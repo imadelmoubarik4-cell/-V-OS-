@@ -234,16 +234,44 @@
     align-items:center; justify-content:center; z-index:20; padding:20px;
   }
   .modal{
-    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
-    width:100%; max-width:400px; padding:28px;
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    width:100%; max-width:420px; max-height:calc(100vh - 40px);
+    overflow-y:auto; overscroll-behavior:contain; padding:28px;
+    box-shadow:0 22px 70px rgba(30,25,18,.18);
   }
+  .modal.item-modal{ max-width:920px; padding:0; overflow:hidden; display:flex; flex-direction:column; }
+  .modal-header{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:24px 28px 18px; border-bottom:1px solid var(--line); flex:0 0 auto;
+  }
+  .modal-header h2{ margin:0; }
+  .modal-close{
+    width:38px; height:38px; border:1px solid var(--line); border-radius:10px;
+    background:var(--surface); color:var(--text); cursor:pointer; font-size:22px; line-height:1;
+  }
+  .modal-scroll{ padding:24px 28px 8px; overflow-y:auto; min-height:0; }
+  .item-form-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 26px; }
+  .form-field{ min-width:0; }
+  .modal-footer{
+    display:flex; justify-content:flex-end; gap:10px; padding:16px 28px;
+    border-top:1px solid var(--line); background:rgba(255,255,255,.96);
+    position:sticky; bottom:0; z-index:2; flex:0 0 auto;
+  }
+  .modal-footer .btn{ min-width:120px; }
   .modal h2{ font-family:'Fraunces', serif; font-weight:500; font-size:22px; margin:0 0 20px; }
   .modal-actions{ display:flex; gap:10px; margin-top:4px; }
   .modal-actions .btn{ flex:1; }
 
-  @media (max-width:640px){
+  @media (max-width:720px){
     thead th:nth-child(3), td:nth-child(3){ display:none; } /* hide "updated" col on mobile */
     .login-card{ padding:32px 22px; }
+    .overlay{ padding:0; align-items:flex-end; }
+    .modal.item-modal{ max-width:none; width:100%; max-height:94vh; border-radius:18px 18px 0 0; }
+    .item-form-grid{ grid-template-columns:1fr; }
+    .modal-header{ padding:18px 20px 14px; }
+    .modal-scroll{ padding:18px 20px 4px; }
+    .modal-footer{ padding:14px 20px calc(14px + env(safe-area-inset-bottom)); }
+    .modal-footer .btn{ flex:1; min-width:0; }
   }
 
   /* ---------- VIEW SWITCH ---------- */
@@ -364,6 +392,44 @@
 
 
 
+
+  /* ---------- ATLAS MODAL OVERRIDES ---------- */
+  #item-overlay{background:rgba(36,37,34,.42);backdrop-filter:blur(4px);}
+  #item-overlay .modal.item-modal{
+    width:min(1080px,calc(100vw - 48px));
+    max-width:1080px;
+    max-height:calc(100vh - 48px);
+    background:var(--atlas-surface);
+    color:var(--atlas-text);
+    border:1px solid var(--atlas-line);
+    border-radius:20px;
+    box-shadow:0 24px 80px rgba(45,40,30,.18);
+  }
+  #item-overlay .modal-header{background:var(--atlas-surface);border-color:var(--atlas-line);padding:22px 28px;}
+  #item-overlay .modal-header h2{font:500 25px/1.2 'Fraunces',serif;color:var(--atlas-text);margin:0;}
+  #item-overlay .modal-close{background:transparent;color:var(--atlas-text);border-color:transparent;}
+  #item-overlay .modal-close:hover{background:var(--atlas-bg);border-color:var(--atlas-line);}
+  #item-overlay .modal-scroll{background:var(--atlas-surface);padding:24px 28px 10px;overflow-y:auto;}
+  #item-overlay .item-form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 26px;}
+  #item-overlay label{color:var(--atlas-text);font-size:13px;margin-bottom:7px;}
+  #item-overlay input,#item-overlay select{
+    background:#fff;color:var(--atlas-text);border:1px solid var(--atlas-line);
+    border-radius:10px;padding:12px 13px;margin-bottom:18px;
+  }
+  #item-overlay input::placeholder{color:#9a9a94;}
+  #item-overlay input:focus,#item-overlay select:focus{border-color:var(--atlas-accent);box-shadow:0 0 0 3px rgba(182,146,94,.12);}
+  #item-overlay .modal-footer{
+    position:sticky;bottom:0;background:rgba(255,255,255,.97);border-color:var(--atlas-line);
+    padding:16px 28px;box-shadow:0 -8px 24px rgba(55,50,40,.05);
+  }
+  #item-overlay .modal-footer .btn{background:var(--atlas-accent);color:white;border-radius:10px;}
+  #item-overlay .modal-footer .btn.ghost{background:#fff;color:var(--atlas-text);border:1px solid var(--atlas-line);}
+  @media(max-width:760px){
+    #item-overlay{align-items:flex-end;padding:0;}
+    #item-overlay .modal.item-modal{width:100%;max-width:none;max-height:94vh;border-radius:20px 20px 0 0;}
+    #item-overlay .item-form-grid{grid-template-columns:1fr;}
+  }
+
   /* ========== PROJECT ATLAS DESIGN SYSTEM ========== */
   :root{
     --atlas-bg:#f6f5f1; --atlas-surface:#ffffff; --atlas-sidebar:#eeece6;
@@ -481,51 +547,32 @@
 
   <!-- ===================== ADD/EDIT MODAL ===================== -->
   <div class="overlay" id="item-overlay">
-    <div class="modal">
-      <h2 id="modal-title">Add item</h2>
-      <form id="item-form">
+    <div class="modal item-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 id="modal-title">Add new inventory item</h2>
+        <button type="button" class="modal-close" id="close-item-btn" aria-label="Close">×</button>
+      </div>
+      <form id="item-form" style="display:flex; flex-direction:column; min-height:0;">
         <input type="hidden" id="item-id" />
-        <label for="item-name">Name</label>
-        <input type="text" id="item-name" required placeholder="e.g. Reyka Vodka" />
-
-        <label for="item-category">Category</label>
-        <input type="text" id="item-category" list="category-suggestions" placeholder="e.g. Spirits, Wine, Glassware..." required />
-        <datalist id="category-suggestions"></datalist>
-
-        <label for="item-quantity">Quantity</label>
-        <input type="number" id="item-quantity" step="0.1" required />
-
-        <label for="item-unit">Unit</label>
-        <input type="text" id="item-unit" placeholder="bottles, kg, cans..." required />
-
-        <label for="item-par">Par level (low-stock alert below this)</label>
-        <input type="number" id="item-par" step="0.1" placeholder="optional" />
-
-        <label for="item-supplier">Supplier</label>
-        <input type="text" id="item-supplier" list="supplier-suggestions" placeholder="e.g. Ölgerðin" />
-        <datalist id="supplier-suggestions"></datalist>
-
-        <label for="item-sku">SKU / barcode <span style="color:var(--text-mute); font-weight:400;">(optional, for later scanning)</span></label>
-        <input type="text" id="item-sku" placeholder="optional" />
-
-        <label for="item-bin">Storage location</label>
-        <input type="text" id="item-bin" placeholder="e.g. Back bar shelf 2" />
-
-        <label for="item-units-per-case">Units per case</label>
-        <input type="number" id="item-units-per-case" step="1" placeholder="optional" />
-
-        <label for="item-case-cost">Case cost <span style="color:var(--text-mute); font-weight:400;">(fills in unit cost below)</span></label>
-        <input type="number" id="item-case-cost" step="0.01" placeholder="optional" />
-
-        <label for="item-cost">Cost price (per unit, what you pay)</label>
-        <input type="number" id="item-cost" step="0.01" placeholder="optional" />
-
-        <label for="item-discount">Standard discount % from this supplier</label>
-        <input type="number" id="item-discount" step="0.1" placeholder="0" />
-
-        <div class="modal-actions">
+        <div class="modal-scroll">
+          <div class="item-form-grid">
+            <div class="form-field"><label for="item-name">Item name</label><input type="text" id="item-name" required placeholder="e.g. Reyka Vodka" /></div>
+            <div class="form-field"><label for="item-category">Category</label><input type="text" id="item-category" list="category-suggestions" placeholder="e.g. Spirits, Mixers, Glassware..." required /><datalist id="category-suggestions"></datalist></div>
+            <div class="form-field"><label for="item-quantity">Quantity</label><input type="number" id="item-quantity" step="0.1" required /></div>
+            <div class="form-field"><label for="item-unit">Unit</label><input type="text" id="item-unit" placeholder="bottles, kg, cans..." required /></div>
+            <div class="form-field"><label for="item-par">Par level (low-stock alert below this)</label><input type="number" id="item-par" step="0.1" placeholder="optional" /></div>
+            <div class="form-field"><label for="item-supplier">Supplier</label><input type="text" id="item-supplier" list="supplier-suggestions" placeholder="e.g. Ölgerðin" /><datalist id="supplier-suggestions"></datalist></div>
+            <div class="form-field"><label for="item-sku">SKU / barcode <span style="color:var(--text-mute); font-weight:400;">(optional)</span></label><input type="text" id="item-sku" placeholder="optional" /></div>
+            <div class="form-field"><label for="item-bin">Storage location</label><input type="text" id="item-bin" placeholder="e.g. Back bar shelf 2" /></div>
+            <div class="form-field"><label for="item-units-per-case">Units per case</label><input type="number" id="item-units-per-case" step="1" placeholder="optional" /></div>
+            <div class="form-field"><label for="item-case-cost">Case cost <span style="color:var(--text-mute); font-weight:400;">(fills unit cost)</span></label><input type="number" id="item-case-cost" step="0.01" placeholder="optional" /></div>
+            <div class="form-field"><label for="item-cost">Cost price (per unit)</label><input type="number" id="item-cost" step="0.01" placeholder="optional" /></div>
+            <div class="form-field"><label for="item-discount">Standard supplier discount %</label><input type="number" id="item-discount" step="0.1" placeholder="0" /></div>
+          </div>
+        </div>
+        <div class="modal-footer">
           <button type="button" class="btn ghost" id="cancel-item-btn">Cancel</button>
-          <button type="submit" class="btn">Save</button>
+          <button type="submit" class="btn">Save item</button>
         </div>
       </form>
     </div>
@@ -926,6 +973,7 @@
 
   document.getElementById('add-item-btn').addEventListener('click', () => openModal(null));
   document.getElementById('cancel-item-btn').addEventListener('click', closeModal);
+  document.getElementById('close-item-btn').addEventListener('click', closeModal);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
 
   function recalcUnitCostFromCase() {
