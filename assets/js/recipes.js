@@ -1,0 +1,782 @@
+(function () {
+  'use strict';
+
+  const FALLBACK_CATEGORIES = [
+    { slug: 'signature-cocktail', name: 'Signature Cocktails', icon: 'sparkles', display_order: 10 },
+    { slug: 'classic-cocktail', name: 'Classic Cocktails', icon: 'martini', display_order: 20 },
+    { slug: 'frozen-cocktail', name: 'Frozen Cocktails', icon: 'snowflake', display_order: 30 },
+    { slug: 'spritz', name: 'Spritzes', icon: 'wine', display_order: 40 },
+    { slug: 'mocktail', name: 'Mocktails', icon: 'citrus', display_order: 50 },
+    { slug: 'coffee', name: 'Coffee', icon: 'coffee', display_order: 60 },
+    { slug: 'hot-cocktail', name: 'Hot Cocktails', icon: 'flame', display_order: 70 },
+    { slug: 'food', name: 'Food', icon: 'utensils', display_order: 80 },
+    { slug: 'dessert', name: 'Dessert', icon: 'cake-slice', display_order: 90 },
+    { slug: 'other', name: 'Other', icon: 'layers-3', display_order: 100 }
+  ];
+
+  const state = {
+    categories: [],
+    categoryById: new Map(),
+    categoryBySlug: new Map(),
+    search: '',
+    category: 'all',
+    viewMode: localStorage.getItem('atlas.recipeViewMode') || 'grid',
+    draftIngredients: [],
+    editingRecipe: null,
+    initialized: false,
+    loadingCategories: null
+  };
+
+  const dom = {};
+
+  function escape(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+  }
+
+  function number(value, fallback = 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function formatIsk(value, empty = '—') {
+    if (!Number.isFinite(value)) return empty;
+    return `${Math.round(value).toLocaleString('en-US')} ISK`;
+  }
+
+  function normalizeUnit(unit) {
+    const value = String(unit || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!value) return 'each';
+    if (['ml', 'millilitre', 'millilitres', 'milliliter', 'milliliters'].includes(value)) return 'ml';
+    if (['l', 'lt', 'liter', 'liters', 'litre', 'litres'].includes(value)) return 'l';
+    if (['g', 'gr', 'gram', 'grams'].includes(value)) return 'g';
+    if (['kg', 'kilogram', 'kilograms'].includes(value)) return 'kg';
+    if (['bottle', 'bottles'].includes(value)) return 'bottle';
+    if (['can', 'cans'].includes(value)) return 'can';
+    if (['piece', 'pieces', 'pc', 'pcs', 'unit', 'units', 'each', 'ea'].includes(value)) return 'each';
+    return value;
+  }
+
+  function parsePackSize(item) {
+    if (number(item?.size_ml) > 0) return { quantity: number(item.size_ml), unit: 'ml' };
+
+    const text = String(item?.unit || '').trim().toLowerCase();
+    const match = text.match(/([0-9]+(?:[.,][0-9]+)?)\s*(ml|l|lt|g|kg)\b/i);
+    if (match) {
+      const quantity = Number(match[1].replace(',', '.'));
+      const unit = normalizeUnit(match[2]);
+      if (unit === 'l') return { quantity: quantity * 1000, unit: 'ml' };
+      if (unit === 'kg') return { quantity: quantity * 1000, unit: 'g' };
+      return { quantity, unit };
+    }
+
+    const normalized = normalizeUnit(text);
+    if (['bottle', 'can', 'each'].includes(normalized)) return { quantity: 1, unit: normalized };
+    return null;
+  }
+
+  function convertIngredientQuantity(quantity, unit) {
+    const normalized = normalizeUnit(unit);
+    if (normalized === 'l') return { quantity: quantity * 1000, unit: 'ml' };
+    if (normalized === 'kg') return { quantity: quantity * 1000, unit: 'g' };
+    return { quantity, unit: normalized };
+  }
+
+  function ingredientCost(ingredient) {
+    const item = items.find((candidate) => candidate.id === ingredient.item_id);
+    const purchaseCost = number(item?.cost_price, NaN);
+    if (!item || !Number.isFinite(purchaseCost) || purchaseCost <= 0) {
+      return { value: null, item, reason: 'Missing inventory cost' };
+    }
+
+    const requested = convertIngredientQuantity(number(ingredient.quantity), ingredient.unit);
+    const pack = parsePackSize(item);
+    if (!pack) return { value: null, item, reason: 'Missing package size' };
+
+    if (pack.unit === requested.unit) {
+      return { value: purchaseCost * (requested.quantity / pack.quantity), item, reason: null };
+    }
+
+    const eachLike = new Set(['each', 'bottle', 'can']);
+    if (eachLike.has(pack.unit) && eachLike.has(requested.unit)) {
+      return { value: purchaseCost * requested.quantity, item, reason: null };
+    }
+
+    return { value: null, item, reason: 'Unit does not match inventory package' };
+  }
+
+  function ingredientAvailability(ingredient) {
+    const item = items.find((candidate) => candidate.id === ingredient.item_id);
+    if (!item) return { servings: null, item: null, reason: 'Inventory item is missing', belowPar: false };
+
+    const requested = convertIngredientQuantity(number(ingredient.quantity), ingredient.unit);
+    const pack = parsePackSize(item);
+    if (!pack || requested.quantity <= 0) {
+      return { servings: null, item, reason: 'Package size is missing', belowPar: false };
+    }
+
+    const stockUnits = Math.max(0, number(item.quantity));
+    const belowPar = item.par_level != null && stockUnits <= number(item.par_level);
+    let availableBatches = null;
+
+    if (pack.unit === requested.unit) {
+      availableBatches = (stockUnits * pack.quantity) / requested.quantity;
+    } else {
+      const eachLike = new Set(['each', 'bottle', 'can']);
+      if (eachLike.has(pack.unit) && eachLike.has(requested.unit)) {
+        availableBatches = stockUnits / requested.quantity;
+      }
+    }
+
+    if (!Number.isFinite(availableBatches)) {
+      return { servings: null, item, reason: 'Inventory unit does not match recipe unit', belowPar };
+    }
+
+    return {
+      servings: Math.max(0, availableBatches),
+      item,
+      reason: null,
+      belowPar
+    };
+  }
+
+  function recipeAvailability(recipeOrIngredients, yieldValue) {
+    const ingredients = Array.isArray(recipeOrIngredients)
+      ? recipeOrIngredients
+      : recipeOrIngredients?.recipe_ingredients || [];
+    const recipeYield = Math.max(0.0001, yieldValue !== undefined
+      ? number(yieldValue, 1)
+      : number(recipeOrIngredients?.yield_quantity, 1));
+
+    if (!ingredients.length) {
+      return { servings: null, limiting: null, unknown: 0, missing: 0, belowPar: 0, status: 'incomplete' };
+    }
+
+    const results = ingredients.map((ingredient) => ({ ingredient, ...ingredientAvailability(ingredient) }));
+    const known = results.filter((result) => Number.isFinite(result.servings));
+    const unknown = results.filter((result) => !Number.isFinite(result.servings));
+    const missing = results.filter((result) => !result.item);
+    const belowPar = results.filter((result) => result.belowPar);
+
+    if (!known.length) {
+      return { servings: null, limiting: unknown[0] || null, unknown: unknown.length, missing: missing.length, belowPar: belowPar.length, status: 'incomplete' };
+    }
+
+    const limiting = known.reduce((smallest, result) => result.servings < smallest.servings ? result : smallest, known[0]);
+    const servings = Math.floor(limiting.servings * recipeYield);
+    let status = 'ready';
+    if (unknown.length || missing.length) status = 'incomplete';
+    else if (servings <= 0) status = 'unavailable';
+    else if (servings < 12 || belowPar.length) status = 'attention';
+
+    return {
+      servings,
+      limiting,
+      unknown: unknown.length,
+      missing: missing.length,
+      belowPar: belowPar.length,
+      status
+    };
+  }
+
+  function recipeFinancials(recipeOrIngredients, menuPriceValue, yieldValue) {
+    const ingredients = Array.isArray(recipeOrIngredients)
+      ? recipeOrIngredients
+      : recipeOrIngredients?.recipe_ingredients || [];
+    const menuPrice = menuPriceValue !== undefined
+      ? number(menuPriceValue, NaN)
+      : number(recipeOrIngredients?.menu_price, NaN);
+    const recipeYield = Math.max(0.0001, yieldValue !== undefined
+      ? number(yieldValue, 1)
+      : number(recipeOrIngredients?.yield_quantity, 1));
+
+    let total = 0;
+    let incomplete = 0;
+    ingredients.forEach((ingredient) => {
+      const result = ingredientCost(ingredient);
+      if (result.value == null) incomplete += 1;
+      else total += result.value;
+    });
+
+    const perServing = total / recipeYield;
+    const costPercent = Number.isFinite(menuPrice) && menuPrice > 0 ? (perServing / menuPrice) * 100 : NaN;
+    const profit = Number.isFinite(menuPrice) ? menuPrice - perServing : NaN;
+    const margin = Number.isFinite(menuPrice) && menuPrice > 0 ? (profit / menuPrice) * 100 : NaN;
+
+    return { total, perServing, costPercent, profit, margin, incomplete };
+  }
+
+  function categoryFor(recipe) {
+    if (recipe?.category_id && state.categoryById.has(recipe.category_id)) {
+      return state.categoryById.get(recipe.category_id);
+    }
+    const slug = recipe?.type || 'other';
+    return state.categoryBySlug.get(slug) || {
+      id: null,
+      slug,
+      name: slug.replace(/-/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      icon: 'layers-3'
+    };
+  }
+
+  async function loadCategories(force = false) {
+    if (!force && state.categories.length) return state.categories;
+    if (!force && state.loadingCategories) return state.loadingCategories;
+
+    state.loadingCategories = (async () => {
+      try {
+        const { data, error } = await sb
+          .from('recipe_categories')
+          .select('id, slug, name, description, icon, display_order, active')
+          .eq('active', true)
+          .order('display_order', { ascending: true });
+        if (error) throw error;
+        state.categories = data?.length ? data : FALLBACK_CATEGORIES;
+      } catch (error) {
+        console.warn('Recipe categories fallback:', error);
+        state.categories = FALLBACK_CATEGORIES;
+      }
+      state.categoryById = new Map(state.categories.filter((category) => category.id).map((category) => [category.id, category]));
+      state.categoryBySlug = new Map(state.categories.map((category) => [category.slug, category]));
+      state.loadingCategories = null;
+      return state.categories;
+    })();
+
+    return state.loadingCategories;
+  }
+
+  function cacheDom() {
+    dom.view = document.getElementById('recipes-view');
+    dom.grid = document.getElementById('recipes-grid-v2');
+    dom.empty = document.getElementById('recipes-empty-v2');
+    dom.search = document.getElementById('recipe-search');
+    dom.categoryRow = document.getElementById('recipe-category-row');
+    dom.addButton = document.getElementById('add-recipe-btn');
+    dom.modal = document.getElementById('recipe-overlay');
+    dom.form = document.getElementById('recipe-form');
+    dom.modalTitle = document.getElementById('recipe-modal-title');
+    dom.modalSubtitle = document.getElementById('recipe-modal-subtitle');
+    dom.categorySelect = document.getElementById('recipe-category-id');
+    dom.ingredientSelect = document.getElementById('ingredient-item');
+    dom.ingredientList = document.getElementById('ingredient-list');
+    dom.saveState = document.getElementById('recipe-save-state');
+  }
+
+  function bindEvents() {
+    dom.addButton?.addEventListener('click', () => openEditor(null));
+    dom.search?.addEventListener('input', (event) => {
+      state.search = event.target.value.trim().toLowerCase();
+      renderCards();
+    });
+
+    document.querySelectorAll('[data-recipe-view-mode]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.viewMode = button.dataset.recipeViewMode;
+        localStorage.setItem('atlas.recipeViewMode', state.viewMode);
+        document.querySelectorAll('[data-recipe-view-mode]').forEach((candidate) => {
+          candidate.classList.toggle('active', candidate === button);
+        });
+        renderCards();
+      });
+    });
+
+    document.querySelectorAll('[data-recipe-filter]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        state.category = button.dataset.recipeFilter || 'all';
+        setActiveView('recipes');
+        render();
+      });
+    });
+
+    document.getElementById('add-ingredient-btn')?.addEventListener('click', addIngredientFromForm);
+    dom.ingredientList?.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-remove-ingredient]');
+      if (!button) return;
+      state.draftIngredients.splice(Number(button.dataset.removeIngredient), 1);
+      renderIngredientList();
+    });
+
+    ['recipe-yield-qty', 'recipe-menu-price'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('input', renderDraftFinancials);
+    });
+
+    dom.form?.addEventListener('submit', saveRecipe);
+    dom.modal?.addEventListener('atlas:modal-close', resetEditor);
+
+    document.getElementById('fab-add-recipe')?.addEventListener('click', () => {
+      document.getElementById('fab-menu')?.classList.remove('open');
+      document.getElementById('fab-btn')?.classList.remove('open');
+      setActiveView('recipes');
+      openEditor(null);
+    });
+  }
+
+  function renderSummary() {
+    const totalRecipes = recipes.length;
+    const activeRecipes = recipes.filter((recipe) => recipe.active !== false);
+    const availability = activeRecipes.map((recipe) => ({ recipe, availability: recipeAvailability(recipe) }));
+    const readyCount = availability.filter((entry) => entry.availability.status === 'ready').length;
+    const attentionCount = availability.filter((entry) => entry.availability.status !== 'ready').length;
+
+    document.getElementById('recipe-stat-total').textContent = totalRecipes;
+    document.getElementById('recipe-stat-active').textContent = activeRecipes.length;
+    document.getElementById('recipe-stat-ready').textContent = readyCount;
+    document.getElementById('recipe-stat-attention').textContent = attentionCount;
+
+    const totalIngredients = recipes.reduce((total, recipe) => total + (recipe.recipe_ingredients?.length || 0), 0);
+    const linkedIngredients = recipes.reduce((total, recipe) => {
+      return total + (recipe.recipe_ingredients || []).filter((ingredient) => ingredient.item_id).length;
+    }, 0);
+    document.getElementById('recipe-inventory-count').textContent = items.length;
+    document.getElementById('recipe-linked-count').textContent = linkedIngredients;
+    document.getElementById('recipe-unlinked-count').textContent = Math.max(0, totalIngredients - linkedIngredients);
+
+    renderIntelligence(availability);
+  }
+
+  function urgencyRank(status) {
+    return ({ unavailable: 0, attention: 1, incomplete: 2, ready: 3 })[status] ?? 4;
+  }
+
+  function renderIntelligence(entries) {
+    const title = document.getElementById('recipe-intelligence-title');
+    const detail = document.getElementById('recipe-intelligence-detail');
+    const action = document.getElementById('recipe-intelligence-action');
+    if (!title || !detail || !action) return;
+
+    const issues = entries
+      .filter((entry) => entry.availability.status !== 'ready')
+      .sort((a, b) => {
+        const statusDifference = urgencyRank(a.availability.status) - urgencyRank(b.availability.status);
+        if (statusDifference) return statusDifference;
+        return number(a.availability.servings, Number.MAX_SAFE_INTEGER) - number(b.availability.servings, Number.MAX_SAFE_INTEGER);
+      });
+
+    if (!issues.length) {
+      title.textContent = entries.length ? 'Every active recipe is ready for service.' : 'Create your first connected recipe.';
+      detail.textContent = entries.length
+        ? 'Atlas found no stock or inventory-link problems across active recipes.'
+        : 'Once ingredients are linked, Atlas will calculate cost and current service availability.';
+      action.hidden = true;
+      action.onclick = null;
+      return;
+    }
+
+    const issue = issues[0];
+    const availability = issue.availability;
+    const limitingName = availability.limiting?.item?.name || availability.limiting?.ingredient?.item_name || 'an ingredient';
+
+    if (availability.status === 'unavailable') {
+      title.textContent = `${issue.recipe.name} cannot currently be served.`;
+      detail.textContent = `${limitingName} is out of stock or insufficient for one serving.`;
+    } else if (availability.status === 'attention') {
+      title.textContent = `${issue.recipe.name}: approximately ${availability.servings} servings available.`;
+      detail.textContent = `${limitingName} is the limiting ingredient${availability.belowPar ? ' and is at or below par' : ''}.`;
+    } else {
+      title.textContent = `${issue.recipe.name} needs an inventory check.`;
+      detail.textContent = availability.missing
+        ? 'One or more ingredients are no longer linked to inventory.'
+        : 'Add package size and matching units to calculate service availability.';
+    }
+
+    action.hidden = false;
+    action.textContent = 'Review recipe';
+    action.onclick = () => openEditor(issue.recipe);
+  }
+
+  function renderCategoryChips() {
+    if (!dom.categoryRow) return;
+    const categoryCounts = new Map();
+    recipes.forEach((recipe) => {
+      const category = categoryFor(recipe);
+      categoryCounts.set(category.slug, (categoryCounts.get(category.slug) || 0) + 1);
+    });
+
+    const buttons = [
+      `<button type="button" class="recipe-category-chip ${state.category === 'all' ? 'active' : ''}" data-category="all">All <span class="count">${recipes.length}</span></button>`,
+      ...state.categories.map((category) => {
+        const count = categoryCounts.get(category.slug) || 0;
+        return `<button type="button" class="recipe-category-chip ${state.category === category.slug ? 'active' : ''}" data-category="${escape(category.slug)}">${escape(category.name)} <span class="count">${count}</span></button>`;
+      })
+    ];
+    dom.categoryRow.innerHTML = buttons.join('');
+    dom.categoryRow.querySelectorAll('[data-category]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.category = button.dataset.category;
+        renderCategoryChips();
+        renderCards();
+      });
+    });
+  }
+
+  function filteredRecipes() {
+    return recipes.filter((recipe) => {
+      const category = categoryFor(recipe);
+      const categoryMatch = state.category === 'all' || category.slug === state.category;
+      const searchText = [recipe.name, category.name, recipe.glassware, recipe.garnish, recipe.method]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      const searchMatch = !state.search || searchText.includes(state.search);
+      return categoryMatch && searchMatch;
+    });
+  }
+
+  function recipeStatus(recipe) {
+    if (recipe.active === false) return { label: 'Inactive', className: 'warn', availability: recipeAvailability(recipe) };
+    const availability = recipeAvailability(recipe);
+    if (availability.status === 'unavailable') return { label: 'Out of stock', className: 'danger', availability };
+    if (availability.status === 'attention') return { label: `${availability.servings} servings`, className: 'warn', availability };
+    if (availability.status === 'incomplete') return { label: 'Needs setup', className: 'warn', availability };
+    return { label: 'Ready', className: 'ready', availability };
+  }
+
+  function renderCards() {
+    if (!dom.grid || !dom.empty) return;
+    const visibleRecipes = filteredRecipes();
+    dom.grid.className = `recipe-grid${state.viewMode === 'list' ? ' list-mode' : ''}`;
+
+    document.querySelectorAll('[data-recipe-view-mode]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.recipeViewMode === state.viewMode);
+    });
+
+    if (!visibleRecipes.length) {
+      dom.grid.innerHTML = '';
+      dom.empty.hidden = false;
+      return;
+    }
+
+    dom.empty.hidden = true;
+    dom.grid.innerHTML = visibleRecipes.map((recipe) => {
+      const category = categoryFor(recipe);
+      const financials = recipeFinancials(recipe);
+      const ingredients = recipe.recipe_ingredients || [];
+      const linked = ingredients.filter((ingredient) => ingredient.item_id).length;
+      const status = recipeStatus(recipe);
+      const imageStyle = recipe.image_url ? `style="background-image:url('${escape(recipe.image_url)}')"` : '';
+      const meta = [recipe.glassware, recipe.garnish].filter(Boolean).map(escape).join(' · ') || 'Add glassware and garnish';
+      return `
+        <article class="recipe-card-v2" data-recipe-id="${escape(recipe.id)}" tabindex="0" role="button" aria-label="Open ${escape(recipe.name)}">
+          <div class="recipe-card-media ${recipe.image_url ? 'has-image' : ''}" ${imageStyle}>
+            <span class="recipe-card-category">${escape(category.name)}</span>
+            <span class="recipe-card-status ${status.className}">${escape(status.label)}</span>
+          </div>
+          <div class="recipe-card-body">
+            <h3>${escape(recipe.name)}</h3>
+            <div class="recipe-card-meta">${meta}</div>
+            <div class="recipe-card-stats">
+              <div class="recipe-card-stat"><span>Ingredients</span><strong>${linked}/${ingredients.length}</strong></div>
+              <div class="recipe-card-stat"><span>Can make</span><strong>${Number.isFinite(status.availability.servings) ? status.availability.servings : '—'}</strong></div>
+              <div class="recipe-card-stat"><span>Cost</span><strong>${financials.incomplete ? 'Incomplete' : formatIsk(financials.perServing)}</strong></div>
+              <div class="recipe-card-stat"><span>Margin</span><strong>${Number.isFinite(financials.margin) && !financials.incomplete ? `${financials.margin.toFixed(0)}%` : '—'}</strong></div>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    dom.grid.querySelectorAll('[data-recipe-id]').forEach((card) => {
+      const open = () => {
+        const recipe = recipes.find((candidate) => candidate.id === card.dataset.recipeId);
+        if (recipe) openEditor(recipe);
+      };
+      card.addEventListener('click', open);
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          open();
+        }
+      });
+    });
+  }
+
+  function renderMenuShare() {
+    const menuUrl = `${window.location.origin}/menu.html`;
+    const linkInput = document.getElementById('menu-link');
+    const embedInput = document.getElementById('menu-embed');
+    const qrImage = document.getElementById('menu-qr');
+    if (linkInput) linkInput.value = menuUrl;
+    if (embedInput) embedInput.value = `<iframe src="${menuUrl}" width="100%" height="600" style="border:none"></iframe>`;
+    if (qrImage) qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(menuUrl)}`;
+  }
+
+  async function render() {
+    if (!state.initialized) init();
+    await loadCategories();
+    renderSummary();
+    renderCategoryChips();
+    renderCards();
+    renderMenuShare();
+    populateCategorySelect();
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function populateCategorySelect(selectedId, selectedSlug) {
+    if (!dom.categorySelect) return;
+    dom.categorySelect.innerHTML = state.categories.map((category) => {
+      const selected = selectedId
+        ? category.id === selectedId
+        : category.slug === selectedSlug;
+      return `<option value="${escape(category.id || '')}" data-slug="${escape(category.slug)}" ${selected ? 'selected' : ''}>${escape(category.name)}</option>`;
+    }).join('');
+  }
+
+  function populateIngredientSelect() {
+    if (!dom.ingredientSelect) return;
+    const available = items.filter((item) => item.active !== false);
+    dom.ingredientSelect.innerHTML = [
+      '<option value="">Select inventory item</option>',
+      ...available.map((item) => `<option value="${escape(item.id)}">${escape(item.name)} · ${escape(item.category || 'Other')} · ${number(item.quantity)} ${escape(item.unit)}</option>`)
+    ].join('');
+  }
+
+  async function openEditor(recipe) {
+    await loadCategories();
+    state.editingRecipe = recipe || null;
+    state.draftIngredients = (recipe?.recipe_ingredients || []).map((ingredient) => ({
+      item_id: ingredient.item_id,
+      item_name: ingredient.item_name,
+      quantity: number(ingredient.quantity),
+      unit: ingredient.unit
+    }));
+
+    dom.modalTitle.textContent = recipe ? 'Edit recipe' : 'New recipe';
+    dom.modalSubtitle.textContent = recipe
+      ? 'Update the recipe, service specification and inventory links.'
+      : 'Build a service-ready recipe connected to live inventory.';
+
+    document.getElementById('recipe-id').value = recipe?.id || '';
+    document.getElementById('recipe-name').value = recipe?.name || '';
+    populateCategorySelect(recipe?.category_id, recipe?.type || 'signature-cocktail');
+    document.getElementById('recipe-image-url').value = recipe?.image_url || '';
+    document.getElementById('recipe-glassware').value = recipe?.glassware || '';
+    document.getElementById('recipe-garnish').value = recipe?.garnish || '';
+    document.getElementById('recipe-method').value = recipe?.method || '';
+    document.getElementById('recipe-notes').value = recipe?.notes || '';
+    document.getElementById('recipe-yield-qty').value = number(recipe?.yield_quantity, 1);
+    document.getElementById('recipe-yield-unit').value = recipe?.yield_unit || 'serving';
+    document.getElementById('recipe-menu-price').value = recipe?.menu_price ?? '';
+    document.getElementById('recipe-active').checked = recipe?.active !== false;
+    document.getElementById('recipe-show-on-menu').checked = recipe?.show_on_menu !== false;
+    dom.saveState.textContent = '';
+    dom.saveState.className = 'recipe-save-state';
+
+    populateIngredientSelect();
+    document.getElementById('ingredient-qty').value = '';
+    document.getElementById('ingredient-unit').value = 'ml';
+    renderIngredientList();
+    window.AtlasModal.open(dom.modal);
+  }
+
+  function resetEditor() {
+    state.editingRecipe = null;
+    state.draftIngredients = [];
+    dom.form?.reset();
+    if (dom.saveState) {
+      dom.saveState.textContent = '';
+      dom.saveState.className = 'recipe-save-state';
+    }
+  }
+
+  function addIngredientFromForm() {
+    const itemId = dom.ingredientSelect.value;
+    const item = items.find((candidate) => candidate.id === itemId);
+    const quantity = number(document.getElementById('ingredient-qty').value, NaN);
+    const unit = document.getElementById('ingredient-unit').value.trim();
+
+    if (!item) {
+      dom.ingredientSelect.focus();
+      return;
+    }
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      document.getElementById('ingredient-qty').focus();
+      return;
+    }
+
+    state.draftIngredients.push({
+      item_id: item.id,
+      item_name: item.name,
+      quantity,
+      unit: unit || 'ml'
+    });
+    document.getElementById('ingredient-qty').value = '';
+    renderIngredientList();
+  }
+
+  function renderIngredientList() {
+    if (!dom.ingredientList) return;
+    if (!state.draftIngredients.length) {
+      dom.ingredientList.innerHTML = '<div class="ingredient-list-empty">No ingredients yet. Select an inventory item above to create the first live link.</div>';
+      renderDraftFinancials();
+      return;
+    }
+
+    dom.ingredientList.innerHTML = state.draftIngredients.map((ingredient, index) => {
+      const cost = ingredientCost(ingredient);
+      const item = cost.item;
+      const inventoryMeta = item
+        ? `${number(item.quantity)} ${escape(item.unit)} in stock${item.par_level != null ? ` · par ${number(item.par_level)}` : ''}`
+        : 'Inventory link missing';
+      return `
+        <div class="ingredient-line-v2">
+          <div class="ingredient-name-v2">
+            <strong>${escape(ingredient.item_name)}</strong>
+            <span>${inventoryMeta}</span>
+          </div>
+          <span class="ingredient-quantity-v2">${number(ingredient.quantity)} ${escape(ingredient.unit)}</span>
+          <span class="ingredient-cost-v2">${cost.value == null ? escape(cost.reason) : formatIsk(cost.value)}</span>
+          <button type="button" class="ingredient-remove-v2" data-remove-ingredient="${index}" aria-label="Remove ${escape(ingredient.item_name)}">×</button>
+        </div>
+      `;
+    }).join('');
+    renderDraftFinancials();
+  }
+
+  function renderDraftFinancials() {
+    const menuPrice = document.getElementById('recipe-menu-price')?.value;
+    const recipeYield = document.getElementById('recipe-yield-qty')?.value;
+    const financials = recipeFinancials(state.draftIngredients, menuPrice, recipeYield);
+
+    document.getElementById('calc-total-cost').textContent = formatIsk(financials.total, '0 ISK');
+    document.getElementById('calc-cost-per-serving').textContent = formatIsk(financials.perServing, '0 ISK');
+    document.getElementById('calc-cost-pct').textContent = Number.isFinite(financials.costPercent) ? `${financials.costPercent.toFixed(1)}%` : '—';
+    document.getElementById('calc-profit').textContent = Number.isFinite(financials.profit) ? formatIsk(financials.profit) : '—';
+
+    const note = document.getElementById('recipe-cost-note');
+    if (financials.incomplete) {
+      note.textContent = `${financials.incomplete} ingredient ${financials.incomplete === 1 ? 'needs' : 'need'} an inventory cost and package size before costing is complete.`;
+      note.className = 'recipe-cost-note warn';
+    } else {
+      note.textContent = state.draftIngredients.length
+        ? 'Costing is calculated from the linked inventory item cost and package size.'
+        : 'Add linked ingredients to calculate the recipe cost.';
+      note.className = 'recipe-cost-note';
+    }
+
+    const availabilityNote = document.getElementById('recipe-availability-note');
+    if (availabilityNote) {
+      const availability = recipeAvailability(state.draftIngredients, recipeYield);
+      const label = availabilityNote.querySelector('span');
+      availabilityNote.className = `recipe-availability-note ${availability.status}`;
+      if (!state.draftIngredients.length) {
+        label.textContent = 'Add linked ingredients to calculate current service availability.';
+      } else if (availability.status === 'incomplete') {
+        label.textContent = 'Availability is incomplete because an inventory link, package size or matching unit is missing.';
+      } else if (availability.status === 'unavailable') {
+        label.textContent = `${availability.limiting?.item?.name || 'The limiting ingredient'} is insufficient for one serving.`;
+      } else {
+        label.textContent = `Current stock supports approximately ${availability.servings} servings before ${availability.limiting?.item?.name || 'the limiting ingredient'} runs out.`;
+      }
+    }
+  }
+
+  async function saveRecipe(event) {
+    event.preventDefault();
+    const submitButton = dom.form.querySelector('[type="submit"]');
+    submitButton.disabled = true;
+    dom.saveState.textContent = 'Saving…';
+    dom.saveState.className = 'recipe-save-state';
+
+    try {
+      const selectedOption = dom.categorySelect.options[dom.categorySelect.selectedIndex];
+      const categoryId = dom.categorySelect.value || null;
+      const categorySlug = selectedOption?.dataset.slug || 'other';
+      const recipeId = document.getElementById('recipe-id').value || null;
+      const payload = {
+        name: document.getElementById('recipe-name').value.trim(),
+        category_id: categoryId,
+        type: categorySlug,
+        image_url: document.getElementById('recipe-image-url').value.trim() || null,
+        glassware: document.getElementById('recipe-glassware').value.trim() || null,
+        garnish: document.getElementById('recipe-garnish').value.trim() || null,
+        method: document.getElementById('recipe-method').value.trim() || null,
+        notes: document.getElementById('recipe-notes').value.trim() || null,
+        yield_quantity: Math.max(0.0001, number(document.getElementById('recipe-yield-qty').value, 1)),
+        yield_unit: document.getElementById('recipe-yield-unit').value.trim() || 'serving',
+        menu_price: document.getElementById('recipe-menu-price').value === ''
+          ? null
+          : number(document.getElementById('recipe-menu-price').value),
+        active: document.getElementById('recipe-active').checked,
+        show_on_menu: document.getElementById('recipe-show-on-menu').checked,
+        updated_by: currentUser?.id || null
+      };
+
+      if (!payload.name) throw new Error('Recipe name is required.');
+
+      let savedRecipeId = recipeId;
+      if (recipeId) {
+        const { error } = await sb.from('recipes').update(payload).eq('id', recipeId);
+        if (error) throw error;
+        const { error: deleteError } = await sb.from('recipe_ingredients').delete().eq('recipe_id', recipeId);
+        if (deleteError) throw deleteError;
+      } else {
+        const { data, error } = await sb.from('recipes').insert(payload).select('id').single();
+        if (error) throw error;
+        savedRecipeId = data.id;
+      }
+
+      if (state.draftIngredients.length) {
+        const { error } = await sb.from('recipe_ingredients').insert(
+          state.draftIngredients.map((ingredient) => ({
+            recipe_id: savedRecipeId,
+            item_id: ingredient.item_id,
+            item_name: ingredient.item_name,
+            quantity: ingredient.quantity,
+            unit: ingredient.unit
+          }))
+        );
+        if (error) throw error;
+      }
+
+      dom.saveState.textContent = 'Saved';
+      await loadAll();
+      window.AtlasModal.close(dom.modal, 'saved');
+      if (activeView === 'recipes') await render();
+    } catch (error) {
+      console.error(error);
+      dom.saveState.textContent = error.message || 'Could not save recipe.';
+      dom.saveState.className = 'recipe-save-state error';
+    } finally {
+      submitButton.disabled = false;
+    }
+  }
+
+  function init() {
+    if (state.initialized) return;
+    cacheDom();
+    if (!dom.view) return;
+    window.AtlasModal.register(dom.modal, { closeOnBackdrop: true, initialFocus: '#recipe-name' });
+    bindEvents();
+    state.initialized = true;
+  }
+
+  function getHomeAlert() {
+    const active = recipes.filter((recipe) => recipe.active !== false);
+    const issues = active
+      .map((recipe) => ({ recipe, availability: recipeAvailability(recipe) }))
+      .filter((entry) => entry.availability.status !== 'ready')
+      .sort((a, b) => urgencyRank(a.availability.status) - urgencyRank(b.availability.status) || number(a.availability.servings, 999999) - number(b.availability.servings, 999999));
+    if (!issues.length) return null;
+    const issue = issues[0];
+    if (issue.availability.status === 'unavailable') return { text: `${issue.recipe.name} cannot currently be served.` };
+    if (issue.availability.status === 'attention') return { text: `${issue.recipe.name}: only about ${issue.availability.servings} servings available.` };
+    return { text: `${issue.recipe.name} needs an inventory or package-size check.` };
+  }
+
+  window.AtlasRecipes = {
+    init,
+    render,
+    openEditor,
+    getHomeAlert,
+    recipeAvailability,
+    reloadCategories: () => loadCategories(true)
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+})();
