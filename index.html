@@ -447,6 +447,7 @@
   <link rel="stylesheet" href="assets/css/operations.css">
   <link rel="stylesheet" href="assets/css/brain.css">
   <link rel="stylesheet" href="assets/css/business.css">
+  <link rel="stylesheet" href="assets/css/import-center.css">
 </head>
 <body>
 
@@ -492,6 +493,7 @@
             </div>
             <button class="nav-item nav-parent" data-default="suppliers"><i data-lucide="truck"></i>Purchasing<i class="chev" data-lucide="chevron-down"></i></button>
             <div class="nav-sub"><button class="nav-item" data-view="suppliers" data-subview="Suppliers">Suppliers</button><button class="nav-item" data-view="suppliers" data-subview="Orders">Orders</button><button class="nav-item" data-view="suppliers" data-subview="Deliveries">Deliveries</button></div>
+            <button class="nav-item" data-view="imports"><i data-lucide="file-up"></i>Import Center</button>
           </div>
           <div class="nav-group"><div class="nav-label">PEOPLE</div><button class="nav-item" data-view="team"><i data-lucide="users"></i>Team</button><button class="nav-item" data-view="shifts"><i data-lucide="calendar-days"></i>Shifts</button><button class="nav-item" data-view="knowledge"><i data-lucide="book-open"></i>Knowledge</button></div>
           <div class="nav-group"><div class="nav-label">INSIGHTS</div><button class="nav-item" data-view="reports"><i data-lucide="chart-no-axes-combined"></i>Reports</button></div>
@@ -569,6 +571,74 @@
             </section>
           </div>
           <div id="suppliers-view" style="display:none;"><div class="toolbar"><input type="text" id="supplier-search" placeholder="Search suppliers..." style="max-width:280px;margin-bottom:0;"/><button class="btn" id="add-supplier-btn">+ New supplier</button></div><table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table><div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div></div>
+          <div id="imports-view" style="display:none;">
+            <section class="atlas-import-center" aria-labelledby="inventory-import-title">
+              <div class="import-hero">
+                <div>
+                  <p class="import-eyebrow">Inventory tools</p>
+                  <h1 id="inventory-import-title">Import Center</h1>
+                  <p>Upload an Excel or CSV file, review every proposed change, then approve the rows you want to save.</p>
+                </div>
+                <button type="button" class="btn ghost" id="download-import-template"><i data-lucide="download"></i>Download template</button>
+              </div>
+
+              <div class="import-layout">
+                <article class="import-card import-upload-card">
+                  <div class="import-drop-zone" id="inventory-import-drop" tabindex="0" role="button" aria-describedby="inventory-import-help">
+                    <div class="import-drop-icon"><i data-lucide="upload-cloud"></i></div>
+                    <h2>Choose a stock file</h2>
+                    <p id="inventory-import-help">Use .xlsx, .xls or .csv. Atlas reads the first sheet and never writes to inventory before approval.</p>
+                    <button type="button" class="btn" id="inventory-import-browse">Choose file</button>
+                    <input type="file" id="inventory-import-file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
+                  </div>
+                  <div class="import-file-meta" id="inventory-import-file-meta" hidden>
+                    <div><span>Selected file</span><strong id="inventory-import-file-name">-</strong></div>
+                    <button type="button" class="import-text-button" id="inventory-import-change-file">Change</button>
+                  </div>
+                  <div class="import-message" id="inventory-import-message" role="status" aria-live="polite"></div>
+                </article>
+
+                <article class="import-card import-rules-card">
+                  <div class="import-card-heading"><i data-lucide="shield-check"></i><div><h2>Safe import rules</h2><p>Existing records are protected by default.</p></div></div>
+                  <ul class="import-rule-list">
+                    <li><strong>Match:</strong> SKU or normalized product name.</li>
+                    <li><strong>Merge:</strong> stock and costs update; descriptive fields only fill missing values.</li>
+                    <li><strong>Create:</strong> unmatched rows become new inventory items.</li>
+                    <li><strong>Skip:</strong> incomplete or unwanted rows remain unchanged.</li>
+                  </ul>
+                </article>
+              </div>
+
+              <section class="import-preview-panel" id="inventory-import-preview" hidden>
+                <div class="import-preview-header">
+                  <div><p class="import-eyebrow">Review before saving</p><h2>Import preview</h2><p id="inventory-import-preview-note">Check the proposed action for each row.</p></div>
+                  <div class="import-preview-actions"><button type="button" class="btn ghost" id="inventory-import-cancel">Cancel</button><button type="button" class="btn" id="inventory-import-commit">Import selected rows</button></div>
+                </div>
+
+                <div class="import-summary-grid" aria-label="Import summary">
+                  <div class="import-summary-card"><span>Rows found</span><strong id="inventory-import-total">0</strong></div>
+                  <div class="import-summary-card"><span>New</span><strong id="inventory-import-new">0</strong></div>
+                  <div class="import-summary-card"><span>Matches</span><strong id="inventory-import-matches">0</strong></div>
+                  <div class="import-summary-card"><span>Skipped</span><strong id="inventory-import-skipped">0</strong></div>
+                </div>
+
+                <div class="import-progress" id="inventory-import-progress" hidden aria-label="Import progress"><div id="inventory-import-progress-bar"></div></div>
+                <p class="import-progress-label" id="inventory-import-progress-label" hidden></p>
+
+                <div class="import-table-wrap">
+                  <table class="import-table">
+                    <thead><tr><th>Row</th><th>Product</th><th>Category</th><th>Quantity</th><th>Supplier</th><th>Match</th><th>Action</th></tr></thead>
+                    <tbody id="inventory-import-rows"></tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="import-card import-history-card">
+                <div class="import-card-heading"><i data-lucide="history"></i><div><h2>Recent imports</h2><p>Stored on this device for quick reference.</p></div></div>
+                <div id="inventory-import-history" class="import-history-list"><p class="import-empty">No imports completed on this device yet.</p></div>
+              </section>
+            </section>
+          </div>
           <div id="team-view" class="placeholder-view"><div class="placeholder-head"><h2>Team</h2><p>Profiles, roles, emergency contacts and training status.</p></div><div class="empty-module"><i data-lucide="users"></i><h3>Team workspace is ready</h3><p>Next: connect live staff profiles from Supabase.</p></div></div>
           <div id="shifts-view" class="placeholder-view"><div class="placeholder-head"><h2>Shifts</h2><p>A calm weekly planner built for hospitality.</p></div><div class="empty-module"><i data-lucide="calendar-days"></i><h3>Shift planner foundation is ready</h3><p>Next: weekly schedule, availability and publishing.</p></div></div>
           <div id="knowledge-view" class="placeholder-view"><div class="placeholder-head"><h2>Knowledge</h2><p>Documents, onboarding, training and checklists.</p></div><div class="empty-module"><i data-lucide="book-open"></i><h3>Knowledge hub foundation is ready</h3><p>Eight onboarding steps already exist in Supabase.</p></div></div>
@@ -736,6 +806,7 @@
     </section>
   </div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="config.js"></script>
 <script>
@@ -1229,11 +1300,12 @@
     dashboard: document.getElementById('dashboard-view'),
     recipes: document.getElementById('recipes-view'),
     suppliers: document.getElementById('suppliers-view'),
+    imports: document.getElementById('imports-view'),
     team: document.getElementById('team-view'), shifts: document.getElementById('shifts-view'),
     knowledge: document.getElementById('knowledge-view'), reports: document.getElementById('reports-view'),
     settings: document.getElementById('settings-view')
   };
-  const titleMap = {dashboard:'Home',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',team:'Team',shifts:'Shifts',knowledge:'Knowledge',reports:'Reports',settings:'Settings'};
+  const titleMap = {dashboard:'Home',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',imports:'Import Center',team:'Team',shifts:'Shifts',knowledge:'Knowledge',reports:'Reports',settings:'Settings'};
   function setActiveView(view) {
     activeView = view;
     Object.values(viewMap).forEach(v => { if(v) v.style.display='none'; });
@@ -1246,6 +1318,7 @@
     if(view==='dashboard'){ renderDashboard(); renderAtlasHome(); }
     if(view==='recipes') renderRecipes();
     if(view==='suppliers') renderSuppliers();
+    if(view==='imports') window.AtlasImportCenter?.render?.();
     closeMobileSidebar();
   }
   document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click',()=>{ setActiveView(btn.dataset.view); if(btn.dataset.subview) document.getElementById('atlas-page-title').textContent=btn.dataset.subview; }));
@@ -1289,7 +1362,7 @@
   document.querySelector('[data-service-action="restock"]').addEventListener('click',()=>{exitService();openRestockModal();});
   document.querySelector('[data-service-action="add-item"]').addEventListener('click',()=>{exitService();openModal(null);});
   document.addEventListener('keydown',(e)=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();document.getElementById('global-search').focus();}if(e.key==='Escape'&&document.body.classList.contains('service-mode'))exitService();});
-  document.getElementById('global-search').addEventListener('input',(e)=>{ const q=e.target.value.toLowerCase(); if(q.includes('recipe'))setActiveView('recipes'); else if(q.includes('supplier')||q.includes('order'))setActiveView('suppliers'); else if(q.includes('team')||q.includes('staff'))setActiveView('team'); else if(q.includes('shift'))setActiveView('shifts'); else if(q.includes('knowledge')||q.includes('document'))setActiveView('knowledge'); else if(q.length>1)setActiveView('inventory'); });
+  document.getElementById('global-search').addEventListener('input',(e)=>{ const q=e.target.value.toLowerCase(); if(q.includes('recipe'))setActiveView('recipes'); else if(q.includes('supplier')||q.includes('order'))setActiveView('suppliers'); else if(q.includes('team')||q.includes('staff'))setActiveView('team'); else if(q.includes('shift'))setActiveView('shifts'); else if(q.includes('knowledge')||q.includes('document'))setActiveView('knowledge'); else if(q.includes('import')||q.includes('excel')||q.includes('csv'))setActiveView('imports'); else if(q.length>1)setActiveView('inventory'); });
 
   // ---------- QUICK ACTION (FAB) ----------
   const fabBtn = document.getElementById('fab-btn');
@@ -1599,5 +1672,6 @@
 <script src="assets/js/operations.js"></script>
 <script src="assets/js/brain.js"></script>
 <script src="assets/js/business.js"></script>
+<script src="assets/js/import-center.js"></script>
 </body>
 </html>
