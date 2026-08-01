@@ -1,0 +1,2 @@
+#import-progress{width:100%;height:10px;background:#ddd;border-radius:6px;overflow:hidden}
+#import-progress>div{height:100%;width:0%;transition:width .3s}
