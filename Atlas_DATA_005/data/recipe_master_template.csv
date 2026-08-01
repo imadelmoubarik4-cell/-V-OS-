@@ -1,0 +1,9 @@
+﻿recipe_name,category,ingredient,quantity,unit,ingredient_cost_isk,selling_price_isk,prep_notes
+Espresso Martini,Cocktail,Vodka,50,ml,0,2490,
+Espresso Martini,Cocktail,Coffee Liqueur,25,ml,0,2490,
+Espresso Martini,Cocktail,Espresso,30,ml,0,2490,
+Gin & Tonic,Cocktail,Gin,50,ml,0,1990,
+Gin & Tonic,Cocktail,Tonic Water,150,ml,0,1990,
+Mojito,Cocktail,White Rum,50,ml,0,2290,
+Mojito,Cocktail,Mint,10,g,0,2290,
+Mojito,Cocktail,Lime,25,ml,0,2290,

@@ -1,0 +1,17 @@
+{
+  "Cocktails": [
+    "Signature",
+    "Classic",
+    "Frozen",
+    "Alcohol Free"
+  ],
+  "Coffee": [
+    "Hot",
+    "Iced"
+  ],
+  "Food": [
+    "Tapas",
+    "Desserts",
+    "Breakfast"
+  ]
+}
