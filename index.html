@@ -230,8 +230,9 @@
 
   /* ---------- MODAL ---------- */
   .overlay{
-    display:none; position:fixed; inset:0; background:rgba(10,12,11,.6);
-    align-items:center; justify-content:center; z-index:20; padding:20px;
+    display:none; position:fixed; inset:0; background:rgba(10,12,11,.52);
+    align-items:center; justify-content:center; z-index:100; padding:20px;
+    backdrop-filter:blur(2px);
   }
   .modal{
     background:var(--surface); border:1px solid var(--line); border-radius:16px;
@@ -391,44 +392,6 @@
   .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 
 
-
-
-  /* ---------- ATLAS MODAL OVERRIDES ---------- */
-  #item-overlay{background:rgba(36,37,34,.42);backdrop-filter:blur(4px);}
-  #item-overlay .modal.item-modal{
-    width:min(1080px,calc(100vw - 48px));
-    max-width:1080px;
-    max-height:calc(100vh - 48px);
-    background:var(--atlas-surface);
-    color:var(--atlas-text);
-    border:1px solid var(--atlas-line);
-    border-radius:20px;
-    box-shadow:0 24px 80px rgba(45,40,30,.18);
-  }
-  #item-overlay .modal-header{background:var(--atlas-surface);border-color:var(--atlas-line);padding:22px 28px;}
-  #item-overlay .modal-header h2{font:500 25px/1.2 'Fraunces',serif;color:var(--atlas-text);margin:0;}
-  #item-overlay .modal-close{background:transparent;color:var(--atlas-text);border-color:transparent;}
-  #item-overlay .modal-close:hover{background:var(--atlas-bg);border-color:var(--atlas-line);}
-  #item-overlay .modal-scroll{background:var(--atlas-surface);padding:24px 28px 10px;overflow-y:auto;}
-  #item-overlay .item-form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 26px;}
-  #item-overlay label{color:var(--atlas-text);font-size:13px;margin-bottom:7px;}
-  #item-overlay input,#item-overlay select{
-    background:#fff;color:var(--atlas-text);border:1px solid var(--atlas-line);
-    border-radius:10px;padding:12px 13px;margin-bottom:18px;
-  }
-  #item-overlay input::placeholder{color:#9a9a94;}
-  #item-overlay input:focus,#item-overlay select:focus{border-color:var(--atlas-accent);box-shadow:0 0 0 3px rgba(182,146,94,.12);}
-  #item-overlay .modal-footer{
-    position:sticky;bottom:0;background:rgba(255,255,255,.97);border-color:var(--atlas-line);
-    padding:16px 28px;box-shadow:0 -8px 24px rgba(55,50,40,.05);
-  }
-  #item-overlay .modal-footer .btn{background:var(--atlas-accent);color:white;border-radius:10px;}
-  #item-overlay .modal-footer .btn.ghost{background:#fff;color:var(--atlas-text);border:1px solid var(--atlas-line);}
-  @media(max-width:760px){
-    #item-overlay{align-items:flex-end;padding:0;}
-    #item-overlay .modal.item-modal{width:100%;max-width:none;max-height:94vh;border-radius:20px 20px 0 0;}
-    #item-overlay .item-form-grid{grid-template-columns:1fr;}
-  }
 
   /* ========== PROJECT ATLAS DESIGN SYSTEM ========== */
   :root{
@@ -973,7 +936,6 @@
 
   document.getElementById('add-item-btn').addEventListener('click', () => openModal(null));
   document.getElementById('cancel-item-btn').addEventListener('click', closeModal);
-  document.getElementById('close-item-btn').addEventListener('click', closeModal);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
 
   function recalcUnitCostFromCase() {
