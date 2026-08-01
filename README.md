@@ -1,28 +1,18 @@
-# VÁ OS
+# VÁ OS — Project Atlas
 
-VÁ OS is the internal operating system for VÁ Bar in Reykjavík.
+A hospitality operating system built for VÁ Bar, Reykjavík.
 
-## Phase 1 build
+## This build
 
-This package contains the working inventory application plus the first unified VÁ OS navigation shell:
+- Minimal VÁ-inspired visual identity
+- Fixed, scrollable left navigation with icons and nested sections
+- Responsive tablet and mobile navigation
+- Home briefing with Today’s Focus
+- Universal search shortcut (`/`)
+- One-tap Service Mode for busy shifts
+- Existing inventory, recipes, purchasing and Supabase authentication preserved
+- Foundations for Team, Shifts, Knowledge, Reports and Settings
 
-- Dashboard
-- Inventory
-- Recipes
-- Suppliers
-- Staff
-- Shift Planner
-- Staff Hub
+## Deploy
 
-The Staff, Shift Planner, and Staff Hub screens are now visible foundations ready for their Supabase tables and workflows in the next sprint.
-
-## Deployment
-
-This is currently a static application. Deploy the repository root on Netlify:
-
-- Build command: leave empty
-- Publish directory: `.`
-
-## Backend
-
-The app uses Supabase Authentication and PostgreSQL. Never expose a service-role key in `config.js`; use only the browser-safe publishable key and enforce access through Row Level Security.
+Static site. Netlify build command is empty and publish directory is `.`.
