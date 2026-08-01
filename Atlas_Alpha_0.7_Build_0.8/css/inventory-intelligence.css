@@ -1,0 +1,6 @@
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+.stat-card{padding:16px;border:1px solid #ddd;border-radius:10px}
+#movement-timeline{list-style:none;padding:0}
+#movement-timeline li{padding:8px 0;border-bottom:1px solid #eee}
+#cost-history{width:100%;border-collapse:collapse}
+#cost-history th,#cost-history td{padding:8px;border-bottom:1px solid #ddd}
