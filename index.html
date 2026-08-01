@@ -4,9 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
 <title>VÁ OS · Project Atlas</title>
-<link rel="icon" href="data:,">
+<link rel="icon" type="image/png" href="assets/logo/atlas-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/recipes.css">
 <style>
   :root{
     --bg:        #12181A;
@@ -68,6 +69,9 @@
     border:1px solid var(--line);
     border-radius:var(--radius);
     padding:40px 32px;
+  }
+  .login-atlas-mark{
+    width:54px; height:54px; object-fit:contain; display:block; margin:0 0 18px;
   }
   .login-card .eyebrow{
     color:var(--brass);
@@ -429,30 +433,6 @@
   @media(max-width:760px){.atlas-shell{display:block}.atlas-sidebar{transform:translateX(-101%);transition:transform .2s ease}.atlas-sidebar.open{transform:translateX(0)}.sidebar-backdrop.open{display:block;position:fixed;inset:0;background:rgba(20,20,18,.35);z-index:25}.atlas-main{grid-column:auto}.mobile-menu{display:grid}.atlas-topbar{padding:0 14px}.atlas-search{display:none}.atlas-content{padding:20px 14px}.home-hero h1{font-size:30px}.atlas-grid{grid-template-columns:1fr 1fr}.service-grid{grid-template-columns:1fr 1fr}}
   @media(max-width:480px){.atlas-grid,.service-grid{grid-template-columns:1fr}.atlas-page-title{font-size:18px}.service-toggle span{display:none}}
 
-
-
-  /* ===== ATLAS FUNCTIONALITY RELEASE ===== */
-  .overlay{z-index:1000!important;background:rgba(30,30,27,.42)!important;backdrop-filter:blur(5px);}
-  .overlay .modal.item-modal{background:var(--atlas-surface)!important;color:var(--atlas-text)!important;border:1px solid var(--atlas-line)!important;max-width:920px!important;width:min(920px,calc(100vw - 48px))!important;max-height:calc(100vh - 48px)!important;border-radius:18px!important;box-shadow:0 28px 90px rgba(40,35,28,.22)!important;}
-  .overlay .item-modal .modal-header,.overlay .item-modal .modal-footer{background:var(--atlas-surface)!important;border-color:var(--atlas-line)!important;}
-  .overlay .item-modal .modal-scroll{background:var(--atlas-surface)!important;}
-  .overlay .item-modal label{color:var(--atlas-text)!important;font-size:13px!important;}
-  .overlay .item-modal input,.overlay .item-modal select,.overlay .item-modal textarea{background:#fff!important;color:var(--atlas-text)!important;border:1px solid var(--atlas-line)!important;border-radius:11px!important;padding:13px 14px!important;}
-  .overlay .item-modal input:focus,.overlay .item-modal select:focus,.overlay .item-modal textarea:focus{border-color:var(--atlas-accent)!important;box-shadow:0 0 0 3px rgba(182,146,94,.12)!important;}
-  .overlay .item-modal .modal-footer{position:sticky!important;bottom:0!important;z-index:3!important;}
-  .focus-row[data-target],.metric-card[data-target],#low-stock-banner{cursor:pointer;transition:background .15s,transform .15s;}
-  .focus-row[data-target]:hover{background:#faf8f3;}
-  .metric-card[data-target]:hover{transform:translateY(-2px);border-color:var(--atlas-accent)!important;}
-  #low-stock-banner:hover{background:rgba(182,146,94,.14);}
-  .recipe-filter-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
-  .recipe-filter-tabs .tab{color:var(--atlas-muted);border-color:var(--atlas-line);}
-  .recipe-filter-tabs .tab.active{background:var(--atlas-accent-soft);color:var(--atlas-text);border-color:var(--atlas-accent);}
-  .supplier-modal .two-col{gap:14px;}
-  .toast{position:fixed;right:24px;bottom:96px;z-index:1200;background:var(--atlas-text);color:#fff;padding:13px 16px;border-radius:12px;box-shadow:0 12px 35px rgba(0,0,0,.2);display:none;}
-  .toast.show{display:block;animation:toastIn .2s ease;}
-  @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-  @media(max-width:720px){.overlay .modal.item-modal{width:100%!important;max-height:94vh!important;border-radius:18px 18px 0 0!important}.item-form-grid{grid-template-columns:1fr!important}}
-
 </style>
 </head>
 <body>
@@ -461,9 +441,10 @@
   <div id="login-screen">
     <div class="watermark">Á</div>
     <div class="login-card">
+      <img class="login-atlas-mark" src="assets/logo/atlas-icon.png" alt="Atlas" />
       <p class="eyebrow">VÁ Bar · Staff only</p>
-      <h1 class="display">Inventory</h1>
-      <p class="sub">Sign in with the account Imad set up for you.</p>
+      <h1 class="display">Atlas</h1>
+      <p class="sub">Hospitality operating system for VÁ.</p>
 
       <div class="error-msg" id="login-error"></div>
 
@@ -481,16 +462,23 @@
   <div id="app-screen">
     <div class="atlas-shell">
       <aside class="atlas-sidebar" id="atlas-sidebar">
-        <div class="atlas-brand"><div class="atlas-logo">Á</div><div><strong>VÁ OS</strong><small>Project Atlas</small></div></div>
+        <div class="atlas-brand"><div class="atlas-logo"><img src="assets/logo/atlas-icon.png" alt="Atlas" /></div><div><strong>ATLAS</strong><small>Hospitality OS · VÁ</small></div></div>
         <nav class="atlas-nav">
           <div class="nav-group"><div class="nav-label">HOME</div><button class="nav-item active" data-view="dashboard"><i data-lucide="house"></i>Home</button></div>
           <div class="nav-group"><div class="nav-label">OPERATIONS</div>
             <button class="nav-item nav-parent" data-default="inventory"><i data-lucide="package"></i>Inventory<i class="chev" data-lucide="chevron-down"></i></button>
-            <div class="nav-sub"><button class="nav-item" data-view="inventory" data-subview="Items">Items</button><button class="nav-item" data-view="inventory" data-subview="Stock count">Stock count</button><button class="nav-item" data-view="dashboard" data-subview="Inventory movements">Movements</button><button class="nav-item" data-view="inventory" data-subview="Waste">Waste</button></div>
+            <div class="nav-sub"><button class="nav-item" data-view="inventory">Items</button><button class="nav-item" data-view="inventory">Stock count</button><button class="nav-item" data-view="inventory">Movements</button><button class="nav-item" data-view="inventory">Waste</button></div>
             <button class="nav-item nav-parent" data-default="recipes"><i data-lucide="martini"></i>Recipes<i class="chev" data-lucide="chevron-down"></i></button>
-            <div class="nav-sub"><button class="nav-item" data-view="recipes" data-recipe-filter="all">All recipes</button><button class="nav-item" data-view="recipes" data-recipe-filter="signature cocktail">Signature cocktails</button><button class="nav-item" data-view="recipes" data-recipe-filter="classic cocktail">Classics</button><button class="nav-item" data-view="recipes" data-recipe-filter="food">Food</button><button class="nav-item" data-view="recipes" data-recipe-filter="coffee">Coffee</button><button class="nav-item" data-view="recipes" data-recipe-filter="dessert">Dessert</button></div>
+            <div class="nav-sub">
+              <button class="nav-item" data-view="recipes" data-recipe-filter="all">Recipe dashboard</button>
+              <button class="nav-item" data-view="recipes" data-recipe-filter="signature-cocktail">Signature cocktails</button>
+              <button class="nav-item" data-view="recipes" data-recipe-filter="classic-cocktail">Classic cocktails</button>
+              <button class="nav-item" data-view="recipes" data-recipe-filter="coffee">Coffee</button>
+              <button class="nav-item" data-view="recipes" data-recipe-filter="food">Food</button>
+              <button class="nav-item" data-view="recipes" data-recipe-filter="dessert">Dessert</button>
+            </div>
             <button class="nav-item nav-parent" data-default="suppliers"><i data-lucide="truck"></i>Purchasing<i class="chev" data-lucide="chevron-down"></i></button>
-            <div class="nav-sub"><button class="nav-item" data-view="suppliers" data-subview="Suppliers">Suppliers</button><button class="nav-item" data-view="suppliers" data-subview="Orders">Orders</button><button class="nav-item" data-view="suppliers" data-subview="Deliveries">Deliveries</button></div>
+            <div class="nav-sub"><button class="nav-item" data-view="suppliers">Suppliers</button><button class="nav-item" data-view="suppliers">Orders</button><button class="nav-item" data-view="suppliers">Deliveries</button></div>
           </div>
           <div class="nav-group"><div class="nav-label">PEOPLE</div><button class="nav-item" data-view="team"><i data-lucide="users"></i>Team</button><button class="nav-item" data-view="shifts"><i data-lucide="calendar-days"></i>Shifts</button><button class="nav-item" data-view="knowledge"><i data-lucide="book-open"></i>Knowledge</button></div>
           <div class="nav-group"><div class="nav-label">INSIGHTS</div><button class="nav-item" data-view="reports"><i data-lucide="chart-no-axes-combined"></i>Reports</button></div>
@@ -504,13 +492,64 @@
         <div class="atlas-content standard-view"><main>
           <div id="home-intro" class="home-hero"><div><h1>Good day, <span id="greeting-name">VÁ team</span>.</h1><p>Everything that needs your attention, in one calm place.</p></div></div>
           <div id="home-focus" class="atlas-card"><div class="placeholder-head"><h2 style="font-size:24px">Today's Focus</h2><p>Your live operational briefing.</p></div><div class="focus-list" id="focus-list"><div class="focus-row"><span class="focus-dot"></span><span>Loading today's priorities…</span></div></div></div>
-          <div id="home-metrics" class="atlas-grid"><div class="metric-card" data-target="inventory"><div class="metric-icon"><i data-lucide="package"></i></div><strong id="home-items">—</strong><span>Inventory items</span></div><div class="metric-card" data-target="inventory-low"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><strong id="home-low">—</strong><span>Below par</span></div><div class="metric-card" data-target="team"><div class="metric-icon"><i data-lucide="users"></i></div><strong id="home-team">—</strong><span>Team members</span></div><div class="metric-card" data-target="knowledge"><div class="metric-icon"><i data-lucide="graduation-cap"></i></div><strong>8</strong><span>Onboarding steps</span></div></div>
+          <div id="home-metrics" class="atlas-grid"><div class="metric-card"><div class="metric-icon"><i data-lucide="package"></i></div><strong id="home-items">—</strong><span>Inventory items</span></div><div class="metric-card"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><strong id="home-low">—</strong><span>Below par</span></div><div class="metric-card"><div class="metric-icon"><i data-lucide="users"></i></div><strong id="home-team">—</strong><span>Team members</span></div><div class="metric-card"><div class="metric-icon"><i data-lucide="graduation-cap"></i></div><strong>8</strong><span>Onboarding steps</span></div></div>
 
           <div class="alert-banner" id="low-stock-banner"><span class="dot"></span><span id="low-stock-text"></span></div>
           <div id="inventory-view" style="display:none;"><div class="toolbar"><div class="tabs" id="category-tabs"></div><button class="btn" id="add-item-btn">+ Add item</button></div><div id="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Updated</th><th>Quantity</th><th></th></tr></thead><tbody id="items-body"></tbody></table><div class="empty-state" id="empty-state" style="display:none;"><span class="mark">Á</span>Nothing here yet. Add the first item.</div></div></div>
           <div id="dashboard-view" style="display:none;"><div class="stat-grid"><div class="stat-card"><div class="label">Total items</div><div class="value" id="stat-total-items">0</div></div><div class="stat-card warn"><div class="label">Low stock</div><div class="value" id="stat-low-stock">0</div></div><div class="stat-card"><div class="label">Spent this month</div><div class="value" id="stat-month-spend">0</div><div class="sub">ISK</div></div><div class="stat-card"><div class="label">Suppliers</div><div class="value" id="stat-suppliers">0</div></div></div><div class="panel"><h3>Low inventory</h3><div id="low-inventory-rows"><div class="empty-dash">Nothing below par right now.</div></div></div><div class="panel"><h3>Recent activity</h3><div id="activity-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel"><h3>Spend by month</h3><div id="monthly-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel"><h3>Spend by supplier — this month</h3><div id="supplier-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div></div>
-          <div id="recipes-view" style="display:none;"><div class="toolbar"><div></div><button class="btn" id="add-recipe-btn">+ New recipe</button></div><div class="recipe-filter-tabs" id="recipe-filter-tabs"></div><div id="recipes-grid" class="card-grid"></div><div class="empty-state" id="recipes-empty" style="display:none;"><span class="mark">Á</span>No recipes yet. Add your first one.</div><div class="panel" style="margin-top:24px;"><h3>Share your public menu</h3><p style="font-size:13px;color:var(--atlas-muted);margin-bottom:14px;">Control what appears on your public menu.</p><div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;"><img id="menu-qr" alt="QR code to menu" style="background:#fff;padding:8px;border-radius:8px;" width="150" height="150"/><div style="flex:1;min-width:220px;"><label>Menu link</label><input type="text" id="menu-link" readonly style="margin-bottom:10px;"/><label>Embed code</label><input type="text" id="menu-embed" readonly/></div></div></div></div>
-          <div id="suppliers-view" style="display:none;"><div class="toolbar"><input type="text" id="supplier-search" placeholder="Search suppliers..." style="max-width:280px;margin-bottom:0;"/><button class="btn" id="add-supplier-btn">+ New supplier</button></div><table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table><div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div></div>
+          <div id="recipes-view" style="display:none;">
+            <section class="recipe-dashboard">
+              <div class="recipe-hero">
+                <div class="recipe-hero-copy">
+                  <h1>Recipe Library</h1>
+                  <p>Build service-ready recipes, connect every ingredient to inventory, and keep costing in one calm workspace.</p>
+                </div>
+                <button type="button" class="recipe-primary-action" id="add-recipe-btn"><i data-lucide="plus"></i>New recipe</button>
+              </div>
+
+              <div class="recipe-summary-grid" aria-label="Recipe summary">
+                <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="book-open"></i></div><div><strong id="recipe-stat-total">0</strong><span>Total recipes</span></div></div>
+                <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="circle-check-big"></i></div><div><strong id="recipe-stat-active">0</strong><span>Active for service</span></div></div>
+                <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="link-2"></i></div><div><strong id="recipe-stat-linked">0</strong><span>Linked ingredients</span></div></div>
+                <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="scan-search"></i></div><div><strong id="recipe-stat-coverage">0%</strong><span>Inventory coverage</span></div></div>
+              </div>
+
+              <div class="recipe-controls">
+                <label class="recipe-search" aria-label="Search recipes"><i data-lucide="search"></i><input type="search" id="recipe-search" placeholder="Search recipes, glassware, garnish…" /></label>
+                <div class="recipe-view-toggle" aria-label="Recipe view">
+                  <button type="button" data-recipe-view-mode="grid" class="active" aria-label="Grid view"><i data-lucide="layout-grid"></i></button>
+                  <button type="button" data-recipe-view-mode="list" aria-label="List view"><i data-lucide="rows-3"></i></button>
+                </div>
+              </div>
+
+              <div class="recipe-category-row" id="recipe-category-row" aria-label="Recipe categories"></div>
+              <div id="recipes-grid-v2" class="recipe-grid"></div>
+              <div id="recipes-empty-v2" class="recipe-empty-v2" hidden>
+                <div><div class="empty-icon"><i data-lucide="martini"></i></div><h3>No recipes in this view</h3><p>Create a recipe or choose another category. Ingredients will link directly to live inventory.</p><button type="button" class="btn" onclick="window.AtlasRecipes.openEditor(null)">Create recipe</button></div>
+              </div>
+
+              <div class="recipe-foundation-panel">
+                <article class="recipe-foundation-card">
+                  <h3>Inventory connection</h3>
+                  <p>Recipe ingredients use the live inventory table. Updating an inventory item keeps every linked recipe connected.</p>
+                  <div class="inventory-connection-list">
+                    <div class="inventory-connection-row"><span>Inventory items available</span><strong id="recipe-inventory-count">0</strong></div>
+                    <div class="inventory-connection-row"><span>Ingredients connected</span><strong id="recipe-linked-count">0</strong></div>
+                    <div class="inventory-connection-row"><span>Ingredients needing a link</span><strong id="recipe-unlinked-count">0</strong></div>
+                  </div>
+                </article>
+                <article class="recipe-foundation-card">
+                  <h3>Public menu</h3>
+                  <p>Only recipes marked “Show on public menu” appear on the guest-facing menu.</p>
+                  <div style="display:flex;gap:14px;align-items:center;margin-top:16px;">
+                    <img id="menu-qr" alt="QR code to public menu" width="92" height="92" style="background:#fff;padding:6px;border:1px solid var(--atlas-line);border-radius:11px;" />
+                    <div style="min-width:0;flex:1;"><label style="font-size:11px;color:var(--atlas-muted);">Menu link</label><input id="menu-link" readonly style="margin:5px 0 8px;" /><input id="menu-embed" readonly aria-label="Embed code" /></div>
+                  </div>
+                </article>
+              </div>
+            </section>
+          </div>
+          <div id="suppliers-view" style="display:none;"><div class="toolbar"><input type="text" id="supplier-search" placeholder="Search suppliers..." style="max-width:280px;margin-bottom:0;"/><div></div></div><table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table><div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div></div>
           <div id="team-view" class="placeholder-view"><div class="placeholder-head"><h2>Team</h2><p>Profiles, roles, emergency contacts and training status.</p></div><div class="empty-module"><i data-lucide="users"></i><h3>Team workspace is ready</h3><p>Next: connect live staff profiles from Supabase.</p></div></div>
           <div id="shifts-view" class="placeholder-view"><div class="placeholder-head"><h2>Shifts</h2><p>A calm weekly planner built for hospitality.</p></div><div class="empty-module"><i data-lucide="calendar-days"></i><h3>Shift planner foundation is ready</h3><p>Next: weekly schedule, availability and publishing.</p></div></div>
           <div id="knowledge-view" class="placeholder-view"><div class="placeholder-head"><h2>Knowledge</h2><p>Documents, onboarding, training and checklists.</p></div><div class="empty-module"><i data-lucide="book-open"></i><h3>Knowledge hub foundation is ready</h3><p>Eight onboarding steps already exist in Supabase.</p></div></div>
@@ -526,7 +565,8 @@
   <div class="fab-wrap">
     <div class="fab-menu" id="fab-menu">
       <button id="fab-add-item">+ Add new item</button>
-      <button id="fab-log-restock">Log a restock</button><button id="fab-add-recipe">+ Add new recipe</button><button id="fab-add-supplier">+ Add supplier</button>
+      <button id="fab-log-restock">📦 Log a restock</button>
+      <button id="fab-add-recipe">🍸 Add new recipe</button>
     </div>
     <button class="fab" id="fab-btn">+</button>
   </div>
@@ -592,123 +632,192 @@
     </div>
   </div>
 
-  <!-- ===================== RECIPE MODAL ===================== -->
-  <div class="overlay" id="recipe-overlay">
-    <div class="modal wide">
-      <h2 id="recipe-modal-title">Create a new recipe</h2>
-      <form id="recipe-form">
+  <!-- ===================== RECIPE MODAL · REUSABLE ATLAS SHELL ===================== -->
+  <div id="recipe-overlay" data-atlas-modal hidden aria-hidden="true">
+    <section class="atlas-modal-panel" data-modal-panel role="dialog" aria-modal="true" aria-labelledby="recipe-modal-title">
+      <div class="atlas-modal-header">
+        <div><h2 id="recipe-modal-title">New recipe</h2><p id="recipe-modal-subtitle">Build a service-ready recipe connected to live inventory.</p></div>
+        <button type="button" class="atlas-modal-close" data-modal-close aria-label="Close recipe editor">×</button>
+      </div>
+      <form id="recipe-form" style="display:flex;flex-direction:column;min-height:0;">
         <input type="hidden" id="recipe-id" />
-        <div class="two-col">
-          <div>
-            <label for="recipe-name">Name</label>
-            <input type="text" id="recipe-name" required placeholder="e.g. VÁ Negroni" />
-          </div>
-          <div>
-            <label for="recipe-type">Type</label>
-            <select id="recipe-type">
-              <option value="signature cocktail">Signature cocktail</option>
-              <option value="classic cocktail">Classic cocktail</option>
-              <option value="food">Food</option>
-              <option value="coffee">Coffee</option>
-              <option value="dessert">Dessert</option>
-              <option value="non-alcoholic">Non-alcoholic</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
+        <div class="atlas-modal-body">
+          <section class="atlas-form-section">
+            <div class="atlas-section-heading"><div><h3>Recipe details</h3><p>The information your team needs to identify and serve the recipe.</p></div></div>
+            <div class="atlas-form-grid">
+              <div class="atlas-field"><label for="recipe-name">Recipe name *</label><input type="text" id="recipe-name" required placeholder="e.g. Espresso Martini" /></div>
+              <div class="atlas-field"><label for="recipe-category-id">Category *</label><select id="recipe-category-id" required></select></div>
+              <div class="atlas-field"><label for="recipe-glassware">Glassware</label><input type="text" id="recipe-glassware" placeholder="e.g. Coupe" /></div>
+              <div class="atlas-field"><label for="recipe-garnish">Garnish</label><input type="text" id="recipe-garnish" placeholder="e.g. 3 coffee beans" /></div>
+              <div class="atlas-field full"><label for="recipe-image-url">Image URL</label><input type="url" id="recipe-image-url" placeholder="https://…" /></div>
+            </div>
+          </section>
+
+          <section class="atlas-form-section">
+            <div class="atlas-section-heading"><div><h3>Inventory-linked ingredients</h3><p>Select real inventory items. Atlas keeps the recipe connected when stock data changes.</p></div></div>
+            <div class="ingredient-builder-v2">
+              <div class="ingredient-column"><label for="ingredient-item">Inventory item</label><select id="ingredient-item"></select></div>
+              <div class="ingredient-column"><label for="ingredient-qty">Quantity</label><input type="number" id="ingredient-qty" min="0" step="0.01" placeholder="45" /></div>
+              <div class="ingredient-column"><label for="ingredient-unit">Unit</label><select id="ingredient-unit"><option value="ml">ml</option><option value="g">g</option><option value="each">each</option><option value="bottle">bottle</option><option value="can">can</option><option value="dash">dash</option><option value="tsp">tsp</option></select></div>
+              <button type="button" class="ingredient-add-button" id="add-ingredient-btn">Add ingredient</button>
+            </div>
+            <div id="ingredient-list" class="ingredient-list-v2"></div>
+          </section>
+
+          <section class="atlas-form-section">
+            <div class="atlas-section-heading"><div><h3>Service specification</h3><p>Method, yield and the details that create consistency during service.</p></div></div>
+            <div class="atlas-form-grid">
+              <div class="atlas-field full"><label for="recipe-method">Method</label><textarea id="recipe-method" placeholder="Shake hard with ice, then fine strain into a chilled coupe."></textarea></div>
+              <div class="atlas-field"><label for="recipe-yield-qty">Recipe yield</label><input type="number" id="recipe-yield-qty" min="0.01" step="0.01" value="1" /></div>
+              <div class="atlas-field"><label for="recipe-yield-unit">Yield unit</label><input type="text" id="recipe-yield-unit" value="serving" /></div>
+              <div class="atlas-field full"><label for="recipe-notes">Service notes</label><textarea id="recipe-notes" placeholder="Allergens, substitutions, prep notes or service guidance."></textarea></div>
+            </div>
+          </section>
+
+          <section class="atlas-form-section">
+            <div class="atlas-section-heading"><div><h3>Pricing and availability</h3><p>Costing uses the linked inventory cost and package size where available.</p></div></div>
+            <div class="atlas-form-grid">
+              <div class="atlas-field"><label for="recipe-menu-price">Menu price (ISK)</label><input type="number" id="recipe-menu-price" min="0" step="1" placeholder="3290" /></div>
+              <div class="atlas-field"><label>Availability</label><div class="recipe-toggle-row"><label class="recipe-check"><input type="checkbox" id="recipe-active" checked />Active for service</label><label class="recipe-check"><input type="checkbox" id="recipe-show-on-menu" checked />Show on public menu</label></div></div>
+            </div>
+            <div class="recipe-cost-strip">
+              <div class="recipe-cost-box"><span>Total recipe cost</span><strong id="calc-total-cost">0 ISK</strong></div>
+              <div class="recipe-cost-box"><span>Cost per serving</span><strong id="calc-cost-per-serving">0 ISK</strong></div>
+              <div class="recipe-cost-box"><span>Cost percentage</span><strong id="calc-cost-pct">—</strong></div>
+              <div class="recipe-cost-box"><span>Profit per serving</span><strong id="calc-profit">—</strong></div>
+            </div>
+            <p class="recipe-cost-note" id="recipe-cost-note">Add linked ingredients to calculate the recipe cost.</p>
+          </section>
         </div>
-
-        <label>Ingredients</label>
-        <div class="ingredient-builder">
-          <select id="ingredient-item"></select>
-          <input type="number" id="ingredient-qty" step="0.01" placeholder="qty" />
-          <input type="text" id="ingredient-unit" placeholder="unit" style="max-width:80px;" />
-          <button type="button" class="btn ghost" id="add-ingredient-btn" style="margin-bottom:0;">Add</button>
-        </div>
-        <div class="ingredient-list" id="ingredient-list"></div>
-
-        <div class="two-col">
-          <div>
-            <label for="recipe-yield-qty">Recipe yield</label>
-            <input type="number" id="recipe-yield-qty" step="0.1" value="1" />
-          </div>
-          <div>
-            <label for="recipe-yield-unit">Yield unit</label>
-            <input type="text" id="recipe-yield-unit" value="serving" />
-          </div>
-        </div>
-
-        <label for="recipe-menu-price">Menu price</label>
-        <input type="number" id="recipe-menu-price" step="0.01" placeholder="e.g. 2400" />
-
-        <label style="display:flex; align-items:center; gap:8px; margin-bottom:18px;">
-          <input type="checkbox" id="recipe-show-on-menu" checked style="width:auto; margin-bottom:0;" />
-          <span>Show on public menu</span>
-        </label>
-
-        <div class="cost-panel">
-          <div class="cost-row"><span>Total ingredient cost</span><strong id="calc-total-cost">0</strong></div>
-          <div class="cost-row"><span>Cost per serving</span><strong id="calc-cost-per-serving">0</strong></div>
-          <div class="cost-row"><span>Cost %</span><strong id="calc-cost-pct">0%</strong></div>
-          <div class="cost-row profit"><span>Profit per serving</span><strong id="calc-profit">0</strong></div>
-        </div>
-
-        <div class="modal-actions">
-          <button type="button" class="btn ghost" id="cancel-recipe-btn">Cancel</button>
-          <button type="submit" class="btn">Save recipe</button>
+        <div class="atlas-modal-footer">
+          <span class="recipe-save-state" id="recipe-save-state"></span>
+          <div class="atlas-modal-actions"><button type="button" class="atlas-modal-secondary" data-modal-close>Cancel</button><button type="submit" class="atlas-modal-primary">Save recipe</button></div>
         </div>
       </form>
-    </div>
+    </section>
   </div>
 
-
-  <!-- ===================== SUPPLIER MODAL ===================== -->
-  <div class="overlay" id="supplier-overlay">
-    <div class="modal wide supplier-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-modal-title">
-      <div class="modal-header"><div><h2 id="supplier-modal-title">New supplier</h2><p style="margin:5px 0 0;color:var(--atlas-muted);font-size:13px">Add a vendor for purchasing and deliveries.</p></div><button type="button" class="modal-close" id="close-supplier-btn" aria-label="Close">×</button></div>
-      <form id="supplier-form">
-        <div class="modal-scroll"><div class="two-col">
-          <div><label for="supplier-name">Supplier name</label><input id="supplier-name" type="text" required placeholder="e.g. Ölgerðin" /></div>
-          <div><label for="supplier-contact">Contact person</label><input id="supplier-contact" type="text" placeholder="optional" /></div>
-          <div><label for="supplier-email">Email</label><input id="supplier-email" type="email" placeholder="optional" /></div>
-          <div><label for="supplier-phone">Phone</label><input id="supplier-phone" type="text" placeholder="optional" /></div>
-        </div><label for="supplier-notes">Notes</label><textarea id="supplier-notes" rows="4" placeholder="Delivery days, ordering notes…" style="width:100%;resize:vertical"></textarea></div>
-        <div class="modal-footer"><button type="button" class="btn ghost" id="cancel-supplier-btn">Cancel</button><button type="submit" class="btn">Save supplier</button></div>
-      </form>
-    </div>
-  </div>
-  <div class="toast" id="atlas-toast"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">  if (window.lucide) window.lucide.createIcons();
-</script>
-<script src="https://unpkg.com/lucide@latest">  if (window.lucide) window.lucide.createIcons();
-</script>
-<script src="config.js">  if (window.lucide) window.lucide.createIcons();
-</script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="config.js"></script>
 <script>
-  function showBootError(msg) {
+  const SUPABASE_CDN_URLS = [
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
+    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js'
+  ];
+
+  function showBootError(msg, prefix = 'Setup problem') {
     const err = document.getElementById('login-error');
-    err.textContent = 'Setup problem: ' + msg;
+    if (!err) return;
+    err.textContent = prefix + ': ' + msg;
     err.style.display = 'block';
   }
-  window.addEventListener('error', function(e) {
-    showBootError(e.message || 'unknown script error');
-  });
 
-  if (!window.VABAR_CONFIG) {
-    showBootError('config.js did not load. Make sure config.js is in the same folder as index.html.');
-  } else if (!window.VABAR_CONFIG.SUPABASE_URL || window.VABAR_CONFIG.SUPABASE_URL.includes('PASTE_YOUR')) {
-    showBootError('config.js is missing your Supabase URL/key — it still has placeholder text.');
-  } else if (!window.supabase) {
-    showBootError('The Supabase library did not load (network/ad-blocker issue). Try a different network or disable ad-blockers.');
+  function clearBootError() {
+    const err = document.getElementById('login-error');
+    if (!err) return;
+    err.textContent = '';
+    err.style.display = 'none';
+  }
+
+  function loadScriptWithTimeout(src, timeoutMs = 15000) {
+    return new Promise((resolve, reject) => {
+      const existing = [...document.scripts].find(script => script.src === src);
+      if (existing && window.supabase?.createClient) {
+        resolve();
+        return;
+      }
+
+      const script = document.createElement('script');
+      const timer = window.setTimeout(() => {
+        script.remove();
+        reject(new Error('Timed out while loading ' + src));
+      }, timeoutMs);
+
+      script.src = src;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.onload = () => {
+        window.clearTimeout(timer);
+        resolve();
+      };
+      script.onerror = () => {
+        window.clearTimeout(timer);
+        script.remove();
+        reject(new Error('Could not load ' + src));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  async function ensureSupabaseLibrary() {
+    if (window.supabase?.createClient) return window.supabase;
+
+    const failures = [];
+    for (const src of SUPABASE_CDN_URLS) {
+      try {
+        await loadScriptWithTimeout(src);
+        if (window.supabase?.createClient) return window.supabase;
+        failures.push(src + ' loaded without exposing createClient');
+      } catch (error) {
+        failures.push(error.message);
+      }
+    }
+
+    throw new Error(
+      'The Supabase client library could not load. Check the internet connection or disable a content blocker, then refresh. ' +
+      failures.join(' | ')
+    );
   }
 
   const cfg = window.VABAR_CONFIG || {};
-  let sb;
-  try {
-    sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
-  } catch (e) {
-    showBootError(e.message);
+  let sb = null;
+  let supabaseReady = null;
+
+  async function initializeSupabase() {
+    if (sb?.auth) return sb;
+    if (supabaseReady) return supabaseReady;
+
+    supabaseReady = (async () => {
+      if (!window.VABAR_CONFIG) {
+        throw new Error('config.js did not load. Make sure config.js is in the repository root beside index.html.');
+      }
+      if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) {
+        throw new Error('config.js is missing the Supabase URL or publishable key.');
+      }
+      if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(cfg.SUPABASE_URL)) {
+        throw new Error('The Supabase URL in config.js is not valid.');
+      }
+
+      const library = await ensureSupabaseLibrary();
+      const client = library.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+
+      if (!client?.auth) {
+        throw new Error('The Supabase client initialized without the Auth module.');
+      }
+
+      sb = client;
+      window.atlasSupabase = client;
+      clearBootError();
+      return client;
+    })();
+
+    try {
+      return await supabaseReady;
+    } catch (error) {
+      supabaseReady = null;
+      throw error;
+    }
   }
+
+  window.addEventListener('unhandledrejection', event => {
+    console.error('Unhandled Atlas error:', event.reason);
+  });
 
   const loginScreen = document.getElementById('login-screen');
   const appScreen = document.getElementById('app-screen');
@@ -721,8 +830,6 @@
   let items = [];
   let restockLog = [];
   let recipes = [];
-  let suppliers = [];
-  let activeRecipeFilter = 'all';
   let draftIngredients = [];
   let activeCategory = 'all';
   let activeView = 'dashboard';
@@ -744,7 +851,8 @@
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     try {
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      const client = await initializeSupabase();
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
       loginBtn.disabled = false;
       loginBtn.textContent = 'Sign in';
       if (error) {
@@ -762,8 +870,12 @@
   });
 
   document.getElementById('logout-btn').addEventListener('click', async () => {
-    await sb.auth.signOut();
-    location.reload();
+    try {
+      const client = await initializeSupabase();
+      await client.auth.signOut();
+    } finally {
+      location.reload();
+    }
   });
 
   async function onSignedIn(session) {
@@ -780,9 +892,21 @@
   }
 
   (async function init() {
-    const { data } = await sb.auth.getSession();
-    if (data.session) {
-      onSignedIn(data.session);
+    try {
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Connecting…';
+      const client = await initializeSupabase();
+      const { data, error } = await client.auth.getSession();
+      if (error) throw error;
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Sign in';
+      if (data.session) {
+        await onSignedIn(data.session);
+      }
+    } catch (error) {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Retry connection';
+      showBootError(error.message);
     }
   })();
 
@@ -827,15 +951,8 @@
     recipes = data;
   }
 
-
-  async function loadSuppliersData() {
-    const { data, error } = await sb.from('suppliers').select('*').order('name', { ascending: true });
-    if (error) { console.error(error); suppliers = []; return; }
-    suppliers = data || [];
-  }
-
   async function loadAll() {
-    await Promise.all([loadItems(), loadRestockLog(), loadRecipes(), loadSuppliersData()]);
+    await Promise.all([loadItems(), loadRestockLog(), loadRecipes()]);
     renderDashboard();
     renderRecipes();
   }
@@ -990,7 +1107,6 @@
 
   document.getElementById('add-item-btn').addEventListener('click', () => openModal(null));
   document.getElementById('cancel-item-btn').addEventListener('click', closeModal);
-  document.getElementById('close-item-btn').addEventListener('click', closeModal);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
 
   function recalcUnitCostFromCase() {
@@ -1004,7 +1120,7 @@
   document.getElementById('item-case-cost').addEventListener('input', recalcUnitCostFromCase);
 
   function openModal(item) {
-    document.getElementById('modal-title').textContent = item ? 'Edit inventory item' : 'Add new inventory item';
+    document.getElementById('modal-title').textContent = item ? 'Edit item' : 'Add item';
     document.getElementById('item-id').value = item ? item.id : '';
     document.getElementById('item-name').value = item ? item.name : '';
     document.getElementById('item-category').value = item ? item.category : '';
@@ -1078,7 +1194,7 @@
     if(view==='suppliers') renderSuppliers();
     closeMobileSidebar();
   }
-  document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click',()=>{ setActiveView(btn.dataset.view); if(btn.dataset.subview) document.getElementById('atlas-page-title').textContent=btn.dataset.subview; if(btn.dataset.recipeFilter){activeRecipeFilter=btn.dataset.recipeFilter;renderRecipes();} }));
+  document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click',()=>setActiveView(btn.dataset.view)));
   document.querySelectorAll('.nav-parent').forEach(btn => btn.addEventListener('click',()=>{ btn.classList.toggle('open'); const target=btn.dataset.default; if(target) setActiveView(target); }));
   function renderAtlasHome(){
     const low=items.filter(i=>i.par_level!=null && Number(i.quantity)<Number(i.par_level));
@@ -1089,19 +1205,8 @@
     else focus.push('Inventory levels look healthy today.');
     focus.push('Check today’s team and shift coverage before service.');
     focus.push('Review onboarding and required knowledge tasks.');
-    document.getElementById('focus-list').innerHTML=focus.map((x,i)=>`<div class="focus-row" data-target="${i===0?'inventory-low':i===1?'shifts':'knowledge'}"><span class="focus-dot"></span><span>${x}</span></div>`).join(''); bindHomeLinks();
+    document.getElementById('focus-list').innerHTML=focus.map(x=>`<div class="focus-row"><span class="focus-dot"></span><span>${x}</span></div>`).join('');
   }
-
-  function bindHomeLinks(){
-    document.querySelectorAll('[data-target]').forEach(el=>el.onclick=()=>{
-      const target=el.dataset.target;
-      if(target==='inventory-low'){activeCategory='all';setActiveView('inventory');document.getElementById('low-stock-banner').scrollIntoView({behavior:'smooth',block:'center'});}
-      else setActiveView(target);
-    });
-    const banner=document.getElementById('low-stock-banner');
-    banner.onclick=()=>setActiveView('inventory');
-  }
-
   const sidebar=document.getElementById('atlas-sidebar');
   const backdrop=document.getElementById('sidebar-backdrop');
   function closeMobileSidebar(){sidebar.classList.remove('open');backdrop.classList.remove('open');}
@@ -1138,8 +1243,6 @@
     fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
     openRestockModal();
   });
-  document.getElementById('fab-add-recipe').addEventListener('click', () => { fabMenu.classList.remove('open'); fabBtn.classList.remove('open'); setActiveView('recipes'); openRecipeModal(null); });
-  document.getElementById('fab-add-supplier').addEventListener('click', () => { fabMenu.classList.remove('open'); fabBtn.classList.remove('open'); setActiveView('suppliers'); openSupplierModal(); });
 
   // ---------- RESTOCK MODAL ----------
   const restockOverlay = document.getElementById('restock-overlay');
@@ -1323,208 +1426,10 @@
     }
   }
 
-  // ---------- RECIPES ----------
-  function recipeCost(ingredients) {
-    return ingredients.reduce((sum, ing) => {
-      const item = items.find(i => i.id === ing.item_id);
-      const unitCost = item ? (item.cost_price || 0) : 0;
-      return sum + ing.quantity * unitCost;
-    }, 0);
-  }
-
+  // ---------- RECIPES · ATLAS ALPHA 0.2 ----------
   function renderRecipes() {
-    const menuUrl = window.location.origin + '/menu.html';
-    document.getElementById('menu-link').value = menuUrl;
-    document.getElementById('menu-embed').value = `<iframe src="${menuUrl}" width="100%" height="600" style="border:none;"></iframe>`;
-    document.getElementById('menu-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(menuUrl)}`;
-
-    const recipeCats=['all','signature cocktail','classic cocktail','food','coffee','dessert','non-alcoholic','other'];
-    const tabs=document.getElementById('recipe-filter-tabs');
-    tabs.innerHTML=recipeCats.map(c=>`<button class="tab ${c===activeRecipeFilter?'active':''}" data-recipe-cat="${c}">${c==='all'?'All':c.replace(/\b\w/g,m=>m.toUpperCase())}</button>`).join('');
-    tabs.querySelectorAll('[data-recipe-cat]').forEach(b=>b.onclick=()=>{activeRecipeFilter=b.dataset.recipeCat;renderRecipes();});
-    const visibleRecipes=recipes.filter(r=>activeRecipeFilter==='all'||r.type===activeRecipeFilter);
-    const grid = document.getElementById('recipes-grid');
-    const empty = document.getElementById('recipes-empty');
-    if (visibleRecipes.length === 0) {
-      grid.innerHTML = '';
-      empty.style.display = 'block';
-      return;
-    }
-    empty.style.display = 'none';
-    grid.innerHTML = visibleRecipes.map(r => {
-      const totalCost = recipeCost(r.recipe_ingredients || []);
-      const perServing = totalCost / (r.yield_quantity || 1);
-      const costPct = r.menu_price ? (perServing / r.menu_price * 100) : null;
-      const profit = r.menu_price != null ? r.menu_price - perServing : null;
-      return `
-        <div class="recipe-card" data-id="${r.id}">
-          <div class="type">${escapeHtml(r.type)}</div>
-          <h4>${escapeHtml(r.name)}</h4>
-          <div class="rline"><span>Cost / serving</span><strong>${perServing.toFixed(0)} ISK</strong></div>
-          <div class="rline"><span>Menu price</span><strong>${r.menu_price != null ? r.menu_price.toFixed(0) + ' ISK' : '—'}</strong></div>
-          <div class="rline"><span>Cost %</span><strong>${costPct != null ? costPct.toFixed(0) + '%' : '—'}</strong></div>
-          <div class="rline profit"><span>Profit</span><strong>${profit != null ? profit.toFixed(0) + ' ISK' : '—'}</strong></div>
-        </div>
-      `;
-    }).join('');
-
-    document.querySelectorAll('.recipe-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const recipe = recipes.find(r => r.id === card.dataset.id);
-        openRecipeModal(recipe);
-      });
-    });
+    if (window.AtlasRecipes) window.AtlasRecipes.render();
   }
-
-  const recipeOverlay = document.getElementById('recipe-overlay');
-  const recipeForm = document.getElementById('recipe-form');
-  const ingredientItemSelect = document.getElementById('ingredient-item');
-
-  document.getElementById('add-recipe-btn').addEventListener('click', () => openRecipeModal(null));
-  document.getElementById('cancel-recipe-btn').addEventListener('click', closeRecipeModal);
-  recipeOverlay.addEventListener('click', (e) => { if (e.target === recipeOverlay) closeRecipeModal(); });
-
-  function openRecipeModal(recipe) {
-    document.getElementById('recipe-modal-title').textContent = recipe ? 'Edit recipe' : 'Create a new recipe';
-    document.getElementById('recipe-id').value = recipe ? recipe.id : '';
-    document.getElementById('recipe-name').value = recipe ? recipe.name : '';
-    document.getElementById('recipe-type').value = recipe ? recipe.type : 'signature cocktail';
-    document.getElementById('recipe-yield-qty').value = recipe ? recipe.yield_quantity : 1;
-    document.getElementById('recipe-yield-unit').value = recipe ? recipe.yield_unit : 'serving';
-    document.getElementById('recipe-menu-price').value = recipe && recipe.menu_price != null ? recipe.menu_price : '';
-    document.getElementById('recipe-show-on-menu').checked = recipe ? recipe.show_on_menu !== false : true;
-
-    draftIngredients = recipe && recipe.recipe_ingredients
-      ? recipe.recipe_ingredients.map(ing => ({ item_id: ing.item_id, item_name: ing.item_name, quantity: ing.quantity, unit: ing.unit }))
-      : [];
-
-    ingredientItemSelect.innerHTML = items.map(i => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('');
-
-    renderIngredientList();
-    recipeOverlay.style.display = 'flex';
-  }
-
-  function closeRecipeModal() {
-    recipeOverlay.style.display = 'none';
-    recipeForm.reset();
-    draftIngredients = [];
-  }
-
-  function renderIngredientList() {
-    const list = document.getElementById('ingredient-list');
-    if (draftIngredients.length === 0) {
-      list.innerHTML = '<div class="empty-dash">No ingredients added yet.</div>';
-    } else {
-      list.innerHTML = draftIngredients.map((ing, idx) => `
-        <div class="ingredient-row">
-          <span>${ing.quantity} ${escapeHtml(ing.unit)} — ${escapeHtml(ing.item_name)}</span>
-          <button type="button" class="remove-ing" data-idx="${idx}">✕</button>
-        </div>
-      `).join('');
-      document.querySelectorAll('.remove-ing').forEach(btn => {
-        btn.addEventListener('click', () => {
-          draftIngredients.splice(parseInt(btn.dataset.idx), 1);
-          renderIngredientList();
-          recalcRecipeCostPanel();
-        });
-      });
-    }
-    recalcRecipeCostPanel();
-  }
-
-  document.getElementById('add-ingredient-btn').addEventListener('click', () => {
-    const itemId = ingredientItemSelect.value;
-    const item = items.find(i => i.id === itemId);
-    if (!item) return;
-    const qty = parseFloat(document.getElementById('ingredient-qty').value);
-    if (isNaN(qty) || qty <= 0) return;
-    const unit = document.getElementById('ingredient-unit').value.trim() || item.unit;
-    draftIngredients.push({ item_id: item.id, item_name: item.name, quantity: qty, unit });
-    document.getElementById('ingredient-qty').value = '';
-    document.getElementById('ingredient-unit').value = '';
-    renderIngredientList();
-  });
-
-  function recalcRecipeCostPanel() {
-    const totalCost = recipeCost(draftIngredients);
-    const yieldQty = parseFloat(document.getElementById('recipe-yield-qty').value) || 1;
-    const perServing = totalCost / yieldQty;
-    const menuPrice = parseFloat(document.getElementById('recipe-menu-price').value);
-    const costPct = menuPrice ? (perServing / menuPrice * 100) : null;
-    const profit = !isNaN(menuPrice) ? menuPrice - perServing : null;
-
-    document.getElementById('calc-total-cost').textContent = totalCost.toFixed(0) + ' ISK';
-    document.getElementById('calc-cost-per-serving').textContent = perServing.toFixed(0) + ' ISK';
-    document.getElementById('calc-cost-pct').textContent = costPct != null ? costPct.toFixed(0) + '%' : '—';
-    const profitEl = document.getElementById('calc-profit');
-    profitEl.textContent = profit != null ? profit.toFixed(0) + ' ISK' : '—';
-    profitEl.className = profit != null ? (profit >= 0 ? 'pos' : 'neg') : '';
-  }
-  document.getElementById('recipe-yield-qty').addEventListener('input', recalcRecipeCostPanel);
-  document.getElementById('recipe-menu-price').addEventListener('input', recalcRecipeCostPanel);
-
-  recipeForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const id = document.getElementById('recipe-id').value;
-    const payload = {
-      name: document.getElementById('recipe-name').value.trim(),
-      type: document.getElementById('recipe-type').value,
-      yield_quantity: parseFloat(document.getElementById('recipe-yield-qty').value) || 1,
-      yield_unit: document.getElementById('recipe-yield-unit').value.trim() || 'serving',
-      menu_price: document.getElementById('recipe-menu-price').value === '' ? null : parseFloat(document.getElementById('recipe-menu-price').value),
-      show_on_menu: document.getElementById('recipe-show-on-menu').checked,
-      updated_by: currentUser.id,
-    };
-
-    let recipeId = id;
-    if (id) {
-      await sb.from('recipes').update(payload).eq('id', id);
-      await sb.from('recipe_ingredients').delete().eq('recipe_id', id);
-    } else {
-      const { data, error } = await sb.from('recipes').insert(payload).select().single();
-      if (error) { console.error(error); return; }
-      recipeId = data.id;
-    }
-
-    if (draftIngredients.length > 0) {
-      await sb.from('recipe_ingredients').insert(
-        draftIngredients.map(ing => ({
-          recipe_id: recipeId,
-          item_id: ing.item_id,
-          item_name: ing.item_name,
-          quantity: ing.quantity,
-          unit: ing.unit,
-        }))
-      );
-    }
-
-    closeRecipeModal();
-    await loadAll();
-    if (activeView === 'recipes') renderRecipes();
-  });
-
-
-  // ---------- SUPPLIER FORM ----------
-  const supplierOverlay=document.getElementById('supplier-overlay');
-  const supplierForm=document.getElementById('supplier-form');
-  function showToast(message){const t=document.getElementById('atlas-toast');t.textContent=message;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
-  function openSupplierModal(){supplierForm.reset();supplierOverlay.style.display='flex';}
-  function closeSupplierModal(){supplierOverlay.style.display='none';supplierForm.reset();}
-  document.getElementById('add-supplier-btn').addEventListener('click',openSupplierModal);
-  document.getElementById('close-supplier-btn').addEventListener('click',closeSupplierModal);
-  document.getElementById('cancel-supplier-btn').addEventListener('click',closeSupplierModal);
-  supplierOverlay.addEventListener('click',e=>{if(e.target===supplierOverlay)closeSupplierModal();});
-  supplierForm.addEventListener('submit',async e=>{
-    e.preventDefault();
-    const payload={name:document.getElementById('supplier-name').value.trim(),contact_name:document.getElementById('supplier-contact').value.trim()||null,email:document.getElementById('supplier-email').value.trim()||null,phone:document.getElementById('supplier-phone').value.trim()||null,notes:document.getElementById('supplier-notes').value.trim()||null};
-    let {error}=await sb.from('suppliers').insert(payload);
-    if(error){
-      // Support older supplier schemas that only contain name.
-      const fallback=await sb.from('suppliers').insert({name:payload.name}); error=fallback.error;
-    }
-    if(error){alert(error.message);return;}
-    closeSupplierModal();await loadAll();renderSuppliers();showToast('Supplier added');
-  });
 
   // ---------- SUPPLIERS ----------
   let supplierSearchTerm = '';
@@ -1535,7 +1440,7 @@
 
   function renderSuppliers() {
     const thisMonthKey = monthKey(new Date().toISOString());
-    const names = [...new Set([...suppliers.map(s=>s.name), ...items.map(i => i.supplier).filter(Boolean)])];
+    const names = [...new Set(items.map(i => i.supplier).filter(Boolean))];
 
     const rows = names
       .filter(name => name.toLowerCase().includes(supplierSearchTerm))
@@ -1570,5 +1475,7 @@
   }
   if (window.lucide) window.lucide.createIcons();
 </script>
+<script src="assets/js/modal.js"></script>
+<script src="assets/js/recipes.js"></script>
 </body>
 </html>
