@@ -1,0 +1,3 @@
+-- DATA-002
+-- Import beer_wine_master_template.csv after DATA-001.
+-- Populate supplier IDs after supplier import.

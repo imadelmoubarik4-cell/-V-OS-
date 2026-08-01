@@ -1,0 +1,18 @@
+{
+  "Beer": [
+    "Draft",
+    "Bottle",
+    "Can",
+    "Alcohol Free"
+  ],
+  "Wine": [
+    "Red",
+    "White",
+    "Ros\u00e9",
+    "Sparkling"
+  ],
+  "Cider": [
+    "Bottle",
+    "Draft"
+  ]
+}
