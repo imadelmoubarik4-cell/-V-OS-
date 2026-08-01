@@ -1,0 +1,11 @@
+﻿item_name,category,subcategory,location,unit,par_level,minimum_stock,current_stock,supplier,unit_cost_isk,replacement_cost_isk,notes
+Coupe Glass,Glassware,Cocktail,Glass Rack A,pcs,48,12,0,,0,0,
+Nick & Nora Glass,Glassware,Cocktail,Glass Rack A,pcs,36,12,0,,0,0,
+Highball Glass,Glassware,Tall,Glass Rack B,pcs,60,20,0,,0,0,
+Wine Glass,Glassware,Wine,Glass Rack C,pcs,72,24,0,,0,0,
+Ice Scoop,Equipment,Tools,Bar Station,pcs,2,1,0,,0,0,
+Jigger 25/50 ml,Equipment,Tools,Bar Station,pcs,4,2,0,,0,0,
+Boston Shaker,Equipment,Tools,Bar Station,pcs,6,2,0,,0,0,
+Bar Spoon,Equipment,Tools,Bar Station,pcs,8,2,0,,0,0,
+Dishwasher Rinse Aid,Cleaning,Chemicals,Storage,L,2,1,0,,0,0,
+Glass Cleaner,Cleaning,Chemicals,Storage,Bottle,6,2,0,,0,0,

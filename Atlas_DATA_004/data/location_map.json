@@ -1,0 +1,22 @@
+{
+  "Front Bar": [
+    "Station 1",
+    "Station 2",
+    "Coffee Station"
+  ],
+  "Back Bar": [
+    "Shelf A",
+    "Shelf B",
+    "Shelf C"
+  ],
+  "Storage": [
+    "Dry Storage",
+    "Cold Storage",
+    "Cleaning Cabinet"
+  ],
+  "Glass Area": [
+    "Rack A",
+    "Rack B",
+    "Rack C"
+  ]
+}
