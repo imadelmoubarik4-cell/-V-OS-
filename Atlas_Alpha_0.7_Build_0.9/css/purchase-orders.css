@@ -1,0 +1,4 @@
+#purchase-orders{padding:24px}
+.toolbar{display:flex;gap:10px;margin-bottom:16px}
+#po-table{width:100%;border-collapse:collapse}
+#po-table th,#po-table td{padding:10px;border-bottom:1px solid #ddd}
