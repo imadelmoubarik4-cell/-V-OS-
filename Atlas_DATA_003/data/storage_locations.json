@@ -1,0 +1,21 @@
+{
+  "Back Bar": [
+    "Top Shelf",
+    "Middle Shelf",
+    "Lower Shelf"
+  ],
+  "Storage": [
+    "Dry Storage",
+    "Cold Storage"
+  ],
+  "Fridge": [
+    "Prep Fridge",
+    "Bottle Fridge"
+  ],
+  "Kitchen": [
+    "Prep Area"
+  ],
+  "Coffee Station": [
+    "Espresso Bar"
+  ]
+}

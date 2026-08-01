@@ -1,0 +1,11 @@
+﻿name,category,subcategory,supplier,unit,package_size,par_level,minimum_stock,current_stock,unit_cost_isk,linked_recipes,storage_location
+Monin Vanilla Syrup,Syrups,Coffee Syrup,,Bottle,700 ml,4,1,0,0,Vanilla Latte; Espresso Martini,Back Bar
+Monin Caramel Syrup,Syrups,Coffee Syrup,,Bottle,700 ml,4,1,0,0,Caramel Latte,Back Bar
+Fresh Lime,Fruit & Garnish,Citrus,,kg,1 kg,8,2,0,0,Margarita; Daiquiri; Mojito,Kitchen
+Fresh Lemon,Fruit & Garnish,Citrus,,kg,1 kg,8,2,0,0,Whisky Sour; Lemon Drop,Kitchen
+Mint,Fruit & Garnish,Herbs,,bunch,1 bunch,6,2,0,0,Mojito; Nojito,Fridge
+Coffee Beans,Coffee,Espresso,,kg,1 kg,5,2,0,0,Espresso; Latte; Cappuccino,Coffee Station
+Tonic Water,Mixers,Soft Drink,,Bottle,200 ml,48,12,0,0,Gin & Tonic,Storage
+Soda Water,Mixers,Soft Drink,,Bottle,200 ml,48,12,0,0,Highballs,Storage
+Coca-Cola,Mixers,Soft Drink,,Bottle,200 ml,48,12,0,0,Cuba Libre,Storage
+Pineapple Juice,Juices,Fruit Juice,,Litre,1 L,12,3,0,0,Piña Colada,Fridge
