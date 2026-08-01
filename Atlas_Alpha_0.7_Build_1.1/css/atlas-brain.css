@@ -1,0 +1,4 @@
+#atlas-brain{padding:24px}
+.brain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.brain-card{border:1px solid #ddd;border-radius:10px;padding:16px;background:#fff}
+.brain-card ul{margin:0;padding-left:18px}
