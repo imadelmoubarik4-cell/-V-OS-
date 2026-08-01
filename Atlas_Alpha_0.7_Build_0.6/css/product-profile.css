@@ -1,0 +1,7 @@
+#product-profile{padding:24px}
+.product-header{display:flex;gap:20px;align-items:center}
+.product-header img{width:140px;height:140px;object-fit:cover;border-radius:12px;background:#eee}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}
+.product-grid>div{padding:12px;border:1px solid #ddd;border-radius:8px}
+#movement-table{width:100%;border-collapse:collapse}
+#movement-table th,#movement-table td{padding:8px;border-bottom:1px solid #ddd}
