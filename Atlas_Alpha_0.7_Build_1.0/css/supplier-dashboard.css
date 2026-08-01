@@ -1,0 +1,5 @@
+#supplier-dashboard{padding:24px}
+.supplier-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px}
+.supplier-summary>div{border:1px solid #ddd;border-radius:8px;padding:12px}
+#supplier-products{width:100%;border-collapse:collapse}
+#supplier-products th,#supplier-products td{padding:8px;border-bottom:1px solid #ddd}
