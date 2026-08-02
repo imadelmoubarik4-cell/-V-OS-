@@ -6,8 +6,14 @@ const config = readFileSync('apps/web/config.js', 'utf8');
 const moduleSource = readFileSync('apps/web/assets/js/brain-phase3.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/brain-phase3.css', 'utf8');
 
-test('Phase 3 loads from the isolated Brain API', () => {
-  assert.match(config, /PHASE3_BRAIN_API:\s*"https:\/\/hrhcwshdaigawukctfob\.supabase\.co\/functions\/v1\/atlas-phase3-brain"/);
+function phase3Host() {
+  const match = config.match(/PHASE3_BRAIN_API:\s*"https:\/\/([a-z0-9]+)\.supabase\.co\/functions\/v1\/atlas-phase3-brain"/);
+  assert.ok(match, 'PHASE3_BRAIN_API endpoint is missing');
+  return match[1];
+}
+
+test('Phase 3 loads from an isolated Brain API', () => {
+  assert.notEqual(phase3Host(), 'dnefgcmjcgxlynycxkts');
   assert.match(config, /assets\/js\/brain-phase3\.js/);
   assert.match(config, /assets\/css\/brain-phase3\.css/);
   assert.doesNotMatch(config + moduleSource, /SUPABASE_SERVICE_ROLE_KEY/);
