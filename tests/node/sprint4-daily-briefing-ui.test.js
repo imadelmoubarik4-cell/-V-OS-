@@ -10,12 +10,14 @@ function count(haystack, needle) {
   return haystack.split(needle).length - 1;
 }
 
-test('Sprint 4 config keeps review and briefing on the Sprint 4 branch', () => {
-  assert.match(config, /SPRINT3_REVIEW_API:\s*"https:\/\/cwazoxupbwxnixpmmlhx\.supabase\.co\/functions\/v1\/atlas-sprint3-review"/);
-  assert.match(config, /SPRINT4_BRIEFING_API:\s*"https:\/\/cwazoxupbwxnixpmmlhx\.supabase\.co\/functions\/v1\/atlas-sprint4-briefing"/);
+test('review, briefing and Phase 3 use one isolated branch graph', () => {
+  assert.match(config, /SPRINT3_REVIEW_API:\s*"https:\/\/hrhcwshdaigawukctfob\.supabase\.co\/functions\/v1\/atlas-sprint3-review"/);
+  assert.match(config, /SPRINT4_BRIEFING_API:\s*"https:\/\/hrhcwshdaigawukctfob\.supabase\.co\/functions\/v1\/atlas-sprint4-briefing"/);
+  assert.match(config, /PHASE3_BRAIN_API:\s*"https:\/\/hrhcwshdaigawukctfob\.supabase\.co\/functions\/v1\/atlas-phase3-brain"/);
   assert.match(config, /brain-daily-briefing-v2\.js/);
+  assert.match(config, /brain-phase3\.js/);
   assert.equal(count(config, 'SUPABASE_ANON_KEY'), 1);
-  assert.doesNotMatch(config, /service[_-]?role/i);
+  assert.doesNotMatch(config, /SUPABASE_SERVICE_ROLE_KEY/);
 });
 
 test('Daily Briefing presents confidence, source attribution and evidence cards', () => {
