@@ -1,0 +1,292 @@
+/* Atlas Sprint 3 - UI polish, navigation clarity and responsive refinement */
+
+/* Unified motion language */
+.operations-summary-card,
+.operations-card,
+.brain-metric,
+.brain-card,
+.brain-recipe-fact,
+.business-metric,
+.business-card,
+.metric-card,
+.atlas-card {
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.operations-summary-card:hover,
+.operations-card:hover,
+.brain-metric:hover,
+.brain-card:hover,
+.brain-recipe-fact:hover,
+.metric-card:hover,
+.atlas-card:hover {
+  transform: translateY(-3px);
+  border-color: #b6925e !important;
+  box-shadow: 0 12px 26px rgba(36, 37, 34, .08) !important;
+}
+
+.business-metric:hover,
+.business-card:hover {
+  transform: translateY(-3px);
+  border-color: #b18b54 !important;
+  box-shadow: 0 12px 26px rgba(36, 37, 34, .08) !important;
+}
+
+.operations-hero,
+.brain-hero,
+.business-hero {
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.operations-hero:hover {
+  transform: translateY(-3px);
+  border-color: #d4b278;
+  box-shadow: 0 22px 50px rgba(34, 31, 25, .18);
+}
+
+.brain-hero:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 26px 60px rgba(34, 31, 25, .22);
+}
+
+.business-hero:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 28px 66px rgba(56, 48, 37, .18);
+}
+
+.operations-readiness,
+.brain-hero-panel,
+.business-health-card {
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.operations-readiness:hover {
+  transform: translateY(-3px);
+  border-color: #d4b278;
+}
+
+.brain-hero-panel:hover {
+  transform: translateY(-3px);
+  border-color: #d4b278;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .25);
+}
+
+.business-health-card:hover {
+  transform: translateY(-3px);
+  border-color: #cbaa73;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .25);
+}
+
+/* Sidebar brand */
+.atlas-brand.atlas-brand-sprint3 {
+  min-height: 126px;
+  padding: 22px 18px 18px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+}
+
+.atlas-brand-sprint3 .atlas-logo {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  display: block;
+}
+
+.atlas-brand-sprint3 .atlas-logo img {
+  display: block;
+  width: 132px;
+  max-width: 100%;
+  height: auto;
+  max-height: 72px;
+  margin: 0 auto;
+  object-fit: contain;
+  filter: brightness(.52) contrast(1.15);
+}
+
+.atlas-brand-sprint3 small {
+  color: var(--atlas-muted);
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+
+/* Sub-navigation owns its active state; parents stay structural. */
+.nav-sub .nav-item.nav-sub-item.active,
+.nav-sub-item.active {
+  background: #fff;
+  color: #242522;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .04);
+}
+
+.nav-parent.active {
+  background: transparent;
+  box-shadow: none;
+}
+
+.nav-sub-item.active::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: #b6925e;
+  flex: 0 0 auto;
+}
+
+/* Light Service Mode */
+body.service-mode,
+body.service-mode .atlas-main {
+  background: #f6f5f1;
+}
+
+body.service-mode .atlas-content {
+  color: #242522;
+}
+
+body.service-mode .service-head h1,
+body.service-mode .service-head p {
+  color: #242522;
+}
+
+body.service-mode .service-exit {
+  background: #242522;
+  color: #fff;
+}
+
+body.service-mode .service-card {
+  background: #fff;
+  border: 1px solid #dedcd4;
+  color: #242522;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+body.service-mode .service-card:hover {
+  transform: translateY(-2px);
+  border-color: #b6925e;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(36, 37, 34, .07);
+}
+
+body.service-mode .service-card svg {
+  color: inherit;
+}
+
+body.service-mode .service-card p {
+  color: #74766f;
+}
+
+/* Brain topbar icon and musing */
+.atlas-page-title.is-brain-icon {
+  min-width: 34px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--atlas-text);
+}
+
+.atlas-page-title.is-brain-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.8;
+}
+
+.brain-musing {
+  margin-top: 16px;
+  color: #8b9089;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.55;
+}
+
+.brain-hero .brain-musing {
+  color: #aeb5ae;
+}
+
+/* Responsive refinements mapped to the real Atlas shell. */
+@media (max-width: 1050px) {
+  :root { --sidebar-w: 224px; }
+  .atlas-shell { grid-template-columns: 224px minmax(0, 1fr); }
+  .atlas-sidebar { width: 224px; }
+}
+
+@media (max-width: 760px) {
+  .atlas-shell { display: block; }
+  .atlas-sidebar {
+    width: min(86vw, 284px);
+    transform: translateX(-101%);
+    transition: transform .2s ease;
+    box-shadow: 18px 0 50px rgba(36, 37, 34, 0);
+  }
+  .atlas-sidebar.open {
+    transform: translateX(0);
+    box-shadow: 18px 0 50px rgba(36, 37, 34, .16);
+  }
+  .atlas-search { display: none; }
+  .mobile-menu { display: grid; }
+  .sidebar-backdrop.open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    background: rgba(20, 20, 18, .35);
+    backdrop-filter: blur(2px);
+  }
+  .atlas-brand.atlas-brand-sprint3 { min-height: 112px; }
+  .atlas-brand-sprint3 .atlas-logo img { width: 116px; max-height: 62px; }
+}
+
+@media (max-width: 480px) {
+  .operations-summary-grid,
+  .brain-metric-grid,
+  .business-metric-grid,
+  .summary-grid,
+  .metric-grid,
+  .atlas-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (hover: none) {
+  .operations-summary-card:hover,
+  .operations-card:hover,
+  .operations-hero:hover,
+  .operations-readiness:hover,
+  .brain-metric:hover,
+  .brain-card:hover,
+  .brain-recipe-fact:hover,
+  .brain-hero:hover,
+  .brain-hero-panel:hover,
+  .business-metric:hover,
+  .business-card:hover,
+  .business-hero:hover,
+  .business-health-card:hover,
+  .metric-card:hover,
+  .atlas-card:hover,
+  body.service-mode .service-card:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .operations-summary-card,
+  .operations-card,
+  .operations-hero,
+  .operations-readiness,
+  .brain-metric,
+  .brain-card,
+  .brain-recipe-fact,
+  .brain-hero,
+  .brain-hero-panel,
+  .business-metric,
+  .business-card,
+  .business-hero,
+  .business-health-card,
+  .metric-card,
+  .atlas-card,
+  body.service-mode .service-card,
+  .atlas-sidebar {
+    transition: none !important;
+  }
+}
