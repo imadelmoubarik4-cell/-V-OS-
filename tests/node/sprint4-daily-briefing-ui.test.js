@@ -37,8 +37,8 @@ test('Daily Briefing does not expose secrets or mutate operational data', () => 
 });
 
 test('Daily Briefing rendering avoids observer loops and locale-dependent grouping', () => {
-  assert.match(moduleSource, /state\.observer\?\.disconnect\(\)/);
-  assert.match(moduleSource, /if \(!shell\.querySelector\('\[data-daily-briefing\]'\)\) queueRender\(\)/);
+  assert.ok(moduleSource.includes('state.observer?.disconnect()'));
+  assert.ok(moduleSource.includes("if (!shell.querySelector('[data-daily-briefing]')) queueRender();"));
   assert.doesNotMatch(moduleSource, /toLocaleString/);
-  assert.match(moduleSource, /replace\(\/\\B\(\?=\(\\d\{3\}\)\+\(\?!\\d\)\)\/g, '\.'\)/);
+  assert.ok(moduleSource.includes("replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')"));
 });
