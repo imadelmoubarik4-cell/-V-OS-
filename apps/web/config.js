@@ -3,9 +3,9 @@
 window.VABAR_CONFIG = {
   SUPABASE_URL: "https://dnefgcmjcgxlynycxkts.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp",
-  SPRINT3_REVIEW_API: "https://hrhcwshdaigawukctfob.supabase.co/functions/v1/atlas-sprint3-review",
-  SPRINT4_BRIEFING_API: "https://hrhcwshdaigawukctfob.supabase.co/functions/v1/atlas-sprint4-briefing",
-  PHASE3_BRAIN_API: "https://hrhcwshdaigawukctfob.supabase.co/functions/v1/atlas-phase3-brain",
+  SPRINT3_REVIEW_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-sprint3-review",
+  SPRINT4_BRIEFING_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-sprint4-briefing",
+  PHASE3_BRAIN_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-phase3-brain",
 };
 
 // Real VÁ Data Review is manager-only. In the Phase 3 preview it reads and
