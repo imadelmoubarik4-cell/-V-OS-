@@ -59,9 +59,26 @@ The private branch now includes:
 - a unified review queue and review-progress view;
 - validated inventory and entity decision functions;
 - an immutable `review_decisions` audit table;
+- service-only paginated review RPCs;
 - transactional tests proving decisions write audit records and roll back cleanly.
 
 The Supabase security advisor reports no findings. Performance notices are limited to unused new indexes and inherited public-schema advisories; they do not open private staging access.
+
+## Manager Review Center
+
+Atlas now includes a manager-only **Real VÁ Data** workspace with:
+
+- pending, approved, rejected, and all-status views;
+- filters for inventory, recipes, menus, suppliers, invoices, purchases, deliveries, and equipment;
+- private-source search and pagination;
+- normalized evidence, raw source evidence, issue flags, source page, and source hash;
+- create, merge, link, skip, approve, reject, and reset controls;
+- immutable decision history;
+- responsive desktop, tablet, and mobile layouts.
+
+The browser continues to authenticate against the production VÁ Auth project. The isolated branch Edge Function verifies that production token, confirms an active `manager` or `admin` profile, and then uses the branch runtime service role internally. The service-role credential is never sent to the browser.
+
+An unauthenticated request to the Review API returns HTTP 401. Browser database roles have zero execute grants on the private review RPCs.
 
 ## Security boundary
 
@@ -79,13 +96,29 @@ The Supabase security advisor reports no findings. Performance notices are limit
 
 - `supabase/drafts/20260802_sprint3_private_staging.sql` - reproducible private staging contract;
 - `supabase/drafts/20260802_sprint3_review_workflow.sql` - review decisions, audit trail, and unified queue contract;
+- `supabase/drafts/20260802_sprint3_review_api.sql` - service-role-only review RPC contract;
+- `supabase/functions/atlas-sprint3-review/index.ts` - custom manager-authenticated branch API;
+- `apps/web/assets/js/sprint3-review.js` - Review Center application module;
+- `apps/web/assets/css/sprint3-review.css` - responsive Review Center presentation;
 - `scripts/validate_sprint3_private_staging.py` - offline validator for ignored JSONL staging exports;
 - `tests/python/test_sprint3_private_staging_contract.py` - private staging contract tests;
 - `tests/python/test_sprint3_review_workflow_contract.py` - review workflow and no-promotion tests;
+- `tests/python/test_sprint3_review_api_contract.py` - manager API and grant-boundary tests;
+- `tests/node/sprint3-review-ui.test.js` - browser integration and no-secret tests;
 - `data/templates/sprint-3-source-manifest.template.csv` - header-only source manifest.
+
+## Validation
+
+- 15 Python contract tests pass;
+- 4 Node UI tests pass;
+- committed Git blobs match the locally tested files;
+- review summary reports 1,104 pending rows;
+- transactional decision tests leave zero persisted decisions;
+- browser roles have zero execute grants on the manager review RPCs;
+- the security advisor reports no findings.
 
 ## Next gate
 
-The next stage is an authorised manager review interface: filter the 1,104 pending rows, inspect source evidence, approve exact mappings, resolve generic house-spirit ingredients, confirm supplier/cost/package fields, and reconcile remaining invoice and delivery lines.
+The next stage is a browser preview using an active VÁ manager account, followed by the real mapping decisions: exact products, generic house spirits, supplier/cost/package confirmation, and remaining invoice/delivery reconciliation.
 
 Canonical promotion remains blocked until those decisions are complete and separately approved.
