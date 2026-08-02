@@ -4,7 +4,7 @@ window.VABAR_CONFIG = {
   SUPABASE_URL: "https://dnefgcmjcgxlynycxkts.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp",
   SPRINT3_REVIEW_API: "https://fvmwfgrrksyddbcyxwpn.supabase.co/functions/v1/atlas-sprint3-review",
-  SPRINT4_BRIEFING_API: "https://fvmwfgrrksyddbcyxwpn.supabase.co/functions/v1/atlas-sprint4-briefing",
+  SPRINT4_BRIEFING_API: "https://cwazoxupbwxnixpmmlhx.supabase.co/functions/v1/atlas-sprint4-briefing",
 };
 
 // Sprint 3 Review Center is branch-scoped and manager-only. The browser keeps
@@ -39,7 +39,7 @@ window.VABAR_CONFIG = {
 // source rows and service credentials never enter browser code.
 (function loadAtlasDailyBriefing() {
   const stylesheetPath = 'assets/css/brain-daily-briefing.css';
-  const scriptPath = 'assets/js/brain-daily-briefing.js';
+  const scriptPath = 'assets/js/brain-daily-briefing-v2.js';
 
   if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
     const stylesheet = document.createElement('link');
