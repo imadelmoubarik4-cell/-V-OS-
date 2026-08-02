@@ -6,6 +6,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 MIGRATION = (ROOT / "supabase/migrations/20260802192300_sprint4_daily_briefing.sql").read_text(encoding="utf-8")
+ORDERING_MIGRATION = (ROOT / "supabase/migrations/20260802202000_sprint4_briefing_priority_order.sql").read_text(encoding="utf-8")
 EDGE = (ROOT / "supabase/functions/atlas-sprint4-briefing/index.ts").read_text(encoding="utf-8")
 CONFIG = (ROOT / "supabase/config.toml").read_text(encoding="utf-8")
 
@@ -40,6 +41,14 @@ class Sprint4DailyBriefingContractTests(unittest.TestCase):
         self.assertIn("'forecasting_enabled', false", MIGRATION)
         self.assertIn("'automatic_ordering_enabled', false", MIGRATION)
         self.assertIn("'canonical_promotion_enabled', false", MIGRATION)
+
+    def test_signals_are_exposed_in_numeric_priority_order(self) -> None:
+        self.assertIn("rename to atlas_sprint4_daily_briefing_raw", ORDERING_MIGRATION)
+        self.assertIn("jsonb_array_elements", ORDERING_MIGRATION)
+        self.assertIn("jsonb_agg(signal order by", ORDERING_MIGRATION)
+        self.assertIn("(signal ->> 'priority')::integer", ORDERING_MIGRATION)
+        self.assertIn("grant execute on function public.atlas_sprint4_daily_briefing()", ORDERING_MIGRATION)
+        self.assertNotRegex(ORDERING_MIGRATION.lower(), r"\b(insert|update|delete|truncate)\b\s+(into\s+|from\s+|table\s+)?atlas_private\.")
 
     def test_edge_function_enforces_custom_manager_authentication(self) -> None:
         self.assertIn('/auth/v1/user', EDGE)
