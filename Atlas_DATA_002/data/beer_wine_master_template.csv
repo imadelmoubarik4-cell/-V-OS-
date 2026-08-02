@@ -1,9 +1,0 @@
-﻿name,category,style,supplier,country,bottle_ml,abv,current_stock,par_level,unit_cost_isk,menu_price_isk,barcode,image
-House Red Wine,Wine,Red,,,750,0,0,6,0,1090,,
-House White Wine,Wine,White,,,750,0,0,6,0,1090,,
-House Rosé,Wine,Rosé,,,750,0,0,6,0,1090,,
-House Sparkling,Wine,Sparkling,,,750,0,0,6,0,1090,,
-Gull Lite,Beer,Draft,Ölgerðin,Iceland,300,4.4,0,24,0,990,,
-Tuborg Classic,Beer,Draft,Ölgerðin,Denmark,400,4.6,0,24,0,990,,
-Boli,Beer,Bottle,Ölgerðin,Iceland,330,5.2,0,24,0,990,,
-Somersby Apple,Cider,Bottle,Ölgerðin,Denmark,330,4.5,0,24,0,990,,
