@@ -19,6 +19,16 @@ data/private/
 tmp/
 *.local.*
 
+# Sprint 3 private staging outputs must remain outside Git.
+/sprint3_private/
+/sprint3_staging/
+/import_batches.jsonl
+/import_inventory_rows.jsonl
+/import_entity_rows.jsonl
+/import_review_items.jsonl
+/*Private_Staging*.zip
+/*Real_VA_Data*.zip
+
 # Operational catalogue inputs must never enter repository history.
 **/approved-inventory-extensions.csv
 **/inventory-aliases.csv
