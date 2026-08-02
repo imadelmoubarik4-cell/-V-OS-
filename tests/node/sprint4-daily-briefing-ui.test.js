@@ -10,7 +10,8 @@ function count(haystack, needle) {
   return haystack.split(needle).length - 1;
 }
 
-test('Sprint 4 config loads the hardened module from the Sprint 4 branch API', () => {
+test('Sprint 4 config keeps review and briefing on the Sprint 4 branch', () => {
+  assert.match(config, /SPRINT3_REVIEW_API:\s*"https:\/\/cwazoxupbwxnixpmmlhx\.supabase\.co\/functions\/v1\/atlas-sprint3-review"/);
   assert.match(config, /SPRINT4_BRIEFING_API:\s*"https:\/\/cwazoxupbwxnixpmmlhx\.supabase\.co\/functions\/v1\/atlas-sprint4-briefing"/);
   assert.match(config, /brain-daily-briefing-v2\.js/);
   assert.equal(count(config, 'SUPABASE_ANON_KEY'), 1);
