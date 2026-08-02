@@ -25,6 +25,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Validate browser JavaScript syntax
+        run: node --check apps/web/assets/js/brain-daily-briefing-v2.js
+
       - name: Run Node contract tests
         run: npm run test:node
 
