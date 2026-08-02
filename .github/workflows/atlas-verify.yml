@@ -1,0 +1,40 @@
+name: Atlas verification
+
+on:
+  pull_request:
+    branches:
+      - release/alpha-0.8.0
+      - agent/sprint-3-real-va-data
+  push:
+    branches:
+      - 'agent/**'
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Node contract tests
+        run: npm run test:node
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile Python contracts
+        run: python -m compileall -q scripts tests/python
+
+      - name: Run Python contract tests
+        run: npm run test:python
