@@ -1,4 +1,4 @@
-# Atlas uses production VÁ Auth while private review and briefing data live in
+# Atlas uses production VÁ Auth while private review and Brain data live in
 # isolated Supabase branches. The branch gateway cannot validate a token issued
 # by the production project, so these functions authenticate the caller inside
 # their handlers and require an active manager/admin profile.
@@ -7,4 +7,7 @@
 verify_jwt = false
 
 [functions.atlas-sprint4-briefing]
+verify_jwt = false
+
+[functions.atlas-phase3-brain]
 verify_jwt = false
