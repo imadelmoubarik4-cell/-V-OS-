@@ -30,6 +30,8 @@ The full private checkpoint was then copied server-to-server into the Sprint 4 S
 
 Temporary transfer RPCs, transfer endpoints, and the temporary `pg_net` extension were retired after verification.
 
+In the Sprint 4 preview, the Real VÁ Data Review Center and the Daily Briefing use this same private branch. A review decision therefore changes the graph used by the next briefing refresh.
+
 ## Daily Briefing API
 
 The service-role-only database function `public.atlas_sprint4_daily_briefing()` reads the private review graph and returns aggregates only.
@@ -87,6 +89,12 @@ Atlas Brain displays:
 
 The renderer uses manual Icelandic number grouping and pauses its mutation observer during its own updates to prevent render loops.
 
+A follow-up migration wraps the underlying briefing payload and sorts cards by numeric priority. The validated order is:
+
+`10, 15, 23, 23, 23, 23, 23, 80`
+
+The governance blocker therefore appears before unresolved issue cards and before historical evidence.
+
 ## Verified current briefing
 
 The private branch currently reports:
@@ -107,12 +115,26 @@ These are review-readiness signals, not claims about current live stock.
 
 - Sprint 4 Supabase branch: `ACTIVE_HEALTHY`;
 - workflow stage: `FUNCTIONS_DEPLOYED`;
-- migration history: 12 versions, including `20260802192300_sprint4_daily_briefing`;
+- migration history: 13 versions;
+- Phase 1 migrations:
+  - `20260802192300_sprint4_daily_briefing`;
+  - `20260802202000_sprint4_briefing_priority_order`;
 - security advisor: no findings;
 - production: unchanged.
 
+## Verification assets
+
+The branch includes:
+
+- Node UI contract tests;
+- Python database/API contract tests;
+- browser JavaScript syntax validation;
+- an Atlas verification GitHub Actions workflow.
+
+GitHub has not yet published an Actions result for the current head, so browser acceptance remains the final gate.
+
 ## Remaining acceptance gate
 
-Phase 1 still requires a browser preview while signed in with an active VÁ manager account. That review should confirm the responsive layout, authenticated API call, evidence-card readability, navigation into Real VÁ Data Review, and refresh behaviour.
+Phase 1 still requires a browser preview while signed in with an active VÁ manager account. That review should confirm the responsive layout, authenticated API call, evidence-card readability, navigation into Real VÁ Data Review, and refresh behaviour after a review decision.
 
 Generative AI, demand forecasting, automatic ordering, and canonical promotion remain outside Phase 1.
