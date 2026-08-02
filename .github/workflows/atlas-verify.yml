@@ -5,6 +5,7 @@ on:
     branches:
       - release/alpha-0.8.0
       - agent/sprint-3-real-va-data
+      - agent/sprint-4-atlas-brain-daily-briefing
   push:
     branches:
       - 'agent/**'
@@ -23,10 +24,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Validate browser JavaScript syntax
-        run: node --check apps/web/assets/js/brain-daily-briefing-v2.js
+        run: |
+          node --check apps/web/assets/js/brain-daily-briefing-v2.js
+          node --check apps/web/assets/js/brain-phase3.js
 
       - name: Run Node contract tests
         run: npm run test:node
