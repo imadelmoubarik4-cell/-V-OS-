@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const config = readFileSync('apps/web/config.js', 'utf8');
 const messages = readFileSync('apps/web/assets/js/team-messages.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/team-messages.css', 'utf8');
+const migration = readFileSync('supabase/migrations/20260803125226_atlas_team_messages_checkpoint_c.sql', 'utf8');
 
 function count(haystack, needle) {
   return haystack.split(needle).length - 1;
@@ -18,12 +19,11 @@ test('Checkpoint C loads from the isolated team-message API', () => {
   assert.doesNotMatch(config + messages, /SUPABASE_SERVICE_ROLE_KEY/);
 });
 
-test('initial channels and manager-only announcement state are rendered', () => {
-  assert.match(messages, /General/);
-  assert.match(messages, /Operations/);
-  assert.match(messages, /Shift handover/);
-  assert.match(messages, /Announcements/);
-  assert.match(messages, /Marketing/);
+test('initial channels are seeded and manager-only announcement state is rendered', () => {
+  for (const channel of ['general', 'operations', 'shift-handover', 'announcements', 'marketing']) {
+    assert.match(migration, new RegExp(`\\('${channel}'`));
+  }
+  assert.match(migration, /'announcements'.*true,true,40/);
   assert.match(messages, /Manager posts only/);
   assert.match(messages, /Only managers and administrators can post in Announcements/);
 });
