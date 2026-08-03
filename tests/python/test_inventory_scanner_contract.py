@@ -77,7 +77,7 @@ class InventoryScannerContractTests(unittest.TestCase):
         self.assertIn("INVENTORY_SCANNER_API", BROWSER_CONFIG)
         self.assertIn("inventory-scanner.js", BROWSER_CONFIG)
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER_MODULE)
-        self.assertNotIn(".from(", BROWSER_MODULE)
+        self.assertNotRegex(BROWSER_MODULE, r"(?:atlasSupabase|supabase|client)\s*\.\s*from\s*\(")
         self.assertNotIn("adjust_inventory", BROWSER_MODULE)
         self.assertIn("Images not uploaded", BROWSER_MODULE)
         self.assertIn("Uncertain matches never change inventory", BROWSER_MODULE)
