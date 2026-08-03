@@ -30,6 +30,7 @@ jobs:
         run: |
           node --check apps/web/assets/js/brain-daily-briefing-v2.js
           node --check apps/web/assets/js/brain-phase3.js
+          node --check apps/web/assets/js/operations-checkpoint-a.js
 
       - name: Run Node contract tests
         run: npm run test:node
