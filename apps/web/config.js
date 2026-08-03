@@ -6,6 +6,7 @@ window.VABAR_CONFIG = {
   SPRINT3_REVIEW_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-sprint3-review",
   SPRINT4_BRIEFING_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-sprint4-briefing",
   PHASE3_BRAIN_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-phase3-brain",
+  OPERATIONS_CHECKPOINT_A_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-operations-checkpoint-a",
 };
 
 // Real VÁ Data Review is manager-only. In the Phase 3 preview it reads and
@@ -81,6 +82,32 @@ window.VABAR_CONFIG = {
     const script = document.createElement('script');
     script.src = scriptPath;
     script.dataset.atlasPhase3Brain = 'true';
+    document.body.appendChild(script);
+  };
+
+  if (document.readyState === 'complete') loadScript();
+  else window.addEventListener('load', loadScript, { once: true });
+})();
+
+// Checkpoint A adds recurring weekly routines, daily temperature evidence and
+// explicit marketing/reputation connection boundaries to the Operations Center.
+(function loadAtlasCheckpointA() {
+  const stylesheetPath = 'assets/css/operations-checkpoint-a.css';
+  const scriptPath = 'assets/js/operations-checkpoint-a.js';
+
+  if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = stylesheetPath;
+    stylesheet.dataset.atlasCheckpointA = 'true';
+    document.head.appendChild(stylesheet);
+  }
+
+  const loadScript = () => {
+    if (window.AtlasCheckpointA || document.querySelector('script[data-atlas-checkpoint-a]')) return;
+    const script = document.createElement('script');
+    script.src = scriptPath;
+    script.dataset.atlasCheckpointA = 'true';
     document.body.appendChild(script);
   };
 
