@@ -20,7 +20,7 @@ test('Checkpoint E loads through the isolated Team Profiles API', () => {
 
 test('Team Profiles adds a dedicated People navigation and directory', () => {
   assert.match(ui, /data-view="team-profiles"/);
-  assert.match(ui, />Profiles</);
+  assert.match(ui, /<\/i>Profiles/);
   assert.match(ui, /Team directory/);
   assert.match(ui, /Search name, role or department/);
   assert.match(ui, /Training due/);
