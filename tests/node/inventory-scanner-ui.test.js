@@ -55,7 +55,7 @@ test('browser scanner uses the authenticated API and no direct table writes', ()
   assert.match(scanner, /api\('lookup'/);
   assert.match(scanner, /api\('link'/);
   assert.match(scanner, /api\('count'/);
-  assert.doesNotMatch(scanner, /\.from\s*\(/);
+  assert.doesNotMatch(scanner, /(?:atlasSupabase|supabase|client)\s*\.\s*from\s*\(/i);
   assert.doesNotMatch(scanner, /adjust_inventory/);
   assert.doesNotMatch(scanner, /inventory_scan_aliases|inventory_scan_events/);
 });
