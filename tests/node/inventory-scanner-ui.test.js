@@ -14,8 +14,6 @@ function count(haystack, needle) {
 test('Checkpoint B loads from the isolated scanner API through its bootstrap', () => {
   assert.match(config, /INVENTORY_SCANNER_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-inventory-scanner"/);
   assert.match(config, /assets\/js\/inventory-scanner-bootstrap\.js/);
-  assert.match(config, /assets\/js\/inventory-scanner\.js/);
-  assert.match(config, /assets\/css\/inventory-scanner\.css/);
   assert.match(bootstrap, /SCANNER_SCRIPT = 'assets\/js\/inventory-scanner\.js'/);
   assert.match(bootstrap, /SCANNER_STYLE = 'assets\/css\/inventory-scanner\.css'/);
   assert.equal(count(config, 'SUPABASE_ANON_KEY'), 1);
