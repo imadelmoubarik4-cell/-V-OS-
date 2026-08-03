@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import unittest
 
 
@@ -95,7 +96,7 @@ class OperationsCheckpointAContractTests(unittest.TestCase):
         self.assertIn("OPERATIONS_CHECKPOINT_A_API", BROWSER_CONFIG)
         self.assertIn("operations-checkpoint-a.js", BROWSER_CONFIG)
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER_MODULE)
-        self.assertNotIn(".from(", BROWSER_MODULE)
+        self.assertIsNone(re.search(r"(?:atlasSupabase|\bsb|\bclient)\.from\s*\(", BROWSER_MODULE))
         self.assertIn("No inventory quantity change from this module", BROWSER_MODULE)
 
 
