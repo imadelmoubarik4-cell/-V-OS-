@@ -165,3 +165,13 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   globalName: 'AtlasShifts',
   dataAttribute: 'atlasShifts',
 }));
+
+// Checkpoint F.1 layers a full month calendar over the weekly planner. It uses
+// the same authenticated Shifts gateway and preserves manager-draft versus
+// staff-published visibility while keeping editing in the weekly workspace.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/shifts-month-calendar.css',
+  scriptPath: 'assets/js/shifts-month-calendar.js',
+  globalName: 'AtlasShiftsMonth',
+  dataAttribute: 'atlasShiftsMonth',
+}));
