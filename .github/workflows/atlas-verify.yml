@@ -32,6 +32,7 @@ jobs:
           node --check apps/web/assets/js/brain-phase3.js
           node --check apps/web/assets/js/operations-checkpoint-a.js
           node --check apps/web/assets/js/operations-checkpoint-a-layout.js
+          node --check apps/web/assets/js/inventory-scanner-bootstrap.js
           node --check apps/web/assets/js/inventory-scanner.js
 
       - name: Run Node contract tests
