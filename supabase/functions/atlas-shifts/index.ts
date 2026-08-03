@@ -52,7 +52,7 @@ function jsonResponse(value: unknown, status = 200): Response {
       ...CORS_HEADERS,
       "content-type": "application/json; charset=utf-8",
       "x-content-type-options": "nosniff",
-      "x-atlas-shifts-version": "0.1.0",
+      "x-atlas-shifts-version": "0.2.0",
     },
   });
 }
@@ -81,6 +81,18 @@ function staffPayload(context: AtlasContext) {
     role: context.profile.role,
     active: true,
     can_manage_schedule: isManager(context),
+  };
+}
+
+function policyPayload() {
+  return {
+    planning_environment: "isolated_branch",
+    production_shift_sync_enabled: false,
+    publish_to_team_enabled: true,
+    month_publish_to_team_enabled: true,
+    schedule_only_people_supported: true,
+    browser_notifications_enabled: false,
+    direct_browser_table_access: false,
   };
 }
 
@@ -182,6 +194,12 @@ function requireMonday(value: unknown, label = "Week start"): string {
   const dateValue = requireDate(value, label);
   const date = new Date(`${dateValue}T12:00:00Z`);
   if (date.getUTCDay() !== 1) throw new ApiError(400, `${label} must be a Monday.`);
+  return dateValue;
+}
+
+function requireMonthStart(value: unknown, label = "Month start"): string {
+  const dateValue = requireDate(value, label);
+  if (!dateValue.endsWith("-01")) throw new ApiError(400, `${label} must be the first day of a month.`);
   return dateValue;
 }
 
@@ -310,14 +328,21 @@ async function snapshot(context: AtlasContext, weekStart: string) {
   return {
     workspace,
     staff: staffPayload(context),
-    policy: {
-      planning_environment: "isolated_branch",
-      production_shift_sync_enabled: false,
-      publish_to_team_enabled: true,
-      schedule_only_people_supported: true,
-      browser_notifications_enabled: false,
-      direct_browser_table_access: false,
-    },
+    policy: policyPayload(),
+  };
+}
+
+async function monthSnapshot(context: AtlasContext, monthStart: string) {
+  await syncProfiles(context);
+  const workspace = await branchRpc("atlas_shifts_month_snapshot", {
+    p_month_start: monthStart,
+    p_actor_id: context.user.id,
+    p_actor_role: context.profile.role,
+  });
+  return {
+    workspace,
+    staff: staffPayload(context),
+    policy: policyPayload(),
   };
 }
 
@@ -330,9 +355,15 @@ Deno.serve(async (request: Request) => {
     const action = url.searchParams.get("action") || "snapshot";
 
     if (request.method === "GET") {
-      if (action !== "snapshot") throw new ApiError(404, "Unknown Shifts action.");
-      const weekStart = requireMonday(url.searchParams.get("week_start"), "Week start");
-      return jsonResponse(await snapshot(context, weekStart));
+      if (action === "snapshot") {
+        const weekStart = requireMonday(url.searchParams.get("week_start"), "Week start");
+        return jsonResponse(await snapshot(context, weekStart));
+      }
+      if (action === "month-snapshot") {
+        const monthStart = requireMonthStart(url.searchParams.get("month_start"), "Month start");
+        return jsonResponse(await monthSnapshot(context, monthStart));
+      }
+      throw new ApiError(404, "Unknown Shifts action.");
     }
 
     if (request.method !== "POST") throw new ApiError(405, "Method not allowed.");
@@ -340,6 +371,7 @@ Deno.serve(async (request: Request) => {
     const actorLabel = labelForProfile(context.profile);
     let result: unknown;
     let refreshWeek = body.week_start ? requireMonday(body.week_start, "Week start") : null;
+    let refreshMonth = body.current_month ? requireMonthStart(body.current_month, "Current month") : null;
 
     switch (action) {
       case "create-person":
@@ -420,6 +452,18 @@ Deno.serve(async (request: Request) => {
         });
         break;
 
+      case "publish-month":
+        requireManager(context);
+        refreshMonth = requireMonthStart(body.month_start, "Month start");
+        result = await branchRpc("atlas_shifts_publish_month", {
+          p_month_start: refreshMonth,
+          p_note: optionalText(body.note, 3000),
+          p_actor_id: context.user.id,
+          p_actor_label: actorLabel,
+          p_actor_role: context.profile.role,
+        });
+        break;
+
       case "save-availability":
         result = await branchRpc("atlas_shifts_save_availability", {
           p_person_id: requireUuid(body.person_id, "Team member"),
@@ -485,6 +529,10 @@ Deno.serve(async (request: Request) => {
 
       default:
         throw new ApiError(404, "Unknown Shifts action.");
+    }
+
+    if (refreshMonth) {
+      return jsonResponse({ result, ...(await monthSnapshot(context, refreshMonth)) });
     }
 
     if (!refreshWeek) {
