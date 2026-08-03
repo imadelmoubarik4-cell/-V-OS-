@@ -9,6 +9,7 @@ window.VABAR_CONFIG = {
   OPERATIONS_CHECKPOINT_A_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-operations-checkpoint-a",
   INVENTORY_SCANNER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner",
   TEAM_MESSAGES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-messages",
+  MARKETING_WORKSPACE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-marketing-workspace",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -113,11 +114,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 }));
 
 // Checkpoint B is intentionally bootstrapped separately. The bootstrap waits
-// until the authenticated application shell is visible, then loads:
-//   assets/css/inventory-scanner.css
-//   assets/js/inventory-scanner.js
-// It also isolates scanner taps, DOM observation and API timeout handling so the
-// modal cannot block login or become unresponsive while its snapshot is loading.
+// until the authenticated application shell is visible, then loads its scanner.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/inventory-scanner-bootstrap.js',
   globalName: 'AtlasInventoryScannerBootstrap',
@@ -132,4 +129,21 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/team-messages.js',
   globalName: 'AtlasTeamMessages',
   dataAttribute: 'atlasTeamMessages',
+}));
+
+// A lightweight unread-count worker keeps the Team and notification badges
+// accurate while users work elsewhere in Atlas. It removes zero badges entirely.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/team-unread-badge.js',
+  globalName: 'AtlasTeamUnreadBadge',
+  dataAttribute: 'atlasTeamUnreadBadge',
+}));
+
+// Checkpoint D injects a private Marketing workspace with planning, calendar,
+// reminders, campaigns, approval history and read-only connection boundaries.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/marketing-workspace.css',
+  scriptPath: 'assets/js/marketing-workspace.js',
+  globalName: 'AtlasMarketingWorkspace',
+  dataAttribute: 'atlasMarketingWorkspace',
 }));
