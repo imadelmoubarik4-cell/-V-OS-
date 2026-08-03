@@ -40,7 +40,7 @@ class TeamMessagesContractTests(unittest.TestCase):
         self.assertIn("soft_delete_with_audit", MIGRATION)
         self.assertIn("15 minutes", MIGRATION)
 
-    def test_linked_records_are typed_and_server_validated(self):
+    def test_linked_records_are_typed_and_server_validated(self):
         for link_type in ("inventory_item", "routine", "shift", "brain_recommendation"):
             self.assertIn(link_type, MIGRATION)
             self.assertIn(link_type, EDGE_FUNCTION)
