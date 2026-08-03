@@ -10,6 +10,46 @@ window.VABAR_CONFIG = {
   INVENTORY_SCANNER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner",
 };
 
+// Several Atlas modules add Lucide placeholders while observing the application
+// shell. Lucide's generated SVGs also retain data-lucide, so repeatedly calling
+// createIcons from a body MutationObserver can replace the same icons forever.
+// Only run Lucide when a source placeholder is actually present, and never allow
+// a re-entrant conversion. This keeps the login form responsive on desktop and
+// mobile while preserving normal icon rendering throughout the authenticated app.
+(function installAtlasLucideStabilityGuard() {
+  const install = () => {
+    const lucide = window.lucide;
+    if (!lucide || typeof lucide.createIcons !== 'function') return false;
+    if (lucide.createIcons.__atlasStabilityGuard) return true;
+
+    const originalCreateIcons = lucide.createIcons.bind(lucide);
+    let rendering = false;
+
+    const guardedCreateIcons = function (options) {
+      if (rendering) return undefined;
+      if (!document.querySelector('i[data-lucide], span[data-lucide]')) return undefined;
+
+      rendering = true;
+      try {
+        return originalCreateIcons(options);
+      } finally {
+        rendering = false;
+      }
+    };
+
+    guardedCreateIcons.__atlasStabilityGuard = true;
+    guardedCreateIcons.__atlasOriginal = originalCreateIcons;
+    lucide.createIcons = guardedCreateIcons;
+    return true;
+  };
+
+  if (install()) return;
+  const timer = window.setInterval(() => {
+    if (install()) window.clearInterval(timer);
+  }, 50);
+  window.setTimeout(() => window.clearInterval(timer), 10000);
+})();
+
 // Real VÁ Data Review is manager-only. In the Phase 3 preview it reads and
 // writes the same isolated private graph used by Decision Memory and the Daily
 // Briefing, so each significant review decision can become auditable memory.
@@ -143,22 +183,23 @@ window.VABAR_CONFIG = {
   else window.addEventListener('load', loadScript, { once: true });
 })();
 
-// Checkpoint B adds a mobile-first barcode scanner to Inventory. The browser
-// receives no branch service credential and never writes scanner tables directly.
-// The isolated preview records test counts in shadow mode until browser acceptance.
+// Checkpoint B adds a mobile-first barcode scanner to Inventory. The scanner is
+// deliberately not loaded on the login screen. It starts only after the Atlas
+// application shell becomes visible, preventing camera/UI observers from doing
+// any work while the user is entering credentials.
 (function loadAtlasInventoryScanner() {
   const stylesheetPath = 'assets/css/inventory-scanner.css';
   const scriptPath = 'assets/js/inventory-scanner.js';
 
-  if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
-    const stylesheet = document.createElement('link');
-    stylesheet.rel = 'stylesheet';
-    stylesheet.href = stylesheetPath;
-    stylesheet.dataset.atlasInventoryScanner = 'true';
-    document.head.appendChild(stylesheet);
-  }
+  const loadAssets = () => {
+    if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
+      const stylesheet = document.createElement('link');
+      stylesheet.rel = 'stylesheet';
+      stylesheet.href = stylesheetPath;
+      stylesheet.dataset.atlasInventoryScanner = 'true';
+      document.head.appendChild(stylesheet);
+    }
 
-  const loadScript = () => {
     if (window.AtlasInventoryScanner || document.querySelector('script[data-atlas-inventory-scanner]')) return;
     const script = document.createElement('script');
     script.src = scriptPath;
@@ -166,6 +207,26 @@ window.VABAR_CONFIG = {
     document.body.appendChild(script);
   };
 
-  if (document.readyState === 'complete') loadScript();
-  else window.addEventListener('load', loadScript, { once: true });
+  const startWhenSignedIn = () => {
+    const appScreen = document.getElementById('app-screen');
+    if (!appScreen) return;
+
+    const isSignedIn = () => appScreen.style.display === 'block'
+      || window.getComputedStyle(appScreen).display !== 'none';
+
+    if (isSignedIn()) {
+      loadAssets();
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      if (!isSignedIn()) return;
+      observer.disconnect();
+      loadAssets();
+    });
+    observer.observe(appScreen, { attributes: true, attributeFilter: ['style', 'class'] });
+  };
+
+  if (document.readyState === 'complete') startWhenSignedIn();
+  else window.addEventListener('load', startWhenSignedIn, { once: true });
 })();
