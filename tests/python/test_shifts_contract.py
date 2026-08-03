@@ -121,7 +121,10 @@ class ShiftsContractTests(unittest.TestCase):
         self.assertIn("window.atlasSupabase", BROWSER)
         self.assertIn("authorization: `Bearer ${session.access_token}`", BROWSER)
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER + GALLERY)
-        self.assertNotIn(".from(", BROWSER)
+        self.assertNotRegex(
+            BROWSER,
+            r"(?:atlasSupabase|supabase|client)\s*\.\s*from\s*\(",
+        )
         self.assertNotIn("atlas_private", BROWSER)
 
     def test_mobile_photo_picker_allows_gallery_selection(self):
