@@ -8,6 +8,7 @@
     inFlight: false,
     timer: null,
     badgeObserver: null,
+    badgeCleanupFrame: null,
     authSubscription: null,
     lastTotal: 0,
     initialized: false
@@ -56,8 +57,8 @@
     if (!container) return;
     let badge = container.querySelector(`.${className}`);
 
-    // A zero is not a notification. Remove the badge completely so no author
-    // display rule can override the browser's hidden attribute and show “0”.
+    // A zero is not a notification. Removing it is more reliable than relying
+    // on hidden because the badge's CSS uses an explicit display value.
     if (total <= 0) {
       badge?.remove();
       return;
@@ -69,9 +70,10 @@
       container.appendChild(badge);
     }
 
+    const nextText = total > 99 ? '99+' : String(total);
+    if (badge.textContent !== nextText) badge.textContent = nextText;
     badge.hidden = false;
     badge.style.display = 'inline-grid';
-    badge.textContent = total > 99 ? '99+' : String(total);
     badge.setAttribute('aria-label', `${total} unread team message${total === 1 ? '' : 's'}`);
   }
 
@@ -85,6 +87,14 @@
     document.querySelectorAll('.team-nav-unread,.team-bell-unread').forEach((badge) => {
       const total = normalizeTotal(badge.textContent);
       if (badge.hidden || total <= 0) badge.remove();
+    });
+  }
+
+  function scheduleZeroCleanup() {
+    if (state.badgeCleanupFrame) return;
+    state.badgeCleanupFrame = window.requestAnimationFrame(() => {
+      state.badgeCleanupFrame = null;
+      cleanLegacyZeroBadges();
     });
   }
 
@@ -138,9 +148,8 @@
       return;
     }
 
-    // While Team is open, its normal six-second refresh already owns the full
-    // conversation state and read cursor. Reuse that value instead of making a
-    // second request that could briefly race with mark-as-read.
+    // While Team is open, reuse its current full snapshot so the background
+    // poll does not race against the channel mark-as-read request.
     if (teamIsVisible() && window.AtlasTeamMessages?.snapshot?.()) {
       setUnreadTotal(window.AtlasTeamMessages.unreadCount?.() || 0);
       return;
@@ -178,19 +187,13 @@
 
   function attachBadgeObserver() {
     state.badgeObserver?.disconnect();
-    state.badgeObserver = new MutationObserver(() => {
-      cleanLegacyZeroBadges();
-      if (state.lastTotal > 0) setUnreadTotal(state.lastTotal);
-    });
+    state.badgeObserver = new MutationObserver(scheduleZeroCleanup);
 
+    // Observe only direct badge additions/removals. Never rewrite a positive
+    // badge from inside the observer; that would create a self-triggering loop.
     badgeTargets().forEach(({ container }) => {
       if (!container) return;
-      state.badgeObserver.observe(container, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['hidden']
-      });
+      state.badgeObserver.observe(container, { childList: true });
     });
   }
 
@@ -233,6 +236,7 @@
     window.addEventListener('pagehide', () => {
       stopPolling();
       state.badgeObserver?.disconnect();
+      if (state.badgeCleanupFrame) window.cancelAnimationFrame(state.badgeCleanupFrame);
       state.authSubscription?.unsubscribe?.();
     }, { once: true });
   }
