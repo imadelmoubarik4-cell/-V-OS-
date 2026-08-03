@@ -8,6 +8,7 @@ window.VABAR_CONFIG = {
   PHASE3_BRAIN_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-phase3-brain",
   OPERATIONS_CHECKPOINT_A_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-operations-checkpoint-a",
   INVENTORY_SCANNER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner",
+  TEAM_MESSAGES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-messages",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -121,4 +122,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/inventory-scanner-bootstrap.js',
   globalName: 'AtlasInventoryScannerBootstrap',
   dataAttribute: 'atlasInventoryScannerBootstrap',
+}));
+
+// Checkpoint C turns the existing Team placeholder into a private staff-message
+// workspace. It fetches only while the Team view is visible and uses secure
+// polling until browser/mobile notification delivery is separately approved.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/team-messages.css',
+  scriptPath: 'assets/js/team-messages.js',
+  globalName: 'AtlasTeamMessages',
+  dataAttribute: 'atlasTeamMessages',
 }));
