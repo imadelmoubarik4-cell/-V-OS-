@@ -166,12 +166,18 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasShifts',
 }));
 
-// Checkpoint F.1 layers a full month calendar over the weekly planner. It uses
-// the same authenticated Shifts gateway and preserves manager-draft versus
-// staff-published visibility while keeping editing in the weekly workspace.
+// Checkpoint F.1 introduced the complete month grid. F.2 turns that grid into
+// the primary monthly planning surface: managers edit any date in the month and
+// publish one immutable month revision for staff while weekly drill-down remains
+// available for detailed review and confirmations.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/shifts-month-calendar.css',
   scriptPath: 'assets/js/shifts-month-calendar.js',
   globalName: 'AtlasShiftsMonth',
   dataAttribute: 'atlasShiftsMonth',
+}));
+
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/shifts-month-editor.css',
+  dataAttribute: 'atlasShiftsMonthEditor',
 }));
