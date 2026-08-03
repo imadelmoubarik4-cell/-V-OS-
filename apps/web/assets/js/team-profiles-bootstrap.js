@@ -4,6 +4,7 @@
   const JS_BUNDLE = 'assets/js/team-profiles.bundle.js.gz';
   const CSS_BUNDLE = 'assets/css/team-profiles.bundle.css.gz';
   let loading = null;
+  let navTimer = null;
 
   async function decompressText(path) {
     if (!('DecompressionStream' in window)) {
@@ -49,7 +50,73 @@
     return loading;
   }
 
-  window.AtlasTeamProfilesBootstrap = { load };
-  if (document.readyState === 'complete') load();
-  else window.addEventListener('load', load, { once: true });
+  function setButtonLoading(button, active) {
+    if (!button) return;
+    button.disabled = active;
+    button.classList.toggle('is-loading', active);
+    if (active) button.setAttribute('aria-busy', 'true');
+    else button.removeAttribute('aria-busy');
+  }
+
+  async function openProfiles(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const button = event?.currentTarget instanceof Element
+      ? event.currentTarget
+      : document.querySelector('.nav-item[data-view="team-profiles"]');
+
+    if (window.AtlasTeamProfiles) {
+      window.AtlasTeamProfiles.open();
+      return;
+    }
+
+    setButtonLoading(button, true);
+    try {
+      const profiles = await load();
+      profiles?.open?.();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Team Profiles could not open.');
+    } finally {
+      setButtonLoading(button, false);
+    }
+  }
+
+  function ensureNavigation() {
+    let button = document.querySelector('.nav-item[data-view="team-profiles"]');
+    if (!button) {
+      const teamButton = document.querySelector('.nav-item[data-view="team"]');
+      if (!teamButton) return false;
+      button = document.createElement('button');
+      button.className = 'nav-item';
+      button.dataset.view = 'team-profiles';
+      button.innerHTML = '<i data-lucide="contact-round"></i>Profiles';
+      teamButton.insertAdjacentElement('afterend', button);
+    }
+
+    if (button.dataset.teamProfilesBootstrapBound !== 'true') {
+      button.dataset.teamProfilesBootstrapBound = 'true';
+      button.addEventListener('click', openProfiles, true);
+      button.addEventListener('pointerenter', () => load().catch(() => null), { once: true, passive: true });
+      button.addEventListener('focus', () => load().catch(() => null), { once: true, passive: true });
+    }
+    window.lucide?.createIcons?.();
+    return true;
+  }
+
+  function init() {
+    if (ensureNavigation()) return;
+    navTimer = window.setInterval(() => {
+      if (!ensureNavigation()) return;
+      window.clearInterval(navTimer);
+      navTimer = null;
+    }, 250);
+    window.setTimeout(() => {
+      if (navTimer) window.clearInterval(navTimer);
+      navTimer = null;
+    }, 10000);
+  }
+
+  window.AtlasTeamProfilesBootstrap = { load, open: () => openProfiles() };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+  else init();
 })();
