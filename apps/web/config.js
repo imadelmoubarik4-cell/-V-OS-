@@ -11,11 +11,8 @@ window.VABAR_CONFIG = {
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
-// shell. Lucide's generated SVGs also retain data-lucide, so repeatedly calling
-// createIcons from a body MutationObserver can replace the same icons forever.
-// Only run Lucide when a source placeholder is actually present, and never allow
-// a re-entrant conversion. This keeps the login form responsive on desktop and
-// mobile while preserving normal icon rendering throughout the authenticated app.
+// shell. Lucide-generated SVGs can otherwise retrigger those observers forever.
+// Render icons only when unresolved source placeholders exist and block re-entry.
 (function installAtlasLucideStabilityGuard() {
   const install = () => {
     const lucide = window.lucide;
@@ -50,183 +47,78 @@ window.VABAR_CONFIG = {
   window.setTimeout(() => window.clearInterval(timer), 10000);
 })();
 
-// Real VÁ Data Review is manager-only. In the Phase 3 preview it reads and
-// writes the same isolated private graph used by Decision Memory and the Daily
-// Briefing, so each significant review decision can become auditable memory.
-(function loadAtlasSprint3Review() {
-  const stylesheetPath = 'assets/css/sprint3-review.css';
-  const scriptPath = 'assets/js/sprint3-review.js';
-
-  if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
+function loadAtlasAssetOnce({ stylesheetPath, scriptPath, globalName, dataAttribute }) {
+  if (stylesheetPath && !document.querySelector(`link[href="${stylesheetPath}"]`)) {
     const stylesheet = document.createElement('link');
     stylesheet.rel = 'stylesheet';
     stylesheet.href = stylesheetPath;
-    stylesheet.dataset.atlasSprint3Review = 'true';
+    if (dataAttribute) stylesheet.dataset[dataAttribute] = 'true';
     document.head.appendChild(stylesheet);
   }
 
-  const loadScript = () => {
-    if (window.AtlasSprint3Review || document.querySelector('script[data-atlas-sprint3-review]')) return;
-    const script = document.createElement('script');
-    script.src = scriptPath;
-    script.dataset.atlasSprint3Review = 'true';
-    document.body.appendChild(script);
-  };
+  if (!scriptPath) return;
+  if ((globalName && window[globalName]) || document.querySelector(`script[src="${scriptPath}"]`)) return;
 
-  if (document.readyState === 'complete') loadScript();
-  else window.addEventListener('load', loadScript, { once: true });
-})();
+  const script = document.createElement('script');
+  script.src = scriptPath;
+  if (dataAttribute) script.dataset[dataAttribute] = 'true';
+  document.body.appendChild(script);
+}
 
-// Phase 1 Daily Briefing remains the trusted morning context layer. It now reads
-// the same isolated branch as Phase 3 so review progress and Brain readiness stay
-// synchronized without exposing private source rows to the browser.
-(function loadAtlasDailyBriefing() {
-  const stylesheetPath = 'assets/css/brain-daily-briefing.css';
-  const scriptPath = 'assets/js/brain-daily-briefing-v2.js';
+function loadAtlasAssetsAfterWindowLoad(loader) {
+  if (document.readyState === 'complete') loader();
+  else window.addEventListener('load', loader, { once: true });
+}
 
-  if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
-    const stylesheet = document.createElement('link');
-    stylesheet.rel = 'stylesheet';
-    stylesheet.href = stylesheetPath;
-    stylesheet.dataset.atlasDailyBriefing = 'true';
-    document.head.appendChild(stylesheet);
-  }
+// Real VÁ Data Review is manager-only. It reads and writes the isolated private
+// graph shared with Daily Briefing and Phase 3 Decision Memory.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/sprint3-review.css',
+  scriptPath: 'assets/js/sprint3-review.js',
+  globalName: 'AtlasSprint3Review',
+  dataAttribute: 'atlasSprint3Review',
+}));
 
-  const loadScript = () => {
-    if (window.AtlasDailyBriefing || document.querySelector('script[data-atlas-daily-briefing]')) return;
-    const script = document.createElement('script');
-    script.src = scriptPath;
-    script.dataset.atlasDailyBriefing = 'true';
-    document.body.appendChild(script);
-  };
+// Phase 1 Daily Briefing remains the trusted context layer.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/brain-daily-briefing.css',
+  scriptPath: 'assets/js/brain-daily-briefing-v2.js',
+  globalName: 'AtlasDailyBriefing',
+  dataAttribute: 'atlasDailyBriefing',
+}));
 
-  if (document.readyState === 'complete') loadScript();
-  else window.addEventListener('load', loadScript, { once: true });
-})();
+// Phase 3 adds shadow recommendations, decision memory and outcome feedback.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/brain-phase3.css',
+  scriptPath: 'assets/js/brain-phase3.js',
+  globalName: 'AtlasPhase3Brain',
+  dataAttribute: 'atlasPhase3Brain',
+}));
 
-// Phase 3 adds evidence-backed shadow recommendations, decision memory and
-// outcome feedback while preserving the original Atlas visual system.
-(function loadAtlasPhase3Brain() {
-  const stylesheetPath = 'assets/css/brain-phase3.css';
-  const scriptPath = 'assets/js/brain-phase3.js';
+// Checkpoint A adds recurring routines and daily temperature evidence.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/operations-checkpoint-a.css',
+  scriptPath: 'assets/js/operations-checkpoint-a.js',
+  globalName: 'AtlasCheckpointA',
+  dataAttribute: 'atlasCheckpointA',
+}));
 
-  if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
-    const stylesheet = document.createElement('link');
-    stylesheet.rel = 'stylesheet';
-    stylesheet.href = stylesheetPath;
-    stylesheet.dataset.atlasPhase3Brain = 'true';
-    document.head.appendChild(stylesheet);
-  }
+// The compact Checkpoint A presentation loads after the routine engine entry.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/operations-checkpoint-a-layout.css',
+  scriptPath: 'assets/js/operations-checkpoint-a-layout.js',
+  globalName: 'AtlasCheckpointALayout',
+  dataAttribute: 'atlasCheckpointALayout',
+}));
 
-  const loadScript = () => {
-    if (window.AtlasPhase3Brain || document.querySelector('script[data-atlas-phase3-brain]')) return;
-    const script = document.createElement('script');
-    script.src = scriptPath;
-    script.dataset.atlasPhase3Brain = 'true';
-    document.body.appendChild(script);
-  };
-
-  if (document.readyState === 'complete') loadScript();
-  else window.addEventListener('load', loadScript, { once: true });
-})();
-
-// Checkpoint A adds recurring weekly routines, daily temperature evidence and
-// explicit marketing/reputation connection boundaries to the Operations Center.
-(function loadAtlasCheckpointA() {
-  const stylesheetPath = 'assets/css/operations-checkpoint-a.css';
-  const scriptPath = 'assets/js/operations-checkpoint-a.js';
-
-  if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
-    const stylesheet = document.createElement('link');
-    stylesheet.rel = 'stylesheet';
-    stylesheet.href = stylesheetPath;
-    stylesheet.dataset.atlasCheckpointA = 'true';
-    document.head.appendChild(stylesheet);
-  }
-
-  const loadScript = () => {
-    if (window.AtlasCheckpointA || document.querySelector('script[data-atlas-checkpoint-a]')) return;
-    const script = document.createElement('script');
-    script.src = scriptPath;
-    script.dataset.atlasCheckpointA = 'true';
-    document.body.appendChild(script);
-  };
-
-  if (document.readyState === 'complete') loadScript();
-  else window.addEventListener('load', loadScript, { once: true });
-})();
-
-// The compact presentation keeps routine definitions, checklist details and
-// integration readiness in the background. Operations and Home surface only
-// what is scheduled today; full checklists open contextually in a focused dialog.
-(function loadAtlasCheckpointALayout() {
-  const stylesheetPath = 'assets/css/operations-checkpoint-a-layout.css';
-  const scriptPath = 'assets/js/operations-checkpoint-a-layout.js';
-
-  if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
-    const stylesheet = document.createElement('link');
-    stylesheet.rel = 'stylesheet';
-    stylesheet.href = stylesheetPath;
-    stylesheet.dataset.atlasCheckpointALayout = 'true';
-    document.head.appendChild(stylesheet);
-  }
-
-  const loadScript = () => {
-    if (window.AtlasCheckpointALayout || document.querySelector('script[data-atlas-checkpoint-a-layout]')) return;
-    const script = document.createElement('script');
-    script.src = scriptPath;
-    script.dataset.atlasCheckpointALayout = 'true';
-    document.body.appendChild(script);
-  };
-
-  if (document.readyState === 'complete') loadScript();
-  else window.addEventListener('load', loadScript, { once: true });
-})();
-
-// Checkpoint B adds a mobile-first barcode scanner to Inventory. The scanner is
-// deliberately not loaded on the login screen. It starts only after the Atlas
-// application shell becomes visible, preventing camera/UI observers from doing
-// any work while the user is entering credentials.
-(function loadAtlasInventoryScanner() {
-  const stylesheetPath = 'assets/css/inventory-scanner.css';
-  const scriptPath = 'assets/js/inventory-scanner.js';
-
-  const loadAssets = () => {
-    if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
-      const stylesheet = document.createElement('link');
-      stylesheet.rel = 'stylesheet';
-      stylesheet.href = stylesheetPath;
-      stylesheet.dataset.atlasInventoryScanner = 'true';
-      document.head.appendChild(stylesheet);
-    }
-
-    if (window.AtlasInventoryScanner || document.querySelector('script[data-atlas-inventory-scanner]')) return;
-    const script = document.createElement('script');
-    script.src = scriptPath;
-    script.dataset.atlasInventoryScanner = 'true';
-    document.body.appendChild(script);
-  };
-
-  const startWhenSignedIn = () => {
-    const appScreen = document.getElementById('app-screen');
-    if (!appScreen) return;
-
-    const isSignedIn = () => appScreen.style.display === 'block'
-      || window.getComputedStyle(appScreen).display !== 'none';
-
-    if (isSignedIn()) {
-      loadAssets();
-      return;
-    }
-
-    const observer = new MutationObserver(() => {
-      if (!isSignedIn()) return;
-      observer.disconnect();
-      loadAssets();
-    });
-    observer.observe(appScreen, { attributes: true, attributeFilter: ['style', 'class'] });
-  };
-
-  if (document.readyState === 'complete') startWhenSignedIn();
-  else window.addEventListener('load', startWhenSignedIn, { once: true });
-})();
+// Checkpoint B is intentionally bootstrapped separately. The bootstrap waits
+// until the authenticated application shell is visible, then loads:
+//   assets/css/inventory-scanner.css
+//   assets/js/inventory-scanner.js
+// It also isolates scanner taps, DOM observation and API timeout handling so the
+// modal cannot block login or become unresponsive while its snapshot is loading.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/inventory-scanner-bootstrap.js',
+  globalName: 'AtlasInventoryScannerBootstrap',
+  dataAttribute: 'atlasInventoryScannerBootstrap',
+}));
