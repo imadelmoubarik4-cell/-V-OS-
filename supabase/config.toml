@@ -1,7 +1,8 @@
 # Atlas uses production VÁ Auth while private review, Brain and operations data
 # live in isolated Supabase branches. The branch gateway cannot validate a token
 # issued by the production project, so these functions authenticate the caller
-# inside their handlers and require an active server-controlled Atlas profile.
+# inside their handlers. Manager-only functions require an active manager/admin profile;
+# the Checkpoint A operations handler separately allows active staff according to action.
 
 [functions.atlas-sprint3-review]
 verify_jwt = false
