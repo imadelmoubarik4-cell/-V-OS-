@@ -78,8 +78,8 @@ test('browser uses authenticated gateway and never writes private tables directl
   assert.match(ui, /authorization: `Bearer \$\{session\.access_token\}`/);
   assert.doesNotMatch(ui, /\.from\s*\(/);
   assert.doesNotMatch(ui, /marketing_content_items|marketing_content_approvals|integration_connections/);
-  assert.match(ui, /actual publishing/i);
   assert.match(ui, /No automatic publishing/);
+  assert.match(ui, /No platform API was called/);
 });
 
 test('Marketing preserves the original Atlas design and responsive behavior', () => {
