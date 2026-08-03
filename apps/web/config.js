@@ -139,7 +139,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 
 // Checkpoint E.1 layers private profile portraits over the existing directory.
 // Photos are resized on-device, then pass through an authenticated server gateway;
-// the browser never receives direct Storage credentials or a service-role key.
+// the browser never receives direct Storage credentials or privileged server keys.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/team-profile-photos.css',
   scriptPath: 'assets/js/team-profile-photos.js',
