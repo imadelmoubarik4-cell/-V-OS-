@@ -7,6 +7,7 @@ MIGRATION = (ROOT / "supabase/migrations/20260803100513_atlas_inventory_scanner_
 EDGE_FUNCTION = (ROOT / "supabase/functions/atlas-inventory-scanner/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
+BROWSER_BOOTSTRAP = (ROOT / "apps/web/assets/js/inventory-scanner-bootstrap.js").read_text()
 BROWSER_MODULE = (ROOT / "apps/web/assets/js/inventory-scanner.js").read_text()
 
 
@@ -75,8 +76,12 @@ class InventoryScannerContractTests(unittest.TestCase):
 
     def test_browser_has_no_service_key_or_direct_database_access(self):
         self.assertIn("INVENTORY_SCANNER_API", BROWSER_CONFIG)
-        self.assertIn("inventory-scanner.js", BROWSER_CONFIG)
-        self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER_MODULE)
+        self.assertIn("inventory-scanner-bootstrap.js", BROWSER_CONFIG)
+        self.assertIn("SCANNER_SCRIPT = 'assets/js/inventory-scanner.js'", BROWSER_BOOTSTRAP)
+        self.assertNotIn(
+            "SUPABASE_SERVICE_ROLE_KEY",
+            BROWSER_CONFIG + BROWSER_BOOTSTRAP + BROWSER_MODULE,
+        )
         self.assertNotRegex(BROWSER_MODULE, r"(?:atlasSupabase|supabase|client)\s*\.\s*from\s*\(")
         self.assertNotIn("adjust_inventory", BROWSER_MODULE)
         self.assertIn("Images not uploaded", BROWSER_MODULE)
