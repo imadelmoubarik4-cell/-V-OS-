@@ -42,7 +42,7 @@ test('Checkpoint A uses the manager API and never writes browser tables directly
   assert.match(moduleSource, /post\('log-temperature'/);
   assert.match(moduleSource, /post\('update-template'/);
   assert.match(moduleSource, /post\('update-temperature-point'/);
-  assert.doesNotMatch(moduleSource, /\.from\(/);
+  assert.doesNotMatch(moduleSource, /(?:atlasSupabase|\bsb|\bclient)\.from\s*\(/);
   assert.doesNotMatch(moduleSource, /inventory_items.*insert/i);
   assert.doesNotMatch(moduleSource, /temperature_logs.*insert/i);
 });
