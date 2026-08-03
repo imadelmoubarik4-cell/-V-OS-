@@ -36,7 +36,7 @@ test('managers can create, edit and remove shifts directly from the month', () =
   assert.match(month, /data-shifts-month-edit/);
   assert.match(month, /data-shifts-month-remove/);
   assert.match(month, /data-shifts-month-shift-form/);
-  assert.match(month, /api\('save-shift'/);
+  assert.match(month, /mutate\('save-shift'/);
   assert.match(month, /mutate\('cancel-shift'/);
   assert.match(month, /week_start: mondayFor\(startDate\)/);
   assert.match(month, /Shift saved to the private monthly draft/);
