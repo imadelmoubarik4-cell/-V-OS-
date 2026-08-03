@@ -7,6 +7,7 @@ window.VABAR_CONFIG = {
   SPRINT4_BRIEFING_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-sprint4-briefing",
   PHASE3_BRAIN_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-phase3-brain",
   OPERATIONS_CHECKPOINT_A_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-operations-checkpoint-a",
+  INVENTORY_SCANNER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner",
 };
 
 // Real VÁ Data Review is manager-only. In the Phase 3 preview it reads and
@@ -135,6 +136,33 @@ window.VABAR_CONFIG = {
     const script = document.createElement('script');
     script.src = scriptPath;
     script.dataset.atlasCheckpointALayout = 'true';
+    document.body.appendChild(script);
+  };
+
+  if (document.readyState === 'complete') loadScript();
+  else window.addEventListener('load', loadScript, { once: true });
+})();
+
+// Checkpoint B adds a mobile-first barcode scanner to Inventory. The browser
+// receives no branch service credential and never writes scanner tables directly.
+// The isolated preview records test counts in shadow mode until browser acceptance.
+(function loadAtlasInventoryScanner() {
+  const stylesheetPath = 'assets/css/inventory-scanner.css';
+  const scriptPath = 'assets/js/inventory-scanner.js';
+
+  if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = stylesheetPath;
+    stylesheet.dataset.atlasInventoryScanner = 'true';
+    document.head.appendChild(stylesheet);
+  }
+
+  const loadScript = () => {
+    if (window.AtlasInventoryScanner || document.querySelector('script[data-atlas-inventory-scanner]')) return;
+    const script = document.createElement('script');
+    script.src = scriptPath;
+    script.dataset.atlasInventoryScanner = 'true';
     document.body.appendChild(script);
   };
 
