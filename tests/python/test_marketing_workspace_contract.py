@@ -5,6 +5,9 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = (ROOT / "supabase/migrations/20260803142123_atlas_marketing_workspace_checkpoint_d.sql").read_text()
 OCCURRENCES = (ROOT / "supabase/migrations/20260803142450_atlas_marketing_recommendation_occurrences.sql").read_text()
+OCCURRENCE_FIX = (ROOT / "supabase/migrations/20260803145746_atlas_marketing_recommendation_occurrence_fix.sql").read_text()
+DISMISS_FIX = (ROOT / "supabase/migrations/20260803150024_atlas_marketing_recommendation_dismiss_occurrence_fix.sql").read_text()
+SNAPSHOT_FIX = (ROOT / "supabase/migrations/20260803150212_atlas_marketing_snapshot_variable_conflict_fix.sql").read_text()
 EDGE_FUNCTION = (ROOT / "supabase/functions/atlas-marketing-workspace/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
@@ -84,6 +87,14 @@ class MarketingWorkspaceContractTests(unittest.TestCase):
         self.assertIn("marketing_dismiss_recommendation_occurrence", OCCURRENCES)
         self.assertIn("on conflict (recommendation_id,occurrence_date)", OCCURRENCES.lower())
         self.assertIn("client_request_id", OCCURRENCES)
+
+    def test_marketing_runtime_ambiguity_fixes_are_versioned(self):
+        self.assertIn("v_occurrence_date", OCCURRENCE_FIX)
+        self.assertIn("occurrence.occurrence_date=v_occurrence_date", OCCURRENCE_FIX)
+        self.assertIn("v_occurrence_date", DISMISS_FIX)
+        self.assertIn("recommendation_row.id,v_occurrence_date,'dismissed'", DISMISS_FIX)
+        self.assertIn("#variable_conflict use_variable", SNAPSHOT_FIX)
+        self.assertIn("marketing_workspace_snapshot(uuid,text,date,date)", SNAPSHOT_FIX)
 
     def test_connection_boundaries_support_exact_requested_states(self):
         for state in (
