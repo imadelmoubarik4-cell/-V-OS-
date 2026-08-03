@@ -114,3 +114,30 @@ window.VABAR_CONFIG = {
   if (document.readyState === 'complete') loadScript();
   else window.addEventListener('load', loadScript, { once: true });
 })();
+
+// The compact presentation keeps routine definitions, checklist details and
+// integration readiness in the background. Operations and Home surface only
+// what is scheduled today; full checklists open contextually in a focused dialog.
+(function loadAtlasCheckpointALayout() {
+  const stylesheetPath = 'assets/css/operations-checkpoint-a-layout.css';
+  const scriptPath = 'assets/js/operations-checkpoint-a-layout.js';
+
+  if (!document.querySelector(`link[href="${stylesheetPath}"]`)) {
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = stylesheetPath;
+    stylesheet.dataset.atlasCheckpointALayout = 'true';
+    document.head.appendChild(stylesheet);
+  }
+
+  const loadScript = () => {
+    if (window.AtlasCheckpointALayout || document.querySelector('script[data-atlas-checkpoint-a-layout]')) return;
+    const script = document.createElement('script');
+    script.src = scriptPath;
+    script.dataset.atlasCheckpointALayout = 'true';
+    document.body.appendChild(script);
+  };
+
+  if (document.readyState === 'complete') loadScript();
+  else window.addEventListener('load', loadScript, { once: true });
+})();
