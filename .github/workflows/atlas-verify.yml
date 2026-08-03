@@ -38,6 +38,7 @@ jobs:
           node --check apps/web/assets/js/team-unread-badge.js
           node --check apps/web/assets/js/marketing-workspace.js
           node --check apps/web/assets/js/team-profiles-bootstrap.js
+          node --check apps/web/assets/js/team-profile-photos.js
           gzip -dc apps/web/assets/js/team-profiles.bundle.js.gz > /tmp/team-profiles.js
           node --check /tmp/team-profiles.js
 
