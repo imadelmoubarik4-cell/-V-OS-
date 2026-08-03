@@ -181,3 +181,12 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/shifts-month-editor.css',
   dataAttribute: 'atlasShiftsMonthEditor',
 }));
+
+// The weekly workspace and the Month extension both listen to the shared tab
+// bar. This bridge keeps the dedicated Month capture handler authoritative so
+// the older weekly bubbling handler cannot rebuild the tabs during the click.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/shifts-month-tab-bridge.js',
+  globalName: 'AtlasShiftsMonthTabBridge',
+  dataAttribute: 'atlasShiftsMonthTabBridge',
+}));
