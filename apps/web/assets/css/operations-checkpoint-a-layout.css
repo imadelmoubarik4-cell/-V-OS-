@@ -31,6 +31,7 @@
 .checkpoint-a-compact-button{border:1px solid var(--atlas-text);background:var(--atlas-text);color:#fff;padding:8px 11px;white-space:nowrap}
 .checkpoint-a-compact-button:hover{background:#3a3b37}
 
+.focus-list .checkpoint-a-focus{display:none!important}
 .checkpoint-a-home-prompt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;margin:16px 0 20px;padding:15px 16px;border:1px solid #d9c8ad;border-radius:15px;background:linear-gradient(135deg,#fbf7ef,#fff);color:var(--atlas-text);box-shadow:0 9px 24px rgba(54,47,37,.06)}
 .checkpoint-a-home-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:12px;background:#ece4d6;color:#816943}
 .checkpoint-a-home-icon svg{width:20px;height:20px}
