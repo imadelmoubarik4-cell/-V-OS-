@@ -35,6 +35,8 @@ jobs:
           node --check apps/web/assets/js/inventory-scanner-bootstrap.js
           node --check apps/web/assets/js/inventory-scanner.js
           node --check apps/web/assets/js/team-messages.js
+          node --check apps/web/assets/js/team-unread-badge.js
+          node --check apps/web/assets/js/marketing-workspace.js
 
       - name: Run Node contract tests
         run: npm run test:node
