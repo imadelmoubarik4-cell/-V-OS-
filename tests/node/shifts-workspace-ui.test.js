@@ -6,6 +6,7 @@ const config = readFileSync('apps/web/config.js', 'utf8');
 const shifts = readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/shifts-workspace.css', 'utf8');
 const gallery = readFileSync('apps/web/assets/js/team-profile-photo-gallery.js', 'utf8');
+const gateway = readFileSync('supabase/functions/atlas-shifts/index.ts', 'utf8');
 
 test('Checkpoint F loads from the isolated Shifts API', () => {
   assert.match(config, /SHIFTS_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-shifts"/);
@@ -50,10 +51,10 @@ test('browser uses the authenticated gateway and keeps production shifts untouch
   assert.match(shifts, /window\.atlasSupabase/);
   assert.match(shifts, /authorization: `Bearer \$\{session\.access_token\}`/);
   assert.match(shifts, /Production public\.shifts remains unchanged/);
-  assert.match(shifts, /production_shift_sync_enabled/);
+  assert.match(gateway, /production_shift_sync_enabled:\s*false/);
+  assert.doesNotMatch(gateway, /\/rest\/v1\/shifts/);
   assert.doesNotMatch(config + shifts + gallery, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(shifts, /\.from\s*\(/);
-  assert.doesNotMatch(shifts, /\/rest\/v1\/shifts/);
 });
 
 test('mobile profile photo picker exposes the gallery instead of forcing camera capture', () => {
