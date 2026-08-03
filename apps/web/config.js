@@ -11,6 +11,7 @@ window.VABAR_CONFIG = {
   TEAM_MESSAGES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-messages",
   MARKETING_WORKSPACE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-marketing-workspace",
   TEAM_PROFILES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profiles",
+  TEAM_PROFILE_PHOTOS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profile-photos",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -134,4 +135,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/team-profiles-bootstrap.js',
   globalName: 'AtlasTeamProfilesBootstrap',
   dataAttribute: 'atlasTeamProfilesBootstrap',
+}));
+
+// Checkpoint E.1 layers private profile portraits over the existing directory.
+// Photos are resized on-device, then pass through an authenticated server gateway;
+// the browser never receives direct Storage credentials or a service-role key.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/team-profile-photos.css',
+  scriptPath: 'assets/js/team-profile-photos.js',
+  globalName: 'AtlasTeamProfilePhotos',
+  dataAttribute: 'atlasTeamProfilePhotos',
 }));
