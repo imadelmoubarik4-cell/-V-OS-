@@ -1,9 +1,9 @@
 # Atlas uses production VÁ Auth while private review, Brain, operations, scanner,
-# team-message, marketing, team-profile and profile-photo data live in isolated
-# Supabase branches. The branch gateway cannot validate a token issued by the
-# production project, so each function authenticates the caller in its handler
-# and revalidates the server-controlled active profile before returning or
-# mutating private data. Brain, briefing and review endpoints still require an
+# team-message, marketing, team-profile, profile-photo and shift-planning data live
+# in isolated Supabase branches. The branch gateway cannot validate a token issued
+# by the production project, so each function authenticates the caller in its
+# handler and revalidates the server-controlled active profile before returning
+# or mutating private data. Brain, briefing and review endpoints still require an
 # active manager/admin profile; staff-facing endpoints apply their narrower
 # server-controlled role permissions.
 
@@ -32,4 +32,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.atlas-team-profile-photos]
+verify_jwt = false
+
+[functions.atlas-shifts]
 verify_jwt = false
