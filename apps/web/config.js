@@ -10,6 +10,7 @@ window.VABAR_CONFIG = {
   INVENTORY_SCANNER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner",
   TEAM_MESSAGES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-messages",
   MARKETING_WORKSPACE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-marketing-workspace",
+  TEAM_PROFILES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profiles",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -27,13 +28,9 @@ window.VABAR_CONFIG = {
     const guardedCreateIcons = function (options) {
       if (rendering) return undefined;
       if (!document.querySelector('i[data-lucide], span[data-lucide]')) return undefined;
-
       rendering = true;
-      try {
-        return originalCreateIcons(options);
-      } finally {
-        rendering = false;
-      }
+      try { return originalCreateIcons(options); }
+      finally { rendering = false; }
     };
 
     guardedCreateIcons.__atlasStabilityGuard = true;
@@ -43,9 +40,7 @@ window.VABAR_CONFIG = {
   };
 
   if (install()) return;
-  const timer = window.setInterval(() => {
-    if (install()) window.clearInterval(timer);
-  }, 50);
+  const timer = window.setInterval(() => { if (install()) window.clearInterval(timer); }, 50);
   window.setTimeout(() => window.clearInterval(timer), 10000);
 })();
 
@@ -57,10 +52,8 @@ function loadAtlasAssetOnce({ stylesheetPath, scriptPath, globalName, dataAttrib
     if (dataAttribute) stylesheet.dataset[dataAttribute] = 'true';
     document.head.appendChild(stylesheet);
   }
-
   if (!scriptPath) return;
   if ((globalName && window[globalName]) || document.querySelector(`script[src="${scriptPath}"]`)) return;
-
   const script = document.createElement('script');
   script.src = scriptPath;
   if (dataAttribute) script.dataset[dataAttribute] = 'true';
@@ -72,8 +65,6 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
   else window.addEventListener('load', loader, { once: true });
 }
 
-// Real VÁ Data Review is manager-only. It reads and writes the isolated private
-// graph shared with Daily Briefing and Phase 3 Decision Memory.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/sprint3-review.css',
   scriptPath: 'assets/js/sprint3-review.js',
@@ -81,7 +72,6 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasSprint3Review',
 }));
 
-// Phase 1 Daily Briefing remains the trusted context layer.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/brain-daily-briefing.css',
   scriptPath: 'assets/js/brain-daily-briefing-v2.js',
@@ -89,7 +79,6 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasDailyBriefing',
 }));
 
-// Phase 3 adds shadow recommendations, decision memory and outcome feedback.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/brain-phase3.css',
   scriptPath: 'assets/js/brain-phase3.js',
@@ -97,7 +86,6 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasPhase3Brain',
 }));
 
-// Checkpoint A adds recurring routines and daily temperature evidence.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/operations-checkpoint-a.css',
   scriptPath: 'assets/js/operations-checkpoint-a.js',
@@ -105,7 +93,6 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasCheckpointA',
 }));
 
-// The compact Checkpoint A presentation loads after the routine engine entry.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/operations-checkpoint-a-layout.css',
   scriptPath: 'assets/js/operations-checkpoint-a-layout.js',
@@ -113,17 +100,13 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasCheckpointALayout',
 }));
 
-// Checkpoint B is intentionally bootstrapped separately. The bootstrap waits
-// until the authenticated application shell is visible, then loads its scanner.
+// Checkpoint B waits until the authenticated application shell is visible.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/inventory-scanner-bootstrap.js',
   globalName: 'AtlasInventoryScannerBootstrap',
   dataAttribute: 'atlasInventoryScannerBootstrap',
 }));
 
-// Checkpoint C turns the existing Team placeholder into a private staff-message
-// workspace. It fetches only while the Team view is visible and uses secure
-// polling until browser/mobile notification delivery is separately approved.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/team-messages.css',
   scriptPath: 'assets/js/team-messages.js',
@@ -131,19 +114,24 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasTeamMessages',
 }));
 
-// A lightweight unread-count worker keeps the Team and notification badges
-// accurate while users work elsewhere in Atlas. It removes zero badges entirely.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/team-unread-badge.js',
   globalName: 'AtlasTeamUnreadBadge',
   dataAttribute: 'atlasTeamUnreadBadge',
 }));
 
-// Checkpoint D injects a private Marketing workspace with planning, calendar,
-// reminders, campaigns, approval history and read-only connection boundaries.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/marketing-workspace.css',
   scriptPath: 'assets/js/marketing-workspace.js',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
+}));
+
+// Checkpoint E loads a compressed, repository-owned Team Profiles bundle. The
+// bootstrap uses browser-native gzip decompression, then installs the Atlas CSS
+// and JavaScript through Blob URLs without inline eval.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/team-profiles-bootstrap.js',
+  globalName: 'AtlasTeamProfilesBootstrap',
+  dataAttribute: 'atlasTeamProfilesBootstrap',
 }));
