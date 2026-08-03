@@ -112,6 +112,16 @@ function requireManager(context: AtlasContext): void {
   }
 }
 
+function staffPayload(context: AtlasContext) {
+  return {
+    id: context.user.id,
+    label: actorLabel(context),
+    role: context.profile.role,
+    can_write: WRITE_ROLES.has(context.profile.role),
+    can_manage: MANAGER_ROLES.has(context.profile.role),
+  };
+}
+
 function isUuid(value: unknown): value is string {
   return typeof value === "string"
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -251,26 +261,37 @@ Deno.serve(async (request: Request) => {
     const action = url.searchParams.get("action") || "snapshot";
 
     if (request.method === "GET") {
-      if (action !== "snapshot") throw new ApiError(404, "Unknown Checkpoint A action.");
-      const requestedDate = url.searchParams.get("date");
-      const localDate = requestedDate ? requireDate(requestedDate) : venueDate();
-      const operations = await branchRpc("atlas_operations_today", { p_local_date: localDate });
-      return jsonResponse({
-        operations,
-        staff: {
-          id: context.user.id,
-          label: actorLabel(context),
-          role: context.profile.role,
-          can_write: WRITE_ROLES.has(context.profile.role),
-          can_manage: MANAGER_ROLES.has(context.profile.role),
-        },
-        policy: {
-          private_branch: true,
-          manager_review_for_settings: true,
-          direct_table_access: false,
-          operational_history_preserved: true,
-        },
-      });
+      if (action === "snapshot") {
+        const requestedDate = url.searchParams.get("date");
+        const localDate = requestedDate ? requireDate(requestedDate) : venueDate();
+        const operations = await branchRpc("atlas_operations_today", { p_local_date: localDate });
+        return jsonResponse({
+          operations,
+          staff: staffPayload(context),
+          policy: {
+            private_branch: true,
+            manager_review_for_settings: true,
+            direct_table_access: false,
+            operational_history_preserved: true,
+          },
+        });
+      }
+
+      if (action === "settings") {
+        requireManager(context);
+        const settings = await branchRpc("atlas_operations_settings");
+        return jsonResponse({
+          settings,
+          staff: staffPayload(context),
+          policy: {
+            manager_only: true,
+            credentials_in_response: false,
+            operational_history_preserved: true,
+          },
+        });
+      }
+
+      throw new ApiError(404, "Unknown Checkpoint A action.");
     }
 
     if (request.method !== "POST") throw new ApiError(405, "Method not allowed.");
@@ -375,11 +396,7 @@ Deno.serve(async (request: Request) => {
 
     return jsonResponse({
       operations: result,
-      staff: {
-        id: context.user.id,
-        label: actor,
-        role: context.profile.role,
-      },
+      staff: staffPayload(context),
       policy: {
         direct_table_access: false,
         quantity_mutation: false,
