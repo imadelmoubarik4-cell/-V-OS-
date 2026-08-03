@@ -12,6 +12,7 @@ window.VABAR_CONFIG = {
   MARKETING_WORKSPACE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-marketing-workspace",
   TEAM_PROFILES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profiles",
   TEAM_PROFILE_PHOTOS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profile-photos",
+  SHIFTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-shifts",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -145,4 +146,22 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/team-profile-photos.js',
   globalName: 'AtlasTeamProfilePhotos',
   dataAttribute: 'atlasTeamProfilePhotos',
+}));
+
+// Mobile profile-photo selection uses the normal operating-system image picker.
+// This preserves both gallery/file access and any camera option offered by the
+// device instead of forcing a front-camera capture.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/team-profile-photo-gallery.js',
+  globalName: 'AtlasTeamProfileGallery',
+  dataAttribute: 'atlasTeamProfileGallery',
+}));
+
+// Checkpoint F replaces the Shifts placeholder with a private weekly planner,
+// availability, time-off, publishing and confirmation workspace.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/shifts-workspace.css',
+  scriptPath: 'assets/js/shifts-workspace.js',
+  globalName: 'AtlasShifts',
+  dataAttribute: 'atlasShifts',
 }));
