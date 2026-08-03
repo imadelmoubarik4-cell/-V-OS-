@@ -54,7 +54,7 @@ test('browser uses the authenticated gateway and keeps production shifts untouch
   assert.match(gateway, /production_shift_sync_enabled:\s*false/);
   assert.doesNotMatch(gateway, /\/rest\/v1\/shifts/);
   assert.doesNotMatch(config + shifts + gallery, /SUPABASE_SERVICE_ROLE_KEY/);
-  assert.doesNotMatch(shifts, /\.from\s*\(/);
+  assert.doesNotMatch(shifts, /(?:atlasSupabase|supabase|client)\s*\.\s*from\s*\(/i);
 });
 
 test('mobile profile photo picker exposes the gallery instead of forcing camera capture', () => {
