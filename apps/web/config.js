@@ -13,6 +13,7 @@ window.VABAR_CONFIG = {
   TEAM_PROFILES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profiles",
   TEAM_PROFILE_PHOTOS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profile-photos",
   SHIFTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-shifts",
+  KNOWLEDGE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-knowledge",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -189,4 +190,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/shifts-month-tab-bridge.js',
   globalName: 'AtlasShiftsMonthTabBridge',
   dataAttribute: 'atlasShiftsMonthTabBridge',
+}));
+
+// Checkpoint G replaces the Knowledge placeholder with a version-controlled,
+// role-aware library. Drafts remain manager-only, while staff receive only
+// published versions and their version-specific acknowledgement state.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/knowledge-workspace.css',
+  scriptPath: 'assets/js/knowledge-workspace.js',
+  globalName: 'AtlasKnowledge',
+  dataAttribute: 'atlasKnowledge',
 }));
