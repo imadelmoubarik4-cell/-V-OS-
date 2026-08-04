@@ -201,3 +201,12 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   globalName: 'AtlasKnowledge',
   dataAttribute: 'atlasKnowledge',
 }));
+
+// Published Knowledge updates can appear as linked Team announcements. This
+// capture bridge keeps the new Knowledge link type from falling through to the
+// older Team Messages default route.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/knowledge-team-link-bridge.js',
+  globalName: 'AtlasKnowledgeTeamLinkBridge',
+  dataAttribute: 'atlasKnowledgeTeamLinkBridge',
+}));
