@@ -1,0 +1,89 @@
+name: Integrate Checkpoint I System
+
+on:
+  push:
+    branches:
+      - agent/sprint-4-phase-3-atlas-brain
+    paths:
+      - .github/workflows/integrate-system-checkpoint.yml
+      - apps/web/assets/js/system-workspace.js
+      - apps/web/assets/css/system-workspace.css
+      - supabase/functions/atlas-system/index.ts
+      - supabase/migrations/*atlas_system_checkpoint_i.sql
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check out Sprint 4 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/sprint-4-phase-3-atlas-brain
+          fetch-depth: 0
+
+      - name: Register System runtime assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          config_path = Path('apps/web/config.js')
+          config = config_path.read_text()
+          marker = 'CHECKPOINT_I_SYSTEM_ASSETS'
+          if marker not in config:
+              config += r'''
+
+          /* CHECKPOINT_I_SYSTEM_ASSETS */
+          ;(() => {
+            const cfg = window.VABAR_CONFIG = window.VABAR_CONFIG || {};
+            cfg.SYSTEM_API = cfg.SYSTEM_API || "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-system";
+
+            const cssHref = "assets/css/system-workspace.css";
+            if (!document.querySelector(`link[href="${cssHref}"]`)) {
+              const link = document.createElement("link");
+              link.rel = "stylesheet";
+              link.href = cssHref;
+              document.head.appendChild(link);
+            }
+
+            const scriptSrc = "assets/js/system-workspace.js";
+            if (!document.querySelector(`script[src="${scriptSrc}"]`)) {
+              const script = document.createElement("script");
+              script.src = scriptSrc;
+              script.async = false;
+              document.head.appendChild(script);
+            }
+          })();
+          '''
+              config_path.write_text(config)
+
+          supabase_path = Path('supabase/config.toml')
+          supabase = supabase_path.read_text()
+          if '[functions.atlas-system]' not in supabase:
+              supabase += '''
+
+          [functions.atlas-system]
+          verify_jwt = false
+          entrypoint = "./functions/atlas-system/index.ts"
+          '''
+              supabase_path.write_text(supabase)
+          PY
+
+      - name: Commit integration wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/config.js supabase/config.toml
+          if git diff --cached --quiet; then
+            echo "System assets are already registered."
+            exit 0
+          fi
+          git commit -m "chore: wire Checkpoint I System"
+          git push origin HEAD:agent/sprint-4-phase-3-atlas-brain
