@@ -34,7 +34,7 @@ test('manager workflow keeps drafts private and publishes immutable versions', (
   assert.match(ui, /Publish version/);
   assert.match(ui, /Existing acknowledgements remain attached to the previous version/);
   assert.match(ui, /Retire/);
-  assert.match(ui, /version-specific acknowledgement state/);
+  assert.match(ui, /Acknowledgements version-specific/);
 });
 
 test('required reading and source governance are interactive', () => {
