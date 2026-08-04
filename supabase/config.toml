@@ -43,3 +43,4 @@ verify_jwt = false
 
 [functions.atlas-reports]
 verify_jwt = false
+entrypoint = "./functions/atlas-reports/entrypoint.ts"
