@@ -279,18 +279,18 @@ function safeClientUrl(url: URL): { hostname: string | null; fullUrl: string | n
 
 function branchCredentials() {
   const branchUrl = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!branchUrl || !serviceRoleKey) throw new ApiError(500, "The private System service is unavailable.");
-  return { branchUrl, serviceRoleKey };
+  const serviceRoleSecret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!branchUrl || !serviceRoleSecret) throw new ApiError(500, "The private System service is unavailable.");
+  return { branchUrl, serviceRoleSecret };
 }
 
 async function branchRpc(name: string, payload: Record<string, unknown>): Promise<any> {
-  const { branchUrl, serviceRoleKey } = branchCredentials();
+  const { branchUrl, serviceRoleSecret } = branchCredentials();
   const response = await fetch(`${branchUrl}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: {
-      apikey: serviceRoleKey,
-      authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleSecret,
+      authorization: `Bearer ${serviceRoleSecret}`,
       "content-type": "application/json",
       accept: "application/json",
       "cache-control": "no-store",
