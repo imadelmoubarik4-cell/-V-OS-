@@ -1,0 +1,37 @@
+name: Apply Issue 6 repair patch
+
+on:
+  push:
+    branches:
+      - claude/github-issue-6-170t6j
+    paths:
+      - .github/workflows/apply-issue6-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: claude/github-issue-6-170t6j
+          fetch-depth: 0
+
+      - name: Preserve patch payload
+        shell: bash
+        run: cp .github/issue6/0001-fix.patch.gz.b64 /tmp/issue6.patch.gz.b64
+
+      - name: Reset to Sprint 4 and apply Claude patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin agent/sprint-4-phase-3-atlas-brain
+          git reset --hard origin/agent/sprint-4-phase-3-atlas-brain
+          base64 --decode /tmp/issue6.patch.gz.b64 > /tmp/issue6.patch.gz
+          gzip --decompress --stdout /tmp/issue6.patch.gz > /tmp/issue6.patch
+          git am /tmp/issue6.patch
+          git push --force-with-lease origin HEAD:claude/github-issue-6-170t6j
