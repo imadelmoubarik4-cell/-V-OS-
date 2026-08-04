@@ -14,6 +14,7 @@ window.VABAR_CONFIG = {
   TEAM_PROFILE_PHOTOS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profile-photos",
   SHIFTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-shifts",
   KNOWLEDGE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-knowledge",
+  REPORTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-reports",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -209,4 +210,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/knowledge-team-link-bridge.js',
   globalName: 'AtlasKnowledgeTeamLinkBridge',
   dataAttribute: 'atlasKnowledgeTeamLinkBridge',
+}));
+
+// Checkpoint H replaces the Reports placeholder with a permission-aware,
+// read-only analysis workspace. It pulls live source records through the
+// authenticated gateway and labels missing integrations instead of inventing data.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/reports-workspace.css',
+  scriptPath: 'assets/js/reports-workspace.js',
+  globalName: 'AtlasReports',
+  dataAttribute: 'atlasReports',
 }));
