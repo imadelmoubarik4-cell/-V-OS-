@@ -32,7 +32,7 @@ test('System contains the complete operational control-room sections', () => {
     'Overview', 'Environments', 'Integrations', 'Data sources',
     'Jobs', 'Incidents', 'Security', 'Audit & recovery'
   ]) {
-    assert.match(ui, new RegExp(section.replace('&', '&')));
+    assert.match(ui, new RegExp(section));
   }
   assert.match(ui, /Core services/);
   assert.match(ui, /Environments & releases/);
@@ -63,12 +63,13 @@ test('System is view-only and does not expose destructive controls', () => {
   assert.doesNotMatch(ui, /delete\s+from|drop\s+table|truncate\s+/i);
 });
 
-test('System UI never renders raw secrets or credentials', () => {
+test('System UI never renders privileged secrets or raw credentials', () => {
   assert.match(ui, /Secrets hidden/);
   assert.match(ui, /Secrets and tokens never returned/);
   assert.match(edge, /secrets_returned:\s*false/);
   assert.match(edge, /tokens_returned:\s*false/);
-  assert.doesNotMatch(ui, /service_role|access_token|refresh_token|client_secret|password/i);
+  assert.match(ui, /authorization: `Bearer \$\{session\.access_token\}`/);
+  assert.doesNotMatch(ui, /service_role|refresh_token|client_secret|password/i);
   assert.doesNotMatch(edge, /return\s+\{[^}]*SUPABASE_SERVICE_ROLE_KEY/s);
 });
 
