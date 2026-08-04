@@ -16,6 +16,7 @@ window.VABAR_CONFIG = {
   KNOWLEDGE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-knowledge",
   REPORTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-reports",
   SYSTEM_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-system",
+  SETTINGS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-settings",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -233,6 +234,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasSystem',
 }));
 
+// Checkpoint J replaces the Settings placeholder with a versioned, role-aware
+// control centre for venue configuration, operating rules and personal preferences.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/settings-workspace.css',
+  scriptPath: 'assets/js/settings-workspace.js',
+  globalName: 'AtlasSettings',
+  dataAttribute: 'atlasSettings',
+}));
 
 /* CHECKPOINT_I_SYSTEM_ASSETS */
 ;(() => {
