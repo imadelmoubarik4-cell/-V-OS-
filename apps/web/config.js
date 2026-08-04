@@ -15,6 +15,7 @@ window.VABAR_CONFIG = {
   SHIFTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-shifts",
   KNOWLEDGE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-knowledge",
   REPORTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-reports",
+  SYSTEM_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-system",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -220,4 +221,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/reports-workspace.js',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
+}));
+
+// Checkpoint I adds a manager-only, read-only control room for application
+// health, environments, integrations, data freshness, jobs, incidents,
+// security posture, audit evidence and recovery references.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/system-workspace.css',
+  scriptPath: 'assets/js/system-workspace.js',
+  globalName: 'AtlasSystem',
+  dataAttribute: 'atlasSystem',
 }));
