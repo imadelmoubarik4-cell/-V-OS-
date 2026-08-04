@@ -43,6 +43,8 @@ jobs:
           node --check apps/web/assets/js/shifts-workspace.js
           node --check apps/web/assets/js/shifts-month-calendar.js
           node --check apps/web/assets/js/shifts-month-tab-bridge.js
+          node --check apps/web/assets/js/knowledge-workspace.js
+          node --check apps/web/assets/js/knowledge-team-link-bridge.js
           gzip -dc apps/web/assets/js/team-profiles.bundle.js.gz > /tmp/team-profiles.js
           node --check /tmp/team-profiles.js
 
