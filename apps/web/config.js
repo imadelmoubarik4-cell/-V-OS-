@@ -232,3 +232,26 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   globalName: 'AtlasSystem',
   dataAttribute: 'atlasSystem',
 }));
+
+
+/* CHECKPOINT_I_SYSTEM_ASSETS */
+;(() => {
+  const cfg = window.VABAR_CONFIG = window.VABAR_CONFIG || {};
+  cfg.SYSTEM_API = cfg.SYSTEM_API || "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-system";
+
+  const cssHref = "assets/css/system-workspace.css";
+  if (!document.querySelector(`link[href="${cssHref}"]`)) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = cssHref;
+    document.head.appendChild(link);
+  }
+
+  const scriptSrc = "assets/js/system-workspace.js";
+  if (!document.querySelector(`script[src="${scriptSrc}"]`)) {
+    const script = document.createElement("script");
+    script.src = scriptSrc;
+    script.async = false;
+    document.head.appendChild(script);
+  }
+})();
