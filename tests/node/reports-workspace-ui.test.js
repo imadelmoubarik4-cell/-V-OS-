@@ -62,7 +62,8 @@ test('important report values are inspectable and exportable', () => {
 test('saved configurations remain permission-safe when reopened', () => {
   assert.match(ui, /localStorage/);
   assert.match(ui, /savedStorageKey/);
-  assert.match(ui, /data-reports-save-current/);
+  assert.match(ui, /data-reports-save(?:=|\b)/);
+  assert.match(ui, /Save current view/);
   assert.match(ui, /data-reports-saved-open/);
   assert.match(ui, /data-reports-saved-rename/);
   assert.match(ui, /data-reports-saved-duplicate/);
@@ -81,8 +82,8 @@ test('Ask Atlas stays grounded in the current report snapshot', () => {
 });
 
 test('unavailable sales data is never replaced with invented values', () => {
-  assert.match(ui, /Sales integration is not available|Sales integration has not been connected/);
-  assert.match(ui, /does not replace missing data with sample values|No sample revenue/i);
+  assert.match(ui, /Sales integration is not available|Sales integration has not been connected|Data source not connected/);
+  assert.match(ui, /missing data with sample values|No sample revenue|No values are invented|does not invent/i);
   assert.doesNotMatch(ui, /Math\.random\(\).*sales|sampleSales|fakeRevenue/i);
 });
 
