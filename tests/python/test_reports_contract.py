@@ -70,13 +70,15 @@ class ReportsContractTests(unittest.TestCase):
         self.assertNotIn("security definer", (FOUNDATION + LIVE + FIX).lower())
 
     def test_snapshot_contract_is_read_only_and_truthful(self):
-        self.assertIn("reports_are_read_only", LIVE)
-        self.assertIn("sales_values_invented", LIVE)
-        self.assertIn("source_data_modified", LIVE)
-        self.assertIn("permission_sensitive_data_loaded_for_staff", LIVE)
-        self.assertIn("Atlantic/Reykjavik", LIVE)
-        self.assertIn("ISK", LIVE)
-        self.assertIn("atlas-reports/0.2.0", LIVE)
+        self.assertIn("function policyPayload", EDGE)
+        self.assertIn("read_only: true", EDGE)
+        self.assertIn("sales_integration_connected: false", EDGE)
+        self.assertIn("source_data_mutation_enabled: false", EDGE)
+        self.assertIn("direct_browser_table_access: false", EDGE)
+        self.assertIn('const TIMEZONE = "Atlantic/Reykjavik"', EDGE)
+        self.assertIn('currency: "ISK"', EDGE)
+        self.assertIn('x-atlas-reports-version', EDGE)
+        self.assertIn('"0.2.0"', EDGE)
         self.assertIn("generated_at_value", LIVE)
         self.assertIn("Corrected Reports snapshot function is missing", FIX)
 
