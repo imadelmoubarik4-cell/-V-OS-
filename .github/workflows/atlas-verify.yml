@@ -34,6 +34,9 @@ jobs:
           node --check apps/web/assets/js/operations-checkpoint-a-layout.js
           node --check apps/web/assets/js/inventory-scanner-bootstrap.js
           node --check apps/web/assets/js/inventory-scanner.js
+          node --check apps/web/assets/js/stock-count-workspace.js
+          node --check apps/web/assets/js/stock-count-bootstrap.js
+          node --check apps/web/assets/js/stock-count-l1-verified.js
           node --check apps/web/assets/js/team-messages.js
           node --check apps/web/assets/js/team-unread-badge.js
           node --check apps/web/assets/js/marketing-workspace.js
