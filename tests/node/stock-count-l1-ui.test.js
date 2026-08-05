@@ -16,9 +16,12 @@ test('Checkpoint L1 assets are wired through a sequential bootstrap', () => {
   assert.match(bootstrap, /await loadScript/);
 });
 
-test('legacy count submit delegates to the unit-aware L1 handler', () => {
-  assert.match(workspace, /AtlasStockCountsL1\?\.handleSubmit/);
-  assert.doesNotMatch(workspace, /override\.note \?\? note\?\.value\?\.trim\(\) \|\| null/);
+test('the bootstrap validates and repairs the original draft before execution', () => {
+  assert.match(workspace, /override\.note \?\? note\?\.value\?\.trim\(\) \|\| null/);
+  assert.match(bootstrap, /note: \(override\.note \?\? note\?\.value\?\.trim\(\)\) \|\| null/);
+  assert.match(bootstrap, /AtlasStockCountsL1\?\.handleSubmit/);
+  assert.match(bootstrap, /new Blob/);
+  assert.match(bootstrap, /runtimePatched/);
 });
 
 test('mobile count forms expose all supported observation units', () => {
