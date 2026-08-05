@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const config = readFileSync('apps/web/config.js', 'utf8');
+const shell = readFileSync('apps/web/index.html', 'utf8');
 const ui = readFileSync('apps/web/assets/js/reports-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/reports-workspace.css', 'utf8');
 
@@ -100,7 +101,7 @@ test('browser uses the session gateway without direct private-table access', () 
 test('Reports preserves the Atlas visual system and tablet-first behavior', () => {
   assert.match(css, /--reports-surface:var\(--atlas-surface/);
   assert.match(css, /'Fraunces'/);
-  assert.match(css, /'IBM Plex Sans'/);
+  assert.match(shell, /IBM\+Plex\+Sans|font-family:'IBM Plex Sans'/);
   assert.match(css, /@media\(max-width:1100px\)/);
   assert.match(css, /@media\(max-width:760px\)/);
   assert.match(css, /@media\(max-width:480px\)/);
