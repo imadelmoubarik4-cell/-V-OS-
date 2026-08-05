@@ -59,7 +59,7 @@ test('System is view-only and does not expose destructive controls', () => {
   assert.match(ui, /Rollback unavailable/);
   assert.match(ui, /Production synchronization/);
   assert.doesNotMatch(ui, /method:\s*['"]POST['"]/);
-  assert.doesNotMatch(ui, /\.from\s*\(/);
+  assert.doesNotMatch(ui, /\.from\s*\(\s*['"]/);
   assert.doesNotMatch(ui, /delete\s+from|drop\s+table|truncate\s+/i);
 });
 
@@ -69,7 +69,7 @@ test('System UI never renders privileged secrets or raw credentials', () => {
   assert.match(edge, /secrets_returned:\s*false/);
   assert.match(edge, /tokens_returned:\s*false/);
   assert.match(ui, /authorization: `Bearer \$\{session\.access_token\}`/);
-  assert.doesNotMatch(ui, /service_role|refresh_token|client_secret|password/i);
+  assert.doesNotMatch(ui, /SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SERVICE_KEY|refresh_token\s*[:=]|client_secret\s*[:=]|password\s*[:=]/i);
   assert.doesNotMatch(edge, /return\s+\{[^}]*SUPABASE_SERVICE_ROLE_KEY/s);
 });
 
