@@ -4,9 +4,13 @@
   const SCANNER_SCRIPT = 'assets/js/inventory-scanner.js';
   const SCANNER_STYLE = 'assets/css/inventory-scanner.css';
   const SCANNER_API_FRAGMENT = '/functions/v1/atlas-inventory-scanner';
+  const STOCK_COUNT_BOOTSTRAP = 'assets/js/stock-count-bootstrap.js';
+  const STOCK_COUNTS_API = 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-stock-counts';
   const state = {
     loading: false,
     loaded: false,
+    stockCountsLoading: false,
+    stockCountsLoaded: false,
     observer: null,
     pollTimer: null
   };
@@ -134,6 +138,30 @@
     document.head.appendChild(stylesheet);
   }
 
+  function loadStockCounts() {
+    const cfg = window.VABAR_CONFIG = window.VABAR_CONFIG || {};
+    cfg.STOCK_COUNTS_API = cfg.STOCK_COUNTS_API || STOCK_COUNTS_API;
+    if (!appIsVisible() || state.stockCountsLoading || state.stockCountsLoaded || window.AtlasStockCountBootstrap) return;
+    if (document.querySelector(`script[src="${STOCK_COUNT_BOOTSTRAP}"]`)) return;
+
+    state.stockCountsLoading = true;
+    const script = document.createElement('script');
+    script.src = STOCK_COUNT_BOOTSTRAP;
+    script.async = false;
+    script.dataset.atlasStockCountBootstrap = 'true';
+    script.onload = () => {
+      state.stockCountsLoading = false;
+      state.stockCountsLoaded = true;
+      window.AtlasStockCountBootstrap?.load?.();
+    };
+    script.onerror = () => {
+      state.stockCountsLoading = false;
+      script.remove();
+      console.error('Checkpoint L1 stock-count workspace could not load.');
+    };
+    document.body.appendChild(script);
+  }
+
   function loadScanner() {
     if (!appIsVisible() || state.loading || state.loaded || window.AtlasInventoryScanner) return;
     if (document.querySelector('script[data-atlas-inventory-scanner]')) {
@@ -195,9 +223,12 @@
       return;
     }
     loadScanner();
+    loadStockCounts();
   }
 
   function init() {
+    const cfg = window.VABAR_CONFIG = window.VABAR_CONFIG || {};
+    cfg.STOCK_COUNTS_API = cfg.STOCK_COUNTS_API || STOCK_COUNTS_API;
     installInteractionStyles();
     installScannerFetchTimeout();
     checkState();
@@ -210,7 +241,7 @@
 
     state.pollTimer = window.setInterval(() => {
       checkState();
-      if (state.loaded) {
+      if (state.loaded && state.stockCountsLoaded) {
         window.clearInterval(state.pollTimer);
         state.pollTimer = null;
       }
@@ -225,7 +256,8 @@
 
   window.AtlasInventoryScannerBootstrap = {
     load: checkState,
-    loaded: () => state.loaded
+    loaded: () => state.loaded,
+    stockCountsLoaded: () => state.stockCountsLoaded
   };
 
   if (document.readyState === 'loading') {
