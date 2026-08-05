@@ -1,7 +1,9 @@
 (function () {
   'use strict';
 
-  const state = { loading: false, ready: false };
+  const state = { loading: false, ready: false, runtimePatched: false };
+  const WORKSPACE_SOURCE = 'assets/js/stock-count-workspace.js?v=20260805-l1';
+  const EXTENSION_SOURCE = 'assets/js/stock-count-l1-verified.js?v=20260805-l1';
 
   function ensureStylesheet(href, marker) {
     if (document.querySelector(`link[data-${marker}]`)) return;
@@ -14,23 +16,43 @@
 
   function loadScript(src, marker) {
     return new Promise((resolve, reject) => {
-      const existing = document.querySelector(`script[src="${src}"]`);
-      if (existing) {
-        if (existing.dataset.atlasLoaded === 'true') resolve();
-        else existing.addEventListener('load', resolve, { once: true });
-        return;
-      }
       const script = document.createElement('script');
       script.src = src;
       script.async = false;
       script.dataset[marker] = 'true';
-      script.addEventListener('load', () => {
-        script.dataset.atlasLoaded = 'true';
-        resolve();
-      }, { once: true });
+      script.addEventListener('load', resolve, { once: true });
       script.addEventListener('error', () => reject(new Error(`Could not load ${src}`)), { once: true });
       document.body.appendChild(script);
     });
+  }
+
+  async function loadValidatedWorkspace() {
+    const response = await fetch(WORKSPACE_SOURCE, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Could not read the stock-count workspace (${response.status}).`);
+    let source = await response.text();
+
+    // The original L1 draft mixed nullish coalescing and logical OR without
+    // parentheses. Repair that parse boundary before execution, then delegate
+    // count-form submissions to the unit-aware evidence extension.
+    source = source.replace(
+      'note: override.note ?? note?.value?.trim() || null,',
+      'note: (override.note ?? note?.value?.trim()) || null,'
+    );
+    const submitGuard = '    if (!(form instanceof HTMLFormElement)) return;\n';
+    const delegation = '    if (window.AtlasStockCountsL1?.handleSubmit?.(event, form)) return;\n';
+    if (!source.includes(delegation)) {
+      if (!source.includes(submitGuard)) throw new Error('The stock-count submit boundary could not be validated.');
+      source = source.replace(submitGuard, submitGuard + delegation);
+    }
+    source += '\n//# sourceURL=stock-count-workspace.validated.js\n';
+
+    const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+    try {
+      await loadScript(blobUrl, 'atlasStockCountWorkspaceValidated');
+      state.runtimePatched = true;
+    } finally {
+      URL.revokeObjectURL(blobUrl);
+    }
   }
 
   async function load() {
@@ -38,9 +60,12 @@
     state.loading = true;
     ensureStylesheet('assets/css/stock-count-workspace.css?v=20260805-l1', 'atlas-stock-count-css');
     try {
-      await loadScript('assets/js/stock-count-workspace.js?v=20260805-l1', 'atlasStockCountWorkspace');
-      await loadScript('assets/js/stock-count-l1-verified.js?v=20260805-l1', 'atlasStockCountL1Verified');
-      state.ready = true;
+      // Install the submission handler first. The validated legacy workspace
+      // calls it only when a count form is actually submitted.
+      await loadScript(EXTENSION_SOURCE, 'atlasStockCountL1Verified');
+      await loadValidatedWorkspace();
+      state.ready = Boolean(window.AtlasStockCounts && window.AtlasStockCountsL1);
+      window.AtlasStockCountsL1?.enhance?.();
     } catch (error) {
       console.error('Checkpoint L1 stock-count assets could not be loaded', error);
     } finally {
@@ -48,7 +73,11 @@
     }
   }
 
-  window.AtlasStockCountBootstrap = { load, ready: () => state.ready };
+  window.AtlasStockCountBootstrap = {
+    load,
+    ready: () => state.ready,
+    runtimePatched: () => state.runtimePatched
+  };
   if (document.readyState === 'complete') load();
   else window.addEventListener('load', load, { once: true });
 })();
