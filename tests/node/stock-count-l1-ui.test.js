@@ -32,7 +32,7 @@ test('mobile count forms expose all supported observation units', () => {
   assert.match(extension, /data-l1-count-unit/);
   assert.match(extension, /observed_input_quantity/);
   assert.match(extension, /observed_input_unit/);
-  assert.match(extension, /conversion preview/i);
+  assert.match(extension, /l1-conversion-preview/);
 });
 
 test('quantity provenance is visible as current, stale, historical or unverified', () => {
