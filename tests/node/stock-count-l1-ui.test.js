@@ -5,12 +5,13 @@ import test from 'node:test';
 const workspace = readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8');
 const extension = readFileSync('apps/web/assets/js/stock-count-l1-verified.js', 'utf8');
 const bootstrap = readFileSync('apps/web/assets/js/stock-count-bootstrap.js', 'utf8');
+const inventoryBootstrap = readFileSync('apps/web/assets/js/inventory-scanner-bootstrap.js', 'utf8');
 const styles = readFileSync('apps/web/assets/css/stock-count-workspace.css', 'utf8');
-const config = readFileSync('apps/web/config.js', 'utf8');
 
-test('Checkpoint L1 assets are wired through a sequential bootstrap', () => {
-  assert.match(config, /STOCK_COUNTS_API/);
-  assert.match(config, /stock-count-bootstrap\.js/);
+test('Checkpoint L1 assets are wired through the authenticated inventory bootstrap', () => {
+  assert.match(inventoryBootstrap, /STOCK_COUNTS_API/);
+  assert.match(inventoryBootstrap, /stock-count-bootstrap\.js/);
+  assert.match(inventoryBootstrap, /loadStockCounts/);
   assert.match(bootstrap, /stock-count-workspace\.js/);
   assert.match(bootstrap, /stock-count-l1-verified\.js/);
   assert.match(bootstrap, /await loadScript/);
