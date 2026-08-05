@@ -79,7 +79,7 @@ class ReportsContractTests(unittest.TestCase):
         self.assertIn('currency: "ISK"', EDGE)
         self.assertIn('x-atlas-reports-version', EDGE)
         self.assertIn('"0.2.0"', EDGE)
-        self.assertIn("generated_at_value", LIVE)
+        self.assertIn("generated_at_value", FIX)
         self.assertIn("Corrected Reports snapshot function is missing", FIX)
 
     def test_edge_never_mutates_operational_source_tables(self):
