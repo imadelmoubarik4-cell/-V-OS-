@@ -9,6 +9,7 @@ window.VABAR_CONFIG = {
   PHASE3_INTELLIGENCE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-phase3-intelligence",
   OPERATIONS_CHECKPOINT_A_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-operations-checkpoint-a",
   INVENTORY_SCANNER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner",
+  STOCK_COUNTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-stock-counts",
   TEAM_MESSAGES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-messages",
   MARKETING_WORKSPACE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-marketing-workspace",
   TEAM_PROFILES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profiles",
@@ -123,6 +124,16 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   globalName: 'AtlasInventoryScannerBootstrap',
   dataAttribute: 'atlasInventoryScannerBootstrap',
 }));
+
+// Checkpoint L1 adds mobile, unit-aware stock-count sessions. Count
+// observations and manager verification remain private; only the explicit
+// manager publication boundary may create controlled count adjustments.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/stock-count-bootstrap.js',
+  globalName: 'AtlasStockCountBootstrap',
+  dataAttribute: 'atlasStockCountBootstrap',
+}));
+
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/team-messages.css',

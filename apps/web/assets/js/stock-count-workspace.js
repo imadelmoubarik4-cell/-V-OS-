@@ -479,7 +479,7 @@
       line_status: 'counted',
       observed_quantity: quantity,
       count_method: override.count_method || 'manual',
-      note: override.note ?? note?.value?.trim() || null,
+      note: (override.note ?? note?.value?.trim()) || null,
       skipped_reason: null,
       expected_version: line.version
     }, `${line.item_name} count saved.`);
@@ -877,6 +877,7 @@
   function handleSubmit(event) {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
+    if (window.AtlasStockCountsL1?.handleSubmit?.(event, form)) return;
     if (form.matches('[data-start-count-form]')) {
       event.preventDefault();
       startCount(form).catch(() => {});
