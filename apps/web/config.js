@@ -6,6 +6,7 @@ window.VABAR_CONFIG = {
   SPRINT3_REVIEW_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-sprint3-review",
   SPRINT4_BRIEFING_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-sprint4-briefing",
   PHASE3_BRAIN_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-phase3-brain",
+  PHASE3_INTELLIGENCE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-phase3-intelligence",
   OPERATIONS_CHECKPOINT_A_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-operations-checkpoint-a",
   INVENTORY_SCANNER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner",
   TEAM_MESSAGES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-messages",
@@ -90,6 +91,16 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/brain-phase3.js',
   globalName: 'AtlasPhase3Brain',
   dataAttribute: 'atlasPhase3Brain',
+}));
+
+// Checkpoint K layers four evidence-gated intelligence tracks over the existing
+// decision-memory workspace. It reads role-permitted production sources through
+// a manager-only gateway and never mutates inventory, orders, menus or waste.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/brain-checkpoint-k.css',
+  scriptPath: 'assets/js/brain-checkpoint-k.js',
+  globalName: 'AtlasCheckpointK',
+  dataAttribute: 'atlasCheckpointK',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
@@ -241,6 +252,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/settings-workspace.js',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
+}));
+
+// A legacy Operations layout can still append its old connection cards to the
+// Settings placeholder. This bridge makes the Checkpoint J workspace authoritative.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/settings-mount-bridge.js',
+  globalName: 'AtlasCheckpointJSettingsMount',
+  dataAttribute: 'atlasCheckpointJSettingsMount',
 }));
 
 /* CHECKPOINT_I_SYSTEM_ASSETS */
