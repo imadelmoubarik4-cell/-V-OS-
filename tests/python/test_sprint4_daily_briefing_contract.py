@@ -72,7 +72,7 @@ class Sprint4DailyBriefingContractTests(unittest.TestCase):
     def test_gateway_jwt_is_disabled_only_for_in_handler_custom_auth(self) -> None:
         self.assertRegex(CONFIG, r"\[functions\.atlas-sprint4-briefing\]\s+verify_jwt\s*=\s*false")
         self.assertIn("production VÁ Auth", CONFIG)
-        self.assertIn("active manager/admin profile", CONFIG)
+        self.assertRegex(CONFIG, r"active\s+manager/admin profile")
 
 
 if __name__ == "__main__":
