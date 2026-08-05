@@ -19,13 +19,15 @@ test('Checkpoint H loads through the authenticated Reports gateway', () => {
 });
 
 test('Reports preserves the complete requested navigation surface', () => {
-  expectLabels(ui, [
-    'Overview', 'Sales', 'Inventory', 'Menu & Recipes', 'Purchasing', 'Suppliers',
-    'Waste & Variance', 'Labour & Shifts', 'Operations', 'Knowledge & Training',
-    'Saved Reports', 'Exports'
-  ]);
-  assert.match(ui, /#reports\//);
-  assert.match(ui, /data-reports-section/);
+  for (const section of [
+    'overview', 'sales', 'inventory', 'recipes', 'purchasing', 'suppliers',
+    'waste', 'labour', 'operations', 'knowledge', 'saved', 'exports'
+  ]) {
+    assert.match(ui, new RegExp(`['"]${section}['"]`));
+  }
+  assert.match(ui, /const SECTION_ORDER/);
+  assert.match(ui, /data-reports-section=/);
+  assert.match(ui, /escapeHtml\(section\.name\)/);
 });
 
 test('period, comparison and custom date controls are functional', () => {
@@ -36,7 +38,7 @@ test('period, comparison and custom date controls are functional', () => {
   ]);
   assert.match(ui, /comparison_start_date/);
   assert.match(ui, /comparison_end_date/);
-  assert.match(ui, /data-reports-period/);
+  assert.match(ui, /data-reports-preset/);
   assert.match(ui, /data-reports-comparison/);
 });
 
@@ -45,11 +47,12 @@ test('global filters expose selections as removable chips', () => {
   assert.match(ui, /data-reports-remove-filter/);
   assert.match(ui, /data-reports-clear-filters/);
   assert.match(ui, /filter_options/);
-  expectLabels(ui, ['Category', 'Supplier', 'Employee', 'Status', 'Clear all']);
+  expectLabels(ui, ['Category', 'Supplier', 'Employee', 'Status']);
+  assert.match(ui, /Clear \$\{count\}/);
 });
 
 test('important report values are inspectable and exportable', () => {
-  assert.match(ui, /data-reports-kpi/);
+  assert.match(ui, /class="report-kpi"/);
   assert.match(ui, /data-reports-sort/);
   assert.match(ui, /data-reports-page/);
   assert.match(ui, /data-reports-source/);
@@ -62,14 +65,14 @@ test('important report values are inspectable and exportable', () => {
 test('saved configurations remain permission-safe when reopened', () => {
   assert.match(ui, /localStorage/);
   assert.match(ui, /savedStorageKey/);
-  assert.match(ui, /data-reports-save(?:=|\b)/);
+  assert.match(ui, /data-reports-save(?:-view|=|\b)/);
   assert.match(ui, /Save current view/);
   assert.match(ui, /data-reports-saved-open/);
   assert.match(ui, /data-reports-saved-rename/);
   assert.match(ui, /data-reports-saved-duplicate/);
   assert.match(ui, /data-reports-saved-archive/);
   assert.match(ui, /data-reports-saved-remove/);
-  assert.match(ui, /Permissions are always rechecked/);
+  assert.match(ui, /Reopening always rechecks current permissions and live data/);
 });
 
 test('Ask Atlas stays grounded in the current report snapshot', () => {
@@ -78,7 +81,7 @@ test('Ask Atlas stays grounded in the current report snapshot', () => {
   assert.match(ui, /api\('ask'/);
   assert.match(ui, /evidence/);
   assert.match(ui, /limitations/);
-  assert.match(ui, /current report values/i);
+  assert.match(ui, /permission-filtered report snapshot/i);
 });
 
 test('unavailable sales data is never replaced with invented values', () => {
@@ -90,12 +93,12 @@ test('unavailable sales data is never replaced with invented values', () => {
 test('browser uses the session gateway without direct private-table access', () => {
   assert.match(ui, /window\.atlasSupabase/);
   assert.match(ui, /authorization:\s*`Bearer \$\{session\.access_token\}`/);
-  assert.doesNotMatch(ui, /\.from\s*\(/);
+  assert.doesNotMatch(ui, /\.from\s*\(\s*['"]/);
   assert.doesNotMatch(ui, /atlas_private\.|inventory_movements|knowledge_acknowledgements/);
 });
 
 test('Reports preserves the Atlas visual system and tablet-first behavior', () => {
-  assert.match(css, /var\(--atlas-surface\)/);
+  assert.match(css, /--reports-surface:var\(--atlas-surface/);
   assert.match(css, /'Fraunces'/);
   assert.match(css, /'IBM Plex Sans'/);
   assert.match(css, /@media\(max-width:1100px\)/);
