@@ -6,6 +6,10 @@ const migration = readFileSync(
   'supabase/migrations/20260805223000_atlas_public_catalog_rls_hardening.sql',
   'utf8'
 );
+const cleanup = readFileSync(
+  'supabase/migrations/20260805223500_atlas_public_catalog_rls_policy_cleanup.sql',
+  'utf8'
+);
 
 const TABLES = ['inventory_items', 'recipes', 'recipe_ingredients', 'suppliers'];
 
@@ -45,6 +49,14 @@ test('recipe, ingredient and supplier writes require manager role', () => {
     }
   }
   assert.match(migration, /private\.is_manager_or_admin\(\)/);
+});
+
+test('duplicate manager policies are removed after the canonical policy set exists', () => {
+  for (const resource of ['inventory', 'suppliers']) {
+    for (const action of ['read', 'add', 'update', 'delete']) {
+      assert.match(cleanup, new RegExp(`drop policy if exists "active managers ${action} ${resource}"`, 'i'));
+    }
+  }
 });
 
 test('public recipe access remains read-only and menu-visible', () => {
