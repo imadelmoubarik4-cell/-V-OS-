@@ -6,6 +6,8 @@ Netlify publishes only `apps/web`.
 
 - `apps/web/index.html` is the single browser entry point.
 - Browser styles, scripts, images and configuration belong under `apps/web`.
+- The canonical recipe stylesheet is `apps/web/assets/css/recipes.css`.
+- The canonical Atlas icon is `apps/web/assets/logo/atlas-icon.png`.
 - Do not add repository-root copies such as `index.html`, `index_atlas_all_fixes.html`, `recipes.css` or `atlas-icon.png`.
 - Supabase migrations and Edge Functions remain under `supabase` and are not browser assets.
 
@@ -23,7 +25,7 @@ Before a checkpoint closure or high-risk migration pass:
 
 For the Checkpoint K closure pass, the pre-change rollback branch is:
 
-` safety/pr5-pre-k-closure-20260805 `
+`safety/pr5-pre-k-closure-20260805`
 
 It points to commit:
 
