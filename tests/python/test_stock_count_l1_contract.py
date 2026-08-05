@@ -7,7 +7,7 @@ UNITS_MIGRATION = ROOT / "supabase/migrations/20260805210000_atlas_stock_counts_
 PUBLICATION_MIGRATION = ROOT / "supabase/migrations/20260805211000_atlas_stock_counts_l1_manager_publication.sql"
 EDGE_FUNCTION = ROOT / "supabase/functions/atlas-stock-counts/entrypoint.ts"
 SUPABASE_CONFIG = ROOT / "supabase/config.toml"
-WEB_CONFIG = ROOT / "apps/web/config.js"
+INVENTORY_BOOTSTRAP = ROOT / "apps/web/assets/js/inventory-scanner-bootstrap.js"
 
 
 class CheckpointL1ContractTests(unittest.TestCase):
@@ -17,7 +17,7 @@ class CheckpointL1ContractTests(unittest.TestCase):
         cls.publication_sql = PUBLICATION_MIGRATION.read_text()
         cls.edge = EDGE_FUNCTION.read_text()
         cls.supabase_config = SUPABASE_CONFIG.read_text()
-        cls.web_config = WEB_CONFIG.read_text()
+        cls.inventory_bootstrap = INVENTORY_BOOTSTRAP.read_text()
 
     def test_original_and_normalized_count_evidence_are_preserved(self):
         for token in (
@@ -88,8 +88,8 @@ class CheckpointL1ContractTests(unittest.TestCase):
     def test_runtime_configuration_uses_the_new_entrypoint(self):
         self.assertIn("[functions.atlas-stock-counts]", self.supabase_config)
         self.assertIn('entrypoint = "./functions/atlas-stock-counts/entrypoint.ts"', self.supabase_config)
-        self.assertIn("STOCK_COUNTS_API", self.web_config)
-        self.assertIn("stock-count-bootstrap.js", self.web_config)
+        self.assertIn("STOCK_COUNTS_API", self.inventory_bootstrap)
+        self.assertIn("stock-count-bootstrap.js", self.inventory_bootstrap)
 
 
 if __name__ == "__main__":
