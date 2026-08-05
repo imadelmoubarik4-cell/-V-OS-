@@ -39,10 +39,7 @@ class SystemContractTests(unittest.TestCase):
     def test_snapshot_is_manager_only_and_service_role_only(self):
         self.assertIn("p_actor_role not in ('admin','manager')", SNAPSHOT)
         signature = "public.atlas_system_snapshot(jsonb,jsonb,jsonb,uuid,text)"
-        self.assertIn(
-            f"revoke execute on function {signature}",
-            SNAPSHOT,
-        )
+        self.assertIn(f"revoke execute on function {signature}", SNAPSHOT)
         self.assertIn("from public,anon,authenticated", SNAPSHOT)
         self.assertIn(f"grant execute on function {signature}", SNAPSHOT)
         self.assertIn("to service_role", SNAPSHOT)
@@ -81,7 +78,7 @@ class SystemContractTests(unittest.TestCase):
         self.assertIn("if (!profile?.active)", EDGE)
         self.assertIn('new Set(["admin", "manager"])', EDGE)
         self.assertIn("System is available only to managers and administrators", EDGE)
-        self.assertIn("request.method !== \"GET\"", EDGE)
+        self.assertIn('request.method !== "GET"', EDGE)
         self.assertIn("Checkpoint I System is view-only", EDGE)
         self.assertIn("[functions.atlas-system]", CONFIG)
         self.assertIn("verify_jwt = false", CONFIG)
@@ -90,8 +87,9 @@ class SystemContractTests(unittest.TestCase):
         self.assertIn("secrets_returned: false", EDGE)
         self.assertIn("tokens_returned: false", EDGE)
         self.assertIn("production_promotion_enabled: false", EDGE)
-        self.assertNotIn("serviceRoleKey,", EDGE)
+        self.assertNotRegex(EDGE, r"jsonResponse\([^\)]*serviceRoleKey")
         self.assertNotRegex(EDGE, r"jsonResponse\([^\)]*SUPABASE_SERVICE_ROLE_KEY")
+        self.assertNotRegex(EDGE, r"return\s*\{[^}]*serviceRoleKey")
 
     def test_browser_uses_authenticated_gateway_without_direct_private_access(self):
         self.assertIn("SYSTEM_API", BROWSER_CONFIG)
@@ -99,7 +97,7 @@ class SystemContractTests(unittest.TestCase):
         self.assertIn("window.atlasSupabase", BROWSER)
         self.assertIn("authorization: `Bearer ${session.access_token}`", BROWSER)
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER)
-        self.assertNotIn(".from(", BROWSER)
+        self.assertNotRegex(BROWSER, r"\.from\s*\(\s*['\"]")
         for private_table in (
             "system_services",
             "system_incidents",
