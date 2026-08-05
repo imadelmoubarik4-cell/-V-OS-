@@ -1,5 +1,7 @@
 name: Integrate Checkpoint L1 stock counts
 
+# Final Checkpoint L1 integration trigger: keep source, configuration and CI
+# wiring repository-native instead of relying only on the runtime bootstrap.
 on:
   push:
     branches:
@@ -44,7 +46,7 @@ jobs:
           workspace = workspace_path.read_text()
           workspace = workspace.replace(
               'note: override.note ?? note?.value?.trim() || null,',
-              'note: (override.note ?? note?.value?.trim()) || null,'
+              'note: (override.note ?? note?.value?.trim()) || null,',
           )
           delegation = """    if (window.AtlasStockCountsL1?.handleSubmit?.(event, form)) return;\n"""
           workspace = replace_once(
