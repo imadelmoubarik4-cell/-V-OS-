@@ -17,8 +17,10 @@ test('Checkpoint L1 assets are wired through the authenticated inventory bootstr
   assert.match(bootstrap, /await loadScript/);
 });
 
-test('the bootstrap validates and repairs the original draft before execution', () => {
-  assert.match(workspace, /override\.note \?\? note\?\.value\?\.trim\(\) \|\| null/);
+test('the repository source is valid and the bootstrap retains a defensive repair path', () => {
+  assert.doesNotMatch(workspace, /note: override\.note \?\? note\?\.value\?\.trim\(\) \|\| null/);
+  assert.match(workspace, /note: \(override\.note \?\? note\?\.value\?\.trim\(\)\) \|\| null/);
+  assert.match(workspace, /AtlasStockCountsL1\?\.handleSubmit/);
   assert.match(bootstrap, /note: \(override\.note \?\? note\?\.value\?\.trim\(\)\) \|\| null/);
   assert.match(bootstrap, /AtlasStockCountsL1\?\.handleSubmit/);
   assert.match(bootstrap, /new Blob/);
