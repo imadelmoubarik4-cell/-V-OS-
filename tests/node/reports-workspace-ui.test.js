@@ -102,8 +102,9 @@ test('Reports preserves the Atlas visual system and tablet-first behavior', () =
   assert.match(css, /--reports-surface:var\(--atlas-surface/);
   assert.match(css, /'Fraunces'/);
   assert.match(shell, /IBM\+Plex\+Sans|font-family:'IBM Plex Sans'/);
-  assert.match(css, /@media\(max-width:1100px\)/);
-  assert.match(css, /@media\(max-width:760px\)/);
+  assert.match(css, /@media\(max-width:1180px\)/);
+  assert.match(css, /@media\(max-width:980px\)/);
+  assert.match(css, /@media\(max-width:720px\)/);
   assert.match(css, /@media\(max-width:480px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.doesNotMatch(css, /Caprasimo|Figtree|--color-accent-2/);
