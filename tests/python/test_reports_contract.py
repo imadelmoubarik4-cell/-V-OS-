@@ -32,7 +32,10 @@ class ReportsContractTests(unittest.TestCase):
             "suppliers",
             "inventory_movements",
         ):
-            self.assertIn(f'productionRows(context, "{table}"', EDGE)
+            self.assertRegex(
+                EDGE,
+                re.compile(rf"productionRows\(\s*context,\s*\"{table}\"", re.MULTILINE),
+            )
         self.assertIn('branchRpc("atlas_reports_snapshot_v2"', EDGE)
         for argument in (
             "p_inventory",
@@ -44,14 +47,16 @@ class ReportsContractTests(unittest.TestCase):
             self.assertIn(argument, EDGE)
 
     def test_staff_commercial_fields_are_removed_before_branch_rpc(self):
-        self.assertIn("sanitizeSources", EDGE)
-        self.assertIn("if (isManager(context)) return sources", EDGE)
+        self.assertIn("async function reportSources", EDGE)
+        self.assertRegex(EDGE, r"if \(isManager\(context\)\)\s*\{")
+        self.assertIn("const operationalInventory = inventory.map", EDGE)
+        self.assertIn("const operationalMovements = movements", EDGE)
         self.assertRegex(EDGE, r"cost_price:\s*null")
         self.assertRegex(EDGE, r"unit_cost:\s*null")
         self.assertRegex(EDGE, r"total_cost:\s*null")
         self.assertRegex(EDGE, r"supplier_id:\s*null")
         self.assertRegex(EDGE, r"suppliers:\s*\[\]")
-        self.assertIn("Commercial purchasing and supplier values are restricted", EDGE)
+        self.assertIn("strips commercial cost and supplier-spend evidence", EDGE)
 
     def test_reports_rpc_is_service_role_only(self):
         signature = (
@@ -76,14 +81,12 @@ class ReportsContractTests(unittest.TestCase):
         self.assertIn("Corrected Reports snapshot function is missing", FIX)
 
     def test_edge_never_mutates_operational_source_tables(self):
-        forbidden_methods = [
-            'method: "PATCH"',
-            'method: "DELETE"',
-            'method: "PUT"',
-        ]
-        for forbidden in forbidden_methods:
+        for forbidden in ('method: "PATCH"', 'method: "DELETE"', 'method: "PUT"'):
             self.assertNotIn(forbidden, EDGE)
-        self.assertNotRegex(EDGE, r"/rest/v1/(inventory_items|recipes|inventory_movements|shifts)\?[^\n]*")
+        self.assertNotRegex(
+            EDGE,
+            r"/rest/v1/(inventory_items|recipes|inventory_movements|shifts)\?[^\n]*",
+        )
         self.assertNotIn("adjust_inventory", EDGE)
         self.assertNotIn("save-shift", EDGE)
 
@@ -98,7 +101,7 @@ class ReportsContractTests(unittest.TestCase):
 
     def test_ask_atlas_is_deterministic_and_snapshot_grounded(self):
         self.assertIn("deterministicReportAnswer", EDGE)
-        self.assertIn("current Reports snapshot", EDGE)
+        self.assertIn("current permission-filtered Reports snapshot", EDGE)
         self.assertIn("evidence", EDGE)
         self.assertIn("limitations", EDGE)
         self.assertNotIn("OPENAI_API_KEY", EDGE)
@@ -111,14 +114,15 @@ class ReportsContractTests(unittest.TestCase):
         self.assertIn("window.atlasSupabase", BROWSER)
         self.assertIn("authorization: `Bearer ${session.access_token}`", BROWSER)
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER)
-        self.assertNotIn(".from(", BROWSER)
+        self.assertNotRegex(BROWSER, r"\.from\s*\(\s*['\"]")
         self.assertNotIn("atlas_private.", BROWSER)
 
     def test_sales_and_purchase_order_gaps_are_explicit(self):
-        self.assertIn("Sales integration is not available", EDGE)
-        self.assertIn("No revenue or order values are invented", EDGE)
-        self.assertIn("Purchase-order reports remain unavailable", EDGE)
-        self.assertNotIn("sample revenue", EDGE.lower().replace("no sample revenue", ""))
+        self.assertIn("Sales is not connected", EDGE)
+        self.assertIn("no revenue or order explanation is available", EDGE)
+        self.assertIn("Purchase-order metrics remain unavailable", EDGE)
+        self.assertIn("Inventory movements are not a complete purchase-order ledger", EDGE)
+        self.assertNotIn("Math.random", EDGE)
 
 
 if __name__ == "__main__":
