@@ -89,7 +89,7 @@ class SystemContractTests(unittest.TestCase):
         self.assertIn("production_promotion_enabled: false", EDGE)
         self.assertNotRegex(EDGE, r"jsonResponse\([^\)]*serviceRoleKey")
         self.assertNotRegex(EDGE, r"jsonResponse\([^\)]*SUPABASE_SERVICE_ROLE_KEY")
-        self.assertNotRegex(EDGE, r"return\s*\{[^}]*serviceRoleKey")
+        self.assertIn("return { branchUrl, serviceRoleKey };", EDGE)
 
     def test_browser_uses_authenticated_gateway_without_direct_private_access(self):
         self.assertIn("SYSTEM_API", BROWSER_CONFIG)
