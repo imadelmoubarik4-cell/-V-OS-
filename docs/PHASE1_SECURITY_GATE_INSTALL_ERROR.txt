@@ -6,499 +6,184 @@ VERIFICATION OUTCOME: failure
 > va-os-atlas@0.8.0 test:node
 > node --test tests/node/*.test.js packages/*/tests/*.test.js
 
-✔ canonicalization removes accents and normalizes package spacing (5.734608ms)
-✔ headers and known category typos normalize deterministically (0.290904ms)
-✔ money parsing preserves integer Icelandic prices (0.476209ms)
-✔ annotated quantities retain their parsed value and a review issue (1.400879ms)
-✔ duplicate matching prioritizes exact identifiers (0.538657ms)
-✔ generic and ambiguous names remain in review (0.585725ms)
-✔ Checkpoint K is wired through the authenticated intelligence gateway (1.666951ms)
-✔ Checkpoint K presents all four evidence domains (0.203348ms)
-✔ Checkpoint K makes the safety contract visible (0.272209ms)
-✔ Checkpoint K escapes source-controlled content before rendering (0.202603ms)
-✔ Checkpoint K remains responsive and consistent with Atlas styling (0.271144ms)
-✔ Checkpoint B loads from the isolated scanner API through its bootstrap (1.189272ms)
-✔ scanner bootstrap waits for the signed-in application shell (0.268632ms)
-✔ scanner interaction layer prevents modal taps from being swallowed (0.663354ms)
-✔ scanner observer ignores its own rendered modal and API requests time out (0.192768ms)
-✔ scanner supports phone camera, native detection and pinned ZXing fallback (0.314704ms)
-✔ barcode photos are processed locally and manual entry remains available (0.285239ms)
-✔ unmatched codes require a confirmed manager link (1.815326ms)
-✔ preview counts are visibly shadow-only until live apply is enabled (0.19559ms)
-✔ browser scanner uses the authenticated API and no direct table writes (0.892275ms)
-✔ scanner preserves the original Atlas design and responsive mobile layout (0.594106ms)
-✔ Checkpoint L2 is wired through the authenticated Inventory bootstrap and gateway (2.350061ms)
-✔ L2 dynamically adds a dedicated Inventory item-master workspace (0.162195ms)
-✔ the editor covers the complete item-master contract (0.253559ms)
-✔ queue filters and priority evidence are visible (0.208887ms)
-✔ draft and publication actions preserve the L2 safety boundary (0.35354ms)
-✔ source-controlled content is escaped before rendering (0.169264ms)
-✔ L2 remains responsive and matches the Atlas visual system (0.236758ms)
-✔ Checkpoint G loads through the authenticated Knowledge gateway (1.521447ms)
-✔ Knowledge exposes the complete requested staff workspace (0.290198ms)
-✔ manager workflow keeps drafts private and publishes immutable versions (0.173266ms)
-✔ required reading and source governance are interactive (0.313744ms)
-✔ markdown rendering escapes raw HTML before adding limited formatting (0.273078ms)
-✔ browser has no direct private database or Drive API access (0.385394ms)
-✔ Team Knowledge links are intercepted before the legacy fallback (0.17022ms)
-✔ Knowledge preserves the original Atlas design and responsive layout (0.363247ms)
-✔ Checkpoint D loads from the isolated Marketing API (1.434826ms)
-✔ Marketing injects a Growth navigation entry and complete planning sections (0.361177ms)
-✔ requested content formats, reminders and workflow controls are present (0.327622ms)
-✔ Atlas recommendations reproduce the approved VÁ marketing briefs (1.404137ms)
-✔ connection cards expose every requested state without pretending to connect (0.433604ms)
-✔ browser uses authenticated gateway and never writes private tables directly (0.450277ms)
-✔ Marketing preserves the original Atlas design and responsive behavior (0.463379ms)
-✔ compact layout is loaded after Checkpoint A (1.049571ms)
-✔ Operations surfaces only scheduled work and opens details contextually (1.477581ms)
-✔ Home receives one visually focused scheduled-day prompt (0.203469ms)
-✔ marketing and reputation readiness move to Settings (0.162147ms)
-✔ refined layout keeps original Atlas styling and responsive behavior (0.411175ms)
-✔ presentation layer contains no direct database or operational mutation code (0.284193ms)
-✔ Checkpoint A loads from the isolated Phase 3 branch (2.59964ms)
-✔ Checkpoint A presents day-aware routines and daily temperature evidence (0.259483ms)
-✔ Tripadvisor is treated as a bounded reputation connection (0.170384ms)
-✔ Checkpoint A uses the manager API and never writes browser tables directly (0.490532ms)
-✔ Checkpoint A remains responsive and preserves the original Atlas visual system (0.350639ms)
-✔ public operational catalog tables keep RLS enabled (1.582473ms)
-✔ browser roles receive only Data API privileges required by policy (0.439071ms)
-✔ legacy permissive recipe write policies are removed (0.39448ms)
-✔ recipe, ingredient and supplier writes require manager role (1.837099ms)
-✔ duplicate manager policies are removed after the canonical policy set exists (0.456723ms)
-✔ public recipe access remains read-only and menu-visible (0.29301ms)
-✔ Checkpoint H loads through the authenticated Reports gateway (2.985729ms)
-✔ Reports preserves the complete requested navigation surface (0.578344ms)
-✔ period, comparison and custom date controls are functional (0.745674ms)
-✔ global filters expose selections as removable chips (0.322654ms)
-✔ important report values are inspectable and exportable (0.467169ms)
-✔ saved configurations remain permission-safe when reopened (0.371532ms)
-✔ Ask Atlas stays grounded in the current report snapshot (0.372059ms)
-✔ unavailable sales data is never replaced with invented values (0.509113ms)
-✔ browser uses the session gateway without direct private-table access (0.673456ms)
-✔ Reports preserves the Atlas visual system and tablet-first behavior (0.64663ms)
-✔ deploy and private-data boundaries are explicit (10.786855ms)
-✔ public operational-reference templates contain headers only (2.898911ms)
-✔ public runtime, seed, and archived examples do not disclose private supplier identities (9.049407ms)
-✔ release and migration version agree (1.102723ms)
-✔ A.2 staging is review-only for authenticated browser clients (1.792742ms)
-✔ web checkpoint has no missing local asset references (2.86348ms)
-✔ Netlify has one canonical deployed web root (1.572241ms)
-✔ legacy root web copies cannot shadow the deployed application (0.272549ms)
-✔ repository contains the exact five migrations recorded before A.1 (8.690943ms)
-✔ clean environments start from a schema-only legacy baseline (2.247965ms)
-✔ authorization helpers trust only active profile roles (1.986172ms)
-✔ anonymous users have no private inventory or import Data API grants (2.198542ms)
-✔ bartenders and viewers cannot mutate or read cost-bearing canonical tables (2.308556ms)
-✔ active staff have a redacted inventory catalogue (1.662524ms)
-✔ manager browser clients can review staging but cannot create staging rows (1.847188ms)
-✔ only active managers access private import files (1.835105ms)
-✔ trusted service worker retains staging and canonical write access (1.233944ms)
-✖ browser dependencies are pinned with reviewed integrity hashes (5.72544ms)
-✔ no service-role credential is shipped to the browser (0.798205ms)
-✔ Netlify headers cover transport, browser capabilities and both Supabase projects (0.338587ms)
-✖ commercial browser paths are profile-gated and use redacted staff catalogues (2.124998ms)
-✔ Checkpoint F.2 loads the month editor after weekly Shifts (2.444546ms)
-✔ month calendar remains a complete Monday-first monthly grid (0.271281ms)
-✔ managers can create, edit and remove shifts directly from the month (0.31014ms)
-✔ one month publication makes the complete plan visible to staff (0.285817ms)
-✔ published month revisions preserve weekly drill-down and confirmations (0.350586ms)
-✔ month browser uses only the authenticated Shifts gateway (0.360764ms)
-✔ full month editor remains responsive and preserves the Atlas design system (0.503058ms)
-✔ Month bridge loads after the monthly workspace (1.127579ms)
-✔ bridge keeps the Month tab separate from the weekly bubbling handler (0.220156ms)
-✔ every visible Month action has a window-capture fallback (0.263529ms)
-✔ Add shift and Save shift use the authenticated Shifts gateway (0.256544ms)
-✔ Refresh, publish, edit, remove and weekly navigation are restored (0.171638ms)
-✔ bridge contains no privileged key or direct table access (0.203203ms)
-✔ Checkpoint F loads from the isolated Shifts API (1.302047ms)
-✔ weekly planner includes navigation, drafting, copying and publication (0.470198ms)
-✔ availability, time off, confirmations and handover are operational (0.336121ms)
-✔ schedule-only people are supported without creating login accounts (0.25017ms)
-✔ browser uses the authenticated gateway and keeps production shifts untouched (0.578746ms)
-✔ mobile profile photo picker exposes the gallery instead of forcing camera capture (0.262479ms)
-✔ Shifts preserves Atlas styling and responsive mobile behavior (0.437231ms)
-✔ review center loads from an isolated branch-scoped manager API (2.988032ms)
-✔ browser uses Atlas session and never contains a service key (0.807373ms)
-✔ review UI is manager-gated and promotion-free (0.412119ms)
-✔ review UI supports responsive layouts and private-data states (0.255867ms)
-✔ review, briefing and Phase 3 use one isolated branch graph (1.70145ms)
-✔ Daily Briefing presents confidence, source attribution and evidence cards (0.257737ms)
-✔ Daily Briefing does not expose secrets or mutate operational data (1.26711ms)
-✔ Daily Briefing rendering avoids observer loops and locale-dependent grouping (0.24128ms)
-✔ Phase 3 loads from an isolated Brain API (1.799508ms)
-✔ Phase 3 presents recommendations, why explanations, evidence and memory (0.213911ms)
-✔ Phase 3 decisions and outcomes remain manager-mediated shadow feedback (0.845611ms)
-✔ Phase 3 renderer is loop-safe, responsive and preserves original Atlas styling (0.366638ms)
-✔ Checkpoint L1 assets are wired through the authenticated inventory bootstrap (1.283763ms)
-✔ the repository source is valid and the bootstrap retains a defensive repair path (0.414609ms)
-✔ mobile count forms expose all supported observation units (0.300351ms)
-✔ quantity provenance is visible as current, stale, historical or unverified (0.275224ms)
-✔ manager publication is a separate explicit action (0.456953ms)
-✔ the UI does not write inventory tables directly (0.269902ms)
-✔ mobile layouts and count evidence states have dedicated styles (0.220931ms)
-✔ Checkpoint I loads through the isolated authenticated System gateway (1.863833ms)
-✔ System dynamically creates the manager control-room navigation and view (0.438293ms)
-✔ System contains the complete operational control-room sections (1.786907ms)
-✔ Reports remains an honest open incident and release blocker (0.265848ms)
-✔ System is view-only and does not expose destructive controls (0.734598ms)
-✔ System UI never renders privileged secrets or raw credentials (0.622331ms)
-✔ System gateway revalidates production manager access on every request (0.342719ms)
-✔ private System tables are RLS protected and service-role only (0.510428ms)
-✔ System snapshot is service-role only and manager-gated (0.951773ms)
-✔ System preserves original Atlas visual language and responsive behavior (0.868743ms)
-✔ Checkpoint C loads from the isolated team-message API (1.394796ms)
-✔ initial channels are seeded and manager-only announcement state is rendered (0.46298ms)
-✔ messages expose unread, read, edit and deletion controls (0.301159ms)
-✔ composer supports server-verified Atlas record links (0.29426ms)
-✔ polling runs only while Team is visible and pauses during composition (0.448622ms)
-✔ browser uses authenticated gateway instead of direct message table access (0.646036ms)
-✔ Team Messages preserve Atlas design and mobile behavior (0.286336ms)
-✔ Checkpoint E.1 loads through the isolated profile-photo API (1.154679ms)
-✔ profile photos decorate the directory, selected profile and signed-in avatar (0.951642ms)
-✔ staff can choose, resize, upload, replace and remove authorized photos (0.243001ms)
-✔ browser uses the authenticated gateway and no direct Storage or table writes (0.261201ms)
-✔ photo decoration is idempotent and its observer is scoped to Team Profiles (0.311212ms)
-✔ portrait styling preserves Atlas design and responsive behavior (0.384383ms)
-✔ Checkpoint E loads through the isolated Team Profiles API (0.889769ms)
-✔ Team Profiles adds a dedicated People navigation and directory (0.241379ms)
-✔ profile details cover employment, contacts, access and training (0.223893ms)
-✔ sensitive controls are explicitly bounded (0.191464ms)
-✔ browser uses authenticated gateway and no direct database writes (0.328587ms)
-✔ Team Profiles preserves Atlas design and responsive behavior (0.292905ms)
-✔ Team unread worker is loaded after the message workspace (1.6213ms)
-✔ zero badges are removed instead of rendered as a visible zero (0.299908ms)
-✔ unread total refreshes outside Team without racing its read cursor (0.24157ms)
-✔ badge observer is narrowly scoped and avoids self-triggering rewrites (0.219147ms)
-✔ unread worker uses authenticated API only (0.224517ms)
+✔ canonicalization removes accents and normalizes package spacing (7.740117ms)
+✔ headers and known category typos normalize deterministically (0.376515ms)
+✔ money parsing preserves integer Icelandic prices (0.504414ms)
+✔ annotated quantities retain their parsed value and a review issue (1.768891ms)
+✔ duplicate matching prioritizes exact identifiers (0.528118ms)
+✔ generic and ambiguous names remain in review (1.247896ms)
+✔ Checkpoint K is wired through the authenticated intelligence gateway (2.019771ms)
+✔ Checkpoint K presents all four evidence domains (0.220964ms)
+✔ Checkpoint K makes the safety contract visible (0.22969ms)
+✔ Checkpoint K escapes source-controlled content before rendering (0.174317ms)
+✔ Checkpoint K remains responsive and consistent with Atlas styling (0.289943ms)
+✔ Checkpoint B loads from the isolated scanner API through its bootstrap (2.150286ms)
+✔ scanner bootstrap waits for the signed-in application shell (0.563235ms)
+✔ scanner interaction layer prevents modal taps from being swallowed (0.260658ms)
+✔ scanner observer ignores its own rendered modal and API requests time out (0.336129ms)
+✔ scanner supports phone camera, native detection and pinned ZXing fallback (0.354965ms)
+✔ barcode photos are processed locally and manual entry remains available (0.383298ms)
+✔ unmatched codes require a confirmed manager link (0.370083ms)
+✔ preview counts are visibly shadow-only until live apply is enabled (0.251942ms)
+✔ browser scanner uses the authenticated API and no direct table writes (1.220094ms)
+✔ scanner preserves the original Atlas design and responsive mobile layout (0.874848ms)
+✔ Checkpoint L2 is wired through the authenticated Inventory bootstrap and gateway (3.542211ms)
+✔ L2 dynamically adds a dedicated Inventory item-master workspace (0.248636ms)
+✔ the editor covers the complete item-master contract (0.412191ms)
+✔ queue filters and priority evidence are visible (0.285154ms)
+✔ draft and publication actions preserve the L2 safety boundary (0.628116ms)
+✔ source-controlled content is escaped before rendering (0.262462ms)
+✔ L2 remains responsive and matches the Atlas visual system (0.501319ms)
+✔ Checkpoint G loads through the authenticated Knowledge gateway (1.699502ms)
+✔ Knowledge exposes the complete requested staff workspace (0.474138ms)
+✔ manager workflow keeps drafts private and publishes immutable versions (0.259857ms)
+✔ required reading and source governance are interactive (0.431157ms)
+✔ markdown rendering escapes raw HTML before adding limited formatting (0.478135ms)
+✔ browser has no direct private database or Drive API access (0.713967ms)
+✔ Team Knowledge links are intercepted before the legacy fallback (0.48622ms)
+✔ Knowledge preserves the original Atlas design and responsive layout (0.52872ms)
+✔ Checkpoint D loads from the isolated Marketing API (1.129254ms)
+✔ Marketing injects a Growth navigation entry and complete planning sections (0.335298ms)
+✔ requested content formats, reminders and workflow controls are present (0.257151ms)
+✔ Atlas recommendations reproduce the approved VÁ marketing briefs (0.25088ms)
+✔ connection cards expose every requested state without pretending to connect (1.702447ms)
+✔ browser uses authenticated gateway and never writes private tables directly (0.417822ms)
+✔ Marketing preserves the original Atlas design and responsive behavior (0.509253ms)
+✔ compact layout is loaded after Checkpoint A (1.658495ms)
+✔ Operations surfaces only scheduled work and opens details contextually (3.047615ms)
+✔ Home receives one visually focused scheduled-day prompt (0.244107ms)
+✔ marketing and reputation readiness move to Settings (0.231483ms)
+✔ refined layout keeps original Atlas styling and responsive behavior (0.558355ms)
+✔ presentation layer contains no direct database or operational mutation code (0.353071ms)
+✔ Checkpoint A loads from the isolated Phase 3 branch (1.903965ms)
+✔ Checkpoint A presents day-aware routines and daily temperature evidence (0.28838ms)
+✔ Tripadvisor is treated as a bounded reputation connection (0.163156ms)
+✔ Checkpoint A uses the manager API and never writes browser tables directly (0.380242ms)
+✔ Checkpoint A remains responsive and preserves the original Atlas visual system (0.333845ms)
+✔ public operational catalog tables keep RLS enabled (1.469985ms)
+✔ browser roles receive only Data API privileges required by policy (0.478225ms)
+✔ legacy permissive recipe write policies are removed (0.631201ms)
+✔ recipe, ingredient and supplier writes require manager role (1.334528ms)
+✔ duplicate manager policies are removed after the canonical policy set exists (0.738052ms)
+✔ public recipe access remains read-only and menu-visible (0.296515ms)
+✔ Checkpoint H loads through the authenticated Reports gateway (2.182065ms)
+✔ Reports preserves the complete requested navigation surface (0.412342ms)
+✔ period, comparison and custom date controls are functional (0.591077ms)
+✔ global filters expose selections as removable chips (0.248095ms)
+✔ important report values are inspectable and exportable (0.435416ms)
+✔ saved configurations remain permission-safe when reopened (0.308959ms)
+✔ Ask Atlas stays grounded in the current report snapshot (0.48094ms)
+✔ unavailable sales data is never replaced with invented values (0.355776ms)
+✔ browser uses the session gateway without direct private-table access (0.524942ms)
+✔ Reports preserves the Atlas visual system and tablet-first behavior (1.424216ms)
+✔ deploy and private-data boundaries are explicit (12.478521ms)
+✔ public operational-reference templates contain headers only (3.947039ms)
+✔ public runtime, seed, and archived examples do not disclose private supplier identities (8.52572ms)
+✔ release and migration version agree (1.662542ms)
+✔ A.2 staging is review-only for authenticated browser clients (2.2066ms)
+✔ web checkpoint has no missing local asset references (3.298194ms)
+✔ Netlify has one canonical deployed web root (1.789961ms)
+✔ legacy root web copies cannot shadow the deployed application (0.305833ms)
+✔ repository contains the exact five migrations recorded before A.1 (14.797485ms)
+✔ clean environments start from a schema-only legacy baseline (4.381823ms)
+✔ authorization helpers trust only active profile roles (3.005096ms)
+✔ anonymous users have no private inventory or import Data API grants (2.55871ms)
+✔ bartenders and viewers cannot mutate or read cost-bearing canonical tables (3.470928ms)
+✔ active staff have a redacted inventory catalogue (1.49593ms)
+✔ manager browser clients can review staging but cannot create staging rows (2.575552ms)
+✔ only active managers access private import files (2.164993ms)
+✔ trusted service worker retains staging and canonical write access (1.854612ms)
+✔ browser dependencies are pinned with reviewed integrity hashes (1.931746ms)
+✔ no service-role credential is shipped to the browser (0.652772ms)
+✔ Netlify headers cover transport, browser capabilities and both Supabase projects (0.34736ms)
+✖ commercial browser paths are profile-gated and use redacted staff catalogues (4.820587ms)
+✔ Checkpoint F.2 loads the month editor after weekly Shifts (1.768821ms)
+✔ month calendar remains a complete Monday-first monthly grid (0.28886ms)
+✔ managers can create, edit and remove shifts directly from the month (0.329587ms)
+✔ one month publication makes the complete plan visible to staff (0.371896ms)
+✔ published month revisions preserve weekly drill-down and confirmations (0.404878ms)
+✔ month browser uses only the authenticated Shifts gateway (0.423573ms)
+✔ full month editor remains responsive and preserves the Atlas design system (0.531715ms)
+✔ Month bridge loads after the monthly workspace (1.067198ms)
+✔ bridge keeps the Month tab separate from the weekly bubbling handler (0.204633ms)
+✔ every visible Month action has a window-capture fallback (0.281697ms)
+✔ Add shift and Save shift use the authenticated Shifts gateway (0.222245ms)
+✔ Refresh, publish, edit, remove and weekly navigation are restored (0.184214ms)
+✔ bridge contains no privileged key or direct table access (0.269265ms)
+✔ Checkpoint F loads from the isolated Shifts API (1.478217ms)
+✔ weekly planner includes navigation, drafting, copying and publication (0.337692ms)
+✔ availability, time off, confirmations and handover are operational (0.355907ms)
+✔ schedule-only people are supported without creating login accounts (0.252824ms)
+✔ browser uses the authenticated gateway and keeps production shifts untouched (0.767467ms)
+✔ mobile profile photo picker exposes the gallery instead of forcing camera capture (0.260988ms)
+✔ Shifts preserves Atlas styling and responsive mobile behavior (0.547055ms)
+✔ review center loads from an isolated branch-scoped manager API (2.726675ms)
+✔ browser uses Atlas session and never contains a service key (0.505296ms)
+✔ review UI is manager-gated and promotion-free (0.358972ms)
+✔ review UI supports responsive layouts and private-data states (0.204914ms)
+✔ review, briefing and Phase 3 use one isolated branch graph (1.809838ms)
+✔ Daily Briefing presents confidence, source attribution and evidence cards (0.277809ms)
+✔ Daily Briefing does not expose secrets or mutate operational data (1.782728ms)
+✔ Daily Briefing rendering avoids observer loops and locale-dependent grouping (0.275045ms)
+✔ Phase 3 loads from an isolated Brain API (1.975328ms)
+✔ Phase 3 presents recommendations, why explanations, evidence and memory (0.232125ms)
+✔ Phase 3 decisions and outcomes remain manager-mediated shadow feedback (0.738051ms)
+✔ Phase 3 renderer is loop-safe, responsive and preserves original Atlas styling (0.437419ms)
+✔ Checkpoint L1 assets are wired through the authenticated inventory bootstrap (1.466505ms)
+✔ the repository source is valid and the bootstrap retains a defensive repair path (0.362148ms)
+✔ mobile count forms expose all supported observation units (0.291906ms)
+✔ quantity provenance is visible as current, stale, historical or unverified (0.476492ms)
+✔ manager publication is a separate explicit action (0.41165ms)
+✔ the UI does not write inventory tables directly (0.368189ms)
+✔ mobile layouts and count evidence states have dedicated styles (0.266218ms)
+✔ Checkpoint I loads through the isolated authenticated System gateway (1.631844ms)
+✔ System dynamically creates the manager control-room navigation and view (1.904365ms)
+✔ System contains the complete operational control-room sections (0.284072ms)
+✔ Reports remains an honest open incident and release blocker (0.22969ms)
+✔ System is view-only and does not expose destructive controls (0.668922ms)
+✔ System UI never renders privileged secrets or raw credentials (0.528279ms)
+✔ System gateway revalidates production manager access on every request (0.33649ms)
+✔ private System tables are RLS protected and service-role only (0.484217ms)
+✔ System snapshot is service-role only and manager-gated (0.943797ms)
+✔ System preserves original Atlas visual language and responsive behavior (0.858858ms)
+✔ Checkpoint C loads from the isolated team-message API (1.946033ms)
+✔ initial channels are seeded and manager-only announcement state is rendered (0.494154ms)
+✔ messages expose unread, read, edit and deletion controls (0.362739ms)
+✔ composer supports server-verified Atlas record links (0.328936ms)
+✔ polling runs only while Team is visible and pauses during composition (0.56081ms)
+✔ browser uses authenticated gateway instead of direct message table access (0.39506ms)
+✔ Team Messages preserve Atlas design and mobile behavior (0.636181ms)
+✔ Checkpoint E.1 loads through the isolated profile-photo API (1.65557ms)
+✔ profile photos decorate the directory, selected profile and signed-in avatar (1.354305ms)
+✔ staff can choose, resize, upload, replace and remove authorized photos (0.329667ms)
+✔ browser uses the authenticated gateway and no direct Storage or table writes (0.409306ms)
+✔ photo decoration is idempotent and its observer is scoped to Team Profiles (0.388757ms)
+✔ portrait styling preserves Atlas design and responsive behavior (0.397544ms)
+✔ Checkpoint E loads through the isolated Team Profiles API (1.518824ms)
+✔ Team Profiles adds a dedicated People navigation and directory (0.268703ms)
+✔ profile details cover employment, contacts, access and training (0.388097ms)
+✔ sensitive controls are explicitly bounded (0.321953ms)
+✔ browser uses authenticated gateway and no direct database writes (0.649285ms)
+✔ Team Profiles preserves Atlas design and responsive behavior (0.526475ms)
+✔ Team unread worker is loaded after the message workspace (1.762649ms)
+✔ zero badges are removed instead of rendered as a visible zero (0.295152ms)
+✔ unread total refreshes outside Team without racing its read cursor (0.247704ms)
+✔ badge observer is narrowly scoped and avoids self-triggering rewrites (0.208881ms)
+✔ unread worker uses authenticated API only (0.20275ms)
 ℹ tests 164
 ℹ suites 0
-ℹ pass 162
-ℹ fail 2
+ℹ pass 163
+ℹ fail 1
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 656.74801
+ℹ duration_ms 756.996249
 
 ✖ failing tests:
 
-test at tests/node/security-supply-chain.test.js:15:1
-✖ browser dependencies are pinned with reviewed integrity hashes (5.72544ms)
-  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /sha384-m\/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM\/UiO4pSNPV6PT/. Input:
-  
-  '<!DOCTYPE html>\n' +
-    '<html lang="en">\n' +
-    '<head>\n' +
-    '<meta charset="UTF-8" />\n' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />\n' +
-    '<title>VÁ OS · Project Atlas</title>\n' +
-    '<link rel="icon" type="image/png" href="assets/logo/atlas-icon.png">\n' +
-    '<link rel="preconnect" href="https://fonts.googleapis.com">\n' +
-    '<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">\n' +
-    '<link rel="stylesheet" href="assets/css/recipes.css">\n' +
-    '<style>\n' +
-    '  :root{\n' +
-    '    --bg:        #12181A;\n' +
-    '    --surface:   #1B2321;\n' +
-    '    --surface-2: #202A27;\n' +
-    '    --line:      #2E3634;\n' +
-    '    --brass:     #B8874A;\n' +
-    '    --brass-hi:  #D1A268;\n' +
-    '    --wine:      #7A2430;\n' +
-    '    --text:      #EDE8E0;\n' +
-    '    --text-mute: #94A099;\n' +
-    '    --ok:        #6B8F71;\n' +
-    '    --warn:      #C97A4A;\n' +
-    '    --radius: 10px;\n' +
-    '  }\n' +
-    '  *{ box-sizing:border-box; }\n' +
-    '  html,body{ height:100%; }\n' +
-    '  body{\n' +
-    '    margin:0;\n' +
-    '    background:var(--bg);\n' +
-    '    color:var(--text);\n' +
-    "    font-family:'IBM Plex Sans', sans-serif;\n" +
-    '    -webkit-font-smoothing:antialiased;\n' +
-    '  }\n' +
-    "  .display{ font-family:'Fraunces', serif; }\n" +
-    "  .mono{ font-family:'IBM Plex Mono', monospace; }\n" +
-    '  button{ font-family:inherit; }\n' +
-    '  a{ color:var(--brass); }\n' +
-    '\n' +
-    '  /* ---------- LOGIN ---------- */\n' +
-    '  #login-screen{\n' +
-    '    min-height:100vh;\n' +
-    '    display:flex;\n' +
-    '    align-items:center;\n' +
-    '    justify-content:center;\n' +
-    '    position:relative;\n' +
-    '    overflow:hidden;\n' +
-    '    padding:24px;\n' +
-    '  }\n' +
-    '  .watermark{\n' +
-    '    position:absolute;\n' +
-    '    top:-8vw;\n' +
-    '    right:-4vw;\n' +
-    "    font-family:'Fraunces', serif;\n" +
-    '    font-size:38vw;\n' +
-    '    line-height:1;\n' +
-    '    color:var(--surface-2);\n' +
-    '    font-weight:500;\n' +
-    '    user-select:none;\n' +
-    '    pointer-events:none;\n' +
-    '    z-index:0;\n' +
-    '  }\n' +
-    '  .login-card{\n' +
-    '    position:relative;\n' +
-    '    z-index:1;\n' +
-    '    width:100%;\n' +
-    '    max-width:380px;\n' +
-    '    background:var(--surface);\n' +
-    '    border:1px solid var(--line);\n' +
-    '    border-radius:var(--radius);\n' +
-    '    padding:40px 32px;\n' +
-    '  }\n' +
-    '  .login-atlas-mark{\n' +
-    '    width:54px; height:54px; object-fit:contain; display:block; margin:0 0 18px;\n' +
-    '  }\n' +
-    '  .login-card .eyebrow{\n' +
-    '    color:var(--brass);\n' +
-    '    letter-spacing:.14em;\n' +
-    '    text-transform:uppercase;\n' +
-    '    font-size:11px;\n' +
-    '    font-weight:600;\n' +
-    '    margin:0 0 6px;\n' +
-    '  }\n' +
-    '  .login-card h1{\n' +
-    '    font-size:32px;\n' +
-    '    font-weight:500;\n' +
-    '    margin:0 0 4px;\n' +
-    '  }\n' +
-    '  .login-card p.sub{\n' +
-    '    color:var(--text-mute);\n' +
-    '    font-size:14px;\n' +
-    '    margin:0 0 28px;\n' +
-    '  }\n' +
-    '  label{\n' +
-    '    display:block;\n' +
-    '    font-size:12px;\n' +
-    '    color:var(--text-mute);\n' +
-    '    margin:0 0 6px;\n' +
-    '    letter-spacing:.02em;\n' +
-    '  }\n' +
-    '  input[type=email], input[type=password], input[type=text], input[type=number], select{\n' +
-    '    width:100%;\n' +
-    '    background:var(--bg);\n' +
-    '    border:1px solid var(--line);\n' +
-    '    color:var(--text);\n' +
-    '    padding:11px 12px;\n' +
-    '    border-radius:8px;\n' +
-    '    font-size:14px;\n' +
-    '    margin-bottom:18px;\n' +
-    '    outline:none;\n' +
-    '    transition:border-color .15s;\n' +
-    '  }\n' +
-    '  input:focus, select:focus{\n' +
-    '    border-color:var(--brass);\n' +
-    '  }\n' +
-    '  .btn{\n' +
-    '    display:inline-flex;\n' +
-    '    align-items:center;\n' +
-    '    justify-content:center;\n' +
-    '    gap:8px;\n' +
-    '    background:var(--brass);\n' +
-    '    color:#181410;\n' +
-    '    border:none;\n' +
-    '    padding:11px 18px;\n' +
-    '    border-radius:8px;\n' +
-    '    font-size:14px;\n' +
-    '    font-weight:600;\n' +
-    '    cursor:pointer;\n' +
-    '    transition:background .15s;\n' +
-    '  }\n' +
-    '  .btn:hover{ background:var(--brass-hi); }\n' +
-    '  .btn:disabled{ opacity:.5; cursor:default; }\n' +
-    '  .btn.full{ width:100%; }\n' +
-    '  .btn.ghost{\n' +
-    '    background:transparent;\n' +
-    '    color:var(--text-mute);\n' +
-    '    border:1px solid var(--line);\n' +
-    '  }\n' +
-    '  .btn.ghost:hover{ color:var(--text); border-color:var(--text-mute); background:transparent;}\n' +
-    '  .btn.danger{ background:var(--wine); color:var(--text); }\n' +
-    '  .btn.danger:hover{ background:#8f2c3a; }\n' +
-    '\n' +
-    '  .error-msg{\n' +
-    '    background:rgba(122,36,48,.18);\n' +
-    '    border:1px solid var(--wine);\n' +
-    '    color:#e8b9bf;\n' +
-    '    font-size:13px;\n' +
-    '    padding:10px 12px;\n' +
-    '    border-radius:8px;\n' +
-    '    margin-bottom:16px;\n' +
-    '    display:none;\n' +
-    '  }\n' +
-    '\n' +
-    '  /* ---------- DASHBOARD ---------- */\n' +
-    '  #app-screen{ display:none; min-height:100vh; }\n' +
-    '  header.top{\n' +
-    '    position:sticky; top:0; z-index:5;\n' +
-    '    display:flex; align-items:center; justify-content:space-between;\n' +
-    '    padding:16px 24px;\n' +
-    '    background:var(--bg);\n' +
-    '    border-bottom:1px solid var(--line);\n' +
-    '  }\n' +
-    '  .brand{ display:flex; align-items:baseline; gap:10px; }\n' +
-    '  .brand .mark{\n' +
-    "    font-family:'Fraunces', serif;\n" +
-    '    font-size:22px;\n' +
-    '    color:var(--brass);\n' +
-    '  }\n' +
-    '  .brand .title{ font-size:14px; color:var(--text-mute); letter-spacing:.06em; text-transform:uppercase; }\n' +
-    '  .who{ display:flex; align-items:center; gap:14px; font-size:13px; color:var(--text-mute); }\n' +
-    '\n' +
-    '  main{ max-width:960px; margin:0 auto; padding:24px; }\n' +
-    '\n' +
-    '  .toolbar{\n' +
-    '    display:flex; align-items:center; justify-content:space-between;\n' +
-    '    gap:12px; margin-bottom:20px; flex-wrap:wrap;\n' +
-    '  }\n' +
-    '  .tabs{ display:flex; gap:6px; flex-wrap:wrap; }\n' +
-    '  .tab{\n' +
-    '    padding:7px 14px; border-radius:20px; border:1px solid var(--line);\n' +
-    '    background:transparent; color:var(--text-mute); font-size:13px; cursor:pointer;\n' +
-    '  }\n' +
-    '  .tab.active{ background:var(--surface); color:var(--text); border-color:var(--brass); }\n' +
-    '\n' +
-    '  .low-stock-banner{\n' +
-    '    display:none;\n' +
-    '    align-items:center; gap:8px;\n' +
-    '    background:rgba(201,122,74,.12);\n' +
-    '    border:1px solid var(--warn);\n' +
-    '    color:var(--warn);\n' +
-    '    font-size:13px;\n' +
-    '    padding:10px 14px;\n' +
-    '    border-radius:8px;\n' +
-    '    margin-bottom:16px;\n' +
-    '  }\n' +
-    '\n' +
-    '  table{ width:100%; border-collapse:collapse; }\n' +
-    '  thead th{\n' +
-    '    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.08em;\n' +
-    '    color:var(--text-mute); font-weight:600; padding:0 10px 10px; border-bottom:1px solid var(--line);\n' +
-    '  }\n' +
-    '  tbody tr{ border-bottom:1px solid var(--line); }\n' +
-    '  tbody tr:hover{ background:var(--surface); }\n' +
-    '  td{ padding:12px 10px; font-size:14px; vertical-align:middle; }\n' +
-    '  td.name{ font-weight:500; }\n' +
-    '  td.cat{ color:var(--text-mute); font-size:12px; text-transform:capitalize; }\n' +
-    '  .qty-input{\n' +
-    '    width:80px; margin:0; padding:7px 8px; font-size:14px;\n' +
-    '    background:var(--surface); border:1px solid var(--line); border-radius:6px; color:var(--text);\n' +
-    '  }\n' +
-    '  .qty-input:focus{ border-color:var(--brass); }\n' +
-    '  .unit{ color:var(--text-mute); font-size:12px; margin-left:6px; }\n' +
-    '  .qty-cell{ display:flex; align-items:center; gap:6px; }\n' +
-    '  .step-btn{\n' +
-    '    width:26px; height:26px; border-radius:6px; border:1px solid var(--line);\n' +
-    '    background:var(--surface); color:var(--text); font-size:14px; cursor:pointer; line-height:1;\n' +
-    '  }\n' +
-    '  .step-btn:hover{ border-color:var(--brass); color:var(--brass-hi); }\n' +
-    '  .low-flag{\n' +
-    "    color:var(--warn); font-family:'Fraunces', serif; font-size:16px; margin-left:6px;\n" +
-    '  }\n' +
-    '  .meta{ color:var(--text-mute); font-size:12px; }\n' +
-    '  .row-actions{ display:flex; gap:6px; }\n' +
-    '  .icon-btn{\n' +
-    '    background:transparent; border:1px solid var(--line); color:var(--text-mute);\n' +
-    '    width:30px; height:30px; border-radius:6px; cursor:pointer; font-size:14px;\n' +
-    '  }\n' +
-    '  .icon-btn:hover{ color:var(--text); border-color:var(--text-mute); }\n' +
-    '\n' +
-    '  .empty-state{\n' +
-    '    text-align:center; padding:60px 20px; color:var(--text-mute);\n' +
-    '  }\n' +
-    "  .empty-state .mark{ font-family:'Fraunces', serif; font-size:40px; color:var(--surface-2); display:block; margin-bottom:12px; }\n" +
-    '\n' +
-    '  /* ---------- MODAL ---------- */\n' +
-    '  .overlay{\n' +
-    '    display:none; position:fixed; inset:0; background:rgba(10,12,11,.6);\n' +
-    '    align-items:center; justify-content:center; z-index:20; padding:20px;\n' +
-    '  }\n' +
-    '  .modal{\n' +
-    '    background:var(--surface); border:1px solid var(--line); border-radius:16px;\n' +
-    '    width:100%; max-width:420px; max-height:calc(100vh - 40px);\n' +
-    '    overflow-y:auto; overscroll-behavior:contain; padding:28px;\n' +
-    '    box-shadow:0 22px 70px rgba(30,25,18,.18);\n' +
-    '  }\n' +
-    '  .modal.item-modal{ max-width:920px; padding:0; overflow:hidden; display:flex; flex-direction:column; }\n' +
-    '  .modal-header{\n' +
-    '    display:flex; align-items:center; justify-content:space-between; gap:16px;\n' +
-    '    padding:24px 28px 18px; border-bottom:1px solid var(--line); flex:0 0 auto;\n' +
-    '  }\n' +
-    '  .modal-header h2{ margin:0; }\n' +
-    '  .modal-close{\n' +
-    '    width:38px; height:38px; border:1px solid var(--line); border-radius:10px;\n' +
-    '    background:var(--surface); color:var(--text); cursor:pointer; font-size:22px; line-height:1;\n' +
-    '  }\n' +
-    '  .modal-scroll{ padding:24px 28px 8px; overflow-y:auto; min-height:0; }\n' +
-    '  .item-form-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 26px; }\n' +
-    '  .form-field{ min-width:0; }\n' +
-    '  .modal-footer{\n' +
-    '    display:flex; justify-content:flex-end; gap:10px; padding:16px 28px;\n' +
-    '    border-top:1px solid var(--line); background:rgba(255,255,255,.96);\n' +
-    '    position:sticky; bottom:0; z-index:2; flex:0 0 auto;\n' +
-    '  }\n' +
-    '  .modal-footer .btn{ min-width:120px; }\n' +
-    "  .modal h2{ font-family:'Fraunces', serif; font-weight:500; font-size:22px; margin:0 0 20px; }\n" +
-    '  .modal-actions{ display:flex; gap:10px; margin-top:4px; }\n' +
-    '  .modal-actions .btn{ flex:1; }\n' +
-    '\n' +
-    '  @media (max-width:720px){\n' +
-    '    thead th:nth-child(3), td:nth-child(3){ display:none; } /* hide "updated" col on mobile */\n' +
-    '    .login-card{ padding:32px 22px; }\n' +
-    '    .overlay{ padding:0; align-items:flex-end; }\n' +
-    '    .modal.item-modal{ max-width:none; width:100%; max-height:94vh; border-radius:18px 18px 0 0; }\n' +
-    '    .item-form-grid{ grid-template-columns:1fr; }\n' +
-    '    .modal-header{ padding:18px 20px 14px; }\n' +
-    '    .modal-scroll{ padding:18px 20px 4px; }\n' +
-    '    .modal-footer{ padding:14px 20px calc(14px + env(safe-area-inset-bottom)); }\n' +
-    '    .modal-footer .btn{ flex:1; min-width:0; }\n' +
-    '  }\n' +
-    '\n' +
-    '  /* ---------- VIEW SWITCH ---------- */\n' +
-    '  .view-switch{ display:flex; gap:6px; margin-bottom:20px; }\n' +
-    '  .view-btn{\n' +
-    '    padding:8px 16px; border-radius:8px; border:1px solid var(--line);\n' +
-    '    background:transparent; color:var(--text-mute); font-size:13px; cursor:pointer; font-weight:500;\n' +
-    '  }\n' +
-    '  .view-btn.active{ background:var(--brass); color:#181410; border-color:var(--brass); }\n' +
-    '\n' +
-    '  /* ---------- ALERT (low stock) ---------- */\n' +
-    '  .alert-banner{\n' +
-    '    display:none; align-items:center; gap:10px;\n' +
-    '    background:rgba(201,122,74,.15);\n' +
-    '    border:1px solid var(--warn);\n' +
-    '    color:var(--warn);\n' +
-    '    font-size:14px; font-weight:500;\n' +
-    '    padding:14px 16px;\n' +
-    '    border-radiu'... 114664 more characters
-  
-      at TestContext.<anonymous> (file:///home/runner/work/-V-OS-/-V-OS-/tests/node/security-supply-chain.test.js:20:67)
-      at Test.runInAsyncScope (node:async_hooks:227:14)
-      at Test.run (node:internal/test_runner/test:1325:25)
-      at Test.start (node:internal/test_runner/test:1191:17)
-      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
-    generatedMessage: true,
-    code: 'ERR_ASSERTION',
-    actual: `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8" />\n<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />\n<title>VÁ OS · Project Atlas</title>\n<link rel="icon" type="image/png" href="assets/logo/atlas-icon.png">\n<link rel="preconnect" href="https://fonts.googleapis.com">\n<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">\n<link rel="stylesheet" href="assets/css/recipes.css">\n<style>\n  :root{\n    --bg:        #12181A;\n    --surface:   #1B2321;\n    --surface-2: #202A27;\n    --line:      #2E3634;\n    --brass:     #B8874A;\n    --brass-hi:  #D1A268;\n    --wine:      #7A2430;\n    --text:      #EDE8E0;\n    --text-mute: #94A099;\n    --ok:        #6B8F71;\n    --warn:      #C97A4A;\n    --radius: 10px;\n  }\n  *{ box-sizing:border-box; }\n  html,body{ height:100%; }\n  body{\n    margin:0;\n    background:var(--bg);\n    color:var(--text);\n    font-family:'IBM Plex Sans', sans-serif;\n    -webkit-font-smoothing:antialiased;\n  }\n  .display{ font-family:'Fraunces', serif; }\n  .mono{ font-family:'IBM Plex Mono', monospace; }\n  button{ font-family:inherit; }\n  a{ color:var(--brass); }\n\n  /* ---------- LOGIN ---------- */\n  #login-screen{\n    min-height:100vh;\n    display:flex;\n    align-items:center;\n    justify-content:center;\n    position:relative;\n    overflow:hidden;\n    padding:24px;\n  }\n  .watermark{\n    position:absolute;\n    top:-8vw;\n    right:-4vw;\n    font-family:'Fraunces', serif;\n    font-size:38vw;\n    line-height:1;\n    color:var(--surface-2);\n    font-weight:500;\n    user-select:none;\n    pointer-events:none;\n    z-index:0;\n  }\n  .login-card{\n    position:relative;\n    z-index:1;\n    width:100%;\n    max-width:380px;\n    background:var(--surface);\n    border:1px solid var(--line);\n    border-radius:var(--radius);\n    padding:40px 32px;\n  }\n  .login-atlas-mark{\n    width:54px; height:54px; object-fit:contain; display:block; margin:0 0 18px;\n  }\n  .login-card .eyebrow{\n    color:var(--brass);\n    letter-spacing:.14em;\n    text-transform:uppercase;\n    font-size:11px;\n    font-weight:600;\n    margin:0 0 6px;\n  }\n  .login-card h1{\n    font-size:32px;\n    font-weight:500;\n    margin:0 0 4px;\n  }\n  .login-card p.sub{\n    color:var(--text-mute);\n    font-size:14px;\n    margin:0 0 28px;\n  }\n  label{\n    display:block;\n    font-size:12px;\n    color:var(--text-mute);\n    margin:0 0 6px;\n    letter-spacing:.02em;\n  }\n  input[type=email], input[type=password], input[type=text], input[type=number], select{\n    width:100%;\n    background:var(--bg);\n    border:1px solid var(--line);\n    color:var(--text);\n    padding:11px 12px;\n    border-radius:8px;\n    font-size:14px;\n    margin-bottom:18px;\n    outline:none;\n    transition:border-color .15s;\n  }\n  input:focus, select:focus{\n    border-color:var(--brass);\n  }\n  .btn{\n    display:inline-flex;\n    align-items:center;\n    justify-content:center;\n    gap:8px;\n    background:var(--brass);\n    color:#181410;\n    border:none;\n    padding:11px 18px;\n    border-radius:8px;\n    font-size:14px;\n    font-weight:600;\n    cursor:pointer;\n    transition:background .15s;\n  }\n  .btn:hover{ background:var(--brass-hi); }\n  .btn:disabled{ opacity:.5; cursor:default; }\n  .btn.full{ width:100%; }\n  .btn.ghost{\n    background:transparent;\n    color:var(--text-mute);\n    border:1px solid var(--line);\n  }\n  .btn.ghost:hover{ color:var(--text); border-color:var(--text-mute); background:transparent;}\n  .btn.danger{ background:var(--wine); color:var(--text); }\n  .btn.danger:hover{ background:#8f2c3a; }\n\n  .error-msg{\n    background:rgba(122,36,48,.18);\n    border:1px solid var(--wine);\n    color:#e8b9bf;\n    font-size:13px;\n    padding:10px 12px;\n    border-radius:8px;\n    margin-bottom:16px;\n    display:none;\n  }\n\n  /* ---------- DASHBOARD ---------- */\n  #app-screen{ display:none; min-height:100vh; }\n  header.top{\n    position:sticky; top:0; z-index:5;\n    display:flex; align-items:center; justify-content:space-between;\n    padding:16px 24px;\n    background:var(--bg);\n    border-bottom:1px solid var(--line);\n  }\n  .brand{ display:flex; align-items:baseline; gap:10px; }\n  .brand .mark{\n    font-family:'Fraunces', serif;\n    font-size:22px;\n    color:var(--brass);\n  }\n  .brand .title{ font-size:14px; color:var(--text-mute); letter-spacing:.06em; text-transform:uppercase; }\n  .who{ display:flex; align-items:center; gap:14px; font-size:13px; color:var(--text-mute); }\n\n  main{ max-width:960px; margin:0 auto; padding:24px; }\n\n  .toolbar{\n    display:flex; align-items:center; justify-content:space-between;\n    gap:12px; margin-bottom:20px; flex-wrap:wrap;\n  }\n  .tabs{ display:flex; gap:6px; flex-wrap:wrap; }\n  .tab{\n    padding:7px 14px; border-radius:20px; border:1px solid var(--line);\n    background:transparent; color:var(--text-mute); font-size:13px; cursor:pointer;\n  }\n  .tab.active{ background:var(--surface); color:var(--text); border-color:var(--brass); }\n\n  .low-stock-banner{\n    display:none;\n    align-items:center; gap:8px;\n    background:rgba(201,122,74,.12);\n    border:1px solid var(--warn);\n    color:var(--warn);\n    font-size:13px;\n    padding:10px 14px;\n    border-radius:8px;\n    margin-bottom:16px;\n  }\n\n  table{ width:100%; border-collapse:collapse; }\n  thead th{\n    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.08em;\n    color:var(--text-mute); font-weight:600; padding:0 10px 10px; border-bottom:1px solid var(--line);\n  }\n  tbody tr{ border-bottom:1px solid var(--line); }\n  tbody tr:hover{ background:var(--surface); }\n  td{ padding:12px 10px; font-size:14px; vertical-align:middle; }\n  td.name{ font-weight:500; }\n  td.cat{ color:var(--text-mute); font-size:12px; text-transform:capitalize; }\n  .qty-input{\n    width:80px; margin:0; padding:7px 8px; font-size:14px;\n    background:var(--surface); border:1px solid var(--line); border-radius:6px; color:var(--text);\n  }\n  .qty-input:focus{ border-color:var(--brass); }\n  .unit{ color:var(--text-mute); font-size:12px; margin-left:6px; }\n  .qty-cell{ display:flex; align-items:center; gap:6px; }\n  .step-btn{\n    width:26px; height:26px; border-radius:6px; border:1px solid var(--line);\n    background:var(--surface); color:var(--text); font-size:14px; cursor:pointer; line-height:1;\n  }\n  .step-btn:hover{ border-color:var(--brass); color:var(--brass-hi); }\n  .low-flag{\n    color:var(--warn); font-family:'Fraunces', serif; font-size:16px; margin-left:6px;\n  }\n  .meta{ color:var(--text-mute); font-size:12px; }\n  .row-actions{ display:flex; gap:6px; }\n  .icon-btn{\n    background:transparent; border:1px solid var(--line); color:var(--text-mute);\n    width:30px; height:30px; border-radius:6px; cursor:pointer; font-size:14px;\n  }\n  .icon-btn:hover{ color:var(--text); border-color:var(--text-mute); }\n\n  .empty-state{\n    text-align:center; padding:60px 20px; color:var(--text-mute);\n  }\n  .empty-state .mark{ font-family:'Fraunces', serif; font-size:40px; color:var(--surface-2); display:block; margin-bottom:12px; }\n\n  /* ---------- MODAL ---------- */\n  .overlay{\n    display:none; position:fixed; inset:0; background:rgba(10,12,11,.6);\n    align-items:center; justify-content:center; z-index:20; padding:20px;\n  }\n  .modal{\n    background:var(--surface); border:1px solid var(--line); border-radius:16px;\n    width:100%; max-width:420px; max-height:calc(100vh - 40px);\n    overflow-y:auto; overscroll-behavior:contain; padding:28px;\n    box-shadow:0 22px 70px rgba(30,25,18,.18);\n  }\n  .modal.item-modal{ max-width:920px; padding:0; overflow:hidden; display:flex; flex-direction:column; }\n  .modal-header{\n    display:flex; align-items:center; justify-content:space-between; gap:16px;\n    padding:24px 28px 18px; border-bottom:1px solid var(--line); flex:0 0 auto;\n  }\n  .modal-header h2{ margin:0; }\n  .modal-close{\n    width:38px; height:38px; border:1px solid var(--line); border-radius:10px;\n    background:var(--surface); color:var(--text); cursor:pointer; font-size:22px; line-height:1;\n  }\n  .modal-scroll{ padding:24px 28px 8px; overflow-y:auto; min-height:0; }\n  .item-form-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 26px; }\n  .form-field{ min-width:0; }\n  .modal-footer{\n    display:flex; justify-content:flex-end; gap:10px; padding:16px 28px;\n    border-top:1px solid var(--line); background:rgba(255,255,255,.96);\n    position:sticky; bottom:0; z-index:2; flex:0 0 auto;\n  }\n  .modal-footer .btn{ min-width:120px; }\n  .modal h2{ font-family:'Fraunces', serif; font-weight:500; font-size:22px; margin:0 0 20px; }\n  .modal-actions{ display:flex; gap:10px; margin-top:4px; }\n  .modal-actions .btn{ flex:1; }\n\n  @media (max-width:720px){\n    thead th:nth-child(3), td:nth-child(3){ display:none; } /* hide "updated" col on mobile */\n    .login-card{ padding:32px 22px; }\n    .overlay{ padding:0; align-items:flex-end; }\n    .modal.item-modal{ max-width:none; width:100%; max-height:94vh; border-radius:18px 18px 0 0; }\n    .item-form-grid{ grid-template-columns:1fr; }\n    .modal-header{ padding:18px 20px 14px; }\n    .modal-scroll{ padding:18px 20px 4px; }\n    .modal-footer{ padding:14px 20px calc(14px + env(safe-area-inset-bottom)); }\n    .modal-footer .btn{ flex:1; min-width:0; }\n  }\n\n  /* ---------- VIEW SWITCH ---------- */\n  .view-switch{ display:flex; gap:6px; margin-bottom:20px; }\n  .view-btn{\n    padding:8px 16px; border-radius:8px; border:1px solid var(--line);\n    background:transparent; color:var(--text-mute); font-size:13px; cursor:pointer; font-weight:500;\n  }\n  .view-btn.active{ background:var(--brass); color:#181410; border-color:var(--brass); }\n\n  /* ---------- ALERT (low stock) ---------- */\n  .alert-banner{\n    display:none; align-items:center; gap:10px;\n    background:rgba(201,122,74,.15);\n    border:1px solid var(--warn);\n    color:var(--warn);\n    font-size:14px; font-weight:500;\n    padding:14px 16px;\n    border-radiu`... 114664 more characters,
-    expected: /sha384-m\/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM\/UiO4pSNPV6PT/,
-    operator: 'match',
-    diff: 'simple'
-  }
-
 test at tests/node/security-supply-chain.test.js:41:1
-✖ commercial browser paths are profile-gated and use redacted staff catalogues (2.124998ms)
-  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /updated_by:\s*currentUser/. Input:
+✖ commercial browser paths are profile-gated and use redacted staff catalogues (4.820587ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /updated_by:\s*currentUser(?:\.id|\?\.id)?/. Input:
   
   '<!DOCTYPE html>\n' +
     '<html lang="en">\n' +
@@ -808,7 +493,7 @@ test at tests/node/security-supply-chain.test.js:41:1
     generatedMessage: true,
     code: 'ERR_ASSERTION',
     actual: `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8" />\n<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />\n<title>VÁ OS · Project Atlas</title>\n<link rel="icon" type="image/png" href="assets/logo/atlas-icon.png">\n<link rel="preconnect" href="https://fonts.googleapis.com">\n<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">\n<link rel="stylesheet" href="assets/css/recipes.css">\n<style>\n  :root{\n    --bg:        #12181A;\n    --surface:   #1B2321;\n    --surface-2: #202A27;\n    --line:      #2E3634;\n    --brass:     #B8874A;\n    --brass-hi:  #D1A268;\n    --wine:      #7A2430;\n    --text:      #EDE8E0;\n    --text-mute: #94A099;\n    --ok:        #6B8F71;\n    --warn:      #C97A4A;\n    --radius: 10px;\n  }\n  *{ box-sizing:border-box; }\n  html,body{ height:100%; }\n  body{\n    margin:0;\n    background:var(--bg);\n    color:var(--text);\n    font-family:'IBM Plex Sans', sans-serif;\n    -webkit-font-smoothing:antialiased;\n  }\n  .display{ font-family:'Fraunces', serif; }\n  .mono{ font-family:'IBM Plex Mono', monospace; }\n  button{ font-family:inherit; }\n  a{ color:var(--brass); }\n\n  /* ---------- LOGIN ---------- */\n  #login-screen{\n    min-height:100vh;\n    display:flex;\n    align-items:center;\n    justify-content:center;\n    position:relative;\n    overflow:hidden;\n    padding:24px;\n  }\n  .watermark{\n    position:absolute;\n    top:-8vw;\n    right:-4vw;\n    font-family:'Fraunces', serif;\n    font-size:38vw;\n    line-height:1;\n    color:var(--surface-2);\n    font-weight:500;\n    user-select:none;\n    pointer-events:none;\n    z-index:0;\n  }\n  .login-card{\n    position:relative;\n    z-index:1;\n    width:100%;\n    max-width:380px;\n    background:var(--surface);\n    border:1px solid var(--line);\n    border-radius:var(--radius);\n    padding:40px 32px;\n  }\n  .login-atlas-mark{\n    width:54px; height:54px; object-fit:contain; display:block; margin:0 0 18px;\n  }\n  .login-card .eyebrow{\n    color:var(--brass);\n    letter-spacing:.14em;\n    text-transform:uppercase;\n    font-size:11px;\n    font-weight:600;\n    margin:0 0 6px;\n  }\n  .login-card h1{\n    font-size:32px;\n    font-weight:500;\n    margin:0 0 4px;\n  }\n  .login-card p.sub{\n    color:var(--text-mute);\n    font-size:14px;\n    margin:0 0 28px;\n  }\n  label{\n    display:block;\n    font-size:12px;\n    color:var(--text-mute);\n    margin:0 0 6px;\n    letter-spacing:.02em;\n  }\n  input[type=email], input[type=password], input[type=text], input[type=number], select{\n    width:100%;\n    background:var(--bg);\n    border:1px solid var(--line);\n    color:var(--text);\n    padding:11px 12px;\n    border-radius:8px;\n    font-size:14px;\n    margin-bottom:18px;\n    outline:none;\n    transition:border-color .15s;\n  }\n  input:focus, select:focus{\n    border-color:var(--brass);\n  }\n  .btn{\n    display:inline-flex;\n    align-items:center;\n    justify-content:center;\n    gap:8px;\n    background:var(--brass);\n    color:#181410;\n    border:none;\n    padding:11px 18px;\n    border-radius:8px;\n    font-size:14px;\n    font-weight:600;\n    cursor:pointer;\n    transition:background .15s;\n  }\n  .btn:hover{ background:var(--brass-hi); }\n  .btn:disabled{ opacity:.5; cursor:default; }\n  .btn.full{ width:100%; }\n  .btn.ghost{\n    background:transparent;\n    color:var(--text-mute);\n    border:1px solid var(--line);\n  }\n  .btn.ghost:hover{ color:var(--text); border-color:var(--text-mute); background:transparent;}\n  .btn.danger{ background:var(--wine); color:var(--text); }\n  .btn.danger:hover{ background:#8f2c3a; }\n\n  .error-msg{\n    background:rgba(122,36,48,.18);\n    border:1px solid var(--wine);\n    color:#e8b9bf;\n    font-size:13px;\n    padding:10px 12px;\n    border-radius:8px;\n    margin-bottom:16px;\n    display:none;\n  }\n\n  /* ---------- DASHBOARD ---------- */\n  #app-screen{ display:none; min-height:100vh; }\n  header.top{\n    position:sticky; top:0; z-index:5;\n    display:flex; align-items:center; justify-content:space-between;\n    padding:16px 24px;\n    background:var(--bg);\n    border-bottom:1px solid var(--line);\n  }\n  .brand{ display:flex; align-items:baseline; gap:10px; }\n  .brand .mark{\n    font-family:'Fraunces', serif;\n    font-size:22px;\n    color:var(--brass);\n  }\n  .brand .title{ font-size:14px; color:var(--text-mute); letter-spacing:.06em; text-transform:uppercase; }\n  .who{ display:flex; align-items:center; gap:14px; font-size:13px; color:var(--text-mute); }\n\n  main{ max-width:960px; margin:0 auto; padding:24px; }\n\n  .toolbar{\n    display:flex; align-items:center; justify-content:space-between;\n    gap:12px; margin-bottom:20px; flex-wrap:wrap;\n  }\n  .tabs{ display:flex; gap:6px; flex-wrap:wrap; }\n  .tab{\n    padding:7px 14px; border-radius:20px; border:1px solid var(--line);\n    background:transparent; color:var(--text-mute); font-size:13px; cursor:pointer;\n  }\n  .tab.active{ background:var(--surface); color:var(--text); border-color:var(--brass); }\n\n  .low-stock-banner{\n    display:none;\n    align-items:center; gap:8px;\n    background:rgba(201,122,74,.12);\n    border:1px solid var(--warn);\n    color:var(--warn);\n    font-size:13px;\n    padding:10px 14px;\n    border-radius:8px;\n    margin-bottom:16px;\n  }\n\n  table{ width:100%; border-collapse:collapse; }\n  thead th{\n    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.08em;\n    color:var(--text-mute); font-weight:600; padding:0 10px 10px; border-bottom:1px solid var(--line);\n  }\n  tbody tr{ border-bottom:1px solid var(--line); }\n  tbody tr:hover{ background:var(--surface); }\n  td{ padding:12px 10px; font-size:14px; vertical-align:middle; }\n  td.name{ font-weight:500; }\n  td.cat{ color:var(--text-mute); font-size:12px; text-transform:capitalize; }\n  .qty-input{\n    width:80px; margin:0; padding:7px 8px; font-size:14px;\n    background:var(--surface); border:1px solid var(--line); border-radius:6px; color:var(--text);\n  }\n  .qty-input:focus{ border-color:var(--brass); }\n  .unit{ color:var(--text-mute); font-size:12px; margin-left:6px; }\n  .qty-cell{ display:flex; align-items:center; gap:6px; }\n  .step-btn{\n    width:26px; height:26px; border-radius:6px; border:1px solid var(--line);\n    background:var(--surface); color:var(--text); font-size:14px; cursor:pointer; line-height:1;\n  }\n  .step-btn:hover{ border-color:var(--brass); color:var(--brass-hi); }\n  .low-flag{\n    color:var(--warn); font-family:'Fraunces', serif; font-size:16px; margin-left:6px;\n  }\n  .meta{ color:var(--text-mute); font-size:12px; }\n  .row-actions{ display:flex; gap:6px; }\n  .icon-btn{\n    background:transparent; border:1px solid var(--line); color:var(--text-mute);\n    width:30px; height:30px; border-radius:6px; cursor:pointer; font-size:14px;\n  }\n  .icon-btn:hover{ color:var(--text); border-color:var(--text-mute); }\n\n  .empty-state{\n    text-align:center; padding:60px 20px; color:var(--text-mute);\n  }\n  .empty-state .mark{ font-family:'Fraunces', serif; font-size:40px; color:var(--surface-2); display:block; margin-bottom:12px; }\n\n  /* ---------- MODAL ---------- */\n  .overlay{\n    display:none; position:fixed; inset:0; background:rgba(10,12,11,.6);\n    align-items:center; justify-content:center; z-index:20; padding:20px;\n  }\n  .modal{\n    background:var(--surface); border:1px solid var(--line); border-radius:16px;\n    width:100%; max-width:420px; max-height:calc(100vh - 40px);\n    overflow-y:auto; overscroll-behavior:contain; padding:28px;\n    box-shadow:0 22px 70px rgba(30,25,18,.18);\n  }\n  .modal.item-modal{ max-width:920px; padding:0; overflow:hidden; display:flex; flex-direction:column; }\n  .modal-header{\n    display:flex; align-items:center; justify-content:space-between; gap:16px;\n    padding:24px 28px 18px; border-bottom:1px solid var(--line); flex:0 0 auto;\n  }\n  .modal-header h2{ margin:0; }\n  .modal-close{\n    width:38px; height:38px; border:1px solid var(--line); border-radius:10px;\n    background:var(--surface); color:var(--text); cursor:pointer; font-size:22px; line-height:1;\n  }\n  .modal-scroll{ padding:24px 28px 8px; overflow-y:auto; min-height:0; }\n  .item-form-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 26px; }\n  .form-field{ min-width:0; }\n  .modal-footer{\n    display:flex; justify-content:flex-end; gap:10px; padding:16px 28px;\n    border-top:1px solid var(--line); background:rgba(255,255,255,.96);\n    position:sticky; bottom:0; z-index:2; flex:0 0 auto;\n  }\n  .modal-footer .btn{ min-width:120px; }\n  .modal h2{ font-family:'Fraunces', serif; font-weight:500; font-size:22px; margin:0 0 20px; }\n  .modal-actions{ display:flex; gap:10px; margin-top:4px; }\n  .modal-actions .btn{ flex:1; }\n\n  @media (max-width:720px){\n    thead th:nth-child(3), td:nth-child(3){ display:none; } /* hide "updated" col on mobile */\n    .login-card{ padding:32px 22px; }\n    .overlay{ padding:0; align-items:flex-end; }\n    .modal.item-modal{ max-width:none; width:100%; max-height:94vh; border-radius:18px 18px 0 0; }\n    .item-form-grid{ grid-template-columns:1fr; }\n    .modal-header{ padding:18px 20px 14px; }\n    .modal-scroll{ padding:18px 20px 4px; }\n    .modal-footer{ padding:14px 20px calc(14px + env(safe-area-inset-bottom)); }\n    .modal-footer .btn{ flex:1; min-width:0; }\n  }\n\n  /* ---------- VIEW SWITCH ---------- */\n  .view-switch{ display:flex; gap:6px; margin-bottom:20px; }\n  .view-btn{\n    padding:8px 16px; border-radius:8px; border:1px solid var(--line);\n    background:transparent; color:var(--text-mute); font-size:13px; cursor:pointer; font-weight:500;\n  }\n  .view-btn.active{ background:var(--brass); color:#181410; border-color:var(--brass); }\n\n  /* ---------- ALERT (low stock) ---------- */\n  .alert-banner{\n    display:none; align-items:center; gap:10px;\n    background:rgba(201,122,74,.15);\n    border:1px solid var(--warn);\n    color:var(--warn);\n    font-size:14px; font-weight:500;\n    padding:14px 16px;\n    border-radiu`... 97584 more characters,
-    expected: /updated_by:\s*currentUser/,
+    expected: /updated_by:\s*currentUser(?:\.id|\?\.id)?/,
     operator: 'doesNotMatch',
     diff: 'simple'
   }
