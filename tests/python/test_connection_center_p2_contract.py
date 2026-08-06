@@ -5,13 +5,13 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_FILES = [
-    ROOT / "supabase/migrations/20260806190744_atlas_connections_p2_registry.sql",
-    ROOT / "supabase/migrations/20260806190833_atlas_connections_p2_evidence.sql",
-    ROOT / "supabase/migrations/20260806190928_atlas_connections_p2_snapshot.sql",
-    ROOT / "supabase/migrations/20260806191017_atlas_connections_p2_checks.sql",
-    ROOT / "supabase/migrations/20260806191056_atlas_connections_p2_capabilities.sql",
-    ROOT / "supabase/migrations/20260806191151_atlas_connections_p2_seeds_api.sql",
-    ROOT / "supabase/migrations/20260806192234_atlas_connections_p2_legacy_compatibility.sql",
+    ROOT / "supabase/migrations/20260806194450_atlas_connections_p2_registry.sql",
+    ROOT / "supabase/migrations/20260806194524_atlas_connections_p2_evidence.sql",
+    ROOT / "supabase/migrations/20260806194611_atlas_connections_p2_snapshot.sql",
+    ROOT / "supabase/migrations/20260806194646_atlas_connections_p2_checks.sql",
+    ROOT / "supabase/migrations/20260806194714_atlas_connections_p2_capabilities.sql",
+    ROOT / "supabase/migrations/20260806194753_atlas_connections_p2_seeds_api.sql",
+    ROOT / "supabase/migrations/20260806194922_atlas_connections_p2_legacy_compatibility.sql",
 ]
 MIGRATION = "\n".join(path.read_text() for path in MIGRATION_FILES)
 COMPATIBILITY = MIGRATION_FILES[-1].read_text()

@@ -6,13 +6,13 @@ const browser = readFileSync('apps/web/assets/js/connection-center.js', 'utf8');
 const loader = readFileSync('apps/web/assets/js/settings-mount-bridge.js', 'utf8');
 const edge = readFileSync('supabase/functions/atlas-connections/index.ts', 'utf8');
 const migrationFiles = [
-  'supabase/migrations/20260806190744_atlas_connections_p2_registry.sql',
-  'supabase/migrations/20260806190833_atlas_connections_p2_evidence.sql',
-  'supabase/migrations/20260806190928_atlas_connections_p2_snapshot.sql',
-  'supabase/migrations/20260806191017_atlas_connections_p2_checks.sql',
-  'supabase/migrations/20260806191056_atlas_connections_p2_capabilities.sql',
-  'supabase/migrations/20260806191151_atlas_connections_p2_seeds_api.sql',
-  'supabase/migrations/20260806192234_atlas_connections_p2_legacy_compatibility.sql'
+  'supabase/migrations/20260806194450_atlas_connections_p2_registry.sql',
+  'supabase/migrations/20260806194524_atlas_connections_p2_evidence.sql',
+  'supabase/migrations/20260806194611_atlas_connections_p2_snapshot.sql',
+  'supabase/migrations/20260806194646_atlas_connections_p2_checks.sql',
+  'supabase/migrations/20260806194714_atlas_connections_p2_capabilities.sql',
+  'supabase/migrations/20260806194753_atlas_connections_p2_seeds_api.sql',
+  'supabase/migrations/20260806194922_atlas_connections_p2_legacy_compatibility.sql'
 ];
 const migration = migrationFiles.map((path) => readFileSync(path, 'utf8')).join('\n');
 const compatibility = readFileSync(migrationFiles.at(-1), 'utf8');
