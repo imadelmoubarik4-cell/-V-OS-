@@ -9,6 +9,7 @@ MIGRATION = (
 ).read_text()
 EDGE = (ROOT / "supabase/functions/atlas-settings/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
+BRIDGE = (ROOT / "apps/web/assets/js/settings-mount-bridge.js").read_text()
 
 
 def function_arguments(function_name: str) -> str:
@@ -180,6 +181,12 @@ class SettingsCheckpointJContractTests(unittest.TestCase):
             CONFIG,
             r"\[functions\.atlas-settings\]\s+verify_jwt\s*=\s*false",
         )
+
+    def test_primary_settings_actions_keep_readable_contrast(self):
+        self.assertIn("BUTTON_CONTRAST_STYLE_ID", BRIDGE)
+        self.assertIn(".settings-view .settings-primary", BRIDGE)
+        self.assertIn("color:#fff", BRIDGE)
+        self.assertIn("ensureButtonContrast", BRIDGE)
 
 
 if __name__ == "__main__":
