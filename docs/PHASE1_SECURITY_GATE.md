@@ -14,6 +14,7 @@ The isolated Atlas Supabase branch contains:
 
 - `20260806104705_atlas_phase1_profiles_security_gate.sql`
 - `20260806105543_atlas_phase1_recipe_catalog_gate.sql`
+- `20260806151244_atlas_phase1_recipe_catalog_runtime_fix.sql`
 
 Together they default new profiles to inactive viewers, protect the final active
 administrator, enable RLS across all public base tables, reset grants and default
@@ -21,26 +22,61 @@ grants, install active-role policies, route staff through redacted inventory,
 movement, recipe and stock-count views, and keep direct commercial tables
 manager-only.
 
+The runtime correction removes an invalid `recipe_ingredients.created_at`
+reference discovered by the transactional role acceptance. The canonical
+`recipe_ingredients` table has no such column, so the redacted recipe projection
+now orders deterministically by ingredient id.
+
 `public.public_menu` is the deliberate exception. It exposes exactly `id`,
 `name`, `type` and `menu_price` to anonymous visitors.
 
 Production application is intentionally paused.
 
-## Manual authentication gates — required before production SQL
+## Authentication and email-delivery gates
 
-Record evidence for each item:
+Owner-confirmed in the production Supabase dashboard:
 
-- [ ] Supabase Email signup disabled.
-- [ ] Email confirmation enabled.
-- [ ] Five staff invited manually.
-- [ ] Leaked-password protection enabled.
-- [ ] Minimum password length is at least 10.
-- [ ] JWT expiry and Auth rate limits reviewed.
+- [x] Email signup disabled.
+- [x] Email confirmation enabled.
+- [x] Leaked-password protection enabled.
+- [x] Minimum password length is at least 10.
+- [x] Custom SMTP configured.
+- [ ] Invitation and password-reset delivery confirmed through the custom SMTP provider.
+- [ ] JWT expiry and Auth rate limits reviewed and recorded.
+
+The owner also confirmed that the staff invitations were completed. The
+production database currently reports **3 Auth users and 3 active profiles**
+(two admins and one manager), with no pending or unprofiled users. Before
+production migration, reconcile whether three is the intended current team or
+whether two invitations are still missing. Do not record the five-account gate
+as verified until this discrepancy is resolved.
+
+Still required outside the repository:
+
 - [ ] 2FA enabled on Supabase, GitHub and Netlify.
 - [ ] GitHub Secret scanning and Push protection enabled.
 - [ ] Netlify environment variables and build hooks reviewed.
 
-Do not apply the production migration until these are checked.
+## Preview role acceptance
+
+`scripts/verify_phase1_role_matrix_preview.sql` is preview-only, requires an
+empty isolated branch, creates disposable Auth and business fixtures inside one
+transaction, and rolls everything back.
+
+The latest run passed **18 of 18** checks:
+
+- logged-out `public_menu` access allowed;
+- anonymous inventory access denied;
+- active bartender recognized as staff but not manager;
+- bartender reads redacted inventory, recipe and stock-count projections;
+- bartender cannot see canonical cost-bearing inventory rows;
+- bartender direct update and delete policies reach zero rows;
+- active admin reads commercial inventory, supplier, recipe and manager count evidence;
+- inactive and unlisted authenticated users receive no inventory rows.
+
+The acceptance fixture was fully rolled back. The isolated preview branch still
+contains zero Auth users, zero profiles, zero inventory rows and zero movement
+rows.
 
 ## Back up before production
 
@@ -58,21 +94,25 @@ Save outside the public repository:
 Expected pre-migration production fingerprint:
 
 - inventory records: 49
+- active inventory records: 49
 - summed quantity: 131.2
 - inventory movements: 12
 
 ## Production order
 
-1. Confirm all manual authentication gates.
-2. Verify `imadelmoubarik4@gmail.com` is active `admin`.
-3. Create the backups above.
-4. Apply `20260806104705_atlas_phase1_profiles_security_gate.sql`.
-5. Apply `20260806105543_atlas_phase1_recipe_catalog_gate.sql`.
-6. Run `scripts/verify_phase1_security_gate.sql`.
-7. Deploy the browser and Netlify hardening commit.
-8. Run the role matrix below.
-9. Re-run the fingerprint and compare it with the baseline.
-10. Keep PR #5 draft until every result is recorded.
+1. Reconcile the production staff-account count.
+2. Confirm SMTP invitation and password-reset delivery.
+3. Confirm JWT/rate-limit review, 2FA, GitHub security settings and Netlify review.
+4. Verify `imadelmoubarik4@gmail.com` is active `admin`.
+5. Create the off-repository backups above.
+6. Apply `20260806104705_atlas_phase1_profiles_security_gate.sql`.
+7. Apply `20260806105543_atlas_phase1_recipe_catalog_gate.sql`.
+8. Apply `20260806151244_atlas_phase1_recipe_catalog_runtime_fix.sql`.
+9. Run `scripts/verify_phase1_security_gate.sql`.
+10. Deploy the browser and Netlify hardening commit.
+11. Run the production browser role matrix below.
+12. Re-run the fingerprint and compare it with the baseline.
+13. Keep PR #5 draft until every result is recorded.
 
 ## Role acceptance matrix
 
