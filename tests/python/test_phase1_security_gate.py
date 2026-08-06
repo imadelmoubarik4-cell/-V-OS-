@@ -115,6 +115,7 @@ class Phase1SecurityGateTests(unittest.TestCase):
             "inventory_movements",
         ):
             self.assertIn(token, VERIFY_SQL)
+        self.assertIn("array_agg(column_name::text", VERIFY_SQL)
 
 
 if __name__ == "__main__":
