@@ -1,5 +1,6 @@
 name: Integrate Checkpoint L2 item master
 
+# Retrigger after the reviewed L2 source package and contracts were committed.
 on:
   push:
     branches:
