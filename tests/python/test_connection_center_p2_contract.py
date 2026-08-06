@@ -11,8 +11,10 @@ MIGRATION_FILES = [
     ROOT / "supabase/migrations/20260806191017_atlas_connections_p2_checks.sql",
     ROOT / "supabase/migrations/20260806191056_atlas_connections_p2_capabilities.sql",
     ROOT / "supabase/migrations/20260806191151_atlas_connections_p2_seeds_api.sql",
+    ROOT / "supabase/migrations/20260806192234_atlas_connections_p2_legacy_compatibility.sql",
 ]
 MIGRATION = "\n".join(path.read_text() for path in MIGRATION_FILES)
+COMPATIBILITY = MIGRATION_FILES[-1].read_text()
 EDGE = (ROOT / "supabase/functions/atlas-connections/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER = (ROOT / "apps/web/assets/js/connection-center.js").read_text()
@@ -79,6 +81,11 @@ class ConnectionCenterP20ContractTests(unittest.TestCase):
         self.assertIn("stale_after_seconds", MIGRATION)
         self.assertIn("make_interval", MIGRATION)
         self.assertIn("unique (connection_key,request_id)", MIGRATION)
+
+    def test_legacy_connected_state_becomes_verifying_not_healthy(self):
+        self.assertIn("when 'connected' then 'verifying'", COMPATIBILITY)
+        self.assertNotIn("when 'connected' then 'healthy'", COMPATIBILITY)
+        self.assertIn("only a passed controlled health check", COMPATIBILITY)
 
     def test_event_and_check_history_are_immutable(self):
         self.assertIn("connection_events_append_only", MIGRATION)

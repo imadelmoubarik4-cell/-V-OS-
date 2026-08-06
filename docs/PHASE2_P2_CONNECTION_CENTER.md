@@ -29,9 +29,14 @@ check with passed outcome and successful verification evidence. A previously
 healthy connection becomes effectively degraded when its successful evidence is
 older than its configured freshness window.
 
+Legacy modules may still report their old `connected` status after configuration.
+The P2.0 compatibility bridge accepts that write but translates it to canonical
+`verifying`; only a passed controlled health check can publish `healthy`.
+
 ## Private data model
 
-Four ordered migrations extend the canonical registry and add four private, RLS-protected tables:
+Seven ordered migrations extend the canonical registry and add four private,
+RLS-protected tables:
 
 - `connection_health_checks` — idempotent check attempts and sanitized evidence;
 - `connection_events` — append-only state, check and capability history;

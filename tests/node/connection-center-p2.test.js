@@ -5,14 +5,17 @@ import { readFileSync } from 'node:fs';
 const browser = readFileSync('apps/web/assets/js/connection-center.js', 'utf8');
 const loader = readFileSync('apps/web/assets/js/settings-mount-bridge.js', 'utf8');
 const edge = readFileSync('supabase/functions/atlas-connections/index.ts', 'utf8');
-const migration = [
+const migrationFiles = [
   'supabase/migrations/20260806190744_atlas_connections_p2_registry.sql',
   'supabase/migrations/20260806190833_atlas_connections_p2_evidence.sql',
   'supabase/migrations/20260806190928_atlas_connections_p2_snapshot.sql',
   'supabase/migrations/20260806191017_atlas_connections_p2_checks.sql',
   'supabase/migrations/20260806191056_atlas_connections_p2_capabilities.sql',
-  'supabase/migrations/20260806191151_atlas_connections_p2_seeds_api.sql'
-].map((path) => readFileSync(path, 'utf8')).join('\n');
+  'supabase/migrations/20260806191151_atlas_connections_p2_seeds_api.sql',
+  'supabase/migrations/20260806192234_atlas_connections_p2_legacy_compatibility.sql'
+];
+const migration = migrationFiles.map((path) => readFileSync(path, 'utf8')).join('\n');
+const compatibility = readFileSync(migrationFiles.at(-1), 'utf8');
 const css = readFileSync('apps/web/assets/css/connection-center.css', 'utf8');
 
 test('P2.0 uses one canonical connection registry and eight truthful states', () => {
@@ -29,6 +32,12 @@ test('healthy state requires controlled verification evidence', () => {
   assert.match(migration, /Healthy connection state requires a passed verification check/);
   assert.match(migration, /unique \(connection_key,request_id\)/);
   assert.match(edge, /SMTP health requires both invitation and password-reset delivery evidence/);
+});
+
+test('legacy connected state remains truthful and becomes verifying', () => {
+  assert.match(compatibility, /when 'connected' then 'verifying'/);
+  assert.doesNotMatch(compatibility, /when 'connected' then 'healthy'/);
+  assert.match(compatibility, /only a passed controlled health check/);
 });
 
 test('connection event history and finished checks are immutable', () => {
