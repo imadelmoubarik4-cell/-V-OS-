@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,7 +16,7 @@ class Phase1SecurityGateTests(unittest.TestCase):
         self.assertIn("public.profiles", PHASE1)
         self.assertIn("public.staff must not coexist", PHASE1)
         self.assertIn("'viewer'::public.staff_role", PHASE1)
-        self.assertRegex(PHASE1, r"alter column active set default false")
+        self.assertIn("alter column active set default false", PHASE1)
         self.assertNotIn("create table public.staff", PHASE1.lower())
 
     def test_accidental_signup_never_creates_active_operational_access(self):
@@ -36,7 +35,8 @@ class Phase1SecurityGateTests(unittest.TestCase):
         for table in ("inventory_items", "inventory_movements", "suppliers"):
             self.assertIn(table, PHASE1)
         self.assertIn("active managers read inventory items", PHASE1)
-        self.assertIn("active managers read suppliers", PHASE1)
+        self.assertIn("'active managers read ' || table_name", PHASE1)
+        self.assertIn("'suppliers'", PHASE1)
         self.assertIn("public.inventory_catalog", PHASE1)
         self.assertIn("public.inventory_movement_catalog", PHASE1)
         for field in ("cost_price", "case_cost", "supplier_id", "supplier_product_reference"):
