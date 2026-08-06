@@ -7,6 +7,7 @@ on:
       - main
       - agent/sprint-4-atlas-brain-daily-briefing
       - agent/sprint-4-phase-3-atlas-brain
+      - agent/phase2-connection-center-p2-0
 
 permissions:
   contents: read
@@ -49,3 +50,6 @@ jobs:
 
       - name: Replay every migration and run security acceptance
         run: bash scripts/verify_full_migration_replay.sh
+
+      - name: Verify P2.1 core-platform readiness contract
+        run: psql -v ON_ERROR_STOP=1 -qAt -f scripts/verify_phase2_core_platform.sql
