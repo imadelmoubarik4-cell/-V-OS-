@@ -40,6 +40,11 @@ Netlify bot on this pull request. A guessed `deploy-preview-<number>` address is
 not release evidence. Until Netlify publishes a successful deployment comment or
 status for this PR, the web-preview gate remains blocked.
 
+Owner-confirmed that the Netlify branch/deploy context for the PR #5 base branch
+has been enabled. Commit `netlify: retrigger P2.0 preview after branch-context enablement`
+exists only to request a fresh PR #8 Deploy Preview; it does not change runtime
+behavior or authorize production deployment.
+
 ## Production boundary
 
 This release record does not authorize production deployment. Phase 1 manual
