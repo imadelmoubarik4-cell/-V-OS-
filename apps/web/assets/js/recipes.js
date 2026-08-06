@@ -31,6 +31,12 @@
 
   const dom = {};
 
+  // PHASE1_RECIPE_ROLE_GATE
+  function canManageCommercial() {
+    return typeof window.atlasCanManageCommercial === 'function'
+      && window.atlasCanManageCommercial();
+  }
+
   function escape(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -546,10 +552,13 @@
       const category = categoryFor(recipe);
       const status = recipeStatus(recipe);
       const financials = recipeFinancials(recipe);
+      const financeMarkup = canManageCommercial()
+        ? `<span class="recipe-library-item-finance"><span>${financials.incomplete ? 'Cost incomplete' : formatIsk(financials.perServing)}</span><span>${Number.isFinite(financials.margin) && !financials.incomplete ? `${financials.margin.toFixed(0)}% margin` : 'Margin unavailable'}</span></span>`
+        : '';
       return `<button type="button" class="recipe-library-item ${recipe.id === state.selectedRecipeId ? 'selected' : ''}" data-recipe-id="${escape(recipe.id)}">
         <span class="recipe-library-item-top"><strong>${escape(recipe.name)}</strong><span class="recipe-health-dot ${status.className}" aria-label="${escape(status.label)}"></span></span>
         <span class="recipe-library-item-meta">${escape(category.name)}<span>${Number.isFinite(status.availability.servings) ? `${status.availability.servings} servings` : status.label}</span></span>
-        <span class="recipe-library-item-finance"><span>${financials.incomplete ? 'Cost incomplete' : formatIsk(financials.perServing)}</span><span>${Number.isFinite(financials.margin) && !financials.incomplete ? `${financials.margin.toFixed(0)}% margin` : 'Margin unavailable'}</span></span>
+        ${financeMarkup}
       </button>`;
     }).join('');
     dom.grid.querySelectorAll('[data-recipe-id]').forEach((button) => button.addEventListener('click', () => selectRecipe(button.dataset.recipeId, { focus: true })));
@@ -592,11 +601,14 @@
       const item = availability.item;
       const stock = item ? `${number(item.quantity)} ${escape(item.unit)}` : 'Missing link';
       const rowClass = !item ? 'missing' : availability.belowPar ? 'low' : servings === 0 ? 'out' : '';
+      const costMarkup = canManageCommercial()
+        ? `<div><span>Cost</span><strong>${cost.value == null ? 'Incomplete' : formatIsk(cost.value)}</strong></div>`
+        : '';
       return `<div class="recipe-profile-ingredient ${rowClass}">
         <div><strong>${escape(ingredient.item_name)}</strong><span>${number(ingredient.quantity)} ${escape(ingredient.unit)} per recipe</span></div>
         <div><span>Stock</span><strong>${stock}</strong></div>
         <div><span>Coverage</span><strong>${Number.isFinite(servings) ? `${servings} servings` : escape(availability.reason || 'Unknown')}</strong></div>
-        <div><span>Cost</span><strong>${cost.value == null ? 'Incomplete' : formatIsk(cost.value)}</strong></div>
+        ${costMarkup}
       </div>`;
     }).join('') : '<div class="recipe-section-empty">No ingredients have been added.</div>';
 
@@ -615,11 +627,11 @@
     dom.insight.innerHTML = `<div class="recipe-insight-head"><span>Live analysis</span><h2>Recipe health</h2></div>
       <div class="recipe-health-card ${status.className}"><span class="recipe-health-label">Status</span><strong>${escape(status.label)}</strong><p>${escape(recommendation.detail)}</p></div>
       <div class="recipe-insight-metrics">
-        <div><span>Menu price</span><strong>${Number.isFinite(number(recipe.menu_price, NaN)) ? formatIsk(number(recipe.menu_price)) : 'Not set'}</strong></div>
+        ${canManageCommercial() ? `<div><span>Menu price</span><strong>${Number.isFinite(number(recipe.menu_price, NaN)) ? formatIsk(number(recipe.menu_price)) : 'Not set'}</strong></div>
         <div><span>Cost per serving</span><strong>${financials.incomplete ? 'Incomplete' : formatIsk(financials.perServing)}</strong></div>
         <div><span>Cost percentage</span><strong>${Number.isFinite(financials.costPercent) && !financials.incomplete ? `${financials.costPercent.toFixed(1)}%` : '—'}</strong></div>
         <div><span>Gross margin</span><strong>${Number.isFinite(financials.margin) && !financials.incomplete ? `${financials.margin.toFixed(1)}%` : '—'}</strong></div>
-        <div><span>Profit per serving</span><strong>${Number.isFinite(financials.profit) && !financials.incomplete ? formatIsk(financials.profit) : '—'}</strong></div>
+        <div><span>Profit per serving</span><strong>${Number.isFinite(financials.profit) && !financials.incomplete ? formatIsk(financials.profit) : '—'}</strong></div>` : ''}
         <div><span>Current coverage</span><strong>${Number.isFinite(status.availability.servings) ? `${status.availability.servings} servings` : 'Unknown'}</strong></div>
       </div>
       <div class="recipe-limiting-card"><span>Limiting ingredient</span><strong>${escape(limitingName)}</strong><p>${status.availability.belowPar ? 'At or below its par level.' : 'This ingredient will run out first.'}</p></div>
@@ -739,6 +751,10 @@
   }
 
   async function openEditor(recipe) {
+    if (!canManageCommercial()) {
+      alert('Recipe editing is limited to managers and administrators.');
+      return;
+    }
     await loadCategories();
     state.editingRecipe = recipe || null;
     state.draftIngredients = (recipe?.recipe_ingredients || []).map((ingredient) => ({
@@ -880,6 +896,10 @@
 
   async function saveRecipe(event) {
     event.preventDefault();
+    if (!canManageCommercial()) {
+      alert('Recipe editing is limited to managers and administrators.');
+      return;
+    }
     const submitButton = dom.form.querySelector('[type="submit"]');
     submitButton.disabled = true;
     dom.saveState.textContent = 'Saving…';

@@ -514,6 +514,11 @@ Deno.serve(async (request: Request) => {
         });
       }
 
+      // Shadow observations remain available to operational staff. Any
+      // production mutation, including a no-change live acknowledgement,
+      // requires a freshly verified manager/admin profile.
+      requireManager(context);
+
       if (Math.abs(observedQuantity - previousQuantity) < 0.0000001) {
         const audit = await branchRpc("atlas_inventory_scanner_record_count", {
           ...commonPayload,

@@ -489,6 +489,11 @@ def patch_index() -> None:
         "guard supplier submission",
     )
 
+    content = re.sub(
+        r"\n\s*updated_by:\s*currentUser(?:\.id|\?\.id)?(?:\s*\|\|\s*null)?,?",
+        "",
+        content,
+    )
     write(path, content)
 
 
@@ -730,7 +735,7 @@ def patch_workflow() -> None:
 def write_tests() -> None:
     write(
         "tests/node/security-supply-chain.test.js",
-        '''import assert from 'node:assert/strict';
+        r'''import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
@@ -749,7 +754,7 @@ test('browser dependencies are pinned with reviewed integrity hashes', () => {
   assert.match(index, /xlsx@0\.18\.5/);
   assert.match(index, /lucide@0\.454\.0/);
   assert.match(index + menu, /supabase-js@2\.45\.4/g);
-  for (const hash of [SUPABASE_SRI, LUCIDE_SRI, XLSX_SRI]) assert.match(browser, new RegExp(hash));
+  for (const hash of [SUPABASE_SRI, LUCIDE_SRI, XLSX_SRI]) assert.ok(browser.includes(hash), `Missing reviewed SRI hash ${hash}`);
   assert.match(index, /script\.integrity\s*=\s*SUPABASE_SRI/);
   assert.match(browser, /crossorigin="anonymous"/i);
 });
@@ -776,14 +781,14 @@ test('commercial browser paths are profile-gated and use redacted staff catalogu
   assert.match(index, /inventory_movement_catalog/);
   assert.match(index, /recipe_catalog/);
   assert.match(index, /atlas-commercial-manager/);
-  assert.doesNotMatch(index, /updated_by:\s*currentUser/);
+  assert.doesNotMatch(index, /updated_by:\s*currentUser(?:\.id|\?\.id)?/);
 });
 ''',
     )
 
     write(
         "tests/python/test_phase1_security_gate.py",
-        '''from pathlib import Path
+        r'''from pathlib import Path
 import re
 import unittest
 

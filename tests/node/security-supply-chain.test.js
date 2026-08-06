@@ -13,11 +13,11 @@ const LUCIDE_SRI = 'sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/U
 const XLSX_SRI = 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw';
 
 test('browser dependencies are pinned with reviewed integrity hashes', () => {
-  assert.doesNotMatch(browser, /@latest|supabase-js@2(?:[/'"])/i);
+  assert.doesNotMatch(browser, /@latest|supabase-js@2(?:[/'\"])/i);
   assert.match(index, /xlsx@0\.18\.5/);
   assert.match(index, /lucide@0\.454\.0/);
   assert.match(index + menu, /supabase-js@2\.45\.4/g);
-  for (const hash of [SUPABASE_SRI, LUCIDE_SRI, XLSX_SRI]) assert.match(browser, new RegExp(hash));
+  for (const hash of [SUPABASE_SRI, LUCIDE_SRI, XLSX_SRI]) assert.ok(browser.includes(hash), `Missing reviewed SRI hash ${hash}`);
   assert.match(index, /script\.integrity\s*=\s*SUPABASE_SRI/);
   assert.match(browser, /crossorigin="anonymous"/i);
 });
@@ -34,8 +34,7 @@ test('Netlify headers cover transport, browser capabilities and both Supabase pr
   assert.match(netlify, /dnefgcmjcgxlynycxkts\.supabase\.co/);
   assert.match(netlify, /uhbamqetppqmygesoeeh\.supabase\.co/);
   assert.match(netlify, /frame-ancestors 'self' https:\/\/xn--vbar-5na\.is/);
-  assert.match(netlify, /script-src[^
-]*blob:/);
+  assert.match(netlify, /script-src[^\n]*blob:/);
   assert.doesNotMatch(netlify, /X-Frame-Options/);
 });
 
@@ -45,5 +44,5 @@ test('commercial browser paths are profile-gated and use redacted staff catalogu
   assert.match(index, /inventory_movement_catalog/);
   assert.match(index, /recipe_catalog/);
   assert.match(index, /atlas-commercial-manager/);
-  assert.doesNotMatch(index, /updated_by:\s*currentUser/);
+  assert.doesNotMatch(index, /updated_by:\s*currentUser(?:\.id|\?\.id)?/);
 });

@@ -197,28 +197,46 @@ function requireManager(context: Context): void {
 }
 
 async function productionInventory(context: Context): Promise<JsonObject[]> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/inventory_items`);
-  url.searchParams.set(
-    "select",
-    [
-      "id", "name", "category", "quantity", "unit", "par_level", "bin_location", "sku", "barcode",
-      "updated_at", "source_updated_at", "source_file", "active", "supplier", "units_per_case",
-      "case_cost", "cost_price", "size_ml", "package_size",
-    ].join(","),
+  const commercialAccess = MANAGER_ROLES.has(context.profile.role);
+  const safeFields = [
+    "id", "name", "category", "quantity", "unit", "par_level", "bin_location", "sku", "barcode",
+    "updated_at", "active", "units_per_case", "size_ml", "package_size",
+  ].join(",");
+  const commercialFields = [
+    safeFields,
+    "source_updated_at", "source_file", "supplier", "supplier_id", "supplier_product_reference",
+    "case_cost", "cost_price", "critical_minimum", "lead_time_days", "minimum_order_quantity",
+  ].join(",");
+
+  async function readRelation(relation: string, select: string): Promise<Response> {
+    const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/${relation}`);
+    url.searchParams.set("select", select);
+    url.searchParams.set("active", "eq.true");
+    url.searchParams.set("order", "bin_location.asc.nullslast,category.asc,name.asc");
+    url.searchParams.set("limit", String(MAX_INVENTORY_ROWS));
+    return await fetch(url, {
+      headers: {
+        apikey: AUTH_PUBLISHABLE_KEY,
+        authorization: `Bearer ${context.token}`,
+        accept: "application/json",
+        "cache-control": "no-store",
+        range: `0-${MAX_INVENTORY_ROWS - 1}`,
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+  }
+
+  let response = await readRelation(
+    commercialAccess ? "inventory_items" : "inventory_catalog",
+    commercialAccess ? commercialFields : safeFields,
   );
-  url.searchParams.set("active", "eq.true");
-  url.searchParams.set("order", "bin_location.asc.nullslast,category.asc,name.asc");
-  url.searchParams.set("limit", String(MAX_INVENTORY_ROWS));
-  const response = await fetch(url, {
-    headers: {
-      apikey: AUTH_PUBLISHABLE_KEY,
-      authorization: `Bearer ${context.token}`,
-      accept: "application/json",
-      "cache-control": "no-store",
-      range: `0-${MAX_INVENTORY_ROWS - 1}`,
-    },
-    signal: AbortSignal.timeout(15_000),
-  });
+
+  // Draft-preview compatibility before the production security migration. The
+  // fallback still selects only redacted columns and disappears once the view exists.
+  if (!commercialAccess && !response.ok) {
+    response = await readRelation("inventory_items", safeFields);
+  }
+
   const text = await response.text();
   let parsed: unknown = [];
   try { parsed = text ? JSON.parse(text) : []; } catch { parsed = []; }
