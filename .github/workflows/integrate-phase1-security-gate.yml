@@ -1,12 +1,10 @@
 name: Integrate Phase 1 security gate
 
-# Explicit retry after the final browser-audit boundary fix.
+# One controlled branch run. This workflow deletes itself in the result commit.
 on:
   push:
     branches:
       - agent/sprint-4-phase-3-atlas-brain
-    paths:
-      - .github/workflows/integrate-phase1-security-gate.yml
 
 permissions:
   contents: write
