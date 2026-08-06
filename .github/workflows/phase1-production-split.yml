@@ -1,0 +1,356 @@
+name: Phase 1 production migration split
+
+on:
+  push:
+    branches:
+      - agent/sprint-4-phase-3-atlas-brain
+    paths:
+      - .github/workflows/phase1-production-split.yml
+
+permissions:
+  contents: write
+
+jobs:
+  split-production-migration:
+    if: github.event.head_commit.message == 'chore: run phase1 production split'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/sprint-4-phase-3-atlas-brain
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Split production and Atlas-only security migrations
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path('.')
+          phase1_path = root / 'supabase/migrations/20260806104705_atlas_phase1_profiles_security_gate.sql'
+          phase1 = phase1_path.read_text()
+          marker = '-- L1 evidence views. The staff projection omits person identity, variance,'
+          if phase1.count(marker) != 1:
+              raise SystemExit(f'Expected one stock-count marker, found {phase1.count(marker)}')
+          production_safe = phase1.split(marker, 1)[0].rstrip()
+          if 'atlas_private.' in production_safe:
+              raise SystemExit('Production Phase 1 migration still contains an atlas_private dependency')
+          production_safe += """
+
+-- Stock-count evidence views are deliberately not created here. Production does
+-- not own the atlas_private L1 evidence tables. The separate branch-only migration
+-- creates those views only on an Atlas database where the verified-balance source
+-- relation exists.
+
+notify pgrst, 'reload schema';
+"""
+          phase1_path.write_text(production_safe)
+
+          stock_views = r'''-- Atlas-branch-only stock-count evidence views.
+--
+-- This migration is safe in every environment. It creates the redacted staff and
+-- manager evidence projections only when the isolated Atlas L1 source relation is
+-- present. Production has no atlas_private schema, so production intentionally
+-- receives a no-op and continues to consume L1 evidence through authenticated
+-- Atlas Edge Functions.
+
+do $atlas_stock_count_views$
+begin
+  if to_regclass('atlas_private.inventory_verified_balances') is not null then
+    execute $ddl$
+      create or replace function private.read_stock_count_summary()
+      returns table (
+        inventory_item_id uuid,
+        item_name text,
+        category text,
+        inventory_unit text,
+        bin_location text,
+        verified_quantity numeric,
+        quantity_state text,
+        verified_at timestamptz,
+        expires_at timestamptz,
+        historical boolean
+      )
+      language plpgsql
+      stable
+      security definer
+      set search_path = ''
+      as $function$
+      begin
+        if coalesce((select auth.role()), '') <> 'service_role'
+           and session_user <> 'postgres'
+           and not private.is_active_staff() then
+          raise exception 'An active Atlas profile is required'
+            using errcode = '42501';
+        end if;
+
+        return query
+        select
+          balance.inventory_item_id,
+          balance.item_name,
+          balance.category,
+          balance.inventory_unit,
+          balance.bin_location,
+          balance.verified_quantity,
+          case
+            when balance.historical is true then 'historical'
+            when balance.verified_at is null then 'unverified'
+            when balance.expires_at is not null and balance.expires_at <= now() then 'stale'
+            when balance.verification_status = 'current' then 'current'
+            else coalesce(balance.verification_status, 'unverified')
+          end,
+          balance.verified_at,
+          balance.expires_at,
+          balance.historical
+        from atlas_private.inventory_verified_balances as balance;
+      end;
+      $function$
+    $ddl$;
+
+    execute $ddl$
+      create or replace function private.read_stock_count_manager_summary()
+      returns table (
+        inventory_item_id uuid,
+        item_name text,
+        category text,
+        inventory_unit text,
+        bin_location text,
+        verified_quantity numeric,
+        quantity_state text,
+        verified_at timestamptz,
+        expires_at timestamptz,
+        historical boolean,
+        source_session_id uuid,
+        source_line_id uuid,
+        verified_by uuid,
+        verified_by_label text,
+        production_quantity_at_verification numeric,
+        production_updated_at timestamptz,
+        variance numeric,
+        source_kind text
+      )
+      language plpgsql
+      stable
+      security definer
+      set search_path = ''
+      as $function$
+      begin
+        if coalesce((select auth.role()), '') <> 'service_role'
+           and session_user <> 'postgres'
+           and not private.is_manager_or_admin() then
+          raise exception 'Stock-count verification evidence is manager-only'
+            using errcode = '42501';
+        end if;
+
+        return query
+        select
+          balance.inventory_item_id,
+          balance.item_name,
+          balance.category,
+          balance.inventory_unit,
+          balance.bin_location,
+          balance.verified_quantity,
+          case
+            when balance.historical is true then 'historical'
+            when balance.verified_at is null then 'unverified'
+            when balance.expires_at is not null and balance.expires_at <= now() then 'stale'
+            when balance.verification_status = 'current' then 'current'
+            else coalesce(balance.verification_status, 'unverified')
+          end,
+          balance.verified_at,
+          balance.expires_at,
+          balance.historical,
+          balance.source_session_id,
+          balance.source_line_id,
+          balance.verified_by,
+          balance.verified_by_label,
+          balance.production_quantity_at_verification,
+          balance.production_updated_at,
+          balance.variance,
+          balance.source_kind
+        from atlas_private.inventory_verified_balances as balance;
+      end;
+      $function$
+    $ddl$;
+
+    execute 'drop view if exists public.stock_count_summary';
+    execute $ddl$
+      create view public.stock_count_summary
+      with (security_invoker = true)
+      as
+      select *
+      from private.read_stock_count_summary()
+    $ddl$;
+
+    execute 'drop view if exists public.stock_count_manager_summary';
+    execute $ddl$
+      create view public.stock_count_manager_summary
+      with (security_invoker = true)
+      as
+      select *
+      from private.read_stock_count_manager_summary()
+    $ddl$;
+
+    execute 'revoke all on function private.read_stock_count_summary() from public, anon';
+    execute 'revoke all on function private.read_stock_count_manager_summary() from public, anon';
+    execute 'grant execute on function private.read_stock_count_summary() to authenticated, service_role';
+    execute 'grant execute on function private.read_stock_count_manager_summary() to authenticated, service_role';
+    execute 'revoke all on table public.stock_count_summary from public, anon';
+    execute 'revoke all on table public.stock_count_manager_summary from public, anon';
+    execute 'grant select on table public.stock_count_summary to authenticated, service_role';
+    execute 'grant select on table public.stock_count_manager_summary to authenticated, service_role';
+    execute $ddl$
+      comment on view public.stock_count_summary is
+        'Redacted active-staff verified-stock summary. No verifier identity, variance, supplier or cost fields.'
+    $ddl$;
+    execute $ddl$
+      comment on view public.stock_count_manager_summary is
+        'Manager-gated stock-count verification provenance and variance evidence.'
+    $ddl$;
+  else
+    raise notice 'Skipping Atlas stock-count views: atlas_private.inventory_verified_balances is absent';
+  end if;
+end
+$atlas_stock_count_views$;
+
+notify pgrst, 'reload schema';
+'''
+          stock_path = root / 'supabase/migrations/20260806160000_atlas_phase1_stock_count_views_branch_only.sql'
+          stock_path.write_text(stock_views)
+
+          test_path = root / 'tests/python/test_phase1_security_gate.py'
+          test_text = test_path.read_text()
+          test_text = test_text.replace(
+              'RECIPES = (ROOT / "supabase/migrations/20260806105543_atlas_phase1_recipe_catalog_gate.sql").read_text()\n',
+              'RECIPES = (ROOT / "supabase/migrations/20260806105543_atlas_phase1_recipe_catalog_gate.sql").read_text()\n'
+              'STOCK_VIEWS = (ROOT / "supabase/migrations/20260806160000_atlas_phase1_stock_count_views_branch_only.sql").read_text()\n',
+          )
+          old_test = '''    def test_stock_count_views_are_split_by_sensitivity(self):
+        self.assertIn("public.stock_count_summary", PHASE1)
+        self.assertIn("public.stock_count_manager_summary", PHASE1)
+        self.assertIn("No verifier identity, variance, supplier or cost fields", PHASE1)
+        self.assertIn("Stock-count verification evidence is manager-only", PHASE1)
+        self.assertGreaterEqual(PHASE1.count("security_invoker = true"), 4)
+'''
+          new_test = '''    def test_stock_count_views_are_branch_only_and_split_by_sensitivity(self):
+        self.assertNotIn("atlas_private.inventory_verified_balances", PHASE1)
+        self.assertNotIn("public.stock_count_summary", PHASE1)
+        self.assertIn("to_regclass('atlas_private.inventory_verified_balances') is not null", STOCK_VIEWS)
+        self.assertIn("public.stock_count_summary", STOCK_VIEWS)
+        self.assertIn("public.stock_count_manager_summary", STOCK_VIEWS)
+        self.assertIn("No verifier identity, variance, supplier or cost fields", STOCK_VIEWS)
+        self.assertIn("Stock-count verification evidence is manager-only", STOCK_VIEWS)
+        self.assertGreaterEqual(STOCK_VIEWS.count("security_invoker = true"), 2)
+'''
+          if old_test not in test_text:
+              raise SystemExit('Could not locate the stock-count security contract block')
+          test_text = test_text.replace(old_test, new_test)
+          test_path.write_text(test_text)
+
+          verify_path = root / 'scripts/verify_phase1_security_gate.sql'
+          verify_text = verify_path.read_text()
+          old_verify = '''  'redacted_views', jsonb_build_object(
+    'inventory_catalog', to_regclass('public.inventory_catalog') is not null,
+    'inventory_movement_catalog', to_regclass('public.inventory_movement_catalog') is not null,
+    'recipe_catalog', to_regclass('public.recipe_catalog') is not null,
+    'stock_count_summary', to_regclass('public.stock_count_summary') is not null,
+    'stock_count_manager_summary', to_regclass('public.stock_count_manager_summary') is not null
+  ),
+'''
+          new_verify = '''  'redacted_views', jsonb_build_object(
+    'inventory_catalog', to_regclass('public.inventory_catalog') is not null,
+    'inventory_movement_catalog', to_regclass('public.inventory_movement_catalog') is not null,
+    'recipe_catalog', to_regclass('public.recipe_catalog') is not null
+  ),
+  'atlas_stock_count_views', jsonb_build_object(
+    'source_available', to_regclass('atlas_private.inventory_verified_balances') is not null,
+    'staff_view', to_regclass('public.stock_count_summary') is not null,
+    'manager_view', to_regclass('public.stock_count_manager_summary') is not null,
+    'expected_in_this_database', to_regclass('atlas_private.inventory_verified_balances') is not null
+  ),
+'''
+          if old_verify not in verify_text:
+              raise SystemExit('Could not locate the verification redacted-view block')
+          verify_path.write_text(verify_text.replace(old_verify, new_verify))
+
+          documentation = {
+              root / 'docs/PHASE1_SECURITY_GATE.md': '''
+
+## Production-compatible migration split
+
+The production Phase 1 migration has no `atlas_private` dependency. It installs
+only production-owned authorization, RLS, grants, audit, inventory, recipe and
+public-menu controls. `20260806160000_atlas_phase1_stock_count_views_branch_only.sql`
+creates the two L1 evidence views only when
+`atlas_private.inventory_verified_balances` exists. Production therefore treats
+that migration as an intentional no-op and continues to access L1 through the
+authenticated Atlas gateway.
+''',
+              root / 'releases/alpha-0.8.0/PHASE1_SECURITY_GATE_PREVIEW.md': '''
+
+## Production compatibility correction
+
+The original preview migration coupled the production security gate to the
+Atlas-only `inventory_verified_balances` relation. That dependency is now split
+into migration `20260806160000_atlas_phase1_stock_count_views_branch_only`.
+The production migration no longer references `atlas_private`; the branch-only
+migration is guarded with `to_regclass(...)` and is a no-op in production.
+''',
+          }
+          for path, addition in documentation.items():
+              text = path.read_text()
+              heading = addition.strip().splitlines()[0]
+              if heading not in text:
+                  path.write_text(text.rstrip() + addition)
+
+          if 'atlas_private.' in phase1_path.read_text():
+              raise SystemExit('Production migration split failed')
+          if "to_regclass('atlas_private.inventory_verified_balances') is not null" not in stock_path.read_text():
+              raise SystemExit('Branch-only migration is not source-gated')
+          PY
+
+      - name: Install Python test dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-test.txt
+
+      - name: Validate browser JavaScript
+        shell: bash
+        run: |
+          node --check apps/web/assets/js/brain-daily-briefing-v2.js
+          node --check apps/web/assets/js/brain-phase3.js
+          node --check apps/web/assets/js/stock-count-workspace.js
+          node --check apps/web/assets/js/stock-count-l1-verified.js
+
+      - name: Run Node contracts
+        run: npm run test:node
+
+      - name: Compile and run Python contracts
+        shell: bash
+        run: |
+          python -m compileall -q scripts tests/python
+          npm run test:python
+
+      - name: Commit verified migration split
+        shell: bash
+        run: |
+          git config user.name 'atlas-security-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add \
+            supabase/migrations/20260806104705_atlas_phase1_profiles_security_gate.sql \
+            supabase/migrations/20260806160000_atlas_phase1_stock_count_views_branch_only.sql \
+            scripts/verify_phase1_security_gate.sql \
+            tests/python/test_phase1_security_gate.py \
+            docs/PHASE1_SECURITY_GATE.md \
+            releases/alpha-0.8.0/PHASE1_SECURITY_GATE_PREVIEW.md
+          git commit -m 'fix: split production and Atlas stock-count security migrations'
+          git push origin HEAD:agent/sprint-4-phase-3-atlas-brain
