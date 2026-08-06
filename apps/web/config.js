@@ -19,6 +19,7 @@ window.VABAR_CONFIG = {
   REPORTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-reports",
   SYSTEM_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-system",
   SETTINGS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-settings",
+  CONNECTIONS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-connections",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
