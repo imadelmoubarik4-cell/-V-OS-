@@ -24,7 +24,7 @@ with public_tables as (
     v.oid as view_oid,
     'security_invoker=true' = any(v.reloptions) as security_invoker,
     has_table_privilege('anon', v.oid, 'select') as anon_view_select,
-    (select array_agg(column_name order by ordinal_position)
+    (select array_agg(column_name::text order by ordinal_position)
      from information_schema.columns
      where table_schema='public' and table_name='public_menu') as columns,
     projection.oid as projection_oid,
