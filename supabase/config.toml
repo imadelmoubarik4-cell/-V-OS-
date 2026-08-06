@@ -1,12 +1,14 @@
 # Atlas uses production VÁ Auth while private review, Brain, operations, scanner,
 # team-message, marketing, team-profile, profile-photo, shift-planning,
 # Knowledge, Reports, System, Settings, Checkpoint K intelligence, Checkpoint L1
-# stock-count evidence and Checkpoint L2 item-master drafts live in isolated
-# Supabase branches. The branch gateway cannot validate a token issued by the
-# production project, so each function authenticates the caller in its handler
-# and revalidates the server-controlled active profile before returning or
-# mutating private data. Brain, briefing, review, System, Checkpoint K, stock-count publication and Item Master L2 require an active manager/admin profile;
-# staff-facing endpoints apply narrower permissions.
+# stock-count evidence, Checkpoint L2 item-master drafts and Phase 2 connection
+# evidence live in isolated Supabase branches. The branch gateway cannot validate
+# a token issued by the production project, so each function authenticates the
+# caller in its handler and revalidates the server-controlled active profile
+# before returning or mutating private data. Brain, briefing, review, System,
+# Checkpoint K, stock-count publication, Item Master L2 and Connection Center
+# mutations require an active manager/admin profile; staff-facing endpoints apply
+# narrower permissions.
 
 [functions.atlas-sprint3-review]
 verify_jwt = false
@@ -59,4 +61,7 @@ entrypoint = "./functions/atlas-reports/entrypoint.ts"
 verify_jwt = false
 
 [functions.atlas-settings]
+verify_jwt = false
+
+[functions.atlas-connections]
 verify_jwt = false

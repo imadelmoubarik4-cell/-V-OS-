@@ -3,6 +3,8 @@
 
   const WORKSPACE_SRC = 'assets/js/settings-workspace.js?v=20260805-1';
   const WORKSPACE_CSS = 'assets/css/settings-workspace.css?v=20260805-1';
+  const CONNECTION_CENTER_SRC = 'assets/js/connection-center.js?v=20260806-p20';
+  const CONNECTION_CENTER_CSS = 'assets/css/connection-center.css?v=20260806-p20';
   const BUTTON_CONTRAST_STYLE_ID = 'atlas-settings-button-contrast';
   const state = {
     loading: false,
@@ -46,6 +48,24 @@
     document.head.appendChild(style);
   }
 
+  function ensureConnectionCenterAssets() {
+    if (!document.querySelector('link[data-atlas-connection-center]')) {
+      const stylesheet = document.createElement('link');
+      stylesheet.rel = 'stylesheet';
+      stylesheet.href = CONNECTION_CENTER_CSS;
+      stylesheet.dataset.atlasConnectionCenter = 'true';
+      document.head.appendChild(stylesheet);
+    }
+    if (!window.AtlasConnectionCenter
+        && !document.querySelector('script[data-atlas-connection-center]')) {
+      const script = document.createElement('script');
+      script.src = CONNECTION_CENTER_SRC;
+      script.async = false;
+      script.dataset.atlasConnectionCenter = 'true';
+      document.body.appendChild(script);
+    }
+  }
+
   function ensureStylesheet() {
     if (!document.querySelector('link[data-atlas-checkpoint-j-settings]')) {
       const stylesheet = document.createElement('link');
@@ -55,6 +75,7 @@
       document.head.appendChild(stylesheet);
     }
     ensureButtonContrast();
+    ensureConnectionCenterAssets();
   }
 
   function showStartingState() {
@@ -71,10 +92,12 @@
 
   async function activateWorkspace() {
     removeLegacySettings();
+    ensureConnectionCenterAssets();
     if (!workspaceReady()) return false;
     try {
       await window.AtlasSettings.refresh();
       removeLegacySettings();
+      window.AtlasConnectionCenter?.refresh?.({ silent: true });
       return true;
     } catch (error) {
       console.error('Checkpoint J Settings activation failed', error);
@@ -133,6 +156,7 @@
     state.observer = new MutationObserver(() => {
       if (!settingsVisible()) return;
       removeLegacySettings();
+      ensureConnectionCenterAssets();
       if (!element.querySelector('.settings-shell') && !state.loading) scheduleMount();
     });
     state.observer.observe(element, { childList: true, subtree: true, attributes: true });
