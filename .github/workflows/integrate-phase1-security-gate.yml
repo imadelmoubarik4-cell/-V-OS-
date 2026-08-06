@@ -1,6 +1,6 @@
 name: Integrate Phase 1 security gate
 
-# Diagnostic retry: failed installer output is committed for review.
+# Diagnostic retry: installer or contract failures are committed for review.
 on:
   push:
     branches:
@@ -39,46 +39,48 @@ jobs:
           set -o pipefail
           python scripts/apply_phase1_security_gate.py 2>&1 | tee /tmp/phase1-installer.log
 
-      - name: Publish installer diagnostic on failure
-        if: steps.apply.outcome == 'failure'
+      - name: Verify patched repository
+        id: verify
+        if: steps.apply.outcome == 'success'
+        continue-on-error: true
         run: |
+          set -o pipefail
+          {
+            node --check apps/web/assets/js/recipes.js
+            node --check apps/web/assets/js/import-center.js
+            node --check apps/web/assets/js/stock-count-workspace.js
+            node --check apps/web/assets/js/settings-workspace.js
+            npm run test:node
+            python -m pip install --disable-pip-version-check -r requirements-test.txt
+            python -m compileall -q scripts tests/python
+            npm run test:python
+          } 2>&1 | tee /tmp/phase1-verification.log
+
+      - name: Publish failure diagnostic
+        if: steps.apply.outcome == 'failure' || steps.verify.outcome == 'failure'
+        run: |
+          git reset --hard HEAD
           mkdir -p docs
-          cp /tmp/phase1-installer.log docs/PHASE1_SECURITY_GATE_INSTALL_ERROR.txt
+          {
+            echo "INSTALLER OUTCOME: ${{ steps.apply.outcome }}"
+            cat /tmp/phase1-installer.log 2>/dev/null || true
+            echo
+            echo "VERIFICATION OUTCOME: ${{ steps.verify.outcome }}"
+            cat /tmp/phase1-verification.log 2>/dev/null || true
+          } > docs/PHASE1_SECURITY_GATE_INSTALL_ERROR.txt
           rm -f .github/workflows/integrate-phase1-security-gate.yml
           git config user.name "Atlas Security Gate"
           git config user.email "actions@users.noreply.github.com"
           git add -A
-          git commit -m "test: capture Phase 1 installer failure"
+          git commit -m "test: capture Phase 1 integration failure"
           git push origin HEAD:agent/sprint-4-phase-3-atlas-brain
 
-      - name: Stop after installer failure
-        if: steps.apply.outcome == 'failure'
+      - name: Stop after failure
+        if: steps.apply.outcome == 'failure' || steps.verify.outcome == 'failure'
         run: exit 1
 
-      - name: Validate modified browser JavaScript
-        if: steps.apply.outcome == 'success'
-        run: |
-          node --check apps/web/assets/js/recipes.js
-          node --check apps/web/assets/js/import-center.js
-          node --check apps/web/assets/js/stock-count-workspace.js
-          node --check apps/web/assets/js/settings-workspace.js
-
-      - name: Run Node contracts
-        if: steps.apply.outcome == 'success'
-        run: npm run test:node
-
-      - name: Install Python test dependencies
-        if: steps.apply.outcome == 'success'
-        run: python -m pip install --disable-pip-version-check -r requirements-test.txt
-
-      - name: Compile and run Python contracts
-        if: steps.apply.outcome == 'success'
-        run: |
-          python -m compileall -q scripts tests/python
-          npm run test:python
-
       - name: Commit verified security-gate integration
-        if: steps.apply.outcome == 'success'
+        if: steps.apply.outcome == 'success' && steps.verify.outcome == 'success'
         run: |
           rm -f .github/workflows/integrate-phase1-security-gate.yml
           git config user.name "Atlas Security Gate"
