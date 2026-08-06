@@ -33,6 +33,13 @@ P2.0 closes when:
 9. Node, Python, browser syntax, migration replay and Netlify preview checks pass;
 10. production inventory remains unchanged.
 
+## Deploy Preview gate
+
+Browser acceptance may use only the exact Deploy Preview URL published by the
+Netlify bot on this pull request. A guessed `deploy-preview-<number>` address is
+not release evidence. Until Netlify publishes a successful deployment comment or
+status for this PR, the web-preview gate remains blocked.
+
 ## Production boundary
 
 This release record does not authorize production deployment. Phase 1 manual
