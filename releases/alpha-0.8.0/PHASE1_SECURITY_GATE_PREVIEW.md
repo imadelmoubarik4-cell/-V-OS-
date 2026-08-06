@@ -4,8 +4,8 @@
 
 The Phase 1 security gate is implemented and validated on the isolated Atlas
 preview branch. It is **not applied to production**. Production authorization
-requires completion of the manual dashboard gates, off-repository backups and
-the role-based acceptance matrix in `docs/PHASE1_SECURITY_GATE.md`.
+still requires off-repository backups and the remaining dashboard evidence
+listed below.
 
 PR #5 remains draft, unmerged and unauthorized for production migration.
 
@@ -27,6 +27,12 @@ The isolated Atlas Supabase branch contains and has applied:
 
 - `20260806104705_atlas_phase1_profiles_security_gate.sql`
 - `20260806105543_atlas_phase1_recipe_catalog_gate.sql`
+- `20260806151244_atlas_phase1_recipe_catalog_runtime_fix.sql`
+
+The runtime correction was required after transactional acceptance found that
+the redacted recipe function ordered ingredients by a nonexistent
+`recipe_ingredients.created_at` column. It now orders by `ingredient.id`, and a
+regression contract prevents the invalid reference from returning.
 
 The preview verification confirmed:
 
@@ -47,9 +53,28 @@ The preview verification confirmed:
   records an immutable movement;
 - browser-provided inventory and recipe audit identities are no longer trusted.
 
+## Preview role acceptance
+
+The versioned preview-only script
+`scripts/verify_phase1_role_matrix_preview.sql` passed **18 of 18** checks in one
+rollback-only transaction:
+
+- logged-out menu access allowed;
+- anonymous inventory access denied;
+- active bartender recognized as staff but not manager;
+- bartender receives redacted inventory, recipe and stock-count data;
+- bartender receives no canonical cost-bearing inventory rows;
+- bartender direct update and delete policies reach zero rows;
+- admin receives commercial inventory, supplier, recipe and manager count evidence;
+- inactive and unlisted authenticated users receive no inventory rows.
+
+The disposable fixture was fully rolled back. After acceptance, the isolated
+branch still had zero Auth users, zero profiles, zero inventory rows, zero summed
+quantity and zero movements.
+
 ## Preview web hardening
 
-The preview branch now includes:
+The preview branch includes:
 
 - active-profile verification before opening the operational application;
 - role-aware commercial navigation and controls;
@@ -64,6 +89,26 @@ The preview branch now includes:
 - the punycode VÁ domain in `frame-ancestors`;
 - CI contracts for RLS, grants, views, RPC boundaries, CDN pinning, SRI,
   credentials and production-mutation safety.
+
+## Authentication evidence
+
+Owner-confirmed in the production Supabase dashboard:
+
+- public Email signup disabled;
+- email confirmation enabled;
+- leaked-password protection enabled;
+- minimum password length set to at least 10;
+- custom SMTP configured;
+- staff invitations reported as completed.
+
+The production database currently reports **3 Auth users and 3 active profiles**
+(two admins and one manager), with no pending or unprofiled accounts. This does
+not match the earlier five-account completion target. The production migration
+remains paused until the owner confirms that three is now the intended team or
+invites the two missing accounts.
+
+SMTP configuration is recorded, but invitation and password-reset delivery must
+still be demonstrated through the custom provider.
 
 ## Production safety evidence
 
@@ -83,18 +128,15 @@ A rollback/safety branch exists at:
 
 Before production SQL or merge authorization, record evidence that:
 
-- Supabase public Email signup is disabled;
-- email confirmation remains enabled;
-- the five staff accounts were invited manually;
-- leaked-password protection is enabled;
-- minimum password length is at least 10;
+- the production staff-account count is reconciled;
+- an invitation and password-reset email are delivered through custom SMTP;
 - JWT expiry and Auth rate limits were reviewed;
 - 2FA is enabled for Supabase, GitHub and Netlify;
 - GitHub Secret scanning and Push protection are enabled;
 - Netlify environment variables and build-hook URLs were reviewed;
 - schema, affected-table data, migrations, policies, grants and view definitions
   were backed up outside the public repository;
-- the administrator, bartender and logged-out acceptance matrix passed.
+- the production browser role matrix passes after migration.
 
 Until these items are complete, L2 stays preview-only and no production
 publication or security migration is authorized.
