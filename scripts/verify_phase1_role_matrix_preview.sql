@@ -38,15 +38,9 @@ from (
     ((select id from auth.instances limit 1),'00000000-0000-4000-8000-000000000003'::uuid,'phase1-inactive@example.invalid')
 ) as seed(instance_id,user_id,email);
 
-update public.profiles
-set display_name='Phase 1 admin',role='admin',active=true
-where id='00000000-0000-4000-8000-000000000001';
-update public.profiles
-set display_name='Phase 1 bartender',role='bartender',active=true
-where id='00000000-0000-4000-8000-000000000002';
-update public.profiles
-set display_name='Phase 1 inactive',role='viewer',active=false
-where id='00000000-0000-4000-8000-000000000003';
+update public.profiles set display_name='Phase 1 admin',role='admin',active=true where id='00000000-0000-4000-8000-000000000001';
+update public.profiles set display_name='Phase 1 bartender',role='bartender',active=true where id='00000000-0000-4000-8000-000000000002';
+update public.profiles set display_name='Phase 1 inactive',role='viewer',active=false where id='00000000-0000-4000-8000-000000000003';
 
 insert into public.inventory_items (
   id,name,category,quantity,unit,par_level,cost_price,case_cost,supplier,active
@@ -120,6 +114,22 @@ insert into phase1_role_acceptance
 select 'bartender_direct_delete_denied',count(*)=0,
        format('Rows reachable by bartender DELETE policy: %s.',count(*))
 from removed;
+do $bartender_adjustment$
+begin
+  begin
+    perform public.adjust_inventory(
+      '00000000-0000-4000-8000-000000000101',1,'adjustment',null,null,'denied bartender acceptance'
+    );
+    insert into phase1_role_acceptance values (
+      'bartender_controlled_adjustment_denied',false,'Controlled adjustment unexpectedly succeeded.'
+    );
+  exception when sqlstate '42501' then
+    insert into phase1_role_acceptance values (
+      'bartender_controlled_adjustment_denied',true,'Controlled adjustment denied with SQLSTATE 42501.'
+    );
+  end;
+end
+$bartender_adjustment$;
 insert into phase1_role_acceptance
 select 'bartender_stock_summary_reads',count(*)>=0,
        'Bartender can query the redacted stock-count summary without manager evidence columns.'
@@ -151,6 +161,19 @@ insert into phase1_role_acceptance
 select 'admin_manager_stock_summary_reads',count(*)>=0,
        'Admin can query the manager stock-count evidence summary.'
 from public.stock_count_manager_summary;
+select public.adjust_inventory(
+  '00000000-0000-4000-8000-000000000101',1,'adjustment',null,null,'manager acceptance'
+);
+insert into phase1_role_acceptance
+select 'admin_controlled_adjustment_records_movement',
+       item.quantity=8 and movement.movement_count=1,
+       format('Quantity after manager adjustment: %s; movement rows: %s.',item.quantity,movement.movement_count)
+from (select quantity from public.inventory_items where id='00000000-0000-4000-8000-000000000101') item
+cross join (
+  select count(*) movement_count
+  from public.inventory_movements
+  where item_id='00000000-0000-4000-8000-000000000101'
+) movement;
 reset role;
 
 set local role authenticated;

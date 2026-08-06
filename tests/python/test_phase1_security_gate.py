@@ -5,10 +5,13 @@ ROOT = Path(__file__).resolve().parents[2]
 PHASE1 = (ROOT / "supabase/migrations/20260806104705_atlas_phase1_profiles_security_gate.sql").read_text()
 RECIPES = (ROOT / "supabase/migrations/20260806105543_atlas_phase1_recipe_catalog_gate.sql").read_text()
 STOCK_VIEWS = (ROOT / "supabase/migrations/20260806165146_atlas_phase1_stock_count_views_branch_only.sql").read_text()
+LINT_FIX = (ROOT / "supabase/migrations/20260806171317_atlas_phase1_public_menu_and_adjustment_lint_fix.sql").read_text()
 INDEX = (ROOT / "apps/web/index.html").read_text()
+MENU = (ROOT / "apps/web/menu.html").read_text()
 STOCK_EDGE = (ROOT / "supabase/functions/atlas-stock-counts/entrypoint.ts").read_text()
 SCANNER_EDGE = (ROOT / "supabase/functions/atlas-inventory-scanner/index.ts").read_text()
 VERIFY_SQL = (ROOT / "scripts/verify_phase1_security_gate.sql").read_text()
+ROLE_MATRIX = (ROOT / "scripts/verify_phase1_role_matrix_preview.sql").read_text()
 
 
 class Phase1SecurityGateTests(unittest.TestCase):
@@ -61,17 +64,30 @@ class Phase1SecurityGateTests(unittest.TestCase):
         self.assertIn("Stock-count verification evidence is manager-only", STOCK_VIEWS)
         self.assertGreaterEqual(STOCK_VIEWS.count("security_invoker = true"), 2)
 
-    def test_public_menu_is_the_explicit_four_column_exception(self):
-        self.assertIn("security_invoker = false", PHASE1)
-        self.assertIn("array['id', 'name', 'type', 'menu_price']", PHASE1)
-        self.assertIn("grant select on table public.public_menu to anon", PHASE1)
+    def test_public_menu_is_a_security_invoker_four_column_projection(self):
+        self.assertIn("create schema if not exists public_menu_private", LINT_FIX)
+        self.assertIn("alter table public_menu_private.items enable row level security", LINT_FIX)
+        self.assertIn("grant select (id, name, type, menu_price)", LINT_FIX)
+        self.assertIn("security_invoker = true, security_barrier = true", LINT_FIX)
+        self.assertIn("array['id', 'name', 'type', 'menu_price']", LINT_FIX)
+        self.assertIn("grant select on table public.public_menu to anon, service_role", LINT_FIX)
+        self.assertIn("recipes_sync_public_menu_projection", LINT_FIX)
+        self.assertIn("persistSession: false", MENU)
+        self.assertIn("detectSessionInUrl: false", MENU)
+        self.assertIn(".select('id,name,type,menu_price')", MENU)
 
     def test_inventory_adjustments_and_audit_identity_are_server_controlled(self):
-        self.assertIn("Controlled inventory adjustments require an active manager", PHASE1)
-        self.assertIn("atlas.allow_inventory_quantity_change", PHASE1)
-        self.assertIn("insert into public.inventory_movements", PHASE1)
+        self.assertIn("Controlled inventory adjustments require an active manager", LINT_FIX)
+        self.assertIn("security invoker", LINT_FIX.lower())
+        self.assertIn("active managers add inventory movements", LINT_FIX)
+        self.assertIn("atlas.allow_inventory_quantity_change", LINT_FIX)
+        self.assertIn("insert into public.inventory_movements", LINT_FIX)
         self.assertIn("alter column updated_by set default", PHASE1)
         self.assertNotIn("updated_by: currentUser", INDEX)
+        adjustment_section = LINT_FIX.split(
+            "create or replace function public.adjust_inventory", 1
+        )[1]
+        self.assertNotIn("security definer", adjustment_section.lower())
 
     def test_staff_edge_payloads_are_redacted_and_live_scanner_is_manager_gated(self):
         self.assertIn("commercialAccess = MANAGER_ROLES.has", STOCK_EDGE)
@@ -81,12 +97,20 @@ class Phase1SecurityGateTests(unittest.TestCase):
         live_apply = SCANNER_EDGE.index("applyLiveCount(context")
         self.assertLess(live_gate, live_apply)
 
+    def test_role_matrix_covers_controlled_adjustment_boundaries(self):
+        self.assertIn("bartender_controlled_adjustment_denied", ROLE_MATRIX)
+        self.assertIn("admin_controlled_adjustment_records_movement", ROLE_MATRIX)
+        self.assertIn("sqlstate '42501'", ROLE_MATRIX.lower())
+
     def test_verification_script_checks_tables_views_functions_and_fingerprint(self):
         for token in (
             "tables_without_rls",
             "unsafe_non_public_views",
             "browser_function_exposure",
             "atlas_stock_count_views",
+            "public_menu_safe",
+            "adjust_inventory_safe",
+            "security_lint_blockers",
             "inventory_records",
             "inventory_movements",
         ):

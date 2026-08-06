@@ -29,31 +29,33 @@ It creates `stock_count_summary` and `stock_count_manager_summary` only when
 source relation, so the migration is an intentional no-op there and L1 remains
 available through the authenticated Atlas gateway.
 
+The final security-lint migration is:
+
+`20260806171317_atlas_phase1_public_menu_and_adjustment_lint_fix.sql`
+
+It replaces the owner-evaluated menu view with a security-invoker view over a
+trigger-maintained four-column projection in the non-exposed
+`public_menu_private` schema. It also makes `adjust_inventory` security-invoker,
+adds the manager-only movement insert policy and keeps the immutable movement
+boundary.
+
 ## Preview implementation and acceptance
-
-The isolated Atlas branch ledger includes:
-
-- `20260806104705_atlas_phase1_profiles_security_gate`
-- `20260806105543_atlas_phase1_recipe_catalog_gate`
-- `20260806112800_atlas_phase1_recipe_catalog_runtime_fix`
-- `20260806151244_atlas_phase1_recipe_catalog_runtime_fix`
-- `20260806165146_atlas_phase1_stock_count_views_branch_only`
-
-The recipe runtime correction removes an invalid
-`recipe_ingredients.created_at` reference. The canonical table has no such
-column, so the redacted projection orders deterministically by ingredient id.
 
 Latest database acceptance:
 
-- preview role matrix: **18 passed, 0 failed, rolled back**;
+- preview role matrix: **20 passed, 0 failed, rolled back**;
 - exact production-safe migration: **executed successfully, rolled back**;
 - production-topology stock-view test: **guarded migration performed a no-op**;
+- security advisors after lint closure: **zero findings**;
 - preview security verification: no table without RLS, no unsafe non-public view,
-  and no unintended browser-callable public function;
+  no unintended browser-callable function and no `security_lint_blockers`;
 - preview fixtures after testing: zero Auth users, profiles, inventory rows,
   quantity and movements;
-- `public_menu`: exactly `id`, `name`, `type` and `menu_price` with anonymous
-  `SELECT` only;
+- `public_menu`: security-invoker, exactly `id`, `name`, `type` and `menu_price`;
+- public menu client: isolated anonymous session with explicit four-field query;
+- bartender controlled adjustment: denied;
+- manager controlled adjustment: passed and created one movement inside the
+  rollback-only fixture;
 - redacted inventory, movement, recipe and stock-count projections present.
 
 The Supabase preview database is active and healthy. Its branch control-plane
@@ -126,12 +128,10 @@ a new public table lacks RLS or a new view is exposed unsafely.
 4. Verify `imadelmoubarik4@gmail.com` remains an active `admin`.
 5. Take a fresh final backup immediately before the window.
 6. Freeze operational writes briefly and capture the fingerprint.
-7. Apply migrations in repository order, including:
-   - `20260806104705_atlas_phase1_profiles_security_gate.sql`
-   - `20260806105543_atlas_phase1_recipe_catalog_gate.sql`
-   - both recorded recipe runtime-fix versions
-   - `20260806165146_atlas_phase1_stock_count_views_branch_only.sql` (production no-op)
-8. Run `scripts/verify_phase1_security_gate.sql`.
+7. Apply migrations in repository order through
+   `20260806171317_atlas_phase1_public_menu_and_adjustment_lint_fix.sql`.
+8. Run `scripts/verify_phase1_security_gate.sql`; every exception list and
+   `security_lint_blockers` must be empty.
 9. Deploy the browser and Netlify hardening commit.
 10. Run the production browser role matrix.
 11. Re-run the fingerprint and compare it with the baseline.
@@ -148,9 +148,10 @@ a new public table lacks RLS or a new view is exposed unsafely.
 | Bartender reads recipe | Redacted `recipe_catalog` only |
 | Bartender reads cost, supplier terms or variance identity | Denied |
 | Bartender records an L1 observation | Allowed |
-| Bartender directly changes live quantity | Denied |
+| Bartender calls controlled live adjustment | Denied |
 | Bartender changes cost or deletes an item | Denied |
 | Manager reads commercial fields | Allowed |
+| Manager calls controlled adjustment | Allowed and movement recorded |
 | Manager publishes an approved count | Controlled L1 publication only |
 | Browser calls private L1/L2 tables | Denied |
 | Preview publication | Blocked |
