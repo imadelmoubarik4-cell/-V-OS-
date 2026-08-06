@@ -2,19 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const config = readFileSync('apps/web/config.js', 'utf8');
+const bootstrap = readFileSync('apps/web/assets/js/stock-count-bootstrap.js', 'utf8');
 const ui = readFileSync('apps/web/assets/js/item-master-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/item-master-workspace.css', 'utf8');
 
-test('Checkpoint L2 is wired through the authenticated item-master gateway', () => {
-  assert.match(config, /ITEM_MASTER_API:/);
-  assert.match(config, /assets\/css\/item-master-workspace\.css/);
-  assert.match(config, /assets\/js\/item-master-workspace\.js/);
-  assert.match(config, /globalName:\s*'AtlasItemMaster'/);
+test('Checkpoint L2 is wired through the authenticated Inventory bootstrap and gateway', () => {
+  assert.match(bootstrap, /ITEM_MASTER_API/);
+  assert.match(bootstrap, /assets\/css\/item-master-workspace\.css/);
+  assert.match(bootstrap, /assets\/js\/item-master-workspace\.js/);
+  assert.match(bootstrap, /window\.VABAR_CONFIG/);
+  assert.match(bootstrap, /window\.AtlasItemMaster/);
   assert.match(ui, /window\.atlasSupabase/);
   assert.match(ui, /authorization:\s*`Bearer \$\{session\.access_token\}`/);
-  assert.doesNotMatch(config + ui, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.doesNotMatch(bootstrap + ui, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(ui, /\.from\s*\(\s*['"]/);
+  assert.doesNotThrow(() => new Function(bootstrap));
+  assert.doesNotThrow(() => new Function(ui));
 });
 
 test('L2 dynamically adds a dedicated Inventory item-master workspace', () => {
