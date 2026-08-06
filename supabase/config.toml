@@ -5,9 +5,8 @@
 # Supabase branches. The branch gateway cannot validate a token issued by the
 # production project, so each function authenticates the caller in its handler
 # and revalidates the server-controlled active profile before returning or
-# mutating private data. Brain, briefing, review, System, Checkpoint K,
-# stock-count publication and Item Master L2 require an active manager/admin
-# profile; staff-facing endpoints apply narrower permissions.
+# mutating private data. Brain, briefing, review, System, Checkpoint K, stock-count publication and Item Master L2 require an active manager/admin profile;
+# staff-facing endpoints apply narrower permissions.
 
 [functions.atlas-sprint3-review]
 verify_jwt = false
