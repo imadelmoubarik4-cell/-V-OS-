@@ -177,6 +177,8 @@ psql -v ON_ERROR_STOP=1 -qAt -f "$ROOT/scripts/verify_phase1_role_matrix_preview
   > "$WORK_DIR/role-matrix.jsonl"
 psql -v ON_ERROR_STOP=1 -qAt -f "$ROOT/scripts/verify_phase1_security_gate.sql" \
   > "$WORK_DIR/security-gate.jsonl"
+psql -v ON_ERROR_STOP=1 -qAt -f "$ROOT/scripts/verify_phase2_foundation.sql" \
+  > "$WORK_DIR/phase2-foundation.jsonl"
 
 python - "$WORK_DIR" "${#migrations[@]}" <<'PY'
 import json
@@ -204,6 +206,7 @@ def last_json(path: pathlib.Path) -> dict:
 
 role = last_json(work / "role-matrix.jsonl")
 security = last_json(work / "security-gate.jsonl")
+phase2 = last_json(work / "phase2-foundation.jsonl")
 
 assert role.get("passed") is True, role
 assert role.get("failed_count") == 0, role
@@ -216,6 +219,11 @@ assert security.get("security_lint_blockers") == [], security
 assert security.get("public_menu", {}).get("public_menu_safe") is True, security
 assert security.get("controlled_adjustment", {}).get("adjust_inventory_safe") is True, security
 
+assert phase2.get("passed") is True, phase2
+assert phase2.get("failed_count") == 0, phase2
+assert phase2.get("passed_count", 0) >= 14, phase2
+assert phase2.get("rolled_back") is True, phase2
+
 query = """
 select jsonb_build_object(
   'ledger_count',(select count(*) from supabase_migrations.schema_migrations),
@@ -224,10 +232,15 @@ select jsonb_build_object(
   'experimental_runs',to_regclass('atlas_private.intelligence_runs') is not null,
   'stock_count_summary',to_regclass('public.stock_count_summary') is not null,
   'item_master_drafts',to_regclass('atlas_private.item_master_drafts') is not null,
+  'read_source_events',to_regclass('atlas_private.read_source_events') is not null,
+  'pos_mapping_settings',to_regclass('atlas_private.pos_mapping_settings') is not null,
+  'pos_mapping_events',to_regclass('atlas_private.pos_mapping_events') is not null,
   'auth_users',(select count(*) from auth.users where deleted_at is null),
   'profiles',(select count(*) from public.profiles),
   'inventory_items',(select count(*) from public.inventory_items),
-  'inventory_movements',(select count(*) from public.inventory_movements)
+  'inventory_movements',(select count(*) from public.inventory_movements),
+  'pos_products',(select count(*) from atlas_private.pos_products),
+  'pos_targets',(select count(*) from atlas_private.pos_mapping_targets)
 )::text;
 """
 state = json.loads(subprocess.check_output(["psql", "-qAt", "-c", query], text=True).strip())
@@ -237,13 +250,26 @@ assert state["brain_snapshots"] is True, state
 assert state["experimental_runs"] is False, state
 assert state["stock_count_summary"] is True, state
 assert state["item_master_drafts"] is True, state
+assert state["read_source_events"] is True, state
+assert state["pos_mapping_settings"] is True, state
+assert state["pos_mapping_events"] is True, state
 assert state["auth_users"] == 0, state
 assert state["profiles"] == 0, state
 assert state["inventory_items"] == 0, state
 assert state["inventory_movements"] == 0, state
+assert state["pos_products"] == 0, state
+assert state["pos_targets"] == 0, state
 
 (work / "acceptance.json").write_text(
-    json.dumps({"role_matrix": role, "security_gate": security, "state": state}, indent=2),
+    json.dumps(
+        {
+            "role_matrix": role,
+            "security_gate": security,
+            "phase2_foundation": phase2,
+            "state": state,
+        },
+        indent=2,
+    ),
     encoding="utf-8",
 )
 print(json.dumps({"migration_replay": "passed", "migrations": expected_migration_count, **state}))
