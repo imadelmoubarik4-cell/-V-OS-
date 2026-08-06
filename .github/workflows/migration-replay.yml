@@ -1,0 +1,51 @@
+name: Migration replay
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - agent/sprint-4-atlas-brain-daily-briefing
+      - agent/sprint-4-phase-3-atlas-brain
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    name: replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vaos_replay
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vaos_replay"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: vaos_replay
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Replay every migration and run security acceptance
+        run: bash scripts/verify_full_migration_replay.sh
