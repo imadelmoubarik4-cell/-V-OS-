@@ -6,6 +6,7 @@ on:
       - release/alpha-0.8.0
       - agent/sprint-3-real-va-data
       - agent/sprint-4-atlas-brain-daily-briefing
+      - agent/sprint-4-phase-3-atlas-brain
   push:
     branches:
       - 'agent/**'
@@ -50,6 +51,10 @@ jobs:
           node --check apps/web/assets/js/knowledge-team-link-bridge.js
           node --check apps/web/assets/js/reports-workspace.js
           node --check apps/web/assets/js/system-workspace.js
+          if [ -f apps/web/assets/js/connection-center.js ]; then
+            node --check apps/web/assets/js/connection-center.js
+          fi
+          node --check apps/web/assets/js/settings-mount-bridge.js
           gzip -dc apps/web/assets/js/team-profiles.bundle.js.gz > /tmp/team-profiles.js
           node --check /tmp/team-profiles.js
 
