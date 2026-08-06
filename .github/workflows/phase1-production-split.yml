@@ -354,3 +354,5 @@ migration is guarded with `to_regclass(...)` and is a no-op in production.
             releases/alpha-0.8.0/PHASE1_SECURITY_GATE_PREVIEW.md
           git commit -m 'fix: split production and Atlas stock-count security migrations'
           git push origin HEAD:agent/sprint-4-phase-3-atlas-brain
+
+# Re-trigger after workflow registration.
