@@ -3,6 +3,7 @@
 
   const WORKSPACE_SRC = 'assets/js/settings-workspace.js?v=20260805-1';
   const WORKSPACE_CSS = 'assets/css/settings-workspace.css?v=20260805-1';
+  const BUTTON_CONTRAST_STYLE_ID = 'atlas-settings-button-contrast';
   const state = {
     loading: false,
     initialized: false,
@@ -37,13 +38,23 @@
     element.querySelectorAll('.checkpoint-a-settings-integrations').forEach((section) => section.remove());
   }
 
+  function ensureButtonContrast() {
+    if (document.getElementById(BUTTON_CONTRAST_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = BUTTON_CONTRAST_STYLE_ID;
+    style.textContent = '.settings-view .settings-primary,.settings-view .settings-hero aside button{color:#fff}';
+    document.head.appendChild(style);
+  }
+
   function ensureStylesheet() {
-    if (document.querySelector('link[data-atlas-checkpoint-j-settings]')) return;
-    const stylesheet = document.createElement('link');
-    stylesheet.rel = 'stylesheet';
-    stylesheet.href = WORKSPACE_CSS;
-    stylesheet.dataset.atlasCheckpointJSettings = 'true';
-    document.head.appendChild(stylesheet);
+    if (!document.querySelector('link[data-atlas-checkpoint-j-settings]')) {
+      const stylesheet = document.createElement('link');
+      stylesheet.rel = 'stylesheet';
+      stylesheet.href = WORKSPACE_CSS;
+      stylesheet.dataset.atlasCheckpointJSettings = 'true';
+      document.head.appendChild(stylesheet);
+    }
+    ensureButtonContrast();
   }
 
   function showStartingState() {
