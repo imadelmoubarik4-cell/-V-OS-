@@ -76,6 +76,17 @@ begin
 end
 $core_platform_acceptance$;
 
+do $core_platform_failure_gate$
+begin
+  if exists(select 1 from core_platform_results where not passed) then
+    raise exception 'P2.1 core-platform acceptance failed: %',(
+      select string_agg(test_name,', ' order by test_name)
+      from core_platform_results where not passed
+    );
+  end if;
+end
+$core_platform_failure_gate$;
+
 select jsonb_build_object(
   'passed',bool_and(passed),
   'passed_count',count(*) filter(where passed),
