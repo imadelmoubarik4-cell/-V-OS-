@@ -1,5 +1,6 @@
 name: Integrate Phase 1 security gate
 
+# Explicit retry after the final browser-audit boundary fix.
 on:
   push:
     branches:
