@@ -1,0 +1,133 @@
+name: Integrate Checkpoint L2 item master
+
+on:
+  push:
+    branches:
+      - agent/sprint-4-phase-3-atlas-brain
+    paths:
+      - .github/workflows/integrate-item-master-l2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out Checkpoint L2 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/sprint-4-phase-3-atlas-brain
+          fetch-depth: 0
+
+      - name: Restore reviewed L2 source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/l2_payload_*.txt > /tmp/checkpoint-l2.b64
+          base64 --decode /tmp/checkpoint-l2.b64 > /tmp/checkpoint-l2.tar.gz
+          echo "96a83b473db03ffd2ab1d781effd44dc51ba0f2dba82db45e188455a387f134c  /tmp/checkpoint-l2.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/checkpoint-l2.tar.gz
+
+      - name: Wire L2 runtime and verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def insert_once(text: str, anchor: str, addition: str, label: str) -> str:
+              if addition.strip() in text:
+                  return text
+              if anchor not in text:
+                  raise SystemExit(f"Could not find {label}")
+              return text.replace(anchor, anchor + addition, 1)
+
+          config_path = Path('apps/web/config.js')
+          config = config_path.read_text()
+          api_line = '  ITEM_MASTER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-item-master",\n'
+          config = insert_once(
+              config,
+              '  STOCK_COUNTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-stock-counts",\n',
+              api_line,
+              'L2 API configuration',
+          )
+          loader = """
+
+          // Checkpoint L2 turns Checkpoint K's item-data blockers into a manager-only
+          // completion queue with private drafts and an explicit publication boundary.
+          loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+            stylesheetPath: 'assets/css/item-master-workspace.css',
+            scriptPath: 'assets/js/item-master-workspace.js',
+            globalName: 'AtlasItemMaster',
+            dataAttribute: 'atlasItemMaster',
+          }));
+          """
+          stock_loader = """loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+            scriptPath: 'assets/js/stock-count-bootstrap.js',
+            globalName: 'AtlasStockCountBootstrap',
+            dataAttribute: 'atlasStockCountBootstrap',
+          }));"""
+          if 'AtlasItemMaster' not in config:
+              config = insert_once(config, stock_loader, loader, 'L2 asset loader')
+          config_path.write_text(config)
+
+          supabase_path = Path('supabase/config.toml')
+          supabase = supabase_path.read_text()
+          supabase = supabase.replace(
+              '# Knowledge, Reports, System, Settings, Checkpoint K intelligence and Checkpoint\n# L1 stock-count evidence live in isolated Supabase branches.',
+              '# Knowledge, Reports, System, Settings, Checkpoint K intelligence, Checkpoint\n# L1 stock-count evidence and Checkpoint L2 item-master drafts live in isolated Supabase branches.',
+          )
+          supabase = supabase.replace(
+              '# review, System, Checkpoint K and stock-count publication require an active manager/admin profile;',
+              '# review, System, Checkpoint K, stock-count publication and Item Master L2 require an active manager/admin profile;',
+          )
+          item_master_config = """
+
+          [functions.atlas-item-master]
+          verify_jwt = false
+          """
+          if '[functions.atlas-item-master]' not in supabase:
+              supabase += item_master_config
+          supabase_path.write_text(supabase)
+
+          verify_path = Path('.github/workflows/atlas-verify.yml')
+          verify = verify_path.read_text()
+          check_line = '          node --check apps/web/assets/js/item-master-workspace.js\n'
+          if check_line not in verify:
+              verify = insert_once(
+                  verify,
+                  '          node --check apps/web/assets/js/stock-count-l1-verified.js\n',
+                  check_line,
+                  'L2 JavaScript syntax check',
+              )
+          verify_path.write_text(verify)
+          PY
+
+          rm -f .github/l2_payload_*.txt
+
+      - name: Validate Checkpoint L2
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check apps/web/assets/js/item-master-workspace.js
+          node --check supabase/functions/atlas-item-master/index.ts
+          python -m py_compile tests/python/test_item_master_l2_contract.py
+          npm run test:node
+          python -m pip install --disable-pip-version-check -r requirements-test.txt
+          npm run test:python
+
+      - name: Commit Checkpoint L2 foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Checkpoint L2 is already integrated."
+            exit 0
+          fi
+          git commit -m "feat: add Checkpoint L2 item-master completion"
+          git push origin HEAD:agent/sprint-4-phase-3-atlas-brain
