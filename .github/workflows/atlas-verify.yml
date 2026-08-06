@@ -18,7 +18,8 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/agent/sprint-4-phase-3-atlas-brain' &&
-      !startsWith(github.event.head_commit.message, 'security: await active-profile verification on login')
+      !startsWith(github.event.head_commit.message, 'security: await active-profile verification on login') &&
+      !startsWith(github.event.head_commit.message, 'test: capture profile-login security failure')
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -40,9 +41,13 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Await profile verification and harden installer repair path
+      - name: Patch and verify active-profile sign-in boundary
+        id: phase
+        continue-on-error: true
         run: |
-          python - <<'PY'
+          set -o pipefail
+          {
+            python - <<'PY'
           from pathlib import Path
 
           index_path = Path('apps/web/index.html')
@@ -84,39 +89,51 @@ jobs:
           test_block = '''
 
 test('active profile verification is awaited before the app opens', () => {
-  assert.match(index, /await onSignedIn\\(data\\.session\\);/);
-  assert.doesNotMatch(index, /(?<!await )onSignedIn\\(data\\.session\\);/);
+  const awaited = (index.match(/await onSignedIn\\(data\\.session\\);/g) || []).length;
+  const allCalls = (index.match(/onSignedIn\\(data\\.session\\);/g) || []).length;
+  assert.equal(awaited, allCalls);
+  assert.ok(awaited >= 2);
 });
 '''
           if "active profile verification is awaited before the app opens" not in test_source:
               test_source += test_block
           test_path.write_text(test_source, encoding='utf-8')
           PY
+            python -m py_compile scripts/apply_phase1_security_gate.py
+            node --check apps/web/assets/js/recipes.js
+            npm run test:node
+            python -m pip install --disable-pip-version-check -r requirements-test.txt
+            python -m compileall -q scripts tests/python
+            npm run test:python
+          } 2>&1 | tee /tmp/profile-login-security.log
 
-      - name: Validate browser and installer syntax
+      - name: Commit verified repair
+        if: steps.phase.outcome == 'success'
         run: |
-          python -m py_compile scripts/apply_phase1_security_gate.py
-          node --check apps/web/assets/js/recipes.js
-
-      - name: Run Node contracts
-        run: npm run test:node
-
-      - name: Install Python test dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-test.txt
-
-      - name: Run Python contracts
-        run: |
-          python -m compileall -q scripts tests/python
-          npm run test:python
-
-      - name: Restore standard verifier and commit the repair
-        run: |
-          git show "$GITHUB_SHA^:.github/workflows/atlas-verify.yml" > .github/workflows/atlas-verify.yml
+          git show "$GITHUB_SHA^^:.github/workflows/atlas-verify.yml" > .github/workflows/atlas-verify.yml
+          rm -f docs/PHASE1_PROFILE_LOGIN_ERROR.txt
           git config user.name "Atlas Security Gate"
           git config user.email "actions@users.noreply.github.com"
           git add -A
           git commit -m "security: await active-profile verification on login"
           git push origin HEAD:agent/sprint-4-phase-3-atlas-brain
+
+      - name: Record failure and restore standard verifier
+        if: steps.phase.outcome == 'failure'
+        run: |
+          git reset --hard HEAD
+          git show "$GITHUB_SHA^^:.github/workflows/atlas-verify.yml" > .github/workflows/atlas-verify.yml
+          mkdir -p docs
+          cp /tmp/profile-login-security.log docs/PHASE1_PROFILE_LOGIN_ERROR.txt
+          git config user.name "Atlas Security Gate"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "test: capture profile-login security failure"
+          git push origin HEAD:agent/sprint-4-phase-3-atlas-brain
+
+      - name: Stop after recorded failure
+        if: steps.phase.outcome == 'failure'
+        run: exit 1
 
   contracts:
     runs-on: ubuntu-latest
