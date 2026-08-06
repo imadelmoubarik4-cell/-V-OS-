@@ -1,24 +1,11 @@
--- Preview-only transport used to restore the preserved Real VA review checkpoint.
+-- Historical ledger anchor for the completed one-time Real VA preview transfer.
 --
--- Production has no atlas_private staging schema, so this migration is an
--- intentional production no-op. On an Atlas preview that has the private review
--- model, it enables pg_net only when that extension was not already installed
--- and leaves a private marker so the paired cleanup migration removes only the
--- extension created by this transfer sequence.
-
-do $preview_transfer_enable$
-begin
-  if to_regclass('atlas_private.import_batches') is null then
-    return;
-  end if;
-
-  if not exists (select 1 from pg_extension where extname = 'pg_net') then
-    create table if not exists atlas_private.p20_transfer_extension_marker (
-      marker boolean primary key default true check (marker)
-    );
-    revoke all on atlas_private.p20_transfer_extension_marker from public, anon, authenticated;
-    grant all on atlas_private.p20_transfer_extension_marker to service_role;
-    execute 'create extension pg_net with schema extensions';
-  end if;
-end
-$preview_transfer_enable$;
+-- The live preview temporarily enabled pg_net while the preserved Sprint 3
+-- review checkpoint was copied server-to-server. The transport has completed,
+-- source and destination counts and digests matched, the temporary endpoints
+-- were retired, and pg_net was removed again.
+--
+-- Clean repository replay must not depend on the hosted-only pg_net extension.
+-- This migration therefore preserves the recorded version without recreating
+-- the retired transport. It is an intentional no-op in every environment.
+select 1;
