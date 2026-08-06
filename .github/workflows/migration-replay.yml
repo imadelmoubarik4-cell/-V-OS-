@@ -53,3 +53,6 @@ jobs:
 
       - name: Verify P2.1 core-platform readiness contract
         run: psql -v ON_ERROR_STOP=1 -qAt -f scripts/verify_phase2_core_platform.sql
+
+      - name: Verify P2.6 recovery and no-false-success contract
+        run: psql -v ON_ERROR_STOP=1 -qAt -f scripts/verify_phase2_recovery.sql
