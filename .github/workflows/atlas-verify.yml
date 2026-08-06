@@ -52,6 +52,8 @@ jobs:
           node --check apps/web/assets/js/reports-workspace.js
           node --check apps/web/assets/js/system-workspace.js
           node --check apps/web/assets/js/connection-center.js
+          node --check apps/web/assets/js/read-sources-p22.js
+          node --check apps/web/assets/js/pos-mapping-checkpoint-m.js
           node --check apps/web/assets/js/settings-mount-bridge.js
           gzip -dc apps/web/assets/js/team-profiles.bundle.js.gz > /tmp/team-profiles.js
           node --check /tmp/team-profiles.js
