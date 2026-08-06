@@ -9,7 +9,7 @@ BEGIN = (ROOT / "supabase/migrations/20260806000447_atlas_item_master_checkpoint
 PRODUCTION = (ROOT / "supabase/migrations/20260806000552_atlas_item_master_checkpoint_l2_production_rpc.sql").read_text()
 EDGE = (ROOT / "supabase/functions/atlas-item-master/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
-BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
+BOOTSTRAP = (ROOT / "apps/web/assets/js/stock-count-bootstrap.js").read_text()
 BROWSER = (ROOT / "apps/web/assets/js/item-master-workspace.js").read_text()
 
 
@@ -108,13 +108,14 @@ class ItemMasterL2ContractTests(unittest.TestCase):
         self.assertIn("missing_fields", EDGE)
 
     def test_browser_uses_gateway_and_no_direct_operational_mutation(self):
-        self.assertIn("ITEM_MASTER_API", BROWSER_CONFIG)
-        self.assertIn("item-master-workspace.js", BROWSER_CONFIG)
+        self.assertIn("ITEM_MASTER_API", BOOTSTRAP)
+        self.assertIn("item-master-workspace.js", BOOTSTRAP)
+        self.assertIn("item-master-workspace.css", BOOTSTRAP)
         self.assertIn("window.atlasSupabase", BROWSER)
         self.assertIn("Save private draft", BROWSER)
         self.assertIn("Preview publication disabled", BROWSER)
         self.assertNotRegex(BROWSER, r"\.from\s*\(\s*['\"]")
-        self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER)
+        self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BOOTSTRAP + BROWSER)
         self.assertNotIn("adjust_inventory", BROWSER)
         self.assertNotIn("inventory_movements", BROWSER)
 
