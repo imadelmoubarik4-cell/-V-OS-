@@ -16,6 +16,7 @@ begin
     'intelligence_runs',
     'intelligence_capabilities',
     'intelligence_recommendations',
+    'intelligence_recommendation_events',
     'intelligence_evidence',
     'intelligence_decisions',
     'intelligence_outcomes',
@@ -48,6 +49,7 @@ drop function if exists atlas_private.intelligence_record_outcome(uuid,text,text
 drop function if exists atlas_private.intelligence_save_run(jsonb,jsonb,jsonb,uuid,text,text);
 drop function if exists atlas_private.intelligence_snapshot(uuid,text);
 
+drop table if exists atlas_private.intelligence_recommendation_events;
 drop table if exists atlas_private.intelligence_events;
 drop table if exists atlas_private.intelligence_outcomes;
 drop table if exists atlas_private.intelligence_decisions;
