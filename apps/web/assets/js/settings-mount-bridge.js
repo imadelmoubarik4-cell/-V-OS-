@@ -5,6 +5,10 @@
   const WORKSPACE_CSS = 'assets/css/settings-workspace.css?v=20260805-1';
   const CONNECTION_CENTER_SRC = 'assets/js/connection-center.js?v=20260806-p20';
   const CONNECTION_CENTER_CSS = 'assets/css/connection-center.css?v=20260806-p20';
+  const READ_SOURCES_SRC = 'assets/js/read-sources-p22.js?v=20260806-p22';
+  const READ_SOURCES_CSS = 'assets/css/read-sources-p22.css?v=20260806-p22';
+  const POS_MAPPING_SRC = 'assets/js/pos-mapping-checkpoint-m.js?v=20260806-m1';
+  const POS_MAPPING_CSS = 'assets/css/pos-mapping-checkpoint-m.css?v=20260806-m1';
   const BUTTON_CONTRAST_STYLE_ID = 'atlas-settings-button-contrast';
   const state = {
     loading: false,
@@ -48,22 +52,44 @@
     document.head.appendChild(style);
   }
 
-  function ensureConnectionCenterAssets() {
-    if (!document.querySelector('link[data-atlas-connection-center]')) {
+  function loadAssetPair({ css, js, dataset, globalName }) {
+    if (css && !document.querySelector(`link[data-${dataset}]`)) {
       const stylesheet = document.createElement('link');
       stylesheet.rel = 'stylesheet';
-      stylesheet.href = CONNECTION_CENTER_CSS;
-      stylesheet.dataset.atlasConnectionCenter = 'true';
+      stylesheet.href = css;
+      stylesheet.setAttribute(`data-${dataset}`, 'true');
       document.head.appendChild(stylesheet);
     }
-    if (!window.AtlasConnectionCenter
-        && !document.querySelector('script[data-atlas-connection-center]')) {
-      const script = document.createElement('script');
-      script.src = CONNECTION_CENTER_SRC;
-      script.async = false;
-      script.dataset.atlasConnectionCenter = 'true';
-      document.body.appendChild(script);
-    }
+    if (!js || window[globalName] || document.querySelector(`script[data-${dataset}]`)) return;
+    const script = document.createElement('script');
+    script.src = js;
+    script.async = false;
+    script.setAttribute(`data-${dataset}`, 'true');
+    document.body.appendChild(script);
+  }
+
+  function ensureConnectionCenterAssets() {
+    loadAssetPair({
+      css: CONNECTION_CENTER_CSS,
+      js: CONNECTION_CENTER_SRC,
+      dataset: 'atlas-connection-center',
+      globalName: 'AtlasConnectionCenter'
+    });
+  }
+
+  function ensurePhase2Assets() {
+    loadAssetPair({
+      css: READ_SOURCES_CSS,
+      js: READ_SOURCES_SRC,
+      dataset: 'atlas-read-sources-p22',
+      globalName: 'AtlasReadSourcesP22'
+    });
+    loadAssetPair({
+      css: POS_MAPPING_CSS,
+      js: POS_MAPPING_SRC,
+      dataset: 'atlas-pos-mapping-m',
+      globalName: 'AtlasCheckpointM'
+    });
   }
 
   function ensureStylesheet() {
@@ -76,6 +102,7 @@
     }
     ensureButtonContrast();
     ensureConnectionCenterAssets();
+    ensurePhase2Assets();
   }
 
   function showStartingState() {
@@ -93,6 +120,7 @@
   async function activateWorkspace() {
     removeLegacySettings();
     ensureConnectionCenterAssets();
+    ensurePhase2Assets();
     if (!workspaceReady()) return false;
     try {
       await window.AtlasSettings.refresh();
@@ -154,6 +182,7 @@
     document.addEventListener('click', handleClick, true);
 
     state.observer = new MutationObserver(() => {
+      ensurePhase2Assets();
       if (!settingsVisible()) return;
       removeLegacySettings();
       ensureConnectionCenterAssets();
