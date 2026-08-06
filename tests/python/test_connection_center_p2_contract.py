@@ -5,12 +5,12 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_FILES = [
-    ROOT / "supabase/migrations/20260806190000_atlas_connections_p2_registry.sql",
-    ROOT / "supabase/migrations/20260806190100_atlas_connections_p2_evidence.sql",
-    ROOT / "supabase/migrations/20260806190200_atlas_connections_p2_snapshot.sql",
-    ROOT / "supabase/migrations/20260806190250_atlas_connections_p2_checks.sql",
-    ROOT / "supabase/migrations/20260806190275_atlas_connections_p2_capabilities.sql",
-    ROOT / "supabase/migrations/20260806190300_atlas_connections_p2_seeds_api.sql",
+    ROOT / "supabase/migrations/20260806190744_atlas_connections_p2_registry.sql",
+    ROOT / "supabase/migrations/20260806190833_atlas_connections_p2_evidence.sql",
+    ROOT / "supabase/migrations/20260806190928_atlas_connections_p2_snapshot.sql",
+    ROOT / "supabase/migrations/20260806191017_atlas_connections_p2_checks.sql",
+    ROOT / "supabase/migrations/20260806191056_atlas_connections_p2_capabilities.sql",
+    ROOT / "supabase/migrations/20260806191151_atlas_connections_p2_seeds_api.sql",
 ]
 MIGRATION = "\n".join(path.read_text() for path in MIGRATION_FILES)
 EDGE = (ROOT / "supabase/functions/atlas-connections/index.ts").read_text()
