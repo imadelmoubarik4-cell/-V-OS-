@@ -89,7 +89,7 @@ declare
   action_total integer;
   smtp_state text;
 begin
-  perform atlas_private.connections_assert_actor(p_actor_role,false);
+  perform atlas_private.connection_assert_actor(p_actor_role,false);
 
   select count(*),
          count(*) filter (
