@@ -5,7 +5,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 PHASE1 = (ROOT / "supabase/migrations/20260806104705_atlas_phase1_profiles_security_gate.sql").read_text()
 RECIPES = (ROOT / "supabase/migrations/20260806105543_atlas_phase1_recipe_catalog_gate.sql").read_text()
-STOCK_VIEWS = (ROOT / "supabase/migrations/20260806160000_atlas_phase1_stock_count_views_branch_only.sql").read_text()
+STOCK_VIEWS = (ROOT / "supabase/migrations/20260806165146_atlas_phase1_stock_count_views_branch_only.sql").read_text()
 INDEX = (ROOT / "apps/web/index.html").read_text()
 STOCK_EDGE = (ROOT / "supabase/functions/atlas-stock-counts/entrypoint.ts").read_text()
 SCANNER_EDGE = (ROOT / "supabase/functions/atlas-inventory-scanner/index.ts").read_text()

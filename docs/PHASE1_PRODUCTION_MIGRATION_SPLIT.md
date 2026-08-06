@@ -27,7 +27,7 @@ It contains no `atlas_private` reference and creates no stock-count evidence vie
 
 ### Atlas-branch-only migration
 
-`20260806160000_atlas_phase1_stock_count_views_branch_only.sql` is guarded by:
+`20260806165146_atlas_phase1_stock_count_views_branch_only.sql` is guarded by:
 
 ```sql
 to_regclass('atlas_private.inventory_verified_balances') is not null
