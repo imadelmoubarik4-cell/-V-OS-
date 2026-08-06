@@ -5,7 +5,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_FIX = (
     ROOT
-    / "supabase/migrations/20260806112800_atlas_phase1_recipe_catalog_runtime_fix.sql"
+    / "supabase/migrations/20260806151244_atlas_phase1_recipe_catalog_runtime_fix.sql"
 ).read_text()
 
 
