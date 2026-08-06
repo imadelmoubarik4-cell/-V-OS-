@@ -1,5 +1,6 @@
 name: Integrate Phase 1 security gate
 
+# Reviewed retry: the installer is versioned and idempotent.
 on:
   push:
     branches:
