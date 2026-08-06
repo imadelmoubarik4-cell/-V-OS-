@@ -71,9 +71,13 @@ select jsonb_build_object(
   'redacted_views', jsonb_build_object(
     'inventory_catalog', to_regclass('public.inventory_catalog') is not null,
     'inventory_movement_catalog', to_regclass('public.inventory_movement_catalog') is not null,
-    'recipe_catalog', to_regclass('public.recipe_catalog') is not null,
-    'stock_count_summary', to_regclass('public.stock_count_summary') is not null,
-    'stock_count_manager_summary', to_regclass('public.stock_count_manager_summary') is not null
+    'recipe_catalog', to_regclass('public.recipe_catalog') is not null
+  ),
+  'atlas_stock_count_views', jsonb_build_object(
+    'source_available', to_regclass('atlas_private.inventory_verified_balances') is not null,
+    'staff_view', to_regclass('public.stock_count_summary') is not null,
+    'manager_view', to_regclass('public.stock_count_manager_summary') is not null,
+    'expected_in_this_database', to_regclass('atlas_private.inventory_verified_balances') is not null
   ),
   'fingerprint', (select to_jsonb(fingerprint) from fingerprint)
 ) as phase1_security_gate;

@@ -1,9 +1,10 @@
--- Phase 1 production security gate: canonical profiles, least-privilege grants,
--- active-role RLS, redacted staff catalogues and server-controlled audit fields.
+-- Phase 1 security gate: one canonical profile registry, least-privilege
+-- grants, active-role RLS, redacted staff views, controlled inventory writes,
+-- and manager-only evidence views.
 --
--- This migration is intentionally independent of the isolated Atlas L1/L2 schema.
--- Stock-count evidence projections are installed by a separate guarded migration
--- only in databases that own the verified-balance source relation.
+-- IMPORTANT: this migration is prepared and validated on the isolated Atlas
+-- branch first. Do not apply it to production until public signup and the other
+-- manual authentication gates are confirmed in the Supabase dashboard.
 
 do $phase1_invariants$
 begin
@@ -27,8 +28,8 @@ create schema if not exists private;
 revoke all on schema private from public;
 grant usage on schema private to authenticated, service_role;
 
--- Business owner maps to admin. New or invited users remain inactive viewers
--- until an administrator explicitly assigns and activates their role.
+-- Keep the current Atlas roles. The business-owner role maps to admin.
+-- Viewer is retained as an intentionally read-only compatibility role.
 alter table public.profiles
   alter column role set default 'viewer'::public.staff_role,
   alter column active set default false;
@@ -122,6 +123,8 @@ grant execute on function private.is_operational_staff() to authenticated, servi
 grant execute on function private.is_manager_or_admin() to authenticated, service_role;
 grant execute on function private.is_self_or_manager(uuid) to authenticated, service_role;
 
+-- Accidental signup can no longer create an active bartender. A dashboard invite
+-- creates an inactive viewer profile until an administrator explicitly activates it.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -154,6 +157,8 @@ $function$;
 
 revoke all on function public.handle_new_user() from public, anon, authenticated;
 
+-- Protect the last active administrator from accidental deactivation, demotion,
+-- or deletion.
 create or replace function private.preserve_active_admin()
 returns trigger
 language plpgsql
@@ -170,7 +175,10 @@ begin
     removing_active_admin :=
       old.active is true
       and old.role::text = 'admin'
-      and (new.active is not true or new.role::text <> 'admin');
+      and (
+        new.active is not true
+        or new.role::text <> 'admin'
+      );
   end if;
 
   if removing_active_admin then
@@ -193,15 +201,13 @@ begin
 end;
 $function$;
 
-revoke all on function private.preserve_active_admin() from public, anon, authenticated;
-grant execute on function private.preserve_active_admin() to service_role;
-
 drop trigger if exists profiles_preserve_active_admin on public.profiles;
 create trigger profiles_preserve_active_admin
 before update or delete on public.profiles
 for each row execute function private.preserve_active_admin();
 
--- Browser-supplied audit labels are ignored for authenticated writes.
+-- Server-controlled inventory audit identity. A browser-provided value is
+-- ignored whenever an authenticated user is present.
 alter table public.inventory_items
   alter column updated_by set default (auth.uid()::text);
 
@@ -213,11 +219,13 @@ set search_path = ''
 as $function$
 declare
   caller_role text := coalesce((select auth.role()), '');
-  trusted_server boolean := caller_role = 'service_role' or session_user = 'postgres';
+  trusted_server boolean :=
+    caller_role = 'service_role' or session_user = 'postgres';
   quantity_path_enabled boolean :=
     coalesce(current_setting('atlas.allow_inventory_quantity_change', true), '') = 'on';
 begin
-  if not trusted_server and not private.is_manager_or_admin() then
+  if not trusted_server
+     and not private.is_manager_or_admin() then
     raise exception 'Inventory master writes require an active manager or administrator'
       using errcode = '42501';
   end if;
@@ -246,14 +254,12 @@ begin
 end;
 $function$;
 
-revoke all on function private.inventory_item_write_guard() from public, anon, authenticated;
-grant execute on function private.inventory_item_write_guard() to service_role;
-
 drop trigger if exists inventory_items_phase1_write_guard on public.inventory_items;
 create trigger inventory_items_phase1_write_guard
 before insert or update on public.inventory_items
 for each row execute function private.inventory_item_write_guard();
 
+-- Recipe audit identity is also derived from the authenticated session.
 alter table public.recipes
   alter column updated_by set default auth.uid();
 
@@ -272,15 +278,12 @@ begin
 end;
 $function$;
 
-revoke all on function private.recipe_write_audit() from public, anon, authenticated;
-grant execute on function private.recipe_write_audit() to service_role;
-
 drop trigger if exists recipes_phase1_write_audit on public.recipes;
 create trigger recipes_phase1_write_audit
 before insert or update on public.recipes
 for each row execute function private.recipe_write_audit();
 
--- Replace legacy policy overlap with one canonical policy set.
+-- Remove legacy policy overlap before installing one canonical policy set.
 do $drop_public_policies$
 declare
   policy_row record;
@@ -299,6 +302,7 @@ begin
 end
 $drop_public_policies$;
 
+-- RLS must be enabled on every public base or partitioned table.
 do $enable_all_public_rls$
 declare
   relation_row record;
@@ -310,43 +314,53 @@ begin
     where n.nspname = 'public'
       and c.relkind in ('r', 'p')
   loop
-    execute format('alter table public.%I enable row level security', relation_row.relname);
+    execute format(
+      'alter table public.%I enable row level security',
+      relation_row.relname
+    );
   end loop;
 end
 $enable_all_public_rls$;
 
--- Reset browser grants first, retain trusted server access, then add only the
--- explicit browser privileges below.
+-- Default/public Data API grants were historically broad. Revoke everything from
+-- browser roles, retain trusted service access, then add only the explicit grants
+-- below.
 do $reset_public_relation_grants$
 declare
   relation_row record;
 begin
   for relation_row in
-    select c.relname, c.relkind
+    select c.relname
     from pg_class as c
     join pg_namespace as n on n.oid = c.relnamespace
     where n.nspname = 'public'
-      and c.relkind in ('r', 'p', 'v', 'm', 'S')
+      and c.relkind in ('r', 'p', 'v', 'm')
   loop
-    if relation_row.relkind = 'S' then
-      execute format(
-        'revoke all privileges on sequence public.%I from public, anon, authenticated',
-        relation_row.relname
-      );
-      execute format(
-        'grant all privileges on sequence public.%I to service_role',
-        relation_row.relname
-      );
-    else
-      execute format(
-        'revoke all privileges on table public.%I from public, anon, authenticated',
-        relation_row.relname
-      );
-      execute format(
-        'grant all privileges on table public.%I to service_role',
-        relation_row.relname
-      );
-    end if;
+    execute format(
+      'revoke all privileges on table public.%I from public, anon, authenticated',
+      relation_row.relname
+    );
+    execute format(
+      'grant all privileges on table public.%I to service_role',
+      relation_row.relname
+    );
+  end loop;
+
+  for relation_row in
+    select c.relname
+    from pg_class as c
+    join pg_namespace as n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relkind = 'S'
+  loop
+    execute format(
+      'revoke all privileges on sequence public.%I from public, anon, authenticated',
+      relation_row.relname
+    );
+    execute format(
+      'grant all privileges on sequence public.%I to service_role',
+      relation_row.relname
+    );
   end loop;
 end
 $reset_public_relation_grants$;
@@ -386,47 +400,51 @@ alter default privileges for role postgres in schema public
 alter default privileges for role postgres in schema public
   grant execute on functions to service_role;
 
-create or replace procedure private.phase1_grant_table(
-  p_table text,
-  p_privileges text
-)
-language plpgsql
-security invoker
-set search_path = ''
-as $procedure$
+-- Browser grants. RLS below still decides which rows/actions are allowed.
+grant select, update on table public.profiles to authenticated;
+grant select, insert, update, delete on table public.inventory_items to authenticated;
+grant select on table public.inventory_movements to authenticated;
+grant select, insert, update, delete on table public.recipes to authenticated;
+grant select, insert, update, delete on table public.recipe_categories to authenticated;
+grant select, insert, update, delete on table public.recipe_ingredients to authenticated;
+grant select, insert, update, delete on table public.suppliers to authenticated;
+grant select, insert, update, delete on table public.atlas_media to authenticated;
+grant select, insert, update, delete on table public.import_batches to authenticated;
+grant select, insert, update, delete on table public.import_review_items to authenticated;
+
+do $optional_browser_grants$
 begin
-  if to_regclass(format('public.%I', p_table)) is not null then
-    execute format(
-      'grant %s on table public.%I to authenticated',
-      p_privileges,
-      p_table
-    );
+  if to_regclass('public.import_inventory_rows') is not null then
+    execute 'grant select, insert, update, delete on table public.import_inventory_rows to authenticated';
   end if;
-end;
-$procedure$;
+  if to_regclass('public.inventory_aliases') is not null then
+    execute 'grant select on table public.inventory_aliases to authenticated';
+  end if;
+  if to_regclass('public.document_acknowledgements') is not null then
+    execute 'grant select, insert on table public.document_acknowledgements to authenticated';
+  end if;
+  if to_regclass('public.onboarding_progress') is not null then
+    execute 'grant select, insert, update, delete on table public.onboarding_progress to authenticated';
+  end if;
+  if to_regclass('public.onboarding_tasks') is not null then
+    execute 'grant select, insert, update, delete on table public.onboarding_tasks to authenticated';
+  end if;
+  if to_regclass('public.shifts') is not null then
+    execute 'grant select, insert, update, delete on table public.shifts to authenticated';
+  end if;
+  if to_regclass('public.staff_availability') is not null then
+    execute 'grant select, insert, update, delete on table public.staff_availability to authenticated';
+  end if;
+  if to_regclass('public.staff_details') is not null then
+    execute 'grant select, insert, update, delete on table public.staff_details to authenticated';
+  end if;
+  if to_regclass('public.staff_documents') is not null then
+    execute 'grant select, insert, update, delete on table public.staff_documents to authenticated';
+  end if;
+end
+$optional_browser_grants$;
 
-call private.phase1_grant_table('profiles', 'select, update');
-call private.phase1_grant_table('inventory_items', 'select, insert, update, delete');
-call private.phase1_grant_table('inventory_movements', 'select');
-call private.phase1_grant_table('recipes', 'select, insert, update, delete');
-call private.phase1_grant_table('recipe_categories', 'select, insert, update, delete');
-call private.phase1_grant_table('recipe_ingredients', 'select, insert, update, delete');
-call private.phase1_grant_table('suppliers', 'select, insert, update, delete');
-call private.phase1_grant_table('atlas_media', 'select, insert, update, delete');
-call private.phase1_grant_table('import_batches', 'select, insert, update, delete');
-call private.phase1_grant_table('import_review_items', 'select, insert, update, delete');
-call private.phase1_grant_table('import_inventory_rows', 'select, insert, update, delete');
-call private.phase1_grant_table('inventory_aliases', 'select');
-call private.phase1_grant_table('shifts', 'select, insert, update, delete');
-call private.phase1_grant_table('staff_availability', 'select, insert, update, delete');
-call private.phase1_grant_table('staff_details', 'select, insert, update, delete');
-call private.phase1_grant_table('staff_documents', 'select, insert, update, delete');
-call private.phase1_grant_table('onboarding_tasks', 'select, insert, update, delete');
-call private.phase1_grant_table('onboarding_progress', 'select, insert, update, delete');
-call private.phase1_grant_table('document_acknowledgements', 'select, insert');
-
-drop procedure private.phase1_grant_table(text, text);
-
+-- Policy helper is dropped after the canonical policy set is installed.
 create or replace procedure private.phase1_create_policy(
   p_table text,
   p_policy text,
@@ -461,6 +479,8 @@ begin
 end;
 $procedure$;
 
+-- Profiles: active staff see the active directory and themselves; managers may
+-- also review inactive profiles. Only active administrators change access.
 call private.phase1_create_policy(
   'profiles',
   'active staff read profiles',
@@ -475,6 +495,8 @@ call private.phase1_create_policy(
   'private.current_profile_role() = ''admin'''
 );
 
+-- Commercial inventory tables are manager-visible. Quantity changes must pass
+-- through adjust_inventory or a service-role controlled publication.
 call private.phase1_create_policy(
   'inventory_items',
   'active managers read inventory items',
@@ -508,50 +530,123 @@ call private.phase1_create_policy(
   'private.is_manager_or_admin()'
 );
 
--- Recipes are operational knowledge before the recipe-catalogue hardening
--- migration replaces these reads with manager-only canonical access.
-do $recipe_policies$
-declare
-  table_name text;
-begin
-  foreach table_name in array array['recipes', 'recipe_categories', 'recipe_ingredients']
-  loop
-    call private.phase1_create_policy(
-      table_name,
-      'active staff read ' || table_name,
-      'select',
-      'private.is_active_staff()'
-    );
-    call private.phase1_create_policy(
-      table_name,
-      'active managers add ' || table_name,
-      'insert',
-      null,
-      'private.is_manager_or_admin()'
-    );
-    call private.phase1_create_policy(
-      table_name,
-      'active managers update ' || table_name,
-      'update',
-      'private.is_manager_or_admin()',
-      'private.is_manager_or_admin()'
-    );
-    call private.phase1_create_policy(
-      table_name,
-      'active managers delete ' || table_name,
-      'delete',
-      'private.is_manager_or_admin()'
-    );
-  end loop;
-end
-$recipe_policies$;
+-- Recipes are operational knowledge. Active staff may read them; only managers
+-- may change them. Anonymous users read only public_menu.
+call private.phase1_create_policy(
+  'recipes',
+  'active staff read recipes',
+  'select',
+  'private.is_active_staff()'
+);
+call private.phase1_create_policy(
+  'recipes',
+  'active managers add recipes',
+  'insert',
+  null,
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'recipes',
+  'active managers update recipes',
+  'update',
+  'private.is_manager_or_admin()',
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'recipes',
+  'active managers delete recipes',
+  'delete',
+  'private.is_manager_or_admin()'
+);
 
+call private.phase1_create_policy(
+  'recipe_categories',
+  'active staff read recipe categories',
+  'select',
+  'private.is_active_staff()'
+);
+call private.phase1_create_policy(
+  'recipe_categories',
+  'active managers add recipe categories',
+  'insert',
+  null,
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'recipe_categories',
+  'active managers update recipe categories',
+  'update',
+  'private.is_manager_or_admin()',
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'recipe_categories',
+  'active managers delete recipe categories',
+  'delete',
+  'private.is_manager_or_admin()'
+);
+
+call private.phase1_create_policy(
+  'recipe_ingredients',
+  'active staff read recipe ingredients',
+  'select',
+  'private.is_active_staff()'
+);
+call private.phase1_create_policy(
+  'recipe_ingredients',
+  'active managers add recipe ingredients',
+  'insert',
+  null,
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'recipe_ingredients',
+  'active managers update recipe ingredients',
+  'update',
+  'private.is_manager_or_admin()',
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'recipe_ingredients',
+  'active managers delete recipe ingredients',
+  'delete',
+  'private.is_manager_or_admin()'
+);
+
+-- Supplier identity and terms remain manager-only.
+call private.phase1_create_policy(
+  'suppliers',
+  'active managers read suppliers',
+  'select',
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'suppliers',
+  'active managers add suppliers',
+  'insert',
+  null,
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'suppliers',
+  'active managers update suppliers',
+  'update',
+  'private.is_manager_or_admin()',
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'suppliers',
+  'active managers delete suppliers',
+  'delete',
+  'private.is_manager_or_admin()'
+);
+
+-- Import/review records can contain supplier terms and source documents.
 do $manager_only_tables$
 declare
   table_name text;
 begin
   foreach table_name in array array[
-    'suppliers',
     'import_batches',
     'import_review_items',
     'import_inventory_rows',
@@ -590,6 +685,8 @@ begin
 end
 $manager_only_tables$;
 
+-- Media is readable by active staff. Operational staff may manage their own
+-- uploads; managers may manage all media.
 call private.phase1_create_policy(
   'atlas_media',
   'active staff read media',
@@ -617,43 +714,188 @@ call private.phase1_create_policy(
   'private.is_manager_or_admin() or (private.is_operational_staff() and uploaded_by = (select auth.uid()))'
 );
 
-call private.phase1_create_policy('shifts', 'active staff read shifts', 'select', 'private.is_active_staff()');
-call private.phase1_create_policy('shifts', 'active managers add shifts', 'insert', null, 'private.is_manager_or_admin()');
-call private.phase1_create_policy('shifts', 'active managers update shifts', 'update', 'private.is_manager_or_admin()', 'private.is_manager_or_admin()');
-call private.phase1_create_policy('shifts', 'active managers delete shifts', 'delete', 'private.is_manager_or_admin()');
+-- Optional legacy staff/operations tables.
+call private.phase1_create_policy(
+  'shifts',
+  'active staff read shifts',
+  'select',
+  'private.is_active_staff()'
+);
+call private.phase1_create_policy(
+  'shifts',
+  'active managers add shifts',
+  'insert',
+  null,
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'shifts',
+  'active managers update shifts',
+  'update',
+  'private.is_manager_or_admin()',
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'shifts',
+  'active managers delete shifts',
+  'delete',
+  'private.is_manager_or_admin()'
+);
 
-call private.phase1_create_policy('staff_availability', 'staff read own availability', 'select', 'private.is_self_or_manager(user_id)');
-call private.phase1_create_policy('staff_availability', 'staff add own availability', 'insert', null, 'private.is_self_or_manager(user_id)');
-call private.phase1_create_policy('staff_availability', 'staff update own availability', 'update', 'private.is_self_or_manager(user_id)', 'private.is_self_or_manager(user_id)');
-call private.phase1_create_policy('staff_availability', 'staff delete own availability', 'delete', 'private.is_self_or_manager(user_id)');
+call private.phase1_create_policy(
+  'staff_availability',
+  'staff read own availability',
+  'select',
+  'private.is_self_or_manager(user_id)'
+);
+call private.phase1_create_policy(
+  'staff_availability',
+  'staff add own availability',
+  'insert',
+  null,
+  'private.is_self_or_manager(user_id)'
+);
+call private.phase1_create_policy(
+  'staff_availability',
+  'staff update own availability',
+  'update',
+  'private.is_self_or_manager(user_id)',
+  'private.is_self_or_manager(user_id)'
+);
+call private.phase1_create_policy(
+  'staff_availability',
+  'staff delete own availability',
+  'delete',
+  'private.is_self_or_manager(user_id)'
+);
 
-call private.phase1_create_policy('staff_details', 'staff read own details', 'select', 'private.is_self_or_manager(user_id)');
-call private.phase1_create_policy('staff_details', 'staff add own details', 'insert', null, 'private.is_self_or_manager(user_id)');
-call private.phase1_create_policy('staff_details', 'staff update own details', 'update', 'private.is_self_or_manager(user_id)', 'private.is_self_or_manager(user_id)');
-call private.phase1_create_policy('staff_details', 'active managers delete staff details', 'delete', 'private.is_manager_or_admin()');
+call private.phase1_create_policy(
+  'staff_details',
+  'staff read own details',
+  'select',
+  'private.is_self_or_manager(user_id)'
+);
+call private.phase1_create_policy(
+  'staff_details',
+  'staff add own details',
+  'insert',
+  null,
+  'private.is_self_or_manager(user_id)'
+);
+call private.phase1_create_policy(
+  'staff_details',
+  'staff update own details',
+  'update',
+  'private.is_self_or_manager(user_id)',
+  'private.is_self_or_manager(user_id)'
+);
+call private.phase1_create_policy(
+  'staff_details',
+  'active managers delete staff details',
+  'delete',
+  'private.is_manager_or_admin()'
+);
 
-call private.phase1_create_policy('staff_documents', 'active staff read published staff documents', 'select', 'private.is_active_staff() and active is true');
-call private.phase1_create_policy('staff_documents', 'active managers add staff documents', 'insert', null, 'private.is_manager_or_admin()');
-call private.phase1_create_policy('staff_documents', 'active managers update staff documents', 'update', 'private.is_manager_or_admin()', 'private.is_manager_or_admin()');
-call private.phase1_create_policy('staff_documents', 'active managers delete staff documents', 'delete', 'private.is_manager_or_admin()');
+call private.phase1_create_policy(
+  'staff_documents',
+  'active staff read published staff documents',
+  'select',
+  'private.is_active_staff() and active is true'
+);
+call private.phase1_create_policy(
+  'staff_documents',
+  'active managers add staff documents',
+  'insert',
+  null,
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'staff_documents',
+  'active managers update staff documents',
+  'update',
+  'private.is_manager_or_admin()',
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'staff_documents',
+  'active managers delete staff documents',
+  'delete',
+  'private.is_manager_or_admin()'
+);
 
-call private.phase1_create_policy('onboarding_tasks', 'active staff read onboarding tasks', 'select', 'private.is_active_staff() and active is true');
-call private.phase1_create_policy('onboarding_tasks', 'active managers add onboarding tasks', 'insert', null, 'private.is_manager_or_admin()');
-call private.phase1_create_policy('onboarding_tasks', 'active managers update onboarding tasks', 'update', 'private.is_manager_or_admin()', 'private.is_manager_or_admin()');
-call private.phase1_create_policy('onboarding_tasks', 'active managers delete onboarding tasks', 'delete', 'private.is_manager_or_admin()');
+call private.phase1_create_policy(
+  'onboarding_tasks',
+  'active staff read onboarding tasks',
+  'select',
+  'private.is_active_staff() and active is true'
+);
+call private.phase1_create_policy(
+  'onboarding_tasks',
+  'active managers add onboarding tasks',
+  'insert',
+  null,
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'onboarding_tasks',
+  'active managers update onboarding tasks',
+  'update',
+  'private.is_manager_or_admin()',
+  'private.is_manager_or_admin()'
+);
+call private.phase1_create_policy(
+  'onboarding_tasks',
+  'active managers delete onboarding tasks',
+  'delete',
+  'private.is_manager_or_admin()'
+);
 
-call private.phase1_create_policy('onboarding_progress', 'staff read own onboarding progress', 'select', 'private.is_self_or_manager(user_id)');
-call private.phase1_create_policy('onboarding_progress', 'staff add own onboarding progress', 'insert', null, 'private.is_self_or_manager(user_id)');
-call private.phase1_create_policy('onboarding_progress', 'staff update own onboarding progress', 'update', 'private.is_self_or_manager(user_id)', 'private.is_self_or_manager(user_id)');
-call private.phase1_create_policy('onboarding_progress', 'active managers delete onboarding progress', 'delete', 'private.is_manager_or_admin()');
+call private.phase1_create_policy(
+  'onboarding_progress',
+  'staff read own onboarding progress',
+  'select',
+  'private.is_self_or_manager(user_id)'
+);
+call private.phase1_create_policy(
+  'onboarding_progress',
+  'staff add own onboarding progress',
+  'insert',
+  null,
+  'private.is_self_or_manager(user_id)'
+);
+call private.phase1_create_policy(
+  'onboarding_progress',
+  'staff update own onboarding progress',
+  'update',
+  'private.is_self_or_manager(user_id)',
+  'private.is_self_or_manager(user_id)'
+);
+call private.phase1_create_policy(
+  'onboarding_progress',
+  'active managers delete onboarding progress',
+  'delete',
+  'private.is_manager_or_admin()'
+);
 
-call private.phase1_create_policy('document_acknowledgements', 'staff read own acknowledgements', 'select', 'private.is_self_or_manager(user_id)');
-call private.phase1_create_policy('document_acknowledgements', 'staff add own acknowledgements', 'insert', null, 'private.is_active_staff() and user_id = (select auth.uid())');
+call private.phase1_create_policy(
+  'document_acknowledgements',
+  'staff read own acknowledgements',
+  'select',
+  'private.is_self_or_manager(user_id)'
+);
+call private.phase1_create_policy(
+  'document_acknowledgements',
+  'staff add own acknowledgements',
+  'insert',
+  null,
+  'private.is_active_staff() and user_id = (select auth.uid())'
+);
 
 drop procedure private.phase1_create_policy(text, text, text, text, text);
 
--- Controlled live-stock mutation: manager/admin only, immutable movement evidence,
--- and no direct quantity write outside this transaction-local gate.
+-- The public RPC is the only authenticated quantity-mutation path. It is
+-- manager-only, produces an immutable movement row, and enables the write guard
+-- only for the duration of this transaction.
 create or replace function public.adjust_inventory(
   p_item_id uuid,
   p_quantity_change numeric,
@@ -690,7 +932,10 @@ begin
   update public.inventory_items
   set quantity = quantity + p_quantity_change,
       supplier_id = coalesce(p_supplier_id, supplier_id),
-      cost_price = case when p_unit_cost is not null then p_unit_cost else cost_price end,
+      cost_price = case
+        when p_unit_cost is not null then p_unit_cost
+        else cost_price
+      end,
       updated_by = coalesce((select auth.uid())::text, updated_by)
   where id = p_item_id
     and quantity + p_quantity_change >= 0
@@ -717,7 +962,10 @@ begin
     p_movement_type,
     p_quantity_change,
     p_unit_cost,
-    case when p_unit_cost is null then null else abs(p_quantity_change) * p_unit_cost end,
+    case
+      when p_unit_cost is null then null
+      else abs(p_quantity_change) * p_unit_cost
+    end,
     p_supplier_id,
     left(p_note, 1000),
     (select auth.uid())
@@ -732,8 +980,8 @@ revoke all on function public.adjust_inventory(uuid, numeric, text, numeric, uui
 grant execute on function public.adjust_inventory(uuid, numeric, text, numeric, uuid, text)
   to authenticated, service_role;
 
--- Staff-safe inventory catalogue. Existing catalogue views are accepted only when
--- they expose no commercial, supplier, import-source or browser-supplied audit data.
+-- Staff-safe inventory catalogue. Preserve an existing safe L2 catalogue if it
+-- already exists; otherwise create the common production form.
 do $inventory_catalog$
 declare
   forbidden_columns text[];
@@ -836,8 +1084,14 @@ declare
 begin
   catalog_function := to_regprocedure('private.read_inventory_catalog()');
   if catalog_function is not null then
-    execute format('revoke all on function %s from public, anon', catalog_function);
-    execute format('grant execute on function %s to authenticated, service_role', catalog_function);
+    execute format(
+      'revoke all on function %s from public, anon',
+      catalog_function
+    );
+    execute format(
+      'grant execute on function %s to authenticated, service_role',
+      catalog_function
+    );
   end if;
 end
 $inventory_catalog_function_grants$;
@@ -847,6 +1101,8 @@ grant select on table public.inventory_catalog to authenticated, service_role;
 comment on view public.inventory_catalog is
   'Redacted active-staff inventory catalogue. Commercial cost, supplier and audit fields are intentionally omitted.';
 
+-- Redacted movement history for active staff; cost, supplier and employee
+-- attribution remain manager-only in inventory_movements.
 create or replace function private.read_inventory_movement_catalog()
 returns table (
   id uuid,
@@ -883,10 +1139,6 @@ begin
 end;
 $function$;
 
-revoke all on function private.read_inventory_movement_catalog() from public, anon;
-grant execute on function private.read_inventory_movement_catalog()
-  to authenticated, service_role;
-
 drop view if exists public.inventory_movement_catalog;
 create view public.inventory_movement_catalog
 with (security_invoker = true)
@@ -894,27 +1146,38 @@ as
 select *
 from private.read_inventory_movement_catalog();
 
+revoke all on function private.read_inventory_movement_catalog() from public, anon;
+grant execute on function private.read_inventory_movement_catalog()
+  to authenticated, service_role;
 revoke all on table public.inventory_movement_catalog from public, anon;
-grant select on table public.inventory_movement_catalog to authenticated, service_role;
-comment on view public.inventory_movement_catalog is
-  'Redacted active-staff inventory movement history. Cost, supplier and employee attribution are omitted.';
+grant select on table public.inventory_movement_catalog
+  to authenticated, service_role;
 
--- Deliberate anonymous exception: exactly four approved fields and no ingredients,
--- costs, margins, supplier terms or employee data.
-drop view if exists public.public_menu;
-create view public.public_menu
-with (security_invoker = false)
-as
-select
-  recipe.id,
-  recipe.name,
-  recipe.type,
-  recipe.menu_price
-from public.recipes as recipe
-where recipe.show_on_menu is true
-  and recipe.active is true;
+-- public_menu is the deliberate public exception. It is owner-evaluated but
+-- exposes exactly four approved fields and no ingredient, cost or margin data.
+do $public_menu_view$
+begin
+  if to_regclass('public.public_menu') is null then
+    execute $create_public_menu$
+      create view public.public_menu
+      with (security_invoker = false)
+      as
+      select
+        recipe.id,
+        recipe.name,
+        recipe.type,
+        recipe.menu_price
+      from public.recipes as recipe
+      where recipe.show_on_menu is true
+        and recipe.active is true
+    $create_public_menu$;
+  else
+    execute 'alter view public.public_menu set (security_invoker = false)';
+  end if;
+end
+$public_menu_view$;
 
-revoke all on table public.public_menu from public, anon, authenticated;
+revoke all on table public.public_menu from public;
 grant select on table public.public_menu to anon, authenticated, service_role;
 
 do $public_menu_shape$
@@ -935,5 +1198,152 @@ $public_menu_shape$;
 
 comment on view public.public_menu is
   'Intentional anonymous menu projection: id, name, type and menu_price only.';
+
+-- L1 evidence views. The staff projection omits person identity, variance,
+-- production baseline, supplier and cost. The manager projection is
+-- manager-gated and contains verification provenance.
+create or replace function private.read_stock_count_summary()
+returns table (
+  inventory_item_id uuid,
+  item_name text,
+  category text,
+  inventory_unit text,
+  bin_location text,
+  verified_quantity numeric,
+  quantity_state text,
+  verified_at timestamptz,
+  expires_at timestamptz,
+  historical boolean
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if coalesce((select auth.role()), '') <> 'service_role'
+     and session_user <> 'postgres'
+     and not private.is_active_staff() then
+    raise exception 'An active Atlas profile is required'
+      using errcode = '42501';
+  end if;
+
+  return query
+  select
+    balance.inventory_item_id,
+    balance.item_name,
+    balance.category,
+    balance.inventory_unit,
+    balance.bin_location,
+    balance.verified_quantity,
+    case
+      when balance.historical is true then 'historical'
+      when balance.verified_at is null then 'unverified'
+      when balance.expires_at is not null and balance.expires_at <= now() then 'stale'
+      when balance.verification_status = 'current' then 'current'
+      else coalesce(balance.verification_status, 'unverified')
+    end,
+    balance.verified_at,
+    balance.expires_at,
+    balance.historical
+  from atlas_private.inventory_verified_balances as balance;
+end;
+$function$;
+
+create or replace function private.read_stock_count_manager_summary()
+returns table (
+  inventory_item_id uuid,
+  item_name text,
+  category text,
+  inventory_unit text,
+  bin_location text,
+  verified_quantity numeric,
+  quantity_state text,
+  verified_at timestamptz,
+  expires_at timestamptz,
+  historical boolean,
+  source_session_id uuid,
+  source_line_id uuid,
+  verified_by uuid,
+  verified_by_label text,
+  production_quantity_at_verification numeric,
+  production_updated_at timestamptz,
+  variance numeric,
+  source_kind text
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if coalesce((select auth.role()), '') <> 'service_role'
+     and session_user <> 'postgres'
+     and not private.is_manager_or_admin() then
+    raise exception 'Stock-count verification evidence is manager-only'
+      using errcode = '42501';
+  end if;
+
+  return query
+  select
+    balance.inventory_item_id,
+    balance.item_name,
+    balance.category,
+    balance.inventory_unit,
+    balance.bin_location,
+    balance.verified_quantity,
+    case
+      when balance.historical is true then 'historical'
+      when balance.verified_at is null then 'unverified'
+      when balance.expires_at is not null and balance.expires_at <= now() then 'stale'
+      when balance.verification_status = 'current' then 'current'
+      else coalesce(balance.verification_status, 'unverified')
+    end,
+    balance.verified_at,
+    balance.expires_at,
+    balance.historical,
+    balance.source_session_id,
+    balance.source_line_id,
+    balance.verified_by,
+    balance.verified_by_label,
+    balance.production_quantity_at_verification,
+    balance.production_updated_at,
+    balance.variance,
+    balance.source_kind
+  from atlas_private.inventory_verified_balances as balance;
+end;
+$function$;
+
+drop view if exists public.stock_count_summary;
+create view public.stock_count_summary
+with (security_invoker = true)
+as
+select *
+from private.read_stock_count_summary();
+
+drop view if exists public.stock_count_manager_summary;
+create view public.stock_count_manager_summary
+with (security_invoker = true)
+as
+select *
+from private.read_stock_count_manager_summary();
+
+revoke all on function private.read_stock_count_summary() from public, anon;
+revoke all on function private.read_stock_count_manager_summary() from public, anon;
+grant execute on function private.read_stock_count_summary()
+  to authenticated, service_role;
+grant execute on function private.read_stock_count_manager_summary()
+  to authenticated, service_role;
+revoke all on table public.stock_count_summary from public, anon;
+revoke all on table public.stock_count_manager_summary from public, anon;
+grant select on table public.stock_count_summary
+  to authenticated, service_role;
+grant select on table public.stock_count_manager_summary
+  to authenticated, service_role;
+
+comment on view public.stock_count_summary is
+  'Redacted active-staff verified-stock summary. No verifier identity, variance, supplier or cost fields.';
+comment on view public.stock_count_manager_summary is
+  'Manager-gated stock-count verification provenance and variance evidence.';
 
 notify pgrst, 'reload schema';

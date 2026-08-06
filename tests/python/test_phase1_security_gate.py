@@ -5,6 +5,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 PHASE1 = (ROOT / "supabase/migrations/20260806104705_atlas_phase1_profiles_security_gate.sql").read_text()
 RECIPES = (ROOT / "supabase/migrations/20260806105543_atlas_phase1_recipe_catalog_gate.sql").read_text()
+STOCK_VIEWS = (ROOT / "supabase/migrations/20260806160000_atlas_phase1_stock_count_views_branch_only.sql").read_text()
 INDEX = (ROOT / "apps/web/index.html").read_text()
 STOCK_EDGE = (ROOT / "supabase/functions/atlas-stock-counts/entrypoint.ts").read_text()
 SCANNER_EDGE = (ROOT / "supabase/functions/atlas-inventory-scanner/index.ts").read_text()
@@ -50,12 +51,15 @@ class Phase1SecurityGateTests(unittest.TestCase):
         self.assertNotIn("unit_cost", RECIPES)
         self.assertNotIn("total_cost", RECIPES)
 
-    def test_stock_count_views_are_split_by_sensitivity(self):
-        self.assertIn("public.stock_count_summary", PHASE1)
-        self.assertIn("public.stock_count_manager_summary", PHASE1)
-        self.assertIn("No verifier identity, variance, supplier or cost fields", PHASE1)
-        self.assertIn("Stock-count verification evidence is manager-only", PHASE1)
-        self.assertGreaterEqual(PHASE1.count("security_invoker = true"), 4)
+    def test_stock_count_views_are_branch_only_and_split_by_sensitivity(self):
+        self.assertNotIn("atlas_private", PHASE1)
+        self.assertNotIn("public.stock_count_summary", PHASE1)
+        self.assertIn("to_regclass('atlas_private.inventory_verified_balances') is not null", STOCK_VIEWS)
+        self.assertIn("public.stock_count_summary", STOCK_VIEWS)
+        self.assertIn("public.stock_count_manager_summary", STOCK_VIEWS)
+        self.assertIn("No verifier identity, variance, supplier or cost fields", STOCK_VIEWS)
+        self.assertIn("Stock-count verification evidence is manager-only", STOCK_VIEWS)
+        self.assertGreaterEqual(STOCK_VIEWS.count("security_invoker = true"), 2)
 
     def test_public_menu_is_the_explicit_four_column_exception(self):
         self.assertIn("security_invoker = false", PHASE1)
@@ -82,6 +86,7 @@ class Phase1SecurityGateTests(unittest.TestCase):
             "tables_without_rls",
             "unsafe_non_public_views",
             "browser_function_exposure",
+            "atlas_stock_count_views",
             "inventory_records",
             "inventory_movements",
         ):
