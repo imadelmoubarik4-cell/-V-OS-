@@ -8,29 +8,59 @@ retained as read-only compatibility. `public.staff` must not coexist.
 
 The database is the authoritative boundary. Browser hiding is usability only.
 
-## Preview implementation
+## Production-compatible migration ownership
 
-The isolated Atlas Supabase branch contains:
+The executable production migration
+`20260806104705_atlas_phase1_profiles_security_gate.sql` contains no
+`atlas_private` reference. It installs only production-owned authorization,
+RLS, grants, audit, inventory, recipe and public-menu controls.
 
-- `20260806104705_atlas_phase1_profiles_security_gate.sql`
-- `20260806105543_atlas_phase1_recipe_catalog_gate.sql`
-- `20260806151244_atlas_phase1_recipe_catalog_runtime_fix.sql`
+The exact earlier SQL already applied to the Atlas preview is preserved outside
+the executable migration directory at:
 
-Together they default new profiles to inactive viewers, protect the final active
-administrator, enable RLS across all public base tables, reset grants and default
-grants, install active-role policies, route staff through redacted inventory,
-movement, recipe and stock-count views, and keep direct commercial tables
-manager-only.
+`docs/security/preview-applied/20260806104705_atlas_phase1_profiles_security_gate.preview.sql`
 
-The runtime correction removes an invalid `recipe_ingredients.created_at`
-reference discovered by the transactional role acceptance. The canonical
-`recipe_ingredients` table has no such column, so the redacted recipe projection
-now orders deterministically by ingredient id.
+The Atlas-only L1 views are owned by the guarded migration:
 
-`public.public_menu` is the deliberate exception. It exposes exactly `id`,
-`name`, `type` and `menu_price` to anonymous visitors.
+`20260806165146_atlas_phase1_stock_count_views_branch_only.sql`
 
-Production application is intentionally paused.
+It creates `stock_count_summary` and `stock_count_manager_summary` only when
+`atlas_private.inventory_verified_balances` exists. Production does not own that
+source relation, so the migration is an intentional no-op there and L1 remains
+available through the authenticated Atlas gateway.
+
+## Preview implementation and acceptance
+
+The isolated Atlas branch ledger includes:
+
+- `20260806104705_atlas_phase1_profiles_security_gate`
+- `20260806105543_atlas_phase1_recipe_catalog_gate`
+- `20260806112800_atlas_phase1_recipe_catalog_runtime_fix`
+- `20260806151244_atlas_phase1_recipe_catalog_runtime_fix`
+- `20260806165146_atlas_phase1_stock_count_views_branch_only`
+
+The recipe runtime correction removes an invalid
+`recipe_ingredients.created_at` reference. The canonical table has no such
+column, so the redacted projection orders deterministically by ingredient id.
+
+Latest database acceptance:
+
+- preview role matrix: **18 passed, 0 failed, rolled back**;
+- exact production-safe migration: **executed successfully, rolled back**;
+- production-topology stock-view test: **guarded migration performed a no-op**;
+- preview security verification: no table without RLS, no unsafe non-public view,
+  and no unintended browser-callable public function;
+- preview fixtures after testing: zero Auth users, profiles, inventory rows,
+  quantity and movements;
+- `public_menu`: exactly `id`, `name`, `type` and `menu_price` with anonymous
+  `SELECT` only;
+- redacted inventory, movement, recipe and stock-count projections present.
+
+The Supabase preview database is active and healthy. Its branch control-plane
+metadata still carries the historical `MIGRATIONS_FAILED` label from the earlier
+deployment incident. That metadata state must be refreshed, reset or explicitly
+resolved before PR #5 leaves draft even though the database ledger and
+transactional acceptance now pass.
 
 ## Authentication and email-delivery gates
 
@@ -41,78 +71,71 @@ Owner-confirmed in the production Supabase dashboard:
 - [x] Leaked-password protection enabled.
 - [x] Minimum password length is at least 10.
 - [x] Custom SMTP configured.
-- [ ] Invitation and password-reset delivery confirmed through the custom SMTP provider.
+- [x] Current roster reconciled: three active accounts are intentional.
+- [x] Two future staff accounts will be invited later through an administrator-only
+  server-side Atlas workflow and will start inactive.
+- [ ] Invitation delivery confirmed through the custom SMTP provider.
+- [ ] Password-reset delivery confirmed through the custom SMTP provider.
 - [ ] JWT expiry and Auth rate limits reviewed and recorded.
-
-The owner also confirmed that the staff invitations were completed. The
-production database currently reports **3 Auth users and 3 active profiles**
-(two admins and one manager), with no pending or unprofiled users. Before
-production migration, reconcile whether three is the intended current team or
-whether two invitations are still missing. Do not record the five-account gate
-as verified until this discrepancy is resolved.
 
 Still required outside the repository:
 
 - [ ] 2FA enabled on Supabase, GitHub and Netlify.
 - [ ] GitHub Secret scanning and Push protection enabled.
+- [ ] Branch ruleset confirmed active on `main` and the current release base.
 - [ ] Netlify environment variables and build hooks reviewed.
+- [ ] Temporary production function `atlas-backup-export-20260806` deleted from
+  the Supabase dashboard; its current deployed body is JWT-gated and returns 410.
 
-## Preview role acceptance
+## Backup and rollback evidence
 
-`scripts/verify_phase1_role_matrix_preview.sql` is preview-only, requires an
-empty isolated branch, creates disposable Auth and business fixtures inside one
-transaction, and rolls everything back.
+The encrypted off-repository backup and rollback package has been created. It
+contains logical data, sanitized Auth metadata, schema/security metadata,
+migration history, fingerprints, verification SQL, authorization rollback SQL
+and an emergency data-restore generator. The archive and encryption key must be
+stored separately and must never enter the public repository.
 
-The latest run passed **18 of 18** checks:
+Captured production baseline:
 
-- logged-out `public_menu` access allowed;
-- anonymous inventory access denied;
-- active bartender recognized as staff but not manager;
-- bartender reads redacted inventory, recipe and stock-count projections;
-- bartender cannot see canonical cost-bearing inventory rows;
-- bartender direct update and delete policies reach zero rows;
-- active admin reads commercial inventory, supplier, recipe and manager count evidence;
-- inactive and unlisted authenticated users receive no inventory rows.
+- inventory records: **49**
+- active inventory records: **49**
+- summed quantity: **131.2**
+- inventory movements: **12**
+- active profiles: **3**
+- active administrators: **2**
 
-The acceptance fixture was fully rolled back. The isolated preview branch still
-contains zero Auth users, zero profiles, zero inventory rows and zero movement
-rows.
+The read-only production schema preflight passed with no required column missing,
+no competing `staff` table, no `atlas_private` schema and no Phase 1 migration
+already applied.
 
-## Back up before production
+## Schema-change rule
 
-Save outside the public repository:
-
-1. schema-only database dump;
-2. exports of every affected table;
-3. migration ledger;
-4. policy and grant inventory;
-5. public view definitions;
-6. deployed commit SHA;
-7. current role/profile list;
-8. output of `scripts/verify_phase1_security_gate.sql`.
-
-Expected pre-migration production fingerprint:
-
-- inventory records: 49
-- active inventory records: 49
-- summed quantity: 131.2
-- inventory movements: 12
+All future schema changes must use reviewed migrations. Do not create operational
+tables from the Supabase Dashboard. The Phase 1 migration closes current grants
+and the default privileges of the migration role; the managed `supabase_admin`
+default ACL cannot be changed by the normal migration runner. The verification
+query is therefore mandatory after every migration and must fail the release if
+a new public table lacks RLS or a new view is exposed unsafely.
 
 ## Production order
 
-1. Reconcile the production staff-account count.
-2. Confirm SMTP invitation and password-reset delivery.
-3. Confirm JWT/rate-limit review, 2FA, GitHub security settings and Netlify review.
-4. Verify `imadelmoubarik4@gmail.com` is active `admin`.
-5. Create the off-repository backups above.
-6. Apply `20260806104705_atlas_phase1_profiles_security_gate.sql`.
-7. Apply `20260806105543_atlas_phase1_recipe_catalog_gate.sql`.
-8. Apply `20260806151244_atlas_phase1_recipe_catalog_runtime_fix.sql`.
-9. Run `scripts/verify_phase1_security_gate.sql`.
-10. Deploy the browser and Netlify hardening commit.
-11. Run the production browser role matrix below.
-12. Re-run the fingerprint and compare it with the baseline.
-13. Keep PR #5 draft until every result is recorded.
+1. Confirm SMTP invitation and password-reset delivery.
+2. Confirm JWT/rate-limit review, 2FA, GitHub security settings, branch rules and
+   Netlify review.
+3. Delete the temporary backup Edge Function.
+4. Verify `imadelmoubarik4@gmail.com` remains an active `admin`.
+5. Take a fresh final backup immediately before the window.
+6. Freeze operational writes briefly and capture the fingerprint.
+7. Apply migrations in repository order, including:
+   - `20260806104705_atlas_phase1_profiles_security_gate.sql`
+   - `20260806105543_atlas_phase1_recipe_catalog_gate.sql`
+   - both recorded recipe runtime-fix versions
+   - `20260806165146_atlas_phase1_stock_count_views_branch_only.sql` (production no-op)
+8. Run `scripts/verify_phase1_security_gate.sql`.
+9. Deploy the browser and Netlify hardening commit.
+10. Run the production browser role matrix.
+11. Re-run the fingerprint and compare it with the baseline.
+12. Keep PR #5 draft until every result is recorded.
 
 ## Role acceptance matrix
 
@@ -136,6 +159,7 @@ Expected pre-migration production fingerprint:
 ## Rollback
 
 Do not restore the old permissive policies as an emergency shortcut. Roll back
-the web deployment first, then restore the pre-migration schema/policy snapshot
-inside a maintenance window. The database migration is deliberately designed to
-fail before changing policy if no active administrator exists.
+the web deployment first, then use the encrypted pre-migration package to restore
+the captured authorization state inside a maintenance window. The production
+migration is designed to fail before changing policy when there is no active
+administrator.
