@@ -1,0 +1,22 @@
+name: Apply Issue 6 repair patch
+
+on:
+  pull_request:
+    branches:
+      - agent/sprint-4-phase-3-atlas-brain
+    types:
+      - opened
+      - reopened
+      - synchronize
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo "Patch chunks are still being staged."
