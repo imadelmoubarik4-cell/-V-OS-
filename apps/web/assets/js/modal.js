@@ -146,18 +146,23 @@
   window.AtlasModal = AtlasModal;
 })();
 
-(function loadAtlasPhase4Shell() {
+(function loadAtlasPhase4Layers() {
   'use strict';
 
-  const src = 'assets/js/phase4-shell.js';
-  if (window.AtlasPhase4Shell || document.querySelector(`script[src="${src}"]`)) return;
+  const layers = [
+    ['assets/js/phase4-shell.js', 'atlasPhase4Shell', 'Atlas Phase 4 shell'],
+    ['assets/js/phase4-operations.js', 'atlasPhase4Operations', 'Atlas Phase 4 operational interface'],
+  ];
 
-  const script = document.createElement('script');
-  script.src = src;
-  script.async = false;
-  script.dataset.atlasPhase4Shell = 'true';
-  script.addEventListener('error', () => {
-    console.error('Atlas Phase 4 interface layer could not be loaded.');
-  }, { once: true });
-  document.body.appendChild(script);
+  layers.forEach(([src, marker, label]) => {
+    if (document.querySelector(`script[src="${src}"]`)) return;
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = false;
+    script.dataset[marker] = 'true';
+    script.addEventListener('error', () => {
+      console.error(`${label} could not be loaded.`);
+    }, { once: true });
+    document.body.appendChild(script);
+  });
 })();
