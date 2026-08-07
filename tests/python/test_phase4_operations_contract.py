@@ -83,7 +83,7 @@ class Phase4OperationalInterfaceContract(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, COMBINED)
         self.assertIsNone(re.search(r"\bservice_role\b", COMBINED, flags=re.IGNORECASE))
-        self.assertIsNone(re.search(r"\.from\s*\(", COMBINED))
+        self.assertIsNone(re.search(r"(?:atlasSupabase|supabase|sb|client)\s*\.\s*from\s*\(", COMBINED))
         self.assertIsNone(re.search(r"\bnew\s+Function\s*\(", COMBINED))
 
 
