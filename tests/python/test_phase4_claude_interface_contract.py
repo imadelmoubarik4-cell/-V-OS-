@@ -1,0 +1,82 @@
+from pathlib import Path
+import re
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[2]
+SHELL = (ROOT / "apps/web/assets/js/phase4-shell.js").read_text()
+CSS = (ROOT / "apps/web/assets/css/phase4-claude.css").read_text()
+MODAL = (ROOT / "apps/web/assets/js/modal.js").read_text()
+RELEASE = (ROOT / "releases/alpha-0.9.0/PHASE4_CLAUDE_INTERFACE_MIGRATION.md").read_text()
+
+
+class Phase4ClaudeInterfaceContract(unittest.TestCase):
+    def test_shell_bootstraps_without_replacing_the_application(self):
+        self.assertIn("assets/js/phase4-shell.js", MODAL)
+        self.assertIn("assets/css/phase4-claude.css", SHELL)
+        self.assertIn("window.AtlasPhase4Shell", SHELL)
+        self.assertIn("atlas:phase4-ready", SHELL)
+
+    def test_navigation_preserves_current_operational_workspaces(self):
+        for value in (
+            "Home",
+            "Operations",
+            "Inventory",
+            "Recipes",
+            "Purchasing",
+            "Import Center",
+            "Real VÁ Data",
+            "Marketing",
+            "Messages",
+            "Team",
+            "Profiles",
+            "Shifts",
+            "Knowledge",
+            "Atlas Brain",
+            "Business Intelligence",
+            "Reports",
+            "Settings",
+            "System",
+        ):
+            self.assertIn(value, SHELL)
+        self.assertIn("MORE", SHELL)
+        self.assertIn("remaining.forEach", SHELL)
+
+    def test_visual_tokens_match_the_approved_claude_direction(self):
+        for token in ("#f6f6f4", "#1fa8a0", "#111113", "#3fc7be"):
+            self.assertIn(token, CSS.lower())
+        self.assertRegex(CSS, r"font-family:\s*Inter")
+        self.assertIn('data-atlas-theme="dark"', CSS)
+        self.assertIn("prefers-reduced-motion", CSS)
+
+    def test_legacy_global_fab_is_removed(self):
+        self.assertRegex(CSS, r"\.fab-wrap\s*\{\s*display:\s*none\s*!important")
+
+    def test_design_runtime_and_private_credentials_are_not_shipped(self):
+        joined = "\n".join((SHELL, CSS, MODAL))
+        for forbidden in (
+            "support.js",
+            "<x-dc",
+            "Babel.transform",
+            "ReactDOM",
+            "SUPABASE_SERVICE_ROLE_KEY",
+            "adjust_inventory",
+        ):
+            self.assertNotIn(forbidden, joined)
+        self.assertIsNone(re.search(r"\bnew\s+Function\s*\(", joined))
+        self.assertIsNone(re.search(r"\.from\s*\(", joined))
+
+    def test_release_record_keeps_production_and_approval_boundaries(self):
+        for phrase in (
+            "does not authorize merge, production migration or release",
+            "does not modify a database schema or migration",
+            "does not change live stock",
+            "does not publish a count",
+            "does not create or submit a supplier order",
+            "does not publish social content",
+        ):
+            self.assertIn(phrase, RELEASE)
+
+
+if __name__ == "__main__":
+    unittest.main()
