@@ -5,14 +5,18 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 OPERATIONS = (ROOT / "apps/web/assets/js/phase4-operations.js").read_text()
+BOOTSTRAP = (ROOT / "apps/web/assets/js/phase4-operations-bootstrap.js").read_text()
 CSS = (ROOT / "apps/web/assets/css/phase4-operations.css").read_text()
 MODAL = (ROOT / "apps/web/assets/js/modal.js").read_text()
-COMBINED = "\n".join((OPERATIONS, CSS, MODAL))
+COMBINED = "\n".join((OPERATIONS, BOOTSTRAP, CSS, MODAL))
 
 
 class Phase4OperationalInterfaceContract(unittest.TestCase):
     def test_phase4b_loader_and_public_api(self):
-        self.assertIn("assets/js/phase4-operations.js", MODAL)
+        self.assertIn("assets/js/phase4-operations-bootstrap.js", MODAL)
+        self.assertIn("assets/js/phase4-operations.js", BOOTSTRAP)
+        self.assertIn("createFilteredObserver", BOOTSTRAP)
+        self.assertIn("phase4-operations-role-guard", BOOTSTRAP)
         self.assertIn("assets/css/phase4-operations.css", OPERATIONS)
         self.assertIn("window.AtlasPhase4Operations", OPERATIONS)
         self.assertIn("atlas:phase4b-ready", OPERATIONS)
