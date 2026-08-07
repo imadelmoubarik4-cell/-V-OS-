@@ -42,7 +42,7 @@
     }
 
     const first = focusable[0];
-    const last = focusable[focusable.length - 1];
+    const last = focusable.at(-1);
     if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus();
@@ -146,15 +146,18 @@
   window.AtlasModal = AtlasModal;
 })();
 
-// Phase 4 is an interface layer over the existing Atlas engine. Loading it from
-// the established modal bundle avoids duplicating index.html and keeps the
-// current authentication, RLS, Edge Function and workflow boundaries intact.
 (function loadAtlasPhase4Shell() {
+  'use strict';
+
   const src = 'assets/js/phase4-shell.js';
   if (window.AtlasPhase4Shell || document.querySelector(`script[src="${src}"]`)) return;
+
   const script = document.createElement('script');
   script.src = src;
   script.async = false;
-  script.dataset.atlasPhase4 = 'true';
+  script.dataset.atlasPhase4Shell = 'true';
+  script.addEventListener('error', () => {
+    console.error('Atlas Phase 4 interface layer could not be loaded.');
+  }, { once: true });
   document.body.appendChild(script);
 })();
