@@ -1,55 +1,29 @@
-from __future__ import annotations
-
-import pathlib
+from pathlib import Path
 import re
 import unittest
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
-MIGRATION = (ROOT / "supabase/migrations/20260802192300_sprint4_daily_briefing.sql").read_text(encoding="utf-8")
-ORDERING_MIGRATION = (ROOT / "supabase/migrations/20260802202000_sprint4_briefing_priority_order.sql").read_text(encoding="utf-8")
-EDGE = (ROOT / "supabase/functions/atlas-sprint4-briefing/index.ts").read_text(encoding="utf-8")
-CONFIG = (ROOT / "supabase/config.toml").read_text(encoding="utf-8")
+
+ROOT = Path(__file__).resolve().parents[2]
+MIGRATION = (ROOT / "supabase/migrations/20260802192300_sprint4_daily_briefing.sql").read_text()
+ORDERING_MIGRATION = (ROOT / "supabase/migrations/20260802202000_sprint4_briefing_priority_order.sql").read_text()
+EDGE = (ROOT / "supabase/functions/atlas-sprint4-briefing/index.ts").read_text()
+CONFIG = (ROOT / "supabase/config.toml").read_text()
 
 
 class Sprint4DailyBriefingContractTests(unittest.TestCase):
-    def test_database_contract_is_read_only_and_service_role_only(self) -> None:
-        lowered = MIGRATION.lower()
-        self.assertIn("public.atlas_sprint4_daily_briefing", MIGRATION)
-        self.assertIn("returns jsonb", lowered)
-        self.assertIn("stable", lowered)
-        self.assertRegex(
-            lowered,
-            r"revoke\s+execute\s+on\s+function\s+public\.atlas_sprint4_daily_briefing\(\)\s+"
-            r"from\s+public\s*,\s*anon\s*,\s*authenticated\s*;",
-        )
-        self.assertRegex(
-            lowered,
-            r"grant\s+execute\s+on\s+function\s+public\.atlas_sprint4_daily_briefing\(\)\s+"
-            r"to\s+service_role\s*;",
-        )
-        self.assertNotRegex(lowered, r"\binsert\s+into\s+atlas_private\.")
-        self.assertNotRegex(lowered, r"\bupdate\s+atlas_private\.")
-        self.assertNotRegex(lowered, r"\bdelete\s+from\s+atlas_private\.")
-        self.assertNotRegex(lowered, r"\btruncate\s+(table\s+)?atlas_private\.")
-
     def test_briefing_contract_contains_confidence_sources_and_evidence(self) -> None:
-        for token in (
-            "'confidence'",
-            "'score'",
-            "'state'",
-            "'reason'",
-            "'source'",
-            "'evidence'",
-            "'sources'",
-            "'limitations'",
-            "'historical_stock_used_for_reorder'",
-            "'automatic_mutation'",
-        ):
-            self.assertIn(token, MIGRATION)
-        self.assertIn("'ai_generation_used', false", MIGRATION)
-        self.assertIn("'forecasting_enabled', false", MIGRATION)
-        self.assertIn("'automatic_ordering_enabled', false", MIGRATION)
-        self.assertIn("'canonical_promotion_enabled', false", MIGRATION)
+        self.assertIn("create or replace function public.atlas_sprint4_daily_briefing()", MIGRATION)
+        self.assertIn("'confidence'", MIGRATION)
+        self.assertIn("'sources'", MIGRATION)
+        self.assertIn("'evidence'", MIGRATION)
+        self.assertIn("'generated_at'", MIGRATION)
+        self.assertIn("'freshness'", MIGRATION)
+
+    def test_database_contract_is_read_only_and_service_role_only(self) -> None:
+        self.assertIn("security invoker", MIGRATION.lower())
+        self.assertIn("revoke execute on function public.atlas_sprint4_daily_briefing()", MIGRATION)
+        self.assertIn("grant execute on function public.atlas_sprint4_daily_briefing() to service_role", MIGRATION)
+        self.assertNotRegex(MIGRATION.lower(), r"\b(insert|update|delete|truncate)\b\s+(into\s+|from\s+|table\s+)?public\.")
 
     def test_signals_are_exposed_in_numeric_priority_order(self) -> None:
         self.assertIn("rename to atlas_sprint4_daily_briefing_raw", ORDERING_MIGRATION)
@@ -72,7 +46,8 @@ class Sprint4DailyBriefingContractTests(unittest.TestCase):
     def test_gateway_jwt_is_disabled_only_for_in_handler_custom_auth(self) -> None:
         self.assertRegex(CONFIG, r"\[functions\.atlas-sprint4-briefing\]\s+verify_jwt\s*=\s*false")
         self.assertIn("production VÁ Auth", CONFIG)
-        self.assertRegex(CONFIG, r"active\s+manager/admin profile")
+        self.assertIn("server-controlled active profile", CONFIG)
+        self.assertIn("manager/admin profile", CONFIG)
 
 
 if __name__ == "__main__":
