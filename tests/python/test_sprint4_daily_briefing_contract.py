@@ -17,12 +17,17 @@ class Sprint4DailyBriefingContractTests(unittest.TestCase):
         self.assertIn("'sources'", MIGRATION)
         self.assertIn("'evidence'", MIGRATION)
         self.assertIn("'generated_at'", MIGRATION)
-        self.assertIn("'freshness'", MIGRATION)
+        self.assertIn("'latest_recorded_at'", MIGRATION)
+        self.assertIn("'effective_from'", MIGRATION)
+        self.assertIn("'effective_to'", MIGRATION)
 
     def test_database_contract_is_read_only_and_service_role_only(self) -> None:
-        self.assertIn("security invoker", MIGRATION.lower())
+        self.assertIn("security definer", MIGRATION.lower())
+        self.assertRegex(MIGRATION.lower(), r"set\s+search_path\s*=\s*''")
         self.assertIn("revoke execute on function public.atlas_sprint4_daily_briefing()", MIGRATION)
-        self.assertIn("grant execute on function public.atlas_sprint4_daily_briefing() to service_role", MIGRATION)
+        self.assertIn("from public, anon, authenticated", MIGRATION)
+        self.assertIn("grant execute on function public.atlas_sprint4_daily_briefing()", MIGRATION)
+        self.assertIn("to service_role", MIGRATION)
         self.assertNotRegex(MIGRATION.lower(), r"\b(insert|update|delete|truncate)\b\s+(into\s+|from\s+|table\s+)?public\.")
 
     def test_signals_are_exposed_in_numeric_priority_order(self) -> None:
