@@ -108,7 +108,8 @@ class Sprint4Phase3BrainContractTests(unittest.TestCase):
     def test_custom_auth_is_declared_in_branch_config(self) -> None:
         self.assertRegex(CONFIG, r"\[functions\.atlas-phase3-brain\]\s+verify_jwt\s*=\s*false")
         self.assertIn("production VÁ Auth", CONFIG)
-        self.assertRegex(CONFIG, r"active\s+manager/admin profile")
+        self.assertIn("server-controlled active profile", CONFIG)
+        self.assertIn("manager/admin profile", CONFIG)
 
 
 if __name__ == "__main__":
