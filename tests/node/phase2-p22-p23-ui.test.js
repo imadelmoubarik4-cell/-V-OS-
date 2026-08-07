@@ -1,8 +1,11 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..', '..');
 const readSources = fs.readFileSync(path.join(root, 'apps/web/assets/js/read-sources-p22.js'), 'utf8');
 const checkpointM = fs.readFileSync(path.join(root, 'apps/web/assets/js/pos-mapping-checkpoint-m.js'), 'utf8');
