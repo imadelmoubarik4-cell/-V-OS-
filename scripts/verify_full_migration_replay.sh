@@ -168,7 +168,7 @@ fi
 for migration in "${migrations[@]}"; do
   base="$(basename "$migration")"
   echo "Applying $base"
-  psql -v ON_ERROR_STOP=1 -q -f "$migration"
+  psql -v ON_ERROR_STOP=1 -q --single-transaction -f "$migration"
   version="${base%%_*}"
   name="${base#*_}"
   name="${name%.sql}"
