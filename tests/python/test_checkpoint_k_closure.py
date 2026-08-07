@@ -44,7 +44,8 @@ class CheckpointKClosureTests(unittest.TestCase):
         self.assertIn('branchRpc("atlas_phase3_snapshot")', EDGE)
         self.assertRegex(CONFIG, r"\[functions\.atlas-phase3-intelligence\]\s+verify_jwt\s*=\s*false")
         self.assertIn("production VÁ Auth", CONFIG)
-        self.assertIn("active manager/admin profile", CONFIG)
+        self.assertIn("server-controlled active profile", CONFIG)
+        self.assertIn("manager/admin profile", CONFIG)
 
     def test_historical_stock_and_missing_evidence_are_explicitly_gated(self):
         self.assertIn('const HISTORICAL_OPENING_CUTOFF = "2026-07-26"', EDGE)
