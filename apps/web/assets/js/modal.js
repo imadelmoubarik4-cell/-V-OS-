@@ -151,7 +151,7 @@
 
   const layers = [
     ['assets/js/phase4-shell.js', 'atlasPhase4Shell', 'Atlas Phase 4 shell'],
-    ['assets/js/phase4-operations.js', 'atlasPhase4Operations', 'Atlas Phase 4 operational interface'],
+    ['assets/js/phase4-operations-bootstrap.js', 'atlasPhase4OperationsBootstrap', 'Atlas Phase 4 operational bootstrap'],
   ];
 
   layers.forEach(([src, marker, label]) => {
