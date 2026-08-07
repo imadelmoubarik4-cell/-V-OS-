@@ -1,0 +1,29 @@
+name: Phase 4 source export
+
+on:
+  pull_request:
+    branches:
+      - agent/phase2-connection-center-p2-0
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out replacement branch
+        uses: actions/checkout@v4
+
+      - name: Package repository source
+        run: |
+          tar --exclude=.git -czf /tmp/vaos-phase4-source.tar.gz .
+
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vaos-phase4-source
+          path: /tmp/vaos-phase4-source.tar.gz
+          if-no-files-found: error
+          retention-days: 1
