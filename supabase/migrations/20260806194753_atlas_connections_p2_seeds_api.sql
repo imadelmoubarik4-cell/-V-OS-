@@ -1,5 +1,6 @@
 -- Seed capability policy. All external side-effect capabilities remain blocked,
 -- verification-required or read-only until a future explicit authorization.
+begin;
 select set_config('atlas.allow_high_risk_capability_grant','on',true);
 insert into atlas_private.connection_capability_grants(
   connection_key,capability_key,capability_kind,grant_state,risk_level,
@@ -37,6 +38,7 @@ set capability_kind=excluded.capability_kind,
     automatic_execution_allowed=false,
     metadata=excluded.metadata,
     updated_at=now();
+commit;
 
 insert into atlas_private.connection_dependencies(
   connection_key,module_key,requirement_level,required_capabilities,safety_boundary
