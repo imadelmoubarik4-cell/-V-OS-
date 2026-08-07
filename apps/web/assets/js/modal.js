@@ -145,3 +145,16 @@
 
   window.AtlasModal = AtlasModal;
 })();
+
+// Phase 4 is an interface layer over the existing Atlas engine. Loading it from
+// the established modal bundle avoids duplicating index.html and keeps the
+// current authentication, RLS, Edge Function and workflow boundaries intact.
+(function loadAtlasPhase4Shell() {
+  const src = 'assets/js/phase4-shell.js';
+  if (window.AtlasPhase4Shell || document.querySelector(`script[src="${src}"]`)) return;
+  const script = document.createElement('script');
+  script.src = src;
+  script.async = false;
+  script.dataset.atlasPhase4 = 'true';
+  document.body.appendChild(script);
+})();
