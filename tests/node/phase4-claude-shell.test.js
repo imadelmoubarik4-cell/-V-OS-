@@ -60,7 +60,7 @@ test('the old global floating action button is retired in favor of contextual ac
   assert.match(css, /\.fab-wrap\s*\{\s*display:\s*none\s*!important/);
 });
 
-test('Phase 4 does not ship the Claude runtime or weaken Atlas data boundaries', () => {
+test('Phase 4 does not ship the Claude runtime or cross Atlas data boundaries', () => {
   for (const forbidden of [
     /support\.js/i,
     /<x-dc/i,
@@ -69,7 +69,8 @@ test('Phase 4 does not ship the Claude runtime or weaken Atlas data boundaries',
     /ReactDOM/,
     /SUPABASE_SERVICE_ROLE_KEY/,
     /service_role/i,
-    /\.from\s*\(/,
+    /\batlasSupabase\b/,
+    /\bcreateClient\s*\(/,
     /adjust_inventory/,
   ]) assert.doesNotMatch(combined, forbidden);
 });
