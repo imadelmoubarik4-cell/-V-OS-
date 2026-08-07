@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en" data-atlas-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f6f6f4" />
+  <title>Atlas · VÁ Hospitality OS</title>
+  <link rel="icon" type="image/png" href="assets/logo/atlas-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/atlas-next.css" />
+  <script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"
+          integrity="sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT"
+          crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"
+          integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug"
+          crossorigin="anonymous" defer></script>
+  <script src="assets/js/atlas-next.js" defer></script>
+</head>
+<body>
+  <div class="atlas-boot" id="atlas-boot" role="status" aria-live="polite">
+    <div class="atlas-boot-card">
+      <div class="atlas-spinner" aria-hidden="true"></div>
+      <span>Opening Atlas…</span>
+    </div>
+  </div>
+
+  <section class="auth-screen" id="auth-screen" hidden aria-labelledby="auth-title">
+    <article class="auth-card">
+      <div class="auth-watermark" aria-hidden="true">Á</div>
+      <div class="auth-brand">
+        <div class="atlas-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48">
+            <rect x="2" y="2" width="44" height="44" rx="12" fill="#20211f" />
+            <path d="M11 15V9h26v26h-6" fill="none" stroke="#1fa8a0" stroke-width="2.6" stroke-linecap="round" />
+            <path d="M17.5 34L24 13l6.5 21M20 27h8" fill="none" stroke="#f7f4ef" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <span class="auth-eyebrow">VÁ Bar · Staff only</span>
+        <h1 id="auth-title">Atlas</h1>
+        <p>Hospitality operating system for VÁ.</p>
+      </div>
+      <div class="auth-error" id="auth-error" hidden></div>
+      <form id="auth-form" novalidate>
+        <label class="auth-field">
+          <span>Email</span>
+          <input id="auth-email" name="email" type="email" autocomplete="username" required />
+        </label>
+        <label class="auth-field">
+          <span>Password</span>
+          <input id="auth-password" name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <button class="atlas-button full" id="auth-submit" type="submit">Sign in</button>
+      </form>
+    </article>
+  </section>
+
+  <div class="app-shell" id="app-shell" hidden>
+    <aside class="sidebar" id="sidebar" aria-label="Atlas navigation">
+      <header class="sidebar-brand">
+        <div class="atlas-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48">
+            <rect x="2" y="2" width="44" height="44" rx="12" fill="#20211f" />
+            <path d="M11 15V9h26v26h-6" fill="none" stroke="#1fa8a0" stroke-width="2.6" stroke-linecap="round" />
+            <path d="M17.5 34L24 13l6.5 21M20 27h8" fill="none" stroke="#f7f4ef" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div class="sidebar-brand-copy"><strong>ATLAS</strong><span>Hospitality OS · VÁ</span></div>
+      </header>
+
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <section class="nav-group">
+          <div class="nav-label">HOME</div>
+          <button class="nav-item active" type="button" data-view="home"><i data-lucide="house"></i><span>Home</span></button>
+        </section>
+        <section class="nav-group">
+          <div class="nav-label">OPERATIONS</div>
+          <button class="nav-item" type="button" data-view="inventory"><i data-lucide="package"></i><span>Inventory</span></button>
+          <button class="nav-item" type="button" data-view="recipes"><i data-lucide="martini"></i><span>Recipes</span></button>
+          <button class="nav-item" type="button" data-view="purchasing"><i data-lucide="truck"></i><span>Purchasing</span></button>
+          <button class="nav-item" type="button" data-view="imports"><i data-lucide="file-up"></i><span>Import Center</span></button>
+          <button class="nav-item" type="button" data-view="review"><i data-lucide="list-checks"></i><span>Real VÁ Data</span><span class="nav-badge" id="review-count">—</span></button>
+        </section>
+        <section class="nav-group">
+          <div class="nav-label">GROWTH</div>
+          <button class="nav-item" type="button" data-view="marketing"><i data-lucide="megaphone"></i><span>Marketing</span></button>
+        </section>
+        <section class="nav-group">
+          <div class="nav-label">PEOPLE</div>
+          <button class="nav-item" type="button" data-view="messages"><i data-lucide="messages-square"></i><span>Messages</span></button>
+          <button class="nav-item" type="button" data-view="team"><i data-lucide="users"></i><span>Team</span></button>
+          <button class="nav-item" type="button" data-view="shifts"><i data-lucide="calendar-days"></i><span>Shifts</span></button>
+          <button class="nav-item" type="button" data-view="knowledge"><i data-lucide="book-open"></i><span>Knowledge</span></button>
+        </section>
+        <section class="nav-group">
+          <div class="nav-label">INSIGHTS</div>
+          <button class="nav-item" type="button" data-view="brain"><i data-lucide="bot"></i><span>Atlas Brain</span></button>
+          <button class="nav-item" type="button" data-view="business"><i data-lucide="chart-no-axes-combined"></i><span>Business Intelligence</span></button>
+          <button class="nav-item" type="button" data-view="reports"><i data-lucide="file-chart-column"></i><span>Reports</span></button>
+        </section>
+        <section class="nav-group">
+          <div class="nav-label">SYSTEM</div>
+          <button class="nav-item" type="button" data-view="settings"><i data-lucide="settings"></i><span>Settings</span></button>
+          <button class="nav-item" type="button" data-view="system"><i data-lucide="activity"></i><span>System</span></button>
+        </section>
+      </nav>
+
+      <footer class="sidebar-profile">
+        <div class="profile-avatar" id="profile-avatar">A</div>
+        <div class="profile-copy"><strong id="profile-label">Atlas staff</strong><span id="profile-email"></span></div>
+        <button class="icon-button" id="sign-out" type="button" aria-label="Sign out"><i data-lucide="log-out"></i></button>
+      </footer>
+    </aside>
+
+    <section class="app-main">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="mobile-menu" type="button" aria-label="Open navigation"><i data-lucide="menu"></i></button>
+        <div class="page-title" id="page-title">Home</div>
+        <button class="search-trigger" id="search-trigger" type="button" aria-label="Search Atlas">
+          <i data-lucide="search"></i><span>Search Atlas…</span><kbd>⌘ K</kbd>
+        </button>
+        <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch theme"><i data-lucide="moon"></i></button>
+        <button class="icon-button" type="button" aria-label="Notifications"><i data-lucide="bell"></i></button>
+        <button class="service-button" id="service-open" type="button"><i data-lucide="zap"></i><span>Service Mode</span></button>
+      </header>
+
+      <main class="content" id="view-root">
+        <section class="view" id="view-home" data-view-panel="home">
+          <header class="page-hero">
+            <div><span class="eyebrow">Today at VÁ</span><h1 id="home-greeting">Good day.</h1><p>Live operational evidence, without the noise.</p></div>
+            <div class="page-actions">
+              <button class="atlas-button secondary" type="button" data-action="refresh"><i data-lucide="refresh-cw"></i>Refresh</button>
+              <button class="atlas-button" type="button" data-action="inventory"><i data-lucide="package"></i>Review stock</button>
+            </div>
+          </header>
+          <div class="metric-grid" id="home-metrics"></div>
+          <div class="dashboard-grid">
+            <section class="panel"><header class="panel-head"><div><h2>Today’s focus</h2><p>Priorities derived from the data available to your role.</p></div></header><div class="focus-list" id="home-focus"></div></section>
+            <aside class="panel"><header class="panel-head"><div><h2>Evidence status</h2><p>Atlas never upgrades stale or missing evidence silently.</p></div></header><div class="focus-list" id="evidence-status"></div></aside>
+          </div>
+        </section>
+
+        <section class="view" id="view-inventory" data-view-panel="inventory" hidden>
+          <header class="page-hero">
+            <div><span class="eyebrow">Operations · Inventory</span><h1>Inventory</h1><p>Current records are read-only here. Controlled workflows handle stock changes.</p></div>
+            <div class="page-actions">
+              <button class="atlas-button secondary" type="button" data-action="scan"><i data-lucide="scan-barcode"></i>Scan barcode</button>
+              <button class="atlas-button" type="button" data-action="start-count"><i data-lucide="clipboard-plus"></i>Start stock count</button>
+            </div>
+          </header>
+          <div class="notice"><i data-lucide="shield-check"></i><div><strong>Controlled inventory boundary</strong><span>A scan or observation does not alter live stock. Manager-approved publication is required.</span></div></div>
+          <div class="toolbar">
+            <input class="atlas-input" id="inventory-search" type="search" placeholder="Search item, category, barcode or location…" />
+            <select class="atlas-select" id="inventory-category" aria-label="Inventory category"><option value="all">All categories</option></select>
+          </div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>Item</th><th>Category</th><th>Location</th><th>Quantity</th><th>Par</th><th>Evidence</th></tr></thead><tbody id="inventory-rows"></tbody></table><div class="empty-state" id="inventory-empty" hidden><i data-lucide="package-open"></i><h3>No inventory records found</h3><p>Change the current filter or check your role access.</p></div></div>
+        </section>
+
+        <section class="view" id="view-placeholder" data-view-panel="placeholder" hidden>
+          <header class="page-hero"><div><span class="eyebrow" id="placeholder-eyebrow">Atlas workspace</span><h1 id="placeholder-title">Workspace</h1><p id="placeholder-copy">This production interface is being connected to the existing secure Atlas workflow.</p></div></header>
+          <section class="panel empty-state"><i data-lucide="blocks"></i><h3>Single-interface migration in progress</h3><p>The old screen is not loaded behind this page. The existing API and permission boundary will be connected directly here.</p></section>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <div class="command-palette" id="command-palette" hidden role="dialog" aria-modal="true" aria-label="Search Atlas">
+    <div class="command-backdrop" data-command-close></div>
+    <section class="command-panel">
+      <div class="command-search"><i data-lucide="search"></i><input id="command-input" type="search" autocomplete="off" placeholder="Search or jump to a workspace…" /><kbd>Esc</kbd></div>
+      <div class="command-results" id="command-results" role="listbox"></div>
+    </section>
+  </div>
+
+  <div class="service-overlay" id="service-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="service-title">
+    <div class="service-backdrop" data-service-close></div>
+    <section class="service-panel">
+      <header class="service-head"><div><h2 id="service-title">Service Mode</h2><p>Fast access to the work that matters during service.</p></div><button class="icon-button" type="button" data-service-close aria-label="Close Service Mode"><i data-lucide="x"></i></button></header>
+      <div class="service-grid">
+        <button class="service-card" type="button" data-service-view="inventory"><i data-lucide="package"></i><strong>Quick stock check</strong><span>View current records and evidence state.</span></button>
+        <button class="service-card" type="button" data-service-action="count"><i data-lucide="clipboard-list"></i><strong>Stock count</strong><span>Manager-verified workflow.</span></button>
+        <button class="service-card" type="button" data-service-action="scan"><i data-lucide="scan-barcode"></i><strong>Scan barcode</strong><span>Identify an item without silent stock change.</span></button>
+        <button class="service-card" type="button" data-service-view="recipes"><i data-lucide="martini"></i><strong>Recipe lookup</strong><span>Service-ready specifications.</span></button>
+        <button class="service-card" type="button" data-service-view="knowledge"><i data-lucide="book-open"></i><strong>Knowledge</strong><span>Opening, closing and safety guidance.</span></button>
+        <button class="service-card" type="button" disabled><i data-lucide="ban"></i><strong>86 board</strong><span>Not configured.</span></button>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+</body>
+</html>
