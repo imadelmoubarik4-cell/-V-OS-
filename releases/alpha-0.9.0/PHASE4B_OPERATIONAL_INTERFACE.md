@@ -50,12 +50,16 @@ Added:
 
 The contracts assert that the Phase 4B layer uses existing safe workspace APIs, hides silent quantity controls, keeps external side effects disabled, includes responsive/dark/reduced-motion treatment, and contains no service-role key, direct Supabase table query, `adjust_inventory` invocation, Claude runtime or runtime compiler.
 
+## Netlify preview retrigger
+
+The Netlify branch-deploy context for the PR #9 base branch was enabled on 2026-08-07. This documentation-only commit intentionally retriggers the pull-request integration. Browser acceptance must use only the exact successful Deploy Preview URL posted by the Netlify bot on PR #9; a guessed numbered URL is not release evidence.
+
 ## Remaining acceptance
 
 - complete hosted Node/Python suite;
 - browser JavaScript syntax check at the committed head;
 - migration replay regression;
-- Netlify Deploy Preview;
+- exact Netlify Deploy Preview evidence;
 - administrator, manager, bartender and viewer visual/role acceptance;
 - phone/tablet/desktop review;
 - production fingerprint confirmation.
