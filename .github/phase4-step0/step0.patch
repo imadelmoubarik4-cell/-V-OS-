@@ -1,45 +1,8 @@
-diff --git a/apps/web/assets/js/data/atlas-data.js b/apps/web/assets/js/data/atlas-data.js
-index 12ede9e..0000000 100644
---- a/apps/web/assets/js/data/atlas-data.js
-+++ b/apps/web/assets/js/data/atlas-data.js
-@@ -13,6 +13,22 @@
-     }
-   }
- 
-+  const CANONICAL_ITEM_FIELDS = Object.freeze([
-+    'id',
-+    'name',
-+    'category',
-+    'quantity',
-+    'unit',
-+    'par_level',
-+    'cost_price',
-+    'size_ml',
-+    'supplier',
-+    'supplier_id',
-+    'sku',
-+    'bin_location',
-+    'units_per_case',
-+    'case_cost',
-+    'discount_percent'
-+  ]);
-+
-   const STAFF_RECIPE_COLUMNS = [
-     'id',
-     'category_id',
-@@ -232,6 +248,7 @@
- 
-   global.AtlasData = Object.freeze({
-     AtlasDataError,
-+    CANONICAL_ITEM_FIELDS,
-     getActiveProfile,
-     getItems,
-     getInventoryMovements,
 diff --git a/apps/web/index.html b/apps/web/index.html
-index 0ac8675..0000000 100644
+index 0ac8675..673f857 100644
 --- a/apps/web/index.html
 +++ b/apps/web/index.html
-@@ -907,6 +907,7 @@
+@@ -908,6 +908,7 @@
          integrity="sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT"
          crossorigin="anonymous"></script>
  <script src="config.js"></script>
@@ -47,7 +10,18 @@ index 0ac8675..0000000 100644
  <script>
    const SUPABASE_CDN_URLS = [
      'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
-@@ -1083,13 +1084,8 @@
+@@ -1012,6 +1013,10 @@
+         throw new Error('The Supabase client initialized without the Auth module.');
+       }
+ 
++      if (!window.AtlasData?.configure) {
++        throw new Error('The Atlas data gateway did not load.');
++      }
++      window.AtlasData.configure(client);
+       sb = client;
+       window.atlasSupabase = client;
+       clearBootError();
+@@ -1122,14 +1127,9 @@
    });
  
    async function loadActiveProfile(session) {
@@ -64,7 +38,7 @@ index 0ac8675..0000000 100644
        await sb.auth.signOut().catch(() => null);
        throw new Error('This account is not an active VÁ staff profile. Ask an administrator to review access.');
      }
-@@ -1146,86 +1142,53 @@
+@@ -1174,96 +1174,55 @@
  
    // ---------- DATA ----------
    async function loadItems() {
@@ -78,7 +52,7 @@ index 0ac8675..0000000 100644
 -      console.error(`${relation} could not be loaded`, error);
 +    try {
 +      items = await window.AtlasData.getItems({
-+        can_manage_commercial: canManageCommercial()
++        canManageCommercial: canManageCommercial()
 +      });
 +    } catch (error) {
 +      console.error('Inventory could not be loaded', error);
@@ -104,8 +78,8 @@ index 0ac8675..0000000 100644
 -      console.error(`${relation} could not be loaded`, error);
 +    try {
 +      restockLog = await window.AtlasData.getInventoryMovements({
-+        can_manage_commercial: canManageCommercial(),
-+        movement_type: 'restock'
++        canManageCommercial: canManageCommercial(),
++        movementType: 'restock'
 +      });
 +    } catch (error) {
 +      console.error('Inventory movements could not be loaded', error);
@@ -148,7 +122,7 @@ index 0ac8675..0000000 100644
 -      console.error('The staff recipe catalogue could not be loaded', result.error);
 +    try {
 +      recipes = await window.AtlasData.getRecipes({
-+        can_manage_commercial: canManageCommercial()
++        canManageCommercial: canManageCommercial()
 +      });
 +    } catch (error) {
 +      console.error('The recipe catalogue could not be loaded', error);
@@ -168,13 +142,12 @@ index 0ac8675..0000000 100644
 -      .select('*')
 -      .order('name', { ascending: true });
 -    if (error) {
--      console.warn('Supplier list could not be loaded:', error.message);
 +    try {
 +      suppliers = await window.AtlasData.getSuppliers({
-+        can_manage_commercial: canManageCommercial()
++        canManageCommercial: canManageCommercial()
 +      });
 +    } catch (error) {
-+      console.warn('Supplier list could not be loaded:', error.message);
+       console.warn('Supplier list could not be loaded:', error.message);
        suppliers = [];
 -      return;
      }
@@ -188,7 +161,7 @@ index 0ac8675..0000000 100644
      renderDashboard();
      renderRecipes();
      renderSuppliers();
-@@ -1371,14 +1334,14 @@
+@@ -1363,15 +1322,16 @@
        const item = items.find(i => i.id === id);
        if (!item || newQty === item.quantity) return;
        const quantityChange = newQty - item.quantity;
@@ -201,22 +174,20 @@ index 0ac8675..0000000 100644
 -        p_note: 'Quick quantity adjustment',
 -      });
 -      if (error) {
--        alert(error.message);
 +      try {
 +        await window.AtlasData.adjustInventory({
-+          item_id: item.id,
-+          quantity_change: quantityChange,
-+          movement_type: quantityChange > 0 ? 'restock' : 'adjustment',
-+          unit_cost: quantityChange > 0 ? (item.cost_price || null) : null,
-+          supplier_id: item.supplier_id || null,
++          itemId: item.id,
++          quantityChange,
++          movementType: quantityChange > 0 ? 'restock' : 'adjustment',
++          unitCost: quantityChange > 0 ? (item.cost_price || null) : null,
++          supplierId: item.supplier_id || null,
 +          note: 'Quick quantity adjustment'
 +        });
 +      } catch (error) {
-+        alert(error.message);
+         alert(error.message);
          return;
        }
-       await loadAll();
-@@ -1419,7 +1382,12 @@
+@@ -1405,7 +1365,12 @@
        btn.addEventListener('click', async () => {
          if (!requireCommercialManager('Inventory deletion')) return;
          if (!confirm('Remove this item from inventory?')) return;
@@ -230,7 +201,15 @@ index 0ac8675..0000000 100644
          await loadAll();
        });
      });
-@@ -1483,11 +1451,12 @@
+@@ -1464,7 +1429,6 @@
+     const payload = {
+       name: document.getElementById('item-name').value.trim(),
+       category: document.getElementById('item-category').value,
+-      quantity: parseFloat(document.getElementById('item-quantity').value),
+       unit: document.getElementById('item-unit').value.trim(),
+       par_level: document.getElementById('item-par').value === '' ? null : parseFloat(document.getElementById('item-par').value),
+       supplier: document.getElementById('item-supplier').value.trim() || null,
+@@ -1475,10 +1439,11 @@
        cost_price: document.getElementById('item-cost').value === '' ? null : parseFloat(document.getElementById('item-cost').value),
        discount_percent: document.getElementById('item-discount').value === '' ? 0 : parseFloat(document.getElementById('item-discount').value),
      };
@@ -246,7 +225,7 @@ index 0ac8675..0000000 100644
      }
      closeModal();
      await loadAll();
-@@ -1640,38 +1609,31 @@
+@@ -1629,38 +1594,27 @@
      const supplier = document.getElementById('restock-supplier').value.trim() || null;
  
      let supplierId = null;
@@ -292,68 +271,210 @@ index 0ac8675..0000000 100644
 -    if (error) {
 +    try {
 +      await window.AtlasData.adjustInventory({
-+        item_id: item.id,
-+        quantity_change: qtyAdded,
-+        movement_type: 'restock',
-+        unit_cost: netUnitCost,
-+        supplier_id: supplierId,
++        itemId: item.id,
++        quantityChange: qtyAdded,
++        movementType: 'restock',
++        unitCost: netUnitCost,
++        supplierId,
 +        note: discount ? `Supplier discount: ${discount}%` : null
 +      });
 +    } catch (error) {
        alert(error.message);
        return;
      }
-@@ -1812,11 +1774,12 @@
+@@ -1810,11 +1764,12 @@
        notes:document.getElementById('supplier-notes').value.trim()||null
      };
      if(!payload.name) return;
 -    let result=await sb.from('suppliers').insert(payload);
 -    if(result.error){
 -      result=await sb.from('suppliers').insert({name:payload.name});
--    }
--    if(result.error){ alert(result.error.message); return; }
 +    try {
 +      await window.AtlasData.createSupplier(payload);
 +    } catch (error) {
 +      alert(error.message);
 +      return;
-+    }
+     }
+-    if(result.error){ alert(result.error.message); return; }
      closeSupplierModal();
      await loadAll();
      setActiveView('suppliers');
-diff --git a/tests/node/phase4-data-seam.test.js b/tests/node/phase4-data-seam.test.js
-index 2321dd0..0000000 100644
---- a/tests/node/phase4-data-seam.test.js
-+++ b/tests/node/phase4-data-seam.test.js
-@@ -10,6 +10,10 @@
-   path.join(root, 'apps/web/assets/js/data/atlas-data.js'),
-   'utf8'
- );
-+const index = fs.readFileSync(
+diff --git a/tests/node/atlas-data-boundary.test.js b/tests/node/atlas-data-boundary.test.js
+new file mode 100644
+index 0000000..b114f19
+--- /dev/null
++++ b/tests/node/atlas-data-boundary.test.js
+@@ -0,0 +1,102 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { existsSync, readFileSync } from 'node:fs';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const __filename = fileURLToPath(import.meta.url);
++const __dirname = path.dirname(__filename);
++const root = path.resolve(__dirname, '..', '..');
++const data = readFileSync(
++  path.join(root, 'apps/web/assets/js/data/atlas-data.js'),
++  'utf8'
++);
++const index = readFileSync(
 +  path.join(root, 'apps/web/index.html'),
 +  'utf8'
 +);
-@@ -63,3 +67,18 @@
-   assert.match(source, /p_movement_type/);
-   assert.match(source, /insert\(\{ \.\.\.record, quantity: 0 \}\)/);
- });
 +
++const directSupabaseFrom = /(?:\bsb\b|\bclient\b|\bsupabase\b|\batlasSupabase\b)\s*\.\s*from\s*\(/i;
++const directSupabaseRpc = /(?:\bsb\b|\bclient\b|\bsupabase\b|\batlasSupabase\b)\s*\.\s*rpc\s*\(/i;
 +
-+test('legacy UI loads the data gateway before its application bootstrap', () => {
++function inventoryMasterFields() {
++  const match = data.match(
++    /const\s+INVENTORY_MASTER_FIELDS\s*=\s*Object\.freeze\s*\(\s*\[(.*?)\]\s*\)\s*;/s
++  );
++  assert.ok(match, 'INVENTORY_MASTER_FIELDS must be declared as a frozen array');
++  return [...match[1].matchAll(/['"]([^'"]+)['"]/g)].map((entry) => entry[1]);
++}
++
++test('Atlas data boundary is DOM-free and does not ship privileged or design runtimes', () => {
++  assert.match(data, /global\.AtlasData\s*=\s*Object\.freeze/);
++  assert.doesNotMatch(data, /\bdocument\b|innerHTML|querySelector|getElementById|MutationObserver/);
++  assert.doesNotMatch(data, /SUPABASE_SERVICE_ROLE_KEY|service_role\s*[:=]|support\.js|Babel\.transform|ReactDOM|new\s+Function\s*\(/i);
++});
++
++test('inventory master fields use canonical names and cannot write quantity', () => {
++  const fields = inventoryMasterFields();
++  assert.ok(fields.length > 0);
++  assert.equal(fields.includes('quantity'), false);
++  for (const field of [
++    'name', 'category', 'unit', 'par_level', 'supplier', 'supplier_id',
++    'sku', 'barcode', 'bin_location', 'units_per_case', 'case_cost',
++    'cost_price', 'discount_percent', 'size_ml'
++  ]) assert.ok(fields.includes(field), `missing canonical inventory field: ${field}`);
++  for (const forbidden of ['currentStock', 'parLevel', 'minimumStock', 'averageDailyUsage']) {
++    assert.equal(fields.includes(forbidden), false);
++  }
++});
++
++test('role-aware commercial and redacted relations remain explicit', () => {
++  for (const relation of [
++    'inventory_items',
++    'inventory_catalog',
++    'inventory_movements',
++    'inventory_movement_catalog',
++    'recipes',
++    'recipe_catalog'
++  ]) assert.match(data, new RegExp(`['"]${relation}['"]`));
++  assert.match(data, /canManageCommercial/);
++  assert.match(data, /canManageCommercial\s*\?\s*['"]inventory_items['"]\s*:\s*['"]inventory_catalog['"]/);
++  assert.match(data, /canManageCommercial[\s\S]{0,120}['"]inventory_movements['"][\s\S]{0,120}['"]inventory_movement_catalog['"]/);
++  assert.match(data, /if\s*\(canManageCommercial\)[\s\S]{0,180}\.from\(['"]recipes['"]\)/);
++  assert.match(data, /\.from\(['"]recipe_catalog['"]\)/);
++});
++
++test('legacy application configures one shared data gateway before loading data', () => {
 +  const configIndex = index.indexOf('<script src="config.js"></script>');
 +  const dataIndex = index.indexOf('<script src="assets/js/data/atlas-data.js"></script>');
 +  const inlineIndex = index.indexOf('<script>\n  const SUPABASE_CDN_URLS');
 +  assert.ok(configIndex >= 0);
 +  assert.ok(dataIndex > configIndex);
 +  assert.ok(inlineIndex > dataIndex);
++  assert.match(index, /window\.AtlasData\.configure\s*\(\s*[A-Za-z_$][\w$]*\s*\)/);
++  assert.match(data, /configuredClient\s*\|\|\s*global\.atlasSupabase/);
++  assert.doesNotMatch(data, /\bcreateClient\s*\(/);
 +});
 +
-+
-+test('legacy loaders fetch through AtlasData and render only after loading', () => {
-+  assert.match(index, /AtlasData\.getActiveProfile/);
-+  assert.match(index, /AtlasData\.getItems/);
-+  assert.match(index, /AtlasData\.getInventoryMovements/);
-+  assert.match(index, /AtlasData\.getRecipes/);
-+  assert.match(index, /AtlasData\.getSuppliers/);
-+  assert.match(index, /await Promise\.all\([\s\S]*renderTabs\(\);[\s\S]*renderTable\(\);/);
++test('index delegates every Supabase data and RPC operation to AtlasData', () => {
++  assert.doesNotMatch(index, directSupabaseFrom);
++  assert.doesNotMatch(index, directSupabaseRpc);
++  for (const operation of [
++    'getActiveProfile', 'getItems', 'getInventoryMovements', 'getRecipes',
++    'getSuppliers', 'saveItem', 'deleteItem', 'adjustInventory',
++    'ensureSupplier', 'createSupplier'
++  ]) assert.match(index, new RegExp(`AtlasData\\.${operation}\\s*\\(`));
 +});
++
++test('item master writes are structurally filtered and quantity is initialized only on create', () => {
++  assert.match(data, /pickFields\s*\(\s*payload\s*,\s*INVENTORY_MASTER_FIELDS\s*\)/);
++  assert.match(data, /\.update\s*\(\s*record\s*\)/);
++  assert.match(
++    data,
++    /\.insert\s*\(\s*\{\s*\.\.\.\s*record\s*,\s*quantity\s*:\s*0\s*\}\s*\)/s
++  );
++  const payloadMatch = index.match(/const\s+payload\s*=\s*\{([\s\S]*?)\};\s*try\s*\{\s*await\s+window\.AtlasData\.saveItem/);
++  assert.ok(payloadMatch, 'item master payload must be passed to AtlasData.saveItem');
++  assert.doesNotMatch(payloadMatch[1], /\bquantity\s*:/);
++});
++
++test('the published web root does not expose a legacy archive directory', () => {
++  assert.equal(existsSync(path.join(root, 'apps/web/old')), false);
++});
+diff --git a/tests/node/phase4-data-seam.test.js b/tests/node/phase4-data-seam.test.js
+deleted file mode 100644
+index 3344f9b..0000000
+--- a/tests/node/phase4-data-seam.test.js
++++ /dev/null
+@@ -1,65 +0,0 @@
+-import test from 'node:test';
+-import assert from 'node:assert/strict';
+-import fs from 'node:fs';
+-import path from 'node:path';
+-import { fileURLToPath } from 'node:url';
+-
+-const __filename = fileURLToPath(import.meta.url);
+-const __dirname = path.dirname(__filename);
+-const root = path.resolve(__dirname, '..', '..');
+-const source = fs.readFileSync(
+-  path.join(root, 'apps/web/assets/js/data/atlas-data.js'),
+-  'utf8'
+-);
+-
+-
+-test('Phase 4 data gateway is DOM-free and exposes plain operations', () => {
+-  assert.match(source, /global\.AtlasData\s*=\s*Object\.freeze/);
+-  assert.match(source, /getActiveProfile/);
+-  assert.match(source, /getItems/);
+-  assert.match(source, /getInventoryMovements/);
+-  assert.match(source, /getRecipes/);
+-  assert.match(source, /getSuppliers/);
+-  assert.match(source, /saveItem/);
+-  assert.match(source, /deleteItem/);
+-  assert.match(source, /adjustInventory/);
+-  assert.match(source, /ensureSupplier/);
+-  assert.match(source, /getPublicMenuItems/);
+-  assert.doesNotMatch(source, /\bdocument\b/);
+-  assert.doesNotMatch(source, /innerHTML|querySelector|getElementById/);
+-});
+-
+-
+-test('Phase 4 data gateway keeps canonical snake_case field names', () => {
+-  assert.match(source, /\bquantity\b/);
+-  assert.match(source, /\bpar_level\b/);
+-  assert.match(source, /\bcost_price\b/);
+-  assert.match(source, /\bsize_ml\b/);
+-  assert.doesNotMatch(source, /currentStock|parLevel|minimumStock|averageDailyUsage/);
+-});
+-
+-
+-test('Phase 4 data gateway preserves role-aware catalogue boundaries', () => {
+-  assert.match(source, /inventory_items/);
+-  assert.match(source, /inventory_catalog/);
+-  assert.match(source, /inventory_movements/);
+-  assert.match(source, /inventory_movement_catalog/);
+-  assert.match(source, /recipe_catalog/);
+-  assert.match(source, /can_manage_commercial/);
+-});
+-
+-
+-test('Phase 4 data gateway reuses the one shared browser client', () => {
+-  assert.match(source, /global\.atlasSupabase/);
+-  assert.doesNotMatch(source, /createClient\s*\(/);
+-  assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY|service_role\s*[:=]/);
+-});
+-
+-
+-test('Phase 4 data gateway keeps inventory mutations behind existing operations', () => {
+-  assert.match(source, /\.rpc\('adjust_inventory'/);
+-  assert.match(source, /p_item_id/);
+-  assert.match(source, /p_quantity_change/);
+-  assert.match(source, /p_movement_type/);
+-  assert.match(source, /insert\(\{ \.\.\.record, quantity: 0 \}\)/);
+-});
