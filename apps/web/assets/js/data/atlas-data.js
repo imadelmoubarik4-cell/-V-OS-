@@ -14,6 +14,27 @@
     }
   }
 
+  const INVENTORY_MASTER_FIELDS = Object.freeze([
+    'name',
+    'category',
+    'unit',
+    'par_level',
+    'supplier',
+    'supplier_id',
+    'sku',
+    'barcode',
+    'bin_location',
+    'units_per_case',
+    'case_cost',
+    'cost_price',
+    'discount_percent',
+    'size_ml',
+    'package_size',
+    'sell_price',
+    'image_url',
+    'active'
+  ]);
+
   const STAFF_RECIPE_COLUMNS = [
     'id',
     'category_id',
@@ -33,8 +54,21 @@
     'recipe_ingredients(id,recipe_id,item_id,item_name,quantity,unit)'
   ].join(',');
 
+  let configuredClient = null;
+
+  function configure(nextClient) {
+    if (!nextClient?.from || !nextClient?.rpc || !nextClient?.auth) {
+      throw new AtlasDataError(
+        'configure',
+        new Error('A complete shared Atlas Supabase client is required.')
+      );
+    }
+    configuredClient = nextClient;
+    return global.AtlasData;
+  }
+
   function getClient() {
-    const client = global.atlasSupabase;
+    const client = configuredClient || global.atlasSupabase;
     if (!client?.from || !client?.rpc || !client?.auth) {
       throw new AtlasDataError(
         'getClient',
@@ -54,18 +88,26 @@
     return text || null;
   }
 
-  async function getActiveProfile(user_id) {
-    if (!user_id) throw new AtlasDataError('getActiveProfile', new Error('user_id is required'));
+  function pickFields(payload, allowedFields) {
+    const source = payload && typeof payload === 'object' ? payload : {};
+    return allowedFields.reduce((record, field) => {
+      if (Object.prototype.hasOwnProperty.call(source, field)) record[field] = source[field];
+      return record;
+    }, {});
+  }
+
+  async function getActiveProfile(userId) {
+    if (!userId) throw new AtlasDataError('getActiveProfile', new Error('userId is required'));
     const result = await getClient()
       .from('profiles')
       .select('id,email,display_name,role,active')
-      .eq('id', user_id)
+      .eq('id', userId)
       .maybeSingle();
-    return fail('getActiveProfile', result, { user_id });
+    return fail('getActiveProfile', result, { userId });
   }
 
-  async function getItems({ can_manage_commercial = false } = {}) {
-    const relation = can_manage_commercial ? 'inventory_items' : 'inventory_catalog';
+  async function getItems({ canManageCommercial = false } = {}) {
+    const relation = canManageCommercial ? 'inventory_items' : 'inventory_catalog';
     const result = await getClient()
       .from(relation)
       .select('*')
@@ -75,24 +117,24 @@
   }
 
   async function getInventoryMovements({
-    can_manage_commercial = false,
-    movement_type = 'restock'
+    canManageCommercial = false,
+    movementType = 'restock'
   } = {}) {
-    const relation = can_manage_commercial
+    const relation = canManageCommercial
       ? 'inventory_movements'
       : 'inventory_movement_catalog';
     let query = getClient().from(relation);
-    query = can_manage_commercial
+    query = canManageCommercial
       ? query.select('*, suppliers(name)')
       : query.select('*');
-    if (movement_type) query = query.eq('movement_type', movement_type);
+    if (movementType) query = query.eq('movement_type', movementType);
     const result = await query.order('created_at', { ascending: false });
-    return fail('getInventoryMovements', result, { relation, movement_type }) || [];
+    return fail('getInventoryMovements', result, { relation, movementType }) || [];
   }
 
-  async function getRecipes({ can_manage_commercial = false } = {}) {
+  async function getRecipes({ canManageCommercial = false } = {}) {
     const client = getClient();
-    if (can_manage_commercial) {
+    if (canManageCommercial) {
       const result = await client
         .from('recipes')
         .select('*, recipe_ingredients(*)')
@@ -105,8 +147,7 @@
       .select('*')
       .order('name', { ascending: true });
 
-    // Compatibility is intentionally limited to operational, non-commercial
-    // fields while the production recipe catalogue migration is rolled out.
+    // Compatibility remains limited to operational, non-commercial columns.
     if (result.error) {
       result = await client
         .from('recipes')
@@ -116,8 +157,8 @@
     return fail('getRecipes', result, { relation: 'recipe_catalog' }) || [];
   }
 
-  async function getSuppliers({ can_manage_commercial = false } = {}) {
-    if (!can_manage_commercial) return [];
+  async function getSuppliers({ canManageCommercial = false } = {}) {
+    if (!canManageCommercial) return [];
     const result = await getClient()
       .from('suppliers')
       .select('*')
@@ -127,7 +168,11 @@
 
   async function saveItem({ id = null, payload = {} } = {}) {
     const client = getClient();
-    const record = { ...payload };
+    const record = pickFields(payload, INVENTORY_MASTER_FIELDS);
+    if (!record.name) {
+      throw new AtlasDataError('saveItem', new Error('name is required'), { id });
+    }
+
     let result;
     if (id) {
       result = await client
@@ -157,33 +202,33 @@
   }
 
   async function adjustInventory({
-    item_id,
-    quantity_change,
-    movement_type,
-    unit_cost = null,
-    supplier_id = null,
+    itemId,
+    quantityChange,
+    movementType,
+    unitCost = null,
+    supplierId = null,
     note = null
   } = {}) {
     const result = await getClient().rpc('adjust_inventory', {
-      p_item_id: item_id,
-      p_quantity_change: quantity_change,
-      p_movement_type: movement_type,
-      p_unit_cost: unit_cost,
-      p_supplier_id: supplier_id,
+      p_item_id: itemId,
+      p_quantity_change: quantityChange,
+      p_movement_type: movementType,
+      p_unit_cost: unitCost,
+      p_supplier_id: supplierId,
       p_note: note
     });
-    return fail('adjustInventory', result, { item_id, movement_type });
+    return fail('adjustInventory', result, { itemId, movementType });
   }
 
   async function findSupplierByName(name) {
-    const normalized_name = cleanText(name);
-    if (!normalized_name) return null;
+    const normalizedName = cleanText(name);
+    if (!normalizedName) return null;
     const result = await getClient()
       .from('suppliers')
       .select('id,name')
-      .ilike('name', normalized_name)
+      .ilike('name', normalizedName)
       .maybeSingle();
-    return fail('findSupplierByName', result, { name: normalized_name });
+    return fail('findSupplierByName', result, { name: normalizedName });
   }
 
   async function createSupplier(payload = {}) {
@@ -204,8 +249,7 @@
       .select('*')
       .single();
 
-    // Older hosted supplier tables may contain only the name column. Preserve
-    // the existing compatibility behavior without leaking it into the UI.
+    // Older hosted supplier tables may contain only the name column.
     if (result.error) {
       result = await getClient()
         .from('suppliers')
@@ -217,11 +261,11 @@
   }
 
   async function ensureSupplier(name) {
-    const normalized_name = cleanText(name);
-    if (!normalized_name) return null;
-    const existing = await findSupplierByName(normalized_name);
+    const normalizedName = cleanText(name);
+    if (!normalizedName) return null;
+    const existing = await findSupplierByName(normalizedName);
     if (existing?.id) return existing;
-    return createSupplier({ name: normalized_name });
+    return createSupplier({ name: normalizedName });
   }
 
   async function getPublicMenuItems() {
@@ -235,6 +279,8 @@
 
   global.AtlasData = Object.freeze({
     AtlasDataError,
+    INVENTORY_MASTER_FIELDS,
+    configure,
     getActiveProfile,
     getItems,
     getInventoryMovements,
