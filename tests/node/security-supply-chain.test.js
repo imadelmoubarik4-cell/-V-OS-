@@ -6,14 +6,15 @@ const index = readFileSync('apps/web/index.html', 'utf8');
 const menu = readFileSync('apps/web/menu.html', 'utf8');
 const config = readFileSync('apps/web/config.js', 'utf8');
 const netlify = readFileSync('netlify.toml', 'utf8');
-const browser = index + menu + config;
+const data = readFileSync('apps/web/assets/js/data/atlas-data.js', 'utf8');
+const browser = index + menu + config + data;
 
 const SUPABASE_SRI = 'sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug';
 const LUCIDE_SRI = 'sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT';
 const XLSX_SRI = 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw';
 
 test('browser dependencies are pinned with reviewed integrity hashes', () => {
-  assert.doesNotMatch(browser, /@latest|supabase-js@2(?:[/'\"])/i);
+  assert.doesNotMatch(browser, /@latest|supabase-js@2(?:[/'"])/i);
   assert.match(index, /xlsx@0\.18\.5/);
   assert.match(index, /lucide@0\.454\.0/);
   assert.match(index + menu, /supabase-js@2\.45\.4/g);
@@ -40,9 +41,9 @@ test('Netlify headers cover transport, browser capabilities and both Supabase pr
 
 test('commercial browser paths are profile-gated and use redacted staff catalogues', () => {
   assert.match(index, /loadActiveProfile/);
-  assert.match(index, /inventory_catalog/);
-  assert.match(index, /inventory_movement_catalog/);
-  assert.match(index, /recipe_catalog/);
+  assert.match(data, /inventory_catalog/);
+  assert.match(data, /inventory_movement_catalog/);
+  assert.match(data, /recipe_catalog/);
   assert.match(index, /atlas-commercial-manager/);
   assert.doesNotMatch(index, /updated_by:\s*currentUser(?:\.id|\?\.id)?/);
 });
