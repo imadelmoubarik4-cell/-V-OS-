@@ -32,7 +32,10 @@ CREATE SCHEMA IF NOT EXISTS graphql;
 CREATE SCHEMA IF NOT EXISTS graphql_public;
 CREATE SCHEMA IF NOT EXISTS pgbouncer;
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+-- Supabase installs pgcrypto in the extensions schema. Mirroring that layout
+-- keeps schema-qualified migration calls replayable in a plain PostgreSQL CI
+-- container and avoids a false failure caused by installing it in public.
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 
 CREATE TABLE IF NOT EXISTS auth.instances(
