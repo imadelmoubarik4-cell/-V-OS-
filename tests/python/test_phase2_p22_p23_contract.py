@@ -4,6 +4,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
+P2_SEEDS = (ROOT / "supabase/migrations/20260806194753_atlas_connections_p2_seeds_api.sql").read_text()
 P22 = (ROOT / "supabase/migrations/20260806232000_atlas_read_sources_p22.sql").read_text()
 P23 = (ROOT / "supabase/migrations/20260806234000_atlas_pos_mapping_checkpoint_m.sql").read_text()
 READ_EDGE = (ROOT / "supabase/functions/atlas-read-sources/index.ts").read_text()
@@ -126,19 +127,25 @@ class CheckpointMContractTests(unittest.TestCase):
             "'production_source_mutation',false",
         ):
             self.assertIn(phrase, P23)
-        self.assertIn("orders.write", P23)
+        self.assertIn("orders.write", P2_SEEDS)
+        self.assertIn("'blocked'", P2_SEEDS)
+        self.assertIn("automatic_ordering", P2_SEEDS)
         self.assertIn("automatic_ordering", P23)
 
     def test_pos_rpc_surface_is_service_role_only(self):
-        for signature in (
-            "public.atlas_pos_mapping_snapshot(uuid,text,integer)",
-            "public.atlas_pos_mapping_refresh_targets(jsonb,uuid,text,text)",
-            "public.atlas_pos_mapping_stage_products(text,text,jsonb,uuid,text,text)",
-            "public.atlas_pos_mapping_decide(uuid,uuid,text,text,uuid,text,text)",
-            "public.atlas_pos_mapping_ping()",
+        for function_name in (
+            "atlas_pos_mapping_snapshot",
+            "atlas_pos_mapping_refresh_targets",
+            "atlas_pos_mapping_stage_products",
+            "atlas_pos_mapping_decide",
+            "atlas_pos_mapping_ping",
         ):
-            self.assertIn(signature, P23)
+            self.assertRegex(
+                P23,
+                rf"create\s+or\s+replace\s+function\s+public\.{function_name}\s*\(",
+            )
         self.assertIn("p.proname like 'atlas_pos_mapping_%'", P23)
+        self.assertIn("revoke all on function %s from public,anon,authenticated", P23)
         self.assertIn("grant execute on function %s to service_role", P23)
 
     def test_pos_gateway_reads_production_targets_but_never_writes_production(self):
