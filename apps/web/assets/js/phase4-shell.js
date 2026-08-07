@@ -1,28 +1,27 @@
 (function () {
   'use strict';
 
-  const VERSION = 'atlas-phase4-shell/0.1.0';
+  const VERSION = 'atlas-phase4-shell/0.2.0';
   const STYLE_HREF = 'assets/css/phase4-claude.css';
   const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
   const THEME_KEY = 'atlas.phase4.theme';
   const COLLAPSE_KEY = 'atlas.phase4.sidebar-collapsed';
 
   const GROUPS = [
-    ['home', 'HOME', [
-      ['dashboard', 'Home', 'house', '[data-view="dashboard"]'],
-    ]],
+    ['home', 'HOME', [['dashboard', 'Home', 'house', '[data-view="dashboard"]']]],
     ['operations', 'OPERATIONS', [
+      ['operations', 'Operations', 'clipboard-check', '[data-view="operations"]'],
       ['inventory', 'Inventory', 'package', '[data-default="inventory"],[data-view="inventory"]'],
       ['recipes', 'Recipes', 'martini', '[data-default="recipes"],[data-view="recipes"]'],
       ['purchasing', 'Purchasing', 'truck', '[data-default="suppliers"],[data-view="suppliers"]'],
       ['imports', 'Import Center', 'file-up', '[data-view="imports"]'],
+      ['real-va-data', 'Real VÁ Data', 'list-checks', '[data-view="sprint3-review"]'],
     ]],
-    ['growth', 'GROWTH', [
-      ['marketing', 'Marketing', 'megaphone', '[data-view="marketing"]'],
-    ]],
+    ['growth', 'GROWTH', [['marketing', 'Marketing', 'megaphone', '[data-view="marketing"]']]],
     ['people', 'PEOPLE', [
       ['messages', 'Messages', 'messages-square', '[data-view="messages"]'],
-      ['team', 'Team', 'users', '[data-view="team"],[data-view="profiles"]'],
+      ['team', 'Team', 'users', '[data-view="team"]'],
+      ['profiles', 'Profiles', 'contact', '[data-view="profiles"]'],
       ['shifts', 'Shifts', 'calendar-days', '[data-view="shifts"]'],
       ['knowledge', 'Knowledge', 'book-open', '[data-view="knowledge"]'],
     ]],
@@ -42,37 +41,34 @@
   let commandEntries = [];
   let commandIndex = 0;
 
-  const getStored = (key) => {
-    try { return localStorage.getItem(key); } catch (_) { return null; }
-  };
-  const setStored = (key, value) => {
-    try { localStorage.setItem(key, value); } catch (_) { /* no-op */ }
-  };
-  const icons = () => { try { window.lucide?.createIcons?.(); } catch (_) { /* decorative */ } };
-  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[char]);
-
-  function addAsset(tag, attrs) {
-    const node = document.createElement(tag);
-    Object.entries(attrs).forEach(([key, value]) => {
-      if (key === 'dataset') Object.assign(node.dataset, value);
-      else if (key === 'crossOrigin') node.crossOrigin = value;
-      else node.setAttribute(key, value);
-    });
-    document.head.appendChild(node);
-    return node;
-  }
+  const getStored = (key) => { try { return localStorage.getItem(key); } catch (_) { return null; } };
+  const setStored = (key, value) => { try { localStorage.setItem(key, value); } catch (_) { /* storage may be disabled */ } };
+  const renderIcons = () => { try { window.lucide?.createIcons?.(); } catch (_) { /* decorative */ } };
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 
   function ensureAssets() {
     if (!document.querySelector('link[data-atlas-phase4-font]')) {
-      addAsset('link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous', dataset: { atlasPhase4Font: 'preconnect' } });
-      addAsset('link', { rel: 'stylesheet', href: FONT_HREF, dataset: { atlasPhase4Font: 'true' } });
+      const preconnect = document.createElement('link');
+      preconnect.rel = 'preconnect';
+      preconnect.href = 'https://fonts.gstatic.com';
+      preconnect.crossOrigin = 'anonymous';
+      preconnect.dataset.atlasPhase4Font = 'preconnect';
+      document.head.appendChild(preconnect);
+      const font = document.createElement('link');
+      font.rel = 'stylesheet';
+      font.href = FONT_HREF;
+      font.dataset.atlasPhase4Font = 'true';
+      document.head.appendChild(font);
     }
     let stylesheet = document.querySelector(`link[href="${STYLE_HREF}"]`);
-    if (!stylesheet) stylesheet = addAsset('link', { rel: 'stylesheet', href: STYLE_HREF, dataset: { atlasPhase4: 'true' } });
+    if (!stylesheet) {
+      stylesheet = document.createElement('link');
+      stylesheet.rel = 'stylesheet';
+      stylesheet.href = STYLE_HREF;
+      stylesheet.dataset.atlasPhase4 = 'true';
+      document.head.appendChild(stylesheet);
+    }
     if (document.head.lastElementChild !== stylesheet) document.head.appendChild(stylesheet);
-    return stylesheet;
   }
 
   function observeHead() {
@@ -94,7 +90,7 @@
       button.title = next === 'dark' ? 'Light mode' : 'Dark mode';
       button.setAttribute('aria-label', next === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
       button.innerHTML = `<i data-lucide="${next === 'dark' ? 'sun' : 'moon'}"></i>`;
-      icons();
+      renderIcons();
     }
   }
 
@@ -107,7 +103,7 @@
       button.title = next ? 'Expand sidebar' : 'Collapse sidebar';
       button.setAttribute('aria-label', next ? 'Expand sidebar' : 'Collapse sidebar');
       button.innerHTML = `<i data-lucide="${next ? 'panel-left-open' : 'panel-left-close'}"></i>`;
-      icons();
+      renderIcons();
     }
   }
 
@@ -115,7 +111,6 @@
     const topbar = document.querySelector('.atlas-topbar');
     const brand = document.querySelector('.atlas-brand');
     if (!topbar || !brand) return;
-
     if (!document.getElementById('phase4-sidebar-toggle')) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -124,7 +119,6 @@
       button.addEventListener('click', () => applyCollapsed(!document.body.classList.contains('atlas-sidebar-collapsed')));
       brand.appendChild(button);
     }
-
     if (!document.getElementById('phase4-theme-toggle')) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -133,13 +127,16 @@
       button.addEventListener('click', () => applyTheme(document.documentElement.dataset.atlasTheme === 'dark' ? 'light' : 'dark'));
       topbar.insertBefore(button, document.getElementById('service-mode-btn'));
     }
-
     const theme = getStored(THEME_KEY) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     applyTheme(theme, false);
     applyCollapsed(getStored(COLLAPSE_KEY) === 'true', false);
   }
 
-  function iconFor(button, icon) {
+  function topLevelButtons(nav) {
+    return Array.from(nav.querySelectorAll(':scope > .nav-group > .nav-item, :scope > .phase4-nav-group > .nav-item')).filter((button) => !button.dataset.phase4Placeholder);
+  }
+
+  function ensureIcon(button, icon) {
     button.querySelectorAll('.chev,[data-lucide="chevron-down"],[data-lucide="chevron-right"]').forEach((node) => node.remove());
     if (!button.querySelector('svg,i[data-lucide]')) {
       const source = document.createElement('i');
@@ -154,19 +151,19 @@
     button.dataset.phase4Label = label;
     button.title = label;
     button.setAttribute('aria-label', label);
-    const existing = button.querySelector('.phase4-nav-copy');
-    if (existing) existing.textContent = label;
-    else {
+    let copy = button.querySelector('.phase4-nav-copy');
+    if (!copy) {
       Array.from(button.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim()).forEach((node) => node.remove());
-      const copy = document.createElement('span');
+      copy = document.createElement('span');
       copy.className = 'phase4-nav-copy';
-      copy.textContent = label;
       const icon = button.querySelector('svg,i[data-lucide]');
-      icon?.after(copy) || button.appendChild(copy);
+      if (icon) icon.insertAdjacentElement('afterend', copy);
+      else button.appendChild(copy);
     }
+    copy.textContent = label;
   }
 
-  function placeholder(key, label, icon) {
+  function createPlaceholder(key, label, icon) {
     const button = document.createElement('button');
     button.type = 'button';
     button.disabled = true;
@@ -177,24 +174,20 @@
     return button;
   }
 
-  function findButton(nav, selector) {
-    return Array.from(nav.querySelectorAll(selector)).find((node) => !node.dataset.phase4Placeholder) || null;
-  }
-
-  function buildGroup(nav, key, label, items) {
+  function createGroup(key, label) {
     const group = document.createElement('section');
     group.className = 'nav-group phase4-nav-group';
     group.dataset.phase4Group = key;
     group.innerHTML = `<div class="nav-label">${label}</div>`;
-    items.forEach(([itemKey, itemLabel, icon, selector, allowPlaceholder]) => {
-      const button = findButton(nav, selector);
-      if (button) {
-        iconFor(button, icon);
-        labelButton(button, itemLabel, itemKey);
-        group.appendChild(button);
-      } else if (allowPlaceholder) group.appendChild(placeholder(itemKey, itemLabel, icon));
-    });
-    return group.querySelector('.nav-item') ? group : null;
+    return group;
+  }
+
+  function findUnusedButton(buttons, used, selector) {
+    return buttons.find((button) => !used.has(button) && button.matches(selector)) || null;
+  }
+
+  function inferLabel(button) {
+    return button.dataset.phase4Label || button.querySelector('span:not(.phase4-nav-meta)')?.textContent?.trim() || Array.from(button.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent).join(' ').trim() || 'Workspace';
   }
 
   function reorganizeNavigation() {
@@ -202,28 +195,46 @@
     if (!nav || reorganizing) return;
     reorganizing = true;
     try {
+      const buttons = topLevelButtons(nav);
+      const used = new Set();
       const fragment = document.createDocumentFragment();
       GROUPS.forEach(([key, label, items]) => {
-        const group = buildGroup(nav, key, label, items);
-        if (group) fragment.appendChild(group);
+        const group = createGroup(key, label);
+        items.forEach(([itemKey, itemLabel, icon, selector, allowPlaceholder]) => {
+          const button = findUnusedButton(buttons, used, selector);
+          if (button) {
+            used.add(button);
+            ensureIcon(button, icon);
+            labelButton(button, itemLabel, itemKey);
+            group.appendChild(button);
+          } else if (allowPlaceholder) group.appendChild(createPlaceholder(itemKey, itemLabel, icon));
+        });
+        if (group.querySelector('.nav-item')) fragment.appendChild(group);
       });
+      const remaining = buttons.filter((button) => !used.has(button));
+      if (remaining.length) {
+        const more = createGroup('more', 'MORE');
+        remaining.forEach((button) => {
+          const label = inferLabel(button);
+          const destination = button.dataset.view || button.dataset.default || label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          ensureIcon(button, 'circle-ellipsis');
+          labelButton(button, label, destination);
+          more.appendChild(button);
+        });
+        fragment.appendChild(more);
+      }
       nav.replaceChildren(fragment);
       nav.dataset.phase4Organized = 'true';
       installNavDelegation(nav);
       syncActive();
       rebuildCommands();
-      icons();
+      renderIcons();
     } finally { reorganizing = false; }
   }
 
   function destinationFromTitle() {
     const title = document.getElementById('atlas-page-title')?.textContent?.trim().toLowerCase() || '';
-    return ({
-      home: 'dashboard', inventory: 'inventory', recipes: 'recipes', purchasing: 'purchasing', suppliers: 'purchasing',
-      'import center': 'imports', messages: 'messages', team: 'team', profiles: 'team', shifts: 'shifts', knowledge: 'knowledge',
-      marketing: 'marketing', 'atlas brain': 'brain', 'business intelligence': 'business', reports: 'reports', accounting: 'accounting',
-      settings: 'settings', system: 'system',
-    })[title] || 'dashboard';
+    return ({ home: 'dashboard', operations: 'operations', inventory: 'inventory', recipes: 'recipes', purchasing: 'purchasing', suppliers: 'purchasing', 'import center': 'imports', 'real vá data': 'real-va-data', messages: 'messages', team: 'team', profiles: 'profiles', shifts: 'shifts', knowledge: 'knowledge', marketing: 'marketing', 'atlas brain': 'brain', 'business intelligence': 'business', reports: 'reports', accounting: 'accounting', settings: 'settings', system: 'system' })[title] || 'dashboard';
   }
 
   function syncActive(forced) {
@@ -232,7 +243,8 @@
     document.querySelectorAll('.atlas-nav .nav-item').forEach((button) => {
       const active = button.dataset.phase4Destination === destination;
       button.classList.toggle('active', active);
-      active ? button.setAttribute('aria-current', 'page') : button.removeAttribute('aria-current');
+      if (active) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
     });
   }
 
@@ -256,10 +268,7 @@
     nav.dataset.phase4Observed = 'true';
     new MutationObserver((mutations) => {
       if (reorganizing) return;
-      const unprocessed = mutations.some((mutation) => Array.from(mutation.addedNodes).some((node) => node instanceof Element && (
-        node.matches('.nav-item:not([data-phase4-destination]):not([data-phase4-placeholder])') ||
-        node.querySelector('.nav-item:not([data-phase4-destination]):not([data-phase4-placeholder])')
-      )));
+      const unprocessed = mutations.some((mutation) => Array.from(mutation.addedNodes).some((node) => node instanceof Element && (node.matches('.nav-item:not([data-phase4-destination]):not([data-phase4-placeholder])') || node.querySelector('.nav-item:not([data-phase4-destination]):not([data-phase4-placeholder])'))));
       if (unprocessed) setTimeout(reorganizeNavigation, 30);
     }).observe(nav, { childList: true, subtree: true });
     const title = document.getElementById('atlas-page-title');
@@ -274,7 +283,8 @@
     palette.hidden = true;
     palette.setAttribute('role', 'dialog');
     palette.setAttribute('aria-modal', 'true');
-    palette.innerHTML = `<div class="phase4-command-backdrop" data-command-close></div><section class="phase4-command-panel" tabindex="-1"><header><i data-lucide="search"></i><input id="phase4-command-input" type="search" autocomplete="off" placeholder="Search Atlas or jump to a workspace…"><kbd>Esc</kbd></header><div class="phase4-command-results" id="phase4-command-results" role="listbox"></div><footer><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>↵</kbd> open</span><span><kbd>⌘</kbd><kbd>K</kbd> search</span></footer></section>`;
+    palette.setAttribute('aria-label', 'Atlas command palette');
+    palette.innerHTML = `<div class="phase4-command-backdrop" data-command-close></div><section class="phase4-command-panel" tabindex="-1"><header><i data-lucide="search"></i><input id="phase4-command-input" type="search" autocomplete="off" placeholder="Search Atlas or jump to a workspace…" aria-label="Search Atlas"><kbd>Esc</kbd></header><div class="phase4-command-results" id="phase4-command-results" role="listbox"></div><footer><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>↵</kbd> open</span><span><kbd>⌘</kbd><kbd>K</kbd> search</span></footer></section>`;
     document.body.appendChild(palette);
     palette.addEventListener('click', (event) => {
       if (event.target.closest('[data-command-close]')) closePalette();
@@ -286,11 +296,7 @@
   }
 
   function rebuildCommands() {
-    commandEntries = Array.from(document.querySelectorAll('.atlas-nav .nav-item:not(:disabled)')).map((button) => ({
-      label: button.dataset.phase4Label || button.textContent.trim(),
-      group: button.closest('[data-phase4-group]')?.querySelector('.nav-label')?.textContent || 'Atlas',
-      action: () => button.click(),
-    }));
+    commandEntries = Array.from(document.querySelectorAll('.atlas-nav .nav-item:not(:disabled)')).map((button) => ({ label: button.dataset.phase4Label || button.textContent.trim(), group: button.closest('[data-phase4-group]')?.querySelector('.nav-label')?.textContent || 'Atlas', action: () => button.click() }));
     commandIndex = 0;
   }
 
@@ -305,7 +311,7 @@
     const entries = filteredCommands();
     commandIndex = Math.min(commandIndex, Math.max(0, entries.length - 1));
     target.innerHTML = entries.length ? entries.map((entry, index) => `<button type="button" role="option" aria-selected="${index === commandIndex}" class="phase4-command-option${index === commandIndex ? ' active' : ''}" data-command-index="${index}"><span class="phase4-command-icon"><i data-lucide="arrow-right"></i></span><span><strong>${escapeHtml(entry.label)}</strong><small>${escapeHtml(entry.group)}</small></span><i data-lucide="arrow-up-right"></i></button>`).join('') : '<div class="phase4-command-empty"><i data-lucide="search-x"></i><strong>No matching workspace</strong><span>Try inventory, recipes, shifts, reports or settings.</span></div>';
-    icons();
+    renderIcons();
   }
 
   function openPalette() {
@@ -363,7 +369,7 @@
     }, true);
   }
 
-  function labelButtons() {
+  function labelIconButtons() {
     const labels = { bell: 'Notifications', menu: 'Open navigation', 'log-out': 'Sign out', x: 'Close', 'refresh-cw': 'Refresh' };
     document.querySelectorAll('button.top-icon,button.phase4-icon-button').forEach((button) => {
       if (button.getAttribute('aria-label')) return;
@@ -383,24 +389,15 @@
     ensurePalette();
     reorganizeNavigation();
     observeNavigation();
-    labelButtons();
-    icons();
-
-    [50, 250, 750, 1500, 3000, 6000].forEach((delay) => setTimeout(() => {
-      reorganizeNavigation();
-      syncActive();
-      labelButtons();
-      ensureAssets();
-      icons();
-    }, delay));
-
+    labelIconButtons();
+    renderIcons();
+    [50, 250, 750, 1500, 3000, 6000].forEach((delay) => setTimeout(() => { reorganizeNavigation(); syncActive(); labelIconButtons(); ensureAssets(); renderIcons(); }, delay));
     addEventListener('resize', () => {
       if (innerWidth > 760) {
         document.getElementById('atlas-sidebar')?.classList.remove('open');
         document.getElementById('sidebar-backdrop')?.classList.remove('open');
       }
     });
-
     window.AtlasPhase4Shell = Object.freeze({ version: VERSION, applyTheme, applyCollapsed, openPalette, reorganizeNavigation, syncActive });
     document.dispatchEvent(new CustomEvent('atlas:phase4-ready', { detail: { version: VERSION } }));
   }
