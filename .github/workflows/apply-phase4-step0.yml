@@ -1,0 +1,44 @@
+name: Apply Phase 4 Step 0 data seam
+
+on:
+  push:
+    branches:
+      - agent/phase4-interface-replacement
+    paths:
+      - .github/phase4-step0/step0.patch
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out replacement branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase4-interface-replacement
+          fetch-depth: 0
+
+      - name: Validate patch
+        run: git apply --check .github/phase4-step0/step0.patch
+
+      - name: Apply extraction patch
+        run: git apply .github/phase4-step0/step0.patch
+
+      - name: Validate browser JavaScript
+        run: node --check apps/web/assets/js/data/atlas-data.js
+
+      - name: Run Node contracts
+        run: npm run test:node
+
+      - name: Commit extracted data seam
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/phase4-step0/step0.patch .github/workflows/apply-phase4-step0.yml
+          git add apps/web/index.html apps/web/assets/js/data/atlas-data.js tests/node/phase4-data-seam.test.js
+          git commit -m "refactor: route legacy UI through Atlas data gateway"
+          git push origin HEAD:agent/phase4-interface-replacement
