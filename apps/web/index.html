@@ -908,6 +908,7 @@
         integrity="sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT"
         crossorigin="anonymous"></script>
 <script src="config.js"></script>
+<script src="assets/js/data/atlas-data.js"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -1012,6 +1013,10 @@
         throw new Error('The Supabase client initialized without the Auth module.');
       }
 
+      if (!window.AtlasData?.configure) {
+        throw new Error('The Atlas data gateway did not load.');
+      }
+      window.AtlasData.configure(client);
       sb = client;
       window.atlasSupabase = client;
       clearBootError();
@@ -1122,14 +1127,9 @@
   });
 
   async function loadActiveProfile(session) {
-    const { data, error } = await sb
-      .from('profiles')
-      .select('id,email,display_name,role,active')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
+    const data = await window.AtlasData.getActiveProfile(session.user.id);
     const allowedRoles = new Set(['admin', 'manager', 'bartender', 'viewer']);
-    if (error || !data?.active || !allowedRoles.has(data.role)) {
+    if (!data?.active || !allowedRoles.has(data.role)) {
       await sb.auth.signOut().catch(() => null);
       throw new Error('This account is not an active VÁ staff profile. Ask an administrator to review access.');
     }
@@ -1174,96 +1174,55 @@
 
   // ---------- DATA ----------
   async function loadItems() {
-    const relation = canManageCommercial() ? 'inventory_items' : 'inventory_catalog';
-    const { data, error } = await sb
-      .from(relation)
-      .select('*')
-      .order('category', { ascending: true })
-      .order('name', { ascending: true });
-    if (error) {
-      console.error(`${relation} could not be loaded`, error);
+    try {
+      items = await window.AtlasData.getItems({
+        canManageCommercial: canManageCommercial()
+      });
+    } catch (error) {
+      console.error('Inventory could not be loaded', error);
       items = [];
       showDataBoundaryError('Inventory');
-      renderTabs();
-      renderTable();
-      return;
     }
-    items = data || [];
-    renderTabs();
-    renderTable();
   }
 
   async function loadRestockLog() {
-    const relation = canManageCommercial() ? 'inventory_movements' : 'inventory_movement_catalog';
-    let query = sb.from(relation);
-    query = canManageCommercial()
-      ? query.select('*, suppliers(name)').eq('movement_type', 'restock')
-      : query.select('*').eq('movement_type', 'restock');
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) {
-      console.error(`${relation} could not be loaded`, error);
+    try {
+      restockLog = await window.AtlasData.getInventoryMovements({
+        canManageCommercial: canManageCommercial(),
+        movementType: 'restock'
+      });
+    } catch (error) {
+      console.error('Inventory movements could not be loaded', error);
       restockLog = [];
-      return;
     }
-    restockLog = data || [];
   }
 
   async function loadRecipes() {
-    if (canManageCommercial()) {
-      const { data, error } = await sb
-        .from('recipes')
-        .select('*, recipe_ingredients(*)')
-        .order('name', { ascending: true });
-      if (error) {
-        console.error(error);
-        recipes = [];
-        return;
-      }
-      recipes = data || [];
-      return;
-    }
-
-    let result = await sb
-      .from('recipe_catalog')
-      .select('*')
-      .order('name', { ascending: true });
-
-    // Compatibility fallback for the draft preview before production migration.
-    // It requests only operational columns and is removed as a usable path once
-    // the canonical recipe tables become manager-only in production RLS.
-    if (result.error) {
-      result = await sb
-        .from('recipes')
-        .select('id,category_id,name,type,method,yield_quantity,yield_unit,menu_price,active,show_on_menu,glassware,garnish,notes,image_url,updated_at,recipe_ingredients(id,recipe_id,item_id,item_name,quantity,unit)')
-        .order('name', { ascending: true });
-    }
-    if (result.error) {
-      console.error('The staff recipe catalogue could not be loaded', result.error);
+    try {
+      recipes = await window.AtlasData.getRecipes({
+        canManageCommercial: canManageCommercial()
+      });
+    } catch (error) {
+      console.error('The recipe catalogue could not be loaded', error);
       recipes = [];
-      return;
     }
-    recipes = result.data || [];
   }
 
   async function loadSuppliersData() {
-    if (!canManageCommercial()) {
-      suppliers = [];
-      return;
-    }
-    const { data, error } = await sb
-      .from('suppliers')
-      .select('*')
-      .order('name', { ascending: true });
-    if (error) {
+    try {
+      suppliers = await window.AtlasData.getSuppliers({
+        canManageCommercial: canManageCommercial()
+      });
+    } catch (error) {
       console.warn('Supplier list could not be loaded:', error.message);
       suppliers = [];
-      return;
     }
-    suppliers = data || [];
   }
 
   async function loadAll() {
     await Promise.all([loadItems(), loadRestockLog(), loadRecipes(), loadSuppliersData()]);
+    renderTabs();
+    renderTable();
     renderDashboard();
     renderRecipes();
     renderSuppliers();
@@ -1363,15 +1322,16 @@
       const item = items.find(i => i.id === id);
       if (!item || newQty === item.quantity) return;
       const quantityChange = newQty - item.quantity;
-      const { error } = await sb.rpc('adjust_inventory', {
-        p_item_id: item.id,
-        p_quantity_change: quantityChange,
-        p_movement_type: quantityChange > 0 ? 'restock' : 'adjustment',
-        p_unit_cost: quantityChange > 0 ? (item.cost_price || null) : null,
-        p_supplier_id: item.supplier_id || null,
-        p_note: 'Quick quantity adjustment',
-      });
-      if (error) {
+      try {
+        await window.AtlasData.adjustInventory({
+          itemId: item.id,
+          quantityChange,
+          movementType: quantityChange > 0 ? 'restock' : 'adjustment',
+          unitCost: quantityChange > 0 ? (item.cost_price || null) : null,
+          supplierId: item.supplier_id || null,
+          note: 'Quick quantity adjustment'
+        });
+      } catch (error) {
         alert(error.message);
         return;
       }
@@ -1405,7 +1365,12 @@
       btn.addEventListener('click', async () => {
         if (!requireCommercialManager('Inventory deletion')) return;
         if (!confirm('Remove this item from inventory?')) return;
-        await sb.from('inventory_items').delete().eq('id', btn.dataset.id);
+        try {
+          await window.AtlasData.deleteItem(btn.dataset.id);
+        } catch (error) {
+          alert(error.message);
+          return;
+        }
         await loadAll();
       });
     });
@@ -1464,7 +1429,6 @@
     const payload = {
       name: document.getElementById('item-name').value.trim(),
       category: document.getElementById('item-category').value,
-      quantity: parseFloat(document.getElementById('item-quantity').value),
       unit: document.getElementById('item-unit').value.trim(),
       par_level: document.getElementById('item-par').value === '' ? null : parseFloat(document.getElementById('item-par').value),
       supplier: document.getElementById('item-supplier').value.trim() || null,
@@ -1475,10 +1439,11 @@
       cost_price: document.getElementById('item-cost').value === '' ? null : parseFloat(document.getElementById('item-cost').value),
       discount_percent: document.getElementById('item-discount').value === '' ? 0 : parseFloat(document.getElementById('item-discount').value),
     };
-    if (id) {
-      await sb.from('inventory_items').update(payload).eq('id', id);
-    } else {
-      await sb.from('inventory_items').insert({ ...payload, quantity: 0 });
+    try {
+      await window.AtlasData.saveItem({ id: id || null, payload });
+    } catch (error) {
+      alert(error.message);
+      return;
     }
     closeModal();
     await loadAll();
@@ -1629,38 +1594,27 @@
     const supplier = document.getElementById('restock-supplier').value.trim() || null;
 
     let supplierId = null;
-    if (supplier) {
-      const { data: existingSupplier } = await sb
-        .from('suppliers')
-        .select('id')
-        .ilike('name', supplier)
-        .maybeSingle();
-      supplierId = existingSupplier?.id || null;
-
-      if (!supplierId) {
-        const { data: createdSupplier, error: supplierError } = await sb
-          .from('suppliers')
-          .insert({ name: supplier })
-          .select('id')
-          .single();
-        if (supplierError) {
-          alert(supplierError.message);
-          return;
-        }
-        supplierId = createdSupplier.id;
-      }
+    try {
+      const supplierRecord = supplier
+        ? await window.AtlasData.ensureSupplier(supplier)
+        : null;
+      supplierId = supplierRecord?.id || null;
+    } catch (error) {
+      alert(error.message);
+      return;
     }
 
     const netUnitCost = unitCost == null ? null : unitCost * (1 - discount / 100);
-    const { error } = await sb.rpc('adjust_inventory', {
-      p_item_id: item.id,
-      p_quantity_change: qtyAdded,
-      p_movement_type: 'restock',
-      p_unit_cost: netUnitCost,
-      p_supplier_id: supplierId,
-      p_note: discount ? `Supplier discount: ${discount}%` : null,
-    });
-    if (error) {
+    try {
+      await window.AtlasData.adjustInventory({
+        itemId: item.id,
+        quantityChange: qtyAdded,
+        movementType: 'restock',
+        unitCost: netUnitCost,
+        supplierId,
+        note: discount ? `Supplier discount: ${discount}%` : null
+      });
+    } catch (error) {
       alert(error.message);
       return;
     }
@@ -1810,11 +1764,12 @@
       notes:document.getElementById('supplier-notes').value.trim()||null
     };
     if(!payload.name) return;
-    let result=await sb.from('suppliers').insert(payload);
-    if(result.error){
-      result=await sb.from('suppliers').insert({name:payload.name});
+    try {
+      await window.AtlasData.createSupplier(payload);
+    } catch (error) {
+      alert(error.message);
+      return;
     }
-    if(result.error){ alert(result.error.message); return; }
     closeSupplierModal();
     await loadAll();
     setActiveView('suppliers');
