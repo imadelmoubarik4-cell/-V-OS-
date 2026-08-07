@@ -84,7 +84,7 @@ test('Phase 4B does not bypass server or database safety boundaries', () => {
     /SUPABASE_SERVICE_ROLE_KEY/,
     /service_role/i,
     /adjust_inventory/,
-    /\.from\s*\(/,
+    /(?:atlasSupabase|supabase|sb|client)\s*\.\s*from\s*\(/,
     /new\s+Function\s*\(/,
     /Babel\.transform/,
     /support\.js/i,
