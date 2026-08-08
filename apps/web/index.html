@@ -1096,19 +1096,19 @@
     try {
       const client = await initializeSupabase();
       const { data, error } = await client.auth.signInWithPassword({ email, password });
-      loginBtn.disabled = false;
-      loginBtn.textContent = 'Sign in';
       if (error) {
         loginError.textContent = 'Error: ' + error.message + ' (status: ' + (error.status || 'n/a') + ')';
         loginError.style.display = 'block';
         return;
       }
-      onSignedIn(data.session);
+      loginBtn.textContent = 'Loading your profile…';
+      await onSignedIn(data.session);
     } catch (e) {
+      loginError.textContent = 'Sign-in failed: ' + e.message;
+      loginError.style.display = 'block';
+    } finally {
       loginBtn.disabled = false;
       loginBtn.textContent = 'Sign in';
-      loginError.textContent = 'Unexpected error: ' + e.message;
-      loginError.style.display = 'block';
     }
   });
 
@@ -1122,14 +1122,25 @@
   });
 
   async function loadActiveProfile(session) {
-    const { data, error } = await sb
+    const profileQuery = sb
       .from('profiles')
       .select('id,email,display_name,role,active')
       .eq('id', session.user.id)
       .maybeSingle();
 
+    const timeout = new Promise((_, reject) =>
+      window.setTimeout(() => reject(new Error('The profile check timed out. Check the connection and try again.')), 12000)
+    );
+
+    const { data, error } = await Promise.race([profileQuery, timeout]);
+
+    if (error) {
+      await sb.auth.signOut().catch(() => null);
+      throw new Error('The staff profile could not be read (' + error.message + '). Ask an administrator to review database access.');
+    }
+
     const allowedRoles = new Set(['admin', 'manager', 'bartender', 'viewer']);
-    if (error || !data?.active || !allowedRoles.has(data.role)) {
+    if (!data?.active || !allowedRoles.has(data.role)) {
       await sb.auth.signOut().catch(() => null);
       throw new Error('This account is not an active VÁ staff profile. Ask an administrator to review access.');
     }
