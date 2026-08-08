@@ -14,9 +14,137 @@ on:
       - 'agent/**'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  apply_native_presentation:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/agent/phase4-claude-interface'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out Phase 4 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase4-claude-interface
+          fetch-depth: 0
+
+      - name: Apply the native Claude presentation once
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          index_path = Path('apps/web/index.html')
+          index = index_path.read_text()
+
+          if 'data-atlas-phase="4"' not in index:
+              index = index.replace(
+                  '<html lang="en">',
+                  '<html lang="en" data-atlas-theme="light" data-atlas-phase="4">',
+                  1,
+              )
+
+          if 'assets/js/phase4-entry.js' not in index:
+              anchor = '''  <link rel="stylesheet" href="assets/css/import-center.css">
+          </head>
+          <body>'''
+              replacement = '''  <link rel="stylesheet" href="assets/css/import-center.css">
+            <link rel="stylesheet" href="assets/css/phase4-claude.css">
+            <link rel="stylesheet" href="assets/css/phase4-operations.css">
+            <script src="assets/js/phase4-entry.js"></script>
+          </head>
+          <body class="atlas-phase4 atlas-phase4b atlas-native-ui">'''
+              if anchor not in index:
+                  raise SystemExit('index head/body anchor was not found')
+              index = index.replace(anchor, replacement, 1)
+
+          if 'await window.ensureAtlasInterface?.();' not in index:
+              anchor = '''    document.getElementById('user-avatar').textContent = displayName.charAt(0).toUpperCase();
+              loginScreen.style.display = 'none';
+              appScreen.style.display = 'block';
+              await loadAll();
+              setActiveView('dashboard');'''
+              replacement = '''    document.getElementById('user-avatar').textContent = displayName.charAt(0).toUpperCase();
+              await window.ensureAtlasInterface?.();
+              loginScreen.style.display = 'none';
+              appScreen.style.display = 'block';
+              await loadAll();
+              window.AtlasPhase4Operations?.refresh?.();
+              window.dispatchEvent(new CustomEvent('atlas:data-ready'));
+              setActiveView('dashboard');'''
+              if anchor not in index:
+                  raise SystemExit('onSignedIn presentation anchor was not found')
+              index = index.replace(anchor, replacement, 1)
+
+          if 'window.setActiveView = setActiveView;' not in index:
+              anchor = '''    closeMobileSidebar();
+            }
+            document.querySelectorAll('[data-view]').forEach'''
+              replacement = '''    closeMobileSidebar();
+            }
+            window.setActiveView = setActiveView;
+            document.querySelectorAll('[data-view]').forEach'''
+              if anchor not in index:
+                  raise SystemExit('setActiveView export anchor was not found')
+              index = index.replace(anchor, replacement, 1)
+
+          index_path.write_text(index)
+
+          operations_path = Path('apps/web/assets/js/phase4-operations.js')
+          operations = operations_path.read_text()
+          operations = operations.replace("  const POLL_LIMIT = 120;\n", "", 1)
+          for line in ("    pollCount: 0,\n", "    observer: null,\n", "    timer: null,\n"):
+              operations = operations.replace(line, "", 1)
+
+          if 'function installObservers()' in operations:
+              operations, count = re.subn(
+                  r"\n  function installObservers\(\) \{.*?\n  \}\n\n  function ensureOperationalSurfaces",
+                  "\n  function ensureOperationalSurfaces",
+                  operations,
+                  count=1,
+                  flags=re.S,
+              )
+              if count != 1:
+                  raise SystemExit('operational observer block was not found')
+
+          if 'state.timer = window.setInterval' in operations:
+              operations, count = re.subn(
+                  r"    installObservers\(\);\n    ensureOperationalSurfaces\(\);\n    state\.timer = window\.setInterval\(.*?\n    \}, \{ once: true \}\);\n    window\.AtlasPhase4Operations",
+                  "    ensureOperationalSurfaces();\n    window.addEventListener('atlas:data-ready', ensureOperationalSurfaces);\n    window.addEventListener('pagehide', () => {\n      document.removeEventListener('click', handleClick, true);\n      window.removeEventListener('atlas:data-ready', ensureOperationalSurfaces);\n    }, { once: true });\n    window.AtlasPhase4Operations",
+                  operations,
+                  count=1,
+                  flags=re.S,
+              )
+              if count != 1:
+                  raise SystemExit('operational polling block was not found')
+
+          operations_path.write_text(operations)
+          PY
+
+          node --check apps/web/assets/js/phase4-entry.js
+          node --check apps/web/assets/js/phase4-shell.js
+          node --check apps/web/assets/js/phase4-operations.js
+          grep -q 'body class="atlas-phase4 atlas-phase4b atlas-native-ui"' apps/web/index.html
+          grep -q 'await window.ensureAtlasInterface' apps/web/index.html
+          if grep -q 'MutationObserver\|setInterval' apps/web/assets/js/phase4-operations.js; then
+            echo 'Phase 4 operations still contains a reconciliation loop' >&2
+            exit 1
+          fi
+
+      - name: Commit presentation change when needed
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'Native presentation is already applied.'
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/index.html apps/web/assets/js/phase4-operations.js
+          git commit -m "feat: make Claude UI the native Atlas presentation"
+          git push origin HEAD:agent/phase4-claude-interface
+
   contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -32,6 +160,7 @@ jobs:
       - name: Validate browser JavaScript syntax
         run: |
           node --check apps/web/assets/js/modal.js
+          node --check apps/web/assets/js/phase4-entry.js
           node --check apps/web/assets/js/phase4-shell.js
           node --check apps/web/assets/js/phase4-operations-bootstrap.js
           node --check apps/web/assets/js/phase4-operations.js
