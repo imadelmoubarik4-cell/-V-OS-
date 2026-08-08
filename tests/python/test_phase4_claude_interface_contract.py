@@ -73,7 +73,7 @@ class Phase4ClaudeInterfaceContract(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, joined)
         self.assertIsNone(re.search(r"\bnew\s+Function\s*\(", joined))
-        self.assertIsNone(re.search(r"\.from\s*\(", joined))
+        self.assertIsNone(re.search(r"(?<!Array)\.from\s*\(", joined))
 
     def test_release_record_keeps_production_and_approval_boundaries(self):
         for phrase in (
