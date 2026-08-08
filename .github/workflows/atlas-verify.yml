@@ -8,6 +8,7 @@ on:
       - agent/sprint-3-real-va-data
       - agent/sprint-4-atlas-brain-daily-briefing
       - agent/sprint-4-phase-3-atlas-brain
+      - agent/phase2-connection-center-p2-0
   push:
     branches:
       - 'agent/**'
@@ -30,6 +31,10 @@ jobs:
 
       - name: Validate browser JavaScript syntax
         run: |
+          node --check apps/web/assets/js/modal.js
+          node --check apps/web/assets/js/phase4-shell.js
+          node --check apps/web/assets/js/phase4-operations-bootstrap.js
+          node --check apps/web/assets/js/phase4-operations.js
           node --check apps/web/assets/js/brain-daily-briefing-v2.js
           node --check apps/web/assets/js/brain-phase3.js
           node --check apps/web/assets/js/operations-checkpoint-a.js
