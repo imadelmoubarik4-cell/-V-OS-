@@ -3,14 +3,10 @@
 
   const VERSION = 'atlas-phase4-operations/0.1.0';
   const STYLE_HREF = 'assets/css/phase4-operations.css';
-  const POLL_LIMIT = 120;
   const state = {
     installed: false,
-    pollCount: 0,
     inventoryMode: 'items',
     purchasingMode: 'suppliers',
-    observer: null,
-    timer: null,
     navigationPatched: false,
     serviceBuilt: false,
   };
@@ -595,16 +591,6 @@
     }
   }
 
-  function installObservers() {
-    if (state.observer) return;
-    state.observer = new MutationObserver((records) => {
-      if (records.some((record) => record.target?.closest?.('.inventory-scanner-overlay,.stock-count-scan-backdrop,.item-master-drawer'))) return;
-      ensureOperationalSurfaces();
-      markQuantitiesReadOnly();
-    });
-    state.observer.observe(document.body, { childList: true, subtree: true });
-  }
-
   function ensureOperationalSurfaces() {
     ensureStylesheet();
     ensureHomeActions();
@@ -624,20 +610,11 @@
     document.body.classList.add('atlas-phase4b');
     document.documentElement.dataset.atlasPhase4Operations = VERSION;
     document.addEventListener('click', handleClick, true);
-    installObservers();
     ensureOperationalSurfaces();
-    state.timer = window.setInterval(() => {
-      state.pollCount += 1;
-      ensureOperationalSurfaces();
-      if (state.pollCount >= POLL_LIMIT || (document.getElementById('phase4-home-operations') && document.getElementById('phase4-inventory-hero') && document.getElementById('phase4-purchasing-hero') && state.serviceBuilt)) {
-        window.clearInterval(state.timer);
-        state.timer = null;
-      }
-    }, 250);
+    window.addEventListener('atlas:data-ready', ensureOperationalSurfaces);
     window.addEventListener('pagehide', () => {
       document.removeEventListener('click', handleClick, true);
-      state.observer?.disconnect();
-      if (state.timer) window.clearInterval(state.timer);
+      window.removeEventListener('atlas:data-ready', ensureOperationalSurfaces);
     }, { once: true });
     window.AtlasPhase4Operations = Object.freeze({
       version: VERSION,
