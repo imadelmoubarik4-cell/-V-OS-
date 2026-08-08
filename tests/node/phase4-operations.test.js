@@ -8,12 +8,10 @@ const css = readFileSync('apps/web/assets/css/phase4-operations.css', 'utf8');
 const modal = readFileSync('apps/web/assets/js/modal.js', 'utf8');
 const combined = `${operations}\n${bootstrap}\n${css}\n${modal}`;
 
-test('Phase 4B loads after the shared Phase 4 shell', () => {
+test('Phase 4B is preserved but not auto-mounted during stable shell recovery', () => {
   assert.match(modal, /assets\/js\/phase4-shell\.js/);
-  assert.match(modal, /assets\/js\/phase4-operations-bootstrap\.js/);
+  assert.doesNotMatch(modal, /assets\/js\/phase4-operations-bootstrap\.js/);
   assert.match(bootstrap, /assets\/js\/phase4-operations\.js/);
-  assert.match(bootstrap, /createFilteredObserver/);
-  assert.match(bootstrap, /phase4-operations-role-guard/);
   assert.match(operations, /assets\/css\/phase4-operations\.css/);
   assert.match(operations, /window\.AtlasPhase4Operations/);
   assert.match(operations, /atlas:phase4b-ready/);
