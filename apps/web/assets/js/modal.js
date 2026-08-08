@@ -16,9 +16,9 @@
   }
 
   function getFocusable(root) {
-    return Array.from(root.querySelectorAll(focusableSelector)).filter((element) => {
-      return !element.hasAttribute('hidden') && element.offsetParent !== null;
-    });
+    return Array.from(root.querySelectorAll(focusableSelector)).filter((element) => (
+      !element.hasAttribute('hidden') && element.offsetParent !== null
+    ));
   }
 
   function closeTopModal(event) {
@@ -42,7 +42,7 @@
     }
 
     const first = focusable[0];
-    const last = focusable[focusable.length - 1];
+    const last = focusable.at(-1);
     if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus();
@@ -65,7 +65,7 @@
       const panel = getPanel(root);
       if (panel && !panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
 
-      const state = {
+      modalState.set(root, {
         options: {
           closeOnBackdrop: options.closeOnBackdrop !== false,
           initialFocus: options.initialFocus || null,
@@ -73,10 +73,10 @@
           onClose: options.onClose || null
         },
         previouslyFocused: null
-      };
-      modalState.set(root, state);
+      });
 
       root.addEventListener('click', (event) => {
+        const state = modalState.get(root);
         const closeButton = event.target.closest('[data-modal-close]');
         if (closeButton) {
           event.preventDefault();
@@ -85,7 +85,6 @@
         }
         if (state.options.closeOnBackdrop && event.target === root) AtlasModal.close(root);
       });
-
       return root;
     },
 
@@ -104,7 +103,6 @@
 
       if (typeof state.options.onOpen === 'function') state.options.onOpen(payload, root);
       root.dispatchEvent(new CustomEvent('atlas:modal-open', { detail: payload }));
-
       requestAnimationFrame(() => {
         const target = state.options.initialFocus
           ? root.querySelector(state.options.initialFocus)
@@ -122,9 +120,7 @@
       root.setAttribute('aria-hidden', 'true');
       root.hidden = true;
       root.style.display = 'none';
-
-      const stillOpen = document.querySelector('[data-atlas-modal].is-open');
-      if (!stillOpen) document.body.classList.remove('atlas-modal-open');
+      if (!document.querySelector('[data-atlas-modal].is-open')) document.body.classList.remove('atlas-modal-open');
 
       if (typeof state.options.onClose === 'function') state.options.onClose(reason, root);
       root.dispatchEvent(new CustomEvent('atlas:modal-close', { detail: { reason } }));
@@ -132,8 +128,7 @@
     },
 
     isOpen(modalOrId) {
-      const root = resolveModal(modalOrId);
-      return Boolean(root?.classList.contains('is-open'));
+      return Boolean(resolveModal(modalOrId)?.classList.contains('is-open'));
     }
   };
 
@@ -142,6 +137,5 @@
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-atlas-modal]').forEach((root) => AtlasModal.register(root));
   });
-
   window.AtlasModal = AtlasModal;
 })();

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-atlas-theme="light" data-atlas-phase="4">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
@@ -480,8 +480,11 @@
   <link rel="stylesheet" href="assets/css/brain.css">
   <link rel="stylesheet" href="assets/css/business.css">
   <link rel="stylesheet" href="assets/css/import-center.css">
+  <link rel="stylesheet" href="assets/css/phase4-claude.css">
+  <link rel="stylesheet" href="assets/css/phase4-operations.css">
+  <script src="assets/js/phase4-entry.js"></script>
 </head>
-<body>
+<body class="atlas-phase4 atlas-phase4b atlas-native-ui">
 
   <!-- ===================== LOGIN ===================== -->
   <div id="login-screen">
@@ -1157,9 +1160,12 @@
     document.getElementById('profile-name').textContent = displayName;
     document.getElementById('greeting-name').textContent = displayName.split(' ')[0];
     document.getElementById('user-avatar').textContent = displayName.charAt(0).toUpperCase();
+    await window.ensureAtlasInterface?.();
     loginScreen.style.display = 'none';
     appScreen.style.display = 'block';
     await loadAll();
+    window.AtlasPhase4Operations?.refresh?.();
+    window.dispatchEvent(new CustomEvent('atlas:data-ready'));
     setActiveView('dashboard');
     if (window.lucide) window.lucide.createIcons();
   }
@@ -1526,6 +1532,7 @@
     if(view==='imports') window.AtlasImportCenter?.render?.();
     closeMobileSidebar();
   }
+  window.setActiveView = setActiveView;
   document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click',()=>{ setActiveView(btn.dataset.view); if(btn.dataset.subview) document.getElementById('atlas-page-title').textContent=btn.dataset.subview; }));
   document.querySelectorAll('.nav-parent').forEach(btn => btn.addEventListener('click',()=>{ btn.classList.toggle('open'); const target=btn.dataset.default; if(target) setActiveView(target); }));
   function renderAtlasHome(){

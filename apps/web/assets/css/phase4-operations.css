@@ -1,0 +1,787 @@
+/*
+ * Atlas Phase 4B — operational interface migration.
+ * Visual and interaction layer only. Existing data, Auth, RLS and approval gateways remain authoritative.
+ */
+
+body.atlas-phase4b {
+  --p4-op-card-gap: 16px;
+  --p4-op-control-height: 44px;
+}
+
+body.atlas-phase4b .phase4-operational-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: end;
+  margin: 0 0 20px;
+  padding: 28px;
+  color: var(--p4-text);
+  background:
+    radial-gradient(circle at 88% 10%, var(--p4-accent-soft), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--p4-surface) 96%, var(--p4-accent) 4%), var(--p4-surface));
+  border: 1px solid var(--p4-line);
+  border-radius: var(--p4-radius-lg);
+  box-shadow: var(--p4-shadow-sm);
+}
+
+body.atlas-phase4b .phase4-operational-heading > span,
+body.atlas-phase4b .phase4-secondary-head > div > span,
+body.atlas-phase4b .phase4-purchase-group > header span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--p4-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+body.atlas-phase4b .phase4-operational-heading h1 {
+  margin: 0;
+  color: var(--p4-text);
+  font: 700 clamp(30px, 4vw, 44px)/1.03 Inter, -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  letter-spacing: -.035em;
+}
+
+body.atlas-phase4b .phase4-operational-heading p {
+  max-width: 720px;
+  margin: 10px 0 0;
+  color: var(--p4-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+body.atlas-phase4b .phase4-operational-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+body.atlas-phase4b .phase4-primary-button,
+body.atlas-phase4b .phase4-secondary-button {
+  min-height: var(--p4-op-control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  border-radius: 12px;
+  font: 600 13px Inter, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 140ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+body.atlas-phase4b .phase4-primary-button {
+  color: var(--p4-on-primary);
+  background: var(--p4-primary);
+  border: 1px solid var(--p4-primary);
+  box-shadow: var(--p4-shadow-sm);
+}
+
+body.atlas-phase4b .phase4-primary-button:hover {
+  background: var(--p4-primary-hover);
+  border-color: var(--p4-primary-hover);
+  transform: translateY(-1px);
+}
+
+body.atlas-phase4b .phase4-secondary-button {
+  color: var(--p4-text);
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line-strong);
+}
+
+body.atlas-phase4b .phase4-secondary-button:hover {
+  border-color: var(--p4-accent-line);
+  background: var(--p4-surface-2);
+}
+
+body.atlas-phase4b .phase4-primary-button svg,
+body.atlas-phase4b .phase4-secondary-button svg { width: 17px; height: 17px; stroke-width: 1.8; }
+
+body.atlas-phase4b .phase4-segmented {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 4px;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 4px;
+  margin-top: 2px;
+  background: var(--p4-surface-2);
+  border: 1px solid var(--p4-line);
+  border-radius: 13px;
+  scrollbar-width: none;
+}
+
+body.atlas-phase4b .phase4-segmented::-webkit-scrollbar { display: none; }
+body.atlas-phase4b .phase4-segmented button {
+  min-height: 34px;
+  flex: 0 0 auto;
+  padding: 0 12px;
+  color: var(--p4-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+body.atlas-phase4b .phase4-segmented button:hover { color: var(--p4-text); }
+body.atlas-phase4b .phase4-segmented button.active {
+  color: var(--p4-text);
+  background: var(--p4-surface);
+  box-shadow: 0 1px 2px rgba(22, 22, 20, .08);
+}
+
+body.atlas-phase4b .phase4-safety-line,
+body.atlas-phase4b .phase4-purchasing-contract {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 13px;
+  color: color-mix(in srgb, var(--p4-ok) 78%, var(--p4-text));
+  background: var(--p4-ok-soft);
+  border: 1px solid color-mix(in srgb, var(--p4-ok) 28%, var(--p4-line));
+  border-radius: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+body.atlas-phase4b .phase4-safety-line svg,
+body.atlas-phase4b .phase4-purchasing-contract svg { width: 16px; height: 16px; flex: 0 0 auto; }
+
+body.atlas-phase4b .phase4-home-legacy { display: none !important; }
+body.atlas-phase4b #operations-view { display: none !important; }
+body.atlas-phase4b .atlas-nav [data-phase4-destination="operations"] { display: none !important; }
+body.atlas-phase4b .phase4-home-actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 22px;
+}
+body.atlas-phase4b .phase4-home-actions > button {
+  min-width: 0;
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 16px;
+  color: var(--p4-text);
+  text-align: left;
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: var(--p4-radius);
+  box-shadow: var(--p4-shadow-sm);
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+body.atlas-phase4b .phase4-home-actions > button:hover {
+  transform: translateY(-2px);
+  border-color: var(--p4-accent-line);
+  box-shadow: var(--p4-shadow);
+}
+body.atlas-phase4b .phase4-home-actions > button > span {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 13px;
+  color: var(--p4-accent);
+  background: var(--p4-accent-soft);
+  border-radius: 11px;
+}
+body.atlas-phase4b .phase4-home-actions svg { width: 18px; height: 18px; stroke-width: 1.8; }
+body.atlas-phase4b .phase4-home-actions strong { display: block; max-width: 100%; font-size: 13px; }
+body.atlas-phase4b .phase4-home-actions small {
+  display: block;
+  max-width: 100%;
+  margin-top: 4px;
+  color: var(--p4-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+body.atlas-phase4b .phase4-home-operations { display: block; }
+body.atlas-phase4b .phase4-home-operations .operations-center { gap: 16px; }
+body.atlas-phase4b .phase4-home-operations .operations-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 260px);
+  gap: 24px;
+  align-items: stretch;
+  padding: 28px;
+  color: var(--p4-text);
+  background:
+    radial-gradient(circle at 88% 12%, var(--p4-accent-soft), transparent 34%),
+    var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: var(--p4-radius-lg);
+  box-shadow: var(--p4-shadow-sm);
+}
+body.atlas-phase4b .phase4-home-operations .operations-kicker { color: var(--p4-accent); }
+body.atlas-phase4b .phase4-home-operations .operations-hero h1 {
+  color: var(--p4-text);
+  font: 700 clamp(30px, 4vw, 44px)/1.04 Inter, sans-serif;
+  letter-spacing: -.035em;
+}
+body.atlas-phase4b .phase4-home-operations .operations-hero p { color: var(--p4-muted); }
+body.atlas-phase4b .phase4-home-operations .operations-readiness {
+  min-width: 0;
+  color: var(--p4-text);
+  background: color-mix(in srgb, var(--p4-surface-2) 86%, var(--p4-accent) 14%);
+  border: 1px solid var(--p4-line);
+  border-radius: var(--p4-radius);
+}
+body.atlas-phase4b .phase4-home-operations .operations-readiness span,
+body.atlas-phase4b .phase4-home-operations .operations-readiness small { color: var(--p4-muted); }
+body.atlas-phase4b .phase4-home-operations .operations-readiness strong {
+  color: var(--p4-text);
+  font: 700 34px Inter, sans-serif;
+}
+body.atlas-phase4b .phase4-home-operations .operations-progress { background: var(--p4-line); }
+body.atlas-phase4b .phase4-home-operations .operations-progress > span { background: var(--p4-accent); }
+body.atlas-phase4b .operations-summary-grid { gap: 12px; }
+body.atlas-phase4b .operations-summary-card,
+body.atlas-phase4b .operations-card {
+  color: var(--p4-text);
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: var(--p4-radius);
+  box-shadow: var(--p4-shadow-sm);
+}
+body.atlas-phase4b .operations-summary-card .summary-icon,
+body.atlas-phase4b .operations-priority-icon { color: var(--p4-accent); background: var(--p4-accent-soft); }
+body.atlas-phase4b .operations-summary-card strong,
+body.atlas-phase4b .operations-card-head h2 { font-family: Inter, sans-serif; font-weight: 700; }
+body.atlas-phase4b .operations-card-head { border-color: var(--p4-line); }
+body.atlas-phase4b .operations-priority,
+body.atlas-phase4b .operations-order-item { border-color: var(--p4-line); }
+body.atlas-phase4b .operations-priority button,
+body.atlas-phase4b .operations-card-action,
+body.atlas-phase4b .operations-order-item button {
+  color: var(--p4-text);
+  background: var(--p4-surface-2);
+  border: 1px solid var(--p4-line);
+  border-radius: 9px;
+}
+body.atlas-phase4b .operations-check-item { color: var(--p4-text); background: transparent; border-color: var(--p4-line); }
+body.atlas-phase4b .operations-check-item.is-complete .operations-check-box { color: var(--p4-on-primary); background: var(--p4-ok); }
+
+body.atlas-phase4b #inventory-view > .toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 14px;
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: 14px;
+}
+body.atlas-phase4b #inventory-view > .toolbar .tabs { flex: 1; min-width: 0; }
+body.atlas-phase4b #inventory-view > .toolbar .tab {
+  color: var(--p4-muted);
+  background: transparent;
+  border: 1px solid transparent;
+}
+body.atlas-phase4b #inventory-view > .toolbar .tab.active {
+  color: var(--p4-text);
+  background: var(--p4-surface-2);
+  border-color: var(--p4-line);
+}
+body.atlas-phase4b #table-wrap {
+  overflow: hidden;
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: var(--p4-radius);
+  box-shadow: var(--p4-shadow-sm);
+}
+body.atlas-phase4b #table-wrap table { margin: 0; border: 0 !important; border-radius: 0 !important; }
+body.atlas-phase4b #table-wrap thead { background: var(--p4-surface-2); }
+body.atlas-phase4b #table-wrap th {
+  padding: 13px 16px;
+  color: var(--p4-muted);
+  border-color: var(--p4-line);
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+body.atlas-phase4b #table-wrap td { padding: 14px 16px; border-color: var(--p4-line); }
+body.atlas-phase4b #table-wrap tbody tr:hover { background: color-mix(in srgb, var(--p4-accent) 4%, var(--p4-surface)); }
+body.atlas-phase4b #items-body .step-btn { display: none !important; }
+body.atlas-phase4b #items-body .qty-input[data-phase4-read-only] {
+  width: 84px;
+  min-height: 34px;
+  padding: 5px 9px;
+  color: var(--p4-text);
+  text-align: right;
+  background: var(--p4-surface-2);
+  border: 1px solid var(--p4-line) !important;
+  border-radius: 9px;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+body.atlas-phase4b #items-body .qty-cell { gap: 8px; }
+body.atlas-phase4b #items-body .unit { color: var(--p4-muted); }
+body.atlas-phase4b #items-body .low-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  color: var(--p4-warn);
+  background: var(--p4-warn-soft);
+  border-radius: 999px;
+  font-family: Inter, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+}
+body.atlas-phase4b[data-phase4-inventory-mode="count"] #phase4-inventory-hero,
+body.atlas-phase4b[data-phase4-inventory-mode="master"] #phase4-inventory-hero { display: none; }
+
+body.atlas-phase4b .phase4-secondary-workspace {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: var(--p4-radius-lg);
+  box-shadow: var(--p4-shadow-sm);
+}
+body.atlas-phase4b .phase4-secondary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+body.atlas-phase4b .phase4-secondary-head h2 {
+  margin: 0;
+  color: var(--p4-text);
+  font: 700 25px/1.1 Inter, sans-serif;
+  letter-spacing: -.025em;
+}
+body.atlas-phase4b .phase4-secondary-head p { max-width: 720px; margin: 7px 0 0; color: var(--p4-muted); font-size: 12px; line-height: 1.55; }
+body.atlas-phase4b .phase4-secondary-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+body.atlas-phase4b .phase4-secondary-summary article {
+  padding: 14px;
+  background: var(--p4-surface-2);
+  border: 1px solid var(--p4-line);
+  border-radius: 12px;
+}
+body.atlas-phase4b .phase4-secondary-summary span { display: block; color: var(--p4-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+body.atlas-phase4b .phase4-secondary-summary strong { display: block; margin-top: 5px; font: 700 22px Inter, sans-serif; }
+body.atlas-phase4b .phase4-movement-list { display: grid; gap: 8px; }
+body.atlas-phase4b .phase4-movement-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 13px;
+  align-items: center;
+  padding: 13px;
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: 13px;
+}
+body.atlas-phase4b .phase4-movement-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: var(--p4-muted);
+  background: var(--p4-surface-2);
+  border-radius: 10px;
+}
+body.atlas-phase4b .phase4-movement-row.is-positive .phase4-movement-icon { color: var(--p4-ok); background: var(--p4-ok-soft); }
+body.atlas-phase4b .phase4-movement-row.is-negative .phase4-movement-icon { color: var(--p4-danger); background: var(--p4-danger-soft); }
+body.atlas-phase4b .phase4-movement-icon svg { width: 17px; height: 17px; }
+body.atlas-phase4b .phase4-movement-copy { min-width: 0; }
+body.atlas-phase4b .phase4-movement-copy > span { display: block; color: var(--p4-muted); font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+body.atlas-phase4b .phase4-movement-copy > strong { display: block; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.atlas-phase4b .phase4-movement-copy > small { display: block; margin-top: 3px; color: var(--p4-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.atlas-phase4b .phase4-movement-value,
+body.atlas-phase4b .phase4-movement-meta { text-align: right; }
+body.atlas-phase4b .phase4-movement-value strong,
+body.atlas-phase4b .phase4-movement-meta strong { display: block; font-variant-numeric: tabular-nums; }
+body.atlas-phase4b .phase4-movement-value span,
+body.atlas-phase4b .phase4-movement-meta span { display: block; margin-top: 3px; color: var(--p4-muted); font-size: 9px; }
+body.atlas-phase4b .phase4-operational-empty {
+  min-height: 230px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  padding: 30px;
+  color: var(--p4-muted);
+  text-align: center;
+  background: var(--p4-surface-2);
+  border: 1px dashed var(--p4-line-strong);
+  border-radius: 14px;
+}
+body.atlas-phase4b .phase4-operational-empty svg { width: 30px; height: 30px; color: var(--p4-accent); }
+body.atlas-phase4b .phase4-operational-empty h3 { margin: 10px 0 4px; color: var(--p4-text); }
+body.atlas-phase4b .phase4-operational-empty p { max-width: 560px; margin: 0; line-height: 1.55; }
+
+body.atlas-phase4b #suppliers-view > .toolbar {
+  padding: 12px;
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: 14px;
+}
+body.atlas-phase4b #suppliers-view > table {
+  overflow: hidden;
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: var(--p4-radius);
+  box-shadow: var(--p4-shadow-sm);
+}
+body.atlas-phase4b .phase4-purchasing-contract { margin: 0; }
+body.atlas-phase4b .phase4-purchase-groups { display: grid; gap: 12px; }
+body.atlas-phase4b .phase4-purchase-group {
+  overflow: hidden;
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: 14px;
+}
+body.atlas-phase4b .phase4-purchase-group > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--p4-surface-2);
+  border-bottom: 1px solid var(--p4-line);
+}
+body.atlas-phase4b .phase4-purchase-group > header h3 { margin: 0; font: 700 16px Inter, sans-serif; }
+body.atlas-phase4b .phase4-purchase-group > article {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--p4-line);
+}
+body.atlas-phase4b .phase4-purchase-group > article:last-child { border-bottom: 0; }
+body.atlas-phase4b .phase4-purchase-group > article strong,
+body.atlas-phase4b .phase4-purchase-group > article span { display: block; }
+body.atlas-phase4b .phase4-purchase-group > article span { margin-top: 3px; color: var(--p4-muted); font-size: 10px; }
+body.atlas-phase4b .phase4-purchase-state {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  padding: 5px 8px;
+  color: var(--p4-warn) !important;
+  background: var(--p4-warn-soft);
+  border-radius: 999px;
+  font-size: 9px !important;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+body.atlas-phase4b .phase4-recipe-dashboard { gap: 18px; }
+body.atlas-phase4b .recipe-hero {
+  align-items: end;
+  padding: 28px;
+  background: var(--p4-surface);
+  border: 1px solid var(--p4-line);
+  border-radius: var(--p4-radius-lg);
+  box-shadow: var(--p4-shadow-sm);
+}
+body.atlas-phase4b .recipe-hero-copy h1 { font: 700 clamp(30px, 4vw, 44px)/1.04 Inter, sans-serif !important; letter-spacing: -.035em; }
+body.atlas-phase4b .recipe-primary-action { min-height: 44px; color: var(--p4-on-primary); background: var(--p4-primary); border-radius: 12px; box-shadow: var(--p4-shadow-sm); }
+body.atlas-phase4b .recipe-summary-card,
+body.atlas-phase4b .recipe-foundation-card,
+body.atlas-phase4b .recipe-card,
+body.atlas-phase4b .recipe-profile-card {
+  color: var(--p4-text);
+  background: var(--p4-surface);
+  border-color: var(--p4-line);
+  border-radius: var(--p4-radius);
+  box-shadow: var(--p4-shadow-sm);
+}
+body.atlas-phase4b .recipe-summary-card .summary-icon,
+body.atlas-phase4b .recipe-intelligence-icon { color: var(--p4-accent); background: var(--p4-accent-soft); }
+body.atlas-phase4b .recipe-summary-card strong,
+body.atlas-phase4b .recipe-card h3,
+body.atlas-phase4b .recipe-library-item h3 { font-family: Inter, sans-serif !important; font-weight: 700; }
+body.atlas-phase4b .recipe-intelligence-panel {
+  color: var(--p4-text);
+  background: linear-gradient(120deg, var(--p4-accent-soft), var(--p4-surface));
+  border: 1px solid var(--p4-accent-line);
+  border-radius: var(--p4-radius);
+}
+body.atlas-phase4b .recipe-intelligence-copy > span { color: var(--p4-accent); }
+body.atlas-phase4b .recipe-search,
+body.atlas-phase4b .recipe-view-toggle,
+body.atlas-phase4b .recipe-category-row button { background: var(--p4-surface); border-color: var(--p4-line); }
+
+body.atlas-phase4b .stock-count-workspace { gap: 14px; color: var(--p4-text); }
+body.atlas-phase4b .stock-count-hero {
+  color: var(--p4-text);
+  background: radial-gradient(circle at 88% 10%, var(--p4-accent-soft), transparent 34%), var(--p4-surface);
+  border-color: var(--p4-line);
+  border-radius: var(--p4-radius-lg);
+  box-shadow: var(--p4-shadow-sm);
+}
+body.atlas-phase4b .stock-count-hero h1,
+body.atlas-phase4b .stock-count-panel-head h2,
+body.atlas-phase4b .stock-count-detail-head h2,
+body.atlas-phase4b .stock-count-modal h2,
+body.atlas-phase4b .stock-count-scan-modal h2,
+body.atlas-phase4b .stock-count-scan-result h3 { font-family: Inter, sans-serif !important; font-weight: 700 !important; letter-spacing: -.025em; }
+body.atlas-phase4b .stock-count-hero > div:first-child > span,
+body.atlas-phase4b .stock-count-panel-head span,
+body.atlas-phase4b .stock-count-modal header span,
+body.atlas-phase4b .stock-count-scan-modal header span,
+body.atlas-phase4b .stock-count-scan-kicker { color: var(--p4-accent); }
+body.atlas-phase4b .stock-count-summary-strip article,
+body.atlas-phase4b .l1-classification-strip article,
+body.atlas-phase4b .stock-count-panel,
+body.atlas-phase4b .stock-count-session-card,
+body.atlas-phase4b .stock-count-balance-row,
+body.atlas-phase4b .stock-count-line {
+  color: var(--p4-text);
+  background: var(--p4-surface);
+  border-color: var(--p4-line);
+  box-shadow: none;
+}
+body.atlas-phase4b .stock-count-summary-strip strong,
+body.atlas-phase4b .l1-classification-strip strong { font-family: Inter, sans-serif; font-weight: 700; }
+body.atlas-phase4b .stock-count-primary { color: var(--p4-on-primary); background: var(--p4-primary); border-color: var(--p4-primary); font-family: Inter, sans-serif; }
+body.atlas-phase4b .stock-count-secondary { color: var(--p4-text); background: var(--p4-surface); border-color: var(--p4-line-strong); font-family: Inter, sans-serif; }
+body.atlas-phase4b .stock-count-progress,
+body.atlas-phase4b .stock-count-progress-block { background: var(--p4-surface-2); }
+body.atlas-phase4b .stock-count-progress i { background: var(--p4-accent); }
+body.atlas-phase4b .stock-count-line-evidence > div { background: var(--p4-surface-2); }
+body.atlas-phase4b .stock-count-line-entry label > div,
+body.atlas-phase4b .stock-count-scan-quantity,
+body.atlas-phase4b .stock-count-line-entry input,
+body.atlas-phase4b .stock-count-controls input,
+body.atlas-phase4b .stock-count-controls select { color: var(--p4-text); background: var(--p4-surface); border-color: var(--p4-line); }
+body.atlas-phase4b .stock-count-modal,
+body.atlas-phase4b .stock-count-scan-modal { color: var(--p4-text); background: var(--p4-bg); border-color: var(--p4-line); box-shadow: var(--p4-shadow-lg); }
+body.atlas-phase4b .stock-count-modal > header,
+body.atlas-phase4b .stock-count-scan-modal > header { background: var(--p4-surface); border-color: var(--p4-line); }
+body.atlas-phase4b .stock-count-scan-result { background: var(--p4-surface-2); }
+body.atlas-phase4b .stock-count-camera { border-color: var(--p4-line); }
+
+body.atlas-phase4b .item-master-workspace { color: var(--p4-text); }
+body.atlas-phase4b .item-master-hero h1,
+body.atlas-phase4b .item-master-card header h3,
+body.atlas-phase4b .item-master-drawer > header h2,
+body.atlas-phase4b .item-master-drawer-body section h3,
+body.atlas-phase4b .item-master-empty h3 { font-family: Inter, sans-serif !important; font-weight: 700 !important; letter-spacing: -.025em; }
+body.atlas-phase4b .item-master-eyebrow { color: var(--p4-accent) !important; }
+body.atlas-phase4b .item-master-summary article,
+body.atlas-phase4b .item-master-policy,
+body.atlas-phase4b .item-master-toolbar,
+body.atlas-phase4b .item-master-card,
+body.atlas-phase4b .item-master-drawer-body section {
+  color: var(--p4-text);
+  background: var(--p4-surface);
+  border-color: var(--p4-line);
+  box-shadow: var(--p4-shadow-sm);
+}
+body.atlas-phase4b .item-master-summary strong { font-family: Inter, sans-serif; font-weight: 700; }
+body.atlas-phase4b .item-master-tier { color: var(--p4-accent); background: var(--p4-accent-soft); }
+body.atlas-phase4b .item-master-draft-state,
+body.atlas-phase4b .item-master-missing span,
+body.atlas-phase4b .item-master-progress-block { background: var(--p4-surface-2); }
+body.atlas-phase4b .item-master-progress { background: var(--p4-line); }
+body.atlas-phase4b .item-master-progress span { background: var(--p4-accent); }
+body.atlas-phase4b .item-master-backdrop { background: var(--p4-overlay); backdrop-filter: blur(4px); }
+body.atlas-phase4b .item-master-drawer { color: var(--p4-text); background: var(--p4-bg); box-shadow: var(--p4-shadow-lg); }
+body.atlas-phase4b .item-master-drawer > header,
+body.atlas-phase4b .item-master-drawer form > footer { background: color-mix(in srgb, var(--p4-bg) 94%, transparent); border-color: var(--p4-line); backdrop-filter: blur(20px); }
+body.atlas-phase4b .item-master-drawer input,
+body.atlas-phase4b .item-master-drawer select,
+body.atlas-phase4b .item-master-drawer textarea,
+body.atlas-phase4b .item-master-check-list label { color: var(--p4-text) !important; background: var(--p4-surface) !important; border-color: var(--p4-line) !important; }
+
+body.atlas-phase4b .inventory-scanner-overlay { color: var(--p4-text); font-family: Inter, sans-serif; }
+body.atlas-phase4b .inventory-scanner-backdrop { background: var(--p4-overlay); backdrop-filter: blur(8px); }
+body.atlas-phase4b .inventory-scanner-panel { color: var(--p4-text); background: var(--p4-bg); border-color: var(--p4-line); border-radius: var(--p4-radius-lg); box-shadow: var(--p4-shadow-lg); }
+body.atlas-phase4b .inventory-scanner-header,
+body.atlas-phase4b .inventory-scanner-capture,
+body.atlas-phase4b .inventory-scanner-result,
+body.atlas-phase4b .inventory-scanner-history { color: var(--p4-text); background: var(--p4-surface); border-color: var(--p4-line); }
+body.atlas-phase4b .inventory-scanner-header > div:first-child > span,
+body.atlas-phase4b .inventory-scanner-kicker { color: var(--p4-accent); }
+body.atlas-phase4b .inventory-scanner-header h2,
+body.atlas-phase4b .inventory-scanner-placeholder strong,
+body.atlas-phase4b .inventory-scanner-result.is-empty h3,
+body.atlas-phase4b .inventory-scanner-result.is-unmatched > h3,
+body.atlas-phase4b .inventory-scanner-item-copy h3 { font-family: Inter, sans-serif !important; font-weight: 700 !important; letter-spacing: -.025em; }
+body.atlas-phase4b .inventory-scanner-primary { color: var(--p4-on-primary); background: var(--p4-primary); border-color: var(--p4-primary); font-family: Inter, sans-serif; }
+body.atlas-phase4b .inventory-scanner-secondary,
+body.atlas-phase4b .inventory-scanner-manual button,
+body.atlas-phase4b .inventory-scanner-link-item,
+body.atlas-phase4b .inventory-scanner-close { color: var(--p4-text); background: var(--p4-surface); border-color: var(--p4-line-strong); font-family: Inter, sans-serif; }
+body.atlas-phase4b .inventory-scanner-result-icon,
+body.atlas-phase4b .inventory-scanner-unmatched-icon { color: var(--p4-accent); background: var(--p4-accent-soft); }
+body.atlas-phase4b .inventory-scanner-mini-stats div,
+body.atlas-phase4b .inventory-scanner-rule,
+body.atlas-phase4b .inventory-scanner-code-line,
+body.atlas-phase4b .inventory-scanner-item-card { color: var(--p4-text); background: var(--p4-surface-2); border-color: var(--p4-line); }
+body.atlas-phase4b .inventory-scanner-manual input,
+body.atlas-phase4b .inventory-scanner-quantity,
+body.atlas-phase4b .inventory-scanner-quantity input,
+body.atlas-phase4b .inventory-scanner-count-form textarea,
+body.atlas-phase4b .inventory-scanner-linker > input { color: var(--p4-text); background: var(--p4-surface); border-color: var(--p4-line); }
+
+body.atlas-phase4b.service-mode { background: #101210; }
+body.atlas-phase4b.service-mode .service-view { max-width: 1180px; }
+body.atlas-phase4b.service-mode .service-head { margin-bottom: 22px; }
+body.atlas-phase4b.service-mode .service-head h1 { font: 700 34px Inter, sans-serif; letter-spacing: -.035em; }
+body.atlas-phase4b.service-mode .service-exit { min-height: 44px; border-radius: 12px; }
+body.atlas-phase4b.service-mode .service-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+body.atlas-phase4b.service-mode .phase4-service-card {
+  position: relative;
+  min-height: 162px;
+  padding: 20px;
+  color: #f2f1ec;
+  background: #1b1e1a;
+  border: 1px solid #30342e;
+  border-radius: 18px;
+  box-shadow: none;
+  transition: transform 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+body.atlas-phase4b.service-mode .phase4-service-card:hover:not(:disabled) { transform: translateY(-2px); background: #232720; border-color: #42483f; }
+body.atlas-phase4b.service-mode .phase4-service-card > svg { width: 24px; height: 24px; color: #55cfc6; stroke-width: 1.7; }
+body.atlas-phase4b.service-mode .phase4-service-card h3 { margin: 24px 0 6px; font: 700 19px Inter, sans-serif; }
+body.atlas-phase4b.service-mode .phase4-service-card p { margin: 0; color: #aeb3ab; font-size: 11px; line-height: 1.45; }
+body.atlas-phase4b.service-mode .phase4-service-card.is-disabled { opacity: .55; cursor: not-allowed; }
+body.atlas-phase4b.service-mode .phase4-service-badge { position: absolute; top: 14px; right: 14px; padding: 4px 7px; color: #c2c7bf; background: #272a25; border-radius: 999px; font-size: 8px; font-weight: 700; text-transform: uppercase; }
+
+body.atlas-phase4b .phase4-operational-toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 2600;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 15px;
+  color: var(--p4-on-primary);
+  background: var(--p4-primary);
+  border-radius: 12px;
+  box-shadow: var(--p4-shadow-lg);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+body.atlas-phase4b .phase4-operational-toast.is-visible { opacity: 1; transform: none; }
+body.atlas-phase4b .phase4-operational-toast[data-tone="warning"] { color: var(--p4-text); background: color-mix(in srgb, var(--p4-warn-soft) 80%, var(--p4-surface)); border: 1px solid color-mix(in srgb, var(--p4-warn) 30%, var(--p4-line)); }
+body.atlas-phase4b .phase4-operational-toast[data-tone="error"] { color: var(--p4-text); background: color-mix(in srgb, var(--p4-danger-soft) 80%, var(--p4-surface)); border: 1px solid color-mix(in srgb, var(--p4-danger) 30%, var(--p4-line)); }
+
+html[data-atlas-theme="dark"] body.atlas-phase4b #table-wrap,
+html[data-atlas-theme="dark"] body.atlas-phase4b #suppliers-view > table,
+html[data-atlas-theme="dark"] body.atlas-phase4b .stock-count-modal,
+html[data-atlas-theme="dark"] body.atlas-phase4b .stock-count-scan-modal,
+html[data-atlas-theme="dark"] body.atlas-phase4b .stock-count-secondary,
+html[data-atlas-theme="dark"] body.atlas-phase4b .stock-count-line-entry label > div,
+html[data-atlas-theme="dark"] body.atlas-phase4b .stock-count-line-entry input,
+html[data-atlas-theme="dark"] body.atlas-phase4b .inventory-scanner-secondary,
+html[data-atlas-theme="dark"] body.atlas-phase4b .inventory-scanner-manual input,
+html[data-atlas-theme="dark"] body.atlas-phase4b .inventory-scanner-manual button,
+html[data-atlas-theme="dark"] body.atlas-phase4b .inventory-scanner-link-item,
+html[data-atlas-theme="dark"] body.atlas-phase4b .inventory-scanner-close,
+html[data-atlas-theme="dark"] body.atlas-phase4b .inventory-scanner-quantity,
+html[data-atlas-theme="dark"] body.atlas-phase4b .inventory-scanner-quantity input,
+html[data-atlas-theme="dark"] body.atlas-phase4b .inventory-scanner-count-form textarea,
+html[data-atlas-theme="dark"] body.atlas-phase4b .inventory-scanner-linker > input {
+  color: var(--p4-text) !important;
+  background: var(--p4-surface) !important;
+  border-color: var(--p4-line) !important;
+}
+
+@media (max-width: 1180px) {
+  body.atlas-phase4b .phase4-home-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body.atlas-phase4b .phase4-movement-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  body.atlas-phase4b .phase4-movement-meta { grid-column: 2 / -1; display: flex; justify-content: space-between; gap: 10px; text-align: left; }
+  body.atlas-phase4b.service-mode .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  body.atlas-phase4b .phase4-operational-hero,
+  body.atlas-phase4b .phase4-home-operations .operations-hero { grid-template-columns: 1fr; }
+  body.atlas-phase4b .phase4-operational-actions { justify-content: flex-start; }
+  body.atlas-phase4b .phase4-secondary-head { flex-direction: column; }
+  body.atlas-phase4b .phase4-secondary-summary { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 760px) {
+  body.atlas-phase4b .phase4-operational-hero { margin-left: -2px; margin-right: -2px; padding: 20px; border-radius: 18px; }
+  body.atlas-phase4b .phase4-home-actions { grid-template-columns: 1fr 1fr; gap: 9px; }
+  body.atlas-phase4b .phase4-home-actions > button { min-height: 104px; padding: 14px; }
+  body.atlas-phase4b .phase4-home-operations .operations-hero { padding: 20px; border-radius: 18px; }
+  body.atlas-phase4b .operations-summary-grid { grid-template-columns: 1fr 1fr; }
+  body.atlas-phase4b #table-wrap { overflow: visible; background: transparent; border: 0; box-shadow: none; }
+  body.atlas-phase4b #table-wrap thead { display: none; }
+  body.atlas-phase4b #table-wrap table,
+  body.atlas-phase4b #table-wrap tbody { display: block; background: transparent; border: 0 !important; }
+  body.atlas-phase4b #table-wrap tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px 12px;
+    margin-bottom: 10px;
+    padding: 14px;
+    background: var(--p4-surface);
+    border: 1px solid var(--p4-line);
+    border-radius: 14px;
+    box-shadow: var(--p4-shadow-sm);
+  }
+  body.atlas-phase4b #table-wrap td { display: block; padding: 0; border: 0; }
+  body.atlas-phase4b #table-wrap td:nth-child(1) { grid-column: 1; font-size: 14px; }
+  body.atlas-phase4b #table-wrap td:nth-child(2),
+  body.atlas-phase4b #table-wrap td:nth-child(3) { grid-column: 1; color: var(--p4-muted); font-size: 10px; }
+  body.atlas-phase4b #table-wrap td:nth-child(4) { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+  body.atlas-phase4b #table-wrap td:nth-child(5) { grid-column: 1 / -1; }
+  body.atlas-phase4b .phase4-movement-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  body.atlas-phase4b .phase4-movement-meta { grid-column: 2 / -1; }
+  body.atlas-phase4b .stock-count-summary-strip,
+  body.atlas-phase4b .l1-classification-strip,
+  body.atlas-phase4b .item-master-summary { grid-template-columns: 1fr 1fr; }
+  body.atlas-phase4b .stock-count-line-entry { grid-template-columns: 1fr; }
+  body.atlas-phase4b .inventory-scanner-overlay { padding: 0; }
+  body.atlas-phase4b .inventory-scanner-panel {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+  body.atlas-phase4b .inventory-scanner-layout { grid-template-columns: 1fr; padding: 14px; }
+  body.atlas-phase4b .inventory-scanner-viewport { min-height: min(46dvh, 390px); }
+  body.atlas-phase4b.service-mode .service-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 520px) {
+  body.atlas-phase4b .phase4-home-actions { grid-template-columns: 1fr; }
+  body.atlas-phase4b .phase4-operational-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
+  body.atlas-phase4b .phase4-primary-button,
+  body.atlas-phase4b .phase4-secondary-button { width: 100%; }
+  body.atlas-phase4b .phase4-secondary-summary,
+  body.atlas-phase4b .stock-count-summary-strip,
+  body.atlas-phase4b .l1-classification-strip,
+  body.atlas-phase4b .item-master-summary,
+  body.atlas-phase4b .operations-summary-grid { grid-template-columns: 1fr; }
+  body.atlas-phase4b .phase4-movement-row { grid-template-columns: auto minmax(0, 1fr); }
+  body.atlas-phase4b .phase4-movement-value,
+  body.atlas-phase4b .phase4-movement-meta { grid-column: 2; display: flex; justify-content: space-between; gap: 10px; text-align: left; }
+  body.atlas-phase4b .phase4-purchase-group > header,
+  body.atlas-phase4b .phase4-purchase-group > article { align-items: flex-start; flex-direction: column; }
+  body.atlas-phase4b.service-mode .service-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.atlas-phase4b *,
+  body.atlas-phase4b *::before,
+  body.atlas-phase4b *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

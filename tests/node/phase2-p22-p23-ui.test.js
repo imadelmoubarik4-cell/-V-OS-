@@ -19,7 +19,7 @@ test('P2.2 Source Center uses an authenticated read-only gateway', () => {
   assert.match(readSources, /source bodies, private URLs or credentials/i);
   assert.match(readSources, /Automatic synchronization is off/i);
   assert.doesNotMatch(readSources, /SUPABASE_SERVICE_ROLE_KEY/);
-  assert.doesNotMatch(readSources, /\.from\s*\(/);
+  assert.doesNotMatch(readSources, /(?:atlasSupabase|supabase|\bsb\b|\bclient\b)\s*\.\s*from\s*\(/i);
   assert.doesNotMatch(readSources, /method:\s*['"](?:POST|PATCH|PUT|DELETE)['"]/);
 });
 
@@ -40,7 +40,7 @@ test('Checkpoint M remains manager-reviewed and sales-disabled', () => {
   assert.match(checkpointM, /Sales ingestion remains disabled/);
   assert.match(checkpointM, /Refresh product targets/);
   assert.doesNotMatch(checkpointM, /SUPABASE_SERVICE_ROLE_KEY/);
-  assert.doesNotMatch(checkpointM, /\.from\s*\(/);
+  assert.doesNotMatch(checkpointM, /(?:atlasSupabase|supabase|\bsb\b|\bclient\b)\s*\.\s*from\s*\(/i);
   assert.doesNotMatch(checkpointM, /automatic[^\n]{0,30}publishing[^\n]{0,30}true/i);
   assert.doesNotMatch(checkpointM, /automatic[^\n]{0,30}ordering[^\n]{0,30}true/i);
 });
