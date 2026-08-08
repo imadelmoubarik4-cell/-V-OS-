@@ -1,0 +1,11 @@
+-- Migration-history bridge for the alternate Checkpoint I schema draft.
+--
+-- The canonical System I model for this branch is the model established by
+-- 20260804134509_atlas_system_checkpoint_i.sql and the deployed snapshot
+-- recorded as 20260804143840_atlas_system_snapshot. The alternate 14:30 draft
+-- used incompatible column names (for example source_kind versus source_type)
+-- and was never the active browser or Edge Function contract.
+--
+-- Keep this version as a no-op so existing preview branches can reconcile the
+-- local migration ledger without attempting to replace the canonical model.
+select 1;

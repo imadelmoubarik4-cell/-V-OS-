@@ -1,0 +1,73 @@
+# Atlas uses production VÁ Auth while private review, Brain, operations, scanner,
+# team-message, marketing, team-profile, profile-photo, shift-planning,
+# Knowledge, Reports, System, Settings, Checkpoint K intelligence, Checkpoint L1
+# stock-count evidence, Checkpoint L2 item-master drafts and Phase 2 connection
+# evidence live in isolated Supabase branches. The branch gateway cannot validate
+# a token issued by the production project, so each function authenticates the
+# caller in its handler and revalidates the server-controlled active profile
+# before returning or mutating private data. Brain, briefing, review, System,
+# Checkpoint K, stock-count publication, Item Master L2, Connection Center,
+# read-only Source Center and Checkpoint M mutations require an active
+# manager/admin profile; staff-facing endpoints apply narrower permissions.
+
+[functions.atlas-sprint3-review]
+verify_jwt = false
+
+[functions.atlas-sprint4-briefing]
+verify_jwt = false
+
+[functions.atlas-phase3-brain]
+verify_jwt = false
+
+[functions.atlas-phase3-intelligence]
+verify_jwt = false
+
+[functions.atlas-operations-checkpoint-a]
+verify_jwt = false
+
+[functions.atlas-inventory-scanner]
+verify_jwt = false
+
+[functions.atlas-stock-counts]
+verify_jwt = false
+entrypoint = "./functions/atlas-stock-counts/entrypoint.ts"
+
+[functions.atlas-item-master]
+verify_jwt = false
+
+[functions.atlas-team-messages]
+verify_jwt = false
+
+[functions.atlas-marketing-workspace]
+verify_jwt = false
+
+[functions.atlas-team-profiles]
+verify_jwt = false
+
+[functions.atlas-team-profile-photos]
+verify_jwt = false
+
+[functions.atlas-shifts]
+verify_jwt = false
+
+[functions.atlas-knowledge]
+verify_jwt = false
+
+[functions.atlas-reports]
+verify_jwt = false
+entrypoint = "./functions/atlas-reports/entrypoint.ts"
+
+[functions.atlas-system]
+verify_jwt = false
+
+[functions.atlas-settings]
+verify_jwt = false
+
+[functions.atlas-connections]
+verify_jwt = false
+
+[functions.atlas-read-sources]
+verify_jwt = false
+
+[functions.atlas-pos-mapping]
+verify_jwt = false

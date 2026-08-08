@@ -1,0 +1,142 @@
+name: Integrate Checkpoint L1 stock counts
+
+# Final Checkpoint L1 integration trigger: keep source, configuration and CI
+# wiring repository-native instead of relying only on the runtime bootstrap.
+on:
+  push:
+    branches:
+      - agent/sprint-4-phase-3-atlas-brain
+    paths:
+      - .github/workflows/integrate-stock-count-l1.yml
+      - apps/web/assets/js/stock-count-bootstrap.js
+      - apps/web/assets/js/stock-count-l1-verified.js
+      - apps/web/assets/css/stock-count-workspace.css
+      - supabase/functions/atlas-stock-counts/entrypoint.ts
+      - supabase/migrations/*atlas_stock_counts_l1*.sql
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out Checkpoint L1 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/sprint-4-phase-3-atlas-brain
+          fetch-depth: 0
+
+      - name: Wire L1 runtime and validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              if new in text:
+                  return text
+              if old not in text:
+                  raise SystemExit(f"Could not find {label}")
+              return text.replace(old, new, 1)
+
+          workspace_path = Path('apps/web/assets/js/stock-count-workspace.js')
+          workspace = workspace_path.read_text()
+          workspace = workspace.replace(
+              'note: override.note ?? note?.value?.trim() || null,',
+              'note: (override.note ?? note?.value?.trim()) || null,',
+          )
+          delegation = """    if (window.AtlasStockCountsL1?.handleSubmit?.(event, form)) return;\n"""
+          workspace = replace_once(
+              workspace,
+              "    if (!(form instanceof HTMLFormElement)) return;\n",
+              "    if (!(form instanceof HTMLFormElement)) return;\n" + delegation,
+              'stock-count submit delegation',
+          )
+          workspace_path.write_text(workspace)
+
+          config_path = Path('apps/web/config.js')
+          config = config_path.read_text()
+          config = replace_once(
+              config,
+              '  INVENTORY_SCANNER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner",\n',
+              '  INVENTORY_SCANNER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner",\n'
+              '  STOCK_COUNTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-stock-counts",\n',
+              'stock-count API configuration',
+          )
+          bootstrap_block = """
+
+          // Checkpoint L1 adds mobile, unit-aware stock-count sessions. Count
+          // observations and manager verification remain private; only the explicit
+          // manager publication boundary may create controlled count adjustments.
+          loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+            scriptPath: 'assets/js/stock-count-bootstrap.js',
+            globalName: 'AtlasStockCountBootstrap',
+            dataAttribute: 'atlasStockCountBootstrap',
+          }));
+          """
+          if 'AtlasStockCountBootstrap' not in config:
+              scanner_block = """loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+            scriptPath: 'assets/js/inventory-scanner-bootstrap.js',
+            globalName: 'AtlasInventoryScannerBootstrap',
+            dataAttribute: 'atlasInventoryScannerBootstrap',
+          }));"""
+              config = replace_once(config, scanner_block, scanner_block + bootstrap_block, 'stock-count bootstrap loader')
+          config_path.write_text(config)
+
+          supabase_path = Path('supabase/config.toml')
+          supabase = supabase_path.read_text()
+          stock_config = """
+
+          [functions.atlas-stock-counts]
+          verify_jwt = false
+          entrypoint = "./functions/atlas-stock-counts/entrypoint.ts"
+          """
+          if '[functions.atlas-stock-counts]' not in supabase:
+              supabase += stock_config
+          elif 'entrypoint = "./functions/atlas-stock-counts/entrypoint.ts"' not in supabase:
+              supabase = supabase.replace(
+                  '[functions.atlas-stock-counts]\nverify_jwt = false',
+                  '[functions.atlas-stock-counts]\nverify_jwt = false\nentrypoint = "./functions/atlas-stock-counts/entrypoint.ts"',
+              )
+          supabase_path.write_text(supabase)
+
+          verify_path = Path('.github/workflows/atlas-verify.yml')
+          verify = verify_path.read_text()
+          checks = """          node --check apps/web/assets/js/stock-count-workspace.js
+          node --check apps/web/assets/js/stock-count-bootstrap.js
+          node --check apps/web/assets/js/stock-count-l1-verified.js
+          """
+          if 'node --check apps/web/assets/js/stock-count-l1-verified.js' not in verify:
+              verify = replace_once(
+                  verify,
+                  '          node --check apps/web/assets/js/inventory-scanner.js\n',
+                  '          node --check apps/web/assets/js/inventory-scanner.js\n' + checks,
+                  'stock-count JavaScript checks',
+              )
+          verify_path.write_text(verify)
+          PY
+
+          node --check apps/web/assets/js/stock-count-workspace.js
+          node --check apps/web/assets/js/stock-count-bootstrap.js
+          node --check apps/web/assets/js/stock-count-l1-verified.js
+
+      - name: Commit L1 integration wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/web/assets/js/stock-count-workspace.js \
+            apps/web/config.js \
+            supabase/config.toml \
+            .github/workflows/atlas-verify.yml
+          if git diff --cached --quiet; then
+            echo "Checkpoint L1 runtime is already wired."
+            exit 0
+          fi
+          git commit -m "chore: integrate Checkpoint L1 runtime"
+          git push origin HEAD:agent/sprint-4-phase-3-atlas-brain

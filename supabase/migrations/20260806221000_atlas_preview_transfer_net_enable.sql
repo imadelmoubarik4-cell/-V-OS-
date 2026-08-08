@@ -1,0 +1,11 @@
+-- Historical ledger anchor for the completed one-time Real VA preview transfer.
+--
+-- The live preview temporarily enabled pg_net while the preserved Sprint 3
+-- review checkpoint was copied server-to-server. The transport has completed,
+-- source and destination counts and digests matched, the temporary endpoints
+-- were retired, and pg_net was removed again.
+--
+-- Clean repository replay must not depend on the hosted-only pg_net extension.
+-- This migration therefore preserves the recorded version without recreating
+-- the retired transport. It is an intentional no-op in every environment.
+select 1;
