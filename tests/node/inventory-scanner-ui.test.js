@@ -26,7 +26,8 @@ test('scanner bootstrap waits for the signed-in application shell', () => {
   assert.match(bootstrap, /#?app-screen|app-screen/);
   assert.match(bootstrap, /window\.getComputedStyle\(app\)\.display !== 'none'/);
   assert.match(bootstrap, /if \(!appIsVisible\(\)/);
-  assert.match(config, /bootstrap waits\s*\n?\/\/ until the authenticated application shell is visible|authenticated application shell is visible/);
+  assert.match(config, /window\.addEventListener\('atlas:profile-ready'/);
+  assert.match(config, /if \(safeBoot \|\| !authenticated\) return false/);
 });
 
 test('scanner interaction layer prevents modal taps from being swallowed', () => {
