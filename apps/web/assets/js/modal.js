@@ -16,9 +16,9 @@
   }
 
   function getFocusable(root) {
-    return Array.from(root.querySelectorAll(focusableSelector)).filter((element) => {
-      return !element.hasAttribute('hidden') && element.offsetParent !== null;
-    });
+    return Array.from(root.querySelectorAll(focusableSelector)).filter((element) => (
+      !element.hasAttribute('hidden') && element.offsetParent !== null
+    ));
   }
 
   function closeTopModal(event) {
@@ -65,7 +65,7 @@
       const panel = getPanel(root);
       if (panel && !panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
 
-      const state = {
+      modalState.set(root, {
         options: {
           closeOnBackdrop: options.closeOnBackdrop !== false,
           initialFocus: options.initialFocus || null,
@@ -73,10 +73,10 @@
           onClose: options.onClose || null
         },
         previouslyFocused: null
-      };
-      modalState.set(root, state);
+      });
 
       root.addEventListener('click', (event) => {
+        const state = modalState.get(root);
         const closeButton = event.target.closest('[data-modal-close]');
         if (closeButton) {
           event.preventDefault();
@@ -85,7 +85,6 @@
         }
         if (state.options.closeOnBackdrop && event.target === root) AtlasModal.close(root);
       });
-
       return root;
     },
 
@@ -104,7 +103,6 @@
 
       if (typeof state.options.onOpen === 'function') state.options.onOpen(payload, root);
       root.dispatchEvent(new CustomEvent('atlas:modal-open', { detail: payload }));
-
       requestAnimationFrame(() => {
         const target = state.options.initialFocus
           ? root.querySelector(state.options.initialFocus)
@@ -122,9 +120,7 @@
       root.setAttribute('aria-hidden', 'true');
       root.hidden = true;
       root.style.display = 'none';
-
-      const stillOpen = document.querySelector('[data-atlas-modal].is-open');
-      if (!stillOpen) document.body.classList.remove('atlas-modal-open');
+      if (!document.querySelector('[data-atlas-modal].is-open')) document.body.classList.remove('atlas-modal-open');
 
       if (typeof state.options.onClose === 'function') state.options.onClose(reason, root);
       root.dispatchEvent(new CustomEvent('atlas:modal-close', { detail: { reason } }));
@@ -132,8 +128,7 @@
     },
 
     isOpen(modalOrId) {
-      const root = resolveModal(modalOrId);
-      return Boolean(root?.classList.contains('is-open'));
+      return Boolean(resolveModal(modalOrId)?.classList.contains('is-open'));
     }
   };
 
@@ -142,27 +137,77 @@
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-atlas-modal]').forEach((root) => AtlasModal.register(root));
   });
-
   window.AtlasModal = AtlasModal;
 })();
 
-(function loadAtlasPhase4Layers() {
+(function installStablePhase4Entry() {
   'use strict';
 
-  const layers = [
-    ['assets/js/phase4-shell.js', 'atlasPhase4Shell', 'Atlas Phase 4 shell'],
-    ['assets/js/phase4-operations-bootstrap.js', 'atlasPhase4OperationsBootstrap', 'Atlas Phase 4 operational bootstrap'],
-  ];
+  const SHELL_SRC = 'assets/js/phase4-shell.js';
+  const STYLE_HREF = 'assets/css/phase4-claude.css';
+  const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+  let shellRequested = false;
 
-  layers.forEach(([src, marker, label]) => {
-    if (document.querySelector(`script[src="${src}"]`)) return;
+  function storedTheme() {
+    try {
+      return localStorage.getItem('atlas.phase4.theme');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function installVisualFoundation() {
+    if (!document.body) return;
+    document.body.classList.add('atlas-phase4');
+    const theme = storedTheme() || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.dataset.atlasTheme = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.style.colorScheme = document.documentElement.dataset.atlasTheme;
+
+    if (!document.querySelector('link[data-atlas-phase4-font]')) {
+      const font = document.createElement('link');
+      font.rel = 'stylesheet';
+      font.href = FONT_HREF;
+      font.dataset.atlasPhase4Font = 'true';
+      document.head.appendChild(font);
+    }
+    if (!document.querySelector(`link[href="${STYLE_HREF}"]`)) {
+      const stylesheet = document.createElement('link');
+      stylesheet.rel = 'stylesheet';
+      stylesheet.href = STYLE_HREF;
+      stylesheet.dataset.atlasPhase4 = 'true';
+      document.head.appendChild(stylesheet);
+    }
+  }
+
+  function appIsAuthenticated() {
+    return Boolean(window.atlasCurrentProfile?.active);
+  }
+
+  function loadShell() {
+    if (shellRequested || window.AtlasPhase4Shell || !appIsAuthenticated()) return;
+    shellRequested = true;
     const script = document.createElement('script');
-    script.src = src;
+    script.src = SHELL_SRC;
     script.async = false;
-    script.dataset[marker] = 'true';
+    script.dataset.atlasPhase4Shell = 'true';
     script.addEventListener('error', () => {
-      console.error(`${label} could not be loaded.`);
+      shellRequested = false;
+      console.error('Atlas Phase 4 shell could not be loaded.');
     }, { once: true });
     document.body.appendChild(script);
+  }
+
+  const start = () => {
+    installVisualFoundation();
+    if (appIsAuthenticated()) requestAnimationFrame(loadShell);
+  };
+
+  window.addEventListener('atlas:profile-ready', (event) => {
+    if (!event.detail?.active) return;
+    installVisualFoundation();
+    requestAnimationFrame(loadShell);
   });
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
 })();
