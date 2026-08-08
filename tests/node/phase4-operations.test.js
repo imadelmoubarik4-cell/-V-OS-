@@ -2,19 +2,23 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
+const entry = readFileSync('apps/web/assets/js/phase4-entry.js', 'utf8');
 const operations = readFileSync('apps/web/assets/js/phase4-operations.js', 'utf8');
 const bootstrap = readFileSync('apps/web/assets/js/phase4-operations-bootstrap.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/phase4-operations.css', 'utf8');
 const modal = readFileSync('apps/web/assets/js/modal.js', 'utf8');
-const combined = `${operations}\n${bootstrap}\n${css}\n${modal}`;
+const combined = `${entry}\n${operations}\n${bootstrap}\n${css}\n${modal}`;
 
-test('Phase 4B is preserved but not auto-mounted during stable shell recovery', () => {
-  assert.match(modal, /assets\/js\/phase4-shell\.js/);
-  assert.doesNotMatch(modal, /assets\/js\/phase4-operations-bootstrap\.js/);
-  assert.match(bootstrap, /assets\/js\/phase4-operations\.js/);
+test('Phase 4B is mounted once by the native authenticated entry point', () => {
+  assert.match(entry, /assets\/js\/phase4-shell\.js/);
+  assert.match(entry, /assets\/js\/phase4-operations\.js/);
+  assert.match(entry, /await loadScriptOnce\(SHELL_SRC/);
+  assert.match(entry, /await loadScriptOnce\(OPERATIONS_SRC/);
+  assert.doesNotMatch(modal, /phase4-shell\.js|phase4-operations/);
   assert.match(operations, /assets\/css\/phase4-operations\.css/);
   assert.match(operations, /window\.AtlasPhase4Operations/);
   assert.match(operations, /atlas:phase4b-ready/);
+  assert.doesNotMatch(operations, /MutationObserver|setInterval\s*\(/);
 });
 
 test('Home becomes the operational hub without duplicating the old Operations destination', () => {
