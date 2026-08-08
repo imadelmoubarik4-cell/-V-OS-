@@ -7,25 +7,30 @@ const css = readFileSync('apps/web/assets/css/phase4-claude.css', 'utf8');
 const modal = readFileSync('apps/web/assets/js/modal.js', 'utf8');
 const combined = `${shell}\n${css}\n${modal}`;
 
-test('Phase 4 loads as an interface layer over the existing Atlas application', () => {
+test('Phase 4 has one authenticated entry point instead of a competing renderer', () => {
   assert.match(modal, /assets\/js\/phase4-shell\.js/);
+  assert.match(modal, /atlas:profile-ready/);
+  assert.match(modal, /window\.atlasCurrentProfile\?\.active/);
+  assert.doesNotMatch(modal, /phase4-operations-bootstrap\.js/);
   assert.match(shell, /assets\/css\/phase4-claude\.css/);
   assert.match(shell, /window\.AtlasPhase4Shell/);
   assert.match(shell, /atlas:phase4-ready/);
 });
 
-test('Claude navigation architecture is represented without replacing live modules', () => {
+test('Claude navigation architecture reuses the live Atlas destinations once', () => {
   for (const group of ['HOME', 'OPERATIONS', 'GROWTH', 'PEOPLE', 'INSIGHTS', 'SYSTEM']) {
     assert.match(shell, new RegExp(`['"]${group}['"]`));
   }
   for (const destination of [
     'Home', 'Inventory', 'Recipes', 'Purchasing', 'Import Center', 'Marketing',
-    'Messages', 'Team', 'Shifts', 'Knowledge', 'Atlas Brain',
+    'Messages', 'Team', 'Profiles', 'Shifts', 'Knowledge', 'Atlas Brain',
     'Business Intelligence', 'Reports', 'Accounting', 'Settings', 'System'
   ]) assert.match(shell, new RegExp(destination.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
-  assert.match(shell, /appendChild\(button\)/);
-  assert.match(shell, /MutationObserver/);
+  assert.match(shell, /nav\.replaceChildren\(fragment\)/);
+  assert.match(shell, /remaining\.forEach/);
+  assert.doesNotMatch(shell, /MutationObserver/);
+  assert.doesNotMatch(shell, /setInterval\s*\(/);
   assert.doesNotMatch(shell, /innerHTML\s*=\s*.*SUPABASE/i);
 });
 
