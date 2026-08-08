@@ -3,6 +3,7 @@ name: Atlas verification
 on:
   pull_request:
     branches:
+      - main
       - release/alpha-0.8.0
       - agent/sprint-3-real-va-data
       - agent/sprint-4-atlas-brain-daily-briefing

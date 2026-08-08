@@ -59,11 +59,11 @@ begin
   );
 
   first_check:=public.atlas_connections_begin_check(
-    'github',request_key,'synthetic','recovery_test',
+    'github',request_key,'synthetic','system',
     actor_id,'Recovery acceptance','admin'
   );
   second_check:=public.atlas_connections_begin_check(
-    'github',request_key,'synthetic','recovery_test',
+    'github',request_key,'synthetic','system',
     actor_id,'Recovery acceptance','admin'
   );
   check_id:=(first_check->>'id')::uuid;
