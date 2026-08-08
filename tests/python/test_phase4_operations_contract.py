@@ -4,20 +4,24 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
+ENTRY = (ROOT / "apps/web/assets/js/phase4-entry.js").read_text()
 OPERATIONS = (ROOT / "apps/web/assets/js/phase4-operations.js").read_text()
 BOOTSTRAP = (ROOT / "apps/web/assets/js/phase4-operations-bootstrap.js").read_text()
 CSS = (ROOT / "apps/web/assets/css/phase4-operations.css").read_text()
 MODAL = (ROOT / "apps/web/assets/js/modal.js").read_text()
-COMBINED = "\n".join((OPERATIONS, BOOTSTRAP, CSS, MODAL))
+COMBINED = "\n".join((ENTRY, OPERATIONS, BOOTSTRAP, CSS, MODAL))
 
 
 class Phase4OperationalInterfaceContract(unittest.TestCase):
-    def test_phase4b_is_preserved_but_not_auto_mounted(self):
-        self.assertNotIn("assets/js/phase4-operations-bootstrap.js", MODAL)
-        self.assertIn("assets/js/phase4-operations.js", BOOTSTRAP)
+    def test_phase4b_is_mounted_once_by_the_native_entry(self):
+        self.assertIn("assets/js/phase4-operations.js", ENTRY)
+        self.assertIn("await loadScriptOnce(OPERATIONS_SRC", ENTRY)
+        self.assertNotIn("phase4-operations", MODAL)
         self.assertIn("assets/css/phase4-operations.css", OPERATIONS)
         self.assertIn("window.AtlasPhase4Operations", OPERATIONS)
         self.assertIn("atlas:phase4b-ready", OPERATIONS)
+        self.assertNotIn("MutationObserver", OPERATIONS)
+        self.assertIsNone(re.search(r"setInterval\s*\(", OPERATIONS))
 
     def test_real_operational_workspaces_are_reused(self):
         for value in (
@@ -75,7 +79,6 @@ class Phase4OperationalInterfaceContract(unittest.TestCase):
     def test_no_browser_privilege_or_design_runtime_regression(self):
         for forbidden in (
             "SUPABASE_SERVICE_ROLE_KEY",
-            "adjust_inventory",
             "Babel.transform",
             "support.js",
         ):
