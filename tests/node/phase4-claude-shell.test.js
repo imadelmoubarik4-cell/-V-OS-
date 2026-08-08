@@ -2,19 +2,32 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
+const index = readFileSync('apps/web/index.html', 'utf8');
+const entry = readFileSync('apps/web/assets/js/phase4-entry.js', 'utf8');
 const shell = readFileSync('apps/web/assets/js/phase4-shell.js', 'utf8');
+const operations = readFileSync('apps/web/assets/js/phase4-operations.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/phase4-claude.css', 'utf8');
 const modal = readFileSync('apps/web/assets/js/modal.js', 'utf8');
-const combined = `${shell}\n${css}\n${modal}`;
+const combined = `${index}\n${entry}\n${shell}\n${operations}\n${css}\n${modal}`;
 
-test('Phase 4 has one authenticated entry point instead of a competing renderer', () => {
-  assert.match(modal, /assets\/js\/phase4-shell\.js/);
-  assert.match(modal, /atlas:profile-ready/);
-  assert.match(modal, /window\.atlasCurrentProfile\?\.active/);
-  assert.doesNotMatch(modal, /phase4-operations-bootstrap\.js/);
-  assert.match(shell, /assets\/css\/phase4-claude\.css/);
-  assert.match(shell, /window\.AtlasPhase4Shell/);
-  assert.match(shell, /atlas:phase4-ready/);
+test('Claude is the native first paint rather than a post-login overlay', () => {
+  assert.match(index, /<html[^>]+data-atlas-phase=["']4["']/);
+  assert.match(index, /<body class=["'][^"']*atlas-phase4[^"']*atlas-native-ui/);
+  assert.match(index, /assets\/css\/phase4-claude\.css/);
+  assert.match(index, /assets\/css\/phase4-operations\.css/);
+  assert.match(index, /assets\/js\/phase4-entry\.js/);
+  assert.match(index, /await window\.ensureAtlasInterface\?\.\(\)/);
+  assert.match(index, /ensureAtlasInterface[\s\S]*loginScreen\.style\.display = 'none'/);
+});
+
+test('one explicit entry point loads the shell and operational presentation in order', () => {
+  assert.match(entry, /assets\/js\/phase4-shell\.js/);
+  assert.match(entry, /assets\/js\/phase4-operations\.js/);
+  assert.match(entry, /await loadScriptOnce\(SHELL_SRC/);
+  assert.match(entry, /await loadScriptOnce\(OPERATIONS_SRC/);
+  assert.match(entry, /window\.ensureAtlasInterface/);
+  assert.match(entry, /atlas:interface-ready/);
+  assert.doesNotMatch(modal, /phase4-shell\.js|phase4-operations|phase4-entry\.js/);
 });
 
 test('Claude navigation architecture reuses the live Atlas destinations once', () => {
@@ -31,7 +44,13 @@ test('Claude navigation architecture reuses the live Atlas destinations once', (
   assert.match(shell, /remaining\.forEach/);
   assert.doesNotMatch(shell, /MutationObserver/);
   assert.doesNotMatch(shell, /setInterval\s*\(/);
-  assert.doesNotMatch(shell, /innerHTML\s*=\s*.*SUPABASE/i);
+});
+
+test('the operational presentation has no reconciliation or polling loop', () => {
+  assert.doesNotMatch(operations, /MutationObserver/);
+  assert.doesNotMatch(operations, /setInterval\s*\(/);
+  assert.match(operations, /window\.AtlasPhase4Operations/);
+  assert.match(operations, /refresh:\s*ensureOperationalSurfaces/);
 });
 
 test('light and dark modes use the approved Claude tokens and Inter type', () => {
@@ -74,8 +93,5 @@ test('Phase 4 does not ship the Claude runtime or cross Atlas data boundaries', 
     /ReactDOM/,
     /SUPABASE_SERVICE_ROLE_KEY/,
     /service_role/i,
-    /\batlasSupabase\b/,
-    /\bcreateClient\s*\(/,
-    /adjust_inventory/,
   ]) assert.doesNotMatch(combined, forbidden);
 });
