@@ -11,8 +11,11 @@ RELEASE = (ROOT / "releases/alpha-0.9.0/PHASE4_CLAUDE_INTERFACE_MIGRATION.md").r
 
 
 class Phase4ClaudeInterfaceContract(unittest.TestCase):
-    def test_shell_bootstraps_without_replacing_the_application(self):
+    def test_shell_mounts_only_after_the_verified_profile(self):
         self.assertIn("assets/js/phase4-shell.js", MODAL)
+        self.assertIn("atlas:profile-ready", MODAL)
+        self.assertIn("window.atlasCurrentProfile?.active", MODAL)
+        self.assertNotIn("phase4-operations-bootstrap.js", MODAL)
         self.assertIn("assets/css/phase4-claude.css", SHELL)
         self.assertIn("window.AtlasPhase4Shell", SHELL)
         self.assertIn("atlas:phase4-ready", SHELL)
@@ -41,6 +44,12 @@ class Phase4ClaudeInterfaceContract(unittest.TestCase):
             self.assertIn(value, SHELL)
         self.assertIn("MORE", SHELL)
         self.assertIn("remaining.forEach", SHELL)
+        self.assertIn("nav.replaceChildren(fragment)", SHELL)
+
+    def test_shell_has_no_dom_reconciliation_loop(self):
+        self.assertNotIn("MutationObserver", SHELL)
+        self.assertNotRegex(SHELL, r"setInterval\s*\(")
+        self.assertNotIn("phase4-operations-bootstrap.js", MODAL)
 
     def test_visual_tokens_match_the_approved_claude_direction(self):
         for token in ("#f6f6f4", "#1fa8a0", "#111113", "#3fc7be"):
