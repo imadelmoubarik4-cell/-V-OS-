@@ -76,15 +76,15 @@ class Phase4ClaudeInterfaceContract(unittest.TestCase):
         self.assertIsNone(re.search(r"(?<!Array)\.from\s*\(", joined))
 
     def test_release_record_keeps_production_and_approval_boundaries(self):
+        self.assertIn("does not authorize merge, production migration or release", RELEASE)
         for phrase in (
-            "does not authorize merge, production migration or release",
-            "does not modify a database schema or migration",
-            "does not change live stock",
-            "does not publish a count",
-            "does not create or submit a supplier order",
-            "does not publish social content",
+            "modify a database schema or migration",
+            "change live stock",
+            "publish a count",
+            "create or submit a supplier order",
+            "publish social content",
         ):
-            self.assertIn(phrase, RELEASE)
+            self.assertIn(f"- {phrase};", RELEASE)
 
 
 if __name__ == "__main__":
