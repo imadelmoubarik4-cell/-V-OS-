@@ -122,7 +122,7 @@
           <i data-lucide="search"></i><span>Search Atlas…</span><kbd>⌘ K</kbd>
         </button>
         <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch theme"><i data-lucide="moon"></i></button>
-        <button class="icon-button" type="button" aria-label="Notifications"><i data-lucide="bell"></i></button>
+        <button class="icon-button" type="button" aria-label="Notifications are not connected yet" title="Notifications are not connected yet" disabled><i data-lucide="bell"></i></button>
         <button class="service-button" id="service-open" type="button"><i data-lucide="zap"></i><span>Service Mode</span></button>
       </header>
 
@@ -138,28 +138,28 @@
           <div class="metric-grid" id="home-metrics"></div>
           <div class="dashboard-grid">
             <section class="panel"><header class="panel-head"><div><h2>Today’s focus</h2><p>Priorities derived from the data available to your role.</p></div></header><div class="focus-list" id="home-focus"></div></section>
-            <aside class="panel"><header class="panel-head"><div><h2>Evidence status</h2><p>Atlas never upgrades stale or missing evidence silently.</p></div></header><div class="focus-list" id="evidence-status"></div></aside>
+            <aside class="panel evidence-panel"><header class="panel-head"><div><h2>Evidence status</h2><p>Atlas never upgrades stale or missing evidence silently.</p></div></header><div class="focus-list" id="evidence-status"></div></aside>
           </div>
         </section>
 
         <section class="view" id="view-inventory" data-view-panel="inventory" hidden>
-          <header class="page-hero">
+          <header class="page-hero inventory-page-hero">
             <div><span class="eyebrow">Operations · Inventory</span><h1>Inventory</h1><p>Current records are read-only here. Controlled workflows handle stock changes.</p></div>
             <div class="page-actions">
               <button class="atlas-button secondary" type="button" data-action="scan"><i data-lucide="scan-barcode"></i>Scan barcode</button>
               <button class="atlas-button" type="button" data-action="start-count"><i data-lucide="clipboard-plus"></i>Start stock count</button>
             </div>
           </header>
-          <div class="notice"><i data-lucide="shield-check"></i><div><strong>Controlled inventory boundary</strong><span>A scan or observation does not alter live stock. Manager-approved publication is required.</span></div></div>
-          <div class="toolbar">
-            <input class="atlas-input" id="inventory-search" type="search" placeholder="Search item, category, barcode or location…" />
+          <div class="notice" role="note"><i data-lucide="shield-check"></i><div><strong>Controlled inventory boundary</strong><span>A scan or observation does not alter live stock. Manager-approved publication is required.</span></div></div>
+          <div class="toolbar inventory-toolbar">
+            <input class="atlas-input" id="inventory-search" type="search" aria-label="Search inventory" placeholder="Search item, category, barcode or location…" />
             <select class="atlas-select" id="inventory-category" aria-label="Inventory category"><option value="all">All categories</option></select>
           </div>
-          <div class="table-wrap"><table class="data-table"><thead><tr><th>Item</th><th>Category</th><th>Location</th><th>Quantity</th><th>Par</th><th>Evidence</th></tr></thead><tbody id="inventory-rows"></tbody></table><div class="empty-state" id="inventory-empty" hidden><i data-lucide="package-open"></i><h3>No inventory records found</h3><p>Change the current filter or check your role access.</p></div></div>
+          <div class="table-wrap inventory-table-wrap"><table class="data-table"><thead><tr><th>Item</th><th>Category</th><th>Location</th><th>Quantity</th><th>Par</th><th>Evidence</th></tr></thead><tbody id="inventory-rows"></tbody></table><div class="empty-state" id="inventory-empty" hidden><i data-lucide="package-open"></i><h3>No inventory records found</h3><p>Change the current filter or check your role access.</p></div></div>
         </section>
 
         <section class="view" id="view-placeholder" data-view-panel="placeholder" hidden>
-          <header class="page-hero"><div><span class="eyebrow" id="placeholder-eyebrow">Atlas workspace</span><h1 id="placeholder-title">Workspace</h1><p id="placeholder-copy">This production interface is being connected to the existing secure Atlas workflow.</p></div></header>
+          <header class="page-hero placeholder-page-hero"><div><span class="eyebrow" id="placeholder-eyebrow">Atlas workspace</span><h1 id="placeholder-title">Workspace</h1><p id="placeholder-copy">This production interface is being connected to the existing secure Atlas workflow.</p></div></header>
           <section class="panel empty-state"><i data-lucide="blocks"></i><h3>Single-interface migration in progress</h3><p>The old screen is not loaded behind this page. The existing API and permission boundary will be connected directly here.</p></section>
         </section>
       </main>
