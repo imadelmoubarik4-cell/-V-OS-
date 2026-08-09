@@ -49,13 +49,39 @@ test('approved design system and responsive states are present', () => {
   assert.match(css, /html\[data-atlas-theme="dark"\]/);
   assert.match(css, /--atlas-bg:\s*#111113/);
   assert.match(css, /--atlas-accent:\s*#3fc7be/);
+  assert.match(css, /@media \(max-width: 900px\)/);
   assert.match(css, /@media \(max-width: 760px\)/);
+  assert.match(css, /@media \(max-width: 640px\)/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(css, /:focus-visible/);
+});
+
+test('phase 3 presentation uses the approved hierarchy without a second shell', () => {
+  assert.match(html, /class="panel evidence-panel"/);
+  assert.match(html, /class="page-hero inventory-page-hero"/);
+  assert.match(html, /class="toolbar inventory-toolbar"/);
+  assert.match(html, /class="table-wrap inventory-table-wrap"/);
+  assert.match(css, /\.metric-grid\s*\{[\s\S]*gap:\s*0/);
+  assert.match(css, /\.nav-item\.active\s*\{[\s\S]*var\(--atlas-accent-soft\)/);
+  assert.match(css, /--atlas-service-bg:/);
+  assert.match(css, /--atlas-service-surface:/);
 });
 
 test('normal inventory view exposes no quantity editor', () => {
   assert.doesNotMatch(html, /qty-input|step-btn|data-line-step/);
   assert.match(html, /Controlled inventory boundary/);
   assert.match(app, /No stock change was performed/);
+});
+
+test('read-only inventory has explicit status and mobile card labels', () => {
+  assert.match(app, /data-label="Item"/);
+  assert.match(app, /data-label="Quantity"/);
+  assert.match(app, /stock-badge warn/);
+  assert.match(app, />Below par</);
+  assert.match(css, /\.data-table td::before\s*\{[\s\S]*content:\s*attr\(data-label\)/);
+});
+
+test('unconnected notification control is visibly honest', () => {
+  assert.match(html, /aria-label="Notifications are not connected yet"/);
+  assert.match(html, /title="Notifications are not connected yet" disabled/);
 });
