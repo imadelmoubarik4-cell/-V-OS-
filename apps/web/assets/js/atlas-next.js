@@ -1,10 +1,10 @@
 (() => {
   'use strict';
 
-  const VERSION = 'atlas-next/0.1.0';
+  const VERSION = 'atlas-next/0.2.0';
   const CONFIG = Object.freeze({
-    supabaseUrl: 'https://dnefgcmjcgxlynycxkts.supabase.co',
-    supabaseKey: 'sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp',
+    supabaseUrl: window.VABAR_CONFIG?.SUPABASE_URL || 'https://dnefgcmjcgxlynycxkts.supabase.co',
+    supabaseKey: window.VABAR_CONFIG?.SUPABASE_ANON_KEY || 'sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp',
     requestTimeoutMs: 12000,
     bootTimeoutMs: 15000,
   });
@@ -12,6 +12,7 @@
   const TITLES = Object.freeze({
     home: 'Home',
     inventory: 'Inventory',
+    operations: 'Operations',
     recipes: 'Recipes',
     purchasing: 'Purchasing',
     imports: 'Import Center',
@@ -28,28 +29,16 @@
     system: 'System',
   });
 
-  const PLACEHOLDERS = Object.freeze({
-    recipes: ['Operations · Recipes', 'Recipes', 'The existing recipe library, costing and availability workflow will be connected directly to this screen.'],
-    purchasing: ['Operations · Purchasing', 'Purchasing', 'Supplier records, review-only drafts and controlled deliveries will be connected without enabling supplier submission.'],
-    imports: ['Operations · Import Center', 'Import Center', 'The private source queue and approval workflow will be connected without loading the legacy page.'],
-    review: ['Data review', 'Real VÁ Data', 'The manager-only 1,104-record review workspace will be connected through its existing authenticated gateway.'],
-    marketing: ['Growth', 'Marketing', 'Planning and approval workflows will be connected with automatic publishing remaining disabled.'],
-    messages: ['People', 'Messages', 'Private team communication will be connected through the existing Team Messages gateway.'],
-    team: ['People', 'Team', 'Profiles, roles and staff status will use the canonical public.profiles authorization model.'],
-    shifts: ['People', 'Shifts', 'The weekly and monthly planning workspace will be connected to the existing private shifts gateway.'],
-    knowledge: ['People', 'Knowledge', 'Published guidance, acknowledgements, training and Source Center will be connected directly.'],
-    brain: ['Insights', 'Atlas Brain', 'Evidence-backed Checkpoint K recommendations will be connected without automatic execution.'],
-    business: ['Insights', 'Business Intelligence', 'Only supported live evidence will be rendered; missing sales sources will remain explicit.'],
-    reports: ['Insights', 'Reports', 'The authenticated reporting workspace and Checkpoint M will be connected directly.'],
-    settings: ['System', 'Settings', 'The versioned Settings workspace and canonical Connection Center will be connected directly.'],
-    system: ['System', 'System', 'Health, incidents, recovery and canonical connection evidence will be connected directly.'],
-  });
+  const CONNECTED_VIEWS = new Set(Object.keys(TITLES).filter((view) => !['home', 'inventory'].includes(view)));
 
   const state = {
     client: null,
     session: null,
     profile: null,
     inventory: [],
+    recipes: [],
+    suppliers: [],
+    movements: [],
     currentView: 'home',
     commandIndex: 0,
     loadingData: false,
@@ -60,8 +49,6 @@
   };
 
   const dom = {};
-
-  const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[character]);
@@ -83,11 +70,11 @@
   function cacheDom() {
     for (const id of [
       'atlas-boot', 'auth-screen', 'auth-form', 'auth-email', 'auth-password', 'auth-submit', 'auth-error',
-      'app-shell', 'sidebar', 'sidebar-nav', 'mobile-menu', 'page-title', 'search-trigger', 'theme-toggle',
-      'service-open', 'service-overlay', 'command-palette', 'command-input', 'command-results', 'sign-out',
-      'profile-avatar', 'profile-label', 'profile-email', 'home-greeting', 'home-metrics', 'home-focus',
-      'evidence-status', 'inventory-search', 'inventory-category', 'inventory-rows', 'inventory-empty',
-      'placeholder-eyebrow', 'placeholder-title', 'placeholder-copy', 'toast', 'review-count',
+      'app-screen', 'app-shell', 'sidebar', 'sidebar-nav', 'mobile-menu', 'page-title', 'search-trigger',
+      'theme-toggle', 'service-open', 'service-overlay', 'command-palette', 'command-input', 'command-results',
+      'sign-out', 'profile-avatar', 'profile-label', 'profile-email', 'home-greeting', 'home-metrics',
+      'home-focus', 'evidence-status', 'inventory-search', 'inventory-category', 'inventory-rows',
+      'inventory-empty', 'placeholder-eyebrow', 'placeholder-title', 'placeholder-copy', 'toast', 'review-count',
     ]) dom[id] = document.getElementById(id);
   }
 
@@ -96,21 +83,6 @@
     dom['atlas-boot'].hidden = !visible;
     const copy = dom['atlas-boot'].querySelector('span');
     if (copy && label) copy.textContent = label;
-  }
-
-  function showAuth(message = '') {
-    dom['app-shell'].hidden = true;
-    dom['auth-screen'].hidden = false;
-    setBoot(false);
-    setAuthError(message);
-    window.requestAnimationFrame(() => dom['auth-email']?.focus());
-  }
-
-  function showApp() {
-    dom['auth-screen'].hidden = true;
-    dom['app-shell'].hidden = false;
-    setBoot(false);
-    renderIcons();
   }
 
   function setAuthError(message = '') {
@@ -125,8 +97,25 @@
     dom['auth-submit'].textContent = busy ? 'Signing in…' : 'Sign in';
   }
 
+  function showAuth(message = '') {
+    if (dom['app-screen']) dom['app-screen'].hidden = true;
+    if (dom['app-shell']) dom['app-shell'].hidden = true;
+    dom['auth-screen'].hidden = false;
+    setBoot(false);
+    setAuthError(message);
+    window.requestAnimationFrame(() => dom['auth-email']?.focus());
+  }
+
+  function showApp() {
+    dom['auth-screen'].hidden = true;
+    if (dom['app-screen']) dom['app-screen'].hidden = false;
+    dom['app-shell'].hidden = false;
+    setBoot(false);
+    renderIcons();
+  }
+
   function showToast(message, duration = 4200) {
-    if (!dom.toast) return;
+    if (!dom.toast || !message) return;
     dom.toast.textContent = message;
     dom.toast.hidden = false;
     window.clearTimeout(showToast.timer);
@@ -138,33 +127,48 @@
     if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(CONFIG.supabaseUrl)) throw new Error('Atlas has an invalid Supabase URL.');
   }
 
+  function dispatchAuth() {
+    document.dispatchEvent(new CustomEvent('atlas:auth', {
+      detail: { client: state.client, session: state.session, profile: state.profile },
+    }));
+  }
+
   function createClient() {
     ensureLibraries();
-    return window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey, {
+    const client = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
       },
-      global: {
-        headers: { 'x-client-info': VERSION },
-      },
+      global: { headers: { 'x-client-info': VERSION } },
     });
+    window.atlasSupabase = client;
+    window.sb = client;
+    window.AtlasData?.configure?.(client);
+    state.client = client;
+    dispatchAuth();
+    return client;
   }
 
   async function resolveProfile(user) {
     const response = await withTimeout(
-      state.client.from('profiles').select('id,email,role,active').eq('id', user.id).maybeSingle(),
+      state.client.from('profiles').select('id,email,display_name,role,active').eq('id', user.id).maybeSingle(),
       CONFIG.requestTimeoutMs,
       'Profile verification took too long.',
     );
     if (response.error) throw response.error;
     const profile = response.data;
     if (!profile?.active) throw new Error('This account does not have active Atlas access. Ask an administrator to activate the profile.');
+    if (!['admin', 'manager', 'bartender', 'viewer'].includes(profile.role)) throw new Error('This Atlas profile has an unsupported role.');
     return profile;
   }
 
-  async function inventoryRequest(fields) {
+  function canManageCommercial() {
+    return ['admin', 'manager'].includes(state.profile?.role || '');
+  }
+
+  async function managerInventoryRequest(fields) {
     return withTimeout(
       state.client.from('inventory_items').select(fields).order('name', { ascending: true }),
       CONFIG.requestTimeoutMs,
@@ -172,13 +176,57 @@
     );
   }
 
+  async function staffInventoryRequest(fields) {
+    return withTimeout(
+      state.client.from('inventory_catalog').select(fields).order('name', { ascending: true }),
+      CONFIG.requestTimeoutMs,
+      'Inventory took too long to respond.',
+    );
+  }
+
   async function loadInventory() {
-    const preferred = 'id,name,category,quantity,unit,par_level,sku,barcode,bin_location,updated_at,active';
-    const fallback = 'id,name,category,quantity,unit,par_level,sku,bin_location,updated_at';
-    let response = await inventoryRequest(preferred);
-    if (response.error && /column|schema cache/i.test(response.error.message || '')) response = await inventoryRequest(fallback);
+    const safeFields = 'id,name,category,quantity,unit,par_level,sku,barcode,bin_location,updated_at,active,units_per_case,size_ml,package_size';
+    const managerFields = `${safeFields},supplier,supplier_id,supplier_product_reference,cost_price,case_cost,critical_minimum,lead_time_days,minimum_order_quantity`;
+    let response = canManageCommercial()
+      ? await managerInventoryRequest(managerFields)
+      : await staffInventoryRequest(safeFields);
+
+    if (response.error && /column|schema cache|relation/i.test(response.error.message || '')) {
+      response = await managerInventoryRequest(safeFields);
+    }
     if (response.error) throw response.error;
     state.inventory = Array.isArray(response.data) ? response.data.filter((item) => item.active !== false) : [];
+  }
+
+  async function loadSupportingData() {
+    if (!window.AtlasData) return;
+    window.AtlasData.configure?.(state.client);
+    const manage = canManageCommercial();
+    const [recipeResult, supplierResult, movementResult] = await Promise.allSettled([
+      withTimeout(window.AtlasData.getRecipes({ canManageCommercial: manage }), CONFIG.requestTimeoutMs, 'Recipes took too long to respond.'),
+      withTimeout(window.AtlasData.getSuppliers({ canManageCommercial: manage }), CONFIG.requestTimeoutMs, 'Suppliers took too long to respond.'),
+      withTimeout(window.AtlasData.getInventoryMovements({ canManageCommercial: manage, movementType: 'restock' }), CONFIG.requestTimeoutMs, 'Purchasing history took too long to respond.'),
+    ]);
+    state.recipes = recipeResult.status === 'fulfilled' && Array.isArray(recipeResult.value) ? recipeResult.value : [];
+    state.suppliers = supplierResult.status === 'fulfilled' && Array.isArray(supplierResult.value) ? supplierResult.value : [];
+    state.movements = movementResult.status === 'fulfilled' && Array.isArray(movementResult.value) ? movementResult.value : [];
+    for (const result of [recipeResult, supplierResult, movementResult]) {
+      if (result.status === 'rejected') console.warn('Atlas supporting data warning', result.reason);
+    }
+  }
+
+  function dispatchData() {
+    document.dispatchEvent(new CustomEvent('atlas:data', {
+      detail: {
+        client: state.client,
+        session: state.session,
+        profile: state.profile,
+        inventory: state.inventory,
+        recipes: state.recipes,
+        suppliers: state.suppliers,
+        movements: state.movements,
+      },
+    }));
   }
 
   async function loadRuntimeData({ quiet = false } = {}) {
@@ -187,14 +235,20 @@
     if (!quiet) showToast('Refreshing live Atlas data…', 1600);
     try {
       await loadInventory();
+      await loadSupportingData();
       renderHome();
       renderInventory();
+      dispatchData();
       if (!quiet) showToast('Atlas data refreshed.');
     } catch (error) {
       console.error('Atlas data load failed', error);
       state.inventory = [];
+      state.recipes = [];
+      state.suppliers = [];
+      state.movements = [];
       renderHome();
       renderInventory();
+      dispatchData();
       showToast(error instanceof Error ? error.message : 'Atlas data could not load.');
     } finally {
       state.loadingData = false;
@@ -202,6 +256,8 @@
   }
 
   function profileDisplayName() {
+    const explicit = String(state.profile?.display_name || '').trim();
+    if (explicit) return explicit;
     const email = state.profile?.email || state.session?.user?.email || 'Atlas staff';
     const local = email.split('@')[0] || 'Atlas staff';
     return local.replace(/[._-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -215,6 +271,8 @@
     dom['profile-avatar'].textContent = name.charAt(0).toUpperCase() || 'A';
     dom['home-greeting'].textContent = `Good day, ${name.split(' ')[0]}.`;
     document.body.dataset.atlasRole = state.profile?.role || 'unknown';
+    window.currentUser = state.session?.user || null;
+    dispatchAuth();
   }
 
   async function enterApplication(session) {
@@ -224,13 +282,15 @@
       state.profile = await resolveProfile(session.user);
       installProfile();
       showApp();
-      navigate('home', { replaceHistory: true });
+      const requested = location.hash.replace(/^#/, '').split('/')[0];
+      navigate(TITLES[requested] ? requested : 'home', { replaceHistory: true });
       await loadRuntimeData({ quiet: true });
     } catch (error) {
       console.error('Atlas access verification failed', error);
       await state.client.auth.signOut().catch(() => undefined);
       state.session = null;
       state.profile = null;
+      dispatchAuth();
       showAuth(error instanceof Error ? error.message : 'Atlas access could not be verified.');
     }
   }
@@ -267,6 +327,12 @@
     state.session = null;
     state.profile = null;
     state.inventory = [];
+    state.recipes = [];
+    state.suppliers = [];
+    state.movements = [];
+    document.body.dataset.atlasRole = 'unknown';
+    dispatchAuth();
+    dispatchData();
     showAuth('');
   }
 
@@ -275,7 +341,8 @@
   }
 
   function focusRow(tone, title, copy, badge) {
-    return `<div class="focus-row"><span class="focus-dot" style="background:var(--atlas-${tone})"></span><div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(copy)}</span></div>${badge ? `<span class="status-pill ${tone === 'success' ? 'good' : tone === 'warning' ? 'warn' : tone === 'danger' ? 'bad' : ''}">${escapeHtml(badge)}</span>` : ''}</div>`;
+    const statusClass = tone === 'success' ? 'good' : tone === 'warning' ? 'warn' : tone === 'danger' ? 'bad' : '';
+    return `<div class="focus-row"><span class="focus-dot" style="background:var(--atlas-${tone})"></span><div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(copy)}</span></div>${badge ? `<span class="status-pill ${statusClass}">${escapeHtml(badge)}</span>` : ''}</div>`;
   }
 
   function inventoryStats() {
@@ -298,17 +365,17 @@
 
     const focus = [];
     if (!stats.records) focus.push(focusRow('warning', 'Inventory evidence unavailable', 'No role-permitted inventory records were returned.', 'Review'));
-    else if (stats.belowPar) focus.push(focusRow('warning', `${stats.belowPar} recorded item${stats.belowPar === 1 ? '' : 's'} below par`, 'Review the source evidence before creating any replenishment draft.', 'Attention'));
-    else focus.push(focusRow('success', 'No recorded item is currently below par', 'This statement uses the available recorded quantities; it does not claim a fresh verified count.', 'Recorded'));
-    if (stats.missingPar) focus.push(focusRow('warning', `${stats.missingPar} item${stats.missingPar === 1 ? '' : 's'} missing par`, 'Item-master completion is required before shortage guidance is complete.', 'L2'));
-    focus.push(focusRow('accent', 'Stock changes remain controlled', 'The replacement interface contains no direct quantity editor.', 'Protected'));
+    else if (stats.belowPar) focus.push(focusRow('warning', `${stats.belowPar} recorded item${stats.belowPar === 1 ? '' : 's'} below par`, 'Review the source evidence before preparing a replenishment draft.', 'Attention'));
+    else focus.push(focusRow('success', 'No recorded item is currently below par', 'This uses the recorded quantities and does not claim a fresh physical count.', 'Recorded'));
+    if (stats.missingPar) focus.push(focusRow('warning', `${stats.missingPar} item${stats.missingPar === 1 ? '' : 's'} missing par`, 'Complete the Item master before relying on shortage guidance.', 'L2'));
+    focus.push(focusRow('accent', 'Stock changes remain controlled', 'Ordinary Inventory contains no direct quantity editor. Use Scanner, L1 or a controlled delivery.', 'Protected'));
     dom['home-focus'].innerHTML = focus.join('');
 
     dom['evidence-status'].innerHTML = [
       focusRow('success', 'Authenticated session', `Verified as ${state.profile?.role || 'staff'} through production Auth.`, 'Live'),
       focusRow(stats.records ? 'success' : 'warning', 'Production inventory read', `${stats.records} role-permitted records loaded.`, stats.records ? 'Loaded' : 'Unavailable'),
-      focusRow('warning', 'Manager-verified current count', 'L1 evidence is not yet mounted in this replacement route.', 'Pending UI'),
-      focusRow('success', 'Automatic side effects', 'Ordering, publishing and production synchronization remain disabled.', 'Off'),
+      focusRow('success', 'Manager-verified stock counts', 'Checkpoint L1 is connected in Inventory. Current, stale, historical and unverified states remain explicit.', 'Connected'),
+      focusRow('success', 'Automatic external side effects', 'Supplier submission, social publishing and production synchronization remain disabled.', 'Off'),
     ].join('');
     renderIcons();
   }
@@ -325,9 +392,9 @@
   }
 
   function formatQuantity(value) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) return '—';
-    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(number);
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return '—';
+    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(parsed);
   }
 
   function evidenceLabel(item) {
@@ -341,7 +408,8 @@
 
   function renderInventoryCategories() {
     const selected = state.inventoryCategory;
-    const categories = [...new Set(state.inventory.map((item) => item.category).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
+    const categories = [...new Set(state.inventory.map((item) => item.category).filter(Boolean))]
+      .sort((left, right) => String(left).localeCompare(String(right)));
     dom['inventory-category'].innerHTML = `<option value="all">All categories</option>${categories.map((category) => `<option value="${escapeHtml(category)}" ${category === selected ? 'selected' : ''}>${escapeHtml(category)}</option>`).join('')}`;
   }
 
@@ -367,36 +435,37 @@
   }
 
   function renderPlaceholder(view) {
-    const [eyebrow, title, copy] = PLACEHOLDERS[view] || ['Atlas workspace', TITLES[view] || 'Workspace', 'This workspace will be connected to the existing Atlas engine.'];
-    dom['placeholder-eyebrow'].textContent = eyebrow;
-    dom['placeholder-title'].textContent = title;
-    dom['placeholder-copy'].textContent = copy;
+    dom['placeholder-eyebrow'].textContent = 'Atlas workspace';
+    dom['placeholder-title'].textContent = TITLES[view] || 'Workspace';
+    dom['placeholder-copy'].textContent = 'This route is not part of the approved Atlas workspace registry.';
   }
 
   function navigate(view, options = {}) {
     if (!TITLES[view]) view = 'home';
     state.currentView = view;
     dom['page-title'].textContent = TITLES[view];
+    const panelKey = view === 'home' ? 'home' : view === 'inventory' ? 'inventory' : CONNECTED_VIEWS.has(view) ? 'connected' : 'placeholder';
     document.querySelectorAll('[data-view-panel]').forEach((panel) => {
-      const visible = panel.dataset.viewPanel === view || (panel.dataset.viewPanel === 'placeholder' && !['home', 'inventory'].includes(view));
-      panel.hidden = !visible;
+      panel.hidden = panel.dataset.viewPanel !== panelKey;
     });
-    document.querySelectorAll('.nav-item[data-view]').forEach((button) => {
+    document.querySelectorAll('#sidebar-nav .nav-item[data-view]').forEach((button) => {
       const active = button.dataset.view === view;
       button.classList.toggle('active', active);
       if (active) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     });
-    if (!['home', 'inventory'].includes(view)) renderPlaceholder(view);
+    if (panelKey === 'placeholder') renderPlaceholder(view);
     document.body.classList.remove('nav-open');
-    if (!options.replaceHistory) history.pushState({ view }, '', `#${view}`);
-    else history.replaceState({ view }, '', `#${view}`);
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    const hash = `#${view}`;
+    if (options.replaceHistory) history.replaceState({ view }, '', hash);
+    else if (location.hash !== hash) history.pushState({ view }, '', hash);
+    document.dispatchEvent(new CustomEvent('atlas:navigate', { detail: { view, panel: panelKey } }));
+    window.scrollTo({ top: 0, behavior: 'auto' });
     renderIcons();
   }
 
   function commandEntries() {
-    return Array.from(document.querySelectorAll('.nav-item[data-view]')).map((button) => ({
+    return Array.from(document.querySelectorAll('#sidebar-nav .nav-item[data-view]')).map((button) => ({
       view: button.dataset.view,
       label: TITLES[button.dataset.view] || button.textContent.trim(),
       group: button.closest('.nav-group')?.querySelector('.nav-label')?.textContent || 'Atlas',
@@ -411,7 +480,9 @@
   function renderCommands() {
     const entries = filteredCommands();
     state.commandIndex = Math.max(0, Math.min(state.commandIndex, entries.length - 1));
-    dom['command-results'].innerHTML = entries.length ? entries.map((entry, index) => `<button class="command-option ${index === state.commandIndex ? 'active' : ''}" type="button" role="option" aria-selected="${index === state.commandIndex}" data-command-view="${escapeHtml(entry.view)}"><i data-lucide="arrow-right"></i><div><span>${escapeHtml(entry.label)}</span><small>${escapeHtml(entry.group)}</small></div></button>`).join('') : '<div class="empty-state"><i data-lucide="search-x"></i><h3>No matching workspace</h3><p>Try inventory, recipes, shifts, reports or settings.</p></div>';
+    dom['command-results'].innerHTML = entries.length
+      ? entries.map((entry, index) => `<button class="command-option ${index === state.commandIndex ? 'active' : ''}" type="button" role="option" aria-selected="${index === state.commandIndex}" data-command-view="${escapeHtml(entry.view)}"><i data-lucide="arrow-right"></i><div><span>${escapeHtml(entry.label)}</span><small>${escapeHtml(entry.group)}</small></div></button>`).join('')
+      : '<div class="empty-state"><i data-lucide="search-x"></i><h3>No matching workspace</h3><p>Try Inventory, Recipes, Shifts, Reports or Settings.</p></div>';
     renderIcons();
   }
 
@@ -456,7 +527,7 @@
 
   function unavailableWorkflow(label) {
     closeService();
-    showToast(`${label} is being connected to the existing secure gateway. No stock change was performed.`);
+    showToast(`${label} is not enabled in this deployment. No stock change was performed.`);
   }
 
   function bindEvents() {
@@ -488,7 +559,9 @@
       const viewButton = event.target.closest('[data-service-view]');
       if (viewButton) { closeService(); navigate(viewButton.dataset.serviceView); }
       const actionButton = event.target.closest('[data-service-action]');
-      if (actionButton) unavailableWorkflow(actionButton.dataset.serviceAction === 'scan' ? 'Barcode scanner' : 'L1 stock count');
+      if (actionButton?.dataset.serviceAction === 'count') return;
+      if (actionButton?.dataset.serviceAction === 'scan') return;
+      if (actionButton) unavailableWorkflow(actionButton.dataset.serviceAction || 'Workflow');
     });
     dom['inventory-search'].addEventListener('input', (event) => { state.inventoryQuery = event.target.value; renderInventory(); });
     dom['inventory-category'].addEventListener('change', (event) => { state.inventoryCategory = event.target.value; renderInventory(); });
@@ -497,8 +570,8 @@
       if (!action) return;
       if (action === 'refresh') loadRuntimeData();
       else if (action === 'inventory') navigate('inventory');
-      else if (action === 'scan') unavailableWorkflow('Barcode scanner');
-      else if (action === 'start-count') unavailableWorkflow('L1 stock count');
+      else if (action === 'scan') window.AtlasInventoryScanner?.open?.();
+      else if (action === 'start-count') return;
     });
     document.addEventListener('keydown', (event) => {
       const typing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || event.target?.isContentEditable;
@@ -521,9 +594,16 @@
       const sessionResponse = await withTimeout(state.client.auth.getSession(), CONFIG.bootTimeoutMs, 'Atlas session recovery timed out.');
       if (sessionResponse.error) throw sessionResponse.error;
       state.authSubscription = state.client.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_OUT' && !dom['auth-screen'].hidden) return;
-        if (event === 'SIGNED_OUT') showAuth('');
-        if (event === 'TOKEN_REFRESHED' && session) state.session = session;
+        if (event === 'SIGNED_OUT') {
+          state.session = null;
+          state.profile = null;
+          dispatchAuth();
+          if (dom['auth-screen'].hidden) showAuth('');
+        }
+        if (event === 'TOKEN_REFRESHED' && session) {
+          state.session = session;
+          dispatchAuth();
+        }
       }).data.subscription;
 
       const session = sessionResponse.data?.session;
@@ -550,7 +630,17 @@
     version: VERSION,
     navigate,
     refresh: loadRuntimeData,
-    state: () => ({ currentView: state.currentView, role: state.profile?.role || null, inventoryRecords: state.inventory.length }),
+    renderHome,
+    renderInventory,
+    toast: showToast,
+    state: () => ({
+      currentView: state.currentView,
+      role: state.profile?.role || null,
+      inventoryRecords: state.inventory.length,
+      recipeRecords: state.recipes.length,
+      supplierRecords: state.suppliers.length,
+      movementRecords: state.movements.length,
+    }),
   });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
