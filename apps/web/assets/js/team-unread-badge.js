@@ -20,7 +20,7 @@
 
   function appIsSignedIn() {
     const app = document.getElementById('app-screen');
-    const login = document.getElementById('login-screen');
+    const login = document.getElementById('auth-screen') || document.getElementById('login-screen');
     if (!app) return false;
     const appVisible = window.getComputedStyle(app).display !== 'none';
     const loginVisible = Boolean(login) && window.getComputedStyle(login).display !== 'none';
@@ -43,11 +43,14 @@
   function badgeTargets() {
     return [
       {
-        container: document.querySelector('.nav-item[data-view="team"]'),
+        container: document.querySelector('#sidebar-nav .nav-item[data-view="messages"]')
+          || document.querySelector('.nav-item[data-view="team"]'),
         className: 'team-nav-unread'
       },
       {
-        container: document.querySelector('.atlas-topbar .top-icon[title="Notifications"]'),
+        container: document.getElementById('notifications-open')
+          || document.querySelector('.topbar .icon-button[title="Notifications"]')
+          || document.querySelector('.atlas-topbar .top-icon[title="Notifications"]'),
         className: 'team-bell-unread'
       }
     ];
@@ -56,20 +59,15 @@
   function updateOneBadge(container, className, total) {
     if (!container) return;
     let badge = container.querySelector(`.${className}`);
-
-    // A zero is not a notification. Removing it is more reliable than relying
-    // on hidden because the badge's CSS uses an explicit display value.
     if (total <= 0) {
       badge?.remove();
       return;
     }
-
     if (!badge) {
       badge = document.createElement('span');
       badge.className = className;
       container.appendChild(badge);
     }
-
     const nextText = total > 99 ? '99+' : String(total);
     if (badge.textContent !== nextText) badge.textContent = nextText;
     badge.hidden = false;
@@ -109,15 +107,12 @@
   async function fetchUnreadTotal() {
     const api = endpoint();
     if (!api) throw new Error('Team Messages API is not configured.');
-
     const session = await activeSession();
     if (!session?.access_token) return 0;
-
     const url = new URL(api);
     url.searchParams.set('action', 'snapshot');
     url.searchParams.set('channel', 'general');
     url.searchParams.set('limit', '1');
-
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
@@ -125,10 +120,7 @@
         method: 'GET',
         cache: 'no-store',
         signal: controller.signal,
-        headers: {
-          authorization: `Bearer ${session.access_token}`,
-          accept: 'application/json'
-        }
+        headers: { authorization: `Bearer ${session.access_token}`, accept: 'application/json' }
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -147,14 +139,10 @@
       if (!appIsSignedIn()) setUnreadTotal(0);
       return;
     }
-
-    // While Team is open, reuse its current full snapshot so the background
-    // poll does not race against the channel mark-as-read request.
     if (teamIsVisible() && window.AtlasTeamMessages?.snapshot?.()) {
       setUnreadTotal(window.AtlasTeamMessages.unreadCount?.() || 0);
       return;
     }
-
     state.inFlight = true;
     try {
       setUnreadTotal(await fetchUnreadTotal());
@@ -188,9 +176,6 @@
   function attachBadgeObserver() {
     state.badgeObserver?.disconnect();
     state.badgeObserver = new MutationObserver(scheduleZeroCleanup);
-
-    // Observe only direct badge additions/removals. Never rewrite a positive
-    // badge from inside the observer; that would create a self-triggering loop.
     badgeTargets().forEach(({ container }) => {
       if (!container) return;
       state.badgeObserver.observe(container, { childList: true });
@@ -216,23 +201,23 @@
   function init() {
     if (state.initialized) return;
     state.initialized = true;
-
     attachBadgeObserver();
     cleanLegacyZeroBadges();
     startPolling();
     refreshUnread();
-
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', () => refreshUnread({ silent: true }));
     window.addEventListener('online', () => refreshUnread());
-
+    document.addEventListener('atlas:auth', () => {
+      attachBadgeObserver();
+      refreshUnread();
+    });
     if (!subscribeToAuth()) {
       const authTimer = window.setInterval(() => {
         if (subscribeToAuth()) window.clearInterval(authTimer);
       }, 250);
       window.setTimeout(() => window.clearInterval(authTimer), 10000);
     }
-
     window.addEventListener('pagehide', () => {
       stopPolling();
       state.badgeObserver?.disconnect();
@@ -247,9 +232,6 @@
     clear: () => setUnreadTotal(0)
   };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init, { once: true });
-  } else {
-    init();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+  else init();
 })();
