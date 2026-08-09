@@ -58,15 +58,44 @@ class AtlasNextReplacementContract(unittest.TestCase):
     def test_design_tokens_and_responsive_contract(self):
         for token in ("#f6f6f4", "#1fa8a0", "#111113", "#3fc7be"):
             self.assertIn(token, CSS.lower())
+        self.assertIn('@media (max-width: 900px)', CSS)
         self.assertIn('@media (max-width: 760px)', CSS)
+        self.assertIn('@media (max-width: 640px)', CSS)
         self.assertIn('prefers-reduced-motion', CSS)
         self.assertIn(':focus-visible', CSS)
+
+    def test_phase3_presentation_structure(self):
+        self.assertIn('class="panel evidence-panel"', HTML)
+        self.assertIn('class="page-hero inventory-page-hero"', HTML)
+        self.assertIn('class="toolbar inventory-toolbar"', HTML)
+        self.assertIn('class="table-wrap inventory-table-wrap"', HTML)
+        self.assertRegex(CSS, r"\.metric-grid\s*\{[\s\S]*?gap:\s*0")
+        self.assertRegex(
+            CSS,
+            r"\.nav-item\.active\s*\{[\s\S]*?var\(--atlas-accent-soft\)",
+        )
+        self.assertIn("--atlas-service-bg:", CSS)
+        self.assertIn("--atlas-service-surface:", CSS)
 
     def test_normal_inventory_is_not_editable(self):
         for forbidden in ("qty-input", "step-btn", "data-line-step"):
             self.assertNotIn(forbidden, HTML)
         self.assertIn("Controlled inventory boundary", HTML)
         self.assertIn("No stock change was performed", APP)
+
+    def test_mobile_inventory_cards_remain_read_only(self):
+        self.assertIn('data-label="Item"', APP)
+        self.assertIn('data-label="Quantity"', APP)
+        self.assertIn("stock-badge warn", APP)
+        self.assertIn(">Below par<", APP)
+        self.assertRegex(
+            CSS,
+            r"\.data-table td::before\s*\{[\s\S]*?content:\s*attr\(data-label\)",
+        )
+
+    def test_unconnected_notifications_are_honest(self):
+        self.assertIn('aria-label="Notifications are not connected yet"', HTML)
+        self.assertIn('title="Notifications are not connected yet" disabled', HTML)
 
 
 if __name__ == "__main__":
