@@ -351,13 +351,15 @@
     dom['inventory-rows'].innerHTML = rows.map((item) => {
       const belowPar = Number.isFinite(Number(item.par_level)) && Number(item.quantity) < Number(item.par_level);
       const [evidence, tone] = evidenceLabel(item);
+      const quantity = `${formatQuantity(item.quantity)} ${item.unit || ''}`.trim();
+      const par = item.par_level == null ? '—' : `${formatQuantity(item.par_level)} ${item.unit || ''}`.trim();
       return `<tr>
-        <td><span class="item-name">${escapeHtml(item.name || 'Unnamed item')}</span><span class="item-meta">${escapeHtml([item.sku, item.barcode].filter(Boolean).join(' · ') || 'No product code')}</span></td>
-        <td>${escapeHtml(item.category || 'Uncategorised')}</td>
-        <td>${escapeHtml(item.bin_location || 'Not assigned')}</td>
-        <td><span class="quantity ${belowPar ? 'low' : ''}">${escapeHtml(formatQuantity(item.quantity))} ${escapeHtml(item.unit || '')}</span></td>
-        <td>${item.par_level == null ? '—' : escapeHtml(`${formatQuantity(item.par_level)} ${item.unit || ''}`)}</td>
-        <td><span class="status-pill ${tone}">${escapeHtml(evidence)}</span></td>
+        <td data-label="Item"><span class="item-name">${escapeHtml(item.name || 'Unnamed item')}</span><span class="item-meta">${escapeHtml([item.sku, item.barcode].filter(Boolean).join(' · ') || 'No product code')}</span></td>
+        <td data-label="Category">${escapeHtml(item.category || 'Uncategorised')}</td>
+        <td data-label="Location">${escapeHtml(item.bin_location || 'Not assigned')}</td>
+        <td data-label="Quantity"><span class="quantity-stack"><span class="quantity ${belowPar ? 'low' : ''}">${escapeHtml(quantity)}</span>${belowPar ? '<span class="stock-badge warn">Below par</span>' : ''}</span></td>
+        <td data-label="Par">${escapeHtml(par)}</td>
+        <td data-label="Evidence"><span class="status-pill ${tone}">${escapeHtml(evidence)}</span></td>
       </tr>`;
     }).join('');
     dom['inventory-empty'].hidden = rows.length > 0;
