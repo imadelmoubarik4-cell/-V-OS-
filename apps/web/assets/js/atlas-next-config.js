@@ -24,3 +24,32 @@ window.VABAR_CONFIG = Object.freeze({
   READ_SOURCES_API: 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-read-sources',
   POS_MAPPING_API: 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-pos-mapping',
 });
+
+(() => {
+  const install = () => {
+    const lucide = window.lucide;
+    if (!lucide || typeof lucide.createIcons !== 'function') return false;
+    if (lucide.createIcons.__atlasStabilityGuard) return true;
+    const original = lucide.createIcons.bind(lucide);
+    let rendering = false;
+    const guarded = function guardedCreateIcons(options) {
+      if (rendering) return undefined;
+      if (!document.querySelector('i[data-lucide], span[data-lucide]')) return undefined;
+      rendering = true;
+      try { return original(options); }
+      finally { rendering = false; }
+    };
+    guarded.__atlasStabilityGuard = true;
+    guarded.__atlasOriginal = original;
+    lucide.createIcons = guarded;
+    return true;
+  };
+  if (install()) return;
+  let attempts = 0;
+  const retry = () => {
+    attempts += 1;
+    if (install() || attempts >= 100) return;
+    window.setTimeout(retry, 50);
+  };
+  retry();
+})();
