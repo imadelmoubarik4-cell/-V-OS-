@@ -40,6 +40,24 @@
     return Math.min(9999, Math.floor(parsed));
   }
 
+  function connectBell() {
+    let bell = document.getElementById('notifications-open');
+    if (!bell) {
+      bell = document.querySelector('.topbar .icon-button[title="Notifications are not connected yet"]')
+        || document.querySelector('.topbar .icon-button[aria-label="Notifications are not connected yet"]');
+    }
+    if (!bell) return null;
+    bell.id = 'notifications-open';
+    bell.disabled = false;
+    bell.title = 'Open Messages';
+    bell.setAttribute('aria-label', 'Open Messages');
+    if (bell.dataset.atlasMessagesBound !== 'true') {
+      bell.dataset.atlasMessagesBound = 'true';
+      bell.addEventListener('click', () => window.AtlasNext?.navigate?.('messages'));
+    }
+    return bell;
+  }
+
   function badgeTargets() {
     return [
       {
@@ -48,7 +66,7 @@
         className: 'team-nav-unread'
       },
       {
-        container: document.getElementById('notifications-open')
+        container: connectBell()
           || document.querySelector('.topbar .icon-button[title="Notifications"]')
           || document.querySelector('.atlas-topbar .top-icon[title="Notifications"]'),
         className: 'team-bell-unread'
@@ -201,6 +219,7 @@
   function init() {
     if (state.initialized) return;
     state.initialized = true;
+    connectBell();
     attachBadgeObserver();
     cleanLegacyZeroBadges();
     startPolling();
@@ -209,6 +228,7 @@
     window.addEventListener('focus', () => refreshUnread({ silent: true }));
     window.addEventListener('online', () => refreshUnread());
     document.addEventListener('atlas:auth', () => {
+      connectBell();
       attachBadgeObserver();
       refreshUnread();
     });
