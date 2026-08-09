@@ -50,6 +50,57 @@ var openSupplierModal = function openSupplierModal() {
   window.AtlasNextPurchasing?.openSupplier?.();
 };
 
+window.AtlasOperations = window.AtlasOperations || Object.freeze({
+  orderSuggestions() {
+    return (Array.isArray(items) ? items : []).filter((item) => item.active !== false).map((item) => {
+      const par = Number(item.par_level);
+      const quantity = Number(item.quantity);
+      const orderQuantity = Number.isFinite(par) && Number.isFinite(quantity) ? Math.max(par - quantity, 0) : 0;
+      return {
+        id: item.id,
+        name: item.name,
+        supplier: item.supplier || 'Supplier not assigned',
+        orderQuantity,
+        unit: item.unit || 'units',
+        estimatedCost: Number.isFinite(Number(item.cost_price)) ? Number(item.cost_price) * orderQuantity : 0,
+        ordered: false,
+      };
+    }).filter((entry) => entry.orderQuantity > 0);
+  },
+  readinessData() {
+    const low = (Array.isArray(items) ? items : []).filter((item) => item.active !== false
+      && Number.isFinite(Number(item.par_level)) && Number(item.quantity) < Number(item.par_level));
+    const snapshot = window.AtlasCheckpointA?.snapshot?.() || {};
+    const routines = Array.isArray(snapshot.routines) ? snapshot.routines.filter((routine) => routine.routine_type !== 'temperature') : [];
+    const progress = routines.reduce((total, routine) => {
+      total.complete += Number(routine.progress?.completed || 0);
+      total.total += Number(routine.progress?.required || 0);
+      return total;
+    }, { complete: 0, total: 0 });
+    const temperature = snapshot.temperature?.summary || {};
+    const tempRequired = Number(temperature.required_points || 0);
+    const tempLogged = Number(temperature.logged_points || 0);
+    progress.complete += tempLogged;
+    progress.total += tempRequired;
+    const opening = {
+      complete: progress.complete,
+      total: progress.total,
+      percent: progress.total ? Math.round((progress.complete / progress.total) * 100) : 0,
+    };
+    const score = Math.max(0, Math.min(100,
+      (opening.total ? opening.percent : 80)
+      - Math.min(35, low.length * 4)
+      - Math.min(20, Number(temperature.outside_range_points || 0) * 10)));
+    return {
+      score,
+      label: score >= 85 ? 'Ready for service' : score >= 60 ? 'Review before service' : 'Attention required',
+      low,
+      issues: [],
+      opening,
+    };
+  },
+});
+
 (() => {
   'use strict';
 
@@ -97,7 +148,7 @@ var openSupplierModal = function openSupplierModal() {
   });
 
   const HOSTS = Object.freeze({
-    operations: 'operations-center',
+    operations: 'operations-view',
     recipes: 'recipes-view',
     purchasing: 'purchasing-view',
     imports: 'imports-view',
@@ -107,7 +158,7 @@ var openSupplierModal = function openSupplierModal() {
     team: 'team-profiles-view',
     shifts: 'shifts-view',
     knowledge: 'knowledge-view',
-    brain: 'brain-shell',
+    brain: 'brain-view',
     business: 'business-view',
     reports: 'reports-view',
     settings: 'settings-view',
@@ -196,6 +247,7 @@ var openSupplierModal = function openSupplierModal() {
       else if (route === 'shifts') window.AtlasShifts?.refresh?.();
       else if (route === 'knowledge') window.AtlasKnowledge?.refresh?.();
       else if (route === 'brain') {
+        window.AtlasBrain?.render?.();
         window.AtlasDailyBriefing?.refresh?.();
         window.AtlasPhase3Brain?.refresh?.();
         window.AtlasCheckpointK?.refresh?.();
@@ -249,10 +301,6 @@ var openSupplierModal = function openSupplierModal() {
   function navigateLegacy(view) {
     const normalized = LEGACY_ROUTES[String(view || '').trim()] || String(view || '').trim();
     if (!normalized) return;
-    if (normalized === 'home' || normalized === 'inventory') {
-      window.AtlasNext?.navigate?.(normalized);
-      return;
-    }
     window.AtlasNext?.navigate?.(normalized);
   }
 
@@ -270,6 +318,9 @@ var openSupplierModal = function openSupplierModal() {
     window.recipes = recipes;
     window.suppliers = suppliers;
     window.restockLog = restockLog;
+    window.AtlasNextPurchasing?.render?.();
+    window.AtlasBrain?.render?.();
+    window.AtlasBusiness?.render?.();
     if (state.route) invokeRoute(state.route);
   }
 
@@ -291,7 +342,8 @@ var openSupplierModal = function openSupplierModal() {
       else button.removeAttribute('aria-current');
     });
     restoreVisibleNavigation('inventory');
-    document.getElementById('page-title').textContent = 'Item master';
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) pageTitle.textContent = 'Item master';
   }
 
   function ensureItemMasterTab(attempt = 0) {
