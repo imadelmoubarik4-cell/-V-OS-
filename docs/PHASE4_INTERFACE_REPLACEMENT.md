@@ -4,40 +4,40 @@
 
 The Phase 4 overlay experiment is retired as an implementation strategy. It remains available in PR #9 for visual reference, but it is not the foundation of the release UI.
 
-The production direction is now:
+The production direction is:
 
 - one login screen;
 - one application shell;
 - one navigation system;
-- one renderer per workspace;
+- one renderer per visible workspace;
 - existing Atlas Auth, RLS, Edge Functions, evidence and publication contracts beneath that interface.
 
 The Claude Design remains authoritative for visual hierarchy, information architecture, responsive behavior, icons, Service Mode and interaction quality. It is not shipped as a runtime.
 
 ## Preview entry point
 
-The replacement begins at:
+The replacement remains isolated at:
 
 `/next.html`
 
-This isolated route exists so the single-renderer architecture can be accepted before it replaces `/index.html`.
+This route exists so the single-interface architecture and connected workflows can be accepted before it replaces `/index.html`.
 
 The foundation provides:
 
 - production Supabase session recovery and password sign-in;
 - canonical `public.profiles` access verification;
-- real role-permitted inventory reads;
-- one static shell with no DOM mutation observer or polling renderer;
+- real role-permitted Inventory, recipe, supplier and movement reads;
+- one visible application shell;
 - light and dark modes;
 - responsive sidebar and mobile navigation;
 - command palette;
-- Service Mode shell;
+- Service Mode;
 - read-only ordinary Inventory presentation;
-- explicit placeholders for workflows that have not yet been connected.
+- direct mounting of the existing authenticated Atlas workspaces.
 
 ## Phase 3 — presentation-only refinement
 
-The approved screenshot review is implemented as a presentation delta over the existing `/next.html` route. It does not create another shell or replace the authenticated data flow.
+The approved screenshot review was implemented as a presentation delta over the existing `/next.html` route. It did not create another shell or replace the authenticated data flow.
 
 The refinement includes:
 
@@ -48,123 +48,168 @@ The refinement includes:
 - a compact Inventory header, controlled-boundary banner and grouped filter surface;
 - explicit `Below par` text in addition to warning color;
 - read-only Inventory cards below 640 px instead of a clipped desktop table;
-- off-canvas navigation below 900 px so the 768 px layout is not compressed;
+- off-canvas navigation below 900 px;
 - earlier top-bar search compaction below 1024 px;
-- semantic Service Mode tokens that remain consistent in light and dark themes;
-- an explicitly disabled notification control until its real gateway is connected.
+- semantic Service Mode tokens in light and dark themes.
 
-No screenshot fixture quantities, forecasts, supplier orders, operational status or other mock production facts are introduced.
+No screenshot fixture quantities, forecasts, supplier orders, operational status or other mock production facts were introduced.
 
 ## Phase 4.1 — L1 stock-count gateway reconnection
 
-The first workflow reconnection mounts the existing Checkpoint L1 stock-count contract directly inside the Inventory workspace. It does not load the legacy Inventory page, create a second shell, or introduce a replacement backend.
+Checkpoint L1 was mounted directly inside the existing Inventory workspace through the deployed `atlas-stock-counts` Edge Function.
 
-The `/next.html` Inventory workspace now has two presentation states:
+The Inventory workspace exposes:
 
-- **Items** — the existing role-permitted, read-only Inventory table/cards;
-- **Stock count** — the existing L1 evidence workflow reached through the deployed `atlas-stock-counts` Edge Function.
+- **Items** — role-permitted, read-only Inventory records;
+- **Stock count** — the existing L1 evidence workflow.
 
-The Start stock count action and the Service Mode Stock count action both open this same workspace. The phone scanner is deliberately not included; it remains Phase 4.2.
+L1 supports count-session reads, scoped count creation, unit-aware observations, skipped-line evidence, submission, manager verification, conflict acknowledgement, rejection, cancellation and separately gated publication planning.
 
-### Authentication and gateway boundary
+Ordinary Inventory remains read-only. Observation, submission and verification do not mutate production Inventory. Publish remains a separate manager-only action and is visible only when both gateway permission and deployment policy enable it.
 
-`atlas-next-gateway-bridge.js` captures the one production Supabase client created by the existing `/next.html` runtime, then restores the original `createClient` function. It does not create a second client or expose the client, access token, or private credentials globally.
+## Phase 4.2 — existing-workspace reconnection
 
-For each gateway request it:
+The remaining implemented Atlas workspaces are now mounted inside the same `/next.html` shell. The route does not boot the legacy application and does not load the retired overlay. Existing workflow modules are reused as workspace renderers beneath the current navigation and authenticated session.
 
-1. obtains the current production Auth session from that existing client;
-2. sends the session access token as `Authorization: Bearer <user-jwt>`;
-3. permits only HTTPS requests to the approved Atlas private-runtime host;
-4. permits only `/functions/v1/atlas-*` gateway paths and GET/POST methods;
-5. applies a bounded request timeout and visible error handling.
+### Shared authenticated boundary
 
-The browser does not access `atlas_private`, a service-role credential, or a private table. The deployed gateway revalidates the production Auth user and active `public.profiles` role before it performs any private operation.
+`atlas-next.js` still creates the one production Supabase client. It publishes that exact client as the existing Atlas compatibility surface and configures `AtlasData` once.
 
-### Connected L1 capabilities
+The connected workspaces receive:
 
-The replacement interface now supports the gateway’s existing capabilities:
+- the current production Auth session;
+- the active role from `public.profiles`;
+- role-permitted Inventory records;
+- role-permitted recipe records;
+- manager-only supplier and movement evidence where authorized;
+- explicit `atlas:auth`, `atlas:data` and `atlas:navigate` events.
 
-- load count-session and verified-balance snapshots;
-- start all-inventory, location, or category sessions;
-- open count-session detail;
-- record manual observations;
-- preserve original input quantity and selected unit;
-- preserve staff, timestamp, capture-surface and note evidence;
-- show current, stale, historical and unverified quantity states;
-- skip inaccessible lines with a reason;
-- submit completed sessions;
-- allow manager verification, rejection and conflict acknowledgement;
-- cancel sessions while preserving audit evidence;
-- prepare a manager publication plan;
-- expose Publish only when both gateway permission and deployment policy enable it.
+Private workflows continue to call their already-deployed `atlas-*` Edge Functions with the signed-in user JWT. The browser does not receive a service-role credential and does not access `atlas_private` directly.
 
-Historical opening inventory is never presented as current stock.
+### Connected Inventory workflows
 
-### Safety boundary
+- ordinary read-only Items view;
+- Checkpoint L1 stock counts;
+- phone barcode scanner through `atlas-inventory-scanner`;
+- Checkpoint L2 Item master through `atlas-item-master`;
+- manager-controlled delivery logging through the existing `adjust_inventory` boundary;
+- supplier creation through the existing role and RLS boundary.
 
-Ordinary Inventory remains read-only. L1 browser requests go only to the existing authenticated Edge Function.
+Quantity editing is not added to ordinary Inventory. Scanner, count evidence, controlled delivery and Item master remain separate workflows.
 
-- starting and editing a count writes private count evidence only;
-- submission and manager verification do not mutate live inventory;
-- the browser never calls `adjust_inventory`, writes `inventory_items`, or invokes private RPCs directly;
-- automatic inventory adjustment remains disabled;
-- production publication is a separate manager-only action, requires a prepared publication plan, and remains disabled unless its deployment environment flag and gateway permission are both true;
-- no schema, migration, RLS, role, grant, Edge Function or Supabase configuration was changed for this reconnection.
+### Connected Operations and Service Mode
 
-### Phase 4.1 file boundary
+- routine/checklist workspace through `atlas-operations-checkpoint-a`;
+- temperature evidence and manager-confirmed ranges;
+- Service Mode stock lookup;
+- Service Mode L1 stock count;
+- Service Mode phone scanner;
+- Service Mode recipe lookup;
+- Service Mode Knowledge;
+- Service Mode operational checks and temperatures.
 
-The reconnection changes only:
+The 86 board remains visibly unavailable because no approved gateway is configured for it.
+
+### Connected commercial and review workspaces
+
+- Recipes and recipe costing over role-permitted Inventory and recipe records;
+- Purchasing shortfall review;
+- supplier directory;
+- controlled delivery history;
+- local review-only purchase drafts and CSV export;
+- Import Center queue;
+- Real VÁ Data review workspace.
+
+Purchasing suggestions use exactly `max(par - recorded on hand, 0)`. Review drafts cannot submit a supplier order. Automatic ordering and supplier submission remain disabled.
+
+### Connected people, growth and knowledge workspaces
+
+- Team Messages and unread indicators;
+- Team profiles and profile photos;
+- weekly and monthly Shifts;
+- Marketing planning and approval;
+- Knowledge, required reading and source governance;
+- Source Center through the read-only gateway.
+
+The top-bar notification control now opens Messages and displays the existing unread count instead of presenting a disconnected control.
+
+### Connected intelligence and administration workspaces
+
+- Atlas Brain overview;
+- Daily Briefing;
+- Phase 3 recommendation memory;
+- Checkpoint K intelligence;
+- Business Intelligence;
+- Reports;
+- Checkpoint M POS mapping;
+- Settings;
+- System control room;
+- canonical Connection Center.
+
+Unsupported sales evidence, automatic publication, external execution and production synchronization remain explicit and disabled.
+
+### Compatibility layer
+
+The connected workspace adapter supplies only the legacy global names that the existing workflow renderers require, including the same Auth client, current user, role-permitted data arrays and route bridge. It does not initialize the old login, old shell or old navigation.
+
+A hidden compatibility navigation tree exists only so independently developed workspace modules can locate their historical mount selectors. It is never presented as a second navigation system.
+
+### Phase 4.2 file boundary
+
+Changes after the accepted Phase 4.1 head are limited to:
 
 - `apps/web/next.html`;
-- `apps/web/assets/js/atlas-next-gateway-bridge.js`;
-- `apps/web/assets/js/atlas-next-stock-counts.js`;
-- `apps/web/assets/css/atlas-next-stock-counts.css`;
+- `apps/web/assets/js/atlas-next.js`;
+- `apps/web/assets/js/atlas-next-config.js`;
+- `apps/web/assets/js/atlas-next-workspaces.js`;
+- `apps/web/assets/js/atlas-next-purchasing.js`;
+- `apps/web/assets/js/team-unread-badge.js`;
+- `apps/web/assets/css/atlas-next-workspaces.css`;
 - focused Node and Python contracts;
 - this documentation and the matching release acceptance record.
 
-It does not change:
-
-- `apps/web/index.html`;
-- `apps/web/assets/js/atlas-next.js`;
-- `apps/web/assets/js/data/atlas-data.js`;
-- any file below `supabase/`;
-- the deployed gateway or database.
+No file below `supabase/` changed. No schema, migration, RLS policy, role, grant, Edge Function deployment, environment variable or production record changed.
 
 ## Performance contract
 
 The replacement route must not:
 
-- initialize the old Atlas interface;
+- initialize the old Atlas application shell;
 - initialize the retired Phase 4 overlay;
 - render more than one login screen;
-- use `MutationObserver` to rebuild the shell;
-- use a polling renderer;
+- use a `MutationObserver` to rebuild the replacement shell;
+- use a polling shell renderer;
 - leave the boot spinner visible after a timeout or startup failure.
 
-Session recovery remains bounded to 15 seconds. Initial Inventory reads remain bounded to 12 seconds. L1 gateway calls are separately bounded and fail into a visible state rather than an endless spinner.
+Session recovery remains bounded to 15 seconds. Initial production reads remain bounded to 12 seconds. Individual existing gateway modules retain their bounded request and visible error contracts.
 
-## Migration sequence
+Existing workflow-specific observers or visibility-aware polling remain scoped to their own connected modules; they do not rebuild the application shell.
 
-1. Accept fast authentication and real inventory reads on `/next.html`.
-2. Connect L1 stock counts through the existing authenticated gateway. **Implemented in Phase 4.1.**
-3. Connect the phone scanner through its existing gateway.
-4. Connect L2 item master through its existing gateway.
-5. Connect Operations checklist and temperature workflows.
-6. Connect Recipes, Purchasing, Brain, Reports, Knowledge and Connection Center one workspace at a time.
-7. Run complete role, device, CI, migration-replay and production-fingerprint acceptance.
-8. Replace `/index.html` only after the connected interface is accepted.
-9. Remove legacy presentation assets only after release rollback evidence is preserved.
+## Validation recorded for Phase 4.2
 
-## Acceptance before production replacement
+A temporary validation-only PR executed the existing repository workflows against exact head `3817e0f7e7aaa8129dd9ed124c908a9041ef1775` and was closed without merge.
 
-- the login appears once;
-- the initial route becomes usable or visibly fails within 15 seconds;
-- active and inactive profile behavior is verified for every supported role;
-- Inventory displays real role-permitted records and has no direct quantity editor;
-- L1 is accepted for administrator, manager, bartender and viewer permissions;
-- count observations, submission and verification leave production inventory unchanged;
-- publication remains unavailable unless the explicit production gate is enabled;
-- command palette, theme, Service Mode and mobile navigation work;
-- light and dark layouts pass at 390 px, 768 px, 1024 px and 1440 px;
-- no old interface is visible behind the replacement route;
-- the production inventory fingerprint remains unchanged outside an explicitly approved publication acceptance test.
+- browser JavaScript syntax step: passed;
+- complete Node suite: **209 passed, 0 failed**;
+- new Node workspace-reconnection contracts: passed;
+- new Python workspace-reconnection contracts: passed;
+- complete Python suite: **220 passed, 5 existing unrelated failures, 4 skipped**;
+- Netlify Deploy Preview #11: deployed successfully;
+- production fingerprint: unchanged at 49 active Inventory records, 131.2 summed quantity, 12 Inventory movements and 3 active profiles;
+- private L1 tables: still empty;
+- migration replay: stopped at the existing high-risk capability seed/guard conflict in `20260806194753_atlas_connections_p2_seeds_api.sql`.
+
+The existing Python text/signature drift and migration replay conflict were not modified to make the interface reconnection appear green.
+
+## Remaining acceptance before production replacement
+
+1. Reconcile PR #11 with its current base branch without losing the connected interface.
+2. Repeat the complete validation against the reconciled head.
+3. Perform hosted login and active/inactive role acceptance with authorized test accounts.
+4. Exercise every connected gateway in the hosted preview at least once with the roles that are permitted to use it.
+5. Confirm that non-publication acceptance leaves the production fingerprint unchanged.
+6. Review every connected workspace at 390 px, 768 px, 1024 px and 1440 px in light and dark mode.
+7. Resolve or formally disposition the existing Python contract drift and migration replay blocker.
+8. Resume presentation polishing only after the connected-workspace baseline is accepted.
+9. Replace `/index.html` only after explicit owner approval.
+10. Merge and publish only after the production replacement review is approved.
