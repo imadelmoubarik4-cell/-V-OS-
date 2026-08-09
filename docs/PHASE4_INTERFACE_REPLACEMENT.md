@@ -35,6 +35,46 @@ The first unit provides:
 - read-only inventory presentation;
 - explicit placeholders for workflows that have not yet been connected.
 
+## Phase 3 — presentation-only refinement
+
+The approved screenshot review is implemented as a presentation delta over the existing `/next.html` route. It does not create another shell or replace the authenticated data flow.
+
+The refinement includes:
+
+- a calmer active-navigation treatment using the existing Atlas teal tokens;
+- more consistent sidebar spacing, brand proportions and top-bar controls;
+- a compact shared Home KPI strip with responsive 2×2 and single-column states;
+- refined panel spacing, row rhythm, type scale, borders and shadows;
+- a compact Inventory header, controlled-boundary banner and grouped filter surface;
+- explicit `Below par` text in addition to warning color;
+- read-only Inventory cards below 640 px instead of a clipped desktop table;
+- off-canvas navigation below 900 px so the 768 px layout is not compressed;
+- earlier top-bar search compaction below 1024 px;
+- semantic Service Mode tokens that remain consistent in light and dark themes;
+- an explicitly disabled notification control until its real gateway is connected.
+
+The implementation preserves:
+
+- the existing Supabase client configuration;
+- the 15-second startup and 12-second request bounds;
+- password sign-in and session recovery;
+- active-profile verification;
+- the existing production Inventory read and compatibility fallback;
+- the absence of direct inventory writes and quantity editors;
+- honest placeholders and no-change messages for unreconnected workflows.
+
+No screenshot fixture quantities, forecasts, supplier orders, operational status or other mock production facts are introduced.
+
+The Phase 3 change boundary is limited to:
+
+- `apps/web/next.html`;
+- `apps/web/assets/css/atlas-next.css`;
+- presentation rendering in `apps/web/assets/js/atlas-next.js`;
+- the focused replacement-route contract tests;
+- this documentation and the matching release acceptance record.
+
+No file under `supabase/` is changed. `apps/web/index.html` and `apps/web/assets/js/data/atlas-data.js` remain outside the Phase 3 change boundary.
+
 ## Performance contract
 
 The replacement route must not:
