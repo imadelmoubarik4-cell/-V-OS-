@@ -2,103 +2,139 @@
 
 ## Status
 
-Implementation continues on `agent/phase4-interface-replacement`, based on the stable Phase 2 branch.
+Implementation continues on `agent/phase4-interface-replacement` in draft PR #11.
 
 This record does not authorize merge, production migration, stock publication or release.
 
-## Reason for the reset
-
-The earlier Phase 4 overlay loaded a second presentation layer over the legacy application. Browser acceptance showed two login experiences alternating during startup and a spinner that remained for more than two minutes. That implementation strategy is retired.
-
 ## Replacement foundation
 
-The `/next.html` route has one static presentation tree and does not load the old application or retired overlay.
-
-It provides:
+The `/next.html` route uses:
 
 - one bounded boot screen;
 - one production Supabase login and session-recovery path;
 - active-profile verification through `public.profiles`;
-- real, role-permitted inventory reads;
-- read-only ordinary Inventory quantities;
-- responsive navigation, command palette, theme and Service Mode;
-- visible placeholders for workflows awaiting direct gateway connection.
+- one visible application shell and navigation system;
+- real role-permitted operational reads;
+- responsive light and dark presentation;
+- command palette and Service Mode;
+- no retired overlay or duplicate login experience.
 
-## Phase 3 presentation-only implementation
+Ordinary Inventory remains read-only. Controlled workflows remain separate from the item list.
 
-The approved visual delta was applied without replacing the shell or changing the secure engine. It refined navigation, spacing, Home metrics, Inventory hierarchy, mobile cards, responsive breakpoints, light/dark Service Mode and the honest disabled notification state. It introduced no fixture quantities, forecasts, supplier orders, purchase states or simulated production facts.
+## Phase 3 — presentation refinement
+
+The approved visual delta refined navigation, spacing, Home metrics, Inventory hierarchy, mobile cards, responsive breakpoints, light/dark Service Mode and status clarity without replacing the secure engine or introducing screenshot fixture data.
 
 ## Phase 4.1 — L1 stock-count reconnection
 
-Checkpoint L1 is now mounted as a Stock count subview inside the existing Inventory workspace.
+Checkpoint L1 is mounted as a Stock count section inside Inventory through the existing `atlas-stock-counts` Edge Function.
 
-Connected UI paths:
-
-- Inventory → Start stock count;
-- Inventory → Stock count section;
-- Service Mode → Stock count.
-
-The phone scanner is not part of this unit and remains the next separately reviewed gateway reconnection.
-
-### Existing gateway used
-
-The interface calls the already deployed `atlas-stock-counts` Edge Function. A small bridge reuses the exact production Auth client already created by `/next.html`, retrieves the current session, and forwards only the user JWT to the approved private-runtime gateway.
-
-The bridge:
-
-- does not create a second Supabase client;
-- does not expose a service-role credential;
-- does not expose `atlas_private` to the browser;
-- validates the approved gateway host and `/functions/v1/atlas-*` path;
-- permits only bounded GET and POST requests.
-
-The deployed gateway remains responsible for active-profile and role validation and for all private RPC access.
-
-### Connected workflow
+Connected capabilities include:
 
 - snapshot and session-detail reads;
 - all, location and category count sessions;
-- manual unit-aware count evidence;
-- bottle, case, unit, litre, millilitre, kilogram and gram input;
-- original and normalized quantity evidence handled by the existing gateway;
+- unit-aware count evidence;
 - skip, submit, manager verify, conflict acknowledgement, reject and cancel;
 - manager publication-plan preparation;
 - Publish visibility only when deployment policy and gateway permission both enable it.
 
-The interface presents current, stale, historical and unverified quantity states explicitly.
+Count observations and verification do not mutate production Inventory.
 
-### Safety evidence
+## Phase 4.2 — existing-workspace reconnection
 
-- ordinary Inventory is still read-only;
-- count observation and verification do not mutate production inventory;
-- no browser code calls `adjust_inventory`, private RPCs, or direct Inventory writes;
-- production publication remains a separate manager-only, double-gated action;
-- publication remains disabled unless the existing deployment environment enables it;
-- scanner functionality is not silently bundled into L1;
-- no file under `supabase/` changed;
-- no Edge Function, schema, migration, role, grant or RLS policy changed.
+The remaining implemented Atlas workflows are mounted beneath the same `/next.html` shell through their existing data boundaries and authenticated gateways.
 
-### Phase 4.1 files
+### Inventory and purchasing
+
+- read-only ordinary Inventory;
+- phone barcode scanner;
+- Checkpoint L1 stock counts;
+- Checkpoint L2 Item master;
+- manager-controlled delivery logging;
+- supplier directory and manager-controlled supplier creation;
+- exact `max(par - recorded on hand, 0)` replenishment review;
+- local review-only purchase drafts and CSV export.
+
+Purchase drafts cannot submit supplier orders. Automatic ordering remains disabled.
+
+### Operations and Service Mode
+
+- recurring operations routines and checklist evidence;
+- temperature logging and manager-confirmed ranges;
+- Service Mode stock lookup, stock count, scanner, recipe lookup, Knowledge, and operational checks.
+
+The 86 board remains disabled because no approved gateway is configured.
+
+### Remaining connected workspaces
+
+- Recipes;
+- Import Center;
+- Real VÁ Data review;
+- Marketing;
+- Team Messages and unread indicators;
+- Team profiles and profile photos;
+- weekly and monthly Shifts;
+- Knowledge and Source Center;
+- Atlas Brain, Daily Briefing, Phase 3 memory and Checkpoint K;
+- Business Intelligence;
+- Reports and Checkpoint M;
+- Settings;
+- System;
+- canonical Connection Center.
+
+Unsupported sales evidence, automatic social publication, external execution and production synchronization remain explicit and disabled.
+
+## Authentication and data boundary
+
+The replacement route creates one production Supabase client and configures `AtlasData` once. The connected modules receive the same current session, active profile and role-permitted data.
+
+Private modules call their existing `atlas-*` Edge Functions with the signed-in user JWT. The browser receives no service-role credential and does not access `atlas_private` directly.
+
+The compatibility adapter supplies only the historical global names and mount selectors required by the already-built workflow renderers. It does not boot the old application, old login or old navigation.
+
+## Phase 4.2 file boundary
+
+Changes after the accepted Phase 4.1 head are limited to:
 
 - `apps/web/next.html`;
-- `apps/web/assets/js/atlas-next-gateway-bridge.js`;
-- `apps/web/assets/js/atlas-next-stock-counts.js`;
-- `apps/web/assets/css/atlas-next-stock-counts.css`;
-- `tests/node/atlas-next-stock-counts.test.js`;
-- `tests/python/test_atlas_next_stock_count_reconnection.py`;
+- `apps/web/assets/js/atlas-next.js`;
+- `apps/web/assets/js/atlas-next-config.js`;
+- `apps/web/assets/js/atlas-next-workspaces.js`;
+- `apps/web/assets/js/atlas-next-purchasing.js`;
+- `apps/web/assets/js/team-unread-badge.js`;
+- `apps/web/assets/css/atlas-next-workspaces.css`;
+- focused Node and Python contracts;
 - Phase 4 documentation.
 
-## Remaining acceptance
+No file below `supabase/` changed. No schema, migration, RLS policy, role, grant, Edge Function deployment, environment variable or production record changed.
 
-1. Browser JavaScript syntax.
-2. Focused Node and Python L1 contracts.
-3. Complete repository suites and migration replay.
-4. Exact Netlify Deploy Preview for the updated draft PR.
-5. One-login and bounded-startup acceptance.
-6. Administrator, manager, bartender, viewer and inactive-profile acceptance.
-7. L1 start, save, skip, submit, verify, reject and cancel acceptance.
-8. Confirmation that production quantity and movement fingerprints remain unchanged during non-publication acceptance.
-9. Light and dark review at 390 px, 768 px, 1024 px and 1440 px.
-10. Separate review and authorization before beginning the phone-scanner reconnection.
+## Validation record
 
-The replacement route may not replace `/index.html` until these checks and the remaining approved gateway reconnections are complete.
+A temporary validation-only PR ran the repository workflows against exact implementation head:
+
+`3817e0f7e7aaa8129dd9ed124c908a9041ef1775`
+
+It was closed without merge after recording:
+
+- browser JavaScript syntax: passed;
+- complete Node suite: **209 passed, 0 failed**;
+- workspace-reconnection Node and Python contracts: passed;
+- complete Python suite: **220 passed, 5 existing unrelated failures, 4 skipped**;
+- Netlify Deploy Preview #11: deployed successfully;
+- production fingerprint unchanged at **49 active Inventory records / 131.2 summed quantity / 12 Inventory movements / 3 active profiles**;
+- private L1 sessions, lines, events, verified balances and publications: **0**.
+
+Migration replay still stops at the existing `20260806194753_atlas_connections_p2_seeds_api.sql` high-risk capability seed/guard conflict. The five Python failures remain existing text/signature expectation drift outside the workspace-reconnection diff. Neither issue was altered to create a false green result.
+
+## Remaining acceptance before production replacement
+
+1. Reconcile PR #11 with its current base branch without losing the connected interface.
+2. Repeat complete validation against the reconciled head.
+3. Perform hosted login and active/inactive role acceptance using authorized test accounts.
+4. Exercise each connected gateway in the deploy preview with every permitted role.
+5. Confirm that non-publication acceptance leaves the production fingerprint unchanged.
+6. Review all connected workspaces at 390 px, 768 px, 1024 px and 1440 px in both themes.
+7. Resolve or formally disposition the existing Python and migration-replay blockers.
+8. Resume the next design-polish pass only after the connected-workspace baseline is accepted.
+9. Replace `/index.html` only after explicit owner approval.
+10. Merge and publish only after the production replacement review is approved.
