@@ -1,0 +1,53 @@
+/* Critical sign-in isolation.
+ * This file loads after every workspace stylesheet so authenticated workspace
+ * overlays cannot cover or disable the pre-authentication form.
+ */
+
+#auth-screen:not([hidden]) {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  display: grid !important;
+  overflow: auto !important;
+  isolation: isolate !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+#auth-screen:not([hidden]),
+#auth-screen:not([hidden]) .auth-card,
+#auth-screen:not([hidden]) form,
+#auth-screen:not([hidden]) label,
+#auth-screen:not([hidden]) input,
+#auth-screen:not([hidden]) button {
+  pointer-events: auto !important;
+}
+
+#auth-screen:not([hidden]) .auth-card,
+#auth-screen:not([hidden]) form,
+#auth-screen:not([hidden]) input,
+#auth-screen:not([hidden]) button {
+  position: relative;
+  z-index: 1;
+}
+
+#auth-screen:not([hidden]) input {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  touch-action: manipulation !important;
+  caret-color: currentColor;
+}
+
+body.atlas-auth-active {
+  overflow: hidden !important;
+}
+
+body.atlas-auth-active > :not(#auth-screen):not(script):not(style) {
+  pointer-events: none !important;
+}
+
+body.atlas-auth-active #auth-screen,
+body.atlas-auth-active #auth-screen * {
+  pointer-events: auto !important;
+}
