@@ -1,0 +1,514 @@
+/* Atlas incremental visual polish — Inventory only.
+ * Existing inventory renderer, quantity controls, scanner, item editor, role
+ * gates and data-loading logic remain untouched.
+ */
+
+#inventory-view {
+  display: grid;
+  gap: 16px;
+}
+
+#inventory-view > .toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 16px;
+  background: var(--atlas-surface);
+  box-shadow: var(--atlas-home-shadow, 0 1px 2px rgba(35,38,35,.04));
+}
+
+#inventory-view #category-tabs {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 1px 2px 2px;
+  scrollbar-width: thin;
+  overscroll-behavior-inline: contain;
+}
+
+#inventory-view #category-tabs .tab {
+  min-height: 36px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 13px;
+  margin: 0;
+  border: 1px solid var(--atlas-line);
+  border-radius: 999px;
+  background: var(--atlas-surface);
+  color: var(--atlas-muted);
+  font: 600 12px/1 'IBM Plex Sans', sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+#inventory-view #category-tabs .tab:hover {
+  border-color: var(--atlas-home-accent-line, rgba(79,125,243,.24));
+  background: var(--atlas-home-accent-soft, rgba(79,125,243,.1));
+  color: var(--atlas-text);
+}
+
+#inventory-view #category-tabs .tab.active {
+  border-color: var(--atlas-home-accent, #4f7df3);
+  background: var(--atlas-home-accent-soft, rgba(79,125,243,.1));
+  color: var(--atlas-home-accent-strong, #3e68d7);
+  box-shadow: inset 0 0 0 1px rgba(79,125,243,.04);
+}
+
+#inventory-view .inventory-scan-entry,
+#inventory-view #add-item-btn {
+  min-height: 40px;
+  flex: 0 0 auto;
+  padding: 0 14px;
+  margin: 0;
+  border-radius: 11px;
+  font-size: 12px;
+  box-shadow: none;
+}
+
+#inventory-view .inventory-scan-entry {
+  border: 1px solid var(--atlas-line);
+  background: var(--atlas-surface);
+  color: var(--atlas-text);
+}
+
+#inventory-view .inventory-scan-entry:hover {
+  border-color: var(--atlas-home-accent-line, rgba(79,125,243,.24));
+  background: var(--atlas-home-accent-soft, rgba(79,125,243,.1));
+}
+
+#inventory-view .inventory-scan-entry svg {
+  width: 16px;
+  height: 16px;
+  color: var(--atlas-home-accent, #4f7df3);
+}
+
+#inventory-view #add-item-btn {
+  border: 1px solid var(--atlas-home-accent, #4f7df3);
+  background: var(--atlas-home-accent, #4f7df3);
+  color: #fff;
+}
+
+#inventory-view #add-item-btn:hover {
+  border-color: var(--atlas-home-accent-strong, #3e68d7);
+  background: var(--atlas-home-accent-strong, #3e68d7);
+}
+
+#inventory-view #table-wrap {
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid var(--atlas-line);
+  border-radius: 16px;
+  background: var(--atlas-surface);
+  box-shadow: var(--atlas-home-shadow, 0 1px 2px rgba(35,38,35,.04));
+}
+
+#inventory-view #table-wrap > table {
+  width: 100%;
+  min-width: 760px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: visible;
+}
+
+#inventory-view thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 45px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--atlas-line);
+  background: color-mix(in srgb, var(--atlas-surface) 92%, var(--atlas-bg));
+  color: var(--atlas-muted);
+  font: 700 10px/1 'IBM Plex Sans', sans-serif;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+#inventory-view thead th:first-child,
+#inventory-view tbody td:first-child {
+  padding-left: 20px;
+}
+
+#inventory-view thead th:last-child,
+#inventory-view tbody td:last-child {
+  padding-right: 20px;
+}
+
+#inventory-view tbody tr {
+  height: 58px;
+  border: 0;
+  background: var(--atlas-surface);
+  transition: background 130ms ease;
+}
+
+#inventory-view tbody tr:hover {
+  background: color-mix(in srgb, var(--atlas-home-accent-soft, rgba(79,125,243,.1)) 48%, var(--atlas-surface));
+}
+
+#inventory-view tbody td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--atlas-line);
+  color: var(--atlas-text);
+  vertical-align: middle;
+}
+
+#inventory-view tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+#inventory-view td.name {
+  min-width: 220px;
+  color: var(--atlas-text);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+#inventory-view td.cat {
+  min-width: 145px;
+  color: var(--atlas-muted);
+  font-size: 11px;
+  text-transform: none;
+}
+
+#inventory-view td.meta {
+  min-width: 105px;
+  color: var(--atlas-muted);
+  font-size: 11px;
+}
+
+#inventory-view .qty-cell {
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+#inventory-view .step-btn {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--atlas-line);
+  border-radius: 9px;
+  background: var(--atlas-surface);
+  color: var(--atlas-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 130ms ease, color 130ms ease, background 130ms ease;
+}
+
+#inventory-view .step-btn:hover {
+  border-color: var(--atlas-home-accent-line, rgba(79,125,243,.24));
+  background: var(--atlas-home-accent-soft, rgba(79,125,243,.1));
+  color: var(--atlas-home-accent-strong, #3e68d7);
+}
+
+#inventory-view .qty-input {
+  width: 72px;
+  min-height: 34px;
+  margin: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 9px;
+  background: var(--atlas-bg);
+  color: var(--atlas-text);
+  font: 600 13px/1 'IBM Plex Mono', monospace;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  box-shadow: none;
+}
+
+#inventory-view .qty-input:focus {
+  border-color: var(--atlas-home-accent, #4f7df3);
+  box-shadow: 0 0 0 3px var(--atlas-home-accent-soft, rgba(79,125,243,.1));
+}
+
+#inventory-view .unit {
+  min-width: 48px;
+  margin: 0 2px 0 0;
+  color: var(--atlas-muted);
+  font-size: 11px;
+}
+
+#inventory-view .low-flag {
+  width: auto;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 1px;
+  padding: 0 8px;
+  border: 1px solid rgba(199,123,61,.26);
+  border-radius: 999px;
+  background: var(--atlas-home-warning-soft, rgba(199,123,61,.11));
+  color: var(--atlas-home-warning, #c77b3d);
+  font: 700 0/1 'IBM Plex Sans', sans-serif;
+}
+
+#inventory-view .low-flag::after {
+  content: 'Below par';
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+#inventory-view .row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+#inventory-view .icon-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border: 1px solid var(--atlas-line);
+  border-radius: 9px;
+  background: var(--atlas-surface);
+  color: var(--atlas-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#inventory-view .icon-btn:hover {
+  border-color: var(--atlas-home-accent-line, rgba(79,125,243,.24));
+  background: var(--atlas-home-accent-soft, rgba(79,125,243,.1));
+  color: var(--atlas-text);
+}
+
+#inventory-view .delete-btn:hover {
+  border-color: rgba(181,79,79,.28);
+  background: rgba(181,79,79,.08);
+  color: #b54f4f;
+}
+
+#inventory-view #empty-state {
+  min-height: 300px;
+  padding: 48px 24px;
+  color: var(--atlas-muted);
+}
+
+#inventory-view #empty-state .mark {
+  color: var(--atlas-home-accent-soft, rgba(79,125,243,.1));
+}
+
+/* Existing item editor: visual normalization only. */
+#item-overlay .modal.item-modal {
+  border-radius: 20px;
+  box-shadow: var(--atlas-home-shadow-raised, 0 12px 40px rgba(35,38,35,.16));
+}
+
+#item-overlay .modal-header {
+  padding-block: 19px 16px;
+}
+
+#item-overlay .modal-header h2 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -.025em;
+}
+
+#item-overlay .modal-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+}
+
+#item-overlay .modal-scroll label {
+  color: var(--atlas-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+#item-overlay .modal-scroll input,
+#item-overlay .modal-scroll select,
+#item-overlay .modal-scroll textarea {
+  border-radius: 10px;
+}
+
+#item-overlay .modal-footer .btn {
+  min-height: 40px;
+  border-radius: 11px;
+}
+
+@media (max-width: 1050px) {
+  #inventory-view > .toolbar {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  #inventory-view #category-tabs {
+    flex-basis: 100%;
+    order: 2;
+  }
+
+  #inventory-view .inventory-scan-entry,
+  #inventory-view #add-item-btn {
+    order: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  #inventory-view {
+    gap: 13px;
+  }
+
+  #inventory-view > .toolbar {
+    padding: 11px;
+    border-radius: 14px;
+  }
+
+  #inventory-view #category-tabs {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  #inventory-view .inventory-scan-entry,
+  #inventory-view #add-item-btn {
+    order: 2;
+    flex: 1 1 calc(50% - 5px);
+  }
+
+  #inventory-view #table-wrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  #inventory-view #table-wrap > table {
+    min-width: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  #inventory-view thead {
+    display: none;
+  }
+
+  #inventory-view tbody {
+    display: grid;
+    gap: 11px;
+  }
+
+  #inventory-view tbody tr {
+    min-width: 0;
+    height: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 14px 15px;
+    border: 1px solid var(--atlas-line);
+    border-radius: 15px;
+    background: var(--atlas-surface);
+    box-shadow: var(--atlas-home-shadow, 0 1px 2px rgba(35,38,35,.04));
+  }
+
+  #inventory-view tbody tr:hover {
+    background: var(--atlas-surface);
+  }
+
+  #inventory-view tbody td,
+  #inventory-view tbody td:first-child,
+  #inventory-view tbody td:last-child {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  #inventory-view td.name {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    padding-right: 10px;
+    font-size: 14px;
+  }
+
+  #inventory-view td.cat {
+    grid-column: 1;
+    grid-row: 2;
+    margin-top: 3px;
+    padding-right: 10px;
+    font-size: 10px;
+  }
+
+  #inventory-view td.meta {
+    grid-column: 1;
+    grid-row: 3;
+    margin-top: 7px;
+    font-size: 10px;
+  }
+
+  #inventory-view tbody td:nth-child(4) {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    margin-top: 13px;
+    padding-top: 12px;
+    border-top: 1px solid var(--atlas-line);
+  }
+
+  #inventory-view tbody td:nth-child(5) {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    align-self: start;
+  }
+
+  #inventory-view .qty-cell {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  #inventory-view .qty-input {
+    flex: 0 0 72px;
+  }
+}
+
+@media (max-width: 430px) {
+  #inventory-view > .toolbar {
+    gap: 8px;
+  }
+
+  #inventory-view .inventory-scan-entry,
+  #inventory-view #add-item-btn {
+    flex-basis: 100%;
+  }
+
+  #inventory-view .qty-cell {
+    gap: 6px;
+  }
+
+  #inventory-view .unit {
+    min-width: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #inventory-view #category-tabs .tab,
+  #inventory-view tbody tr,
+  #inventory-view .step-btn {
+    transition: none;
+  }
+}
