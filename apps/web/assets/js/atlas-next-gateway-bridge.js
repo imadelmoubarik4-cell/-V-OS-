@@ -1,6 +1,87 @@
 (() => {
   'use strict';
 
+  const RECOVERY_TIMEOUT_MS = 18000;
+  let redirected = false;
+  let watchdog = null;
+  let observer = null;
+
+  function loginUrl(message = '', forceSignOut = false) {
+    const url = new URL('login.html', window.location.href);
+    const requestedView = window.location.hash.replace(/^#/, '').split('/')[0];
+    if (/^[a-z-]+$/i.test(requestedView)) url.searchParams.set('view', requestedView);
+    if (message) url.searchParams.set('message', message);
+    if (forceSignOut) url.searchParams.set('force_signout', '1');
+    url.searchParams.set('recovery', Date.now().toString(36));
+    return url.href;
+  }
+
+  function redirectToLogin(message = '', forceSignOut = false) {
+    if (redirected) return;
+    redirected = true;
+    window.clearTimeout(watchdog);
+    observer?.disconnect();
+    window.location.replace(loginUrl(message, forceSignOut));
+  }
+
+  function appVisible() {
+    const shell = document.getElementById('app-shell');
+    return Boolean(shell && !shell.hidden);
+  }
+
+  function authVisible() {
+    const auth = document.getElementById('auth-screen');
+    return Boolean(auth && !auth.hidden);
+  }
+
+  function authMessage() {
+    return document.getElementById('auth-error')?.textContent?.trim() || '';
+  }
+
+  function inspectRecoveryState() {
+    if (redirected) return;
+    if (appVisible()) {
+      window.clearTimeout(watchdog);
+      observer?.disconnect();
+      return;
+    }
+    if (authVisible()) {
+      redirectToLogin(authMessage() || 'Sign in to continue to Atlas.');
+    }
+  }
+
+  function interceptSignOut(event) {
+    const target = event.target instanceof Element ? event.target.closest('#sign-out') : null;
+    if (!target) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    redirectToLogin('You have signed out of Atlas.', true);
+  }
+
+  function installRecoveryBoundary() {
+    document.addEventListener('click', interceptSignOut, true);
+    observer = new MutationObserver(inspectRecoveryState);
+    observer.observe(document.documentElement, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['hidden'],
+    });
+    watchdog = window.setTimeout(() => {
+      if (!appVisible()) redirectToLogin('Atlas startup timed out. Sign in again to continue.');
+    }, RECOVERY_TIMEOUT_MS);
+    inspectRecoveryState();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installRecoveryBoundary, { once: true });
+  } else {
+    installRecoveryBoundary();
+  }
+})();
+
+(() => {
+  'use strict';
+
   const AUTH_PROJECT_URL = 'https://dnefgcmjcgxlynycxkts.supabase.co';
   const GATEWAY_HOST = 'uhbamqetppqmygesoeeh.supabase.co';
   const DEFAULT_TIMEOUT_MS = 22000;
