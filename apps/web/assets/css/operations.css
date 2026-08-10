@@ -1,5 +1,6 @@
 @import url("home-polish.css");
 @import url("home-polish-baseline.css");
+@import url("inventory-polish.css");
 
 /* Atlas Alpha 0.4.0 — Operations Intelligence */
 
@@ -373,7 +374,7 @@
   .operations-priority button { grid-column: 2; justify-self: start; padding: 0; }
   .operations-order-item { grid-template-columns: minmax(0,1fr) auto; }
   .operations-order-item button { grid-column: 1 / -1; justify-self: start; }
-  #item-overlay { padding: 0 !important; align-items: flex-end !important; }
+  #item-overlay { padding: 0 !important; align-items:flex-end !important; }
   #item-overlay .modal.item-modal { width: 100%; max-height: 94vh; border-radius: 20px 20px 0 0; }
 }
 
