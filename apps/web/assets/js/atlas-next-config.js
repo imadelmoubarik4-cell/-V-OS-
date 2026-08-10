@@ -26,6 +26,98 @@ window.VABAR_CONFIG = Object.freeze({
 });
 
 (() => {
+  'use strict';
+
+  const STYLE_ID = 'atlas-auth-interaction-guard';
+  let observer = null;
+
+  function installStyle() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = `
+      #auth-screen:not([hidden]) {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 2147483646 !important;
+        display: grid !important;
+        overflow: auto !important;
+        isolation: isolate !important;
+        pointer-events: auto !important;
+        touch-action: manipulation !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      #auth-screen:not([hidden]),
+      #auth-screen:not([hidden]) .auth-card,
+      #auth-screen:not([hidden]) form,
+      #auth-screen:not([hidden]) label,
+      #auth-screen:not([hidden]) input,
+      #auth-screen:not([hidden]) button {
+        pointer-events: auto !important;
+      }
+      #auth-screen:not([hidden]) .auth-card {
+        position: relative !important;
+        z-index: 1 !important;
+      }
+      #auth-screen:not([hidden]) input {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+        touch-action: manipulation !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function unlockAuthSurface() {
+    const auth = document.getElementById('auth-screen');
+    if (!auth || auth.hidden) return;
+    auth.removeAttribute('inert');
+    auth.setAttribute('aria-hidden', 'false');
+    auth.style.pointerEvents = 'auto';
+    const email = document.getElementById('auth-email');
+    const password = document.getElementById('auth-password');
+    for (const input of [email, password]) {
+      if (!(input instanceof HTMLInputElement)) continue;
+      input.disabled = false;
+      input.readOnly = false;
+      input.removeAttribute('inert');
+      input.style.pointerEvents = 'auto';
+    }
+  }
+
+  function focusCoveredControl(event) {
+    const auth = document.getElementById('auth-screen');
+    if (!auth || auth.hidden || auth.contains(event.target)) return;
+    const controls = Array.from(auth.querySelectorAll('input, button'));
+    const control = controls.find((element) => {
+      const rect = element.getBoundingClientRect();
+      return event.clientX >= rect.left && event.clientX <= rect.right
+        && event.clientY >= rect.top && event.clientY <= rect.bottom;
+    });
+    if (!control) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    control.focus({ preventScroll: true });
+  }
+
+  function initAuthGuard() {
+    installStyle();
+    unlockAuthSurface();
+    const auth = document.getElementById('auth-screen');
+    if (auth && !observer) {
+      observer = new MutationObserver(unlockAuthSurface);
+      observer.observe(auth, { attributes: true, attributeFilter: ['hidden', 'style', 'class', 'inert'] });
+    }
+    document.addEventListener('pointerdown', focusCoveredControl, true);
+    window.addEventListener('pageshow', unlockAuthSurface);
+    document.addEventListener('atlas:auth', unlockAuthSurface);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAuthGuard, { once: true });
+  else initAuthGuard();
+})();
+
+(() => {
   const install = () => {
     const lucide = window.lucide;
     if (!lucide || typeof lucide.createIcons !== 'function') return false;
