@@ -54,10 +54,12 @@ class AtlasDesignRecoveryContract(unittest.TestCase):
     def test_gateway_contract_is_preserved(self):
         self.assertIn("RECOVERY_TIMEOUT_MS = 18000", BRIDGE)
         self.assertIn("redirectToLogin", BRIDGE)
-        self.assertIn("MutationObserver", BRIDGE)
+        self.assertIn("inspectClientSession", BRIDGE)
         self.assertIn("force_signout", BRIDGE)
         self.assertIn("window.AtlasGatewayBridge = Object.freeze", BRIDGE)
         self.assertIn("GATEWAY_HOST = 'uhbamqetppqmygesoeeh.supabase.co'", BRIDGE)
+        self.assertNotIn("MutationObserver", BRIDGE)
+        self.assertNotIn("setInterval(", BRIDGE)
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BRIDGE)
         self.assertNotIn("service_role", BRIDGE)
 
