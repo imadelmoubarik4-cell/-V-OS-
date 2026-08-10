@@ -4,7 +4,6 @@
   const RECOVERY_TIMEOUT_MS = 18000;
   let redirected = false;
   let watchdog = null;
-  let observer = null;
 
   function loginUrl(message = '', forceSignOut = false) {
     const url = new URL('login.html', window.location.href);
@@ -20,7 +19,6 @@
     if (redirected) return;
     redirected = true;
     window.clearTimeout(watchdog);
-    observer?.disconnect();
     window.location.replace(loginUrl(message, forceSignOut));
   }
 
@@ -39,15 +37,17 @@
   }
 
   function inspectRecoveryState() {
-    if (redirected) return;
-    if (appVisible()) {
-      window.clearTimeout(watchdog);
-      observer?.disconnect();
-      return;
-    }
-    if (authVisible()) {
-      redirectToLogin(authMessage() || 'Sign in to continue to Atlas.');
-    }
+    if (redirected || appVisible()) return;
+    if (authVisible()) redirectToLogin(authMessage() || 'Sign in to continue to Atlas.');
+  }
+
+  function inspectClientSession(client) {
+    Promise.resolve(client?.auth?.getSession?.())
+      .then((result) => {
+        if (redirected || appVisible()) return;
+        if (!result?.error && !result?.data?.session) redirectToLogin('Sign in to continue to Atlas.');
+      })
+      .catch(() => undefined);
   }
 
   function interceptSignOut(event) {
@@ -60,17 +60,15 @@
 
   function installRecoveryBoundary() {
     document.addEventListener('click', interceptSignOut, true);
-    observer = new MutationObserver(inspectRecoveryState);
-    observer.observe(document.documentElement, {
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['hidden'],
-    });
+    window.addEventListener('load', inspectRecoveryState, { once: true });
+    window.addEventListener('pageshow', inspectRecoveryState);
     watchdog = window.setTimeout(() => {
       if (!appVisible()) redirectToLogin('Atlas startup timed out. Sign in again to continue.');
     }, RECOVERY_TIMEOUT_MS);
     inspectRecoveryState();
   }
+
+  window.AtlasRecoveryBoundary = Object.freeze({ inspectClientSession });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', installRecoveryBoundary, { once: true });
@@ -129,6 +127,7 @@
       if (!state.client && String(args[0] || '').replace(/\/$/, '') === AUTH_PROJECT_URL) {
         state.client = client;
         state.readyResolve?.(client);
+        window.AtlasRecoveryBoundary?.inspectClientSession?.(client);
         supabase.createClient = originalCreateClient;
       }
       return client;
