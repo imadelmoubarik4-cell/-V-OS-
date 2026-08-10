@@ -56,7 +56,7 @@
   }
 
   function appUrl() {
-    const url = new URL('next.html', window.location.href);
+    const url = new URL('app.html', window.location.href);
     const requestedHash = new URLSearchParams(window.location.search).get('view');
     if (requestedHash && /^[a-z-]+$/i.test(requestedHash)) url.hash = requestedHash;
     url.searchParams.set('signed-in', Date.now().toString(36));
@@ -137,7 +137,7 @@
           autoRefreshToken: true,
           detectSessionInUrl: true,
         },
-        global: { headers: { 'x-client-info': 'atlas-login/1.0.0' } },
+        global: { headers: { 'x-client-info': 'atlas-login/1.0.1' } },
       });
 
       const response = await withTimeout(
