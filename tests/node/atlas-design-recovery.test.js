@@ -45,9 +45,10 @@ test('successful isolated login hands off directly to next.html', () => {
 test('recovery boundary prevents indefinite startup without replacing the gateway', () => {
   assert.match(bridge, /RECOVERY_TIMEOUT_MS\s*=\s*18000/);
   assert.match(bridge, /redirectToLogin/);
-  assert.match(bridge, /MutationObserver/);
+  assert.match(bridge, /inspectClientSession/);
   assert.match(bridge, /force_signout/);
   assert.match(bridge, /window\.AtlasGatewayBridge\s*=\s*Object\.freeze/);
   assert.match(bridge, /GATEWAY_HOST\s*=\s*'uhbamqetppqmygesoeeh\.supabase\.co'/);
+  assert.doesNotMatch(bridge, /MutationObserver|setInterval\s*\(/);
   assert.doesNotMatch(bridge, /service_role|SUPABASE_SERVICE_ROLE_KEY/);
 });
