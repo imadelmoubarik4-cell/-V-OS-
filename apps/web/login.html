@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" data-atlas-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f6f6f4" />
+  <title>Sign in · Atlas</title>
+  <link rel="icon" type="image/png" href="assets/logo/atlas-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/atlas-next.css" />
+  <style>
+    html, body { min-height: 100%; }
+    body { overflow: auto; }
+    .auth-screen { position: fixed; inset: 0; z-index: 1; }
+    .auth-screen[hidden], .atlas-boot[hidden] { display: none !important; }
+    .auth-card, .auth-card form, .auth-card input, .auth-card button { pointer-events: auto; }
+    .auth-card input { user-select: text; -webkit-user-select: text; }
+  </style>
+  <script>
+    (() => {
+      let theme = 'light';
+      try {
+        const saved = localStorage.getItem('atlas.next.theme');
+        theme = saved === 'dark' || saved === 'light'
+          ? saved
+          : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch (_) {
+        theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.dataset.atlasTheme = theme;
+      document.documentElement.style.colorScheme = theme;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#111113' : '#f6f6f4');
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"
+          integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug"
+          crossorigin="anonymous" defer></script>
+  <script src="assets/js/atlas-login.js" defer></script>
+</head>
+<body>
+  <div class="atlas-boot" id="login-boot" role="status" aria-live="polite">
+    <div class="atlas-boot-card">
+      <div class="atlas-spinner" aria-hidden="true"></div>
+      <span data-login-boot-copy>Opening secure sign-in…</span>
+    </div>
+  </div>
+
+  <main class="auth-screen" id="login-screen" hidden aria-labelledby="login-title">
+    <article class="auth-card">
+      <div class="auth-watermark" aria-hidden="true">Á</div>
+      <div class="auth-brand">
+        <div class="atlas-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48">
+            <rect x="2" y="2" width="44" height="44" rx="12" fill="#20211f" />
+            <path d="M11 15V9h26v26h-6" fill="none" stroke="#1fa8a0" stroke-width="2.6" stroke-linecap="round" />
+            <path d="M17.5 34L24 13l6.5 21M20 27h8" fill="none" stroke="#f7f4ef" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <span class="auth-eyebrow">VÁ Bar · Staff only</span>
+        <h1 id="login-title">Atlas</h1>
+        <p>Hospitality operating system for VÁ.</p>
+      </div>
+
+      <div class="auth-error" id="login-error" hidden role="alert"></div>
+      <form id="login-form" novalidate>
+        <label class="auth-field" for="login-email">
+          <span>Email</span>
+          <input id="login-email" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+        </label>
+        <label class="auth-field" for="login-password">
+          <span>Password</span>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <button class="atlas-button full" id="login-submit" type="submit">Sign in</button>
+      </form>
+    </article>
+  </main>
+</body>
+</html>
