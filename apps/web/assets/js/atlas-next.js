@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = 'atlas-next/0.2.1';
+  const VERSION = 'atlas-next/0.2.2';
   const CONFIG = Object.freeze({
     supabaseUrl: window.VABAR_CONFIG?.SUPABASE_URL || 'https://dnefgcmjcgxlynycxkts.supabase.co',
     supabaseKey: window.VABAR_CONFIG?.SUPABASE_ANON_KEY || 'sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp',
@@ -45,6 +45,7 @@
     loadingData: false,
     inventoryQuery: '',
     inventoryCategory: 'all',
+    bootStarted: false,
     bootFinished: false,
     authSubscription: null,
   };
@@ -125,18 +126,19 @@
   }
 
   function showAuth(message = '') {
-    if (dom['app-screen']) dom['app-screen'].hidden = true;
-    if (dom['app-shell']) dom['app-shell'].hidden = true;
-    dom['auth-screen'].hidden = false;
     setBoot(false);
-    setAuthError(message);
-    window.requestAnimationFrame(() => dom['auth-email']?.focus());
+    const url = new URL('login.html', window.location.href);
+    const requested = location.hash.replace(/^#/, '').split('/')[0];
+    if (requested && TITLES[requested]) url.searchParams.set('view', requested);
+    if (message) url.searchParams.set('message', message);
+    url.searchParams.set('from', VERSION);
+    window.location.replace(url.href);
   }
 
   function showApp() {
-    dom['auth-screen'].hidden = true;
+    if (dom['auth-screen']) dom['auth-screen'].hidden = true;
     if (dom['app-screen']) dom['app-screen'].hidden = false;
-    dom['app-shell'].hidden = false;
+    if (dom['app-shell']) dom['app-shell'].hidden = false;
     setBoot(false);
     renderIcons();
   }
@@ -316,35 +318,14 @@
       console.error('Atlas access verification failed', error);
       const message = error instanceof Error ? error.message : 'Atlas access could not be verified.';
       clearSessionState();
-      showAuth(message);
       void boundedLocalSignOut();
+      showAuth(message);
     }
   }
 
   async function handleLogin(event) {
     event.preventDefault();
-    const email = dom['auth-email'].value.trim();
-    const password = dom['auth-password'].value;
-    if (!email || !password) {
-      setAuthError('Enter your email and password.');
-      return;
-    }
-    setAuthError('');
-    setAuthBusy(true);
-    try {
-      const response = await withTimeout(
-        state.client.auth.signInWithPassword({ email, password }),
-        CONFIG.requestTimeoutMs,
-        'Sign-in took too long. Check the connection and try again.',
-      );
-      if (response.error) throw response.error;
-      if (!response.data?.session) throw new Error('Atlas did not receive a valid session.');
-      await enterApplication(response.data.session);
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Sign-in failed.');
-    } finally {
-      setAuthBusy(false);
-    }
+    showAuth('Use the isolated Atlas sign-in page.');
   }
 
   async function signOut() {
@@ -549,7 +530,7 @@
   }
 
   function bindEvents() {
-    dom['auth-form'].addEventListener('submit', handleLogin);
+    dom['auth-form']?.addEventListener('submit', handleLogin);
     dom['sign-out'].addEventListener('click', signOut);
     dom['mobile-menu'].addEventListener('click', () => document.body.classList.toggle('nav-open'));
     dom['sidebar-nav'].addEventListener('click', (event) => {
@@ -601,11 +582,17 @@
   }
 
   async function boot() {
+    if (state.bootStarted) return;
+    state.bootStarted = true;
     cacheDom();
     bindEvents();
     applyTheme(initialTheme());
     renderIcons();
     setBoot(true, 'Opening Atlas…');
+
+    const watchdog = window.setTimeout(() => {
+      if (!state.bootFinished) showAuth('Atlas startup timed out. Sign in again to continue.');
+    }, CONFIG.bootTimeoutMs + 2000);
 
     try {
       state.client = createClient();
@@ -613,10 +600,8 @@
       if (sessionResponse.error) throw sessionResponse.error;
       state.authSubscription = state.client.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT') {
-          state.session = null;
-          state.profile = null;
-          dispatchAuth();
-          if (dom['auth-screen'].hidden) showAuth('');
+          clearSessionState();
+          showAuth('');
         }
         if (event === 'TOKEN_REFRESHED' && session) {
           state.session = session;
@@ -631,17 +616,18 @@
       console.error('Atlas boot failed', error);
       showAuth(error instanceof Error ? error.message : 'Atlas could not start.');
     } finally {
+      window.clearTimeout(watchdog);
       state.bootFinished = true;
     }
   }
 
   window.addEventListener('error', (event) => {
     console.error('Atlas runtime error', event.error || event.message);
-    if (!state.bootFinished) showAuth('Atlas encountered a startup error. Refresh the page and try again.');
+    if (!state.bootFinished) showAuth('Atlas encountered a startup error. Sign in again to continue.');
   });
   window.addEventListener('unhandledrejection', (event) => {
     console.error('Atlas rejected promise', event.reason);
-    if (!state.bootFinished) showAuth('Atlas encountered a startup error. Refresh the page and try again.');
+    if (!state.bootFinished) showAuth('Atlas encountered a startup error. Sign in again to continue.');
   });
 
   window.AtlasNext = Object.freeze({
@@ -661,6 +647,9 @@
     }),
   });
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
-  else boot();
+  // atlas-next.js is itself loaded with `defer`, so the document has already
+  // been parsed when this line runs. Boot immediately rather than waiting for
+  // DOMContentLoaded, which is delayed by the many optional deferred workspace
+  // bundles that follow this core runtime in /next.html.
+  void boot();
 })();
