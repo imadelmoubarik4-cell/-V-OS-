@@ -25,6 +25,86 @@ window.VABAR_CONFIG = Object.freeze({
   POS_MAPPING_API: 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-pos-mapping',
 });
 
+// The connected workspaces are loaded on the same page as authentication. Some
+// of those mature modules register document/window shortcuts. Install this
+// firewall before any of them so events originating in the sign-in form remain
+// native and cannot be cancelled or rewritten by an unrelated workspace.
+(() => {
+  'use strict';
+
+  const AUTH_EVENT_TYPES = new Set([
+    'keydown', 'keypress', 'keyup',
+    'beforeinput', 'input',
+    'compositionstart', 'compositionupdate', 'compositionend',
+    'paste', 'cut',
+    'pointerdown', 'pointerup', 'mousedown', 'mouseup',
+    'touchstart', 'touchend', 'click',
+  ]);
+  const nativeAdd = EventTarget.prototype.addEventListener;
+  const nativeRemove = EventTarget.prototype.removeEventListener;
+  const registrations = new WeakMap();
+
+  const captureKey = (options) => (
+    typeof options === 'boolean' ? options : Boolean(options && options.capture)
+  );
+
+  function isVisibleAuthEvent(event) {
+    const auth = document.getElementById('auth-screen');
+    const target = event.target;
+    return Boolean(
+      auth
+      && !auth.hidden
+      && target instanceof Element
+      && target.closest('#auth-form')
+    );
+  }
+
+  function listenerBelongsToAuth(target) {
+    return target instanceof Element && Boolean(target.closest('#auth-form'));
+  }
+
+  EventTarget.prototype.addEventListener = function atlasSafeAddEventListener(type, listener, options) {
+    const normalizedType = String(type || '');
+    if (!listener || !AUTH_EVENT_TYPES.has(normalizedType)) {
+      return nativeAdd.call(this, type, listener, options);
+    }
+
+    let byListener = registrations.get(this);
+    if (!byListener) {
+      byListener = new WeakMap();
+      registrations.set(this, byListener);
+    }
+    let byKey = byListener.get(listener);
+    if (!byKey) {
+      byKey = new Map();
+      byListener.set(listener, byKey);
+    }
+
+    const key = `${normalizedType}:${captureKey(options) ? '1' : '0'}`;
+    let wrapped = byKey.get(key);
+    if (!wrapped) {
+      const registrationTarget = this;
+      wrapped = function atlasSafeListener(event) {
+        if (isVisibleAuthEvent(event) && !listenerBelongsToAuth(registrationTarget)) {
+          return undefined;
+        }
+        if (typeof listener === 'function') return listener.call(this, event);
+        return listener.handleEvent(event);
+      };
+      byKey.set(key, wrapped);
+    }
+
+    return nativeAdd.call(this, type, wrapped, options);
+  };
+
+  EventTarget.prototype.removeEventListener = function atlasSafeRemoveEventListener(type, listener, options) {
+    const normalizedType = String(type || '');
+    const key = `${normalizedType}:${captureKey(options) ? '1' : '0'}`;
+    const wrapped = listener ? registrations.get(this)?.get(listener)?.get(key) : null;
+    return nativeRemove.call(this, type, wrapped || listener, options);
+  };
+})();
+
 (() => {
   'use strict';
 
@@ -39,7 +119,7 @@ window.VABAR_CONFIG = Object.freeze({
       #auth-screen:not([hidden]) {
         position: fixed !important;
         inset: 0 !important;
-        z-index: 2147483646 !important;
+        z-index: 2147483647 !important;
         display: grid !important;
         overflow: auto !important;
         isolation: isolate !important;
@@ -60,6 +140,10 @@ window.VABAR_CONFIG = Object.freeze({
         z-index: 1 !important;
       }
       #auth-screen:not([hidden]) input {
+        opacity: 1 !important;
+        color: var(--atlas-text) !important;
+        -webkit-text-fill-color: var(--atlas-text) !important;
+        caret-color: var(--atlas-accent) !important;
         user-select: text !important;
         -webkit-user-select: text !important;
         touch-action: manipulation !important;
@@ -68,20 +152,42 @@ window.VABAR_CONFIG = Object.freeze({
     document.head.appendChild(style);
   }
 
+  function closePreAuthOverlays() {
+    for (const id of ['command-palette', 'service-overlay', 'recipe-overlay']) {
+      const overlay = document.getElementById(id);
+      if (!overlay) continue;
+      overlay.hidden = true;
+      overlay.classList.remove('is-open');
+      overlay.setAttribute('aria-hidden', 'true');
+      if (overlay.style.display) overlay.style.display = 'none';
+    }
+    document.body?.classList.remove(
+      'atlas-modal-open',
+      'item-master-editor-open',
+      'inventory-scanner-open',
+      'nav-open',
+    );
+  }
+
   function unlockAuthSurface() {
     const auth = document.getElementById('auth-screen');
     if (!auth || auth.hidden) return;
+    document.documentElement.removeAttribute('inert');
+    document.body?.removeAttribute('inert');
+    closePreAuthOverlays();
+
     auth.removeAttribute('inert');
-    auth.setAttribute('aria-hidden', 'false');
-    auth.style.pointerEvents = 'auto';
+    if (auth.getAttribute('aria-hidden') !== 'false') auth.setAttribute('aria-hidden', 'false');
+    if (auth.style.pointerEvents !== 'auto') auth.style.pointerEvents = 'auto';
+
     const email = document.getElementById('auth-email');
     const password = document.getElementById('auth-password');
     for (const input of [email, password]) {
       if (!(input instanceof HTMLInputElement)) continue;
-      input.disabled = false;
-      input.readOnly = false;
+      if (input.disabled) input.disabled = false;
+      if (input.readOnly) input.readOnly = false;
       input.removeAttribute('inert');
-      input.style.pointerEvents = 'auto';
+      if (input.style.pointerEvents !== 'auto') input.style.pointerEvents = 'auto';
     }
   }
 
@@ -106,7 +212,11 @@ window.VABAR_CONFIG = Object.freeze({
     const auth = document.getElementById('auth-screen');
     if (auth && !observer) {
       observer = new MutationObserver(unlockAuthSurface);
-      observer.observe(auth, { attributes: true, attributeFilter: ['hidden', 'style', 'class', 'inert'] });
+      observer.observe(auth, {
+        attributes: true,
+        subtree: true,
+        attributeFilter: ['hidden', 'style', 'class', 'inert', 'aria-hidden', 'disabled', 'readonly'],
+      });
     }
     document.addEventListener('pointerdown', focusCoveredControl, true);
     window.addEventListener('pageshow', unlockAuthSurface);
