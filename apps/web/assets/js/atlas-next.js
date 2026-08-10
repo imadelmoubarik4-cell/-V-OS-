@@ -1,12 +1,13 @@
 (() => {
   'use strict';
 
-  const VERSION = 'atlas-next/0.2.0';
+  const VERSION = 'atlas-next/0.2.1';
   const CONFIG = Object.freeze({
     supabaseUrl: window.VABAR_CONFIG?.SUPABASE_URL || 'https://dnefgcmjcgxlynycxkts.supabase.co',
     supabaseKey: window.VABAR_CONFIG?.SUPABASE_ANON_KEY || 'sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp',
     requestTimeoutMs: 12000,
     bootTimeoutMs: 15000,
+    signOutTimeoutMs: 4000,
   });
 
   const TITLES = Object.freeze({
@@ -65,6 +66,32 @@
         timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
       }),
     ]).finally(() => window.clearTimeout(timer));
+  }
+
+  async function boundedLocalSignOut() {
+    if (!state.client?.auth?.signOut) return;
+    try {
+      await withTimeout(
+        state.client.auth.signOut({ scope: 'local' }),
+        CONFIG.signOutTimeoutMs,
+        'Local sign-out cleanup took too long.',
+      );
+    } catch (error) {
+      console.warn('Atlas local sign-out cleanup warning', error);
+    }
+  }
+
+  function clearSessionState() {
+    state.session = null;
+    state.profile = null;
+    state.inventory = [];
+    state.recipes = [];
+    state.suppliers = [];
+    state.movements = [];
+    document.body.dataset.atlasRole = 'unknown';
+    window.currentUser = null;
+    dispatchAuth();
+    dispatchData();
   }
 
   function cacheDom() {
@@ -287,11 +314,10 @@
       await loadRuntimeData({ quiet: true });
     } catch (error) {
       console.error('Atlas access verification failed', error);
-      await state.client.auth.signOut().catch(() => undefined);
-      state.session = null;
-      state.profile = null;
-      dispatchAuth();
-      showAuth(error instanceof Error ? error.message : 'Atlas access could not be verified.');
+      const message = error instanceof Error ? error.message : 'Atlas access could not be verified.';
+      clearSessionState();
+      showAuth(message);
+      void boundedLocalSignOut();
     }
   }
 
@@ -323,16 +349,8 @@
 
   async function signOut() {
     setBoot(true, 'Signing out…');
-    await state.client.auth.signOut().catch((error) => console.warn('Sign-out warning', error));
-    state.session = null;
-    state.profile = null;
-    state.inventory = [];
-    state.recipes = [];
-    state.suppliers = [];
-    state.movements = [];
-    document.body.dataset.atlasRole = 'unknown';
-    dispatchAuth();
-    dispatchData();
+    await boundedLocalSignOut();
+    clearSessionState();
     showAuth('');
   }
 
