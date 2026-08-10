@@ -1,6 +1,7 @@
 name: Atlas forensic web export
 
 on:
+  pull_request:
   push:
     branches:
       - agent/audit-complete-version-pr8
