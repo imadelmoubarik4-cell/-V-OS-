@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en" data-atlas-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f6f6f4" />
+  <title>Atlas · VÁ Hospitality OS</title>
+  <link rel="icon" type="image/png" href="assets/logo/atlas-icon.png" />
+  <style>
+    :root { color-scheme: light; background: #f6f6f4; color: #71716a; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    html[data-atlas-theme="dark"] { color-scheme: dark; background: #111113; color: #9d9d96; }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body { background: inherit; color: inherit; }
+    .atlas-bootstrap { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; }
+    .atlas-bootstrap-card { display: grid; justify-items: center; gap: 15px; text-align: center; }
+    .atlas-bootstrap-spinner { width: 32px; height: 32px; border: 3px solid rgba(127,127,127,.28); border-top-color: #1fa8a0; border-radius: 50%; animation: atlas-bootstrap-spin .8s linear infinite; }
+    .atlas-bootstrap-card strong { color: inherit; font-size: 15px; }
+    .atlas-bootstrap-card p { max-width: 520px; margin: 0; font-size: 13px; line-height: 1.5; }
+    .atlas-bootstrap-card a { min-height: 42px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 12px; background: #20211f; color: #fff; text-decoration: none; font-weight: 650; }
+    @keyframes atlas-bootstrap-spin { to { transform: rotate(360deg); } }
+  </style>
+  <script>
+    (() => {
+      let theme = 'light';
+      try {
+        const saved = localStorage.getItem('atlas.next.theme');
+        theme = saved === 'dark' || saved === 'light'
+          ? saved
+          : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch (_) {
+        theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.dataset.atlasTheme = theme;
+      document.documentElement.style.colorScheme = theme;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#111113' : '#f6f6f4');
+    })();
+  </script>
+  <script src="assets/js/atlas-app-bootstrap.js" defer></script>
+</head>
+<body>
+  <main class="atlas-bootstrap" id="atlas-bootstrap" role="status" aria-live="polite">
+    <div class="atlas-bootstrap-card">
+      <div class="atlas-bootstrap-spinner" aria-hidden="true"></div>
+      <strong id="atlas-bootstrap-title">Opening Atlas…</strong>
+      <p id="atlas-bootstrap-copy">Loading the authenticated application shell before the connected workspaces.</p>
+      <a id="atlas-bootstrap-login" href="login.html" hidden>Return to sign in</a>
+    </div>
+  </main>
+</body>
+</html>
