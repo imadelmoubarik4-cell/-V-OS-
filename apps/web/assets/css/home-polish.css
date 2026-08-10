@@ -1,0 +1,606 @@
+/* Atlas incremental visual polish — Home only.
+ * This layer intentionally does not change application behaviour, routing,
+ * authentication, data access or any non-Home workspace renderer.
+ */
+
+:root {
+  --atlas-home-accent: #4f7df3;
+  --atlas-home-accent-strong: #3e68d7;
+  --atlas-home-accent-soft: rgba(79, 125, 243, 0.10);
+  --atlas-home-accent-line: rgba(79, 125, 243, 0.24);
+  --atlas-home-teal: #23a8a1;
+  --atlas-home-teal-soft: rgba(35, 168, 161, 0.11);
+  --atlas-home-warning: #c77b3d;
+  --atlas-home-warning-soft: rgba(199, 123, 61, 0.11);
+  --atlas-home-shadow: 0 1px 2px rgba(35, 38, 35, 0.04), 0 18px 44px -34px rgba(35, 38, 35, 0.36);
+  --atlas-home-shadow-raised: 0 4px 12px rgba(35, 38, 35, 0.06), 0 28px 54px -38px rgba(35, 38, 35, 0.42);
+}
+
+/* Hero */
+#home-intro.atlas-home-hero {
+  align-items: center;
+  min-height: 92px;
+  margin-bottom: 18px;
+  padding: 2px 2px 0;
+}
+
+#home-intro .atlas-home-hero-copy {
+  min-width: 0;
+}
+
+#home-intro .atlas-home-eyebrow,
+.atlas-home-section-kicker,
+#home-focus .atlas-home-panel-kicker {
+  display: block;
+  margin: 0 0 7px;
+  color: var(--atlas-home-accent);
+  font: 700 10px/1.2 'IBM Plex Sans', sans-serif;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+#home-intro h1 {
+  margin: 0;
+  color: var(--atlas-text);
+  font: 600 clamp(34px, 3.6vw, 46px)/1.04 'IBM Plex Sans', sans-serif;
+  letter-spacing: -0.045em;
+}
+
+#home-intro p {
+  max-width: 650px;
+  margin-top: 9px;
+  color: var(--atlas-muted);
+  font-size: 15px;
+}
+
+.atlas-home-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.atlas-home-action {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  border: 1px solid var(--atlas-home-accent);
+  border-radius: 12px;
+  background: var(--atlas-home-accent);
+  color: #fff;
+  font: 600 13px/1 'IBM Plex Sans', sans-serif;
+  cursor: pointer;
+  box-shadow: var(--atlas-home-shadow);
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.atlas-home-action:hover {
+  transform: translateY(-1px);
+  background: var(--atlas-home-accent-strong);
+  border-color: var(--atlas-home-accent-strong);
+}
+
+.atlas-home-action.secondary {
+  border-color: var(--atlas-line);
+  background: var(--atlas-surface);
+  color: var(--atlas-text);
+}
+
+.atlas-home-action.secondary:hover {
+  border-color: var(--atlas-home-accent-line);
+  background: var(--atlas-home-accent-soft);
+}
+
+.atlas-home-action svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.9;
+}
+
+/* Today's focus */
+#home-focus.atlas-home-focus {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  border-color: var(--atlas-line) !important;
+  box-shadow: var(--atlas-home-shadow) !important;
+}
+
+#home-focus .atlas-home-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 21px 22px 17px;
+  border-bottom: 1px solid var(--atlas-line);
+  background: linear-gradient(115deg, rgba(79, 125, 243, 0.055), rgba(35, 168, 161, 0.035) 55%, transparent 85%);
+}
+
+#home-focus .atlas-home-panel-head h2 {
+  margin: 0;
+  color: var(--atlas-text);
+  font: 600 20px/1.2 'IBM Plex Sans', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+#home-focus .atlas-home-panel-head p {
+  margin: 5px 0 0;
+  color: var(--atlas-muted);
+  font-size: 12px;
+}
+
+.atlas-home-live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid var(--atlas-home-accent-line);
+  border-radius: 999px;
+  background: var(--atlas-home-accent-soft);
+  color: var(--atlas-home-accent-strong);
+  font: 700 10px/1 'IBM Plex Sans', sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.atlas-home-live-status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--atlas-home-teal);
+  box-shadow: 0 0 0 4px var(--atlas-home-teal-soft);
+}
+
+#home-focus .focus-list {
+  padding: 0 22px;
+}
+
+#home-focus .focus-row {
+  position: relative;
+  min-height: 55px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 2px;
+  color: var(--atlas-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 140ms ease, padding 140ms ease;
+}
+
+#home-focus .focus-row:hover {
+  margin-inline: -9px;
+  padding-inline: 11px;
+  border-radius: 11px;
+  background: var(--atlas-home-accent-soft);
+}
+
+#home-focus .focus-row::after {
+  content: '›';
+  color: var(--atlas-muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+#home-focus .focus-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--atlas-home-warning);
+  box-shadow: 0 0 0 4px var(--atlas-home-warning-soft);
+}
+
+#home-focus [data-atlas-brain-focus] {
+  margin: 8px 0;
+  padding: 14px 14px;
+  border: 1px solid var(--atlas-home-accent-line);
+  border-radius: 12px;
+  background: linear-gradient(110deg, rgba(79, 125, 243, 0.11), rgba(35, 168, 161, 0.06));
+}
+
+#home-focus [data-atlas-brain-focus]:hover {
+  margin: 8px 0;
+  padding: 14px 14px;
+  background: linear-gradient(110deg, rgba(79, 125, 243, 0.15), rgba(35, 168, 161, 0.08));
+}
+
+#home-focus [data-atlas-brain-focus] .focus-dot {
+  background: var(--atlas-home-accent);
+  box-shadow: 0 0 0 4px var(--atlas-home-accent-soft);
+}
+
+/* Existing scheduled Operations prompt, restyled without changing its behaviour. */
+body #app-screen .checkpoint-a-home-prompt {
+  margin: 16px 0 18px;
+  padding: 15px 17px;
+  border: 1px solid rgba(199, 123, 61, 0.25);
+  border-radius: 15px;
+  background: linear-gradient(105deg, rgba(199, 123, 61, 0.075), rgba(255, 255, 255, 0.92));
+  box-shadow: var(--atlas-home-shadow);
+}
+
+body #app-screen .checkpoint-a-home-icon {
+  background: var(--atlas-home-warning-soft);
+  color: var(--atlas-home-warning);
+}
+
+body #app-screen .checkpoint-a-home-copy > span {
+  color: var(--atlas-home-warning);
+}
+
+body #app-screen .checkpoint-a-home-prompt button {
+  min-height: 38px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 11px;
+  background: var(--atlas-surface);
+  color: var(--atlas-text);
+  box-shadow: none;
+}
+
+body #app-screen .checkpoint-a-home-prompt button:hover {
+  border-color: rgba(199, 123, 61, 0.36);
+  background: var(--atlas-home-warning-soft);
+}
+
+/* Primary KPI strip */
+#home-metrics.atlas-home-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 0 18px;
+  overflow: hidden;
+  border: 1px solid var(--atlas-line);
+  border-radius: 16px;
+  background: var(--atlas-surface);
+  box-shadow: var(--atlas-home-shadow);
+}
+
+#home-metrics .metric-card {
+  min-height: 122px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+  column-gap: 13px;
+  row-gap: 3px;
+  padding: 18px 20px;
+  border: 0;
+  border-right: 1px solid var(--atlas-line);
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+#home-metrics .metric-card:last-child {
+  border-right: 0;
+}
+
+#home-metrics .metric-card:hover {
+  background: var(--atlas-home-accent-soft);
+}
+
+#home-metrics .metric-icon {
+  grid-row: 1 / 3;
+  align-self: center;
+  width: 38px;
+  height: 38px;
+  margin: 0;
+  border-radius: 11px;
+  background: var(--atlas-home-accent-soft);
+  color: var(--atlas-home-accent);
+}
+
+#home-metrics .metric-card:nth-child(2) .metric-icon {
+  background: var(--atlas-home-warning-soft);
+  color: var(--atlas-home-warning);
+}
+
+#home-metrics .metric-card:nth-child(3) .metric-icon,
+#home-metrics .metric-card:nth-child(4) .metric-icon {
+  background: var(--atlas-home-teal-soft);
+  color: var(--atlas-home-teal);
+}
+
+#home-metrics .metric-card strong {
+  align-self: end;
+  color: var(--atlas-text);
+  font: 650 29px/1 'IBM Plex Sans', sans-serif;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+#home-metrics .metric-card > span {
+  align-self: start;
+  margin: 0;
+  color: var(--atlas-muted);
+  font-size: 11px;
+}
+
+/* Attention strip */
+#low-stock-banner {
+  min-height: 44px;
+  margin: 0 0 18px;
+  padding: 11px 14px;
+  border: 1px solid rgba(199, 123, 61, 0.32);
+  border-radius: 13px;
+  background: var(--atlas-home-warning-soft);
+  color: var(--atlas-home-warning);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+#low-stock-banner .dot {
+  width: 8px;
+  height: 8px;
+  background: var(--atlas-home-warning);
+  animation: none;
+}
+
+/* Lower Home sections */
+#dashboard-view.atlas-home-details {
+  gap: 18px;
+}
+
+.atlas-home-section {
+  margin-top: 18px;
+}
+
+.atlas-home-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 2px 11px;
+}
+
+.atlas-home-section-heading h2 {
+  margin: 0;
+  color: var(--atlas-text);
+  font: 600 18px/1.25 'IBM Plex Sans', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+.atlas-home-section-heading p {
+  margin: 4px 0 0;
+  color: var(--atlas-muted);
+  font-size: 11px;
+}
+
+#dashboard-view .stat-grid.atlas-home-commercial-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--atlas-line);
+  border-radius: 16px;
+  background: var(--atlas-surface);
+  box-shadow: var(--atlas-home-shadow);
+}
+
+#dashboard-view .stat-grid.atlas-home-commercial-metrics .stat-card {
+  min-height: 108px;
+  padding: 18px 20px;
+  border: 0 !important;
+  border-right: 1px solid var(--atlas-line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+#dashboard-view .stat-grid.atlas-home-commercial-metrics .stat-card:last-child {
+  border-right: 0 !important;
+}
+
+#dashboard-view .stat-card .label {
+  color: var(--atlas-muted);
+  font: 700 10px/1.2 'IBM Plex Sans', sans-serif;
+  letter-spacing: 0.08em;
+}
+
+#dashboard-view .stat-card .value {
+  margin-top: 10px;
+  color: var(--atlas-text);
+  font: 650 27px/1 'IBM Plex Sans', sans-serif;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+#dashboard-view .stat-card.warn .value {
+  color: var(--atlas-home-warning);
+}
+
+#dashboard-view .stat-card .sub {
+  color: var(--atlas-muted);
+  font-size: 10px;
+}
+
+.atlas-home-panel-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+#dashboard-view .panel.atlas-home-panel {
+  min-width: 0;
+  margin: 0;
+  padding: 0 !important;
+  overflow: hidden;
+  box-shadow: var(--atlas-home-shadow) !important;
+}
+
+#dashboard-view .panel.atlas-home-panel h3 {
+  margin: 0;
+  padding: 17px 18px 14px;
+  border-bottom: 1px solid var(--atlas-line);
+  background: linear-gradient(110deg, rgba(79, 125, 243, 0.045), transparent 58%);
+  color: var(--atlas-text);
+  font: 600 16px/1.25 'IBM Plex Sans', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+#dashboard-view .panel.atlas-home-panel > div {
+  padding: 5px 18px 14px;
+}
+
+#dashboard-view .list-row,
+#dashboard-view .activity-row {
+  min-height: 48px;
+  padding: 11px 0;
+  border-color: var(--atlas-line);
+}
+
+#dashboard-view .list-row .item-info .name,
+#dashboard-view .activity-row .who {
+  font-weight: 600;
+}
+
+#dashboard-view .list-row .item-info .cat,
+#dashboard-view .activity-row .when,
+#dashboard-view .meta {
+  color: var(--atlas-muted);
+}
+
+#dashboard-view .qty-badge {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--atlas-home-warning-soft);
+  color: var(--atlas-home-warning);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+#dashboard-view .bar-track {
+  background: var(--atlas-bg);
+}
+
+#dashboard-view .bar-fill {
+  background: linear-gradient(90deg, var(--atlas-home-accent), var(--atlas-home-teal));
+}
+
+#dashboard-view .empty-dash {
+  padding: 28px 0;
+  color: var(--atlas-muted);
+  text-align: center;
+}
+
+@media (max-width: 1050px) {
+  #home-intro.atlas-home-hero {
+    align-items: flex-start;
+  }
+
+  .atlas-home-hero-actions {
+    max-width: 290px;
+  }
+
+  #home-metrics.atlas-home-metrics,
+  #dashboard-view .stat-grid.atlas-home-commercial-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #home-metrics .metric-card:nth-child(2),
+  #dashboard-view .stat-grid.atlas-home-commercial-metrics .stat-card:nth-child(2) {
+    border-right: 0 !important;
+  }
+
+  #home-metrics .metric-card:nth-child(-n + 2),
+  #dashboard-view .stat-grid.atlas-home-commercial-metrics .stat-card:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--atlas-line) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #home-intro.atlas-home-hero {
+    min-height: 0;
+    flex-direction: column;
+    gap: 17px;
+    margin-bottom: 20px;
+  }
+
+  #home-intro h1 {
+    font-size: 33px;
+  }
+
+  .atlas-home-hero-actions {
+    width: 100%;
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .atlas-home-action {
+    flex: 1 1 150px;
+  }
+
+  #home-focus .atlas-home-panel-head {
+    padding: 18px 17px 15px;
+  }
+
+  #home-focus .focus-list {
+    padding-inline: 17px;
+  }
+
+  #home-focus .focus-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  #home-focus .focus-row::after {
+    display: none;
+  }
+
+  .atlas-home-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .atlas-home-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 520px) {
+  #home-metrics.atlas-home-metrics,
+  #dashboard-view .stat-grid.atlas-home-commercial-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  #home-metrics .metric-card,
+  #home-metrics .metric-card:nth-child(2),
+  #dashboard-view .stat-grid.atlas-home-commercial-metrics .stat-card,
+  #dashboard-view .stat-grid.atlas-home-commercial-metrics .stat-card:nth-child(2) {
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--atlas-line) !important;
+  }
+
+  #home-metrics .metric-card:last-child,
+  #dashboard-view .stat-grid.atlas-home-commercial-metrics .stat-card:last-child {
+    border-bottom: 0 !important;
+  }
+
+  #home-metrics .metric-card {
+    min-height: 100px;
+  }
+
+  .atlas-home-live-status {
+    display: none;
+  }
+}
+
+@media (hover: none) {
+  .atlas-home-action:hover,
+  #home-focus .focus-row:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-home-action,
+  #home-focus .focus-row,
+  #home-metrics .metric-card {
+    transition: none;
+  }
+}
