@@ -11,6 +11,30 @@
     '[tabindex]:not([tabindex="-1"])'
   ].join(',');
 
+  function authFormTarget(event) {
+    const auth = document.getElementById('auth-screen');
+    const target = event.target;
+    return Boolean(auth && !auth.hidden && target instanceof Element && target.closest('#auth-form'));
+  }
+
+  function protectAuthInput(event) {
+    if (!authFormTarget(event)) return;
+
+    // Connected workspace scripts register their own global shortcuts and modal
+    // handlers. The sign-in form is mounted before those workspaces, so keep
+    // credential entry native and stop later handlers from cancelling it.
+    event.stopImmediatePropagation();
+
+    if (event.type === 'keydown' && event.key === 'Enter') {
+      event.preventDefault();
+      document.getElementById('auth-form')?.requestSubmit();
+    }
+  }
+
+  for (const type of ['keydown', 'beforeinput', 'compositionstart', 'compositionend', 'paste', 'cut']) {
+    window.addEventListener(type, protectAuthInput, true);
+  }
+
   function getPanel(root) {
     return root.querySelector('[data-modal-panel]') || root.querySelector('.modal');
   }
@@ -30,6 +54,9 @@
 
   function trapFocus(event) {
     if (event.key !== 'Tab') return;
+    const auth = document.getElementById('auth-screen');
+    if (auth && !auth.hidden) return;
+
     const openModals = Array.from(document.querySelectorAll('[data-atlas-modal].is-open'));
     const root = openModals.at(-1);
     if (!root) return;
