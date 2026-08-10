@@ -443,6 +443,38 @@
   .toast.show{display:block;animation:toastIn .2s ease;}
   @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   .atlas-logo svg{width:100%;height:100%;display:block;}
+
+  /* PHASE1_SECURITY_GATE_UI
+     Commercial controls are hidden unless the verified profile is manager/admin.
+     Database grants and RLS remain the authoritative boundary. */
+  body:not(.atlas-commercial-manager) [data-commercial-only],
+  body:not(.atlas-commercial-manager) [data-default="suppliers"],
+  body:not(.atlas-commercial-manager) [data-view="suppliers"],
+  body:not(.atlas-commercial-manager) [data-view="imports"],
+  body:not(.atlas-commercial-manager) [data-service-action="restock"],
+  body:not(.atlas-commercial-manager) [data-service-action="add-item"],
+  body:not(.atlas-commercial-manager) #add-item-btn,
+  body:not(.atlas-commercial-manager) #add-supplier-btn,
+  body:not(.atlas-commercial-manager) #add-recipe-btn,
+  body:not(.atlas-commercial-manager) #recipe-library-add,
+  body:not(.atlas-commercial-manager) .fab-wrap,
+  body:not(.atlas-commercial-manager) .row-actions,
+  body:not(.atlas-commercial-manager) .step-btn,
+  body:not(.atlas-commercial-manager) [data-edit-recipe],
+  body:not(.atlas-commercial-manager) [data-empty-create],
+  body:not(.atlas-commercial-manager) .recipe-library-item-finance,
+  body:not(.atlas-commercial-manager) .recipe-profile-ingredient > div:last-child,
+  body:not(.atlas-commercial-manager) .recipe-insight-metrics > div:nth-child(-n+5),
+  body:not(.atlas-commercial-manager) .recipe-featured-card,
+  body:not(.atlas-commercial-manager) .recipe-cost-strip,
+  body:not(.atlas-commercial-manager) .recipe-cost-note,
+  body:not(.atlas-commercial-manager) .ingredient-cost-v2 {
+    display:none!important;
+  }
+  body:not(.atlas-commercial-manager) #inventory-view .qty-input {
+    pointer-events:none;
+    opacity:.72;
+  }
 </style>
   <link rel="stylesheet" href="assets/css/operations.css">
   <link rel="stylesheet" href="assets/css/brain.css">
@@ -511,7 +543,7 @@
 
           <div class="alert-banner" id="low-stock-banner"><span class="dot"></span><span id="low-stock-text"></span></div>
           <div id="inventory-view" style="display:none;"><div class="toolbar"><div class="tabs" id="category-tabs"></div><button class="btn" id="add-item-btn">+ Add item</button></div><div id="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Updated</th><th>Quantity</th><th></th></tr></thead><tbody id="items-body"></tbody></table><div class="empty-state" id="empty-state" style="display:none;"><span class="mark">Á</span>Nothing here yet. Add the first item.</div></div></div>
-          <div id="dashboard-view" style="display:none;"><div class="stat-grid"><div class="stat-card"><div class="label">Total items</div><div class="value" id="stat-total-items">0</div></div><div class="stat-card warn"><div class="label">Low stock</div><div class="value" id="stat-low-stock">0</div></div><div class="stat-card"><div class="label">Spent this month</div><div class="value" id="stat-month-spend">0</div><div class="sub">ISK</div></div><div class="stat-card"><div class="label">Suppliers</div><div class="value" id="stat-suppliers">0</div></div></div><div class="panel"><h3>Low inventory</h3><div id="low-inventory-rows"><div class="empty-dash">Nothing below par right now.</div></div></div><div class="panel"><h3>Recent activity</h3><div id="activity-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel"><h3>Spend by month</h3><div id="monthly-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel"><h3>Spend by supplier — this month</h3><div id="supplier-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div></div>
+          <div id="dashboard-view" style="display:none;"><div class="stat-grid"><div class="stat-card"><div class="label">Total items</div><div class="value" id="stat-total-items">0</div></div><div class="stat-card warn"><div class="label">Low stock</div><div class="value" id="stat-low-stock">0</div></div><div class="stat-card" data-commercial-only><div class="label">Spent this month</div><div class="value" id="stat-month-spend">0</div><div class="sub">ISK</div></div><div class="stat-card" data-commercial-only><div class="label">Suppliers</div><div class="value" id="stat-suppliers">0</div></div></div><div class="panel"><h3>Low inventory</h3><div id="low-inventory-rows"><div class="empty-dash">Nothing below par right now.</div></div></div><div class="panel"><h3>Recent activity</h3><div id="activity-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by month</h3><div id="monthly-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by supplier — this month</h3><div id="supplier-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div></div>
           <div id="recipes-view" style="display:none;">
             <section class="recipe-dashboard">
               <div class="recipe-hero">
@@ -737,7 +769,7 @@
           <div class="item-form-grid">
             <div class="form-field"><label for="item-name">Item name</label><input type="text" id="item-name" required placeholder="e.g. Reyka Vodka" /></div>
             <div class="form-field"><label for="item-category">Category</label><input type="text" id="item-category" list="category-suggestions" placeholder="e.g. Spirits, Mixers, Glassware..." required /><datalist id="category-suggestions"></datalist></div>
-            <div class="form-field"><label for="item-quantity">Quantity</label><input type="number" id="item-quantity" step="0.1" required /></div>
+            <div class="form-field"><label for="item-quantity">Quantity (controlled stock workflow)</label><input type="number" id="item-quantity" step="0.1" value="0" disabled /></div>
             <div class="form-field"><label for="item-unit">Unit</label><input type="text" id="item-unit" placeholder="bottles, kg, cans..." required /></div>
             <div class="form-field"><label for="item-par">Par level (low-stock alert below this)</label><input type="number" id="item-par" step="0.1" placeholder="optional" /></div>
             <div class="form-field"><label for="item-supplier">Supplier</label><input type="text" id="item-supplier" list="supplier-suggestions" placeholder="Supplier name" /><datalist id="supplier-suggestions"></datalist></div>
@@ -869,14 +901,19 @@
     </section>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+        integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
+        crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"
+        integrity="sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT"
+        crossorigin="anonymous"></script>
 <script src="config.js"></script>
 <script>
   const SUPABASE_CDN_URLS = [
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
-    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js'
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
+    'https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'
   ];
+  const SUPABASE_SRI = 'sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug';
 
   function showBootError(msg, prefix = 'Setup problem') {
     const err = document.getElementById('login-error');
@@ -909,6 +946,7 @@
       script.src = src;
       script.async = true;
       script.crossOrigin = 'anonymous';
+      script.integrity = SUPABASE_SRI;
       script.onload = () => {
         window.clearTimeout(timer);
         resolve();
@@ -1000,6 +1038,37 @@
   const userEmailEl = document.getElementById('user-email');
 
   let currentUser = null;
+  let currentProfile = null;
+
+  function canManageCommercial() {
+    return ['admin', 'manager'].includes(currentProfile?.role);
+  }
+
+  window.atlasCanManageCommercial = canManageCommercial;
+
+  function requireCommercialManager(action = 'This action') {
+    if (canManageCommercial()) return true;
+    alert(`${action} is limited to managers and administrators.`);
+    return false;
+  }
+
+  function applyRoleVisibility() {
+    document.body.classList.toggle('atlas-commercial-manager', canManageCommercial());
+    window.atlasCurrentProfile = currentProfile
+      ? { id: currentProfile.id, role: currentProfile.role, active: currentProfile.active }
+      : null;
+    window.dispatchEvent(new CustomEvent('atlas:profile-ready', { detail: window.atlasCurrentProfile }));
+  }
+
+  function showDataBoundaryError(label) {
+    const banner = document.getElementById('low-stock-banner');
+    const copy = document.getElementById('low-stock-text');
+    if (banner && copy) {
+      banner.style.display = 'flex';
+      copy.textContent = `${label} is unavailable until the Phase 1 security migration is published.`;
+    }
+  }
+
   let items = [];
   let restockLog = [];
   let recipes = [];
@@ -1052,12 +1121,31 @@
     }
   });
 
+  async function loadActiveProfile(session) {
+    const { data, error } = await sb
+      .from('profiles')
+      .select('id,email,display_name,role,active')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    const allowedRoles = new Set(['admin', 'manager', 'bartender', 'viewer']);
+    if (error || !data?.active || !allowedRoles.has(data.role)) {
+      await sb.auth.signOut().catch(() => null);
+      throw new Error('This account is not an active VÁ staff profile. Ask an administrator to review access.');
+    }
+    currentProfile = data;
+    applyRoleVisibility();
+    return data;
+  }
+
   async function onSignedIn(session) {
     currentUser = session.user;
+    const profile = await loadActiveProfile(session);
+    const displayName = profile.display_name?.trim() || currentUser.email.split('@')[0];
     userEmailEl.textContent = currentUser.email;
-    document.getElementById('profile-name').textContent = currentUser.email.split('@')[0];
-    document.getElementById('greeting-name').textContent = currentUser.email.split('@')[0];
-    document.getElementById('user-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
+    document.getElementById('profile-name').textContent = displayName;
+    document.getElementById('greeting-name').textContent = displayName.split(' ')[0];
+    document.getElementById('user-avatar').textContent = displayName.charAt(0).toUpperCase();
     loginScreen.style.display = 'none';
     appScreen.style.display = 'block';
     await loadAll();
@@ -1086,46 +1174,82 @@
 
   // ---------- DATA ----------
   async function loadItems() {
+    const relation = canManageCommercial() ? 'inventory_items' : 'inventory_catalog';
     const { data, error } = await sb
-      .from('inventory_items')
+      .from(relation)
       .select('*')
       .order('category', { ascending: true })
       .order('name', { ascending: true });
     if (error) {
-      console.error(error);
+      console.error(`${relation} could not be loaded`, error);
+      items = [];
+      showDataBoundaryError('Inventory');
+      renderTabs();
+      renderTable();
       return;
     }
-    items = data;
+    items = data || [];
     renderTabs();
     renderTable();
   }
 
   async function loadRestockLog() {
-    const { data, error } = await sb
-      .from('inventory_movements')
-      .select('*, suppliers(name)')
-      .eq('movement_type', 'restock')
-      .order('created_at', { ascending: false });
+    const relation = canManageCommercial() ? 'inventory_movements' : 'inventory_movement_catalog';
+    let query = sb.from(relation);
+    query = canManageCommercial()
+      ? query.select('*, suppliers(name)').eq('movement_type', 'restock')
+      : query.select('*').eq('movement_type', 'restock');
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) {
-      console.error(error);
+      console.error(`${relation} could not be loaded`, error);
+      restockLog = [];
       return;
     }
-    restockLog = data;
+    restockLog = data || [];
   }
 
   async function loadRecipes() {
-    const { data, error } = await sb
-      .from('recipes')
-      .select('*, recipe_ingredients(*)')
-      .order('name', { ascending: true });
-    if (error) {
-      console.error(error);
+    if (canManageCommercial()) {
+      const { data, error } = await sb
+        .from('recipes')
+        .select('*, recipe_ingredients(*)')
+        .order('name', { ascending: true });
+      if (error) {
+        console.error(error);
+        recipes = [];
+        return;
+      }
+      recipes = data || [];
       return;
     }
-    recipes = data || [];
+
+    let result = await sb
+      .from('recipe_catalog')
+      .select('*')
+      .order('name', { ascending: true });
+
+    // Compatibility fallback for the draft preview before production migration.
+    // It requests only operational columns and is removed as a usable path once
+    // the canonical recipe tables become manager-only in production RLS.
+    if (result.error) {
+      result = await sb
+        .from('recipes')
+        .select('id,category_id,name,type,method,yield_quantity,yield_unit,menu_price,active,show_on_menu,glassware,garnish,notes,image_url,updated_at,recipe_ingredients(id,recipe_id,item_id,item_name,quantity,unit)')
+        .order('name', { ascending: true });
+    }
+    if (result.error) {
+      console.error('The staff recipe catalogue could not be loaded', result.error);
+      recipes = [];
+      return;
+    }
+    recipes = result.data || [];
   }
 
   async function loadSuppliersData() {
+    if (!canManageCommercial()) {
+      suppliers = [];
+      return;
+    }
     const { data, error } = await sb
       .from('suppliers')
       .select('*')
@@ -1217,7 +1341,7 @@
         <td>
           <div class="qty-cell">
             <button class="step-btn step-down" data-id="${item.id}" type="button">−</button>
-            <input type="number" step="0.1" class="qty-input mono" value="${item.quantity}" data-id="${item.id}" />
+            <input type="number" step="0.1" class="qty-input mono" value="${item.quantity}" data-id="${item.id}" ${canManageCommercial() ? '' : 'disabled'} />
             <button class="step-btn step-up" data-id="${item.id}" type="button">+</button>
             <span class="unit">${escapeHtml(item.unit)}</span>
             ${isLow ? '<span class="low-flag" title="At or below par level">Á</span>' : ''}
@@ -1234,6 +1358,7 @@
     });
 
     async function applyQuantityChange(id, newQty) {
+      if (!requireCommercialManager('Direct inventory adjustment')) return;
       if (isNaN(newQty) || newQty < 0) return;
       const item = items.find(i => i.id === id);
       if (!item || newQty === item.quantity) return;
@@ -1278,6 +1403,7 @@
 
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
+        if (!requireCommercialManager('Inventory deletion')) return;
         if (!confirm('Remove this item from inventory?')) return;
         await sb.from('inventory_items').delete().eq('id', btn.dataset.id);
         await loadAll();
@@ -1308,11 +1434,12 @@
   document.getElementById('item-case-cost').addEventListener('input', recalcUnitCostFromCase);
 
   function openModal(item) {
+    if (!requireCommercialManager('Inventory master editing')) return;
     document.getElementById('modal-title').textContent = item ? 'Edit item' : 'Add item';
     document.getElementById('item-id').value = item ? item.id : '';
     document.getElementById('item-name').value = item ? item.name : '';
     document.getElementById('item-category').value = item ? item.category : '';
-    document.getElementById('item-quantity').value = item ? item.quantity : '';
+    document.getElementById('item-quantity').value = item ? item.quantity : 0;
     document.getElementById('item-unit').value = item ? item.unit : 'bottles';
     document.getElementById('item-par').value = item && item.par_level != null ? item.par_level : '';
     document.getElementById('item-supplier').value = item && item.supplier ? item.supplier : '';
@@ -1332,6 +1459,7 @@
 
   itemForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!requireCommercialManager('Inventory master editing')) return;
     const id = document.getElementById('item-id').value;
     const payload = {
       name: document.getElementById('item-name').value.trim(),
@@ -1346,12 +1474,11 @@
       case_cost: document.getElementById('item-case-cost').value === '' ? null : parseFloat(document.getElementById('item-case-cost').value),
       cost_price: document.getElementById('item-cost').value === '' ? null : parseFloat(document.getElementById('item-cost').value),
       discount_percent: document.getElementById('item-discount').value === '' ? 0 : parseFloat(document.getElementById('item-discount').value),
-      updated_by: currentUser.id,
     };
     if (id) {
       await sb.from('inventory_items').update(payload).eq('id', id);
     } else {
-      await sb.from('inventory_items').insert(payload);
+      await sb.from('inventory_items').insert({ ...payload, quantity: 0 });
     }
     closeModal();
     await loadAll();
@@ -1370,6 +1497,10 @@
   };
   const titleMap = {dashboard:'Home',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',imports:'Import Center',team:'Team',shifts:'Shifts',knowledge:'Knowledge',reports:'Reports',settings:'Settings'};
   function setActiveView(view) {
+    if (!canManageCommercial() && ['suppliers', 'imports'].includes(view)) {
+      alert('This workspace is limited to managers and administrators.');
+      view = 'dashboard';
+    }
     activeView = view;
     Object.values(viewMap).forEach(v => { if(v) v.style.display='none'; });
     document.getElementById('home-intro').style.display = view === 'dashboard' ? 'flex' : 'none';
@@ -1460,6 +1591,7 @@
   const restockItemSelect = document.getElementById('restock-item');
 
   function openRestockModal() {
+    if (!requireCommercialManager('Restock logging')) return;
     restockItemSelect.innerHTML = '';
     items.forEach(item => {
       const opt = document.createElement('option');
@@ -1488,6 +1620,7 @@
 
   restockForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!requireCommercialManager('Restock logging')) return;
     const item = items.find(i => i.id === restockItemSelect.value);
     if (!item) return;
     const qtyAdded = parseFloat(document.getElementById('restock-qty').value);
@@ -1651,6 +1784,7 @@
     window.setTimeout(()=>toast.classList.remove('show'),2200);
   }
   function openSupplierModal(){
+    if (!requireCommercialManager('Supplier management')) return;
     supplierForm.reset();
     supplierOverlay.style.display='flex';
     supplierOverlay.setAttribute('aria-hidden','false');
@@ -1667,6 +1801,7 @@
   supplierOverlay.addEventListener('click',event=>{if(event.target===supplierOverlay)closeSupplierModal();});
   supplierForm.addEventListener('submit',async event=>{
     event.preventDefault();
+    if (!requireCommercialManager('Supplier management')) return;
     const payload={
       name:document.getElementById('supplier-name').value.trim(),
       contact_name:document.getElementById('supplier-contact').value.trim()||null,
