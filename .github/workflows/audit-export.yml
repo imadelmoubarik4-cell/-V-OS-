@@ -1,0 +1,30 @@
+name: Atlas forensic web export
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@v4
+      - name: Record candidate identity
+        run: |
+          git rev-parse HEAD > CANDIDATE_SHA.txt
+          git status --short > WORKTREE_STATUS.txt
+      - name: Upload deployable web snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-pr9-web-snapshot
+          path: |
+            apps/web
+            netlify.toml
+            CANDIDATE_SHA.txt
+            WORKTREE_STATUS.txt
+          if-no-files-found: error
+          retention-days: 3
