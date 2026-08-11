@@ -1,0 +1,236 @@
+/* Atlas — second polish pass.
+ *
+ * Fixes found in the signed-in acceptance sweep of the branch preview:
+ * dark/sand primary buttons and tab rails that the first pass didn't reach.
+ * Loads last, after system-polish.css.
+ *
+ * Presentation only. Every selector marked (confirmed) was read from the
+ * module's own stylesheet in the repo. A few marked (speculative) follow the
+ * same naming convention but weren't found in a stylesheet — if the class
+ * doesn't exist it is simply inert.
+ */
+
+/* ---------- Primary buttons: one blue primary across the product ----------
+   Marketing shipped a near-black primary (--atlas-text), Shifts a brown one
+   (#a6814d), Operations a black compact button. (confirmed) */
+
+.marketing-primary,
+.shift-primary,
+.checkpoint-a-compact-button,
+.knowledge-primary,        /* speculative */
+.shifts-primary,           /* speculative */
+.team-messages-primary {   /* speculative */
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700)) !important;
+  border: 1px solid var(--blue-700) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 20px -14px rgba(47, 128, 237, .95) !important;
+}
+
+.marketing-primary:hover:not(:disabled),
+.shift-primary:hover,
+.checkpoint-a-compact-button:hover,
+.knowledge-primary:hover,
+.shifts-primary:hover,
+.team-messages-primary:hover {
+  background: var(--blue-700) !important;
+  transform: translateY(-1px);
+}
+
+/* ---------- Tab rails: sand troughs → light blue (confirmed) ---------- */
+
+.marketing-tabs,
+.shift-tabs,
+.system-tabs {
+  background: var(--blue-50) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.marketing-tabs button.is-active,
+.shift-tabs button.is-active {
+  background: #fff !important;
+  color: var(--blue-700) !important;
+  box-shadow: 0 1px 2px rgba(16, 60, 110, .08) !important;
+}
+
+/* System's active tab was near-black; it becomes the app's blue. (confirmed) */
+.system-tabs button.is-active {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700)) !important;
+  color: #fff !important;
+}
+
+.system-tabs button:hover:not(.is-active) {
+  background: var(--blue-100) !important;
+  color: var(--blue-700) !important;
+}
+
+/* ---------- Operations Center hero: the last dark hero (confirmed) ----------
+   Brain and Business Intelligence heroes were converted in the first pass;
+   Operations was missed and still reads as a black slab. */
+
+.operations-hero {
+  color: var(--atlas-text) !important;
+  background:
+    radial-gradient(circle at 84% 10%, rgba(47, 128, 237, .14), transparent 44%),
+    radial-gradient(circle at 8% 90%, rgba(125, 180, 242, .16), transparent 50%),
+    rgba(255, 255, 255, .78) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+
+.operations-hero::after { display: none; }
+
+.operations-hero h1 {
+  color: var(--atlas-text) !important;
+  font-weight: 600;
+  letter-spacing: -.035em;
+}
+
+.operations-hero p { color: var(--atlas-muted) !important; }
+
+/* The readiness figure inside the hero was a light panel on dark; it needs a
+   light-on-light treatment now. */
+.operations-hero > *:last-child {
+  background: rgba(255, 255, 255, .72) !important;
+  border: 1px solid var(--glass-line) !important;
+  border-radius: 18px;
+  color: var(--atlas-text) !important;
+  box-shadow: var(--glass-highlight);
+}
+
+/* ---------- Remaining sand fills (confirmed) ---------- */
+
+.system-hero::after,
+.system-hero:after { display: none !important; }
+
+.business-table thead th {
+  background: rgba(255, 255, 255, .6) !important;
+  color: var(--atlas-muted) !important;
+}
+
+.business-table tbody tr:hover { background: rgba(47, 128, 237, .05) !important; }
+.business-table tbody td { border-bottom-color: var(--glass-line) !important; }
+
+.team-message-actions button { color: var(--blue-700) !important; }
+.team-message-actions button:last-child { color: var(--atlas-danger) !important; }
+
+.shift-month-day-button em {
+  background: var(--blue-100) !important;
+  color: var(--blue-700) !important;
+}
+
+.shift-month-detail-actions button:hover,
+.shift-month-day-empty button:hover {
+  border-color: var(--atlas-home-accent-line) !important;
+  background: var(--blue-50) !important;
+}
+
+.shift-month-day-button:focus-visible,
+.shift-month-chip:focus-visible,
+.shift-month-add-day:focus-visible { outline-color: var(--blue-600) !important; }
+
+/* The "Scheduled today" routine strip appears on every workspace, so it reads
+   as chrome rather than an alert; it moves onto the blue scale. Genuine
+   overdue/out-of-range states keep their own tones. (confirmed) */
+.checkpoint-a-compact-card {
+  background: rgba(244, 249, 255, .78) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.checkpoint-a-compact-eyebrow { color: var(--blue-600) !important; }
+
+
+/* ================== THIRD PASS — from the close screenshot read. ==================
+   Every selector below was confirmed in the module's own stylesheet. */
+
+/* ---------- Messages: the channel column was still on the warm palette ---------- */
+
+.team-channel-panel {
+  background: rgba(244, 249, 255, .66) !important;
+  border-right-color: var(--glass-line) !important;
+}
+
+.team-channel:hover { background: rgba(255, 255, 255, .78) !important; }
+
+.team-channel.is-active {
+  background: #fff !important;
+  border-color: var(--atlas-home-accent-line) !important;
+  box-shadow: 0 1px 2px rgba(16, 60, 110, .06) !important;
+}
+
+.team-channel-icon {
+  background: var(--blue-100) !important;
+  color: var(--blue-700) !important;
+}
+
+.team-composer {
+  background: rgba(255, 255, 255, .85) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.team-composer-wrap { border-top-color: var(--glass-line) !important; }
+.team-composer-tool { color: var(--blue-700) !important; }
+.team-composer-tool:hover,
+.team-composer-tool.is-active { background: var(--blue-100) !important; }
+
+/* Send was a near-black primary; disabled stays the same hue, just faded. */
+.team-send-button {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700)) !important;
+  border-color: var(--blue-700) !important;
+  color: #fff !important;
+}
+
+.team-send-button:hover:not(:disabled) { background: var(--blue-700) !important; }
+
+.team-composer-locked { background: var(--blue-50) !important; }
+.team-messages-empty svg { color: var(--blue-400) !important; }
+
+/* ---------- Business Intelligence: metric tiles and chart bars ----------
+   Neutral tiles and bars move to blue; the data-tone="warn"/"good" variants are
+   semantic and keep their amber/green. */
+
+.business-metric-icon {
+  background: var(--blue-100) !important;
+  color: var(--blue-600) !important;
+}
+
+.business-metric[data-tone="warn"] .business-metric-icon {
+  background: rgba(252, 243, 230, .9) !important;
+  color: #a4701f !important;
+}
+
+.business-metric[data-tone="good"] .business-metric-icon {
+  background: rgba(231, 248, 244, .9) !important;
+  color: #15806f !important;
+}
+
+.business-bar { background: var(--blue-100) !important; }
+.business-bar span { background: linear-gradient(90deg, var(--blue-400), var(--blue-600)) !important; }
+
+/* ---------- Marketing: recommendation cards and reminder rows ---------- */
+
+.marketing-recommendation {
+  background: rgba(255, 255, 255, .62) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.marketing-recommendation-type,
+.marketing-confidence { color: var(--blue-600) !important; }
+
+.marketing-recommendation dl div,
+.marketing-content-card dl div,
+.marketing-campaign-card dl div,
+.marketing-connection-card dl div,
+.marketing-content-detail dl div { background: var(--blue-50) !important; }
+
+.marketing-reminder,
+.marketing-approval-row { border-bottom-color: var(--glass-line) !important; }
+
+.marketing-reminder-icon,
+.marketing-approval-row > span:first-child {
+  background: var(--blue-100) !important;
+  color: var(--blue-600) !important;
+}
+
+.marketing-empty-state > svg { color: var(--blue-400) !important; }
