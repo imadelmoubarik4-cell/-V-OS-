@@ -1,0 +1,230 @@
+/* Atlas incremental visual polish — Real VÁ Data (Sprint 3 review) only.
+ *
+ * Scoped to `.review-shell`, the workspace mounted by `sprint3-review.js`
+ * against the `SPRINT3_REVIEW_API` gateway. This is the manager review surface
+ * for real staged VÁ source evidence, so the rules below touch chrome only and
+ * leave every evidence signal intact (§1D, §1E-L):
+ *
+ *   - `.review-status-badge.pending / .approved / .rejected / .imported` keep
+ *     their distinct decision tones — they are the review state itself;
+ *   - `.review-issue-chips` keep their warning tone, and `.clear` stays green;
+ *   - `.review-message.error / .success` keep their tones;
+ *   - approve and reject stay visually different so a decision can never be
+ *     made by muscle memory alone;
+ *   - `.review-history` (the decision trail) and `.review-source-details`
+ *     (provenance) are restyled for legibility only, never condensed.
+ *
+ * Nothing here promotes staged evidence to canonical, and no data path changes.
+ */
+
+/* Most of this workspace reads its own scale, so re-point that first. */
+.review-shell {
+  --review-accent: var(--blue-600, #2f80ed);
+  --review-line: var(--glass-line, rgba(16, 60, 110, .1));
+  --review-surface: var(--glass-fill, rgba(255, 255, 255, .72));
+  --review-text: var(--atlas-text, #10151c);
+  --review-muted: var(--atlas-muted, #6b7787);
+}
+
+/* Hero: the dark panel becomes light glass, with its inherited light text
+   recoloured so nothing renders white-on-white. */
+
+.review-shell .review-hero {
+  color: var(--atlas-text) !important;
+  background:
+    radial-gradient(circle at 84% 10%, rgba(47, 128, 237, .14), transparent 44%),
+    radial-gradient(circle at 8% 96%, rgba(125, 180, 242, .16), transparent 48%),
+    rgba(255, 255, 255, .78) !important;
+  backdrop-filter: var(--glass-blur, saturate(150%) blur(20px));
+  -webkit-backdrop-filter: var(--glass-blur, saturate(150%) blur(20px));
+  border: 1px solid var(--glass-line, rgba(16, 60, 110, .1)) !important;
+  box-shadow: var(--glass-highlight, inset 0 1px 0 rgba(255, 255, 255, .85)), var(--glass-shadow, 0 1px 2px rgba(16, 60, 110, .04)) !important;
+}
+
+.review-shell .review-kicker { color: var(--blue-600, #2f80ed) !important; }
+
+.review-shell .review-hero h1 {
+  color: var(--atlas-text) !important;
+  font-weight: 600;
+  letter-spacing: -.04em;
+}
+
+.review-shell .review-hero p { color: var(--atlas-muted) !important; }
+
+.review-shell .review-branch-card {
+  border: 1px solid var(--glass-line, rgba(16, 60, 110, .1)) !important;
+  background: rgba(255, 255, 255, .72) !important;
+  box-shadow: var(--glass-highlight, inset 0 1px 0 rgba(255, 255, 255, .85));
+}
+
+.review-shell .review-branch-card span,
+.review-shell .review-branch-card small { color: var(--atlas-muted) !important; }
+
+.review-shell .review-branch-card strong {
+  color: var(--atlas-text);
+  font-weight: 650;
+  letter-spacing: -.03em;
+}
+
+/* Cards */
+
+.review-shell .review-summary-card,
+.review-shell .review-list-card,
+.review-shell .review-detail-card,
+.review-shell .review-issues-card {
+  backdrop-filter: var(--glass-blur, saturate(150%) blur(20px));
+  -webkit-backdrop-filter: var(--glass-blur, saturate(150%) blur(20px));
+  box-shadow: var(--glass-highlight, inset 0 1px 0 rgba(255, 255, 255, .85)), var(--glass-shadow, 0 1px 2px rgba(16, 60, 110, .04));
+}
+
+.review-shell .review-summary-icon {
+  background: var(--blue-100, #e8f1fd) !important;
+  color: var(--blue-600, #2f80ed) !important;
+}
+
+.review-shell .review-summary-card strong {
+  font-weight: 650;
+  letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Controls */
+
+.review-shell .review-scope-chip {
+  min-height: 34px;
+  background: rgba(255, 255, 255, .74);
+}
+
+.review-shell .review-scope-chip span {
+  background: var(--blue-50, #f4f9ff);
+  color: var(--atlas-muted);
+}
+
+.review-shell .review-scope-chip:hover,
+.review-shell .review-scope-chip.active {
+  border-color: var(--blue-600, #2f80ed);
+  background: var(--blue-100, #e8f1fd) !important;
+  color: var(--blue-700, #1f66c9);
+}
+
+.review-shell .review-scope-chip.active span {
+  background: rgba(255, 255, 255, .7);
+  color: var(--blue-700, #1f66c9);
+}
+
+.review-shell .review-search,
+.review-shell .review-filter-row select,
+.review-shell .review-refresh {
+  min-height: 40px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .86) !important;
+}
+
+.review-shell .review-search:focus-within,
+.review-shell .review-filter-row select:focus {
+  outline: none;
+  border-color: var(--blue-600, #2f80ed) !important;
+  box-shadow: 0 0 0 3px rgba(47, 128, 237, .14);
+}
+
+.review-shell .review-refresh:hover {
+  border-color: var(--blue-600, #2f80ed);
+  background: var(--blue-50, #f4f9ff) !important;
+  color: var(--blue-700, #1f66c9);
+}
+
+/* Rows — selection is chrome; the status badge on each row is not touched. */
+
+.review-shell .review-row:hover { background: rgba(47, 128, 237, .05); }
+
+.review-shell .review-row.selected {
+  background: var(--blue-50, #f4f9ff);
+  box-shadow: inset 3px 0 0 var(--blue-600, #2f80ed);
+}
+
+.review-shell .review-scope-badge {
+  background: var(--blue-50, #f4f9ff);
+  color: var(--atlas-muted);
+}
+
+.review-shell .review-nav-count {
+  background: var(--blue-100, #e8f1fd);
+  color: var(--blue-700, #1f66c9);
+}
+
+/* Detail: provenance and extracted values stay verbatim — legibility only. */
+
+.review-shell .review-detail-head h2 {
+  font-weight: 650;
+  letter-spacing: -.03em;
+}
+
+.review-shell .review-data-grid > div {
+  border-color: var(--glass-line, rgba(16, 60, 110, .1)) !important;
+  background: var(--blue-50, #f4f9ff) !important;
+}
+
+.review-shell .review-data-grid dd {
+  font-size: 11px;
+  color: var(--atlas-text);
+}
+
+/* Decision actions. Approve takes the app's primary; reject stays a distinct
+   outlined danger; reset stays quiet. The three must never look alike. */
+
+.review-shell .review-decision-actions button {
+  min-height: 38px;
+  border-radius: 11px;
+  padding: 0 14px;
+  font-size: 11px;
+}
+
+.review-shell .review-approve {
+  background: linear-gradient(160deg, var(--blue-600, #2f80ed), var(--blue-700, #1f66c9)) !important;
+  border: 1px solid var(--blue-700, #1f66c9) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 20px -14px rgba(47, 128, 237, .95);
+}
+
+.review-shell .review-approve:hover { background: var(--blue-700, #1f66c9) !important; }
+
+.review-shell .review-reset {
+  background: rgba(255, 255, 255, .86);
+  border-color: var(--glass-line, rgba(16, 60, 110, .1));
+}
+
+.review-shell .review-form-grid input,
+.review-shell .review-form-grid select,
+.review-shell .review-form-grid textarea {
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  background: rgba(255, 255, 255, .9) !important;
+}
+
+.review-shell .review-form-grid input:focus,
+.review-shell .review-form-grid select:focus,
+.review-shell .review-form-grid textarea:focus {
+  outline: none;
+  border-color: var(--blue-600, #2f80ed) !important;
+  box-shadow: 0 0 0 3px rgba(47, 128, 237, .14);
+}
+
+/* Bounded states: loading and empty stay distinguishable from each other and
+   from a genuinely empty queue (§1E-G). */
+
+.review-shell .review-message:not(:empty) {
+  border-radius: 11px;
+  background: var(--blue-50, #f4f9ff);
+}
+
+.review-shell .review-list-empty svg,
+.review-shell .review-detail-empty svg { color: var(--blue-400, #7db4f2); }
+
+.review-shell .review-loading span {
+  border-color: rgba(47, 128, 237, .25);
+  border-top-color: var(--blue-600, #2f80ed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-shell .review-loading span { animation: none; }
+}

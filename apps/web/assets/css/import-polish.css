@@ -1,0 +1,393 @@
+/* Atlas incremental visual polish — Import Center only.
+ *
+ * `#imports-view` already has a complete stylesheet (`import-center.css`) and a
+ * working renderer. This layer only brings its surfaces, controls and typography
+ * onto the white + light-blue glass system. It deliberately does NOT relayout
+ * the workspace and does NOT restyle any evidence state:
+ *
+ *   - the six-stage pipeline (`[data-stage]`) keeps its own active/complete
+ *     styling from import-center.css — those are provenance states, not chrome;
+ *   - `.import-status-pill` variants, progress values and the "needs attention"
+ *     summary card keep their semantic tones;
+ *   - the empty and loading states stay distinct, so an empty queue never reads
+ *     as a loaded one (§1E-G bounded states).
+ *
+ * Presentation only. Upload handling, Supabase queue reads, batch records,
+ * review/approve flow and the detail drawer's data are untouched.
+ */
+
+/* Hero */
+
+#imports-view .import-hero {
+  align-items: flex-end;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+#imports-view .import-hero h1 {
+  margin: 0 0 8px;
+  font: 600 clamp(28px, 3.4vw, 38px)/1.06 'IBM Plex Sans', sans-serif;
+  letter-spacing: -.04em;
+}
+
+#imports-view .import-hero p:last-child {
+  max-width: 720px;
+  color: var(--atlas-muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+#imports-view .import-eyebrow {
+  color: var(--blue-600, #2f80ed) !important;
+  font-size: 10px !important;
+  font-weight: 700;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+#imports-view .import-hero-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+#imports-view .import-hero-actions .btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 11px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+#imports-view .import-hero-actions .btn svg { width: 16px; height: 16px; }
+
+/* Summary cards — surface only; the `.danger` card keeps its semantic tone. */
+
+#imports-view .import-queue-summary { gap: 12px; }
+
+#imports-view .import-queue-summary-card {
+  padding: 16px 17px 17px;
+  border: 1px solid var(--glass-line, rgba(16, 60, 110, .1));
+  border-radius: 16px;
+  background: var(--glass-fill, rgba(255, 255, 255, .72));
+  backdrop-filter: var(--glass-blur, saturate(150%) blur(20px));
+  -webkit-backdrop-filter: var(--glass-blur, saturate(150%) blur(20px));
+  box-shadow: var(--glass-highlight, inset 0 1px 0 rgba(255, 255, 255, .85)), var(--glass-shadow, 0 1px 2px rgba(16, 60, 110, .04));
+}
+
+#imports-view .import-queue-summary-card span {
+  color: var(--atlas-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+#imports-view .import-queue-summary-card strong {
+  display: block;
+  margin: 8px 0 3px;
+  font: 650 27px/1 'IBM Plex Sans', sans-serif;
+  letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+#imports-view .import-queue-summary-card small {
+  color: var(--atlas-muted);
+  font-size: 10.5px;
+}
+
+/* Cards */
+
+#imports-view .import-card {
+  border: 1px solid var(--glass-line, rgba(16, 60, 110, .1));
+  border-radius: 18px;
+  background: var(--glass-fill, rgba(255, 255, 255, .72));
+  backdrop-filter: var(--glass-blur, saturate(150%) blur(20px));
+  -webkit-backdrop-filter: var(--glass-blur, saturate(150%) blur(20px));
+  box-shadow: var(--glass-highlight, inset 0 1px 0 rgba(255, 255, 255, .85)), var(--glass-shadow, 0 1px 2px rgba(16, 60, 110, .04));
+}
+
+#imports-view .import-card-heading h2 {
+  font: 600 17px/1.2 'IBM Plex Sans', sans-serif;
+  letter-spacing: -.025em;
+}
+
+#imports-view .import-card-heading p {
+  color: var(--atlas-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+#imports-view .import-card-heading svg {
+  width: 19px;
+  height: 19px;
+  color: var(--blue-600, #2f80ed);
+}
+
+/* Upload controls */
+
+#imports-view .import-scope-field span {
+  color: var(--atlas-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+#imports-view #import-entity-scope,
+#imports-view #import-queue-filter,
+#imports-view .import-search {
+  min-height: 40px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 11px;
+  background: var(--atlas-bg);
+  color: var(--atlas-text);
+  font: 400 13px/1 'IBM Plex Sans', sans-serif;
+}
+
+#imports-view #import-entity-scope:focus,
+#imports-view #import-queue-filter:focus,
+#imports-view .import-search:focus-within {
+  outline: none;
+  border-color: var(--blue-600, #2f80ed);
+  box-shadow: 0 0 0 3px rgba(47, 128, 237, .14);
+}
+
+#imports-view .import-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+}
+
+#imports-view .import-search svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--atlas-muted);
+}
+
+#imports-view .import-search input {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--atlas-text);
+  font: inherit;
+  outline: none;
+}
+
+/* Drop zone */
+
+#imports-view .import-drop-zone {
+  border: 1.5px dashed rgba(47, 128, 237, .34);
+  border-radius: 16px;
+  background: var(--blue-50, #f4f9ff);
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+#imports-view .import-drop-zone:hover,
+#imports-view .import-drop-zone:focus-visible,
+#imports-view .import-drop-zone.is-dragover {
+  outline: none;
+  border-color: var(--blue-600, #2f80ed);
+  background: rgba(47, 128, 237, .07);
+}
+
+#imports-view .import-drop-icon {
+  color: var(--blue-600, #2f80ed);
+  background: rgba(47, 128, 237, .1);
+  border-radius: 14px;
+}
+
+#imports-view .import-drop-zone h2 {
+  font: 600 18px/1.2 'IBM Plex Sans', sans-serif;
+  letter-spacing: -.028em;
+}
+
+#imports-view .import-drop-zone p {
+  max-width: 460px;
+  color: var(--atlas-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+/* Pipeline — spacing and type only. Stage states stay with import-center.css. */
+
+#imports-view .import-pipeline li strong {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+
+#imports-view .import-pipeline li small {
+  color: var(--atlas-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+#imports-view .import-next-phase-note {
+  border-radius: 14px;
+  background: var(--blue-50, #f4f9ff);
+  border: 1px solid rgba(47, 128, 237, .18);
+}
+
+#imports-view .import-next-phase-note svg { color: var(--blue-600, #2f80ed); }
+#imports-view .import-next-phase-note p { font-size: 12px; line-height: 1.55; }
+
+/* Queue table */
+
+#imports-view .import-queue-toolbar h2 {
+  margin: 3px 0 0;
+  font: 600 19px/1.2 'IBM Plex Sans', sans-serif;
+  letter-spacing: -.028em;
+}
+
+#imports-view .import-queue-table th {
+  height: 44px;
+  padding: 0 15px;
+  border-bottom: 1px solid var(--atlas-line);
+  background: rgba(255, 255, 255, .6);
+  color: var(--atlas-muted);
+  font: 700 10px/1 'IBM Plex Sans', sans-serif;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+#imports-view .import-queue-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--atlas-line);
+  color: var(--atlas-text);
+  font-size: 12.5px;
+  vertical-align: middle;
+}
+
+#imports-view .import-queue-table tbody tr:last-child td { border-bottom: 0; }
+
+#imports-view .import-queue-table tbody tr {
+  transition: background 130ms ease;
+}
+
+#imports-view .import-queue-table tbody tr:hover {
+  background: rgba(47, 128, 237, .05);
+}
+
+/* Empty and loading stay visually distinct — an empty queue must never read as
+   a loaded one, and a loading queue must never read as empty. */
+
+#imports-view .import-queue-empty {
+  min-height: 240px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 7px;
+  padding: 40px 24px;
+  color: var(--atlas-muted);
+  text-align: center;
+}
+
+#imports-view .import-queue-empty[hidden],
+#imports-view .import-queue-loading[hidden] { display: none; }
+
+#imports-view .import-queue-empty svg {
+  width: 24px;
+  height: 24px;
+  color: var(--atlas-muted);
+}
+
+#imports-view .import-queue-empty h3 {
+  margin: 0;
+  color: var(--atlas-text);
+  font: 600 15px/1.2 'IBM Plex Sans', sans-serif;
+}
+
+#imports-view .import-queue-empty p { margin: 0; font-size: 12.5px; }
+
+#imports-view .import-queue-loading {
+  min-height: 240px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 40px 24px;
+  color: var(--blue-700, #1f66c9);
+  text-align: center;
+}
+
+#imports-view .import-queue-loading > span {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(47, 128, 237, .25);
+  border-top-color: var(--blue-600, #2f80ed);
+  border-radius: 50%;
+  animation: importQueueSpin .8s linear infinite;
+}
+
+#imports-view .import-queue-loading p {
+  margin: 0;
+  color: var(--atlas-muted);
+  font-size: 12.5px;
+}
+
+@keyframes importQueueSpin { to { transform: rotate(360deg); } }
+
+/* Detail drawer — provenance surface: content type, size, created, updated and
+   current stage. Chrome only; every value keeps its renderer output. */
+
+#imports-view .import-detail-backdrop {
+  background: rgba(16, 60, 110, .22);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+#imports-view .import-detail-drawer {
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: var(--glass-blur, saturate(150%) blur(20px));
+  -webkit-backdrop-filter: var(--glass-blur, saturate(150%) blur(20px));
+  border-left: 1px solid var(--glass-line, rgba(16, 60, 110, .1));
+  box-shadow: -18px 0 60px -30px rgba(16, 60, 110, .5);
+}
+
+#imports-view .import-detail-drawer > header {
+  border-bottom: 1px solid var(--atlas-line);
+}
+
+#imports-view .import-detail-drawer h2 {
+  margin: 3px 0 0;
+  font: 600 19px/1.2 'IBM Plex Sans', sans-serif;
+  letter-spacing: -.028em;
+}
+
+#imports-view .import-detail-progress-track {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--blue-100, #e8f1fd);
+  overflow: hidden;
+}
+
+#imports-view #import-detail-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--blue-400, #7db4f2), var(--blue-600, #2f80ed));
+}
+
+#imports-view .import-detail-grid dt {
+  color: var(--atlas-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+#imports-view .import-detail-grid dd {
+  margin: 5px 0 0;
+  color: var(--atlas-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #imports-view .import-drop-zone,
+  #imports-view .import-queue-table tbody tr { transition: none; }
+  #imports-view .import-queue-loading > span { animation: none; }
+}

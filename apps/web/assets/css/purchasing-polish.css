@@ -1,0 +1,376 @@
+/* Atlas incremental visual polish — Purchasing only.
+ *
+ * `#suppliers-view` is the whole Purchasing workspace. Confirmed by reading
+ * `apps/web/index.html`: the nav's `data-subview` handler (line ~1523) only
+ * rewrites `#atlas-page-title` — it does **not** swap content — and the
+ * renderer (line ~1854) always emits the same four columns:
+ * `td.name` (supplier), item count, `td.mono` month spend ISK, `td.mono`
+ * all-time spend ISK. So Suppliers / Orders / Deliveries all render this one
+ * table today, and the column treatment below is safe for all three.
+ *
+ * Product finding, not fixed here: choosing Orders or Deliveries retitles the
+ * page but still shows the supplier list. That needs renderers, which is a
+ * capability change, not presentation. Recorded in REVIEW_RECIPES_GALLERY.md.
+ *
+ * Presentation only. The supplier renderer, search handler, `+ New supplier`
+ * action, role gates (`[data-view="suppliers"]` is commercial-manager gated in
+ * index.html) and all data access are untouched. Structure mirrors the approved
+ * inventory-polish.css so the two workspaces read as one system.
+ */
+
+#suppliers-view {
+  display: grid;
+  gap: 16px;
+}
+
+/* Toolbar */
+
+#suppliers-view > .toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 16px;
+  background: var(--atlas-surface);
+  box-shadow: var(--atlas-home-shadow, 0 1px 2px rgba(35, 38, 35, .04));
+}
+
+#suppliers-view #supplier-search {
+  min-width: 0;
+  flex: 1 1 280px;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 13px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 11px;
+  background: var(--atlas-bg);
+  color: var(--atlas-text);
+  font: 400 13px/1 'IBM Plex Sans', sans-serif;
+}
+
+#suppliers-view #supplier-search:focus {
+  outline: none;
+  border-color: var(--atlas-home-accent, #4f7df3);
+  box-shadow: 0 0 0 3px var(--atlas-home-accent-soft, rgba(79, 125, 243, .1));
+}
+
+#suppliers-view #add-supplier-btn {
+  min-height: 40px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0 14px;
+  border-radius: 11px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+/* Table */
+
+#suppliers-view > table {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--atlas-line);
+  border-radius: 16px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  background: var(--atlas-surface);
+  box-shadow: var(--atlas-home-shadow, 0 1px 2px rgba(35, 38, 35, .04));
+}
+
+/* No sticky header here. Inventory's sticky head works because it has a
+   `#table-wrap` scroll container; `#suppliers-view` has no wrapper in the real
+   markup, and the rounded corners need `overflow: hidden` on the table — which
+   would make a sticky th stick to a box that never scrolls. Honest choice:
+   a normal header. */
+#suppliers-view thead th {
+  height: 45px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--atlas-line);
+  background: color-mix(in srgb, var(--atlas-surface) 92%, var(--atlas-bg));
+  color: var(--atlas-muted);
+  font: 700 10px/1 'IBM Plex Sans', sans-serif;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+#suppliers-view thead th:first-child,
+#suppliers-view tbody td:first-child { padding-left: 20px; }
+
+#suppliers-view thead th:last-child,
+#suppliers-view tbody td:last-child { padding-right: 20px; }
+
+/* Counts and money read as figures, not prose. The renderer emits exactly these
+   four columns for every Purchasing tab, so this is safe. Alignment and tabular
+   figures only — no reformatting, rounding or unit conversion of the values. */
+#suppliers-view thead th:nth-child(n + 2),
+#suppliers-view tbody td:nth-child(n + 2) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#suppliers-view tbody tr {
+  height: 58px;
+  border: 0;
+  background: var(--atlas-surface);
+  transition: background 130ms ease;
+}
+
+#suppliers-view tbody tr:hover {
+  background: color-mix(in srgb, var(--atlas-home-accent-soft, rgba(79, 125, 243, .1)) 48%, var(--atlas-surface));
+}
+
+#suppliers-view tbody td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--atlas-line);
+  color: var(--atlas-text);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+#suppliers-view tbody tr:last-child td { border-bottom: 0; }
+
+#suppliers-view tbody td:first-child {
+  color: var(--atlas-text);
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+
+/* Empty state */
+
+#suppliers-view #suppliers-empty {
+  min-height: 300px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 48px 24px;
+  border: 1px dashed var(--atlas-line);
+  border-radius: 16px;
+  background: var(--atlas-surface);
+  color: var(--atlas-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+#suppliers-view #suppliers-empty .mark {
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--atlas-home-accent-soft, rgba(79, 125, 243, .1));
+}
+
+/* Responsive — same card stacking as Inventory below 760px */
+
+@media (max-width: 760px) {
+  #suppliers-view { gap: 13px; }
+
+  #suppliers-view > .toolbar {
+    flex-wrap: wrap;
+    padding: 11px;
+    border-radius: 14px;
+  }
+
+  #suppliers-view #supplier-search { flex: 1 1 100%; }
+  #suppliers-view #add-supplier-btn { flex: 1 1 100%; }
+
+  #suppliers-view > table {
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  #suppliers-view thead { display: none; }
+
+  #suppliers-view tbody {
+    display: grid;
+    gap: 11px;
+  }
+
+  #suppliers-view tbody tr {
+    height: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 14px 15px;
+    border: 1px solid var(--atlas-line);
+    border-radius: 15px;
+    background: var(--atlas-surface);
+    box-shadow: var(--atlas-home-shadow, 0 1px 2px rgba(35, 38, 35, .04));
+  }
+
+  #suppliers-view tbody tr:hover { background: var(--atlas-surface); }
+
+  #suppliers-view tbody td,
+  #suppliers-view tbody td:first-child,
+  #suppliers-view tbody td:last-child {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  #suppliers-view tbody td:first-child {
+    grid-column: 1 / -1;
+    margin-bottom: 9px;
+    font-size: 14px;
+  }
+
+  /* Each remaining cell keeps its column meaning through a label, since the
+     header row is hidden at this width. These match the renderer's fixed
+     four-column output (item count, month spend, all-time spend). */
+  #suppliers-view tbody td:nth-child(2),
+  #suppliers-view tbody td:nth-child(3),
+  #suppliers-view tbody td:nth-child(4) {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0 0;
+    font-size: 12.5px;
+  }
+
+  #suppliers-view tbody td:nth-child(2)::before { content: 'Items'; }
+  #suppliers-view tbody td:nth-child(3)::before { content: 'Spent this month'; }
+  #suppliers-view tbody td:nth-child(4)::before { content: 'Spent all-time'; }
+
+  #suppliers-view tbody td:nth-child(n + 2)::before {
+    color: var(--atlas-muted);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #suppliers-view tbody tr { transition: none; }
+}
+
+/* ---------- Supplier form ----------
+ * The existing modal markup (`index.html` ~line 826) puts the close button
+ * inside `.item-modal-head` next to the title block, and lays the fields out in
+ * `.two-col`. Neither had layout rules that reached this modal, so the close
+ * button fell below the heading and the field columns took intrinsic widths.
+ * Layout only — the form, its ids, validation, the commercial-manager gate in
+ * `openSupplierModal()` and the save path are untouched.
+ */
+
+#supplier-overlay .item-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 17px;
+  border-bottom: 1px solid var(--atlas-line);
+}
+
+#supplier-overlay .item-modal-head h2 {
+  margin: 0 0 5px;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -.025em;
+}
+
+#supplier-overlay .item-modal-head p {
+  margin: 0;
+  max-width: 560px;
+  color: var(--atlas-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+#supplier-overlay .modal-close {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--atlas-line);
+  border-radius: 11px;
+  background: var(--atlas-surface);
+  color: var(--atlas-muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#supplier-overlay .modal-close:hover {
+  border-color: var(--atlas-home-accent-line, rgba(79, 125, 243, .24));
+  background: var(--atlas-home-accent-soft, rgba(79, 125, 243, .1));
+  color: var(--atlas-text);
+}
+
+#supplier-overlay #supplier-form {
+  display: grid;
+  gap: 4px;
+  padding-top: 18px;
+}
+
+#supplier-overlay .two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+#supplier-overlay .two-col > div { min-width: 0; }
+
+#supplier-overlay label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--atlas-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+#supplier-overlay input,
+#supplier-overlay textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 10px;
+  background: var(--atlas-bg);
+  color: var(--atlas-text);
+  font: 400 13px/1.45 'IBM Plex Sans', sans-serif;
+}
+
+#supplier-overlay textarea {
+  min-height: 88px;
+  margin-bottom: 18px;
+  resize: vertical;
+}
+
+#supplier-overlay input:focus,
+#supplier-overlay textarea:focus {
+  outline: none;
+  border-color: var(--atlas-home-accent, #4f7df3);
+  box-shadow: 0 0 0 3px var(--atlas-home-accent-soft, rgba(79, 125, 243, .1));
+}
+
+#supplier-overlay .modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 17px;
+  border-top: 1px solid var(--atlas-line);
+}
+
+#supplier-overlay .modal-actions .btn {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 11px;
+}
+
+@media (max-width: 620px) {
+  #supplier-overlay .two-col { grid-template-columns: minmax(0, 1fr); }
+  #supplier-overlay .modal-actions .btn { flex: 1 1 auto; }
+}
