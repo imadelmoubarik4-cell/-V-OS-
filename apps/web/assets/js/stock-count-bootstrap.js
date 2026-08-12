@@ -5,6 +5,7 @@
     loading: false,
     ready: false,
     runtimePatched: false,
+    reentryPatched: false,
     itemMasterReady: false,
   };
   const WORKSPACE_SOURCE = 'assets/js/stock-count-workspace.js?v=20260805-l1';
@@ -52,6 +53,22 @@
       if (!source.includes(submitGuard)) throw new Error('The stock-count submit boundary could not be validated.');
       source = source.replace(submitGuard, submitGuard + delegation);
     }
+
+    // The workspace close path marks its mount hidden. The original open path
+    // never clears that flag, so returning to Stock count after visiting another
+    // workspace can leave the entire L1 renderer hidden. Repair that exact
+    // re-entry boundary in the validated runtime without changing data behavior.
+    const openBoundary = '  function open() {\n    state.active = true;\n    ensureWorkspace();\n';
+    const openBoundaryFixed = '  function open() {\n    state.active = true;\n    const mount = ensureWorkspace();\n    if (mount) mount.hidden = false;\n';
+    if (source.includes(openBoundary)) {
+      source = source.replace(openBoundary, openBoundaryFixed);
+      state.reentryPatched = true;
+    } else if (source.includes('if (mount) mount.hidden = false;')) {
+      state.reentryPatched = true;
+    } else {
+      throw new Error('The stock-count re-entry boundary could not be validated.');
+    }
+
     source += '\n//# sourceURL=stock-count-workspace.validated.js\n';
 
     const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
@@ -108,6 +125,7 @@
     load,
     ready: () => state.ready,
     runtimePatched: () => state.runtimePatched,
+    reentryPatched: () => state.reentryPatched,
     itemMasterReady: () => state.itemMasterReady,
   };
   if (document.readyState === 'complete') load();
