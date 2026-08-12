@@ -3,6 +3,7 @@
 
   const state = {
     loading: false,
+    loadPromise: null,
     ready: false,
     runtimePatched: false,
     reentryPatched: false,
@@ -40,9 +41,6 @@
     if (!response.ok) throw new Error(`Could not read the stock-count workspace (${response.status}).`);
     let source = await response.text();
 
-    // The original L1 draft mixed nullish coalescing and logical OR without
-    // parentheses. Repair that parse boundary before execution, then delegate
-    // count-form submissions to the unit-aware evidence extension.
     source = source.replace(
       'note: override.note ?? note?.value?.trim() || null,',
       'note: (override.note ?? note?.value?.trim()) || null,'
@@ -54,10 +52,6 @@
       source = source.replace(submitGuard, submitGuard + delegation);
     }
 
-    // The workspace close path marks its mount hidden. The original open path
-    // never clears that flag, so returning to Stock count after visiting another
-    // workspace can leave the entire L1 renderer hidden. Repair that exact
-    // re-entry boundary in the validated runtime without changing data behavior.
     const openBoundary = '  function open() {\n    state.active = true;\n    ensureWorkspace();\n';
     const openBoundaryFixed = '  function open() {\n    state.active = true;\n    const mount = ensureWorkspace();\n    if (mount) mount.hidden = false;\n';
     if (source.includes(openBoundary)) {
@@ -70,7 +64,6 @@
     }
 
     source += '\n//# sourceURL=stock-count-workspace.validated.js\n';
-
     const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
     try {
       await loadScript(blobUrl, 'atlasStockCountWorkspaceValidated');
@@ -90,16 +83,11 @@
     state.itemMasterReady = Boolean(window.AtlasItemMaster);
   }
 
-  async function load() {
-    if (state.ready && state.itemMasterReady) return;
-    if (state.loading) return;
+  async function performLoad() {
     state.loading = true;
     ensureStylesheet('assets/css/stock-count-workspace.css?v=20260805-l1', 'atlas-stock-count-css');
-
     try {
       if (!state.ready) {
-        // Install the submission handler first. The validated legacy workspace
-        // calls it only when a count form is actually submitted.
         await loadScript(EXTENSION_SOURCE, 'atlasStockCountL1Verified');
         await loadValidatedWorkspace();
         state.ready = Boolean(window.AtlasStockCounts && window.AtlasStockCountsL1);
@@ -110,16 +98,50 @@
     }
 
     try {
-      // L2 is layered over the authenticated Inventory shell. It has a separate
-      // manager-only gateway, private drafts and a disabled preview publication
-      // boundary; loading its browser assets cannot change production records.
       await loadItemMaster();
     } catch (error) {
       console.error('Checkpoint L2 item-master assets could not be loaded', error);
     } finally {
       state.loading = false;
+      state.loadPromise = null;
     }
   }
+
+  function load() {
+    if (state.ready && state.itemMasterReady) return Promise.resolve();
+    if (state.loadPromise) return state.loadPromise;
+    state.loadPromise = performLoad();
+    return state.loadPromise;
+  }
+
+  function replayNavigation(target) {
+    if (!(target instanceof Element)) return;
+    const stockNav = target.closest('[data-view="inventory"][data-subview="Stock count"]');
+    const itemMasterNav = target.closest('[data-item-master-l2]');
+    if (!stockNav && !itemMasterNav) return;
+
+    load().then(() => {
+      window.setTimeout(() => {
+        if (stockNav) {
+          const inventory = document.getElementById('inventory-view');
+          if (inventory) inventory.style.display = 'block';
+          const title = document.getElementById('atlas-page-title');
+          if (title) title.textContent = 'Stock count';
+          window.AtlasItemMaster?.close?.();
+          window.AtlasStockCounts?.open?.();
+          return;
+        }
+        if (itemMasterNav) {
+          window.AtlasStockCounts?.close?.();
+          window.AtlasItemMaster?.open?.();
+        }
+      }, 0);
+    }).catch((error) => {
+      console.error('Inventory workspace navigation could not finish loading', error);
+    });
+  }
+
+  document.addEventListener('click', (event) => replayNavigation(event.target), true);
 
   window.AtlasStockCountBootstrap = {
     load,
