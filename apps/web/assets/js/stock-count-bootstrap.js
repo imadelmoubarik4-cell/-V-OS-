@@ -10,8 +10,8 @@
     reentryPatched: false,
     itemMasterReady: false,
   };
-  const WORKSPACE_SOURCE = 'assets/js/stock-count-workspace.js?v=20260812-l1-core2';
-  const EXTENSION_SOURCE = 'assets/js/stock-count-l1-verified.js?v=20260812-l1-core2';
+  const WORKSPACE_SOURCE = 'assets/js/stock-count-workspace.js?v=20260813-l1-core3';
+  const EXTENSION_SOURCE = 'assets/js/stock-count-l1-verified.js?v=20260813-l1-core3';
   const ITEM_MASTER_SOURCE = 'assets/js/item-master-workspace.js?v=20260806-l2';
   const ITEM_MASTER_STYLESHEET = 'assets/css/item-master-workspace.css?v=20260806-l2';
   const ITEM_MASTER_API = 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-item-master';
@@ -46,9 +46,6 @@
       const selector = markerSelector(marker);
       const existing = document.querySelector(selector);
       if (existing) {
-        // A prior failed load can leave a finished script tag behind. Waiting for
-        // another load event on that element hangs forever, so discard it unless
-        // it is explicitly still loading and let the canonical asset retry.
         if (existing.dataset.atlasLoadState === 'loading') {
           const timer = window.setTimeout(() => {
             reject(new Error(`Timed out while waiting for ${src}`));
@@ -91,6 +88,42 @@
     });
   }
 
+  async function loadStockCountCoreWithObserverGuard() {
+    const NativeMutationObserver = window.MutationObserver;
+    if (typeof NativeMutationObserver !== 'function') {
+      await loadScript(WORKSPACE_SOURCE, 'atlasStockCountWorkspace');
+      return;
+    }
+
+    // stock-count-workspace.js observes the full app shell and its callback calls
+    // render(). render() replaces the workspace children, which otherwise feeds
+    // straight back into that observer and can keep the loading screen in a
+    // self-triggered render loop. During this script's initialization only,
+    // constrain its observer callbacks to the visibility changes it actually
+    // needs to recover from navigation.
+    window.MutationObserver = class AtlasStockCountMutationObserver extends NativeMutationObserver {
+      constructor(callback) {
+        super((mutations, observer) => {
+          const relevant = mutations.filter((mutation) => {
+            if (mutation.type !== 'attributes') return false;
+            if (!['style', 'hidden'].includes(mutation.attributeName || '')) return false;
+            const target = mutation.target;
+            return target instanceof Element
+              && (target.id === 'inventory-view' || target.id === 'app-screen');
+          });
+          if (relevant.length) callback(relevant, observer);
+        });
+      }
+    };
+
+    try {
+      await loadScript(WORKSPACE_SOURCE, 'atlasStockCountWorkspace');
+      state.runtimePatched = true;
+    } finally {
+      window.MutationObserver = NativeMutationObserver;
+    }
+  }
+
   function installStockCountReentryGuard() {
     const api = window.AtlasStockCounts;
     if (!api || typeof api.open !== 'function') return false;
@@ -114,14 +147,13 @@
 
   async function loadStockCountWorkspace() {
     if (!window.AtlasStockCounts) {
-      await loadScript(WORKSPACE_SOURCE, 'atlasStockCountWorkspace');
+      await loadStockCountCoreWithObserverGuard();
     }
     if (!window.AtlasStockCounts) {
       throw new Error('The canonical Stock Count workspace loaded without installing AtlasStockCounts.');
     }
     installStockCountReentryGuard();
     state.ready = true;
-    state.runtimePatched = false;
   }
 
   async function loadStockCountExtension() {
@@ -144,10 +176,8 @@
 
   async function performLoad() {
     state.loading = true;
-    ensureStylesheet('assets/css/stock-count-workspace.css?v=20260812-l1-core2', 'atlas-stock-count-css');
+    ensureStylesheet('assets/css/stock-count-workspace.css?v=20260813-l1-core3', 'atlas-stock-count-css');
 
-    // The canonical core must not be held hostage by an optional enhancement.
-    // Load it first so Stock Count can always open and report its own API state.
     try {
       await loadStockCountWorkspace();
     } catch (error) {
@@ -180,6 +210,19 @@
     return state.loadPromise;
   }
 
+  function showUnavailable(label) {
+    const message = `${label} is not available in this V1 preview yet.`;
+    if (typeof window.showToast === 'function') {
+      window.showToast(message);
+      return;
+    }
+    const toast = document.getElementById('atlas-toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    window.setTimeout(() => toast.classList.remove('show'), 2600);
+  }
+
   function openStockCount() {
     const inventory = document.getElementById('inventory-view');
     if (inventory) inventory.style.display = 'block';
@@ -189,8 +232,19 @@
     window.AtlasStockCounts?.open?.();
   }
 
-  function replayNavigation(target) {
-    if (!(target instanceof Element)) return;
+  function replayNavigation(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const movementsNav = target.closest('[data-subview="Inventory movements"]');
+    const wasteNav = target.closest('[data-subview="Waste"]');
+    if (movementsNav || wasteNav) {
+      event.preventDefault();
+      event.stopPropagation();
+      showUnavailable(movementsNav ? 'Inventory movements' : 'Waste');
+      return;
+    }
+
     const stockNav = target.closest('[data-view="inventory"][data-subview="Stock count"]');
     const itemMasterNav = target.closest('[data-item-master-l2]');
     if (!stockNav && !itemMasterNav) return;
@@ -219,7 +273,7 @@
     });
   }
 
-  document.addEventListener('click', (event) => replayNavigation(event.target), true);
+  document.addEventListener('click', replayNavigation, true);
 
   window.AtlasStockCountBootstrap = {
     load,
