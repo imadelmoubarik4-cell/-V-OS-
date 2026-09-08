@@ -15,6 +15,9 @@ test('Checkpoint E loads through the isolated Team Profiles API', () => {
   assert.match(bootstrap, /team-profiles\.bundle\.css\.gz/);
   assert.match(bootstrap, /DecompressionStream\('gzip'\)/);
   assert.match(bootstrap, /Blob/);
+  assert.match(bootstrap, /document\.createElement\('style'\)/);
+  assert.match(bootstrap, /style\.textContent = source/);
+  assert.doesNotMatch(bootstrap, /new Blob\(\[source\], \{ type: 'text\/css' \}\)/);
   assert.doesNotMatch(bootstrap, /eval\s*\(|new Function/);
 });
 
