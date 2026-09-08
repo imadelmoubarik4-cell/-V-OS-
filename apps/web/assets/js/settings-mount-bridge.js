@@ -44,15 +44,20 @@
   function removeLegacySettings() {
     const element = host();
     if (!element) return;
-    element.querySelector('#checkpoint-a-integrations-settings')?.remove();
-    element.querySelectorAll('.checkpoint-a-settings-integrations').forEach((section) => section.remove());
+    // The Operations layout recreates this compatibility section whenever it is
+    // removed. Deleting it from this observer therefore creates a cross-observer
+    // feedback loop as soon as Settings becomes visible. Keep the node connected
+    // but suppressed so Operations sees its current signature and stops writing.
+    element.querySelectorAll('#checkpoint-a-integrations-settings, .checkpoint-a-settings-integrations').forEach((section) => {
+      if (!section.hidden) section.hidden = true;
+    });
   }
 
   function ensureButtonContrast() {
     if (document.getElementById(BUTTON_CONTRAST_STYLE_ID)) return;
     const style = document.createElement('style');
     style.id = BUTTON_CONTRAST_STYLE_ID;
-    style.textContent = '.settings-view .settings-primary,.settings-view .settings-hero aside button{color:#fff}';
+    style.textContent = '.settings-view .settings-primary,.settings-view .settings-hero aside button{color:#fff}#settings-view #checkpoint-a-integrations-settings,#settings-view .checkpoint-a-settings-integrations{display:none!important}';
     document.head.appendChild(style);
   }
 
