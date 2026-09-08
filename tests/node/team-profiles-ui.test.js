@@ -60,6 +60,12 @@ test('Team Profiles preserves Atlas design and responsive behavior', () => {
   assert.match(css, /var\(--atlas-surface\)/);
   assert.match(css, /'Fraunces'/);
   assert.match(css, /'IBM Plex Sans'/);
+  assert.match(ui, /team-profile-card-media/);
+  assert.match(ui, /aria-pressed="\$\{selected \? 'true' : 'false'\}"/);
+  assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css, /\.team-profile-card-list\{grid-template-columns:1fr\}/);
+  assert.match(css, /\.team-profile-card:focus-visible/);
   assert.match(css, /@media\(max-width:820px\)/);
   assert.match(css, /@media\(max-width:600px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
