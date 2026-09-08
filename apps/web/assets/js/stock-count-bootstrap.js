@@ -158,6 +158,11 @@
     });
   }
 
+  function observeEnhancementTarget() {
+    const target = document.getElementById('inventory-view');
+    if (target) state.observer?.observe(target, { childList: true, subtree: true });
+  }
+
   function scheduleEnhance() {
     if (enhanceFrame !== null) return;
     enhanceFrame = window.requestAnimationFrame(() => {
@@ -166,7 +171,7 @@
       try {
         enhance();
       } finally {
-        state.observer?.observe(document.body, { childList: true, subtree: true });
+        observeEnhancementTarget();
       }
     });
   }`;
@@ -175,13 +180,18 @@
     const guardedObserverSource = `    state.observer = new MutationObserver((records) => {
       if (records.some((record) => !mutationIsLucideOnly(record))) scheduleEnhance();
     });`;
+    const observerTargetSource = '    state.observer.observe(document.body, { childList: true, subtree: true });';
+    const guardedObserverTargetSource = '    observeEnhancementTarget();';
 
-    if (!source.includes(schedulerSource) || !source.includes(observerSource)) {
+    if (!source.includes(schedulerSource)
+        || !source.includes(observerSource)
+        || !source.includes(observerTargetSource)) {
       throw new Error('The Stock Count enhancement observer boundary could not be validated.');
     }
     source = source
       .replace(schedulerSource, guardedSchedulerSource)
-      .replace(observerSource, guardedObserverSource);
+      .replace(observerSource, guardedObserverSource)
+      .replace(observerTargetSource, guardedObserverTargetSource);
     source += '\n//# sourceURL=stock-count-l1-verified.guarded.js\n';
 
     const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
