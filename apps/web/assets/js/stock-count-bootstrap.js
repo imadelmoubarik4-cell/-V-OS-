@@ -276,7 +276,13 @@
 
     const stockNav = target.closest('[data-view="inventory"][data-subview="Stock count"]');
     const itemMasterNav = target.closest('[data-item-master-l2]');
-    if (!stockNav && !itemMasterNav) return;
+    const inventorySubview = target.closest('[data-view="inventory"][data-subview]');
+    if (!stockNav && !itemMasterNav) {
+      if (!inventorySubview && document.body.classList.contains('stock-count-active')) {
+        window.setTimeout(() => activateInventorySubview('Stock count'), 0);
+      }
+      return;
+    }
 
     if (stockNav && window.AtlasStockCounts) {
       openStockCount();
