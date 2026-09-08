@@ -242,11 +242,21 @@
     window.setTimeout(() => toast.classList.remove('show'), 2600);
   }
 
+  function activateInventorySubview(label) {
+    document.querySelectorAll('[data-view="inventory"][data-subview]').forEach((item) => {
+      item.classList.toggle('active', item.dataset.subview === label);
+    });
+  }
+
   function openStockCount() {
     const inventory = document.getElementById('inventory-view');
     if (inventory) inventory.style.display = 'block';
     const title = document.getElementById('atlas-page-title');
     if (title) title.textContent = 'Stock count';
+    activateInventorySubview('Stock count');
+    // The legacy bubbling handler runs after this capture listener and can add
+    // another active class without clearing Items. Normalize once it finishes.
+    window.setTimeout(() => activateInventorySubview('Stock count'), 0);
     window.AtlasItemMaster?.close?.();
     window.AtlasStockCounts?.open?.();
   }
