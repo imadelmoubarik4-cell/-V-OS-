@@ -23,3 +23,14 @@
 @media(max-width:900px){.stock-count-overview-grid{grid-template-columns:1fr}.stock-count-side-stack{grid-template-columns:1fr 1fr}.stock-count-hero{grid-template-columns:1fr}.stock-count-hero-actions{justify-content:flex-start}.stock-count-summary-strip,.l1-classification-strip{grid-template-columns:1fr 1fr}}
 @media(max-width:680px){.stock-count-workspace{gap:12px}.stock-count-hero,.stock-count-panel{padding:14px;border-radius:15px}.stock-count-hero h1{font-size:28px}.stock-count-summary-strip{grid-template-columns:1fr 1fr}.stock-count-side-stack{grid-template-columns:1fr}.stock-count-panel-head,.stock-count-detail-head{display:grid}.stock-count-panel-head select{width:100%}.stock-count-detail-actions,.stock-count-hero-actions{justify-content:stretch}.stock-count-detail-actions button,.stock-count-hero-actions button{flex:1}.stock-count-line-evidence{grid-template-columns:1fr 1fr}.stock-count-line-entry{grid-template-columns:1fr}.stock-count-controls{grid-template-columns:1fr}.stock-count-controls select{width:100%}.stock-count-scan-grid{grid-template-columns:1fr}.stock-count-form-grid{grid-template-columns:1fr}.stock-count-form-grid label.is-full{grid-column:auto}.stock-count-modal-backdrop,.stock-count-scan-backdrop{padding:0;align-items:end}.stock-count-modal,.stock-count-scan-modal{max-height:94vh;border-radius:20px 20px 0 0}.stock-count-balance-row{grid-template-columns:1fr auto}.stock-count-balance-row>.stock-count-pill{grid-column:1/-1;justify-self:start}}
 @media(max-width:430px){.stock-count-summary-strip,.l1-classification-strip{grid-template-columns:1fr}.stock-count-line-evidence{grid-template-columns:1fr}.stock-count-line footer{align-items:flex-start;flex-direction:column}.stock-count-line footer>div{width:100%;display:flex}.stock-count-line footer button{flex:1}.stock-count-line-entry label>div{flex-wrap:wrap}.stock-count-line-entry select[data-l1-count-unit],.stock-count-scan-quantity select[data-l1-count-unit]{min-width:100%;border-left:0;border-top:1px solid var(--atlas-line,#dedcd4)}}
+
+/* Checkpoint L1 — legacy Inventory suppression.
+ * setLegacyVisibility() in stock-count-workspace.js:167 hides the legacy Items
+ * chrome with the `hidden` attribute. That relies on the UA rule
+ * [hidden]{display:none}, specificity (0,0,1). inventory-polish.css:11 declares
+ * #inventory-view > .toolbar{display:flex} at (0,1,1), which wins — so the Items
+ * toolbar stays on screen underneath the Stock Count workspace.
+ * The JS already toggles body.stock-count-active (:174), so the repair is CSS only. */
+body.stock-count-active #inventory-view > .toolbar,
+body.stock-count-active #inventory-view > #table-wrap,
+body.stock-count-active #inventory-view > #empty-state{display:none!important}

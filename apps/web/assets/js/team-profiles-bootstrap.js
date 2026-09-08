@@ -17,14 +17,11 @@
   }
 
   function installCss(source) {
-    if (document.querySelector('link[data-atlas-team-profiles-bundle]')) return;
-    const url = URL.createObjectURL(new Blob([source], { type: 'text/css' }));
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = url;
-    link.dataset.atlasTeamProfilesBundle = 'true';
-    link.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
-    document.head.appendChild(link);
+    if (document.querySelector('style[data-atlas-team-profiles-bundle]')) return;
+    const style = document.createElement('style');
+    style.dataset.atlasTeamProfilesBundle = 'true';
+    style.textContent = source;
+    document.head.appendChild(style);
   }
 
   function installJs(source) {

@@ -206,24 +206,36 @@
     const profileTraining = training(profile);
     const trainingPercent = profileTraining.private ? null : Number(profileTraining.percent || 0);
     const subtitle = profile.job_title || roleLabel(profile.role);
-    return `<button type="button" class="team-profile-card ${profile.id === selectedProfile()?.id ? 'is-selected' : ''}" data-team-profile-select="${escapeHtml(profile.id)}">
-      <span class="team-profile-avatar">${escapeHtml(initials(profile.name))}</span>
-      <span class="team-profile-card-copy">
-        <span><strong>${escapeHtml(profile.name)}</strong>${profile.active ? '<small class="is-active">Active</small>' : '<small class="is-inactive">Inactive</small>'}</span>
-        <small>${escapeHtml(subtitle)} · ${escapeHtml(profile.email || 'No email')}</small>
-        ${trainingPercent === null ? '<em>Training private</em>' : `<em>${trainingPercent}% onboarding</em>${progressBar(trainingPercent, 'Onboarding')}`}
+    const selected = profile.id === selectedProfile()?.id;
+    const department = DEPARTMENT_LABELS[profile.department] || roleLabel(profile.role);
+    const contactStatus = Number(profile.emergency_contact_count || 0) > 0 ? 'Contact saved' : 'Contact missing';
+    return `<button type="button" class="team-profile-card ${selected ? 'is-selected' : ''}" data-team-profile-select="${escapeHtml(profile.id)}" aria-pressed="${selected ? 'true' : 'false'}" aria-label="Open ${escapeHtml(profile.name)} profile">
+      <span class="team-profile-card-media">
+        <span class="team-profile-avatar">${escapeHtml(initials(profile.name))}</span>
+        <span class="team-profile-card-status ${profile.active ? 'is-active' : 'is-inactive'}"><span aria-hidden="true"></span>${profile.active ? 'Active' : 'Inactive'}</span>
+        ${selected ? '<span class="team-profile-card-selected" aria-hidden="true"><i data-lucide="check"></i></span>' : ''}
       </span>
-      <i data-lucide="chevron-right"></i>
+      <span class="team-profile-card-copy">
+        <span class="team-profile-card-identity"><span><strong>${escapeHtml(profile.name)}</strong><small>${escapeHtml(subtitle)}</small></span><i data-lucide="chevron-right"></i></span>
+        <small class="team-profile-card-email">${escapeHtml(profile.email || 'No email')}</small>
+        <span class="team-profile-card-training">
+          <span><span>Training</span><strong>${trainingPercent === null ? 'Private' : `${trainingPercent}%`}</strong></span>
+          ${trainingPercent === null ? '' : progressBar(trainingPercent, 'Onboarding')}
+        </span>
+        <span class="team-profile-card-foot"><span><i data-lucide="briefcase-business"></i>${escapeHtml(department)}</span><span class="${Number(profile.emergency_contact_count || 0) > 0 ? 'is-complete' : 'is-missing'}"><i data-lucide="${Number(profile.emergency_contact_count || 0) > 0 ? 'circle-check-big' : 'circle-alert'}"></i>${contactStatus}</span></span>
+      </span>
     </button>`;
   }
 
   function directoryMarkup() {
     const entries = filteredProfiles();
     return `<aside class="team-profiles-directory">
-      <header><strong>Team directory</strong><span>${entries.length} shown</span></header>
-      <label class="team-profiles-search"><i data-lucide="search"></i><input type="search" data-team-profiles-search placeholder="Search name, role or department" value="${escapeHtml(state.search)}" /></label>
-      <div class="team-profiles-filters">
-        ${['active','all','training','contacts','inactive'].map((filter) => `<button type="button" class="${state.filter === filter ? 'is-active' : ''}" data-team-profiles-filter="${filter}">${filter === 'training' ? 'Training due' : filter === 'contacts' ? 'Contact missing' : humanize(filter)}</button>`).join('')}
+      <header class="team-profiles-directory-head"><div><span>People</span><h2>Team directory</h2><p>Select a person to review their full Atlas profile.</p></div><strong>${entries.length} shown</strong></header>
+      <div class="team-profiles-toolbar">
+        <label class="team-profiles-search"><i data-lucide="search"></i><input type="search" data-team-profiles-search placeholder="Search name, role or department" value="${escapeHtml(state.search)}" /></label>
+        <div class="team-profiles-filters" aria-label="Filter team profiles">
+          ${['active','all','training','contacts','inactive'].map((filter) => `<button type="button" class="${state.filter === filter ? 'is-active' : ''}" data-team-profiles-filter="${filter}" aria-pressed="${state.filter === filter ? 'true' : 'false'}">${filter === 'training' ? 'Training due' : filter === 'contacts' ? 'Contact missing' : humanize(filter)}</button>`).join('')}
+        </div>
       </div>
       <div class="team-profile-card-list">${entries.length ? entries.map(profileCard).join('') : '<div class="team-profiles-empty"><i data-lucide="user-search"></i><p>No profiles match this view.</p></div>'}</div>
       <footer><i data-lucide="user-plus"></i><span>Account invitations are not connected yet. This checkpoint manages existing Atlas accounts only.</span></footer>

@@ -32,7 +32,7 @@ CREATE SCHEMA IF NOT EXISTS graphql;
 CREATE SCHEMA IF NOT EXISTS graphql_public;
 CREATE SCHEMA IF NOT EXISTS pgbouncer;
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 
 CREATE TABLE IF NOT EXISTS auth.instances(
@@ -155,6 +155,13 @@ CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations(
 SQL
 
 psql -v ON_ERROR_STOP=1 -q -f "$WORK_DIR/bootstrap.sql"
+
+pgcrypto_schema="$(psql -v ON_ERROR_STOP=1 -qAt -c \
+  "select n.nspname from pg_extension e join pg_namespace n on n.oid = e.extnamespace where e.extname = 'pgcrypto'")"
+if [[ "$pgcrypto_schema" != "extensions" ]]; then
+  echo "Expected pgcrypto in extensions schema, found: ${pgcrypto_schema:-missing}" >&2
+  exit 1
+fi
 
 mapfile -t migrations < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' -print | LC_ALL=C sort)
 if [[ ${#migrations[@]} -eq 0 ]]; then

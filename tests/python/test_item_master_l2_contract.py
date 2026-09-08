@@ -7,6 +7,7 @@ FOUNDATION = (ROOT / "supabase/migrations/20260806000337_atlas_item_master_check
 ALIAS_FIX = (ROOT / "supabase/migrations/20260806000401_atlas_item_master_checkpoint_l2_alias_conflict_fix.sql").read_text()
 BEGIN = (ROOT / "supabase/migrations/20260806000447_atlas_item_master_checkpoint_l2_publication_begin.sql").read_text()
 PRODUCTION = (ROOT / "supabase/migrations/20260806000552_atlas_item_master_checkpoint_l2_production_rpc.sql").read_text()
+NAMED_ARGUMENTS = (ROOT / "supabase/migrations/20260908192309_atlas_item_master_l2_named_arguments.sql").read_text()
 EDGE = (ROOT / "supabase/functions/atlas-item-master/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BOOTSTRAP = (ROOT / "apps/web/assets/js/stock-count-bootstrap.js").read_text()
@@ -58,6 +59,49 @@ class ItemMasterL2ContractTests(unittest.TestCase):
             self.assertIn(f"revoke execute on function {signature}", combined)
             self.assertIn(f"grant execute on function {signature}", combined)
         self.assertIn("to service_role", combined)
+
+    def test_public_branch_rpcs_expose_the_named_gateway_contract(self):
+        named_contracts = {
+            "atlas_item_master_snapshot": ("p_actor_id", "p_actor_role"),
+            "atlas_item_master_save_draft": (
+                "p_external_item_id", "p_item_name", "p_category", "p_source_snapshot",
+                "p_proposed_values", "p_recipe_links", "p_barcode_aliases",
+                "p_priority_score", "p_priority_tier", "p_priority_reasons",
+                "p_missing_fields", "p_expected_version", "p_actor_id",
+                "p_actor_label", "p_actor_role",
+            ),
+            "atlas_item_master_prepare_publication": (
+                "p_draft_id", "p_request_id", "p_current_source_snapshot",
+                "p_actor_id", "p_actor_label", "p_actor_role",
+            ),
+            "atlas_item_master_begin_publication": (
+                "p_publication_id", "p_actor_id", "p_actor_label", "p_actor_role",
+            ),
+            "atlas_item_master_complete_publication": (
+                "p_publication_id", "p_status", "p_applied_values", "p_failure_message",
+                "p_actor_id", "p_actor_label", "p_actor_role",
+            ),
+        }
+        for function_name, parameter_names in named_contracts.items():
+            declaration = re.search(
+                rf"create or replace function public\.{function_name}\((?P<arguments>.*?)\)\s*returns jsonb",
+                NAMED_ARGUMENTS,
+                re.IGNORECASE | re.DOTALL,
+            )
+            self.assertIsNotNone(declaration)
+            self.assertEqual(
+                re.findall(r"\b(p_[a-z_]+)\s+(?:uuid|text|jsonb|integer)\b", declaration.group("arguments")),
+                list(parameter_names),
+            )
+            for parameter_name in parameter_names:
+                self.assertIn(parameter_name, EDGE)
+
+        self.assertEqual(NAMED_ARGUMENTS.lower().count("security invoker"), 5)
+        self.assertEqual(NAMED_ARGUMENTS.lower().count("set search_path = ''"), 5)
+        self.assertEqual(NAMED_ARGUMENTS.lower().count("revoke all on function public.atlas_item_master_"), 5)
+        self.assertEqual(NAMED_ARGUMENTS.lower().count("grant execute on function public.atlas_item_master_"), 5)
+        self.assertNotIn("drop function", NAMED_ARGUMENTS.lower())
+        self.assertIn("notify pgrst, 'reload schema'", NAMED_ARGUMENTS.lower())
 
     def test_manager_only_atomic_production_rpc_has_no_quantity_or_movement_path(self):
         self.assertIn("private.is_manager_or_admin()", PRODUCTION)
