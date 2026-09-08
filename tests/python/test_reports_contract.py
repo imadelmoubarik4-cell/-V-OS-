@@ -8,6 +8,7 @@ FOUNDATION = (ROOT / "supabase/migrations/20260804093723_atlas_reports_checkpoin
 LIVE = (ROOT / "supabase/migrations/20260804095329_atlas_reports_checkpoint_h_live_sources.sql").read_text()
 FIX = (ROOT / "supabase/migrations/20260804095939_atlas_reports_snapshot_variable_fix.sql").read_text()
 EDGE = (ROOT / "supabase/functions/atlas-reports/index.ts").read_text()
+ENTRYPOINT = (ROOT / "supabase/functions/atlas-reports/entrypoint.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
 BROWSER = (ROOT / "apps/web/assets/js/reports-workspace.js").read_text()
@@ -45,6 +46,23 @@ class ReportsContractTests(unittest.TestCase):
             "p_movements",
         ):
             self.assertIn(argument, EDGE)
+
+    def test_rpc_recordsets_are_normalized_to_arrays_of_objects(self):
+        for argument in (
+            "p_inventory",
+            "p_recipes",
+            "p_recipe_ingredients",
+            "p_suppliers",
+            "p_movements",
+            "p_profiles",
+            "p_tasks",
+            "p_progress",
+        ):
+            self.assertIn(f'"{argument}"', ENTRYPOINT)
+        self.assertIn("normalizeRecordsetRows", ENTRYPOINT)
+        self.assertIn("Array.isArray(value)", ENTRYPOINT)
+        self.assertIn('typeof row === "object"', ENTRYPOINT)
+        self.assertIn("!Array.isArray(row)", ENTRYPOINT)
 
     def test_staff_commercial_fields_are_removed_before_branch_rpc(self):
         self.assertIn("async function reportSources", EDGE)

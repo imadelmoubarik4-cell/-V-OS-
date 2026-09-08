@@ -91,6 +91,13 @@ class CheckpointL1ContractTests(unittest.TestCase):
         self.assertIn("STOCK_COUNTS_API", self.inventory_bootstrap)
         self.assertIn("stock-count-bootstrap.js", self.inventory_bootstrap)
 
+    def test_production_projection_tolerates_unreleased_optional_columns(self):
+        self.assertIn("readCompatibleRelation", self.edge)
+        self.assertIn("missingColumn", self.edge)
+        self.assertIn("response.status === 400", self.edge)
+        self.assertIn("fields = fields.filter", self.edge)
+        self.assertIn('readCompatibleRelation("inventory_items", safeFields)', self.edge)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -59,6 +59,13 @@ test('browser uses authenticated gateway and no direct database writes', () => {
   assert.doesNotMatch(ui, /team_profile_details|team_emergency_contacts|onboarding_progress/);
 });
 
+test('profile modal closes from its backdrop as well as explicit controls', () => {
+  assert.match(ui, /team-profile-modal-backdrop\[data-team-profile-close-modal\]/);
+  assert.match(ui, /backdrop\.addEventListener\('click', closeModal, \{ once: true \}\)/);
+  assert.match(ui, /event\?\.stopPropagation\?\.\(\)/);
+  assert.match(ui, /event\.key === 'Escape'.*closeModal\(event\)/s);
+});
+
 test('Team Profiles preserves Atlas design and responsive behavior', () => {
   assert.match(css, /var\(--atlas-surface\)/);
   assert.match(css, /'Fraunces'/);
