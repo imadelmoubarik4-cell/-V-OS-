@@ -6,11 +6,12 @@
     loadPromise: null,
     ready: false,
     extensionReady: false,
+    extensionRuntimePatched: false,
     reentryPatched: false,
     itemMasterReady: false,
   };
-  const WORKSPACE_SOURCE = 'assets/js/stock-count-workspace.js?v=20260813-l1-core4';
-  const EXTENSION_SOURCE = 'assets/js/stock-count-l1-verified.js?v=20260813-l1-core4';
+  const WORKSPACE_SOURCE = 'assets/js/stock-count-workspace.js?v=20260813-l1-core5';
+  const EXTENSION_SOURCE = 'assets/js/stock-count-l1-verified.js?v=20260813-l1-core5';
   const ITEM_MASTER_SOURCE = 'assets/js/item-master-workspace.js?v=20260806-l2';
   const ITEM_MASTER_STYLESHEET = 'assets/css/item-master-workspace.css?v=20260806-l2';
   const ITEM_MASTER_API = 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-item-master';
@@ -129,9 +130,54 @@
     state.ready = true;
   }
 
+  // The optional L1 enhancement observes the whole document, then calls Lucide,
+  // whose SVG replacements are document mutations too. Guard its private
+  // scheduler at load time so one enhancement pass cannot schedule itself.
+  // This keeps the repository change inside the approved bootstrap boundary
+  // without replacing the page's global MutationObserver.
+  async function loadStockCountExtensionRuntime() {
+    const response = await fetch(EXTENSION_SOURCE, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Could not read ${EXTENSION_SOURCE} (${response.status}).`);
+    }
+
+    let source = await response.text();
+    const schedulerSource = `  function scheduleEnhance() {
+    window.requestAnimationFrame(enhance);
+  }`;
+    const guardedSchedulerSource = `  let enhanceFrame = null;
+
+  function scheduleEnhance() {
+    if (enhanceFrame !== null) return;
+    enhanceFrame = window.requestAnimationFrame(() => {
+      enhanceFrame = null;
+      state.observer?.disconnect();
+      try {
+        enhance();
+      } finally {
+        state.observer?.observe(document.body, { childList: true, subtree: true });
+      }
+    });
+  }`;
+
+    if (!source.includes(schedulerSource)) {
+      throw new Error('The Stock Count enhancement observer boundary could not be validated.');
+    }
+    source = source.replace(schedulerSource, guardedSchedulerSource);
+    source += '\n//# sourceURL=stock-count-l1-verified.guarded.js\n';
+
+    const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+    try {
+      await loadScript(blobUrl, 'atlasStockCountL1Verified');
+      state.extensionRuntimePatched = true;
+    } finally {
+      URL.revokeObjectURL(blobUrl);
+    }
+  }
+
   async function loadStockCountExtension() {
     if (!window.AtlasStockCountsL1) {
-      await loadScript(EXTENSION_SOURCE, 'atlasStockCountL1Verified');
+      await loadStockCountExtensionRuntime();
     }
     state.extensionReady = Boolean(window.AtlasStockCountsL1);
     window.AtlasStockCountsL1?.enhance?.();
@@ -149,7 +195,7 @@
 
   async function performLoad() {
     state.loading = true;
-    ensureStylesheet('assets/css/stock-count-workspace.css?v=20260813-l1-core4', 'atlas-stock-count-css');
+    ensureStylesheet('assets/css/stock-count-workspace.css?v=20260813-l1-core5', 'atlas-stock-count-css');
 
     try {
       await loadStockCountWorkspace();
@@ -252,6 +298,7 @@
     load,
     ready: () => state.ready,
     extensionReady: () => state.extensionReady,
+    extensionRuntimePatched: () => state.extensionRuntimePatched,
     reentryPatched: () => state.reentryPatched,
     itemMasterReady: () => state.itemMasterReady,
   };
