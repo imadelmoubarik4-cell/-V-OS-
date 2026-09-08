@@ -106,6 +106,12 @@ test('loading always reaches a terminal state when session recovery stalls', () 
   assert.match(ui, /data-reports-refresh/);
 });
 
+test('the whole snapshot load has a terminal-state watchdog', () => {
+  assert.match(ui, /const LOAD_TIMEOUT_MS = 15000/);
+  assert.match(ui, /withTimeout\(\s*api\('snapshot'\),\s*LOAD_TIMEOUT_MS/);
+  assert.match(ui, /Reports did not finish loading/);
+});
+
 test('Reports preserves the Atlas visual system and tablet-first behavior', () => {
   assert.match(css, /--reports-surface:var\(--atlas-surface/);
   assert.match(css, /'Fraunces'/);

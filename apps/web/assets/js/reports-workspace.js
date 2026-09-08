@@ -4,6 +4,7 @@
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 30000;
   const SESSION_TIMEOUT_MS = 8000;
+  const LOAD_TIMEOUT_MS = 15000;
   const PAGE_SIZE = 20;
   const SECTION_ORDER = [
     'overview', 'sales', 'inventory', 'recipes', 'purchasing', 'suppliers',
@@ -815,7 +816,11 @@
     }
     render();
     try {
-      const payload = await api('snapshot');
+      const payload = await withTimeout(
+        api('snapshot'),
+        LOAD_TIMEOUT_MS,
+        'Reports did not finish loading. Check the connection and try again.'
+      );
       applySnapshot(payload);
       if (state.preset === 'custom' && !state.startDate) {
         state.startDate = state.snapshot?.period?.start || '';
