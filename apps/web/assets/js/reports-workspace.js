@@ -1240,7 +1240,7 @@
     document.addEventListener('submit', handleSubmit);
 
     state.viewObserver = new MutationObserver(() => {
-      if (viewVisible() && !state.snapshot && !state.loading) loadSnapshot();
+      if (viewVisible() && !state.snapshot && !state.loading && !state.error) loadSnapshot();
     });
     state.viewObserver.observe(host(), { attributes: true, attributeFilter: ['style', 'class'] });
 
