@@ -545,7 +545,7 @@
       </aside>
       <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
       <section class="atlas-main">
-        <header class="atlas-topbar"><button class="top-icon mobile-menu" id="mobile-menu-btn"><i data-lucide="menu"></i></button><div class="atlas-page-title" id="atlas-page-title">Home</div><div class="atlas-search"><i data-lucide="search"></i><input id="global-search" type="text" placeholder="Search VÁ OS…  /" /></div><button class="top-icon" title="Notifications"><i data-lucide="bell"></i></button><button class="service-toggle" id="service-mode-btn"><i data-lucide="zap"></i><span>Service Mode</span></button></header>
+        <header class="atlas-topbar"><button class="top-icon mobile-menu" id="mobile-menu-btn"><i data-lucide="menu"></i></button><div class="atlas-page-title" id="atlas-page-title">Home</div><div class="atlas-search"><i data-lucide="search"></i><input id="global-search" type="text" placeholder="Jump to pages or commands…  /" aria-label="Jump to a page or command" title="Pages and commands only — operational records are not indexed." data-search-scope="navigation" autocomplete="off" /></div><button class="top-icon" title="Notifications"><i data-lucide="bell"></i></button><button class="service-toggle" id="service-mode-btn"><i data-lucide="zap"></i><span>Service Mode</span></button></header>
         <div class="atlas-content standard-view"><main>
           <div id="home-intro" class="home-hero"><div><h1>Good day, <span id="greeting-name">VÁ team</span>.</h1><p>Everything that needs your attention, in one calm place.</p></div></div>
           <div id="home-focus" class="atlas-card"><div class="placeholder-head"><h2 style="font-size:24px">Today's Focus</h2><p>Your live operational briefing.</p></div><div class="focus-list" id="focus-list"><div class="focus-row"><span class="focus-dot"></span><span>Loading today's priorities…</span></div></div></div>
@@ -1566,7 +1566,19 @@
   document.querySelector('[data-service-action="restock"]').addEventListener('click',()=>{exitService();openRestockModal();});
   document.querySelector('[data-service-action="add-item"]').addEventListener('click',()=>{exitService();openModal(null);});
   document.addEventListener('keydown',(e)=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();document.getElementById('global-search').focus();}if(e.key==='Escape'&&document.body.classList.contains('service-mode'))exitService();});
-  document.getElementById('global-search').addEventListener('input',(e)=>{ const q=e.target.value.toLowerCase(); if(q.includes('recipe'))setActiveView('recipes'); else if(q.includes('supplier')||q.includes('order'))setActiveView('suppliers'); else if(q.includes('team')||q.includes('staff'))setActiveView('team'); else if(q.includes('shift'))setActiveView('shifts'); else if(q.includes('knowledge')||q.includes('document'))setActiveView('knowledge'); else if(q.includes('import')||q.includes('excel')||q.includes('csv'))setActiveView('imports'); else if(q.length>1)setActiveView('inventory'); });
+  document.getElementById('global-search').addEventListener('input',(e)=>{
+    const q=e.target.value.toLowerCase().trim();
+    if(q.includes('recipe'))setActiveView('recipes');
+    else if(q.includes('supplier')||q.includes('order')||q.includes('purchase'))setActiveView('suppliers');
+    else if(q.includes('team')||q.includes('staff')||q.includes('profile'))setActiveView('team');
+    else if(q.includes('shift')||q.includes('schedule'))setActiveView('shifts');
+    else if(q.includes('knowledge')||q.includes('document')||q.includes('checklist'))setActiveView('knowledge');
+    else if(q.includes('import')||q.includes('excel')||q.includes('csv'))setActiveView('imports');
+    else if(q.includes('inventory')||q.includes('item')||q.includes('stock')||q.includes('count'))setActiveView('inventory');
+    else if(q.includes('report'))setActiveView('reports');
+    else if(q.includes('setting'))setActiveView('settings');
+    else if(q.includes('home')||q.includes('dashboard'))setActiveView('dashboard');
+  });
 
   // ---------- QUICK ACTION (FAB) ----------
   const fabBtn = document.getElementById('fab-btn');
