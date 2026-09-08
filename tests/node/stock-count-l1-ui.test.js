@@ -17,14 +17,17 @@ test('Checkpoint L1 assets are wired through the authenticated inventory bootstr
   assert.match(bootstrap, /await loadScript/);
 });
 
-test('the repository source is valid and the bootstrap retains a defensive repair path', () => {
+test('the repository source is valid and the bootstrap retains scoped runtime safeguards', () => {
   assert.doesNotMatch(workspace, /note: override\.note \?\? note\?\.value\?\.trim\(\) \|\| null/);
   assert.match(workspace, /note: \(override\.note \?\? note\?\.value\?\.trim\(\)\) \|\| null/);
   assert.match(workspace, /AtlasStockCountsL1\?\.handleSubmit/);
-  assert.match(bootstrap, /note: \(override\.note \?\? note\?\.value\?\.trim\(\)\) \|\| null/);
-  assert.match(bootstrap, /AtlasStockCountsL1\?\.handleSubmit/);
-  assert.match(bootstrap, /new Blob/);
-  assert.match(bootstrap, /runtimePatched/);
+  assert.doesNotMatch(bootstrap, /override\.note/);
+  assert.match(bootstrap, /await loadStockCountCore\(\)/);
+  assert.match(bootstrap, /installStockCountReentryGuard\(\)/);
+  assert.match(bootstrap, /mutationIsLucideOnly/);
+  assert.match(bootstrap, /observeEnhancementTarget/);
+  assert.match(bootstrap, /new Blob\(\[source\]/);
+  assert.match(bootstrap, /extensionRuntimePatched/);
 });
 
 test('mobile count forms expose all supported observation units', () => {
