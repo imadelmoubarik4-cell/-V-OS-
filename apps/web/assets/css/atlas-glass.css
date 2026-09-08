@@ -368,6 +368,21 @@
   box-shadow: var(--glass-highlight), var(--glass-shadow-raised);
 }
 
+#fab-menu button {
+  color: var(--atlas-text);
+}
+
+#fab-menu button:hover,
+#fab-menu button:focus-visible {
+  background: var(--blue-100);
+  color: var(--atlas-text);
+}
+
+#fab-menu button:focus-visible {
+  outline: 2px solid var(--blue-600);
+  outline-offset: 2px;
+}
+
 /* ---------- Recipes gallery on glass ---------- */
 
 #recipes-view .recipe-gallery-toolbar,
