@@ -6,12 +6,11 @@
     loadPromise: null,
     ready: false,
     extensionReady: false,
-    runtimePatched: false,
     reentryPatched: false,
     itemMasterReady: false,
   };
-  const WORKSPACE_SOURCE = 'assets/js/stock-count-workspace.js?v=20260813-l1-core3';
-  const EXTENSION_SOURCE = 'assets/js/stock-count-l1-verified.js?v=20260813-l1-core3';
+  const WORKSPACE_SOURCE = 'assets/js/stock-count-workspace.js?v=20260813-l1-core4';
+  const EXTENSION_SOURCE = 'assets/js/stock-count-l1-verified.js?v=20260813-l1-core4';
   const ITEM_MASTER_SOURCE = 'assets/js/item-master-workspace.js?v=20260806-l2';
   const ITEM_MASTER_STYLESHEET = 'assets/css/item-master-workspace.css?v=20260806-l2';
   const ITEM_MASTER_API = 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-item-master';
@@ -88,40 +87,14 @@
     });
   }
 
-  async function loadStockCountCoreWithObserverGuard() {
-    const NativeMutationObserver = window.MutationObserver;
-    if (typeof NativeMutationObserver !== 'function') {
-      await loadScript(WORKSPACE_SOURCE, 'atlasStockCountWorkspace');
-      return;
-    }
-
-    // stock-count-workspace.js observes the full app shell and its callback calls
-    // render(). render() replaces the workspace children, which otherwise feeds
-    // straight back into that observer and can keep the loading screen in a
-    // self-triggered render loop. During this script's initialization only,
-    // constrain its observer callbacks to the visibility changes it actually
-    // needs to recover from navigation.
-    window.MutationObserver = class AtlasStockCountMutationObserver extends NativeMutationObserver {
-      constructor(callback) {
-        super((mutations, observer) => {
-          const relevant = mutations.filter((mutation) => {
-            if (mutation.type !== 'attributes') return false;
-            if (!['style', 'hidden'].includes(mutation.attributeName || '')) return false;
-            const target = mutation.target;
-            return target instanceof Element
-              && (target.id === 'inventory-view' || target.id === 'app-screen');
-          });
-          if (relevant.length) callback(relevant, observer);
-        });
-      }
-    };
-
-    try {
-      await loadScript(WORKSPACE_SOURCE, 'atlasStockCountWorkspace');
-      state.runtimePatched = true;
-    } finally {
-      window.MutationObserver = NativeMutationObserver;
-    }
+  // The temporary global observer replacement that used to wrap this load is gone.
+  // It masked a recursion that lives in stock-count-workspace.js itself, and it only
+  // held while that one script was evaluating - any other load order brought the loop
+  // straight back. The workspace now scopes its own observer, so the global no longer
+  // needs patching (patching it globally also silently narrowed every observer any
+  // other module happened to construct meanwhile).
+  async function loadStockCountCore() {
+    await loadScript(WORKSPACE_SOURCE, 'atlasStockCountWorkspace');
   }
 
   function installStockCountReentryGuard() {
@@ -147,7 +120,7 @@
 
   async function loadStockCountWorkspace() {
     if (!window.AtlasStockCounts) {
-      await loadStockCountCoreWithObserverGuard();
+      await loadStockCountCore();
     }
     if (!window.AtlasStockCounts) {
       throw new Error('The canonical Stock Count workspace loaded without installing AtlasStockCounts.');
@@ -176,7 +149,7 @@
 
   async function performLoad() {
     state.loading = true;
-    ensureStylesheet('assets/css/stock-count-workspace.css?v=20260813-l1-core3', 'atlas-stock-count-css');
+    ensureStylesheet('assets/css/stock-count-workspace.css?v=20260813-l1-core4', 'atlas-stock-count-css');
 
     try {
       await loadStockCountWorkspace();
@@ -279,7 +252,6 @@
     load,
     ready: () => state.ready,
     extensionReady: () => state.extensionReady,
-    runtimePatched: () => state.runtimePatched,
     reentryPatched: () => state.reentryPatched,
     itemMasterReady: () => state.itemMasterReady,
   };

@@ -6,6 +6,8 @@
   const SCANNER_API = String(cfg.INVENTORY_SCANNER_API || 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner').trim();
   const ZXING_ESM_URL = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.2.1/+esm';
   const REQUEST_TIMEOUT_MS = 22000;
+  const SESSION_TIMEOUT_MS = 8000;
+  const LOAD_WATCHDOG_MS = 26000;
   const SCAN_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'];
 
   const state = {
@@ -25,6 +27,9 @@
     error: null,
     observer: null,
     retryTimer: null,
+    rendering: false,
+    loadSerial: 0,
+    loadWatchdog: null,
     modal: null,
     scan: {
       open: false,
@@ -115,12 +120,30 @@
     return state.detail?.permissions || {};
   }
 
+  function withTimeout(promise, ms, message) {
+    let timer = null;
+    return Promise.race([
+      Promise.resolve(promise).finally(() => window.clearTimeout(timer)),
+      new Promise((_, reject) => {
+        timer = window.setTimeout(() => reject(new Error(message)), ms);
+      })
+    ]);
+  }
+
   async function activeSession() {
     const client = window.atlasSupabase;
     if (!client?.auth) return null;
-    const result = await client.auth.getSession();
-    if (result.error) throw result.error;
-    return result.data.session || null;
+    // getSession() waits on the Supabase auth lock and carries no deadline of its
+    // own. It runs before api() opens its AbortController, so left unbounded it is
+    // the one await in the loading path that can never settle - which strands
+    // render() on loadingMarkup() with no way back. Bound it.
+    const result = await withTimeout(
+      client.auth.getSession(),
+      SESSION_TIMEOUT_MS,
+      'Atlas could not confirm your session in time. Check the connection, then try again.'
+    );
+    if (result?.error) throw result.error;
+    return result?.data?.session || null;
   }
 
   async function api(endpoint, action, options = {}) {
@@ -325,7 +348,16 @@
   }
 
   function render() {
-    if (!state.active) return;
+    if (!state.active || state.rendering) return;
+    state.rendering = true;
+    try {
+      renderNow();
+    } finally {
+      state.rendering = false;
+    }
+  }
+
+  function renderNow() {
     const mount = ensureWorkspace();
     if (!mount) return;
     setLegacyVisibility(true);
@@ -344,25 +376,58 @@
     window.lucide?.createIcons?.();
   }
 
+  function clearLoadWatchdog() {
+    if (!state.loadWatchdog) return;
+    window.clearTimeout(state.loadWatchdog);
+    state.loadWatchdog = null;
+  }
+
+  // Last line of defence for the error-state contract: whatever stalls, the
+  // workspace leaves the spinner and offers Try again.
+  function startLoadWatchdog(serial) {
+    clearLoadWatchdog();
+    state.loadWatchdog = window.setTimeout(() => {
+      state.loadWatchdog = null;
+      if (serial !== state.loadSerial || !state.loading) return;
+      state.loading = false;
+      if (!state.snapshot && !state.error) {
+        state.error = 'Stock counts did not finish loading. The stock-count service may be unavailable right now.';
+      }
+      render();
+    }, LOAD_WATCHDOG_MS);
+  }
+
   async function loadSnapshot(force = false) {
-    if (state.loading || (!force && state.snapshot)) return;
+    // A forced load must be able to pre-empt a stalled one. The old guard also
+    // returned on state.loading, so once that latch stuck true every Refresh and
+    // Try again became a no-op and the spinner was permanent.
+    if (!force && (state.loading || state.snapshot)) return;
+    const serial = state.loadSerial + 1;
+    state.loadSerial = serial;
     state.loading = true;
     state.error = null;
     render();
+    startLoadWatchdog(serial);
     try {
       const payload = await countApi('snapshot');
+      if (serial !== state.loadSerial) return;
       state.snapshot = payload.counts || {};
       state.staff = payload.staff || null;
       state.policy = payload.policy || null;
       if (state.activeSessionId) {
         const detailPayload = await countApi('detail', { params: { id: state.activeSessionId } });
+        if (serial !== state.loadSerial) return;
         state.detail = detailPayload.count || null;
       }
     } catch (error) {
+      if (serial !== state.loadSerial) return;
       state.error = error instanceof Error ? error.message : 'Stock counts could not load.';
     } finally {
-      state.loading = false;
-      render();
+      if (serial === state.loadSerial) {
+        clearLoadWatchdog();
+        state.loading = false;
+        render();
+      }
     }
   }
 
@@ -912,6 +977,12 @@
 
   function close() {
     state.active = false;
+    // Invalidate any pending load before clearing its watchdog. Otherwise a
+    // stalled request can leave state.loading latched after navigation, and the
+    // next open() only repaints the stale spinner instead of starting a new load.
+    state.loadSerial += 1;
+    state.loading = false;
+    clearLoadWatchdog();
     closeModal();
     closeScanModal();
     setLegacyVisibility(false);
@@ -935,8 +1006,16 @@
     document.addEventListener('input', handleInput, true);
     document.addEventListener('change', handleChange, true);
     document.addEventListener('submit', handleSubmit, true);
+    // restoreIfVisible() calls render(), and render() rewrites #stock-count-workspace,
+    // which sits inside #inventory-view inside #app-screen. Observing that tree with
+    // childList + subtree made every render re-enter this observer, so the callback fed
+    // itself inside a single microtask checkpoint. Watch only the visibility attributes
+    // navigation actually changes, on the two host elements themselves.
     state.observer = new MutationObserver(restoreIfVisible);
-    state.observer.observe(document.getElementById('app-screen') || document.body, { attributes: true, childList: true, subtree: true });
+    const visibilityOptions = { attributes: true, attributeFilter: ['style', 'hidden', 'class'], childList: false, subtree: false };
+    [document.getElementById('app-screen'), host()].forEach((element) => {
+      if (element) state.observer.observe(element, visibilityOptions);
+    });
     window.addEventListener('pagehide', () => {
       state.observer?.disconnect();
       closeScanModal();
