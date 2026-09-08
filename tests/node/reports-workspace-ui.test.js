@@ -98,6 +98,14 @@ test('browser uses the session gateway without direct private-table access', () 
   assert.doesNotMatch(ui, /atlas_private\.|inventory_movements|knowledge_acknowledgements/);
 });
 
+test('loading always reaches a terminal state when session recovery stalls', () => {
+  assert.match(ui, /const SESSION_TIMEOUT_MS = 8000/);
+  assert.match(ui, /withTimeout\(\s*client\.auth\.getSession\(\)/);
+  assert.match(ui, /Atlas could not confirm your session in time/);
+  assert.match(ui, /Reports took too long to respond/);
+  assert.match(ui, /data-reports-refresh/);
+});
+
 test('Reports preserves the Atlas visual system and tablet-first behavior', () => {
   assert.match(css, /--reports-surface:var\(--atlas-surface/);
   assert.match(css, /'Fraunces'/);

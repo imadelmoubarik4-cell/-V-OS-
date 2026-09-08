@@ -3,6 +3,7 @@
 
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 30000;
+  const SESSION_TIMEOUT_MS = 8000;
   const PAGE_SIZE = 20;
   const SECTION_ORDER = [
     'overview', 'sales', 'inventory', 'recipes', 'purchasing', 'suppliers',
@@ -141,12 +142,26 @@
     return String(cfg.REPORTS_API || '').trim();
   }
 
+  function withTimeout(promise, ms, message) {
+    let timer = null;
+    return Promise.race([
+      Promise.resolve(promise).finally(() => window.clearTimeout(timer)),
+      new Promise((_, reject) => {
+        timer = window.setTimeout(() => reject(new Error(message)), ms);
+      })
+    ]);
+  }
+
   async function activeSession() {
     const client = window.atlasSupabase;
     if (!client?.auth) return null;
-    const result = await client.auth.getSession();
-    if (result.error) throw result.error;
-    return result.data.session || null;
+    const result = await withTimeout(
+      client.auth.getSession(),
+      SESSION_TIMEOUT_MS,
+      'Atlas could not confirm your session in time. Check the connection, then try again.'
+    );
+    if (result?.error) throw result.error;
+    return result?.data?.session || null;
   }
 
   function requestParams() {
