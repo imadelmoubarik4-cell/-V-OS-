@@ -523,7 +523,7 @@
           <div class="nav-group"><div class="nav-label">HOME</div><button class="nav-item active" data-view="dashboard"><i data-lucide="house"></i>Home</button></div>
           <div class="nav-group"><div class="nav-label">OPERATIONS</div>
             <button class="nav-item nav-parent" data-default="inventory"><i data-lucide="package"></i>Inventory<i class="chev" data-lucide="chevron-down"></i></button>
-            <div class="nav-sub"><button class="nav-item" data-view="inventory" data-subview="Items">Items</button><button class="nav-item" data-view="inventory" data-subview="Stock count">Stock count</button><button class="nav-item" data-view="dashboard" data-subview="Inventory movements">Movements</button><button class="nav-item" data-view="inventory" data-subview="Waste">Waste</button></div>
+            <div class="nav-sub"><button class="nav-item" data-view="inventory" data-subview="Items">Items</button><button class="nav-item" data-view="inventory" data-subview="Stock count">Stock count</button><button class="nav-item" data-view="movements" data-subview="Inventory movements">Movements</button><button class="nav-item" data-view="waste" data-subview="Waste">Waste</button></div>
             <button class="nav-item nav-parent" data-default="recipes"><i data-lucide="martini"></i>Recipes<i class="chev" data-lucide="chevron-down"></i></button>
             <div class="nav-sub">
               <button class="nav-item" data-view="recipes" data-recipe-filter="all">Recipe dashboard</button>
@@ -747,6 +747,8 @@
           <div id="team-view" class="placeholder-view"><div class="placeholder-head"><h2>Team</h2><p>Profiles, roles, emergency contacts and training status.</p></div><div class="empty-module"><i data-lucide="users"></i><h3>Team workspace is ready</h3><p>Next: connect live staff profiles from Supabase.</p></div></div>
           <div id="shifts-view" class="placeholder-view"><div class="placeholder-head"><h2>Shifts</h2><p>A calm weekly planner built for hospitality.</p></div><div class="empty-module"><i data-lucide="calendar-days"></i><h3>Shift planner foundation is ready</h3><p>Next: weekly schedule, availability and publishing.</p></div></div>
           <div id="knowledge-view" class="placeholder-view"><div class="placeholder-head"><h2>Knowledge</h2><p>Documents, onboarding, training and checklists.</p></div><div class="empty-module"><i data-lucide="book-open"></i><h3>Knowledge hub foundation is ready</h3><p>Eight onboarding steps already exist in Supabase.</p></div></div>
+          <div id="movements-view" class="placeholder-view" data-unavailable-view="movements"><div class="placeholder-head"><h2>Inventory movements</h2><p>Movement history is not available in this V1 preview.</p></div><div class="empty-module" role="status"><i data-lucide="database-off"></i><h3>Inventory movements are not available yet</h3><p>Atlas does not have an approved standalone movement ledger. No movement records are shown or inferred here.</p></div></div>
+          <div id="waste-view" class="placeholder-view" data-unavailable-view="waste"><div class="placeholder-head"><h2>Waste</h2><p>Waste tracking is not available in this V1 preview.</p></div><div class="empty-module" role="status"><i data-lucide="database-off"></i><h3>Waste logging is coming later</h3><p>Atlas does not yet have an approved Waste workspace. No waste records are shown or fabricated here.</p></div></div>
           <div id="reports-view" class="placeholder-view"><div class="placeholder-head"><h2>Reports</h2><p>Inventory, usage, waste, labour and purchasing insights.</p></div><div class="empty-module"><i data-lucide="chart-no-axes-combined"></i><h3>Reports are coming next</h3></div></div>
           <div id="settings-view" class="placeholder-view"><div class="placeholder-head"><h2>Settings</h2><p>Venue, team access and VÁ OS preferences.</p></div><div class="empty-module"><i data-lucide="settings"></i><h3>Project Atlas</h3><p>Built with care for VÁ Bar, Reykjavík.</p></div></div>
         </main></div>
@@ -1502,10 +1504,11 @@
     suppliers: document.getElementById('suppliers-view'),
     imports: document.getElementById('imports-view'),
     team: document.getElementById('team-view'), shifts: document.getElementById('shifts-view'),
-    knowledge: document.getElementById('knowledge-view'), reports: document.getElementById('reports-view'),
+    knowledge: document.getElementById('knowledge-view'), movements: document.getElementById('movements-view'),
+    waste: document.getElementById('waste-view'), reports: document.getElementById('reports-view'),
     settings: document.getElementById('settings-view')
   };
-  const titleMap = {dashboard:'Home',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',imports:'Import Center',team:'Team',shifts:'Shifts',knowledge:'Knowledge',reports:'Reports',settings:'Settings'};
+  const titleMap = {dashboard:'Home',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',imports:'Import Center',team:'Team',shifts:'Shifts',knowledge:'Knowledge',movements:'Inventory movements',waste:'Waste',reports:'Reports',settings:'Settings'};
   function setActiveView(view) {
     if (!canManageCommercial() && ['suppliers', 'imports'].includes(view)) {
       alert('This workspace is limited to managers and administrators.');
@@ -1574,6 +1577,8 @@
     else if(q.includes('shift')||q.includes('schedule'))setActiveView('shifts');
     else if(q.includes('knowledge')||q.includes('document')||q.includes('checklist'))setActiveView('knowledge');
     else if(q.includes('import')||q.includes('excel')||q.includes('csv'))setActiveView('imports');
+    else if(q.includes('movement'))setActiveView('movements');
+    else if(q.includes('waste')||q.includes('spoilage')||q.includes('breakage'))setActiveView('waste');
     else if(q.includes('inventory')||q.includes('item')||q.includes('stock')||q.includes('count'))setActiveView('inventory');
     else if(q.includes('report'))setActiveView('reports');
     else if(q.includes('setting'))setActiveView('settings');

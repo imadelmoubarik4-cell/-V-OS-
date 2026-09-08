@@ -257,19 +257,6 @@
     return state.loadPromise;
   }
 
-  function showUnavailable(label) {
-    const message = `${label} is not available in this V1 preview yet.`;
-    if (typeof window.showToast === 'function') {
-      window.showToast(message);
-      return;
-    }
-    const toast = document.getElementById('atlas-toast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.classList.add('show');
-    window.setTimeout(() => toast.classList.remove('show'), 2600);
-  }
-
   function activateInventorySubview(label) {
     document.querySelectorAll('[data-view="inventory"][data-subview]').forEach((item) => {
       item.classList.toggle('active', item.dataset.subview === label);
@@ -292,15 +279,6 @@
   function replayNavigation(event) {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
-
-    const movementsNav = target.closest('[data-subview="Inventory movements"]');
-    const wasteNav = target.closest('[data-subview="Waste"]');
-    if (movementsNav || wasteNav) {
-      event.preventDefault();
-      event.stopPropagation();
-      showUnavailable(movementsNav ? 'Inventory movements' : 'Waste');
-      return;
-    }
 
     const stockNav = target.closest('[data-view="inventory"][data-subview="Stock count"]');
     const itemMasterNav = target.closest('[data-item-master-l2]');
