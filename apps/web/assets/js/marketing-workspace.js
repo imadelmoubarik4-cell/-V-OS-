@@ -836,7 +836,10 @@
       const insights = [...document.querySelectorAll('.nav-group')].find((candidate) => candidate.querySelector('.nav-label')?.textContent?.trim() === 'INSIGHTS');
       if (nav) nav.insertBefore(group, insights || null);
       navButton = group.querySelector('[data-view="marketing"]');
-      navButton?.addEventListener('click', (event) => { event.preventDefault(); activateMarketing(); });
+    }
+    if (navButton && navButton.dataset.marketingWorkspaceBound !== 'true') {
+      navButton.dataset.marketingWorkspaceBound = 'true';
+      navButton.addEventListener('click', (event) => { event.preventDefault(); activateMarketing(); });
     }
 
     if (!host()) {

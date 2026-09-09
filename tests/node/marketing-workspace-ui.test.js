@@ -19,6 +19,8 @@ test('Checkpoint D loads from the isolated Marketing API', () => {
 test('Marketing injects a Growth navigation entry and complete planning sections', () => {
   assert.match(ui, /GROWTH/);
   assert.match(ui, /data-view=\"marketing\"/);
+  assert.match(ui, /navButton\.dataset\.marketingWorkspaceBound !== 'true'/);
+  assert.match(ui, /navButton\.addEventListener\('click',[\s\S]*activateMarketing\(\)/);
   for (const section of ['Overview', 'Calendar', 'Content', 'Campaigns', 'Connections', 'History']) {
     assert.match(ui, new RegExp(section));
   }
