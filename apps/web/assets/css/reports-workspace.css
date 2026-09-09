@@ -130,4 +130,35 @@
 @media(max-width:980px){.reports-hero{align-items:flex-start;flex-direction:column}.reports-hero-meta{width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}.reports-layout{grid-template-columns:1fr}.reports-navigation{position:static;display:flex;overflow:auto;padding:7px}.reports-navigation button{min-width:max-content;width:auto}.reports-overview-grid,.reports-chart-grid{grid-template-columns:1fr}.reports-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.reports-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.reports-shell{gap:14px}.reports-hero h1{font-size:34px}.reports-hero-meta{grid-template-columns:1fr}.reports-controls{grid-template-columns:1fr}.reports-control-group{align-items:stretch;flex-direction:column}.reports-control-actions{grid-column:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.reports-control-actions button{white-space:normal}.reports-filter-row{display:grid;grid-template-columns:1fr 1fr}.reports-search{grid-column:1/-1;min-width:0}.reports-filter-row>label:not(.reports-search){min-width:0;max-width:none;flex:none}.reports-kpi-grid{grid-template-columns:1fr 1fr}.report-kpi{min-height:165px}.reports-summary-grid{grid-template-columns:1fr 1fr}.reports-export-grid{grid-template-columns:1fr}.reports-saved-list article{grid-template-columns:1fr}.reports-saved-list article>div:last-child{justify-content:flex-start}.reports-table-panel>footer{align-items:flex-start;flex-direction:column}.reports-ask-fab{right:15px;bottom:15px}.reports-ask-panel{right:10px;bottom:10px;width:calc(100vw - 20px);max-height:calc(100vh - 20px)}}
 @media(max-width:480px){.reports-hero h1{font-size:31px}.reports-controls,.reports-filter-shell{padding:11px}.reports-control-actions{grid-template-columns:1fr}.reports-filter-row{grid-template-columns:1fr}.reports-search{grid-column:auto}.reports-kpi-grid,.reports-summary-grid{grid-template-columns:1fr}.report-kpi{min-height:150px}.reports-section-head{align-items:stretch;flex-direction:column}.reports-section-head>button{align-self:flex-start}.reports-summary-card dl div,.reports-quality-card dl div{grid-template-columns:1fr;gap:4px}.reports-sources-overview article{grid-template-columns:34px minmax(0,1fr)}.reports-sources-overview article>.report-status{grid-column:2}.reports-bar-chart article{grid-template-columns:90px minmax(65px,1fr) 80px}.reports-date-pair{grid-template-columns:1fr}.reports-ask-panel{border-radius:16px}}
+
+/* Keep wide report modules inside the shared Atlas content rail. */
+#reports-view,
+.reports-shell,
+.reports-controls,
+.reports-filter-shell,
+.reports-layout,
+.reports-main,
+.reports-section-body,
+.reports-overview,
+.reports-kpi-grid,
+.reports-overview-grid,
+.reports-chart-grid,
+.reports-summary-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+#reports-view,
+.reports-shell {
+  overflow-x: clip;
+}
+
+.reports-layout > *,
+.reports-kpi-grid > *,
+.reports-overview-grid > *,
+.reports-chart-grid > *,
+.reports-summary-grid > * {
+  min-width: 0;
+}
 @media(prefers-reduced-motion:reduce){.report-kpi,.reports-skeleton-grid span{transition:none;animation:none}}

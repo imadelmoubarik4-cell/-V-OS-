@@ -165,8 +165,13 @@
   function deactivate() {
     if (!state.active) return;
     state.active = false;
-    state.navButton?.classList.remove('active');
+    document.body.classList.remove('item-master-active');
+    document.querySelectorAll('[data-item-master-l2]').forEach((button) => button.classList.remove('active'));
     setBaseInventoryVisible(true);
+    const intelligence = document.getElementById('inventory-intelligence');
+    if (intelligence) intelligence.hidden = document.body.classList.contains('stock-count-active');
+    const actions = document.querySelector('.inventory-section-actions');
+    if (actions) actions.hidden = document.body.classList.contains('stock-count-active');
     closeEditor();
   }
 
@@ -174,9 +179,15 @@
     const itemNav = document.querySelector('[data-view="inventory"][data-subview="Items"]');
     if (itemNav) itemNav.click();
     state.active = true;
+    document.body.classList.add('item-master-active');
     document.querySelectorAll('.nav-item').forEach((button) => button.classList.remove('active'));
-    ensureNav()?.classList.add('active');
+    ensureNav();
+    document.querySelectorAll('[data-item-master-l2]').forEach((button) => button.classList.add('active'));
     document.getElementById('atlas-page-title').textContent = 'Item master';
+    const intelligence = document.getElementById('inventory-intelligence');
+    if (intelligence) intelligence.hidden = true;
+    const actions = document.querySelector('.inventory-section-actions');
+    if (actions) actions.hidden = true;
     setBaseInventoryVisible(false);
     render();
     await refresh();

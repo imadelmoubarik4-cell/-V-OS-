@@ -461,7 +461,7 @@
     return `<div class="system-sources">
       <section class="system-section-head"><div><span>Evidence registry</span><h2>Data sources & freshness</h2><p>Live operational data, private imports and historical snapshots remain visibly distinct.</p></div></section>
       <div class="system-filter-row">${filters.map(([key, label]) => `<button type="button" data-system-source-filter="${key}" class="${state.sourceFilter === key ? 'is-active' : ''}">${label}</button>`).join('')}</div>
-      <section class="system-source-table">${visible.length ? visible.map(sourceMarkup).join('') : '<div class="system-empty"><i data-lucide="database-off"></i>No data sources match this filter.</div>'}</section>
+      <section class="system-source-table">${visible.length ? visible.map(sourceMarkup).join('') : '<div class="system-empty"><i data-lucide="database"></i>No data sources match this filter.</div>'}</section>
       <section class="system-source-guard"><i data-lucide="brain-circuit"></i><div><strong>Atlas Brain evidence gate</strong><span>Historical evidence, pending Sprint 3 rows, disconnected sales and missing bookings never become live operational facts automatically.</span></div></section>
     </div>`;
   }

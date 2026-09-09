@@ -195,6 +195,14 @@
     if (toolbar) toolbar.hidden = hidden;
     if (tableWrap) tableWrap.hidden = hidden;
     document.body.classList.toggle('stock-count-active', hidden);
+    const intelligence = document.getElementById('inventory-intelligence');
+    if (intelligence) intelligence.hidden = hidden;
+    const actions = document.querySelector('.inventory-section-actions');
+    if (actions) actions.hidden = hidden || document.body.classList.contains('item-master-active');
+    document.querySelectorAll('.inventory-workspace-tab[data-inventory-section]').forEach((button) => {
+      const section = button.dataset.inventorySection;
+      button.classList.toggle('active', hidden ? section === 'stock-count' : section === 'items');
+    });
   }
 
   function ensureWorkspace() {

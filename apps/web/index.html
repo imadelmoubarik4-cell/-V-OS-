@@ -552,7 +552,27 @@
           <div id="home-metrics" class="atlas-grid"><div class="metric-card" data-target="inventory"><div class="metric-icon"><i data-lucide="package"></i></div><strong id="home-items">—</strong><span>Inventory items</span></div><div class="metric-card" data-target="inventory-low"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><strong id="home-low">—</strong><span>Below par</span></div><div class="metric-card" data-target="team"><div class="metric-icon"><i data-lucide="users"></i></div><strong id="home-team">—</strong><span>Team members</span></div><div class="metric-card" data-target="knowledge"><div class="metric-icon"><i data-lucide="graduation-cap"></i></div><strong>8</strong><span>Onboarding steps</span></div></div>
 
           <div class="alert-banner" id="low-stock-banner"><span class="dot"></span><span id="low-stock-text"></span></div>
-          <div id="inventory-view" style="display:none;"><div class="toolbar"><div class="tabs" id="category-tabs"></div><button class="btn" id="add-item-btn">+ Add item</button></div><div id="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Updated</th><th>Quantity</th><th></th></tr></thead><tbody id="items-body"></tbody></table><div class="empty-state" id="empty-state" style="display:none;"><span class="mark">Á</span>Nothing here yet. Add the first item.</div></div></div>
+          <section class="inventory-section-header" id="inventory-section-header" hidden>
+            <div class="inventory-section-row">
+              <nav class="inventory-workspace-tabs" aria-label="Inventory sections">
+                <button type="button" class="inventory-workspace-tab" data-view="inventory" data-subview="Items" data-inventory-section="items">Items</button>
+                <button type="button" class="inventory-workspace-tab" data-view="inventory" data-subview="Stock count" data-inventory-section="stock-count">Stock count</button>
+                <button type="button" class="inventory-workspace-tab" data-item-master-l2 data-inventory-section="item-master">Item master</button>
+                <button type="button" class="inventory-workspace-tab" data-view="movements" data-subview="Inventory movements" data-inventory-section="movements">Movements</button>
+                <button type="button" class="inventory-workspace-tab" data-view="waste" data-subview="Waste" data-inventory-section="waste">Waste</button>
+                <button type="button" class="inventory-workspace-tab" data-view="imports" data-inventory-section="imports">Import</button>
+              </nav>
+              <div class="inventory-section-actions">
+                <button class="btn" id="add-item-btn" type="button"><i data-lucide="plus"></i>Add item</button>
+              </div>
+            </div>
+            <div class="inventory-intelligence" id="inventory-intelligence" role="status" aria-live="polite">
+              <span class="inventory-intelligence-icon"><i data-lucide="package"></i></span>
+              <p><strong id="inventory-intelligence-title">Checking inventory readiness.</strong> <span id="inventory-intelligence-detail">Atlas is reviewing verified stock data.</span></p>
+              <button type="button" id="inventory-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
+            </div>
+          </section>
+          <div id="inventory-view" style="display:none;"><div class="toolbar inventory-filter-toolbar"><div class="tabs" id="category-tabs" aria-label="Inventory categories"></div><div class="tabs inventory-subcategory-tabs" id="subcategory-tabs" aria-label="Inventory subcategories" hidden></div></div><div id="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th data-commercial-only>Supplier</th><th data-commercial-only class="numeric">Cost</th><th>Updated</th><th>Quantity</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="items-body"></tbody></table><div class="empty-state" id="empty-state" style="display:none;"><span class="mark">Á</span>Nothing matches these inventory filters.</div></div></div>
           <div id="dashboard-view" style="display:none;"><div class="stat-grid"><div class="stat-card"><div class="label">Total items</div><div class="value" id="stat-total-items">0</div></div><div class="stat-card warn"><div class="label">Low stock</div><div class="value" id="stat-low-stock">0</div></div><div class="stat-card" data-commercial-only><div class="label">Spent this month</div><div class="value" id="stat-month-spend">0</div><div class="sub">ISK</div></div><div class="stat-card" data-commercial-only><div class="label">Suppliers</div><div class="value" id="stat-suppliers">0</div></div></div><div class="panel"><h3>Low inventory</h3><div id="low-inventory-rows"><div class="empty-dash">Nothing below par right now.</div></div></div><div class="panel"><h3>Recent activity</h3><div id="activity-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by month</h3><div id="monthly-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by supplier — this month</h3><div id="supplier-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div></div>
           <div id="recipes-view" style="display:none;">
             <section class="recipe-dashboard">
@@ -747,8 +767,8 @@
           <div id="team-view" class="placeholder-view"><div class="placeholder-head"><h2>Team</h2><p>Profiles, roles, emergency contacts and training status.</p></div><div class="empty-module"><i data-lucide="users"></i><h3>Team workspace is ready</h3><p>Next: connect live staff profiles from Supabase.</p></div></div>
           <div id="shifts-view" class="placeholder-view"><div class="placeholder-head"><h2>Shifts</h2><p>A calm weekly planner built for hospitality.</p></div><div class="empty-module"><i data-lucide="calendar-days"></i><h3>Shift planner foundation is ready</h3><p>Next: weekly schedule, availability and publishing.</p></div></div>
           <div id="knowledge-view" class="placeholder-view"><div class="placeholder-head"><h2>Knowledge</h2><p>Documents, onboarding, training and checklists.</p></div><div class="empty-module"><i data-lucide="book-open"></i><h3>Knowledge hub foundation is ready</h3><p>Eight onboarding steps already exist in Supabase.</p></div></div>
-          <div id="movements-view" class="placeholder-view" data-unavailable-view="movements"><div class="placeholder-head"><h2>Inventory movements</h2><p>Movement history is not available in this V1 preview.</p></div><div class="empty-module" role="status"><i data-lucide="database-off"></i><h3>Inventory movements are not available yet</h3><p>Atlas does not have an approved standalone movement ledger. No movement records are shown or inferred here.</p></div></div>
-          <div id="waste-view" class="placeholder-view" data-unavailable-view="waste"><div class="placeholder-head"><h2>Waste</h2><p>Waste tracking is not available in this V1 preview.</p></div><div class="empty-module" role="status"><i data-lucide="database-off"></i><h3>Waste logging is coming later</h3><p>Atlas does not yet have an approved Waste workspace. No waste records are shown or fabricated here.</p></div></div>
+          <div id="movements-view" class="placeholder-view" data-unavailable-view="movements"><div class="placeholder-head"><h2>Inventory movements</h2><p>Movement history is not available in this V1 preview.</p></div><div class="empty-module" role="status"><i data-lucide="database"></i><h3>Inventory movements are not available yet</h3><p>Atlas does not have an approved standalone movement ledger. No movement records are shown or inferred here.</p></div></div>
+          <div id="waste-view" class="placeholder-view" data-unavailable-view="waste"><div class="placeholder-head"><h2>Waste</h2><p>Waste tracking is not available in this V1 preview.</p></div><div class="empty-module" role="status"><i data-lucide="database"></i><h3>Waste logging is coming later</h3><p>Atlas does not yet have an approved Waste workspace. No waste records are shown or fabricated here.</p></div></div>
           <div id="reports-view" class="placeholder-view"><div class="placeholder-head"><h2>Reports</h2><p>Inventory, usage, waste, labour and purchasing insights.</p></div><div class="empty-module"><i data-lucide="chart-no-axes-combined"></i><h3>Reports are coming next</h3></div></div>
           <div id="settings-view" class="placeholder-view"><div class="placeholder-head"><h2>Settings</h2><p>Venue, team access and VÁ OS preferences.</p></div><div class="empty-module"><i data-lucide="settings"></i><h3>Project Atlas</h3><p>Built with care for VÁ Bar, Reykjavík.</p></div></div>
         </main></div>
@@ -1079,6 +1099,12 @@
       banner.style.display = 'flex';
       copy.textContent = `${label} is unavailable until the Phase 1 security migration is published.`;
     }
+    const intelligenceTitle = document.getElementById('inventory-intelligence-title');
+    const intelligenceDetail = document.getElementById('inventory-intelligence-detail');
+    if (label === 'Inventory' && intelligenceTitle && intelligenceDetail) {
+      intelligenceTitle.textContent = 'Inventory data is unavailable.';
+      intelligenceDetail.textContent = 'Atlas could not load the role-approved inventory catalogue. Retry after the security migration is available.';
+    }
   }
 
   let items = [];
@@ -1087,7 +1113,15 @@
   let suppliers = [];
   let draftIngredients = [];
   let activeCategory = 'all';
+  let activeSubcategory = 'all';
   let activeView = 'dashboard';
+
+  const INVENTORY_GROUPS = [
+    ['spirits', 'Spirits'], ['wine', 'Wine'], ['beer', 'Beer'], ['mixers', 'Mixers'],
+    ['syrups', 'Syrups'], ['bitters', 'Bitters'], ['fresh-fruit', 'Fresh Fruit'],
+    ['fresh-herbs', 'Fresh Herbs'], ['garnish', 'Garnish'], ['bar-ingredients', 'Bar Ingredients'],
+    ['consumables', 'Consumables'], ['bar-equipment', 'Bar Equipment'], ['coffee', 'Coffee']
+  ];
 
   const DEFAULT_CATEGORIES = [
     'Vodka', 'Gin', 'Whiskey', 'Rum', 'Tequila & Mezcal', 'Brandy & Cognac',
@@ -1195,9 +1229,9 @@
     if (error) {
       console.error(`${relation} could not be loaded`, error);
       items = [];
-      showDataBoundaryError('Inventory');
       renderTabs();
       renderTable();
+      showDataBoundaryError('Inventory');
       return;
     }
     items = data || [];
@@ -1281,18 +1315,110 @@
     renderSuppliers();
   }
 
+  function inventoryGroup(item) {
+    const category = String(item?.category || '').toLowerCase();
+    const name = String(item?.name || '').toLowerCase();
+    const value = `${category} ${name}`;
+    if (/bitters?/.test(value)) return 'bitters';
+    if (/syrup/.test(value)) return 'syrups';
+    if (/coffee|espresso|hot drink/.test(value)) return 'coffee';
+    if (/glassware|equipment|tool|utensil/.test(value)) return 'bar-equipment';
+    if (/cleaning|consumable|napkin|straw|receipt roll/.test(value)) return 'consumables';
+    if (/herb|mint|basil|rosemary|thyme/.test(value)) return 'fresh-herbs';
+    if (/garnish|olive|cherry|dehydrated|zest/.test(value)) return 'garnish';
+    if (/fruit|lemon|lime|orange|grapefruit|berry/.test(value)) return 'fresh-fruit';
+    if (/wine|champagne|prosecco|cava|ros[eé]/.test(value)) return 'wine';
+    if (/beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/.test(value)) return 'beer';
+    if (/mixer|juice|tonic|soda|soft drink|energy drink|ginger beer/.test(value)) return 'mixers';
+    if (/vodka|gin|whisk(?:e)?y|rum|tequila|mezcal|brandy|cognac|aquavit|brenniv[ií]n|liqueur|aperitif|vermouth|spirit|shot/.test(value)) return 'spirits';
+    if (/ingredient|food|tapas|salt|sugar|cream|milk|egg/.test(value)) return 'bar-ingredients';
+    return 'other';
+  }
+
+  function inventorySubcategory(item, group = inventoryGroup(item)) {
+    const value = `${item?.category || ''} ${item?.name || ''} ${item?.unit || ''}`.toLowerCase();
+    if (group === 'spirits') {
+      if (/whisk(?:e)?y|bourbon|scotch/.test(value)) return 'Whiskey';
+      if (/gin/.test(value)) return 'Gin';
+      if (/vodka/.test(value)) return 'Vodka';
+      if (/rum/.test(value)) return 'Rum';
+      if (/tequila|mezcal/.test(value)) return 'Tequila & Mezcal';
+      if (/brandy|cognac/.test(value)) return 'Brandy & Cognac';
+      if (/aquavit|brenniv[ií]n/.test(value)) return 'Aquavit';
+      if (/shot/.test(value)) return 'Shots';
+      return 'Liqueurs & Aperitifs';
+    }
+    if (group === 'wine') {
+      if (/champagne/.test(value)) return 'Champagne';
+      if (/sparkling|prosecco|cava/.test(value)) return 'Sparkling wine';
+      if (/ros[eé]/.test(value)) return 'Rosé wine';
+      if (/red wine|\bred\b/.test(value)) return 'Red wine';
+      return 'White wine';
+    }
+    if (group === 'beer') {
+      if (/\bkeg|30l|20l|50l/.test(value)) return 'Kegs';
+      if (/cider/.test(value)) return 'Cider';
+      if (/ready.to.drink|\brtd\b|breezer/.test(value)) return 'RTD';
+      return 'Bottles';
+    }
+    return String(item?.category || 'Other').trim() || 'Other';
+  }
+
+  function renderInventoryIntelligence() {
+    const title = document.getElementById('inventory-intelligence-title');
+    const detail = document.getElementById('inventory-intelligence-detail');
+    if (!title || !detail) return;
+    const low = items.filter(item => item.par_level != null && Number(item.quantity) <= Number(item.par_level));
+    const missingCost = items.filter(item => item.cost_price == null || item.cost_price === '');
+    if (low.length) {
+      const item = low[0];
+      title.textContent = `${item.name} is at or below par.`;
+      detail.textContent = `${item.quantity} ${item.unit || 'units'} on hand against a par level of ${item.par_level}.`;
+    } else if (missingCost.length && canManageCommercial()) {
+      title.textContent = `${missingCost.length} item${missingCost.length === 1 ? '' : 's'} need cost prices.`;
+      detail.textContent = 'Complete Item Master to improve inventory value and recipe costing.';
+    } else {
+      title.textContent = 'Inventory is ready for review.';
+      detail.textContent = `${items.length} active item${items.length === 1 ? '' : 's'} are available in the current catalogue.`;
+    }
+  }
+
   function renderTabs() {
     const uniqueCats = [...new Set(items.map(i => i.category))];
-    const cats = ['all', ...uniqueCats];
+    const presentGroups = new Set(items.map(inventoryGroup));
+    const cats = [['all', 'All'], ...INVENTORY_GROUPS];
+    if (presentGroups.has('other')) cats.push(['other', 'Other']);
     const wrap = document.getElementById('category-tabs');
     wrap.innerHTML = '';
-    cats.forEach(cat => {
+    cats.forEach(([cat, label]) => {
       const btn = document.createElement('button');
       btn.className = 'tab' + (cat === activeCategory ? ' active' : '');
-      btn.textContent = cat === 'all' ? 'All' : cat[0].toUpperCase() + cat.slice(1);
-      btn.addEventListener('click', () => { activeCategory = cat; renderTabs(); renderTable(); });
+      btn.textContent = label;
+      btn.setAttribute('aria-pressed', String(cat === activeCategory));
+      btn.addEventListener('click', () => { activeCategory = cat; activeSubcategory = 'all'; renderTabs(); renderTable(); });
       wrap.appendChild(btn);
     });
+
+    const subWrap = document.getElementById('subcategory-tabs');
+    const groupItems = activeCategory === 'all' ? [] : items.filter(item => inventoryGroup(item) === activeCategory);
+    const counts = groupItems.reduce((result, item) => {
+      const label = inventorySubcategory(item, activeCategory);
+      result.set(label, (result.get(label) || 0) + 1);
+      return result;
+    }, new Map());
+    subWrap.innerHTML = '';
+    subWrap.hidden = !counts.size;
+    if (counts.size) {
+      const subcategories = [...counts].sort(([left], [right]) => left.localeCompare(right));
+      [['all', 'All', groupItems.length], ...subcategories.map(([label, count]) => [label, label, count])].forEach(([value, label, count]) => {
+        const btn = document.createElement('button');
+        btn.className = 'tab' + (value === activeSubcategory ? ' active' : '');
+        btn.setAttribute('aria-pressed', String(value === activeSubcategory));
+        btn.innerHTML = `${escapeHtml(label)} <span>${count}</span>`;
+        btn.addEventListener('click', () => { activeSubcategory = value; renderTabs(); renderTable(); });
+        subWrap.appendChild(btn);
+      });
+    }
 
     const datalist = document.getElementById('category-suggestions');
     datalist.innerHTML = '';
@@ -1311,6 +1437,7 @@
       opt.value = sup;
       supplierList.appendChild(opt);
     });
+    renderInventoryIntelligence();
   }
 
   function timeAgo(dateStr) {
@@ -1327,7 +1454,11 @@
     const banner = document.getElementById('low-stock-banner');
     body.innerHTML = '';
 
-    const visible = items.filter(i => activeCategory === 'all' || i.category === activeCategory);
+    const visible = items.filter(item => {
+      const groupMatches = activeCategory === 'all' || inventoryGroup(item) === activeCategory;
+      const subcategoryMatches = activeSubcategory === 'all' || inventorySubcategory(item, activeCategory) === activeSubcategory;
+      return groupMatches && subcategoryMatches;
+    });
     const lowCount = items.filter(i => i.par_level != null && i.quantity <= i.par_level).length;
 
     if (lowCount > 0) {
@@ -1345,18 +1476,22 @@
 
     visible.forEach(item => {
       const isLow = item.par_level != null && item.quantity <= item.par_level;
+      const cost = item.cost_price == null || item.cost_price === ''
+        ? '—'
+        : `${new Intl.NumberFormat('is-IS', { maximumFractionDigits: 0 }).format(Number(item.cost_price))} ISK`;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td class="name">${escapeHtml(item.name)}</td>
+        <td class="name"><span>${escapeHtml(item.name)}</span>${isLow ? '<span class="below-par-badge">Below par</span>' : ''}</td>
         <td class="cat">${escapeHtml(item.category)}</td>
-        <td class="meta">${item.updated_by ? escapeHtml(item.updated_by.split('@')[0]) + ' · ' : ''}${timeAgo(item.updated_at)}</td>
+        <td class="supplier" data-commercial-only>${escapeHtml(item.supplier || '—')}</td>
+        <td class="cost numeric" data-commercial-only>${cost}</td>
+        <td class="meta">${timeAgo(item.updated_at)}</td>
         <td>
           <div class="qty-cell">
             <button class="step-btn step-down" data-id="${item.id}" type="button">−</button>
             <input type="number" step="0.1" class="qty-input mono" value="${item.quantity}" data-id="${item.id}" ${canManageCommercial() ? '' : 'disabled'} />
             <button class="step-btn step-up" data-id="${item.id}" type="button">+</button>
             <span class="unit">${escapeHtml(item.unit)}</span>
-            ${isLow ? '<span class="low-flag" title="At or below par level">Á</span>' : ''}
           </div>
         </td>
         <td>
@@ -1509,6 +1644,26 @@
     settings: document.getElementById('settings-view')
   };
   const titleMap = {dashboard:'Home',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',imports:'Import Center',team:'Team',shifts:'Shifts',knowledge:'Knowledge',movements:'Inventory movements',waste:'Waste',reports:'Reports',settings:'Settings'};
+  const inventoryViews = new Set(['inventory', 'movements', 'waste', 'imports']);
+  function syncInventorySectionHeader(view) {
+    const header = document.getElementById('inventory-section-header');
+    if (!header) return;
+    header.hidden = !inventoryViews.has(view);
+    const intelligence = document.getElementById('inventory-intelligence');
+    const stockCountOpen = document.body.classList.contains('stock-count-active');
+    const itemMasterOpen = document.body.classList.contains('item-master-active');
+    if (intelligence) intelligence.hidden = view !== 'inventory' || stockCountOpen;
+    const actions = header.querySelector('.inventory-section-actions');
+    if (actions) actions.hidden = view !== 'inventory' || stockCountOpen || itemMasterOpen;
+    const lowStockBanner = document.getElementById('low-stock-banner');
+    if (lowStockBanner) lowStockBanner.hidden = view !== 'dashboard';
+    document.querySelectorAll('.inventory-workspace-tab[data-view]').forEach(button => {
+      const isItems = button.dataset.inventorySection === 'items' && view === 'inventory' && !stockCountOpen;
+      const isStock = button.dataset.inventorySection === 'stock-count' && view === 'inventory' && stockCountOpen;
+      const isOther = button.dataset.view === view && view !== 'inventory';
+      button.classList.toggle('active', isItems || isStock || isOther);
+    });
+  }
   function setActiveView(view) {
     if (!canManageCommercial() && ['suppliers', 'imports'].includes(view)) {
       alert('This workspace is limited to managers and administrators.');
@@ -1519,7 +1674,8 @@
     document.getElementById('home-intro').style.display = view === 'dashboard' ? 'flex' : 'none';
     document.getElementById('home-focus').style.display = view === 'dashboard' ? 'block' : 'none';
     document.getElementById('home-metrics').style.display = view === 'dashboard' ? 'grid' : 'none';
-    if (viewMap[view]) viewMap[view].style.display='block';
+    if (viewMap[view]) viewMap[view].style.display = view === 'inventory' ? 'grid' : 'block';
+    syncInventorySectionHeader(view);
     document.getElementById('atlas-page-title').textContent = titleMap[view] || 'VÁ OS';
     document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     if(view==='dashboard'){ renderDashboard(); renderAtlasHome(); }
@@ -1528,7 +1684,7 @@
     if(view==='imports') window.AtlasImportCenter?.render?.();
     closeMobileSidebar();
   }
-  document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click',()=>{ setActiveView(btn.dataset.view); if(btn.dataset.subview) document.getElementById('atlas-page-title').textContent=btn.dataset.subview; }));
+  document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click',()=>{ setActiveView(btn.dataset.view); if(btn.dataset.subview && !btn.dataset.inventorySection) document.getElementById('atlas-page-title').textContent=btn.dataset.subview; }));
   document.querySelectorAll('.nav-parent').forEach(btn => btn.addEventListener('click',()=>{ btn.classList.toggle('open'); const target=btn.dataset.default; if(target) setActiveView(target); }));
   function renderAtlasHome(){
     const low=items.filter(i=>i.par_level!=null && Number(i.quantity)<Number(i.par_level));
@@ -1556,6 +1712,9 @@
     const banner=document.getElementById('low-stock-banner');
     if(banner) banner.onclick=()=>setActiveView('inventory');
   }
+  document.getElementById('inventory-intelligence-action')?.addEventListener('click', () => {
+    document.querySelector('.nav-item[data-view="reports"]')?.click();
+  });
   const sidebar=document.getElementById('atlas-sidebar');
   const backdrop=document.getElementById('sidebar-backdrop');
   function closeMobileSidebar(){sidebar.classList.remove('open');backdrop.classList.remove('open');}

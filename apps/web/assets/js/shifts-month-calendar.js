@@ -402,7 +402,7 @@
       </header>
       <div class="shift-month-cell-content">
         ${visibleEntries.map(shiftChipMarkup).join('')}
-        ${leave.slice(0, 1).map((request) => `<button type="button" class="shift-month-leave" data-shifts-month-day="${escapeHtml(date)}"><i data-lucide="calendar-off-2"></i>${escapeHtml(request.person_name || personFor(request.person_id)?.display_name || 'Team')} · ${escapeHtml(humanize(request.request_type))}</button>`).join('')}
+        ${leave.slice(0, 1).map((request) => `<button type="button" class="shift-month-leave" data-shifts-month-day="${escapeHtml(date)}"><i data-lucide="calendar-days"></i>${escapeHtml(request.person_name || personFor(request.person_id)?.display_name || 'Team')} · ${escapeHtml(humanize(request.request_type))}</button>`).join('')}
         ${inMonth && !entries.length && !leave.length ? `<button type="button" class="shift-month-empty" data-shifts-month-day="${escapeHtml(date)}">${canManage() ? 'Add or review shifts' : 'No shifts'}</button>` : ''}
         ${!inMonth ? `<button type="button" class="shift-month-empty" data-shifts-month-adjacent="${escapeHtml(date)}">Open ${escapeHtml(formatDay(date, { month: 'short' }))}</button>` : ''}
         ${remaining ? `<button type="button" class="shift-month-more" data-shifts-month-day="${escapeHtml(date)}">+${remaining} more shift${remaining === 1 ? '' : 's'}</button>` : ''}
@@ -440,7 +440,7 @@
             </div>
           </article>`;
         }).join('') : `<div class="shift-month-day-empty"><i data-lucide="calendar-x-2"></i><span>No shifts on this day.</span>${manager ? `<button type="button" data-shifts-month-add-day="${escapeHtml(state.selectedDate)}"><i data-lucide="plus"></i>Add first shift</button>` : ''}</div>`}
-        ${leave.map((request) => `<article class="is-leave"><span class="shift-month-detail-time"><i data-lucide="calendar-off-2"></i></span><div><strong>${escapeHtml(request.person_name || personFor(request.person_id)?.display_name || 'Team member')}</strong><small>${escapeHtml(humanize(request.request_type))} · approved time off</small>${request.note ? `<p>${escapeHtml(request.note)}</p>` : ''}</div><span class="shift-month-response is-approved">Approved</span></article>`).join('')}
+        ${leave.map((request) => `<article class="is-leave"><span class="shift-month-detail-time"><i data-lucide="calendar-days"></i></span><div><strong>${escapeHtml(request.person_name || personFor(request.person_id)?.display_name || 'Team member')}</strong><small>${escapeHtml(humanize(request.request_type))} · approved time off</small>${request.note ? `<p>${escapeHtml(request.note)}</p>` : ''}</div><span class="shift-month-response is-approved">Approved</span></article>`).join('')}
       </div>
     </section>`;
   }
