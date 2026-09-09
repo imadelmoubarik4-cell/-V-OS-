@@ -99,6 +99,7 @@ test('Marketing actions and planning state remain legible in the shared blue sys
   assert.match(ui, /data-marketing-new-content aria-label="New content"/);
   assert.match(ui, /<span>New content<\/span>/);
   assert.match(css, /\.marketing-primary\{[^}]*var\(--blue-600/);
+  assert.match(css, /\.marketing-hero \.marketing-primary\{[^}]*var\(--blue-600/);
   assert.match(css, /\.marketing-trust\{[^}]*var\(--atlas-home-accent-soft/);
   assert.match(css, /\.marketing-tabs\{[^}]*var\(--blue-50/);
 });
