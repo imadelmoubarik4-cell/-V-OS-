@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const config = readFileSync('apps/web/config.js', 'utf8');
 const ui = readFileSync('apps/web/assets/js/marketing-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/marketing-workspace.css', 'utf8');
+const sharedPolish = readFileSync('apps/web/assets/css/polish-pass2.css', 'utf8');
 const migration = readFileSync('supabase/migrations/20260803142123_atlas_marketing_workspace_checkpoint_d.sql', 'utf8');
 const occurrences = readFileSync('supabase/migrations/20260803142450_atlas_marketing_recommendation_occurrences.sql', 'utf8');
 
@@ -100,6 +101,7 @@ test('Marketing actions and planning state remain legible in the shared blue sys
   assert.match(ui, /<span>New content<\/span>/);
   assert.match(css, /\.marketing-primary\{[^}]*var\(--blue-600/);
   assert.match(css, /\.marketing-hero \.marketing-primary\{[^}]*var\(--blue-600/);
+  assert.doesNotMatch(sharedPolish, /\.marketing-hero \.marketing-primary/);
   assert.match(css, /\.marketing-trust\{[^}]*var\(--atlas-home-accent-soft/);
   assert.match(css, /\.marketing-tabs\{[^}]*var\(--blue-50/);
 });

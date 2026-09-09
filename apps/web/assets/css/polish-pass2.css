@@ -72,7 +72,6 @@ body[data-atlas-view]:not([data-atlas-view="dashboard"]) .checkpoint-a-home-prom
 }
 
 .recipe-primary-action,
-.marketing-hero .marketing-primary,
 .knowledge-hero-actions .is-primary,
 .settings-hero aside button,
 .system-hero aside button {
@@ -83,7 +82,6 @@ body[data-atlas-view]:not([data-atlas-view="dashboard"]) .checkpoint-a-home-prom
 }
 
 .recipe-primary-action:hover,
-.marketing-hero .marketing-primary:hover,
 .knowledge-hero-actions .is-primary:hover,
 .settings-hero aside button:hover,
 .system-hero aside button:hover {
