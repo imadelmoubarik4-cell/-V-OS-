@@ -36,6 +36,7 @@ test('Inventory filters use the approved primary and contextual category model',
   }
   assert.match(app, /function inventoryGroup\(item\)/);
   assert.match(app, /function inventorySubcategory\(item/);
+  assert.match(app, /\/cider\/\.test\(name\).*?!\/beer\/\.test\(category\)/);
   assert.match(app, /id="subcategory-tabs"/);
   assert.match(app, /result\.set\(label, \(result\.get\(label\) \|\| 0\) \+ 1\)/);
 });

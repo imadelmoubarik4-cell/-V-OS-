@@ -1336,7 +1336,10 @@
   }
 
   function inventorySubcategory(item, group = inventoryGroup(item)) {
-    const value = `${item?.category || ''} ${item?.name || ''} ${item?.unit || ''}`.toLowerCase();
+    const category = String(item?.category || '').toLowerCase();
+    const name = String(item?.name || '').toLowerCase();
+    const unit = String(item?.unit || '').toLowerCase();
+    const value = `${category} ${name} ${unit}`;
     if (group === 'spirits') {
       if (/whisk(?:e)?y|bourbon|scotch/.test(value)) return 'Whiskey';
       if (/gin/.test(value)) return 'Gin';
@@ -1357,7 +1360,7 @@
     }
     if (group === 'beer') {
       if (/\bkeg|30l|20l|50l/.test(value)) return 'Kegs';
-      if (/cider/.test(value)) return 'Cider';
+      if (/cider/.test(name) || (/cider/.test(category) && !/beer/.test(category))) return 'Cider';
       if (/ready.to.drink|\brtd\b|breezer/.test(value)) return 'RTD';
       return 'Bottles';
     }
