@@ -42,8 +42,8 @@ for migration_name in "${baseline_migrations[@]}"; do
   version="${migration_name%%_*}"
   name="${migration_name#*_}"
   name="${name%.sql}"
-  psql -v ON_ERROR_STOP=1 -X -q -v version="$version" -v name="$name" -c \
-    "insert into supabase_migrations.schema_migrations(version,name,statements) values (:'version',:'name',array[]::text[]) on conflict (version) do nothing"
+  psql -v ON_ERROR_STOP=1 -X -q -c \
+    "insert into supabase_migrations.schema_migrations(version,name,statements) values ('$version','$name',array[]::text[]) on conflict (version) do nothing"
 done
 
 psql -v ON_ERROR_STOP=1 -X -q \
