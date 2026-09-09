@@ -28,6 +28,7 @@ body[data-atlas-view]:not([data-atlas-view="dashboard"]) .checkpoint-a-home-prom
    greeting. Dynamic module styles load later, so these rules are intentional
    important overrides. */
 .recipe-hero h1,
+.recipe-alpha03-head h1,
 .operations-hero h1,
 .brain-hero h1,
 .business-hero h1,

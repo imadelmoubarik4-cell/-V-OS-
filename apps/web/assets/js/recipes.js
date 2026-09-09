@@ -263,7 +263,7 @@
         <header class="recipe-alpha03-head">
           <div>
             <span class="recipe-kicker">Atlas Alpha 0.3</span>
-            <h1>Recipe Intelligence</h1>
+            <h1>Recipe Library</h1>
             <p>Service specifications, live inventory availability and cost performance in one workspace.</p>
           </div>
           <button type="button" class="recipe-primary-action" id="add-recipe-btn"><i data-lucide="plus"></i><span>New recipe</span></button>
