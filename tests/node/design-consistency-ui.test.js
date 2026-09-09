@@ -58,6 +58,8 @@ test('workspace switching owns visibility, inventory state and scroll reset cent
   assert.match(app, /document\.body\.dataset\.atlasView = view/);
   assert.match(app, /window\.AtlasStockCounts\?\.close\?\.\(\)/);
   assert.match(app, /window\.AtlasItemMaster\?\.close\?\.\(\)/);
+  assert.match(app, /sidebarDestination\.dataset\.atlasBaseViewBound !== 'true' && viewMap\[view\]/);
+  assert.match(app, /btn\.dataset\.atlasBaseViewBound = 'true'/);
 });
 
 test('shared polish removes duplicate Home metrics and normalizes workspace hierarchy', () => {

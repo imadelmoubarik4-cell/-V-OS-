@@ -1738,9 +1738,13 @@
       document.body.dataset.atlasView = view;
       hideAtlasWorkspaceRoots(view);
       resetAtlasWorkspaceScroll();
+      if (sidebarDestination.dataset.atlasBaseViewBound !== 'true' && viewMap[view]) setActiveView(view);
     }
   }, true);
-  document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click',()=>{ setActiveView(btn.dataset.view); if(btn.dataset.subview && !btn.dataset.inventorySection) document.getElementById('atlas-page-title').textContent=btn.dataset.subview; }));
+  document.querySelectorAll('[data-view]').forEach(btn => {
+    btn.dataset.atlasBaseViewBound = 'true';
+    btn.addEventListener('click',()=>{ setActiveView(btn.dataset.view); if(btn.dataset.subview && !btn.dataset.inventorySection) document.getElementById('atlas-page-title').textContent=btn.dataset.subview; });
+  });
   document.querySelectorAll('.nav-parent').forEach(btn => btn.addEventListener('click',()=>{ btn.classList.toggle('open'); const target=btn.dataset.default; if(target) setActiveView(target); }));
   function formatVenueDay(now = new Date()) {
     try {
