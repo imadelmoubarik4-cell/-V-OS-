@@ -34,7 +34,6 @@
     submitting: false,
     error: null,
     message: null,
-    search: '',
     filter: 'active',
     selectedProfileId: null,
     modal: null,
@@ -158,21 +157,12 @@
   }
 
   function filteredProfiles() {
-    const query = state.search.trim().toLowerCase();
     return profiles().filter((profile) => {
       if (state.filter === 'active' && !profile.active) return false;
       if (state.filter === 'inactive' && profile.active) return false;
       if (state.filter === 'training' && (training(profile).private || training(profile).complete)) return false;
       if (state.filter === 'contacts' && Number(profile.emergency_contact_count || 0) > 0) return false;
-      if (!query) return true;
-      return [
-        profile.name,
-        profile.email,
-        profile.job_title,
-        profile.role,
-        profile.department,
-        profile.employment_type
-      ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query));
+      return true;
     });
   }
 
@@ -232,7 +222,6 @@
     return `<aside class="team-profiles-directory">
       <header class="team-profiles-directory-head"><div><span>People</span><h2>Team directory</h2><p>Select a person to review their full Atlas profile.</p></div><strong>${entries.length} shown</strong></header>
       <div class="team-profiles-toolbar">
-        <label class="team-profiles-search"><i data-lucide="search"></i><input type="search" data-team-profiles-search placeholder="Search name, role or department" value="${escapeHtml(state.search)}" /></label>
         <div class="team-profiles-filters" aria-label="Filter team profiles">
           ${['active','all','training','contacts','inactive'].map((filter) => `<button type="button" class="${state.filter === filter ? 'is-active' : ''}" data-team-profiles-filter="${filter}" aria-pressed="${state.filter === filter ? 'true' : 'false'}">${filter === 'training' ? 'Training due' : filter === 'contacts' ? 'Contact missing' : humanize(filter)}</button>`).join('')}
         </div>
@@ -618,20 +607,6 @@
     }
   }
 
-  function handleInput(event) {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement) || !target.matches('[data-team-profiles-search]')) return;
-    state.search = target.value;
-    render();
-    requestAnimationFrame(() => {
-      const field = host()?.querySelector('[data-team-profiles-search]');
-      if (field) {
-        field.focus();
-        field.setSelectionRange(state.search.length, state.search.length);
-      }
-    });
-  }
-
   function handleSubmit(event) {
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || !host()?.contains(form)) return;
@@ -728,7 +703,6 @@
     observeViewChanges();
     document.addEventListener('click', handleNavigationCapture, true);
     document.addEventListener('click', handleClick);
-    document.addEventListener('input', handleInput);
     document.addEventListener('submit', handleSubmit);
     document.addEventListener('keydown', handleKeydown);
   }

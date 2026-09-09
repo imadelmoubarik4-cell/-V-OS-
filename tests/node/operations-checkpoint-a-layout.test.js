@@ -31,6 +31,7 @@ test('Home receives one visually focused scheduled-day prompt', () => {
   assert.match(layout, /Scheduled today/);
   assert.match(layout, /homePromptSignature/);
   assert.match(layout, /data-checkpoint-home-open/);
+  assert.match(layout, /homeFocus\.insertAdjacentHTML\('beforebegin'/);
 });
 
 test('marketing and reputation readiness move to Settings', () => {
@@ -49,6 +50,12 @@ test('refined layout keeps original Atlas styling and responsive behavior', () =
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.doesNotMatch(css, /Caprasimo|Figtree|--color-accent-2/);
   assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
+});
+
+test('compact mode cannot reveal the replaced legacy operations sections', () => {
+  assert.match(css, /\.checkpoint-a-compact-mode>\.checkpoint-a-hero\[hidden\]/);
+  assert.match(css, /\.checkpoint-a-compact-mode>\.checkpoint-a-layout\[hidden\]\{display:none!important\}/);
+  assert.match(css, /\.checkpoint-a-compact-grid>:only-child\{grid-column:1\/-1\}/);
 });
 
 test('presentation layer contains no direct database or operational mutation code', () => {

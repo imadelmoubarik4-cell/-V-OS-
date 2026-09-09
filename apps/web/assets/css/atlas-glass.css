@@ -156,6 +156,28 @@
   color: var(--blue-700);
 }
 
+/* PR29 shell navigation: one destination per workspace with a compact desktop rail. */
+@media (min-width: 761px) {
+  #mobile-menu-btn.mobile-menu { display: grid; }
+  body.atlas-sidebar-collapsed { --sidebar-w: 78px; }
+  body.atlas-sidebar-collapsed .atlas-sidebar { width: 78px; }
+  body.atlas-sidebar-collapsed .atlas-brand { min-height: 70px; justify-content: center; padding: 14px 10px; }
+  body.atlas-sidebar-collapsed .atlas-brand > div:last-child,
+  body.atlas-sidebar-collapsed .nav-label,
+  body.atlas-sidebar-collapsed .nav-item-label,
+  body.atlas-sidebar-collapsed .profile-copy,
+  body.atlas-sidebar-collapsed #logout-btn,
+  body.atlas-sidebar-collapsed .system-nav-status,
+  body.atlas-sidebar-collapsed .review-nav-count,
+  body.atlas-sidebar-collapsed .team-nav-unread { display: none !important; }
+  body.atlas-sidebar-collapsed .atlas-logo { width: 38px; height: 38px; }
+  body.atlas-sidebar-collapsed .atlas-nav { padding: 13px 10px; }
+  body.atlas-sidebar-collapsed .nav-group { margin-bottom: 11px; }
+  body.atlas-sidebar-collapsed .nav-item { min-height: 44px; justify-content: center; gap: 0; padding: 10px; font-size: 0; }
+  body.atlas-sidebar-collapsed .nav-item svg { width: 19px; height: 19px; }
+  body.atlas-sidebar-collapsed .atlas-profile { justify-content: center; padding: 14px 10px; }
+}
+
 .atlas-topbar {
   background: rgba(255, 255, 255, .62);
   backdrop-filter: var(--glass-blur);

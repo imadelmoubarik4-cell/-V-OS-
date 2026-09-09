@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const config = readFileSync('apps/web/config.js', 'utf8');
 const ui = readFileSync('apps/web/assets/js/marketing-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/marketing-workspace.css', 'utf8');
+const sharedPolish = readFileSync('apps/web/assets/css/polish-pass2.css', 'utf8');
 const migration = readFileSync('supabase/migrations/20260803142123_atlas_marketing_workspace_checkpoint_d.sql', 'utf8');
 const occurrences = readFileSync('supabase/migrations/20260803142450_atlas_marketing_recommendation_occurrences.sql', 'utf8');
 
@@ -19,6 +20,8 @@ test('Checkpoint D loads from the isolated Marketing API', () => {
 test('Marketing injects a Growth navigation entry and complete planning sections', () => {
   assert.match(ui, /GROWTH/);
   assert.match(ui, /data-view=\"marketing\"/);
+  assert.match(ui, /navButton\.dataset\.marketingWorkspaceBound !== 'true'/);
+  assert.match(ui, /navButton\.addEventListener\('click',[\s\S]*activateMarketing\(\)/);
   for (const section of ['Overview', 'Calendar', 'Content', 'Campaigns', 'Connections', 'History']) {
     assert.match(ui, new RegExp(section));
   }
@@ -91,4 +94,14 @@ test('Marketing preserves the original Atlas design and responsive behavior', ()
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.doesNotMatch(css, /Caprasimo|Figtree|--color-accent-2/);
   assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
+});
+
+test('Marketing actions and planning state remain legible in the shared blue system', () => {
+  assert.match(ui, /data-marketing-new-content aria-label="New content"/);
+  assert.match(ui, /<span>New content<\/span>/);
+  assert.match(css, /\.marketing-primary\{[^}]*var\(--blue-600/);
+  assert.match(css, /\.marketing-hero \.marketing-primary\{[^}]*var\(--blue-600/);
+  assert.doesNotMatch(sharedPolish, /\.marketing-hero \.marketing-primary/);
+  assert.match(css, /\.marketing-trust\{[^}]*var\(--atlas-home-accent-soft/);
+  assert.match(css, /\.marketing-tabs\{[^}]*var\(--blue-50/);
 });

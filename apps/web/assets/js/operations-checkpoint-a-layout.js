@@ -214,7 +214,7 @@
 
     const markup = homePromptMarkup();
     if (!markup) return;
-    homeFocus.insertAdjacentHTML('afterend', markup);
+    homeFocus.insertAdjacentHTML('beforebegin', markup);
     const prompt = document.querySelector('[data-checkpoint-a-home-prompt]');
     if (prompt) prompt.dataset.signature = signature;
     if (window.lucide) window.lucide.createIcons();

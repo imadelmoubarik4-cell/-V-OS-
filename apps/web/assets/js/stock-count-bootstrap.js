@@ -265,7 +265,7 @@
 
   function openStockCount() {
     const inventory = document.getElementById('inventory-view');
-    if (inventory) inventory.style.display = 'block';
+    if (inventory) inventory.style.display = 'grid';
     const title = document.getElementById('atlas-page-title');
     if (title) title.textContent = 'Stock count';
     activateInventorySubview('Stock count');
