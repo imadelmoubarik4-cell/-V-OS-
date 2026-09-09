@@ -125,3 +125,9 @@ test('Reports preserves the Atlas visual system and tablet-first behavior', () =
   assert.doesNotMatch(css, /Caprasimo|Figtree|--color-accent-2/);
   assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
 });
+
+test('Reports primary and Ask Atlas actions use the shared blue treatment', () => {
+  assert.match(css, /\.reports-primary\{[^}]*var\(--blue-600/);
+  assert.match(css, /\.reports-ask-fab\{[^}]*var\(--blue-600/);
+  assert.match(css, /\.reports-ask-panel form button\{[^}]*var\(--blue-600/);
+});

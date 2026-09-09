@@ -903,7 +903,12 @@
   window.AtlasShiftsMonth = {
     open: () => {
       window.AtlasShifts?.open?.();
-      window.setTimeout(() => host()?.querySelector('[data-shifts-tab="month"]')?.click(), 120);
+      state.active = true;
+      state.monthStart = state.monthStart || monthStartFor(window.AtlasShifts?.week?.() || venueDate());
+      state.error = null;
+      state.message = null;
+      scheduleApply();
+      window.setTimeout(() => loadMonth(), 0);
     },
     refresh: () => loadMonth({ force: true }),
     month: () => state.monthStart,

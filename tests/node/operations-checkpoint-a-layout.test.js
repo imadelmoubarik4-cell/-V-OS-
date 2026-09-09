@@ -52,6 +52,12 @@ test('refined layout keeps original Atlas styling and responsive behavior', () =
   assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
 });
 
+test('compact mode cannot reveal the replaced legacy operations sections', () => {
+  assert.match(css, /\.checkpoint-a-compact-mode>\.checkpoint-a-hero\[hidden\]/);
+  assert.match(css, /\.checkpoint-a-compact-mode>\.checkpoint-a-layout\[hidden\]\{display:none!important\}/);
+  assert.match(css, /\.checkpoint-a-compact-grid>:only-child\{grid-column:1\/-1\}/);
+});
+
 test('presentation layer contains no direct database or operational mutation code', () => {
   assert.doesNotMatch(layout, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(layout, /\.from\s*\(/);

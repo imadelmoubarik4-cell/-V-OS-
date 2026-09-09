@@ -621,7 +621,24 @@
               </div>
             </section>
           </div>
-          <div id="suppliers-view" style="display:none;"><div class="toolbar"><input type="text" id="supplier-search" placeholder="Search suppliers..." style="max-width:280px;margin-bottom:0;"/><button class="btn" id="add-supplier-btn">+ New supplier</button></div><table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table><div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div></div>
+          <div id="suppliers-view" style="display:none;">
+            <section class="purchasing-workspace-head">
+              <nav class="purchasing-workspace-tabs" aria-label="Purchasing sections">
+                <button type="button" class="active" aria-current="page">Suppliers</button>
+                <button type="button" disabled title="Purchase orders are not connected yet">Orders</button>
+                <button type="button" disabled title="Delivery records are not connected yet">Deliveries</button>
+              </nav>
+              <button class="btn" id="add-supplier-btn"><i data-lucide="plus"></i>New supplier</button>
+            </section>
+            <section class="purchasing-intelligence" aria-live="polite">
+              <span class="purchasing-intelligence-icon"><i data-lucide="truck"></i></span>
+              <p><strong id="purchasing-intelligence-title">Checking purchasing readiness.</strong> <span id="purchasing-intelligence-detail">Atlas is reviewing suppliers and recorded restocks.</span></p>
+              <button type="button" id="purchasing-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
+            </section>
+            <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" placeholder="Search suppliers..."/></label></div>
+            <table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table>
+            <div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div>
+          </div>
           <div id="imports-view" style="display:none;">
             <section class="atlas-import-center import-queue-center">
               <div class="import-hero">
@@ -1705,7 +1722,7 @@
     hideAtlasWorkspaceRoots(view);
     Object.values(viewMap).forEach(v => { if(v) v.style.display='none'; });
     document.getElementById('home-intro').style.display = view === 'dashboard' ? 'flex' : 'none';
-    document.getElementById('home-focus').style.display = view === 'dashboard' ? 'block' : 'none';
+    document.getElementById('home-focus').style.display = view === 'dashboard' ? 'grid' : 'none';
     document.getElementById('home-metrics').style.display = view === 'dashboard' ? 'grid' : 'none';
     if (viewMap[view]) viewMap[view].style.display = view === 'inventory' ? 'grid' : 'block';
     restoreAtlasWorkspaceInterior(view);
@@ -2212,13 +2229,13 @@
     supplierSearchTerm = e.target.value.trim().toLowerCase();
     renderSuppliers();
   });
+  document.getElementById('purchasing-intelligence-action').addEventListener('click', () => setActiveView('reports'));
 
   function renderSuppliers() {
     const thisMonthKey = monthKey(new Date().toISOString());
     const names = [...new Set([...suppliers.map(s=>s.name).filter(Boolean), ...items.map(i => i.supplier).filter(Boolean)])];
 
-    const rows = names
-      .filter(name => name.toLowerCase().includes(supplierSearchTerm))
+    const allRows = names
       .map(name => {
         const itemCount = items.filter(i => i.supplier === name).length;
         const monthSpend = restockLog
@@ -2227,9 +2244,30 @@
         const allTimeSpend = restockLog
           .filter(r => r.suppliers?.name === name)
           .reduce((sum, r) => sum + (r.total_cost || 0), 0);
-        return { name, itemCount, monthSpend, allTimeSpend };
+        const supplier = suppliers.find(entry => entry.name === name) || {};
+        return { name, itemCount, monthSpend, allTimeSpend, supplier };
       })
       .sort((a, b) => b.allTimeSpend - a.allTimeSpend);
+    const rows = allRows.filter(row => row.name.toLowerCase().includes(supplierSearchTerm));
+
+    const connectedItems = allRows.reduce((sum, row) => sum + row.itemCount, 0);
+    const totalMonthSpend = allRows.reduce((sum, row) => sum + row.monthSpend, 0);
+    const leadSupplier = [...allRows].sort((a, b) => b.monthSpend - a.monthSpend)[0];
+    const insightTitle = document.getElementById('purchasing-intelligence-title');
+    const insightDetail = document.getElementById('purchasing-intelligence-detail');
+    if (insightTitle && insightDetail) {
+      if (!allRows.length) {
+        insightTitle.textContent = 'Add your first supplier to connect purchasing.';
+        insightDetail.textContent = 'Supplier spend and inventory coverage will appear here once records are available.';
+      } else if (totalMonthSpend > 0 && leadSupplier) {
+        const share = Math.round((leadSupplier.monthSpend / totalMonthSpend) * 100);
+        insightTitle.textContent = `${leadSupplier.name} represents ${share}% of recorded spend this month.`;
+        insightDetail.textContent = `${Math.round(totalMonthSpend).toLocaleString()} ISK is supported by recorded restock evidence.`;
+      } else {
+        insightTitle.textContent = `${allRows.length} ${allRows.length === 1 ? 'supplier is' : 'suppliers are'} connected to ${connectedItems} inventory ${connectedItems === 1 ? 'item' : 'items'}.`;
+        insightDetail.textContent = 'Spend appears only when a costed restock is recorded.';
+      }
+    }
 
     const body = document.getElementById('suppliers-body');
     const empty = document.getElementById('suppliers-empty');
@@ -2241,7 +2279,7 @@
     empty.style.display = 'none';
     body.innerHTML = rows.map(r => `
       <tr>
-        <td class="name">${escapeHtml(r.name)}</td>
+        <td class="name"><span class="purchasing-supplier"><span class="purchasing-supplier-avatar">${escapeHtml(r.name.slice(0,2).toUpperCase())}</span><span><strong>${escapeHtml(r.name)}</strong><small>${escapeHtml(r.supplier.email || r.supplier.contact_name || `${r.itemCount} linked ${r.itemCount === 1 ? 'item' : 'items'}`)}</small></span></span></td>
         <td>${r.itemCount}</td>
         <td class="mono">${Math.round(r.monthSpend).toLocaleString()} ISK</td>
         <td class="mono">${Math.round(r.allTimeSpend).toLocaleString()} ISK</td>

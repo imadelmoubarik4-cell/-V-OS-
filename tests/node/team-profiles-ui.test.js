@@ -25,7 +25,7 @@ test('Team Profiles adds a dedicated People navigation and directory', () => {
   assert.match(ui, /data-view="team-profiles"/);
   assert.match(ui, /<\/i>Profiles/);
   assert.match(ui, /Team directory/);
-  assert.match(ui, /Search name, role or department/);
+  assert.doesNotMatch(ui, /Search name, role or department|data-team-profiles-search/);
   assert.match(ui, /Training due/);
   assert.match(ui, /Contact missing/);
 });
@@ -76,6 +76,8 @@ test('Team Profiles preserves Atlas design and responsive behavior', () => {
   assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css, /\.team-profile-card-list\{grid-template-columns:1fr\}/);
   assert.match(css, /\.team-profile-card:focus-visible/);
+  assert.match(css, /\.team-profile-detail\{[^}]*padding:14px/);
+  assert.match(css, /\.team-profile-empty-section,\.team-profiles-empty\{[^}]*min-height:68px/);
   assert.match(css, /@media\(max-width:820px\)/);
   assert.match(css, /@media\(max-width:600px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);

@@ -9,6 +9,7 @@
 .checkpoint-a-compact-manage:hover{border-color:#aaa79f;background:#faf9f6}
 .checkpoint-a-compact-manage svg,.checkpoint-a-compact-button svg{width:15px;height:15px}
 .checkpoint-a-compact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.checkpoint-a-compact-grid>:only-child{grid-column:1/-1}
 .checkpoint-a-compact-card{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;min-width:0;padding:17px;border:1px solid var(--atlas-line);border-radius:14px;background:#fbfaf7;overflow:hidden}
 .checkpoint-a-compact-card::before{content:'';position:absolute;inset:0 auto 0 0;width:3px;background:#b6925e}
 .checkpoint-a-compact-card[data-state='completed']::before{background:#6f8d75}
@@ -30,6 +31,13 @@
 .checkpoint-a-compact-status.is-not_connected,.checkpoint-a-compact-status.is-scheduled,.checkpoint-a-compact-status.is-range_unconfigured{background:#efeee9;color:#72746b}
 .checkpoint-a-compact-button{border:1px solid var(--atlas-text);background:var(--atlas-text);color:#fff;padding:8px 11px;white-space:nowrap}
 .checkpoint-a-compact-button:hover{background:#3a3b37}
+
+/* The compact board replaces the legacy Checkpoint A sections. Their original
+   author styles use display declarations that otherwise override [hidden]. */
+.checkpoint-a-compact-mode>.checkpoint-a-hero[hidden],
+.checkpoint-a-compact-mode>.checkpoint-a-summary-grid[hidden],
+.checkpoint-a-compact-mode>.checkpoint-a-layout[hidden]{display:none!important}
+.checkpoint-a-compact-mode>.checkpoint-a-compact-board{margin-bottom:0}
 
 .focus-list .checkpoint-a-focus{display:none!important}
 .checkpoint-a-home-prompt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;margin:16px 0 20px;padding:15px 16px;border:1px solid #d9c8ad;border-radius:15px;background:linear-gradient(135deg,#fbf7ef,#fff);color:var(--atlas-text);box-shadow:0 9px 24px rgba(54,47,37,.06)}

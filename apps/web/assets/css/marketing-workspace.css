@@ -18,25 +18,26 @@
 .marketing-hero p{max-width:720px;margin:0;color:var(--atlas-muted);font-size:13px;line-height:1.55}
 .marketing-hero-actions{display:flex;align-items:center;gap:10px;flex:0 0 auto}
 .marketing-primary,.marketing-secondary{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:9px 13px;border-radius:11px;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,transform .15s}
-.marketing-primary{border:1px solid var(--atlas-text);background:var(--atlas-text);color:#fff}
-.marketing-primary:hover:not(:disabled){background:#393a36;transform:translateY(-1px)}
+.marketing-primary{border:1px solid var(--blue-700,#256bc9);background:linear-gradient(160deg,var(--blue-600,#2f80ed),var(--blue-700,#256bc9));color:#fff;box-shadow:0 8px 20px -14px rgba(47,128,237,.95)}
+.marketing-primary:hover:not(:disabled){background:var(--blue-700,#256bc9);transform:translateY(-1px)}
 .marketing-primary:disabled,.marketing-secondary:disabled{opacity:.45;cursor:not-allowed}
 .marketing-secondary{border:1px solid var(--atlas-line);background:var(--atlas-surface);color:var(--atlas-text)}
 .marketing-secondary:hover{border-color:#bbb3a6;background:#f7f5f0}
 .marketing-secondary.is-danger{color:#96594f;border-color:#dfc7c2;background:#fff8f6}
 .marketing-primary svg,.marketing-secondary svg{width:15px;height:15px}
+.marketing-primary>span,.marketing-secondary>span{display:inline;white-space:nowrap}
 
-.marketing-trust{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding:12px 14px;border-radius:13px;background:#20211f;color:#f2eee7}
-.marketing-trust>svg{width:21px;height:21px;color:#d0ad72;flex:0 0 auto}
+.marketing-trust{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding:12px 14px;border:1px solid rgba(47,128,237,.2);border-radius:13px;background:linear-gradient(110deg,rgba(244,249,255,.94),var(--atlas-home-accent-soft,rgba(47,128,237,.1)));color:var(--atlas-text)}
+.marketing-trust>svg{width:21px;height:21px;color:var(--blue-600,#2f80ed);flex:0 0 auto}
 .marketing-trust strong,.marketing-trust span{display:block}
 .marketing-trust strong{font-size:11px}
-.marketing-trust span{margin-top:2px;color:#c9c6bf;font-size:9px;line-height:1.45}
+.marketing-trust span{margin-top:2px;color:var(--atlas-muted);font-size:9px;line-height:1.45}
 .marketing-feedback{display:flex;align-items:flex-start;gap:9px;margin-bottom:14px;padding:11px 13px;border-radius:11px;font-size:12px;line-height:1.45}
 .marketing-feedback svg{width:17px;height:17px;flex:0 0 auto}
 .marketing-feedback.is-success{border:1px solid #c8d8ca;background:#edf4ee;color:#4f6d55}
 .marketing-feedback.is-error{border:1px solid #e4c1bc;background:#fbefed;color:#8d4c47}
 
-.marketing-tabs{display:flex;align-items:center;gap:5px;margin:0 0 18px;padding:5px;border:1px solid var(--atlas-line);border-radius:13px;background:#efede7;overflow-x:auto;scrollbar-width:none}
+.marketing-tabs{display:flex;align-items:center;gap:5px;margin:0 0 18px;padding:5px;border:1px solid rgba(47,128,237,.16);border-radius:13px;background:var(--blue-50,#f4f9ff);overflow-x:auto;scrollbar-width:none}
 .marketing-tabs::-webkit-scrollbar{display:none}
 .marketing-tabs button{flex:0 0 auto;min-height:34px;padding:7px 13px;border:0;border-radius:9px;background:transparent;color:var(--atlas-muted);font-size:10px;font-weight:600;cursor:pointer}
 .marketing-tabs button:hover{color:var(--atlas-text)}

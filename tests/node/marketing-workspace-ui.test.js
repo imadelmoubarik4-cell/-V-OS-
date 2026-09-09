@@ -92,3 +92,11 @@ test('Marketing preserves the original Atlas design and responsive behavior', ()
   assert.doesNotMatch(css, /Caprasimo|Figtree|--color-accent-2/);
   assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
 });
+
+test('Marketing actions and planning state remain legible in the shared blue system', () => {
+  assert.match(ui, /data-marketing-new-content aria-label="New content"/);
+  assert.match(ui, /<span>New content<\/span>/);
+  assert.match(css, /\.marketing-primary\{[^}]*var\(--blue-600/);
+  assert.match(css, /\.marketing-trust\{[^}]*var\(--atlas-home-accent-soft/);
+  assert.match(css, /\.marketing-tabs\{[^}]*var\(--blue-50/);
+});

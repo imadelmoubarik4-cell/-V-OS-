@@ -5,6 +5,8 @@ import test from 'node:test';
 const app = readFileSync('apps/web/index.html', 'utf8');
 const inventoryCss = readFileSync('apps/web/assets/css/inventory-polish.css', 'utf8');
 const homeCss = readFileSync('apps/web/assets/css/home-polish.css', 'utf8');
+const recipesCss = readFileSync('apps/web/assets/css/recipes-gallery.css', 'utf8');
+const purchasingCss = readFileSync('apps/web/assets/css/purchasing-polish.css', 'utf8');
 const shellCss = readFileSync('apps/web/assets/css/atlas-glass.css', 'utf8');
 const recipes = readFileSync('apps/web/assets/js/recipes.js', 'utf8');
 const scanner = readFileSync('apps/web/assets/js/inventory-scanner.js', 'utf8');
@@ -79,7 +81,19 @@ test('Home uses live values and supports expanded or compact navigation', () => 
   assert.match(app, /window\.AtlasRecipes\?\.getHomeMetrics/);
   assert.match(recipes, /function getHomeMetrics\(\)/);
   assert.match(homeCss, /#home-focus\.atlas-home-focus/);
+  assert.match(app, /home-focus'\)\.style\.display = view === 'dashboard' \? 'grid' : 'none'/);
+  assert.match(homeCss, /\.atlas-home-brief-icon \{ grid-column: 1; grid-row: 1/);
   assert.match(shellCss, /body\.atlas-sidebar-collapsed/);
+});
+
+test('Recipes and Purchasing use clean, honest in-page controls', () => {
+  assert.match(recipesCss, /#recipes-view \.recipe-status-filters \{[^}]*background: transparent/s);
+  assert.match(app, /class="purchasing-workspace-tabs"/);
+  assert.match(app, /Purchase orders are not connected yet/);
+  assert.match(app, /Delivery records are not connected yet/);
+  assert.match(app, /id="purchasing-intelligence-title"/);
+  assert.match(app, /Spend appears only when a costed restock is recorded/);
+  assert.match(purchasingCss, /\.purchasing-intelligence \{[^}]*var\(--atlas-home-accent-soft/s);
 });
 
 test('Inventory filters use the approved primary and contextual category model', () => {

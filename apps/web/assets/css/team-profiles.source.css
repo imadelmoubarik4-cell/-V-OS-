@@ -21,7 +21,7 @@
 .team-profiles-summary strong{display:block;margin:7px 0 2px;font:500 28px/1 'Fraunces',serif}
 .team-profiles-summary small{display:block;color:var(--atlas-muted);font-size:9px;line-height:1.4}
 
-.team-profiles-layout{display:grid;gap:16px;min-width:0;background:transparent}
+.team-profiles-layout{display:grid;gap:12px;min-width:0;background:transparent}
 .team-profiles-directory{display:flex;flex-direction:column;min-width:0;padding:20px;border:1px solid var(--atlas-line);border-radius:18px;background:#f7f8f8}
 .team-profiles-directory-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:16px}
 .team-profiles-directory-head>div{min-width:0}
@@ -29,10 +29,7 @@
 .team-profiles-directory-head h2{margin:0;font:500 24px/1.15 'Fraunces',serif}
 .team-profiles-directory-head p{margin:5px 0 0;color:var(--atlas-muted);font-size:10px;line-height:1.45}
 .team-profiles-directory-head>strong{flex:0 0 auto;padding:7px 10px;border:1px solid var(--atlas-line);border-radius:999px;background:#fff;color:var(--atlas-muted);font-size:8px;text-transform:uppercase;letter-spacing:.06em}
-.team-profiles-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-.team-profiles-search{display:flex;align-items:center;gap:8px;width:min(360px,100%);padding:0 11px;border:1px solid var(--atlas-line);border-radius:11px;background:#fff}
-.team-profiles-search svg{width:15px;height:15px;color:var(--atlas-muted);flex:0 0 auto}
-.team-profiles-search input{width:100%;min-width:0;margin:0;padding:10px 0;border:0;background:transparent;color:var(--atlas-text);font:400 11px 'IBM Plex Sans',sans-serif;outline:0}
+.team-profiles-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-bottom:14px}
 .team-profiles-filters{display:flex;justify-content:flex-end;gap:5px;min-width:0;overflow-x:auto;scrollbar-width:none}
 .team-profiles-filters::-webkit-scrollbar{display:none}
 .team-profiles-filters button{flex:0 0 auto;padding:7px 10px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--atlas-muted);font:600 8px 'IBM Plex Sans',sans-serif;cursor:pointer}
@@ -71,15 +68,15 @@
 .team-profile-card-foot .is-complete{color:#4f7b5e}
 .team-profile-card-foot .is-missing{color:#987260}
 .team-profiles-empty{grid-column:1/-1}
-.team-profiles-directory>footer{display:flex;align-items:flex-start;gap:8px;margin-top:16px;padding-top:13px;border-top:1px solid var(--atlas-line);color:var(--atlas-muted);font-size:8px;line-height:1.5}
+.team-profiles-directory>footer{display:flex;align-items:flex-start;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--atlas-line);color:var(--atlas-muted);font-size:8px;line-height:1.45}
 .team-profiles-directory>footer svg{width:14px;height:14px;flex:0 0 auto}
 
-.team-profile-detail{min-width:0;padding:20px;border:1px solid var(--atlas-line);border-radius:18px;background:#fff;overflow:auto}
-.team-profile-detail-head{display:flex;align-items:center;gap:14px;padding:3px 2px 18px;border-bottom:1px solid var(--atlas-line)}
-.team-profile-detail-avatar{width:58px;height:58px;border-radius:18px;font-size:15px}
+.team-profile-detail{min-width:0;padding:14px;border:1px solid var(--atlas-line);border-radius:18px;background:#fff;overflow:auto}
+.team-profile-detail-head{display:flex;align-items:center;gap:12px;padding:1px 1px 11px;border-bottom:1px solid var(--atlas-line)}
+.team-profile-detail-avatar{width:52px;height:52px;border-radius:16px;font-size:14px}
 .team-profile-detail-head>div:nth-child(2){min-width:0;flex:1}
 .team-profile-detail-head>div:nth-child(2)>span{color:#806947;font-size:8px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
-.team-profile-detail-head h2{margin:3px 0 2px;font:500 28px/1.1 'Fraunces',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-profile-detail-head h2{margin:2px 0;font:500 26px/1.1 'Fraunces',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .team-profile-detail-head p{margin:0;color:var(--atlas-muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .team-profile-detail-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
 .team-profile-status{display:inline-flex;align-items:center;min-height:28px;padding:6px 9px;border-radius:999px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
@@ -88,18 +85,18 @@
 .team-profile-detail-actions button,.team-profile-panel>header>button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:7px 10px;border:1px solid var(--atlas-line);border-radius:10px;background:#fff;color:var(--atlas-text);font:600 9px 'IBM Plex Sans',sans-serif;cursor:pointer}
 .team-profile-detail-actions button svg,.team-profile-panel>header>button svg{width:14px;height:14px}
 
-.team-profile-completeness{padding:15px 0 17px}
-.team-profile-completeness>div{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+.team-profile-completeness{padding:9px 0 10px}
+.team-profile-completeness>div{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px}
 .team-profile-completeness>div span{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
 .team-profile-completeness>div strong{font:500 18px 'Fraunces',serif}
-.team-profile-completeness p{margin:7px 0 0;color:var(--atlas-muted);font-size:9px}
-.team-profile-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px}
-.team-profile-panel{min-width:0;padding:15px;border:1px solid var(--atlas-line);border-radius:15px;background:#fbfaf7}
-.team-profile-panel>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:13px}
+.team-profile-completeness p{margin:5px 0 0;color:var(--atlas-muted);font-size:9px}
+.team-profile-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px}
+.team-profile-panel{min-width:0;padding:12px 13px;border:1px solid var(--atlas-line);border-radius:15px;background:#fbfaf7}
+.team-profile-panel>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
 .team-profile-panel>header>div>span{display:block;color:#8a7049;font-size:7px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
 .team-profile-panel h3{margin:3px 0 0;font:500 19px/1.2 'Fraunces',serif}
 .team-profile-panel>header>svg{width:18px;height:18px;color:#8b806e}
-.team-profile-panel dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin:0}
+.team-profile-panel dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 16px;margin:0}
 .team-profile-panel dl>div{min-width:0}
 .team-profile-panel dt{margin-bottom:3px;color:var(--atlas-muted);font-size:7px;text-transform:uppercase;letter-spacing:.07em}
 .team-profile-panel dd{margin:0;font-size:10px;line-height:1.45;overflow-wrap:anywhere}
@@ -122,11 +119,11 @@
 .team-emergency-actions button{width:27px;height:27px;display:grid;place-items:center;border:0;border-radius:8px;background:#f1eee7;color:#756d60;cursor:pointer}
 .team-emergency-actions button:last-child{color:#9b5c56}
 .team-emergency-actions svg{width:13px;height:13px}
-.team-profile-empty-section,.team-profiles-empty{display:grid;place-items:center;align-content:center;gap:7px;min-height:110px;color:var(--atlas-muted);text-align:center}
+.team-profile-empty-section,.team-profiles-empty{display:grid;place-items:center;align-content:center;gap:6px;min-height:68px;color:var(--atlas-muted);text-align:center}
 .team-profile-empty-section svg,.team-profiles-empty svg{width:24px;height:24px}
 .team-profile-empty-section p,.team-profiles-empty p{margin:0;font-size:9px}
 
-.team-training-panel{margin-bottom:12px}
+.team-training-panel{margin-bottom:8px}
 .team-training-panel>header>strong{font:500 20px 'Fraunces',serif}
 .team-training-summary{margin-bottom:11px}
 .team-training-summary>span{display:block;margin-bottom:5px;color:var(--atlas-muted);font-size:8px}
@@ -207,8 +204,7 @@ body.team-profile-modal-open{overflow:hidden}
   .team-profiles-hero>div:last-child{width:100%;justify-content:flex-end}
   .team-profiles-layout{min-height:0;overflow:visible;border:0;background:transparent}
   .team-profiles-directory{padding:16px;border-radius:16px}
-  .team-profiles-toolbar{align-items:stretch;flex-direction:column}
-  .team-profiles-search{width:100%}
+  .team-profiles-toolbar{align-items:stretch;justify-content:flex-start}
   .team-profiles-filters{justify-content:flex-start}
   .team-profile-detail{border-radius:16px}
 }
