@@ -6,6 +6,16 @@
 
 const nativeFetch = globalThis.fetch.bind(globalThis);
 const productionOrigin = "https://dnefgcmjcgxlynycxkts.supabase.co";
+const recordsetArguments = [
+  "p_inventory",
+  "p_recipes",
+  "p_recipe_ingredients",
+  "p_suppliers",
+  "p_movements",
+  "p_profiles",
+  "p_tasks",
+  "p_progress",
+] as const;
 const branchOrigin = (() => {
   try {
     return new URL(Deno.env.get("SUPABASE_URL") || "").origin;
@@ -63,6 +73,20 @@ function normalizePackageSize(value: unknown): unknown {
   return value;
 }
 
+function normalizeRecordsetRows(value: unknown, argument: string): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    console.error("Reports RPC recordset was not an array", argument);
+    return [];
+  }
+  const rows = value.filter((row): row is Record<string, unknown> => (
+    Boolean(row) && typeof row === "object" && !Array.isArray(row)
+  ));
+  if (rows.length !== value.length) {
+    console.error("Reports RPC recordset removed invalid rows", argument, value.length - rows.length);
+  }
+  return rows;
+}
+
 async function normalizedRpcRequest(
   input: RequestInfo | URL,
   init: RequestInit | undefined,
@@ -84,14 +108,13 @@ async function normalizedRpcRequest(
 
   try {
     const payload = JSON.parse(bodyText);
-    if (Array.isArray(payload?.p_inventory)) {
-      payload.p_inventory = payload.p_inventory.map((item: unknown) => {
-        if (!item || typeof item !== "object" || Array.isArray(item)) return item;
-        const row = { ...(item as Record<string, unknown>) };
-        row.package_size = normalizePackageSize(row.package_size);
-        return row;
-      });
+    for (const argument of recordsetArguments) {
+      payload[argument] = normalizeRecordsetRows(payload?.[argument], argument);
     }
+    payload.p_inventory = payload.p_inventory.map((item: Record<string, unknown>) => ({
+      ...item,
+      package_size: normalizePackageSize(item.package_size),
+    }));
 
     const nextInit: RequestInit = {
       ...(init || {}),

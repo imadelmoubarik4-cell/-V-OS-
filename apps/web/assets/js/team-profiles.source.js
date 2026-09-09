@@ -429,6 +429,8 @@
     if (state.loading && !state.workspace) element.innerHTML = loadingMarkup();
     else if (state.error && !state.workspace) element.innerHTML = errorMarkup();
     else element.innerHTML = shellMarkup();
+    const backdrop = element.querySelector('.team-profile-modal-backdrop[data-team-profile-close-modal]');
+    if (backdrop) backdrop.addEventListener('click', closeModal, { once: true });
     document.body.classList.toggle('team-profile-modal-open', Boolean(state.modal));
     window.lucide?.createIcons?.();
   }
@@ -481,6 +483,13 @@
 
   function formValue(form, name) {
     return form.elements.namedItem(name)?.value?.trim?.() || '';
+  }
+
+  function closeModal(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    state.modal = null;
+    render();
   }
 
   function submitDetails(form) {
@@ -539,9 +548,7 @@
     }
 
     if (target.closest('[data-team-profile-close-modal]')) {
-      event.preventDefault();
-      state.modal = null;
-      render();
+      closeModal(event);
       return;
     }
 
@@ -636,8 +643,7 @@
 
   function handleKeydown(event) {
     if (event.key === 'Escape' && state.modal) {
-      state.modal = null;
-      render();
+      closeModal(event);
     }
   }
 

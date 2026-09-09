@@ -637,7 +637,7 @@
     const moduleKeys = ['operations', 'scanner', 'messages', 'marketing', 'profiles', 'shifts', 'knowledge', 'reports', 'system', 'settings'];
     return `<form class="settings-card settings-form" data-settings-section-form="modules" data-version="${Number(data?.version || 1)}">
       <header><div><span>Feature availability</span><h3>Modules</h3><p>${escapeHtml(data?.description || '')}</p></div>${statusPill(value.reports_state || 'active', value.reports_state === 'blocked' ? 'Reports blocked' : humanize(value.reports_state))}</header>
-      <div class="settings-toggle-grid">${moduleKeys.map((key) => checkboxField(humanize(key), key, Boolean(value[key]), { disabled: disabled || ['system', 'settings'].includes(key), note: ['system', 'settings'].includes(key) ? 'Core module.' : key === 'reports' ? 'Reports remains a release blocker.' : '' })).join('')}</div>
+      <div class="settings-toggle-grid">${moduleKeys.map((key) => checkboxField(humanize(key), key, Boolean(value[key]), { disabled: disabled || ['system', 'settings'].includes(key), note: ['system', 'settings'].includes(key) ? 'Core module.' : key === 'reports' ? (value.reports_state === 'ready' ? 'Authenticated preview passed.' : 'Availability follows isolated validation.') : '' })).join('')}</div>
       <div class="settings-form-grid">
         ${inputField('Reports state', 'reports_state', value.reports_state, { type: 'select', choices: [['blocked', 'Blocked'], ['degraded', 'Degraded'], ['ready', 'Ready']], disabled })}
       </div>
