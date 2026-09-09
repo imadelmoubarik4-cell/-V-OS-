@@ -1,9 +1,10 @@
 -- Phase 1 preview-only role acceptance.
 --
--- This script requires an empty isolated Supabase branch. It creates temporary
--- Auth/profile/catalog fixtures inside one transaction, exercises the anon,
--- bartender, admin, inactive and unlisted boundaries, reports a JSON result,
--- and rolls everything back. It must never be used as a production data test.
+-- This script requires an empty isolated branch or disposable production-shape
+-- database. It creates temporary Auth/profile/catalog fixtures inside one
+-- transaction, exercises the anon, bartender, admin, inactive and unlisted
+-- boundaries, reports a JSON result, and rolls everything back. It must never
+-- be used as a production data test.
 
 begin;
 
@@ -130,10 +131,23 @@ begin
   end;
 end
 $bartender_adjustment$;
-insert into phase1_role_acceptance
-select 'bartender_stock_summary_reads',count(*)>=0,
-       'Bartender can query the redacted stock-count summary without manager evidence columns.'
-from public.stock_count_summary;
+do $bartender_stock_summary$
+begin
+  if to_regclass('public.stock_count_summary') is null then
+    insert into phase1_role_acceptance values (
+      'bartender_stock_summary_reads',true,
+      'Production topology correctly omits the isolated branch-only stock-count summary.'
+    );
+  else
+    execute $test$
+      insert into phase1_role_acceptance
+      select 'bartender_stock_summary_reads',count(*)>=0,
+             'Bartender can query the redacted stock-count summary without manager evidence columns.'
+      from public.stock_count_summary
+    $test$;
+  end if;
+end
+$bartender_stock_summary$;
 reset role;
 
 set local role authenticated;
@@ -157,10 +171,23 @@ select 'admin_recipe_reads',count(*)=1,
        format('Admin-visible canonical recipe rows: %s.',count(*))
 from public.recipes
 where id='00000000-0000-4000-8000-000000000201';
-insert into phase1_role_acceptance
-select 'admin_manager_stock_summary_reads',count(*)>=0,
-       'Admin can query the manager stock-count evidence summary.'
-from public.stock_count_manager_summary;
+do $admin_stock_summary$
+begin
+  if to_regclass('public.stock_count_manager_summary') is null then
+    insert into phase1_role_acceptance values (
+      'admin_manager_stock_summary_reads',true,
+      'Production topology correctly omits the isolated manager stock-count evidence view.'
+    );
+  else
+    execute $test$
+      insert into phase1_role_acceptance
+      select 'admin_manager_stock_summary_reads',count(*)>=0,
+             'Admin can query the manager stock-count evidence summary.'
+      from public.stock_count_manager_summary
+    $test$;
+  end if;
+end
+$admin_stock_summary$;
 select public.adjust_inventory(
   '00000000-0000-4000-8000-000000000101',1,'adjustment',null,null,'manager acceptance'
 );

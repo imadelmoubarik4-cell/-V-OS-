@@ -1,0 +1,59 @@
+name: Production adoption dry run
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/production-adoption-dry-run.yml'
+      - 'scripts/verify_full_migration_replay.sh'
+      - 'scripts/verify_production_adoption_dry_run.sh'
+      - 'scripts/verify_phase1_role_matrix_preview.sql'
+      - 'scripts/verify_phase1_security_gate.sql'
+      - 'docs/PRODUCTION_ADOPTION_PR28.md'
+      - 'supabase/migrations/**'
+      - 'supabase/production-adoption/**'
+      - 'tests/python/test_production_adoption_contract.py'
+
+permissions:
+  contents: read
+
+jobs:
+  disposable-postgres:
+    name: disposable PostgreSQL 17
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vaos_adoption
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vaos_adoption"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: vaos_adoption
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Validate package contract
+        run: python -m unittest discover -s tests/python -p 'test_production_adoption_contract.py' -v
+
+      - name: Run production-shaped adoption in disposable PostgreSQL
+        run: bash scripts/verify_production_adoption_dry_run.sh
