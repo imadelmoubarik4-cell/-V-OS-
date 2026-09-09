@@ -7,6 +7,10 @@ ROOT = Path(__file__).resolve().parents[2]
 FOUNDATION = (ROOT / "supabase/migrations/20260804093723_atlas_reports_checkpoint_h_foundation.sql").read_text()
 LIVE = (ROOT / "supabase/migrations/20260804095329_atlas_reports_checkpoint_h_live_sources.sql").read_text()
 FIX = (ROOT / "supabase/migrations/20260804095939_atlas_reports_snapshot_variable_fix.sql").read_text()
+HARDENING = (
+    ROOT
+    / "supabase/migrations/20260909085342_atlas_reports_recordset_wrapper_hardening.sql"
+).read_text()
 EDGE = (ROOT / "supabase/functions/atlas-reports/index.ts").read_text()
 ENTRYPOINT = (ROOT / "supabase/functions/atlas-reports/entrypoint.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
@@ -68,6 +72,24 @@ class ReportsContractTests(unittest.TestCase):
         self.assertIn("const normalizedPayload", EDGE)
         self.assertIn("JSON.stringify(normalizedPayload)", EDGE)
 
+    def test_sql_wrapper_normalizes_every_recordset_before_private_parser(self):
+        for argument in (
+            "p_inventory",
+            "p_recipes",
+            "p_recipe_ingredients",
+            "p_suppliers",
+            "p_movements",
+            "p_profiles",
+            "p_tasks",
+            "p_progress",
+        ):
+            self.assertIn(f"coalesce({argument},'[]'::jsonb)", HARDENING)
+        self.assertEqual(HARDENING.count("where jsonb_typeof(item)='object'"), 8)
+        self.assertIn("cross join lateral jsonb_array_elements", HARDENING)
+        self.assertIn("atlas_private.reports_snapshot_v2(", HARDENING)
+        self.assertIn("security invoker", HARDENING.lower())
+        self.assertIn("notify pgrst,'reload schema'", HARDENING)
+
     def test_staff_commercial_fields_are_removed_before_branch_rpc(self):
         self.assertIn("async function reportSources", EDGE)
         self.assertRegex(EDGE, r"if \(isManager\(context\)\)\s*\{")
@@ -85,11 +107,11 @@ class ReportsContractTests(unittest.TestCase):
             "public.atlas_reports_snapshot_v2(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,"
             "uuid,text,date,date,date,date,text,jsonb)"
         )
-        self.assertIn(f"revoke execute on function {signature}", LIVE)
-        self.assertIn("from public,anon,authenticated", LIVE)
-        self.assertIn(f"grant execute on function {signature}", LIVE)
-        self.assertIn("to service_role", LIVE)
-        self.assertNotIn("security definer", (FOUNDATION + LIVE + FIX).lower())
+        self.assertIn(f"revoke execute on function {signature}", HARDENING)
+        self.assertIn("from public,anon,authenticated", HARDENING)
+        self.assertIn(f"grant execute on function {signature}", HARDENING)
+        self.assertIn("to service_role", HARDENING)
+        self.assertNotIn("security definer", (FOUNDATION + LIVE + FIX + HARDENING).lower())
 
     def test_snapshot_contract_is_read_only_and_truthful(self):
         self.assertIn("function policyPayload", EDGE)
