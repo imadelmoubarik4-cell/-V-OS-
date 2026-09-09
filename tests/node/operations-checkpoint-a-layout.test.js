@@ -31,6 +31,7 @@ test('Home receives one visually focused scheduled-day prompt', () => {
   assert.match(layout, /Scheduled today/);
   assert.match(layout, /homePromptSignature/);
   assert.match(layout, /data-checkpoint-home-open/);
+  assert.match(layout, /homeFocus\.insertAdjacentHTML\('beforebegin'/);
 });
 
 test('marketing and reputation readiness move to Settings', () => {

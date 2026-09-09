@@ -4,6 +4,9 @@ import test from 'node:test';
 
 const app = readFileSync('apps/web/index.html', 'utf8');
 const inventoryCss = readFileSync('apps/web/assets/css/inventory-polish.css', 'utf8');
+const homeCss = readFileSync('apps/web/assets/css/home-polish.css', 'utf8');
+const shellCss = readFileSync('apps/web/assets/css/atlas-glass.css', 'utf8');
+const recipes = readFileSync('apps/web/assets/js/recipes.js', 'utf8');
 const scanner = readFileSync('apps/web/assets/js/inventory-scanner.js', 'utf8');
 const stockCount = readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8');
 const itemMaster = readFileSync('apps/web/assets/js/item-master-workspace.js', 'utf8');
@@ -27,6 +30,35 @@ test('Inventory uses one compact section rail for every approved workspace', () 
   assert.match(app, /view === 'inventory' \? 'grid' : 'block'/);
 });
 
+test('sidebar keeps one destination per workspace without duplicate category menus', () => {
+  assert.match(app, /class="nav-item" data-view="inventory"><i data-lucide="package"><\/i><span>Inventory<\/span><\/button>/);
+  assert.match(app, /class="nav-item" data-view="recipes"><i data-lucide="martini"><\/i><span>Recipes<\/span><\/button>/);
+  assert.match(app, /class="nav-item" data-view="suppliers"><i data-lucide="truck"><\/i><span>Purchasing<\/span><\/button>/);
+  assert.doesNotMatch(app, /<button[^>]+data-default=|<div class="nav-sub"/);
+  assert.doesNotMatch(app, /data-recipe-filter="signature-cocktail"/);
+  assert.doesNotMatch(app, /class="nav-item" data-view="imports"/);
+});
+
+test('navigation is organized into one-row workspace groups', () => {
+  for (const group of ['home', 'operations', 'people', 'growth', 'insights', 'system']) assert.match(app, new RegExp(`\\['${group}'`));
+  assert.match(app, /team:'Messages','team-profiles':'Team'/);
+  assert.match(app, /operations:'Operations Center'/);
+  assert.match(app, /brain:'Atlas Brain',business:'Business Intelligence'/);
+  assert.match(app, /new MutationObserver/);
+});
+
+test('Home uses live values and supports expanded or compact navigation', () => {
+  assert.match(app, /id="home-date"/);
+  assert.match(app, /data-home-action="stock-count"/);
+  assert.match(app, /data-home-action="new-order"/);
+  assert.match(app, /id="home-margin">—<\/strong>/);
+  assert.doesNotMatch(app, /<strong>8<\/strong><span>Onboarding steps/);
+  assert.match(app, /window\.AtlasRecipes\?\.getHomeMetrics/);
+  assert.match(recipes, /function getHomeMetrics\(\)/);
+  assert.match(homeCss, /#home-focus\.atlas-home-focus/);
+  assert.match(shellCss, /body\.atlas-sidebar-collapsed/);
+});
+
 test('Inventory filters use the approved primary and contextual category model', () => {
   for (const label of [
     'Spirits', 'Wine', 'Beer', 'Mixers', 'Syrups', 'Bitters', 'Fresh Fruit',
@@ -36,6 +68,7 @@ test('Inventory filters use the approved primary and contextual category model',
   }
   assert.match(app, /function inventoryGroup\(item\)/);
   assert.match(app, /function inventorySubcategory\(item/);
+  assert.match(app, /\/cider\/\.test\(name\).*?!\/beer\/\.test\(category\)/);
   assert.match(app, /id="subcategory-tabs"/);
   assert.match(app, /result\.set\(label, \(result\.get\(label\) \|\| 0\) \+ 1\)/);
 });

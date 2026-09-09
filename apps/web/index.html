@@ -520,26 +520,15 @@
       <aside class="atlas-sidebar" id="atlas-sidebar">
         <div class="atlas-brand"><div class="atlas-logo" aria-hidden="true"><svg viewBox="0 0 48 48" role="img"><rect x="2" y="2" width="44" height="44" rx="12" fill="#20211f"/><path d="M11 15V9h26v26h-6" fill="none" stroke="#d4b278" stroke-width="2.6" stroke-linecap="round"/><path d="M17.5 34L24 13l6.5 21M20 27h8" fill="none" stroke="#f4efe6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><strong>ATLAS</strong><small>Hospitality OS · VÁ</small></div></div>
         <nav class="atlas-nav">
-          <div class="nav-group"><div class="nav-label">HOME</div><button class="nav-item active" data-view="dashboard"><i data-lucide="house"></i>Home</button></div>
-          <div class="nav-group"><div class="nav-label">OPERATIONS</div>
-            <button class="nav-item nav-parent" data-default="inventory"><i data-lucide="package"></i>Inventory<i class="chev" data-lucide="chevron-down"></i></button>
-            <div class="nav-sub"><button class="nav-item" data-view="inventory" data-subview="Items">Items</button><button class="nav-item" data-view="inventory" data-subview="Stock count">Stock count</button><button class="nav-item" data-view="movements" data-subview="Inventory movements">Movements</button><button class="nav-item" data-view="waste" data-subview="Waste">Waste</button></div>
-            <button class="nav-item nav-parent" data-default="recipes"><i data-lucide="martini"></i>Recipes<i class="chev" data-lucide="chevron-down"></i></button>
-            <div class="nav-sub">
-              <button class="nav-item" data-view="recipes" data-recipe-filter="all">Recipe dashboard</button>
-              <button class="nav-item" data-view="recipes" data-recipe-filter="signature-cocktail">Signature cocktails</button>
-              <button class="nav-item" data-view="recipes" data-recipe-filter="classic-cocktail">Classic cocktails</button>
-              <button class="nav-item" data-view="recipes" data-recipe-filter="coffee">Coffee</button>
-              <button class="nav-item" data-view="recipes" data-recipe-filter="food">Food</button>
-              <button class="nav-item" data-view="recipes" data-recipe-filter="dessert">Dessert</button>
-            </div>
-            <button class="nav-item nav-parent" data-default="suppliers"><i data-lucide="truck"></i>Purchasing<i class="chev" data-lucide="chevron-down"></i></button>
-            <div class="nav-sub"><button class="nav-item" data-view="suppliers" data-subview="Suppliers">Suppliers</button><button class="nav-item" data-view="suppliers" data-subview="Orders">Orders</button><button class="nav-item" data-view="suppliers" data-subview="Deliveries">Deliveries</button></div>
-            <button class="nav-item" data-view="imports"><i data-lucide="file-up"></i>Import Center</button>
+          <div class="nav-group" data-nav-group="home"><div class="nav-label">HOME</div><button class="nav-item active" data-view="dashboard"><i data-lucide="house"></i><span>Home</span></button></div>
+          <div class="nav-group" data-nav-group="operations"><div class="nav-label">OPERATIONS</div>
+            <button class="nav-item" data-view="inventory"><i data-lucide="package"></i><span>Inventory</span></button>
+            <button class="nav-item" data-view="recipes"><i data-lucide="martini"></i><span>Recipes</span></button>
+            <button class="nav-item" data-view="suppliers"><i data-lucide="truck"></i><span>Purchasing</span></button>
           </div>
-          <div class="nav-group"><div class="nav-label">PEOPLE</div><button class="nav-item" data-view="team"><i data-lucide="users"></i>Team</button><button class="nav-item" data-view="shifts"><i data-lucide="calendar-days"></i>Shifts</button><button class="nav-item" data-view="knowledge"><i data-lucide="book-open"></i>Knowledge</button></div>
-          <div class="nav-group"><div class="nav-label">INSIGHTS</div><button class="nav-item" data-view="reports"><i data-lucide="chart-no-axes-combined"></i>Reports</button></div>
-          <div class="nav-group"><div class="nav-label">SYSTEM</div><button class="nav-item" data-view="settings"><i data-lucide="settings"></i>Settings</button></div>
+          <div class="nav-group" data-nav-group="people"><div class="nav-label">PEOPLE</div><button class="nav-item" data-view="team"><i data-lucide="messages-square"></i><span>Messages</span></button><button class="nav-item" data-view="shifts"><i data-lucide="calendar-days"></i><span>Shifts</span></button><button class="nav-item" data-view="knowledge"><i data-lucide="book-open"></i><span>Knowledge</span></button></div>
+          <div class="nav-group" data-nav-group="insights"><div class="nav-label">INSIGHTS</div><button class="nav-item" data-view="reports"><i data-lucide="chart-no-axes-combined"></i><span>Reports</span></button></div>
+          <div class="nav-group" data-nav-group="system"><div class="nav-label">SYSTEM</div><button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>Settings</span></button></div>
         </nav>
         <div class="atlas-profile"><div class="avatar" id="user-avatar">V</div><div class="profile-copy"><strong id="profile-name">VÁ Team</strong><small id="user-email"></small></div><button class="top-icon" id="logout-btn" title="Sign out"><i data-lucide="log-out"></i></button></div>
       </aside>
@@ -547,9 +536,9 @@
       <section class="atlas-main">
         <header class="atlas-topbar"><button class="top-icon mobile-menu" id="mobile-menu-btn"><i data-lucide="menu"></i></button><div class="atlas-page-title" id="atlas-page-title">Home</div><div class="atlas-search"><i data-lucide="search"></i><input id="global-search" type="text" placeholder="Jump to pages or commands…  /" aria-label="Jump to a page or command" title="Pages and commands only — operational records are not indexed." data-search-scope="navigation" autocomplete="off" /></div><button class="top-icon" title="Notifications"><i data-lucide="bell"></i></button><button class="service-toggle" id="service-mode-btn"><i data-lucide="zap"></i><span>Service Mode</span></button></header>
         <div class="atlas-content standard-view"><main>
-          <div id="home-intro" class="home-hero"><div><h1>Good day, <span id="greeting-name">VÁ team</span>.</h1><p>Everything that needs your attention, in one calm place.</p></div></div>
-          <div id="home-focus" class="atlas-card"><div class="placeholder-head"><h2 style="font-size:24px">Today's Focus</h2><p>Your live operational briefing.</p></div><div class="focus-list" id="focus-list"><div class="focus-row"><span class="focus-dot"></span><span>Loading today's priorities…</span></div></div></div>
-          <div id="home-metrics" class="atlas-grid"><div class="metric-card" data-target="inventory"><div class="metric-icon"><i data-lucide="package"></i></div><strong id="home-items">—</strong><span>Inventory items</span></div><div class="metric-card" data-target="inventory-low"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><strong id="home-low">—</strong><span>Below par</span></div><div class="metric-card" data-target="team"><div class="metric-icon"><i data-lucide="users"></i></div><strong id="home-team">—</strong><span>Team members</span></div><div class="metric-card" data-target="knowledge"><div class="metric-icon"><i data-lucide="graduation-cap"></i></div><strong>8</strong><span>Onboarding steps</span></div></div>
+          <div id="home-intro" class="home-hero atlas-home-hero"><div class="atlas-home-hero-copy"><span class="atlas-home-date" id="home-date">Today</span><h1><span id="home-greeting">Good day</span>, <span id="greeting-name">VÁ team</span>.</h1></div><div class="atlas-home-hero-actions"><button type="button" class="atlas-home-action secondary" data-home-action="stock-count"><i data-lucide="clipboard-check"></i>Start stock count</button><button type="button" class="atlas-home-action" data-home-action="new-order" data-commercial-only><i data-lucide="plus"></i>New order</button></div></div>
+          <div id="home-focus" class="atlas-card atlas-home-focus"><div class="atlas-home-brief-icon"><i data-lucide="bot"></i></div><div class="atlas-home-brief-copy"><span class="atlas-home-panel-kicker">Atlas Brain · Daily brief</span><h2 id="home-brief-headline">Preparing today’s priorities…</h2><p id="home-brief-detail">Atlas is checking live inventory, recipe, and operations data.</p><div class="atlas-home-brief-actions"><button type="button" class="atlas-home-action secondary" data-target="inventory-low">Review priorities</button><button type="button" class="atlas-home-action secondary" data-target="brain">All Brain insights <span aria-hidden="true">→</span></button></div><div class="focus-list" id="focus-list" aria-label="Today’s live priorities"><div class="focus-row"><span class="focus-dot"></span><span>Loading today’s priorities…</span></div></div></div></div>
+          <div id="home-metrics" class="atlas-grid atlas-home-metrics"><div class="metric-card" data-target="inventory"><div class="metric-icon"><i data-lucide="package"></i></div><div class="metric-copy"><span>Inventory items</span><strong id="home-items">—</strong><small id="home-items-note">Live catalog</small></div></div><div class="metric-card" data-target="inventory-low"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><div class="metric-copy"><span>Items below par</span><strong id="home-low">—</strong><small id="home-low-note">Checking levels</small></div></div><div class="metric-card" data-target="recipes"><div class="metric-icon"><i data-lucide="martini"></i></div><div class="metric-copy"><span>Average recipe margin</span><strong id="home-margin">—</strong><small id="home-margin-note">Verified recipes only</small></div></div><div class="metric-card" data-target="team-profiles"><div class="metric-icon"><i data-lucide="users"></i></div><div class="metric-copy"><span>Team members</span><strong id="home-team">—</strong><small id="home-team-note">Loading live profiles</small></div></div></div>
 
           <div class="alert-banner" id="low-stock-banner"><span class="dot"></span><span id="low-stock-text"></span></div>
           <section class="inventory-section-header" id="inventory-section-header" hidden>
@@ -1336,7 +1325,9 @@
   }
 
   function inventorySubcategory(item, group = inventoryGroup(item)) {
-    const value = `${item?.category || ''} ${item?.name || ''} ${item?.unit || ''}`.toLowerCase();
+    const category = String(item?.category || '').toLowerCase();
+    const name = String(item?.name || '').toLowerCase();
+    const value = `${category} ${name} ${item?.unit || ''}`.toLowerCase();
     if (group === 'spirits') {
       if (/whisk(?:e)?y|bourbon|scotch/.test(value)) return 'Whiskey';
       if (/gin/.test(value)) return 'Gin';
@@ -1357,7 +1348,7 @@
     }
     if (group === 'beer') {
       if (/\bkeg|30l|20l|50l/.test(value)) return 'Kegs';
-      if (/cider/.test(value)) return 'Cider';
+      if (/cider/.test(name) || (/cider/.test(category) && !/beer/.test(category))) return 'Cider';
       if (/ready.to.drink|\brtd\b|breezer/.test(value)) return 'RTD';
       return 'Bottles';
     }
@@ -1686,17 +1677,65 @@
   }
   document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click',()=>{ setActiveView(btn.dataset.view); if(btn.dataset.subview && !btn.dataset.inventorySection) document.getElementById('atlas-page-title').textContent=btn.dataset.subview; }));
   document.querySelectorAll('.nav-parent').forEach(btn => btn.addEventListener('click',()=>{ btn.classList.toggle('open'); const target=btn.dataset.default; if(target) setActiveView(target); }));
+  function formatVenueDay(now = new Date()) {
+    try {
+      return new Intl.DateTimeFormat('en-GB', { weekday:'long', day:'numeric', month:'long', timeZone:'Atlantic/Reykjavik' }).format(now);
+    } catch (_) {
+      return new Intl.DateTimeFormat('en-GB', { weekday:'long', day:'numeric', month:'long' }).format(now);
+    }
+  }
+  function venueGreeting(now = new Date()) {
+    let hour = now.getHours();
+    try { hour = Number(new Intl.DateTimeFormat('en-GB', { hour:'2-digit', hour12:false, timeZone:'Atlantic/Reykjavik' }).format(now)); }
+    catch (_) { /* Use the browser-local hour as a safe fallback. */ }
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
+  function updateHomeTeamMetric() {
+    const value = document.getElementById('home-team');
+    const note = document.getElementById('home-team-note');
+    const profiles = window.AtlasTeamProfiles?.snapshot?.();
+    const count = Number(profiles?.summary?.active_profiles);
+    if (Number.isFinite(count)) {
+      value.textContent = count;
+      note.textContent = count === 1 ? 'Active Atlas profile' : 'Active Atlas profiles';
+      return;
+    }
+    const messages = window.AtlasTeamMessages?.snapshot?.();
+    const messageCount = Number(messages?.summary?.active_members);
+    if (Number.isFinite(messageCount)) {
+      value.textContent = messageCount;
+      note.textContent = messageCount === 1 ? 'Active staff member' : 'Active staff members';
+      return;
+    }
+    value.textContent = '—';
+    note.textContent = 'Open Team to load';
+  }
   function renderAtlasHome(){
     const low=items.filter(i=>i.par_level!=null && Number(i.quantity)<Number(i.par_level));
+    document.getElementById('home-date').textContent=formatVenueDay();
+    document.getElementById('home-greeting').textContent=venueGreeting();
     document.getElementById('home-items').textContent=items.length;
     document.getElementById('home-low').textContent=low.length;
+    document.getElementById('home-items-note').textContent=items.length===1?'Live catalog item':'Live catalog items';
+    document.getElementById('home-low-note').textContent=low.length?'Review before service':'Stock levels healthy';
+    const recipeMetrics=window.AtlasRecipes?.getHomeMetrics?.();
+    const averageMargin=Number(recipeMetrics?.averageMargin);
+    document.getElementById('home-margin').textContent=Number.isFinite(averageMargin)?`${Math.round(averageMargin)}%`:'—';
+    document.getElementById('home-margin-note').textContent=Number.isFinite(averageMargin)?`${recipeMetrics.marginRecipeCount} costed ${recipeMetrics.marginRecipeCount===1?'recipe':'recipes'}`:'Complete recipe costing';
+    updateHomeTeamMetric();
     const focus=[];
     if(low.length) focus.push({text:`${low.length} inventory ${low.length===1?'item is':'items are'} below par.`,target:'inventory-low'});
     else focus.push({text:'Inventory levels look healthy today.',target:'inventory'});
     const recipeAlert=window.AtlasRecipes?.getHomeAlert?.();
     if(recipeAlert) focus.push({text:recipeAlert.text,target:'recipes'});
     focus.push({text:'Check today’s team and shift coverage before service.',target:'shifts'});
-    focus.push({text:'Review onboarding and required knowledge tasks.',target:'knowledge'});
+    document.getElementById('home-brief-headline').textContent=low.length
+      ? `${low.length} ${low.length===1?'item needs':'items need'} attention before service.`
+      : 'Inventory is ready for today’s service.';
+    document.getElementById('home-brief-detail').textContent=recipeAlert?.text
+      || 'Atlas is using the latest available inventory, recipe, and operations data.';
     document.getElementById('focus-list').innerHTML=focus.map(entry=>`<div class="focus-row" data-target="${entry.target}"><span class="focus-dot"></span><span>${entry.text}</span></div>`).join('');
     bindHomeLinks();
   }
@@ -1706,19 +1745,100 @@
       el.onclick=()=>{
         const target=el.dataset.target;
         if(target==='inventory-low'){ activeCategory='all'; setActiveView('inventory'); setTimeout(()=>document.getElementById('low-stock-banner')?.scrollIntoView({behavior:'smooth',block:'center'}),60); }
-        else setActiveView(target);
+        else {
+          const navButton=document.querySelector(`.atlas-nav .nav-item[data-view="${target}"]`);
+          if(navButton) navButton.click();
+          else setActiveView(target);
+        }
       };
     });
     const banner=document.getElementById('low-stock-banner');
     if(banner) banner.onclick=()=>setActiveView('inventory');
   }
+  document.querySelectorAll('[data-home-action]').forEach(button=>button.addEventListener('click',()=>{
+    if(button.dataset.homeAction==='stock-count'){
+      setActiveView('inventory');
+      window.setTimeout(()=>document.querySelector('[data-inventory-section="stock-count"]')?.click(),40);
+      return;
+    }
+    if(button.dataset.homeAction==='new-order') document.querySelector('.atlas-nav .nav-item[data-view="suppliers"]')?.click();
+  }));
   document.getElementById('inventory-intelligence-action')?.addEventListener('click', () => {
     document.querySelector('.nav-item[data-view="reports"]')?.click();
   });
   const sidebar=document.getElementById('atlas-sidebar');
   const backdrop=document.getElementById('sidebar-backdrop');
+  const navigationPlan=[
+    ['home','HOME',['dashboard']],
+    ['operations','OPERATIONS',['operations','inventory','recipes','suppliers']],
+    ['people','PEOPLE',['team','team-profiles','shifts','knowledge']],
+    ['growth','GROWTH',['marketing','accounting']],
+    ['insights','INSIGHTS',['brain','business','reports','sprint3-review']],
+    ['system','SYSTEM',['system','settings']]
+  ];
+  const navigationLabels={dashboard:'Home',operations:'Operations Center',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',team:'Messages','team-profiles':'Team',shifts:'Shifts',knowledge:'Knowledge',marketing:'Marketing',accounting:'Accounting',brain:'Atlas Brain',business:'Business Intelligence',reports:'Reports','sprint3-review':'Real VÁ Data',system:'System',settings:'Settings'};
+  let navigationFrame=null;
+  const navigationObserver=new MutationObserver(()=>{
+    if(navigationFrame) return;
+    navigationFrame=requestAnimationFrame(()=>{navigationFrame=null;organizeAtlasNavigation();});
+  });
+  function setNavigationLabel(button,label){
+    let text=button.querySelector(':scope > .nav-item-label')
+      || [...button.children].find(child=>child.tagName==='SPAN'&&!child.matches('.team-nav-unread,.review-nav-count,.system-nav-status'));
+    if(!text){
+      [...button.childNodes].filter(node=>node.nodeType===Node.TEXT_NODE).forEach(node=>node.remove());
+      text=document.createElement('span');
+      text.className='nav-item-label';
+      const trailing=[...button.children].find(child=>child.matches('.team-nav-unread,.review-nav-count,.system-nav-status'));
+      button.insertBefore(text,trailing||null);
+    }
+    text.classList.add('nav-item-label');
+    text.textContent=label;
+  }
+  function organizeAtlasNavigation(){
+    const nav=document.querySelector('.atlas-nav');
+    if(!nav) return;
+    navigationObserver.disconnect();
+    navigationPlan.forEach(([key,label,views])=>{
+      let group=nav.querySelector(`.nav-group[data-nav-group="${key}"]`);
+      const hasView=views.some(view=>nav.querySelector(`.nav-item[data-view="${view}"]`));
+      if(!group&&hasView){
+        group=document.createElement('div');
+        group.className='nav-group';
+        group.dataset.navGroup=key;
+        group.innerHTML=`<div class="nav-label">${label}</div>`;
+      }
+      if(!group) return;
+      views.forEach(view=>{
+        const button=nav.querySelector(`.nav-item[data-view="${view}"]`);
+        if(!button) return;
+        button.classList.remove('nav-parent','open');
+        button.removeAttribute('data-default');
+        setNavigationLabel(button,navigationLabels[view]||view);
+        group.appendChild(button);
+      });
+      nav.appendChild(group);
+    });
+    nav.querySelectorAll('.nav-sub').forEach(node=>node.remove());
+    nav.querySelectorAll('.nav-group').forEach(group=>{if(!group.querySelector('.nav-item')) group.remove();});
+    navigationObserver.observe(nav,{childList:true,subtree:true});
+  }
+  organizeAtlasNavigation();
   function closeMobileSidebar(){sidebar.classList.remove('open');backdrop.classList.remove('open');}
-  document.getElementById('mobile-menu-btn').addEventListener('click',()=>{sidebar.classList.add('open');backdrop.classList.add('open');});
+  const menuButton=document.getElementById('mobile-menu-btn');
+  function syncDesktopSidebarPreference(){
+    if(window.matchMedia('(max-width:760px)').matches) return;
+    const collapsed=localStorage.getItem('atlas.sidebarCollapsed')==='true';
+    document.body.classList.toggle('atlas-sidebar-collapsed',collapsed);
+    menuButton.setAttribute('aria-expanded',String(!collapsed));
+  }
+  syncDesktopSidebarPreference();
+  menuButton.addEventListener('click',()=>{
+    if(window.matchMedia('(max-width:760px)').matches){sidebar.classList.add('open');backdrop.classList.add('open');return;}
+    const collapsed=document.body.classList.toggle('atlas-sidebar-collapsed');
+    localStorage.setItem('atlas.sidebarCollapsed',String(collapsed));
+    menuButton.setAttribute('aria-expanded',String(!collapsed));
+  });
   backdrop.addEventListener('click',closeMobileSidebar);
   const enterService=()=>{document.body.classList.add('service-mode');};
   const exitService=()=>{document.body.classList.remove('service-mode');};

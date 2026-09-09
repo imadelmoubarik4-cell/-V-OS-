@@ -1043,11 +1043,23 @@
     return featured ? { text: `Featured recommendation: ${featured.recipe.name} is ready with a ${featured.financials.margin.toFixed(0)}% margin.` } : null;
   }
 
+  function getHomeMetrics() {
+    const margins = recipes
+      .filter((recipe) => recipe.active !== false)
+      .map((recipe) => recipeFinancials(recipe))
+      .filter((financials) => financials.incomplete === 0 && Number.isFinite(financials.margin));
+    return {
+      averageMargin: margins.length ? margins.reduce((sum, financials) => sum + financials.margin, 0) / margins.length : null,
+      marginRecipeCount: margins.length
+    };
+  }
+
   window.AtlasRecipes = {
     init,
     render,
     openEditor,
     getHomeAlert,
+    getHomeMetrics,
     recipeAvailability,
     openServiceLibrary,
     reloadCategories: () => loadCategories(true)
