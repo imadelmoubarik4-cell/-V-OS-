@@ -11,6 +11,10 @@ HARDENING = (
     ROOT
     / "supabase/migrations/20260909085342_atlas_reports_recordset_wrapper_hardening.sql"
 ).read_text()
+NULL_SAFE_WRAPPER = (
+    ROOT
+    / "supabase/migrations/20260909090422_atlas_reports_null_package_size_wrapper_fix.sql"
+).read_text()
 EDGE = (ROOT / "supabase/functions/atlas-reports/index.ts").read_text()
 ENTRYPOINT = (ROOT / "supabase/functions/atlas-reports/entrypoint.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
@@ -89,6 +93,9 @@ class ReportsContractTests(unittest.TestCase):
         self.assertIn("atlas_private.reports_snapshot_v2(", HARDENING)
         self.assertIn("security invoker", HARDENING.lower())
         self.assertIn("notify pgrst,'reload schema'", HARDENING)
+        self.assertEqual(NULL_SAFE_WRAPPER.count("where jsonb_typeof(item)='object'"), 8)
+        self.assertIn("coalesce(\n            to_jsonb(", NULL_SAFE_WRAPPER)
+        self.assertIn("'null'::jsonb", NULL_SAFE_WRAPPER)
 
     def test_staff_commercial_fields_are_removed_before_branch_rpc(self):
         self.assertIn("async function reportSources", EDGE)
@@ -107,11 +114,14 @@ class ReportsContractTests(unittest.TestCase):
             "public.atlas_reports_snapshot_v2(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,"
             "uuid,text,date,date,date,date,text,jsonb)"
         )
-        self.assertIn(f"revoke execute on function {signature}", HARDENING)
-        self.assertIn("from public,anon,authenticated", HARDENING)
-        self.assertIn(f"grant execute on function {signature}", HARDENING)
-        self.assertIn("to service_role", HARDENING)
-        self.assertNotIn("security definer", (FOUNDATION + LIVE + FIX + HARDENING).lower())
+        self.assertIn(f"revoke execute on function {signature}", NULL_SAFE_WRAPPER)
+        self.assertIn("from public,anon,authenticated", NULL_SAFE_WRAPPER)
+        self.assertIn(f"grant execute on function {signature}", NULL_SAFE_WRAPPER)
+        self.assertIn("to service_role", NULL_SAFE_WRAPPER)
+        self.assertNotIn(
+            "security definer",
+            (FOUNDATION + LIVE + FIX + HARDENING + NULL_SAFE_WRAPPER).lower(),
+        )
 
     def test_snapshot_contract_is_read_only_and_truthful(self):
         self.assertIn("function policyPayload", EDGE)
