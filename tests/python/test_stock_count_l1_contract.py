@@ -5,7 +5,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 UNITS_MIGRATION = ROOT / "supabase/migrations/20260805210000_atlas_stock_counts_l1_units_and_status.sql"
 PUBLICATION_MIGRATION = ROOT / "supabase/migrations/20260805211000_atlas_stock_counts_l1_manager_publication.sql"
-NAMED_ARGUMENTS_MIGRATION = ROOT / "supabase/migrations/20260908201500_atlas_stock_counts_named_arguments.sql"
+NAMED_ARGUMENTS_MIGRATION = ROOT / "supabase/migrations/20260909083100_atlas_stock_counts_named_arguments.sql"
 EDGE_FUNCTION = ROOT / "supabase/functions/atlas-stock-counts/entrypoint.ts"
 SUPABASE_CONFIG = ROOT / "supabase/config.toml"
 INVENTORY_BOOTSTRAP = ROOT / "apps/web/assets/js/inventory-scanner-bootstrap.js"
