@@ -163,6 +163,11 @@ if [[ "$pgcrypto_schema" != "extensions" ]]; then
   exit 1
 fi
 
+if [[ "${ATLAS_BOOTSTRAP_ONLY:-0}" == "1" ]]; then
+  echo "Supabase-compatible test bootstrap passed"
+  exit 0
+fi
+
 mapfile -t migrations < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' -print | LC_ALL=C sort)
 if [[ ${#migrations[@]} -eq 0 ]]; then
   echo "No migrations found" >&2
