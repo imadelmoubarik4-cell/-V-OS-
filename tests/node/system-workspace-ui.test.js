@@ -8,6 +8,7 @@ const css = readFileSync('apps/web/assets/css/system-workspace.css', 'utf8');
 const edge = readFileSync('supabase/functions/atlas-system/index.ts', 'utf8');
 const foundation = readFileSync('supabase/migrations/20260804134509_atlas_system_checkpoint_i.sql', 'utf8');
 const snapshot = readFileSync('supabase/migrations/20260804134510_atlas_system_snapshot.sql', 'utf8');
+const closure = readFileSync('supabase/migrations/20260909094553_atlas_pr27_reports_release_closure.sql', 'utf8');
 const supabaseConfig = readFileSync('supabase/config.toml', 'utf8');
 
 test('Checkpoint I loads through the isolated authenticated System gateway', () => {
@@ -43,11 +44,15 @@ test('System contains the complete operational control-room sections', () => {
   assert.match(ui, /Audit & recovery/);
 });
 
-test('Reports remains an honest open incident and release blocker', () => {
+test('Reports incident history is preserved and PR27 closes the release blocker', () => {
   assert.match(foundation, /reports-loading-stall/);
   assert.match(foundation, /Reports authenticated snapshot does not complete/);
-  assert.match(foundation, /Reports authenticated snapshot remains unresolved/);
   assert.match(foundation, /production_records_changed',false/);
+  assert.match(closure, /status='resolved'/);
+  assert.match(closure, /'release_blocker',false/);
+  assert.match(closure, /release_blockers='\[\]'::jsonb/);
+  assert.match(closure, /production_sync_state='disabled'/);
+  assert.match(closure, /settings_value->>'reports_state'='ready'/);
   assert.match(ui, /Release blocker/);
   assert.match(ui, /Incident centre/);
 });
