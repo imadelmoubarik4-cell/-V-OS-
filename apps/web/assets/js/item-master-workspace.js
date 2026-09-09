@@ -101,27 +101,9 @@
 
   function ensureNav() {
     if (state.navButton?.isConnected) return state.navButton;
-    const parent = document.querySelector('.nav-parent[data-default="inventory"]');
-    const sub = parent?.nextElementSibling;
-    if (!sub?.classList.contains('nav-sub')) return null;
-    let button = sub.querySelector('[data-item-master-l2]');
-    if (!button) {
-      button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'nav-item';
-      button.dataset.itemMasterL2 = 'true';
-      button.innerHTML = '<span data-lucide="list-checks"></span>Item master';
-      const stockCount = sub.querySelector('[data-subview="Stock count"]');
-      if (stockCount?.nextSibling) sub.insertBefore(button, stockCount.nextSibling);
-      else sub.appendChild(button);
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        activate();
-      });
-    }
+    const button = document.querySelector('#inventory-section-header [data-item-master-l2]');
+    if (!button) return null;
     state.navButton = button;
-    window.lucide?.createIcons?.();
     return button;
   }
 

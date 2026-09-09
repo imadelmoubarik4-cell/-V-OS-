@@ -27,6 +27,14 @@ test('Inventory uses one compact section rail for every approved workspace', () 
   assert.match(app, /view === 'inventory' \? 'grid' : 'block'/);
 });
 
+test('sidebar keeps one destination per workspace without duplicate category menus', () => {
+  assert.match(app, /class="nav-item" data-view="inventory"><i data-lucide="package"><\/i>Inventory<\/button>/);
+  assert.match(app, /class="nav-item" data-view="recipes"><i data-lucide="martini"><\/i>Recipes<\/button>/);
+  assert.doesNotMatch(app, /data-default="inventory"|data-default="recipes"/);
+  assert.doesNotMatch(app, /data-recipe-filter="signature-cocktail"/);
+  assert.doesNotMatch(app, /class="nav-item" data-view="imports"/);
+});
+
 test('Inventory filters use the approved primary and contextual category model', () => {
   for (const label of [
     'Spirits', 'Wine', 'Beer', 'Mixers', 'Syrups', 'Bitters', 'Fresh Fruit',
