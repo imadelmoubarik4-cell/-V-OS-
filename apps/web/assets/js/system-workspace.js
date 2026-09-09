@@ -675,10 +675,14 @@
   }
 
   function hideOtherViews() {
+    if (window.AtlasShell?.hideWorkspaceRoots) {
+      window.AtlasShell.hideWorkspaceRoots('system');
+    }
     document.querySelectorAll([
       '#inventory-view', '#dashboard-view', '#recipes-view', '#suppliers-view', '#imports-view',
       '#team-view', '#shifts-view', '#knowledge-view', '#reports-view', '#settings-view',
-      '#operations-center', '#brain-shell', '#marketing-view', '#profiles-view', '#team-profiles-view'
+      '#operations-view', '#brain-view', '#business-view', '#marketing-view', '#profiles-view',
+      '#team-profiles-view', '#sprint3-review-view'
     ].join(',')).forEach((view) => { if (view !== host()) view.style.display = 'none'; });
     ['home-intro', 'home-focus', 'home-metrics'].forEach((id) => {
       const element = document.getElementById(id);
@@ -689,6 +693,7 @@
   function activateSystem() {
     ensureStructure();
     state.activating = true;
+    document.body.dataset.atlasView = 'system';
     hideOtherViews();
     const element = host();
     if (element) element.style.display = 'block';
@@ -698,6 +703,7 @@
     document.getElementById('atlas-sidebar')?.classList.remove('open');
     document.getElementById('sidebar-backdrop')?.classList.remove('open');
     state.activating = false;
+    window.AtlasShell?.resetScroll?.();
     render();
     if (!state.workspace && !state.loading) loadSnapshot({ force: true });
   }

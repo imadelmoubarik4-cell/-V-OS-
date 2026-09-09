@@ -6,7 +6,7 @@ const shell = readFileSync('apps/web/index.html', 'utf8');
 
 test('Global Search identifies itself as a navigation command field', () => {
   assert.match(shell, /id="global-search"/);
-  assert.match(shell, /placeholder="Jump to pages or commands…  \/"/);
+  assert.match(shell, /placeholder="Search or ask Atlas…"/);
   assert.match(shell, /aria-label="Jump to a page or command"/);
   assert.match(shell, /Pages and commands only — operational records are not indexed\./);
   assert.match(shell, /data-search-scope="navigation"/);

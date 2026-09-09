@@ -12,6 +12,7 @@ const stockCount = readFileSync('apps/web/assets/js/stock-count-workspace.js', '
 const itemMaster = readFileSync('apps/web/assets/js/item-master-workspace.js', 'utf8');
 const reportsCss = readFileSync('apps/web/assets/css/reports-workspace.css', 'utf8');
 const settingsCss = readFileSync('apps/web/assets/css/settings-workspace.css', 'utf8');
+const finalPolishCss = readFileSync('apps/web/assets/css/polish-pass2.css', 'utf8');
 const iconSources = [
   app,
   readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8'),
@@ -45,6 +46,25 @@ test('navigation is organized into one-row workspace groups', () => {
   assert.match(app, /operations:'Operations Center'/);
   assert.match(app, /brain:'Atlas Brain',business:'Business Intelligence'/);
   assert.match(app, /new MutationObserver/);
+  assert.match(app, /button\.setAttribute\('aria-label',label\)/);
+  assert.match(app, /updateMenuButtonLabel\(collapsed\)/);
+});
+
+test('workspace switching owns visibility, inventory state and scroll reset centrally', () => {
+  assert.match(app, /function hideAtlasWorkspaceRoots\(keepView = ''\)/);
+  assert.match(app, /'sprint3-review': 'sprint3-review-view', system: 'system-view'/);
+  assert.match(app, /restoreAtlasWorkspaceInterior\(view\)/);
+  assert.match(app, /window\.scrollTo\(\{ top: 0, left: 0, behavior: 'auto' \}\)/);
+  assert.match(app, /document\.body\.dataset\.atlasView = view/);
+  assert.match(app, /window\.AtlasStockCounts\?\.close\?\.\(\)/);
+  assert.match(app, /window\.AtlasItemMaster\?\.close\?\.\(\)/);
+});
+
+test('shared polish removes duplicate Home metrics and normalizes workspace hierarchy', () => {
+  assert.match(finalPolishCss, /#dashboard-view > \.stat-grid/);
+  assert.match(finalPolishCss, /body\[data-atlas-view\]:not\(\[data-atlas-view="dashboard"\]\) \.checkpoint-a-home-prompt/);
+  assert.match(finalPolishCss, /\.recipe-hero h1,[\s\S]*\.settings-hero h1/);
+  assert.match(finalPolishCss, /\.team-profile-card-media[\s\S]*height: 176px !important/);
 });
 
 test('Home uses live values and supports expanded or compact navigation', () => {

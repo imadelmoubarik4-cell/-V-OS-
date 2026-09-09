@@ -10,6 +10,136 @@
  * doesn't exist it is simply inert.
  */
 
+/* ---------- PR29 acceptance follow-up: one shell rhythm everywhere ---------- */
+
+/* The scheduled task belongs on Home. Operations has the full task workspace;
+   repeating the compact prompt above every other page displaced every hero. */
+body[data-atlas-view]:not([data-atlas-view="dashboard"]) .checkpoint-a-home-prompt {
+  display: none !important;
+}
+
+/* Home already has the live KPI strip. Keep the useful legacy detail panels,
+   but remove their duplicate four-card summary. */
+#dashboard-view > .stat-grid {
+  display: none !important;
+}
+
+/* Normalize workspace hierarchy without flattening the more expressive Home
+   greeting. Dynamic module styles load later, so these rules are intentional
+   important overrides. */
+.recipe-hero h1,
+.operations-hero h1,
+.brain-hero h1,
+.business-hero h1,
+.marketing-hero h1,
+.team-messages-hero h1,
+.team-profiles-hero h1,
+.shifts-hero h1,
+.knowledge-hero h1,
+.reports-hero h1,
+.review-hero h1,
+.system-hero h1,
+.settings-hero h1,
+.item-master-hero h1,
+.import-hero h1 {
+  font-family: 'IBM Plex Sans', sans-serif !important;
+  font-size: clamp(32px, 3vw, 40px) !important;
+  font-weight: 650 !important;
+  line-height: 1.08 !important;
+  letter-spacing: -.035em !important;
+}
+
+/* Blue communicates selection consistently; neutral white remains the default
+   action treatment used by the approved Inventory and Recipe references. */
+.inventory-workspace-tab.active,
+.reports-navigation button.is-active,
+.settings-tabs button.is-active,
+.knowledge-tabs button.is-active,
+.knowledge-category-row button.is-active,
+.team-profiles-filters button.is-active,
+.business-period-control button.active {
+  border-color: var(--blue-500) !important;
+  background: var(--blue-100) !important;
+  color: var(--blue-700) !important;
+  box-shadow: none !important;
+}
+
+.reports-navigation button.is-active .report-status {
+  border-color: rgba(47, 128, 237, .2) !important;
+  background: rgba(255, 255, 255, .72) !important;
+  color: var(--blue-700) !important;
+}
+
+.recipe-primary-action,
+.marketing-hero .marketing-primary,
+.knowledge-hero-actions .is-primary,
+.settings-hero aside button,
+.system-hero aside button {
+  border: 1px solid var(--atlas-line) !important;
+  background: rgba(255, 255, 255, .82) !important;
+  color: var(--atlas-text) !important;
+  box-shadow: var(--glass-highlight) !important;
+}
+
+.recipe-primary-action:hover,
+.marketing-hero .marketing-primary:hover,
+.knowledge-hero-actions .is-primary:hover,
+.settings-hero aside button:hover,
+.system-hero aside button:hover {
+  border-color: var(--blue-400) !important;
+  background: var(--blue-50) !important;
+  color: var(--blue-700) !important;
+}
+
+/* Team cards are photo-forward and readable at normal desktop distance. */
+.team-profile-card-media {
+  height: 176px !important;
+  padding: 12px !important;
+}
+
+.team-profile-card-copy {
+  padding: 15px 16px 14px !important;
+}
+
+.team-profile-card-identity strong { font-size: 15px !important; }
+.team-profile-card-identity small { font-size: 11px !important; }
+.team-profile-card-email { font-size: 10px !important; }
+.team-profile-card-training > span:first-child { font-size: 10px !important; }
+.team-profile-card-training > span:first-child > strong { font-size: 11px !important; }
+.team-profile-card-foot { font-size: 9px !important; }
+
+/* Wide workspace content stays within the shared rail and advertises overflow
+   at the component boundary instead of widening the full application. */
+#inventory-view,
+#reports-view,
+#shifts-view,
+#knowledge-view,
+#settings-view,
+#system-view,
+#sprint3-review-view,
+.reports-shell,
+.shifts-shell,
+.knowledge-shell,
+.settings-shell,
+.system-shell,
+.review-shell {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.reports-table-scroll,
+.settings-hours-table,
+.shift-month-grid,
+#table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+@media (max-width: 760px) {
+  .team-profile-card-media { height: 168px !important; }
+}
+
 /* ---------- Primary buttons: one blue primary across the product ----------
    Marketing shipped a near-black primary (--atlas-text), Shifts a brown one
    (#a6814d), Operations a black compact button. (confirmed) */

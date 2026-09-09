@@ -801,7 +801,9 @@
   function activateMarketing() {
     ensureStructure();
     state.activating = true;
-    document.querySelectorAll('#inventory-view,#dashboard-view,#recipes-view,#suppliers-view,#imports-view,#team-view,#shifts-view,#knowledge-view,#reports-view,#settings-view,#operations-center,#brain-shell').forEach((view) => { view.style.display = 'none'; });
+    document.body.dataset.atlasView = 'marketing';
+    window.AtlasShell?.hideWorkspaceRoots?.('marketing');
+    document.querySelectorAll('#inventory-view,#dashboard-view,#recipes-view,#suppliers-view,#imports-view,#team-view,#shifts-view,#knowledge-view,#reports-view,#settings-view,#operations-view,#brain-view,#business-view,#team-profiles-view,#sprint3-review-view,#system-view').forEach((view) => { view.style.display = 'none'; });
     ['home-intro','home-focus','home-metrics'].forEach((id) => { const element = document.getElementById(id); if (element) element.style.display = 'none'; });
     const element = host();
     if (element) element.style.display = 'block';
@@ -811,6 +813,7 @@
     document.getElementById('atlas-sidebar')?.classList.remove('open');
     document.getElementById('sidebar-backdrop')?.classList.remove('open');
     state.activating = false;
+    window.AtlasShell?.resetScroll?.();
     if (!state.workspace && !state.loading) loadSnapshot();
     else render();
   }
