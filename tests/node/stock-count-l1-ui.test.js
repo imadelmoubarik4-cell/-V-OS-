@@ -70,3 +70,11 @@ test('mobile layouts and count evidence states have dedicated styles', () => {
   assert.match(styles, /l1-publication-banner/);
   assert.match(styles, /l1-conversion-preview/);
 });
+
+test('count controls and modal use the shared light-blue visual system', () => {
+  assert.match(styles, /\.stock-count-primary\{[^}]*var\(--atlas-home-accent/);
+  assert.match(styles, /\.stock-count-controls\{[^}]*minmax\(280px,1fr\)[^}]*minmax\(150px,190px\)/);
+  assert.match(styles, /\.stock-count-controls input\{[^}]*width:100%[^}]*min-width:0/);
+  assert.match(styles, /\.stock-count-form-grid input,\.stock-count-form-grid select,\.stock-count-form-grid textarea\{[^}]*background:#fff[^}]*color:var\(--atlas-text/);
+  assert.match(styles, /\.stock-count-modal h2,\.stock-count-scan-modal h2\{[^}]*color:var\(--atlas-text/);
+});

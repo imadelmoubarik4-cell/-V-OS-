@@ -1,27 +1,97 @@
 /* Atlas incremental visual polish — Purchasing only.
  *
- * `#suppliers-view` is the whole Purchasing workspace. Confirmed by reading
- * `apps/web/index.html`: the nav's `data-subview` handler (line ~1523) only
- * rewrites `#atlas-page-title` — it does **not** swap content — and the
- * renderer (line ~1854) always emits the same four columns:
- * `td.name` (supplier), item count, `td.mono` month spend ISK, `td.mono`
- * all-time spend ISK. So Suppliers / Orders / Deliveries all render this one
- * table today, and the column treatment below is safe for all three.
- *
- * Product finding, not fixed here: choosing Orders or Deliveries retitles the
- * page but still shows the supplier list. That needs renderers, which is a
- * capability change, not presentation. Recorded in REVIEW_RECIPES_GALLERY.md.
- *
- * Presentation only. The supplier renderer, search handler, `+ New supplier`
- * action, role gates (`[data-view="suppliers"]` is commercial-manager gated in
- * index.html) and all data access are untouched. Structure mirrors the approved
- * inventory-polish.css so the two workspaces read as one system.
+ * `#suppliers-view` is the current Purchasing workspace. Suppliers are live;
+ * purchase orders and confirmed deliveries are not connected, so their tabs
+ * stay visibly disabled instead of pretending that the supplier table is those
+ * workspaces. The evidence strip uses only the existing supplier, inventory and
+ * costed-restock arrays. Role gates and all write paths remain unchanged.
+ * Structure mirrors the approved Inventory workspace so both areas read as one
+ * system without inventing unavailable records.
  */
 
 #suppliers-view {
   display: grid;
   gap: 16px;
 }
+
+/* Workspace navigation and evidence */
+
+#suppliers-view > .purchasing-workspace-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.purchasing-workspace-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .82);
+}
+
+.purchasing-workspace-tabs button {
+  min-height: 36px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--atlas-muted);
+  font: 600 12px 'IBM Plex Sans', sans-serif;
+}
+
+.purchasing-workspace-tabs button.active {
+  background: #fff;
+  color: var(--atlas-text);
+  box-shadow: 0 1px 3px rgba(16, 60, 110, .08);
+}
+
+.purchasing-workspace-tabs button:disabled {
+  opacity: .58;
+  cursor: not-allowed;
+}
+
+#suppliers-view > .purchasing-workspace-head #add-supplier-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+#suppliers-view > .purchasing-workspace-head #add-supplier-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.purchasing-intelligence {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  min-height: 60px;
+  padding: 13px 16px;
+  border: 1px solid var(--atlas-home-accent-line, rgba(79, 125, 243, .24));
+  border-radius: 15px;
+  background: linear-gradient(105deg, rgba(255,255,255,.96), var(--atlas-home-accent-soft, rgba(79,125,243,.1)));
+  box-shadow: var(--atlas-home-shadow, 0 1px 2px rgba(35, 38, 35, .04));
+}
+
+.purchasing-intelligence-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--atlas-home-accent, #4f7df3);
+  color: #fff;
+}
+
+.purchasing-intelligence-icon svg { width: 16px; height: 16px; }
+.purchasing-intelligence p { min-width: 0; margin: 0; color: var(--atlas-muted); font-size: 12px; line-height: 1.45; }
+.purchasing-intelligence p strong { color: var(--atlas-text); font-weight: 650; }
+.purchasing-intelligence button { border: 0; background: transparent; color: var(--atlas-home-accent-strong, #3e68d7); font: 600 11px 'IBM Plex Sans', sans-serif; white-space: nowrap; cursor: pointer; }
 
 /* Toolbar */
 
@@ -30,7 +100,7 @@
   align-items: center;
   gap: 10px;
   margin: 0;
-  padding: 14px;
+  padding: 10px;
   border: 1px solid var(--atlas-line);
   border-radius: 16px;
   background: var(--atlas-surface);
@@ -42,12 +112,31 @@
   flex: 1 1 280px;
   min-height: 40px;
   margin: 0;
-  padding: 0 13px;
+  width: 100%;
+  padding: 0 13px 0 36px;
   border: 1px solid var(--atlas-line);
   border-radius: 11px;
   background: var(--atlas-bg);
   color: var(--atlas-text);
   font: 400 13px/1 'IBM Plex Sans', sans-serif;
+}
+
+#suppliers-view .purchasing-search {
+  position: relative;
+  display: block;
+  width: min(420px, 100%);
+}
+
+#suppliers-view .purchasing-search > svg {
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  color: var(--atlas-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 #suppliers-view #supplier-search:focus {
@@ -141,6 +230,32 @@
   letter-spacing: -.01em;
 }
 
+.purchasing-supplier {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.purchasing-supplier-avatar {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  background: var(--atlas-home-accent-soft, rgba(79,125,243,.1));
+  color: var(--atlas-home-accent-strong, #3e68d7);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.purchasing-supplier > span:last-child { min-width: 0; }
+.purchasing-supplier strong,
+.purchasing-supplier small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.purchasing-supplier strong { color: var(--atlas-text); font-size: 12.5px; }
+.purchasing-supplier small { margin-top: 2px; color: var(--atlas-muted); font-size: 9.5px; font-weight: 400; }
+
 /* Empty state */
 
 #suppliers-view #suppliers-empty {
@@ -169,6 +284,13 @@
 @media (max-width: 760px) {
   #suppliers-view { gap: 13px; }
 
+  #suppliers-view > .purchasing-workspace-head { align-items: stretch; flex-direction: column; }
+  .purchasing-workspace-tabs { display: grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .purchasing-workspace-tabs button { padding: 0 8px; }
+  #suppliers-view > .purchasing-workspace-head #add-supplier-btn { justify-content: center; }
+  .purchasing-intelligence { grid-template-columns: auto minmax(0,1fr); }
+  .purchasing-intelligence button { grid-column: 2; justify-self: start; padding: 0; }
+
   #suppliers-view > .toolbar {
     flex-wrap: wrap;
     padding: 11px;
@@ -176,7 +298,6 @@
   }
 
   #suppliers-view #supplier-search { flex: 1 1 100%; }
-  #suppliers-view #add-supplier-btn { flex: 1 1 100%; }
 
   #suppliers-view > table {
     min-width: 0;

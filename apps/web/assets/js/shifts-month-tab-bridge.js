@@ -363,7 +363,7 @@
     event.stopPropagation();
     window.requestAnimationFrame(() => {
       const host = shiftsHost();
-      if (!host || host.classList.contains('shifts-month-active')) return;
+      if (!host || (host.classList.contains('shifts-month-active') && monthPanel())) return;
       window.AtlasShiftsMonth?.open?.();
     });
   }

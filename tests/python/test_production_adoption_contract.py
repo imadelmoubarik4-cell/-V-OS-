@@ -16,6 +16,14 @@ WORKFLOW = (ROOT / ".github" / "workflows" / "production-adoption-dry-run.yml").
 class ProductionAdoptionContractTests(unittest.TestCase):
     def test_package_is_not_an_executable_supabase_migration(self):
         self.assertFalse((ROOT / "supabase" / "migrations" / "20260909_production_adoption.sql").exists())
+        self.assertEqual(
+            MANIFEST["refreshed_against_base_commit"],
+            "8411b54b8a71bb94149517d22261632fe4aee020",
+        )
+        self.assertEqual(MANIFEST["refreshed_after_pull_request"], 29)
+        self.assertFalse(MANIFEST["candidate_sql_changed_by_refresh"])
+        self.assertFalse(MANIFEST["hosted_staging_branch_created"])
+        self.assertFalse(MANIFEST["hosted_database_modified"])
         self.assertFalse(MANIFEST["production_apply_authorized"])
         self.assertFalse(MANIFEST["edge_function_deploy_authorized"])
         self.assertFalse(MANIFEST["frontend_endpoint_switch_authorized"])
@@ -71,6 +79,7 @@ class ProductionAdoptionContractTests(unittest.TestCase):
         lower_workflow = WORKFLOW.lower()
         self.assertIn("postgres:17", lower_workflow)
         self.assertIn("verify_production_adoption_dry_run.sh", lower_workflow)
+        self.assertIn("docs/production_adoption_pr28.md", lower_workflow)
         self.assertNotIn("supabase_access_token", lower_workflow)
         self.assertNotIn("database_url", lower_workflow)
         self.assertNotIn("dnefgcmjcgxlynycxkts", lower_workflow)

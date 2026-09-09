@@ -4,6 +4,14 @@ This directory is a review and disposable-staging package. It is intentionally
 outside `supabase/migrations`, so merging the pull request cannot make Supabase
 apply it through the normal migration workflow.
 
+## Current refresh
+
+This package was refreshed against merged base commit
+`8411b54b8a71bb94149517d22261632fe4aee020` after PR29. The PR29 merge contains
+frontend and UI-test changes only, so the candidate SQL allowlist below was not
+expanded or flattened. No hosted staging branch was created and no hosted
+database was contacted during this refresh.
+
 ## Scope
 
 The package covers only the first production-adoption slice:

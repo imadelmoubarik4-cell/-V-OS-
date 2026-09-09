@@ -65,8 +65,8 @@
 .team-manager-only svg{width:13px;height:13px}
 
 .team-message-list{flex:1;min-height:360px;max-height:640px;overflow:auto;padding:20px 22px;scrollbar-width:thin;overscroll-behavior:contain;background:linear-gradient(180deg,#fff 0,#fbfaf7 100%)}
-.team-message{display:grid;grid-template-columns:36px minmax(0,1fr);gap:11px;max-width:780px;margin:0 0 17px}
-.team-message.is-own{margin-left:auto;grid-template-columns:minmax(0,1fr) 36px}
+.team-message{display:grid;grid-template-columns:36px minmax(260px,1fr);gap:11px;width:fit-content;max-width:min(680px,82%);margin:0 0 14px}
+.team-message.is-own{margin-left:auto;grid-template-columns:minmax(260px,1fr) 36px}
 .team-message.is-own .team-message-avatar{grid-column:2;grid-row:1}
 .team-message.is-own .team-message-content{grid-column:1;grid-row:1;background:#f3eee5;border-color:#e5dbca}
 .team-message-avatar{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:#e9e5dc;color:#6f6657;font-size:10px;font-weight:700}
@@ -183,7 +183,7 @@
   .team-message-list{min-height:360px;max-height:54vh;padding:15px}
   .team-conversation-head{padding:14px}
   .team-conversation-head p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px}
-  .team-message{max-width:92%}
+  .team-message{max-width:88%}
   .team-message.is-system{max-width:100%}
   .team-composer-wrap{position:sticky;bottom:0;padding-bottom:calc(14px + env(safe-area-inset-bottom));z-index:2}
   .team-attachment-controls{grid-template-columns:1fr}
@@ -197,7 +197,7 @@
   .team-conversation-head{align-items:flex-start}
   .team-manager-only{max-width:98px;white-space:normal;text-align:center}
   .team-message-list{max-height:56vh;padding:12px}
-  .team-message{grid-template-columns:31px minmax(0,1fr);gap:8px;max-width:96%}
+  .team-message{grid-template-columns:31px minmax(0,1fr);gap:8px;width:auto;max-width:96%}
   .team-message.is-own{grid-template-columns:minmax(0,1fr) 31px}
   .team-message-avatar{width:31px;height:31px}
   .team-message-content{padding:10px 11px}

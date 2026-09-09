@@ -1,6 +1,11 @@
 {
   "package": "pr28-production-adoption-phase-1-dry-run",
   "mode": "review-and-disposable-staging-only",
+  "refreshed_against_base_commit": "8411b54b8a71bb94149517d22261632fe4aee020",
+  "refreshed_after_pull_request": 29,
+  "candidate_sql_changed_by_refresh": false,
+  "hosted_staging_branch_created": false,
+  "hosted_database_modified": false,
   "production_apply_authorized": false,
   "edge_function_deploy_authorized": false,
   "frontend_endpoint_switch_authorized": false,

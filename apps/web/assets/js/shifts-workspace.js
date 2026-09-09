@@ -317,7 +317,7 @@
     const tabs = [
       ['schedule', 'calendar-days', 'Schedule'],
       ['availability', 'calendar-clock', 'Availability'],
-      ['time-off', 'calendar-off-2', 'Time off'],
+      ['time-off', 'calendar-days', 'Time off'],
       ['confirmations', 'badge-check', 'Confirmations'],
       ['activity', 'history', 'Activity']
     ];

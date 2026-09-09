@@ -387,7 +387,7 @@
     return `<section class="reports-panel reports-sources-overview">
       <header><div><span class="reports-eyebrow">Data quality</span><h2>Source coverage</h2></div><button type="button" data-reports-section="exports">Export details</button></header>
       <div>${sources.map((source) => `<article>
-        <span class="reports-source-icon"><i data-lucide="${source.status === 'connected' ? 'database-zap' : source.status === 'partial' ? 'database-backup' : 'database-off'}"></i></span>
+        <span class="reports-source-icon"><i data-lucide="${source.status === 'connected' ? 'database-zap' : source.status === 'partial' ? 'database-backup' : 'database'}"></i></span>
         <div><strong>${escapeHtml(source.name)}</strong><small>${escapeHtml(source.note || '')}</small><em>Included ${formatNumber(source.records_included || 0)} · Excluded ${formatNumber(source.records_excluded || 0)} · Refreshed ${escapeHtml(formatDateTime(source.last_refreshed_at))}</em></div>
         ${statusPill(source.status, '')}
       </article>`).join('')}</div>
@@ -611,7 +611,7 @@
         { key: 'overdue_orders', label: 'Overdue orders', icon: 'clock-alert', unit: 'count', note: 'Source not connected' },
         { key: 'receiving_differences', label: 'Receiving differences', icon: 'package-search', unit: 'count', note: 'Source not connected' }
       ])}
-      <div class="reports-chart-grid">${barChartMarkup(priceChanges.slice(0, 10), { title: 'Largest recorded unit-cost changes', labelKey: 'item_name', valueKey: 'absolute_change', unit: 'ISK', empty: 'At least two compatible unit-cost records per item are required.' })}<section class="reports-panel reports-quality-card"><header><h2>Purchase-order status</h2></header><div class="reports-empty-inline"><i data-lucide="database-off"></i><span>Purchase orders, expected deliveries and receiving differences are not connected. Atlas does not derive them from restock movements.</span></div></section></div>
+      <div class="reports-chart-grid">${barChartMarkup(priceChanges.slice(0, 10), { title: 'Largest recorded unit-cost changes', labelKey: 'item_name', valueKey: 'absolute_change', unit: 'ISK', empty: 'At least two compatible unit-cost records per item are required.' })}<section class="reports-panel reports-quality-card"><header><h2>Purchase-order status</h2></header><div class="reports-empty-inline"><i data-lucide="database"></i><span>Purchase orders, expected deliveries and receiving differences are not connected. Atlas does not derive them from restock movements.</span></div></section></div>
       ${formulaMarkup('purchasing')}${reportTableMarkup('purchasing')}
     </div>`;
   }

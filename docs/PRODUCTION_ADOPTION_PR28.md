@@ -5,6 +5,12 @@
 PR28 prepares and tests the first production-adoption slice. It does not grant
 permission to apply SQL or deploy any runtime component.
 
+The staging package was refreshed on 9 September 2026 against the merged PR29
+base commit `8411b54b8a71bb94149517d22261632fe4aee020`. PR29 changed only the web
+application and UI tests, so the reviewed Phase 1 candidate allowlist remains
+unchanged. This refresh did not create a hosted staging branch or contact a
+hosted database.
+
 ## Included
 
 - A production-shape preflight locked to the current six hosted migration
@@ -15,6 +21,8 @@ permission to apply SQL or deploy any runtime component.
   production security files.
 - Protected-row, quantity, RLS, function-exposure and role-matrix assertions.
 - A GitHub Actions job backed only by disposable PostgreSQL 17.
+- Manifest evidence tying this review package to the post-PR29 base while
+  recording that its candidate SQL did not change.
 
 ## Explicitly excluded
 

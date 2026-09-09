@@ -263,7 +263,7 @@
         <header class="recipe-alpha03-head">
           <div>
             <span class="recipe-kicker">Atlas Alpha 0.3</span>
-            <h1>Recipe Intelligence</h1>
+            <h1>Recipe Library</h1>
             <p>Service specifications, live inventory availability and cost performance in one workspace.</p>
           </div>
           <button type="button" class="recipe-primary-action" id="add-recipe-btn"><i data-lucide="plus"></i><span>New recipe</span></button>
@@ -1043,11 +1043,23 @@
     return featured ? { text: `Featured recommendation: ${featured.recipe.name} is ready with a ${featured.financials.margin.toFixed(0)}% margin.` } : null;
   }
 
+  function getHomeMetrics() {
+    const margins = recipes
+      .filter((recipe) => recipe.active !== false)
+      .map((recipe) => recipeFinancials(recipe))
+      .filter((financials) => financials.incomplete === 0 && Number.isFinite(financials.margin));
+    return {
+      averageMargin: margins.length ? margins.reduce((sum, financials) => sum + financials.margin, 0) / margins.length : null,
+      marginRecipeCount: margins.length
+    };
+  }
+
   window.AtlasRecipes = {
     init,
     render,
     openEditor,
     getHomeAlert,
+    getHomeMetrics,
     recipeAvailability,
     openServiceLibrary,
     reloadCategories: () => loadCategories(true)
