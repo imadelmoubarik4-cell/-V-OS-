@@ -63,6 +63,10 @@ class ReportsContractTests(unittest.TestCase):
         self.assertIn("Array.isArray(value)", ENTRYPOINT)
         self.assertIn('typeof row === "object"', ENTRYPOINT)
         self.assertIn("!Array.isArray(row)", ENTRYPOINT)
+        self.assertIn("normalizeBranchRpcPayload", EDGE)
+        self.assertIn("normalizeReportRecordset", EDGE)
+        self.assertIn("const normalizedPayload", EDGE)
+        self.assertIn("JSON.stringify(normalizedPayload)", EDGE)
 
     def test_staff_commercial_fields_are_removed_before_branch_rpc(self):
         self.assertIn("async function reportSources", EDGE)

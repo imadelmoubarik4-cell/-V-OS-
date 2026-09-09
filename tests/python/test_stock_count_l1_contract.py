@@ -5,6 +5,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 UNITS_MIGRATION = ROOT / "supabase/migrations/20260805210000_atlas_stock_counts_l1_units_and_status.sql"
 PUBLICATION_MIGRATION = ROOT / "supabase/migrations/20260805211000_atlas_stock_counts_l1_manager_publication.sql"
+NAMED_ARGUMENTS_MIGRATION = ROOT / "supabase/migrations/20260908201500_atlas_stock_counts_named_arguments.sql"
 EDGE_FUNCTION = ROOT / "supabase/functions/atlas-stock-counts/entrypoint.ts"
 SUPABASE_CONFIG = ROOT / "supabase/config.toml"
 INVENTORY_BOOTSTRAP = ROOT / "apps/web/assets/js/inventory-scanner-bootstrap.js"
@@ -15,6 +16,7 @@ class CheckpointL1ContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.units_sql = UNITS_MIGRATION.read_text()
         cls.publication_sql = PUBLICATION_MIGRATION.read_text()
+        cls.named_arguments_sql = NAMED_ARGUMENTS_MIGRATION.read_text()
         cls.edge = EDGE_FUNCTION.read_text()
         cls.supabase_config = SUPABASE_CONFIG.read_text()
         cls.inventory_bootstrap = INVENTORY_BOOTSTRAP.read_text()
@@ -97,6 +99,30 @@ class CheckpointL1ContractTests(unittest.TestCase):
         self.assertIn("response.status === 400", self.edge)
         self.assertIn("fields = fields.filter", self.edge)
         self.assertIn('readCompatibleRelation("inventory_items", safeFields)', self.edge)
+
+    def test_postgrest_wrappers_expose_the_edge_payload_argument_names(self):
+        for function_name in (
+            "atlas_stock_count_snapshot",
+            "atlas_stock_count_detail",
+            "atlas_stock_count_start",
+            "atlas_stock_count_save_line_v2",
+            "atlas_stock_count_submit",
+            "atlas_stock_count_verify",
+            "atlas_stock_count_prepare_publication",
+            "atlas_stock_count_publish",
+            "atlas_stock_count_reject",
+            "atlas_stock_count_cancel",
+        ):
+            self.assertIn(f"function public.{function_name}", self.named_arguments_sql)
+        for argument_name in (
+            "p_inventory",
+            "p_session_id",
+            "p_actor_id",
+            "p_actor_label",
+            "p_actor_role",
+        ):
+            self.assertIn(argument_name, self.named_arguments_sql)
+        self.assertIn("notify pgrst, 'reload schema'", self.named_arguments_sql.lower())
 
 
 if __name__ == "__main__":
