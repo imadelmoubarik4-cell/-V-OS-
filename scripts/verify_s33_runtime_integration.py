@@ -7,8 +7,10 @@ from pathlib import Path
 import re
 import subprocess
 if __package__:
+    from .verify_s33_runtime_delta import verify as verify_delta
     from .s33_import_pipeline_checks import verify as verify_import_pipeline
 else:
+    from verify_s33_runtime_delta import verify as verify_delta
     from s33_import_pipeline_checks import verify as verify_import_pipeline
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,6 +66,7 @@ def main():
     if not 170000 <= int(sql('show server_version_num', env)) < 180000:
         raise RuntimeError('PostgreSQL 17 required')
     plan = source_plan()
+    verify_delta()
     evidence = Path(env['RUNNER_TEMP']) / 'atlas-s33-evidence'
     evidence.mkdir(exist_ok=False)
     report = {'status': 'running', 'scope': 'synthetic PostgreSQL only',

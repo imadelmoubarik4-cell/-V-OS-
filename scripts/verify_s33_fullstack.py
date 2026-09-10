@@ -6,6 +6,7 @@ import base64, hashlib, html, json, os, re, secrets, subprocess, sys, time, urll
 from pathlib import Path
 from prepare_s33_fullstack import prepare
 from s33_fullstack_fixtures import exercise
+from verify_s33_runtime_delta import verify as verify_delta
 ROOT=Path(__file__).resolve().parents[1]
 API='http://127.0.0.1:54321'
 MAIL='http://127.0.0.1:54324'
@@ -83,7 +84,7 @@ def baseline(name):
     db(name,"notify pgrst, 'reload schema';")
 
 def fingerprint(name):
-    tables=json.loads(db(name,"select coalesce(json_agg(quote_ident(n.nspname)||'.'||quote_ident(c.relname) order by n.nspname,c.relname),'[]') from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r' and n.nspname in ('public','private','atlas_private','supabase_migrations')"))
+    tables=json.loads(db(name,"select coalesce(json_agg(quote_ident(n.nspname)||'.'||quote_ident(c.relname) order by n.nspname,c.relname),'[]') from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r' and n.nspname in ('public','private','public_menu_private','atlas_private','supabase_migrations')"))
     return {t:hashlib.sha256(db(name,'select coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text),\'[]\') from '+t+' t').encode()).hexdigest() for t in tables}
 
 def gateways(users,key,phase,report):
@@ -157,9 +158,11 @@ def main():
     evidence=temp/'atlas-s33-fullstack-evidence'; evidence.mkdir(exist_ok=False)
     private=temp/'atlas-s33-private-recovery'; private.mkdir(mode=0o700)
     report={'status':'running','scope':'Disposable local Supabase, synthetic identities and files only','cli_version':cmd(['supabase','--version']).decode().strip(),'hosted_changes':False,'operator_browser_acceptance':False}
+    report['runtime_delta']=verify_delta()
     started=time.monotonic()
     try:
         source=prepare(temp/NAMES[0],NAMES[0]); key,service,process=start(source,NAMES[0]); baseline(NAMES[0])
+        report['reference_row_counts']={t:int(db(NAMES[0],'select count(*) from '+t)) for t in fingerprint(NAMES[0])}
         users=[]
         for role in ('admin','manager','bartender','viewer','inactive','unlisted'):
             user={'role':role,'email':'s33-ci-'+role+'@example.invalid','password':secrets.token_urlsafe(24)+'aA1!'}
@@ -171,7 +174,7 @@ def main():
         manager_session=login(manager,key); token=manager_session['access_token']
         # Real private Storage API upload/download and role denial.
         data=b'name,unit,quantity,cost_price\nS33 recovery item,bottle,2,100\n'
-        object_path='s33-recovery/source.csv'
+        object_path=manager['id']+'/s33-recovery/source.csv'
         okay(request('/storage/v1/object/atlas-imports/'+object_path,'POST',token=token,key=key,raw=data,ctype='text/csv'),'Storage upload')
         downloaded=okay(request('/storage/v1/object/atlas-imports/'+object_path,token=token,key=key),'Storage download')
         assert downloaded==data
@@ -185,11 +188,12 @@ def main():
         # Native recoverable set: Auth identities/password hashes, app schema/data,
         # custom Auth trigger, Storage policies/buckets and separately captured bytes.
         before=fingerprint(NAMES[0]); report['source_table_hashes']=before
+        report['snapshot_row_counts']={t:int(db(NAMES[0],'select count(*) from '+t)) for t in before}
         assert db(NAMES[0], 'select count(*) from storage.objects')=='1'
-        metadata_query="select json_build_object('bucket_id',bucket_id,'name',name,'owner_id',owner_id,'size',metadata->>'size','mimetype',metadata->>'mimetype') from storage.objects where bucket_id='atlas-imports' and name='s33-recovery/source.csv'"
+        metadata_query="select json_build_object('bucket_id',bucket_id,'name',name,'owner_id',owner_id,'size',metadata->>'size','mimetype',metadata->>'mimetype') from storage.objects where bucket_id='atlas-imports' and name="+lit(object_path)
         source_metadata=json.loads(db(NAMES[0],metadata_query))
         report['source_object_metadata']=source_metadata
-        app=cmd(['docker','exec','supabase_db_'+NAMES[0],'pg_dump','-U','postgres','-d','postgres','--schema=public','--schema=private','--schema=atlas_private','--schema=supabase_migrations','--no-owner'])
+        app=cmd(['docker','exec','supabase_db_'+NAMES[0],'pg_dump','-U','postgres','-d','postgres','--schema=public','--schema=private','--schema=public_menu_private','--schema=atlas_private','--schema=supabase_migrations','--no-owner'])
         auth=cmd(['docker','exec','supabase_db_'+NAMES[0],'pg_dump','-U','postgres','-d','postgres','--data-only','--column-inserts','--table=auth.users','--table=auth.identities'])
         trigger=db(NAMES[0],"select pg_get_triggerdef(oid)||';' from pg_trigger where tgrelid='auth.users'::regclass and tgname='on_auth_user_created'")
         policies=json.loads(db(NAMES[0],"select coalesce(json_agg(json_build_object('name',policyname,'permissive',permissive,'roles',roles,'cmd',cmd,'qual',qual,'check',with_check)),'[]') from pg_policies where schemaname='storage' and tablename='objects'"))
