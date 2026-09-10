@@ -51,8 +51,7 @@ psql -v ON_ERROR_STOP=1 -X -q \
 
 psql -v ON_ERROR_STOP=1 -X -qAt \
   -f "$ROOT/supabase/production-adoption/sql/000_preflight.sql" \
-  -f "$ROOT/supabase/production-adoption/sql/010_rls_auto_enable_hardening.sql" \
-  -f "$ROOT/supabase/production-adoption/sql/020_phase1_candidate.psql" \
+  -f "$ROOT/supabase/migrations/20260910094217_atlas_phase1_production_adoption.sql" \
   -f "$ROOT/supabase/production-adoption/sql/090_verify.sql" \
   | tee "$WORK_DIR/adoption.jsonl"
 

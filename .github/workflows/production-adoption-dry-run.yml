@@ -9,6 +9,7 @@ on:
       - 'scripts/verify_phase1_role_matrix_preview.sql'
       - 'scripts/verify_phase1_security_gate.sql'
       - 'docs/PRODUCTION_ADOPTION_PR28.md'
+      - 'docs/PRODUCTION_ADOPTION_PR30.md'
       - 'supabase/migrations/**'
       - 'supabase/production-adoption/**'
       - 'tests/python/test_production_adoption_contract.py'
