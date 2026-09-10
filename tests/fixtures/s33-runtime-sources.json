@@ -1,0 +1,360 @@
+{
+  "status": "CI-only integration experiment; not a hosted migration allowlist",
+  "source_revision": "6608eb791a8c06dd183f32b499c03dc5f3c07f87",
+  "sql_sources": [
+    {
+      "path": "supabase/migrations/20260802175714_sprint3_private_staging.sql",
+      "sha256": "d0b4d8be8733237f3646f22fd89acc69f467ff3548df3e7e14ef61800e6ac55c"
+    },
+    {
+      "path": "supabase/migrations/20260802180230_sprint3_review_workflow.sql",
+      "sha256": "979b52f189869658342d4512543b61c22fec7109d952c453cc33c6db5fd4d7b7"
+    },
+    {
+      "path": "supabase/migrations/20260802181109_sprint3_review_api.sql",
+      "sha256": "ddf70ce75e15e8669108f943270ee7f565dbe18fa8fcb8f77b65b4ce677b20d2"
+    },
+    {
+      "path": "supabase/migrations/20260802192300_sprint4_daily_briefing.sql",
+      "sha256": "92949549cb4939373e26bc1319ac9f70325764774c9b92e8636356125a12ca2e"
+    },
+    {
+      "path": "supabase/migrations/20260802202000_sprint4_briefing_priority_order.sql",
+      "sha256": "40e09aa10e028740caddc53f3f6715d812d4b721975f77c957cc305d29a36fd6"
+    },
+    {
+      "path": "supabase/migrations/20260802223000_atlas_brain_phase3_memory.sql",
+      "sha256": "5a03ca8e7b7d7184c16860e76d9fea1bf441bedb3ed122afa972d350f007eb71"
+    },
+    {
+      "path": "supabase/migrations/20260802224500_atlas_brain_phase3_memory_fix.sql",
+      "sha256": "c6fabce4b5e234ab55259dce356e4c88a00456526a01c9b7f1c30090b3d2bf1c"
+    },
+    {
+      "path": "supabase/migrations/20260802225000_atlas_brain_phase3_api.sql",
+      "sha256": "3d0537f7647647c29830f4cc3979864b5185e43948ff18a43bdb1053f95ff9a8"
+    },
+    {
+      "path": "supabase/migrations/20260802230000_atlas_brain_phase3_indexes.sql",
+      "sha256": "1fffae16d480008453a396c0da9c59dd267beafa628ff7b7874ac8ef543b2abe"
+    },
+    {
+      "path": "supabase/migrations/20260803012704_atlas_operations_checkpoint_a.sql",
+      "sha256": "90b751ba86ce476259a492b82fbba235b926b57537c0c0f82641715eb73f9cb5"
+    },
+    {
+      "path": "supabase/migrations/20260803014251_atlas_operations_checkpoint_a_settings.sql",
+      "sha256": "f40ac7b549d70175de047ada9023a3905c706a3ae3261215a08e9009b534efbd"
+    },
+    {
+      "path": "supabase/migrations/20260803021451_atlas_operations_routine_status_fix.sql",
+      "sha256": "413683d3aa9980028407b7d30ecce9270a88af128777abe55d48a50ab0007f72"
+    },
+    {
+      "path": "supabase/migrations/20260803100513_atlas_inventory_scanner_checkpoint_b.sql",
+      "sha256": "2ea091f7c5016a1ea1e5be50e2f36ffd7fcc11669250e9631b5fe06e111137a4"
+    },
+    {
+      "path": "supabase/migrations/20260803102130_atlas_inventory_scanner_indexes.sql",
+      "sha256": "aff8b1c865fb925adfdceb84af46ad29ba129baf309a06c1138c5470c9333c6c"
+    },
+    {
+      "path": "supabase/migrations/20260803102333_atlas_inventory_scanner_alias_index_fix.sql",
+      "sha256": "9b97b9d1ed3ca82d41132a9bc36c354be6751ab6c4290517a028b99b8525d21f"
+    },
+    {
+      "path": "supabase/migrations/20260803125226_atlas_team_messages_checkpoint_c.sql",
+      "sha256": "60f705626b3149819afed856d6740f0c01ebd12e520a0113e4c59a1955359ce0"
+    },
+    {
+      "path": "supabase/migrations/20260803125530_atlas_team_messages_hardening.sql",
+      "sha256": "3e7f4541051e862f33ba1c96ae42a1c7085237939a11af13e1a8bcd0335558e3"
+    },
+    {
+      "path": "supabase/migrations/20260803132222_atlas_team_messages_idempotency.sql",
+      "sha256": "18573c34de8ff04cb778fd69d9af420e9fa39ebc7f3819d7e6ad7bc5e6e678fe"
+    },
+    {
+      "path": "supabase/migrations/20260803142123_atlas_marketing_workspace_checkpoint_d.sql",
+      "sha256": "bfb8197ad12df977fb7e81a45d3253aa479913e1074ec29fe41eb8493983bd96"
+    },
+    {
+      "path": "supabase/migrations/20260803142450_atlas_marketing_recommendation_occurrences.sql",
+      "sha256": "1134c764c01ef10c3d6276f106fcbff63f8a0a02434f3ccf3c9ed288eb234023"
+    },
+    {
+      "path": "supabase/migrations/20260803145746_atlas_marketing_recommendation_occurrence_fix.sql",
+      "sha256": "ca0b5a1bcdfd296e0bb9c7a21c2d931822977a20bfe61eebc57c7bb575bd26f8"
+    },
+    {
+      "path": "supabase/migrations/20260803150024_atlas_marketing_recommendation_dismiss_occurrence_fix.sql",
+      "sha256": "4ae91be80d8af05d62ac3a51fe49015d15aae961e17fdbc25f064e3a3f9fbb21"
+    },
+    {
+      "path": "supabase/migrations/20260803150212_atlas_marketing_snapshot_variable_conflict_fix.sql",
+      "sha256": "38b783a0ed6a37d9b77d262de089e0dfa3d4913d326363351d8d42540198ec27"
+    },
+    {
+      "path": "supabase/migrations/20260803150824_atlas_marketing_foreign_key_indexes.sql",
+      "sha256": "5e9c3d39f8be9dfd6262c3ee965aabbc3ddeca0086f80e1d6b563c5ce7e85c13"
+    },
+    {
+      "path": "supabase/migrations/20260803155556_atlas_team_profiles_checkpoint_e.sql",
+      "sha256": "2169fe847718920643c827ac0eefcef865055cba9b73a5218cf8eb164ecbd018"
+    },
+    {
+      "path": "supabase/migrations/20260803173422_atlas_team_profile_photos_checkpoint_e1.sql",
+      "sha256": "3904a089e41feeb232a0f1a561adb2fe2a5b5c1e9b66f027c29b6ec05075f416"
+    },
+    {
+      "path": "supabase/migrations/20260803193953_atlas_shifts_checkpoint_f.sql",
+      "sha256": "5ccf26b8dbf7cbb7fd8f2fbf7931f786c1fead968b349b728e3008d5004bc171"
+    },
+    {
+      "path": "supabase/migrations/20260803194238_atlas_shifts_checkpoint_f_workflows.sql",
+      "sha256": "15c7d54974d50a5df396ad67fc4cd023588167e11b81c81303c61b4018b4f874"
+    },
+    {
+      "path": "supabase/migrations/20260803201746_atlas_shifts_checkpoint_f_hardening.sql",
+      "sha256": "2671e78b88ef31185f6e078929dbdfafe74ba86550a5529cf0fbb81904f7c696"
+    },
+    {
+      "path": "supabase/migrations/20260803202056_atlas_shifts_copy_week_interval_fix.sql",
+      "sha256": "645b2dd33eaf23357284c44c77b6e13fe01b9c90d2c79337b889a82df907002f"
+    },
+    {
+      "path": "supabase/migrations/20260803214138_atlas_shifts_monthly_planning_f2.sql",
+      "sha256": "7459335e9c1a5c2119315cbe24297fa97e8add955fb1680b7f26209b80fd866d"
+    },
+    {
+      "path": "supabase/migrations/20260803225245_atlas_shifts_month_publish_complete_weeks.sql",
+      "sha256": "25c5483bc6b368f199686b8c61dd957a34139e06d2cf9dd0b39ee981174ea3e3"
+    },
+    {
+      "path": "supabase/migrations/20260804004723_atlas_knowledge_checkpoint_g.sql",
+      "sha256": "f9f94bd4c859261e154a4f76d06dd0bafb9585ea48a469f90c631a17bef4a844"
+    },
+    {
+      "path": "supabase/migrations/20260804005004_atlas_knowledge_checkpoint_g_hardening.sql",
+      "sha256": "2ce2dac8a19479799a6575b7699a03ca5e502bceac1b4f5ca35826a1099477be"
+    },
+    {
+      "path": "supabase/migrations/20260804005558_atlas_knowledge_rpc_named_arguments.sql",
+      "sha256": "2b92d40ad904c78c807b1d58e90fe3103750ddf4e89fa75efc8689a32f21e06a"
+    },
+    {
+      "path": "supabase/migrations/20260804011727_atlas_knowledge_foreign_key_indexes.sql",
+      "sha256": "a6024586491a0de8896939dbe6f4a0eb29eb8c03896fc6f1fb73205686d86b7c"
+    },
+    {
+      "path": "supabase/migrations/20260804093723_atlas_reports_checkpoint_h_foundation.sql",
+      "sha256": "6925d9edd1836d9635a54d5625150d61bc4f192f04f5c7a2ba11cae057e2ce82"
+    },
+    {
+      "path": "supabase/migrations/20260804095329_atlas_reports_checkpoint_h_live_sources.sql",
+      "sha256": "38fc4f16aa5ee57a247f8f957ce6e3605b9d1afe0d036b5dc4176221dc0e4b38"
+    },
+    {
+      "path": "supabase/migrations/20260804095507_atlas_reports_checkpoint_h_variable_fix.sql",
+      "sha256": "ddea168e0aa9152faffe63c4b9e6f36b2f83fea68ee753eecfcb54b26947e4f2"
+    },
+    {
+      "path": "supabase/migrations/20260804095939_atlas_reports_snapshot_variable_fix.sql",
+      "sha256": "6d4ade039011fd6ae72a8c28f61f1892ef273a450bfc08c32a28cd6c1f7bb651"
+    },
+    {
+      "path": "supabase/migrations/20260804110405_atlas_reports_checkpoint_h.sql",
+      "sha256": "34608547db05e53710586fe6cc81798376f95efc212b24d673e898a222b76677"
+    },
+    {
+      "path": "supabase/migrations/20260804125547_atlas_reports_package_size_normalization.sql",
+      "sha256": "b0f2f0b7a80dddd0f2f3c32deb732e334e370cced345264c4537056ab76cda8d"
+    },
+    {
+      "path": "supabase/migrations/20260804134509_atlas_system_checkpoint_i.sql",
+      "sha256": "945f4adff8d5da52cf9bb53474ffb84bc64ff032688267515809305e08b6da08"
+    },
+    {
+      "path": "supabase/migrations/20260804134510_atlas_system_snapshot.sql",
+      "sha256": "92e96c3d9a64544af049db58fa246bbda474818d28b0828560547ead5301a020"
+    },
+    {
+      "path": "supabase/migrations/20260804143000_atlas_system_checkpoint_i.sql",
+      "sha256": "fc8077eb981a224e8f9aa4496d10158b85a0f3dca0f911e4e4d0546162c289c4"
+    },
+    {
+      "path": "supabase/migrations/20260804143100_atlas_system_checkpoint_i_snapshot.sql",
+      "sha256": "f82feb042ebaaab0428c794cf11eb8beed4bc6c6635ef0a9a4d4175d3f2c530f"
+    },
+    {
+      "path": "supabase/migrations/20260804143840_atlas_system_snapshot.sql",
+      "sha256": "6288912d79f8b2a21c007840ba341e9c4b1e809d6802142becb2975300f870e7"
+    },
+    {
+      "path": "supabase/migrations/20260804162529_atlas_settings_checkpoint_j_foundation.sql",
+      "sha256": "269b61da0fc11c4a74b75e3f2610b4757c4a9a1876d2264b94b54d5a4fc43d28"
+    },
+    {
+      "path": "supabase/migrations/20260804163127_atlas_settings_checkpoint_j_api.sql",
+      "sha256": "4eaf4b6b770906bd1bdbca72fa9021b443aba5207fd61dbd5c0a019d7162ff5c"
+    },
+    {
+      "path": "supabase/migrations/20260804170000_atlas_settings_checkpoint_j_canonical.sql",
+      "sha256": "df9b31498e0ed035064c4c6407b2a2c5b98305301e22183c484b8a7d894ec4f8"
+    },
+    {
+      "path": "supabase/migrations/20260805093732_atlas_brain_checkpoint_k_intelligence.sql",
+      "sha256": "7559223673b903da726f5d9f1d6abb253f5c6de95c45c8e800512542f47136c4"
+    },
+    {
+      "path": "supabase/migrations/20260805104423_atlas_intelligence_checkpoint_k.sql",
+      "sha256": "2fd5723095c0501f9ce7a48f7e08f52299435c16a0990e0ac12009b4db96ef00"
+    },
+    {
+      "path": "supabase/migrations/20260805122942_atlas_intelligence_checkpoint_k.sql",
+      "sha256": "e169f6b11c3f3003925610fac7e97ffb626c3b65d3289b1cdae5f7f8ad281aff"
+    },
+    {
+      "path": "supabase/migrations/20260805123000_atlas_stock_counts_checkpoint_l1.sql",
+      "sha256": "0d83a9e5fa791c5ab14fcef71b22f2e85dfdef63d1af6af79bd28772ea0fca6b"
+    },
+    {
+      "path": "supabase/migrations/20260805125412_atlas_intelligence_checkpoint_k_consolidation.sql",
+      "sha256": "f852e9402bc5fb2246c9993075e43a50308f6ae9e0a095064b4ec6d939735c6d"
+    },
+    {
+      "path": "supabase/migrations/20260805125959_atlas_stock_counts_checkpoint_l1.sql",
+      "sha256": "aae7d1abe4c201b99e25265261bf211d250daf981c39e0ddd661fb4888cc4c67"
+    },
+    {
+      "path": "supabase/migrations/20260805210000_atlas_stock_counts_l1_units_and_status.sql",
+      "sha256": "20e7368862166f59f640d26c39618397f2df8d79e7cb4734a32e0310a0140b6e"
+    },
+    {
+      "path": "supabase/migrations/20260805211000_atlas_stock_counts_l1_manager_publication.sql",
+      "sha256": "4ea4c4fae3e7c77c46f67b2b35fc3233ea1ab81139552b13d683d7881356f73a"
+    },
+    {
+      "path": "supabase/migrations/20260806090938_atlas_settings_checkpoint_j_named_arguments.sql",
+      "sha256": "62205772a27612e274cbe579427d2df4df9fcd53a93d4bca24d3d3c160f30fc1"
+    },
+    {
+      "path": "supabase/migrations/20260806165146_atlas_phase1_stock_count_views_branch_only.sql",
+      "sha256": "83b878c56c6728c9b4f911fc214a706caa7297b8de83688684ee0fa927e124c2"
+    },
+    {
+      "path": "supabase/migrations/20260908193653_atlas_team_profiles_named_arguments.sql",
+      "sha256": "f8b3eb2f67be1e30aa268cdce3b653ffa9d8a3a198d4791e8bdf7a3287d75e49"
+    },
+    {
+      "path": "supabase/migrations/20260909083100_atlas_stock_counts_named_arguments.sql",
+      "sha256": "f65cce0e02ed3de90fc16f54ce9fab9c9e2fe5a5defdf4022e8d7b018da2c29d"
+    },
+    {
+      "path": "supabase/migrations/20260909085342_atlas_reports_recordset_wrapper_hardening.sql",
+      "sha256": "199d986c715faf6e4534f9de058e2a5c2b965a2c96b02ece36017c07f29f9297"
+    },
+    {
+      "path": "supabase/migrations/20260909090422_atlas_reports_null_package_size_wrapper_fix.sql",
+      "sha256": "9635bb3679dd8357311a65bc4eadf0e96882514d0b795010f249c56ccd32b191"
+    }
+  ],
+  "rpc_names": [
+    "atlas_inventory_scanner_finalize_count",
+    "atlas_inventory_scanner_link_code",
+    "atlas_inventory_scanner_lookup",
+    "atlas_inventory_scanner_record_count",
+    "atlas_inventory_scanner_snapshot",
+    "atlas_knowledge_acknowledge",
+    "atlas_knowledge_article_detail",
+    "atlas_knowledge_mark_read",
+    "atlas_knowledge_publish",
+    "atlas_knowledge_remove_source",
+    "atlas_knowledge_retire",
+    "atlas_knowledge_save_draft",
+    "atlas_knowledge_save_source",
+    "atlas_knowledge_set_task_links",
+    "atlas_knowledge_snapshot",
+    "atlas_marketing_convert_recommendation_occurrence",
+    "atlas_marketing_create_campaign",
+    "atlas_marketing_create_content",
+    "atlas_marketing_decide_approval",
+    "atlas_marketing_dismiss_recommendation_occurrence",
+    "atlas_marketing_mark_completed",
+    "atlas_marketing_mark_published",
+    "atlas_marketing_recommendations",
+    "atlas_marketing_submit_approval",
+    "atlas_marketing_update_content",
+    "atlas_marketing_workspace_snapshot",
+    "atlas_operations_complete_routine",
+    "atlas_operations_log_temperature",
+    "atlas_operations_set_item",
+    "atlas_operations_settings",
+    "atlas_operations_skip_routine",
+    "atlas_operations_today",
+    "atlas_operations_update_temperature_point",
+    "atlas_operations_update_template",
+    "atlas_phase3_decide_recommendation",
+    "atlas_phase3_intelligence_settings",
+    "atlas_phase3_memory_search",
+    "atlas_phase3_recommendation_detail",
+    "atlas_phase3_record_outcome",
+    "atlas_phase3_refresh_shadow_recommendations",
+    "atlas_phase3_snapshot",
+    "atlas_phase3_sync_intelligence",
+    "atlas_reports_snapshot_v2",
+    "atlas_settings_save_hours",
+    "atlas_settings_save_notification_policy",
+    "atlas_settings_save_offer",
+    "atlas_settings_save_preferences",
+    "atlas_settings_save_role",
+    "atlas_settings_save_section",
+    "atlas_settings_snapshot",
+    "atlas_shifts_cancel_shift",
+    "atlas_shifts_copy_week",
+    "atlas_shifts_create_person",
+    "atlas_shifts_decide_response",
+    "atlas_shifts_decide_time_off",
+    "atlas_shifts_month_snapshot",
+    "atlas_shifts_publish_month",
+    "atlas_shifts_publish_week",
+    "atlas_shifts_request_time_off",
+    "atlas_shifts_respond",
+    "atlas_shifts_save_availability",
+    "atlas_shifts_save_shift",
+    "atlas_shifts_snapshot",
+    "atlas_shifts_sync_profiles",
+    "atlas_shifts_update_person",
+    "atlas_sprint3_review_decide_entity",
+    "atlas_sprint3_review_decide_inventory",
+    "atlas_sprint3_review_detail",
+    "atlas_sprint3_review_rows",
+    "atlas_sprint3_review_summary",
+    "atlas_sprint4_daily_briefing",
+    "atlas_stock_count_cancel",
+    "atlas_stock_count_detail",
+    "atlas_stock_count_prepare_publication",
+    "atlas_stock_count_publish",
+    "atlas_stock_count_reject",
+    "atlas_stock_count_save_line",
+    "atlas_stock_count_save_line_v2",
+    "atlas_stock_count_snapshot",
+    "atlas_stock_count_start",
+    "atlas_stock_count_submit",
+    "atlas_stock_count_verify",
+    "atlas_system_snapshot",
+    "atlas_team_messages_delete",
+    "atlas_team_messages_edit",
+    "atlas_team_messages_mark_read",
+    "atlas_team_messages_send",
+    "atlas_team_messages_snapshot",
+    "atlas_team_profile_log_external_event",
+    "atlas_team_profile_photo_remove",
+    "atlas_team_profile_photo_upsert",
+    "atlas_team_profile_photos_snapshot",
+    "atlas_team_profile_remove_emergency_contact",
+    "atlas_team_profile_save_emergency_contact",
+    "atlas_team_profile_upsert_details",
+    "atlas_team_profiles_snapshot"
+  ]
+}
