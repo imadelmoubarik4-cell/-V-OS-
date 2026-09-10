@@ -200,6 +200,8 @@ done
 
 psql -v ON_ERROR_STOP=1 -qAt -f "$ROOT/scripts/verify_phase1_role_matrix_preview.sql" \
   > "$WORK_DIR/role-matrix.jsonl"
+psql -v ON_ERROR_STOP=1 -X -qAt -f "$ROOT/scripts/verify_recipe_ingredient_access_preview.sql" \
+  > "$WORK_DIR/recipe-access.jsonl"
 psql -v ON_ERROR_STOP=1 -qAt -f "$ROOT/scripts/verify_phase1_security_gate.sql" \
   > "$WORK_DIR/security-gate.jsonl"
 
@@ -228,7 +230,12 @@ def last_json(path: pathlib.Path) -> dict:
 
 
 role = last_json(work / "role-matrix.jsonl")
+recipe_access = last_json(work / "recipe-access.jsonl")
 security = last_json(work / "security-gate.jsonl")
+
+assert recipe_access.get("passed") is True, recipe_access
+assert recipe_access.get("passed_count") == 14, recipe_access
+assert recipe_access.get("failed_count") == 0, recipe_access
 
 assert role.get("passed") is True, role
 assert role.get("failed_count") == 0, role
@@ -268,7 +275,7 @@ assert state["inventory_items"] == 0, state
 assert state["inventory_movements"] == 0, state
 
 (work / "acceptance.json").write_text(
-    json.dumps({"role_matrix": role, "security_gate": security, "state": state}, indent=2),
+    json.dumps({"role_matrix": role, "recipe_access": recipe_access, "security_gate": security, "state": state}, indent=2),
     encoding="utf-8",
 )
 print(json.dumps({"migration_replay": "passed", "migrations": expected_migration_count, **state}))

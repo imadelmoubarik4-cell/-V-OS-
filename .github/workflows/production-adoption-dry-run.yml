@@ -8,6 +8,7 @@ on:
       - 'scripts/verify_production_adoption_dry_run.sh'
       - 'scripts/verify_phase1_role_matrix_preview.sql'
       - 'scripts/verify_phase1_security_gate.sql'
+      - 'scripts/verify_recipe_ingredient_access_preview.sql'
       - 'docs/PRODUCTION_ADOPTION_PR28.md'
       - 'docs/PRODUCTION_ADOPTION_PR30.md'
       - 'supabase/migrations/**'
@@ -58,3 +59,8 @@ jobs:
 
       - name: Run production-shaped adoption in disposable PostgreSQL
         run: bash scripts/verify_production_adoption_dry_run.sh
+
+      - name: Validate recipe access follow-up after the exact PR30 candidate
+        run: |
+          psql -v ON_ERROR_STOP=1 -X -q -f supabase/migrations/20260910104621_atlas_phase1_recipe_access_and_index_cleanup.sql
+          psql -v ON_ERROR_STOP=1 -X -qAt -f scripts/verify_recipe_ingredient_access_preview.sql
