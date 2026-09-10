@@ -67,5 +67,7 @@ export function parseCSV(bytes) {
 export async function extractCSV(bytes) {
   const rows = parseCSV(bytes);
   for (const row of rows) row.source_hash = await sha256(new TextEncoder().encode(JSON.stringify(row.raw_data)));
-  return { source_hash: await sha256(bytes), extractor_version: 'atlas-csv-1', rows };
+  let binary='';
+  for(let i=0;i<bytes.length;i+=8192) binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
+  return { source_hash: await sha256(bytes), source_base64: btoa(binary), extractor_version: 'atlas-csv-1', rows };
 }

@@ -1,5 +1,6 @@
 """Synthetic import integration checks, invoked only by the guarded S33 CI runner."""
 from concurrent.futures import ThreadPoolExecutor
+import base64
 import json
 import subprocess
 import threading
@@ -7,6 +8,9 @@ import threading
 
 def verify(env, sql, root):
     checks = []
+    # The committed mock bootstrap omits provider-managed Storage grants.
+    # Model them only in disposable CI so these checks exercise RLS, not missing grants.
+    sql('grant select,insert,update,delete on storage.objects to authenticated',env)
     actor = '33000000-0000-4000-8000-000000000001'
     prefix = '33000000-0000-4000-8000-'
     quote = lambda v: "'" + str(v).replace("'", "''") + "'"
@@ -55,6 +59,13 @@ def verify(env, sql, root):
     csv = 'name,unit,quantity,cost_price,sku\nS33 CSV Alpha,pcs,2,100,S33-CSV-A\nS33 CSV Beta,pcs,3,,S33-CSV-B\n'
     first,path = batch(101,csv)
     doc=extraction(csv)
+    manager=f"set role authenticated; select set_config('request.jwt.claim.sub','{actor}',false); select set_config('request.jwt.claim.role','authenticated',false);"
+    sql(manager+f"""do $$ declare touched integer; begin
+      update storage.objects set name=name where bucket_id='atlas-imports' and name='{path}';
+      get diagnostics touched=row_count;
+      if touched<>1 then raise exception 'Positive control: manager cannot update an unclaimed source'; end if;
+    end $$""",env)
+    checks.append('unclaimed_source_positive_control')
     viewer=prefix+'000000000002'
     sql(f"insert into auth.users(id,email) values('{viewer}','s33-ci-inactive@example.invalid')",env)
     denied('set role authenticated; '+command('claim',first),'browser_rpc_denied')
@@ -63,7 +74,6 @@ def verify(env, sql, root):
     sql(f"update public.profiles set active=true where id='{viewer}'",env)
     denied('set role service_role; '+command('claim',first,who=viewer),'viewer_actor_denied')
     assert call('claim',first)['status']=='claimed'
-    manager=f"set role authenticated; select set_config('request.jwt.claim.sub','{actor}',false); select set_config('request.jwt.claim.role','authenticated',false);"
     denied(manager+f"update public.import_batches set file_name='changed.csv' where id='{first}'",'claimed_queue_immutable')
     sql(manager+f"""do $$ declare touched integer; begin
       delete from storage.objects where bucket_id='atlas-imports' and name='{path}';
@@ -74,7 +84,12 @@ def verify(env, sql, root):
       if touched<>0 then raise exception 'Claimed source file was mutable'; end if;
     end $$""",env)
     checks.append('claimed_storage_delete_update_denied')
+    denied('set role service_role; '+command('stage',first,dict(doc,source_base64=base64.b64encode(b'changed').decode())),
+           'source_hash_mismatch_denied')
     one=call('stage',first,doc); two=call('stage',first,doc)
+    captured=call('source',first)
+    assert base64.b64decode(captured['source_base64'])==csv.encode() and captured['source_hash']==doc['source_hash']
+    checks.append('captured_source_bytes_and_hash_match')
     assert one['review_batch_id']==two['review_batch_id'] and counts()==[0,0]
     assert sql(f"select count(*) from atlas_private.import_inventory_rows where batch_id='{one['review_batch_id']}'",env)=='2'
     checks.append('extraction_retry_deduplicates_and_does_not_promote')

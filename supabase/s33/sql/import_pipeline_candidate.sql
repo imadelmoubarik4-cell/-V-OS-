@@ -6,6 +6,7 @@ create table atlas_private.import_jobs (
   review_batch_id uuid unique references atlas_private.import_batches(id) on delete restrict,
   status text not null check(status in ('claimed','staged','promoted')),
   source_hash text unique check(source_hash ~ '^[0-9a-f]{64}$'),
+  source_bytes bytea check(octet_length(source_bytes) between 1 and 1048576),
   source_snapshot jsonb not null,
   claimed_by uuid not null references public.profiles(id) on delete restrict,
   promoted_by uuid references public.profiles(id) on delete restrict,
@@ -84,8 +85,9 @@ as $$ declare
   old_actor text;
   created_ids jsonb:='[]';
   row_count integer;
+  original_bytes bytea;
 begin
-  if p_action is null or p_action not in ('claim','stage','promote','discard') then
+  if p_action is null or p_action not in ('claim','stage','promote','discard','source') then
     raise exception 'Unknown import action';
   end if;
   perform 1 from public.profiles where id=p_actor and active and role::text in ('admin','manager') for share;
@@ -112,6 +114,11 @@ begin
       'storage_path',job.source_snapshot->>'storage_path','review_batch_id',job.review_batch_id);
   end if;
   if job.batch_id is null then raise exception 'Claim the source before processing'; end if;
+  if p_action='source' then
+    if job.source_bytes is null then raise exception 'Source has not been captured yet'; end if;
+    return jsonb_build_object('source_base64',encode(job.source_bytes,'base64'),'source_hash',job.source_hash,
+      'file_name',job.source_snapshot->>'file_name');
+  end if;
   if p_action='discard' then
     if job.status='promoted' then raise exception 'Published inventory and its source audit cannot be discarded'; end if;
     delete from atlas_private.import_jobs where batch_id=q.id;
@@ -133,6 +140,11 @@ begin
     end if;
     row_count:=jsonb_array_length(p_document->'rows');
     if row_count not between 1 and 1000 then raise exception 'CSV must contain 1 to 1000 rows'; end if;
+    original_bytes:=decode(p_document->>'source_base64','base64');
+    if original_bytes is null or octet_length(original_bytes) not between 1 and 1048576
+      or encode(extensions.digest(original_bytes,'sha256'),'hex') is distinct from p_document->>'source_hash' then
+      raise exception 'Captured source bytes do not match the source hash';
+    end if;
     insert into atlas_private.import_batches(batch_key,source_files,status,entity_scope,source_hash,
       extractor_version,file_name,storage_bucket,storage_path,record_counts)
     values('csv-'||q.id, q.source_files,'review','inventory',p_document->>'source_hash','atlas-csv-1',
@@ -159,7 +171,7 @@ begin
         group by lower(btrim(normalized_data->>'name')) having count(*)>1)
        or exists(select 1 from atlas_private.import_inventory_rows where batch_id=review_id and nullif(normalized_data->>'sku','') is not null
         group by lower(btrim(normalized_data->>'sku')) having count(*)>1) then raise exception 'Duplicate CSV name or SKU'; end if;
-    update atlas_private.import_jobs set status='staged',source_hash=p_document->>'source_hash',review_batch_id=review_id where batch_id=q.id;
+    update atlas_private.import_jobs set status='staged',source_hash=p_document->>'source_hash',source_bytes=original_bytes,review_batch_id=review_id where batch_id=q.id;
     update public.import_batches set status='ready',current_stage='ready',progress_percent=100,
       record_counts=jsonb_build_object('worker','atlas-csv-1','processing_status','staged','rows',row_count,'review_batch_id',review_id) where id=q.id;
     return jsonb_build_object('batch_id',q.id,'status','staged','review_batch_id',review_id,'rows',row_count);

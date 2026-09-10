@@ -51,6 +51,14 @@ role, password, setting or last-admin guard is changed by this context assignmen
 A failure on any row rolls back all item, movement, review and job changes.
 Completed retries return the original result. Published review rows are immutable.
 
+The private job also retains the exact captured CSV bytes. PostgreSQL independently
+verifies their SHA-256 before staging; the captured-source download verifies it
+again in the browser. This is the authoritative source for review and recovery.
+Storage policies block ordinary later mutations, but do not establish that an
+already-running upload cannot race with a cross-table policy snapshot. The captured
+bytes preserve the evidence even in that case; no claim of tested live upload-race
+prevention is made. No extra Storage object is created by this capture.
+
 ## Frontend and cleanup
 
 Import Center actions remain disabled unless `VABAR_CONFIG.IMPORT_WORKER_API` and
@@ -79,6 +87,10 @@ actor denials, source immutability, review requirements, source-hash deduplicati
 concurrent publication, stock/cost/actor totals, whole-transaction rollback,
 discard cleanup, and retry after native restore. Their result must be green on
 the reviewed PR revision before accepting this candidate.
+The CI bootstrap lacks provider-managed Storage table grants, so the import tests
+model authenticated Storage grants locally before testing both allowed unclaimed
+and denied claimed-object actions. These grants are not part of the hosted SQL
+candidate and do not prove the live Storage service contract.
 
 This does not establish live Storage-service policy behavior, managed session
 revocation, Deno deployment/type checking, operator UI acceptance or complete

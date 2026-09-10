@@ -58,7 +58,7 @@ export function createHandler(env, transport = fetch) {
       const input = JSON.parse(new TextDecoder().decode(await readBounded(req, 1024)));
       if (!input || typeof input !== 'object' || Array.isArray(input) ||
           Object.keys(input).some(k => !['action', 'batch_id'].includes(k)) ||
-          !['stage', 'promote', 'discard'].includes(input.action) || !UUID.test(input.batch_id || '')) {
+          !['stage', 'promote', 'discard', 'source'].includes(input.action) || !UUID.test(input.batch_id || '')) {
         throw new ImportError('Choose an import action and a valid batch.');
       }
       const rpc = async (action, document = null) => {

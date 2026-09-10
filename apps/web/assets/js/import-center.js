@@ -345,6 +345,20 @@
   }
 
   async function viewSource(batch){
+    if(['staged','promoted'].includes(workerStatus(batch))&&workerEndpoint()){
+      const {data,error}=await getClient().auth.getSession();
+      if(error||!data.session?.access_token)throw new Error('Sign in again to view the source.');
+      const response=await fetch(workerEndpoint(),{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+data.session.access_token},body:JSON.stringify({action:'source',batch_id:batch.id}),signal:AbortSignal.timeout(30000)});
+      const result=await response.json();
+      if(!response.ok)throw new Error(result.error||'The captured source could not be read.');
+      const bytes=Uint8Array.from(atob(result.source_base64),c=>c.charCodeAt(0));
+      const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
+      if(hash!==result.source_hash)throw new Error('The captured source failed its integrity check.');
+      const url=URL.createObjectURL(new Blob([bytes],{type:'text/csv'})),link=document.createElement('a');
+      link.href=url;link.download=safeFileName(result.file_name||'import-source.csv');link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+      return;
+    }
     if(!(batch.storage_bucket&&batch.storage_path))return;
     const {data,error}=await getClient().storage.from(batch.storage_bucket).createSignedUrl(batch.storage_path,120);
     if(error)throw error;

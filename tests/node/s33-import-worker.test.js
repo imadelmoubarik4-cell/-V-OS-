@@ -17,6 +17,7 @@ test('CSV preserves raw decimals and null costs, quoted commas, BOM and multilin
   assert.equal(result.rows[0].normalized_data.cost_price, null);
   assert.equal(result.rows[0].normalized_data.name, 'Glass, tall');
   assert.equal(result.source_hash.length, 64);
+  assert.deepEqual(Buffer.from(result.source_base64,'base64'),Buffer.from(bytes('\ufeff'+csv)));
   assert.equal(parseCSV(bytes('name,unit,quantity\n"A\nB",pcs,0'))[0].raw_data.name, 'A\nB');
 });
 test('CSV rejects malformed, ambiguous, oversized and non-finite inputs', () => {
