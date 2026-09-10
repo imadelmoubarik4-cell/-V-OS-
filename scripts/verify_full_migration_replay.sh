@@ -176,7 +176,12 @@ if [[ "${ATLAS_BOOTSTRAP_ONLY:-0}" == "1" ]]; then
   exit 0
 fi
 
-mapfile -t migrations < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' -print | LC_ALL=C sort)
+# PR30 is an alternative production-adoption path containing Phase 1 SQL that
+# this historical sequence already applies. Its exact file is tested separately
+# by verify_production_adoption_dry_run.sh against the production-shaped baseline.
+# Exclude only this filename; all other migrations must continue to replay.
+mapfile -t migrations < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' \
+  ! -name '20260910094217_atlas_phase1_production_adoption.sql' -print | LC_ALL=C sort)
 if [[ ${#migrations[@]} -eq 0 ]]; then
   echo "No migrations found" >&2
   exit 1
@@ -184,13 +189,6 @@ fi
 
 for migration in "${migrations[@]}"; do
   base="$(basename "$migration")"
-  if [[ "$base" == "20260910094217_atlas_phase1_production_adoption.sql" ]]; then
-    # Hosted production already has this event trigger. Plain PostgreSQL does
-    # not; reuse the adoption fixture immediately before its hardening runs.
-    # Keep it out of the migration ledger and leave earlier replay unchanged.
-    psql -v ON_ERROR_STOP=1 -X -q \
-      -f "$ROOT/supabase/production-adoption/sql/005_local_rls_trigger_fixture.sql"
-  fi
   echo "Applying $base"
   psql -v ON_ERROR_STOP=1 -q -f "$migration"
   version="${base%%_*}"
@@ -246,15 +244,6 @@ assert security.get("controlled_adjustment", {}).get("adjust_inventory_safe") is
 query = """
 select jsonb_build_object(
   'ledger_count',(select count(*) from supabase_migrations.schema_migrations),
-  'ensure_rls_enabled',exists (
-    select 1 from pg_event_trigger
-    where evtname = 'ensure_rls' and evtenabled in ('O', 'A')
-      and evtfoid = 'public.rls_auto_enable()'::regprocedure
-  ),
-  'rls_auto_enable_browser_execute',(
-    has_function_privilege('anon', 'public.rls_auto_enable()', 'execute')
-    or has_function_privilege('authenticated', 'public.rls_auto_enable()', 'execute')
-  ),
   'settings_sections',to_regclass('atlas_private.settings_sections') is not null,
   'brain_snapshots',to_regclass('atlas_private.brain_intelligence_snapshots') is not null,
   'experimental_runs',to_regclass('atlas_private.intelligence_runs') is not null,
@@ -268,8 +257,6 @@ select jsonb_build_object(
 """
 state = json.loads(subprocess.check_output(["psql", "-qAt", "-c", query], text=True).strip())
 assert state["ledger_count"] == expected_migration_count, state
-assert state["ensure_rls_enabled"] is True, state
-assert state["rls_auto_enable_browser_execute"] is False, state
 assert state["settings_sections"] is True, state
 assert state["brain_snapshots"] is True, state
 assert state["experimental_runs"] is False, state

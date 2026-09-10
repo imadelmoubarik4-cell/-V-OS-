@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import json
 import subprocess
 import tempfile
 import unittest
@@ -40,18 +41,46 @@ class MigrationReplayContractTests(unittest.TestCase):
             self.assertIn("Refusing migration replay", result.stderr)
             self.assertFalse(marker.exists())
 
-    def test_adoption_fixture_precedes_flattened_migration_only(self):
-        loop = REPLAY.split('for migration in "${migrations[@]}"; do', 1)[1]
-        fixture = "supabase/production-adoption/sql/005_local_rls_trigger_fixture.sql"
-        self.assertIn(
-            'if [[ "$base" == "20260910094217_atlas_phase1_production_adoption.sql" ]]; then',
-            loop,
-        )
-        self.assertLess(loop.index(fixture), loop.index('echo "Applying $base"'))
-        self.assertIn('psql -v ON_ERROR_STOP=1 -q -f "$migration"', loop)
-        self.assertIn('assert state["ledger_count"] == expected_migration_count', loop)
-        self.assertIn('assert state["ensure_rls_enabled"] is True', loop)
-        self.assertIn('assert state["rls_auto_enable_browser_execute"] is False', loop)
+    def test_only_flattened_alternative_is_excluded_and_tested_separately(self):
+        manifest = json.loads((ROOT / "supabase/production-adoption/manifest.json").read_text())
+        flattened = manifest["flattened_migration"]
+        self.assertIn(f"! -name '{Path(flattened).name}'", REPLAY)
+        self.assertEqual(REPLAY.count("! -name"), 1)
+        adoption = (ROOT / "scripts/verify_production_adoption_dry_run.sh").read_text()
+        workflow = (ROOT / ".github/workflows/production-adoption-dry-run.yml").read_text()
+        self.assertIn(f'-f "$ROOT/{flattened}"', adoption)
+        self.assertIn("005_local_rls_trigger_fixture.sql", adoption)
+        self.assertIn("'supabase/migrations/**'", workflow)
+        self.assertIn("bash scripts/verify_production_adoption_dry_run.sh", workflow)
+        self.assertIn('assert state["ledger_count"] == expected_migration_count', REPLAY)
+
+    def test_historical_replay_executes_every_other_migration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "calls.jsonl"
+            psql = Path(directory) / "psql"
+            psql.write_text(
+                "#!/usr/bin/env python3\nimport json, sys\n"
+                f"with open({str(log)!r}, 'a') as log: log.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                "if any('from pg_extension' in arg for arg in sys.argv): print('extensions')\n"
+            )
+            psql.chmod(0o755)
+            result = subprocess.run(
+                ["bash", str(ROOT / "scripts/verify_full_migration_replay.sh")],
+                env={**os.environ, "PGHOST": "127.0.0.1", "ATLAS_BOOTSTRAP_ONLY": "0",
+                     "RUNNER_TEMP": directory,
+                     "PATH": directory + os.pathsep + os.environ["PATH"]},
+                capture_output=True, text=True,
+            )
+            # The fake client runs no SQL, so final acceptance must fail closed.
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("No JSON result found", result.stderr)
+            calls = [json.loads(line) for line in log.read_text().splitlines()]
+            applied = [Path(args[args.index("-f") + 1]).name for args in calls
+                       if "-f" in args and "/supabase/migrations/" in args[args.index("-f") + 1]]
+            expected = sorted(path.name for path in (ROOT / "supabase/migrations").glob("*.sql")
+                              if path.name != "20260910094217_atlas_phase1_production_adoption.sql")
+            self.assertTrue(expected)
+            self.assertEqual(applied, expected)
 
 
 if __name__ == "__main__":

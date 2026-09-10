@@ -22,16 +22,23 @@ The generated migration contains no psql include or variable commands. The
 PR28 preflight and verification files remain assertions around the migration;
 they are not deployment statements and are not embedded in it.
 
-## Replay-test fixture correction
+## Replay-test correction
 
-The initial migration replay failed because plain PostgreSQL lacks the hosted
-`public.rls_auto_enable()` function. The replay runner now loads the existing
-`005_local_rls_trigger_fixture.sql` immediately before the flattened migration.
-The fixture is not a migration or ledger entry. Every migration still executes,
-including the exact unchanged flattened candidate, and the existing role and
-security acceptance gates remain required. Replay additionally checks that
-`ensure_rls` stays enabled and browser execution of its function is revoked.
-The runner rejects non-loopback hosts before running any SQL.
+The flattened candidate is an alternative adoption path, not an additional
+step after the full historical sequence. Replaying both first failed because
+plain PostgreSQL lacks the hosted `public.rls_auto_enable()` function; adding
+the existing local fixture then exposed duplicate storage policies from the
+original Phase 1 migrations.
+
+Historical replay now excludes only
+`20260910094217_atlas_phase1_production_adoption.sql`. Every other migration,
+the exact historical ledger count, and the role/security gates remain checked.
+The separate production-adoption dry-run workflow executes the unchanged
+flattened file against the six-version production-shaped baseline, including
+the hosted-trigger fixture, fingerprint preservation and role/security checks.
+Both CI workflows must pass. This does not make the flattened file safe to
+append to an already-migrated database or authorize hosted migration tooling.
+The replay runner rejects non-loopback hosts before running any SQL.
 
 ## Git-only boundary
 
