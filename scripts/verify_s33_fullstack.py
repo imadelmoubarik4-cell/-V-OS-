@@ -95,7 +95,8 @@ def gateways(users,key,phase,report):
         token=login(user,key)['access_token']
         statuses={}
         for name in names:
-            result=request('/functions/v1/'+name,token=token,key=key)
+            path='/functions/v1/'+name+('?week_start=2026-09-07' if name=='atlas-shifts' else '')
+            result=request(path,token=token,key=key)
             expected=403 if user['role'] in ('inactive','unlisted') or (user['role'] in ('viewer','bartender') and name in restricted) else 200
             if result[0]!=expected: okay(result,phase+' '+user['role']+' '+name) if expected==200 else (_ for _ in ()).throw(AssertionError(phase+' '+user['role']+' '+name+' expected denial, got '+str(result[0])))
             statuses[name]=result[0]
@@ -159,6 +160,7 @@ def main():
     private=temp/'atlas-s33-private-recovery'; private.mkdir(mode=0o700)
     report={'status':'running','scope':'Disposable local Supabase, synthetic identities and files only','cli_version':cmd(['supabase','--version']).decode().strip(),'hosted_changes':False,'operator_browser_acceptance':False}
     report['runtime_delta']=verify_delta()
+    report['commit_under_test']=os.environ.get('GITHUB_SHA')
     started=time.monotonic()
     try:
         source=prepare(temp/NAMES[0],NAMES[0]); key,service,process=start(source,NAMES[0]); baseline(NAMES[0])
@@ -256,5 +258,5 @@ def main():
     finally:
         report['elapsed_seconds']=round(time.monotonic()-started,2)
         (evidence/'acceptance.json').write_text(json.dumps(report,indent=2)+'\n')
-        print(json.dumps({'status':report['status'],'error':report.get('error'),'elapsed_seconds':report['elapsed_seconds']}),flush=True)
+        print('S33_REDACTED_ACCEPTANCE='+json.dumps(report,separators=(',',':')),flush=True)
 if __name__=='__main__': main()

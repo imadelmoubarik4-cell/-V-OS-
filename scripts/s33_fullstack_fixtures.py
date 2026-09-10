@@ -27,7 +27,11 @@ def exercise(request, okay, db, database, key, manager, token, object_path, csv,
     # Each creates synthetic in-app records only; no social publication or mail.
     message=post('atlas-team-messages','send',{'channel_key':'general','body':'S33 synthetic recovery message','link_type':'none','client_request_id':str(uuid.uuid4())})
     post('atlas-marketing-workspace','create-campaign',{'name':'S33 synthetic recovery campaign','campaign_type':'always_on','platforms':[]})
-    post('atlas-shifts','create-person',{'display_name':'S33 synthetic schedule person','default_role':'bartender'})
+    count=db(database,'select count(*) from atlas_private.shift_people')
+    bad=request('/functions/v1/atlas-shifts?action=create-person','POST',{'display_name':'S33 invalid calendar fixture'},token=token,key=key)
+    assert bad[0]==400 and db(database,'select count(*) from atlas_private.shift_people')==count,'Invalid calendar request committed a person'
+    post('atlas-shifts','create-person',{'display_name':'S33 synthetic schedule person','default_role':'bartender','current_week':'2026-09-07'})
+    report['shifts_invalid_context_has_no_write']=True
     category=db(database,'select id from atlas_private.knowledge_categories order by category_key limit 1')
     post('atlas-knowledge','save-draft',{'article_key':'s33-recovery-synthetic','category_id':category,'article_type':'reference','title':'S33 recovery reference','content':'Synthetic restoration evidence only.','target_roles':['all'],'task_ids':[]})
     report['runtime_write_fixtures']=['reviewed_csv_inventory_and_stock_movement','team_message','marketing_campaign','schedule_person','knowledge_draft']

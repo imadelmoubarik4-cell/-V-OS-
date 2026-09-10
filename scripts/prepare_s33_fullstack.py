@@ -2,7 +2,8 @@
 """Build only a named disposable CI stack; never repoint the staging artifact."""
 import json, os, shutil, sys, tempfile
 from pathlib import Path
-from build_isolated_runtime import build, EXCLUDED
+from build_isolated_runtime import EXCLUDED
+from build_s33_release_runtime import release
 ROOT = Path(__file__).resolve().parents[1]
 
 def prepare(destination, name):
@@ -14,10 +15,9 @@ def prepare(destination, name):
     dest.mkdir()
     with tempfile.TemporaryDirectory() as temporary:
         artifact = Path(temporary)/'artifact'
-        build(artifact)
+        release(artifact)
         shutil.copytree(artifact, dest/'supabase')
     supa=dest/'supabase'
-    shutil.copytree(ROOT/'supabase/s33/functions/atlas-import-worker',supa/'functions/atlas-import-worker')
     # Separate recovery build, fixed to the CLI's internal gateway. The reviewed
     # hosted artifact and its fail-closed target guard remain unchanged.
     for path in (supa/'functions').rglob('*'):
@@ -81,7 +81,6 @@ inspector_port = 8083
 enabled = false
 '''
     config+=(supa/'config.toml').read_text()
-    config+='\n[functions.atlas-import-worker]\nverify_jwt = false\n'
     (supa/'config.toml').write_text(config)
     return dest
 
