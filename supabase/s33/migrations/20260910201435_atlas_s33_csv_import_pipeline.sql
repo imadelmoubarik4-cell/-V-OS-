@@ -1,4 +1,4 @@
--- S33 integration candidate only. Not a registered or approved hosted migration.
+-- S33 review candidate with a Supabase CLI-generated filename. Not approved for hosted execution.
 -- Apply only after the private runtime schema in the disposable integration runner.
 begin;
 create table atlas_private.import_jobs (

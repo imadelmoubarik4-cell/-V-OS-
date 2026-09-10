@@ -94,7 +94,7 @@ def main():
             for entry in plan['sql_sources']:
                 print(target['PGDATABASE'] + ': ' + entry['path'], flush=True)
                 sql_file(ROOT / entry['path'], target)
-            sql_file(ROOT / 'supabase/s33/sql/import_pipeline_candidate.sql', target)
+            sql_file(ROOT / 'supabase/s33/migrations/20260910201435_atlas_s33_csv_import_pipeline.sql', target)
         after = fingerprint(custodian)
         assert all(after.get(k) == v for k, v in protected.items()), 'Protected baseline rows changed'
         assert guard == sql("select pg_get_functiondef('private.preserve_active_admin()'::regprocedure)", custodian)
@@ -137,7 +137,7 @@ def main():
         report['checks']['private_import_review'] = True
         report['checks']['csv_import_pipeline'] = verify_import_pipeline(custodian, sql, ROOT)
         report['import_candidate_sha256'] = hashlib.sha256(
-            (ROOT / 'supabase/s33/sql/import_pipeline_candidate.sql').read_bytes()).hexdigest()
+            (ROOT / 'supabase/s33/migrations/20260910201435_atlas_s33_csv_import_pipeline.sql').read_bytes()).hexdigest()
         # Native PostgreSQL restore, including synthetic private review rows and audit.
         # Does not claim managed Auth login, Storage bytes, or full Supabase restore.
         before_restore = fingerprint(custodian)

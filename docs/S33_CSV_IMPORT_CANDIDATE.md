@@ -3,7 +3,9 @@
 Review-only source in PR33. No hosted migration, function deployment or frontend
 endpoint enablement is included. The new worker is quarantined under
 `supabase/s33/functions/atlas-import-worker`; the SQL is an integration candidate
-under `supabase/s33/sql`, outside automatic migration replay.
+in `supabase/s33/migrations/20260910201435_atlas_s33_csv_import_pipeline.sql`,
+outside automatic migration replay. The filename was allocated by Supabase CLI
+2.117.0, then the candidate was moved out of the active migration directory.
 
 The candidate fills the new-inventory CSV path: uploaded private source -> claim
 and freeze -> bounded extraction -> private manager review -> atomic publication.
@@ -97,6 +99,8 @@ revocation, Deno deployment/type checking, operator UI acceptance or complete
 Auth/Storage-byte recovery. The existing sixteen-gateway ZIP remains unchanged;
 this worker would be an explicitly reviewed seventeenth function in a later
 combined package. The historical 64-source runtime experiment is still not the
-final hosted migration delta. Final migration generation via the Supabase CLI
-remains pending; the local CLI package install was interrupted by network approval,
-so no migration filename or execution authorization is invented here.
+final hosted migration delta. The import component now has a CLI-generated
+migration filename. The command created its empty file before a later network
+step was cancelled; only that local file was used, with the reviewed SQL added
+afterward. No hosted migration was registered or executed. Final integration/seed
+review for the complete runtime migration package remains pending.

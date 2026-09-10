@@ -31,11 +31,12 @@ and native dump/restore with all application row contents compared. RPC presence
 does not prove all signatures, PL/pgSQL branches or handler authorization work.
 No Deno handler, managed Auth login, email or Storage-byte restore is exercised.
 
-The import-review test intentionally demonstrates that review approval does not
-write canonical inventory. The browser upload queue and private review schema
-remain separate. A trusted upload/extraction mapping and atomic promotion worker
-are still missing; the existing local PDF extractor and private-export validator
-do not fill this gap. Do not describe this test as end-to-end CSV import.
+The initial import-review test demonstrates that review approval alone does not
+write canonical inventory. PR33 now also contains the bounded CSV candidate in
+`docs/S33_CSV_IMPORT_CANDIDATE.md`, with real parser output and disposable SQL
+publication/rollback tests. It supports approved new-item creation or skipping,
+with captured source bytes and native recovery. Existing-item merges, other file
+formats, hosted Storage/Auth and operator UI acceptance remain outside that proof.
 
 CI stores synthetic acceptance JSON and a native database dump for seven days.
 All databases disappear with the disposable service. Full-stack recovery and
@@ -63,6 +64,6 @@ ran PostgreSQL 17.11; the workflow now pins that observed image digest. The firs
 attempt had failed before SQL execution because the runner did not provide a
 `postgresql-client-17` package; native dump/restore now use the service's own tools.
 
-This is database integration evidence only. Full-stack recovery, trusted import
-processing, live handler authorization, a reviewed hosted SQL delta and runtime
+This is database integration evidence only. Full-stack recovery, live import
+acceptance, live handler authorization, a reviewed hosted SQL delta and runtime
 fixture caps still prevent combined staging execution approval.
