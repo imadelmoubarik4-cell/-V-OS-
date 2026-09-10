@@ -32,10 +32,10 @@ jobs:
       PGDATABASE: vaos_s33
     steps:
       - uses: actions/checkout@v4
-      - name: Install matching PostgreSQL client
+      - name: Install SQL client
         run: |
           sudo apt-get update
-          sudo apt-get install --yes postgresql-client-17
+          sudo apt-get install --yes postgresql-client
       - name: Validate isolated SQL integration and native restore
         env:
           POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}

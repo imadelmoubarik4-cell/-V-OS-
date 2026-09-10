@@ -134,10 +134,14 @@ def main():
         # Does not claim managed Auth login, Storage bytes, or full Supabase restore.
         before_restore = fingerprint(custodian)
         dump = evidence / 'synthetic-database.dump'
-        run(['pg_dump', '-Fc', '-f', str(dump)], custodian)
+        # Use the service image's own tools so dump/restore exactly match its major version.
+        container = env['POSTGRES_CONTAINER_ID']
+        dump.write_bytes(subprocess.check_output(['docker', 'exec', container,
+            'pg_dump', '-U', 'postgres', '-d', 'vaos_s33_custodian', '-Fc']))
         sql('create database vaos_s33_restore', env)
         restore = dict(env, PGDATABASE='vaos_s33_restore')
-        run(['pg_restore', '--exit-on-error', '-d', 'vaos_s33_restore', str(dump)], restore)
+        subprocess.run(['docker', 'exec', '-i', container, 'pg_restore', '--exit-on-error',
+            '-U', 'postgres', '-d', 'vaos_s33_restore'], input=dump.read_bytes(), check=True)
         assert fingerprint(restore) == before_restore, 'Native restore row comparison failed'
         assert guard == sql("select pg_get_functiondef('private.preserve_active_admin()'::regprocedure)", restore)
         report['checks']['native_postgres_restore'] = True
