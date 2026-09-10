@@ -5,6 +5,7 @@ No hosted credentials, endpoint inputs or external email provider are accepted.
 import base64, hashlib, html, json, os, re, secrets, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 from prepare_s33_fullstack import prepare
+from s33_fullstack_fixtures import exercise
 ROOT=Path(__file__).resolve().parents[1]
 API='http://127.0.0.1:54321'
 MAIL='http://127.0.0.1:54324'
@@ -177,12 +178,17 @@ def main():
         assert request('/storage/v1/object/atlas-imports/'+object_path,token=login(viewer,key)['access_token'],key=key)[0]>=400,'Viewer read private source'
         assert request('/storage/v1/object/atlas-imports/'+object_path,key=key)[0]>=400,'Anonymous read private source'
         report['storage_source_sha256']=hashlib.sha256(data).hexdigest()
+        exercise(request,okay,db,NAMES[0],key,manager,token,object_path,data,report)
         gateways(users,key,'source',report)
         reset(viewer,key); report['source_reset_and_reuse_denial']=True
         reset(viewer,key,expire=True); report['source_expired_reset_denial']=True
         # Native recoverable set: Auth identities/password hashes, app schema/data,
         # custom Auth trigger, Storage policies/buckets and separately captured bytes.
         before=fingerprint(NAMES[0]); report['source_table_hashes']=before
+        assert db(NAMES[0], 'select count(*) from storage.objects')=='1'
+        metadata_query="select json_build_object('bucket_id',bucket_id,'name',name,'owner_id',owner_id,'size',metadata->>'size','mimetype',metadata->>'mimetype') from storage.objects where bucket_id='atlas-imports' and name='s33-recovery/source.csv'"
+        source_metadata=json.loads(db(NAMES[0],metadata_query))
+        report['source_object_metadata']=source_metadata
         app=cmd(['docker','exec','supabase_db_'+NAMES[0],'pg_dump','-U','postgres','-d','postgres','--schema=public','--schema=private','--schema=atlas_private','--schema=supabase_migrations','--no-owner'])
         auth=cmd(['docker','exec','supabase_db_'+NAMES[0],'pg_dump','-U','postgres','-d','postgres','--data-only','--column-inserts','--table=auth.users','--table=auth.identities'])
         trigger=db(NAMES[0],"select pg_get_triggerdef(oid)||';' from pg_trigger where tgrelid='auth.users'::regclass and tgname='on_auth_user_created'")
@@ -200,7 +206,11 @@ def main():
         assert db(NAMES[1],'select count(*) from auth.users')=='0','Destination is not empty'
         # No trigger disabling: restore Auth before the app's profile trigger.
         db(NAMES[1],auth.decode())
-        db(NAMES[1],app.decode().replace('CREATE SCHEMA public;','-- public schema provided by local Supabase'))
+        # Supabase CLI may initialize an empty migration-history schema itself.
+        if db(NAMES[1],"select to_regclass('supabase_migrations.schema_migrations') is not null")=='t':
+            assert db(NAMES[1],'select count(*) from supabase_migrations.schema_migrations')=='0'
+            db(NAMES[1],'drop table supabase_migrations.schema_migrations')
+        db(NAMES[1],app.decode().replace('CREATE SCHEMA public;','-- public schema provided by local Supabase').replace('CREATE SCHEMA supabase_migrations;','CREATE SCHEMA IF NOT EXISTS supabase_migrations;'))
         db(NAMES[1],trigger)
         for p in policies:
             quoted='"'+p['name'].replace('"','""')+'"'
@@ -221,6 +231,12 @@ def main():
         assert okay(request('/storage/v1/object/atlas-imports/'+object_path,token=token,key=key),'restored download')==data
         assert request('/storage/v1/object/atlas-imports/'+object_path,token=login(viewer,key)['access_token'],key=key)[0]>=400,'Restored viewer read private source'
         assert request('/storage/v1/object/atlas-imports/'+object_path,key=key)[0]>=400,'Restored anonymous read private source'
+        assert json.loads(db(NAMES[1],metadata_query))==source_metadata,'Restored Storage metadata differs'
+        before_retry=fingerprint(NAMES[1])
+        batch=report['fullstack_csv_publication']['batch_id']
+        okay(request('/functions/v1/atlas-import-worker','POST',{'action':'promote','batch_id':batch},token=token,key=key),'restored CSV retry')
+        assert fingerprint(NAMES[1])==before_retry,'Restored CSV retry changed application rows'
+        report['restored_csv_retry_deduplicated']=True
         report['storage_bytes_and_private_access_restored']=True
         gateways(users,key,'recovery',report)
         reset(viewer,key); report['restored_password_recovery']=True

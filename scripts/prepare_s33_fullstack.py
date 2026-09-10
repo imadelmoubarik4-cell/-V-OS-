@@ -65,7 +65,7 @@ enable_signup = false
 enable_anonymous_sign_ins = false
 minimum_password_length = 12
 [auth.email]
-enable_signup = false
+enable_signup = true
 enable_confirmations = true
 secure_password_change = false
 max_frequency = "1s"
