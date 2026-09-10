@@ -8,6 +8,9 @@ on:
       - 'scripts/build_isolated_runtime.py'
       - 'tests/python/test_isolated_runtime.py'
       - 'tests/fixtures/s33-runtime-artifact.json'
+      - 'scripts/s33_import_pipeline_checks.py'
+      - 'supabase/s33/**'
+      - 'tests/node/s33-import-worker.test.js'
       - 'tests/fixtures/s33-runtime-sources.json'
       - 'tests/sql/s33_import_review.sql'
 permissions:
@@ -35,6 +38,11 @@ jobs:
       PGDATABASE: vaos_s33
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate CSV parser and worker boundary
+        run: node --test tests/node/s33-import-worker.test.js
       - name: Install SQL client
         run: |
           sudo apt-get update
