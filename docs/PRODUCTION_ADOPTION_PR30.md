@@ -22,6 +22,17 @@ The generated migration contains no psql include or variable commands. The
 PR28 preflight and verification files remain assertions around the migration;
 they are not deployment statements and are not embedded in it.
 
+## Replay-test fixture correction
+
+The initial migration replay failed because plain PostgreSQL lacks the hosted
+`public.rls_auto_enable()` function. The replay runner now loads the existing
+`005_local_rls_trigger_fixture.sql` immediately before the flattened migration.
+The fixture is not a migration or ledger entry. Every migration still executes,
+including the exact unchanged flattened candidate, and the existing role and
+security acceptance gates remain required. Replay additionally checks that
+`ensure_rls` stays enabled and browser execution of its function is revoked.
+The runner rejects non-loopback hosts before running any SQL.
+
 ## Git-only boundary
 
 This pull request does not:
