@@ -202,6 +202,8 @@ psql -v ON_ERROR_STOP=1 -qAt -f "$ROOT/scripts/verify_phase1_role_matrix_preview
   > "$WORK_DIR/role-matrix.jsonl"
 psql -v ON_ERROR_STOP=1 -X -qAt -f "$ROOT/scripts/verify_recipe_ingredient_access_preview.sql" \
   > "$WORK_DIR/recipe-access.jsonl"
+psql -v ON_ERROR_STOP=1 -X -qAt -f "$ROOT/scripts/verify_purchase_order_preview.sql" \
+  > "$WORK_DIR/purchase-orders.jsonl"
 psql -v ON_ERROR_STOP=1 -qAt -f "$ROOT/scripts/verify_phase1_security_gate.sql" \
   > "$WORK_DIR/security-gate.jsonl"
 
@@ -231,6 +233,8 @@ def last_json(path: pathlib.Path) -> dict:
 
 role = last_json(work / "role-matrix.jsonl")
 recipe_access = last_json(work / "recipe-access.jsonl")
+purchase_orders = last_json(work / "purchase-orders.jsonl")
+assert purchase_orders.get("passed") is True and purchase_orders.get("passed_count") == 16, purchase_orders
 security = last_json(work / "security-gate.jsonl")
 
 assert recipe_access.get("passed") is True, recipe_access
@@ -247,6 +251,7 @@ assert security.get("browser_function_exposure") == [], security
 assert security.get("security_lint_blockers") == [], security
 assert security.get("public_menu", {}).get("public_menu_safe") is True, security
 assert security.get("controlled_adjustment", {}).get("adjust_inventory_safe") is True, security
+assert security.get("controlled_purchase_order", {}).get("purchase_order_safe") is True, security
 
 query = """
 select jsonb_build_object(
@@ -275,7 +280,7 @@ assert state["inventory_items"] == 0, state
 assert state["inventory_movements"] == 0, state
 
 (work / "acceptance.json").write_text(
-    json.dumps({"role_matrix": role, "recipe_access": recipe_access, "security_gate": security, "state": state}, indent=2),
+    json.dumps({"role_matrix": role, "recipe_access": recipe_access, "purchase_orders": purchase_orders, "security_gate": security, "state": state}, indent=2),
     encoding="utf-8",
 )
 print(json.dumps({"migration_replay": "passed", "migrations": expected_migration_count, **state}))

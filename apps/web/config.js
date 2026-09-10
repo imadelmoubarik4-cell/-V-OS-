@@ -69,6 +69,7 @@ function loadAtlasAssetOnce({ stylesheetPath, scriptPath, globalName, dataAttrib
 }
 
 function loadAtlasAssetsAfterWindowLoad(loader) {
+  if (document.body?.dataset.atlasStandalone === 'true') return;
   if (document.readyState === 'complete') loader();
   else window.addEventListener('load', loader, { once: true });
 }
