@@ -91,9 +91,7 @@ def main():
         protected = fingerprint(custodian)
         guard = sql("select pg_get_functiondef('private.preserve_active_admin()'::regprocedure)", custodian)
         for target in (env, custodian):
-            for entry in plan['sql_sources']:
-                print(target['PGDATABASE'] + ': ' + entry['path'], flush=True)
-                sql_file(ROOT / entry['path'], target)
+            sql_file(ROOT / 'supabase/s33/migrations/20260910205055_atlas_s33_runtime_delta.sql', target)
             sql_file(ROOT / 'supabase/s33/migrations/20260910201435_atlas_s33_csv_import_pipeline.sql', target)
         after = fingerprint(custodian)
         assert all(after.get(k) == v for k, v in protected.items()), 'Protected baseline rows changed'
@@ -109,6 +107,9 @@ def main():
             end if;
         end $$""", custodian)
         report['checks']['protected_rows_and_admin_guard'] = True
+        report['runtime_delta_sha256'] = hashlib.sha256((ROOT / 'supabase/s33/migrations/20260910205055_atlas_s33_runtime_delta.sql').read_bytes()).hexdigest()
+        for table in ('system_services','system_data_sources','system_jobs','system_release_checkpoints','system_incidents','system_events'):
+            assert sql('select count(*) from atlas_private.' + table, custodian) == '0', table
         for name in ('role_matrix', 'recipe_ingredient_access', 'purchase_order'):
             filename = {'role_matrix': 'verify_phase1_role_matrix_preview.sql',
                         'recipe_ingredient_access': 'verify_recipe_ingredient_access_preview.sql',
