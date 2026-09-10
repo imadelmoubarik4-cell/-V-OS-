@@ -7,6 +7,14 @@ set -euo pipefail
 : "${PGDATABASE:=vaos_replay}"
 export PGHOST PGPORT PGUSER PGDATABASE
 
+case "$PGHOST" in
+  127.0.0.1|localhost|::1) ;;
+  *)
+    echo "Refusing migration replay against non-loopback PGHOST: $PGHOST" >&2
+    exit 1
+    ;;
+esac
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MIGRATIONS_DIR="$ROOT/supabase/migrations"
 WORK_DIR="${RUNNER_TEMP:-/tmp}/vaos-migration-replay"
@@ -168,7 +176,12 @@ if [[ "${ATLAS_BOOTSTRAP_ONLY:-0}" == "1" ]]; then
   exit 0
 fi
 
-mapfile -t migrations < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' -print | LC_ALL=C sort)
+# PR30 is an alternative production-adoption path containing Phase 1 SQL that
+# this historical sequence already applies. Its exact file is tested separately
+# by verify_production_adoption_dry_run.sh against the production-shaped baseline.
+# Exclude only this filename; all other migrations must continue to replay.
+mapfile -t migrations < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' \
+  ! -name '20260910094217_atlas_phase1_production_adoption.sql' -print | LC_ALL=C sort)
 if [[ ${#migrations[@]} -eq 0 ]]; then
   echo "No migrations found" >&2
   exit 1

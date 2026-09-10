@@ -12,6 +12,19 @@ frontend and UI-test changes only, so the candidate SQL allowlist below was not
 expanded or flattened. No hosted staging branch was created and no hosted
 database was contacted during this refresh.
 
+## PR30 flattened candidate
+
+PR30 adds
+`supabase/migrations/20260910094217_atlas_phase1_production_adoption.sql` as
+a Git-only artifact generated with `supabase migration new`. It is flattened
+against merged base commit `67ba67080f7f92bfe1e6324c3c971c490bfdc6cc` and
+contains, in order, the RLS event-trigger hardening plus the five SQL files in
+`020_phase1_candidate.psql`.
+
+The preflight and verification scripts remain test assertions and are not
+embedded in the migration. No hosted staging branch was created, no SQL was
+applied, and no function, endpoint or production configuration was changed.
+
 ## Scope
 
 The package covers only the first production-adoption slice:
@@ -50,7 +63,7 @@ This package is not production SQL approval. After the dry run and review pass,
 a later, separate approval must:
 
 - refresh the production fingerprint and backup evidence;
-- flatten the reviewed candidate into a newly generated migration file;
+- review the newly generated flattened migration against its exact sources;
 - test that exact migration on an authorized production-shaped staging target;
 - approve the database window independently from Edge Functions and frontend
   endpoint cutover.

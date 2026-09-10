@@ -9,6 +9,11 @@
   "production_apply_authorized": false,
   "edge_function_deploy_authorized": false,
   "frontend_endpoint_switch_authorized": false,
+  "flattened_candidate_prepared_in_pull_request": 30,
+  "flattened_against_base_commit": "67ba67080f7f92bfe1e6324c3c971c490bfdc6cc",
+  "flattened_migration": "supabase/migrations/20260910094217_atlas_phase1_production_adoption.sql",
+  "flattened_migration_created_in_git_only": true,
+  "flattened_sql_applied": false,
   "expected_production_migration_versions": [
     "20260801105516",
     "20260801125810",
@@ -40,6 +45,14 @@
     "supabase/migrations/20260806151244_atlas_phase1_recipe_catalog_runtime_fix.sql",
     "supabase/migrations/20260806171317_atlas_phase1_public_menu_and_adjustment_lint_fix.sql",
     "supabase/production-adoption/sql/090_verify.sql"
+  ],
+  "flattened_source_files": [
+    "supabase/production-adoption/sql/010_rls_auto_enable_hardening.sql",
+    "supabase/migrations/20260802090000_phase_a_02_inventory_staging.sql",
+    "supabase/migrations/20260806104705_atlas_phase1_profiles_security_gate.sql",
+    "supabase/migrations/20260806105543_atlas_phase1_recipe_catalog_gate.sql",
+    "supabase/migrations/20260806151244_atlas_phase1_recipe_catalog_runtime_fix.sql",
+    "supabase/migrations/20260806171317_atlas_phase1_public_menu_and_adjustment_lint_fix.sql"
   ],
   "excluded_patterns": [
     "legacy_schema_baseline",
