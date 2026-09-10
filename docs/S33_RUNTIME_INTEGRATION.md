@@ -44,6 +44,25 @@ hosted staging acceptance remain open after this check.
 The earlier S33 offline runtime ZIP remains separately reviewable at its saved
 SHA-256 `c7b907deb502e77d0383744e9b73fdc973cb5274990be2e1881b3e6b355c1112`.
 Its prior temporary preparation commit is unavailable in this restored checkout.
+The restored `scripts/build_isolated_runtime.py` checks every original and
+generated source against the saved archive manifest and reproduces its eighteen
+TypeScript files exactly. Its three tests cover reproduction/no-overwrite,
+missing/wrong-target configuration rejection and unexpected production references.
 This change starts from reviewed revision
-`6608eb791a8c06dd183f32b499c03dc5f3c07f87`; it does not claim to contain that missing
-commit or its builder tests.
+`6608eb791a8c06dd183f32b499c03dc5f3c07f87`; it does not claim to recreate the missing
+commit identity. The generated directory remains a review-only artifact.
+
+## Recorded integration evidence
+
+On 10 September 2026, [CI run 34520898617](https://github.com/imadelmoubarik4-cell/-V-OS-/actions/runs/34520898617)
+passed at source commit `2bc2ba7fddb7407167f9a6115ed8be85a88ed394`. All 64 experimental
+SQL sources replayed on both baseline variants. Protected rows, the last-admin
+guard, the core role/recipe/PO tests, security gate, 96 RPC names and privileges,
+private import review, and native row-by-row restore comparison passed. The service
+ran PostgreSQL 17.11; the workflow now pins that observed image digest. The first
+attempt had failed before SQL execution because the runner did not provide a
+`postgresql-client-17` package; native dump/restore now use the service's own tools.
+
+This is database integration evidence only. Full-stack recovery, trusted import
+processing, live handler authorization, a reviewed hosted SQL delta and runtime
+fixture caps still prevent combined staging execution approval.
