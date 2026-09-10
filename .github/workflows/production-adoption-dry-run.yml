@@ -71,7 +71,17 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -X -q -f supabase/migrations/20260910121248_atlas_purchase_order_lifecycle.sql
           psql -v ON_ERROR_STOP=1 -X -qAt -f scripts/verify_purchase_order_preview.sql
-          psql -v ON_ERROR_STOP=1 -X -qAt -f scripts/verify_phase1_security_gate.sql
+          psql -v ON_ERROR_STOP=1 -X -qAt -f scripts/verify_phase1_security_gate.sql > "$RUNNER_TEMP/purchase-order-security.json"
+          python - "$RUNNER_TEMP/purchase-order-security.json" <<'PY'
+          import json, sys
+          result = json.load(open(sys.argv[1]))
+          for key in ('tables_without_rls', 'unsafe_non_public_views', 'browser_function_exposure', 'security_lint_blockers'):
+              assert result.get(key) == [], result
+          assert result.get('controlled_purchase_order', {}).get('purchase_order_safe') is True, result
+          assert result.get('public_menu', {}).get('public_menu_safe') is True, result
+          assert result.get('controlled_adjustment', {}).get('adjust_inventory_safe') is True, result
+          print(json.dumps(result))
+          PY
 
       - name: Rehearse synthetic backup and restore in the disposable service
         env:

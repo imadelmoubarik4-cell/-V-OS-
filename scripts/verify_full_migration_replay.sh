@@ -251,6 +251,7 @@ assert security.get("browser_function_exposure") == [], security
 assert security.get("security_lint_blockers") == [], security
 assert security.get("public_menu", {}).get("public_menu_safe") is True, security
 assert security.get("controlled_adjustment", {}).get("adjust_inventory_safe") is True, security
+assert security.get("controlled_purchase_order", {}).get("purchase_order_safe") is True, security
 
 query = """
 select jsonb_build_object(
