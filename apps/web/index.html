@@ -511,6 +511,7 @@
         <input type="password" id="password" autocomplete="current-password" required />
         <button type="submit" class="btn full" id="login-btn">Sign in</button>
       </form>
+      <p><a href="recovery.html">Forgot your password?</a></p>
     </div>
   </div>
 
@@ -625,7 +626,7 @@
             <section class="purchasing-workspace-head">
               <nav class="purchasing-workspace-tabs" aria-label="Purchasing sections">
                 <button type="button" class="active" aria-current="page">Suppliers</button>
-                <button type="button" disabled title="Purchase orders are not connected yet">Orders</button>
+                <button type="button" id="purchase-orders-tab" disabled title="Orders are not enabled in this environment">Orders</button>
                 <button type="button" disabled title="Delivery records are not connected yet">Deliveries</button>
               </nav>
               <button class="btn" id="add-supplier-btn"><i data-lucide="plus"></i>New supplier</button>
@@ -638,6 +639,7 @@
             <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" placeholder="Search suppliers..."/></label></div>
             <table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table>
             <div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div>
+            <section id="purchase-order-panel" hidden style="padding:20px 0;max-width:900px"></section>
           </div>
           <div id="imports-view" style="display:none;">
             <section class="atlas-import-center import-queue-center">
@@ -946,6 +948,7 @@
         integrity="sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT"
         crossorigin="anonymous"></script>
 <script src="config.js"></script>
+<script src="assets/js/rehearsal-boundary.js"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -1155,7 +1158,7 @@
         loginError.style.display = 'block';
         return;
       }
-      onSignedIn(data.session);
+      await onSignedIn(data.session);
     } catch (e) {
       loginBtn.disabled = false;
       loginBtn.textContent = 'Sign in';
@@ -1321,11 +1324,18 @@
   }
 
   async function loadAll() {
+    // Keep the last loaded, role-filtered in-memory snapshot during an outage.
+    // No offline login, persistent commercial cache, or automatic write replay.
+    if (!navigator.onLine) return;
     await Promise.all([loadItems(), loadRestockLog(), loadRecipes(), loadSuppliersData()]);
     renderDashboard();
     renderRecipes();
     renderSuppliers();
   }
+  window.atlasPurchasingData = () => canManageCommercial()
+    ? { items: structuredClone(items), suppliers: structuredClone(suppliers) }
+    : { items: [], suppliers: [] };
+  window.atlasReloadPurchasingData = loadAll;
 
   function inventoryGroup(item) {
     const category = String(item?.category || '').toLowerCase();
@@ -1566,7 +1576,8 @@
       btn.addEventListener('click', async () => {
         if (!requireCommercialManager('Inventory deletion')) return;
         if (!confirm('Remove this item from inventory?')) return;
-        await sb.from('inventory_items').delete().eq('id', btn.dataset.id);
+        const { error } = await sb.from('inventory_items').delete().eq('id', btn.dataset.id);
+        if (error) { alert(error.message); return; }
         await loadAll();
       });
     });
@@ -1636,11 +1647,10 @@
       cost_price: document.getElementById('item-cost').value === '' ? null : parseFloat(document.getElementById('item-cost').value),
       discount_percent: document.getElementById('item-discount').value === '' ? 0 : parseFloat(document.getElementById('item-discount').value),
     };
-    if (id) {
-      await sb.from('inventory_items').update(payload).eq('id', id);
-    } else {
-      await sb.from('inventory_items').insert({ ...payload, quantity: 0 });
-    }
+    const { error: saveError } = id
+      ? await sb.from('inventory_items').update(payload).eq('id', id)
+      : await sb.from('inventory_items').insert({ ...payload, quantity: 0 });
+    if (saveError) { alert(saveError.message); return; }
     closeModal();
     await loadAll();
   });
@@ -2294,5 +2304,6 @@
 <script src="assets/js/brain.js"></script>
 <script src="assets/js/business.js"></script>
 <script src="assets/js/import-center.js"></script>
+<script src="assets/js/purchase-orders.js"></script>
 </body>
 </html>

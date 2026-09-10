@@ -9,6 +9,8 @@ on:
       - 'scripts/verify_phase1_role_matrix_preview.sql'
       - 'scripts/verify_phase1_security_gate.sql'
       - 'scripts/verify_recipe_ingredient_access_preview.sql'
+      - 'scripts/verify_purchase_order_preview.sql'
+      - 'scripts/verify_recovery_roundtrip.sh'
       - 'docs/PRODUCTION_ADOPTION_PR28.md'
       - 'docs/PRODUCTION_ADOPTION_PR30.md'
       - 'supabase/migrations/**'
@@ -64,3 +66,14 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -X -q -f supabase/migrations/20260910104621_atlas_phase1_recipe_access_and_index_cleanup.sql
           psql -v ON_ERROR_STOP=1 -X -qAt -f scripts/verify_recipe_ingredient_access_preview.sql
+
+      - name: Validate purchase order lifecycle after PR31
+        run: |
+          psql -v ON_ERROR_STOP=1 -X -q -f supabase/migrations/20260910121248_atlas_purchase_order_lifecycle.sql
+          psql -v ON_ERROR_STOP=1 -X -qAt -f scripts/verify_purchase_order_preview.sql
+          psql -v ON_ERROR_STOP=1 -X -qAt -f scripts/verify_phase1_security_gate.sql
+
+      - name: Rehearse synthetic backup and restore in the disposable service
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: bash scripts/verify_recovery_roundtrip.sh
