@@ -29,7 +29,8 @@ The explicit order is the runtime delta, then
 automatic migrations. The source-contract migration creates empty, RLS-protected
 `onboarding_tasks`, `onboarding_progress`, and published `shifts` tables required
 by the reviewed Knowledge, Team Profiles, Reports, and Team Messages gateways. It
-contains no venue, staff, schedule, or onboarding seed data. Do not run a
+also creates the empty private Reports event source consumed by the System audit
+timeline. It contains no venue, staff, schedule, onboarding, or audit seed data. Do not run a
 directory-wide database push: filenames are allocation identities, and the
 import migration depends on the runtime schema. A later
 hosted execution package must record this exact order and the expected ledger

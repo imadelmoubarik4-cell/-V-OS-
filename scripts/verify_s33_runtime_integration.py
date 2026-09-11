@@ -115,6 +115,7 @@ def main():
         contracts = ROOT / 'supabase/s33/migrations/20260910211903_atlas_s33_runtime_source_contracts.sql'
         report['runtime_source_contracts_sha256'] = hashlib.sha256(contracts.read_bytes()).hexdigest()
         assert sql("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('onboarding_tasks','onboarding_progress','shifts') and c.relrowsecurity", custodian) == '3'
+        assert sql("select count(*) from atlas_private.report_events", custodian) == '0'
         report['checks']['runtime_source_contracts'] = True
         for table in ('system_services','system_data_sources','system_jobs','system_release_checkpoints','system_incidents','system_events'):
             assert sql('select count(*) from atlas_private.' + table, custodian) == '0', table

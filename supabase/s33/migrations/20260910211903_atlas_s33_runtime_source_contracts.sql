@@ -15,7 +15,8 @@ begin
 
   if to_regclass('public.onboarding_tasks') is not null
      or to_regclass('public.onboarding_progress') is not null
-     or to_regclass('public.shifts') is not null then
+     or to_regclass('public.shifts') is not null
+     or to_regclass('atlas_private.report_events') is not null then
     raise exception 'S33 runtime source contract target is not empty';
   end if;
 end
@@ -63,6 +64,24 @@ create table public.shifts (
 
 create index shifts_starts_at_idx on public.shifts (starts_at);
 create index shifts_user_starts_at_idx on public.shifts (user_id, starts_at);
+
+create table atlas_private.report_events (
+  id uuid primary key default gen_random_uuid(),
+  event_type text not null check (length(trim(event_type)) between 1 and 80),
+  saved_view_id uuid,
+  report_key text,
+  actor_id uuid references public.profiles(id) on delete set null,
+  actor_label text not null,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index report_events_created_at_idx
+  on atlas_private.report_events (created_at desc);
+
+revoke all on table atlas_private.report_events
+  from public, anon, authenticated;
+grant select, insert on table atlas_private.report_events to service_role;
 
 revoke all on table public.onboarding_tasks, public.onboarding_progress, public.shifts
   from public, anon, authenticated;
@@ -122,3 +141,5 @@ comment on table public.onboarding_progress is
   'Per-profile onboarding completion records consumed by Atlas Knowledge and Team Profiles.';
 comment on table public.shifts is
   'Published shift link targets consumed by Atlas Team Messages; private shift planning remains authoritative.';
+comment on table atlas_private.report_events is
+  'Private Reports audit source consumed by the Atlas System timeline; initialized empty in S33.';
