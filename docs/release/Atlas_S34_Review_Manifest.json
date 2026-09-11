@@ -23,7 +23,7 @@
     "apps/web/config.js",
     "apps/web/index.html",
     "apps/web/service-worker.js",
-    ".github/workflows/s34-visual-evidence.yml",
+    ".github/workflows/atlas-verify.yml",
     "docs/release/Atlas_S34_Launch_Fix_Checklist.md",
     "docs/release/Atlas_S34_Review_Manifest.json",
     "docs/release/Atlas_S34_Rollback.md",

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = (path) => readFileSync(path, 'utf8');
-const workflow = read('.github/workflows/s34-visual-evidence.yml');
+const workflow = read('.github/workflows/atlas-verify.yml');
 const capture = read('scripts/capture_s34_visual_evidence.mjs');
 
 test('S34 evidence workflow is PR-scoped, read-only, and uploads one review artifact', () => {

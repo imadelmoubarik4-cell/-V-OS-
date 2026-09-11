@@ -5,8 +5,9 @@
   because its screenshots contain a real staff name.
 - `tests/fixtures/s34-visual-review.html` is the network-free after-state visual
   contract for all 12 affected modules and desktop/mobile modes.
-- `.github/workflows/s34-visual-evidence.yml` renders that fixture in a pinned
-  headless Chromium runner with all non-file requests blocked. Its single
+- The `s34-visual-evidence` job in `.github/workflows/atlas-verify.yml` renders
+  that fixture in a pinned headless Chromium runner with all non-file requests
+  blocked. Its single
   `atlas-s34-synthetic-visual-evidence` artifact contains 24 PNGs, an HTML
   gallery, and a SHA-256 manifest: every module at 1440 x 900 and 390 x 844.
 - The source PDF remains the before-state reference outside Git. The automated
