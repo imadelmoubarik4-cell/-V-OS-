@@ -27,7 +27,7 @@ class S35StagingPackageTests(unittest.TestCase):
         self.assertEqual(self.manifest["source_merge_commit"], builder.SOURCE_MERGE_COMMIT)
         self.assertEqual(self.manifest["target"]["project_ref"], builder.TARGET)
         self.assertEqual(self.manifest["target"]["preview_origin"], builder.PREVIEW_ORIGIN)
-        self.assertEqual([m["order"] for m in self.manifest["migrations"]], [1, 2, 3, 4, 5])
+        self.assertEqual([m["order"] for m in self.manifest["migrations"]], [1, 2, 3, 4, 5, 6])
         self.assertEqual(len(self.manifest["functions"]), 18)
         self.assertEqual(len({f["name"] for f in self.manifest["functions"]}), 18)
         boundaries = self.manifest["boundaries"]

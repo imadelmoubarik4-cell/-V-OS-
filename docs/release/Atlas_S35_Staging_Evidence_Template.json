@@ -1,5 +1,5 @@
 {
-  "package": "Atlas S35 combined isolated-staging package v1",
+  "package": "Atlas S35 combined isolated-staging package v2",
   "execution_status": "pending approval",
   "source_merge_commit": "0556ec89ec8041a9d2b1f7cd94706212176884a6",
   "target_project_ref": "atialqebqxcquzdkezln",
@@ -18,9 +18,19 @@
     "functions_before_sha256": null,
     "auth_redirects_before_sha256": null,
     "storage_policy_before_sha256": null,
-    "sensitive_exports_encrypted": false
+    "sensitive_exports_encrypted": false,
+    "s36_report_events_baseline_exact": false
   },
   "migrations": [],
+  "s36_security_remediation": {
+    "status": "pending",
+    "migration_sha256": "29fbe14978f70952c8c16d67c89fc59d38d1460d055431b3fab15fd73dd16879",
+    "rls_enabled": false,
+    "service_role_select_policy": false,
+    "service_role_insert_policy": false,
+    "anon_grants": null,
+    "authenticated_grants": null
+  },
   "functions": [],
   "preview": {
     "status": "pending",
