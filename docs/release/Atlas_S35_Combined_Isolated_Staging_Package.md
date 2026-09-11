@@ -1,14 +1,15 @@
-# Atlas S35 combined isolated-staging package v1
+# Atlas S35 combined isolated-staging package v2
 
 Status: **Git-only preparation — nothing in this package has been executed.**
 
-This is the single review package for the full-app staging rehearsal after PR34. A later approval may authorize this package as one operation. It does not authorize or describe a production release.
+This is the single review package for the full-app staging rehearsal after PR34, updated by the Git-only S36 security remediation. A later approval may authorize this revised package as one operation. It does not authorize or describe a production release.
 
 ## Fixed boundary
 
 | Control | Required value |
 | --- | --- |
 | Source | merge commit `0556ec89ec8041a9d2b1f7cd94706212176884a6` |
+| Package base | PR35 merge commit `0915c36034d36b009d45f3d6730bf5df01b868eb` |
 | Staging project | `atlas-pr30-validation` / `atialqebqxcquzdkezln` / `eu-west-1` |
 | Private preview | `https://atlas-s32-rehearsal.coffee-cockt-8589.chatgpt.site` |
 | Synthetic tag | `atlas-s35-20260911` |
@@ -25,9 +26,10 @@ Only synthetic identities, files, messages, schedules, imports, inventory, recip
 2. Export the staging migration ledger, schema fingerprints, deployed-function inventory, Auth redirect allowlist, Storage bucket/policy inventory, and notification configuration. Store sensitive exports encrypted; publish only sanitized hashes and counts.
 3. Compare every source file with `Atlas_S35_Combined_Isolated_Staging_Manifest.json`.
 4. Stop on a project-ref, source, checksum, ledger, schema, function, redirect, or Storage-policy mismatch. Do not repair an unknown baseline inside this run.
-5. If a listed migration is already present with the exact accepted version and fingerprint, record it as an exact skip. A partial or divergent S33/S34 state is a stop condition.
+5. Accept the known S36 pre-migration baseline only when `atlas_private.report_events` exists, RLS is disabled, no policies exist, and `anon`/`authenticated` have no grants. Any other state is a stop. Migration 6 is the only authorized repair.
+6. If a listed migration is already present with the exact accepted version and fingerprint, record it as an exact skip. A partial or divergent S33/S34/S36 state is a stop condition.
 
-Never run a directory-wide database push. Apply only the five reviewed files below.
+Never run a directory-wide database push. Apply only the six reviewed files below.
 
 ### 2. Migrations
 
@@ -38,6 +40,9 @@ Apply each file transactionally and capture its before/after fingerprint:
 3. `supabase/s33/migrations/20260910201435_atlas_s33_csv_import_pipeline.sql`
 4. `supabase/migrations/20260911124006_s34_foreign_key_indexes.sql`
 5. `supabase/migrations/20260911124039_s34_notification_and_conversation_stars.sql`
+6. `supabase/migrations/20260911160616_s36_report_events_rls.sql`
+
+Migration 6 enables RLS on `atlas_private.report_events`, removes all table privileges before granting only `SELECT` and `INSERT` to `service_role`, and creates explicit service-role policies for those two operations. Its conditional table check exists only for the historical GitHub replay baseline; the isolated staging table is required by preflight. After applying it, verify RLS is enabled, both policies exist, and `anon`/`authenticated` retain no grants.
 
 The JSON manifest is authoritative for SHA-256 checksums. Stop immediately if a transaction fails or the post-migration fingerprint differs.
 

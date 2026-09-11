@@ -1,7 +1,8 @@
 {
-  "package": "Atlas S35 combined isolated-staging package v1",
+  "package": "Atlas S35 combined isolated-staging package v2",
   "status": "Git-only / not executed",
   "source_merge_commit": "0556ec89ec8041a9d2b1f7cd94706212176884a6",
+  "package_base_merge_commit": "0915c36034d36b009d45f3d6730bf5df01b868eb",
   "generated_on": "2026-09-11",
   "target": {
     "logical_name": "atlas-pr30-validation",
@@ -45,8 +46,23 @@
       "order": 5,
       "path": "supabase/migrations/20260911124039_s34_notification_and_conversation_stars.sql",
       "sha256": "489f99635c1b208e2c27fd61915f31e06e18f5a812ac53a963359db38e499137"
+    },
+    {
+      "order": 6,
+      "path": "supabase/migrations/20260911160616_s36_report_events_rls.sql",
+      "sha256": "29fbe14978f70952c8c16d67c89fc59d38d1460d055431b3fab15fd73dd16879"
     }
   ],
+  "security_remediation": {
+    "table": "atlas_private.report_events",
+    "rls_required": true,
+    "allowed_role": "service_role",
+    "allowed_privileges": ["select", "insert"],
+    "anonymous_or_authenticated_access_allowed": false,
+    "historical_replay_skip_when_table_absent": true,
+    "staging_table_required": true,
+    "hosted_execution_performed": false
+  },
   "functions": [
     {"name":"atlas-inventory-scanner","sources":{"supabase/functions/atlas-inventory-scanner/index.ts":"5d340c104d6ee5540404e3aa472243b03a577adb7a6fe5d43262710a67b5200a"}},
     {"name":"atlas-knowledge","sources":{"supabase/functions/atlas-knowledge/index.ts":"ce0248ba19f8bbdf446e75e6ca4179d4bcfff0f659b1b7e9e252edaff6358fb2"}},
