@@ -203,6 +203,14 @@ def main():
         source_metadata=json.loads(db(NAMES[0],metadata_query))
         report['source_object_metadata']=source_metadata
         app=cmd(['docker','exec','supabase_db_'+NAMES[0],'pg_dump','-U','postgres','-d','postgres','--schema=public','--schema=private','--schema=public_menu_private','--schema=atlas_private','--schema=supabase_migrations','--no-owner'])
+        # A fresh managed stack recreates provider-owned default ACLs. They are
+        # not application objects, and postgres cannot alter another provider
+        # role's defaults during restore. Preserve postgres-owned application
+        # defaults and every concrete object ACL from the dump.
+        provider_defaults=re.compile(rb'(?ms)^ALTER DEFAULT PRIVILEGES FOR ROLE (?!postgres\b).*?;\n')
+        removed_defaults=provider_defaults.findall(app)
+        app=provider_defaults.sub(b'',app)
+        report['provider_default_acls_recreated_by_fresh_stack']=len(removed_defaults)
         auth=cmd(['docker','exec','supabase_db_'+NAMES[0],'pg_dump','-U','postgres','-d','postgres','--data-only','--column-inserts','--table=auth.users','--table=auth.identities'])
         trigger=db(NAMES[0],"select pg_get_triggerdef(oid)||';' from pg_trigger where tgrelid='auth.users'::regclass and tgname='on_auth_user_created'")
         policies=json.loads(db(NAMES[0],"select coalesce(json_agg(json_build_object('name',policyname,'permissive',permissive,'roles',roles,'cmd',cmd,'qual',qual,'check',with_check)),'[]') from pg_policies where schemaname='storage' and tablename='objects'"))

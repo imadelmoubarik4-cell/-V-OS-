@@ -60,7 +60,10 @@ Recovery captures application schema/data, synthetic Auth users/identities,
 custom Auth trigger, Storage bucket settings/policies, and actual file bytes.
 It stops and removes the source stack before creating the destination. Auth
 identities are restored before the application's profile trigger, without
-disabling triggers. Source sessions are excluded; old refresh tokens must fail.
+disabling triggers. Provider-owned default ACLs come from the fresh Supabase
+destination rather than the application dump; postgres-owned defaults and all
+concrete application grants remain in the dump. Source sessions are excluded;
+old refresh tokens must fail.
 The target must support fresh logins, private object upload/download with
 identical bytes and owner/MIME/size, all gateway role checks and password reset.
 Application table hashes must match before new journeys run, and retrying the
