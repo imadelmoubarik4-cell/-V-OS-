@@ -52,10 +52,10 @@ does not connect to Auth, Storage, a database, an Edge Function, or a hosted URL
 ## Visual evidence boundary
 
 The 15-page source is fully mapped above, but its screenshots are intentionally
-not committed because page 1 contains a real staff name. Automated image capture
-of the local file fixture was also unavailable in the review environment, so the
-after-state is committed as deterministic HTML instead of mislabeling generated
-artwork as an application screenshot. Before staging acceptance, capture
-sanitized before/after evidence for every matrix row at 1440 x 900 and 390 x 844.
-This is the only open evidence item; it does not affect the Node/Python behavioral
-gates and does not authorize a hosted preview.
+not committed because page 1 contains a real staff name. The source PDF remains
+the before-state reference outside Git. `.github/workflows/s34-visual-evidence.yml`
+uses pinned headless Chromium to capture the deterministic synthetic fixture with
+all non-file requests blocked. Its review artifact contains 24 after-state PNGs,
+an HTML gallery and a SHA-256 manifest: every matrix row at 1440 x 900 and
+390 x 844. This evidence job does not connect to or authorize a hosted preview,
+staging environment, SQL runner, function deployment, endpoint, or production.

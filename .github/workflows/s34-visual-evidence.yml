@@ -1,0 +1,51 @@
+name: S34 synthetic visual evidence
+
+on:
+  pull_request:
+    branches:
+      - claude/recipes-gallery-v2
+    paths:
+      - '.github/workflows/s34-visual-evidence.yml'
+      - 'scripts/capture_s34_visual_evidence.mjs'
+      - 'tests/fixtures/s34-visual-review.html'
+      - 'apps/web/assets/css/s34-preproduction.css'
+      - 'tests/node/s34-visual-evidence.test.js'
+      - 'docs/release/Atlas_S34_Launch_Fix_Checklist.md'
+      - 'docs/release/Atlas_S34_Review_Manifest.json'
+      - 'docs/release/evidence/s34/README.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: Capture 12 modules at desktop and mobile widths
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      S34_EVIDENCE_DIR: ${{ runner.temp }}/atlas-s34-visual-evidence
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install pinned browser runner
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Capture network-blocked synthetic evidence
+        run: node scripts/capture_s34_visual_evidence.mjs
+
+      - name: Upload review gallery and screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-s34-synthetic-visual-evidence
+          path: ${{ runner.temp }}/atlas-s34-visual-evidence
+          if-no-files-found: error
+          retention-days: 30
