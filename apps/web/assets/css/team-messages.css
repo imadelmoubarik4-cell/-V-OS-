@@ -61,6 +61,13 @@
 .team-conversation-icon.is-marketing{background:#e8edf2;color:#5c6f82}
 .team-conversation-head h2{margin:0;font:500 22px/1.2 'Fraunces',serif}
 .team-conversation-head p{margin:3px 0 0;color:var(--atlas-muted);font-size:10px}
+.team-conversation-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto}
+.team-conversation-actions [data-team-star]{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 10px;border:1px solid var(--atlas-line);border-radius:10px;background:#fff;color:var(--atlas-muted);font:600 10px/1 'IBM Plex Sans',sans-serif;cursor:pointer}
+.team-conversation-actions [data-team-star]:hover,.team-conversation-actions [data-team-star]:focus-visible{border-color:var(--atlas-action,#2d78dc);color:var(--atlas-action,#2d78dc);outline:3px solid rgba(45,124,224,.18);outline-offset:1px}
+.team-conversation-actions [data-team-star][aria-pressed="true"]{border-color:#e2c378;background:#fff8df;color:#987020}
+.team-conversation-actions [data-team-star][aria-pressed="true"] svg,.team-channel-status .is-starred{fill:currentColor;color:#c18a22}
+.team-channel-status{display:flex;align-items:center;gap:7px;margin-left:auto}
+.team-channel-status>svg{width:14px;height:14px}
 .team-manager-only{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border-radius:999px;background:#f5eddf;color:#80653f;font-size:9px;font-weight:600;white-space:nowrap}
 .team-manager-only svg{width:13px;height:13px}
 
@@ -195,6 +202,7 @@
   .team-channel{min-width:170px;padding:9px}
   .team-channel-icon{width:32px;height:32px}
   .team-conversation-head{align-items:flex-start}
+  .team-conversation-actions [data-team-star] span,.team-manager-only{display:none}
   .team-manager-only{max-width:98px;white-space:normal;text-align:center}
   .team-message-list{max-height:56vh;padding:12px}
   .team-message{grid-template-columns:31px minmax(0,1fr);gap:8px;width:auto;max-width:96%}

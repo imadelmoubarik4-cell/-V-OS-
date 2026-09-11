@@ -58,7 +58,7 @@ function jsonResponse(value: unknown, status = 200): Response {
       ...CORS_HEADERS,
       "content-type": "application/json; charset=utf-8",
       "x-content-type-options": "nosniff",
-      "x-atlas-team-messages-version": "0.1.0",
+      "x-atlas-team-messages-version": "0.2.0-s34",
     },
   });
 }
@@ -305,13 +305,24 @@ function formatShiftLabel(shift: any, profiles: AtlasProfile[]): string {
 
 async function messageSnapshot(context: AtlasContext, channelKey: string, limit: number) {
   const members = await activeProfiles(context);
-  const snapshot = await branchRpc("atlas_team_messages_snapshot", {
-    p_user_id: context.user.id,
-    p_user_role: context.profile.role,
-    p_active_user_ids: members.map((member) => member.id),
-    p_channel_key: channelKey,
-    p_limit: limit,
-  });
+  const [snapshot, starredChannels] = await Promise.all([
+    branchRpc("atlas_team_messages_snapshot", {
+      p_user_id: context.user.id,
+      p_user_role: context.profile.role,
+      p_active_user_ids: members.map((member) => member.id),
+      p_channel_key: channelKey,
+      p_limit: limit,
+    }),
+    branchRpc("atlas_team_conversation_stars_snapshot", { p_user_id: context.user.id }),
+  ]);
+  const starred = new Set(Array.isArray(starredChannels) ? starredChannels.map(String) : []);
+  if (Array.isArray(snapshot?.channels)) {
+    snapshot.channels = snapshot.channels.map((channel: Record<string, unknown>) => ({
+      ...channel,
+      starred: starred.has(String(channel.key ?? "")),
+    })).sort((left: Record<string, unknown>, right: Record<string, unknown>) =>
+      Number(Boolean(right.starred)) - Number(Boolean(left.starred)));
+  }
   return { snapshot, members };
 }
 
@@ -519,8 +530,8 @@ Deno.serve(async (request: Request) => {
             role: member.role,
           })),
           policy: {
-            delivery_mode: "secure_polling",
-            browser_notifications_enabled: false,
+            delivery_mode: Deno.env.get("ATLAS_PUSH_DELIVERY_ENABLED") === "true" ? "push_and_secure_polling" : "secure_polling",
+            browser_notifications_enabled: Deno.env.get("ATLAS_PUSH_DELIVERY_ENABLED") === "true",
             direct_table_access: false,
             inactive_profile_access: "denied_on_every_request",
           },
@@ -555,6 +566,16 @@ Deno.serve(async (request: Request) => {
       return jsonResponse({ result, snapshot, members, staff: staffPayload(context) });
     }
 
+    if (action === "star") {
+      result = await branchRpc("atlas_team_conversation_star_set", {
+        p_user_id: context.user.id,
+        p_channel_key: channelKey,
+        p_starred: body.starred === true,
+      });
+      const { snapshot, members } = await messageSnapshot(context, channelKey, safeLimit(body.limit));
+      return jsonResponse({ result, snapshot, members, staff: staffPayload(context) });
+    }
+
     if (action === "send") {
       requireWriter(context);
       if (channelKey === "announcements") requireManager(context);
@@ -574,6 +595,19 @@ Deno.serve(async (request: Request) => {
         p_link_route: link.route,
         p_link_metadata: link.metadata,
       });
+      if (!result?.duplicate) {
+        const audience = (await activeProfiles(context))
+          .map((profile) => profile.id)
+          .filter((userId) => userId !== context.user.id);
+        await branchRpc("atlas_push_notification_enqueue_many", {
+          p_audience_user_ids: audience,
+          p_event_type: "team_message",
+          p_title: channelKey === "announcements" ? "Atlas announcement" : "New Atlas message",
+          p_body: `${actor}: ${messageBody}`.slice(0, 500),
+          p_route: "team",
+          p_object_id: result?.message_id ?? null,
+        });
+      }
     } else if (action === "edit") {
       requireWriter(context);
       result = await branchRpc("atlas_team_messages_edit", {

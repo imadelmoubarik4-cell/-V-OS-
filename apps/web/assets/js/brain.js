@@ -21,8 +21,8 @@
   }
 
   function formatIsk(value, fallback = '—') {
-    if (!Number.isFinite(value)) return fallback;
-    return `${Math.round(value).toLocaleString('en-US')} ISK`;
+    return window.AtlasCalculations?.formatIsk?.(value, fallback)
+      || (!Number.isFinite(value) ? fallback : `${Math.round(value).toLocaleString('en-US')} ISK`);
   }
 
   function sourceItems() {
@@ -99,6 +99,7 @@
   }
 
   function recipeFinancials(recipe) {
+    if (window.AtlasCalculations) return window.AtlasCalculations.recipeMetrics(recipe, sourceItems()).financials;
     const ingredients = recipe?.recipe_ingredients || [];
     const recipeYield = Math.max(.0001, number(recipe?.yield_quantity, 1));
     const menuPrice = number(recipe?.menu_price, NaN);

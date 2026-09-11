@@ -49,8 +49,8 @@
   }
 
   function formatIsk(value, empty = '—') {
-    if (!Number.isFinite(value)) return empty;
-    return `${Math.round(value).toLocaleString('en-US')} ISK`;
+    return window.AtlasCalculations?.formatIsk?.(value, empty)
+      || (!Number.isFinite(value) ? empty : `${Math.round(value).toLocaleString('en-US')} ISK`);
   }
 
   function normalizeUnit(unit) {
@@ -92,6 +92,10 @@
   }
 
   function ingredientCost(ingredient) {
+    if (window.AtlasCalculations) {
+      const result = window.AtlasCalculations.ingredientMetrics(ingredient, items);
+      return { value: result.cost, item: result.item, reason: result.reason };
+    }
     const item = items.find((candidate) => candidate.id === ingredient.item_id);
     const purchaseCost = number(item?.cost_price, NaN);
     if (!item || !Number.isFinite(purchaseCost) || purchaseCost <= 0) {
@@ -115,6 +119,10 @@
   }
 
   function ingredientAvailability(ingredient) {
+    if (window.AtlasCalculations) {
+      const result = window.AtlasCalculations.ingredientMetrics(ingredient, items);
+      return { servings: result.batches, item: result.item, reason: result.reason, belowPar: result.belowPar };
+    }
     const item = items.find((candidate) => candidate.id === ingredient.item_id);
     if (!item) return { servings: null, item: null, reason: 'Inventory item is missing', belowPar: false };
 
@@ -157,6 +165,10 @@
       ? number(yieldValue, 1)
       : number(recipeOrIngredients?.yield_quantity, 1));
 
+    if (window.AtlasCalculations) {
+      return window.AtlasCalculations.recipeMetrics({ recipe_ingredients: ingredients, yield_quantity: recipeYield }, items).availability;
+    }
+
     if (!ingredients.length) {
       return { servings: null, limiting: null, unknown: 0, missing: 0, belowPar: 0, status: 'incomplete' };
     }
@@ -198,6 +210,10 @@
     const recipeYield = Math.max(0.0001, yieldValue !== undefined
       ? number(yieldValue, 1)
       : number(recipeOrIngredients?.yield_quantity, 1));
+
+    if (window.AtlasCalculations) {
+      return window.AtlasCalculations.recipeMetrics({ recipe_ingredients: ingredients, menu_price: menuPrice, yield_quantity: recipeYield }, items).financials;
+    }
 
     let total = 0;
     let incomplete = 0;

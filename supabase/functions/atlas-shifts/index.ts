@@ -318,6 +318,18 @@ async function syncProfiles(context: AtlasContext): Promise<void> {
   });
 }
 
+async function enqueuePublishedShiftNotice(context: AtlasContext, label: string): Promise<void> {
+  const audience = (await productionProfiles(context)).filter((profile) => profile.active).map((profile) => profile.id);
+  await branchRpc("atlas_push_notification_enqueue_many", {
+    p_audience_user_ids: audience,
+    p_event_type: "shift_update",
+    p_title: "Atlas shift schedule updated",
+    p_body: label,
+    p_route: "shifts",
+    p_object_id: null,
+  });
+}
+
 async function snapshot(context: AtlasContext, weekStart: string) {
   await syncProfiles(context);
   const workspace = await branchRpc("atlas_shifts_snapshot", {
@@ -529,6 +541,12 @@ Deno.serve(async (request: Request) => {
 
       default:
         throw new ApiError(404, "Unknown Shifts action.");
+    }
+
+    if (action === "publish-week") {
+      await enqueuePublishedShiftNotice(context, `The schedule for the week of ${refreshWeek} is available.`);
+    } else if (action === "publish-month") {
+      await enqueuePublishedShiftNotice(context, `The schedule for ${refreshMonth} is available.`);
     }
 
     if (refreshMonth) {

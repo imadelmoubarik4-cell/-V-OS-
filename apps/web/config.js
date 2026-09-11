@@ -19,6 +19,9 @@ window.VABAR_CONFIG = {
   REPORTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-reports",
   SYSTEM_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-system",
   SETTINGS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-settings",
+  // S34 ships the client and server candidates without activating a hosted
+  // notification endpoint. Staging supplies this value only after approval.
+  NOTIFICATIONS_API: "",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -264,6 +267,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/settings-workspace.js',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
+}));
+
+// S34 registers only a local service worker and opt-in UI. Push delivery stays
+// disabled until the reviewed migration and function are applied in staging.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/notifications.js',
+  globalName: 'AtlasNotifications',
+  dataAttribute: 'atlasNotifications',
 }));
 
 // A legacy Operations layout can still append its old connection cards to the
