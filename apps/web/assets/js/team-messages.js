@@ -14,6 +14,7 @@
     refreshing: false,
     submitting: false,
     markingRead: false,
+    starring: false,
     error: null,
     message: null,
     drafts: Object.create(null),
@@ -169,7 +170,7 @@
     return `<button type="button" class="team-channel ${channel.key === state.selectedChannel ? 'is-active' : ''}" data-team-channel="${escapeHtml(channel.key)}">
       <span class="team-channel-icon is-${escapeHtml(channel.tone || 'neutral')}"><i data-lucide="${escapeHtml(channel.icon || 'message-circle')}"></i></span>
       <span class="team-channel-copy"><strong>${escapeHtml(channel.name)}</strong><small>${escapeHtml(channel.last_message?.body || channel.description || '')}</small></span>
-      ${unread > 0 ? `<span class="team-unread-count">${unread > 99 ? '99+' : unread}</span>` : ''}
+      <span class="team-channel-status">${channel.starred ? '<i data-lucide="star" class="is-starred" aria-label="Starred conversation"></i>' : ''}${unread > 0 ? `<span class="team-unread-count">${unread > 99 ? '99+' : unread}</span>` : ''}</span>
     </button>`;
   }
 
@@ -318,7 +319,10 @@
         <main class="team-conversation-panel">
           <header class="team-conversation-head">
             <div><span class="team-conversation-icon is-${escapeHtml(channel?.tone || 'neutral')}"><i data-lucide="${escapeHtml(channel?.icon || 'message-circle')}"></i></span><div><h2>${escapeHtml(channel?.name || 'Team Messages')}</h2><p>${escapeHtml(channel?.description || '')}</p></div></div>
-            ${channel?.manager_post_only ? '<span class="team-manager-only"><i data-lucide="shield-check"></i>Manager posts only</span>' : ''}
+            <div class="team-conversation-actions">
+              ${channel?.manager_post_only ? '<span class="team-manager-only"><i data-lucide="shield-check"></i>Manager posts only</span>' : ''}
+              <button type="button" data-team-star aria-pressed="${Boolean(channel?.starred)}" ${state.starring ? 'disabled' : ''} aria-label="${channel?.starred ? 'Unstar' : 'Star'} ${escapeHtml(channel?.name || 'conversation')}"><i data-lucide="star"></i><span>${channel?.starred ? 'Starred' : 'Star'}</span></button>
+            </div>
           </header>
 
           <div class="team-message-list" data-team-message-list>${messageList.length ? messageList.map(renderMessage).join('') : emptyMessagesMarkup()}</div>
@@ -418,6 +422,28 @@
     } finally {
       state.loading = false;
       state.refreshing = false;
+    }
+  }
+
+  async function setConversationStar() {
+    const channel = selectedChannel();
+    if (!channel || state.starring) return;
+    state.starring = true;
+    state.error = null;
+    render();
+    try {
+      const payload = await api('star', {
+        method: 'POST',
+        body: { channel_key: channel.key, starred: !channel.starred, limit: 60 }
+      });
+      if (payload.snapshot) state.snapshot = payload.snapshot;
+      if (Array.isArray(payload.members)) state.members = payload.members;
+      state.message = channel.starred ? 'Conversation unstarred.' : 'Conversation starred.';
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : 'The conversation star could not be saved.';
+    } finally {
+      state.starring = false;
+      render();
     }
   }
 
@@ -598,6 +624,12 @@
     if (target.closest('[data-team-refresh]') && host()?.contains(target)) {
       event.preventDefault();
       loadSnapshot();
+      return;
+    }
+
+    if (target.closest('[data-team-star]') && host()?.contains(target)) {
+      event.preventDefault();
+      setConversationStar();
       return;
     }
 

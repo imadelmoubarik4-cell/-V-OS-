@@ -1,10 +1,11 @@
 (function () {
   'use strict';
   const trigger = document.getElementById('purchase-orders-tab');
+  const deliveriesTrigger = document.getElementById('purchase-deliveries-tab');
   const panel = document.getElementById('purchase-order-panel');
-  if (!trigger || !panel || !window.VABAR_CONFIG?.PURCHASE_ORDERS_ENABLED) return;
+  if (!trigger || !deliveriesTrigger || !panel) return;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  let orders = [], draft = null, busy = false;
+  let orders = [], draft = null, busy = false, activeSection = 'orders';
   const choices = () => window.atlasPurchasingData?.() || { items: [], suppliers: [] };
   const status = message => { panel.querySelector('[data-order-status]').textContent = message; };
   const resetDraft = () => { draft = { id: crypto.randomUUID(), version: null, supplier_id: '', lines: [], note: '' }; };
@@ -18,18 +19,21 @@
   function render() {
     if (!draft) resetDraft();
     const suppliers = choices().suppliers;
-    panel.innerHTML = `<h2>Purchase orders</h2><p>Quantities use the inventory unit shown beside each item. Receiving an order records all its lines as restocks.</p>
-      <p role="status" data-order-status></p><button type="button" data-refresh-orders>Refresh orders</button>
-      <form id="purchase-order-form"><h3>${draft.version ? 'Amend draft' : 'New order'}</h3>
+    const visibleOrders = activeSection === 'deliveries'
+      ? orders.filter(order => ['ordered', 'received'].includes(order.status))
+      : orders;
+    const editor = activeSection === 'orders' ? `<form id="purchase-order-form"><h3>${draft.version ? 'Amend draft' : 'New order'}</h3>
       <label>Supplier<select name="supplier" required><option value="">Choose supplier</option>${suppliers.filter(x=>x.active!==false).map(x=>`<option value="${esc(x.id)}" ${x.id===draft.supplier_id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
       <div data-order-lines>${(draft.lines.length ? draft.lines : [{}]).map(lineMarkup).join('')}</div>
       <button type="button" data-add-line>Add item</button><label>Note<textarea name="note" maxlength="2000">${esc(draft.note)}</textarea></label>
-      <button type="submit">Save draft</button><button type="button" data-new-order>Clear form</button></form>
-      <div data-order-list>${orders.map(order=>`<article style="padding:16px 0;border-top:1px solid #ddd"><h3>${esc(suppliers.find(x=>x.id===order.supplier_id)?.name || 'Supplier')} · ${esc(order.status)}</h3>
+      <button type="submit">Save draft</button><button type="button" data-new-order>Clear form</button></form>` : '';
+    panel.innerHTML = `<h2>${activeSection === 'orders' ? 'Purchase orders' : 'Deliveries'}</h2><p>${activeSection === 'orders' ? 'Quantities use the inventory unit shown beside each item.' : 'Receive ordered deliveries only after every delivered line has been checked. Receiving records stock and restock movements.'}</p>
+      <p role="status" data-order-status></p><button type="button" data-refresh-orders>Refresh orders</button>
+      ${editor}<div data-order-list>${visibleOrders.map(order=>`<article class="purchase-order-card"><h3>${esc(suppliers.find(x=>x.id===order.supplier_id)?.name || 'Supplier')} · ${esc(order.status)}</h3>
       <p>Order ${esc(order.id)} · version ${order.version}</p><ul>${order.lines.map(line=>`<li>${esc(line.item_name)}: ${esc(line.quantity)} ${esc(line.unit)} × ${esc(line.unit_cost)} ISK</li>`).join('')}</ul><p>${esc(order.note)}</p>
       ${order.status==='draft'?`<button type="button" data-command="edit" data-order="${order.id}">Amend</button> <button type="button" data-command="place" data-order="${order.id}">Mark ordered</button>`:''}
       ${order.status==='ordered'?`<button type="button" data-command="receive" data-order="${order.id}">Receive all items</button>`:''}
-      ${['draft','ordered'].includes(order.status)?`<button type="button" data-command="cancel" data-order="${order.id}">Cancel order</button>`:''}</article>`).join('') || '<p>No orders recorded.</p>'}</div>`;
+      ${['draft','ordered'].includes(order.status)?`<button type="button" data-command="cancel" data-order="${order.id}">Cancel order</button>`:''}</article>`).join('') || `<p>No ${activeSection === 'orders' ? 'orders' : 'deliveries'} recorded.</p>`}</div>`;
   }
   async function refresh() {
     if (!navigator.onLine) { status('Offline. Saved orders cannot be refreshed until you reconnect.'); return; }
@@ -55,11 +59,18 @@
     } finally { busy = false; panel.querySelectorAll('button').forEach(button=>button.disabled=false); }
   }
   trigger.disabled = false; trigger.title = 'Create and receive purchase orders';
-  trigger.addEventListener('click', async () => {
+  deliveriesTrigger.disabled = false;
+  const openSection = async (section) => {
     if (!window.atlasCanManageCommercial?.()) return;
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) { render(); await refresh(); }
-  });
+    activeSection = section;
+    panel.hidden = false;
+    trigger.classList.toggle('active', section === 'orders');
+    deliveriesTrigger.classList.toggle('active', section === 'deliveries');
+    render();
+    await refresh();
+  };
+  trigger.addEventListener('click', () => openSection('orders'));
+  deliveriesTrigger.addEventListener('click', () => openSection('deliveries'));
   panel.addEventListener('click', async event => {
     if (busy) return;
     const button = event.target.closest('button'); if (!button) return;

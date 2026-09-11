@@ -119,8 +119,8 @@
       "files": [
         {
           "path": "functions/atlas-shifts/index.ts",
-          "source_sha256": "3ec9d2a4c89770b60c3e0f59a6805e8161897c543cf2b9183d56bae3e02281df",
-          "candidate_sha256": "e92e56e8381fe445d61e3f28aad65d1aa00cf84348d2195806ec8ba46f808c45"
+          "source_sha256": "ad8f80b4000c393da0e1084aae7a7e91e9ded1096f921913bde53f902420ee15",
+          "candidate_sha256": "bcb2f15dc4e2e8f40383139b3b7be67e8b2053c26ea71fc74095e3dfaa3b548f"
         }
       ]
     },
@@ -184,8 +184,8 @@
       "files": [
         {
           "path": "functions/atlas-team-messages/index.ts",
-          "source_sha256": "aa35f4665a28071c9bdd634d2a7ebdbdb366b9afdeae753fd2ce761b5a3473df",
-          "candidate_sha256": "9ab46b3e59b10cfa93e2e27ca94e35417c3fc55f1ff01ce83f39e94995424697"
+          "source_sha256": "053dd0041e105b6e932069269f4bc0e7daa2e98213b3fb11200f393313bba610",
+          "candidate_sha256": "01c23a9003ec488092262a508cb9fef43af21c229b2a16679d98ab239968c88f"
         }
       ]
     },

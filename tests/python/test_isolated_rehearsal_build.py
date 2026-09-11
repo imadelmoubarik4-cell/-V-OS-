@@ -19,7 +19,7 @@ class IsolatedRehearsalBuildTests(unittest.TestCase):
             headers = (output / '_headers').read_text()
             manifest = json.loads((output / 'rehearsal-manifest.json').read_text())
             self.assertIn(builder.TARGET, config)
-            self.assertEqual(len(manifest['disabled_runtime_settings']), 16)
+            self.assertEqual(len(manifest['disabled_runtime_settings']), 17)
             for forbidden in ('dnefgcmjcgxlynycxkts', 'uhbamqetppqmygesoeeh'):
                 self.assertNotIn(forbidden, config)
                 self.assertNotIn(forbidden, headers)

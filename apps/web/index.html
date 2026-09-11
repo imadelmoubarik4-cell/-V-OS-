@@ -490,6 +490,7 @@
   <link rel="stylesheet" href="assets/css/workspaces-polish.css">
   <link rel="stylesheet" href="assets/css/system-polish.css">
   <link rel="stylesheet" href="assets/css/polish-pass2.css">
+  <link rel="stylesheet" href="assets/css/s34-preproduction.css">
 </head>
 <body>
 
@@ -627,7 +628,7 @@
               <nav class="purchasing-workspace-tabs" aria-label="Purchasing sections">
                 <button type="button" class="active" aria-current="page">Suppliers</button>
                 <button type="button" id="purchase-orders-tab" disabled title="Orders are not enabled in this environment">Orders</button>
-                <button type="button" disabled title="Delivery records are not connected yet">Deliveries</button>
+                <button type="button" id="purchase-deliveries-tab" disabled title="Review ordered and received deliveries">Deliveries</button>
               </nav>
               <button class="btn" id="add-supplier-btn"><i data-lucide="plus"></i>New supplier</button>
             </section>
@@ -948,6 +949,7 @@
         integrity="sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT"
         crossorigin="anonymous"></script>
 <script src="config.js"></script>
+<script src="assets/js/runtime-module-guard.js"></script>
 <script src="assets/js/rehearsal-boundary.js"></script>
 <script>
   const SUPABASE_CDN_URLS = [
@@ -1358,6 +1360,8 @@
   }
 
   function inventorySubcategory(item, group = inventoryGroup(item)) {
+    const stored = String(item?.subcategory || '').trim();
+    if (stored) return stored.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
     const category = String(item?.category || '').toLowerCase();
     const name = String(item?.name || '').toLowerCase();
     const value = `${category} ${name} ${item?.unit || ''}`.toLowerCase();
@@ -2298,6 +2302,7 @@
   }
   if (window.lucide) window.lucide.createIcons();
 </script>
+<script src="assets/js/atlas-calculations.js"></script>
 <script src="assets/js/modal.js"></script>
 <script src="assets/js/recipes.js"></script>
 <script src="assets/js/operations.js"></script>

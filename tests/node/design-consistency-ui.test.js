@@ -90,8 +90,9 @@ test('Recipes and Purchasing use clean, honest in-page controls', () => {
   assert.match(recipesCss, /#recipes-view \.recipe-status-filters \{[^}]*background: transparent/s);
   assert.match(app, /class="purchasing-workspace-tabs"/);
   assert.match(app, /id="purchase-orders-tab" disabled/);
-  assert.match(app, /Orders are not enabled in this environment/);
-  assert.match(app, /Delivery records are not connected yet/);
+  assert.match(app, /id="purchase-deliveries-tab" disabled/);
+  assert.match(readFileSync('apps/web/assets/js/purchase-orders.js', 'utf8'), /openSection\('orders'\)/);
+  assert.match(readFileSync('apps/web/assets/js/purchase-orders.js', 'utf8'), /openSection\('deliveries'\)/);
   assert.match(app, /id="purchasing-intelligence-title"/);
   assert.match(app, /Spend appears only when a costed restock is recorded/);
   assert.match(purchasingCss, /\.purchasing-intelligence \{[^}]*var\(--atlas-home-accent-soft/s);
