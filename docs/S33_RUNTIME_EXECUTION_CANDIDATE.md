@@ -23,10 +23,15 @@ categories/channels and disabled publication defaults remain explicit seeds.
 The public Reports definition previously encoded to fit a connector payload
 limit is readable SQL here; its decoded content hash is recorded in the audit.
 
-The explicit order is runtime delta first, then
-`20260910201435_atlas_s33_csv_import_pipeline.sql`. Both remain outside automatic
-migrations. Do not run a directory-wide database push: filenames are allocation
-identities, and the import migration depends on the runtime schema. A later
+The explicit order is the runtime delta, then
+`20260910211903_atlas_s33_runtime_source_contracts.sql`, then
+`20260910201435_atlas_s33_csv_import_pipeline.sql`. All three remain outside
+automatic migrations. The source-contract migration creates empty, RLS-protected
+`onboarding_tasks`, `onboarding_progress`, and published `shifts` tables required
+by the reviewed Knowledge, Team Profiles, Reports, and Team Messages gateways. It
+contains no venue, staff, schedule, or onboarding seed data. Do not run a
+directory-wide database push: filenames are allocation identities, and the
+import migration depends on the runtime schema. A later
 hosted execution package must record this exact order and the expected ledger
 entries and verify the actual hosted fingerprint before changing it.
 
@@ -43,10 +48,11 @@ removes declaration-only package imports. This distinction must remain visible
 in the acceptance report; it is not proof of hosted deployment compatibility.
 
 The test exercises login, active/inactive/missing profiles and manager/staff
-permissions across all sixteen gateways. It uploads one private CSV through the
+permissions across all seventeen gateways. It uploads one private CSV through the
 Storage API, reviews and publishes it through actual gateways, verifies retry
-safety, and creates bounded synthetic message/campaign/schedule/Knowledge
-records. Reset emails must contain working links, consumed links must fail,
+safety, and creates bounded synthetic message/campaign/schedule/onboarding/Knowledge
+records. The fixture also resolves published shift targets through Team Messages.
+Reset emails must contain working links, consumed links must fail,
 expired links must fail, and the previous password must fail after reset.
 
 Recovery captures application schema/data, synthetic Auth users/identities,

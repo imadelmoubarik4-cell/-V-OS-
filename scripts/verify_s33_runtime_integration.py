@@ -95,6 +95,7 @@ def main():
         guard = sql("select pg_get_functiondef('private.preserve_active_admin()'::regprocedure)", custodian)
         for target in (env, custodian):
             sql_file(ROOT / 'supabase/s33/migrations/20260910205055_atlas_s33_runtime_delta.sql', target)
+            sql_file(ROOT / 'supabase/s33/migrations/20260910211903_atlas_s33_runtime_source_contracts.sql', target)
             sql_file(ROOT / 'supabase/s33/migrations/20260910201435_atlas_s33_csv_import_pipeline.sql', target)
         after = fingerprint(custodian)
         assert all(after.get(k) == v for k, v in protected.items()), 'Protected baseline rows changed'
@@ -111,6 +112,10 @@ def main():
         end $$""", custodian)
         report['checks']['protected_rows_and_admin_guard'] = True
         report['runtime_delta_sha256'] = hashlib.sha256((ROOT / 'supabase/s33/migrations/20260910205055_atlas_s33_runtime_delta.sql').read_bytes()).hexdigest()
+        contracts = ROOT / 'supabase/s33/migrations/20260910211903_atlas_s33_runtime_source_contracts.sql'
+        report['runtime_source_contracts_sha256'] = hashlib.sha256(contracts.read_bytes()).hexdigest()
+        assert sql("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('onboarding_tasks','onboarding_progress','shifts') and c.relrowsecurity", custodian) == '3'
+        report['checks']['runtime_source_contracts'] = True
         for table in ('system_services','system_data_sources','system_jobs','system_release_checkpoints','system_incidents','system_events'):
             assert sql('select count(*) from atlas_private.' + table, custodian) == '0', table
         for name in ('role_matrix', 'recipe_ingredient_access', 'purchase_order'):

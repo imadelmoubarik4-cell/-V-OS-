@@ -14,6 +14,7 @@ NAMES=('atlas-s33-source','atlas-s33-recovery')
 EXCLUDES='realtime,imgproxy,postgres-meta,studio,logflare,vector,supavisor'
 BASE_FILES=['20260801000000_legacy_schema_baseline.sql','20260801105516_atlas_alpha_02_recipe_engine.sql','20260801125810_atlas_alpha_02_phase1_recipe_architecture.sql','20260801165947_atlas_vision_media_and_import_foundation.sql','20260801180202_atlas_inventory_import_audit_fields.sql','20260801222046_inventory_imported_at_default.sql','20260801224004_phase_a_01_import_queue.sql']
 DELTA='20260910205055_atlas_s33_runtime_delta.sql'
+CONTRACTS='20260910211903_atlas_s33_runtime_source_contracts.sql'
 IMPORT='20260910201435_atlas_s33_csv_import_pipeline.sql'
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs): return None
@@ -80,7 +81,7 @@ def baseline(name):
     entries += [('20260910103758','pr30_validation_baseline_and_exact_candidate'),('20260910113945','atlas_phase1_recipe_access_and_index_cleanup'),('20260910133602','atlas_purchase_order_lifecycle')]
     for version,label in entries:
         db(name,'insert into supabase_migrations.schema_migrations(version,name,statements) values ('+lit(version)+','+lit(label)+",array['synthetic CI baseline']) on conflict(version) do nothing;")
-    for filename in (DELTA,IMPORT): db(name,(ROOT/'supabase/s33/migrations'/filename).read_text())
+    for filename in (DELTA,CONTRACTS,IMPORT): db(name,(ROOT/'supabase/s33/migrations'/filename).read_text())
     db(name,"notify pgrst, 'reload schema';")
 
 def fingerprint(name):
@@ -100,9 +101,15 @@ def gateways(users,key,phase,report):
             expected=403 if user['role'] in ('inactive','unlisted') or (user['role'] in ('viewer','bartender') and name in restricted) else 200
             if result[0]!=expected: okay(result,phase+' '+user['role']+' '+name) if expected==200 else (_ for _ in ()).throw(AssertionError(phase+' '+user['role']+' '+name+' expected denial, got '+str(result[0])))
             statuses[name]=result[0]
+        batch=report['fullstack_csv_publication']['batch_id']
+        worker=request('/functions/v1/atlas-import-worker','POST',{'action':'source','batch_id':batch},token=token,key=key)
+        expected=200 if user['role'] in ('admin','manager') else 403
+        if worker[0]!=expected: okay(worker,phase+' '+user['role']+' atlas-import-worker') if expected==200 else (_ for _ in ()).throw(AssertionError(phase+' '+user['role']+' atlas-import-worker expected denial, got '+str(worker[0])))
+        statuses['atlas-import-worker']=worker[0]
         matrix[user['role']]=statuses
     for name in names:
         assert request('/functions/v1/'+name,key=key)[0] in (401,403),name+' anonymous'
+    assert request('/functions/v1/atlas-import-worker','POST',{'action':'source','batch_id':report['fullstack_csv_publication']['batch_id']},key=key)[0] in (401,403),'atlas-import-worker anonymous'
     report[phase+'_runtime_role_matrix']=matrix
 
 def reset(user,key,expire=False):
