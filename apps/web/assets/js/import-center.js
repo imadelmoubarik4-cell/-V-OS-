@@ -11,6 +11,12 @@
   const STATUS_LABELS={prepared:'Prepared',uploaded:'Uploaded',reading:'Reading',extracting:'Extracting',matching:'Matching',ready:'Ready for review',importing:'Importing',completed:'Completed',completed_with_review:'Completed with review',imported:'Imported',failed:'Failed',cancelled:'Cancelled'};
 
   const state={batches:[],filter:'all',query:'',loading:false,selectedId:null,pollTimer:null,localUploads:new Map()};
+  const workerBusy=new Set();
+  function workerEndpoint(){
+    const cfg=window.VABAR_CONFIG||{},target='https://atialqebqxcquzdkezln.supabase.co';
+    return cfg.SUPABASE_URL===target&&cfg.IMPORT_WORKER_API===target+'/functions/v1/atlas-import-worker'?cfg.IMPORT_WORKER_API:'';
+  }
+  const workerStatus=batch=>batch.record_counts?.worker==='atlas-csv-1'?batch.record_counts.processing_status:null;
   const byId=id=>document.getElementById(id);
   const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
@@ -127,15 +133,16 @@
       const progress=progressOf(batch);
       const name=sourceName(batch);
       const scope=SCOPE_LABELS[batch.entity_scope]||batch.entity_scope||'Inventory';
-      const canRetry=batch.status==='failed'||batch.status==='cancelled';
-      const canCancel=!TERMINAL.has(batch.status)&&batch.status!=='ready';
+      const processing=workerStatus(batch);
+      const canRetry=!processing&&(batch.status==='failed'||batch.status==='cancelled');
+      const canCancel=!processing&&!TERMINAL.has(batch.status)&&batch.status!=='ready';
       return '<tr>'+
         '<td><div class="import-file-cell"><div class="import-file-icon"><i data-lucide="'+fileIcon(batch)+'"></i></div><div class="import-file-copy"><strong>'+escapeHtml(name)+'</strong><span>'+escapeHtml(formatBytes(batch.file_size))+' · '+escapeHtml(batch.file_extension||extensionOf(name).toUpperCase()||'FILE')+'</span></div></div></td>'+
         '<td><span class="import-scope-pill">'+escapeHtml(scope)+'</span></td>'+
         '<td><span class="import-status-pill '+escapeHtml(statusClass(batch))+'">'+escapeHtml(statusLabel(batch))+'</span></td>'+
         '<td><div class="import-progress-cell"><div class="import-progress-meta"><span>'+escapeHtml(batch.current_stage||batch.status||'uploaded')+'</span><strong>'+progress+'%</strong></div><div class="import-progress-track"><div style="width:'+progress+'%"></div></div></div></td>'+
         '<td>'+escapeHtml(formatDate(batch.created_at))+'</td>'+
-        '<td><div class="import-row-actions">'+actionButton('open','panel-right-open','Open batch',batch.id)+(canRetry?actionButton('retry','rotate-ccw','Retry',batch.id):'')+(canCancel?actionButton('cancel','circle-x','Cancel',batch.id):'')+actionButton('delete','trash-2','Delete',batch.id)+'</div></td>'+
+        '<td><div class="import-row-actions">'+actionButton('open','panel-right-open','Open batch',batch.id)+processingActions(batch)+(canRetry?actionButton('retry','rotate-ccw','Retry',batch.id):'')+(canCancel?actionButton('cancel','circle-x','Cancel',batch.id):'')+(!processing?actionButton('delete','trash-2','Delete',batch.id):'')+'</div></td>'+
       '</tr>';
     }).join('');
     if(window.lucide)window.lucide.createIcons();
@@ -259,15 +266,18 @@
   }
 
   async function retryBatch(batch){
+    if(workerStatus(batch))throw new Error('Use the processing actions for this import.');
     await updateBatch(batch.id,{status:'uploaded',current_stage:'uploaded',progress_percent:100,last_error:null,completed_at:null,started_at:null},'Batch returned to the upload queue.');
   }
 
   async function cancelBatch(batch){
+    if(workerStatus(batch))throw new Error('Discard unpublished processing to cancel this import.');
     if(!confirm('Cancel processing for "'+sourceName(batch)+'"?'))return;
     await updateBatch(batch.id,{status:'cancelled',current_stage:'cancelled',last_error:'Cancelled by a staff member.'},'Import batch cancelled.');
   }
 
   async function deleteBatch(batch){
+    if(workerStatus(batch))throw new Error('Discard unpublished processing first. Published source evidence must be retained.');
     if(!confirm('Delete "'+sourceName(batch)+'" and its stored source file? This cannot be undone.'))return;
     const client=getClient();
     if(batch.storage_bucket&&batch.storage_path){
@@ -318,8 +328,9 @@
     errorSection.hidden=!batch.last_error;
     byId('import-detail-error').textContent=batch.last_error||'';
     byId('import-detail-view-source').disabled=!(batch.storage_bucket&&batch.storage_path);
-    byId('import-detail-retry').hidden=!(batch.status==='failed'||batch.status==='cancelled');
-    byId('import-detail-cancel').hidden=TERMINAL.has(batch.status)||batch.status==='ready';
+    byId('import-detail-retry').hidden=!!workerStatus(batch)||!(batch.status==='failed'||batch.status==='cancelled');
+    byId('import-detail-cancel').hidden=!!workerStatus(batch)||TERMINAL.has(batch.status)||batch.status==='ready';
+    byId('import-detail-delete').hidden=!!workerStatus(batch);
     byId('import-detail-drawer').hidden=false;
     byId('import-detail-backdrop').hidden=false;
     updatePipeline(batch);
@@ -334,10 +345,61 @@
   }
 
   async function viewSource(batch){
+    if(['staged','promoted'].includes(workerStatus(batch))&&workerEndpoint()){
+      const {data,error}=await getClient().auth.getSession();
+      if(error||!data.session?.access_token)throw new Error('Sign in again to view the source.');
+      const response=await fetch(workerEndpoint(),{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+data.session.access_token},body:JSON.stringify({action:'source',batch_id:batch.id}),signal:AbortSignal.timeout(30000)});
+      const result=await response.json();
+      if(!response.ok)throw new Error(result.error||'The captured source could not be read.');
+      const bytes=Uint8Array.from(atob(result.source_base64),c=>c.charCodeAt(0));
+      const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
+      if(hash!==result.source_hash)throw new Error('The captured source failed its integrity check.');
+      const url=URL.createObjectURL(new Blob([bytes],{type:'text/csv'})),link=document.createElement('a');
+      link.href=url;link.download=safeFileName(result.file_name||'import-source.csv');link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+      return;
+    }
     if(!(batch.storage_bucket&&batch.storage_path))return;
     const {data,error}=await getClient().storage.from(batch.storage_bucket).createSignedUrl(batch.storage_path,120);
     if(error)throw error;
     window.open(data.signedUrl,'_blank','noopener,noreferrer');
+  }
+
+  function processingActions(batch){
+    if(!workerEndpoint()||workerBusy.has(batch.id))return '';
+    const status=workerStatus(batch);
+    if(status==='staged')return actionButton('review','list-checks','Review rows',batch.id)+actionButton('promote','check-check','Publish approved rows',batch.id)+actionButton('discard','undo-2','Discard unpublished processing',batch.id);
+    if(status==='claimed')return actionButton('stage','play','Resume CSV extraction',batch.id)+actionButton('discard','undo-2','Discard unpublished processing',batch.id);
+    if(!status&&batch.status==='uploaded'&&batch.entity_scope==='inventory'&&batch.file_extension==='csv')return actionButton('stage','play','Process CSV for review',batch.id);
+    return '';
+  }
+
+  async function processBatch(action,batch){
+    const endpoint=workerEndpoint();
+    if(!endpoint)throw new Error('CSV processing is not enabled in this environment.');
+    if(workerBusy.has(batch.id))return;
+    if(action==='promote'&&!confirm('Publish approved new inventory items from "'+sourceName(batch)+'"? Their quantities will be added once.'))return;
+    if(action==='discard'&&!confirm('Discard unpublished processing and review decisions for "'+sourceName(batch)+'"? The uploaded file will remain available to delete.'))return;
+    workerBusy.add(batch.id);renderQueue();
+    try{
+      const {data,error}=await getClient().auth.getSession();
+      if(error||!data.session?.access_token)throw new Error('Sign in again to process this import.');
+      const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+data.session.access_token},body:JSON.stringify({action,batch_id:batch.id}),signal:AbortSignal.timeout(30000)});
+      const result=await response.json();
+      if(!response.ok)throw new Error(result.error||'Import did not complete. Check its status before retrying.');
+      await loadQueue(false);
+      notify(result.status==='promoted'?'Approved new items published.':result.status==='discarded'?'Unpublished processing discarded.':'CSV extracted. Review every row before publishing.','success');
+    }catch(error){await loadQueue(false);throw error;}
+    finally{workerBusy.delete(batch.id);renderQueue();}
+  }
+
+  function reviewBatch(batch){
+    const button=document.querySelector('[data-view="sprint3-review"]');
+    if(!button)throw new Error('The review workspace is not available yet.');
+    closeDetails();button.click();
+    const search=byId('review-search'),status=byId('review-status');
+    if(status){status.value='all';status.dispatchEvent(new Event('change',{bubbles:true}));}
+    if(search){search.value='csv:'+batch.id;search.dispatchEvent(new Event('input',{bubbles:true}));}
   }
 
   async function handleAction(action,id){
@@ -348,6 +410,8 @@
       else if(action==='retry')await retryBatch(batch);
       else if(action==='cancel')await cancelBatch(batch);
       else if(action==='delete')await deleteBatch(batch);
+      else if(['stage','promote','discard'].includes(action))await processBatch(action,batch);
+      else if(action==='review')reviewBatch(batch);
     }catch(error){console.error(error);notify(error.message||'The action failed.','error');}
   }
 

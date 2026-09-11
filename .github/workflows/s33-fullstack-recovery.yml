@@ -1,0 +1,34 @@
+name: S33 isolated Auth and Storage recovery
+on:
+  pull_request:
+    branches: [claude/recipes-gallery-v2]
+    paths:
+      - '.github/workflows/s33-fullstack-recovery.yml'
+      - 'scripts/*s33*'
+      - 'supabase/s33/**'
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.117.0
+      - name: Run isolated full-stack recovery
+        run: python3 scripts/verify_s33_fullstack.py
+      - name: Retain redacted rehearsal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s33-fullstack-acceptance
+          path: ${{ runner.temp }}/atlas-s33-fullstack-evidence/
+          retention-days: 30
+      - name: Remove disposable stacks and recovery material
+        if: always()
+        run: python3 scripts/verify_s33_fullstack.py --cleanup
