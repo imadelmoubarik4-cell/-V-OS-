@@ -133,6 +133,7 @@ test('performance candidate contains exactly the reviewed 12 indexes and no broa
   ]);
   assert.match(indexMigration, /set lock_timeout = '5s'/);
   assert.match(indexMigration, /set statement_timeout = '2min'/);
+  assert.match(indexMigration, /to_regclass\('atlas_private\.report_events'\)/);
   assert.doesNotMatch(indexMigration, /\b(drop|alter|delete|update|insert|grant|revoke|create\s+(table|function|trigger|policy))\b/i);
 });
 

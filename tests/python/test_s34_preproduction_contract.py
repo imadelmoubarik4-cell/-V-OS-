@@ -31,6 +31,7 @@ class S34PreproductionContractTests(unittest.TestCase):
         ]
         self.assertEqual(expected, found)
         self.assertEqual(12, INDEX.lower().count("create index if not exists"))
+        self.assertIn("to_regclass('atlas_private.report_events')", INDEX)
         self.assertNotRegex(INDEX.lower(), r"\b(drop|alter|delete|update|insert|grant|revoke)\b")
 
     def test_private_notification_tables_are_rls_protected(self):

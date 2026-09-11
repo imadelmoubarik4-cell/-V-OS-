@@ -15,8 +15,16 @@ create index if not exists inventory_verified_balances_source_line_id_idx
   on atlas_private.inventory_verified_balances (source_line_id);
 create index if not exists inventory_verified_balances_source_session_id_idx
   on atlas_private.inventory_verified_balances (source_session_id);
-create index if not exists report_events_actor_id_idx
-  on atlas_private.report_events (actor_id);
+-- report_events is supplied by the separately reviewed S33 runtime delta. The
+-- historical replay baseline intentionally omits that delta, so keep this one
+-- advisor index conditional while preserving the hosted-target behavior.
+do $migration$
+begin
+  if pg_catalog.to_regclass('atlas_private.report_events') is not null then
+    execute 'create index if not exists report_events_actor_id_idx on atlas_private.report_events (actor_id)';
+  end if;
+end
+$migration$;
 create index if not exists routine_item_results_template_item_id_idx
   on atlas_private.routine_item_results (template_item_id);
 create index if not exists atlas_media_uploaded_by_idx
