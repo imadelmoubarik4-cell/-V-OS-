@@ -33,8 +33,14 @@ create index if not exists inventory_movements_created_by_idx
   on public.inventory_movements (created_by);
 create index if not exists inventory_movements_supplier_id_idx
   on public.inventory_movements (supplier_id);
-create index if not exists onboarding_progress_completed_by_idx
-  on public.onboarding_progress (completed_by);
+-- onboarding_progress is also outside the historical replay baseline.
+do $migration$
+begin
+  if pg_catalog.to_regclass('public.onboarding_progress') is not null then
+    execute 'create index if not exists onboarding_progress_completed_by_idx on public.onboarding_progress (completed_by)';
+  end if;
+end
+$migration$;
 create index if not exists recipes_updated_by_idx
   on public.recipes (updated_by);
 
