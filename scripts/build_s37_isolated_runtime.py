@@ -69,13 +69,13 @@ def _transform(source, add_guard):
         "${AUTH_PROJECT_URL}/rest/v1/",
         "${S37_TARGET_ORIGIN}/rest/v1/",
     )
-    source = re.sub(r"\\bproductionRows\\b", "isolatedRows", source)
+    source = re.sub(r"\bproductionRows\b", "isolatedRows", source)
     source = source.replace(
         "production_rest_snapshot",
         "isolated_staging_rest_snapshot",
     )
     source = re.sub(
-        r"\\bproduction_source_mutation\\b",
+        r"\bproduction_source_mutation\b",
         "isolated_source_mutation",
         source,
     )
