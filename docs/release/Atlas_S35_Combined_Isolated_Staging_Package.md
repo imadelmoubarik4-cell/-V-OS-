@@ -1,8 +1,8 @@
-# Atlas S35 combined isolated-staging package v2
+# Atlas S35 combined isolated-staging package v3 (S37 runtime isolation)
 
-Status: **Git-only preparation — nothing in this package has been executed.**
+Status: **S37 Git-only isolation correction. S35 migrations 1–6 are complete in isolated staging; runtime deployment has not started.**
 
-This is the single review package for the full-app staging rehearsal after PR34, updated by the Git-only S36 security remediation. A later approval may authorize this revised package as one operation. It does not authorize or describe a production release.
+This package resumes the approved S35 rehearsal after the Git-only S36 database remediation. S37 adds a deterministic fail-closed runtime artifact so the 18 reviewed functions cannot fall back to a production project or advertise wildcard browser access. It does not authorize or describe a production release.
 
 ## Fixed boundary
 
@@ -10,6 +10,7 @@ This is the single review package for the full-app staging rehearsal after PR34,
 | --- | --- |
 | Source | merge commit `0556ec89ec8041a9d2b1f7cd94706212176884a6` |
 | Package base | PR35 merge commit `0915c36034d36b009d45f3d6730bf5df01b868eb` |
+| S37 base | PR36 merge commit `c6815d959dc57a8b1d3ec812a0596dcfe21b9302` |
 | Staging project | `atlas-pr30-validation` / `atialqebqxcquzdkezln` / `eu-west-1` |
 | Private preview | `https://atlas-s32-rehearsal.coffee-cockt-8589.chatgpt.site` |
 | Synthetic tag | `atlas-s35-20260911` |
@@ -24,7 +25,7 @@ Only synthetic identities, files, messages, schedules, imports, inventory, recip
 
 1. Resolve and record the exact source commit, staging project ref, region, preview origin, and CLI version.
 2. Export the staging migration ledger, schema fingerprints, deployed-function inventory, Auth redirect allowlist, Storage bucket/policy inventory, and notification configuration. Store sensitive exports encrypted; publish only sanitized hashes and counts.
-3. Compare every source file with `Atlas_S35_Combined_Isolated_Staging_Manifest.json`.
+3. Compare every source file with `Atlas_S35_Combined_Isolated_Staging_Manifest.json`, then build and verify the S37 generated runtime manifest before any function deployment.
 4. Stop on a project-ref, source, checksum, ledger, schema, function, redirect, or Storage-policy mismatch. Do not repair an unknown baseline inside this run.
 5. Accept the known S36 pre-migration baseline only when `atlas_private.report_events` exists, RLS is disabled, no policies exist, and `anon`/`authenticated` have no grants. Any other state is a stop. Migration 6 is the only authorized repair.
 6. If a listed migration is already present with the exact accepted version and fingerprint, record it as an exact skip. A partial or divergent S33/S34/S36 state is a stop condition.
@@ -48,7 +49,13 @@ The JSON manifest is authoritative for SHA-256 checksums. Stop immediately if a 
 
 ### 3. Runtime functions and secrets
 
-Deploy exactly the 18 named function packages in the manifest and record the deployed version plus source hashes. Do not deploy `atlas-item-master` or any unlisted function.
+Build a new runtime directory outside the repository:
+
+```sh
+python3 scripts/build_s37_isolated_runtime.py "$ATLAS_S37_RUNTIME_OUTPUT"
+```
+
+Deploy exactly the 18 generated function packages listed by `runtime-manifest.json` and record their candidate hashes and deployed versions. Never deploy the raw manifest sources directly. The builder verifies every reviewed source hash, removes all known production project references and Auth fallbacks, fixes browser CORS to the owner-private preview origin, and adds an exact-target startup guard. Do not deploy `atlas-item-master` or any unlisted function.
 
 Keep `SUPABASE_SERVICE_ROLE_KEY`, `ATLAS_VAPID_PRIVATE_KEY`, and `ATLAS_NOTIFICATION_DISPATCH_TOKEN` server-only. Configure the staging Auth URL and publishable key outside Git. Begin with:
 
@@ -56,7 +63,7 @@ Keep `SUPABASE_SERVICE_ROLE_KEY`, `ATLAS_VAPID_PRIVATE_KEY`, and `ATLAS_NOTIFICA
 - `ATLAS_STOCK_COUNT_PUBLICATION_ENABLED=false`
 - `ATLAS_PUSH_DELIVERY_ENABLED=false`
 
-The notifications function retains platform JWT verification. Any gateway-auth exception is a stop requiring a new review.
+The notifications function retains platform JWT verification. The other 17 functions retain their reviewed in-handler active-profile verification only behind the exact staging configuration guard. Any generated production reference, wildcard CORS value, target mismatch, or gateway-auth exception is a stop requiring a new review.
 
 ### 4. Owner-private full-app preview
 
@@ -114,7 +121,7 @@ If cleanup or validation fails, freeze the isolated target and recover from the 
 
 ## Stop conditions
 
-Stop without continuing to later phases when any fixed identifier or checksum differs; preflight is incomplete; a migration is partial; an unlisted function is required; preview privacy fails; production or real-person data is observed; push cannot be constrained to one device and two events; recovery fingerprints differ; or cleanup cannot prove zero residue.
+Stop without continuing to later phases when any fixed identifier or checksum differs; preflight is incomplete; a migration is partial; the generated runtime contains a production reference or wildcard CORS; an unlisted function is required; preview privacy fails; production or real-person data is observed; push cannot be constrained to one device and two events; recovery fingerprints differ; or cleanup cannot prove zero residue.
 
 ## Evidence and decision
 
