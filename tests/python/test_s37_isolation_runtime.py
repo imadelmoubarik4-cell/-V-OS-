@@ -58,6 +58,7 @@ class S37IsolationRuntimeTests(unittest.TestCase):
                     )
                     self.assertNotIn('"production-', generated)
                     self.assertNotIn('"Production ', generated)
+                    self.assertNotIn("Stock-count production ", generated)
                     for line in generated.splitlines():
                         if line.lstrip().startswith("//"):
                             self.assertNotRegex(line, r"\b[Pp]roduction\b")
