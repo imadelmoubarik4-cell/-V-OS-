@@ -96,6 +96,7 @@ def _transform(source, add_guard):
     source = source.replace('"Production ', '"Isolated staging ')
     source = source.replace('"The production ', '"The isolated staging ')
     source = source.replace("production REST", "isolated staging REST")
+    source = source.replace("Stock-count production ", "Stock-count isolated staging ")
     source = "\n".join(
         re.sub(r"\b[Pp]roduction\b", "isolated staging", line)
         if line.lstrip().startswith("//") else line
