@@ -98,6 +98,21 @@ test('browser uses the session gateway without direct private-table access', () 
   assert.doesNotMatch(ui, /atlas_private\.|inventory_movements|knowledge_acknowledgements/);
 });
 
+test('loading always reaches a terminal state when session recovery stalls', () => {
+  assert.match(ui, /const SESSION_TIMEOUT_MS = 8000/);
+  assert.match(ui, /withTimeout\(\s*client\.auth\.getSession\(\)/);
+  assert.match(ui, /Atlas could not confirm your session in time/);
+  assert.match(ui, /Reports took too long to respond/);
+  assert.match(ui, /data-reports-refresh/);
+});
+
+test('the whole snapshot load has a terminal-state watchdog', () => {
+  assert.match(ui, /const LOAD_TIMEOUT_MS = 15000/);
+  assert.match(ui, /withTimeout\(\s*api\('snapshot'\),\s*LOAD_TIMEOUT_MS/);
+  assert.match(ui, /Reports did not finish loading/);
+  assert.match(ui, /viewVisible\(\) && !state\.snapshot && !state\.loading && !state\.error/);
+});
+
 test('Reports preserves the Atlas visual system and tablet-first behavior', () => {
   assert.match(css, /--reports-surface:var\(--atlas-surface/);
   assert.match(css, /'Fraunces'/);
@@ -109,4 +124,10 @@ test('Reports preserves the Atlas visual system and tablet-first behavior', () =
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.doesNotMatch(css, /Caprasimo|Figtree|--color-accent-2/);
   assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
+});
+
+test('Reports primary and Ask Atlas actions use the shared blue treatment', () => {
+  assert.match(css, /\.reports-primary\{[^}]*var\(--blue-600/);
+  assert.match(css, /\.reports-ask-fab\{[^}]*var\(--blue-600/);
+  assert.match(css, /\.reports-ask-panel form button\{[^}]*var\(--blue-600/);
 });

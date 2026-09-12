@@ -1,8 +1,18 @@
 (function () {
   'use strict';
 
-  const WORKSPACE_SRC = 'assets/js/settings-workspace.js?v=20260805-1';
-  const WORKSPACE_CSS = 'assets/css/settings-workspace.css?v=20260805-1';
+  // Launch-blocker fix (Settings does not respond):
+  // These two constants previously carried a `?v=20260805-1` cache-buster.
+  // `loadAtlasAssetOnce()` in apps/web/config.js de-duplicates with
+  // `document.querySelector('script[src="assets/js/settings-workspace.js"]')`,
+  // an exact-string match that never matched the suffixed element. Both loaders
+  // run after window load, so in the race window each one believed the other
+  // had not loaded and the Settings IIFE could be evaluated twice — duplicate
+  // document click listeners (settings-workspace.js:1100) and duplicate
+  // snapshot/API requests. Using the identical path on both sides restores the
+  // existing de-duplication guard. No config.js change, no behaviour change.
+  const WORKSPACE_SRC = 'assets/js/settings-workspace.js';
+  const WORKSPACE_CSS = 'assets/css/settings-workspace.css';
   const BUTTON_CONTRAST_STYLE_ID = 'atlas-settings-button-contrast';
   const state = {
     loading: false,
@@ -34,15 +44,20 @@
   function removeLegacySettings() {
     const element = host();
     if (!element) return;
-    element.querySelector('#checkpoint-a-integrations-settings')?.remove();
-    element.querySelectorAll('.checkpoint-a-settings-integrations').forEach((section) => section.remove());
+    // The Operations layout recreates this compatibility section whenever it is
+    // removed. Deleting it from this observer therefore creates a cross-observer
+    // feedback loop as soon as Settings becomes visible. Keep the node connected
+    // but suppressed so Operations sees its current signature and stops writing.
+    element.querySelectorAll('#checkpoint-a-integrations-settings, .checkpoint-a-settings-integrations').forEach((section) => {
+      if (!section.hidden) section.hidden = true;
+    });
   }
 
   function ensureButtonContrast() {
     if (document.getElementById(BUTTON_CONTRAST_STYLE_ID)) return;
     const style = document.createElement('style');
     style.id = BUTTON_CONTRAST_STYLE_ID;
-    style.textContent = '.settings-view .settings-primary,.settings-view .settings-hero aside button{color:#fff}';
+    style.textContent = '.settings-view .settings-primary,.settings-view .settings-hero aside button{color:#fff}#settings-view #checkpoint-a-integrations-settings,#settings-view .checkpoint-a-settings-integrations{display:none!important}';
     document.head.appendChild(style);
   }
 
@@ -86,6 +101,24 @@
     ensureStylesheet();
     if (workspaceReady()) return activateWorkspace();
     if (state.loading) return Promise.resolve(false);
+
+    // Second guard: if config.js has already appended the workspace script but
+    // it has not finished evaluating, do not append a competing copy.
+    const existing = document.querySelector(`script[src="${WORKSPACE_SRC}"]`);
+    if (existing) {
+      state.loading = true;
+      return new Promise((resolve) => {
+        existing.addEventListener('load', async () => {
+          state.loading = false;
+          resolve(await activateWorkspace());
+        }, { once: true });
+        existing.addEventListener('error', () => {
+          state.loading = false;
+          console.error('Checkpoint J Settings bundle could not be loaded.');
+          resolve(false);
+        }, { once: true });
+      });
+    }
 
     state.loading = true;
     return new Promise((resolve) => {

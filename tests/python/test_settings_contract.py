@@ -10,6 +10,11 @@ MIGRATION = (
 EDGE = (ROOT / "supabase/functions/atlas-settings/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BRIDGE = (ROOT / "apps/web/assets/js/settings-mount-bridge.js").read_text()
+BROWSER = (ROOT / "apps/web/assets/js/settings-workspace.js").read_text()
+CLOSURE = (
+    ROOT
+    / "supabase/migrations/20260909094553_atlas_pr27_reports_release_closure.sql"
+).read_text()
 
 
 def function_arguments(function_name: str) -> str:
@@ -187,6 +192,12 @@ class SettingsCheckpointJContractTests(unittest.TestCase):
         self.assertIn(".settings-view .settings-primary", BRIDGE)
         self.assertIn("color:#fff", BRIDGE)
         self.assertIn("ensureButtonContrast", BRIDGE)
+
+    def test_reports_ready_copy_matches_authenticated_isolated_acceptance(self):
+        self.assertIn("settings_value->>'reports_state'='ready'", CLOSURE)
+        self.assertIn("'{production_sync_enabled}','false'::jsonb,true", CLOSURE)
+        self.assertIn("Authenticated preview passed.", BROWSER)
+        self.assertNotIn("Reports remains a release blocker.", BROWSER)
 
 
 if __name__ == "__main__":

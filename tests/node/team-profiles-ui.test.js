@@ -15,6 +15,9 @@ test('Checkpoint E loads through the isolated Team Profiles API', () => {
   assert.match(bootstrap, /team-profiles\.bundle\.css\.gz/);
   assert.match(bootstrap, /DecompressionStream\('gzip'\)/);
   assert.match(bootstrap, /Blob/);
+  assert.match(bootstrap, /document\.createElement\('style'\)/);
+  assert.match(bootstrap, /style\.textContent = source/);
+  assert.doesNotMatch(bootstrap, /new Blob\(\[source\], \{ type: 'text\/css' \}\)/);
   assert.doesNotMatch(bootstrap, /eval\s*\(|new Function/);
 });
 
@@ -22,7 +25,7 @@ test('Team Profiles adds a dedicated People navigation and directory', () => {
   assert.match(ui, /data-view="team-profiles"/);
   assert.match(ui, /<\/i>Profiles/);
   assert.match(ui, /Team directory/);
-  assert.match(ui, /Search name, role or department/);
+  assert.doesNotMatch(ui, /Search name, role or department|data-team-profiles-search/);
   assert.match(ui, /Training due/);
   assert.match(ui, /Contact missing/);
 });
@@ -56,10 +59,25 @@ test('browser uses authenticated gateway and no direct database writes', () => {
   assert.doesNotMatch(ui, /team_profile_details|team_emergency_contacts|onboarding_progress/);
 });
 
+test('profile modal closes from its backdrop as well as explicit controls', () => {
+  assert.match(ui, /team-profile-modal-backdrop\[data-team-profile-close-modal\]/);
+  assert.match(ui, /backdrop\.addEventListener\('click', closeModal, \{ once: true \}\)/);
+  assert.match(ui, /event\?\.stopPropagation\?\.\(\)/);
+  assert.match(ui, /event\.key === 'Escape'.*closeModal\(event\)/s);
+});
+
 test('Team Profiles preserves Atlas design and responsive behavior', () => {
   assert.match(css, /var\(--atlas-surface\)/);
   assert.match(css, /'Fraunces'/);
   assert.match(css, /'IBM Plex Sans'/);
+  assert.match(ui, /team-profile-card-media/);
+  assert.match(ui, /aria-pressed="\$\{selected \? 'true' : 'false'\}"/);
+  assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css, /\.team-profile-card-list\{grid-template-columns:1fr\}/);
+  assert.match(css, /\.team-profile-card:focus-visible/);
+  assert.match(css, /\.team-profile-detail\{[^}]*padding:14px/);
+  assert.match(css, /\.team-profile-empty-section,\.team-profiles-empty\{[^}]*min-height:68px/);
   assert.match(css, /@media\(max-width:820px\)/);
   assert.match(css, /@media\(max-width:600px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);

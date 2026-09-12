@@ -101,27 +101,9 @@
 
   function ensureNav() {
     if (state.navButton?.isConnected) return state.navButton;
-    const parent = document.querySelector('.nav-parent[data-default="inventory"]');
-    const sub = parent?.nextElementSibling;
-    if (!sub?.classList.contains('nav-sub')) return null;
-    let button = sub.querySelector('[data-item-master-l2]');
-    if (!button) {
-      button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'nav-item';
-      button.dataset.itemMasterL2 = 'true';
-      button.innerHTML = '<span data-lucide="list-checks"></span>Item master';
-      const stockCount = sub.querySelector('[data-subview="Stock count"]');
-      if (stockCount?.nextSibling) sub.insertBefore(button, stockCount.nextSibling);
-      else sub.appendChild(button);
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        activate();
-      });
-    }
+    const button = document.querySelector('#inventory-section-header [data-item-master-l2]');
+    if (!button) return null;
     state.navButton = button;
-    window.lucide?.createIcons?.();
     return button;
   }
 
@@ -165,8 +147,13 @@
   function deactivate() {
     if (!state.active) return;
     state.active = false;
-    state.navButton?.classList.remove('active');
+    document.body.classList.remove('item-master-active');
+    document.querySelectorAll('[data-item-master-l2]').forEach((button) => button.classList.remove('active'));
     setBaseInventoryVisible(true);
+    const intelligence = document.getElementById('inventory-intelligence');
+    if (intelligence) intelligence.hidden = document.body.classList.contains('stock-count-active');
+    const actions = document.querySelector('.inventory-section-actions');
+    if (actions) actions.hidden = document.body.classList.contains('stock-count-active');
     closeEditor();
   }
 
@@ -174,9 +161,15 @@
     const itemNav = document.querySelector('[data-view="inventory"][data-subview="Items"]');
     if (itemNav) itemNav.click();
     state.active = true;
+    document.body.classList.add('item-master-active');
     document.querySelectorAll('.nav-item').forEach((button) => button.classList.remove('active'));
-    ensureNav()?.classList.add('active');
+    ensureNav();
+    document.querySelectorAll('[data-item-master-l2]').forEach((button) => button.classList.add('active'));
     document.getElementById('atlas-page-title').textContent = 'Item master';
+    const intelligence = document.getElementById('inventory-intelligence');
+    if (intelligence) intelligence.hidden = true;
+    const actions = document.querySelector('.inventory-section-actions');
+    if (actions) actions.hidden = true;
     setBaseInventoryVisible(false);
     render();
     await refresh();

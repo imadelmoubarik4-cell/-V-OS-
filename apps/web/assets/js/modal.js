@@ -2,6 +2,7 @@
   'use strict';
 
   const modalState = new WeakMap();
+  const legacyOverlaySelector = '.overlay:not([data-atlas-modal])';
   const focusableSelector = [
     'a[href]',
     'button:not([disabled])',
@@ -25,7 +26,44 @@
     if (event.key !== 'Escape') return;
     const openModals = Array.from(document.querySelectorAll('[data-atlas-modal].is-open'));
     const topModal = openModals.at(-1);
-    if (topModal) AtlasModal.close(topModal);
+    if (topModal) {
+      AtlasModal.close(topModal, 'escape');
+      return;
+    }
+
+    const legacyModal = visibleLegacyOverlays().at(-1);
+    if (legacyModal) closeLegacyOverlay(legacyModal, 'escape');
+  }
+
+  function visibleLegacyOverlays() {
+    return Array.from(document.querySelectorAll(legacyOverlaySelector)).filter((root) => {
+      const style = window.getComputedStyle(root);
+      return !root.hidden && style.display !== 'none' && style.visibility !== 'hidden';
+    });
+  }
+
+  function closeLegacyOverlay(root, reason = 'dismiss') {
+    if (!(root instanceof HTMLElement)) return;
+    root.style.display = 'none';
+    if (root.hasAttribute('aria-hidden')) root.setAttribute('aria-hidden', 'true');
+    root.querySelectorAll('form').forEach((form) => form.reset());
+    root.dispatchEvent(new CustomEvent('atlas:modal-close', { detail: { reason } }));
+  }
+
+  function closeLegacyOverlayFromClick(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    const root = target?.closest(legacyOverlaySelector);
+    if (!root) return;
+
+    const closeControl = target.closest([
+      '.modal-close',
+      '[data-modal-close]',
+      '[id^="cancel-"][id$="-btn"]'
+    ].join(','));
+    if (!closeControl && event.target !== root) return;
+
+    event.preventDefault();
+    closeLegacyOverlay(root, closeControl ? 'control' : 'backdrop');
   }
 
   function trapFocus(event) {
@@ -139,6 +177,7 @@
 
   document.addEventListener('keydown', closeTopModal);
   document.addEventListener('keydown', trapFocus);
+  document.addEventListener('click', closeLegacyOverlayFromClick);
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-atlas-modal]').forEach((root) => AtlasModal.register(root));
   });

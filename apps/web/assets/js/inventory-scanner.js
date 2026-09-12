@@ -666,13 +666,14 @@
   }
 
   function ensureEntryPoints() {
-    const toolbar = document.querySelector('#inventory-view .toolbar');
+    const toolbar = document.querySelector('.inventory-section-actions')
+      || document.querySelector('#inventory-view .toolbar');
     if (toolbar && !document.getElementById('inventory-scan-btn')) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'btn ghost inventory-scan-entry';
       button.id = 'inventory-scan-btn';
-      button.innerHTML = '<i data-lucide="scan-barcode"></i>Scan bottle';
+      button.innerHTML = '<i data-lucide="scan-barcode"></i>Scan';
       const addButton = document.getElementById('add-item-btn');
       toolbar.insertBefore(button, addButton || null);
     }

@@ -49,8 +49,8 @@
   }
 
   function formatIsk(value, empty = '—') {
-    if (!Number.isFinite(value)) return empty;
-    return `${Math.round(value).toLocaleString('en-US')} ISK`;
+    return window.AtlasCalculations?.formatIsk?.(value, empty)
+      || (!Number.isFinite(value) ? empty : `${Math.round(value).toLocaleString('en-US')} ISK`);
   }
 
   function normalizeUnit(unit) {
@@ -92,6 +92,10 @@
   }
 
   function ingredientCost(ingredient) {
+    if (window.AtlasCalculations) {
+      const result = window.AtlasCalculations.ingredientMetrics(ingredient, items);
+      return { value: result.cost, item: result.item, reason: result.reason };
+    }
     const item = items.find((candidate) => candidate.id === ingredient.item_id);
     const purchaseCost = number(item?.cost_price, NaN);
     if (!item || !Number.isFinite(purchaseCost) || purchaseCost <= 0) {
@@ -115,6 +119,10 @@
   }
 
   function ingredientAvailability(ingredient) {
+    if (window.AtlasCalculations) {
+      const result = window.AtlasCalculations.ingredientMetrics(ingredient, items);
+      return { servings: result.batches, item: result.item, reason: result.reason, belowPar: result.belowPar };
+    }
     const item = items.find((candidate) => candidate.id === ingredient.item_id);
     if (!item) return { servings: null, item: null, reason: 'Inventory item is missing', belowPar: false };
 
@@ -157,6 +165,10 @@
       ? number(yieldValue, 1)
       : number(recipeOrIngredients?.yield_quantity, 1));
 
+    if (window.AtlasCalculations) {
+      return window.AtlasCalculations.recipeMetrics({ recipe_ingredients: ingredients, yield_quantity: recipeYield }, items).availability;
+    }
+
     if (!ingredients.length) {
       return { servings: null, limiting: null, unknown: 0, missing: 0, belowPar: 0, status: 'incomplete' };
     }
@@ -198,6 +210,10 @@
     const recipeYield = Math.max(0.0001, yieldValue !== undefined
       ? number(yieldValue, 1)
       : number(recipeOrIngredients?.yield_quantity, 1));
+
+    if (window.AtlasCalculations) {
+      return window.AtlasCalculations.recipeMetrics({ recipe_ingredients: ingredients, menu_price: menuPrice, yield_quantity: recipeYield }, items).financials;
+    }
 
     let total = 0;
     let incomplete = 0;
@@ -263,7 +279,7 @@
         <header class="recipe-alpha03-head">
           <div>
             <span class="recipe-kicker">Atlas Alpha 0.3</span>
-            <h1>Recipe Intelligence</h1>
+            <h1>Recipe Library</h1>
             <p>Service specifications, live inventory availability and cost performance in one workspace.</p>
           </div>
           <button type="button" class="recipe-primary-action" id="add-recipe-btn"><i data-lucide="plus"></i><span>New recipe</span></button>
@@ -282,12 +298,8 @@
           <button type="button" class="recipe-intelligence-action" id="recipe-intelligence-action" hidden>Review recipe</button>
         </section>
 
-        <div class="recipe-workspace">
-          <aside class="recipe-library-pane" aria-label="Recipe library">
-            <div class="recipe-library-head">
-              <div><h2>Library</h2><span id="recipe-library-count">0 recipes</span></div>
-              <button type="button" class="recipe-icon-action" id="recipe-library-add" aria-label="Create recipe"><i data-lucide="plus"></i></button>
-            </div>
+        <section class="recipe-gallery" aria-label="Recipe gallery">
+          <div class="recipe-gallery-toolbar">
             <label class="recipe-search recipe-workspace-search" aria-label="Search recipes"><i data-lucide="search"></i><input type="search" id="recipe-search" placeholder="Search recipes…" /></label>
             <div class="recipe-status-filters" id="recipe-status-filters" aria-label="Recipe health filters">
               <button type="button" class="active" data-status="all">All</button>
@@ -295,13 +307,21 @@
               <button type="button" data-status="attention">Attention</button>
               <button type="button" data-status="draft">Draft</button>
             </div>
-            <div class="recipe-category-row recipe-category-stack" id="recipe-category-row" aria-label="Recipe categories"></div>
-            <div id="recipes-grid-v2" class="recipe-library-list"></div>
-            <div id="recipes-empty-v2" class="recipe-library-empty" hidden><i data-lucide="search-x"></i><strong>No recipes found</strong><span>Change the filters or create a new recipe.</span></div>
-          </aside>
+            <span class="recipe-gallery-count" id="recipe-library-count">0 recipes</span>
+            <button type="button" class="recipe-icon-action" id="recipe-library-add" aria-label="Create recipe"><i data-lucide="plus"></i></button>
+          </div>
+          <div class="recipe-category-row" id="recipe-category-row" aria-label="Recipe categories"></div>
+          <div id="recipes-grid-v2" class="recipe-gallery-grid"></div>
+          <div id="recipes-empty-v2" class="recipe-library-empty" hidden><i data-lucide="search-x"></i><strong>No recipes found</strong><span>Change the filters or create a new recipe.</span></div>
+        </section>
 
-          <main class="recipe-profile-pane" id="recipe-profile-pane" aria-live="polite"></main>
-          <aside class="recipe-insight-pane" id="recipe-insight-pane" aria-label="Recipe intelligence"></aside>
+        <div class="recipe-detail-sheet" id="recipe-detail-sheet" hidden>
+          <div class="recipe-detail-scrim" data-detail-close></div>
+          <div class="recipe-detail-shell" role="dialog" aria-modal="true" aria-label="Recipe detail">
+            <button type="button" class="recipe-detail-close" data-detail-close aria-label="Close recipe"><i data-lucide="x"></i></button>
+            <main class="recipe-profile-pane" id="recipe-profile-pane" tabindex="-1" aria-live="polite"></main>
+            <aside class="recipe-insight-pane" id="recipe-insight-pane" aria-label="Recipe intelligence"></aside>
+          </div>
         </div>
 
         <div class="recipe-foundation-panel recipe-alpha03-foundation">
@@ -371,6 +391,7 @@
     dom.ingredientSelect = document.getElementById('ingredient-item');
     dom.ingredientList = document.getElementById('ingredient-list');
     dom.saveState = document.getElementById('recipe-save-state');
+    dom.detailSheet = document.getElementById('recipe-detail-sheet');
     dom.serviceOverlay = document.getElementById('recipe-service-overlay');
     dom.serviceShell = document.getElementById('recipe-service-shell');
   }
@@ -412,6 +433,12 @@
       document.getElementById('fab-btn')?.classList.remove('open');
       setActiveView('recipes');
       openEditor(null);
+    });
+    dom.detailSheet?.addEventListener('click', (event) => {
+      if (event.target.closest('[data-detail-close]')) closeDetail();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && dom.detailSheet && !dom.detailSheet.hidden && dom.serviceOverlay?.hidden !== false) closeDetail();
     });
     dom.serviceOverlay?.addEventListener('click', (event) => {
       if (event.target === dom.serviceOverlay || event.target.closest('[data-service-close]')) closeServiceView();
@@ -465,7 +492,7 @@
       detail.textContent = featured ? `${featured.recipe.name} is the strongest current promotion candidate based on availability and margin.` : 'Once ingredients are linked, Atlas will calculate cost and service availability.';
       action.hidden = !featured;
       action.textContent = featured ? 'Review recommendation' : '';
-      action.onclick = featured ? () => selectRecipe(featured.recipe.id) : null;
+      action.onclick = featured ? () => selectRecipe(featured.recipe.id, { focus: true }) : null;
       return;
     }
     const issue = issues[0];
@@ -482,7 +509,7 @@
     }
     action.hidden = false;
     action.textContent = 'Review recipe';
-    action.onclick = () => selectRecipe(issue.recipe.id);
+    action.onclick = () => selectRecipe(issue.recipe.id, { focus: true });
   }
 
   function categoryCounts() {
@@ -532,7 +559,24 @@
     if (recipeId) localStorage.setItem('atlas.selectedRecipeId', recipeId);
     else localStorage.removeItem('atlas.selectedRecipeId');
     renderWorkspaceContent();
-    if (options.focus && dom.profile) dom.profile.focus({ preventScroll: true });
+    if (options.focus) openDetail();
+  }
+
+  function openDetail() {
+    if (!dom.detailSheet || !state.selectedRecipeId) return;
+    dom.detailReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dom.detailSheet.hidden = false;
+    document.body.classList.add('recipe-detail-open');
+    dom.profile?.focus({ preventScroll: true });
+  }
+
+  function closeDetail() {
+    if (!dom.detailSheet) return;
+    dom.detailSheet.hidden = true;
+    document.body.classList.remove('recipe-detail-open');
+    const returnFocus = dom.detailReturnFocus;
+    dom.detailReturnFocus = null;
+    if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
   }
 
   function renderCards() {
@@ -544,6 +588,7 @@
       dom.grid.innerHTML = '';
       dom.empty.hidden = false;
       state.selectedRecipeId = null;
+      closeDetail();
       return;
     }
     dom.empty.hidden = true;
@@ -552,13 +597,33 @@
       const category = categoryFor(recipe);
       const status = recipeStatus(recipe);
       const financials = recipeFinancials(recipe);
+      const availability = status.availability;
+      const coverage = Number.isFinite(availability.servings) ? `${availability.servings} servings` : status.label;
+      const specParts = [recipe.glassware, recipe.garnish].filter(Boolean).map((part) => escape(part));
+      const media = recipe.image_url
+        ? `<span class="recipe-gallery-media has-image"><img class="recipe-gallery-photo" src="${escape(recipe.image_url)}" alt="" loading="lazy" decoding="async" /><span class="recipe-gallery-status ${status.className}">${escape(status.label)}</span></span>`
+        : `<span class="recipe-gallery-media"><i data-lucide="martini"></i><span class="recipe-gallery-status ${status.className}">${escape(status.label)}</span></span>`;
       const financeMarkup = canManageCommercial()
-        ? `<span class="recipe-library-item-finance"><span>${financials.incomplete ? 'Cost incomplete' : formatIsk(financials.perServing)}</span><span>${Number.isFinite(financials.margin) && !financials.incomplete ? `${financials.margin.toFixed(0)}% margin` : 'Margin unavailable'}</span></span>`
+        ? `<span class="recipe-gallery-stat"><span>Cost / serving</span><strong>${financials.incomplete ? 'Incomplete' : formatIsk(financials.perServing)}</strong></span>
+           <span class="recipe-gallery-stat"><span>Margin</span><strong>${Number.isFinite(financials.margin) && !financials.incomplete ? `${financials.margin.toFixed(0)}%` : '—'}</strong></span>`
         : '';
-      return `<button type="button" class="recipe-library-item ${recipe.id === state.selectedRecipeId ? 'selected' : ''}" data-recipe-id="${escape(recipe.id)}">
-        <span class="recipe-library-item-top"><strong>${escape(recipe.name)}</strong><span class="recipe-health-dot ${status.className}" aria-label="${escape(status.label)}"></span></span>
-        <span class="recipe-library-item-meta">${escape(category.name)}<span>${Number.isFinite(status.availability.servings) ? `${status.availability.servings} servings` : status.label}</span></span>
-        ${financeMarkup}
+      const attention = availability.missing
+        ? `<span class="recipe-gallery-flag">${availability.missing} ingredient${availability.missing === 1 ? '' : 's'} not linked to inventory</span>`
+        : availability.belowPar
+          ? '<span class="recipe-gallery-flag">An ingredient is at or below par</span>'
+          : '';
+      return `<button type="button" class="recipe-gallery-card ${recipe.id === state.selectedRecipeId ? 'selected' : ''}" data-recipe-id="${escape(recipe.id)}" aria-label="Open ${escape(recipe.name)}">
+        ${media}
+        <span class="recipe-gallery-body">
+          <span class="recipe-gallery-category">${escape(category.name)}</span>
+          <strong class="recipe-gallery-name">${escape(recipe.name)}</strong>
+          <span class="recipe-gallery-spec">${specParts.length ? specParts.join(' · ') : 'Specification incomplete'}</span>
+          <span class="recipe-gallery-stats">
+            <span class="recipe-gallery-stat"><span>Coverage</span><strong>${escape(coverage)}</strong></span>
+            ${financeMarkup}
+          </span>
+          ${attention}
+        </span>
       </button>`;
     }).join('');
     dom.grid.querySelectorAll('[data-recipe-id]').forEach((button) => button.addEventListener('click', () => selectRecipe(button.dataset.recipeId, { focus: true })));
@@ -994,11 +1059,23 @@
     return featured ? { text: `Featured recommendation: ${featured.recipe.name} is ready with a ${featured.financials.margin.toFixed(0)}% margin.` } : null;
   }
 
+  function getHomeMetrics() {
+    const margins = recipes
+      .filter((recipe) => recipe.active !== false)
+      .map((recipe) => recipeFinancials(recipe))
+      .filter((financials) => financials.incomplete === 0 && Number.isFinite(financials.margin));
+    return {
+      averageMargin: margins.length ? margins.reduce((sum, financials) => sum + financials.margin, 0) / margins.length : null,
+      marginRecipeCount: margins.length
+    };
+  }
+
   window.AtlasRecipes = {
     init,
     render,
     openEditor,
     getHomeAlert,
+    getHomeMetrics,
     recipeAvailability,
     openServiceLibrary,
     reloadCategories: () => loadCategories(true)

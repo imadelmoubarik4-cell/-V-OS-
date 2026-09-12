@@ -20,6 +20,9 @@ test('bridge keeps the Month tab separate from the weekly bubbling handler', () 
   assert.match(bridge, /host\.addEventListener\('click', protectMonthTab, true\)/);
   assert.match(bridge, /event\.preventDefault\(\)/);
   assert.match(bridge, /event\.stopPropagation\(\)/);
+  assert.match(bridge, /host\.classList\.contains\('shifts-month-active'\) && monthPanel\(\)/);
+  assert.match(month, /state\.active = true/);
+  assert.match(month, /window\.setTimeout\(\(\) => loadMonth\(\), 0\)/);
 });
 
 test('every visible Month action has a window-capture fallback', () => {

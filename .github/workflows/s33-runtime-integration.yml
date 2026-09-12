@@ -1,0 +1,60 @@
+name: S33 disposable runtime integration
+on:
+  pull_request:
+    branches: [claude/recipes-gallery-v2]
+    paths:
+      - '.github/workflows/s33-runtime-integration.yml'
+      - 'scripts/verify_s33_runtime_integration.py'
+      - 'scripts/build_isolated_runtime.py'
+      - 'tests/python/test_isolated_runtime.py'
+      - 'tests/fixtures/s33-runtime-artifact.json'
+      - 'scripts/s33_import_pipeline_checks.py'
+      - 'supabase/s33/**'
+      - 'tests/node/s33-import-worker.test.js'
+      - 'tests/fixtures/s33-runtime-sources.json'
+      - 'tests/sql/s33_import_review.sql'
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vaos_s33
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vaos_s33"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: vaos_s33
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate CSV parser and worker boundary
+        run: node --test tests/node/s33-import-worker.test.js
+      - name: Install SQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Validate isolated SQL integration and native restore
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: python3 scripts/verify_s33_runtime_integration.py
+      - name: Retain synthetic acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s33-postgres-integration
+          path: ${{ runner.temp }}/atlas-s33-evidence/
+          retention-days: 7

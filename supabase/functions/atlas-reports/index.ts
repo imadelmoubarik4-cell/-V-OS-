@@ -149,8 +149,52 @@ function branchCredentials() {
   return { branchUrl, privilegedKey };
 }
 
+const REPORT_RECORDSET_ARGUMENTS = [
+  "p_inventory",
+  "p_recipes",
+  "p_recipe_ingredients",
+  "p_suppliers",
+  "p_movements",
+  "p_profiles",
+  "p_tasks",
+  "p_progress",
+] as const;
+
+function normalizeReportRecordset(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((row): row is Record<string, unknown> => (
+    Boolean(row) && typeof row === "object" && !Array.isArray(row)
+  ));
+}
+
+function normalizeReportPackageSize(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const normalized = value.trim().toLowerCase();
+  const number = normalized.match(/([0-9]+(?:[.,][0-9]+)?)/)?.[1]?.replace(",", ".");
+  if (!number) return value;
+  if (/(?:^|[^a-z])(gr|gram|grams)(?:[^a-z]|$)/i.test(normalized)
+      || /[0-9]\s*(gr|gram|grams)(?:[^a-z]|$)/i.test(normalized)) {
+    return `${number} g`;
+  }
+  return value;
+}
+
+function normalizeBranchRpcPayload(name: string, payload: Record<string, unknown>): Record<string, unknown> {
+  if (name !== "atlas_reports_snapshot_v2") return payload;
+  const normalized = { ...payload };
+  for (const argument of REPORT_RECORDSET_ARGUMENTS) {
+    normalized[argument] = normalizeReportRecordset(payload[argument]);
+  }
+  normalized.p_inventory = normalizeReportRecordset(normalized.p_inventory).map((item) => ({
+    ...item,
+    package_size: normalizeReportPackageSize(item.package_size),
+  }));
+  return normalized;
+}
+
 async function branchRpc(name: string, payload: Record<string, unknown>): Promise<any> {
   const { branchUrl, privilegedKey } = branchCredentials();
+  const normalizedPayload = normalizeBranchRpcPayload(name, payload);
   const response = await fetch(`${branchUrl}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: {
@@ -160,7 +204,7 @@ async function branchRpc(name: string, payload: Record<string, unknown>): Promis
       accept: "application/json",
       "cache-control": "no-store",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(normalizedPayload),
   });
 
   const text = await response.text();

@@ -34,7 +34,6 @@
     submitting: false,
     error: null,
     message: null,
-    search: '',
     filter: 'active',
     selectedProfileId: null,
     modal: null,
@@ -158,21 +157,12 @@
   }
 
   function filteredProfiles() {
-    const query = state.search.trim().toLowerCase();
     return profiles().filter((profile) => {
       if (state.filter === 'active' && !profile.active) return false;
       if (state.filter === 'inactive' && profile.active) return false;
       if (state.filter === 'training' && (training(profile).private || training(profile).complete)) return false;
       if (state.filter === 'contacts' && Number(profile.emergency_contact_count || 0) > 0) return false;
-      if (!query) return true;
-      return [
-        profile.name,
-        profile.email,
-        profile.job_title,
-        profile.role,
-        profile.department,
-        profile.employment_type
-      ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query));
+      return true;
     });
   }
 
@@ -206,24 +196,35 @@
     const profileTraining = training(profile);
     const trainingPercent = profileTraining.private ? null : Number(profileTraining.percent || 0);
     const subtitle = profile.job_title || roleLabel(profile.role);
-    return `<button type="button" class="team-profile-card ${profile.id === selectedProfile()?.id ? 'is-selected' : ''}" data-team-profile-select="${escapeHtml(profile.id)}">
-      <span class="team-profile-avatar">${escapeHtml(initials(profile.name))}</span>
-      <span class="team-profile-card-copy">
-        <span><strong>${escapeHtml(profile.name)}</strong>${profile.active ? '<small class="is-active">Active</small>' : '<small class="is-inactive">Inactive</small>'}</span>
-        <small>${escapeHtml(subtitle)} · ${escapeHtml(profile.email || 'No email')}</small>
-        ${trainingPercent === null ? '<em>Training private</em>' : `<em>${trainingPercent}% onboarding</em>${progressBar(trainingPercent, 'Onboarding')}`}
+    const selected = profile.id === selectedProfile()?.id;
+    const department = DEPARTMENT_LABELS[profile.department] || roleLabel(profile.role);
+    const contactStatus = Number(profile.emergency_contact_count || 0) > 0 ? 'Contact saved' : 'Contact missing';
+    return `<button type="button" class="team-profile-card ${selected ? 'is-selected' : ''}" data-team-profile-select="${escapeHtml(profile.id)}" aria-pressed="${selected ? 'true' : 'false'}" aria-label="Open ${escapeHtml(profile.name)} profile">
+      <span class="team-profile-card-media">
+        <span class="team-profile-avatar">${escapeHtml(initials(profile.name))}</span>
+        <span class="team-profile-card-status ${profile.active ? 'is-active' : 'is-inactive'}"><span aria-hidden="true"></span>${profile.active ? 'Active' : 'Inactive'}</span>
+        ${selected ? '<span class="team-profile-card-selected" aria-hidden="true"><i data-lucide="check"></i></span>' : ''}
       </span>
-      <i data-lucide="chevron-right"></i>
+      <span class="team-profile-card-copy">
+        <span class="team-profile-card-identity"><span><strong>${escapeHtml(profile.name)}</strong><small>${escapeHtml(subtitle)}</small></span><i data-lucide="chevron-right"></i></span>
+        <small class="team-profile-card-email">${escapeHtml(profile.email || 'No email')}</small>
+        <span class="team-profile-card-training">
+          <span><span>Training</span><strong>${trainingPercent === null ? 'Private' : `${trainingPercent}%`}</strong></span>
+          ${trainingPercent === null ? '' : progressBar(trainingPercent, 'Onboarding')}
+        </span>
+        <span class="team-profile-card-foot"><span><i data-lucide="briefcase-business"></i>${escapeHtml(department)}</span><span class="${Number(profile.emergency_contact_count || 0) > 0 ? 'is-complete' : 'is-missing'}"><i data-lucide="${Number(profile.emergency_contact_count || 0) > 0 ? 'circle-check-big' : 'circle-alert'}"></i>${contactStatus}</span></span>
+      </span>
     </button>`;
   }
 
   function directoryMarkup() {
     const entries = filteredProfiles();
     return `<aside class="team-profiles-directory">
-      <header><strong>Team directory</strong><span>${entries.length} shown</span></header>
-      <label class="team-profiles-search"><i data-lucide="search"></i><input type="search" data-team-profiles-search placeholder="Search name, role or department" value="${escapeHtml(state.search)}" /></label>
-      <div class="team-profiles-filters">
-        ${['active','all','training','contacts','inactive'].map((filter) => `<button type="button" class="${state.filter === filter ? 'is-active' : ''}" data-team-profiles-filter="${filter}">${filter === 'training' ? 'Training due' : filter === 'contacts' ? 'Contact missing' : humanize(filter)}</button>`).join('')}
+      <header class="team-profiles-directory-head"><div><span>People</span><h2>Team directory</h2><p>Select a person to review their full Atlas profile.</p></div><strong>${entries.length} shown</strong></header>
+      <div class="team-profiles-toolbar">
+        <div class="team-profiles-filters" aria-label="Filter team profiles">
+          ${['active','all','training','contacts','inactive'].map((filter) => `<button type="button" class="${state.filter === filter ? 'is-active' : ''}" data-team-profiles-filter="${filter}" aria-pressed="${state.filter === filter ? 'true' : 'false'}">${filter === 'training' ? 'Training due' : filter === 'contacts' ? 'Contact missing' : humanize(filter)}</button>`).join('')}
+        </div>
       </div>
       <div class="team-profile-card-list">${entries.length ? entries.map(profileCard).join('') : '<div class="team-profiles-empty"><i data-lucide="user-search"></i><p>No profiles match this view.</p></div>'}</div>
       <footer><i data-lucide="user-plus"></i><span>Account invitations are not connected yet. This checkpoint manages existing Atlas accounts only.</span></footer>
@@ -417,6 +418,8 @@
     if (state.loading && !state.workspace) element.innerHTML = loadingMarkup();
     else if (state.error && !state.workspace) element.innerHTML = errorMarkup();
     else element.innerHTML = shellMarkup();
+    const backdrop = element.querySelector('.team-profile-modal-backdrop[data-team-profile-close-modal]');
+    if (backdrop) backdrop.addEventListener('click', closeModal, { once: true });
     document.body.classList.toggle('team-profile-modal-open', Boolean(state.modal));
     window.lucide?.createIcons?.();
   }
@@ -469,6 +472,13 @@
 
   function formValue(form, name) {
     return form.elements.namedItem(name)?.value?.trim?.() || '';
+  }
+
+  function closeModal(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    state.modal = null;
+    render();
   }
 
   function submitDetails(form) {
@@ -527,9 +537,7 @@
     }
 
     if (target.closest('[data-team-profile-close-modal]')) {
-      event.preventDefault();
-      state.modal = null;
-      render();
+      closeModal(event);
       return;
     }
 
@@ -599,20 +607,6 @@
     }
   }
 
-  function handleInput(event) {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement) || !target.matches('[data-team-profiles-search]')) return;
-    state.search = target.value;
-    render();
-    requestAnimationFrame(() => {
-      const field = host()?.querySelector('[data-team-profiles-search]');
-      if (field) {
-        field.focus();
-        field.setSelectionRange(state.search.length, state.search.length);
-      }
-    });
-  }
-
   function handleSubmit(event) {
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || !host()?.contains(form)) return;
@@ -624,8 +618,7 @@
 
   function handleKeydown(event) {
     if (event.key === 'Escape' && state.modal) {
-      state.modal = null;
-      render();
+      closeModal(event);
     }
   }
 
@@ -710,7 +703,6 @@
     observeViewChanges();
     document.addEventListener('click', handleNavigationCapture, true);
     document.addEventListener('click', handleClick);
-    document.addEventListener('input', handleInput);
     document.addEventListener('submit', handleSubmit);
     document.addEventListener('keydown', handleKeydown);
   }

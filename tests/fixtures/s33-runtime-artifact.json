@@ -1,0 +1,217 @@
+{
+  "status": "OFFLINE_CANDIDATE_NOT_DEPLOYMENT_AUTHORIZATION",
+  "source_revision": "6608eb791a8c06dd183f32b499c03dc5f3c07f87",
+  "target": "atialqebqxcquzdkezln",
+  "runtime_schema_validated": false,
+  "deployed": false,
+  "required_environment_names": [
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "ATLAS_AUTH_PROJECT_URL",
+    "ATLAS_AUTH_PUBLISHABLE_KEY"
+  ],
+  "functions": [
+    {
+      "name": "atlas-inventory-scanner",
+      "entrypoint": "./functions/atlas-inventory-scanner/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-inventory-scanner/index.ts",
+          "source_sha256": "5d340c104d6ee5540404e3aa472243b03a577adb7a6fe5d43262710a67b5200a",
+          "candidate_sha256": "2df16de4712b8a1dd391e2146d5e760ec1afd6e08e0d22351df5b204f628e782"
+        }
+      ]
+    },
+    {
+      "name": "atlas-knowledge",
+      "entrypoint": "./functions/atlas-knowledge/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-knowledge/index.ts",
+          "source_sha256": "ce0248ba19f8bbdf446e75e6ca4179d4bcfff0f659b1b7e9e252edaff6358fb2",
+          "candidate_sha256": "39031b8ef3b684dbc01ae7371a1d81fb7cfafcef631b78a6578711815b29d23a"
+        }
+      ]
+    },
+    {
+      "name": "atlas-marketing-workspace",
+      "entrypoint": "./functions/atlas-marketing-workspace/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-marketing-workspace/index.ts",
+          "source_sha256": "bb178376cd1537c1ba879aac2afa1c124dccda2db448eee599a196f81b3fc95b",
+          "candidate_sha256": "80670ab48dc9a4731c51ca6ffe7e71063977d779fb806a13bbce4f3fd675021e"
+        }
+      ]
+    },
+    {
+      "name": "atlas-operations-checkpoint-a",
+      "entrypoint": "./functions/atlas-operations-checkpoint-a/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-operations-checkpoint-a/index.ts",
+          "source_sha256": "ecdf8b64979059542e0911facf8d5c6fe6e63f07e6341c8bf6f996e0903a45bf",
+          "candidate_sha256": "358de934442c3de3d4524118e25f055f23b9784b38049409526d5631e30116b5"
+        }
+      ]
+    },
+    {
+      "name": "atlas-phase3-brain",
+      "entrypoint": "./functions/atlas-phase3-brain/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-phase3-brain/index.ts",
+          "source_sha256": "638f4b6b6aa3eef4481c6badbba6d71a9e9619b4f3eafa326d77911825bfdf82",
+          "candidate_sha256": "241151c3510b282d1ed053fc00f4fa16929e8c38f1801635c5294a4260e74d08"
+        }
+      ]
+    },
+    {
+      "name": "atlas-phase3-intelligence",
+      "entrypoint": "./functions/atlas-phase3-intelligence/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-phase3-intelligence/index.ts",
+          "source_sha256": "70de29819c0dfedd3eb554ae7c4f6e28aa0a2b308492aa6f8a8186f62c0cf3e7",
+          "candidate_sha256": "fb1879c73aa1248ceab3c4257d23a6960bd744090e755a7641e9d42e118d707a"
+        }
+      ]
+    },
+    {
+      "name": "atlas-reports",
+      "entrypoint": "./functions/atlas-reports/entrypoint.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-reports/entrypoint.ts",
+          "source_sha256": "52922c789f811d6c413a6ed2d0a93badf9c99968709e7108e0dd9169ed585b31",
+          "candidate_sha256": "677f0a7117db6af527d2cc4653776a90af46cb81a51c5b5699f2dd98ab855d72"
+        },
+        {
+          "path": "functions/atlas-reports/index.ts",
+          "source_sha256": "8ee479dc8baba54335ca0a127ef556f54f487126c3c485e2e58d5bca3745368c",
+          "candidate_sha256": "b86b84a3599e072d4c7a2d9bf600ec8aa76501a5605a1df9bb0c701d53571902"
+        }
+      ]
+    },
+    {
+      "name": "atlas-settings",
+      "entrypoint": "./functions/atlas-settings/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-settings/index.ts",
+          "source_sha256": "a62e706388bd8f2e49d22d52888284c1fdd262de3d167cc80b3fec79e6438d82",
+          "candidate_sha256": "5b8ffd5e686edc1cdeecd30c74705df05f7b35653b9e727ad6e01a237b2d50d5"
+        }
+      ]
+    },
+    {
+      "name": "atlas-shifts",
+      "entrypoint": "./functions/atlas-shifts/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-shifts/index.ts",
+          "source_sha256": "ad8f80b4000c393da0e1084aae7a7e91e9ded1096f921913bde53f902420ee15",
+          "candidate_sha256": "bcb2f15dc4e2e8f40383139b3b7be67e8b2053c26ea71fc74095e3dfaa3b548f"
+        }
+      ]
+    },
+    {
+      "name": "atlas-sprint3-review",
+      "entrypoint": "./functions/atlas-sprint3-review/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-sprint3-review/index.ts",
+          "source_sha256": "dd0a532c9a754481afa550077c939f2155f280fdd13af625cf7fd37221e67401",
+          "candidate_sha256": "abe1739c00dcf1c047013daa92c7646529c82cb9259e36366efffc2d72cf9aa1"
+        }
+      ]
+    },
+    {
+      "name": "atlas-sprint4-briefing",
+      "entrypoint": "./functions/atlas-sprint4-briefing/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-sprint4-briefing/index.ts",
+          "source_sha256": "9fd8d237e422a756dda837eef7dac1a09b18ff6e9b00de7ed20c1438706bc1d5",
+          "candidate_sha256": "9aaf13e9328dfd4944a5cc254134922d74bb44fa01a6b8ec2706f11a34d3228c"
+        }
+      ]
+    },
+    {
+      "name": "atlas-stock-counts",
+      "entrypoint": "./functions/atlas-stock-counts/entrypoint.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-stock-counts/entrypoint.ts",
+          "source_sha256": "caf9577afd7deb589bccda5a18c346c33b66457a35c6b5982230ab091aebbdc6",
+          "candidate_sha256": "5821eeed755472a028d091079048da8dfae3f4f318b0540164d68635da11561b"
+        },
+        {
+          "path": "functions/atlas-stock-counts/index.ts",
+          "source_sha256": "e10cc53f0154e321bf27486e123d04918d97f20585115d1ffb3a6d60677de3ee",
+          "candidate_sha256": "fe0c826e178e2a0fbbdca6d9ccce48e624942458417e4e8563a0b5f46fa6cb52"
+        }
+      ]
+    },
+    {
+      "name": "atlas-system",
+      "entrypoint": "./functions/atlas-system/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-system/index.ts",
+          "source_sha256": "d5b8e6a6201a630e906ceea9168595c55a73da8255c52897f2ba07ac32316940",
+          "candidate_sha256": "54ef0cc031960423f74c0424474cc904cd4bcd346df8d9f0a2d905263bba5d98"
+        }
+      ]
+    },
+    {
+      "name": "atlas-team-messages",
+      "entrypoint": "./functions/atlas-team-messages/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-team-messages/index.ts",
+          "source_sha256": "053dd0041e105b6e932069269f4bc0e7daa2e98213b3fb11200f393313bba610",
+          "candidate_sha256": "01c23a9003ec488092262a508cb9fef43af21c229b2a16679d98ab239968c88f"
+        }
+      ]
+    },
+    {
+      "name": "atlas-team-profile-photos",
+      "entrypoint": "./functions/atlas-team-profile-photos/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-team-profile-photos/index.ts",
+          "source_sha256": "52c526ff8300db29791b24b3f03e2a3ed88ebb4088c1f47ddbc615f47fcac69d",
+          "candidate_sha256": "541a46b583b6cb8ce3395906375436582413e1330494b1a2fcb10dbb9c876ce4"
+        }
+      ]
+    },
+    {
+      "name": "atlas-team-profiles",
+      "entrypoint": "./functions/atlas-team-profiles/index.ts",
+      "verify_jwt": false,
+      "files": [
+        {
+          "path": "functions/atlas-team-profiles/index.ts",
+          "source_sha256": "304518271436c3ce92b849d100afebe330f2c3d71669f6d03c5249033e91fc9e",
+          "candidate_sha256": "a8a432ee2ced4d4185b7ca90a21cfe56abfb3cf7a6589aa9e2ba0adaa655a811"
+        }
+      ]
+    }
+  ]
+}

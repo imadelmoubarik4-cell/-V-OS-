@@ -76,3 +76,8 @@ test('Team Messages preserve Atlas design and mobile behavior', () => {
   assert.doesNotMatch(css, /Caprasimo|Figtree|--color-accent-2/);
   assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
 });
+
+test('short messages do not stretch across the conversation pane', () => {
+  assert.match(css, /\.team-message\{[^}]*width:fit-content[^}]*max-width:min\(680px,82%\)/);
+  assert.match(css, /\.team-message\.is-own\{[^}]*margin-left:auto/);
+});

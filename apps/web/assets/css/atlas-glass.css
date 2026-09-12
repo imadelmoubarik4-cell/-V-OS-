@@ -1,0 +1,830 @@
+/* Atlas — global glass presentation layer.
+ *
+ * Minimalist glassmorphism: white base, light-blue secondary, translucent
+ * surfaces over a soft blue wash. Applies to every workspace from one place so
+ * no screen carries its own competing palette.
+ *
+ * Presentation only. Loads LAST. It changes no markup, no renderer, no data
+ * access, no auth and no routing; it re-points the existing design tokens and
+ * restyles existing classes. Rolling back is deleting this file's <link>.
+ */
+
+:root {
+  /* Base: white, with light blue as the only secondary hue. */
+  --atlas-bg: #ffffff;
+  --atlas-surface: rgba(255, 255, 255, .72);
+  --atlas-sidebar: rgba(255, 255, 255, .58);
+  --atlas-text: #10151c;
+  --atlas-muted: #6b7787;
+  --atlas-line: rgba(16, 60, 110, .10);
+  --atlas-accent: #2f80ed;
+  --atlas-accent-soft: #e8f1fd;
+  --atlas-green: #1f9d76;
+  --atlas-warn: #c98a2e;
+  --atlas-danger: #d05c5c;
+  --atlas-radius: 18px;
+
+  /* Glass primitives */
+  --glass-blur: saturate(150%) blur(20px);
+  --glass-fill: rgba(255, 255, 255, .72);
+  --glass-fill-strong: rgba(255, 255, 255, .86);
+  --glass-fill-soft: rgba(255, 255, 255, .5);
+  --glass-line: rgba(16, 60, 110, .10);
+  --glass-line-strong: rgba(16, 60, 110, .16);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .85);
+  --glass-shadow: 0 1px 2px rgba(16, 60, 110, .04), 0 18px 40px -28px rgba(16, 60, 110, .28);
+  --glass-shadow-raised: 0 6px 18px rgba(16, 60, 110, .07), 0 34px 60px -34px rgba(16, 60, 110, .34);
+  --blue-50: #f4f9ff;
+  --blue-100: #e8f1fd;
+  --blue-200: #d3e5fb;
+  --blue-400: #7db4f2;
+  --blue-600: #2f80ed;
+  --blue-700: #1f66c9;
+
+  /* Home / Inventory passes read these; re-pointed to the blue scale. */
+  --atlas-home-accent: #2f80ed;
+  --atlas-home-accent-strong: #1f66c9;
+  --atlas-home-accent-soft: rgba(47, 128, 237, .10);
+  --atlas-home-accent-line: rgba(47, 128, 237, .22);
+  --atlas-home-teal: #1f9d8f;
+  --atlas-home-teal-soft: rgba(31, 157, 143, .11);
+  --atlas-home-warning: #c98a2e;
+  --atlas-home-warning-soft: rgba(201, 138, 46, .11);
+  --atlas-home-shadow: var(--glass-shadow);
+  --atlas-home-shadow-raised: var(--glass-shadow-raised);
+}
+
+/* ---------- Page field: white, with light blue depth for the glass to read against ---------- */
+
+#app-screen {
+  background:
+    radial-gradient(1100px 620px at 12% -8%, rgba(47, 128, 237, .09), transparent 62%),
+    radial-gradient(900px 560px at 92% 4%, rgba(125, 180, 242, .12), transparent 58%),
+    radial-gradient(760px 520px at 50% 108%, rgba(47, 128, 237, .06), transparent 60%),
+    #ffffff;
+  background-attachment: fixed;
+}
+
+/* Minimalist type: one sans across the app, no serif display faces. */
+#app-screen,
+#app-screen .atlas-page-title,
+#app-screen h1, #app-screen h2, #app-screen h3, #app-screen h4,
+#app-screen .metric-card strong,
+#app-screen .home-hero h1,
+#app-screen .placeholder-head h2,
+#app-screen .service-head h1,
+#app-screen .service-card h3,
+#app-screen .atlas-logo,
+.modal h2, .modal h3,
+.recipe-alpha03 h1, .recipe-alpha03 h2, .recipe-alpha03 h3,
+.recipe-profile-pane h2, .recipe-profile-pane h3,
+.recipe-service-shell h1, .recipe-service-shell h2 {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+#app-screen h1, #app-screen .home-hero h1, #app-screen .placeholder-head h2 {
+  font-weight: 600;
+  letter-spacing: -.035em;
+}
+
+/* Recipes surfaces carry several serif rules of their own; one sweep keeps the
+   workspace on the app's single typeface. */
+#recipes-view *,
+.recipe-detail-shell *,
+.recipe-service-shell * {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+#recipes-view .recipe-alpha03-head h1 {
+  font-weight: 600;
+  letter-spacing: -.038em;
+}
+
+#recipes-view .recipe-summary-card strong,
+#recipes-view .recipe-alpha03-summary strong {
+  font-weight: 650;
+  letter-spacing: -.035em;
+}
+
+#app-screen h2, #app-screen h3, #app-screen .atlas-page-title {
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+
+/* ---------- Shell ---------- */
+
+.atlas-sidebar {
+  background: var(--glass-fill-soft);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--glass-line);
+}
+
+.atlas-brand,
+.atlas-profile {
+  border-color: var(--glass-line);
+}
+
+.atlas-logo {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700));
+  border-radius: 13px;
+  box-shadow: 0 6px 16px -8px rgba(47, 128, 237, .8);
+}
+
+.nav-label { color: var(--atlas-muted); }
+
+.nav-item {
+  border-radius: 12px;
+  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, .74);
+  color: var(--atlas-text);
+}
+
+.nav-item.active {
+  background: var(--glass-fill-strong);
+  color: var(--blue-700);
+  box-shadow: var(--glass-highlight), 0 1px 2px rgba(16, 60, 110, .05);
+}
+
+.nav-item.active svg { color: var(--blue-600); }
+
+.avatar {
+  background: var(--blue-100);
+  color: var(--blue-700);
+}
+
+/* PR29 shell navigation: one destination per workspace with a compact desktop rail. */
+@media (min-width: 761px) {
+  #mobile-menu-btn.mobile-menu { display: grid; }
+  body.atlas-sidebar-collapsed { --sidebar-w: 78px; }
+  body.atlas-sidebar-collapsed .atlas-sidebar { width: 78px; }
+  body.atlas-sidebar-collapsed .atlas-brand { min-height: 70px; justify-content: center; padding: 14px 10px; }
+  body.atlas-sidebar-collapsed .atlas-brand > div:last-child,
+  body.atlas-sidebar-collapsed .nav-label,
+  body.atlas-sidebar-collapsed .nav-item-label,
+  body.atlas-sidebar-collapsed .profile-copy,
+  body.atlas-sidebar-collapsed #logout-btn,
+  body.atlas-sidebar-collapsed .system-nav-status,
+  body.atlas-sidebar-collapsed .review-nav-count,
+  body.atlas-sidebar-collapsed .team-nav-unread { display: none !important; }
+  body.atlas-sidebar-collapsed .atlas-logo { width: 38px; height: 38px; }
+  body.atlas-sidebar-collapsed .atlas-nav { padding: 13px 10px; }
+  body.atlas-sidebar-collapsed .nav-group { margin-bottom: 11px; }
+  body.atlas-sidebar-collapsed .nav-item { min-height: 44px; justify-content: center; gap: 0; padding: 10px; font-size: 0; }
+  body.atlas-sidebar-collapsed .nav-item svg { width: 19px; height: 19px; }
+  body.atlas-sidebar-collapsed .atlas-profile { justify-content: center; padding: 14px 10px; }
+}
+
+.atlas-topbar {
+  background: rgba(255, 255, 255, .62);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-line);
+}
+
+.atlas-search input,
+.atlas-content input,
+.atlas-content select,
+.atlas-content textarea,
+.modal input,
+.modal select,
+.modal textarea {
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-line);
+  border-radius: 12px;
+  color: var(--atlas-text);
+}
+
+.atlas-search input:focus,
+.atlas-content input:focus,
+.atlas-content select:focus,
+.atlas-content textarea:focus,
+.modal input:focus,
+.modal select:focus,
+.modal textarea:focus {
+  outline: none;
+  border-color: var(--blue-400);
+  box-shadow: 0 0 0 3px rgba(47, 128, 237, .14);
+}
+
+.top-icon {
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: 12px;
+  color: var(--atlas-muted);
+  box-shadow: var(--glass-highlight);
+}
+
+.top-icon:hover {
+  border-color: var(--atlas-home-accent-line);
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+
+.service-toggle {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700));
+  border-radius: 12px;
+  box-shadow: 0 8px 20px -12px rgba(47, 128, 237, .9);
+}
+
+.service-toggle:hover { background: var(--blue-700); }
+
+/* ---------- Surfaces ---------- */
+
+.atlas-content .panel,
+.atlas-content .stat-card,
+.atlas-card,
+.metric-card,
+.empty-module,
+.atlas-content table {
+  background: var(--glass-fill) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line) !important;
+  border-radius: var(--atlas-radius) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+  color: var(--atlas-text) !important;
+}
+
+.metric-card .metric-icon {
+  background: var(--blue-100);
+  color: var(--blue-600);
+  border-radius: 12px;
+}
+
+.atlas-content thead th {
+  background: rgba(255, 255, 255, .6);
+  color: var(--atlas-muted);
+  border-color: var(--glass-line);
+}
+
+.atlas-content tbody tr { border-color: var(--glass-line); }
+.atlas-content tbody tr:hover { background: rgba(47, 128, 237, .05); }
+
+.focus-row { border-color: var(--glass-line); }
+.focus-row[data-target]:hover { background: rgba(47, 128, 237, .07); }
+.focus-dot { background: var(--blue-600); }
+
+.metric-card[data-target]:hover {
+  transform: translateY(-2px);
+  border-color: var(--atlas-home-accent-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow-raised) !important;
+}
+
+#low-stock-banner:hover { background: rgba(201, 138, 46, .16); }
+
+/* Buttons */
+.atlas-content .btn,
+.modal .btn,
+.recipe-primary-action,
+.atlas-home-action {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700));
+  border: 1px solid var(--blue-700);
+  border-radius: 12px;
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px -14px rgba(47, 128, 237, .95);
+}
+
+.atlas-content .btn:hover,
+.modal .btn:hover,
+.recipe-primary-action:hover,
+.atlas-home-action:hover {
+  background: var(--blue-700);
+  border-color: var(--blue-700);
+}
+
+.atlas-content .btn.ghost,
+.modal .btn.ghost,
+.recipe-secondary-action,
+.recipe-intelligence-action,
+.atlas-home-action.secondary {
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-line-strong);
+  border-radius: 12px;
+  color: var(--atlas-text);
+  white-space: nowrap;
+  box-shadow: var(--glass-highlight);
+}
+
+.atlas-content .btn.ghost:hover,
+.modal .btn.ghost:hover,
+.recipe-secondary-action:hover,
+.recipe-intelligence-action:hover,
+.atlas-home-action.secondary:hover {
+  background: var(--blue-50);
+  border-color: var(--atlas-home-accent-line);
+  color: var(--blue-700);
+}
+
+/* Atlas Intelligence panel in Recipes: the last gold accents in the workspace. */
+#recipes-view .recipe-kicker,
+#recipes-view .recipe-intelligence-copy span,
+#recipes-view .recipe-intelligence-copy span span {
+  color: var(--blue-600) !important;
+}
+
+#recipes-view .recipe-intelligence-icon {
+  background: var(--blue-100) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+  color: var(--blue-600) !important;
+}
+
+#recipes-view .recipe-intelligence-icon svg,
+#recipes-view .recipe-intelligence-icon path {
+  color: var(--blue-600) !important;
+  stroke: currentColor;
+}
+
+#recipes-view .recipe-summary-card .summary-icon,
+#recipes-view .recipe-featured-head .summary-icon {
+  background: var(--blue-100) !important;
+  color: var(--blue-600) !important;
+}
+
+/* Modals, sheets, toasts */
+.modal,
+#item-overlay .modal.item-modal {
+  background: rgba(255, 255, 255, .88) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow-raised) !important;
+}
+
+.overlay {
+  background: rgba(16, 60, 110, .22) !important;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.modal-header,
+.modal-footer { border-color: var(--glass-line) !important; }
+
+.toast {
+  background: rgba(16, 21, 28, .86);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: 14px;
+}
+
+/* Quick actions */
+.fab-wrap .fab-btn,
+#fab-btn {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700));
+  box-shadow: 0 12px 30px -14px rgba(47, 128, 237, .95);
+}
+
+#fab-menu {
+  background: rgba(255, 255, 255, .9);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: 18px;
+  box-shadow: var(--glass-highlight), var(--glass-shadow-raised);
+}
+
+#fab-menu button {
+  color: var(--atlas-text);
+}
+
+#fab-menu button:hover,
+#fab-menu button:focus-visible {
+  background: var(--blue-100);
+  color: var(--atlas-text);
+}
+
+#fab-menu button:focus-visible {
+  outline: 2px solid var(--blue-600);
+  outline-offset: 2px;
+}
+
+/* ---------- Recipes gallery on glass ---------- */
+
+#recipes-view .recipe-gallery-toolbar,
+#recipes-view .recipe-gallery-card,
+#recipes-view .recipe-library-empty,
+.recipe-summary-card,
+.recipe-foundation-card,
+.recipe-intelligence-panel {
+  background: var(--glass-fill) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+
+#recipes-view .recipe-gallery-card:hover {
+  border-color: var(--atlas-home-accent-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow-raised) !important;
+}
+
+#recipes-view .recipe-gallery-stat,
+#recipes-view .recipe-status-filters button,
+#recipes-view .recipe-category-chip {
+  background: rgba(255, 255, 255, .66);
+  border-color: var(--glass-line);
+}
+
+#recipes-view .recipe-gallery-stat { border: 1px solid var(--glass-line); }
+
+#recipes-view .recipe-status-filters button.active,
+#recipes-view .recipe-category-chip.active {
+  background: var(--blue-100);
+  border-color: var(--atlas-home-accent-line);
+  color: var(--blue-700);
+}
+
+#recipes-view .recipe-gallery-media:not(.has-image) {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(47, 128, 237, .12), transparent 64%),
+    var(--blue-50);
+}
+
+#recipes-view .recipe-gallery-status {
+  background: rgba(255, 255, 255, .82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#recipes-view .recipe-gallery-status.ready { background: rgba(231, 248, 244, .9); color: #15806f; }
+#recipes-view .recipe-gallery-status.warn { background: rgba(252, 243, 230, .92); color: #a4701f; }
+#recipes-view .recipe-gallery-status.danger { background: rgba(252, 236, 236, .92); color: #b04949; }
+
+.recipe-detail-shell {
+  background: rgba(255, 255, 255, .8);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-left: 1px solid var(--glass-line);
+}
+
+.recipe-detail-shell .recipe-profile-pane { background: transparent; }
+.recipe-detail-shell .recipe-insight-pane {
+  background: rgba(244, 249, 255, .72);
+  border-color: var(--glass-line);
+}
+
+.recipe-detail-scrim {
+  background: rgba(16, 60, 110, .2);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.recipe-detail-close {
+  background: var(--glass-fill-strong);
+  border-color: var(--glass-line);
+  box-shadow: var(--glass-highlight);
+}
+
+/* Service Mode keeps its dark, high-contrast surface — glass is for management,
+   not for a busy bar. Only its accents move to the blue scale. */
+.service-card svg { color: var(--blue-400); }
+.service-exit { border-radius: 14px; }
+
+/* ---------- Module workspaces: Operations, Atlas Brain, Business Intelligence,
+   Import Center. Their own stylesheets carry warm sand fills, gold accents and
+   dark intelligence heroes; these rules bring all four onto the white + light
+   blue glass system without touching their markup or logic. Any selector a
+   module doesn't use is simply inert. ---------- */
+
+.operations-card,
+.operations-summary-card,
+.operations-readiness,
+.brain-card,
+.brain-metric,
+.business-metric,
+.import-card,
+.import-queue-summary-card {
+  background: var(--glass-fill) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line) !important;
+  border-radius: var(--atlas-radius) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+  color: var(--atlas-text);
+}
+
+/* Intelligence heroes: dark panels become light glass, with their inherited
+   light text recoloured so nothing turns white-on-white. */
+.brain-hero,
+.business-hero {
+  color: var(--atlas-text) !important;
+  background:
+    radial-gradient(circle at 84% 10%, rgba(47, 128, 237, .14), transparent 44%),
+    radial-gradient(circle at 8% 90%, rgba(125, 180, 242, .16), transparent 50%),
+    rgba(255, 255, 255, .78) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+
+.brain-hero::after,
+.business-hero::after { display: none; }
+
+.brain-kicker,
+.business-kicker,
+.brain-briefing-line svg,
+.operations-kicker { color: var(--blue-600) !important; }
+
+.brain-hero h1,
+.business-hero h1 {
+  color: var(--atlas-text) !important;
+  font-weight: 600;
+  letter-spacing: -.035em;
+}
+
+.brain-hero-copy > p,
+.business-hero p,
+.brain-clock-label,
+.brain-countdown span { color: var(--atlas-muted) !important; }
+
+.brain-briefing-line {
+  color: var(--atlas-text) !important;
+  border-top-color: var(--glass-line) !important;
+}
+
+.brain-hero-panel {
+  background: rgba(255, 255, 255, .72) !important;
+  border: 1px solid var(--glass-line) !important;
+  box-shadow: var(--glass-highlight);
+}
+
+.brain-clock-label strong,
+.brain-countdown { color: var(--atlas-text) !important; }
+
+.brain-readiness-track,
+.brain-stock-meter,
+.operations-progress { background: var(--blue-100) !important; }
+
+.brain-readiness-track span,
+.brain-stock-meter span,
+.operations-progress span,
+.operations-progress > div {
+  background: linear-gradient(90deg, var(--blue-400), var(--blue-600)) !important;
+}
+
+/* Warm sand fills and gold accents → light blue */
+.brain-recipe-fact,
+.brain-assistant-answer,
+.brain-recommendation-icon,
+.operations-priority-icon {
+  background: var(--blue-50) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.brain-metric-icon { background: var(--blue-100) !important; color: var(--blue-600) !important; }
+.brain-data-dot.pending { background: var(--blue-400) !important; }
+.brain-data-dot.connected { background: var(--atlas-green) !important; }
+.brain-timeline-row.is-current .brain-timeline-marker {
+  background: var(--blue-600) !important;
+  box-shadow: 0 0 0 5px rgba(47, 128, 237, .16) !important;
+}
+.brain-recommendation button:hover { color: var(--blue-700) !important; }
+.brain-prompt-row button { background: rgba(255, 255, 255, .8) !important; }
+.brain-prompt-row button:hover { border-color: var(--atlas-home-accent-line) !important; color: var(--blue-700) !important; }
+
+.brain-feature-button,
+.brain-assistant-form button,
+.operations-card-action.is-primary,
+.business-period-control button.active {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700)) !important;
+  border-color: var(--blue-700) !important;
+  color: #fff !important;
+}
+
+.business-period-control button {
+  background: rgba(255, 255, 255, .74) !important;
+  border: 1px solid var(--glass-line) !important;
+  color: var(--atlas-text) !important;
+}
+
+/* Business Intelligence declares its own scale on .business-shell — re-point it
+   rather than fighting each rule. */
+.business-shell {
+  --business-ink: #10151c;
+  --business-muted: #6b7787;
+  --business-surface: rgba(255, 255, 255, .72);
+  --business-line: rgba(16, 60, 110, .10);
+}
+
+.business-health-card {
+  background: rgba(255, 255, 255, .76) !important;
+  border-color: var(--glass-line) !important;
+  color: var(--atlas-text) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+
+.business-health-card > span,
+.business-health-card > p { color: var(--atlas-muted) !important; }
+.business-health-ring:before { background: #fff !important; }
+
+/* ---------- App-wide type sweep.
+   Fifteen module stylesheets set Fraunces on their own headings. One sweep
+   keeps the whole product on a single typeface without editing any of them.
+
+   `!important` here is load-order insurance, not laziness: `config.js` injects
+   most module stylesheets after window load, so they land later in <head> than
+   this static link and would otherwise win every equal-specificity contest. */
+
+.daily-briefing-shell, .phase3-shell, .checkpoint-k-panel, .review-shell,
+.checkpoint-a-shell, .knowledge-shell, .shifts-hero, .shift-month-navigation,
+.shift-month-summary, .shift-month-cell-head, .shift-month-day-detail,
+.shift-month-state, .shift-week-navigation, .shift-summary-grid,
+.shift-day-column, .shift-empty-week, .shift-empty-section, .shift-section-card,
+.shift-confirmation-date, .shift-modal, .shift-state,
+.reports-shell, #reports-view, .settings-shell, .marketing-shell,
+.system-shell, .business-shell, .brain-shell, .item-master-workspace,
+.stock-count-hero, .stock-count-panel, .stock-count-summary-strip,
+.l1-classification-strip, .inventory-scanner-header,
+.inventory-scanner-placeholder, .inventory-scanner-result,
+.inventory-scanner-mini-stats, .inventory-scanner-item-copy,
+.atlas-import-center, .operations-center {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+.daily-briefing-shell h1, .daily-briefing-shell h2, .daily-briefing-shell h3,
+.phase3-shell h1, .phase3-shell h2, .phase3-shell h3, .phase3-shell strong,
+.checkpoint-k-panel h1, .checkpoint-k-panel h2, .checkpoint-k-panel h3,
+.review-shell h1, .review-shell h2, .review-shell h3, .review-shell strong,
+.checkpoint-a-shell h1, .checkpoint-a-shell h2, .checkpoint-a-shell h3,
+.checkpoint-a-compact-head h2, .checkpoint-a-compact-copy h3,
+.checkpoint-a-home-copy h3, .checkpoint-a-context-header h2,
+.checkpoint-a-settings-head h2, .checkpoint-a-settings-connection h3,
+.knowledge-shell h1, .knowledge-shell h2, .knowledge-shell h3,
+.shifts-hero h1, .shift-month-navigation h2, .shift-month-summary strong,
+.shift-month-cell-head strong, .shift-month-day-detail h3, .shift-month-state h2,
+.shift-week-navigation strong, .shift-summary-grid strong,
+.shift-day-column strong, .shift-empty-week h3, .shift-empty-section h3,
+.shift-section-card h2, .shift-confirmation-date strong, .shift-modal h2,
+.shift-state h2,
+.reports-hero h1, .reports-section-head h2, .report-kpi strong,
+.reports-panel h2, .reports-summary-grid article strong,
+.reports-bar-chart figcaption strong, .reports-ask-panel h2, .reports-state h2,
+.settings-shell h1, .settings-shell h2, .settings-shell h3,
+.settings-hero aside strong, .settings-summary-grid article strong,
+.settings-profile-summary strong,
+.marketing-shell h1, .marketing-shell h2, .marketing-shell h3,
+.marketing-stats strong, .marketing-recommendation-summary,
+.business-shell h1, .business-shell h2, .business-shell strong,
+.brain-shell h1, .brain-shell h2, .brain-shell h3, .brain-metric strong,
+.brain-stock-qty strong,
+.item-master-hero h1, .stock-count-hero h1, .stock-count-summary-strip strong,
+.l1-classification-strip strong,
+.inventory-scanner-header h2, .inventory-scanner-placeholder strong,
+.inventory-scanner-result h3, .inventory-scanner-mini-stats strong,
+.inventory-scanner-item-copy h3,
+.import-hero h1, .operations-hero h1, .operations-card h2, .operations-card h3 {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: 600;
+  letter-spacing: -.03em;
+}
+
+/* ---------- Module palettes.
+   Stylesheets that read `var(--atlas-accent, #b6925e)` are already corrected by
+   the token re-point above. These are the places that hard-code the old sand
+   and gold values, plus the one local `--brass` scale. */
+
+.checkpoint-k-panel { --brass: var(--blue-600); }
+
+.daily-kicker,
+.review-kicker,
+.phase3-hero span,
+.import-eyebrow,
+.checkpoint-a-shell .checkpoint-a-hero span,
+.stock-count-scan-kicker {
+  color: var(--blue-600) !important;
+}
+
+/* Icon wrappers: the fill and the glyph colour both move to blue. */
+.phase3-memory-marker,
+.phase3-state-icon,
+.review-summary-icon {
+  background: var(--blue-50) !important;
+  color: var(--blue-700) !important;
+}
+
+/* Containers that hold real copy: fill only. Their own text colours stand —
+   month chips carry staff names and times, export tiles carry labels and
+   descriptions, and recolouring either would tint content, not chrome. */
+.shift-month-chip,
+.reports-table th,
+.reports-export-grid button {
+  background: var(--blue-50) !important;
+}
+
+/* Days outside the current month are de-emphasised on purpose — keep them
+   quieter than in-month days rather than accenting them. */
+.marketing-calendar-day.is-outside {
+  background: var(--blue-50) !important;
+  color: var(--atlas-muted) !important;
+}
+
+.marketing-secondary:hover,
+.marketing-reminder:hover,
+.marketing-approval-row:hover { background: var(--blue-50) !important; }
+
+.shift-month-chip { border-left-color: var(--blue-400) !important; }
+
+.phase3-recommendation:before,
+.checkpoint-a-compact-card::before,
+.l1-classification-strip article:nth-child(3) { background: var(--blue-600) !important; }
+.l1-classification-strip article:nth-child(3) { border-left-color: var(--blue-600) !important; }
+
+.business-coverage-state.pending i { background: var(--blue-400) !important; }
+
+.knowledge-hero {
+  background: linear-gradient(135deg, #fff 0%, var(--blue-50) 100%) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.daily-briefing-shell {
+  background: linear-gradient(145deg, rgba(255, 255, 255, .82) 0%, rgba(244, 249, 255, .72) 100%) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-color: var(--glass-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+
+/* Glass surfaces for the panels these modules actually use. Every selector here
+   is a named class lifted from the module's own stylesheet — no guesses about
+   DOM structure, so a class a module doesn't use is inert rather than harmful.
+   Knowledge, Marketing and System panels are deliberately absent: their
+   container classes need a read of their renderers, which happens when those
+   workspaces get their own pass. */
+.phase3-panel, .phase3-recommendation, .phase3-modal-panel,
+.review-summary-card, .review-list-card, .review-detail-card, .review-issues-card,
+.checkpoint-a-panel, .checkpoint-a-routine,
+.reports-panel, .report-kpi, .reports-summary-grid article, .reports-ask-panel,
+.settings-profile-summary article,
+.shift-section-card, .shift-summary-grid article, .shift-modal,
+.stock-count-panel {
+  background: var(--glass-fill) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-color: var(--glass-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+
+/* The Phase 3 trust strip stays dark on purpose — it is an attestation surface,
+   not a content card. Only its accent moves to the blue scale. */
+.phase3-trust-strip > svg { color: var(--blue-400) !important; }
+
+.phase3-modal-backdrop,
+.item-master-backdrop {
+  background: rgba(16, 60, 110, .22) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.item-master-drawer {
+  background: rgba(255, 255, 255, .9) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.item-master-drawer > header {
+  background: rgba(255, 255, 255, .8) !important;
+  border-bottom-color: var(--glass-line) !important;
+}
+
+/* ---------- Accessibility / fallbacks ---------- */
+
+/* Where backdrop-filter is unsupported, fall back to near-opaque white so
+   nothing becomes unreadable. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass-fill: rgba(255, 255, 255, .96);
+    --glass-fill-strong: #ffffff;
+    --glass-fill-soft: rgba(255, 255, 255, .94);
+  }
+
+  .atlas-sidebar, .atlas-topbar { background: rgba(255, 255, 255, .97); }
+  .modal { background: #fff !important; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-fill: #ffffff;
+    --glass-fill-strong: #ffffff;
+    --glass-fill-soft: #ffffff;
+  }
+
+  .atlas-sidebar, .atlas-topbar, .modal, .recipe-detail-shell,
+  .daily-briefing-shell, .item-master-drawer, .item-master-drawer > header,
+  .brain-hero, .business-hero, .brain-hero-panel {
+    background: #fff !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-item, .metric-card[data-target] { transition: none; }
+}
