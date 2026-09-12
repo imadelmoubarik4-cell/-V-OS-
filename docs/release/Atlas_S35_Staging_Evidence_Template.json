@@ -1,5 +1,5 @@
 {
-  "package": "Atlas S35 combined isolated-staging package v2",
+  "package": "Atlas S35 combined isolated-staging package v3 (S37 runtime isolation)",
   "execution_status": "pending approval",
   "source_merge_commit": "0556ec89ec8041a9d2b1f7cd94706212176884a6",
   "target_project_ref": "atialqebqxcquzdkezln",
@@ -100,5 +100,16 @@
     "staging_accepted": false,
     "production_approved": false,
     "notes": "Production remains a separate approval."
+  },
+  "runtime_isolation": {
+    "status": "pending",
+    "builder": "scripts/build_s37_isolated_runtime.py",
+    "generated_manifest_sha256": null,
+    "function_count": 18,
+    "candidate_file_count": 22,
+    "exact_target_guard_verified": false,
+    "production_references_found": null,
+    "wildcard_cors_found": null,
+    "allowed_browser_origin_verified": false
   }
 }
