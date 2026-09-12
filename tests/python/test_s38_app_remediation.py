@@ -10,10 +10,6 @@ CHECKLIST = ROOT / "docs/release/Atlas_S38_PDF_App_Remediation_Checklist.md"
 
 class S38AppRemediationTests(unittest.TestCase):
     @classmethod
-    defSubmit = None
-    @classmethod
-    def setUpClass(clsLess = None
-    @classmethod
     def setUpClass(cls):
         cls.index = INDEX.read_text(encoding="utf-8")
         cls.css = CSS.read_text(encoding="utf-8")
@@ -67,7 +63,7 @@ class S38AppRemediationTests(unittest.TestCase):
             "data-subview",
             "polishMessages",
             "data-team-message-list",
-            "AtlasSettings.tab",
+            "AtlasSettings?.tab",
         ):
             self.assertIn(contract, self.javascript)
 
