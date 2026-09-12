@@ -16,6 +16,7 @@ BASE_FILES=['20260801000000_legacy_schema_baseline.sql','20260801105516_atlas_al
 DELTA='20260910205055_atlas_s33_runtime_delta.sql'
 CONTRACTS='20260910211903_atlas_s33_runtime_source_contracts.sql'
 IMPORT='20260910201435_atlas_s33_csv_import_pipeline.sql'
+POST_S33_FILES=['20260911124006_s34_foreign_key_indexes.sql','20260911124039_s34_notification_and_conversation_stars.sql','20260911160616_s36_report_events_rls.sql']
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs): return None
 OPENER=urllib.request.build_opener(NoRedirect)
@@ -82,6 +83,7 @@ def baseline(name):
     for version,label in entries:
         db(name,'insert into supabase_migrations.schema_migrations(version,name,statements) values ('+lit(version)+','+lit(label)+",array['synthetic CI baseline']) on conflict(version) do nothing;")
     for filename in (DELTA,CONTRACTS,IMPORT): db(name,(ROOT/'supabase/s33/migrations'/filename).read_text())
+    for filename in POST_S33_FILES: db(name,(ROOT/'supabase/migrations'/filename).read_text())
     db(name,"notify pgrst, 'reload schema';")
 
 def fingerprint(name):
