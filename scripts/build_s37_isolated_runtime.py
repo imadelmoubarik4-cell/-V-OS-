@@ -79,6 +79,29 @@ def _transform(source, add_guard):
         "isolated_source_mutation",
         source,
     )
+    identifier_replacements = {
+        "productionOrigin": "isolatedOrigin",
+        "productionJson": "isolatedJson",
+        "productionProfiles": "isolatedProfiles",
+        "productionInventory": "isolatedInventory",
+        "productionHeaders": "isolatedHeaders",
+        "productionSources": "isolatedSources",
+        "productionSource": "isolatedSource",
+        "ProductionSource": "IsolatedSource",
+    }
+    for old, new in identifier_replacements.items():
+        source = re.sub(rf"\b{old}\b", new, source)
+
+    source = source.replace('"production-', '"isolated-')
+    source = source.replace('"Production ', '"Isolated staging ')
+    source = source.replace('"The production ', '"The isolated staging ')
+    source = source.replace("production REST", "isolated staging REST")
+    source = source.replace("Stock-count production ", "Stock-count isolated staging ")
+    source = "\n".join(
+        re.sub(r"\b[Pp]roduction\b", "isolated staging", line)
+        if line.lstrip().startswith("//") else line
+        for line in source.split("\n")
+    )
     source = source.replace(
         '"access-control-allow-origin": "*"',
         f'"access-control-allow-origin": "{PREVIEW_ORIGIN}"',
