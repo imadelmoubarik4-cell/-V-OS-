@@ -1,6 +1,6 @@
 # Atlas S35 combined isolated-staging package v3 (S37 runtime isolation)
 
-Status: **S37 Git-only isolation correction. S35 migrations 1–6 are complete in isolated staging; runtime deployment has not started.**
+Status: **S37 Git-only isolation correction under review. S35 migrations 1–6 are complete in isolated staging; six functions are deployed and the remaining deployment is paused pending this correction.**
 
 This package resumes the approved S35 rehearsal after the Git-only S36 database remediation. S37 adds a deterministic fail-closed runtime artifact so the 18 reviewed functions cannot fall back to a production project or advertise wildcard browser access. It does not authorize or describe a production release.
 
@@ -55,7 +55,7 @@ Build a new runtime directory outside the repository:
 python3 scripts/build_s37_isolated_runtime.py "$ATLAS_S37_RUNTIME_OUTPUT"
 ```
 
-Deploy exactly the 18 generated function packages listed by `runtime-manifest.json` and record their candidate hashes and deployed versions. Never deploy the raw manifest sources directly. The builder verifies every reviewed source hash, removes all known production project references and Auth fallbacks, binds operational REST reads directly to the exact isolated runtime origin instead of the Auth client, fixes browser CORS to the owner-private preview origin, and adds an exact-target startup guard. Do not deploy `atlas-item-master` or any unlisted function.
+Deploy exactly the 18 generated function packages listed by `runtime-manifest.json` and record their candidate hashes and deployed versions. Never deploy the raw manifest sources directly. The builder verifies every reviewed source hash, removes all known production project references and Auth fallbacks, binds operational REST reads directly to the exact isolated runtime origin instead of the Auth client, removes legacy cross-project reader identifiers, source labels, and comments while preserving required database/API contract fields, fixes browser CORS to the owner-private preview origin, and adds an exact-target startup guard. Do not deploy `atlas-item-master` or any unlisted function.
 
 Keep `SUPABASE_SERVICE_ROLE_KEY`, `ATLAS_VAPID_PRIVATE_KEY`, and `ATLAS_NOTIFICATION_DISPATCH_TOKEN` server-only. Configure the staging Auth URL and publishable key outside Git. Begin with:
 
