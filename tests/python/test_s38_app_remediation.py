@@ -49,7 +49,7 @@ class S38AppRemediationTests(unittest.TestCase):
             "handleScannerControl",
             "[data-scanner-close]",
             "[data-scanner-step]",
-            "window.AtlasInventoryScanner.close",
+            "window.AtlasInventoryScanner?.close",
             "Math.max(0",
             "dispatchEvent(new Event('change'",
         ):
