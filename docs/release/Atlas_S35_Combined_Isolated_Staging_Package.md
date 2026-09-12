@@ -55,7 +55,7 @@ Build a new runtime directory outside the repository:
 python3 scripts/build_s37_isolated_runtime.py "$ATLAS_S37_RUNTIME_OUTPUT"
 ```
 
-Deploy exactly the 18 generated function packages listed by `runtime-manifest.json` and record their candidate hashes and deployed versions. Never deploy the raw manifest sources directly. The builder verifies every reviewed source hash, removes all known production project references and Auth fallbacks, fixes browser CORS to the owner-private preview origin, and adds an exact-target startup guard. Do not deploy `atlas-item-master` or any unlisted function.
+Deploy exactly the 18 generated function packages listed by `runtime-manifest.json` and record their candidate hashes and deployed versions. Never deploy the raw manifest sources directly. The builder verifies every reviewed source hash, removes all known production project references and Auth fallbacks, binds operational REST reads directly to the exact isolated runtime origin instead of the Auth client, fixes browser CORS to the owner-private preview origin, and adds an exact-target startup guard. Do not deploy `atlas-item-master` or any unlisted function.
 
 Keep `SUPABASE_SERVICE_ROLE_KEY`, `ATLAS_VAPID_PRIVATE_KEY`, and `ATLAS_NOTIFICATION_DISPATCH_TOKEN` server-only. Configure the staging Auth URL and publishable key outside Git. Begin with:
 
