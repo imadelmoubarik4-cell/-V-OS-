@@ -52,6 +52,15 @@ class S37IsolationRuntimeTests(unittest.TestCase):
                         "${AUTH_PROJECT_URL}/rest/v1/",
                         generated,
                     )
+                    self.assertNotRegex(
+                        generated,
+                        r"\bproduction(?:Origin|Json|Rows|Profiles|Inventory|Headers|Source|Sources)\b",
+                    )
+                    self.assertNotIn('"production-', generated)
+                    self.assertNotIn('"Production ', generated)
+                    for line in generated.splitlines():
+                        if line.lstrip().startswith("//"):
+                            self.assertNotRegex(line, r"\b[Pp]roduction\b")
                     for ref in builder.FORBIDDEN_PROJECT_REFS:
                         self.assertNotIn(ref, generated)
                     self.assertNotRegex(
