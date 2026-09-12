@@ -63,6 +63,22 @@ def _transform(source, add_guard):
         r"\1!;",
         source,
     )
+    # Authentication still uses the explicit Auth client. Operational REST data
+    # is always read from the exact isolated runtime origin guarded above.
+    source = source.replace(
+        "${AUTH_PROJECT_URL}/rest/v1/",
+        "${S37_TARGET_ORIGIN}/rest/v1/",
+    )
+    source = re.sub(r"\bproductionRows\b", "isolatedRows", source)
+    source = source.replace(
+        "production_rest_snapshot",
+        "isolated_staging_rest_snapshot",
+    )
+    source = re.sub(
+        r"\bproduction_source_mutation\b",
+        "isolated_source_mutation",
+        source,
+    )
     source = source.replace(
         '"access-control-allow-origin": "*"',
         f'"access-control-allow-origin": "{PREVIEW_ORIGIN}"',

@@ -48,6 +48,10 @@ class S37IsolationRuntimeTests(unittest.TestCase):
                 self.assertTrue(entrypoint.read_text().startswith("// S37 staging boundary:"))
                 for item in function["files"]:
                     generated = (output / item["path"]).read_text()
+                    self.assertNotIn(
+                        "${AUTH_PROJECT_URL}/rest/v1/",
+                        generated,
+                    )
                     for ref in builder.FORBIDDEN_PROJECT_REFS:
                         self.assertNotIn(ref, generated)
                     self.assertNotRegex(
@@ -56,6 +60,17 @@ class S37IsolationRuntimeTests(unittest.TestCase):
                     )
                     if "access-control-allow-origin" in generated.lower():
                         self.assertIn(builder.PREVIEW_ORIGIN, generated)
+
+            intelligence = (
+                output / "functions/atlas-phase3-intelligence/index.ts"
+            ).read_text()
+            self.assertNotIn("productionRows", intelligence)
+            self.assertNotIn("production_rest_snapshot", intelligence)
+            self.assertNotIn("production_source_mutation", intelligence)
+            self.assertIn(
+                "${S37_TARGET_ORIGIN}/rest/v1/",
+                intelligence,
+            )
 
             config = (output / "config.toml").read_text()
             notification_block = config.split(

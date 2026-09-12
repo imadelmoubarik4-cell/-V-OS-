@@ -229,6 +229,8 @@
     "gateway_jwt": {
       "atlas-notifications": true,
       "other_reviewed_functions": "custom active-profile verification with exact staging configuration guard"
-    }
+    },
+    "operational_rest_origin": "https://atialqebqxcquzdkezln.supabase.co",
+    "operational_rest_via_auth_client": false
   }
 }
