@@ -1,9 +1,9 @@
 {
-  "package": "Atlas S35 combined isolated-staging package v2",
-  "status": "Git-only / not executed",
+  "package": "Atlas S35 combined isolated-staging package v3 (S37 runtime isolation)",
+  "status": "Git-only S37 isolation fix; staging continuation authorized but not yet executed",
   "source_merge_commit": "0556ec89ec8041a9d2b1f7cd94706212176884a6",
   "package_base_merge_commit": "0915c36034d36b009d45f3d6730bf5df01b868eb",
-  "generated_on": "2026-09-11",
+  "generated_on": "2026-09-12",
   "target": {
     "logical_name": "atlas-pr30-validation",
     "project_ref": "atialqebqxcquzdkezln",
@@ -57,36 +57,138 @@
     "table": "atlas_private.report_events",
     "rls_required": true,
     "allowed_role": "service_role",
-    "allowed_privileges": ["select", "insert"],
+    "allowed_privileges": [
+      "select",
+      "insert"
+    ],
     "anonymous_or_authenticated_access_allowed": false,
     "historical_replay_skip_when_table_absent": true,
     "staging_table_required": true,
     "hosted_execution_performed": false
   },
   "functions": [
-    {"name":"atlas-inventory-scanner","sources":{"supabase/functions/atlas-inventory-scanner/index.ts":"5d340c104d6ee5540404e3aa472243b03a577adb7a6fe5d43262710a67b5200a"}},
-    {"name":"atlas-knowledge","sources":{"supabase/functions/atlas-knowledge/index.ts":"ce0248ba19f8bbdf446e75e6ca4179d4bcfff0f659b1b7e9e252edaff6358fb2"}},
-    {"name":"atlas-marketing-workspace","sources":{"supabase/functions/atlas-marketing-workspace/index.ts":"bb178376cd1537c1ba879aac2afa1c124dccda2db448eee599a196f81b3fc95b"}},
-    {"name":"atlas-operations-checkpoint-a","sources":{"supabase/functions/atlas-operations-checkpoint-a/index.ts":"ecdf8b64979059542e0911facf8d5c6fe6e63f07e6341c8bf6f996e0903a45bf"}},
-    {"name":"atlas-phase3-brain","sources":{"supabase/functions/atlas-phase3-brain/index.ts":"638f4b6b6aa3eef4481c6badbba6d71a9e9619b4f3eafa326d77911825bfdf82"}},
-    {"name":"atlas-phase3-intelligence","sources":{"supabase/functions/atlas-phase3-intelligence/index.ts":"70de29819c0dfedd3eb554ae7c4f6e28aa0a2b308492aa6f8a8186f62c0cf3e7"}},
-    {"name":"atlas-reports","sources":{"supabase/functions/atlas-reports/entrypoint.ts":"52922c789f811d6c413a6ed2d0a93badf9c99968709e7108e0dd9169ed585b31","supabase/functions/atlas-reports/index.ts":"8ee479dc8baba54335ca0a127ef556f54f487126c3c485e2e58d5bca3745368c"}},
-    {"name":"atlas-settings","sources":{"supabase/functions/atlas-settings/index.ts":"a62e706388bd8f2e49d22d52888284c1fdd262de3d167cc80b3fec79e6438d82"}},
-    {"name":"atlas-shifts","sources":{"supabase/functions/atlas-shifts/index.ts":"ad8f80b4000c393da0e1084aae7a7e91e9ded1096f921913bde53f902420ee15"}},
-    {"name":"atlas-sprint3-review","sources":{"supabase/functions/atlas-sprint3-review/index.ts":"dd0a532c9a754481afa550077c939f2155f280fdd13af625cf7fd37221e67401"}},
-    {"name":"atlas-sprint4-briefing","sources":{"supabase/functions/atlas-sprint4-briefing/index.ts":"9fd8d237e422a756dda837eef7dac1a09b18ff6e9b00de7ed20c1438706bc1d5"}},
-    {"name":"atlas-stock-counts","sources":{"supabase/functions/atlas-stock-counts/entrypoint.ts":"caf9577afd7deb589bccda5a18c346c33b66457a35c6b5982230ab091aebbdc6","supabase/functions/atlas-stock-counts/index.ts":"e10cc53f0154e321bf27486e123d04918d97f20585115d1ffb3a6d60677de3ee"}},
-    {"name":"atlas-system","sources":{"supabase/functions/atlas-system/index.ts":"d5b8e6a6201a630e906ceea9168595c55a73da8255c52897f2ba07ac32316940"}},
-    {"name":"atlas-team-messages","sources":{"supabase/functions/atlas-team-messages/index.ts":"053dd0041e105b6e932069269f4bc0e7daa2e98213b3fb11200f393313bba610"}},
-    {"name":"atlas-team-profile-photos","sources":{"supabase/functions/atlas-team-profile-photos/index.ts":"52c526ff8300db29791b24b3f03e2a3ed88ebb4088c1f47ddbc615f47fcac69d"}},
-    {"name":"atlas-team-profiles","sources":{"supabase/functions/atlas-team-profiles/index.ts":"304518271436c3ce92b849d100afebe330f2c3d71669f6d03c5249033e91fc9e"}},
-    {"name":"atlas-import-worker","sources":{"supabase/s33/functions/atlas-import-worker/index.ts":"c0da70be1d50fa050e2dbc725bdfb97333f12e510ecd8118c2f02b02425b127b","supabase/s33/functions/atlas-import-worker/csv.mjs":"267e6649d6c709101d0a43c8b57c8a6ac8bd9644b9b869892c4c8902d4280948","supabase/s33/functions/atlas-import-worker/worker.mjs":"a8e15cb2c686ca0972a080274c332987956e8b644b563c7793084beffff16462"}},
-    {"name":"atlas-notifications","gateway_jwt":"platform default verification retained","sources":{"supabase/functions/atlas-notifications/index.ts":"5d4265e01a711c42a80972eec9c16b53d4b0c65006e33ed29b3febcd7b558bea"}}
+    {
+      "name": "atlas-inventory-scanner",
+      "sources": {
+        "supabase/functions/atlas-inventory-scanner/index.ts": "5d340c104d6ee5540404e3aa472243b03a577adb7a6fe5d43262710a67b5200a"
+      }
+    },
+    {
+      "name": "atlas-knowledge",
+      "sources": {
+        "supabase/functions/atlas-knowledge/index.ts": "ce0248ba19f8bbdf446e75e6ca4179d4bcfff0f659b1b7e9e252edaff6358fb2"
+      }
+    },
+    {
+      "name": "atlas-marketing-workspace",
+      "sources": {
+        "supabase/functions/atlas-marketing-workspace/index.ts": "bb178376cd1537c1ba879aac2afa1c124dccda2db448eee599a196f81b3fc95b"
+      }
+    },
+    {
+      "name": "atlas-operations-checkpoint-a",
+      "sources": {
+        "supabase/functions/atlas-operations-checkpoint-a/index.ts": "ecdf8b64979059542e0911facf8d5c6fe6e63f07e6341c8bf6f996e0903a45bf"
+      }
+    },
+    {
+      "name": "atlas-phase3-brain",
+      "sources": {
+        "supabase/functions/atlas-phase3-brain/index.ts": "638f4b6b6aa3eef4481c6badbba6d71a9e9619b4f3eafa326d77911825bfdf82"
+      }
+    },
+    {
+      "name": "atlas-phase3-intelligence",
+      "sources": {
+        "supabase/functions/atlas-phase3-intelligence/index.ts": "70de29819c0dfedd3eb554ae7c4f6e28aa0a2b308492aa6f8a8186f62c0cf3e7"
+      }
+    },
+    {
+      "name": "atlas-reports",
+      "sources": {
+        "supabase/functions/atlas-reports/entrypoint.ts": "52922c789f811d6c413a6ed2d0a93badf9c99968709e7108e0dd9169ed585b31",
+        "supabase/functions/atlas-reports/index.ts": "8ee479dc8baba54335ca0a127ef556f54f487126c3c485e2e58d5bca3745368c"
+      }
+    },
+    {
+      "name": "atlas-settings",
+      "sources": {
+        "supabase/functions/atlas-settings/index.ts": "a62e706388bd8f2e49d22d52888284c1fdd262de3d167cc80b3fec79e6438d82"
+      }
+    },
+    {
+      "name": "atlas-shifts",
+      "sources": {
+        "supabase/functions/atlas-shifts/index.ts": "ad8f80b4000c393da0e1084aae7a7e91e9ded1096f921913bde53f902420ee15"
+      }
+    },
+    {
+      "name": "atlas-sprint3-review",
+      "sources": {
+        "supabase/functions/atlas-sprint3-review/index.ts": "dd0a532c9a754481afa550077c939f2155f280fdd13af625cf7fd37221e67401"
+      }
+    },
+    {
+      "name": "atlas-sprint4-briefing",
+      "sources": {
+        "supabase/functions/atlas-sprint4-briefing/index.ts": "9fd8d237e422a756dda837eef7dac1a09b18ff6e9b00de7ed20c1438706bc1d5"
+      }
+    },
+    {
+      "name": "atlas-stock-counts",
+      "sources": {
+        "supabase/functions/atlas-stock-counts/entrypoint.ts": "caf9577afd7deb589bccda5a18c346c33b66457a35c6b5982230ab091aebbdc6",
+        "supabase/functions/atlas-stock-counts/index.ts": "e10cc53f0154e321bf27486e123d04918d97f20585115d1ffb3a6d60677de3ee"
+      }
+    },
+    {
+      "name": "atlas-system",
+      "sources": {
+        "supabase/functions/atlas-system/index.ts": "d5b8e6a6201a630e906ceea9168595c55a73da8255c52897f2ba07ac32316940"
+      }
+    },
+    {
+      "name": "atlas-team-messages",
+      "sources": {
+        "supabase/functions/atlas-team-messages/index.ts": "053dd0041e105b6e932069269f4bc0e7daa2e98213b3fb11200f393313bba610"
+      }
+    },
+    {
+      "name": "atlas-team-profile-photos",
+      "sources": {
+        "supabase/functions/atlas-team-profile-photos/index.ts": "52c526ff8300db29791b24b3f03e2a3ed88ebb4088c1f47ddbc615f47fcac69d"
+      }
+    },
+    {
+      "name": "atlas-team-profiles",
+      "sources": {
+        "supabase/functions/atlas-team-profiles/index.ts": "304518271436c3ce92b849d100afebe330f2c3d71669f6d03c5249033e91fc9e"
+      }
+    },
+    {
+      "name": "atlas-import-worker",
+      "sources": {
+        "supabase/s33/functions/atlas-import-worker/index.ts": "c0da70be1d50fa050e2dbc725bdfb97333f12e510ecd8118c2f02b02425b127b",
+        "supabase/s33/functions/atlas-import-worker/csv.mjs": "267e6649d6c709101d0a43c8b57c8a6ac8bd9644b9b869892c4c8902d4280948",
+        "supabase/s33/functions/atlas-import-worker/worker.mjs": "a8e15cb2c686ca0972a080274c332987956e8b644b563c7793084beffff16462"
+      }
+    },
+    {
+      "name": "atlas-notifications",
+      "gateway_jwt": "platform default verification retained",
+      "sources": {
+        "supabase/functions/atlas-notifications/index.ts": "5d4265e01a711c42a80972eec9c16b53d4b0c65006e33ed29b3febcd7b558bea"
+      }
+    }
   ],
   "runtime": {
     "function_package_count": 18,
     "frontend_endpoint_count": 17,
-    "server_only_variables": ["SUPABASE_SERVICE_ROLE_KEY", "ATLAS_VAPID_PRIVATE_KEY", "ATLAS_NOTIFICATION_DISPATCH_TOKEN"],
+    "server_only_variables": [
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "ATLAS_VAPID_PRIVATE_KEY",
+      "ATLAS_NOTIFICATION_DISPATCH_TOKEN"
+    ],
     "staging_variables": {
       "ATLAS_AUTH_PROJECT_URL": "https://atialqebqxcquzdkezln.supabase.co",
       "ATLAS_AUTH_PUBLISHABLE_KEY": "provided outside Git",
@@ -96,6 +198,7 @@
     }
   },
   "required_evidence": [
+    "generated S37 runtime manifest and candidate hashes",
     "preflight target and migration ledger",
     "migration transaction and post-migration fingerprints",
     "deployed function versions and source hashes",
@@ -113,5 +216,19 @@
     "delete_synthetic_storage_objects": true,
     "remove_test_secrets": true,
     "zero_residue_required": true
+  },
+  "s36_merge_commit": "c6815d959dc57a8b1d3ec812a0596dcfe21b9302",
+  "runtime_isolation": {
+    "builder_path": "scripts/build_s37_isolated_runtime.py",
+    "target_origin": "https://atialqebqxcquzdkezln.supabase.co",
+    "allowed_browser_origin": "https://atlas-s32-rehearsal.coffee-cockt-8589.chatgpt.site",
+    "deploy_generated_artifact_only": true,
+    "production_fallbacks_allowed": false,
+    "wildcard_cors_allowed": false,
+    "startup_configuration_fail_closed": true,
+    "gateway_jwt": {
+      "atlas-notifications": true,
+      "other_reviewed_functions": "custom active-profile verification with exact staging configuration guard"
+    }
   }
 }
