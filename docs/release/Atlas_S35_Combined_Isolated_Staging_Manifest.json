@@ -1,6 +1,6 @@
 {
   "package": "Atlas S35 combined isolated-staging package v3 (S37 runtime isolation)",
-  "status": "Git-only S37 isolation fix; staging continuation authorized but not yet executed",
+  "status": "Git-only S37 isolation correction under review; staging function deployment resumes only after merge",
   "source_merge_commit": "0556ec89ec8041a9d2b1f7cd94706212176884a6",
   "package_base_merge_commit": "0915c36034d36b009d45f3d6730bf5df01b868eb",
   "generated_on": "2026-09-12",
@@ -231,6 +231,8 @@
       "other_reviewed_functions": "custom active-profile verification with exact staging configuration guard"
     },
     "operational_rest_origin": "https://atialqebqxcquzdkezln.supabase.co",
-    "operational_rest_via_auth_client": false
+    "operational_rest_via_auth_client": false,
+    "legacy_production_reader_identifiers_allowed": false,
+    "contract_sensitive_legacy_field_names_preserved": true
   }
 }
