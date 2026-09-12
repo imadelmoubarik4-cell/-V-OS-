@@ -1,5 +1,6 @@
 name: S33 isolated Auth and Storage recovery
 on:
+  workflow_dispatch:
   pull_request:
     branches: [claude/recipes-gallery-v2]
     paths:
