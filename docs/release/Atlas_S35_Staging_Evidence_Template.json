@@ -110,6 +110,8 @@
     "exact_target_guard_verified": false,
     "production_references_found": null,
     "wildcard_cors_found": null,
-    "allowed_browser_origin_verified": false
+    "allowed_browser_origin_verified": false,
+    "legacy_production_reader_identifiers_found": null,
+    "contract_sensitive_field_names_preserved": false
   }
 }
