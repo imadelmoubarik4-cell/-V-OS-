@@ -316,7 +316,16 @@
       result.push({ icon: 'circle-check-big', title: 'No urgent action required', detail: 'Atlas has not detected an immediate service risk from the currently connected data.', action: 'View operations', target: 'operations' });
     }
 
-    return result.slice(0, 5);
+    const urgency = (entry) => {
+      const text = `${entry.title} ${entry.detail}`.toLowerCase();
+      if (/cannot|unavailable|immediate|urgent/.test(text)) return 0;
+      if (/low inventory|below par|attention/.test(text)) return 1;
+      if (/purchasing|order/.test(text)) return 2;
+      if (/opening|check/.test(text)) return 3;
+      if (/feature|promote/.test(text)) return 4;
+      return 5;
+    };
+    return result.sort((a, b) => urgency(a) - urgency(b)).slice(0, 5);
   }
 
   function timelineEntries(now = new Date()) {
@@ -508,40 +517,28 @@
         ${metricMarkup('database', `${connectedCount}/${coverage.length}`, 'Live data sources connected', connectedCount < coverage.length ? 'warn' : 'good')}
       </section>
 
-      <div class="brain-layout">
-        <div class="brain-stack">
-          <section class="brain-card">
-            <header class="brain-card-head"><div><h2>Atlas recommendations</h2><p>Rule-based actions generated from the data currently connected to VÁ OS.</p></div><button type="button" class="brain-card-action" data-brain-refresh>Refresh analysis</button></header>
-            <div class="brain-recommendation-list">${recommendationsMarkup()}</div>
-          </section>
+      <section class="brain-card brain-ask-card">
+        <header class="brain-card-head"><div><h2>Ask Atlas</h2><p>Live rule-based answers from the current operating data.</p></div></header>
+        <div class="brain-assistant"><div class="brain-assistant-answer" id="brain-assistant-answer">${escape(answer)}</div><div class="brain-prompt-row"><button type="button" data-brain-prompt="What needs attention today?">What needs attention?</button><button type="button" data-brain-prompt="What should I order?">What should I order?</button><button type="button" data-brain-prompt="Which recipe should I promote?">What should I feature?</button></div><form class="brain-assistant-form" id="brain-assistant-form"><input id="brain-assistant-input" placeholder="Ask about stock, recipes, orders or readiness" autocomplete="off" /><button type="submit">Ask</button></form></div>
+      </section>
 
-          <section class="brain-card">
-            <header class="brain-card-head"><div><h2>Featured recipe</h2><p>A ready-for-service recipe with a strong complete margin signal.</p></div></header>
-            ${featuredMarkup()}
-          </section>
-
-          <section class="brain-card">
-            <header class="brain-card-head"><div><h2>Stock intelligence</h2><p>Current items at or below par, ordered by urgency.</p></div><button type="button" class="brain-card-action" data-brain-target="inventory">Open Inventory</button></header>
-            <div class="brain-stock-list">${stockMarkup()}</div>
-          </section>
-        </div>
-
-        <aside class="brain-stack">
-          <section class="brain-card">
-            <header class="brain-card-head"><div><h2>Ask Atlas</h2><p>Live rule-based answers from the current operating data.</p></div></header>
-            <div class="brain-assistant"><div class="brain-assistant-answer" id="brain-assistant-answer">${escape(answer)}</div><div class="brain-prompt-row"><button type="button" data-brain-prompt="What needs attention today?">What needs attention?</button><button type="button" data-brain-prompt="What should I order?">What should I order?</button><button type="button" data-brain-prompt="Which recipe should I promote?">What should I feature?</button></div><form class="brain-assistant-form" id="brain-assistant-form"><input id="brain-assistant-input" placeholder="Ask about stock, recipes, orders or readiness" autocomplete="off" /><button type="submit">Ask</button></form></div>
-          </section>
-
-          <section class="brain-card">
-            <header class="brain-card-head"><div><h2>Today’s timeline</h2><p>Key VÁ service moments based on the current day.</p></div></header>
-            <div class="brain-timeline">${timelineMarkup()}</div>
-          </section>
-
-          <section class="brain-card">
-            <header class="brain-card-head"><div><h2>Brain data coverage</h2><p>Forecast quality improves as more operating systems are connected.</p></div></header>
-            <div class="brain-data-list">${dataMarkup()}</div>
-          </section>
-        </aside>
+      <div class="brain-intelligence-grid">
+        <details class="brain-card">
+          <summary><span><i data-lucide="list-checks"></i><strong>Items requiring attention</strong></span><small>Most urgent first · ${recommendations().length} current action${recommendations().length === 1 ? '' : 's'}</small><i data-lucide="chevron-down"></i></summary>
+          <div class="brain-card-body"><div class="brain-card-head is-inline"><button type="button" class="brain-card-action" data-brain-refresh>Refresh analysis</button></div><div class="brain-recommendation-list">${recommendationsMarkup()}</div></div>
+        </details>
+        <details class="brain-card">
+          <summary><span><i data-lucide="package-search"></i><strong>Stock intelligence</strong></span><small>At or below par · sorted by urgency</small><i data-lucide="chevron-down"></i></summary>
+          <div class="brain-card-body"><div class="brain-card-head is-inline"><button type="button" class="brain-card-action" data-brain-target="inventory">Open Inventory</button></div><div class="brain-stock-list">${stockMarkup()}</div></div>
+        </details>
+        <details class="brain-card">
+          <summary><span><i data-lucide="martini"></i><strong>Featured recipe</strong></span><small>Best current service-ready signal</small><i data-lucide="chevron-down"></i></summary>
+          <div class="brain-card-body">${featuredMarkup()}</div>
+        </details>
+        <details class="brain-card">
+          <summary><span><i data-lucide="database"></i><strong>Data coverage</strong></span><small>${connectedCount}/${coverage.length} sources connected</small><i data-lucide="chevron-down"></i></summary>
+          <div class="brain-card-body"><div class="brain-data-list">${dataMarkup()}</div></div>
+        </details>
       </div>`;
 
     bindRenderedEvents();
@@ -596,7 +593,19 @@
     const recommendation = recommendations()[0];
     if (!recommendation) return;
     focusList.insertAdjacentHTML('afterbegin', `<div class="focus-row" data-target="brain" data-atlas-brain-focus><span class="focus-dot"></span><span>Atlas Brain: ${escape(recommendation.title)}.</span></div>`);
+    const metrics = document.getElementById('home-metrics');
+    if (metrics) {
+      let timeline = document.getElementById('home-timeline');
+      if (!timeline) {
+        timeline = document.createElement('section');
+        timeline.id = 'home-timeline';
+        timeline.className = 'atlas-card home-timeline-card';
+        metrics.insertAdjacentElement('afterend', timeline);
+      }
+      timeline.innerHTML = `<header><div><span>Today</span><h2>Today’s timeline</h2></div><i data-lucide="clock-3"></i></header><div class="brain-timeline">${timelineMarkup()}</div>`;
+    }
     if (typeof bindHomeLinks === 'function') bindHomeLinks();
+    window.lucide?.createIcons?.();
   }
 
   function patchApplication() {

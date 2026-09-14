@@ -497,12 +497,13 @@
 
   <!-- ===================== LOGIN ===================== -->
   <div id="login-screen">
-    <div class="watermark">Á</div>
     <div class="login-card">
-      <img class="login-atlas-mark" src="assets/logo/atlas-icon.png" alt="Atlas" />
-      <p class="eyebrow">VÁ Bar · Staff only</p>
-      <h1 class="display">Atlas</h1>
-      <p class="sub">Hospitality operating system for VÁ.</p>
+      <div class="login-brand" aria-label="Atlas">
+        <img class="login-atlas-mark" src="assets/logo/atlas-icon.png" alt="" />
+        <span>Atlas</span>
+      </div>
+      <h1 class="display">Welcome back</h1>
+      <p class="sub">Sign in to continue to your workspace.</p>
 
       <div class="error-msg" id="login-error"></div>
 
@@ -627,21 +628,23 @@
           <div id="suppliers-view" style="display:none;">
             <section class="purchasing-workspace-head">
               <nav class="purchasing-workspace-tabs" aria-label="Purchasing sections">
-                <button type="button" class="active" aria-current="page">Suppliers</button>
+                <button type="button" id="purchase-suppliers-tab" class="active" aria-current="page">Suppliers</button>
                 <button type="button" id="purchase-orders-tab" disabled title="Orders are not enabled in this environment">Orders</button>
                 <button type="button" id="purchase-deliveries-tab" disabled title="Review ordered and received deliveries">Deliveries</button>
               </nav>
               <button class="btn" id="add-supplier-btn"><i data-lucide="plus"></i>New supplier</button>
             </section>
-            <section class="purchasing-intelligence" aria-live="polite">
-              <span class="purchasing-intelligence-icon"><i data-lucide="truck"></i></span>
-              <p><strong id="purchasing-intelligence-title">Checking purchasing readiness.</strong> <span id="purchasing-intelligence-detail">Atlas is reviewing suppliers and recorded restocks.</span></p>
-              <button type="button" id="purchasing-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
-            </section>
-            <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" placeholder="Search suppliers..."/></label></div>
-            <table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table>
-            <div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div>
-            <section id="purchase-order-panel" hidden style="padding:20px 0;max-width:900px"></section>
+            <div id="purchase-suppliers-panel">
+              <section class="purchasing-intelligence" aria-live="polite">
+                <span class="purchasing-intelligence-icon"><i data-lucide="truck"></i></span>
+                <p><strong id="purchasing-intelligence-title">Checking purchasing readiness.</strong> <span id="purchasing-intelligence-detail">Atlas is reviewing suppliers and recorded restocks.</span></p>
+                <button type="button" id="purchasing-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
+              </section>
+              <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" placeholder="Search suppliers..."/></label></div>
+              <table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table>
+              <div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div>
+            </div>
+            <section id="purchase-order-panel" hidden></section>
           </div>
           <div id="imports-view" style="display:none;">
             <section class="atlas-import-center import-queue-center">
@@ -1362,10 +1365,16 @@
 
   function inventorySubcategory(item, group = inventoryGroup(item)) {
     const stored = String(item?.subcategory || '').trim();
-    if (stored) return stored.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
     const category = String(item?.category || '').toLowerCase();
     const name = String(item?.name || '').toLowerCase();
-    const value = `${category} ${name} ${item?.unit || ''}`.toLowerCase();
+    const value = `${stored} ${category} ${name} ${item?.unit || ''}`.toLowerCase();
+    if (group === 'wine') {
+      if (/champagne|sparkling|prosecco|cava/.test(value)) return 'Sparkling';
+      if (/ros[eé]/.test(value)) return 'Rosé';
+      if (/red wine|\bred\b/.test(value)) return 'Red';
+      return 'White';
+    }
+    if (stored) return stored.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
     if (group === 'spirits') {
       if (/whisk(?:e)?y|bourbon|scotch/.test(value)) return 'Whiskey';
       if (/gin/.test(value)) return 'Gin';
@@ -1376,13 +1385,6 @@
       if (/aquavit|brenniv[ií]n/.test(value)) return 'Aquavit';
       if (/shot/.test(value)) return 'Shots';
       return 'Liqueurs & Aperitifs';
-    }
-    if (group === 'wine') {
-      if (/champagne/.test(value)) return 'Champagne';
-      if (/sparkling|prosecco|cava/.test(value)) return 'Sparkling wine';
-      if (/ros[eé]/.test(value)) return 'Rosé wine';
-      if (/red wine|\bred\b/.test(value)) return 'Red wine';
-      return 'White wine';
     }
     if (group === 'beer') {
       if (/\bkeg|30l|20l|50l/.test(value)) return 'Kegs';

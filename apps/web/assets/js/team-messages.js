@@ -10,6 +10,7 @@
     staff: null,
     members: [],
     selectedChannel: 'general',
+    conversationFilter: 'all',
     loading: false,
     refreshing: false,
     submitting: false,
@@ -136,6 +137,12 @@
     return Array.isArray(state.snapshot?.channels) ? state.snapshot.channels : [];
   }
 
+  function filteredChannels() {
+    return state.conversationFilter === 'pinned'
+      ? channels().filter((channel) => channel.starred)
+      : channels();
+  }
+
   function messages() {
     return Array.isArray(state.snapshot?.messages) ? state.snapshot.messages : [];
   }
@@ -170,7 +177,7 @@
     return `<button type="button" class="team-channel ${channel.key === state.selectedChannel ? 'is-active' : ''}" data-team-channel="${escapeHtml(channel.key)}">
       <span class="team-channel-icon is-${escapeHtml(channel.tone || 'neutral')}"><i data-lucide="${escapeHtml(channel.icon || 'message-circle')}"></i></span>
       <span class="team-channel-copy"><strong>${escapeHtml(channel.name)}</strong><small>${escapeHtml(channel.last_message?.body || channel.description || '')}</small></span>
-      <span class="team-channel-status">${channel.starred ? '<i data-lucide="star" class="is-starred" aria-label="Starred conversation"></i>' : ''}${unread > 0 ? `<span class="team-unread-count">${unread > 99 ? '99+' : unread}</span>` : ''}</span>
+      <span class="team-channel-status">${channel.starred ? '<i data-lucide="pin" class="is-pinned" aria-label="Pinned conversation"></i>' : ''}${unread > 0 ? `<span class="team-unread-count">${unread > 99 ? '99+' : unread}</span>` : ''}</span>
     </button>`;
   }
 
@@ -311,9 +318,10 @@
 
       <div class="team-messages-layout">
         <aside class="team-channel-panel">
-          <header><strong>Channels</strong><span>${Number(state.snapshot?.summary?.total_unread || 0)} unread</span></header>
-          <div class="team-channel-list">${channels().map(renderChannelButton).join('')}</div>
-          <footer><i data-lucide="bell-off"></i><span>Browser and mobile notifications will be added after permission and delivery settings are approved.</span></footer>
+          <header><strong>Conversations</strong><span>${Number(state.snapshot?.summary?.total_unread || 0)} unread</span></header>
+          <nav class="team-channel-filters" aria-label="Conversation filters"><button type="button" data-team-filter="all" class="${state.conversationFilter === 'all' ? 'is-active' : ''}">All</button><button type="button" data-team-filter="pinned" class="${state.conversationFilter === 'pinned' ? 'is-active' : ''}"><i data-lucide="pin"></i>Pinned</button></nav>
+          <div class="team-channel-list">${filteredChannels().map(renderChannelButton).join('') || '<div class="team-channel-filter-empty"><i data-lucide="pin"></i><span>No pinned conversations yet.</span></div>'}</div>
+          <footer><i data-lucide="bell"></i><span>Browser and supported mobile notifications are controlled by the master switch in Settings.</span></footer>
         </aside>
 
         <main class="team-conversation-panel">
@@ -321,7 +329,7 @@
             <div><span class="team-conversation-icon is-${escapeHtml(channel?.tone || 'neutral')}"><i data-lucide="${escapeHtml(channel?.icon || 'message-circle')}"></i></span><div><h2>${escapeHtml(channel?.name || 'Team Messages')}</h2><p>${escapeHtml(channel?.description || '')}</p></div></div>
             <div class="team-conversation-actions">
               ${channel?.manager_post_only ? '<span class="team-manager-only"><i data-lucide="shield-check"></i>Manager posts only</span>' : ''}
-              <button type="button" data-team-star aria-pressed="${Boolean(channel?.starred)}" ${state.starring ? 'disabled' : ''} aria-label="${channel?.starred ? 'Unstar' : 'Star'} ${escapeHtml(channel?.name || 'conversation')}"><i data-lucide="star"></i><span>${channel?.starred ? 'Starred' : 'Star'}</span></button>
+              <button type="button" data-team-star aria-pressed="${Boolean(channel?.starred)}" ${state.starring ? 'disabled' : ''} aria-label="${channel?.starred ? 'Unpin' : 'Pin'} ${escapeHtml(channel?.name || 'conversation')}"><i data-lucide="pin"></i><span>${channel?.starred ? 'Pinned' : 'Pin'}</span></button>
             </div>
           </header>
 
@@ -438,9 +446,9 @@
       });
       if (payload.snapshot) state.snapshot = payload.snapshot;
       if (Array.isArray(payload.members)) state.members = payload.members;
-      state.message = channel.starred ? 'Conversation unstarred.' : 'Conversation starred.';
+      state.message = channel.starred ? 'Conversation unpinned.' : 'Conversation pinned.';
     } catch (error) {
-      state.error = error instanceof Error ? error.message : 'The conversation star could not be saved.';
+      state.error = error instanceof Error ? error.message : 'The conversation pin could not be saved.';
     } finally {
       state.starring = false;
       render();
@@ -610,6 +618,14 @@
   function handleClick(event) {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
+
+    const filterButton = target.closest('[data-team-filter]');
+    if (filterButton && host()?.contains(filterButton)) {
+      event.preventDefault();
+      state.conversationFilter = filterButton.dataset.teamFilter === 'pinned' ? 'pinned' : 'all';
+      render();
+      return;
+    }
 
     const channelButton = target.closest('[data-team-channel]');
     if (channelButton && host()?.contains(channelButton)) {

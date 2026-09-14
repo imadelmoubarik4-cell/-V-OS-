@@ -1,5 +1,7 @@
 # Atlas S38 PDF app-remediation checklist
 
+> Superseded by `Atlas_S38_Owner_Decisions_and_Acceptance.md`, which records the owner's complete corrected decisions. Do not implement from this earlier interpretation.
+
 Source: owner review PDF, 15 pages, received 12 September 2026.
 
 ## Scope boundary
@@ -15,7 +17,7 @@ S38 changes the Atlas web interface and client-side interaction wiring only. It 
 | 1–15 | Shared | Add hover treatment to floating cards | One shared lift, shadow, and border transition across supported workspaces | Cards move no more than 3 px and retain readable contrast |
 | 2 | Operations | Fix the left blue light on scheduled routine cards | Replace the visual flare with a flat four-pixel state rail; blue is the normal scheduled state | No glow or detached light; status colours remain distinct |
 | 2 | Operations | Remove black action buttons | Primary operational actions use the Atlas blue token | Destructive actions remain red and visually distinct |
-| 2 | Inventory | Add wine subcategories | Preserve and expose the existing wine classifier: Champagne, Sparkling, Rosé, Red, and White | Selecting Wine displays the subcategory strip and counts |
+| 2 | Inventory | Add wine subcategories | Limit Wine to Red, White, Rosé, and Sparkling | Selecting Wine displays only the four approved subcategories and counts |
 | 3 | Inventory scanner | Match overall design | White/blue panel, lighter idle camera state, consistent radii and controls | Scanner visually matches Inventory on desktop and mobile |
 | 3 | Inventory scanner | Repair close control | Capture-phase close bridge calls the scanner’s public close API | Header X and backdrop close the scanner and stop camera tracks |
 | 3 | Inventory scanner | Repair quantity control | Deterministic ± bridge updates the decimal field and emits input/change events | Quantity never goes below zero and submits the displayed value |
@@ -24,7 +26,7 @@ S38 changes the Atlas web interface and client-side interaction wiring only. It 
 | 7 | Purchasing | Align layout, controls, spacing, and colour | Blue active navigation, structured order form/cards, consistent spacing | Supplier, order, and delivery states are visually distinct |
 | 8 | Purchasing | Make Orders and Deliveries work | Re-enable both tabs and bridge sidebar subviews to their real purchase-order panels | Each control opens the matching panel and refreshes its data |
 | 8–9 | Team Messages | Reduce page scrolling and add internal chat scrolling | Viewport-aware conversation height; independent channel and message scrolling | Composer remains reachable while long chats scroll internally |
-| 8–9 | Team Messages | Add starring | Preserve the existing server-backed star action and strengthen its selected state | Star/unstar is visible and survives server refresh |
+| 8–9 | Team Messages | Add pinning | Present the existing server-backed preference as Pin conversation with a Pinned action/filter | Pin/unpin is visible and survives server refresh |
 | 8–9 | Team Messages | Add browser and mobile notifications | Connect the top bell to Settings → Notifications and replace obsolete “coming later” copy | Bell opens notification controls; supported browsers use the configured permission flow |
 | 8–9 | Team Messages | Match navigation icon and colour language | Conversation/channel icons use the shared blue-soft icon token | Icons align with the left navigation system |
 | 10 | Shifts | Fix spacing and monthly view | Compact white/blue month surface with clear today/selected states | Month is readable without grey blocks or horizontal clipping at supported widths |

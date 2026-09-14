@@ -1,14 +1,27 @@
 (function () {
   'use strict';
+  const suppliersTrigger = document.getElementById('purchase-suppliers-tab');
   const trigger = document.getElementById('purchase-orders-tab');
   const deliveriesTrigger = document.getElementById('purchase-deliveries-tab');
+  const suppliersPanel = document.getElementById('purchase-suppliers-panel');
   const panel = document.getElementById('purchase-order-panel');
-  if (!trigger || !deliveriesTrigger || !panel) return;
+  const addSupplierButton = document.getElementById('add-supplier-btn');
+  if (!suppliersTrigger || !trigger || !deliveriesTrigger || !suppliersPanel || !panel) return;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   let orders = [], draft = null, busy = false, activeSection = 'orders';
   const choices = () => window.atlasPurchasingData?.() || { items: [], suppliers: [] };
   const status = message => { panel.querySelector('[data-order-status]').textContent = message; };
   const resetDraft = () => { draft = { id: crypto.randomUUID(), version: null, supplier_id: '', lines: [], note: '' }; };
+  const orderStatusLabel = value => ({
+    draft: 'Draft', submitted: 'Submitted', ordered: 'Confirmed', confirmed: 'Confirmed',
+    partially_received: 'Partially received', partial: 'Partially received', received: 'Received', cancelled: 'Cancelled'
+  }[value] || String(value || 'Draft').replace(/_/g, ' '));
+  const deliveryStatusLabel = order => {
+    if (['partially_received', 'partial'].includes(order.status)) return 'Partially received';
+    if (order.status === 'received') return 'Received';
+    const expected = order.expected_delivery_at ? new Date(order.expected_delivery_at) : null;
+    return expected && Number.isFinite(expected.getTime()) && expected.getTime() < Date.now() ? 'Overdue' : 'Expected';
+  };
   function lineMarkup(line = {}) {
     return `<div data-order-line style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin:8px 0">
       <label>Item<select data-item required>${choices().items.filter(x => x.active !== false).map(x=>`<option value="${esc(x.id)}" ${x.id===line.item_id?'selected':''}>${esc(x.name)} (${esc(x.unit)})</option>`).join('')}</select></label>
@@ -20,7 +33,7 @@
     if (!draft) resetDraft();
     const suppliers = choices().suppliers;
     const visibleOrders = activeSection === 'deliveries'
-      ? orders.filter(order => ['ordered', 'received'].includes(order.status))
+      ? orders.filter(order => ['ordered', 'confirmed', 'partially_received', 'partial', 'received'].includes(order.status))
       : orders;
     const editor = activeSection === 'orders' ? `<form id="purchase-order-form"><h3>${draft.version ? 'Amend draft' : 'New order'}</h3>
       <label>Supplier<select name="supplier" required><option value="">Choose supplier</option>${suppliers.filter(x=>x.active!==false).map(x=>`<option value="${esc(x.id)}" ${x.id===draft.supplier_id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
@@ -29,9 +42,9 @@
       <button type="submit">Save draft</button><button type="button" data-new-order>Clear form</button></form>` : '';
     panel.innerHTML = `<h2>${activeSection === 'orders' ? 'Purchase orders' : 'Deliveries'}</h2><p>${activeSection === 'orders' ? 'Quantities use the inventory unit shown beside each item.' : 'Receive ordered deliveries only after every delivered line has been checked. Receiving records stock and restock movements.'}</p>
       <p role="status" data-order-status></p><button type="button" data-refresh-orders>Refresh orders</button>
-      ${editor}<div data-order-list>${visibleOrders.map(order=>`<article class="purchase-order-card"><h3>${esc(suppliers.find(x=>x.id===order.supplier_id)?.name || 'Supplier')} · ${esc(order.status)}</h3>
-      <p>Order ${esc(order.id)} · version ${order.version}</p><ul>${order.lines.map(line=>`<li>${esc(line.item_name)}: ${esc(line.quantity)} ${esc(line.unit)} × ${esc(line.unit_cost)} ISK</li>`).join('')}</ul><p>${esc(order.note)}</p>
-      ${order.status==='draft'?`<button type="button" data-command="edit" data-order="${order.id}">Amend</button> <button type="button" data-command="place" data-order="${order.id}">Mark ordered</button>`:''}
+      ${editor}<div data-order-list>${visibleOrders.map(order=>`<article class="purchase-order-card"><header><div><span>${activeSection === 'deliveries' ? 'Delivery' : 'Purchase order'}</span><h3>${esc(suppliers.find(x=>x.id===order.supplier_id)?.name || 'Supplier')}</h3></div><strong class="purchase-order-status is-${esc(order.status)}">${esc(activeSection === 'deliveries' ? deliveryStatusLabel(order) : orderStatusLabel(order.status))}</strong></header>
+      <p>Order ${esc(order.id)} · version ${order.version}</p><ul>${order.lines.map(line=>`<li><span>${esc(line.item_name)}</span><strong>${esc(line.quantity)} ${esc(line.unit)} × ${esc(line.unit_cost)} ISK</strong></li>`).join('')}</ul>${order.note ? `<p>${esc(order.note)}</p>` : ''}
+      ${order.status==='draft'?`<button type="button" data-command="edit" data-order="${order.id}">Amend</button> <button type="button" data-command="place" data-order="${order.id}">Submit order</button>`:''}
       ${order.status==='ordered'?`<button type="button" data-command="receive" data-order="${order.id}">Receive all items</button>`:''}
       ${['draft','ordered'].includes(order.status)?`<button type="button" data-command="cancel" data-order="${order.id}">Cancel order</button>`:''}</article>`).join('') || `<p>No ${activeSection === 'orders' ? 'orders' : 'deliveries'} recorded.</p>`}</div>`;
   }
@@ -60,15 +73,28 @@
   }
   trigger.disabled = false; trigger.title = 'Create and receive purchase orders';
   deliveriesTrigger.disabled = false;
+  const selectTab = (button, selected) => {
+    button.classList.toggle('active', selected);
+    if (selected) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  };
+  const showSection = section => {
+    const suppliersSelected = section === 'suppliers';
+    activeSection = section;
+    suppliersPanel.hidden = !suppliersSelected;
+    panel.hidden = suppliersSelected;
+    if (addSupplierButton) addSupplierButton.hidden = !suppliersSelected;
+    selectTab(suppliersTrigger, suppliersSelected);
+    selectTab(trigger, section === 'orders');
+    selectTab(deliveriesTrigger, section === 'deliveries');
+  };
   const openSection = async (section) => {
     if (!window.atlasCanManageCommercial?.()) return;
-    activeSection = section;
-    panel.hidden = false;
-    trigger.classList.toggle('active', section === 'orders');
-    deliveriesTrigger.classList.toggle('active', section === 'deliveries');
+    showSection(section);
     render();
     await refresh();
   };
+  suppliersTrigger.addEventListener('click', () => showSection('suppliers'));
   trigger.addEventListener('click', () => openSection('orders'));
   deliveriesTrigger.addEventListener('click', () => openSection('deliveries'));
   panel.addEventListener('click', async event => {
@@ -94,5 +120,5 @@
     if (!draft.lines.length) { status('Add at least one item.'); return; }
     await command({p_id:draft.id,p_action:draft.version?'update':'create',p_version:draft.version,p_supplier_id:draft.supplier_id,p_lines:draft.lines,p_note:draft.note});
   });
-  window.addEventListener('atlas:profile-ready', () => { orders=[]; draft=null; panel.hidden=true; panel.replaceChildren(); });
+  window.addEventListener('atlas:profile-ready', () => { orders=[]; draft=null; panel.replaceChildren(); showSection('suppliers'); });
 })();
