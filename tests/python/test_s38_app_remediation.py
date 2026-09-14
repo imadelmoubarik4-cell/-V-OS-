@@ -53,15 +53,20 @@ class S38AppRemediationTests(unittest.TestCase):
             "s38-attention-pulse",
             "element.dataset.s38AttentionSignature",
             "animation: s38-attention-pulse 3.2s ease-in-out 2",
-            "Home Brain brief: compact light Atlas context card",
-            "background:linear-gradient(118deg,#f8fbff",
-            "border:1px solid rgba(47,128,237,.25)!important",
+            "Home Brain brief: owner reference composition",
+            '"brain-icon brain-kicker"',
+            "background:linear-gradient(112deg,#fff",
+            "border:1px solid #dfe6ef!important",
+            "#home-focus .atlas-home-brief-copy{display:contents}",
+            "background:#4f7df3",
             "#home-focus .atlas-home-brief-actions .atlas-home-action:first-child",
         ):
             self.assertIn(contract, self.javascript if contract in self.javascript else self.css)
         self.assertIn('data-attention-required="${attentionRequired}"', operations_layout)
         for forbidden in ("#11151c", "#171d27", "#1c2029"):
             self.assertNotIn(forbidden, self.css)
+        self.assertIn("brief.querySelector('[data-s38-priority-toggle]')?.remove()", self.javascript)
+        self.assertNotIn("Routine priorities", self.javascript)
 
     def test_scanner_controls_are_wired(self):
         scanner_css = (ROOT / "apps/web/assets/css/inventory-scanner.css").read_text(encoding="utf-8")

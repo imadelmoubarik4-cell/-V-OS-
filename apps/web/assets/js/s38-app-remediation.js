@@ -49,20 +49,8 @@
       setAttentionPulse(brief, requiresAction);
 
       const focusList = document.getElementById('focus-list');
-      const actions = brief.querySelector('.atlas-home-brief-actions');
-      if (focusList && actions) {
-        let toggle = brief.querySelector('[data-s38-priority-toggle]');
-        if (!toggle) {
-          toggle = document.createElement('button');
-        }
-        toggle.type = 'button';
-        toggle.className = 'atlas-home-action secondary s38-priority-toggle';
-        toggle.dataset.s38PriorityToggle = 'true';
-        toggle.setAttribute('aria-expanded', 'false');
-        toggle.innerHTML = '<i data-lucide="list-checks"></i><span>Routine priorities</span><i data-lucide="chevron-down"></i>';
-        actions.append(toggle);
-        focusList.hidden = true;
-      }
+      brief.querySelector('[data-s38-priority-toggle]')?.remove();
+      if (focusList) focusList.hidden = true;
     }
   }
 
@@ -218,17 +206,6 @@
     window.setTimeout(() => window.AtlasSettings?.tab?.('notifications'), 0);
   }
 
-  function handlePriorityToggle(event) {
-    const button = event.target instanceof Element ? event.target.closest('[data-s38-priority-toggle]') : null;
-    if (!button) return;
-    const list = document.getElementById('focus-list');
-    if (!list) return;
-    const expanded = button.getAttribute('aria-expanded') === 'true';
-    button.setAttribute('aria-expanded', String(!expanded));
-    list.hidden = expanded;
-    button.querySelector('span').textContent = expanded ? 'Routine priorities' : 'Hide routine priorities';
-  }
-
   function init() {
     if (state.initialized) return;
     state.initialized = true;
@@ -236,7 +213,6 @@
     document.addEventListener('click', handleScannerControl, true);
     document.addEventListener('click', handlePurchasingNavigation);
     document.addEventListener('click', handleNotificationButton);
-    document.addEventListener('click', handlePriorityToggle);
 
     state.observer = new MutationObserver(scheduleApply);
     state.observer.observe(document.body, { childList: true, subtree: true });
@@ -249,7 +225,7 @@
 
   window.AtlasS38Remediation = {
     apply: scheduleApply,
-    version: 's38-owner-remediation-v6'
+    version: 's38-owner-remediation-v7'
   };
 
   if (document.readyState === 'loading') {

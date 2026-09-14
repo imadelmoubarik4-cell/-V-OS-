@@ -204,4 +204,4 @@ The private preview is ready for owner approval only when all of the following a
 - Month day cards use a tight four-pixel gutter. Every per-day plus control is a centered compact light-blue Atlas button with a clear blue hover state.
 - Both the month-level Add Shift control and every day plus control synchronously open the Add Shift form for that exact date and focus the team-member field.
 - The Home daily-action prompt uses a soft two-cycle breathing pulse only when its explicit attention state first appears or changes; it does not animate continuously.
-- The Home Atlas Brain brief is a compact light Atlas-blue context card with blue borders and actions, grouped controls, readable hierarchy, and no black or near-black surface.
+- The Home Atlas Brain brief matches the approved reference: a white-to-light-blue floating card, compact blue square icon beside the kicker, full-width headline and explanation, and exactly two understated actions. It contains no black, copper, or extra Routine priorities control.
