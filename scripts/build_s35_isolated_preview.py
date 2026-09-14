@@ -21,8 +21,9 @@ def _runtime_endpoints(source):
     )
     endpoints = dict(pairs)
     endpoints["NOTIFICATIONS_API"] = "atlas-notifications"
-    if len(endpoints) != 17:
-        raise ValueError(f"Expected 17 runtime endpoints, found {len(endpoints)}.")
+    endpoints["IMPORT_WORKER_API"] = "atlas-import-worker"
+    if len(endpoints) != 18:
+        raise ValueError(f"Expected 18 runtime endpoints, found {len(endpoints)}.")
     return endpoints
 
 

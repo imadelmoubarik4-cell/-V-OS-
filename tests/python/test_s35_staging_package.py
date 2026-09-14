@@ -1,6 +1,7 @@
 import hashlib
 import importlib.util
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -85,12 +86,17 @@ class S35StagingPackageTests(unittest.TestCase):
             headers = (output / "_headers").read_text()
             boundary = (output / "assets/js/rehearsal-boundary.js").read_text()
             manifest = json.loads((output / "rehearsal-manifest.json").read_text())
-            self.assertEqual(manifest["runtime_endpoint_count"], 17)
+            self.assertEqual(manifest["runtime_endpoint_count"], 18)
             self.assertFalse(manifest["hosted_setup_performed"])
             self.assertFalse(manifest["notification_delivery_enabled"])
             self.assertFalse(manifest["production_changes"])
             self.assertNotIn("sb_publishable_synthetic", json.dumps(manifest))
-            self.assertEqual(config.count(f"https://{builder.TARGET}.supabase.co/functions/v1/"), 18)
+            configured_functions = set(re.findall(
+                rf"https://{builder.TARGET}\.supabase\.co/functions/v1/([a-z0-9-]+)",
+                config,
+            ))
+            self.assertEqual(len(configured_functions), 18)
+            self.assertIn("atlas-import-worker", configured_functions)
             self.assertIn("loadAtlasAsset", config)
             self.assertIn("Runtime modules enabled for this isolated target", boundary)
             self.assertTrue((output / "recovery.html").is_file())
