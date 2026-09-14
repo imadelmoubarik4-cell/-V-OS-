@@ -153,6 +153,8 @@ class S38AppRemediationTests(unittest.TestCase):
             "border-radius:16px",
             ".shift-month-chip.person-tone-7",
             "button.shift-month-empty",
+            "gap:4px",
+            "display:inline-grid!important",
         ):
             self.assertIn(contract, month_css)
         self.assertIn("polishShiftsMonth", self.javascript)

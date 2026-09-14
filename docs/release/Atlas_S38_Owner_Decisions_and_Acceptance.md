@@ -201,3 +201,4 @@ The private preview is ready for owner approval only when all of the following a
 - The Shifts Month tab is permanently present and opens the full-month workspace without relying on a delayed injected control.
 - Today's Timeline is visible on Home only and is hidden from every other Atlas workspace.
 - The functional Shifts Month calendar is fully reskinned as an Atlas workspace: light-blue floating calendar surface, rounded day cards, Atlas-blue controls and selection states, readable Add shift actions, and consistent soft employee colours. The legacy beige table, brown selection border, and overlapping global quick-action button are removed.
+- Month day cards use a tight four-pixel gutter. Every per-day plus control is a centered compact light-blue Atlas button with a clear blue hover state.

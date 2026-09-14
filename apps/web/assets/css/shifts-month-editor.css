@@ -178,7 +178,7 @@ button.shift-month-empty:hover,button.shift-month-more:hover{color:#876c43}
 }
 .shift-month-note svg{color:var(--month-blue)}
 .shift-month-calendar-scroll{
-  padding:12px;
+  padding:8px;
   border:1px solid var(--month-line);
   border-radius:22px;
   background:var(--month-blue-wash);
@@ -191,12 +191,12 @@ button.shift-month-empty:hover,button.shift-month-more:hover{color:#876c43}
 .shift-month-calendar-scroll::-webkit-scrollbar-thumb{border:3px solid #eaf0fb;border-radius:999px;background:#9bb6f7}
 .shift-month-weekdays,.shift-month-grid{
   min-width:980px;
-  gap:8px;
+  gap:4px;
   border:0;
   background:transparent;
 }
 .shift-month-weekdays{
-  margin-bottom:8px;
+  margin-bottom:4px;
   border-radius:0;
   overflow:visible;
 }
@@ -260,14 +260,21 @@ button.shift-month-empty:hover,button.shift-month-more:hover{color:#876c43}
 .shift-month-add-day{
   width:30px;
   height:30px;
-  border-color:#cfdbef;
-  border-radius:10px;
-  background:#fff;
+  display:inline-grid!important;
+  place-items:center;
+  flex:0 0 30px;
+  align-self:flex-start;
+  padding:0!important;
+  border:1px solid #b9ccfa;
+  border-radius:9px;
+  background:var(--month-blue-soft);
   color:var(--month-blue-strong);
-  transition:transform .16s ease,border-color .16s ease,background .16s ease;
+  line-height:0;
+  box-shadow:0 4px 10px rgba(79,125,243,.10);
+  transition:transform .16s ease,border-color .16s ease,background .16s ease,color .16s ease,box-shadow .16s ease;
 }
-.shift-month-add-day:hover{transform:scale(1.04);border-color:#abc1f7;background:var(--month-blue-soft)}
-.shift-month-add-day svg{width:14px;height:14px}
+.shift-month-add-day:hover{transform:translateY(-1px);border-color:var(--month-blue);background:var(--month-blue);color:#fff;box-shadow:0 7px 14px rgba(79,125,243,.20)}
+.shift-month-add-day svg{display:block;width:15px;height:15px;pointer-events:none}
 .shift-month-cell-content{gap:6px;margin-top:8px}
 button.shift-month-chip{
   display:grid;
@@ -344,8 +351,8 @@ button.shift-month-more{padding:5px 2px;color:var(--month-blue-strong);font-size
   .shift-month-weekdays,.shift-month-grid{min-width:910px}
 }
 @media(max-width:820px){
-  .shift-month-calendar-scroll{padding:9px;border-radius:18px}
-  .shift-month-weekdays,.shift-month-grid{grid-template-columns:repeat(7,minmax(126px,1fr));min-width:910px;gap:7px}
+  .shift-month-calendar-scroll{padding:7px;border-radius:18px}
+  .shift-month-weekdays,.shift-month-grid{grid-template-columns:repeat(7,minmax(126px,1fr));min-width:910px;gap:4px}
   .shift-month-cell{min-height:146px;padding:10px}
 }
 @media(max-width:600px){

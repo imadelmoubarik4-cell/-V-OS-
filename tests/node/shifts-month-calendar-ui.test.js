@@ -106,9 +106,11 @@ test('the last-loaded month layer replaces the legacy beige table with Atlas car
   assert.match(editorCss, /Final Atlas month calendar skin/);
   assert.match(editorCss, /--month-blue:#4f7df3/);
   assert.match(editorCss, /\.shift-month-calendar-scroll\{[\s\S]*background:var\(--month-blue-wash\)/);
-  assert.match(editorCss, /\.shift-month-weekdays,\.shift-month-grid\{[\s\S]*gap:8px/);
+  assert.match(editorCss, /\.shift-month-weekdays,\.shift-month-grid\{[\s\S]*gap:4px/);
   assert.match(editorCss, /\.shift-month-cell\{[\s\S]*border-radius:16px;[\s\S]*background:#fff/);
   assert.match(editorCss, /\.shift-month-cell\.is-selected\{[\s\S]*border-color:var\(--month-blue\)/);
   assert.match(editorCss, /\.shift-month-chip\.person-tone-7/);
   assert.match(editorCss, /button\.shift-month-empty\{[\s\S]*background:#f8faff/);
+  assert.match(editorCss, /\.shift-month-add-day\{[\s\S]*display:inline-grid!important;[\s\S]*background:var\(--month-blue-soft\)/);
+  assert.match(editorCss, /\.shift-month-add-day:hover\{[\s\S]*background:var\(--month-blue\);color:#fff/);
 });
