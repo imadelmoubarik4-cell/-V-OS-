@@ -98,6 +98,9 @@ class S35StagingPackageTests(unittest.TestCase):
             for forbidden in builder.FORBIDDEN_REFS:
                 self.assertNotIn(forbidden, config)
                 self.assertNotIn(forbidden, headers)
+                for asset in output.rglob("*"):
+                    if asset.is_file() and asset.suffix.lower() in {".html", ".js", ".css", ".json", ".toml", ".txt"}:
+                        self.assertNotIn(forbidden, asset.read_text(encoding="utf-8"), str(asset))
             self.assertEqual((ROOT / "apps/web/config.js").read_bytes(), original)
 
     def test_preview_builder_refuses_secrets_repo_output_and_overwrite(self):
