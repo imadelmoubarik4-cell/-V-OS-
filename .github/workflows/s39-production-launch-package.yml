@@ -1,0 +1,74 @@
+name: S39 production-launch package
+
+on:
+  pull_request:
+    branches: [claude/recipes-gallery-v2]
+    paths:
+      - '.github/workflows/s39-production-launch-package.yml'
+      - 'docs/release/Atlas_S39_Production_Launch_Manifest.json'
+      - 'docs/release/Atlas_S39_Production_Launch_Package.md'
+      - 'scripts/build_s39_production_runtime.py'
+      - 'scripts/verify_s39_production_snapshots.py'
+      - 'scripts/verify_s39_production_launch_dry_run.sh'
+      - 'supabase/production-launch/000_read_only_snapshot.sql'
+      - 'tests/python/test_s39_production_launch_package.py'
+      - 'supabase/functions/**'
+      - 'supabase/s33/functions/**'
+      - 'supabase/migrations/**'
+      - 'supabase/s33/migrations/**'
+
+permissions:
+  contents: read
+
+jobs:
+  package-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Git-only package contracts
+        run: python -m unittest tests/python/test_s39_production_launch_package.py
+      - name: Build undeployed fail-closed runtime
+        run: |
+          output="$(mktemp -d)/atlas-s39-runtime"
+          python scripts/build_s39_production_runtime.py "$output" \
+            --browser-origin https://os-vabar.netlify.app
+          test -f "$output/runtime-manifest.json"
+
+  disposable-production-shape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vaos_s39_launch
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vaos_s39_launch"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: vaos_s39_launch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Rehearse exact package on disposable PostgreSQL
+        run: bash scripts/verify_s39_production_launch_dry_run.sh
