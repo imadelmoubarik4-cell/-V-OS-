@@ -1,0 +1,137 @@
+{
+  "package": "Atlas S39 production-launch preparation package v1",
+  "status": "Git-only; no hosted execution authorized",
+  "generated_on": "2026-09-14",
+  "source": {
+    "base_branch": "claude/recipes-gallery-v2",
+    "base_commit": "972ab3a0d8198e12c6b94c7d99867a8558dca9ad",
+    "base_tree": "5e113e20b3a5b927ffb36f2e524e9e1f74af0fe6"
+  },
+  "production_target": {
+    "logical_name": "vabar-inventory",
+    "project_ref": "dnefgcmjcgxlynycxkts",
+    "region": "eu-west-1",
+    "origin": "https://dnefgcmjcgxlynycxkts.supabase.co"
+  },
+  "boundaries": {
+    "production_sql_authorized": false,
+    "edge_function_deployment_authorized": false,
+    "frontend_endpoint_change_authorized": false,
+    "site_deployment_authorized": false,
+    "real_stock_write_authorized": false,
+    "directory_wide_database_push_allowed": false,
+    "production_credentials_allowed_in_git_or_ci": false
+  },
+  "observed_production_baseline": {
+    "captured_at": "2026-09-14T19:23:57Z",
+    "migration_count": 6,
+    "public_table_count": 17,
+    "public_tables_with_rls": 17,
+    "security_advisor_blocker_count": 2,
+    "deployed_atlas_runtime_function_count": 0,
+    "backup_function_count": 1,
+    "real_stock_values_stored_in_public_git": false,
+    "fresh_external_stock_snapshot_required_at_launch": true
+  },
+  "unchanged_source_files": {
+    "apps/web/config.js": "66638dd24bfd5110156d5cf86683a03a585fd57ddb7afb509ae1b80a4d0bfdc8",
+    "netlify.toml": "eb14693a09b0fcd9e1c375e1440c41e70840c91f821ac2e6f9aa753698034876"
+  },
+  "migration_plan": [
+    {
+      "order": 1,
+      "version": "20260910094217",
+      "path": "supabase/migrations/20260910094217_atlas_phase1_production_adoption.sql",
+      "sha256": "e9602de7e93d4d529ca3d34f1b979bc821750214194c09cc9ed146e58b4caa66"
+    },
+    {
+      "order": 2,
+      "version": "20260910104621",
+      "path": "supabase/migrations/20260910104621_atlas_phase1_recipe_access_and_index_cleanup.sql",
+      "sha256": "e49e7d934d6947af3d633d330c1cf4c4041db7c4f055eb659d8980eb60675e49"
+    },
+    {
+      "order": 3,
+      "version": "20260910121248",
+      "path": "supabase/migrations/20260910121248_atlas_purchase_order_lifecycle.sql",
+      "sha256": "141ea6303e487c776eace8cc8d55a998d1f0c6fa5ce75bc8881a3a37e506f9f9"
+    },
+    {
+      "order": 4,
+      "version": "20260910205055",
+      "path": "supabase/s33/migrations/20260910205055_atlas_s33_runtime_delta.sql",
+      "sha256": "a7f71345e453444974b320c4cd1263e1873c3876f57137e46c6ff6acf10dc5b6"
+    },
+    {
+      "order": 5,
+      "version": "20260910211903",
+      "path": "supabase/s33/migrations/20260910211903_atlas_s33_runtime_source_contracts.sql",
+      "sha256": "d0533fc2ca56c9e2726b3f2432bf7d3183cc0df37db443f7b964477514873c59"
+    },
+    {
+      "order": 6,
+      "version": "20260910201435",
+      "path": "supabase/s33/migrations/20260910201435_atlas_s33_csv_import_pipeline.sql",
+      "sha256": "5d080bac6bbd575a2ec12e041763b60026d24ac524b7e0e72c67dead9f8e843d"
+    },
+    {
+      "order": 7,
+      "version": "20260911124006",
+      "path": "supabase/migrations/20260911124006_s34_foreign_key_indexes.sql",
+      "sha256": "91fca0974d6db0909df28419804a22b7b07f62e676a42e49f290b8443dea046f"
+    },
+    {
+      "order": 8,
+      "version": "20260911124039",
+      "path": "supabase/migrations/20260911124039_s34_notification_and_conversation_stars.sql",
+      "sha256": "489f99635c1b208e2c27fd61915f31e06e18f5a812ac53a963359db38e499137"
+    },
+    {
+      "order": 9,
+      "version": "20260911160616",
+      "path": "supabase/migrations/20260911160616_s36_report_events_rls.sql",
+      "sha256": "29fbe14978f70952c8c16d67c89fc59d38d1460d055431b3fab15fd73dd16879"
+    }
+  ],
+  "stock_preservation": {
+    "snapshot_query": "supabase/production-launch/000_read_only_snapshot.sql",
+    "comparison_script": "scripts/verify_s39_production_snapshots.py",
+    "disposable_dry_run": "scripts/verify_s39_production_launch_dry_run.sh",
+    "snapshot_values_are_external": true,
+    "exact_before_after_match_required": true,
+    "inventory_dml_allowed_during_database_window": false,
+    "negative_quantity_allowed": false
+  },
+  "runtime": {
+    "source_manifest": "docs/release/Atlas_S35_Combined_Isolated_Staging_Manifest.json",
+    "source_manifest_sha256": "1d4f15348b99f9eab0d94917b94e564d364064a5145adbe472466dca61c04a43",
+    "builder": "scripts/build_s39_production_runtime.py",
+    "function_package_count": 18,
+    "frontend_endpoint_count": 17,
+    "browser_origin_must_be_approved_at_build_time": true,
+    "generated_artifact_only": true,
+    "deployment_authorized": false,
+    "verify_jwt": {
+      "atlas-notifications": true,
+      "other_functions": "custom active-profile authorization retained"
+    },
+    "server_only_variables": [
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "ATLAS_VAPID_PRIVATE_KEY",
+      "ATLAS_NOTIFICATION_DISPATCH_TOKEN"
+    ],
+    "safe_initial_variables": {
+      "ATLAS_IMPORT_ENABLED": "false",
+      "ATLAS_STOCK_COUNT_PUBLICATION_ENABLED": "false",
+      "ATLAS_PUSH_DELIVERY_ENABLED": "false"
+    }
+  },
+  "required_separate_approvals": [
+    "production backup and maintenance window",
+    "nine exact production migrations",
+    "eighteen generated production Edge Functions",
+    "read-only production smoke test",
+    "frontend endpoint cutover and site deployment",
+    "each production write feature activation"
+  ]
+}
