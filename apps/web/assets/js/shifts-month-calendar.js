@@ -553,6 +553,20 @@
     window.lucide?.createIcons?.();
   }
 
+  function openShiftEditor(date) {
+    const target = date || state.selectedDate || state.monthStart || venueDate();
+    state.monthStart = monthStartFor(target);
+    state.selectedDate = target;
+    state.active = true;
+    state.modal = { mode: 'shift', date: target, shift: null };
+    state.error = null;
+    apply();
+    renderPanel();
+    window.requestAnimationFrame(() => {
+      document.querySelector('.shift-month-modal select[name="person_id"]')?.focus?.({ preventScroll: true });
+    });
+  }
+
   function apply() {
     const element = host();
     if (!element || !element.querySelector('.shift-tabs')) return false;
@@ -771,10 +785,7 @@
 
     const addDay = target.closest('[data-shifts-month-add-day]');
     if (addDay) {
-      state.selectedDate = addDay.dataset.shiftsMonthAddDay;
-      state.modal = { mode: 'shift', date: state.selectedDate, shift: null };
-      state.error = null;
-      renderPanel();
+      openShiftEditor(addDay.dataset.shiftsMonthAddDay);
       return;
     }
 
@@ -782,10 +793,7 @@
       const date = state.selectedDate?.slice(0, 7) === state.monthStart.slice(0, 7)
         ? state.selectedDate
         : state.monthStart;
-      state.selectedDate = date;
-      state.modal = { mode: 'shift', date, shift: null };
-      state.error = null;
-      renderPanel();
+      openShiftEditor(date);
       return;
     }
 
@@ -916,14 +924,7 @@
     refresh: () => loadMonth({ force: true }),
     month: () => state.monthStart,
     snapshot: () => state.workspace,
-    addShift: (date) => {
-      const target = date || state.selectedDate || state.monthStart || venueDate();
-      state.monthStart = monthStartFor(target);
-      state.selectedDate = target;
-      state.active = true;
-      state.modal = { mode: 'shift', date: target, shift: null };
-      scheduleApply();
-    }
+    addShift: openShiftEditor
   };
 
   if (!init()) {

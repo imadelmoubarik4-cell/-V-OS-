@@ -202,3 +202,6 @@ The private preview is ready for owner approval only when all of the following a
 - Today's Timeline is visible on Home only and is hidden from every other Atlas workspace.
 - The functional Shifts Month calendar is fully reskinned as an Atlas workspace: light-blue floating calendar surface, rounded day cards, Atlas-blue controls and selection states, readable Add shift actions, and consistent soft employee colours. The legacy beige table, brown selection border, and overlapping global quick-action button are removed.
 - Month day cards use a tight four-pixel gutter. Every per-day plus control is a centered compact light-blue Atlas button with a clear blue hover state.
+- Both the month-level Add Shift control and every day plus control synchronously open the Add Shift form for that exact date and focus the team-member field.
+- The Home daily-action prompt uses a soft two-cycle breathing pulse only when its explicit attention state first appears or changes; it does not animate continuously.
+- The Home Atlas Brain brief is a compact premium dark context card with a restrained copper border and accents, grouped actions, readable hierarchy, and no oversized empty region.

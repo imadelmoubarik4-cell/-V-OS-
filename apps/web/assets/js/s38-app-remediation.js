@@ -15,6 +15,23 @@
     });
   }
 
+  function setAttentionPulse(element, requiresAction) {
+    if (!element) return;
+    element.classList.toggle('s38-attention', requiresAction);
+    if (!requiresAction) {
+      element.classList.remove('s38-attention-pulse');
+      delete element.dataset.s38AttentionSignature;
+      return;
+    }
+
+    const signature = element.dataset.signature || (element.textContent || '').replace(/\s+/g, ' ').trim();
+    if (element.dataset.s38AttentionSignature === signature) return;
+    element.dataset.s38AttentionSignature = signature;
+    element.classList.remove('s38-attention-pulse');
+    void element.offsetWidth;
+    element.classList.add('s38-attention-pulse');
+  }
+
   function installHomeMark() {
     const host = document.querySelector('#home-focus .atlas-home-brief-icon');
     if (!host) return;
@@ -29,18 +46,21 @@
       const lowCount = Number.parseFloat(document.getElementById('home-low')?.textContent || '0');
       const copy = `${document.getElementById('home-brief-headline')?.textContent || ''} ${document.getElementById('home-brief-detail')?.textContent || ''}`;
       const requiresAction = lowCount > 0 || /requires? (?:action|attention)|needs? attention|urgent|overdue|below par|cannot be served/i.test(copy);
-      brief.classList.toggle('s38-attention', requiresAction);
+      setAttentionPulse(brief, requiresAction);
 
       const focusList = document.getElementById('focus-list');
       const actions = brief.querySelector('.atlas-home-brief-actions');
-      if (focusList && actions && !brief.querySelector('[data-s38-priority-toggle]')) {
-        const toggle = document.createElement('button');
+      if (focusList && actions) {
+        let toggle = brief.querySelector('[data-s38-priority-toggle]');
+        if (!toggle) {
+          toggle = document.createElement('button');
+        }
         toggle.type = 'button';
         toggle.className = 'atlas-home-action secondary s38-priority-toggle';
         toggle.dataset.s38PriorityToggle = 'true';
         toggle.setAttribute('aria-expanded', 'false');
         toggle.innerHTML = '<i data-lucide="list-checks"></i><span>Routine priorities</span><i data-lucide="chevron-down"></i>';
-        actions.insertAdjacentElement('afterend', toggle);
+        actions.append(toggle);
         focusList.hidden = true;
       }
     }
@@ -48,8 +68,8 @@
 
   function polishOperations() {
     document.querySelectorAll('.checkpoint-a-home-prompt').forEach((prompt) => {
-      const requiresAction = /requires? (?:action|attention)|urgent|overdue|missed|incomplete/i.test(prompt.textContent || '');
-      prompt.classList.toggle('s38-attention', requiresAction);
+      const requiresAction = prompt.dataset.attentionRequired === 'true';
+      setAttentionPulse(prompt, requiresAction);
     });
     document.querySelectorAll('.checkpoint-a-compact-card').forEach((card) => {
       card.dataset.s38Polished = 'true';
@@ -229,7 +249,7 @@
 
   window.AtlasS38Remediation = {
     apply: scheduleApply,
-    version: 's38-owner-remediation-v4'
+    version: 's38-owner-remediation-v5'
   };
 
   if (document.readyState === 'loading') {

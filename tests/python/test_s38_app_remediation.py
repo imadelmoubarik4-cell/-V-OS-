@@ -46,6 +46,21 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertNotIn("background: #000", self.css)
         self.assertNotIn("background:#000", self.css)
 
+    def test_home_attention_and_brain_card_follow_owner_contract(self):
+        operations_layout = (ROOT / "apps/web/assets/js/operations-checkpoint-a-layout.js").read_text(encoding="utf-8")
+        for contract in (
+            "setAttentionPulse",
+            "s38-attention-pulse",
+            "element.dataset.s38AttentionSignature",
+            "animation: s38-attention-pulse 3.2s ease-in-out 2",
+            "Home Brain brief: compact premium context card",
+            "background:linear-gradient(118deg,#11151c",
+            "border:1px solid rgba(199,123,61,.48)!important",
+            "#home-focus .atlas-home-brief-actions .atlas-home-action:first-child",
+        ):
+            self.assertIn(contract, self.javascript if contract in self.javascript else self.css)
+        self.assertIn('data-attention-required="${attentionRequired}"', operations_layout)
+
     def test_scanner_controls_are_wired(self):
         scanner_css = (ROOT / "apps/web/assets/css/inventory-scanner.css").read_text(encoding="utf-8")
         for contract in (
@@ -132,6 +147,8 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertNotIn("Conversation starred", messages)
         self.assertIn("person-tone-", shifts)
         self.assertIn("data-shifts-month-add-day", shifts)
+        self.assertIn("function openShiftEditor(date)", shifts)
+        self.assertIn("addShift: openShiftEditor", shifts)
         shifts_weekly = (ROOT / "apps/web/assets/js/shifts-workspace.js").read_text(encoding="utf-8")
         self.assertIn("['month', 'calendar-range', 'Month']", shifts_weekly)
         self.assertIn("window.AtlasShiftsMonth?.open?.()", shifts_weekly)
