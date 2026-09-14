@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const config = readFileSync('apps/web/config.js', 'utf8');
 const month = readFileSync('apps/web/assets/js/shifts-month-calendar.js', 'utf8');
+const weekly = readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/shifts-month-calendar.css', 'utf8');
 const editorCss = readFileSync('apps/web/assets/css/shifts-month-editor.css', 'utf8');
 const edge = readFileSync('supabase/functions/atlas-shifts/index.ts', 'utf8');
@@ -20,6 +21,8 @@ test('Checkpoint F.2 loads the month editor after weekly Shifts', () => {
 });
 
 test('month calendar remains a complete Monday-first monthly grid', () => {
+  assert.match(weekly, /\['month', 'calendar-range', 'Month'\]/);
+  assert.match(weekly, /window\.AtlasShiftsMonth\?\.open\?\.\(\)/);
   assert.match(month, /data-shifts-tab=\"month\"/);
   assert.match(month, /Monthly shift plan/);
   assert.match(month, /data-shifts-month-nav=\"-1\"/);
@@ -28,6 +31,7 @@ test('month calendar remains a complete Monday-first monthly grid', () => {
   assert.match(month, /WEEKDAY_ORDER = \[1, 2, 3, 4, 5, 6, 0\]/);
   assert.match(month, /gridStart: mondayFor\(start\)/);
   assert.match(month, /gridEnd: addDays\(mondayFor\(monthEnd\), 6\)/);
+  assert.match(month, /if \(!viewVisible\(\)\) window\.AtlasShifts\?\.open\?\.\(\)/);
 });
 
 test('managers can create, edit and remove shifts directly from the month', () => {

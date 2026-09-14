@@ -602,6 +602,7 @@
         timeline.className = 'atlas-card home-timeline-card';
         metrics.insertAdjacentElement('afterend', timeline);
       }
+      timeline.style.display = document.body.dataset.atlasView === 'dashboard' ? 'block' : 'none';
       timeline.innerHTML = `<header><div><span>Today</span><h2>Today’s timeline</h2></div><i data-lucide="clock-3"></i></header><div class="brain-timeline">${timelineMarkup()}</div>`;
     }
     if (typeof bindHomeLinks === 'function') bindHomeLinks();

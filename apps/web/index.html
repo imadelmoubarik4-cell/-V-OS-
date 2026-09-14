@@ -1741,6 +1741,8 @@
     document.getElementById('home-intro').style.display = view === 'dashboard' ? 'flex' : 'none';
     document.getElementById('home-focus').style.display = view === 'dashboard' ? 'grid' : 'none';
     document.getElementById('home-metrics').style.display = view === 'dashboard' ? 'grid' : 'none';
+    const homeTimeline = document.getElementById('home-timeline');
+    if (homeTimeline) homeTimeline.style.display = view === 'dashboard' ? 'block' : 'none';
     if (viewMap[view]) viewMap[view].style.display = view === 'inventory' ? 'grid' : 'block';
     restoreAtlasWorkspaceInterior(view);
     syncInventorySectionHeader(view);

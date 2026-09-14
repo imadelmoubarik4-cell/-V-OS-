@@ -116,6 +116,14 @@
     });
   }
 
+  function constrainHomeTimeline() {
+    const timeline = document.getElementById('home-timeline');
+    if (!timeline) return;
+    const isHome = (document.body.dataset.atlasView || 'dashboard') === 'dashboard';
+    timeline.style.display = isHome ? 'block' : 'none';
+    timeline.setAttribute('aria-hidden', String(!isHome));
+  }
+
   function applyRemediation() {
     installHomeMark();
     polishOperations();
@@ -123,6 +131,7 @@
     enablePurchasingNavigation();
     polishMessages();
     polishForms();
+    constrainHomeTimeline();
     window.lucide?.createIcons?.();
   }
 
@@ -212,7 +221,7 @@
 
   window.AtlasS38Remediation = {
     apply: scheduleApply,
-    version: 's38-owner-remediation-v2'
+    version: 's38-owner-remediation-v3'
   };
 
   if (document.readyState === 'loading') {

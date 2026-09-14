@@ -905,7 +905,7 @@
 
   window.AtlasShiftsMonth = {
     open: () => {
-      window.AtlasShifts?.open?.();
+      if (!viewVisible()) window.AtlasShifts?.open?.();
       state.active = true;
       state.monthStart = state.monthStart || monthStartFor(window.AtlasShifts?.week?.() || venueDate());
       state.error = null;

@@ -194,3 +194,9 @@ The private preview is ready for owner approval only when all of the following a
 4. Existing role, Auth, Storage, recovery, and isolated-staging safeguards still pass.
 5. No production endpoint, project reference, data, function, or deployment is changed.
 6. The owner reviews and explicitly approves the private preview before any next stage.
+
+## Final owner touch-ups
+
+- The Bottle Scanner contains no black action or footer bar; its complete surface uses the shared light Atlas-blue design.
+- The Shifts Month tab is permanently present and opens the full-month workspace without relying on a delayed injected control.
+- Today's Timeline is visible on Home only and is hidden from every other Atlas workspace.

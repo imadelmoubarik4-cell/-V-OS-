@@ -47,6 +47,7 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertNotIn("background:#000", self.css)
 
     def test_scanner_controls_are_wired(self):
+        scanner_css = (ROOT / "apps/web/assets/css/inventory-scanner.css").read_text(encoding="utf-8")
         for contract in (
             "handleScannerControl",
             "[data-scanner-close]",
@@ -56,6 +57,9 @@ class S38AppRemediationTests(unittest.TestCase):
             "dispatchEvent(new Event('change'",
         ):
             self.assertIn(contract, self.javascript)
+        self.assertIn("Final Atlas scanner skin", scanner_css)
+        self.assertIn(".inventory-scanner-trust{border-color:#cbdafe;background:#edf3ff", scanner_css)
+        self.assertIn(".inventory-scanner-primary,.inventory-scanner-manual button{border-color:#4f7df3;background:#4f7df3", scanner_css)
 
     def test_purchasing_and_message_controls_are_wired(self):
         for contract in (
@@ -128,10 +132,15 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertNotIn("Conversation starred", messages)
         self.assertIn("person-tone-", shifts)
         self.assertIn("data-shifts-month-add-day", shifts)
+        shifts_weekly = (ROOT / "apps/web/assets/js/shifts-workspace.js").read_text(encoding="utf-8")
+        self.assertIn("['month', 'calendar-range', 'Month']", shifts_weekly)
+        self.assertIn("window.AtlasShiftsMonth?.open?.()", shifts_weekly)
         self.assertIn("<details class=\"recipe-foundation-card", recipes)
         self.assertIn("knowledge-editor-properties", knowledge)
         self.assertIn("brain-intelligence-grid", brain)
         self.assertIn("home-timeline", brain)
+        self.assertIn("homeTimeline.style.display = view === 'dashboard' ? 'block' : 'none'", self.index)
+        self.assertIn("constrainHomeTimeline", self.javascript)
         self.assertIn("Master notification control", settings)
         self.assertIn("overflow-y:scroll !important", self.css)
 
