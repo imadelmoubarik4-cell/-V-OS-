@@ -249,7 +249,7 @@
 
   window.AtlasS38Remediation = {
     apply: scheduleApply,
-    version: 's38-owner-remediation-v5'
+    version: 's38-owner-remediation-v6'
   };
 
   if (document.readyState === 'loading') {

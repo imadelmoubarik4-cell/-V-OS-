@@ -53,13 +53,15 @@ class S38AppRemediationTests(unittest.TestCase):
             "s38-attention-pulse",
             "element.dataset.s38AttentionSignature",
             "animation: s38-attention-pulse 3.2s ease-in-out 2",
-            "Home Brain brief: compact premium context card",
-            "background:linear-gradient(118deg,#11151c",
-            "border:1px solid rgba(199,123,61,.48)!important",
+            "Home Brain brief: compact light Atlas context card",
+            "background:linear-gradient(118deg,#f8fbff",
+            "border:1px solid rgba(47,128,237,.25)!important",
             "#home-focus .atlas-home-brief-actions .atlas-home-action:first-child",
         ):
             self.assertIn(contract, self.javascript if contract in self.javascript else self.css)
         self.assertIn('data-attention-required="${attentionRequired}"', operations_layout)
+        for forbidden in ("#11151c", "#171d27", "#1c2029"):
+            self.assertNotIn(forbidden, self.css)
 
     def test_scanner_controls_are_wired(self):
         scanner_css = (ROOT / "apps/web/assets/css/inventory-scanner.css").read_text(encoding="utf-8")

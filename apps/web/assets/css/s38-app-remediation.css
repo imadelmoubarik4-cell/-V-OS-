@@ -801,7 +801,7 @@ body.s38-month-active .fab-wrap { display:none !important; }
 .brain-card-body { padding:0 17px 17px; border-top:1px solid var(--s38-line); }
 .brain-card-head.is-inline { justify-content:flex-end; padding:12px 0 0; }
 
-/* Home Brain brief: compact premium context card */
+/* Home Brain brief: compact light Atlas context card */
 #home-focus.atlas-home-focus {
   position:relative;
   isolation:isolate;
@@ -811,10 +811,10 @@ body.s38-month-active .fab-wrap { display:none !important; }
   margin-bottom:18px;
   padding:18px 20px;
   overflow:hidden;
-  border:1px solid rgba(199,123,61,.48)!important;
+  border:1px solid rgba(47,128,237,.25)!important;
   border-radius:16px;
-  background:linear-gradient(118deg,#11151c 0%,#171d27 62%,#1c2029 100%)!important;
-  box-shadow:0 18px 36px rgba(20,27,38,.18),inset 0 1px 0 rgba(255,255,255,.05)!important;
+  background:linear-gradient(118deg,#f8fbff 0%,#edf5ff 62%,#f5f9ff 100%)!important;
+  box-shadow:0 16px 34px rgba(47,128,237,.10),inset 0 1px 0 rgba(255,255,255,.85)!important;
 }
 #home-focus.atlas-home-focus::before {
   content:"";
@@ -825,35 +825,35 @@ body.s38-month-active .fab-wrap { display:none !important; }
   width:300px;
   height:210px;
   border-radius:50%;
-  background:radial-gradient(circle,rgba(199,123,61,.18),rgba(199,123,61,0) 68%);
+  background:radial-gradient(circle,rgba(47,128,237,.14),rgba(47,128,237,0) 68%);
   pointer-events:none;
 }
 #home-focus .atlas-home-brief-icon {
   width:48px;
   height:48px;
-  border:1px solid rgba(213,145,84,.55);
+  border:1px solid rgba(47,128,237,.28);
   border-radius:13px;
-  background:rgba(199,123,61,.12);
-  color:#e2a15f;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.07);
+  background:#e7f1ff;
+  color:#2f80ed;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.88);
 }
 #home-focus .atlas-home-brief-icon>svg{width:24px;height:24px;stroke-width:1.8}
 #home-focus .atlas-home-panel-kicker{
   margin:0 0 5px;
-  color:#e2a15f;
+  color:#2f80ed;
   font-size:11px;
   letter-spacing:.11em;
 }
 #home-focus #home-brief-headline{
   max-width:900px;
-  color:#f7f9fc;
+  color:#153252;
   font-size:clamp(21px,2vw,27px);
   line-height:1.2;
 }
 #home-focus #home-brief-detail{
   max-width:820px;
   margin-top:6px;
-  color:#aeb8c7;
+  color:#64748b;
   font-size:13px;
   line-height:1.5;
 }
@@ -861,37 +861,37 @@ body.s38-month-active .fab-wrap { display:none !important; }
 #home-focus .atlas-home-brief-actions .atlas-home-action{
   min-height:36px;
   padding:8px 12px;
-  border:1px solid rgba(226,161,95,.38);
+  border:1px solid rgba(47,128,237,.22);
   border-radius:10px;
-  background:rgba(255,255,255,.055);
-  color:#eef2f8;
-  box-shadow:none;
+  background:rgba(255,255,255,.86);
+  color:#24415f;
+  box-shadow:0 5px 12px rgba(47,128,237,.06);
 }
 #home-focus .atlas-home-brief-actions .atlas-home-action:first-child{
-  border-color:#c77b3d;
-  background:#c77b3d;
+  border-color:#2f80ed;
+  background:#2f80ed;
   color:#fff;
 }
 #home-focus .atlas-home-brief-actions .atlas-home-action:hover{
   transform:translateY(-1px);
-  border-color:#e2a15f;
-  background:rgba(226,161,95,.16);
-  color:#fff;
+  border-color:#2f80ed;
+  background:#e4f0ff;
+  color:#1f6fd1;
 }
-#home-focus .atlas-home-brief-actions .atlas-home-action:first-child:hover{background:#d38a48}
-#home-focus .s38-priority-toggle svg{width:15px;height:15px;color:#e2a15f}
+#home-focus .atlas-home-brief-actions .atlas-home-action:first-child:hover{background:#1f6fd1;color:#fff}
+#home-focus .s38-priority-toggle svg{width:15px;height:15px;color:#2f80ed}
 #home-focus .focus-list{margin-top:10px}
 #home-focus .focus-list[hidden]{display:none!important}
 #home-focus .focus-row,
 #home-focus [data-atlas-brain-focus],
 #home-focus [data-atlas-business-focus]{
-  border-color:rgba(226,161,95,.25);
-  background:rgba(255,255,255,.06);
-  color:#c7cfdb;
+  border-color:rgba(47,128,237,.20);
+  background:rgba(255,255,255,.78);
+  color:#405a75;
 }
 #home-focus .focus-row:hover,
 #home-focus [data-atlas-brain-focus]:hover,
-#home-focus [data-atlas-business-focus]:hover{background:rgba(226,161,95,.12)}
+#home-focus [data-atlas-business-focus]:hover{background:#e7f1ff}
 .checkpoint-a-home-prompt.s38-attention{border-color:rgba(199,123,61,.48)!important}
 
 /* Settings: compact cards and one notification control */
