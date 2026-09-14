@@ -21,8 +21,9 @@ def _runtime_endpoints(source):
     )
     endpoints = dict(pairs)
     endpoints["NOTIFICATIONS_API"] = "atlas-notifications"
-    if len(endpoints) != 17:
-        raise ValueError(f"Expected 17 runtime endpoints, found {len(endpoints)}.")
+    endpoints["IMPORT_WORKER_API"] = "atlas-import-worker"
+    if len(endpoints) != 18:
+        raise ValueError(f"Expected 18 runtime endpoints, found {len(endpoints)}.")
     return endpoints
 
 
@@ -47,6 +48,19 @@ def build(output, publishable_key):
         suffix = suffix.replace(f"https://{ref}.supabase.co", f"https://{TARGET}.supabase.co")
 
     shutil.copytree(ROOT / "apps/web", output)
+    # A few lazy-loaded browser modules retain reviewed production defaults for
+    # the normal application build. The isolated preview must never ship those
+    # fallbacks, even when runtime config would override them before use.
+    for asset in output.rglob("*"):
+        if not asset.is_file() or asset.suffix.lower() not in {".html", ".js", ".css", ".json", ".toml", ".txt"}:
+            continue
+        content = asset.read_text(encoding="utf-8")
+        isolated = content
+        for ref in FORBIDDEN_REFS:
+            isolated = isolated.replace(f"https://{ref}.supabase.co", f"https://{TARGET}.supabase.co")
+            isolated = isolated.replace(f"wss://{ref}.supabase.co", f"wss://{TARGET}.supabase.co")
+        if isolated != content:
+            asset.write_text(isolated, encoding="utf-8")
     cfg = {
         "MODE": "isolated-rehearsal",
         "SUPABASE_URL": f"https://{TARGET}.supabase.co",

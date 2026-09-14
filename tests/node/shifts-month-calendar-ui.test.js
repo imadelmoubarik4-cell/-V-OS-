@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const config = readFileSync('apps/web/config.js', 'utf8');
 const month = readFileSync('apps/web/assets/js/shifts-month-calendar.js', 'utf8');
+const weekly = readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/shifts-month-calendar.css', 'utf8');
 const editorCss = readFileSync('apps/web/assets/css/shifts-month-editor.css', 'utf8');
 const edge = readFileSync('supabase/functions/atlas-shifts/index.ts', 'utf8');
@@ -20,6 +21,8 @@ test('Checkpoint F.2 loads the month editor after weekly Shifts', () => {
 });
 
 test('month calendar remains a complete Monday-first monthly grid', () => {
+  assert.match(weekly, /\['month', 'calendar-range', 'Month'\]/);
+  assert.match(weekly, /window\.AtlasShiftsMonth\?\.open\?\.\(\)/);
   assert.match(month, /data-shifts-tab=\"month\"/);
   assert.match(month, /Monthly shift plan/);
   assert.match(month, /data-shifts-month-nav=\"-1\"/);
@@ -28,6 +31,7 @@ test('month calendar remains a complete Monday-first monthly grid', () => {
   assert.match(month, /WEEKDAY_ORDER = \[1, 2, 3, 4, 5, 6, 0\]/);
   assert.match(month, /gridStart: mondayFor\(start\)/);
   assert.match(month, /gridEnd: addDays\(mondayFor\(monthEnd\), 6\)/);
+  assert.match(month, /if \(!viewVisible\(\)\) window\.AtlasShifts\?\.open\?\.\(\)/);
 });
 
 test('managers can create, edit and remove shifts directly from the month', () => {
@@ -40,6 +44,11 @@ test('managers can create, edit and remove shifts directly from the month', () =
   assert.match(month, /mutate\('cancel-shift'/);
   assert.match(month, /week_start: mondayFor\(startDate\)/);
   assert.match(month, /Shift saved to the private monthly draft/);
+  assert.match(month, /function openShiftEditor\(date\)/);
+  assert.match(month, /state\.modal = \{ mode: 'shift', date: target, shift: null \}/);
+  assert.match(month, /openShiftEditor\(addDay\.dataset\.shiftsMonthAddDay\)/);
+  assert.match(month, /addShift: openShiftEditor/);
+  assert.match(month, /apply\(\);\s*renderPanel\(\);/);
 });
 
 test('one month publication makes the complete plan visible to staff', () => {
@@ -96,4 +105,17 @@ test('full month editor remains responsive and preserves the Atlas design system
   assert.match(styles, /@media\(prefers-reduced-motion:reduce\)/);
   assert.doesNotMatch(styles, /Caprasimo|Figtree|--color-accent-2/);
   assert.equal((styles.match(/{/g) || []).length, (styles.match(/}/g) || []).length);
+});
+
+test('the last-loaded month layer replaces the legacy beige table with Atlas cards', () => {
+  assert.match(editorCss, /Final Atlas month calendar skin/);
+  assert.match(editorCss, /--month-blue:#4f7df3/);
+  assert.match(editorCss, /\.shift-month-calendar-scroll\{[\s\S]*background:var\(--month-blue-wash\)/);
+  assert.match(editorCss, /\.shift-month-weekdays,\.shift-month-grid\{[\s\S]*gap:4px/);
+  assert.match(editorCss, /\.shift-month-cell\{[\s\S]*border-radius:16px;[\s\S]*background:#fff/);
+  assert.match(editorCss, /\.shift-month-cell\.is-selected\{[\s\S]*border-color:var\(--month-blue\)/);
+  assert.match(editorCss, /\.shift-month-chip\.person-tone-7/);
+  assert.match(editorCss, /button\.shift-month-empty\{[\s\S]*background:#f8faff/);
+  assert.match(editorCss, /\.shift-month-add-day\{[\s\S]*display:inline-grid!important;[\s\S]*background:var\(--month-blue-soft\)/);
+  assert.match(editorCss, /\.shift-month-add-day:hover\{[\s\S]*background:var\(--month-blue\);color:#fff/);
 });

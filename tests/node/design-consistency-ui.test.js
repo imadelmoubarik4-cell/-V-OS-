@@ -80,10 +80,18 @@ test('Home uses live values and supports expanded or compact navigation', () => 
   assert.doesNotMatch(app, /<strong>8<\/strong><span>Onboarding steps/);
   assert.match(app, /window\.AtlasRecipes\?\.getHomeMetrics/);
   assert.match(recipes, /function getHomeMetrics\(\)/);
-  assert.match(homeCss, /#home-focus\.atlas-home-focus/);
-  assert.match(app, /home-focus'\)\.style\.display = view === 'dashboard' \? 'grid' : 'none'/);
-  assert.match(homeCss, /\.atlas-home-brief-icon \{ grid-column: 1; grid-row: 1/);
+  assert.doesNotMatch(app, /id="home-focus"/);
+  assert.doesNotMatch(app, /home-focus'\)\.style\.display/);
   assert.match(shellCss, /body\.atlas-sidebar-collapsed/);
+});
+
+test('Service Mode uses the shared light Atlas design without black surfaces', () => {
+  assert.match(app, /body\.service-mode\{background:#f4f8ff\}/);
+  assert.match(app, /\.service-card\{[^}]*background:rgba\(255,255,255,\.92\)/);
+  assert.match(app, /\.service-card svg\{[^}]*background:#e6f1ff[^}]*color:#2f80ed/);
+  assert.match(app, /\.service-card:hover\{[^}]*background:#edf5ff/);
+  assert.doesNotMatch(app, /body\.service-mode\{background:#111310\}/);
+  assert.doesNotMatch(app, /\.service-card\{[^}]*background:#20231f/);
 });
 
 test('Recipes and Purchasing use clean, honest in-page controls', () => {

@@ -428,7 +428,7 @@
   .atlas-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:20px 0}.metric-card{padding:20px;background:var(--atlas-surface);border:1px solid var(--atlas-line);border-radius:var(--atlas-radius)}.metric-card .metric-icon{width:36px;height:36px;border-radius:10px;background:var(--atlas-accent-soft);display:grid;place-items:center;margin-bottom:18px}.metric-card .metric-icon svg{width:18px}.metric-card strong{font:500 26px 'Fraunces',serif;display:block}.metric-card span{font-size:12px;color:var(--atlas-muted)}
   .placeholder-view{display:none}.placeholder-head{margin-bottom:22px}.placeholder-head h2{font:500 30px 'Fraunces',serif;margin:0 0 6px}.placeholder-head p{color:var(--atlas-muted);margin:0}.empty-module{padding:42px;text-align:center;background:var(--atlas-surface);border:1px dashed var(--atlas-line);border-radius:var(--atlas-radius)}.empty-module svg{width:32px;height:32px;color:var(--atlas-accent);margin-bottom:10px}
   .mobile-menu{display:none}.sidebar-backdrop{display:none}
-  body.service-mode{background:#111310}body.service-mode .atlas-sidebar,body.service-mode .atlas-topbar{display:none}body.service-mode .atlas-main{grid-column:1/-1;background:#111310;min-height:100vh}body.service-mode .atlas-shell{display:block}body.service-mode .atlas-content{max-width:1100px;padding:28px;color:white}.service-view{display:none}.service-mode .service-view{display:block!important}.service-mode .standard-view{display:none!important}.service-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}.service-head h1{font:500 36px 'Fraunces',serif;margin:0}.service-exit{background:white;color:#111310;border:0;border-radius:14px;padding:13px 18px;font-weight:600}.service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.service-card{min-height:170px;border-radius:20px;background:#20231f;border:1px solid #343832;padding:24px;color:white;text-align:left;cursor:pointer}.service-card:hover{background:#292d27}.service-card svg{width:28px;height:28px;color:#d8bd93}.service-card h3{font:500 24px 'Fraunces',serif;margin:28px 0 7px}.service-card p{margin:0;color:#abb0a6}
+  body.service-mode{background:#f4f8ff}body.service-mode .atlas-sidebar,body.service-mode .atlas-topbar{display:none}body.service-mode .atlas-main{grid-column:1/-1;min-height:100vh;background:radial-gradient(circle at 85% 5%,rgba(79,125,243,.12),transparent 34%),linear-gradient(180deg,#f8fbff 0%,#eef5ff 100%)}body.service-mode .atlas-shell{display:block}body.service-mode .atlas-content{max-width:1180px;padding:36px;color:#182234}.service-view{display:none}.service-mode .service-view{display:block!important}.service-mode .standard-view{display:none!important}.service-head{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:24px}.service-head h1{margin:0;color:#182234;font:650 34px/1.1 'IBM Plex Sans',sans-serif;letter-spacing:-.03em}.service-head p{margin:7px 0 0;color:#6f7f95;font-size:15px}.service-exit{min-height:48px;padding:13px 20px;border:0;border-radius:15px;background:#2f80ed;color:#fff;font-weight:650;box-shadow:0 10px 24px rgba(47,128,237,.2);cursor:pointer;transition:transform .18s ease,background .18s ease,box-shadow .18s ease}.service-exit:hover{background:#246fd2;transform:translateY(-2px);box-shadow:0 14px 28px rgba(47,128,237,.25)}.service-exit:focus-visible,.service-card:focus-visible{outline:3px solid rgba(47,128,237,.3);outline-offset:3px}.service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.service-card{min-height:170px;padding:24px;border:1px solid #d8e5f7;border-radius:22px;background:rgba(255,255,255,.92);color:#182234;text-align:left;cursor:pointer;box-shadow:0 12px 30px rgba(49,84,139,.09);transition:transform .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease}.service-card:hover{background:#edf5ff;border-color:#9fc1f5;transform:translateY(-3px);box-shadow:0 18px 38px rgba(49,84,139,.14)}.service-card svg{box-sizing:border-box;width:42px;height:42px;padding:9px;border-radius:13px;background:#e6f1ff;color:#2f80ed}.service-card h3{margin:22px 0 7px;color:#182234;font:650 22px/1.2 'IBM Plex Sans',sans-serif;letter-spacing:-.02em}.service-card p{margin:0;color:#6f7f95;font-size:15px;line-height:1.45}
   @media(max-width:1050px){:root{--sidebar-w:224px}.atlas-grid{grid-template-columns:repeat(2,1fr)}.atlas-search{max-width:260px}}
   @media(max-width:760px){.atlas-shell{display:block}.atlas-sidebar{transform:translateX(-101%);transition:transform .2s ease}.atlas-sidebar.open{transform:translateX(0)}.sidebar-backdrop.open{display:block;position:fixed;inset:0;background:rgba(20,20,18,.35);z-index:25}.atlas-main{grid-column:auto}.mobile-menu{display:grid}.atlas-topbar{padding:0 14px}.atlas-search{display:none}.atlas-content{padding:20px 14px}.home-hero h1{font-size:30px}.atlas-grid{grid-template-columns:1fr 1fr}.service-grid{grid-template-columns:1fr 1fr}}
   @media(max-width:480px){.atlas-grid,.service-grid{grid-template-columns:1fr}.atlas-page-title{font-size:18px}.service-toggle span{display:none}}
@@ -497,12 +497,13 @@
 
   <!-- ===================== LOGIN ===================== -->
   <div id="login-screen">
-    <div class="watermark">Á</div>
     <div class="login-card">
-      <img class="login-atlas-mark" src="assets/logo/atlas-icon.png" alt="Atlas" />
-      <p class="eyebrow">VÁ Bar · Staff only</p>
-      <h1 class="display">Atlas</h1>
-      <p class="sub">Hospitality operating system for VÁ.</p>
+      <div class="login-brand" aria-label="Atlas">
+        <img class="login-atlas-mark" src="assets/logo/atlas-icon.png" alt="" />
+        <span>Atlas</span>
+      </div>
+      <h1 class="display">Welcome back</h1>
+      <p class="sub">Sign in to continue to your workspace.</p>
 
       <div class="error-msg" id="login-error"></div>
 
@@ -540,7 +541,6 @@
         <header class="atlas-topbar"><button type="button" class="top-icon mobile-menu" id="mobile-menu-btn" aria-label="Collapse navigation" title="Collapse navigation"><i data-lucide="menu"></i></button><div class="atlas-page-title" id="atlas-page-title">Home</div><div class="atlas-search"><i data-lucide="search"></i><input id="global-search" type="text" placeholder="Search or ask Atlas…" aria-label="Jump to a page or command" title="Pages and commands only — operational records are not indexed." data-search-scope="navigation" autocomplete="off" /></div><button type="button" class="top-icon" title="Notifications" aria-label="Notifications"><i data-lucide="bell"></i></button><button type="button" class="service-toggle" id="service-mode-btn"><i data-lucide="zap"></i><span>Service Mode</span></button></header>
         <div class="atlas-content standard-view"><main>
           <div id="home-intro" class="home-hero atlas-home-hero"><div class="atlas-home-hero-copy"><span class="atlas-home-date" id="home-date">Today</span><h1><span id="home-greeting">Good day</span>, <span id="greeting-name">VÁ team</span>.</h1></div><div class="atlas-home-hero-actions"><button type="button" class="atlas-home-action secondary" data-home-action="stock-count"><i data-lucide="clipboard-check"></i>Start stock count</button><button type="button" class="atlas-home-action" data-home-action="new-order" data-commercial-only><i data-lucide="plus"></i>New order</button></div></div>
-          <div id="home-focus" class="atlas-card atlas-home-focus"><div class="atlas-home-brief-icon"><i data-lucide="bot"></i></div><div class="atlas-home-brief-copy"><span class="atlas-home-panel-kicker">Atlas Brain · Daily brief</span><h2 id="home-brief-headline">Preparing today’s priorities…</h2><p id="home-brief-detail">Atlas is checking live inventory, recipe, and operations data.</p><div class="atlas-home-brief-actions"><button type="button" class="atlas-home-action secondary" data-target="inventory-low">Review priorities</button><button type="button" class="atlas-home-action secondary" data-target="brain">All Brain insights <span aria-hidden="true">→</span></button></div><div class="focus-list" id="focus-list" aria-label="Today’s live priorities"><div class="focus-row"><span class="focus-dot"></span><span>Loading today’s priorities…</span></div></div></div></div>
           <div id="home-metrics" class="atlas-grid atlas-home-metrics"><div class="metric-card" data-target="inventory"><div class="metric-icon"><i data-lucide="package"></i></div><div class="metric-copy"><span>Inventory items</span><strong id="home-items">—</strong><small id="home-items-note">Live catalog</small></div></div><div class="metric-card" data-target="inventory-low"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><div class="metric-copy"><span>Items below par</span><strong id="home-low">—</strong><small id="home-low-note">Checking levels</small></div></div><div class="metric-card" data-target="recipes"><div class="metric-icon"><i data-lucide="martini"></i></div><div class="metric-copy"><span>Average recipe margin</span><strong id="home-margin">—</strong><small id="home-margin-note">Verified recipes only</small></div></div><div class="metric-card" data-target="team-profiles"><div class="metric-icon"><i data-lucide="users"></i></div><div class="metric-copy"><span>Team members</span><strong id="home-team">—</strong><small id="home-team-note">Loading live profiles</small></div></div></div>
 
           <div class="alert-banner" id="low-stock-banner"><span class="dot"></span><span id="low-stock-text"></span></div>
@@ -627,21 +627,23 @@
           <div id="suppliers-view" style="display:none;">
             <section class="purchasing-workspace-head">
               <nav class="purchasing-workspace-tabs" aria-label="Purchasing sections">
-                <button type="button" class="active" aria-current="page">Suppliers</button>
+                <button type="button" id="purchase-suppliers-tab" class="active" aria-current="page">Suppliers</button>
                 <button type="button" id="purchase-orders-tab" disabled title="Orders are not enabled in this environment">Orders</button>
                 <button type="button" id="purchase-deliveries-tab" disabled title="Review ordered and received deliveries">Deliveries</button>
               </nav>
               <button class="btn" id="add-supplier-btn"><i data-lucide="plus"></i>New supplier</button>
             </section>
-            <section class="purchasing-intelligence" aria-live="polite">
-              <span class="purchasing-intelligence-icon"><i data-lucide="truck"></i></span>
-              <p><strong id="purchasing-intelligence-title">Checking purchasing readiness.</strong> <span id="purchasing-intelligence-detail">Atlas is reviewing suppliers and recorded restocks.</span></p>
-              <button type="button" id="purchasing-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
-            </section>
-            <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" placeholder="Search suppliers..."/></label></div>
-            <table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table>
-            <div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div>
-            <section id="purchase-order-panel" hidden style="padding:20px 0;max-width:900px"></section>
+            <div id="purchase-suppliers-panel">
+              <section class="purchasing-intelligence" aria-live="polite">
+                <span class="purchasing-intelligence-icon"><i data-lucide="truck"></i></span>
+                <p><strong id="purchasing-intelligence-title">Checking purchasing readiness.</strong> <span id="purchasing-intelligence-detail">Atlas is reviewing suppliers and recorded restocks.</span></p>
+                <button type="button" id="purchasing-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
+              </section>
+              <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" placeholder="Search suppliers..."/></label></div>
+              <table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table>
+              <div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div>
+            </div>
+            <section id="purchase-order-panel" hidden></section>
           </div>
           <div id="imports-view" style="display:none;">
             <section class="atlas-import-center import-queue-center">
@@ -782,7 +784,7 @@
           <div id="reports-view" class="placeholder-view"><div class="placeholder-head"><h2>Reports</h2><p>Inventory, usage, waste, labour and purchasing insights.</p></div><div class="empty-module"><i data-lucide="chart-no-axes-combined"></i><h3>Reports are coming next</h3></div></div>
           <div id="settings-view" class="placeholder-view"><div class="placeholder-head"><h2>Settings</h2><p>Venue, team access and VÁ OS preferences.</p></div><div class="empty-module"><i data-lucide="settings"></i><h3>Project Atlas</h3><p>Built with care for VÁ Bar, Reykjavík.</p></div></div>
         </main></div>
-        <div class="atlas-content service-view"><div class="service-head"><div><h1>Service Mode</h1><p style="color:#abb0a6;margin:6px 0 0">Fast access for a busy shift.</p></div><button class="service-exit" id="service-exit-btn">Exit Service Mode</button></div><div class="service-grid"><button class="service-card" data-service-view="inventory"><i data-lucide="package"></i><h3>Stock</h3><p>Adjust inventory in seconds.</p></button><button class="service-card" data-service-view="recipes"><i data-lucide="martini"></i><h3>Recipes</h3><p>Fast cocktail and prep reference.</p></button><button class="service-card" data-service-view="shifts"><i data-lucide="users"></i><h3>Today's Team</h3><p>See who is working now.</p></button><button class="service-card" data-service-action="restock"><i data-lucide="truck"></i><h3>Delivery</h3><p>Log incoming stock.</p></button><button class="service-card" data-service-view="knowledge"><i data-lucide="shield-alert"></i><h3>Emergency</h3><p>Procedures and contacts.</p></button><button class="service-card" data-service-action="add-item"><i data-lucide="plus"></i><h3>Quick Action</h3><p>Add an item or make an adjustment.</p></button></div></div>
+        <div class="atlas-content service-view"><div class="service-head"><div><h1>Service Mode</h1><p>Fast access for a busy shift.</p></div><button class="service-exit" id="service-exit-btn">Exit Service Mode</button></div><div class="service-grid"><button class="service-card" data-service-view="inventory"><i data-lucide="package"></i><h3>Stock</h3><p>Adjust inventory in seconds.</p></button><button class="service-card" data-service-view="recipes"><i data-lucide="martini"></i><h3>Recipes</h3><p>Fast cocktail and prep reference.</p></button><button class="service-card" data-service-view="shifts"><i data-lucide="users"></i><h3>Today's Team</h3><p>See who is working now.</p></button><button class="service-card" data-service-action="restock"><i data-lucide="truck"></i><h3>Delivery</h3><p>Log incoming stock.</p></button><button class="service-card" data-service-view="knowledge"><i data-lucide="shield-alert"></i><h3>Emergency</h3><p>Procedures and contacts.</p></button><button class="service-card" data-service-action="add-item"><i data-lucide="plus"></i><h3>Quick Action</h3><p>Add an item or make an adjustment.</p></button></div></div>
       </section>
     </div>
   </div>
@@ -1362,10 +1364,16 @@
 
   function inventorySubcategory(item, group = inventoryGroup(item)) {
     const stored = String(item?.subcategory || '').trim();
-    if (stored) return stored.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
     const category = String(item?.category || '').toLowerCase();
     const name = String(item?.name || '').toLowerCase();
-    const value = `${category} ${name} ${item?.unit || ''}`.toLowerCase();
+    const value = `${stored} ${category} ${name} ${item?.unit || ''}`.toLowerCase();
+    if (group === 'wine') {
+      if (/champagne|sparkling|prosecco|cava/.test(value)) return 'Sparkling';
+      if (/ros[eé]/.test(value)) return 'Rosé';
+      if (/red wine|\bred\b/.test(value)) return 'Red';
+      return 'White';
+    }
+    if (stored) return stored.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
     if (group === 'spirits') {
       if (/whisk(?:e)?y|bourbon|scotch/.test(value)) return 'Whiskey';
       if (/gin/.test(value)) return 'Gin';
@@ -1376,13 +1384,6 @@
       if (/aquavit|brenniv[ií]n/.test(value)) return 'Aquavit';
       if (/shot/.test(value)) return 'Shots';
       return 'Liqueurs & Aperitifs';
-    }
-    if (group === 'wine') {
-      if (/champagne/.test(value)) return 'Champagne';
-      if (/sparkling|prosecco|cava/.test(value)) return 'Sparkling wine';
-      if (/ros[eé]/.test(value)) return 'Rosé wine';
-      if (/red wine|\bred\b/.test(value)) return 'Red wine';
-      return 'White wine';
     }
     if (group === 'beer') {
       if (/\bkeg|30l|20l|50l/.test(value)) return 'Kegs';
@@ -1737,8 +1738,9 @@
     hideAtlasWorkspaceRoots(view);
     Object.values(viewMap).forEach(v => { if(v) v.style.display='none'; });
     document.getElementById('home-intro').style.display = view === 'dashboard' ? 'flex' : 'none';
-    document.getElementById('home-focus').style.display = view === 'dashboard' ? 'grid' : 'none';
     document.getElementById('home-metrics').style.display = view === 'dashboard' ? 'grid' : 'none';
+    const homeTimeline = document.getElementById('home-timeline');
+    if (homeTimeline) homeTimeline.style.display = view === 'dashboard' ? 'block' : 'none';
     if (viewMap[view]) viewMap[view].style.display = view === 'inventory' ? 'grid' : 'block';
     restoreAtlasWorkspaceInterior(view);
     syncInventorySectionHeader(view);

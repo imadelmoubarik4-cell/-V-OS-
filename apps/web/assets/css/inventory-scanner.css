@@ -166,3 +166,24 @@ body.inventory-scanner-open{overflow:hidden}
   .inventory-scanner-primary,.inventory-scanner-secondary,.inventory-scanner-manual button,.inventory-scanner-text-button{transition:none}
   .inventory-scanner-backdrop{backdrop-filter:none}
 }
+
+/* Final Atlas scanner skin. This file loads dynamically after the shared S38
+   layer, so the scanner's definitive colours must live here as well. */
+.inventory-scanner-panel{border-color:#dfe6ef;background:#f5f7fb;box-shadow:0 34px 100px rgba(24,34,48,.22)}
+.inventory-scanner-header{border-color:#dfe6ef;background:rgba(255,255,255,.94)}
+.inventory-scanner-header>div:first-child>span{color:#4f7df3}
+.inventory-scanner-header h2{color:#182230;font-family:'IBM Plex Sans',sans-serif;font-weight:650;letter-spacing:-.03em}
+.inventory-scanner-capture,.inventory-scanner-result{border-color:#dfe6ef;background:#fff}
+.inventory-scanner-viewport,
+.inventory-scanner-viewport.is-scanning{background:linear-gradient(145deg,#dfeafe,#f4f8ff);color:#182230}
+.inventory-scanner-placeholder{background:radial-gradient(circle at 50% 42%,#fff 0%,#edf3ff 74%)}
+.inventory-scanner-placeholder svg{color:#4f7df3}
+.inventory-scanner-placeholder span{color:#66758a}
+.inventory-scanner-frame{border-color:rgba(79,125,243,.8);box-shadow:0 0 0 999px rgba(53,103,232,.08)}
+.inventory-scanner-frame::before,.inventory-scanner-frame::after{border-color:#4f7df3}
+.inventory-scanner-frame span{background:#78a3ff;box-shadow:0 0 14px rgba(79,125,243,.72)}
+.inventory-scanner-engine{border:1px solid #cbdafe;background:rgba(255,255,255,.94);color:#3567e8}
+.inventory-scanner-primary,.inventory-scanner-manual button{border-color:#4f7df3;background:#4f7df3;color:#fff}
+.inventory-scanner-primary:hover:not(:disabled),.inventory-scanner-manual button:hover:not(:disabled){border-color:#3567e8;background:#3567e8}
+.inventory-scanner-trust{border-color:#cbdafe;background:#edf3ff;color:#526782}
+.inventory-scanner-trust svg{color:#4f7df3}

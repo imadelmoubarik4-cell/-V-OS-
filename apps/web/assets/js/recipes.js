@@ -325,21 +325,21 @@
         </div>
 
         <div class="recipe-foundation-panel recipe-alpha03-foundation">
-          <article class="recipe-foundation-card">
-            <h3>Inventory connection</h3>
-            <p>Recipe ingredients use live inventory quantities, costs and package sizes.</p>
+          <details class="recipe-foundation-card">
+            <summary><span><i data-lucide="package-check"></i><strong>Inventory connection</strong></span><small id="recipe-connection-summary">Live recipe links</small><i data-lucide="chevron-down"></i></summary>
+            <div class="recipe-foundation-body"><p>Recipe ingredients use live inventory quantities, costs and package sizes.</p>
             <div class="inventory-connection-list">
               <div class="inventory-connection-row"><span>Inventory items available</span><strong id="recipe-inventory-count">0</strong></div>
               <div class="inventory-connection-row"><span>Ingredients connected</span><strong id="recipe-linked-count">0</strong></div>
               <div class="inventory-connection-row"><span>Ingredients needing a link</span><strong id="recipe-unlinked-count">0</strong></div>
-            </div>
-          </article>
-          <article class="recipe-foundation-card recipe-featured-card" id="recipe-featured-card"></article>
-          <article class="recipe-foundation-card">
-            <h3>Public menu</h3>
-            <p>Only recipes marked “Show on public menu” appear on the guest-facing menu.</p>
-            <div class="recipe-menu-share"><img id="menu-qr" alt="QR code to public menu" width="84" height="84" /><div><label for="menu-link">Menu link</label><input id="menu-link" readonly /><input id="menu-embed" readonly aria-label="Embed code" /></div></div>
-          </article>
+            </div></div>
+          </details>
+          <details class="recipe-foundation-card recipe-featured-card"><summary><span><i data-lucide="sparkles"></i><strong>Featured recommendation</strong></span><small>Atlas recommendation</small><i data-lucide="chevron-down"></i></summary><div class="recipe-foundation-body" id="recipe-featured-card"></div></details>
+          <details class="recipe-foundation-card">
+            <summary><span><i data-lucide="qr-code"></i><strong>Public menu</strong></span><small>Guest-facing visibility</small><i data-lucide="chevron-down"></i></summary>
+            <div class="recipe-foundation-body"><p>Only recipes marked “Show on public menu” appear on the guest-facing menu.</p>
+            <div class="recipe-menu-share"><img id="menu-qr" alt="QR code to public menu" width="84" height="84" /><div><label for="menu-link">Menu link</label><input id="menu-link" readonly /><input id="menu-embed" readonly aria-label="Embed code" /></div></div></div>
+          </details>
         </div>
       </section>`;
 

@@ -482,8 +482,8 @@
   box-shadow: var(--glass-highlight);
 }
 
-/* Service Mode keeps its dark, high-contrast surface — glass is for management,
-   not for a busy bar. Only its accents move to the blue scale. */
+/* Service Mode uses the same light Atlas language while retaining large,
+   high-contrast touch targets for fast behind-bar access. */
 .service-card svg { color: var(--blue-400); }
 .service-exit { border-radius: 14px; }
 

@@ -44,6 +44,7 @@
       error: null,
       message: null,
       submitting: false,
+      dirty: false,
       zxingModule: null
     }
   };
@@ -327,6 +328,20 @@
     </form>`;
   }
 
+  function groupedLineMarkup(lines) {
+    const groups = new Map();
+    lines.forEach((line) => {
+      const label = line.category || line.bin_location || 'Other inventory';
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(line);
+    });
+    const expanded = Boolean(state.search.trim() || state.lineFilter !== 'all');
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([label, entries]) => {
+      const pending = entries.filter((entry) => entry.line_status === 'pending').length;
+      return `<details class="stock-count-category-group" ${expanded ? 'open' : ''}><summary><span><i data-lucide="boxes"></i><strong>${escapeHtml(label)}</strong></span><small>${entries.length} item${entries.length === 1 ? '' : 's'}${pending ? ` · ${pending} pending` : ''}</small><i data-lucide="chevron-down"></i></summary><div class="stock-count-category-lines">${entries.map(lineCard).join('')}</div></details>`;
+    }).join('');
+  }
+
   function detailActionsMarkup() {
     const session = currentSession();
     const summary = currentSummary();
@@ -351,7 +366,7 @@
       <div class="stock-count-progress-block"><div><span>Session progress</span><strong>${formatNumber(summary.progress_percent || 0)}%</strong></div><div class="stock-count-progress"><i style="width:${Math.max(0, Math.min(100, number(summary.progress_percent)))}%"></i></div><div class="stock-count-session-stats"><span><strong>${formatNumber(summary.counted_lines || 0)}</strong> counted</span><span><strong>${formatNumber(summary.skipped_lines || 0)}</strong> skipped</span><span><strong>${formatNumber(summary.pending_lines || 0)}</strong> pending</span><span><strong>${formatNumber(summary.negative_variances || 0)}</strong> negative variances</span></div></div>
       ${session.status === 'submitted' ? '<div class="stock-count-review-banner"><i data-lucide="shield-alert"></i><span>This session is locked for staff edits and awaits manager verification. Verification records private current balances; it does not change production inventory.</span></div>' : ''}
       <div class="stock-count-controls"><label><i data-lucide="search"></i><input type="search" data-count-search placeholder="Search item, category, location or barcode" value="${escapeHtml(state.search)}"/></label><select data-line-filter><option value="all" ${state.lineFilter === 'all' ? 'selected' : ''}>All lines</option><option value="pending" ${state.lineFilter === 'pending' ? 'selected' : ''}>Pending</option><option value="counted" ${state.lineFilter === 'counted' ? 'selected' : ''}>Counted</option><option value="skipped" ${state.lineFilter === 'skipped' ? 'selected' : ''}>Skipped</option></select></div>
-      <div class="stock-count-line-list">${lines.length ? lines.map(lineCard).join('') : '<div class="stock-count-empty"><i data-lucide="search-x"></i><h3>No count lines match</h3><p>Clear the search or choose another status.</p></div>'}</div>
+      <div class="stock-count-line-list">${lines.length ? groupedLineMarkup(lines) : '<div class="stock-count-empty"><i data-lucide="search-x"></i><h3>No count lines match</h3><p>Clear the search or choose another status.</p></div>'}</div>
     </section>`;
   }
 
@@ -499,7 +514,7 @@
   }
 
   function openStartModal() {
-    closeModal();
+    if (!closeModal()) return;
     state.modal = { type: 'start', scopeType: 'all', scopeValue: '', title: 'Current stock count', notes: '' };
     const wrapper = document.createElement('div');
     wrapper.dataset.stockCountModalRoot = 'true';
@@ -515,9 +530,11 @@
     window.lucide?.createIcons?.();
   }
 
-  function closeModal() {
+  function closeModal(force = false) {
+    if (!force && state.modal?.dirty && !window.confirm('Discard the unsaved stock-count setup?')) return false;
     document.querySelector('[data-stock-count-modal-root]')?.remove();
     state.modal = null;
+    return true;
   }
 
   async function startCount(form) {
@@ -530,7 +547,7 @@
       notes: form.elements.notes.value.trim() || null,
       client_request_id: randomUuid()
     }, 'Stock-count session started.');
-    closeModal();
+    closeModal(true);
     if (payload?.detail?.session?.id) state.activeSessionId = payload.detail.session.id;
     render();
   }
@@ -647,6 +664,7 @@
     state.scan.source = 'manual';
     state.scan.error = null;
     state.scan.message = null;
+    state.scan.dirty = false;
     renderScanModal();
   }
 
@@ -671,12 +689,15 @@
     }
   }
 
-  function closeScanModal() {
+  function closeScanModal(force = false) {
+    if (!force && state.scan.dirty && !window.confirm('Discard the scanned item and unsaved quantity changes?')) return false;
     stopCountCamera();
     state.scan.open = false;
+    state.scan.dirty = false;
     state.scan.line = null;
     state.scan.lookup = null;
     document.querySelector('[data-stock-count-scan-root]')?.remove();
+    return true;
   }
 
   async function supportedNativeFormats() {
@@ -700,6 +721,7 @@
   async function resolveScannedCode(rawCode, source) {
     const code = String(rawCode || '').trim();
     if (!code) return;
+    state.scan.dirty = true;
     stopCountCamera();
     state.scan.code = code;
     state.scan.source = source;
@@ -840,7 +862,7 @@
         skipped_reason: null,
         expected_version: line.version
       }, `${line.item_name} count saved.`);
-      closeScanModal();
+      closeScanModal(true);
     } catch (_) {
       state.scan.error = state.error || 'The scanned count could not be saved.';
       state.error = null;
@@ -904,14 +926,19 @@
     const scanStep = target.closest('[data-scan-step]');
     if (scanStep) {
       const input = document.querySelector('[data-save-scanned-count] input[name="quantity"]');
-      if (input) input.value = String(Math.max(0, number(input.value) + number(scanStep.dataset.scanStep)));
+      if (input) {
+        input.value = String(Math.max(0, number(input.value) + number(scanStep.dataset.scanStep)));
+        state.scan.dirty = true;
+      }
       return;
     }
   }
 
   function handleInput(event) {
     const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
+    if (target.closest('[data-stock-count-modal-root]') && state.modal) state.modal.dirty = true;
+    if (target.closest('[data-stock-count-scan-root]')) state.scan.dirty = true;
     if (target.matches('[data-count-search]')) {
       state.search = target.value;
       render();
@@ -937,13 +964,17 @@
       state.modal.scopeValue = '';
       state.modal.title = form?.elements.title?.value || state.modal.title;
       state.modal.notes = form?.elements.notes?.value || state.modal.notes;
+      state.modal.dirty = true;
       rerenderStartModal();
       return;
     }
     if (target.matches('[data-count-scan-photo]')) {
       const file = target.files?.[0];
       target.value = '';
-      if (file) decodeCountPhoto(file);
+      if (file) {
+        state.scan.dirty = true;
+        decodeCountPhoto(file);
+      }
     }
   }
 
@@ -984,6 +1015,7 @@
   }
 
   function close() {
+    if (!closeModal() || !closeScanModal()) return false;
     state.active = false;
     // Invalidate any pending load before clearing its watchdog. Otherwise a
     // stalled request can leave state.loading latched after navigation, and the
@@ -991,11 +1023,10 @@
     state.loadSerial += 1;
     state.loading = false;
     clearLoadWatchdog();
-    closeModal();
-    closeScanModal();
     setLegacyVisibility(false);
     const mount = workspace();
     if (mount) mount.hidden = true;
+    return true;
   }
 
   function restoreIfVisible() {
@@ -1026,7 +1057,7 @@
     });
     window.addEventListener('pagehide', () => {
       state.observer?.disconnect();
-      closeScanModal();
+      closeScanModal(true);
     }, { once: true });
     return true;
   }

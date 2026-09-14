@@ -15,27 +15,27 @@
     });
   }
 
-  function installHomeMark() {
-    const host = document.querySelector('#home-focus .atlas-home-brief-icon');
-    if (!host || host.dataset.s38Mark === 'ready') return;
-    const image = document.createElement('img');
-    image.src = 'assets/logo/atlas-icon.png';
-    image.alt = 'Atlas';
-    image.width = 34;
-    image.height = 34;
-    host.replaceChildren(image);
-    host.dataset.s38Mark = 'ready';
-
-    const brief = document.getElementById('home-focus');
-    if (brief) {
-      brief.classList.add('s38-attention');
-      brief.setAttribute('aria-live', 'polite');
+  function setAttentionPulse(element, requiresAction) {
+    if (!element) return;
+    element.classList.toggle('s38-attention', requiresAction);
+    if (!requiresAction) {
+      element.classList.remove('s38-attention-pulse');
+      delete element.dataset.s38AttentionSignature;
+      return;
     }
+
+    const signature = element.dataset.signature || (element.textContent || '').replace(/\s+/g, ' ').trim();
+    if (element.dataset.s38AttentionSignature === signature) return;
+    element.dataset.s38AttentionSignature = signature;
+    element.classList.remove('s38-attention-pulse');
+    void element.offsetWidth;
+    element.classList.add('s38-attention-pulse');
   }
 
   function polishOperations() {
     document.querySelectorAll('.checkpoint-a-home-prompt').forEach((prompt) => {
-      prompt.classList.add('s38-attention');
+      const requiresAction = prompt.dataset.attentionRequired === 'true';
+      setAttentionPulse(prompt, requiresAction);
     });
     document.querySelectorAll('.checkpoint-a-compact-card').forEach((card) => {
       card.dataset.s38Polished = 'true';
@@ -87,6 +87,17 @@
     document.querySelectorAll('.team-messages-trust span').forEach((copy) => {
       copy.textContent = (copy.textContent || '').replace('Push notifications off', 'Notification delivery follows Settings');
     });
+
+    const team = document.getElementById('team-view');
+    const visible = team && window.getComputedStyle(team).display !== 'none';
+    document.body.classList.toggle('s38-team-active', Boolean(visible));
+  }
+
+  function polishShiftsMonth() {
+    const shifts = document.getElementById('shifts-view');
+    const visible = shifts && window.getComputedStyle(shifts).display !== 'none';
+    const monthOpen = Boolean(visible && shifts.classList.contains('shifts-month-active'));
+    document.body.classList.toggle('s38-month-active', monthOpen);
   }
 
   function polishForms() {
@@ -98,13 +109,22 @@
     });
   }
 
+  function constrainHomeTimeline() {
+    const timeline = document.getElementById('home-timeline');
+    if (!timeline) return;
+    const isHome = (document.body.dataset.atlasView || 'dashboard') === 'dashboard';
+    timeline.style.display = isHome ? 'block' : 'none';
+    timeline.setAttribute('aria-hidden', String(!isHome));
+  }
+
   function applyRemediation() {
-    installHomeMark();
     polishOperations();
     polishScanner();
     enablePurchasingNavigation();
     polishMessages();
+    polishShiftsMonth();
     polishForms();
+    constrainHomeTimeline();
     window.lucide?.createIcons?.();
   }
 
@@ -182,7 +202,7 @@
 
   window.AtlasS38Remediation = {
     apply: scheduleApply,
-    version: 's38-pdf-remediation-v1'
+    version: 's38-owner-remediation-v8'
   };
 
   if (document.readyState === 'loading') {
