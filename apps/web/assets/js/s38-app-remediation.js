@@ -32,28 +32,6 @@
     element.classList.add('s38-attention-pulse');
   }
 
-  function installHomeMark() {
-    const host = document.querySelector('#home-focus .atlas-home-brief-icon');
-    if (!host) return;
-    if (host.dataset.s38Mark !== 'ready') {
-      host.innerHTML = '<i data-lucide="bot" aria-hidden="true"></i><span class="sr-only">Atlas</span>';
-      host.dataset.s38Mark = 'ready';
-    }
-
-    const brief = document.getElementById('home-focus');
-    if (brief) {
-      brief.setAttribute('aria-live', 'polite');
-      const lowCount = Number.parseFloat(document.getElementById('home-low')?.textContent || '0');
-      const copy = `${document.getElementById('home-brief-headline')?.textContent || ''} ${document.getElementById('home-brief-detail')?.textContent || ''}`;
-      const requiresAction = lowCount > 0 || /requires? (?:action|attention)|needs? attention|urgent|overdue|below par|cannot be served/i.test(copy);
-      setAttentionPulse(brief, requiresAction);
-
-      const focusList = document.getElementById('focus-list');
-      brief.querySelector('[data-s38-priority-toggle]')?.remove();
-      if (focusList) focusList.hidden = true;
-    }
-  }
-
   function polishOperations() {
     document.querySelectorAll('.checkpoint-a-home-prompt').forEach((prompt) => {
       const requiresAction = prompt.dataset.attentionRequired === 'true';
@@ -140,7 +118,6 @@
   }
 
   function applyRemediation() {
-    installHomeMark();
     polishOperations();
     polishScanner();
     enablePurchasingNavigation();
@@ -225,7 +202,7 @@
 
   window.AtlasS38Remediation = {
     apply: scheduleApply,
-    version: 's38-owner-remediation-v7'
+    version: 's38-owner-remediation-v8'
   };
 
   if (document.readyState === 'loading') {

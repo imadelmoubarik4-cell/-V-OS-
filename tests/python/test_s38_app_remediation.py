@@ -46,27 +46,19 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertNotIn("background: #000", self.css)
         self.assertNotIn("background:#000", self.css)
 
-    def test_home_attention_and_brain_card_follow_owner_contract(self):
+    def test_home_attention_and_removed_brain_card_follow_owner_contract(self):
         operations_layout = (ROOT / "apps/web/assets/js/operations-checkpoint-a-layout.js").read_text(encoding="utf-8")
         for contract in (
             "setAttentionPulse",
             "s38-attention-pulse",
             "element.dataset.s38AttentionSignature",
             "animation: s38-attention-pulse 3.2s ease-in-out 2",
-            "Home Brain brief: owner reference composition",
-            '"brain-icon brain-kicker"',
-            "background:linear-gradient(112deg,#fff",
-            "border:1px solid #dfe6ef!important",
-            "#home-focus .atlas-home-brief-copy{display:contents}",
-            "background:#4f7df3",
-            "#home-focus .atlas-home-brief-actions .atlas-home-action:first-child",
         ):
             self.assertIn(contract, self.javascript if contract in self.javascript else self.css)
         self.assertIn('data-attention-required="${attentionRequired}"', operations_layout)
-        for forbidden in ("#11151c", "#171d27", "#1c2029"):
-            self.assertNotIn(forbidden, self.css)
-        self.assertIn("brief.querySelector('[data-s38-priority-toggle]')?.remove()", self.javascript)
-        self.assertNotIn("Routine priorities", self.javascript)
+        self.assertNotIn('id="home-focus"', self.index)
+        self.assertNotIn("installHomeMark", self.javascript)
+        self.assertNotIn("getElementById('home-focus').style.display", self.index)
 
     def test_scanner_controls_are_wired(self):
         scanner_css = (ROOT / "apps/web/assets/css/inventory-scanner.css").read_text(encoding="utf-8")

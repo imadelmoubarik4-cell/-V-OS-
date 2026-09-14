@@ -80,9 +80,8 @@ test('Home uses live values and supports expanded or compact navigation', () => 
   assert.doesNotMatch(app, /<strong>8<\/strong><span>Onboarding steps/);
   assert.match(app, /window\.AtlasRecipes\?\.getHomeMetrics/);
   assert.match(recipes, /function getHomeMetrics\(\)/);
-  assert.match(homeCss, /#home-focus\.atlas-home-focus/);
-  assert.match(app, /home-focus'\)\.style\.display = view === 'dashboard' \? 'grid' : 'none'/);
-  assert.match(homeCss, /\.atlas-home-brief-icon \{ grid-column: 1; grid-row: 1/);
+  assert.doesNotMatch(app, /id="home-focus"/);
+  assert.doesNotMatch(app, /home-focus'\)\.style\.display/);
   assert.match(shellCss, /body\.atlas-sidebar-collapsed/);
 });
 
