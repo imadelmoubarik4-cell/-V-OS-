@@ -588,11 +588,13 @@
 
   function renderHomeAugmentation() {
     const focusList = document.getElementById('focus-list');
-    if (!focusList) return;
-    focusList.querySelectorAll('[data-atlas-brain-focus]').forEach((row) => row.remove());
-    const recommendation = recommendations()[0];
-    if (!recommendation) return;
-    focusList.insertAdjacentHTML('afterbegin', `<div class="focus-row" data-target="brain" data-atlas-brain-focus><span class="focus-dot"></span><span>Atlas Brain: ${escape(recommendation.title)}.</span></div>`);
+    if (focusList) {
+      focusList.querySelectorAll('[data-atlas-brain-focus]').forEach((row) => row.remove());
+      const recommendation = recommendations()[0];
+      if (recommendation) {
+        focusList.insertAdjacentHTML('afterbegin', `<div class="focus-row" data-target="brain" data-atlas-brain-focus><span class="focus-dot"></span><span>Atlas Brain: ${escape(recommendation.title)}.</span></div>`);
+      }
+    }
     const metrics = document.getElementById('home-metrics');
     if (metrics) {
       let timeline = document.getElementById('home-timeline');

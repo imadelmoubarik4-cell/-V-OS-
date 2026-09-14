@@ -157,6 +157,8 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("knowledge-editor-properties", knowledge)
         self.assertIn("brain-intelligence-grid", brain)
         self.assertIn("home-timeline", brain)
+        self.assertIn("if (focusList) {", brain)
+        self.assertNotIn("if (!focusList) return;", brain)
         self.assertIn("homeTimeline.style.display = view === 'dashboard' ? 'block' : 'none'", self.index)
         self.assertIn("constrainHomeTimeline", self.javascript)
         self.assertIn("Master notification control", settings)
