@@ -107,6 +107,13 @@
     document.body.classList.toggle('s38-team-active', Boolean(visible));
   }
 
+  function polishShiftsMonth() {
+    const shifts = document.getElementById('shifts-view');
+    const visible = shifts && window.getComputedStyle(shifts).display !== 'none';
+    const monthOpen = Boolean(visible && shifts.classList.contains('shifts-month-active'));
+    document.body.classList.toggle('s38-month-active', monthOpen);
+  }
+
   function polishForms() {
     document.querySelectorAll(
       '.inventory-scanner-close, [data-checkpoint-context-close], [data-shifts-month-close], [data-team-close-attachment]'
@@ -130,6 +137,7 @@
     polishScanner();
     enablePurchasingNavigation();
     polishMessages();
+    polishShiftsMonth();
     polishForms();
     constrainHomeTimeline();
     window.lucide?.createIcons?.();
@@ -221,7 +229,7 @@
 
   window.AtlasS38Remediation = {
     apply: scheduleApply,
-    version: 's38-owner-remediation-v3'
+    version: 's38-owner-remediation-v4'
   };
 
   if (document.readyState === 'loading') {

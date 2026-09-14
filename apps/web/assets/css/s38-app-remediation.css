@@ -736,6 +736,7 @@ textarea:focus-visible {
 .team-conversation-actions [data-team-star][aria-pressed='true'] { border-color:var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
 .team-conversation-actions [data-team-star][aria-pressed='true'] svg,.team-channel-status .is-pinned { fill:currentColor; color:var(--s38-blue); }
 body.s38-team-active .fab-wrap { display:none !important; }
+body.s38-month-active .fab-wrap { display:none !important; }
 
 /* Full month Shifts view */
 .shift-month-toolbar { padding:12px 14px; border-radius:18px; box-shadow:var(--s38-shadow); }

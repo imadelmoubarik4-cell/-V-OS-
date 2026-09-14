@@ -144,6 +144,21 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("Master notification control", settings)
         self.assertIn("overflow-y:scroll !important", self.css)
 
+    def test_month_view_uses_final_atlas_skin_and_hides_global_fab(self):
+        month_css = (ROOT / "apps/web/assets/css/shifts-month-editor.css").read_text(encoding="utf-8")
+        for contract in (
+            "Final Atlas month calendar skin",
+            "--month-blue:#4f7df3",
+            "background:var(--month-blue-wash)",
+            "border-radius:16px",
+            ".shift-month-chip.person-tone-7",
+            "button.shift-month-empty",
+        ):
+            self.assertIn(contract, month_css)
+        self.assertIn("polishShiftsMonth", self.javascript)
+        self.assertIn("s38-month-active", self.javascript)
+        self.assertIn("body.s38-month-active .fab-wrap", self.css)
+
 
 if __name__ == "__main__":
     unittest.main()
