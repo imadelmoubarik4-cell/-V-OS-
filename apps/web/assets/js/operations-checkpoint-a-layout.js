@@ -206,8 +206,8 @@
   }
 
   function syncHomePrompt() {
-    const homeFocus = document.getElementById('home-focus');
-    if (!homeFocus) return;
+    const homeAnchor = document.getElementById('home-focus') || document.getElementById('home-metrics');
+    if (!homeAnchor) return;
 
     const signature = homePromptSignature();
     const existing = document.querySelector('[data-checkpoint-a-home-prompt]');
@@ -216,7 +216,7 @@
 
     const markup = homePromptMarkup();
     if (!markup) return;
-    homeFocus.insertAdjacentHTML('beforebegin', markup);
+    homeAnchor.insertAdjacentHTML('beforebegin', markup);
     const prompt = document.querySelector('[data-checkpoint-a-home-prompt]');
     if (prompt) prompt.dataset.signature = signature;
     if (window.lucide) window.lucide.createIcons();

@@ -33,7 +33,8 @@ test('Home receives one visually focused scheduled-day prompt', () => {
   assert.match(layout, /data-checkpoint-home-open/);
   assert.match(layout, /data-attention-required="\$\{attentionRequired\}"/);
   assert.match(layout, /routineNeedsAttention/);
-  assert.match(layout, /homeFocus\.insertAdjacentHTML\('beforebegin'/);
+  assert.match(layout, /getElementById\('home-focus'\) \|\| document\.getElementById\('home-metrics'\)/);
+  assert.match(layout, /homeAnchor\.insertAdjacentHTML\('beforebegin'/);
 });
 
 test('marketing and reputation readiness move to Settings', () => {

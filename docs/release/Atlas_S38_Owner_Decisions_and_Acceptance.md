@@ -205,3 +205,4 @@ The private preview is ready for owner approval only when all of the following a
 - Both the month-level Add Shift control and every day plus control synchronously open the Add Shift form for that exact date and focus the team-member field.
 - The Home daily-action prompt uses a soft two-cycle breathing pulse only when its explicit attention state first appears or changes; it does not animate continuously.
 - The Home Atlas Brain Daily Brief card is removed entirely at the owner's request. Atlas Brain remains available through its dedicated workspace; the Home daily-action prompt, metrics, and timeline remain unchanged.
+- The Home daily-action prompt is anchored independently above the metrics, so removing the Brain card cannot remove the notification. Its Open action and action-required pulse remain intact.

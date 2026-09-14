@@ -56,6 +56,8 @@ class S38AppRemediationTests(unittest.TestCase):
         ):
             self.assertIn(contract, self.javascript if contract in self.javascript else self.css)
         self.assertIn('data-attention-required="${attentionRequired}"', operations_layout)
+        self.assertIn("document.getElementById('home-focus') || document.getElementById('home-metrics')", operations_layout)
+        self.assertIn("homeAnchor.insertAdjacentHTML('beforebegin', markup)", operations_layout)
         self.assertNotIn('id="home-focus"', self.index)
         self.assertNotIn("installHomeMark", self.javascript)
         self.assertNotIn("getElementById('home-focus').style.display", self.index)
