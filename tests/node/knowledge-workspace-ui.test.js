@@ -87,10 +87,10 @@ test('Knowledge preserves the original Atlas design and responsive layout', () =
 });
 
 test('Knowledge navigation uses separate light Atlas cards instead of the legacy beige rail', () => {
-  assert.match(remediationCss, /\.knowledge-tabs\s*\{[^}]*display:grid;[^}]*background:transparent;/s);
-  assert.match(remediationCss, /\.knowledge-tabs button\s*\{[^}]*background:#fff;/s);
-  assert.match(remediationCss, /\.knowledge-tabs button\.is-active\s*\{[^}]*background:var\(--s38-blue-soft\) !important;/s);
-  assert.match(remediationCss, /\.knowledge-footer-contract\s*\{[^}]*background:var\(--s38-blue-soft\);/s);
+  assert.match(remediationCss, /#knowledge-view \.knowledge-tabs\s*\{[^}]*display:grid;[^}]*background:transparent;/s);
+  assert.match(remediationCss, /#knowledge-view \.knowledge-tabs button\s*\{[^}]*background:#fff;/s);
+  assert.match(remediationCss, /#knowledge-view \.knowledge-tabs button\.is-active\s*\{[^}]*background:var\(--s38-blue-soft\) !important;/s);
+  assert.match(remediationCss, /#knowledge-view \.knowledge-footer-contract\s*\{[^}]*background:var\(--s38-blue-soft\);/s);
   assert.doesNotMatch(remediationCss, /\.knowledge-tabs\s*\{[^}]*background:#eeece6;/s);
   assert.equal((remediationCss.match(/{/g) || []).length, (remediationCss.match(/}/g) || []).length);
 });
