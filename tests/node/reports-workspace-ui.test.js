@@ -63,6 +63,15 @@ test('important report values are inspectable and exportable', () => {
   assert.match(ui, /Report,|Generated at|Currency/);
 });
 
+test('inventory reporting distinguishes verified counts from non-current evidence', () => {
+  expectLabels(ui, ['Current verified', 'Needs current count', 'Never a live alert', 'Stock evidence quality']);
+  assert.match(ui, /summary\.historical_items/);
+  assert.match(ui, /summary\.stale_items/);
+  assert.match(ui, /summary\.unverified_items/);
+  assert.match(css, /\.report-status\.is-historical/);
+  assert.match(css, /\.report-status\.is-unverified/);
+});
+
 test('saved configurations remain permission-safe when reopened', () => {
   assert.match(ui, /localStorage/);
   assert.match(ui, /savedStorageKey/);

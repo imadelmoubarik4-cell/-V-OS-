@@ -16,6 +16,7 @@ NULL_SAFE_WRAPPER = (
     / "supabase/migrations/20260909090422_atlas_reports_null_package_size_wrapper_fix.sql"
 ).read_text()
 EDGE = (ROOT / "supabase/functions/atlas-reports/index.ts").read_text()
+STOCK_PROVENANCE = (ROOT / "supabase/functions/atlas-reports/stock-provenance.mjs").read_text()
 ENTRYPOINT = (ROOT / "supabase/functions/atlas-reports/entrypoint.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
@@ -132,9 +133,23 @@ class ReportsContractTests(unittest.TestCase):
         self.assertIn('const TIMEZONE = "Atlantic/Reykjavik"', EDGE)
         self.assertIn('currency: "ISK"', EDGE)
         self.assertIn('x-atlas-reports-version', EDGE)
-        self.assertIn('"0.2.0"', EDGE)
+        self.assertIn('"0.3.0"', EDGE)
         self.assertIn("generated_at_value", FIX)
         self.assertIn("Corrected Reports snapshot function is missing", FIX)
+
+    def test_live_stock_alerts_require_current_verified_counts(self):
+        self.assertIn('branchRpc("atlas_stock_count_verified_balances"', EDGE)
+        self.assertIn("source_updated_at", EDGE)
+        self.assertIn("buildStockReport", EDGE)
+        self.assertIn("applyStockTrustToWorkspace", EDGE)
+        self.assertIn('HISTORICAL_OPENING_CUTOFF = "2026-07-31"', STOCK_PROVENANCE)
+        self.assertIn('return "historical"', STOCK_PROVENANCE)
+        self.assertIn('return "unverified"', STOCK_PROVENANCE)
+        self.assertIn('return "stale"', STOCK_PROVENANCE)
+        self.assertIn('quantityStatus !== "current"', STOCK_PROVENANCE)
+        self.assertIn("historical_stock_used_as_live_alert: false", STOCK_PROVENANCE)
+        self.assertIn("unverified_stock_used_as_live_alert: false", STOCK_PROVENANCE)
+        self.assertIn("stale_stock_used_as_live_alert: false", STOCK_PROVENANCE)
 
     def test_edge_never_mutates_operational_source_tables(self):
         for forbidden in ('method: "PATCH"', 'method: "DELETE"', 'method: "PUT"'):
