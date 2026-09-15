@@ -48,7 +48,9 @@ test('managers can create, edit and remove shifts directly from the month', () =
   assert.match(month, /state\.modal = \{ mode: 'shift', date: target, shift: null \}/);
   assert.match(month, /openShiftEditor\(addDay\.dataset\.shiftsMonthAddDay\)/);
   assert.match(month, /addShift: openShiftEditor/);
-  assert.match(month, /apply\(\);\s*renderPanel\(\);/);
+  assert.match(month, /renderShiftModalOnly\(\);/);
+  assert.match(month, /panel\.insertAdjacentHTML\('beforeend', shiftModalMarkup\(\)\)/);
+  assert.doesNotMatch(month, /function openShiftEditor\(date\)[\s\S]*?apply\(\);\s*renderPanel\(\);/);
 });
 
 test('one month publication makes the complete plan visible to staff', () => {
