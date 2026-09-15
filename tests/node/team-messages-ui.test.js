@@ -12,7 +12,7 @@ function count(haystack, needle) {
 }
 
 test('Checkpoint C loads from the isolated team-message API', () => {
-  assert.match(config, /TEAM_MESSAGES_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-team-messages"/);
+  assert.match(config, /TEAM_MESSAGES_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-team-messages"/);
   assert.match(config, /assets\/js\/team-messages\.js/);
   assert.match(config, /assets\/css\/team-messages\.css/);
   assert.equal(count(config, 'SUPABASE_ANON_KEY'), 1);

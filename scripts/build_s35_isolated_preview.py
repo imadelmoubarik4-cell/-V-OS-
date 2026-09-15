@@ -20,6 +20,8 @@ def _runtime_endpoints(source):
         re.M,
     )
     endpoints = dict(pairs)
+    # Item Master was intentionally outside the historical S35 deployment.
+    endpoints.pop("ITEM_MASTER_API", None)
     endpoints["NOTIFICATIONS_API"] = "atlas-notifications"
     endpoints["IMPORT_WORKER_API"] = "atlas-import-worker"
     if len(endpoints) != 18:
@@ -59,6 +61,7 @@ def build(output, publishable_key):
         for ref in FORBIDDEN_REFS:
             isolated = isolated.replace(f"https://{ref}.supabase.co", f"https://{TARGET}.supabase.co")
             isolated = isolated.replace(f"wss://{ref}.supabase.co", f"wss://{TARGET}.supabase.co")
+            isolated = isolated.replace(ref, TARGET)
         if isolated != content:
             asset.write_text(isolated, encoding="utf-8")
     cfg = {

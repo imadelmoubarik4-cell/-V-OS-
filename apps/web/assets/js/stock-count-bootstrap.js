@@ -14,7 +14,7 @@
   const EXTENSION_SOURCE = 'assets/js/stock-count-l1-verified.js?v=20260813-l1-core5';
   const ITEM_MASTER_SOURCE = 'assets/js/item-master-workspace.js?v=20260806-l2';
   const ITEM_MASTER_STYLESHEET = 'assets/css/item-master-workspace.css?v=20260806-l2';
-  const ITEM_MASTER_API = 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-item-master';
+  const ITEM_MASTER_API = String(window.VABAR_CONFIG?.ITEM_MASTER_API || '').trim();
   const SCRIPT_TIMEOUT_MS = 8000;
 
   function ensureStylesheet(href, marker) {

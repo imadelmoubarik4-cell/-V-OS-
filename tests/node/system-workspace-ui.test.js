@@ -12,7 +12,7 @@ const closure = readFileSync('supabase/migrations/20260909094553_atlas_pr27_repo
 const supabaseConfig = readFileSync('supabase/config.toml', 'utf8');
 
 test('Checkpoint I loads through the isolated authenticated System gateway', () => {
-  assert.match(config, /SYSTEM_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-system"/);
+  assert.match(config, /SYSTEM_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-system"/);
   assert.match(config, /assets\/css\/system-workspace\.css/);
   assert.match(config, /assets\/js\/system-workspace\.js/);
   assert.match(config, /AtlasSystem/);

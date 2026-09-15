@@ -5,7 +5,7 @@
   const SCANNER_STYLE = 'assets/css/inventory-scanner.css';
   const SCANNER_API_FRAGMENT = '/functions/v1/atlas-inventory-scanner';
   const STOCK_COUNT_BOOTSTRAP = 'assets/js/stock-count-bootstrap.js';
-  const STOCK_COUNTS_API = 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-stock-counts';
+  const STOCK_COUNTS_API = String(window.VABAR_CONFIG?.STOCK_COUNTS_API || '').trim();
   const state = {
     loading: false,
     loaded: false,

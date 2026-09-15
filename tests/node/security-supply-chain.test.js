@@ -27,12 +27,13 @@ test('no service-role credential is shipped to the browser', () => {
   assert.doesNotMatch(browser, /sb_secret_[A-Za-z0-9_-]+/i);
 });
 
-test('Netlify headers cover transport, browser capabilities and both Supabase projects', () => {
+test('Netlify headers cover transport, browser capabilities and only production Supabase', () => {
   assert.match(netlify, /Strict-Transport-Security/);
   assert.match(netlify, /Permissions-Policy\s*=\s*"camera=\(self\), microphone=\(\), geolocation=\(\), payment=\(\)"/);
   assert.match(netlify, /Content-Security-Policy/);
   assert.match(netlify, /dnefgcmjcgxlynycxkts\.supabase\.co/);
-  assert.match(netlify, /uhbamqetppqmygesoeeh\.supabase\.co/);
+  assert.doesNotMatch(netlify, /uhbamqetppqmygesoeeh\.supabase\.co/);
+  assert.doesNotMatch(netlify, /atialqebqxcquzdkezln\.supabase\.co/);
   assert.match(netlify, /frame-ancestors 'self' https:\/\/xn--vbar-5na\.is/);
   assert.match(netlify, /script-src[^\n]*blob:/);
   assert.doesNotMatch(netlify, /X-Frame-Options/);

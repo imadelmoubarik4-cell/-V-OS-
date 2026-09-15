@@ -10,7 +10,7 @@ const migration = readFileSync('supabase/migrations/20260803142123_atlas_marketi
 const occurrences = readFileSync('supabase/migrations/20260803142450_atlas_marketing_recommendation_occurrences.sql', 'utf8');
 
 test('Checkpoint D loads from the isolated Marketing API', () => {
-  assert.match(config, /MARKETING_WORKSPACE_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-marketing-workspace"/);
+  assert.match(config, /MARKETING_WORKSPACE_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-marketing-workspace"/);
   assert.match(config, /assets\/js\/marketing-workspace\.js/);
   assert.match(config, /assets\/css\/marketing-workspace\.css/);
   assert.match(config, /AtlasMarketingWorkspace/);

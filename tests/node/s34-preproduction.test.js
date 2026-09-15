@@ -101,8 +101,8 @@ test('push opt-in covers unsupported, denied, pending, and enabled states', () =
   assert.match(notificationApi, /ATLAS_PUSH_DELIVERY_ENABLED/);
   assert.match(notificationApi, /delivery: "disabled"/);
   assert.match(notificationApi, /npm:web-push@3\.6\.7/);
-  assert.match(config, /NOTIFICATIONS_API:\s*""/);
-  assert.doesNotMatch(read('supabase/config.toml'), /\[functions\.atlas-notifications\]/);
+  assert.match(config, /NOTIFICATIONS_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-notifications"/);
+  assert.match(read('supabase/config.toml'), /\[functions\.atlas-notifications\]\s+verify_jwt\s*=\s*true/);
 });
 
 test('Team Messages and published shifts enqueue only scoped notification events', () => {

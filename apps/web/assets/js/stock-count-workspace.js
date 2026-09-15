@@ -2,8 +2,8 @@
   'use strict';
 
   const cfg = window.VABAR_CONFIG || {};
-  const STOCK_COUNT_API = String(cfg.STOCK_COUNTS_API || 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-stock-counts').trim();
-  const SCANNER_API = String(cfg.INVENTORY_SCANNER_API || 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner').trim();
+  const STOCK_COUNT_API = String(cfg.STOCK_COUNTS_API || '').trim();
+  const SCANNER_API = String(cfg.INVENTORY_SCANNER_API || '').trim();
   const ZXING_ESM_URL = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.2.1/+esm';
   const REQUEST_TIMEOUT_MS = 22000;
   const SESSION_TIMEOUT_MS = 8000;

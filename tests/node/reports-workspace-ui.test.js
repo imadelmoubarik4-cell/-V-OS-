@@ -12,7 +12,7 @@ function expectLabels(source, labels) {
 }
 
 test('Checkpoint H loads through the authenticated Reports gateway', () => {
-  assert.match(config, /REPORTS_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-reports"/);
+  assert.match(config, /REPORTS_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-reports"/);
   assert.match(config, /assets\/css\/reports-workspace\.css/);
   assert.match(config, /assets\/js\/reports-workspace\.js/);
   assert.match(config, /globalName:\s*'AtlasReports'/);

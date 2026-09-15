@@ -13,7 +13,7 @@
   const state={batches:[],filter:'all',query:'',loading:false,selectedId:null,pollTimer:null,localUploads:new Map()};
   const workerBusy=new Set();
   function workerEndpoint(){
-    const cfg=window.VABAR_CONFIG||{},target='https://atialqebqxcquzdkezln.supabase.co';
+    const cfg=window.VABAR_CONFIG||{},target=String(cfg.SUPABASE_URL||'').replace(/\/$/,'');
     return cfg.SUPABASE_URL===target&&cfg.IMPORT_WORKER_API===target+'/functions/v1/atlas-import-worker'?cfg.IMPORT_WORKER_API:'';
   }
   const workerStatus=batch=>batch.record_counts?.worker==='atlas-csv-1'?batch.record_counts.processing_status:null;

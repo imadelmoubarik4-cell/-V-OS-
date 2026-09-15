@@ -9,7 +9,7 @@ const bridge = readFileSync('apps/web/assets/js/knowledge-team-link-bridge.js', 
 const team = readFileSync('apps/web/assets/js/team-messages.js', 'utf8');
 
 test('Checkpoint G loads through the authenticated Knowledge gateway', () => {
-  assert.match(config, /KNOWLEDGE_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-knowledge"/);
+  assert.match(config, /KNOWLEDGE_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-knowledge"/);
   assert.match(config, /assets\/css\/knowledge-workspace\.css/);
   assert.match(config, /assets\/js\/knowledge-workspace\.js/);
   assert.match(config, /globalName:\s*'AtlasKnowledge'/);

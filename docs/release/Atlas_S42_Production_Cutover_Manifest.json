@@ -1,0 +1,35 @@
+{
+  "package": "Atlas S42 production web cutover v1",
+  "status": "Approved production endpoint and site launch package",
+  "generated_on": "2026-09-15",
+  "source_merge_commit": "ddc9d4ed48b1e4ff8c452546fe3336309fd4b6e9",
+  "production": {
+    "project_ref": "dnefgcmjcgxlynycxkts",
+    "supabase_origin": "https://dnefgcmjcgxlynycxkts.supabase.co",
+    "browser_origin": "https://os-vabar.netlify.app",
+    "runtime_function_count": 19,
+    "configured_frontend_endpoint_count": 18
+  },
+  "inactive_features": {
+    "import_worker": true,
+    "stock_count_publication": true,
+    "push_delivery": true,
+    "item_master_publication": true
+  },
+  "boundaries": {
+    "staging_references_allowed": false,
+    "wildcard_cors_allowed": false,
+    "real_stock_mutation_authorized": false,
+    "automatic_import_authorized": false
+  },
+  "files": {
+    "apps/web/config.js": "05a72d2caca0c58dcf6508f23fd295b157ccd8cafcc7e78397469789df6e600a",
+    "apps/web/assets/js/rehearsal-boundary.js": "7f93c10cb909568b56395b4fbfad559991a08e6129111b7be55f1ac73b8fbf1f",
+    "apps/web/assets/js/inventory-scanner-bootstrap.js": "29e643af6012f3a82a646ed859ef52d14029dbf0d247aa2b5327b52f0ae179a9",
+    "apps/web/assets/js/stock-count-bootstrap.js": "935d7fe79891f87a4bb894546924f469a4750828a7799e221b2a3a385ea85f25",
+    "apps/web/assets/js/stock-count-workspace.js": "c706aede42e54017c22cd35074d426f6f7a77cf98868a5457696e90dd87b693b",
+    "apps/web/assets/js/import-center.js": "c8da1f649f535a6d8171f5f317692220f60e3519761ccdb27c69c68fe89ef5d5",
+    "netlify.toml": "d951de030dedcd5696cb824a3fb7f2d72fe3142f18f527c25b9bee8ae8e1e395",
+    "supabase/config.toml": "9b533a4ae579c5dbef11e20b762c1f1fb12501fb759df557c6704862e57a3f5a"
+  }
+}
