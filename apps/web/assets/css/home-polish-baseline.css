@@ -1,0 +1,335 @@
+/* Atlas incremental visual polish — baseline Home markup compatibility.
+ * Presentation only: no routes, data, auth, workflows, handlers, or non-Home
+ * workspace markup are changed by this stylesheet.
+ */
+
+/* Home hero: retain the existing greeting and make it read like the approved
+ * operational dashboard reference rather than a large editorial banner. */
+#home-intro:not([style*="display: none"]),
+#home-intro:not([style*="display:none"]) {
+  position: relative;
+  min-height: 104px;
+  display: flex;
+  align-items: center;
+  margin: 0 0 18px;
+  padding: 22px 24px 20px;
+  overflow: hidden;
+  border: 1px solid var(--atlas-line);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 86% 12%, rgba(79,125,243,.08), transparent 28%),
+    linear-gradient(110deg, rgba(79,125,243,.035), rgba(35,168,161,.025) 55%, transparent 85%),
+    var(--atlas-surface);
+  box-shadow: var(--atlas-home-shadow);
+}
+
+#home-intro > div::before {
+  content: 'Today at VÁ';
+  display: block;
+  margin: 0 0 8px;
+  color: var(--atlas-home-accent);
+  font: 700 10px/1.2 'IBM Plex Sans', sans-serif;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+#home-intro h1 {
+  font-family: 'IBM Plex Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: clamp(32px, 3.2vw, 42px) !important;
+  letter-spacing: -.045em;
+}
+
+#home-intro p {
+  margin-bottom: 0;
+}
+
+/* Daily briefing card */
+#home-focus {
+  padding: 0 !important;
+  overflow: hidden;
+  border-color: var(--atlas-line) !important;
+  border-radius: 16px !important;
+  background: var(--atlas-surface) !important;
+  box-shadow: var(--atlas-home-shadow) !important;
+}
+
+#home-focus > .placeholder-head {
+  position: relative;
+  margin: 0 !important;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--atlas-line);
+  background: linear-gradient(110deg, rgba(79,125,243,.06), rgba(35,168,161,.025) 62%, transparent 90%);
+}
+
+#home-focus > .placeholder-head::before {
+  content: 'Atlas daily brief';
+  display: block;
+  margin-bottom: 6px;
+  color: var(--atlas-home-accent);
+  font: 700 10px/1.2 'IBM Plex Sans', sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+#home-focus > .placeholder-head::after {
+  content: 'Live';
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  padding: 6px 9px 6px 20px;
+  border: 1px solid var(--atlas-home-accent-line);
+  border-radius: 999px;
+  background: var(--atlas-home-accent-soft);
+  color: var(--atlas-home-accent-strong);
+  font: 700 10px/1 'IBM Plex Sans', sans-serif;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+#home-focus > .placeholder-head h2 {
+  margin: 0 !important;
+  font: 600 20px/1.2 'IBM Plex Sans', sans-serif !important;
+  letter-spacing: -.025em;
+}
+
+#home-focus > .placeholder-head p {
+  margin: 5px 0 0;
+}
+
+#home-focus .focus-list {
+  padding: 4px 22px 10px;
+}
+
+#home-focus .focus-row {
+  min-height: 54px;
+  border-bottom: 1px solid var(--atlas-line);
+}
+
+#home-focus .focus-row:last-child {
+  border-bottom: 0;
+}
+
+/* Shared KPI surface */
+#home-metrics {
+  grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+  gap: 0 !important;
+  margin: 18px 0 !important;
+  overflow: hidden;
+  border: 1px solid var(--atlas-line);
+  border-radius: 16px;
+  background: var(--atlas-surface);
+  box-shadow: var(--atlas-home-shadow);
+}
+
+#home-metrics .metric-card {
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+  column-gap: 13px;
+  row-gap: 3px;
+  padding: 18px 20px;
+  border: 0 !important;
+  border-right: 1px solid var(--atlas-line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#home-metrics .metric-card:last-child {
+  border-right: 0 !important;
+}
+
+#home-metrics .metric-card:hover {
+  background: var(--atlas-home-accent-soft) !important;
+  transform: none !important;
+}
+
+#home-metrics .metric-icon {
+  grid-row: 1 / 3;
+  align-self: center;
+  width: 38px;
+  height: 38px;
+  margin: 0;
+  border-radius: 11px;
+}
+
+#home-metrics .metric-card strong {
+  align-self: end;
+  font-family: 'IBM Plex Sans', sans-serif !important;
+  font-size: 29px !important;
+  font-weight: 600 !important;
+}
+
+#home-metrics .metric-card > span {
+  align-self: start;
+  margin-top: 0;
+}
+
+/* Existing Home dashboard details. No elements are added or removed; the
+ * current renderer continues to own the values and row interactions. */
+#dashboard-view {
+  gap: 16px !important;
+}
+
+#dashboard-view .stat-grid {
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 0 !important;
+  margin: 0 0 16px !important;
+  overflow: hidden;
+  border: 1px solid var(--atlas-line);
+  border-radius: 16px;
+  background: var(--atlas-surface);
+  box-shadow: var(--atlas-home-shadow);
+}
+
+#dashboard-view .stat-card {
+  min-height: 104px;
+  padding: 18px 20px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--atlas-line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#dashboard-view .stat-card:last-child {
+  border-right: 0 !important;
+}
+
+#dashboard-view .stat-card .label {
+  color: var(--atlas-muted);
+  font: 700 10px/1.2 'IBM Plex Sans', sans-serif;
+  letter-spacing: .075em;
+  text-transform: uppercase;
+}
+
+#dashboard-view .stat-card .value {
+  margin-top: 10px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -.04em;
+}
+
+#dashboard-view .panel {
+  margin: 0 0 16px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 16px !important;
+  background: var(--atlas-surface) !important;
+  box-shadow: var(--atlas-home-shadow) !important;
+}
+
+#dashboard-view .panel h3 {
+  margin: 0;
+  padding: 17px 18px 14px;
+  border-bottom: 1px solid var(--atlas-line);
+  background: linear-gradient(110deg, rgba(79,125,243,.045), transparent 60%);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+#dashboard-view .panel > div {
+  padding: 5px 18px 14px;
+}
+
+#dashboard-view .list-row,
+#dashboard-view .activity-row {
+  min-height: 48px;
+  padding: 11px 0;
+  border-color: var(--atlas-line);
+}
+
+#dashboard-view .qty-badge {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--atlas-home-warning-soft);
+  color: var(--atlas-home-warning);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Existing Operations due prompt receives only visual alignment. */
+#app-screen .checkpoint-a-home-prompt {
+  margin: 15px 0 18px !important;
+  border-radius: 14px !important;
+  box-shadow: var(--atlas-home-shadow) !important;
+}
+
+/* Preserve the existing global quick action and search controls exactly as
+ * functional components; only align their Home-page visual weight. */
+body:has(#home-intro:not([style*="display: none"]):not([style*="display:none"])) .fab-btn {
+  box-shadow: var(--atlas-home-shadow-raised);
+}
+
+@media (max-width: 1050px) {
+  #home-metrics,
+  #dashboard-view .stat-grid {
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  }
+
+  #home-metrics .metric-card:nth-child(2),
+  #dashboard-view .stat-card:nth-child(2) {
+    border-right: 0 !important;
+  }
+
+  #home-metrics .metric-card:nth-child(-n+2),
+  #dashboard-view .stat-card:nth-child(-n+2) {
+    border-bottom: 1px solid var(--atlas-line) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #home-intro:not([style*="display: none"]),
+  #home-intro:not([style*="display:none"]) {
+    min-height: 0;
+    padding: 19px 18px;
+  }
+
+  #home-intro h1 {
+    font-size: 31px !important;
+  }
+
+  #home-focus > .placeholder-head {
+    padding: 18px 17px 15px;
+  }
+
+  #home-focus > .placeholder-head::after {
+    top: 18px;
+    right: 17px;
+  }
+
+  #home-focus .focus-list {
+    padding-inline: 17px;
+  }
+}
+
+@media (max-width: 520px) {
+  #home-metrics,
+  #dashboard-view .stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #home-metrics .metric-card,
+  #home-metrics .metric-card:nth-child(2),
+  #dashboard-view .stat-card,
+  #dashboard-view .stat-card:nth-child(2) {
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--atlas-line) !important;
+  }
+
+  #home-metrics .metric-card:last-child,
+  #dashboard-view .stat-card:last-child {
+    border-bottom: 0 !important;
+  }
+
+  #home-focus > .placeholder-head::after {
+    display: none;
+  }
+}

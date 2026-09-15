@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Account recovery · Atlas</title>
+<style>body{font:16px system-ui;background:#f5f3ee;color:#25251f;margin:0}main{max-width:400px;margin:8vh auto;padding:28px;background:white;border:1px solid #ddd;border-radius:16px}label,input,button{display:block;box-sizing:border-box;width:100%;margin:12px 0}input,button{padding:12px;font:inherit}button{background:#292b26;color:white;border:0;border-radius:8px}a{color:#334638}[hidden]{display:none!important}#status{line-height:1.5}</style>
+</head><body data-atlas-standalone="true"><main><p>VÁ · Atlas</p><h1>Account recovery</h1>
+<p id="status" role="status">Enter your email to request a password reset.</p>
+<form id="request-recovery"><label for="recovery-email">Email</label><input id="recovery-email" type="email" autocomplete="username" required><button type="submit">Send reset link</button></form>
+<form id="complete-recovery" hidden><label for="new-password">New password</label><input id="new-password" type="password" autocomplete="new-password" minlength="10" required><label for="confirm-password">Confirm new password</label><input id="confirm-password" type="password" autocomplete="new-password" minlength="10" required><button type="submit">Save new password</button></form>
+<a href="index.html">Back to sign in</a></main>
+<script src="config.js"></script><script src="assets/js/rehearsal-boundary.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
+<script src="assets/js/account-recovery.js"></script></body></html>

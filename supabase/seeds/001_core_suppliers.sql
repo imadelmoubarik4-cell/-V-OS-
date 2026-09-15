@@ -1,0 +1,3 @@
+-- Intentionally empty public seed.
+-- Supplier identities and commercial relationships are private operational data
+-- and enter Atlas only through the reviewed private import workflow.

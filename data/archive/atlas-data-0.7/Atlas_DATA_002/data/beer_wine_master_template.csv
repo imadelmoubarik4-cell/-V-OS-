@@ -1,0 +1,9 @@
+﻿name,category,style,supplier,country,bottle_ml,abv,current_stock,par_level,unit_cost_isk,menu_price_isk,barcode,image
+House Red Wine,Wine,Red,,,750,0,0,6,0,1090,,
+House White Wine,Wine,White,,,750,0,0,6,0,1090,,
+House Rosé,Wine,Rosé,,,750,0,0,6,0,1090,,
+House Sparkling,Wine,Sparkling,,,750,0,0,6,0,1090,,
+Example Lager,Beer,Draft,Example Supplier A,Example Country,300,4.4,0,24,0,0,,
+Example Classic,Beer,Draft,Example Supplier A,Example Country,400,4.6,0,24,0,0,,
+Example Bottle Beer,Beer,Bottle,Example Supplier A,Example Country,330,5.2,0,24,0,0,,
+Example Apple Cider,Cider,Bottle,Example Supplier A,Example Country,330,4.5,0,24,0,0,,

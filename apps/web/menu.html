@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VÁ — Menu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181A; --surface:#1B2321; --line:#2E3634;
+    --brass:#B8874A; --text:#EDE8E0; --text-mute:#94A099;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif; font-weight:300;
+    padding:40px 20px 80px;
+  }
+  .wrap{ max-width:640px; margin:0 auto; }
+  h1{ font-family:'Fraunces', serif; font-weight:600; font-size:38px; text-align:center; margin:0 0 6px; }
+  .sub{ text-align:center; color:var(--text-mute); font-size:13px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:36px; }
+  .tabs{ display:flex; justify-content:center; gap:8px; margin-bottom:36px; flex-wrap:wrap; }
+  .tab{
+    padding:8px 18px; border-radius:20px; border:1px solid var(--line);
+    background:transparent; color:var(--text-mute); font-size:13px; cursor:pointer;
+  }
+  .tab.active{ background:var(--surface); color:var(--text); border-color:var(--brass); }
+  .menu-item{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:16px 0; border-bottom:1px solid var(--line);
+  }
+  .menu-item .name{ font-family:'Fraunces', serif; font-size:19px; font-weight:500; }
+  .menu-item .price{ font-size:16px; color:var(--brass); white-space:nowrap; margin-left:16px; }
+  .empty{ text-align:center; color:var(--text-mute); padding:60px 0; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>VÁ</h1>
+    <p class="sub">Hafnartorg · Reykjavík</p>
+    <div class="tabs" id="menu-tabs"></div>
+    <div id="menu-list"></div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"
+        integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug"
+        crossorigin="anonymous"></script>
+<script src="config.js"></script>
+<script>
+  const cfg = window.VABAR_CONFIG;
+  // The public menu always uses a fresh anonymous client. It never restores the
+  // signed-in Atlas session from shared browser storage.
+  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  });
+  let allItems = [];
+  let activeType = 'all';
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  function render() {
+    const types = ['all', ...new Set(allItems.map(i => i.type))];
+    document.getElementById('menu-tabs').innerHTML = types.map(t =>
+      `<button class="tab ${t === activeType ? 'active' : ''}" data-type="${t}">${t === 'all' ? 'All' : t[0].toUpperCase() + t.slice(1)}</button>`
+    ).join('');
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => { activeType = btn.dataset.type; render(); });
+    });
+
+    const visible = allItems.filter(i => activeType === 'all' || i.type === activeType);
+    const list = document.getElementById('menu-list');
+    if (visible.length === 0) {
+      list.innerHTML = '<div class="empty">Menu coming soon.</div>';
+      return;
+    }
+    list.innerHTML = visible.map(i => `
+      <div class="menu-item">
+        <span class="name">${escapeHtml(i.name)}</span>
+        <span class="price">${i.menu_price != null ? Math.round(i.menu_price).toLocaleString() + ' ISK' : ''}</span>
+      </div>
+    `).join('');
+  }
+
+  (async function init() {
+    const { data, error } = await sb
+      .from('public_menu')
+      .select('id,name,type,menu_price');
+    if (error) {
+      document.getElementById('menu-list').innerHTML = '<div class="empty">Menu unavailable right now.</div>';
+      console.error(error);
+      return;
+    }
+    allItems = data || [];
+    render();
+  })();
+</script>
+</body>
+</html>

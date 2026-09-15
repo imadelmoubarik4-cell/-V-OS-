@@ -1,0 +1,5 @@
+﻿name,brand,category,subcategory,supplier,barcode,sku,unit,package_size_ml,units_per_case,current_stock,par_level,minimum_stock,unit_cost_isk,case_cost_isk,storage_location,image
+Example Gin,Example Brand,Spirits,Gin,Example Supplier A,,EX-GIN-700,Bottle,700,6,0,6,2,0,0,Back Bar,
+Example Vodka,Example Brand,Spirits,Vodka,Example Supplier A,,EX-VODKA-700,Bottle,700,6,0,6,2,0,0,Back Bar,
+Example Rum,Example Brand,Spirits,Rum,Example Supplier A,,EX-RUM-700,Bottle,700,6,0,6,2,0,0,Back Bar,
+Example Tequila,Example Brand,Spirits,Tequila,Example Supplier B,,EX-TEQUILA-700,Bottle,700,6,0,6,2,0,0,Back Bar,

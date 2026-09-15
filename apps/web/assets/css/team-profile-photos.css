@@ -1,0 +1,40 @@
+.team-profile-avatar,.team-profile-detail-avatar,#user-avatar{overflow:hidden;position:relative}
+.team-profile-avatar>span,.team-profile-detail-avatar>span,#user-avatar>span{display:grid;width:100%;height:100%;place-items:center}
+.team-profile-avatar img,.team-profile-detail-avatar img,#user-avatar img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+.team-profile-avatar.has-profile-photo,.team-profile-detail-avatar.has-profile-photo{background:#e8e3d9;color:transparent}
+.team-profile-detail-avatar.has-profile-photo{box-shadow:inset 0 0 0 1px rgba(55,52,45,.08),0 4px 14px rgba(55,52,45,.08)}
+#user-avatar.has-profile-photo{background:#e8e3d9;color:transparent}
+
+.team-profile-photo-controls{display:inline-flex;align-items:center;gap:6px}
+.team-profile-photo-controls>button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:7px 10px;border:1px solid var(--atlas-line);border-radius:10px;background:#fff;color:var(--atlas-text);font:600 9px 'IBM Plex Sans',sans-serif;cursor:pointer;white-space:nowrap}
+.team-profile-photo-controls>button:hover:not(:disabled){border-color:#b7ab96;background:#f8f5ef}
+.team-profile-photo-controls>button.is-remove{width:32px;padding:7px;color:#9b5c56}
+.team-profile-photo-controls>button:disabled{opacity:.55;cursor:wait}
+.team-profile-photo-controls svg{width:14px;height:14px}
+.team-profile-photo-controls button[aria-busy="true"] svg{animation:team-profile-photo-spin .9s linear infinite}
+@keyframes team-profile-photo-spin{to{transform:rotate(360deg)}}
+
+.team-profile-photo-feedback{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:11px 13px;border:1px solid #c8d8ca;border-radius:11px;background:#edf4ee;color:#4f6d55;font:500 11px/1.45 'IBM Plex Sans',sans-serif}
+.team-profile-photo-feedback.is-error{border-color:#e4c1bc;background:#fbefed;color:#8d4c47}
+.team-profile-photo-feedback>span{min-width:0}
+.team-profile-photo-feedback>button{width:27px;height:27px;display:grid;place-items:center;flex:0 0 auto;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
+.team-profile-photo-feedback>button:hover{background:rgba(0,0,0,.05)}
+.team-profile-photo-feedback svg{width:14px;height:14px}
+
+@media(max-width:820px){
+  .team-profile-detail-head{align-items:flex-start;flex-wrap:wrap}
+  .team-profile-detail-actions{width:100%;margin-left:72px;flex-wrap:wrap}
+  .team-profile-photo-controls{flex-wrap:wrap}
+}
+
+@media(max-width:600px){
+  .team-profile-avatar{width:44px;height:44px}
+  .team-profile-detail-avatar{width:66px;height:66px;border-radius:20px}
+  .team-profile-detail-actions{margin-left:0}
+  .team-profile-photo-controls>button:not(.is-remove){min-height:36px}
+  .team-profile-photo-feedback{align-items:flex-start}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .team-profile-photo-controls button[aria-busy="true"] svg{animation:none}
+}

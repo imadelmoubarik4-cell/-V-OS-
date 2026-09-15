@@ -1,0 +1,111 @@
+{
+  "package": "Atlas S40 production source-contract compatibility package v1",
+  "status": "Git-only; no hosted execution authorized",
+  "generated_on": "2026-09-14",
+  "source": {
+    "base_branch": "claude/recipes-gallery-v2",
+    "base_commit": "93539601464625f9325994ea1ec647d31f539f12",
+    "base_tree": "9f6e1fb16982883e8108d72483297a6cb3c82386"
+  },
+  "production_target": {
+    "logical_name": "vabar-inventory",
+    "project_ref": "dnefgcmjcgxlynycxkts",
+    "region": "eu-west-1"
+  },
+  "boundaries": {
+    "production_sql_authorized": false,
+    "edge_function_deployment_authorized": false,
+    "frontend_endpoint_change_authorized": false,
+    "site_publication_authorized": false,
+    "write_feature_activation_authorized": false,
+    "real_stock_write_authorized": false,
+    "production_credentials_allowed_in_git_or_ci": false
+  },
+  "production_checkpoint": {
+    "migration_count": 10,
+    "historical_migration_count": 6,
+    "applied_s39_versions": [
+      "20260910094217",
+      "20260910104621",
+      "20260910121248",
+      "20260910205055"
+    ],
+    "protected_data_verified_unchanged_after_failure": true,
+    "real_stock_values_stored_in_public_git": false
+  },
+  "replaced_s39_step": {
+    "version": "20260910211903",
+    "path": "supabase/s33/migrations/20260910211903_atlas_s33_runtime_source_contracts.sql",
+    "sha256": "d0533fc2ca56c9e2726b3f2432bf7d3183cc0df37db443f7b964477514873c59",
+    "production_status": "failed and fully rolled back; no ledger entry",
+    "failure": "S33 runtime source contract target is not empty",
+    "disposition": "superseded for the remaining production plan; retained unchanged as historical evidence"
+  },
+  "compatibility_contract": {
+    "adopt_without_recreation": [
+      "public.onboarding_tasks",
+      "public.onboarding_progress",
+      "public.shifts"
+    ],
+    "create_if_missing": [
+      "atlas_private.report_events"
+    ],
+    "public_table_row_dml_allowed": false,
+    "public_table_column_changes_allowed": false,
+    "required_preflight": [
+      "runtime columns and types",
+      "primary and onboarding uniqueness keys",
+      "row level security",
+      "authenticated grants",
+      "twelve Phase 1 policies"
+    ]
+  },
+  "remaining_migration_plan": [
+    {
+      "order": 1,
+      "version": "20260914204202",
+      "path": "supabase/s40/migrations/20260914204202_s40_production_source_contract_adoption.sql",
+      "sha256": "3739f50fd4db4034c45014ea4b436cf0288f47a2c0017a235b8312c45820ea02"
+    },
+    {
+      "order": 2,
+      "version": "20260910201435",
+      "path": "supabase/s33/migrations/20260910201435_atlas_s33_csv_import_pipeline.sql",
+      "sha256": "5d080bac6bbd575a2ec12e041763b60026d24ac524b7e0e72c67dead9f8e843d"
+    },
+    {
+      "order": 3,
+      "version": "20260911124006",
+      "path": "supabase/migrations/20260911124006_s34_foreign_key_indexes.sql",
+      "sha256": "91fca0974d6db0909df28419804a22b7b07f62e676a42e49f290b8443dea046f"
+    },
+    {
+      "order": 4,
+      "version": "20260911124039",
+      "path": "supabase/migrations/20260911124039_s34_notification_and_conversation_stars.sql",
+      "sha256": "489f99635c1b208e2c27fd61915f31e06e18f5a812ac53a963359db38e499137"
+    },
+    {
+      "order": 5,
+      "version": "20260911160616",
+      "path": "supabase/migrations/20260911160616_s36_report_events_rls.sql",
+      "sha256": "29fbe14978f70952c8c16d67c89fc59d38d1460d055431b3fab15fd73dd16879"
+    }
+  ],
+  "validation": {
+    "disposable_replay": "scripts/verify_s40_production_compatibility_dry_run.sh",
+    "snapshot_verifier": "scripts/verify_s40_production_compatibility_snapshots.py",
+    "production_shape_fixture": "supabase/s40/sql/005_existing_production_source_contracts_fixture.sql",
+    "source_contract_snapshot": "supabase/s40/sql/090_source_contract_snapshot.sql",
+    "fixture_is_synthetic": true,
+    "old_failure_must_be_reproduced": true,
+    "compatibility_retry_must_pass": true,
+    "protected_and_source_fingerprints_must_match": true,
+    "role_and_security_gates_must_pass": true
+  },
+  "unchanged_endpoint_files": {
+    "apps/web/config.js": "66638dd24bfd5110156d5cf86683a03a585fd57ddb7afb509ae1b80a4d0bfdc8",
+    "netlify.toml": "eb14693a09b0fcd9e1c375e1440c41e70840c91f821ac2e6f9aa753698034876"
+  },
+  "required_next_approval": "Apply the five revised remaining migrations to production individually and transactionally with fresh protected-data verification."
+}

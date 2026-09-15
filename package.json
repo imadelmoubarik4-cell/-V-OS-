@@ -1,0 +1,18 @@
+{
+  "name": "va-os-atlas",
+  "version": "0.8.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "node --test tests/node/*.test.js packages/*/tests/*.test.js",
+    "test:node": "node --test tests/node/*.test.js packages/*/tests/*.test.js",
+    "test:python": "python -m unittest discover -s tests/python -v",
+    "verify": "npm run test:node && npm run test:python"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

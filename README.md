@@ -1,33 +1,40 @@
-# Atlas Alpha 0.7 - Build 0.5
+# Atlas Alpha 0.8.0
 
-This build connects the inventory importer to the current Atlas application.
+Atlas is the operating system for VÁ. Alpha 0.8.0 starts the real-data foundation: private source files enter a controlled queue, become normalized staging rows, and reach live inventory only after review.
 
-## Included
+## Sprint 1
 
-- Updated `index.html`
-- `assets/css/import-center.css`
-- `assets/js/import-center.js`
-- `atlas-inventory-import-template.csv`
+- preserve the working Alpha 0.7 application and release history;
+- establish the package, database, data, test, and release boundaries;
+- extract the 2026 source inventory without inventing missing values;
+- normalize categories, units, aliases, and source provenance;
+- stage duplicate decisions before any live inventory mutation;
+- build a master catalogue of at least 300 documented items from approved VÁ sources.
 
-## Install
+The repository is public. Source PDFs, current stock quantities, supplier costs, generated master data, and review exports are deliberately ignored by Git.
 
-1. Replace the repository root `index.html` with the included file.
-2. Copy `assets/css/import-center.css` into `assets/css/`.
-3. Copy `assets/js/import-center.js` into `assets/js/`.
-4. Commit and deploy. No database migration is required for this build.
+## Layout
 
-## Features
+```text
+apps/web/                    current static Atlas application
+packages/import-engine/      normalization and duplicate matching
+packages/inventory/          inventory domain contract
+supabase/migrations/         reviewed database changes
+data/templates/              safe import templates
+data/templates/              header-only public import/reference templates
+scripts/                     private-source extraction tools
+tests/                       repository-level tests
+releases/alpha-0.8.0/        release checkpoint
+releases/archive/            preserved Alpha 0.7 builds
+```
 
-- Import Center navigation and workspace
-- Excel, XLS and CSV parsing through SheetJS
-- Header alias mapping for common inventory spreadsheets
-- Duplicate matching by SKU or normalized product name
-- Per-row Merge, Create New or Skip action
-- Safe merge rules that preserve existing descriptive fields
-- Progress reporting and failure handling
-- Recent import history stored on the current device
-- Downloadable CSV template
+## Local verification
 
-## Database fields used
+```bash
+npm test
+python -m unittest discover -s tests/python -v
+```
 
-This build writes only fields already used by the current Atlas `inventory_items` implementation: `name`, `category`, `quantity`, `unit`, `par_level`, `supplier`, `sku`, `bin_location`, `units_per_case`, `case_cost`, `cost_price`, `discount_percent`, and `updated_by`.
+To generate the private Sprint 1 dataset, install `requirements-dev.txt` and follow [data/README.md](data/README.md). Never commit operational reference CSVs or the resulting `data/private/` directory.
+
+See [docs/ATLAS_MASTER_PLAN.md](docs/ATLAS_MASTER_PLAN.md) for the delivery sequence, [docs/SECURITY.md](docs/SECURITY.md) for the Release 1 access model, and [releases/alpha-0.8.0/INSTALL.md](releases/alpha-0.8.0/INSTALL.md) for setup.
