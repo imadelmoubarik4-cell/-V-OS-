@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const config = readFileSync('apps/web/config.js', 'utf8');
+const index = readFileSync('apps/web/index.html', 'utf8');
 const ui = readFileSync('apps/web/assets/js/knowledge-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/knowledge-workspace.css', 'utf8');
 const remediationCss = readFileSync('apps/web/assets/css/s38-app-remediation.css', 'utf8');
@@ -16,6 +17,18 @@ test('Checkpoint G loads through the authenticated Knowledge gateway', () => {
   assert.match(config, /globalName:\s*'AtlasKnowledge'/);
   assert.match(config, /assets\/js\/knowledge-team-link-bridge\.js/);
   assert.doesNotMatch(config + ui + bridge, /SUPABASE_SERVICE_ROLE_KEY/);
+});
+
+test('Knowledge assets load deterministically before the final remediation layer', () => {
+  const stylesheet = index.indexOf('assets/css/knowledge-workspace.css');
+  const remediation = index.indexOf('assets/css/s38-app-remediation.css');
+  const module = index.indexOf('assets/js/knowledge-workspace.js');
+  const bridgeModule = index.indexOf('assets/js/knowledge-team-link-bridge.js');
+  const remediationModule = index.indexOf('assets/js/s38-app-remediation.js');
+
+  assert.ok(stylesheet >= 0 && stylesheet < remediation);
+  assert.ok(module >= 0 && module < remediationModule);
+  assert.ok(bridgeModule >= 0 && bridgeModule < remediationModule);
 });
 
 test('Knowledge exposes the complete requested staff workspace', () => {
