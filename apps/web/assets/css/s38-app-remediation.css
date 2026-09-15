@@ -756,7 +756,7 @@ body.s38-month-active .fab-wrap { display:none !important; }
 /* Knowledge: wrapping filters and a writing-first editor */
 .knowledge-shell { color:var(--s38-ink); }
 .knowledge-hero,.knowledge-summary-grid article,.knowledge-article-card,.knowledge-training-hero,.knowledge-team-training,.knowledge-source-index,.knowledge-activity { border-color:var(--s38-line) !important; background:#fff !important; box-shadow:var(--s38-shadow); }
-.knowledge-tabs {
+#knowledge-view .knowledge-tabs {
   display:grid;
   grid-template-columns:repeat(5,minmax(0,1fr));
   gap:8px;
@@ -765,7 +765,7 @@ body.s38-month-active .fab-wrap { display:none !important; }
   border:0;
   background:transparent;
 }
-.knowledge-tabs button {
+#knowledge-view .knowledge-tabs button {
   min-height:42px;
   justify-content:center;
   border:1px solid var(--s38-line);
@@ -775,30 +775,30 @@ body.s38-month-active .fab-wrap { display:none !important; }
   box-shadow:var(--s38-shadow);
   transition:transform .16s ease,border-color .16s ease,background-color .16s ease,box-shadow .16s ease;
 }
-.knowledge-tabs button:hover {
+#knowledge-view .knowledge-tabs button:hover {
   transform:translateY(-1px);
   border-color:var(--s38-blue-line);
   background:var(--s38-blue-soft);
   color:var(--s38-blue-strong);
   box-shadow:var(--s38-shadow-raised);
 }
-.knowledge-tabs button.is-active {
+#knowledge-view .knowledge-tabs button.is-active {
   border-color:var(--s38-blue-line) !important;
   background:var(--s38-blue-soft) !important;
   color:var(--s38-blue-strong) !important;
 }
-.knowledge-category-row { flex-wrap:wrap; overflow:visible; }
-.knowledge-category-row button { border-color:var(--s38-line); background:#fff; box-shadow:var(--s38-shadow); }
-.knowledge-category-row button:hover { border-color:var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
-.knowledge-category-row button span { background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
-.knowledge-category-row button.is-active { border-color:var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
+#knowledge-view .knowledge-category-row { flex-wrap:wrap; overflow:visible; }
+#knowledge-view .knowledge-category-row button { border-color:var(--s38-line); background:#fff; box-shadow:var(--s38-shadow); }
+#knowledge-view .knowledge-category-row button:hover { border-color:var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
+#knowledge-view .knowledge-category-row button span { background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
+#knowledge-view .knowledge-category-row button.is-active { border-color:var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
 .knowledge-hero > div:first-child > span,
 .knowledge-team-training header span,
 .knowledge-source-index header span,
 .knowledge-activity header span { color:var(--s38-blue-strong); }
 .knowledge-empty > span,.knowledge-state > span,.knowledge-source-logo,.knowledge-training-check { background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
-.knowledge-footer-contract { border:1px solid var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-muted); }
-.knowledge-footer-contract svg { color:var(--s38-blue-strong); }
+#knowledge-view .knowledge-footer-contract { border:1px solid var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-muted); }
+#knowledge-view .knowledge-footer-contract svg { color:var(--s38-blue-strong); }
 .knowledge-hero-actions .is-primary,.knowledge-editor-modal footer .is-primary { background:var(--s38-blue) !important; border-color:var(--s38-blue) !important; }
 .knowledge-editor-modal { background:var(--s38-bg); border-color:var(--s38-line); border-radius:24px; }
 .knowledge-title-field { margin:0 0 14px !important; }
@@ -815,8 +815,8 @@ body.s38-month-active .fab-wrap { display:none !important; }
 .knowledge-editor-properties-body { padding:0 14px 14px; border-top:1px solid var(--s38-line); }
 
 @media(max-width:760px) {
-  .knowledge-tabs { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .knowledge-tabs button:last-child:nth-child(odd) { grid-column:1/-1; }
+  #knowledge-view .knowledge-tabs { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #knowledge-view .knowledge-tabs button:last-child:nth-child(odd) { grid-column:1/-1; }
 }
 
 /* Availability and Team Profiles */
