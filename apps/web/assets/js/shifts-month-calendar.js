@@ -553,6 +553,23 @@
     window.lucide?.createIcons?.();
   }
 
+  function renderShiftModalOnly() {
+    const panel = ensurePanel();
+    if (!panel) return false;
+    panel.querySelector('.shift-month-modal')?.remove();
+    panel.insertAdjacentHTML('beforeend', shiftModalMarkup());
+    document.body.classList.toggle('shift-modal-open', Boolean(state.modal));
+    window.lucide?.createIcons?.();
+    return Boolean(panel.querySelector('.shift-month-modal'));
+  }
+
+  function closeShiftEditor() {
+    state.modal = null;
+    state.error = null;
+    ensurePanel()?.querySelector('.shift-month-modal')?.remove();
+    document.body.classList.remove('shift-modal-open');
+  }
+
   function openShiftEditor(date) {
     const target = date || state.selectedDate || state.monthStart || venueDate();
     state.monthStart = monthStartFor(target);
@@ -560,8 +577,7 @@
     state.active = true;
     state.modal = { mode: 'shift', date: target, shift: null };
     state.error = null;
-    apply();
-    renderPanel();
+    renderShiftModalOnly();
     window.requestAnimationFrame(() => {
       document.querySelector('.shift-month-modal select[name="person_id"]')?.focus?.({ preventScroll: true });
     });
@@ -730,9 +746,7 @@
     if (!state.active) return;
 
     if (target.closest('[data-shifts-month-close]')) {
-      state.modal = null;
-      state.error = null;
-      renderPanel();
+      closeShiftEditor();
       return;
     }
 
@@ -863,9 +877,7 @@
 
   function handleKeydown(event) {
     if (event.key === 'Escape' && state.modal) {
-      state.modal = null;
-      state.error = null;
-      renderPanel();
+      closeShiftEditor();
     }
   }
 
