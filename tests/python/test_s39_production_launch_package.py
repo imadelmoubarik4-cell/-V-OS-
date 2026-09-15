@@ -9,6 +9,9 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = ROOT / "docs/release/Atlas_S39_Production_Launch_Manifest.json"
 MANIFEST = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+S41_ADDENDUM = json.loads(
+    (ROOT / "docs/release/Atlas_S41_Production_Function_Addendum.json").read_text(encoding="utf-8")
+)
 PACKAGE_DOC = (ROOT / "docs/release/Atlas_S39_Production_Launch_Package.md").read_text(encoding="utf-8")
 SNAPSHOT_SQL = (ROOT / "supabase/production-launch/000_read_only_snapshot.sql").read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github/workflows/s39-production-launch-package.yml").read_text(encoding="utf-8")
@@ -64,7 +67,7 @@ class S39ProductionLaunchPackageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runtime"
             result = builder.build(output, "https://os-vabar.netlify.app")
-            self.assertEqual(result["functions"], 18)
+            self.assertEqual(result["functions"], 19)
             runtime = json.loads((output / "runtime-manifest.json").read_text(encoding="utf-8"))
             self.assertFalse(runtime["deployment_authorized"])
             self.assertFalse(runtime["endpoint_cutover_authorized"])
@@ -74,14 +77,41 @@ class S39ProductionLaunchPackageTests(unittest.TestCase):
                 "ATLAS_STOCK_COUNT_PUBLICATION_ENABLED": "false",
                 "ATLAS_PUSH_DELIVERY_ENABLED": "false",
             })
-            self.assertEqual(len(runtime["functions"]), 18)
+            self.assertEqual(len(runtime["functions"]), 19)
             self.assertEqual(sum(item["verify_jwt"] for item in runtime["functions"]), 1)
+            self.assertIn("atlas-item-master", {item["name"] for item in runtime["functions"]})
             combined = "\n".join(path.read_text(encoding="utf-8") for path in output.rglob("*.ts"))
             self.assertIn(MANIFEST["production_target"]["origin"], combined)
             self.assertNotIn("atialqebqxcquzdkezln", combined)
             self.assertNotIn("uhbamqetppqmygesoeeh", combined)
+            self.assertNotIn("atlas-s32-rehearsal.coffee-cockt-8589.chatgpt.site", combined)
             self.assertNotRegex(combined, r"access-control-allow-origin[\"']?\s*:\s*[\"']\*")
             self.assertIn("all write flags disabled", combined)
+            self.assertIn("SUPABASE_PUBLISHABLE_KEYS", combined)
+            self.assertIn("atlasAuthProjectUrl()", combined)
+            self.assertIn("atlasAuthPublishableKey()", combined)
+            self.assertNotIn('Deno.env.get("ATLAS_IMPORT_ENABLED") !== "false"', combined)
+            javascript = "\n".join(path.read_text(encoding="utf-8") for path in output.rglob("*.mjs"))
+            self.assertNotIn("): string", javascript)
+            import_entrypoint = (output / "functions/atlas-import-worker/index.ts").read_text(encoding="utf-8")
+            self.assertIn("Import is disabled.", import_entrypoint)
+            item_master = (output / "functions/atlas-item-master/index.ts").read_text(encoding="utf-8")
+            self.assertNotRegex(item_master, r'access-control-allow-origin["\']?\s*:\s*["\']\*')
+            self.assertIn("atlasAuthProjectUrl()", item_master)
+
+    def test_s41_addendum_is_exact_and_fail_closed(self):
+        self.assertEqual(S41_ADDENDUM["production_target"], MANIFEST["production_target"]["project_ref"])
+        self.assertEqual(len(S41_ADDENDUM["functions"]), 1)
+        item_master = S41_ADDENDUM["functions"][0]
+        self.assertEqual(item_master["name"], "atlas-item-master")
+        self.assertFalse(item_master["verify_jwt"])
+        self.assertEqual(S41_ADDENDUM["boundaries"], {
+            "real_stock_writes_authorized": False,
+            "item_master_publication_enabled": False,
+            "wildcard_cors_allowed": False,
+        })
+        for relative, expected in item_master["sources"].items():
+            self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected)
 
     def test_builder_rejects_unsafe_origins_and_repository_output(self):
         builder = load_builder()
