@@ -60,3 +60,9 @@ verify_jwt = false
 
 [functions.atlas-settings]
 verify_jwt = false
+
+[functions.atlas-notifications]
+verify_jwt = true
+
+[functions.atlas-import-worker]
+verify_jwt = false

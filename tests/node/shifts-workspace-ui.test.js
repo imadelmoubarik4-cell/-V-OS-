@@ -9,7 +9,7 @@ const gallery = readFileSync('apps/web/assets/js/team-profile-photo-gallery.js',
 const gateway = readFileSync('supabase/functions/atlas-shifts/index.ts', 'utf8');
 
 test('Checkpoint F loads from the isolated Shifts API', () => {
-  assert.match(config, /SHIFTS_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-shifts"/);
+  assert.match(config, /SHIFTS_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-shifts"/);
   assert.match(config, /assets\/js\/shifts-workspace\.js/);
   assert.match(config, /assets\/css\/shifts-workspace\.css/);
   assert.match(config, /AtlasShifts/);

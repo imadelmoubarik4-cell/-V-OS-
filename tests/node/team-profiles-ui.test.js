@@ -9,7 +9,7 @@ const ui = gunzipSync(readFileSync('apps/web/assets/js/team-profiles.bundle.js.g
 const css = gunzipSync(readFileSync('apps/web/assets/css/team-profiles.bundle.css.gz')).toString('utf8');
 
 test('Checkpoint E loads through the isolated Team Profiles API', () => {
-  assert.match(config, /TEAM_PROFILES_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-team-profiles"/);
+  assert.match(config, /TEAM_PROFILES_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-team-profiles"/);
   assert.match(config, /assets\/js\/team-profiles-bootstrap\.js/);
   assert.match(bootstrap, /team-profiles\.bundle\.js\.gz/);
   assert.match(bootstrap, /team-profiles\.bundle\.css\.gz/);

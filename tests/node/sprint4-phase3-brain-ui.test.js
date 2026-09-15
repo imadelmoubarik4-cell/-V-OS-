@@ -12,8 +12,8 @@ function phase3Host() {
   return match[1];
 }
 
-test('Phase 3 loads from an isolated Brain API', () => {
-  assert.notEqual(phase3Host(), 'dnefgcmjcgxlynycxkts');
+test('Phase 3 loads from the production Brain API', () => {
+  assert.equal(phase3Host(), 'dnefgcmjcgxlynycxkts');
   assert.match(config, /assets\/js\/brain-phase3\.js/);
   assert.match(config, /assets\/css\/brain-phase3\.css/);
   assert.doesNotMatch(config + moduleSource, /SUPABASE_SERVICE_ROLE_KEY/);

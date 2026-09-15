@@ -11,7 +11,7 @@ function count(haystack, needle) {
 }
 
 test('Checkpoint A loads from the isolated Phase 3 branch', () => {
-  assert.match(config, /OPERATIONS_CHECKPOINT_A_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-operations-checkpoint-a"/);
+  assert.match(config, /OPERATIONS_CHECKPOINT_A_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-operations-checkpoint-a"/);
   assert.match(config, /assets\/js\/operations-checkpoint-a\.js/);
   assert.match(config, /assets\/css\/operations-checkpoint-a\.css/);
   assert.equal(count(config, 'SUPABASE_ANON_KEY'), 1);

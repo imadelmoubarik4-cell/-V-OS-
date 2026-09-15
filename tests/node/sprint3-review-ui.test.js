@@ -14,15 +14,15 @@ function configuredUrl(key) {
   return new URL(match[1]);
 }
 
-test('review center loads from an isolated branch-scoped manager API', () => {
+test('review center loads from the production manager API', () => {
   const reviewApi = configuredUrl('SPRINT3_REVIEW_API');
   assert.equal(reviewApi.pathname, '/functions/v1/atlas-sprint3-review');
-  assert.notEqual(reviewApi.hostname, 'dnefgcmjcgxlynycxkts.supabase.co');
+  assert.equal(reviewApi.hostname, 'dnefgcmjcgxlynycxkts.supabase.co');
 
   const briefingMatch = config.match(/SPRINT4_BRIEFING_API:\s*"([^"]+)"/);
   if (briefingMatch) {
     const briefingApi = new URL(briefingMatch[1]);
-    assert.equal(reviewApi.origin, briefingApi.origin, 'Sprint 4 review and briefing must use the same isolated branch');
+    assert.equal(reviewApi.origin, briefingApi.origin, 'Sprint 4 review and briefing must use the same production project');
   }
 
   assert.match(config, /assets\/js\/sprint3-review\.js/);

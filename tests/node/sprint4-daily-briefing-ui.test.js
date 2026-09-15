@@ -16,14 +16,14 @@ function endpointHost(name, slug) {
   return match[1];
 }
 
-test('review, briefing and Phase 3 use one isolated branch graph', () => {
+test('review, briefing and Phase 3 use one production graph', () => {
   const hosts = [
     endpointHost('SPRINT3_REVIEW_API', 'atlas-sprint3-review'),
     endpointHost('SPRINT4_BRIEFING_API', 'atlas-sprint4-briefing'),
     endpointHost('PHASE3_BRAIN_API', 'atlas-phase3-brain')
   ];
   assert.equal(new Set(hosts).size, 1);
-  assert.notEqual(hosts[0], 'dnefgcmjcgxlynycxkts');
+  assert.equal(hosts[0], 'dnefgcmjcgxlynycxkts');
   assert.match(config, /brain-daily-briefing-v2\.js/);
   assert.match(config, /brain-phase3\.js/);
   assert.equal(count(config, 'SUPABASE_ANON_KEY'), 1);

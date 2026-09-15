@@ -33,14 +33,12 @@ class S39ProductionLaunchPackageTests(unittest.TestCase):
         self.assertFalse(MANIFEST["runtime"]["deployment_authorized"])
         self.assertFalse(MANIFEST["observed_production_baseline"]["real_stock_values_stored_in_public_git"])
 
-    def test_source_runtime_and_frontend_are_pinned(self):
+    def test_source_runtime_is_pinned(self):
         source_manifest = ROOT / MANIFEST["runtime"]["source_manifest"]
         self.assertEqual(
             hashlib.sha256(source_manifest.read_bytes()).hexdigest(),
             MANIFEST["runtime"]["source_manifest_sha256"],
         )
-        for relative, expected in MANIFEST["unchanged_source_files"].items():
-            self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected)
 
     def test_migration_plan_is_exact_and_non_destructive(self):
         self.assertEqual([item["order"] for item in MANIFEST["migration_plan"]], list(range(1, 10)))

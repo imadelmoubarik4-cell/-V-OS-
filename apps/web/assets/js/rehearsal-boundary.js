@@ -1,6 +1,6 @@
 (function (root) {
   'use strict';
-  const TARGET = 'atialqebqxcquzdkezln';
+  const TARGET = 'dnefgcmjcgxlynycxkts';
   function allowed(url, config, origin) {
     const value = new URL(url, origin);
     if (value.origin === origin) return true;
@@ -8,11 +8,11 @@
     return false;
   }
   function validate(config) {
-    if (config.MODE !== 'isolated-rehearsal') return;
-    if (config.SUPABASE_URL !== `https://${TARGET}.supabase.co`) throw new Error('Rehearsal target mismatch.');
-    if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(config.SUPABASE_ANON_KEY || '')) throw new Error('A staging publishable key is required.');
+    if (!['production', 'isolated-rehearsal'].includes(config.MODE)) return;
+    if (config.SUPABASE_URL !== `https://${TARGET}.supabase.co`) throw new Error('Atlas target mismatch.');
+    if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(config.SUPABASE_ANON_KEY || '')) throw new Error('An Atlas publishable key is required.');
     for (const [key, value] of Object.entries(config)) {
-      if (key.endsWith('_API') && value && !String(value).startsWith(`${config.SUPABASE_URL}/functions/v1/`)) throw new Error(`Rehearsal endpoint mismatch: ${key}`);
+      if (key.endsWith('_API') && value && !String(value).startsWith(`${config.SUPABASE_URL}/functions/v1/`)) throw new Error(`Atlas endpoint mismatch: ${key}`);
     }
   }
   const api = { TARGET, allowed, validate };
@@ -27,8 +27,8 @@
     const url = typeof input === 'string' || input instanceof URL ? String(input) : input.url;
     const method = String(init?.method || input?.method || 'GET').toUpperCase();
     if (failure) return Promise.reject(failure);
-    if (config.MODE === 'isolated-rehearsal' && !allowed(url, config, root.location.origin)) {
-      return Promise.reject(new Error('This service is not connected to the isolated rehearsal.'));
+    if (['production', 'isolated-rehearsal'].includes(config.MODE) && !allowed(url, config, root.location.origin)) {
+      return Promise.reject(new Error('This request is outside the configured Atlas environment.'));
     }
     if (!root.navigator.onLine && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       return Promise.reject(new Error('Offline: nothing was submitted. Reconnect and refresh before saving.'));

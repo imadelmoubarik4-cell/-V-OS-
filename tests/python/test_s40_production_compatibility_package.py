@@ -100,9 +100,16 @@ class S40ProductionCompatibilityPackageTests(unittest.TestCase):
         self.assertNotIn("supabase db push", lowered)
         self.assertNotIn("supabase functions deploy", lowered)
 
-    def test_endpoint_sources_are_pinned_unchanged(self):
-        for relative, expected in MANIFEST["unchanged_endpoint_files"].items():
-            self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected)
+    def test_endpoint_sources_have_an_explicit_s42_successor(self):
+        cutover = json.loads(
+            (ROOT / "docs/release/Atlas_S42_Production_Cutover_Manifest.json").read_text(encoding="utf-8")
+        )
+        for relative in MANIFEST["unchanged_endpoint_files"]:
+            self.assertIn(relative, cutover["files"])
+            self.assertEqual(
+                hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(),
+                cutover["files"][relative],
+            )
 
     def test_docs_preserve_separate_production_approval(self):
         for phrase in (
