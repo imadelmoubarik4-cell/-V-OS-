@@ -7,7 +7,9 @@ const workflow = read('.github/workflows/atlas-verify.yml');
 const capture = read('scripts/capture_s34_visual_evidence.mjs');
 
 test('S34 evidence workflow is PR-scoped, read-only, and uploads one review artifact', () => {
-  assert.match(workflow, /pull_request:\s*\n\s*branches:\s*\n\s*- claude\/recipes-gallery-v2/);
+  assert.match(workflow, /pull_request:\s*\n\s*branches:/);
+  assert.match(workflow, /\n\s*- main/);
+  assert.match(workflow, /\n\s*- claude\/recipes-gallery-v2/);
   assert.match(workflow, /permissions:\s*\n\s*contents: read/);
   assert.match(workflow, /playwright@1\.55\.0/);
   assert.match(workflow, /actions\/upload-artifact@v4/);
