@@ -1,4 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import {
+  applyStockTrustToWorkspace,
+  buildStockReport,
+  reconcileRecipeStockEvidence,
+} from "./stock-provenance.mjs";
 
 const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
@@ -66,7 +71,7 @@ function jsonResponse(value: unknown, status = 200): Response {
       ...CORS_HEADERS,
       "content-type": "application/json; charset=utf-8",
       "x-content-type-options": "nosniff",
-      "x-atlas-reports-version": "0.2.0",
+      "x-atlas-reports-version": "0.3.0",
     },
   });
 }
@@ -293,7 +298,7 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
     productionRows(
       context,
       "inventory_items",
-      "id,name,category,quantity,unit,par_level,updated_at,supplier_id,supplier,cost_price,sku,barcode,bin_location,size_ml,active,sell_price,package_size,brand,subcategory,needs_review",
+      "id,name,category,quantity,unit,par_level,updated_at,source_updated_at,supplier_id,supplier,cost_price,sku,barcode,bin_location,size_ml,active,sell_price,package_size,brand,subcategory,needs_review",
       { order: "name.asc", filters: { active: "eq.true" } },
     ),
     productionRows(
@@ -539,10 +544,17 @@ async function snapshot(context: AtlasContext, url: URL) {
   const { period, preset } = dateRangeFromRequest(url);
   const comparisonKey = url.searchParams.get("comparison") || "previous_period";
   const comparison = comparisonRange(period, comparisonKey, url);
-  const sources = await reportSources(context);
+  const [sources, verifiedBalances] = await Promise.all([
+    reportSources(context),
+    branchRpc("atlas_stock_count_verified_balances", {}),
+  ]);
+  const filters = filterPayload(url);
+  const stockReport = buildStockReport(sources.inventory, verifiedBalances, filters);
 
-  const workspace = await branchRpc("atlas_reports_snapshot_v2", {
-    p_inventory: sources.inventory,
+  const rawWorkspace = await branchRpc("atlas_reports_snapshot_v2", {
+    // The private snapshot receives current manager-verified quantities. Raw
+    // historical, stale and unverified values remain catalog evidence only.
+    p_inventory: stockReport.rpc_inventory,
     p_recipes: sources.recipes,
     p_recipe_ingredients: sources.recipeIngredients,
     p_suppliers: sources.suppliers,
@@ -557,8 +569,14 @@ async function snapshot(context: AtlasContext, url: URL) {
     p_comparison_start: comparison?.start ?? null,
     p_comparison_end: comparison?.end ?? null,
     p_comparison_key: comparisonKey,
-    p_filters: filterPayload(url),
+    p_filters: filters,
   });
+  const recipeReport = reconcileRecipeStockEvidence(
+    rawWorkspace?.reports?.recipes,
+    sources.recipeIngredients,
+    stockReport,
+  );
+  const workspace = applyStockTrustToWorkspace(rawWorkspace, stockReport, recipeReport);
 
   return {
     workspace,

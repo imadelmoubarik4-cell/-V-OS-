@@ -52,6 +52,8 @@
 .report-status.is-connected,.report-status.is-complete,.report-status.is-ok,.report-status.is-ready,.report-status.is-published,.report-status.is-completed{color:#58735d;background:color-mix(in srgb,var(--reports-green) 9%,white);border-color:color-mix(in srgb,var(--reports-green) 30%,var(--reports-line))}
 .report-status.is-partial,.report-status.is-below_par,.report-status.is-missing_cost,.report-status.is-missing_supplier,.report-status.is-missing_par,.report-status.is-needs_attention,.report-status.is-overdue,.report-status.is-draft{color:#9a6740;background:color-mix(in srgb,var(--reports-warn) 9%,white);border-color:color-mix(in srgb,var(--reports-warn) 30%,var(--reports-line))}
 .report-status.is-not_connected,.report-status.is-no_records,.report-status.is-no_data_for_period,.report-status.is-unavailable,.report-status.is-incomplete_setup{color:#777970}
+.report-status.is-historical,.report-status.is-stale{color:#806740;background:#f2ede2;border-color:#dfd1b8}
+.report-status.is-unverified{color:#64748b;background:#eff6ff;border-color:#cbdcf4}
 .report-status.is-out_of_stock,.report-status.is-unavailable,.report-status.is-waste,.report-status.is-variance,.report-status.is-spoilage,.report-status.is-breakage,.report-status.is-loss{color:#985757;background:color-mix(in srgb,var(--reports-danger) 8%,white);border-color:color-mix(in srgb,var(--reports-danger) 30%,var(--reports-line))}
 .reports-main{min-width:0;display:grid;gap:16px}
 .reports-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:2px 2px 4px}

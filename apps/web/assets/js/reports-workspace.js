@@ -567,13 +567,13 @@
     return `<div class="reports-section-body">
       ${summaryCardsMarkup(summary, [
         { key: 'active_items', label: 'Active items', icon: 'boxes', unit: 'count' },
-        { key: 'estimated_value', label: 'Estimated value', icon: 'circle-dollar-sign', unit: 'ISK', note: 'Excludes missing cost' },
+        { key: 'current_items', label: 'Current verified', icon: 'badge-check', unit: 'count', note: 'Live alert source' },
+        { key: 'estimated_value', label: 'Verified stock value', icon: 'circle-dollar-sign', unit: 'ISK', note: 'Current counts only' },
         { key: 'below_par', label: 'Below par', icon: 'gauge', unit: 'count' },
         { key: 'out_of_stock', label: 'Out of stock', icon: 'package-x', unit: 'count' },
-        { key: 'missing_cost', label: 'Missing cost', icon: 'badge-dollar-sign', unit: 'count' },
-        { key: 'missing_supplier', label: 'Missing supplier', icon: 'truck', unit: 'count' }
+        { key: 'needs_current_count', label: 'Needs current count', icon: 'clipboard-list', unit: 'count', note: 'Never a live alert' }
       ])}
-      <div class="reports-chart-grid">${barChartMarkup(data.categories || [], { title: 'Inventory value by category', labelKey: 'category', valueKey: 'estimated_value', unit: 'ISK', empty: 'Add complete item costs to unlock category valuation.' })}<section class="reports-panel reports-quality-card"><header><h2>Valuation quality</h2></header><dl><div><dt>Items included</dt><dd>${formatNumber(Math.max(0, (number(summary.active_items) || 0) - (number(summary.missing_cost) || 0)))}</dd></div><div><dt>Items excluded</dt><dd>${formatNumber(summary.missing_cost || 0)}</dd></div><div><dt>Missing par</dt><dd>${formatNumber(summary.missing_par || 0)}</dd></div><div><dt>Recently updated</dt><dd>${formatNumber(summary.recently_updated || 0)}</dd></div></dl></section></div>
+      <div class="reports-chart-grid">${barChartMarkup(data.categories || [], { title: 'Verified inventory value by category', labelKey: 'category', valueKey: 'estimated_value', unit: 'ISK', empty: 'Complete a current verified stock count to unlock category valuation.' })}<section class="reports-panel reports-quality-card"><header><h2>Stock evidence quality</h2></header><dl><div><dt>Current verified</dt><dd>${formatNumber(summary.current_items || 0)}</dd></div><div><dt>Needs current count</dt><dd>${formatNumber(summary.needs_current_count || 0)}</dd></div><div><dt>Historical</dt><dd>${formatNumber(summary.historical_items || 0)}</dd></div><div><dt>Stale</dt><dd>${formatNumber(summary.stale_items || 0)}</dd></div><div><dt>Unverified</dt><dd>${formatNumber(summary.unverified_items || 0)}</dd></div><div><dt>Missing cost</dt><dd>${formatNumber(summary.missing_cost || 0)}</dd></div></dl></section></div>
       ${formulaMarkup('inventory')}${reportTableMarkup('inventory')}
     </div>`;
   }
