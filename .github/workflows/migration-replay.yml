@@ -47,5 +47,5 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes postgresql-client
 
-      - name: Replay every migration and run security acceptance
+      - name: Replay historical migrations and run security acceptance
         run: bash scripts/verify_full_migration_replay.sh

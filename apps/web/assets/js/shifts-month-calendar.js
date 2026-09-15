@@ -333,10 +333,11 @@
 
     return `<header class="shift-month-toolbar">
       <div class="shift-month-navigation">
-        <button type="button" data-shifts-month-nav="-1" aria-label="Previous month"><i data-lucide="chevron-left"></i></button>
         <button type="button" data-shifts-month-today>Today</button>
-        <button type="button" data-shifts-month-nav="1" aria-label="Next month"><i data-lucide="chevron-right"></i></button>
+        <button type="button" data-shifts-month-nav="-1" aria-label="Previous month"><i data-lucide="chevron-left"></i></button>
         <div><span>Monthly shift plan</span><h2>${escapeHtml(monthLabel(state.monthStart))}</h2></div>
+        <button type="button" data-shifts-month-nav="1" aria-label="Next month"><i data-lucide="chevron-right"></i></button>
+        <label class="shift-month-view-select"><span class="sr-only">Calendar view</span><select aria-label="Calendar view"><option value="month">Month</option></select></label>
         ${monthStatusMarkup()}
       </div>
       <div class="shift-month-toolbar-actions">
@@ -377,9 +378,11 @@
     const attribute = canManage()
       ? `data-shifts-month-edit="${escapeHtml(shift.id)}"`
       : `data-shifts-month-day="${escapeHtml(dateFromLocal(shift.starts_local))}"`;
-    return `<button type="button" class="shift-month-chip is-${responseTone(response)} ${warnings.length ? 'has-warning' : ''}" ${attribute} title="${escapeHtml(warnings.join(' · ') || `${shift.person_name || person?.display_name || 'Team'} ${timeFromLocal(shift.starts_local)}–${timeFromLocal(shift.ends_local)}`)}">
-      <strong>${escapeHtml(timeFromLocal(shift.starts_local))}</strong>
-      <em>${escapeHtml(shift.person_name || person?.display_name || 'Team')}</em>
+    const personKey = String(shift.person_id || shift.person_name || person?.display_name || 'team');
+    const tone = [...personKey].reduce((total, character) => ((total * 31) + character.charCodeAt(0)) >>> 0, 0) % 8;
+    return `<button type="button" class="shift-month-chip person-tone-${tone} is-${responseTone(response)} ${warnings.length ? 'has-warning' : ''}" ${attribute} title="${escapeHtml(warnings.join(' · ') || `${shift.person_name || person?.display_name || 'Team'} ${timeFromLocal(shift.starts_local)}–${timeFromLocal(shift.ends_local)}`)}">
+      <strong>${escapeHtml(shift.person_name || person?.display_name || 'Team')}</strong>
+      <em>${escapeHtml(timeFromLocal(shift.starts_local))}–${escapeHtml(timeFromLocal(shift.ends_local))}</em>
     </button>`;
   }
 
@@ -402,8 +405,8 @@
       </header>
       <div class="shift-month-cell-content">
         ${visibleEntries.map(shiftChipMarkup).join('')}
-        ${leave.slice(0, 1).map((request) => `<button type="button" class="shift-month-leave" data-shifts-month-day="${escapeHtml(date)}"><i data-lucide="calendar-off-2"></i>${escapeHtml(request.person_name || personFor(request.person_id)?.display_name || 'Team')} · ${escapeHtml(humanize(request.request_type))}</button>`).join('')}
-        ${inMonth && !entries.length && !leave.length ? `<button type="button" class="shift-month-empty" data-shifts-month-day="${escapeHtml(date)}">${canManage() ? 'Add or review shifts' : 'No shifts'}</button>` : ''}
+        ${leave.slice(0, 1).map((request) => `<button type="button" class="shift-month-leave" data-shifts-month-day="${escapeHtml(date)}"><i data-lucide="calendar-days"></i>${escapeHtml(request.person_name || personFor(request.person_id)?.display_name || 'Team')} · ${escapeHtml(humanize(request.request_type))}</button>`).join('')}
+        ${inMonth && !entries.length && !leave.length ? `<button type="button" class="shift-month-empty" ${canManage() ? `data-shifts-month-add-day="${escapeHtml(date)}"` : `data-shifts-month-day="${escapeHtml(date)}"`}>${canManage() ? 'Add shift' : 'No shifts'}</button>` : ''}
         ${!inMonth ? `<button type="button" class="shift-month-empty" data-shifts-month-adjacent="${escapeHtml(date)}">Open ${escapeHtml(formatDay(date, { month: 'short' }))}</button>` : ''}
         ${remaining ? `<button type="button" class="shift-month-more" data-shifts-month-day="${escapeHtml(date)}">+${remaining} more shift${remaining === 1 ? '' : 's'}</button>` : ''}
       </div>
@@ -440,7 +443,7 @@
             </div>
           </article>`;
         }).join('') : `<div class="shift-month-day-empty"><i data-lucide="calendar-x-2"></i><span>No shifts on this day.</span>${manager ? `<button type="button" data-shifts-month-add-day="${escapeHtml(state.selectedDate)}"><i data-lucide="plus"></i>Add first shift</button>` : ''}</div>`}
-        ${leave.map((request) => `<article class="is-leave"><span class="shift-month-detail-time"><i data-lucide="calendar-off-2"></i></span><div><strong>${escapeHtml(request.person_name || personFor(request.person_id)?.display_name || 'Team member')}</strong><small>${escapeHtml(humanize(request.request_type))} · approved time off</small>${request.note ? `<p>${escapeHtml(request.note)}</p>` : ''}</div><span class="shift-month-response is-approved">Approved</span></article>`).join('')}
+        ${leave.map((request) => `<article class="is-leave"><span class="shift-month-detail-time"><i data-lucide="calendar-days"></i></span><div><strong>${escapeHtml(request.person_name || personFor(request.person_id)?.display_name || 'Team member')}</strong><small>${escapeHtml(humanize(request.request_type))} · approved time off</small>${request.note ? `<p>${escapeHtml(request.note)}</p>` : ''}</div><span class="shift-month-response is-approved">Approved</span></article>`).join('')}
       </div>
     </section>`;
   }
@@ -548,6 +551,20 @@
     panel.innerHTML = monthMarkup();
     document.body.classList.toggle('shift-modal-open', Boolean(state.modal));
     window.lucide?.createIcons?.();
+  }
+
+  function openShiftEditor(date) {
+    const target = date || state.selectedDate || state.monthStart || venueDate();
+    state.monthStart = monthStartFor(target);
+    state.selectedDate = target;
+    state.active = true;
+    state.modal = { mode: 'shift', date: target, shift: null };
+    state.error = null;
+    apply();
+    renderPanel();
+    window.requestAnimationFrame(() => {
+      document.querySelector('.shift-month-modal select[name="person_id"]')?.focus?.({ preventScroll: true });
+    });
   }
 
   function apply() {
@@ -768,10 +785,7 @@
 
     const addDay = target.closest('[data-shifts-month-add-day]');
     if (addDay) {
-      state.selectedDate = addDay.dataset.shiftsMonthAddDay;
-      state.modal = { mode: 'shift', date: state.selectedDate, shift: null };
-      state.error = null;
-      renderPanel();
+      openShiftEditor(addDay.dataset.shiftsMonthAddDay);
       return;
     }
 
@@ -779,10 +793,7 @@
       const date = state.selectedDate?.slice(0, 7) === state.monthStart.slice(0, 7)
         ? state.selectedDate
         : state.monthStart;
-      state.selectedDate = date;
-      state.modal = { mode: 'shift', date, shift: null };
-      state.error = null;
-      renderPanel();
+      openShiftEditor(date);
       return;
     }
 
@@ -902,20 +913,18 @@
 
   window.AtlasShiftsMonth = {
     open: () => {
-      window.AtlasShifts?.open?.();
-      window.setTimeout(() => host()?.querySelector('[data-shifts-tab="month"]')?.click(), 120);
+      if (!viewVisible()) window.AtlasShifts?.open?.();
+      state.active = true;
+      state.monthStart = state.monthStart || monthStartFor(window.AtlasShifts?.week?.() || venueDate());
+      state.error = null;
+      state.message = null;
+      scheduleApply();
+      window.setTimeout(() => loadMonth(), 0);
     },
     refresh: () => loadMonth({ force: true }),
     month: () => state.monthStart,
     snapshot: () => state.workspace,
-    addShift: (date) => {
-      const target = date || state.selectedDate || state.monthStart || venueDate();
-      state.monthStart = monthStartFor(target);
-      state.selectedDate = target;
-      state.active = true;
-      state.modal = { mode: 'shift', date: target, shift: null };
-      scheduleApply();
-    }
+    addShift: openShiftEditor
   };
 
   if (!init()) {

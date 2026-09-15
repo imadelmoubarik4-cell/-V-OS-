@@ -7,7 +7,17 @@ ROOT = Path(__file__).resolve().parents[2]
 FOUNDATION = (ROOT / "supabase/migrations/20260804093723_atlas_reports_checkpoint_h_foundation.sql").read_text()
 LIVE = (ROOT / "supabase/migrations/20260804095329_atlas_reports_checkpoint_h_live_sources.sql").read_text()
 FIX = (ROOT / "supabase/migrations/20260804095939_atlas_reports_snapshot_variable_fix.sql").read_text()
+HARDENING = (
+    ROOT
+    / "supabase/migrations/20260909085342_atlas_reports_recordset_wrapper_hardening.sql"
+).read_text()
+NULL_SAFE_WRAPPER = (
+    ROOT
+    / "supabase/migrations/20260909090422_atlas_reports_null_package_size_wrapper_fix.sql"
+).read_text()
 EDGE = (ROOT / "supabase/functions/atlas-reports/index.ts").read_text()
+STOCK_PROVENANCE = (ROOT / "supabase/functions/atlas-reports/stock-provenance.mjs").read_text()
+ENTRYPOINT = (ROOT / "supabase/functions/atlas-reports/entrypoint.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
 BROWSER = (ROOT / "apps/web/assets/js/reports-workspace.js").read_text()
@@ -46,6 +56,48 @@ class ReportsContractTests(unittest.TestCase):
         ):
             self.assertIn(argument, EDGE)
 
+    def test_rpc_recordsets_are_normalized_to_arrays_of_objects(self):
+        for argument in (
+            "p_inventory",
+            "p_recipes",
+            "p_recipe_ingredients",
+            "p_suppliers",
+            "p_movements",
+            "p_profiles",
+            "p_tasks",
+            "p_progress",
+        ):
+            self.assertIn(f'"{argument}"', ENTRYPOINT)
+        self.assertIn("normalizeRecordsetRows", ENTRYPOINT)
+        self.assertIn("Array.isArray(value)", ENTRYPOINT)
+        self.assertIn('typeof row === "object"', ENTRYPOINT)
+        self.assertIn("!Array.isArray(row)", ENTRYPOINT)
+        self.assertIn("normalizeBranchRpcPayload", EDGE)
+        self.assertIn("normalizeReportRecordset", EDGE)
+        self.assertIn("const normalizedPayload", EDGE)
+        self.assertIn("JSON.stringify(normalizedPayload)", EDGE)
+
+    def test_sql_wrapper_normalizes_every_recordset_before_private_parser(self):
+        for argument in (
+            "p_inventory",
+            "p_recipes",
+            "p_recipe_ingredients",
+            "p_suppliers",
+            "p_movements",
+            "p_profiles",
+            "p_tasks",
+            "p_progress",
+        ):
+            self.assertIn(f"coalesce({argument},'[]'::jsonb)", HARDENING)
+        self.assertEqual(HARDENING.count("where jsonb_typeof(item)='object'"), 8)
+        self.assertIn("cross join lateral jsonb_array_elements", HARDENING)
+        self.assertIn("atlas_private.reports_snapshot_v2(", HARDENING)
+        self.assertIn("security invoker", HARDENING.lower())
+        self.assertIn("notify pgrst,'reload schema'", HARDENING)
+        self.assertEqual(NULL_SAFE_WRAPPER.count("where jsonb_typeof(item)='object'"), 8)
+        self.assertIn("coalesce(\n            to_jsonb(", NULL_SAFE_WRAPPER)
+        self.assertIn("'null'::jsonb", NULL_SAFE_WRAPPER)
+
     def test_staff_commercial_fields_are_removed_before_branch_rpc(self):
         self.assertIn("async function reportSources", EDGE)
         self.assertRegex(EDGE, r"if \(isManager\(context\)\)\s*\{")
@@ -63,11 +115,14 @@ class ReportsContractTests(unittest.TestCase):
             "public.atlas_reports_snapshot_v2(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,"
             "uuid,text,date,date,date,date,text,jsonb)"
         )
-        self.assertIn(f"revoke execute on function {signature}", LIVE)
-        self.assertIn("from public,anon,authenticated", LIVE)
-        self.assertIn(f"grant execute on function {signature}", LIVE)
-        self.assertIn("to service_role", LIVE)
-        self.assertNotIn("security definer", (FOUNDATION + LIVE + FIX).lower())
+        self.assertIn(f"revoke execute on function {signature}", NULL_SAFE_WRAPPER)
+        self.assertIn("from public,anon,authenticated", NULL_SAFE_WRAPPER)
+        self.assertIn(f"grant execute on function {signature}", NULL_SAFE_WRAPPER)
+        self.assertIn("to service_role", NULL_SAFE_WRAPPER)
+        self.assertNotIn(
+            "security definer",
+            (FOUNDATION + LIVE + FIX + HARDENING + NULL_SAFE_WRAPPER).lower(),
+        )
 
     def test_snapshot_contract_is_read_only_and_truthful(self):
         self.assertIn("function policyPayload", EDGE)
@@ -78,9 +133,23 @@ class ReportsContractTests(unittest.TestCase):
         self.assertIn('const TIMEZONE = "Atlantic/Reykjavik"', EDGE)
         self.assertIn('currency: "ISK"', EDGE)
         self.assertIn('x-atlas-reports-version', EDGE)
-        self.assertIn('"0.2.0"', EDGE)
+        self.assertIn('"0.3.0"', EDGE)
         self.assertIn("generated_at_value", FIX)
         self.assertIn("Corrected Reports snapshot function is missing", FIX)
+
+    def test_live_stock_alerts_require_current_verified_counts(self):
+        self.assertIn('branchRpc("atlas_stock_count_verified_balances"', EDGE)
+        self.assertIn("source_updated_at", EDGE)
+        self.assertIn("buildStockReport", EDGE)
+        self.assertIn("applyStockTrustToWorkspace", EDGE)
+        self.assertIn('HISTORICAL_OPENING_CUTOFF = "2026-07-31"', STOCK_PROVENANCE)
+        self.assertIn('return "historical"', STOCK_PROVENANCE)
+        self.assertIn('return "unverified"', STOCK_PROVENANCE)
+        self.assertIn('return "stale"', STOCK_PROVENANCE)
+        self.assertIn('quantityStatus !== "current"', STOCK_PROVENANCE)
+        self.assertIn("historical_stock_used_as_live_alert: false", STOCK_PROVENANCE)
+        self.assertIn("unverified_stock_used_as_live_alert: false", STOCK_PROVENANCE)
+        self.assertIn("stale_stock_used_as_live_alert: false", STOCK_PROVENANCE)
 
     def test_edge_never_mutates_operational_source_tables(self):
         for forbidden in ('method: "PATCH"', 'method: "DELETE"', 'method: "PUT"'):

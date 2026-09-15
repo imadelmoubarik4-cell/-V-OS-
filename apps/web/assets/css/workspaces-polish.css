@@ -1,0 +1,516 @@
+/* Atlas — remaining workspace passes.
+ *
+ * Marketing, Messages, Team, Shifts, Knowledge, Atlas Brain, Business
+ * Intelligence, Reports, Settings — plus the five placeholder views.
+ *
+ * Loads AFTER atlas-glass.css. Presentation only: no markup, renderer, data,
+ * auth or routing change. Every selector below is a class lifted from the
+ * module's own stylesheet in the repo, so a class a module doesn't render is
+ * inert rather than harmful.
+ *
+ * `!important` is load-order insurance: config.js injects these module
+ * stylesheets after window load, so they land later in <head> than this static
+ * link and would otherwise win every equal-specificity contest.
+ */
+
+/* ---------- Local scales the modules hard-code ---------- */
+
+.settings-shell,
+.settings-hero,
+.settings-panel,
+.settings-card {
+  --settings-ink: #10151c;
+  --settings-muted: #6b7787;
+  --settings-line: rgba(16, 60, 110, .10);
+  --settings-soft: #f4f9ff;
+  --settings-panel: rgba(255, 255, 255, .72);
+  --settings-brass: #2f80ed;
+  --settings-brass-soft: #e8f1fd;
+  --settings-shadow: var(--glass-shadow);
+}
+
+.business-shell {
+  --business-soft: var(--blue-50);
+  --business-accent: var(--blue-600);
+}
+
+/* ---------- Shared surface treatment ---------- */
+
+.marketing-panel,
+.marketing-content-card,
+.marketing-campaign-card,
+.marketing-connection-card,
+.marketing-modal,
+.team-messages-layout,
+.team-profiles-layout,
+.team-profiles-state,
+.team-profile-panel,
+.team-profile-detail,
+.shift-schedule-panel,
+.shift-month-toolbar,
+.shift-week-toolbar,
+.shift-month-state,
+.shift-card,
+.knowledge-article-card,
+.knowledge-summary-grid > *,
+.knowledge-trust-panel,
+.knowledge-training-hero,
+.knowledge-connection-card,
+.knowledge-state,
+.knowledge-drawer,
+.knowledge-editor-modal,
+.knowledge-source-modal,
+.business-card,
+.reports-hero-meta,
+.reports-filter-shell,
+.reports-table-panel,
+.reports-chart-empty,
+.settings-panel,
+.settings-card,
+.settings-activity-list article {
+  background: var(--glass-fill) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line) !important;
+  border-radius: var(--atlas-radius) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+  color: var(--atlas-text);
+}
+
+/* Nested cards sit inside an already-glass panel: fill only, no second shadow. */
+.marketing-content-card,
+.marketing-campaign-card,
+.marketing-connection-card,
+.shift-card,
+.team-profile-panel,
+.settings-activity-list article {
+  background: rgba(255, 255, 255, .62) !important;
+  box-shadow: none !important;
+  border-radius: 14px !important;
+}
+
+/* ---------- Marketing ---------- */
+
+.marketing-hero p,
+.marketing-panel-head p,
+.marketing-empty,
+.marketing-empty-state,
+.marketing-modal-intro { color: var(--atlas-muted) !important; }
+
+.marketing-panel-head { border-bottom-color: var(--glass-line) !important; }
+
+.marketing-calendar-item {
+  background: var(--blue-50) !important;
+  color: var(--blue-700) !important;
+  border: 1px solid var(--glass-line) !important;
+}
+
+.marketing-calendar-item:hover {
+  background: var(--blue-100) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+}
+
+.marketing-evidence-list article,
+.marketing-history-list article > span {
+  background: var(--blue-50) !important;
+  color: var(--blue-700) !important;
+}
+
+.marketing-history-list article { border-bottom-color: var(--glass-line) !important; }
+.marketing-history-list p { color: var(--atlas-muted) !important; }
+
+.marketing-modal-backdrop {
+  background: rgba(16, 60, 110, .22) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ---------- Messages ---------- */
+
+.team-messages-hero p,
+.team-messages-empty { color: var(--atlas-muted) !important; }
+
+.team-message-list {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .78) 0, rgba(244, 249, 255, .62) 100%) !important;
+}
+
+.team-message-content {
+  background: rgba(255, 255, 255, .86) !important;
+  border-color: var(--glass-line) !important;
+  box-shadow: 0 1px 2px rgba(16, 60, 110, .05);
+}
+
+/* Own messages read as the accent side of the conversation. */
+.team-message.is-own .team-message-content {
+  background: var(--blue-100) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+}
+
+.team-message-avatar {
+  background: var(--blue-100) !important;
+  color: var(--blue-700) !important;
+}
+
+/* System messages stay visually distinct — they are provenance, not chat. */
+.team-message.is-system .team-message-avatar {
+  background: var(--blue-700) !important;
+  color: #fff !important;
+}
+
+.team-message.is-system .team-message-content {
+  background: rgba(244, 249, 255, .8) !important;
+  border-style: dashed;
+}
+
+.team-message-link {
+  background: rgba(255, 255, 255, .74) !important;
+  border-color: var(--glass-line) !important;
+  color: var(--atlas-text) !important;
+}
+
+.team-message-link:hover {
+  background: var(--blue-50) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+}
+
+/* Trust strips carry an attestation — they keep their dark, deliberate weight. */
+.team-messages-trust,
+.team-profiles-trust {
+  background: rgba(16, 21, 28, .9) !important;
+  border-radius: 14px !important;
+}
+
+/* ---------- Team ---------- */
+
+.team-profiles-hero p,
+.team-profiles-empty,
+.team-profile-empty-section,
+.team-profile-private-note { color: var(--atlas-muted) !important; }
+
+.team-profiles-directory {
+  background: rgba(244, 249, 255, .66) !important;
+  border-right-color: var(--glass-line) !important;
+}
+
+.team-profiles-search,
+.team-profile-toggle {
+  background: rgba(255, 255, 255, .82) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.team-profile-card:hover {
+  background: rgba(255, 255, 255, .7) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.team-profile-card.is-active,
+.team-profile-card[aria-selected="true"] {
+  background: var(--blue-100) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+}
+
+.team-profile-avatar,
+.team-profile-detail-avatar {
+  background: var(--blue-100) !important;
+  color: var(--blue-700) !important;
+}
+
+.team-profile-detail { background: transparent !important; box-shadow: none !important; }
+.team-profile-detail-head { border-bottom-color: var(--glass-line) !important; }
+
+.team-profile-progress { background: var(--blue-100) !important; }
+.team-profile-progress > * { background: linear-gradient(90deg, var(--blue-400), var(--blue-600)) !important; }
+
+/* A manager-only note is a permission boundary; it keeps a distinct tone. */
+.team-profile-manager-note {
+  background: rgba(252, 243, 230, .8) !important;
+  border-color: rgba(201, 138, 46, .3) !important;
+  color: #7d6330 !important;
+}
+
+.team-profile-primary {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700)) !important;
+  border-color: var(--blue-700) !important;
+  color: #fff !important;
+}
+
+.team-profile-secondary {
+  background: var(--glass-fill-strong) !important;
+  border-color: var(--glass-line-strong) !important;
+  color: var(--atlas-text) !important;
+}
+
+.team-profile-modal-backdrop {
+  background: rgba(16, 60, 110, .22) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ---------- Shifts ---------- */
+
+.shifts-hero p,
+.shift-day-empty,
+.shift-month-empty,
+.shift-month-day-empty,
+.shift-empty-week p,
+.shift-empty-section p,
+.shift-state p { color: var(--atlas-muted) !important; }
+
+.shift-day-column {
+  background: rgba(244, 249, 255, .6) !important;
+  border-color: var(--glass-line) !important;
+  border-radius: 14px !important;
+}
+
+.shift-card:hover {
+  border-color: var(--atlas-home-accent-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+
+.shift-month-day-list article,
+.shift-request-list article,
+.shift-confirmation-list article {
+  background: rgba(255, 255, 255, .64) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.shift-empty-week svg,
+.shift-empty-section svg { color: var(--blue-400) !important; }
+
+.shift-activity-list article { border-bottom-color: var(--glass-line) !important; }
+.shift-activity-list article > span {
+  background: var(--blue-100) !important;
+  color: var(--blue-700) !important;
+}
+
+.shift-modal-note {
+  background: var(--blue-50) !important;
+  color: var(--atlas-muted) !important;
+}
+
+.shift-modal-backdrop {
+  background: rgba(16, 60, 110, .22) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Coverage warnings stay amber — an understaffed shift must not read as chrome. */
+.shift-month-day-list article.has-warning {
+  background: rgba(252, 243, 230, .72) !important;
+  border-color: rgba(201, 138, 46, .3) !important;
+}
+
+/* ---------- Knowledge ---------- */
+
+.knowledge-card-summary,
+.knowledge-card-meta,
+.knowledge-empty,
+.knowledge-empty-inline,
+.knowledge-required-note,
+.knowledge-detail-summary { color: var(--atlas-muted) !important; }
+
+.knowledge-article-card:hover {
+  border-color: var(--atlas-home-accent-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow-raised) !important;
+}
+
+.knowledge-article-icon,
+.knowledge-source-logo,
+.knowledge-card-arrow {
+  background: var(--blue-100) !important;
+  color: var(--blue-600) !important;
+}
+
+.knowledge-search {
+  background: rgba(255, 255, 255, .82) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.knowledge-tabs button.is-active,
+.knowledge-category-row button.is-active {
+  background: var(--blue-100) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+  color: var(--blue-700) !important;
+}
+
+.knowledge-progress-track { background: var(--blue-100) !important; }
+.knowledge-progress-track > * { background: linear-gradient(90deg, var(--blue-400), var(--blue-600)) !important; }
+
+.knowledge-training-task,
+.knowledge-live-resource,
+.knowledge-detail-source,
+.knowledge-version-list article,
+.knowledge-ack-list article {
+  background: rgba(255, 255, 255, .62) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.knowledge-drawer,
+.knowledge-editor-modal,
+.knowledge-source-modal {
+  background: rgba(255, 255, 255, .9) !important;
+  border-radius: 22px !important;
+}
+
+.knowledge-drawer-backdrop,
+.knowledge-modal-backdrop {
+  background: rgba(16, 60, 110, .22) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* A draft warning and a required-training state are publication states, not
+   decoration: they keep their own tone. */
+.knowledge-draft-warning {
+  background: rgba(252, 243, 230, .8) !important;
+  border-color: rgba(201, 138, 46, .3) !important;
+}
+
+/* ---------- Atlas Brain ---------- */
+
+.brain-card-head { border-bottom-color: var(--glass-line) !important; }
+.brain-card-head p,
+.brain-empty { color: var(--atlas-muted) !important; }
+
+.brain-card-action {
+  background: var(--glass-fill-strong) !important;
+  border-color: var(--glass-line-strong) !important;
+  color: var(--atlas-text) !important;
+}
+
+.brain-card-action:hover {
+  background: var(--blue-50) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+  color: var(--blue-700) !important;
+}
+
+/* ---------- Business Intelligence ---------- */
+
+.business-card-head { border-bottom-color: var(--glass-line) !important; }
+.business-card-head p,
+.business-empty { color: var(--atlas-muted) !important; }
+
+.business-card-action {
+  background: var(--glass-fill-strong) !important;
+  border-color: var(--glass-line-strong) !important;
+  color: var(--atlas-text) !important;
+}
+
+.business-card-action:hover {
+  background: var(--blue-50) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+  color: var(--blue-700) !important;
+}
+
+.business-hero-copy,
+.business-hero p { color: var(--atlas-muted) !important; }
+.business-chart-column strong { color: var(--atlas-muted) !important; }
+
+/* ---------- Reports ---------- */
+
+.reports-hero p,
+.reports-cell-empty,
+.reports-empty-inline,
+.reports-chart-empty { color: var(--atlas-muted) !important; }
+
+.reports-hero-meta svg { color: var(--blue-600) !important; }
+
+.reports-summary-card dl div,
+.reports-quality-card dl div,
+.reports-saved-list article { border-bottom-color: var(--glass-line) !important; }
+
+.reports-state-icon {
+  background: var(--blue-100) !important;
+  color: var(--blue-600) !important;
+}
+
+/* Attention rows are triage: danger and warn keep their semantic tones, and
+   only the neutral row moves to blue. */
+.reports-attention-list .reports-attention-icon {
+  background: var(--blue-100) !important;
+  color: var(--blue-600) !important;
+}
+
+.reports-attention-list .is-danger .reports-attention-icon,
+.reports-attention-list .is-warn .reports-attention-icon { background: revert !important; color: revert !important; }
+
+/* ---------- Settings ---------- */
+
+.settings-hero {
+  background:
+    radial-gradient(circle at 88% 8%, rgba(47, 128, 237, .12), transparent 46%),
+    linear-gradient(135deg, rgba(255, 255, 255, .86) 0%, rgba(244, 249, 255, .78) 100%) !important;
+  border: 1px solid var(--glass-line) !important;
+  border-radius: 24px !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+
+.settings-hero aside {
+  background: rgba(255, 255, 255, .72) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.settings-hero p,
+.settings-empty { color: var(--atlas-muted) !important; }
+
+.settings-permission-list label,
+.settings-check-row span {
+  background: rgba(255, 255, 255, .74) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.settings-permission-list input { accent-color: var(--blue-600) !important; }
+
+.settings-activity-icon {
+  background: var(--blue-100) !important;
+  color: var(--blue-600) !important;
+}
+
+.settings-safeguard-list svg { color: var(--atlas-green) !important; }
+
+.settings-empty { border-color: var(--glass-line) !important; }
+
+/* A settings note carries a consequence warning; it keeps its amber tone. */
+.settings-note-card:not(.is-warning) {
+  background: var(--blue-50) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+  color: var(--atlas-muted) !important;
+}
+
+.settings-note-card:not(.is-warning) > svg { color: var(--blue-600) !important; }
+
+/* ---------- Placeholder views (Team, Shifts, Knowledge, Reports, Settings
+   before their modules mount) ---------- */
+
+.placeholder-head p { color: var(--atlas-muted); }
+
+.empty-module {
+  border: 1px dashed var(--glass-line-strong) !important;
+  background: rgba(255, 255, 255, .5) !important;
+  box-shadow: none !important;
+}
+
+.empty-module svg { color: var(--blue-400); }
+
+/* ---------- Fallbacks ---------- */
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .team-messages-layout, .team-profiles-layout, .marketing-panel,
+  .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal,
+  .settings-panel, .settings-card, .reports-table-panel, .business-card {
+    background: #fff !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .team-messages-layout, .team-profiles-layout, .team-profiles-directory,
+  .marketing-panel, .marketing-modal, .knowledge-drawer,
+  .knowledge-editor-modal, .knowledge-source-modal, .settings-panel,
+  .settings-card, .settings-hero, .reports-table-panel, .reports-filter-shell,
+  .business-card, .shift-schedule-panel, .shift-month-toolbar,
+  .shift-week-toolbar, .team-message-list {
+    background: #fff !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

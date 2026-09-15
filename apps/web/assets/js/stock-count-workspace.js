@@ -2,10 +2,12 @@
   'use strict';
 
   const cfg = window.VABAR_CONFIG || {};
-  const STOCK_COUNT_API = String(cfg.STOCK_COUNTS_API || 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-stock-counts').trim();
-  const SCANNER_API = String(cfg.INVENTORY_SCANNER_API || 'https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner').trim();
+  const STOCK_COUNT_API = String(cfg.STOCK_COUNTS_API || '').trim();
+  const SCANNER_API = String(cfg.INVENTORY_SCANNER_API || '').trim();
   const ZXING_ESM_URL = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.2.1/+esm';
   const REQUEST_TIMEOUT_MS = 22000;
+  const SESSION_TIMEOUT_MS = 8000;
+  const LOAD_WATCHDOG_MS = 26000;
   const SCAN_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'];
 
   const state = {
@@ -25,6 +27,9 @@
     error: null,
     observer: null,
     retryTimer: null,
+    rendering: false,
+    loadSerial: 0,
+    loadWatchdog: null,
     modal: null,
     scan: {
       open: false,
@@ -39,6 +44,7 @@
       error: null,
       message: null,
       submitting: false,
+      dirty: false,
       zxingModule: null
     }
   };
@@ -115,12 +121,30 @@
     return state.detail?.permissions || {};
   }
 
+  function withTimeout(promise, ms, message) {
+    let timer = null;
+    return Promise.race([
+      Promise.resolve(promise).finally(() => window.clearTimeout(timer)),
+      new Promise((_, reject) => {
+        timer = window.setTimeout(() => reject(new Error(message)), ms);
+      })
+    ]);
+  }
+
   async function activeSession() {
     const client = window.atlasSupabase;
     if (!client?.auth) return null;
-    const result = await client.auth.getSession();
-    if (result.error) throw result.error;
-    return result.data.session || null;
+    // getSession() waits on the Supabase auth lock and carries no deadline of its
+    // own. It runs before api() opens its AbortController, so left unbounded it is
+    // the one await in the loading path that can never settle - which strands
+    // render() on loadingMarkup() with no way back. Bound it.
+    const result = await withTimeout(
+      client.auth.getSession(),
+      SESSION_TIMEOUT_MS,
+      'Atlas could not confirm your session in time. Check the connection, then try again.'
+    );
+    if (result?.error) throw result.error;
+    return result?.data?.session || null;
   }
 
   async function api(endpoint, action, options = {}) {
@@ -172,6 +196,14 @@
     if (toolbar) toolbar.hidden = hidden;
     if (tableWrap) tableWrap.hidden = hidden;
     document.body.classList.toggle('stock-count-active', hidden);
+    const intelligence = document.getElementById('inventory-intelligence');
+    if (intelligence) intelligence.hidden = hidden;
+    const actions = document.querySelector('.inventory-section-actions');
+    if (actions) actions.hidden = hidden || document.body.classList.contains('item-master-active');
+    document.querySelectorAll('.inventory-workspace-tab[data-inventory-section]').forEach((button) => {
+      const section = button.dataset.inventorySection;
+      button.classList.toggle('active', hidden ? section === 'stock-count' : section === 'items');
+    });
   }
 
   function ensureWorkspace() {
@@ -296,6 +328,20 @@
     </form>`;
   }
 
+  function groupedLineMarkup(lines) {
+    const groups = new Map();
+    lines.forEach((line) => {
+      const label = line.category || line.bin_location || 'Other inventory';
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(line);
+    });
+    const expanded = Boolean(state.search.trim() || state.lineFilter !== 'all');
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([label, entries]) => {
+      const pending = entries.filter((entry) => entry.line_status === 'pending').length;
+      return `<details class="stock-count-category-group" ${expanded ? 'open' : ''}><summary><span><i data-lucide="boxes"></i><strong>${escapeHtml(label)}</strong></span><small>${entries.length} item${entries.length === 1 ? '' : 's'}${pending ? ` · ${pending} pending` : ''}</small><i data-lucide="chevron-down"></i></summary><div class="stock-count-category-lines">${entries.map(lineCard).join('')}</div></details>`;
+    }).join('');
+  }
+
   function detailActionsMarkup() {
     const session = currentSession();
     const summary = currentSummary();
@@ -320,12 +366,21 @@
       <div class="stock-count-progress-block"><div><span>Session progress</span><strong>${formatNumber(summary.progress_percent || 0)}%</strong></div><div class="stock-count-progress"><i style="width:${Math.max(0, Math.min(100, number(summary.progress_percent)))}%"></i></div><div class="stock-count-session-stats"><span><strong>${formatNumber(summary.counted_lines || 0)}</strong> counted</span><span><strong>${formatNumber(summary.skipped_lines || 0)}</strong> skipped</span><span><strong>${formatNumber(summary.pending_lines || 0)}</strong> pending</span><span><strong>${formatNumber(summary.negative_variances || 0)}</strong> negative variances</span></div></div>
       ${session.status === 'submitted' ? '<div class="stock-count-review-banner"><i data-lucide="shield-alert"></i><span>This session is locked for staff edits and awaits manager verification. Verification records private current balances; it does not change production inventory.</span></div>' : ''}
       <div class="stock-count-controls"><label><i data-lucide="search"></i><input type="search" data-count-search placeholder="Search item, category, location or barcode" value="${escapeHtml(state.search)}"/></label><select data-line-filter><option value="all" ${state.lineFilter === 'all' ? 'selected' : ''}>All lines</option><option value="pending" ${state.lineFilter === 'pending' ? 'selected' : ''}>Pending</option><option value="counted" ${state.lineFilter === 'counted' ? 'selected' : ''}>Counted</option><option value="skipped" ${state.lineFilter === 'skipped' ? 'selected' : ''}>Skipped</option></select></div>
-      <div class="stock-count-line-list">${lines.length ? lines.map(lineCard).join('') : '<div class="stock-count-empty"><i data-lucide="search-x"></i><h3>No count lines match</h3><p>Clear the search or choose another status.</p></div>'}</div>
+      <div class="stock-count-line-list">${lines.length ? groupedLineMarkup(lines) : '<div class="stock-count-empty"><i data-lucide="search-x"></i><h3>No count lines match</h3><p>Clear the search or choose another status.</p></div>'}</div>
     </section>`;
   }
 
   function render() {
-    if (!state.active) return;
+    if (!state.active || state.rendering) return;
+    state.rendering = true;
+    try {
+      renderNow();
+    } finally {
+      state.rendering = false;
+    }
+  }
+
+  function renderNow() {
     const mount = ensureWorkspace();
     if (!mount) return;
     setLegacyVisibility(true);
@@ -344,25 +399,58 @@
     window.lucide?.createIcons?.();
   }
 
+  function clearLoadWatchdog() {
+    if (!state.loadWatchdog) return;
+    window.clearTimeout(state.loadWatchdog);
+    state.loadWatchdog = null;
+  }
+
+  // Last line of defence for the error-state contract: whatever stalls, the
+  // workspace leaves the spinner and offers Try again.
+  function startLoadWatchdog(serial) {
+    clearLoadWatchdog();
+    state.loadWatchdog = window.setTimeout(() => {
+      state.loadWatchdog = null;
+      if (serial !== state.loadSerial || !state.loading) return;
+      state.loading = false;
+      if (!state.snapshot && !state.error) {
+        state.error = 'Stock counts did not finish loading. The stock-count service may be unavailable right now.';
+      }
+      render();
+    }, LOAD_WATCHDOG_MS);
+  }
+
   async function loadSnapshot(force = false) {
-    if (state.loading || (!force && state.snapshot)) return;
+    // A forced load must be able to pre-empt a stalled one. The old guard also
+    // returned on state.loading, so once that latch stuck true every Refresh and
+    // Try again became a no-op and the spinner was permanent.
+    if (!force && (state.loading || state.snapshot)) return;
+    const serial = state.loadSerial + 1;
+    state.loadSerial = serial;
     state.loading = true;
     state.error = null;
     render();
+    startLoadWatchdog(serial);
     try {
       const payload = await countApi('snapshot');
+      if (serial !== state.loadSerial) return;
       state.snapshot = payload.counts || {};
       state.staff = payload.staff || null;
       state.policy = payload.policy || null;
       if (state.activeSessionId) {
         const detailPayload = await countApi('detail', { params: { id: state.activeSessionId } });
+        if (serial !== state.loadSerial) return;
         state.detail = detailPayload.count || null;
       }
     } catch (error) {
+      if (serial !== state.loadSerial) return;
       state.error = error instanceof Error ? error.message : 'Stock counts could not load.';
     } finally {
-      state.loading = false;
-      render();
+      if (serial === state.loadSerial) {
+        clearLoadWatchdog();
+        state.loading = false;
+        render();
+      }
     }
   }
 
@@ -426,7 +514,7 @@
   }
 
   function openStartModal() {
-    closeModal();
+    if (!closeModal()) return;
     state.modal = { type: 'start', scopeType: 'all', scopeValue: '', title: 'Current stock count', notes: '' };
     const wrapper = document.createElement('div');
     wrapper.dataset.stockCountModalRoot = 'true';
@@ -442,9 +530,11 @@
     window.lucide?.createIcons?.();
   }
 
-  function closeModal() {
+  function closeModal(force = false) {
+    if (!force && state.modal?.dirty && !window.confirm('Discard the unsaved stock-count setup?')) return false;
     document.querySelector('[data-stock-count-modal-root]')?.remove();
     state.modal = null;
+    return true;
   }
 
   async function startCount(form) {
@@ -457,7 +547,7 @@
       notes: form.elements.notes.value.trim() || null,
       client_request_id: randomUuid()
     }, 'Stock-count session started.');
-    closeModal();
+    closeModal(true);
     if (payload?.detail?.session?.id) state.activeSessionId = payload.detail.session.id;
     render();
   }
@@ -574,6 +664,7 @@
     state.scan.source = 'manual';
     state.scan.error = null;
     state.scan.message = null;
+    state.scan.dirty = false;
     renderScanModal();
   }
 
@@ -598,12 +689,15 @@
     }
   }
 
-  function closeScanModal() {
+  function closeScanModal(force = false) {
+    if (!force && state.scan.dirty && !window.confirm('Discard the scanned item and unsaved quantity changes?')) return false;
     stopCountCamera();
     state.scan.open = false;
+    state.scan.dirty = false;
     state.scan.line = null;
     state.scan.lookup = null;
     document.querySelector('[data-stock-count-scan-root]')?.remove();
+    return true;
   }
 
   async function supportedNativeFormats() {
@@ -627,6 +721,7 @@
   async function resolveScannedCode(rawCode, source) {
     const code = String(rawCode || '').trim();
     if (!code) return;
+    state.scan.dirty = true;
     stopCountCamera();
     state.scan.code = code;
     state.scan.source = source;
@@ -767,7 +862,7 @@
         skipped_reason: null,
         expected_version: line.version
       }, `${line.item_name} count saved.`);
-      closeScanModal();
+      closeScanModal(true);
     } catch (_) {
       state.scan.error = state.error || 'The scanned count could not be saved.';
       state.error = null;
@@ -831,14 +926,19 @@
     const scanStep = target.closest('[data-scan-step]');
     if (scanStep) {
       const input = document.querySelector('[data-save-scanned-count] input[name="quantity"]');
-      if (input) input.value = String(Math.max(0, number(input.value) + number(scanStep.dataset.scanStep)));
+      if (input) {
+        input.value = String(Math.max(0, number(input.value) + number(scanStep.dataset.scanStep)));
+        state.scan.dirty = true;
+      }
       return;
     }
   }
 
   function handleInput(event) {
     const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
+    if (target.closest('[data-stock-count-modal-root]') && state.modal) state.modal.dirty = true;
+    if (target.closest('[data-stock-count-scan-root]')) state.scan.dirty = true;
     if (target.matches('[data-count-search]')) {
       state.search = target.value;
       render();
@@ -864,13 +964,17 @@
       state.modal.scopeValue = '';
       state.modal.title = form?.elements.title?.value || state.modal.title;
       state.modal.notes = form?.elements.notes?.value || state.modal.notes;
+      state.modal.dirty = true;
       rerenderStartModal();
       return;
     }
     if (target.matches('[data-count-scan-photo]')) {
       const file = target.files?.[0];
       target.value = '';
-      if (file) decodeCountPhoto(file);
+      if (file) {
+        state.scan.dirty = true;
+        decodeCountPhoto(file);
+      }
     }
   }
 
@@ -911,12 +1015,18 @@
   }
 
   function close() {
+    if (!closeModal() || !closeScanModal()) return false;
     state.active = false;
-    closeModal();
-    closeScanModal();
+    // Invalidate any pending load before clearing its watchdog. Otherwise a
+    // stalled request can leave state.loading latched after navigation, and the
+    // next open() only repaints the stale spinner instead of starting a new load.
+    state.loadSerial += 1;
+    state.loading = false;
+    clearLoadWatchdog();
     setLegacyVisibility(false);
     const mount = workspace();
     if (mount) mount.hidden = true;
+    return true;
   }
 
   function restoreIfVisible() {
@@ -935,11 +1045,19 @@
     document.addEventListener('input', handleInput, true);
     document.addEventListener('change', handleChange, true);
     document.addEventListener('submit', handleSubmit, true);
+    // restoreIfVisible() calls render(), and render() rewrites #stock-count-workspace,
+    // which sits inside #inventory-view inside #app-screen. Observing that tree with
+    // childList + subtree made every render re-enter this observer, so the callback fed
+    // itself inside a single microtask checkpoint. Watch only the visibility attributes
+    // navigation actually changes, on the two host elements themselves.
     state.observer = new MutationObserver(restoreIfVisible);
-    state.observer.observe(document.getElementById('app-screen') || document.body, { attributes: true, childList: true, subtree: true });
+    const visibilityOptions = { attributes: true, attributeFilter: ['style', 'hidden', 'class'], childList: false, subtree: false };
+    [document.getElementById('app-screen'), host()].forEach((element) => {
+      if (element) state.observer.observe(element, visibilityOptions);
+    });
     window.addEventListener('pagehide', () => {
       state.observer?.disconnect();
-      closeScanModal();
+      closeScanModal(true);
     }, { once: true });
     return true;
   }

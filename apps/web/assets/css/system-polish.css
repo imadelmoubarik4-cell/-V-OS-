@@ -1,0 +1,216 @@
+/* Atlas — System workspace.
+ *
+ * The last workspace. Loads after workspaces-polish.css.
+ *
+ * Presentation only: no markup, renderer, data, auth or routing change. Every
+ * selector is a class lifted from apps/web/assets/css/system-workspace.css.
+ *
+ * `!important` is load-order insurance: config.js injects system-workspace.css
+ * after window load, so it lands later in <head> than this static link.
+ *
+ * Two surfaces deliberately stay dark: the recovery card and the disabled
+ * destructive action. Both are break-glass controls — a technician must be able
+ * to tell them apart from ordinary chrome at a glance.
+ */
+
+.system-shell {
+  --system-ink: #10151c;
+  --system-muted: #6b7787;
+  --system-line: rgba(16, 60, 110, .10);
+  --system-soft: #f4f9ff;
+  --system-panel: rgba(255, 255, 255, .72);
+  --system-shadow: var(--glass-shadow);
+}
+
+/* ---------- Hero ---------- */
+
+.system-hero {
+  background:
+    radial-gradient(circle at 88% 8%, rgba(47, 128, 237, .12), transparent 46%),
+    linear-gradient(135deg, rgba(255, 255, 255, .86) 0%, rgba(244, 249, 255, .78) 100%) !important;
+  border: 1px solid var(--glass-line) !important;
+  border-radius: 24px !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+
+.system-hero aside {
+  background: rgba(255, 255, 255, .72) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.system-hero p,
+.system-section-head p,
+.system-empty { color: var(--atlas-muted) !important; }
+
+.system-hero aside button,
+.system-primary {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700)) !important;
+  border: 1px solid var(--blue-700) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 20px -14px rgba(47, 128, 237, .95);
+}
+
+.system-hero aside button:hover,
+.system-primary:hover { background: var(--blue-700) !important; }
+
+/* ---------- Cards, panels, rows ---------- */
+
+.system-summary-grid article,
+.system-service-card,
+.system-integration-card,
+.system-release-card,
+.system-incident-card,
+.system-panel,
+.system-safeguards-grid article,
+.system-security-grid article,
+.system-source-row,
+.system-job-row,
+.system-empty {
+  background: var(--glass-fill) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-color: var(--glass-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+  color: var(--atlas-text);
+}
+
+/* Release cards nested inside a panel keep the panel's surface. */
+.system-panel .system-release-card {
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.system-empty {
+  border: 1px dashed var(--glass-line-strong) !important;
+  background: rgba(255, 255, 255, .5) !important;
+  box-shadow: none !important;
+}
+
+.system-empty svg { color: var(--blue-400) !important; }
+.system-empty.is-good svg { color: var(--atlas-green) !important; }
+
+.system-head-counts span {
+  background: rgba(255, 255, 255, .74) !important;
+  border-color: var(--glass-line) !important;
+  color: var(--atlas-muted) !important;
+}
+
+/* Dividers inside definition lists */
+.system-service-card dl > div,
+.system-integration-card dl > div,
+.system-incident-card dl > div,
+.system-release-card dl > div,
+.system-recovery-references dl > div,
+.system-integration-card footer,
+.system-blocker-list { border-color: var(--glass-line) !important; }
+
+.system-service-card footer span {
+  background: var(--blue-50) !important;
+  color: var(--blue-700) !important;
+}
+
+/* ---------- Icons and code ---------- */
+
+.system-card-icon,
+.system-source-icon,
+.system-job-icon {
+  background: var(--blue-100) !important;
+  color: var(--blue-600) !important;
+}
+
+.system-summary-grid article > span svg { color: var(--blue-600) !important; }
+.system-safeguards-grid svg { color: var(--atlas-green) !important; }
+
+.system-service-card code,
+.system-release-card code,
+.system-job-row code,
+.system-recovery-references code {
+  background: var(--blue-50) !important;
+  color: var(--blue-700) !important;
+}
+
+/* ---------- Filters ---------- */
+
+.system-filter-row button {
+  background: rgba(255, 255, 255, .74) !important;
+  border-color: var(--glass-line) !important;
+  color: var(--atlas-muted) !important;
+}
+
+.system-filter-row button:hover,
+.system-filter-row button.is-active {
+  background: var(--blue-100) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+  color: var(--blue-700) !important;
+}
+
+/* ---------- Health states: semantic, left alone.
+   The is-good / is-warn / is-bad left borders on source and job rows, the
+   nav status dot, the red blocker list, the amber card warning and the green
+   resolution block all carry operational truth. Only their container fill
+   moved above; their own colours stand. ---------- */
+
+.system-card-warning {
+  background: rgba(252, 243, 230, .8) !important;
+  color: #7d6330 !important;
+}
+
+.system-blocker-list > div { background: rgba(252, 236, 236, .78) !important; }
+.system-resolution { background: rgba(231, 248, 244, .8) !important; }
+.system-resolution span { color: #15806f !important; }
+
+/* ---------- Break-glass surfaces: deliberately NOT glass ---------- */
+
+/* The recovery card is the runbook you reach for when the app is failing. It
+   stays dark so it never reads as an ordinary panel. */
+.system-recovery-card {
+  background: rgba(16, 21, 28, .92) !important;
+  border: 1px solid rgba(255, 255, 255, .1) !important;
+  color: #fff !important;
+  box-shadow: var(--glass-shadow-raised) !important;
+}
+
+.system-recovery-card h2 { color: #fff !important; }
+.system-recovery-card dt { color: rgba(255, 255, 255, .62) !important; }
+.system-recovery-card dd { color: #fff !important; }
+.system-recovery-card dl > div { border-color: rgba(255, 255, 255, .14) !important; }
+
+.system-recovery-card code {
+  background: rgba(255, 255, 255, .12) !important;
+  color: var(--blue-200) !important;
+}
+
+.system-recovery-card button {
+  background: rgba(255, 255, 255, .1) !important;
+  border-color: rgba(255, 255, 255, .2) !important;
+  color: rgba(255, 255, 255, .68) !important;
+}
+
+/* A disabled destructive action must look disabled, not blue and inviting. */
+.system-disabled-action button {
+  background: rgba(16, 60, 110, .06) !important;
+  border: 1px solid var(--glass-line-strong) !important;
+  color: var(--atlas-muted) !important;
+  cursor: not-allowed;
+}
+
+/* ---------- Fallbacks ---------- */
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .system-panel, .system-summary-grid article, .system-service-card,
+  .system-integration-card, .system-incident-card, .system-source-row,
+  .system-job-row { background: #fff !important; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .system-hero, .system-hero aside, .system-panel, .system-summary-grid article,
+  .system-service-card, .system-integration-card, .system-release-card,
+  .system-incident-card, .system-safeguards-grid article,
+  .system-security-grid article, .system-source-row, .system-job-row {
+    background: #fff !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

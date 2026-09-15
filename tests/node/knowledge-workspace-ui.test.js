@@ -5,11 +5,12 @@ import { readFileSync } from 'node:fs';
 const config = readFileSync('apps/web/config.js', 'utf8');
 const ui = readFileSync('apps/web/assets/js/knowledge-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/knowledge-workspace.css', 'utf8');
+const remediationCss = readFileSync('apps/web/assets/css/s38-app-remediation.css', 'utf8');
 const bridge = readFileSync('apps/web/assets/js/knowledge-team-link-bridge.js', 'utf8');
 const team = readFileSync('apps/web/assets/js/team-messages.js', 'utf8');
 
 test('Checkpoint G loads through the authenticated Knowledge gateway', () => {
-  assert.match(config, /KNOWLEDGE_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-knowledge"/);
+  assert.match(config, /KNOWLEDGE_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-knowledge"/);
   assert.match(config, /assets\/css\/knowledge-workspace\.css/);
   assert.match(config, /assets\/js\/knowledge-workspace\.js/);
   assert.match(config, /globalName:\s*'AtlasKnowledge'/);
@@ -83,4 +84,13 @@ test('Knowledge preserves the original Atlas design and responsive layout', () =
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.doesNotMatch(css, /Caprasimo|Figtree|--color-accent-2/);
   assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
+});
+
+test('Knowledge navigation uses separate light Atlas cards instead of the legacy beige rail', () => {
+  assert.match(remediationCss, /\.knowledge-tabs\s*\{[^}]*display:grid;[^}]*background:transparent;/s);
+  assert.match(remediationCss, /\.knowledge-tabs button\s*\{[^}]*background:#fff;/s);
+  assert.match(remediationCss, /\.knowledge-tabs button\.is-active\s*\{[^}]*background:var\(--s38-blue-soft\) !important;/s);
+  assert.match(remediationCss, /\.knowledge-footer-contract\s*\{[^}]*background:var\(--s38-blue-soft\);/s);
+  assert.doesNotMatch(remediationCss, /\.knowledge-tabs\s*\{[^}]*background:#eeece6;/s);
+  assert.equal((remediationCss.match(/{/g) || []).length, (remediationCss.match(/}/g) || []).length);
 });

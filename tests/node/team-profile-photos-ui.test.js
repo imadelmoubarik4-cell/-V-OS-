@@ -7,7 +7,7 @@ const client = readFileSync('apps/web/assets/js/team-profile-photos.js', 'utf8')
 const css = readFileSync('apps/web/assets/css/team-profile-photos.css', 'utf8');
 
 test('Checkpoint E.1 loads through the isolated profile-photo API', () => {
-  assert.match(config, /TEAM_PROFILE_PHOTOS_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-team-profile-photos"/);
+  assert.match(config, /TEAM_PROFILE_PHOTOS_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-team-profile-photos"/);
   assert.match(config, /assets\/js\/team-profile-photos\.js/);
   assert.match(config, /assets\/css\/team-profile-photos\.css/);
   assert.match(config, /AtlasTeamProfilePhotos/);

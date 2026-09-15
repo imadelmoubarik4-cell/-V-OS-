@@ -475,18 +475,23 @@
         <form data-knowledge-editor-form>
           <input type="hidden" name="article_id" value="${escapeHtml(article.id || '')}">
           <input type="hidden" name="article_key" value="${escapeHtml(article.article_key || '')}">
-          <div class="knowledge-form-grid">
-            <label class="is-wide"><span>Article title</span><input name="title" maxlength="220" required value="${escapeHtml(version.title || '')}" placeholder="Example: Guest complaint procedure"></label>
-            <label><span>Category</span><select name="category_id" required>${categories().map((category) => `<option value="${escapeHtml(category.id)}" ${category.id === article.category_id ? 'selected' : ''}>${escapeHtml(category.name)}</option>`).join('')}</select></label>
-            <label><span>Article type</span><select name="article_type">${['policy','sop','checklist','training','reference','live_resource'].map((type) => `<option value="${type}" ${type === article.article_type ? 'selected' : ''}>${escapeHtml(humanize(type))}</option>`).join('')}</select></label>
-            <label class="is-wide"><span>Summary</span><textarea name="summary" rows="2" maxlength="3000" placeholder="What staff should learn from this article">${escapeHtml(version.summary || '')}</textarea></label>
-            <label><span>Live Atlas route</span><select name="live_route"><option value="">No live module</option>${['operations','recipes','inventory','shifts','brain','team','marketing'].map((route) => `<option value="${route}" ${route === article.live_route ? 'selected' : ''}>${escapeHtml(humanize(route))}</option>`).join('')}</select></label>
-            <label class="knowledge-check-field"><input type="checkbox" name="required" ${article.required ? 'checked' : ''}><span><strong>Required reading</strong><small>Assigned staff must acknowledge every published version.</small></span></label>
-          </div>
-          <fieldset class="knowledge-role-field"><legend>Visible to roles</legend><div>${['all','admin','manager','bartender','viewer'].map((role) => roleCheckbox(role, selectedRoles.includes(role))).join('')}</div></fieldset>
-          <fieldset class="knowledge-task-field"><legend>Linked onboarding tasks</legend><div>${state.onboardingTasks.map((task) => `<label><input type="checkbox" name="task_ids" value="${escapeHtml(task.id)}" ${linkedTasks.has(task.id) ? 'checked' : ''}><span><strong>${escapeHtml(task.title)}</strong><small>${escapeHtml(task.category || 'Training')}</small></span></label>`).join('') || '<p>No active onboarding tasks.</p>'}</div></fieldset>
+          <label class="knowledge-title-field"><span>Article title</span><input name="title" maxlength="220" required value="${escapeHtml(version.title || '')}" placeholder="Example: Guest complaint procedure"></label>
           <label class="knowledge-content-field"><span>Article content · Markdown supported</span><textarea name="content" rows="20" maxlength="250000" required placeholder="# Heading\n\nApproved guidance…">${escapeHtml(version.content || '')}</textarea></label>
-          <label><span>Draft / version note</span><input name="change_note" maxlength="3000" value="${escapeHtml(version.change_note || '')}" placeholder="What changed in this version"></label>
+          <details class="knowledge-editor-properties">
+            <summary><span><i data-lucide="sliders-horizontal"></i><strong>Article properties</strong></span><small>Category, visibility, links and version note</small><i data-lucide="chevron-down"></i></summary>
+            <div class="knowledge-editor-properties-body">
+              <div class="knowledge-form-grid">
+                <label><span>Category</span><select name="category_id" required>${categories().map((category) => `<option value="${escapeHtml(category.id)}" ${category.id === article.category_id ? 'selected' : ''}>${escapeHtml(category.name)}</option>`).join('')}</select></label>
+                <label><span>Article type</span><select name="article_type">${['policy','sop','checklist','training','reference','live_resource'].map((type) => `<option value="${type}" ${type === article.article_type ? 'selected' : ''}>${escapeHtml(humanize(type))}</option>`).join('')}</select></label>
+                <label class="is-wide"><span>Summary</span><textarea name="summary" rows="2" maxlength="3000" placeholder="What staff should learn from this article">${escapeHtml(version.summary || '')}</textarea></label>
+                <label><span>Live Atlas route</span><select name="live_route"><option value="">No live module</option>${['operations','recipes','inventory','shifts','brain','team','marketing'].map((route) => `<option value="${route}" ${route === article.live_route ? 'selected' : ''}>${escapeHtml(humanize(route))}</option>`).join('')}</select></label>
+                <label class="knowledge-check-field"><input type="checkbox" name="required" ${article.required ? 'checked' : ''}><span><strong>Required reading</strong><small>Assigned staff must acknowledge every published version.</small></span></label>
+              </div>
+              <fieldset class="knowledge-role-field"><legend>Visible to roles</legend><div>${['all','admin','manager','bartender','viewer'].map((role) => roleCheckbox(role, selectedRoles.includes(role))).join('')}</div></fieldset>
+              <fieldset class="knowledge-task-field"><legend>Linked onboarding tasks</legend><div>${state.onboardingTasks.map((task) => `<label><input type="checkbox" name="task_ids" value="${escapeHtml(task.id)}" ${linkedTasks.has(task.id) ? 'checked' : ''}><span><strong>${escapeHtml(task.title)}</strong><small>${escapeHtml(task.category || 'Training')}</small></span></label>`).join('') || '<p>No active onboarding tasks.</p>'}</div></fieldset>
+              <label><span>Draft / version note</span><input name="change_note" maxlength="3000" value="${escapeHtml(version.change_note || '')}" placeholder="What changed in this version"></label>
+            </div>
+          </details>
           <footer><button type="button" data-knowledge-close-editor>Cancel</button><button type="submit" class="is-primary" ${state.submitting ? 'disabled' : ''}><i data-lucide="save"></i>${state.submitting ? 'Saving…' : 'Save private draft'}</button></footer>
         </form>
       </aside>`;

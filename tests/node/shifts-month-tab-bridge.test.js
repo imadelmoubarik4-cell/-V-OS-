@@ -20,9 +20,12 @@ test('bridge keeps the Month tab separate from the weekly bubbling handler', () 
   assert.match(bridge, /host\.addEventListener\('click', protectMonthTab, true\)/);
   assert.match(bridge, /event\.preventDefault\(\)/);
   assert.match(bridge, /event\.stopPropagation\(\)/);
+  assert.match(bridge, /host\.classList\.contains\('shifts-month-active'\) && monthPanel\(\)/);
+  assert.match(month, /state\.active = true/);
+  assert.match(month, /window\.setTimeout\(\(\) => loadMonth\(\), 0\)/);
 });
 
-test('every visible Month action has a window-capture fallback', () => {
+test('the monthly calendar is the sole owner of Month actions and submissions', () => {
   for (const selector of [
     'data-shifts-month-add',
     'data-shifts-month-add-day',
@@ -33,33 +36,36 @@ test('every visible Month action has a window-capture fallback', () => {
     'data-shifts-month-remove',
     'data-shifts-month-close'
   ]) {
-    assert.match(bridge, new RegExp(selector));
+    assert.match(month, new RegExp(selector));
   }
-  assert.match(bridge, /window\.addEventListener\('click', handleMonthAction, true\)/);
-  assert.match(bridge, /window\.addEventListener\('submit', handleMonthSubmit, true\)/);
-  assert.match(bridge, /event\.stopImmediatePropagation\?\.\(\)/);
+  assert.match(month, /document\.addEventListener\('click', handleClick, true\)/);
+  assert.match(month, /document\.addEventListener\('submit', handleSubmit, true\)/);
+  assert.doesNotMatch(bridge, /window\.addEventListener\('click'/);
+  assert.doesNotMatch(bridge, /window\.addEventListener\('submit'/);
+  assert.doesNotMatch(bridge, /stopImmediatePropagation/);
 });
 
-test('Add shift and Save shift use the authenticated Shifts gateway', () => {
-  assert.match(bridge, /window\.AtlasShiftsMonth\?\.addShift\?\.\(targetDate\)/);
-  assert.match(bridge, /data-shifts-month-shift-form/);
-  assert.match(bridge, /shiftsApi\('save-shift'/);
-  assert.match(bridge, /week_start:\s*mondayFor\(startDate\)/);
-  assert.match(bridge, /authorization:\s*`Bearer \$\{session\.access_token\}`/);
+test('Add shift and Save shift use the authenticated monthly gateway', () => {
+  assert.match(month, /function openShiftEditor\(date\)/);
+  assert.match(month, /openShiftEditor\(addDay\.dataset\.shiftsMonthAddDay\)/);
+  assert.match(month, /data-shifts-month-shift-form/);
+  assert.match(month, /mutate\('save-shift'/);
+  assert.match(month, /week_start:\s*mondayFor\(startDate\)/);
+  assert.match(month, /authorization: `Bearer \$\{session\.access_token\}`/);
 });
 
-test('Refresh, publish, edit, remove and weekly navigation are restored', () => {
-  assert.match(bridge, /window\.AtlasShiftsMonth\?\.refresh\?\.\(\)/);
-  assert.match(bridge, /shiftsApi\('publish-month'/);
-  assert.match(bridge, /shiftsApi\('cancel-shift'/);
-  assert.match(bridge, /function openEditShift/);
-  assert.match(bridge, /function openWeeklyPlanner/);
-  assert.match(bridge, /dataset\.shiftsWeek/);
+test('Refresh, publish, edit, remove and weekly navigation stay in the monthly calendar', () => {
+  assert.match(month, /data-shifts-month-refresh/);
+  assert.match(month, /mutate\('publish-month'/);
+  assert.match(month, /mutate\('cancel-shift'/);
+  assert.match(month, /data-shifts-month-edit/);
+  assert.match(month, /function navigateToWeek/);
+  assert.match(month, /dataset\.shiftsWeek/);
 });
 
 test('bridge contains no privileged key or direct table access', () => {
   assert.doesNotMatch(bridge, /SUPABASE_SERVICE_ROLE_KEY|\.from\s*\(|atlas_private\.|public\.shifts/);
-  assert.match(bridge, /SHIFTS_API/);
+  assert.doesNotMatch(bridge, /SHIFTS_API|fetch\s*\(/);
   assert.match(bridge, /touch-action:manipulation/);
   assert.match(bridge, /pointer-events:auto!important/);
 });

@@ -1,0 +1,117 @@
+{
+  "package": "Atlas S35 combined isolated-staging package v3 (S37 runtime isolation)",
+  "execution_status": "pending approval",
+  "source_merge_commit": "0556ec89ec8041a9d2b1f7cd94706212176884a6",
+  "target_project_ref": "atialqebqxcquzdkezln",
+  "preview_origin": "https://atlas-s32-rehearsal.coffee-cockt-8589.chatgpt.site",
+  "production_touched": false,
+  "operator": "pending",
+  "started_at": null,
+  "completed_at": null,
+  "preflight": {
+    "status": "pending",
+    "cli_version": null,
+    "source_verified": false,
+    "target_verified": false,
+    "migration_ledger_before_sha256": null,
+    "schema_before_sha256": null,
+    "functions_before_sha256": null,
+    "auth_redirects_before_sha256": null,
+    "storage_policy_before_sha256": null,
+    "sensitive_exports_encrypted": false,
+    "s36_report_events_baseline_exact": false
+  },
+  "migrations": [],
+  "s36_security_remediation": {
+    "status": "pending",
+    "migration_sha256": "29fbe14978f70952c8c16d67c89fc59d38d1460d055431b3fab15fd73dd16879",
+    "rls_enabled": false,
+    "service_role_select_policy": false,
+    "service_role_insert_policy": false,
+    "anon_grants": null,
+    "authenticated_grants": null
+  },
+  "functions": [],
+  "preview": {
+    "status": "pending",
+    "artifact_manifest_sha256": null,
+    "deployment_version": null,
+    "owner_private": false,
+    "unauthorised_access_denied": false,
+    "recovery_redirect_exact": false,
+    "production_endpoints_found": null
+  },
+  "acceptance": {
+    "status": "pending",
+    "fixture_ledger_sha256": null,
+    "roles": {},
+    "auth_recovery": {},
+    "storage": {},
+    "modules": {},
+    "recipe_calculation": {
+      "cost_isk": 200,
+      "price_isk": 500,
+      "margin_percent": 60,
+      "servings": 5,
+      "saved_and_refetched": false
+    },
+    "desktop_mobile": {}
+  },
+  "notifications": {
+    "status": "pending",
+    "delivery_disabled_before": false,
+    "disabled_dispatch_verified": false,
+    "test_recipient_count": null,
+    "team_message_delivery_id": null,
+    "shift_delivery_id": null,
+    "unexpected_delivery_count": null,
+    "redacted_payloads": false,
+    "isolated_deep_links": false,
+    "delivery_disabled_after": false,
+    "test_subscription_removed": false
+  },
+  "recovery": {
+    "status": "pending",
+    "encrypted_recovery_set_sha256": null,
+    "recovery_target": "atlas-s35-recovery",
+    "application_fingerprint_match": false,
+    "storage_bytes_and_policy_match": false,
+    "role_matrix_match": false,
+    "login_and_password_recovery_passed": false,
+    "old_refresh_tokens_denied": false,
+    "second_restore_idempotent": false,
+    "recovery_target_destroyed": false
+  },
+  "cleanup": {
+    "status": "pending",
+    "delivery_disabled_first": false,
+    "preview_unpublished_or_endpoints_blanked": false,
+    "tagged_application_rows": null,
+    "synthetic_auth_users": null,
+    "synthetic_sessions": null,
+    "synthetic_storage_objects": null,
+    "test_subscriptions": null,
+    "pending_notification_queue_rows": null,
+    "test_secrets_removed": false,
+    "recovery_redirect_removed_if_required": false,
+    "zero_residue": false
+  },
+  "decision": {
+    "staging_accepted": false,
+    "production_approved": false,
+    "notes": "Production remains a separate approval."
+  },
+  "runtime_isolation": {
+    "status": "pending",
+    "builder": "scripts/build_s37_isolated_runtime.py",
+    "generated_manifest_sha256": null,
+    "function_count": 18,
+    "candidate_file_count": 22,
+    "exact_target_guard_verified": false,
+    "production_references_found": null,
+    "wildcard_cors_found": null,
+    "allowed_browser_origin_verified": false,
+    "legacy_production_reader_identifiers_found": null,
+    "contract_sensitive_field_names_preserved": false
+  }
+}

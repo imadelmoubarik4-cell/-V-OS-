@@ -316,8 +316,9 @@
   function tabMarkup() {
     const tabs = [
       ['schedule', 'calendar-days', 'Schedule'],
+      ['month', 'calendar-range', 'Month'],
       ['availability', 'calendar-clock', 'Availability'],
-      ['time-off', 'calendar-off-2', 'Time off'],
+      ['time-off', 'calendar-days', 'Time off'],
       ['confirmations', 'badge-check', 'Confirmations'],
       ['activity', 'history', 'Activity']
     ];
@@ -653,6 +654,11 @@
 
     const tab = target.closest('[data-shifts-tab]');
     if (tab) {
+      if (tab.dataset.shiftsTab === 'month') {
+        event.preventDefault();
+        window.AtlasShiftsMonth?.open?.();
+        return;
+      }
       state.tab = tab.dataset.shiftsTab || 'schedule';
       state.error = null;
       state.message = null;

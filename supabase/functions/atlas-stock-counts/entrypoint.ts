@@ -226,7 +226,38 @@ async function productionInventory(context: Context): Promise<JsonObject[]> {
     });
   }
 
-  let response = await readRelation(
+  function missingColumn(message: string): string | null {
+    const match = message.match(
+      /column\s+(?:(?:["']?[a-z0-9_]+["']?)\.)?["']?([a-z_][a-z0-9_]*)["']?\s+does not exist/i,
+    );
+    return match?.[1] || null;
+  }
+
+  async function readCompatibleRelation(relation: string, select: string): Promise<Response> {
+    let fields = select.split(",").map((field) => field.trim()).filter(Boolean);
+    let response = await readRelation(relation, fields.join(","));
+
+    for (let attempt = 0; attempt < 12 && !response.ok && response.status === 400; attempt += 1) {
+      const body = await response.clone().text();
+      let message = body;
+      try {
+        const parsed = JSON.parse(body);
+        message = String(parsed?.message || parsed?.details || body);
+      } catch {
+        // Keep the raw response body for compatibility matching.
+      }
+
+      const unsupported = missingColumn(message);
+      if (!unsupported || !fields.includes(unsupported)) break;
+      console.warn("Stock-count production projection removed unavailable field", unsupported);
+      fields = fields.filter((field) => field !== unsupported);
+      response = await readRelation(relation, fields.join(","));
+    }
+
+    return response;
+  }
+
+  let response = await readCompatibleRelation(
     commercialAccess ? "inventory_items" : "inventory_catalog",
     commercialAccess ? commercialFields : safeFields,
   );
@@ -234,7 +265,7 @@ async function productionInventory(context: Context): Promise<JsonObject[]> {
   // Draft-preview compatibility before the production security migration. The
   // fallback still selects only redacted columns and disappears once the view exists.
   if (!commercialAccess && !response.ok) {
-    response = await readRelation("inventory_items", safeFields);
+    response = await readCompatibleRelation("inventory_items", safeFields);
   }
 
   const text = await response.text();

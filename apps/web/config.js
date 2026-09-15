@@ -1,24 +1,30 @@
 // VÁ Bar Inventory — connection settings
 
 window.VABAR_CONFIG = {
+  MODE: "production",
   SUPABASE_URL: "https://dnefgcmjcgxlynycxkts.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp",
-  SPRINT3_REVIEW_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-sprint3-review",
-  SPRINT4_BRIEFING_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-sprint4-briefing",
-  PHASE3_BRAIN_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-phase3-brain",
-  PHASE3_INTELLIGENCE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-phase3-intelligence",
-  OPERATIONS_CHECKPOINT_A_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-operations-checkpoint-a",
-  INVENTORY_SCANNER_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-inventory-scanner",
-  STOCK_COUNTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-stock-counts",
-  TEAM_MESSAGES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-messages",
-  MARKETING_WORKSPACE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-marketing-workspace",
-  TEAM_PROFILES_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profiles",
-  TEAM_PROFILE_PHOTOS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-team-profile-photos",
-  SHIFTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-shifts",
-  KNOWLEDGE_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-knowledge",
-  REPORTS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-reports",
-  SYSTEM_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-system",
-  SETTINGS_API: "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-settings",
+  SPRINT3_REVIEW_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-sprint3-review",
+  SPRINT4_BRIEFING_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-sprint4-briefing",
+  PHASE3_BRAIN_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-phase3-brain",
+  PHASE3_INTELLIGENCE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-phase3-intelligence",
+  OPERATIONS_CHECKPOINT_A_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-operations-checkpoint-a",
+  INVENTORY_SCANNER_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-inventory-scanner",
+  STOCK_COUNTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-stock-counts",
+  TEAM_MESSAGES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-messages",
+  MARKETING_WORKSPACE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-workspace",
+  TEAM_PROFILES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profiles",
+  TEAM_PROFILE_PHOTOS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profile-photos",
+  SHIFTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-shifts",
+  KNOWLEDGE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-knowledge",
+  REPORTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-reports",
+  SYSTEM_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-system",
+  SETTINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-settings",
+  ITEM_MASTER_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-item-master",
+  // Import processing remains fail-closed until its separate activation gate.
+  IMPORT_WORKER_API: "",
+  // Device subscriptions are opt-in; server-side push delivery remains disabled.
+  NOTIFICATIONS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-notifications",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -69,6 +75,7 @@ function loadAtlasAssetOnce({ stylesheetPath, scriptPath, globalName, dataAttrib
 }
 
 function loadAtlasAssetsAfterWindowLoad(loader) {
+  if (document.body?.dataset.atlasStandalone === 'true') return;
   if (document.readyState === 'complete') loader();
   else window.addEventListener('load', loader, { once: true });
 }
@@ -265,6 +272,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasSettings',
 }));
 
+// Notification subscriptions remain opt-in. Server-side delivery stays disabled
+// until its separate production activation gate is approved.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/notifications.js',
+  globalName: 'AtlasNotifications',
+  dataAttribute: 'atlasNotifications',
+}));
+
 // A legacy Operations layout can still append its old connection cards to the
 // Settings placeholder. This bridge makes the Checkpoint J workspace authoritative.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
@@ -276,7 +291,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 /* CHECKPOINT_I_SYSTEM_ASSETS */
 ;(() => {
   const cfg = window.VABAR_CONFIG = window.VABAR_CONFIG || {};
-  cfg.SYSTEM_API = cfg.SYSTEM_API || "https://uhbamqetppqmygesoeeh.supabase.co/functions/v1/atlas-system";
+  cfg.SYSTEM_API = cfg.SYSTEM_API || `${cfg.SUPABASE_URL}/functions/v1/atlas-system`;
 
   const cssHref = "assets/css/system-workspace.css";
   if (!document.querySelector(`link[href="${cssHref}"]`)) {

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const bootstrap = readFileSync('apps/web/assets/js/stock-count-bootstrap.js', 'utf8');
+const app = readFileSync('apps/web/index.html', 'utf8');
 const ui = readFileSync('apps/web/assets/js/item-master-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/item-master-workspace.css', 'utf8');
 
@@ -20,9 +21,10 @@ test('Checkpoint L2 is wired through the authenticated Inventory bootstrap and g
   assert.doesNotThrow(() => new Function(ui));
 });
 
-test('L2 dynamically adds a dedicated Inventory item-master workspace', () => {
-  assert.match(ui, /data-item-master-l2/);
-  assert.match(ui, /Item master/);
+test('L2 uses the dedicated in-workspace Item Master navigation', () => {
+  assert.match(app, /class="inventory-workspace-tab" data-item-master-l2/);
+  assert.match(app, />Item master<\/button>/);
+  assert.doesNotMatch(ui, /document\.createElement\('button'\)/);
   assert.match(ui, /data-item-master-l2-workspace/);
   assert.match(ui, /setBaseInventoryVisible/);
   assert.match(ui, /Checkpoint L2 · Verified Inventory Foundation/);

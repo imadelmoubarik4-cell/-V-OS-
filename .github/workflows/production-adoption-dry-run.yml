@@ -1,0 +1,89 @@
+name: Production adoption dry run
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/production-adoption-dry-run.yml'
+      - 'scripts/verify_full_migration_replay.sh'
+      - 'scripts/verify_production_adoption_dry_run.sh'
+      - 'scripts/verify_phase1_role_matrix_preview.sql'
+      - 'scripts/verify_phase1_security_gate.sql'
+      - 'scripts/verify_recipe_ingredient_access_preview.sql'
+      - 'scripts/verify_purchase_order_preview.sql'
+      - 'scripts/verify_recovery_roundtrip.sh'
+      - 'docs/PRODUCTION_ADOPTION_PR28.md'
+      - 'docs/PRODUCTION_ADOPTION_PR30.md'
+      - 'supabase/migrations/**'
+      - 'supabase/production-adoption/**'
+      - 'tests/python/test_production_adoption_contract.py'
+
+permissions:
+  contents: read
+
+jobs:
+  disposable-postgres:
+    name: disposable PostgreSQL 17
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vaos_adoption
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vaos_adoption"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: vaos_adoption
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Validate package contract
+        run: python -m unittest discover -s tests/python -p 'test_production_adoption_contract.py' -v
+
+      - name: Run production-shaped adoption in disposable PostgreSQL
+        run: bash scripts/verify_production_adoption_dry_run.sh
+
+      - name: Validate recipe access follow-up after the exact PR30 candidate
+        run: |
+          psql -v ON_ERROR_STOP=1 -X -q -f supabase/migrations/20260910104621_atlas_phase1_recipe_access_and_index_cleanup.sql
+          psql -v ON_ERROR_STOP=1 -X -qAt -f scripts/verify_recipe_ingredient_access_preview.sql
+
+      - name: Validate purchase order lifecycle after PR31
+        run: |
+          psql -v ON_ERROR_STOP=1 -X -q -f supabase/migrations/20260910121248_atlas_purchase_order_lifecycle.sql
+          psql -v ON_ERROR_STOP=1 -X -qAt -f scripts/verify_purchase_order_preview.sql
+          psql -v ON_ERROR_STOP=1 -X -qAt -f scripts/verify_phase1_security_gate.sql > "$RUNNER_TEMP/purchase-order-security.json"
+          python - "$RUNNER_TEMP/purchase-order-security.json" <<'PY'
+          import json, sys
+          result = json.load(open(sys.argv[1]))
+          for key in ('tables_without_rls', 'unsafe_non_public_views', 'browser_function_exposure', 'security_lint_blockers'):
+              assert result.get(key) == [], result
+          assert result.get('controlled_purchase_order', {}).get('purchase_order_safe') is True, result
+          assert result.get('public_menu', {}).get('public_menu_safe') is True, result
+          assert result.get('controlled_adjustment', {}).get('adjust_inventory_safe') is True, result
+          print(json.dumps(result))
+          PY
+
+      - name: Rehearse synthetic backup and restore in the disposable service
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: bash scripts/verify_recovery_roundtrip.sh

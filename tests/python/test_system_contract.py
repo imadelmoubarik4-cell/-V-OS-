@@ -5,6 +5,10 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 FOUNDATION = (ROOT / "supabase/migrations/20260804134509_atlas_system_checkpoint_i.sql").read_text()
 SNAPSHOT = (ROOT / "supabase/migrations/20260804134510_atlas_system_snapshot.sql").read_text()
+CLOSURE = (
+    ROOT
+    / "supabase/migrations/20260909094553_atlas_pr27_reports_release_closure.sql"
+).read_text()
 EDGE = (ROOT / "supabase/functions/atlas-system/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
@@ -45,12 +49,16 @@ class SystemContractTests(unittest.TestCase):
         self.assertIn("to service_role", SNAPSHOT)
         self.assertNotIn("security definer", (FOUNDATION + SNAPSHOT).lower())
 
-    def test_reports_problem_is_preserved_as_an_open_release_blocker(self):
+    def test_reports_incident_history_is_preserved_and_release_blocker_is_closed(self):
         self.assertIn("reports-loading-stall", FOUNDATION)
         self.assertIn("Reports authenticated snapshot does not complete", FOUNDATION)
-        self.assertIn("Reports authenticated snapshot remains unresolved", FOUNDATION)
-        self.assertIn("'release_blocker',true", FOUNDATION)
         self.assertIn("'production_records_changed',false", FOUNDATION)
+        self.assertIn("status='resolved'", CLOSURE)
+        self.assertIn("severity='info'", CLOSURE)
+        self.assertIn("'release_blocker',false", CLOSURE)
+        self.assertIn("release_blockers='[]'::jsonb", CLOSURE)
+        self.assertIn("production_sync_state='disabled'", CLOSURE)
+        self.assertIn("settings_value->>'reports_state'='ready'", CLOSURE)
 
     def test_destructive_and_automatic_controls_default_off(self):
         for setting in (

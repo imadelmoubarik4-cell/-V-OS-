@@ -3,6 +3,8 @@
 
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 30000;
+  const SESSION_TIMEOUT_MS = 8000;
+  const LOAD_TIMEOUT_MS = 15000;
   const PAGE_SIZE = 20;
   const SECTION_ORDER = [
     'overview', 'sales', 'inventory', 'recipes', 'purchasing', 'suppliers',
@@ -141,12 +143,26 @@
     return String(cfg.REPORTS_API || '').trim();
   }
 
+  function withTimeout(promise, ms, message) {
+    let timer = null;
+    return Promise.race([
+      Promise.resolve(promise).finally(() => window.clearTimeout(timer)),
+      new Promise((_, reject) => {
+        timer = window.setTimeout(() => reject(new Error(message)), ms);
+      })
+    ]);
+  }
+
   async function activeSession() {
     const client = window.atlasSupabase;
     if (!client?.auth) return null;
-    const result = await client.auth.getSession();
-    if (result.error) throw result.error;
-    return result.data.session || null;
+    const result = await withTimeout(
+      client.auth.getSession(),
+      SESSION_TIMEOUT_MS,
+      'Atlas could not confirm your session in time. Check the connection, then try again.'
+    );
+    if (result?.error) throw result.error;
+    return result?.data?.session || null;
   }
 
   function requestParams() {
@@ -371,7 +387,7 @@
     return `<section class="reports-panel reports-sources-overview">
       <header><div><span class="reports-eyebrow">Data quality</span><h2>Source coverage</h2></div><button type="button" data-reports-section="exports">Export details</button></header>
       <div>${sources.map((source) => `<article>
-        <span class="reports-source-icon"><i data-lucide="${source.status === 'connected' ? 'database-zap' : source.status === 'partial' ? 'database-backup' : 'database-off'}"></i></span>
+        <span class="reports-source-icon"><i data-lucide="${source.status === 'connected' ? 'database-zap' : source.status === 'partial' ? 'database-backup' : 'database'}"></i></span>
         <div><strong>${escapeHtml(source.name)}</strong><small>${escapeHtml(source.note || '')}</small><em>Included ${formatNumber(source.records_included || 0)} · Excluded ${formatNumber(source.records_excluded || 0)} · Refreshed ${escapeHtml(formatDateTime(source.last_refreshed_at))}</em></div>
         ${statusPill(source.status, '')}
       </article>`).join('')}</div>
@@ -551,13 +567,13 @@
     return `<div class="reports-section-body">
       ${summaryCardsMarkup(summary, [
         { key: 'active_items', label: 'Active items', icon: 'boxes', unit: 'count' },
-        { key: 'estimated_value', label: 'Estimated value', icon: 'circle-dollar-sign', unit: 'ISK', note: 'Excludes missing cost' },
+        { key: 'current_items', label: 'Current verified', icon: 'badge-check', unit: 'count', note: 'Live alert source' },
+        { key: 'estimated_value', label: 'Verified stock value', icon: 'circle-dollar-sign', unit: 'ISK', note: 'Current counts only' },
         { key: 'below_par', label: 'Below par', icon: 'gauge', unit: 'count' },
         { key: 'out_of_stock', label: 'Out of stock', icon: 'package-x', unit: 'count' },
-        { key: 'missing_cost', label: 'Missing cost', icon: 'badge-dollar-sign', unit: 'count' },
-        { key: 'missing_supplier', label: 'Missing supplier', icon: 'truck', unit: 'count' }
+        { key: 'needs_current_count', label: 'Needs current count', icon: 'clipboard-list', unit: 'count', note: 'Never a live alert' }
       ])}
-      <div class="reports-chart-grid">${barChartMarkup(data.categories || [], { title: 'Inventory value by category', labelKey: 'category', valueKey: 'estimated_value', unit: 'ISK', empty: 'Add complete item costs to unlock category valuation.' })}<section class="reports-panel reports-quality-card"><header><h2>Valuation quality</h2></header><dl><div><dt>Items included</dt><dd>${formatNumber(Math.max(0, (number(summary.active_items) || 0) - (number(summary.missing_cost) || 0)))}</dd></div><div><dt>Items excluded</dt><dd>${formatNumber(summary.missing_cost || 0)}</dd></div><div><dt>Missing par</dt><dd>${formatNumber(summary.missing_par || 0)}</dd></div><div><dt>Recently updated</dt><dd>${formatNumber(summary.recently_updated || 0)}</dd></div></dl></section></div>
+      <div class="reports-chart-grid">${barChartMarkup(data.categories || [], { title: 'Verified inventory value by category', labelKey: 'category', valueKey: 'estimated_value', unit: 'ISK', empty: 'Complete a current verified stock count to unlock category valuation.' })}<section class="reports-panel reports-quality-card"><header><h2>Stock evidence quality</h2></header><dl><div><dt>Current verified</dt><dd>${formatNumber(summary.current_items || 0)}</dd></div><div><dt>Needs current count</dt><dd>${formatNumber(summary.needs_current_count || 0)}</dd></div><div><dt>Historical</dt><dd>${formatNumber(summary.historical_items || 0)}</dd></div><div><dt>Stale</dt><dd>${formatNumber(summary.stale_items || 0)}</dd></div><div><dt>Unverified</dt><dd>${formatNumber(summary.unverified_items || 0)}</dd></div><div><dt>Missing cost</dt><dd>${formatNumber(summary.missing_cost || 0)}</dd></div></dl></section></div>
       ${formulaMarkup('inventory')}${reportTableMarkup('inventory')}
     </div>`;
   }
@@ -595,7 +611,7 @@
         { key: 'overdue_orders', label: 'Overdue orders', icon: 'clock-alert', unit: 'count', note: 'Source not connected' },
         { key: 'receiving_differences', label: 'Receiving differences', icon: 'package-search', unit: 'count', note: 'Source not connected' }
       ])}
-      <div class="reports-chart-grid">${barChartMarkup(priceChanges.slice(0, 10), { title: 'Largest recorded unit-cost changes', labelKey: 'item_name', valueKey: 'absolute_change', unit: 'ISK', empty: 'At least two compatible unit-cost records per item are required.' })}<section class="reports-panel reports-quality-card"><header><h2>Purchase-order status</h2></header><div class="reports-empty-inline"><i data-lucide="database-off"></i><span>Purchase orders, expected deliveries and receiving differences are not connected. Atlas does not derive them from restock movements.</span></div></section></div>
+      <div class="reports-chart-grid">${barChartMarkup(priceChanges.slice(0, 10), { title: 'Largest recorded unit-cost changes', labelKey: 'item_name', valueKey: 'absolute_change', unit: 'ISK', empty: 'At least two compatible unit-cost records per item are required.' })}<section class="reports-panel reports-quality-card"><header><h2>Purchase-order status</h2></header><div class="reports-empty-inline"><i data-lucide="database"></i><span>Purchase orders, expected deliveries and receiving differences are not connected. Atlas does not derive them from restock movements.</span></div></section></div>
       ${formulaMarkup('purchasing')}${reportTableMarkup('purchasing')}
     </div>`;
   }
@@ -800,7 +816,11 @@
     }
     render();
     try {
-      const payload = await api('snapshot');
+      const payload = await withTimeout(
+        api('snapshot'),
+        LOAD_TIMEOUT_MS,
+        'Reports did not finish loading. Check the connection and try again.'
+      );
       applySnapshot(payload);
       if (state.preset === 'custom' && !state.startDate) {
         state.startDate = state.snapshot?.period?.start || '';
@@ -1220,7 +1240,7 @@
     document.addEventListener('submit', handleSubmit);
 
     state.viewObserver = new MutationObserver(() => {
-      if (viewVisible() && !state.snapshot && !state.loading) loadSnapshot();
+      if (viewVisible() && !state.snapshot && !state.loading && !state.error) loadSnapshot();
     });
     state.viewObserver.observe(host(), { attributes: true, attributeFilter: ['style', 'class'] });
 

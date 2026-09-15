@@ -4,8 +4,8 @@ const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
 const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
   ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
-const FUNCTION_VERSION = "0.1.0";
-const GITHUB_BRANCH_URL = "https://api.github.com/repos/imadelmoubarik4-cell/-V-OS-/commits/agent/sprint-4-phase-3-atlas-brain";
+const FUNCTION_VERSION = "0.2.0";
+const GITHUB_BRANCH_URL = "https://api.github.com/repos/imadelmoubarik4-cell/-V-OS-/commits/codex/pr26-live-validation-fixes";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",

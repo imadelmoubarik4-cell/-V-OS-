@@ -189,8 +189,10 @@
       ? `${progressText(routine)} · due ${formatTime(routine.due_time)}`
       : `${logged} of ${required} points logged today${outside ? ` · ${outside} out of range` : ''}`;
     const kind = routine ? 'routine' : 'temperature';
+    const routineNeedsAttention = Boolean(routine && !['completed', 'skipped'].includes(routine.status));
+    const attentionRequired = routineNeedsAttention || (!routine && temperatureNeedsAttention);
 
-    return `<section class="checkpoint-a-home-prompt" data-checkpoint-a-home-prompt>
+    return `<section class="checkpoint-a-home-prompt" data-checkpoint-a-home-prompt data-attention-required="${attentionRequired}">
       <div class="checkpoint-a-home-icon"><i data-lucide="${escapeHtml(routine ? routineIcon(routine.routine_type) : 'thermometer')}"></i></div>
       <div class="checkpoint-a-home-copy">
         <span>Scheduled today</span>
@@ -204,8 +206,8 @@
   }
 
   function syncHomePrompt() {
-    const homeFocus = document.getElementById('home-focus');
-    if (!homeFocus) return;
+    const homeAnchor = document.getElementById('home-focus') || document.getElementById('home-metrics');
+    if (!homeAnchor) return;
 
     const signature = homePromptSignature();
     const existing = document.querySelector('[data-checkpoint-a-home-prompt]');
@@ -214,7 +216,7 @@
 
     const markup = homePromptMarkup();
     if (!markup) return;
-    homeFocus.insertAdjacentHTML('afterend', markup);
+    homeAnchor.insertAdjacentHTML('beforebegin', markup);
     const prompt = document.querySelector('[data-checkpoint-a-home-prompt]');
     if (prompt) prompt.dataset.signature = signature;
     if (window.lucide) window.lucide.createIcons();

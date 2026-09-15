@@ -1,0 +1,108 @@
+:root{
+  --atlas-action:#2d78dc;
+  --atlas-action-hover:#2268c5;
+  --atlas-action-focus:rgba(45,120,220,.24);
+  --atlas-card-radius:16px;
+  --atlas-card-shadow:0 10px 28px rgba(30,42,56,.07);
+  --atlas-card-shadow-hover:0 15px 34px rgba(30,61,105,.12);
+}
+
+/* One focus contract for pointer and keyboard controls. */
+:where(button,[role="button"],a,input,select,textarea):focus-visible{
+  outline:3px solid var(--atlas-action-focus)!important;
+  outline-offset:2px!important;
+}
+
+/* Launch actions use Atlas blue. Dark panels remain dark only as information. */
+:where(.settings-primary,.settings-hero aside button,.team-send-button,.knowledge-hero-actions .is-primary,
+  .knowledge-drawer footer .is-primary,.knowledge-editor-modal footer .is-primary,
+  .knowledge-source-modal footer .is-primary,.brain-feature-button,.brain-assistant-form button,
+  .recipe-primary-action,.recipe-save-button,.checkpoint-a-primary,.checkpoint-a-compact-button,
+  .checkpoint-a-home-prompt button,.inventory-scanner-primary){
+  border-color:var(--atlas-action)!important;
+  background:var(--atlas-action)!important;
+  color:#fff!important;
+}
+:where(.settings-primary,.settings-hero aside button,.team-send-button,.knowledge-hero-actions .is-primary,
+  .knowledge-drawer footer .is-primary,.knowledge-editor-modal footer .is-primary,
+  .knowledge-source-modal footer .is-primary,.brain-feature-button,.brain-assistant-form button,
+  .recipe-primary-action,.recipe-save-button,.checkpoint-a-primary,.checkpoint-a-compact-button,
+  .checkpoint-a-home-prompt button,.inventory-scanner-primary):hover:not(:disabled){
+  background:var(--atlas-action-hover)!important;
+  border-color:var(--atlas-action-hover)!important;
+  transform:translateY(-1px);
+}
+
+/* Shared cards and state surfaces. */
+:where(.metric-card,.recipe-gallery-card,.purchase-order-card,.knowledge-article-card,.settings-card,
+  .shift-card,.team-message,.checkpoint-a-panel){
+  border-radius:var(--atlas-card-radius);
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+:where(.metric-card,.recipe-gallery-card,.purchase-order-card,.knowledge-article-card,.settings-card,
+  .shift-card):hover{
+  border-color:rgba(45,120,220,.34);
+  box-shadow:var(--atlas-card-shadow-hover);
+  transform:translateY(-1px);
+}
+:where(button,input,select,textarea):disabled{cursor:not-allowed!important;opacity:.55}
+:where(.settings-feedback,.team-feedback,.stock-count-alert){border-radius:12px}
+
+/* Compact search field used across launch modules. */
+:where(.atlas-search,.recipe-search,.purchasing-search,.knowledge-search,.team-attachment-controls label,
+  .brain-search,.settings-search){max-width:420px}
+:where(.atlas-search,.recipe-search,.purchasing-search,.knowledge-search,.team-attachment-controls label,
+  .brain-search,.settings-search) input[type="search"],
+:where(.atlas-search) input{
+  min-height:36px!important;
+  height:36px!important;
+  border-radius:11px!important;
+  background:rgba(255,255,255,.92)!important;
+}
+
+/* Modal geometry leaves close controls visible and form content scrollable. */
+:where(.recipe-editor-modal,.knowledge-editor-modal,.knowledge-source-modal,.shift-modal>section,
+  .stock-count-modal,.stock-count-scan-modal){
+  max-height:min(92vh,900px)!important;
+  border-radius:20px!important;
+  overflow:hidden!important;
+}
+
+#home-focus{position:relative;overflow:hidden}
+#home-focus::after{
+  content:"";position:absolute;inset:-40% auto -40% -25%;width:42%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(76,141,229,.10),transparent);
+  animation:atlasDailyAttention 9s ease-in-out infinite;
+}
+@keyframes atlasDailyAttention{0%,72%,100%{transform:translateX(-120%)}86%{transform:translateX(390%)}}
+
+.settings-device-notifications>div{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:13px}
+.settings-device-notifications>div>span{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:#edf3fc;color:var(--atlas-action)}
+.settings-device-notifications>div>span svg{width:20px;height:20px}
+.settings-device-notifications>div p{margin:0;color:var(--settings-muted,var(--atlas-muted));font-size:12px;line-height:1.55}
+
+#purchase-order-panel{display:grid;gap:14px;max-width:none!important}
+#purchase-order-panel[hidden]{display:none}
+#purchase-order-panel>h2,#purchase-order-panel>p{margin:0}
+#purchase-order-form,.purchase-order-card{padding:18px;border:1px solid var(--atlas-line);border-radius:var(--atlas-card-radius);background:#fff}
+#purchase-order-form{display:grid;gap:12px}
+#purchase-order-form h3,#purchase-order-form label{margin:0}
+#purchase-order-form label{display:grid;gap:5px;color:var(--atlas-muted);font-size:11px}
+#purchase-order-form input,#purchase-order-form select,#purchase-order-form textarea{width:100%;margin:0}
+#purchase-order-form button,#purchase-order-panel>[data-refresh-orders],.purchase-order-card button{min-height:36px;padding:8px 12px;border:1px solid var(--atlas-line);border-radius:10px;background:#fff;color:var(--atlas-text);font-weight:600;cursor:pointer}
+#purchase-order-form button[type="submit"],.purchase-order-card [data-command="place"],.purchase-order-card [data-command="receive"]{border-color:var(--atlas-action);background:var(--atlas-action);color:#fff}
+.purchase-order-card{margin-top:10px}
+.purchase-order-card h3,.purchase-order-card p{margin:0 0 8px}
+.purchase-order-card [data-command="cancel"]{color:#a34f4f;border-color:#debcbc}
+
+@media(max-width:680px){
+  .settings-device-notifications>div{grid-template-columns:auto minmax(0,1fr)}
+  .settings-device-notifications>div button{grid-column:1/-1;width:100%}
+  :where(.atlas-search,.recipe-search,.purchasing-search,.knowledge-search,.team-attachment-controls label,
+    .brain-search,.settings-search){max-width:none;width:100%}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  #home-focus::after{display:none}
+}

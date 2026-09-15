@@ -32,6 +32,7 @@
     note: '',
     message: null,
     error: null,
+    dirty: false,
     lastFocused: null,
     initialized: false
   };
@@ -351,6 +352,7 @@
     state.note = '';
     state.message = null;
     state.error = null;
+    state.dirty = false;
     render();
   }
 
@@ -388,12 +390,15 @@
     }
   }
 
-  function closeScanner() {
+  function closeScanner(force = false) {
+    if (!force && state.dirty && !window.confirm('Discard the scanned product and any unsaved quantity changes?')) return false;
     stopScanner();
     state.open = false;
+    state.dirty = false;
     if (state.overlay) state.overlay.hidden = true;
     document.body.classList.remove('inventory-scanner-open');
     if (state.lastFocused instanceof HTMLElement) state.lastFocused.focus();
+    return true;
   }
 
   async function loadZxing() {
@@ -558,6 +563,7 @@
     state.itemQuery = '';
     state.message = null;
     state.error = null;
+    state.dirty = true;
     render();
 
     try {
@@ -593,6 +599,7 @@
       state.snapshot = refreshed.scanner || state.snapshot;
       state.items = Array.isArray(refreshed.items) ? refreshed.items : state.items;
       state.staff = refreshed.staff || state.staff;
+      state.dirty = false;
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'The barcode link could not be saved.';
     } finally {
@@ -649,6 +656,7 @@
       state.snapshot = refreshed.scanner || state.snapshot;
       state.items = Array.isArray(refreshed.items) ? refreshed.items : state.items;
       state.staff = refreshed.staff || state.staff;
+      state.dirty = false;
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'The bottle count could not be recorded.';
     } finally {
@@ -662,17 +670,19 @@
     if (!input) return;
     const next = Math.max(0, number(input.value) + delta);
     input.value = String(Math.round(next * 10) / 10);
+    state.dirty = true;
     input.focus();
   }
 
   function ensureEntryPoints() {
-    const toolbar = document.querySelector('#inventory-view .toolbar');
+    const toolbar = document.querySelector('.inventory-section-actions')
+      || document.querySelector('#inventory-view .toolbar');
     if (toolbar && !document.getElementById('inventory-scan-btn')) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'btn ghost inventory-scan-entry';
       button.id = 'inventory-scan-btn';
-      button.innerHTML = '<i data-lucide="scan-barcode"></i>Scan bottle';
+      button.innerHTML = '<i data-lucide="scan-barcode"></i>Scan';
       const addButton = document.getElementById('add-item-btn');
       toolbar.insertBefore(button, addButton || null);
     }
@@ -728,6 +738,7 @@
     if (select) {
       event.preventDefault();
       state.selectedItemId = select.dataset.scannerSelectItem || null;
+      state.dirty = true;
       render();
       document.getElementById('inventory-scanner-item-search')?.focus();
       return;
@@ -761,7 +772,11 @@
 
   function handleInput(event) {
     const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
+    if (state.open && ['inventory-scanner-code', 'inventory-scanner-quantity', 'inventory-scanner-note', 'inventory-scanner-item-search'].includes(target.id)) {
+      state.dirty = true;
+    }
+    if (target.id === 'inventory-scanner-note') state.note = target.value;
     if (target.id === 'inventory-scanner-item-search') {
       state.itemQuery = target.value;
       const list = state.overlay?.querySelector('.inventory-scanner-link-list');
@@ -778,7 +793,10 @@
     if (target instanceof HTMLInputElement && target.matches('[data-scanner-image]')) {
       const file = target.files?.[0];
       target.value = '';
-      if (file) decodeImage(file);
+      if (file) {
+        state.dirty = true;
+        decodeImage(file);
+      }
     }
   }
 

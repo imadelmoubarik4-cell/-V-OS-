@@ -80,6 +80,31 @@ with public_tables as (
     and manager_movement_insert_policy
     as adjust_inventory_safe
   from adjustment_status
+), purchase_order_status as (
+  -- Optional until the purchase-order migration is installed. Only the exact
+  -- invoker wrapper with its reviewed grants and RLS may leave the exception list.
+  select p.oid,
+    not p.prosecdef
+    and coalesce('search_path=""' = any(p.proconfig), false)
+    and has_function_privilege('authenticated', p.oid, 'execute')
+    and not has_function_privilege('anon', p.oid, 'execute')
+    and exists (
+      select 1 from pg_proc impl
+      where impl.oid = to_regprocedure('private.purchase_order_command(uuid,text,integer,uuid,jsonb,text)')
+        and impl.prosecdef
+        and coalesce('search_path=""' = any(impl.proconfig), false)
+        and has_function_privilege('authenticated', impl.oid, 'execute')
+        and not has_function_privilege('anon', impl.oid, 'execute')
+    )
+    and exists (
+      select 1 from public_tables t
+      where t.relname = 'purchase_orders' and t.relrowsecurity
+        and has_table_privilege('authenticated', t.oid, 'select')
+        and not has_table_privilege('authenticated', t.oid, 'insert,update,delete,truncate')
+        and not has_table_privilege('anon', t.oid, 'select,insert,update,delete,truncate')
+    ) as purchase_order_safe
+  from pg_proc p
+  where p.oid = to_regprocedure('public.atlas_purchase_order_command(uuid,text,integer,uuid,jsonb,text)')
 ), browser_functions as (
   select p.oid, p.proname, pg_get_function_identity_arguments(p.oid) as args
   from pg_proc p
@@ -90,6 +115,10 @@ with public_tables as (
       or has_function_privilege('authenticated', p.oid, 'execute')
     )
     and p.proname <> 'adjust_inventory'
+    and not exists (
+      select 1 from purchase_order_status po
+      where po.oid = p.oid and po.purchase_order_safe
+    )
 ), fingerprint as (
   select
     count(*) as inventory_records,
@@ -131,11 +160,16 @@ select jsonb_build_object(
     select to_jsonb(adjustment_final) - 'oid'
     from adjustment_final
   ), jsonb_build_object('adjust_inventory_safe',false)),
+  'controlled_purchase_order', coalesce((
+    select to_jsonb(purchase_order_status) - 'oid' from purchase_order_status
+  ), jsonb_build_object('installed',false)),
   'security_lint_blockers', to_jsonb(array_remove(array[
     case when not coalesce((select public_menu_safe from menu_final),false)
       then 'public_menu is not a safe security-invoker four-column projection' end,
     case when not coalesce((select adjust_inventory_safe from adjustment_final),false)
-      then 'adjust_inventory is not a caller-evaluated manager-only RPC' end
+      then 'adjust_inventory is not a caller-evaluated manager-only RPC' end,
+    case when exists (select 1 from purchase_order_status where not purchase_order_safe)
+      then 'purchase order wrapper, grants or table boundary is unsafe' end
   ]::text[], null)),
   'browser_function_exposure', coalesce((
     select jsonb_agg(jsonb_build_object('function', proname, 'args', args) order by proname, args)

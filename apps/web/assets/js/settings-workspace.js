@@ -47,6 +47,7 @@
     viewObserver: null,
     authTimer: null,
     offerDraft: null,
+    notificationAction: false,
     search: ''
   };
 
@@ -427,23 +428,22 @@
 
   function notificationsMarkup() {
     const policies = state.workspace?.notification_policies || [];
+    const device = window.AtlasNotifications?.snapshot?.() || {
+      status: 'unsupported', detail: 'Push setup is unavailable in this browser.'
+    };
+    const canEnable = ['pending'].includes(device.status);
+    const deviceAction = device.status === 'enabled'
+      ? '<button type="button" class="settings-secondary" data-settings-push-disable>Turn notifications off</button>'
+      : canEnable
+        ? '<button type="button" class="settings-primary" data-settings-push-enable>Turn notifications on</button>'
+        : '';
     return `<div class="settings-notifications">
-      ${sectionHead('Notification governance', 'Notifications', 'Choose which operational events appear in Atlas and which channels may be used.')}
-      <section class="settings-note-card"><i data-lucide="bell-ring"></i><div><strong>Browser and email delivery require permission</strong><span>Saving a channel enables the policy only. Atlas never claims delivery is available until the relevant browser or integration permission is granted.</span></div></section>
-      <div class="settings-notification-grid">${policies.map((policy) => `<form class="settings-card settings-notification-card" data-settings-notification-form="${escapeHtml(policy.event_key)}" data-version="${Number(policy.version || 1)}">
-        <header><div><span>${escapeHtml(policy.category)}</span><h3>${escapeHtml(policy.label)}</h3></div>${statusPill(policy.enabled ? 'active' : 'not_connected', policy.enabled ? 'Enabled' : 'Disabled')}</header>
-        <div class="settings-toggle-grid">
-          ${checkboxField('Policy enabled', 'enabled', Boolean(policy.enabled), { disabled: !policy.can_edit })}
-          ${checkboxField('Manager approval', 'manager_approval_required', Boolean(policy.manager_approval_required), { disabled: !policy.can_edit })}
-        </div>
-        <fieldset><legend>Channels</legend><div class="settings-check-row">${NOTIFICATION_CHANNELS.map((channel) => `<label><input type="checkbox" name="channel_${channel}" ${policy.channels?.[channel] ? 'checked' : ''} ${policy.can_edit ? '' : 'disabled'}><span>${escapeHtml(channel === 'in_app' ? 'In Atlas' : humanize(channel))}</span></label>`).join('')}</div></fieldset>
-        <fieldset><legend>Target roles</legend><div class="settings-check-row">${ROLE_KEYS.map((role) => `<label><input type="checkbox" name="role_${role}" ${(policy.target_roles || []).includes(role) ? 'checked' : ''} ${policy.can_edit ? '' : 'disabled'}><span>${escapeHtml(ROLE_LABELS[role])}</span></label>`).join('')}</div></fieldset>
-        <div class="settings-form-grid is-compact">
-          ${inputField('Reminder minutes', 'reminder_minutes', (policy.reminder_minutes || []).join(', '), { disabled: !policy.can_edit, note: 'Comma-separated, e.g. 1440, 120, 0.' })}
-          ${inputField('Escalation minutes', 'escalation_minutes', policy.escalation_minutes ?? '', { type: 'number', min: 0, max: 43200, disabled: !policy.can_edit })}
-        </div>
-        <footer class="settings-form-footer"><span>Version ${Number(policy.version || 1)}</span>${policy.can_edit ? `<button type="submit" class="settings-primary" ${state.saving ? 'disabled' : ''}><i data-lucide="save"></i>Save policy</button>` : '<span>Read-only</span>'}</footer>
-      </form>`).join('')}</div>
+      ${sectionHead('One simple control', 'Notifications', 'Use one master switch for supported browser and mobile alerts. Individual notification-type switches are intentionally removed.')}
+      <section class="settings-card settings-device-notifications is-${escapeHtml(device.status)}">
+        <header><div><span>Master notification control</span><h3>Atlas notifications</h3><p>${escapeHtml(device.detail)}</p></div>${statusPill(device.status, device.status === 'enabled' ? 'On' : 'Off')}</header>
+        <div><span><i data-lucide="${device.status === 'enabled' ? 'bell-ring' : device.status === 'denied' ? 'bell-off' : 'bell'}"></i></span><p>Atlas asks for browser permission only after you turn notifications on. Turning them off disables delivery on this device.</p>${state.notificationAction ? '<button type="button" class="settings-secondary" disabled>Updating…</button>' : deviceAction}</div>
+      </section>
+      <section class="settings-card settings-notification-coverage"><header><div><span>Included alerts</span><h3>What the master switch covers</h3><p>${policies.length ? `${policies.filter((policy) => policy.enabled).length} of ${policies.length} server policies are currently active.` : 'Coverage is shown here without separate user switches.'}</p></div></header><div><span><i data-lucide="message-circle"></i>New direct messages</span><span><i data-lucide="at-sign"></i>Mentions</span><span><i data-lucide="calendar-clock"></i>Shift changes</span><span><i data-lucide="list-checks"></i>Assigned tasks</span><span><i data-lucide="truck"></i>Purchase-order and delivery updates</span><span><i data-lucide="package-search"></i>Low-stock alerts</span></div></section>
     </div>`;
   }
 
@@ -637,7 +637,7 @@
     const moduleKeys = ['operations', 'scanner', 'messages', 'marketing', 'profiles', 'shifts', 'knowledge', 'reports', 'system', 'settings'];
     return `<form class="settings-card settings-form" data-settings-section-form="modules" data-version="${Number(data?.version || 1)}">
       <header><div><span>Feature availability</span><h3>Modules</h3><p>${escapeHtml(data?.description || '')}</p></div>${statusPill(value.reports_state || 'active', value.reports_state === 'blocked' ? 'Reports blocked' : humanize(value.reports_state))}</header>
-      <div class="settings-toggle-grid">${moduleKeys.map((key) => checkboxField(humanize(key), key, Boolean(value[key]), { disabled: disabled || ['system', 'settings'].includes(key), note: ['system', 'settings'].includes(key) ? 'Core module.' : key === 'reports' ? 'Reports remains a release blocker.' : '' })).join('')}</div>
+      <div class="settings-toggle-grid">${moduleKeys.map((key) => checkboxField(humanize(key), key, Boolean(value[key]), { disabled: disabled || ['system', 'settings'].includes(key), note: ['system', 'settings'].includes(key) ? 'Core module.' : key === 'reports' ? (value.reports_state === 'ready' ? 'Authenticated preview passed.' : 'Availability follows isolated validation.') : '' })).join('')}</div>
       <div class="settings-form-grid">
         ${inputField('Reports state', 'reports_state', value.reports_state, { type: 'select', choices: [['blocked', 'Blocked'], ['degraded', 'Degraded'], ['ready', 'Ready']], disabled })}
       </div>
@@ -760,6 +760,22 @@
       state.error = error instanceof Error ? error.message : 'Settings could not be saved.';
     } finally {
       state.saving = false;
+      render();
+    }
+  }
+
+  async function updatePushPreference(enable) {
+    if (state.notificationAction || !window.AtlasNotifications) return;
+    state.notificationAction = true;
+    state.error = null;
+    render();
+    try {
+      await (enable ? window.AtlasNotifications.enable() : window.AtlasNotifications.disable());
+      state.message = enable ? 'Browser notifications enabled for this device.' : 'Browser notifications disabled for this device.';
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : 'Browser notification setup failed.';
+    } finally {
+      state.notificationAction = false;
       render();
     }
   }
@@ -999,20 +1015,11 @@
       const wantsBrowser = boolValue(form, 'browser_notifications');
       let browserAllowed = wantsBrowser;
       if (wantsBrowser) {
-        if (!('Notification' in window)) {
-          state.error = 'This browser does not support notifications.';
-          render();
-          return;
-        }
-        if (Notification.permission !== 'granted') {
-          const permission = await Notification.requestPermission();
-          browserAllowed = permission === 'granted';
-          if (!browserAllowed) {
-            state.error = 'Browser notification permission was not granted.';
-            render();
-            return;
-          }
-        }
+        const result = await window.AtlasNotifications?.enable?.();
+        browserAllowed = result?.status === 'enabled';
+        if (!browserAllowed) { state.error = result?.detail || 'Browser notification permission was not granted.'; render(); return; }
+      } else if (window.AtlasNotifications?.snapshot?.()?.status === 'enabled') {
+        await window.AtlasNotifications.disable();
       }
       await mutate('save-preferences', {
         theme: fieldValue(form, 'theme'),
@@ -1052,6 +1059,16 @@
 
     if (target.closest('[data-settings-refresh]')) {
       load();
+      return;
+    }
+
+    if (target.closest('[data-settings-push-enable]')) {
+      updatePushPreference(true);
+      return;
+    }
+
+    if (target.closest('[data-settings-push-disable]')) {
+      updatePushPreference(false);
       return;
     }
 
@@ -1102,6 +1119,11 @@
     state.viewObserver = new MutationObserver(() => activate());
     state.viewObserver.observe(element, { attributes: true, attributeFilter: ['style', 'class'] });
     state.viewObserver.observe(document.getElementById('app-screen') || document.body, { attributes: true, attributeFilter: ['style', 'class'] });
+
+    window.setTimeout(async () => {
+      try { await window.AtlasNotifications?.refresh?.(); } catch { /* settings keeps the delivery state non-authoritative */ }
+      if (state.activeTab === 'notifications' && settingsVisible()) render();
+    }, 0);
 
     window.addEventListener('focus', () => {
       if (settingsVisible() && state.workspace) load({ silent: true });

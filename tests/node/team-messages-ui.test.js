@@ -12,7 +12,7 @@ function count(haystack, needle) {
 }
 
 test('Checkpoint C loads from the isolated team-message API', () => {
-  assert.match(config, /TEAM_MESSAGES_API:\s*"https:\/\/uhbamqetppqmygesoeeh\.supabase\.co\/functions\/v1\/atlas-team-messages"/);
+  assert.match(config, /TEAM_MESSAGES_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-team-messages"/);
   assert.match(config, /assets\/js\/team-messages\.js/);
   assert.match(config, /assets\/css\/team-messages\.css/);
   assert.equal(count(config, 'SUPABASE_ANON_KEY'), 1);
@@ -75,4 +75,9 @@ test('Team Messages preserve Atlas design and mobile behavior', () => {
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.doesNotMatch(css, /Caprasimo|Figtree|--color-accent-2/);
   assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
+});
+
+test('short messages do not stretch across the conversation pane', () => {
+  assert.match(css, /\.team-message\{[^}]*width:fit-content[^}]*max-width:min\(680px,82%\)/);
+  assert.match(css, /\.team-message\.is-own\{[^}]*margin-left:auto/);
 });

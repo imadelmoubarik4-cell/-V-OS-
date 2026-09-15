@@ -461,7 +461,7 @@
     return `<div class="system-sources">
       <section class="system-section-head"><div><span>Evidence registry</span><h2>Data sources & freshness</h2><p>Live operational data, private imports and historical snapshots remain visibly distinct.</p></div></section>
       <div class="system-filter-row">${filters.map(([key, label]) => `<button type="button" data-system-source-filter="${key}" class="${state.sourceFilter === key ? 'is-active' : ''}">${label}</button>`).join('')}</div>
-      <section class="system-source-table">${visible.length ? visible.map(sourceMarkup).join('') : '<div class="system-empty"><i data-lucide="database-off"></i>No data sources match this filter.</div>'}</section>
+      <section class="system-source-table">${visible.length ? visible.map(sourceMarkup).join('') : '<div class="system-empty"><i data-lucide="database"></i>No data sources match this filter.</div>'}</section>
       <section class="system-source-guard"><i data-lucide="brain-circuit"></i><div><strong>Atlas Brain evidence gate</strong><span>Historical evidence, pending Sprint 3 rows, disconnected sales and missing bookings never become live operational facts automatically.</span></div></section>
     </div>`;
   }
@@ -675,10 +675,14 @@
   }
 
   function hideOtherViews() {
+    if (window.AtlasShell?.hideWorkspaceRoots) {
+      window.AtlasShell.hideWorkspaceRoots('system');
+    }
     document.querySelectorAll([
       '#inventory-view', '#dashboard-view', '#recipes-view', '#suppliers-view', '#imports-view',
       '#team-view', '#shifts-view', '#knowledge-view', '#reports-view', '#settings-view',
-      '#operations-center', '#brain-shell', '#marketing-view', '#profiles-view', '#team-profiles-view'
+      '#operations-view', '#brain-view', '#business-view', '#marketing-view', '#profiles-view',
+      '#team-profiles-view', '#sprint3-review-view'
     ].join(',')).forEach((view) => { if (view !== host()) view.style.display = 'none'; });
     ['home-intro', 'home-focus', 'home-metrics'].forEach((id) => {
       const element = document.getElementById(id);
@@ -689,6 +693,7 @@
   function activateSystem() {
     ensureStructure();
     state.activating = true;
+    document.body.dataset.atlasView = 'system';
     hideOtherViews();
     const element = host();
     if (element) element.style.display = 'block';
@@ -698,6 +703,7 @@
     document.getElementById('atlas-sidebar')?.classList.remove('open');
     document.getElementById('sidebar-backdrop')?.classList.remove('open');
     state.activating = false;
+    window.AtlasShell?.resetScroll?.();
     render();
     if (!state.workspace && !state.loading) loadSnapshot({ force: true });
   }

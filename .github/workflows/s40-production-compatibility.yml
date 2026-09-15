@@ -1,0 +1,67 @@
+name: S40 production compatibility
+
+on:
+  pull_request:
+    branches: [claude/recipes-gallery-v2]
+    paths:
+      - '.github/workflows/s40-production-compatibility.yml'
+      - 'docs/release/Atlas_S40_Production_Compatibility_Manifest.json'
+      - 'docs/release/Atlas_S40_Production_Compatibility_Package.md'
+      - 'scripts/verify_s40_production_compatibility_dry_run.sh'
+      - 'scripts/verify_s40_production_compatibility_snapshots.py'
+      - 'supabase/s40/**'
+      - 'tests/python/test_s40_production_compatibility_package.py'
+      - 'supabase/production-launch/000_read_only_snapshot.sql'
+      - 'supabase/production-adoption/**'
+      - 'supabase/s33/migrations/**'
+      - 'supabase/migrations/**'
+
+permissions:
+  contents: read
+
+jobs:
+  package-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Git-only S40 contracts
+        run: python -m unittest tests/python/test_s40_production_compatibility_package.py
+
+  disposable-production-shape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vaos_s40_compatibility
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vaos_s40_compatibility"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: vaos_s40_compatibility
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Replay current production shape and revised remaining plan
+        run: bash scripts/verify_s40_production_compatibility_dry_run.sh

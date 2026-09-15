@@ -1,8 +1,10 @@
 from pathlib import Path
+import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = (ROOT / 'supabase/migrations/20260803155556_atlas_team_profiles_checkpoint_e.sql').read_text()
+NAMED_ARGUMENTS = (ROOT / 'supabase/migrations/20260908193653_atlas_team_profiles_named_arguments.sql').read_text()
 EDGE = (ROOT / 'supabase/functions/atlas-team-profiles/index.ts').read_text()
 CONFIG = (ROOT / 'supabase/config.toml').read_text()
 BROWSER = (ROOT / 'apps/web/config.js').read_text()
@@ -40,6 +42,55 @@ class TeamProfilesContractTests(unittest.TestCase):
             self.assertIn(f'revoke execute on function {signature} from public,anon,authenticated', MIGRATION)
             self.assertIn(f'grant execute on function {signature} to service_role', MIGRATION)
         self.assertNotIn('security definer', MIGRATION.lower())
+
+    def test_public_rpcs_expose_the_named_gateway_contract(self):
+        named_contracts = {
+            'atlas_team_profiles_snapshot': (
+                'p_profiles', 'p_tasks', 'p_progress', 'p_actor_id', 'p_actor_role',
+            ),
+            'atlas_team_profile_upsert_details': (
+                'p_profile_id', 'p_preferred_name', 'p_job_title', 'p_department',
+                'p_employment_type', 'p_start_date', 'p_phone', 'p_phone_visibility',
+                'p_preferred_language', 'p_manager_notes', 'p_actor_id',
+                'p_actor_label', 'p_actor_role',
+            ),
+            'atlas_team_profile_save_emergency_contact': (
+                'p_contact_id', 'p_profile_id', 'p_contact_name', 'p_relationship',
+                'p_phone', 'p_note', 'p_priority', 'p_actor_id', 'p_actor_label',
+                'p_actor_role',
+            ),
+            'atlas_team_profile_remove_emergency_contact': (
+                'p_contact_id', 'p_profile_id', 'p_actor_id', 'p_actor_label',
+                'p_actor_role',
+            ),
+            'atlas_team_profile_log_external_event': (
+                'p_event_type', 'p_profile_id', 'p_actor_id', 'p_actor_label',
+                'p_actor_role', 'p_payload',
+            ),
+        }
+        for function_name, parameter_names in named_contracts.items():
+            declaration = re.search(
+                rf'create or replace function public\.{function_name}\((?P<arguments>.*?)\)\s*returns (?:jsonb|uuid)',
+                NAMED_ARGUMENTS,
+                re.IGNORECASE | re.DOTALL,
+            )
+            self.assertIsNotNone(declaration)
+            self.assertEqual(
+                re.findall(
+                    r'\b(p_[a-z_]+)\s+(?:uuid|text|jsonb|date|smallint)\b',
+                    declaration.group('arguments'),
+                ),
+                list(parameter_names),
+            )
+            for parameter_name in parameter_names:
+                self.assertIn(parameter_name, EDGE)
+
+        self.assertEqual(NAMED_ARGUMENTS.lower().count('security invoker'), 5)
+        self.assertEqual(NAMED_ARGUMENTS.lower().count("set search_path = ''"), 5)
+        self.assertEqual(NAMED_ARGUMENTS.lower().count('revoke all on function public.atlas_team_profile'), 5)
+        self.assertEqual(NAMED_ARGUMENTS.lower().count('grant execute on function public.atlas_team_profile'), 5)
+        self.assertNotIn('drop function', NAMED_ARGUMENTS.lower())
+        self.assertIn("notify pgrst, 'reload schema'", NAMED_ARGUMENTS.lower())
 
     def test_gateway_revalidates_active_profile_and_roles(self):
         self.assertIn('requireActiveProfile', EDGE)

@@ -1,0 +1,9 @@
+\set ON_ERROR_STOP on
+
+-- Exact Phase 1 allowlist. This psql composition file is for disposable staging
+-- only and must be flattened into a new migration after separate approval.
+\ir ../../migrations/20260802090000_phase_a_02_inventory_staging.sql
+\ir ../../migrations/20260806104705_atlas_phase1_profiles_security_gate.sql
+\ir ../../migrations/20260806105543_atlas_phase1_recipe_catalog_gate.sql
+\ir ../../migrations/20260806151244_atlas_phase1_recipe_catalog_runtime_fix.sql
+\ir ../../migrations/20260806171317_atlas_phase1_public_menu_and_adjustment_lint_fix.sql
