@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "docs/release/Atlas_S39_Production_Launch_Manifest.json"
+S41_ADDENDUM_PATH = ROOT / "docs/release/Atlas_S41_Production_Function_Addendum.json"
 NON_PRODUCTION_PROJECT_REFS = (
     "atialqebqxcquzdkezln",
     "uhbamqetppqmygesoeeh",
@@ -53,41 +54,82 @@ def _entrypoint(function):
     return matches[0]
 
 
-def _guard(target_origin):
-    return f'''// S39 production boundary: fail closed before registering a handler.
+def _helpers(target_origin, typed):
+    return_type = ": string" if typed else ""
+    return f'''// S41 production identity helpers.
 const S39_TARGET_ORIGIN = "{target_origin}";
+function atlasAuthProjectUrl(){return_type} {{
+  const value = Deno.env.get("ATLAS_AUTH_PROJECT_URL") ?? Deno.env.get("SUPABASE_URL") ?? "";
+  if (value !== S39_TARGET_ORIGIN) throw new Error("Atlas Auth project mismatch");
+  return value;
+}}
+function atlasAuthPublishableKey(){return_type} {{
+  const configured = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY");
+  let managed = "";
+  try {{
+    managed = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{{}}")?.default ?? "";
+  }} catch {{
+    managed = "";
+  }}
+  const value = configured ?? managed;
+  if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(value)) {{
+    throw new Error("Atlas publishable key is unavailable");
+  }}
+  return value;
+}}
+'''
+
+
+def _guard():
+    return '''// S41 production boundary: fail closed before registering a handler.
 if (
   Deno.env.get("SUPABASE_URL") !== S39_TARGET_ORIGIN ||
-  Deno.env.get("ATLAS_AUTH_PROJECT_URL") !== S39_TARGET_ORIGIN ||
-  !/^sb_publishable_[A-Za-z0-9_-]+$/.test(
-    Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY") ?? "",
-  ) ||
-  Deno.env.get("ATLAS_IMPORT_ENABLED") !== "false" ||
-  Deno.env.get("ATLAS_STOCK_COUNT_PUBLICATION_ENABLED") !== "false" ||
-  Deno.env.get("ATLAS_PUSH_DELIVERY_ENABLED") !== "false"
-) {{
+  Deno.env.get("ATLAS_IMPORT_ENABLED") === "true" ||
+  Deno.env.get("ATLAS_STOCK_COUNT_PUBLICATION_ENABLED") === "true" ||
+  Deno.env.get("ATLAS_PUSH_DELIVERY_ENABLED") === "true"
+) {
   throw new Error("S39 requires exact production configuration with all write flags disabled");
-}}
+}
 
 '''
 
 
-def _transform(source, target_origin, browser_origin, add_guard):
+def _transform(source, target_origin, browser_origin, add_guard, typed):
     for project_ref in NON_PRODUCTION_PROJECT_REFS:
         source = source.replace(f"https://{project_ref}.supabase.co", target_origin)
+    source = source.replace(
+        "https://atlas-s32-rehearsal.coffee-cockt-8589.chatgpt.site",
+        browser_origin,
+    )
 
     source = re.sub(
-        r'(const AUTH_PROJECT_URL = Deno\.env\.get\("ATLAS_AUTH_PROJECT_URL"\))'
+        r'const AUTH_PROJECT_URL = Deno\.env\.get\("ATLAS_AUTH_PROJECT_URL"\)'
         r'\s*\?\?\s*"[^"]+";',
-        r"\1!;",
+        "const AUTH_PROJECT_URL = atlasAuthProjectUrl();",
         source,
     )
     source = re.sub(
-        r'(const AUTH_PUBLISHABLE_KEY = Deno\.env\.get\("ATLAS_AUTH_PUBLISHABLE_KEY"\))'
+        r'const AUTH_PUBLISHABLE_KEY = Deno\.env\.get\("ATLAS_AUTH_PUBLISHABLE_KEY"\)'
         r'\s*\?\?\s*"[^"]+";',
-        r"\1!;",
+        "const AUTH_PUBLISHABLE_KEY = atlasAuthPublishableKey();",
         source,
     )
+    source = source.replace('requiredEnv("ATLAS_AUTH_PROJECT_URL")', "atlasAuthProjectUrl()")
+    source = source.replace('requiredEnv("ATLAS_AUTH_PUBLISHABLE_KEY")', "atlasAuthPublishableKey()")
+    source = source.replace('Deno.env.get("ATLAS_AUTH_PROJECT_URL")', "atlasAuthProjectUrl()")
+    source = source.replace("Deno.env.get('ATLAS_AUTH_PROJECT_URL')", "atlasAuthProjectUrl()")
+    source = source.replace('Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")', "atlasAuthPublishableKey()")
+    source = source.replace("Deno.env.get('ATLAS_AUTH_PUBLISHABLE_KEY')", "atlasAuthPublishableKey()")
+    if "Review-only S33 source" in source and "Deno.serve(createHandler({" in source:
+        source = source.replace(
+            "Deno.serve(createHandler({",
+            "if (Deno.env.get('ATLAS_IMPORT_ENABLED') === 'true') {\n  Deno.serve(createHandler({",
+            1,
+        )
+        head, separator, tail = source.rpartition("}));")
+        if not separator:
+            raise ValueError("Import worker entrypoint shape changed")
+        source = head + "}));\n} else {\n  Deno.serve(async () => new Response(JSON.stringify({ error: 'Import is disabled.' }), {\n    status: 503,\n    headers: { 'content-type': 'application/json', 'access-control-allow-origin': '" + browser_origin + "' },\n  }));\n}" + tail
     source = source.replace("${AUTH_PROJECT_URL}/rest/v1/", "${S39_TARGET_ORIGIN}/rest/v1/")
     source = source.replace(
         '"access-control-allow-origin": "*"',
@@ -106,7 +148,9 @@ def _transform(source, target_origin, browser_origin, add_guard):
         re.IGNORECASE,
     ):
         raise ValueError("Wildcard CORS remains in generated runtime")
-    return (_guard(target_origin) if add_guard else "") + source
+    needs_helpers = add_guard or "atlasAuthProjectUrl()" in source or "atlasAuthPublishableKey()" in source
+    prefix = _helpers(target_origin, typed) if needs_helpers else ""
+    return prefix + (_guard() if add_guard else "") + source
 
 
 def build(destination, browser_origin):
@@ -123,12 +167,25 @@ def build(destination, browser_origin):
     if _sha256(source_manifest_path) != manifest["runtime"]["source_manifest_sha256"]:
         raise ValueError("Reviewed function-source manifest changed")
     source_manifest = json.loads(source_manifest_path.read_text(encoding="utf-8"))
-    functions = source_manifest["functions"]
-    if len(functions) != 18 or len({item["name"] for item in functions}) != 18:
-        raise ValueError("Expected exactly 18 reviewed functions")
+    addendum = json.loads(S41_ADDENDUM_PATH.read_text(encoding="utf-8"))
+    if addendum["base_source_manifest"] != manifest["runtime"]["source_manifest"]:
+        raise ValueError("S41 addendum base manifest mismatch")
+    if addendum["base_source_manifest_sha256"] != manifest["runtime"]["source_manifest_sha256"]:
+        raise ValueError("S41 addendum base fingerprint mismatch")
+    if addendum["production_target"] != manifest["production_target"]["project_ref"]:
+        raise ValueError("S41 addendum production target mismatch")
+    if addendum["boundaries"] != {
+        "real_stock_writes_authorized": False,
+        "item_master_publication_enabled": False,
+        "wildcard_cors_allowed": False,
+    }:
+        raise ValueError("S41 addendum boundaries changed")
+    functions = source_manifest["functions"] + addendum["functions"]
+    if len(functions) != 19 or len({item["name"] for item in functions}) != 19:
+        raise ValueError("Expected exactly 19 approved functions")
 
     generated_manifest = {
-        "package": "Atlas S39 production runtime artifact",
+        "package": "Atlas S41 production runtime artifact",
         "target_origin": target_origin,
         "allowed_browser_origin": browser_origin,
         "deployment_authorized": False,
@@ -156,6 +213,7 @@ def build(destination, browser_origin):
                     target_origin,
                     browser_origin,
                     add_guard=source_path == entrypoint,
+                    typed=Path(source_path).suffix == ".ts",
                 ).encode("utf-8")
                 relative = Path("functions") / function["name"] / Path(source_path).name
                 target = output / relative
@@ -201,4 +259,3 @@ if __name__ == "__main__":
     parser.add_argument("--browser-origin", required=True)
     args = parser.parse_args()
     print(json.dumps(build(args.destination, args.browser_origin)))
-
