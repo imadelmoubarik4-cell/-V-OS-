@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const config = readFileSync('apps/web/config.js', 'utf8');
+const index = readFileSync('apps/web/index.html', 'utf8');
 const bridge = readFileSync('apps/web/assets/js/shifts-month-tab-bridge.js', 'utf8');
 const weekly = readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8');
 const month = readFileSync('apps/web/assets/js/shifts-month-calendar.js', 'utf8');
@@ -11,6 +12,19 @@ test('Month bridge loads after the monthly workspace', () => {
   assert.match(config, /assets\/js\/shifts-month-tab-bridge\.js/);
   assert.match(config, /globalName:\s*'AtlasShiftsMonthTabBridge'/);
   assert.ok(config.indexOf('shifts-month-calendar.js') < config.indexOf('shifts-month-tab-bridge.js'));
+});
+
+test('production loads weekly, Month, and bridge assets in deterministic dependency order', () => {
+  const weeklyCss = index.indexOf('assets/css/shifts-workspace.css');
+  const monthCss = index.indexOf('assets/css/shifts-month-calendar.css');
+  const editorCss = index.indexOf('assets/css/shifts-month-editor.css');
+  const remediationCss = index.indexOf('assets/css/s38-app-remediation.css');
+  const weeklyJs = index.indexOf('assets/js/shifts-workspace.js');
+  const monthJs = index.indexOf('assets/js/shifts-month-calendar.js');
+  const bridgeJs = index.indexOf('assets/js/shifts-month-tab-bridge.js');
+
+  assert.ok(weeklyCss >= 0 && weeklyCss < monthCss && monthCss < editorCss && editorCss < remediationCss);
+  assert.ok(weeklyJs >= 0 && weeklyJs < monthJs && monthJs < bridgeJs);
 });
 
 test('bridge keeps the Month tab separate from the weekly bubbling handler', () => {
