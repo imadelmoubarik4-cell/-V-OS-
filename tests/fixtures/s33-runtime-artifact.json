@@ -95,8 +95,13 @@
         },
         {
           "path": "functions/atlas-reports/index.ts",
-          "source_sha256": "8ee479dc8baba54335ca0a127ef556f54f487126c3c485e2e58d5bca3745368c",
-          "candidate_sha256": "b86b84a3599e072d4c7a2d9bf600ec8aa76501a5605a1df9bb0c701d53571902"
+          "source_sha256": "0d5267c61d442e171b174170b0281139d0cdaacd575614a99dcbcb5750a0a743",
+          "candidate_sha256": "1fac490899a6a6f81e2b4ed3f455ea020dbc9458edabbd38c043b9360353f20e"
+        },
+        {
+          "path": "functions/atlas-reports/stock-provenance.mjs",
+          "source_sha256": "c09a2a8846e67dbaa5a682407d62a5d5778369811d090d6b43082888e93500b0",
+          "candidate_sha256": "c0aa8b24434bce5fb7a3d960e6bb5d6d82ea0f9a782daf6675bea9c7b5948893"
         }
       ]
     },
