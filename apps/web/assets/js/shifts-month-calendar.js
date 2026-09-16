@@ -790,16 +790,22 @@
       return;
     }
 
+    const addDay = target.closest('[data-shifts-month-add-day]');
+    if (addDay) {
+      // Month add controls are nested inside the legacy Shifts workspace. Claim
+      // the event before any weekly/global handler can rerender the host and
+      // detach the clicked control before the Month editor is mounted.
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      openShiftEditor(addDay.dataset.shiftsMonthAddDay);
+      return;
+    }
+
     const day = target.closest('[data-shifts-month-day]');
     if (day) {
       state.selectedDate = day.dataset.shiftsMonthDay;
       renderPanel();
-      return;
-    }
-
-    const addDay = target.closest('[data-shifts-month-add-day]');
-    if (addDay) {
-      openShiftEditor(addDay.dataset.shiftsMonthAddDay);
       return;
     }
 
