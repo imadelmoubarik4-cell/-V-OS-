@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const config = readFileSync('apps/web/config.js', 'utf8');
+const index = readFileSync('apps/web/index.html', 'utf8');
 const month = readFileSync('apps/web/assets/js/shifts-month-calendar.js', 'utf8');
 const weekly = readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/shifts-month-calendar.css', 'utf8');
@@ -18,6 +19,12 @@ test('Checkpoint F.2 loads the month editor after weekly Shifts', () => {
   assert.match(config, /globalName:\s*'AtlasShiftsMonth'/);
   assert.ok(config.indexOf('shifts-workspace.js') < config.indexOf('shifts-month-calendar.js'));
   assert.ok(config.indexOf('shifts-month-calendar.css') < config.indexOf('shifts-month-editor.css'));
+});
+
+test('the production shell cache-busts the Month interaction bundle', () => {
+  const versionedBundle = 'assets/js/shifts-month-calendar.js?v=20260916-s48b';
+  assert.ok(config.includes(`scriptPath: '${versionedBundle}'`));
+  assert.ok(index.includes(`<script src="${versionedBundle}"></script>`));
 });
 
 test('month calendar remains a complete Monday-first monthly grid', () => {

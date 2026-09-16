@@ -23,7 +23,7 @@
     "automatic_import_authorized": false
   },
   "files": {
-    "apps/web/config.js": "05a72d2caca0c58dcf6508f23fd295b157ccd8cafcc7e78397469789df6e600a",
+    "apps/web/config.js": "2b0650a26a25e76709ceaf2c8dc4298f011e06a26fcc03d13a59dd70bc2fa96b",
     "apps/web/assets/js/rehearsal-boundary.js": "7f93c10cb909568b56395b4fbfad559991a08e6129111b7be55f1ac73b8fbf1f",
     "apps/web/assets/js/inventory-scanner-bootstrap.js": "29e643af6012f3a82a646ed859ef52d14029dbf0d247aa2b5327b52f0ae179a9",
     "apps/web/assets/js/stock-count-bootstrap.js": "935d7fe79891f87a4bb894546924f469a4750828a7799e221b2a3a385ea85f25",
