@@ -22,7 +22,7 @@ test('Checkpoint F.2 loads the month editor after weekly Shifts', () => {
 });
 
 test('the production shell cache-busts the Month interaction bundle', () => {
-  const versionedBundle = 'assets/js/shifts-month-calendar.js?v=20260916-s48b';
+  const versionedBundle = 'assets/js/shifts-month-calendar.js?v=20260917-s61';
   assert.ok(config.includes(`scriptPath: '${versionedBundle}'`));
   assert.ok(index.includes(`<script src="${versionedBundle}"></script>`));
 });

@@ -166,7 +166,7 @@
         <section class="review-controls" aria-label="Review filters">
           <div class="review-scope-row" id="review-scope-row"></div>
           <div class="review-filter-row">
-            <label class="review-search"><i data-lucide="search"></i><input id="review-search" type="search" placeholder="Search name, source, issue…" /></label>
+            <label class="review-search"><i data-lucide="search"></i><input id="review-search" type="search" aria-label="Search review records" placeholder="Search name, source, issue…" /></label>
             <select id="review-status" aria-label="Review status">
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>

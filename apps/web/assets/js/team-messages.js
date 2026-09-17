@@ -252,7 +252,7 @@
   function attachmentPanelMarkup() {
     if (!state.attachmentOpen || state.editingMessageId) return '';
     return `<section class="team-attachment-panel">
-      <header><div><strong>Link an Atlas record</strong><span>The target is verified by the server before the message is sent.</span></div><button type="button" data-team-close-attachment><i data-lucide="x"></i></button></header>
+      <header><div><strong>Link an Atlas record</strong><span>The target is verified by the server before the message is sent.</span></div><button type="button" data-team-close-attachment aria-label="Close linked-record picker"><i data-lucide="x"></i></button></header>
       <div class="team-attachment-controls">
         <select data-team-link-type aria-label="Link type">
           <option value="none" ${state.linkType === 'none' ? 'selected' : ''}>Choose a record type</option>
@@ -261,7 +261,7 @@
           <option value="shift" ${state.linkType === 'shift' ? 'selected' : ''}>Shift</option>
           <option value="brain_recommendation" ${state.linkType === 'brain_recommendation' ? 'selected' : ''}>Atlas recommendation</option>
         </select>
-        <label><i data-lucide="search"></i><input type="search" data-team-target-search placeholder="Search available records" value="${escapeHtml(state.linkQuery)}" ${state.linkType === 'none' ? 'disabled' : ''} /></label>
+        <label><i data-lucide="search"></i><input type="search" aria-label="Search available Atlas records" data-team-target-search placeholder="Search available records" value="${escapeHtml(state.linkQuery)}" ${state.linkType === 'none' ? 'disabled' : ''} /></label>
       </div>
       <div class="team-target-list">${state.linkType === 'none' ? '<div class="team-target-state">Choose a record type to continue.</div>' : targetResultsMarkup()}</div>
     </section>`;

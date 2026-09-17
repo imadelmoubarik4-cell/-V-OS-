@@ -23,11 +23,11 @@
     "automatic_import_authorized": false
   },
   "files": {
-    "apps/web/config.js": "168ba626b4a2698b3ac42728273c3ad73ff043dc81b7375290fedb5bd0cf0c9c",
+    "apps/web/config.js": "45adcd3ef2dcdd8801998a569d81909495e1089ebd9c5de3d3f33ff91c2e625c",
     "apps/web/assets/js/rehearsal-boundary.js": "7f93c10cb909568b56395b4fbfad559991a08e6129111b7be55f1ac73b8fbf1f",
     "apps/web/assets/js/inventory-scanner-bootstrap.js": "29e643af6012f3a82a646ed859ef52d14029dbf0d247aa2b5327b52f0ae179a9",
     "apps/web/assets/js/stock-count-bootstrap.js": "935d7fe79891f87a4bb894546924f469a4750828a7799e221b2a3a385ea85f25",
-    "apps/web/assets/js/stock-count-workspace.js": "0919f8b0bb0fab332cccb8429f92647aff89a008e940d24c49dc2d861d28deec",
+    "apps/web/assets/js/stock-count-workspace.js": "c8e95d69b76b2216f9a009be3945f99ad0b9d6fd8756027237735ea9df4a36f9",
     "apps/web/assets/js/import-center.js": "c8da1f649f535a6d8171f5f317692220f60e3519761ccdb27c69c68fe89ef5d5",
     "netlify.toml": "d951de030dedcd5696cb824a3fb7f2d72fe3142f18f527c25b9bee8ae8e1e395",
     "supabase/config.toml": "9b533a4ae579c5dbef11e20b762c1f1fb12501fb759df557c6704862e57a3f5a"

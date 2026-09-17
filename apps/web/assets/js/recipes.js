@@ -300,7 +300,7 @@
 
         <section class="recipe-gallery" aria-label="Recipe gallery">
           <div class="recipe-gallery-toolbar">
-            <label class="recipe-search recipe-workspace-search" aria-label="Search recipes"><i data-lucide="search"></i><input type="search" id="recipe-search" placeholder="Search recipes…" /></label>
+            <label class="recipe-search recipe-workspace-search"><i data-lucide="search"></i><input type="search" id="recipe-search" aria-label="Search recipes" placeholder="Search recipes…" /></label>
             <div class="recipe-status-filters" id="recipe-status-filters" aria-label="Recipe health filters">
               <button type="button" class="active" data-status="all">All</button>
               <button type="button" data-status="ready">Ready</button>

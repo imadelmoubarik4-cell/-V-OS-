@@ -285,7 +285,7 @@
     const rows = filteredArticles(mode);
     return `<section class="knowledge-library">
       <div class="knowledge-controls">
-        <label class="knowledge-search"><i data-lucide="search"></i><input type="search" data-knowledge-search placeholder="Search policies, SOPs, checklists and training…" value="${escapeHtml(state.search)}"></label>
+        <label class="knowledge-search"><i data-lucide="search"></i><input type="search" aria-label="Search Knowledge" data-knowledge-search placeholder="Search policies, SOPs, checklists and training…" value="${escapeHtml(state.search)}"></label>
         <span>${rows.length} article${rows.length === 1 ? '' : 's'}</span>
       </div>
       ${categoryFiltersMarkup()}
@@ -422,7 +422,7 @@
     return `<article class="knowledge-detail-source">
       <span><i data-lucide="${source.source_type === 'google_drive' ? 'cloud' : source.source_type === 'atlas_module' ? 'radio-tower' : 'file-check-2'}"></i></span>
       <div><small>${escapeHtml(humanize(source.source_type))}</small><strong>${escapeHtml(source.source_label)}</strong><p>${escapeHtml(source.source_version || source.source_reference || '')}</p><em>${escapeHtml(humanize(source.connection_status))}${source.visible_to_staff ? ' · staff visible' : ' · manager only'}</em></div>
-      ${canManage() ? `<div class="knowledge-source-actions">${source.source_url ? `<button type="button" data-knowledge-source-open="${escapeHtml(source.id)}"><i data-lucide="external-link"></i></button>` : ''}<button type="button" data-knowledge-source-edit="${escapeHtml(source.id)}"><i data-lucide="pencil"></i></button><button type="button" data-knowledge-source-remove="${escapeHtml(source.id)}"><i data-lucide="trash-2"></i></button></div>` : ''}
+      ${canManage() ? `<div class="knowledge-source-actions">${source.source_url ? `<button type="button" data-knowledge-source-open="${escapeHtml(source.id)}" aria-label="Open source"><i data-lucide="external-link"></i></button>` : ''}<button type="button" data-knowledge-source-edit="${escapeHtml(source.id)}" aria-label="Edit source"><i data-lucide="pencil"></i></button><button type="button" data-knowledge-source-remove="${escapeHtml(source.id)}" aria-label="Remove source"><i data-lucide="trash-2"></i></button></div>` : ''}
     </article>`;
   }
 
@@ -480,7 +480,7 @@
     const pendingTask = state.onboardingTasks.find((task) => task.id === state.pendingTaskId);
     return `<div class="knowledge-modal-backdrop" data-knowledge-close-editor></div>
       <aside class="knowledge-editor-modal" aria-labelledby="knowledge-editor-title">
-        <header><div><span>Manager workspace</span><h2 id="knowledge-editor-title">${article.id ? 'Edit Knowledge draft' : 'New Knowledge article'}</h2></div><button type="button" data-knowledge-close-editor><i data-lucide="x"></i></button></header>
+        <header><div><span>Manager workspace</span><h2 id="knowledge-editor-title">${article.id ? 'Edit Knowledge draft' : 'New Knowledge article'}</h2></div><button type="button" data-knowledge-close-editor aria-label="Close Knowledge editor"><i data-lucide="x"></i></button></header>
         <form data-knowledge-editor-form>
           <input type="hidden" name="article_id" value="${escapeHtml(article.id || '')}">
           <input type="hidden" name="article_key" value="${escapeHtml(article.article_key || '')}">
@@ -511,7 +511,7 @@
     if (!state.sourceEditorOpen || !state.detail) return '';
     const source = state.sourceEditing || {};
     return `<div class="knowledge-modal-backdrop is-source" data-knowledge-close-source></div>
-      <aside class="knowledge-source-modal" aria-labelledby="knowledge-source-title"><header><div><span>Manager-only attribution</span><h2 id="knowledge-source-title">${source.id ? 'Edit source' : 'Add source'}</h2></div><button type="button" data-knowledge-close-source><i data-lucide="x"></i></button></header>
+      <aside class="knowledge-source-modal" aria-labelledby="knowledge-source-title"><header><div><span>Manager-only attribution</span><h2 id="knowledge-source-title">${source.id ? 'Edit source' : 'Add source'}</h2></div><button type="button" data-knowledge-close-source aria-label="Close source editor"><i data-lucide="x"></i></button></header>
         <form data-knowledge-source-form>
           <input type="hidden" name="source_id" value="${escapeHtml(source.id || '')}">
           <label><span>Source type</span><select name="source_type">${['google_drive','atlas_module','sprint3_import','manual','external'].map((type) => `<option value="${type}" ${type === (source.source_type || 'manual') ? 'selected' : ''}>${escapeHtml(humanize(type))}</option>`).join('')}</select></label>
