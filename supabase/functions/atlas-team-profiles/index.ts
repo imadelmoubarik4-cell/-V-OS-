@@ -85,6 +85,7 @@ function staffPayload(context: AtlasContext) {
     can_edit_self: true,
     live_training_writes_enabled: true,
     live_profile_writes_enabled: true,
+    account_invitations_enabled: true,
   };
 }
 
@@ -161,6 +162,14 @@ function requiredText(value: unknown, label: string, maxLength: number): string 
   const normalized = optionalText(value, maxLength);
   if (!normalized) throw new ApiError(400, `${label} is required.`);
   return normalized;
+}
+
+function requiredEmail(value: unknown): string {
+  const email = requiredText(value, "Email", 320).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new ApiError(400, "Enter a valid email address.");
+  }
+  return email;
 }
 
 function optionalEnum(value: unknown, label: string, allowed: Set<string>): string | null {
@@ -352,7 +361,7 @@ async function snapshot(context: AtlasContext) {
       role_and_active_controls: "manager_or_admin_except_self",
       self_role_change: false,
       self_deactivation: false,
-      account_invitations_enabled: false,
+      account_invitations_enabled: true,
       direct_browser_table_access: false,
     },
   };
@@ -480,6 +489,40 @@ async function updateOnboarding(context: AtlasContext, body: Record<string, unkn
   return result;
 }
 
+async function inviteAccount(context: AtlasContext, body: Record<string, unknown>) {
+  requireManager(context);
+  const email = requiredEmail(body.email);
+  const displayName = optionalText(body.display_name, 120);
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceRoleKey) throw new ApiError(500, "Account invitations are temporarily unavailable.");
+
+  const inviteUrl = new URL(`${AUTH_PROJECT_URL}/auth/v1/invite`);
+  inviteUrl.searchParams.set("redirect_to", "https://os-vabar.netlify.app");
+  const response = await fetch(inviteUrl, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      authorization: `Bearer ${serviceRoleKey}`,
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      data: displayName ? { display_name: displayName } : {},
+    }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = typeof result?.msg === "string"
+      ? result.msg
+      : typeof result?.message === "string"
+      ? result.message
+      : "Invitation could not be sent.";
+    throw new ApiError(response.status === 422 ? 409 : response.status >= 500 ? 503 : 400, detail);
+  }
+  return { invited: true, email };
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
 
@@ -563,6 +606,10 @@ Deno.serve(async (request: Request) => {
 
       case "update-onboarding":
         result = await updateOnboarding(context, body);
+        break;
+
+      case "invite-account":
+        result = await inviteAccount(context, body);
         break;
 
       default:

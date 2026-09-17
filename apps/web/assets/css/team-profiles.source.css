@@ -170,6 +170,11 @@
 
 .team-profiles-trust{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 13px;border-radius:12px;background:#252622;color:#e9e3d9;font-size:8px;line-height:1.5}
 .team-profiles-trust svg{width:16px;height:16px;color:#c7a269;flex:0 0 auto}
+.team-profiles-directory>footer button{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:9px 12px;border:1px solid var(--atlas-line);border-radius:10px;background:#fff;color:var(--atlas-text);font:600 10px 'IBM Plex Sans',sans-serif;cursor:pointer}
+.team-profiles-directory>footer button:hover{border-color:#baa989;background:#fbfaf7}
+.team-profiles-directory>footer button svg,.team-profiles-directory>footer>span svg{width:15px;height:15px;flex:0 0 auto}
+.team-profiles-directory>footer>span{display:flex;align-items:center;gap:7px}
+.team-profile-form-note{margin:0;padding:11px 12px;border:1px solid #e5dfd3;border-radius:10px;background:#faf8f3;color:var(--atlas-muted);font-size:9px;line-height:1.55}
 
 .team-profiles-state{min-height:560px;display:grid;place-content:center;justify-items:center;text-align:center;padding:42px;border:1px solid var(--atlas-line);border-radius:18px;background:var(--atlas-surface)}
 .team-profiles-state>span{width:60px;height:60px;display:grid;place-items:center;border-radius:18px;background:var(--atlas-accent-soft);color:#836b47}

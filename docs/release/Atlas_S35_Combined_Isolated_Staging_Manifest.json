@@ -163,7 +163,7 @@
     {
       "name": "atlas-team-profiles",
       "sources": {
-        "supabase/functions/atlas-team-profiles/index.ts": "15aa6de71ef178d8ce97d8fdd56d77454382c1a6ff5e4ca89305647f8691c72a"
+        "supabase/functions/atlas-team-profiles/index.ts": "d8943e38c0d3411772cae6a8133626d7a672c9c9525fa17ea7e00506d75cff63"
       }
     },
     {

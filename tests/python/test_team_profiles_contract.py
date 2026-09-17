@@ -107,7 +107,15 @@ class TeamProfilesContractTests(unittest.TestCase):
         self.assertIn('/rest/v1/onboarding_tasks', EDGE)
         self.assertIn('/rest/v1/onboarding_progress', EDGE)
         self.assertIn('active.desc,display_name.asc.nullslast,email.asc', EDGE)
-        self.assertIn('account_invitations_enabled: false', EDGE)
+        self.assertIn('account_invitations_enabled: true', EDGE)
+
+    def test_manager_account_invitation_uses_supabase_auth_admin_gateway(self):
+        self.assertIn('async function inviteAccount', EDGE)
+        self.assertIn('requireManager(context)', EDGE)
+        self.assertIn('/auth/v1/invite', EDGE)
+        self.assertIn('SUPABASE_SERVICE_ROLE_KEY', EDGE)
+        self.assertIn('redirect_to', EDGE)
+        self.assertNotIn('app_metadata', EDGE)
 
     def test_audited_production_training_and_access_controls_are_enabled(self):
         self.assertIn('live_training_writes_enabled: true', EDGE)
