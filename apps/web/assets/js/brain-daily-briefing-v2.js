@@ -147,6 +147,22 @@
     return `<section class="daily-briefing-shell is-error" data-daily-briefing><div class="daily-state-icon"><i data-lucide="shield-alert"></i></div><div class="daily-error-copy"><h2>Daily Briefing unavailable</h2><p>${escape(message)}</p></div><button type="button" class="daily-refresh-button" data-daily-refresh><i data-lucide="refresh-cw"></i>Try again</button></section>`;
   }
 
+  function privateMaturityMarkup(summary) {
+    const staged = Math.max(0, number(summary.staged_rows));
+    const reviewed = Math.max(0, number(summary.reviewed_rows));
+    if (!staged) {
+      return '<article data-private-maturity="unavailable"><span>Private review maturity</span><strong>Not available</strong><small>No staged private records</small></article>';
+    }
+    return `<article data-private-maturity="measured"><span>Private review maturity</span><strong>${formatPercent(summary.maturity_percent)}</strong><small>${formatNumber(reviewed)} of ${formatNumber(staged)} reviewed</small></article>`;
+  }
+
+  function briefingHeadline(briefing, summary) {
+    if (Math.max(0, number(summary.staged_rows)) === 0) {
+      return 'No staged private review records are available yet.';
+    }
+    return briefing.headline || 'Atlas briefing';
+  }
+
   function briefingMarkup(briefing) {
     const summary = briefing.summary || {};
     const signals = Array.isArray(briefing.signals) ? briefing.signals.slice(0, 8) : [];
@@ -157,11 +173,11 @@
 
     return `<section class="daily-briefing-shell" data-daily-briefing>
       <header class="daily-briefing-head">
-        <div><span class="daily-kicker"><i data-lucide="sunrise"></i>Daily Atlas Briefing · Phase 1</span><h2>${escape(briefing.headline || 'Atlas briefing')}</h2><p>Deterministic management intelligence with visible confidence, source attribution and supporting evidence.</p></div>
+        <div><span class="daily-kicker"><i data-lucide="sunrise"></i>Daily Atlas Briefing · Phase 1</span><h2>${escape(briefingHeadline(briefing, summary))}</h2><p>Deterministic management intelligence with visible confidence, source attribution and supporting evidence.</p></div>
         <div class="daily-head-actions"><span class="daily-generated">Generated ${escape(formatDateTime(briefing.generated_at))}</span><button type="button" class="daily-refresh-button" data-daily-refresh><i data-lucide="refresh-cw"></i>Refresh</button></div>
       </header>
       <div class="daily-summary-grid">
-        <article><span>Data maturity</span><strong>${formatPercent(summary.maturity_percent)}</strong><small>${formatNumber(summary.reviewed_rows)} reviewed</small></article>
+        ${privateMaturityMarkup(summary)}
         <article><span>Pending review</span><strong>${formatNumber(summary.pending_rows)}</strong><small>of ${formatNumber(summary.staged_rows)} staged rows</small></article>
         <article><span>Source files</span><strong>${formatNumber(summary.source_files)}</strong><small>${formatNumber(summary.hashed_batches)} hashed batches</small></article>
         <article><span>Open issues</span><strong>${formatNumber(summary.open_issue_rows)}</strong><small>${summary.promotion_ready ? 'Promotion gate clear' : 'Promotion remains blocked'}</small></article>
