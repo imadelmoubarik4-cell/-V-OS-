@@ -1,0 +1,19 @@
+/* S57: compact conversation actions and reliable narrow-screen message scrolling. */
+#team-view .team-conversation-actions [data-team-star]{width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;padding:0!important;justify-content:center!important}
+#team-view .team-conversation-actions [data-team-star]>span{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+#team-view .team-conversation-actions [data-team-star] svg{width:16px!important;height:16px!important;margin:0!important}
+body.s38-team-active .fab-wrap{display:none!important}
+
+@media(max-width:760px){
+  #team-view .team-messages-layout{display:flex!important;flex-direction:column!important;height:auto!important;min-height:0!important;overflow:visible!important}
+  #team-view .team-channel-panel{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+  #team-view .team-conversation-panel{height:clamp(500px,72dvh,720px)!important;min-height:500px!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  #team-view .team-message-list{flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain}
+  #team-view .team-composer{position:relative!important;inset:auto!important;flex:0 0 auto!important;z-index:3!important;padding-bottom:max(12px,env(safe-area-inset-bottom))!important}
+}
+
+@media(max-width:430px){
+  #team-view .team-conversation-panel{height:clamp(480px,76dvh,680px)!important;min-height:480px!important}
+  #team-view .team-conversation-head h2{max-width:52vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #team-view .team-composer footer{display:flex!important;flex-wrap:wrap!important;gap:8px!important}
+}

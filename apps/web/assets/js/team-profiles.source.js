@@ -227,7 +227,9 @@
         </div>
       </div>
       <div class="team-profile-card-list">${entries.length ? entries.map(profileCard).join('') : '<div class="team-profiles-empty"><i data-lucide="user-search"></i><p>No profiles match this view.</p></div>'}</div>
-      <footer><i data-lucide="user-plus"></i><span>Account invitations are not connected yet. This checkpoint manages existing Atlas accounts only.</span></footer>
+      <footer>${state.staff?.can_manage_team && state.staff?.account_invitations_enabled
+        ? '<button type="button" data-team-profile-invite><i data-lucide="user-plus"></i><span>Invite team member</span></button>'
+        : '<span><i data-lucide="user-plus"></i>Account invitations are manager-controlled.</span>'}</footer>
     </aside>`;
   }
 
@@ -379,7 +381,25 @@
     </div>`;
   }
 
+  function inviteModal() {
+    return `<div class="team-profile-modal" role="dialog" aria-modal="true" aria-labelledby="team-invite-modal-title">
+      <div class="team-profile-modal-backdrop" data-team-profile-close-modal></div>
+      <section>
+        <header><div><span>Account invitation</span><h2 id="team-invite-modal-title">Invite a team member</h2></div><button type="button" data-team-profile-close-modal aria-label="Close"><i data-lucide="x"></i></button></header>
+        <form data-team-profile-invite-form>
+          <p class="team-profile-form-note">Supabase Auth will email a secure invitation. Role, access and onboarding remain manager-controlled after the person accepts it.</p>
+          <div class="team-profile-form-grid">
+            <label><span>Email address</span><input type="email" name="email" required maxlength="320" autocomplete="email" placeholder="person@example.com" /></label>
+            <label><span>Display name (optional)</span><input name="display_name" maxlength="120" autocomplete="name" placeholder="Name shown in Atlas" /></label>
+          </div>
+          <footer><button type="button" class="team-profile-secondary" data-team-profile-close-modal>Cancel</button><button type="submit" class="team-profile-primary" ${state.submitting ? 'disabled' : ''}><i data-lucide="send"></i>Send invitation</button></footer>
+        </form>
+      </section>
+    </div>`;
+  }
+
   function modalMarkup() {
+    if (state.modal?.mode === 'invite') return inviteModal();
     const profile = selectedProfile();
     if (!state.modal || !profile) return '';
     if (state.modal.mode === 'edit-profile') return editProfileModal(profile);
@@ -407,7 +427,7 @@
       ${feedbackMarkup()}
       ${summaryMarkup()}
       <div class="team-profiles-layout">${directoryMarkup()}${detailMarkup()}</div>
-      <footer class="team-profiles-trust"><i data-lucide="shield-check"></i><span>Active profiles only for staff · Emergency contacts private · Role and access changes manager-controlled · Training changes audited · Account invitation off</span></footer>
+      <footer class="team-profiles-trust"><i data-lucide="shield-check"></i><span>Active profiles only for staff · Emergency contacts private · Role and access changes manager-controlled · Training changes audited · Invitations manager-only</span></footer>
       ${modalMarkup()}
     </section>`;
   }
@@ -508,6 +528,13 @@
     }, 'Emergency contact saved.');
   }
 
+  function submitInvite(form) {
+    mutate('invite-account', {
+      email: formValue(form, 'email'),
+      display_name: formValue(form, 'display_name') || null
+    }, 'Account invitation sent.');
+  }
+
   function submitAccess(form) {
     const profile = selectedProfile();
     if (!profile) return;
@@ -545,6 +572,11 @@
 
     if (target.closest('[data-team-profiles-refresh]')) { loadSnapshot({ force: true }); return; }
     if (target.closest('[data-team-profiles-messages]')) { openMessages(); return; }
+    if (target.closest('[data-team-profile-invite]')) {
+      state.modal = { mode: 'invite' };
+      render();
+      return;
+    }
 
     const card = target.closest('[data-team-profile-select]');
     if (card) {
@@ -613,6 +645,7 @@
     event.preventDefault();
     if (form.matches('[data-team-profile-details-form]')) submitDetails(form);
     else if (form.matches('[data-team-profile-contact-form]')) submitContact(form);
+    else if (form.matches('[data-team-profile-invite-form]')) submitInvite(form);
     else if (form.matches('[data-team-profile-access-form]')) submitAccess(form);
   }
 

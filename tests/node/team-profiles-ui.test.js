@@ -49,7 +49,10 @@ test('sensitive controls are explicitly bounded', () => {
   assert.match(ui, /Emergency contacts are visible only to the team member and managers/);
   assert.match(ui, /You cannot change your own role or deactivate your own account here/);
   assert.match(ui, /Only an administrator can modify an administrator profile/);
-  assert.match(ui, /Account invitations are not connected yet/);
+  assert.match(ui, /Invite team member/);
+  assert.match(ui, /data-team-profile-invite-form/);
+  assert.match(ui, /invite-account/);
+  assert.match(ui, /Account invitation sent/);
   assert.match(ui, /audit event will be preserved/i);
 });
 

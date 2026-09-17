@@ -213,8 +213,8 @@
       "files": [
         {
           "path": "functions/atlas-team-profiles/index.ts",
-          "source_sha256": "15aa6de71ef178d8ce97d8fdd56d77454382c1a6ff5e4ca89305647f8691c72a",
-          "candidate_sha256": "1eccdabd6dc63b0e283c70755b00b65b2ab65000fbe7aac88e04dc021e36aacf"
+          "source_sha256": "d8943e38c0d3411772cae6a8133626d7a672c9c9525fa17ea7e00506d75cff63",
+          "candidate_sha256": "ad7b60ee95a71f229d95c32fdcd04c034a81dea63bca606de94f04d172f41cf7"
         }
       ]
     }
