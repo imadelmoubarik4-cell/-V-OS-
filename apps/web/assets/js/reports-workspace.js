@@ -92,6 +92,9 @@
     if (!value) return 'Not refreshed';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return String(value);
+    // The reporting RPC uses the Unix epoch as an empty aggregate sentinel.
+    // Never present that sentinel as a genuine operational refresh.
+    if (date.getUTCFullYear() <= 1970) return 'Not refreshed';
     return new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Atlantic/Reykjavik',
       day: '2-digit', month: 'short', year: 'numeric',
@@ -332,7 +335,7 @@
     const count = activeFilterCount();
     return `<section class="reports-filter-shell">
       <div class="reports-filter-row">
-        <label class="reports-search"><i data-lucide="search"></i><input type="search" data-reports-search value="${escapeHtml(state.filters.search)}" placeholder="Search the current report"></label>
+        <label class="reports-search"><i data-lucide="search"></i><input type="search" aria-label="Search the current report" data-reports-search value="${escapeHtml(state.filters.search)}" placeholder="Search the current report"></label>
         <label><span>Status</span><select data-reports-filter="status"><option value="">All statuses</option>${statuses.map((value) => `<option value="${escapeHtml(value)}" ${state.filters.status === value ? 'selected' : ''}>${escapeHtml(humanize(value))}</option>`).join('')}</select></label>
         <label><span>Category</span><select data-reports-filter="category"><option value="">All categories</option>${categories.map((value) => `<option value="${escapeHtml(value)}" ${state.filters.category === value ? 'selected' : ''}>${escapeHtml(value)}</option>`).join('')}</select></label>
         <label><span>Supplier</span><select data-reports-filter="supplier"><option value="">All suppliers</option>${suppliers.map((value) => `<option value="${escapeHtml(value)}" ${state.filters.supplier === value ? 'selected' : ''}>${escapeHtml(value)}</option>`).join('')}</select></label>
@@ -344,7 +347,7 @@
   }
 
   function navigationMarkup() {
-    return `<nav class="reports-navigation" aria-label="Report sections">${sections().map((section) => `<button type="button" data-reports-section="${escapeHtml(section.key)}" class="${state.activeSection === section.key ? 'is-active' : ''}">
+    return `<nav class="reports-navigation" aria-label="Report sections">${sections().map((section) => `<button type="button" data-reports-section="${escapeHtml(section.key)}" class="${state.activeSection === section.key ? 'is-active' : ''}" ${state.activeSection === section.key ? 'aria-current="page"' : ''}>
       <span>${escapeHtml(section.name)}</span>${statusPill(section.status, '')}
     </button>`).join('')}</nav>`;
   }
@@ -759,12 +762,15 @@
 
   function shellMarkup() {
     const meta = sectionMeta();
-    const activeSources = (state.snapshot?.data_sources || []).filter((source) => source.status === 'connected').length;
-    const totalSources = (state.snapshot?.data_sources || []).length;
+    const sources = state.snapshot?.data_sources || [];
+    const connectedSources = sources.filter((source) => source.status === 'connected').length;
+    const partialSources = sources.filter((source) => source.status === 'partial').length;
+    const availableSources = connectedSources + partialSources;
+    const totalSources = sources.length;
     return `<section class="reports-shell">
       <header class="reports-hero">
         <div><span class="reports-kicker"><i data-lucide="chart-no-axes-combined"></i>Checkpoint H · Read & analyse</span><h1>Reports</h1><p>Understand what happened, what requires attention and how trustworthy the available evidence is—without changing source records.</p></div>
-        <div class="reports-hero-meta"><span><i data-lucide="calendar-range"></i>${escapeHtml(state.snapshot?.period?.label || '')}</span><span><i data-lucide="clock-3"></i>Refreshed ${escapeHtml(formatDateTime(state.snapshot?.generated_at))}</span><span><i data-lucide="database"></i>${activeSources}/${totalSources} sources connected</span></div>
+        <div class="reports-hero-meta"><span><i data-lucide="calendar-range"></i>${escapeHtml(state.snapshot?.period?.label || '')}</span><span><i data-lucide="clock-3"></i>Refreshed ${escapeHtml(formatDateTime(state.snapshot?.generated_at))}</span><span><i data-lucide="database"></i>${availableSources}/${totalSources} sources available · ${connectedSources} fully connected</span></div>
       </header>
       ${state.message ? `<div class="reports-feedback is-success"><i data-lucide="circle-check-big"></i>${escapeHtml(state.message)}</div>` : ''}
       ${state.error ? `<div class="reports-feedback is-error"><i data-lucide="triangle-alert"></i>${escapeHtml(state.error)}</div>` : ''}
@@ -844,6 +850,9 @@
     state.askAnswer = null;
     const hash = `#reports/${section}`;
     if (location.hash !== hash) history.replaceState(null, '', hash);
+    // Switch the visible report synchronously; the request below refreshes the
+    // evidence without leaving the prior section on screen during the round trip.
+    render();
     loadSnapshot({ force: true });
   }
 

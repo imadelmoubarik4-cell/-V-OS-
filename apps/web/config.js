@@ -247,8 +247,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // read-only analysis workspace. It pulls live source records through the
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/reports-workspace.css',
-  scriptPath: 'assets/js/reports-workspace.js',
+  stylesheetPath: 'assets/css/reports-workspace.css?v=20260917-s60',
+  scriptPath: 'assets/js/reports-workspace.js?v=20260917-s60',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));

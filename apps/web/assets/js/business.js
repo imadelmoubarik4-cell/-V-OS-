@@ -329,7 +329,7 @@
       { value: 30, label: '30 days' },
       { value: 90, label: '90 days' },
       { value: Infinity, label: 'All time' }
-    ].map((entry) => `<button type="button" data-business-period="${Number.isFinite(entry.value) ? entry.value : 'all'}" class="${state.periodDays === entry.value ? 'active' : ''}">${entry.label}</button>`).join('');
+    ].map((entry) => `<button type="button" data-business-period="${Number.isFinite(entry.value) ? entry.value : 'all'}" class="${state.periodDays === entry.value ? 'active' : ''}" aria-pressed="${state.periodDays === entry.value}">${entry.label}</button>`).join('');
   }
 
   function metricMarkup(icon, value, label, detail, tone = '') {
@@ -384,15 +384,22 @@
   }
 
   function coverageMarkup() {
+    const inventoryLoaded = activeItems().length > 0;
+    const inventoryReady = activeItems().some((item) => number(item.cost_price) > 0);
+    const recipesLoaded = activeRecipes().length > 0;
+    const recipesReady = recipeCompleteness().complete > 0;
+    const movementsLoaded = sourceMovements().length > 0;
+    const purchasingReady = sourceMovements().some((movement) => number(movement.total_cost) > 0);
     const rows = [
-      { name: 'Inventory valuation', connected: activeItems().some((item) => number(item.cost_price) > 0), note: 'Live from inventory items' },
-      { name: 'Recipe profitability', connected: recipeCompleteness().complete > 0, note: 'Live from recipes and inventory costs' },
-      { name: 'Supplier purchasing', connected: sourceMovements().some((movement) => number(movement.total_cost) > 0), note: 'Live from costed restock movements' },
-      { name: 'Sales and product mix', connected: false, note: 'POS integration required' },
-      { name: 'Bookings and guest forecast', connected: false, note: 'Booking integration required' },
-      { name: 'Labour and wage analysis', connected: false, note: 'Team and payroll integration required' }
+      { name: 'Inventory valuation', status: inventoryReady ? 'connected' : inventoryLoaded ? 'incomplete' : 'not_connected', note: inventoryReady ? 'Live from inventory items with current cost data' : inventoryLoaded ? 'Inventory is connected; current cost data is still required' : 'Inventory data is not available' },
+      { name: 'Recipe profitability', status: recipesReady ? 'connected' : recipesLoaded ? 'incomplete' : 'not_connected', note: recipesReady ? 'Live from complete recipe and inventory costs' : recipesLoaded ? 'Recipes are connected; price and cost setup is incomplete' : 'Recipe data is not available' },
+      { name: 'Supplier purchasing', status: purchasingReady ? 'connected' : movementsLoaded ? 'incomplete' : 'no_records', note: purchasingReady ? 'Live from costed restock movements' : movementsLoaded ? 'Restock history is connected; cost data is incomplete' : 'No costed restock movements are recorded' },
+      { name: 'Sales and product mix', status: 'not_connected', note: 'POS integration required' },
+      { name: 'Bookings and guest forecast', status: 'not_connected', note: 'Booking integration required' },
+      { name: 'Labour and wage analysis', status: 'not_connected', note: 'Team and payroll integration required' }
     ];
-    return rows.map((row) => `<div class="business-coverage-row"><div><strong>${escape(row.name)}</strong><span>${escape(row.note)}</span></div><span class="business-coverage-state ${row.connected ? 'connected' : 'pending'}"><i></i>${row.connected ? 'Connected' : 'Not connected'}</span></div>`).join('');
+    const labels = { connected: 'Connected', incomplete: 'Incomplete', no_records: 'No records', not_connected: 'Not connected' };
+    return rows.map((row) => `<div class="business-coverage-row"><div><strong>${escape(row.name)}</strong><span>${escape(row.note)}</span></div><span class="business-coverage-state ${row.status === 'connected' ? 'connected' : 'pending'}"><i></i>${labels[row.status]}</span></div>`).join('');
   }
 
   function render() {
