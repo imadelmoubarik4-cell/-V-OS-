@@ -498,6 +498,7 @@
   <link rel="stylesheet" href="assets/css/s38-app-remediation.css">
   <link rel="stylesheet" href="assets/css/knowledge-s56.css?v=20260917-s56">
   <link rel="stylesheet" href="assets/css/team-s57.css?v=20260917-s57">
+  <link rel="stylesheet" href="assets/css/inventory-operations-s58.css?v=20260917-s58">
 </head>
 <body>
 
@@ -785,8 +786,26 @@
           <div id="team-view" class="placeholder-view"><div class="placeholder-head"><h2>Team</h2><p>Profiles, roles, emergency contacts and training status.</p></div><div class="empty-module"><i data-lucide="users"></i><h3>Team workspace is ready</h3><p>Next: connect live staff profiles from Supabase.</p></div></div>
           <div id="shifts-view" class="placeholder-view"><div class="placeholder-head"><h2>Shifts</h2><p>A calm weekly planner built for hospitality.</p></div><div class="empty-module"><i data-lucide="calendar-days"></i><h3>Shift planner foundation is ready</h3><p>Next: weekly schedule, availability and publishing.</p></div></div>
           <div id="knowledge-view" class="placeholder-view"><div class="placeholder-head"><h2>Knowledge</h2><p>Documents, onboarding, training and checklists.</p></div><div class="empty-module"><i data-lucide="book-open"></i><h3>Knowledge hub foundation is ready</h3><p>Eight onboarding steps already exist in Supabase.</p></div></div>
-          <div id="movements-view" class="placeholder-view" data-unavailable-view="movements"><div class="placeholder-head"><h2>Inventory movements</h2><p>Movement history is not available in this V1 preview.</p></div><div class="empty-module" role="status"><i data-lucide="database"></i><h3>Inventory movements are not available yet</h3><p>Atlas does not have an approved standalone movement ledger. No movement records are shown or inferred here.</p></div></div>
-          <div id="waste-view" class="placeholder-view" data-unavailable-view="waste"><div class="placeholder-head"><h2>Waste</h2><p>Waste tracking is not available in this V1 preview.</p></div><div class="empty-module" role="status"><i data-lucide="database"></i><h3>Waste logging is coming later</h3><p>Atlas does not yet have an approved Waste workspace. No waste records are shown or fabricated here.</p></div></div>
+          <div id="movements-view" class="inventory-ledger-view" style="display:none;">
+            <header class="inventory-ledger-head"><div><span>Inventory evidence</span><h2>Movement history</h2><p>Every recorded restock, count, adjustment, transfer, sale and explicit waste event.</p></div><button type="button" class="btn ghost" id="inventory-ledger-refresh"><i data-lucide="refresh-cw"></i>Refresh</button></header>
+            <div class="inventory-ledger-summary" aria-label="Inventory movement summary"><article><span>Total records</span><strong id="movement-total">0</strong></article><article><span>Restocks</span><strong id="movement-restocks">0</strong></article><article><span>Explicit waste</span><strong id="movement-waste">0</strong></article></div>
+            <section class="inventory-ledger-table"><table><thead><tr><th>Date</th><th>Item</th><th>Type</th><th>Change</th><th>Note</th></tr></thead><tbody id="movement-history-body"></tbody></table><div class="inventory-ledger-empty" id="movement-history-empty" hidden><i data-lucide="history"></i><h3>No movement records yet</h3><p>Verified stock operations will appear here without inference.</p></div></section>
+          </div>
+          <div id="waste-view" class="inventory-ledger-view" style="display:none;">
+            <header class="inventory-ledger-head"><div><span>Controlled inventory workflow</span><h2>Waste</h2><p>Record explicit waste only. Ordinary negative adjustments are never reclassified as waste.</p></div></header>
+            <section class="inventory-waste-entry" data-commercial-only>
+              <div><i data-lucide="recycle"></i><span><strong>Log waste</strong><small>This immediately reduces live stock and creates an immutable movement record.</small></span></div>
+              <form id="inventory-waste-form">
+                <label><span>Inventory item</span><select name="item_id" id="inventory-waste-item" required><option value="">Choose item</option></select></label>
+                <label><span>Quantity wasted</span><input type="number" name="quantity" min="0.000001" step="any" required /></label>
+                <label><span>Reason</span><select name="reason" required><option value="">Choose reason</option><option value="spoilage">Spoilage</option><option value="breakage">Breakage</option><option value="spill">Spill</option><option value="expiry">Expiry</option><option value="preparation">Preparation waste</option><option value="other">Other</option></select></label>
+                <label class="is-wide"><span>Note</span><input name="note" maxlength="900" required placeholder="What happened and where" /></label>
+                <button type="submit" class="btn"><i data-lucide="minus-circle"></i>Record waste</button>
+              </form>
+              <p role="status" id="inventory-waste-status" aria-live="polite"></p>
+            </section>
+            <section class="inventory-ledger-table"><table><thead><tr><th>Date</th><th>Item</th><th>Quantity</th><th>Recorded reason</th></tr></thead><tbody id="waste-history-body"></tbody></table><div class="inventory-ledger-empty" id="waste-history-empty" hidden><i data-lucide="recycle"></i><h3>No explicit waste records</h3><p>Atlas will not infer waste from ordinary adjustments.</p></div></section>
+          </div>
           <div id="reports-view" class="placeholder-view"><div class="placeholder-head"><h2>Reports</h2><p>Inventory, usage, waste, labour and purchasing insights.</p></div><div class="empty-module"><i data-lucide="chart-no-axes-combined"></i><h3>Reports are coming next</h3></div></div>
           <div id="settings-view" class="placeholder-view"><div class="placeholder-head"><h2>Settings</h2><p>Venue, team access and VÁ OS preferences.</p></div><div class="empty-module"><i data-lucide="settings"></i><h3>Project Atlas</h3><p>Built with care for VÁ Bar, Reykjavík.</p></div></div>
         </main></div>
@@ -1129,6 +1148,7 @@
 
   let items = [];
   let restockLog = [];
+  let inventoryMovements = [];
   let recipes = [];
   let suppliers = [];
   let draftIngredients = [];
@@ -1263,21 +1283,26 @@
     items = data || [];
     renderTabs();
     renderTable();
+    renderInventoryOperations();
   }
 
   async function loadRestockLog() {
     const relation = canManageCommercial() ? 'inventory_movements' : 'inventory_movement_catalog';
     let query = sb.from(relation);
     query = canManageCommercial()
-      ? query.select('*, suppliers(name)').eq('movement_type', 'restock')
-      : query.select('*').eq('movement_type', 'restock');
+      ? query.select('*, suppliers(name)')
+      : query.select('*');
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) {
       console.error(`${relation} could not be loaded`, error);
+      inventoryMovements = [];
       restockLog = [];
+      renderInventoryOperations();
       return;
     }
-    restockLog = data || [];
+    inventoryMovements = data || [];
+    restockLog = inventoryMovements.filter(entry => entry.movement_type === 'restock');
+    renderInventoryOperations();
   }
 
   async function loadRecipes() {
@@ -1444,8 +1469,11 @@
     }, new Map());
     subWrap.innerHTML = '';
     subWrap.hidden = !counts.size;
-    if (counts.size) {
-      const subcategories = [...counts].sort(([left], [right]) => left.localeCompare(right));
+    if (counts.size || activeCategory === 'wine') {
+      const subcategories = activeCategory === 'wine'
+        ? ['Red', 'White', 'Rosé', 'Sparkling'].map(label => [label, counts.get(label) || 0])
+        : [...counts].sort(([left], [right]) => left.localeCompare(right));
+      subWrap.hidden = false;
       [['all', 'All', groupItems.length], ...subcategories.map(([label, count]) => [label, label, count])].forEach(([value, label, count]) => {
         const btn = document.createElement('button');
         btn.className = 'tab' + (value === activeSubcategory ? ' active' : '');
@@ -1483,6 +1511,77 @@
     if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
     return Math.floor(diff / 86400) + 'd ago';
   }
+
+  function movementTypeLabel(value) {
+    return String(value || 'adjustment').replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+  }
+
+  function movementRow(entry) {
+    const quantity = Number(entry.quantity_change || 0);
+    return `<tr><td>${escapeHtml(new Date(entry.created_at).toLocaleString())}</td><td><strong>${escapeHtml(entry.item_name || 'Inventory item')}</strong></td><td><span class="inventory-movement-type is-${escapeHtml(entry.movement_type || 'adjustment')}">${escapeHtml(movementTypeLabel(entry.movement_type))}</span></td><td class="numeric ${quantity < 0 ? 'is-negative' : 'is-positive'}">${quantity > 0 ? '+' : ''}${escapeHtml(quantity)}</td><td>${escapeHtml(entry.note || '—')}</td></tr>`;
+  }
+
+  function renderInventoryOperations() {
+    const movementBody = document.getElementById('movement-history-body');
+    const wasteBody = document.getElementById('waste-history-body');
+    if (!movementBody || !wasteBody) return;
+    const explicitWaste = inventoryMovements.filter(entry => entry.movement_type === 'waste');
+    document.getElementById('movement-total').textContent = inventoryMovements.length;
+    document.getElementById('movement-restocks').textContent = restockLog.length;
+    document.getElementById('movement-waste').textContent = explicitWaste.length;
+    movementBody.innerHTML = inventoryMovements.map(movementRow).join('');
+    document.getElementById('movement-history-empty').hidden = inventoryMovements.length > 0;
+    wasteBody.innerHTML = explicitWaste.map(entry => `<tr><td>${escapeHtml(new Date(entry.created_at).toLocaleString())}</td><td><strong>${escapeHtml(entry.item_name || 'Inventory item')}</strong></td><td class="numeric">${escapeHtml(Math.abs(Number(entry.quantity_change || 0)))}</td><td>${escapeHtml(entry.note || 'Explicit waste')}</td></tr>`).join('');
+    document.getElementById('waste-history-empty').hidden = explicitWaste.length > 0;
+    const select = document.getElementById('inventory-waste-item');
+    const selected = select.value;
+    select.innerHTML = `<option value="">Choose item</option>${items.filter(item => item.active !== false && Number(item.quantity || 0) > 0).map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} · ${escapeHtml(item.quantity)} ${escapeHtml(item.unit || 'units')}</option>`).join('')}`;
+    if ([...select.options].some(option => option.value === selected)) select.value = selected;
+    window.lucide?.createIcons?.();
+  }
+
+  async function refreshInventoryOperations() {
+    const status = document.getElementById('inventory-waste-status');
+    if (status) status.textContent = 'Refreshing movement history…';
+    await loadRestockLog();
+    if (status) status.textContent = '';
+  }
+
+  document.getElementById('inventory-ledger-refresh').addEventListener('click', refreshInventoryOperations);
+  document.getElementById('inventory-waste-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!requireCommercialManager('Waste recording')) return;
+    const form = event.currentTarget;
+    const status = document.getElementById('inventory-waste-status');
+    const item = items.find(entry => entry.id === form.elements.item_id.value);
+    const quantity = Number(form.elements.quantity.value);
+    const reason = form.elements.reason.value;
+    const note = form.elements.note.value.trim();
+    if (!item || !Number.isFinite(quantity) || quantity <= 0 || quantity > Number(item.quantity || 0)) {
+      status.textContent = 'Choose an item and enter a quantity no greater than current stock.';
+      return;
+    }
+    if (!reason || !note) { status.textContent = 'Choose a reason and add a factual note.'; return; }
+    if (!window.confirm(`Record ${quantity} ${item.unit || 'units'} of ${item.name} as waste? This reduces live stock immediately.`)) return;
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    status.textContent = 'Recording waste…';
+    const { error } = await sb.rpc('adjust_inventory', {
+      p_item_id: item.id,
+      p_quantity_change: -quantity,
+      p_movement_type: 'waste',
+      p_unit_cost: item.cost_price || null,
+      p_supplier_id: null,
+      p_note: `${movementTypeLabel(reason)}: ${note}`
+    });
+    if (error) status.textContent = error.message || 'Waste could not be recorded.';
+    else {
+      form.reset();
+      status.textContent = 'Waste recorded and live stock updated.';
+      await Promise.all([loadItems(), loadRestockLog()]);
+    }
+    submit.disabled = false;
+  });
 
   function renderTable() {
     const body = document.getElementById('items-body');
@@ -1755,6 +1854,7 @@
     if(view==='dashboard'){ renderDashboard(); renderAtlasHome(); }
     if(view==='recipes') renderRecipes();
     if(view==='suppliers') renderSuppliers();
+    if(view==='movements' || view==='waste') renderInventoryOperations();
     if(view==='imports') window.AtlasImportCenter?.render?.();
     closeMobileSidebar();
     resetAtlasWorkspaceScroll();

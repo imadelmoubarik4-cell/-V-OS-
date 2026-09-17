@@ -14,13 +14,16 @@ test('Movements and Waste navigate to dedicated V1 views', () => {
   assert.match(app, /waste:'Waste'/);
 });
 
-test('both views persistently disclose that operational data is unavailable', () => {
-  assert.match(app, /id="movements-view"[^>]*data-unavailable-view="movements"/);
-  assert.match(app, /Movement history is not available in this V1 preview\./);
-  assert.match(app, /No movement records are shown or inferred here\./);
-  assert.match(app, /id="waste-view"[^>]*data-unavailable-view="waste"/);
-  assert.match(app, /Waste tracking is not available in this V1 preview\./);
-  assert.match(app, /No waste records are shown or fabricated here\./);
+test('both views use live movement evidence instead of placeholder pages', () => {
+  assert.match(app, /id="movements-view" class="inventory-ledger-view"/);
+  assert.match(app, /id="movement-history-body"/);
+  assert.match(app, /inventoryMovements = data \|\| \[\]/);
+  assert.match(app, /id="waste-view" class="inventory-ledger-view"/);
+  assert.match(app, /id="inventory-waste-form"/);
+  assert.match(app, /p_movement_type: 'waste'/);
+  assert.match(app, /p_quantity_change: -quantity/);
+  assert.match(app, /Ordinary negative adjustments are never reclassified as waste/);
+  assert.doesNotMatch(app, /data-unavailable-view="(?:movements|waste)"/);
   assert.doesNotMatch(bootstrap, /showUnavailable/);
   assert.doesNotMatch(bootstrap, /target\.closest\('\[data-subview="Inventory movements"\]'\)/);
 });

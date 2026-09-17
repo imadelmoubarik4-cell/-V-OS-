@@ -188,7 +188,7 @@
   function readyResultMarkup() {
     const summary = state.snapshot?.summary || {};
     return `<section class="inventory-scanner-result is-empty">
-      <div class="inventory-scanner-result-icon"><i data-lucide="bottle"></i></div>
+      <div class="inventory-scanner-result-icon"><i data-lucide="wine"></i></div>
       <h3>Scan one bottle</h3>
       <p>Atlas will identify a linked inventory item, show its current quantity, and let staff enter the observed count.</p>
       <div class="inventory-scanner-mini-stats">
