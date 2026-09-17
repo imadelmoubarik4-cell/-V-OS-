@@ -728,6 +728,17 @@
 
   function handleClick(event) {
     const target = event.target instanceof Element ? event.target : null;
+    const sidebarDestination = target?.closest?.('.atlas-nav .nav-item[data-view]');
+    if (sidebarDestination && state.active) {
+      // Release Month before the shell handles a sidebar destination. Keeping
+      // the monthly state active while the Shifts host is hidden can reclaim
+      // the workspace during the same click and leave the user trapped here.
+      state.active = false;
+      state.modal = null;
+      state.requestSerial += 1;
+      scheduleApply();
+      return;
+    }
     if (!target || !host()?.contains(target)) return;
 
     const tab = target.closest('[data-shifts-tab]');
