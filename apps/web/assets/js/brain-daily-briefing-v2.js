@@ -207,8 +207,10 @@
 
     if (existing) existing.replaceWith(next);
     else {
+      const assistant = shell.querySelector('.brain-ask-card');
       const hero = shell.querySelector('.brain-hero');
-      if (hero) hero.insertAdjacentElement('afterend', next);
+      if (assistant) assistant.insertAdjacentElement('afterend', next);
+      else if (hero) hero.insertAdjacentElement('afterend', next);
       else shell.prepend(next);
     }
 
