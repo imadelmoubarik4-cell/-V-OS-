@@ -67,6 +67,13 @@
     return String(cfg.SETTINGS_API || '').trim();
   }
 
+  function runtimeEnvironmentLabel() {
+    const mode = String(cfg.MODE || '').trim().toLowerCase();
+    if (mode === 'production') return 'Production';
+    if (mode === 'isolated-rehearsal') return 'Isolated rehearsal';
+    return humanize(mode || 'unknown');
+  }
+
   function host() {
     return document.getElementById('settings-view');
   }
@@ -227,7 +234,7 @@
       </div>
       <aside>
         <span>Environment</span>
-        <strong>${escapeHtml(humanize(trust.environment || 'isolated_branch'))}</strong>
+        <strong>${escapeHtml(runtimeEnvironmentLabel())}</strong>
         <small>Version ${escapeHtml(workspace.version || 'not loaded')} · ${canManage() ? 'Organization manager access' : 'Personal preferences access'}</small>
         <button type="button" data-settings-refresh ${state.loading ? 'disabled' : ''}><i data-lucide="refresh-cw"></i>${state.loading ? 'Refreshing…' : 'Refresh'}</button>
       </aside>
@@ -438,12 +445,26 @@
         ? '<button type="button" class="settings-primary" data-settings-push-enable>Turn notifications on</button>'
         : '';
     return `<div class="settings-notifications">
-      ${sectionHead('One simple control', 'Notifications', 'Use one master switch for supported browser and mobile alerts. Individual notification-type switches are intentionally removed.')}
+      ${sectionHead('Delivery & policy controls', 'Notifications', 'Control this device and configure each server-backed notification type separately.')}
       <section class="settings-card settings-device-notifications is-${escapeHtml(device.status)}">
-        <header><div><span>Master notification control</span><h3>Atlas notifications</h3><p>${escapeHtml(device.detail)}</p></div>${statusPill(device.status, device.status === 'enabled' ? 'On' : 'Off')}</header>
+        <header><div><span>Device delivery control</span><h3>Browser notifications</h3><p>${escapeHtml(device.detail)}</p></div>${statusPill(device.status, device.status === 'enabled' ? 'On' : 'Off')}</header>
         <div><span><i data-lucide="${device.status === 'enabled' ? 'bell-ring' : device.status === 'denied' ? 'bell-off' : 'bell'}"></i></span><p>Atlas asks for browser permission only after you turn notifications on. Turning them off disables delivery on this device.</p>${state.notificationAction ? '<button type="button" class="settings-secondary" disabled>Updating…</button>' : deviceAction}</div>
       </section>
-      <section class="settings-card settings-notification-coverage"><header><div><span>Included alerts</span><h3>What the master switch covers</h3><p>${policies.length ? `${policies.filter((policy) => policy.enabled).length} of ${policies.length} server policies are currently active.` : 'Coverage is shown here without separate user switches.'}</p></div></header><div><span><i data-lucide="message-circle"></i>New direct messages</span><span><i data-lucide="at-sign"></i>Mentions</span><span><i data-lucide="calendar-clock"></i>Shift changes</span><span><i data-lucide="list-checks"></i>Assigned tasks</span><span><i data-lucide="truck"></i>Purchase-order and delivery updates</span><span><i data-lucide="package-search"></i>Low-stock alerts</span></div></section>
+      <section class="settings-note-card"><i data-lucide="list-checks"></i><div><strong>${policies.filter((policy) => policy.enabled).length} of ${policies.length} notification policies active</strong><span>Only policies returned by the authenticated Settings service are shown. Browser and email delivery still require their corresponding permission or integration.</span></div></section>
+      <div class="settings-notification-grid">${policies.length ? policies.map((policy) => `<form class="settings-card settings-notification-card" data-settings-notification-form="${escapeHtml(policy.event_key)}" data-version="${Number(policy.version || 1)}">
+        <header><div><span>${escapeHtml(policy.category)}</span><h3>${escapeHtml(policy.label)}</h3></div>${statusPill(policy.enabled ? 'active' : 'not_connected', policy.enabled ? 'Enabled' : 'Disabled')}</header>
+        <div class="settings-toggle-grid">
+          ${checkboxField('Policy enabled', 'enabled', Boolean(policy.enabled), { disabled: !policy.can_edit })}
+          ${checkboxField('Manager approval', 'manager_approval_required', Boolean(policy.manager_approval_required), { disabled: !policy.can_edit })}
+        </div>
+        <fieldset><legend>Channels</legend><div class="settings-check-row">${NOTIFICATION_CHANNELS.map((channel) => `<label><input type="checkbox" name="channel_${channel}" ${policy.channels?.[channel] ? 'checked' : ''} ${policy.can_edit ? '' : 'disabled'}><span>${escapeHtml(channel === 'in_app' ? 'In Atlas' : humanize(channel))}</span></label>`).join('')}</div></fieldset>
+        <fieldset><legend>Target roles</legend><div class="settings-check-row">${ROLE_KEYS.map((role) => `<label><input type="checkbox" name="role_${role}" ${(policy.target_roles || []).includes(role) ? 'checked' : ''} ${policy.can_edit ? '' : 'disabled'}><span>${escapeHtml(ROLE_LABELS[role])}</span></label>`).join('')}</div></fieldset>
+        <div class="settings-form-grid is-compact">
+          ${inputField('Reminder minutes', 'reminder_minutes', (policy.reminder_minutes || []).join(', '), { disabled: !policy.can_edit, note: 'Comma-separated, e.g. 1440, 120, 0.' })}
+          ${inputField('Escalation minutes', 'escalation_minutes', policy.escalation_minutes ?? '', { type: 'number', min: 0, max: 43200, disabled: !policy.can_edit })}
+        </div>
+        <footer class="settings-form-footer"><span>Version ${Number(policy.version || 1)}</span>${policy.can_edit ? `<button type="submit" class="settings-primary" ${state.saving ? 'disabled' : ''}><i data-lucide="save"></i>Save policy</button>` : '<span>Read-only</span>'}</footer>
+      </form>`).join('') : '<div class="settings-empty"><i data-lucide="bell-off"></i><span>No server notification policies are configured.</span></div>'}</div>
     </div>`;
   }
 

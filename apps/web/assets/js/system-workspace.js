@@ -57,6 +57,7 @@
     warning: 'Warning',
     info: 'Information',
     preview_only: 'Preview only',
+    unverified: 'Unverified',
     disabled: 'Disabled'
   };
 
@@ -258,6 +259,19 @@
     return Array.isArray(state.workspace?.releases) ? state.workspace.releases : [];
   }
 
+  function healthEvidence() {
+    const missing = [];
+    if (!services().length) missing.push('service checks');
+    if (!sources().length) missing.push('runtime-verified data sources');
+    if (!releases().length) missing.push('release checkpoint');
+    return { complete: missing.length === 0, missing };
+  }
+
+  function effectiveOverallStatus() {
+    const reported = state.workspace?.summary?.overall_status || 'unknown';
+    return reported === 'healthy' && !healthEvidence().complete ? 'unverified' : reported;
+  }
+
   function auditEvents() {
     return Array.isArray(state.workspace?.audit) ? state.workspace.audit : [];
   }
@@ -297,7 +311,7 @@
       ['server', 'Healthy services', summary.healthy_services, `${summary.degraded_services || 0} degraded or down`],
       ['siren', 'Open incidents', summary.open_incidents, `${summary.release_blockers || 0} release blocker${Number(summary.release_blockers || 0) === 1 ? '' : 's'}`],
       ['plug-zap', 'Connected integrations', summary.connected_integrations, `${summary.unconnected_integrations || 0} not fully connected`],
-      ['database-zap', 'Trusted live sources', summary.trusted_live_sources, `${summary.blocked_sources || 0} blocked or unconnected`]
+      ['database-zap', 'Runtime-verified sources', summary.trusted_live_sources, `${summary.blocked_sources || 0} blocked or unconnected`]
     ];
     return `<section class="system-summary-grid">${cards.map(([icon, label, value, note]) => `<article><span><i data-lucide="${icon}"></i>${label}</span><strong>${formatNumber(value)}</strong><small>${escapeHtml(note)}</small></article>`).join('')}</section>`;
   }
@@ -352,16 +366,32 @@
 
   function overviewMarkup() {
     const summary = state.workspace?.summary || {};
+    const evidence = healthEvidence();
+    const overall = effectiveOverallStatus();
+    const recovery = state.workspace?.recovery || {};
+    const recoveryComplete = Boolean(recovery.last_known_healthy_reference)
+      && Boolean(recovery.rollback_reference)
+      && !['', 'unknown', 'not_verified_by_atlas_runtime'].includes(String(recovery.backup_status || ''));
     const openIncidents = incidents().filter((incident) => ['open', 'monitoring'].includes(incident.status));
     const mainRelease = releases()[0];
     const primaryServices = services().filter((service) => ['web-app', 'production-auth', 'private-database', 'private-storage', 'edge-functions', 'reports-service'].includes(service.service_key));
     return `<div class="system-overview">
+      ${evidence.complete ? '' : `<section class="system-evidence-warning"><i data-lucide="shield-question"></i><div><strong>System health is unverified</strong><span>Missing ${escapeHtml(evidence.missing.join(', '))}. Atlas will not report Healthy until runtime evidence is recorded.</span></div></section>`}
       ${summaryCardsMarkup()}
       <section class="system-section-head"><div><span>Runtime health</span><h2>Core services</h2><p>Verified services and explicitly recorded degraded modules.</p></div><button type="button" data-system-tab-jump="environments">View environments<i data-lucide="arrow-right"></i></button></section>
-      <div class="system-service-grid">${primaryServices.map(serviceCard).join('')}</div>
+      <div class="system-service-grid">${primaryServices.length ? primaryServices.map(serviceCard).join('') : '<div class="system-empty"><i data-lucide="server-off"></i>No runtime service checks are recorded.</div>'}</div>
+      <section class="system-panel system-recovery-evidence">
+        <header><div><span>Recovery evidence</span><h2>${recoveryComplete ? 'Recovery references recorded' : 'Recovery readiness unverified'}</h2></div>${statusPill(recoveryComplete ? 'ready' : 'unverified')}</header>
+        <dl>
+          <div><dt>Last known healthy release</dt><dd><code>${escapeHtml(recovery.last_known_healthy_reference || 'Not recorded')}</code></dd></div>
+          <div><dt>Rollback reference</dt><dd><code>${escapeHtml(recovery.rollback_reference || 'Not recorded')}</code></dd></div>
+          <div><dt>Runtime-verified backup</dt><dd>${escapeHtml(statusLabel(recovery.backup_status || 'unverified'))}</dd></div>
+        </dl>
+        ${recoveryComplete ? '' : '<p>Missing recovery evidence is shown explicitly and is never treated as a healthy backup or rollback path.</p>'}
+      </section>
       <div class="system-overview-split">
         <section class="system-panel">
-          <header><div><span>Release gate</span><h2>${summary.release_blockers ? 'Preview has release blockers' : 'Preview ready for review'}</h2></div>${statusPill(summary.overall_status)}</header>
+          <header><div><span>Release gate</span><h2>${mainRelease ? (summary.release_blockers ? 'Release has blockers' : 'Release checkpoint recorded') : 'Release status unverified'}</h2></div>${statusPill(overall)}</header>
           ${mainRelease ? releaseCard(mainRelease) : '<div class="system-empty"><i data-lucide="git-branch"></i>No release checkpoint is available.</div>'}
         </section>
         <section class="system-panel">
@@ -461,7 +491,7 @@
     return `<div class="system-sources">
       <section class="system-section-head"><div><span>Evidence registry</span><h2>Data sources & freshness</h2><p>Live operational data, private imports and historical snapshots remain visibly distinct.</p></div></section>
       <div class="system-filter-row">${filters.map(([key, label]) => `<button type="button" data-system-source-filter="${key}" class="${state.sourceFilter === key ? 'is-active' : ''}">${label}</button>`).join('')}</div>
-      <section class="system-source-table">${visible.length ? visible.map(sourceMarkup).join('') : '<div class="system-empty"><i data-lucide="database"></i>No data sources match this filter.</div>'}</section>
+      <section class="system-source-table">${visible.length ? visible.map(sourceMarkup).join('') : `<div class="system-empty"><i data-lucide="database"></i>${sources().length ? 'No registered sources match this filter.' : 'The System source registry has no runtime-verified entries. Operational modules may still contain data.'}</div>`}</section>
       <section class="system-source-guard"><i data-lucide="brain-circuit"></i><div><strong>Atlas Brain evidence gate</strong><span>Historical evidence, pending Sprint 3 rows, disconnected sales and missing bookings never become live operational facts automatically.</span></div></section>
     </div>`;
   }
@@ -570,8 +600,7 @@
   }
 
   function shellMarkup() {
-    const summary = state.workspace?.summary || {};
-    const overall = summary.overall_status || 'unknown';
+    const overall = effectiveOverallStatus();
     return `<section class="system-shell">
       <header class="system-hero is-${statusTone(overall)}">
         <div><span class="system-kicker"><i data-lucide="server-cog"></i>Checkpoint I · System control room</span><h1>Atlas System</h1><p>One view of application health, environments, integrations, data sources, jobs, incidents, security and recovery boundaries.</p></div>
@@ -580,7 +609,7 @@
       ${feedbackMarkup()}
       ${tabsMarkup()}
       <main class="system-main">${activeBodyMarkup()}</main>
-      <footer class="system-footer"><i data-lucide="shield-check"></i><span>Manager only · View only · Preview isolated · Production synchronization disabled · Secrets and tokens never returned</span></footer>
+      <footer class="system-footer"><i data-lucide="shield-check"></i><span>Manager only · View only · Runtime: ${escapeHtml(String(cfg.MODE || 'unknown').toUpperCase())} · Production synchronization disabled · Secrets and tokens never returned</span></footer>
     </section>`;
   }
 

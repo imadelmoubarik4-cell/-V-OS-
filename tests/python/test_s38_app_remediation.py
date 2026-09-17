@@ -118,7 +118,7 @@ class S38AppRemediationTests(unittest.TestCase):
             "Do not use the word “Starred.”",
             "Today's Timeline belongs on Home",
             "Each employee has one consistent soft colour",
-            "one master Notifications On/Off control",
+            "separate server-backed policy controls",
             "Welcome back",
         ):
             self.assertIn(requirement, self.decisions)
@@ -161,7 +161,9 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertNotIn("if (!focusList) return;", brain)
         self.assertIn("homeTimeline.style.display = view === 'dashboard' ? 'block' : 'none'", self.index)
         self.assertIn("constrainHomeTimeline", self.javascript)
-        self.assertIn("Master notification control", settings)
+        self.assertIn("Device delivery control", settings)
+        self.assertIn("data-settings-notification-form", settings)
+        self.assertNotIn(".settings-notification-grid { display:none", self.css)
         self.assertIn("overflow-y:scroll !important", self.css)
 
     def test_month_view_uses_final_atlas_skin_and_hides_global_fab(self):
