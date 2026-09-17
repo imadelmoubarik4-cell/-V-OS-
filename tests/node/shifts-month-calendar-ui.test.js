@@ -22,9 +22,15 @@ test('Checkpoint F.2 loads the month editor after weekly Shifts', () => {
 });
 
 test('the production shell cache-busts the Month interaction bundle', () => {
-  const versionedBundle = 'assets/js/shifts-month-calendar.js?v=20260917-s61';
+  const versionedBundle = 'assets/js/shifts-month-calendar.js?v=20260917-s62';
   assert.ok(config.includes(`scriptPath: '${versionedBundle}'`));
   assert.ok(index.includes(`<script src="${versionedBundle}"></script>`));
+});
+
+test('Month releases ownership before the shell handles sidebar navigation', () => {
+  assert.match(month, /closest\?\.\('\.atlas-nav \.nav-item\[data-view\]'\)/);
+  assert.match(month, /if \(sidebarDestination && state\.active\)[\s\S]+?state\.active = false/);
+  assert.match(month, /state\.requestSerial \+= 1/);
 });
 
 test('month calendar remains a complete Monday-first monthly grid', () => {
