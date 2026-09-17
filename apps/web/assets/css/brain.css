@@ -248,7 +248,7 @@
 .brain-data-row span{color:var(--atlas-muted)}
 .brain-data-state{display:inline-flex;align-items:center;gap:7px;color:var(--atlas-text)!important;font-weight:600}
 .brain-data-dot{width:8px;height:8px;border-radius:50%;background:#aaa}
-.brain-data-dot.connected{background:#6f8d75}
+.brain-data-dot.available{background:#6f8d75}
 .brain-data-dot.pending{background:#b6925e}
 
 .brain-assistant{padding:22px 24px 24px}

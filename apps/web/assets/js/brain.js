@@ -195,14 +195,14 @@
     return candidates.sort((a, b) => b.financials.margin - a.financials.margin)[0] || null;
   }
 
-  function dataCoverage() {
+  function workspaceCoverage() {
     return [
-      { name: 'Inventory', connected: sourceItems().length > 0 },
-      { name: 'Recipes', connected: sourceRecipes().length > 0 },
-      { name: 'Suppliers', connected: sourceSuppliers().length > 0 || sourceItems().some((item) => item.supplier) },
-      { name: 'Operations', connected: Boolean(window.AtlasOperations) },
-      { name: 'Sales history', connected: false },
-      { name: 'Bookings', connected: false }
+      { name: 'Inventory', available: sourceItems().length > 0 },
+      { name: 'Recipes', available: sourceRecipes().length > 0 },
+      { name: 'Suppliers', available: sourceSuppliers().length > 0 || sourceItems().some((item) => item.supplier) },
+      { name: 'Operations', available: Boolean(window.AtlasOperations) },
+      { name: 'Sales history', available: false },
+      { name: 'Bookings', available: false }
     ];
   }
 
@@ -472,7 +472,7 @@
   }
 
   function dataMarkup() {
-    return dataCoverage().map((entry) => `<div class="brain-data-row"><span>${escape(entry.name)}</span><span class="brain-data-state"><i class="brain-data-dot ${entry.connected ? 'connected' : 'pending'}"></i>${entry.connected ? 'Connected' : 'Not connected'}</span></div>`).join('');
+    return workspaceCoverage().map((entry) => `<div class="brain-data-row"><span>${escape(entry.name)}</span><span class="brain-data-state"><i class="brain-data-dot ${entry.available ? 'available' : 'pending'}"></i>${entry.available ? 'Available in this session' : 'Unavailable in this session'}</span></div>`).join('');
   }
 
   function featuredMarkup() {
@@ -489,8 +489,8 @@
     const issues = recipeIssues();
     const orders = operationOrders().filter((entry) => !entry.ordered);
     const suppliers = new Set(orders.map((entry) => entry.supplier));
-    const coverage = dataCoverage();
-    const connectedCount = coverage.filter((entry) => entry.connected).length;
+    const coverage = workspaceCoverage();
+    const availableCount = coverage.filter((entry) => entry.available).length;
     const schedule = venueSchedule();
     const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const answer = state.assistantAnswer || assistantResponse('attention');
@@ -514,7 +514,7 @@
         ${metricMarkup('shield-alert', risk.label, 'Today’s operational risk', risk.tone)}
         ${metricMarkup('banknote', formatIsk(revenueAtRisk()), 'Estimated menu value at risk', revenueAtRisk() > 0 ? 'warn' : 'good')}
         ${metricMarkup('martini', String(issues.length), 'Recipes needing attention', issues.length ? 'warn' : 'good')}
-        ${metricMarkup('database', `${connectedCount}/${coverage.length}`, 'Live data sources connected', connectedCount < coverage.length ? 'warn' : 'good')}
+        ${metricMarkup('database', `${availableCount}/${coverage.length}`, 'Workspace data available', availableCount < coverage.length ? 'warn' : 'good')}
       </section>
 
       <section class="brain-card brain-ask-card">
@@ -536,7 +536,7 @@
           <div class="brain-card-body">${featuredMarkup()}</div>
         </details>
         <details class="brain-card">
-          <summary><span><i data-lucide="database"></i><strong>Data coverage</strong></span><small>${connectedCount}/${coverage.length} sources connected</small><i data-lucide="chevron-down"></i></summary>
+          <summary><span><i data-lucide="database"></i><strong>Workspace availability</strong></span><small>${availableCount}/${coverage.length} available in this session</small><i data-lucide="chevron-down"></i></summary>
           <div class="brain-card-body"><div class="brain-data-list">${dataMarkup()}</div></div>
         </details>
       </div>`;

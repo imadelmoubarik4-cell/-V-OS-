@@ -29,7 +29,11 @@ def build(output, publishable_key):
     (output / 'config.js').write_text('window.VABAR_CONFIG = ' + json.dumps(cfg, indent=2) + ';\n')
     index = (output / 'index.html').read_text()
     for filename in ('brain.js', 'business.js'):
-        index = index.replace(f'<script src="assets/js/{filename}"></script>', '')
+        index = re.sub(
+            rf'<script src="assets/js/{re.escape(filename)}(?:\?[^\"]*)?"></script>',
+            '',
+            index,
+        )
     (output / 'index.html').write_text(index)
     csp = (ROOT / 'netlify.toml').read_text().split('Content-Security-Policy = "', 1)[1].split('"', 1)[0]
     for ref in ('dnefgcmjcgxlynycxkts', 'uhbamqetppqmygesoeeh'):
