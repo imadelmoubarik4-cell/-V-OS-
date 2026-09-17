@@ -256,7 +256,7 @@
       return `<section class="team-profile-panel"><header><div><span>Private</span><h3>Onboarding and training</h3></div><i data-lucide="lock-keyhole"></i></header><p class="team-profile-private-note">Training progress is visible only to the team member and managers.</p></section>`;
     }
     const tasks = Array.isArray(profileTraining.tasks) ? profileTraining.tasks : [];
-    const canManageTraining = Boolean(profile.can_manage_training && state.staff?.live_profile_writes_enabled);
+    const canManageTraining = Boolean(profile.can_manage_training && state.staff?.live_training_writes_enabled);
     return `<section class="team-profile-panel team-training-panel">
       <header><div><span>Knowledge</span><h3>Onboarding and training</h3></div><strong>${Number(profileTraining.completed_required || 0)}/${Number(profileTraining.total_required || 0)}</strong></header>
       <div class="team-training-summary"><span>${Number(profileTraining.percent || 0)}% complete</span>${progressBar(profileTraining.percent, 'Onboarding')}</div>
@@ -265,7 +265,7 @@
         <span><strong>${escapeHtml(task.title)}</strong><small>${escapeHtml(task.description || humanize(task.category))}</small>${task.completed_at ? `<em>Completed ${escapeHtml(formatDate(task.completed_at))}</em>` : ''}</span>
         ${task.required ? '<small>Required</small>' : '<small>Optional</small>'}
       </button>`).join('')}</div>
-      ${canManageTraining ? '<footer>Managers can update each task. Every change is kept in the Team Profiles audit trail.</footer>' : state.staff?.can_manage_team ? '<footer><i data-lucide="shield-off"></i>Training changes are preview-locked. Current production progress is read-only here.</footer>' : '<footer>Your manager records completion after each training step.</footer>'}
+      ${canManageTraining ? '<footer>Managers can update each task. Every change is kept in the Team Profiles audit trail.</footer>' : '<footer>Your manager records completion after each training step.</footer>'}
     </section>`;
   }
 

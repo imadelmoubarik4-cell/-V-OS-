@@ -41,6 +41,8 @@ test('profile details cover employment, contacts, access and training', () => {
   assert.match(ui, /manager_notes/);
   assert.match(ui, /update-access/);
   assert.match(ui, /update-onboarding/);
+  assert.match(ui, /live_training_writes_enabled/);
+  assert.doesNotMatch(ui, /Training changes are preview-locked/);
 });
 
 test('sensitive controls are explicitly bounded', () => {

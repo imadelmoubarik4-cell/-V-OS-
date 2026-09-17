@@ -7,6 +7,7 @@ const index = readFileSync('apps/web/index.html', 'utf8');
 const ui = readFileSync('apps/web/assets/js/knowledge-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/knowledge-workspace.css', 'utf8');
 const remediationCss = readFileSync('apps/web/assets/css/s38-app-remediation.css', 'utf8');
+const finalCss = readFileSync('apps/web/assets/css/knowledge-s56.css', 'utf8');
 const bridge = readFileSync('apps/web/assets/js/knowledge-team-link-bridge.js', 'utf8');
 const team = readFileSync('apps/web/assets/js/team-messages.js', 'utf8');
 
@@ -106,4 +107,25 @@ test('Knowledge navigation uses separate light Atlas cards instead of the legacy
   assert.match(remediationCss, /#knowledge-view \.knowledge-footer-contract\s*\{[^}]*background:var\(--s38-blue-soft\);/s);
   assert.doesNotMatch(remediationCss, /\.knowledge-tabs\s*\{[^}]*background:#eeece6;/s);
   assert.equal((remediationCss.match(/{/g) || []).length, (remediationCss.match(/}/g) || []).length);
+});
+
+test('Knowledge categories and article properties stay compact until opened', () => {
+  assert.match(ui, /<details class="knowledge-category-filter">/);
+  assert.match(ui, /<details class="knowledge-editor-properties" data-knowledge-editor-properties>/);
+  assert.doesNotMatch(ui, /<details class="knowledge-(?:category-filter|editor-properties)"[^>]*\sopen/);
+  assert.match(finalCss, /\.knowledge-category-row\{[\s\S]*flex-wrap:wrap!important/);
+  assert.match(finalCss, /@media\(max-width:430px\)/);
+});
+
+test('managers can create an article already linked to an unserved training task', () => {
+  assert.match(ui, /data-knowledge-link-task/);
+  assert.match(ui, /Create linked article/);
+  assert.match(ui, /state\.pendingTaskId = taskId/);
+  assert.match(ui, /linkedTasks\.add\(state\.pendingTaskId\)/);
+  assert.match(ui, /task_ids: taskIds/);
+});
+
+test('production loads the final Knowledge assets with a cache key', () => {
+  assert.match(index, /knowledge-s56\.css\?v=20260917-s56/);
+  assert.match(index, /knowledge-workspace\.js\?v=20260917-s56/);
 });
