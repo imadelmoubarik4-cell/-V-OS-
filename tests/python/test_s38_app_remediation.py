@@ -77,6 +77,20 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn(".inventory-scanner-trust{border-color:#cbdafe;background:#edf3ff", scanner_css)
         self.assertIn(".inventory-scanner-primary,.inventory-scanner-manual button{border-color:#4f7df3;background:#4f7df3", scanner_css)
 
+    def test_recipes_search_and_filters_remain_compact(self):
+        self.assertIn("assets/css/s38-app-remediation.css?v=20260917-s50", self.index)
+        for contract in (
+            "#recipes-view .recipe-gallery-toolbar .recipe-search",
+            "width:min(100%,320px)",
+            "#recipes-view .recipe-gallery-toolbar .recipe-search input:focus",
+            "box-shadow:none !important",
+            "#recipes-view .recipe-status-filters",
+            "flex-wrap:wrap",
+            "#recipes-view .recipe-category-row",
+            "overflow:visible !important",
+        ):
+            self.assertIn(contract, self.css)
+
     def test_purchasing_and_message_controls_are_wired(self):
         for contract in (
             "enablePurchasingNavigation",
