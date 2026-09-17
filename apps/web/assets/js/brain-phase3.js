@@ -487,7 +487,9 @@
     if (existing) existing.replaceWith(next);
     else {
       const daily = shell.querySelector('[data-daily-briefing]');
+      const assistant = shell.querySelector('.brain-ask-card');
       if (daily) daily.insertAdjacentElement('afterend', next);
+      else if (assistant) assistant.insertAdjacentElement('afterend', next);
       else {
         const hero = shell.querySelector('.brain-hero');
         if (hero) hero.insertAdjacentElement('afterend', next);

@@ -24,7 +24,7 @@ class IsolatedRehearsalBuildTests(unittest.TestCase):
                 self.assertNotIn(forbidden, config)
                 self.assertNotIn(forbidden, headers)
             self.assertNotIn('loadAtlasAsset', config)
-            self.assertNotIn('src="assets/js/brain.js"', (output / 'index.html').read_text())
+            self.assertNotIn('assets/js/brain.js', (output / 'index.html').read_text())
             self.assertTrue((output / 'recovery.html').exists())
             self.assertEqual((ROOT / 'apps/web/config.js').read_bytes(), original)
 
