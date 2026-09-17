@@ -655,7 +655,7 @@
                 <div>
                   <p class="import-eyebrow">Phase A.1 · Knowledge Import Engine</p>
                   <h1>Import Queue</h1>
-                  <p>Upload source files once, track every processing stage, and keep a complete record before Atlas changes live business data.</p>
+                  <p>Upload source files into a private queue, track their recorded state, and keep a complete audit trail before any reviewed change reaches live business data.</p>
                 </div>
                 <div class="import-hero-actions">
                   <button type="button" class="btn ghost" id="import-queue-refresh"><i data-lucide="refresh-cw"></i>Refresh</button>
@@ -665,7 +665,7 @@
 
               <div class="import-queue-summary" aria-label="Import queue summary">
                 <article class="import-queue-summary-card"><span>All files</span><strong id="import-queue-total">0</strong><small>Recorded batches</small></article>
-                <article class="import-queue-summary-card"><span>In progress</span><strong id="import-queue-active">0</strong><small>Waiting or processing</small></article>
+                <article class="import-queue-summary-card"><span>Awaiting processing</span><strong id="import-queue-active">0</strong><small>Private uploads · worker paused</small></article>
                 <article class="import-queue-summary-card"><span>Ready</span><strong id="import-queue-ready">0</strong><small>Waiting for approval</small></article>
                 <article class="import-queue-summary-card"><span>Completed</span><strong id="import-queue-complete">0</strong><small>Successfully processed</small></article>
                 <article class="import-queue-summary-card danger"><span>Needs attention</span><strong id="import-queue-failed">0</strong><small>Failed or cancelled</small></article>
@@ -694,7 +694,7 @@
                   <div class="import-drop-zone import-queue-drop" id="import-queue-drop" tabindex="0" role="button" aria-label="Upload files">
                     <div class="import-drop-icon"><i data-lucide="files"></i></div>
                     <h2>Drop files here</h2>
-                    <p>Atlas stores the original source privately, creates one tracked batch per file, and waits for the extraction engine.</p>
+                    <p>Atlas stores the original source privately and creates one tracked batch per file. Production does not process the batch automatically.</p>
                     <button type="button" class="btn" id="import-queue-browse">Choose files</button>
                     <input id="import-queue-file-input" type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.json,.txt,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,text/csv,text/plain,application/json,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/*" hidden />
                   </div>
@@ -710,13 +710,13 @@
                   </div>
                   <ol class="import-pipeline" id="import-pipeline">
                     <li data-stage="uploaded"><span>1</span><div><strong>Upload</strong><small>Original source stored privately</small></div></li>
-                    <li data-stage="reading"><span>2</span><div><strong>Read</strong><small>Identify pages, sheets and structure</small></div></li>
-                    <li data-stage="extracting"><span>3</span><div><strong>Extract</strong><small>Convert source content into records</small></div></li>
-                    <li data-stage="matching"><span>4</span><div><strong>Match</strong><small>Find existing Atlas records</small></div></li>
-                    <li data-stage="ready"><span>5</span><div><strong>Review</strong><small>Approve matches and new records</small></div></li>
-                    <li data-stage="importing"><span>6</span><div><strong>Import</strong><small>Commit approved changes</small></div></li>
+                    <li data-stage="reading" aria-disabled="true"><span>2</span><div><strong>Read</strong><small>Requires reviewed worker activation</small></div></li>
+                    <li data-stage="extracting" aria-disabled="true"><span>3</span><div><strong>Extract</strong><small>Runs only after processing is enabled</small></div></li>
+                    <li data-stage="matching" aria-disabled="true"><span>4</span><div><strong>Match</strong><small>Staged matches require verification</small></div></li>
+                    <li data-stage="ready" aria-disabled="true"><span>5</span><div><strong>Review</strong><small>Approve matches and new records</small></div></li>
+                    <li data-stage="importing" aria-disabled="true"><span>6</span><div><strong>Import</strong><small>Commit only approved changes</small></div></li>
                   </ol>
-                  <div class="import-next-phase-note"><i data-lucide="sparkles"></i><p><strong>Next: Phase A.2</strong><br>The extraction engine will automatically move uploaded files through Read, Extract and Match.</p></div>
+                  <div class="import-next-phase-note" data-worker-state="disabled" role="status"><i data-lucide="circle-pause"></i><p><strong>Automatic processing is paused</strong><br>Production stores uploads privately but does not run Read, Extract or Match. Processing requires a separately reviewed worker activation.</p></div>
                 </article>
               </div>
 
@@ -730,7 +730,7 @@
                     <label class="import-search"><i data-lucide="search"></i><input id="import-queue-search" type="search" placeholder="Search files…" /></label>
                     <select id="import-queue-filter" aria-label="Filter import queue">
                       <option value="all">All statuses</option>
-                      <option value="active">In progress</option>
+                      <option value="active">Awaiting processing</option>
                       <option value="uploaded">Uploaded</option>
                       <option value="ready">Ready</option>
                       <option value="complete">Completed</option>
