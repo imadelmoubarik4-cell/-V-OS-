@@ -22,6 +22,7 @@
     editorOpen: false,
     sourceEditorOpen: false,
     sourceEditing: null,
+    pendingTaskId: null,
     initialized: false,
     viewObserver: null,
     authTimer: null
@@ -268,10 +269,16 @@
   }
 
   function categoryFiltersMarkup() {
-    return `<div class="knowledge-category-row">
-      <button type="button" class="${state.activeCategory === 'all' ? 'is-active' : ''}" data-knowledge-category="all">All <span>${articles().length}</span></button>
-      ${categories().map((category) => `<button type="button" class="${state.activeCategory === category.key ? 'is-active' : ''}" data-knowledge-category="${escapeHtml(category.key)}"><i data-lucide="${escapeHtml(category.icon)}"></i>${escapeHtml(category.name)} <span>${Number(category.article_count || 0)}</span></button>`).join('')}
-    </div>`;
+    const active = state.activeCategory === 'all'
+      ? { name: 'All categories', icon: 'list-filter' }
+      : categories().find((category) => category.key === state.activeCategory) || { name: 'Categories', icon: 'list-filter' };
+    return `<details class="knowledge-category-filter">
+      <summary><span><i data-lucide="${escapeHtml(active.icon || 'list-filter')}"></i><strong>${escapeHtml(active.name)}</strong></span><small>Choose category</small><i data-lucide="chevron-down"></i></summary>
+      <div class="knowledge-category-row">
+        <button type="button" class="${state.activeCategory === 'all' ? 'is-active' : ''}" data-knowledge-category="all">All <span>${articles().length}</span></button>
+        ${categories().map((category) => `<button type="button" class="${state.activeCategory === category.key ? 'is-active' : ''}" data-knowledge-category="${escapeHtml(category.key)}"><i data-lucide="${escapeHtml(category.icon)}"></i>${escapeHtml(category.name)} <span>${Number(category.article_count || 0)}</span></button>`).join('')}
+      </div>
+    </details>`;
   }
 
   function libraryMarkup(mode = 'library') {
@@ -292,7 +299,7 @@
     return `<article class="knowledge-training-task ${task.completed ? 'is-complete' : ''}">
       <span class="knowledge-training-check"><i data-lucide="${task.completed ? 'circle-check-big' : 'circle'}"></i></span>
       <div><span>${escapeHtml(task.category || 'Training')}</span><strong>${escapeHtml(task.title)}</strong><p>${escapeHtml(task.description || '')}</p>
-        ${linked.length ? `<div class="knowledge-training-links">${linked.map((article) => `<button type="button" data-knowledge-open="${escapeHtml(article.article_id)}"><i data-lucide="book-open-check"></i>${escapeHtml(article.title)}</button>`).join('')}</div>` : '<small>No Knowledge article linked yet.</small>'}
+        ${linked.length ? `<div class="knowledge-training-links">${linked.map((article) => `<button type="button" data-knowledge-open="${escapeHtml(article.article_id)}"><i data-lucide="book-open-check"></i>${escapeHtml(article.title)}</button>`).join('')}</div>` : canManage() ? `<div class="knowledge-training-missing"><small>No Knowledge article linked yet.</small><button type="button" data-knowledge-link-task="${escapeHtml(task.id)}"><i data-lucide="file-plus-2"></i>Create linked article</button></div>` : '<small>No Knowledge article linked yet.</small>'}
       </div>
       <span class="knowledge-training-state">${task.completed ? `Completed${task.completed_at ? ` · ${escapeHtml(formatDate(task.completed_at))}` : ''}` : task.required ? 'Required' : 'Optional'}</span>
     </article>`;
@@ -469,15 +476,18 @@
     const version = detail?.version || {};
     const selectedRoles = Array.isArray(article.target_roles) && article.target_roles.length ? article.target_roles : ['all'];
     const linkedTasks = new Set((detail?.task_links || []).map((item) => item.onboarding_task_id));
+    if (!article.id && state.pendingTaskId) linkedTasks.add(state.pendingTaskId);
+    const pendingTask = state.onboardingTasks.find((task) => task.id === state.pendingTaskId);
     return `<div class="knowledge-modal-backdrop" data-knowledge-close-editor></div>
       <aside class="knowledge-editor-modal" aria-labelledby="knowledge-editor-title">
         <header><div><span>Manager workspace</span><h2 id="knowledge-editor-title">${article.id ? 'Edit Knowledge draft' : 'New Knowledge article'}</h2></div><button type="button" data-knowledge-close-editor><i data-lucide="x"></i></button></header>
         <form data-knowledge-editor-form>
           <input type="hidden" name="article_id" value="${escapeHtml(article.id || '')}">
           <input type="hidden" name="article_key" value="${escapeHtml(article.article_key || '')}">
+          ${pendingTask ? `<div class="knowledge-editor-link-note"><i data-lucide="link-2"></i><span><strong>Linked training article</strong><small>This draft will be linked to “${escapeHtml(pendingTask.title)}”. Article properties remain collapsed until you choose to review them.</small></span></div>` : ''}
           <label class="knowledge-title-field"><span>Article title</span><input name="title" maxlength="220" required value="${escapeHtml(version.title || '')}" placeholder="Example: Guest complaint procedure"></label>
           <label class="knowledge-content-field"><span>Article content · Markdown supported</span><textarea name="content" rows="20" maxlength="250000" required placeholder="# Heading\n\nApproved guidance…">${escapeHtml(version.content || '')}</textarea></label>
-          <details class="knowledge-editor-properties">
+          <details class="knowledge-editor-properties" data-knowledge-editor-properties>
             <summary><span><i data-lucide="sliders-horizontal"></i><strong>Article properties</strong></span><small>Category, visibility, links and version note</small><i data-lucide="chevron-down"></i></summary>
             <div class="knowledge-editor-properties-body">
               <div class="knowledge-form-grid">
@@ -616,8 +626,9 @@
     }
   }
 
-  function openNewEditor() {
+  function openNewEditor(taskId = null) {
     state.detail = null;
+    state.pendingTaskId = taskId;
     state.editorOpen = true;
     state.sourceEditorOpen = false;
     render();
@@ -666,6 +677,7 @@
       });
       applyPayload(payload);
       state.editorOpen = false;
+      state.pendingTaskId = null;
       state.message = 'Private Knowledge draft saved. Staff visibility has not changed.';
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'Knowledge draft could not be saved.';
@@ -829,6 +841,13 @@
       return;
     }
 
+    const linkTask = target.closest('[data-knowledge-link-task]');
+    if (linkTask && host()?.contains(linkTask) && canManage()) {
+      event.preventDefault();
+      openNewEditor(linkTask.dataset.knowledgeLinkTask || null);
+      return;
+    }
+
     const open = target.closest('[data-knowledge-open]');
     if (open && host()?.contains(open)) {
       event.preventDefault();
@@ -844,7 +863,7 @@
 
     if (target.closest('[data-knowledge-new]') && host()?.contains(target)) {
       event.preventDefault();
-      openNewEditor();
+      openNewEditor(null);
       return;
     }
 
@@ -892,6 +911,7 @@
     if (target.closest('[data-knowledge-close-editor]')) {
       event.preventDefault();
       state.editorOpen = false;
+      state.pendingTaskId = null;
       render();
       return;
     }

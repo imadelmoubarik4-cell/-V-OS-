@@ -83,6 +83,8 @@ function staffPayload(context: AtlasContext) {
     active: true,
     can_manage_team: isManager(context),
     can_edit_self: true,
+    live_training_writes_enabled: true,
+    live_profile_writes_enabled: true,
   };
 }
 

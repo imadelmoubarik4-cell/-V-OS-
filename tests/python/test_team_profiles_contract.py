@@ -109,6 +109,13 @@ class TeamProfilesContractTests(unittest.TestCase):
         self.assertIn('active.desc,display_name.asc.nullslast,email.asc', EDGE)
         self.assertIn('account_invitations_enabled: false', EDGE)
 
+    def test_audited_production_training_and_access_controls_are_enabled(self):
+        self.assertIn('live_training_writes_enabled: true', EDGE)
+        self.assertIn('live_profile_writes_enabled: true', EDGE)
+        self.assertIn('requireManager(context)', EDGE)
+        self.assertIn('await logExternalEvent(context, "onboarding_status_changed"', EDGE)
+        self.assertIn('Atlas must retain at least one active manager or administrator', EDGE)
+
     def test_browser_has_no_service_key_or_private_table_access(self):
         self.assertIn('TEAM_PROFILES_API', BROWSER)
         self.assertIn('team-profiles-bootstrap.js', BROWSER)
