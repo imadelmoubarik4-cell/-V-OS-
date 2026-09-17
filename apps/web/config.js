@@ -82,7 +82,7 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/sprint3-review.css',
-  scriptPath: 'assets/js/sprint3-review.js',
+  scriptPath: 'assets/js/sprint3-review.js?v=20260917-s55',
   globalName: 'AtlasSprint3Review',
   dataAttribute: 'atlasSprint3Review',
 }));
@@ -257,8 +257,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // health, environments, integrations, data freshness, jobs, incidents,
 // security posture, audit evidence and recovery references.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/system-workspace.css',
-  scriptPath: 'assets/js/system-workspace.js',
+  stylesheetPath: 'assets/css/system-workspace.css?v=20260917-s55',
+  scriptPath: 'assets/js/system-workspace.js?v=20260917-s55',
   globalName: 'AtlasSystem',
   dataAttribute: 'atlasSystem',
 }));
@@ -266,8 +266,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // Checkpoint J replaces the Settings placeholder with a versioned, role-aware
 // control centre for venue configuration, operating rules and personal preferences.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/settings-workspace.css',
-  scriptPath: 'assets/js/settings-workspace.js',
+  stylesheetPath: 'assets/css/settings-workspace.css?v=20260917-s55',
+  scriptPath: 'assets/js/settings-workspace.js?v=20260917-s55',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
 }));
@@ -293,7 +293,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   const cfg = window.VABAR_CONFIG = window.VABAR_CONFIG || {};
   cfg.SYSTEM_API = cfg.SYSTEM_API || `${cfg.SUPABASE_URL}/functions/v1/atlas-system`;
 
-  const cssHref = "assets/css/system-workspace.css";
+  const cssHref = "assets/css/system-workspace.css?v=20260917-s55";
   if (!document.querySelector(`link[href="${cssHref}"]`)) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -301,7 +301,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
     document.head.appendChild(link);
   }
 
-  const scriptSrc = "assets/js/system-workspace.js";
+  const scriptSrc = "assets/js/system-workspace.js?v=20260917-s55";
   if (!document.querySelector(`script[src="${scriptSrc}"]`)) {
     const script = document.createElement("script");
     script.src = scriptSrc;

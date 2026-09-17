@@ -951,11 +951,8 @@ body.s38-month-active .fab-wrap { display:none !important; }
 #home-focus [data-atlas-business-focus]:hover{background:#e7f1ff}
 .checkpoint-a-home-prompt.s38-attention{border-color:rgba(199,123,61,.48)!important}
 
-/* Settings: compact cards and one notification control */
-.settings-notification-grid { display:none !important; }
-.settings-notification-coverage > div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:0 18px 18px; }
-.settings-notification-coverage > div > span { display:flex; align-items:center; gap:8px; min-height:42px; padding:9px 11px; border:1px solid var(--s38-line); border-radius:12px; background:var(--s38-bg); color:var(--s38-ink); font-size:10px; }
-.settings-notification-coverage svg { width:16px; color:var(--s38-blue); }
+/* Settings: device delivery plus separate server-backed policy controls */
+.settings-notification-grid { display:grid; }
 
 @media (max-width: 1000px) {
   .team-messages-layout { height:clamp(520px,calc(100dvh - 220px),720px) !important; min-height:520px !important; }
@@ -974,7 +971,6 @@ body.s38-month-active .fab-wrap { display:none !important; }
   .shift-month-navigation > div { flex:1; min-width:130px; }
   .shift-month-view-select { margin-left:auto; }
   .recipe-foundation-card > summary small,.brain-intelligence-grid > .brain-card > summary small,.knowledge-editor-properties > summary small { display:none; }
-  .settings-notification-coverage > div { grid-template-columns:1fr; }
   #home-focus.atlas-home-focus{padding:21px}
 }
 

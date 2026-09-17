@@ -116,8 +116,8 @@ Acceptance: long conversations scroll internally on desktop and mobile; the page
 ### 9. Notifications and Team Profiles
 
 - Support notifications for new direct messages, mentions, shift changes, assigned tasks, purchase-order or delivery updates, and low-stock alerts.
-- Do not expose separate user toggles for every notification type.
-- Settings contains one master Notifications On/Off control.
+- Keep one device-level browser notification control.
+- Settings also exposes separate server-backed policy controls for every configured notification type.
 - Redesign Team Profiles with compact Atlas cards and consistent spacing while preserving profile functionality.
 
 Acceptance: the notification bell routes to the real notification controls; supported browser/mobile permission flow works; notification delivery remains disabled in isolated staging unless explicitly enabled for a test.
@@ -171,7 +171,7 @@ Acceptance: the most important decision is visible first; Ask Atlas is not burie
 - Preserve current Settings categories and functionality.
 - Reorganize them into compact Atlas cards with clean toggles and smaller tab controls.
 - Keep advanced and rarely used settings collapsed until clicked.
-- Include one master Notifications On/Off control.
+- Include one device delivery control plus separate controls for each configured notification policy.
 
 Acceptance: Settings matches the rest of Atlas, has no black primary buttons, and remains responsive.
 

@@ -155,8 +155,8 @@
           </div>
           <div class="review-branch-card">
             <span>Environment</span>
-            <strong>Isolated PR branch</strong>
-            <small>Production remains unchanged</small>
+            <strong>${escapeHtml(String(window.VABAR_CONFIG?.MODE || 'unknown').toLowerCase() === 'production' ? 'Production' : 'Isolated rehearsal')}</strong>
+            <small>Review-gated private data · Canonical records require explicit publication</small>
           </div>
         </header>
 
