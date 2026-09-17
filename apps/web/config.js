@@ -205,7 +205,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // available for detailed review and confirmations.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/shifts-month-calendar.css',
-  scriptPath: 'assets/js/shifts-month-calendar.js?v=20260916-s48b',
+  scriptPath: 'assets/js/shifts-month-calendar.js?v=20260917-s61',
   globalName: 'AtlasShiftsMonth',
   dataAttribute: 'atlasShiftsMonth',
 }));

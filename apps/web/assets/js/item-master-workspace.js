@@ -234,7 +234,7 @@
 
   function toolbarMarkup() {
     return `<div class="item-master-toolbar">
-      <label class="item-master-search"><span data-lucide="search"></span><input data-l2-search type="search" value="${escapeHtml(state.search)}" placeholder="Search item, category, blocker…" /></label>
+      <label class="item-master-search"><span data-lucide="search"></span><input data-l2-search type="search" aria-label="Search item master" value="${escapeHtml(state.search)}" placeholder="Search item, category, blocker…" /></label>
       <select data-l2-tier aria-label="Priority tier">
         ${['all','critical','high','standard','complete'].map((value) => `<option value="${value}" ${state.tier === value ? 'selected' : ''}>${value === 'all' ? 'All priorities' : tierLabel(value)}</option>`).join('')}
       </select>

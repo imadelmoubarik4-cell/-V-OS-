@@ -499,6 +499,7 @@
   <link rel="stylesheet" href="assets/css/knowledge-s56.css?v=20260917-s56">
   <link rel="stylesheet" href="assets/css/team-s57.css?v=20260917-s57">
   <link rel="stylesheet" href="assets/css/inventory-operations-s58.css?v=20260917-s58">
+  <link rel="stylesheet" href="assets/css/accessibility-responsive-s61.css?v=20260917-s61">
 </head>
 <body>
 
@@ -541,7 +542,7 @@
           <div class="nav-group" data-nav-group="insights"><div class="nav-label">INSIGHTS</div><button class="nav-item" data-view="reports"><i data-lucide="chart-no-axes-combined"></i><span>Reports</span></button></div>
           <div class="nav-group" data-nav-group="system"><div class="nav-label">SYSTEM</div><button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>Settings</span></button></div>
         </nav>
-        <div class="atlas-profile"><div class="avatar" id="user-avatar">V</div><div class="profile-copy"><strong id="profile-name">VÁ Team</strong><small id="user-email"></small></div><button class="top-icon" id="logout-btn" title="Sign out"><i data-lucide="log-out"></i></button></div>
+        <div class="atlas-profile"><div class="avatar" id="user-avatar">V</div><div class="profile-copy"><strong id="profile-name">VÁ Team</strong><small id="user-email"></small></div><button class="top-icon" id="logout-btn" title="Sign out" aria-label="Sign out"><i data-lucide="log-out"></i></button></div>
       </aside>
       <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
       <section class="atlas-main">
@@ -597,7 +598,7 @@
               </section>
 
               <div class="recipe-controls">
-                <label class="recipe-search" aria-label="Search recipes"><i data-lucide="search"></i><input type="search" id="recipe-search" placeholder="Search recipes, glassware, garnish…" /></label>
+                <label class="recipe-search"><i data-lucide="search"></i><input type="search" id="recipe-search" aria-label="Search recipes" placeholder="Search recipes, glassware, garnish…" /></label>
                 <div class="recipe-view-toggle" aria-label="Recipe view">
                   <button type="button" data-recipe-view-mode="grid" class="active" aria-label="Grid view"><i data-lucide="layout-grid"></i></button>
                   <button type="button" data-recipe-view-mode="list" aria-label="List view"><i data-lucide="rows-3"></i></button>
@@ -646,7 +647,7 @@
                 <p><strong id="purchasing-intelligence-title">Checking purchasing readiness.</strong> <span id="purchasing-intelligence-detail">Atlas is reviewing suppliers and recorded restocks.</span></p>
                 <button type="button" id="purchasing-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
               </section>
-              <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" placeholder="Search suppliers..."/></label></div>
+              <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" aria-label="Search suppliers" placeholder="Search suppliers..."/></label></div>
               <table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table>
               <div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div>
             </div>
@@ -730,7 +731,7 @@
                     <h2>Source files</h2>
                   </div>
                   <div class="import-queue-controls">
-                    <label class="import-search"><i data-lucide="search"></i><input id="import-queue-search" type="search" placeholder="Search files…" /></label>
+                    <label class="import-search"><i data-lucide="search"></i><input id="import-queue-search" type="search" aria-label="Search import files" placeholder="Search files…" /></label>
                     <select id="import-queue-filter" aria-label="Filter import queue">
                       <option value="all">All statuses</option>
                       <option value="active">In progress</option>
@@ -2420,7 +2421,7 @@
 <script src="assets/js/import-center.js"></script>
 <script src="assets/js/purchase-orders.js"></script>
 <script src="assets/js/shifts-workspace.js"></script>
-<script src="assets/js/shifts-month-calendar.js?v=20260916-s48b"></script>
+<script src="assets/js/shifts-month-calendar.js?v=20260917-s61"></script>
 <script src="assets/js/shifts-month-tab-bridge.js"></script>
 <script src="assets/js/knowledge-workspace.js?v=20260917-s56"></script>
 <script src="assets/js/knowledge-team-link-bridge.js"></script>
