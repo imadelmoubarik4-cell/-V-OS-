@@ -491,7 +491,7 @@ async function updateOnboarding(context: AtlasContext, body: Record<string, unkn
 
 async function inviteAccount(context: AtlasContext, body: Record<string, unknown>) {
   requireManager(context);
-  const email = requiredEmail(body.email);
+  const email = requiredText(body.email, "Email", 320).toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Enter a valid email address.");
   const displayName = optionalText(body.display_name, 120);
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!serviceRoleKey) throw new ApiError(500, "Account invitations are temporarily unavailable.");
@@ -523,6 +523,62 @@ async function inviteAccount(context: AtlasContext, body: Record<string, unknown
   return { invited: true, email };
 }
 
+import { createClient } from "npm:@supabase/supabase-js@2.45.4";
+
+// Used only after requireActiveProfile has verified the live account and role.
+async function createLoginMember(context: AtlasContext, body: Record<string, unknown>) {
+  requireManager(context);
+  const name = requiredText(body.display_name, "Name", 120);
+  const email = requiredText(body.email, "Email", 320).toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Enter a valid email address.");
+  const job = requiredText(body.default_role, "Staff role", 120);
+  const role = requiredEnum(body.login_role, "Atlas access", new Set(["bartender", "viewer"]));
+  const project = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!key || project !== AUTH_PROJECT_URL) throw new ApiError(503, "Account setup requires the same Atlas authentication project.");
+  const admin = createClient(project!, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: existing, error: lookupError } = await admin.from("profiles").select("id").ilike("email", email.replace(/[%_]/g, "\\$&"));
+  if (lookupError) throw new ApiError(503, "Could not check existing accounts.");
+  if (existing?.length) throw new ApiError(409, "This email already has an Atlas account. Select that member; do not add a duplicate. Use password recovery if they cannot sign in.");
+  const { data, error } = await admin.auth.admin.generateLink({ type: "invite", email, options: { data: { full_name: name } } });
+  if (error || !data?.user?.id || !data.properties?.hashed_token) throw new ApiError(400, "Account setup could not be created. Check the email or try again.");
+  const id = data.user.id;
+  const { error: markerError } = await admin.auth.admin.updateUserById(id, { app_metadata: { atlas_invited_by: context.user.id } });
+  if (markerError) throw new ApiError(503, "Account created but invitation tracking failed. Ask an administrator to review it.");
+  // Auth's trigger creates a disabled viewer. Only the verified manager activates it.
+  const { error: profileError } = await admin.from("profiles").update({ display_name: name, role, active: true }).eq("id", id);
+  if (profileError) throw new ApiError(503, "Account created but access is not configured. Ask an administrator to review this member before retrying.");
+  await branchRpc("atlas_team_profile_upsert_details", {
+    p_profile_id: id, p_preferred_name: name, p_job_title: job,
+    p_department: null, p_employment_type: null, p_start_date: null,
+    p_phone: null, p_phone_visibility: "managers_only", p_preferred_language: null, p_manager_notes: null,
+    p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile), p_actor_role: context.profile.role,
+  });
+  await branchRpc("atlas_shifts_sync_profiles", {
+    p_profiles: [{ id, email, display_name: name, role, active: true }],
+    p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile), p_actor_role: context.profile.role,
+  });
+  await logExternalEvent(context, "active_status_changed", id, { previous_active: false, active: true, role, reason: "owner_created_login_member" });
+  return { id, email, login_role: role, invitation_token: data.properties.hashed_token, invitation_type: "invite", email_sent: false };
+}
+
+async function renewMemberSetup(context: AtlasContext, body: Record<string, unknown>) {
+  requireManager(context);
+  const id = requireUuid(body.profile_id, "Team member");
+  const project = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!key || project !== AUTH_PROJECT_URL) throw new ApiError(503, "Account setup is unavailable.");
+  const admin = createClient(project!, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await admin.auth.admin.getUserById(id);
+  if (error || !data.user?.app_metadata?.atlas_invited_by || data.user.email_confirmed_at) {
+    throw new ApiError(409, "This member has already accepted their invitation or was not created here. They should use Forgot your password on the sign-in page.");
+  }
+  const profile = await profileById(context, id);
+  if (!profile?.active) throw new ApiError(409, "This member is inactive. Review their access before issuing an invitation.");
+  const { data: link, error: linkError } = await admin.auth.admin.generateLink({ type: "invite", email: data.user.email! });
+  if (linkError || !link.properties?.hashed_token) throw new ApiError(400, "Could not renew the setup link.");
+  return { id, email: data.user.email, invitation_token: link.properties.hashed_token, email_sent: false };
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
 
@@ -542,6 +598,12 @@ Deno.serve(async (request: Request) => {
     let result: unknown;
 
     switch (action) {
+      case "renew-member-setup":
+        result = await renewMemberSetup(context, body);
+        break;
+      case "create-login-member":
+        result = await createLoginMember(context, body);
+        break;
       case "save-details": {
         const profileId = requireUuid(body.profile_id, "Team profile");
         if (!isManager(context) && profileId !== context.user.id) {

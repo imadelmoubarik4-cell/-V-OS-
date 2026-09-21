@@ -809,6 +809,7 @@
     });
     state.viewObserver.observe(host(), { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
 
+    window.addEventListener('atlas:team-roster-changed', () => { state.workspace = null; if (viewVisible()) loadSnapshot({ force: true }); });
     window.addEventListener('focus', () => {
       if (viewVisible()) loadSnapshot({ force: true, silent: true });
     });

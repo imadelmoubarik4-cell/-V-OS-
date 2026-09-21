@@ -308,7 +308,7 @@ async function productionProfiles(context: AtlasContext): Promise<AtlasProfile[]
   return Array.isArray(rows) ? rows as AtlasProfile[] : [];
 }
 
-async function syncProfiles(context: AtlasContext): Promise<void> {
+async function syncProfiles(context: AtlasContext): Promise<AtlasProfile[]> {
   const rows = await productionProfiles(context);
   await branchRpc("atlas_shifts_sync_profiles", {
     p_profiles: rows,
@@ -316,6 +316,15 @@ async function syncProfiles(context: AtlasContext): Promise<void> {
     p_actor_label: labelForProfile(context.profile),
     p_actor_role: context.profile.role,
   });
+  return rows;
+}
+
+function reconcileRoster(workspace: any, profileRows: AtlasProfile[]) {
+  const active = new Set(profileRows.filter(profile => profile.active).map(profile => profile.id));
+  workspace.people = (workspace.people || []).map((person: any) => ({
+    ...person, active: person.profile_id ? person.active && active.has(person.profile_id) : person.active
+  }));
+  return workspace;
 }
 
 async function enqueuePublishedShiftNotice(context: AtlasContext, label: string): Promise<void> {
@@ -331,28 +340,28 @@ async function enqueuePublishedShiftNotice(context: AtlasContext, label: string)
 }
 
 async function snapshot(context: AtlasContext, weekStart: string) {
-  await syncProfiles(context);
+  const profileRows = await syncProfiles(context);
   const workspace = await branchRpc("atlas_shifts_snapshot", {
     p_week_start: weekStart,
     p_actor_id: context.user.id,
     p_actor_role: context.profile.role,
   });
   return {
-    workspace,
+    workspace: reconcileRoster(workspace, profileRows),
     staff: staffPayload(context),
     policy: policyPayload(),
   };
 }
 
 async function monthSnapshot(context: AtlasContext, monthStart: string) {
-  await syncProfiles(context);
+  const profileRows = await syncProfiles(context);
   const workspace = await branchRpc("atlas_shifts_month_snapshot", {
     p_month_start: monthStart,
     p_actor_id: context.user.id,
     p_actor_role: context.profile.role,
   });
   return {
-    workspace,
+    workspace: reconcileRoster(workspace, profileRows),
     staff: staffPayload(context),
     policy: policyPayload(),
   };

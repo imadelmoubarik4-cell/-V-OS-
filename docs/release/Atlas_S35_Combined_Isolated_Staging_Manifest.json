@@ -120,7 +120,7 @@
     {
       "name": "atlas-shifts",
       "sources": {
-        "supabase/functions/atlas-shifts/index.ts": "ad8f80b4000c393da0e1084aae7a7e91e9ded1096f921913bde53f902420ee15"
+        "supabase/functions/atlas-shifts/index.ts": "4db811d9c10be922c1c966f936d361c56247b527db62df6e50de7e150f299123"
       }
     },
     {
@@ -163,7 +163,7 @@
     {
       "name": "atlas-team-profiles",
       "sources": {
-        "supabase/functions/atlas-team-profiles/index.ts": "d8943e38c0d3411772cae6a8133626d7a672c9c9525fa17ea7e00506d75cff63"
+        "supabase/functions/atlas-team-profiles/index.ts": "1fc678add3ad2ae6fee1b79800c9dcd64ecb97110ae9f1f14ff3c245b67eb53a"
       }
     },
     {
