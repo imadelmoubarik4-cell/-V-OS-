@@ -301,7 +301,7 @@
       actions.appendChild(button);
     }
 
-    const policy = window.AtlasStockCountsL1?.lastPolicy || {};
+    const policy = window.AtlasStockCounts?.policy?.() || window.AtlasStockCountsL1?.lastPolicy || {};
     if (publication?.status === 'ready'
         && permissions.production_apply_enabled
         && policy.publication_environment_enabled
