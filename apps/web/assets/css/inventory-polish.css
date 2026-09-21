@@ -933,29 +933,3 @@
 @media (max-width: 760px) {
   #inventory-view #table-wrap > table { min-width: 0; width: 100%; }
 }
-
-
-/* S65: Unknown stock must present an actionable verified-count path. */
-#inventory-view .qty-unknown {
-  min-width: 58px;
-  color: var(--atlas-muted);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-#inventory-view .set-real-stock-btn {
-  min-height: 32px;
-  margin-left: 6px;
-  padding: 0 11px;
-  border: 1px solid var(--atlas-home-accent, #4f7df3);
-  border-radius: 9px;
-  background: var(--atlas-home-accent-soft, rgba(79,125,243,.1));
-  color: var(--atlas-home-accent-strong, #3e68d7);
-  font: 650 11px/1 'IBM Plex Sans', sans-serif;
-  cursor: pointer;
-}
-
-#inventory-view .set-real-stock-btn:hover {
-  background: var(--atlas-home-accent, #4f7df3);
-  color: #fff;
-}
