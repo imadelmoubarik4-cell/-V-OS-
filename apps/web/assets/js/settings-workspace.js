@@ -700,7 +700,9 @@
   function render() {
     const element = host();
     if (!element) return;
-    element.classList.add('settings-view');
+    // The visibility observer watches this class attribute. Re-adding an
+    // existing class emits another mutation and recursively triggers render.
+    if (!element.classList.contains('settings-view')) element.classList.add('settings-view');
     if (state.loading && !state.workspace) {
       element.innerHTML = loadingMarkup();
       window.lucide?.createIcons?.();

@@ -30,6 +30,7 @@
   const state = {
     workspace: null,
     staff: null,
+    roster: [],
     loading: false,
     submitting: false,
     error: null,
@@ -102,13 +103,14 @@
   }
 
   async function api(action, options = {}) {
-    const endpoint = profileApi();
+    const endpoint = options.roster ? String(cfg.SHIFTS_API || "") : profileApi();
     if (!endpoint) throw new Error('Team Profiles API is not configured for this preview.');
     const session = await activeSession();
     if (!session?.access_token) throw new Error('Sign in to Atlas to open Team Profiles.');
 
     const url = new URL(endpoint);
     url.searchParams.set('action', action);
+    if (options.roster) url.searchParams.set('week_start', rosterWeek());
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
@@ -134,8 +136,20 @@
     }
   }
 
+  function rosterWeek() {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+    return date.toISOString().slice(0, 10);
+  }
+
   function profiles() {
-    return Array.isArray(state.workspace?.profiles) ? state.workspace.profiles : [];
+    const accounts = Array.isArray(state.workspace?.profiles) ? state.workspace.profiles : [];
+    const roster = state.roster.filter(person => !person.profile_id).map(person => ({
+      id: person.id, name: person.display_name, email: person.email, active: person.active,
+      role: 'schedule_only', job_title: person.default_role, schedule_only: true,
+      training: { private: true }, emergency_contact_count: 0
+    }));
+    return [...accounts, ...roster];
   }
 
   function selectedProfile() {
@@ -184,7 +198,7 @@
   function summaryMarkup() {
     const summary = state.workspace?.summary || {};
     const values = [
-      ['users-round', 'Active staff', Number(summary.active_profiles || 0), 'Profiles with Atlas access'],
+      ['users-round', 'Active staff', profiles().filter(profile => profile.active).length, 'Active accounts and schedule-only staff'],
       ['shield-check', 'Managers', Number(summary.managers || 0), 'Managers and administrators'],
       ['graduation-cap', 'Training complete', summary.training_complete ?? '—', 'Required onboarding finished'],
       ['phone-call', 'Emergency contacts', summary.emergency_contacts_complete ?? '—', 'Profiles with a contact saved']
@@ -300,6 +314,7 @@
   function detailMarkup() {
     const profile = selectedProfile();
     if (!profile) return `<main class="team-profile-detail"><div class="team-profiles-empty"><i data-lucide="users"></i><p>No team profiles are available.</p></div></main>`;
+    if (profile.schedule_only) return `<main class="team-profile-detail"><header class="team-profile-detail-head"><div><span>Schedule-only staff</span><h2>${escapeHtml(profile.name)}</h2><p>${escapeHtml(profile.job_title || 'Staff')} · ${profile.active ? 'Active' : 'Inactive'}</p></div></header><section class="team-profile-panel"><h3>Atlas access</h3><p>This person is available in the Shift employee selector. No login account has been created and no invitation has been sent.</p><p>${escapeHtml(profile.email || 'No email recorded')}</p><button type="button" class="team-profile-primary" data-team-profile-open-shifts>Open Shifts</button></section></main>`;
     const profileTraining = training(profile);
     return `<main class="team-profile-detail">
       <header class="team-profile-detail-head">
@@ -308,6 +323,7 @@
         <div class="team-profile-detail-actions">
           <span class="team-profile-status ${profile.active ? 'is-active' : 'is-inactive'}">${profile.active ? 'Active' : 'Inactive'}</span>
           ${profile.can_edit_profile ? '<button type="button" data-team-profile-edit><i data-lucide="pencil"></i>Edit profile</button>' : ''}
+          ${state.staff?.can_manage_team && profile.id !== state.staff.id ? '<button type="button" data-team-member-renew>New setup link</button>' : ''}
         </div>
       </header>
 
@@ -398,7 +414,60 @@
     </div>`;
   }
 
+  function loginReadyModal() {
+    const result = state.modal.result;
+    const link = new URL('invitation.html', location.href);
+    link.hash = new URLSearchParams({ token_hash: result.invitation_token }).toString();
+    return `<div class="team-profile-modal" role="dialog" aria-modal="true" aria-labelledby="login-ready-title"><div class="team-profile-modal-backdrop" data-team-profile-close-modal></div><section><header><h2 id="login-ready-title">Member ready — set up login</h2><button type="button" data-team-profile-close-modal aria-label="Close">×</button></header><p>${escapeHtml(result.email)} is now available in Team and Shifts.</p><p>Share this one-time link privately with this member. They will choose their password. No email has been sent. Copy the link before closing this window.</p><label>Private setup link<input readonly value="${escapeHtml(link.href)}" /></label><p>${location.hostname === '127.0.0.1' ? 'For this local preview, open the link on this computer.' : 'The member can use this link once to set their password.'}</p><footer><button type="button" class="team-profile-primary" data-team-profile-close-modal>Done</button></footer></section></div>`;
+  }
+
+  function addMemberModal() {
+    const draft = state.modal?.draft || {};
+    return `<div class="team-profile-modal" role="dialog" aria-modal="true" aria-labelledby="team-add-member-title"><div class="team-profile-modal-backdrop" data-team-profile-close-modal></div><section><header><div><span>Team roster</span><h2 id="team-add-member-title">Add team member</h2></div><button type="button" data-team-profile-close-modal aria-label="Close"><i data-lucide="x"></i></button></header><form data-team-profile-add-member-form>${state.error ? `<p role="alert">${escapeHtml(state.error)}</p>` : ''}<div class="team-profile-form-grid"><label><span>Name</span><input name="display_name" value="${escapeHtml(draft.display_name || '')}" required maxlength="120" /></label><label><span>Staff role</span><input name="default_role" value="${escapeHtml(draft.default_role || '')}" required maxlength="120" placeholder="Bartender, barback, manager…" /></label><label><span>Email (optional)</span><input type="email" name="email" value="${escapeHtml(draft.email || '')}" maxlength="320" /></label><label><span>Atlas access</span><select name="access"><option value="schedule_only" ${draft.access === 'schedule_only' ? 'selected' : ''}>Schedule only — no login</option><option value="bartender" ${draft.access === 'bartender' ? 'selected' : ''}>Staff login</option><option value="viewer" ${draft.access === 'viewer' ? 'selected' : ''}>Viewer login</option></select></label></div><p class="team-profile-form-note">Login access requires an email. You will get a one-time setup link to share privately with this member. They choose their own password. No email is sent automatically.</p><footer><button type="button" class="team-profile-secondary" data-team-profile-close-modal>Cancel</button><button type="submit" class="team-profile-primary" ${state.submitting ? 'disabled' : ''}>Save team member</button></footer></form></section></div>`;
+  }
+
+  async function submitMember(form) {
+    if (state.submitting) return;
+    const body = { display_name: formValue(form, 'display_name'), default_role: formValue(form, 'default_role'), email: formValue(form, 'email') || null, current_week: rosterWeek() };
+    const access = formValue(form, 'access');
+    if (access !== 'schedule_only' && !body.email) { form.elements.namedItem('email').setCustomValidity('Email is required for login access.'); form.elements.namedItem('email').reportValidity(); return; }
+    body.login_role = access;
+    state.modal.draft = { ...body, access };
+    state.submitting = true;
+    state.error = null;
+    const submit = form.querySelector('[type="submit"]');
+    submit.disabled = true;
+    try {
+      const login = access !== 'schedule_only';
+      const payload = await api(login ? 'create-login-member' : 'create-person', { roster: !login, method: 'POST', body });
+      if (login) {
+        state.workspace = payload.workspace || state.workspace;
+        state.staff = payload.staff || state.staff;
+        state.selectedProfileId = payload.result.id;
+        state.modal = { mode: 'login-ready', result: payload.result };
+        state.message = 'Team member created with login access. Share the setup link privately with them.';
+        window.dispatchEvent(new Event('atlas:team-roster-changed'));
+        return;
+      }
+      state.roster = payload.workspace?.people || [];
+      const added = state.roster.find(person => person.id === payload.result?.id)
+        || state.roster.find(person => person.display_name === body.display_name && !person.profile_id);
+      if (added) state.selectedProfileId = added.id;
+      state.filter = 'active';
+      state.modal = null;
+      state.message = 'Team member added and available in Shifts. No login invitation sent.';
+      window.dispatchEvent(new Event('atlas:team-roster-changed'));
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : 'Could not add team member.';
+    } finally {
+      state.submitting = false;
+      render();
+    }
+  }
+
   function modalMarkup() {
+    if (state.modal?.mode === 'login-ready') return loginReadyModal();
+    if (state.modal?.mode === 'add-member') return addMemberModal();
     if (state.modal?.mode === 'invite') return inviteModal();
     const profile = selectedProfile();
     if (!state.modal || !profile) return '';
@@ -421,8 +490,8 @@
   function shellMarkup() {
     return `<section class="team-profiles-shell">
       <header class="team-profiles-hero">
-        <div><span><i data-lucide="contact-round"></i>Checkpoint E · People operations</span><h1>Team Profiles</h1><p>Roles, contact details, emergency information and onboarding progress for every existing Atlas account.</p></div>
-        <div><button type="button" data-team-profiles-messages><i data-lucide="messages-square"></i>Messages</button><button type="button" data-team-profiles-refresh><i data-lucide="refresh-cw"></i>Refresh</button></div>
+        <div><span><i data-lucide="contact-round"></i>Checkpoint E · People operations</span><h1>Team Profiles</h1><p>Team members, schedule access, contact details and onboarding in one workspace.</p></div>
+        <div>${state.staff?.can_manage_team ? '<button type="button" data-team-profile-add-member><i data-lucide="user-plus"></i>Add team member</button>' : ''}<button type="button" data-team-profiles-messages><i data-lucide="messages-square"></i>Messages</button><button type="button" data-team-profiles-refresh><i data-lucide="refresh-cw"></i>Refresh</button></div>
       </header>
       ${feedbackMarkup()}
       ${summaryMarkup()}
@@ -453,7 +522,8 @@
     }
     render();
     try {
-      const payload = await api('snapshot');
+      const [payload, roster] = await Promise.all([api('snapshot'), api('snapshot', { roster: true })]);
+      state.roster = roster.workspace?.people || [];
       state.workspace = payload.workspace || {};
       state.staff = payload.staff || state.staff;
       if (!profiles().some((profile) => profile.id === state.selectedProfileId)) {
@@ -572,6 +642,15 @@
 
     if (target.closest('[data-team-profiles-refresh]')) { loadSnapshot({ force: true }); return; }
     if (target.closest('[data-team-profiles-messages]')) { openMessages(); return; }
+    if (target.closest('[data-team-profile-add-member]')) {
+      state.modal = { mode: 'add-member' };
+      render();
+      return;
+    }
+    if (target.closest('[data-team-profile-open-shifts]')) {
+      window.AtlasShifts?.open?.();
+      return;
+    }
     if (target.closest('[data-team-profile-invite]')) {
       state.modal = { mode: 'invite' };
       render();
@@ -594,6 +673,15 @@
       return;
     }
 
+    if (target.closest('[data-team-member-renew]')) {
+      if (state.submitting) return;
+      state.submitting = true;
+      api('renew-member-setup', { method: 'POST', body: { profile_id: selectedProfile().id } })
+        .then(payload => { state.error = null; state.modal = { mode: 'login-ready', result: payload.result }; })
+        .catch(error => { state.error = error.message; })
+        .finally(() => { state.submitting = false; render(); });
+      return;
+    }
     if (target.closest('[data-team-profile-edit]')) {
       state.modal = { mode: 'edit-profile' };
       render();
@@ -646,6 +734,7 @@
     if (form.matches('[data-team-profile-details-form]')) submitDetails(form);
     else if (form.matches('[data-team-profile-contact-form]')) submitContact(form);
     else if (form.matches('[data-team-profile-invite-form]')) submitInvite(form);
+    else if (form.matches('[data-team-profile-add-member-form]')) submitMember(form);
     else if (form.matches('[data-team-profile-access-form]')) submitAccess(form);
   }
 
@@ -737,6 +826,7 @@
     document.addEventListener('click', handleNavigationCapture, true);
     document.addEventListener('click', handleClick);
     document.addEventListener('submit', handleSubmit);
+    document.addEventListener('input', event => { if (event.target?.name === 'email') event.target.setCustomValidity(''); });
     document.addEventListener('keydown', handleKeydown);
   }
 

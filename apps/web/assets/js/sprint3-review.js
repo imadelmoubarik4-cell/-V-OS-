@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '3.1.0';
+  const VERSION = '3.2.0';
   const SCOPES = [
     ['all', 'All'],
     ['inventory', 'Inventory'],
@@ -11,7 +11,8 @@
     ['invoice', 'Invoices'],
     ['purchase', 'Purchases'],
     ['delivery', 'Deliveries'],
-    ['equipment', 'Equipment']
+    ['equipment', 'Equipment'],
+    ['wine', 'Wine'], ['routine', 'Routines'], ['staff_document', 'Staff documents'], ['offer', 'Offers']
   ];
 
   const state = {
@@ -24,7 +25,7 @@
     limit: 40,
     offset: 0,
     scope: 'all',
-    status: 'pending',
+    status: 'all',
     query: '',
     selectedKey: null,
     detail: null,
@@ -168,10 +169,13 @@
           <div class="review-filter-row">
             <label class="review-search"><i data-lucide="search"></i><input id="review-search" type="search" aria-label="Search review records" placeholder="Search name, source, issue…" /></label>
             <select id="review-status" aria-label="Review status">
+              <option value="all">All statuses</option>
+              <option value="held">Held</option>
+              <option value="source_checked">Source checked</option>
+              <option value="excluded">Excluded</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
-              <option value="all">All statuses</option>
             </select>
             <button type="button" class="review-refresh" id="review-refresh"><i data-lucide="refresh-cw"></i><span>Refresh</span></button>
           </div>
@@ -259,6 +263,7 @@
       state.offset = 0;
       state.selectedKey = null;
       state.detail = null;
+      renderScopes();
       loadRows();
     });
     dom.search?.addEventListener('input', () => {
@@ -304,21 +309,19 @@
   }
 
   function scopeCount(scope) {
-    if (scope === 'all') return Number(state.summary?.totals?.pending || 0);
-    return progressCount(scope, 'pending');
+    return progressCount(scope, state.status);
   }
 
   function renderSummary() {
     if (!dom.summary) return;
     const totals = state.summary?.totals || {};
     const operational = ['invoice', 'purchase', 'delivery'].reduce((sum, scope) => sum + progressCount(scope, 'pending'), 0);
-    const reviewed = Number(totals.approved || 0) + Number(totals.rejected || 0) + Number(totals.imported || 0);
     const cards = [
-      ['clipboard-list', totals.pending || 0, 'Pending review', 'No promotion until approved'],
+      ['clipboard-list', totals.pending || 0, 'Pending review', 'Source review is separate from live data'],
       ['package-search', progressCount('inventory'), 'Inventory candidates', 'July quantity remains historical'],
-      ['martini', progressCount('recipe'), 'Recipe records', 'Recipes and ingredient links'],
+      ['martini', progressCount('recipe', 'all'), 'Recipe records', 'Reference only · recipes entered manually'],
       ['receipt-text', operational, 'Purchasing evidence', 'Invoices, purchases and deliveries'],
-      ['badge-check', reviewed, 'Reviewed decisions', `${totals.decisions || 0} audit events`]
+      ['pause-circle', totals.held || 0, 'Held records', `${totals.source_checked || 0} source checked · not operational approval`]
     ];
     dom.summary.innerHTML = cards.map(([icon, value, label, detail]) => `
       <article class="review-summary-card"><div class="review-summary-icon"><i data-lucide="${icon}"></i></div><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span><small>${escapeHtml(detail)}</small></article>`).join('');
@@ -399,17 +402,21 @@
     const source = row.normalized_data?.source_file || row.normalized_data?.source_files || row.batch_file_name || row.batch_source_files?.[0] || 'Private source';
     const issues = Array.from(new Set([...(row.issues || []), ...(detail.issue_records || []).map((entry) => entry.issue)])).filter(Boolean);
     const matchedId = rowKind === 'inventory' ? row.matched_item_id : row.matched_entity_id;
+    const frozen = Boolean(detail.source_frozen || row.batch_key?.startsWith('S63B-'));
+    const contextHtml = (records, title) => records?.length ? `<section class="review-detail-section"><h3>${escapeHtml(title)}</h3>${records.map(entry => `<article class="review-conflict"><strong>${escapeHtml(entry.issue)}</strong><p>${escapeHtml(entry.source_data?.evidence || '')}</p><p><b>${entry.resolved ? 'Recorded resolution' : 'Remaining decision'}:</b> ${escapeHtml(entry.source_data?.resolution || 'Not configured')}</p><small>${entry.resolved ? 'Resolved source issue' : 'Held / unresolved'} · ${escapeHtml(entry.source_key)}</small></article>`).join('')}</section>` : '';
 
     dom.detail.innerHTML = `
       <header class="review-detail-head"><div><span>${escapeHtml(formatKey(scope))}</span><h2>${escapeHtml(displayName)}</h2><p>${escapeHtml(source)}${row.source_page ? ` · page ${escapeHtml(row.source_page)}` : ''}</p></div><span class="review-status-badge ${escapeHtml(row.review_status)}">${escapeHtml(formatKey(row.review_status))}</span></header>
 
       <section class="review-detail-section"><h3>Review issues</h3><div class="review-issue-chips">${issues.length ? issues.map((issue) => `<span>${escapeHtml(formatKey(issue))}</span>`).join('') : '<span class="clear">No issue flags</span>'}</div></section>
 
+${contextHtml(detail.issue_records, "Record conflict evidence")}
+      ${contextHtml(detail.batch_issue_records, "Batch context · not a confirmed match to this record")}
       <section class="review-detail-section"><h3>Normalized evidence</h3>${renderObject(row.normalized_data)}</section>
 
       <details class="review-source-details"><summary>Raw source evidence</summary><pre>${escapeHtml(safeJson(row.raw_data))}</pre><div class="review-source-meta"><span>Source hash</span><code>${escapeHtml(String(row.source_hash || row.batch_source_hash || '—').slice(0, 24))}</code></div></details>
 
-      <form class="review-decision-form" id="review-decision-form">
+      ${frozen ? `<section class="review-detail-section review-frozen"><h3>Frozen source evidence</h3><p>Source checked, held or excluded does not mean operational approval. This record is read-only. Current stock is unknown until a fresh count; recipes are entered manually.</p></section>` : `<form class="review-decision-form" id="review-decision-form">
         <h3>Decision</h3>
         <div class="review-form-grid">
           <label><span>Action</span><select id="review-action">${actionOptions(rowKind, row.proposed_action)}</select></label>
@@ -422,7 +429,7 @@
           <button type="button" class="review-reject" data-review-decision="reject"><i data-lucide="circle-x"></i>Reject</button>
           <button type="button" class="review-reset" data-review-decision="reset"><i data-lucide="rotate-ccw"></i>Reset to pending</button>
         </div>
-      </form>
+      </form>`}
 
       <section class="review-history"><h3>Decision history</h3>${(detail.history || []).length ? detail.history.map((entry) => `<div class="review-history-row"><div><strong>${escapeHtml(formatKey(entry.decision))}</strong><span>${escapeHtml(entry.decided_by_label || 'Manager')} · ${escapeHtml(formatDate(entry.created_at))}</span></div><small>${escapeHtml(entry.notes || `${formatKey(entry.previous_status)} → ${formatKey(entry.new_status)}`)}</small></div>`).join('') : '<div class="review-empty-copy">No decision has been recorded for this source row.</div>'}</section>`;
 
@@ -452,6 +459,9 @@
         }
       });
       state.rows = payload.rows || [];
+      if (!state.rows.some(row => `${row.row_kind}:${row.row_id}` === state.selectedKey)) {
+        state.selectedKey = null; state.detail = null;
+      }
       state.total = Number(payload.total || 0);
       if (selectFirst && !state.selectedKey && state.rows.length) {
         const first = state.rows[0];
@@ -496,6 +506,10 @@
     if (state.submitting || !state.detail?.row) return;
     const row = state.detail.row;
     const rowKind = state.detail.row_kind;
+    if (state.detail.source_frozen || row.batch_key?.startsWith('S63B-')) {
+      setMessage('Frozen S63B evidence is read-only; source review is not operational approval.', 'error');
+      return;
+    }
     const action = document.getElementById('review-action')?.value || row.proposed_action || 'review';
     const matchedId = document.getElementById('review-match-id')?.value?.trim() || null;
     const matchedEntityType = document.getElementById('review-match-type')?.value?.trim() || null;

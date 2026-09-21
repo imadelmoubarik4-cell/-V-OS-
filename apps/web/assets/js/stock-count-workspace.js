@@ -56,11 +56,12 @@
   }
 
   function number(value, fallback = 0) {
-    const parsed = Number(value);
+    const parsed = value == null || String(value).trim() === '' ? NaN : Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
   function formatNumber(value) {
+    if (value == null || value === '' || !Number.isFinite(Number(value))) return 'Unknown';
     const parsed = number(value);
     return parsed.toLocaleString('en-US', { maximumFractionDigits: 2 });
   }
@@ -315,14 +316,14 @@
 
   function lineCard(line) {
     const editable = Boolean(currentPermissions().can_edit);
-    const variance = line.observed_quantity == null ? null : number(line.observed_quantity) - number(line.expected_quantity);
-    const varianceText = variance === null ? 'Not counted' : variance === 0 ? 'No variance' : `${variance > 0 ? '+' : ''}${formatNumber(variance)} ${line.inventory_unit || ''}`;
+    const variance = line.observed_quantity == null || line.expected_quantity == null ? null : number(line.observed_quantity) - number(line.expected_quantity);
+    const varianceText = line.observed_quantity == null ? 'Not counted' : variance === null ? 'Unknown — no verified baseline' : variance === 0 ? 'No variance' : `${variance > 0 ? '+' : ''}${formatNumber(variance)} ${line.inventory_unit || ''}`;
     return `<form class="stock-count-line is-${escapeHtml(line.line_status)}" data-count-line-form data-line-id="${escapeHtml(line.id)}" data-line-version="${line.version}">
       <header><div><span>${escapeHtml(line.bin_location || line.category || 'Inventory')}</span><h3>${escapeHtml(line.item_name)}</h3></div><div>${sourceBadge(line)}${statusPill(line.line_status)}</div></header>
       <div class="stock-count-line-evidence"><div><span>Source quantity</span><strong>${formatNumber(line.expected_quantity)} ${escapeHtml(line.inventory_unit || '')}</strong></div><div><span>Variance</span><strong class="${variance != null && variance !== 0 ? 'is-variance' : ''}">${escapeHtml(varianceText)}</strong></div><div><span>Counted by</span><strong>${escapeHtml(line.counted_by_label || '—')}</strong></div></div>
-      ${line.source_kind === 'historical_snapshot' ? '<div class="stock-count-line-warning"><i data-lucide="history"></i><span>The displayed source quantity came from the historical July opening evidence and is not treated as current stock.</span></div>' : ''}
+      ${line.source_kind === 'historical_snapshot' ? '<div class="stock-count-line-warning"><i data-lucide="history"></i><span>Historical July opening evidence is excluded from the current stock baseline and variance.</span></div>' : ''}
       ${line.source_changed_since_start ? '<div class="stock-count-line-warning is-conflict"><i data-lucide="git-compare-arrows"></i><span>The production source changed after this session started. Manager acknowledgement is required.</span></div>' : ''}
-      <div class="stock-count-line-entry"><label><span>Observed quantity</span><div><button type="button" data-line-step="-1" ${editable ? '' : 'disabled'}>−</button><input type="number" min="0" step="0.1" data-line-quantity value="${line.observed_quantity == null ? '' : escapeHtml(line.observed_quantity)}" placeholder="0" ${editable ? '' : 'disabled'}/><button type="button" data-line-step="1" ${editable ? '' : 'disabled'}>+</button><em>${escapeHtml(line.inventory_unit || 'units')}</em></div></label><label><span>Count note</span><input type="text" data-line-note value="${escapeHtml(line.note || '')}" placeholder="Open bottle estimate, damage, storage note…" ${editable ? '' : 'disabled'}/></label></div>
+      <div class="stock-count-line-entry"><label><span>Observed quantity</span><div><button type="button" data-line-step="-1" ${editable ? '' : 'disabled'}>−</button><input type="number" min="0" step="0.1" data-line-quantity value="${line.observed_quantity == null ? '' : escapeHtml(line.observed_quantity)}" placeholder="Not counted" ${editable ? '' : 'disabled'}/><button type="button" data-line-step="1" ${editable ? '' : 'disabled'}>+</button><em>${escapeHtml(line.inventory_unit || 'units')}</em></div></label><label><span>Count note</span><input type="text" data-line-note value="${escapeHtml(line.note || '')}" placeholder="Open bottle estimate, damage, storage note…" ${editable ? '' : 'disabled'}/></label></div>
       ${line.line_status === 'skipped' ? `<p class="stock-count-skip-reason"><strong>Skipped:</strong> ${escapeHtml(line.skipped_reason || '')}</p>` : ''}
       <footer><span>${line.counted_at ? escapeHtml(formatDate(line.counted_at)) : line.sku || line.barcode ? escapeHtml([line.sku, line.barcode].filter(Boolean).join(' · ')) : 'Awaiting observation'}</span>${editable ? `<div><button type="button" class="stock-count-text-action" data-skip-line="${escapeHtml(line.id)}">Skip</button><button type="submit" class="stock-count-primary"><i data-lucide="check"></i>Save count</button></div>` : ''}</footer>
     </form>`;
@@ -561,7 +562,7 @@
     if (!line) return;
     const input = form.querySelector('[data-line-quantity]');
     const note = form.querySelector('[data-line-note]');
-    const quantity = override.observed_quantity ?? Number(input?.value);
+    const quantity = override.observed_quantity ?? number(input?.value, NaN);
     if (!Number.isFinite(quantity) || quantity < 0) throw new Error('Enter an observed quantity of zero or more.');
     await mutate('save-line', {
       session_id: currentSession().id,
@@ -631,7 +632,7 @@
   function scanModalMarkup() {
     const scan = state.scan;
     const line = scan.line;
-    return `<div class="stock-count-scan-backdrop"><section class="stock-count-scan-modal" role="dialog" aria-modal="true"><header><div><span>Mobile count capture</span><h2>Scan next inventory item</h2><p>Identify one item, confirm the quantity and save it into ${escapeHtml(currentSession()?.title || 'this count')}.</p></div><button type="button" data-close-count-scan aria-label="Close"><i data-lucide="x"></i></button></header>${scan.error ? `<div class="stock-count-alert is-error"><i data-lucide="triangle-alert"></i><span>${escapeHtml(scan.error)}</span></div>` : ''}${scan.message ? `<div class="stock-count-alert is-success"><i data-lucide="circle-check-big"></i><span>${escapeHtml(scan.message)}</span></div>` : ''}<div class="stock-count-scan-grid"><section><div class="stock-count-camera ${scan.scanning ? 'is-scanning' : ''}"><video data-count-video playsinline muted></video><div><i data-lucide="scan-barcode"></i><strong>${scan.scanning ? 'Looking for a barcode…' : 'Camera ready'}</strong><span>Place the full barcode inside the frame.</span></div><i></i></div><div class="stock-count-camera-actions">${scan.scanning ? '<button type="button" class="stock-count-secondary" data-stop-count-camera><i data-lucide="square"></i>Stop camera</button>' : '<button type="button" class="stock-count-primary" data-start-count-camera><i data-lucide="camera"></i>Start camera</button>'}<label class="stock-count-secondary"><i data-lucide="image-up"></i>Scan photo<input type="file" accept="image/*" capture="environment" data-count-scan-photo hidden/></label></div><form data-manual-count-code><label><span>Barcode or SKU</span><div><input name="code" value="${escapeHtml(scan.code)}" autocomplete="off" inputmode="numeric" placeholder="Enter code"/><button type="submit">Look up</button></div></label></form></section><section class="stock-count-scan-result">${line ? `<span class="stock-count-scan-kicker">Matched count line</span><h3>${escapeHtml(line.item_name)}</h3><p>${escapeHtml(line.bin_location || line.category || 'Inventory')} · source ${formatNumber(line.expected_quantity)} ${escapeHtml(line.inventory_unit || '')}</p><form data-save-scanned-count><label><span>Observed quantity</span><div class="stock-count-scan-quantity"><button type="button" data-scan-step="-1">−</button><input type="number" min="0" step="0.1" name="quantity" value="${line.observed_quantity == null ? escapeHtml(line.expected_quantity) : escapeHtml(line.observed_quantity)}" required/><button type="button" data-scan-step="1">+</button><em>${escapeHtml(line.inventory_unit || 'units')}</em></div></label><label><span>Count note</span><textarea name="note" rows="2" placeholder="Optional observation">${escapeHtml(line.note || '')}</textarea></label><button type="submit" class="stock-count-primary" ${scan.submitting ? 'disabled' : ''}><i data-lucide="clipboard-check"></i>Add to count</button></form>` : `<div class="stock-count-scan-empty"><i data-lucide="wine"></i><h3>Scan one item</h3><p>Atlas checks verified barcode aliases and the live item catalog, then matches only items included in this session.</p></div>`}</section></div><footer><i data-lucide="shield-check"></i><span>Images and camera frames stay on this device · The saved observation remains private · No live inventory change</span></footer></section></div>`;
+    return `<div class="stock-count-scan-backdrop"><section class="stock-count-scan-modal" role="dialog" aria-modal="true"><header><div><span>Mobile count capture</span><h2>Scan next inventory item</h2><p>Identify one item, confirm the quantity and save it into ${escapeHtml(currentSession()?.title || 'this count')}.</p></div><button type="button" data-close-count-scan aria-label="Close"><i data-lucide="x"></i></button></header>${scan.error ? `<div class="stock-count-alert is-error"><i data-lucide="triangle-alert"></i><span>${escapeHtml(scan.error)}</span></div>` : ''}${scan.message ? `<div class="stock-count-alert is-success"><i data-lucide="circle-check-big"></i><span>${escapeHtml(scan.message)}</span></div>` : ''}<div class="stock-count-scan-grid"><section><div class="stock-count-camera ${scan.scanning ? 'is-scanning' : ''}"><video data-count-video playsinline muted></video><div><i data-lucide="scan-barcode"></i><strong>${scan.scanning ? 'Looking for a barcode…' : 'Camera ready'}</strong><span>Place the full barcode inside the frame.</span></div><i></i></div><div class="stock-count-camera-actions">${scan.scanning ? '<button type="button" class="stock-count-secondary" data-stop-count-camera><i data-lucide="square"></i>Stop camera</button>' : '<button type="button" class="stock-count-primary" data-start-count-camera><i data-lucide="camera"></i>Start camera</button>'}<label class="stock-count-secondary"><i data-lucide="image-up"></i>Scan photo<input type="file" accept="image/*" capture="environment" data-count-scan-photo hidden/></label></div><form data-manual-count-code><label><span>Barcode or SKU</span><div><input name="code" value="${escapeHtml(scan.code)}" autocomplete="off" inputmode="numeric" placeholder="Enter code"/><button type="submit">Look up</button></div></label></form></section><section class="stock-count-scan-result">${line ? `<span class="stock-count-scan-kicker">Matched count line</span><h3>${escapeHtml(line.item_name)}</h3><p>${escapeHtml(line.bin_location || line.category || 'Inventory')} · source ${formatNumber(line.expected_quantity)} ${escapeHtml(line.inventory_unit || '')}</p><form data-save-scanned-count><label><span>Observed quantity</span><div class="stock-count-scan-quantity"><button type="button" data-scan-step="-1">−</button><input type="number" min="0" step="0.1" name="quantity" value="${line.observed_quantity == null ? '' : escapeHtml(line.observed_quantity)}" required/><button type="button" data-scan-step="1">+</button><em>${escapeHtml(line.inventory_unit || 'units')}</em></div></label><label><span>Count note</span><textarea name="note" rows="2" placeholder="Optional observation">${escapeHtml(line.note || '')}</textarea></label><button type="submit" class="stock-count-primary" ${scan.submitting ? 'disabled' : ''}><i data-lucide="clipboard-check"></i>Add to count</button></form>` : `<div class="stock-count-scan-empty"><i data-lucide="wine"></i><h3>Scan one item</h3><p>Atlas checks verified barcode aliases and the live item catalog, then matches only items included in this session.</p></div>`}</section></div><footer><i data-lucide="shield-check"></i><span>Images and camera frames stay on this device · The saved observation remains private · No live inventory change</span></footer></section></div>`;
   }
 
   function renderScanModal() {
@@ -842,7 +843,7 @@
   async function saveScannedCount(form) {
     const line = state.scan.line;
     if (!line || state.scan.submitting) return;
-    const quantity = Number(form.elements.quantity.value);
+    const quantity = number(form.elements.quantity.value, NaN);
     if (!Number.isFinite(quantity) || quantity < 0) {
       state.scan.error = 'Enter an observed quantity of zero or more.';
       renderScanModal();
@@ -1084,3 +1085,5 @@
     }, 12000);
   }
 })();
+
+

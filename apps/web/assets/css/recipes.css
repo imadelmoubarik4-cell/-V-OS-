@@ -1451,6 +1451,7 @@ body.atlas-modal-open {
 
 .recipe-profile-ingredient > div:first-child strong {
   display: block;
+  color: var(--atlas-text, #232623);
   overflow: hidden;
   font-size: 12px;
   white-space: nowrap;

@@ -97,7 +97,7 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
         supplier: text(item.supplier) || "Unassigned",
         supplier_id: item.supplier_id ?? null,
         cost_price: item.cost_price,
-        estimated_value: quantityStatus === "current" && verifiedQuantity !== null && verifiedQuantity > 0 && cost !== null && cost > 0
+        estimated_value: quantityStatus === "current" && verifiedQuantity !== null && verifiedQuantity >= 0 && cost !== null && cost > 0
           ? verifiedQuantity * cost
           : null,
         status,
@@ -122,7 +122,7 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
     historical_items: rows.filter((row) => row.quantity_status === "historical").length,
     unverified_items: rows.filter((row) => row.quantity_status === "unverified").length,
     needs_current_count: needsCurrentCount,
-    estimated_value: currentWithCost.reduce((sum, row) => sum + Math.max(0, numberOrNull(row.quantity) ?? 0) * (numberOrNull(row.cost_price) ?? 0), 0),
+    estimated_value: currentWithCost.length ? currentWithCost.reduce((sum, row) => sum + Math.max(0, numberOrNull(row.quantity) ?? 0) * (numberOrNull(row.cost_price) ?? 0), 0) : null,
     current_missing_cost: currentMissingCost,
     valuation_excluded_items: needsCurrentCount + currentMissingCost,
     below_par: rows.filter((row) => row.status === "below_par").length,
@@ -136,10 +136,10 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
   const categoryMap = new Map();
   for (const row of rows) {
     const category = text(row.category) || "Uncategorised";
-    const current = categoryMap.get(category) || { category, item_count: 0, current_items: 0, estimated_value: 0 };
+    const current = categoryMap.get(category) || { category, item_count: 0, current_items: 0, estimated_value: null };
     current.item_count += 1;
     if (row.quantity_status === "current") current.current_items += 1;
-    current.estimated_value += numberOrNull(row.estimated_value) ?? 0;
+    if (row.estimated_value !== null) current.estimated_value = (current.estimated_value ?? 0) + row.estimated_value;
     categoryMap.set(category, current);
   }
 
@@ -239,11 +239,17 @@ export function applyStockTrustToWorkspace(workspace, stockReport, recipeReport)
   if (Array.isArray(next.kpis)) {
     next.kpis = next.kpis.map((kpi) => kpi?.key === "stock_alerts" ? {
       ...kpi,
-      value: alertCount,
-      status: stockReport.summary.current_items > 0 ? "complete" : "partial",
+      value: stockReport.summary.current_items > 0 ? alertCount : null,
+      status: stockReport.summary.needs_current_count === 0 && stockReport.summary.current_items > 0 ? "complete" : "partial",
       detail: stockReport.summary.current_items > 0
         ? "Out-of-stock and below-par alerts from current manager-verified counts only."
         : "No current verified counts; historical, stale and unverified quantities are excluded.",
+    } : kpi?.key === "inventory_value" ? {
+      ...kpi,
+      value: stockReport.summary.estimated_value,
+      status: stockReport.summary.valuation_excluded_items === 0 && stockReport.summary.current_items > 0 ? "complete" : "partial",
+      detail: "Current manager-verified quantities × configured costs. Unverified quantities and missing costs are excluded.",
+      change_value: null, change_percent: null, comparison_value: null, trend: "not_comparable",
     } : kpi);
   }
 

@@ -108,7 +108,7 @@
       "sources": {
         "supabase/functions/atlas-reports/entrypoint.ts": "52922c789f811d6c413a6ed2d0a93badf9c99968709e7108e0dd9169ed585b31",
         "supabase/functions/atlas-reports/index.ts": "0d5267c61d442e171b174170b0281139d0cdaacd575614a99dcbcb5750a0a743",
-        "supabase/functions/atlas-reports/stock-provenance.mjs": "c09a2a8846e67dbaa5a682407d62a5d5778369811d090d6b43082888e93500b0"
+        "supabase/functions/atlas-reports/stock-provenance.mjs": "bd050d4fdaeb1ae49b301b9c87a69c5f1f6cfcba09f82b19ec91066ade66b743"
       }
     },
     {
@@ -120,7 +120,7 @@
     {
       "name": "atlas-shifts",
       "sources": {
-        "supabase/functions/atlas-shifts/index.ts": "ad8f80b4000c393da0e1084aae7a7e91e9ded1096f921913bde53f902420ee15"
+        "supabase/functions/atlas-shifts/index.ts": "4db811d9c10be922c1c966f936d361c56247b527db62df6e50de7e150f299123"
       }
     },
     {
@@ -163,7 +163,7 @@
     {
       "name": "atlas-team-profiles",
       "sources": {
-        "supabase/functions/atlas-team-profiles/index.ts": "d8943e38c0d3411772cae6a8133626d7a672c9c9525fa17ea7e00506d75cff63"
+        "supabase/functions/atlas-team-profiles/index.ts": "1fc678add3ad2ae6fee1b79800c9dcd64ecb97110ae9f1f14ff3c245b67eb53a"
       }
     },
     {

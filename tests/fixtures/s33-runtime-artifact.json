@@ -100,8 +100,8 @@
         },
         {
           "path": "functions/atlas-reports/stock-provenance.mjs",
-          "source_sha256": "c09a2a8846e67dbaa5a682407d62a5d5778369811d090d6b43082888e93500b0",
-          "candidate_sha256": "c0aa8b24434bce5fb7a3d960e6bb5d6d82ea0f9a782daf6675bea9c7b5948893"
+          "source_sha256": "bd050d4fdaeb1ae49b301b9c87a69c5f1f6cfcba09f82b19ec91066ade66b743",
+          "candidate_sha256": "95ee7035e2be5530b695f56c77345fa2a9709ec3502dfef32ccea077e2b6f77e"
         }
       ]
     },
@@ -124,8 +124,8 @@
       "files": [
         {
           "path": "functions/atlas-shifts/index.ts",
-          "source_sha256": "ad8f80b4000c393da0e1084aae7a7e91e9ded1096f921913bde53f902420ee15",
-          "candidate_sha256": "bcb2f15dc4e2e8f40383139b3b7be67e8b2053c26ea71fc74095e3dfaa3b548f"
+          "source_sha256": "4db811d9c10be922c1c966f936d361c56247b527db62df6e50de7e150f299123",
+          "candidate_sha256": "ff910061f33beb577fd973fa1bdecbb3ab1dc4411464d90819e9c1016515ad97"
         }
       ]
     },
@@ -213,8 +213,8 @@
       "files": [
         {
           "path": "functions/atlas-team-profiles/index.ts",
-          "source_sha256": "d8943e38c0d3411772cae6a8133626d7a672c9c9525fa17ea7e00506d75cff63",
-          "candidate_sha256": "ad7b60ee95a71f229d95c32fdcd04c034a81dea63bca606de94f04d172f41cf7"
+          "source_sha256": "1fc678add3ad2ae6fee1b79800c9dcd64ecb97110ae9f1f14ff3c245b67eb53a",
+          "candidate_sha256": "7a0515388e366c47fe6ba9bbe0fa5e43d7ceff90769884ced1e3c3d74d6ca221"
         }
       ]
     }

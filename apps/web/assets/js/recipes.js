@@ -121,7 +121,7 @@
   function ingredientAvailability(ingredient) {
     if (window.AtlasCalculations) {
       const result = window.AtlasCalculations.ingredientMetrics(ingredient, items);
-      return { servings: result.batches, item: result.item, reason: result.reason, belowPar: result.belowPar };
+      return { servings: result.batches, item: result.item, reason: result.batches == null && result.item?.freshness_state !== 'current' ? 'Unknown / Not counted' : result.reason, belowPar: result.belowPar };
     }
     const item = items.find((candidate) => candidate.id === ingredient.item_id);
     if (!item) return { servings: null, item: null, reason: 'Inventory item is missing', belowPar: false };
@@ -132,7 +132,10 @@
       return { servings: null, item, reason: 'Package size is missing', belowPar: false };
     }
 
-    const stockUnits = Math.max(0, number(item.quantity));
+    if (item.freshness_state !== 'current' || item.verified_quantity == null || !Number.isFinite(Number(item.verified_quantity))) {
+      return { servings: null, item, reason: 'Current stock is unknown / Not counted', belowPar: false };
+    }
+    const stockUnits = Math.max(0, Number(item.verified_quantity));
     const belowPar = item.par_level != null && stockUnits <= number(item.par_level);
     let availableBatches = null;
 
@@ -204,9 +207,8 @@
     const ingredients = Array.isArray(recipeOrIngredients)
       ? recipeOrIngredients
       : recipeOrIngredients?.recipe_ingredients || [];
-    const menuPrice = menuPriceValue !== undefined
-      ? number(menuPriceValue, NaN)
-      : number(recipeOrIngredients?.menu_price, NaN);
+    const rawPrice = menuPriceValue !== undefined ? menuPriceValue : recipeOrIngredients?.menu_price;
+    const menuPrice = rawPrice == null || rawPrice === '' ? NaN : number(rawPrice, NaN);
     const recipeYield = Math.max(0.0001, yieldValue !== undefined
       ? number(yieldValue, 1)
       : number(recipeOrIngredients?.yield_quantity, 1));
@@ -223,9 +225,11 @@
       else total += result.value;
     });
 
-    const perServing = total / recipeYield;
-    const costPercent = Number.isFinite(menuPrice) && menuPrice > 0 ? (perServing / menuPrice) * 100 : NaN;
-    const profit = Number.isFinite(menuPrice) ? menuPrice - perServing : NaN;
+    const costsKnown = ingredients.length > 0 && incomplete === 0;
+    if (!costsKnown) total = null;
+    const perServing = costsKnown ? total / recipeYield : null;
+    const costPercent = costsKnown && Number.isFinite(menuPrice) && menuPrice > 0 ? (perServing / menuPrice) * 100 : NaN;
+    const profit = costsKnown && Number.isFinite(menuPrice) ? menuPrice - perServing : NaN;
     const margin = Number.isFinite(menuPrice) && menuPrice > 0 ? (profit / menuPrice) * 100 : NaN;
 
     return { total, perServing, costPercent, profit, margin, incomplete };
@@ -505,7 +509,7 @@
       detail.textContent = `${limitingName} is the limiting ingredient${issue.availability.belowPar ? ' and is at or below par' : ''}.`;
     } else {
       title.textContent = `${issue.recipe.name} needs an inventory check.`;
-      detail.textContent = issue.availability.missing ? 'One or more ingredients are no longer linked to inventory.' : 'Add package size and matching units to calculate service availability.';
+      detail.textContent = issue.availability.missing ? 'One or more ingredients are no longer linked to inventory.' : 'A fresh verified stock count and matching package units are required to calculate service availability.';
     }
     action.hidden = false;
     action.textContent = 'Review recipe';
@@ -604,7 +608,7 @@
         ? `<span class="recipe-gallery-media has-image"><img class="recipe-gallery-photo" src="${escape(recipe.image_url)}" alt="" loading="lazy" decoding="async" /><span class="recipe-gallery-status ${status.className}">${escape(status.label)}</span></span>`
         : `<span class="recipe-gallery-media"><i data-lucide="martini"></i><span class="recipe-gallery-status ${status.className}">${escape(status.label)}</span></span>`;
       const financeMarkup = canManageCommercial()
-        ? `<span class="recipe-gallery-stat"><span>Cost / serving</span><strong>${financials.incomplete ? 'Incomplete' : formatIsk(financials.perServing)}</strong></span>
+        ? `<span class="recipe-gallery-stat"><span>Cost / serving</span><strong>${financials.incomplete ? 'Unknown' : formatIsk(financials.perServing)}</strong></span>
            <span class="recipe-gallery-stat"><span>Margin</span><strong>${Number.isFinite(financials.margin) && !financials.incomplete ? `${financials.margin.toFixed(0)}%` : '—'}</strong></span>`
         : '';
       const attention = availability.missing
@@ -644,7 +648,7 @@
     if (status.key === 'draft') return { title: 'Recipe is not active', detail: 'Activate it when the service specification is complete.', action: 'Edit recipe' };
     if (status.key === 'unavailable') return { title: 'Restock required', detail: `${limiting || 'The limiting ingredient'} prevents this recipe from being served.`, action: 'Review inventory' };
     if (status.key === 'attention') return { title: 'Low service coverage', detail: `${limiting || 'The limiting ingredient'} will run out first. Plan a restock before the next busy service.`, action: 'Review inventory' };
-    if (status.key === 'incomplete') return { title: 'Setup is incomplete', detail: 'Add missing inventory links, package sizes or matching units.', action: 'Edit recipe' };
+    if (status.key === 'incomplete') return { title: 'Setup is incomplete', detail: 'Check inventory links, package units and fresh verified stock counts.', action: 'Edit recipe' };
     return { title: 'Ready for service', detail: 'All linked ingredients currently support service.', action: 'Open Service Mode' };
   }
 
@@ -664,10 +668,10 @@
     const image = recipe.image_url ? `<div class="recipe-profile-image" style="background-image:url('${escape(recipe.image_url)}')"></div>` : '<div class="recipe-profile-image recipe-profile-placeholder"><i data-lucide="martini"></i></div>';
     const ingredientMarkup = ingredientRows.length ? ingredientRows.map(({ ingredient, availability, cost, servings }) => {
       const item = availability.item;
-      const stock = item ? `${number(item.quantity)} ${escape(item.unit)}` : 'Missing link';
+      const stock = item ? stockLabel(item) : 'Missing link';
       const rowClass = !item ? 'missing' : availability.belowPar ? 'low' : servings === 0 ? 'out' : '';
       const costMarkup = canManageCommercial()
-        ? `<div><span>Cost</span><strong>${cost.value == null ? 'Incomplete' : formatIsk(cost.value)}</strong></div>`
+        ? `<div><span>Cost</span><strong>${cost.value == null ? 'Unknown' : formatIsk(cost.value)}</strong></div>`
         : '';
       return `<div class="recipe-profile-ingredient ${rowClass}">
         <div><strong>${escape(ingredient.item_name)}</strong><span>${number(ingredient.quantity)} ${escape(ingredient.unit)} per recipe</span></div>
@@ -693,13 +697,13 @@
       <div class="recipe-health-card ${status.className}"><span class="recipe-health-label">Status</span><strong>${escape(status.label)}</strong><p>${escape(recommendation.detail)}</p></div>
       <div class="recipe-insight-metrics">
         ${canManageCommercial() ? `<div><span>Menu price</span><strong>${Number.isFinite(number(recipe.menu_price, NaN)) ? formatIsk(number(recipe.menu_price)) : 'Not set'}</strong></div>
-        <div><span>Cost per serving</span><strong>${financials.incomplete ? 'Incomplete' : formatIsk(financials.perServing)}</strong></div>
+        <div><span>Cost per serving</span><strong>${financials.incomplete ? 'Unknown' : formatIsk(financials.perServing)}</strong></div>
         <div><span>Cost percentage</span><strong>${Number.isFinite(financials.costPercent) && !financials.incomplete ? `${financials.costPercent.toFixed(1)}%` : '—'}</strong></div>
         <div><span>Gross margin</span><strong>${Number.isFinite(financials.margin) && !financials.incomplete ? `${financials.margin.toFixed(1)}%` : '—'}</strong></div>
         <div><span>Profit per serving</span><strong>${Number.isFinite(financials.profit) && !financials.incomplete ? formatIsk(financials.profit) : '—'}</strong></div>` : ''}
         <div><span>Current coverage</span><strong>${Number.isFinite(status.availability.servings) ? `${status.availability.servings} servings` : 'Unknown'}</strong></div>
       </div>
-      <div class="recipe-limiting-card"><span>Limiting ingredient</span><strong>${escape(limitingName)}</strong><p>${status.availability.belowPar ? 'At or below its par level.' : 'This ingredient will run out first.'}</p></div>
+      <div class="recipe-limiting-card"><span>Limiting ingredient</span><strong>${escape(limitingName)}</strong><p>${status.availability.unknown ? 'Unknown until all linked ingredients have verified stock.' : status.availability.belowPar ? 'At or below its par level.' : 'This ingredient will run out first.'}</p></div>
       <button type="button" class="recipe-insight-primary" data-health-action>${escape(recommendation.action)}</button>`;
     dom.insight.querySelector('[data-health-action]')?.addEventListener('click', () => {
       if (status.key === 'ready') openServiceView(recipe);
@@ -806,12 +810,18 @@
     }).join('');
   }
 
+  function stockLabel(item) {
+    return item?.freshness_state === 'current' && item.verified_quantity != null
+      && Number.isFinite(Number(item.verified_quantity))
+      ? `${Number(item.verified_quantity)} ${escape(item.unit)}` : 'Unknown / Not counted';
+  }
+
   function populateIngredientSelect() {
     if (!dom.ingredientSelect) return;
     const available = items.filter((item) => item.active !== false);
     dom.ingredientSelect.innerHTML = [
       '<option value="">Select inventory item</option>',
-      ...available.map((item) => `<option value="${escape(item.id)}">${escape(item.name)} · ${escape(item.category || 'Other')} · ${number(item.quantity)} ${escape(item.unit)}</option>`)
+      ...available.map((item) => `<option value="${escape(item.id)}">${escape(item.name)} · ${escape(item.category || 'Other')} · ${stockLabel(item)}</option>`)
     ].join('');
   }
 
@@ -904,7 +914,7 @@
       const cost = ingredientCost(ingredient);
       const item = cost.item;
       const inventoryMeta = item
-        ? `${number(item.quantity)} ${escape(item.unit)} in stock${item.par_level != null ? ` · par ${number(item.par_level)}` : ''}`
+        ? stockLabel(item)
         : 'Inventory link missing';
       return `
         <div class="ingredient-line-v2">
@@ -926,8 +936,8 @@
     const recipeYield = document.getElementById('recipe-yield-qty')?.value;
     const financials = recipeFinancials(state.draftIngredients, menuPrice, recipeYield);
 
-    document.getElementById('calc-total-cost').textContent = formatIsk(financials.total, '0 ISK');
-    document.getElementById('calc-cost-per-serving').textContent = formatIsk(financials.perServing, '0 ISK');
+    document.getElementById('calc-total-cost').textContent = formatIsk(financials.total, state.draftIngredients.length ? 'Unknown' : 'Not configured');
+    document.getElementById('calc-cost-per-serving').textContent = formatIsk(financials.perServing, state.draftIngredients.length ? 'Unknown' : 'Not configured');
     document.getElementById('calc-cost-pct').textContent = Number.isFinite(financials.costPercent) ? `${financials.costPercent.toFixed(1)}%` : '—';
     document.getElementById('calc-profit').textContent = Number.isFinite(financials.profit) ? formatIsk(financials.profit) : '—';
 
@@ -950,7 +960,7 @@
       if (!state.draftIngredients.length) {
         label.textContent = 'Add linked ingredients to calculate current service availability.';
       } else if (availability.status === 'incomplete') {
-        label.textContent = 'Availability is incomplete because an inventory link, package size or matching unit is missing.';
+        label.textContent = 'Availability is unknown until linked ingredients have a fresh verified stock count and compatible package units.';
       } else if (availability.status === 'unavailable') {
         label.textContent = `${availability.limiting?.item?.name || 'The limiting ingredient'} is insufficient for one serving.`;
       } else {
@@ -996,30 +1006,19 @@
 
       if (!payload.name) throw new Error('Recipe name is required.');
 
-      let savedRecipeId = recipeId;
-      if (recipeId) {
-        const { error } = await sb.from('recipes').update(payload).eq('id', recipeId);
-        if (error) throw error;
-        const { error: deleteError } = await sb.from('recipe_ingredients').delete().eq('recipe_id', recipeId);
-        if (deleteError) throw deleteError;
-      } else {
-        const { data, error } = await sb.from('recipes').insert(payload).select('id').single();
-        if (error) throw error;
-        savedRecipeId = data.id;
-      }
-
-      if (state.draftIngredients.length) {
-        const { error } = await sb.from('recipe_ingredients').insert(
-          state.draftIngredients.map((ingredient) => ({
-            recipe_id: savedRecipeId,
-            item_id: ingredient.item_id,
-            item_name: ingredient.item_name,
-            quantity: ingredient.quantity,
-            unit: ingredient.unit
-          }))
-        );
-        if (error) throw error;
-      }
+      const { data: savedRecipeId, error } = await sb.rpc('atlas_save_recipe', {
+        p_recipe_id: recipeId,
+        p_recipe: payload,
+        p_ingredients: state.draftIngredients.map((ingredient) => ({
+          item_id: ingredient.item_id,
+          item_name: ingredient.item_name,
+          quantity: ingredient.quantity,
+          unit: ingredient.unit
+        }))
+      });
+      if (error) throw error;
+      // Retain the persisted identity if refreshing fails, so retry updates it.
+      document.getElementById('recipe-id').value = savedRecipeId;
 
       dom.saveState.textContent = 'Saved';
       await loadAll();

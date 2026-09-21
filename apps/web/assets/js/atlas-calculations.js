@@ -47,8 +47,11 @@
     const pack = parsePackSize(item);
     const requested = convert(number(ingredient.quantity), ingredient.unit);
     const purchaseCost = number(item.cost_price, NaN);
-    const stockUnits = Math.max(0, number(item.quantity));
-    const belowPar = item.par_level != null && stockUnits <= number(item.par_level);
+    // Operational quantities are historical until a current verified balance is supplied.
+    const stockKnown = item.freshness_state === 'current' && item.verified_quantity != null
+      && Number.isFinite(Number(item.verified_quantity));
+    const stockUnits = stockKnown ? Math.max(0, Number(item.verified_quantity)) : null;
+    const belowPar = stockKnown && item.par_level != null && stockUnits <= number(item.par_level);
     if (!pack || requested.quantity <= 0) return { item, cost: null, batches: null, reason: 'Package size is missing', belowPar };
 
     const eachLike = new Set(['each', 'bottle', 'can']);
@@ -59,8 +62,8 @@
     return {
       item,
       cost: Number.isFinite(purchaseCost) && purchaseCost > 0 ? purchaseCost * requestedPacks : null,
-      batches: stockUnits / requestedPacks,
-      reason: Number.isFinite(purchaseCost) && purchaseCost > 0 ? null : 'Missing inventory cost',
+      batches: stockKnown ? stockUnits / requestedPacks : null,
+      reason: !(Number.isFinite(purchaseCost) && purchaseCost > 0) ? 'Missing inventory cost' : !stockKnown ? 'Current stock is unknown / Not counted' : null,
       belowPar
     };
   }
@@ -68,19 +71,19 @@
   function recipeMetrics(recipe, inventory) {
     const ingredients = Array.isArray(recipe?.recipe_ingredients) ? recipe.recipe_ingredients : [];
     const recipeYield = Math.max(0.0001, number(recipe?.yield_quantity, 1));
-    const menuPrice = number(recipe?.menu_price, NaN);
+    const menuPrice = recipe?.menu_price == null || recipe.menu_price === '' ? NaN : number(recipe.menu_price, NaN);
     const rows = ingredients.map((ingredient) => ({ ingredient, ...ingredientMetrics(ingredient, inventory) }));
     const costRows = rows.filter((row) => Number.isFinite(row.cost));
     const completeCosts = ingredients.length > 0 && costRows.length === ingredients.length;
-    const total = costRows.reduce((sum, row) => sum + row.cost, 0);
-    const perServing = total / recipeYield;
-    const profit = Number.isFinite(menuPrice) ? menuPrice - perServing : NaN;
+    const total = completeCosts ? costRows.reduce((sum, row) => sum + row.cost, 0) : null;
+    const perServing = completeCosts ? total / recipeYield : null;
+    const profit = completeCosts && Number.isFinite(menuPrice) ? menuPrice - perServing : NaN;
     const margin = Number.isFinite(menuPrice) && menuPrice > 0 ? (profit / menuPrice) * 100 : NaN;
-    const costPercent = Number.isFinite(menuPrice) && menuPrice > 0 ? (perServing / menuPrice) * 100 : NaN;
+    const costPercent = completeCosts && Number.isFinite(menuPrice) && menuPrice > 0 ? (perServing / menuPrice) * 100 : NaN;
 
     const known = rows.filter((row) => Number.isFinite(row.batches));
     const limiting = known.length ? known.reduce((smallest, row) => row.batches < smallest.batches ? row : smallest, known[0]) : null;
-    const servings = limiting ? Math.max(0, Math.floor(limiting.batches * recipeYield)) : null;
+    const servings = limiting && known.length === rows.length ? Math.max(0, Math.floor(limiting.batches * recipeYield)) : null;
     const unknown = rows.length - known.length;
     const missing = rows.filter((row) => !row.item).length;
     const belowPar = rows.filter((row) => row.belowPar).length;

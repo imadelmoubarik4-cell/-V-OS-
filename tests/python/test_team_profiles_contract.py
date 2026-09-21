@@ -115,7 +115,13 @@ class TeamProfilesContractTests(unittest.TestCase):
         self.assertIn('/auth/v1/invite', EDGE)
         self.assertIn('SUPABASE_SERVICE_ROLE_KEY', EDGE)
         self.assertIn('redirect_to', EDGE)
-        self.assertNotIn('app_metadata', EDGE)
+        # Server-owned invitation provenance is allowed; authorization still
+        # comes from the current profiles row, never editable Auth metadata.
+        auth_gate = EDGE.split('async function requireActiveProfile', 1)[1].split('function requireManager', 1)[0]
+        self.assertNotIn('user_metadata', auth_gate)
+        self.assertNotIn('app_metadata', auth_gate)
+        self.assertIn('app_metadata: { atlas_invited_by: context.user.id }', EDGE)
+        self.assertIn('data.user.email_confirmed_at', EDGE)
 
     def test_audited_production_training_and_access_controls_are_enabled(self):
         self.assertIn('live_training_writes_enabled: true', EDGE)
@@ -131,3 +137,4 @@ class TeamProfilesContractTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

@@ -449,6 +449,7 @@
   }
 
   function shiftModalMarkup() {
+    if (state.modal?.mode === 'remove') return `<div class="shift-modal shift-month-modal" role="dialog" aria-modal="true" aria-labelledby="shift-month-remove-title"><div class="shift-modal-backdrop" data-shifts-month-close></div><section><header><h2 id="shift-month-remove-title">Remove shift?</h2><button type="button" data-shifts-month-close aria-label="Close"><i data-lucide="x"></i></button></header><p>Remove ${escapeHtml(state.modal.shift.person_name || personFor(state.modal.shift.person_id)?.display_name || 'this team member')}'s shift on ${escapeHtml(formatDay(dateFromLocal(state.modal.shift.starts_local), { weekday: 'long', day: 'numeric', month: 'long' }))} from the draft? The audit history will be kept.</p><footer><button type="button" class="shift-secondary" data-shifts-month-close>Cancel</button><button type="button" class="shift-primary" data-shifts-month-confirm-remove ${state.submitting ? 'disabled' : ''}>Remove shift</button></footer></section></div>`;
     if (!state.modal || state.modal.mode !== 'shift') return '';
     const shift = state.modal.shift || null;
     const date = state.modal.date || dateFromLocal(shift?.starts_local) || state.selectedDate || state.monthStart;
@@ -458,7 +459,7 @@
     return `<div class="shift-modal shift-month-modal" role="dialog" aria-modal="true" aria-labelledby="shift-month-modal-title">
       <div class="shift-modal-backdrop" data-shifts-month-close></div>
       <section>
-        <header><div><span>Monthly planner</span><h2 id="shift-month-modal-title">${shift ? 'Edit shift' : 'Add shift'}</h2></div><button type="button" data-shifts-month-close aria-label="Close"><i data-lucide="x"></i></button></header>
+        <header><div><span>Monthly planner</span><h2 id="shift-month-modal-title">${shift?.id ? 'Edit shift' : 'Add shift'}</h2></div><button type="button" data-shifts-month-close aria-label="Close"><i data-lucide="x"></i></button></header>
         <form data-shifts-month-shift-form>
           <input type="hidden" name="shift_id" value="${escapeHtml(shift?.id || '')}" />
           <div class="shift-form-grid">
@@ -586,11 +587,15 @@
   function apply() {
     const element = host();
     if (!element || !element.querySelector('.shift-tabs')) return false;
+    // Icon replacement also mutates nodes outside the month panel. Do not
+    // observe our own render and schedule another render on every frame.
+    state.observer?.disconnect();
+    try {
     ensureMonthTab();
     element.classList.toggle('shifts-month-active', state.active);
     if (state.active) {
       if (!state.monthStart) state.monthStart = monthStartFor(window.AtlasShifts?.week?.() || venueDate());
-      renderPanel();
+      if (!state.modal || !element.querySelector('.shift-month-modal')) renderPanel();
       if (!state.loading && state.workspace?.month?.month_start !== state.monthStart) loadMonth();
     } else {
       element.querySelector('[data-shifts-month-panel]')?.remove();
@@ -598,6 +603,9 @@
       document.body.classList.remove('shift-modal-open');
     }
     return true;
+    } finally {
+      state.observer?.observe(element, { childList: true, subtree: true });
+    }
   }
 
   function scheduleApply() {
@@ -677,6 +685,13 @@
     const startsLocal = formValue(form, 'starts_local');
     const endsLocal = formValue(form, 'ends_local');
     const startDate = startsLocal.slice(0, 10);
+    // Preserve the submitted draft through validation and server-error renders.
+    if (state.modal) state.modal.shift = {
+      id: formValue(form, 'shift_id') || null,
+      person_id: formValue(form, 'person_id'),
+      role_name: formValue(form, 'role_name'), starts_local: startsLocal, ends_local: endsLocal,
+      break_minutes: Number(formValue(form, 'break_minutes') || 0), note: formValue(form, 'note')
+    };
 
     if (startDate.slice(0, 7) !== state.monthStart.slice(0, 7)) {
       state.error = `The shift must start inside ${monthLabel(state.monthStart)}. Open another month to move it there.`;
@@ -816,7 +831,8 @@
     const day = target.closest('[data-shifts-month-day]');
     if (day) {
       state.selectedDate = day.dataset.shiftsMonthDay;
-      renderPanel();
+      if (canManage()) openShiftEditor(state.selectedDate);
+      else renderPanel();
       return;
     }
 
@@ -840,14 +856,18 @@
       return;
     }
 
+    if (target.closest('[data-shifts-month-confirm-remove]')) {
+      const shift = state.modal?.shift;
+      if (shift) mutate('cancel-shift', { shift_id: shift.id }, 'Shift removed from the private monthly draft.', { selectedDate: dateFromLocal(shift.starts_local) });
+      return;
+    }
+
     const remove = target.closest('[data-shifts-month-remove]');
     if (remove) {
       const shift = shifts().find((entry) => entry.id === remove.dataset.shiftsMonthRemove);
       if (!shift) return;
-      if (!window.confirm(`Remove ${shift.person_name || personFor(shift.person_id)?.display_name || 'this team member'}'s ${timeFromLocal(shift.starts_local)} shift from ${formatDay(dateFromLocal(shift.starts_local), { weekday: 'long', day: '2-digit', month: 'short' })}? Staff will keep seeing the previous published month until you publish the update.`)) return;
-      mutate('cancel-shift', { shift_id: shift.id }, 'Shift removed from the private monthly draft. Publish the month update to make the change visible to staff.', {
-        selectedDate: dateFromLocal(shift.starts_local)
-      });
+      state.modal = { mode: 'remove', shift };
+      renderPanel();
       return;
     }
 
@@ -923,6 +943,7 @@
       }
     }, REFRESH_MS);
 
+    window.addEventListener('atlas:team-roster-changed', () => { state.workspace = null; if (state.active && viewVisible()) loadMonth({ force: true }); });
     window.addEventListener('focus', () => {
       if (state.active && viewVisible() && !state.modal) loadMonth({ force: true, silent: true });
     });

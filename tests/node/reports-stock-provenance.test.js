@@ -8,6 +8,19 @@ import {
   reconcileRecipeStockEvidence,
 } from '../../supabase/functions/atlas-reports/stock-provenance.mjs';
 
+test('S64F unknown valuation and alert coverage are not displayed as zero', () => {
+  const items = [{id:'unverified', name:'Test item', quantity:0, cost_price:100}];
+  const stock = buildStockReport(items, []);
+  const result = applyStockTrustToWorkspace({kpis:[{key:'inventory_value',value:0},{key:'stock_alerts',value:1}]}, stock);
+  assert.equal(stock.summary.estimated_value, null);
+  assert.equal(stock.categories[0].estimated_value, null);
+  assert.equal(result.kpis[0].value, null);
+  assert.equal(result.kpis[1].value, null);
+  const verified = buildStockReport(items, [{inventory_item_id:'unverified', freshness_state:'current',verified_quantity:0}]);
+  assert.equal(verified.summary.estimated_value, 0);
+  assert.equal(verified.rows[0].estimated_value, 0);
+});
+
 const NOW = Date.parse('2026-09-15T12:00:00Z');
 const inventory = [
   { id: 'historical', name: 'Historical zero', quantity: 0, par_level: 2, active: true, source_updated_at: '2026-07-26', cost_price: 100 },

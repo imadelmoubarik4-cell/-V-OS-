@@ -46,7 +46,7 @@ test('one calculation rule gives saved and refetched fixture values', () => {
   const sandbox = { window: {} };
   vm.runInNewContext(read('apps/web/assets/js/atlas-calculations.js'), sandbox);
   const calculator = sandbox.window.AtlasCalculations;
-  const inventory = [{ id: 'item-1', quantity: 10, unit: 'bottles', cost_price: 100, par_level: 2 }];
+  const inventory = [{ id: 'item-1', quantity: 10, verified_quantity: 10, freshness_state: 'current', unit: 'bottles', cost_price: 100, par_level: 2 }];
   const recipe = {
     menu_price: 500,
     yield_quantity: 1,

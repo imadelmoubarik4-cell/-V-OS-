@@ -141,7 +141,7 @@
       throw new Error(`Could not read ${EXTENSION_SOURCE} (${response.status}).`);
     }
 
-    let source = await response.text();
+    let source = (await response.text()).replace(/\r\n?/g, '\n');
     const schedulerSource = `  function scheduleEnhance() {
     window.requestAnimationFrame(enhance);
   }`;
