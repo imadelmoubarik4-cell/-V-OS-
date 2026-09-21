@@ -586,6 +586,10 @@
   function apply() {
     const element = host();
     if (!element || !element.querySelector('.shift-tabs')) return false;
+    // Icon replacement also mutates nodes outside the month panel. Do not
+    // observe our own render and schedule another render on every frame.
+    state.observer?.disconnect();
+    try {
     ensureMonthTab();
     element.classList.toggle('shifts-month-active', state.active);
     if (state.active) {
@@ -598,6 +602,9 @@
       document.body.classList.remove('shift-modal-open');
     }
     return true;
+    } finally {
+      state.observer?.observe(element, { childList: true, subtree: true });
+    }
   }
 
   function scheduleApply() {
