@@ -1006,30 +1006,19 @@
 
       if (!payload.name) throw new Error('Recipe name is required.');
 
-      let savedRecipeId = recipeId;
-      if (recipeId) {
-        const { error } = await sb.from('recipes').update(payload).eq('id', recipeId);
-        if (error) throw error;
-        const { error: deleteError } = await sb.from('recipe_ingredients').delete().eq('recipe_id', recipeId);
-        if (deleteError) throw deleteError;
-      } else {
-        const { data, error } = await sb.from('recipes').insert(payload).select('id').single();
-        if (error) throw error;
-        savedRecipeId = data.id;
-      }
-
-      if (state.draftIngredients.length) {
-        const { error } = await sb.from('recipe_ingredients').insert(
-          state.draftIngredients.map((ingredient) => ({
-            recipe_id: savedRecipeId,
-            item_id: ingredient.item_id,
-            item_name: ingredient.item_name,
-            quantity: ingredient.quantity,
-            unit: ingredient.unit
-          }))
-        );
-        if (error) throw error;
-      }
+      const { data: savedRecipeId, error } = await sb.rpc('atlas_save_recipe', {
+        p_recipe_id: recipeId,
+        p_recipe: payload,
+        p_ingredients: state.draftIngredients.map((ingredient) => ({
+          item_id: ingredient.item_id,
+          item_name: ingredient.item_name,
+          quantity: ingredient.quantity,
+          unit: ingredient.unit
+        }))
+      });
+      if (error) throw error;
+      // Retain the persisted identity if refreshing fails, so retry updates it.
+      document.getElementById('recipe-id').value = savedRecipeId;
 
       dom.saveState.textContent = 'Saved';
       await loadAll();
