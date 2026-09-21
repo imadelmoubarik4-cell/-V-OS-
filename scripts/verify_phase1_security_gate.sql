@@ -105,6 +105,17 @@ with public_tables as (
     ) as purchase_order_safe
   from pg_proc p
   where p.oid = to_regprocedure('public.atlas_purchase_order_command(uuid,text,integer,uuid,jsonb,text)')
+), recipe_save_status as (
+  select p.oid,
+    not p.prosecdef
+    and not has_function_privilege('anon', p.oid, 'execute')
+    and has_function_privilege('authenticated', p.oid, 'execute')
+    and coalesce(p.proconfig @> array['search_path=""'], false)
+    and p.prosrc like '%auth.uid() is null or not private.is_manager_or_admin()%'
+    and p.prosrc like '%errcode=''42501''%'
+    as recipe_save_safe
+  from pg_proc p
+  where p.oid = to_regprocedure('public.atlas_save_recipe(uuid,jsonb,jsonb)')
 ), browser_functions as (
   select p.oid, p.proname, pg_get_function_identity_arguments(p.oid) as args
   from pg_proc p
@@ -115,6 +126,10 @@ with public_tables as (
       or has_function_privilege('authenticated', p.oid, 'execute')
     )
     and p.proname <> 'adjust_inventory'
+    and not exists (
+      select 1 from recipe_save_status rs
+      where rs.oid = p.oid and rs.recipe_save_safe
+    )
     and not exists (
       select 1 from purchase_order_status po
       where po.oid = p.oid and po.purchase_order_safe
@@ -169,7 +184,9 @@ select jsonb_build_object(
     case when not coalesce((select adjust_inventory_safe from adjustment_final),false)
       then 'adjust_inventory is not a caller-evaluated manager-only RPC' end,
     case when exists (select 1 from purchase_order_status where not purchase_order_safe)
-      then 'purchase order wrapper, grants or table boundary is unsafe' end
+      then 'purchase order wrapper, grants or table boundary is unsafe' end,
+    case when exists (select 1 from recipe_save_status where not recipe_save_safe)
+      then 'recipe save is not a caller-evaluated manager-only RPC' end
   ]::text[], null)),
   'browser_function_exposure', coalesce((
     select jsonb_agg(jsonb_build_object('function', proname, 'args', args) order by proname, args)
@@ -188,3 +205,4 @@ select jsonb_build_object(
   ),
   'fingerprint', (select to_jsonb(fingerprint) from fingerprint)
 ) as phase1_security_gate;
+
