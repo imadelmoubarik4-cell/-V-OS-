@@ -694,7 +694,7 @@ textarea:focus-visible {
 .recipe-foundation-card[open] > summary > svg { transform:rotate(180deg); }
 .recipe-foundation-body { padding:0 18px 18px; }
 .recipe-detail-shell { width:min(1040px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); margin:auto; border:1px solid var(--s38-line); border-radius:26px !important; background:#fff; box-shadow:0 32px 90px rgba(24,34,48,.25); overflow:hidden; }
-.recipe-category-row { flex-wrap:wrap; overflow:visible !important; }
+#recipes-view .recipe-category-row { flex-wrap:wrap; overflow:visible !important; }
 
 /* Purchasing status workspace */
 #purchase-order-panel [data-order-list] { display:grid; gap:12px; }

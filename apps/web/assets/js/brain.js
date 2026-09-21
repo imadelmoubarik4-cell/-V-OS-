@@ -138,7 +138,7 @@
 
   function lowInventory() {
     return sourceItems()
-      .filter((item) => item.active !== false && item.par_level != null && number(item.quantity) <= number(item.par_level))
+      .filter((item) => item.active !== false && window.AtlasStockTruth?.known(item) && item.par_level != null && number(item.quantity) <= number(item.par_level))
       .sort((a, b) => {
         const ratioA = number(a.par_level) > 0 ? number(a.quantity) / number(a.par_level) : 1;
         const ratioB = number(b.par_level) > 0 ? number(b.quantity) / number(b.par_level) : 1;

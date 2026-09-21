@@ -540,6 +540,8 @@
 }
 
 .inventory-section-row {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -548,6 +550,8 @@
 
 .inventory-workspace-tabs {
   min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   gap: 3px;

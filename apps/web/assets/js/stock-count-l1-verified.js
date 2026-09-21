@@ -28,7 +28,7 @@
   }
 
   function number(value, fallback = 0) {
-    const parsed = Number(value);
+    const parsed = value == null || String(value).trim() === '' ? NaN : Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
@@ -94,6 +94,9 @@
   }
 
   function previewNormalization(line, inputQuantity, inputUnit) {
+    if (inputQuantity == null || String(inputQuantity).trim() === '') return null;
+    const packageUnit = String(line.inventory_unit || '').trim().toLowerCase();
+    if (['box', 'boxes', 'pack', 'packs', 'case', 'cases'].includes(packageUnit) && inputUnit !== 'inventory') return null;
     const quantity = number(inputQuantity, NaN);
     if (!Number.isFinite(quantity) || quantity < 0) return null;
     const family = quantityFamily(line.inventory_unit);
@@ -152,7 +155,7 @@
     const result = previewNormalization(line, input.value, select.value);
     preview.textContent = result
       ? `${formatNumber(result.normalized)} ${line.inventory_unit || 'units'} after ${result.basis}`
-      : 'Complete package information is required for this conversion.';
+      : input.value.trim() === '' ? 'Enter an observed quantity.' : 'Complete package information is required for this conversion.';
     preview.classList.toggle('is-warning', !result);
   }
 
@@ -160,7 +163,9 @@
     const supported = Array.isArray(line.supported_count_units) && line.supported_count_units.length
       ? line.supported_count_units
       : ['inventory'];
-    return supported.map((unit) => `<option value="${escapeHtml(unit)}">${escapeHtml(UNIT_LABELS[unit] || unit)}</option>`).join('');
+    const packageUnit = String(line.inventory_unit || '').trim().toLowerCase();
+    const allowed = ['box', 'boxes', 'pack', 'packs', 'case', 'cases'].includes(packageUnit) ? ['inventory'] : supported;
+    return allowed.map((unit) => `<option value="${escapeHtml(unit)}">${escapeHtml(UNIT_LABELS[unit] || unit)}</option>`).join('');
   }
 
   function addQuantityStatus(form, line) {
@@ -185,6 +190,7 @@
     if (!quantityInput || !quantityWrap) return;
 
     let select = form.querySelector('[data-l1-count-unit]');
+    const initializeValue = !select;
     if (!select) {
       select = document.createElement('select');
       select.dataset.l1CountUnit = 'true';
@@ -206,8 +212,8 @@
     }
 
     const preferredUnit = line.observed_input_unit || 'inventory';
-    if ([...select.options].some((option) => option.value === preferredUnit)) select.value = preferredUnit;
-    if (line.observed_input_quantity !== null && line.observed_input_quantity !== undefined) {
+    if (initializeValue && [...select.options].some((option) => option.value === preferredUnit)) select.value = preferredUnit;
+    if (initializeValue && line.observed_input_quantity !== null && line.observed_input_quantity !== undefined) {
       quantityInput.value = String(line.observed_input_quantity);
     }
     updatePreview(form, line);
@@ -344,7 +350,7 @@
     const input = form.querySelector('[data-line-quantity], input[name="quantity"]');
     const select = form.querySelector('[data-l1-count-unit]');
     const note = form.querySelector('[data-line-note], textarea[name="note"]');
-    const quantity = Number(input?.value);
+    const quantity = number(input?.value, NaN);
     if (!sessionId || !line || !Number.isFinite(quantity) || quantity < 0) {
       showMessage('Enter an observed quantity of zero or more.', 'error');
       return;
@@ -482,3 +488,6 @@
 
   init();
 })();
+
+
+

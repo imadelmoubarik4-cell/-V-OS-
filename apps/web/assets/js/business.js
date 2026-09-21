@@ -141,6 +141,7 @@
   }
 
   function inventoryValue() {
+    if (activeItems().some(item => !window.AtlasStockTruth?.known(item) || item.cost_price == null)) return NaN;
     return activeItems().reduce((sum, item) => {
       const quantity = Math.max(0, number(item.quantity));
       const cost = number(item.cost_price, NaN);
@@ -210,7 +211,7 @@
 
   function categoryValues() {
     const groups = new Map();
-    activeItems().forEach((item) => {
+    activeItems().filter(item => window.AtlasStockTruth?.known(item)).forEach((item) => {
       const category = String(item.category || 'Uncategorised').trim() || 'Uncategorised';
       const cost = number(item.cost_price, NaN);
       const value = Number.isFinite(cost) && cost > 0 ? Math.max(0, number(item.quantity)) * cost : 0;
@@ -270,7 +271,7 @@
   }
 
   function topCapitalItems() {
-    return activeItems().map((item) => {
+    return activeItems().filter(item => window.AtlasStockTruth?.known(item)).map((item) => {
       const cost = number(item.cost_price, NaN);
       return {
         item,

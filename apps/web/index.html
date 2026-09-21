@@ -954,8 +954,8 @@
               <div class="atlas-field"><label>Availability</label><div class="recipe-toggle-row"><label class="recipe-check"><input type="checkbox" id="recipe-active" checked />Active for service</label><label class="recipe-check"><input type="checkbox" id="recipe-show-on-menu" checked />Show on public menu</label></div></div>
             </div>
             <div class="recipe-cost-strip">
-              <div class="recipe-cost-box"><span>Total recipe cost</span><strong id="calc-total-cost">0 ISK</strong></div>
-              <div class="recipe-cost-box"><span>Cost per serving</span><strong id="calc-cost-per-serving">0 ISK</strong></div>
+              <div class="recipe-cost-box"><span>Total recipe cost</span><strong id="calc-total-cost">Not configured</strong></div>
+              <div class="recipe-cost-box"><span>Cost per serving</span><strong id="calc-cost-per-serving">Not configured</strong></div>
               <div class="recipe-cost-box"><span>Cost percentage</span><strong id="calc-cost-pct">—</strong></div>
               <div class="recipe-cost-box"><span>Profit per serving</span><strong id="calc-profit">—</strong></div>
             </div>
@@ -980,6 +980,7 @@
 <script src="config.js"></script>
 <script src="assets/js/runtime-module-guard.js"></script>
 <script src="assets/js/rehearsal-boundary.js"></script>
+<script src="assets/js/atlas-stock-truth.js?v=20260921-s64f"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -1281,7 +1282,18 @@
       showDataBoundaryError('Inventory');
       return;
     }
-    items = data || [];
+    let balances = [];
+    try {
+      const session = (await sb.auth.getSession()).data?.session;
+      const endpoint = window.VABAR_CONFIG?.STOCK_COUNTS_API;
+      if (session?.access_token && endpoint) {
+        const url = new URL(endpoint); url.searchParams.set('action', 'snapshot');
+        const response = await fetch(url, {headers: {authorization: `Bearer ${session.access_token}`}, signal: AbortSignal.timeout(12000)});
+        if (!response.ok) throw new Error('Verified stock unavailable');
+        balances = (await response.json()).counts?.verified_balances || [];
+      }
+    } catch (error) { console.warn('Stock remains unknown until verified balances can be read.'); }
+    items = window.AtlasStockTruth.project(data || [], balances);
     renderTabs();
     renderTable();
     renderInventoryOperations();
@@ -1430,7 +1442,7 @@
     const title = document.getElementById('inventory-intelligence-title');
     const detail = document.getElementById('inventory-intelligence-detail');
     if (!title || !detail) return;
-    const low = items.filter(item => item.par_level != null && Number(item.quantity) <= Number(item.par_level));
+    const low = items.filter(item => window.AtlasStockTruth.known(item) && item.par_level != null && Number(item.quantity) <= Number(item.par_level));
     const missingCost = items.filter(item => item.cost_price == null || item.cost_price === '');
     if (low.length) {
       const item = low[0];
@@ -1595,7 +1607,7 @@
       const subcategoryMatches = activeSubcategory === 'all' || inventorySubcategory(item, activeCategory) === activeSubcategory;
       return groupMatches && subcategoryMatches;
     });
-    const lowCount = items.filter(i => i.par_level != null && i.quantity <= i.par_level).length;
+    const lowCount = items.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;
 
     if (lowCount > 0) {
       banner.style.display = 'flex';
@@ -1611,7 +1623,7 @@
     }
 
     visible.forEach(item => {
-      const isLow = item.par_level != null && item.quantity <= item.par_level;
+      const isLow = window.AtlasStockTruth.known(item) && item.par_level != null && item.quantity <= item.par_level;
       const cost = item.cost_price == null || item.cost_price === ''
         ? '—'
         : `${new Intl.NumberFormat('is-IS', { maximumFractionDigits: 0 }).format(Number(item.cost_price))} ISK`;
@@ -1624,9 +1636,9 @@
         <td class="meta">${timeAgo(item.updated_at)}</td>
         <td>
           <div class="qty-cell">
-            <button class="step-btn step-down" data-id="${item.id}" type="button">−</button>
-            <input type="number" step="0.1" class="qty-input mono" value="${item.quantity}" data-id="${item.id}" ${canManageCommercial() ? '' : 'disabled'} />
-            <button class="step-btn step-up" data-id="${item.id}" type="button">+</button>
+            <button class="step-btn step-down" data-id="${item.id}" type="button" ${window.AtlasStockTruth.known(item) ? '' : 'disabled'}>−</button>
+            <input type="number" step="0.1" class="qty-input mono" value="${item.quantity ?? ''}" placeholder="Unknown" data-id="${item.id}" ${canManageCommercial() && window.AtlasStockTruth.known(item) ? '' : 'disabled'} />
+            <button class="step-btn step-up" data-id="${item.id}" type="button" ${window.AtlasStockTruth.known(item) ? '' : 'disabled'}>+</button>
             <span class="unit">${escapeHtml(item.unit)}</span>
           </div>
         </td>
@@ -1644,7 +1656,7 @@
       if (!requireCommercialManager('Direct inventory adjustment')) return;
       if (isNaN(newQty) || newQty < 0) return;
       const item = items.find(i => i.id === id);
-      if (!item || newQty === item.quantity) return;
+      if (!item || !window.AtlasStockTruth.known(item) || newQty === item.quantity) return;
       const quantityChange = newQty - item.quantity;
       const { error } = await sb.rpc('adjust_inventory', {
         p_item_id: item.id,
@@ -1923,27 +1935,28 @@
     note.textContent = 'Open Team to load';
   }
   function renderAtlasHome(){
-    const low=items.filter(i=>i.par_level!=null && Number(i.quantity)<Number(i.par_level));
+    const low=items.filter(i=>window.AtlasStockTruth.known(i) && i.par_level!=null && Number(i.quantity)<Number(i.par_level));
     document.getElementById('home-date').textContent=formatVenueDay();
     document.getElementById('home-greeting').textContent=venueGreeting();
     document.getElementById('home-items').textContent=items.length;
-    document.getElementById('home-low').textContent=low.length;
+    const unknownStock = items.filter(item => !window.AtlasStockTruth.known(item)).length;
+    document.getElementById('home-low').textContent=unknownStock ? 'Unknown' : low.length;
     document.getElementById('home-items-note').textContent=items.length===1?'Live catalog item':'Live catalog items';
-    document.getElementById('home-low-note').textContent=low.length?'Review before service':'Stock levels healthy';
+    document.getElementById('home-low-note').textContent=unknownStock ? `${unknownStock} items not counted / verified` : low.length?'Review before service':'Verified stock levels healthy';
     const recipeMetrics=window.AtlasRecipes?.getHomeMetrics?.();
-    const averageMargin=Number(recipeMetrics?.averageMargin);
+    const averageMargin=recipeMetrics?.marginRecipeCount > 0 && recipeMetrics?.averageMargin != null ? Number(recipeMetrics.averageMargin) : NaN;
     document.getElementById('home-margin').textContent=Number.isFinite(averageMargin)?`${Math.round(averageMargin)}%`:'—';
     document.getElementById('home-margin-note').textContent=Number.isFinite(averageMargin)?`${recipeMetrics.marginRecipeCount} costed ${recipeMetrics.marginRecipeCount===1?'recipe':'recipes'}`:'Complete recipe costing';
     updateHomeTeamMetric();
     const focus=[];
     if(low.length) focus.push({text:`${low.length} inventory ${low.length===1?'item is':'items are'} below par.`,target:'inventory-low'});
-    else focus.push({text:'Inventory levels look healthy today.',target:'inventory'});
+    else focus.push({text:unknownStock ? 'Stock remains unknown until a count is verified.' : 'Verified inventory levels look healthy today.',target:'inventory'});
     const recipeAlert=window.AtlasRecipes?.getHomeAlert?.();
     if(recipeAlert) focus.push({text:recipeAlert.text,target:'recipes'});
     focus.push({text:'Check today’s team and shift coverage before service.',target:'shifts'});
     document.getElementById('home-brief-headline').textContent=low.length
       ? `${low.length} ${low.length===1?'item needs':'items need'} attention before service.`
-      : 'Inventory is ready for today’s service.';
+      : unknownStock ? 'Stock verification is incomplete.' : 'Verified inventory is ready for today’s service.';
     document.getElementById('home-brief-detail').textContent=recipeAlert?.text
       || 'Atlas is using the latest available inventory, recipe, and operations data.';
     document.getElementById('focus-list').innerHTML=focus.map(entry=>`<div class="focus-row" data-target="${entry.target}"><span class="focus-dot"></span><span>${entry.text}</span></div>`).join('');
@@ -2122,7 +2135,7 @@
     items.forEach(item => {
       const opt = document.createElement('option');
       opt.value = item.id;
-      opt.textContent = `${item.name} (${item.quantity} ${item.unit})`;
+      opt.textContent = `${item.name} (${item.quantity ?? 'Unknown'} ${item.unit})`;
       restockItemSelect.appendChild(opt);
     });
     prefillRestockFromItem();
@@ -2207,17 +2220,17 @@
   }
 
   function renderDashboard() {
-    const lowCount = items.filter(i => i.par_level != null && i.quantity <= i.par_level).length;
+    const lowCount = items.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;
     const suppliers = new Set(items.map(i => i.supplier).filter(Boolean));
     document.getElementById('stat-total-items').textContent = items.length;
-    document.getElementById('stat-low-stock').textContent = lowCount;
+    document.getElementById('stat-low-stock').textContent = items.some(item => !window.AtlasStockTruth.known(item)) ? 'Unknown' : lowCount;
     document.getElementById('stat-suppliers').textContent = suppliers.size;
 
     // Low inventory list — actual items, not just a count
-    const lowItems = items.filter(i => i.par_level != null && i.quantity <= i.par_level);
+    const lowItems = items.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level);
     const lowRows = document.getElementById('low-inventory-rows');
     if (lowItems.length === 0) {
-      lowRows.innerHTML = '<div class="empty-dash">Nothing below par right now.</div>';
+      lowRows.innerHTML = items.some(item => !window.AtlasStockTruth.known(item)) ? '<div class="empty-dash">Stock status unknown — verify a physical count.</div>' : '<div class="empty-dash">Nothing below par in verified stock.</div>';
     } else {
       lowRows.innerHTML = lowItems.map(i => `
         <div class="list-row">
