@@ -1699,10 +1699,19 @@
     });
 
     document.querySelectorAll('[data-set-real-stock]').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
+        if (!requireCommercialManager('Set real stock')) return;
         const stockTab = document.querySelector('.inventory-workspace-tab[data-inventory-section="stock-count"]');
         if (stockTab) stockTab.click();
-        else window.AtlasStockCounts?.open?.();
+        try {
+          if (window.AtlasStockCounts?.openForItem) {
+            await window.AtlasStockCounts.openForItem(btn.dataset.setRealStock);
+          } else {
+            window.AtlasStockCounts?.open?.();
+          }
+        } catch (error) {
+          alert(error instanceof Error ? error.message : 'The stock count could not be opened.');
+        }
       });
     });
 
