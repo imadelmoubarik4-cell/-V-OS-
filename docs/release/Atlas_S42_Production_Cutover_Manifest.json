@@ -27,7 +27,7 @@
     "apps/web/assets/js/rehearsal-boundary.js": "7f93c10cb909568b56395b4fbfad559991a08e6129111b7be55f1ac73b8fbf1f",
     "apps/web/assets/js/inventory-scanner-bootstrap.js": "29e643af6012f3a82a646ed859ef52d14029dbf0d247aa2b5327b52f0ae179a9",
     "apps/web/assets/js/stock-count-bootstrap.js": "ce0f80bed26c22d3ac575afe66853b8fb411045dd8137d2363dfdbc52972f52e",
-    "apps/web/assets/js/stock-count-workspace.js": "ee3fc89fc5fd70fc0a211b12434e009d879bed6343bb8b535564239b81c097ec",
+    "apps/web/assets/js/stock-count-workspace.js": "84ae7aac98ffa81a0dcd67293a402dc16f7077040f0edc2428c54aec6f66e2b3",
     "apps/web/assets/js/import-center.js": "c8da1f649f535a6d8171f5f317692220f60e3519761ccdb27c69c68fe89ef5d5",
     "netlify.toml": "d951de030dedcd5696cb824a3fb7f2d72fe3142f18f527c25b9bee8ae8e1e395",
     "supabase/config.toml": "9b533a4ae579c5dbef11e20b762c1f1fb12501fb759df557c6704862e57a3f5a"
