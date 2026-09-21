@@ -1293,7 +1293,14 @@
         balances = (await response.json()).counts?.verified_balances || [];
       }
     } catch (error) { console.warn('Stock remains unknown until verified balances can be read.'); }
-    items = window.AtlasStockTruth.project(data || [], balances);
+    const liveQuantityById = new Map((data || []).map((row) => [row.id, row.quantity]));
+    items = window.AtlasStockTruth.project(data || [], balances).map((item) => {
+      const liveQuantity = Number(liveQuantityById.get(item.id));
+      return {
+        ...item,
+        live_quantity: canManageCommercial() && Number.isFinite(liveQuantity) ? liveQuantity : null
+      };
+    });
     renderTabs();
     renderTable();
     renderInventoryOperations();
@@ -1623,7 +1630,11 @@
     }
 
     visible.forEach(item => {
-      const isLow = window.AtlasStockTruth.known(item) && item.par_level != null && item.quantity <= item.par_level;
+      const hasManagerLiveQuantity = canManageCommercial() && Number.isFinite(Number(item.live_quantity));
+      const displayQuantity = hasManagerLiveQuantity ? Number(item.live_quantity) : item.quantity;
+      const isLow = (hasManagerLiveQuantity || window.AtlasStockTruth.known(item))
+        && item.par_level != null
+        && Number(displayQuantity) <= Number(item.par_level);
       const cost = item.cost_price == null || item.cost_price === ''
         ? '—'
         : `${new Intl.NumberFormat('is-IS', { maximumFractionDigits: 0 }).format(Number(item.cost_price))} ISK`;
@@ -1636,15 +1647,14 @@
         <td class="meta">${timeAgo(item.updated_at)}</td>
         <td>
           <div class="qty-cell">
-            ${window.AtlasStockTruth.known(item) ? `
-              <button class="step-btn step-down" data-id="${item.id}" type="button">−</button>
-              <input type="number" step="0.1" class="qty-input mono" value="${item.quantity ?? ''}" data-id="${item.id}" ${canManageCommercial() ? '' : 'disabled'} />
-              <button class="step-btn step-up" data-id="${item.id}" type="button">+</button>
+            ${hasManagerLiveQuantity || window.AtlasStockTruth.known(item) ? `
+              <button class="step-btn step-down" data-id="${item.id}" type="button" ${canManageCommercial() ? '' : 'disabled'}>−</button>
+              <input type="number" step="0.1" min="0" class="qty-input mono" value="${displayQuantity ?? ''}" data-id="${item.id}" ${canManageCommercial() ? '' : 'disabled'} />
+              <button class="step-btn step-up" data-id="${item.id}" type="button" ${canManageCommercial() ? '' : 'disabled'}>+</button>
               <span class="unit">${escapeHtml(item.unit)}</span>
             ` : `
               <span class="qty-unknown">Unknown</span>
               <span class="unit">${escapeHtml(item.unit)}</span>
-              ${canManageCommercial() ? '<button class="set-real-stock-btn" type="button" data-set-real-stock="' + item.id + '">Set real stock</button>' : ''}
             `}
           </div>
         </td>
@@ -1662,8 +1672,12 @@
       if (!requireCommercialManager('Direct inventory adjustment')) return;
       if (isNaN(newQty) || newQty < 0) return;
       const item = items.find(i => i.id === id);
-      if (!item || !window.AtlasStockTruth.known(item) || newQty === item.quantity) return;
-      const quantityChange = newQty - item.quantity;
+      if (!item) return;
+      const currentQty = Number.isFinite(Number(item.live_quantity))
+        ? Number(item.live_quantity)
+        : (window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN);
+      if (!Number.isFinite(currentQty) || newQty === currentQty) return;
+      const quantityChange = newQty - currentQty;
       const { error } = await sb.rpc('adjust_inventory', {
         p_item_id: item.id,
         p_quantity_change: quantityChange,
@@ -1688,13 +1702,19 @@
     document.querySelectorAll('.step-up').forEach(btn => {
       btn.addEventListener('click', () => {
         const item = items.find(i => i.id === btn.dataset.id);
-        if (item) applyQuantityChange(item.id, item.quantity + 1);
+        if (item) {
+          const currentQty = Number.isFinite(Number(item.live_quantity)) ? Number(item.live_quantity) : Number(item.quantity);
+          if (Number.isFinite(currentQty)) applyQuantityChange(item.id, currentQty + 1);
+        }
       });
     });
     document.querySelectorAll('.step-down').forEach(btn => {
       btn.addEventListener('click', () => {
         const item = items.find(i => i.id === btn.dataset.id);
-        if (item) applyQuantityChange(item.id, Math.max(0, item.quantity - 1));
+        if (item) {
+          const currentQty = Number.isFinite(Number(item.live_quantity)) ? Number(item.live_quantity) : Number(item.quantity);
+          if (Number.isFinite(currentQty)) applyQuantityChange(item.id, Math.max(0, currentQty - 1));
+        }
       });
     });
 
