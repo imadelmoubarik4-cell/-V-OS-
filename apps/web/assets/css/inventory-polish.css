@@ -928,3 +928,8 @@
     margin: 5px 0 0;
   }
 }
+
+/* S64F: preserve the existing mobile cards after desktop table sizing. */
+@media (max-width: 760px) {
+  #inventory-view #table-wrap > table { min-width: 0; width: 100%; }
+}

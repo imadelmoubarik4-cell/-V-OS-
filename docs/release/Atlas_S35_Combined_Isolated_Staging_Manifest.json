@@ -108,7 +108,7 @@
       "sources": {
         "supabase/functions/atlas-reports/entrypoint.ts": "52922c789f811d6c413a6ed2d0a93badf9c99968709e7108e0dd9169ed585b31",
         "supabase/functions/atlas-reports/index.ts": "0d5267c61d442e171b174170b0281139d0cdaacd575614a99dcbcb5750a0a743",
-        "supabase/functions/atlas-reports/stock-provenance.mjs": "c09a2a8846e67dbaa5a682407d62a5d5778369811d090d6b43082888e93500b0"
+        "supabase/functions/atlas-reports/stock-provenance.mjs": "bd050d4fdaeb1ae49b301b9c87a69c5f1f6cfcba09f82b19ec91066ade66b743"
       }
     },
     {
