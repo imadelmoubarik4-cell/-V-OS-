@@ -259,7 +259,7 @@
   }
 
   function trustMarkup() {
-    return `<div class="stock-count-trust"><i data-lucide="shield-check"></i><span>Counts remain private until submitted and manager verified · Historical July quantities are never promoted automatically · Production inventory mutation is off</span></div>`;
+    return `<div class="stock-count-trust"><i data-lucide="shield-check"></i><span>Counts remain private until submitted and manager verified · Historical quantities are never promoted automatically · Only explicit manager publication may change live inventory</span></div>`;
   }
 
   function sessionCard(session) {
@@ -295,7 +295,7 @@
       </section>
       <aside class="stock-count-side-stack">
         <section class="stock-count-panel"><header class="stock-count-panel-head"><div><span>Verified evidence</span><h2>Fresh balances</h2><p>These private values can be used by Checkpoint K until the freshness window expires.</p></div></header><div class="stock-count-balance-list">${balances.length ? balances.slice(0, 12).map(verifiedBalanceMarkup).join('') : '<div class="stock-count-empty is-compact"><i data-lucide="badge-check"></i><h3>No verified balances yet</h3><p>Complete and verify the first current count.</p></div>'}</div></section>
-        <section class="stock-count-panel"><header class="stock-count-panel-head"><div><span>Evidence contract</span><h2>What verification means</h2></div></header><ul class="stock-count-contract-list"><li>Every line keeps its observed quantity, staff identity and time.</li><li>Source changes after the count started are detected as conflicts.</li><li>Manager verification creates private current evidence for seven days.</li><li>No production quantity or movement is created in this checkpoint.</li></ul></section>
+        <section class="stock-count-panel"><header class="stock-count-panel-head"><div><span>Evidence contract</span><h2>What verification means</h2></div></header><ul class="stock-count-contract-list"><li>Every line keeps its observed quantity, staff identity and time.</li><li>Source changes after the count started are detected as conflicts.</li><li>Manager verification creates private current evidence for seven days.</li><li>Verification alone does not change production inventory; explicit manager publication is required.</li></ul></section>
       </aside>
     </div>`;
   }
@@ -1007,6 +1007,49 @@
     }
   }
 
+  async function openForItem(itemId) {
+    state.active = true;
+    ensureWorkspace();
+    setLegacyVisibility(true);
+
+    if (!state.snapshot) await loadSnapshot(true);
+    if (!state.snapshot) return;
+
+    const catalogItem = (state.snapshot.catalog || []).find((item) => item.id === itemId) || null;
+    let session = currentSession();
+
+    if (!session || session.status !== 'draft') {
+      const draft = (state.snapshot.sessions || []).find((entry) => entry.status === 'draft');
+      if (draft) {
+        await openSession(draft.id);
+      } else {
+        const payload = await mutate('start', {
+          title: 'Current stock count',
+          scope_type: 'all',
+          scope_value: null,
+          notes: 'Started from Inventory · Set real stock',
+          client_request_id: randomUuid()
+        }, 'Stock-count session started.');
+        if (payload?.detail?.session?.id) state.activeSessionId = payload.detail.session.id;
+      }
+    }
+
+    const line = (state.detail?.lines || []).find((entry) => entry.inventory_item_id === itemId) || null;
+    state.lineFilter = 'all';
+    state.search = line?.item_name || catalogItem?.name || '';
+    render();
+
+    if (line) {
+      window.requestAnimationFrame(() => {
+        const form = document.querySelector(`[data-count-line-form][data-line-id="${line.id}"]`);
+        const input = form?.querySelector('[data-line-quantity]');
+        form?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input?.focus();
+        input?.select?.();
+      });
+    }
+  }
+
   function open() {
     state.active = true;
     ensureWorkspace();
@@ -1068,8 +1111,10 @@
     close,
     refresh() { return loadSnapshot(true); },
     openSession,
+    openForItem,
     snapshot() { return state.snapshot; },
-    detail() { return state.detail; }
+    detail() { return state.detail; },
+    policy() { return state.policy; }
   };
 
   if (!init()) {
