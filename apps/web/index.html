@@ -1636,10 +1636,16 @@
         <td class="meta">${timeAgo(item.updated_at)}</td>
         <td>
           <div class="qty-cell">
-            <button class="step-btn step-down" data-id="${item.id}" type="button" ${window.AtlasStockTruth.known(item) ? '' : 'disabled'}>−</button>
-            <input type="number" step="0.1" class="qty-input mono" value="${item.quantity ?? ''}" placeholder="Unknown" data-id="${item.id}" ${canManageCommercial() && window.AtlasStockTruth.known(item) ? '' : 'disabled'} />
-            <button class="step-btn step-up" data-id="${item.id}" type="button" ${window.AtlasStockTruth.known(item) ? '' : 'disabled'}>+</button>
-            <span class="unit">${escapeHtml(item.unit)}</span>
+            ${window.AtlasStockTruth.known(item) ? `
+              <button class="step-btn step-down" data-id="${item.id}" type="button">−</button>
+              <input type="number" step="0.1" class="qty-input mono" value="${item.quantity ?? ''}" data-id="${item.id}" ${canManageCommercial() ? '' : 'disabled'} />
+              <button class="step-btn step-up" data-id="${item.id}" type="button">+</button>
+              <span class="unit">${escapeHtml(item.unit)}</span>
+            ` : `
+              <span class="qty-unknown">Unknown</span>
+              <span class="unit">${escapeHtml(item.unit)}</span>
+              ${canManageCommercial() ? '<button class="set-real-stock-btn" type="button" data-set-real-stock="' + item.id + '">Set real stock</button>' : ''}
+            `}
           </div>
         </td>
         <td>
@@ -1689,6 +1695,14 @@
       btn.addEventListener('click', () => {
         const item = items.find(i => i.id === btn.dataset.id);
         if (item) applyQuantityChange(item.id, Math.max(0, item.quantity - 1));
+      });
+    });
+
+    document.querySelectorAll('[data-set-real-stock]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const stockTab = document.querySelector('.inventory-workspace-tab[data-inventory-section="stock-count"]');
+        if (stockTab) stockTab.click();
+        else window.AtlasStockCounts?.open?.();
       });
     });
 
