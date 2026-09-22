@@ -516,10 +516,6 @@ ${contextHtml(detail.issue_records, "Record conflict evidence")}
     const matchedId = document.getElementById('review-match-id')?.value?.trim() || null;
     const matchedEntityType = document.getElementById('review-match-type')?.value?.trim() || null;
     const notes = document.getElementById('review-notes')?.value?.trim() || null;
-    if (decision === 'approve' && action === 'review') {
-      setMessage('Choose Create, Merge, Link or Skip before approving.', 'error');
-      return;
-    }
     if (decision === 'approve' && ['merge', 'link'].includes(action) && !matchedId) {
       setMessage('A matched record ID is required for Merge or Link.', 'error');
       return;
