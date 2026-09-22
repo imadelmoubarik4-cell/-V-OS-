@@ -33,6 +33,8 @@
 
   // PHASE1_RECIPE_ROLE_GATE
   function canManageCommercial() {
+    const profile = window.atlasCurrentProfile;
+    if (profile?.active === true && ['admin', 'manager'].includes(profile.role)) return true;
     return typeof window.atlasCanManageCommercial === 'function'
       && window.atlasCanManageCommercial();
   }
@@ -826,6 +828,10 @@
   }
 
   async function openEditor(recipe) {
+    if (!dom.modal || !dom.form) {
+      alert('Recipe editor is unavailable. Refresh Atlas and try again.');
+      return;
+    }
     if (!canManageCommercial()) {
       alert('Recipe editing is limited to managers and administrators.');
       return;
