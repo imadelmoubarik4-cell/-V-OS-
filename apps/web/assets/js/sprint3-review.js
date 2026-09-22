@@ -402,7 +402,8 @@
     const source = row.normalized_data?.source_file || row.normalized_data?.source_files || row.batch_file_name || row.batch_source_files?.[0] || 'Private source';
     const issues = Array.from(new Set([...(row.issues || []), ...(detail.issue_records || []).map((entry) => entry.issue)])).filter(Boolean);
     const matchedId = rowKind === 'inventory' ? row.matched_item_id : row.matched_entity_id;
-    const frozen = Boolean(detail.source_frozen || row.batch_key?.startsWith('S63B-'));
+    const sourceFrozen = Boolean(detail.source_frozen || row.batch_key?.startsWith('S63B-'));
+    const decisionLocked = rowKind === 'review_item';
     const contextHtml = (records, title) => records?.length ? `<section class="review-detail-section"><h3>${escapeHtml(title)}</h3>${records.map(entry => `<article class="review-conflict"><strong>${escapeHtml(entry.issue)}</strong><p>${escapeHtml(entry.source_data?.evidence || '')}</p><p><b>${entry.resolved ? 'Recorded resolution' : 'Remaining decision'}:</b> ${escapeHtml(entry.source_data?.resolution || 'Not configured')}</p><small>${entry.resolved ? 'Resolved source issue' : 'Held / unresolved'} · ${escapeHtml(entry.source_key)}</small></article>`).join('')}</section>` : '';
 
     dom.detail.innerHTML = `
@@ -416,7 +417,8 @@ ${contextHtml(detail.issue_records, "Record conflict evidence")}
 
       <details class="review-source-details"><summary>Raw source evidence</summary><pre>${escapeHtml(safeJson(row.raw_data))}</pre><div class="review-source-meta"><span>Source hash</span><code>${escapeHtml(String(row.source_hash || row.batch_source_hash || '—').slice(0, 24))}</code></div></details>
 
-      ${frozen ? `<section class="review-detail-section review-frozen"><h3>Frozen source evidence</h3><p>Source checked, held or excluded does not mean operational approval. This record is read-only. Current stock is unknown until a fresh count; recipes are entered manually.</p></section>` : `<form class="review-decision-form" id="review-decision-form">
+      ${sourceFrozen ? `<section class="review-detail-section review-frozen"><h3>Frozen source evidence</h3><p>The original source evidence remains immutable. A review decision records approval, rejection or reset only; it does not edit the source or automatically promote anything to production.</p></section>` : ''}
+      ${decisionLocked ? `<section class="review-detail-section review-frozen"><h3>Source context only</h3><p>This synthetic evidence record is read-only and cannot receive an operational approval decision.</p></section>` : `<form class="review-decision-form" id="review-decision-form">
         <h3>Decision</h3>
         <div class="review-form-grid">
           <label><span>Action</span><select id="review-action">${actionOptions(rowKind, row.proposed_action)}</select></label>
