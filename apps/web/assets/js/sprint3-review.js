@@ -508,8 +508,8 @@ ${contextHtml(detail.issue_records, "Record conflict evidence")}
     if (state.submitting || !state.detail?.row) return;
     const row = state.detail.row;
     const rowKind = state.detail.row_kind;
-    if (state.detail.source_frozen || row.batch_key?.startsWith('S63B-')) {
-      setMessage('Frozen S63B evidence is read-only; source review is not operational approval.', 'error');
+    if (rowKind === 'review_item') {
+      setMessage('This source-context record is read-only and cannot receive an operational decision.', 'error');
       return;
     }
     const action = document.getElementById('review-action')?.value || row.proposed_action || 'review';
