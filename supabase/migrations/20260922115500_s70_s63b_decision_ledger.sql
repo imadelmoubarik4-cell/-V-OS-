@@ -32,14 +32,18 @@ begin
     raise exception 'Invalid decision: %', p_decision;
   end if;
 
-  select r.*, b.batch_key
-  into before_row, batch_key
-  from atlas_private.import_inventory_rows r
-  join atlas_private.import_batches b on b.id=r.batch_id
-  where r.id=p_row_id
-  for update of r;
+  select *
+  into before_row
+  from atlas_private.import_inventory_rows
+  where id=p_row_id
+  for update;
 
   if not found then raise exception 'Inventory staging row not found'; end if;
+
+  select b.batch_key
+  into batch_key
+  from atlas_private.import_batches b
+  where b.id=before_row.batch_id;
 
   select *
   into prior
@@ -160,14 +164,18 @@ begin
     raise exception 'Invalid decision: %', p_decision;
   end if;
 
-  select r.*, b.batch_key
-  into before_row, batch_key
-  from atlas_private.import_entity_rows r
-  join atlas_private.import_batches b on b.id=r.batch_id
-  where r.id=p_row_id
-  for update of r;
+  select *
+  into before_row
+  from atlas_private.import_entity_rows
+  where id=p_row_id
+  for update;
 
   if not found then raise exception 'Entity staging row not found'; end if;
+
+  select b.batch_key
+  into batch_key
+  from atlas_private.import_batches b
+  where b.id=before_row.batch_id;
 
   select *
   into prior
