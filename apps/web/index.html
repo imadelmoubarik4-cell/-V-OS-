@@ -1443,9 +1443,8 @@
       if (/ros[eé]/.test(name)) return 'Rosé';
       return 'White';
     }
-    if (stored) return stored.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
     if (group === 'spirits') {
-      if (/whisk(?:e)?y|bourbon|scotch/.test(value)) return 'Whiskey';
+      if (/whisk(?:e)?y|bourbon|scotch|rye/.test(value)) return 'Whiskey';
       if (/gin/.test(value)) return 'Gin';
       if (/vodka/.test(value)) return 'Vodka';
       if (/rum/.test(value)) return 'Rum';
@@ -1461,6 +1460,7 @@
       if (/ready.to.drink|\brtd\b|breezer/.test(value)) return 'RTD';
       return 'Bottles';
     }
+    if (stored) return stored.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
     return String(item?.category || 'Other').trim() || 'Other';
   }
 
