@@ -122,7 +122,7 @@ test('Inventory filters use the approved primary and contextual category model',
 
 test('Inventory insight and table values remain grounded in loaded records', () => {
   assert.match(app, /function renderInventoryIntelligence\(\)/);
-  assert.match(app, /items\.filter\(item => window\.AtlasStockTruth\.known\(item\) && item\.par_level/);
+  assert.match(app, /currentItems\.filter\(item => window\.AtlasStockTruth\.known\(item\) && item\.par_level/);
   assert.match(app, /item\.cost_price/);
   assert.match(app, /item\.supplier \|\| '—'/);
   assert.match(app, /<th data-commercial-only>Supplier<\/th>/);
