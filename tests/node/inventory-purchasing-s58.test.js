@@ -20,6 +20,19 @@ test('Wine always exposes the four approved subcategory filters', () => {
   assert.match(app, /counts\.get\(label\) \|\| 0/);
 });
 
+test('Wine grouping uses stored category and excludes inactive rows from live inventory', () => {
+  assert.match(app, /test\(category\)\) return 'wine'/);
+  assert.match(app, /const categoryValue = `\$\{stored\} \$\{category\}`\.toLowerCase\(\)/);
+  assert.match(app, /if \(item\.active === false\) return false/);
+  assert.match(app, /const currentItems = items\.filter\(item => item\.active !== false\)/);
+});
+
+test('Inventory grouping prioritizes stored category over misleading product-name words', () => {
+  assert.match(app, /if \(\/soda\|mixer\|juice\|tonic\|soft drink\|energy drink\/\.test\(category\)\) return 'mixers'/);
+  assert.match(app, /if \(\/vodka\|gin\|whisk/);
+  assert.match(app, /Product-name words such as/);
+});
+
 test('Inventory uses supported Lucide icons and controlled waste writes', () => {
   assert.doesNotMatch(scanner, /data-lucide="bottle"/);
   assert.doesNotMatch(counts, /data-lucide="bottle"/);
