@@ -25,6 +25,8 @@
     selectedRecipeId: localStorage.getItem('atlas.selectedRecipeId') || null,
     draftIngredients: [],
     editingRecipe: null,
+    pendingImageFile: null,
+    pendingImageObjectUrl: null,
     initialized: false,
     loadingCategories: null
   };
@@ -397,6 +399,9 @@
     dom.ingredientSelect = document.getElementById('ingredient-item');
     dom.ingredientList = document.getElementById('ingredient-list');
     dom.saveState = document.getElementById('recipe-save-state');
+    dom.imageFile = document.getElementById('recipe-image-file');
+    dom.imagePreview = document.getElementById('recipe-image-preview');
+    dom.imageRemove = document.getElementById('recipe-image-remove');
     dom.detailSheet = document.getElementById('recipe-detail-sheet');
     dom.serviceOverlay = document.getElementById('recipe-service-overlay');
     dom.serviceShell = document.getElementById('recipe-service-shell');
@@ -432,6 +437,8 @@
       renderIngredientList();
     });
     ['recipe-yield-qty', 'recipe-menu-price'].forEach((id) => document.getElementById(id)?.addEventListener('input', renderDraftFinancials));
+    dom.imageFile?.addEventListener('change', handleRecipeImageSelection);
+    dom.imageRemove?.addEventListener('click', clearRecipeImage);
     dom.form?.addEventListener('submit', saveRecipe);
     dom.modal?.addEventListener('atlas:modal-close', resetEditor);
     document.getElementById('fab-add-recipe')?.addEventListener('click', () => {
@@ -827,6 +834,76 @@
     ].join('');
   }
 
+  function setRecipeImagePreview(src) {
+    if (!dom.imagePreview) return;
+    if (src) {
+      dom.imagePreview.src = src;
+      dom.imagePreview.hidden = false;
+    } else {
+      dom.imagePreview.removeAttribute('src');
+      dom.imagePreview.hidden = true;
+    }
+  }
+
+  function revokePendingImageUrl() {
+    if (state.pendingImageObjectUrl) {
+      URL.revokeObjectURL(state.pendingImageObjectUrl);
+      state.pendingImageObjectUrl = null;
+    }
+  }
+
+  function handleRecipeImageSelection(event) {
+    const file = event.target.files?.[0] || null;
+    revokePendingImageUrl();
+    state.pendingImageFile = null;
+
+    if (!file) {
+      const existing = document.getElementById('recipe-image-url')?.value.trim();
+      setRecipeImagePreview(existing || '');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      event.target.value = '';
+      throw new Error('Please choose an image file.');
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      event.target.value = '';
+      alert('Recipe images must be 10 MB or smaller.');
+      return;
+    }
+
+    state.pendingImageFile = file;
+    state.pendingImageObjectUrl = URL.createObjectURL(file);
+    setRecipeImagePreview(state.pendingImageObjectUrl);
+  }
+
+  function clearRecipeImage() {
+    revokePendingImageUrl();
+    state.pendingImageFile = null;
+    if (dom.imageFile) dom.imageFile.value = '';
+    const urlInput = document.getElementById('recipe-image-url');
+    if (urlInput) urlInput.value = '';
+    setRecipeImagePreview('');
+  }
+
+  async function uploadRecipeImage(file) {
+    if (!file) return null;
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const userId = currentUser?.id || 'unknown';
+    const objectName = `recipes/${userId}/${crypto.randomUUID()}.${ext}`;
+    const { data: upload, error: uploadError } = await sb.storage
+      .from('atlas-media')
+      .upload(objectName, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type || undefined
+      });
+    if (uploadError) throw uploadError;
+    const { data } = sb.storage.from('atlas-media').getPublicUrl(upload.path);
+    if (!data?.publicUrl) throw new Error('Image uploaded but Atlas could not create its public URL.');
+    return data.publicUrl;
+  }
+
   async function openEditor(recipe) {
     if (!dom.modal || !dom.form) {
       alert('Recipe editor is unavailable. Refresh Atlas and try again.');
@@ -853,7 +930,11 @@
     document.getElementById('recipe-id').value = recipe?.id || '';
     document.getElementById('recipe-name').value = recipe?.name || '';
     populateCategorySelect(recipe?.category_id, recipe?.type || 'signature-cocktail');
+    revokePendingImageUrl();
+    state.pendingImageFile = null;
+    if (dom.imageFile) dom.imageFile.value = '';
     document.getElementById('recipe-image-url').value = recipe?.image_url || '';
+    setRecipeImagePreview(recipe?.image_url || '');
     document.getElementById('recipe-glassware').value = recipe?.glassware || '';
     document.getElementById('recipe-garnish').value = recipe?.garnish || '';
     document.getElementById('recipe-method').value = recipe?.method || '';
@@ -876,6 +957,9 @@
   function resetEditor() {
     state.editingRecipe = null;
     state.draftIngredients = [];
+    revokePendingImageUrl();
+    state.pendingImageFile = null;
+    setRecipeImagePreview('');
     dom.form?.reset();
     if (dom.saveState) {
       dom.saveState.textContent = '';
@@ -991,11 +1075,14 @@
       const categoryId = dom.categorySelect.value || null;
       const categorySlug = selectedOption?.dataset.slug || 'other';
       const recipeId = document.getElementById('recipe-id').value || null;
+      const uploadedImageUrl = state.pendingImageFile
+        ? await uploadRecipeImage(state.pendingImageFile)
+        : null;
       const payload = {
         name: document.getElementById('recipe-name').value.trim(),
         category_id: categoryId,
         type: categorySlug,
-        image_url: document.getElementById('recipe-image-url').value.trim() || null,
+        image_url: uploadedImageUrl || document.getElementById('recipe-image-url').value.trim() || null,
         glassware: document.getElementById('recipe-glassware').value.trim() || null,
         garnish: document.getElementById('recipe-garnish').value.trim() || null,
         method: document.getElementById('recipe-method').value.trim() || null,

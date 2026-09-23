@@ -922,7 +922,14 @@
               <div class="atlas-field"><label for="recipe-category-id">Category *</label><select id="recipe-category-id" required></select></div>
               <div class="atlas-field"><label for="recipe-glassware">Glassware</label><input type="text" id="recipe-glassware" placeholder="e.g. Coupe" /></div>
               <div class="atlas-field"><label for="recipe-garnish">Garnish</label><input type="text" id="recipe-garnish" placeholder="e.g. 3 coffee beans" /></div>
-              <div class="atlas-field full"><label for="recipe-image-url">Image URL</label><input type="url" id="recipe-image-url" placeholder="https://…" /></div>
+              <div class="atlas-field full">
+                <label for="recipe-image-file">Recipe image</label>
+                <input type="file" id="recipe-image-file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" />
+                <img id="recipe-image-preview" alt="Recipe image preview" hidden style="display:block;max-width:220px;max-height:220px;object-fit:cover;border-radius:12px;margin:10px 0;" />
+                <button type="button" class="btn ghost" id="recipe-image-remove">Remove image</button>
+                <label for="recipe-image-url" style="margin-top:12px;">Or paste an image URL</label>
+                <input type="url" id="recipe-image-url" placeholder="https://…" />
+              </div>
             </div>
           </section>
 
