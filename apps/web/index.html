@@ -1397,6 +1397,15 @@
     const category = String(item?.category || '').toLowerCase();
     const name = String(item?.name || '').toLowerCase();
     const value = `${category} ${name}`;
+
+    // Stored Item Master category is authoritative. Product-name words such as
+    // "Ginger Beer", "Jameson Stout Edition", or "Four Roses" must not move
+    // an item into Beer or Rosé when its category says otherwise.
+    if (/wine|champagne|prosecco|cava|sparkling|ros[eé]/.test(category)) return 'wine';
+    if (/soda|mixer|juice|tonic|soft drink|energy drink/.test(category)) return 'mixers';
+    if (/vodka|gin|whisk(?:e)?y|rum|tequila|mezcal|brandy|cognac|aquavit|brenniv[ií]n|liqueur|aperitif|vermouth|spirit|shot/.test(category)) return 'spirits';
+    if (/beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/.test(category)) return 'beer';
+
     if (/bitters?/.test(value)) return 'bitters';
     if (/syrup/.test(value)) return 'syrups';
     if (/coffee|espresso|hot drink/.test(value)) return 'coffee';
@@ -1405,10 +1414,9 @@
     if (/herb|mint|basil|rosemary|thyme/.test(value)) return 'fresh-herbs';
     if (/garnish|olive|cherry|dehydrated|zest/.test(value)) return 'garnish';
     if (/fruit|lemon|lime|orange|grapefruit|berry/.test(value)) return 'fresh-fruit';
-    if (/wine|champagne|prosecco|cava|sparkling|ros[eé]/.test(category)) return 'wine';
-    if (/beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/.test(value)) return 'beer';
     if (/mixer|juice|tonic|soda|soft drink|energy drink|ginger beer/.test(value)) return 'mixers';
     if (/vodka|gin|whisk(?:e)?y|rum|tequila|mezcal|brandy|cognac|aquavit|brenniv[ií]n|liqueur|aperitif|vermouth|spirit|shot/.test(value)) return 'spirits';
+    if (/beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/.test(value)) return 'beer';
     if (/ingredient|food|tapas|salt|sugar|cream|milk|egg/.test(value)) return 'bar-ingredients';
     return 'other';
   }
