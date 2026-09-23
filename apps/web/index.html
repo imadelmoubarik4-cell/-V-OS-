@@ -1405,7 +1405,7 @@
     if (/herb|mint|basil|rosemary|thyme/.test(value)) return 'fresh-herbs';
     if (/garnish|olive|cherry|dehydrated|zest/.test(value)) return 'garnish';
     if (/fruit|lemon|lime|orange|grapefruit|berry/.test(value)) return 'fresh-fruit';
-    if (/wine|champagne|prosecco|cava|ros[eé]/.test(value)) return 'wine';
+    if (/wine|champagne|prosecco|cava|sparkling|ros[eé]/.test(category)) return 'wine';
     if (/beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/.test(value)) return 'beer';
     if (/mixer|juice|tonic|soda|soft drink|energy drink|ginger beer/.test(value)) return 'mixers';
     if (/vodka|gin|whisk(?:e)?y|rum|tequila|mezcal|brandy|cognac|aquavit|brenniv[ií]n|liqueur|aperitif|vermouth|spirit|shot/.test(value)) return 'spirits';
@@ -1419,9 +1419,13 @@
     const name = String(item?.name || '').toLowerCase();
     const value = `${stored} ${category} ${name} ${item?.unit || ''}`.toLowerCase();
     if (group === 'wine') {
-      if (/champagne|sparkling|prosecco|cava/.test(value)) return 'Sparkling';
-      if (/ros[eé]/.test(value)) return 'Rosé';
-      if (/red wine|\bred\b/.test(value)) return 'Red';
+      const categoryValue = `${stored} ${category}`.toLowerCase();
+      if (/champagne|sparkling|prosecco|cava|cr[eé]mant|franciacorta/.test(categoryValue)) return 'Sparkling';
+      if (/ros[eé]/.test(categoryValue)) return 'Rosé';
+      if (/red wine|\bred\b/.test(categoryValue)) return 'Red';
+      if (/white wine|\bwhite\b/.test(categoryValue)) return 'White';
+      if (/champagne|sparkling|prosecco|cava|cr[eé]mant|franciacorta/.test(name)) return 'Sparkling';
+      if (/ros[eé]/.test(name)) return 'Rosé';
       return 'White';
     }
     if (stored) return stored.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
@@ -1449,8 +1453,9 @@
     const title = document.getElementById('inventory-intelligence-title');
     const detail = document.getElementById('inventory-intelligence-detail');
     if (!title || !detail) return;
-    const low = items.filter(item => window.AtlasStockTruth.known(item) && item.par_level != null && Number(item.quantity) <= Number(item.par_level));
-    const missingCost = items.filter(item => item.cost_price == null || item.cost_price === '');
+    const currentItems = items.filter(item => item.active !== false);
+    const low = currentItems.filter(item => window.AtlasStockTruth.known(item) && item.par_level != null && Number(item.quantity) <= Number(item.par_level));
+    const missingCost = currentItems.filter(item => item.cost_price == null || item.cost_price === '');
     if (low.length) {
       const item = low[0];
       title.textContent = `${item.name} is at or below par.`;
@@ -1460,13 +1465,14 @@
       detail.textContent = 'Complete Item Master to improve inventory value and recipe costing.';
     } else {
       title.textContent = 'Inventory is ready for review.';
-      detail.textContent = `${items.length} active item${items.length === 1 ? '' : 's'} are available in the current catalogue.`;
+      detail.textContent = `${currentItems.length} active item${currentItems.length === 1 ? '' : 's'} are available in the current catalogue.`;
     }
   }
 
   function renderTabs() {
-    const uniqueCats = [...new Set(items.map(i => i.category))];
-    const presentGroups = new Set(items.map(inventoryGroup));
+    const currentItems = items.filter(item => item.active !== false);
+    const uniqueCats = [...new Set(currentItems.map(i => i.category))];
+    const presentGroups = new Set(currentItems.map(inventoryGroup));
     const cats = [['all', 'All'], ...INVENTORY_GROUPS];
     if (presentGroups.has('other')) cats.push(['other', 'Other']);
     const wrap = document.getElementById('category-tabs');
@@ -1481,7 +1487,7 @@
     });
 
     const subWrap = document.getElementById('subcategory-tabs');
-    const groupItems = activeCategory === 'all' ? [] : items.filter(item => inventoryGroup(item) === activeCategory);
+    const groupItems = activeCategory === 'all' ? [] : currentItems.filter(item => inventoryGroup(item) === activeCategory);
     const counts = groupItems.reduce((result, item) => {
       const label = inventorySubcategory(item, activeCategory);
       result.set(label, (result.get(label) || 0) + 1);
@@ -1610,6 +1616,7 @@
     body.innerHTML = '';
 
     const visible = items.filter(item => {
+      if (item.active === false) return false;
       const groupMatches = activeCategory === 'all' || inventoryGroup(item) === activeCategory;
       const subcategoryMatches = activeSubcategory === 'all' || inventorySubcategory(item, activeCategory) === activeSubcategory;
       return groupMatches && subcategoryMatches;
