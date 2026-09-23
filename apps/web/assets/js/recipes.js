@@ -694,10 +694,11 @@
       <div><span class="recipe-profile-category">${escape(category.name)}</span><h2>${escape(recipe.name)}</h2><div class="recipe-profile-meta">${escape(recipe.glassware || 'Glassware not set')}<span></span>${escape(recipe.garnish || 'Garnish not set')}</div></div>
       <span class="recipe-profile-status ${status.className}">${escape(status.label)}</span>
     </div>
-    <div class="recipe-profile-actions"><button type="button" class="recipe-secondary-action" data-edit-recipe><i data-lucide="pencil-line"></i>Edit recipe</button><button type="button" class="recipe-primary-action" data-service-recipe><i data-lucide="monitor-up"></i>Service view</button></div>
+    <div class="recipe-profile-actions"><button type="button" class="recipe-secondary-action" data-edit-recipe><i data-lucide="pencil-line"></i>Edit recipe</button><button type="button" class="recipe-secondary-action" data-delete-recipe><i data-lucide="trash-2"></i>Delete recipe</button><button type="button" class="recipe-primary-action" data-service-recipe><i data-lucide="monitor-up"></i>Service view</button></div>
     <section class="recipe-profile-section"><div class="recipe-profile-section-head"><div><span>Ingredients</span><h3>Live inventory coverage</h3></div><strong>${ingredientRows.length}</strong></div><div class="recipe-profile-ingredients">${ingredientMarkup}</div></section>
     <section class="recipe-profile-section recipe-spec-grid"><div><span>Method</span><p>${escape(recipe.method || 'Preparation method has not been added.')}</p></div><div><span>Service notes</span><p>${escape(recipe.notes || 'No additional service notes.')}</p></div></section>`;
     dom.profile.querySelector('[data-edit-recipe]')?.addEventListener('click', () => openEditor(recipe));
+    dom.profile.querySelector('[data-delete-recipe]')?.addEventListener('click', () => deleteRecipe(recipe));
     dom.profile.querySelector('[data-service-recipe]')?.addEventListener('click', () => openServiceView(recipe));
 
     const recommendation = healthRecommendation(recipe, status);
@@ -1057,6 +1058,34 @@
         label.textContent = `Current stock supports approximately ${availability.servings} servings before ${availability.limiting?.item?.name || 'the limiting ingredient'} runs out.`;
       }
     }
+  }
+
+  async function deleteRecipe(recipe) {
+    if (!recipe?.id) return;
+    if (!canManageCommercial()) {
+      alert('Recipe deletion is limited to managers and administrators.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete "${recipe.name}"?\n\nThis permanently removes the recipe and its ingredient links. Inventory items and stock quantities will not be changed.`
+    );
+    if (!confirmed) return;
+
+    const { error } = await sb.from('recipes').delete().eq('id', recipe.id);
+    if (error) {
+      console.error(error);
+      alert(error.message || 'Could not delete recipe.');
+      return;
+    }
+
+    if (state.selectedRecipeId === recipe.id) {
+      state.selectedRecipeId = null;
+      localStorage.removeItem('atlas.selectedRecipeId');
+    }
+    closeDetail();
+    await loadAll();
+    if (activeView === 'recipes') await render();
   }
 
   async function saveRecipe(event) {
