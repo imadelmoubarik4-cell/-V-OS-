@@ -26,6 +26,7 @@ function isCurrentBalance(balance, nowMillis) {
   const state = lower(balance.freshness_state || balance.verification_status);
   if (state !== "current") return false;
   const expiresAt = dateMillis(balance.expires_at);
+  if (balance.expires_at && expiresAt === null) return false;
   return expiresAt === null || expiresAt > nowMillis;
 }
 
