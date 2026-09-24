@@ -28,6 +28,7 @@
     const verifiedAt = millis(balance.verified_at);
     const expiresAt = millis(balance.expires_at);
     if (state !== 'current' || quantity === null) return null;
+    if (balance.expires_at && expiresAt === null) return null;
     if (expiresAt !== null && expiresAt <= nowMillis) return null;
     return {
       quantity,
