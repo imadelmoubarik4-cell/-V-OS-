@@ -329,7 +329,7 @@
       ['access', 'users-round', 'Team access', 'Role permissions and active staff profile summary.'],
       ['operations', 'clipboard-check', 'Operational rules', 'Inventory, temperature and cleaning defaults.'],
       ['intelligence', 'brain-circuit', 'Marketing & Brain', 'Approval, learning, evidence and recommendation rules.'],
-      ['integrations', 'plug-zap', 'Integrations', 'Verified connection and permission states.'],
+      ['integrations', 'plug-zap', 'Integrations', 'Which outside services Atlas can use today.'],
       ['preferences', 'user-round-cog', 'Preferences', 'Your start page and motion preference.']
     ];
     return `<div class="settings-overview">
@@ -670,21 +670,47 @@
     </div>`;
   }
 
+  // Plain-language names for the requirement keys stored per provider.
+  const REQUIREMENT_LABELS = {
+    oauth: 'Sign-in with the provider (OAuth)', meta_app: 'A Meta developer app', meta_app_review: 'Meta app review',
+    facebook_page: 'A Facebook Page', professional_account: 'An Instagram professional account',
+    business_or_creator_account: 'A business or creator account', insights_permission_required: 'Insights permission',
+    publishing_permission_required: 'Publishing permission', page_insights_permission_required: 'Page insights permission',
+    page_publishing_permission_required: 'Page publishing permission', developer_app: 'A TikTok developer app',
+    developer_app_review: 'TikTok app review', approved_scopes: 'Approved API scopes', content_posting_api: 'Content Posting API access',
+    url_property_verification: 'Verified website ownership', google_cloud_project: 'A Google Cloud project',
+    business_profile_api_access: 'Business Profile API access', verified_business_profile: 'A verified Business Profile',
+    location_access: 'Access to the VÁ location', claimed_listing: 'A claimed Tripadvisor listing',
+    management_center_access: 'Tripadvisor Management Center access', api_key_and_billing_for_content_api: 'A Content API key with billing'
+  };
+
+  function requirementList(requirements) {
+    return Object.entries(requirements || {})
+      .filter(([, value]) => value === true || (Array.isArray(value) && value.length) || (typeof value === 'string' && value))
+      .map(([key]) => REQUIREMENT_LABELS[key] || humanize(key));
+  }
+
   function integrationsMarkup() {
     const integrations = state.workspace?.integrations || [];
     return `<div class="settings-integrations">
-      ${sectionHead('Connection boundaries', 'Integrations', 'Read the verified authorization and permission state of each service. Connection flows remain in their owning integration workspace.')}
-      <section class="settings-note-card"><i data-lucide="shield-check"></i><div><strong>No credentials are stored here</strong><span>Settings displays status and capability boundaries only. Passwords, API keys and access tokens never enter this workspace.</span></div></section>
-      <div class="settings-integration-grid">${integrations.map((integration) => `<article class="settings-integration-card is-${statusTone(integration.status)}">
-        <header><span><i data-lucide="${integration.status === 'connected' ? 'plug-zap' : 'unplug'}"></i></span><div><small>${escapeHtml(humanize(integration.category))}</small><h3>${escapeHtml(integration.label)}</h3></div>${statusPill(integration.status)}</header>
-        <dl class="settings-definition-list">
-          <div><dt>Authorization</dt><dd>${escapeHtml(humanize(integration.authorization_state))}</dd></div>
+      ${sectionHead('Connections', 'Integrations', 'Which outside services Atlas can use today, and what each one needs.')}
+      <section class="settings-note-card"><i data-lucide="shield-check"></i><div><strong>No credentials are stored here</strong><span>Passwords, API keys and access tokens never enter Settings or the browser.</span></div></section>
+      <div class="settings-integration-grid">${integrations.map((integration) => {
+        const connected = integration.status === 'connected';
+        const needs = requirementList(integration.requirements);
+        return `<article class="settings-integration-card is-${statusTone(integration.status)}">
+        <header><span><i data-lucide="${connected ? 'plug-zap' : 'unplug'}"></i></span><div><small>${escapeHtml(humanize(integration.category))}</small><h3>${escapeHtml(integration.label)}</h3></div>${statusPill(connected ? 'connected' : 'not_connected', connected ? 'Connected' : 'Not available yet')}</header>
+        ${connected
+          ? `<dl class="settings-definition-list">
           <div><dt>Publishing</dt><dd>${escapeHtml(humanize(integration.publishing_permission_state))}</dd></div>
           <div><dt>Analytics</dt><dd>${escapeHtml(humanize(integration.analytics_permission_state))}</dd></div>
           <div><dt>Last verified</dt><dd>${escapeHtml(formatDateTime(integration.last_verified_at))}</dd></div>
-        </dl>
+        </dl>`
+          : `<p class="settings-integration-gap">Atlas has no connection flow for ${escapeHtml(integration.label)} yet, so there is nothing to connect here. Planning in Marketing works without it.</p>
+        ${needs.length ? `<div class="settings-integration-needs"><strong>Needed before it can be built</strong><ul>${needs.map((need) => `<li>${escapeHtml(need)}</li>`).join('')}</ul></div>` : ''}`}
         ${integration.last_connection_error ? `<p>${escapeHtml(integration.last_connection_error)}</p>` : ''}
-      </article>`).join('')}</div>
+      </article>`;
+      }).join('') || '<div class="settings-empty"><i data-lucide="plug-zap"></i><span>No integrations are configured.</span></div>'}</div>
     </div>`;
   }
 

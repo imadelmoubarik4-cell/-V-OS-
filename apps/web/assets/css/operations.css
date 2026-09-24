@@ -394,3 +394,4 @@ button.operations-summary-card {
 button.operations-summary-card:hover { border-color: rgba(47, 128, 237, .35); box-shadow: 0 8px 22px rgba(16, 32, 60, .08); }
 button.operations-summary-card:active { transform: translateY(1px); }
 button.operations-summary-card:focus-visible { outline: 2px solid #2f80ed; outline-offset: 2px; }
+.operations-order-state { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; background: rgba(31, 157, 118, .10); color: #1f7a5c; font-size: 12px; font-weight: 600; }

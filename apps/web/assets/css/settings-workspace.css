@@ -137,3 +137,7 @@ html[data-atlas-density="compact"] .settings-card{padding:15px}html[data-atlas-d
 .settings-link{border:0;background:none;padding:0;color:#2f5e9e;text-decoration:underline;cursor:pointer;font-size:inherit}
 .settings-link:focus-visible{outline:2px solid #2f5e9e;outline-offset:2px;border-radius:4px}
 .settings-preference-facts{margin-top:4px}
+.settings-integration-gap{margin:0;font-size:13px;line-height:1.55;color:var(--settings-muted)}
+.settings-integration-needs{display:grid;gap:6px;font-size:12.5px}
+.settings-integration-needs strong{font-weight:600}
+.settings-integration-needs ul{margin:0;padding-left:18px;color:var(--settings-muted);line-height:1.6}

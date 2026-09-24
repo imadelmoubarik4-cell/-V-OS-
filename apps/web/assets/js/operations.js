@@ -109,8 +109,16 @@
       });
   }
 
+  // An item counts as ordered when it is on a placed purchase order (shared
+  // across devices) or was marked here today before an order was recorded.
   function orderedItemIds() {
-    return new Set(readJson(orderedStorageKey(), []));
+    const ids = new Set(readJson(orderedStorageKey(), []));
+    window.AtlasPurchaseOrders?.openItemIds?.().forEach((id) => ids.add(id));
+    return ids;
+  }
+
+  function onPurchaseOrder(id) {
+    return Boolean(window.AtlasPurchaseOrders?.openItemIds?.().has(id));
   }
 
   function orderSuggestions() {
@@ -309,7 +317,9 @@
           <div class="operations-order-item ${item.ordered ? 'is-ordered' : ''}">
             <div><strong>${escape(item.name)}</strong><span>${item.cases ? `${item.cases} case${item.cases === 1 ? '' : 's'} · ` : ''}${item.orderQuantity} ${escape(item.unit)}</span></div>
             <strong>${formatIsk(item.estimatedCost)}</strong>
-            <button type="button" data-order-toggle="${escape(item.id)}">${item.ordered ? 'Reopen' : 'Mark ordered'}</button>
+            ${onPurchaseOrder(item.id)
+              ? '<span class="operations-order-state" title="On a placed purchase order">On order</span>'
+              : `<button type="button" data-order-toggle="${escape(item.id)}" title="Noted on this device only. Record a purchase order to share it with the team.">${item.ordered ? 'Reopen' : 'Mark ordered'}</button>`}
           </div>`).join('')}
       </section>`).join('');
   }
@@ -498,6 +508,7 @@
     patchApplication();
     state.initialized = true;
     render();
+    window.addEventListener('atlas:purchase-orders-updated', () => render());
     if (window.lucide) window.lucide.createIcons();
   }
 

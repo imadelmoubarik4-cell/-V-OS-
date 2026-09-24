@@ -44,7 +44,7 @@
       <p role="status" data-order-status></p><button type="button" data-refresh-orders>Refresh orders</button>
       ${editor}<div data-order-list>${visibleOrders.map(order=>`<article class="purchase-order-card"><header><div><span>${activeSection === 'deliveries' ? 'Delivery' : 'Purchase order'}</span><h3>${esc(suppliers.find(x=>x.id===order.supplier_id)?.name || 'Supplier')}</h3></div><strong class="purchase-order-status is-${esc(order.status)}">${esc(activeSection === 'deliveries' ? deliveryStatusLabel(order) : orderStatusLabel(order.status))}</strong></header>
       <p>Order ${esc(order.id)} · version ${order.version}</p><ul>${order.lines.map(line=>`<li><span>${esc(line.item_name)}</span><strong>${esc(line.quantity)} ${esc(line.unit)} × ${esc(line.unit_cost)} ISK</strong></li>`).join('')}</ul>${order.note ? `<p>${esc(order.note)}</p>` : ''}
-      ${order.status==='draft'?`<button type="button" data-command="edit" data-order="${order.id}">Amend</button> <button type="button" data-command="place" data-order="${order.id}">Submit order</button>`:''}
+      ${order.status==='draft'?`<button type="button" data-command="edit" data-order="${order.id}">Amend</button> <button type="button" data-command="place" data-order="${order.id}" title="Atlas does not send orders to suppliers. Place the order with the supplier, then mark it ordered here.">Mark as ordered</button>`:''}
       ${order.status==='ordered'?`<button type="button" data-command="receive" data-order="${order.id}">Receive all items</button>`:''}
       ${['draft','ordered'].includes(order.status)?`<button type="button" data-command="cancel" data-order="${order.id}">Cancel order</button>`:''}</article>`).join('') || `<p>No ${activeSection === 'orders' ? 'orders' : 'deliveries'} recorded.</p>`}</div>`;
   }
@@ -54,8 +54,14 @@
       const { data, error } = await window.atlasSupabase.from('purchase_orders').select('*').order('created_at', { ascending: false }).limit(100);
       if (error) throw error;
       orders = data || []; render();
+      window.dispatchEvent(new CustomEvent('atlas:purchase-orders-updated'));
     } catch (_) { status('Orders could not be loaded. Check your connection or ask an administrator to check this environment.'); }
   }
+  // Items on a placed, not yet received order. Operations uses this so its
+  // "ordered" state reflects real purchase orders on every device.
+  window.AtlasPurchaseOrders = Object.freeze({
+    openItemIds: () => new Set(orders.filter(order => order.status === 'ordered').flatMap(order => (order.lines || []).map(line => line.item_id)).filter(Boolean))
+  });
   async function command(args) {
     if (busy || !window.atlasCanManageCommercial?.()) return;
     if (!navigator.onLine) { status('Offline: nothing was submitted. Reconnect and refresh first.'); return; }
@@ -109,6 +115,7 @@
       const order = orders.find(x=>x.id===button.dataset.order); if (!order) return;
       if (button.dataset.command==='edit') { draft=structuredClone(order); render(); return; }
       if (button.dataset.command==='receive' && !confirm('Receive every line in this order? This records stock and restock movements.')) return;
+      if (button.dataset.command==='place' && !confirm('Mark this order as placed?\n\nAtlas does not send it to the supplier — place it with the supplier yourself (phone, email or portal) first.')) return;
       await command({p_id:order.id,p_action:button.dataset.command,p_version:order.version});
     }
   });
@@ -120,5 +127,8 @@
     if (!draft.lines.length) { status('Add at least one item.'); return; }
     await command({p_id:draft.id,p_action:draft.version?'update':'create',p_version:draft.version,p_supplier_id:draft.supplier_id,p_lines:draft.lines,p_note:draft.note});
   });
-  window.addEventListener('atlas:profile-ready', () => { orders=[]; draft=null; panel.replaceChildren(); showSection('suppliers'); });
+  window.addEventListener('atlas:profile-ready', () => {
+    orders=[]; draft=null; panel.replaceChildren(); showSection('suppliers');
+    if (window.atlasCanManageCommercial?.()) window.setTimeout(refresh, 0);
+  });
 })();

@@ -112,3 +112,22 @@ test('an archived recipe is deleted only after its name is typed', { skip }, asy
     assert.ok(right.record.requests.some((entry) => entry.path.endsWith('/rest/v1/recipes') && entry.method === 'DELETE'));
   } finally { await right.close(); }
 });
+
+test('Operations shows items on a placed purchase order as On order', { skip }, async () => {
+  const { page, close } = await launchAtlas({
+    fixtures: {
+      tables: {
+        inventory_items: inventory, recipes, suppliers: [{ id: 's1', name: 'Globus' }],
+        purchase_orders: [{ id: 'po1', supplier_id: 's1', status: 'ordered', version: 1, lines: [{ item_id: 'pinot', item_name: 'Angelo Pinot Grigio', quantity: 12, unit: 'bottles', unit_cost: 2100 }] }]
+      },
+      functions: { ...emptyFunctions(), 'atlas-stock-counts': { counts: { verified_balances: [balance('pinot', 4), balance('lime', 5), balance('gin', 2)] } } }
+    }
+  });
+  try {
+    await openView(page, 'operations');
+    await page.waitForTimeout(300);
+    assert.match(await page.textContent('#operations-orders'), /On order/);
+    assert.equal(await page.$('#operations-orders [data-order-toggle="pinot"]'), null);
+    assert.match(await page.textContent('button.operations-summary-card[data-operation-target="operations-orders"]'), /^0/, 'no supplier still needs an order');
+  } finally { await close(); }
+});

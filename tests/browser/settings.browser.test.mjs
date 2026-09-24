@@ -210,3 +210,20 @@ test('blocked permission is reported as blocked, not as off', { skip }, async ()
     assert.match(await page.textContent('.settings-device-notifications'), /Blocked/);
   } finally { await close(); }
 });
+
+test('integrations without a connection flow say so and list what they need', { skip }, async () => {
+  const integrations = [{ provider_key: 'instagram', label: 'Instagram', category: 'social', status: 'not_connected', authorization_state: 'not_connected', requirements: { oauth: true, meta_app_review: true, professional_account: true } }];
+  const backend = settingsBackend();
+  backend.workspace.integrations = integrations;
+  const app = await launchAtlas({ fixtures: { functions: { ...emptyFunctions(), 'atlas-settings': backend.handler } } });
+  try {
+    await openView(app.page, 'settings');
+    await app.page.waitForSelector('.settings-shell .settings-tabs');
+    await tab(app.page, 'integrations');
+    const card = await app.page.textContent('.settings-integration-card');
+    assert.match(card, /Not available yet/);
+    assert.match(card, /no connection flow for Instagram/);
+    assert.match(card, /Meta app review/);
+    assert.equal(await app.page.$$eval('.settings-integration-card button, .settings-integration-card a', (nodes) => nodes.length), 0, 'no Connect button without a real flow');
+  } finally { await app.close(); }
+});
