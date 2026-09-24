@@ -197,13 +197,20 @@ test('reject, expiry and role: a rejected or expired proposal never runs; a bart
   assert.deepEqual(rt.world.writes, []);
 });
 
+// Voice tools require a live voice session (security hardening F1).
+async function liveVoice(rt, actor, conversationId) {
+  const session = await rt.services.rpc('atlas_ai_voice_session_start', { p_actor_id: ACTORS[actor].id, p_actor_role: actor, p_conversation_id: conversationId, p_models: {}, p_mints_per_minute: 6 });
+  return session.voice_session_id ?? session.id;
+}
+
 test('bartender voice count: voice-tool draft → bartender approval → count session with the bartender JWT; stock unchanged', opts, async () => {
   const rt = setup(() => message('ok'));
   const conversation = await rt.services.rpc('atlas_ai_conversation_create', { p_actor_id: ACTORS.bartender.id, p_actor_role: 'bartender', p_title: 'Voice', p_context: {} });
+  const voiceSessionId = await liveVoice(rt, 'bartender', conversation.id);
   const draft = await rt.call('voice-tool', {
     actor: 'bartender',
     body: {
-      conversation_id: conversation.id, name: 'inventory_prepare_count', call_id: 'call_voice_1',
+      conversation_id: conversation.id, voice_session_id: voiceSessionId, name: 'inventory_prepare_count', call_id: 'call_voice_1',
       arguments: JSON.stringify({ entries: [{ item_id: null, item_query: 'Tanqueray', quantity: 6, unit: 'bottle', note: null }, { item_id: null, item_query: 'Campari', quantity: 2, unit: 'bottle', note: null }], title: null, note: null }),
     },
   });
@@ -216,7 +223,7 @@ test('bartender voice count: voice-tool draft → bartender approval → count s
   assert.deepEqual(rt.world.writes.map((write) => write.name), ['stock-counts:start', 'stock-counts:save-line', 'stock-counts:save-line']);
   assert.ok(rt.world.writes.every((write) => write.token === tokenFor(ACTORS.bartender)));
   assert.equal(rt.world.writes[0].body.scope_value, 'Spirits');
-  const stock = await rt.call('voice-tool', { actor: 'bartender', body: { conversation_id: conversation.id, name: 'inventory_get', call_id: 'call_voice_2', arguments: { item_id: IDS.item.tanqueray } } });
+  const stock = await rt.call('voice-tool', { actor: 'bartender', body: { conversation_id: conversation.id, voice_session_id: voiceSessionId, name: 'inventory_get', call_id: 'call_voice_2', arguments: { item_id: IDS.item.tanqueray } } });
   assert.match(stock.body.output, /Tanqueray London Dry Gin: 4 bottle verified/, 'stock changes only after manager verification');
   const context = rt.db.conversations.get(conversation.id).context;
   assert.equal(context.last_tool, 'inventory.get');
@@ -419,7 +426,8 @@ test('Knowledge with an injected instruction: the tool output is data and the mo
 test('voice-tool ask_atlas: the spoken request runs the full orchestrator with the real gateway', opts, async () => {
   const rt = setup((req) => (hasToolOutput(req) ? answerFromTool(req) : toolCall('shifts_who_is_working', { day: 'tomorrow', date: null })));
   const conversation = await rt.services.rpc('atlas_ai_conversation_create', { p_actor_id: ACTORS.viewer.id, p_actor_role: 'viewer', p_title: 'Voice', p_context: {} });
-  const response = await rt.call('voice-tool', { actor: 'viewer', body: { conversation_id: conversation.id, name: 'ask_atlas', arguments: { request: 'Who works tomorrow?' }, call_id: 'call_ask_1' } });
+  const voiceSessionId = await liveVoice(rt, 'viewer', conversation.id);
+  const response = await rt.call('voice-tool', { actor: 'viewer', body: { conversation_id: conversation.id, voice_session_id: voiceSessionId, name: 'ask_atlas', arguments: { request: 'Who works tomorrow?' }, call_id: 'call_ask_1' } });
   assert.equal(response.status, 200, JSON.stringify(response.body));
   assert.match(response.body.output, /3 people are working tomorrow/);
   assert.ok(response.body.evidence.some((item) => item.label === 'Business date'));
