@@ -1,7 +1,7 @@
 (function(root) {
   'use strict';
 
-  const OWNER_CONFIRMED_TYPES = new Set(['owner_confirmed', 'owner_confirmed_supplier_price']);
+  const LEGACY_OWNER_CONFIRMED_TYPES = new Set(['owner_confirmed', 'owner_confirmed_supplier_price', 'owner_confirmed_prep', 'owner_verified_count']);
   const DEFAULT_FRESHNESS_MS = 7 * 24 * 60 * 60 * 1000;
 
   function numberOrNull(value) {
@@ -51,12 +51,20 @@
     if (!has(item, 'source_type')) {
       return { quantity: numberOrNull(item?.owner_confirmed_quantity), at: millis(item?.owner_confirmed_at) };
     }
-    const sourceType = String(item.source_type || '').toLowerCase();
-    if (!OWNER_CONFIRMED_TYPES.has(sourceType) || Number(item.source_confidence) !== 100) return null;
-    if (!has(item, 'source_confirmed_at')) {
-      return { quantity: numberOrNull(item.quantity), at: millis(item.updated_at) };
+
+    // S84.1: once the dedicated evidence fields exist, they are the authority.
+    // The database guard is responsible for deciding which trusted owner
+    // workflows may stamp them. This keeps the browser independent from the
+    // source_type taxonomy (prep, verified count, supplier price, etc.).
+    if (has(item, 'source_confirmed_at') || has(item, 'source_confirmed_quantity')) {
+      return { quantity: numberOrNull(item.source_confirmed_quantity), at: millis(item.source_confirmed_at) };
     }
-    return { quantity: numberOrNull(item.source_confirmed_quantity), at: millis(item.source_confirmed_at) };
+
+    // Compatibility only for environments that have not received the S84
+    // evidence columns yet.
+    const sourceType = String(item.source_type || '').toLowerCase();
+    if (!LEGACY_OWNER_CONFIRMED_TYPES.has(sourceType) || Number(item.source_confidence) !== 100) return null;
+    return { quantity: numberOrNull(item.quantity), at: millis(item.updated_at) };
   }
 
   function ownerBaseline(item, balance) {
