@@ -361,24 +361,6 @@
     }
   }
 
-  function professionalizeQuickActions() {
-    const actions = [
-      ['fab-add-item', 'plus', 'Add inventory item'],
-      ['fab-log-restock', 'package-plus', 'Log restock'],
-      ['fab-add-recipe', 'martini', 'Add recipe'],
-      ['fab-add-supplier', 'truck', 'Add supplier']
-    ];
-    actions.forEach(([id, iconName, label]) => {
-      const button = document.getElementById(id);
-      if (!button) return;
-      const icon = document.createElement('i');
-      icon.dataset.lucide = iconName;
-      const text = document.createElement('span');
-      text.textContent = label;
-      button.replaceChildren(icon, text);
-    });
-  }
-
   function cacheDom() {
     dom.view = document.getElementById('recipes-view');
     dom.grid = document.getElementById('recipes-grid-v2');
@@ -441,12 +423,6 @@
     dom.imageRemove?.addEventListener('click', clearRecipeImage);
     dom.form?.addEventListener('submit', saveRecipe);
     dom.modal?.addEventListener('atlas:modal-close', resetEditor);
-    document.getElementById('fab-add-recipe')?.addEventListener('click', () => {
-      document.getElementById('fab-menu')?.classList.remove('open');
-      document.getElementById('fab-btn')?.classList.remove('open');
-      setActiveView('recipes');
-      openEditor(null);
-    });
     dom.detailSheet?.addEventListener('click', (event) => {
       if (event.target.closest('[data-detail-close]')) closeDetail();
     });
@@ -465,13 +441,6 @@
       if (!dom.serviceOverlay?.hidden && event.key === 'ArrowRight') stepServiceRecipe(1);
       if (!dom.serviceOverlay?.hidden && event.key === 'ArrowLeft') stepServiceRecipe(-1);
     });
-    document.addEventListener('click', (event) => {
-      const serviceRecipeCard = event.target.closest('[data-service-view="recipes"]');
-      if (!serviceRecipeCard) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      openServiceLibrary();
-    }, true);
   }
 
   function renderSummary() {
@@ -1242,7 +1211,6 @@
   function init() {
     if (state.initialized) return;
     ensureWorkspaceMarkup();
-    professionalizeQuickActions();
     cacheDom();
     if (!dom.view) return;
     window.AtlasModal.register(dom.modal, { closeOnBackdrop: true, initialFocus: '#recipe-name' });

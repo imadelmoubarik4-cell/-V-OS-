@@ -15,14 +15,10 @@
 @layer atlas.legacy {
 /* Minimalist type: one sans across the app, no serif display faces. */
 #app-screen,
-#app-screen .atlas-page-title,
 #app-screen h1, #app-screen h2, #app-screen h3, #app-screen h4,
 #app-screen .metric-card strong,
 #app-screen .home-hero h1,
 #app-screen .placeholder-head h2,
-#app-screen .service-head h1,
-#app-screen .service-card h3,
-#app-screen .atlas-logo,
 .modal h2, .modal h3,
 .recipe-alpha03 h1, .recipe-alpha03 h2, .recipe-alpha03 h3,
 .recipe-profile-pane h2, .recipe-profile-pane h3,
@@ -54,32 +50,10 @@
   letter-spacing: -.035em;
 }
 
-#app-screen h2, #app-screen h3, #app-screen .atlas-page-title {
+#app-screen h2, #app-screen h3 {
   font-weight: 600;
   letter-spacing: -.025em;
 }
-
-/* PR29 shell navigation: one destination per workspace with a compact desktop rail. */
-@media (min-width: 761px) {
-  #mobile-menu-btn.mobile-menu { display: grid; }
-  body.atlas-sidebar-collapsed .atlas-brand > div:last-child,
-  body.atlas-sidebar-collapsed .nav-label,
-  body.atlas-sidebar-collapsed .nav-item-label,
-  body.atlas-sidebar-collapsed .profile-copy,
-  body.atlas-sidebar-collapsed #logout-btn,
-  body.atlas-sidebar-collapsed .system-nav-status,
-  body.atlas-sidebar-collapsed .review-nav-count,
-  body.atlas-sidebar-collapsed .team-nav-unread { display: none !important; }
-}
-
-
-.service-toggle {
-  background: linear-gradient(160deg, var(--blue-600), var(--blue-700));
-  border-radius: 12px;
-  box-shadow: 0 8px 20px -12px rgba(47, 128, 237, .9);
-}
-
-.service-toggle:hover { background: var(--blue-700); }
 
 .atlas-content thead th {
   background: rgba(255, 255, 255, .6);
@@ -156,17 +130,6 @@
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-radius: 14px;
-}
-
-/* Quick actions */
-.fab-wrap .fab-btn,
-#fab-btn {
-  background: linear-gradient(160deg, var(--blue-600), var(--blue-700));
-  box-shadow: 0 12px 30px -14px rgba(47, 128, 237, .95);
-}
-
-#fab-menu button {
-  color: var(--atlas-text);
 }
 
 /* ---------- Module workspaces: Operations, Atlas Brain, Business Intelligence,
@@ -399,8 +362,7 @@
 }
 
 @media (prefers-reduced-transparency: reduce) {
-
-  .atlas-sidebar, .atlas-topbar, .modal, .recipe-detail-shell,
+  .modal, .recipe-detail-shell,
   .daily-briefing-shell, .item-master-drawer, .item-master-drawer > header,
   .brain-hero, .business-hero, .brain-hero-panel {
     background: #fff !important;

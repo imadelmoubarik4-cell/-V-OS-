@@ -9,9 +9,9 @@
     "inlineAndInjectedStyleBlocks": 4
   },
   "ceilings": {
-    "important": 850,
-    "crossFileDuplicateSelectors": 738,
-    "subElevenPxFontSizes": 563,
+    "important": 837,
+    "crossFileDuplicateSelectors": 720,
+    "subElevenPxFontSizes": 561,
     "stylesheetFiles": 27,
     "legacyFragmentFiles": 92,
     "inlineAndInjectedStyleBlocks": 1

@@ -73,7 +73,8 @@ const ROUTES = {
   shift_week: (id) => `#shifts?week=${enc(id)}`,
   shift: (id) => `#shifts?shift=${enc(id)}`,
   profile: (id) => `#team?profile=${enc(id)}`,
-  team_channel: (id) => `#team?channel=${enc(id)}`,
+  // Messages live at #messages; #team is the Team directory (S88 route table).
+  team_channel: (id) => `#messages?channel=${enc(id)}`,
   knowledge_article: (id) => `#knowledge?article=${enc(id)}`,
   knowledge: () => "#knowledge",
   settings: (id) => (id ? `#settings?tab=${enc(id)}` : "#settings"),
@@ -94,7 +95,7 @@ function enc(value) {
 const ROOTS = {
   inventory_item: "#inventory", movement: "#movements", recipe: "#recipes", supplier: "#suppliers",
   report: "#reports/overview", routine: "#dashboard", shift_week: "#shifts", shift: "#shifts", profile: "#team",
-  team_channel: "#team", knowledge_article: "#knowledge", brain_recommendation: "#dashboard",
+  team_channel: "#messages", knowledge_article: "#knowledge", brain_recommendation: "#dashboard",
   marketing_recommendation: "#marketing",
 };
 

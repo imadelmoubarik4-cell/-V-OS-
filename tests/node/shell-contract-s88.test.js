@@ -132,8 +132,6 @@ const OBSERVER_ALLOWLIST = {
 //   atlas-shell.js (1)             the single navigation listener; must see sidebar/tab clicks first.
 //   inventory-scanner.js (4)       full-screen overlay above every workspace; taps must never be swallowed
 //                                  (previously forced by replacing document.addEventListener).
-//   recipes.js (1)                 Recipes takes over its Service Mode card (service library) before the
-//                                  shell's bubbling service-card routing.
 //   rehearsal-boundary.js (1)      offline write boundary: blocks form submits before any module sees them.
 //   shifts-month-calendar.js (3)   Month owns its controls inside the weekly planner's host and stops the
 //                                  weekly bubbling handler.
@@ -145,7 +143,6 @@ const OBSERVER_ALLOWLIST = {
 const CAPTURE_ALLOWLIST = {
   'assets/js/atlas-shell.js': 1,
   'assets/js/inventory-scanner.js': 4,
-  'assets/js/recipes.js': 1,
   'assets/js/rehearsal-boundary.js': 1,
   'assets/js/shifts-month-calendar.js': 3,
   'assets/js/stock-count-workspace.js': 4,
@@ -153,7 +150,7 @@ const CAPTURE_ALLOWLIST = {
   'assets/js/team-profile-photo-gallery.js': 2
 };
 const OBSERVER_CEILING = 2;
-const CAPTURE_CEILING = 17;
+const CAPTURE_CEILING = 16;
 
 test('MutationObservers stay within the documented ratchet ceiling', () => {
   const counts = countPerFile(/new\s+(?:window\.)?MutationObserver\s*\(/g);
@@ -173,7 +170,7 @@ test('capture-phase listeners stay within the documented ratchet ceiling', () =>
   }
   assert.ok(total(counts) <= CAPTURE_CEILING, `${total(counts)} capture listeners > ceiling ${CAPTURE_CEILING}`);
   const stopImmediate = SOURCES.filter(([, source]) => /stopImmediatePropagation/.test(source)).map(([file]) => file).sort();
-  assert.deepEqual(stopImmediate, ['assets/js/recipes.js', 'assets/js/rehearsal-boundary.js', 'assets/js/shifts-month-calendar.js']);
+  assert.deepEqual(stopImmediate, ['assets/js/rehearsal-boundary.js', 'assets/js/shifts-month-calendar.js']);
 });
 
 // Events the shell emits itself (atlas-shell.js) or from index.html's lifecycle.
@@ -293,9 +290,10 @@ function loadShell({ hash = '', storage = {} } = {}) {
   return { shell: context.AtlasShell, context, location, history, dispatched, errors, scripts, store, documentListeners, fireWindow };
 }
 
-test('AtlasShell installs one capture and one bubbling navigation listener and nothing global', () => {
+test('AtlasShell installs one capture-phase navigation listener and nothing global', () => {
   const { shell, documentListeners, context } = loadShell();
-  assert.deepEqual(documentListeners, [{ type: 'click', capture: true }, { type: 'click', capture: false }]);
+  // S88 redesign: the bubbling Service Mode card listener is gone with Service Mode.
+  assert.deepEqual(documentListeners, [{ type: 'click', capture: true }]);
   assert.equal(typeof context.MutationObserver, 'undefined');
   for (const name of ['registerView', 'show', 'current', 'on', 'off', 'emit', 'registerHomeSection', 'onDataLoaded', 'parseRoute', 'load']) {
     assert.equal(typeof shell[name], 'function', name);

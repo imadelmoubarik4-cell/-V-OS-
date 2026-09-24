@@ -10,7 +10,6 @@
 @layer atlas.legacy {
 /* Compact Apple-style search controls */
 :is(
-  .atlas-search,
   .purchasing-search,
   .recipe-search,
   .team-attachment-controls label
@@ -19,7 +18,6 @@
 }
 
 :is(
-  #global-search,
   #supplier-search,
   #recipe-search,
   [data-team-target-search]
@@ -33,7 +31,6 @@
 }
 
 :is(
-  #global-search,
   #supplier-search,
   #recipe-search,
   [data-team-target-search]

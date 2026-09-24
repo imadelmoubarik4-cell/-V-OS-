@@ -80,7 +80,10 @@ test('shared launch design uses blue actions, compact search, visible focus, and
   assert.match(tokens, /--atlas-accent: #2f80ed;/);
   assert.match(tokens, /--atlas-action: var\(--atlas-accent\);/);
   assert.doesNotMatch(design, /--atlas-action:#2d78dc/);
-  assert.match(design, /:focus-visible/);
+  // S88: one focus contract (2 px accent, spec G18) lives with the shell, not
+  // in the S34 fragments; no legacy rule forces a focus style with !important.
+  assert.doesNotMatch(design, /:focus-visible\{\s*outline:3px solid var\(--atlas-action-focus\)!important/);
+  assert.match(readFileSync('apps/web/assets/css/atlas-shell.css', 'utf8'), /:focus-visible \{ outline: 2px solid var\(--accent, #1f6fdb\)/);
   assert.match(design, /input\[type="search"\]/);
   assert.match(design, /@media\(prefers-reduced-motion:reduce\)/);
   assert.match(design, /#home-focus::after/);

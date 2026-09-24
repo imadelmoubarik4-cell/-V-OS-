@@ -16,11 +16,19 @@ npm run test:browser
 Environment overrides: `ATLAS_BROWSER_LIBS` (library `node_modules`),
 `ATLAS_PLAYWRIGHT` (Playwright package path), `ATLAS_CHROMIUM` (browser binary).
 
+## Shell screenshots (`tools/shell-shots.mjs`, not run by `npm run test:browser`)
+
+`node tests/browser/tools/shell-shots.mjs --out DIR [--quick]` captures the S88
+shell (Home, Inventory, palette, notifications, account menu, More sheet,
+overlay sidebar) for admin and bartender at 1440/1280/1024/768/430/390, plus
+sign-in, invitation and recovery, for comparison with
+`docs/design/atlas-reference.html`.
+
 ## CSS refactor evidence (`tools/`, not run by `npm run test:browser`)
 
 - `tools/style-snapshot.mjs capture --out DIR` records, for admin and bartender
   at 1440/1024/768/390 and every view plus a few open states (Shifts Month,
-  recipe detail, scanner, stock count, item master, FAB), the computed value of
+  recipe detail, scanner, stock count, item master, palette), the computed value of
   every CSS property of every element (and rendered `::before`/`::after`) and a
   screenshot, against the deterministic data in `tools/capture-fixtures.mjs`
   with a frozen clock. `diff BEFORE AFTER` lists every changed property.

@@ -709,15 +709,6 @@
       toolbar.insertBefore(button, addButton || null);
     }
 
-    const fabMenu = document.getElementById('fab-menu');
-    if (fabMenu && !document.getElementById('fab-scan-bottle')) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.id = 'fab-scan-bottle';
-      button.innerHTML = '<i data-lucide="scan-barcode"></i><span>Scan bottle</span>';
-      fabMenu.prepend(button);
-    }
-
     window.lucide?.createIcons?.();
   }
 
@@ -725,10 +716,8 @@
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
 
-    if (target.closest('#inventory-scan-btn, #fab-scan-bottle')) {
+    if (target.closest('#inventory-scan-btn')) {
       event.preventDefault();
-      document.getElementById('fab-menu')?.classList.remove('open');
-      document.getElementById('fab-btn')?.classList.remove('open');
       openScanner();
       return;
     }

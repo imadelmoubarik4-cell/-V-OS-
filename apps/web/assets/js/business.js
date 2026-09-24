@@ -525,20 +525,6 @@
       else insightsGroup.appendChild(button);
     }
 
-    const fabMenu = document.getElementById('fab-menu');
-    if (fabMenu && !document.getElementById('fab-open-business')) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.id = 'fab-open-business';
-      button.innerHTML = '<i data-lucide="chart-no-axes-combined"></i><span>Open Business Intelligence</span>';
-      fabMenu.appendChild(button);
-      button.addEventListener('click', () => {
-        fabMenu.classList.remove('open');
-        document.getElementById('fab-btn')?.classList.remove('open');
-        window.AtlasShell.show('business');
-      });
-    }
-
     dom.view = view;
     dom.shell = document.getElementById('business-shell');
   }

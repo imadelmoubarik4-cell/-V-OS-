@@ -23,6 +23,9 @@
 //             notify.open() / close() / toggle() / isOpen() · notify.setPanel(panel)
 //   links     links.register(type, handler) · links.open(type, key)   (registerLink / openLink)
 //   modules   modules.ensure({ js, global }) · load(src, options)       (deduplicated loader)
+//   nav       nav.items({ role }) · nav.allowed(idOrView, role) · nav.forRoute(hash) · nav.forView(view)
+//             (spec §3.1/§3.3 destinations and role visibility; atlas-chrome.js renders them)
+//   feedback  toast(message, { action, tone, duration }) · pageHead({ title, sub, actions }) · escape(text)
 //
 // Loaded as a classic script before config.js and every module. It installs one
 // capture-phase and one bubbling document click listener (navigation) and the
@@ -32,7 +35,7 @@
 
   if (root.AtlasShell && root.AtlasShell.version) return;
 
-  const VERSION = 's88-shell-2';
+  const VERSION = 's88-shell-3';
   // Internal view-id aliases accepted by show().
   const ALIASES = Object.freeze({ home: 'dashboard', '': 'dashboard' });
   // Shell events that older modules still observe as window events.
@@ -43,7 +46,6 @@
   });
   // Navigation triggers routed by the shell's document listeners.
   const NAV_SELECTOR = '.atlas-nav .nav-item[data-view], .inventory-workspace-tab[data-view]';
-  const SERVICE_SELECTOR = '[data-service-view]';
   const SEVERITY_RANK = Object.freeze({ danger: 0, warning: 1, info: 2 });
   const READ_STORAGE_KEY = 'atlas.notifications.read.v1';
 
@@ -141,7 +143,9 @@
 
   const ROUTES = {
     home: () => [['dashboard']],
-    ai: (rest) => [['ai', rest[0] === 'c' ? { conversation: rest[1] || '' } : rest[0] === 'new' ? { new: '1' } : section(rest[0])]],
+    // Until the Atlas AI workspace registers 'ai', its predecessor (Brain, which
+    // holds today's Ask) answers the route so the destination never dead-ends.
+    ai: (rest) => [['ai', rest[0] === 'c' ? { conversation: rest[1] || '' } : rest[0] === 'new' ? { new: '1' } : section(rest[0])], ['brain']],
     messages: (rest) => [['team', rest[0] ? { conversation: rest[0] } : {}]],
     operations: (rest) => [['operations', section(rest[0])]],
     inventory: (rest) => {
@@ -280,14 +284,19 @@
     ));
   }
 
-  function writeRoute(name, params) {
+  // `route` is the link the user followed (navigate('#ai')): it is written as
+  // typed when it resolves to the view being shown, so a fallback page (Brain
+  // answering #ai) keeps its spec address.
+  function writeRoute(name, params, route) {
     if (!routing || !root.history || !root.location) return;
     const replace = replaceNextRoute;
     replaceNextRoute = false;
     if (routeMatches(parseRoute(root.location.hash), name, params)) return;
+    const typed = typeof route === 'string' && route.includes('#') ? `#${route.split('#').slice(1).join('#')}` : '';
+    const target = typed && parseRoute(typed).view === name ? typed : href(name, params);
     try {
-      if (replace) root.history.replaceState(root.history.state, '', href(name, params));
-      else root.history.pushState(null, '', href(name, params));
+      if (replace) root.history.replaceState(root.history.state, '', target);
+      else root.history.pushState(null, '', target);
     } catch (error) { report(error); }
   }
 
@@ -402,7 +411,7 @@
     pending = null;
     metrics.shows[key] = (metrics.shows[key] || 0) + 1;
     safe(layout || defaultLayout, key, entry, context);
-    if (options.history !== false) writeRoute(key, currentParams);
+    if (options.history !== false) writeRoute(key, currentParams, options.route);
     if (token !== showToken) return true;
 
     if (previous && previous !== key) {
@@ -428,7 +437,7 @@
   function navigate(target, options = {}) {
     const route = typeof target === 'string' ? parseRoute(target) : { view: canonicalName(target?.view), params: target?.params || {} };
     if (route.panel === 'notifications') return openNotifications();
-    return show(route.view, route.params, { source: 'link', ...options });
+    return show(route.view, route.params, { source: 'link', ...(typeof target === 'string' ? { route: target } : {}), ...options });
   }
 
   // ---------- Home composition ----------
@@ -526,6 +535,156 @@
     emit('profile:ready', lastProfile);
   }
 
+  // ---------- navigation destinations (spec §3.1, §3.3) ----------
+  //
+  // The one list of destinations. The sidebar, rail, phone tab bar, More sheet,
+  // command palette ("Go to") and search all read it, so a role never sees a
+  // destination in one place and not another. `view` is the internal view id
+  // the route opens; `views` are the internal views that belong to it (active
+  // state); `aliases` are the legacy route heads it absorbed.
+
+  const ROLES_ALL = Object.freeze(['admin', 'manager', 'bartender', 'viewer']);
+  const ROLES_MANAGERS = Object.freeze(['admin', 'manager']);
+  const NAV_ITEMS = Object.freeze([
+    { id: 'home', label: 'Home', icon: 'house', route: '#home', view: 'dashboard', views: ['dashboard', 'brain'], aliases: ['dashboard', 'brain'], group: null, roles: ROLES_ALL, keywords: ['today', 'dashboard', 'briefing'] },
+    { id: 'ai', label: 'Atlas AI', icon: 'sparkles', route: '#ai', view: 'ai', views: ['ai'], aliases: [], group: null, roles: ROLES_ALL, accent: true, keywords: ['ask', 'assistant', 'decisions'] },
+    { id: 'messages', label: 'Messages', icon: 'messages-square', route: '#messages', view: 'team', views: ['team'], aliases: [], group: null, roles: ROLES_ALL, keywords: ['chat', 'handover', 'announcements'] },
+    { id: 'operations', label: 'Operations', icon: 'clipboard-check', route: '#operations', view: 'operations', views: ['operations'], aliases: [], group: 'Venue', roles: ROLES_ALL, keywords: ['checklist', 'opening', 'closing', 'temperature'] },
+    { id: 'inventory', label: 'Inventory', icon: 'package', route: '#inventory', view: 'inventory', views: ['inventory', 'movements', 'waste'], aliases: ['movements', 'waste'], group: 'Venue', roles: ROLES_ALL, keywords: ['stock', 'items', 'count', 'waste', 'movements'] },
+    { id: 'recipes', label: 'Recipes', icon: 'martini', route: '#recipes', view: 'recipes', views: ['recipes'], aliases: [], group: 'Venue', roles: ROLES_ALL, keywords: ['cocktails', 'drinks', 'menu'] },
+    { id: 'purchasing', label: 'Purchasing', icon: 'truck', route: '#purchasing', view: 'suppliers', views: ['suppliers'], aliases: ['suppliers'], group: 'Venue', roles: ROLES_MANAGERS, keywords: ['orders', 'suppliers', 'deliveries'] },
+    { id: 'shifts', label: 'Shifts', icon: 'calendar-days', route: '#shifts', view: 'shifts', views: ['shifts'], aliases: [], group: 'People', roles: ROLES_ALL, keywords: ['schedule', 'rota', 'availability', 'time off'] },
+    { id: 'team', label: 'Team', icon: 'users', route: '#team', view: 'team-profiles', views: ['team-profiles'], aliases: ['team-profiles'], group: 'People', roles: ROLES_ALL, keywords: ['people', 'staff', 'profiles', 'directory'] },
+    { id: 'knowledge', label: 'Knowledge', icon: 'book-open', route: '#knowledge', view: 'knowledge', views: ['knowledge'], aliases: [], group: 'People', roles: ROLES_ALL, keywords: ['documents', 'training', 'procedures'] },
+    { id: 'reports', label: 'Reports', icon: 'chart-no-axes-column', route: '#reports', view: 'reports', views: ['reports', 'business'], aliases: ['business'], group: 'Business', roles: ROLES_MANAGERS, keywords: ['analytics', 'overview', 'waste', 'labour'] },
+    { id: 'marketing', label: 'Marketing', icon: 'megaphone', route: '#marketing', view: 'marketing', views: ['marketing'], aliases: [], group: 'Business', roles: ROLES_MANAGERS, keywords: ['social', 'posts', 'instagram'] },
+    { id: 'data', label: 'Data', icon: 'database', route: '#data', view: 'imports', views: ['data', 'imports', 'sprint3-review'], aliases: ['imports', 'sprint3-review'], group: 'Business', roles: ROLES_MANAGERS, keywords: ['import', 'excel', 'csv', 'review', 'par levels'] },
+    { id: 'settings', label: 'Settings', icon: 'settings', route: '#settings', view: 'settings', views: ['settings', 'system'], aliases: ['system'], group: 'footer', roles: ROLES_MANAGERS, keywords: ['preferences', 'hours', 'notifications', 'system health'] }
+  ]);
+  const NAV_GROUPS = Object.freeze([null, 'Venue', 'People', 'Business']);
+
+  function describeNav(item) {
+    return { ...item, views: [...item.views], aliases: [...item.aliases], roles: [...item.roles], keywords: [...item.keywords] };
+  }
+
+  // Destinations the role may open, in sidebar order ({ all: true } lists every one).
+  function navItems(context = {}) {
+    const role = currentRole(context);
+    return NAV_ITEMS.filter((item) => context.all || (Boolean(role) && item.roles.includes(role))).map(describeNav);
+  }
+
+  function navById(id) {
+    return NAV_ITEMS.find((item) => item.id === id) || null;
+  }
+
+  function navForView(view) {
+    const key = canonicalName(view);
+    return NAV_ITEMS.find((item) => item.views.includes(key)) || null;
+  }
+
+  // The destination a route belongs to, e.g. '#purchasing/order/4' and
+  // '#suppliers' → purchasing, '' → home.
+  function navForRoute(hash) {
+    const text = String(hash ?? '').replace(/^[^#]*#/, '').split('?')[0];
+    const head = decode(text.split('/')[0] || 'home');
+    return NAV_ITEMS.find((item) => item.id === head || item.aliases.includes(head)) || null;
+  }
+
+  // Whether a role may open a destination (a nav id or an internal view id).
+  // Views outside the navigation are allowed here; their own guard decides.
+  function navAllowed(target, role = currentRole()) {
+    const item = navById(target) || navForView(target);
+    if (!item) return true;
+    return Boolean(role) && item.roles.includes(role);
+  }
+
+  // ---------- feedback helpers (spec §4.11, §6.1, §6.25) ----------
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+  }
+
+  // Page header markup (spec §4.5, §6.1): one H1, a one-line subtitle of facts,
+  // actions right-aligned (secondaries first, at most one primary).
+  // actions: [{ label, icon?, variant?: 'primary'|'secondary'|'ghost', attrs?: { name: value } }]
+  function pageHead({ title = '', sub = '', actions = [], id = '' } = {}) {
+    const buttons = (Array.isArray(actions) ? actions : []).map((action) => {
+      const attrs = Object.entries(action.attrs || {}).map(([name, value]) => ` ${escapeHtml(name)}="${escapeHtml(value)}"`).join('');
+      const icon = action.icon ? `<i data-lucide="${escapeHtml(action.icon)}" aria-hidden="true"></i>` : '';
+      return `<button type="button" class="atlas-btn atlas-btn--${escapeHtml(action.variant || 'secondary')}"${attrs}>${icon}${escapeHtml(action.label)}</button>`;
+    }).join('');
+    const heading = `<h1 class="page-head__title"${id ? ` id="${escapeHtml(id)}"` : ''}>${escapeHtml(title)}</h1>`;
+    const subtitle = sub ? `<p class="page-head__sub">${escapeHtml(sub)}</p>` : '';
+    return `<header class="page-head"><div class="page-head__text">${heading}${subtitle}</div>${buttons ? `<div class="page-head__actions">${buttons}</div>` : ''}</header>`;
+  }
+
+  // One toast at a time (spec §4.11): bottom centre, above the phone tab bar,
+  // 4 s (8 s with an action), paused while hovered or focused. For completed
+  // actions only, never for errors that need a decision.
+  const toastState = { timer: null, remaining: 0, started: 0 };
+
+  function toastRegion() {
+    const document = root.document;
+    if (!document?.body) return null;
+    let region = document.getElementById('atlas-toast-region');
+    if (!region) {
+      region = document.createElement('div');
+      region.id = 'atlas-toast-region';
+      region.className = 'atlas-toast-region';
+      region.setAttribute('role', 'status');
+      region.setAttribute('aria-live', 'polite');
+      document.body.appendChild(region);
+    }
+    return region;
+  }
+
+  function dismissToast() {
+    if (toastState.timer) root.clearTimeout(toastState.timer);
+    toastState.timer = null;
+    root.document?.getElementById('atlas-toast-region')?.replaceChildren();
+  }
+
+  function pauseToast() {
+    if (!toastState.timer) return;
+    root.clearTimeout(toastState.timer);
+    toastState.timer = null;
+    toastState.remaining -= Date.now() - toastState.started;
+  }
+
+  function resumeToast(ms = toastState.remaining) {
+    if (toastState.timer) root.clearTimeout(toastState.timer);
+    toastState.remaining = Math.max(1500, ms);
+    toastState.started = Date.now();
+    toastState.timer = root.setTimeout(dismissToast, toastState.remaining);
+  }
+
+  function toast(message, options = {}) {
+    const region = toastRegion();
+    if (!region || !message) return null;
+    const document = root.document;
+    const element = document.createElement('div');
+    element.className = `atlas-toast${options.tone ? ` atlas-toast--${options.tone}` : ''}`;
+    const text = document.createElement('span');
+    text.className = 'atlas-toast__text';
+    text.textContent = String(message);
+    element.appendChild(text);
+    const action = options.action && typeof options.action.run === 'function' ? options.action : null;
+    if (action) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'atlas-toast__action';
+      button.textContent = String(action.label || 'Open');
+      button.addEventListener('click', () => { dismissToast(); safe(action.run); });
+      element.appendChild(button);
+    }
+    ['mouseenter', 'focusin'].forEach((type) => element.addEventListener(type, pauseToast));
+    ['mouseleave', 'focusout'].forEach((type) => element.addEventListener(type, () => resumeToast()));
+    region.replaceChildren(element);
+    toastState.remaining = 0;
+    resumeToast(Number(options.duration) || (action ? 8000 : 4000));
+    return element;
+  }
+
   // ---------- canonical actions (spec §4.8) ----------
   //
   // One label, icon, permission check and implementation per action; the
@@ -543,6 +702,8 @@
       roles: Array.isArray(definition.roles) ? definition.roles.map(String) : null,
       contexts: Array.isArray(definition.contexts) ? definition.contexts.map(String) : [],
       forRecord: definition.forRecord || null,
+      // Record-aware label, e.g. 'Count {name}' → "Count Campari" (spec §4.7).
+      recordLabel: definition.recordLabel ? String(definition.recordLabel) : null,
       when: typeof definition.when === 'function' ? definition.when : null,
       denied: typeof definition.denied === 'function' ? definition.denied : null,
       run: definition.run,
@@ -558,7 +719,7 @@
   }
 
   function describeAction(entry) {
-    return { id: entry.id, label: entry.label, icon: entry.icon, keywords: [...entry.keywords], roles: entry.roles ? [...entry.roles] : null, contexts: [...entry.contexts], forRecord: entry.forRecord };
+    return { id: entry.id, label: entry.label, icon: entry.icon, keywords: [...entry.keywords], roles: entry.roles ? [...entry.roles] : null, contexts: [...entry.contexts], forRecord: entry.forRecord, recordLabel: entry.recordLabel };
   }
 
   // ctx: { role?, context? (page key), suggested? (only actions for that context),
@@ -716,10 +877,11 @@
     return Boolean(notifyPanel);
   }
 
-  function closeNotifications() {
+  // options.restoreFocus === false keeps focus where the caller moves it.
+  function closeNotifications(options = {}) {
     if (!notifyIsOpen) return;
     notifyIsOpen = false;
-    if (notifyPanel?.close) safe(notifyPanel.close);
+    if (notifyPanel?.close) safe(notifyPanel.close, options);
     emit('notify:close', {});
   }
 
@@ -823,23 +985,23 @@
     if (!trigger) return;
     const view = trigger.dataset.view;
     if (!view) return;
+    const source = trigger.matches('.atlas-nav .nav-item') ? 'nav' : 'tab';
+    // Navigation links are real <a href="#route"> links: a plain click routes
+    // here (so the route table's fallbacks apply); a modified click opens a tab.
+    const link = trigger.tagName === 'A' ? String(trigger.getAttribute('href') || '') : '';
+    if (link.startsWith('#')) {
+      if (event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      navigate(link, { source, trigger, event });
+      return;
+    }
     const params = {};
     if (view === 'inventory' && trigger.dataset.inventorySection) params.section = trigger.dataset.inventorySection;
-    const source = trigger.matches('.atlas-nav .nav-item') ? 'nav' : 'tab';
     show(view, params, { source, trigger, event });
-  }
-
-  // Service Mode cards route in the bubbling phase so a workspace can take over
-  // its own card first (Recipes opens its service library instead).
-  function handleServiceCard(event) {
-    const trigger = navigationTrigger(event, SERVICE_SELECTOR);
-    if (!trigger) return;
-    show(trigger.dataset.serviceView, {}, { source: 'service', trigger, event });
   }
 
   if (root.document && typeof root.document.addEventListener === 'function') {
     root.document.addEventListener('click', handleNavigation, true);
-    root.document.addEventListener('click', handleServiceCard);
   }
   if (typeof root.addEventListener === 'function') {
     root.addEventListener('popstate', handleRouteChange);
@@ -904,7 +1066,7 @@
       activate: activateNotification,
       open: openNotifications,
       close: closeNotifications,
-      toggle: (options) => (notifyIsOpen ? closeNotifications() : openNotifications(options)),
+      toggle: (options) => (notifyIsOpen ? closeNotifications(options) : openNotifications(options)),
       isOpen: () => notifyIsOpen,
       setPanel: setNotificationPanel
     },
@@ -915,6 +1077,20 @@
     // runtime modules
     modules: { ensure: ({ js, global, ...options } = {}) => load(js, { global, ...options }) },
     load,
+    // navigation destinations and role visibility (spec §3.1, §3.3)
+    nav: {
+      items: navItems,
+      groups: () => [...NAV_GROUPS],
+      get: (id) => { const item = navById(id); return item ? describeNav(item) : null; },
+      forView: (view) => { const item = navForView(view); return item ? describeNav(item) : null; },
+      forRoute: (hash) => { const item = navForRoute(hash); return item ? describeNav(item) : null; },
+      allowed: navAllowed
+    },
+    // feedback and page markup (spec §4.11, §6.1)
+    toast,
+    dismissToast,
+    pageHead,
+    escape: escapeHtml,
     debug: () => JSON.parse(JSON.stringify(metrics))
   };
 })(typeof window === 'undefined' ? globalThis : window);

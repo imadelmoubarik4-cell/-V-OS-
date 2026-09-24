@@ -48,15 +48,6 @@
 #home-focus .atlas-home-brief-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 #home-focus .focus-list { margin-top: 16px; padding: 0; }
 
-/* Focus visibility */
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid rgba(79, 125, 243, .28);
-  outline-offset: 2px;
-}
 @media (max-width: 720px) {
   #home-focus.atlas-home-focus { grid-template-columns: 44px minmax(0, 1fr); padding: 17px; }
   #home-focus .atlas-home-brief-icon { width: 44px; height: 44px; border-radius: 14px; }
@@ -66,7 +57,6 @@ textarea:focus-visible {
 @media (max-width: 480px) {
   #home-focus.atlas-home-focus { grid-template-columns: 1fr; }
 }
-
 
 /* Home priorities and timeline */
 #focus-list[hidden] { display:none !important; }

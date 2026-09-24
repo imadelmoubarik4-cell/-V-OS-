@@ -3,12 +3,6 @@
  * Owner: WP-OPS-HOME. Phase 2 merges these rules into home.css (new)
  * using their effective values, then empties this file. */
 @layer atlas.legacy {
-/* One focus contract for pointer and keyboard controls. */
-:where(button,[role="button"],a,input,select,textarea):focus-visible{
-  outline:3px solid var(--atlas-action-focus)!important;
-  outline-offset:2px!important;
-}
-
 #home-focus{position:relative;overflow:hidden}
 #home-focus::after{
   content:"";position:absolute;inset:-40% auto -40% -25%;width:42%;pointer-events:none;

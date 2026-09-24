@@ -9,13 +9,6 @@ body.atlas-modal-open {
   overflow: hidden;
 }
 
-.atlas-logo img {
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-  display: block;
-}
-
 .recipe-dashboard {
   display: grid;
   gap: 22px;
@@ -1849,12 +1842,6 @@ body.recipe-service-open { overflow: hidden; }
 }
 
 .recipe-service-footer svg { width: 16px; height: 16px; }
-
-.fab-menu button svg {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-}
 
 @media (max-width: 1180px) {
   .recipe-workspace {

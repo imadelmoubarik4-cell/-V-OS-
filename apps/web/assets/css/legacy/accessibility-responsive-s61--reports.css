@@ -5,11 +5,7 @@
 /* S61: accessible responsive action ownership. */
 @layer atlas.legacy {
 /* Reports owns a fixed Ask Atlas action; do not stack Quick Actions over it. */
-body:has(#reports-view:not([style*="display: none"]):not([style*="display:none"])) .fab-wrap {
-  display: none !important;
-}
 @media (max-width: 760px) {
-
   .reports-ask-fab,
   .reports-ask-panel {
     right: max(14px, env(safe-area-inset-right));
