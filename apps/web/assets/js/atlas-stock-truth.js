@@ -34,32 +34,52 @@
       quantity,
       at: verifiedAt ?? 0,
       expiresAt,
+      recountDueAt: expiresAt,
       source: 'manager_verified_count'
     };
   }
 
-  function ownerBaseline(item, balance, nowMillis) {
-    const sourceType = String(item?.source_type || '').toLowerCase();
-    if (!OWNER_CONFIRMED_TYPES.has(sourceType) || Number(item?.source_confidence) < 100) return null;
+  function has(item, key) {
+    return Boolean(item) && Object.prototype.hasOwnProperty.call(item, key);
+  }
 
-    const quantity = numberOrNull(item?.quantity);
-    const updatedAt = millis(item?.updated_at);
-    if (quantity === null || updatedAt === null) return null;
+  // Owner confirmation evidence. Manager rows carry the source metadata and the
+  // dedicated confirmation columns; the staff catalogue exposes only the
+  // server-gated owner_confirmed_* baseline. Rows read before the S84 columns
+  // exist fall back to the live row, matching the previous rule.
+  function ownerConfirmation(item) {
+    if (!has(item, 'source_type')) {
+      return { quantity: numberOrNull(item?.owner_confirmed_quantity), at: millis(item?.owner_confirmed_at) };
+    }
+    const sourceType = String(item.source_type || '').toLowerCase();
+    if (!OWNER_CONFIRMED_TYPES.has(sourceType) || Number(item.source_confidence) !== 100) return null;
+    if (!has(item, 'source_confirmed_at')) {
+      return { quantity: numberOrNull(item.quantity), at: millis(item.updated_at) };
+    }
+    return { quantity: numberOrNull(item.source_confirmed_quantity), at: millis(item.source_confirmed_at) };
+  }
 
+  function ownerBaseline(item, balance) {
+    const confirmation = ownerConfirmation(item);
+    if (!confirmation || confirmation.quantity === null || confirmation.quantity < 0 || confirmation.at === null) return null;
+
+    // Any recorded manager count at or after the confirmation supersedes it,
+    // including one that has since expired or been revoked.
     const balanceAt = millis(balance?.verified_at);
-    if (balanceAt !== null && updatedAt <= balanceAt) return null;
+    if (balanceAt !== null && confirmation.at <= balanceAt) return null;
 
+    // Owner confirmations do not expire; after the count freshness window they
+    // stay authoritative (plus audited movements) and are flagged for recount.
     const balanceExpires = millis(balance?.expires_at);
     const freshnessWindow = balanceAt !== null && balanceExpires !== null && balanceExpires > balanceAt
       ? balanceExpires - balanceAt
       : DEFAULT_FRESHNESS_MS;
-    const expiresAt = updatedAt + freshnessWindow;
-    if (expiresAt <= nowMillis) return null;
 
     return {
-      quantity,
-      at: updatedAt,
-      expiresAt,
+      quantity: confirmation.quantity,
+      at: confirmation.at,
+      expiresAt: null,
+      recountDueAt: confirmation.at + freshnessWindow,
       source: 'owner_confirmed'
     };
   }
@@ -77,7 +97,7 @@
 
   function effectiveStock(item, balance, movements = [], nowMillis = Date.now()) {
     const manager = managerBaseline(balance, nowMillis);
-    const owner = ownerBaseline(item, balance, nowMillis);
+    const owner = ownerBaseline(item, balance);
     const baseline = owner && (!manager || owner.at > manager.at) ? owner : manager;
     if (!baseline) return null;
 
@@ -87,7 +107,8 @@
       baselineAt: baseline.at,
       expiresAt: baseline.expiresAt,
       source: baseline.source,
-      movementDelta: delta
+      movementDelta: delta,
+      recountDue: baseline.recountDueAt !== null && baseline.recountDueAt !== undefined && baseline.recountDueAt <= nowMillis
     };
   }
 
@@ -102,7 +123,8 @@
         freshness_state: evidence ? 'current' : 'unknown',
         stock_source: evidence?.source || null,
         stock_baseline_at: evidence?.baselineAt || null,
-        stock_movement_delta: evidence?.movementDelta || 0
+        stock_movement_delta: evidence?.movementDelta || 0,
+        stock_recount_due: evidence?.recountDue === true
       };
     });
   }

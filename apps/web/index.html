@@ -987,7 +987,7 @@
 <script src="config.js"></script>
 <script src="assets/js/runtime-module-guard.js"></script>
 <script src="assets/js/rehearsal-boundary.js"></script>
-<script src="assets/js/atlas-stock-truth.js?v=20260921-s64f"></script>
+<script src="assets/js/atlas-stock-truth.js?v=20260924-s84"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -1300,14 +1300,8 @@
         balances = (await response.json()).counts?.verified_balances || [];
       }
     } catch (error) { console.warn('Stock remains unknown until verified balances can be read.'); }
-    const liveQuantityById = new Map((data || []).map((row) => [row.id, row.quantity]));
-    items = window.AtlasStockTruth.project(data || [], balances, inventoryMovements).map((item) => {
-      const liveQuantity = Number(liveQuantityById.get(item.id));
-      return {
-        ...item,
-        live_quantity: canManageCommercial() && Number.isFinite(liveQuantity) ? liveQuantity : null
-      };
-    });
+    // Every workspace, including this table, reads the single reconciled quantity.
+    items = window.AtlasStockTruth.project(data || [], balances, inventoryMovements);
     renderTabs();
     renderTable();
     renderInventoryOperations();
@@ -1656,9 +1650,9 @@
     }
 
     visible.forEach(item => {
-      const hasManagerLiveQuantity = canManageCommercial() && Number.isFinite(Number(item.live_quantity));
-      const displayQuantity = hasManagerLiveQuantity ? Number(item.live_quantity) : item.quantity;
-      const isLow = (hasManagerLiveQuantity || window.AtlasStockTruth.known(item))
+      const stockKnown = window.AtlasStockTruth.known(item);
+      const displayQuantity = stockKnown ? Number(item.quantity) : null;
+      const isLow = stockKnown
         && item.par_level != null
         && Number(displayQuantity) <= Number(item.par_level);
       const cost = item.cost_price == null || item.cost_price === ''
@@ -1666,14 +1660,14 @@
         : `${new Intl.NumberFormat('is-IS', { maximumFractionDigits: 0 }).format(Number(item.cost_price))} ISK`;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td class="name"><span>${escapeHtml(item.name)}</span>${isLow ? '<span class="below-par-badge">Below par</span>' : ''}</td>
+        <td class="name"><span>${escapeHtml(item.name)}</span>${isLow ? '<span class="below-par-badge">Below par</span>' : ''}${stockKnown && item.stock_recount_due ? '<span class="below-par-badge recount-due-badge" title="Owner-confirmed count is past its freshness window">Recount due</span>' : ''}</td>
         <td class="cat">${escapeHtml(item.category)}</td>
         <td class="supplier" data-commercial-only>${escapeHtml(item.supplier || '—')}</td>
         <td class="cost numeric" data-commercial-only>${cost}</td>
         <td class="meta">${timeAgo(item.updated_at)}</td>
         <td>
           <div class="qty-cell">
-            ${hasManagerLiveQuantity || window.AtlasStockTruth.known(item) ? `
+            ${stockKnown ? `
               <button class="step-btn step-down" data-id="${item.id}" type="button" ${canManageCommercial() ? '' : 'disabled'}>−</button>
               <input type="number" step="0.1" min="0" class="qty-input mono" value="${displayQuantity ?? ''}" data-id="${item.id}" ${canManageCommercial() ? '' : 'disabled'} />
               <button class="step-btn step-up" data-id="${item.id}" type="button" ${canManageCommercial() ? '' : 'disabled'}>+</button>
@@ -1699,9 +1693,8 @@
       if (isNaN(newQty) || newQty < 0) return;
       const item = items.find(i => i.id === id);
       if (!item) return;
-      const currentQty = Number.isFinite(Number(item.live_quantity))
-        ? Number(item.live_quantity)
-        : (window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN);
+      // Movements are deltas from the reconciled quantity the manager can see.
+      const currentQty = window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN;
       if (!Number.isFinite(currentQty) || newQty === currentQty) return;
       const quantityChange = newQty - currentQty;
       const { error } = await sb.rpc('adjust_inventory', {
@@ -1729,7 +1722,7 @@
       btn.addEventListener('click', () => {
         const item = items.find(i => i.id === btn.dataset.id);
         if (item) {
-          const currentQty = Number.isFinite(Number(item.live_quantity)) ? Number(item.live_quantity) : Number(item.quantity);
+          const currentQty = window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN;
           if (Number.isFinite(currentQty)) applyQuantityChange(item.id, currentQty + 1);
         }
       });
@@ -1738,7 +1731,7 @@
       btn.addEventListener('click', () => {
         const item = items.find(i => i.id === btn.dataset.id);
         if (item) {
-          const currentQty = Number.isFinite(Number(item.live_quantity)) ? Number(item.live_quantity) : Number(item.quantity);
+          const currentQty = window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN;
           if (Number.isFinite(currentQty)) applyQuantityChange(item.id, Math.max(0, currentQty - 1));
         }
       });
@@ -1804,7 +1797,7 @@
     document.getElementById('item-id').value = item ? item.id : '';
     document.getElementById('item-name').value = item ? item.name : '';
     document.getElementById('item-category').value = item ? item.category : '';
-    document.getElementById('item-quantity').value = item ? (Number.isFinite(Number(item.live_quantity)) ? item.live_quantity : (item.quantity ?? 0)) : 0;
+    document.getElementById('item-quantity').value = item ? (window.AtlasStockTruth.known(item) ? item.quantity : '') : 0;
     document.getElementById('item-unit').value = item ? item.unit : 'bottles';
     document.getElementById('item-par').value = item && item.par_level != null ? item.par_level : '';
     document.getElementById('item-supplier').value = item && item.supplier ? item.supplier : '';
@@ -2493,7 +2486,7 @@
   }
   if (window.lucide) window.lucide.createIcons();
 </script>
-<script src="assets/js/atlas-calculations.js"></script>
+<script src="assets/js/atlas-calculations.js?v=20260924-s84"></script>
 <script src="assets/js/modal.js?v=20260922-s73"></script>
 <script src="assets/js/recipes.js?v=20260922-s73"></script>
 <script src="assets/js/operations.js"></script>
