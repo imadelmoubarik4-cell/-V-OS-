@@ -43,6 +43,14 @@ def _browser_origin(value):
     return f"https://{parsed.netloc}"
 
 
+def _runtime_path(function_name, source_path):
+    """Keep supabase/functions/_shared modules shared so ../_shared imports resolve."""
+    source = Path(source_path)
+    if source.parent == Path("supabase/functions/_shared"):
+        return Path("functions") / "_shared" / source.name
+    return Path("functions") / function_name / source.name
+
+
 def _entrypoint(function):
     preferred = {
         "atlas-reports": "entrypoint.ts",
@@ -215,7 +223,7 @@ def build(destination, browser_origin):
                     add_guard=source_path == entrypoint,
                     typed=Path(source_path).suffix == ".ts",
                 ).encode("utf-8")
-                relative = Path("functions") / function["name"] / Path(source_path).name
+                relative = _runtime_path(function["name"], source_path)
                 target = output / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(generated)
