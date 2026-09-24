@@ -100,8 +100,8 @@
         },
         {
           "path": "functions/atlas-reports/stock-provenance.mjs",
-          "source_sha256": "fcdc294365d7b8c2ace394c2ff8361f6b55c8c911acdc2e00108194daf37d231",
-          "candidate_sha256": "500d9f50c00e13ed3f18881477adbca812b82049765cd38999313bdf854dde80"
+          "source_sha256": "52600abae36beead11d0490e5e00fd0d97e1fbcb5d5e5355681d06a2be3772bc",
+          "candidate_sha256": "e17be656b241ba46efc7ce213f84450b9cdf1f869c043236b18d80410df95f42"
         }
       ]
     },
