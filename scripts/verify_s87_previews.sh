@@ -14,6 +14,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 status=0
 for script in \
   verify_s87_recipe_delete_guard_preview.sql \
+  verify_s87_inventory_delete_guard_preview.sql \
   verify_s87_atlas_media_policies_preview.sql \
   verify_s87_knowledge_role_matrix_preview.sql; do
   result="$(psql -v ON_ERROR_STOP=1 -At -f "$ROOT/scripts/$script" | grep '^{' | tail -1)"
