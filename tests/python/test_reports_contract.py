@@ -16,7 +16,7 @@ NULL_SAFE_WRAPPER = (
     / "supabase/migrations/20260909090422_atlas_reports_null_package_size_wrapper_fix.sql"
 ).read_text()
 EDGE = (ROOT / "supabase/functions/atlas-reports/index.ts").read_text()
-STOCK_PROVENANCE = (ROOT / "supabase/functions/atlas-reports/stock-provenance.mjs").read_text()
+STOCK_PROVENANCE = (ROOT / "supabase/functions/_shared/stock-provenance.mjs").read_text()
 ENTRYPOINT = (ROOT / "supabase/functions/atlas-reports/entrypoint.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()

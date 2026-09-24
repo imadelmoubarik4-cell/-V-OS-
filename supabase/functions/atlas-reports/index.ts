@@ -5,7 +5,7 @@ import {
   buildStockReport,
   sanitizeSnapshotInventory,
   sanitizeSnapshotRecipes,
-} from "./stock-provenance.mjs";
+} from "../_shared/stock-provenance.mjs";
 
 const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";

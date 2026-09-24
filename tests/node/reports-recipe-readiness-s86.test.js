@@ -10,7 +10,7 @@ import {
   classifyQuantityText,
   sanitizeSnapshotInventory,
   sanitizeSnapshotRecipes,
-} from '../../supabase/functions/atlas-reports/stock-provenance.mjs';
+} from '../../supabase/functions/_shared/stock-provenance.mjs';
 
 const read = (path) => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const NOW = Date.parse('2026-09-24T12:00:00Z');
