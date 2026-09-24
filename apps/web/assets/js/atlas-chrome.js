@@ -5,7 +5,7 @@
 // notifications from AtlasShell.notify, actions from AtlasShell.actions.
 //
 // Public: window.AtlasChrome = { setAccount, icon, openMore, closeMore,
-// openAccountMenu, closeAccountMenu, setTabBarHidden, refresh }.
+// openAccountMenu, closeAccountMenu, setTabBarHidden, setTopBar, refresh }.
 (function () {
   'use strict';
 
@@ -26,6 +26,7 @@
     notifyFilter: 'all',
     notifyOpen: false,
     notifyTrigger: null,
+    topbar: { title: null, back: null, actions: [], own: false },
     moreTrigger: null,
     menuTrigger: null,
     pollTimer: null,
@@ -145,8 +146,34 @@
     const view = shell.view(shell.current());
     const label = item?.label || view?.title || 'Atlas';
     const title = $('atlas-page-title');
-    if (title && !document.body.classList.contains('stock-count-active')) title.textContent = label;
-    document.title = label === 'Home' ? 'Atlas' : `${label} · Atlas`;
+    const text = state.topbar.title || label;
+    if (title && !document.body.classList.contains('stock-count-active')) title.textContent = text;
+    document.title = text === 'Home' ? 'Atlas' : `${text} · Atlas`;
+  }
+
+  // ---------- page-owned phone top bar (spec §4.4) ----------
+  // A page sets it from its onShow hook; every navigation resets it.
+  //   setTopBar({ title, back: '#route' | fn, actions: [{ icon, label, run }], own: true })
+  // `own` hides the global search and bell (Atlas AI conversations).
+  function renderTopBar() {
+    const back = $('atlas-topbar-back');
+    if (back) back.hidden = !state.topbar.back;
+    const slot = $('atlas-topbar-actions');
+    if (slot) {
+      slot.innerHTML = state.topbar.actions.map((action, index) => `<button type="button" class="atlas-icon-btn" data-topbar-action="${index}" aria-label="${escape(action.label)}">${icon(action.icon || 'ellipsis', { size: 20 })}</button>`).join('');
+    }
+    document.body.classList.toggle('atlas-topbar-own', Boolean(state.topbar.own));
+    syncActive();
+  }
+
+  function setTopBar(options = {}) {
+    state.topbar = {
+      title: options.title ? String(options.title) : null,
+      back: options.back || null,
+      actions: Array.isArray(options.actions) ? options.actions.filter((action) => action && typeof action.run === 'function').slice(0, 2) : [],
+      own: Boolean(options.own)
+    };
+    renderTopBar();
   }
 
   // ---------- sidebar collapse, rail overlay (spec §4.1, §4.2) ----------
@@ -733,6 +760,13 @@
     if (target.closest('#atlas-sidebar-toggle')) { toggleSidebar(); return; }
     if (target.closest('#atlas-sidebar-scrim')) { closeOverlaySidebar(); return; }
     if (target.closest('#atlas-account-btn')) { if ($('atlas-account-layer')?.hidden === false) closeAccountMenu(); else openAccountMenu($('atlas-account-btn')); return; }
+    if (target.closest('#atlas-topbar-back')) {
+      const back = state.topbar.back;
+      if (typeof back === 'function') back(event); else if (back) navigate(String(back), target, event);
+      return;
+    }
+    const topbarAction = target.closest('[data-topbar-action]');
+    if (topbarAction) { state.topbar.actions[Number(topbarAction.dataset.topbarAction)]?.run(event); return; }
     const bell = target.closest('#atlas-notifications-btn');
     if (bell) { event.preventDefault(); if (state.notifyOpen) shell.notify.close(); else shell.notify.open({ trigger: bell }); return; }
     // Choosing a destination in the overlay sidebar closes it.
@@ -764,6 +798,7 @@
       syncActive();
     });
     [PHONE, RAIL].forEach((query) => query.addEventListener('change', () => { applyLayout(); closeMore({ restoreFocus: false }); if (state.notifyOpen) shell.notify.close({ restoreFocus: false }); }));
+    shell.on('view:before-show', () => { if (state.topbar.title || state.topbar.back || state.topbar.actions.length || state.topbar.own) setTopBar({}); });
     shell.on('view:show', (detail) => {
       syncActive();
       closeMore({ restoreFocus: false });
@@ -797,6 +832,7 @@
       if (hidden) reasons.add(String(reason)); else reasons.delete(String(reason));
       document.body.dataset.atlasTabbarHidden = [...reasons].join(' ');
     },
+    setTopBar,
     refresh: () => { applyRole(); syncBadges(); }
   };
 

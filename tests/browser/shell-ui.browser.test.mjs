@@ -123,6 +123,19 @@ test('phone (390 and 430): top bar title, 5-slot tab bar, More sheet with the re
       await page.waitForFunction(() => document.body.dataset.atlasView === 'shifts');
       assert.equal(await page.$eval('#atlas-more', (node) => node.hidden), true, 'opening a row closes the sheet');
       assert.equal(await page.evaluate(() => document.querySelector('.atlas-tabbar [aria-current="page"]')?.dataset.navId), 'more');
+      // A detail screen owns the phone top bar: back chevron, title, its own action.
+      await page.evaluate(() => window.AtlasChrome.setTopBar({ title: 'Campari', back: '#inventory', actions: [{ icon: 'ellipsis', label: 'More actions', run: () => { window.__topbarAction = true; } }], own: true }));
+      const own = await page.evaluate(() => ({
+        title: document.getElementById('atlas-page-title').textContent,
+        back: document.getElementById('atlas-topbar-back').getBoundingClientRect().width,
+        search: document.getElementById('atlas-phone-search').getClientRects().length
+      }));
+      assert.deepEqual(own, { title: 'Campari', back: 44, search: 0 });
+      await page.click('[data-topbar-action="0"]');
+      assert.equal(await page.evaluate(() => window.__topbarAction), true);
+      await page.click('#atlas-topbar-back');
+      await page.waitForFunction(() => document.body.dataset.atlasView === 'inventory');
+      assert.deepEqual(await page.evaluate(() => [document.getElementById('atlas-page-title').textContent, document.getElementById('atlas-topbar-back').hidden]), ['Inventory', true], 'navigation resets the top bar');
       assert.deepEqual(record.pageErrors, []);
     } finally { await close(); }
   }
@@ -362,5 +375,28 @@ test('toasts: one at a time, role=status, above the tab bar on phones', { skip }
       return { role: region.getAttribute('role'), count: region.querySelectorAll('.atlas-toast').length, text: region.textContent, above: region.getBoundingClientRect().bottom <= tabbar.top };
     });
     assert.deepEqual(toast, { role: 'status', count: 1, text: 'Order createdView', above: true });
+  } finally { await close(); }
+});
+
+test('"/" types into fields instead of opening the palette; Tab stays inside open overlays', { skip }, async () => {
+  const { page, close } = await launch();
+  try {
+    await page.evaluate(() => window.AtlasShell.navigate('#inventory'));
+    await page.focus('#inventory-search');
+    await page.keyboard.press('/');
+    assert.equal(await page.evaluate(() => window.AtlasPalette.isOpen()), false);
+    assert.equal(await page.inputValue('#inventory-search'), '/');
+    // Focus trap: Tab from the palette input never leaves the dialog.
+    await page.click('#atlas-omni');
+    for (let i = 0; i < 6; i += 1) await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.getElementById('atlas-palette').contains(document.activeElement)), true);
+    await page.keyboard.press('Escape');
+    // The More sheet (phone) traps focus too, and Escape returns focus to More.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.click('#atlas-more-btn');
+    for (let i = 0; i < 20; i += 1) await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.querySelector('#atlas-more .atlas-more').contains(document.activeElement)), true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'atlas-more-btn');
   } finally { await close(); }
 });

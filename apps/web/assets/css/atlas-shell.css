@@ -143,7 +143,7 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
 .atlas-topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 8px; height: 56px; min-height: 56px; padding: 0 var(--page-gutter, 40px) 0 16px; background: #fff; border-bottom: 1px solid var(--line-subtle, #f0f0ed); backdrop-filter: none; box-shadow: none; }
 .atlas-topbar__title { display: none; min-width: 0; margin: 0; color: var(--text, #17191e); font: 600 17px/22px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .atlas-topbar__spacer { flex: 1; }
-.atlas-topbar__phone { display: none; }
+.atlas-topbar__phone, .atlas-topbar__back, .atlas-topbar__actions { display: none; }
 .atlas-omni { display: flex; align-items: center; gap: 10px; flex: 0 1 360px; width: 360px; min-width: 0; height: 36px; padding: 0 8px 0 12px; border: 1px solid var(--line, #e7e7e3); border-radius: var(--r-md, 8px); background: var(--bg-subtle, #f7f7f5); color: var(--text-3, #80858e); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: left; cursor: text; transition: border-color var(--dur-1, 120ms); }
 .atlas-omni:hover { border-color: var(--line-strong, #d4d4cf); }
 .atlas-omni > svg { flex: none; width: 16px; height: 16px; color: var(--text-2, #5b616b); }
@@ -354,6 +354,10 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
   .atlas-topbar__title { display: block; flex: 1; }
   .atlas-topbar__spacer { display: none; }
   .atlas-topbar__phone { display: inline-grid; }
+  /* Page-owned phone top bar (AtlasChrome.setTopBar): back chevron, own actions. */
+  .atlas-topbar__back { display: inline-grid; margin-left: calc(-1 * var(--page-gutter, 16px) + 4px); }
+  .atlas-topbar__actions { display: inline-flex; align-items: center; }
+  body.atlas-topbar-own .atlas-topbar__global { display: none; }
   .atlas-topbar .atlas-icon-btn { width: 44px; height: 44px; }
   .atlas-topbar .atlas-icon-btn svg { width: 20px; height: 20px; }
   .atlas-offline { top: calc(52px + env(safe-area-inset-top)); padding-inline: var(--page-gutter, 16px); }

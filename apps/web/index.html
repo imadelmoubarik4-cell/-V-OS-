@@ -565,12 +565,14 @@
       <section class="atlas-main">
         <header class="atlas-topbar" id="atlas-topbar">
           <button type="button" class="atlas-icon-btn atlas-topbar__toggle" id="atlas-sidebar-toggle" aria-controls="atlas-sidebar" aria-expanded="true" aria-label="Collapse sidebar"><i data-lucide="panel-left" aria-hidden="true"></i></button>
+          <button type="button" class="atlas-icon-btn atlas-topbar__back" id="atlas-topbar-back" aria-label="Back" hidden><i data-lucide="chevron-left" aria-hidden="true"></i></button>
           <div class="atlas-topbar__title" id="atlas-page-title">Home</div>
           <button type="button" class="atlas-omni" id="atlas-omni" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K /"><i data-lucide="search" aria-hidden="true"></i><span class="atlas-omni__label">Search or ask Atlas</span><kbd class="kbd atlas-omni__kbd" data-shortcut-hint>⌘K</kbd></button>
           <span class="atlas-topbar__spacer"></span>
-          <button type="button" class="atlas-icon-btn atlas-topbar__phone" id="atlas-phone-search" aria-haspopup="dialog" aria-label="Search or ask Atlas"><i data-lucide="search" aria-hidden="true"></i></button>
+          <span class="atlas-topbar__actions" id="atlas-topbar-actions"></span>
+          <button type="button" class="atlas-icon-btn atlas-topbar__phone atlas-topbar__global" id="atlas-phone-search" aria-haspopup="dialog" aria-label="Search or ask Atlas"><i data-lucide="search" aria-hidden="true"></i></button>
           <button type="button" class="atlas-icon-btn atlas-topbar__desktop" id="atlas-quick-actions" aria-haspopup="dialog" aria-label="Quick actions"><i data-lucide="plus" aria-hidden="true"></i></button>
-          <button type="button" class="atlas-icon-btn" id="atlas-notifications-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="atlas-notifications" aria-label="Notifications"><i data-lucide="bell" aria-hidden="true"></i><span class="dot" hidden></span></button>
+          <button type="button" class="atlas-icon-btn atlas-topbar__global" id="atlas-notifications-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="atlas-notifications" aria-label="Notifications"><i data-lucide="bell" aria-hidden="true"></i><span class="dot" hidden></span></button>
         </header>
         <div class="atlas-content standard-view"><main id="atlas-main" tabindex="-1">
           <div id="home-intro" class="home-hero atlas-home-hero"><div class="atlas-home-hero-copy"><span class="atlas-home-date" id="home-date">Today</span><h1><span id="home-greeting">Good day</span>, <span id="greeting-name">VÁ team</span>.</h1></div><div class="atlas-home-hero-actions"><button type="button" class="atlas-home-action secondary" data-home-action="stock-count"><i data-lucide="clipboard-check"></i>Start stock count</button><button type="button" class="atlas-home-action" data-home-action="new-order" data-commercial-only><i data-lucide="plus"></i>New order</button></div></div>
