@@ -78,8 +78,8 @@
       "files": [
         {
           "path": "functions/atlas-phase3-intelligence/index.ts",
-          "source_sha256": "70de29819c0dfedd3eb554ae7c4f6e28aa0a2b308492aa6f8a8186f62c0cf3e7",
-          "candidate_sha256": "fb1879c73aa1248ceab3c4257d23a6960bd744090e755a7641e9d42e118d707a"
+          "source_sha256": "4c49f50b9bc25e2937c14a8a4c1a83b88f56c498c203c528e83f11def3cdb59d",
+          "candidate_sha256": "f2cb08f21be53b04c4c11ac8263572b2917943b9fc0cdba4a7e3394c5c75b544"
         }
       ]
     },
@@ -100,8 +100,8 @@
         },
         {
           "path": "functions/atlas-reports/stock-provenance.mjs",
-          "source_sha256": "07de2f179eab35b6400d6e31a52a0bcd66976db30257a93ebd0bde0308f0aade",
-          "candidate_sha256": "48f3200864bb6a3ade13d7a1135f9701bd6a132492b2d7c8eb8752af9091f7e7"
+          "source_sha256": "85da48216c8b2b82d391dc367726e7662074501092a24759e8cd9ece2e280fbf",
+          "candidate_sha256": "82db0d4bb87df13fe3eab12ab814083047ad4a250e3eefeaaa384f34cd26755e"
         }
       ]
     },
@@ -112,8 +112,8 @@
       "files": [
         {
           "path": "functions/atlas-settings/index.ts",
-          "source_sha256": "a62e706388bd8f2e49d22d52888284c1fdd262de3d167cc80b3fec79e6438d82",
-          "candidate_sha256": "5b8ffd5e686edc1cdeecd30c74705df05f7b35653b9e727ad6e01a237b2d50d5"
+          "source_sha256": "28ed9a556e45cf1ca3ab2d0b13ec8d719aeb62fe900936ebfc6312029a00c964",
+          "candidate_sha256": "b591cf182482ff2e1474e645043769666efb5f45801116087a61a57dc25ef73d"
         }
       ]
     },
