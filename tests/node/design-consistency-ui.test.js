@@ -76,7 +76,8 @@ test('workspace switching owns visibility, inventory state and scroll reset cent
 test('shared polish removes duplicate Home metrics and normalizes workspace hierarchy', () => {
   assert.match(finalPolishCss, /#dashboard-view > \.stat-grid/);
   assert.match(finalPolishCss, /body\[data-atlas-view\]:not\(\[data-atlas-view="dashboard"\]\) \.checkpoint-a-home-prompt/);
-  assert.match(finalPolishCss, /\.recipe-hero h1,[\s\S]*\.recipe-alpha03-head h1,[\s\S]*\.settings-hero h1/);
+  // S88: the workspace page-title normalization is part of atlas-components.css.
+  assert.match(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.recipe-hero h1,[\s\S]*\.recipe-alpha03-head h1,[\s\S]*\.settings-hero h1/);
   assert.match(finalPolishCss, /\.team-profile-card-media[\s\S]*height: 176px !important/);
   assert.match(recipes, /<h1>Recipe Library<\/h1>/);
 });

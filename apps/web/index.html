@@ -8,24 +8,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <!-- S88: atlas-tokens.css is linked first because it declares the cascade-layer
-       order. Every other stylesheet is in @layer atlas.legacy, linked in the order
+       order. atlas-base.css (@layer atlas.base) and atlas-components.css
+       (@layer atlas.components) are the design system. Every other stylesheet
+       is in @layer atlas.legacy, linked in the order
        that decided the cascade before S88 (runtime module sheets included, so
        config.js, runtime-module-guard.js and the bootstraps find them already
        present and inject nothing). legacy/*.css are the per-module fragments of
        the retired override stylesheets. -->
   <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s88">
 <style>
 @layer atlas.legacy {
   :root{
-    --bg:        #12181A;
-    --surface:   #1B2321;
     --surface-2: #202A27;
-    --line:      #2E3634;
     --brass:     #B8874A;
     --brass-hi:  #D1A268;
     --wine:      #7A2430;
-    --text:      #EDE8E0;
     --text-mute: #94A099;
     --ok:        #6B8F71;
     --warn:      #C97A4A;
@@ -43,7 +43,6 @@
   .display{ font-family:'Fraunces', serif; }
   .mono{ font-family:'IBM Plex Mono', monospace; }
   button{ font-family:inherit; }
-  a{ color:var(--brass); }
 
   /* ---------- LOGIN ---------- */
   #login-screen{
@@ -495,7 +494,6 @@
   <link rel="stylesheet" href="assets/css/legacy/home-polish--inventory.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/inventory-polish--inventory.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/inventory-polish--components.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/inventory-polish--base.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/inventory-polish--purchasing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/recipes-gallery--recipes.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/purchasing-polish--purchasing.css?v=20260926-s88">
@@ -504,7 +502,6 @@
   <link rel="stylesheet" href="assets/css/legacy/import-polish--import-center.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/review-polish--sprint3-review.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--base.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--search.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--home.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--inventory.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--recipes.css?v=20260926-s88">
@@ -514,22 +511,18 @@
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--shifts-month.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--knowledge.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--item-master.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--components.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--business.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--marketing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--team-messages.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--team-profiles.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--components.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--shifts.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--shifts-month.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--knowledge.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--brain.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--reports.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--settings.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--base.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/system-polish--system.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/polish-pass2--home.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--components.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/polish-pass2--operations.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/polish-pass2--reports.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/polish-pass2--team-profiles.css?v=20260926-s88">
@@ -538,14 +531,11 @@
   <link rel="stylesheet" href="assets/css/legacy/polish-pass2--team-messages.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/polish-pass2--shifts-month.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/polish-pass2--marketing.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--base.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--home.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--inventory-scanner.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--operations.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--shifts.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--components.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--stock-count.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--search.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--settings.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--purchasing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/shifts-workspace.css">
@@ -577,9 +567,7 @@
   <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--reports.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--base.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--team-messages.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--components.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/atlas-search.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/atlas-tokens--base.css?v=20260926-s88">
   <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
        append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
        or data attribute); the five also named by runtime-module-guard.js and the

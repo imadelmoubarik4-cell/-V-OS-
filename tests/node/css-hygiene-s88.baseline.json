@@ -1,5 +1,5 @@
 {
-  "note": "S88 CSS hygiene ratchet (tests/node/css-hygiene-s88.test.js). Ceilings may only go down; lower them in the same commit that lowers a count.",
+  "note": "S88 CSS hygiene ratchet (tests/node/css-hygiene-s88.test.js). Ceilings may only go down; lower them in the same commit that lowers a count. stylesheetFiles counts every stylesheet file, legacy/ fragments included (S88 WP-BASE; 119 before atlas-base.css and atlas-components.css landed).",
   "measured_before_s88": {
     "important": 850,
     "crossFileDuplicateSelectors": 738,
@@ -9,11 +9,11 @@
     "inlineAndInjectedStyleBlocks": 4
   },
   "ceilings": {
-    "important": 850,
-    "crossFileDuplicateSelectors": 738,
+    "important": 668,
+    "crossFileDuplicateSelectors": 500,
     "subElevenPxFontSizes": 563,
-    "stylesheetFiles": 27,
-    "legacyFragmentFiles": 92,
+    "stylesheetFiles": 110,
+    "legacyFragmentFiles": 81,
     "inlineAndInjectedStyleBlocks": 1
   }
 }

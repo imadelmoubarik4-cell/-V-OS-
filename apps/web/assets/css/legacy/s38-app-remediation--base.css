@@ -9,15 +9,8 @@
  */
 @layer atlas.legacy {
 :root {
-  /* --s38-blue* resolve to the Atlas blue in atlas-tokens.css. */
-  --s38-ink: #182230;
-  --s38-muted: #66758a;
-  --s38-bg: #f5f7fb;
+  /* The --s38-* palette resolves to the design tokens in atlas-tokens.css. */
   --s38-card: #ffffff;
-  --s38-line: #dfe6ef;
-  --s38-shadow: 0 10px 30px -24px rgba(31, 57, 93, .55);
-  --s38-shadow-raised: 0 18px 42px -26px rgba(31, 57, 93, .58);
-  --s38-radius: 18px;
 }
 
 .atlas-content,

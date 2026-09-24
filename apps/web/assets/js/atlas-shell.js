@@ -23,6 +23,7 @@
 //             notify.open() / close() / toggle() / isOpen() · notify.setPanel(panel)
 //   links     links.register(type, handler) · links.open(type, key)   (registerLink / openLink)
 //   modules   modules.ensure({ js, global }) · load(src, options)       (deduplicated loader)
+//   ui        toast(message, { action: { label, onClick }, duration }) · menu(trigger, menuEl, { onSelect })
 //
 // Loaded as a classic script before config.js and every module. It installs one
 // capture-phase and one bubbling document click listener (navigation) and the
@@ -846,6 +847,185 @@
     root.addEventListener('hashchange', handleRouteChange);
   }
 
+  // ---------------------------------------------------------------------------
+  // Toast and menu helpers (design system §4.11, §6.19, §6.25). Presentation
+  // only: markup uses the .atlas-toast / .atlas-menu classes from
+  // atlas-components.css. One toast is visible at a time; it stays 4 s (8 s
+  // with an action) and pauses while hovered or focused.
+  const TOAST_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>';
+  let toastRegion = null;
+  let activeToast = null;
+
+  function toastHost() {
+    if (typeof document === 'undefined' || !document.body) return null;
+    if (toastRegion && toastRegion.isConnected) return toastRegion;
+    toastRegion = document.createElement('div');
+    toastRegion.className = 'atlas-toast-region';
+    toastRegion.setAttribute('role', 'status');
+    toastRegion.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toastRegion);
+    return toastRegion;
+  }
+
+  function showToast(message, options = {}) {
+    const host = toastHost();
+    const text = String(message || '').trim();
+    if (!host || !text) return { dismiss() {} };
+    if (activeToast) activeToast.dismiss(true);
+    const action = options.action && options.action.label ? options.action : null;
+    const node = document.createElement('div');
+    node.className = 'atlas-toast';
+    if (options.icon !== false) node.insertAdjacentHTML('beforeend', TOAST_ICON);
+    const label = document.createElement('span');
+    label.className = 'atlas-toast__text';
+    label.textContent = text;
+    node.appendChild(label);
+    let button = null;
+    if (action) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'atlas-toast__action';
+      button.textContent = String(action.label);
+      node.appendChild(button);
+    }
+    host.appendChild(node);
+
+    const duration = Number(options.duration) > 0 ? Number(options.duration) : (action ? 8000 : 4000);
+    let remaining = duration;
+    let started = Date.now();
+    let timer = null;
+    let done = false;
+    const schedule = () => { started = Date.now(); timer = setTimeout(() => handle.dismiss(), remaining); };
+    const pause = () => { if (timer) { clearTimeout(timer); timer = null; remaining = Math.max(1000, remaining - (Date.now() - started)); } };
+    const resume = () => { if (!timer && !done && !node.contains(document.activeElement)) schedule(); };
+    const handle = {
+      element: node,
+      dismiss(immediate = false) {
+        if (done) return;
+        done = true;
+        if (timer) clearTimeout(timer);
+        if (activeToast === handle) activeToast = null;
+        if (immediate) { node.remove(); return; }
+        node.classList.add('is-leaving');
+        setTimeout(() => node.remove(), 140);
+      }
+    };
+    node.addEventListener('mouseenter', pause);
+    node.addEventListener('mouseleave', resume);
+    node.addEventListener('focusin', pause);
+    node.addEventListener('focusout', () => setTimeout(resume, 0));
+    if (button) {
+      button.addEventListener('click', () => {
+        safe(action.onClick || action.run, handle);
+        handle.dismiss();
+      });
+    }
+    activeToast = handle;
+    schedule();
+    emit('toast:show', { message: text, action: action ? String(action.label) : null });
+    return handle;
+  }
+
+  // Menu: wires a trigger button to an .atlas-menu element (role=menu with
+  // .atlas-menu__item children). Arrow keys, Home/End, type-ahead, Escape and
+  // outside clicks behave as spec §6.19 describes; focus returns to the trigger.
+  function bindMenu(trigger, menu, options = {}) {
+    if (!trigger || !menu || typeof document === 'undefined') return null;
+    const items = () => Array.from(menu.querySelectorAll('.atlas-menu__item, [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]'))
+      .filter((item) => !item.hidden && !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+    if (!menu.id) menu.id = `atlas-menu-${Math.random().toString(36).slice(2, 9)}`;
+    menu.setAttribute('role', menu.getAttribute('role') || 'menu');
+    menu.querySelectorAll('.atlas-menu__item').forEach((item) => {
+      if (!item.getAttribute('role')) item.setAttribute('role', 'menuitem');
+      item.tabIndex = -1;
+    });
+    trigger.setAttribute('aria-haspopup', 'menu');
+    trigger.setAttribute('aria-controls', menu.id);
+    trigger.setAttribute('aria-expanded', 'false');
+    menu.hidden = true;
+    let typed = '';
+    let typedAt = 0;
+
+    const place = () => {
+      if (options.position === false) return;
+      const rect = trigger.getBoundingClientRect();
+      menu.style.position = 'fixed';
+      menu.style.top = `${Math.round(rect.bottom + 4)}px`;
+      const width = menu.offsetWidth || 200;
+      const left = options.align === 'start' ? rect.left : rect.right - width;
+      menu.style.left = `${Math.round(Math.max(8, Math.min(left, window.innerWidth - width - 8)))}px`;
+    };
+    const focusItem = (index) => {
+      const list = items();
+      if (!list.length) return;
+      list[(index + list.length) % list.length].focus();
+    };
+    const onOutside = (event) => {
+      if (!menu.contains(event.target) && !trigger.contains(event.target)) close(false);
+    };
+    function open(focus = 'first') {
+      if (!menu.hidden) return;
+      menu.hidden = false;
+      trigger.setAttribute('aria-expanded', 'true');
+      place();
+      document.addEventListener('pointerdown', onOutside);
+      focusItem(focus === 'last' ? -1 : 0);
+      emit('menu:open', { id: menu.id });
+    }
+    function close(returnFocus = true) {
+      if (menu.hidden) return;
+      menu.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('pointerdown', onOutside);
+      if (returnFocus) trigger.focus();
+      emit('menu:close', { id: menu.id });
+    }
+    const onTriggerClick = () => (menu.hidden ? open() : close());
+    const onTriggerKey = (event) => {
+      if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open('first'); }
+      if (event.key === 'ArrowUp') { event.preventDefault(); open('last'); }
+    };
+    const onMenuKey = (event) => {
+      const list = items();
+      const index = list.indexOf(document.activeElement);
+      if (event.key === 'ArrowDown') { event.preventDefault(); focusItem(index + 1); }
+      else if (event.key === 'ArrowUp') { event.preventDefault(); focusItem(index - 1); }
+      else if (event.key === 'Home') { event.preventDefault(); focusItem(0); }
+      else if (event.key === 'End') { event.preventDefault(); focusItem(-1); }
+      else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); }
+      else if (event.key === 'Tab') close(false);
+      else if (event.key.length === 1 && /\S/.test(event.key)) {
+        const now = Date.now();
+        typed = now - typedAt > 600 ? event.key.toLowerCase() : typed + event.key.toLowerCase();
+        typedAt = now;
+        const match = list.find((item) => item.textContent.trim().toLowerCase().startsWith(typed));
+        if (match) match.focus();
+      }
+    };
+    const onMenuClick = (event) => {
+      const item = event.target.closest('.atlas-menu__item, [role="menuitem"]');
+      if (!item || !menu.contains(item) || item.disabled || item.getAttribute('aria-disabled') === 'true') return;
+      safe(options.onSelect, item, event);
+      close(true);
+    };
+    trigger.addEventListener('click', onTriggerClick);
+    trigger.addEventListener('keydown', onTriggerKey);
+    menu.addEventListener('keydown', onMenuKey);
+    menu.addEventListener('click', onMenuClick);
+    return {
+      open,
+      close,
+      isOpen: () => !menu.hidden,
+      destroy() {
+        close(false);
+        trigger.removeEventListener('click', onTriggerClick);
+        trigger.removeEventListener('keydown', onTriggerKey);
+        menu.removeEventListener('keydown', onMenuKey);
+        menu.removeEventListener('click', onMenuClick);
+      }
+    };
+  }
+
   root.AtlasShell = {
     version: VERSION,
     // views and lifecycle
@@ -915,6 +1095,9 @@
     // runtime modules
     modules: { ensure: ({ js, global, ...options } = {}) => load(js, { global, ...options }) },
     load,
+    // design-system helpers (toast §6.25, menu §6.19)
+    toast: showToast,
+    menu: bindMenu,
     debug: () => JSON.parse(JSON.stringify(metrics))
   };
 })(typeof window === 'undefined' ? globalThis : window);
