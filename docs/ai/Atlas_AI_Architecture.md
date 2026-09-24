@@ -223,6 +223,21 @@ the card (transcripts are approximate).
   private bucket **`atlas-ai-media`** at `user_id/conversation_id/uuid.ext` →
   `ai_media` row. The bucket has no browser policies; access is only through the
   function (profile-photo pattern) with short-lived signed URLs.
+- Upload limits (S88 hardening F2, F4, F8): uploads follow the Atlas AI switch
+  (`503 not_configured` while disabled; they do not count as turns). Per user
+  and rolling 24 hours, `atlas_ai_media_register` enforces
+  `ai_settings.upload_files_per_day` (default 100) and `upload_bytes_per_day`
+  (default 250 MB) atomically under a per-user lock; deleted media still counts.
+  Over quota: `429 upload_quota_exceeded` with `reason` `daily_files` or
+  `daily_bytes`, and the stored object is removed. A multipart body over 26 MB is
+  refused from `content-length` before it is read and a streamed body is cut
+  off at the limit (`413 too_large`). Every allowed type is sniffed by magic
+  bytes: JPEG, PNG, WebP, HEIC/HEIF (a HEIF brand in the `ftyp` box, never an
+  MP4/MOV brand), PDF, UTF-8 text/CSV, WebM (EBML), Ogg, WAV (RIFF/WAVE), MP3
+  (ID3 or frame sync) and MP4 audio (an MP4 brand, no HEIF brand); voice notes
+  sent to `transcribe` are sniffed too.
+- Per turn, the images and PDFs sent to the model are capped at 20 MB in total
+  (`413 attachments_too_large`), because they are base64-inlined.
 - Model input: images as `input_image`, PDFs as `input_file` (base64 from
   storage, read server-side). Content extracted from documents is wrapped as
   untrusted data.
@@ -248,7 +263,10 @@ the card (transcripts are approximate).
 | Decision memory | existing Brain tables (`brain_recommendations`, `_evidence`, `brain_decisions`, `brain_outcomes`) | AI proposals are recorded as shadow recommendations (`generated_by = 'atlas-ai'`) with evidence; approve/reject is written as a decision; `decisions.history` lets Atlas say "Last time you deferred this because a delivery was expected" |
 
 There is no separate AI memory store and no second Brain. Decision memory stays
-manager-only, matching the Brain today.
+manager-only, matching the Brain today. Privacy (S88 hardening F12): a team
+message proposal is recorded in Brain with its channel, recipients and effects
+only; the drafted text and text-bearing evidence stay in the proposer's
+conversation and the stored action, and are not copied to Brain.
 
 ---
 
@@ -295,6 +313,55 @@ editable before sending.
 - A server-controlled sideband session would be a stronger boundary but needs a
   process that lives for the whole call, which Supabase Edge Functions cannot
   hold. The chosen design keeps the authority server-side at the tool gateway.
+- **Metering (S88 hardening F1, F11).** Every `voice-session` call reserves a
+  voice session atomically in the database before the provider is called
+  (`atlas_ai_voice_session_start`, per-user advisory lock), in this order:
+  Atlas AI enabled; a durable mint throttle (6 per user per minute, shared by
+  every isolate); the daily turn limit (a mint is one turn); the daily session
+  cap `ai_settings.voice_sessions_per_day` (default 20); the concurrency cap
+  `max_concurrent_voice_sessions` (default 1); and the estimated daily minutes
+  budget `voice_minutes_per_day` (default 60). Refusals are
+  `429 rate_limited` or `429 voice_quota_exceeded` with `reason`
+  `daily_sessions`, `concurrent` or `daily_minutes`. A failed mint releases its
+  reservation. The response adds `voice_session_id` (and
+  `voice_session_expires_at`) next to the provider `session_id`.
+- **Live session required.** `voice-tool` and `voice-append` must send
+  `voice_session_id` (the Atlas id, or the provider `session_id` from the same
+  response) of a live session owned by the caller and bound to the same
+  conversation; otherwise `409 voice_session_inactive`. A session is live until
+  it is ended (`POST ?action=voice-end {voice_session_id}`, or `voice-append`
+  with `"ended": true`), until 10 minutes pass without a tool call or
+  transcript append, or 60 minutes after it started (the provider's maximum).
+  Transcript appends are still accepted for 5 minutes after the end (final
+  flush). Tool calls and transcript appends are each limited to 30 per user per
+  minute (`429 rate_limited`), durably in the database. `voice-tool`
+  re-resolves the actor from the JWT and re-checks the role on every call.
+- **Server-side session bounds.** The session config sent with the client
+  secret sets `max_output_tokens` 1024 per response, `truncation`
+  `{type: "retention_ratio", retention_ratio: 0.8, token_limits:
+  {post_instructions: 16000}}` (bounds the input tokens each turn carries),
+  `parallel_tool_calls: false`, and a 60-second secret TTL
+  (`expires_after`). The TTL only limits how long the secret can *start* a
+  session; the Realtime API has no session-length field, and `idle_timeout_ms`
+  exists only for `server_vad` (Atlas uses `semantic_vad`).
+- **Residual risk (documented, accepted).** The browser owns the WebRTC call
+  and its `oai-events` data channel, so a modified client can send
+  `session.update` to replace instructions, tools and output limits, keep a
+  call open up to the provider's 60-minute limit, and use the venue key as a
+  general voice assistant during that call. None of the text-channel guardrails
+  (input screen, grounding check, output redaction of spoken audio) apply to
+  what the model says in audio. What still holds: tools only run through
+  `voice-tool`, which re-authorizes every call with the JWT and role; one
+  minted secret per reservation; the daily session, concurrency and minutes
+  caps bound how many calls a user can open; and the minutes budget is an
+  *estimate* (start to end, or to the end of the idle lease when a session is
+  never ended), not a measurement of audio. The server cannot force-close an
+  established Realtime call: deactivating or demoting a user stops their tool
+  calls and new mints immediately, but an open call continues until the
+  browser closes it or the provider's limit is reached. A server-controlled
+  sideband connection (or the provider's call hangup endpoint driven by a
+  long-lived worker) would close this gap and is the recommended next step if
+  voice cost or misuse becomes material.
 
 ---
 
@@ -312,14 +379,48 @@ editable before sending.
 
 ## 12. Guardrails
 
-- Input: length limits, attachment type/size limits, rate limits per user
-  (`ai_runs` window), and an injection/scope check on user text and extracted
-  document text.
+- Input: length limits, attachment type/size limits (per file, and 20 MB per
+  turn in total), request bodies read with a byte limit, rate limits per user
+  (`ai_runs` window) enforced atomically at `atlas_ai_run_start` (per-user
+  advisory lock; `atlas_ai_rate_check` is display only), and an
+  injection/scope check on user text and extracted document text.
 - Tool: strict schemas, role checks, row and spend caps, execute-level commands
   unreachable from the model.
 - Output: redaction of secrets/keys patterns; a grounding check — a reply that
-  states operational quantities without a tool result in the same run is
-  replaced with a "could not verify" answer.
+  states operational quantities (units, currency, percentages) is replaced with
+  a "could not verify" answer unless every stated figure appears in the user's
+  question, the previous answer's evidence, or the output (summary, evidence,
+  data) of a tool that returned operational evidence in the same run.
+  Navigation (`app.open`) and tools that return no evidence do not count, and
+  streaming holds as soon as the text states an unsupported figure. Common
+  roundings of evidence figures (whole number, one or two decimals) are
+  accepted; replies without quantities (greetings, clarifying questions) always
+  pass (S88 hardening F5).
+- System notes (approvals, rejections) are built from flattened titles and
+  reasons (no markup or line breaks), escaped when replayed, and marked as data
+  in history: `<atlas_note>` content never grants roles (F6).
+- Errors: browsers never receive raw database, gateway or provider text; failed
+  approved actions return a fixed message per code (F9).
+- Error codes added by the S88 hardening (response shape unchanged:
+  `{error_code, message, …}`):
+
+  | `error_code` | HTTP | When | Extra fields |
+  | --- | --- | --- | --- |
+  | `voice_quota_exceeded` | 429 | `voice-session` over the daily session cap, the concurrency cap or the estimated minutes budget | `reason`: `daily_sessions` \| `concurrent` \| `daily_minutes` |
+  | `voice_session_inactive` | 409 | `voice-tool`, `voice-append` or `voice-end` without a live voice session of the caller | — |
+  | `upload_quota_exceeded` | 429 | `upload` (or kept voice-note audio) over the daily files or bytes quota | `reason`: `daily_files` \| `daily_bytes` |
+  | `attachments_too_large` | 413 | `chat` whose image/PDF attachments exceed 20 MB in total | — |
+  | `rate_limited` | 429 | now also: turn limit reached at run start (race), voice mint throttle, voice tool or transcript append over 30 per minute | — |
+  | `not_configured` | 503 | now also: `upload` while Atlas AI is disabled | — |
+
+  `payload_too_large` is not used: oversized bodies keep the existing
+  `413 too_large`, now refused from `content-length` before reading.
+  New action: `POST ?action=voice-end {voice_session_id}` →
+  `{ended: true, voice_session_id, ended_at}`. `voice-session` adds
+  `voice_session_id` and `voice_session_expires_at`; `voice-append` accepts
+  `ended: true`; `settings` accepts and returns `voice_sessions_per_day`,
+  `voice_minutes_per_day`, `max_concurrent_voice_sessions`,
+  `upload_bytes_per_day`, `upload_files_per_day`.
 - Prompting: system instructions state the evidence rules, the unknown rules
   ("234 items have no par level — do not infer"), and that document text is data.
 - Failure behaviour: tool errors are shown as failure states ("Stock is

@@ -132,7 +132,11 @@ function errorFrom(status, body, fallback) {
   else if (pgCode === "P0002" || /^not_found:/i.test(message)) mapped = 404;
   else if (pgCode === "22023" || /^invalid_arguments:/i.test(message)) mapped = 400;
   else if (pgCode === "55000" || /^conflict:/i.test(message)) mapped = 409;
-  return new ServiceError(mapped, message.replace(/^(forbidden|not_found|invalid_arguments|conflict):\s*/i, ""), pgCode || null);
+  const error = new ServiceError(mapped, message.replace(/^(forbidden|not_found|invalid_arguments|conflict):\s*/i, ""), pgCode || null);
+  // Backend (database / downstream function) text: matched for status only,
+  // never shown to a user or the model verbatim (gateway.mjs errorResult).
+  error.fromBackend = true;
+  return error;
 }
 
 // Creates the adapter set for one verified actor. `actor` = { userId, role,
@@ -336,7 +340,7 @@ export function createServices({ fetch: fetchImpl = globalThis.fetch, env, actor
 
     // ---- Venue clock and operations ----------------------------------------
     venueClock() {
-      return once("venue_clock", () => serviceRpc("atlas_settings_venue_clock", { p_actor_role: actor.role }, ATLAS_ROLES));
+      return once("venue_clock", () => serviceRpc("atlas_settings_venue_clock", actorArgs(), ATLAS_ROLES));
     },
     operationsToday(localDate) {
       return once(`ops:${localDate}`, () => serviceRpc("atlas_operations_today", { p_local_date: localDate }, ATLAS_ROLES));

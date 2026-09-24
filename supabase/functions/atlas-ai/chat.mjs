@@ -238,6 +238,12 @@ export async function prepareChatTurn({ deps, config, actor, input }) {
     source = lastUser.source ?? "text";
   }
   const media = await loadMedia(services, actor, mediaIds);
+  // Images and PDFs are base64-inlined into the model input: bound the total
+  // per turn (memory and input cost), not just each file.
+  const modelBytes = media.filter((entry) => entry && entry.kind !== "audio").reduce((sum, entry) => sum + Math.max(0, Number(entry.bytes) || 0), 0);
+  if (modelBytes > config.limits.turnAttachmentBytes) {
+    throw new ApiError(413, "attachments_too_large", `Attachments in one message can be up to ${Math.round(config.limits.turnAttachmentBytes / (1024 * 1024))} MB in total.`);
+  }
   const attachments = attachmentMeta(media);
 
   const toAppend = [];
@@ -290,7 +296,18 @@ export async function prepareChatTurn({ deps, config, actor, input }) {
     orchestrator: hasVisionHint ? config.models.vision : config.models.orchestrator,
     specialist: config.models.specialist,
   };
-  const runId = await startRun(services, actor, conversationId, source === "voice_note" ? "voice_note" : source === "quick_action" ? "quick_action" : "text", modelsUsed);
+  let runId;
+  try {
+    // atlas_ai_run_start reserves the turn atomically (daily limit); a burst
+    // that passed the display check is refused here.
+    runId = await startRun(services, actor, conversationId, source === "voice_note" ? "voice_note" : source === "quick_action" ? "quick_action" : "text", modelsUsed);
+  } catch (error) {
+    await safeRpc(services, "atlas_ai_message_update", {
+      p_message_id: assistantId, p_actor_id: actor.userId, p_actor_role: actor.role,
+      p_patch: { status: "error", metadata: { error_code: error?.code ?? "unavailable" } },
+    });
+    throw error;
+  }
   await safeRpc(services, "atlas_ai_message_update", {
     p_message_id: assistantId, p_actor_id: actor.userId, p_actor_role: actor.role, p_patch: { run_id: runId },
   });
@@ -329,6 +346,19 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
   });
   const evidenceBefore = previousEvidence(messages);
   const gate = createRedactingStream();
+  const allowed = allowedNumbersFor(message, evidenceBefore, conversation?.context);
+  // Text streams only after an evidence-bearing tool result, and holds as
+  // soon as it states a figure that the evidence does not support (the final
+  // grounding check then replaces the answer).
+  let held = false;
+  const canRelease = () => {
+    if (held || !turn.verified) return false;
+    if (!groundingCheck(gate.text, { verifiedToolRan: true, allowedNumbers: allowed, evidenceNumbers: turn.evidenceNumbers }).ok) {
+      held = true;
+      return false;
+    }
+    return true;
+  };
   let status = "complete";
   let runStatus = "completed";
   let errorCode = null;
@@ -356,8 +386,8 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
       if (signal?.aborted) break;
       if (event.type === "raw_model_stream_event" && event.data?.type === "output_text_delta") {
         gate.push(event.data.delta);
-        if (turn.verified) {
-          const chunk = gate.releasable();
+        if (canRelease()) {
+          const chunk = gate.releasable({ holdTrailingFigure: true });
           if (chunk) send("delta", { text: chunk });
         }
       } else if (event.type === "run_item_stream_event") {
@@ -365,8 +395,8 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
           const name = event.item?.rawItem?.name;
           const label = graph.progressLabels[name];
           if (label && graph.specialistNames.includes(name)) turn.progress(label);
-        } else if (event.name === "tool_output" && turn.verified) {
-          const chunk = gate.releasable();
+        } else if (event.name === "tool_output" && canRelease()) {
+          const chunk = gate.releasable({ holdTrailingFigure: true });
           if (chunk) send("delta", { text: chunk });
         }
       }
@@ -400,8 +430,7 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
     errorCode = "stopped";
     finalText = redactSecrets(gate.released || "");
   } else if (!errorInfo) {
-    const allowed = allowedNumbersFor(message, evidenceBefore, conversation?.context);
-    grounding = guardrail ? { ok: true, replaced: false } : groundingCheck(finalText, { verifiedToolRan: turn.verified, allowedNumbers: allowed });
+    grounding = guardrail ? { ok: true, replaced: false } : groundingCheck(finalText, { verifiedToolRan: turn.verified, allowedNumbers: allowed, evidenceNumbers: turn.evidenceNumbers });
     const finished = gate.finish(grounding.text ?? finalText);
     finalText = finished.text;
     if (finished.rest) send("delta", { text: finished.rest });
@@ -496,7 +525,7 @@ export async function runAskAtlas({ deps, config, actor, conversationId, request
       { role: "user", content: `${request}\n\n(Spoken request. Answer in one to three short sentences suitable for speech.)` },
     ], { context: { turn, userText: request }, session, maxTurns: config.limits.maxTurns });
     text = String(result.finalOutput ?? "");
-    const grounding = groundingCheck(text, { verifiedToolRan: turn.verified, allowedNumbers: allowedNumbersFor(request, evidenceBefore, context) });
+    const grounding = groundingCheck(text, { verifiedToolRan: turn.verified, allowedNumbers: allowedNumbersFor(request, evidenceBefore, context), evidenceNumbers: turn.evidenceNumbers });
     text = redactSecrets(grounding.text);
   } catch (error) {
     text = isNamed(error, "InputGuardrailTripwireTriggered") ? GUARDRAIL_REPLY : friendlyRunError(error).message;

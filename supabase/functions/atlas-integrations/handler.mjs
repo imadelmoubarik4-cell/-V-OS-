@@ -11,6 +11,10 @@
 // JSON response passes assertNoSecretFields() before it is sent.
 
 import {
+  bindingClearCookie,
+  bindingCookieName,
+  bindingSetCookie,
+  buildAuthorizeHopUrl,
   buildRedirectUri,
   buildReturnUrl,
   createOAuthState,
@@ -21,9 +25,11 @@ import {
   findSecretKeys,
   hashState,
   importAesKey,
+  isWellFormedChallenge,
   isWellFormedState,
   normalizeReturnPath,
   parseAllowedOrigins,
+  readCookie,
   sanitizeProviderError,
 } from "./oauth-core.mjs";
 import {
@@ -56,6 +62,29 @@ export class ApiError extends Error {
   }
 }
 
+// Stable error codes for browser responses (F9): every error carries one.
+const STATUS_CODES = { 400: "invalid_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 405: "method_not_allowed", 409: "conflict", 413: "too_large" };
+function errorCodeFor(error) {
+  return error.extra?.error_code ?? STATUS_CODES[error.status] ?? "unavailable";
+}
+
+// A failed service-role RPC: fixed wording by class, never the database text.
+export function rpcFailure(status, sqlstate, message) {
+  const text = String(message ?? "");
+  if (status === 403 || sqlstate === "42501" || /managers and administrators/i.test(text)) {
+    return new ApiError(403, "Integrations can be managed by active managers and administrators only.", { error_code: "forbidden" });
+  }
+  if (sqlstate === "22023" || sqlstate === "23514" || sqlstate === "22P02" || (status >= 400 && status < 500)) {
+    return new ApiError(400, "The integration request was not valid.", { error_code: "invalid_request" });
+  }
+  return new ApiError(503, "The private integrations service is unavailable. Please try again.", { error_code: "unavailable" });
+}
+
+// Friendly, fixed text for a failed provider check; the provider's own
+// message is sanitised into the stored audit row only.
+const PROVIDER_CHECK_FAILED = "The provider did not accept the connection. Reconnect, or check the provider account.";
+const PROVIDER_REFRESH_FAILED = "The provider did not renew access. Reconnect to continue.";
+
 export function assertNoSecretFields(value) {
   const hits = findSecretKeys(value);
   if (hits.length) throw new Error(`Refusing to return credential-shaped fields: ${hits.join(", ")}`);
@@ -79,11 +108,10 @@ export function jsonResponse(value, status = 200) {
   });
 }
 
-function redirectResponse(location) {
-  return new Response(null, {
-    status: 302,
-    headers: { location, "cache-control": "no-store", "referrer-policy": "no-referrer" },
-  });
+function redirectResponse(location, cookies = []) {
+  const headers = new Headers({ location, "cache-control": "no-store", "referrer-policy": "no-referrer" });
+  for (const cookie of cookies) headers.append("set-cookie", cookie);
+  return new Response(null, { status: 302, headers });
 }
 
 function textResponse(message, status) {
@@ -103,9 +131,30 @@ function requireManager(context) {
   }
 }
 
+// Body read with a byte limit: a declared length over the limit is refused
+// before reading, a streamed body is cut off at the limit.
 async function readJson(request) {
-  const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) throw new ApiError(413, "Request body is too large.");
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) throw new ApiError(413, "Request body is too large.");
+  const chunks = [];
+  let total = 0;
+  if (request.body) {
+    const reader = request.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BODY_BYTES) {
+        try { await reader.cancel(); } catch { /* closed */ }
+        throw new ApiError(413, "Request body is too large.");
+      }
+      chunks.push(value);
+    }
+  }
+  const joined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { joined.set(chunk, offset); offset += chunk.byteLength; }
+  const text = new TextDecoder().decode(joined);
   if (!text) return {};
   let parsed;
   try { parsed = JSON.parse(text); } catch { throw new ApiError(400, "Request body must be valid JSON."); }
@@ -227,18 +276,19 @@ export function createIntegrationsHandler(deps) {
     };
   }
 
-  async function statusRows(role) {
-    const rows = await deps.rpc("atlas_integration_status", { p_actor_role: role });
+  // The service-role RPCs re-check this actor against the active profile.
+  async function statusRows(actor) {
+    const rows = await deps.rpc("atlas_integration_status", { p_actor_role: actor.role, p_actor_id: actor.id });
     return new Map((Array.isArray(rows) ? rows : []).map((row) => [row.provider_key, row]));
   }
 
-  async function providerView(provider, role) {
-    const rows = await statusRows(role);
+  async function providerView(provider, actor) {
+    const rows = await statusRows(actor);
     return publicProvider(provider, rows.get(provider.key), configurationFor(provider));
   }
 
   async function handleStatus(context) {
-    const rows = await statusRows(context.profile.role);
+    const rows = await statusRows({ id: context.user.id, role: context.profile.role });
     return {
       providers: PROVIDER_KEYS.map((key) => {
         const provider = getProvider(key);
@@ -282,11 +332,46 @@ export function createIntegrationsHandler(deps) {
       p_actor_label: actorLabel(context.profile),
       p_actor_role: context.profile.role,
     });
+    // authorize_url is the Atlas hop on the functions domain (same host as
+    // the callback): opening it binds the state to this browser, then
+    // redirects to the provider. A copied URL opened later is refused.
+    const hop = buildAuthorizeHopUrl(redirectUri, provider.key, state, pkce?.challenge ?? null);
+    if (!hop) throw new ApiError(409, "This integration callback is not configured.", { error_code: "not_configured" });
     return {
       provider_key: provider.key,
-      authorize_url: buildAuthorizeUrl(provider, env, { redirectUri, state, codeChallenge: pkce?.challenge ?? null }),
+      authorize_url: hop,
       expires_at: begun?.expires_at ?? null,
     };
+  }
+
+  // GET …/authorize/<provider>?state=…&cc=… (no JWT: a top-level navigation).
+  // Binds the pending state to this browser once, sets the binding cookie
+  // and redirects to the provider's consent screen.
+  async function handleAuthorize(request, url, providerKey) {
+    const origin = appOrigin();
+    if (!origin) return textResponse("This integration is not configured.", 503);
+    const provider = getProvider(providerKey);
+    const back = (reason) => redirectResponse(buildReturnUrl(origin, "#settings", provider ? provider.key : "unknown", "error", reason));
+    if (!provider || provider.auth_kind !== "oauth2") return back("unknown_provider");
+    if (request.method !== "GET") return back("method");
+    const state = url.searchParams.get("state") ?? "";
+    const challenge = url.searchParams.get("cc");
+    if (!isWellFormedState(state)) return back("invalid_state");
+    if (provider.pkce === "S256" && !isWellFormedChallenge(challenge)) return back("invalid_state");
+    if (!configurationFor(provider).configured) return back("not_configured");
+    const nonce = createOAuthState();
+    const bound = await deps.rpc("atlas_integration_bind_browser", {
+      p_provider_key: provider.key,
+      p_state_hash: await hashState(state),
+      p_binding_hash: await hashState(nonce),
+    });
+    if (!bound) return back("invalid_state");
+    const target = buildAuthorizeUrl(provider, env, {
+      redirectUri: redirectUriFor(provider),
+      state,
+      codeChallenge: provider.pkce === "S256" ? challenge : null,
+    });
+    return redirectResponse(target, [bindingSetCookie(provider.key, nonce)]);
   }
 
   async function storeCredential(provider, kind, secretValue, meta, actor) {
@@ -336,12 +421,13 @@ export function createIntegrationsHandler(deps) {
       });
       return { verified: true };
     } catch (error) {
-      const message = error instanceof ProviderError ? error.message : "The provider check failed.";
+      // The sanitised provider text goes to the audit row only.
+      const detail = error instanceof ProviderError ? error.message : "The provider check failed.";
       await recordResult(provider, "verify_failed", actor, {
-        error: message,
+        error: detail,
         needs_reauthorization: error instanceof ProviderError ? error.reauthorize : false,
       });
-      return { verified: false, message };
+      return { verified: false, message: PROVIDER_CHECK_FAILED, error_code: "provider_check_failed" };
     }
   }
 
@@ -349,18 +435,26 @@ export function createIntegrationsHandler(deps) {
     const origin = appOrigin();
     if (!origin) return textResponse("This integration callback is not configured.", 503);
     const provider = getProvider(providerKey);
+    const clear = provider ? [bindingClearCookie(provider.key)] : [];
     const back = (result, reason, returnPath) => {
-      return redirectResponse(buildReturnUrl(origin, returnPath ?? "#settings", provider ? provider.key : "unknown", result, reason));
+      return redirectResponse(buildReturnUrl(origin, returnPath ?? "#settings", provider ? provider.key : "unknown", result, reason), clear);
     };
     if (!provider || provider.auth_kind !== "oauth2") return back("error", "unknown_provider");
     if (request.method !== "GET") return back("error", "method");
     const state = url.searchParams.get("state") ?? "";
     if (!isWellFormedState(state)) return back("error", "invalid_state");
+    // The state is only accepted from the browser that opened the authorize
+    // hop (binding cookie), and only while the initiating user is still an
+    // active manager or administrator (checked in SQL, current role used).
+    const nonce = readCookie(request.headers.get("cookie"), bindingCookieName(provider.key));
+    if (!nonce || !isWellFormedState(nonce)) return back("error", "browser_mismatch");
     const consumed = await deps.rpc("atlas_integration_consume_state", {
       p_provider_key: provider.key,
       p_state_hash: await hashState(state),
+      p_binding_hash: await hashState(nonce),
     });
     if (!consumed || consumed.provider_key !== provider.key) return back("error", "invalid_state");
+    if (consumed.actor_allowed !== true) return back("error", "not_authorized", consumed.return_path);
     const actor = { id: consumed.actor_id, label: consumed.actor_label ?? "Atlas manager", role: consumed.actor_role };
     const returnPath = consumed.return_path;
 
@@ -369,7 +463,7 @@ export function createIntegrationsHandler(deps) {
     if (denied || !code || code.length > 4096) {
       await recordResult(provider, "callback_failed", actor, {
         error: denied ? `Provider returned ${sanitizeProviderError(denied)}` : "The provider did not return an authorization code.",
-      });
+      }).catch(() => undefined);
       return back("error", denied ? "denied" : "missing_code", returnPath);
     }
     if (!configurationFor(provider).configured) {
@@ -406,8 +500,8 @@ export function createIntegrationsHandler(deps) {
     }
   }
 
-  async function openCredential(provider, role) {
-    const stored = await deps.rpc("atlas_integration_read_credential", { p_provider_key: provider.key, p_actor_role: role });
+  async function openCredential(provider, actor) {
+    const stored = await deps.rpc("atlas_integration_read_credential", { p_provider_key: provider.key, p_actor_role: actor.role, p_actor_id: actor.id });
     if (!stored) return null;
     const value = await decryptJson(
       await keyFor(Number(stored.key_version)),
@@ -424,11 +518,11 @@ export function createIntegrationsHandler(deps) {
     const actor = { id: context.user.id, label: actorLabel(context.profile), role: context.profile.role };
     let credential;
     try {
-      credential = await openCredential(provider, actor.role);
+      credential = await openCredential(provider, actor);
     } catch (error) {
       if (error instanceof ApiError) throw error;
       await recordResult(provider, "verify_failed", actor, { error: "Stored credential could not be decrypted; reconnect.", needs_reauthorization: true });
-      return { provider: await providerView(provider, actor.role), verified: false, message: "Stored credential could not be decrypted; reconnect." };
+      return { provider: await providerView(provider, actor), verified: false, message: "Stored credential could not be decrypted; reconnect.", error_code: "credential_unreadable" };
     }
     if (!credential) throw new ApiError(409, `${provider.label} is not connected.`, { error_code: "not_connected" });
     let secretValue = credential.value;
@@ -439,22 +533,26 @@ export function createIntegrationsHandler(deps) {
         await storeCredential(provider, credential.kind, secretValue, secretValue, actor);
         await recordResult(provider, "refreshed", actor, { access_expires_at: secretValue.access_expires_at });
       } catch (error) {
-        const message = error instanceof ProviderError ? error.message : "Token refresh failed.";
-        await recordResult(provider, "refresh_failed", actor, { error: message, needs_reauthorization: true });
-        return { provider: await providerView(provider, actor.role), verified: false, message };
+        const detail = error instanceof ProviderError ? error.message : "Token refresh failed.";
+        await recordResult(provider, "refresh_failed", actor, { error: detail, needs_reauthorization: true });
+        return { provider: await providerView(provider, actor), verified: false, message: PROVIDER_REFRESH_FAILED, error_code: "provider_refresh_failed" };
       }
     }
     const outcome = await verifyAndRecord(provider, secretValue, actor);
-    return { provider: await providerView(provider, actor.role), verified: outcome.verified, message: outcome.message ?? null };
+    return {
+      provider: await providerView(provider, actor), verified: outcome.verified, message: outcome.message ?? null,
+      ...(outcome.error_code ? { error_code: outcome.error_code } : {}),
+    };
   }
 
   async function handleDisconnect(context, body) {
     const provider = providerFrom(body.provider_key);
     const role = context.profile.role;
+    const actor = { id: context.user.id, role };
     let revokedAtProvider = false;
     if (provider.revoke && configurationFor(provider).configured) {
       try {
-        const credential = await openCredential(provider, role);
+        const credential = await openCredential(provider, actor);
         if (credential) {
           await provider.revoke(provider, env, deps.fetchImpl, credential.value);
           revokedAtProvider = true;
@@ -469,7 +567,7 @@ export function createIntegrationsHandler(deps) {
       p_actor_label: actorLabel(context.profile),
       p_actor_role: role,
     });
-    return { provider: await providerView(provider, role), revoked_at_provider: revokedAtProvider };
+    return { provider: await providerView(provider, actor), revoked_at_provider: revokedAtProvider };
   }
 
   async function handleSaveApiKey(context, body) {
@@ -482,15 +580,20 @@ export function createIntegrationsHandler(deps) {
     const secretValue = { api_key: apiKey, obtained_at: new Date(now()).toISOString() };
     await storeCredential(provider, "api_key", secretValue, {}, actor);
     const outcome = await verifyAndRecord(provider, secretValue, actor);
-    return { provider: await providerView(provider, actor.role), verified: outcome.verified, message: outcome.message ?? null };
+    return {
+      provider: await providerView(provider, actor), verified: outcome.verified, message: outcome.message ?? null,
+      ...(outcome.error_code ? { error_code: outcome.error_code } : {}),
+    };
   }
 
   return async function handle(request) {
     if (request.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
     const url = new URL(request.url);
     const callback = url.pathname.match(/\/callback\/([a-z0-9-]{1,60})\/?$/);
+    const authorize = url.pathname.match(/\/authorize\/([a-z0-9-]{1,60})\/?$/);
     try {
       if (callback) return await handleCallback(request, url, callback[1]);
+      if (authorize) return await handleAuthorize(request, url, authorize[1]);
 
       const context = await deps.authenticate(request);
       requireManager(context);
@@ -506,14 +609,15 @@ export function createIntegrationsHandler(deps) {
         default: throw new ApiError(404, "Unknown integrations action.");
       }
     } catch (error) {
-      if (callback) {
+      if (callback || authorize) {
         const origin = appOrigin();
         return origin
-          ? redirectResponse(buildReturnUrl(origin, "#settings", callback[1], "error"))
+          ? redirectResponse(buildReturnUrl(origin, "#settings", (callback ?? authorize)[1], "error"))
           : textResponse("This integration callback could not complete.", 500);
       }
-      if (error instanceof ApiError) return jsonResponse({ error: error.message, ...error.extra }, error.status);
-      return jsonResponse({ error: "The integrations service could not complete this request." }, 500);
+      if (error instanceof ApiError) return jsonResponse({ error: error.message, error_code: errorCodeFor(error), ...error.extra }, error.status);
+      console.warn("[atlas-integrations] request failed", error?.name ?? "Error");
+      return jsonResponse({ error: "The integrations service could not complete this request.", error_code: "internal" }, 500);
     }
   };
 }

@@ -51,10 +51,46 @@ export function errorResponse(error) {
   return jsonResponse({ error_code: "internal", message: "Atlas AI could not complete that request." }, 500);
 }
 
+// Reads a request body with a hard byte limit: a declared content-length
+// over the limit is refused before anything is read, and a chunked or
+// under-declared body is counted while it streams and cut off at the limit.
+export async function readBodyBytes(request, maxBytes, { message = "The request is too large." } = {}) {
+  const declared = request.headers.get("content-length");
+  if (declared !== null && declared !== "") {
+    const length = Number(declared);
+    if (!Number.isFinite(length) || length < 0) throw new ApiError(400, "invalid_request", "The request length is not valid.");
+    if (length > maxBytes) throw new ApiError(413, "too_large", message);
+  }
+  if (!request.body) return new Uint8Array(0);
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      try { await reader.cancel(); } catch { /* already closed */ }
+      throw new ApiError(413, "too_large", message);
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
 export async function readJsonBody(request, maxBytes) {
-  const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > maxBytes) {
-    throw new ApiError(413, "too_large", "The request is too large.");
+  const bytes = await readBodyBytes(request, maxBytes);
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new ApiError(400, "invalid_request", "The request body must be valid JSON.");
   }
   if (!text.trim()) return {};
   let parsed;
@@ -87,7 +123,20 @@ export function requireUuid(value, field) {
 
 // Maps an RPC failure (error prefix contract in ai-data-contract.md) to a
 // friendly ApiError. The raw message is never returned to the browser.
+const VOICE_QUOTA_REASONS = new Set(["daily_sessions", "concurrent", "daily_minutes"]);
+const UPLOAD_QUOTA_REASONS = new Set(["daily_files", "daily_bytes"]);
+const reasonAfter = (message, prefix, allowed) => {
+  const reason = message.slice(prefix.length).trim();
+  return allowed.has(reason) ? { reason } : {};
+};
 const RPC_ERRORS = [
+  // S88 hardening codes are matched by message prefix first (the SQLSTATEs
+  // 55000/53400 are shared with conflict and other limits).
+  { test: (_code, message) => message.startsWith("rate_limited:"), status: 429, code: "rate_limited", message: "You've reached an Atlas AI limit. Please wait and try again." },
+  { test: (_code, message) => message.startsWith("voice_quota_exceeded:"), status: 429, code: "voice_quota_exceeded", message: "You've reached today's live voice limit. Voice notes and text still work.", extra: (message) => reasonAfter(message, "voice_quota_exceeded:", VOICE_QUOTA_REASONS) },
+  { test: (_code, message) => message.startsWith("upload_quota_exceeded:"), status: 429, code: "upload_quota_exceeded", message: "You've reached today's upload limit for Atlas AI. It resets within 24 hours.", extra: (message) => reasonAfter(message, "upload_quota_exceeded:", UPLOAD_QUOTA_REASONS) },
+  { test: (_code, message) => message.startsWith("voice_session_inactive:"), status: 409, code: "voice_session_inactive", message: "This live voice session has ended. Start a new one to continue." },
+  { test: (_code, message) => message.startsWith("not_configured:"), status: 503, code: "not_configured", message: "Atlas AI is not configured" },
   { test: (code, message) => code === "42501" || message.startsWith("forbidden:"), status: 403, code: "forbidden", message: "This is not available for your Atlas role." },
   { test: (code, message) => code === "P0002" || message.startsWith("not_found:"), status: 404, code: "not_found", message: "That could not be found." },
   { test: (code, message) => code === "22023" || message.startsWith("invalid_arguments:"), status: 400, code: "invalid_request", message: "Some of the details were not valid." },
@@ -95,12 +144,21 @@ const RPC_ERRORS = [
 ];
 
 export class RpcError extends ApiError {
-  constructor(status, code, message, rpcName, dbCode) {
-    super(status, code, message);
+  constructor(status, code, message, rpcName, dbCode, extra = {}) {
+    super(status, code, message, extra);
     this.name = "RpcError";
     this.rpcName = rpcName;
     this.dbCode = dbCode;
   }
+}
+
+// The friendly error for a failed RPC (the raw database text is only
+// matched, never returned). Exported for the test harness.
+export function mapRpcError(name, dbCode, message) {
+  const text = String(message ?? "");
+  const mapped = RPC_ERRORS.find((entry) => entry.test(String(dbCode ?? ""), text));
+  if (mapped) return new RpcError(mapped.status, mapped.code, mapped.message, name, dbCode, mapped.extra ? mapped.extra(text) : {});
+  return new RpcError(502, "unavailable", "Atlas AI could not reach its data service.", name, dbCode);
 }
 
 function envValue(env, name) {
@@ -153,9 +211,7 @@ export function createServices({ env, fetchImpl }) {
       const dbCode = parsed && typeof parsed === "object" ? String(parsed.code ?? "") : "";
       const message = parsed && typeof parsed === "object" ? String(parsed.message ?? "") : "";
       console.warn(`[atlas-ai] rpc ${name} failed`, response.status, dbCode || "-");
-      const mapped = RPC_ERRORS.find((entry) => entry.test(dbCode, message));
-      if (mapped) throw new RpcError(mapped.status, mapped.code, mapped.message, name, dbCode);
-      throw new RpcError(502, "unavailable", "Atlas AI could not reach its data service.", name, dbCode);
+      throw mapRpcError(name, dbCode, message);
     }
     return parsed;
   }
