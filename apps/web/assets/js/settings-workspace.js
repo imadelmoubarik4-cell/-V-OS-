@@ -887,6 +887,8 @@
       state.dirtyForms.delete(key);
       state.formFeedback[key] = { type: 'success', text: message };
       applyPayload(payload);
+      // AtlasVenueClock re-reads hours / venue time zone on this event.
+      window.AtlasShell?.emit?.('settings:saved', { action, section_key: body?.section_key || null });
       return true;
     } catch (error) {
       state.formFeedback[key] = { type: 'error', text: friendlySaveError(error) };

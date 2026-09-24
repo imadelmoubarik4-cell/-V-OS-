@@ -69,3 +69,48 @@ export function emptyFunctions(names = [
 ]) {
   return Object.fromEntries(names.map((name) => [name, {}]));
 }
+
+/**
+ * Seven saved business-hour rows shaped like atlas-settings venue-clock rows
+ * (weekday 0 = Sunday). Test data only: Atlas itself never ships default hours.
+ */
+export function weekHours({ open = '15:00:00', close = '00:00:00', lateClose = '03:00:00', lastOrder = '23:30:00', lateLastOrder = '02:30:00', closedWeekdays = [] } = {}) {
+  const labels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return labels.map((day_label, weekday) => {
+    const late = weekday === 5 || weekday === 6;
+    const isOpen = !closedWeekdays.includes(weekday);
+    return {
+      weekday, day_label, is_open: isOpen,
+      open_time: isOpen ? open : null, close_time: isOpen ? (late ? lateClose : close) : null, close_next_day: isOpen,
+      kitchen_close_time: null, kitchen_close_next_day: false,
+      last_order_time: isOpen ? (late ? lateLastOrder : lastOrder) : null, last_order_next_day: isOpen && late,
+      updated_at: now
+    };
+  });
+}
+
+/**
+ * atlas-settings mock answering GET ?action=venue-clock from mutable state
+ * (`backend.hours`, `backend.offers`, `backend.timezone`); other actions go to
+ * `fallback` (default: an empty 200). `status` forces an error status (404 =
+ * function not deployed).
+ */
+export function venueClockBackend({ hours = [], offers = [], timezone = 'Atlantic/Reykjavik', status = 200, fallback = null } = {}) {
+  const backend = { hours, offers, timezone, status, calls: [] };
+  backend.handler = async (entry) => {
+    if (entry.method === 'GET' && entry.action === 'venue-clock') {
+      backend.calls.push(entry);
+      if (backend.status !== 200) return { __status: backend.status, body: { error: backend.status === 404 ? 'Not found' : 'Unavailable' } };
+      return {
+        clock: {
+          timezone: backend.timezone, timezone_source: 'settings', hours_configured: backend.hours.length === 7,
+          business_hours: backend.hours, offers: backend.offers,
+          venue_date: null, business_date: null, venue_local_time: null, generated_at: now
+        },
+        staff: { id: entry.user.id, role: entry.user.role, active: true, can_manage_hours: ['admin', 'manager'].includes(entry.user.role) }
+      };
+    }
+    return fallback ? fallback(entry) : {};
+  };
+  return backend;
+}

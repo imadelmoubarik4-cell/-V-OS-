@@ -86,13 +86,15 @@ function json(route, body, status = 200) {
  *   rpc:       { name: result | (body) => result }
  *   functions: { 'atlas-x': (ctx) => ({ status, body }) | body }
  */
-export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '' } = {}) {
+export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '', timezoneId = undefined, fixedTime = undefined } = {}) {
   const playwright = loadPlaywright();
   const libs = resolveLibraries();
   if (!playwright || !libs) throw new Error('Browser harness dependencies are unavailable.');
   const browser = await playwright.chromium.launch({ executablePath: process.env.ATLAS_CHROMIUM || undefined });
-  const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
+  const context = await browser.newContext({ viewport, serviceWorkers: 'block', ...(timezoneId ? { timezoneId } : {}) });
   const page = await context.newPage();
+  // Date.now()/new Date() frozen at fixedTime; timers keep running.
+  if (fixedTime !== undefined) await page.clock.setFixedTime(fixedTime);
   page.setDefaultTimeout(10000);
   const record = { requests: [], consoleErrors: [], pageErrors: [], dialogs: [] };
 
