@@ -6,13 +6,11 @@
     loadPromise: null,
     ready: false,
     extensionReady: false,
-    extensionRuntimePatched: false,
-    reentryPatched: false,
     itemMasterReady: false,
   };
-  const WORKSPACE_SOURCE = 'assets/js/stock-count-workspace.js?v=20260813-l1-core5';
-  const EXTENSION_SOURCE = 'assets/js/stock-count-l1-verified.js?v=20260813-l1-core5';
-  const ITEM_MASTER_SOURCE = 'assets/js/item-master-workspace.js?v=20260806-l2';
+  const WORKSPACE_SOURCE = 'assets/js/stock-count-workspace.js?v=20260926-s88';
+  const EXTENSION_SOURCE = 'assets/js/stock-count-l1-verified.js?v=20260926-s88';
+  const ITEM_MASTER_SOURCE = 'assets/js/item-master-workspace.js?v=20260926-s88';
   const ITEM_MASTER_STYLESHEET = 'assets/css/item-master-workspace.css?v=20260806-l2';
   const ITEM_MASTER_API = String(window.VABAR_CONFIG?.ITEM_MASTER_API || '').trim();
   const SCRIPT_TIMEOUT_MS = 8000;
@@ -26,187 +24,26 @@
     document.head.appendChild(link);
   }
 
-  function markerSelector(marker) {
-    return `script[data-${marker.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}]`;
+  // One loader for every inventory runtime: AtlasShell.load deduplicates by
+  // path and resolves only once the script has installed its global.
+  function loadScript(src, globalName) {
+    return window.AtlasShell.load(src, { global: globalName, requireGlobal: true, timeout: SCRIPT_TIMEOUT_MS });
   }
 
-  function markerReady(marker) {
-    return (marker === 'atlasStockCountL1Verified' && Boolean(window.AtlasStockCountsL1))
-      || (marker === 'atlasStockCountWorkspace' && Boolean(window.AtlasStockCounts))
-      || (marker === 'atlasItemMaster' && Boolean(window.AtlasItemMaster));
-  }
-
-  function loadScript(src, marker) {
-    return new Promise((resolve, reject) => {
-      if (markerReady(marker)) {
-        resolve();
-        return;
-      }
-
-      const selector = markerSelector(marker);
-      const existing = document.querySelector(selector);
-      if (existing) {
-        if (existing.dataset.atlasLoadState === 'loading') {
-          const timer = window.setTimeout(() => {
-            reject(new Error(`Timed out while waiting for ${src}`));
-          }, SCRIPT_TIMEOUT_MS);
-          existing.addEventListener('load', () => {
-            window.clearTimeout(timer);
-            if (markerReady(marker)) resolve();
-            else reject(new Error(`${src} loaded without installing its Atlas runtime.`));
-          }, { once: true });
-          existing.addEventListener('error', () => {
-            window.clearTimeout(timer);
-            reject(new Error(`Could not load ${src}`));
-          }, { once: true });
-          return;
-        }
-        existing.remove();
-      }
-
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = false;
-      script.dataset[marker] = 'true';
-      script.dataset.atlasLoadState = 'loading';
-      const timer = window.setTimeout(() => {
-        script.dataset.atlasLoadState = 'timeout';
-        reject(new Error(`Timed out loading ${src}`));
-      }, SCRIPT_TIMEOUT_MS);
-      script.addEventListener('load', () => {
-        window.clearTimeout(timer);
-        script.dataset.atlasLoadState = 'loaded';
-        if (markerReady(marker)) resolve();
-        else reject(new Error(`${src} loaded without installing its Atlas runtime.`));
-      }, { once: true });
-      script.addEventListener('error', () => {
-        window.clearTimeout(timer);
-        script.dataset.atlasLoadState = 'error';
-        reject(new Error(`Could not load ${src}`));
-      }, { once: true });
-      document.body.appendChild(script);
-    });
-  }
-
-  // The temporary global observer replacement that used to wrap this load is gone.
-  // It masked a recursion that lives in stock-count-workspace.js itself, and it only
-  // held while that one script was evaluating - any other load order brought the loop
-  // straight back. The workspace now scopes its own observer, so the global no longer
-  // needs patching (patching it globally also silently narrowed every observer any
-  // other module happened to construct meanwhile).
-  async function loadStockCountCore() {
-    await loadScript(WORKSPACE_SOURCE, 'atlasStockCountWorkspace');
-  }
-
-  function installStockCountReentryGuard() {
-    const api = window.AtlasStockCounts;
-    if (!api || typeof api.open !== 'function') return false;
-    if (api.open.__atlasReentryGuard) {
-      state.reentryPatched = true;
-      return true;
-    }
-
-    const nativeOpen = api.open.bind(api);
-    const guardedOpen = (...args) => {
-      const mount = document.getElementById('stock-count-workspace');
-      if (mount) mount.hidden = false;
-      return nativeOpen(...args);
-    };
-    guardedOpen.__atlasReentryGuard = true;
-    guardedOpen.__atlasOriginal = nativeOpen;
-    api.open = guardedOpen;
-    state.reentryPatched = true;
-    return true;
-  }
-
+  // S88: the workspace scopes its own visibility handling and re-shows its mount
+  // on open(), so the bootstrap no longer wraps AtlasStockCounts.open.
   async function loadStockCountWorkspace() {
-    if (!window.AtlasStockCounts) {
-      await loadStockCountCore();
-    }
+    if (!window.AtlasStockCounts) await loadScript(WORKSPACE_SOURCE, 'AtlasStockCounts');
     if (!window.AtlasStockCounts) {
       throw new Error('The canonical Stock Count workspace loaded without installing AtlasStockCounts.');
     }
-    installStockCountReentryGuard();
     state.ready = true;
   }
 
-  // The optional L1 enhancement observes the whole document, then calls Lucide,
-  // whose SVG replacements are document mutations too. Guard its private
-  // scheduler at load time so one enhancement pass cannot schedule itself.
-  // This keeps the repository change inside the approved bootstrap boundary
-  // without replacing the page's global MutationObserver.
-  async function loadStockCountExtensionRuntime() {
-    const response = await fetch(EXTENSION_SOURCE, { cache: 'no-store' });
-    if (!response.ok) {
-      throw new Error(`Could not read ${EXTENSION_SOURCE} (${response.status}).`);
-    }
-
-    let source = (await response.text()).replace(/\r\n?/g, '\n');
-    const schedulerSource = `  function scheduleEnhance() {
-    window.requestAnimationFrame(enhance);
-  }`;
-    const guardedSchedulerSource = `  let enhanceFrame = null;
-
-  function mutationIsLucideOnly(record) {
-    if (record.type !== 'childList') return false;
-    const changedNodes = [...record.addedNodes, ...record.removedNodes];
-    if (!changedNodes.length) return false;
-    return changedNodes.every((node) => {
-      if (!(node instanceof Element)) return false;
-      return node.matches('i[data-lucide], svg[data-lucide]')
-        || Boolean(node.closest('svg[data-lucide]'));
-    });
-  }
-
-  function observeEnhancementTarget() {
-    const target = document.getElementById('inventory-view');
-    if (target) state.observer?.observe(target, { childList: true, subtree: true });
-  }
-
-  function scheduleEnhance() {
-    if (enhanceFrame !== null) return;
-    enhanceFrame = window.requestAnimationFrame(() => {
-      enhanceFrame = null;
-      state.observer?.disconnect();
-      try {
-        enhance();
-      } finally {
-        observeEnhancementTarget();
-      }
-    });
-  }`;
-
-    const observerSource = '    state.observer = new MutationObserver(scheduleEnhance);';
-    const guardedObserverSource = `    state.observer = new MutationObserver((records) => {
-      if (records.some((record) => !mutationIsLucideOnly(record))) scheduleEnhance();
-    });`;
-    const observerTargetSource = '    state.observer.observe(document.body, { childList: true, subtree: true });';
-    const guardedObserverTargetSource = '    observeEnhancementTarget();';
-
-    if (!source.includes(schedulerSource)
-        || !source.includes(observerSource)
-        || !source.includes(observerTargetSource)) {
-      throw new Error('The Stock Count enhancement observer boundary could not be validated.');
-    }
-    source = source
-      .replace(schedulerSource, guardedSchedulerSource)
-      .replace(observerSource, guardedObserverSource)
-      .replace(observerTargetSource, guardedObserverTargetSource);
-    source += '\n//# sourceURL=stock-count-l1-verified.guarded.js\n';
-
-    const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
-    try {
-      await loadScript(blobUrl, 'atlasStockCountL1Verified');
-      state.extensionRuntimePatched = true;
-    } finally {
-      URL.revokeObjectURL(blobUrl);
-    }
-  }
-
+  // S88: stock-count-l1-verified.js ships its scoped, Lucide-aware observer in
+  // its own source, so it loads as a normal script (no source rewrite, no Blob).
   async function loadStockCountExtension() {
-    if (!window.AtlasStockCountsL1) {
-      await loadStockCountExtensionRuntime();
-    }
+    if (!window.AtlasStockCountsL1) await loadScript(EXTENSION_SOURCE, 'AtlasStockCountsL1');
     state.extensionReady = Boolean(window.AtlasStockCountsL1);
     window.AtlasStockCountsL1?.enhance?.();
   }
@@ -215,9 +52,7 @@
     const runtimeConfig = window.VABAR_CONFIG = window.VABAR_CONFIG || {};
     runtimeConfig.ITEM_MASTER_API = runtimeConfig.ITEM_MASTER_API || ITEM_MASTER_API;
     ensureStylesheet(ITEM_MASTER_STYLESHEET, 'atlas-item-master-css');
-    if (!window.AtlasItemMaster) {
-      await loadScript(ITEM_MASTER_SOURCE, 'atlasItemMaster');
-    }
+    if (!window.AtlasItemMaster) await loadScript(ITEM_MASTER_SOURCE, 'AtlasItemMaster');
     state.itemMasterReady = Boolean(window.AtlasItemMaster);
   }
 
@@ -269,61 +104,61 @@
     const title = document.getElementById('atlas-page-title');
     if (title) title.textContent = 'Stock count';
     activateInventorySubview('Stock count');
-    // The legacy bubbling handler runs after this capture listener and can add
-    // another active class without clearing Items. Normalize once it finishes.
-    window.setTimeout(() => activateInventorySubview('Stock count'), 0);
     window.AtlasItemMaster?.close?.();
     window.AtlasStockCounts?.open?.();
   }
 
-  function replayNavigation(event) {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
+  function openItemMaster() {
+    window.AtlasStockCounts?.close?.();
+    window.AtlasItemMaster?.open?.();
+  }
 
-    const stockNav = target.closest('[data-view="inventory"][data-subview="Stock count"]');
-    const itemMasterNav = target.closest('[data-item-master-l2]');
-    const inventorySubview = target.closest('[data-view="inventory"][data-subview]');
-    if (!stockNav && !itemMasterNav) {
-      if (inventorySubview?.dataset.subview === 'Items') {
-        window.setTimeout(() => activateInventorySubview('Items'), 0);
-      } else if (!inventorySubview && document.body.classList.contains('stock-count-active')) {
-        window.setTimeout(() => activateInventorySubview('Stock count'), 0);
-      }
-      return;
-    }
-
-    if (stockNav && window.AtlasStockCounts) {
-      openStockCount();
-      load().catch((error) => {
-        console.error('Inventory workspace background refresh could not finish loading', error);
-      });
-      return;
-    }
-
-    load().then(() => {
-      window.setTimeout(() => {
-        if (stockNav) {
-          openStockCount();
-          return;
-        }
-        if (itemMasterNav) {
-          window.AtlasStockCounts?.close?.();
-          window.AtlasItemMaster?.open?.();
-        }
-      }, 0);
-    }).catch((error) => {
+  function whenLoaded(open) {
+    load().then(() => window.setTimeout(open, 0)).catch((error) => {
       console.error('Inventory workspace navigation could not finish loading', error);
     });
   }
 
-  document.addEventListener('click', replayNavigation, true);
+  // Inventory sections are routes: the Stock count tab, Home's "Start stock
+  // count" and a #inventory/stock-count link all arrive here through AtlasShell.
+  function handleInventoryShown(params) {
+    if (params.section === 'stock-count') {
+      if (window.AtlasStockCounts) {
+        openStockCount();
+        load().catch((error) => console.error('Inventory workspace background refresh could not finish loading', error));
+      } else {
+        whenLoaded(openStockCount);
+      }
+      return;
+    }
+    if (params.section === 'item-master') {
+      whenLoaded(openItemMaster);
+      return;
+    }
+    if (params.section === 'items') window.setTimeout(() => activateInventorySubview('Items'), 0);
+  }
+
+  // The Item master tab is an Inventory control rather than a view of its own.
+  function handleItemMasterClick(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    if (target.closest('[data-item-master-l2]')) {
+      whenLoaded(openItemMaster);
+      return;
+    }
+    if (!target.closest('[data-view="inventory"][data-subview]') && document.body.classList.contains('stock-count-active')) {
+      window.setTimeout(() => activateInventorySubview('Stock count'), 0);
+    }
+  }
+
+  window.AtlasShell.onView('inventory', { show: handleInventoryShown });
+  document.addEventListener('click', handleItemMasterClick);
 
   window.AtlasStockCountBootstrap = {
     load,
+    open: () => window.AtlasShell.show('inventory', { section: 'stock-count' }),
     ready: () => state.ready,
     extensionReady: () => state.extensionReady,
-    extensionRuntimePatched: () => state.extensionRuntimePatched,
-    reentryPatched: () => state.reentryPatched,
     itemMasterReady: () => state.itemMasterReady,
   };
   if (document.readyState === 'complete') load();

@@ -30,7 +30,9 @@ test('Inventory uses one compact section rail for every approved workspace', () 
   }
   assert.match(inventoryCss, /\.inventory-workspace-tabs/);
   assert.match(app, /syncInventorySectionHeader\(view\)/);
-  assert.match(app, /view === 'inventory' \? 'grid' : 'block'/);
+  // S88: Inventory registers with AtlasShell as a grid-displayed view.
+  assert.match(app, /\['inventory', \{ display: 'grid'/);
+  assert.match(app, /if \(root\) root\.style\.display = entry\.display;/);
 });
 
 test('sidebar keeps one destination per workspace without duplicate category menus', () => {
@@ -47,7 +49,9 @@ test('navigation is organized into one-row workspace groups', () => {
   assert.match(app, /team:'Messages','team-profiles':'Team'/);
   assert.match(app, /operations:'Operations Center'/);
   assert.match(app, /brain:'Atlas Brain',business:'Business Intelligence'/);
-  assert.match(app, /new MutationObserver/);
+  // S88: modules register views; the sidebar regroups on registration events.
+  assert.match(app, /\['view:registered','view:unregistered','nav:changed'\]\.forEach\(type=>window\.AtlasShell\.on\(type,scheduleNavigationLayout\)\)/);
+  assert.doesNotMatch(app, /navigationObserver/);
   assert.match(app, /button\.setAttribute\('aria-label',label\)/);
   assert.match(app, /updateMenuButtonLabel\(collapsed\)/);
 });
@@ -60,8 +64,12 @@ test('workspace switching owns visibility, inventory state and scroll reset cent
   assert.match(app, /document\.body\.dataset\.atlasView = view/);
   assert.match(app, /window\.AtlasStockCounts\?\.close\?\.\(\)/);
   assert.match(app, /window\.AtlasItemMaster\?\.close\?\.\(\)/);
-  assert.match(app, /sidebarDestination\.dataset\.atlasBaseViewBound !== 'true' && viewMap\[view\]/);
-  assert.match(app, /btn\.dataset\.atlasBaseViewBound = 'true'/);
+  // S88: one navigation path. AtlasShell routes every sidebar click once and
+  // the base shell's chrome is its layout hook; no per-button double binding.
+  assert.match(app, /window\.AtlasShell\.setLayout\(layoutAtlasView\)/);
+  assert.match(app, /function layoutAtlasView\(view, entry, context\)/);
+  assert.match(app, /if \(context\.source === 'nav' \|\| view !== 'inventory'\)/);
+  assert.doesNotMatch(app, /atlasBaseViewBound/);
 });
 
 test('shared polish removes duplicate Home metrics and normalizes workspace hierarchy', () => {

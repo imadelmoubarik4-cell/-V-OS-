@@ -282,7 +282,7 @@
   function attachmentPanelMarkup() {
     if (!state.attachmentOpen || state.editingMessageId) return '';
     return `<section class="team-attachment-panel">
-      <header><div><strong>Link an Atlas record</strong><span>The target is verified by the server before the message is sent.</span></div><button type="button" data-team-close-attachment aria-label="Close linked-record picker"><i data-lucide="x"></i></button></header>
+      <header><div><strong>Link an Atlas record</strong><span>The target is verified by the server before the message is sent.</span></div><button type="button" data-team-close-attachment aria-label="Close linked-record picker" style="touch-action:manipulation"><i data-lucide="x"></i></button></header>
       <div class="team-attachment-controls">
         <select data-team-link-type aria-label="Link type">
           <option value="none" ${state.linkType === 'none' ? 'selected' : ''}>Choose a record type</option>
@@ -363,12 +363,12 @@
             </div>
           </header>
 
-          <div class="team-message-list" data-team-message-list>${messageList.length ? messageList.map(renderMessage).join('') : emptyMessagesMarkup()}</div>
+          <div class="team-message-list" data-team-message-list role="log" aria-live="polite" aria-relevant="additions text">${messageList.length ? messageList.map(renderMessage).join('') : emptyMessagesMarkup()}</div>
           ${composerMarkup(channel)}
         </main>
       </div>
 
-      <footer class="team-messages-trust"><i data-lucide="shield-check"></i><span>Active staff only · Manager-only announcements · Message revisions audited · Inactive profiles denied on every request · Push notifications off</span></footer>
+      <footer class="team-messages-trust"><i data-lucide="shield-check"></i><span>Active staff only · Manager-only announcements · Message revisions audited · Inactive profiles denied on every request · Notification delivery follows Settings</span></footer>
     </section>`;
   }
 
@@ -635,6 +635,9 @@
   }
 
   function openLinkedRecord(type, key) {
+    // Workspaces register their own link types with AtlasShell (for example
+    // Knowledge articles); the cases below are Team Messages' built-in routes.
+    if (window.AtlasShell?.openLink?.(type, key, { source: 'team-messages' })) return;
     if (type === 'routine') {
       if (window.AtlasCheckpointALayout?.openRoutine) window.AtlasCheckpointALayout.openRoutine(key);
       else navigateView('operations');
@@ -830,16 +833,23 @@
       if (teamViewVisible()) loadSnapshot({ silent: true });
     });
 
-    state.viewObserver = new MutationObserver(() => {
-      if (teamViewVisible()) {
+    // S88: AtlasShell announces when Messages opens and closes (formerly a
+    // visibility MutationObserver). body.s38-team-active (hides the FAB over the
+    // composer) moved here from s38-app-remediation.js.
+    window.AtlasShell?.onView?.('team', {
+      show: () => {
+        document.body.classList.add('s38-team-active');
+        if (!teamViewVisible()) return;
         // Back off after a failure; the Try again control still loads at once.
         if (!state.snapshot && !state.loading && Date.now() - (state.failedAt || 0) >= 20000) loadSnapshot();
         else startPolling();
-      } else {
+      },
+      hide: () => {
+        document.body.classList.remove('s38-team-active');
         stopPolling();
       }
     });
-    state.viewObserver.observe(element, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+    if (window.AtlasShell?.current?.() === 'team') document.body.classList.add('s38-team-active');
 
     if (teamViewVisible()) loadSnapshot();
     else render();

@@ -124,7 +124,10 @@ test('preferences save only implemented values and apply them at the next sign-i
     assert.equal(body.browser_notifications, false, 'mirrors the real device state');
     assert.equal(await page.evaluate(() => document.documentElement.classList.contains('atlas-reduce-motion')), true);
 
-    await page.reload({ waitUntil: 'load' });
+    // S88: the address bar now follows the open view (#settings), and a #view
+    // link wins over the start view, so the next sign-in opens the bare app URL.
+    assert.match(page.url(), /#settings$/);
+    await page.goto(page.url().split('#')[0], { waitUntil: 'load' });
     await page.waitForFunction(() => document.body.dataset.atlasReady === 'true');
     await page.waitForTimeout(400);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'shifts');

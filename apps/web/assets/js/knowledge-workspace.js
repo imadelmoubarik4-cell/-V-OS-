@@ -1030,10 +1030,9 @@
     document.addEventListener('submit', handleSubmit, true);
     document.addEventListener('keydown', handleKeydown, true);
 
-    state.viewObserver = new MutationObserver(handleVisibility);
-    state.viewObserver.observe(host(), { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
-    const app = document.getElementById('app-screen');
-    if (app) state.viewObserver.observe(app, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+    // S88: AtlasShell announces when Knowledge opens (formerly a visibility
+    // MutationObserver on the workspace and the app screen).
+    window.AtlasShell?.onView?.('knowledge', { show: handleVisibility });
 
     window.addEventListener('focus', () => {
       if (viewVisible() && state.snapshot) loadSnapshot({ silent: true });
@@ -1042,13 +1041,24 @@
       if (viewVisible()) loadSnapshot();
     });
     window.addEventListener('pagehide', () => {
-      state.viewObserver?.disconnect();
       if (state.authTimer) window.clearInterval(state.authTimer);
     }, { once: true });
 
     handleVisibility();
     return true;
   }
+
+  function openArticleFromLink(articleId) {
+    const id = String(articleId || '').trim();
+    if (!id) return;
+    navigateView('knowledge');
+    window.setTimeout(() => openArticle(id), 140);
+  }
+
+  // Knowledge links in Team Messages (and any other typed link) open through the
+  // shell's link registry; this replaced knowledge-team-link-bridge.js's
+  // capture-phase click interception.
+  window.AtlasShell?.registerLink?.('knowledge_article', openArticleFromLink);
 
   window.AtlasKnowledge = {
     open: () => navigateView('knowledge'),

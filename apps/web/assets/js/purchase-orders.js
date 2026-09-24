@@ -77,8 +77,10 @@
       status((error.message || 'Order could not be saved.') + ' Refresh to check its state before retrying.');
     } finally { busy = false; panel.querySelectorAll('button').forEach(button=>button.disabled=false); }
   }
-  trigger.disabled = false; trigger.title = 'Create and receive purchase orders';
-  deliveriesTrigger.disabled = false;
+  // The purchasing tabs are enabled at source (S38 owner fix, formerly re-applied
+  // by s38-app-remediation.js on every DOM mutation).
+  trigger.disabled = false; trigger.title = 'Open purchase orders'; trigger.setAttribute('aria-disabled', 'false');
+  deliveriesTrigger.disabled = false; deliveriesTrigger.title = 'Open ordered and received deliveries'; deliveriesTrigger.setAttribute('aria-disabled', 'false');
   const selectTab = (button, selected) => {
     button.classList.toggle('active', selected);
     if (selected) button.setAttribute('aria-current', 'page');

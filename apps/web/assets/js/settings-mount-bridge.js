@@ -11,13 +11,12 @@
   // document click listeners (settings-workspace.js:1100) and duplicate
   // snapshot/API requests. Using the identical path on both sides restores the
   // existing de-duplication guard. No config.js change, no behaviour change.
-  const WORKSPACE_SRC = 'assets/js/settings-workspace.js';
+  const WORKSPACE_SRC = 'assets/js/settings-workspace.js?v=20260926-s88';
   const WORKSPACE_CSS = 'assets/css/settings-workspace.css';
   const BUTTON_CONTRAST_STYLE_ID = 'atlas-settings-button-contrast';
   const state = {
     loading: false,
     initialized: false,
-    observer: null,
     retryTimer: null
   };
 
@@ -97,46 +96,20 @@
     }
   }
 
+  // S88: the Settings bundle loads through AtlasShell.load, which deduplicates
+  // with config.js (same path, any cache key), so it can never evaluate twice.
   function loadWorkspace() {
     ensureStylesheet();
     if (workspaceReady()) return activateWorkspace();
     if (state.loading) return Promise.resolve(false);
-
-    // Second guard: if config.js has already appended the workspace script but
-    // it has not finished evaluating, do not append a competing copy.
-    const existing = document.querySelector(`script[src="${WORKSPACE_SRC}"]`);
-    if (existing) {
-      state.loading = true;
-      return new Promise((resolve) => {
-        existing.addEventListener('load', async () => {
-          state.loading = false;
-          resolve(await activateWorkspace());
-        }, { once: true });
-        existing.addEventListener('error', () => {
-          state.loading = false;
-          console.error('Checkpoint J Settings bundle could not be loaded.');
-          resolve(false);
-        }, { once: true });
-      });
-    }
-
     state.loading = true;
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = WORKSPACE_SRC;
-      script.async = false;
-      script.dataset.atlasCheckpointJSettings = 'true';
-      script.onload = async () => {
-        state.loading = false;
-        resolve(await activateWorkspace());
-      };
-      script.onerror = () => {
-        state.loading = false;
+    return window.AtlasShell.load(WORKSPACE_SRC, { global: 'AtlasSettings', dataset: { atlasCheckpointJSettings: 'true' } })
+      .then(() => activateWorkspace())
+      .catch(() => {
         console.error('Checkpoint J Settings bundle could not be loaded.');
-        resolve(false);
-      };
-      document.body.appendChild(script);
-    });
+        return false;
+      })
+      .finally(() => { state.loading = false; });
   }
 
   function scheduleMount() {
@@ -148,12 +121,6 @@
     }, 0);
   }
 
-  function handleClick(event) {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target?.closest?.('[data-view="settings"]')) return;
-    scheduleMount();
-  }
-
   function init() {
     if (state.initialized) return true;
     const element = host();
@@ -161,24 +128,16 @@
 
     state.initialized = true;
     ensureStylesheet();
-    document.addEventListener('click', handleClick, true);
 
-    state.observer = new MutationObserver(() => {
-      if (!settingsVisible()) return;
-      removeLegacySettings();
-      if (!element.querySelector('.settings-shell') && !state.loading) scheduleMount();
-    });
-    state.observer.observe(element, { childList: true, subtree: true, attributes: true });
-    state.observer.observe(document.getElementById('app-screen') || document.body, {
-      attributes: true,
-      attributeFilter: ['class', 'style']
-    });
+    // S88: AtlasShell announces when Settings opens (formerly a capture-phase
+    // click listener plus a MutationObserver on #settings-view and the app).
+    // scheduleMount() runs after the show completes, so a legacy Operations
+    // section written during the same show is suppressed.
+    window.AtlasShell?.onView?.('settings', { show: scheduleMount });
 
     if (settingsVisible()) scheduleMount();
 
     window.addEventListener('pagehide', () => {
-      document.removeEventListener('click', handleClick, true);
-      state.observer?.disconnect();
       if (state.retryTimer) window.clearInterval(state.retryTimer);
     }, { once: true });
     return true;

@@ -511,6 +511,8 @@
     if (backdrop) backdrop.addEventListener('click', closeModal, { once: true });
     document.body.classList.toggle('team-profile-modal-open', Boolean(state.modal));
     window.lucide?.createIcons?.();
+    // Profile photos (team-profile-photos.js) decorate avatars after each render.
+    window.AtlasShell?.emit?.('team-profiles:rendered', { host: element });
   }
 
   async function loadSnapshot(options = {}) {
@@ -754,31 +756,18 @@
     document.body.classList.remove('team-profile-modal-open');
   }
 
-  function handleNavigationCapture(event) {
-    const button = event.target instanceof Element ? event.target.closest('.nav-item[data-view]') : null;
-    if (!button) return;
-    if (button.dataset.view === 'team-profiles') {
-      event.preventDefault();
-      event.stopPropagation();
-      activateProfiles();
-      return;
-    }
-    hideProfiles();
-  }
-
+  // S88: Team Profiles is an AtlasShell view. The shell hides the other
+  // workspaces, sets the title and the active nav item and calls these hooks
+  // (formerly a capture-phase nav listener plus a MutationObserver).
   function activateProfiles() {
     ensureStructure();
-    state.activating = true;
-    document.querySelectorAll('#inventory-view,#dashboard-view,#recipes-view,#suppliers-view,#imports-view,#team-view,#shifts-view,#knowledge-view,#reports-view,#settings-view,#operations-center,#brain-shell,#marketing-view').forEach((view) => { view.style.display = 'none'; });
-    ['home-intro','home-focus','home-metrics'].forEach((id) => { const element = document.getElementById(id); if (element) element.style.display = 'none'; });
+    window.AtlasShell.show('team-profiles');
+  }
+
+  function profilesShown() {
+    ensureStructure();
     const element = host();
     if (element) element.style.display = 'block';
-    const title = document.getElementById('atlas-page-title');
-    if (title) title.textContent = 'Team Profiles';
-    document.querySelectorAll('.nav-item').forEach((button) => button.classList.toggle('active', button.dataset.view === 'team-profiles'));
-    document.getElementById('atlas-sidebar')?.classList.remove('open');
-    document.getElementById('sidebar-backdrop')?.classList.remove('open');
-    state.activating = false;
     if (!state.workspace && !state.loading) loadSnapshot({ force: true });
     else render();
   }
@@ -809,24 +798,11 @@
     window.lucide?.createIcons?.();
   }
 
-  function observeViewChanges() {
-    const parent = host()?.parentElement;
-    if (!parent) return;
-    state.viewObserver?.disconnect();
-    state.viewObserver = new MutationObserver(() => {
-      if (state.activating || !viewVisible()) return;
-      const anotherVisible = [...parent.children].some((child) => child !== host() && window.getComputedStyle(child).display !== 'none');
-      if (anotherVisible) hideProfiles();
-    });
-    state.viewObserver.observe(parent, { subtree: false, attributes: true, attributeFilter: ['style','class','hidden'] });
-  }
-
   function init() {
     if (state.initialized) return;
     state.initialized = true;
     ensureStructure();
-    observeViewChanges();
-    document.addEventListener('click', handleNavigationCapture, true);
+    window.AtlasShell?.registerView?.('team-profiles', { root: host, title: 'Team Profiles', onShow: profilesShown, onHide: hideProfiles });
     document.addEventListener('click', handleClick);
     document.addEventListener('submit', handleSubmit);
     document.addEventListener('input', event => { if (event.target?.name === 'email') event.target.setCustomValidity(''); });

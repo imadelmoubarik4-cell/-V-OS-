@@ -184,10 +184,6 @@
     return document.getElementById('brain-shell');
   }
 
-  function observerOptions() {
-    return { childList: true };
-  }
-
   function bindRenderedEvents(root) {
     root.querySelectorAll('[data-daily-target]').forEach((button) => button.addEventListener('click', () => navigate(button.dataset.dailyTarget)));
     root.querySelectorAll('[data-daily-refresh]').forEach((button) => button.addEventListener('click', () => refresh(true)));
@@ -197,7 +193,6 @@
     const shell = host();
     if (!shell) return;
 
-    state.observer?.disconnect();
     const existing = shell.querySelector('[data-daily-briefing]');
     const markup = state.loading ? loadingMarkup() : state.error ? errorMarkup(state.error) : state.briefing ? briefingMarkup(state.briefing) : loadingMarkup();
     const template = document.createElement('template');
@@ -214,7 +209,6 @@
 
     bindRenderedEvents(next);
     if (window.lucide) window.lucide.createIcons();
-    state.observer?.observe(shell, observerOptions());
   }
 
   function queueRender() {
@@ -269,13 +263,14 @@
     }
   }
 
+  // brain.js replaces #brain-shell on every render and announces it with
+  // 'brain:rendered'; re-insert the briefing then (was a MutationObserver).
   function installObserver() {
-    const shell = host();
-    if (!shell || state.observer) return;
-    state.observer = new MutationObserver(() => {
-      if (!shell.querySelector('[data-daily-briefing]')) queueRender();
+    if (state.shellBound || !window.AtlasShell) return;
+    state.shellBound = true;
+    window.AtlasShell.on('brain:rendered', () => {
+      if (!host()?.querySelector('[data-daily-briefing]')) queueRender();
     });
-    state.observer.observe(shell, observerOptions());
   }
 
   function bindAuthWhenReady() {
