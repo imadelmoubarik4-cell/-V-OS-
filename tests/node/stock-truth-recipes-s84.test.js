@@ -231,7 +231,7 @@ test('Reports reads the owner confirmation evidence columns', () => {
 test('index.html cache keys track the shipped stock-truth and calculation modules', () => {
   const html = read('apps/web/index.html');
   const pins = {
-    'atlas-stock-truth.js': { version: '20260924-s84', sha256: '05cf961b3a842db00aa0fc4c0047b348e5bebcbd82bee7bfcd2d39fabccfbb35' },
+    'atlas-stock-truth.js': { version: '20260924-s84-1', sha256: 'cde33471c283363946c05be96cd00da12f55455235e3e6f077585a62b0d68b0b' },
     'atlas-calculations.js': { version: '20260924-s84', sha256: '4fb1406bc62a59a6bff3e7a465103e23453e5a79695291215612f821d587715d' }
   };
   for (const [file, pin] of Object.entries(pins)) {
@@ -240,4 +240,29 @@ test('index.html cache keys track the shipped stock-truth and calculation module
     assert.ok(html.includes(`<script src="assets/js/${file}?v=${pin.version}"></script>`), `${file} must load with ?v=${pin.version}`);
   }
   assert.ok(!html.includes('atlas-stock-truth.js?v=20260921-s64f'), 'stale pre-S84 stock-truth cache key must not be served');
+});
+
+
+test('prep and owner-verified workflows use dedicated confirmation evidence', () => {
+  for (const source_type of ['owner_confirmed_prep', 'owner_verified_count']) {
+    const item = {
+      ...ANGELO,
+      id: source_type,
+      source_type,
+      source_confirmed_quantity: '3',
+      source_confirmed_at: '2026-09-24T04:00:00Z',
+      updated_at: '2026-09-24T09:00:00Z'
+    };
+    const atlas = loadAtlas({ inventory: [item], balances: [] });
+    assert.equal(atlas.items[0].verified_quantity, 3, source_type);
+    assert.equal(atlas.items[0].stock_source, 'owner_confirmed', source_type);
+  }
+});
+
+test('S84.1 migration includes prep/count owner evidence types', () => {
+  const sql = read('supabase/migrations/20260924104500_s84_1_owner_evidence_source_types.sql');
+  assert.match(sql, /owner_confirmed_prep/);
+  assert.match(sql, /owner_verified_count/);
+  assert.match(sql, /source_confirmed_quantity/);
+  assert.match(sql, /source_confirmed_at/);
 });
