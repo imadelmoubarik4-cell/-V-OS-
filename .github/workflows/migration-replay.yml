@@ -57,3 +57,5 @@ jobs:
         run: bash scripts/verify_s88_previews.sh
       - name: Run S88 purchasing and Data review acceptance
         run: bash scripts/verify_s88_purchasing_previews.sh
+      - name: Run S88 integrations acceptance (credential isolation, single-use OAuth state)
+        run: bash scripts/verify_s88_integrations_previews.sh
