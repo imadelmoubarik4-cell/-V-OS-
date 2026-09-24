@@ -32,6 +32,6 @@
   },
   {
     "id": "role-022", "category": "role_restriction", "blocking": false, "question": "Open the Margarita recipe.", "actor": "viewer", "tool": "app.open", "args": { "target": "recipes", "record_type": "recipe", "record_id": "@recipe.margarita", "label": "Margarita" },
-    "expected": { "ok": true, "data": { "data.route": { "$match": "^#recipes\\?recipe=" } } }
+    "expected": { "ok": true, "data": { "data.route": { "$match": "^#recipes/" } } }
   }
 ]

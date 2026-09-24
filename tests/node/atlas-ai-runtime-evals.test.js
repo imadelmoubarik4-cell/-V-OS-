@@ -69,7 +69,7 @@ test('SSE: "Can we make 30 Margaritas?" → friendly progress, grounded answer, 
   assert.ok(evidence.some((item) => item.kind === 'calculation' && item.label === 'Servings of Margarita possible' && /^28 /.test(item.value)));
   assert.ok(evidence.some((item) => item.kind === 'fact' && item.label === 'Stock of El Jimador Blanco Tequila' && item.value === '2 bottle'));
   const records = events.find((entry) => entry.event === 'records').data.items;
-  assert.ok(records.some((item) => item.type === 'recipe' && item.id === IDS.recipe.margarita && item.route === `#recipes?recipe=${IDS.recipe.margarita}`));
+  assert.ok(records.some((item) => item.type === 'recipe' && item.id === IDS.recipe.margarita && item.route === `#recipes/${IDS.recipe.margarita}`));
   // Audit: one tool call, by the verified bartender; staff read only the catalogues.
   assert.equal(rt.db.toolCalls.length, 1);
   assert.equal(rt.db.toolCalls[0].p_tool_name, 'recipes.can_make');
