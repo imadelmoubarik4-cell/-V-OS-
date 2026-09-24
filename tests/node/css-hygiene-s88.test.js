@@ -121,6 +121,34 @@ test('CSS hygiene counts never go up (S88 ratchet)', () => {
   }
 });
 
+test('cascade layers are declared first and every stylesheet is layered', () => {
+  const index = readFileSync(path.join(WEB, 'index.html'), 'utf8');
+  const links = [...index.matchAll(/<link rel="stylesheet" href="(assets\/css\/[^"?]+)/g)].map((match) => match[1]);
+  assert.equal(links[0], 'assets/css/atlas-tokens.css', 'atlas-tokens.css declares the layer order and must be the first Atlas stylesheet');
+  const tokens = readFileSync(path.join(CSS, 'atlas-tokens.css'), 'utf8');
+  assert.match(stripComments(tokens), /^\s*@layer atlas\.tokens, atlas\.base, atlas\.legacy, atlas\.components, atlas\.modules;/);
+  assert.ok(index.indexOf('assets/css/atlas-tokens.css') < index.indexOf('<style'), 'the inline <style> comes after the layer statement');
+  // Unlayered CSS beats every layer; nothing may ship outside a layer.
+  for (const source of cssSources().filter((entry) => !entry.js)) {
+    const text = stripComments(source.text).trim();
+    if (source.name === 'atlas-tokens.css') continue;
+    assert.match(text, /^@layer atlas\.(base|legacy|components|modules)\s*\{[\s\S]*\}$/, `${source.name} must be one @layer block`);
+  }
+});
+
+test('custom properties on :root are defined only in atlas-tokens.css', () => {
+  const defined = (text) => new Set([...stripComments(text).matchAll(/(--[\w-]+)\s*:/g)].map((match) => match[1]));
+  const tokens = defined(readFileSync(path.join(CSS, 'atlas-tokens.css'), 'utf8'));
+  for (const source of cssSources()) {
+    if (source.name === 'atlas-tokens.css') continue;
+    for (const rule of rules(source.text)) {
+      if (!splitSelectors(rule.selector).some((selector) => selector.startsWith(':root') || selector === 'html')) continue;
+      const clash = [...defined(rule.body)].filter((name) => tokens.has(name));
+      assert.deepEqual(clash, [], `${source.name} redefines token(s) on ${rule.selector}`);
+    }
+  }
+});
+
 test('the ratchet ceilings are tight', () => {
   // A ceiling that is higher than today's count lets a regression back in
   // unnoticed. Lower the ceiling whenever a count drops.

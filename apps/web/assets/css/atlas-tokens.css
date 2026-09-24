@@ -1,28 +1,34 @@
 /* Atlas design tokens — the single source of truth.
  *
- * Documented in docs/design/Atlas_Design_System.md. Linked FIRST: this file
- * declares the cascade-layer order for every Atlas stylesheet (below), and
- * the tokens live in the lowest layer; nothing else defines them. Values equal the ones that already won
- * the cascade before S87, so this file removes ambiguity without restyling;
- * the one deliberate change is that every "primary blue" alias now resolves
- * to the Atlas blue (#2f80ed) instead of three different blues.
+ * Documented in docs/design/Atlas_Design_System.md. Values equal the ones that
+ * already won the cascade before S87, so this file removes ambiguity without
+ * restyling; the one deliberate change is that every "primary blue" alias now
+ * resolves to the Atlas blue (#2f80ed) instead of three different blues.
  *
  * New CSS must use these tokens. Do not add new :root colour, radius or
- * spacing definitions in module stylesheets.
- */
-/* Cascade layers (S88). Declared once, before any other Atlas CSS, so the
- * order of <link> tags and runtime injection no longer decides which rule
- * wins between layers:
+ * spacing definitions in module stylesheets; css-hygiene-s88.test.js fails if
+ * any other stylesheet defines one of these names on :root.
+ *
+ * Linked FIRST in index.html because it also declares the cascade-layer order
+ * for every Atlas stylesheet (S88). Between layers, the later layer wins for
+ * normal declarations whatever the specificity or load order; for !important
+ * the order reverses (the earlier layer wins).
+ *
  *   atlas.tokens      custom properties only (this file)
- *   atlas.base        reset, typography, shell           (Phase 2: atlas-base.css)
- *   atlas.components  buttons, inputs, cards, tables...  (Phase 2: atlas-components.css)
- *   atlas.legacy      every pre-S88 stylesheet, in its original order, and the
- *                     legacy/*.css fragments split out of the old override files
- *   atlas.modules     module stylesheets after their Phase 2 consolidation
- * A later layer beats an earlier one for normal declarations regardless of
- * specificity; for !important the order is reversed. Move a module from
- * atlas.legacy to atlas.modules and remove its !important in the same commit. */
-@layer atlas.tokens, atlas.base, atlas.components, atlas.legacy, atlas.modules;
+ *   atlas.base        reset, typography, shell chrome (atlas-base.css, to come).
+ *                     Below legacy so a new element-level rule cannot restyle a
+ *                     page that has not been rebuilt yet; land a base rule
+ *                     together with deleting the legacy rule it replaces.
+ *   atlas.legacy      every pre-S88 stylesheet in its original order, plus the
+ *                     legacy/<source>--<module>.css fragments of the retired
+ *                     override files. Emptied module by module.
+ *   atlas.components  opt-in component classes (atlas-components.css, to come);
+ *                     they win over legacy rules on the same element.
+ *   atlas.modules     one consolidated stylesheet per module. Moving a module
+ *                     here from atlas.legacy removes its !important in the same
+ *                     commit (an !important left in atlas.legacy still wins).
+ */
+@layer atlas.tokens, atlas.base, atlas.legacy, atlas.components, atlas.modules;
 
 @layer atlas.tokens {
 :root {
