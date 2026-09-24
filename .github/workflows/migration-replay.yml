@@ -59,3 +59,5 @@ jobs:
         run: bash scripts/verify_s88_purchasing_previews.sh
       - name: Run S88 integrations acceptance (credential isolation, single-use OAuth state)
         run: bash scripts/verify_s88_integrations_previews.sh
+      - name: Run S88 Atlas AI acceptance (ownership, proposals, Brain, Knowledge search, media)
+        run: bash scripts/verify_s88_ai_previews.sh
