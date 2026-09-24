@@ -298,7 +298,7 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
     productionRows(
       context,
       "inventory_items",
-      "id,name,category,quantity,unit,par_level,updated_at,source_updated_at,source_type,source_confidence,supplier_id,supplier,cost_price,sku,barcode,bin_location,size_ml,active,sell_price,package_size,brand,subcategory,needs_review",
+      "id,name,category,quantity,unit,par_level,updated_at,source_updated_at,source_type,source_confidence,source_confirmed_at,source_confirmed_quantity,supplier_id,supplier,cost_price,sku,barcode,bin_location,size_ml,active,sell_price,package_size,brand,subcategory,needs_review",
       { order: "name.asc", filters: { active: "eq.true" } },
     ),
     productionRows(

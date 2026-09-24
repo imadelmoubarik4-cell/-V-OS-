@@ -34,25 +34,42 @@ function isCurrentBalance(balance, nowMillis) {
 const OWNER_CONFIRMED_TYPES = new Set(["owner_confirmed", "owner_confirmed_supplier_price"]);
 const DEFAULT_FRESHNESS_MS = 7 * 24 * 60 * 60 * 1000;
 
-function ownerConfirmedBaseline(item, balance, nowMillis) {
+function has(item, key) {
+  return Boolean(item) && typeof item === "object" && Object.prototype.hasOwnProperty.call(item, key);
+}
+
+// The owner confirmation is its own evidence pair (S84). Rows read before the
+// columns exist fall back to the live row, matching the previous rule.
+function ownerConfirmation(item) {
   const sourceType = lower(item?.source_type);
   if (!OWNER_CONFIRMED_TYPES.has(sourceType) || numberOrNull(item?.source_confidence) !== 100) return null;
+  if (!has(item, "source_confirmed_at")) {
+    return { quantity: numberOrNull(item?.quantity), at: dateMillis(item?.updated_at) };
+  }
+  return { quantity: numberOrNull(item?.source_confirmed_quantity), at: dateMillis(item?.source_confirmed_at) };
+}
 
-  const quantity = numberOrNull(item?.quantity);
-  const updatedAt = dateMillis(item?.updated_at);
-  if (quantity === null || updatedAt === null) return null;
+function ownerConfirmedBaseline(item, balance) {
+  const confirmation = ownerConfirmation(item);
+  if (!confirmation || confirmation.quantity === null || confirmation.quantity < 0 || confirmation.at === null) return null;
 
+  // Any recorded manager count at or after the confirmation supersedes it.
   const balanceAt = dateMillis(balance?.verified_at);
-  if (balanceAt !== null && updatedAt <= balanceAt) return null;
+  if (balanceAt !== null && confirmation.at <= balanceAt) return null;
 
+  // Owner confirmations do not expire; past the freshness window they are flagged for recount.
   const balanceExpires = dateMillis(balance?.expires_at);
   const freshnessWindow = balanceAt !== null && balanceExpires !== null && balanceExpires > balanceAt
     ? balanceExpires - balanceAt
     : DEFAULT_FRESHNESS_MS;
-  const expiresAt = updatedAt + freshnessWindow;
-  if (expiresAt <= nowMillis) return null;
 
-  return { quantity, at: updatedAt, expiresAt, source: "owner_confirmed" };
+  return {
+    quantity: confirmation.quantity,
+    at: confirmation.at,
+    expiresAt: null,
+    recountDueAt: confirmation.at + freshnessWindow,
+    source: "owner_confirmed",
+  };
 }
 
 function managerVerifiedBaseline(balance, nowMillis) {
@@ -80,7 +97,7 @@ function movementDelta(movements, itemId, afterMillis, nowMillis) {
 
 function currentQuantityEvidence(item, balance, movements, nowMillis) {
   const manager = managerVerifiedBaseline(balance, nowMillis);
-  const owner = ownerConfirmedBaseline(item, balance, nowMillis);
+  const owner = ownerConfirmedBaseline(item, balance);
   const baseline = owner && (!manager || owner.at > manager.at) ? owner : manager;
   if (!baseline) return null;
 
@@ -90,6 +107,7 @@ function currentQuantityEvidence(item, balance, movements, nowMillis) {
     source: baseline.source,
     verifiedAt: new Date(baseline.at).toISOString(),
     movementDelta: delta,
+    recountDue: typeof baseline.recountDueAt === "number" && baseline.recountDueAt <= nowMillis,
   };
 }
 
@@ -170,6 +188,7 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
         verified_at: quantityStatus === "current" ? (evidence?.verifiedAt ?? balance?.verified_at ?? null) : null,
         quantity_source: evidence?.source ?? null,
         movement_delta: evidence?.movementDelta ?? 0,
+        recount_due: evidence?.recountDue === true,
         updated_at: quantityStatus === "current" ? (evidence?.verifiedAt ?? balance?.verified_at ?? item.updated_at) : item.updated_at,
       };
     });

@@ -204,6 +204,8 @@ psql -v ON_ERROR_STOP=1 -X -qAt -f "$ROOT/scripts/verify_recipe_ingredient_acces
   > "$WORK_DIR/recipe-access.jsonl"
 psql -v ON_ERROR_STOP=1 -X -qAt -f "$ROOT/scripts/verify_purchase_order_preview.sql" \
   > "$WORK_DIR/purchase-orders.jsonl"
+psql -v ON_ERROR_STOP=1 -X -qAt -f "$ROOT/scripts/verify_s84_owner_confirmation_preview.sql" \
+  > "$WORK_DIR/s84-owner-confirmation.jsonl"
 psql -v ON_ERROR_STOP=1 -qAt -f "$ROOT/scripts/verify_phase1_security_gate.sql" \
   > "$WORK_DIR/security-gate.jsonl"
 
