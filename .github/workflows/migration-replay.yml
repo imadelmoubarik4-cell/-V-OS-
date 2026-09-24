@@ -52,3 +52,6 @@ jobs:
 
       - name: Run S87 acceptance (recipe delete guard, media policies, Knowledge role matrix)
         run: bash scripts/verify_s87_previews.sh
+
+      - name: Run S88 Atlas AI acceptance (ownership, proposals, Brain, Knowledge search, media)
+        run: bash scripts/verify_s88_ai_previews.sh
