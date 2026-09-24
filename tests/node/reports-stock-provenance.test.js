@@ -6,7 +6,7 @@ import {
   buildStockReport,
   buildRecipeReport,
   quantityTrustState,
-} from '../../supabase/functions/atlas-reports/stock-provenance.mjs';
+} from '../../supabase/functions/_shared/stock-provenance.mjs';
 
 test('S64F unknown valuation and alert coverage are not displayed as zero', () => {
   const items = [{id:'unverified', name:'Test item', quantity:0, cost_price:100}];

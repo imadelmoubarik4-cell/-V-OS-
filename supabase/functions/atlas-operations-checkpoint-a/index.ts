@@ -17,15 +17,51 @@ const CORS_HEADERS = {
 const WRITE_ROLES = new Set(["admin", "manager", "bartender"]);
 const MANAGER_ROLES = new Set(["admin", "manager"]);
 const MAX_BODY_BYTES = 64 * 1024;
+const FUNCTION_VERSION = "0.2.0";
 
 class ApiError extends Error {
   status: number;
+  code: string | null;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code: string | null = null) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
+
+// s88-operations-helpers:start (pure; unit-tested by tests/node/daily-checklists-api-s88.test.js)
+const RPC_ERROR_STATUS: Record<string, number> = {
+  forbidden: 403,
+  not_found: 404,
+  routine_closed: 409,
+  checklist_day_closed: 409,
+  invalid_date: 400,
+};
+
+function rpcErrorCode(hint: unknown): string | null {
+  const match = typeof hint === "string" ? hint.match(/^atlas:([a-z_]+)$/) : null;
+  return match ? match[1] : null;
+}
+
+function rpcErrorStatus(status: number, code: string | null): number {
+  if (code && RPC_ERROR_STATUS[code]) return RPC_ERROR_STATUS[code];
+  if (status >= 500) return 500;
+  return status === 403 ? 403 : 400;
+}
+
+function dailyChecklistSummary(checklist: any) {
+  if (!checklist || typeof checklist !== "object") return null;
+  const items = Array.isArray(checklist.items) ? checklist.items : [];
+  const required = items.filter((item: any) => item && item.required !== false);
+  return {
+    instance_id: checklist.id ?? null,
+    status: checklist.status ?? null,
+    required: required.length,
+    completed: required.filter((item: any) => item.completed === true).length,
+  };
+}
+// s88-operations-helpers:end
 
 type AtlasContext = {
   user: { id: string; email?: string | null };
@@ -45,7 +81,7 @@ function jsonResponse(value: unknown, status = 200): Response {
       ...CORS_HEADERS,
       "content-type": "application/json; charset=utf-8",
       "x-content-type-options": "nosniff",
-      "x-atlas-operations-version": "0.1.0",
+      "x-atlas-operations-version": FUNCTION_VERSION,
     },
   });
 }
@@ -236,9 +272,26 @@ async function branchRpc(name: string, payload: Record<string, unknown> = {}): P
       : typeof parsed === "string" && parsed
       ? parsed
       : "The Checkpoint A database request failed.";
-    throw new ApiError(response.status >= 500 ? 500 : 400, message);
+    const code = typeof parsed === "object" && parsed && "hint" in parsed
+      ? rpcErrorCode((parsed as { hint: unknown }).hint)
+      : null;
+    throw new ApiError(rpcErrorStatus(response.status, code), message, code);
   }
   return parsed;
+}
+
+// The operational day follows the venue business date (a closing checklist
+// at 01:30 still belongs to the previous day). Falls back to the venue
+// calendar date only if the S88 database read is not deployed yet.
+async function businessDate(): Promise<string> {
+  try {
+    const value = await branchRpc("atlas_operations_business_date");
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 500) throw error;
+    console.warn("Checkpoint A business date unavailable; using the venue calendar date");
+  }
+  return venueDate();
 }
 
 function venueDate(): string {
@@ -263,7 +316,7 @@ Deno.serve(async (request: Request) => {
     if (request.method === "GET") {
       if (action === "snapshot") {
         const requestedDate = url.searchParams.get("date");
-        const localDate = requestedDate ? requireDate(requestedDate) : venueDate();
+        const localDate = requestedDate ? requireDate(requestedDate) : await businessDate();
         const operations = await branchRpc("atlas_operations_today", { p_local_date: localDate });
         return jsonResponse({
           operations,
@@ -272,6 +325,26 @@ Deno.serve(async (request: Request) => {
             private_branch: true,
             manager_review_for_settings: true,
             direct_table_access: false,
+            operational_history_preserved: true,
+          },
+        });
+      }
+
+      if (action === "daily-checklists") {
+        const requestedDate = url.searchParams.get("date");
+        const checklists = await branchRpc("atlas_operations_daily_checklists", {
+          p_business_date: requestedDate ? requireDate(requestedDate) : null,
+        }) as Record<string, unknown>;
+        return jsonResponse({
+          checklists,
+          summary: {
+            opening: dailyChecklistSummary(checklists?.opening),
+            closing: dailyChecklistSummary(checklists?.closing),
+          },
+          staff: staffPayload(context),
+          policy: {
+            shared_between_devices: true,
+            device_storage: false,
             operational_history_preserved: true,
           },
         });
@@ -404,7 +477,9 @@ Deno.serve(async (request: Request) => {
       },
     });
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError) {
+      return jsonResponse(error.code ? { error: error.message, code: error.code } : { error: error.message }, error.status);
+    }
     console.error("Checkpoint A operations API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The Checkpoint A operations service is temporarily unavailable." }, 500);
   }

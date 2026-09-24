@@ -289,7 +289,7 @@
           <option value="inventory_item" ${state.linkType === 'inventory_item' ? 'selected' : ''}>Inventory item</option>
           <option value="routine" ${state.linkType === 'routine' ? 'selected' : ''}>Checklist / routine</option>
           <option value="shift" ${state.linkType === 'shift' ? 'selected' : ''}>Shift</option>
-          <option value="brain_recommendation" ${state.linkType === 'brain_recommendation' ? 'selected' : ''}>Atlas recommendation</option>
+          ${state.staff?.can_link_brain_recommendations ? `<option value="brain_recommendation" ${state.linkType === 'brain_recommendation' ? 'selected' : ''}>Atlas recommendation</option>` : ''}
         </select>
         <label><i data-lucide="search"></i><input type="search" aria-label="Search available Atlas records" data-team-target-search placeholder="Search available records" value="${escapeHtml(state.linkQuery)}" ${state.linkType === 'none' ? 'disabled' : ''} /></label>
       </div>

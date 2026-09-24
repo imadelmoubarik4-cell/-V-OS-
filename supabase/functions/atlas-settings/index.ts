@@ -4,7 +4,7 @@ const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
 const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
   ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
-const FUNCTION_VERSION = "0.1.2";
+const FUNCTION_VERSION = "0.1.3";
 const MAX_BODY_BYTES = 256 * 1024;
 
 const CORS_HEADERS = {
@@ -49,6 +49,37 @@ class ApiError extends Error {
     this.status = status;
   }
 }
+
+// s88-settings-helpers:start (pure; unit-tested by tests/node/venue-clock-api-s88.test.js)
+const DEFAULT_VENUE_TIME_ZONE = "Atlantic/Reykjavik";
+const TIME_ZONE_PATTERN = /^[A-Za-z][A-Za-z0-9_+-]*(?:\/[A-Za-z0-9_+-]+){0,2}$/;
+
+function isValidTimeZone(value: unknown): boolean {
+  if (typeof value !== "string" || value !== value.trim() || !TIME_ZONE_PATTERN.test(value)) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format(0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function timeZoneProblem(value: unknown): string | null {
+  if (value === undefined) return null;
+  if (isValidTimeZone(value)) return null;
+  const shown = typeof value === "string" && value.trim() ? value.trim().slice(0, 64) : "(empty)";
+  return `Time zone ${shown} is not recognised. Use an IANA name such as ${DEFAULT_VENUE_TIME_ZONE}.`;
+}
+
+function venueClockStaff(role: string, id: string) {
+  return {
+    id,
+    role,
+    active: true,
+    can_manage_hours: role === "admin" || role === "manager",
+  };
+}
+// s88-settings-helpers:end
 
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
@@ -362,6 +393,14 @@ Deno.serve(async (request: Request) => {
     const action = url.searchParams.get("action") || "snapshot";
 
     if (request.method === "GET") {
+      if (action === "venue-clock") {
+        // Every active role may read the venue clock: hours, offers, time
+        // zone and dates are operational, not commercial.
+        const clock = await branchRpc("atlas_settings_venue_clock", {
+          p_actor_role: context.profile.role,
+        });
+        return jsonResponse({ clock, staff: venueClockStaff(context.profile.role, context.user.id) });
+      }
       if (action !== "snapshot") throw new ApiError(404, "Unknown Settings action.");
       return jsonResponse(await snapshot(context));
     }
@@ -377,6 +416,10 @@ Deno.serve(async (request: Request) => {
         const sectionKey = enumValue(body.section_key, "Settings section", SECTION_KEYS);
         const value = objectValue(body.value, "Settings value");
         assertNoSensitiveKeys(value);
+        if (sectionKey === "venue") {
+          const problem = timeZoneProblem(value.timezone);
+          if (problem) throw new ApiError(400, problem);
+        }
         result = await branchRpc("atlas_settings_save_section", {
           p_section_key: sectionKey,
           p_value: value,
@@ -473,13 +516,16 @@ Deno.serve(async (request: Request) => {
       case "save-preferences": {
         const preferences = optionalObject(body.preferences, "Preferences");
         assertNoSensitiveKeys(preferences);
+        const preferenceZone = stringValue(body.timezone, "Timezone", 100, true);
+        const preferenceZoneProblem = timeZoneProblem(preferenceZone);
+        if (preferenceZoneProblem) throw new ApiError(400, preferenceZoneProblem);
         result = await branchRpc("atlas_settings_save_preferences", {
           p_user_id: context.user.id,
           p_theme: enumValue(body.theme, "Theme", new Set(["dark", "light", "system"])),
           p_density: enumValue(body.density, "Density", new Set(["comfortable", "compact"])),
           p_language: enumValue(body.language, "Language", new Set(["en", "is"])),
           p_start_view: stringValue(body.start_view, "Start view", 80, true),
-          p_timezone: stringValue(body.timezone, "Timezone", 100, true),
+          p_timezone: preferenceZone,
           p_reduce_motion: booleanValue(body.reduce_motion, "Reduce motion"),
           p_browser_notifications: booleanValue(body.browser_notifications, "Browser notifications"),
           p_email_notifications: booleanValue(body.email_notifications, "Email notifications"),

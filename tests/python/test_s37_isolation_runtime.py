@@ -37,7 +37,7 @@ class S37IsolationRuntimeTests(unittest.TestCase):
             output = Path(directory) / "runtime"
             result = builder.build(output)
             self.assertEqual(result["functions"], 18)
-            self.assertEqual(result["files"], 23)
+            self.assertEqual(result["files"], 25)
             runtime = json.loads((output / "runtime-manifest.json").read_text())
             self.assertEqual(len(runtime["functions"]), 18)
             self.assertFalse(runtime["production_fallbacks"])

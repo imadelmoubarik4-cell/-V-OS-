@@ -1,12 +1,20 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+// Canonical stock truth shared with Reports and the browser (AtlasStockTruth):
+// owner-confirmed and manager-verified evidence, the historical cutoff and the
+// below-par rule.
+import {
+  balanceFromCountActivity,
+  belowPar as canonicalBelowPar,
+  projectStock,
+  quantityTrustState as canonicalQuantityTrustState,
+} from "../_shared/atlas-domain.mjs";
 
 const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
 const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
   ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
-const FUNCTION_VERSION = "0.1.0";
+const FUNCTION_VERSION = "0.1.1";
 const MAX_ROWS = 5000;
-const HISTORICAL_OPENING_CUTOFF = "2026-07-31";
 const MANAGER_ROLES = new Set(["admin", "manager"]);
 
 const MASTER_FIELDS = [
@@ -59,11 +67,74 @@ const CORS_HEADERS = {
 };
 
 class ApiError extends Error {
-  constructor(status, message) {
+  status;
+  code;
+
+  constructor(status, message, code = null) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
+
+// s88-activation-helpers:start (pure; unit-tested by tests/node/inventory-activation-api-s88.test.js)
+const ACTIVATION_ERROR_STATUS = {
+  forbidden: 403,
+  not_found: 404,
+  stale_item: 409,
+  open_purchase_order: 409,
+  active_duplicate_name: 409,
+  invalid_request: 400,
+};
+const ACTIVATION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function rpcErrorCode(hint) {
+  const match = typeof hint === "string" ? hint.match(/^atlas:([a-z_]+)$/) : null;
+  return match ? match[1] : null;
+}
+
+function activationErrorStatus(status, code) {
+  if (code && ACTIVATION_ERROR_STATUS[code]) return ACTIVATION_ERROR_STATUS[code];
+  return status >= 500 ? 500 : 400;
+}
+
+function activationItemId(value) {
+  const id = typeof value === "string" ? value.trim() : "";
+  if (!ACTIVATION_UUID.test(id)) throw new ApiError(400, "Inventory item is invalid.", "invalid_request");
+  return id.toLowerCase();
+}
+
+function activationRequest(body) {
+  const source = body && typeof body === "object" && !Array.isArray(body) ? body : {};
+  if (typeof source.active !== "boolean") {
+    throw new ApiError(400, "Active must be true or false.", "invalid_request");
+  }
+  let reason = null;
+  if (source.reason !== undefined && source.reason !== null && source.reason !== "") {
+    if (typeof source.reason !== "string") throw new ApiError(400, "Reason must be text.", "invalid_request");
+    reason = source.reason.trim() || null;
+    if (reason && reason.length > 500) {
+      throw new ApiError(400, "Reason is limited to 500 characters.", "invalid_request");
+    }
+  }
+  let expectedUpdatedAt = null;
+  if (source.expected_updated_at !== undefined && source.expected_updated_at !== null && source.expected_updated_at !== "") {
+    const parsed = typeof source.expected_updated_at === "string" ? new Date(source.expected_updated_at) : null;
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      throw new ApiError(400, "Expected update time is invalid.", "invalid_request");
+    }
+    // Keep the original string: Postgres timestamps carry microseconds that
+    // a JavaScript Date would round away.
+    expectedUpdatedAt = source.expected_updated_at;
+  }
+  return {
+    p_item_id: activationItemId(source.item_id),
+    p_active: source.active,
+    p_reason: reason,
+    p_expected_updated_at: expectedUpdatedAt,
+  };
+}
+// s88-activation-helpers:end
 
 function jsonResponse(value, status = 200) {
   return new Response(JSON.stringify(value), {
@@ -101,12 +172,6 @@ function nullableNumber(value) {
 function numberValue(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function dateValue(value) {
-  if (!value) return null;
-  const parsed = new Date(String(value));
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function normalizeName(value) {
@@ -226,7 +291,8 @@ async function inventoryRows(context) {
     "supplier_id", "supplier", "supplier_product_reference", "units_per_case",
     "size_ml", "package_weight_g", "package_size", "cost_price", "case_cost",
     "bin_location", "lead_time_days", "minimum_order_quantity", "sku", "barcode",
-    "active", "source_file", "source_updated_at", "updated_at",
+    "active", "source_file", "source_updated_at", "source_type", "source_confidence",
+    "source_confirmed_at", "source_confirmed_quantity", "updated_at",
   ].join(",");
   const legacySelect = [
     "id", "name", "category", "quantity", "unit", "par_level", "supplier_id",
@@ -287,7 +353,8 @@ async function branchRpc(name, payload = {}) {
       : typeof parsed === "string" && parsed
       ? parsed
       : `Checkpoint L2 database request ${name} failed.`;
-    throw new ApiError(response.status >= 500 ? 500 : 400, message);
+    const code = parsed && typeof parsed === "object" ? rpcErrorCode(parsed.hint) : null;
+    throw new ApiError(code ? activationErrorStatus(response.status, code) : response.status >= 500 ? 500 : 400, message, code);
   }
   return parsed;
 }
@@ -318,15 +385,10 @@ function isImportantServiceCategory(category) {
   return SERVICE_CATEGORY_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
-function quantityTrustState(item, countActivity) {
-  const now = Date.now();
-  if (countActivity?.verification_status === "current") {
-    const expires = dateValue(countActivity.expires_at);
-    if (!expires || expires.getTime() > now) return "current";
-  }
-  if (countActivity?.verified_at) return "stale";
-  if (text(item.source_updated_at) && text(item.source_updated_at) <= HISTORICAL_OPENING_CUTOFF) return "historical";
-  return "unverified";
+// Same trust states as Reports (current / stale / historical / unverified):
+// a current manager count or a newer owner-confirmed count is current.
+function quantityTrustState(item, countActivity, nowMillis = Date.now()) {
+  return canonicalQuantityTrustState(item, balanceFromCountActivity(countActivity), nowMillis);
 }
 
 function createEnvironment(sources) {
@@ -388,6 +450,13 @@ function createEnvironment(sources) {
     aliasByCode.set(normalizeCode(alias.normalized_code || alias.code), alias);
   }
   const countByItem = new Map((sources.branch.count_activity ?? []).map((entry) => [text(entry.inventory_item_id), entry]));
+  const nowMillis = Date.now();
+  const projectedByItem = new Map(projectStock(
+    items,
+    [...countByItem.values()].map(balanceFromCountActivity).filter(Boolean),
+    sources.movements.rows,
+    nowMillis,
+  ).map((projected) => [text(projected.id), projected]));
   const supplierById = new Map(sources.suppliers.rows.map((supplier) => [text(supplier.id), supplier]));
 
   return {
@@ -401,6 +470,8 @@ function createEnvironment(sources) {
     aliasesByItem,
     aliasByCode,
     countByItem,
+    projectedByItem,
+    nowMillis,
     supplierById,
   };
 }
@@ -462,11 +533,12 @@ function assessItem(item, environment, draftOverride = undefined) {
   const countActivity = environment.countByItem.get(itemId) ?? null;
   const movementCount = environment.movementByItem.get(itemId) ?? 0;
   const adjustmentCount = environment.adjustmentByItem.get(itemId) ?? 0;
-  const quantityStatus = quantityTrustState(item, countActivity);
+  const quantityStatus = quantityTrustState(item, countActivity, environment.nowMillis);
+  const projected = environment.projectedByItem.get(itemId) ?? null;
   const historicalZero = quantityStatus === "historical" && numberValue(item.quantity) <= 0;
-  // Same rule as the browser AtlasStockTruth.belowPar: strictly under a positive par.
-  const belowPar = (nullableNumber(effective.par_level) ?? 0) > 0
-    && numberValue(item.quantity) < numberValue(effective.par_level);
+  // The canonical AtlasStockTruth.belowPar on verified stock, against the
+  // effective (draft-aware) par. Unverified stock is never below par.
+  const belowPar = Boolean(projected) && canonicalBelowPar({ ...projected, par_level: effective.par_level });
   const usedByActiveRecipe = linkedRecipes.length > 0 || recipeLinkCandidates.length > 0;
   const importantCategory = isImportantServiceCategory(item.category);
 
@@ -487,7 +559,7 @@ function assessItem(item, environment, draftOverride = undefined) {
     priorityReasons.push("Historical zero requires a verified current count");
   } else if (belowPar) {
     priorityScore += 30;
-    priorityReasons.push("Current quantity is at or below configured par");
+    priorityReasons.push("Verified current quantity is below configured par");
   }
   if (numberValue(countActivity?.count_observations) >= 2) {
     const score = Math.min(20, numberValue(countActivity.count_observations) * 4);
@@ -549,8 +621,10 @@ function assessItem(item, environment, draftOverride = undefined) {
     barcode_aliases: aliases,
     proposed_barcode_aliases: proposedAliases,
     quantity_status: quantityStatus,
-    verified_quantity: countActivity?.verified_quantity ?? null,
-    verified_at: countActivity?.verified_at ?? null,
+    verified_quantity: projected?.verified_quantity ?? null,
+    verified_at: projected?.stock_baseline_at ? new Date(projected.stock_baseline_at).toISOString() : null,
+    quantity_source: projected?.stock_source ?? null,
+    recount_due: projected?.stock_recount_due === true,
     count_observations: numberValue(countActivity?.count_observations),
     movement_count: movementCount,
     adjustment_count: adjustmentCount,
@@ -924,6 +998,16 @@ Deno.serve(async (request) => {
     const actionFromUrl = lower(url.searchParams.get("action")) || "snapshot";
 
     if (request.method === "GET") {
+      if (actionFromUrl === "item_dependencies" || actionFromUrl === "item-dependencies") {
+        const dependencies = await branchRpc("atlas_inventory_item_dependencies", {
+          p_item_id: activationItemId(url.searchParams.get("item_id")),
+          p_actor_id: context.user.id,
+        });
+        return jsonResponse({
+          dependencies,
+          manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
+        });
+      }
       if (actionFromUrl !== "snapshot") throw new ApiError(404, "Unknown Checkpoint L2 action.");
       const built = await buildWorkspace(context);
       return jsonResponse({
@@ -942,6 +1026,17 @@ Deno.serve(async (request) => {
         manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
       });
     }
+    if (action === "set_item_active" || action === "set-item-active") {
+      const result = await branchRpc("atlas_set_inventory_item_active", {
+        ...activationRequest(body),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({
+        result,
+        manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
+      });
+    }
     if (action === "publish") {
       const result = await publishDraft(context, body);
       return jsonResponse({
@@ -951,7 +1046,9 @@ Deno.serve(async (request) => {
     }
     throw new ApiError(404, "Unknown Checkpoint L2 action.");
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError) {
+      return jsonResponse(error.code ? { error: error.message, code: error.code } : { error: error.message }, error.status);
+    }
     console.error("Checkpoint L2 item-master error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "Checkpoint L2 is temporarily unavailable." }, 500);
   }
