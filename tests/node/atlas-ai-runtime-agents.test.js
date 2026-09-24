@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 
 import { SDK, SKIP_SDK } from './helpers/atlas-ai-sdk.mjs';
 import {
-  USERS, createHandler, request, readSse, deltaText, message, toolCall, hasToolOutput,
+  USERS, createHandler, request, readSse, deltaText, message, toolCall, hasToolOutput, startVoice,
 } from './helpers/atlas-ai-harness.mjs';
 import { UNVERIFIED_REPLY, GUARDRAIL_REPLY } from '../../supabase/functions/atlas-ai/guardrails.mjs';
 
@@ -280,7 +280,8 @@ test('voice-tool ask_atlas runs the text orchestrator non-streaming with the con
     return message('Ten bottles of Pinot Grigio, per the stock record.');
   });
   const conversation = await bundle.services.rpc('atlas_ai_conversation_create', { p_actor_id: USERS.manager.id, p_actor_role: 'manager', p_title: 'v', p_context: {} });
-  const response = await bundle.handle(request('voice-tool', { body: { conversation_id: conversation.id, name: 'ask_atlas', arguments: JSON.stringify({ request: 'How much Pinot do we have?' }), call_id: 'call_x' } }));
+  const { voice_session_id } = await startVoice(bundle.handle, USERS.manager, conversation.id);
+  const response = await bundle.handle(request('voice-tool', { body: { conversation_id: conversation.id, voice_session_id, name: 'ask_atlas', arguments: JSON.stringify({ request: 'How much Pinot do we have?' }), call_id: 'call_x' } }));
   const body = await response.json();
   assert.equal(response.status, 200);
   assert.match(body.output, /Ten bottles/);

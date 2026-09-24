@@ -310,13 +310,23 @@ function failure(code, message) {
   return { ok: false, error: { code, message } };
 }
 
+// Fixed messages per code: downstream gateway or database text is never
+// passed on (it can name tables, constraints or provider details).
+const SERVICE_FAILURE_MESSAGES = Object.freeze({
+  forbidden: "Your Atlas role cannot run this action.",
+  not_found: "Something this action needs could not be found. Nothing was changed.",
+  conflict: "The record changed since this was prepared. Nothing was changed; prepare it again.",
+  invalid_arguments: "Atlas refused the details of this action. Nothing was changed.",
+  unavailable: "Atlas could not complete this action right now. Nothing was confirmed.",
+});
+
 function serviceFailure(error) {
   if (error instanceof ServiceError) {
     const code = error.status === 403 ? "forbidden" : error.status === 404 ? "not_found"
       : error.status === 409 ? "conflict" : error.status === 400 ? "invalid_arguments" : "unavailable";
-    return failure(code, error.message);
+    return failure(code, SERVICE_FAILURE_MESSAGES[code]);
   }
-  return failure("unavailable", "Atlas could not complete this action right now. Nothing was confirmed.");
+  return failure("unavailable", SERVICE_FAILURE_MESSAGES.unavailable);
 }
 
 async function executeStockCount(command, services) {
@@ -353,7 +363,8 @@ async function executeStockCount(command, services) {
       });
       saved.push({ item_id: entry.item_id, item_name: entry.item_name, quantity: entry.quantity, unit: entry.unit });
     } catch (error) {
-      notSaved.push({ item_id: entry.item_id, item_name: entry.item_name, reason: error instanceof Error ? error.message : "Save failed" });
+      const code = error instanceof ServiceError && error.status === 409 ? "conflict" : "not_saved";
+      notSaved.push({ item_id: entry.item_id, item_name: entry.item_name, reason: code === "conflict" ? "The count line changed; save it in Stock count." : "Could not be saved; enter it in Stock count.", code });
     }
   }
   return {

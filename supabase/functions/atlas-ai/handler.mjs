@@ -18,6 +18,7 @@ import {
   createServices,
   errorResponse,
   jsonResponse,
+  readBodyBytes,
   readJsonBody,
   requireUuid,
   uuidOrNull,
@@ -26,7 +27,6 @@ import { prepareChatTurn, streamChatTurn, validateChatBody, runAskAtlas, startRu
 import {
   AUDIO_TYPES,
   buildRealtimeSession,
-  createMintThrottle,
   mintRealtimeSecret,
   normaliseAudioMime,
   synthesiseSpeech,
@@ -62,17 +62,41 @@ function normaliseUploadMime(type) {
   return normaliseAudioMime(base);
 }
 
-// Light content sniffing so a renamed binary is not accepted as a photo, PDF
-// or text document.
+// Content sniffing so a renamed file is not accepted as a photo, PDF, text
+// document or audio: every allowed type is checked against its magic bytes
+// (unknown types are refused).
+const HEIF_BRANDS = new Set(["heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs", "mif1", "msf1", "heif", "mif2", "avif", "avis"]);
+const MP4_AUDIO_BRANDS = new Set(["M4A ", "M4B ", "M4P ", "mp41", "mp42", "isom", "iso2", "iso4", "iso5", "iso6", "dash", "3gp4", "3gp5", "3gp6", "3g2a", "f4a "]);
+
+// Major and compatible brands of an ISO-BMFF "ftyp" box, or null.
+function ftypBrands(b) {
+  const ascii4 = (start) => String.fromCharCode(b[start], b[start + 1], b[start + 2], b[start + 3]);
+  if (b.length < 12 || ascii4(4) !== "ftyp") return null;
+  const size = (b[0] * 16777216) + (b[1] << 16) + (b[2] << 8) + b[3];
+  const end = Math.min(b.length, size >= 16 && size <= 4096 ? size : 16);
+  const brands = [ascii4(8)];
+  for (let offset = 16; offset + 4 <= end; offset += 4) brands.push(ascii4(offset));
+  return brands;
+}
+
 export function contentMatches(mime, bytes) {
   const b = bytes;
+  if (!b || typeof b.length !== "number" || b.length < 4) return false;
   const ascii = (start, text) => [...text].every((ch, index) => b[start + index] === ch.charCodeAt(0));
   switch (mime) {
     case "image/jpeg": return b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
     case "image/png": return b[0] === 0x89 && ascii(1, "PNG");
     case "image/webp": return ascii(0, "RIFF") && ascii(8, "WEBP");
     case "image/heic":
-    case "image/heif": return ascii(4, "ftyp");
+    case "image/heif": {
+      // ISO-BMFF whose major brand is a HEIF image brand, or a HEIF brand
+      // among the compatible brands of a file that is not an MP4 container.
+      const brands = ftypBrands(b);
+      if (!brands) return false;
+      if (HEIF_BRANDS.has(brands[0])) return true;
+      return !MP4_AUDIO_BRANDS.has(brands[0]) && !["qt  ", "avc1", "mp4v"].includes(brands[0])
+        && brands.slice(1).some((brand) => HEIF_BRANDS.has(brand));
+    }
     case "application/pdf": return ascii(0, "%PDF-");
     case "text/plain":
     case "text/csv":
@@ -82,7 +106,18 @@ export function contentMatches(mime, bytes) {
       } catch {
         return false;
       }
-    default: return true;
+    // EBML (WebM/Matroska), Ogg, RIFF/WAVE, MP3 (ID3 tag or MPEG frame sync)
+    // and MP4 audio (ISO-BMFF with an MP4 brand and no HEIF brand).
+    case "audio/webm": return b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3;
+    case "audio/ogg": return ascii(0, "OggS");
+    case "audio/wav": return b.length >= 12 && ascii(0, "RIFF") && ascii(8, "WAVE");
+    case "audio/mpeg": return ascii(0, "ID3") || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0);
+    case "audio/mp4": {
+      const brands = ftypBrands(b);
+      return Boolean(brands) && !brands.some((brand) => HEIF_BRANDS.has(brand))
+        && brands.some((brand) => MP4_AUDIO_BRANDS.has(brand));
+    }
+    default: return false;
   }
 }
 
@@ -99,12 +134,15 @@ function timingSafeEqual(a, b) {
   return diff === 0;
 }
 
-async function readMultipart(request, maxBytes) {
-  const declared = Number(request.headers.get("content-length") ?? "0");
-  if (declared > maxBytes + 1024 * 1024) throw new ApiError(413, "too_large", "Files can be up to 25 MB.");
+// Multipart bodies are read with a byte limit (a declared length over the
+// limit is refused before reading; a streamed body is cut off at the limit)
+// and only then parsed.
+async function readMultipart(request, maxBytes, overheadBytes) {
+  const tooLarge = `Files can be up to ${Math.round(maxBytes / (1024 * 1024))} MB.`;
+  const raw = await readBodyBytes(request, maxBytes + overheadBytes, { message: tooLarge });
   let form;
   try {
-    form = await request.formData();
+    form = await new Response(raw, { headers: { "content-type": request.headers.get("content-type") ?? "" } }).formData();
   } catch {
     throw new ApiError(400, "invalid_request", "Send the file as multipart form data.");
   }
@@ -112,9 +150,35 @@ async function readMultipart(request, maxBytes) {
   if (!file || typeof file === "string" || typeof file.arrayBuffer !== "function") {
     throw new ApiError(400, "invalid_request", "Attach a file in the \"file\" field.");
   }
-  if (file.size > maxBytes) throw new ApiError(413, "too_large", "Files can be up to 25 MB.");
+  if (file.size > maxBytes) throw new ApiError(413, "too_large", tooLarge);
   if (file.size === 0) throw new ApiError(400, "invalid_request", "The file is empty.");
   return { form, file };
+}
+
+// Model-influenced text (proposal titles) and user text (rejection reasons)
+// is flattened before it is written into a system note: no markup, control
+// characters or line breaks. Notes are replayed to the model as data.
+export function noteText(value, max = 160) {
+  const text = String(value ?? "").replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim();
+  return text.slice(0, max);
+}
+
+// Fixed browser-facing messages for approved actions that failed. Gateway or
+// downstream error text is never returned; the code is logged instead.
+const ACTION_ERROR_MESSAGES = Object.freeze({
+  forbidden: "Your Atlas role cannot run this action.",
+  not_found: "Something this action needs could not be found. Nothing was changed.",
+  conflict: "The record changed since this was prepared. Nothing was changed; prepare it again.",
+  invalid_arguments: "The stored action is not valid and was not run.",
+  not_executable: "Atlas does not make this change. Open the linked screen to review it yourself.",
+  unavailable: "Atlas could not complete this action right now. Nothing was confirmed.",
+  failed: "The action could not be completed.",
+});
+
+function actionError(outcome) {
+  const raw = String(outcome?.error?.code ?? "failed");
+  const code = Object.hasOwn(ACTION_ERROR_MESSAGES, raw) ? raw : "failed";
+  return { code, message: ACTION_ERROR_MESSAGES[code] };
 }
 
 function sseHeaders() {
@@ -144,7 +208,6 @@ export function createAtlasAiHandler(deps) {
     services,
     config,
   };
-  const throttle = createMintThrottle(config.limits.voiceMintsPerMinute);
   const resolve = deps.resolveActor ?? ((request) => sharedResolveActor(request, { get: env }, fetchImpl));
 
   const actorArgs = (actor) => ({ p_actor_id: actor.userId, p_actor_role: actor.role });
@@ -258,7 +321,11 @@ export function createAtlasAiHandler(deps) {
     const body = await readJsonBody(request, config.limits.jsonBodyBytes);
     const patch = body.patch && typeof body.patch === "object" ? body.patch : body;
     const allowed = {};
-    for (const key of ["enabled", "media_retention_days", "audio_retention", "daily_turn_limit_per_user"]) if (key in patch) allowed[key] = patch[key];
+    for (const key of [
+      "enabled", "media_retention_days", "audio_retention", "daily_turn_limit_per_user",
+      "voice_sessions_per_day", "voice_minutes_per_day", "max_concurrent_voice_sessions",
+      "upload_bytes_per_day", "upload_files_per_day",
+    ]) if (key in patch) allowed[key] = patch[key];
     return services.rpc("atlas_ai_settings_set", { ...actorArgs(actor), p_patch: allowed });
   }
 
@@ -362,7 +429,9 @@ export function createAtlasAiHandler(deps) {
       outcome = { ok: false, error: { code: "failed", message: "The action could not be completed." } };
     }
     const ok = outcome?.ok === true;
-    const errorMessage = ok ? null : redactSecrets(String(outcome?.error?.message ?? "The action could not be completed.")).slice(0, 500);
+    const failure = ok ? null : actionError(outcome);
+    if (!ok) console.warn("[atlas-ai] approved action failed", action.kind, failure.code);
+    const errorMessage = ok ? null : failure.message;
     const finished = await services.rpc("atlas_ai_action_transition", {
       p_action_id: actionId,
       p_to_status: ok ? "executed" : "failed",
@@ -373,16 +442,17 @@ export function createAtlasAiHandler(deps) {
     await safeRpc(services, "atlas_ai_record_decision", {
       p_action_id: actionId, p_decision: "approve", ...actorArgs(actor), p_notes: ok ? null : `Execution failed: ${errorMessage}`,
     });
-    const summary = ok && typeof outcome.result?.summary === "string" ? ` ${redactSecrets(outcome.result.summary).slice(0, 300)}` : "";
+    const summary = ok && typeof outcome.result?.summary === "string" ? noteText(redactSecrets(outcome.result.summary), 300) : "";
+    const title = noteText(action.title) || "Proposal";
     const note = ok
-      ? `Approved by ${actor.label}: ${action.title}. Done.${summary}`
-      : `Approved by ${actor.label}: ${action.title}. It could not be completed: ${errorMessage}`;
+      ? `Approved by ${noteText(actor.label, 120)}: ${title}. Done.${summary ? ` ${summary}` : ""}`
+      : `Approved by ${noteText(actor.label, 120)}: ${title}. It could not be completed: ${errorMessage}`;
     const noteId = await appendNote(actor, action.conversation_id, note, `action:${actionId}:${ok ? "executed" : "failed"}`);
     return {
       ok,
       action: finished?.action ?? action,
       result: ok ? boundedResult(outcome.result ?? {}) : null,
-      error: ok ? null : { code: String(outcome?.error?.code ?? "failed").slice(0, 60), message: errorMessage },
+      error: ok ? null : { code: failure.code, message: errorMessage },
       note_message_id: noteId,
     };
   }
@@ -403,15 +473,20 @@ export function createAtlasAiHandler(deps) {
       p_action_id: actionId, p_decision: "reject", ...actorArgs(actor), p_notes: reason || null,
     });
     const action = transition.action;
+    const noteReason = noteText(reason, 300);
     const noteId = await appendNote(actor, action.conversation_id,
-      `Rejected by ${actor.label}: ${action.title}.${reason ? ` Reason: ${reason}` : ""}`, `action:${actionId}:rejected`);
+      `Rejected by ${noteText(actor.label, 120)}: ${noteText(action.title) || "Proposal"}.${noteReason ? ` Reason: ${noteReason}` : ""}`, `action:${actionId}:rejected`);
     return { ok: true, action, note_message_id: noteId };
   }
 
   // --- Media ----------------------------------------------------------------
 
   async function upload(request, actor) {
-    const { form, file } = await readMultipart(request, config.limits.uploadBytes);
+    // Uploads follow the Atlas AI switch (not the turn limit); the per-user
+    // daily byte and file quotas are enforced atomically in
+    // atlas_ai_media_register.
+    await requireAi(actor, { count: false });
+    const { form, file } = await readMultipart(request, config.limits.uploadBytes, config.limits.multipartOverheadBytes);
     const mime = normaliseUploadMime(file.type);
     const type = UPLOAD_TYPES[mime];
     if (!type) throw new ApiError(415, "unsupported_type", "Atlas AI accepts photos, PDFs, text or CSV files and voice notes.");
@@ -450,11 +525,12 @@ export function createAtlasAiHandler(deps) {
 
   async function transcribe(request, actor) {
     await requireAi(actor, { count: true });
-    const { form, file } = await readMultipart(request, config.limits.transcribeBytes);
+    const { form, file } = await readMultipart(request, config.limits.transcribeBytes, config.limits.multipartOverheadBytes);
     const mime = normaliseAudioMime(file.type);
     if (!AUDIO_TYPES[mime]) throw new ApiError(415, "unsupported_type", "Record voice notes as WebM, Ogg, MP4, MPEG or WAV audio.");
     const conversationId = uuidOrNull(form.get("conversation_id"), "conversation_id");
     const bytes = new Uint8Array(await file.arrayBuffer());
+    if (!contentMatches(mime, bytes)) throw new ApiError(415, "unsupported_type", "The recording content does not match its audio type.");
     const keywords = await transcriptionKeywords(services, actor, config.limits.transcriptionKeywords);
     const runId = await startRun(services, actor, conversationId, "voice_note", { transcribe: config.models.transcribe });
     let transcript;
@@ -497,12 +573,14 @@ export function createAtlasAiHandler(deps) {
     return created.id;
   }
 
+  // Live voice (F1/F11): the mint is reserved atomically in the database
+  // (enabled, durable per-minute throttle, daily turn limit, daily voice
+  // sessions, concurrency and the estimated minutes budget) before the
+  // provider is called. The returned voice_session_id (or the provider
+  // session_id) must accompany voice-tool and voice-append calls.
   async function voiceSession(body, actor) {
     const gateway = gatewayOrUnavailable();
     await requireAi(actor, { count: true });
-    if (!throttle(actor.userId, now())) {
-      throw new ApiError(429, "rate_limited", "Too many voice sessions started. Please wait a minute.");
-    }
     const conversationId = await ensureConversation(actor, uuidOrNull(body.conversation_id, "conversation_id"));
     if (body.conversation_id) {
       // Ownership check before minting.
@@ -515,24 +593,64 @@ export function createAtlasAiHandler(deps) {
     const session = buildRealtimeSession({
       config, actor, gateway, keywords, preferences: preferencesValue, nowIso: new Date(now()).toISOString(), conversationId,
     });
-    const runId = await startRun(services, actor, conversationId, "voice", { realtime: config.models.realtime });
+    const reserved = await services.rpc("atlas_ai_voice_session_start", {
+      ...actorArgs(actor),
+      p_conversation_id: conversationId,
+      p_models: { realtime: config.models.realtime },
+      p_mints_per_minute: config.limits.voiceMintsPerMinute,
+    });
+    const voiceSessionId = reserved?.voice_session_id ?? null;
+    const runId = reserved?.run_id ?? null;
     let minted;
     try {
       minted = await mintRealtimeSecret(runtime, openaiApiKey(env), session, config.limits.realtimeSecretSeconds);
     } catch (error) {
+      if (voiceSessionId) {
+        await safeRpc(services, "atlas_ai_voice_session_touch", {
+          p_voice_session_id: voiceSessionId, ...actorArgs(actor), p_event: "mint_failed", p_provider_session_id: null,
+        });
+      }
       await finishRun(services, actor, runId, { status: "failed", errorCode: error?.code ?? "provider_error" });
       throw error;
     }
     await finishRun(services, actor, runId, { status: "completed", models: { realtime: config.models.realtime, voice: config.voice } });
+    const providerSessionId = typeof minted.session?.id === "string" ? minted.session.id.slice(0, 120) : null;
+    if (voiceSessionId && providerSessionId) {
+      await safeRpc(services, "atlas_ai_voice_session_touch", {
+        p_voice_session_id: voiceSessionId, ...actorArgs(actor), p_event: "activate", p_provider_session_id: providerSessionId,
+      });
+    }
     return {
       client_secret: minted.value,
       expires_at: minted.expires_at ?? null,
       model: config.models.realtime,
       voice: config.voice,
-      session_id: minted.session?.id ?? null,
+      session_id: providerSessionId,
+      voice_session_id: voiceSessionId,
+      voice_session_expires_at: reserved?.hard_expires_at ?? null,
       conversation_id: conversationId,
       run_id: runId,
     };
+  }
+
+  // The live voice session owned by the actor (Atlas voice_session_id, or the
+  // provider session_id returned by voice-session). Throws
+  // voice_session_inactive when it is missing, unknown or over.
+  async function touchVoiceSession(actor, body, event) {
+    const raw = typeof body.voice_session_id === "string" && body.voice_session_id.trim()
+      ? body.voice_session_id
+      : typeof body.session_id === "string" ? body.session_id : "";
+    const key = raw.trim().slice(0, 120);
+    if (!key) throw new ApiError(409, "voice_session_inactive", "This live voice session has ended. Start a new one to continue.");
+    return services.rpc("atlas_ai_voice_session_touch", {
+      p_voice_session_id: key, ...actorArgs(actor), p_event: event, p_provider_session_id: null,
+    });
+  }
+
+  function assertVoiceConversation(voice, conversationId) {
+    if (voice?.conversation_id && voice.conversation_id !== conversationId) {
+      throw new ApiError(400, "invalid_request", "This voice session belongs to another conversation.");
+    }
   }
 
   function parseToolArguments(value) {
@@ -553,10 +671,12 @@ export function createAtlasAiHandler(deps) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (!/^[a-z][a-z0-9_.]{0,119}$/.test(name)) throw new ApiError(400, "invalid_request", "Unknown voice tool.");
     const args = parseToolArguments(body.arguments);
-    const voiceSessionId = typeof body.voice_session_id === "string" ? body.voice_session_id.slice(0, 120) : null;
 
     if (name === "ask_atlas") {
       await requireAi(actor, { count: true });
+      const voice = await touchVoiceSession(actor, body, "tool");
+      assertVoiceConversation(voice, conversationId);
+      const voiceSessionId = voice?.voice_session_id ?? null;
       const request = String(args.request ?? "").trim().slice(0, config.limits.messageChars);
       if (!request) throw new ApiError(400, "invalid_request", "ask_atlas needs a request.");
       const runId = await startRun(services, actor, conversationId, "voice", { orchestrator: config.models.orchestrator, voice_session_id: voiceSessionId });
@@ -572,6 +692,9 @@ export function createAtlasAiHandler(deps) {
     }
 
     await requireAi(actor, { count: false });
+    const voice = await touchVoiceSession(actor, body, "tool");
+    assertVoiceConversation(voice, conversationId);
+    const voiceSessionId = voice?.voice_session_id ?? null;
     const entry = (gateway.toolsForRole(actor.role, { levels: ["read", "draft"] }) ?? [])
       .find((candidate) => candidate && candidate.level !== "execute" && (candidate.fnName === name || candidate.name === name));
     if (!entry) throw new ApiError(403, "forbidden", "That is not available for your Atlas role.");
@@ -595,6 +718,8 @@ export function createAtlasAiHandler(deps) {
 
   async function voiceAppend(body, actor) {
     const conversationId = requireUuid(body.conversation_id, "conversation_id");
+    const voice = await touchVoiceSession(actor, body, "append");
+    assertVoiceConversation(voice, conversationId);
     if (!Array.isArray(body.turns) || !body.turns.length || body.turns.length > config.limits.voiceTurns) {
       throw new ApiError(400, "invalid_request", `Send 1 to ${config.limits.voiceTurns} transcript turns.`);
     }
@@ -607,7 +732,17 @@ export function createAtlasAiHandler(deps) {
       }
       return { role, content, source: "live_voice", items: historyItemsFor({ role, content, status: "complete" }), client_request_id: requestId };
     });
-    return services.rpc("atlas_ai_messages_append", { p_conversation_id: conversationId, ...actorArgs(actor), p_messages: messages });
+    const appended = await services.rpc("atlas_ai_messages_append", { p_conversation_id: conversationId, ...actorArgs(actor), p_messages: messages });
+    if (body.ended === true) await touchVoiceSession(actor, body, "end");
+    return appended;
+  }
+
+  // Ends a live voice session: frees the concurrency slot and stops Atlas
+  // serving its tools. The browser closes the Realtime call itself; the
+  // server cannot force-close an established call.
+  async function voiceEnd(body, actor) {
+    const voice = await touchVoiceSession(actor, body, "end");
+    return { ended: true, voice_session_id: voice?.voice_session_id ?? null, ended_at: voice?.ended_at ?? null };
   }
 
   async function speak(body, actor) {
@@ -683,6 +818,7 @@ export function createAtlasAiHandler(deps) {
     "voice-session": { methods: ["POST"], body: true, run: (body, actor) => voiceSession(body, actor) },
     "voice-tool": { methods: ["POST"], body: true, run: (body, actor) => voiceTool(body, actor) },
     "voice-append": { methods: ["POST"], body: true, run: (body, actor) => voiceAppend(body, actor) },
+    "voice-end": { methods: ["POST"], body: true, run: (body, actor) => voiceEnd(body, actor) },
   };
 
   return async function handle(request) {

@@ -3,6 +3,7 @@
 // model implementing the Agents SDK Model interface, and SSE parsing.
 
 import { createAtlasAiHandler } from '../../../supabase/functions/atlas-ai/handler.mjs';
+import { mapRpcError } from '../../../supabase/functions/atlas-ai/http.mjs';
 import * as gateway from './atlas-ai-tools-stub.mjs';
 
 export const USERS = {
@@ -39,9 +40,15 @@ const fail = (code, message) => { throw new RpcFailure(code, message); };
 
 // In-memory implementation of the Atlas AI RPC contract (ai-data-contract.md)
 // with the owner, role, single-use and expiry rules the gateway relies on.
-export function createFakeDb() {
+export function createFakeDb({ users = USERS } = {}) {
   const db = {
-    settings: { enabled: true, media_retention_days: 30, audio_retention: 'delete_after_transcription', daily_turn_limit_per_user: 200 },
+    settings: {
+      enabled: true, media_retention_days: 30, audio_retention: 'delete_after_transcription', daily_turn_limit_per_user: 200,
+      voice_sessions_per_day: 20, voice_minutes_per_day: 60, max_concurrent_voice_sessions: 1,
+      upload_bytes_per_day: 262144000, upload_files_per_day: 100,
+    },
+    voiceSessions: new Map(),
+    rateEvents: [],
     conversations: new Map(),
     messages: [],
     runs: new Map(),
@@ -56,7 +63,7 @@ export function createFakeDb() {
     calls: [],
     preferences: new Map(),
   };
-  const profiles = Object.fromEntries(Object.values(USERS).map((user) => [user.id, user]));
+  const profiles = Object.fromEntries(Object.values(users).map((user) => [user.id, user]));
   const requireActor = (id, role) => {
     const profile = profiles[id];
     if (!profile || !profile.active || profile.role !== role) fail('42501', 'forbidden: inactive or role mismatch');
@@ -72,10 +79,32 @@ export function createFakeDb() {
     return { ...rest, status: row.status === 'proposed' && Date.parse(row.expires_at) <= Date.now() ? 'expired' : row.status };
   };
 
+  // Mirrors the S88 hardening SQL (20260926106000_s88_ai_hardening.sql).
+  const turnsUsed = (userId) => [...db.runs.values()].filter((run) => run.user_id === userId && !['voice_tool', 'background'].includes(run.channel)).length;
+  const rateTake = (userId, bucket, limit) => {
+    const now = Date.now();
+    const used = db.rateEvents.filter((event) => event.user_id === userId && event.bucket === bucket && now - event.at < 60000).length;
+    if (used >= limit) return false;
+    db.rateEvents.push({ user_id: userId, bucket, at: now });
+    return true;
+  };
+  const liveVoice = (row) => !row.ended_at && Date.now() < Math.min(row.lease_expires_at, row.hard_expires_at);
+  const voiceUsage = (userId) => {
+    const rows = [...db.voiceSessions.values()].filter((row) => row.user_id === userId && row.end_reason !== 'mint_failed');
+    const minutes = rows.reduce((sum, row) => sum + ((row.ended_at ?? Math.min(Date.now(), row.lease_expires_at, row.hard_expires_at)) - row.started_at) / 60000, 0);
+    return { sessions_used: rows.length, live_sessions: rows.filter(liveVoice).length, minutes_used_estimate: Math.ceil(minutes) };
+  };
+  const voiceJson = (row) => ({
+    voice_session_id: row.id, conversation_id: row.conversation_id, run_id: row.run_id, provider_session_id: row.provider_session_id,
+    started_at: new Date(row.started_at).toISOString(), lease_expires_at: new Date(row.lease_expires_at).toISOString(),
+    hard_expires_at: new Date(row.hard_expires_at).toISOString(), ended_at: row.ended_at ? new Date(row.ended_at).toISOString() : null,
+    end_reason: row.end_reason, live: liveVoice(row), tool_calls: row.tool_calls, appended_turns: row.appended_turns,
+  });
+
   const rpcs = {
     atlas_ai_rate_check: ({ p_actor_id, p_actor_role }) => {
       requireActor(p_actor_id, p_actor_role);
-      const used = [...db.runs.values()].filter((run) => run.user_id === p_actor_id && !['voice_tool', 'background'].includes(run.channel)).length;
+      const used = turnsUsed(p_actor_id);
       const limit = db.settings.daily_turn_limit_per_user;
       return { enabled: db.settings.enabled, allowed: db.settings.enabled && used < limit, used, limit, remaining: Math.max(0, limit - used), window_hours: 24, resets_at: null };
     },
@@ -185,9 +214,58 @@ export function createFakeDb() {
     atlas_ai_run_start: ({ p_actor_id, p_actor_role, p_conversation_id, p_channel, p_models }) => {
       requireActor(p_actor_id, p_actor_role);
       if (p_conversation_id) owned(p_conversation_id, p_actor_id);
+      if (p_channel !== 'background') {
+        if (!db.settings.enabled) fail('55000', 'not_configured: Atlas AI is disabled');
+        if (p_channel !== 'voice_tool' && turnsUsed(p_actor_id) >= db.settings.daily_turn_limit_per_user) fail('53400', 'rate_limited: daily Atlas AI limit reached');
+      }
       const run = { id: uuid(), user_id: p_actor_id, role: p_actor_role, conversation_id: p_conversation_id, channel: p_channel, models: p_models, status: 'running' };
       db.runs.set(run.id, run);
       return { run_id: run.id, status: 'running' };
+    },
+    atlas_ai_voice_session_start: ({ p_actor_id, p_actor_role, p_conversation_id, p_models, p_mints_per_minute }) => {
+      requireActor(p_actor_id, p_actor_role);
+      if (p_conversation_id) owned(p_conversation_id, p_actor_id);
+      if (!db.settings.enabled) fail('55000', 'not_configured: Atlas AI is disabled');
+      if (!rateTake(p_actor_id, 'voice_mint', p_mints_per_minute ?? 6)) fail('53400', 'rate_limited: too many voice sessions started this minute');
+      if (turnsUsed(p_actor_id) >= db.settings.daily_turn_limit_per_user) fail('53400', 'rate_limited: daily Atlas AI limit reached');
+      const usage = voiceUsage(p_actor_id);
+      if (usage.sessions_used >= db.settings.voice_sessions_per_day) fail('53400', 'voice_quota_exceeded: daily_sessions');
+      if (usage.live_sessions >= db.settings.max_concurrent_voice_sessions) fail('53400', 'voice_quota_exceeded: concurrent');
+      if (usage.minutes_used_estimate >= db.settings.voice_minutes_per_day) fail('53400', 'voice_quota_exceeded: daily_minutes');
+      const run = { id: uuid(), user_id: p_actor_id, role: p_actor_role, conversation_id: p_conversation_id, channel: 'voice', models: p_models, status: 'running' };
+      db.runs.set(run.id, run);
+      const now = Date.now();
+      const row = { id: uuid(), user_id: p_actor_id, conversation_id: p_conversation_id, run_id: run.id, provider_session_id: null, started_at: now, lease_expires_at: now + 600000, hard_expires_at: now + 3600000, ended_at: null, end_reason: null, tool_calls: 0, appended_turns: 0 };
+      db.voiceSessions.set(row.id, row);
+      return voiceJson(row);
+    },
+    atlas_ai_voice_session_touch: ({ p_voice_session_id, p_actor_id, p_actor_role, p_event, p_provider_session_id }) => {
+      requireActor(p_actor_id, p_actor_role);
+      const key = String(p_voice_session_id ?? '').trim();
+      if (!key) fail('55000', 'voice_session_inactive: a live voice session is required');
+      const row = [...db.voiceSessions.values()].filter((entry) => entry.user_id === p_actor_id && (entry.id === key || entry.provider_session_id === key)).sort((a, b) => b.started_at - a.started_at)[0];
+      if (!row) fail('55000', 'voice_session_inactive: unknown voice session');
+      const live = liveVoice(row);
+      const end = row.ended_at ?? Math.min(row.lease_expires_at, row.hard_expires_at);
+      if (p_event === 'end' || p_event === 'mint_failed') {
+        if (!row.ended_at) Object.assign(row, { ended_at: Math.max(row.started_at, Math.min(Date.now(), row.lease_expires_at, row.hard_expires_at)), end_reason: p_event === 'mint_failed' ? 'mint_failed' : 'client_end' });
+        return voiceJson(row);
+      }
+      if (p_event === 'append') {
+        if (!live && Date.now() > end + 300000) fail('55000', 'voice_session_inactive: the voice session has ended');
+        if (!rateTake(p_actor_id, 'voice_append', 30)) fail('53400', 'rate_limited: too many voice transcript updates this minute');
+        row.appended_turns += 1;
+        return voiceJson(row);
+      }
+      if (!live) fail('55000', 'voice_session_inactive: the voice session has ended');
+      if (p_event === 'tool') {
+        if (!rateTake(p_actor_id, 'voice_tool', 30)) fail('53400', 'rate_limited: too many voice tool calls this minute');
+        row.tool_calls += 1;
+        row.lease_expires_at = Math.min(row.hard_expires_at, Date.now() + 600000);
+      } else if (p_event === 'activate') {
+        row.provider_session_id = row.provider_session_id ?? p_provider_session_id ?? null;
+      }
+      return voiceJson(row);
     },
     atlas_ai_run_finish: ({ p_run_id, p_actor_id, p_actor_role, ...rest }) => {
       requireActor(p_actor_id, p_actor_role);
@@ -262,6 +340,9 @@ export function createFakeDb() {
       requireActor(payload.p_actor_id, payload.p_actor_role);
       const prefix = `${payload.p_actor_id}/${payload.p_conversation_id ?? 'unsorted'}/`;
       if (!payload.p_path.startsWith(prefix)) fail('22023', 'invalid_arguments: path');
+      const today = [...db.media.values()].filter((row) => row.user_id === payload.p_actor_id);
+      if (today.length + 1 > db.settings.upload_files_per_day) fail('53400', 'upload_quota_exceeded: daily_files');
+      if (today.reduce((sum, row) => sum + row.bytes, 0) + payload.p_bytes > db.settings.upload_bytes_per_day) fail('53400', 'upload_quota_exceeded: daily_bytes');
       const row = { id: uuid(), user_id: payload.p_actor_id, conversation_id: payload.p_conversation_id, bucket: 'atlas-ai-media', path: payload.p_path, mime: payload.p_mime, bytes: payload.p_bytes, kind: payload.p_kind, sha256: payload.p_sha256, expires_at: null, deleted_at: null };
       db.media.set(row.id, row);
       return { ...row };
@@ -314,12 +395,7 @@ export function createFakeDb() {
       try {
         return structuredClone(fn(structuredClone(payload ?? {})));
       } catch (error) {
-        if (error instanceof RpcFailure) {
-          const map = { '42501': ['forbidden', 403], P0002: ['not_found', 404], 22023: ['invalid_request', 400], 55000: ['conflict', 409] }[error.dbCode];
-          const { ApiError } = await import('../../../supabase/functions/atlas-ai/http.mjs');
-          const friendly = { forbidden: 'This is not available for your Atlas role.', not_found: 'That could not be found.', invalid_request: 'Some of the details were not valid.', conflict: 'This was already handled or has expired.' };
-          throw new ApiError(map[1], map[0], friendly[map[0]]);
-        }
+        if (error instanceof RpcFailure) throw mapRpcError(name, error.dbCode, error.message);
         throw error;
       }
     },
@@ -334,7 +410,7 @@ export function createFakeDb() {
       for (const path of paths) { db.objects.delete(path); db.removed.push(path); }
       return { removed: paths.length };
     },
-    async profileById(id) { return Object.values(USERS).find((user) => user.id === id) ?? null; },
+    async profileById(id) { return Object.values(users).find((user) => user.id === id) ?? null; },
     async restAsUser(_actor, table) {
       if (table === 'inventory_catalog') return [{ name: 'Tanqueray' }, { name: 'Campari' }];
       if (table === 'suppliers') return [{ name: 'Globus' }];
@@ -463,6 +539,15 @@ export function createHandler({ sdk, z, respond, env = {}, services, fetchOption
     services: fake.services,
   });
   return { handle, db: fake.db, services: fake.services, fetch, gateway, modelLog: providerBundle.log, models: providerBundle.models, hooks: providerBundle.hooks };
+}
+
+// Starts a live voice session through the handler (voice-tool and
+// voice-append require one) and returns the voice-session response body.
+export async function startVoice(handle, user, conversationId) {
+  const response = await handle(request('voice-session', { user, body: conversationId ? { conversation_id: conversationId } : {} }));
+  const body = await response.json();
+  if (response.status !== 200) throw new Error(`voice-session failed: ${response.status} ${JSON.stringify(body)}`);
+  return body;
 }
 
 export function token(user) {

@@ -15,7 +15,12 @@ $$;
 
 insert into auth.users (instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 values ((select id from auth.instances limit 1),'00000000-0000-4000-8000-000000088001','authenticated','authenticated','s88-int-mgr@example.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+insert into auth.users (instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+values ((select id from auth.instances limit 1),'00000000-0000-4000-8000-000000088002','authenticated','authenticated','s88-int-admin@example.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now()),
+       ((select id from auth.instances limit 1),'00000000-0000-4000-8000-000000088003','authenticated','authenticated','s88-int-bar@example.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
 update public.profiles set role='manager', active=true where id='00000000-0000-4000-8000-000000088001';
+update public.profiles set role='admin', active=true where id='00000000-0000-4000-8000-000000088002';
+update public.profiles set role='bartender', active=true where id='00000000-0000-4000-8000-000000088003';
 
 -- ---------------------------------------------------------------- privileges
 
@@ -35,7 +40,7 @@ where (n.nspname = 'public' and p.proname like 'atlas\_integration\_%')
    or (n.nspname = 'atlas_private' and p.proname like 'integration\_%' and p.proname <> 'integration_connections');
 
 insert into s88_integrations values
-  ('service_role can execute the status wrapper', has_function_privilege('service_role', 'public.atlas_integration_status(text)', 'execute')),
+  ('service_role can execute the status wrapper', has_function_privilege('service_role', 'public.atlas_integration_status(text, uuid)', 'execute')),
   ('RLS is enabled on the three new tables', (
     select bool_and(c.relrowsecurity) from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'atlas_private' and c.relname in ('integration_credentials','integration_oauth_states','integration_events')
@@ -64,8 +69,12 @@ select public.atlas_integration_begin(
 -- A consumed-by-expiry fixture.
 select public.atlas_integration_begin(
   'facebook', repeat('34', 32), null, null, null, '#settings',
-  '00000000-0000-4000-8000-000000088001', 'S88 manager', 'admin'
+  '00000000-0000-4000-8000-000000088002', 'S88 admin', 'admin'
 );
+-- Browser binding (F10): the authorize hop binds each state once.
+select public.atlas_integration_bind_browser('google-drive', repeat('ab', 32), repeat('b1', 32));
+select public.atlas_integration_bind_browser('tiktok', repeat('12', 32), repeat('b2', 32));
+select public.atlas_integration_bind_browser('facebook', repeat('34', 32), repeat('b3', 32));
 reset role;
 update atlas_private.integration_oauth_states set expires_at = now() - interval '1 second' where state_hash = decode(repeat('34', 32), 'hex');
 set local role service_role;
@@ -80,14 +89,20 @@ begin
     select 1 from information_schema.columns where table_schema = 'atlas_private' and table_name = 'integration_oauth_states' and column_name = 'state'
   ));
 
-  v_first := public.atlas_integration_consume_state('google-drive', repeat('ab', 32));
-  v_second := public.atlas_integration_consume_state('google-drive', repeat('ab', 32));
   insert into s88_integrations values
-    ('state is consumed once', v_first is not null and v_first->>'return_path' = '#knowledge' and v_first->>'actor_role' = 'manager'),
+    ('a bound state cannot be rebound by another browser', public.atlas_integration_bind_browser('google-drive', repeat('ab', 32), repeat('c1', 32)) is null),
+    ('a state is not accepted from a different browser', public.atlas_integration_consume_state('google-drive', repeat('ab', 32), repeat('c1', 32)) is null),
+    ('a state is not accepted without the browser binding', public.atlas_integration_consume_state('google-drive', repeat('ab', 32), null) is null);
+  v_first := public.atlas_integration_consume_state('google-drive', repeat('ab', 32), repeat('b1', 32));
+  v_second := public.atlas_integration_consume_state('google-drive', repeat('ab', 32), repeat('b1', 32));
+  insert into s88_integrations values
+    ('state is consumed once', v_first is not null and v_first->>'return_path' = '#knowledge' and v_first->>'actor_role' = 'manager'
+      and (v_first->>'actor_allowed')::boolean),
     ('state replay is rejected', v_second is null),
-    ('state bound to its provider', public.atlas_integration_consume_state('google-business-profile', repeat('12', 32)) is null),
-    ('state for the right provider still works once', public.atlas_integration_consume_state('tiktok', repeat('12', 32)) is not null),
-    ('expired state is rejected', public.atlas_integration_consume_state('facebook', repeat('34', 32)) is null);
+    ('state bound to its provider', public.atlas_integration_consume_state('google-business-profile', repeat('12', 32), repeat('b2', 32)) is null),
+    ('state for the right provider still works once', public.atlas_integration_consume_state('tiktok', repeat('12', 32), repeat('b2', 32)) is not null),
+    ('expired state is rejected', public.atlas_integration_consume_state('facebook', repeat('34', 32), repeat('b3', 32)) is null),
+    ('an expired state cannot be bound', public.atlas_integration_bind_browser('facebook', repeat('34', 32), repeat('b4', 32)) is null);
 
   v_blocked := false;
   begin
@@ -142,15 +157,37 @@ begin
 
   v_blocked := false;
   begin
-    perform public.atlas_integration_status('bartender');
+    perform public.atlas_integration_status('bartender', '00000000-0000-4000-8000-000000088003');
   exception when insufficient_privilege then v_blocked := true;
   end;
   insert into s88_integrations values ('status is manager-only', v_blocked);
 
+  -- S88 hardening F7: a claimed manager role is re-checked against the profile.
+  v_blocked := false;
+  begin
+    perform public.atlas_integration_status('manager', '00000000-0000-4000-8000-000000088003');
+  exception when insufficient_privilege then v_blocked := true;
+  end;
+  insert into s88_integrations values ('a bartender claiming manager is refused', v_blocked);
+
+  v_blocked := false;
+  begin
+    perform public.atlas_integration_read_credential('google-drive', 'admin', '00000000-0000-4000-8000-000000088001');
+  exception when insufficient_privilege then v_blocked := true;
+  end;
+  insert into s88_integrations values ('a manager claiming admin cannot read credentials', v_blocked);
+
+  v_blocked := false;
+  begin
+    perform public.atlas_integration_disconnect('google-drive', null, 'x', 'manager');
+  exception when insufficient_privilege then v_blocked := true;
+  end;
+  insert into s88_integrations values ('integration writes need an actor id', v_blocked);
+
   insert into s88_integrations values
-    ('status output has no credential keys', not pg_temp.s88_has_secret_keys(public.atlas_integration_status('manager'))),
+    ('status output has no credential keys', not pg_temp.s88_has_secret_keys(public.atlas_integration_status('manager', '00000000-0000-4000-8000-000000088001'))),
     ('status reports the credential exists', exists (
-      select 1 from jsonb_array_elements(public.atlas_integration_status('admin')) row
+      select 1 from jsonb_array_elements(public.atlas_integration_status('admin', '00000000-0000-4000-8000-000000088002')) row
       where row->>'provider_key' = 'google-drive' and (row->>'has_credential')::boolean
     ));
 
@@ -196,14 +233,14 @@ begin
 
   v_blocked := false;
   begin
-    perform public.atlas_integration_read_credential('google-drive', 'admin');
+    perform public.atlas_integration_read_credential('google-drive', 'admin', '00000000-0000-4000-8000-000000088002');
   exception when insufficient_privilege then v_blocked := true;
   end;
   insert into s88_integrations values ('manager JWT cannot call the credential reader', v_blocked);
 
   v_blocked := false;
   begin
-    perform public.atlas_integration_consume_state('google-drive', repeat('ab', 32));
+    perform public.atlas_integration_consume_state('google-drive', repeat('ab', 32), repeat('b1', 32));
   exception when insufficient_privilege then v_blocked := true;
   end;
   insert into s88_integrations values ('manager JWT cannot consume OAuth state', v_blocked);

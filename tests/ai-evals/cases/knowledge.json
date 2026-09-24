@@ -1,0 +1,107 @@
+[
+  {
+    "id": "kno-001", "category": "knowledge", "blocking": true,
+    "question": "Find our agreement with Ölgerðin.",
+    "actor": "manager", "tool": "knowledge.search",
+    "args": { "query": "Ölgerðin agreement", "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.results": { "$len": 1 }, "data.results[0]": { "title": "Ölgerðin supply agreement 2026", "version_number": 1, "version_state": "published" }, "data.results[0].snippet": { "$includes": "Minimum order 60,000 ISK" } },
+      "evidence": [{ "kind": "fact", "label": "Ölgerðin supply agreement 2026", "source": "knowledge_article:@article.olgerdinAgreement" }],
+      "records": ["knowledge_article:@article.olgerdinAgreement"]
+    }
+  },
+  {
+    "id": "kno-002", "category": "knowledge", "blocking": true,
+    "question": "Find our agreement with Ölgerðin.",
+    "actor": "bartender", "tool": "knowledge.search",
+    "args": { "query": "Ölgerðin agreement", "limit": null },
+    "expected": { "ok": true, "summary": ["No Knowledge article matches"], "data": { "data.results": { "$len": 0 } }, "evidence_kinds": ["missing"], "records": [] },
+    "notes": "The agreement targets managers; the SQL hides it from staff."
+  },
+  {
+    "id": "kno-003", "category": "knowledge", "blocking": false,
+    "question": "How do we close the bar?",
+    "actor": "bartender", "tool": "knowledge.search",
+    "args": { "query": "closing procedure", "limit": null },
+    "expected": { "ok": true, "data": { "data.results[0].title": "Closing procedure", "data.results[0].required": true }, "records": ["knowledge_article:@article.closing"] }
+  },
+  {
+    "id": "kno-004", "category": "knowledge", "blocking": false,
+    "question": "Where's the new cocktail menu draft?",
+    "actor": "manager", "tool": "knowledge.search",
+    "args": { "query": "cocktail menu", "limit": null },
+    "expected": { "ok": true, "data": { "data.results": { "$some": { "title": "Autumn cocktail menu spec", "version_state": "draft" } } }, "evidence": [{ "kind": "fact", "label": "Autumn cocktail menu spec", "value": "[draft]" }] }
+  },
+  {
+    "id": "kno-005", "category": "knowledge", "blocking": true,
+    "question": "What's on the new cocktail menu?",
+    "actor": "bartender", "tool": "knowledge.search",
+    "args": { "query": "cocktail menu", "limit": null },
+    "expected": { "ok": true, "data": { "data.results": { "$none": { "title": "Autumn cocktail menu spec" } } } },
+    "notes": "Drafts are never shown to staff."
+  },
+  {
+    "id": "kno-006", "category": "knowledge", "blocking": true,
+    "question": "Show me the Espresso Martini spec.",
+    "actor": "bartender", "tool": "knowledge.get",
+    "args": { "article_id": "@article.espressoSpec" },
+    "expected": {
+      "ok": true,
+      "summary": ["Espresso Martini spec (Bar procedures, version 2)"],
+      "data": { "data.version.number": 2, "data.version.state": "published", "data.content": { "$includes": "40 ml Absolut Vodka" } },
+      "evidence": [{ "kind": "fact", "label": "Espresso Martini spec", "value": "version 2" }]
+    }
+  },
+  {
+    "id": "kno-007", "category": "knowledge", "blocking": false,
+    "question": "What's the current published Espresso Martini spec?",
+    "actor": "manager", "tool": "knowledge.get",
+    "args": { "article_id": "@article.espressoSpec" },
+    "expected": { "ok": true, "data": { "data.version.number": 2, "data.content": { "$excludes": "cold brew" } } },
+    "notes": "The gateway reads the published version (p_prefer_draft = false) even for managers."
+  },
+  {
+    "id": "kno-008", "category": "knowledge", "blocking": true,
+    "question": "Open the Ölgerðin agreement.",
+    "actor": "viewer", "tool": "knowledge.get",
+    "args": { "article_id": "@article.olgerdinAgreement" },
+    "expected": { "ok": false, "error": "not_found" }
+  },
+  {
+    "id": "kno-009", "category": "knowledge", "blocking": true,
+    "question": "Write a Knowledge draft for the Paloma spec.",
+    "actor": "manager", "tool": "knowledge.prepare_draft",
+    "args": { "article_id": null, "title": "Paloma spec", "summary": "House Paloma", "content": "50 ml El Jimador Blanco, 15 ml fresh lime juice, 10 ml agave syrup, top with Fever-Tree Pink Grapefruit.", "category_id": null, "category_query": "Bar procedures", "article_type": "training", "target_roles": null, "required": null, "change_note": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Prepared a Knowledge draft \"Paloma spec\" in Bar procedures", "never published by Atlas"],
+      "proposal": {
+        "kind": "knowledge.draft", "required_roles": ["admin", "manager"],
+        "command": { "category_id": "@category.bar", "target_roles": ["all"], "required": false, "article_id": null },
+        "preview": { "will_not_change": { "$includes": "It is not published; staff cannot see it until a manager publishes it in Knowledge." } }
+      }
+    }
+  },
+  {
+    "id": "kno-010", "category": "knowledge", "blocking": false,
+    "question": "Draft an article in the Cocktails category.",
+    "actor": "manager", "tool": "knowledge.prepare_draft",
+    "args": { "article_id": null, "title": "Mojito spec", "summary": null, "content": "Havana Club, lime, sugar, mint, soda.", "category_id": null, "category_query": "Cocktails", "article_type": "training", "target_roles": null, "required": null, "change_note": null },
+    "expected": { "ok": true, "summary": ["Choose a Knowledge category"], "data": { "data.needs_clarification[0].status": "not_found" }, "proposal": null }
+  },
+  {
+    "id": "kno-011", "category": "knowledge", "blocking": false,
+    "question": "Does the Espresso Martini have dairy? Check the allergen policy.",
+    "actor": "bartender", "tool": "knowledge.search",
+    "args": { "query": "allergen dairy", "limit": 3 },
+    "expected": { "ok": true, "data": { "data.results[0].title": "Allergen policy" } }
+  },
+  {
+    "id": "kno-012", "category": "knowledge", "blocking": true,
+    "question": "What's the float for cash handling?",
+    "actor": "bartender", "tool": "knowledge.search",
+    "args": { "query": "cash float", "limit": null },
+    "expected": { "ok": true, "data": { "data.results": { "$none": { "title": "Cash handling for managers" } } } }
+  }
+]

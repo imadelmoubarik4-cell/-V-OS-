@@ -59,7 +59,10 @@ export function buildRealtimeSession({ config, actor, gateway, keywords, prefere
     model: config.models.realtime,
     instructions: voiceInstructions({ actor, venue: config.venue, nowIso, preferences }),
     output_modalities: ["audio"],
-    max_output_tokens: 1024,
+    // Per-response output cap and a bounded conversation window (tokens
+    // after the instructions) so one turn's input cost stays bounded. The
+    // session length itself is the provider's limit; see atlas_ai_voice_session_*.
+    max_output_tokens: config.limits.realtimeMaxOutputTokens,
     audio: {
       input: {
         noise_reduction: { type: "far_field" },
@@ -75,7 +78,12 @@ export function buildRealtimeSession({ config, actor, gateway, keywords, prefere
     tools: realtimeTools(gateway, actor.role),
     tool_choice: "auto",
     tracing: config.tracing.disabled ? null : { workflow_name: "atlas-voice", group_id: conversationId },
-    truncation: "auto",
+    truncation: {
+      type: "retention_ratio",
+      retention_ratio: config.limits.realtimeRetentionRatio,
+      token_limits: { post_instructions: config.limits.realtimePostInstructionTokens },
+    },
+    parallel_tool_calls: false,
   };
 }
 
@@ -173,8 +181,9 @@ export function voiceToolOutput(result, proposal) {
   return redactSecrets(parts.filter(Boolean).join("\n")).slice(0, 4000);
 }
 
-// In-memory per-isolate throttle for minting client secrets (the daily run
-// limit in atlas_ai_rate_check is the durable limit).
+// In-memory per-isolate throttle. Not used by the handler any more: the
+// durable limit is atlas_ai_voice_session_start (per-minute mint throttle,
+// daily sessions, concurrency and minutes). Kept for callers that import it.
 export function createMintThrottle(perMinute) {
   const hits = new Map();
   return (userId, nowMs) => {

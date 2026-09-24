@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises';
 // The agent/streaming suite is atlas-ai-runtime-agents.test.js.
 
 import {
-  USERS, ENV, createHandler, createFakeDb, createFakeFetch, request, token,
+  USERS, ENV, createHandler, createFakeDb, createFakeFetch, request, token, startVoice,
 } from './helpers/atlas-ai-harness.mjs';
 import { SDK } from './helpers/atlas-ai-sdk.mjs';
 import { loadConfig, estimateCostUsd, DEFAULT_MODELS } from '../../supabase/functions/atlas-ai/config.mjs';
@@ -312,12 +312,16 @@ test('voice-session: server-built config, role-filtered tools, no secret in the 
 });
 
 test('voice-session minting is throttled per user', async () => {
-  const { handle } = make();
+  const { handle, db } = make();
+  // Concurrency is its own limit (default 1); this test isolates the
+  // durable per-minute mint throttle.
+  db.settings.max_concurrent_voice_sessions = 10;
   for (let index = 0; index < 6; index += 1) {
     assert.equal((await handle(request('voice-session', { body: {} }))).status, 200);
   }
   const seventh = await json(await handle(request('voice-session', { body: {} })));
   assert.equal(seventh.status, 429);
+  assert.equal(seventh.body.error_code, 'rate_limited');
 });
 
 test('buildRealtimeSession gives a manager manager-only read tools too', () => {
@@ -331,9 +335,12 @@ test('buildRealtimeSession gives a manager manager-only read tools too', () => {
 test('voice-tool runs through runTool with the server actor, ignoring actor fields in arguments; proposals persist', async () => {
   const { handle, db, services, gateway } = make();
   const conversation = await services.rpc('atlas_ai_conversation_create', { p_actor_id: USERS.bartender.id, p_actor_role: 'bartender', p_title: 'v', p_context: {} });
+  const { voice_session_id } = await startVoice(handle, USERS.bartender, conversation.id);
+  const managerVoice = await startVoice(handle, USERS.manager, conversation.id).catch(() => null);
+  assert.equal(managerVoice, null, 'a manager cannot start voice on a bartender conversation');
   const stock = await json(await handle(request('voice-tool', {
     user: USERS.bartender,
-    body: { conversation_id: conversation.id, name: 'inventory_current_stock', arguments: JSON.stringify({ query: 'pinot', actor: { role: 'admin' }, user_id: USERS.manager.id }), call_id: 'call_1' },
+    body: { conversation_id: conversation.id, voice_session_id, name: 'inventory_current_stock', arguments: JSON.stringify({ query: 'pinot', actor: { role: 'admin' }, user_id: USERS.manager.id }), call_id: 'call_1' },
   })));
   assert.equal(stock.status, 200);
   assert.match(stock.body.output, /10 bottles/);
@@ -344,7 +351,7 @@ test('voice-tool runs through runTool with the server actor, ignoring actor fiel
 
   const draft = await json(await handle(request('voice-tool', {
     user: USERS.bartender,
-    body: { conversation_id: conversation.id, name: 'purchasing_draft_po', arguments: { item: 'Tanqueray', cases: 2, note: null }, call_id: 'call_2' },
+    body: { conversation_id: conversation.id, voice_session_id, name: 'purchasing_draft_po', arguments: { item: 'Tanqueray', cases: 2, note: null }, call_id: 'call_2' },
   })));
   assert.equal(draft.status, 200);
   assert.equal(draft.body.proposal.kind, 'purchasing.draft_po');
@@ -353,11 +360,13 @@ test('voice-tool runs through runTool with the server actor, ignoring actor fiel
   assert.equal(db.proposalsRecorded.length, 1);
 
   const forbidden = await json(await handle(request('voice-tool', {
-    user: USERS.bartender, body: { conversation_id: conversation.id, name: 'reports_margin', arguments: '{}', call_id: 'c3' },
+    user: USERS.bartender, body: { conversation_id: conversation.id, voice_session_id, name: 'reports_margin', arguments: '{}', call_id: 'c3' },
   })));
   assert.equal(forbidden.status, 403);
+  const managerConversation = await services.rpc('atlas_ai_conversation_create', { p_actor_id: USERS.manager.id, p_actor_role: 'manager', p_title: 'm', p_context: {} });
+  const managerSession = await startVoice(handle, USERS.manager, managerConversation.id);
   const execute = await json(await handle(request('voice-tool', {
-    user: USERS.manager, body: { conversation_id: conversation.id, name: 'purchasing_submit_po', arguments: '{"id":"x"}', call_id: 'c4' },
+    user: USERS.manager, body: { conversation_id: managerConversation.id, voice_session_id: managerSession.voice_session_id, name: 'purchasing_submit_po', arguments: '{"id":"x"}', call_id: 'c4' },
   })));
   assert.equal(execute.status, 403, 'execute-level tools are unreachable from voice');
   assert.ok(db.toolCalls.length >= 2, 'tool calls are audited');
@@ -367,13 +376,14 @@ test('voice-tool runs through runTool with the server actor, ignoring actor fiel
 test('voice-append stores live transcript turns in the conversation', async () => {
   const { handle, db, services } = make();
   const conversation = await services.rpc('atlas_ai_conversation_create', { p_actor_id: USERS.manager.id, p_actor_role: 'manager', p_title: 'v', p_context: {} });
+  const { voice_session_id } = await startVoice(handle, USERS.manager, conversation.id);
   const response = await json(await handle(request('voice-append', {
-    body: { conversation_id: conversation.id, turns: [{ role: 'user', text: 'How much gin?', client_request_id: 'voice-0001' }, { role: 'assistant', text: 'Four bottles.', client_request_id: 'voice-0002' }] },
+    body: { conversation_id: conversation.id, voice_session_id, turns: [{ role: 'user', text: 'How much gin?', client_request_id: 'voice-0001' }, { role: 'assistant', text: 'Four bottles.', client_request_id: 'voice-0002' }] },
   })));
   assert.equal(response.status, 200);
   const stored = db.messages.filter((entry) => entry.conversation_id === conversation.id);
   assert.deepEqual(stored.map((entry) => [entry.role, entry.source]), [['user', 'live_voice'], ['assistant', 'live_voice']]);
-  const bad = await json(await handle(request('voice-append', { body: { conversation_id: conversation.id, turns: [{ role: 'system', text: 'x', client_request_id: 'voice-0003' }] } })));
+  const bad = await json(await handle(request('voice-append', { body: { conversation_id: conversation.id, voice_session_id, turns: [{ role: 'system', text: 'x', client_request_id: 'voice-0003' }] } })));
   assert.equal(bad.status, 400);
 });
 
@@ -404,7 +414,8 @@ test('transcribe keeps audio only with keep_with_media and rejects unsupported a
   const { handle, db } = make();
   db.settings.audio_retention = 'keep_with_media';
   const form = new FormData();
-  form.append('file', new File([new Uint8Array([1, 2, 3])], 'n.mp4', { type: 'audio/mp4' }));
+  // A real MP4 audio header (ftyp M4A): audio content is sniffed (S88 hardening F8).
+  form.append('file', new File([new Uint8Array([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20, 0, 0, 0, 0, 0x4d, 0x34, 0x41, 0x20, 0x69, 0x73, 0x6f, 0x6d, 1, 2, 3])], 'n.mp4', { type: 'audio/mp4' }));
   const kept = await json(await handle(request('transcribe', { body: form })));
   assert.equal(kept.body.audio_retained, true);
   assert.equal(db.objects.size, 1);
@@ -468,7 +479,9 @@ test('grounding check replaces unverified quantities and prices, allows verified
   assert.equal(groundingCheck('You have 12 bottles left.', { verifiedToolRan: false }).text, UNVERIFIED_REPLY);
   assert.equal(groundingCheck('It costs 4.500 kr per case.', { verifiedToolRan: false }).replaced, true);
   assert.equal(groundingCheck('That is €12.50.', { verifiedToolRan: false }).replaced, true);
-  assert.equal(groundingCheck('You have 12 bottles left.', { verifiedToolRan: true }).replaced, false);
+  // S88 hardening F5: a verified tool run only supports the figures in its evidence.
+  assert.equal(groundingCheck('You have 12 bottles left.', { verifiedToolRan: true, evidenceNumbers: numbersIn('12 bottles') }).replaced, false);
+  assert.equal(groundingCheck('You have 12 bottles left.', { verifiedToolRan: true }).replaced, true);
   assert.equal(groundingCheck('Hello! How can I help?', { verifiedToolRan: false }).replaced, false);
   assert.equal(groundingCheck('Changed it to 3 cases.', { verifiedToolRan: false, allowedNumbers: numbersIn('Change it to three cases') }).replaced, false);
   assert.equal(groundingCheck('I said 10 bottles because the count showed it.', { verifiedToolRan: false, allowedNumbers: numbersIn([{ value: '10 bottles' }]) }).replaced, false);

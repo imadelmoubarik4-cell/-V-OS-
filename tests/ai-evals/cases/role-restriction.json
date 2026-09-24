@@ -1,0 +1,37 @@
+[
+  { "id": "role-001", "category": "role_restriction", "blocking": true, "question": "What needs ordering this week?", "actor": "bartender", "tool": "purchasing.suggest", "args": { "supplier_id": null, "include_ordered": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-002", "category": "role_restriction", "blocking": true, "question": "What does a Margarita cost us?", "actor": "viewer", "tool": "recipes.cost", "args": { "recipe_id": null, "recipe_query": "Margarita" }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-003", "category": "role_restriction", "blocking": true, "question": "Which cocktails have the best margin?", "actor": "bartender", "tool": "recipes.best_margin", "args": { "limit": null, "ready_only": null, "menu_only": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-004", "category": "role_restriction", "blocking": true, "question": "I counted six Tanqueray.", "actor": "viewer", "tool": "inventory.prepare_count", "args": { "entries": [{ "item_id": null, "item_query": "Tanqueray", "quantity": 6, "unit": "bottle", "note": null }], "title": null, "note": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-005", "category": "role_restriction", "blocking": true, "question": "Order two cases of Tanqueray.", "actor": "bartender", "tool": "purchasing.prepare_draft_po", "args": { "supplier_id": null, "supplier_query": "Mekka", "use_suggestions": null, "lines": [{ "item_id": null, "item_query": "Tanqueray", "quantity": 12, "unit_cost": null }], "note": null, "expected_delivery_date": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-006", "category": "role_restriction", "blocking": true, "question": "How much Angelo do we have?", "actor": "deactivated", "tool": "inventory.current_stock", "args": { "item_ids": null, "query": "Angelo", "category": null, "limit": null }, "expected": { "ok": false, "error": "forbidden", "message": ["An active Atlas profile is required"] }, "notes": "A deactivated profile gets nothing, even for a read." },
+  { "id": "role-007", "category": "role_restriction", "blocking": true, "question": "What data needs fixing?", "actor": "bartender", "tool": "data_quality.review_list", "args": { "issue": null, "limit": null, "offset": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-008", "category": "role_restriction", "blocking": true, "question": "What did the managers decide about Angelo?", "actor": "viewer", "tool": "decisions.history", "args": { "query": "Angelo", "subject_type": null, "subject_key": null, "limit": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-009", "category": "role_restriction", "blocking": true, "question": "How much did we spend with suppliers?", "actor": "bartender", "tool": "reports.spend", "args": { "days": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-010", "category": "role_restriction", "blocking": true, "question": "Open the purchase orders.", "actor": "bartender", "tool": "app.open", "args": { "target": "purchase_orders", "record_type": null, "record_id": null, "label": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-011", "category": "role_restriction", "blocking": true, "question": "What products increased in cost?", "actor": "viewer", "tool": "purchasing.cost_changes", "args": { "days": null, "min_increase_percent": null, "limit": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-012", "category": "role_restriction", "blocking": true, "question": "What is our stock worth?", "actor": "bartender", "tool": "reports.inventory_value", "args": { "category": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-013", "category": "role_restriction", "blocking": true, "question": "Who's working Friday? I need to add someone.", "actor": "bartender", "tool": "shifts.prepare_draft", "args": { "person_id": null, "person_query": "Anna", "date": "2026-09-25", "start_time": "17:00", "end_time": "01:00", "role_name": null, "break_minutes": null, "note": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-014", "category": "role_restriction", "blocking": true, "question": "Open the cash handling policy.", "actor": "bartender", "tool": "knowledge.get", "args": { "article_id": "@article.managerCash" }, "expected": { "ok": false, "error": "not_found" } },
+  { "id": "role-015", "category": "role_restriction", "blocking": true, "question": "Show me every setting.", "actor": "bartender", "tool": "settings.read", "args": { "section": "all" }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-016", "category": "role_restriction", "blocking": true, "question": "Which integrations are connected?", "actor": "viewer", "tool": "integrations.status", "args": {}, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-017", "category": "role_restriction", "blocking": true, "question": "Draft a Knowledge article about the new glassware.", "actor": "bartender", "tool": "knowledge.prepare_draft", "args": { "article_id": null, "title": "Glassware", "summary": null, "content": "New coupes.", "category_id": null, "category_query": "Bar procedures", "article_type": "reference", "target_roles": null, "required": null, "change_note": null }, "expected": { "ok": false, "error": "forbidden" } },
+  { "id": "role-018", "category": "role_restriction", "blocking": true, "question": "Send a message to the team.", "actor": "viewer", "tool": "team.prepare_message", "args": { "channel_key": "general", "body": "Hi all", "link_type": null, "link_key": null, "link_label": null }, "expected": { "ok": false, "error": "forbidden" } },
+  {
+    "id": "role-019", "category": "role_restriction", "blocking": true, "question": "What needs ordering?", "actor": "admin", "tool": "purchasing.suggest", "args": { "supplier_id": null, "include_ordered": null },
+    "expected": { "ok": true, "data": { "data.counts.suggested": 6, "data.estimated_total": 222960 } }
+  },
+  {
+    "id": "role-020", "category": "role_restriction", "blocking": true, "question": "What does a Margarita cost?", "actor": "admin", "tool": "recipes.cost", "args": { "recipe_id": null, "recipe_query": "Margarita" },
+    "expected": { "ok": true, "data": { "data.cost_per_serving": { "$approx": 534.643, "$tol": 0.01 }, "data.margin_percent": { "$approx": 81.564, "$tol": 0.01 } } },
+    "notes": "50 ml El Jimador 307.14 + 25 ml Cointreau 200 + 25 ml lime juice 27.50 = 534.64 ISK."
+  },
+  {
+    "id": "role-021", "category": "role_restriction", "blocking": true, "question": "Show me the supplier details on the Tanqueray.", "actor": "bartender", "tool": "inventory.get", "args": { "item_id": "@item.tanqueray" },
+    "expected": { "ok": true, "redacted": true, "data": { "data.item.supplier": { "$absent": true }, "data.item.cost_price": { "$absent": true }, "data.item.quantity": 4 } }
+  },
+  {
+    "id": "role-022", "category": "role_restriction", "blocking": false, "question": "Open the Margarita recipe.", "actor": "viewer", "tool": "app.open", "args": { "target": "recipes", "record_type": "recipe", "record_id": "@recipe.margarita", "label": "Margarita" },
+    "expected": { "ok": true, "data": { "data.route": { "$match": "^#recipes\\?recipe=" } } }
+  }
+]

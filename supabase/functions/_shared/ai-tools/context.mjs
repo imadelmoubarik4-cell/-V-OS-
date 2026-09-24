@@ -162,7 +162,11 @@ export function modifyProposalArgs(lastProposal, text) {
     const source = Array.isArray(lastProposal.args.lines) && lastProposal.args.lines.length
       ? lastProposal.args.lines
       : lines.map((line) => ({ item_id: line.item_id, item_query: null, quantity: line.quantity, unit_cost: null }));
-    const nextLines = source.map((line) => (line.item_id === target.item_id ? { ...line, item_query: null, quantity: newQuantity } : line));
+    // Lines drafted by name (item_query) have no item_id yet; the proposal's
+    // resolved lines are in the same order, so match those by position.
+    const nextLines = source.map((line, index) => ((line.item_id ? line.item_id === target.item_id : lines[index]?.item_id === target.item_id)
+      ? { ...line, item_id: target.item_id, item_query: null, quantity: newQuantity }
+      : line));
     return { tool: lastProposal.tool, args: { ...lastProposal.args, use_suggestions: false, lines: nextLines } };
   }
   if (lastProposal.tool === "inventory.prepare_count") {

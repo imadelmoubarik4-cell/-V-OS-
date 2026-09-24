@@ -46,7 +46,8 @@ select 'every ai_* table has RLS and no anon/authenticated/public privilege',
     and not has_table_privilege('anon', c.oid, 'select,insert,update,delete,truncate,references,trigger')
     and not has_table_privilege('authenticated', c.oid, 'select,insert,update,delete,truncate,references,trigger')
     and has_table_privilege('service_role', c.oid, 'select,insert,update,delete'))
-  and count(*) = 8,
+  -- 8 S88 tables + ai_voice_sessions and ai_rate_events (20260926106000_s88_ai_hardening.sql)
+  and count(*) = 10,
   string_agg(c.relname, ',' order by c.relname)
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'atlas_private' and c.relkind = 'r' and c.relname like 'ai\_%';
@@ -60,7 +61,8 @@ select 'every atlas_ai_* RPC and atlas_knowledge_search is service-role only, in
     and not p.prosecdef
     and coalesce(p.proconfig @> array['search_path=""'], false))
   -- 31 data-layer RPCs + atlas_ai_signals_upsert (20260926105000_s88_ai_signals.sql)
-  and count(*) = 32,
+  -- + atlas_ai_voice_session_start/_touch (20260926106000_s88_ai_hardening.sql)
+  and count(*) = 34,
   count(*)::text || ' functions'
 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public' and (p.proname like 'atlas\_ai\_%' or p.proname = 'atlas_knowledge_search');
@@ -118,6 +120,8 @@ begin
       'select count(*) from atlas_private.ai_media',
       'select count(*) from atlas_private.ai_user_preferences',
       'select count(*) from atlas_private.ai_settings',
+      'select count(*) from atlas_private.ai_voice_sessions',
+      'select count(*) from atlas_private.ai_rate_events',
       'insert into atlas_private.ai_conversations (user_id) values (''00000000-0000-4000-8000-000000088801'')',
       'insert into atlas_private.ai_messages (conversation_id, role) values (gen_random_uuid(), ''user'')',
       'insert into atlas_private.ai_actions (user_id, role_at_proposal, kind, title, command) values (''00000000-0000-4000-8000-000000088801'', ''manager'', ''x.y'', ''t'', ''{"a":1}'')',
@@ -250,9 +254,9 @@ begin
     not (r->'context' ? 'focus_date') and r->'context'->'filters'->>'category' = 'wine' and r->'context' ? 'last_records', r::text);
 
   -- Action proposals
-  a_mgr_only := (public.atlas_ai_action_create(bar, 'bartender', bar_conv, null, 'purchasing.draft_po',
+  a_mgr_only := (public.atlas_ai_action_create(bar, 'bartender', bar_conv, null, 'purchase_order.create',
     'Order 3 cases of Pinot Grigio', '{"summary":"Draft purchase order for Angelo Pinot Grigio"}'::jsonb, cmd,
-    array['manager'], 86400)->>'id')::uuid;
+    array['admin','manager'], 86400)->>'id')::uuid;
   insert into s88_ai values ('bartender cannot approve a proposal whose required_roles is manager',
     public.s88_expect(format('select public.atlas_ai_action_transition(%L,%L,%L,%L)', a_mgr_only, 'executing', bar, 'bartender')) = '42501'
     and (select status from atlas_private.ai_actions where id = a_mgr_only) = 'proposed', null);
@@ -295,9 +299,9 @@ begin
     and (select status from atlas_private.brain_recommendations where id = rec) = 'accepted'
     and (select shadow_mode from atlas_private.brain_recommendations where id = rec), r::text);
 
-  a_rejected := (public.atlas_ai_action_create(bar, 'bartender', bar_conv, null, 'team.message',
-    'Tell the team the fridge is fixed', '{}'::jsonb, '{"action":"team_message","body":"Fridge fixed"}'::jsonb,
-    array['bartender','manager'], 86400)->>'id')::uuid;
+  a_rejected := (public.atlas_ai_action_create(bar, 'bartender', bar_conv, null, 'team_message.send',
+    'Tell the team the fridge is fixed', '{}'::jsonb, '{"channel_key":"general","body":"Fridge fixed"}'::jsonb,
+    array['admin','bartender','manager'], 86400)->>'id')::uuid;
   perform public.atlas_ai_record_proposal(a_rejected, bar, 'bartender', '[]'::jsonb, null, null, null);
   r := public.atlas_ai_action_transition(a_rejected, 'rejected', bar, 'bartender', null, 'Not needed');
   r2 := public.atlas_ai_record_decision(a_rejected, 'reject', bar, 'bartender', null);
@@ -307,8 +311,8 @@ begin
     and exists (select 1 from atlas_private.brain_decisions d join atlas_private.ai_actions a on a.brain_recommendation_id = d.recommendation_id
       where a.id = a_rejected and d.decision = 'reject' and d.decided_by = bar), r2::text);
 
-  a_expiring := (public.atlas_ai_action_create(bar, 'bartender', bar_conv, null, 'inventory.count_draft',
-    'Save a count draft', '{}'::jsonb, '{"action":"stock_count_draft"}'::jsonb, array['bartender','manager'], 3600)->>'id')::uuid;
+  a_expiring := (public.atlas_ai_action_create(bar, 'bartender', bar_conv, null, 'stock_count.draft',
+    'Save a count draft', '{}'::jsonb, '{"action":"stock_count_draft"}'::jsonb, array['admin','bartender','manager'], 3600)->>'id')::uuid;
   perform public.atlas_ai_record_proposal(a_expiring, bar, 'bartender', '[]'::jsonb, null, null, null);
   update atlas_private.ai_actions set expires_at = pg_catalog.now() - interval '1 minute' where id = a_expiring;
   state := public.s88_expect(format('select public.atlas_ai_action_transition(%L,%L,%L,%L)', a_expiring, 'executing', bar, 'bartender'));
@@ -318,8 +322,8 @@ begin
     and (select status from atlas_private.ai_actions where id = a_expiring) = 'expired'
     and (select b.status from atlas_private.brain_recommendations b join atlas_private.ai_actions a on a.brain_recommendation_id = b.id where a.id = a_expiring) = 'expired', r::text);
 
-  a_mgr := (public.atlas_ai_action_create(mgr, 'manager', mgr_conv, msg_id, 'shifts.draft', 'Draft Friday shift', '{}'::jsonb,
-    '{"action":"shift_draft"}'::jsonb, array['manager'], 86400)->>'id')::uuid;
+  a_mgr := (public.atlas_ai_action_create(mgr, 'manager', mgr_conv, msg_id, 'shift.draft', 'Draft Friday shift', '{}'::jsonb,
+    '{"action":"shift_draft"}'::jsonb, array['admin','manager'], 86400)->>'id')::uuid;
   insert into s88_ai values ('staff cannot read, approve or reject another user''s proposal',
     public.s88_expect(format('select public.atlas_ai_action_get(%L,%L,%L)', a_mgr, bar, 'bartender')) = 'P0002'
     and public.s88_expect(format('select public.atlas_ai_action_transition(%L,%L,%L,%L)', a_mgr, 'rejected', bar, 'bartender')) = 'P0002'
@@ -417,11 +421,14 @@ begin
   r := public.atlas_ai_run_finish(run1, bar, 'bartender', 'completed', 1200, 300, 0.0042, null, null, null);
   perform public.atlas_ai_run_start(bar, 'bartender', null, 'voice_note', '{}');
   perform public.atlas_ai_run_start(bar, 'bartender', null, 'voice_tool', '{}');
+  -- The next counted turn is refused at run start (atomic reservation).
+  state := public.s88_expect(format('select public.atlas_ai_run_start(%L,%L,null,%L)', bar, 'bartender', 'text'));
   insert into s88_ai values ('runs record observability and the daily turn limit blocks the next turn',
     (r2->>'allowed')::boolean and (r2->>'used')::int = 1
     and (r->>'tool_calls')::int = 2 and (r->>'tokens_in')::int = 1200 and r->>'status' = 'completed' and (r->>'latency_ms')::int >= 0
     and not (public.atlas_ai_rate_check(bar, 'bartender')->>'allowed')::boolean
     and (public.atlas_ai_rate_check(bar, 'bartender')->>'used')::int = 2
+    and state = '53400'
     and (public.atlas_ai_rate_check(mgr, 'manager')->>'allowed')::boolean
     and (select count(*) from atlas_private.ai_tool_calls where run_id = run1 and role = 'bartender') = 2
     and public.s88_expect(format('select public.atlas_ai_run_finish(%L,%L,%L,%L)', run1, mgr, 'manager', 'failed')) = 'P0002'

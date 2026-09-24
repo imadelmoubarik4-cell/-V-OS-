@@ -1,0 +1,73 @@
+[
+  {
+    "id": "set-001", "category": "settings", "blocking": true,
+    "question": "What are our opening hours?",
+    "actor": "manager", "tool": "settings.read",
+    "args": { "section": "hours" },
+    "expected": {
+      "ok": true,
+      "summary": ["Opening hours are not set in Settings"],
+      "data": { "data.hours_configured": false, "data.business_hours": { "$len": 0 } },
+      "evidence": [{ "kind": "missing", "label": "Opening hours", "value": "not set in Settings" }, { "kind": "fact", "label": "Time zone", "value": "(default; not set in Settings)" }],
+      "unknown": { "count": 1 }
+    },
+    "notes": "No business-hours rows: Atlas must not assume hours."
+  },
+  {
+    "id": "set-002", "category": "settings", "blocking": true,
+    "question": "What are our opening hours?",
+    "actor": "bartender", "world": "hours", "tool": "settings.read",
+    "args": { "section": "hours" },
+    "expected": {
+      "ok": true,
+      "data": { "data.hours_configured": true, "data.business_hours": { "$len": 7 }, "data.business_hours[5]": { "weekday": "Friday", "open_time": "16:00", "close_time": "03:00", "close_next_day": true }, "data.business_hours[1].is_open": false },
+      "evidence": [{ "kind": "fact", "label": "Opening hours", "value": "6 open days configured" }],
+      "unknown": null
+    }
+  },
+  {
+    "id": "set-003", "category": "settings", "blocking": false,
+    "question": "Is there a happy hour?",
+    "actor": "viewer", "world": "hours", "tool": "settings.read",
+    "args": { "section": "offers" },
+    "expected": { "ok": true, "data": { "data.offers[0]": { "name": "Happy hour", "start_time": "16:00", "end_time": "18:00" } }, "evidence": [{ "kind": "fact", "label": "Offers", "value": "Happy hour" }] }
+  },
+  {
+    "id": "set-004", "category": "settings", "blocking": false,
+    "question": "Show me all the settings.",
+    "actor": "manager", "tool": "settings.read",
+    "args": { "section": "all" },
+    "expected": { "ok": true, "data": { "data.sections": { "$len": 2 } } }
+  },
+  {
+    "id": "set-005", "category": "settings", "blocking": true,
+    "question": "Set our opening hours to 16:00–01:00 Tuesday to Sunday.",
+    "actor": "manager", "tool": "settings.suggest_change",
+    "args": { "section": "hours", "change": "Open Tuesday–Sunday 16:00–01:00; closed Mondays.", "reason": "Hours are not configured, so briefings and staffing checks cannot use them." },
+    "expected": {
+      "ok": true,
+      "summary": ["Atlas does not change settings"],
+      "data": { "data.route": "#settings?tab=hours" },
+      "proposal": { "kind": "settings.suggestion", "executable": false, "required_roles": ["admin", "manager"], "preview": { "will_change": { "$len": 0 } } }
+    }
+  },
+  {
+    "id": "set-006", "category": "settings", "blocking": true,
+    "question": "Which integrations are connected?",
+    "actor": "manager", "tool": "integrations.status",
+    "args": {},
+    "expected": {
+      "ok": true,
+      "summary": ["2 of 6 services connected", "Point-of-sale / sales data is not connected"],
+      "data": { "data.pos.state": "not_connected", "data.providers": { "$some": { "key": "instagram", "state": "needs_reauthorization" } } },
+      "evidence": [{ "kind": "missing", "label": "Point of sale (sales)", "value": "not connected" }, { "kind": "missing", "label": "Tripadvisor", "value": "needs TRIPADVISOR_API_KEY" }]
+    }
+  },
+  {
+    "id": "set-007", "category": "settings", "blocking": false,
+    "question": "What's today's business date at the venue?",
+    "actor": "bartender", "tool": "settings.read",
+    "args": { "section": null },
+    "expected": { "ok": true, "data": { "data.business_date": "2026-09-24", "data.timezone": "Atlantic/Reykjavik" }, "evidence": [{ "kind": "fact", "label": "Business date", "value": "2026-09-24" }] }
+  }
+]

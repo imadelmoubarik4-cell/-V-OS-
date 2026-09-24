@@ -88,6 +88,22 @@ const ACTIVATION_ERROR_STATUS = {
 };
 const ACTIVATION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// S88 hardening (F9): database text reaches the browser only when it is an
+// Atlas-authored message (raised by our SQL) without schema detail; anything
+// else (constraint, column, relation or permission text) becomes the fixed
+// fallback. The SQLSTATE is logged instead.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed, fallback) {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed;
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
+}
+
 function rpcErrorCode(hint) {
   const match = typeof hint === "string" ? hint.match(/^atlas:([a-z_]+)$/) : null;
   return match ? match[1] : null;
@@ -265,9 +281,7 @@ async function productionRows(context, table, select, orderColumn, filters = {})
     let parsed = [];
     try { parsed = body ? JSON.parse(body) : []; } catch { parsed = []; }
     if (!response.ok) {
-      const message = parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.message
-        ? String(parsed.message)
-        : `${table} returned ${response.status}`;
+      const message = safeDbMessage(parsed, `${table} returned ${response.status}`);
       return { table, status: "degraded", rows: [], error: message, statusCode: response.status };
     }
     const rows = Array.isArray(parsed)
@@ -279,7 +293,7 @@ async function productionRows(context, table, select, orderColumn, filters = {})
       table,
       status: "degraded",
       rows: [],
-      error: error instanceof Error ? error.message : `${table} could not be read`,
+      error: `${table} could not be read`,
       statusCode: 0,
     };
   }
@@ -348,11 +362,10 @@ async function branchRpc(name, payload = {}) {
   let parsed = null;
   try { parsed = body ? JSON.parse(body) : null; } catch { parsed = body; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && parsed.message
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : `Checkpoint L2 database request ${name} failed.`;
+    const message = safeDbMessage(parsed, "The item master database request failed.");
+    if (message === "The item master database request failed.") {
+      console.warn("Checkpoint L2 RPC failed", name, response.status, parsed && typeof parsed === "object" ? String(parsed.code ?? "-") : "-");
+    }
     const code = parsed && typeof parsed === "object" ? rpcErrorCode(parsed.hint) : null;
     throw new ApiError(code ? activationErrorStatus(response.status, code) : response.status >= 500 ? 500 : 400, message, code);
   }
@@ -899,11 +912,7 @@ async function productionRpc(context, name, payload) {
   let parsed = null;
   try { parsed = body ? JSON.parse(body) : null; } catch { parsed = body; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && parsed.message
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : `Production item-master publication failed (${response.status}).`;
+    const message = safeDbMessage(parsed, `Production item-master publication failed (${response.status}).`);
     throw new ApiError(response.status >= 500 ? 500 : 409, message);
   }
   return parsed;

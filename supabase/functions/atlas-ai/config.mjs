@@ -41,8 +41,20 @@ export const LIMITS = Object.freeze({
   toolOutputChars: 12000,
   documentChars: 20000,
   modelAttachmentBytes: 20 * 1024 * 1024,
+  // Total bytes of the attachments sent to the model in one turn (images and
+  // PDFs are base64-inlined, so this bounds memory and input cost per turn).
+  turnAttachmentBytes: 20 * 1024 * 1024,
+  // Multipart overhead allowed above the file limit before the body is cut off.
+  multipartOverheadBytes: 1024 * 1024,
+  // Starts a Realtime session only; the call itself can last up to the
+  // provider's session limit. Live usage is metered by atlas_ai_voice_session_*.
   realtimeSecretSeconds: 60,
+  // Durable (database) mint throttle per user per minute.
   voiceMintsPerMinute: 6,
+  // Realtime per-response and per-turn input bounds (client_secrets session).
+  realtimeMaxOutputTokens: 1024,
+  realtimeRetentionRatio: 0.8,
+  realtimePostInstructionTokens: 16000,
   transcriptionKeywords: 100,
   pageContextChars: 400,
 });

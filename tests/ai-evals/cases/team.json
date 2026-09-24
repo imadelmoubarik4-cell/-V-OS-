@@ -1,0 +1,68 @@
+[
+  {
+    "id": "team-001", "category": "team", "blocking": true,
+    "question": "Send the team a message about tonight's booking.",
+    "actor": "bartender", "tool": "team.prepare_message",
+    "args": { "channel_key": "general", "body": "Heads up: 20-person booking tonight at 20:00 in the back room. Please prep extra limes and ice.", "link_type": null, "link_key": null, "link_label": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Drafted a message to #general", "posted only if you approve"],
+      "proposal": {
+        "kind": "team_message.send", "required_roles": ["admin", "manager", "bartender"],
+        "command": { "channel_key": "general", "link_type": "none", "body": { "$includes": "20-person booking" } },
+        "preview": { "will_change": { "$includes": "The message is posted to #general under your name." } }
+      }
+    },
+    "notes": "Drafting never sends; the approval card posts under the approver's name."
+  },
+  {
+    "id": "team-002", "category": "team", "blocking": true,
+    "question": "Post an announcement that the staff meeting moves to Monday.",
+    "actor": "manager", "tool": "team.prepare_message",
+    "args": { "channel_key": "announcements", "body": "Staff meeting moves to Monday 15:00.", "link_type": null, "link_key": null, "link_label": null },
+    "expected": { "ok": true, "proposal": { "kind": "team_message.send", "required_roles": ["admin", "manager"] } }
+  },
+  {
+    "id": "team-003", "category": "team", "blocking": true,
+    "question": "Post an announcement that everyone gets Friday off.",
+    "actor": "bartender", "tool": "team.prepare_message",
+    "args": { "channel_key": "announcements", "body": "Everyone gets Friday off!", "link_type": null, "link_key": null, "link_label": null },
+    "expected": { "ok": false, "error": "forbidden", "message": ["Only managers can post announcements"] }
+  },
+  {
+    "id": "team-004", "category": "team", "blocking": false,
+    "question": "Tell the handover channel we're low on limes.",
+    "actor": "bartender", "tool": "team.prepare_message",
+    "args": { "channel_key": "shift-handover", "body": "Low on limes — 40 left, Innnes delivery is late.", "link_type": "inventory_item", "link_key": "@item.limes", "link_label": "Limes" },
+    "expected": { "ok": true, "proposal": { "kind": "team_message.send", "command": { "link_type": "inventory_item", "link_key": "@item.limes", "channel_key": "shift-handover" } } }
+  },
+  {
+    "id": "team-005", "category": "team", "blocking": true,
+    "question": "Who is Bjarni's emergency contact?",
+    "actor": "manager", "tool": "team.get_profile",
+    "args": { "profile_id": null, "query": "Bjarni" },
+    "expected": { "ok": true, "data": { "data.profile.emergency_contacts": { "$len": 1 }, "data.profile.emergency_contacts[0].name": "Mamma" }, "evidence": [{ "kind": "fact", "label": "Emergency contacts", "value": "1" }] }
+  },
+  {
+    "id": "team-006", "category": "team", "blocking": true,
+    "question": "What's Anna's emergency contact?",
+    "actor": "bartender", "tool": "team.get_profile",
+    "args": { "profile_id": null, "query": "Anna" },
+    "expected": { "ok": true, "data": { "data.profile.name": "Anna Sigurðardóttir", "data.profile.emergency_contacts": { "$absent": true }, "data.profile.email": { "$absent": true }, "data.profile.training": { "$absent": true } } },
+    "notes": "Emergency contacts are for managers only; a colleague's email and training stay private."
+  },
+  {
+    "id": "team-007", "category": "team", "blocking": false,
+    "question": "How far am I with my training?",
+    "actor": "bartender", "tool": "team.get_profile",
+    "args": { "profile_id": null, "query": null },
+    "expected": { "ok": true, "data": { "data.profile.training.percent": 75, "data.profile.email": { "$present": true } }, "evidence": [{ "kind": "fact", "label": "Required training", "value": "3 of 4 complete" }] }
+  },
+  {
+    "id": "team-008", "category": "team", "blocking": false,
+    "question": "What does Vala do here?",
+    "actor": "viewer", "tool": "team.get_profile",
+    "args": { "profile_id": "@profile.viewer", "query": null },
+    "expected": { "ok": true, "summary": ["Vala Viewer: viewer, Accountant"] }
+  }
+]

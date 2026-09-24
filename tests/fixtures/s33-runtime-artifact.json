@@ -54,8 +54,8 @@
       "files": [
         {
           "path": "functions/atlas-operations-checkpoint-a/index.ts",
-          "source_sha256": "8048b8fea3377618b950ead1f22bc2995ff200f77fdc7098b852b714d52bd01e",
-          "candidate_sha256": "d0905e5335b0e534c4bb5e4c4ee154e46753bb4befc2272ec19ea93f5a8340f9"
+          "source_sha256": "6d1432c13d30f66c0f5e9d9b6ae44316c60eb40bd16a44fe1dd06f2873a94c04",
+          "candidate_sha256": "a7393b735b4984bb4ea4b8b5f7e2adbfb558875e63ff03eb55fae74dc7b6294a"
         }
       ]
     },
@@ -122,8 +122,8 @@
       "files": [
         {
           "path": "functions/atlas-settings/index.ts",
-          "source_sha256": "95f5e6808e2a81d22ca5a65455ede94adc47b5d32eda65ae0ffe3b1b2a5a12c6",
-          "candidate_sha256": "5c37b85ae5171f1c251a051eaf48a59805314a8f3b449fa0d5b008a1c0371ffe"
+          "source_sha256": "d3c23cebe17a78e8b85756e7095d8fad8919418ec6893b3f6eef13094cadc940",
+          "candidate_sha256": "cb4a4b72642e392117023440eca51c302b23f0cf310705813e3edfa96e69ce7a"
         }
       ]
     },

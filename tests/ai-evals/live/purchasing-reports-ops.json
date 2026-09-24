@@ -1,0 +1,180 @@
+[
+  {
+    "id": "live-pur-01", "category": "purchasing", "actor": "manager", "blocking": true,
+    "question": "What do we need from Globus?",
+    "truth": [{ "tool": "purchasing.suggest", "args": { "supplier_id": "@supplier.globus", "include_ordered": null } }],
+    "expect": { "tools_any": ["purchasing.suggest"], "must_mention": ["Campari", "tonic"], "numbers": ["72"], "rubric": "Campari 6 (1 case) and Fever-Tree tonic 72 (3 cases), about 37,560 ISK; Aperol is already on the overdue Globus order." }
+  },
+  {
+    "id": "live-pur-02", "category": "purchasing", "actor": "manager", "blocking": true,
+    "question": "Draft the Vínnes order from the suggestions.",
+    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.vinnes", "p_lines[0].quantity": 18 } }, "rubric": "Prepares a draft Vínnes order for 18 Angelo Pinot Grigio (3 cases, about 52,200 ISK) for approval; says it is saved as a draft only after approval and is not sent." }
+  },
+  {
+    "id": "live-pur-03", "category": "purchasing", "actor": "manager", "blocking": true,
+    "question": "Order 2 cases of Tanqueray from Mekka.",
+    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.mekka", "p_lines[0].item_id": "@item.tanqueray", "p_lines[0].quantity": 12, "p_lines[0].unit_cost": 5200 } }, "rubric": "Draft order: 12 bottles of Tanqueray (2 cases of 6) at 5,200 ISK = 62,400 ISK, for approval." }
+  },
+  {
+    "id": "live-pur-04", "category": "purchasing", "actor": "manager", "blocking": true,
+    "question": "Which deliveries are late?",
+    "truth": [{ "tool": "purchasing.order_status", "args": { "status": null, "supplier_id": null, "limit": null } }],
+    "expect": { "tools_any": ["purchasing.order_status", "operations.alerts"], "must_mention": ["Globus", "Innnes"], "rubric": "Globus (expected 23 Sep: Aperol and Cointreau) and Innnes (expected 22 Sep, partially received citrus) are overdue; Ölgerðin is due Friday." }
+  },
+  {
+    "id": "live-pur-05", "category": "purchasing", "actor": "manager", "blocking": false,
+    "question": "What's arriving tomorrow?",
+    "truth": [{ "tool": "purchasing.order_status", "args": { "status": null, "supplier_id": null, "limit": null } }],
+    "expect": { "tools_any": ["purchasing.order_status", "briefing.today"], "must_mention": ["lger[ðd]in"], "rubric": "The Ölgerðin order (2 Gull kegs and 24 Coca-Cola) is expected Friday 25 Sep." }
+  },
+  {
+    "id": "live-pur-06", "category": "purchasing", "actor": "manager", "blocking": true,
+    "question": "Put orange juice on the Innnes order.",
+    "expect": { "tools_any": ["purchasing.prepare_draft_po", "inventory.get", "inventory.search"], "proposal": null, "must_mention_any": ["cost", "price"], "rubric": "Asks for the unit cost (Orange Juice has none) and the quantity instead of inventing them; nothing is prepared yet." }
+  },
+  {
+    "id": "live-pur-07", "category": "purchasing", "actor": "manager", "blocking": true,
+    "question": "Is the Aperol we're out of already on order?",
+    "truth": [{ "tool": "purchasing.order_status", "args": { "status": null, "supplier_id": null, "limit": null } }, { "tool": "purchasing.suggest", "args": { "supplier_id": null, "include_ordered": true } }],
+    "expect": { "tools_any": ["purchasing.order_status", "purchasing.suggest", "purchasing.get_supplier"], "must_mention": ["Globus"], "must_mention_any": ["overdue", "late", "23"], "rubric": "Yes, 12 Aperol are on the Globus order that was due 23 Sep and is overdue; suggests chasing Globus." }
+  },
+  {
+    "id": "live-pur-08", "category": "purchasing", "actor": "manager", "blocking": true,
+    "question": "What's the phone number for Vínnes?",
+    "truth": [{ "tool": "purchasing.get_supplier", "args": { "supplier_id": null, "supplier_query": "Vínnes" } }],
+    "expect": { "tools_any": ["purchasing.get_supplier"], "must_mention_any": ["not recorded", "no (phone|number|contact)", "don't have", "isn't recorded", "missing"], "must_not_mention": ["\\+354"], "rubric": "No phone, email or contact person is recorded for Vínnes; suggests adding them in Suppliers." }
+  },
+  {
+    "id": "live-pur-09", "category": "purchasing", "actor": "manager", "blocking": true,
+    "question": "Draft an order with Rolf Johansen.",
+    "expect": { "proposal": null, "must_mention_any": ["inactive", "not active", "deactivated"], "rubric": "Rolf Johansen & Co is inactive, so no draft; asks which active supplier to use." }
+  },
+  {
+    "id": "live-pur-10", "category": "voice_transcript", "actor": "manager", "blocking": true, "source": "voice_note",
+    "question": "Order two cases of Prosecco from Karl K.",
+    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.karlk", "p_lines[0].item_id": "@item.prosecco", "p_lines[0].quantity": 12 } }, "rubric": "Draft Karl K. Karlsson order: 12 Villa Sandi Prosecco (2 cases), 30,000 ISK, for approval." }
+  },
+  {
+    "id": "live-rep-01", "category": "reports", "actor": "bartender", "blocking": true,
+    "question": "How were sales yesterday?",
+    "expect": { "must_mention_any": ["not connected", "isn't connected", "no (POS|sales)", "don't have (any )?sales", "can't see sales"], "rubric": "Sales data is not connected to Atlas; no figures." }
+  },
+  {
+    "id": "live-rep-02", "category": "reports", "actor": "manager", "blocking": true,
+    "question": "What's our average margin across the menu?",
+    "truth": [{ "tool": "reports.margin", "args": { "query": null, "menu_only": null, "limit": null } }],
+    "expect": { "tools_any": ["reports.margin", "recipes.best_margin"], "numbers": ["78.1"], "must_mention_any": ["theoretical", "not connected", "realised", "realized"], "rubric": "78.1% theoretical average over 9 recipes (highest Espresso Martini 86.9%, lowest Villa Maria glass 63.2%); 2 cannot be assessed; realised margin needs sales, which are not connected." }
+  },
+  {
+    "id": "live-rep-03", "category": "reports", "actor": "manager", "blocking": true,
+    "question": "What is our stock worth?",
+    "truth": [{ "tool": "reports.inventory_value", "args": { "category": null } }],
+    "expect": { "tools_all": ["reports.inventory_value"], "numbers": ["285,400"], "must_mention_any": ["at least", "lower bound", "minimum", "only (the )?counted"], "rubric": "The total is unknown: 16 of 40 items have no current count and Orange Juice has no cost; counted, costed items are worth at least 285,400 ISK." }
+  },
+  {
+    "id": "live-rep-04", "category": "reports", "actor": "manager", "blocking": true,
+    "question": "What is the wine stock worth?",
+    "truth": [{ "tool": "reports.inventory_value", "args": { "category": "Wine" } }],
+    "expect": { "tools_all": ["reports.inventory_value"], "numbers": ["97,700"], "must_mention_any": ["at least", "lower bound", "unknown", "not (all )?counted"], "rubric": "At least 97,700 ISK; Rioja, Chablis and Whispering Angel have no current count, so the total is unknown." }
+  },
+  {
+    "id": "live-rep-05", "category": "reports", "actor": "manager", "blocking": true,
+    "question": "How much did we spend with suppliers this month?",
+    "truth": [{ "tool": "reports.spend", "args": { "days": null } }],
+    "expect": { "tools_all": ["reports.spend"], "numbers": ["191,340"], "rubric": "191,340 ISK of costed receipts in the last 30 days (Mekka 57,000, Globus 54,840, Ölgerðin 42,000, Vínnes 34,800, Innnes 2,700); one receipt has no cost; these are receipts, not invoices." }
+  },
+  {
+    "id": "live-rep-06", "category": "reports", "actor": "manager", "blocking": true,
+    "question": "What did we waste this month?",
+    "truth": [{ "tool": "reports.waste", "args": { "days": null } }],
+    "expect": { "tools_all": ["reports.waste"], "numbers": ["4", "11,050"], "rubric": "4 logged entries (corked Angelo, broken Tanqueray and Prosecco, 10 mouldy limes), about 11,050 ISK; unlogged waste is unknown." }
+  },
+  {
+    "id": "live-rep-07", "category": "reports", "actor": "bartender", "blocking": true,
+    "question": "What got thrown out this month?",
+    "truth": [{ "tool": "reports.waste", "args": { "days": null } }],
+    "expect": { "tools_all": ["reports.waste"], "must_mention_any": ["Tanqueray", "Prosecco", "lime"], "rubric": "The four logged waste entries, without any cost." }
+  },
+  {
+    "id": "live-rep-08", "category": "reports", "actor": "manager", "blocking": true,
+    "question": "What's our labour cost as a percentage of sales?",
+    "expect": { "must_mention_any": ["not connected", "isn't connected", "no (POS|sales)", "don't have (any )?sales"], "rubric": "Cannot be calculated: sales are not connected (and labour cost is not in Atlas)." }
+  },
+  {
+    "id": "live-rep-09", "category": "reports", "actor": "manager", "blocking": false,
+    "question": "How much do we spend with Mekka?",
+    "truth": [{ "tool": "reports.spend", "args": { "days": null } }],
+    "expect": { "tools_any": ["reports.spend", "purchasing.get_supplier"], "numbers": ["57,000"], "rubric": "57,000 ISK in costed receipts over the last 30 days (Tanqueray and El Jimador)." }
+  },
+  {
+    "id": "live-ops-01", "category": "operations", "actor": "bartender", "blocking": true,
+    "question": "What do I need to know before my shift?",
+    "expect": { "tools_any": ["briefing.today", "operations.alerts", "operations.status", "shifts.who_is_working"], "must_mention": ["coffee machine"], "rubric": "Operational briefing only: overdue coffee machine cleaning, Fridge 2 temperature, Aperol out (no Aperol Spritz), who is on tonight. No order costs." }
+  },
+  {
+    "id": "live-ops-02", "category": "operations", "actor": "bartender", "blocking": false,
+    "question": "What's overdue on today's checklists?",
+    "truth": [{ "tool": "operations.status", "args": { "date": null } }],
+    "expect": { "tools_any": ["operations.status", "operations.alerts", "briefing.today"], "must_mention": ["coffee machine"], "rubric": "Clean coffee machine is overdue (1 of 3 steps, due 11:00); the opening checklist is done; temperatures 2 of 4 logged." }
+  },
+  {
+    "id": "live-ops-03", "category": "operations", "actor": "bartender", "blocking": true,
+    "question": "Are the fridge temperatures OK?",
+    "truth": [{ "tool": "operations.alerts", "args": {} }],
+    "expect": { "tools_any": ["operations.status", "operations.alerts", "briefing.today"], "must_mention_any": ["above", "out of range", "7\\.5", "too warm"], "rubric": "No: Fridge 2 logged 7.5°C (above 5°C) at 10:00, and only 2 of 4 checks are logged." }
+  },
+  {
+    "id": "live-ops-04", "category": "operations", "actor": "manager", "blocking": false,
+    "question": "Did we decide anything about the Angelo order before?",
+    "expect": { "tools_any": ["decisions.history"], "must_mention_any": ["defer", "postpone", "delivery"], "rubric": "Maria deferred ordering Angelo on 10 Sep because a Vínnes delivery was expected." }
+  },
+  {
+    "id": "live-ops-05", "category": "operations", "actor": "bartender", "blocking": false,
+    "question": "Any marketing posts due today?",
+    "expect": { "tools_any": ["marketing.suggestions"], "must_mention": ["happy hour"], "rubric": "Happy hour reminder (story, due today) and the Friday cocktail feature (available); these are seeded templates, not data-driven." }
+  },
+  {
+    "id": "live-ops-06", "category": "settings", "actor": "bartender", "blocking": true,
+    "question": "What time do we open today?",
+    "expect": { "tools_any": ["settings.read", "briefing.today"], "must_mention_any": ["not set", "aren't set", "not configured", "don't have (the )?(opening )?hours", "no opening hours"], "rubric": "Opening hours are not set in Settings, so Atlas cannot say; ask a manager to set them." }
+  },
+  {
+    "id": "live-ops-07", "category": "settings", "actor": "bartender", "world": "hours", "blocking": true,
+    "question": "What time do we open today?",
+    "truth": [{ "tool": "settings.read", "args": { "section": "hours" } }],
+    "expect": { "tools_any": ["settings.read", "briefing.today"], "numbers": ["16"], "rubric": "Thursday: 16:00–01:00 (last order 00:30); happy hour 16–18." }
+  },
+  {
+    "id": "live-ops-08", "category": "settings", "actor": "manager", "world": "hours", "blocking": false,
+    "question": "What time is last order tonight?",
+    "truth": [{ "tool": "settings.read", "args": { "section": "hours" } }],
+    "expect": { "tools_any": ["settings.read", "briefing.today"], "must_mention_any": ["00:30", "12:30", "half past twelve"], "rubric": "Last order 00:30 (close 01:00)." }
+  },
+  {
+    "id": "live-set-01", "category": "settings", "actor": "manager", "blocking": true,
+    "question": "What are our opening hours?",
+    "expect": { "tools_any": ["settings.read", "briefing.today"], "must_mention_any": ["not set", "aren't set", "not configured", "no opening hours"], "rubric": "Opening hours are not set in Settings; offers to prepare a suggestion that opens Settings." }
+  },
+  {
+    "id": "live-set-02", "category": "settings", "actor": "bartender", "world": "hours", "blocking": true,
+    "question": "What are our opening hours on Friday?",
+    "truth": [{ "tool": "settings.read", "args": { "section": "hours" } }],
+    "expect": { "tools_any": ["settings.read"], "numbers": ["16", "03"], "rubric": "Friday 16:00–03:00 (last order 02:30)." }
+  },
+  {
+    "id": "live-set-03", "category": "approval_boundary", "actor": "manager", "blocking": true,
+    "question": "Set our opening hours to 16:00–01:00 Tuesday to Sunday.",
+    "expect": { "tools_any": ["settings.suggest_change"], "proposal": { "kind_any": ["settings.suggestion"], "optional": true }, "must_mention": ["Settings"], "must_not_mention": ["(have|has) been (updated|changed|set)", "I('ve| have) (updated|changed|set)"], "rubric": "Atlas cannot change settings: prepares a suggestion card that opens Settings → Hours for the manager to make the change." }
+  },
+  {
+    "id": "live-set-04", "category": "settings", "actor": "manager", "blocking": true,
+    "question": "Which integrations are connected?",
+    "truth": [{ "tool": "integrations.status", "args": {} }],
+    "expect": { "tools_all": ["integrations.status"], "must_mention": ["Google Business Profile", "Instagram"], "must_mention_any": ["POS", "point of sale", "sales"], "rubric": "Connected: Google Business Profile, Google Drive. Instagram needs reconnecting; Facebook, TikTok and Tripadvisor are not configured; POS/sales is not connected." }
+  },
+  {
+    "id": "live-set-05", "category": "settings", "actor": "manager", "blocking": false,
+    "question": "Connect our POS so you can see sales.",
+    "expect": { "must_mention_any": ["not connected", "no (POS )?integration", "can't connect", "cannot connect", "not available"], "rubric": "There is no POS integration in Atlas; Atlas cannot connect one; sales stay unavailable." }
+  }
+]

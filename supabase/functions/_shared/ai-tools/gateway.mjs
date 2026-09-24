@@ -91,10 +91,13 @@ function normalizeResult(result) {
 function errorResult(error, tool) {
   if (error instanceof ToolError) return fail(error.code, error.message);
   if (error instanceof ServiceError) {
-    if (error.status === 401 || error.status === 403) return fail("forbidden", error.message || "This is not available for your Atlas role.");
-    if (error.status === 404) return fail("not_found", error.message || "Not found.");
-    if (error.status === 400) return fail("invalid_arguments", error.message);
-    if (error.status === 409) return fail("conflict", error.message);
+    // Database and downstream-function text is replaced with fixed wording;
+    // messages written by the gateway's own adapters are kept.
+    const own = error.fromBackend !== true;
+    if (error.status === 401 || error.status === 403) return fail("forbidden", (own && error.message) || "This is not available for your Atlas role.");
+    if (error.status === 404) return fail("not_found", (own && error.message) || "That record could not be found.");
+    if (error.status === 400) return fail("invalid_arguments", (own && error.message) || "Atlas refused those details.");
+    if (error.status === 409) return fail("conflict", (own && error.message) || "That record changed; check it again.");
     return fail("unavailable", `${tool?.progress ? tool.progress.replace(/…$/, "") : "This information"} is unavailable right now.`);
   }
   return fail("unavailable", "This information is unavailable right now. Atlas did not guess a result.");
