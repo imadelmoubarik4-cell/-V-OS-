@@ -20,6 +20,8 @@
 import { projectStock } from "../atlas-domain.mjs";
 import { buildStockReport } from "../stock-provenance.mjs";
 import { ATLAS_ROLES, MANAGER_ROLES, WRITE_ROLES } from "../auth.mjs";
+import { callVision, estimateVisionCostUsd, RecognitionError, visionModelFrom } from "../recognition/extract.mjs";
+import { guardedRpc } from "../recognition/retrieve.mjs";
 
 export { ATLAS_ROLES, MANAGER_ROLES, WRITE_ROLES };
 
@@ -290,6 +292,49 @@ export function createServices({ fetch: fetchImpl = globalThis.fetch, env, actor
     },
     scannerLookup(code) {
       return callFunction("atlas-inventory-scanner", { action: "lookup", params: { code } });
+    },
+
+    // ---- Visual inventory recognition (in process) ------------------------
+    // The recognition pipeline (_shared/recognition) runs here with the
+    // verified actor. Its database access is the atlas_recognition_* RPCs
+    // only (guardedRpc), which run as the NOLOGIN recognition definer and
+    // cannot write stock, items, codes or aliases.
+    recognitionRpc: guardedRpc((name, args) => serviceRpc(name, args, ATLAS_ROLES)),
+    // An Atlas AI attachment the actor owns (atlas_ai_media_get checks it).
+    mediaGet(mediaId) {
+      return serviceRpc("atlas_ai_media_get", { p_media_id: mediaId, ...actorArgs() }, ATLAS_ROLES);
+    },
+    async mediaDownload(path) {
+      if (!config.serviceUrl || !config.serviceKey) throw new ServiceError(500, "Atlas data access is not configured.");
+      const url = `${config.serviceUrl}/storage/v1/object/atlas-ai-media/${String(path).split("/").map(encodeURIComponent).join("/")}`;
+      let response;
+      try {
+        response = await fetchImpl(url, { method: "GET", headers: { apikey: config.serviceKey, authorization: `Bearer ${config.serviceKey}`, "cache-control": "no-store" } });
+      } catch {
+        throw new ServiceError(503, "The photo could not be read right now.");
+      }
+      if (!response.ok) throw new ServiceError(response.status === 404 ? 404 : 503, "The photo could not be read right now.");
+      return new Uint8Array(await response.arrayBuffer());
+    },
+    // Vision extraction for recognition; null when no model key is set.
+    visionConfigured() {
+      return Boolean(envValue(env, "OPENAI_API_KEY"));
+    },
+    async visionExtract({ imageDataUrl, mode }) {
+      const apiKey = envValue(env, "OPENAI_API_KEY");
+      if (!apiKey) throw new RecognitionError("not_configured", "Photo recognition is not configured.", 503);
+      const model = visionModelFrom((name) => envValue(env, name));
+      const baseUrl = String(envValue(env, "ATLAS_AI_OPENAI_BASE_URL") ?? "https://api.openai.com/v1").trim() || "https://api.openai.com/v1";
+      const result = await callVision({ fetchImpl, apiKey, baseUrl, model, imageDataUrl, mode, timeoutMs: 20000 });
+      return { ...result, cost_usd: estimateVisionCostUsd(result.model, result.tokens_in, result.tokens_out) };
+    },
+    // Catalogue proposals (actions.mjs after human approval). The database
+    // re-checks the actor; requests are always created pending.
+    catalogRequestCreate(args) {
+      return serviceRpc("atlas_catalog_request_create", { ...args, p_actor_id: actor.userId, p_actor_label: actor.label || actor.displayName || "Atlas team member" }, WRITE_ROLES);
+    },
+    catalogFindDuplicates(values, codes = [], aliases = []) {
+      return serviceRpc("atlas_recognition_find_duplicates", { p_values: values, p_codes: codes, p_aliases: aliases, p_limit: 10, ...actorArgs() }, WRITE_ROLES);
     },
 
     // ---- Recipes --------------------------------------------------------

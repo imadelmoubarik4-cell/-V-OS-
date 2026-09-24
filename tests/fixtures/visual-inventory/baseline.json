@@ -1,0 +1,27 @@
+{
+  "scorer_version": "rs-1",
+  "note": "Measured on the committed fixture set. CI fails on any false merge, any sibling at rank 1 outside the Low band, draft-path duplicate recall below 100 %, top-1 more than 2 points below this baseline, or ECE above the gate.",
+  "measured": {
+    "cases": 125,
+    "detections": 130,
+    "top1_accuracy": 1,
+    "top3_accuracy": 1,
+    "band_accuracy": 1,
+    "abstain_rate": 0.096,
+    "duplicate_guard_recall": 1,
+    "duplicate_guard_alone_recall": 0.933,
+    "ece": 0.127
+  },
+  "gates": {
+    "min_cases": 80,
+    "false_merges": 0,
+    "sibling_at_top": 0,
+    "duplicate_guard_recall": 1,
+    "min_top1_accuracy": 0.9,
+    "max_top1_regression": 0.02,
+    "min_top3_accuracy": 0.95,
+    "min_band_accuracy": 0.95,
+    "max_abstain_rate": 0.15,
+    "max_ece": 0.15
+  }
+}

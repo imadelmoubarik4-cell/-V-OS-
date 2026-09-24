@@ -149,7 +149,7 @@ export function validateGatewayCase(entry, toolNames) {
   if (!GATEWAY_CATEGORIES.includes(entry.category)) errors.push(`${where}: unknown category ${entry.category}`);
   if (typeof entry.question !== 'string' || entry.question.length < 5) errors.push(`${where}: question is required`);
   if (!ACTOR_KEYS.includes(entry.actor)) errors.push(`${where}: unknown actor ${entry.actor}`);
-  if (entry.world && !['default', 'hours'].includes(entry.world)) errors.push(`${where}: world must be default or hours`);
+  if (entry.world && !['default', 'hours', 'catalog'].includes(entry.world)) errors.push(`${where}: world must be default, hours or catalog`);
   if (!toolNames.includes(entry.tool)) errors.push(`${where}: unknown tool ${entry.tool}`);
   if (!entry.args || typeof entry.args !== 'object') errors.push(`${where}: args must be an object`);
   if (typeof entry.blocking !== 'boolean') errors.push(`${where}: blocking must be true or false`);

@@ -424,7 +424,8 @@ export function createAtlasAiHandler(deps) {
     });
     let outcome;
     try {
-      outcome = await gateway.executeProposal(action.kind, transition.command, turn.gatewayCtx);
+      // The action id links catalogue requests to this proposal (Brain decisions).
+      outcome = await gateway.executeProposal(action.kind, transition.command, { ...turn.gatewayCtx, actionId });
     } catch {
       outcome = { ok: false, error: { code: "failed", message: "The action could not be completed." } };
     }
