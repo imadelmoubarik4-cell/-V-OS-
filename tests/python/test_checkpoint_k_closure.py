@@ -8,6 +8,7 @@ FOUNDATION = (ROOT / "supabase/migrations/20260805093732_atlas_brain_checkpoint_
 CONSOLIDATION = (ROOT / "supabase/migrations/20260805125412_atlas_intelligence_checkpoint_k_consolidation.sql").read_text()
 EDGE = (ROOT / "supabase/functions/atlas-phase3-intelligence/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
+SHARED_STOCK = (ROOT / "supabase/functions/_shared/stock-provenance.mjs").read_text()
 
 
 class CheckpointKClosureTests(unittest.TestCase):
@@ -47,7 +48,11 @@ class CheckpointKClosureTests(unittest.TestCase):
         self.assertIn("active manager/admin profile", CONFIG)
 
     def test_historical_stock_and_missing_evidence_are_explicitly_gated(self):
-        self.assertIn('const HISTORICAL_OPENING_CUTOFF = "2026-07-26"', EDGE)
+        # S88: one historical cutoff, owned by the shared stock module (Reports').
+        self.assertNotIn("const HISTORICAL_OPENING_CUTOFF", EDGE)
+        self.assertNotIn("2026-07-26", EDGE)
+        self.assertIn('from "../_shared/atlas-domain.mjs"', EDGE)
+        self.assertIn('HISTORICAL_OPENING_CUTOFF = "2026-07-31"', SHARED_STOCK)
         self.assertIn("function historicalOpeningRow", EDGE)
         self.assertIn("historical July opening snapshot", EDGE)
         self.assertIn("Current stock is not verified", EDGE)

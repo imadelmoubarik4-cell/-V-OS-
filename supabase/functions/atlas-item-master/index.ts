@@ -1,4 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+// Canonical stock truth shared with Reports and the browser (AtlasStockTruth):
+// owner-confirmed and manager-verified evidence, the historical cutoff and the
+// below-par rule.
+import {
+  balanceFromCountActivity,
+  belowPar as canonicalBelowPar,
+  projectStock,
+  quantityTrustState as canonicalQuantityTrustState,
+} from "../_shared/atlas-domain.mjs";
 
 const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
@@ -6,7 +15,6 @@ const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
   ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
 const FUNCTION_VERSION = "0.1.0";
 const MAX_ROWS = 5000;
-const HISTORICAL_OPENING_CUTOFF = "2026-07-31";
 const MANAGER_ROLES = new Set(["admin", "manager"]);
 
 const MASTER_FIELDS = [
@@ -101,12 +109,6 @@ function nullableNumber(value) {
 function numberValue(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function dateValue(value) {
-  if (!value) return null;
-  const parsed = new Date(String(value));
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function normalizeName(value) {
@@ -226,7 +228,8 @@ async function inventoryRows(context) {
     "supplier_id", "supplier", "supplier_product_reference", "units_per_case",
     "size_ml", "package_weight_g", "package_size", "cost_price", "case_cost",
     "bin_location", "lead_time_days", "minimum_order_quantity", "sku", "barcode",
-    "active", "source_file", "source_updated_at", "updated_at",
+    "active", "source_file", "source_updated_at", "source_type", "source_confidence",
+    "source_confirmed_at", "source_confirmed_quantity", "updated_at",
   ].join(",");
   const legacySelect = [
     "id", "name", "category", "quantity", "unit", "par_level", "supplier_id",
@@ -318,15 +321,10 @@ function isImportantServiceCategory(category) {
   return SERVICE_CATEGORY_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
-function quantityTrustState(item, countActivity) {
-  const now = Date.now();
-  if (countActivity?.verification_status === "current") {
-    const expires = dateValue(countActivity.expires_at);
-    if (!expires || expires.getTime() > now) return "current";
-  }
-  if (countActivity?.verified_at) return "stale";
-  if (text(item.source_updated_at) && text(item.source_updated_at) <= HISTORICAL_OPENING_CUTOFF) return "historical";
-  return "unverified";
+// Same trust states as Reports (current / stale / historical / unverified):
+// a current manager count or a newer owner-confirmed count is current.
+function quantityTrustState(item, countActivity, nowMillis = Date.now()) {
+  return canonicalQuantityTrustState(item, balanceFromCountActivity(countActivity), nowMillis);
 }
 
 function createEnvironment(sources) {
@@ -388,6 +386,13 @@ function createEnvironment(sources) {
     aliasByCode.set(normalizeCode(alias.normalized_code || alias.code), alias);
   }
   const countByItem = new Map((sources.branch.count_activity ?? []).map((entry) => [text(entry.inventory_item_id), entry]));
+  const nowMillis = Date.now();
+  const projectedByItem = new Map(projectStock(
+    items,
+    [...countByItem.values()].map(balanceFromCountActivity).filter(Boolean),
+    sources.movements.rows,
+    nowMillis,
+  ).map((projected) => [text(projected.id), projected]));
   const supplierById = new Map(sources.suppliers.rows.map((supplier) => [text(supplier.id), supplier]));
 
   return {
@@ -401,6 +406,8 @@ function createEnvironment(sources) {
     aliasesByItem,
     aliasByCode,
     countByItem,
+    projectedByItem,
+    nowMillis,
     supplierById,
   };
 }
@@ -462,11 +469,12 @@ function assessItem(item, environment, draftOverride = undefined) {
   const countActivity = environment.countByItem.get(itemId) ?? null;
   const movementCount = environment.movementByItem.get(itemId) ?? 0;
   const adjustmentCount = environment.adjustmentByItem.get(itemId) ?? 0;
-  const quantityStatus = quantityTrustState(item, countActivity);
+  const quantityStatus = quantityTrustState(item, countActivity, environment.nowMillis);
+  const projected = environment.projectedByItem.get(itemId) ?? null;
   const historicalZero = quantityStatus === "historical" && numberValue(item.quantity) <= 0;
-  // Same rule as the browser AtlasStockTruth.belowPar: strictly under a positive par.
-  const belowPar = (nullableNumber(effective.par_level) ?? 0) > 0
-    && numberValue(item.quantity) < numberValue(effective.par_level);
+  // The canonical AtlasStockTruth.belowPar on verified stock, against the
+  // effective (draft-aware) par. Unverified stock is never below par.
+  const belowPar = Boolean(projected) && canonicalBelowPar({ ...projected, par_level: effective.par_level });
   const usedByActiveRecipe = linkedRecipes.length > 0 || recipeLinkCandidates.length > 0;
   const importantCategory = isImportantServiceCategory(item.category);
 
@@ -487,7 +495,7 @@ function assessItem(item, environment, draftOverride = undefined) {
     priorityReasons.push("Historical zero requires a verified current count");
   } else if (belowPar) {
     priorityScore += 30;
-    priorityReasons.push("Current quantity is at or below configured par");
+    priorityReasons.push("Verified current quantity is below configured par");
   }
   if (numberValue(countActivity?.count_observations) >= 2) {
     const score = Math.min(20, numberValue(countActivity.count_observations) * 4);
@@ -549,8 +557,10 @@ function assessItem(item, environment, draftOverride = undefined) {
     barcode_aliases: aliases,
     proposed_barcode_aliases: proposedAliases,
     quantity_status: quantityStatus,
-    verified_quantity: countActivity?.verified_quantity ?? null,
-    verified_at: countActivity?.verified_at ?? null,
+    verified_quantity: projected?.verified_quantity ?? null,
+    verified_at: projected?.stock_baseline_at ? new Date(projected.stock_baseline_at).toISOString() : null,
+    quantity_source: projected?.stock_source ?? null,
+    recount_due: projected?.stock_recount_due === true,
     count_observations: numberValue(countActivity?.count_observations),
     movement_count: movementCount,
     adjustment_count: adjustmentCount,
