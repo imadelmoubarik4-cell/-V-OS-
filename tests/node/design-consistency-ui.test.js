@@ -50,7 +50,7 @@ test('navigation is organized into one-row workspace groups', () => {
   assert.match(app, /operations:'Operations Center'/);
   assert.match(app, /brain:'Atlas Brain',business:'Business Intelligence'/);
   // S88: modules register views; the sidebar regroups on registration events.
-  assert.match(app, /\['view:registered','view:unregistered','nav:changed'\]\.forEach\(type=>window\.AtlasShell\.on\(type,scheduleNavigationLayout\)\)/);
+  assert.match(app, /\['view:registered','view:unregistered'\]\.forEach\(type=>window\.AtlasShell\.on\(type,scheduleNavigationLayout\)\)/);
   assert.doesNotMatch(app, /navigationObserver/);
   assert.match(app, /button\.setAttribute\('aria-label',label\)/);
   assert.match(app, /updateMenuButtonLabel\(collapsed\)/);

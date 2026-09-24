@@ -2073,8 +2073,11 @@
   window.AtlasShell.setLayout(layoutAtlasView);
   [
     ['dashboard', { render: () => { renderDashboard(); renderAtlasHome(); } }],
-    ['inventory', { display: 'grid', onShow: (params) => { if (params.item) openInventoryItemLink(params.item); } }],
-    ['recipes', { render: () => renderRecipes() }],
+    ['inventory', { display: 'grid', onShow: (params) => {
+      if (params.item) openInventoryItemLink(params.item);
+      else if (params.filter === 'below-par') showBelowPar();
+    } }],
+    ['recipes', { render: () => renderRecipes(), onShow: (params) => { if (params.recipe) window.AtlasRecipes?.openRecipe?.(params.recipe); } }],
     ['suppliers', { guard: commercialWorkspaceGuard, render: () => renderSuppliers(), onShow: (params) => openPurchasingSection(params.section) }],
     ['imports', { guard: commercialWorkspaceGuard, render: () => window.AtlasImportCenter?.render?.() }],
     ['movements', { render: () => renderInventoryOperations() }],
@@ -2185,12 +2188,13 @@
     const banner=document.getElementById('low-stock-banner');
     if(banner) banner.onclick=()=>showBelowPar();
   }
+  // Home buttons, the quick-action menu and Service Mode run canonical actions
+  // (AtlasShell.actions, registered below), the same ones the command palette,
+  // notifications and Atlas AI will call.
+  const homeActionIds={'stock-count':'inventory.count.start','new-order':'purchasing.order.new'};
   document.querySelectorAll('[data-home-action]').forEach(button=>button.addEventListener('click',()=>{
-    if(button.dataset.homeAction==='stock-count'){
-      window.AtlasShell.navigate('#inventory/stock-count');
-      return;
-    }
-    if(button.dataset.homeAction==='new-order') document.querySelector('.atlas-nav .nav-item[data-view="suppliers"]')?.click();
+    const actionId=homeActionIds[button.dataset.homeAction];
+    if(actionId) window.AtlasShell.actions.run(actionId,{context:'home'});
   }));
   document.getElementById('inventory-intelligence-action')?.addEventListener('click', () => {
     document.querySelector('.nav-item[data-view="reports"]')?.click();
@@ -2213,7 +2217,7 @@
     if(navigationFrame) return;
     navigationFrame=requestAnimationFrame(()=>{navigationFrame=null;organizeAtlasNavigation();});
   }
-  ['view:registered','view:unregistered','nav:changed'].forEach(type=>window.AtlasShell.on(type,scheduleNavigationLayout));
+  ['view:registered','view:unregistered'].forEach(type=>window.AtlasShell.on(type,scheduleNavigationLayout));
   function setNavigationLabel(button,label){
     let text=button.querySelector(':scope > .nav-item-label')
       || [...button.children].find(child=>child.tagName==='SPAN'&&!child.matches('.team-nav-unread,.review-nav-count,.system-nav-status'));
@@ -2279,16 +2283,23 @@
     updateMenuButtonLabel(collapsed);
   });
   backdrop.addEventListener('click',closeMobileSidebar);
-  // Topbar bell (moved from s38-app-remediation.js): it carries the unread-message
-  // badge, so unread messages open Messages; with nothing unread it opens this
-  // device's notification settings (#settings/notifications).
+  // Topbar bell: opens the notifications feed (AtlasShell.notify). Until the
+  // notifications panel UI registers itself with notify.setPanel(), this interim
+  // panel keeps the previous routing (moved from s38-app-remediation.js): unread
+  // messages open Messages, otherwise this device's notification settings.
+  window.AtlasShell.notify.setPanel({
+    open(){
+      window.AtlasShell.notify.close();
+      const unread=Number(window.AtlasTeamMessages?.unreadCount?.()||0);
+      const messagesNav=document.querySelector('.nav-item[data-view="team"]');
+      if(unread>0&&messagesNav){messagesNav.click();return;}
+      if(!document.querySelector('.nav-item[data-view="settings"]')) return;
+      window.AtlasShell.navigate('#settings/notifications',{source:'nav'});
+    }
+  });
   document.querySelector('.atlas-topbar .top-icon[title="Notifications"]')?.addEventListener('click',(event)=>{
     event.preventDefault();
-    const unread=Number(window.AtlasTeamMessages?.unreadCount?.()||0);
-    const messagesNav=document.querySelector('.nav-item[data-view="team"]');
-    if(unread>0&&messagesNav){messagesNav.click();return;}
-    if(!document.querySelector('.nav-item[data-view="settings"]')) return;
-    window.AtlasShell.navigate('#settings/notifications',{source:'nav'});
+    window.AtlasShell.notify.open({trigger:event.currentTarget});
   });
   const enterService=()=>{document.body.classList.add('service-mode');};
   const exitService=()=>{document.body.classList.remove('service-mode');};
@@ -2296,8 +2307,8 @@
   document.getElementById('service-exit-btn').addEventListener('click',exitService);
   // AtlasShell routes [data-service-view] cards; leaving Service Mode is the card's own job.
   document.querySelectorAll('[data-service-view]').forEach(btn=>btn.addEventListener('click',exitService));
-  document.querySelector('[data-service-action="restock"]').addEventListener('click',()=>{exitService();openRestockModal();});
-  document.querySelector('[data-service-action="add-item"]').addEventListener('click',()=>{exitService();openModal(null);});
+  document.querySelector('[data-service-action="restock"]').addEventListener('click',()=>{exitService();window.AtlasShell.actions.run('purchasing.delivery.receive',{context:'service'});});
+  document.querySelector('[data-service-action="add-item"]').addEventListener('click',()=>{exitService();window.AtlasShell.actions.run('inventory.item.add',{context:'service'});});
   document.addEventListener('keydown',(e)=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();document.getElementById('global-search').focus();}if(e.key==='Escape'&&document.body.classList.contains('service-mode'))exitService();});
   // ---------- QUICK ACTION (FAB) ----------
   const fabBtn = document.getElementById('fab-btn');
@@ -2312,19 +2323,24 @@
       fabBtn.classList.remove('open');
     }
   });
-  document.getElementById('fab-add-item').addEventListener('click', () => {
-    fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
-    openModal(null);
+  [['fab-add-item','inventory.item.add'],['fab-log-restock','purchasing.delivery.receive'],['fab-add-supplier','purchasing.supplier.add']].forEach(([id,actionId])=>{
+    document.getElementById(id).addEventListener('click', () => {
+      fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
+      window.AtlasShell.actions.run(actionId,{context:'quick-actions'});
+    });
   });
-  document.getElementById('fab-log-restock').addEventListener('click', () => {
-    fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
-    openRestockModal();
-  });
-  document.getElementById('fab-add-supplier').addEventListener('click', () => {
-    fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
-    setActiveView('suppliers');
-    openSupplierModal();
-  });
+  // Canonical actions owned by the base shell (spec §4.8). The editors keep
+  // their own manager check, so a denied action runs the same function, which
+  // explains the limit, exactly as the buttons did before.
+  const MANAGERS=['admin','manager'];
+  const STAFF=['admin','manager','bartender'];
+  [
+    { id:'inventory.item.add', label:'Add item', icon:'package-plus', keywords:['new item','product','inventory'], roles:MANAGERS, contexts:['home','inventory'], run:()=>openModal(null) },
+    { id:'inventory.count.start', label:'Start stock count', icon:'list-checks', keywords:['count','stocktake'], roles:STAFF, contexts:['home','inventory'], run:()=>window.AtlasShell.navigate('#inventory/counts') },
+    { id:'purchasing.order.new', label:'New order', icon:'shopping-cart', keywords:['order','purchase','buy'], roles:MANAGERS, contexts:['home','purchasing'], run:()=>window.AtlasShell.show('suppliers',{},{source:'nav'}) },
+    { id:'purchasing.delivery.receive', label:'Receive a delivery', icon:'truck', keywords:['restock','delivery','receive'], roles:MANAGERS, contexts:['home','inventory','purchasing'], run:()=>openRestockModal() },
+    { id:'purchasing.supplier.add', label:'Add supplier', icon:'store', keywords:['supplier','vendor'], roles:MANAGERS, contexts:['purchasing'], run:()=>{ setActiveView('suppliers'); openSupplierModal(); } }
+  ].forEach(action=>window.AtlasShell.actions.register({ ...action, denied:action.run }));
 
   // ---------- RESTOCK MODAL ----------
   const restockOverlay = document.getElementById('restock-overlay');

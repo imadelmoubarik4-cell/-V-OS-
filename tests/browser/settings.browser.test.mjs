@@ -136,7 +136,8 @@ test('preferences save only implemented values and apply them at the next sign-i
 });
 
 test('a #view link opens that destination at sign-in', { skip }, async () => {
-  const { page, close } = await launchAtlas({ hash: '#team', fixtures: { functions: emptyFunctions() } });
+  // S88 route table: Messages (internal view 'team') opens at #messages.
+  const { page, close } = await launchAtlas({ hash: '#messages', fixtures: { functions: emptyFunctions() } });
   try {
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'team');
   } finally { await close(); }

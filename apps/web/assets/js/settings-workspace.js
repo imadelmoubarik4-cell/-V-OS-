@@ -1211,8 +1211,11 @@
     if (!element) return false;
     state.initialized = true;
 
-    document.addEventListener('click', handleClick, true);
-    document.addEventListener('submit', handleSubmit, true);
+    // Delegated handlers scoped to #settings-view. Capture was only needed while
+    // settings-mount-bridge.js intercepted Settings clicks; since S88 the shell
+    // owns navigation, so the ordinary bubbling phase is enough.
+    document.addEventListener('click', handleClick);
+    document.addEventListener('submit', handleSubmit);
     const markDirty = (event) => {
       const form = event.target instanceof Element ? event.target.closest('form') : null;
       if (!form || !host()?.contains(form)) return;
@@ -1221,8 +1224,8 @@
       state.dirtyForms.add(key);
       if (state.formFeedback[key]?.type === 'success') delete state.formFeedback[key];
     };
-    document.addEventListener('input', markDirty, true);
-    document.addEventListener('change', markDirty, true);
+    document.addEventListener('input', markDirty);
+    document.addEventListener('change', markDirty);
     // S88: AtlasShell announces when Settings opens, including #settings/<tab>
     // links (formerly a MutationObserver on the workspace and the app screen).
     window.AtlasShell?.onView?.('settings', {

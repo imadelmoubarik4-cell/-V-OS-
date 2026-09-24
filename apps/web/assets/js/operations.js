@@ -476,6 +476,10 @@
       renderHomeAugmentation();
     });
     shell.registerHomeSection('operations', renderHomeAugmentation, 10);
+    shell.actions.register({
+      id: 'operations.checklist.open', label: "Open today's checklist", icon: 'clipboard-check', keywords: ['checklist', 'opening', 'closing'],
+      roles: ['admin', 'manager', 'bartender'], contexts: ['home', 'operations'], run: () => scrollOperationsTarget('operations-checklist')
+    });
   }
 
   function init() {

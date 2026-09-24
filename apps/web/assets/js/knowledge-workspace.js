@@ -1024,11 +1024,14 @@
   function init() {
     if (state.initialized || !host()) return false;
     state.initialized = true;
-    document.addEventListener('click', handleClick, true);
-    document.addEventListener('input', handleInput, true);
-    document.addEventListener('change', handleChange, true);
-    document.addEventListener('submit', handleSubmit, true);
-    document.addEventListener('keydown', handleKeydown, true);
+    // Delegated handlers scoped to #knowledge-view. They ran in the capture
+    // phase to stay ahead of the Team link bridge's interception; with links
+    // resolved through AtlasShell (S88) the ordinary bubbling phase is enough.
+    document.addEventListener('click', handleClick);
+    document.addEventListener('input', handleInput);
+    document.addEventListener('change', handleChange);
+    document.addEventListener('submit', handleSubmit);
+    document.addEventListener('keydown', handleKeydown);
 
     // S88: AtlasShell announces when Knowledge opens (formerly a visibility
     // MutationObserver on the workspace and the app screen).

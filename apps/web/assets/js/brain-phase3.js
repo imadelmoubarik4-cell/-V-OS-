@@ -461,8 +461,7 @@
 
   function bindRenderedEvents(root) {
     // With Checkpoint K loaded, Refresh runs its combined intelligence sync
-    // (which reloads this block too); it used to intercept this click in the
-    // capture phase with stopImmediatePropagation.
+    // (which reloads this block too); Checkpoint K no longer intercepts it.
     root.querySelectorAll('[data-phase3-refresh]').forEach((button) => button.addEventListener('click', () => {
       if (window.AtlasCheckpointK?.refresh) window.AtlasCheckpointK.refresh();
       else loadSnapshot(true);

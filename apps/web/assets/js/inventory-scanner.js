@@ -847,6 +847,13 @@
     // are re-checked when a workspace opens or data reloads (was a body observer).
     window.AtlasShell?.on?.('view:show', ensureEntryPoints);
     window.AtlasShell?.onDataLoaded?.(ensureEntryPoints);
+
+    // Canonical action (spec §4.8): the palette, Home and Atlas AI open the
+    // scanner through the same function as the Scan buttons.
+    window.AtlasShell?.actions?.register?.({
+      id: 'inventory.scan', label: 'Scan a product', icon: 'scan-barcode', keywords: ['scan', 'barcode', 'bottle'],
+      roles: ['admin', 'manager', 'bartender'], contexts: ['home', 'inventory'], run: () => openScanner()
+    });
   }
 
   window.AtlasInventoryScanner = {

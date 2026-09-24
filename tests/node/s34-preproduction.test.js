@@ -102,6 +102,8 @@ test('push opt-in covers unsupported, denied, pending, and enabled states', () =
   assert.match(worker, /addEventListener\('push'/);
   assert.match(worker, /addEventListener\('notificationclick'/);
   assert.match(worker, /route === 'shifts' \? 'shifts' : 'team'/);
+  // S88: message notifications open #messages (the spec route table gives #team to Team).
+  assert.match(worker, /new URL\(`\.\/#\$\{route === 'shifts' \? 'shifts' : 'messages'\}`/);
   assert.match(notificationApi, /ATLAS_PUSH_DELIVERY_ENABLED/);
   assert.match(notificationApi, /delivery: "disabled"/);
   assert.match(notificationApi, /npm:web-push@3\.6\.7/);
