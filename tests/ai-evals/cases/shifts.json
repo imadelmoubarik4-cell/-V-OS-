@@ -1,0 +1,120 @@
+[
+  {
+    "id": "shf-001", "category": "shifts", "blocking": true,
+    "question": "Who works tomorrow?",
+    "actor": "manager", "tool": "shifts.who_is_working",
+    "args": { "day": "tomorrow", "date": null },
+    "expected": {
+      "ok": true,
+      "summary": ["4 people are working tomorrow: Bjarni 17:00–02:00, Sigrún 17:00–03:00, Kári 18:00–02:00, Anna 20:00–03:00"],
+      "data": { "data.date": "2026-09-25", "data.published": true, "data.shifts": { "$len": 4 }, "data.shifts[3]": { "name": "Anna", "unpublished_change": true } },
+      "evidence": [{ "kind": "fact", "label": "Business date", "value": "2026-09-24 (Atlantic/Reykjavik)" }, { "kind": "fact", "label": "Kári", "value": "18:00–02:00 · Floor" }],
+      "records": ["shift_week:2026-09-21"]
+    },
+    "notes": "Anna's Friday shift was added after publication: managers see it flagged, staff do not see it."
+  },
+  {
+    "id": "shf-002", "category": "shifts", "blocking": true,
+    "question": "Who am I working with tomorrow?",
+    "actor": "bartender", "tool": "shifts.who_is_working",
+    "args": { "day": "tomorrow", "date": null },
+    "expected": {
+      "ok": true,
+      "summary": ["3 people are working tomorrow"],
+      "data": { "data.shifts.length": 3, "data.shifts": { "$none": { "name": "Anna" } } }
+    }
+  },
+  {
+    "id": "shf-003", "category": "shifts", "blocking": true,
+    "question": "Who's on tonight?",
+    "actor": "viewer", "tool": "shifts.who_is_working",
+    "args": { "day": "today", "date": null },
+    "expected": { "ok": true, "summary": ["3 people are working today: Maria 16:00–00:00, Anna 17:00–01:00, Jón 18:00–00:00"], "data": { "data.date": "2026-09-24" } }
+  },
+  {
+    "id": "shf-004", "category": "shifts", "blocking": true,
+    "question": "Show me next week's rota.",
+    "actor": "manager", "tool": "shifts.schedule",
+    "args": { "week_start": "2026-09-28" },
+    "expected": {
+      "ok": true,
+      "summary": ["Week of 2026-09-28: 4 shifts; not published yet, so it may still change; 4 unpublished changes"],
+      "data": { "data.published": false, "data.status": "draft", "data.days[1].shifts[0].name": "Anna", "data.hours_configured": false },
+      "evidence": [{ "kind": "interpretation", "label": "Rota may change" }, { "kind": "missing", "label": "Staffing gaps", "value": "opening hours are not set" }]
+    }
+  },
+  {
+    "id": "shf-005", "category": "shifts", "blocking": true,
+    "question": "Can I see next week's rota yet?",
+    "actor": "bartender", "tool": "shifts.schedule",
+    "args": { "week_start": "2026-09-30" },
+    "expected": {
+      "ok": true,
+      "summary": ["Week of 2026-09-28: 0 shifts; not published yet"],
+      "data": { "data.published": false, "data.days": { "$every": { "shifts": { "$len": 0 } } }, "data.unpublished_changes": 0 }
+    },
+    "notes": "Staff never see an unpublished week."
+  },
+  {
+    "id": "shf-006", "category": "shifts", "blocking": true,
+    "question": "Prepare next week's draft rota — start with Kári on Tuesday 18 to midnight.",
+    "actor": "manager", "tool": "shifts.prepare_draft",
+    "args": { "person_id": null, "person_query": "Kári", "date": "2026-09-29", "start_time": "18:00", "end_time": "00:00", "role_name": null, "break_minutes": null, "note": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Prepared a shift for Kári on 2026-09-29 18:00–00:00", "the rota is not published"],
+      "data": { "data.warnings": { "$len": 0 } },
+      "proposal": {
+        "kind": "shift.draft", "required_roles": ["admin", "manager"],
+        "command": { "week_start": "2026-09-28", "person_id": "@person.kari", "starts_local": "2026-09-29T18:00", "ends_local": "2026-09-30T00:00", "role_name": "Floor", "break_minutes": 0 },
+        "preview": { "will_not_change": { "$includes": "The week is not published and nobody is notified." } }
+      }
+    }
+  },
+  {
+    "id": "shf-007", "category": "shifts", "blocking": false,
+    "question": "Put Jón on next Saturday, 17 to 1.",
+    "actor": "manager", "tool": "shifts.prepare_draft",
+    "args": { "person_id": null, "person_query": "Jón", "date": "2026-10-03", "start_time": "17:00", "end_time": "01:00", "role_name": null, "break_minutes": 30, "note": null },
+    "expected": { "ok": true, "data": { "data.warnings": ["Jón is marked unavailable on Saturdays."] }, "proposal": { "kind": "shift.draft", "command": { "ends_local": "2026-10-04T01:00", "break_minutes": 30 } } }
+  },
+  {
+    "id": "shf-008", "category": "shifts", "blocking": true,
+    "question": "Add Kári this Sunday 16:00–23:00.",
+    "actor": "admin", "tool": "shifts.prepare_draft",
+    "args": { "person_id": "@person.kari", "person_query": null, "date": "2026-09-27", "start_time": "16:00", "end_time": "23:00", "role_name": "Floor", "break_minutes": null, "note": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.warnings": { "$len": 2 }, "data.warnings[0]": "Kári is marked unavailable on Sundays.", "data.warnings[1]": { "$includes": "already published" } },
+      "evidence": [{ "kind": "fact", "label": "Week status", "value": "published" }],
+      "proposal": { "kind": "shift.draft" }
+    }
+  },
+  {
+    "id": "shf-009", "category": "shifts", "blocking": false,
+    "question": "What about the day after tomorrow?",
+    "actor": "manager", "tool": "shifts.who_is_working",
+    "args": { "day": null, "date": "2026-09-26" },
+    "expected": { "ok": true, "data": { "data.shifts": { "$len": 3 } }, "summary": ["Anna 17:00–03:00", "Bjarni 17:00–03:00", "Kári 18:00–02:00"] }
+  },
+  {
+    "id": "shf-010", "category": "shifts", "blocking": true,
+    "question": "Are we short-staffed next week?",
+    "actor": "manager", "world": "hours", "tool": "shifts.schedule",
+    "args": { "week_start": "2026-09-28" },
+    "expected": {
+      "ok": true,
+      "summary": ["3 open days with nobody scheduled"],
+      "data": { "data.gaps": { "$len": 3 }, "data.gaps[0].subject_key": "2026-10-01", "data.hours_configured": true },
+      "evidence": [{ "kind": "fact", "label": "Staffing gap", "value": "Nobody is scheduled on Thursday 2026-10-01" }]
+    },
+    "notes": "Open Tue–Sun per Settings; Thu 1, Sat 3 and Sun 4 October have nobody. Monday is closed, so not a gap."
+  },
+  {
+    "id": "shf-011", "category": "shifts", "blocking": false,
+    "question": "Is this week's rota published?",
+    "actor": "viewer", "tool": "shifts.schedule",
+    "args": { "week_start": null },
+    "expected": { "ok": true, "data": { "data.week_start": "2026-09-21", "data.published": true }, "evidence": [{ "kind": "fact", "label": "Week status", "value": "published" }] }
+  }
+]

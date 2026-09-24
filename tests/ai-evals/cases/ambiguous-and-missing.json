@@ -1,0 +1,178 @@
+[
+  {
+    "id": "amb-001", "category": "ambiguous", "blocking": true,
+    "question": "I counted six gin.",
+    "actor": "bartender", "tool": "inventory.prepare_count",
+    "args": { "entries": [{ "item_id": null, "item_query": "gin", "quantity": 6, "unit": "bottle", "note": null }], "title": null, "note": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Atlas needs clarification", "\"gin\" matches 2 items"],
+      "data": { "data.needs_clarification[0].status": "ambiguous", "data.needs_clarification[0].candidates": { "$len": 2 } },
+      "evidence_kinds": ["interpretation"],
+      "records": ["inventory_item:@item.tanqueray", "inventory_item:@item.beefeater"],
+      "proposal": null
+    },
+    "notes": "Two gins: Atlas asks which one and prepares nothing."
+  },
+  {
+    "id": "amb-002", "category": "ambiguous", "blocking": true,
+    "question": "We've got five Pinot left.",
+    "actor": "manager", "tool": "inventory.prepare_count",
+    "args": { "entries": [{ "item_id": null, "item_query": "pinot", "quantity": 5, "unit": null, "note": null }], "title": null, "note": null },
+    "expected": { "ok": true, "data": { "data.needs_clarification[0].candidates": { "$some": { "name": "Montes Pinot Noir" } } }, "proposal": null }
+  },
+  {
+    "id": "amb-003", "category": "ambiguous", "blocking": true,
+    "question": "How many glasses can we pour?",
+    "actor": "bartender", "tool": "recipes.can_make",
+    "args": { "recipe_id": null, "recipe_query": "glass", "servings": null },
+    "expected": { "ok": true, "summary": ["matches 2 recipes", "Ask which one"], "data": { "data.needs_clarification[0].status": "ambiguous" }, "records": ["recipe:@recipe.glassangelo", "recipe:@recipe.glassvillamaria"] }
+  },
+  {
+    "id": "amb-004", "category": "ambiguous", "blocking": true,
+    "question": "Get me the Vín supplier.",
+    "actor": "manager", "tool": "purchasing.get_supplier",
+    "args": { "supplier_id": null, "supplier_query": "Vín" },
+    "expected": { "ok": true, "summary": ["matches 2 suppliers"], "records": ["supplier:@supplier.vinnes", "supplier:@supplier.vinogmatur"] }
+  },
+  {
+    "id": "amb-005", "category": "ambiguous", "blocking": true,
+    "question": "Draft the usual order from Vín.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": null, "supplier_query": "Vín", "use_suggestions": true, "lines": null, "note": null, "expected_delivery_date": null },
+    "expected": { "ok": true, "data": { "data.needs_clarification[0].status": "ambiguous" }, "proposal": null }
+  },
+  {
+    "id": "amb-006", "category": "ambiguous", "blocking": true,
+    "question": "Add a case of Pinot to the Vínnes order.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": "@supplier.vinnes", "supplier_query": null, "use_suggestions": null, "lines": [{ "item_id": null, "item_query": "pinot", "quantity": 6, "unit_cost": null }], "note": null, "expected_delivery_date": null },
+    "expected": { "ok": true, "summary": ["\"pinot\" matches several items"], "proposal": null }
+  },
+  {
+    "id": "amb-007", "category": "ambiguous", "blocking": true,
+    "question": "Can we make a Cosmopolitan?",
+    "actor": "bartender", "tool": "recipes.can_make",
+    "args": { "recipe_id": null, "recipe_query": "Cosmopolitan", "servings": null },
+    "expected": { "ok": false, "error": "not_found", "message": ["No recipe matches \"Cosmopolitan\""] }
+  },
+  {
+    "id": "amb-008", "category": "ambiguous", "blocking": true,
+    "question": "Counted 4 Grey Goose.",
+    "actor": "bartender", "tool": "inventory.prepare_count",
+    "args": { "entries": [{ "item_id": null, "item_query": "Grey Goose", "quantity": 4, "unit": "bottle", "note": null }], "title": null, "note": null },
+    "expected": { "ok": true, "summary": ["\"Grey Goose\" matches no item"], "data": { "data.needs_clarification[0].status": "not_found" }, "proposal": null }
+  },
+  {
+    "id": "amb-009", "category": "ambiguous", "blocking": true,
+    "question": "Six Tanqueray and, er, six Tanqueray again.",
+    "actor": "bartender", "tool": "inventory.prepare_count",
+    "args": { "entries": [{ "item_id": null, "item_query": "Tanqueray", "quantity": 6, "unit": "bottle", "note": null }, { "item_id": "@item.tanqueray", "item_query": null, "quantity": 6, "unit": "bottle", "note": null }], "title": null, "note": null },
+    "expected": { "ok": true, "summary": ["is listed twice"], "data": { "data.needs_clarification": { "$some": { "status": "duplicate" } } }, "proposal": null }
+  },
+  {
+    "id": "mis-001", "category": "missing_evidence", "blocking": true,
+    "question": "Why is Orange Juice showing incomplete?",
+    "actor": "manager", "tool": "inventory.get",
+    "args": { "item_id": "@item.orangejuice" },
+    "expected": {
+      "ok": true,
+      "summary": ["Orange Juice: stock unknown (never verified by a count)"],
+      "data": { "data.item.quantity": null, "data.item.quantity_status": "unverified", "data.item.cost_price": null, "data.item.supplier": "Unassigned", "data.item.supplier_id": null, "data.package_size": null },
+      "evidence_kinds": ["missing"],
+      "evidence_kinds_absent": ["fact"],
+      "evidence": [{ "kind": "missing", "label": "Current stock of Orange Juice", "value": "never verified" }, { "kind": "missing", "label": "Package size" }, { "kind": "missing", "label": "Par level", "value": "not set" }],
+      "unknown": { "count": 1 }
+    },
+    "notes": "No count, no package size (\"1L carton\" is free text), no cost, no supplier, no par: the raw 6 cartons are never stock."
+  },
+  {
+    "id": "mis-002", "category": "missing_evidence", "blocking": true,
+    "question": "What data do we need to fix?",
+    "actor": "manager", "tool": "data_quality.review_list",
+    "args": { "issue": null, "limit": null, "offset": null },
+    "expected": {
+      "ok": true,
+      "summary": ["largest: Items without a par level (24)"],
+      "data": { "data.issues": { "$some": { "code": "inventory.missing_cost", "count": 1 } }, "data.issues[0]": { "code": "inventory.missing_par", "count": 24 } },
+      "evidence": [{ "kind": "fact", "label": "Items without a supplier", "value": "2" }, { "kind": "fact", "label": "Recipes without a menu price", "value": "1" }]
+    }
+  },
+  {
+    "id": "mis-003", "category": "missing_evidence", "blocking": false,
+    "question": "Which items have no cost?",
+    "actor": "manager", "tool": "data_quality.review_list",
+    "args": { "issue": "inventory.missing_cost", "limit": null, "offset": null },
+    "expected": { "ok": true, "data": { "data.total": 1, "data.rows[0].name": "Orange Juice" }, "records": ["inventory_item:@item.orangejuice"] }
+  },
+  {
+    "id": "mis-004", "category": "missing_evidence", "blocking": true,
+    "question": "Can we make 10 Espresso Martinis?",
+    "actor": "bartender", "tool": "recipes.can_make",
+    "args": { "recipe_id": null, "recipe_query": "Espresso Martini", "servings": 10 },
+    "expected": {
+      "ok": true,
+      "summary": ["Atlas cannot confirm Espresso Martini × 10", "Kahlúa (no verified stock count)"],
+      "data": { "data.answer": "unknown", "data.servings_possible": null, "data.blockers": [{ "name": "Kahlúa", "reason": "no verified stock count" }] },
+      "evidence": [{ "kind": "missing", "label": "Stock of Kahlúa", "value": "unknown" }],
+      "unknown": { "count": 1 }
+    },
+    "notes": "Kahlúa's last count expired: the answer is unknown, never yes or no."
+  },
+  {
+    "id": "mis-005", "category": "missing_evidence", "blocking": true,
+    "question": "Do we have any Kahlúa?",
+    "actor": "viewer", "tool": "inventory.get",
+    "args": { "item_id": "@item.kahlua" },
+    "expected": { "ok": true, "data": { "data.item.quantity": null, "data.item.quantity_status": "stale" }, "evidence": [{ "kind": "missing", "value": "the last verified count has expired" }], "unknown": { "count": 1 } }
+  },
+  {
+    "id": "mis-006", "category": "missing_evidence", "blocking": true,
+    "question": "How much Brennivín is in the cellar?",
+    "actor": "manager", "tool": "inventory.current_stock",
+    "args": { "item_ids": null, "query": "Brennivín", "category": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "summary": ["0 of 1 matching items have verified stock; 1 are unknown"],
+      "summary_excludes": ["18"],
+      "data": { "data.items[0].quantity": null, "data.items[0].quantity_status": "historical" },
+      "evidence": [{ "kind": "missing", "value": "only an old imported quantity exists" }],
+      "unknown": { "count": 1 }
+    },
+    "notes": "The imported opening quantity (18) is not stock."
+  },
+  {
+    "id": "mis-007", "category": "missing_evidence", "blocking": true,
+    "question": "Is Jameson running low?",
+    "actor": "manager", "tool": "inventory.get",
+    "args": { "item_id": "@item.jameson" },
+    "expected": { "ok": true, "data": { "data.item.quantity": null, "data.item.par_level": 3, "data.item.status": "stale" }, "evidence": [{ "kind": "fact", "label": "Par level", "value": "3 bottle" }, { "kind": "missing", "label": "Current stock of Jameson Irish Whiskey" }] }
+  },
+  {
+    "id": "mis-008", "category": "missing_evidence", "blocking": true,
+    "question": "Can you suggest par levels?",
+    "actor": "manager", "tool": "data_quality.par_suggestions",
+    "args": { "item_ids": null, "cover_days": null, "limit": null },
+    "expected": { "ok": true, "summary": ["4 of 6 items have enough usage evidence", "Give cover_days"], "data": { "data.eligible": 4, "data.ineligible": 2 }, "evidence": [{ "kind": "missing", "label": "Items without enough usage evidence", "value": "2 items" }], "proposal": null, "unknown": { "count": 2 } }
+  },
+  {
+    "id": "mis-009", "category": "missing_evidence", "blocking": true,
+    "question": "Suggest pars for a week of cover.",
+    "actor": "manager", "tool": "data_quality.par_suggestions",
+    "args": { "item_ids": null, "cover_days": 7, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.suggested": 4, "data.items": { "$some": { "name": "Tanqueray London Dry Gin", "suggested_par": 4 } } },
+      "evidence": [{ "kind": "calculation", "label": "Limes suggested par", "value": "42 (6/day × 7 days)" }],
+      "proposal": { "kind": "par_level.suggestion", "executable": false, "command": { "cover_days": 7, "items": { "$len": 4 } }, "preview": { "will_change": { "$len": 0 } } }
+    },
+    "notes": "Tanqueray 0.5/day × 7 = 3.5 → 4; Absolut 0.8 × 7 = 5.6 → 6; Limes 42; Angelo 1.2 × 7 = 8.4 → 9."
+  },
+  {
+    "id": "mis-010", "category": "missing_evidence", "blocking": true,
+    "question": "Can we make Mojitos tonight?",
+    "actor": "manager", "tool": "recipes.can_make",
+    "args": { "recipe_id": null, "recipe_query": "Mojito", "servings": null },
+    "expected": { "ok": true, "data": { "data.answer": "unknown", "data.blockers": [{ "name": "Kristall Soda Water 330 ml", "reason": "no verified stock count" }] } }
+  }
+]
