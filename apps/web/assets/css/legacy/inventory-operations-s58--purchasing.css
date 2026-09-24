@@ -14,7 +14,7 @@
 #purchase-suppliers-panel>.toolbar .purchasing-search>svg{position:absolute;z-index:1;left:12px;top:50%;width:16px;height:16px;transform:translateY(-50%);pointer-events:none}
 #purchase-suppliers-panel>.toolbar #supplier-search{width:100%;min-height:40px;margin:0;padding:0 13px 0 36px;border:1px solid var(--atlas-line);border-radius:11px;background:var(--atlas-bg)}
 #purchase-suppliers-panel>table{width:100%;border:1px solid var(--atlas-line);border-radius:16px;border-collapse:separate;border-spacing:0;overflow:hidden;background:var(--atlas-surface)}
-#add-supplier-btn[hidden]{display:none!important}
+
 @media(max-width:640px){#purchase-suppliers-panel>.toolbar .purchasing-search{width:100%}
 }
 }

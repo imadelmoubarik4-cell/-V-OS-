@@ -13,43 +13,8 @@
  * restyles existing classes. Rolling back is deleting this file's <link>.
  */
 @layer atlas.legacy {
-:root {
-  /* Palette tokens (--atlas-*) are defined once in atlas-tokens.css. */
+/* Palette and glass tokens are defined (flat) in atlas-tokens.css. */
 
-  /* Glass primitives */
-  --glass-blur: saturate(150%) blur(20px);
-  --glass-fill: rgba(255, 255, 255, .72);
-  --glass-fill-strong: rgba(255, 255, 255, .86);
-  --glass-fill-soft: rgba(255, 255, 255, .5);
-  --glass-line: rgba(16, 60, 110, .10);
-  --glass-line-strong: rgba(16, 60, 110, .16);
-  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .85);
-  --glass-shadow: 0 1px 2px rgba(16, 60, 110, .04), 0 18px 40px -28px rgba(16, 60, 110, .28);
-  --glass-shadow-raised: 0 6px 18px rgba(16, 60, 110, .07), 0 34px 60px -34px rgba(16, 60, 110, .34);
-  --blue-50: #f4f9ff;
-  --blue-100: #e8f1fd;
-  --blue-200: #d3e5fb;
-  --blue-400: #7db4f2;
-
-  /* Home / Inventory accent aliases are defined in atlas-tokens.css. */
-  --atlas-home-teal: #1f9d8f;
-  --atlas-home-teal-soft: rgba(31, 157, 143, .11);
-  --atlas-home-warning: #c98a2e;
-  --atlas-home-warning-soft: rgba(201, 138, 46, .11);
-  --atlas-home-shadow: var(--glass-shadow);
-  --atlas-home-shadow-raised: var(--glass-shadow-raised);
-}
-
-/* ---------- Page field: white, with light blue depth for the glass to read against ---------- */
-
-#app-screen {
-  background:
-    radial-gradient(1100px 620px at 12% -8%, rgba(47, 128, 237, .09), transparent 62%),
-    radial-gradient(900px 560px at 92% 4%, rgba(125, 180, 242, .12), transparent 58%),
-    radial-gradient(760px 520px at 50% 108%, rgba(47, 128, 237, .06), transparent 60%),
-    #ffffff;
-  background-attachment: fixed;
-}
 
 /* ---------- Shell ---------- */
 
@@ -146,27 +111,6 @@
 }
 .service-exit { border-radius: 14px; }
 
-/* ---------- Accessibility / fallbacks ---------- */
-
-/* Where backdrop-filter is unsupported, fall back to near-opaque white so
-   nothing becomes unreadable. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  :root {
-    --glass-fill: rgba(255, 255, 255, .96);
-    --glass-fill-strong: #ffffff;
-    --glass-fill-soft: rgba(255, 255, 255, .94);
-  }
-
-  .atlas-sidebar, .atlas-topbar { background: rgba(255, 255, 255, .97); }
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  :root {
-    --glass-fill: #ffffff;
-    --glass-fill-strong: #ffffff;
-    --glass-fill-soft: #ffffff;
-  }
-}
 
 /* Shell and Quick actions rules (moved here from atlas-glass--components.css in S88;
    shell chrome is rebuilt in the shell package). */

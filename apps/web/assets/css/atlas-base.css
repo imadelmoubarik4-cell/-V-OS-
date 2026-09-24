@@ -1,84 +1,182 @@
-/* Atlas base — reset-level rules shared by every page (layer atlas.base, below
- * atlas.legacy: a base rule never overrides a legacy page rule). First step of
- * the S88 consolidation: the base rules of the retired override stylesheets. */
+/* Atlas base — reset, typography, focus, motion and layout primitives.
+ *
+ * Spec: docs/design/Atlas_Experience_Redesign.md §5; reference:
+ * docs/design/Atlas_Design_System.md. Values come only from atlas-tokens.css.
+ *
+ * This layer sits BELOW atlas.legacy on purpose: an element rule here never
+ * overrides a pre-S88 page rule, it only fills in what legacy CSS leaves to
+ * the browser defaults. Component classes live in atlas-components.css.
+ *
+ * !important is used only where the spec allows it in base: [hidden] and
+ * reduced motion. In the layer order an !important declaration in an earlier
+ * layer beats one in a later layer, so these two contracts hold everywhere.
+ */
 @layer atlas.base {
-/* Focus is always visible for keyboard users. */
-:where(button, a[href], input, select, textarea, [role="button"], [tabindex="0"]):focus-visible {
-  outline: 2px solid var(--atlas-accent);
-  outline-offset: 2px;
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
-/* Wide data tables scroll inside their card; the page never scrolls sideways. */
+/* Body type: 14/20 (15/22 on phones), IBM Plex Sans, warm near-black on white.
+   The line height is unitless so legacy text with its own size keeps a
+   proportional leading instead of inheriting a fixed 20 px. */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: 1.4286;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+@media (max-width: 767px) {
+  body { font-size: var(--fs-body-lg); line-height: 1.4667; }
+}
+
+/* Form controls use the page type instead of the 13.33 px browser default. */
+button, input, select, textarea { font-family: inherit; font-size: 100%; color: inherit; }
+button { cursor: pointer; }
+button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
+code, kbd, samp, pre { font-family: var(--font-mono); }
+
+/* Headings and numbers */
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-sans); font-weight: 600; color: var(--text); }
+strong, b { font-weight: 600; }
+.num, time, [data-num] { font-variant-numeric: tabular-nums; }
+
+/* Links: accent text, underline on hover. */
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* Icons: lucide (pinned 0.454.0) is the only icon set. Stroke 1.75 everywhere;
+   size classes for new markup (legacy rules size their own icons). */
+svg.lucide { stroke-width: var(--icon-stroke); flex: none; }
+.icon, .atlas-icon {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--icon-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: middle;
+}
+.icon--md, .atlas-icon--md { width: var(--icon-md); height: var(--icon-md); }
+.icon--lg, .atlas-icon--lg { width: var(--icon-lg); height: var(--icon-lg); }
+.icon--xl, .atlas-icon--xl { width: var(--icon-xl); height: var(--icon-xl); stroke-width: var(--icon-stroke-xl); }
+
+/* Focus: always visible for keyboard users — 2 px accent outline, 2 px offset. */
+:where(button, a[href], input, select, textarea, summary, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], [tabindex]):focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+::selection { background: rgba(31, 111, 219, .18); color: inherit; }
+
+/* The hidden attribute always hides (spec §9.1 allows !important here). */
+[hidden] { display: none !important; }
+
+/* Screen-reader only text. */
+.sr-only, .atlas-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Wide tables scroll inside their card; the page never scrolls sideways. */
 .atlas-table-scroll { min-width: 0; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-:where(button, input, select, textarea):disabled { cursor: not-allowed; opacity: .55; }
+/* ---------- Layout primitives ----------
+   Stack: vertical rhythm. Cluster: a wrapping row (buttons, chips, meta).
+   Grid: responsive auto columns. Gaps come from the spacing scale. */
+.atlas-stack { display: flex; flex-direction: column; gap: var(--stack-gap, var(--s-4)); min-width: 0; }
+.atlas-stack--xs { --stack-gap: var(--s-1); }
+.atlas-stack--sm { --stack-gap: var(--s-2); }
+.atlas-stack--md { --stack-gap: var(--s-3); }
+.atlas-stack--lg { --stack-gap: var(--s-6); }
+.atlas-stack--xl { --stack-gap: var(--s-10); }
+.atlas-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cluster-gap, var(--s-2)); min-width: 0; }
+.atlas-cluster--end { justify-content: flex-end; }
+.atlas-cluster--between { justify-content: space-between; }
+.atlas-cluster--nowrap { flex-wrap: nowrap; }
+.atlas-auto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--grid-min, 240px)), 1fr)); gap: var(--grid-gap, var(--s-4)); }
+.atlas-spacer { flex: 1 1 auto; }
+.atlas-page {
+  max-width: calc(var(--page-max) + 2 * var(--page-gutter));
+  margin: 0 auto;
+  padding: var(--s-8) var(--page-gutter) var(--s-20);
+}
+.atlas-page--wide { max-width: none; }
+.atlas-reading { max-width: var(--reading-max); }
+@media (max-width: 767px) {
+  .atlas-page { padding: var(--s-3) var(--page-gutter) calc(var(--tabbar-h) + var(--s-10)); }
+}
 
-/* Reduced motion: the OS setting and the personal Reduce motion preference.
-   !important in an earlier layer beats !important in every later layer. */
+/* ---------- Reduced motion ----------
+   prefers-reduced-motion and the personal Reduce motion preference
+   (html.atlas-reduce-motion): no movement; fades are cut to the 120 ms limit
+   or less; the skeleton shimmer is static. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 html.atlas-reduce-motion *,
 html.atlas-reduce-motion *::before,
 html.atlas-reduce-motion *::after {
-  animation-duration: .001ms !important;
+  animation-duration: .01ms !important;
   animation-iteration-count: 1 !important;
-  transition-duration: .001ms !important;
+  transition-duration: .01ms !important;
   scroll-behavior: auto !important;
 }
 
-/* Legacy defaults: the non-!important rules of the retired override files. */
+/* ==========================================================================
+   Legacy defaults — TRANSITIONAL. The non-!important rules of the retired
+   override files (atlas-glass, workspaces-polish, polish-pass2, s34, s38
+   search, s61), de-glassed. They sit below atlas.legacy, so any module rule
+   still wins; module owners delete their selectors here when they rebuild.
+   ========================================================================== */
+:where(button, input, select, textarea):disabled { opacity: .55; }
 /* ---------- from legacy/atlas-glass--search.css ---------- */
 :where(.atlas-search input, .atlas-content input, .atlas-content select, .atlas-content textarea, .modal input, .modal select, .modal textarea) {
   background: var(--glass-fill-strong);
   border: 1px solid var(--glass-line);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   color: var(--atlas-text);
 }
 :where(.atlas-search input:focus, .atlas-content input:focus, .atlas-content select:focus, .atlas-content textarea:focus, .modal input:focus, .modal select:focus, .modal textarea:focus) {
   outline: none;
   border-color: var(--blue-400);
-  box-shadow: 0 0 0 3px rgba(47, 128, 237, .14);
+  box-shadow: 0 0 0 3px rgba(31, 111, 219, .16);
 }
 /* ---------- from legacy/workspaces-polish--components.css ---------- */
 /* ---------- Shared surface treatment ---------- */
 :where(.marketing-panel, .marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .marketing-modal, .team-messages-layout, .team-profiles-layout, .team-profiles-state, .team-profile-panel, .team-profile-detail, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .shift-month-state, .shift-card, .knowledge-article-card, .knowledge-summary-grid > *, .knowledge-trust-panel, .knowledge-training-hero, .knowledge-connection-card, .knowledge-state, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal, .business-card, .reports-hero-meta, .reports-filter-shell, .reports-table-panel, .reports-chart-empty, .settings-panel, .settings-card, .settings-activity-list article) {
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   color: var(--atlas-text);
 }
 /* Nested cards sit inside an already-glass panel: fill only, no second shadow. */
-:where(.marketing-modal-backdrop) {
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
 :where(.team-message-content) {
-  box-shadow: 0 1px 2px rgba(16, 60, 110, .05);
-}
-/* A manager-only note is a permission boundary; it keeps a distinct tone. */
-:where(.team-profile-modal-backdrop) {
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-/* ---------- Shifts ---------- */
-:where(.shift-modal-backdrop) {
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-:where(.knowledge-drawer-backdrop, .knowledge-modal-backdrop) {
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  box-shadow: var(--shadow-1);
 }
 /* ---------- Settings ---------- */
 :where(.empty-module svg) {
   color: var(--blue-400);
-}
-/* ---------- Fallbacks ---------- */
-@media (prefers-reduced-transparency: reduce) {
-  :where(.team-messages-layout, .team-profiles-layout, .team-profiles-directory, .marketing-panel, .marketing-modal, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal, .settings-panel, .settings-card, .settings-hero, .reports-table-panel, .reports-filter-shell, .business-card, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .team-message-list) {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
 }
 /* ---------- from legacy/polish-pass2--components.css ---------- */
 /* Wide workspace content stays within the shared rail and advertises overflow
@@ -87,12 +185,6 @@ html.atlas-reduce-motion *::after {
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
-}
-/* ---------- Primary buttons: one blue primary across the product ----------
-   Marketing shipped a near-black primary (--atlas-text), Shifts a brown one
-   (#a6814d), Operations a black compact button. (confirmed) */
-:where(.marketing-primary:hover:not(:disabled), .shift-primary:hover, .checkpoint-a-compact-button:hover, .knowledge-primary:hover, .shifts-primary:hover, .team-messages-primary:hover) {
-  transform: translateY(-1px);
 }
 /* ---------- from legacy/s34-preproduction--search.css ---------- */
 /* Compact search field used across launch modules. */
@@ -112,7 +204,7 @@ html.atlas-reduce-motion *::after {
 }
 :where(:is( #global-search, #supplier-search, #recipe-search, [data-team-target-search] )) {
   max-height: 42px;
-  box-shadow: inset 0 1px 2px rgba(31, 57, 93, .04);
+  box-shadow: none;
 }
 /* ---------- from legacy/accessibility-responsive-s61--components.css ---------- */
 @media (max-width: 760px) {

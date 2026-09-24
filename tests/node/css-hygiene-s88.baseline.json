@@ -12,8 +12,8 @@
     "important": 668,
     "crossFileDuplicateSelectors": 500,
     "subElevenPxFontSizes": 563,
-    "stylesheetFiles": 111,
-    "legacyFragmentFiles": 82,
+    "stylesheetFiles": 110,
+    "legacyFragmentFiles": 81,
     "inlineAndInjectedStyleBlocks": 1
   }
 }

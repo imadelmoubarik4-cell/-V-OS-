@@ -2,6 +2,16 @@
   'use strict';
 
   const modalState = new WeakMap();
+  // Design system §6.18: dialogs and sheets are labelled modal dialogs; the
+  // page behind them is inert while one is open.
+  const inertState = new Map();
+  const fieldSelector = [
+    '[data-autofocus]',
+    'input:not([type="hidden"]):not([disabled]):not([readonly])',
+    'select:not([disabled])',
+    'textarea:not([disabled]):not([readonly])'
+  ].join(',');
+  let titleSequence = 0;
   const legacyOverlaySelector = '.overlay:not([data-atlas-modal])';
   const focusableSelector = [
     'a[href]',
@@ -20,6 +30,48 @@
     return Array.from(root.querySelectorAll(focusableSelector)).filter((element) => {
       return !element.hasAttribute('hidden') && element.offsetParent !== null;
     });
+  }
+
+  function labelDialog(root) {
+    const panel = getPanel(root);
+    if (!panel) return;
+    if (!panel.getAttribute('role')) panel.setAttribute('role', 'dialog');
+    if (!panel.hasAttribute('aria-modal')) panel.setAttribute('aria-modal', 'true');
+    if (!panel.hasAttribute('aria-labelledby') && !panel.hasAttribute('aria-label')) {
+      const title = panel.querySelector('[data-modal-title], h1, h2, h3');
+      if (title) {
+        if (!title.id) title.id = `atlas-modal-title-${titleSequence += 1}`;
+        panel.setAttribute('aria-labelledby', title.id);
+      }
+    }
+  }
+
+  function setBackgroundInert(root) {
+    inertState.forEach((wasInert, element) => { element.inert = wasInert; });
+    inertState.clear();
+    if (!root) return;
+    Array.from(document.body.children).forEach((element) => {
+      if (element === root || element.contains(root)) return;
+      if (element.matches('script, style, link, template, [aria-live], [role="status"], [role="alert"]')) return;
+      inertState.set(element, Boolean(element.inert));
+      element.inert = true;
+    });
+  }
+
+  // First field, else the title (read-only dialogs), else the first control.
+  function initialFocusTarget(root, state) {
+    if (state.options.initialFocus) return root.querySelector(state.options.initialFocus);
+    const visible = (element) => element && !element.hasAttribute('hidden') && element.offsetParent !== null;
+    const field = Array.from(root.querySelectorAll(fieldSelector)).find(visible);
+    if (field) return field;
+    const panel = getPanel(root);
+    const titleId = panel?.getAttribute('aria-labelledby');
+    const title = titleId ? document.getElementById(titleId) : null;
+    if (visible(title)) {
+      if (!title.hasAttribute('tabindex')) title.setAttribute('tabindex', '-1');
+      return title;
+    }
+    return getFocusable(root)[0] || panel;
   }
 
   function closeTopModal(event) {
@@ -102,6 +154,7 @@
 
       const panel = getPanel(root);
       if (panel && !panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
+      labelDialog(root);
 
       const state = {
         options: {
@@ -139,15 +192,13 @@
       root.setAttribute('aria-hidden', 'false');
       root.classList.add('is-open');
       document.body.classList.add('atlas-modal-open');
+      setBackgroundInert(root);
 
       if (typeof state.options.onOpen === 'function') state.options.onOpen(payload, root);
       root.dispatchEvent(new CustomEvent('atlas:modal-open', { detail: payload }));
 
       requestAnimationFrame(() => {
-        const target = state.options.initialFocus
-          ? root.querySelector(state.options.initialFocus)
-          : getFocusable(root)[0] || getPanel(root);
-        target?.focus();
+        initialFocusTarget(root, state)?.focus();
       });
     },
 
@@ -161,8 +212,9 @@
       root.hidden = true;
       root.style.display = 'none';
 
-      const stillOpen = document.querySelector('[data-atlas-modal].is-open');
+      const stillOpen = Array.from(document.querySelectorAll('[data-atlas-modal].is-open')).at(-1);
       if (!stillOpen) document.body.classList.remove('atlas-modal-open');
+      setBackgroundInert(stillOpen || null);
 
       if (typeof state.options.onClose === 'function') state.options.onClose(reason, root);
       root.dispatchEvent(new CustomEvent('atlas:modal-close', { detail: { reason } }));
