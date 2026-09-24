@@ -13,9 +13,20 @@ grant all on table s88_clock to anon, authenticated, service_role;
 
 insert into auth.users (instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 values ((select id from auth.instances limit 1),'00000000-0000-4000-8000-000000088101','authenticated','authenticated','s88-clock-mgr@example.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+insert into auth.users (instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+select (select id from auth.instances limit 1), v.id, 'authenticated','authenticated', v.email,'',now(),'{}'::jsonb,'{}'::jsonb,now(),now()
+from (values
+  ('00000000-0000-4000-8000-000000088102'::uuid,'s88-clock-viewer@example.invalid'),
+  ('00000000-0000-4000-8000-000000088103'::uuid,'s88-clock-bar@example.invalid'),
+  ('00000000-0000-4000-8000-000000088104'::uuid,'s88-clock-admin@example.invalid'),
+  ('00000000-0000-4000-8000-000000088105'::uuid,'s88-clock-gone@example.invalid')) v(id,email);
 insert into public.profiles (id,email,display_name,role,active)
-values ('00000000-0000-4000-8000-000000088101','s88-clock-mgr@example.invalid','S88 clock manager','manager',true)
-on conflict (id) do update set role='manager', active=true;
+values ('00000000-0000-4000-8000-000000088101','s88-clock-mgr@example.invalid','S88 clock manager','manager',true),
+       ('00000000-0000-4000-8000-000000088102','s88-clock-viewer@example.invalid','S88 clock viewer','viewer',true),
+       ('00000000-0000-4000-8000-000000088103','s88-clock-bar@example.invalid','S88 clock bartender','bartender',true),
+       ('00000000-0000-4000-8000-000000088104','s88-clock-admin@example.invalid','S88 clock admin','admin',true),
+       ('00000000-0000-4000-8000-000000088105','s88-clock-gone@example.invalid','S88 clock former','bartender',false)
+on conflict (id) do update set role=excluded.role, active=excluded.active;
 
 -- Production has no hours rows; start from that state.
 delete from atlas_private.settings_business_hours;
@@ -31,7 +42,7 @@ declare
   clock jsonb;
   failed boolean;
 begin
-  clock := public.atlas_settings_venue_clock('viewer');
+  clock := public.atlas_settings_venue_clock('viewer', '00000000-0000-4000-8000-000000088102');
   insert into s88_clock values ('no hours rows: hours_configured is false', (clock->>'hours_configured')::boolean = false);
   insert into s88_clock values ('no hours rows: empty business_hours', clock->'business_hours' = '[]'::jsonb);
   insert into s88_clock values ('clock reports the configured zone from Settings',
@@ -41,23 +52,48 @@ begin
   insert into s88_clock values ('clock returns venue_date, business_date and local time',
     clock ? 'venue_date' and clock ? 'business_date' and clock ? 'venue_local_time');
 
-  insert into s88_clock values ('bartender can read the clock', public.atlas_settings_venue_clock('bartender') ? 'timezone');
-  insert into s88_clock values ('manager can read the clock', public.atlas_settings_venue_clock('manager') ? 'timezone');
-  insert into s88_clock values ('admin can read the clock', public.atlas_settings_venue_clock('admin') ? 'timezone');
+  insert into s88_clock values ('bartender can read the clock', public.atlas_settings_venue_clock('bartender', '00000000-0000-4000-8000-000000088103') ? 'timezone');
+  insert into s88_clock values ('manager can read the clock', public.atlas_settings_venue_clock('manager', '00000000-0000-4000-8000-000000088101') ? 'timezone');
+  insert into s88_clock values ('admin can read the clock', public.atlas_settings_venue_clock('admin', '00000000-0000-4000-8000-000000088104') ? 'timezone');
 
   failed := false;
   begin
-    perform public.atlas_settings_venue_clock('nobody');
+    perform public.atlas_settings_venue_clock('nobody', '00000000-0000-4000-8000-000000088101');
   exception when others then failed := true;
   end;
   insert into s88_clock values ('unknown role is refused', failed);
 
   failed := false;
   begin
-    perform public.atlas_settings_venue_clock(null);
+    perform public.atlas_settings_venue_clock(null, '00000000-0000-4000-8000-000000088101');
   exception when others then failed := true;
   end;
   insert into s88_clock values ('missing role is refused', failed);
+
+  -- S88 hardening F7: the claimed role is re-checked against the active profile.
+  failed := false;
+  begin
+    perform public.atlas_settings_venue_clock('admin', '00000000-0000-4000-8000-000000088103');
+  exception when insufficient_privilege then failed := true;
+  end;
+  insert into s88_clock values ('a claimed role that is not the profile role is refused', failed);
+
+  failed := false;
+  begin
+    perform public.atlas_settings_venue_clock('bartender', '00000000-0000-4000-8000-000000088105');
+  exception when insufficient_privilege then failed := true;
+  end;
+  insert into s88_clock values ('an inactive profile is refused', failed);
+
+  failed := false;
+  begin
+    perform public.atlas_settings_venue_clock('manager', null);
+  exception when insufficient_privilege then failed := true;
+  end;
+  insert into s88_clock values ('a missing actor id is refused', failed);
+
+  insert into s88_clock values ('the role-only venue clock signature no longer exists',
+    to_regprocedure('public.atlas_settings_venue_clock(text)') is null);
 end
 $probe$;
 
@@ -76,7 +112,7 @@ set role service_role;
 do $probe$
 declare clock jsonb;
 begin
-  clock := public.atlas_settings_venue_clock('viewer');
+  clock := public.atlas_settings_venue_clock('viewer', '00000000-0000-4000-8000-000000088102');
   insert into s88_clock values ('seven rows: hours_configured is true', (clock->>'hours_configured')::boolean);
   insert into s88_clock values ('seven rows: business_hours ordered Sunday first',
     jsonb_array_length(clock->'business_hours') = 7 and (clock->'business_hours'->0->>'weekday')::int = 0);
@@ -163,7 +199,7 @@ do $probe$
 declare denied boolean := false;
 begin
   begin
-    perform public.atlas_settings_venue_clock('viewer');
+    perform public.atlas_settings_venue_clock('viewer', '00000000-0000-4000-8000-000000088102');
   exception when insufficient_privilege then denied := true;
   end;
   insert into s88_clock values ('anon cannot call the venue clock RPC', denied);
@@ -178,7 +214,7 @@ do $probe$
 declare denied_clock boolean := false; denied_date boolean := false;
 begin
   begin
-    perform public.atlas_settings_venue_clock('manager');
+    perform public.atlas_settings_venue_clock('manager', '00000000-0000-4000-8000-000000088101');
   exception when insufficient_privilege then denied_clock := true;
   end;
   begin

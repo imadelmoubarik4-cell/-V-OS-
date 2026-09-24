@@ -175,6 +175,7 @@ export async function decryptJson(key, ciphertextHex, nonceHex, aad) {
 // ---------------------------------------------------------------- redirect + return allow-lists
 
 export const CALLBACK_PATH_PREFIX = "/functions/v1/atlas-integrations/callback/";
+export const AUTHORIZE_PATH_PREFIX = "/functions/v1/atlas-integrations/authorize/";
 
 // The redirect URI registered with each provider. Exact string, no query, no
 // fragment, https only, host must be allow-listed. Google and Meta compare it
@@ -191,6 +192,50 @@ export function buildRedirectUri(publicBaseUrl, providerKey, allowedHosts) {
   if (!isAllowedHost(base.hostname, allowedHosts)) return null;
   if (!/^[a-z][a-z0-9-]{1,40}$/.test(String(providerKey ?? ""))) return null;
   return `https://${base.host}${CALLBACK_PATH_PREFIX}${providerKey}`;
+}
+
+// The Atlas authorize hop on the same host as the callback. `start` returns
+// this URL; the browser opens it (top-level navigation on the functions
+// domain), which binds the state to that browser with a first-party cookie
+// and then redirects to the provider. S88 hardening F10.
+export function buildAuthorizeHopUrl(redirectUri, providerKey, state, codeChallenge) {
+  if (!redirectUri || !redirectUri.includes(CALLBACK_PATH_PREFIX)) return null;
+  const url = new URL(redirectUri.replace(CALLBACK_PATH_PREFIX, AUTHORIZE_PATH_PREFIX));
+  if (!url.pathname.endsWith(`/${providerKey}`)) return null;
+  url.searchParams.set("state", state);
+  if (codeChallenge) url.searchParams.set("cc", codeChallenge);
+  return url.toString();
+}
+
+export function isWellFormedChallenge(value) {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{43}$/.test(value);
+}
+
+// Browser binding: a random nonce in an httpOnly, Secure, SameSite=Lax,
+// __Host- cookie on the functions domain; the database keeps only sha256.
+// SameSite=Lax is sent on the provider's top-level redirect back to the
+// callback and never on cross-site subresource requests.
+export const BINDING_COOKIE_PREFIX = "__Host-atlas-oauth-";
+
+export function bindingCookieName(providerKey) {
+  return `${BINDING_COOKIE_PREFIX}${String(providerKey ?? "").replace(/[^a-z0-9-]/g, "")}`;
+}
+
+export function bindingSetCookie(providerKey, nonce, maxAgeSeconds = STATE_TTL_SECONDS) {
+  return `${bindingCookieName(providerKey)}=${nonce}; Path=/; Max-Age=${maxAgeSeconds}; Secure; HttpOnly; SameSite=Lax`;
+}
+
+export function bindingClearCookie(providerKey) {
+  return `${bindingCookieName(providerKey)}=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax`;
+}
+
+export function readCookie(header, name) {
+  for (const part of String(header ?? "").split(";")) {
+    const index = part.indexOf("=");
+    if (index < 0) continue;
+    if (part.slice(0, index).trim() === name) return part.slice(index + 1).trim();
+  }
+  return null;
 }
 
 export function isAllowedHost(hostname, allowedHosts) {

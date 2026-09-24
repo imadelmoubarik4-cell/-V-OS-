@@ -102,8 +102,27 @@ granted to `service_role` only:
   replay database has no Vault and because it would put the key and the data behind the same
   service-role credential.
 - **State.** 256-bit random value, base64url. Only its sha256 is stored. It is single-use,
-  bound to one provider and valid for 10 minutes. The callback identity (manager id, label and
-  role at start time) comes from the state row, never from query parameters.
+  bound to one provider and valid for 10 minutes. The callback identity (manager id and label)
+  comes from the state row, never from query parameters.
+- **Browser binding (S88 hardening F10).** `start` returns an Atlas *authorize hop* on the
+  functions domain (`…/atlas-integrations/authorize/<provider>?state=…&cc=…`), not the provider
+  URL. When the browser opens it (a top-level navigation), the function binds the pending state
+  to that browser once (`atlas_integration_bind_browser`: sha256 of a random 256-bit nonce) and
+  sets the nonce in a `__Host-atlas-oauth-<provider>` cookie (`Secure; HttpOnly; SameSite=Lax;
+  Path=/; Max-Age=600`), then redirects to the provider. The callback only consumes the state
+  when the same cookie comes back (`atlas_integration_consume_state(provider, state_hash,
+  binding_hash)`); the cookie is cleared on every callback. A copied `authorize_url` opened later
+  in another browser is refused (`reason=invalid_state`), and a callback without the cookie is
+  refused without consuming the state (`reason=browser_mismatch`). A cookie was chosen over a
+  value returned to the app because the callback runs on the Supabase functions domain, which
+  cannot read the app origin's storage; the cookie is first-party to the functions domain and
+  `SameSite=Lax` is sent on the provider's top-level redirect back. Deployment check: the
+  `Set-Cookie` header of the hop must reach the browser (if a proxy ever strips it, connections
+  fail closed with `browser_mismatch`).
+- **Initiator re-check (F10).** At the callback the database re-reads the initiating user's
+  profile: it must still be active and `manager` or `admin` (the *current* role is used, not the
+  role recorded at start). Otherwise the state is consumed, nothing is exchanged or stored, and
+  the browser returns with `reason=not_authorized`.
 - **PKCE.** S256 for Google (Business Profile and Drive). Meta's manual web login flow and
   TikTok's web Login Kit document a confidential client (state plus a server-side secret) and do
   not document PKCE for web, so PKCE is not sent to them. The flag is per provider in the registry.
@@ -119,8 +138,16 @@ granted to `service_role` only:
   (`verify`). A failed check sets `verification_failed` or `needs_reauthorization` and stores a
   sanitised error (no tokens, codes or long opaque strings, at most 240 characters). Provider
   response bodies are never forwarded to the browser.
-- **Roles.** Every action except the callback requires a valid Atlas JWT and an active profile
-  with the `manager` or `admin` role. The RPCs check the role again.
+- **Roles.** Every action except the authorize hop and the callback requires a valid Atlas JWT
+  and an active profile with the `manager` or `admin` role. Every service-role RPC receives the
+  actor id and re-checks it against `public.profiles` (active, exactly that role, manager/admin),
+  so a claimed role alone is never trusted (`atlas_private.integration_assert_actor`, S88
+  hardening F7).
+- **Error text (F9).** Browser responses never carry PostgREST or provider text: RPC failures map
+  to fixed messages by class (`forbidden`, `invalid_request`, `unavailable`), provider check
+  failures return a fixed message with `error_code: "provider_check_failed"` or
+  `"provider_refresh_failed"`, and the sanitised provider detail is kept only in the audit row
+  (`last_error`, events). The SQLSTATE is logged server-side without payloads.
 - **Disconnect.** Revokes at the provider where an endpoint exists (Google `oauth2.googleapis.com/revoke`,
   Meta `DELETE /me/permissions`, TikTok `/v2/oauth/revoke/`). This is best effort; the local
   credential is always deleted.
@@ -189,7 +216,9 @@ States:
 
 ### `POST ?action=start` — body `{ "provider_key": "google-drive", "return_path": "#settings" }`
 
-`200 { "provider_key", "authorize_url", "expires_at" }`. Navigate with `location.assign(authorize_url)`.
+`200 { "provider_key", "authorize_url", "expires_at" }`. Navigate with `location.assign(authorize_url)`
+in the same browser (it is the Atlas authorize hop; it binds the flow to this browser and then
+redirects to the provider). Do not open it in another window or share it.
 `409 { "error": "Not available yet — requires …", "error_code": "not_configured", "provider_key", "missing_requirements" }`.
 `400` for an API-key provider or an invalid `return_path` (hash routes only, default `#settings`).
 
@@ -197,15 +226,25 @@ States:
 
 The function redirects to `<app origin>/?integration=<provider_key>&result=connected#<return_path>`, or
 `…&result=error&reason=<reason>` where `reason` ∈ `invalid_state`, `denied`, `missing_code`,
-`not_configured`, `exchange_failed`, `verify_failed`, `unknown_provider`, `method`. Show one
-notice, remove the query with `history.replaceState`, then reload `status`. Details are in
-`last_error`.
+`not_configured`, `exchange_failed`, `verify_failed`, `unknown_provider`, `method`,
+`browser_mismatch` (the callback came without the binding cookie of the browser that started
+it; start again in this browser) or `not_authorized` (the user who started it is no longer an
+active manager or administrator). Show one notice, remove the query with
+`history.replaceState`, then reload `status`. Details are in `last_error`.
 
 ### `POST ?action=test` — body `{ "provider_key": "…" }`
 
 Refreshes the access token first when it expires within 5 minutes (Google, TikTok), then runs the
-live check. Returns `200 { "provider": <status row>, "verified": true|false, "message": string|null }`,
+live check. Returns `200 { "provider": <status row>, "verified": true|false, "message": string|null }`
+(plus `error_code` ∈ `provider_check_failed`, `provider_refresh_failed`, `credential_unreadable`
+when `verified` is false; `message` is fixed text, never the provider's),
 `409 error_code:"not_configured"` or `409 error_code:"not_connected"`.
+
+Every error response is `{ "error": <fixed message>, "error_code": <code>, … }` with
+`error_code` ∈ `invalid_request`, `unauthorized`, `forbidden`, `not_found`,
+`method_not_allowed`, `conflict`, `too_large`, `not_configured`, `not_connected`,
+`unavailable`, `internal`. JSON bodies over 16 KB are refused from `content-length` before they
+are read, and streamed bodies are cut off at the limit.
 
 ### `POST ?action=disconnect` — body `{ "provider_key": "…" }`
 

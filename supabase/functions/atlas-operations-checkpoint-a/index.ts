@@ -239,6 +239,22 @@ async function readJson(request: Request): Promise<Record<string, unknown>> {
   }
 }
 
+// S88 hardening (F9): database text reaches the browser only when it is an
+// Atlas-authored message (raised by our SQL) without schema detail; anything
+// else (constraint, column, relation or permission text) becomes the fixed
+// fallback. The SQLSTATE is logged instead.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed as { code?: unknown; message?: unknown };
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
+}
+
 async function branchRpc(name: string, payload: Record<string, unknown> = {}): Promise<unknown> {
   const branchUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -267,11 +283,10 @@ async function branchRpc(name: string, payload: Record<string, unknown> = {}): P
   }
 
   if (!response.ok) {
-    const message = typeof parsed === "object" && parsed && "message" in parsed
-      ? String((parsed as { message: unknown }).message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : "The Checkpoint A database request failed.";
+    const message = safeDbMessage(parsed, "The Checkpoint A database request failed.");
+    if (message === "The Checkpoint A database request failed.") {
+      console.warn("Checkpoint A RPC failed", response.status, typeof parsed === "object" && parsed ? String((parsed as { code?: unknown }).code ?? "-") : "-");
+    }
     const code = typeof parsed === "object" && parsed && "hint" in parsed
       ? rpcErrorCode((parsed as { hint: unknown }).hint)
       : null;

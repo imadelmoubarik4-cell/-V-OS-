@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { ApiError, createIntegrationsHandler } from "./handler.mjs";
+import { ApiError, createIntegrationsHandler, rpcFailure } from "./handler.mjs";
 
 // atlas-integrations: server-side OAuth / API-key connections for Google
 // Business Profile, Google Drive, Facebook, Instagram, TikTok and Tripadvisor.
@@ -72,11 +72,12 @@ async function rpc(name: string, payload: Record<string, unknown>): Promise<unkn
   let parsed: unknown = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = null; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String((parsed as { message: unknown }).message).slice(0, 200)
-      : "The private integrations request failed.";
-    const forbidden = response.status === 403 || /managers and administrators/i.test(message);
-    throw new ApiError(forbidden ? 403 : response.status >= 500 ? 500 : 400, message);
+    // Never the raw PostgREST text: a fixed message and code; the SQLSTATE
+    // is logged without the payload.
+    const code = parsed && typeof parsed === "object" && "code" in parsed ? String((parsed as { code: unknown }).code) : "";
+    const message = parsed && typeof parsed === "object" && "message" in parsed ? String((parsed as { message: unknown }).message) : "";
+    console.warn("[atlas-integrations] rpc failed", name, response.status, code || "-");
+    throw rpcFailure(response.status, code, message);
   }
   return parsed;
 }

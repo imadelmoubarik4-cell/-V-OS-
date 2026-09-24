@@ -55,7 +55,8 @@ test('atlas-settings serves the venue clock to every active role before the snap
   assert.match(EDGE, /const FUNCTION_VERSION = "0\.1\.3";/);
   const getBranch = EDGE.slice(EDGE.indexOf('if (request.method === "GET")'), EDGE.indexOf('if (request.method !== "POST")'));
   assert.match(getBranch, /action === "venue-clock"/);
-  assert.match(getBranch, /branchRpc\("atlas_settings_venue_clock", \{\s*p_actor_role: context\.profile\.role,\s*\}\)/);
+  // S88 hardening F7: the actor id travels with the role and is re-checked in SQL.
+  assert.match(getBranch, /branchRpc\("atlas_settings_venue_clock", \{\s*p_actor_role: context\.profile\.role,\s*p_actor_id: context\.user\.id,\s*\}\)/);
   assert.ok(getBranch.indexOf('venue-clock') < getBranch.indexOf('action !== "snapshot"'));
   assert.doesNotMatch(getBranch.slice(0, getBranch.indexOf('action !== "snapshot"')), /requireManager/);
   // requireActiveProfile is the only gate: an inactive profile is refused, all four roles pass.

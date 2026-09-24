@@ -14,7 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 status=0
 for script in \
   verify_s88_ai_preview.sql \
-  verify_s88_ai_signals_preview.sql; do
+  verify_s88_ai_signals_preview.sql \
+  verify_s88_ai_hardening_preview.sql; do
   result="$(psql -v ON_ERROR_STOP=1 -X -At -f "$ROOT/scripts/$script" | grep '^{' | tail -1)"
   echo "$script: $result"
   if ! grep -q '_preview": "passed"' <<<"$result"; then status=1; fi

@@ -5,7 +5,19 @@
 // Tool arguments never change the actor: the gateway context is built here
 // from the verified actor, and every tool call goes through gateway.runTool.
 
-import { redactArguments, redactSecrets } from "./guardrails.mjs";
+import { evidenceNumbersFrom, redactArguments, redactSecrets } from "./guardrails.mjs";
+
+// Tools whose success is not operational evidence (navigation only).
+const NON_EVIDENCE_TOOLS = new Set(["app.open"]);
+
+// A tool result counts for the grounding check only when it succeeded and
+// carried operational evidence (a fact, calculation, interpretation, estimate
+// or an explicit "missing" item), and the tool is not navigation-only.
+export function isEvidenceResult(entry, result) {
+  if (!result || result.ok !== true) return false;
+  if (NON_EVIDENCE_TOOLS.has(entry?.name)) return false;
+  return Array.isArray(result.evidence) && result.evidence.some((item) => item && typeof item === "object" && (item.label || item.value !== undefined));
+}
 
 const EVIDENCE_KINDS = new Set(["fact", "calculation", "interpretation", "estimate", "missing"]);
 const MAX_EVIDENCE = 40;
@@ -103,7 +115,12 @@ export class TurnState {
     this.records = [];
     this.proposals = [];
     this.results = [];
+    // True once a tool returned operational evidence in this run.
     this.verified = false;
+    // Figures from evidence-bearing tool outputs (summary, evidence, data,
+    // unknown); the grounding check only accepts stated figures from here or
+    // from the user's own words.
+    this.evidenceNumbers = new Set();
     this.toolCalls = 0;
     this.auditCount = 0;
     this.lastProgress = null;
@@ -207,7 +224,12 @@ export class TurnState {
   async accept(entry, result, args = null) {
     this.results.push({ tool: entry.name, ok: result.ok === true });
     if (result.ok !== true) return null;
-    this.verified = true;
+    if (isEvidenceResult(entry, result)) {
+      this.verified = true;
+      for (const number of evidenceNumbersFrom([result.summary ?? "", result.evidence ?? [], result.data ?? null, result.unknown ?? null])) {
+        this.evidenceNumbers.add(number);
+      }
+    }
     const seen = new Set(this.evidence.map(evidenceKey));
     for (const raw of result.evidence ?? []) {
       const item = cleanEvidence(raw);

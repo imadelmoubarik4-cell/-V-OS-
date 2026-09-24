@@ -3,7 +3,9 @@
 //   user's own text (document text is data and is wrapped, not screened out);
 // * output redaction of key and secret patterns, stable while streaming;
 // * the grounding check: an answer that states operational quantities or
-//   prices without a successful tool result in the same run is replaced.
+//   prices is replaced unless every stated figure appears in the question,
+//   the previous answer's evidence or the output of a tool that returned
+//   operational evidence in the same run.
 
 const INJECTION_PATTERNS = [
   { reason: "override_instructions", re: /\b(ignore|disregard|forget|override)\b[^.\n]{0,40}\b(previous|prior|above|earlier|all|your|system)\b[^.\n]{0,20}\b(instructions?|rules|prompts?|guidelines|directions)\b/i },
@@ -87,8 +89,20 @@ export function createRedactingStream() {
     get text() {
       return full;
     },
-    releasable() {
-      const boundary = Math.max(full.lastIndexOf(" "), full.lastIndexOf("\n"), full.lastIndexOf("\t"));
+    // `holdTrailingFigure`: a figure (a word with a digit or a currency
+    // marker) is released only together with the word after it, so the
+    // grounding check has seen the whole quantity ("57" + "bottles") before
+    // any of it reaches the browser.
+    releasable({ holdTrailingFigure = false } = {}) {
+      let boundary = Math.max(full.lastIndexOf(" "), full.lastIndexOf("\n"), full.lastIndexOf("\t"));
+      if (boundary < 0) return "";
+      while (holdTrailingFigure && boundary >= 0) {
+        const head = full.slice(0, boundary).replace(/\s+$/, "");
+        const start = head.search(/\S+$/);
+        const word = start < 0 ? "" : head.slice(start);
+        if (!word || !(/[\d€$£%]/.test(word) || /^(isk|eur|usd|gbp|kr\.?)$/i.test(word))) break;
+        boundary = start - 1;
+      }
       if (boundary < 0) return "";
       const safe = redactSecrets(full.slice(0, boundary + 1));
       if (!safe.startsWith(released)) return "";
@@ -135,7 +149,9 @@ const WORD_NUMBERS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven
 function normaliseNumber(raw) {
   const compact = String(raw).replace(/\s/g, "");
   // "1,234.5" / "1.234,5" / "12,5" → digits only comparison is enough here.
-  return compact.replace(/[.,](?=\d{3}(\D|$))/g, "").replace(",", ".").replace(/\.0+$/, "");
+  const plain = compact.replace(/[.,](?=\d{3}(\D|$))/g, "").replace(",", ".");
+  // "4.50" and "4.5" are the same figure; "10.0" is "10".
+  return plain.includes(".") ? plain.replace(/0+$/, "").replace(/\.$/, "") : plain;
 }
 
 export function quantityMentions(text) {
@@ -160,16 +176,37 @@ export function numbersIn(value) {
   return found;
 }
 
+// Numbers a verified tool output supports, with the roundings an answer may
+// use ("11.6 bottles" may be said as "12" or "11.6").
+export function evidenceNumbersFrom(values) {
+  const found = new Set();
+  for (const value of values) {
+    for (const number of numbersIn(value)) {
+      found.add(number);
+      const parsed = Number(number);
+      if (Number.isFinite(parsed)) {
+        found.add(normaliseNumber(String(Math.round(parsed))));
+        found.add(normaliseNumber(parsed.toFixed(1)));
+        found.add(normaliseNumber(parsed.toFixed(2)));
+      }
+    }
+  }
+  return found;
+}
+
 export const UNVERIFIED_REPLY =
   "I couldn't verify that from Atlas data, so I won't state a figure. Ask me to check it and I'll look it up in Atlas.";
 
-// Returns {ok, replaced, text, unverified[]}. `verifiedToolRan` is true when a
-// tool returned ok:true in this run. `allowedNumbers` holds numbers the user
-// supplied or that come from evidence already shown (previous turn), so
-// "How do you know?" and "Change it to three cases" are not blocked.
-export function groundingCheck(text, { verifiedToolRan, allowedNumbers = new Set() }) {
-  if (verifiedToolRan) return { ok: true, replaced: false, text, unverified: [] };
-  const unverified = quantityMentions(text).filter((mention) => !allowedNumbers.has(mention.number));
+// Returns {ok, replaced, text, unverified[]}. `allowedNumbers` holds numbers
+// the user supplied or that come from evidence already shown (previous
+// turn), so "How do you know?" and "Change it to three cases" are not
+// blocked. `evidenceNumbers` holds the figures in the outputs of tools that
+// returned operational evidence in this run (TurnState.evidenceNumbers);
+// `verifiedToolRan` alone no longer lets unverified figures through.
+// Conversational replies without quantities always pass.
+export function groundingCheck(text, { verifiedToolRan = false, allowedNumbers = new Set(), evidenceNumbers = new Set() } = {}) {
+  const supported = (number) => allowedNumbers.has(number) || (verifiedToolRan && evidenceNumbers.has(number));
+  const unverified = quantityMentions(text).filter((mention) => !supported(mention.number));
   if (!unverified.length) return { ok: true, replaced: false, text, unverified: [] };
   return { ok: false, replaced: true, text: UNVERIFIED_REPLY, unverified: unverified.map((entry) => entry.text).slice(0, 10) };
 }

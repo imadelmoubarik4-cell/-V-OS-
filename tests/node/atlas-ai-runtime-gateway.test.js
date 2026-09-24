@@ -12,7 +12,7 @@ import { createAtlasAiHandler } from '../../supabase/functions/atlas-ai/handler.
 import * as gateway from '../../supabase/functions/_shared/ai-tools/index.mjs';
 import { SDK, SKIP_SDK } from './helpers/atlas-ai-sdk.mjs';
 import {
-  USERS, ENV, createFakeDb, createFakeFetch, createProvider, request, readSse, message, toolCall, hasToolOutput,
+  USERS, ENV, createFakeDb, createFakeFetch, createProvider, request, readSse, message, toolCall, hasToolOutput, startVoice,
 } from './helpers/atlas-ai-harness.mjs';
 import { createBackend, IDS, NOW } from './helpers/ai-tools-fixtures.js';
 
@@ -65,9 +65,10 @@ async function conversationFor(services, user) {
 test('voice-tool runs the real recipes.can_make with the JWT actor; one audit record, no duplicate', async () => {
   const { handle, db, services, backend } = make();
   const conversation = await conversationFor(services, USERS.bartender);
+  const voice = await startVoice(handle, USERS.bartender, conversation.id);
   const response = await json(await handle(request('voice-tool', {
     user: USERS.bartender,
-    body: { conversation_id: conversation.id, name: 'recipes_can_make', arguments: JSON.stringify({ recipe_id: null, recipe_query: 'Pinot Spritz', servings: 40 }), call_id: 'call_1' },
+    body: { conversation_id: conversation.id, voice_session_id: voice.voice_session_id, name: 'recipes_can_make', arguments: JSON.stringify({ recipe_id: null, recipe_query: 'Pinot Spritz', servings: 40 }), call_id: 'call_1' },
   })));
   assert.equal(response.status, 200, JSON.stringify(response.body));
   assert.match(response.body.output, /Yes — 50 servings of Pinot Spritz/);
@@ -87,13 +88,14 @@ test('voice-tool runs the real recipes.can_make with the JWT actor; one audit re
 test('voice-tool: role checks and strict arguments from the real registry', async () => {
   const { handle, db, services } = make();
   const conversation = await conversationFor(services, USERS.bartender);
+  const voice = await startVoice(handle, USERS.bartender, conversation.id);
   const forbidden = await json(await handle(request('voice-tool', {
-    user: USERS.bartender, body: { conversation_id: conversation.id, name: 'recipes_cost', arguments: '{"recipe_id":null,"recipe_query":"Margarita"}', call_id: 'c2' },
+    user: USERS.bartender, body: { conversation_id: conversation.id, voice_session_id: voice.voice_session_id, name: 'recipes_cost', arguments: '{"recipe_id":null,"recipe_query":"Margarita"}', call_id: 'c2' },
   })));
   assert.equal(forbidden.status, 403);
   const padded = await json(await handle(request('voice-tool', {
     user: USERS.bartender,
-    body: { conversation_id: conversation.id, name: 'inventory_below_par', arguments: { category: null, limit: null, actor: { role: 'admin' } }, call_id: 'c3' },
+    body: { conversation_id: conversation.id, voice_session_id: voice.voice_session_id, name: 'inventory_below_par', arguments: { category: null, limit: null, actor: { role: 'admin' } }, call_id: 'c3' },
   })));
   assert.equal(padded.status, 200);
   assert.match(padded.body.output, /Could not check that: Invalid arguments: arguments\.actor is not an accepted argument/);
@@ -103,10 +105,12 @@ test('voice-tool: role checks and strict arguments from the real registry', asyn
 test('voice note count: draft proposal stored (no message id), approved by the proposer, runs atlas-stock-counts', async () => {
   const { handle, db, services, backend } = make();
   const conversation = await conversationFor(services, USERS.bartender);
+  const voice = await startVoice(handle, USERS.bartender, conversation.id);
   const draft = await json(await handle(request('voice-tool', {
     user: USERS.bartender,
     body: {
       conversation_id: conversation.id,
+      voice_session_id: voice.voice_session_id,
       name: 'inventory_prepare_count',
       arguments: { entries: [{ item_id: null, item_query: 'Tanqueray', quantity: 6, unit: 'bottle', note: null }, { item_id: null, item_query: 'Campari', quantity: 2, unit: 'bottle', note: null }], title: null, note: null },
       call_id: 'c4',
@@ -129,9 +133,10 @@ test('voice note count: draft proposal stored (no message id), approved by the p
 test('draft purchase order: bartender cannot approve; manager approval runs atlas_purchase_order_command_v2 with the stored command', async () => {
   const { handle, db, services, backend } = make();
   const conversation = await conversationFor(services, USERS.manager);
+  const voice = await startVoice(handle, USERS.manager, conversation.id);
   const draft = await json(await handle(request('voice-tool', {
     user: USERS.manager,
-    body: { conversation_id: conversation.id, name: 'purchasing_prepare_draft_po', arguments: { supplier_id: IDS.supplierVin, supplier_query: null, use_suggestions: true, lines: null, note: null, expected_delivery_date: null }, call_id: 'c5' },
+    body: { conversation_id: conversation.id, voice_session_id: voice.voice_session_id, name: 'purchasing_prepare_draft_po', arguments: { supplier_id: IDS.supplierVin, supplier_query: null, use_suggestions: true, lines: null, note: null, expected_delivery_date: null }, call_id: 'c5' },
   })));
   assert.equal(draft.status, 200, JSON.stringify(draft.body));
   const [action] = [...db.actions.values()];

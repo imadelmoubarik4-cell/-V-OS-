@@ -158,6 +158,22 @@ function branchCredentials() {
   return { branchUrl, serviceRoleKey };
 }
 
+// S88 hardening (F9): database text reaches the browser only when it is an
+// Atlas-authored message (raised by our SQL) without schema detail; anything
+// else (constraint, column, relation or permission text) becomes the fixed
+// fallback. The SQLSTATE is logged instead.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed as { code?: unknown; message?: unknown };
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
+}
+
 async function branchRpc(name: string, payload: Record<string, unknown>): Promise<any> {
   const { branchUrl, serviceRoleKey } = branchCredentials();
   const response = await fetch(`${branchUrl}/rest/v1/rpc/${name}`, {
@@ -175,11 +191,10 @@ async function branchRpc(name: string, payload: Record<string, unknown>): Promis
   let parsed: any = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : "The private Settings request failed.";
+    const message = safeDbMessage(parsed, "The private Settings request failed.");
+    if (message === "The private Settings request failed.") {
+      console.warn("Settings RPC failed", name, response.status, parsed && typeof parsed === "object" ? String(parsed.code ?? "-") : "-");
+    }
     const conflict = /changed after this page was opened/i.test(message);
     throw new ApiError(response.status >= 500 && !conflict ? 500 : conflict ? 409 : 400, message);
   }
@@ -398,6 +413,7 @@ Deno.serve(async (request: Request) => {
         // zone and dates are operational, not commercial.
         const clock = await branchRpc("atlas_settings_venue_clock", {
           p_actor_role: context.profile.role,
+          p_actor_id: context.user.id,
         });
         return jsonResponse({ clock, staff: venueClockStaff(context.profile.role, context.user.id) });
       }
