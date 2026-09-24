@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
@@ -129,10 +128,42 @@ const afterS841 = (row) => (trustedBackfill.has(row.source_type) && row.source_c
   : row);
 
 test('the pre-fix Home reproduces the production "Unknown — 25 items not counted / verified"', () => {
-  const git = (path) => execFileSync('git', ['show', `7c1bd03:${path}`], { cwd: ROOT, encoding: 'utf8' });
-  const home = renderHome([ANGELO, ...REGRESSION, ...INACTIVE], [], {
-    html: git('apps/web/index.html'), truth: git('apps/web/assets/js/atlas-stock-truth.js')
-  });
+  // Reconstruct the old live-metric behavior from the current shell instead of
+  // depending on a historical git object. GitHub Actions uses a shallow
+  // checkout, so historical commits are intentionally unavailable there.
+  let legacyHtml = read('apps/web/index.html');
+  legacyHtml = legacyHtml
+    .replace(
+      `    // Home reports live stock: inactive rows stay in Inventory records but never count here.
+    const activeItems = items.filter(item => item.active !== false);
+    const low = activeItems.filter(
+      item =>
+        window.AtlasStockTruth.known(item) &&
+        item.par_level != null &&
+        Number(item.quantity) < Number(item.par_level)
+    );`,
+      `    const low=items.filter(i=>window.AtlasStockTruth.known(i) && i.par_level!=null && Number(i.quantity)<Number(i.par_level));`
+    )
+    .replace("document.getElementById('home-items').textContent = activeItems.length;", "document.getElementById('home-items').textContent=items.length;")
+    .replace(
+      `    const unknownStock = activeItems.filter(
+      item => !window.AtlasStockTruth.known(item)
+    ).length;`,
+      `    const unknownStock = items.filter(item => !window.AtlasStockTruth.known(item)).length;`
+    )
+    .replace("document.getElementById('home-items-note').textContent=activeItems.length===1?'Live catalog item':'Live catalog items';", "document.getElementById('home-items-note').textContent=items.length===1?'Live catalog item':'Live catalog items';")
+    .replace(
+      `    // Stock cards describe live inventory; inactive rows are records, not stock.
+    const activeItems = items.filter(item => item.active !== false);
+    const lowCount = activeItems.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;`,
+      `    const lowCount = items.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;`
+    )
+    .replace("document.getElementById('stat-total-items').textContent = activeItems.length;", "document.getElementById('stat-total-items').textContent = items.length;")
+    .replace("document.getElementById('stat-low-stock').textContent = activeItems.some(item => !window.AtlasStockTruth.known(item)) ? 'Unknown' : lowCount;", "document.getElementById('stat-low-stock').textContent = items.some(item => !window.AtlasStockTruth.known(item)) ? 'Unknown' : lowCount;")
+    .replace("const lowItems = activeItems.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level);", "const lowItems = items.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level);")
+    .replace("lowRows.innerHTML = activeItems.some(item => !window.AtlasStockTruth.known(item)) ? '<div class=\"empty-dash\">Stock status unknown — verify a physical count.</div>' : '<div class=\"empty-dash\">Nothing below par in verified stock.</div>';", "lowRows.innerHTML = items.some(item => !window.AtlasStockTruth.known(item)) ? '<div class=\"empty-dash\">Stock status unknown — verify a physical count.</div>' : '<div class=\"empty-dash\">Nothing below par in verified stock.</div>';");
+
+  const home = renderHome([ANGELO, ...REGRESSION, ...INACTIVE], [], { html: legacyHtml });
   assert.equal(home.low, 'Unknown');
   assert.equal(home.lowNote, '25 items not counted / verified');
 });
