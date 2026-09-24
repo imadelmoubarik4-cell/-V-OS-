@@ -495,25 +495,18 @@
     }
   }
 
-  function interceptNavigation(event) {
-    const target = event.target instanceof Element ? event.target.closest('.nav-item,[data-service-view]') : null;
-    if (!target || target.matches('[data-item-master-l2]')) return;
-    if (state.active) deactivate();
+  // S88: leaving through the sidebar or a Service Mode card closes Item master.
+  // AtlasShell announces those navigations, so no capture-phase click listener
+  // is needed. The nav button and mount are resolved lazily by ensureNav() and
+  // ensureMount() on every activation (formerly also by a body-wide observer).
+  function handleNavigation(context) {
+    if (state.active && (context.source === 'nav' || context.source === 'service')) deactivate();
   }
 
   function init() {
     ensureNav();
     ensureMount();
-    document.addEventListener('click', interceptNavigation, true);
-    state.observer = new MutationObserver(() => {
-      ensureNav();
-      ensureMount();
-    });
-    state.observer.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener('pagehide', () => {
-      document.removeEventListener('click', interceptNavigation, true);
-      state.observer?.disconnect();
-    }, { once: true });
+    window.AtlasShell?.on?.('view:before-show', handleNavigation);
   }
 
   window.AtlasItemMaster = {

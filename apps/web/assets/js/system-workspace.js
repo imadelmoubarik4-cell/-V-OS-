@@ -682,11 +682,6 @@
       const settingsButton = systemGroup.querySelector('.nav-item[data-view="settings"]');
       if (settingsButton) systemGroup.insertBefore(navButton, settingsButton);
       else systemGroup.appendChild(navButton);
-      navButton.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        activateSystem();
-      });
     }
 
     if (!host()) {
@@ -700,39 +695,23 @@
         || document.querySelector('.atlas-content');
       parent?.appendChild(view);
     }
+    if (!state.viewRegistered && window.AtlasShell) {
+      state.viewRegistered = true;
+      window.AtlasShell.registerView('system', { root: host, title: 'System', onShow: systemShown, onHide: hideSystem });
+    }
     window.lucide?.createIcons?.();
   }
 
-  function hideOtherViews() {
-    if (window.AtlasShell?.hideWorkspaceRoots) {
-      window.AtlasShell.hideWorkspaceRoots('system');
-    }
-    document.querySelectorAll([
-      '#inventory-view', '#dashboard-view', '#recipes-view', '#suppliers-view', '#imports-view',
-      '#team-view', '#shifts-view', '#knowledge-view', '#reports-view', '#settings-view',
-      '#operations-view', '#brain-view', '#business-view', '#marketing-view', '#profiles-view',
-      '#team-profiles-view', '#sprint3-review-view'
-    ].join(',')).forEach((view) => { if (view !== host()) view.style.display = 'none'; });
-    ['home-intro', 'home-focus', 'home-metrics'].forEach((id) => {
-      const element = document.getElementById(id);
-      if (element) element.style.display = 'none';
-    });
-  }
-
+  // S88: System is an AtlasShell view. The shell hides the other workspaces,
+  // shows #system-view, sets the title and nav state (formerly done here, with
+  // a capture-phase nav listener and a MutationObserver to hide itself again).
   function activateSystem() {
     ensureStructure();
-    state.activating = true;
-    document.body.dataset.atlasView = 'system';
-    hideOtherViews();
-    const element = host();
-    if (element) element.style.display = 'block';
-    const title = document.getElementById('atlas-page-title');
-    if (title) title.textContent = 'System';
-    document.querySelectorAll('.nav-item').forEach((button) => button.classList.toggle('active', button.dataset.view === 'system'));
-    document.getElementById('atlas-sidebar')?.classList.remove('open');
-    document.getElementById('sidebar-backdrop')?.classList.remove('open');
-    state.activating = false;
-    window.AtlasShell?.resetScroll?.();
+    window.AtlasShell.show('system');
+  }
+
+  function systemShown(params = {}) {
+    if (params.section && TAB_ORDER.includes(params.section)) state.activeTab = params.section;
     render();
     if (!state.workspace && !state.loading) loadSnapshot({ force: true });
   }
@@ -740,12 +719,6 @@
   function hideSystem() {
     const element = host();
     if (element && element.style.display !== 'none') element.style.display = 'none';
-  }
-
-  function handleNavigationCapture(event) {
-    const button = event.target instanceof Element ? event.target.closest('.nav-item[data-view]') : null;
-    if (!button || button.dataset.view === 'system') return;
-    hideSystem();
   }
 
   function handleClick(event) {
@@ -787,29 +760,10 @@
     }
   }
 
-  function observeViewChanges() {
-    const parent = host()?.parentElement;
-    if (!parent) return;
-    state.viewObserver?.disconnect();
-    state.viewObserver = new MutationObserver(() => {
-      if (state.activating || !systemVisible()) return;
-      const anotherVisible = [...parent.children].some((child) => {
-        if (child === host()) return false;
-        const id = child.id || '';
-        if (!id || ['home-intro', 'home-focus', 'home-metrics'].includes(id)) return false;
-        return window.getComputedStyle(child).display !== 'none';
-      });
-      if (anotherVisible) hideSystem();
-    });
-    state.viewObserver.observe(parent, { subtree: false, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
-  }
-
   function init() {
     if (state.initialized) return;
     state.initialized = true;
     ensureStructure();
-    observeViewChanges();
-    document.addEventListener('click', handleNavigationCapture, true);
     document.addEventListener('click', handleClick);
     window.addEventListener('focus', () => {
       if (systemVisible() && state.workspace && !state.loading) loadSnapshot({ force: true, silent: true });
@@ -818,7 +772,6 @@
       if (systemVisible()) loadSnapshot({ force: true });
     });
     window.addEventListener('pagehide', () => {
-      state.viewObserver?.disconnect();
       if (state.authTimer) window.clearInterval(state.authTimer);
     }, { once: true });
   }

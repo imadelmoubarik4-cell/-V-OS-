@@ -1234,9 +1234,29 @@
     }
   }
 
+  // Route sections (#reports/<section>); 'stock' is the design-system name for
+  // the inventory report.
+  const SECTION_ALIASES = { stock: 'inventory' };
+  function routeSection(value) {
+    const section = SECTION_ALIASES[value] || value;
+    return SECTION_ORDER.includes(section) ? section : null;
+  }
+
   function initialSection() {
-    const match = location.hash.match(/^#reports\/([a-z-]+)$/);
-    return match && SECTION_ORDER.includes(match[1]) ? match[1] : 'overview';
+    const route = window.AtlasShell?.parseRoute?.(location.hash);
+    return (route?.view === 'reports' && routeSection(route.params.section)) || 'overview';
+  }
+
+  // S88: AtlasShell announces when Reports opens, including from a
+  // #reports/<section> link or Back/Forward (formerly a visibility
+  // MutationObserver plus a hashchange listener).
+  function handleReportsShown(params = {}) {
+    const section = routeSection(params.section);
+    if (section && section !== state.activeSection) {
+      changeSection(section);
+      return;
+    }
+    if (viewVisible() && !state.snapshot && !state.loading && !state.error) loadSnapshot();
   }
 
   function init() {
@@ -1249,15 +1269,7 @@
     document.addEventListener('change', handleChange);
     document.addEventListener('submit', handleSubmit);
 
-    state.viewObserver = new MutationObserver(() => {
-      if (viewVisible() && !state.snapshot && !state.loading && !state.error) loadSnapshot();
-    });
-    state.viewObserver.observe(host(), { attributes: true, attributeFilter: ['style', 'class'] });
-
-    window.addEventListener('hashchange', () => {
-      const section = initialSection();
-      if (section !== state.activeSection) changeSection(section);
-    });
+    window.AtlasShell?.onView?.('reports', { show: handleReportsShown });
     window.addEventListener('focus', () => {
       if (viewVisible() && state.snapshot && !state.loading) loadSnapshot({ force: true, silent: true });
     });
@@ -1265,7 +1277,6 @@
       if (viewVisible()) loadSnapshot({ force: true });
     });
     window.addEventListener('pagehide', () => {
-      state.viewObserver?.disconnect();
       if (state.searchTimer) clearTimeout(state.searchTimer);
       if (state.authTimer) clearInterval(state.authTimer);
     }, { once: true });
@@ -1278,7 +1289,7 @@
   window.AtlasReports = {
     open: (section = 'overview') => {
       navigateView('reports');
-      window.setTimeout(() => changeSection(SECTION_ORDER.includes(section) ? section : 'overview'), 100);
+      window.setTimeout(() => changeSection(routeSection(section) || 'overview'), 100);
     },
     refresh: () => loadSnapshot({ force: true }),
     snapshot: () => state.snapshot,

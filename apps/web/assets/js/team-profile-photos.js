@@ -221,6 +221,8 @@
     }
     decorateControls();
     decorateSidebarAvatar();
+    // The gallery picker fix (team-profile-photo-gallery.js) follows each pass.
+    window.AtlasShell?.emit?.('team-profile-photos:decorated');
   }
 
   function scheduleDecorate() {
@@ -418,13 +420,16 @@
       return true;
     }
     state.started = true;
-    state.viewObserver = new MutationObserver(() => {
+    // S88: Team Profiles announces each render and AtlasShell announces the view
+    // opening; decorate and refresh then (formerly a MutationObserver on the view).
+    const refreshVisibleProfiles = () => {
       scheduleDecorate();
       if (profilesVisible() && (!state.lastLoadedAt || Date.now() - state.lastLoadedAt > 30000)) {
         loadSnapshot({ silent: true });
       }
-    });
-    state.viewObserver.observe(element, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+    };
+    window.AtlasShell?.on?.('team-profiles:rendered', refreshVisibleProfiles);
+    window.AtlasShell?.onView?.('team-profiles', { show: refreshVisibleProfiles });
     startRefreshTimer();
     loadSnapshot({ force: true, silent: true });
     return true;
@@ -438,7 +443,6 @@
       else scheduleDecorate();
     });
     window.addEventListener('online', () => loadSnapshot({ force: true, silent: true }));
-    window.addEventListener('atlas:team-profiles-rendered', scheduleDecorate);
     // Messages and the sidebar show photos too, so load them at sign-in rather
     // than waiting for someone to open Team Profiles.
     const loadForSignedInApp = () => {

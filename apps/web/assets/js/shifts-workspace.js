@@ -522,6 +522,9 @@
     if (state.loading && !state.workspace) element.innerHTML = loadingMarkup();
     else if (state.error && !state.workspace) element.innerHTML = `<section class="shift-state"><span class="is-error"><i data-lucide="calendar-x-2"></i></span><h2>Shifts unavailable</h2><p>${escapeHtml(state.error)}</p><button type="button" class="shift-primary" data-shifts-refresh>Try again</button></section>`;
     else element.innerHTML = shellMarkup();
+    // The Month extension (shifts-month-calendar.js) re-attaches after every
+    // weekly render on this event instead of observing the host.
+    window.AtlasShell?.emit?.('shifts:rendered', { host: element });
     document.body.classList.toggle('shift-modal-open', Boolean(state.modal));
     window.lucide?.createIcons?.();
   }
@@ -660,7 +663,14 @@
     if (tab) {
       if (tab.dataset.shiftsTab === 'month') {
         event.preventDefault();
-        window.AtlasShiftsMonth?.open?.();
+        // shifts-month-calendar.js owns the Month tab (its capture handler has
+        // already activated it). Open Month here only if that did not happen;
+        // this replaced shifts-month-tab-bridge.js's stopPropagation guard.
+        window.requestAnimationFrame(() => {
+          const element = host();
+          if (!element || (element.classList.contains('shifts-month-active') && element.querySelector('[data-shifts-month-panel]'))) return;
+          window.AtlasShiftsMonth?.open?.();
+        });
         return;
       }
       state.tab = tab.dataset.shiftsTab || 'schedule';
@@ -809,17 +819,19 @@
     document.addEventListener('submit', handleSubmit);
     document.addEventListener('keydown', handleKeydown);
 
-    state.viewObserver = new MutationObserver(() => {
-      window.clearTimeout(state.loadTimer);
-      state.loadTimer = window.setTimeout(checkVisibility, 80);
+    // S88: AtlasShell announces when Shifts opens (formerly a visibility
+    // MutationObserver on the workspace host).
+    window.AtlasShell?.onView?.('shifts', {
+      show: () => {
+        window.clearTimeout(state.loadTimer);
+        state.loadTimer = window.setTimeout(checkVisibility, 80);
+      }
     });
-    state.viewObserver.observe(host(), { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
 
     window.addEventListener('atlas:team-roster-changed', () => { state.workspace = null; if (viewVisible()) loadSnapshot({ force: true }); });
     window.addEventListener('focus', () => {
       if (viewVisible()) loadSnapshot({ force: true, silent: true });
     });
-    window.addEventListener('pagehide', () => state.viewObserver?.disconnect(), { once: true });
     checkVisibility();
   }
 

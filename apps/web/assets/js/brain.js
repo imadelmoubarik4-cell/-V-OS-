@@ -416,7 +416,6 @@
       const homeButton = firstGroup.querySelector('[data-view="dashboard"]');
       if (homeButton) homeButton.insertAdjacentElement('afterend', button);
       else firstGroup.prepend(button);
-      button.addEventListener('click', () => setActiveView('brain'));
     }
 
     const serviceGrid = document.querySelector('.service-grid');
@@ -427,10 +426,7 @@
       button.dataset.serviceView = 'brain';
       button.innerHTML = '<i data-lucide="brain-circuit"></i><h3>Atlas Brain</h3><p>Live briefing and recommended actions.</p>';
       serviceGrid.prepend(button);
-      button.addEventListener('click', () => {
-        document.body.classList.remove('service-mode');
-        setActiveView('brain');
-      });
+      button.addEventListener('click', () => document.body.classList.remove('service-mode'));
     }
 
     const fabMenu = document.getElementById('fab-menu');
@@ -443,7 +439,7 @@
       button.addEventListener('click', () => {
         fabMenu.classList.remove('open');
         document.getElementById('fab-btn')?.classList.remove('open');
-        setActiveView('brain');
+        window.AtlasShell.show('brain');
       });
     }
 
@@ -547,15 +543,18 @@
     bindRenderedEvents();
     updateClock();
     if (window.lucide) window.lucide.createIcons();
+    // Brain extensions (daily briefing, Phase 3, Checkpoint K) draw inside
+    // #brain-shell and re-attach on this event instead of observing it.
+    window.AtlasShell?.emit?.('brain:rendered', { shell: dom.shell });
   }
 
   function navigate(target) {
     if (target === 'operations-orders' || target === 'operations-checklist') {
-      setActiveView('operations');
+      window.AtlasShell.show('operations');
       requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
       return;
     }
-    setActiveView(target);
+    window.AtlasShell.show(target);
   }
 
   function bindRenderedEvents() {
@@ -621,48 +620,24 @@
     window.lucide?.createIcons?.();
   }
 
-  function patchApplication() {
-    if (typeof viewMap !== 'undefined') viewMap.brain = dom.view;
-    if (typeof titleMap !== 'undefined') titleMap.brain = 'Atlas Brain';
-
-    if (typeof setActiveView === 'function' && !setActiveView.__atlasBrainPatched) {
-      const originalSetActiveView = setActiveView;
-      const patchedSetActiveView = function (view) {
-        originalSetActiveView(view);
-        if (view === 'brain') render();
-      };
-      patchedSetActiveView.__atlasBrainPatched = true;
-      setActiveView = patchedSetActiveView;
-    }
-
-    if (typeof loadAll === 'function' && !loadAll.__atlasBrainPatched) {
-      const originalLoadAll = loadAll;
-      const patchedLoadAll = async function () {
-        await originalLoadAll();
-        render();
-        renderHomeAugmentation();
-      };
-      patchedLoadAll.__atlasBrainPatched = true;
-      loadAll = patchedLoadAll;
-    }
-
-    if (typeof renderAtlasHome === 'function' && !renderAtlasHome.__atlasBrainPatched) {
-      const originalRenderAtlasHome = renderAtlasHome;
-      const patchedRenderAtlasHome = function () {
-        originalRenderAtlasHome();
-        renderHomeAugmentation();
-      };
-      patchedRenderAtlasHome.__atlasBrainPatched = true;
-      renderAtlasHome = patchedRenderAtlasHome;
-    }
-
+  // S88: Atlas Brain registers with AtlasShell instead of reassigning the
+  // shell's setActiveView/loadAll/renderAtlasHome globals.
+  function registerWithShell() {
+    const shell = window.AtlasShell;
+    if (!shell) return;
+    shell.registerView('brain', { root: dom.view, title: 'Atlas Brain', render });
+    shell.onDataLoaded(() => {
+      render();
+      renderHomeAugmentation();
+    });
+    shell.registerHomeSection('brain', renderHomeAugmentation, 20);
   }
 
   function init() {
     if (state.initialized) return;
     ensureMarkup();
     if (!dom.view || !dom.shell) return;
-    patchApplication();
+    registerWithShell();
     state.initialized = true;
     render();
     renderHomeAugmentation();

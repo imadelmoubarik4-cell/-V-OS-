@@ -4,6 +4,7 @@
   const cfg = window.VABAR_CONFIG || {};
   const ZXING_ESM_URL = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.2.1/+esm';
   const DEFAULT_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'];
+  const SCANNER_TIMEOUT_MS = 15000;
 
   const state = {
     snapshot: null,
@@ -94,16 +95,32 @@
       if (value !== null && value !== undefined && value !== '') url.searchParams.set(key, String(value));
     });
 
-    const response = await fetch(url, {
-      method: options.method || 'GET',
-      cache: 'no-store',
-      headers: {
-        authorization: `Bearer ${session.access_token}`,
-        accept: 'application/json',
-        'content-type': 'application/json'
-      },
-      body: options.body ? JSON.stringify(options.body) : undefined
-    });
+    // A stalled scanner request fails after 15 s instead of hanging the overlay.
+    // (The bootstrap used to wrap window.fetch for this; its URL test never
+    // matched the URL objects passed here, so the timeout now lives with the call.)
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), SCANNER_TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(url, {
+        method: options.method || 'GET',
+        cache: 'no-store',
+        signal: controller.signal,
+        headers: {
+          authorization: `Bearer ${session.access_token}`,
+          accept: 'application/json',
+          'content-type': 'application/json'
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined
+      });
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        throw new Error('The scanner service took too long to respond. Close the scanner, check the connection, and try again.');
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timer);
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || `Scanner request failed (${response.status}).`);
     return payload;
@@ -230,7 +247,7 @@
       <div class="inventory-scanner-code-line"><span>Scanned code</span><strong>${escapeHtml(state.code)}</strong><small>${escapeHtml(humanize(state.symbology))}</small></div>
       ${itemCardMarkup(item)}
       <form class="inventory-scanner-count-form" data-scanner-count-form>
-        <label><span>Observed quantity</span><div class="inventory-scanner-quantity"><button type="button" data-scanner-step="-1" aria-label="Decrease quantity">−</button><input id="inventory-scanner-quantity" type="number" min="0" step="0.1" value="${escapeHtml(item.quantity)}" required /><button type="button" data-scanner-step="1" aria-label="Increase quantity">+</button><em>${escapeHtml(item.unit || 'units')}</em></div></label>
+        <label><span>Observed quantity</span><div class="inventory-scanner-quantity"><button type="button" data-scanner-step="-1" aria-label="Decrease quantity">−</button><input id="inventory-scanner-quantity" type="number" inputmode="decimal" aria-label="Observed inventory quantity" min="0" step="0.1" value="${escapeHtml(item.quantity)}" required /><button type="button" data-scanner-step="1" aria-label="Increase quantity">+</button><em>${escapeHtml(item.unit || 'units')}</em></div></label>
         <label><span>Count note</span><textarea id="inventory-scanner-note" rows="2" placeholder="Optional: open bottle estimate, damaged bottle, storage note…">${escapeHtml(state.note)}</textarea></label>
         <p>${escapeHtml(helper)}</p>
         <button type="submit" class="inventory-scanner-primary" ${state.staff?.can_count && !state.submitting ? '' : 'disabled'}><i data-lucide="clipboard-check"></i>${escapeHtml(buttonCopy)}</button>
@@ -294,7 +311,7 @@
       <section class="inventory-scanner-panel" role="dialog" aria-modal="true" aria-labelledby="inventory-scanner-title">
         <header class="inventory-scanner-header">
           <div><span>Mobile inventory</span><h2 id="inventory-scanner-title">Bottle scanner</h2><p>Scan a barcode, confirm the product, then enter the observed quantity.</p></div>
-          <div>${renderModeBadge()}<button type="button" class="inventory-scanner-close" data-scanner-close aria-label="Close bottle scanner"><i data-lucide="x"></i></button></div>
+          <div>${renderModeBadge()}<button type="button" class="inventory-scanner-close" data-scanner-close aria-label="Close bottle scanner" style="touch-action:manipulation"><i data-lucide="x"></i></button></div>
         </header>
         ${state.error ? `<div class="inventory-scanner-message is-error"><i data-lucide="triangle-alert"></i><span>${escapeHtml(state.error)}</span></div>` : ''}
         ${state.message ? `<div class="inventory-scanner-message is-success"><i data-lucide="circle-check-big"></i><span>${escapeHtml(state.message)}</span></div>` : ''}
@@ -665,13 +682,18 @@
     }
   }
 
+  // The +/- steppers (owner fix S38, moved here from s38-app-remediation.js):
+  // clamp at zero, keep one decimal, and announce the change like typing does.
   function stepQuantity(delta) {
     const input = document.getElementById('inventory-scanner-quantity');
     if (!input) return;
-    const next = Math.max(0, number(input.value) + delta);
+    const current = Number(input.value);
+    const next = Math.max(0, (Number.isFinite(current) ? current : 0) + (Number.isFinite(delta) ? delta : 0));
     input.value = String(Math.round(next * 10) / 10);
     state.dirty = true;
-    input.focus();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.focus({ preventScroll: true });
   }
 
   function ensureEntryPoints() {
@@ -810,15 +832,28 @@
     ensureOverlay();
     ensureEntryPoints();
 
-    document.addEventListener('click', handleClick);
-    document.addEventListener('submit', handleSubmit);
-    document.addEventListener('input', handleInput);
-    document.addEventListener('change', handleChange);
+    // The scanner is a full-screen overlay above every workspace. Its delegated
+    // handlers run in the capture phase so no page-level handler can swallow a
+    // scanner tap on mobile (this was previously forced by the bootstrap
+    // temporarily replacing document.addEventListener).
+    document.addEventListener('click', handleClick, true);
+    document.addEventListener('submit', handleSubmit, true);
+    document.addEventListener('input', handleInput, true);
+    document.addEventListener('change', handleChange, true);
     document.addEventListener('keydown', handleKeydown);
     window.addEventListener('pagehide', stopScanner);
 
-    state.observer = new MutationObserver(ensureEntryPoints);
-    state.observer.observe(document.body, { childList: true, subtree: true });
+    // Entry points live in the static Inventory header and the FAB menu; they
+    // are re-checked when a workspace opens or data reloads (was a body observer).
+    window.AtlasShell?.on?.('view:show', ensureEntryPoints);
+    window.AtlasShell?.onDataLoaded?.(ensureEntryPoints);
+
+    // Canonical action (spec §4.8): the palette, Home and Atlas AI open the
+    // scanner through the same function as the Scan buttons.
+    window.AtlasShell?.actions?.register?.({
+      id: 'inventory.scan', label: 'Scan a product', icon: 'scan-barcode', keywords: ['scan', 'barcode', 'bottle'],
+      roles: ['admin', 'manager', 'bartender'], contexts: ['home', 'inventory'], run: () => openScanner()
+    });
   }
 
   window.AtlasInventoryScanner = {

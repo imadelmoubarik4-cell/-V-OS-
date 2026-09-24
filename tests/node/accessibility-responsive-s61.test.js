@@ -34,5 +34,5 @@ test('narrow layouts reserve space for the single owning floating action', () =>
   assert.match(css, /padding-bottom:\s*calc\(96px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(css, /max-height:\s*calc\(100dvh - 104px\)/);
   assert.match(shell, /accessibility-responsive-s61\.css\?v=20260917-s61/);
-  assert.match(shell, /shifts-month-calendar\.js\?v=20260917-s62/);
+  assert.match(shell, /shifts-month-calendar\.js\?v=20260926-s88/);
 });

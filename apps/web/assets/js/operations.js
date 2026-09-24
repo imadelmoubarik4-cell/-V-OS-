@@ -257,8 +257,8 @@
       button.className = 'nav-item';
       button.dataset.view = 'operations';
       button.innerHTML = '<i data-lucide="gauge"></i><span>Operations Center</span>';
+      // AtlasShell routes sidebar clicks; the item needs no listener of its own.
       firstGroup.appendChild(button);
-      button.addEventListener('click', () => setActiveView('operations'));
     }
 
     const serviceGrid = document.querySelector('.service-grid');
@@ -269,10 +269,7 @@
       button.dataset.serviceView = 'operations';
       button.innerHTML = '<i data-lucide="clipboard-check"></i><h3>Service Readiness</h3><p>Opening, closing and daily priorities.</p>';
       serviceGrid.prepend(button);
-      button.addEventListener('click', () => {
-        document.body.classList.remove('service-mode');
-        setActiveView('operations');
-      });
+      button.addEventListener('click', () => document.body.classList.remove('service-mode'));
     }
 
     const fabMenu = document.getElementById('fab-menu');
@@ -285,7 +282,7 @@
       button.addEventListener('click', () => {
         fabMenu.classList.remove('open');
         document.getElementById('fab-btn')?.classList.remove('open');
-        setActiveView('operations');
+        window.AtlasShell.show('operations');
       });
     }
 
@@ -390,10 +387,13 @@
 
     bindRenderedEvents();
     if (window.lucide) window.lucide.createIcons();
+    // Extensions that draw inside #operations-center (Checkpoint A) re-attach
+    // on this event instead of observing the DOM.
+    window.AtlasShell?.emit?.('operations:rendered', { center: dom.center });
   }
 
   function scrollOperationsTarget(id) {
-    setActiveView('operations');
+    window.AtlasShell.show('operations');
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
@@ -408,7 +408,7 @@
           render();
         }
         if (target === 'operations-orders' || target === 'operations-checklist') scrollOperationsTarget(target);
-        else setActiveView(target);
+        else window.AtlasShell.show(target);
       });
     });
 
@@ -465,47 +465,28 @@
     if (typeof bindHomeLinks === 'function') bindHomeLinks();
   }
 
-  function patchApplication() {
-    if (typeof viewMap !== 'undefined') viewMap.operations = dom.view;
-    if (typeof titleMap !== 'undefined') titleMap.operations = 'Operations Center';
-
-    if (typeof setActiveView === 'function' && !setActiveView.__atlasOperationsPatched) {
-      const originalSetActiveView = setActiveView;
-      const patchedSetActiveView = function (view) {
-        originalSetActiveView(view);
-        if (view === 'operations') render();
-      };
-      patchedSetActiveView.__atlasOperationsPatched = true;
-      setActiveView = patchedSetActiveView;
-    }
-
-    if (typeof loadAll === 'function' && !loadAll.__atlasOperationsPatched) {
-      const originalLoadAll = loadAll;
-      const patchedLoadAll = async function () {
-        await originalLoadAll();
-        render();
-        renderHomeAugmentation();
-      };
-      patchedLoadAll.__atlasOperationsPatched = true;
-      loadAll = patchedLoadAll;
-    }
-
-    if (typeof renderAtlasHome === 'function' && !renderAtlasHome.__atlasOperationsPatched) {
-      const originalRenderAtlasHome = renderAtlasHome;
-      const patchedRenderAtlasHome = function () {
-        originalRenderAtlasHome();
-        renderHomeAugmentation();
-      };
-      patchedRenderAtlasHome.__atlasOperationsPatched = true;
-      renderAtlasHome = patchedRenderAtlasHome;
-    }
+  // S88: Operations registers with AtlasShell instead of reassigning the
+  // shell's setActiveView/loadAll/renderAtlasHome globals.
+  function registerWithShell() {
+    const shell = window.AtlasShell;
+    if (!shell) return;
+    shell.registerView('operations', { root: dom.view, title: 'Operations Center', render });
+    shell.onDataLoaded(() => {
+      render();
+      renderHomeAugmentation();
+    });
+    shell.registerHomeSection('operations', renderHomeAugmentation, 10);
+    shell.actions.register({
+      id: 'operations.checklist.open', label: "Open today's checklist", icon: 'clipboard-check', keywords: ['checklist', 'opening', 'closing'],
+      roles: ['admin', 'manager', 'bartender'], contexts: ['home', 'operations'], run: () => scrollOperationsTarget('operations-checklist')
+    });
   }
 
   function init() {
     if (state.initialized) return;
     ensureMarkup();
     if (!dom.view || !dom.center) return;
-    patchApplication();
+    registerWithShell();
     state.initialized = true;
     render();
     window.addEventListener('atlas:purchase-orders-updated', () => render());

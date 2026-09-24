@@ -73,7 +73,13 @@ class KnowledgeContractTests(unittest.TestCase):
         self.assertIn("team_messages_link_type_check", HARDENING)
         self.assertIn("team_messages_post_system", HARDENING)
         self.assertIn("'knowledge'", HARDENING)
-        self.assertIn('data-team-open-link="knowledge_article"', TEAM_BRIDGE)
+        # S88: the link type is registered with the shell's link registry by the
+        # Knowledge workspace; Team Messages resolves it before its own routes.
+        self.assertIn("registerLink?.('knowledge_article', openArticleFromLink)", BROWSER_MODULE)
+        self.assertIn("AtlasShell?.openLink?.('knowledge_article'", TEAM_BRIDGE)
+        team = (ROOT / "apps/web/assets/js/team-messages.js").read_text()
+        self.assertIn("window.AtlasShell?.openLink?.(type, key, { source: 'team-messages' })", team)
+        self.assertNotIn("stopImmediatePropagation", TEAM_BRIDGE)
 
     def test_public_rpc_surface_is_service_role_only_and_named(self):
         signatures = (

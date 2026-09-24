@@ -45,8 +45,12 @@ test('Phase 3 decisions and outcomes remain manager-mediated shadow feedback', (
 });
 
 test('Phase 3 renderer is loop-safe, responsive and preserves original Atlas styling', () => {
-  assert.ok(moduleSource.includes('state.observer?.disconnect()'));
-  assert.ok(moduleSource.includes("if (!shell.querySelector('[data-phase3-brain]')) queueRender();"));
+  // S88: no observer; Phase 3 re-attaches when brain.js announces a render and
+  // announces its own render for Checkpoint K.
+  assert.doesNotMatch(moduleSource, /new MutationObserver/);
+  assert.ok(moduleSource.includes("window.AtlasShell.on('brain:rendered', () => {"));
+  assert.ok(moduleSource.includes("if (!host()?.querySelector('[data-phase3-brain]')) queueRender();"));
+  assert.ok(moduleSource.includes("window.AtlasShell?.emit?.('brain-phase3:rendered', { shell });"));
   assert.doesNotMatch(moduleSource, /toLocaleString/);
   assert.match(css, /@media\(max-width:1180px\)/);
   assert.match(css, /@media\(max-width:760px\)/);

@@ -5,6 +5,12 @@ ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / "apps/web/index.html"
 CSS = ROOT / "apps/web/assets/css/s38-app-remediation.css"
 JS = ROOT / "apps/web/assets/js/s38-app-remediation.js"
+# S88: each S38 fix lives in the module that renders the markup.
+SCANNER = ROOT / "apps/web/assets/js/inventory-scanner.js"
+LAYOUT = ROOT / "apps/web/assets/js/operations-checkpoint-a-layout.js"
+PURCHASING = ROOT / "apps/web/assets/js/purchase-orders.js"
+MESSAGES = ROOT / "apps/web/assets/js/team-messages.js"
+MONTH = ROOT / "apps/web/assets/js/shifts-month-calendar.js"
 CHECKLIST = ROOT / "docs/release/Atlas_S38_PDF_App_Remediation_Checklist.md"
 DECISIONS = ROOT / "docs/release/Atlas_S38_Owner_Decisions_and_Acceptance.md"
 
@@ -17,6 +23,14 @@ class S38AppRemediationTests(unittest.TestCase):
         cls.javascript = JS.read_text(encoding="utf-8")
         cls.checklist = CHECKLIST.read_text(encoding="utf-8")
         cls.decisions = DECISIONS.read_text(encoding="utf-8")
+        cls.owners = {path.name: path.read_text(encoding="utf-8") for path in (SCANNER, LAYOUT, PURCHASING, MESSAGES, MONTH)}
+
+    def test_remediation_script_no_longer_patches_the_page(self):
+        # The fixes moved to their owners; the script keeps only its marker.
+        for pattern in ("new MutationObserver", "addEventListener(", "stopImmediatePropagation", "atlas:view-change"):
+            self.assertNotIn(pattern, self.javascript)
+        self.assertIn("window.AtlasS38Remediation", self.javascript)
+        self.assertIn("s38-owner-remediation-v9", self.javascript)
 
     def test_remediation_assets_load_last(self):
         css_reference = "assets/css/s38-app-remediation.css"
@@ -25,6 +39,7 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertEqual(self.index.count(js_reference), 1)
         self.assertLess(self.index.index(css_reference), self.index.index("</head>"))
         self.assertLess(self.index.index("assets/js/purchase-orders.js"), self.index.index(js_reference))
+        self.assertIn(js_reference + "?v=20260926-s88", self.index)
         self.assertLess(self.index.index(js_reference), self.index.index("</body>"))
 
     def test_shared_visual_contract(self):
@@ -51,14 +66,15 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertNotIn("background:#000", self.css)
 
     def test_home_attention_and_removed_brain_card_follow_owner_contract(self):
-        operations_layout = (ROOT / "apps/web/assets/js/operations-checkpoint-a-layout.js").read_text(encoding="utf-8")
+        operations_layout = self.owners["operations-checkpoint-a-layout.js"]
         for contract in (
             "setAttentionPulse",
             "s38-attention-pulse",
             "element.dataset.s38AttentionSignature",
-            "animation: s38-attention-pulse 3.2s ease-in-out 2",
         ):
-            self.assertIn(contract, self.javascript if contract in self.javascript else self.css)
+            self.assertIn(contract, operations_layout)
+        self.assertIn("setAttentionPulse(prompt, prompt.dataset.attentionRequired === 'true')", operations_layout)
+        self.assertIn("animation: s38-attention-pulse 3.2s ease-in-out 2", self.css)
         self.assertIn('data-attention-required="${attentionRequired}"', operations_layout)
         self.assertIn("document.getElementById('home-focus') || document.getElementById('home-metrics')", operations_layout)
         self.assertIn("homeAnchor.insertAdjacentHTML('beforebegin', markup)", operations_layout)
@@ -68,30 +84,36 @@ class S38AppRemediationTests(unittest.TestCase):
 
     def test_scanner_controls_are_wired(self):
         scanner_css = (ROOT / "apps/web/assets/css/inventory-scanner.css").read_text(encoding="utf-8")
+        scanner = self.owners["inventory-scanner.js"]
         for contract in (
-            "handleScannerControl",
+            "function stepQuantity(delta)",
             "[data-scanner-close]",
             "[data-scanner-step]",
-            "window.AtlasInventoryScanner?.close",
+            "closeScanner();",
             "Math.max(0",
             "dispatchEvent(new Event('change'",
+            "document.addEventListener('click', handleClick, true)",
+            'inputmode="decimal" aria-label="Observed inventory quantity"',
         ):
-            self.assertIn(contract, self.javascript)
+            self.assertIn(contract, scanner)
         self.assertIn("Final Atlas scanner skin", scanner_css)
         self.assertIn(".inventory-scanner-trust{border-color:#cbdafe;background:#edf3ff", scanner_css)
         self.assertIn(".inventory-scanner-primary,.inventory-scanner-manual button{border-color:#4f7df3;background:#4f7df3", scanner_css)
 
     def test_purchasing_and_message_controls_are_wired(self):
-        for contract in (
-            "enablePurchasingNavigation",
-            "purchase-orders-tab",
-            "purchase-deliveries-tab",
-            "data-subview",
-            "polishMessages",
-            "data-team-message-list",
-            "AtlasSettings?.tab",
-        ):
-            self.assertIn(contract, self.javascript)
+        purchasing = self.owners["purchase-orders.js"]
+        self.assertIn("trigger.title = 'Open purchase orders'; trigger.setAttribute('aria-disabled', 'false')", purchasing)
+        self.assertIn("deliveriesTrigger.title = 'Open ordered and received deliveries'", purchasing)
+        # Purchasing sections are routes (#suppliers/orders, #suppliers/deliveries).
+        self.assertIn("function openPurchasingSection(section)", self.index)
+        self.assertIn("orders: 'purchase-orders-tab', deliveries: 'purchase-deliveries-tab'", self.index)
+        messages = self.owners["team-messages.js"]
+        self.assertIn('data-team-message-list role="log" aria-live="polite" aria-relevant="additions text"', messages)
+        self.assertIn("Notification delivery follows Settings", messages)
+        self.assertNotIn("Push notifications off", messages)
+        self.assertIn("document.body.classList.add('s38-team-active')", messages)
+        # The bell opens Messages when unread, otherwise #settings/notifications.
+        self.assertIn("window.AtlasShell.navigate('#settings/notifications',{source:'nav'})", self.index)
 
     def test_existing_server_backed_features_remain_present(self):
         purchase_orders = (ROOT / "apps/web/assets/js/purchase-orders.js").read_text(encoding="utf-8")
@@ -164,7 +186,7 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("if (focusList) {", brain)
         self.assertNotIn("if (!focusList) return;", brain)
         self.assertIn("homeTimeline.style.display = view === 'dashboard' ? 'block' : 'none'", self.index)
-        self.assertIn("constrainHomeTimeline", self.javascript)
+        self.assertIn("homeTimeline.setAttribute('aria-hidden', String(view !== 'dashboard'))", self.index)
         self.assertIn("Master notification control", settings)
         self.assertIn("overflow-y:scroll !important", self.css)
 
@@ -181,8 +203,9 @@ class S38AppRemediationTests(unittest.TestCase):
             "display:inline-grid!important",
         ):
             self.assertIn(contract, month_css)
-        self.assertIn("polishShiftsMonth", self.javascript)
-        self.assertIn("s38-month-active", self.javascript)
+        month = self.owners["shifts-month-calendar.js"]
+        self.assertIn("function syncBodyState()", month)
+        self.assertIn("document.body.classList.toggle('s38-month-active', open)", month)
         self.assertIn("body.s38-month-active .fab-wrap", self.css)
 
 

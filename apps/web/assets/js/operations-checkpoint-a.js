@@ -9,8 +9,8 @@
     loading: false,
     error: null,
     submitting: false,
-    observer: null,
     renderQueued: false,
+    shellBound: false,
     modalMode: null,
     selectedRoutineId: null,
     selectedPointId: null,
@@ -300,7 +300,6 @@
   function renderOperations() {
     const host = operationsHost();
     if (!host) return;
-    state.observer?.disconnect();
     const existing = host.querySelector('[data-checkpoint-a]');
     const wrapper = document.createElement('div');
     wrapper.innerHTML = hostMarkup();
@@ -315,7 +314,8 @@
     bindEvents(next);
     renderHomeAlerts();
     window.lucide?.createIcons?.();
-    observeHost();
+    // The compact layout (operations-checkpoint-a-layout.js) transforms this block.
+    window.AtlasShell?.emit?.('checkpoint-a:rendered', { host });
   }
 
   function renderHomeAlerts() {
@@ -335,17 +335,17 @@
     window.lucide?.createIcons?.();
   }
 
-  function observeHost() {
-    const host = operationsHost();
-    if (!host || state.observer) {
-      state.observer?.observe(host, { childList: true, subtree: true });
-      return;
-    }
-    state.observer = new MutationObserver(() => {
+  // operations.js replaces #operations-center on every render and announces it
+  // with 'operations:rendered'; re-insert this block then (was a MutationObserver).
+  function bindShell() {
+    if (state.shellBound || !window.AtlasShell) return;
+    state.shellBound = true;
+    window.AtlasShell.on('operations:rendered', () => {
       const currentHost = operationsHost();
       if (currentHost && !currentHost.querySelector('[data-checkpoint-a]')) queueRender();
     });
-    state.observer.observe(host, { childList: true, subtree: true });
+    // Home alert rows are one of Home's registered sections.
+    window.AtlasShell.registerHomeSection('checkpoint-a', renderHomeAlerts, 40);
   }
 
   function queueRender() {
@@ -358,7 +358,7 @@
   }
 
   function openOperationsTarget(target) {
-    if (typeof setActiveView === 'function') setActiveView('operations');
+    window.AtlasShell?.show?.('operations');
     const id = target === 'temperature-log' ? 'checkpoint-a-temperature' : 'checkpoint-a-routines';
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
@@ -640,39 +640,15 @@
     root.querySelectorAll('[data-checkpoint-target]').forEach((button) => button.addEventListener('click', () => {
       const target = button.dataset.checkpointTarget;
       if (target === 'temperature-log') openOperationsTarget(target);
-      else if (typeof setActiveView === 'function') setActiveView(target);
+      else window.AtlasShell?.show?.(target);
     }));
     root.querySelector('[data-checkpoint-settings]')?.addEventListener('click', openSettings);
   }
 
-  function patchApplication() {
-    if (typeof setActiveView === 'function' && !setActiveView.__checkpointAPatched) {
-      const originalSetActiveView = setActiveView;
-      const patchedSetActiveView = function (view) {
-        originalSetActiveView(view);
-        if (view === 'operations') queueRender();
-        if (view === 'dashboard' || view === 'home') renderHomeAlerts();
-      };
-      patchedSetActiveView.__checkpointAPatched = true;
-      setActiveView = patchedSetActiveView;
-    }
-
-    if (typeof renderAtlasHome === 'function' && !renderAtlasHome.__checkpointAPatched) {
-      const originalRenderAtlasHome = renderAtlasHome;
-      const patchedRenderAtlasHome = function () {
-        originalRenderAtlasHome();
-        renderHomeAlerts();
-      };
-      patchedRenderAtlasHome.__checkpointAPatched = true;
-      renderAtlasHome = patchedRenderAtlasHome;
-    }
-  }
-
   function init() {
-    patchApplication();
+    bindShell();
     const waitForOperations = () => {
       if (operationsHost()) {
-        observeHost();
         loadSnapshot();
         return;
       }

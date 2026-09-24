@@ -14,7 +14,8 @@ function count(haystack, needle) {
 test('Checkpoint B loads from the isolated scanner API through its bootstrap', () => {
   assert.match(config, /INVENTORY_SCANNER_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-inventory-scanner"/);
   assert.match(config, /assets\/js\/inventory-scanner-bootstrap\.js/);
-  assert.match(bootstrap, /SCANNER_SCRIPT = 'assets\/js\/inventory-scanner\.js'/);
+  assert.match(bootstrap, /SCANNER_SCRIPT = 'assets\/js\/inventory-scanner\.js\?v=20260926-s88'/);
+  assert.match(bootstrap, /window\.AtlasShell\.load\(SCANNER_SCRIPT/);
   assert.match(bootstrap, /SCANNER_STYLE = 'assets\/css\/inventory-scanner\.css'/);
   assert.equal(count(config, 'SUPABASE_ANON_KEY'), 1);
   assert.doesNotMatch(config + bootstrap + scanner, /SUPABASE_SERVICE_ROLE_KEY/);
@@ -33,18 +34,31 @@ test('scanner interaction layer prevents modal taps from being swallowed', () =>
   assert.match(bootstrap, /inventory-scanner-backdrop\{z-index:0!important/);
   assert.match(bootstrap, /inventory-scanner-panel\{z-index:1!important;pointer-events:auto!important/);
   assert.match(bootstrap, /touch-action:manipulation/);
-  assert.match(bootstrap, /captureTypes = new Set\(\['click', 'submit', 'input', 'change'\]\)/);
-  assert.match(bootstrap, /nativeDocumentAddEventListener\.call\(document, type, listener, true\)/);
+  // S88: the scanner registers its own capture-phase handlers; the bootstrap no
+  // longer replaces document.addEventListener while the scanner evaluates.
+  for (const type of ['click', 'submit', 'input', 'change']) {
+    assert.match(scanner, new RegExp(`document\\.addEventListener\\('${type}', handle\\w+, true\\)`));
+  }
+  assert.doesNotMatch(bootstrap, /document\.addEventListener\s*=|nativeDocumentAddEventListener/);
 });
 
-test('scanner observer ignores its own rendered modal and API requests time out', () => {
-  assert.match(bootstrap, /scannerMutationIsInternal/);
-  assert.match(bootstrap, /\.closest\?\.\('\.inventory-scanner-overlay'\)/);
-  assert.match(bootstrap, /records\.filter\(\(record\) => !scannerMutationIsInternal\(record\)\)/);
-  assert.match(bootstrap, /SCANNER_API_FRAGMENT = '\/functions\/v1\/atlas-inventory-scanner'/);
-  assert.match(bootstrap, /new AbortController\(\)/);
-  assert.match(bootstrap, /15000/);
-  assert.match(bootstrap, /scanner service took too long to respond/i);
+test('scanner no longer observes the page and its API requests time out', () => {
+  // S88: no global MutationObserver or fetch replacement. Entry points are
+  // re-checked on AtlasShell events and the scanner's own requests time out.
+  assert.doesNotMatch(bootstrap, /window\.MutationObserver\s*=|window\.fetch\s*=|new MutationObserver/);
+  assert.doesNotMatch(scanner, /new MutationObserver/);
+  assert.match(scanner, /window\.AtlasShell\?\.on\?\.\('view:show', ensureEntryPoints\)/);
+  assert.match(scanner, /SCANNER_TIMEOUT_MS = 15000/);
+  assert.match(scanner, /new AbortController\(\)/);
+  assert.match(scanner, /signal: controller\.signal/);
+  assert.match(scanner, /scanner service took too long to respond/i);
+});
+
+test('scanner stepper and close controls are owned by the scanner (S38 fixes moved from remediation)', () => {
+  assert.match(scanner, /function stepQuantity\(delta\)[\s\S]+?Math\.max\(0,[\s\S]+?dispatchEvent\(new Event\('change'/);
+  assert.match(scanner, /inputmode="decimal" aria-label="Observed inventory quantity"/);
+  assert.match(scanner, /target\.closest\('\[data-scanner-close\]'\)/);
+  assert.match(scanner, /target\.closest\('\[data-scanner-step\]'\)/);
 });
 
 test('scanner supports phone camera, native detection and pinned ZXing fallback', () => {

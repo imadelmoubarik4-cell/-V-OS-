@@ -14,7 +14,7 @@ function extract(html, start, end) {
   return html.slice(from, to);
 }
 
-// Runs the real renderAtlasHome() and renderDashboard() from index.html against
+// Runs the real Home base section (renderHomeCore) and renderDashboard() from index.html against
 // stubbed DOM nodes, using the real stock-truth projection.
 function renderHome(rawItems, balances = [], { html = read('apps/web/index.html'), truth = read('apps/web/assets/js/atlas-stock-truth.js') } = {}) {
   const nodes = new Map();
@@ -34,8 +34,10 @@ function renderHome(rawItems, balances = [], { html = read('apps/web/index.html'
   vm.runInContext(truth, context);
   context.AtlasRecipes = { getHomeMetrics: () => null, getHomeAlert: () => null };
   context.items = context.AtlasStockTruth.project(rawItems, balances, [], NOW);
-  vm.runInContext(extract(html, '  function renderAtlasHome(){', '\n  function bindHomeLinks'), context);
-  vm.runInContext('renderAtlasHome();', context);
+  // S88: renderAtlasHome() composes AtlasShell Home sections; the base section
+  // under test is renderHomeCore().
+  vm.runInContext(extract(html, '  function renderHomeCore(){', '\n  function bindHomeLinks'), context);
+  vm.runInContext('renderHomeCore();', context);
   // renderDashboard's tail (activity and spend panels) is outside the stock cards under test.
   vm.runInContext(`(${extract(html, '  function renderDashboard() {', '\n    // Recent activity').replace('function renderDashboard() {', 'function () {')}\n})();`, context);
   const text = (id) => String(node(id).textContent);
