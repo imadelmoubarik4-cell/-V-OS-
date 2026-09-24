@@ -1,0 +1,128 @@
+/* S87 Global Search / Ask Atlas.
+   Uses the shared Atlas tokens; no new colours are introduced. */
+.atlas-search-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  min-width: 320px;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgba(16, 32, 60, .14);
+  z-index: 60;
+}
+.atlas-search-panel[hidden] { display: none; }
+.atlas-search-panel ul { list-style: none; margin: 0; padding: 0; }
+.atlas-search-group {
+  padding: 10px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--atlas-muted);
+}
+.atlas-search-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.atlas-search-option svg { width: 16px; height: 16px; flex: 0 0 auto; color: var(--atlas-muted); }
+.atlas-search-option span { display: grid; min-width: 0; }
+.atlas-search-option strong { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-search-option small { font-size: 12px; color: var(--atlas-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-search-option:hover,
+.atlas-search-option.is-active { background: var(--atlas-accent-soft, #e8f1fd); }
+.atlas-search-empty { margin: 0; padding: 14px 10px; font-size: 13px; color: var(--atlas-muted); }
+
+.atlas-search-answer {
+  margin: 0 0 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--atlas-bg, #f6f5f1);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.atlas-search-answer.is-good { background: rgba(31, 157, 118, .08); }
+.atlas-search-answer.is-warn { background: rgba(201, 138, 46, .10); }
+.atlas-search-answer.is-bad { background: rgba(208, 92, 92, .09); }
+.atlas-search-answer-label { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--atlas-muted); }
+.atlas-search-answer-label svg { width: 13px; height: 13px; }
+.atlas-search-answer p { margin: 6px 0 0; }
+.atlas-search-answer ul { margin: 8px 0 0; padding-left: 18px; }
+.atlas-search-answer li { margin: 2px 0; }
+.atlas-search-answer-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--atlas-accent, #2f80ed);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.atlas-search-answer-action svg { width: 14px; height: 14px; }
+.atlas-search-answer-action:focus-visible,
+.atlas-search-option.is-active { outline: 2px solid var(--atlas-accent, #2f80ed); outline-offset: -2px; }
+
+/* The magnifier is decorative; taps on it must reach the field. */
+.atlas-search > svg, .atlas-search > i, .purchasing-search > svg, .recipe-search > svg, .knowledge-search > svg { pointer-events: none; }
+
+#items-body tr.atlas-search-highlight td { background: var(--atlas-accent-soft, #e8f1fd); transition: background .2s ease; }
+
+/* Inventory had no text search; it shares the Purchasing search control. */
+#inventory-view .inventory-search { flex: 0 1 280px; min-width: 180px; }
+
+/* Phones: the field was hidden entirely. It is now a 44px control that
+   expands across the top bar while it has focus. */
+@media (max-width: 760px) {
+  .atlas-topbar .atlas-search {
+    display: block !important;
+    flex: 0 0 44px;
+    max-width: 44px;
+    margin-left: auto;
+  }
+  .atlas-topbar .atlas-search input#global-search {
+    /* s34-preproduction.css and s38-app-remediation.css pin search fields to
+       36-42px with !important; a phone touch target needs 44px. */
+    width: 44px;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px;
+    padding: 0 0 0 44px;
+    color: transparent;
+    cursor: pointer;
+  }
+  .atlas-topbar .atlas-search input::placeholder { color: transparent; }
+  .atlas-topbar .atlas-search:focus-within {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    max-width: none;
+    z-index: 70;
+  }
+  .atlas-topbar .atlas-search:focus-within input#global-search {
+    width: 100%;
+    padding-left: 40px;
+    color: var(--atlas-text);
+    cursor: text;
+  }
+  .atlas-topbar .atlas-search:focus-within input::placeholder { color: var(--atlas-muted); }
+  .atlas-search-panel { position: fixed; top: 70px; left: 12px; right: 12px; min-width: 0; max-height: calc(100vh - 90px); }
+  #inventory-view .inventory-search { flex: 1 1 100%; }
+}

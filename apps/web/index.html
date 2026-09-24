@@ -500,6 +500,7 @@
   <link rel="stylesheet" href="assets/css/team-s57.css?v=20260917-s57">
   <link rel="stylesheet" href="assets/css/inventory-operations-s58.css?v=20260917-s58">
   <link rel="stylesheet" href="assets/css/accessibility-responsive-s61.css?v=20260917-s61">
+  <link rel="stylesheet" href="assets/css/atlas-search.css?v=20260924-s87">
 </head>
 <body>
 
@@ -546,7 +547,7 @@
       </aside>
       <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
       <section class="atlas-main">
-        <header class="atlas-topbar"><button type="button" class="top-icon mobile-menu" id="mobile-menu-btn" aria-label="Collapse navigation" title="Collapse navigation"><i data-lucide="menu"></i></button><div class="atlas-page-title" id="atlas-page-title">Home</div><div class="atlas-search"><i data-lucide="search"></i><input id="global-search" type="text" placeholder="Search or ask Atlas…" aria-label="Jump to a page or command" title="Pages and commands only — operational records are not indexed." data-search-scope="navigation" autocomplete="off" /></div><button type="button" class="top-icon" title="Notifications" aria-label="Notifications"><i data-lucide="bell"></i></button><button type="button" class="service-toggle" id="service-mode-btn"><i data-lucide="zap"></i><span>Service Mode</span></button></header>
+        <header class="atlas-topbar"><button type="button" class="top-icon mobile-menu" id="mobile-menu-btn" aria-label="Collapse navigation" title="Collapse navigation"><i data-lucide="menu"></i></button><div class="atlas-page-title" id="atlas-page-title">Home</div><div class="atlas-search"><i data-lucide="search"></i><input id="global-search" type="text" placeholder="Search or ask Atlas…" aria-label="Search Atlas or ask a question" title="Search items, recipes, suppliers, people, documents and pages, or ask a question" data-search-scope="records" autocomplete="off" /></div><button type="button" class="top-icon" title="Notifications" aria-label="Notifications"><i data-lucide="bell"></i></button><button type="button" class="service-toggle" id="service-mode-btn"><i data-lucide="zap"></i><span>Service Mode</span></button></header>
         <div class="atlas-content standard-view"><main>
           <div id="home-intro" class="home-hero atlas-home-hero"><div class="atlas-home-hero-copy"><span class="atlas-home-date" id="home-date">Today</span><h1><span id="home-greeting">Good day</span>, <span id="greeting-name">VÁ team</span>.</h1></div><div class="atlas-home-hero-actions"><button type="button" class="atlas-home-action secondary" data-home-action="stock-count"><i data-lucide="clipboard-check"></i>Start stock count</button><button type="button" class="atlas-home-action" data-home-action="new-order" data-commercial-only><i data-lucide="plus"></i>New order</button></div></div>
           <div id="home-metrics" class="atlas-grid atlas-home-metrics"><div class="metric-card" data-target="inventory"><div class="metric-icon"><i data-lucide="package"></i></div><div class="metric-copy"><span>Inventory items</span><strong id="home-items">—</strong><small id="home-items-note">Live catalog</small></div></div><div class="metric-card" data-target="inventory-low"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><div class="metric-copy"><span>Items below par</span><strong id="home-low">—</strong><small id="home-low-note">Checking levels</small></div></div><div class="metric-card" data-target="recipes"><div class="metric-icon"><i data-lucide="martini"></i></div><div class="metric-copy"><span>Average recipe margin</span><strong id="home-margin">—</strong><small id="home-margin-note">Verified recipes only</small></div></div><div class="metric-card" data-target="team-profiles"><div class="metric-icon"><i data-lucide="users"></i></div><div class="metric-copy"><span>Team members</span><strong id="home-team">—</strong><small id="home-team-note">Loading live profiles</small></div></div></div>
@@ -572,7 +573,7 @@
               <button type="button" id="inventory-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
             </div>
           </section>
-          <div id="inventory-view" style="display:none;"><div class="toolbar inventory-filter-toolbar"><div class="tabs" id="category-tabs" aria-label="Inventory categories"></div><div class="tabs inventory-subcategory-tabs" id="subcategory-tabs" aria-label="Inventory subcategories" hidden></div></div><div id="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th data-commercial-only>Supplier</th><th data-commercial-only class="numeric">Cost</th><th>Updated</th><th>Quantity</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="items-body"></tbody></table><div class="empty-state" id="empty-state" style="display:none;"><span class="mark">Á</span>Nothing matches these inventory filters.</div></div></div>
+          <div id="inventory-view" style="display:none;"><div class="toolbar inventory-filter-toolbar"><label class="purchasing-search inventory-search" for="inventory-search"><i data-lucide="search"></i><input type="search" id="inventory-search" aria-label="Search inventory" placeholder="Search items, suppliers, SKU…" autocomplete="off" /></label><div class="tabs" id="category-tabs" aria-label="Inventory categories"></div><div class="tabs inventory-subcategory-tabs" id="subcategory-tabs" aria-label="Inventory subcategories" hidden></div></div><div id="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th data-commercial-only>Supplier</th><th data-commercial-only class="numeric">Cost</th><th>Updated</th><th>Quantity</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="items-body"></tbody></table><div class="empty-state" id="empty-state" style="display:none;"><span class="mark">Á</span>Nothing matches these inventory filters.</div></div></div>
           <div id="dashboard-view" style="display:none;"><div class="stat-grid"><div class="stat-card"><div class="label">Total items</div><div class="value" id="stat-total-items">0</div></div><div class="stat-card warn"><div class="label">Low stock</div><div class="value" id="stat-low-stock">0</div></div><div class="stat-card" data-commercial-only><div class="label">Spent this month</div><div class="value" id="stat-month-spend">0</div><div class="sub">ISK</div></div><div class="stat-card" data-commercial-only><div class="label">Suppliers</div><div class="value" id="stat-suppliers">0</div></div></div><div class="panel"><h3>Low inventory</h3><div id="low-inventory-rows"><div class="empty-dash">Nothing below par right now.</div></div></div><div class="panel"><h3>Recent activity</h3><div id="activity-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by month</h3><div id="monthly-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by supplier — this month</h3><div id="supplier-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div></div>
           <div id="recipes-view" style="display:none;">
             <section class="recipe-dashboard">
@@ -1160,6 +1161,13 @@
   let inventoryMovements = [];
   let recipes = [];
   let suppliers = [];
+  // Read-only access to the loaded, role-filtered records for other modules
+  // (Search). Returns the same arrays every page renders from.
+  window.AtlasData = Object.freeze({
+    items: () => items,
+    recipes: () => recipes,
+    suppliers: () => suppliers
+  });
   let draftIngredients = [];
   let activeCategory = 'all';
   let activeSubcategory = 'all';
@@ -1664,11 +1672,14 @@
     const banner = document.getElementById('low-stock-banner');
     body.innerHTML = '';
 
+    const query = (document.getElementById('inventory-search')?.value || '').trim().toLowerCase();
     const visible = items.filter(item => {
       if (item.active === false) return false;
       const groupMatches = activeCategory === 'all' || inventoryGroup(item) === activeCategory;
       const subcategoryMatches = activeSubcategory === 'all' || inventorySubcategory(item, activeCategory) === activeSubcategory;
-      return groupMatches && subcategoryMatches;
+      const textMatches = !query || [item.name, item.category, item.subcategory, item.supplier, item.sku, item.brand]
+        .some(value => String(value || '').toLowerCase().includes(query));
+      return groupMatches && subcategoryMatches && textMatches;
     });
     const lowCount = items.filter(i => i.active !== false && window.AtlasStockTruth.belowPar(i)).length;
 
@@ -1812,6 +1823,7 @@
   const itemForm = document.getElementById('item-form');
 
   document.getElementById('add-item-btn').addEventListener('click', () => openModal(null));
+  document.getElementById('inventory-search')?.addEventListener('input', () => renderTable());
   document.getElementById('cancel-item-btn').addEventListener('click', closeModal);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
 
@@ -2185,23 +2197,6 @@
   document.querySelector('[data-service-action="restock"]').addEventListener('click',()=>{exitService();openRestockModal();});
   document.querySelector('[data-service-action="add-item"]').addEventListener('click',()=>{exitService();openModal(null);});
   document.addEventListener('keydown',(e)=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();document.getElementById('global-search').focus();}if(e.key==='Escape'&&document.body.classList.contains('service-mode'))exitService();});
-  document.getElementById('global-search').addEventListener('input',(e)=>{
-    const q=e.target.value.toLowerCase().trim();
-    if(q.includes('recipe'))setActiveView('recipes');
-    else if(q.includes('supplier')||q.includes('order')||q.includes('purchase'))setActiveView('suppliers');
-    else if(q.includes('profile')||q.includes('staff directory')||q.includes('team member'))document.querySelector('.nav-item[data-view="team-profiles"]')?.click();
-    else if(q.includes('message')||q.includes('chat')||q.includes('team'))setActiveView('team');
-    else if(q.includes('shift')||q.includes('schedule'))setActiveView('shifts');
-    else if(q.includes('knowledge')||q.includes('document')||q.includes('checklist'))setActiveView('knowledge');
-    else if(q.includes('import')||q.includes('excel')||q.includes('csv'))setActiveView('imports');
-    else if(q.includes('movement'))setActiveView('movements');
-    else if(q.includes('waste')||q.includes('spoilage')||q.includes('breakage'))setActiveView('waste');
-    else if(q.includes('inventory')||q.includes('item')||q.includes('stock')||q.includes('count'))setActiveView('inventory');
-    else if(q.includes('report'))setActiveView('reports');
-    else if(q.includes('setting'))setActiveView('settings');
-    else if(q.includes('home')||q.includes('dashboard'))setActiveView('dashboard');
-  });
-
   // ---------- QUICK ACTION (FAB) ----------
   const fabBtn = document.getElementById('fab-btn');
   const fabMenu = document.getElementById('fab-menu');
@@ -2546,5 +2541,6 @@
 <script src="assets/js/knowledge-workspace.js?v=20260917-s56"></script>
 <script src="assets/js/knowledge-team-link-bridge.js"></script>
 <script src="assets/js/s38-app-remediation.js"></script>
+<script src="assets/js/atlas-search.js?v=20260924-s87"></script>
 </body>
 </html>

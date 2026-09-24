@@ -646,10 +646,6 @@
       renderAtlasHome = patchedRenderAtlasHome;
     }
 
-    document.getElementById('global-search')?.addEventListener('input', (event) => {
-      const query = event.target.value.toLowerCase();
-      if (query.includes('brain') || query.includes('briefing') || query.includes('intelligence')) setActiveView('brain');
-    });
   }
 
   function init() {

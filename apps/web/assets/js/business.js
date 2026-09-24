@@ -589,12 +589,6 @@
       renderAtlasHome = patchedRenderAtlasHome;
     }
 
-    document.getElementById('global-search')?.addEventListener('input', (event) => {
-      const query = event.target.value.toLowerCase();
-      if (query.includes('business') || query.includes('profit') || query.includes('margin') || query.includes('spend') || query.includes('intelligence')) {
-        setActiveView('business');
-      }
-    });
   }
 
   function init() {

@@ -28,7 +28,8 @@ test('both views use live movement evidence instead of placeholder pages', () =>
   assert.doesNotMatch(bootstrap, /target\.closest\('\[data-subview="Inventory movements"\]'\)/);
 });
 
-test('navigation search recognizes Movements and Waste as commands', () => {
-  assert.match(app, /q\.includes\('movement'\)\)setActiveView\('movements'\)/);
-  assert.match(app, /q\.includes\('waste'\).*setActiveView\('waste'\)/);
+test('search recognizes Movements and Waste as pages', () => {
+  const search = readFileSync('apps/web/assets/js/atlas-search.js', 'utf8');
+  assert.match(search, /\['movements', 'Inventory movements', \['movement'/);
+  assert.match(search, /\['waste', 'Waste', \['waste', 'spoilage', 'breakage'\]\]/);
 });

@@ -652,12 +652,33 @@
     });
   }
 
+  // The ingredients that stop a recipe's availability from being calculated,
+  // with the real reason. availability.limiting is the smallest *known*
+  // ingredient, which is not the cause when a recipe is incomplete.
+  function recipeBlockers(recipe) {
+    if (!window.AtlasCalculations) return [];
+    const rows = window.AtlasCalculations.recipeMetrics(recipe, items).rows || [];
+    return rows
+      .filter((row) => !row.reference && !Number.isFinite(row.batches))
+      .map((row) => {
+        const name = row.item?.name || row.ingredient?.item_name || 'An ingredient';
+        let reason = 'not linked to an inventory item';
+        if (row.item && row.reason && /unit|package/i.test(row.reason)) reason = row.reason.toLowerCase();
+        else if (row.item && !window.AtlasStockTruth?.known(row.item)) reason = 'no verified stock count';
+        else if (row.item) reason = String(row.reason || 'stock cannot be calculated').toLowerCase();
+        return { name, reason };
+      });
+  }
+
   function healthRecommendation(recipe, status) {
     const limiting = status.availability.limiting?.item?.name || status.availability.limiting?.ingredient?.item_name;
     if (status.key === 'draft') return { title: 'Recipe is not active', detail: 'Activate it when the service specification is complete.', action: 'Edit recipe' };
     if (status.key === 'unavailable') return { title: 'Restock required', detail: `${limiting || 'The limiting ingredient'} prevents this recipe from being served.`, action: 'Review inventory' };
     if (status.key === 'attention') return { title: 'Low service coverage', detail: `${limiting || 'The limiting ingredient'} will run out first. Plan a restock before the next busy service.`, action: 'Review inventory' };
-    if (status.key === 'incomplete') return { title: 'Setup is incomplete', detail: 'Check inventory links, package units and fresh verified stock counts.', action: 'Edit recipe' };
+    if (status.key === 'incomplete') {
+      const blocker = recipeBlockers(recipe)[0];
+      return { title: 'Setup is incomplete', detail: blocker ? `${blocker.name}: ${blocker.reason}.` : 'Check inventory links, package units and fresh verified stock counts.', action: 'Edit recipe' };
+    }
     return { title: 'Ready for service', detail: 'All linked ingredients currently support service.', action: 'Open Service Mode' };
   }
 
@@ -713,7 +734,9 @@
         <div><span>Profit per serving</span><strong>${Number.isFinite(financials.profit) && !financials.incomplete ? formatIsk(financials.profit) : '—'}</strong></div>` : ''}
         <div><span>Current coverage</span><strong>${Number.isFinite(status.availability.servings) ? `${status.availability.servings} servings` : 'Unknown'}</strong></div>
       </div>
-      <div class="recipe-limiting-card"><span>Limiting ingredient</span><strong>${escape(limitingName)}</strong><p>${status.availability.unknown ? 'Unknown until all linked ingredients have verified stock.' : status.availability.belowPar ? 'At or below its par level.' : 'This ingredient will run out first.'}</p></div>
+      ${status.key === 'incomplete'
+        ? (() => { const blockers = recipeBlockers(recipe); return `<div class="recipe-limiting-card"><span>${blockers.length > 1 ? 'Blocking ingredients' : 'Blocking ingredient'}</span><strong>${escape(blockers[0]?.name || '—')}</strong><p>${escape(blockers.map((entry) => `${entry.name}: ${entry.reason}`).join(' · ') || 'Availability cannot be calculated yet.')}</p></div>`; })()
+        : `<div class="recipe-limiting-card"><span>Limiting ingredient</span><strong>${escape(limitingName)}</strong><p>${status.availability.belowPar ? 'Below its par level.' : 'This ingredient will run out first.'}</p></div>`}
       <button type="button" class="recipe-insight-primary" data-health-action>${escape(recommendation.action)}</button>`;
     dom.insight.querySelector('[data-health-action]')?.addEventListener('click', () => {
       if (status.key === 'ready') openServiceView(recipe);
@@ -1198,6 +1221,13 @@
     getHomeAlert,
     getHomeMetrics,
     recipeAvailability,
+    // Search and Ask Atlas use the exact readiness shown on the Recipes page.
+    recipeStatus,
+    recipeBlockers,
+    openRecipe: (recipeId) => {
+      document.querySelector('.atlas-nav .nav-item[data-view="recipes"]')?.click();
+      window.setTimeout(() => selectRecipe(recipeId, { focus: true }), 60);
+    },
     openServiceLibrary,
     reloadCategories: () => loadCategories(true)
   };
