@@ -41,12 +41,16 @@ function has(item, key) {
 // The owner confirmation is its own evidence pair (S84). Rows read before the
 // columns exist fall back to the live row, matching the previous rule.
 function ownerConfirmation(item) {
+  // S84.1: dedicated owner evidence is authoritative once present. The
+  // database guard decides which trusted owner workflows may stamp it.
+  if (has(item, "source_confirmed_at") || has(item, "source_confirmed_quantity")) {
+    return { quantity: numberOrNull(item?.source_confirmed_quantity), at: dateMillis(item?.source_confirmed_at) };
+  }
+
+  // Compatibility for pre-S84 rows only.
   const sourceType = lower(item?.source_type);
   if (!OWNER_CONFIRMED_TYPES.has(sourceType) || numberOrNull(item?.source_confidence) !== 100) return null;
-  if (!has(item, "source_confirmed_at")) {
-    return { quantity: numberOrNull(item?.quantity), at: dateMillis(item?.updated_at) };
-  }
-  return { quantity: numberOrNull(item?.source_confirmed_quantity), at: dateMillis(item?.source_confirmed_at) };
+  return { quantity: numberOrNull(item?.quantity), at: dateMillis(item?.updated_at) };
 }
 
 function ownerConfirmedBaseline(item, balance) {
