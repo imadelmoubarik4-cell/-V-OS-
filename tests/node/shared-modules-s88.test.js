@@ -45,8 +45,10 @@ function localClosure(entry) {
 
 test('shared modules are dependency-free ESM without Deno APIs', () => {
   const shared = fs.readdirSync(path.join(FUNCTIONS, '_shared'));
-  assert.deepEqual(shared.sort(), ['atlas-domain.mjs', 'auth.mjs', 'stock-provenance.mjs']);
-  for (const file of shared) {
+  // S88: ai-tools/ holds the Atlas AI Tool Gateway (checked file by file in
+  // tests/node/ai-tools-registry.test.js with the same rules).
+  assert.deepEqual(shared.sort(), ['ai-tools', 'atlas-domain.mjs', 'auth.mjs', 'stock-provenance.mjs']);
+  for (const file of shared.filter((name) => name.endsWith('.mjs'))) {
     const source = fs.readFileSync(path.join(FUNCTIONS, '_shared', file), 'utf8');
     assert.doesNotMatch(source, /\bDeno\./, `${file} must not use Deno APIs`);
     assert.doesNotMatch(source, /from\s+["'](?:jsr:|npm:|https?:)/, `${file} must not import remote packages`);
