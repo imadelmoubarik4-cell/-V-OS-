@@ -13,7 +13,7 @@ const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
 const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
   ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
-const FUNCTION_VERSION = "0.1.0";
+const FUNCTION_VERSION = "0.1.1";
 const MAX_ROWS = 5000;
 const MANAGER_ROLES = new Set(["admin", "manager"]);
 
@@ -67,11 +67,74 @@ const CORS_HEADERS = {
 };
 
 class ApiError extends Error {
-  constructor(status, message) {
+  status;
+  code;
+
+  constructor(status, message, code = null) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
+
+// s88-activation-helpers:start (pure; unit-tested by tests/node/inventory-activation-api-s88.test.js)
+const ACTIVATION_ERROR_STATUS = {
+  forbidden: 403,
+  not_found: 404,
+  stale_item: 409,
+  open_purchase_order: 409,
+  active_duplicate_name: 409,
+  invalid_request: 400,
+};
+const ACTIVATION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function rpcErrorCode(hint) {
+  const match = typeof hint === "string" ? hint.match(/^atlas:([a-z_]+)$/) : null;
+  return match ? match[1] : null;
+}
+
+function activationErrorStatus(status, code) {
+  if (code && ACTIVATION_ERROR_STATUS[code]) return ACTIVATION_ERROR_STATUS[code];
+  return status >= 500 ? 500 : 400;
+}
+
+function activationItemId(value) {
+  const id = typeof value === "string" ? value.trim() : "";
+  if (!ACTIVATION_UUID.test(id)) throw new ApiError(400, "Inventory item is invalid.", "invalid_request");
+  return id.toLowerCase();
+}
+
+function activationRequest(body) {
+  const source = body && typeof body === "object" && !Array.isArray(body) ? body : {};
+  if (typeof source.active !== "boolean") {
+    throw new ApiError(400, "Active must be true or false.", "invalid_request");
+  }
+  let reason = null;
+  if (source.reason !== undefined && source.reason !== null && source.reason !== "") {
+    if (typeof source.reason !== "string") throw new ApiError(400, "Reason must be text.", "invalid_request");
+    reason = source.reason.trim() || null;
+    if (reason && reason.length > 500) {
+      throw new ApiError(400, "Reason is limited to 500 characters.", "invalid_request");
+    }
+  }
+  let expectedUpdatedAt = null;
+  if (source.expected_updated_at !== undefined && source.expected_updated_at !== null && source.expected_updated_at !== "") {
+    const parsed = typeof source.expected_updated_at === "string" ? new Date(source.expected_updated_at) : null;
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      throw new ApiError(400, "Expected update time is invalid.", "invalid_request");
+    }
+    // Keep the original string: Postgres timestamps carry microseconds that
+    // a JavaScript Date would round away.
+    expectedUpdatedAt = source.expected_updated_at;
+  }
+  return {
+    p_item_id: activationItemId(source.item_id),
+    p_active: source.active,
+    p_reason: reason,
+    p_expected_updated_at: expectedUpdatedAt,
+  };
+}
+// s88-activation-helpers:end
 
 function jsonResponse(value, status = 200) {
   return new Response(JSON.stringify(value), {
@@ -290,7 +353,8 @@ async function branchRpc(name, payload = {}) {
       : typeof parsed === "string" && parsed
       ? parsed
       : `Checkpoint L2 database request ${name} failed.`;
-    throw new ApiError(response.status >= 500 ? 500 : 400, message);
+    const code = parsed && typeof parsed === "object" ? rpcErrorCode(parsed.hint) : null;
+    throw new ApiError(code ? activationErrorStatus(response.status, code) : response.status >= 500 ? 500 : 400, message, code);
   }
   return parsed;
 }
@@ -934,6 +998,16 @@ Deno.serve(async (request) => {
     const actionFromUrl = lower(url.searchParams.get("action")) || "snapshot";
 
     if (request.method === "GET") {
+      if (actionFromUrl === "item_dependencies" || actionFromUrl === "item-dependencies") {
+        const dependencies = await branchRpc("atlas_inventory_item_dependencies", {
+          p_item_id: activationItemId(url.searchParams.get("item_id")),
+          p_actor_id: context.user.id,
+        });
+        return jsonResponse({
+          dependencies,
+          manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
+        });
+      }
       if (actionFromUrl !== "snapshot") throw new ApiError(404, "Unknown Checkpoint L2 action.");
       const built = await buildWorkspace(context);
       return jsonResponse({
@@ -952,6 +1026,17 @@ Deno.serve(async (request) => {
         manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
       });
     }
+    if (action === "set_item_active" || action === "set-item-active") {
+      const result = await branchRpc("atlas_set_inventory_item_active", {
+        ...activationRequest(body),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({
+        result,
+        manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
+      });
+    }
     if (action === "publish") {
       const result = await publishDraft(context, body);
       return jsonResponse({
@@ -961,7 +1046,9 @@ Deno.serve(async (request) => {
     }
     throw new ApiError(404, "Unknown Checkpoint L2 action.");
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError) {
+      return jsonResponse(error.code ? { error: error.message, code: error.code } : { error: error.message }, error.status);
+    }
     console.error("Checkpoint L2 item-master error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "Checkpoint L2 is temporarily unavailable." }, 500);
   }
