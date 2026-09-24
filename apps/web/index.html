@@ -1634,7 +1634,7 @@
       const subcategoryMatches = activeSubcategory === 'all' || inventorySubcategory(item, activeCategory) === activeSubcategory;
       return groupMatches && subcategoryMatches;
     });
-    const lowCount = items.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;
+    const lowCount = items.filter(i => i.active !== false && window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;
 
     if (lowCount > 0) {
       banner.style.display = 'flex';
@@ -1996,13 +1996,22 @@
     note.textContent = 'Open Team to load';
   }
   function renderAtlasHome(){
-    const low=items.filter(i=>window.AtlasStockTruth.known(i) && i.par_level!=null && Number(i.quantity)<Number(i.par_level));
+    // Home reports live stock: inactive rows stay in Inventory records but never count here.
+    const activeItems = items.filter(item => item.active !== false);
+    const low = activeItems.filter(
+      item =>
+        window.AtlasStockTruth.known(item) &&
+        item.par_level != null &&
+        Number(item.quantity) < Number(item.par_level)
+    );
     document.getElementById('home-date').textContent=formatVenueDay();
     document.getElementById('home-greeting').textContent=venueGreeting();
-    document.getElementById('home-items').textContent=items.length;
-    const unknownStock = items.filter(item => !window.AtlasStockTruth.known(item)).length;
+    document.getElementById('home-items').textContent = activeItems.length;
+    const unknownStock = activeItems.filter(
+      item => !window.AtlasStockTruth.known(item)
+    ).length;
     document.getElementById('home-low').textContent=unknownStock ? 'Unknown' : low.length;
-    document.getElementById('home-items-note').textContent=items.length===1?'Live catalog item':'Live catalog items';
+    document.getElementById('home-items-note').textContent=activeItems.length===1?'Live catalog item':'Live catalog items';
     document.getElementById('home-low-note').textContent=unknownStock ? `${unknownStock} items not counted / verified` : low.length?'Review before service':'Verified stock levels healthy';
     const recipeMetrics=window.AtlasRecipes?.getHomeMetrics?.();
     const averageMargin=recipeMetrics?.marginRecipeCount > 0 && recipeMetrics?.averageMargin != null ? Number(recipeMetrics.averageMargin) : NaN;
@@ -2281,17 +2290,19 @@
   }
 
   function renderDashboard() {
-    const lowCount = items.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;
+    // Stock cards describe live inventory; inactive rows are records, not stock.
+    const activeItems = items.filter(item => item.active !== false);
+    const lowCount = activeItems.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;
     const suppliers = new Set(items.map(i => i.supplier).filter(Boolean));
-    document.getElementById('stat-total-items').textContent = items.length;
-    document.getElementById('stat-low-stock').textContent = items.some(item => !window.AtlasStockTruth.known(item)) ? 'Unknown' : lowCount;
+    document.getElementById('stat-total-items').textContent = activeItems.length;
+    document.getElementById('stat-low-stock').textContent = activeItems.some(item => !window.AtlasStockTruth.known(item)) ? 'Unknown' : lowCount;
     document.getElementById('stat-suppliers').textContent = suppliers.size;
 
     // Low inventory list — actual items, not just a count
-    const lowItems = items.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level);
+    const lowItems = activeItems.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level);
     const lowRows = document.getElementById('low-inventory-rows');
     if (lowItems.length === 0) {
-      lowRows.innerHTML = items.some(item => !window.AtlasStockTruth.known(item)) ? '<div class="empty-dash">Stock status unknown — verify a physical count.</div>' : '<div class="empty-dash">Nothing below par in verified stock.</div>';
+      lowRows.innerHTML = activeItems.some(item => !window.AtlasStockTruth.known(item)) ? '<div class="empty-dash">Stock status unknown — verify a physical count.</div>' : '<div class="empty-dash">Nothing below par in verified stock.</div>';
     } else {
       lowRows.innerHTML = lowItems.map(i => `
         <div class="list-row">
