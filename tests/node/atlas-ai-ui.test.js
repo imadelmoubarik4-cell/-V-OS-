@@ -72,7 +72,7 @@ test('interface copy avoids engineering words (spec §5.9, §7.2)', () => {
 
 test('Atlas AI registers through AtlasShell with the spec routes and actions', () => {
   assert.match(ai, /shell\.registerView\('ai',/);
-  assert.match(ai, /shell\.registerView\('atlas',/);
+  assert.doesNotMatch(ai, /registerView\('atlas'/, 'only the spec routes (#ai…)');
   for (const id of ['ai.ask', 'ai.ask.record', 'ai.voice']) assert.match(ai, new RegExp(`id: '${id.replace('.', '\\.')}'`));
   assert.match(ai, /shell\.links\?\.register\?\.\('ai'/);
   assert.match(ai, /home\.contribute\('ai'/);
@@ -95,6 +95,8 @@ test('index loads the Atlas AI view root, style and scripts with the S88 cache k
 
 test('stylesheet defines no global tokens and honours reduced motion', () => {
   assert.doesNotMatch(css, /:root\s*\{/);
+  assert.match(css.replace(/\/\*[\s\S]*?\*\//g, '').trim(), /^@layer atlas\.modules \{[\s\S]*\}$/);
+  assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /!important/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /@media \(pointer: coarse\)/);
   assert.match(css, /var\(--accent, #1f6fdb\)/);

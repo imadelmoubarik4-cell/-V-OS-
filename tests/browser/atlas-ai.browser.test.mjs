@@ -43,8 +43,13 @@ async function openAi(options = {}) {
     storage: { 'atlas.ai.voice.explained.v1': 'yes', ...(options.storage || {}) },
     initScript: options.initScript
   });
-  await launched.page.waitForSelector('#ai-view .composer textarea');
-  await launched.page.waitForTimeout(300);
+  try {
+    await launched.page.waitForFunction(() => document.body.dataset.atlasView === 'ai' && document.querySelector('#ai-view [data-ai-composer]'));
+    await launched.page.waitForTimeout(300);
+  } catch (error) {
+    await launched.close();
+    throw error;
+  }
   return { ...launched, backend };
 }
 
@@ -404,7 +409,7 @@ test('history: search, rename, pin and delete with confirmation', { skip }, asyn
   } finally { await close(); }
 });
 
-test('deep links open a conversation, Decisions for managers and the #atlas alias', { skip }, async () => {
+test('deep links open a conversation and Decisions for managers', { skip }, async () => {
   const opened = await openAi({ hash: `#ai/c/${IDS.convNegroni}` });
   try {
     await opened.page.waitForSelector('.msg-ai');
@@ -413,7 +418,7 @@ test('deep links open a conversation, Decisions for managers and the #atlas alia
     assert.ok(calls(opened.backend, 'conversation').some((entry) => new URLSearchParams(entry.search).get('id') === IDS.convNegroni));
   } finally { await opened.close(); }
 
-  const decisions = await openAi({ hash: '#atlas/decisions' });
+  const decisions = await openAi({ hash: '#ai/decisions' });
   try {
     await decisions.page.waitForSelector('.ai-dec-row:not(.ai-dec-row--head)');
     assert.equal(await decisions.page.evaluate(() => location.hash), '#ai/decisions');
@@ -450,8 +455,9 @@ test('Decisions opens a record sheet and saves a decision', { skip }, async () =
     await page.fill('.ai-sheet textarea[name="notes"]', 'Ordered with Friday delivery');
     await page.click('.ai-sheet [data-ai-dec-form] button[type="submit"]');
     await page.waitForSelector('.ai-sheet', { state: 'detached' });
-    assert.equal(posts[0].action, 'decision');
-    assert.deepEqual({ id: posts[0].body.recommendation_id, decision: posts[0].body.decision, notes: posts[0].body.notes }, { id: 'r-1', decision: 'accept', notes: 'Ordered with Friday delivery' });
+    const decision = posts.find((entry) => entry.action === 'decision');
+    assert.ok(decision, 'a decision was posted');
+    assert.deepEqual({ id: decision.body.recommendation_id, decision: decision.body.decision, notes: decision.body.notes }, { id: 'r-1', decision: 'accept', notes: 'Ordered with Friday delivery' });
   } finally { await close(); }
 });
 

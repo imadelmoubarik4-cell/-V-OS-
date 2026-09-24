@@ -76,7 +76,7 @@ test('database refusals map to HTTP statuses the dialog can act on', { skip: !ca
 });
 
 test('atlas-item-master exposes manager-only dependency and activation actions', () => {
-  assert.match(EDGE, /const FUNCTION_VERSION = "0\.1\.1";/);
+  assert.match(EDGE, /const FUNCTION_VERSION = "0\.2\.0";/);
   assert.match(EDGE, /const MANAGER_ROLES = new Set\(\["admin", "manager"\]\);/);
   assert.match(EDGE, /if \(!profile\?\.active\) throw new ApiError\(403/);
   const serve = EDGE.slice(EDGE.indexOf('Deno.serve('));

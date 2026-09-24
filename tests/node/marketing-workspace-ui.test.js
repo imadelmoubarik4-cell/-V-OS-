@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const config = readFileSync('apps/web/config.js', 'utf8');
 const ui = readFileSync('apps/web/assets/js/marketing-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/marketing-workspace.css', 'utf8');
-const sharedPolish = readFileSync('apps/web/assets/css/polish-pass2.css', 'utf8');
+const sharedPolish = legacyCss('polish-pass2');
 const migration = readFileSync('supabase/migrations/20260803142123_atlas_marketing_workspace_checkpoint_d.sql', 'utf8');
 const occurrences = readFileSync('supabase/migrations/20260803142450_atlas_marketing_recommendation_occurrences.sql', 'utf8');
 

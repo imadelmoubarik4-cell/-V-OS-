@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const app = readFileSync('apps/web/index.html', 'utf8');
-const css = readFileSync('apps/web/assets/css/inventory-operations-s58.css', 'utf8');
+const css = legacyCss('inventory-operations-s58');
 const purchasing = readFileSync('apps/web/assets/js/purchase-orders.js', 'utf8');
 const scanner = readFileSync('apps/web/assets/js/inventory-scanner.js', 'utf8');
 const counts = readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8');

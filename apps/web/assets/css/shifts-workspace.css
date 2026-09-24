@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 .shifts-workspace-host,.shifts-shell{min-width:0;color:var(--atlas-text);font-family:'IBM Plex Sans',sans-serif}
 .shifts-workspace-host{display:none}
 .shifts-shell{padding-bottom:24px}
@@ -250,4 +255,5 @@
 
 @media(prefers-reduced-motion:reduce){
   .shift-state>span:not(.is-error) svg{animation:none}
+}
 }

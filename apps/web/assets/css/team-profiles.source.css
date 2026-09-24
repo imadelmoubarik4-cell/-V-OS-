@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 .team-profiles-view,.team-profiles-shell{color:var(--atlas-text);font-family:'IBM Plex Sans',sans-serif}
 .team-profiles-shell{min-width:0}
 .team-profiles-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:20px}
@@ -245,4 +250,5 @@ body.team-profile-modal-open{overflow:hidden}
   .team-profile-card:hover{transform:none}
   .team-profile-progress span{transition:none}
   .team-profiles-state>span svg{animation:none}
+}
 }

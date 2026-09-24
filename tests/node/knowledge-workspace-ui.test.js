@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const config = readFileSync('apps/web/config.js', 'utf8');
 const index = readFileSync('apps/web/index.html', 'utf8');
 const ui = readFileSync('apps/web/assets/js/knowledge-workspace.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/knowledge-workspace.css', 'utf8');
-const remediationCss = readFileSync('apps/web/assets/css/s38-app-remediation.css', 'utf8');
-const finalCss = readFileSync('apps/web/assets/css/knowledge-s56.css', 'utf8');
+const remediationCss = legacyCss('s38-app-remediation');
+const finalCss = legacyCss('knowledge-s56');
 const bridge = readFileSync('apps/web/assets/js/knowledge-team-link-bridge.js', 'utf8');
 const team = readFileSync('apps/web/assets/js/team-messages.js', 'utf8');
 
@@ -21,13 +22,15 @@ test('Checkpoint G loads through the authenticated Knowledge gateway', () => {
 });
 
 test('Knowledge assets load deterministically before the final remediation layer', () => {
-  const stylesheet = index.indexOf('assets/css/knowledge-workspace.css');
-  const remediation = index.indexOf('assets/css/s38-app-remediation.css');
+  const stylesheet = linkPosition('knowledge-workspace.css');
+  const remediation = linkPosition('s38-app-remediation');
   const module = index.indexOf('assets/js/knowledge-workspace.js');
   const bridgeModule = index.indexOf('assets/js/knowledge-team-link-bridge.js');
   const remediationModule = index.indexOf('assets/js/s38-app-remediation.js');
 
   assert.ok(stylesheet >= 0 && stylesheet < remediation);
+  // S88: same cascade layer, so link order (not layer order) still decides.
+  assert.equal(layerOf('knowledge-workspace.css'), layerOf('legacy/s38-app-remediation--knowledge.css'));
   assert.ok(module >= 0 && module < remediationModule);
   assert.ok(bridgeModule >= 0 && bridgeModule < remediationModule);
 });
@@ -130,6 +133,6 @@ test('managers can create an article already linked to an unserved training task
 });
 
 test('production loads the final Knowledge assets with a cache key', () => {
-  assert.match(index, /knowledge-s56\.css\?v=20260917-s56/);
+  assert.match(index, /legacy\/knowledge-s56--knowledge\.css\?v=20260926-s88/);
   assert.match(index, /knowledge-workspace\.js\?v=20260926-s88/);
 });

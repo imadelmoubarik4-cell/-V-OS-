@@ -18,8 +18,8 @@
       "files": [
         {
           "path": "functions/atlas-inventory-scanner/index.ts",
-          "source_sha256": "5d340c104d6ee5540404e3aa472243b03a577adb7a6fe5d43262710a67b5200a",
-          "candidate_sha256": "2df16de4712b8a1dd391e2146d5e760ec1afd6e08e0d22351df5b204f628e782"
+          "source_sha256": "204ec0bb115107a47751bb3452d904f0edbd4a3235d6aab464e3a2316901d5ca",
+          "candidate_sha256": "44cf70d7c08853c5ffcc5eb1f6ee4cde137b15133b4b35cfc5547b9e14121e38"
         }
       ]
     },
@@ -170,8 +170,8 @@
       "files": [
         {
           "path": "functions/atlas-stock-counts/entrypoint.ts",
-          "source_sha256": "caf9577afd7deb589bccda5a18c346c33b66457a35c6b5982230ab091aebbdc6",
-          "candidate_sha256": "5821eeed755472a028d091079048da8dfae3f4f318b0540164d68635da11561b"
+          "source_sha256": "e5331059f8e30ea63091f1497d0ad2ba2832e95646ef13c7501eaacdd0f53261",
+          "candidate_sha256": "e3e5744a6ae0592862917147ac83c5ba8c3d36efdb352e88ce1a8452e5f04e4d"
         },
         {
           "path": "functions/atlas-stock-counts/index.ts",

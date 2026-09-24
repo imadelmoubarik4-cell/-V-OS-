@@ -3,7 +3,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / "apps/web/index.html"
-CSS = ROOT / "apps/web/assets/css/s38-app-remediation.css"
+# S88: the S38 rules were split verbatim into per-module fragments,
+# apps/web/assets/css/legacy/s38-app-remediation--<module>.css.
+CSS_FRAGMENTS = sorted((ROOT / "apps/web/assets/css/legacy").glob("s38-app-remediation--*.css"))
 JS = ROOT / "apps/web/assets/js/s38-app-remediation.js"
 # S88: each S38 fix lives in the module that renders the markup.
 SCANNER = ROOT / "apps/web/assets/js/inventory-scanner.js"
@@ -19,7 +21,7 @@ class S38AppRemediationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.index = INDEX.read_text(encoding="utf-8")
-        cls.css = CSS.read_text(encoding="utf-8")
+        cls.css = "\n".join(path.read_text(encoding="utf-8") for path in CSS_FRAGMENTS)
         cls.javascript = JS.read_text(encoding="utf-8")
         cls.checklist = CHECKLIST.read_text(encoding="utf-8")
         cls.decisions = DECISIONS.read_text(encoding="utf-8")
@@ -33,11 +35,13 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("s38-owner-remediation-v9", self.javascript)
 
     def test_remediation_assets_load_last(self):
-        css_reference = "assets/css/s38-app-remediation.css"
         js_reference = "assets/js/s38-app-remediation.js"
-        self.assertEqual(self.index.count(css_reference), 1)
+        self.assertTrue(CSS_FRAGMENTS)
+        for path in CSS_FRAGMENTS:
+            css_reference = f"assets/css/legacy/{path.name}"
+            self.assertEqual(self.index.count(css_reference), 1)
+            self.assertLess(self.index.index(css_reference), self.index.index("</head>"))
         self.assertEqual(self.index.count(js_reference), 1)
-        self.assertLess(self.index.index(css_reference), self.index.index("</head>"))
         self.assertLess(self.index.index("assets/js/purchase-orders.js"), self.index.index(js_reference))
         self.assertIn(js_reference + "?v=20260926-s88", self.index)
         self.assertLess(self.index.index(js_reference), self.index.index("</body>"))

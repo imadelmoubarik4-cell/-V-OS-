@@ -1,0 +1,18 @@
+/* S88 legacy fragment: the purchasing rules of inventory-polish.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where inventory-polish.css was).
+ * Owner: WP-INV. Phase 2 merges these rules into purchasing.css (from purchasing-polish)
+ * using their effective values, then empties this file. */
+/* Atlas incremental visual polish — Inventory only.
+ * Existing inventory renderer, quantity controls, scanner, item editor, role
+ * gates and data-loading logic remain untouched.
+ */
+@layer atlas.legacy {
+#inventory-view td.supplier {
+  min-width: 120px;
+  color: var(--atlas-muted);
+  font-size: 11px;
+}
+@media (max-width: 760px) {
+  #inventory-view td.supplier { grid-column: 1; grid-row: 3; margin-top: 5px; }
+}
+}

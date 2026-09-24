@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 .review-shell{--review-accent:var(--atlas-accent,#b6925e);--review-line:var(--atlas-line,#dedbd2);--review-surface:var(--atlas-surface,#fff);--review-text:var(--atlas-text,#242522);--review-muted:var(--atlas-muted,#74766f);display:grid;gap:22px;color:var(--review-text)}
 .review-hero{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:28px;align-items:stretch;padding:34px 36px;border-radius:26px;color:#f4efe6;background:radial-gradient(circle at 82% 12%,rgba(80,139,156,.24),transparent 34%),radial-gradient(circle at 55% 110%,rgba(182,146,94,.18),transparent 42%),linear-gradient(145deg,#171b1a,#202522 58%,#151817);border:1px solid rgba(255,255,255,.08);box-shadow:0 22px 54px rgba(34,31,25,.12)}
 .review-kicker{display:inline-flex;align-items:center;gap:8px;color:#d4b278;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}.review-kicker svg{width:16px;height:16px}.review-hero h1{margin:15px 0 10px;font:500 clamp(38px,5vw,58px)/1 'Fraunces',serif;letter-spacing:-.025em}.review-hero p{max-width:720px;margin:0;color:#c3c8c1;font-size:14px;line-height:1.65}.review-branch-card{display:flex;flex-direction:column;justify-content:center;padding:23px;border:1px solid rgba(255,255,255,.13);border-radius:20px;background:rgba(255,255,255,.055);backdrop-filter:blur(16px)}.review-branch-card span,.review-branch-card small{color:#bfc5be;font-size:11px}.review-branch-card strong{font:500 24px/1.15 'Fraunces',serif;margin:8px 0 6px}
@@ -14,3 +19,4 @@
 @media(prefers-reduced-motion:reduce){.review-loading span{animation:none}}
 
 .review-status-badge.held{background:#fff0d4;color:#785000}.review-status-badge.source_checked{background:#e8edf1;color:#394c58}.review-status-badge.excluded{background:#eee;color:#666}.review-conflict{border-left:3px solid #b6925e;padding:12px;margin-top:12px;background:#faf7f0;overflow-wrap:anywhere}.review-conflict p,.review-frozen p{font-size:13px;line-height:1.55}.review-conflict small{font-size:11px;color:#666}.review-frozen{background:#faf7f0}.review-detail-card,.review-list-card,.review-row-copy{min-width:0}.review-data-grid dd,.review-detail-head h2{overflow-wrap:anywhere}
+}

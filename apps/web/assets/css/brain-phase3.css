@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 body.phase3-modal-open{overflow:hidden}
 .phase3-shell{display:grid;gap:16px;margin:0 0 22px;padding:22px;border:1px solid var(--atlas-line);border-radius:18px;background:var(--atlas-surface);color:var(--atlas-text)}
 .phase3-shell *{box-sizing:border-box}.phase3-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding-bottom:18px;border-bottom:1px solid var(--atlas-line)}
@@ -25,3 +30,4 @@ body.phase3-modal-open{overflow:hidden}
 @media(max-width:760px){.phase3-shell{padding:16px;border-radius:15px}.phase3-hero{flex-direction:column}.phase3-hero-actions{width:100%;justify-content:space-between}.phase3-summary-grid,.phase3-recommendation-grid,.phase3-side-stack{grid-template-columns:1fr}.phase3-trust-strip{grid-column:auto}.phase3-modal-backdrop{padding:0;align-items:flex-end}.phase3-modal-panel{width:100%;max-height:94vh;border-radius:18px 18px 0 0}.phase3-modal-body-scroll,.phase3-form{padding:20px}.phase3-modal-footer{padding:13px 20px calc(13px + env(safe-area-inset-bottom))}.phase3-detail-head{flex-direction:column;padding-right:42px}.phase3-evidence-grid,.phase3-alternative-list{grid-template-columns:1fr}.phase3-shell.is-loading,.phase3-shell.is-error{grid-template-columns:auto minmax(0,1fr)}.phase3-shell.is-error .phase3-primary-action{grid-column:1/-1;width:100%}}
 @media(max-width:480px){.phase3-summary-grid{grid-template-columns:1fr 1fr}.phase3-summary-grid article:last-child{grid-column:1/-1}.phase3-hero-actions{align-items:flex-start;flex-direction:column}.phase3-hero-actions button{width:100%}.phase3-evidence-card dl{grid-template-columns:1fr}.phase3-form-actions,.phase3-modal-footer{flex-direction:column-reverse}.phase3-form-actions button,.phase3-modal-footer button{width:100%}}
 @media(prefers-reduced-motion:reduce){.phase3-primary-action,.phase3-secondary-action{transition:none}.phase3-shell.is-loading .phase3-state-icon svg,.phase3-modal-loading svg{animation:none}}
+}

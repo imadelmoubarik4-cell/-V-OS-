@@ -106,9 +106,9 @@ test('no module reassigns the shell globals or wraps browser APIs', () => {
 
 test('no bootstrap rewrites or Blob-evaluates another script', () => {
   const blobScripts = SOURCES.filter(([, source]) => /createObjectURL\(new Blob\(\[source\]/.test(source)).map(([file]) => file).sort();
-  // team-profiles-bootstrap installs the repository-owned gzip bundle; the
-  // settings-workspace-bootstrap.js orphan is not loaded by any page.
-  assert.deepEqual(blobScripts, ['assets/js/settings-workspace-bootstrap.js', 'assets/js/team-profiles-bootstrap.js']);
+  // team-profiles-bootstrap installs the repository-owned gzip bundle (the
+  // settings-workspace-bootstrap.js orphan was deleted in the S88 CSS split).
+  assert.deepEqual(blobScripts, ['assets/js/team-profiles-bootstrap.js']);
   assert.ok(!/settings-workspace-bootstrap/.test(index + read('apps/web/config.js')), 'the orphan bootstrap stays unloaded');
   const stockCount = read('apps/web/assets/js/stock-count-bootstrap.js');
   assert.doesNotMatch(stockCount, /await response\.text\(\)|\.replace\(schedulerSource|sourceURL=/);

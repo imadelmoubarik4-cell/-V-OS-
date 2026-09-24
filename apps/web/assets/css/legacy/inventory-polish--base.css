@@ -1,0 +1,22 @@
+/* S88 legacy fragment: the base rules of inventory-polish.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where inventory-polish.css was).
+ * Owner: WP-BASE. Phase 2 merges these rules into atlas-base.css (new)
+ * using their effective values, then empties this file. */
+/* Atlas incremental visual polish — Inventory only.
+ * Existing inventory renderer, quantity controls, scanner, item editor, role
+ * gates and data-loading logic remain untouched.
+ */
+@layer atlas.legacy {
+/* PR29 design-consistency pass — shared Inventory workspace chrome. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+}

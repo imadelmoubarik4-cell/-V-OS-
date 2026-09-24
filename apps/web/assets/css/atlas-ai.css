@@ -15,7 +15,10 @@
  *     values exactly for .atlas-btn, .atlas-icon-btn, .atlas-pill, .atlas-chip,
  *     .atlas-alert, .atlas-empty, .atlas-skel, .atlas-input/.atlas-select,
  *     .atlas-segmented and .atlas-toast, scoped to Atlas AI.
+ * Everything sits in @layer atlas.modules (declared in atlas-tokens.css).
  */
+@layer atlas.modules {
+
 
 .atlas-ai.ai-legacy-tokens,
 .ai-layer.ai-legacy-tokens {
@@ -55,7 +58,6 @@ body.is-ai .fab-wrap { display: none; }
 .atlas-ai .num { font-variant-numeric: tabular-nums; }
 .atlas-ai .muted, .ai-layer .muted { color: var(--text-2, #5b616b); }
 .atlas-ai .sr-only, .ai-layer .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.atlas-ai [hidden], .ai-layer [hidden] { display: none !important; }
 .atlas-ai :where(button, a, input, select, textarea, [tabindex]):focus-visible,
 .ai-layer :where(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--accent, #1f6fdb); outline-offset: 2px; border-radius: var(--r-sm, 6px);
@@ -80,7 +82,7 @@ body.is-ai .fab-wrap { display: none; }
 .atlas-ai .atlas-btn--danger-solid, .ai-layer .atlas-btn--danger-solid { background: var(--danger, #c0362c); color: #fff; }
 .atlas-ai .atlas-btn--sm, .ai-layer .atlas-btn--sm { height: 32px; padding: 0 10px; font-size: 13px; }
 .atlas-ai .atlas-btn[disabled], .atlas-ai .atlas-btn[aria-disabled="true"], .ai-layer .atlas-btn[disabled] { opacity: .45; cursor: not-allowed; }
-.atlas-ai .atlas-btn.is-loading, .ai-layer .atlas-btn.is-loading { color: transparent !important; position: relative; opacity: 1; }
+.atlas-ai .atlas-btn.is-loading, .ai-layer .atlas-btn.is-loading { color: transparent; position: relative; opacity: 1; }
 .atlas-ai .atlas-btn.is-loading .icon, .ai-layer .atlas-btn.is-loading .icon { visibility: hidden; }
 .atlas-ai .atlas-btn.is-loading::after, .ai-layer .atlas-btn.is-loading::after {
   content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%;
@@ -203,8 +205,7 @@ body.is-ai .fab-wrap { display: none; }
 
 /* empty state */
 .atlas-ai .ai-empty { min-height: 100%; display: grid; align-content: center; justify-items: center; gap: 12px; padding: 12vh 0 24px; text-align: center; }
-/* #ai-view: the base shell styles #app-screen h2 by id until its override layers are removed. */
-#ai-view .ai-empty__greeting, .atlas-ai .ai-empty__greeting { font: 500 28px/34px var(--font-display, 'Fraunces', Georgia, serif); letter-spacing: -0.02em; font-variation-settings: 'opsz' 72; color: var(--text, #17191e); }
+.atlas-ai .ai-empty__greeting { font: 500 28px/34px var(--font-display, 'Fraunces', Georgia, serif); letter-spacing: -0.02em; font-variation-settings: 'opsz' 72; color: var(--text, #17191e); }
 .atlas-ai .ai-empty__context { color: var(--text-2, #5b616b); }
 .atlas-ai .ai-empty__chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; max-width: 560px; }
 .atlas-ai .ai-empty--off { padding-top: 8vh; }
@@ -322,14 +323,12 @@ body.is-ai .fab-wrap { display: none; }
   box-shadow: 0 1px 2px rgba(23, 25, 30, .04), 0 8px 24px rgba(23, 25, 30, .05); padding: 10px 10px 8px 14px;
 }
 .atlas-ai .composer:focus-within { border-color: var(--accent, #1f6fdb); box-shadow: 0 0 0 3px rgba(31, 111, 219, .16), 0 8px 24px rgba(23, 25, 30, .05); }
-/* The composer shows focus for its textarea; s34-preproduction.css forces an
-   outline on every focused field with !important until E1 removes it. */
-#ai-view .composer textarea:focus-visible { outline: none !important; }
+
 .atlas-ai .composer textarea {
   display: block; width: 100%; margin: 0; border: 0; border-radius: 0; resize: none; outline: none; box-shadow: none; background: transparent;
   font: var(--type-body-lg, 400 15px/24px var(--font-sans, sans-serif)); color: var(--text, #17191e); min-height: 28px; height: 28px; padding: 2px 0; overflow-y: hidden;
 }
-#ai-view .composer textarea, #ai-view .composer textarea:focus, #ai-view .composer textarea:focus-visible { border: 0; outline: none; box-shadow: none; background: transparent; margin: 0; }
+.atlas-ai .composer textarea:focus, .atlas-ai .composer textarea:focus-visible { border: 0; outline: none; box-shadow: none; background: transparent; margin: 0; }
 .atlas-ai .composer textarea::placeholder { color: var(--text-3, #80858e); }
 .atlas-ai .composer.is-offline textarea { cursor: not-allowed; }
 .atlas-ai .composer__attachments { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px -4px; }
@@ -472,12 +471,12 @@ body.is-ai .fab-wrap { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .atlas-ai *, .atlas-ai *::before, .atlas-ai *::after, .ai-layer, .ai-layer *, .ai-layer-scrim {
-    animation-duration: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; scroll-behavior: auto !important;
+    animation-duration: 0ms; animation-iteration-count: 1; transition-duration: 0ms; scroll-behavior: auto;
   }
-  .atlas-ai .atlas-skel { animation: none !important; background: var(--bg-muted, #efefec); }
+  .atlas-ai .atlas-skel { animation: none; background: var(--bg-muted, #efefec); }
 }
 html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::before, html.atlas-reduce-motion .ai-layer {
-  animation-duration: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important;
+  animation-duration: 0ms; animation-iteration-count: 1; transition-duration: 0ms;
 }
 
 /* ---------- touch targets ---------- */
@@ -568,4 +567,8 @@ html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::befo
   .ai-layer.ai-sheet { top: 12px; left: 0; right: 0; bottom: 0; width: auto; border-radius: var(--r-xl, 16px) var(--r-xl, 16px) 0 0; }
   .ai-layer .ai-sheet__head, .ai-layer .ai-sheet__body { padding-left: 16px; padding-right: 16px; }
   .ai-layer .ai-sheet__body { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+}
+
+/* Last, so it wins over the display rules above for toggled elements. */
+#ai-view [hidden], .ai-layer [hidden] { display: none; }
 }

@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 .team-messages-shell{color:var(--atlas-text);font-family:'IBM Plex Sans',sans-serif}
 .team-messages-shell.is-state{min-height:540px;display:grid;place-content:center;justify-items:center;text-align:center;padding:42px;border:1px solid var(--atlas-line);border-radius:18px;background:var(--atlas-surface)}
 .team-messages-shell.is-state h2{margin:16px 0 6px;font:500 30px/1.15 'Fraunces',serif}
@@ -221,3 +226,4 @@
 /* S87: current profile photos on message avatars */
 .team-message-avatar{overflow:hidden}
 .team-message-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+}

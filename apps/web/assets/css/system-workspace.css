@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 .system-view{
   --system-ink:#25231f;
   --system-muted:#7f7a70;
@@ -136,3 +141,4 @@
 @media(max-width:760px){.system-shell{padding:20px 16px 42px;gap:17px}.system-hero{padding:24px 20px;border-radius:21px}.system-hero h1{font-size:40px}.system-hero p{font-size:14px}.system-hero aside{grid-template-columns:1fr}.system-hero aside button{grid-column:1;grid-row:auto;width:100%;margin-top:8px}.system-tabs{top:65px;margin-inline:-2px}.system-tabs button{padding:9px 11px}.system-section-head{align-items:flex-start;flex-direction:column}.system-section-head h2{font-size:27px}.system-summary-grid,.system-service-grid,.system-integration-grid,.system-safeguards-grid,.system-security-grid,.system-security-contract{grid-template-columns:1fr}.system-summary-grid article{min-height:116px}.system-source-row,.system-job-row{grid-template-columns:auto minmax(0,1fr) auto;gap:10px}.system-source-row>div:nth-child(3),.system-source-row>div:nth-child(4),.system-source-row>div:nth-child(5),.system-job-row>div:nth-child(3),.system-job-row>div:nth-child(4){display:none}.system-source-error,.system-job-error{grid-column:2/-1}.system-release-card dl,.system-incident-card dl{grid-template-columns:1fr}.system-role-distribution>div{grid-template-columns:repeat(2,minmax(0,1fr))}.system-disabled-action{align-items:flex-start}.system-disabled-action button{display:none}.system-loading-grid{grid-template-columns:repeat(2,minmax(100px,1fr));width:100%;max-width:440px}.system-loading{min-height:480px}.system-panel{padding:17px}.system-card-icon{width:36px;height:36px}}
 @media(max-width:460px){.system-shell{padding-inline:12px}.system-hero{padding:22px 17px}.system-hero h1{font-size:36px}.system-summary-grid{gap:10px}.system-summary-grid article{padding:15px}.system-service-card,.system-integration-card,.system-release-card,.system-incident-card{padding:15px}.system-service-card>header,.system-integration-card>header,.system-incident-card>header{grid-template-columns:auto minmax(0,1fr)}.system-service-card>header>.system-status,.system-integration-card>header>.system-status,.system-incident-card>header>.system-status{grid-column:2;margin-top:3px;justify-self:start}.system-role-distribution>div{grid-template-columns:1fr}.system-source-row,.system-job-row{padding:12px}.system-footer{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){.system-view *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+}

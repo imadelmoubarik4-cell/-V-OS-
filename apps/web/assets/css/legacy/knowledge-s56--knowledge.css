@@ -1,0 +1,104 @@
+/* S88 legacy fragment: the knowledge rules of knowledge-s56.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where knowledge-s56.css was).
+ * Owner: WP-PEOPLE. Phase 2 merges these rules into knowledge-workspace.css
+ * using their effective values, then empties this file. */
+/* S56 Knowledge: compact disclosure navigation and reliable narrow-width wrapping. */
+@layer atlas.legacy {
+#knowledge-view .knowledge-tabs{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+  padding:0!important;
+  overflow:visible!important;
+  border:0!important;
+  background:transparent!important;
+}
+#knowledge-view .knowledge-tabs button{
+  min-width:0;
+  min-height:42px;
+  justify-content:center;
+  border:1px solid var(--s38-line,#dfe7f2)!important;
+  border-radius:13px!important;
+  background:#fff!important;
+  color:var(--s38-muted,#66758a)!important;
+  box-shadow:0 8px 24px rgba(43,68,102,.07);
+}
+#knowledge-view .knowledge-tabs button.is-active{
+  border-color:var(--s38-blue-line,#b9cdf4)!important;
+  background:var(--s38-blue-soft,#edf4ff)!important;
+  color:var(--s38-blue-strong,#315fcf)!important;
+}
+#knowledge-view .knowledge-category-filter,
+.knowledge-editor-properties{
+  margin:0 0 16px;
+  border:1px solid var(--s38-line,#dfe7f2);
+  border-radius:15px;
+  background:#fff;
+  overflow:hidden;
+}
+#knowledge-view .knowledge-category-filter>summary,
+.knowledge-editor-properties>summary{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  align-items:center;
+  gap:10px;
+  min-height:50px;
+  padding:10px 13px;
+  list-style:none;
+  cursor:pointer;
+}
+#knowledge-view .knowledge-category-filter>summary::-webkit-details-marker,
+.knowledge-editor-properties>summary::-webkit-details-marker{display:none}
+#knowledge-view .knowledge-category-filter>summary>span{display:flex;align-items:center;gap:8px;min-width:0}
+#knowledge-view .knowledge-category-filter>summary svg{width:16px;color:var(--s38-blue,#4f7df3)}
+#knowledge-view .knowledge-category-filter>summary small{color:var(--s38-muted,#66758a);font-size:9px}
+#knowledge-view .knowledge-category-filter>summary>svg,
+.knowledge-editor-properties>summary>svg{transition:transform .18s ease}
+#knowledge-view .knowledge-category-filter[open]>summary>svg,
+.knowledge-editor-properties[open]>summary>svg{transform:rotate(180deg)}
+#knowledge-view .knowledge-category-row{
+  display:flex;
+  flex-wrap:wrap!important;
+  gap:8px;
+  margin:0;
+  padding:0 13px 13px;
+  overflow:visible!important;
+  border-top:1px solid var(--s38-line,#dfe7f2);
+}
+#knowledge-view .knowledge-category-row button{flex:0 1 auto;max-width:100%;white-space:normal;text-align:left}
+.knowledge-training-missing{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.knowledge-training-missing button{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  border:1px solid var(--s38-blue-line,#b9cdf4);
+  border-radius:9px;
+  background:var(--s38-blue-soft,#edf4ff);
+  color:var(--s38-blue-strong,#315fcf);
+  padding:6px 8px;
+  font-size:9px;
+  font-weight:650;
+  cursor:pointer;
+}
+.knowledge-training-missing button svg{width:13px;height:13px}
+.knowledge-editor-link-note{display:flex;align-items:flex-start;gap:9px;margin-bottom:13px;padding:11px 12px;border:1px solid var(--s38-blue-line,#b9cdf4);border-radius:12px;background:var(--s38-blue-soft,#edf4ff);color:var(--s38-blue-strong,#315fcf)}
+.knowledge-editor-link-note>svg{width:17px;flex:0 0 auto}
+.knowledge-editor-link-note strong,.knowledge-editor-link-note small{display:block}
+.knowledge-editor-link-note strong{font-size:10px}.knowledge-editor-link-note small{margin-top:2px;font-size:9px;line-height:1.45}
+@media(max-width:760px){
+  #knowledge-view .knowledge-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #knowledge-view .knowledge-tabs button:last-child:nth-child(odd){grid-column:1/-1}
+}
+
+@media(max-width:430px){
+  #knowledge-view .knowledge-category-filter>summary{grid-template-columns:minmax(0,1fr) auto}
+  #knowledge-view .knowledge-category-filter>summary small{display:none}
+  #knowledge-view .knowledge-category-row{align-items:stretch}
+  #knowledge-view .knowledge-category-row button{flex:1 1 calc(50% - 4px);justify-content:flex-start}
+}
+
+@media(prefers-reduced-motion:reduce){
+  #knowledge-view .knowledge-category-filter>summary>svg,
+  .knowledge-editor-properties>summary>svg{transition:none}
+}
+}

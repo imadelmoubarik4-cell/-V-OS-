@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 .checkpoint-a-compact-board{margin:0 0 24px;padding:22px;border:1px solid var(--atlas-line);border-radius:18px;background:var(--atlas-surface);color:var(--atlas-text)}
 .checkpoint-a-compact-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:18px}
 .checkpoint-a-compact-head h2{margin:5px 0 5px;font:500 27px/1.15 'Fraunces',serif;color:var(--atlas-text)}
@@ -113,4 +118,5 @@ body.checkpoint-a-context-open{overflow:hidden}
 @media(prefers-reduced-motion:reduce){
   .checkpoint-a-compact-manage,.checkpoint-a-compact-button,.checkpoint-a-home-prompt button{transition:none}
   .checkpoint-a-context-backdrop{backdrop-filter:none}
+}
 }

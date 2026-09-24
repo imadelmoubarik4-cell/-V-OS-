@@ -189,7 +189,8 @@ sprints, phases, branches, "production source mutation") in product UI.
 ## 15. Focus and accessibility
 
 - Visible focus on every interactive element (`:focus-visible` outline in the
-  accent colour, 2px, 2px offset — defined in `atlas-tokens.css`).
+  accent colour, 2px, 2px offset — defined next to the tokens, since S88 in
+  `legacy/atlas-tokens--base.css`; moves to `atlas-base.css`).
 - Keyboard: Tab order follows reading order; `/` focuses search; arrows move
   through search results; Escape closes menus and dialogs.
 - Contrast: text on surfaces meets WCAG AA; status is never colour-only.
@@ -213,3 +214,22 @@ Verified widths: 1440, 1280, 1024, 768, 430, 390.
   change the owning component stylesheet instead.
 - The S87 health report lists the remaining legacy debt (override layers,
   `!important`, off-scale sizes) to retire module by module.
+- Cascade layers (S88). `atlas-tokens.css` is linked first and declares
+  `@layer atlas.tokens, atlas.base, atlas.legacy, atlas.components, atlas.modules;`.
+  A later layer beats an earlier one for normal declarations whatever the
+  specificity or load order; for `!important` the order reverses. Every
+  pre-S88 stylesheet sits in `atlas.legacy` in its old order, and the retired
+  override files live on as `assets/css/legacy/<source>--<module>.css`
+  fragments owned by the module they style. `atlas.base` sits below legacy so
+  a new element-level rule cannot restyle a page that has not been rebuilt
+  (land it together with deleting the legacy rule it replaces); opt-in
+  component classes (`atlas.components`) and consolidated module sheets
+  (`atlas.modules`) win over legacy. Consolidating a module means: merge its
+  fragments into its stylesheet using their effective values (or rewrite it
+  against the components), change its `@layer atlas.legacy` to
+  `@layer atlas.modules`, remove its `!important` in the same commit (an
+  `!important` left in `atlas.legacy` still wins), and delete the fragments.
+  Custom properties are defined on `:root` only in `atlas-tokens.css`.
+- Evidence for a CSS change: `tests/browser/tools/style-snapshot.mjs` (computed
+  style of every element, 2 roles × 4 widths) and `cascade-graph.mjs`; the
+  hygiene ratchet is `tests/node/css-hygiene-s88.test.js`.

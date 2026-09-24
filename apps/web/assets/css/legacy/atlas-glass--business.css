@@ -1,0 +1,32 @@
+/* S88 legacy fragment: the business rules of atlas-glass.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where atlas-glass.css was).
+ * Owner: WP-RBB. Phase 2 merges these rules into business.css
+ * using their effective values, then empties this file. */
+/* Atlas — global glass presentation layer.
+ *
+ * Minimalist glassmorphism: white base, light-blue secondary, translucent
+ * surfaces over a soft blue wash. Applies to every workspace from one place so
+ * no screen carries its own competing palette.
+ *
+ * Presentation only. Loads LAST. It changes no markup, no renderer, no data
+ * access, no auth and no routing; it re-points the existing design tokens and
+ * restyles existing classes. Rolling back is deleting this file's <link>.
+ */
+@layer atlas.legacy {
+/* Business Intelligence declares its own scale on .business-shell — re-point it
+   rather than fighting each rule. */
+.business-shell {
+  --business-ink: #10151c;
+  --business-muted: #6b7787;
+  --business-surface: rgba(255, 255, 255, .72);
+  --business-line: rgba(16, 60, 110, .10);
+}
+
+.business-health-card {
+  background: rgba(255, 255, 255, .76) !important;
+  border-color: var(--glass-line) !important;
+  color: var(--atlas-text) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+.business-health-ring:before { background: #fff !important; }
+}

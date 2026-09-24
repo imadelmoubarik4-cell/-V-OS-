@@ -1838,3 +1838,20 @@ The reference page (`docs/design/atlas-reference.html`) uses illustrative conten
 render only real Atlas data. Where a source does not exist (bookings, POS sales,
 weather) the element is hidden or shows the truthful "not connected" state — never
 placeholder numbers. Owner-decision defaults 1–9 above are adopted for S88.
+
+### Owner rules for module teams (binding, S88)
+
+1. Module teams (A: Home · Operations · Settings; B: Inventory · Purchasing · Stock count;
+   C: Recipes · Reports · Data; D: Shifts · Team · Messages · Knowledge) must not change
+   global typography, spacing, buttons, inputs, navigation, shell or responsive rules inside
+   their own pages. A missing or wrong global pattern is fixed in the design system
+   (`atlas-tokens.css`, `atlas-base.css`, `atlas-components.css`, `atlas-shell.css`) by the
+   design-system owner, then consumed by the module.
+2. Module stylesheets contain only module layout and module-specific pieces, in
+   `@layer atlas.modules`, with no `!important` and no new tokens.
+3. Team B consumes the Visual Inventory Intelligence contracts and shared capture/recognition
+   components; it does not build its own scanner or recognition UI.
+4. Merge checkpoint before module teams start: tokens/components merged; shell rebased onto
+   them and visually checked; Atlas AI rebased onto both; Visual Inventory foundation verified
+   not to alter live stock; all suites at or above Node 802 / browser 57 / Deno AI 98 /
+   Python OK.

@@ -91,21 +91,21 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
 }
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/sprint3-review.css',
+  stylesheetPath: 'assets/css/sprint3-review.css?v=20260926-s88',
   scriptPath: 'assets/js/sprint3-review.js?v=20260926-s88',
   globalName: 'AtlasSprint3Review',
   dataAttribute: 'atlasSprint3Review',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/brain-daily-briefing.css',
+  stylesheetPath: 'assets/css/brain-daily-briefing.css?v=20260926-s88',
   scriptPath: 'assets/js/brain-daily-briefing-v2.js?v=20260926-s88',
   globalName: 'AtlasDailyBriefing',
   dataAttribute: 'atlasDailyBriefing',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/brain-phase3.css',
+  stylesheetPath: 'assets/css/brain-phase3.css?v=20260926-s88',
   scriptPath: 'assets/js/brain-phase3.js?v=20260926-s88',
   globalName: 'AtlasPhase3Brain',
   dataAttribute: 'atlasPhase3Brain',
@@ -115,21 +115,21 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // decision-memory workspace. It reads role-permitted production sources through
 // a manager-only gateway and never mutates inventory, orders, menus or waste.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/brain-checkpoint-k.css',
+  stylesheetPath: 'assets/css/brain-checkpoint-k.css?v=20260926-s88',
   scriptPath: 'assets/js/brain-checkpoint-k.js?v=20260926-s88',
   globalName: 'AtlasCheckpointK',
   dataAttribute: 'atlasCheckpointK',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/operations-checkpoint-a.css',
+  stylesheetPath: 'assets/css/operations-checkpoint-a.css?v=20260926-s88',
   scriptPath: 'assets/js/operations-checkpoint-a.js?v=20260926-s88',
   globalName: 'AtlasCheckpointA',
   dataAttribute: 'atlasCheckpointA',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/operations-checkpoint-a-layout.css',
+  stylesheetPath: 'assets/css/operations-checkpoint-a-layout.css?v=20260926-s88',
   scriptPath: 'assets/js/operations-checkpoint-a-layout.js?v=20260926-s88',
   globalName: 'AtlasCheckpointALayout',
   dataAttribute: 'atlasCheckpointALayout',
@@ -166,7 +166,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/marketing-workspace.css',
+  stylesheetPath: 'assets/css/marketing-workspace.css?v=20260926-s88',
   scriptPath: 'assets/js/marketing-workspace.js?v=20260926-s88',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
@@ -214,14 +214,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // publish one immutable month revision for staff while weekly drill-down remains
 // available for detailed review and confirmations.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/shifts-month-calendar.css',
+  stylesheetPath: 'assets/css/shifts-month-calendar.css?v=20260926-s88',
   scriptPath: 'assets/js/shifts-month-calendar.js?v=20260926-s88',
   globalName: 'AtlasShiftsMonth',
   dataAttribute: 'atlasShiftsMonth',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/shifts-month-editor.css',
+  stylesheetPath: 'assets/css/shifts-month-editor.css?v=20260926-s88',
   dataAttribute: 'atlasShiftsMonthEditor',
 }));
 
@@ -257,7 +257,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // read-only analysis workspace. It pulls live source records through the
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/reports-workspace.css?v=20260917-s60',
+  stylesheetPath: 'assets/css/reports-workspace.css?v=20260926-s88',
   scriptPath: 'assets/js/reports-workspace.js?v=20260926-s88',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
@@ -267,7 +267,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // health, environments, integrations, data freshness, jobs, incidents,
 // security posture, audit evidence and recovery references.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/system-workspace.css',
+  stylesheetPath: 'assets/css/system-workspace.css?v=20260926-s88',
   scriptPath: 'assets/js/system-workspace.js?v=20260926-s88',
   globalName: 'AtlasSystem',
   dataAttribute: 'atlasSystem',
@@ -303,7 +303,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   const cfg = window.VABAR_CONFIG = window.VABAR_CONFIG || {};
   cfg.SYSTEM_API = cfg.SYSTEM_API || `${cfg.SUPABASE_URL}/functions/v1/atlas-system`;
 
-  const cssHref = "assets/css/system-workspace.css";
+  const cssHref = "assets/css/system-workspace.css?v=20260926-s88";
   if (!document.querySelector(`link[href="${cssHref}"]`)) {
     const link = document.createElement("link");
     link.rel = "stylesheet";

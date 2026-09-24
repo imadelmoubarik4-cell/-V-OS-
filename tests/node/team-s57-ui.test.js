@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const index = readFileSync('apps/web/index.html', 'utf8');
-const css = readFileSync('apps/web/assets/css/team-s57.css', 'utf8');
+const css = legacyCss('team-s57');
 const messages = readFileSync('apps/web/assets/js/team-messages.js', 'utf8');
 
 test('conversation Pin is a compact named icon action', () => {
@@ -21,7 +22,9 @@ test('narrow message history owns scrolling and composer remains visible', () =>
   assert.match(css, /body\.s38-team-active \.fab-wrap\{display:none!important\}/);
 });
 
-test('S57 overrides load after the prior Team remediation', () => {
-  assert.match(index, /assets\/css\/team-s57\.css\?v=20260917-s57/);
-  assert.ok(index.indexOf('assets/css/team-s57.css') > index.indexOf('assets/css/s38-app-remediation.css'));
+test('S57 overrides load after the prior Team remediation, in the same cascade layer', () => {
+  assert.match(index, /assets\/css\/legacy\/team-s57--team-messages\.css\?v=20260926-s88/);
+  assert.ok(linkPosition('team-s57') > linkPosition('s38-app-remediation', 'last'));
+  assert.equal(layerOf('legacy/team-s57--team-messages.css'), 'atlas.legacy');
+  assert.equal(layerOf('legacy/s38-app-remediation--team-messages.css'), 'atlas.legacy');
 });

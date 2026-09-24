@@ -5,9 +5,9 @@
 // Talks only to atlas-ai (VABAR_CONFIG.ATLAS_AI_API) with the signed-in
 // person's session, and to the existing decision-memory endpoint
 // (PHASE3_BRAIN_API) for Decisions. Registers with AtlasShell: view 'ai'
-// (routes #ai, #ai/c/<id>, #ai/new?context=<type>:<id>, #ai/decisions),
-// actions ai.ask / ai.voice / ai.ask.record, link type 'ai', a Home
-// attention contribution for proposals waiting, and the 'atlas' alias view.
+// (routes #ai, #ai/c/<id>, #ai/new?context=<type>:<id>, #ai/decisions per
+// the spec route table), actions ai.ask / ai.voice / ai.ask.record, link type
+// 'ai' and a Home attention contribution for proposals waiting.
 //
 // Rules this file keeps (docs/design/Atlas_Experience_Redesign.md §6.28, §7.2,
 // §8.7, docs/ai/Atlas_AI_Architecture.md §5–§10):
@@ -627,6 +627,14 @@
 
     rootEl.addEventListener('click', onRootClick);
     rootEl.addEventListener('keydown', onRootKeydown);
+    rootEl.addEventListener('change', (event) => {
+      const filter = event.target.closest?.('[data-ai-dec-filter]');
+      if (!filter) return;
+      state.decisions.filter = { ...state.decisions.filter, [filter.dataset.aiDecFilter]: filter.value };
+      const id = filter.id;
+      renderDecisions();
+      document.getElementById(id)?.focus();
+    });
     el('composer').addEventListener('submit', (event) => { event.preventDefault(); send(); });
     el('input').addEventListener('input', () => { autoGrow(); renderComposerBar(); });
     el('input').addEventListener('keydown', (event) => {
@@ -2804,8 +2812,6 @@
     const shell = root.AtlasShell;
     if (!shell) return;
     shell.registerView('ai', { root: () => ensureRoot(), title: 'Atlas AI', display: 'block', render, onHide });
-    // #atlas and #atlas/decisions are accepted as aliases of the spec routes.
-    shell.registerView('atlas', { guard: (params) => { shell.show('ai', params || {}, { source: 'alias' }); return false; } });
     shell.actions?.register?.({
       id: 'ai.ask', label: 'Ask Atlas', icon: 'sparkles', keywords: ['ask', 'question', 'atlas', 'ai', 'help'], contexts: ['home', 'inventory', 'recipes', 'suppliers', 'reports'],
       run: (ctx = {}) => ask({ question: ctx.query || ctx.question || '', record: ctx.record || null, view: ctx.context || null })
@@ -2833,10 +2839,6 @@
   function init() {
     if (state.booted) return;
     state.booted = true;
-    // A #atlas deep link opens the spec route (#atlas/decisions → #ai/decisions).
-    if (/^#atlas(?=\/|\?|$)/.test(root.location.hash)) {
-      try { root.history.replaceState(root.history.state, '', root.location.hash.replace(/^#atlas/, '#ai')); } catch { /* history unavailable */ }
-    }
     ensureRoot();
     ensureNavItem();
     registerWithShell();

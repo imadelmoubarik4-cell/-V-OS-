@@ -7,8 +7,16 @@
 <link rel="icon" type="image/png" href="assets/logo/atlas-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/recipes.css">
+  <!-- S88: atlas-tokens.css is linked first because it declares the cascade-layer
+       order. Every other stylesheet is in @layer atlas.legacy, linked in the order
+       that decided the cascade before S88 (runtime module sheets included, so
+       config.js, runtime-module-guard.js and the bootstraps find them already
+       present and inject nothing). legacy/*.css are the per-module fragments of
+       the retired override stylesheets. -->
+  <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s88">
 <style>
+@layer atlas.legacy {
   :root{
     --bg:        #12181A;
     --surface:   #1B2321;
@@ -472,33 +480,130 @@
     pointer-events:none;
     opacity:.72;
   }
+}
 </style>
-  <link rel="stylesheet" href="assets/css/operations.css">
-  <link rel="stylesheet" href="assets/css/brain.css">
-  <link rel="stylesheet" href="assets/css/business.css?v=20260917-s60">
-  <link rel="stylesheet" href="assets/css/import-center.css">
-  <link rel="stylesheet" href="assets/css/home-polish.css">
-  <link rel="stylesheet" href="assets/css/inventory-polish.css">
-  <link rel="stylesheet" href="assets/css/recipes-gallery.css">
-  <link rel="stylesheet" href="assets/css/purchasing-polish.css">
-  <link rel="stylesheet" href="assets/css/import-polish.css">
-  <link rel="stylesheet" href="assets/css/review-polish.css">
-  <link rel="stylesheet" href="assets/css/atlas-glass.css">
-  <link rel="stylesheet" href="assets/css/workspaces-polish.css">
-  <link rel="stylesheet" href="assets/css/system-polish.css">
-  <link rel="stylesheet" href="assets/css/polish-pass2.css">
-  <link rel="stylesheet" href="assets/css/s34-preproduction.css">
+  <link rel="stylesheet" href="assets/css/legacy/home-polish-baseline--home.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/home-polish-baseline--operations.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/operations.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/brain.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/business.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/import-center.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/home-polish--base.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/home-polish--brain.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/home-polish--home.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/home-polish--operations.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/home-polish--inventory.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/inventory-polish--inventory.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/inventory-polish--components.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/inventory-polish--base.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/inventory-polish--purchasing.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/recipes-gallery--recipes.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/purchasing-polish--purchasing.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/purchasing-polish--components.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/purchasing-polish--base.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/import-polish--import-center.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/review-polish--sprint3-review.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--base.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--search.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--home.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--inventory.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--recipes.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--brain.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--business.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--marketing.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--shifts-month.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--knowledge.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--item-master.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--components.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--business.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--marketing.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--team-messages.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--team-profiles.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--components.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--shifts.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--shifts-month.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--knowledge.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--brain.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--reports.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--settings.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--base.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/system-polish--system.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--home.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--components.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--operations.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--reports.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--team-profiles.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--system.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--business.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--team-messages.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--shifts-month.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/polish-pass2--marketing.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--base.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--home.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--inventory-scanner.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--operations.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--shifts.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--components.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--stock-count.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--search.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--settings.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--purchasing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/shifts-workspace.css">
-  <link rel="stylesheet" href="assets/css/shifts-month-calendar.css">
-  <link rel="stylesheet" href="assets/css/shifts-month-editor.css">
+  <link rel="stylesheet" href="assets/css/shifts-month-calendar.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/shifts-month-editor.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/knowledge-workspace.css">
-  <link rel="stylesheet" href="assets/css/s38-app-remediation.css">
-  <link rel="stylesheet" href="assets/css/knowledge-s56.css?v=20260917-s56">
-  <link rel="stylesheet" href="assets/css/team-s57.css?v=20260917-s57">
-  <link rel="stylesheet" href="assets/css/inventory-operations-s58.css?v=20260917-s58">
-  <link rel="stylesheet" href="assets/css/accessibility-responsive-s61.css?v=20260917-s61">
-  <link rel="stylesheet" href="assets/css/atlas-search.css?v=20260924-s87">
-  <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260924-s87">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--purchasing.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--home.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--shifts-month.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--operations.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--inventory-scanner.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--inventory.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--brain.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--base.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--components.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--search.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--stock-count.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--recipes.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--import-center.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--knowledge.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--settings.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--team-messages.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--shifts.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--team-profiles.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/knowledge-s56--knowledge.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/team-s57--team-messages.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/inventory-operations-s58--purchasing.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/inventory-operations-s58--inventory.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--reports.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--base.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--team-messages.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--components.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/atlas-search.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/atlas-tokens--base.css?v=20260926-s88">
+  <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
+       append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
+       or data attribute); the five also named by runtime-module-guard.js and the
+       scanner sheet keep their unversioned href for that reason. The three links
+       with an id replace the <style> elements that shifts-month-tab-bridge.js,
+       inventory-scanner-bootstrap.js and settings-mount-bridge.js used to inject. -->
+  <link rel="stylesheet" href="assets/css/system-workspace.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/shifts-month-tab-bridge--shifts-month.css?v=20260926-s88" id="shifts-month-interaction-fix">
+  <link rel="stylesheet" href="assets/css/sprint3-review.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/brain-daily-briefing.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/brain-phase3.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/brain-checkpoint-k.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/operations-checkpoint-a.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/operations-checkpoint-a-layout.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/team-messages.css">
+  <link rel="stylesheet" href="assets/css/marketing-workspace.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/team-profile-photos.css">
+  <link rel="stylesheet" href="assets/css/reports-workspace.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/legacy/inventory-scanner-bootstrap--inventory-scanner.css?v=20260926-s88" id="inventory-scanner-interaction-fix">
+  <link rel="stylesheet" href="assets/css/stock-count-workspace.css?v=20260926-s88" data-atlas-stock-count-css="true">
+  <link rel="stylesheet" href="assets/css/settings-workspace.css">
+  <link rel="stylesheet" href="assets/css/legacy/settings-mount-bridge--settings.css?v=20260926-s88" id="atlas-settings-button-contrast">
+  <link rel="stylesheet" href="assets/css/inventory-scanner.css">
+  <link rel="stylesheet" href="assets/css/item-master-workspace.css?v=20260926-s88" data-atlas-item-master-css="true">
   <link rel="stylesheet" href="assets/css/atlas-ai.css?v=20260926-s88">
 </head>
 <body>
