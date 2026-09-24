@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-import { buildStockReport } from '../../supabase/functions/atlas-reports/stock-provenance.mjs';
+import { buildStockReport } from '../../supabase/functions/_shared/stock-provenance.mjs';
 
 const read = (path) => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const NOW = Date.parse('2026-09-24T12:00:00Z');
@@ -185,7 +185,7 @@ test('runtime trusts server-gated evidence without a source_type whitelist', () 
   const futureWorkflow = { ...byName('Saline Solution'), source_type: 'owner_workflow_added_later' };
   assert.equal(loadAtlas({ inventory: [futureWorkflow] }).items[0].freshness_state, 'current');
   assert.equal(buildStockReport([futureWorkflow], [], {}, NOW, []).rows[0].quantity_status, 'current');
-  for (const file of ['apps/web/assets/js/atlas-stock-truth.js', 'supabase/functions/atlas-reports/stock-provenance.mjs']) {
+  for (const file of ['apps/web/assets/js/atlas-stock-truth.js', 'supabase/functions/_shared/stock-provenance.mjs']) {
     assert.doesNotMatch(read(file), /OWNER_CONFIRMED_TYPES/, `${file} must not gate evidence by source_type`);
   }
 });

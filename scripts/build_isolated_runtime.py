@@ -39,7 +39,7 @@ def build(destination):
         raise ValueError('Use a new destination outside the repository')
     manifest = json.loads(CONTRACT.read_text())
     expected = {f['path']: f for fn in manifest['functions'] for f in fn['files']}
-    if len(manifest['functions']) != 16 or len(expected) != 19:
+    if len(manifest['functions']) != 16 or len(expected) != 20:
         raise ValueError('Unexpected gateway/file scope')
     actual = set()
     for fn in manifest['functions']:
@@ -51,6 +51,14 @@ def build(destination):
                 raise ValueError('Symlinked function input')
             if path.is_file():
                 actual.add(str(path.relative_to(ROOT / 'supabase')))
+    # Shared modules (supabase/functions/_shared) are reviewed per importing
+    # function; only the listed ones are bundled.
+    for name in expected:
+        if name.startswith('functions/_shared/'):
+            path = ROOT / 'supabase' / name
+            if path.is_symlink() or not path.is_file():
+                raise ValueError('Invalid shared runtime source: ' + name)
+            actual.add(name)
     if actual != set(expected):
         raise ValueError('Unreviewed or missing runtime source files')
     with tempfile.TemporaryDirectory(prefix='atlas-s33-build-') as temporary:
@@ -70,7 +78,7 @@ def build(destination):
         (output / 'config.toml').write_text(config)
         (output / 'runtime-manifest.json').write_bytes(CONTRACT.read_bytes())
         shutil.copytree(output, destination)
-    return {'functions': 16, 'files': 19, 'deployed': False, 'output': str(destination)}
+    return {'functions': 16, 'files': 20, 'deployed': False, 'output': str(destination)}
 
 
 if __name__ == '__main__':

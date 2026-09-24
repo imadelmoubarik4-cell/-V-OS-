@@ -83,8 +83,18 @@ function staffPayload(context: AtlasContext) {
     role: context.profile.role,
     can_post: WRITE_ROLES.has(context.profile.role),
     can_announce: MANAGER_ROLES.has(context.profile.role),
+    can_link_brain_recommendations: MANAGER_ROLES.has(context.profile.role),
     active: true,
   };
+}
+
+// Brain recommendations are manager-only (atlas-phase3-brain). Their titles,
+// types and statuses must not reach bartenders or viewers through link
+// targets or link validation.
+function requireBrainRecommendationAccess(context: AtlasContext): void {
+  if (!MANAGER_ROLES.has(context.profile.role)) {
+    throw new ApiError(403, "Atlas recommendations can only be linked by managers and administrators.");
+  }
 }
 
 async function requireActiveProfile(request: Request): Promise<AtlasContext> {
@@ -401,6 +411,7 @@ async function targetOptions(context: AtlasContext, type: LinkPayload["type"], q
   }
 
   if (type === "brain_recommendation") {
+    requireBrainRecommendationAccess(context);
     const phase3 = await branchRpc("atlas_phase3_snapshot");
     const recommendations = Array.isArray(phase3?.recommendations) ? phase3.recommendations : [];
     return recommendations
@@ -490,6 +501,7 @@ async function validateLink(
     };
   }
 
+  requireBrainRecommendationAccess(context);
   const phase3 = await branchRpc("atlas_phase3_snapshot");
   const recommendations = Array.isArray(phase3?.recommendations) ? phase3.recommendations : [];
   const recommendation = recommendations.find((candidate: any) => candidate.id === key);

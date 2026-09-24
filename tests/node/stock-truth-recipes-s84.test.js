@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-import { buildStockReport } from '../../supabase/functions/atlas-reports/stock-provenance.mjs';
+import { buildStockReport } from '../../supabase/functions/_shared/stock-provenance.mjs';
 
 const read = (path) => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const NOW = Date.parse('2026-09-24T10:00:00Z');
