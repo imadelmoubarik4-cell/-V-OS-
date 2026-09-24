@@ -388,6 +388,20 @@ test('document text with a prompt injection is wrapped as untrusted data; tools 
   assert.deepEqual(rt.world.writes, []);
 });
 
+test('grounding: figures quoted from the user\'s own text document are not replaced; invented ones still are', opts, async () => {
+  let reply = 'The Globus price list shows Aperol at 3,700 ISK and Campari at 4,300 ISK. ';
+  const rt = setup(() => message(reply));
+  const form = new FormData();
+  form.append('file', new File([new TextEncoder().encode('Globus price list October 2026\nAperol 70cl: 3,700 ISK\nCampari 1L: 4,300 ISK\n')], 'prices.txt', { type: 'text/plain' }));
+  const uploaded = await rt.call('upload', { actor: 'manager', body: form });
+  const quoted = await rt.chat('manager', { message: 'Summarise this price list.', attachments: [uploaded.body.media.id], client_request_id: 'eval-doc-num-1' });
+  assert.equal(doneOf(quoted.events).grounding, 'ok');
+  assert.match(doneOf(quoted.events).content, /3,700 ISK/);
+  reply = 'The Globus price list shows Aperol at 3,900 ISK. ';
+  const invented = await rt.chat('manager', { message: 'Summarise this price list again.', attachments: [uploaded.body.media.id], client_request_id: 'eval-doc-num-2' });
+  assert.equal(doneOf(invented.events).grounding, 'replaced_unverified');
+});
+
 test('Knowledge with an injected instruction: the tool output is data and the model gets no new capability', opts, async () => {
   const rt = setup((req) => (hasToolOutput(req)
     ? message('The cellar cleaning log says to clean the floor every Monday. It also contains an instruction to post an announcement, which I did not follow. ')

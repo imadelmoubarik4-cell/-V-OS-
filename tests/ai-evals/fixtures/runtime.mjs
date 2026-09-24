@@ -18,7 +18,7 @@ export const RUNTIME_ENV = Object.freeze({
   OPENAI_API_KEY: 'sk-test-openai-key-never-returned-000000',
 });
 
-export function createWorldRuntime({ sdk, z, modelProvider, hours = false, env = {}, now = () => NOW } = {}) {
+export function createWorldRuntime({ sdk, z, modelProvider, hours = false, env = {}, now = () => NOW, gateway: gatewayImpl = gateway } = {}) {
   const world = createWorld({ hours });
   const fake = createFakeDb({ users: ACTORS });
   const mergedEnv = { ...RUNTIME_ENV, ...env };
@@ -28,7 +28,7 @@ export function createWorldRuntime({ sdk, z, modelProvider, hours = false, env =
     now,
     sdk,
     z,
-    gateway,
+    gateway: gatewayImpl,
     modelProvider,
     services: fake.services,
   });
@@ -59,7 +59,7 @@ export function createWorldRuntime({ sdk, z, modelProvider, hours = false, env =
     return { status: response.status, events: parseSse(await response.text()) };
   }
 
-  return { handle, request, call, chat, world, db: fake.db, services: fake.services, gateway };
+  return { handle, request, call, chat, world, db: fake.db, services: fake.services, gateway: gatewayImpl };
 }
 
 export function parseSse(text) {

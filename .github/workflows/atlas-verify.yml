@@ -71,6 +71,9 @@ jobs:
       - name: Run Atlas AI runtime tests (real Agents SDK, scripted model, no network)
         run: npm run test:ai
 
+      - name: Validate the Atlas AI live evaluation cases (dry run, no key)
+        run: npm run eval:ai-live:dry-run
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

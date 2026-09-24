@@ -179,8 +179,12 @@ function attachmentMeta(media) {
   }));
 }
 
-function allowedNumbersFor(message, evidence, context) {
+// Numbers the answer may repeat without a tool result: the user's message,
+// text documents the user attached (quoted, not Atlas data), evidence already
+// shown and the last proposal.
+function allowedNumbersFor(message, evidence, context, documentText = "") {
   const allowed = numbersIn(message);
+  for (const number of numbersIn(documentText)) allowed.add(number);
   for (const number of numbersIn(evidence)) allowed.add(number);
   for (const number of numbersIn(context?.atlas_last_proposal ?? null)) allowed.add(number);
   return allowed;
@@ -336,9 +340,11 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
   let guardrail = null;
   let result = null;
   let finalText = "";
+  let documentText = "";
 
   try {
     const { parts, notes } = await attachmentParts(media, { services: deps.services, limits: config.limits });
+    documentText = parts.filter((part) => part.type === "input_text").map((part) => part.text).join("\n");
     const { graph, runner } = await prepareAgent({ deps, config, actor, preferences, hasVision: hasVisionHint, nowIso });
     const session = new AtlasSession(conversationId, history);
     const turnInput = [
@@ -400,7 +406,7 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
     errorCode = "stopped";
     finalText = redactSecrets(gate.released || "");
   } else if (!errorInfo) {
-    const allowed = allowedNumbersFor(message, evidenceBefore, conversation?.context);
+    const allowed = allowedNumbersFor(message, evidenceBefore, conversation?.context, documentText);
     grounding = guardrail ? { ok: true, replaced: false } : groundingCheck(finalText, { verifiedToolRan: turn.verified, allowedNumbers: allowed });
     const finished = gate.finish(grounding.text ?? finalText);
     finalText = finished.text;
