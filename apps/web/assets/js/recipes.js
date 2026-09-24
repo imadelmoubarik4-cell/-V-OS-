@@ -140,7 +140,7 @@
       return { servings: null, item, reason: 'Current stock is unknown / Not counted', belowPar: false };
     }
     const stockUnits = Math.max(0, Number(item.verified_quantity));
-    const belowPar = item.par_level != null && stockUnits <= number(item.par_level);
+    const belowPar = number(item.par_level) > 0 && stockUnits < number(item.par_level);
     let availableBatches = null;
 
     if (pack.unit === requested.unit) {
@@ -515,7 +515,7 @@
       detail.textContent = `${limitingName} is insufficient for one serving.`;
     } else if (issue.availability.status === 'attention') {
       title.textContent = `${issue.recipe.name}: approximately ${issue.availability.servings} servings available.`;
-      detail.textContent = `${limitingName} is the limiting ingredient${issue.availability.belowPar ? ' and is at or below par' : ''}.`;
+      detail.textContent = `${limitingName} is the limiting ingredient${issue.availability.belowPar ? ' and is below par' : ''}.`;
     } else {
       title.textContent = `${issue.recipe.name} needs an inventory check.`;
       detail.textContent = issue.availability.missing ? 'One or more ingredients are no longer linked to inventory.' : 'A fresh verified stock count and matching package units are required to calculate service availability.';
@@ -623,7 +623,7 @@
       const attention = availability.missing
         ? `<span class="recipe-gallery-flag">${availability.missing} ingredient${availability.missing === 1 ? '' : 's'} not linked to inventory</span>`
         : availability.belowPar
-          ? '<span class="recipe-gallery-flag">An ingredient is at or below par</span>'
+          ? '<span class="recipe-gallery-flag">An ingredient is below par</span>'
           : '';
       return `<button type="button" class="recipe-gallery-card ${recipe.id === state.selectedRecipeId ? 'selected' : ''}" data-recipe-id="${escape(recipe.id)}" aria-label="Open ${escape(recipe.name)}">
         ${media}

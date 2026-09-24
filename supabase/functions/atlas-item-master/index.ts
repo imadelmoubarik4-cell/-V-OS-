@@ -464,8 +464,9 @@ function assessItem(item, environment, draftOverride = undefined) {
   const adjustmentCount = environment.adjustmentByItem.get(itemId) ?? 0;
   const quantityStatus = quantityTrustState(item, countActivity);
   const historicalZero = quantityStatus === "historical" && numberValue(item.quantity) <= 0;
-  const belowPar = nullableNumber(effective.par_level) !== null
-    && numberValue(item.quantity) <= numberValue(effective.par_level);
+  // Same rule as the browser AtlasStockTruth.belowPar: strictly under a positive par.
+  const belowPar = (nullableNumber(effective.par_level) ?? 0) > 0
+    && numberValue(item.quantity) < numberValue(effective.par_level);
   const usedByActiveRecipe = linkedRecipes.length > 0 || recipeLinkCandidates.length > 0;
   const importantCategory = isImportantServiceCategory(item.category);
 

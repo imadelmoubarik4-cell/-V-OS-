@@ -314,7 +314,8 @@ function createIntelligence(
   const observedInventory = inventory.filter((item) => !historicalOpeningRow(item));
   const historicalZero = historicalInventory.filter((item) => numberValue(item.quantity) <= 0);
   const observedWithPar = observedInventory.filter((item) => nullableNumber(item.par_level) !== null && numberValue(item.par_level) > 0);
-  const observedBelowPar = observedWithPar.filter((item) => numberValue(item.quantity) <= numberValue(item.par_level));
+  // Same rule as the browser AtlasStockTruth.belowPar: strictly under par.
+  const observedBelowPar = observedWithPar.filter((item) => numberValue(item.quantity) < numberValue(item.par_level));
   const inventoryWithPar = inventory.filter((item) => nullableNumber(item.par_level) !== null && numberValue(item.par_level) > 0);
   const inventoryWithSupplier = inventory.filter((item) => text(item.supplier_id) || text(item.supplier));
   const inventoryWithCasePack = inventory.filter((item) => numberValue(item.units_per_case) > 0);
@@ -350,7 +351,7 @@ function createIntelligence(
       capability_key: "shortage_prediction",
       subject_type: "inventory_item",
       subject_key: text(item.id),
-      title: quantity <= 0 ? `${text(item.name)} has no observed stock` : `${text(item.name)} is at or below par`,
+      title: quantity <= 0 ? `${text(item.name)} has no observed stock` : `${text(item.name)} is below par`,
       summary: `${quantity} ${text(item.unit) || "units"} observed against a configured par level of ${par}.`,
       explanation: "This is a deterministic par-level watch based on a non-historical inventory record. Atlas is not predicting a stockout date because validated demand, incoming deliveries and supplier lead times are not connected.",
       suggested_action: { kind: "open_inventory_item", target: "inventory", item_id: text(item.id), mode: "manager_review" },

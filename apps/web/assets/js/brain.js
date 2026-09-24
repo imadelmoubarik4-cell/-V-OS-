@@ -138,7 +138,7 @@
 
   function lowInventory() {
     return sourceItems()
-      .filter((item) => item.active !== false && window.AtlasStockTruth?.known(item) && item.par_level != null && number(item.quantity) <= number(item.par_level))
+      .filter((item) => item.active !== false && window.AtlasStockTruth?.belowPar(item))
       .sort((a, b) => {
         const ratioA = number(a.par_level) > 0 ? number(a.quantity) / number(a.par_level) : 1;
         const ratioB = number(b.par_level) > 0 ? number(b.quantity) / number(b.par_level) : 1;
@@ -274,7 +274,7 @@
         target: 'operations-orders'
       });
     } else if (low.length) {
-      result.push({ icon: 'package-search', title: 'Review low inventory', detail: `${low.length} items are currently at or below par.`, action: 'Open inventory', target: 'inventory' });
+      result.push({ icon: 'package-search', title: 'Review low inventory', detail: `${low.length} items are currently below par.`, action: 'Open inventory', target: 'inventory' });
     }
 
     if (issues.length) {
@@ -387,7 +387,7 @@
     if (query.includes('stock') || query.includes('inventory')) {
       const low = lowInventory();
       if (!low.length) return 'Inventory levels are currently above their configured par levels.';
-      return `${low.length} inventory ${low.length === 1 ? 'item is' : 'items are'} at or below par. The first item to review is ${low[0].name}, with ${number(low[0].quantity)} ${low[0].unit || 'units'} in stock.`;
+      return `${low.length} inventory ${low.length === 1 ? 'item is' : 'items are'} below par. The first item to review is ${low[0].name}, with ${number(low[0].quantity)} ${low[0].unit || 'units'} in stock.`;
     }
     return 'Ask about today’s priorities, service readiness, purchasing, inventory, recipes, or which recipe to feature.';
   }

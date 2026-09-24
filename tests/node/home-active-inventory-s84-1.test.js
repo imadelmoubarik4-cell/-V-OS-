@@ -190,6 +190,6 @@ test('6. inactive recipe references such as Ice and Water may stay unverified wi
 test('Inventory records keep inactive rows; only live-stock surfaces filter them', () => {
   const html = read('apps/web/index.html');
   assert.match(html, /items = window\.AtlasStockTruth\.project\(data \|\| \[\], balances, inventoryMovements\);/);
-  assert.match(html, /const lowCount = items\.filter\(i => i\.active !== false && window\.AtlasStockTruth\.known\(i\)/);
+  assert.match(html, /const lowCount = items\.filter\(i => i\.active !== false && window\.AtlasStockTruth\.belowPar\(i\)\)/);
   assert.doesNotMatch(html, /update\(\{\s*active:\s*true/);
 });

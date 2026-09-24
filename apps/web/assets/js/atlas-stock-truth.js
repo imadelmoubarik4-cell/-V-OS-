@@ -130,5 +130,15 @@
     });
   }
 
-  root.AtlasStockTruth = Object.freeze({ known, project, effectiveStock });
+  // The one below-par rule for every module (Home, Inventory, Operations,
+  // Brain, Recipes, Reports, Search): verified stock strictly under a positive
+  // par level. An item exactly at par is not below par.
+  function belowPar(item) {
+    if (!known(item)) return false;
+    const par = numberOrNull(item.par_level);
+    const quantity = numberOrNull(item.verified_quantity ?? item.quantity);
+    return par !== null && par > 0 && quantity !== null && quantity < par;
+  }
+
+  root.AtlasStockTruth = Object.freeze({ known, belowPar, project, effectiveStock });
 })(window);

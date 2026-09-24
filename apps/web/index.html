@@ -987,7 +987,7 @@
 <script src="config.js"></script>
 <script src="assets/js/runtime-module-guard.js"></script>
 <script src="assets/js/rehearsal-boundary.js"></script>
-<script src="assets/js/atlas-stock-truth.js?v=20260924-s84-1"></script>
+<script src="assets/js/atlas-stock-truth.js?v=20260924-s87"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -1502,11 +1502,11 @@
     const detail = document.getElementById('inventory-intelligence-detail');
     if (!title || !detail) return;
     const currentItems = items.filter(item => item.active !== false);
-    const low = currentItems.filter(item => window.AtlasStockTruth.known(item) && item.par_level != null && Number(item.quantity) <= Number(item.par_level));
+    const low = currentItems.filter(item => window.AtlasStockTruth.belowPar(item));
     const missingCost = currentItems.filter(item => item.cost_price == null || item.cost_price === '');
     if (low.length) {
       const item = low[0];
-      title.textContent = `${item.name} is at or below par.`;
+      title.textContent = `${item.name} is below par.`;
       detail.textContent = `${item.quantity} ${item.unit || 'units'} on hand against a par level of ${item.par_level}.`;
     } else if (missingCost.length && canManageCommercial()) {
       title.textContent = `${missingCost.length} item${missingCost.length === 1 ? '' : 's'} need cost prices.`;
@@ -1670,11 +1670,11 @@
       const subcategoryMatches = activeSubcategory === 'all' || inventorySubcategory(item, activeCategory) === activeSubcategory;
       return groupMatches && subcategoryMatches;
     });
-    const lowCount = items.filter(i => i.active !== false && window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;
+    const lowCount = items.filter(i => i.active !== false && window.AtlasStockTruth.belowPar(i)).length;
 
     if (lowCount > 0) {
       banner.style.display = 'flex';
-      document.getElementById('low-stock-text').textContent = `${lowCount} item${lowCount > 1 ? 's' : ''} at or below par level`;
+      document.getElementById('low-stock-text').textContent = `${lowCount} item${lowCount > 1 ? 's' : ''} below par`;
     } else {
       banner.style.display = 'none';
     }
@@ -1688,9 +1688,7 @@
     visible.forEach(item => {
       const stockKnown = window.AtlasStockTruth.known(item);
       const displayQuantity = stockKnown ? Number(item.quantity) : null;
-      const isLow = stockKnown
-        && item.par_level != null
-        && Number(displayQuantity) <= Number(item.par_level);
+      const isLow = window.AtlasStockTruth.belowPar(item);
       const cost = item.cost_price == null || item.cost_price === ''
         ? '—'
         : `${new Intl.NumberFormat('is-IS', { maximumFractionDigits: 0 }).format(Number(item.cost_price))} ISK`;
@@ -2034,12 +2032,7 @@
   function renderAtlasHome(){
     // Home reports live stock: inactive rows stay in Inventory records but never count here.
     const activeItems = items.filter(item => item.active !== false);
-    const low = activeItems.filter(
-      item =>
-        window.AtlasStockTruth.known(item) &&
-        item.par_level != null &&
-        Number(item.quantity) < Number(item.par_level)
-    );
+    const low = activeItems.filter(item => window.AtlasStockTruth.belowPar(item));
     document.getElementById('home-date').textContent=formatVenueDay();
     document.getElementById('home-greeting').textContent=venueGreeting();
     document.getElementById('home-items').textContent = activeItems.length;
@@ -2334,14 +2327,14 @@
   function renderDashboard() {
     // Stock cards describe live inventory; inactive rows are records, not stock.
     const activeItems = items.filter(item => item.active !== false);
-    const lowCount = activeItems.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;
+    const lowCount = activeItems.filter(i => window.AtlasStockTruth.belowPar(i)).length;
     const suppliers = new Set(items.map(i => i.supplier).filter(Boolean));
     document.getElementById('stat-total-items').textContent = activeItems.length;
     document.getElementById('stat-low-stock').textContent = activeItems.some(item => !window.AtlasStockTruth.known(item)) ? 'Unknown' : lowCount;
     document.getElementById('stat-suppliers').textContent = suppliers.size;
 
     // Low inventory list — actual items, not just a count
-    const lowItems = activeItems.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level);
+    const lowItems = activeItems.filter(i => window.AtlasStockTruth.belowPar(i));
     const lowRows = document.getElementById('low-inventory-rows');
     if (lowItems.length === 0) {
       lowRows.innerHTML = activeItems.some(item => !window.AtlasStockTruth.known(item)) ? '<div class="empty-dash">Stock status unknown — verify a physical count.</div>' : '<div class="empty-dash">Nothing below par in verified stock.</div>';
@@ -2539,9 +2532,9 @@
   }
   if (window.lucide) window.lucide.createIcons();
 </script>
-<script src="assets/js/atlas-calculations.js?v=20260924-s85"></script>
+<script src="assets/js/atlas-calculations.js?v=20260924-s87"></script>
 <script src="assets/js/modal.js?v=20260922-s73"></script>
-<script src="assets/js/recipes.js?v=20260924-s85"></script>
+<script src="assets/js/recipes.js?v=20260924-s87"></script>
 <script src="assets/js/operations.js"></script>
 <script src="assets/js/brain.js"></script>
 <script src="assets/js/business.js?v=20260917-s60"></script>

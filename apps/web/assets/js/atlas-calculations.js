@@ -89,7 +89,8 @@
     const stockKnown = item.freshness_state === 'current' && item.verified_quantity != null
       && Number.isFinite(Number(item.verified_quantity));
     const stockUnits = stockKnown ? Math.max(0, Number(item.verified_quantity)) : null;
-    const belowPar = stockKnown && item.par_level != null && stockUnits <= number(item.par_level);
+    // Same rule as AtlasStockTruth.belowPar: strictly under a positive par.
+    const belowPar = stockKnown && number(item.par_level) > 0 && stockUnits < number(item.par_level);
     if (requested.quantity <= 0) return { item, cost: null, batches: null, reason: 'Package size is missing', belowPar };
 
     // Stock is counted in the item's own unit: a measure (kg, l, ml) is the

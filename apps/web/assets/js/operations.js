@@ -91,7 +91,7 @@
 
   function lowInventoryItems() {
     return (typeof items !== 'undefined' ? items : []).filter((item) => (
-      item.active !== false && window.AtlasStockTruth?.known(item) && item.par_level != null && number(item.quantity) <= number(item.par_level)
+      item.active !== false && window.AtlasStockTruth?.belowPar(item)
     ));
   }
 
