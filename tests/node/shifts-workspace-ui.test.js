@@ -50,7 +50,7 @@ test('schedule-only people are supported without creating login accounts', () =>
 test('browser uses the authenticated gateway and keeps production shifts untouched', () => {
   assert.match(shifts, /window\.atlasSupabase/);
   assert.match(shifts, /authorization: `Bearer \$\{session\.access_token\}`/);
-  assert.match(shifts, /Production public\.shifts remains unchanged/);
+  assert.match(shifts, /Changes stay private to managers until you publish the week\./);
   assert.match(gateway, /production_shift_sync_enabled:\s*false/);
   assert.doesNotMatch(gateway, /\/rest\/v1\/shifts/);
   assert.doesNotMatch(config + shifts + gallery, /SUPABASE_SERVICE_ROLE_KEY/);

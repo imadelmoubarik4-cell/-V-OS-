@@ -271,7 +271,7 @@
     const canManage = permission('can_manage_schedule');
     return `<header class="shifts-hero">
       <div class="shifts-hero-copy">
-        <span><i data-lucide="calendar-range"></i>Checkpoint F · People operations</span>
+        <span><i data-lucide="calendar-range"></i>People operations</span>
         <h1>Shifts</h1>
         <p>Plan the week, collect availability, publish one clear schedule and keep every response in one place.</p>
       </div>
@@ -359,7 +359,7 @@
     const days = weekDates();
     const canManage = permission('can_manage_schedule');
     return `<section class="shift-schedule-panel">
-      <div class="shift-schedule-note"><i data-lucide="shield-check"></i><span>${canManage ? 'You are editing the isolated Checkpoint F schedule. Production public.shifts remains unchanged.' : 'The team sees only the latest published revision. Draft manager changes remain private.'}</span></div>
+      <div class="shift-schedule-note"><i data-lucide="shield-check"></i><span>${canManage ? 'Changes stay private to managers until you publish the week.' : 'The team sees only the latest published revision. Draft manager changes remain private.'}</span></div>
       <div class="shift-week-grid">${days.map((date) => {
         const dayNumber = dateFromKey(date).getUTCDay();
         const entries = shifts().filter((shift) => dateFromLocal(shift.starts_local) === date);

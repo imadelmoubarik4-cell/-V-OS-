@@ -84,7 +84,7 @@
 
   async function api(action, options = {}) {
     const endpoint = scannerEndpoint();
-    if (!endpoint) throw new Error('Checkpoint B scanner API is not configured for this preview.');
+    if (!endpoint) throw new Error('The scanner is not available in this environment.');
     const session = await activeSession();
     if (!session?.access_token) throw new Error('Sign in to Atlas before using the bottle scanner.');
 
@@ -293,7 +293,7 @@
     return `<div class="inventory-scanner-backdrop" data-scanner-close></div>
       <section class="inventory-scanner-panel" role="dialog" aria-modal="true" aria-labelledby="inventory-scanner-title">
         <header class="inventory-scanner-header">
-          <div><span>Checkpoint B · Mobile inventory</span><h2 id="inventory-scanner-title">Bottle scanner</h2><p>Scan a barcode, confirm the product, then enter the observed quantity.</p></div>
+          <div><span>Mobile inventory</span><h2 id="inventory-scanner-title">Bottle scanner</h2><p>Scan a barcode, confirm the product, then enter the observed quantity.</p></div>
           <div>${renderModeBadge()}<button type="button" class="inventory-scanner-close" data-scanner-close aria-label="Close bottle scanner"><i data-lucide="x"></i></button></div>
         </header>
         ${state.error ? `<div class="inventory-scanner-message is-error"><i data-lucide="triangle-alert"></i><span>${escapeHtml(state.error)}</span></div>` : ''}

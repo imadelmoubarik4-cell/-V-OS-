@@ -55,7 +55,7 @@
   }
 
   async function api(action, body) {
-    if (!ENDPOINT) throw new Error('The Checkpoint L1 API is not configured.');
+    if (!ENDPOINT) throw new Error('Stock counts are not available in this environment.');
     const session = await activeSession();
     if (!session?.access_token) throw new Error('Sign in again to continue.');
     const url = new URL(ENDPOINT);

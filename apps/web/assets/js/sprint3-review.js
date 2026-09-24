@@ -67,7 +67,7 @@
 
   function endpoint() {
     const value = window.VABAR_CONFIG?.SPRINT3_REVIEW_API;
-    if (!value) throw new Error('Sprint 3 Review API is not configured.');
+    if (!value) throw new Error('Data review is not available in this environment.');
     return value;
   }
 
@@ -84,7 +84,7 @@
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
     const token = data?.session?.access_token;
-    if (!token) throw new Error('Sign in to Atlas to open the Sprint 3 Review Center.');
+    if (!token) throw new Error('Sign in to Atlas to open Data review.');
     return token;
   }
 
@@ -105,7 +105,7 @@
       cache: 'no-store'
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `Sprint 3 review request failed (${response.status}).`);
+    if (!response.ok) throw new Error(payload.error || `Data review request failed (${response.status}).`);
     return payload;
   }
 
@@ -150,7 +150,7 @@
       <section class="review-shell">
         <header class="review-hero">
           <div class="review-hero-copy">
-            <span class="review-kicker"><i data-lucide="shield-check"></i>Sprint 3 · Private Review</span>
+            <span class="review-kicker"><i data-lucide="shield-check"></i>Data review</span>
             <h1>Real VÁ Data</h1>
             <p>Review inventory, recipes, menus, suppliers, invoices, purchases, deliveries and equipment before anything reaches live Atlas records.</p>
           </div>
@@ -200,7 +200,7 @@
         </div>
 
         <section class="review-issues-card">
-          <header class="review-card-head"><div><h2>Most common unresolved issues</h2><p>These groups determine the fastest path through Sprint 3 review.</p></div></header>
+          <header class="review-card-head"><div><h2>Most common unresolved issues</h2><p>These groups are the fastest path through the review.</p></div></header>
           <div class="review-issue-list" id="review-issue-list"></div>
         </section>
       </section>`;
@@ -552,14 +552,14 @@ ${contextHtml(detail.issue_records, "Record conflict evidence")}
 
   async function refreshAll(manual = false) {
     if (!state.authorized) return;
-    if (manual) setMessage('Refreshing private Sprint 3 data…');
+    if (manual) setMessage('Refreshing review data…');
     try {
       await Promise.all([loadSummary(), loadRows(false)]);
       if (state.selectedKey) {
         const [rowKind, rowId] = state.selectedKey.split(':');
         await loadDetail(rowKind, rowId);
       }
-      if (manual) notify('Sprint 3 review data refreshed.');
+      if (manual) notify('Review data refreshed.');
       setMessage('');
     } catch (error) {
       setMessage(error.message, 'error');

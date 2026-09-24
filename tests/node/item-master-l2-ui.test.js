@@ -27,7 +27,7 @@ test('L2 uses the dedicated in-workspace Item Master navigation', () => {
   assert.doesNotMatch(ui, /document\.createElement\('button'\)/);
   assert.match(ui, /data-item-master-l2-workspace/);
   assert.match(ui, /setBaseInventoryVisible/);
-  assert.match(ui, /Checkpoint L2 · Verified Inventory Foundation/);
+  assert.match(ui, />Verified inventory</);
 });
 
 test('the editor covers the complete item-master contract', () => {

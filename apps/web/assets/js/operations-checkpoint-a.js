@@ -71,7 +71,7 @@
 
   async function api(action, options = {}) {
     const endpoint = apiEndpoint();
-    if (!endpoint) throw new Error('Checkpoint A operations API is not configured for this preview.');
+    if (!endpoint) throw new Error('Daily routines is not available in this environment.');
     const activeSession = await session();
     if (!activeSession?.access_token) throw new Error('Sign in to Atlas to load operational routines.');
 
@@ -235,7 +235,7 @@
     return `<section class="checkpoint-a-shell" data-checkpoint-a>
       <header class="checkpoint-a-hero">
         <div>
-          <span class="checkpoint-a-kicker"><i data-lucide="calendar-check-2"></i>Checkpoint A · Daily routines</span>
+          <span class="checkpoint-a-kicker"><i data-lucide="calendar-check-2"></i>Daily routines</span>
           <h2>Today’s operational routines</h2>
           <p>Weekly cleaning, inventory reminders and daily temperature evidence appear only when they are due. Every action keeps its staff, time and notes.</p>
         </div>

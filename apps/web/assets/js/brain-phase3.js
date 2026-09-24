@@ -74,7 +74,7 @@
 
   async function api(action, options = {}) {
     const endpoint = phase3Api();
-    if (!endpoint) throw new Error('Phase 3 Brain API is not configured for this preview.');
+    if (!endpoint) throw new Error('Decision memory is not available in this environment.');
     const activeSession = await session();
     if (!activeSession?.access_token) throw new Error('Sign in to Atlas to load Phase 3.');
 
@@ -95,7 +95,7 @@
       body: options.body ? JSON.stringify(options.body) : undefined
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `Phase 3 request failed (${response.status}).`);
+    if (!response.ok) throw new Error(payload.error || `Decision memory request failed (${response.status}).`);
     return payload;
   }
 
@@ -164,7 +164,7 @@
   function errorMarkup(message) {
     return `<section class="phase3-shell is-error" data-phase3-brain>
       <div class="phase3-state-icon"><i data-lucide="brain-circuit"></i></div>
-      <div><h2>Phase 3 unavailable</h2><p>${escapeHtml(message)}</p></div>
+      <div><h2>Decision memory unavailable</h2><p>${escapeHtml(message)}</p></div>
       <button type="button" class="phase3-primary-action" data-phase3-refresh><i data-lucide="refresh-cw"></i>Try again</button>
     </section>`;
   }
@@ -179,7 +179,7 @@
     return `<section class="phase3-shell" data-phase3-brain>
       <header class="phase3-hero">
         <div>
-          <span class="phase3-kicker"><i data-lucide="brain-circuit"></i>Phase 3 · Atlas Decision Memory</span>
+          <span class="phase3-kicker"><i data-lucide="brain-circuit"></i>Decision memory</span>
           <h2>Atlas remembers what VÁ decides.</h2>
           <p>Every recommendation keeps its evidence, manager response and eventual outcome. Operational predictions remain locked until their required live evidence is verified.</p>
         </div>
@@ -218,7 +218,7 @@
 
           <section class="phase3-trust-strip">
             <i data-lucide="shield-check"></i>
-            <div><strong>Phase 3 safety contract</strong><span>AI generation off · Automatic ordering off · Automatic menu changes off · Historical stock excluded from predictions · Manager review required</span></div>
+            <div><strong>Safety rules</strong><span>AI generation off · Automatic ordering off · Automatic menu changes off · Historical stock excluded from predictions · Manager review required</span></div>
           </section>
         </aside>
       </div>
@@ -365,7 +365,7 @@
       state.snapshot = payload.snapshot;
       state.manager = payload.manager || null;
     } catch (error) {
-      state.error = error instanceof Error ? error.message : 'Phase 3 could not be loaded.';
+      state.error = error instanceof Error ? error.message : 'Decision memory could not be loaded.';
     } finally {
       state.loading = false;
       queueRender();

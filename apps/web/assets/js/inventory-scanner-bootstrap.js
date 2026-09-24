@@ -157,7 +157,7 @@
     script.onerror = () => {
       state.stockCountsLoading = false;
       script.remove();
-      console.error('Checkpoint L1 stock-count workspace could not load.');
+      console.error('Stock count could not load.');
     };
     document.body.appendChild(script);
   }

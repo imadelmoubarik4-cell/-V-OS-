@@ -19,7 +19,7 @@ test('Checkpoint A loads from the isolated Phase 3 branch', () => {
 });
 
 test('Checkpoint A presents day-aware routines and daily temperature evidence', () => {
-  assert.match(moduleSource, /Checkpoint A · Daily routines/);
+  assert.match(moduleSource, />Daily routines</);
   assert.match(moduleSource, /Sunday inventory, Monday deep cleaning and Tuesday storage organisation/);
   assert.match(moduleSource, /Daily temperature log/);
   assert.match(moduleSource, /Corrective action is required for an out-of-range temperature/);

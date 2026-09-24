@@ -386,7 +386,10 @@
     }
     if (query.includes('stock') || query.includes('inventory')) {
       const low = lowInventory();
-      if (!low.length) return 'Inventory levels are currently above their configured par levels.';
+      const active = sourceItems().filter((item) => item.active !== false);
+      const unverified = active.filter((item) => !window.AtlasStockTruth?.known(item)).length;
+      if (!low.length && unverified === active.length) return 'No item has a verified count yet, so Atlas cannot tell which stock is low.';
+      if (!low.length) return `Nothing with a verified count is below par.${unverified ? ` ${unverified} ${unverified === 1 ? 'item has' : 'items have'} no verified count.` : ''}`;
       return `${low.length} inventory ${low.length === 1 ? 'item is' : 'items are'} below par. The first item to review is ${low[0].name}, with ${number(low[0].quantity)} ${low[0].unit || 'units'} in stock.`;
     }
     return 'Ask about today’s priorities, service readiness, purchasing, inventory, recipes, or which recipe to feature.';
@@ -498,7 +501,7 @@
     dom.shell.innerHTML = `
       <header class="brain-hero">
         <div class="brain-hero-copy">
-          <span class="brain-kicker"><i data-lucide="brain-circuit"></i>Atlas Alpha 0.5</span>
+          <span class="brain-kicker"><i data-lucide="brain-circuit"></i>Atlas Brain</span>
           <h1>${escape(greeting())}, ${escape(userName())}.</h1>
           <p>${escape(date)}. Atlas is reading live stock, recipe, supplier and operations data to prepare one clear management briefing.</p>
           <div class="brain-briefing-line"><i data-lucide="sparkles"></i><span>${escape(topBriefing())}</span></div>
@@ -558,17 +561,24 @@
   function bindRenderedEvents() {
     dom.shell.querySelectorAll('[data-brain-target]').forEach((button) => button.addEventListener('click', () => navigate(button.dataset.brainTarget)));
     dom.shell.querySelector('[data-brain-refresh]')?.addEventListener('click', render);
-    dom.shell.querySelectorAll('[data-brain-prompt]').forEach((button) => button.addEventListener('click', () => {
-      state.assistantAnswer = assistantResponse(button.dataset.brainPrompt);
+    // Questions the global Ask Atlas understands are answered by it, so both
+    // boxes give the same answer from the same data; the rest use the
+    // readiness summary below.
+    const answerQuestion = async (question) => {
       const answer = document.getElementById('brain-assistant-answer');
+      let text = null;
+      try {
+        const shared = await window.AtlasSearch?.answerFor?.(question);
+        if (shared) text = [shared.text, ...(shared.lines || []).map((line) => `• ${line}`)].join('\n');
+      } catch { text = null; }
+      state.assistantAnswer = text || assistantResponse(question);
       if (answer) answer.textContent = state.assistantAnswer;
-    }));
+    };
+    dom.shell.querySelectorAll('[data-brain-prompt]').forEach((button) => button.addEventListener('click', () => answerQuestion(button.dataset.brainPrompt)));
     dom.shell.querySelector('#brain-assistant-form')?.addEventListener('submit', (event) => {
       event.preventDefault();
       const input = document.getElementById('brain-assistant-input');
-      state.assistantAnswer = assistantResponse(input?.value || '');
-      const answer = document.getElementById('brain-assistant-answer');
-      if (answer) answer.textContent = state.assistantAnswer;
+      answerQuestion(input?.value || '');
       if (input) input.value = '';
     });
   }

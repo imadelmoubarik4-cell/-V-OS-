@@ -398,7 +398,7 @@
     const trainingCompleted = Number(ownProgress.required_completed || 0);
     return `<section class="knowledge-shell">
       <header class="knowledge-hero">
-        <div><span><i data-lucide="book-open-check"></i>Checkpoint G · Approved internal knowledge</span><h1>Knowledge</h1><p>Policies, procedures, checklists, live resources and role-based training in one version-controlled staff library.</p></div>
+        <div><span><i data-lucide="book-open-check"></i>Approved internal knowledge</span><h1>Knowledge</h1><p>Policies, procedures, checklists, live resources and role-based training in one version-controlled staff library.</p></div>
         <div class="knowledge-hero-actions"><button type="button" data-knowledge-refresh><i data-lucide="refresh-cw"></i>Refresh</button>${canManage() ? '<button type="button" class="is-primary" data-knowledge-new><i data-lucide="plus"></i>New article</button>' : ''}</div>
       </header>
 

@@ -78,7 +78,7 @@
     element.innerHTML = `<section class="settings-shell settings-loading" data-settings-bridge-loading>
       <span class="settings-loading-icon"><i data-lucide="settings-2"></i></span>
       <h2>Loading Atlas Settings</h2>
-      <p>Opening the Checkpoint J control centre.</p>
+      <p>Opening Settings.</p>
       <div class="settings-loading-grid"><i></i><i></i><i></i><i></i></div>
     </section>`;
     window.lucide?.createIcons?.();

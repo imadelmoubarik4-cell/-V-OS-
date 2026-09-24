@@ -770,7 +770,7 @@
     const totalSources = sources.length;
     return `<section class="reports-shell">
       <header class="reports-hero">
-        <div><span class="reports-kicker"><i data-lucide="chart-no-axes-combined"></i>Checkpoint H · Read & analyse</span><h1>Reports</h1><p>Understand what happened, what requires attention and how trustworthy the available evidence is—without changing source records.</p></div>
+        <div><span class="reports-kicker"><i data-lucide="chart-no-axes-combined"></i>Read & analyse</span><h1>Reports</h1><p>Understand what happened, what requires attention and how trustworthy the available evidence is—without changing source records.</p></div>
         <div class="reports-hero-meta"><span><i data-lucide="calendar-range"></i>${escapeHtml(state.snapshot?.period?.label || '')}</span><span><i data-lucide="clock-3"></i>Refreshed ${escapeHtml(formatDateTime(state.snapshot?.generated_at))}</span><span><i data-lucide="database"></i>${availableSources}/${totalSources} sources available · ${connectedSources} fully connected</span></div>
       </header>
       ${state.message ? `<div class="reports-feedback is-success"><i data-lucide="circle-check-big"></i>${escapeHtml(state.message)}</div>` : ''}

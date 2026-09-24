@@ -238,7 +238,7 @@
     if (state.loading && !force) return;
     const api = String(cfg.SPRINT4_BRIEFING_API || '').trim();
     if (!api) {
-      state.error = 'Sprint 4 briefing API is not configured for this build.';
+      state.error = 'Daily Briefing is not available in this environment.';
       state.loading = false;
       queueRender();
       return;

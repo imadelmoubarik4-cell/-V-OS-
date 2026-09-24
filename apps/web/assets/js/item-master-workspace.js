@@ -79,7 +79,7 @@
 
   async function api(action, method = 'GET', body = null) {
     const base = endpoint();
-    if (!base) throw new Error('Checkpoint L2 item-master API is not configured.');
+    if (!base) throw new Error('Item Master is not available in this environment.');
     const session = await currentSession();
     if (!session?.access_token) throw new Error('Sign in to Atlas to use the item-master queue.');
     const url = new URL(base);
@@ -95,7 +95,7 @@
       body: body ? JSON.stringify(body) : undefined,
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `Checkpoint L2 request failed (${response.status}).`);
+    if (!response.ok) throw new Error(payload.error || `Item Master request failed (${response.status}).`);
     return payload;
   }
 
@@ -286,7 +286,7 @@
     const mount = ensureMount();
     if (!mount || !state.active) return;
     mount.hidden = false;
-    mount.innerHTML = `<div class="item-master-hero"><div><p class="item-master-eyebrow">Checkpoint L2 · Verified Inventory Foundation</p><h1>Item-master completion</h1><p>Prioritise the records that block verified shortage, purchasing and menu guidance. Save privately, review evidence, then publish explicitly.</p></div>
+    mount.innerHTML = `<div class="item-master-hero"><div><p class="item-master-eyebrow">Verified inventory</p><h1>Item-master completion</h1><p>Prioritise the records that block verified shortage, purchasing and menu guidance. Save privately, review evidence, then publish explicitly.</p></div>
       <button type="button" class="btn ghost" data-l2-refresh ${state.loading ? 'disabled' : ''}><span data-lucide="refresh-cw"></span>${state.loading ? 'Refreshing…' : 'Refresh queue'}</button></div>
       ${state.error ? `<div class="item-master-message is-error"><span data-lucide="triangle-alert"></span>${escapeHtml(state.error)}</div>` : ''}
       ${state.message ? `<div class="item-master-message is-success"><span data-lucide="circle-check"></span>${escapeHtml(state.message)}</div>` : ''}

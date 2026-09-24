@@ -286,7 +286,7 @@
       <section class="recipe-alpha03">
         <header class="recipe-alpha03-head">
           <div>
-            <span class="recipe-kicker">Atlas Alpha 0.3</span>
+            <span class="recipe-kicker">Recipes</span>
             <h1>Recipe Library</h1>
             <p>Service specifications, live inventory availability and cost performance in one workspace.</p>
           </div>

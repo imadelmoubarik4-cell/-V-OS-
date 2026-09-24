@@ -59,7 +59,7 @@
 
   async function requestRefresh() {
     const api = endpoint();
-    if (!api) throw new Error('Checkpoint K intelligence API is not configured.');
+    if (!api) throw new Error('Intelligence is not available in this environment.');
     const activeSession = await session();
     if (!activeSession?.access_token) throw new Error('Sign in to Atlas to refresh intelligence.');
     const url = new URL(api);
@@ -75,7 +75,7 @@
       body: '{}'
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `Checkpoint K refresh failed (${response.status}).`);
+    if (!response.ok) throw new Error(payload.error || `Intelligence could not refresh (${response.status}).`);
     return payload;
   }
 
@@ -118,11 +118,11 @@
     const domains = Array.isArray(intelligence?.domains) ? intelligence.domains : [];
     return `<section class="phase3-panel checkpoint-k-panel" data-checkpoint-k-panel>
       <header class="phase3-panel-head checkpoint-k-head">
-        <div><span><i data-lucide="sparkles"></i>Checkpoint K</span><h3>Operational intelligence readiness</h3><p>Atlas now evaluates shortage, purchasing, menu and waste evidence separately. It unlocks safe shadow scopes without pretending missing data is complete.</p></div>
+        <div><span><i data-lucide="sparkles"></i>Intelligence</span><h3>Operational intelligence readiness</h3><p>Atlas now evaluates shortage, purchasing, menu and waste evidence separately. It unlocks safe shadow scopes without pretending missing data is complete.</p></div>
         <aside><strong>${domains.length}/4</strong><small>domains assessed</small></aside>
       </header>
       ${state.error ? `<div class="checkpoint-k-warning"><i data-lucide="triangle-alert"></i><span>${escapeHtml(state.error)}</span></div>` : ''}
-      <div class="checkpoint-k-grid">${domains.length ? domains.map(domainMarkup).join('') : '<p class="phase3-empty">Checkpoint K has not completed its first source assessment yet.</p>'}</div>
+      <div class="checkpoint-k-grid">${domains.length ? domains.map(domainMarkup).join('') : '<p class="phase3-empty">Atlas has not completed its first data assessment yet.</p>'}</div>
       <div class="checkpoint-k-contract"><i data-lucide="shield-check"></i><span>Historical July stock is excluded from predictions · Negative adjustments are not waste · No automatic orders, menu changes or staff attribution</span></div>
     </section>`;
   }
@@ -151,8 +151,10 @@
     else main.prepend(next);
 
     const kicker = document.querySelector('#brain-shell .phase3-kicker');
-    if (kicker && !kicker.textContent.includes('Checkpoint K')) {
-      kicker.innerHTML = '<i data-lucide="brain-circuit"></i>Phase 3 · Decision Memory + Checkpoint K';
+    // Written once; a text check here would rewrite the node on every pass.
+    if (kicker && kicker.dataset.atlasKicker !== 'intelligence') {
+      kicker.dataset.atlasKicker = 'intelligence';
+      kicker.innerHTML = '<i data-lucide="brain-circuit"></i>Decision memory and intelligence';
     }
     window.lucide?.createIcons?.();
   }
@@ -180,7 +182,7 @@
       state.synced = true;
       await window.AtlasPhase3Brain?.refresh?.();
     } catch (error) {
-      state.error = error instanceof Error ? error.message : 'Checkpoint K could not refresh.';
+      state.error = error instanceof Error ? error.message : 'Intelligence could not refresh.';
     } finally {
       state.syncing = false;
       scheduleRender();

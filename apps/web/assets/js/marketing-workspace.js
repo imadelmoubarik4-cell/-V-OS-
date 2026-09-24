@@ -164,7 +164,7 @@
 
   async function api(action, options = {}) {
     const endpoint = marketingApi();
-    if (!endpoint) throw new Error('Checkpoint D Marketing API is not configured for this preview.');
+    if (!endpoint) throw new Error('Marketing is not available in this environment.');
     const session = await activeSession();
     if (!session?.access_token) throw new Error('Sign in to Atlas to open Marketing.');
 
@@ -660,7 +660,7 @@
   function shellMarkup() {
     return `<section class="marketing-shell">
       <header class="marketing-hero">
-        <div><span><i data-lucide="megaphone"></i>Checkpoint D · Content planning</span><h1>Marketing</h1><p>Plan campaigns, reminders, content and approvals before any social connection exists.</p></div>
+        <div><span><i data-lucide="megaphone"></i>Content planning</span><h1>Marketing</h1><p>Plan campaigns, reminders, content and approvals before any social connection exists.</p></div>
         <div class="marketing-hero-actions"><button type="button" class="marketing-secondary" data-marketing-team-channel><i data-lucide="messages-square"></i><span>Marketing chat</span></button>${state.staff?.can_create ? '<button type="button" class="marketing-primary" data-marketing-new-content aria-label="New content"><i data-lucide="plus"></i><span>New content</span></button>' : ''}</div>
       </header>
       <div class="marketing-trust"><i data-lucide="shield-check"></i><div><strong>Planning mode</strong><span>No automatic publishing · No analytics ingestion · OAuth tokens never enter the browser · Manager approval required</span></div></div>

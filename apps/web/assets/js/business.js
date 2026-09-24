@@ -413,7 +413,7 @@
     dom.shell.innerHTML = `
       <header class="business-hero">
         <div class="business-hero-copy">
-          <span class="business-kicker"><i data-lucide="chart-no-axes-combined"></i>Atlas Alpha 0.6</span>
+          <span class="business-kicker"><i data-lucide="chart-no-axes-combined"></i>Business intelligence</span>
           <h1>Business Intelligence</h1>
           <p>Understand the financial and operational signals already available inside Atlas without inventing sales, bookings or labour data that has not yet been connected.</p>
           <div class="business-period-control" aria-label="Business intelligence period">${periodControlsMarkup()}</div>
