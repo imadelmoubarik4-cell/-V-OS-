@@ -167,4 +167,38 @@
     --glass-fill-soft: #ffffff;
   }
 }
+
+/* Shell and Quick actions rules (moved here from atlas-glass--components.css in S88;
+   shell chrome is rebuilt in the shell package). */
+/* PR29 shell navigation: one destination per workspace with a compact desktop rail. */
+@media (min-width: 761px) {
+  #mobile-menu-btn.mobile-menu { display: grid; }
+  body.atlas-sidebar-collapsed .atlas-brand > div:last-child,
+  body.atlas-sidebar-collapsed .nav-label,
+  body.atlas-sidebar-collapsed .nav-item-label,
+  body.atlas-sidebar-collapsed .profile-copy,
+  body.atlas-sidebar-collapsed #logout-btn,
+  body.atlas-sidebar-collapsed .system-nav-status,
+  body.atlas-sidebar-collapsed .review-nav-count,
+  body.atlas-sidebar-collapsed .team-nav-unread { display: none !important; }
+}
+
+.service-toggle {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700));
+  border-radius: 12px;
+  box-shadow: 0 8px 20px -12px rgba(47, 128, 237, .9);
+}
+
+.service-toggle:hover { background: var(--blue-700); }
+
+/* Quick actions */
+.fab-wrap .fab-btn,
+#fab-btn {
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-700));
+  box-shadow: 0 12px 30px -14px rgba(47, 128, 237, .95);
+}
+
+#fab-menu button {
+  color: var(--atlas-text);
+}
 }

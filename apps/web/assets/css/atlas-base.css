@@ -1,0 +1,125 @@
+/* Atlas base — reset-level rules shared by every page (layer atlas.base, below
+ * atlas.legacy: a base rule never overrides a legacy page rule). First step of
+ * the S88 consolidation: the base rules of the retired override stylesheets. */
+@layer atlas.base {
+/* Focus is always visible for keyboard users. */
+:where(button, a[href], input, select, textarea, [role="button"], [tabindex="0"]):focus-visible {
+  outline: 2px solid var(--atlas-accent);
+  outline-offset: 2px;
+}
+
+/* Wide data tables scroll inside their card; the page never scrolls sideways. */
+.atlas-table-scroll { min-width: 0; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+:where(button, input, select, textarea):disabled { cursor: not-allowed; opacity: .55; }
+
+/* Reduced motion: the OS setting and the personal Reduce motion preference.
+   !important in an earlier layer beats !important in every later layer. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+html.atlas-reduce-motion *,
+html.atlas-reduce-motion *::before,
+html.atlas-reduce-motion *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Legacy defaults: the non-!important rules of the retired override files. */
+/* ---------- from legacy/atlas-glass--search.css ---------- */
+:where(.atlas-search input, .atlas-content input, .atlas-content select, .atlas-content textarea, .modal input, .modal select, .modal textarea) {
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-line);
+  border-radius: 12px;
+  color: var(--atlas-text);
+}
+:where(.atlas-search input:focus, .atlas-content input:focus, .atlas-content select:focus, .atlas-content textarea:focus, .modal input:focus, .modal select:focus, .modal textarea:focus) {
+  outline: none;
+  border-color: var(--blue-400);
+  box-shadow: 0 0 0 3px rgba(47, 128, 237, .14);
+}
+/* ---------- from legacy/workspaces-polish--components.css ---------- */
+/* ---------- Shared surface treatment ---------- */
+:where(.marketing-panel, .marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .marketing-modal, .team-messages-layout, .team-profiles-layout, .team-profiles-state, .team-profile-panel, .team-profile-detail, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .shift-month-state, .shift-card, .knowledge-article-card, .knowledge-summary-grid > *, .knowledge-trust-panel, .knowledge-training-hero, .knowledge-connection-card, .knowledge-state, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal, .business-card, .reports-hero-meta, .reports-filter-shell, .reports-table-panel, .reports-chart-empty, .settings-panel, .settings-card, .settings-activity-list article) {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--atlas-text);
+}
+/* Nested cards sit inside an already-glass panel: fill only, no second shadow. */
+:where(.marketing-modal-backdrop) {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+:where(.team-message-content) {
+  box-shadow: 0 1px 2px rgba(16, 60, 110, .05);
+}
+/* A manager-only note is a permission boundary; it keeps a distinct tone. */
+:where(.team-profile-modal-backdrop) {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+/* ---------- Shifts ---------- */
+:where(.shift-modal-backdrop) {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+:where(.knowledge-drawer-backdrop, .knowledge-modal-backdrop) {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+/* ---------- Settings ---------- */
+:where(.empty-module svg) {
+  color: var(--blue-400);
+}
+/* ---------- Fallbacks ---------- */
+@media (prefers-reduced-transparency: reduce) {
+  :where(.team-messages-layout, .team-profiles-layout, .team-profiles-directory, .marketing-panel, .marketing-modal, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal, .settings-panel, .settings-card, .settings-hero, .reports-table-panel, .reports-filter-shell, .business-card, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .team-message-list) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+/* ---------- from legacy/polish-pass2--components.css ---------- */
+/* Wide workspace content stays within the shared rail and advertises overflow
+   at the component boundary instead of widening the full application. */
+:where(.reports-table-scroll, .settings-hours-table, .shift-month-grid, #table-wrap) {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+/* ---------- Primary buttons: one blue primary across the product ----------
+   Marketing shipped a near-black primary (--atlas-text), Shifts a brown one
+   (#a6814d), Operations a black compact button. (confirmed) */
+:where(.marketing-primary:hover:not(:disabled), .shift-primary:hover, .checkpoint-a-compact-button:hover, .knowledge-primary:hover, .shifts-primary:hover, .team-messages-primary:hover) {
+  transform: translateY(-1px);
+}
+/* ---------- from legacy/s34-preproduction--search.css ---------- */
+/* Compact search field used across launch modules. */
+:where(:where(.atlas-search,.recipe-search,.purchasing-search,.knowledge-search,.team-attachment-controls label, .brain-search,.settings-search)) {
+  max-width:420px;
+}
+@media(max-width:680px) {
+  :where(:where(.atlas-search,.recipe-search,.purchasing-search,.knowledge-search,.team-attachment-controls label, .brain-search,.settings-search)) {
+    max-width:none;
+    width:100%;
+  }
+}
+/* ---------- from legacy/s38-app-remediation--search.css ---------- */
+/* Compact Apple-style search controls */
+:where(:is( .atlas-search, .purchasing-search, .recipe-search, .team-attachment-controls label )) {
+  border-radius: 999px;
+}
+:where(:is( #global-search, #supplier-search, #recipe-search, [data-team-target-search] )) {
+  max-height: 42px;
+  box-shadow: inset 0 1px 2px rgba(31, 57, 93, .04);
+}
+/* ---------- from legacy/accessibility-responsive-s61--components.css ---------- */
+@media (max-width: 760px) {
+  :where(.toast) {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: calc(86px + env(safe-area-inset-bottom));
+    max-width: calc(100vw - 28px);
+  }
+}
+}

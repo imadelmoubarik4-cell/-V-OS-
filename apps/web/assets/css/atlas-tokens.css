@@ -142,5 +142,9 @@
   --s38-blue-line: #cbdcf8;
   --blue-600: var(--atlas-accent);
   --blue-700: var(--atlas-accent-strong);
+  --atlas-action-hover: #1f66c9;
+  --atlas-card-radius: 16px;
+  --atlas-card-shadow: 0 10px 28px rgba(30,42,56,.07);
+  --atlas-card-shadow-hover: 0 15px 34px rgba(30,61,105,.12);
 }
 }

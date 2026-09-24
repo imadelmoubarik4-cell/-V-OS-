@@ -80,11 +80,16 @@ test('shared launch design uses blue actions, compact search, visible focus, and
   assert.match(tokens, /--atlas-accent: #2f80ed;/);
   assert.match(tokens, /--atlas-action: var\(--atlas-accent\);/);
   assert.doesNotMatch(design, /--atlas-action:#2d78dc/);
-  assert.match(design, /:focus-visible/);
-  assert.match(design, /input\[type="search"\]/);
-  assert.match(design, /@media\(prefers-reduced-motion:reduce\)/);
+  // S88: the shared focus, search and reduced-motion rules moved into the
+  // design system (atlas-base.css and atlas-components.css).
+  const base = readFileSync('apps/web/assets/css/atlas-base.css', 'utf8');
+  const components = readFileSync('apps/web/assets/css/atlas-components.css', 'utf8');
+  assert.match(base, /:focus-visible/);
+  assert.match(components, /input\[type="search"\]/);
+  assert.match(base, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(design, /#home-focus::after/);
-  assert.match(app, /assets\/css\/legacy\/s34-preproduction--base\.css\?v=20260926-s88/);
+  assert.match(app, /assets\/css\/atlas-base\.css\?v=20260926-s88/);
+  assert.match(app, /assets\/css\/atlas-components\.css\?v=20260926-s88/);
 });
 
 test('conversation stars persist through the private gateway', () => {
