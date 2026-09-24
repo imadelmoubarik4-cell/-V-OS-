@@ -8,7 +8,7 @@ import { buildProposal, COUNT_UNITS } from "./actions.mjs";
 import {
   calculation, fact, interpretation, missing, ok, quantityLabel, record, source, ToolError, truncate,
 } from "./result.mjs";
-import { clampLimit, isManagerActor, lower, matchByName, newId, numberOrNull, text, withinDays } from "./helpers.mjs";
+import { clampLimit, isManagerActor, lower, matchByName, newId, numberOrNull, text, withinDays, nowMillis } from "./helpers.mjs";
 
 const ALL = ["admin", "manager", "bartender", "viewer"];
 const OPERATIONAL = ["admin", "manager", "bartender"];
@@ -284,14 +284,14 @@ const staleCounts = {
   async execute(args, ctx) {
     const manager = isManagerActor(ctx.actor);
     const days = args.days ?? 7;
-    const nowMillis = Number(ctx.now) || Date.now();
+    const nowMs = nowMillis(ctx);
     const stock = await report(ctx, args.category ? { category: args.category } : {});
     const reasons = [];
     for (const row of stock.rows) {
       let reason = null;
       if (row.quantity_status !== "current") reason = row.quantity_status;
       else if (row.recount_due) reason = "recount_due";
-      else if (!withinDays(row.verified_at, days, nowMillis)) reason = "older_than_window";
+      else if (!withinDays(row.verified_at, days, nowMs)) reason = "older_than_window";
       if (reason) reasons.push({ row, reason });
     }
     const byReason = {};
@@ -401,7 +401,7 @@ const prepareCount = {
     const stock = await report(ctx);
     const categories = [...new Set(resolved.map(({ item }) => text(item.category)).filter(Boolean))];
     const scope = categories.length === 1 && resolved.every(({ item }) => text(item.category)) ? { type: "category", value: categories[0] } : { type: "all", value: null };
-    const date = new Date(Number(ctx.now) || Date.now()).toISOString().slice(0, 10);
+    const date = new Date(nowMillis(ctx)).toISOString().slice(0, 10);
     const command = {
       title: args.title || `Atlas count ${date}`,
       scope_type: scope.type,

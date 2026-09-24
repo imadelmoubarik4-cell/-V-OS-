@@ -8,7 +8,7 @@ import { marginRows } from "./tools-recipes.mjs";
 import {
   calculation, estimate, fact, formatIsk, formatNumber, interpretation, missing, ok, record, source, ToolError, truncate,
 } from "./result.mjs";
-import { clampLimit, isManagerActor, lower, numberOrNull, withinDays } from "./helpers.mjs";
+import { clampLimit, isManagerActor, lower, numberOrNull, withinDays, nowMillis } from "./helpers.mjs";
 
 const ALL = ["admin", "manager", "bartender", "viewer"];
 const MANAGERS = ["admin", "manager"];
@@ -117,11 +117,11 @@ const spend = {
   parameters: S.object({ days: S.nullable(S.integer("Period length in days (default 30)", { minimum: 1, maximum: 366 })) }),
   async execute(args, ctx) {
     const days = args.days ?? 30;
-    const nowMillis = Number(ctx.now) || Date.now();
+    const nowMs = nowMillis(ctx);
     const [movements, suppliers] = await Promise.all([ctx.services.movements(), ctx.services.suppliers()]);
     const names = new Map(suppliers.map((supplier) => [String(supplier.id), supplier.name]));
     const receipts = movements.filter((movement) => RECEIPT_TYPES.has(lower(movement.movement_type))
-      && numberOrNull(movement.quantity_change) > 0 && withinDays(movement.created_at, days, nowMillis));
+      && numberOrNull(movement.quantity_change) > 0 && withinDays(movement.created_at, days, nowMs));
     let total = 0;
     let uncosted = 0;
     const bySupplier = new Map();
@@ -166,12 +166,12 @@ const waste = {
   parameters: S.object({ days: S.nullable(S.integer("Period length in days (default 30)", { minimum: 1, maximum: 366 })) }),
   async execute(args, ctx) {
     const days = args.days ?? 30;
-    const nowMillis = Number(ctx.now) || Date.now();
+    const nowMs = nowMillis(ctx);
     const manager = isManagerActor(ctx.actor);
     const [movements, items] = await Promise.all([ctx.services.movements(), ctx.services.inventory()]);
     const costs = new Map(items.map((item) => [String(item.id), numberOrNull(item.cost_price)]));
     const units = new Map(items.map((item) => [String(item.id), item.unit || "units"]));
-    const rows = movements.filter((movement) => WASTE_TYPES.has(lower(movement.movement_type)) && withinDays(movement.created_at, days, nowMillis));
+    const rows = movements.filter((movement) => WASTE_TYPES.has(lower(movement.movement_type)) && withinDays(movement.created_at, days, nowMs));
     const byItem = new Map();
     let costedValue = 0;
     let uncosted = 0;

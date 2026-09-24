@@ -9,7 +9,7 @@ import { buildProposal } from "./actions.mjs";
 import {
   calculation, estimate, fact, formatIsk, formatNumber, interpretation, missing, ok, quantityLabel, record, source, ToolError, truncate,
 } from "./result.mjs";
-import { clampLimit, lower, matchByName, newId, numberOrNull, text, venueDates, withinDays } from "./helpers.mjs";
+import { clampLimit, lower, matchByName, newId, numberOrNull, text, venueDates, withinDays, nowMillis } from "./helpers.mjs";
 
 const MANAGERS = ["admin", "manager"];
 export const OPEN_ORDER_STATUSES = ["draft", "pending_approval", "approved", "ordered", "partially_received"];
@@ -481,7 +481,7 @@ const costChanges = {
   async execute(args, ctx) {
     const days = args.days ?? 90;
     const minimum = args.min_increase_percent ?? 0;
-    const nowMillis = Number(ctx.now) || Date.now();
+    const nowMs = nowMillis(ctx);
     const movements = await ctx.services.movements();
     const receipts = movements
       .filter((movement) => RECEIPT_MOVEMENT_TYPES.has(lower(movement.movement_type)) && numberOrNull(movement.unit_cost) > 0 && numberOrNull(movement.quantity_change) > 0)
@@ -496,7 +496,7 @@ const costChanges = {
     let singleReceipt = 0;
     for (const history of byItem.values()) {
       const latest = history[history.length - 1];
-      if (!withinDays(latest.created_at, days, nowMillis)) continue;
+      if (!withinDays(latest.created_at, days, nowMs)) continue;
       if (history.length < 2) {
         singleReceipt += 1;
         continue;

@@ -64,17 +64,17 @@ export function weekdayName(isoDate) {
 
 // { businessDate, calendarDate, timezone, source, clock } for the venue.
 export async function venueDates(ctx, services) {
-  const nowMillis = Number(ctx.now) || Date.now();
+  const nowMs = nowMillis(ctx);
   if (ctx.venue?.businessDate) {
     const timezone = ctx.venue.timezone || DEFAULT_TIME_ZONE;
-    return { businessDate: ctx.venue.businessDate, calendarDate: calendarDate(nowMillis, timezone), timezone, source: "context", clock: null };
+    return { businessDate: ctx.venue.businessDate, calendarDate: calendarDate(nowMs, timezone), timezone, source: "context", clock: null };
   }
   try {
     const clock = await services.venueClock();
     if (clock && /^\d{4}-\d{2}-\d{2}$/.test(String(clock.business_date || ""))) {
       return {
         businessDate: clock.business_date,
-        calendarDate: clock.venue_date || calendarDate(nowMillis, clock.timezone),
+        calendarDate: clock.venue_date || calendarDate(nowMs, clock.timezone),
         timezone: clock.timezone || DEFAULT_TIME_ZONE,
         source: "venue_clock",
         clock,
@@ -84,7 +84,7 @@ export async function venueDates(ctx, services) {
     // Fall back to the venue calendar date below.
   }
   const timezone = ctx.venue?.timezone || DEFAULT_TIME_ZONE;
-  const date = calendarDate(nowMillis, timezone);
+  const date = calendarDate(nowMs, timezone);
   return { businessDate: date, calendarDate: date, timezone, source: "calendar_fallback", clock: null };
 }
 
@@ -142,4 +142,12 @@ export function withinDays(isoTimestamp, days, nowMillis) {
 export function newId() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
   throw new ToolError("unavailable", "A secure identifier could not be generated.");
+}
+
+// ctx.now may be a function returning a Date or epoch ms (atlas-ai runtime),
+// a Date, or epoch milliseconds (tests). Anything else falls back to the clock.
+export function nowMillis(ctx) {
+  const value = typeof ctx?.now === "function" ? ctx.now() : ctx?.now;
+  const ms = value instanceof Date ? value.getTime() : Number(value);
+  return Number.isFinite(ms) && ms > 0 ? ms : Date.now();
 }

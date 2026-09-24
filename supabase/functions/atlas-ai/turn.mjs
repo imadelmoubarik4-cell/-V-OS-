@@ -118,7 +118,7 @@ export class TurnState {
       conversationId,
       get runId() { return self.runId; },
       audit: (record) => self.audit(record),
-      services: { rpc: services.rpc },
+      // Data access is created by the gateway from fetch/env/actor (user JWT + verified actor).
     };
   }
 

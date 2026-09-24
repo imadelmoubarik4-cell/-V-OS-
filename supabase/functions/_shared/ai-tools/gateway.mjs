@@ -1,3 +1,4 @@
+import { nowMillis } from "./helpers.mjs";
 // Atlas AI Tool Gateway.
 //
 // runTool enforces, in order: tool exists → actor active → role allowed →
@@ -103,7 +104,7 @@ function servicesFor(ctx) {
   if (ctx.services) return ctx.services;
   if (!ctx.__services) {
     Object.defineProperty(ctx, "__services", {
-      value: createServices({ fetch: ctx.fetch, env: ctx.env, actor: ctx.actor, now: Number(ctx.now) || Date.now() }),
+      value: createServices({ fetch: ctx.fetch, env: ctx.env, actor: ctx.actor, now: nowMillis(ctx) }),
       enumerable: false,
       configurable: true,
     });

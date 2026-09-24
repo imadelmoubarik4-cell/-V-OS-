@@ -1,3 +1,4 @@
+import { nowMillis } from "./helpers.mjs";
 // Atlas AI proposals: the Draft → Execute boundary.
 //
 // Draft tools call `buildProposal(kind, command, meta)`; nothing changes.
@@ -381,7 +382,7 @@ export async function executeProposal(kind, storedCommand, ctx) {
   if (!definition.executable) {
     return failure("not_executable", "Atlas does not make this change. Open the linked screen to review it yourself.");
   }
-  const services = ctx.services || createServices({ fetch: ctx.fetch, env: ctx.env, actor, now: ctx.now });
+  const services = ctx.services || createServices({ fetch: ctx.fetch, env: ctx.env, actor, now: nowMillis(ctx) });
   try {
     switch (kind) {
       case "purchase_order.create": {
