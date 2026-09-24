@@ -30,10 +30,12 @@ test('every empty Month cell names the exact date in its Add shift action', () =
   assert.match(month, /aria-label="Add first shift on \$\{escapeHtml\(formatDay\(state\.selectedDate/);
 });
 
-test('narrow layouts reserve space for the single owning floating action', () => {
-  assert.match(css, /#reports-view[\s\S]+?\.fab-wrap[\s\S]+?display:\s*none !important/);
+test('narrow layouts reserve space for the phone tab bar, not a floating action', () => {
+  // S88 redesign (spec §4.12): the floating + button is retired; the phone tab
+  // bar owns the bottom edge and pages pad above it.
+  assert.doesNotMatch(css, /\.fab-wrap/);
+  assert.doesNotMatch(shell, /class="fab-wrap"|id="fab-btn"/);
   assert.match(css, /padding-bottom:\s*calc\(96px \+ env\(safe-area-inset-bottom\)\)/);
-  assert.match(css, /max-height:\s*calc\(100dvh - 104px\)/);
   // S88: the S61 rules live in legacy/accessibility-responsive-s61--*.css fragments.
   assert.match(shell, /legacy\/accessibility-responsive-s61--[a-z-]+\.css\?v=20260926-s88/);
   assert.match(shell, /shifts-month-calendar\.js\?v=20260926-s88/);

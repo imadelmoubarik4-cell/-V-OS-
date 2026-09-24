@@ -11,6 +11,7 @@
 
 import { assertStrictSchema } from "./schema.mjs";
 import { INVENTORY_TOOLS } from "./tools-inventory.mjs";
+import { RECOGNITION_TOOLS } from "./tools-recognition.mjs";
 import { RECIPE_TOOLS } from "./tools-recipes.mjs";
 import { PURCHASING_TOOLS } from "./tools-purchasing.mjs";
 import { REPORT_TOOLS } from "./tools-reports.mjs";
@@ -29,7 +30,12 @@ const SOURCES = {
   "inventory.below_par": "buildStockReport status below_par / out_of_stock (strict < positive par on verified stock)",
   "inventory.stale_counts": "buildStockReport quantity_status, verified_at, recount_due",
   "inventory.lookup_barcode": "atlas-inventory-scanner ?action=lookup (user JWT) + buildStockReport",
-  "inventory.prepare_count": "inventory items (user JWT) + buildStockReport; executes via atlas-stock-counts start + save-line",
+  "inventory.prepare_count": "inventory items (user JWT) + inventory.resolve_name + buildStockReport; executes via atlas-stock-counts start + save-line",
+  "inventory.identify_from_image": "atlas_ai_media_get + atlas-ai-media storage (service) + vision extraction; _shared/recognition pipeline over atlas_recognition_resolve_codes / _candidates / _record (NOLOGIN recognition definer, no stock writes)",
+  "inventory.resolve_name": "atlas_recognition_candidates (aliases, identity/name/match keys, packs) scored by _shared/recognition; falls back to the same scorer over inventory rows",
+  "inventory.propose_alias": "inventory items + inventory.resolve_name; executes atlas_catalog_request_create alias (pending, source ai_proposal)",
+  "inventory.propose_item": "atlas_recognition_find_duplicates (duplicate guard first); executes atlas_catalog_request_create new_item (pending, source ai_proposal)",
+  "inventory.report_wrong_match": "inventory items; executes atlas_catalog_request_create wrong_match_report (pending, source ai_proposal)",
   "recipes.search": "recipes+recipe_ingredients (managers) / recipe_catalog (staff); _shared/atlas-domain recipeStatus over projectStock",
   "recipes.get": "recipes / recipe_catalog; atlas-domain recipeMetrics, recipeStatus, recipeBlockers",
   "recipes.can_make": "atlas-domain recipeAvailability / recipeStatus / recipeBlockers over projectStock",
@@ -39,7 +45,7 @@ const SOURCES = {
   "purchasing.get_supplier": "suppliers, inventory_items, purchase_orders (user JWT, manager RLS)",
   "purchasing.prepare_draft_po": "suppliers, inventory_items (user JWT); executes atlas_purchase_order_command_v2 create",
   "purchasing.order_status": "purchase_orders (user JWT) + venue business date",
-  "purchasing.compare_delivery": "atlas_purchase_order_detail (user JWT); executes atlas_purchase_order_command_v2 receive_lines",
+  "purchasing.compare_delivery": "atlas_purchase_order_detail (user JWT) + inventory.resolve_name over the order lines; executes atlas_purchase_order_command_v2 receive_lines",
   "purchasing.cost_changes": "inventory_movements restock receipts with unit_cost (user JWT)",
   "reports.sales": "none — sales/POS not connected",
   "reports.margin": "atlas-domain recipeMetrics financials (theoretical)",
@@ -70,6 +76,9 @@ const SOURCES = {
 // Proposal kind produced by each draft tool (documentation).
 const PROPOSALS = {
   "inventory.prepare_count": "stock_count.draft",
+  "inventory.propose_alias": "catalog.alias",
+  "inventory.propose_item": "catalog.new_item",
+  "inventory.report_wrong_match": "catalog.wrong_match",
   "purchasing.prepare_draft_po": "purchase_order.create",
   "purchasing.compare_delivery": "purchase_order.receive",
   "shifts.prepare_draft": "shift.draft",
@@ -88,6 +97,11 @@ const EVIDENCE = {
   "inventory.stale_counts": "calculation totals; fact per reason",
   "inventory.lookup_barcode": "fact match; fact/missing stock",
   "inventory.prepare_count": "fact counted (user-reported) and current stock",
+  "inventory.identify_from_image": "interpretation label reading and each candidate's evidence sentence; fact exact code match (High); missing unreadable fields",
+  "inventory.resolve_name": "fact exact name or code; interpretation name/alias match; missing no match",
+  "inventory.propose_alias": "fact item; interpretation current resolution; missing not recognised yet",
+  "inventory.propose_item": "interpretation possible existing matches with score and evidence; missing none found",
+  "inventory.report_wrong_match": "fact matched item; interpretation reported right item",
   "recipes.search": "calculation/missing servings",
   "recipes.get": "fact stock/package/usage, calculation servings, missing blockers",
   "recipes.can_make": "fact stock, package size, recipe usage; calculation servings; missing blockers",
@@ -156,6 +170,7 @@ function freezeEntry(tool) {
 
 export const TOOL_REGISTRY = Object.freeze([
   ...INVENTORY_TOOLS,
+  ...RECOGNITION_TOOLS,
   ...RECIPE_TOOLS,
   ...PURCHASING_TOOLS,
   ...REPORT_TOOLS,

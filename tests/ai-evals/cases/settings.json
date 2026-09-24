@@ -47,7 +47,7 @@
     "expected": {
       "ok": true,
       "summary": ["Atlas does not change settings"],
-      "data": { "data.route": "#settings?tab=hours" },
+      "data": { "data.route": "#settings/hours" },
       "proposal": { "kind": "settings.suggestion", "executable": false, "required_roles": ["admin", "manager"], "preview": { "will_change": { "$len": 0 } } }
     }
   },

@@ -37,11 +37,6 @@
   .checkpoint-a-home-prompt.s38-attention-pulse { animation: none; }
 }
 
-#login-screen .login-card :is(input[type=email],input[type=password]) { min-height:48px; margin-bottom:18px; border:1px solid var(--s38-line); border-radius:13px; background:#f8faff; color:var(--s38-ink); }
-#login-screen .login-card :is(input[type=email],input[type=password]):focus { border-color:var(--s38-blue); box-shadow:0 0 0 4px rgba(79,125,243,.12); }
-#login-screen #login-btn { min-height:48px; border-radius:13px; background:var(--s38-blue); color:#fff; }
-#login-screen #login-btn:hover { background:var(--s38-blue-strong); }
-#login-screen .login-card > p:last-child { margin:18px 0 0; text-align:center; font-size:12px; }
 #home-focus .focus-row,
 #home-focus [data-atlas-brain-focus],
 #home-focus [data-atlas-business-focus]{

@@ -403,15 +403,16 @@
     home: { icon: 'list-checks', label: 'Home', route: () => '#home' }
   };
 
+  // Server records carry canonical spec routes (#inventory/item/<id>, …); the
+  // type table is only a fallback for records without one.
   function recordRoute(record) {
+    if (typeof record?.route === 'string' && /^#[a-z]/.test(record.route)) return record.route;
     const type = RECORD_TYPES[record?.type];
-    if (type) {
-      try {
-        const route = type.route(record.id == null ? '' : String(record.id));
-        if (route && !route.endsWith('/')) return route;
-      } catch { /* fall through */ }
-    }
-    return typeof record?.route === 'string' && record.route.startsWith('#') ? record.route : null;
+    if (!type) return null;
+    try {
+      const route = type.route(record.id == null ? '' : String(record.id));
+      return route && !route.endsWith('/') ? route : null;
+    } catch { return null; }
   }
 
   function recordIcon(type) {
@@ -535,10 +536,6 @@
     if (!rootEl.dataset.aiReady) {
       rootEl.dataset.aiReady = 'true';
       rootEl.classList.add('atlas-ai');
-      // Until the redesign tokens land, the base shell defines --bg/--text/
-      // --line/--surface for its old dark theme; scope correct values here.
-      const tokens = root.getComputedStyle?.(document.documentElement);
-      if (tokens && !tokens.getPropertyValue('--line-subtle').trim()) rootEl.classList.add('ai-legacy-tokens');
       rootEl.innerHTML = skeletonMarkup();
       bindSkeleton(rootEl);
     }
@@ -548,11 +545,6 @@
 
   function skeletonMarkup() {
     return `
-      <div class="ai-phonebar">
-        <button type="button" class="atlas-icon-btn" data-ai-open-list aria-label="Conversations">${icon('history', 'icon--lg')}</button>
-        <div class="ai-phonebar__title" aria-hidden="true">Atlas AI</div>
-        <button type="button" class="atlas-icon-btn" data-ai-new aria-label="New conversation">${icon('pencil', 'icon--lg')}</button>
-      </div>
       <div class="ai-layout">
         <div class="ai-scrim" data-ai-close-list hidden></div>
         <aside class="ai-list" id="ai-list" aria-label="Conversations" tabindex="-1">
@@ -605,7 +597,7 @@
         </section>
         <section class="ai-decisions" data-ai-decisions aria-labelledby="ai-decisions-title" hidden></section>
       </div>
-      <div class="ai-toast-region" data-ai-toasts role="status" aria-live="polite"></div>`;
+`;
   }
 
   function el(name) {
@@ -622,7 +614,7 @@
       composerWrap: q('[data-ai-composer-wrap]'), composer: q('[data-ai-composer]'), input: q('[data-ai-input]'), bar: q('[data-ai-bar]'),
       record: q('[data-ai-record]'), attachments: q('[data-ai-attachments]'), hint: q('[data-ai-hint]'), prompts: q('[data-ai-prompts]'),
       voiceSlot: q('[data-ai-voice-slot]'), filePhoto: q('[data-ai-file-photo]'), fileCamera: q('[data-ai-file-camera]'), fileAny: q('[data-ai-file-any]'),
-      decisions: q('[data-ai-decisions]'), toasts: q('[data-ai-toasts]')
+      decisions: q('[data-ai-decisions]')
     };
 
     rootEl.addEventListener('click', onRootClick);
@@ -700,18 +692,9 @@
     root.setTimeout(() => { region.textContent = text; }, 30);
   }
 
+  // Completed actions only (spec §4.11), through the shell's one toast.
   function toast(text, action = null) {
-    if (root.AtlasShell?.toast && typeof root.AtlasShell.toast === 'function') {
-      root.AtlasShell.toast(text, action ? { action } : undefined);
-      return;
-    }
-    const region = el('toasts');
-    if (!region) return;
-    region.innerHTML = `<div class="atlas-toast">${icon('circle-check')}<span>${escapeHtml(text)}</span>${action ? `<button type="button" data-ai-toast-action>${escapeHtml(action.label)}</button>` : ''}</div>`;
-    const button = region.querySelector('[data-ai-toast-action]');
-    if (button) button.addEventListener('click', () => { region.innerHTML = ''; action.run(); });
-    root.clearTimeout(state.toastTimer);
-    state.toastTimer = root.setTimeout(() => { region.innerHTML = ''; }, action ? 8000 : 4000);
+    root.AtlasShell?.toast?.(text, action ? { action: { label: action.label, onClick: action.run } } : undefined);
   }
 
   // ---------- conversation list ----------
@@ -919,12 +902,12 @@
   function openMenu(trigger, items) {
     closeMenu();
     const menu = document.createElement('div');
-    menu.className = 'ai-menu';
+    menu.className = 'atlas-menu ai-menu';
     menu.setAttribute('role', 'menu');
     menu._trigger = trigger;
     menu.innerHTML = items.map((item, index) => (item.divider
-      ? '<div class="ai-menu__divider" role="separator"></div>'
-      : `<button type="button" role="menuitem" class="ai-menu__item${item.danger ? ' is-danger' : ''}" data-index="${index}" tabindex="-1">${icon(item.icon)}${escapeHtml(item.label)}</button>`)).join('');
+      ? '<hr class="atlas-menu__sep" role="separator">'
+      : `<button type="button" role="menuitem" class="atlas-menu__item${item.danger ? ' atlas-menu__item--danger' : ''}" data-index="${index}" tabindex="-1">${icon(item.icon)}${escapeHtml(item.label)}</button>`)).join('');
     state.root.appendChild(menu);
     const rect = trigger.getBoundingClientRect();
     const rootRect = state.root.getBoundingClientRect();
@@ -1142,13 +1125,31 @@
     </div>`;
   }
 
+  // Spec §4.4/§8.7: the phone tab bar is hidden inside a conversation and
+  // while live voice is on; the empty state keeps it.
+  function syncTabBar() {
+    const hide = state.visible && (state.conv.messages.length > 0 || Boolean(state.live));
+    root.AtlasChrome?.setTabBarHidden?.('ai', hide);
+    state.root?.classList.toggle('has-tabbar', state.visible && !hide);
+  }
+
+  function setTopBar() {
+    root.AtlasChrome?.setTopBar?.({
+      own: true,
+      actions: [
+        { icon: 'history', label: 'Conversations', run: () => openListSheet() },
+        { icon: 'square-pen', label: 'New conversation', run: () => newConversation({ route: true }) }
+      ]
+    });
+  }
+
   function renderThread() {
     const container = el('messages');
     if (!container) return;
     renderThreadHead();
     const { conv } = state;
     state.root.classList.toggle('has-messages', conv.messages.length > 0);
-    document.body.classList.toggle('is-ai-thread', state.visible && conv.messages.length > 0);
+    syncTabBar();
     if (conv.loading) {
       container.innerHTML = `<div class="ai-loading" aria-busy="true"><div class="msg-user"><div class="atlas-skel" style="width:46%;height:40px;border-radius:16px"></div></div><div class="atlas-skel" style="width:30%"></div><div class="atlas-skel" style="width:92%;margin-top:12px"></div><div class="atlas-skel" style="width:74%;margin-top:10px"></div><span class="sr-only">Loading conversation</span></div>`;
       return;
@@ -2105,7 +2106,7 @@
     if (!slot) return;
     slot.innerHTML = liveMarkup();
     state.root.classList.toggle('is-voice', Boolean(state.live));
-    document.body.classList.toggle('is-ai-voice', Boolean(state.live));
+    syncTabBar();
   }
 
   function waveLoop() {
@@ -2400,10 +2401,14 @@
         <p class="ai-decisions__foot">${rows.length} ${rows.length === 1 ? 'decision' : 'decisions'} · Atlas records these so it can explain what was decided before. Nothing here changes stock, orders or shifts.</p>`;
       }
     }
-    container.innerHTML = `<div class="ai-decisions__inner">
-      <div class="page-head ai-decisions__head"><div><h1 class="ai-decisions__title" id="ai-decisions-title">Decisions</h1><p class="ai-decisions__sub">What Atlas suggested, what was decided and what happened next.</p></div>
-      <button type="button" class="atlas-btn atlas-btn--secondary" data-ai-dec-refresh${d.loading ? ' disabled aria-busy="true"' : ''}>${icon('refresh-cw')}Refresh</button></div>
-      ${filters}${body}</div>`;
+    const head = root.AtlasShell.pageHead({
+      id: 'ai-decisions-title',
+      title: 'Decisions',
+      sub: 'What Atlas suggested, what was decided and what happened next.',
+      actions: [{ label: 'Refresh', icon: 'refresh-cw', variant: 'secondary', attrs: { 'data-ai-dec-refresh': '', ...(d.loading ? { disabled: '', 'aria-busy': 'true' } : {}) } }]
+    });
+    container.innerHTML = `<div class="ai-decisions__inner">${head}${filters}${body}</div>`;
+    root.lucide?.createIcons?.();
   }
 
   async function loadDecisions() {
@@ -2710,7 +2715,7 @@
   function render(params = {}) {
     if (!ensureRoot()) return;
     state.visible = true;
-    document.body.classList.add('is-ai');
+    setTopBar();
     measureTop();
     if (!state.initialized) {
       state.initialized = true;
@@ -2729,7 +2734,8 @@
     if (params.new || params.context || params.q) {
       const context = state.pendingContext || parseContext(params.context);
       state.pendingContext = null;
-      if (context && params.view) context.view = params.view;
+      const from = params.view || params.from || null;
+      if (context && from && !context.view) context.view = from;
       if (!state.conv.messages.length || params.new) newConversation({ context, focus: !params.q });
       else if (context) { state.composer.context = context; renderComposerBar(); }
       if (params.q) {
@@ -2752,7 +2758,7 @@
     if (state.live) endLive();
     closeMenu();
     closeListSheet();
-    document.body.classList.remove('is-ai', 'is-ai-thread', 'is-ai-voice');
+    root.AtlasChrome?.setTabBarHidden?.('ai', false);
   }
 
   // Opens Atlas AI with an optional question and page context.
@@ -2795,19 +2801,6 @@
     });
   }
 
-  function ensureNavItem() {
-    const nav = document.querySelector('.atlas-nav');
-    if (!nav || nav.querySelector('.nav-item[data-view="ai"]')) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'nav-item nav-item--ai';
-    button.dataset.view = 'ai';
-    button.innerHTML = `${icon('sparkles')}<span>Atlas AI</span>`;
-    const home = nav.querySelector('.nav-item[data-view="dashboard"]');
-    if (home) home.insertAdjacentElement('afterend', button);
-    else nav.prepend(button);
-  }
-
   function registerWithShell() {
     const shell = root.AtlasShell;
     if (!shell) return;
@@ -2840,7 +2833,6 @@
     if (state.booted) return;
     state.booted = true;
     ensureRoot();
-    ensureNavItem();
     registerWithShell();
     root.addEventListener('pagehide', () => { if (state.live?.session) state.live.session.exit(); });
     root.addEventListener('online', () => renderComposerBar());

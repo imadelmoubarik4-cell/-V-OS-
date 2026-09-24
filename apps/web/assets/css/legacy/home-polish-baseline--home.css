@@ -261,9 +261,6 @@
 
 /* Preserve the existing global quick action and search controls exactly as
  * functional components; only align their Home-page visual weight. */
-body:has(#home-intro:not([style*="display: none"]):not([style*="display:none"])) .fab-btn {
-  box-shadow: var(--atlas-home-shadow-raised);
-}
 @media (max-width: 1050px) {
   #home-metrics,
   #dashboard-view .stat-grid {

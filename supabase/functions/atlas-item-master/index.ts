@@ -321,6 +321,14 @@ function catalogErrorDetails(details) {
     return null;
   }
 }
+
+// A decided request that came from an approved Atlas AI proposal is also
+// written to the Brain (atlas_catalog_record_ai_decision -> brain_decisions).
+function shouldRecordAiDecision(request) {
+  return Boolean(request && typeof request === "object" && request.source === "ai_proposal"
+    && typeof request.ai_action_id === "string" && request.ai_action_id
+    && ["applied", "rejected", "failed"].includes(String(request.status)));
+}
 // s89-catalog-helpers:end
 
 function jsonResponse(value, status = 200) {
@@ -1313,7 +1321,16 @@ Deno.serve(async (request) => {
         p_actor_id: context.user.id,
         p_actor_label: labelFor(context),
       });
-      return jsonResponse({ request, stock_changed: false });
+      let brainDecision = null;
+      if (shouldRecordAiDecision(request)) {
+        // Best effort: the catalogue decision stands even if the Brain write fails.
+        brainDecision = await branchRpc("atlas_catalog_record_ai_decision", {
+          p_change_request_id: request.id,
+          p_actor_id: context.user.id,
+          p_actor_label: labelFor(context),
+        }).catch(() => ({ recorded: false, reason: "unavailable" }));
+      }
+      return jsonResponse({ request, brain_decision: brainDecision, stock_changed: false });
     }
     if (action === "catalog-withdraw" || action === "catalog_withdraw") {
       const request = await branchRpc("atlas_catalog_request_withdraw", {

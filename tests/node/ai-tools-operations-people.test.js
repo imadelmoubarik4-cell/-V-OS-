@@ -114,7 +114,7 @@ test('knowledge: search via atlas_knowledge_search with the verified actor, cite
   const call = backend.calls.find((entry) => entry.name === 'atlas_knowledge_search');
   assert.deepEqual(call.args, { p_query: 'closing', p_actor_id: IDS.viewer, p_actor_role: 'viewer', p_limit: 3 });
   assert.equal(search.data.results[0].version_id, IDS.articleVersion);
-  assert.equal(search.records[0].route, `#knowledge?article=${IDS.article}`);
+  assert.equal(search.records[0].route, `#knowledge/${IDS.article}`);
   const get = await run('viewer', 'knowledge.get', { article_id: IDS.article }, { backend });
   assert.equal(get.data.version.number, 2);
   assert.equal(backend.calls.find((entry) => entry.name === 'atlas_knowledge_article_detail').args.p_prefer_draft, false);
@@ -136,7 +136,7 @@ test('settings are read only and hours are reported as not set', async () => {
   const suggestion = await run('manager', 'settings.suggest_change', { section: 'hours', change: 'Set Friday 16:00–01:00', reason: null });
   assert.equal(suggestion.proposal.kind, 'settings.suggestion');
   assert.equal(suggestion.proposal.executable, false);
-  assert.equal(suggestion.proposal.route, '#settings?tab=hours');
+  assert.equal(suggestion.proposal.route, '#settings/hours');
 });
 
 test('decision memory, data quality and par suggestions are manager-only', async () => {
@@ -147,7 +147,7 @@ test('decision memory, data quality and par suggestions are manager-only', async
   const review = await run('manager', 'data_quality.review_list', { issue: null, limit: null, offset: null });
   assert.equal(review.data.issues[0].count, 234);
   const rows = await run('manager', 'data_quality.review_list', { issue: 'recipe.ingredient_unlinked', limit: null, offset: null });
-  assert.equal(rows.records[0].route, `#recipes?recipe=${IDS.margarita}`);
+  assert.equal(rows.records[0].route, `#recipes/${IDS.margarita}`);
   const par = await run('manager', 'data_quality.par_suggestions', { item_ids: null, cover_days: 7, limit: null });
   assert.equal(par.proposal.kind, 'par_level.suggestion');
   assert.equal(par.proposal.executable, false);
@@ -176,7 +176,7 @@ test('marketing ideas are labelled as seeded; integrations report true states an
 test('app.open returns a route and reads no data', async () => {
   const backend = createBackend();
   const result = await run('viewer', 'app.open', { target: 'recipes', record_type: 'recipe', record_id: IDS.margarita, label: 'Margarita' }, { backend });
-  assert.equal(result.data.route, `#recipes?recipe=${IDS.margarita}`);
+  assert.equal(result.data.route, `#recipes/${IDS.margarita}`);
   assert.equal(backend.calls.length, 0);
   assert.equal((await run('viewer', 'app.open', { target: 'purchase_orders', record_type: null, record_id: null, label: null })).error.code, 'forbidden');
   assert.equal((await run('viewer', 'app.open', { target: 'home', record_type: 'purchase_order', record_id: IDS.po1, label: null })).error.code, 'forbidden');

@@ -65,7 +65,7 @@ test('approved draft purchase order runs atlas_purchase_order_command_v2 create 
   assert.equal(call.args.p_action, 'create');
   assert.deepEqual(call.args.p_lines, proposal.command.p_lines);
   assert.equal(executed.result.data.status, 'draft');
-  assert.equal(executed.result.records[0].route, `#suppliers?purchase_order=${proposal.command.p_id}`);
+  assert.equal(executed.result.records[0].route, `#purchasing/order/${proposal.command.p_id}`);
 });
 
 test('approved receiving runs receive_lines with version and request id; only what arrived', async () => {

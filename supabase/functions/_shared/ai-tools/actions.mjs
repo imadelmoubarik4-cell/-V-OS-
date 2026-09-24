@@ -102,6 +102,44 @@ const COMMAND_SCHEMAS = {
     change: S.string(null, { maxLength: 1000 }),
     reason: nullableText(1000),
   }),
+  "catalog.alias": S.object({
+    request_id: S.uuid(),
+    item_id: S.uuid(),
+    item_name: S.string(null, { maxLength: 300 }),
+    alias: S.string(null, { maxLength: 200 }),
+    alias_kind: S.enum(["product_name", "supplier_name", "ocr_variant", "legacy_name"]),
+    language: S.nullable(S.enum(["is", "en", "fr", "other"])),
+    reason: nullableText(500),
+    recognition_request_id: S.nullable(S.uuid()),
+  }),
+  "catalog.new_item": S.object({
+    request_id: S.uuid(),
+    values: S.object({
+      name: S.string(null, { maxLength: 200 }),
+      brand: S.nullable(S.string(null, { maxLength: 120 })),
+      variant: S.nullable(S.string(null, { maxLength: 120 })),
+      category: S.nullable(S.string(null, { maxLength: 120 })),
+      item_class: S.nullable(S.string(null, { maxLength: 40 })),
+      packaging_type: S.nullable(S.string(null, { maxLength: 40 })),
+      unit: S.nullable(S.string(null, { maxLength: 40 })),
+      unit_size_quantity: S.nullable(S.number(null, { minimum: 0.001, maximum: 1000000 })),
+      unit_size_base: S.nullable(S.enum(["ml", "g", "count"])),
+      units_per_case: S.nullable(S.integer(null, { minimum: 1, maximum: 1000 })),
+    }),
+    codes: S.array(S.object({ kind: S.enum(["gtin", "sku", "other_barcode"]), code: S.string(null, { maxLength: 64 }) }), null, { minItems: 0, maxItems: 5 }),
+    notes: nullableText(1000),
+    duplicate_candidates: S.array(S.uuid(), null, { minItems: 0, maxItems: 10 }),
+    recognition_request_id: S.nullable(S.uuid()),
+  }),
+  "catalog.wrong_match": S.object({
+    request_id: S.uuid(),
+    item_id: S.uuid(),
+    item_name: S.string(null, { maxLength: 300 }),
+    suggested_item_id: S.nullable(S.uuid()),
+    suggested_item_name: nullableText(300),
+    note: S.string(null, { maxLength: 1000 }),
+    recognition_request_id: S.nullable(S.uuid()),
+  }),
   "par_level.suggestion": S.object({
     cover_days: S.number(null, { minimum: 1, maximum: 60 }),
     items: S.array(S.object({
@@ -124,6 +162,12 @@ export const PROPOSAL_KINDS = Object.freeze({
   "knowledge.draft": { roles: MANAGERS, executable: true, subject: "knowledge_article" },
   "settings.suggestion": { roles: MANAGERS, executable: false, subject: "settings" },
   "par_level.suggestion": { roles: MANAGERS, executable: false, subject: "par_levels" },
+  // Catalogue proposals: approving the card only submits a PENDING request
+  // (atlas_catalog_request_create, source ai_proposal); a manager decides it
+  // in the approval queue. Nothing is created, linked or merged here.
+  "catalog.alias": { roles: OPERATIONAL, executable: true, subject: "inventory_item" },
+  "catalog.new_item": { roles: OPERATIONAL, executable: true, subject: "inventory_item" },
+  "catalog.wrong_match": { roles: OPERATIONAL, executable: true, subject: "inventory_item" },
 });
 
 // Roles that may execute this exact command (announcements are manager-only).
@@ -272,6 +316,57 @@ export function buildPreview(kind, command, extras = {}) {
         will_not_change: ["Nothing is saved. Open the par editor to review and apply the suggestions."],
         route: routeFor("par_levels"),
       };
+    case "catalog.alias":
+      return {
+        headline: `Add "${command.alias}" as another name for ${command.item_name}`,
+        lines: [
+          { label: "Item", detail: command.item_name },
+          { label: "Other name", detail: `${command.alias} (${command.alias_kind.replace(/_/g, " ")}${command.language ? `, ${command.language}` : ""})` },
+          ...(command.reason ? [{ label: "Why", detail: command.reason }] : []),
+        ],
+        recipients: [],
+        will_change: ["A request to add this name is sent to a manager for approval."],
+        will_not_change: [
+          "Nothing changes until a manager approves it.",
+          "Stock, items, costs and suppliers do not change.",
+        ],
+        route: routeFor("inventory_item", command.item_id),
+      };
+    case "catalog.new_item": {
+      const v = command.values;
+      const size = v.unit_size_quantity ? `${formatNumber(v.unit_size_quantity)} ${v.unit_size_base}` : null;
+      return {
+        headline: `Request a new product: ${v.name}`,
+        lines: [
+          { label: "Product", detail: [v.brand, v.name, v.variant].filter(Boolean).join(" · ") },
+          ...(v.category || v.item_class ? [{ label: "Type", detail: [v.category, v.item_class].filter(Boolean).join(" · ") }] : []),
+          ...(size || v.packaging_type ? [{ label: "Package", detail: [v.packaging_type, size, v.units_per_case ? `${v.units_per_case} per case` : null].filter(Boolean).join(" · ") }] : []),
+          ...(command.codes.length ? [{ label: "Barcode", detail: command.codes.map((code) => code.code).join(", ") }] : []),
+          ...((extras.duplicates ?? []).length ? [{ label: "Possible existing matches", detail: extras.duplicates.join(", ") }] : []),
+          ...(command.notes ? [{ label: "Notes", detail: command.notes }] : []),
+        ],
+        recipients: [],
+        will_change: ["A new-product request is sent to a manager, who checks the possible existing matches before creating anything."],
+        will_not_change: [
+          "No item is created until a manager approves it; it then starts with no stock (not counted).",
+          "Stock, costs and suppliers do not change.",
+        ],
+        route: routeFor("inventory_item"),
+      };
+    }
+    case "catalog.wrong_match":
+      return {
+        headline: `Report a wrong match: ${command.item_name}`,
+        lines: [
+          { label: "Matched", detail: command.item_name },
+          ...(command.suggested_item_name ? [{ label: "Should be", detail: command.suggested_item_name }] : []),
+          { label: "Note", detail: command.note },
+        ],
+        recipients: [],
+        will_change: ["A wrong-match report is sent to a manager to review."],
+        will_not_change: ["No code, name, item or stock changes."],
+        route: routeFor("inventory_item", command.item_id),
+      };
     default:
       return { headline: kind, lines: [], recipients: [], will_change: [], will_not_change: [], route: null };
   }
@@ -373,6 +468,47 @@ async function executeStockCount(command, services) {
       summary: `Count session started with ${saved.length} of ${command.entries.length} counted lines saved. It now needs submitting and manager verification in Stock count; stock has not changed.`,
       data: { session_id: sessionId, saved, not_saved: notSaved, stock_changed: false },
       records: [record("stock_count", sessionId, command.title)],
+    },
+  };
+}
+
+// Catalogue proposals become PENDING requests in the approval queue, linked
+// to the Atlas AI action so the manager's decision is recorded in the Brain.
+const UUID_RE = new RegExp(UUID_PATTERN);
+
+async function executeCatalogRequest(kind, command, services, ctx) {
+  const common = {
+    p_source: "ai_proposal",
+    p_ai_action_id: typeof ctx?.actionId === "string" && UUID_RE.test(ctx.actionId) ? ctx.actionId : null,
+    p_recognition_request_id: command.recognition_request_id ?? null,
+    p_media_id: null,
+    p_request_id: `atlas-ai:${command.request_id}`,
+    p_self_approve: false,
+  };
+  let args;
+  if (kind === "catalog.alias") {
+    args = { ...common, p_kind: "alias", p_subject_item_id: command.item_id,
+      p_payload: { item_id: command.item_id, alias: command.alias, alias_kind: command.alias_kind, ...(command.language && command.language !== "other" ? { language: command.language } : {}) },
+      p_evidence: { source: "atlas_ai", reason: command.reason } };
+  } else if (kind === "catalog.new_item") {
+    const values = Object.fromEntries(Object.entries(command.values).filter(([, value]) => value !== null && value !== undefined));
+    args = { ...common, p_kind: "new_item", p_subject_item_id: null,
+      p_payload: { values, codes: command.codes, aliases: [] },
+      p_evidence: { source: "atlas_ai", notes: command.notes, duplicate_candidates_at_draft: command.duplicate_candidates } };
+  } else {
+    args = { ...common, p_kind: "wrong_match_report", p_subject_item_id: command.item_id,
+      p_payload: { item_id: command.item_id, ...(command.suggested_item_id ? { suggested_item_id: command.suggested_item_id } : {}), note: command.note },
+      p_evidence: { source: "atlas_ai" } };
+  }
+  const request = await services.catalogRequestCreate(args);
+  const label = kind === "catalog.alias" ? `Name "${command.alias}" for ${command.item_name}`
+    : kind === "catalog.new_item" ? `New product ${command.values.name}` : `Wrong match ${command.item_name}`;
+  return {
+    ok: true,
+    result: {
+      summary: `${label} sent to a manager for approval (${request?.status ?? "pending"}). Nothing changes until a manager approves it.`,
+      data: { change_request_id: request?.id ?? null, status: request?.status ?? "pending", kind: request?.kind ?? args.p_kind, stock_changed: false },
+      records: command.item_id ? [record("inventory_item", command.item_id, command.item_name)] : [],
     },
   };
 }
@@ -503,6 +639,10 @@ export async function executeProposal(kind, storedCommand, ctx) {
           },
         };
       }
+      case "catalog.alias":
+      case "catalog.new_item":
+      case "catalog.wrong_match":
+        return await executeCatalogRequest(kind, command, services, ctx);
       default:
         return failure("not_executable", "Atlas does not run this kind of action.");
     }

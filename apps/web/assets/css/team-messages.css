@@ -48,10 +48,8 @@
 .team-channel-copy strong,.team-channel-copy small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .team-channel-copy strong{font-size:12px}
 .team-channel-copy small{margin-top:3px;color:var(--atlas-muted);font-size:9px;line-height:1.35}
-.team-unread-count,.team-nav-unread,.team-bell-unread{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--atlas-accent);color:#fff;font-size:9px;font-weight:700;line-height:1}
+.team-unread-count,.team-nav-unread {display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--atlas-accent);color:#fff;font-size:9px;font-weight:700;line-height:1}
 .team-nav-unread{margin-left:auto}
-.team-bell-unread{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 5px;font-size:8px;border:2px solid var(--atlas-bg)}
-.atlas-topbar .top-icon[title="Notifications"]{position:relative}
 .team-channel-panel>footer{display:flex;align-items:flex-start;gap:8px;margin-top:auto;padding:14px 16px;border-top:1px solid var(--atlas-line);color:var(--atlas-muted);font-size:9px;line-height:1.5}
 .team-channel-panel>footer svg{width:15px;height:15px;flex:0 0 auto}
 

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atlas components</title>
+<meta name="description" content="Living gallery of the Atlas design system. Loads the real atlas-tokens, atlas-base and atlas-components stylesheets. Not part of the app bundle.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../../apps/web/assets/css/atlas-tokens.css">
+<link rel="stylesheet" href="../../../apps/web/assets/css/atlas-base.css">
+<link rel="stylesheet" href="../../../apps/web/assets/css/atlas-components.css">
+<style>
+/* Gallery layout only (not a component). */
+@layer atlas.modules {
+  .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-6); margin-top: var(--s-8); }
+  .gallery > .atlas-card { padding: var(--s-5); }
+  .gallery h2 { margin: 0 0 var(--s-4); font: var(--type-heading); }
+  .gallery .wide { grid-column: 1 / -1; }
+  .swatches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); }
+  .swatch { overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-md); font: var(--type-caption); }
+  .swatch i { display: block; height: 36px; }
+  .swatch span { display: block; padding: 6px 8px; color: var(--text-2); }
+  .type-spec > div { display: flex; align-items: baseline; gap: var(--s-4); padding: 6px 0; border-top: 1px solid var(--line-subtle); }
+  .type-spec > div:first-child { border-top: 0; }
+  .type-spec code { flex: none; width: 140px; font: var(--type-caption); font-family: var(--font-mono); color: var(--text-2); }
+  .demo-sheet { position: relative; height: 420px; overflow: hidden; border-radius: var(--r-lg); background: var(--bg-subtle); }
+  .demo-sheet .atlas-scrim, .demo-sheet .atlas-sheet, .demo-sheet .atlas-dialog { position: absolute; animation: none; }
+  .demo-sheet .atlas-scrim { z-index: 0; }
+  @media (max-width: 767px) {
+    .gallery { grid-template-columns: minmax(0, 1fr); }
+    .swatches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .type-spec code { width: 110px; }
+  }
+}
+</style>
+</head>
+<body>
+<main class="atlas-page" id="gallery">
+  <header class="page-head">
+    <div class="page-head__text">
+      <h1 class="page-head__title">Components</h1>
+      <p class="page-head__sub">The Atlas design system, rendered from the real stylesheets.</p>
+    </div>
+    <div class="page-head__actions">
+      <button type="button" class="atlas-btn atlas-btn--secondary"><i data-lucide="download"></i>Export</button>
+      <button type="button" class="atlas-btn atlas-btn--primary" id="demo-primary"><i data-lucide="plus"></i>Add item</button>
+    </div>
+  </header>
+
+  <nav class="atlas-tabs" aria-label="Sections">
+    <a href="#buttons" aria-current="page">Controls</a>
+    <a href="#data">Data <span class="count">12</span></a>
+    <a href="#feedback">Feedback</a>
+    <a href="#overlays">Overlays</a>
+  </nav>
+
+  <div class="atlas-toolbar">
+    <label class="atlas-search"><i data-lucide="search"></i><input class="atlas-input" type="search" placeholder="Search items" aria-label="Search items"><button type="button" class="atlas-search__clear" aria-label="Clear search"><i data-lucide="x"></i></button></label>
+    <button type="button" class="atlas-chip is-active">Below par<span class="atlas-chip__clear" aria-hidden="true"><i data-lucide="x"></i></span></button>
+    <button type="button" class="atlas-chip">Category<i data-lucide="chevron-down"></i></button>
+    <button type="button" class="atlas-chip atlas-chip--dashed"><i data-lucide="plus"></i>More filters</button>
+    <div class="atlas-toolbar__end">128 items</div>
+  </div>
+
+  <div class="gallery">
+    <section class="atlas-card" id="buttons" aria-labelledby="g-buttons">
+      <h2 id="g-buttons">Buttons</h2>
+      <div class="atlas-stack atlas-stack--md">
+        <div class="atlas-cluster">
+          <button type="button" class="atlas-btn atlas-btn--primary" data-test="btn-primary">Create order</button>
+          <button type="button" class="atlas-btn atlas-btn--secondary" data-test="btn-secondary">Edit</button>
+          <button type="button" class="atlas-btn atlas-btn--ghost" data-test="btn-ghost">Cancel</button>
+          <button type="button" class="atlas-btn atlas-btn--danger" data-test="btn-danger">Delete item</button>
+          <button type="button" class="atlas-btn atlas-btn--danger-solid" data-test="btn-danger-solid">Delete</button>
+        </div>
+        <div class="atlas-cluster">
+          <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-test="btn-sm">Small</button>
+          <button type="button" class="atlas-btn atlas-btn--secondary" data-test="btn-md">Default</button>
+          <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-test="btn-lg">Large</button>
+          <button type="button" class="atlas-btn atlas-btn--primary is-loading" aria-busy="true" disabled>Saving</button>
+          <button type="button" class="atlas-btn atlas-btn--secondary" disabled title="You're offline">Disabled</button>
+        </div>
+        <div class="atlas-cluster">
+          <button type="button" class="atlas-icon-btn" aria-label="Notifications" data-atlas-tooltip="Notifications" data-test="icon-btn"><i data-lucide="bell"></i><span class="dot"></span></button>
+          <button type="button" class="atlas-icon-btn" aria-label="More actions"><i data-lucide="ellipsis"></i></button>
+          <span class="kbd">⌘K</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="atlas-card" aria-labelledby="g-inputs">
+      <h2 id="g-inputs">Fields</h2>
+      <form class="atlas-form" onsubmit="return false">
+        <div class="atlas-field">
+          <label for="g-name">Name</label>
+          <input class="atlas-input" id="g-name" placeholder="e.g. Campari" data-test="input">
+          <p class="help">As printed on the label.</p>
+        </div>
+        <div class="atlas-grid-2">
+          <div class="atlas-field">
+            <label for="g-size">Size</label>
+            <div class="atlas-affix"><input class="atlas-input" id="g-size" value="700" inputmode="decimal"><span class="suffix">ml</span></div>
+          </div>
+          <div class="atlas-field">
+            <label for="g-unit">Unit</label>
+            <select class="atlas-select" id="g-unit" data-test="select"><option>Bottle</option><option>Case</option></select>
+          </div>
+        </div>
+        <div class="atlas-field">
+          <label for="g-par">Par level</label>
+          <input class="atlas-input" id="g-par" aria-invalid="true" aria-describedby="g-par-error" value="-2">
+          <p class="error" id="g-par-error"><i data-lucide="circle-alert"></i>Enter a number of 0 or more.</p>
+        </div>
+        <div class="atlas-field">
+          <label for="g-date">Delivery date <span class="optional">(optional)</span></label>
+          <input class="atlas-input" id="g-date" type="date" value="2026-09-24">
+        </div>
+        <div class="atlas-field">
+          <label for="g-notes">Notes</label>
+          <textarea class="atlas-textarea" id="g-notes" placeholder="Anything the team should know"></textarea>
+        </div>
+      </form>
+    </section>
+
+    <section class="atlas-card" aria-labelledby="g-choices">
+      <h2 id="g-choices">Choices</h2>
+      <div class="atlas-stack">
+        <div class="atlas-toggle-row">
+          <div><p class="atlas-toggle-row__label" id="g-t1">Low-stock alerts</p><p class="atlas-toggle-row__help">Notify managers when an item drops below par.</p></div>
+          <button type="button" class="atlas-toggle" role="switch" aria-checked="true" aria-labelledby="g-t1" data-test="toggle"></button>
+        </div>
+        <div class="atlas-toggle-row">
+          <div><p class="atlas-toggle-row__label" id="g-t2">Weekly summary</p><p class="atlas-toggle-row__help">Saving…</p></div>
+          <button type="button" class="atlas-toggle is-pending" role="switch" aria-checked="false" aria-labelledby="g-t2"></button>
+        </div>
+        <div class="atlas-cluster">
+          <label class="atlas-check-row"><input type="checkbox" class="atlas-check" checked>Counted</label>
+          <label class="atlas-check-row"><input type="checkbox" class="atlas-check" id="g-indeterminate">Some</label>
+          <label class="atlas-check-row"><input type="checkbox" class="atlas-check">Not counted</label>
+          <label class="atlas-check-row"><input type="radio" class="atlas-radio" name="g-r" checked>Bottle</label>
+          <label class="atlas-check-row"><input type="radio" class="atlas-radio" name="g-r">Case</label>
+        </div>
+        <div class="atlas-segmented" role="group" aria-label="Period">
+          <button type="button" aria-pressed="true" data-test="segment">Week</button>
+          <button type="button" aria-pressed="false">Month</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="atlas-card" aria-labelledby="g-status">
+      <h2 id="g-status">Status</h2>
+      <div class="atlas-stack">
+        <div class="atlas-cluster">
+          <span class="atlas-pill atlas-pill--positive" data-test="pill-positive">Counted</span>
+          <span class="atlas-pill atlas-pill--warning" data-test="pill-warning">Below par</span>
+          <span class="atlas-pill atlas-pill--danger" data-test="pill-danger">Out</span>
+          <span class="atlas-pill atlas-pill--info" data-test="pill-info">Needs approval</span>
+          <span class="atlas-pill" data-test="pill-neutral">Not counted</span>
+          <span class="atlas-badge" data-test="badge">3</span>
+          <span class="atlas-badge atlas-badge--muted">12</span>
+        </div>
+        <div class="atlas-cluster">
+          <span class="atlas-avatar atlas-avatar--sm atlas-avatar--a">IM</span>
+          <span class="atlas-avatar atlas-avatar--b">SJ<span class="atlas-avatar__status"></span></span>
+          <span class="atlas-avatar atlas-avatar--lg atlas-avatar--c">AK</span>
+          <span class="atlas-avatar atlas-avatar--xl atlas-avatar--d">EB</span>
+        </div>
+        <ol class="atlas-steps" aria-label="Import progress">
+          <li class="is-done"><span class="n"><i data-lucide="check"></i></span>Upload</li>
+          <li class="sep" aria-hidden="true"></li>
+          <li class="is-current" aria-current="step"><span class="n">2</span>Review</li>
+          <li class="sep" aria-hidden="true"></li>
+          <li><span class="n">3</span>Import</li>
+        </ol>
+        <div class="atlas-steps-compact"><span>Step 2 of 3 · Review</span><div class="atlas-progress"><i style="width:66%"></i></div></div>
+      </div>
+    </section>
+
+    <section class="atlas-card wide" id="data" aria-labelledby="g-table">
+      <h2 id="g-table">Table</h2>
+      <div class="atlas-bulkbar"><span>2 selected</span><span class="atlas-bulkbar__sep"></span><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm">Set par</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm">Clear</button></div>
+      <div class="atlas-table-wrap atlas-table-wrap--responsive">
+        <table class="atlas-table">
+          <thead><tr>
+            <th class="col-check"><input type="checkbox" class="atlas-check" aria-label="Select all"></th>
+            <th aria-sort="ascending"><button type="button" class="atlas-th-sort">Item<i data-lucide="chevron-down"></i></button></th>
+            <th data-priority="2">Category</th>
+            <th class="is-num">On hand</th>
+            <th class="is-num" data-priority="3">Unit cost</th>
+            <th>Status</th>
+            <th class="col-actions"><span class="sr-only">Actions</span></th>
+          </tr></thead>
+          <tbody>
+            <tr class="is-selected"><td class="col-check"><input type="checkbox" class="atlas-check" checked aria-label="Select Campari"></td><td><span class="cell-primary">Campari</span><span class="cell-sub">700 ml · Back bar</span></td><td data-priority="2">Spirits</td><td class="is-num">2<span class="atlas-par atlas-par--warning"><i style="width:30%"></i></span></td><td class="is-num" data-priority="3">3.900 kr</td><td><span class="atlas-pill atlas-pill--warning">Below par</span></td><td class="col-actions"><button type="button" class="atlas-icon-btn row-action" aria-label="Actions for Campari"><i data-lucide="ellipsis"></i></button></td></tr>
+            <tr><td class="col-check"><input type="checkbox" class="atlas-check" aria-label="Select Aperol"></td><td><span class="cell-primary">Aperol</span><span class="cell-sub">700 ml · Back bar</span></td><td data-priority="2">Spirits</td><td class="is-num">9</td><td class="is-num" data-priority="3">3.290 kr</td><td><span class="atlas-pill atlas-pill--positive">Counted</span></td><td class="col-actions"><button type="button" class="atlas-icon-btn row-action" aria-label="Actions for Aperol"><i data-lucide="ellipsis"></i></button></td></tr>
+            <tr><td class="col-check"><input type="checkbox" class="atlas-check" aria-label="Select Lime"></td><td><span class="cell-primary">Lime</span><span class="cell-sub">each · Fridge</span></td><td data-priority="2">Fresh fruit</td><td class="is-num">—</td><td class="is-num" data-priority="3">45 kr</td><td><span class="atlas-pill">Not counted</span></td><td class="col-actions"><button type="button" class="atlas-icon-btn row-action" aria-label="Actions for Lime"><i data-lucide="ellipsis"></i></button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="atlas-table-list">
+        <li><a class="atlas-table-list__row" href="#data"><div class="atlas-table-list__body"><div class="atlas-table-list__title">Campari</div><div class="atlas-table-list__meta">700 ml · Back bar</div></div><div class="atlas-table-list__value">2<br><span class="atlas-pill atlas-pill--warning">Below par</span></div></a></li>
+        <li><a class="atlas-table-list__row" href="#data"><div class="atlas-table-list__body"><div class="atlas-table-list__title">Aperol</div><div class="atlas-table-list__meta">700 ml · Back bar</div></div><div class="atlas-table-list__value">9<br><span class="atlas-pill atlas-pill--positive">Counted</span></div></a></li>
+      </ul>
+      <div class="atlas-table-foot"><span>3 items</span><span>Quantities are from the last verified count plus recorded movements.</span></div>
+    </section>
+
+    <section class="wide" aria-labelledby="g-stats">
+      <div class="atlas-section__head"><h2 class="atlas-section__title" id="g-stats">At a glance <span class="atlas-badge atlas-badge--muted">3</span></h2><a class="atlas-section__link" href="#data">View all</a></div>
+      <div class="atlas-stats">
+        <a class="atlas-stat" href="#data"><p class="atlas-stat__label"><i data-lucide="package"></i>Below par</p><p class="atlas-stat__value" data-test="kpi">4<span class="atlas-stat__unit">items</span></p><p class="atlas-stat__detail">Campari is almost out</p><span class="atlas-stat__link">Open inventory<i data-lucide="arrow-right"></i></span></a>
+        <a class="atlas-stat" href="#data"><p class="atlas-stat__label"><i data-lucide="truck"></i>Orders</p><p class="atlas-stat__value">2<span class="atlas-stat__unit">open</span></p><p class="atlas-stat__detail">One arrives today</p><span class="atlas-stat__link">Open purchasing<i data-lucide="arrow-right"></i></span></a>
+        <a class="atlas-stat" href="#data"><p class="atlas-stat__label"><i data-lucide="calendar-days"></i>On shift</p><p class="atlas-stat__value">—</p><p class="atlas-stat__detail">Shifts not published yet</p><span class="atlas-stat__link">Open shifts<i data-lucide="arrow-right"></i></span></a>
+      </div>
+    </section>
+
+    <section class="atlas-card" id="feedback" aria-labelledby="g-rows">
+      <div class="atlas-card__head"><h2 class="atlas-card__title" id="g-rows">Needs attention</h2><a class="atlas-section__link" href="#feedback">View all</a></div>
+      <ul class="atlas-list">
+        <li class="atlas-row"><span class="atlas-row__icon atlas-row__icon--warning"><i data-lucide="package"></i></span><div class="atlas-row__body"><p class="atlas-row__title">Campari is almost out</p><p class="atlas-row__meta">Negroni and Boulevardier are affected</p></div><div class="atlas-row__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action">Order</button><i data-lucide="chevron-right" class="atlas-row__chevron"></i></div></li>
+        <li class="atlas-row"><span class="atlas-row__icon"><i data-lucide="list-checks"></i></span><div class="atlas-row__body"><p class="atlas-row__title">Opening checklist</p><p class="atlas-row__meta">Not started · due 16:00</p></div><div class="atlas-row__end"><span class="atlas-pill">Not started</span></div></li>
+      </ul>
+    </section>
+
+    <section class="atlas-card" aria-labelledby="g-alerts">
+      <h2 id="g-alerts">Alerts and states</h2>
+      <div class="atlas-stack">
+        <div class="atlas-alert atlas-alert--danger" role="alert" data-test="alert-danger"><i data-lucide="circle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Shifts couldn't be loaded.</p><p class="atlas-alert__body">Your changes are safe. Try again, or check your connection.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm">Try again</button></div></div>
+        <div class="atlas-alert atlas-alert--warning" data-test="alert-warning"><i data-lucide="triangle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Stock hasn't been counted yet</p><p class="atlas-alert__body">Quantities show "Not counted" until the first count.</p></div></div>
+        <div class="atlas-alert atlas-alert--info" data-test="alert-info"><i data-lucide="info"></i><div class="atlas-alert__content"><p class="atlas-alert__body">Nothing here changes live records until you approve it.</p></div></div>
+        <div class="atlas-empty" data-test="empty"><div class="atlas-empty__icon"><i data-lucide="lock"></i></div><h3 class="atlas-empty__title">Purchasing is for managers</h3><p class="atlas-empty__text">Ask an administrator for access.</p><button type="button" class="atlas-btn atlas-btn--secondary">Go to Home</button></div>
+        <div class="atlas-stack atlas-stack--sm" aria-hidden="true"><span class="atlas-skel atlas-skel--title"></span><span class="atlas-skel"></span><span class="atlas-skel" style="width:70%"></span></div>
+        <div class="atlas-upload" data-test="upload"><div class="atlas-upload__thumb"><i data-lucide="image"></i></div><div class="atlas-upload__body"><p class="atlas-upload__title">Delivery note</p><p class="atlas-upload__help">Photo or PDF, up to 25 MB.</p></div><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm">Choose</button></div>
+      </div>
+    </section>
+
+    <section class="atlas-card wide" id="overlays" aria-labelledby="g-overlays">
+      <h2 id="g-overlays">Overlays</h2>
+      <div class="atlas-grid-2">
+        <div class="demo-sheet">
+          <div class="atlas-scrim"></div>
+          <section class="atlas-sheet" role="dialog" aria-modal="false" aria-labelledby="g-sheet-title">
+            <span class="atlas-sheet__grabber"></span>
+            <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="g-sheet-title">Add item</h2><p class="atlas-sheet__desc">New items start as Not counted.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close"><i data-lucide="x"></i></button></header>
+            <div class="atlas-sheet__body"><div class="atlas-field"><label for="g-s-name">Name</label><input class="atlas-input" id="g-s-name"></div></div>
+            <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost">Cancel</button><button type="button" class="atlas-btn atlas-btn--primary">Add item</button></footer>
+          </section>
+        </div>
+        <div class="demo-sheet">
+          <div class="atlas-scrim"></div>
+          <section class="atlas-dialog" role="dialog" aria-modal="false" aria-labelledby="g-dialog-title">
+            <h2 class="atlas-dialog__title" id="g-dialog-title">Delete Campari?</h2>
+            <div class="atlas-dialog__body"><p>The item and its par level are removed. Past counts and orders keep their history.</p></div>
+            <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost">Keep item</button><button type="button" class="atlas-btn atlas-btn--danger-solid">Delete</button></div>
+          </section>
+        </div>
+      </div>
+      <div class="atlas-cluster" style="margin-top:var(--s-5)">
+        <ul class="atlas-menu" role="menu" aria-label="Item actions" data-test="menu">
+          <li><button type="button" class="atlas-menu__item" role="menuitem"><i data-lucide="pencil"></i>Edit item</button></li>
+          <li><button type="button" class="atlas-menu__item" role="menuitem"><i data-lucide="copy"></i>Duplicate</button></li>
+          <li role="separator" class="atlas-menu__sep"></li>
+          <li><button type="button" class="atlas-menu__item atlas-menu__item--danger" role="menuitem"><i data-lucide="trash-2"></i>Delete item</button></li>
+        </ul>
+        <div class="atlas-popover"><p class="atlas-row__title">Par level</p><p class="atlas-row__meta">The quantity you want on hand after a delivery.</p></div>
+        <span class="atlas-tooltip" style="position:static">Notifications</span>
+        <div class="atlas-toast" data-test="toast"><i data-lucide="circle-check"></i><span class="atlas-toast__text">Order created</span><button type="button" class="atlas-toast__action">View</button></div>
+      </div>
+    </section>
+
+    <section class="atlas-card" aria-labelledby="g-type">
+      <h2 id="g-type">Type</h2>
+      <div class="type-spec">
+        <div><code>--type-display</code><span style="font:var(--type-display);letter-spacing:var(--track-display)">Good evening</span></div>
+        <div><code>--type-title</code><span style="font:var(--type-title)">Inventory</span></div>
+        <div><code>--type-section</code><span style="font:var(--type-section)">Tonight</span></div>
+        <div><code>--type-heading</code><span style="font:var(--type-heading)">Needs attention</span></div>
+        <div><code>--type-body</code><span style="font:var(--type-body)">Campari is almost out</span></div>
+        <div><code>--type-meta</code><span style="font:var(--type-meta);color:var(--text-2)">Negroni is affected</span></div>
+        <div><code>--type-caption</code><span style="font:var(--type-caption);color:var(--text-2)">Updated 12 min ago</span></div>
+        <div><code>--type-kpi</code><span class="num" style="font:var(--type-kpi)">3.900 kr</span></div>
+      </div>
+    </section>
+
+    <section class="atlas-card" aria-labelledby="g-colour">
+      <h2 id="g-colour">Colour</h2>
+      <div class="swatches">
+        <div class="swatch"><i style="background:var(--bg-subtle)"></i><span>bg-subtle</span></div>
+        <div class="swatch"><i style="background:var(--bg-muted)"></i><span>bg-muted</span></div>
+        <div class="swatch"><i style="background:var(--text)"></i><span>text</span></div>
+        <div class="swatch"><i style="background:var(--text-2)"></i><span>text-2</span></div>
+        <div class="swatch"><i style="background:var(--accent)"></i><span>accent</span></div>
+        <div class="swatch"><i style="background:var(--accent-soft)"></i><span>accent-soft</span></div>
+        <div class="swatch"><i style="background:var(--positive)"></i><span>positive</span></div>
+        <div class="swatch"><i style="background:var(--warning-icon)"></i><span>warning</span></div>
+        <div class="swatch"><i style="background:var(--danger)"></i><span>danger</span></div>
+        <div class="swatch"><i style="background:var(--line)"></i><span>line</span></div>
+        <div class="swatch"><i style="background:var(--line-strong)"></i><span>line-strong</span></div>
+        <div class="swatch"><i style="background:var(--neutral-soft)"></i><span>neutral-soft</span></div>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"></script>
+<script>
+  document.getElementById('g-indeterminate').indeterminate = true;
+  if (window.lucide) window.lucide.createIcons();
+</script>
+</body>
+</html>

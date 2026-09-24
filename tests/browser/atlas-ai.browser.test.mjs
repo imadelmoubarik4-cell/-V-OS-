@@ -374,20 +374,20 @@ test('history: search, rename, pin and delete with confirmation', { skip }, asyn
 
     await page.hover(`[data-ai-open-conv="${IDS.convPaloma}"]`);
     await page.click(`[data-ai-conv-menu="${IDS.convPaloma}"]`);
-    await page.click('.ai-menu__item:has-text("Rename")');
+    await page.click('.atlas-menu__item:has-text("Rename")');
     await page.fill('.ai-dialog input', 'Paloma costing');
     await page.click('.ai-dialog button[type="submit"]');
     await page.waitForSelector('.ai-conv__t:has-text("Paloma costing")');
     assert.equal(calls(backend, 'rename').at(-1).body.title, 'Paloma costing');
 
     await page.click(`[data-ai-conv-menu="${IDS.convPaloma}"]`);
-    await page.click('.ai-menu__item:has-text("Pin")');
+    await page.click('.atlas-menu__item:has-text("Pin")');
     await page.waitForFunction(() => [...document.querySelectorAll('.ai-list__group')][0].innerText.includes('Paloma costing'));
     assert.equal(calls(backend, 'pin').at(-1).body.pinned, true);
 
     const trigger = `[data-ai-conv-menu="${IDS.convPaloma}"]`;
     await page.click(trigger);
-    await page.click('.ai-menu__item:has-text("Delete")');
+    await page.click('.atlas-menu__item:has-text("Delete")');
     await page.waitForSelector('.ai-dialog');
     assert.match(await page.textContent('.ai-dialog'), /Delete this conversation\?[\s\S]*Orders, counts or messages Atlas already created stay as they are\./);
     // Focus stays inside the dialog.
@@ -398,7 +398,7 @@ test('history: search, rename, pin and delete with confirmation', { skip }, asyn
     assert.equal(calls(backend, 'delete').length, 0, 'Escape cancels');
     assert.ok(await page.evaluate((selector) => document.activeElement === document.querySelector(selector), trigger), 'focus returns to the trigger');
     await page.click(trigger);
-    await page.click('.ai-menu__item:has-text("Delete")');
+    await page.click('.atlas-menu__item:has-text("Delete")');
     await page.click('.ai-dialog [data-ai-confirm]');
     await page.waitForFunction((id) => !document.querySelector(`[data-ai-open-conv="${id}"]`), IDS.convPaloma);
     assert.equal(calls(backend, 'delete')[0].body.conversation_id, IDS.convPaloma);
@@ -465,18 +465,22 @@ test('search questions and Ask Atlas actions open Atlas AI with the question', {
   const { fixtures, backend } = aiFixtures();
   const { page, close } = await launchAtlas({ fixtures });
   try {
-    await page.click('#global-search');
-    await page.fill('#global-search', 'pinot');
-    await page.waitForTimeout(250);
-    const options = await page.$$eval('.atlas-search-option', (nodes) => nodes.map((node) => node.innerText.replace(/\s+/g, ' ').trim()));
-    assert.match(options.at(-1), /^Ask Atlas “pinot”/, 'the last row asks Atlas');
-    await page.fill('#global-search', 'Why are margins lower this month?');
-    await page.waitForTimeout(250);
-    assert.match((await page.$$eval('.atlas-search-option', (nodes) => nodes.map((node) => node.innerText)))[0], /Ask Atlas/, 'questions put Ask Atlas first');
-    await page.keyboard.press('Enter');
+    // The palette's Ask Atlas row (and ⌘/Ctrl+Enter) opens #ai/new?q=…&from=<page>.
+    await page.click('#atlas-omni');
+    await page.fill('#atlas-palette-input', 'Why are margins lower this month?');
+    await page.waitForTimeout(300);
+    const options = await page.$$eval('.atlas-palette__item', (nodes) => nodes.map((node) => node.innerText.replace(/\s+/g, ' ').trim()));
+    assert.ok(options.some((option) => /Ask Atlas “Why are margins lower this month\?”/.test(option)), JSON.stringify(options));
+    await page.keyboard.press('Control+Enter');
     await page.waitForFunction(() => document.body.dataset.atlasView === 'ai');
+    assert.match(await page.evaluate(() => location.hash), /^#ai(\/|$|\?)/);
     await page.waitForSelector('[data-ai-steps]');
     assert.equal(backend.state.calls.find((entry) => entry.action === 'chat').body.message, 'Why are margins lower this month?');
+    // A direct #ai/new?q=… link from another page asks once.
+    await page.evaluate(() => { location.hash = '#ai/new?q=Who%20works%20tomorrow%3F&from=inventory'; });
+    await page.waitForFunction(() => document.querySelectorAll('.msg-user').length === 1 && /Who works tomorrow/.test(document.querySelector('.msg-user').innerText));
+    await page.waitForSelector('[data-ai-steps]');
+    assert.equal(backend.state.calls.filter((entry) => entry.action === 'chat').length, 2);
     // Record-scoped canonical action carries page context.
     const actions = await page.evaluate(() => window.AtlasShell.actions.list({ role: 'admin', record: { type: 'recipe', id: 'r1', label: 'Negroni' } }).map((action) => action.id));
     assert.ok(actions.includes('ai.ask') && actions.includes('ai.ask.record'));
@@ -510,15 +514,18 @@ test('phone: no sideways scroll, composer in reach, 44 px targets and a focus-tr
       .map((node) => { const rect = node.getBoundingClientRect(); return { label: node.getAttribute('aria-label') || node.textContent.trim().slice(0, 30), h: Math.round(rect.height), w: Math.round(rect.width) }; })
       .filter((entry) => entry.h < 44 || entry.w < 44));
     assert.deepEqual(small, []);
-    assert.equal(await page.isVisible('.atlas-topbar'), false, 'Atlas AI owns the phone top bar');
-    await page.click('.ai-phonebar [data-ai-open-list]');
+    // Atlas AI owns the phone top bar: History and New, no search or bell (spec §8.7).
+    assert.ok(await page.evaluate(() => document.body.classList.contains('atlas-topbar-own')));
+    assert.deepEqual(await page.$$eval('#atlas-topbar-actions [data-topbar-action]', (nodes) => nodes.map((node) => node.getAttribute('aria-label'))), ['Conversations', 'New conversation']);
+    assert.equal(await page.isVisible('.atlas-tabbar'), false, 'the tab bar is hidden inside a conversation');
+    await page.click('#atlas-topbar-actions [data-topbar-action="0"]');
     await page.waitForSelector('.atlas-ai.is-list-open');
     assert.equal(await page.getAttribute('.ai-list', 'aria-modal'), 'true');
     for (let index = 0; index < 12; index += 1) await page.keyboard.press('Tab');
     assert.ok(await page.evaluate(() => document.activeElement.closest('.ai-list') !== null), 'focus stays in the history sheet');
     await page.keyboard.press('Escape');
     assert.equal(await page.evaluate(() => document.querySelector('.atlas-ai').classList.contains('is-list-open')), false);
-    assert.ok(await page.evaluate(() => document.activeElement.matches('.ai-phonebar [data-ai-open-list]')), 'focus returns to History');
+    assert.ok(await page.evaluate(() => document.activeElement.matches('#atlas-topbar-actions [data-topbar-action="0"]')), 'focus returns to History');
   } finally { await close(); }
 });
 
@@ -717,5 +724,21 @@ test('an answer the server replaced for lack of evidence is shown as sent, with 
     assert.equal((await page.textContent('.msg-ai [data-ai-text]')).trim(), safe);
     assert.doesNotMatch(await page.textContent('.msg-ai'), /You sold 4/, 'streamed text is replaced, never completed client-side');
     assert.equal(await page.locator('.msg-ai [data-ai-text] strong').count(), 0);
+  } finally { await close(); }
+});
+
+test('phone: the empty state keeps the tab bar with the composer above it', { skip }, async () => {
+  const { page, close } = await openAi({ viewport: { width: 390, height: 844 }, contextOptions: { hasTouch: true, isMobile: true } });
+  try {
+    assert.ok(await page.isVisible('.atlas-tabbar'));
+    const gap = await page.evaluate(() => document.querySelector('.atlas-tabbar').getBoundingClientRect().top - document.querySelector('.composer').getBoundingClientRect().bottom);
+    assert.ok(gap >= 0, `composer overlaps the tab bar by ${-gap}px`);
+    await typeAndSend(page, 'What is low before tonight?');
+    await page.waitForSelector('[data-ai-steps]');
+    assert.equal(await page.isVisible('.atlas-tabbar'), false);
+    // Leaving Atlas AI gives the tab bar back.
+    await page.evaluate(() => { location.hash = '#home'; });
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'dashboard');
+    assert.ok(await page.isVisible('.atlas-tabbar'));
   } finally { await close(); }
 });

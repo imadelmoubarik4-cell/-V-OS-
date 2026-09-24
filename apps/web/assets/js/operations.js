@@ -261,31 +261,6 @@
       firstGroup.appendChild(button);
     }
 
-    const serviceGrid = document.querySelector('.service-grid');
-    if (serviceGrid && !serviceGrid.querySelector('[data-service-view="operations"]')) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'service-card';
-      button.dataset.serviceView = 'operations';
-      button.innerHTML = '<i data-lucide="clipboard-check"></i><h3>Service Readiness</h3><p>Opening, closing and daily priorities.</p>';
-      serviceGrid.prepend(button);
-      button.addEventListener('click', () => document.body.classList.remove('service-mode'));
-    }
-
-    const fabMenu = document.getElementById('fab-menu');
-    if (fabMenu && !document.getElementById('fab-open-operations')) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.id = 'fab-open-operations';
-      button.innerHTML = '<i data-lucide="gauge"></i><span>Operations Center</span>';
-      fabMenu.appendChild(button);
-      button.addEventListener('click', () => {
-        fabMenu.classList.remove('open');
-        document.getElementById('fab-btn')?.classList.remove('open');
-        window.AtlasShell.show('operations');
-      });
-    }
-
     dom.view = view;
     dom.center = document.getElementById('operations-center');
   }

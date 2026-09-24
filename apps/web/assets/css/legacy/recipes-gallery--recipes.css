@@ -537,7 +537,6 @@ body.recipe-detail-open { overflow: hidden; }
  * point into the editor — sheet "Edit recipe", toolbar +, Quick Action — lands
  * on top of the sheet rather than behind it. */
 body.recipe-detail-open #recipe-overlay { z-index: 120; }
-body.recipe-detail-open .fab-wrap { z-index: 130; }
 
 /* Detail pane typography aligned with the approved Home / Inventory passes. */
 .recipe-detail-shell .recipe-profile-pane h2,

@@ -30,8 +30,12 @@ function launch(options = {}) {
   });
 }
 
+// Clicks the sidebar link; retired destinations (Brain, Business, System)
+// have no visible link since the S88 redesign and open through the shell.
 async function clickNav(page, view) {
-  await page.click(`.atlas-nav .nav-item[data-view="${view}"]`);
+  const visible = await page.$eval(`.atlas-nav .nav-item[data-view="${view}"]`, (node) => node.getClientRects().length > 0).catch(() => false);
+  if (visible) await page.click(`.atlas-nav .nav-item[data-view="${view}"]`);
+  else await page.evaluate((target) => window.AtlasShell.show(target, {}, { source: 'nav' }), view);
   await page.waitForTimeout(150);
 }
 
@@ -55,29 +59,30 @@ test('sidebar navigation shows exactly one workspace, updates the address bar an
   try {
     // Runtime modules register their views after window load.
     await page.waitForFunction(() => ['marketing', 'system', 'team-profiles', 'operations', 'brain', 'business'].every((view) => window.AtlasShell.views().includes(view)));
+    // [view, root, address, page title (spec names), active sidebar item]
     const expectations = [
-      ['inventory', 'inventory-view', '#inventory', 'Inventory'],
-      ['recipes', 'recipes-view', '#recipes', 'Recipes'],
-      ['suppliers', 'suppliers-view', '#purchasing', 'Purchasing'],
-      ['operations', 'operations-view', '#operations', 'Operations Center'],
-      ['team', 'team-view', '#messages', 'Messages'],
-      ['shifts', 'shifts-view', '#shifts', 'Shifts'],
-      ['knowledge', 'knowledge-view', '#knowledge', 'Knowledge'],
-      ['brain', 'brain-view', '#brain', 'Atlas Brain'],
-      ['business', 'business-view', '#business', 'Business Intelligence'],
-      ['reports', 'reports-view', '#reports', 'Reports'],
-      ['marketing', 'marketing-view', '#marketing', 'Marketing'],
-      ['system', 'system-view', '#settings/system', 'System'],
-      ['settings', 'settings-view', '#settings', 'Settings'],
-      ['dashboard', 'dashboard-view', '#home', 'Home']
+      ['inventory', 'inventory-view', '#inventory', 'Inventory', 'inventory'],
+      ['recipes', 'recipes-view', '#recipes', 'Recipes', 'recipes'],
+      ['suppliers', 'suppliers-view', '#purchasing', 'Purchasing', 'suppliers'],
+      ['operations', 'operations-view', '#operations', 'Operations', 'operations'],
+      ['team', 'team-view', '#messages', 'Messages', 'team'],
+      ['shifts', 'shifts-view', '#shifts', 'Shifts', 'shifts'],
+      ['knowledge', 'knowledge-view', '#knowledge', 'Knowledge', 'knowledge'],
+      ['brain', 'brain-view', '#brain', 'Home', 'dashboard'],
+      ['business', 'business-view', '#business', 'Reports', 'reports'],
+      ['reports', 'reports-view', '#reports', 'Reports', 'reports'],
+      ['marketing', 'marketing-view', '#marketing', 'Marketing', 'marketing'],
+      ['system', 'system-view', '#settings/system', 'Settings', 'settings'],
+      ['settings', 'settings-view', '#settings', 'Settings', 'settings'],
+      ['dashboard', 'dashboard-view', '#home', 'Home', 'dashboard']
     ];
-    for (const [view, root, hash, title] of expectations) {
+    for (const [view, root, hash, title, active] of expectations) {
       await clickNav(page, view);
       const now = await state(page);
       assert.equal(now.view, view, `${view}: body view`);
       assert.equal(now.current, view, `${view}: AtlasShell.current()`);
       assert.deepEqual(now.visibleRoots, [root], `${view}: only its workspace is visible`);
-      assert.deepEqual(now.active, [view], `${view}: one active nav item`);
+      assert.deepEqual(now.active, [active], `${view}: one active nav item`);
       assert.equal(now.title, title, `${view}: page title`);
       assert.ok(now.hash === hash || (view === 'reports' && now.hash.startsWith('#reports')), `${view}: address ${now.hash}`);
     }
@@ -220,21 +225,24 @@ test('the bell opens the notifications feed; canonical actions run the existing 
     const opened = await page.evaluate(() => {
       const events = [];
       window.AtlasShell.on('notify:open', () => events.push('open'));
-      document.querySelector('.atlas-topbar .top-icon[title="Notifications"]').click();
+      document.getElementById('atlas-notifications-btn').click();
       return events;
     });
     assert.deepEqual(opened, ['open']);
-    // Until the panel UI lands, the interim panel keeps the previous routing.
-    await page.waitForFunction(() => document.body.dataset.atlasView === 'settings');
-    assert.equal(await page.evaluate(() => location.hash), '#settings/notifications');
+    // The bell opens the panel (spec §4.9), never Settings.
+    await page.waitForSelector('#atlas-notifications .atlas-notify', { state: 'visible' });
+    assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'dashboard');
+    await page.keyboard.press('Escape');
     const actions = await page.evaluate(() => window.AtlasShell.actions.list({ context: 'home', suggested: true }).map((action) => action.id));
     for (const id of ['inventory.item.add', 'inventory.count.start', 'purchasing.order.new', 'inventory.scan', 'operations.checklist.open']) {
       assert.ok(actions.includes(id), `${id} is suggested on Home for an admin`);
     }
     await page.evaluate(() => window.AtlasShell.actions.run('operations.checklist.open'));
     await page.waitForFunction(() => document.body.dataset.atlasView === 'operations');
-    await page.click('#fab-btn');
-    await page.click('#fab-add-item');
+    // The + button (quick actions) replaces the floating action button.
+    await page.click('#atlas-quick-actions');
+    await page.fill('#atlas-palette-input', 'add item');
+    await page.keyboard.press('Enter');
     await page.waitForFunction(() => getComputedStyle(document.getElementById('item-overlay')).display !== 'none');
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
@@ -249,7 +257,9 @@ test('a bartender sees staff actions only and the purchasing link explains its l
     await page.evaluate(() => window.AtlasShell.navigate('#purchasing'));
     await page.waitForTimeout(200);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'dashboard');
-    assert.ok(record.dialogs.some((dialog) => /limited to managers/.test(dialog.message)));
+    // No alert() (spec §4.12): a toast says who can open it.
+    assert.deepEqual(record.dialogs, []);
+    assert.match(await page.textContent('#atlas-toast-region'), /That page is for managers/);
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });

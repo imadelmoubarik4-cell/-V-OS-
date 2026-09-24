@@ -9,15 +9,8 @@
  */
 @layer atlas.legacy {
 :root {
-  /* --s38-blue* resolve to the Atlas blue in atlas-tokens.css. */
-  --s38-ink: #182230;
-  --s38-muted: #66758a;
-  --s38-bg: #f5f7fb;
+  /* The --s38-* palette resolves to the design tokens in atlas-tokens.css. */
   --s38-card: #ffffff;
-  --s38-line: #dfe6ef;
-  --s38-shadow: 0 10px 30px -24px rgba(31, 57, 93, .55);
-  --s38-shadow-raised: 0 18px 42px -26px rgba(31, 57, 93, .58);
-  --s38-radius: 18px;
 }
 
 .atlas-content,
@@ -32,29 +25,6 @@
 
 /* S38 owner-approved final system ------------------------------------------------ */
 
-/* Minimal light sign-in */
-#login-screen {
-  background:
-    radial-gradient(circle at 20% 10%, rgba(79,125,243,.13), transparent 32%),
-    linear-gradient(145deg, #f8fbff 0%, #eef4ff 100%);
-  color: var(--s38-ink);
-}
-#login-screen .login-card {
-  max-width: 420px;
-  padding: 34px;
-  border: 1px solid rgba(203,218,254,.9);
-  border-radius: 26px;
-  background: rgba(255,255,255,.92);
-  box-shadow: 0 28px 80px -46px rgba(31,57,93,.6);
-  backdrop-filter: blur(18px);
-}
-#login-screen .login-brand { display:flex; align-items:center; gap:10px; margin-bottom:30px; color:var(--s38-ink); font-size:17px; font-weight:650; letter-spacing:-.02em; }
-#login-screen .login-atlas-mark { width:34px; height:34px; margin:0; }
-#login-screen .login-card h1 { margin:0 0 7px; color:var(--s38-ink); font:650 30px/1.15 'IBM Plex Sans',sans-serif; letter-spacing:-.04em; }
-#login-screen .login-card p.sub { margin:0 0 28px; color:var(--s38-muted); }
-#login-screen .login-card label { color:var(--s38-muted); font-weight:600; }
-#login-screen .login-card a { color:var(--s38-blue-strong); }
-
 /* Import Queue */
 #imports-view :is(.import-queue-summary-card,.import-card,.import-queue-panel) { border-color:var(--s38-line); border-radius:18px; background:#fff; box-shadow:var(--s38-shadow); transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease; }
 #home-focus .atlas-home-brief-icon {
@@ -66,8 +36,5 @@
   background:#4f7df3;
   color:#fff;
   box-shadow:0 7px 15px rgba(79,125,243,.18);
-}
-@media (max-width: 760px) {
-  #login-screen .login-card { padding:28px 22px; border-radius:22px; }
 }
 }

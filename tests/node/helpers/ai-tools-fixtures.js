@@ -6,6 +6,9 @@
 // branch project, and the Atlas Edge Functions. Every call is recorded so
 // tests can assert which backend and role were used.
 
+import { localCandidates, localResolveCodes } from '../../../supabase/functions/_shared/recognition/retrieve.mjs';
+import { duplicateKeys, duplicateScore, normalizeCode } from '../../../supabase/functions/_shared/product-identity.mjs';
+
 export const NOW = Date.parse('2026-09-24T12:00:00Z');
 export const BUSINESS_DATE = '2026-09-24';
 
@@ -22,6 +25,7 @@ export const IDS = {
   routineOpen: uuid(601), routineCoffee: uuid(602),
   article: uuid(701), articleVersion: uuid(702), categoryBar: uuid(711), categoryKitchen: uuid(712),
   session: uuid(801),
+  photo: uuid(901),
 };
 
 export const TOKENS = { admin: 'tok-admin', manager: 'tok-manager', bartender: 'tok-bartender', viewer: 'tok-viewer' };
@@ -222,7 +226,34 @@ export function createBackend(overrides = {}) {
     role,
   });
 
+  // Visual inventory recognition (the JavaScript twins of the SQL).
+  const recognitionCatalog = () => data.inventory.map((row) => ({
+    ...row,
+    codes: [
+      ...(row.sku ? [{ kind: 'sku', code: row.sku }] : []),
+      ...(row.barcode ? [{ kind: normalizeCode(row.barcode).valid ? 'gtin' : 'other_barcode', code: row.barcode }] : []),
+    ],
+    aliases: row.id === IDS.aperol ? [{ alias: 'Aperol Aperitivo', alias_kind: 'product_name', status: 'approved' }] : [],
+  }));
   const serviceRpcs = {
+    atlas_recognition_candidates: (args) => localCandidates(recognitionCatalog(), args.p_signals ?? {}, { role: args.p_actor_role, limit: args.p_limit ?? 25 }),
+    atlas_recognition_resolve_codes: (args) => localResolveCodes(recognitionCatalog(), args.p_codes ?? []),
+    atlas_recognition_limits: (args) => ({ role: args.p_actor_role, vision_enabled: true, stock_changed: false }),
+    atlas_recognition_record: (args) => ({ request_id: uuid(950), replayed: false, stock_changed: false,
+      detections: (args.p_request?.detections ?? []).map((detection, index) => ({ detection_index: detection.detection_index, detection_id: uuid(960 + index) })) }),
+    atlas_recognition_find_duplicates: (args) => {
+      if (args.p_actor_role === 'viewer') return { __status: 403, code: '42501', message: 'forbidden' };
+      const draft = duplicateKeys({ ...(args.p_values ?? {}), codes: args.p_codes ?? [] });
+      const candidates = recognitionCatalog().map((item) => ({ item, result: duplicateScore(draft, duplicateKeys(item)) }))
+        .filter(({ result }) => result.score >= 0.3).sort((a, b) => b.result.score - a.result.score)
+        .map(({ item, result }) => ({ item_id: item.id, name: item.name, active: item.active, score: result.score,
+          band: result.score >= 0.85 ? 'strong' : result.score >= 0.6 ? 'possible' : 'listed', requires_ack: result.score >= 0.6,
+          code_collision: result.code_collision, evidence: result.evidence }));
+      return { candidates, code_conflicts: [], alias_conflicts: [], identity_conflict: null, stock_changed: false };
+    },
+    atlas_ai_media_get: (args) => (args.p_media_id === IDS.photo
+      ? { id: IDS.photo, user_id: args.p_actor_id, path: `${args.p_actor_id}/unsorted/${IDS.photo}.jpg`, mime: 'image/jpeg', kind: 'image', bytes: 1024, deleted_at: null }
+      : { __status: 404, code: 'P0002', message: 'not_found: media' }),
     atlas_stock_count_verified_balances: () => data.balances,
     atlas_settings_venue_clock: () => data.venueClock,
     atlas_operations_today: (args) => ({

@@ -19,7 +19,8 @@ test('narrow message history owns scrolling and composer remains visible', () =>
   assert.match(css, /\.team-conversation-panel\{[^}]*height:clamp\(500px,72dvh,720px\)!important;[^}]*overflow:hidden!important/);
   assert.match(css, /\.team-message-list\{[^}]*flex:1 1 auto!important;[^}]*min-height:0!important;[^}]*overflow-y:auto!important/);
   assert.match(css, /\.team-composer\{[^}]*position:relative!important;[^}]*padding-bottom:max\(12px,env\(safe-area-inset-bottom\)\)!important/);
-  assert.match(css, /body\.s38-team-active \.fab-wrap\{display:none!important\}/);
+  // S88: the floating action is retired (spec §4.12), so nothing hides it here.
+  assert.doesNotMatch(css, /\.fab-wrap/);
 });
 
 test('S57 overrides load after the prior Team remediation, in the same cascade layer', () => {

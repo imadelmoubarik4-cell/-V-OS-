@@ -2,8 +2,26 @@
   'use strict';
   const status = document.getElementById('status');
   const form = document.getElementById('accept-invitation');
+  const checking = document.getElementById('invite-checking');
+  // Venue line: the name Settings last gave this device, never an invented one.
+  try {
+    const venue = JSON.parse(window.localStorage?.getItem('atlas.venue.v1') || 'null');
+    if (venue?.line) document.querySelectorAll?.('[data-atlas-venue-line]').forEach((node) => { node.textContent = venue.line; node.hidden = false; });
+  } catch (_) { /* no remembered venue */ }
   const token = new URLSearchParams(location.hash.slice(1)).get('token_hash');
   history.replaceState(null, '', location.pathname);
+  const say = (text, tone = '') => {
+    status.textContent = text;
+    status.classList.toggle('is-error', tone === 'error');
+  };
+  // Live password rules (spec §7.17): at least 10 characters, both match.
+  const rules = () => {
+    const password = document.getElementById('new-password').value;
+    const confirm = document.getElementById('confirm-password').value;
+    const met = { length: password.length >= 10, match: Boolean(password) && password === confirm };
+    document.querySelectorAll('#invite-rules [data-rule]').forEach((rule) => rule.classList.toggle('is-met', met[rule.dataset.rule]));
+    return met.length && met.match;
+  };
   let client;
   try {
     const cfg = window.VABAR_CONFIG;
@@ -15,28 +33,42 @@
     });
     const { data, error } = await client.auth.verifyOtp({ token_hash: token, type: 'invite' });
     if (error || !data.session) throw error || new Error('session');
-    status.textContent = `Welcome, ${data.user.email}. Choose a password with at least 10 characters.`;
+    if (checking) checking.hidden = true;
+    const email = document.getElementById('invite-email');
+    if (email) { email.textContent = data.user.email; document.getElementById('invite-account').hidden = false; }
+    say('Choose a password with at least 10 characters.');
     form.hidden = false;
+    document.getElementById('new-password').focus();
   } catch (_) {
-    status.textContent = 'This invitation is missing, expired or already used. Ask your manager for help. If you already set a password, return to sign in.';
+    if (checking) checking.hidden = true;
+    const sub = document.getElementById('invite-sub');
+    if (sub) sub.textContent = 'This invitation link cannot be used.';
+    say('This invitation has expired or was already used. Ask your manager for a new one. If you already set a password, sign in instead.', 'error');
     return;
   }
+  ['new-password', 'confirm-password'].forEach((id) => document.getElementById(id).addEventListener('input', rules));
   form.addEventListener('submit', async event => {
     event.preventDefault();
     const password = document.getElementById('new-password').value;
-    if (password.length < 10 || password !== document.getElementById('confirm-password').value) {
-      status.textContent = 'Passwords must match and have at least 10 characters.'; return;
+    if (!rules() || password.length < 10 || password !== document.getElementById('confirm-password').value) {
+      say('Passwords must match and have at least 10 characters.', 'error'); return;
     }
     const submit = form.querySelector('button');
     submit.disabled = true;
+    submit.classList.add('is-loading');
+    submit.setAttribute('aria-busy', 'true');
     try {
       const { error } = await client.auth.updateUser({ password });
       if (error) throw error;
       await client.auth.signOut({ scope: 'local' });
       form.reset(); form.hidden = true;
-      status.textContent = 'Your password is set. You can now sign in to Atlas with your email and password.';
+      say('Your password is set. You can now sign in to Atlas with your email and password.');
     } catch (_) {
-      status.textContent = 'Could not set your password. Check the requirements and try again before closing this page.';
-    } finally { submit.disabled = false; }
+      say('Your password could not be set. Check the requirements and try again before closing this page.', 'error');
+    } finally {
+      submit.disabled = false;
+      submit.classList.remove('is-loading');
+      submit.removeAttribute('aria-busy');
+    }
   });
 })();

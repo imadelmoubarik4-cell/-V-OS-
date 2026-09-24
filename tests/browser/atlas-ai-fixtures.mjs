@@ -48,7 +48,7 @@ export function orderProposal(overrides = {}) {
       recipients: [],
       will_change: ['A new purchase order is saved in Purchasing with status Draft.'],
       will_not_change: ['The order is not placed or sent to the supplier.', 'Stock and item costs do not change.'],
-      route: `#suppliers?purchase_order=po-1`
+      route: '#purchasing/order/po-1'
     },
     ...overrides
   };
@@ -62,9 +62,9 @@ export const EVIDENCE = [
 ];
 
 export const RECORDS = [
-  { type: 'inventory_item', id: IDS.campari, label: 'Campari', route: `#inventory?item=${IDS.campari}` },
-  { type: 'recipe', id: IDS.negroni, label: 'Negroni', route: `#recipes?recipe=${IDS.negroni}` },
-  { type: 'supplier', id: IDS.globus, label: 'Globus', route: `#suppliers?supplier=${IDS.globus}` }
+  { type: 'inventory_item', id: IDS.campari, label: 'Campari', route: `#inventory/item/${IDS.campari}` },
+  { type: 'recipe', id: IDS.negroni, label: 'Negroni', route: `#recipes/${IDS.negroni}` },
+  { type: 'supplier', id: IDS.globus, label: 'Globus', route: `#purchasing/suppliers/${IDS.globus}` }
 ];
 
 export const ANSWER = 'Yes, but only about 30 Negronis. You have one bottle of Campari left and each Negroni uses 30 ml. On a busy night you usually sell 40–50.\n\nI’ve prepared an order with Globus so Campari arrives tomorrow morning. Approve it before 18:00 to make their cut-off.';

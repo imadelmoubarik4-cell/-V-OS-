@@ -174,9 +174,9 @@ insert into s89_vi select 'recognition bodies are security definer and owned by 
    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
    where n.nspname='atlas_private' and p.proname in ('recognition_resolve_codes','recognition_candidate_features',
      'recognition_register_media','recognition_record','recognition_record_outcome','recognition_propose',
-     'recognition_find_duplicates','recognition_my_requests'))
+     'recognition_find_duplicates','recognition_my_requests','recognition_limits','recognition_request_get'))
   and (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-       where n.nspname='atlas_private' and pg_get_userbyid(p.proowner) = 'atlas_recognition_definer') = 8
+       where n.nspname='atlas_private' and pg_get_userbyid(p.proowner) = 'atlas_recognition_definer') = 10
   and not (select rolcanlogin or rolinherit or rolsuper or rolbypassrls or rolcreaterole from pg_roles where rolname='atlas_recognition_definer');
 insert into s89_vi select 'the definer has no write privilege on any quantity or catalogue table',
   not exists (

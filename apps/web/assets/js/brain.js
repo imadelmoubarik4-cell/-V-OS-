@@ -418,31 +418,6 @@
       else firstGroup.prepend(button);
     }
 
-    const serviceGrid = document.querySelector('.service-grid');
-    if (serviceGrid && !serviceGrid.querySelector('[data-service-view="brain"]')) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'service-card';
-      button.dataset.serviceView = 'brain';
-      button.innerHTML = '<i data-lucide="brain-circuit"></i><h3>Atlas Brain</h3><p>Live briefing and recommended actions.</p>';
-      serviceGrid.prepend(button);
-      button.addEventListener('click', () => document.body.classList.remove('service-mode'));
-    }
-
-    const fabMenu = document.getElementById('fab-menu');
-    if (fabMenu && !document.getElementById('fab-open-brain')) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.id = 'fab-open-brain';
-      button.innerHTML = '<i data-lucide="brain-circuit"></i><span>Open Atlas Brain</span>';
-      fabMenu.appendChild(button);
-      button.addEventListener('click', () => {
-        fabMenu.classList.remove('open');
-        document.getElementById('fab-btn')?.classList.remove('open');
-        window.AtlasShell.show('brain');
-      });
-    }
-
     dom.view = view;
     dom.shell = document.getElementById('brain-shell');
   }

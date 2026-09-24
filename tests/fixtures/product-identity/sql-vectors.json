@@ -3380,15 +3380,17 @@
     "units_per_pack": null,
     "ambiguous_reason": null
    },
-   "name_key": "4 6",
-   "match_key": "4 6",
+   "name_key": "4 6 x",
+   "match_key": "4 6 x",
    "name_tokens": [
     "4",
+    "x",
     "6"
    ],
    "search_fold": "4 x 6 cans",
    "match_tokens": [
     "4",
+    "x",
     "6"
    ]
   },
@@ -3420,11 +3422,15 @@
     "units_per_pack": null,
     "ambiguous_reason": null
    },
-   "name_key": null,
-   "match_key": null,
-   "name_tokens": [],
+   "name_key": "x",
+   "match_key": "x",
+   "name_tokens": [
+    "x"
+   ],
    "search_fold": "x",
-   "match_tokens": []
+   "match_tokens": [
+    "x"
+   ]
   },
   {
    "fold": "",
