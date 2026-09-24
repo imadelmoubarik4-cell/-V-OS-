@@ -125,7 +125,7 @@
   function ingredientAvailability(ingredient) {
     if (window.AtlasCalculations) {
       const result = window.AtlasCalculations.ingredientMetrics(ingredient, items);
-      return { servings: result.batches, item: result.item, reason: result.batches == null && result.item?.freshness_state !== 'current' ? 'Unknown / Not counted' : result.reason, belowPar: result.belowPar };
+      return { servings: result.batches, item: result.item, reference: result.reference === true, reason: result.batches == null && !result.reference && result.item?.freshness_state !== 'current' ? 'Unknown / Not counted' : result.reason, belowPar: result.belowPar };
     }
     const item = items.find((candidate) => candidate.id === ingredient.item_id);
     if (!item) return { servings: null, item: null, reason: 'Inventory item is missing', belowPar: false };
