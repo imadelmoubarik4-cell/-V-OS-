@@ -176,9 +176,17 @@
     const target = event.target instanceof Element ? event.target : null;
     const button = target?.closest('.atlas-topbar .top-icon[title="Notifications"]');
     if (!button) return;
+    event.preventDefault();
+    // The bell carries the unread-message badge, so unread messages open
+    // Messages; with nothing unread it opens this device's notification switch.
+    const unread = Number(window.AtlasTeamMessages?.unreadCount?.() || 0);
+    const messagesNav = document.querySelector('.nav-item[data-view="team"]');
+    if (unread > 0 && messagesNav) {
+      messagesNav.click();
+      return;
+    }
     const settingsNav = document.querySelector('.nav-item[data-view="settings"]');
     if (!settingsNav) return;
-    event.preventDefault();
     settingsNav.click();
     window.setTimeout(() => window.AtlasSettings?.tab?.('notifications'), 0);
   }

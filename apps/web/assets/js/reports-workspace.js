@@ -792,7 +792,7 @@
   function render() {
     const element = host();
     if (!element) return;
-    element.classList.remove('placeholder-view');
+    if (element.classList.contains('placeholder-view')) element.classList.remove('placeholder-view');
     if (state.loading && !state.snapshot) element.innerHTML = loadingMarkup();
     else if (state.error && !state.snapshot) element.innerHTML = errorMarkup();
     else element.innerHTML = shellMarkup();

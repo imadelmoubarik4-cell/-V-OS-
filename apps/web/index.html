@@ -1249,9 +1249,45 @@
     document.getElementById('user-avatar').textContent = displayName.charAt(0).toUpperCase();
     loginScreen.style.display = 'none';
     appScreen.style.display = 'block';
+    const preferences = cachedPreferences(currentUser.id);
+    window.AtlasPreferences.apply(preferences);
+    navigatedDuringLoad = false;
     await loadAll();
-    setActiveView('dashboard');
+    // Someone who opened a page while data was loading stays there.
+    if (!navigatedDuringLoad) openInitialView(preferences);
+    document.body.dataset.atlasReady = 'true';
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  let navigatedDuringLoad = false;
+  document.addEventListener('click', (event) => {
+    if (event.isTrusted && event.target instanceof Element && event.target.closest('.atlas-nav .nav-item[data-view]')) navigatedDuringLoad = true;
+  }, true);
+
+  // Personal preferences are cached per user by Settings after every load or
+  // save, so they apply at sign-in without waiting for the Settings module.
+  const PREFERENCE_CACHE_KEY = 'atlas.preferences.v1';
+  function cachedPreferences(userId) {
+    try {
+      const value = JSON.parse(window.localStorage.getItem(PREFERENCE_CACHE_KEY) || 'null');
+      return value && value.user_id === userId ? value : null;
+    } catch (_) { return null; }
+  }
+  window.AtlasPreferences = {
+    apply(preferences) {
+      document.documentElement.classList.toggle('atlas-reduce-motion', Boolean(preferences?.reduce_motion));
+    }
+  };
+  // A #view link (for example a notification tap opening #team) wins over the
+  // saved start view; unknown or unavailable destinations fall back to Home.
+  function openInitialView(preferences) {
+    const hashView = decodeURIComponent((location.hash || '').replace(/^#/, '').split(/[/?]/)[0]);
+    for (const view of [hashView, preferences?.start_view]) {
+      if (!view || view === 'dashboard') continue;
+      const button = document.querySelector(`.atlas-nav .nav-item[data-view="${CSS.escape(view)}"]`);
+      if (button && button.offsetParent !== null) { button.click(); return; }
+    }
+    setActiveView('dashboard');
   }
 
   (async function init() {
@@ -2024,12 +2060,18 @@
     const recipeAlert=window.AtlasRecipes?.getHomeAlert?.();
     if(recipeAlert) focus.push({text:recipeAlert.text,target:'recipes'});
     focus.push({text:'Check today’s team and shift coverage before service.',target:'shifts'});
-    document.getElementById('home-brief-headline').textContent=low.length
+    // The brief and focus list are optional Home regions. Writing to a missing
+    // node used to throw here, which skipped bindHomeLinks() and every module
+    // chained after renderAtlasHome on each return to Home.
+    const briefHeadline=document.getElementById('home-brief-headline');
+    if(briefHeadline) briefHeadline.textContent=low.length
       ? `${low.length} ${low.length===1?'item needs':'items need'} attention before service.`
       : unknownStock ? 'Stock verification is incomplete.' : 'Verified inventory is ready for today’s service.';
-    document.getElementById('home-brief-detail').textContent=recipeAlert?.text
+    const briefDetail=document.getElementById('home-brief-detail');
+    if(briefDetail) briefDetail.textContent=recipeAlert?.text
       || 'Atlas is using the latest available inventory, recipe, and operations data.';
-    document.getElementById('focus-list').innerHTML=focus.map(entry=>`<div class="focus-row" data-target="${entry.target}"><span class="focus-dot"></span><span>${entry.text}</span></div>`).join('');
+    const focusList=document.getElementById('focus-list');
+    if(focusList) focusList.innerHTML=focus.map(entry=>`<div class="focus-row" data-target="${entry.target}"><span class="focus-dot"></span><span>${escapeHtml(entry.text)}</span></div>`).join('');
     bindHomeLinks();
   }
 

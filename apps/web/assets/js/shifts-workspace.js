@@ -516,7 +516,9 @@
   function render() {
     const element = host();
     if (!element) return;
-    element.classList.add('shifts-workspace-host');
+    // classList.add() rewrites the class attribute even when the token exists;
+    // that mutation re-enters the visibility observer and reloads.
+    if (!element.classList.contains('shifts-workspace-host')) element.classList.add('shifts-workspace-host');
     if (state.loading && !state.workspace) element.innerHTML = loadingMarkup();
     else if (state.error && !state.workspace) element.innerHTML = `<section class="shift-state"><span class="is-error"><i data-lucide="calendar-x-2"></i></span><h2>Shifts unavailable</h2><p>${escapeHtml(state.error)}</p><button type="button" class="shift-primary" data-shifts-refresh>Try again</button></section>`;
     else element.innerHTML = shellMarkup();
@@ -540,8 +542,10 @@
       const availablePerson = selectedAvailabilityPerson();
       state.availabilityPersonId = availablePerson?.id || null;
       state.error = null;
+      state.failedAt = 0;
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'Shifts could not load.';
+      state.failedAt = Date.now();
     } finally {
       state.loading = false;
       render();
@@ -789,6 +793,8 @@
 
   function checkVisibility() {
     if (!viewVisible()) return;
+    // Back off after a failure; the Try again control still loads at once.
+    if (Date.now() - (state.failedAt || 0) < 20000) return;
     if (!state.workspace && !state.loading) loadSnapshot({ force: true });
   }
 

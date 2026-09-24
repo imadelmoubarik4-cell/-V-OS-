@@ -1,0 +1,57 @@
+// S87 cross-module runtime regressions: request storms, the Home render crash
+// and navigation made while the first data load is still running.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { harnessAvailable, launchAtlas, openView, requestsTo } from './harness.mjs';
+import { emptyFunctions } from './fixtures.mjs';
+
+const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
+const DOWN = { __status: 503, body: { error: 'Service unavailable' } };
+
+for (const [view, fn] of [['knowledge', 'atlas-knowledge'], ['team', 'atlas-team-messages'], ['shifts', 'atlas-shifts']]) {
+  test(`${view} does not retry in a loop while its API is failing`, { skip }, async () => {
+    const { page, record, close } = await launchAtlas({ fixtures: { functions: { ...emptyFunctions(), [fn]: DOWN } } });
+    try {
+      await openView(page, view);
+      await page.waitForTimeout(5000);
+      const count = requestsTo(record, fn, 'snapshot').length;
+      assert.ok(count <= 3, `${fn} sent ${count} snapshot requests in 5 s`);
+      // The explicit retry control still works immediately.
+      const retry = { knowledge: '[data-knowledge-refresh]', team: '[data-team-refresh]', shifts: '[data-shifts-refresh]' }[view];
+      await page.click(`#${view}-view ${retry}`);
+      await page.waitForTimeout(500);
+      assert.ok(requestsTo(record, fn, 'snapshot').length > count, 'Try again sends a new request');
+    } finally { await close(); }
+  });
+}
+
+test('Knowledge does not loop on a 200 response without a workspace', { skip }, async () => {
+  const { page, record, close } = await launchAtlas({ fixtures: { functions: { ...emptyFunctions(), 'atlas-knowledge': {} } } });
+  try {
+    await openView(page, 'knowledge');
+    await page.waitForTimeout(4000);
+    assert.ok(requestsTo(record, 'atlas-knowledge', 'snapshot').length <= 3);
+  } finally { await close(); }
+});
+
+test('returning to Home renders without errors and keeps metric cards linked', { skip }, async () => {
+  const { page, record, close } = await launchAtlas({ fixtures: { functions: emptyFunctions() } });
+  try {
+    await openView(page, 'operations');
+    await openView(page, 'dashboard');
+    assert.deepEqual(record.pageErrors, []);
+    await page.click('#home-metrics .metric-card[data-target="recipes"]');
+    await page.waitForTimeout(200);
+    assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'recipes');
+  } finally { await close(); }
+});
+
+test('a destination opened while data loads is not replaced by Home', { skip }, async () => {
+  const slow = () => new Promise((resolve) => setTimeout(() => resolve([]), 1500));
+  const { page, close } = await launchAtlas({ waitReady: false, fixtures: { functions: emptyFunctions(), tables: { suppliers: slow } } });
+  try {
+    await page.click('.atlas-nav .nav-item[data-view="shifts"]');
+    await page.waitForFunction(() => document.body.dataset.atlasReady === 'true');
+    assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'shifts');
+  } finally { await close(); }
+});

@@ -372,7 +372,9 @@
   function render() {
     const element = host();
     if (!element) return;
-    element.classList.remove('placeholder-view');
+    // classList.remove() rewrites the class attribute even when the token is
+    // absent; that mutation re-enters the visibility observer and reloads.
+    if (element.classList.contains('placeholder-view')) element.classList.remove('placeholder-view');
     if (state.loading && !state.snapshot) element.innerHTML = loadingMarkup();
     else if (state.error && !state.snapshot) element.innerHTML = errorMarkup();
     else element.innerHTML = shellMarkup();
@@ -421,11 +423,16 @@
       state.members = Array.isArray(payload.members) ? payload.members : state.members;
       state.selectedChannel = state.snapshot.selected_channel_key || state.selectedChannel;
       state.error = null;
+      state.failedAt = 0;
       render();
       await markSelectedChannelRead();
       startPolling();
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'Team Messages could not load.';
+      state.failedAt = Date.now();
+      // Clear the loading flag before rendering, otherwise the loading screen
+      // wins over the error screen and its Try again control never appears.
+      state.loading = false;
       render();
     } finally {
       state.loading = false;
@@ -776,7 +783,8 @@
 
     state.viewObserver = new MutationObserver(() => {
       if (teamViewVisible()) {
-        if (!state.snapshot && !state.loading) loadSnapshot();
+        // Back off after a failure; the Try again control still loads at once.
+        if (!state.snapshot && !state.loading && Date.now() - (state.failedAt || 0) >= 20000) loadSnapshot();
         else startPolling();
       } else {
         stopPolling();

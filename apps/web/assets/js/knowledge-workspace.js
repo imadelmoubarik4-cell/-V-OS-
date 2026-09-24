@@ -529,7 +529,9 @@
   function render() {
     const element = host();
     if (!element) return;
-    element.classList.remove('placeholder-view');
+    // classList.remove() rewrites the class attribute even when the token is
+    // absent; that mutation re-enters the visibility observer and reloads.
+    if (element.classList.contains('placeholder-view')) element.classList.remove('placeholder-view');
     if (state.loading && !state.snapshot) element.innerHTML = loadingMarkup();
     else if (state.error && !state.snapshot) element.innerHTML = errorMarkup();
     else element.innerHTML = `${shellMarkup()}${detailMarkup()}${editorMarkup()}${sourceEditorMarkup()}`;
@@ -556,8 +558,10 @@
       const payload = await api('snapshot');
       applyPayload(payload);
       state.error = null;
+      state.failedAt = 0;
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'Knowledge could not load.';
+      state.failedAt = Date.now();
     } finally {
       state.loading = false;
       state.refreshing = false;
@@ -1008,7 +1012,12 @@
     }
   }
 
+  // Automatic loads back off after a failure so an outage cannot turn every
+  // DOM or visibility change into another request. Try again stays immediate.
+  const AUTO_RETRY_BACKOFF_MS = 20000;
+
   function handleVisibility() {
+    if (Date.now() - (state.failedAt || 0) < AUTO_RETRY_BACKOFF_MS) return;
     if (viewVisible() && !state.snapshot && !state.loading) loadSnapshot();
   }
 
