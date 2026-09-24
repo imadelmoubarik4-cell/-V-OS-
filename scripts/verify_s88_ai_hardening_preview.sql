@@ -279,7 +279,7 @@ begin
 
   -- F12: team message drafts are not copied to Brain
   a_team := (public.atlas_ai_action_create(bar, 'bartender', bar_conv, null, 'team_message.send', 'Message to #general',
-    '{"headline":"Message to #general","lines":[{"label":"Message","detail":"PRIVATEDRAFTBODY my shift swap with Anna"}],"recipients":["Everyone with access to #general"],"will_change":["posted"],"will_not_change":["nothing else"],"route":"#team?channel=general"}'::jsonb,
+    '{"headline":"Message to #general","lines":[{"label":"Message","detail":"PRIVATEDRAFTBODY my shift swap with Anna"}],"recipients":["Everyone with access to #general"],"will_change":["posted"],"will_not_change":["nothing else"],"route":"#messages?channel=general"}'::jsonb,
     '{"channel_key":"general","body":"PRIVATEDRAFTBODY my shift swap with Anna"}'::jsonb, array['admin','manager','bartender'])->>'id')::uuid;
   r := public.atlas_ai_record_proposal(a_team, bar, 'bartender',
     '[{"tool":"team.prepare_message","label":"Draft message","kind":"interpretation","value":"PRIVATEDRAFTBODY my shift swap with Anna"}]'::jsonb,

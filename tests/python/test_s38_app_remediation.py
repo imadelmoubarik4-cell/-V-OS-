@@ -116,8 +116,12 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("Notification delivery follows Settings", messages)
         self.assertNotIn("Push notifications off", messages)
         self.assertIn("document.body.classList.add('s38-team-active')", messages)
-        # The bell opens Messages when unread, otherwise #settings/notifications.
-        self.assertIn("window.AtlasShell.navigate('#settings/notifications',{source:'nav'})", self.index)
+        # S88 redesign: the bell opens the notifications panel (spec §4.9), which
+        # lists unread messages and links to #settings/notifications.
+        chrome = (ROOT / "apps/web/assets/js/atlas-chrome.js").read_text(encoding="utf-8")
+        self.assertIn("shell.notify.setPanel(notifyPanel)", chrome)
+        self.assertIn("navigate('#settings/notifications', action)", chrome)
+        self.assertIn("shell.notify.contribute('messages-unread'", chrome)
 
     def test_existing_server_backed_features_remain_present(self):
         purchase_orders = (ROOT / "apps/web/assets/js/purchase-orders.js").read_text(encoding="utf-8")
@@ -210,7 +214,8 @@ class S38AppRemediationTests(unittest.TestCase):
         month = self.owners["shifts-month-calendar.js"]
         self.assertIn("function syncBodyState()", month)
         self.assertIn("document.body.classList.toggle('s38-month-active', open)", month)
-        self.assertIn("body.s38-month-active .fab-wrap", self.css)
+        # S88 redesign: the floating action is retired (spec §4.12); nothing to hide.
+        self.assertNotIn(".fab-wrap", self.css)
 
 
 if __name__ == "__main__":

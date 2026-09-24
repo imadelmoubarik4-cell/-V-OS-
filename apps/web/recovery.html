@@ -1,12 +1,41 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer"><title>Account recovery · Atlas</title>
-<style>body{font:16px system-ui;background:#f5f3ee;color:#25251f;margin:0}main{max-width:400px;margin:8vh auto;padding:28px;background:white;border:1px solid #ddd;border-radius:16px}label,input,button{display:block;box-sizing:border-box;width:100%;margin:12px 0}input,button{padding:12px;font:inherit}button{background:#292b26;color:white;border:0;border-radius:8px}a{color:#334638}[hidden]{display:none!important}#status{line-height:1.5}</style>
-</head><body data-atlas-standalone="true"><main><p>VÁ · Atlas</p><h1>Account recovery</h1>
-<p id="status" role="status">Enter your email to request a password reset.</p>
-<form id="request-recovery"><label for="recovery-email">Email</label><input id="recovery-email" type="email" autocomplete="username" required><button type="submit">Send reset link</button></form>
-<form id="complete-recovery" hidden><label for="new-password">New password</label><input id="new-password" type="password" autocomplete="new-password" minlength="10" required><label for="confirm-password">Confirm new password</label><input id="confirm-password" type="password" autocomplete="new-password" minlength="10" required><button type="submit">Save new password</button></form>
-<a href="index.html">Back to sign in</a></main>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer"><title>Reset your password · Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260926-s88">
+<link rel="stylesheet" href="assets/css/atlas-base.css?v=20260926-s88">
+<link rel="stylesheet" href="assets/css/atlas-components.css?v=20260926-s88">
+<link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260926-s88">
+</head><body data-atlas-standalone="true">
+<div class="atlas-auth">
+  <main class="atlas-auth__column" aria-labelledby="recovery-title">
+    <div class="atlas-auth__brand"><span class="atlas-brand__mark" aria-hidden="true">A</span><span class="atlas-auth__wordmark">Atlas</span></div>
+    <h1 class="atlas-auth__title" id="recovery-title">Reset your password</h1>
+    <p class="atlas-auth__sub" id="status" role="status">Enter your email and we'll send you a link to choose a new password.</p>
+    <form id="request-recovery" class="atlas-auth__form">
+      <div class="atlas-field">
+        <label for="recovery-email">Email</label>
+        <input class="atlas-input" id="recovery-email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required>
+      </div>
+      <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit">Send reset link</button>
+    </form>
+    <form id="complete-recovery" class="atlas-auth__form" hidden>
+      <div class="atlas-field">
+        <label for="new-password">New password</label>
+        <input class="atlas-input" id="new-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="recovery-rules">
+      </div>
+      <ul class="atlas-auth__rules" id="recovery-rules" aria-live="polite"><li data-rule="length">At least 10 characters</li><li data-rule="match">Both passwords match</li></ul>
+      <div class="atlas-field">
+        <label for="confirm-password">Confirm new password</label>
+        <input class="atlas-input" id="confirm-password" type="password" autocomplete="new-password" minlength="10" required>
+      </div>
+      <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit">Save new password</button>
+    </form>
+    <p class="atlas-auth__link"><a href="index.html">Back to sign in</a></p>
+  </main>
+  <p class="atlas-auth__foot" data-atlas-venue-line hidden></p>
+</div>
 <script src="config.js"></script><script src="assets/js/rehearsal-boundary.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
 <script src="assets/js/account-recovery.js"></script></body></html>

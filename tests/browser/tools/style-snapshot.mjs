@@ -45,7 +45,7 @@ export const STATES = [
   ['scanner', 'inventory', async (page) => { await page.evaluate(() => window.AtlasInventoryScanner?.open?.()); }],
   ['stock-count', 'inventory', async (page) => { await page.evaluate(() => window.AtlasStockCounts?.open?.()); }],
   ['item-master', 'inventory', async (page) => { await page.evaluate(() => window.AtlasItemMaster?.open?.()); }],
-  ['fab-open', 'dashboard', async (page) => { await page.evaluate(() => document.getElementById('fab-btn')?.click()); }]
+  ['palette-open', 'dashboard', async (page) => { await page.evaluate(() => window.AtlasPalette?.open()); }]
 ];
 
 function parseArgs(argv) {

@@ -137,6 +137,9 @@ test('Reports preserves the Atlas visual system and tablet-first behavior', () =
 
 test('Reports primary and Ask Atlas actions use the shared blue treatment', () => {
   assert.match(css, /\.reports-primary\{[^}]*var\(--blue-600/);
-  assert.match(css, /\.reports-ask-fab\{[^}]*var\(--blue-600/);
+  // S88: Ask Atlas is a secondary header button; blue is only its sparkles mark
+  // (spec §2.4), and it no longer floats over the report.
+  assert.match(css, /\.reports-ask-fab svg\{[^}]*var\(--blue-600/);
+  assert.doesNotMatch(css, /\.reports-ask-fab\{[^}]*position:fixed/);
   assert.match(css, /\.reports-ask-panel form button\{[^}]*var\(--blue-600/);
 });

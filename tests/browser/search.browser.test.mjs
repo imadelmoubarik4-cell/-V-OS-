@@ -1,5 +1,6 @@
-// S87 Global Search / Ask Atlas: records, questions, keyboard and honesty
-// when source data is missing. Runs the shipped atlas-search.js in Chromium.
+// S87 Global Search / Ask Atlas, S88 command palette: records, questions,
+// keyboard and honesty when source data is missing. Runs the shipped
+// atlas-search.js (provider) and atlas-palette.js (UI) in Chromium.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { harnessAvailable, launchAtlas, USERS } from './harness.mjs';
@@ -48,14 +49,17 @@ function fixtures({ balances, shifts = null } = {}) {
   };
 }
 
-async function ask(page, text, { enter = false } = {}) {
-  await page.click('#global-search');
-  await page.fill('#global-search', text);
-  if (enter) await page.keyboard.press('Enter');
-  await page.waitForTimeout(enter ? 600 : 250);
+// Opens the palette from the top-bar field (or the phone search button) and types.
+async function ask(page, text, { wait = 350 } = {}) {
+  if (!(await page.evaluate(() => window.AtlasPalette.isOpen()))) {
+    const phone = await page.evaluate(() => window.matchMedia('(max-width: 767px)').matches);
+    await page.click(phone ? '#atlas-phone-search' : '#atlas-omni');
+  }
+  await page.fill('#atlas-palette-input', text);
+  await page.waitForTimeout(wait);
   return page.evaluate(() => ({
-    answer: document.querySelector('.atlas-search-answer')?.innerText.replace(/\s+/g, ' ').trim() || null,
-    options: [...document.querySelectorAll('.atlas-search-option')].map((node) => node.innerText.replace(/\s+/g, ' ').trim()),
+    answer: document.querySelector('.atlas-palette__answer')?.innerText.replace(/\s+/g, ' ').trim() || null,
+    options: [...document.querySelectorAll('.atlas-palette__item')].map((node) => node.innerText.replace(/\s+/g, ' ').trim()),
     view: document.body.dataset.atlasView
   }));
 }
@@ -83,7 +87,7 @@ test('Enter on a record opens it in its module', { skip }, async () => {
   const { page, close } = await launchAtlas({ fixtures: fixtures() });
   try {
     await ask(page, 'angelo');
-    await page.keyboard.press('ArrowDown');
+    // The first row (the item) is selected by default.
     await page.keyboard.press('Enter');
     await page.waitForTimeout(300);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'inventory');
@@ -137,7 +141,7 @@ test('"What needs ordering?" uses the shared order suggestions', { skip }, async
 test('"Who works tomorrow?" reads the published schedule', { skip }, async () => {
   const { page, close } = await launchAtlas({ fixtures: fixtures() });
   try {
-    const { answer } = await ask(page, 'Who works tomorrow?', { enter: true });
+    const { answer } = await ask(page, 'Who works tomorrow?', { wait: 900 });
     assert.match(answer, /1 person works tomorrow/);
     assert.match(answer, /Sara Jónsdóttir: 17:00–23:30 · Bartender/);
   } finally { await close(); }
@@ -148,24 +152,26 @@ test('questions without source data say so instead of answering', { skip }, asyn
   try {
     assert.match((await ask(page, 'What is low in stock?')).answer, /No item has a verified count yet/);
     assert.match((await ask(page, 'What needs ordering?')).answer, /Nothing needs ordering based on verified stock\. Items without a verified count \(5\)/);
-    assert.match((await ask(page, 'Who works today?', { enter: true })).answer, /could not load the schedule/);
+    assert.match((await ask(page, 'Who works today?', { wait: 1500 })).answer, /could not load the schedule/);
   } finally { await close(); }
 });
 
-test('Escape clears and closes the results', { skip }, async () => {
+test('Escape closes the palette, returns focus and the next search starts empty', { skip }, async () => {
   const { page, close } = await launchAtlas({ fixtures: fixtures() });
   try {
     await ask(page, 'pinot');
     await page.keyboard.press('Escape');
-    assert.equal(await page.inputValue('#global-search'), '');
-    assert.equal(await page.$eval('#atlas-search-panel', (node) => node.hidden), true);
+    assert.equal(await page.$eval('#atlas-palette', (node) => node.hidden), true);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'atlas-omni');
+    await page.click('#atlas-omni');
+    assert.equal(await page.inputValue('#atlas-palette-input'), '');
   } finally { await close(); }
 });
 
 test('search is reachable on a phone', { skip }, async () => {
   const { page, close } = await launchAtlas({ fixtures: fixtures(), viewport: { width: 390, height: 844 } });
   try {
-    const box = await page.$eval('#global-search', (node) => { const rect = node.getBoundingClientRect(); return { w: rect.width, h: rect.height, visible: rect.width > 0 && getComputedStyle(node).visibility !== 'hidden' }; });
+    const box = await page.$eval('#atlas-phone-search', (node) => { const rect = node.getBoundingClientRect(); return { w: rect.width, h: rect.height, visible: rect.width > 0 && getComputedStyle(node).visibility !== 'hidden' }; });
     assert.ok(box.visible && box.w >= 40 && box.h >= 40, JSON.stringify(box));
     const result = await ask(page, 'pinot');
     assert.ok(result.options.some((option) => /Angelo Pinot Grigio/.test(option)));
@@ -177,5 +183,6 @@ test('staff never see supplier results', { skip }, async () => {
   try {
     const result = await ask(page, 'globus');
     assert.ok(!result.options.some((option) => /orders@globus/.test(option)));
+    assert.ok(!result.options.some((option) => /^Purchasing/.test(option)), 'no manager-only destination either');
   } finally { await close(); }
 });

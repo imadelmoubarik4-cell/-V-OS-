@@ -53,7 +53,6 @@
   .team-messages-layout { min-height: 760px; }
 }
 
-
 /* Team conversations: fixed header and composer, only history scrolls */
 .team-messages-layout { height:clamp(520px,calc(100dvh - 245px),760px) !important; min-height:520px !important; overflow:hidden !important; }
 .team-channel-panel,.team-conversation-panel { height:100%; min-height:0 !important; }
@@ -71,8 +70,6 @@
 .team-channel-filter-empty svg { width:20px; color:var(--s38-blue); }
 .team-conversation-actions [data-team-star][aria-pressed='true'] { border-color:var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
 .team-conversation-actions [data-team-star][aria-pressed='true'] svg,.team-channel-status .is-pinned { fill:currentColor; color:var(--s38-blue); }
-body.s38-team-active .fab-wrap { display:none !important; }
-body.s38-month-active .fab-wrap { display:none !important; }
 .shift-month-navigation > button { border-color:var(--s38-line); background:#fff; color:var(--s38-ink); }
 .shift-month-navigation > button:first-child { width:auto; padding-inline:13px; border-color:var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
 .settings-notification-coverage svg { width:16px; color:var(--s38-blue); }

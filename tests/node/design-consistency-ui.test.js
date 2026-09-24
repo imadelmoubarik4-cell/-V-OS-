@@ -8,7 +8,9 @@ const inventoryCss = legacyCss('inventory-polish');
 const homeCss = legacyCss('home-polish');
 const recipesCss = legacyCss('recipes-gallery');
 const purchasingCss = legacyCss('purchasing-polish');
-const shellCss = legacyCss('atlas-glass');
+const shellCss = readFileSync('apps/web/assets/css/atlas-shell.css', 'utf8');
+const shellJs = readFileSync('apps/web/assets/js/atlas-shell.js', 'utf8');
+const chrome = readFileSync('apps/web/assets/js/atlas-chrome.js', 'utf8');
 const recipes = readFileSync('apps/web/assets/js/recipes.js', 'utf8');
 const scanner = readFileSync('apps/web/assets/js/inventory-scanner.js', 'utf8');
 const stockCount = readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8');
@@ -37,24 +39,25 @@ test('Inventory uses one compact section rail for every approved workspace', () 
 });
 
 test('sidebar keeps one destination per workspace without duplicate category menus', () => {
-  assert.match(app, /class="nav-item" data-view="inventory"><i data-lucide="package"><\/i><span>Inventory<\/span><\/button>/);
-  assert.match(app, /class="nav-item" data-view="recipes"><i data-lucide="martini"><\/i><span>Recipes<\/span><\/button>/);
-  assert.match(app, /class="nav-item" data-view="suppliers"><i data-lucide="truck"><\/i><span>Purchasing<\/span><\/button>/);
+  // S88 redesign (spec §3.1, §4.2): real links, one per destination, keeping
+  // the .atlas-nav .nav-item[data-view] contract the harness and modules use.
+  assert.match(app, /<a class="nav-item" href="#inventory" data-view="inventory" data-nav-id="inventory" aria-label="Inventory"><i data-lucide="package" aria-hidden="true"><\/i><span class="nav-item-label">Inventory<\/span><\/a>/);
+  assert.match(app, /<a class="nav-item" href="#recipes" data-view="recipes" data-nav-id="recipes" aria-label="Recipes"><i data-lucide="martini" aria-hidden="true"><\/i><span class="nav-item-label">Recipes<\/span><\/a>/);
+  assert.match(app, /<a class="nav-item" href="#purchasing" data-view="suppliers" data-nav-id="purchasing" aria-label="Purchasing" hidden><i data-lucide="truck" aria-hidden="true"><\/i><span class="nav-item-label">Purchasing<\/span><\/a>/);
   assert.doesNotMatch(app, /<button[^>]+data-default=|<div class="nav-sub"/);
   assert.doesNotMatch(app, /data-recipe-filter="signature-cocktail"/);
-  assert.doesNotMatch(app, /class="nav-item" data-view="imports"/);
+  // Retired destinations keep a hidden link only (their modules find it and inject nothing).
+  assert.match(app, /<div class="atlas-nav__retired" hidden data-sprint3-review-nav="true">/);
 });
 
-test('navigation is organized into one-row workspace groups', () => {
-  for (const group of ['home', 'operations', 'people', 'growth', 'insights', 'system']) assert.match(app, new RegExp(`\\['${group}'`));
-  assert.match(app, /team:'Messages','team-profiles':'Team'/);
-  assert.match(app, /operations:'Operations Center'/);
-  assert.match(app, /brain:'Atlas Brain',business:'Business Intelligence'/);
-  // S88: modules register views; the sidebar regroups on registration events.
-  assert.match(app, /\['view:registered','view:unregistered'\]\.forEach\(type=>window\.AtlasShell\.on\(type,scheduleNavigationLayout\)\)/);
-  assert.doesNotMatch(app, /navigationObserver/);
-  assert.match(app, /button\.setAttribute\('aria-label',label\)/);
-  assert.match(app, /updateMenuButtonLabel\(collapsed\)/);
+test('navigation is organized into the spec groups: Home/Atlas AI/Messages, Venue, People, Business', () => {
+  for (const group of ['main', 'venue', 'people', 'business']) assert.match(app, new RegExp(`data-nav-group="${group}"`));
+  for (const label of ['Venue', 'People', 'Business']) assert.match(app, new RegExp(`<div class="nav-label" role="presentation">${label}</div>`));
+  assert.match(shellJs, /const NAV_GROUPS = Object\.freeze\(\[null, 'Venue', 'People', 'Business'\]\);/);
+  // Role visibility comes from one model (AtlasShell.nav), not per-module CSS.
+  assert.match(chrome, /link\.hidden = !shell\.nav\.allowed\(link\.dataset\.navId, current\);/);
+  assert.doesNotMatch(app, /navigationObserver|organizeAtlasNavigation|scheduleNavigationLayout/);
+  assert.match(chrome, /toggle\.setAttribute\('aria-label', overlay \? \(open \? 'Close navigation' : 'Open navigation'\) : \(open \? 'Collapse sidebar' : 'Expand sidebar'\)\);/);
 });
 
 test('workspace switching owns visibility, inventory state and scroll reset centrally', () => {
@@ -92,16 +95,16 @@ test('Home uses live values and supports expanded or compact navigation', () => 
   assert.match(recipes, /function getHomeMetrics\(\)/);
   assert.doesNotMatch(app, /id="home-focus"/);
   assert.doesNotMatch(app, /home-focus'\)\.style\.display/);
-  assert.match(shellCss, /body\.atlas-sidebar-collapsed/);
+  // Expanded sidebar (240) or the 64 px rail, per viewer (spec §4.1).
+  assert.match(shellCss, /body\.atlas-rail \.atlas-shell \{ grid-template-columns: 64px minmax\(0, 1fr\); \}/);
+  assert.match(chrome, /document\.body\.classList\.toggle\('atlas-rail', RAIL\.matches \|\| collapsed\);/);
 });
 
-test('Service Mode uses the shared light Atlas design without black surfaces', () => {
-  assert.match(app, /body\.service-mode\{background:#f4f8ff\}/);
-  assert.match(app, /\.service-card\{[^}]*background:rgba\(255,255,255,\.92\)/);
-  assert.match(app, /\.service-card svg\{[^}]*background:#e6f1ff[^}]*color:#2f80ed/);
-  assert.match(app, /\.service-card:hover\{[^}]*background:#edf5ff/);
-  assert.doesNotMatch(app, /body\.service-mode\{background:#111310\}/);
-  assert.doesNotMatch(app, /\.service-card\{[^}]*background:#20231f/);
+test('Service Mode is retired; Home and the phone tab bar are the service surface', () => {
+  // Spec §4.12, owner decision 2.
+  assert.doesNotMatch(app, /service-mode|service-view|service-card|Service Mode/);
+  assert.doesNotMatch(shellJs, /data-service-view|SERVICE_SELECTOR/);
+  assert.match(app, /<nav class="atlas-tabbar" id="atlas-tabbar" aria-label="Main">/);
 });
 
 test('Recipes and Purchasing use clean, honest in-page controls', () => {

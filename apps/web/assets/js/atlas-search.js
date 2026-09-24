@@ -1,53 +1,56 @@
 (function () {
   'use strict';
 
-  // Global Search / Ask Atlas.
+  // Search provider for the command palette (assets/js/atlas-palette.js,
+  // spec §4.6–4.7): records, destinations ("Go to") and instant answers.
   //
-  // One owner for the top-bar field. Typing only shows results; nothing
-  // navigates until a result is chosen with Enter, click or tap. Records come
-  // from data other modules have already loaded, and answers reuse the same
-  // shared truth those modules show (AtlasStockTruth.belowPar, AtlasRecipes
-  // .recipeStatus, AtlasOperations.orderSuggestions, the Shifts snapshot).
-  // When the source data is not available, the answer says so instead of
-  // guessing.
+  // It renders nothing itself. Records come from data other modules have
+  // already loaded, and answers reuse the same shared truth those modules show
+  // (AtlasStockTruth.belowPar, AtlasRecipes.recipeStatus,
+  // AtlasOperations.orderSuggestions, the Shifts snapshot). When the source
+  // data is not available, the answer says so instead of guessing. Role rules
+  // come from AtlasShell.nav (spec §3.3): a hidden destination is never a
+  // result.
 
   const MAX_PER_GROUP = 5;
   const VENUE_TIME_ZONE = 'Atlantic/Reykjavik';
 
-  const PAGES = [
-    ['dashboard', 'Home', ['home', 'dashboard', 'today']],
-    ['operations', 'Operations', ['operations', 'opening', 'checks', 'readiness']],
-    ['inventory', 'Inventory', ['inventory', 'item', 'items', 'stock', 'count']],
-    ['recipes', 'Recipes', ['recipe', 'recipes', 'cocktail', 'menu']],
-    ['suppliers', 'Purchasing', ['supplier', 'suppliers', 'order', 'orders', 'purchase', 'purchasing', 'delivery']],
-    ['team', 'Messages', ['message', 'messages', 'chat', 'team']],
-    ['team-profiles', 'Team', ['profile', 'profiles', 'staff', 'team member', 'directory']],
-    ['shifts', 'Shifts', ['shift', 'shifts', 'schedule', 'rota']],
-    ['knowledge', 'Knowledge', ['knowledge', 'document', 'documents', 'checklist', 'sop', 'policy', 'training']],
-    ['marketing', 'Marketing', ['marketing', 'social', 'instagram', 'facebook']],
-    ['brain', 'Atlas Brain', ['brain', 'briefing', 'daily briefing', 'intelligence']],
-    ['business', 'Business Intelligence', ['business', 'profit', 'margin', 'spend']],
-    ['reports', 'Reports', ['report', 'reports', 'analytics', 'valuation']],
-    ['imports', 'Import', ['import', 'excel', 'csv', 'upload']],
-    ['movements', 'Inventory movements', ['movement', 'movements']],
-    ['waste', 'Waste', ['waste', 'spoilage', 'breakage']],
-    ['system', 'System', ['system', 'health', 'status']],
-    ['settings', 'Settings', ['setting', 'settings', 'preferences']]
+  // Destinations and their sections: [nav id, label, route, keywords, roles?].
+  // Top-level pages come from AtlasShell.nav; these are the linkable tabs.
+  const MANAGERS = ['admin', 'manager'];
+  const SECTIONS = [
+    ['ai', 'Atlas AI › Decisions', '#ai/decisions', ['decisions', 'recommendations', 'outcomes'], MANAGERS],
+    ['inventory', 'Inventory › Stock count', '#inventory/counts', ['stock count', 'count stock', 'stocktake', 'counts']],
+    ['inventory', 'Inventory › Movements', '#inventory/movements', ['movement', 'movements', 'history', 'ledger']],
+    ['inventory', 'Inventory › Waste', '#inventory/waste', ['waste', 'spoilage', 'breakage']],
+    ['purchasing', 'Purchasing › Orders', '#purchasing/orders', ['order', 'orders', 'purchase order']],
+    ['purchasing', 'Purchasing › Deliveries', '#purchasing/deliveries', ['delivery', 'deliveries', 'receive', 'restock']],
+    ['purchasing', 'Purchasing › Suppliers', '#purchasing/suppliers', ['supplier', 'suppliers', 'vendor']],
+    ['shifts', 'Shifts › Month', '#shifts/month', ['month', 'calendar']],
+    ['shifts', 'Shifts › Availability', '#shifts/availability', ['availability', 'available']],
+    ['shifts', 'Shifts › Time off', '#shifts/time-off', ['time off', 'holiday', 'leave', 'vacation']],
+    ['knowledge', 'Knowledge › Required reading', '#knowledge/required', ['required', 'reading', 'must read']],
+    ['knowledge', 'Knowledge › Training', '#knowledge/training', ['training', 'onboarding']],
+    ['reports', 'Reports › Overview', '#reports/overview', ['overview', 'business', 'profit', 'margin', 'spend']],
+    ['reports', 'Reports › Stock', '#reports/stock', ['stock report', 'valuation', 'inventory report']],
+    ['reports', 'Reports › Purchasing', '#reports/purchasing', ['purchasing report', 'spend']],
+    ['reports', 'Reports › Recipes', '#reports/recipes', ['recipe report', 'margins']],
+    ['reports', 'Reports › Waste', '#reports/waste', ['waste report']],
+    ['reports', 'Reports › Labour', '#reports/labour', ['labour', 'labor', 'hours worked']],
+    ['data', 'Data › Import review', '#data/import-review', ['import review', 'review', 'real data']],
+    ['data', 'Data › Issues', '#data/issues', ['issues', 'data issues', 'fix']],
+    ['data', 'Data › Par levels', '#data/pars', ['par', 'pars', 'par levels']],
+    ['settings', 'Settings › Venue and opening hours', '#settings/general', ['opening hours', 'business hours', 'hours', 'venue']],
+    ['settings', 'Settings › Team access', '#settings/access', ['access', 'roles', 'permissions', 'invite']],
+    ['settings', 'Settings › Operational rules', '#settings/operations', ['rules', 'operational rules']],
+    ['settings', 'Settings › Integrations', '#settings/integrations', ['integrations', 'connections']],
+    ['settings', 'Settings › Security', '#settings/security', ['security', 'password', 'sessions']],
+    ['settings', 'Settings › Activity', '#settings/activity', ['activity', 'audit']],
+    ['settings', 'Settings › System health', '#settings/system', ['system', 'health', 'status'], ['admin']],
+    // Everyone's own settings (spec §3.3: staff reach these from the account menu).
+    ['account', 'Preferences', '#settings/preferences', ['preference', 'preferences', 'start view', 'reduce motion'], null],
+    ['account', 'Notification settings', '#settings/notifications', ['notification', 'notifications', 'alerts', 'push'], null]
   ];
-  const COMMANDS = [
-    ['stock-count', 'Start a stock count', ['stock count', 'count stock', 'start count']],
-    ['settings:notifications', 'Notification settings', ['notification', 'notifications', 'alerts', 'push']],
-    ['settings:preferences', 'My preferences', ['preference', 'preferences', 'start view', 'reduce motion']],
-    ['settings:general', 'Venue & opening hours', ['opening hours', 'business hours', 'hours', 'venue']]
-  ];
-
-  const state = { results: [], answer: null, active: -1, token: 0, timer: null };
-  let input = null;
-  let panel = null;
-
-  function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-  }
 
   function normalize(value) {
     return String(value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
@@ -84,9 +87,13 @@
     return Boolean(window.atlasCanManageCommercial?.());
   }
 
-  function navVisible(view) {
-    const button = document.querySelector(`.atlas-nav .nav-item[data-view="${view}"]`);
-    return Boolean(button && button.offsetParent !== null);
+  function role() {
+    return window.AtlasShell?.profile?.()?.role || window.atlasCurrentProfile?.role || null;
+  }
+
+  // A destination (nav id or internal view) the signed-in role may open.
+  function navVisible(target) {
+    return Boolean(window.AtlasShell?.nav ? window.AtlasShell.nav.allowed(target, role()) : true);
   }
 
   function formatNumber(value) {
@@ -110,27 +117,33 @@
     return `${formatNumber(item.quantity)} ${item.unit || 'units'}${low}${due}`;
   }
 
-  // ---------- record results ----------
+  // ---------- destinations ("Go to") ----------
 
-  function pageResults(query) {
-    const pages = PAGES
-      .filter(([view]) => navVisible(view))
-      .map(([view, label, words]) => ({ view, label, value: Math.max(score(label, query), ...words.map((word) => score(word, query))) }))
-      .filter((entry) => entry.value >= 40)
-      .map((entry) => ({ group: 'Pages', title: entry.label, detail: 'Open page', icon: 'arrow-right', score: entry.value, run: () => openView(entry.view) }));
-    const commands = COMMANDS
-      .filter(([key]) => (key === 'stock-count' ? navVisible('inventory') : true))
-      .map(([key, label, words]) => ({ key, label, value: Math.max(score(label, query), ...words.map((word) => score(word, query))) }))
-      .filter((entry) => entry.value >= 40)
-      .map((entry) => ({ group: 'Pages', title: entry.label, detail: 'Command', icon: 'corner-down-right', score: entry.value - 1, run: () => runCommand(entry.key) }));
-    return [...pages, ...commands];
+  function destinations(query) {
+    const q = normalize(query);
+    const shell = window.AtlasShell;
+    const pages = (shell?.nav?.items({ role: role() }) || []).map((item) => ({ id: item.id, label: item.label, route: item.route, icon: item.icon, words: item.keywords, allowed: true }));
+    const sections = SECTIONS.map(([id, label, route, words, roles]) => ({
+      id, label, route, words, icon: id === 'account' ? (route.endsWith('notifications') ? 'bell' : 'sliders-horizontal') : (shell?.nav?.get(id)?.icon || 'arrow-right'),
+      allowed: roles === null ? Boolean(role()) : (roles ? roles.includes(role()) : navVisible(id)) && (id === 'account' || navVisible(id))
+    }));
+    return [...pages, ...sections]
+      .filter((entry) => entry.allowed)
+      .map((entry) => ({ entry, value: q ? Math.max(score(entry.label, q), score(entry.label.split(' › ').pop(), q), ...entry.words.map((word) => score(word, q) - 5)) : 1 }))
+      .filter((match) => match.value >= 40 || (!q && match.value > 0))
+      .sort((a, b) => b.value - a.value)
+      .map(({ entry, value }) => ({ group: 'Go to', type: 'page', id: entry.route, title: entry.label, detail: '', icon: entry.icon, score: value, route: entry.route, run: () => openRoute(entry.route) }));
   }
+
+  // ---------- record results ----------
+  // Every result carries { type, id, route } so the palette can offer
+  // record-aware actions ("Count Campari") and remember recent records.
 
   function inventoryResults(query) {
     return inventory()
       .map((item) => ({ item, value: Math.max(score(item.name, query), score(item.supplier, query) - 20, score(item.sku, query), score(item.category, query) - 30) }))
       .filter((entry) => entry.value >= 30)
-      .map((entry) => ({ group: 'Inventory', title: entry.item.name, detail: stockLine(entry.item), icon: 'package', score: entry.value, run: () => openInventoryItem(entry.item) }));
+      .map((entry) => ({ group: 'Items', type: 'inventory_item', id: String(entry.item.id), title: entry.item.name, detail: stockLine(entry.item), icon: 'package', score: entry.value, route: `#inventory/item/${encodeURIComponent(entry.item.id)}`, run: () => openInventoryItem(entry.item) }));
   }
 
   function recipeResults(query) {
@@ -139,16 +152,16 @@
       .filter((entry) => entry.value >= 30)
       .map((entry) => {
         const status = window.AtlasRecipes?.recipeStatus?.(entry.recipe);
-        return { group: 'Recipes', title: entry.recipe.name, detail: status?.label || 'Recipe', icon: 'martini', score: entry.value, run: () => window.AtlasRecipes?.openRecipe?.(entry.recipe.id) };
+        return { group: 'Recipes', type: 'recipe', id: String(entry.recipe.id), title: entry.recipe.name, detail: status?.label || 'Recipe', icon: 'martini', score: entry.value, route: `#recipes/${encodeURIComponent(entry.recipe.id)}`, run: () => window.AtlasRecipes?.openRecipe?.(entry.recipe.id) };
       });
   }
 
   function supplierResults(query) {
-    if (!isManager()) return [];
+    if (!isManager() || !navVisible('purchasing')) return [];
     return (globalList('suppliers') || [])
       .map((supplier) => ({ supplier, value: score(supplier.name, query) }))
       .filter((entry) => entry.value >= 40)
-      .map((entry) => ({ group: 'Suppliers', title: entry.supplier.name, detail: entry.supplier.contact_name || entry.supplier.email || 'Supplier', icon: 'truck', score: entry.value, run: () => openSupplier(entry.supplier) }));
+      .map((entry) => ({ group: 'Suppliers', type: 'supplier', id: String(entry.supplier.id), title: entry.supplier.name, detail: entry.supplier.contact_name || entry.supplier.email || 'Supplier', icon: 'truck', score: entry.value, route: `#purchasing/suppliers/${encodeURIComponent(entry.supplier.id)}`, run: () => openSupplier(entry.supplier) }));
   }
 
   function people() {
@@ -168,7 +181,7 @@
     return people()
       .map((person) => ({ person, value: score(person.name, query) }))
       .filter((entry) => entry.value >= 40)
-      .map((entry) => ({ group: 'Team', title: entry.person.name, detail: entry.person.role || 'Team member', icon: 'user-round', score: entry.value, run: () => openPerson(entry.person) }));
+      .map((entry) => ({ group: 'People', type: 'person', id: String(entry.person.id || ''), title: entry.person.name, detail: entry.person.role || 'Team member', icon: 'user-round', score: entry.value, route: entry.person.id ? `#team/${encodeURIComponent(entry.person.id)}` : '#team', run: () => openPerson(entry.person) }));
   }
 
   function knowledgeResults(query) {
@@ -176,19 +189,11 @@
     const matches = articles
       .map((article) => ({ article, value: Math.max(score(article.title, query), score(article.category_name, query) - 20, score(article.summary, query) - 30) }))
       .filter((entry) => entry.value >= 30)
-      .map((entry) => ({ group: 'Knowledge', title: entry.article.title, detail: entry.article.category_name || 'Knowledge', icon: 'book-open', score: entry.value, run: () => window.AtlasKnowledge?.openArticle?.(entry.article.id) }));
+      .map((entry) => ({ group: 'Articles', type: 'knowledge_article', id: String(entry.article.id), title: entry.article.title, detail: entry.article.category_name || 'Knowledge', icon: 'book-open', score: entry.value, route: `#knowledge/${encodeURIComponent(entry.article.id)}`, run: () => window.AtlasKnowledge?.openArticle?.(entry.article.id) }));
     if (!matches.length && navVisible('knowledge') && normalize(query).length >= 3 && !detectIntent(query)) {
-      matches.push({ group: 'Knowledge', title: `Search Knowledge for “${query}”`, detail: 'Documents are searched inside Knowledge', icon: 'book-open', score: 1, run: () => openKnowledgeSearch(query) });
+      matches.push({ group: 'Articles', type: 'knowledge_search', id: `search:${query}`, title: `Search Knowledge for “${query}”`, detail: 'Documents are searched inside Knowledge', icon: 'book-open', score: 1, route: '#knowledge', run: () => openKnowledgeSearch(query) });
     }
     return matches;
-  }
-
-  function settingsResults(query) {
-    const tabs = [['general', 'Venue & hours'], ['access', 'Team access'], ['notifications', 'Notifications'], ['operations', 'Operational rules'], ['intelligence', 'Marketing & Brain'], ['integrations', 'Integrations'], ['security', 'Security'], ['preferences', 'Preferences'], ['activity', 'Settings activity']];
-    return tabs
-      .map(([tab, label]) => ({ tab, label, value: score(label, query) }))
-      .filter((entry) => entry.value >= 60)
-      .map((entry) => ({ group: 'Settings', title: entry.label, detail: 'Settings', icon: 'settings', score: entry.value - 5, run: () => runCommand(`settings:${entry.tab}`) }));
   }
 
   // ---------- Ask Atlas answers ----------
@@ -218,7 +223,7 @@
       .sort((a, b) => (Number(a.quantity) / Number(a.par_level)) - (Number(b.quantity) / Number(b.par_level)));
     const unknown = list.length - counted.length;
     const unknownNote = unknown ? ` ${unknown} ${unknown === 1 ? 'item has' : 'items have'} no verified count, so ${unknown === 1 ? 'it is' : 'they are'} not included.` : '';
-    if (!counted.length) return { text: `No item has a verified count yet, so Atlas cannot tell what is low.${unknownNote}`, tone: 'unknown', action: { label: 'Start a stock count', run: () => runCommand('stock-count') } };
+    if (!counted.length) return { text: `No item has a verified count yet, so Atlas cannot tell what is low.${unknownNote}`, tone: 'unknown', action: { label: 'Start stock count', run: () => openRoute('#inventory/counts') } };
     if (!low.length) return { text: `Nothing with a verified count is below par.${unknownNote}`, tone: 'good' };
     const lines = low.slice(0, 6).map((item) => `${item.name}: ${formatNumber(item.quantity)} of ${formatNumber(item.par_level)} ${item.unit || 'units'}`);
     return { text: `${low.length} ${low.length === 1 ? 'item is' : 'items are'} below par.${unknownNote}`, lines, tone: 'warn', action: { label: 'Open Inventory', run: () => openView('inventory') } };
@@ -337,19 +342,13 @@
   // ---------- navigation ----------
 
   // Results open through AtlasShell routes, the same #view/section?param links
-  // Atlas AI records carry (#inventory?item=…, #settings/notifications).
+  // Atlas AI records carry (#inventory/item/…, #settings/notifications).
   function openView(view, params = {}) {
     window.AtlasShell.show(view, params, { source: 'nav' });
   }
 
-  function runCommand(key) {
-    if (key === 'stock-count') {
-      openView('inventory', { section: 'stock-count' });
-      return;
-    }
-    if (key.startsWith('settings:')) {
-      openView('settings', { section: key.slice('settings:'.length) });
-    }
+  function openRoute(route) {
+    window.AtlasShell.navigate(route, { source: 'nav' });
   }
 
   // index.html's Inventory view opens ?item= links: it filters to the item and
@@ -359,7 +358,7 @@
   }
 
   function openSupplier(supplier) {
-    openView('suppliers');
+    openView('suppliers', { section: 'suppliers' });
     window.setTimeout(() => {
       const search = document.getElementById('supplier-search');
       if (!search) return;
@@ -373,6 +372,18 @@
     else openView('team-profiles');
   }
 
+  // Opens a remembered record ({ type, id, title, route }) the way a fresh
+  // result would (recent items in the palette).
+  function openRecord(record = {}) {
+    const id = record.id;
+    if (record.type === 'inventory_item') { openView('inventory', { item: id }); return; }
+    if (record.type === 'recipe' && window.AtlasRecipes?.openRecipe) { window.AtlasRecipes.openRecipe(id); return; }
+    if (record.type === 'supplier') { openSupplier({ id, name: record.title }); return; }
+    if (record.type === 'person') { openPerson({ id, name: record.title }); return; }
+    if (record.type === 'knowledge_article' && window.AtlasKnowledge?.openArticle) { window.AtlasKnowledge.openArticle(id); return; }
+    if (record.route) openRoute(record.route);
+  }
+
   function openKnowledgeSearch(query) {
     openView('knowledge');
     window.setTimeout(() => {
@@ -383,161 +394,22 @@
     }, 300);
   }
 
-  // ---------- rendering ----------
+  // ---------- provider API ----------
 
+  const RECORD_SOURCES = [inventoryResults, recipeResults, supplierResults, teamResults, knowledgeResults];
+
+  // Records only, best first within each type (max 5 per type).
+  function records(query) {
+    if (!normalize(query)) return [];
+    return RECORD_SOURCES.flatMap((source) => {
+      try { return source(query).sort((a, b) => b.score - a.score).slice(0, MAX_PER_GROUP); } catch { return []; }
+    });
+  }
+
+  // Records followed by destinations (the pre-palette shape, kept for callers).
   function collect(query) {
-    const groups = [pageResults, inventoryResults, recipeResults, supplierResults, teamResults, knowledgeResults, settingsResults]
-      .flatMap((source) => {
-        try { return source(query).sort((a, b) => b.score - a.score).slice(0, MAX_PER_GROUP); } catch { return []; }
-      });
-    return groups;
+    return [...records(query), ...destinations(query).slice(0, MAX_PER_GROUP)];
   }
 
-  function answerMarkup(answer) {
-    if (!answer) return '';
-    return `<section class="atlas-search-answer is-${escapeHtml(answer.tone || 'neutral')}" aria-live="polite">
-      <span class="atlas-search-answer-label"><i data-lucide="sparkles"></i>Atlas</span>
-      <p>${escapeHtml(answer.text)}</p>
-      ${answer.lines?.length ? `<ul>${answer.lines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>` : ''}
-      ${answer.action ? `<button type="button" class="atlas-search-answer-action" data-atlas-search-answer-action>${escapeHtml(answer.action.label)}<i data-lucide="arrow-right"></i></button>` : ''}
-    </section>`;
-  }
-
-  function render(query) {
-    if (!panel) return;
-    const answer = state.answer;
-    const results = state.results;
-    if (!query) { close(); return; }
-    let lastGroup = '';
-    const options = results.map((result, index) => {
-      const header = result.group !== lastGroup ? `<li class="atlas-search-group" role="presentation">${escapeHtml(result.group)}</li>` : '';
-      lastGroup = result.group;
-      return `${header}<li id="atlas-search-option-${index}" role="option" class="atlas-search-option ${index === state.active ? 'is-active' : ''}" aria-selected="${index === state.active}" data-atlas-search-index="${index}"><i data-lucide="${escapeHtml(result.icon)}"></i><span><strong>${escapeHtml(result.title)}</strong><small>${escapeHtml(result.detail)}</small></span></li>`;
-    }).join('');
-    const empty = !results.length && !answer
-      ? '<p class="atlas-search-empty">No matches. Try an item, recipe, supplier, person or page — or ask “What is low in stock?”</p>'
-      : '';
-    panel.innerHTML = `${answerMarkup(answer)}${options ? `<ul role="listbox" aria-label="Search results">${options}</ul>` : ''}${empty}`;
-    panel.hidden = false;
-    input.setAttribute('aria-expanded', 'true');
-    if (state.active >= 0) input.setAttribute('aria-activedescendant', `atlas-search-option-${state.active}`);
-    else input.removeAttribute('aria-activedescendant');
-    window.lucide?.createIcons?.();
-  }
-
-  function close() {
-    if (!panel) return;
-    panel.hidden = true;
-    panel.innerHTML = '';
-    state.active = -1;
-    input?.setAttribute('aria-expanded', 'false');
-    input?.removeAttribute('aria-activedescendant');
-  }
-
-  async function update() {
-    const query = input.value.trim();
-    const token = ++state.token;
-    state.active = -1;
-    state.results = query ? collect(query) : [];
-    const intent = detectIntent(query);
-    state.answer = intent && intent.kind !== 'who-works' ? await answerFor(query) : null;
-    if (intent?.kind === 'who-works') state.answer = { text: 'Press Enter to check the schedule.', tone: 'neutral' };
-    if (token !== state.token) return;
-    render(query);
-  }
-
-  function choose(index) {
-    const result = state.results[index];
-    if (!result) return;
-    close();
-    input.value = '';
-    input.blur();
-    result.run();
-  }
-
-  async function submit() {
-    // A pending keystroke refresh must not overwrite the submitted answer.
-    window.clearTimeout(state.timer);
-    const query = input.value.trim();
-    if (!query) return;
-    if (state.active >= 0) { choose(state.active); return; }
-    const intent = detectIntent(query);
-    if (intent) {
-      const token = ++state.token;
-      state.answer = { text: 'Checking…', tone: 'neutral' };
-      render(query);
-      const answer = await answerFor(query);
-      if (token !== state.token) return;
-      state.answer = answer || { text: 'Atlas could not answer that from the data it has.', tone: 'unknown' };
-      render(query);
-      return;
-    }
-    if (state.results.length) choose(0);
-  }
-
-  function handleKeydown(event) {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      if (!state.results.length) return;
-      event.preventDefault();
-      const step = event.key === 'ArrowDown' ? 1 : -1;
-      state.active = (state.active + step + state.results.length) % state.results.length;
-      render(input.value.trim());
-      document.getElementById(`atlas-search-option-${state.active}`)?.scrollIntoView({ block: 'nearest' });
-      return;
-    }
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      submit();
-      return;
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      if (input.value) { input.value = ''; close(); } else input.blur();
-    }
-  }
-
-  function init() {
-    input = document.getElementById('global-search');
-    if (!input || input.dataset.atlasSearchReady === 'true') return;
-    input.dataset.atlasSearchReady = 'true';
-    input.setAttribute('role', 'combobox');
-    input.setAttribute('aria-autocomplete', 'list');
-    input.setAttribute('aria-expanded', 'false');
-    input.setAttribute('aria-controls', 'atlas-search-panel');
-    input.setAttribute('aria-label', 'Search Atlas or ask a question');
-    input.title = 'Search items, recipes, suppliers, people, documents and pages, or ask a question';
-    input.dataset.searchScope = 'records';
-    panel = document.createElement('div');
-    panel.id = 'atlas-search-panel';
-    panel.className = 'atlas-search-panel';
-    panel.hidden = true;
-    input.closest('.atlas-search')?.appendChild(panel);
-
-    input.addEventListener('input', () => {
-      window.clearTimeout(state.timer);
-      state.timer = window.setTimeout(update, 80);
-    });
-    input.addEventListener('focus', () => { if (input.value.trim()) update(); });
-    input.addEventListener('keydown', handleKeydown);
-    panel.addEventListener('mousedown', (event) => event.preventDefault());
-    panel.addEventListener('click', (event) => {
-      const target = event.target instanceof Element ? event.target : null;
-      const option = target?.closest('[data-atlas-search-index]');
-      if (option) { choose(Number(option.dataset.atlasSearchIndex)); return; }
-      if (target?.closest('[data-atlas-search-answer-action]')) {
-        const action = state.answer?.action;
-        close();
-        input.value = '';
-        action?.run();
-      }
-    });
-    document.addEventListener('click', (event) => {
-      if (!(event.target instanceof Element) || !event.target.closest('.atlas-search')) close();
-    });
-  }
-
-  window.AtlasSearch = { detectIntent, answerFor, results: (query) => collect(query) };
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
-  else init();
+  window.AtlasSearch = { detectIntent, answerFor, results: (query) => collect(query), records, destinations, openRecord };
 })();
