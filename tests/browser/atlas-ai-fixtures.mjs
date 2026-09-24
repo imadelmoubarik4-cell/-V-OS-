@@ -11,6 +11,7 @@ export const IDS = {
   action: '9d1e2f30-4a5b-4c6d-8e7f-001122334455',
   voiceAction: '9d1e2f30-4a5b-4c6d-8e7f-001122334466',
   media: '7a7a7a7a-1111-4222-8333-444455556666',
+  voiceSession: 'e1e2e3e4-5555-4666-8777-888899990000',
   campari: 'c0a1b2c3-0000-4000-8000-00000000c001',
   negroni: 'c0a1b2c3-0000-4000-8000-00000000c002',
   globus: 'c0a1b2c3-0000-4000-8000-00000000c003'
@@ -99,13 +100,21 @@ export function chatStream({ conversationId = IDS.created, content = ANSWER, pro
  *   chat(entry, state) — custom chat responder returning a harness result;
  *   delayChatMs — hold the chat response (to test Stop).
  */
-export function atlasAiBackend({ configured = true, chat = null, delayChatMs = 0, messages = negroniMessages } = {}) {
-  const state = { conversations: conversations(), calls: [], executed: 0 };
+export function atlasAiBackend({ configured = true, chat = null, delayChatMs = 0, messages = negroniMessages, overrides = {} } = {}) {
+  const state = { conversations: conversations(), calls: [], executed: 0, voiceActive: false };
+  // Hardened voice contract: tool and transcript calls must carry the Atlas
+  // voice_session_id of a live session, else 409 voice_session_inactive.
+  const inactive = { __status: 409, body: { error_code: 'voice_session_inactive', message: 'This live voice session has ended. Start a new one to continue.' } };
+  const liveSession = (body) => state.voiceActive && body.voice_session_id === IDS.voiceSession;
   const handler = async (entry) => {
     state.calls.push(entry);
     if (!configured) return { __status: 503, body: { error_code: 'not_configured', message: 'Atlas AI is not configured' } };
     const body = entry.body && typeof entry.body === 'object' ? entry.body : {};
     const params = new URLSearchParams(entry.search);
+    if (overrides[entry.action]) {
+      const result = await overrides[entry.action](entry, state);
+      if (result !== undefined) return result;
+    }
     switch (entry.action) {
       case 'settings': return { enabled: true, configured: true, key_present: true };
       case 'conversations': {
@@ -153,14 +162,22 @@ export function atlasAiBackend({ configured = true, chat = null, delayChatMs = 0
       case 'transcribe':
         return { text: 'I just counted six bottles of Tanqueray and two Campari', duration: 4.2, source: 'voice_note', media_id: null, audio_retained: false };
       case 'voice-session':
-        return { client_secret: 'ek_harness_secret', expires_at: null, model: 'realtime', voice: 'marin', session_id: 'sess_harness', conversation_id: body.conversation_id || IDS.created, run_id: 'run-voice' };
+        state.voiceActive = true;
+        return { client_secret: 'ek_harness_secret', expires_at: null, model: 'realtime', voice: 'marin', session_id: 'sess_harness', voice_session_id: IDS.voiceSession, voice_session_expires_at: inHours(1), conversation_id: body.conversation_id || IDS.created, run_id: 'run-voice' };
+      case 'voice-end':
+        if (!liveSession(body)) return inactive;
+        state.voiceActive = false;
+        return { ended: true, voice_session_id: body.voice_session_id, ended_at: new Date().toISOString() };
       case 'voice-tool':
+        if (!liveSession(body)) return inactive;
         return {
           output: 'Tanqueray: 6 bottles counted. Prepared "Back bar count" as a proposal card on screen.',
           proposal: { id: IDS.voiceAction, kind: 'stock_count.draft', title: 'Back bar count', status: 'proposed', required_roles: ['admin', 'manager', 'bartender'], expires_at: inHours(20), preview: { headline: 'New stock count with 2 counted lines', lines: [{ label: 'Tanqueray 1 L', detail: '6 bottle' }, { label: 'Campari 1 L', detail: '2 bottle' }], will_change: ['A new count session is started in Stock count.'], will_not_change: ['Stock does not change now.'] } },
           records: [], evidence: []
         };
       case 'voice-append':
+        if (body.voice_session_id !== IDS.voiceSession) return inactive;
+        if (body.ended === true) state.voiceActive = false;
         return { messages: (body.turns || []).map((turn, index) => ({ id: `v-${index}`, created: true })) };
       case 'chat': {
         if (delayChatMs) await new Promise((resolve) => setTimeout(resolve, delayChatMs));

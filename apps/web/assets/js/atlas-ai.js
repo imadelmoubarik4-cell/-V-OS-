@@ -25,6 +25,7 @@
   const OPERATIONAL_ROLES = ['admin', 'manager', 'bartender'];
   const MAX_ATTACHMENTS = 4;
   const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+  const MAX_TURN_ATTACHMENT_BYTES = 20 * 1024 * 1024;
   const UPLOAD_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,text/plain,text/csv,.csv,.txt';
   const VOICE_EXPLAINED_KEY = 'atlas.ai.voice.explained.v1';
   const DAY = 86400000;
@@ -237,11 +238,12 @@
   // ---------- API ----------
 
   class AiError extends Error {
-    constructor(status, code, message) {
+    constructor(status, code, message, reason = null) {
       super(message || 'Atlas AI request failed.');
       this.name = 'AiError';
       this.status = status;
       this.code = code || 'failed';
+      this.reason = typeof reason === 'string' ? reason : null;
     }
   }
 
@@ -285,11 +287,21 @@
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
       root.console?.warn?.('[atlas-ai]', action, response.status, payload?.error_code || '', response.headers.get('x-request-id') || '');
-      throw new AiError(response.status, payload?.error_code || (response.status === 503 ? 'not_configured' : 'failed'), payload?.message);
+      throw new AiError(response.status, payload?.error_code || (response.status === 503 ? 'not_configured' : 'failed'), payload?.message, payload?.reason);
     }
     if (stream) return response;
     if (response.status === 204) return {};
     return response.json().catch(() => ({}));
+  }
+
+  // A request that survives page unload (voice-end on pagehide). The access
+  // token was read when the call started; nothing is stored.
+  function requestOnExit(token, action, body) {
+    const base = endpoint();
+    if (!base || !token) return;
+    const url = new URL(base);
+    url.searchParams.set('action', action);
+    root.fetch(url, { method: 'POST', keepalive: true, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
   }
 
   // Multipart upload with progress (fetch cannot report upload progress).
@@ -309,7 +321,7 @@
           if (xhr.status >= 200 && xhr.status < 300) resolve(payload);
           else {
             root.console?.warn?.('[atlas-ai]', action, xhr.status, payload?.error_code || '');
-            reject(new AiError(xhr.status, payload?.error_code || 'failed', payload?.message));
+            reject(new AiError(xhr.status, payload?.error_code || (xhr.status === 503 ? 'not_configured' : 'failed'), payload?.message, payload?.reason));
           }
         };
         xhr.onerror = () => reject(new AiError(0, 'network', 'Atlas couldn’t be reached.'));
@@ -320,16 +332,40 @@
   }
 
   // Plain-language failure copy: what failed, what is safe, what to do.
+  const FIXED_COPY = {
+    rate_limited: 'Atlas is getting a lot of requests from you right now. Wait a minute, then try again.',
+    busy: 'Atlas is busy right now. Try again in a moment.',
+    timeout: 'Atlas took too long to answer. Try again, or ask a narrower question.',
+    too_many_steps: 'That needed too many steps. Try a narrower question.',
+    forbidden: 'Your role can’t do this. Ask a manager if it’s needed.',
+    conflict: 'This was already handled or has expired. Nothing else was changed.',
+    too_large: 'This file is larger than 25 MB.',
+    attachments_too_large: 'Photos and PDFs in one message can be up to 20 MB together. Remove one and try again.',
+    unsupported_type: 'Atlas can read photos, PDFs, text and CSV files.',
+    unauthorized: 'Your session has ended. Sign in again to continue.',
+    message_too_long: 'That message is too long. Shorten it and try again.',
+    voice_session_inactive: 'This live voice session has ended. Start a new one to continue.',
+    not_configured: 'Atlas AI isn’t switched on yet.'
+  };
+  const QUOTA_COPY = {
+    voice_quota_exceeded: {
+      daily_sessions: 'You’ve used today’s live voice sessions. Voice notes and text still work.',
+      daily_minutes: 'You’ve used today’s live voice time. Voice notes and text still work.',
+      concurrent: 'Live voice is already open in another tab or device. End it there, then try again.',
+      default: 'You’ve reached today’s live voice limit. Voice notes and text still work.'
+    },
+    upload_quota_exceeded: {
+      daily_files: 'You’ve reached today’s limit of 100 files for Atlas AI. It resets within 24 hours.',
+      daily_bytes: 'You’ve reached today’s upload size limit for Atlas AI. It resets within 24 hours.',
+      default: 'You’ve reached today’s upload limit for Atlas AI. It resets within 24 hours.'
+    }
+  };
+
   function friendly(error, subject = 'That') {
     const code = error?.code;
+    if (QUOTA_COPY[code]) return QUOTA_COPY[code][error?.reason] || QUOTA_COPY[code].default;
+    if (FIXED_COPY[code]) return FIXED_COPY[code];
     if (code === 'network') return `${subject} couldn’t reach Atlas. Nothing was changed. Check your connection and try again.`;
-    if (code === 'rate_limited' || code === 'busy' || code === 'timeout' || code === 'too_many_steps') return humanText(error.message, 'Atlas is busy right now. Try again in a moment.');
-    if (code === 'forbidden') return 'Your role can’t do this. Ask a manager if it’s needed.';
-    if (code === 'conflict') return 'This was already handled or has expired. Nothing else was changed.';
-    if (code === 'too_large') return 'This file is larger than 25 MB.';
-    if (code === 'unsupported_type') return 'Atlas can read photos, PDFs, text and CSV files.';
-    if (code === 'unauthorized') return 'Your session has ended. Sign in again to continue.';
-    if (code === 'message_too_long') return 'That message is too long. Shorten it and try again.';
     return `${subject} couldn’t be completed. Nothing was changed. Try again.`;
   }
 
@@ -1224,7 +1260,7 @@
     const streaming = message.status === 'streaming';
     const text = message.content || '';
     const body = text
-      ? `<div class="msg-ai__text" data-ai-text>${formatAnswer(text, { emphasiseFirst: message.status === 'complete' && !message.fallback })}</div>`
+      ? `<div class="msg-ai__text" data-ai-text>${formatAnswer(text, { emphasiseFirst: message.status === 'complete' && !message.fallback && message.grounding !== 'replaced' })}</div>`
       : streaming ? '<div class="ai-skel-lines" aria-hidden="true"><div class="atlas-skel" style="width:92%"></div><div class="atlas-skel" style="width:74%"></div></div><div class="msg-ai__text" data-ai-text hidden></div>' : '';
     const fallback = message.fallback ? `<p class="msg-ai__label"><span class="atlas-pill atlas-pill--plain">Quick answer</span> From Atlas records. Atlas AI is off, so this is a fixed check, not a full answer.</p>` : '';
     const fallbackLines = message.fallbackLines?.length ? `<ul class="msg-ai__lines">${message.fallbackLines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>` : '';
@@ -1576,6 +1612,8 @@
       return;
     }
     if (!navigator.onLine) { toast('You’re offline. Atlas AI needs a connection.'); return; }
+    const modelBytes = ready.filter((attachment) => attachment.kind === 'image' || attachment.kind === 'pdf').reduce((sum, attachment) => sum + (Number(attachment.size) || 0), 0);
+    if (!options.regenerate && modelBytes > MAX_TURN_ATTACHMENT_BYTES) { toast(FIXED_COPY.attachments_too_large); return; }
 
     if (state.configured === false || !endpoint()) { answerLocally(text); return; }
 
@@ -1669,6 +1707,9 @@
         reply.content = typeof data?.content === 'string' ? data.content : reply.content;
         reply.id = data?.message_id || reply.id;
         reply.status = 'complete';
+        // The server replaced a figure it could not support with its safe
+        // answer; show exactly that, never a client-side completion.
+        reply.grounding = data?.grounding === 'replaced_unverified' ? 'replaced' : 'ok';
         const last = reply.progress.at(-1);
         if (last && !last.ms) last.ms = Date.now() - last.at;
         if (userMessage && data?.user_message_id) userMessage.id = data.user_message_id;
@@ -1711,7 +1752,7 @@
 
   function failReply(reply, error, { render = true } = {}) {
     reply.status = 'error';
-    const specific = ['rate_limited', 'busy', 'timeout', 'too_many_steps', 'network', 'forbidden', 'message_too_long', 'unauthorized'].includes(error?.code);
+    const specific = ['rate_limited', 'busy', 'timeout', 'too_many_steps', 'network', 'forbidden', 'message_too_long', 'unauthorized', 'attachments_too_large', 'too_large', 'upload_quota_exceeded'].includes(error?.code);
     reply.error = {
       title: 'Atlas couldn’t finish this answer. Nothing was changed.',
       body: specific ? friendly(error, 'This question') : ''
@@ -1840,9 +1881,12 @@
       if (!attachment.media?.id) attachment.error = 'This file couldn’t be added. Try again.';
     } catch (error) {
       if (error?.name === 'AbortError') return;
-      if (error?.code === 'not_configured') state.configured = false;
       attachment.status = 'error';
-      attachment.error = friendly(error, 'The upload');
+      if (error?.code === 'not_configured') {
+        state.configured = false;
+        attachment.error = 'Photos and files need Atlas AI to be switched on.';
+        renderThread();
+      } else attachment.error = friendly(error, 'The upload');
     }
     renderAttachments();
     renderComposerBar();
@@ -2015,8 +2059,16 @@
 
   const LIVE_LABELS = {
     connecting: 'Connecting', listening: 'Listening', thinking: 'Thinking', speaking: 'Speaking', muted: 'Muted',
-    interrupted: 'Listening', disconnected: 'Disconnected', error: 'Couldn’t connect', ended: 'Ended', reconnecting: 'Reconnecting'
+    interrupted: 'Listening', disconnected: 'Disconnected', error: 'Couldn’t connect', ended: 'Ended', reconnecting: 'Reconnecting',
+    inactive: 'Session ended'
   };
+
+  function liveErrorText(detail = {}) {
+    if (detail.code === 'microphone_blocked') return 'Microphone access is blocked. Allow it in your browser settings, then try again.';
+    if (detail.code === 'voice_quota_exceeded' || detail.code === 'rate_limited') return friendly({ code: detail.code, reason: detail.reason });
+    if (detail.code === 'unsupported') return 'Live voice isn’t supported in this browser. Voice notes and text still work.';
+    return 'Live voice couldn’t connect. Your conversation is saved.';
+  }
 
   function liveMarkup() {
     const live = state.live;
@@ -2024,15 +2076,16 @@
     const status = live.state;
     const label = LIVE_LABELS[status] || 'Connecting';
     const lines = live.lines.slice(-2).map((line) => `<span class="${line.final ? 'is-final' : 'is-interim'}${line.role === 'assistant' ? ' is-atlas' : ''}">${escapeHtml(line.text)}</span>`).join(' ');
-    const broken = status === 'disconnected' || status === 'error';
+    const broken = status === 'disconnected' || status === 'error' || status === 'inactive';
+    const retryable = !(status === 'error' && live.blocked);
     return `<div class="voice" role="region" aria-label="Live voice" data-state="${escapeHtml(status)}">
       <div class="voice__top"><span class="voice__state" aria-live="polite">${escapeHtml(label)}</span><span class="voice__time" data-ai-live-time>${durationLabel((Date.now() - live.startedAt) / 1000)}</span>
         <button type="button" class="voice__toggle" data-ai-live-transcript aria-pressed="${live.showTranscript}">${live.showTranscript ? 'Hide transcript' : 'Show transcript'}</button></div>
-      ${broken ? `<div class="voice__error">${escapeHtml(status === 'error' && live.errorText ? live.errorText : 'Live voice disconnected. Your conversation is saved.')}</div>` : `<div class="voice__wave" aria-hidden="true">${'<i></i>'.repeat(18)}</div>`}
+      ${broken ? `<div class="voice__error" role="alert">${escapeHtml(status === 'inactive' ? FIXED_COPY.voice_session_inactive : status === 'error' && live.errorText ? live.errorText : 'Live voice disconnected. Your conversation is saved.')}</div>` : `<div class="voice__wave" aria-hidden="true">${'<i></i>'.repeat(18)}</div>`}
       ${live.showTranscript && lines ? `<div class="voice__transcript">${lines}</div>` : ''}
       <div class="voice__controls">
         ${broken
-          ? '<button type="button" data-ai-live-reconnect>' + icon('refresh-cw') + 'Reconnect</button>'
+          ? (retryable ? `<button type="button" data-ai-live-reconnect>${icon('refresh-cw')}${status === 'inactive' ? 'Start a new session' : status === 'error' ? 'Try again' : 'Reconnect'}</button>` : '')
           : `<button type="button" data-ai-live-mute aria-pressed="${status === 'muted'}">${icon(status === 'muted' ? 'mic' : 'mic-off')}${status === 'muted' ? 'Unmute' : 'Mute'}</button>`}
         <button type="button" class="end" data-ai-live-end>${icon('phone-off')}End</button>
       </div>
@@ -2085,17 +2138,26 @@
       toast(friendly(error, 'Live voice'));
       return;
     }
-    const live = { state: 'connecting', startedAt: Date.now(), lines: [], showTranscript: true, errorText: '', session: null, frame: 0, liveMessage: null };
+    const live = { state: 'connecting', startedAt: Date.now(), lines: [], showTranscript: true, errorText: '', blocked: false, session: null, frame: 0, liveMessage: null };
     state.live = live;
     renderLive();
     renderComposerBar();
+    // Read once so voice-end can still be sent while the page unloads.
+    const exitToken = await accessToken();
     const session = root.AtlasAIVoice.createLiveVoice({
       request,
+      sendOnExit: (action, body) => requestOnExit(exitToken, action, body),
       conversationId,
       onState: (next, detail) => {
         if (state.live !== live) return;
         live.state = next;
-        if (next === 'error') live.errorText = detail?.code === 'microphone_blocked' ? 'Microphone access is blocked. Allow it in your browser settings, then reconnect.' : 'Live voice couldn’t connect. Your conversation is saved.';
+        if (next === 'error') {
+          live.errorText = liveErrorText(detail || {});
+          // Daily limits do not lift by retrying now; offer no retry for them.
+          live.blocked = detail?.code === 'voice_quota_exceeded' && detail?.reason !== 'concurrent';
+          if (detail?.code === 'not_configured') { state.configured = false; renderThread(); }
+        }
+        if (next === 'inactive') announce(FIXED_COPY.voice_session_inactive);
         if (next === 'ended') { finishLive(); return; }
         renderLive();
       },
@@ -2115,15 +2177,21 @@
         reply.evidence = [...(reply.evidence || []), ...evidence].slice(0, 40);
         patchMessage(reply);
       },
-      onError: () => {}
+      onError: (problem) => { if (problem?.code === 'rate_limited') toast('Live voice is going faster than Atlas allows. Wait a moment before the next request.'); }
     });
     live.session = session;
     waveLoop();
     try {
       await session.start();
     } catch (error) {
-      // The panel already shows the reason; the console keeps the detail.
+      // The panel shows fixed copy for the reason; the console keeps the code.
       root.console?.warn?.('[atlas-ai] live voice could not start', error?.code || error?.name || 'error', error?.status || '');
+      if (state.live === live && live.state === 'error') {
+        live.errorText = liveErrorText({ code: error?.name === 'NotAllowedError' ? 'microphone_blocked' : error?.code, reason: error?.reason });
+        live.blocked = error?.code === 'voice_quota_exceeded' && error?.reason !== 'concurrent';
+        if (error?.code === 'not_configured') { state.configured = false; renderThread(); }
+        renderLive();
+      }
     }
   }
 
@@ -2553,7 +2621,12 @@
     if (hit('[data-ai-live-end]')) { endLive(); return; }
     if (hit('[data-ai-live-mute]')) { if (state.live?.session) state.live.session.mute(); return; }
     if (hit('[data-ai-live-transcript]')) { if (state.live) { state.live.showTranscript = !state.live.showTranscript; renderLive(); el('voiceSlot').querySelector('[data-ai-live-transcript]')?.focus(); } return; }
-    if (hit('[data-ai-live-reconnect]')) { const old = state.live; if (old) { root.cancelAnimationFrame(old.frame); old.session?.end?.(); state.live = null; } startLive({ skipExplain: true }); return; }
+    if (hit('[data-ai-live-reconnect]')) {
+      const old = state.live;
+      if (old) { root.cancelAnimationFrame(old.frame); old.session?.end?.(); state.live = null; }
+      startLive({ skipExplain: true });
+      return;
+    }
     if ((node = hit('[data-ai-dec-open]'))) { openDecision(node.dataset.aiDecOpen); return; }
     if (hit('[data-ai-dec-retry]') || hit('[data-ai-dec-refresh]')) { loadDecisions(); return; }
     if (hit('[data-ai-dec-clear]')) { state.decisions.filter = { status: 'all', area: 'all', period: 'all' }; renderDecisions(); return; }
@@ -2668,6 +2741,7 @@
 
   function onHide() {
     state.visible = false;
+    if (state.live) endLive();
     closeMenu();
     closeListSheet();
     document.body.classList.remove('is-ai', 'is-ai-thread', 'is-ai-voice');
@@ -2766,6 +2840,7 @@
     ensureRoot();
     ensureNavItem();
     registerWithShell();
+    root.addEventListener('pagehide', () => { if (state.live?.session) state.live.session.exit(); });
     root.addEventListener('online', () => renderComposerBar());
     root.addEventListener('offline', () => renderComposerBar());
     root.addEventListener('resize', () => measureTop());

@@ -317,7 +317,7 @@ test('live voice connects over WebRTC, runs tools through the server and shows p
     await page.waitForFunction(() => window.__dc.sent.some((event) => event.type === 'response.create'));
     const tool = calls(backend, 'voice-tool');
     assert.equal(tool.length, 1);
-    assert.deepEqual({ name: tool[0].body.name, call: tool[0].body.call_id, conversation: tool[0].body.conversation_id, session: tool[0].body.voice_session_id }, { name: 'stock_count_draft', call: 'call_1', conversation: IDS.convNegroni, session: 'sess_harness' });
+    assert.deepEqual({ name: tool[0].body.name, call: tool[0].body.call_id, conversation: tool[0].body.conversation_id, session: tool[0].body.voice_session_id }, { name: 'stock_count_draft', call: 'call_1', conversation: IDS.convNegroni, session: IDS.voiceSession }, 'the Atlas voice session id, not the provider id');
     const sent = await page.evaluate(() => window.__dc.sent);
     assert.deepEqual(sent[0], { type: 'conversation.item.create', item: { type: 'function_call_output', call_id: 'call_1', output: 'Tanqueray: 6 bottles counted. Prepared "Back bar count" as a proposal card on screen.' } });
     assert.deepEqual(sent[1], { type: 'response.create' });
@@ -343,8 +343,10 @@ test('live voice connects over WebRTC, runs tools through the server and shows p
     await page.waitForSelector('.voice', { state: 'detached' });
     for (let tries = 0; tries < 40 && calls(backend, 'voice-append').flatMap((entry) => entry.body.turns).length < 2; tries += 1) await page.waitForTimeout(100);
     await page.waitForFunction(() => document.querySelector('.composer') && getComputedStyle(document.querySelector('.composer')).display !== 'none');
-    const appended = calls(backend, 'voice-append').flatMap((entry) => entry.body.turns);
+    const appendCalls = calls(backend, 'voice-append');
+    const appended = appendCalls.flatMap((entry) => entry.body.turns);
     assert.deepEqual(appended.map((turn) => [turn.role, turn.text]), [['user', 'Six bottles of Tanqueray and two Campari'], ['assistant', 'Got it, six Tanqueray.']]);
+    assert.ok(appendCalls.every((entry) => entry.body.voice_session_id === IDS.voiceSession), 'every transcript append carries the voice session id');
     assert.ok(appended.every((turn) => /^[A-Za-z0-9._:-]{8,128}$/.test(turn.client_request_id)));
     assert.doesNotMatch(await aiText(page), /stock_count_draft|ek_harness_secret|function_call/);
   } finally { await close(); }
@@ -535,5 +537,179 @@ test('accessibility: every control is labelled and streaming is announced', { sk
     await page.keyboard.press('Shift+Enter');
     await page.keyboard.type('Line two');
     assert.equal(await page.inputValue('#ai-composer-input'), 'Line one\nLine two');
+  } finally { await close(); }
+});
+
+// ---------- hardened voice and upload contract (owner brief S88 §1–4, §7, §10) ----------
+
+async function startLiveCall(page, context) {
+  await context.route('https://api.openai.com/**', (route) => (route.request().method() === 'OPTIONS'
+    ? route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST' } })
+    : route.fulfill({ status: 201, contentType: 'application/sdp', headers: { 'access-control-allow-origin': '*' }, body: 'v=0 harness-answer' })));
+  await page.click('[data-ai-live]');
+  await page.waitForSelector('.voice[data-state="listening"]');
+}
+
+test('live voice ends its session with voice-end on End, after saving the transcript', { skip }, async () => {
+  const { page, context, close, backend } = await openAi({ initScript: fakeMediaInit, hash: `#ai/c/${IDS.convNegroni}` });
+  try {
+    await startLiveCall(page, context);
+    // No transcript: End sends voice-end with the Atlas voice session id.
+    await page.click('[data-ai-live-end]');
+    await page.waitForSelector('.voice', { state: 'detached' });
+    for (let tries = 0; tries < 30 && !calls(backend, 'voice-end').length; tries += 1) await page.waitForTimeout(100);
+    assert.deepEqual(calls(backend, 'voice-end').map((entry) => entry.body), [{ voice_session_id: IDS.voiceSession }]);
+    assert.equal(backend.state.voiceActive, false);
+
+    // With a pending transcript, the last append carries ended:true.
+    await startLiveCall(page, context);
+    await page.evaluate(() => window.__dc.serverEvent({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u9', transcript: 'Two limes left' }));
+    await page.click('[data-ai-live-end]');
+    for (let tries = 0; tries < 30 && backend.state.voiceActive; tries += 1) await page.waitForTimeout(100);
+    const appends = calls(backend, 'voice-append').map((entry) => entry.body);
+    assert.ok(appends.every((body) => body.voice_session_id === IDS.voiceSession));
+    assert.deepEqual(appends.flatMap((body) => body.turns.map((turn) => turn.text)), ['Two limes left']);
+    // The session ends either with the final append (ended:true) or voice-end.
+    assert.ok(appends.at(-1).ended === true || calls(backend, 'voice-end').length === 2);
+    assert.equal(backend.state.voiceActive, false);
+    assert.equal(calls(backend, 'voice-session').length, 2, 'each call starts its own session');
+  } finally { await close(); }
+});
+
+test('leaving the page sends voice-end for the live session', { skip }, async () => {
+  const { page, context, close, backend } = await openAi({ initScript: fakeMediaInit, hash: `#ai/c/${IDS.convNegroni}` });
+  try {
+    await startLiveCall(page, context);
+    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false })));
+    for (let tries = 0; tries < 30 && !calls(backend, 'voice-end').length; tries += 1) await page.waitForTimeout(100);
+    assert.deepEqual(calls(backend, 'voice-end').map((entry) => entry.body), [{ voice_session_id: IDS.voiceSession }]);
+  } finally { await close(); }
+});
+
+test('an inactive voice session stops tools and transcripts and offers a fresh session', { skip }, async () => {
+  const { page, context, close, backend } = await openAi({
+    initScript: fakeMediaInit,
+    hash: `#ai/c/${IDS.convNegroni}`,
+    backend: { overrides: { 'voice-tool': (_entry, state) => { state.voiceActive = false; return { __status: 409, body: { error_code: 'voice_session_inactive', message: 'raw server detail' } }; } } }
+  });
+  try {
+    await startLiveCall(page, context);
+    await page.evaluate(() => window.__dc.serverEvent({ type: 'response.output_item.done', item: { type: 'function_call', status: 'completed', call_id: 'call_x', name: 'inventory_search', arguments: '{}' } }));
+    await page.waitForSelector('.voice[data-state="inactive"]');
+    const panel = await page.textContent('.voice');
+    assert.match(panel, /Session ended[\s\S]*This live voice session has ended\. Start a new one to continue\.[\s\S]*Start a new session/);
+    assert.doesNotMatch(panel, /raw server detail/);
+    assert.equal(await page.evaluate(() => window.__dc.sent.length), 0, 'no tool output is sent for an inactive session');
+    // Further events for that session do nothing: no tool call, no transcript append, no retry.
+    await page.evaluate(() => {
+      window.__dc.serverEvent({ type: 'response.output_item.done', item: { type: 'function_call', status: 'completed', call_id: 'call_y', name: 'inventory_search', arguments: '{}' } });
+      window.__dc.serverEvent({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u5', transcript: 'Anything' });
+    });
+    await page.waitForTimeout(700);
+    assert.equal(calls(backend, 'voice-tool').length, 1);
+    assert.equal(calls(backend, 'voice-append').length, 0);
+    assert.equal(calls(backend, 'voice-session').length, 1, 'never silently retried');
+    await page.click('[data-ai-live-end]');
+    await page.waitForSelector('.voice', { state: 'detached' });
+    assert.equal(calls(backend, 'voice-end').length, 0, 'an inactive session is not ended again');
+    // A fresh session is a new voice-session call.
+    await startLiveCall(page, context);
+    assert.equal(calls(backend, 'voice-session').length, 2);
+  } finally { await close(); }
+});
+
+test('voice limits show fixed, friendly copy for each reason', { skip }, async () => {
+  const reasons = [['concurrent', /already open in another tab or device/, true], ['daily_minutes', /used today’s live voice time/, false], ['daily_sessions', /used today’s live voice sessions/, false]];
+  for (const [reason, copy, retry] of reasons) {
+    const { page, close, backend } = await openAi({
+      initScript: fakeMediaInit,
+      hash: `#ai/c/${IDS.convNegroni}`,
+      backend: { overrides: { 'voice-session': () => ({ __status: 429, body: { error_code: 'voice_quota_exceeded', reason, message: 'raw quota text from the database' } }) } }
+    });
+    try {
+      await page.click('[data-ai-live]');
+      await page.waitForSelector('.voice[data-state="error"]');
+      await page.waitForFunction(() => /Voice|voice|tab/.test(document.querySelector('.voice__error')?.textContent || ''));
+      const text = await page.textContent('.voice');
+      assert.match(text, copy, reason);
+      assert.doesNotMatch(text, /raw quota text/);
+      assert.equal(await page.locator('[data-ai-live-reconnect]').count(), retry ? 1 : 0, `${reason} retry offered: ${retry}`);
+      assert.equal(calls(backend, 'voice-tool').length, 0);
+    } finally { await close(); }
+  }
+  const { page, close } = await openAi({
+    initScript: fakeMediaInit,
+    hash: `#ai/c/${IDS.convNegroni}`,
+    backend: { overrides: { 'voice-session': () => ({ __status: 429, body: { error_code: 'rate_limited', message: 'mint throttle' } }) } }
+  });
+  try {
+    await page.click('[data-ai-live]');
+    await page.waitForSelector('.voice[data-state="error"]');
+    await page.waitForFunction(() => /Wait a minute/.test(document.querySelector('.voice__error')?.textContent || ''));
+    assert.doesNotMatch(await page.textContent('.voice'), /mint throttle/);
+  } finally { await close(); }
+});
+
+test('upload limits and sizes show fixed copy and nothing is sent', { skip }, async () => {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  const cases = [
+    [{ error_code: 'upload_quota_exceeded', reason: 'daily_files' }, 429, /today’s limit of 100 files/],
+    [{ error_code: 'upload_quota_exceeded', reason: 'daily_bytes' }, 429, /today’s upload size limit/],
+    [{ error_code: 'too_large' }, 413, /larger than 25 MB/],
+    [{ error_code: 'not_configured' }, 503, /need Atlas AI to be switched on/]
+  ];
+  for (const [payload, status, copy] of cases) {
+    const { page, close, backend } = await openAi({ backend: { overrides: { upload: () => ({ __status: status, body: { ...payload, message: 'raw storage detail' } }) } } });
+    try {
+      await page.setInputFiles('[data-ai-file-any]', { name: 'note.png', mimeType: 'image/png', buffer: png });
+      await page.waitForSelector('[data-ai-att].is-error');
+      const text = await page.textContent('[data-ai-att]');
+      assert.match(text, copy, payload.error_code);
+      assert.doesNotMatch(text, /raw storage detail/);
+      await page.fill('#ai-composer-input', 'What is this?');
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(300);
+      const chat = calls(backend, 'chat')[0];
+      assert.ok(!chat || !chat.body.attachments, 'a failed upload is never attached');
+    } finally { await close(); }
+  }
+});
+
+test('photos over 20 MB together are stopped before sending; a 413 from the server is explained', { skip }, async () => {
+  const { page, close, backend } = await openAi({ backend: { overrides: { chat: () => ({ __status: 413, body: { error_code: 'attachments_too_large', message: 'Attachments in one message can be up to 20 MB in total.' } }) } } });
+  try {
+    const big = Buffer.alloc(11 * 1024 * 1024, 1);
+    big.write('\x89PNG', 0, 'binary');
+    await page.setInputFiles('[data-ai-file-any]', [{ name: 'a.png', mimeType: 'image/png', buffer: big }, { name: 'b.png', mimeType: 'image/png', buffer: big }]);
+    await page.waitForFunction(() => document.querySelectorAll('[data-ai-att] .file-chip__meta').length === 2, null, { timeout: 20000 });
+    await page.fill('#ai-composer-input', 'Do these match?');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.atlas-toast');
+    assert.match(await page.textContent('.atlas-toast'), /up to 20 MB together/);
+    assert.equal(calls(backend, 'chat').length, 0, 'not sent');
+    // The server's own limit (for example media counted differently) is explained the same way.
+    await page.click('[data-ai-remove-att]');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.msg-ai .atlas-alert');
+    assert.match(await page.textContent('.msg-ai .atlas-alert'), /Atlas couldn’t finish this answer\. Nothing was changed\.[\s\S]*up to 20 MB together/);
+  } finally { await close(); }
+});
+
+test('an answer the server replaced for lack of evidence is shown as sent, with Try again', { skip }, async () => {
+  const safe = 'I can’t confirm that figure from Atlas records, so I won’t guess. Try again, or check Inventory.';
+  const { page, close } = await openAi({ initScript: manualStreamInit });
+  try {
+    await typeAndSend(page, 'How many Negronis did we sell?');
+    await page.waitForFunction(() => window.__chat?.push);
+    await page.evaluate((text) => {
+      window.__chat.push('progress', { label: 'Checking sales data' });
+      window.__chat.push('delta', { text: 'You sold 4' });
+      window.__chat.push('done', { message_id: 'm-g', conversation_id: 'x', content: text, grounding: 'replaced_unverified' });
+      window.__chat.end();
+    }, safe);
+    await page.waitForSelector('.msg-ai [data-ai-retry]');
+    assert.equal((await page.textContent('.msg-ai [data-ai-text]')).trim(), safe);
+    assert.doesNotMatch(await page.textContent('.msg-ai'), /You sold 4/, 'streamed text is replaced, never completed client-side');
+    assert.equal(await page.locator('.msg-ai [data-ai-text] strong').count(), 0);
   } finally { await close(); }
 });
