@@ -177,6 +177,23 @@ test('backend failures become plain failures, never invented results', async () 
   assert.equal((await runTool('inventory.below_par', { category: null, limit: null }, noConfig)).error.code, 'unavailable');
 });
 
+test('runtime ctx shape: now() returning a Date, env.get, and the runtime\'s own services ({ rpc }) are handled', async () => {
+  const backend = createBackend();
+  const rpcCalls = [];
+  const { ctx } = makeCtx('manager', {
+    backend,
+    now: () => new Date('2026-09-24T12:00:00Z'),
+    env: { get: (name) => ({ SUPABASE_URL: 'https://branch.test', ATLAS_AUTH_PROJECT_URL: 'https://prod.test', ATLAS_AUTH_PUBLISHABLE_KEY: 'pk-test', SUPABASE_SERVICE_ROLE_KEY: 'service-key' })[name] },
+    services: { rpc: async (name) => { rpcCalls.push(name); return null; } },
+  });
+  const result = await runTool('inventory.below_par', { category: null, limit: null }, ctx);
+  assert.equal(result.ok, true, JSON.stringify(result.error));
+  assert.equal(result.data.counts.current_items, 4, 'the Date from now() drives the stock projection');
+  assert.deepEqual(rpcCalls, [], 'the runtime rpc client is not used for Atlas data');
+  const later = makeCtx('manager', { backend, now: () => new Date('2026-10-30T12:00:00Z') }).ctx;
+  assert.equal((await runTool('inventory.below_par', { category: null, limit: null }, later)).data.counts.current_items, 0, 'counts expire with the clock');
+});
+
 test('a column missing from the production schema is dropped and the read retried', async () => {
   const backend = createBackend({ unsupportedColumns: { inventory_items: ['brand', 'needs_review'] } });
   const result = await runTool('inventory.below_par', { category: null, limit: null }, makeCtx('manager', { backend }).ctx);

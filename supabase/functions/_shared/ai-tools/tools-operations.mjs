@@ -190,13 +190,23 @@ const schedule = {
     const total = days.reduce((sum, day) => sum + day.shifts.length, 0);
     const unpublished = manager ? days.flatMap((day) => day.shifts).filter((line) => line.unpublished_change).length : 0;
     const weekSource = source("shift_week", weekStart, `Week of ${weekStart}`);
+    // Staffing gaps: open days (from Settings opening hours) from today on
+    // with nobody scheduled. Without opening hours a gap cannot be judged.
+    const hoursConfigured = dates.clock?.hours_configured === true;
+    const gaps = hoursConfigured
+      ? days.filter((day) => day.date >= dates.businessDate && day.shifts.length === 0
+        && todaysHours(dates.clock, day.date)?.is_open === true)
+        .map((day) => ({ key: "staffing-gap", subject_key: day.date, title: `Nobody is scheduled on ${day.weekday} ${day.date}`, detail: "The venue is open that day according to Settings.", severity: "medium" }))
+      : [];
     const evidence = [fact("Week status", published ? "published" : week.status ? `${week.status} (not published)` : "not published", weekSource)];
+    if (!hoursConfigured) evidence.push(missing("Staffing gaps", "opening hours are not set, so days without staff cannot be judged", source("venue_clock", null, "Opening hours")));
+    for (const gap of gaps) evidence.push(fact("Staffing gap", gap.title, weekSource));
     if (!published) evidence.push(interpretation("Rota may change", "This week is not published yet", weekSource));
     if (manager && unpublished) evidence.push(fact("Unpublished changes", `${unpublished} shifts changed since the last publication`, weekSource));
     for (const day of days) evidence.push(fact(`${day.weekday} ${day.date}`, day.shifts.length ? day.shifts.map((line) => `${line.name} ${line.start}–${line.end}`).join(", ") : "nobody scheduled", weekSource));
     return ok({
-      summary: `Week of ${weekStart}: ${total} shifts; ${published ? "published" : "not published yet, so it may still change"}${unpublished ? `; ${unpublished} unpublished changes` : ""}.`,
-      data: { week_start: weekStart, status: week.status ?? null, published, days, unpublished_changes: unpublished },
+      summary: `Week of ${weekStart}: ${total} shifts; ${published ? "published" : "not published yet, so it may still change"}${unpublished ? `; ${unpublished} unpublished changes` : ""}${gaps.length ? `; ${gaps.length} open days with nobody scheduled` : ""}.`,
+      data: { week_start: weekStart, status: week.status ?? null, published, days, unpublished_changes: unpublished, gaps, hours_configured: hoursConfigured },
       evidence,
       records: [record("shift_week", weekStart, `Week of ${weekStart}`)],
     });

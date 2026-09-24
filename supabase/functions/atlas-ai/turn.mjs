@@ -200,11 +200,11 @@ export class TurnState {
         error_code: code,
       });
     }
-    const proposal = await this.accept(entry, result);
+    const proposal = await this.accept(entry, result, args);
     return { result, proposal, output: toolOutputForModel(result, proposal, this.toolOutputChars) };
   }
 
-  async accept(entry, result) {
+  async accept(entry, result, args = null) {
     this.results.push({ tool: entry.name, ok: result.ok === true });
     if (result.ok !== true) return null;
     this.verified = true;
@@ -227,7 +227,7 @@ export class TurnState {
       this.records.push(record);
     }
     try {
-      const patch = this.gateway.buildContextPatch?.(entry.name, result, this.context);
+      const patch = this.gateway.buildContextPatch?.(entry.name, result, this.context, parseArgs(args));
       if (patch && typeof patch === "object" && !Array.isArray(patch)) {
         Object.assign(this.contextPatch, patch);
         Object.assign(this.context, patch);
@@ -329,4 +329,13 @@ export class TurnState {
       return null;
     }
   }
+}
+
+// Tool arguments arrive as an object or a JSON string; follow-ups need the object.
+function parseArgs(args) {
+  if (args && typeof args === "object") return args;
+  if (typeof args === "string") {
+    try { const parsed = JSON.parse(args); return parsed && typeof parsed === "object" ? parsed : null; } catch { return null; }
+  }
+  return null;
 }

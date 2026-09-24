@@ -100,8 +100,12 @@ function errorResult(error, tool) {
   return fail("unavailable", "This information is unavailable right now. Atlas did not guess a result.");
 }
 
-function servicesFor(ctx) {
-  if (ctx.services) return ctx.services;
+
+// Gateway data adapters: injected ones (tests) when they are Tool Gateway
+// services, otherwise built once per ctx from env/fetch/actor. The runtime's
+// own ctx.services ({ rpc } for the Atlas AI tables) is not used for tool data.
+export function servicesFor(ctx) {
+  if (ctx.services && typeof ctx.services.stockReport === "function") return ctx.services;
   if (!ctx.__services) {
     Object.defineProperty(ctx, "__services", {
       value: createServices({ fetch: ctx.fetch, env: ctx.env, actor: ctx.actor, now: nowMillis(ctx) }),
@@ -161,7 +165,10 @@ export async function runTool(nameOrFnName, rawArgs, ctx) {
   let result;
   try {
     const services = servicesFor(ctx);
-    const toolCtx = Object.create(ctx, { services: { value: services, enumerable: true } });
+    const toolCtx = Object.create(ctx, {
+      services: { value: services, enumerable: true },
+      now: { value: nowMillis(ctx), enumerable: true },
+    });
     result = normalizeResult(await tool.execute(checked.value, toolCtx));
   } catch (error) {
     result = errorResult(error, tool);
