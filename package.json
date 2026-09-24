@@ -10,7 +10,8 @@
     "test": "node --test tests/node/*.test.js packages/*/tests/*.test.js",
     "test:node": "node --test tests/node/*.test.js packages/*/tests/*.test.js",
     "test:python": "python -m unittest discover -s tests/python -v",
-    "verify": "npm run test:node && npm run test:python"
+    "verify": "npm run test:node && npm run test:python",
+    "test:browser": "node --test --test-concurrency=4 tests/browser/*.browser.test.mjs"
   },
   "engines": {
     "node": ">=20"
