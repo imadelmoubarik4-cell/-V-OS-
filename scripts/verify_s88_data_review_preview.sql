@@ -142,10 +142,12 @@ from jsonb_to_recordset(public.atlas_data_review_summary()->'issues') as c(code 
 create temporary view s88_dr_hits as
   select x->>'code' as code, id.value #>> '{}' as entity_id
   from s88_dr_state s, jsonb_array_elements(s.value) x, jsonb_array_elements(x->'ids') id
-  where s.key='rows';
+  where s.key='rows'
+    -- S89 catalogue codes have their own acceptance (verify_s89_catalog_governance_preview.sql).
+    and x->>'code' not in ('inventory.possible_duplicate','catalog.pending_approval','catalog.code_collision','inventory.category_unmapped');
 
 insert into s88_dr select 'summary lists the full catalogue with counts',
-  jsonb_array_length(s->'issues')=12 and (s->>'generated_at') is not null
+  jsonb_array_length(s->'issues')=16 and (s->>'generated_at') is not null
   and (select bool_and((i->>'count')::int >= 0 and i ? 'label' and i ? 'entity_type') from jsonb_array_elements(s->'issues') i)
 from (select public.atlas_data_review_summary() as s) x;
 

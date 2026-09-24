@@ -61,3 +61,5 @@ jobs:
         run: bash scripts/verify_s88_integrations_previews.sh
       - name: Run S88 Atlas AI acceptance (ownership, proposals, Brain, Knowledge search, media)
         run: bash scripts/verify_s88_ai_previews.sh
+      - name: Run S89 Visual Inventory acceptance (Icelandic identity, duplicate guard, recognition privileges, governance)
+        run: bash scripts/verify_s89_visual_inventory_previews.sh

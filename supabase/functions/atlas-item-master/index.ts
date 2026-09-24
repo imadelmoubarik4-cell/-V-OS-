@@ -8,12 +8,15 @@ import {
   projectStock,
   quantityTrustState as canonicalQuantityTrustState,
 } from "../_shared/atlas-domain.mjs";
+// S89: one product-identity normalisation shared with SQL, the scanner and
+// the import engine (Icelandic letters kept; codes GTIN-validated).
+import { normalizeCode as normalizeProductCode, searchFoldText } from "../_shared/product-identity.mjs";
 
 const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
 const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
   ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
-const FUNCTION_VERSION = "0.1.1";
+const FUNCTION_VERSION = "0.2.0";
 const MAX_ROWS = 5000;
 const MANAGER_ROLES = new Set(["admin", "manager"]);
 
@@ -32,6 +35,19 @@ const MASTER_FIELDS = [
   "bin_location",
   "lead_time_days",
   "minimum_order_quantity",
+];
+
+// S89 product attributes (published through atlas_apply_item_master_update).
+const S89_MASTER_FIELDS = [
+  "brand",
+  "product_name",
+  "variant",
+  "item_class",
+  "packaging_type",
+  "unit_size_quantity",
+  "unit_size_base",
+  "abv_percent",
+  "subcategory",
 ];
 
 const FIELD_LABELS = {
@@ -69,11 +85,13 @@ const CORS_HEADERS = {
 class ApiError extends Error {
   status;
   code;
+  details;
 
-  constructor(status, message, code = null) {
+  constructor(status, message, code = null, details = null) {
     super(message);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -85,6 +103,16 @@ const ACTIVATION_ERROR_STATUS = {
   open_purchase_order: 409,
   active_duplicate_name: 409,
   invalid_request: 400,
+  // S89 catalogue governance
+  duplicate_suspected: 409,
+  duplicate_identity: 409,
+  code_conflict: 409,
+  alias_conflict: 409,
+  stale_request: 409,
+  invalid_code: 400,
+  open_count: 409,
+  stock_on_duplicate: 409,
+  append_only: 409,
 };
 const ACTIVATION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -136,6 +164,149 @@ function activationRequest(body) {
 }
 // s88-activation-helpers:end
 
+// s89-catalog-helpers:start (pure; unit-tested by tests/node/catalog-governance-api-s89.test.js)
+const CATALOG_KINDS = new Set([
+  "alias", "code", "new_item", "duplicate_resolution", "metadata_correction", "wrong_match_report", "code_conflict",
+]);
+const CATALOG_STATUSES = new Set(["pending", "approved", "rejected", "applied", "failed", "withdrawn", "superseded", "all"]);
+const CATALOG_SOURCES = new Set(["manager", "data_review", "backfill", "import", "ai_proposal", "recognition"]);
+const CATALOG_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CATALOG_MAX_JSON = 64 * 1024;
+
+function catalogObject(value, label) {
+  if (value === undefined || value === null) return {};
+  if (typeof value !== "object" || Array.isArray(value)) throw new ApiError(400, `${label} must be an object.`, "invalid_request");
+  if (JSON.stringify(value).length > CATALOG_MAX_JSON) throw new ApiError(413, `${label} is too large.`, "invalid_request");
+  return value;
+}
+
+function catalogList(value, label, max = 20) {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > max) throw new ApiError(400, `${label} must be a list of up to ${max}.`, "invalid_request");
+  return value;
+}
+
+function catalogUuid(value, label, required = true) {
+  if ((value === undefined || value === null || value === "") && !required) return null;
+  const id = typeof value === "string" ? value.trim() : "";
+  if (!CATALOG_UUID.test(id)) throw new ApiError(400, `${label} is invalid.`, "invalid_request");
+  return id.toLowerCase();
+}
+
+function catalogRequestId(value) {
+  const id = typeof value === "string" ? value.trim() : "";
+  if (!id || id.length > 200) throw new ApiError(400, "A request id is required.", "invalid_request");
+  return id;
+}
+
+// POST action=create-item. The legacy Add item form fields sku and barcode
+// become codes; quantity is never accepted (items start at 0). The database
+// runs the mandatory duplicate check.
+function createItemRequest(body) {
+  const source = catalogObject(body, "Request");
+  const values = { ...catalogObject(source.values, "Item values") };
+  const codes = [...catalogList(source.codes, "Codes")];
+  for (const [field, kind] of [["sku", "sku"], ["barcode", null]]) {
+    const raw = typeof values[field] === "string" ? values[field].trim() : "";
+    if (raw) codes.push(kind ? { kind, code: raw } : { code: raw });
+    delete values[field];
+  }
+  delete values.quantity;
+  return {
+    p_values: values,
+    p_codes: codes,
+    p_aliases: catalogList(source.aliases, "Aliases"),
+    p_media_id: catalogUuid(source.media_id, "Image", false),
+    p_duplicate_ack: source.duplicate_ack === undefined || source.duplicate_ack === null
+      ? null
+      : Array.isArray(source.duplicate_ack)
+        ? { acknowledged: source.duplicate_ack }
+        : catalogObject(source.duplicate_ack, "Duplicate acknowledgement"),
+    p_change_request_id: catalogUuid(source.change_request_id, "Change request", false),
+    p_request_id: catalogRequestId(source.request_id),
+  };
+}
+
+function findDuplicatesRequest(body) {
+  const source = catalogObject(body, "Request");
+  const limit = source.limit === undefined ? 10 : Number(source.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new ApiError(400, "Limit must be between 1 and 50.", "invalid_request");
+  const request = createItemRequest({ ...source, request_id: "find-duplicates" });
+  return {
+    p_values: request.p_values,
+    p_codes: request.p_codes,
+    p_aliases: request.p_aliases,
+    p_exclude_item_id: catalogUuid(source.exclude_item_id, "Excluded item", false),
+    p_limit: limit,
+  };
+}
+
+function catalogDecideRequest(body) {
+  const source = catalogObject(body, "Request");
+  const decision = typeof source.decision === "string" ? source.decision.trim().toLowerCase() : "";
+  if (!["approve", "reject"].includes(decision)) throw new ApiError(400, "Decision must be approve or reject.", "invalid_request");
+  const note = source.note === undefined || source.note === null ? null : String(source.note).trim() || null;
+  if (note && note.length > 2000) throw new ApiError(400, "Note is limited to 2000 characters.", "invalid_request");
+  let version = null;
+  if (source.expected_version !== undefined && source.expected_version !== null) {
+    version = Number(source.expected_version);
+    if (!Number.isInteger(version) || version < 1) throw new ApiError(400, "Expected version is invalid.", "invalid_request");
+  }
+  return {
+    p_id: catalogUuid(source.id ?? source.change_request_id, "Change request"),
+    p_decision: decision,
+    p_note: note,
+    p_expected_version: version,
+    p_resolution: catalogObject(source.resolution, "Resolution"),
+  };
+}
+
+function catalogCreateRequest(body) {
+  const source = catalogObject(body, "Request");
+  const kind = typeof source.kind === "string" ? source.kind.trim() : "";
+  if (!CATALOG_KINDS.has(kind)) throw new ApiError(400, "Unknown catalogue request type.", "invalid_request");
+  const origin = typeof source.source === "string" && source.source.trim() ? source.source.trim() : "manager";
+  if (!CATALOG_SOURCES.has(origin)) throw new ApiError(400, "Unknown request source.", "invalid_request");
+  return {
+    p_kind: kind,
+    p_subject_item_id: catalogUuid(source.subject_item_id, "Item", false),
+    p_payload: catalogObject(source.payload, "Payload"),
+    p_evidence: catalogObject(source.evidence, "Evidence"),
+    p_source: origin,
+    p_ai_action_id: catalogUuid(source.ai_action_id, "Atlas AI action", false),
+    p_recognition_request_id: catalogUuid(source.recognition_request_id, "Recognition result", false),
+    p_media_id: catalogUuid(source.media_id, "Image", false),
+    p_request_id: catalogRequestId(source.request_id),
+    p_self_approve: source.self_approve === true,
+  };
+}
+
+function catalogQueueQuery(params) {
+  const status = (params.get("status") || "pending").trim().toLowerCase();
+  if (!CATALOG_STATUSES.has(status)) throw new ApiError(400, "Status is invalid.", "invalid_request");
+  const kind = (params.get("kind") || "").trim();
+  if (kind && !CATALOG_KINDS.has(kind)) throw new ApiError(400, "Unknown catalogue request type.", "invalid_request");
+  const limit = Number(params.get("limit") || 50);
+  const offset = Number(params.get("offset") || 0);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new ApiError(400, "Limit must be between 1 and 200.", "invalid_request");
+  if (!Number.isInteger(offset) || offset < 0) throw new ApiError(400, "Offset is invalid.", "invalid_request");
+  return { p_kind: kind || null, p_status: status, p_limit: limit, p_offset: offset };
+}
+
+// The database puts the duplicate check (candidates, conflicts) in the error
+// detail of duplicate_suspected / duplicate_identity / code_conflict /
+// alias_conflict refusals.
+function catalogErrorDetails(details) {
+  if (typeof details !== "string" || !details.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(details);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+// s89-catalog-helpers:end
+
 function jsonResponse(value, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
@@ -174,17 +345,17 @@ function numberValue(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+// Search-only comparison key for recipe ingredient names (never stored).
 function normalizeName(value) {
-  return text(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+  return searchFoldText(value).replace(/[.,]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Shared code normalisation: GTIN-14 for valid GTINs, otherwise the code
+// with whitespace removed and ASCII letters upper-cased (hyphens kept).
 function normalizeCode(value) {
-  return lower(value).replace(/[^a-z0-9]/g, "");
+  const code = normalizeProductCode(text(value));
+  if (code.valid) return code.normalized;
+  return normalizeProductCode(text(value), { kind: "other_barcode" }).normalized ?? "";
 }
 
 function stableHash(value) {
@@ -301,6 +472,11 @@ async function inventoryRows(context) {
     "updated_at",
   ].join(",");
 
+  const s89 = await productionRows(context, "inventory_items", `${richSelect},${S89_MASTER_FIELDS.join(",")}`, "name", { active: "eq.true" });
+  if (s89.status !== "degraded") {
+    return { ...s89, schemaState: "s89_columns_available" };
+  }
+
   const rich = await productionRows(context, "inventory_items", richSelect, "name", { active: "eq.true" });
   if (rich.status !== "degraded") {
     return { ...rich, schemaState: "l2_columns_available" };
@@ -354,7 +530,8 @@ async function branchRpc(name, payload = {}) {
       ? parsed
       : `Checkpoint L2 database request ${name} failed.`;
     const code = parsed && typeof parsed === "object" ? rpcErrorCode(parsed.hint) : null;
-    throw new ApiError(code ? activationErrorStatus(response.status, code) : response.status >= 500 ? 500 : 400, message, code);
+    const details = parsed && typeof parsed === "object" ? catalogErrorDetails(parsed.details) : null;
+    throw new ApiError(code ? activationErrorStatus(response.status, code) : response.status >= 500 ? 500 : 400, message, code, details);
   }
   return parsed;
 }
@@ -362,6 +539,10 @@ async function branchRpc(name, payload = {}) {
 function masterValues(item) {
   const values = {};
   for (const field of MASTER_FIELDS) values[field] = item[field] ?? null;
+  // S89 fields join the optimistic check only once the columns exist.
+  for (const field of S89_MASTER_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(item, field)) values[field] = item[field] ?? null;
+  }
   return values;
 }
 
@@ -376,7 +557,9 @@ function sourceSnapshot(item) {
     source_file: item.source_file ?? null,
     source_updated_at: item.source_updated_at ?? null,
     master_values: values,
-    master_fingerprint: stableHash(values),
+    // The fingerprint stays on the legacy fields so drafts saved before S89
+    // still match their source.
+    master_fingerprint: stableHash(Object.fromEntries(MASTER_FIELDS.map((field) => [field, values[field]]))),
   };
 }
 
@@ -789,8 +972,52 @@ function sanitizeProposedValues(input, item, environment) {
 
   const location = text(input.bin_location);
   if (location) values.bin_location = location.slice(0, 240);
+  Object.assign(values, sanitizeProductAttributes(input));
   if (leadTime !== null) values.lead_time_days = leadTime;
   if (minimumOrder !== null) values.minimum_order_quantity = minimumOrder;
+  return values;
+}
+
+const ITEM_CLASSES = new Set([
+  "spirit", "liqueur", "wine", "sparkling", "beer_cider", "non_alcoholic", "syrup", "bar_ingredient", "dairy_alt",
+  "coffee_tea", "produce", "garnish", "food", "consumable", "cleaning", "equipment", "gas", "prep", "reference",
+]);
+const PACKAGING_TYPES = new Set([
+  "bottle", "can", "carton", "keg", "bag", "box", "case", "jar", "tub", "pouch", "sachet", "tray", "bundle", "loose",
+  "cup", "wrapped", "cylinder", "tool", "other",
+]);
+
+// S89 product attributes. Text keeps every letter as typed (no folding).
+function sanitizeProductAttributes(input) {
+  const values = {};
+  for (const field of ["brand", "product_name", "variant", "subcategory"]) {
+    const value = text(input[field]);
+    if (value) values[field] = value.slice(0, 240);
+  }
+  const itemClass = lower(input.item_class);
+  if (itemClass) {
+    if (!ITEM_CLASSES.has(itemClass)) throw new ApiError(400, "Product type is not in the Atlas taxonomy.");
+    values.item_class = itemClass;
+  }
+  const packagingType = lower(input.packaging_type);
+  if (packagingType) {
+    if (!PACKAGING_TYPES.has(packagingType)) throw new ApiError(400, "Package type is not supported.");
+    values.packaging_type = packagingType;
+  }
+  const unitSize = optionalNumber(input.unit_size_quantity, "unit_size_quantity", { exclusiveMin: 0 });
+  const unitBase = lower(input.unit_size_base);
+  if (unitSize !== null || unitBase) {
+    if (unitSize === null || !["ml", "g", "count"].includes(unitBase)) {
+      throw new ApiError(400, "Unit size needs a quantity and a unit (ml, g or count).");
+    }
+    values.unit_size_quantity = unitSize;
+    values.unit_size_base = unitBase;
+  }
+  const abv = optionalNumber(input.abv_percent, "abv_percent", { min: 0 });
+  if (abv !== null) {
+    if (abv > 100) throw new ApiError(400, "ABV must be between 0 and 100.");
+    values.abv_percent = abv;
+  }
   return values;
 }
 
@@ -1008,6 +1235,13 @@ Deno.serve(async (request) => {
           manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
         });
       }
+      if (actionFromUrl === "catalog-queue" || actionFromUrl === "catalog_queue") {
+        const queue = await branchRpc("atlas_catalog_queue", {
+          ...catalogQueueQuery(url.searchParams),
+          p_actor_id: context.user.id,
+        });
+        return jsonResponse({ queue, stock_changed: false, manager: { id: context.user.id, label: labelFor(context), role: context.profile.role } });
+      }
       if (actionFromUrl !== "snapshot") throw new ApiError(404, "Unknown Checkpoint L2 action.");
       const built = await buildWorkspace(context);
       return jsonResponse({
@@ -1037,6 +1271,61 @@ Deno.serve(async (request) => {
         manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
       });
     }
+    if (action === "create-item" || action === "create_item") {
+      const result = await branchRpc("atlas_catalog_create_item", {
+        ...createItemRequest(body),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({
+        result,
+        stock_changed: false,
+        manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
+      }, result?.replayed ? 200 : 201);
+    }
+    if (action === "find-duplicates" || action === "find_duplicates") {
+      const duplicates = await branchRpc("atlas_catalog_find_duplicates", {
+        ...findDuplicatesRequest(body),
+        p_actor_id: context.user.id,
+      });
+      return jsonResponse({ duplicates, stock_changed: false });
+    }
+    if (action === "catalog-request" || action === "catalog_request") {
+      const request = await branchRpc("atlas_catalog_request_create", {
+        ...catalogCreateRequest(body),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({ request, stock_changed: false }, 201);
+    }
+    if (action === "catalog-decide" || action === "catalog_decide") {
+      const request = await branchRpc("atlas_catalog_request_decide", {
+        ...catalogDecideRequest(body),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({ request, stock_changed: false });
+    }
+    if (action === "catalog-withdraw" || action === "catalog_withdraw") {
+      const request = await branchRpc("atlas_catalog_request_withdraw", {
+        p_id: catalogUuid(body.id ?? body.change_request_id, "Change request"),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({ request, stock_changed: false });
+    }
+    if (action === "catalog-backfill" || action === "catalog_backfill") {
+      const limit = body.limit === undefined ? 100 : Number(body.limit);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+        throw new ApiError(400, "Limit must be between 1 and 500.", "invalid_request");
+      }
+      const proposals = await branchRpc("atlas_catalog_propose_backfill", {
+        p_limit: limit,
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({ proposals, stock_changed: false });
+    }
     if (action === "publish") {
       const result = await publishDraft(context, body);
       return jsonResponse({
@@ -1047,7 +1336,9 @@ Deno.serve(async (request) => {
     throw new ApiError(404, "Unknown Checkpoint L2 action.");
   } catch (error) {
     if (error instanceof ApiError) {
-      return jsonResponse(error.code ? { error: error.message, code: error.code } : { error: error.message }, error.status);
+      const payload = error.code ? { error: error.message, code: error.code } : { error: error.message };
+      if (error.details) payload.duplicate_check = error.details;
+      return jsonResponse(payload, error.status);
     }
     console.error("Checkpoint L2 item-master error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "Checkpoint L2 is temporarily unavailable." }, 500);
