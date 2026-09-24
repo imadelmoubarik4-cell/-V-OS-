@@ -208,6 +208,8 @@ psql -v ON_ERROR_STOP=1 -X -qAt -f "$ROOT/scripts/verify_s84_owner_confirmation_
   > "$WORK_DIR/s84-owner-confirmation.jsonl"
 psql -v ON_ERROR_STOP=1 -X -qAt -f "$ROOT/scripts/verify_s84_1_trusted_owner_workflows_preview.sql" \
   > "$WORK_DIR/s84-1-trusted-owner-workflows.jsonl"
+psql -v ON_ERROR_STOP=1 -X -qAt -f "$ROOT/scripts/verify_s86_1_reports_package_parser_preview.sql" \
+  > "$WORK_DIR/s86-1-reports-package-parser.jsonl"
 psql -v ON_ERROR_STOP=1 -qAt -f "$ROOT/scripts/verify_phase1_security_gate.sql" \
   > "$WORK_DIR/security-gate.jsonl"
 

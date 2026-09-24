@@ -95,13 +95,13 @@
         },
         {
           "path": "functions/atlas-reports/index.ts",
-          "source_sha256": "3dfa2f6903f99a4b059c685cc8720a640acea7ee6f613a5b631e1f52aa77e5cd",
-          "candidate_sha256": "be9b87c0928e1854602850d715218435f7ce58014f0fc3bf64c24a60d19e3b03"
+          "source_sha256": "a28c3359f863936d6f6640830cdf3af98274a189d574c0028317fdc8cd0a8152",
+          "candidate_sha256": "439f219ecb35f58d25669d3c5977b34bb60cddf6dfeeb42662c7ff42be9d9e7c"
         },
         {
           "path": "functions/atlas-reports/stock-provenance.mjs",
-          "source_sha256": "52600abae36beead11d0490e5e00fd0d97e1fbcb5d5e5355681d06a2be3772bc",
-          "candidate_sha256": "e17be656b241ba46efc7ce213f84450b9cdf1f869c043236b18d80410df95f42"
+          "source_sha256": "07de2f179eab35b6400d6e31a52a0bcd66976db30257a93ebd0bde0308f0aade",
+          "candidate_sha256": "48f3200864bb6a3ade13d7a1135f9701bd6a132492b2d7c8eb8752af9091f7e7"
         }
       ]
     },
