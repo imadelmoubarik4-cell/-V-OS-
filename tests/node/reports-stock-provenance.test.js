@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import {
   applyStockTrustToWorkspace,
   buildStockReport,
+  buildRecipeReport,
   quantityTrustState,
-  reconcileRecipeStockEvidence,
 } from '../../supabase/functions/atlas-reports/stock-provenance.mjs';
 
 test('S64F unknown valuation and alert coverage are not displayed as zero', () => {
@@ -75,23 +75,19 @@ test('historical, stale and unverified zeros never become live stock alerts', ()
 
 test('recipe availability refuses to treat unverified stock as unavailable', () => {
   const stock = buildStockReport(inventory, balances, {}, NOW);
-  const recipeReport = reconcileRecipeStockEvidence({
-    summary: {},
-    rows: [
-      { id: 'historical-recipe', ingredient_count: 1, missing_links: 0, incompatible_units: 0, missing_costs: 0, availability_state: 'unavailable' },
-      { id: 'verified-zero-recipe', ingredient_count: 1, missing_links: 0, incompatible_units: 0, missing_costs: 0, availability_state: 'ready' },
-      { id: 'healthy-recipe', ingredient_count: 1, missing_links: 0, incompatible_units: 0, missing_costs: 0, availability_state: 'unavailable' },
-    ],
-  }, [
-    { recipe_id: 'historical-recipe', item_id: 'historical' },
-    { recipe_id: 'verified-zero-recipe', item_id: 'current-zero' },
-    { recipe_id: 'healthy-recipe', item_id: 'current-ok' },
-  ], stock);
+  const recipes = ['historical-recipe', 'verified-zero-recipe', 'healthy-recipe'].map((id) => ({ id, name: id, active: true, yield_quantity: 1 }));
+  const recipeReport = buildRecipeReport(recipes, [
+    { recipe_id: 'historical-recipe', item_id: 'historical', quantity: 0.25, unit: 'bottle' },
+    { recipe_id: 'verified-zero-recipe', item_id: 'current-zero', quantity: 0.25, unit: 'bottle' },
+    { recipe_id: 'healthy-recipe', item_id: 'current-ok', quantity: 0.25, unit: 'bottle' },
+  ], inventory, stock);
+  const state = (id) => recipeReport.rows.find((row) => row.id === id);
 
-  assert.equal(recipeReport.rows[0].availability_state, 'incomplete_setup');
-  assert.equal(recipeReport.rows[0].estimated_servings_available, null);
-  assert.equal(recipeReport.rows[1].availability_state, 'unavailable');
-  assert.equal(recipeReport.rows[2].availability_state, 'ready');
+  assert.equal(state('historical-recipe').availability_state, 'incomplete_setup');
+  assert.equal(state('historical-recipe').estimated_servings_available, null);
+  assert.equal(state('verified-zero-recipe').availability_state, 'unavailable');
+  assert.equal(state('healthy-recipe').availability_state, 'ready');
+  assert.equal(state('healthy-recipe').estimated_servings_available, 24);
   assert.equal(recipeReport.summary.unavailable, 1);
   assert.equal(recipeReport.summary.stock_evidence_unverified, 1);
 });

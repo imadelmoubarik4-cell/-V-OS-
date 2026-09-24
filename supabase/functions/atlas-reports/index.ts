@@ -1,8 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
   applyStockTrustToWorkspace,
+  buildRecipeReport,
   buildStockReport,
-  reconcileRecipeStockEvidence,
+  sanitizeSnapshotInventory,
+  sanitizeSnapshotRecipes,
 } from "./stock-provenance.mjs";
 
 const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
@@ -299,7 +301,9 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
       context,
       "inventory_items",
       "id,name,category,quantity,unit,par_level,updated_at,source_updated_at,source_type,source_confidence,source_confirmed_at,source_confirmed_quantity,supplier_id,supplier,cost_price,sku,barcode,bin_location,size_ml,active,sell_price,package_size,brand,subcategory,needs_review",
-      { order: "name.asc", filters: { active: "eq.true" } },
+      // Inactive rows are read so recipes can recognise references such as Ice
+      // and Water; live stock metrics still include active rows only.
+      { order: "name.asc" },
     ),
     productionRows(
       context,
@@ -551,12 +555,16 @@ async function snapshot(context: AtlasContext, url: URL) {
   const filters = filterPayload(url);
   const stockReport = buildStockReport(sources.inventory, verifiedBalances, filters, Date.now(), sources.movements);
 
-  const rawWorkspace = await branchRpc("atlas_reports_snapshot_v2", {
+  // The private SQL only receives sanitized rows (plain numbers, valid ids and
+  // canonical "<n> ml" / "<n> g" pack sizes); legacy text is reported, not cast.
+  const snapshotInventory = sanitizeSnapshotInventory(stockReport.rpc_inventory);
+  const snapshotRecipes = sanitizeSnapshotRecipes(sources.recipes, sources.recipeIngredients);
+  const snapshotPayload = {
     // The private snapshot receives current manager-verified quantities. Raw
     // historical, stale and unverified values remain catalog evidence only.
-    p_inventory: stockReport.rpc_inventory,
-    p_recipes: sources.recipes,
-    p_recipe_ingredients: sources.recipeIngredients,
+    p_inventory: snapshotInventory.rows,
+    p_recipes: snapshotRecipes.recipes,
+    p_recipe_ingredients: snapshotRecipes.ingredients,
     p_suppliers: sources.suppliers,
     p_movements: sources.movements,
     p_profiles: sources.profiles,
@@ -570,13 +578,34 @@ async function snapshot(context: AtlasContext, url: URL) {
     p_comparison_end: comparison?.end ?? null,
     p_comparison_key: comparisonKey,
     p_filters: filters,
-  });
-  const recipeReport = reconcileRecipeStockEvidence(
-    rawWorkspace?.reports?.recipes,
+  };
+  let rawWorkspace;
+  let degraded = false;
+  try {
+    rawWorkspace = await branchRpc("atlas_reports_snapshot_v2", snapshotPayload);
+  } catch (error) {
+    // Inventory and recipe sections are rebuilt below from reconciled stock, so
+    // a legacy row the private parser rejects must not take down every section.
+    console.error("Reports private snapshot rejected inventory/recipe input", error instanceof Error ? error.message : "unknown");
+    degraded = true;
+    rawWorkspace = await branchRpc("atlas_reports_snapshot_v2", {
+      ...snapshotPayload,
+      p_inventory: [],
+      p_recipes: [],
+      p_recipe_ingredients: [],
+    });
+  }
+  const recipeReport = buildRecipeReport(
+    sources.recipes,
     sources.recipeIngredients,
+    sources.inventory,
     stockReport,
+    filters,
   );
-  const workspace = applyStockTrustToWorkspace(rawWorkspace, stockReport, recipeReport);
+  const workspace = applyStockTrustToWorkspace(rawWorkspace, stockReport, recipeReport, {
+    issues: snapshotInventory.issues,
+    degraded,
+  });
 
   return {
     workspace,
