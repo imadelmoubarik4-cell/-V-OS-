@@ -22,6 +22,8 @@ def _runtime_endpoints(source):
     endpoints = dict(pairs)
     # Item Master was intentionally outside the historical S35 deployment.
     endpoints.pop("ITEM_MASTER_API", None)
+    # So was Atlas AI (S88); the historical preview never configures it.
+    endpoints.pop("ATLAS_AI_API", None)
     endpoints["NOTIFICATIONS_API"] = "atlas-notifications"
     endpoints["IMPORT_WORKER_API"] = "atlas-import-worker"
     if len(endpoints) != 18:

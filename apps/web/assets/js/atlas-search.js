@@ -25,6 +25,7 @@
     ['shifts', 'Shifts', ['shift', 'shifts', 'schedule', 'rota']],
     ['knowledge', 'Knowledge', ['knowledge', 'document', 'documents', 'checklist', 'sop', 'policy', 'training']],
     ['marketing', 'Marketing', ['marketing', 'social', 'instagram', 'facebook']],
+    ['ai', 'Atlas AI', ['atlas ai', 'ai', 'ask', 'assistant', 'conversation', 'decisions']],
     ['brain', 'Atlas Brain', ['brain', 'briefing', 'daily briefing', 'intelligence']],
     ['business', 'Business Intelligence', ['business', 'profit', 'margin', 'spend']],
     ['reports', 'Reports', ['report', 'reports', 'analytics', 'valuation']],
@@ -390,7 +391,29 @@
       .flatMap((source) => {
         try { return source(query).sort((a, b) => b.score - a.score).slice(0, MAX_PER_GROUP); } catch { return []; }
       });
-    return groups;
+    // Spec §4.6: the last row always asks Atlas AI; questions put it first.
+    const ask = askRow(query);
+    if (!ask) return groups;
+    return looksLikeQuestion(query) ? [ask, ...groups] : [...groups, ask];
+  }
+
+  // ---------- Atlas AI hand-off ----------
+
+  function looksLikeQuestion(query) {
+    const q = normalize(query);
+    return /\?\s*$/.test(String(query || '').trim()) || /^(who|what|when|where|why|how|can|could|do|does|did|is|are|should|which|will|would)\b/.test(q);
+  }
+
+  function askAtlas(query) {
+    const question = String(query || '').trim();
+    if (window.AtlasAI?.ask) window.AtlasAI.ask({ question });
+    else window.AtlasShell.show('ai', { new: '1', ...(question ? { q: question } : {}) }, { source: 'nav' });
+  }
+
+  function askRow(query) {
+    const question = String(query || '').trim();
+    if (!question) return null;
+    return { group: 'Ask Atlas', icon: 'sparkles', title: `Ask Atlas “${question.length > 80 ? `${question.slice(0, 77)}…` : question}”`, detail: 'Answers with sources · Ctrl+Enter', score: 0, ask: true, run: () => askAtlas(question) };
   }
 
   function answerMarkup(answer) {
@@ -462,6 +485,7 @@
     if (!query) return;
     if (state.active >= 0) { choose(state.active); return; }
     const intent = detectIntent(query);
+    if (!intent && looksLikeQuestion(query)) { close(); input.value = ''; input.blur(); askAtlas(query); return; }
     if (intent) {
       const token = ++state.token;
       state.answer = { text: 'Checking…', tone: 'neutral' };
@@ -483,6 +507,17 @@
       state.active = (state.active + step + state.results.length) % state.results.length;
       render(input.value.trim());
       document.getElementById(`atlas-search-option-${state.active}`)?.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      const query = input.value.trim();
+      if (!query) return;
+      window.clearTimeout(state.timer);
+      close();
+      input.value = '';
+      input.blur();
+      askAtlas(query);
       return;
     }
     if (event.key === 'Enter') {
@@ -536,7 +571,7 @@
     });
   }
 
-  window.AtlasSearch = { detectIntent, answerFor, results: (query) => collect(query) };
+  window.AtlasSearch = { detectIntent, answerFor, looksLikeQuestion, results: (query) => collect(query) };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();

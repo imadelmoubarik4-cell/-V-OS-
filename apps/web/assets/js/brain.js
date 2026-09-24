@@ -492,7 +492,6 @@
     const connectedCount = coverage.filter((entry) => entry.connected).length;
     const schedule = venueSchedule();
     const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const answer = state.assistantAnswer || assistantResponse('attention');
 
     dom.shell.innerHTML = `
       <header class="brain-hero">
@@ -517,8 +516,8 @@
       </section>
 
       <section class="brain-card brain-ask-card">
-        <header class="brain-card-head"><div><h2>Ask Atlas</h2><p>Live rule-based answers from the current operating data.</p></div></header>
-        <div class="brain-assistant"><div class="brain-assistant-answer" id="brain-assistant-answer">${escape(answer)}</div><div class="brain-prompt-row"><button type="button" data-brain-prompt="What needs attention today?">What needs attention?</button><button type="button" data-brain-prompt="What should I order?">What should I order?</button><button type="button" data-brain-prompt="Which recipe should I promote?">What should I feature?</button></div><form class="brain-assistant-form" id="brain-assistant-form"><input id="brain-assistant-input" aria-label="Ask Atlas" placeholder="Ask about stock, recipes, orders or readiness" autocomplete="off" /><button type="submit">Ask</button></form></div>
+        <header class="brain-card-head"><div><h2>Ask Atlas</h2><p>Questions now open in Atlas AI, with sources and anything it prepares for you to approve.</p></div></header>
+        <div class="brain-assistant"><div class="brain-prompt-row"><button type="button" data-brain-prompt="What needs attention today?">What needs attention?</button><button type="button" data-brain-prompt="What should I order?">What should I order?</button><button type="button" data-brain-prompt="Which recipe should I promote?">What should I feature?</button></div><form class="brain-assistant-form" id="brain-assistant-form"><input id="brain-assistant-input" aria-label="Ask Atlas" placeholder="Ask about stock, recipes, orders or readiness" autocomplete="off" /><button type="submit">Ask Atlas</button></form></div>
       </section>
 
       <div class="brain-intelligence-grid">
@@ -560,18 +559,12 @@
   function bindRenderedEvents() {
     dom.shell.querySelectorAll('[data-brain-target]').forEach((button) => button.addEventListener('click', () => navigate(button.dataset.brainTarget)));
     dom.shell.querySelector('[data-brain-refresh]')?.addEventListener('click', render);
-    // Questions the global Ask Atlas understands are answered by it, so both
-    // boxes give the same answer from the same data; the rest use the
-    // readiness summary below.
-    const answerQuestion = async (question) => {
-      const answer = document.getElementById('brain-assistant-answer');
-      let text = null;
-      try {
-        const shared = await window.AtlasSearch?.answerFor?.(question);
-        if (shared) text = [shared.text, ...(shared.lines || []).map((line) => `• ${line}`)].join('\n');
-      } catch { text = null; }
-      state.assistantAnswer = text || assistantResponse(question);
-      if (answer) answer.textContent = state.assistantAnswer;
+    // S88: the Brain Ask card hands questions to Atlas AI (#ai), which falls
+    // back to the same deterministic answers when Atlas AI is switched off.
+    const answerQuestion = (question) => {
+      const text = String(question || '').trim();
+      if (window.AtlasAI?.ask) window.AtlasAI.ask({ question: text });
+      else window.AtlasShell.show('ai', text ? { new: '1', q: text } : { new: '1' });
     };
     dom.shell.querySelectorAll('[data-brain-prompt]').forEach((button) => button.addEventListener('click', () => answerQuestion(button.dataset.brainPrompt)));
     dom.shell.querySelector('#brain-assistant-form')?.addEventListener('submit', (event) => {

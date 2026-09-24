@@ -84,14 +84,15 @@ function json(route, body, status = 200) {
  * Launch the app. `fixtures` shapes the mocked backend:
  *   tables:    { tableName: rows[] }            (PostgREST GET)
  *   rpc:       { name: result | (body) => result }
- *   functions: { 'atlas-x': (ctx) => ({ status, body }) | body }
+ *   functions: { 'atlas-x': (ctx) => ({ status, body }) | body | { __raw: { status, contentType, body } } }
+ * `contextOptions` is passed to browser.newContext (for example { hasTouch: true }).
  */
-export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '' } = {}) {
+export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '', contextOptions = {} } = {}) {
   const playwright = loadPlaywright();
   const libs = resolveLibraries();
   if (!playwright || !libs) throw new Error('Browser harness dependencies are unavailable.');
   const browser = await playwright.chromium.launch({ executablePath: process.env.ATLAS_CHROMIUM || undefined });
-  const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
+  const context = await browser.newContext({ viewport, serviceWorkers: 'block', ...contextOptions });
   const page = await context.newPage();
   page.setDefaultTimeout(10000);
   const record = { requests: [], consoleErrors: [], pageErrors: [], dialogs: [] };
@@ -180,6 +181,8 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
       const handler = fixtures.functions?.[fn];
       if (!handler) return json(route, { error: `No harness fixture for ${fn}.` }, 503);
       const result = typeof handler === 'function' ? await handler({ ...entry, fn, user }) : handler;
+      // { __raw: { status, contentType, body } } answers with a non-JSON body (for example an SSE stream).
+      if (result && result.__raw) return route.fulfill({ status: result.__raw.status ?? 200, contentType: result.__raw.contentType || 'text/plain', headers: { 'access-control-allow-origin': '*' }, body: result.__raw.body ?? '' });
       if (result && result.__status) return json(route, result.body ?? {}, result.__status);
       return json(route, result ?? {});
     }
