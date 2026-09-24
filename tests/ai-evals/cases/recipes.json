@@ -1,0 +1,198 @@
+[
+  {
+    "id": "rec-001", "category": "recipes", "blocking": true,
+    "question": "Can we make 30 Margaritas?",
+    "actor": "manager", "tool": "recipes.can_make",
+    "args": { "recipe_id": null, "recipe_query": "Margarita", "servings": 30 },
+    "expected": {
+      "ok": true,
+      "summary": ["No — 28 servings of Margarita", "limited by El Jimador Blanco Tequila", "30 requested"],
+      "data": { "data.answer": "no", "data.servings_possible": 28, "data.servings_requested": 30, "data.limiting_ingredient": "El Jimador Blanco Tequila", "data.readiness": "attention" },
+      "evidence_kinds": ["fact", "calculation"],
+      "evidence": [
+        { "kind": "fact", "label": "Stock of El Jimador Blanco Tequila", "value": "2 bottle" },
+        { "kind": "fact", "label": "Package size of El Jimador Blanco Tequila", "value": "700 ml" },
+        { "kind": "fact", "label": "Margarita uses", "value": "50 ml of El Jimador Blanco Tequila" },
+        { "kind": "calculation", "label": "Servings from El Jimador Blanco Tequila", "value": "28" },
+        { "kind": "calculation", "label": "Servings of Margarita possible", "value": "28 (limited by El Jimador Blanco Tequila)" }
+      ],
+      "records": ["recipe:@recipe.margarita", "inventory_item:@item.eljimador", "inventory_item:@item.cointreau", "inventory_item:@item.limejuice"],
+      "unknown": null, "proposal": null
+    },
+    "notes": "2 × 700 ml ÷ 50 ml = 28 (Cointreau 56, lime juice 80)."
+  },
+  {
+    "id": "rec-002", "category": "recipes", "blocking": true,
+    "question": "Can we do 20 Margaritas for the hen party?",
+    "actor": "bartender", "tool": "recipes.can_make",
+    "args": { "recipe_id": null, "recipe_query": "margarita", "servings": 20 },
+    "expected": {
+      "ok": true,
+      "summary": ["Yes — 28 servings"],
+      "data": { "data.answer": "yes", "data.servings_possible": 28 },
+      "records": ["recipe:@recipe.margarita"]
+    }
+  },
+  {
+    "id": "rec-003", "category": "recipes", "blocking": true,
+    "question": "How many Negronis can we make tonight?",
+    "actor": "manager", "tool": "recipes.can_make",
+    "args": { "recipe_id": "@recipe.negroni", "recipe_query": null, "servings": null },
+    "expected": {
+      "ok": true,
+      "summary": ["66 servings possible", "limited by Campari"],
+      "data": { "data.answer": "yes", "data.servings_possible": 66, "data.limiting_ingredient": "Campari", "data.below_par_ingredients": 2 },
+      "evidence": [{ "kind": "calculation", "label": "Servings from Campari", "value": "66" }, { "kind": "calculation", "label": "Servings from Tanqueray London Dry Gin", "value": "93" }]
+    },
+    "notes": "Campari 2 × 1000 ml ÷ 30 ml = 66.7 → 66; Tanqueray 4 × 700 ÷ 30 = 93."
+  },
+  {
+    "id": "rec-004", "category": "recipes", "blocking": true,
+    "question": "Can we serve Aperol Spritz tonight?",
+    "actor": "bartender", "tool": "recipes.can_make",
+    "args": { "recipe_id": null, "recipe_query": "Aperol Spritz", "servings": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.answer": "no", "data.servings_possible": 0, "data.readiness": "unavailable", "data.limiting_ingredient": "Aperol" },
+      "evidence": [{ "kind": "fact", "label": "Stock of Aperol", "value": "0 bottle" }]
+    },
+    "notes": "Aperol was counted at zero on 23 Sep; the Globus delivery is overdue."
+  },
+  {
+    "id": "rec-005", "category": "recipes", "blocking": true,
+    "question": "Why is Tequila Sunrise incomplete?",
+    "actor": "manager", "tool": "recipes.get",
+    "args": { "recipe_id": null, "recipe_query": "Tequila Sunrise" },
+    "expected": {
+      "ok": true,
+      "data": {
+        "data.recipe.status": "incomplete",
+        "data.blockers": { "$len": 2 },
+        "data.blockers[0]": { "name": "Orange Juice", "reason": "package size is missing" },
+        "data.blockers[1]": { "name": "Grenadine", "reason": "not linked to an inventory item" }
+      },
+      "evidence": [{ "kind": "missing", "label": "Grenadine in Tequila Sunrise", "value": "not linked" }, { "kind": "missing", "label": "Package size of Orange Juice" }],
+      "unknown": { "count": 2 }
+    }
+  },
+  {
+    "id": "rec-006", "category": "recipes", "blocking": true,
+    "question": "Which cocktails have the best margin?",
+    "actor": "manager", "tool": "recipes.best_margin",
+    "args": { "limit": null, "ready_only": null, "menu_only": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Highest theoretical margin: Espresso Martini at 86.9%", "2 of 11 recipes cannot be ranked", "sales, which are not connected"],
+      "data": {
+        "data.total_ranked": 9, "data.ranked": { "$len": 5 },
+        "data.ranked[0].name": "Espresso Martini", "data.ranked[0].margin_percent": { "$approx": 86.865, "$tol": 0.01 },
+        "data.ranked[1].name": "Pint of Gull", "data.ranked[1].margin_percent": { "$approx": 86.0, "$tol": 0.01 },
+        "data.ranked[2].name": "Negroni", "data.ranked[2].margin_percent": { "$approx": 85.077, "$tol": 0.01 },
+        "data.ranked[3].name": "Margarita", "data.ranked[3].margin_percent": { "$approx": 81.564, "$tol": 0.01 },
+        "data.ranked[4].name": "Paloma",
+        "data.not_ranked": { "$len": 2 },
+        "data.basis": "theoretical"
+      },
+      "evidence": [
+        { "kind": "calculation", "label": "Espresso Martini theoretical margin", "value": "86.9% (price 3,100 ISK, cost 407 ISK)" },
+        { "kind": "missing", "label": "Realised margin", "value": "not connected" }
+      ],
+      "records": ["recipe:@recipe.espresso", "recipe:@recipe.pintgull", "recipe:@recipe.negroni"],
+      "unknown": { "count": 2 }
+    },
+    "notes": "Espresso Martini: 40 ml Absolut 222.86 + 20 ml Kahlúa 105.71 + 18 g beans 75.60 + 10 ml syrup 3.00 = 407.17 ISK; (3100 − 407.17) / 3100 = 86.87%."
+  },
+  {
+    "id": "rec-007", "category": "recipes", "blocking": false,
+    "question": "Of the drinks we can actually serve right now, which has the best margin?",
+    "actor": "manager", "tool": "recipes.best_margin",
+    "args": { "limit": null, "ready_only": true, "menu_only": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.total_ranked": 1, "data.ranked[0].name": "Glass of Villa Maria Sauvignon Blanc", "data.ranked[0].margin_percent": { "$approx": 63.158, "$tol": 0.01 } }
+    }
+  },
+  {
+    "id": "rec-008", "category": "recipes", "blocking": true,
+    "question": "What does a Negroni cost us to make?",
+    "actor": "manager", "tool": "recipes.cost",
+    "args": { "recipe_id": null, "recipe_query": "Negroni" },
+    "expected": {
+      "ok": true,
+      "summary": ["Negroni costs 418 ISK per serving", "85.1%"],
+      "data": { "data.cost_per_serving": { "$approx": 417.857, "$tol": 0.01 }, "data.margin_percent": { "$approx": 85.077, "$tol": 0.01 }, "data.menu_price": 2800, "data.ingredients": { "$len": 3 } },
+      "evidence": [{ "kind": "calculation", "label": "Cost of Campari", "value": "123 ISK" }, { "kind": "fact", "label": "Menu price", "value": "2,800 ISK" }],
+      "unknown": null
+    },
+    "notes": "30 ml Tanqueray (5200/700×30 = 222.86) + 30 ml Campari (4100/1000×30 = 123) + 30 ml Martini Rosso (2400/1000×30 = 72)."
+  },
+  {
+    "id": "rec-009", "category": "recipes", "blocking": true,
+    "question": "What is the cost of a Tequila Sunrise?",
+    "actor": "manager", "tool": "recipes.cost",
+    "args": { "recipe_id": "@recipe.sunrise", "recipe_query": null },
+    "expected": {
+      "ok": true,
+      "summary": ["cost is unknown: 2 of 3 ingredients have no usable cost"],
+      "data": { "data.cost_per_serving": null, "data.cost_total": null, "data.margin_percent": null },
+      "evidence": [{ "kind": "missing", "label": "Cost of Orange Juice" }, { "kind": "missing", "label": "Cost of Grenadine", "value": "Not linked" }],
+      "unknown": { "count": 2 }
+    },
+    "notes": "Unknown cost is null, never a partial total."
+  },
+  {
+    "id": "rec-010", "category": "recipes", "blocking": false,
+    "question": "Which recipes are out of stock?",
+    "actor": "bartender", "tool": "recipes.search",
+    "args": { "query": null, "status": "unavailable", "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.total": 1, "data.recipes[0].name": "Aperol Spritz" },
+      "records": ["recipe:@recipe.aperolspritz"]
+    }
+  },
+  {
+    "id": "rec-011", "category": "recipes", "blocking": false,
+    "question": "Show me the Margarita recipe.",
+    "actor": "bartender", "tool": "recipes.get",
+    "args": { "recipe_id": null, "recipe_query": "Margarita" },
+    "expected": {
+      "ok": true,
+      "data": { "data.recipe.method": { "$includes": "double strain" }, "data.recipe.ingredients": { "$len": 3 }, "data.recipe.servings_available": 28 },
+      "records": ["recipe:@recipe.margarita"]
+    }
+  },
+  {
+    "id": "rec-012", "category": "recipes", "blocking": true,
+    "question": "How many Palomas can we make?",
+    "actor": "manager", "tool": "recipes.can_make",
+    "args": { "recipe_id": null, "recipe_query": "Paloma", "servings": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.servings_possible": 20, "data.limiting_ingredient": "Fever-Tree Pink Grapefruit 200 ml" }
+    },
+    "notes": "20 bottles of grapefruit soda, one per drink (El Jimador allows 28)."
+  },
+  {
+    "id": "rec-013", "category": "recipes", "blocking": true,
+    "question": "How many glasses of Angelo Pinot Grigio can we pour?",
+    "actor": "bartender", "tool": "recipes.can_make",
+    "args": { "recipe_id": "@recipe.glassangelo", "recipe_query": null, "servings": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.servings_possible": 42 },
+      "evidence": [{ "kind": "calculation", "label": "Servings from Angelo Pinot Grigio", "value": "42" }]
+    },
+    "notes": "10 × 750 ml ÷ 175 ml = 42.9 → 42 glasses."
+  },
+  {
+    "id": "rec-014", "category": "recipes", "blocking": false,
+    "question": "Which recipes need attention?",
+    "actor": "manager", "tool": "recipes.search",
+    "args": { "query": null, "status": null, "limit": 20 },
+    "expected": {
+      "ok": true,
+      "data": { "data.total": 12, "data.counts": { "attention": 6, "incomplete": 3, "unavailable": 1, "ready": 1, "draft": 1 } }
+    }
+  }
+]

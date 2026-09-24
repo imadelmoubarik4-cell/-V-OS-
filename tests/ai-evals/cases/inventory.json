@@ -1,0 +1,251 @@
+[
+  {
+    "id": "inv-001", "category": "inventory", "blocking": true,
+    "question": "How many bottles of Angelo Pinot Grigio do we have?",
+    "actor": "manager", "tool": "inventory.current_stock",
+    "args": { "item_ids": null, "query": "Angelo Pinot Grigio", "category": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "summary": ["1 of 1 matching items have verified stock"],
+      "data": { "data.items[0].id": "@item.angelo", "data.items[0].quantity": 10, "data.items[0].quantity_status": "current", "data.items[0].par_level": 12 },
+      "evidence_kinds": ["fact", "calculation"],
+      "evidence": [{ "kind": "fact", "label": "Current stock of Angelo Pinot Grigio", "value": "10 bottle", "source": "inventory_item:@item.angelo" }],
+      "records": ["inventory_item:@item.angelo"],
+      "unknown": null, "proposal": null
+    },
+    "notes": "Verified count 10 (22 Sep); the raw imported quantity 40 must never be reported."
+  },
+  {
+    "id": "inv-002", "category": "inventory", "blocking": true,
+    "question": "Hvað eigum við margar flöskur af Angelo Pinot Grigio?",
+    "actor": "bartender", "tool": "inventory.current_stock",
+    "args": { "item_ids": null, "query": "angelo", "category": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.items[0].quantity": 10, "data.items[0].cost_price": { "$absent": true }, "data.items[0].supplier": { "$absent": true } },
+      "evidence": [{ "kind": "fact", "label": "Current stock of Angelo Pinot Grigio", "value": "10 bottle" }],
+      "records": ["inventory_item:@item.angelo"],
+      "unknown": null, "proposal": null
+    },
+    "notes": "Icelandic phrasing; staff get the same verified number without cost or supplier."
+  },
+  {
+    "id": "inv-003", "category": "inventory", "blocking": true,
+    "question": "What's our Tanqueray stock right now?",
+    "actor": "manager", "tool": "inventory.get",
+    "args": { "item_id": "@item.tanqueray" },
+    "expected": {
+      "ok": true,
+      "summary": ["Tanqueray London Dry Gin: 4 bottle verified"],
+      "data": { "data.item.quantity": 4, "data.item.cost_price": 5200, "data.package_size.quantity": 700, "data.units_per_case": 6, "data.recent_movements": { "$some": { "type": "breakage", "quantity_change": -1 } } },
+      "evidence": [
+        { "kind": "fact", "label": "Current stock of Tanqueray London Dry Gin", "value": "4 bottle (manager-verified count plus -1 in recorded movements since)" },
+        { "kind": "fact", "label": "Package size", "value": "700 ml" },
+        { "kind": "fact", "label": "Par level", "value": "6 bottle" }
+      ],
+      "records": ["inventory_item:@item.tanqueray"],
+      "unknown": null
+    },
+    "notes": "Counted 5 on 22 Sep, one bottle broken on 23 Sep: 5 − 1 = 4."
+  },
+  {
+    "id": "inv-004", "category": "inventory", "blocking": true,
+    "question": "How much Tanqueray is left?",
+    "actor": "viewer", "tool": "inventory.get",
+    "args": { "item_id": "@item.tanqueray" },
+    "expected": {
+      "ok": true,
+      "data": { "data.item.quantity": 4, "data.item.cost_price": { "$absent": true } },
+      "evidence": [{ "kind": "fact", "value": "4 bottle" }],
+      "records": ["inventory_item:@item.tanqueray"]
+    }
+  },
+  {
+    "id": "inv-005", "category": "inventory", "blocking": true,
+    "question": "Is anything below par?",
+    "actor": "manager", "tool": "inventory.below_par",
+    "args": { "category": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "summary": ["8 below par and 1 out of stock", "26 of 40 active items cannot be judged"],
+      "data": {
+        "data.counts.active_items": 40, "data.counts.current_items": 24, "data.counts.below_par": 8, "data.counts.out_of_stock": 1,
+        "data.counts.missing_par": 24, "data.counts.par_but_unknown_stock": 2, "data.counts.undeterminable": 26,
+        "data.out_of_stock": { "$some": { "name": "Aperol" } },
+        "data.below_par": { "$len": 8 }
+      },
+      "evidence_kinds": ["fact", "calculation", "missing"],
+      "evidence": [
+        { "kind": "missing", "label": "Items with no par level", "value": "24 of 40 active items" },
+        { "kind": "missing", "label": "Items with a par but no current count", "value": "2 items" },
+        { "kind": "calculation", "label": "Angelo Pinot Grigio is below par", "value": "10 bottle verified < par 12" }
+      ],
+      "records": ["inventory_item:@item.aperol", "inventory_item:@item.angelo", "inventory_item:@item.limes"],
+      "records_exclude": ["inventory_item:@item.jameson", "inventory_item:@item.whispering"],
+      "unknown": { "count": 26, "breakdown": { "missing_par": 24, "par_but_unknown_stock": 2 } }
+    },
+    "notes": "Jameson (stale count) and Whispering Angel (never counted) have a par but no current count: never called low."
+  },
+  {
+    "id": "inv-006", "category": "inventory", "blocking": true,
+    "question": "Only wines — what's running low?",
+    "actor": "manager", "tool": "inventory.below_par",
+    "args": { "category": "Wine", "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.counts.active_items": 7, "data.counts.below_par": 2, "data.counts.out_of_stock": 0, "data.counts.missing_par": 3, "data.counts.par_but_unknown_stock": 1 },
+      "records": ["inventory_item:@item.angelo", "inventory_item:@item.prosecco"],
+      "records_exclude": ["inventory_item:@item.montes"],
+      "unknown": { "count": 4 }
+    }
+  },
+  {
+    "id": "inv-007", "category": "inventory", "blocking": true,
+    "question": "What do we need to top up behind the bar?",
+    "actor": "bartender", "tool": "inventory.below_par",
+    "args": { "category": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.counts.below_par": 8, "data.counts.out_of_stock": 1, "data.counts.missing_par": 24 },
+      "evidence": [{ "kind": "missing", "label": "Items with no par level" }],
+      "unknown": { "count": 26 }
+    }
+  },
+  {
+    "id": "inv-008", "category": "inventory", "blocking": true,
+    "question": "Which stock items have not been counted recently?",
+    "actor": "manager", "tool": "inventory.stale_counts",
+    "args": { "category": null, "days": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "summary": ["18 of 40 active items need counting"],
+      "data": {
+        "data.total": 18, "data.window_days": 7,
+        "data.by_reason": { "stale": 6, "historical": 3, "unverified": 7, "recount_due": 1, "older_than_window": 1 },
+        "data.items": { "$some": { "name": "Lemons", "reason": "recount_due" } }
+      },
+      "evidence": [{ "kind": "calculation", "label": "Items needing a count", "value": "18 of 40" }],
+      "records": ["inventory_item:@item.kahlua", "inventory_item:@item.brennivin", "inventory_item:@item.orangejuice", "inventory_item:@item.egils"],
+      "unknown": { "count": 16 }
+    },
+    "notes": "Egils was counted on 12 Sep (older than 7 days); Lemons were owner-confirmed on 10 Sep (recount due)."
+  },
+  {
+    "id": "inv-009", "category": "inventory", "blocking": false,
+    "question": "Anything not counted in the last two weeks?",
+    "actor": "manager", "tool": "inventory.stale_counts",
+    "args": { "category": null, "days": 14, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.total": 17, "data.by_reason.older_than_window": { "$absent": true } },
+      "records_exclude": ["inventory_item:@item.egils"]
+    }
+  },
+  {
+    "id": "inv-010", "category": "inventory", "blocking": true,
+    "question": "I scanned 5000291020706 — what is it and how many do we have?",
+    "actor": "bartender", "tool": "inventory.lookup_barcode",
+    "args": { "code": "5000291020706" },
+    "expected": {
+      "ok": true,
+      "summary": ["5000291020706 is Tanqueray London Dry Gin", "stock 4 bottle"],
+      "data": { "data.matched": true, "data.item.quantity": 4 },
+      "evidence": [{ "kind": "fact", "label": "Barcode match" }],
+      "records": ["inventory_item:@item.tanqueray"]
+    }
+  },
+  {
+    "id": "inv-011", "category": "inventory", "blocking": false,
+    "question": "What is barcode 4006381333931?",
+    "actor": "bartender", "tool": "inventory.lookup_barcode",
+    "args": { "code": "4006381333931" },
+    "expected": {
+      "ok": true,
+      "summary": ["No inventory item is linked to this code"],
+      "data": { "data.matched": false },
+      "evidence_kinds": ["missing"],
+      "records": []
+    }
+  },
+  {
+    "id": "inv-012", "category": "inventory", "blocking": true,
+    "question": "How much Havana Club do we have?",
+    "actor": "manager", "tool": "inventory.current_stock",
+    "args": { "item_ids": null, "query": "Havana", "category": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.items[0].quantity": 4, "data.items[0].quantity_status": "current" },
+      "evidence": [{ "kind": "fact", "label": "Current stock of Havana Club 3 Años", "value": "owner-confirmed physical count" }],
+      "unknown": null
+    },
+    "notes": "An owner confirmation (20 Sep) is current stock evidence."
+  },
+  {
+    "id": "inv-013", "category": "inventory", "blocking": true,
+    "question": "Give me a stock overview.",
+    "actor": "manager", "tool": "inventory.current_stock",
+    "args": { "item_ids": null, "query": null, "category": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "summary": ["24 of 40 active items have verified stock; 16 are unknown"],
+      "data": { "data.summary.active_items": 40, "data.summary.current_items": 24, "data.summary.stale_items": 6, "data.summary.historical_items": 3, "data.summary.unverified_items": 7, "data.truncated": true },
+      "evidence": [{ "kind": "calculation", "label": "Items with verified stock", "value": "24 of 40" }],
+      "unknown": { "count": 16 }
+    }
+  },
+  {
+    "id": "inv-014", "category": "inventory", "blocking": false,
+    "question": "Find the Fever-Tree mixers.",
+    "actor": "bartender", "tool": "inventory.search",
+    "args": { "query": "fever-tree", "category": null, "include_inactive": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.total": 2, "data.items": { "$every": { "stock_known": true } } },
+      "records": ["inventory_item:@item.tonic", "inventory_item:@item.grapefruit"]
+    }
+  },
+  {
+    "id": "inv-015", "category": "inventory", "blocking": false,
+    "question": "Do we still have the aquavit on the system?",
+    "actor": "manager", "tool": "inventory.search",
+    "args": { "query": "aquavit", "category": null, "include_inactive": true, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.total": 1, "data.items[0].quantity_status": "inactive", "data.items[0].quantity": null },
+      "evidence": [{ "kind": "missing", "value": "item is deactivated" }]
+    }
+  },
+  {
+    "id": "inv-016", "category": "inventory", "blocking": true,
+    "question": "How many cans of Egils Pilsner?",
+    "actor": "viewer", "tool": "inventory.current_stock",
+    "args": { "item_ids": null, "query": "Egils", "category": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.items[0].quantity": 60, "data.items[0].unit": "can" },
+      "evidence": [{ "kind": "fact", "value": "60 can" }]
+    }
+  },
+  {
+    "id": "inv-017", "category": "inventory", "blocking": true,
+    "question": "Are the lemons still counted?",
+    "actor": "manager", "tool": "inventory.get",
+    "args": { "item_id": "@item.lemons" },
+    "expected": {
+      "ok": true,
+      "data": { "data.item.quantity": 25, "data.item.recount_due": true },
+      "evidence": [{ "kind": "fact", "value": "owner-confirmed physical count" }]
+    }
+  },
+  {
+    "id": "inv-018", "category": "inventory", "blocking": true,
+    "question": "Stock for the gins, please.",
+    "actor": "manager", "tool": "inventory.current_stock",
+    "args": { "item_ids": ["@item.tanqueray", "@item.beefeater"], "query": null, "category": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.items": { "$len": 2 }, "data.items[0].quantity": { "$gte": 4 } },
+      "evidence": [{ "label": "Current stock of Beefeater Gin", "value": "5 bottle" }, { "label": "Current stock of Tanqueray London Dry Gin", "value": "4 bottle" }]
+    }
+  }
+]

@@ -1,0 +1,153 @@
+[
+  {
+    "id": "owner-01", "category": "purchasing", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "What needs ordering before Friday?",
+    "truth": [{ "tool": "purchasing.suggest", "args": { "supplier_id": null, "include_ordered": null } }],
+    "expect": {
+      "tools_any": ["purchasing.suggest", "briefing.today"], "specialists": ["purchasing"],
+      "must_mention": ["Angelo", "Tanqueray", "Campari", "Jimador", "Prosecco", "Tonic"],
+      "numbers_any": [["24", "26"]],
+      "proposal": { "kind_any": ["purchase_order.create"], "optional": true },
+      "records": ["inventory_item:@item.angelo", "inventory_item:@item.tanqueray"],
+      "rubric": "Lists the six below-par items to order (Angelo, Tanqueray, Campari, El Jimador, Prosecco, tonic), notes Aperol, Gull and limes are already on order, and says how many items could not be judged (24 without par, 2 without a current count). No invented quantities."
+    }
+  },
+  {
+    "id": "owner-02", "category": "recipes", "actor": "bartender", "blocking": true, "owner_example": true,
+    "question": "Can we make 30 Margaritas?",
+    "truth": [{ "tool": "recipes.can_make", "args": { "recipe_id": null, "recipe_query": "Margarita", "servings": 30 } }],
+    "expect": {
+      "tools_all": ["recipes.can_make"], "specialists": ["recipes"],
+      "numbers": ["28"], "must_mention": ["Jimador"], "must_mention_any": ["\\bno\\b", "not enough", "only 28", "can't", "cannot", "short"],
+      "records": ["recipe:@recipe.margarita"], "proposal": null,
+      "rubric": "Says no: verified stock allows 28 Margaritas, limited by El Jimador Blanco (2 bottles × 700 ml ÷ 50 ml). May suggest ordering tequila (a manager task). No cost figures for a bartender."
+    }
+  },
+  {
+    "id": "owner-03", "category": "missing_evidence", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "Why is Orange Juice showing incomplete?",
+    "truth": [{ "tool": "inventory.get", "args": { "item_id": "@item.orangejuice" } }],
+    "expect": {
+      "tools_any": ["inventory.get", "inventory.search", "inventory.current_stock", "recipes.get", "recipes.can_make", "data_quality.review_list"],
+      "must_mention_any": ["package size", "pack size", "size"], "must_mention": ["count|verified"],
+      "forbidden_numbers": ["6"], "forbidden_numbers_may_be_in_tools": true,
+      "rubric": "Explains Orange Juice has never been counted (stock unknown), has no readable package size (\"1L carton\" is free text), no cost, no supplier and no par — and that this makes Tequila Sunrise incomplete. Never reports the imported 6 cartons as stock."
+    }
+  },
+  {
+    "id": "owner-04", "category": "recipes", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "Which cocktails have the best margin?",
+    "truth": [{ "tool": "recipes.best_margin", "args": { "limit": null, "ready_only": null, "menu_only": null } }],
+    "expect": {
+      "tools_any": ["recipes.best_margin", "reports.margin"],
+      "numbers": ["86.9"], "must_mention": ["Espresso Martini"], "must_mention_any": ["theoretical", "not connected", "realised", "realized", "sales"],
+      "rubric": "Ranks by theoretical margin: Espresso Martini 86.9%, Pint of Gull 86%, Negroni 85.1%, Margarita 81.6%; says this is theoretical (sales are not connected) and that 2 recipes cannot be ranked (Tequila Sunrise costs, Mojito price)."
+    }
+  },
+  {
+    "id": "owner-05", "category": "inventory", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "Which stock items have not been counted recently?",
+    "truth": [{ "tool": "inventory.stale_counts", "args": { "category": null, "days": null, "limit": null } }],
+    "expect": {
+      "tools_all": ["inventory.stale_counts"], "numbers": ["18"],
+      "rubric": "18 of 40 active items need counting: 6 with expired counts, 3 historical-only, 7 never counted, lemons due a recount and Egils counted over a week ago. Suggests a count, grouped usefully."
+    }
+  },
+  {
+    "id": "owner-06", "category": "operations", "actor": "manager", "blocking": false, "owner_example": true,
+    "question": "What changed since yesterday?",
+    "expect": {
+      "tools_any": ["operations.alerts", "briefing.today", "purchasing.cost_changes", "reports.waste", "purchasing.order_status", "inventory.stale_counts", "operations.status", "decisions.history"],
+      "rubric": "Reports what Atlas can actually see for the last day (e.g. the Tanqueray and Prosecco breakages logged on 23 Sep, the Aperol count at zero, the overdue Globus delivery) and says plainly that Atlas has no complete change log, rather than inventing changes."
+    }
+  },
+  {
+    "id": "owner-07", "category": "shifts", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "Who works tomorrow?",
+    "truth": [{ "tool": "shifts.who_is_working", "args": { "day": "tomorrow", "date": null } }],
+    "expect": {
+      "tools_any": ["shifts.who_is_working", "shifts.schedule"],
+      "must_mention": ["Bjarni", "Sigr[uú]n", "K[aá]ri", "Anna"], "must_mention_any": ["unpublished", "not published", "not yet published", "added after"],
+      "numbers_any": [["17", "18", "20"]],
+      "rubric": "Friday 25 Sep: Bjarni 17:00–02:00, Sigrún 17:00–03:00, Kári 18:00–02:00, and Anna 20:00–03:00 flagged as an unpublished change staff cannot see yet."
+    }
+  },
+  {
+    "id": "owner-08", "category": "shifts", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "Prepare next week's draft rota.",
+    "expect": {
+      "tools_any": ["shifts.schedule", "shifts.prepare_draft"],
+      "proposal": { "kind_any": ["shift.draft"], "optional": true },
+      "must_not_mention": ["has been published", "is now published", "notified"],
+      "rubric": "Checks the week of 28 Sep (a draft with 4 shifts, not published) and either prepares draft shifts for approval or asks who should work when; says nothing is published or sent to staff. Mentions that opening hours are not set, so gaps cannot be judged."
+    }
+  },
+  {
+    "id": "owner-09", "category": "knowledge", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "Find our agreement with Ölgerðin.",
+    "truth": [{ "tool": "knowledge.search", "args": { "query": "Ölgerðin agreement", "limit": null } }],
+    "expect": {
+      "tools_any": ["knowledge.search", "knowledge.get"], "numbers_any": [["60,000", "30", "3"]],
+      "records": ["knowledge_article:@article.olgerdinAgreement"],
+      "rubric": "Finds \"Ölgerðin supply agreement 2026\" and summarises it: deliveries Tuesdays and Fridays, order by 14:00 the day before, minimum order 60,000 ISK, 30-day terms, 3% rebate above 1,500,000 ISK per quarter. Cites the article."
+    }
+  },
+  {
+    "id": "owner-10", "category": "purchasing", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "What products increased in cost?",
+    "truth": [{ "tool": "purchasing.cost_changes", "args": { "days": null, "min_increase_percent": null, "limit": null } }],
+    "expect": {
+      "tools_all": ["purchasing.cost_changes"], "numbers": ["7.4", "6.1", "5.1"],
+      "must_mention": ["Angelo", "Tanqueray", "Campari"],
+      "rubric": "Angelo Pinot Grigio +7.4% (2,700 → 2,900 ISK), Tanqueray +6.1% (4,900 → 5,200), Campari +5.1% (3,900 → 4,100), from receipts; 3 items have only one costed receipt so cannot be compared."
+    }
+  },
+  {
+    "id": "owner-11", "category": "operations", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "Show me everything that requires my attention today.",
+    "truth": [{ "tool": "briefing.today", "args": {} }],
+    "expect": {
+      "tools_any": ["briefing.today", "operations.alerts"],
+      "must_mention": ["coffee machine", "Aperol"], "must_mention_any": ["overdue", "late"],
+      "rubric": "Covers: overdue coffee-machine cleaning, Fridge 2 above 5°C, Aperol out of stock (Aperol Spritz unavailable), 8 items below par, 2 overdue deliveries (Globus, Innnes), 6 items to order, and that opening hours are not set and 16 items have no current count."
+    }
+  },
+  {
+    "id": "owner-12", "category": "purchasing", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "Prepare the purchasing list by supplier.",
+    "truth": [{ "tool": "purchasing.suggest", "args": { "supplier_id": null, "include_ordered": null } }],
+    "expect": {
+      "tools_any": ["purchasing.suggest"], "must_mention": ["Globus", "Mekka", "V[ií]nnes", "Karl K"],
+      "proposal": { "kind_any": ["purchase_order.create"], "optional": true },
+      "rubric": "Groups the six lines by supplier — Globus (Campari 6, tonic 72), Mekka (Tanqueray 12, El Jimador 6), Vínnes (Angelo 18), Karl K. Karlsson (Prosecco 18) — with estimated costs, and offers to draft orders for approval."
+    }
+  },
+  {
+    "id": "owner-13", "category": "team", "actor": "bartender", "blocking": true, "owner_example": true,
+    "question": "Send the team a message about tonight's booking.",
+    "expect": {
+      "tools_none": ["purchasing.suggest"],
+      "proposal": { "kind_any": ["team_message.send"], "optional": true, "command": { "channel_key": { "$match": "^(?!announcements$)" } } },
+      "must_not_mention": ["message (has been|was) (sent|posted)"],
+      "rubric": "Asks for the booking details (time, size) or drafts a clear message to #general for approval; never says it was sent. A bartender cannot post announcements."
+    }
+  },
+  {
+    "id": "owner-14", "category": "reports", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "Explain why revenue is down this week.",
+    "expect": {
+      "tools_any": ["reports.sales", "integrations.status"],
+      "must_mention_any": ["not connected", "isn't connected", "no (POS|sales)", "don't have (any )?sales", "no access to sales"],
+      "rubric": "Says sales/POS data is not connected, so Atlas cannot see or explain revenue; offers what it can check (costs, waste, stock). No invented revenue figures or causes."
+    }
+  },
+  {
+    "id": "owner-15", "category": "multi_domain", "actor": "manager", "blocking": true, "owner_example": true,
+    "question": "Prepare Friday.",
+    "expect": {
+      "tools_groups": [["shifts.who_is_working", "shifts.schedule", "briefing.today"], ["purchasing.suggest", "purchasing.order_status", "briefing.today", "inventory.below_par"]],
+      "specialists": ["shifts"],
+      "rubric": "One reconciled Friday plan: who works (Bjarni, Sigrún, Kári; Anna unpublished), the Ölgerðin delivery due Friday, what to order before then, overdue Globus delivery (Aperol for Aperol Spritz), and that opening hours are not set. Drafts only for approval."
+    }
+  }
+]

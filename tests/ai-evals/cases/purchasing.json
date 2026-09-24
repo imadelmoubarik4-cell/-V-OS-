@@ -1,0 +1,222 @@
+[
+  {
+    "id": "pur-001", "category": "purchasing", "blocking": true,
+    "question": "What needs ordering before Friday?",
+    "actor": "manager", "tool": "purchasing.suggest",
+    "args": { "supplier_id": null, "include_ordered": null },
+    "expected": {
+      "ok": true,
+      "summary": ["6 items to order across 4 supplier(s), estimated 222,960 ISK", "3 more are already on open orders", "24 items have no par level and 2 have no current count"],
+      "data": {
+        "data.counts": { "suggested": 6, "already_ordered": 3, "missing_par": 24, "par_but_unknown_stock": 2 },
+        "data.estimated_total": 222960,
+        "data.groups": { "$len": 4 },
+        "data.already_ordered": { "$some": { "name": "Aperol" } }
+      },
+      "evidence_kinds": ["calculation", "estimate", "fact", "missing"],
+      "evidence": [
+        { "kind": "calculation", "label": "Order Angelo Pinot Grigio", "value": "verified 10 bottle < par 12; target 24, shortfall 14, 3 case(s) = 18" },
+        { "kind": "estimate", "label": "Estimated cost of Angelo Pinot Grigio", "value": "52,200 ISK" },
+        { "kind": "fact", "label": "Already on open orders", "value": "3 below-par items" },
+        { "kind": "missing", "label": "Items that cannot be judged", "value": "24 with no par level, 2 with a par but no current count" }
+      ],
+      "records": ["inventory_item:@item.angelo", "inventory_item:@item.tanqueray", "inventory_item:@item.campari", "inventory_item:@item.eljimador", "inventory_item:@item.prosecco", "inventory_item:@item.tonic"],
+      "records_exclude": ["inventory_item:@item.aperol", "inventory_item:@item.gull", "inventory_item:@item.limes"],
+      "unknown": { "count": 26 }
+    },
+    "notes": "Aperol (Globus, ordered), Gull (Ölgerðin, arriving Friday) and Limes (Innnes, partially received) are already on order."
+  },
+  {
+    "id": "pur-002", "category": "purchasing", "blocking": true,
+    "question": "Prepare the purchasing list by supplier.",
+    "actor": "manager", "tool": "purchasing.suggest",
+    "args": { "supplier_id": null, "include_ordered": false },
+    "expected": {
+      "ok": true,
+      "data": {
+        "data.groups[0].supplier": "Globus",
+        "data.groups": {
+          "$some": { "supplier": "Mekka Wines & Spirits", "estimated_cost": 88200 }
+        },
+        "data.groups[0].estimated_cost": 37560,
+        "data.groups[0].lines": { "$len": 2 }
+      },
+      "evidence": [{ "kind": "estimate", "label": "Estimated cost of Tanqueray London Dry Gin", "value": "62,400 ISK" }]
+    },
+    "notes": "Globus 37,560 (Campari 6 + tonic 72), Mekka 88,200 (Tanqueray 12 + El Jimador 6), Vínnes 52,200, Karl K. Karlsson 45,000."
+  },
+  {
+    "id": "pur-003", "category": "purchasing", "blocking": false,
+    "question": "Include what's already on order too.",
+    "actor": "manager", "tool": "purchasing.suggest",
+    "args": { "supplier_id": null, "include_ordered": true },
+    "expected": {
+      "ok": true,
+      "data": { "data.counts.suggested": 9, "data.groups": { "$some": { "supplier": "Globus", "lines": { "$some": { "name": "Aperol", "ordered": true } } } } }
+    }
+  },
+  {
+    "id": "pur-004", "category": "purchasing", "blocking": true,
+    "question": "What do we need from Globus?",
+    "actor": "manager", "tool": "purchasing.suggest",
+    "args": { "supplier_id": "@supplier.globus", "include_ordered": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.counts.suggested": 2, "data.estimated_total": 37560, "data.groups[0].lines[1].order_quantity": 72, "data.groups[0].lines[1].cases": 3 }
+    },
+    "notes": "Tonic: verified 30 < par 48; target 96, shortfall 66 → 3 cases of 24 = 72 bottles."
+  },
+  {
+    "id": "pur-005", "category": "purchasing", "blocking": true,
+    "question": "Draft the Vínnes order from the suggestions.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": null, "supplier_query": "Vínnes", "use_suggestions": true, "lines": null, "note": null, "expected_delivery_date": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Prepared a draft order for Vínnes: 1 line, estimated 52,200 ISK", "Nothing is saved until you approve"],
+      "data": { "data.estimated_total": 52200, "data.lines[0].quantity": 18, "data.lines[0].units_per_case": 6 },
+      "evidence": [{ "kind": "calculation", "label": "Estimated order total", "value": "52,200 ISK" }],
+      "records": ["supplier:@supplier.vinnes", "inventory_item:@item.angelo"],
+      "proposal": {
+        "kind": "purchase_order.create", "required_roles": ["admin", "manager"], "executable": true,
+        "command": { "p_action": "create", "p_supplier_id": "@supplier.vinnes", "p_lines": [{ "item_id": "@item.angelo", "quantity": 18, "unit_cost": 2900 }] },
+        "preview": { "will_change": { "$includes": "A new purchase order is saved in Purchasing with status Draft." }, "will_not_change": { "$includes": "The order is not placed or sent to the supplier." } }
+      }
+    }
+  },
+  {
+    "id": "pur-006", "category": "purchasing", "blocking": true,
+    "question": "Order 2 cases of Tanqueray from Mekka.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": null, "supplier_query": "Mekka", "use_suggestions": null, "lines": [{ "item_id": null, "item_query": "Tanqueray", "quantity": 12, "unit_cost": null }], "note": null, "expected_delivery_date": "2026-09-29" },
+    "expected": {
+      "ok": true,
+      "data": { "data.estimated_total": 62400, "data.warnings": { "$len": 0 } },
+      "proposal": { "kind": "purchase_order.create", "command": { "p_lines[0].quantity": 12, "p_lines[0].unit_cost": 5200, "p_expected_delivery_date": "2026-09-29" } }
+    }
+  },
+  {
+    "id": "pur-007", "category": "purchasing", "blocking": false,
+    "question": "Add a case of Campari to the Mekka order.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": "@supplier.mekka", "supplier_query": null, "use_suggestions": null, "lines": [{ "item_id": "@item.campari", "item_query": null, "quantity": 6, "unit_cost": null }], "note": null, "expected_delivery_date": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.warnings": ["Campari is normally supplied by Globus."] },
+      "evidence": [{ "kind": "interpretation", "label": "Supplier check", "value": "normally supplied by Globus" }],
+      "proposal": { "kind": "purchase_order.create" }
+    }
+  },
+  {
+    "id": "pur-008", "category": "purchasing", "blocking": true,
+    "question": "Put orange juice on the Innnes order.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": null, "supplier_query": "Innnes", "use_suggestions": null, "lines": [{ "item_id": null, "item_query": "Orange Juice", "quantity": 6, "unit_cost": null }], "note": null, "expected_delivery_date": null },
+    "expected": {
+      "ok": true,
+      "summary": ["has no cost — give a unit cost"],
+      "data": { "data.needs_clarification[0].status": "missing_unit_cost" },
+      "proposal": null
+    },
+    "notes": "Orange Juice has no cost; Atlas asks instead of inventing one."
+  },
+  {
+    "id": "pur-009", "category": "purchasing", "blocking": true,
+    "question": "Which deliveries are late?",
+    "actor": "manager", "tool": "purchasing.order_status",
+    "args": { "status": null, "supplier_id": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "summary": ["4 open orders; 2 overdue"],
+      "data": {
+        "data.total": 4, "data.venue_date": "2026-09-24",
+        "data.orders": { "$some": { "supplier": "Globus", "overdue": true, "total": 76800 } }
+      },
+      "evidence": [{ "kind": "fact", "label": "Globus order (ordered)", "value": "expected 2026-09-23 — overdue" }, { "kind": "fact", "label": "Innnes order (partially received)", "value": "overdue" }],
+      "records": ["purchase_order:@po.globusOrdered", "purchase_order:@po.innnesPartial", "purchase_order:@po.olgerdinOrdered", "purchase_order:@po.vinnesDraft"],
+      "records_exclude": ["purchase_order:@po.karlkReceived"]
+    },
+    "notes": "Globus total: 12 × 3600 + 6 × 5600 = 76,800 ISK."
+  },
+  {
+    "id": "pur-010", "category": "purchasing", "blocking": false,
+    "question": "What's arriving tomorrow?",
+    "actor": "admin", "tool": "purchasing.order_status",
+    "args": { "status": "ordered", "supplier_id": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.total": 2, "data.orders": { "$some": { "supplier": "Ölgerðin Egill Skallagrímsson", "expected_delivery_date": "2026-09-25", "overdue": false } } }
+    }
+  },
+  {
+    "id": "pur-011", "category": "purchasing", "blocking": false,
+    "question": "Pull up Ölgerðin for me.",
+    "actor": "manager", "tool": "purchasing.get_supplier",
+    "args": { "supplier_id": null, "supplier_query": "Ölgerðin" },
+    "expected": {
+      "ok": true,
+      "data": { "data.supplier.name": "Ölgerðin Egill Skallagrímsson", "data.items": { "$len": 9 }, "data.open_orders": { "$len": 1 }, "data.open_orders[0].total": 44880 },
+      "evidence": [{ "kind": "fact", "label": "Email" }, { "kind": "fact", "label": "Linked active items", "value": "9" }],
+      "records": ["supplier:@supplier.olgerdin", "purchase_order:@po.olgerdinOrdered"]
+    },
+    "notes": "Open order: 2 kegs × 21,000 + 24 cans × 120 = 44,880 ISK."
+  },
+  {
+    "id": "pur-012", "category": "purchasing", "blocking": false,
+    "question": "What's the phone number for Vínnes?",
+    "actor": "manager", "tool": "purchasing.get_supplier",
+    "args": { "supplier_id": null, "supplier_query": "Vínnes" },
+    "expected": {
+      "ok": true,
+      "summary": ["no email or phone recorded"],
+      "data": { "data.supplier.phone": null },
+      "evidence": [{ "kind": "missing", "label": "Phone", "value": "not recorded" }, { "kind": "missing", "label": "Email" }]
+    }
+  },
+  {
+    "id": "pur-013", "category": "purchasing", "blocking": true,
+    "question": "What products increased in cost?",
+    "actor": "manager", "tool": "purchasing.cost_changes",
+    "args": { "days": null, "min_increase_percent": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "summary": ["3 items cost more on their latest receipt", "largest: Angelo Pinot Grigio +7.4%"],
+      "data": {
+        "data.total": 3,
+        "data.increases[0]": { "name": "Angelo Pinot Grigio", "previous_cost": 2700, "latest_cost": 2900 },
+        "data.increases[0].change_percent": { "$approx": 7.407, "$tol": 0.01 },
+        "data.increases[1].name": "Tanqueray London Dry Gin", "data.increases[1].change_percent": { "$approx": 6.122, "$tol": 0.01 },
+        "data.increases[2].name": "Campari", "data.increases[2].change_percent": { "$approx": 5.128, "$tol": 0.01 },
+        "data.increases": { "$none": { "name": "Aperol" } }
+      },
+      "evidence": [
+        { "kind": "fact", "label": "Angelo Pinot Grigio previous receipt", "value": "2,700 ISK on 2026-07-15", "source": "movement:@movement.m1" },
+        { "kind": "fact", "label": "Angelo Pinot Grigio latest receipt", "value": "2,900 ISK on 2026-09-01", "source": "movement:@movement.m2" },
+        { "kind": "calculation", "label": "Angelo Pinot Grigio cost change", "value": "+7.4%" }
+      ],
+      "unknown": { "count": 3 }
+    },
+    "notes": "Aperol got cheaper (3,700 → 3,600) and is not listed; El Jimador, Gull and Limes have one costed receipt only."
+  },
+  {
+    "id": "pur-014", "category": "purchasing", "blocking": false,
+    "question": "Anything up by more than 6%?",
+    "actor": "manager", "tool": "purchasing.cost_changes",
+    "args": { "days": 90, "min_increase_percent": 6, "limit": null },
+    "expected": { "ok": true, "data": { "data.total": 2, "data.increases": { "$none": { "name": "Campari" } } } }
+  },
+  {
+    "id": "pur-015", "category": "purchasing", "blocking": true,
+    "question": "Draft a Karl K order for delivery last Monday.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": "@supplier.karlk", "supplier_query": null, "use_suggestions": true, "lines": null, "note": null, "expected_delivery_date": "2026-09-21" },
+    "expected": { "ok": false, "error": "invalid_arguments", "message": ["cannot be before 2026-09-24"] }
+  },
+  {
+    "id": "pur-016", "category": "purchasing", "blocking": true,
+    "question": "Draft an order with Rolf Johansen.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": null, "supplier_query": "Rolf Johansen", "use_suggestions": true, "lines": null, "note": null, "expected_delivery_date": null },
+    "expected": { "ok": false, "error": "invalid_arguments", "message": ["inactive"] }
+  }
+]
