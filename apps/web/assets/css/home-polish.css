@@ -4,16 +4,8 @@
  */
 
 :root {
-  --atlas-home-accent: #4f7df3;
-  --atlas-home-accent-strong: #3e68d7;
-  --atlas-home-accent-soft: rgba(79, 125, 243, 0.10);
-  --atlas-home-accent-line: rgba(79, 125, 243, 0.24);
-  --atlas-home-teal: #23a8a1;
-  --atlas-home-teal-soft: rgba(35, 168, 161, 0.11);
-  --atlas-home-warning: #c77b3d;
-  --atlas-home-warning-soft: rgba(199, 123, 61, 0.11);
-  --atlas-home-shadow: 0 1px 2px rgba(35, 38, 35, 0.04), 0 18px 44px -34px rgba(35, 38, 35, 0.36);
-  --atlas-home-shadow-raised: 0 4px 12px rgba(35, 38, 35, 0.06), 0 28px 54px -38px rgba(35, 38, 35, 0.42);
+  /* These tokens are defined in atlas-glass.css and atlas-tokens.css; the
+     values that used to sit here never won the cascade. */
 }
 
 /* Hero */

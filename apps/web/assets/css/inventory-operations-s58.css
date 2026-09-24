@@ -2,7 +2,8 @@
 #purchase-suppliers-panel{display:grid;gap:12px;min-width:0}
 #purchase-suppliers-panel>.purchasing-intelligence,
 #purchase-suppliers-panel>.toolbar,
-#purchase-suppliers-panel>table{margin:0!important}
+#purchase-suppliers-panel>table,
+#purchase-suppliers-panel>.atlas-table-scroll>table{margin:0!important}
 #purchase-suppliers-panel>.toolbar{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--atlas-line);border-radius:14px;background:var(--atlas-surface)}
 #purchase-suppliers-panel>.toolbar .purchasing-search{position:relative;display:block;width:min(420px,100%)}
 #purchase-suppliers-panel>.toolbar .purchasing-search>svg{position:absolute;z-index:1;left:12px;top:50%;width:16px;height:16px;transform:translateY(-50%);pointer-events:none}

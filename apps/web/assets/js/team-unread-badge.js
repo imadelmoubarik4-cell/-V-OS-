@@ -11,6 +11,7 @@
     badgeCleanupFrame: null,
     authSubscription: null,
     lastTotal: 0,
+    activeMembers: null,
     initialized: false
   };
 
@@ -135,6 +136,13 @@
         if (response.status === 401 || response.status === 403) return 0;
         throw new Error(payload.error || `Unread-count request failed (${response.status}).`);
       }
+      // The same lightweight snapshot carries the active staff count that
+      // Home shows, so Home does not need Team to be opened first.
+      const members = Number(payload?.snapshot?.summary?.active_members);
+      if (Number.isFinite(members) && members !== state.activeMembers) {
+        state.activeMembers = members;
+        window.dispatchEvent(new CustomEvent('atlas:team-summary', { detail: { activeMembers: members } }));
+      }
       return normalizeTotal(payload?.snapshot?.summary?.total_unread);
     } finally {
       window.clearTimeout(timer);
@@ -244,6 +252,7 @@
   window.AtlasTeamUnreadBadge = {
     refresh: () => refreshUnread(),
     count: () => state.lastTotal,
+    activeMembers: () => state.activeMembers,
     clear: () => setUnreadTotal(0)
   };
 

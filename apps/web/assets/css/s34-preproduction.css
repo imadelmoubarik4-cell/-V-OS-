@@ -1,7 +1,6 @@
 :root{
-  --atlas-action:#2d78dc;
-  --atlas-action-hover:#2268c5;
-  --atlas-action-focus:rgba(45,120,220,.24);
+  /* --atlas-action and --atlas-action-focus are defined in atlas-tokens.css. */
+  --atlas-action-hover:#1f66c9;
   --atlas-card-radius:16px;
   --atlas-card-shadow:0 10px 28px rgba(30,42,56,.07);
   --atlas-card-shadow-hover:0 15px 34px rgba(30,61,105,.12);

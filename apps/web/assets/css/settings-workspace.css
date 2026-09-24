@@ -35,8 +35,8 @@
 .settings-hero aside>strong{font-family:'Fraunces',serif;font-size:27px;font-weight:500}
 .settings-hero aside>small{color:var(--settings-muted);font-size:12px;line-height:1.45}
 .settings-primary,.settings-secondary,.settings-hero aside button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer;transition:transform .15s ease,background .15s ease,border-color .15s ease}
-.settings-primary,.settings-hero aside button{border:0;background:#25231f;color:#fff}
-.settings-primary:hover,.settings-hero aside button:hover{background:#393630;transform:translateY(-1px)}
+.settings-primary,.settings-hero aside button{border:0;background:var(--atlas-accent,#2f80ed);color:#fff}
+.settings-primary:hover,.settings-hero aside button:hover{background:var(--atlas-accent-strong,#1f66c9);transform:translateY(-1px)}
 .settings-primary:disabled,.settings-secondary:disabled,.settings-hero aside button:disabled{opacity:.55;cursor:wait;transform:none}
 .settings-hero aside button{margin-top:10px}
 .settings-secondary{border:1px solid var(--settings-line);background:#fff;color:var(--settings-ink)}

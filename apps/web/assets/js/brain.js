@@ -522,7 +522,7 @@
 
       <section class="brain-card brain-ask-card">
         <header class="brain-card-head"><div><h2>Ask Atlas</h2><p>Live rule-based answers from the current operating data.</p></div></header>
-        <div class="brain-assistant"><div class="brain-assistant-answer" id="brain-assistant-answer">${escape(answer)}</div><div class="brain-prompt-row"><button type="button" data-brain-prompt="What needs attention today?">What needs attention?</button><button type="button" data-brain-prompt="What should I order?">What should I order?</button><button type="button" data-brain-prompt="Which recipe should I promote?">What should I feature?</button></div><form class="brain-assistant-form" id="brain-assistant-form"><input id="brain-assistant-input" placeholder="Ask about stock, recipes, orders or readiness" autocomplete="off" /><button type="submit">Ask</button></form></div>
+        <div class="brain-assistant"><div class="brain-assistant-answer" id="brain-assistant-answer">${escape(answer)}</div><div class="brain-prompt-row"><button type="button" data-brain-prompt="What needs attention today?">What needs attention?</button><button type="button" data-brain-prompt="What should I order?">What should I order?</button><button type="button" data-brain-prompt="Which recipe should I promote?">What should I feature?</button></div><form class="brain-assistant-form" id="brain-assistant-form"><input id="brain-assistant-input" aria-label="Ask Atlas" placeholder="Ask about stock, recipes, orders or readiness" autocomplete="off" /><button type="submit">Ask</button></form></div>
       </section>
 
       <div class="brain-intelligence-grid">

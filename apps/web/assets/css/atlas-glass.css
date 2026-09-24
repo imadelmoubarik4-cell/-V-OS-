@@ -10,19 +10,7 @@
  */
 
 :root {
-  /* Base: white, with light blue as the only secondary hue. */
-  --atlas-bg: #ffffff;
-  --atlas-surface: rgba(255, 255, 255, .72);
-  --atlas-sidebar: rgba(255, 255, 255, .58);
-  --atlas-text: #10151c;
-  --atlas-muted: #6b7787;
-  --atlas-line: rgba(16, 60, 110, .10);
-  --atlas-accent: #2f80ed;
-  --atlas-accent-soft: #e8f1fd;
-  --atlas-green: #1f9d76;
-  --atlas-warn: #c98a2e;
-  --atlas-danger: #d05c5c;
-  --atlas-radius: 18px;
+  /* Palette tokens (--atlas-*) are defined once in atlas-tokens.css. */
 
   /* Glass primitives */
   --glass-blur: saturate(150%) blur(20px);
@@ -38,14 +26,8 @@
   --blue-100: #e8f1fd;
   --blue-200: #d3e5fb;
   --blue-400: #7db4f2;
-  --blue-600: #2f80ed;
-  --blue-700: #1f66c9;
 
-  /* Home / Inventory passes read these; re-pointed to the blue scale. */
-  --atlas-home-accent: #2f80ed;
-  --atlas-home-accent-strong: #1f66c9;
-  --atlas-home-accent-soft: rgba(47, 128, 237, .10);
-  --atlas-home-accent-line: rgba(47, 128, 237, .22);
+  /* Home / Inventory accent aliases are defined in atlas-tokens.css. */
   --atlas-home-teal: #1f9d8f;
   --atlas-home-teal-soft: rgba(31, 157, 143, .11);
   --atlas-home-warning: #c98a2e;

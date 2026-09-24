@@ -131,3 +131,25 @@ test('Operations shows items on a placed purchase order as On order', { skip }, 
     assert.match(await page.textContent('button.operations-summary-card[data-operation-target="operations-orders"]'), /^0/, 'no supplier still needs an order');
   } finally { await close(); }
 });
+
+test('Inventory ✕ deactivates the item instead of deleting its history', { skip }, async () => {
+  const { page, record, close } = await launch();
+  try {
+    await openView(page, 'inventory');
+    await page.click('#items-body .delete-btn[data-id="pinot"]');
+    await page.waitForTimeout(300);
+    const write = record.requests.find((entry) => entry.path.endsWith('/rest/v1/inventory_items') && entry.method !== 'GET');
+    assert.equal(write?.method, 'PATCH');
+    assert.deepEqual(write?.body, { active: false });
+    assert.equal(await page.getAttribute('#items-body .qty-input[data-id="lime"]', 'aria-label'), 'Quantity of Lime juice');
+  } finally { await close(); }
+});
+
+test('Home timeline text is not squeezed into the marker column', { skip }, async () => {
+  const { page, close } = await launch();
+  try {
+    await page.waitForSelector('#home-timeline .brain-timeline-copy');
+    const width = await page.$eval('#home-timeline .brain-timeline-copy', (node) => node.getBoundingClientRect().width);
+    assert.ok(width > 80, `timeline text column is ${width}px wide`);
+  } finally { await close(); }
+});

@@ -74,7 +74,11 @@ test('Recipes, Brain, and Business Intelligence delegate to the shared calculati
 });
 
 test('shared launch design uses blue actions, compact search, visible focus, and reduced motion', () => {
-  assert.match(design, /--atlas-action:#2d78dc/);
+  // S87: the action colour resolves to the single Atlas blue token.
+  const tokens = readFileSync('apps/web/assets/css/atlas-tokens.css', 'utf8');
+  assert.match(tokens, /--atlas-accent: #2f80ed;/);
+  assert.match(tokens, /--atlas-action: var\(--atlas-accent\);/);
+  assert.doesNotMatch(design, /--atlas-action:#2d78dc/);
   assert.match(design, /:focus-visible/);
   assert.match(design, /input\[type="search"\]/);
   assert.match(design, /@media\(prefers-reduced-motion:reduce\)/);

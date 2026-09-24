@@ -83,8 +83,10 @@
 
 #items-body tr.atlas-search-highlight td { background: var(--atlas-accent-soft, #e8f1fd); transition: background .2s ease; }
 
-/* Inventory had no text search; it shares the Purchasing search control. */
-#inventory-view .inventory-search { flex: 0 1 280px; min-width: 180px; }
+/* Inventory had no text search; same anatomy as the other search fields. */
+#inventory-view .inventory-search { position: relative; display: block; flex: 1 1 260px; min-width: 180px; max-width: 420px; }
+#inventory-view .inventory-search > svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--atlas-muted); }
+#inventory-view .inventory-search input { width: 100%; margin: 0; padding-left: 38px; }
 
 /* Phones: the field was hidden entirely. It is now a 44px control that
    expands across the top bar while it has focus. */
@@ -124,7 +126,7 @@
   }
   .atlas-topbar .atlas-search:focus-within input::placeholder { color: var(--atlas-muted); }
   .atlas-search-panel { position: fixed; top: 70px; left: 12px; right: 12px; min-width: 0; max-height: calc(100vh - 90px); }
-  #inventory-view .inventory-search { flex: 1 1 100%; }
+  #inventory-view .inventory-search { flex: 1 1 100%; max-width: none; }
 }
 
 /* Inventory "Below par only" filter chip (Home, banner, Operations, Search). */
@@ -145,3 +147,9 @@
 }
 .inventory-filter-chip svg { width: 14px; height: 14px; }
 .inventory-filter-chip:focus-visible { outline: 2px solid var(--atlas-accent, #2f80ed); outline-offset: 2px; }
+
+/* Inventory row controls: 36px targets, 44px on touch screens. */
+#items-body .step-btn, #items-body .icon-btn { min-width: 36px; min-height: 36px; }
+@media (pointer: coarse) {
+  #items-body .step-btn, #items-body .icon-btn { min-width: var(--touch-target, 44px); min-height: var(--touch-target, 44px); }
+}

@@ -1,0 +1,132 @@
+/* Atlas design tokens — the single source of truth.
+ *
+ * Documented in docs/design/Atlas_Design_System.md. Loaded after every static
+ * stylesheet so these definitions win. Values equal the ones that already won
+ * the cascade before S87, so this file removes ambiguity without restyling;
+ * the one deliberate change is that every "primary blue" alias now resolves
+ * to the Atlas blue (#2f80ed) instead of three different blues.
+ *
+ * New CSS must use these tokens. Do not add new :root colour, radius or
+ * spacing definitions in module stylesheets.
+ */
+:root {
+  /* Colour — surfaces */
+  --atlas-bg: #ffffff;
+  --atlas-surface: rgba(255, 255, 255, .72);
+  --atlas-surface-solid: #ffffff;
+  --atlas-surface-sunken: #f6f7f9;
+  --atlas-sidebar: rgba(255, 255, 255, .58);
+
+  /* Colour — text and lines */
+  --atlas-text: #10151c;
+  --atlas-muted: #6b7787;
+  --atlas-subtle: #8a94a3;
+  --atlas-line: rgba(16, 60, 110, .10);
+  --atlas-line-strong: rgba(16, 60, 110, .16);
+
+  /* Colour — interactive (Atlas blue) */
+  --atlas-accent: #2f80ed;
+  --atlas-accent-strong: #1f66c9;
+  --atlas-accent-soft: #e8f1fd;
+  --atlas-accent-line: rgba(47, 128, 237, .24);
+  --atlas-focus-ring: 0 0 0 3px rgba(47, 128, 237, .28);
+
+  /* Colour — status (same meaning everywhere) */
+  --atlas-green: #1f9d76;
+  --atlas-green-soft: rgba(31, 157, 118, .10);
+  --atlas-warn: #c98a2e;
+  --atlas-warn-soft: rgba(201, 138, 46, .11);
+  --atlas-danger: #d05c5c;
+  --atlas-danger-soft: rgba(208, 92, 92, .10);
+  --atlas-info: #2f80ed;
+  --atlas-info-soft: #e8f1fd;
+
+  /* Semantic aliases for new code */
+  --color-primary: var(--atlas-accent);
+  --color-text: var(--atlas-text);
+  --color-text-secondary: var(--atlas-muted);
+  --color-text-tertiary: var(--atlas-subtle);
+  --color-border: var(--atlas-line);
+  --color-background: var(--atlas-bg);
+  --color-surface: var(--atlas-surface-solid);
+  --color-positive: var(--atlas-green);
+  --color-warning: var(--atlas-warn);
+  --color-danger: var(--atlas-danger);
+  --color-information: var(--atlas-info);
+
+  /* Spacing scale (px): 4 8 12 16 20 24 32 40 48 64 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius hierarchy */
+  --radius-sm: 8px;      /* chips inside controls, small badges */
+  --radius-md: 12px;     /* inputs, buttons */
+  --radius-lg: 16px;     /* cards */
+  --radius-xl: 20px;     /* panels, modals, sheets */
+  --radius-pill: 999px;  /* pills, search, segmented tabs */
+  --atlas-radius: 18px;  /* legacy card radius (existing modules) */
+
+  /* Typography */
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --text-display: 32px;   /* page title */
+  --text-title: 22px;     /* section heading */
+  --text-heading: 17px;   /* card heading */
+  --text-body: 14px;
+  --text-meta: 13px;
+  --text-caption: 12px;   /* smallest text for reading */
+  --text-micro: 11px;     /* uppercase labels only */
+  --text-kpi: 30px;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgba(16, 60, 110, .04), 0 18px 40px -28px rgba(16, 60, 110, .28);
+  --shadow-2: 0 6px 18px rgba(16, 60, 110, .07), 0 34px 60px -34px rgba(16, 60, 110, .34);
+  --shadow-popover: 0 18px 44px rgba(16, 32, 60, .14);
+
+  /* Controls */
+  --control-sm: 32px;
+  --control-md: 40px;
+  --touch-target: 44px;
+
+  /* Motion */
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+
+  /* Legacy aliases: every module-specific "primary blue" resolves to the
+     Atlas blue. Previously #2d78dc (S34), #4f7df3 (S38, Home polish) and
+     #2f80ed were all in use for primary actions. */
+  --atlas-action: var(--atlas-accent);
+  --atlas-action-focus: rgba(47, 128, 237, .24);
+  --atlas-home-accent: var(--atlas-accent);
+  --atlas-home-accent-strong: var(--atlas-accent-strong);
+  --atlas-home-accent-soft: rgba(47, 128, 237, .10);
+  --atlas-home-accent-line: rgba(47, 128, 237, .22);
+  --s38-blue: var(--atlas-accent);
+  --s38-blue-strong: var(--atlas-accent-strong);
+  --s38-blue-soft: var(--atlas-accent-soft);
+  --s38-blue-line: #cbdcf8;
+  --blue-600: var(--atlas-accent);
+  --blue-700: var(--atlas-accent-strong);
+}
+
+/* Focus is always visible for keyboard users. */
+:where(button, a[href], input, select, textarea, [role="button"], [tabindex="0"]):focus-visible {
+  outline: 2px solid var(--atlas-accent);
+  outline-offset: 2px;
+}
+
+/* Wide data tables scroll inside their card; the page never scrolls sideways. */
+.atlas-table-scroll { min-width: 0; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }

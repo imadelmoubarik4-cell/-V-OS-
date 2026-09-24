@@ -397,11 +397,8 @@
 
 
   /* ========== PROJECT ATLAS DESIGN SYSTEM ========== */
+  /* Colour, radius and type tokens live in assets/css/atlas-tokens.css. */
   :root{
-    --atlas-bg:#f6f5f1; --atlas-surface:#ffffff; --atlas-sidebar:#eeece6;
-    --atlas-text:#242522; --atlas-muted:#777970; --atlas-line:#dedcd4;
-    --atlas-accent:#b6925e; --atlas-accent-soft:#e8dfd1; --atlas-green:#6f8d75;
-    --atlas-warn:#c28552; --atlas-danger:#b76565; --atlas-radius:16px;
     --sidebar-w:268px;
   }
   #app-screen{background:var(--atlas-bg);color:var(--atlas-text);min-height:100vh;}
@@ -501,6 +498,7 @@
   <link rel="stylesheet" href="assets/css/inventory-operations-s58.css?v=20260917-s58">
   <link rel="stylesheet" href="assets/css/accessibility-responsive-s61.css?v=20260917-s61">
   <link rel="stylesheet" href="assets/css/atlas-search.css?v=20260924-s87">
+  <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260924-s87">
 </head>
 <body>
 
@@ -649,7 +647,7 @@
                 <button type="button" id="purchasing-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
               </section>
               <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" aria-label="Search suppliers" placeholder="Search suppliers..."/></label></div>
-              <table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table>
+              <div class="atlas-table-scroll"><table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table></div>
               <div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div>
             </div>
             <section id="purchase-order-panel" hidden></section>
@@ -1588,7 +1586,9 @@
   }
 
   function timeAgo(dateStr) {
-    const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+    const time = dateStr ? new Date(dateStr).getTime() : NaN;
+    if (!Number.isFinite(time)) return '—';
+    const diff = (Date.now() - time) / 1000;
     if (diff < 60) return 'just now';
     if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
     if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
@@ -1716,9 +1716,9 @@
         <td>
           <div class="qty-cell">
             ${stockKnown ? `
-              <button class="step-btn step-down" data-id="${item.id}" type="button" ${canManageCommercial() ? '' : 'disabled'}>−</button>
-              <input type="number" step="0.1" min="0" class="qty-input mono" value="${displayQuantity ?? ''}" data-id="${item.id}" ${canManageCommercial() ? '' : 'disabled'} />
-              <button class="step-btn step-up" data-id="${item.id}" type="button" ${canManageCommercial() ? '' : 'disabled'}>+</button>
+              <button class="step-btn step-down" data-id="${item.id}" type="button" aria-label="Decrease ${escapeHtml(item.name)}" ${canManageCommercial() ? '' : 'disabled'}>−</button>
+              <input type="number" step="0.1" min="0" class="qty-input mono" value="${displayQuantity ?? ''}" data-id="${item.id}" aria-label="Quantity of ${escapeHtml(item.name)}" ${canManageCommercial() ? '' : 'disabled'} />
+              <button class="step-btn step-up" data-id="${item.id}" type="button" aria-label="Increase ${escapeHtml(item.name)}" ${canManageCommercial() ? '' : 'disabled'}>+</button>
               <span class="unit">${escapeHtml(item.unit)}</span>
             ` : `
               <span class="qty-unknown">Unknown</span>
@@ -1728,8 +1728,8 @@
         </td>
         <td>
           <div class="row-actions">
-            <button class="icon-btn edit-btn" data-id="${item.id}" title="Edit">✎</button>
-            <button class="icon-btn delete-btn" data-id="${item.id}" title="Delete">✕</button>
+            <button class="icon-btn edit-btn" type="button" data-id="${item.id}" title="Edit" aria-label="Edit ${escapeHtml(item.name)}">✎</button>
+            <button class="icon-btn delete-btn" type="button" data-id="${item.id}" title="Deactivate" aria-label="Deactivate ${escapeHtml(item.name)}">✕</button>
           </div>
         </td>
       `;
@@ -1806,11 +1806,15 @@
       btn.addEventListener('click', () => openModal(items.find(i => i.id === btn.dataset.id)));
     });
 
+    // Deleting an item un-linked its movement history and every recipe that
+    // used it. Items are deactivated instead: they leave live stock, stay in
+    // records and history, and can be reactivated in Item Master.
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        if (!requireCommercialManager('Inventory deletion')) return;
-        if (!confirm('Remove this item from inventory?')) return;
-        const { error } = await sb.from('inventory_items').delete().eq('id', btn.dataset.id);
+        if (!requireCommercialManager('Inventory changes')) return;
+        const item = items.find(i => i.id === btn.dataset.id);
+        if (!confirm(`Deactivate ${item?.name || 'this item'}?\n\nIt leaves live stock, counts and ordering. Its history and recipe links are kept.`)) return;
+        const { error } = await sb.from('inventory_items').update({ active: false }).eq('id', btn.dataset.id);
         if (error) { alert(error.message); return; }
         await loadAll();
       });
@@ -2055,6 +2059,7 @@
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
   }
+  window.addEventListener('atlas:team-summary', () => updateHomeTeamMetric());
   function updateHomeTeamMetric() {
     const value = document.getElementById('home-team');
     const note = document.getElementById('home-team-note');
@@ -2066,7 +2071,8 @@
       return;
     }
     const messages = window.AtlasTeamMessages?.snapshot?.();
-    const messageCount = Number(messages?.summary?.active_members);
+    const rawMembers = messages?.summary?.active_members ?? window.AtlasTeamUnreadBadge?.activeMembers?.();
+    const messageCount = rawMembers == null ? NaN : Number(rawMembers);
     if (Number.isFinite(messageCount)) {
       value.textContent = messageCount;
       note.textContent = messageCount === 1 ? 'Active staff member' : 'Active staff members';

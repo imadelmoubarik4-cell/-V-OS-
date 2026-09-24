@@ -5,10 +5,7 @@
  */
 
 :root {
-  --s38-blue: #4f7df3;
-  --s38-blue-strong: #3567e8;
-  --s38-blue-soft: #edf3ff;
-  --s38-blue-line: #cbdafe;
+  /* --s38-blue* resolve to the Atlas blue in atlas-tokens.css. */
   --s38-ink: #182230;
   --s38-muted: #66758a;
   --s38-bg: #f5f7fb;
@@ -653,6 +650,9 @@ textarea:focus-visible {
 #home-timeline .brain-timeline { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:9px; }
 #home-timeline .brain-timeline-row { min-height:82px; padding:12px; border:1px solid var(--s38-line); border-radius:14px; background:var(--s38-bg); }
 #home-timeline .brain-timeline-marker { display:none; }
+/* With the marker hidden the text used to land in the 12px marker column and
+   wrap one word per line; Home rows use two columns. */
+#home-timeline .brain-timeline-row { grid-template-columns:minmax(44px,auto) minmax(0,1fr); }
 #home-timeline .brain-timeline-copy { padding:0; }
 
 /* Never use legacy black for primary actions */
