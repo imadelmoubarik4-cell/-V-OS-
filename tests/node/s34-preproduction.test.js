@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
+import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const read = (path) => readFileSync(path, 'utf8');
 const app = read('apps/web/index.html');
 const config = read('apps/web/config.js');
 const runtime = read('apps/web/assets/js/runtime-module-guard.js');
-const design = read('apps/web/assets/css/s34-preproduction.css');
+const design = legacyCss('s34-preproduction');
 const messages = read('apps/web/assets/js/team-messages.js');
 const messageApi = read('supabase/functions/atlas-team-messages/index.ts');
 const shiftsApi = read('supabase/functions/atlas-shifts/index.ts');
@@ -83,7 +84,7 @@ test('shared launch design uses blue actions, compact search, visible focus, and
   assert.match(design, /input\[type="search"\]/);
   assert.match(design, /@media\(prefers-reduced-motion:reduce\)/);
   assert.match(design, /#home-focus::after/);
-  assert.match(app, /assets\/css\/s34-preproduction\.css/);
+  assert.match(app, /assets\/css\/legacy\/s34-preproduction--base\.css\?v=20260926-s88/);
 });
 
 test('conversation stars persist through the private gateway', () => {

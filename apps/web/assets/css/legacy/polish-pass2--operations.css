@@ -1,0 +1,70 @@
+/* S88 legacy fragment: the operations rules of polish-pass2.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where polish-pass2.css was).
+ * Owner: WP-OPS-HOME. Phase 2 merges these rules into operations.css
+ * using their effective values, then empties this file. */
+/* Atlas — second polish pass.
+ *
+ * Fixes found in the signed-in acceptance sweep of the branch preview:
+ * dark/sand primary buttons and tab rails that the first pass didn't reach.
+ * Loads last, after system-polish.css.
+ *
+ * Presentation only. Every selector marked (confirmed) was read from the
+ * module's own stylesheet in the repo. A few marked (speculative) follow the
+ * same naming convention but weren't found in a stylesheet — if the class
+ * doesn't exist it is simply inert.
+ */
+@layer atlas.legacy {
+/* ---------- PR29 acceptance follow-up: one shell rhythm everywhere ---------- */
+
+/* The scheduled task belongs on Home. Operations has the full task workspace;
+   repeating the compact prompt above every other page displaced every hero. */
+body[data-atlas-view]:not([data-atlas-view="dashboard"]) .checkpoint-a-home-prompt {
+  display: none !important;
+}
+
+/* ---------- Operations Center hero: the last dark hero (confirmed) ----------
+   Brain and Business Intelligence heroes were converted in the first pass;
+   Operations was missed and still reads as a black slab. */
+
+.operations-hero {
+  color: var(--atlas-text) !important;
+  background:
+    radial-gradient(circle at 84% 10%, rgba(47, 128, 237, .14), transparent 44%),
+    radial-gradient(circle at 8% 90%, rgba(125, 180, 242, .16), transparent 50%),
+    rgba(255, 255, 255, .78) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line) !important;
+  box-shadow: var(--glass-highlight), var(--glass-shadow) !important;
+}
+
+.operations-hero::after { display: none; }
+
+.operations-hero h1 {
+  color: var(--atlas-text) !important;
+  font-weight: 600;
+  letter-spacing: -.035em;
+}
+
+.operations-hero p { color: var(--atlas-muted) !important; }
+
+/* The readiness figure inside the hero was a light panel on dark; it needs a
+   light-on-light treatment now. */
+.operations-hero > *:last-child {
+  background: rgba(255, 255, 255, .72) !important;
+  border: 1px solid var(--glass-line) !important;
+  border-radius: 18px;
+  color: var(--atlas-text) !important;
+  box-shadow: var(--glass-highlight);
+}
+
+/* The "Scheduled today" routine strip appears on every workspace, so it reads
+   as chrome rather than an alert; it moves onto the blue scale. Genuine
+   overdue/out-of-range states keep their own tones. (confirmed) */
+.checkpoint-a-compact-card {
+  background: rgba(244, 249, 255, .78) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.checkpoint-a-compact-eyebrow { color: var(--blue-600) !important; }
+}

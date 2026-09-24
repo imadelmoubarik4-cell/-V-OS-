@@ -1,0 +1,82 @@
+/* S88 legacy fragment: the brain rules of s38-app-remediation.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where s38-app-remediation.css was).
+ * Owner: WP-RBB. Phase 2 merges these rules into brain.css
+ * using their effective values, then empties this file. */
+/*
+ * Atlas S38 — PDF app-remediation layer.
+ * Scope: presentation, interaction affordances and responsive layout only.
+ * Loaded last so every workspace shares one calm blue/white visual language.
+ */
+@layer atlas.legacy {
+/* Atlas Brain: one clear hierarchy, no black hero */
+.brain-shell { gap: 18px; }
+.brain-hero {
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+  gap: 22px;
+  padding: 28px;
+  border: 1px solid var(--s38-blue-line);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(79, 125, 243, .15), transparent 38%),
+    linear-gradient(135deg, #fff 0%, #f7faff 72%, #edf3ff 100%);
+  color: var(--s38-ink);
+  box-shadow: var(--s38-shadow-raised);
+}
+.brain-hero::after { background: none; }
+.brain-kicker,
+.brain-briefing-line svg { color: var(--s38-blue); }
+.brain-hero-copy > p,
+.brain-clock-label,
+.brain-countdown span { color: var(--s38-muted); }
+.brain-briefing-line { border-color: var(--s38-line); color: var(--s38-ink); }
+.brain-hero-panel {
+  border-color: var(--s38-blue-line);
+  background: rgba(255, 255, 255, .8);
+  color: var(--s38-ink);
+}
+.brain-clock-label strong { color: var(--s38-ink); }
+.brain-readiness-track { background: #dfe8f7; }
+.brain-readiness-track span { background: linear-gradient(90deg, var(--s38-blue), #7ea4ff); }
+.brain-metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.brain-metric { min-height: 126px; padding: 17px; border-color: var(--s38-line); background: #fff; }
+.brain-layout { grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 18px; }
+.brain-card { border-color: var(--s38-line); background: #fff; }
+.brain-card-action { border-color: var(--s38-blue-line); background: var(--s38-blue-soft); color: var(--s38-blue-strong); }
+@media (max-width: 1000px) {
+  .brain-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .brain-metric-grid { grid-template-columns: 1fr 1fr; }
+}
+
+#home-timeline .brain-timeline { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:9px; }
+#home-timeline .brain-timeline-row { min-height:82px; padding:12px; border:1px solid var(--s38-line); border-radius:14px; background:var(--s38-bg); }
+#home-timeline .brain-timeline-marker { display:none; }
+/* With the marker hidden the text used to land in the 12px marker column and
+   wrap one word per line; Home rows use two columns. */
+#home-timeline .brain-timeline-row { grid-template-columns:minmax(44px,auto) minmax(0,1fr); }
+#home-timeline .brain-timeline-copy { padding:0; }
+
+/* Brain: Ask Atlas first, remaining intelligence collapsed */
+.brain-ask-card { padding:20px; }
+.brain-intelligence-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.brain-intelligence-grid > .brain-card { padding:0; overflow:hidden; }
+.brain-intelligence-grid > .brain-card > summary { min-height:68px; display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:12px; padding:15px 17px; list-style:none; cursor:pointer; }
+.brain-intelligence-grid > .brain-card > summary::-webkit-details-marker { display:none; }
+.brain-intelligence-grid > .brain-card > summary > span { display:flex; align-items:center; gap:9px; }
+.brain-intelligence-grid > .brain-card > summary > span svg { width:19px; color:var(--s38-blue); }
+.brain-intelligence-grid > .brain-card > summary strong { font-size:14px; }
+.brain-intelligence-grid > .brain-card > summary small { color:var(--s38-muted); font-size:9px; text-align:right; }
+.brain-intelligence-grid > .brain-card > summary > svg { width:17px; color:var(--s38-muted); transition:transform .18s ease; }
+.brain-intelligence-grid > .brain-card[open] > summary > svg { transform:rotate(180deg); }
+.brain-card-body { padding:0 17px 17px; border-top:1px solid var(--s38-line); }
+.brain-card-head.is-inline { justify-content:flex-end; padding:12px 0 0; }
+@media (max-width: 1000px) {
+  .brain-intelligence-grid { grid-template-columns:1fr; }
+}
+
+@media (max-width: 480px) {
+  #home-timeline .brain-timeline { grid-template-columns:1fr 1fr; }
+}
+}

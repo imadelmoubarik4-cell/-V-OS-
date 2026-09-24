@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const shell = readFileSync('apps/web/index.html', 'utf8');
 const month = readFileSync('apps/web/assets/js/shifts-month-calendar.js', 'utf8');
-const css = readFileSync('apps/web/assets/css/accessibility-responsive-s61.css', 'utf8');
+const css = legacyCss('accessibility-responsive-s61');
 const sources = [
   shell,
   readFileSync('apps/web/assets/js/recipes.js', 'utf8'),
@@ -33,6 +34,7 @@ test('narrow layouts reserve space for the single owning floating action', () =>
   assert.match(css, /#reports-view[\s\S]+?\.fab-wrap[\s\S]+?display:\s*none !important/);
   assert.match(css, /padding-bottom:\s*calc\(96px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(css, /max-height:\s*calc\(100dvh - 104px\)/);
-  assert.match(shell, /accessibility-responsive-s61\.css\?v=20260917-s61/);
+  // S88: the S61 rules live in legacy/accessibility-responsive-s61--*.css fragments.
+  assert.match(shell, /legacy\/accessibility-responsive-s61--[a-z-]+\.css\?v=20260926-s88/);
   assert.match(shell, /shifts-month-calendar\.js\?v=20260917-s62/);
 });

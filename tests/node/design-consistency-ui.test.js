@@ -1,20 +1,21 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const app = readFileSync('apps/web/index.html', 'utf8');
-const inventoryCss = readFileSync('apps/web/assets/css/inventory-polish.css', 'utf8');
-const homeCss = readFileSync('apps/web/assets/css/home-polish.css', 'utf8');
-const recipesCss = readFileSync('apps/web/assets/css/recipes-gallery.css', 'utf8');
-const purchasingCss = readFileSync('apps/web/assets/css/purchasing-polish.css', 'utf8');
-const shellCss = readFileSync('apps/web/assets/css/atlas-glass.css', 'utf8');
+const inventoryCss = legacyCss('inventory-polish');
+const homeCss = legacyCss('home-polish');
+const recipesCss = legacyCss('recipes-gallery');
+const purchasingCss = legacyCss('purchasing-polish');
+const shellCss = legacyCss('atlas-glass');
 const recipes = readFileSync('apps/web/assets/js/recipes.js', 'utf8');
 const scanner = readFileSync('apps/web/assets/js/inventory-scanner.js', 'utf8');
 const stockCount = readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8');
 const itemMaster = readFileSync('apps/web/assets/js/item-master-workspace.js', 'utf8');
 const reportsCss = readFileSync('apps/web/assets/css/reports-workspace.css', 'utf8');
 const settingsCss = readFileSync('apps/web/assets/css/settings-workspace.css', 'utf8');
-const finalPolishCss = readFileSync('apps/web/assets/css/polish-pass2.css', 'utf8');
+const finalPolishCss = legacyCss('polish-pass2');
 const iconSources = [
   app,
   readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8'),

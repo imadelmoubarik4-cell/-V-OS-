@@ -1,0 +1,9 @@
+/* S88 legacy fragment: the CSS that settings-mount-bridge.js injects as <style id="atlas-settings-button-contrast">,
+ * copied verbatim. index.html links this file with that id at the position
+ * where the script used to append its <style>, so the script finds the id and
+ * injects nothing, and the rules sit in @layer atlas.legacy like everything else.
+ * Owner: WP-ADMIN. WP-LOADER deletes the injection code; Phase 2 merges these
+ * rules into settings-workspace.css. */
+@layer atlas.legacy {
+.settings-view .settings-primary,.settings-view .settings-hero aside button{color:#fff}#settings-view #checkpoint-a-integrations-settings,#settings-view .checkpoint-a-settings-integrations{display:none!important}
+}

@@ -35,5 +35,5 @@ test('BI period state and report search expose accessible names and selection', 
 test('production loads the S60 Reports and BI assets with a cache key', () => {
   assert.match(config, /reports-workspace\.js\?v=20260917-s60/);
   assert.match(shell, /business\.js\?v=20260917-s60/);
-  assert.match(shell, /business\.css\?v=20260917-s60/);
+  assert.match(shell, /business\.css\?v=20260926-s88/);
 });

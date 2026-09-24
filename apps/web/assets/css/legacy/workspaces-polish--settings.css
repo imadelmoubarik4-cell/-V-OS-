@@ -1,0 +1,59 @@
+/* S88 legacy fragment: the settings rules of workspaces-polish.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where workspaces-polish.css was).
+ * Owner: WP-ADMIN. Phase 2 merges these rules into settings-workspace.css
+ * using their effective values, then empties this file. */
+/* Atlas — remaining workspace passes.
+ *
+ * Marketing, Messages, Team, Shifts, Knowledge, Atlas Brain, Business
+ * Intelligence, Reports, Settings — plus the five placeholder views.
+ *
+ * Loads AFTER atlas-glass.css. Presentation only: no markup, renderer, data,
+ * auth or routing change. Every selector below is a class lifted from the
+ * module's own stylesheet in the repo, so a class a module doesn't render is
+ * inert rather than harmful.
+ *
+ * `!important` is load-order insurance: config.js injects these module
+ * stylesheets after window load, so they land later in <head> than this static
+ * link and would otherwise win every equal-specificity contest.
+ */
+@layer atlas.legacy {
+/* ---------- Local scales the modules hard-code ---------- */
+
+.settings-shell,
+.settings-hero,
+.settings-panel,
+.settings-card {
+  --settings-ink: #10151c;
+  --settings-muted: #6b7787;
+  --settings-line: rgba(16, 60, 110, .10);
+  --settings-soft: #f4f9ff;
+  --settings-panel: rgba(255, 255, 255, .72);
+  --settings-brass: #2f80ed;
+  --settings-brass-soft: #e8f1fd;
+  --settings-shadow: var(--glass-shadow);
+}
+
+.settings-hero aside {
+  background: rgba(255, 255, 255, .72) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.settings-permission-list label,
+.settings-check-row span {
+  background: rgba(255, 255, 255, .74) !important;
+  border-color: var(--glass-line) !important;
+}
+
+.settings-permission-list input { accent-color: var(--blue-600) !important; }
+
+.settings-safeguard-list svg { color: var(--atlas-green) !important; }
+
+/* A settings note carries a consequence warning; it keeps its amber tone. */
+.settings-note-card:not(.is-warning) {
+  background: var(--blue-50) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+  color: var(--atlas-muted) !important;
+}
+
+.settings-note-card:not(.is-warning) > svg { color: var(--blue-600) !important; }
+}

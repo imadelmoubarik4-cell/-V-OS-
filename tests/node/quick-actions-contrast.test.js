@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const shell = readFileSync('apps/web/index.html', 'utf8');
-const glass = readFileSync('apps/web/assets/css/atlas-glass.css', 'utf8');
+const glass = legacyCss('atlas-glass');
 
 test('Quick Actions keeps the existing Atlas action surface', () => {
   assert.match(shell, /id="fab-menu"/);

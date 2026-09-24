@@ -1,0 +1,24 @@
+/* S88 legacy fragment: the import-center rules of s38-app-remediation.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where s38-app-remediation.css was).
+ * Owner: WP-INV. Phase 2 merges these rules into import-center.css
+ * using their effective values, then empties this file. */
+/*
+ * Atlas S38 — PDF app-remediation layer.
+ * Scope: presentation, interaction affordances and responsive layout only.
+ * Loaded last so every workspace shares one calm blue/white visual language.
+ */
+@layer atlas.legacy {
+#imports-view :is(.import-queue-summary-card,.import-card,.import-queue-panel):hover { transform:translateY(-2px); border-color:var(--s38-blue-line); box-shadow:var(--s38-shadow-raised); }
+#imports-view .import-drop-zone { border-color:var(--s38-blue-line); background:var(--s38-blue-soft); }
+#imports-view .import-drop-icon { background:#fff; color:var(--s38-blue); }
+#imports-view .import-row-action:hover { border-color:var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
+#home-focus .atlas-home-brief-actions .atlas-home-action{
+  min-height:42px;
+  padding:9px 16px;
+  border:1px solid #ccd6e3;
+  border-radius:12px;
+  background:rgba(255,255,255,.82);
+  color:#2d3746;
+  box-shadow:0 3px 8px rgba(31,49,70,.04);
+}
+}

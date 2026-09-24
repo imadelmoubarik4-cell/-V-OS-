@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 body.inventory-scanner-open{overflow:hidden}
 .inventory-scan-entry{display:inline-flex;align-items:center;gap:7px}
 .inventory-scan-entry svg{width:16px;height:16px}
@@ -187,3 +192,4 @@ body.inventory-scanner-open{overflow:hidden}
 .inventory-scanner-primary:hover:not(:disabled),.inventory-scanner-manual button:hover:not(:disabled){border-color:#3567e8;background:#3567e8}
 .inventory-scanner-trust{border-color:#cbdafe;background:#edf3ff;color:#526782}
 .inventory-scanner-trust svg{color:#4f7df3}
+}

@@ -1,0 +1,16 @@
+/* S88 legacy fragment: the base rules of s34-preproduction.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where s34-preproduction.css was).
+ * Owner: WP-BASE. Phase 2 merges these rules into atlas-base.css (new)
+ * using their effective values, then empties this file. */
+@layer atlas.legacy {
+:root{
+  /* --atlas-action and --atlas-action-focus are defined in atlas-tokens.css. */
+  --atlas-action-hover:#1f66c9;
+  --atlas-card-radius:16px;
+  --atlas-card-shadow:0 10px 28px rgba(30,42,56,.07);
+  --atlas-card-shadow-hover:0 15px 34px rgba(30,61,105,.12);
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+}

@@ -1,0 +1,33 @@
+/* S88 legacy fragment: the inventory rules of s38-app-remediation.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where s38-app-remediation.css was).
+ * Owner: WP-INV. Phase 2 merges these rules into inventory.css (from inventory-polish)
+ * using their effective values, then empties this file. */
+/*
+ * Atlas S38 — PDF app-remediation layer.
+ * Scope: presentation, interaction affordances and responsive layout only.
+ * Loaded last so every workspace shares one calm blue/white visual language.
+ */
+@layer atlas.legacy {
+/* Inventory and scanner */
+.inventory-subcategory-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.inventory-subcategory-tabs .tab {
+  flex: 0 0 auto;
+  border-color: var(--s38-line);
+  background: #fff;
+}
+.inventory-subcategory-tabs .tab.active {
+  border-color: var(--s38-blue);
+  background: var(--s38-blue);
+  color: #fff;
+}
+.inventory-subcategory-tabs .tab span {
+  margin-left: 4px;
+  opacity: .72;
+}
+}

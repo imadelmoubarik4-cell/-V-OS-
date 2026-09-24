@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 /* Atlas Alpha 0.5 — Atlas Brain */
 
 .brain-shell{
@@ -296,4 +301,5 @@
   .brain-assistant{padding:18px}
   .brain-assistant-form{grid-template-columns:1fr}
   .brain-assistant-form button{min-height:42px}
+}
 }

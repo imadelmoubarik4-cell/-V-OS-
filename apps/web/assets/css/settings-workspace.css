@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 .settings-view{
   --settings-ink:#25231f;
   --settings-muted:#7f7a70;
@@ -141,3 +146,4 @@ html[data-atlas-density="compact"] .settings-card{padding:15px}html[data-atlas-d
 .settings-integration-needs{display:grid;gap:6px;font-size:12.5px}
 .settings-integration-needs strong{font-weight:600}
 .settings-integration-needs ul{margin:0;padding-left:18px;color:var(--settings-muted);line-height:1.6}
+}

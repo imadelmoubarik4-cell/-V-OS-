@@ -62,7 +62,10 @@
   }
 
   function ensureStylesheet() {
-    if (!document.querySelector('link[data-atlas-checkpoint-j-settings]')) {
+    // S88: index.html links settings-workspace.css statically (and config.js /
+    // runtime-module-guard.js dedupe on that href). Checking only the data
+    // attribute appended a second copy of the whole stylesheet.
+    if (!document.querySelector(`link[data-atlas-checkpoint-j-settings], link[href="${WORKSPACE_CSS}"]`)) {
       const stylesheet = document.createElement('link');
       stylesheet.rel = 'stylesheet';
       stylesheet.href = WORKSPACE_CSS;

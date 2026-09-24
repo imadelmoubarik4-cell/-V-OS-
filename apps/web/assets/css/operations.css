@@ -1,7 +1,8 @@
-@import url("home-polish.css");
-@import url("home-polish-baseline.css");
-@import url("inventory-polish.css");
-
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 /* Atlas Alpha 0.4.0 — Operations Intelligence */
 
 .operations-center {
@@ -395,3 +396,4 @@ button.operations-summary-card:hover { border-color: rgba(47, 128, 237, .35); bo
 button.operations-summary-card:active { transform: translateY(1px); }
 button.operations-summary-card:focus-visible { outline: 2px solid #2f80ed; outline-offset: 2px; }
 .operations-order-state { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; background: rgba(31, 157, 118, .10); color: #1f7a5c; font-size: 12px; font-weight: 600; }
+}

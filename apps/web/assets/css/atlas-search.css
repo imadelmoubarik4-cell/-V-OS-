@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 /* S87 Global Search / Ask Atlas.
    Uses the shared Atlas tokens; no new colours are introduced. */
 .atlas-search-panel {
@@ -155,4 +160,5 @@
 #items-body .step-btn, #items-body .icon-btn { min-width: 36px; min-height: 36px; }
 @media (pointer: coarse) {
   #items-body .step-btn, #items-body .icon-btn { min-width: var(--touch-target, 44px); min-height: var(--touch-target, 44px); }
+}
 }

@@ -1,7 +1,8 @@
 /* Atlas design tokens — the single source of truth.
  *
- * Documented in docs/design/Atlas_Design_System.md. Loaded after every static
- * stylesheet so these definitions win. Values equal the ones that already won
+ * Documented in docs/design/Atlas_Design_System.md. Linked FIRST: this file
+ * declares the cascade-layer order for every Atlas stylesheet (below), and
+ * the tokens live in the lowest layer; nothing else defines them. Values equal the ones that already won
  * the cascade before S87, so this file removes ambiguity without restyling;
  * the one deliberate change is that every "primary blue" alias now resolves
  * to the Atlas blue (#2f80ed) instead of three different blues.
@@ -9,6 +10,21 @@
  * New CSS must use these tokens. Do not add new :root colour, radius or
  * spacing definitions in module stylesheets.
  */
+/* Cascade layers (S88). Declared once, before any other Atlas CSS, so the
+ * order of <link> tags and runtime injection no longer decides which rule
+ * wins between layers:
+ *   atlas.tokens      custom properties only (this file)
+ *   atlas.base        reset, typography, shell           (Phase 2: atlas-base.css)
+ *   atlas.components  buttons, inputs, cards, tables...  (Phase 2: atlas-components.css)
+ *   atlas.legacy      every pre-S88 stylesheet, in its original order, and the
+ *                     legacy/*.css fragments split out of the old override files
+ *   atlas.modules     module stylesheets after their Phase 2 consolidation
+ * A later layer beats an earlier one for normal declarations regardless of
+ * specificity; for !important the order is reversed. Move a module from
+ * atlas.legacy to atlas.modules and remove its !important in the same commit. */
+@layer atlas.tokens, atlas.base, atlas.components, atlas.legacy, atlas.modules;
+
+@layer atlas.tokens {
 :root {
   /* Colour — surfaces */
   --atlas-bg: #ffffff;
@@ -121,12 +137,4 @@
   --blue-600: var(--atlas-accent);
   --blue-700: var(--atlas-accent-strong);
 }
-
-/* Focus is always visible for keyboard users. */
-:where(button, a[href], input, select, textarea, [role="button"], [tabindex="0"]):focus-visible {
-  outline: 2px solid var(--atlas-accent);
-  outline-offset: 2px;
 }
-
-/* Wide data tables scroll inside their card; the page never scrolls sideways. */
-.atlas-table-scroll { min-width: 0; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }

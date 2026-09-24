@@ -3,7 +3,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / "apps/web/index.html"
-CSS = ROOT / "apps/web/assets/css/s38-app-remediation.css"
+# S88: the S38 rules were split verbatim into per-module fragments,
+# apps/web/assets/css/legacy/s38-app-remediation--<module>.css.
+CSS_FRAGMENTS = sorted((ROOT / "apps/web/assets/css/legacy").glob("s38-app-remediation--*.css"))
 JS = ROOT / "apps/web/assets/js/s38-app-remediation.js"
 CHECKLIST = ROOT / "docs/release/Atlas_S38_PDF_App_Remediation_Checklist.md"
 DECISIONS = ROOT / "docs/release/Atlas_S38_Owner_Decisions_and_Acceptance.md"
@@ -13,17 +15,19 @@ class S38AppRemediationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.index = INDEX.read_text(encoding="utf-8")
-        cls.css = CSS.read_text(encoding="utf-8")
+        cls.css = "\n".join(path.read_text(encoding="utf-8") for path in CSS_FRAGMENTS)
         cls.javascript = JS.read_text(encoding="utf-8")
         cls.checklist = CHECKLIST.read_text(encoding="utf-8")
         cls.decisions = DECISIONS.read_text(encoding="utf-8")
 
     def test_remediation_assets_load_last(self):
-        css_reference = "assets/css/s38-app-remediation.css"
         js_reference = "assets/js/s38-app-remediation.js"
-        self.assertEqual(self.index.count(css_reference), 1)
+        self.assertTrue(CSS_FRAGMENTS)
+        for path in CSS_FRAGMENTS:
+            css_reference = f"assets/css/legacy/{path.name}"
+            self.assertEqual(self.index.count(css_reference), 1)
+            self.assertLess(self.index.index(css_reference), self.index.index("</head>"))
         self.assertEqual(self.index.count(js_reference), 1)
-        self.assertLess(self.index.index(css_reference), self.index.index("</head>"))
         self.assertLess(self.index.index("assets/js/purchase-orders.js"), self.index.index(js_reference))
         self.assertLess(self.index.index(js_reference), self.index.index("</body>"))
 
