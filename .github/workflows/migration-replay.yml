@@ -52,3 +52,6 @@ jobs:
 
       - name: Run S87 acceptance (recipe delete guard, media policies, Knowledge role matrix)
         run: bash scripts/verify_s87_previews.sh
+
+      - name: Run S88 integrations acceptance (credential isolation, single-use OAuth state)
+        run: bash scripts/verify_s88_integrations_previews.sh
