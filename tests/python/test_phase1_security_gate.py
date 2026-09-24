@@ -93,9 +93,11 @@ class Phase1SecurityGateTests(unittest.TestCase):
         self.assertIn("commercialAccess = MANAGER_ROLES.has", STOCK_EDGE)
         self.assertIn("inventory_catalog", STOCK_EDGE)
         self.assertIn("safeFields", STOCK_EDGE)
-        live_gate = SCANNER_EDGE.index("requireManager(context);")
-        live_apply = SCANNER_EDGE.index("applyLiveCount(context")
-        self.assertLess(live_gate, live_apply)
+        # S89: the scanner's live count path is removed entirely; linking a
+        # code stays manager-gated.
+        self.assertNotIn("applyLiveCount", SCANNER_EDGE)
+        self.assertNotIn("rpc/adjust_inventory", SCANNER_EDGE)
+        self.assertIn("requireManager(context);", SCANNER_EDGE)
 
     def test_role_matrix_covers_controlled_adjustment_boundaries(self):
         self.assertIn("bartender_controlled_adjustment_denied", ROLE_MATRIX)

@@ -1,25 +1,59 @@
-const DIACRITICS = /[\u0300-\u036f]/g;
+// Import canonicalization on the shared Atlas product identity rules
+// (supabase/functions/_shared/product-identity.mjs, S89).
+//
+// Stored forms keep every letter: "Þurrkaður Ananas" is "þurrkaður ananas",
+// never "urrka ur ananas" (the pre-S89 NFKD strip lost Icelandic letters) and
+// never a transliteration. Accent-insensitive comparison is available only
+// through searchText()/tokens(), which feed similarity scoring and are never
+// written to a stored key.
+import {
+  foldText,
+  identityKey,
+  matchKey,
+  matchTokens,
+  nameKey,
+  nameTokens,
+  normalizeCode,
+  packKey,
+  parsePackage as parseProductPackage,
+  parsePackageText,
+  searchFoldText,
+} from '../../../supabase/functions/_shared/product-identity.mjs';
+
+export {
+  foldText,
+  identityKey,
+  matchKey,
+  matchTokens,
+  nameKey,
+  nameTokens,
+  normalizeCode,
+  packKey,
+  parseProductPackage,
+  parsePackageText,
+  searchFoldText,
+};
+
 const SPACE = /\s+/g;
 
 export function cleanText(value) {
   if (value === null || value === undefined) return '';
   return String(value)
-    .replace(/[\u2018\u2019\u2032]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[‘’′]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-')
     .replace(SPACE, ' ')
     .trim();
 }
 
+function withoutPunctuation(value) {
+  return value.replace(/[.,]+/g, ' ').replace(SPACE, ' ').trim();
+}
+
+// Stored canonical text: case-folded, letters kept (Á á Ð ð É é Í í Ó ó Ú ú
+// Ý ý Þ þ Æ æ Ö ö survive), punctuation removed.
 export function canonicalText(value) {
-  return cleanText(value)
-    .normalize('NFKD')
-    .replace(DIACRITICS, '')
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(SPACE, ' ')
-    .trim();
+  return withoutPunctuation(foldText(cleanText(value)));
 }
 
 export function canonicalKey(name, packageSize = '') {
@@ -37,6 +71,12 @@ export function normalizeIdentifier(value) {
   return normalized || null;
 }
 
+// Search-only text for similarity scoring (accent-insensitive).
+export function searchText(value) {
+  return withoutPunctuation(searchFoldText(cleanText(value)));
+}
+
+// Search-only token set for similarity scoring.
 export function tokens(value) {
-  return new Set(canonicalText(value).split(' ').filter(Boolean));
+  return new Set(searchText(value).split(' ').filter(Boolean));
 }

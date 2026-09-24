@@ -4,7 +4,7 @@ const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
 const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
   ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
-const FUNCTION_VERSION = "0.2.0";
+const FUNCTION_VERSION = "0.3.0";
 const MAX_BODY_BYTES = 160 * 1024;
 const MAX_INVENTORY_ROWS = 5000;
 const PUBLICATION_ENV_ENABLED =
@@ -113,25 +113,53 @@ function integerValue(value: unknown, label: string, min = 1, max = 1_000_000): 
   return parsed;
 }
 
+// s89-count-helpers:start (pure; unit-tested by tests/node/stock-count-add-line-s89.test.js)
+// Decimal counts (0.2, 0.4, 1.7 bottles) up to three decimal places; the
+// person is authoritative on fill level.
 function quantityValue(value: unknown, label: string): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0 || parsed > 10_000_000) {
     throw new ApiError(400, `${label} must be zero or more.`);
   }
+  if (Math.abs(parsed * 1000 - Math.round(parsed * 1000)) > 1e-6) {
+    throw new ApiError(400, `${label} accepts up to three decimal places.`);
+  }
   return parsed;
 }
 
+const COUNT_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// Recognition evidence on a count line carries references only. The
+// database re-validates the outcome (same person, same item, a confirmation,
+// under 30 minutes old) and rebuilds band and score from the audit rows;
+// anything else is dropped and the line saves as manual.
+function countEvidence(value: unknown): Record<string, unknown> {
+  if (value === null || value === undefined) return {};
+  if (typeof value !== "object" || Array.isArray(value)) throw new ApiError(400, "Count evidence must be an object.");
+  const evidence = { ...(value as Record<string, unknown>) };
+  if (JSON.stringify(evidence).length > 16 * 1024) throw new ApiError(413, "Count evidence is too large.");
+  if (evidence.recognition !== undefined) {
+    const source = evidence.recognition;
+    if (!source || typeof source !== "object" || Array.isArray(source)) {
+      throw new ApiError(400, "Recognition evidence must be an object.");
+    }
+    const refs: Record<string, string> = {};
+    for (const key of ["outcome_id", "detection_id", "request_id"]) {
+      const id = (source as Record<string, unknown>)[key];
+      if (id === undefined || id === null || id === "") continue;
+      if (typeof id !== "string" || !COUNT_UUID.test(id)) throw new ApiError(400, "Recognition evidence ids are invalid.");
+      refs[key] = id.toLowerCase();
+    }
+    if (!refs.outcome_id) throw new ApiError(400, "Recognition evidence needs the confirmed outcome id.");
+    evidence.recognition = refs;
+  }
+  return evidence;
+}
+// s89-count-helpers:end
+
 function booleanValue(value: unknown): boolean {
   return value === true;
-}
-
-function objectValue(value: unknown, label: string): JsonObject {
-  if (value === null || value === undefined) return {};
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new ApiError(400, `${label} must be an object.`);
-  }
-  return value as JsonObject;
 }
 
 async function readJson(request: Request): Promise<JsonObject> {
@@ -425,7 +453,26 @@ Deno.serve(async (request: Request) => {
           p_note: optionalText(body.note, "Note", 2000),
           p_skipped_reason: status === "skipped" ? requiredText(body.skipped_reason, "Skip reason", 1000) : null,
           p_expected_version: integerValue(body.expected_version, "Expected line version"),
-          p_evidence: objectValue(body.evidence, "Count evidence"),
+          p_evidence: countEvidence(body.evidence),
+          p_actor_id: context.user.id,
+          p_actor_label: actorLabel,
+          p_actor_role: context.profile.role,
+        });
+        break;
+      }
+
+      case "add-line": {
+        // Adds one active item that is outside the session scope (S89). The
+        // item is read from production with the caller's role projection.
+        requireEditingRole(context);
+        sessionId = requiredUuid(body.session_id, "Stock-count session");
+        const itemId = requiredUuid(body.item_id, "Inventory item").toLowerCase();
+        const inventory = await productionInventory(context);
+        const item = inventory.find((row) => String(row.id).toLowerCase() === itemId);
+        if (!item) throw new ApiError(404, "That item is not an active inventory item.");
+        result = await branchRpc("atlas_stock_count_add_line", {
+          p_session_id: sessionId,
+          p_item: item,
           p_actor_id: context.user.id,
           p_actor_label: actorLabel,
           p_actor_role: context.profile.role,

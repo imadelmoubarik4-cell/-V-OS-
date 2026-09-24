@@ -37,7 +37,8 @@ class S37IsolationRuntimeTests(unittest.TestCase):
             output = Path(directory) / "runtime"
             result = builder.build(output)
             self.assertEqual(result["functions"], 18)
-            self.assertEqual(result["files"], 25)
+            # S89: the scanner also packages _shared/product-identity.mjs.
+            self.assertEqual(result["files"], 26)
             runtime = json.loads((output / "runtime-manifest.json").read_text())
             self.assertEqual(len(runtime["functions"]), 18)
             self.assertFalse(runtime["production_fallbacks"])
