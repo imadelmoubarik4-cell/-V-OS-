@@ -231,7 +231,7 @@ test('Reports reads the owner confirmation evidence columns', () => {
 test('index.html cache keys track the shipped stock-truth and calculation modules', () => {
   const html = read('apps/web/index.html');
   const pins = {
-    'atlas-stock-truth.js': { version: '20260924-s84', sha256: '05cf961b3a842db00aa0fc4c0047b348e5bebcbd82bee7bfcd2d39fabccfbb35' },
+    'atlas-stock-truth.js': { version: '20260924-s84-1', sha256: 'bc94c9df693104f6d49ab2f1478c265ea9cdc7c023db81698e446a96d23a053f' },
     'atlas-calculations.js': { version: '20260924-s84', sha256: '4fb1406bc62a59a6bff3e7a465103e23453e5a79695291215612f821d587715d' }
   };
   for (const [file, pin] of Object.entries(pins)) {

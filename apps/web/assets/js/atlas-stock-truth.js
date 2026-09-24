@@ -1,7 +1,8 @@
 (function(root) {
   'use strict';
 
-  const OWNER_CONFIRMED_TYPES = new Set(['owner_confirmed', 'owner_confirmed_supplier_price']);
+  // Pre-S84 compatibility only; the database decides which workflows create evidence.
+  const LEGACY_OWNER_TYPES = new Set(['owner_confirmed', 'owner_confirmed_supplier_price', 'owner_confirmed_prep', 'owner_verified_count']);
   const DEFAULT_FRESHNESS_MS = 7 * 24 * 60 * 60 * 1000;
 
   function numberOrNull(value) {
@@ -43,20 +44,20 @@
     return Boolean(item) && Object.prototype.hasOwnProperty.call(item, key);
   }
 
-  // Owner confirmation evidence. Manager rows carry the source metadata and the
-  // dedicated confirmation columns; the staff catalogue exposes only the
-  // server-gated owner_confirmed_* baseline. Rows read before the S84 columns
-  // exist fall back to the live row, matching the previous rule.
+  // Owner confirmation evidence. The database writes source_confirmed_* only
+  // for trusted owner workflows, so present evidence is trusted as-is; the
+  // staff catalogue carries the same evidence as owner_confirmed_*. Rows read
+  // before the S84 columns exist fall back to the legacy source_type rule.
   function ownerConfirmation(item) {
-    if (!has(item, 'source_type')) {
-      return { quantity: numberOrNull(item?.owner_confirmed_quantity), at: millis(item?.owner_confirmed_at) };
+    if (has(item, 'source_confirmed_at') || has(item, 'source_confirmed_quantity')) {
+      return { quantity: numberOrNull(item.source_confirmed_quantity), at: millis(item.source_confirmed_at) };
     }
-    const sourceType = String(item.source_type || '').toLowerCase();
-    if (!OWNER_CONFIRMED_TYPES.has(sourceType) || Number(item.source_confidence) !== 100) return null;
-    if (!has(item, 'source_confirmed_at')) {
-      return { quantity: numberOrNull(item.quantity), at: millis(item.updated_at) };
+    if (has(item, 'owner_confirmed_at') || has(item, 'owner_confirmed_quantity')) {
+      return { quantity: numberOrNull(item.owner_confirmed_quantity), at: millis(item.owner_confirmed_at) };
     }
-    return { quantity: numberOrNull(item.source_confirmed_quantity), at: millis(item.source_confirmed_at) };
+    const sourceType = String(item?.source_type || '').toLowerCase();
+    if (!LEGACY_OWNER_TYPES.has(sourceType) || Number(item?.source_confidence) !== 100) return null;
+    return { quantity: numberOrNull(item.quantity), at: millis(item.updated_at) };
   }
 
   function ownerBaseline(item, balance) {

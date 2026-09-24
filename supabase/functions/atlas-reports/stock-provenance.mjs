@@ -31,22 +31,24 @@ function isCurrentBalance(balance, nowMillis) {
 }
 
 
-const OWNER_CONFIRMED_TYPES = new Set(["owner_confirmed", "owner_confirmed_supplier_price"]);
+// Pre-S84 compatibility only; the database decides which workflows create evidence.
+const LEGACY_OWNER_TYPES = new Set(["owner_confirmed", "owner_confirmed_supplier_price", "owner_confirmed_prep", "owner_verified_count"]);
 const DEFAULT_FRESHNESS_MS = 7 * 24 * 60 * 60 * 1000;
 
 function has(item, key) {
   return Boolean(item) && typeof item === "object" && Object.prototype.hasOwnProperty.call(item, key);
 }
 
-// The owner confirmation is its own evidence pair (S84). Rows read before the
-// columns exist fall back to the live row, matching the previous rule.
+// The owner confirmation is its own evidence pair (S84), written by the
+// database only for trusted owner workflows, so present evidence is trusted
+// as-is. Rows read before the columns exist fall back to the legacy rule.
 function ownerConfirmation(item) {
-  const sourceType = lower(item?.source_type);
-  if (!OWNER_CONFIRMED_TYPES.has(sourceType) || numberOrNull(item?.source_confidence) !== 100) return null;
-  if (!has(item, "source_confirmed_at")) {
-    return { quantity: numberOrNull(item?.quantity), at: dateMillis(item?.updated_at) };
+  if (has(item, "source_confirmed_at") || has(item, "source_confirmed_quantity")) {
+    return { quantity: numberOrNull(item.source_confirmed_quantity), at: dateMillis(item.source_confirmed_at) };
   }
-  return { quantity: numberOrNull(item?.source_confirmed_quantity), at: dateMillis(item?.source_confirmed_at) };
+  const sourceType = lower(item?.source_type);
+  if (!LEGACY_OWNER_TYPES.has(sourceType) || numberOrNull(item?.source_confidence) !== 100) return null;
+  return { quantity: numberOrNull(item?.quantity), at: dateMillis(item?.updated_at) };
 }
 
 function ownerConfirmedBaseline(item, balance) {
