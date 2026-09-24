@@ -2,14 +2,14 @@
   "package": "Atlas S41 production function addendum v1",
   "status": "Approved for production deployment on 2026-09-15",
   "base_source_manifest": "docs/release/Atlas_S35_Combined_Isolated_Staging_Manifest.json",
-  "base_source_manifest_sha256": "cf61221e3138e0d7643768d90543b9290afd176920e9afafd12b4f24e3761738",
+  "base_source_manifest_sha256": "5424c4c662358d8c07a2d0b1b8d67c2799b2928fc48ce09a876b16b3d2ec6fe1",
   "production_target": "dnefgcmjcgxlynycxkts",
   "functions": [
     {
       "name": "atlas-item-master",
       "verify_jwt": false,
       "sources": {
-        "supabase/functions/atlas-item-master/index.ts": "6f1458565cd693d7aa91b454454009cd569b471fe935ffcb31a2beb6a3d33bec"
+        "supabase/functions/atlas-item-master/index.ts": "cea4788ccbd250082855c16104cac1e214e08bcf287f5bd6dbd5f849a1faa2b9"
       }
     }
   ],

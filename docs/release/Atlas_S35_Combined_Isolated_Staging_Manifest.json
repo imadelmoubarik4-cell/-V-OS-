@@ -88,7 +88,7 @@
     {
       "name": "atlas-operations-checkpoint-a",
       "sources": {
-        "supabase/functions/atlas-operations-checkpoint-a/index.ts": "ecdf8b64979059542e0911facf8d5c6fe6e63f07e6341c8bf6f996e0903a45bf"
+        "supabase/functions/atlas-operations-checkpoint-a/index.ts": "8048b8fea3377618b950ead1f22bc2995ff200f77fdc7098b852b714d52bd01e"
       }
     },
     {
@@ -114,7 +114,7 @@
     {
       "name": "atlas-settings",
       "sources": {
-        "supabase/functions/atlas-settings/index.ts": "28ed9a556e45cf1ca3ab2d0b13ec8d719aeb62fe900936ebfc6312029a00c964"
+        "supabase/functions/atlas-settings/index.ts": "95f5e6808e2a81d22ca5a65455ede94adc47b5d32eda65ae0ffe3b1b2a5a12c6"
       }
     },
     {
