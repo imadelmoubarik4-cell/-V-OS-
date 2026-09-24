@@ -1,4 +1,4 @@
-import { canonicalKey, canonicalText, normalizeIdentifier, tokens } from '../utils/canonicalize.js';
+import { canonicalKey, normalizeIdentifier, searchText, tokens } from '../utils/canonicalize.js';
 
 function intersectionSize(left, right) {
   let count = 0;
@@ -16,8 +16,9 @@ export function tokenSimilarity(left, right) {
 }
 
 export function editSimilarity(left, right) {
-  const a = canonicalText(left);
-  const b = canonicalText(right);
+  // Similarity is search-only: accent-insensitive, never stored.
+  const a = searchText(left);
+  const b = searchText(right);
   if (a === b) return 1;
   if (!a || !b) return 0;
   const previous = Array.from({ length: b.length + 1 }, (_, index) => index);

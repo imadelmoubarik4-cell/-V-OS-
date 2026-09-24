@@ -11,8 +11,9 @@ import {
   parsePackage,
 } from '../index.js';
 
-test('canonicalization removes accents and normalizes package spacing', () => {
-  assert.equal(canonicalKey('Patrón Reposado', '700 ml'), 'patron reposado|700 ml');
+test('canonicalization keeps accented letters and normalizes package spacing', () => {
+  // S89 owner rule: letters are case-folded, never stripped or transliterated.
+  assert.equal(canonicalKey('Patrón Reposado', '700 ml'), 'patrón reposado|700 ml');
   assert.deepEqual(parsePackage('1L'), { label: '1000ml', quantity: 1000, unit: 'ml', container: null });
   assert.deepEqual(parsePackage('330ml can'), { label: '330ml can', quantity: 330, unit: 'ml', container: 'can' });
 });
