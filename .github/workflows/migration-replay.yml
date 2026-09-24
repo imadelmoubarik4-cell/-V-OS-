@@ -52,3 +52,6 @@ jobs:
 
       - name: Run S87 acceptance (recipe delete guard, media policies, Knowledge role matrix)
         run: bash scripts/verify_s87_previews.sh
+
+      - name: Run S88 purchasing and Data review acceptance
+        run: bash scripts/verify_s88_purchasing_previews.sh
