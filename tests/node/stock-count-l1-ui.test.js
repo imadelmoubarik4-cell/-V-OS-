@@ -15,19 +15,33 @@ test('Checkpoint L1 assets are wired through the authenticated inventory bootstr
   assert.match(bootstrap, /stock-count-workspace\.js/);
   assert.match(bootstrap, /stock-count-l1-verified\.js/);
   assert.match(bootstrap, /await loadScript/);
+  assert.match(bootstrap, /window\.AtlasShell\.load\(src, \{ global: globalName, requireGlobal: true, timeout: SCRIPT_TIMEOUT_MS \}\)/);
 });
 
-test('the repository source is valid and the bootstrap retains scoped runtime safeguards', () => {
+test('the repository source is valid and the runtime safeguards ship in their owners', () => {
   assert.doesNotMatch(workspace, /note: override\.note \?\? note\?\.value\?\.trim\(\) \|\| null/);
   assert.match(workspace, /note: \(override\.note \?\? note\?\.value\?\.trim\(\)\) \|\| null/);
   assert.match(workspace, /AtlasStockCountsL1\?\.handleSubmit/);
   assert.doesNotMatch(bootstrap, /override\.note/);
-  assert.match(bootstrap, /await loadStockCountCore\(\)/);
-  assert.match(bootstrap, /installStockCountReentryGuard\(\)/);
-  assert.match(bootstrap, /mutationIsLucideOnly/);
-  assert.match(bootstrap, /observeEnhancementTarget/);
-  assert.match(bootstrap, /new Blob\(\[source\]/);
-  assert.match(bootstrap, /extensionRuntimePatched/);
+  // S88: no source rewriting and no API wrapping in the bootstrap. The scoped,
+  // Lucide-aware observer ships in stock-count-l1-verified.js itself, and the
+  // workspace re-shows its mount in open().
+  assert.doesNotMatch(bootstrap, /new Blob|createObjectURL|\.replace\(schedulerSource|api\.open = /);
+  assert.match(bootstrap, /await loadScript\(WORKSPACE_SOURCE, 'AtlasStockCounts'\)/);
+  assert.match(bootstrap, /await loadScript\(EXTENSION_SOURCE, 'AtlasStockCountsL1'\)/);
+  assert.match(extension, /function mutationIsLucideOnly\(record\)/);
+  assert.match(extension, /function observeEnhancementTarget\(\)[\s\S]+?getElementById\('inventory-view'\)/);
+  assert.match(extension, /if \(records\.some\(\(record\) => !mutationIsLucideOnly\(record\)\)\) scheduleEnhance\(\);/);
+  assert.doesNotMatch(extension, /observe\(document\.body/);
+  assert.match(workspace, /function open\(\) \{\s+state\.active = true;[\s\S]+?if \(mount\) mount\.hidden = false;/);
+  assert.match(workspace, /window\.AtlasShell\?\.onView\?\.\('inventory'/);
+  assert.doesNotMatch(workspace, /new MutationObserver/);
+});
+
+test('Inventory sections are routes: #inventory/stock-count opens the count', () => {
+  assert.match(bootstrap, /window\.AtlasShell\.onView\('inventory', \{ show: handleInventoryShown \}\)/);
+  assert.match(bootstrap, /if \(params\.section === 'stock-count'\)/);
+  assert.doesNotMatch(bootstrap, /addEventListener\('click', \w+, true\)/);
 });
 
 test('mobile count forms expose all supported observation units', () => {

@@ -460,7 +460,12 @@
   }
 
   function bindRenderedEvents(root) {
-    root.querySelectorAll('[data-phase3-refresh]').forEach((button) => button.addEventListener('click', () => loadSnapshot(true)));
+    // With Checkpoint K loaded, Refresh runs its combined intelligence sync
+    // (which reloads this block too); Checkpoint K no longer intercepts it.
+    root.querySelectorAll('[data-phase3-refresh]').forEach((button) => button.addEventListener('click', () => {
+      if (window.AtlasCheckpointK?.refresh) window.AtlasCheckpointK.refresh();
+      else loadSnapshot(true);
+    }));
     root.querySelectorAll('[data-phase3-why]').forEach((button) => button.addEventListener('click', () => openRecommendation(button.dataset.phase3Why, 'why')));
     root.querySelectorAll('[data-phase3-decide]').forEach((button) => button.addEventListener('click', () => openRecommendation(button.dataset.phase3Decide, 'decision')));
     root.querySelectorAll('[data-phase3-memory-open]').forEach((button) => button.addEventListener('click', () => openRecommendation(button.dataset.phase3MemoryOpen, 'memory')));
@@ -469,7 +474,6 @@
   function render() {
     const shell = host();
     if (!shell) return;
-    state.observer?.disconnect();
     const existing = shell.querySelector('[data-phase3-brain]');
     const markup = state.loading && !state.snapshot
       ? loadingMarkup()
@@ -497,7 +501,8 @@
 
     bindRenderedEvents(next);
     window.lucide?.createIcons?.();
-    state.observer?.observe(shell, { childList: true });
+    // Checkpoint K draws inside this block and re-attaches on this event.
+    window.AtlasShell?.emit?.('brain-phase3:rendered', { shell });
   }
 
   function queueRender() {
@@ -509,13 +514,14 @@
     });
   }
 
+  // brain.js replaces #brain-shell on every render and announces it with
+  // 'brain:rendered'; re-insert this block then (was a MutationObserver).
   function installObserver() {
-    const shell = host();
-    if (!shell || state.observer) return;
-    state.observer = new MutationObserver(() => {
-      if (!shell.querySelector('[data-phase3-brain]')) queueRender();
+    if (state.shellBound || !window.AtlasShell) return;
+    state.shellBound = true;
+    window.AtlasShell.on('brain:rendered', () => {
+      if (!host()?.querySelector('[data-phase3-brain]')) queueRender();
     });
-    state.observer.observe(shell, { childList: true });
   }
 
   function bindAuthWhenReady() {

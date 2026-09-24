@@ -217,7 +217,6 @@
       const operations = Array.from(nav.querySelectorAll('.nav-group')).find((candidate) => candidate.querySelector('.nav-label')?.textContent?.trim() === 'OPERATIONS');
       if (operations) operations.insertAdjacentElement('afterend', group);
       else nav.appendChild(group);
-      group.querySelector('[data-view="sprint3-review"]')?.addEventListener('click', () => setActiveView('sprint3-review'));
     }
 
     dom.view = view;
@@ -236,25 +235,21 @@
     dom.message = document.getElementById('review-message');
     dom.navCount = document.getElementById('review-nav-count');
 
-    if (typeof viewMap !== 'undefined') viewMap['sprint3-review'] = view;
-    if (typeof titleMap !== 'undefined') titleMap['sprint3-review'] = 'Real VÁ Data';
-    patchViewSwitching();
+    registerWithShell(view);
     bindControls();
     renderScopes();
     window.lucide?.createIcons?.();
   }
 
-  function patchViewSwitching() {
-    if (typeof setActiveView !== 'function' || setActiveView.__sprint3ReviewPatched) return;
-    const original = setActiveView;
-    const patched = function (view) {
-      const result = original.apply(this, arguments);
-      if (view === 'sprint3-review') openReviewCenter();
-      return result;
-    };
-    patched.__sprint3ReviewPatched = true;
-    patched.__sprint3ReviewOriginal = original;
-    setActiveView = patched;
+  // S88: the Review Center registers a view with AtlasShell (which also runs
+  // openReviewCenter when it is shown) instead of wrapping setActiveView.
+  function registerWithShell(view) {
+    state.unregisterView?.();
+    state.unregisterView = window.AtlasShell?.registerView('sprint3-review', {
+      root: view,
+      title: 'Real VÁ Data',
+      onShow: () => { openReviewCenter(); }
+    }) || null;
   }
 
   function bindControls() {
@@ -572,17 +567,17 @@ ${contextHtml(detail.issue_records, "Record conflict evidence")}
   }
 
   function removeReviewCenter() {
-    const wasActive = typeof activeView !== 'undefined' && activeView === 'sprint3-review';
+    const wasActive = window.AtlasShell?.current?.() === 'sprint3-review';
     document.querySelector('[data-sprint3-review-nav]')?.remove();
     if (dom.view) dom.view.remove();
-    if (typeof viewMap !== 'undefined') delete viewMap['sprint3-review'];
-    if (typeof titleMap !== 'undefined') delete titleMap['sprint3-review'];
+    state.unregisterView?.();
+    state.unregisterView = null;
     Object.keys(dom).forEach((key) => delete dom[key]);
     state.initialized = false;
     state.summary = null;
     state.rows = [];
     state.detail = null;
-    if (wasActive && typeof setActiveView === 'function') setActiveView('dashboard');
+    if (wasActive) window.AtlasShell?.show?.('dashboard');
   }
 
   async function authorize() {
@@ -625,7 +620,7 @@ ${contextHtml(detail.issue_records, "Record conflict evidence")}
   window.AtlasSprint3Review = {
     version: VERSION,
     refresh: refreshAll,
-    open: () => state.authorized && setActiveView('sprint3-review')
+    open: () => state.authorized && window.AtlasShell.show('sprint3-review')
   };
 
   if (document.readyState === 'complete') init();

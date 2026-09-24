@@ -2,7 +2,6 @@
   'use strict';
 
   const state = {
-    observer: null,
     frame: null,
     modal: null,
     modalKind: null,
@@ -218,8 +217,30 @@
     if (!markup) return;
     homeAnchor.insertAdjacentHTML('beforebegin', markup);
     const prompt = document.querySelector('[data-checkpoint-a-home-prompt]');
-    if (prompt) prompt.dataset.signature = signature;
+    if (prompt) {
+      prompt.dataset.signature = signature;
+      setAttentionPulse(prompt, prompt.dataset.attentionRequired === 'true');
+    }
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  // Owner decision S38: a prompt that needs action pulses twice, once per new
+  // signature (moved here from s38-app-remediation.js).
+  function setAttentionPulse(element, requiresAction) {
+    if (!element) return;
+    element.classList.toggle('s38-attention', requiresAction);
+    if (!requiresAction) {
+      element.classList.remove('s38-attention-pulse');
+      delete element.dataset.s38AttentionSignature;
+      return;
+    }
+
+    const signature = element.dataset.signature || (element.textContent || '').replace(/\s+/g, ' ').trim();
+    if (element.dataset.s38AttentionSignature === signature) return;
+    element.dataset.s38AttentionSignature = signature;
+    element.classList.remove('s38-attention-pulse');
+    void element.offsetWidth;
+    element.classList.add('s38-attention-pulse');
   }
 
   function integrationSignature() {
@@ -282,11 +303,11 @@
     modal.className = 'checkpoint-a-context-modal';
     modal.hidden = true;
     modal.dataset.checkpointContextModal = 'true';
-    modal.innerHTML = `<div class="checkpoint-a-context-backdrop" data-checkpoint-context-close></div>
+    modal.innerHTML = `<div class="checkpoint-a-context-backdrop" data-checkpoint-context-close style="touch-action:manipulation"></div>
       <section class="checkpoint-a-context-panel" role="dialog" aria-modal="true" aria-labelledby="checkpoint-a-context-title">
         <header class="checkpoint-a-context-header">
           <div><span>Today at VÁ</span><h2 id="checkpoint-a-context-title">Scheduled routine</h2></div>
-          <button type="button" aria-label="Close" data-checkpoint-context-close><i data-lucide="x"></i></button>
+          <button type="button" aria-label="Close" data-checkpoint-context-close style="touch-action:manipulation"><i data-lucide="x"></i></button>
         </header>
         <div class="checkpoint-a-context-body" data-checkpoint-context-body></div>
       </section>`;
@@ -399,7 +420,7 @@
   }
 
   function activateOperationsAndOpen(kind, id) {
-    if (typeof setActiveView === 'function') setActiveView('operations');
+    window.AtlasShell?.show?.('operations');
     window.setTimeout(() => openModal(kind, id), 180);
   }
 
@@ -463,8 +484,15 @@
     document.addEventListener('click', handleClick);
     document.addEventListener('keydown', handleKeydown);
 
-    state.observer = new MutationObserver(scheduleApply);
-    state.observer.observe(document.body, { childList: true, subtree: true });
+    // S88: shell events replace the former body-wide MutationObserver. The
+    // compact board follows every Checkpoint A render, the "Scheduled today"
+    // prompt is a Home section, and Settings is synced when it opens.
+    const shell = window.AtlasShell;
+    if (shell) {
+      shell.on('checkpoint-a:rendered', scheduleApply);
+      shell.onView('settings', { show: () => syncIntegrationsToSettings() });
+      shell.registerHomeSection('checkpoint-a-prompt', syncHomePrompt, 50);
+    }
 
     scheduleApply();
   }

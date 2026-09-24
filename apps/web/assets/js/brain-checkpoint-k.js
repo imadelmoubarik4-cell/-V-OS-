@@ -7,7 +7,6 @@
     synced: false,
     error: null,
     intelligence: null,
-    observer: null,
     frame: null,
     timer: null,
     lastSyncAt: 0
@@ -189,27 +188,18 @@
     }
   }
 
-  function handleClick(event) {
-    const target = event.target instanceof Element ? event.target : null;
-    const refresh = target?.closest?.('#brain-shell [data-phase3-refresh]');
-    if (!refresh) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation?.();
-    sync(true);
-  }
-
   function init() {
-    document.addEventListener('click', handleClick, true);
-    state.observer = new MutationObserver(scheduleRender);
-    state.observer.observe(document.getElementById('brain-shell') || document.body, { childList: true, subtree: true, attributes: true });
+    // S88: Brain and Phase 3 announce their renders through AtlasShell; the
+    // panel re-attaches then (formerly a MutationObserver over #brain-shell).
+    // Phase 3's Refresh button calls AtlasCheckpointK.refresh itself, so the
+    // capture-phase click interception is gone as well.
+    window.AtlasShell?.on?.('brain:rendered', scheduleRender);
+    window.AtlasShell?.on?.('brain-phase3:rendered', scheduleRender);
     state.timer = window.setInterval(() => {
       scheduleRender();
       if (brainVisible() && !state.synced && !state.syncing) sync(false);
     }, 1200);
     window.addEventListener('pagehide', () => {
-      document.removeEventListener('click', handleClick, true);
-      state.observer?.disconnect();
       if (state.timer) window.clearInterval(state.timer);
     }, { once: true });
     scheduleRender();

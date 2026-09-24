@@ -77,7 +77,7 @@ class InventoryScannerContractTests(unittest.TestCase):
     def test_browser_has_no_service_key_or_direct_database_access(self):
         self.assertIn("INVENTORY_SCANNER_API", BROWSER_CONFIG)
         self.assertIn("inventory-scanner-bootstrap.js", BROWSER_CONFIG)
-        self.assertIn("SCANNER_SCRIPT = 'assets/js/inventory-scanner.js'", BROWSER_BOOTSTRAP)
+        self.assertIn("SCANNER_SCRIPT = 'assets/js/inventory-scanner.js?v=20260926-s88'", BROWSER_BOOTSTRAP)
         self.assertNotIn(
             "SUPABASE_SERVICE_ROLE_KEY",
             BROWSER_CONFIG + BROWSER_BOOTSTRAP + BROWSER_MODULE,

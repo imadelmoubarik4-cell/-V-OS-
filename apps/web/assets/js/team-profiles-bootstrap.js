@@ -55,27 +55,29 @@
     else button.removeAttribute('aria-busy');
   }
 
-  async function openProfiles(event) {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-    const button = event?.currentTarget instanceof Element
-      ? event.currentTarget
-      : document.querySelector('.nav-item[data-view="team-profiles"]');
-
-    if (window.AtlasTeamProfiles) {
-      window.AtlasTeamProfiles.open();
-      return;
-    }
-
+  // S88: Team Profiles is an AtlasShell view. Until the bundle is loaded this
+  // bootstrap owns the view; opening it loads the bundle, which registers its
+  // own view hooks, and the view is shown again so they run. No capture-phase
+  // listener on the nav item is needed any more.
+  async function profilesShown(params = {}) {
+    const button = document.querySelector('.nav-item[data-view="team-profiles"]');
     setButtonLoading(button, true);
     try {
-      const profiles = await load();
-      profiles?.open?.();
+      await load();
+      if (window.AtlasShell.current() === 'team-profiles') window.AtlasShell.show('team-profiles', params, { history: false });
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Team Profiles could not open.');
     } finally {
       setButtonLoading(button, false);
     }
+  }
+
+  function openProfiles() {
+    if (window.AtlasTeamProfiles) {
+      window.AtlasTeamProfiles.open();
+      return;
+    }
+    window.AtlasShell.show('team-profiles');
   }
 
   function ensureNavigation() {
@@ -92,7 +94,13 @@
 
     if (button.dataset.teamProfilesBootstrapBound !== 'true') {
       button.dataset.teamProfilesBootstrapBound = 'true';
-      button.addEventListener('click', openProfiles, true);
+      if (!window.AtlasTeamProfiles) {
+        window.AtlasShell.registerView('team-profiles', {
+          root: () => document.getElementById('team-profiles-view'),
+          title: 'Team Profiles',
+          onShow: profilesShown
+        });
+      }
       button.addEventListener('pointerenter', () => load().catch(() => null), { once: true, passive: true });
       button.addEventListener('focus', () => load().catch(() => null), { once: true, passive: true });
     }

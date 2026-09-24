@@ -6,20 +6,29 @@ import vm from 'node:vm';
 const source = fs.readFileSync(new URL('../../apps/web/assets/js/shifts-month-calendar.js', import.meta.url), 'utf8');
 const apply = source.slice(source.indexOf('  function apply() {'), source.indexOf('  function scheduleApply()'));
 
-test('month render ignores its own icon mutations and resumes observing external changes', () => {
-  let observing = true, queued = 0, renders = 0;
+// S88: Month no longer observes the Shifts host. The weekly planner announces
+// each render ('shifts:rendered') and apply() re-attaches then, so a Month
+// render (including Lucide icon replacement) can never schedule itself.
+test('month render cannot schedule itself and always syncs the body state', () => {
+  let renders = 0, synced = 0;
   const element = { querySelector: () => ({}), classList: { toggle() {} } };
   const state = { active: true, monthStart: '2026-09-01', loading: false,
-    workspace: { month: { month_start: '2026-09-01' } },
-    observer: { disconnect() { observing = false; }, observe() { observing = true; } } };
+    workspace: { month: { month_start: '2026-09-01' } } };
   const scope = { host: () => element, state, ensureMonthTab() {},
-    renderPanel() { renders++; if (observing) queued++; } };
+    renderPanel() { renders++; }, syncBodyState() { synced++; } };
   vm.createContext(scope);
   vm.runInContext(apply + '\napply();', scope);
   assert.equal(renders, 1);
-  assert.equal(queued, 0, 'render must not schedule itself from icon replacement');
-  assert.equal(observing, true, 'external workspace changes must remain observable');
+  assert.equal(synced, 1, 'body.s38-month-active follows every apply');
+  assert.doesNotMatch(apply, /observer|MutationObserver/, 'apply() does not pause or resume an observer');
   scope.renderPanel = () => { throw new Error('render failed'); };
   assert.throws(() => vm.runInContext('apply();', scope), /render failed/);
-  assert.equal(observing, true, 'observer must recover even when rendering fails');
+  assert.equal(synced, 2, 'the body state is synced even when rendering fails');
+});
+
+test('Month re-attaches on the weekly render event instead of a MutationObserver', () => {
+  assert.doesNotMatch(source, /new MutationObserver/);
+  assert.match(source, /window\.AtlasShell\?\.on\?\.\('shifts:rendered', scheduleApply\)/);
+  const weekly = fs.readFileSync(new URL('../../apps/web/assets/js/shifts-workspace.js', import.meta.url), 'utf8');
+  assert.match(weekly, /window\.AtlasShell\?\.emit\?\.\('shifts:rendered', \{ host: element \}\)/);
 });

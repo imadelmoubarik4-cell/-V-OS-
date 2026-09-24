@@ -2,7 +2,7 @@
   'use strict';
 
   const SELECTOR = '[data-team-profile-photo-input]';
-  const state = { observer: null, frame: null, initialized: false };
+  const state = { frame: null, initialized: false };
 
   function makeGalleryFriendly(input) {
     if (!(input instanceof HTMLInputElement) || input.type !== 'file') return;
@@ -60,17 +60,17 @@
     if (state.initialized) return;
     state.initialized = true;
 
+    // Capture phase: the input must be made gallery-friendly before the photo
+    // module's own (bubbling) click handler opens the file picker.
     document.addEventListener('pointerdown', handlePointer, true);
     document.addEventListener('click', handlePointer, true);
     apply();
 
-    state.observer = new MutationObserver((records) => {
-      if (records.some((record) => record.addedNodes.length > 0)) scheduleApply();
-    });
-    state.observer.observe(document.body, { childList: true, subtree: true });
+    // S88: the photo controls are rendered by team-profile-photos.js, which
+    // announces each decoration pass (formerly a body-wide MutationObserver).
+    window.AtlasShell?.on?.('team-profile-photos:decorated', scheduleApply);
 
     window.addEventListener('pagehide', () => {
-      state.observer?.disconnect();
       if (state.frame) window.cancelAnimationFrame(state.frame);
     }, { once: true });
   }

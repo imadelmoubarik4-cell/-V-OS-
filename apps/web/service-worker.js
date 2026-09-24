@@ -15,7 +15,8 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const route = event.notification.data?.route === 'shifts' ? 'shifts' : 'team';
-  const target = new URL(`./#${route}`, self.registration.scope).href;
+  // S88 route table: Messages opens at #messages (#team is now the Team directory).
+  const target = new URL(`./#${route === 'shifts' ? 'shifts' : 'messages'}`, self.registration.scope).href;
   event.waitUntil((async () => {
     const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     const existing = windows.find((client) => client.url.startsWith(self.registration.scope));

@@ -11,10 +11,6 @@
     return document.getElementById('shifts-view');
   }
 
-  function monthPanel() {
-    return shiftsHost()?.querySelector('[data-shifts-month-panel]') || null;
-  }
-
   function installInteractionStyles() {
     if (document.getElementById('shifts-month-interaction-fix')) return;
     const style = document.createElement('style');
@@ -34,27 +30,11 @@
     document.head.appendChild(style);
   }
 
-  function isMonthTabClick(event) {
-    const target = event.target instanceof Element ? event.target : null;
-    const tab = target?.closest?.('[data-shifts-tab="month"]');
-    return Boolean(tab && shiftsHost()?.contains(tab));
-  }
-
-  // The monthly calendar owns every Month action and form submission through
-  // its document-capture handlers. This bridge has one job only: stop the older
-  // weekly bubbling handler after the monthly handler receives the Month-tab
-  // click. Intercepting Month actions here used to replace their DOM during the
-  // click and made the visible + / Add shift controls appear unresponsive.
-  function protectMonthTab(event) {
-    if (!isMonthTabClick(event)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    window.requestAnimationFrame(() => {
-      const host = shiftsHost();
-      if (!host || (host.classList.contains('shifts-month-active') && monthPanel())) return;
-      window.AtlasShiftsMonth?.open?.();
-    });
-  }
+  // S88: this bridge no longer intercepts clicks. shifts-month-calendar.js owns
+  // the Month tab in the capture phase and the weekly planner opens Month itself
+  // only as a fallback (shifts-workspace.js), so there is nothing to arbitrate.
+  // It still installs the Month interaction styles until they move into
+  // shifts-month CSS.
 
   function init() {
     if (state.initialized) return true;
@@ -64,10 +44,8 @@
     state.initialized = true;
     state.host = host;
     installInteractionStyles();
-    host.addEventListener('click', protectMonthTab, true);
 
     window.addEventListener('pagehide', () => {
-      state.host?.removeEventListener('click', protectMonthTab, true);
       if (state.timer) window.clearInterval(state.timer);
     }, { once: true });
 

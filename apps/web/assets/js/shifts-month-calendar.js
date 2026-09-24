@@ -449,7 +449,7 @@
   }
 
   function shiftModalMarkup() {
-    if (state.modal?.mode === 'remove') return `<div class="shift-modal shift-month-modal" role="dialog" aria-modal="true" aria-labelledby="shift-month-remove-title"><div class="shift-modal-backdrop" data-shifts-month-close></div><section><header><h2 id="shift-month-remove-title">Remove shift?</h2><button type="button" data-shifts-month-close aria-label="Close"><i data-lucide="x"></i></button></header><p>Remove ${escapeHtml(state.modal.shift.person_name || personFor(state.modal.shift.person_id)?.display_name || 'this team member')}'s shift on ${escapeHtml(formatDay(dateFromLocal(state.modal.shift.starts_local), { weekday: 'long', day: 'numeric', month: 'long' }))} from the draft? The audit history will be kept.</p><footer><button type="button" class="shift-secondary" data-shifts-month-close>Cancel</button><button type="button" class="shift-primary" data-shifts-month-confirm-remove ${state.submitting ? 'disabled' : ''}>Remove shift</button></footer></section></div>`;
+    if (state.modal?.mode === 'remove') return `<div class="shift-modal shift-month-modal" role="dialog" aria-modal="true" aria-labelledby="shift-month-remove-title"><div class="shift-modal-backdrop" data-shifts-month-close style="touch-action:manipulation"></div><section><header><h2 id="shift-month-remove-title">Remove shift?</h2><button type="button" data-shifts-month-close aria-label="Close" style="touch-action:manipulation"><i data-lucide="x"></i></button></header><p>Remove ${escapeHtml(state.modal.shift.person_name || personFor(state.modal.shift.person_id)?.display_name || 'this team member')}'s shift on ${escapeHtml(formatDay(dateFromLocal(state.modal.shift.starts_local), { weekday: 'long', day: 'numeric', month: 'long' }))} from the draft? The audit history will be kept.</p><footer><button type="button" class="shift-secondary" data-shifts-month-close style="touch-action:manipulation">Cancel</button><button type="button" class="shift-primary" data-shifts-month-confirm-remove ${state.submitting ? 'disabled' : ''}>Remove shift</button></footer></section></div>`;
     if (!state.modal || state.modal.mode !== 'shift') return '';
     const shift = state.modal.shift || null;
     const date = state.modal.date || dateFromLocal(shift?.starts_local) || state.selectedDate || state.monthStart;
@@ -457,9 +457,9 @@
     const end = shift?.ends_local || `${date}T17:00:00`;
 
     return `<div class="shift-modal shift-month-modal" role="dialog" aria-modal="true" aria-labelledby="shift-month-modal-title">
-      <div class="shift-modal-backdrop" data-shifts-month-close></div>
+      <div class="shift-modal-backdrop" data-shifts-month-close style="touch-action:manipulation"></div>
       <section>
-        <header><div><span>Monthly planner</span><h2 id="shift-month-modal-title">${shift?.id ? 'Edit shift' : 'Add shift'}</h2></div><button type="button" data-shifts-month-close aria-label="Close"><i data-lucide="x"></i></button></header>
+        <header><div><span>Monthly planner</span><h2 id="shift-month-modal-title">${shift?.id ? 'Edit shift' : 'Add shift'}</h2></div><button type="button" data-shifts-month-close aria-label="Close" style="touch-action:manipulation"><i data-lucide="x"></i></button></header>
         <form data-shifts-month-shift-form>
           <input type="hidden" name="shift_id" value="${escapeHtml(shift?.id || '')}" />
           <div class="shift-form-grid">
@@ -471,7 +471,7 @@
             <label class="is-wide"><span>Shift note</span><textarea name="note" rows="3" maxlength="3000" placeholder="Opening duties, handover context, special event…">${escapeHtml(shift?.note || '')}</textarea></label>
           </div>
           <p class="shift-modal-note"><i data-lucide="info"></i>Save as many dates as needed, then use <strong>Publish month</strong> once the full plan is ready for staff.</p>
-          <footer><button type="button" class="shift-secondary" data-shifts-month-close>Cancel</button><button type="submit" class="shift-primary" ${state.submitting ? 'disabled' : ''}><i data-lucide="save"></i>Save shift</button></footer>
+          <footer><button type="button" class="shift-secondary" data-shifts-month-close style="touch-action:manipulation">Cancel</button><button type="submit" class="shift-primary" ${state.submitting ? 'disabled' : ''}><i data-lucide="save"></i>Save shift</button></footer>
         </form>
       </section>
     </div>`;
@@ -584,12 +584,17 @@
     });
   }
 
+  // body.s38-month-active hides the global FAB while Month is open (moved here
+  // from s38-app-remediation.js).
+  function syncBodyState() {
+    const element = host();
+    const open = Boolean(element && state.active && viewVisible() && element.classList.contains('shifts-month-active'));
+    document.body.classList.toggle('s38-month-active', open);
+  }
+
   function apply() {
     const element = host();
     if (!element || !element.querySelector('.shift-tabs')) return false;
-    // Icon replacement also mutates nodes outside the month panel. Do not
-    // observe our own render and schedule another render on every frame.
-    state.observer?.disconnect();
     try {
     ensureMonthTab();
     element.classList.toggle('shifts-month-active', state.active);
@@ -604,7 +609,7 @@
     }
     return true;
     } finally {
-      state.observer?.observe(element, { childList: true, subtree: true });
+      syncBodyState();
     }
   }
 
@@ -918,11 +923,6 @@
     }
   }
 
-  function mutationIsInsideMonth(record) {
-    const target = record.target instanceof Element ? record.target : record.target?.parentElement;
-    return Boolean(target?.closest?.('[data-shifts-month-panel]'));
-  }
-
   function init() {
     if (state.initialized || !window.AtlasShifts || !host()) return false;
     state.initialized = true;
@@ -932,10 +932,11 @@
     document.addEventListener('submit', handleSubmit, true);
     document.addEventListener('keydown', handleKeydown, true);
 
-    state.observer = new MutationObserver((records) => {
-      if (records.some((record) => !mutationIsInsideMonth(record))) scheduleApply();
-    });
-    state.observer.observe(host(), { childList: true, subtree: true });
+    // S88: the weekly planner announces each render (it replaces the tab bar
+    // and host content), and AtlasShell announces Shifts opening and closing.
+    // These replace a MutationObserver on the Shifts host.
+    window.AtlasShell?.on?.('shifts:rendered', scheduleApply);
+    window.AtlasShell?.onView?.('shifts', { show: syncBodyState, hide: () => document.body.classList.remove('s38-month-active') });
 
     state.pollTimer = window.setInterval(() => {
       if (state.active && viewVisible() && !document.hidden && !state.modal && !state.submitting) {
@@ -951,7 +952,6 @@
       if (state.active && !state.modal) loadMonth({ force: true });
     });
     window.addEventListener('pagehide', () => {
-      state.observer?.disconnect();
       if (state.frame) window.cancelAnimationFrame(state.frame);
       if (state.pollTimer) window.clearInterval(state.pollTimer);
       state.requestSerial += 1;
