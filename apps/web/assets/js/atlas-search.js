@@ -177,7 +177,7 @@
       .map((article) => ({ article, value: Math.max(score(article.title, query), score(article.category_name, query) - 20, score(article.summary, query) - 30) }))
       .filter((entry) => entry.value >= 30)
       .map((entry) => ({ group: 'Knowledge', title: entry.article.title, detail: entry.article.category_name || 'Knowledge', icon: 'book-open', score: entry.value, run: () => window.AtlasKnowledge?.openArticle?.(entry.article.id) }));
-    if (!matches.length && navVisible('knowledge') && normalize(query).length >= 3) {
+    if (!matches.length && navVisible('knowledge') && normalize(query).length >= 3 && !detectIntent(query)) {
       matches.push({ group: 'Knowledge', title: `Search Knowledge for “${query}”`, detail: 'Documents are searched inside Knowledge', icon: 'book-open', score: 1, run: () => openKnowledgeSearch(query) });
     }
     return matches;

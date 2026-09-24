@@ -16,6 +16,9 @@
   z-index: 60;
 }
 .atlas-search-panel[hidden] { display: none; }
+/* Shell rules position the field's magnifier absolutely; icons inside the
+   results panel sit in normal flow. */
+.atlas-topbar .atlas-search .atlas-search-panel svg { position: static; transform: none; inset: auto; margin: 0; pointer-events: none; }
 .atlas-search-panel ul { list-style: none; margin: 0; padding: 0; }
 .atlas-search-group {
   padding: 10px 10px 4px;
