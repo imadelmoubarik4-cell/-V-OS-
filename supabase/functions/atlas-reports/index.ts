@@ -298,7 +298,7 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
     productionRows(
       context,
       "inventory_items",
-      "id,name,category,quantity,unit,par_level,updated_at,source_updated_at,supplier_id,supplier,cost_price,sku,barcode,bin_location,size_ml,active,sell_price,package_size,brand,subcategory,needs_review",
+      "id,name,category,quantity,unit,par_level,updated_at,source_updated_at,source_type,source_confidence,supplier_id,supplier,cost_price,sku,barcode,bin_location,size_ml,active,sell_price,package_size,brand,subcategory,needs_review",
       { order: "name.asc", filters: { active: "eq.true" } },
     ),
     productionRows(
@@ -549,7 +549,7 @@ async function snapshot(context: AtlasContext, url: URL) {
     branchRpc("atlas_stock_count_verified_balances", {}),
   ]);
   const filters = filterPayload(url);
-  const stockReport = buildStockReport(sources.inventory, verifiedBalances, filters);
+  const stockReport = buildStockReport(sources.inventory, verifiedBalances, filters, Date.now(), sources.movements);
 
   const rawWorkspace = await branchRpc("atlas_reports_snapshot_v2", {
     // The private snapshot receives current manager-verified quantities. Raw
