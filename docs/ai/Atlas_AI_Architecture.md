@@ -369,6 +369,10 @@ See `docs/ai/Atlas_AI_Evaluation_Plan.md`. Two layers:
    permission, proposal, approval request and usefulness. Any regression that
    could change an operational decision blocks release.
 
+Both run the real runtime and gateway against the VÁ fixture world
+(`tests/ai-evals/`): `npm test` (gateway cases), `npm run test:ai` (runtime
+evals), `npm run eval:ai-live` (live; `:dry-run` in CI).
+
 ---
 
 ## 15. Consolidation of existing intelligence
