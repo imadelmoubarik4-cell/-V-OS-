@@ -39,7 +39,7 @@ const fail = (code, message) => { throw new RpcFailure(code, message); };
 
 // In-memory implementation of the Atlas AI RPC contract (ai-data-contract.md)
 // with the owner, role, single-use and expiry rules the gateway relies on.
-export function createFakeDb() {
+export function createFakeDb({ users = USERS } = {}) {
   const db = {
     settings: { enabled: true, media_retention_days: 30, audio_retention: 'delete_after_transcription', daily_turn_limit_per_user: 200 },
     conversations: new Map(),
@@ -56,7 +56,7 @@ export function createFakeDb() {
     calls: [],
     preferences: new Map(),
   };
-  const profiles = Object.fromEntries(Object.values(USERS).map((user) => [user.id, user]));
+  const profiles = Object.fromEntries(Object.values(users).map((user) => [user.id, user]));
   const requireActor = (id, role) => {
     const profile = profiles[id];
     if (!profile || !profile.active || profile.role !== role) fail('42501', 'forbidden: inactive or role mismatch');
@@ -334,7 +334,7 @@ export function createFakeDb() {
       for (const path of paths) { db.objects.delete(path); db.removed.push(path); }
       return { removed: paths.length };
     },
-    async profileById(id) { return Object.values(USERS).find((user) => user.id === id) ?? null; },
+    async profileById(id) { return Object.values(users).find((user) => user.id === id) ?? null; },
     async restAsUser(_actor, table) {
       if (table === 'inventory_catalog') return [{ name: 'Tanqueray' }, { name: 'Campari' }];
       if (table === 'suppliers') return [{ name: 'Globus' }];
