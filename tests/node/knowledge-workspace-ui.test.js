@@ -84,12 +84,16 @@ test('browser has no direct private database or Drive API access', () => {
   assert.match(ui, /Source text is not committed to the public repository/i);
 });
 
-test('Team Knowledge links are intercepted before the legacy fallback', () => {
-  assert.match(bridge, /data-team-open-link="knowledge_article"/);
-  assert.match(bridge, /stopImmediatePropagation/);
-  assert.match(bridge, /AtlasKnowledge\?\.openArticle/);
-  assert.match(bridge, /data-view="knowledge"/);
+test('Team Knowledge links resolve through the shell link registry before the legacy fallback', () => {
+  // S88: Knowledge registers its link type; Team Messages asks the registry
+  // first. No capture-phase interception or stopImmediatePropagation remains.
+  assert.match(ui, /window\.AtlasShell\?\.registerLink\?\.\('knowledge_article', openArticleFromLink\)/);
+  assert.match(ui, /function openArticleFromLink\(articleId\)[\s\S]+?navigateView\('knowledge'\)[\s\S]+?openArticle\(id\)/);
   assert.match(team, /data-team-open-link/);
+  assert.match(team, /if \(window\.AtlasShell\?\.openLink\?\.\(type, key, \{ source: 'team-messages' \}\)\) return;/);
+  assert.ok(team.indexOf('AtlasShell?.openLink') < team.indexOf("if (type === 'routine')"), 'registered link types win over the built-in routes');
+  assert.doesNotMatch(bridge, /addEventListener|stopImmediatePropagation/);
+  assert.match(bridge, /AtlasShell\?\.openLink\?\.\('knowledge_article'/);
 });
 
 test('Knowledge preserves the original Atlas design and responsive layout', () => {
@@ -130,5 +134,5 @@ test('managers can create an article already linked to an unserved training task
 
 test('production loads the final Knowledge assets with a cache key', () => {
   assert.match(index, /legacy\/knowledge-s56--knowledge\.css\?v=20260926-s88/);
-  assert.match(index, /knowledge-workspace\.js\?v=20260917-s56/);
+  assert.match(index, /knowledge-workspace\.js\?v=20260926-s88/);
 });

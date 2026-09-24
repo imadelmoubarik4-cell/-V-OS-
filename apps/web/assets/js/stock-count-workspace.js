@@ -1052,7 +1052,10 @@
 
   function open() {
     state.active = true;
-    ensureWorkspace();
+    // close() hides the mount; re-show it here (this was a wrapper around
+    // AtlasStockCounts.open installed by stock-count-bootstrap.js before S88).
+    const mount = ensureWorkspace();
+    if (mount) mount.hidden = false;
     setLegacyVisibility(true);
     if (!state.snapshot && !state.loading) loadSnapshot();
     else render();
@@ -1089,18 +1092,13 @@
     document.addEventListener('input', handleInput, true);
     document.addEventListener('change', handleChange, true);
     document.addEventListener('submit', handleSubmit, true);
-    // restoreIfVisible() calls render(), and render() rewrites #stock-count-workspace,
-    // which sits inside #inventory-view inside #app-screen. Observing that tree with
-    // childList + subtree made every render re-enter this observer, so the callback fed
-    // itself inside a single microtask checkpoint. Watch only the visibility attributes
-    // navigation actually changes, on the two host elements themselves.
-    state.observer = new MutationObserver(restoreIfVisible);
-    const visibilityOptions = { attributes: true, attributeFilter: ['style', 'hidden', 'class'], childList: false, subtree: false };
-    [document.getElementById('app-screen'), host()].forEach((element) => {
-      if (element) state.observer.observe(element, visibilityOptions);
+    // S88: AtlasShell announces when Inventory is shown; a count that is still
+    // active is restored then (formerly a visibility MutationObserver). The
+    // stock-count route itself is opened by stock-count-bootstrap.js.
+    window.AtlasShell?.onView?.('inventory', {
+      show: (params) => { if (params.section !== 'stock-count') restoreIfVisible(); }
     });
     window.addEventListener('pagehide', () => {
-      state.observer?.disconnect();
       closeScanModal(true);
     }, { once: true });
     return true;

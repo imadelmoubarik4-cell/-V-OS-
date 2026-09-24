@@ -489,7 +489,7 @@
       if (typeof openRestockModal === 'function') openRestockModal();
       return;
     }
-    setActiveView(target);
+    window.AtlasShell.show(target);
   }
 
   function bindRenderedEvents() {
@@ -523,7 +523,6 @@
       const reportsButton = insightsGroup.querySelector('[data-view="reports"]');
       if (reportsButton) insightsGroup.insertBefore(button, reportsButton);
       else insightsGroup.appendChild(button);
-      button.addEventListener('click', () => setActiveView('business'));
     }
 
     const fabMenu = document.getElementById('fab-menu');
@@ -536,7 +535,7 @@
       button.addEventListener('click', () => {
         fabMenu.classList.remove('open');
         document.getElementById('fab-btn')?.classList.remove('open');
-        setActiveView('business');
+        window.AtlasShell.show('business');
       });
     }
 
@@ -554,48 +553,24 @@
     if (typeof bindHomeLinks === 'function') bindHomeLinks();
   }
 
-  function patchApplication() {
-    if (typeof viewMap !== 'undefined') viewMap.business = dom.view;
-    if (typeof titleMap !== 'undefined') titleMap.business = 'Business Intelligence';
-
-    if (typeof setActiveView === 'function' && !setActiveView.__atlasBusinessPatched) {
-      const originalSetActiveView = setActiveView;
-      const patchedSetActiveView = function (view) {
-        originalSetActiveView(view);
-        if (view === 'business') render();
-      };
-      patchedSetActiveView.__atlasBusinessPatched = true;
-      setActiveView = patchedSetActiveView;
-    }
-
-    if (typeof loadAll === 'function' && !loadAll.__atlasBusinessPatched) {
-      const originalLoadAll = loadAll;
-      const patchedLoadAll = async function () {
-        await originalLoadAll();
-        render();
-        renderHomeAugmentation();
-      };
-      patchedLoadAll.__atlasBusinessPatched = true;
-      loadAll = patchedLoadAll;
-    }
-
-    if (typeof renderAtlasHome === 'function' && !renderAtlasHome.__atlasBusinessPatched) {
-      const originalRenderAtlasHome = renderAtlasHome;
-      const patchedRenderAtlasHome = function () {
-        originalRenderAtlasHome();
-        renderHomeAugmentation();
-      };
-      patchedRenderAtlasHome.__atlasBusinessPatched = true;
-      renderAtlasHome = patchedRenderAtlasHome;
-    }
-
+  // S88: Business Intelligence registers with AtlasShell instead of
+  // reassigning the shell's setActiveView/loadAll/renderAtlasHome globals.
+  function registerWithShell() {
+    const shell = window.AtlasShell;
+    if (!shell) return;
+    shell.registerView('business', { root: dom.view, title: 'Business Intelligence', render });
+    shell.onDataLoaded(() => {
+      render();
+      renderHomeAugmentation();
+    });
+    shell.registerHomeSection('business', renderHomeAugmentation, 30);
   }
 
   function init() {
     if (state.initialized) return;
     ensureMarkup();
     if (!dom.view || !dom.shell) return;
-    patchApplication();
+    registerWithShell();
     state.initialized = true;
     render();
     renderHomeAugmentation();

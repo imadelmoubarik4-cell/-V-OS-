@@ -21,8 +21,10 @@ test('Checkpoint D loads from the isolated Marketing API', () => {
 test('Marketing injects a Growth navigation entry and complete planning sections', () => {
   assert.match(ui, /GROWTH/);
   assert.match(ui, /data-view=\"marketing\"/);
-  assert.match(ui, /navButton\.dataset\.marketingWorkspaceBound !== 'true'/);
-  assert.match(ui, /navButton\.addEventListener\('click',[\s\S]*activateMarketing\(\)/);
+  // S88: Marketing is an AtlasShell view; the shell routes its nav item.
+  assert.match(ui, /window\.AtlasShell\.registerView\('marketing', \{ root: host, title: 'Marketing', onShow: marketingShown, onHide: hideMarketing \}\)/);
+  assert.match(ui, /function activateMarketing\(\) \{\s+ensureStructure\(\);\s+window\.AtlasShell\.show\('marketing'\);/);
+  assert.doesNotMatch(ui, /handleNavigationCapture|new MutationObserver/);
   for (const section of ['Overview', 'Calendar', 'Content', 'Campaigns', 'Connections', 'History']) {
     assert.match(ui, new RegExp(section));
   }

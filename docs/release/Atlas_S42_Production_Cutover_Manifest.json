@@ -23,13 +23,13 @@
     "automatic_import_authorized": false
   },
   "files": {
-    "apps/web/config.js": "b3fac2d5026bae4258de8e413313fcda0c2bf6d454f4e322ba996f7f74739283",
+    "apps/web/config.js": "b2a028b3a0463cd32d5bfa02e91b9547907bafab663c3c02b0e6ec0215482039",
     "apps/web/assets/js/rehearsal-boundary.js": "7f93c10cb909568b56395b4fbfad559991a08e6129111b7be55f1ac73b8fbf1f",
-    "apps/web/assets/js/inventory-scanner-bootstrap.js": "d202989045b4fd16ac9742c37bed7cc8ee603fdb69525ad4588b571d280ddad9",
-    "apps/web/assets/js/stock-count-bootstrap.js": "ce0f80bed26c22d3ac575afe66853b8fb411045dd8137d2363dfdbc52972f52e",
-    "apps/web/assets/js/stock-count-workspace.js": "ee3fc89fc5fd70fc0a211b12434e009d879bed6343bb8b535564239b81c097ec",
+    "apps/web/assets/js/inventory-scanner-bootstrap.js": "269c7f5cbd431ed13cbc50147244ba9958df31752b0389e0e654941c72148606",
+    "apps/web/assets/js/stock-count-bootstrap.js": "f7e1ba95d27c6efb1b6bccb899515bf39d23404935696495f63e7059b834e0a6",
+    "apps/web/assets/js/stock-count-workspace.js": "cdb09c358fd64016d27d147ba9a63fe3271adf2d32b9c2aa9755b56fe56e5cca",
     "apps/web/assets/js/import-center.js": "b67ada5d39df4790151d348f32cb90373f89b66ba8ae82f04aba78c2fc16b146",
     "netlify.toml": "d951de030dedcd5696cb824a3fb7f2d72fe3142f18f527c25b9bee8ae8e1e395",
-    "supabase/config.toml": "9b533a4ae579c5dbef11e20b762c1f1fb12501fb759df557c6704862e57a3f5a"
+    "supabase/config.toml": "85fbc7ea95df7f8e406e4d804d50e690d3375162b4ece55d7401ef16b3ddafff"
   }
 }

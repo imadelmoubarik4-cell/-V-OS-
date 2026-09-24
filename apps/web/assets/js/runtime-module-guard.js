@@ -24,6 +24,12 @@
       stylesheet.dataset.atlasRuntimeGuard = 'true';
       document.head.appendChild(stylesheet);
     }
+    // S88: AtlasShell.load deduplicates against config.js by path (any cache key).
+    if (window.AtlasShell?.load) {
+      window.AtlasShell.load(scriptPath, { global: globalName, async: true, dataset: { atlasRuntimeGuard: 'true' } })
+        .catch((error) => console.error(error));
+      return;
+    }
     if (window[globalName] || document.querySelector(`script[src="${scriptPath}"]`)) return;
     const script = document.createElement('script');
     script.src = scriptPath;

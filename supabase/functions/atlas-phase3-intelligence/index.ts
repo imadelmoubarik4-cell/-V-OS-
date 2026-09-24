@@ -1,11 +1,18 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+// Canonical stock truth shared with Reports and the browser (AtlasStockTruth):
+// the historical cutoff, verified-stock projection and the below-par rule.
+import {
+  belowPar,
+  HISTORICAL_OPENING_CUTOFF,
+  isStockKnown,
+  projectStock,
+} from "../_shared/atlas-domain.mjs";
 
 const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
 const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
   ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
 const FUNCTION_VERSION = "0.1.0";
-const HISTORICAL_OPENING_CUTOFF = "2026-07-26";
 const MAX_ROWS = 5000;
 
 const CORS_HEADERS = {
@@ -125,14 +132,17 @@ function sameEachUnit(ingredientUnit: string, itemUnit: string): boolean {
 
 function ingredientCostAndAvailability(ingredient: JsonObject, item: JsonObject | undefined) {
   if (!item) return { cost: null, servings: null, reason: "linked inventory item is missing" };
-  if (historicalOpeningRow(item)) {
+  if (historicalOpeningRow(item) && !isStockKnown(item)) {
     return { cost: null, servings: null, reason: "linked quantity belongs to the historical July opening snapshot" };
   }
 
   const quantityNeeded = numberValue(ingredient.quantity);
   const ingredientUnit = lower(ingredient.unit);
   const itemUnit = lower(item.unit);
-  const inventoryQuantity = numberValue(item.quantity);
+  // Servings come from verified current stock only; unknown stock is never 0.
+  const stockKnown = isStockKnown(item);
+  const inventoryQuantity = stockKnown ? numberValue(item.verified_quantity) : 0;
+  const unknownStock = "linked stock has no current verified count";
   const costPrice = nullableNumber(item.cost_price);
   if (quantityNeeded <= 0) return { cost: null, servings: null, reason: "ingredient quantity is invalid" };
 
@@ -141,8 +151,8 @@ function ingredientCostAndAvailability(ingredient: JsonObject, item: JsonObject 
     if (!sizeMl || sizeMl <= 0) return { cost: null, servings: null, reason: "verified bottle size is missing" };
     return {
       cost: costPrice === null ? null : (quantityNeeded / sizeMl) * costPrice,
-      servings: Math.floor((inventoryQuantity * sizeMl) / quantityNeeded),
-      reason: costPrice === null ? "current cost is missing" : null,
+      servings: stockKnown ? Math.floor((inventoryQuantity * sizeMl) / quantityNeeded) : null,
+      reason: costPrice === null ? "current cost is missing" : stockKnown ? null : unknownStock,
     };
   }
 
@@ -151,16 +161,16 @@ function ingredientCostAndAvailability(ingredient: JsonObject, item: JsonObject 
     if (!grams) return { cost: null, servings: null, reason: "verified package weight is missing" };
     return {
       cost: costPrice === null ? null : (quantityNeeded / grams) * costPrice,
-      servings: Math.floor((inventoryQuantity * grams) / quantityNeeded),
-      reason: costPrice === null ? "current cost is missing" : null,
+      servings: stockKnown ? Math.floor((inventoryQuantity * grams) / quantityNeeded) : null,
+      reason: costPrice === null ? "current cost is missing" : stockKnown ? null : unknownStock,
     };
   }
 
   if (sameEachUnit(ingredientUnit, itemUnit)) {
     return {
       cost: costPrice === null ? null : quantityNeeded * costPrice,
-      servings: Math.floor(inventoryQuantity / quantityNeeded),
-      reason: costPrice === null ? "current cost is missing" : null,
+      servings: stockKnown ? Math.floor(inventoryQuantity / quantityNeeded) : null,
+      reason: costPrice === null ? "current cost is missing" : stockKnown ? null : unknownStock,
     };
   }
 
@@ -295,9 +305,21 @@ function createIntelligence(
   recipeSource: SourceResult,
   ingredientSource: SourceResult,
   supplierSource: SourceResult,
+  verifiedBalances: JsonObject[] = [],
+  nowMillis: number = Date.now(),
 ) {
-  const inventory = inventorySource.rows.filter((item) => item.active !== false);
   const movements = movementSource.rows;
+  // Every quantity below is the canonical effective stock: a current
+  // manager-verified count or newer owner confirmation plus later audited
+  // movements. Raw imported quantities are never treated as current stock.
+  const inventory = (projectStock(
+    inventorySource.rows
+      .filter((item) => item.active !== false)
+      .map((item) => ({ ...item, source_quantity: item.quantity })),
+    verifiedBalances,
+    movements,
+    nowMillis,
+  ) as JsonObject[]);
   const recipes = recipeSource.rows.filter((recipe) => recipe.active !== false);
   const ingredients = ingredientSource.rows;
   const suppliers = supplierSource.rows.filter((supplier) => supplier.active !== false);
@@ -312,10 +334,12 @@ function createIntelligence(
 
   const historicalInventory = inventory.filter(historicalOpeningRow);
   const observedInventory = inventory.filter((item) => !historicalOpeningRow(item));
-  const historicalZero = historicalInventory.filter((item) => numberValue(item.quantity) <= 0);
-  const observedWithPar = observedInventory.filter((item) => nullableNumber(item.par_level) !== null && numberValue(item.par_level) > 0);
-  // Same rule as the browser AtlasStockTruth.belowPar: strictly under par.
-  const observedBelowPar = observedWithPar.filter((item) => numberValue(item.quantity) < numberValue(item.par_level));
+  const historicalZero = historicalInventory.filter((item) => !isStockKnown(item) && numberValue(item.source_quantity) <= 0);
+  // Only verified current stock with a positive par can be watched.
+  const observedWithPar = inventory.filter((item) => isStockKnown(item) && nullableNumber(item.par_level) !== null && numberValue(item.par_level) > 0);
+  // The canonical AtlasStockTruth.belowPar: verified stock strictly under a
+  // positive par. Unknown or unverified stock is never below par.
+  const observedBelowPar = inventory.filter((item) => belowPar(item));
   const inventoryWithPar = inventory.filter((item) => nullableNumber(item.par_level) !== null && numberValue(item.par_level) > 0);
   const inventoryWithSupplier = inventory.filter((item) => text(item.supplier_id) || text(item.supplier));
   const inventoryWithCasePack = inventory.filter((item) => numberValue(item.units_per_case) > 0);
@@ -353,13 +377,13 @@ function createIntelligence(
       subject_key: text(item.id),
       title: quantity <= 0 ? `${text(item.name)} has no observed stock` : `${text(item.name)} is below par`,
       summary: `${quantity} ${text(item.unit) || "units"} observed against a configured par level of ${par}.`,
-      explanation: "This is a deterministic par-level watch based on a non-historical inventory record. Atlas is not predicting a stockout date because validated demand, incoming deliveries and supplier lead times are not connected.",
+      explanation: "This is a deterministic par-level watch based on verified current stock. Atlas is not predicting a stockout date because validated demand, incoming deliveries and supplier lead times are not connected.",
       suggested_action: { kind: "open_inventory_item", target: "inventory", item_id: text(item.id), mode: "manager_review" },
       alternatives: [{ label: "Run a fresh stock count", target: "inventory-count" }],
       consequence_of_inaction: { risk: "The item may remain below the manager-configured service level." },
       confidence_state: "pending",
       confidence_score: 0.6,
-      confidence_reason: "Quantity and par are present, but the record is not backed by a verified current stock count or demand history.",
+      confidence_reason: "Verified current stock is under the configured par, but no demand history or incoming-delivery evidence is connected.",
       limitations: [
         "No validated product-level sales history is connected.",
         "No confirmed incoming delivery or supplier lead-time evidence is connected.",
@@ -369,7 +393,7 @@ function createIntelligence(
       source_object: "inventory_items",
       source_row_key: text(item.id),
       evidence_label: "Observed inventory versus configured par",
-      evidence_value: { item_name: text(item.name), quantity, unit: text(item.unit), par_level: par, updated_at: item.updated_at, historical_opening_snapshot: false },
+      evidence_value: { item_name: text(item.name), quantity, unit: text(item.unit), par_level: par, updated_at: item.updated_at, stock_source: item.stock_source ?? null, stock_recount_due: item.stock_recount_due === true, historical_opening_snapshot: false },
       observed_at: text(item.updated_at) || inventorySource.observedAt,
     }));
   }
@@ -618,7 +642,7 @@ function createIntelligence(
   };
 
   const connections = [
-    { connection_key: "current_stock", status: inventorySource.status === "degraded" ? "degraded" : inventory.length ? "pending_review" : "not_connected", last_verified_at: inventorySource.observedAt, metadata: { active_rows: inventory.length, historical_opening_rows: historicalInventory.length, non_historical_rows: observedInventory.length, verified_current_count: false } },
+    { connection_key: "current_stock", status: inventorySource.status === "degraded" ? "degraded" : inventory.length ? "pending_review" : "not_connected", last_verified_at: inventorySource.observedAt, metadata: { active_rows: inventory.length, historical_opening_rows: historicalInventory.length, non_historical_rows: observedInventory.length, verified_current_rows: inventory.filter((item) => isStockKnown(item)).length, verified_current_count: false } },
     { connection_key: "sales_history", status: "not_connected", last_verified_at: null, metadata: { reason: "No validated product-level sales source is connected." } },
     { connection_key: "confirmed_deliveries", status: "not_connected", last_verified_at: null, metadata: { reason: "Past restocks are not confirmed incoming deliveries." } },
     { connection_key: "supplier_lead_times", status: "not_connected", last_verified_at: null, metadata: { reason: "No verified lead-time source is connected." } },
@@ -692,17 +716,29 @@ function createIntelligence(
   return { connections, domains, recommendations, sourceStatus, sourceObservedAt };
 }
 
+// Manager-verified balances, the same evidence Reports reads. When they cannot
+// be read no count is trusted, so nothing is reported below par (fail closed).
+async function verifiedBalances(): Promise<JsonObject[]> {
+  try {
+    const rows = await branchRpc("atlas_stock_count_verified_balances", {});
+    return Array.isArray(rows) ? rows.filter((row): row is JsonObject => Boolean(row) && typeof row === "object") : [];
+  } catch {
+    return [];
+  }
+}
+
 async function build(context: ManagerContext) {
-  const [inventory, movements, recipes, ingredients, suppliers, settings] = await Promise.all([
-    productionRows(context, "inventory_items", "id,name,category,quantity,unit,par_level,supplier_id,supplier,cost_price,units_per_case,case_cost,size_ml,active,sell_price,source_key,source_file,source_updated_at,updated_at,package_size", "updated_at"),
+  const [inventory, movements, recipes, ingredients, suppliers, settings, balances] = await Promise.all([
+    productionRows(context, "inventory_items", "id,name,category,quantity,unit,par_level,supplier_id,supplier,cost_price,units_per_case,case_cost,size_ml,active,sell_price,source_key,source_file,source_updated_at,source_type,source_confidence,source_confirmed_at,source_confirmed_quantity,updated_at,package_size", "updated_at"),
     productionRows(context, "inventory_movements", "id,item_id,item_name,movement_type,quantity_change,unit_cost,total_cost,supplier_id,created_at", "created_at"),
     productionRows(context, "recipes", "id,name,type,yield_quantity,yield_unit,menu_price,show_on_menu,active,updated_at,glass_price,bottle_price,happy_hour_price", "updated_at"),
     productionRows(context, "recipe_ingredients", "id,recipe_id,item_id,item_name,quantity,unit", "id"),
     productionRows(context, "suppliers", "id,name,active,updated_at", "updated_at"),
     branchRpc("atlas_phase3_intelligence_settings"),
+    verifiedBalances(),
   ]);
 
-  const intelligence = createIntelligence(settings || {}, inventory, movements, recipes, ingredients, suppliers);
+  const intelligence = createIntelligence(settings || {}, inventory, movements, recipes, ingredients, suppliers, balances);
   const synced = await branchRpc("atlas_phase3_sync_intelligence", {
     p_connections: intelligence.connections,
     p_domains: intelligence.domains,

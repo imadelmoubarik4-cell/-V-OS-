@@ -32,6 +32,14 @@ if (
 """
 
 
+def _runtime_path(function_name, source_path):
+    """Keep supabase/functions/_shared modules shared so ../_shared imports resolve."""
+    source = Path(source_path)
+    if source.parent == Path("supabase/functions/_shared"):
+        return Path("functions") / "_shared" / source.name
+    return Path("functions") / function_name / source.name
+
+
 def _entrypoint(function):
     sources = list(function["sources"])
     preferred = {
@@ -160,7 +168,7 @@ def build(destination):
                     raw.decode("utf-8"),
                     add_guard=source_path == entrypoint,
                 ).encode("utf-8")
-                relative = Path("functions") / function["name"] / Path(source_path).name
+                relative = _runtime_path(function["name"], source_path)
                 target = output / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(generated)

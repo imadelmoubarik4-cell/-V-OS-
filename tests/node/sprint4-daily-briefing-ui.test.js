@@ -50,8 +50,10 @@ test('Daily Briefing does not expose secrets or mutate operational data', () => 
 });
 
 test('Daily Briefing rendering avoids observer loops and locale-dependent grouping', () => {
-  assert.ok(moduleSource.includes('state.observer?.disconnect()'));
-  assert.ok(moduleSource.includes("if (!shell.querySelector('[data-daily-briefing]')) queueRender();"));
+  // S88: no observer; the briefing re-attaches when brain.js announces a render.
+  assert.doesNotMatch(moduleSource, /new MutationObserver/);
+  assert.ok(moduleSource.includes("window.AtlasShell.on('brain:rendered', () => {"));
+  assert.ok(moduleSource.includes("if (!host()?.querySelector('[data-daily-briefing]')) queueRender();"));
   assert.doesNotMatch(moduleSource, /toLocaleString/);
   assert.ok(moduleSource.includes("replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')"));
 });

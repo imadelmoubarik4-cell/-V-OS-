@@ -36,5 +36,5 @@ test('narrow layouts reserve space for the single owning floating action', () =>
   assert.match(css, /max-height:\s*calc\(100dvh - 104px\)/);
   // S88: the S61 rules live in legacy/accessibility-responsive-s61--*.css fragments.
   assert.match(shell, /legacy\/accessibility-responsive-s61--[a-z-]+\.css\?v=20260926-s88/);
-  assert.match(shell, /shifts-month-calendar\.js\?v=20260917-s62/);
+  assert.match(shell, /shifts-month-calendar\.js\?v=20260926-s88/);
 });

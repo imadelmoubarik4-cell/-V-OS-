@@ -798,22 +798,15 @@
     }, 'Atlas recommendation converted to an editable draft.');
   }
 
+  // S88: Marketing is an AtlasShell view. The shell hides the other
+  // workspaces, shows #marketing-view, sets the title and the active nav item;
+  // this module only loads or renders its content.
   function activateMarketing() {
     ensureStructure();
-    state.activating = true;
-    document.body.dataset.atlasView = 'marketing';
-    window.AtlasShell?.hideWorkspaceRoots?.('marketing');
-    document.querySelectorAll('#inventory-view,#dashboard-view,#recipes-view,#suppliers-view,#imports-view,#team-view,#shifts-view,#knowledge-view,#reports-view,#settings-view,#operations-view,#brain-view,#business-view,#team-profiles-view,#sprint3-review-view,#system-view').forEach((view) => { view.style.display = 'none'; });
-    ['home-intro','home-focus','home-metrics'].forEach((id) => { const element = document.getElementById(id); if (element) element.style.display = 'none'; });
-    const element = host();
-    if (element) element.style.display = 'block';
-    const title = document.getElementById('atlas-page-title');
-    if (title) title.textContent = 'Marketing';
-    document.querySelectorAll('.nav-item').forEach((button) => button.classList.toggle('active', button.dataset.view === 'marketing'));
-    document.getElementById('atlas-sidebar')?.classList.remove('open');
-    document.getElementById('sidebar-backdrop')?.classList.remove('open');
-    state.activating = false;
-    window.AtlasShell?.resetScroll?.();
+    window.AtlasShell.show('marketing');
+  }
+
+  function marketingShown() {
     if (!state.workspace && !state.loading) loadSnapshot();
     else render();
   }
@@ -837,11 +830,6 @@
       if (nav) nav.insertBefore(group, insights || null);
       navButton = group.querySelector('[data-view="marketing"]');
     }
-    if (navButton && navButton.dataset.marketingWorkspaceBound !== 'true') {
-      navButton.dataset.marketingWorkspaceBound = 'true';
-      navButton.addEventListener('click', (event) => { event.preventDefault(); activateMarketing(); });
-    }
-
     if (!host()) {
       const view = document.createElement('div');
       view.id = 'marketing-view';
@@ -850,13 +838,11 @@
       const parent = document.getElementById('team-view')?.parentElement || document.querySelector('.atlas-content main');
       parent?.appendChild(view);
     }
+    if (!state.viewRegistered && window.AtlasShell) {
+      state.viewRegistered = true;
+      window.AtlasShell.registerView('marketing', { root: host, title: 'Marketing', onShow: marketingShown, onHide: hideMarketing });
+    }
     window.lucide?.createIcons?.();
-  }
-
-  function handleNavigationCapture(event) {
-    const button = event.target instanceof Element ? event.target.closest('.nav-item[data-view]') : null;
-    if (!button || button.dataset.view === 'marketing') return;
-    hideMarketing();
   }
 
   function handleClick(event) {
@@ -1006,24 +992,10 @@
     }
   }
 
-  function observeViewChanges() {
-    const parent = host()?.parentElement;
-    if (!parent) return;
-    state.viewObserver?.disconnect();
-    state.viewObserver = new MutationObserver(() => {
-      if (state.activating || !marketingVisible()) return;
-      const anotherVisible = [...parent.children].some((child) => child !== host() && window.getComputedStyle(child).display !== 'none');
-      if (anotherVisible) hideMarketing();
-    });
-    state.viewObserver.observe(parent, { subtree: false, attributes: true, attributeFilter: ['style','class','hidden'] });
-  }
-
   function init() {
     if (state.initialized) return;
     state.initialized = true;
     ensureStructure();
-    observeViewChanges();
-    document.addEventListener('click', handleNavigationCapture, true);
     document.addEventListener('click', handleClick);
     document.addEventListener('submit', handleSubmit);
     document.addEventListener('keydown', handleKeydown);

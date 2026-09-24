@@ -13,6 +13,18 @@ Netlify publishes only `apps/web`.
 
 The Node contract `tests/node/repository-layout.test.js` protects this boundary so a legacy root file cannot silently become a second edit target.
 
+## Shared Edge Function code
+
+`supabase/functions/_shared` holds the canonical server domain layer. Functions import it with `../_shared/<module>.mjs`, which the Supabase bundler includes at deploy time; the `_`-prefixed folder is never deployed as a function.
+
+- `stock-provenance.mjs`: stock evidence, trust states, the historical cutoff, the Reports stock and recipe reports.
+- `atlas-domain.mjs`: stock projection, below par, recipe status, blockers and cost, order suggestions and inventory value. Each rule is a port of the browser rule it names and is parity-tested against the shipped browser modules (`tests/node/domain-parity-s88.test.js`).
+- `auth.mjs`: caller authentication (`resolveActor`, `requireRole`) for new functions.
+
+Shared modules stay plain ESM with no Deno APIs so Node tests import them directly. A function that imports a shared module must list it among its reviewed sources in the release manifests (`tests/node/shared-modules-s88.test.js`); the runtime builders keep `_shared` beside the function folders.
+
+`supabase/functions/atlas-stock-counts/index.ts` is not the configured entrypoint (`entrypoint.ts` is), but it is pinned as a reviewed source in the S35 staging manifest and the S33 runtime fixture, and the S39 production builder packages it. It stays until a release package drops it.
+
 ## Rollback discipline
 
 Before a checkpoint closure or high-risk migration pass:

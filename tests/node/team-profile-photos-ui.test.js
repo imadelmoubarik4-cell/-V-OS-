@@ -45,11 +45,14 @@ test('browser uses the authenticated gateway and no direct Storage or table writ
   assert.doesNotMatch(client, /team_profile_photos|team_profile_events/);
 });
 
-test('photo decoration is idempotent and its observer is scoped to Team Profiles', () => {
+test('photo decoration is idempotent and follows Team Profiles render events', () => {
+  // S88: Team Profiles announces each render through AtlasShell (the former
+  // 'atlas:team-profiles-rendered' window listener waited for an event nobody
+  // sent); decoration follows it and the view opening instead of an observer.
   assert.match(client, /teamProfilePhotoKey === key/);
-  assert.match(client, /new MutationObserver/);
-  assert.match(client, /state\.viewObserver\.observe\(element/);
-  assert.match(client, /childList: true, subtree: true/);
+  assert.doesNotMatch(client, /new MutationObserver/);
+  assert.match(client, /window\.AtlasShell\?\.on\?\.\('team-profiles:rendered', refreshVisibleProfiles\)/);
+  assert.match(client, /window\.AtlasShell\?\.onView\?\.\('team-profiles', \{ show: refreshVisibleProfiles \}\)/);
   assert.match(client, /requestAnimationFrame/);
   assert.doesNotMatch(client, /document\.body.*observe|observe\(document\.body/);
 });

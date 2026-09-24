@@ -45,10 +45,15 @@ function has(item, key) {
 
 // The owner confirmation is its own evidence pair (S84), written by the
 // database only for trusted owner workflows, so present evidence is trusted
-// as-is. Rows read before the columns exist fall back to the legacy rule.
+// as-is. The staff catalogue carries the same evidence as owner_confirmed_*
+// (same rule as AtlasStockTruth). Rows read before the columns exist fall back
+// to the legacy rule.
 function ownerConfirmation(item) {
   if (has(item, "source_confirmed_at") || has(item, "source_confirmed_quantity")) {
     return { quantity: numberOrNull(item.source_confirmed_quantity), at: dateMillis(item.source_confirmed_at) };
+  }
+  if (has(item, "owner_confirmed_at") || has(item, "owner_confirmed_quantity")) {
+    return { quantity: numberOrNull(item.owner_confirmed_quantity), at: dateMillis(item.owner_confirmed_at) };
   }
   const sourceType = lower(item?.source_type);
   if (!LEGACY_OWNER_TYPES.has(sourceType) || numberOrNull(item?.source_confidence) !== 100) return null;
@@ -101,7 +106,10 @@ function movementDelta(movements, itemId, afterMillis, nowMillis) {
   }, 0);
 }
 
-function currentQuantityEvidence(item, balance, movements, nowMillis) {
+// The newest authoritative baseline (current manager count or newer owner
+// confirmation) plus audited movements after it; null when stock is unknown.
+// Server twin of AtlasStockTruth.effectiveStock.
+export function currentQuantityEvidence(item, balance, movements, nowMillis = Date.now()) {
   const manager = managerVerifiedBaseline(balance, nowMillis);
   const owner = ownerConfirmedBaseline(item, balance);
   const baseline = owner && (!manager || owner.at > manager.at) ? owner : manager;
@@ -111,6 +119,8 @@ function currentQuantityEvidence(item, balance, movements, nowMillis) {
   return {
     quantity: Math.max(0, baseline.quantity + delta),
     source: baseline.source,
+    baselineAt: baseline.at,
+    expiresAt: baseline.expiresAt,
     verifiedAt: new Date(baseline.at).toISOString(),
     movementDelta: delta,
     recountDue: typeof baseline.recountDueAt === "number" && baseline.recountDueAt <= nowMillis,
@@ -427,6 +437,7 @@ export function recipeMetrics(recipe, ingredients, itemsById) {
   const perServing = completeCosts ? total / recipeYield : null;
   const profit = completeCosts && Number.isFinite(menuPrice) ? menuPrice - perServing : NaN;
   const margin = Number.isFinite(menuPrice) && menuPrice > 0 ? (profit / menuPrice) * 100 : NaN;
+  const costPercent = completeCosts && Number.isFinite(menuPrice) && menuPrice > 0 ? (perServing / menuPrice) * 100 : NaN;
 
   const stockRows = rows.filter((row) => !row.reference);
   const references = rows.length - stockRows.length;
@@ -444,7 +455,11 @@ export function recipeMetrics(recipe, ingredients, itemsById) {
   else if (servings < 12 || belowPar) status = "attention";
 
   return {
-    financials: { total, perServing, profit, margin, incomplete: list.length - costRows.length },
+    financials: {
+      total, perServing, profit, margin, costPercent,
+      incomplete: list.length - costRows.length,
+      complete: completeCosts && Number.isFinite(menuPrice) && menuPrice > 0,
+    },
     availability: { servings, limiting, unknown, missing, belowPar, references, status },
     rows,
   };

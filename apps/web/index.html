@@ -1088,8 +1088,9 @@
 <script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"
         integrity="sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT"
         crossorigin="anonymous"></script>
+<script src="assets/js/atlas-shell.js?v=20260926-s88"></script>
 <script src="config.js"></script>
-<script src="assets/js/runtime-module-guard.js"></script>
+<script src="assets/js/runtime-module-guard.js?v=20260926-s88"></script>
 <script src="assets/js/rehearsal-boundary.js"></script>
 <script src="assets/js/atlas-stock-truth.js?v=20260924-s87"></script>
 <script>
@@ -1241,7 +1242,8 @@
     window.atlasCurrentProfile = currentProfile
       ? { id: currentProfile.id, role: currentProfile.role, active: currentProfile.active }
       : null;
-    window.dispatchEvent(new CustomEvent('atlas:profile-ready', { detail: window.atlasCurrentProfile }));
+    // Emits the shell's profile:ready event (mirrored as window 'atlas:profile-ready').
+    window.AtlasShell.profileReady(window.atlasCurrentProfile);
   }
 
   function showDataBoundaryError(label) {
@@ -1364,6 +1366,9 @@
     const preferences = cachedPreferences(currentUser.id);
     window.AtlasPreferences.apply(preferences);
     navigatedDuringLoad = false;
+    // From here the shell keeps the address bar in step with the open view, so
+    // #view links, Back and Forward work.
+    window.AtlasShell.startRouting();
     await loadAll();
     // Someone who opened a page while data was loading stays there.
     if (!navigatedDuringLoad) openInitialView(preferences);
@@ -1372,9 +1377,9 @@
   }
 
   let navigatedDuringLoad = false;
-  document.addEventListener('click', (event) => {
-    if (event.isTrusted && event.target instanceof Element && event.target.closest('.atlas-nav .nav-item[data-view]')) navigatedDuringLoad = true;
-  }, true);
+  window.AtlasShell.on('view:show', (event) => {
+    if (event.source === 'nav' && event.event?.isTrusted) navigatedDuringLoad = true;
+  });
 
   // Personal preferences are cached per user by Settings after every load or
   // save, so they apply at sign-in without waiting for the Settings module.
@@ -1392,14 +1397,16 @@
   };
   // A #view link (for example a notification tap opening #team) wins over the
   // saved start view; unknown or unavailable destinations fall back to Home.
+  // Links may carry a section and parameters (#reports/inventory, #inventory?item=…);
+  // AtlasShell.parseRoute is the one parser for them.
   function openInitialView(preferences) {
-    const hashView = decodeURIComponent((location.hash || '').replace(/^#/, '').split(/[/?]/)[0]);
-    for (const view of [hashView, preferences?.start_view]) {
+    const route = window.AtlasShell.parseRoute(location.hash);
+    for (const { view, params } of [route, { view: preferences?.start_view, params: {} }]) {
       if (!view || view === 'dashboard') continue;
       const button = document.querySelector(`.atlas-nav .nav-item[data-view="${CSS.escape(view)}"]`);
-      if (button && button.offsetParent !== null) { button.click(); return; }
+      if (button && button.offsetParent !== null) { window.AtlasShell.show(view, params, { source: 'link' }); return; }
     }
-    setActiveView('dashboard');
+    window.AtlasShell.show('dashboard', {}, { source: 'link' });
   }
 
   (async function init() {
@@ -1528,7 +1535,13 @@
     suppliers = data || [];
   }
 
+  // loadAll() loads the shell data, then emits data:loaded. Modules refresh
+  // through AtlasShell.onDataLoaded() instead of wrapping this function.
   async function loadAll() {
+    await loadAtlasData();
+    window.AtlasShell.dataLoaded({ online: navigator.onLine });
+  }
+  async function loadAtlasData() {
     // Keep the last loaded, role-filtered in-memory snapshot during an outage.
     // No offline login, persistent commercial cache, or automatic write replay.
     if (!navigator.onLine) return;
@@ -1543,7 +1556,8 @@
   window.atlasPurchasingData = () => canManageCommercial()
     ? { items: structuredClone(items), suppliers: structuredClone(suppliers) }
     : { items: [], suppliers: [] };
-  window.atlasReloadPurchasingData = loadAll;
+  // Purchase orders reload the shell data only, as before modules hooked data:loaded.
+  window.atlasReloadPurchasingData = loadAtlasData;
 
   function inventoryGroup(item) {
     const category = String(item?.category || '').toLowerCase();
@@ -2030,6 +2044,9 @@
   });
 
   // ---------- PROJECT ATLAS NAVIGATION ----------
+  // AtlasShell (assets/js/atlas-shell.js) owns navigation. The base shell
+  // registers its own views here; modules register theirs through
+  // AtlasShell.registerView() and never write into these tables.
   const viewMap = {
     inventory: document.getElementById('inventory-view'),
     dashboard: document.getElementById('dashboard-view'),
@@ -2051,7 +2068,7 @@
     'team-profiles': 'team-profiles-view', 'sprint3-review': 'sprint3-review-view', system: 'system-view'
   };
   function hideAtlasWorkspaceRoots(keepView = '') {
-    const keepId = workspaceRootIds[keepView] || '';
+    const keepId = workspaceRootIds[keepView] || window.AtlasShell.view(keepView)?.root?.id || '';
     const main = document.querySelector('.atlas-content.standard-view main');
     if (!main) return;
     [...main.children].forEach((element) => {
@@ -2092,14 +2109,17 @@
       button.classList.toggle('active', isItems || isStock || isItemMaster || isOther);
     });
   }
-  function setActiveView(view) {
-    if (!canManageCommercial() && ['suppliers', 'imports'].includes(view)) {
-      alert('This workspace is limited to managers and administrators.');
-      view = 'dashboard';
-    }
-    if (view !== 'inventory') {
+  // The base shell chrome for every destination. AtlasShell.show() runs it once
+  // per navigation, before the view's render and onShow hooks.
+  function layoutAtlasView(view, entry, context) {
+    const trigger = context.trigger;
+    if (context.source === 'nav' || view !== 'inventory') {
       window.AtlasStockCounts?.close?.();
       window.AtlasItemMaster?.close?.();
+    } else if (trigger?.matches?.('.inventory-workspace-tab')) {
+      const section = trigger.dataset.inventorySection;
+      if (section !== 'stock-count') window.AtlasStockCounts?.close?.();
+      if (section !== 'item-master') window.AtlasItemMaster?.close?.();
     }
     activeView = view;
     document.body.dataset.atlasView = view;
@@ -2109,45 +2129,72 @@
     document.getElementById('home-metrics').style.display = view === 'dashboard' ? 'grid' : 'none';
     const homeTimeline = document.getElementById('home-timeline');
     if (homeTimeline) homeTimeline.style.display = view === 'dashboard' ? 'block' : 'none';
-    if (viewMap[view]) viewMap[view].style.display = view === 'inventory' ? 'grid' : 'block';
+    if (homeTimeline) homeTimeline.setAttribute('aria-hidden', String(view !== 'dashboard'));
+    const root = viewMap[view] || window.AtlasShell.view(view)?.root;
+    if (root) root.style.display = entry.display;
     restoreAtlasWorkspaceInterior(view);
     syncInventorySectionHeader(view);
-    document.getElementById('atlas-page-title').textContent = titleMap[view] || 'VÁ OS';
+    document.getElementById('atlas-page-title').textContent = titleMap[view] || entry.title || 'VÁ OS';
     document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    if(view==='dashboard'){ renderDashboard(); renderAtlasHome(); }
-    if(view==='recipes') renderRecipes();
-    if(view==='suppliers') renderSuppliers();
-    if(view==='movements' || view==='waste') renderInventoryOperations();
-    if(view==='imports') window.AtlasImportCenter?.render?.();
     closeMobileSidebar();
     resetAtlasWorkspaceScroll();
   }
-  window.AtlasShell = { hideWorkspaceRoots: hideAtlasWorkspaceRoots, resetScroll: resetAtlasWorkspaceScroll, restoreWorkspaceInterior: restoreAtlasWorkspaceInterior };
-  document.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
-    const inventoryTab = target.closest('.inventory-workspace-tab');
-    const sidebarDestination = target.closest('.atlas-nav .nav-item[data-view]');
-    if (inventoryTab) {
-      const section = inventoryTab.dataset.inventorySection;
-      if (section !== 'stock-count') window.AtlasStockCounts?.close?.();
-      if (section !== 'item-master') window.AtlasItemMaster?.close?.();
-      window.setTimeout(() => syncInventorySectionHeader(inventoryTab.dataset.view || 'inventory'), 0);
-    }
-    if (sidebarDestination) {
-      const view = sidebarDestination.dataset.view;
-      window.AtlasStockCounts?.close?.();
-      window.AtlasItemMaster?.close?.();
-      document.body.dataset.atlasView = view;
-      hideAtlasWorkspaceRoots(view);
-      resetAtlasWorkspaceScroll();
-      if (sidebarDestination.dataset.atlasBaseViewBound !== 'true' && viewMap[view]) setActiveView(view);
-    }
-  }, true);
-  document.querySelectorAll('[data-view]').forEach(btn => {
-    btn.dataset.atlasBaseViewBound = 'true';
-    btn.addEventListener('click',()=>{ setActiveView(btn.dataset.view); if(btn.dataset.subview && !btn.dataset.inventorySection) document.getElementById('atlas-page-title').textContent=btn.dataset.subview; });
+  // Inventory sections can change the header after the view is shown (stock
+  // count and item master open from their own modules).
+  window.AtlasShell.on('view:show', ({ view }) => {
+    if (inventoryViews.has(view)) window.setTimeout(() => syncInventorySectionHeader(view), 0);
   });
+  function commercialWorkspaceGuard() {
+    if (canManageCommercial()) return true;
+    alert('This workspace is limited to managers and administrators.');
+    return 'dashboard';
+  }
+  function openPurchasingSection(section) {
+    const tab = { orders: 'purchase-orders-tab', deliveries: 'purchase-deliveries-tab', suppliers: 'purchase-suppliers-tab' }[section];
+    if (!tab) return;
+    window.setTimeout(() => {
+      const button = document.getElementById(tab);
+      if (!button || button.disabled) return;
+      button.click();
+      button.focus({ preventScroll: true });
+    }, 0);
+  }
+  function openInventoryItemLink(itemId) {
+    const item = items.find(entry => String(entry.id) === String(itemId));
+    if (!item) return;
+    window.setTimeout(() => {
+      const search = document.getElementById('inventory-search');
+      if (search) {
+        search.value = item.name;
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      const row = document.querySelector(`#items-body [data-id="${CSS.escape(String(item.id))}"]`)?.closest('tr');
+      if (!row) return;
+      row.classList.add('atlas-search-highlight');
+      row.scrollIntoView({ block: 'center' });
+      window.setTimeout(() => row.classList.remove('atlas-search-highlight'), 2400);
+    }, 80);
+  }
+  window.AtlasShell.setLayout(layoutAtlasView);
+  [
+    ['dashboard', { render: () => { renderDashboard(); renderAtlasHome(); } }],
+    ['inventory', { display: 'grid', onShow: (params) => {
+      if (params.item) openInventoryItemLink(params.item);
+      else if (params.filter === 'below-par') showBelowPar();
+    } }],
+    ['recipes', { render: () => renderRecipes(), onShow: (params) => { if (params.recipe) window.AtlasRecipes?.openRecipe?.(params.recipe); } }],
+    ['suppliers', { guard: commercialWorkspaceGuard, render: () => renderSuppliers(), onShow: (params) => openPurchasingSection(params.section) }],
+    ['imports', { guard: commercialWorkspaceGuard, render: () => window.AtlasImportCenter?.render?.() }],
+    ['movements', { render: () => renderInventoryOperations() }],
+    ['waste', { render: () => renderInventoryOperations() }],
+    ['team', {}], ['shifts', {}], ['knowledge', {}], ['reports', {}], ['settings', {}]
+  ].forEach(([view, definition]) => window.AtlasShell.registerView(view, { root: viewMap[view], title: titleMap[view], ...definition }));
+  // Compatibility shim: modules and tests still call the global by name. It is
+  // a thin call into the shell and is never reassigned (tests/node/shell-contract-s88).
+  function setActiveView(view) {
+    return window.AtlasShell.show(view);
+  }
+  Object.assign(window.AtlasShell, { hideWorkspaceRoots: hideAtlasWorkspaceRoots, resetScroll: resetAtlasWorkspaceScroll, restoreWorkspaceInterior: restoreAtlasWorkspaceInterior });
   document.querySelectorAll('.nav-parent').forEach(btn => btn.addEventListener('click',()=>{ btn.classList.toggle('open'); const target=btn.dataset.default; if(target) setActiveView(target); }));
   function formatVenueDay(now = new Date()) {
     try {
@@ -2186,7 +2233,13 @@
     value.textContent = '—';
     note.textContent = 'Open Team to load';
   }
+  // Home is composed, not wrapped: the base section below renders first, then
+  // every module section registered with AtlasShell.registerHomeSection(), in order.
   function renderAtlasHome(){
+    return window.AtlasShell.renderHome();
+  }
+  window.AtlasShell.registerHomeSection('core', renderHomeCore, 0);
+  function renderHomeCore(){
     // Home reports live stock: inactive rows stay in Inventory records but never count here.
     const activeItems = items.filter(item => item.active !== false);
     const low = activeItems.filter(item => window.AtlasStockTruth.belowPar(item));
@@ -2240,13 +2293,13 @@
     const banner=document.getElementById('low-stock-banner');
     if(banner) banner.onclick=()=>showBelowPar();
   }
+  // Home buttons, the quick-action menu and Service Mode run canonical actions
+  // (AtlasShell.actions, registered below), the same ones the command palette,
+  // notifications and Atlas AI will call.
+  const homeActionIds={'stock-count':'inventory.count.start','new-order':'purchasing.order.new'};
   document.querySelectorAll('[data-home-action]').forEach(button=>button.addEventListener('click',()=>{
-    if(button.dataset.homeAction==='stock-count'){
-      setActiveView('inventory');
-      window.setTimeout(()=>document.querySelector('[data-inventory-section="stock-count"]')?.click(),40);
-      return;
-    }
-    if(button.dataset.homeAction==='new-order') document.querySelector('.atlas-nav .nav-item[data-view="suppliers"]')?.click();
+    const actionId=homeActionIds[button.dataset.homeAction];
+    if(actionId) window.AtlasShell.actions.run(actionId,{context:'home'});
   }));
   document.getElementById('inventory-intelligence-action')?.addEventListener('click', () => {
     document.querySelector('.nav-item[data-view="reports"]')?.click();
@@ -2262,11 +2315,14 @@
     ['system','SYSTEM',['system','settings']]
   ];
   const navigationLabels={dashboard:'Home',operations:'Operations Center',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',team:'Messages','team-profiles':'Team',shifts:'Shifts',knowledge:'Knowledge',marketing:'Marketing',accounting:'Accounting',brain:'Atlas Brain',business:'Business Intelligence',reports:'Reports','sprint3-review':'Real VÁ Data',system:'System',settings:'Settings'};
+  // Modules add their navigation item and then register their view, so the
+  // sidebar is regrouped on registration events instead of by observing it.
   let navigationFrame=null;
-  const navigationObserver=new MutationObserver(()=>{
+  function scheduleNavigationLayout(){
     if(navigationFrame) return;
     navigationFrame=requestAnimationFrame(()=>{navigationFrame=null;organizeAtlasNavigation();});
-  });
+  }
+  ['view:registered','view:unregistered'].forEach(type=>window.AtlasShell.on(type,scheduleNavigationLayout));
   function setNavigationLabel(button,label){
     let text=button.querySelector(':scope > .nav-item-label')
       || [...button.children].find(child=>child.tagName==='SPAN'&&!child.matches('.team-nav-unread,.review-nav-count,.system-nav-status'));
@@ -2285,7 +2341,6 @@
   function organizeAtlasNavigation(){
     const nav=document.querySelector('.atlas-nav');
     if(!nav) return;
-    navigationObserver.disconnect();
     navigationPlan.forEach(([key,label,views])=>{
       let group=nav.querySelector(`.nav-group[data-nav-group="${key}"]`);
       const hasView=views.some(view=>nav.querySelector(`.nav-item[data-view="${view}"]`));
@@ -2308,7 +2363,6 @@
     });
     nav.querySelectorAll('.nav-sub').forEach(node=>node.remove());
     nav.querySelectorAll('.nav-group').forEach(group=>{if(!group.querySelector('.nav-item')) group.remove();});
-    navigationObserver.observe(nav,{childList:true,subtree:true});
   }
   organizeAtlasNavigation();
   function closeMobileSidebar(){sidebar.classList.remove('open');backdrop.classList.remove('open');}
@@ -2334,13 +2388,32 @@
     updateMenuButtonLabel(collapsed);
   });
   backdrop.addEventListener('click',closeMobileSidebar);
+  // Topbar bell: opens the notifications feed (AtlasShell.notify). Until the
+  // notifications panel UI registers itself with notify.setPanel(), this interim
+  // panel keeps the previous routing (moved from s38-app-remediation.js): unread
+  // messages open Messages, otherwise this device's notification settings.
+  window.AtlasShell.notify.setPanel({
+    open(){
+      window.AtlasShell.notify.close();
+      const unread=Number(window.AtlasTeamMessages?.unreadCount?.()||0);
+      const messagesNav=document.querySelector('.nav-item[data-view="team"]');
+      if(unread>0&&messagesNav){messagesNav.click();return;}
+      if(!document.querySelector('.nav-item[data-view="settings"]')) return;
+      window.AtlasShell.navigate('#settings/notifications',{source:'nav'});
+    }
+  });
+  document.querySelector('.atlas-topbar .top-icon[title="Notifications"]')?.addEventListener('click',(event)=>{
+    event.preventDefault();
+    window.AtlasShell.notify.open({trigger:event.currentTarget});
+  });
   const enterService=()=>{document.body.classList.add('service-mode');};
   const exitService=()=>{document.body.classList.remove('service-mode');};
   document.getElementById('service-mode-btn').addEventListener('click',enterService);
   document.getElementById('service-exit-btn').addEventListener('click',exitService);
-  document.querySelectorAll('[data-service-view]').forEach(btn=>btn.addEventListener('click',()=>{exitService();setActiveView(btn.dataset.serviceView);}));
-  document.querySelector('[data-service-action="restock"]').addEventListener('click',()=>{exitService();openRestockModal();});
-  document.querySelector('[data-service-action="add-item"]').addEventListener('click',()=>{exitService();openModal(null);});
+  // AtlasShell routes [data-service-view] cards; leaving Service Mode is the card's own job.
+  document.querySelectorAll('[data-service-view]').forEach(btn=>btn.addEventListener('click',exitService));
+  document.querySelector('[data-service-action="restock"]').addEventListener('click',()=>{exitService();window.AtlasShell.actions.run('purchasing.delivery.receive',{context:'service'});});
+  document.querySelector('[data-service-action="add-item"]').addEventListener('click',()=>{exitService();window.AtlasShell.actions.run('inventory.item.add',{context:'service'});});
   document.addEventListener('keydown',(e)=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();document.getElementById('global-search').focus();}if(e.key==='Escape'&&document.body.classList.contains('service-mode'))exitService();});
   // ---------- QUICK ACTION (FAB) ----------
   const fabBtn = document.getElementById('fab-btn');
@@ -2355,19 +2428,24 @@
       fabBtn.classList.remove('open');
     }
   });
-  document.getElementById('fab-add-item').addEventListener('click', () => {
-    fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
-    openModal(null);
+  [['fab-add-item','inventory.item.add'],['fab-log-restock','purchasing.delivery.receive'],['fab-add-supplier','purchasing.supplier.add']].forEach(([id,actionId])=>{
+    document.getElementById(id).addEventListener('click', () => {
+      fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
+      window.AtlasShell.actions.run(actionId,{context:'quick-actions'});
+    });
   });
-  document.getElementById('fab-log-restock').addEventListener('click', () => {
-    fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
-    openRestockModal();
-  });
-  document.getElementById('fab-add-supplier').addEventListener('click', () => {
-    fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
-    setActiveView('suppliers');
-    openSupplierModal();
-  });
+  // Canonical actions owned by the base shell (spec §4.8). The editors keep
+  // their own manager check, so a denied action runs the same function, which
+  // explains the limit, exactly as the buttons did before.
+  const MANAGERS=['admin','manager'];
+  const STAFF=['admin','manager','bartender'];
+  [
+    { id:'inventory.item.add', label:'Add item', icon:'package-plus', keywords:['new item','product','inventory'], roles:MANAGERS, contexts:['home','inventory'], run:()=>openModal(null) },
+    { id:'inventory.count.start', label:'Start stock count', icon:'list-checks', keywords:['count','stocktake'], roles:STAFF, contexts:['home','inventory'], run:()=>window.AtlasShell.navigate('#inventory/counts') },
+    { id:'purchasing.order.new', label:'New order', icon:'shopping-cart', keywords:['order','purchase','buy'], roles:MANAGERS, contexts:['home','purchasing'], run:()=>window.AtlasShell.show('suppliers',{},{source:'nav'}) },
+    { id:'purchasing.delivery.receive', label:'Receive a delivery', icon:'truck', keywords:['restock','delivery','receive'], roles:MANAGERS, contexts:['home','inventory','purchasing'], run:()=>openRestockModal() },
+    { id:'purchasing.supplier.add', label:'Add supplier', icon:'store', keywords:['supplier','vendor'], roles:MANAGERS, contexts:['purchasing'], run:()=>{ setActiveView('suppliers'); openSupplierModal(); } }
+  ].forEach(action=>window.AtlasShell.actions.register({ ...action, denied:action.run }));
 
   // ---------- RESTOCK MODAL ----------
   const restockOverlay = document.getElementById('restock-overlay');
@@ -2675,17 +2753,17 @@
 <script src="assets/js/atlas-calculations.js?v=20260924-s87"></script>
 <script src="assets/js/modal.js?v=20260922-s73"></script>
 <script src="assets/js/recipes.js?v=20260924-s87"></script>
-<script src="assets/js/operations.js"></script>
-<script src="assets/js/brain.js"></script>
-<script src="assets/js/business.js?v=20260917-s60"></script>
+<script src="assets/js/operations.js?v=20260926-s88"></script>
+<script src="assets/js/brain.js?v=20260926-s88"></script>
+<script src="assets/js/business.js?v=20260926-s88"></script>
 <script src="assets/js/import-center.js"></script>
-<script src="assets/js/purchase-orders.js"></script>
-<script src="assets/js/shifts-workspace.js"></script>
-<script src="assets/js/shifts-month-calendar.js?v=20260917-s62"></script>
-<script src="assets/js/shifts-month-tab-bridge.js"></script>
-<script src="assets/js/knowledge-workspace.js?v=20260917-s56"></script>
-<script src="assets/js/knowledge-team-link-bridge.js"></script>
-<script src="assets/js/s38-app-remediation.js"></script>
-<script src="assets/js/atlas-search.js?v=20260924-s87"></script>
+<script src="assets/js/purchase-orders.js?v=20260926-s88"></script>
+<script src="assets/js/shifts-workspace.js?v=20260926-s88"></script>
+<script src="assets/js/shifts-month-calendar.js?v=20260926-s88"></script>
+<script src="assets/js/shifts-month-tab-bridge.js?v=20260926-s88"></script>
+<script src="assets/js/knowledge-workspace.js?v=20260926-s88"></script>
+<script src="assets/js/knowledge-team-link-bridge.js?v=20260926-s88"></script>
+<script src="assets/js/s38-app-remediation.js?v=20260926-s88"></script>
+<script src="assets/js/atlas-search.js?v=20260926-s88"></script>
 </body>
 </html>

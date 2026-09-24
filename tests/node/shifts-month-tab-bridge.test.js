@@ -32,14 +32,16 @@ test('production loads weekly, Month, and bridge assets in deterministic depende
   assert.ok(weeklyJs >= 0 && weeklyJs < monthJs && monthJs < bridgeJs);
 });
 
-test('bridge keeps the Month tab separate from the weekly bubbling handler', () => {
+test('the Month tab has one owner and the weekly planner only falls back', () => {
+  // S88: the bridge no longer stops propagation. Month owns the tab in the
+  // capture phase; the weekly bubbling handler opens Month only if that did not
+  // happen (the check the bridge used to make).
   assert.match(weekly, /document\.addEventListener\('click', handleClick\)/);
   assert.match(month, /document\.addEventListener\('click', handleClick, true\)/);
-  assert.match(bridge, /\[data-shifts-tab=\"month\"\]/);
-  assert.match(bridge, /host\.addEventListener\('click', protectMonthTab, true\)/);
-  assert.match(bridge, /event\.preventDefault\(\)/);
-  assert.match(bridge, /event\.stopPropagation\(\)/);
-  assert.match(bridge, /host\.classList\.contains\('shifts-month-active'\) && monthPanel\(\)/);
+  assert.doesNotMatch(bridge, /addEventListener\('click'|stopPropagation/);
+  assert.match(weekly, /if \(tab\.dataset\.shiftsTab === 'month'\) \{\s+event\.preventDefault\(\);/);
+  assert.match(weekly, /element\.classList\.contains\('shifts-month-active'\) && element\.querySelector\('\[data-shifts-month-panel\]'\)/);
+  assert.match(weekly, /window\.AtlasShiftsMonth\?\.open\?\.\(\)/);
   assert.match(month, /state\.active = true/);
   assert.match(month, /window\.setTimeout\(\(\) => loadMonth\(\), 0\)/);
 });

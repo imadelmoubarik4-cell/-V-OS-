@@ -336,40 +336,26 @@
 
   // ---------- navigation ----------
 
-  function openView(view) {
-    const button = document.querySelector(`.atlas-nav .nav-item[data-view="${view}"]`);
-    if (button) button.click();
-    else if (typeof window.setActiveView === 'function') window.setActiveView(view);
+  // Results open through AtlasShell routes, the same #view/section?param links
+  // Atlas AI records carry (#inventory?item=…, #settings/notifications).
+  function openView(view, params = {}) {
+    window.AtlasShell.show(view, params, { source: 'nav' });
   }
 
   function runCommand(key) {
     if (key === 'stock-count') {
-      openView('inventory');
-      window.setTimeout(() => document.querySelector('[data-inventory-section="stock-count"]')?.click(), 60);
+      openView('inventory', { section: 'stock-count' });
       return;
     }
     if (key.startsWith('settings:')) {
-      openView('settings');
-      const tab = key.slice('settings:'.length);
-      window.setTimeout(() => window.AtlasSettings?.tab?.(tab), 80);
+      openView('settings', { section: key.slice('settings:'.length) });
     }
   }
 
+  // index.html's Inventory view opens ?item= links: it filters to the item and
+  // highlights its row.
   function openInventoryItem(item) {
-    openView('inventory');
-    window.setTimeout(() => {
-      const search = document.getElementById('inventory-search');
-      if (search) {
-        search.value = item.name;
-        search.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-      const row = document.querySelector(`#items-body [data-id="${CSS.escape(item.id)}"]`)?.closest('tr');
-      if (row) {
-        row.classList.add('atlas-search-highlight');
-        row.scrollIntoView({ block: 'center' });
-        window.setTimeout(() => row.classList.remove('atlas-search-highlight'), 2400);
-      }
-    }, 80);
+    openView('inventory', { item: item.id });
   }
 
   function openSupplier(supplier) {
