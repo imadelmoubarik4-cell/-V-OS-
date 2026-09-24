@@ -26,7 +26,7 @@ this.helpers = { ${names.join(', ')} };`, context);
 }
 
 const catalog = () => load(EDGE, 's89-catalog-helpers', ['createItemRequest', 'findDuplicatesRequest', 'catalogDecideRequest',
-  'catalogCreateRequest', 'catalogQueueQuery', 'catalogErrorDetails']);
+  'catalogCreateRequest', 'catalogQueueQuery', 'catalogErrorDetails', 'shouldRecordAiDecision']);
 const counts = () => load(COUNTS, 's89-count-helpers', ['quantityValue', 'countEvidence']);
 
 function refusal(fn) {
@@ -127,4 +127,17 @@ test('stock counts expose add-line through the service-role RPC', () => {
   assert.match(COUNTS, /case "add-line": \{/);
   assert.match(COUNTS, /branchRpc\("atlas_stock_count_add_line"/);
   assert.match(COUNTS, /p_evidence: countEvidence\(body\.evidence\)/);
+});
+
+test('approvals of AI-originated catalogue requests are recorded in the Brain after the decision', { skip: !canStrip }, () => {
+  const { shouldRecordAiDecision } = catalog();
+  const action = '00000000-0000-4000-8000-0000000000a9';
+  assert.equal(shouldRecordAiDecision({ id: ID, source: 'ai_proposal', ai_action_id: action, status: 'applied' }), true);
+  assert.equal(shouldRecordAiDecision({ id: ID, source: 'ai_proposal', ai_action_id: action, status: 'rejected' }), true);
+  assert.equal(shouldRecordAiDecision({ id: ID, source: 'ai_proposal', ai_action_id: action, status: 'pending' }), false);
+  assert.equal(shouldRecordAiDecision({ id: ID, source: 'recognition', ai_action_id: null, status: 'applied' }), false);
+  assert.equal(shouldRecordAiDecision({ id: ID, source: 'ai_proposal', ai_action_id: null, status: 'applied' }), false);
+  const decide = EDGE.slice(EDGE.indexOf('action === "catalog-decide"'), EDGE.indexOf('action === "catalog-withdraw"'));
+  assert.match(decide, /atlas_catalog_request_decide[\s\S]*shouldRecordAiDecision\(request\)[\s\S]*atlas_catalog_record_ai_decision/);
+  assert.match(decide, /\.catch\(/, 'the Brain write never fails the decision');
 });

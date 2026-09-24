@@ -8,7 +8,8 @@ import { buildProposal, COUNT_UNITS } from "./actions.mjs";
 import {
   calculation, fact, interpretation, missing, ok, quantityLabel, record, source, ToolError, truncate,
 } from "./result.mjs";
-import { clampLimit, isManagerActor, lower, matchByName, newId, numberOrNull, text, withinDays, nowMillis } from "./helpers.mjs";
+import { clampLimit, isManagerActor, lower, newId, numberOrNull, text, withinDays, nowMillis } from "./helpers.mjs";
+import { resolveInventoryName } from "./tools-recognition.mjs";
 
 const ALL = ["admin", "manager", "bartender", "viewer"];
 const OPERATIONAL = ["admin", "manager", "bartender"];
@@ -378,9 +379,11 @@ const prepareCount = {
         item = items.find((candidate) => String(candidate.id) === entry.item_id) || null;
         if (!item) clarifications.push({ entry: index, query: entry.item_id, status: "not_found", candidates: [] });
       } else if (entry.item_query) {
-        const match = matchByName(items, entry.item_query);
-        if (match.status === "unique") item = match.match;
-        else clarifications.push({ entry: index, query: entry.item_query, status: match.status === "none" ? "not_found" : "ambiguous", candidates: match.candidates.map((candidate) => ({ id: candidate.id, name: candidate.name, unit: candidate.unit ?? null })) });
+        // Canonical resolver: aliases, Icelandic/English spellings and pack
+        // sizes ("Aperol 70cl" is Aperol), never a guess between items.
+        const match = await resolveInventoryName(ctx, entry.item_query, { universe: items });
+        if (match.status === "unique") item = items.find((candidate) => String(candidate.id) === String(match.match.item_id)) || null;
+        if (!item) clarifications.push({ entry: index, query: entry.item_query, status: match.status === "none" ? "not_found" : "ambiguous", candidates: match.candidates.map((candidate) => ({ id: candidate.item_id, name: candidate.item?.name ?? null, unit: candidate.item?.unit ?? null })) });
       } else {
         throw new ToolError("invalid_arguments", `Entry ${index + 1} needs item_id or item_query.`);
       }

@@ -14,7 +14,8 @@ const { TOOL_REGISTRY, toolsForRole, functionDefinitions, getTool, SPECIALISTS }
 
 const REQUIRED_TOOLS = [
   'inventory.search', 'inventory.get', 'inventory.current_stock', 'inventory.below_par', 'inventory.stale_counts',
-  'inventory.prepare_count', 'inventory.lookup_barcode', 'recipes.search', 'recipes.get', 'recipes.can_make', 'recipes.cost',
+  'inventory.prepare_count', 'inventory.lookup_barcode', 'inventory.identify_from_image', 'inventory.resolve_name',
+  'inventory.propose_alias', 'inventory.propose_item', 'inventory.report_wrong_match', 'recipes.search', 'recipes.get', 'recipes.can_make', 'recipes.cost',
   'recipes.best_margin', 'purchasing.suggest', 'purchasing.get_supplier', 'purchasing.prepare_draft_po', 'purchasing.order_status',
   'purchasing.compare_delivery', 'purchasing.cost_changes', 'reports.sales', 'reports.margin', 'reports.inventory_value',
   'reports.spend', 'reports.waste', 'operations.status', 'operations.alerts', 'briefing.today', 'shifts.schedule',
