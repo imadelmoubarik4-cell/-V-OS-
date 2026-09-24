@@ -1354,6 +1354,8 @@
       let primary;
       if (!info.executable) {
         primary = route ? `<a class="atlas-btn atlas-btn--primary atlas-btn--sm" href="${escapeHtml(route)}" data-ai-route="${escapeHtml(route)}">${escapeHtml(info.verb)}</a>` : '';
+      } else if (proposal.status === 'failed') {
+        primary = '';
       } else if (!allowed) {
         primary = `<button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm" disabled aria-disabled="true" title="Only a manager can approve this" aria-describedby="ai-why-${id}">${icon('lock')}${escapeHtml(info.verb)}</button><span class="sr-only" id="ai-why-${id}">Only a manager can approve this.</span>`;
       } else {

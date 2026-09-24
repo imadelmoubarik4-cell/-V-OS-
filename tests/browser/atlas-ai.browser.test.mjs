@@ -150,7 +150,7 @@ test('approving calls execute-action once and shows the confirmed result', { ski
     assert.match(await page.textContent('[data-ai-approval]'), /Order created/);
     assert.match(await page.textContent('.approval__foot--done'), /Draft order saved in Purchasing\.[\s\S]*View order/);
     assert.equal(await page.getAttribute('.approval__foot--done a', 'href'), '#purchasing/order/po-1');
-    assert.equal(await page.$('[data-ai-approve]'), null, 'no approve button after success');
+    assert.equal(await page.locator('[data-ai-approve]').count(), 0, 'no approve button after success');
   } finally { await close(); }
 });
 
@@ -168,7 +168,7 @@ test('a failed approval says so and never shows success', { skip }, async () => 
     const text = await page.textContent('[data-ai-approval]');
     assert.match(text, /Failed[\s\S]*This couldn’t be completed\.[\s\S]*Nothing was changed/);
     assert.doesNotMatch(text, /raw database text|Order created/);
-    assert.equal(await page.$('[data-ai-approval] [data-ai-approve]'), null, 'a refused proposal is not retried from the card');
+    assert.equal(await page.locator('[data-ai-approval] [data-ai-approve]').count(), 0, 'a refused proposal is not retried from the card');
   } finally { await close(); }
 });
 
@@ -185,7 +185,7 @@ test('a bartender sees manager-only proposals as waiting, with approve disabled'
     await button.click({ force: true });
     await page.waitForTimeout(200);
     assert.equal(calls(backend, 'execute-action').length, 0);
-    assert.equal(await page.$('[data-ai-mode="decisions"]:visible'), null, 'no Decisions tab for staff');
+    assert.equal(await page.locator('[data-ai-mode="decisions"]').filter({ visible: true }).count(), 0, 'no Decisions tab for staff');
   } finally { await close(); }
 });
 
@@ -250,7 +250,7 @@ test('photos and files upload with progress and are sent with the question', { s
     await page.setInputFiles('[data-ai-file-any]', { name: 'second.png', mimeType: 'image/png', buffer: png });
     await page.waitForSelector('[data-ai-remove-att]');
     await page.click('[data-ai-remove-att]');
-    assert.equal(await page.$('[data-ai-att]'), null);
+    assert.equal(await page.locator('[data-ai-att]').count(), 0);
   } finally { await close(); }
 });
 
@@ -337,7 +337,7 @@ test('live voice connects over WebRTC, runs tools through the server and shows p
     assert.equal(await state(), 'muted');
     assert.match(await page.textContent('[data-ai-live-mute]'), /Unmute/);
     await page.click('[data-ai-live-transcript]');
-    assert.equal(await page.$('.voice__transcript'), null, 'transcript can be hidden');
+    assert.equal(await page.locator('.voice__transcript').count(), 0, 'transcript can be hidden');
 
     await page.click('[data-ai-live-end]');
     await page.waitForSelector('.voice', { state: 'detached' });
@@ -427,7 +427,7 @@ test('deep links open a conversation, Decisions for managers and the #atlas alia
   try {
     await staff.page.waitForSelector('[data-ai-decisions]:not([hidden])');
     assert.match(await staff.page.textContent('[data-ai-decisions]'), /Decisions are for managers/);
-    assert.equal(await staff.page.$('.ai-dec-row'), null);
+    assert.equal(await staff.page.locator('.ai-dec-row').count(), 0);
   } finally { await staff.close(); }
 });
 
@@ -483,7 +483,7 @@ test('search questions and Ask Atlas actions open Atlas AI with the question', {
     await page.evaluate(() => window.AtlasAI.askAbout({ type: 'inventory_item', id: 'x1', label: 'Campari' }));
     await page.waitForSelector('[data-ai-clear-context]');
     await page.click('[data-ai-clear-context]');
-    assert.equal(await page.$('.composer__ctx'), null);
+    assert.equal(await page.locator('.composer__ctx').count(), 0);
   } finally { await close(); }
 });
 
@@ -527,7 +527,7 @@ test('accessibility: every control is labelled and streaming is announced', { sk
     assert.deepEqual(unlabelled, []);
     assert.equal(await page.getAttribute('.ai-list', 'aria-label'), 'Conversations');
     assert.equal(await page.$$eval('#ai-view h1', (nodes) => nodes.filter((node) => !node.closest('[hidden]')).length), 1, 'one H1');
-    assert.ok(await page.$('#ai-view [aria-live="polite"]'));
+    assert.ok(await page.locator('#ai-view [aria-live="polite"]').count() > 0);
     assert.equal(await page.getAttribute('label[for="ai-composer-input"]', 'class'), 'sr-only');
     // Keyboard: Enter sends, Shift+Enter adds a line.
     await page.focus('#ai-composer-input');
