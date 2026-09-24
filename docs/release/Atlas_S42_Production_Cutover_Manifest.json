@@ -30,6 +30,6 @@
     "apps/web/assets/js/stock-count-workspace.js": "ee3fc89fc5fd70fc0a211b12434e009d879bed6343bb8b535564239b81c097ec",
     "apps/web/assets/js/import-center.js": "b67ada5d39df4790151d348f32cb90373f89b66ba8ae82f04aba78c2fc16b146",
     "netlify.toml": "d951de030dedcd5696cb824a3fb7f2d72fe3142f18f527c25b9bee8ae8e1e395",
-    "supabase/config.toml": "eb7ec07bfc8969232b95fe3f955dab10e970983511929bfd75070f188ffa5ca5"
+    "supabase/config.toml": "85fbc7ea95df7f8e406e4d804d50e690d3375162b4ece55d7401ef16b3ddafff"
   }
 }

@@ -63,6 +63,14 @@ jobs:
       - name: Run Node contract tests
         run: npm run test:node
 
+      - name: Set up Deno for the Atlas AI runtime suite
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run Atlas AI runtime tests (real Agents SDK, scripted model, no network)
+        run: npm run test:ai
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
