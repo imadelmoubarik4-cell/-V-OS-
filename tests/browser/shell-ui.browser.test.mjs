@@ -423,3 +423,53 @@ test('"/" types into fields instead of opening the palette; Tab stays inside ope
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'atlas-more-btn');
   } finally { await close(); }
 });
+
+test('AtlasShell.menu is idempotent: re-binding on every render never duplicates handlers', { skip }, async () => {
+  const { page, record, close } = await launch();
+  try {
+    const result = await page.evaluate(() => {
+      const host = document.createElement('div');
+      host.innerHTML = '<button type="button" id="t-trigger">Row actions</button><div class="atlas-menu" id="t-menu"><button type="button" class="atlas-menu__item">Edit</button></div>';
+      document.body.append(host);
+      const trigger = document.getElementById('t-trigger');
+      const menu = document.getElementById('t-menu');
+      let selected = 0;
+      let lastOption = '';
+      const handles = [];
+      // A list re-rendered five times binds the same trigger and menu five times.
+      for (let i = 0; i < 5; i += 1) handles.push(window.AtlasShell.menu(trigger, menu, { onSelect: () => { selected += 1; lastOption = `render-${i}`; } }));
+      const sameHandle = handles.every((handle) => handle === handles[0]);
+      trigger.click();
+      const openAfterOneClick = !menu.hidden;
+      menu.querySelector('.atlas-menu__item').click();
+      const afterSelect = { selected, lastOption, closed: menu.hidden };
+      // Re-rendered menu element for the same trigger: the old one is unbound.
+      const fresh = document.createElement('div');
+      fresh.className = 'atlas-menu';
+      fresh.innerHTML = '<button type="button" class="atlas-menu__item">Delete</button>';
+      host.append(fresh);
+      let freshSelected = 0;
+      const second = window.AtlasShell.menu(trigger, fresh, { onSelect: () => { freshSelected += 1; } });
+      menu.hidden = false;
+      menu.querySelector('.atlas-menu__item').click();
+      const staleIgnored = selected === 1;
+      trigger.click();
+      fresh.querySelector('.atlas-menu__item').click();
+      second.dispose();
+      trigger.click();
+      const disposed = fresh.hidden;
+      host.remove();
+      return { sameHandle, openAfterOneClick, afterSelect, staleIgnored, freshSelected, newHandle: second !== handles[0], disposed };
+    });
+    assert.deepEqual(result, {
+      sameHandle: true,
+      openAfterOneClick: true,
+      afterSelect: { selected: 1, lastOption: 'render-4', closed: true },
+      staleIgnored: true,
+      freshSelected: 1,
+      newHandle: true,
+      disposed: true
+    });
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});

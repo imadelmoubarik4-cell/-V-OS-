@@ -48,6 +48,10 @@ body.atlas-rail .atlas-shell { grid-template-columns: 64px minmax(0, 1fr); }
 .atlas-brand__lockup { display: block; flex: none; width: 121px; height: 32px; margin-left: -2px; }
 .atlas-brand__mark { display: none; flex: none; width: 27px; height: 24px; }
 .atlas-brand__venue { max-width: 100%; padding-left: 2px; font: 400 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text-2, #475569); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Atlas AI empty state: the kit mark (the page already says Atlas), 32 px
+   high, above the greeting. Decorative, from the supplied file, never redrawn;
+   here rather than in atlas-ai.css so the AI module stays untouched. */
+.atlas-ai .ai-empty:not(.ai-empty--off)::before { content: ''; display: block; width: 36px; height: 32px; margin-bottom: 8px; background: url("../brand/Atlas_Mark_Midnight.svg") center / contain no-repeat; }
 
 .atlas-nav { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; padding: 0; overflow: visible; }
 .atlas-nav__scroll { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -12px; padding: 4px 12px 8px; scrollbar-width: thin; }
@@ -268,7 +272,7 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
    logo lands and is what shows before, after and instead of the motion. */
 .atlas-auth__brand--intro { position: relative; width: clamp(240px, 70vw, 320px); aspect-ratio: 16 / 9; margin: -8px auto 0; }
 .atlas-auth__brand--intro .atlas-auth__lockup { position: absolute; left: 30%; top: 16.5%; width: 40%; height: auto; opacity: 1; transition: opacity 400ms var(--ease-out, ease-out); }
-.atlas-auth__intro { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; pointer-events: none; filter: brightness(1.085); -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 60%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 60%, transparent 100%); transition: opacity 400ms var(--ease-out, ease-out); }
+.atlas-auth__intro { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; pointer-events: none; filter: brightness(1.07); -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 60%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 60%, transparent 100%); transition: opacity 400ms var(--ease-out, ease-out); }
 .atlas-auth__brand--intro[data-intro-state="playing"] .atlas-auth__intro { opacity: 1; transition-duration: 200ms; }
 .atlas-auth__brand--intro[data-intro-state="playing"] .atlas-auth__lockup { opacity: 0; transition: opacity 0s linear 200ms; }
 .atlas-auth__brand--intro + .atlas-auth__title { margin-top: 8px; }

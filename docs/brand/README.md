@@ -84,7 +84,7 @@ All web copies live in `apps/web/assets/brand/` (byte-identical to the kit).
 | `02_Vector_Logos/Atlas_Primary_Horizontal_Midnight.svg` | Sidebar brand row at ≥ 1280 px and the overlay sidebar (`index.html`, `.atlas-brand__lockup`); `docs/design/atlas-reference.html` |
 | `02_Vector_Logos/Atlas_Primary_Horizontal_White.svg` | Shipped for dark surfaces; no dark surface shows the logo today |
 | `02_Vector_Logos/Atlas_Primary_Stacked_Midnight.svg` | Sign-in (`index.html`), `invitation.html`, `recovery.html` (`.atlas-auth__lockup`); reference sign-in |
-| `02_Vector_Logos/Atlas_Mark_Midnight.svg` | Sidebar rail at 768–1279 px (`.atlas-brand__mark`), phone top bar (`.atlas-topbar__mark`); reference rail |
+| `02_Vector_Logos/Atlas_Mark_Midnight.svg` | Sidebar rail at 768–1279 px (`.atlas-brand__mark`), phone top bar (`.atlas-topbar__mark`), Atlas AI empty state; reference rail and phone top bar |
 | `02_Vector_Logos/Atlas_Mark_White.svg` | Shipped for dark surfaces; not placed yet |
 | `05_Favicons_Web/favicon.ico`, `favicon.svg`, `favicon-16x16.png`, `favicon-32x32.png`, `favicon-48x48.png` | `<link rel="icon">` in `index.html` (all five); `invitation.html` and `recovery.html` (ico, svg, 32 px) |
 | `05_Favicons_Web/apple-touch-icon.png` | `<link rel="apple-touch-icon">` on the same pages |
@@ -131,13 +131,16 @@ including on the sign-in screen before, after and instead of the clip.
   the clip's logo lands. The form is interactive immediately.
 - Presentation: a 16:9 stage (320 px desktop, `clamp(240px, 70vw, 320px)` on
   phones) on the Snow sign-in page; the clip's light-grey studio background is
-  lifted to Snow (`brightness(1.085)`) and its edges dissolve through a radial
+  lifted to Snow (`brightness(1.07)`) and its edges dissolve through a radial
   mask, so no rectangle shows.
 - Not on invitation, recovery or any page of the app shell. The service worker
   has no fetch handler, so the clip is never precached (network only).
 
-## Not yet branded
+## Atlas AI
 
-- The Atlas AI page (`atlas-ai.js` / `atlas-ai.css`) is being rebuilt on another
-  branch. It uses the tokens, so its colours follow automatically; its empty
-  state may use `Atlas_Mark_Midnight.svg` (via `<img>`) when it lands.
+The Atlas AI page (`atlas-ai.js` / `atlas-ai.css`) uses the tokens, so its
+colours follow the brand automatically. Its empty state ("What can I help
+with…") shows `Atlas_Mark_Midnight.svg` (36 × 32 px) above the greeting, set
+from `atlas-shell.css` as a decorative background image of the supplied file so
+the AI module itself did not have to change. If the AI module later renders the
+mark as an `<img>` in its markup, remove that rule.

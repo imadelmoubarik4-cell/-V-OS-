@@ -267,7 +267,10 @@ Atlas AI module stylesheet.
   errors that need a decision.
 - `AtlasShell.menu(trigger, menuEl, { onSelect, align })`: `aria-haspopup` /
   `aria-expanded`, arrows, Home/End, type-ahead, Esc (focus back to the
-  trigger), outside click.
+  trigger), outside click. Idempotent: call it on every render of a list —
+  the same trigger + menu returns the existing handle (new options apply), a
+  re-rendered menu or trigger replaces the older binding, so listeners never
+  pile up. `handle.dispose()` (alias `destroy()`) unbinds.
 
 ## 10. Copy (spec §5.9)
 
