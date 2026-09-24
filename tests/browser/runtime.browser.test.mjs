@@ -55,3 +55,24 @@ test('a destination opened while data loads is not replaced by Home', { skip }, 
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'shifts');
   } finally { await close(); }
 });
+
+test('an idle page does not churn the DOM every frame', { skip }, async () => {
+  const functions = {
+    ...emptyFunctions(),
+    'atlas-team-messages': { snapshot: { channels: [{ key: 'general', name: 'General' }], messages: [], selected_channel_key: 'general', summary: {} }, members: [], staff: {} }
+  };
+  const { page, close } = await launchAtlas({ fixtures: { functions } });
+  try {
+    // Rendering Messages once used to start a self-sustaining observer loop.
+    await openView(page, 'team');
+    await openView(page, 'shifts');
+    await page.waitForTimeout(1000);
+    const mutations = await page.evaluate(() => new Promise((resolve) => {
+      let count = 0;
+      const observer = new MutationObserver((records) => { count += records.length; });
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+      setTimeout(() => { observer.disconnect(); resolve(count); }, 3000);
+    }));
+    assert.ok(mutations < 60, `${mutations} DOM mutations in 3 s while idle`);
+  } finally { await close(); }
+});

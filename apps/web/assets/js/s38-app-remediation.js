@@ -7,6 +7,17 @@
     frame: null
   };
 
+  // This module observes the whole document, so every write it makes must be a
+  // no-op when the value is already correct. An unconditional textContent write
+  // re-triggered the observer each frame (~600 DOM mutations per second, idle).
+  function setAttr(element, name, value) {
+    if (element.getAttribute(name) !== value) element.setAttribute(name, value);
+  }
+
+  function setText(element, value) {
+    if (element.textContent !== value) element.textContent = value;
+  }
+
   function scheduleApply() {
     if (state.frame) return;
     state.frame = window.requestAnimationFrame(() => {
@@ -50,8 +61,8 @@
     });
     const quantity = overlay.querySelector('#inventory-scanner-quantity');
     if (quantity) {
-      quantity.inputMode = 'decimal';
-      quantity.setAttribute('aria-label', 'Observed inventory quantity');
+      if (quantity.inputMode !== 'decimal') quantity.inputMode = 'decimal';
+      setAttr(quantity, 'aria-label', 'Observed inventory quantity');
     }
   }
 
@@ -59,33 +70,33 @@
     const orders = document.getElementById('purchase-orders-tab');
     const deliveries = document.getElementById('purchase-deliveries-tab');
     if (orders) {
-      orders.disabled = false;
-      orders.title = 'Open purchase orders';
-      orders.setAttribute('aria-disabled', 'false');
+      if (orders.disabled) orders.disabled = false;
+      setAttr(orders, 'title', 'Open purchase orders');
+      setAttr(orders, 'aria-disabled', 'false');
     }
     if (deliveries) {
-      deliveries.disabled = false;
-      deliveries.title = 'Open ordered and received deliveries';
-      deliveries.setAttribute('aria-disabled', 'false');
+      if (deliveries.disabled) deliveries.disabled = false;
+      setAttr(deliveries, 'title', 'Open ordered and received deliveries');
+      setAttr(deliveries, 'aria-disabled', 'false');
     }
   }
 
   function polishMessages() {
     const list = document.querySelector('[data-team-message-list]');
     if (list) {
-      list.setAttribute('role', 'log');
-      list.setAttribute('aria-live', 'polite');
-      list.setAttribute('aria-relevant', 'additions text');
+      setAttr(list, 'role', 'log');
+      setAttr(list, 'aria-live', 'polite');
+      setAttr(list, 'aria-relevant', 'additions text');
     }
 
     document.querySelectorAll('.team-channel-panel > footer span').forEach((copy) => {
       if (/notifications will be added/i.test(copy.textContent || '')) {
-        copy.textContent = 'Browser and supported mobile notifications are controlled in Settings.';
+        setText(copy, 'Browser and supported mobile notifications are controlled in Settings.');
       }
     });
 
     document.querySelectorAll('.team-messages-trust span').forEach((copy) => {
-      copy.textContent = (copy.textContent || '').replace('Push notifications off', 'Notification delivery follows Settings');
+      setText(copy, (copy.textContent || '').replace('Push notifications off', 'Notification delivery follows Settings'));
     });
 
     const team = document.getElementById('team-view');
@@ -104,8 +115,8 @@
     document.querySelectorAll(
       '.inventory-scanner-close, [data-checkpoint-context-close], [data-shifts-month-close], [data-team-close-attachment]'
     ).forEach((button) => {
-      button.type = 'button';
-      button.style.touchAction = 'manipulation';
+      if (button.type !== 'button') button.type = 'button';
+      if (button.style.touchAction !== 'manipulation') button.style.touchAction = 'manipulation';
     });
   }
 
@@ -113,8 +124,8 @@
     const timeline = document.getElementById('home-timeline');
     if (!timeline) return;
     const isHome = (document.body.dataset.atlasView || 'dashboard') === 'dashboard';
-    timeline.style.display = isHome ? 'block' : 'none';
-    timeline.setAttribute('aria-hidden', String(!isHome));
+    if (timeline.style.display !== (isHome ? 'block' : 'none')) timeline.style.display = isHome ? 'block' : 'none';
+    setAttr(timeline, 'aria-hidden', String(!isHome));
   }
 
   function applyRemediation() {
