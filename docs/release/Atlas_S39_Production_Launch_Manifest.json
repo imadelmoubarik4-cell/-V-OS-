@@ -104,7 +104,7 @@
   },
   "runtime": {
     "source_manifest": "docs/release/Atlas_S35_Combined_Isolated_Staging_Manifest.json",
-    "source_manifest_sha256": "63d074bf134e9ae467a6f230dd63c667714f7813436e3700311798a048a7f3f3",
+    "source_manifest_sha256": "407fdaa0acc5ec61b24d81224e909cb463f78f6990c89012dc5ed86763a2c2f7",
     "builder": "scripts/build_s39_production_runtime.py",
     "function_package_count": 18,
     "frontend_endpoint_count": 17,
