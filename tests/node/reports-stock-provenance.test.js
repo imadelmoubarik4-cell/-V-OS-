@@ -113,3 +113,62 @@ test('workspace stock KPI and attention use reconciled verified counts', () => {
   assert.equal(reconciled.trust.historical_stock_used_as_live_alert, false);
   assert.match(reconciled.data_sources[0].note, /current manager-verified counts only/i);
 });
+
+test('newer owner-confirmed physical stock replaces an older verified zero in reports', () => {
+  const now = Date.parse('2026-09-24T09:00:00Z');
+  const items = [{
+    id:'angelo',
+    name:'Angelo Pinot Grigio',
+    quantity:10,
+    unit:'bottles',
+    par_level:2,
+    active:true,
+    source_type:'owner_confirmed',
+    source_confidence:100,
+    updated_at:'2026-09-23T22:14:07Z',
+    cost_price:1874,
+    supplier:'Ölgerðin'
+  }];
+  const balances = [{
+    inventory_item_id:'angelo',
+    verified_quantity:0,
+    freshness_state:'current',
+    verified_at:'2026-09-21T19:36:22Z',
+    expires_at:'2026-09-28T19:36:22Z'
+  }];
+  const report = buildStockReport(items, balances, {}, now, []);
+  assert.equal(report.rows[0].quantity,10);
+  assert.equal(report.rows[0].quantity_status,'current');
+  assert.equal(report.rows[0].quantity_source,'owner_confirmed');
+  assert.equal(report.rows[0].status,'ok');
+  assert.equal(report.summary.out_of_stock,0);
+});
+
+test('post-baseline movements are applied to report stock truth', () => {
+  const now = Date.parse('2026-09-24T09:00:00Z');
+  const items = [{
+    id:'a',
+    name:'Test',
+    quantity:10,
+    active:true,
+    source_type:'owner_confirmed_supplier_price',
+    source_confidence:100,
+    updated_at:'2026-09-23T20:00:00Z',
+    cost_price:100,
+    supplier:'Supplier'
+  }];
+  const balances = [{
+    inventory_item_id:'a',
+    verified_quantity:7,
+    freshness_state:'current',
+    verified_at:'2026-09-22T10:00:00Z',
+    expires_at:'2026-09-29T10:00:00Z'
+  }];
+  const movements = [
+    {item_id:'a',movement_type:'sale',quantity_change:-2,created_at:'2026-09-23T21:00:00Z'},
+    {item_id:'a',movement_type:'restock',quantity_change:1,created_at:'2026-09-24T08:00:00Z'}
+  ];
+  const report = buildStockReport(items, balances, {}, now, movements);
+  assert.equal(report.rows[0].quantity,9);
+  assert.equal(report.rows[0].movement_delta,-1);
+});

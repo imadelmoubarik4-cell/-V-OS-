@@ -26,13 +26,75 @@ function isCurrentBalance(balance, nowMillis) {
   const state = lower(balance.freshness_state || balance.verification_status);
   if (state !== "current") return false;
   const expiresAt = dateMillis(balance.expires_at);
+  if (balance.expires_at && expiresAt === null) return false;
   return expiresAt === null || expiresAt > nowMillis;
 }
 
+
+const OWNER_CONFIRMED_TYPES = new Set(["owner_confirmed", "owner_confirmed_supplier_price"]);
+const DEFAULT_FRESHNESS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function ownerConfirmedBaseline(item, balance, nowMillis) {
+  const sourceType = lower(item?.source_type);
+  if (!OWNER_CONFIRMED_TYPES.has(sourceType) || numberOrNull(item?.source_confidence) !== 100) return null;
+
+  const quantity = numberOrNull(item?.quantity);
+  const updatedAt = dateMillis(item?.updated_at);
+  if (quantity === null || updatedAt === null) return null;
+
+  const balanceAt = dateMillis(balance?.verified_at);
+  if (balanceAt !== null && updatedAt <= balanceAt) return null;
+
+  const balanceExpires = dateMillis(balance?.expires_at);
+  const freshnessWindow = balanceAt !== null && balanceExpires !== null && balanceExpires > balanceAt
+    ? balanceExpires - balanceAt
+    : DEFAULT_FRESHNESS_MS;
+  const expiresAt = updatedAt + freshnessWindow;
+  if (expiresAt <= nowMillis) return null;
+
+  return { quantity, at: updatedAt, expiresAt, source: "owner_confirmed" };
+}
+
+function managerVerifiedBaseline(balance, nowMillis) {
+  if (!isCurrentBalance(balance, nowMillis)) return null;
+  const quantity = numberOrNull(balance?.verified_quantity);
+  if (quantity === null) return null;
+  return {
+    quantity,
+    at: dateMillis(balance?.verified_at) ?? 0,
+    expiresAt: dateMillis(balance?.expires_at),
+    source: "manager_verified_count",
+  };
+}
+
+function movementDelta(movements, itemId, afterMillis, nowMillis) {
+  return (Array.isArray(movements) ? movements : []).reduce((sum, movement) => {
+    if (text(movement?.item_id) !== text(itemId)) return sum;
+    if (lower(movement?.movement_type) === "count") return sum;
+    const createdAt = dateMillis(movement?.created_at);
+    const delta = numberOrNull(movement?.quantity_change);
+    if (createdAt === null || delta === null || createdAt <= afterMillis || createdAt > nowMillis) return sum;
+    return sum + delta;
+  }, 0);
+}
+
+function currentQuantityEvidence(item, balance, movements, nowMillis) {
+  const manager = managerVerifiedBaseline(balance, nowMillis);
+  const owner = ownerConfirmedBaseline(item, balance, nowMillis);
+  const baseline = owner && (!manager || owner.at > manager.at) ? owner : manager;
+  if (!baseline) return null;
+
+  const delta = movementDelta(movements, item?.id, baseline.at, nowMillis);
+  return {
+    quantity: Math.max(0, baseline.quantity + delta),
+    source: baseline.source,
+    verifiedAt: new Date(baseline.at).toISOString(),
+    movementDelta: delta,
+  };
+}
+
 export function quantityTrustState(item, balance, nowMillis = Date.now()) {
-  if (isCurrentBalance(balance, nowMillis) && numberOrNull(balance.verified_quantity) !== null) {
-    return "current";
-  }
+  if (currentQuantityEvidence(item, balance, [], nowMillis)) return "current";
   if (balance && typeof balance === "object") return "stale";
   const sourceDate = text(item?.source_updated_at);
   if (sourceDate && sourceDate <= HISTORICAL_OPENING_CUTOFF) return "historical";
@@ -65,7 +127,7 @@ function matchesFilters(row, filters) {
   return true;
 }
 
-export function buildStockReport(inventory, balances, filters = {}, nowMillis = Date.now()) {
+export function buildStockReport(inventory, balances, filters = {}, nowMillis = Date.now(), movements = []) {
   const balanceByItem = new Map(
     (Array.isArray(balances) ? balances : [])
       .filter((balance) => balance && typeof balance === "object")
@@ -76,10 +138,11 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
     .filter((item) => item && typeof item === "object" && item.active !== false)
     .map((item) => {
       const balance = balanceByItem.get(text(item.id));
-      const quantityStatus = quantityTrustState(item, balance, nowMillis);
-      const verifiedQuantity = quantityStatus === "current"
-        ? numberOrNull(balance?.verified_quantity)
-        : null;
+      const evidence = currentQuantityEvidence(item, balance, movements, nowMillis);
+      const quantityStatus = evidence
+        ? "current"
+        : quantityTrustState(item, balance, nowMillis);
+      const verifiedQuantity = evidence?.quantity ?? null;
       const rawQuantity = numberOrNull(item.quantity);
       const cost = numberOrNull(item.cost_price);
       const status = inventoryStatus(item, quantityStatus, verifiedQuantity);
@@ -104,8 +167,10 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
         bin_location: item.bin_location,
         needs_review: item.needs_review === true,
         source_updated_at: item.source_updated_at ?? null,
-        verified_at: quantityStatus === "current" ? balance?.verified_at ?? null : null,
-        updated_at: quantityStatus === "current" ? balance?.verified_at ?? item.updated_at : item.updated_at,
+        verified_at: quantityStatus === "current" ? (evidence?.verifiedAt ?? balance?.verified_at ?? null) : null,
+        quantity_source: evidence?.source ?? null,
+        movement_delta: evidence?.movementDelta ?? 0,
+        updated_at: quantityStatus === "current" ? (evidence?.verifiedAt ?? balance?.verified_at ?? item.updated_at) : item.updated_at,
       };
     });
 
@@ -152,7 +217,7 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
 
   return {
     summary,
-    formula: "Live stock alerts and valuation use only current manager-verified counts. Historical, stale and unverified quantities remain data-quality evidence and never become out-of-stock or below-par alerts.",
+    formula: "Live stock uses the newest authoritative physical count: a current manager-verified count or a newer 100% owner-confirmed physical count, plus audited movements after that baseline. Historical, stale and unverified quantities never become live alerts.",
     rows,
     categories: [...categoryMap.values()].sort((a, b) => b.estimated_value - a.estimated_value || a.category.localeCompare(b.category)),
     evidence_rows: allRows,
@@ -213,7 +278,7 @@ export function reconcileRecipeStockEvidence(recipeReport, ingredients, stockRep
       incomplete_setup: rows.filter((row) => row.availability_state === "incomplete_setup").length,
       stock_evidence_unverified: rows.filter((row) => row.stock_evidence_status === "unverified").length,
     },
-    formula: "Recipe availability uses only current manager-verified stock counts. A recipe linked to historical, stale or unverified quantity evidence is marked incomplete rather than unavailable.",
+    formula: "Recipe availability uses the same current stock truth as Inventory: the newest authoritative physical baseline plus audited movements. Historical, stale or unverified evidence is marked incomplete rather than unavailable.",
     rows,
   };
 }

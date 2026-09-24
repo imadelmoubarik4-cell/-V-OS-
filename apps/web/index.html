@@ -1301,7 +1301,7 @@
       }
     } catch (error) { console.warn('Stock remains unknown until verified balances can be read.'); }
     const liveQuantityById = new Map((data || []).map((row) => [row.id, row.quantity]));
-    items = window.AtlasStockTruth.project(data || [], balances).map((item) => {
+    items = window.AtlasStockTruth.project(data || [], balances, inventoryMovements).map((item) => {
       const liveQuantity = Number(liveQuantityById.get(item.id));
       return {
         ...item,
@@ -1390,7 +1390,10 @@
     // Keep the last loaded, role-filtered in-memory snapshot during an outage.
     // No offline login, persistent commercial cache, or automatic write replay.
     if (!navigator.onLine) return;
-    await Promise.all([loadItems(), loadRestockLog(), loadRecipes(), loadSuppliersData()]);
+    // Movement history must load before inventory projection so current verified
+    // balances can be adjusted by audited restocks, waste, sales and transfers.
+    await loadRestockLog();
+    await Promise.all([loadItems(), loadRecipes(), loadSuppliersData()]);
     renderDashboard();
     renderRecipes();
     renderSuppliers();
@@ -1619,7 +1622,8 @@
     else {
       form.reset();
       status.textContent = 'Waste recorded and live stock updated.';
-      await Promise.all([loadItems(), loadRestockLog()]);
+      await loadRestockLog();
+      await loadItems();
     }
     submit.disabled = false;
   });
@@ -1800,7 +1804,7 @@
     document.getElementById('item-id').value = item ? item.id : '';
     document.getElementById('item-name').value = item ? item.name : '';
     document.getElementById('item-category').value = item ? item.category : '';
-    document.getElementById('item-quantity').value = item ? item.quantity : 0;
+    document.getElementById('item-quantity').value = item ? (Number.isFinite(Number(item.live_quantity)) ? item.live_quantity : (item.quantity ?? 0)) : 0;
     document.getElementById('item-unit').value = item ? item.unit : 'bottles';
     document.getElementById('item-par').value = item && item.par_level != null ? item.par_level : '';
     document.getElementById('item-supplier').value = item && item.supplier ? item.supplier : '';
@@ -1825,7 +1829,6 @@
     const payload = {
       name: document.getElementById('item-name').value.trim(),
       category: document.getElementById('item-category').value,
-      quantity: parseFloat(document.getElementById('item-quantity').value),
       unit: document.getElementById('item-unit').value.trim(),
       par_level: document.getElementById('item-par').value === '' ? null : parseFloat(document.getElementById('item-par').value),
       supplier: document.getElementById('item-supplier').value.trim() || null,
