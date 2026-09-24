@@ -10,6 +10,7 @@
     "test": "node --test tests/node/*.test.js packages/*/tests/*.test.js",
     "test:node": "node --test tests/node/*.test.js packages/*/tests/*.test.js",
     "test:python": "python -m unittest discover -s tests/python -v",
+    "test:ai": "deno test --allow-read --allow-env --no-check --no-lock --node-modules-dir=none tests/node/atlas-ai-runtime-*.test.js",
     "verify": "npm run test:node && npm run test:python",
     "test:browser": "node --test --test-concurrency=4 tests/browser/*.browser.test.mjs"
   },

@@ -59,7 +59,8 @@ select 'every atlas_ai_* RPC and atlas_knowledge_search is service-role only, in
     and has_function_privilege('service_role', p.oid, 'execute')
     and not p.prosecdef
     and coalesce(p.proconfig @> array['search_path=""'], false))
-  and count(*) = 31,
+  -- 31 data-layer RPCs + atlas_ai_signals_upsert (20260926105000_s88_ai_signals.sql)
+  and count(*) = 32,
   count(*)::text || ' functions'
 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public' and (p.proname like 'atlas\_ai\_%' or p.proname = 'atlas_knowledge_search');
