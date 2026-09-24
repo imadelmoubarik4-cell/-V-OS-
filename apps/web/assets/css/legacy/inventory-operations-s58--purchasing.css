@@ -1,0 +1,20 @@
+/* S88 legacy fragment: the purchasing rules of inventory-operations-s58.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where inventory-operations-s58.css was).
+ * Owner: WP-INV. Phase 2 merges these rules into purchasing.css (from purchasing-polish)
+ * using their effective values, then empties this file. */
+/* S58: compact Purchasing layout and operational Inventory movement workspaces. */
+@layer atlas.legacy {
+#purchase-suppliers-panel{display:grid;gap:12px;min-width:0}
+#purchase-suppliers-panel>.purchasing-intelligence,
+#purchase-suppliers-panel>.toolbar,
+#purchase-suppliers-panel>table,
+#purchase-suppliers-panel>.atlas-table-scroll>table{margin:0!important}
+#purchase-suppliers-panel>.toolbar{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--atlas-line);border-radius:14px;background:var(--atlas-surface)}
+#purchase-suppliers-panel>.toolbar .purchasing-search{position:relative;display:block;width:min(420px,100%)}
+#purchase-suppliers-panel>.toolbar .purchasing-search>svg{position:absolute;z-index:1;left:12px;top:50%;width:16px;height:16px;transform:translateY(-50%);pointer-events:none}
+#purchase-suppliers-panel>.toolbar #supplier-search{width:100%;min-height:40px;margin:0;padding:0 13px 0 36px;border:1px solid var(--atlas-line);border-radius:11px;background:var(--atlas-bg)}
+#purchase-suppliers-panel>table{width:100%;border:1px solid var(--atlas-line);border-radius:16px;border-collapse:separate;border-spacing:0;overflow:hidden;background:var(--atlas-surface)}
+#add-supplier-btn[hidden]{display:none!important}
+@media(max-width:640px){#purchase-suppliers-panel>.toolbar .purchasing-search{width:100%}
+}
+}

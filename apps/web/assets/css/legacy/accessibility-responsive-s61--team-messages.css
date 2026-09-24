@@ -1,0 +1,13 @@
+/* S88 legacy fragment: the team-messages rules of accessibility-responsive-s61.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where accessibility-responsive-s61.css was).
+ * Owner: WP-PEOPLE. Phase 2 merges these rules into team-messages.css
+ * using their effective values, then empties this file. */
+/* S61: accessible responsive action ownership. */
+@layer atlas.legacy {
+@media (max-width: 760px) {
+
+  body.atlas-commercial-manager:not(.s38-team-active):not(.s38-month-active) .atlas-content.standard-view main {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+}
+}

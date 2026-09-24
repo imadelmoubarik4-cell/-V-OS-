@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const config = readFileSync('apps/web/config.js', 'utf8');
 const index = readFileSync('apps/web/index.html', 'utf8');
@@ -15,15 +16,19 @@ test('Month bridge loads after the monthly workspace', () => {
 });
 
 test('production loads weekly, Month, and bridge assets in deterministic dependency order', () => {
-  const weeklyCss = index.indexOf('assets/css/shifts-workspace.css');
-  const monthCss = index.indexOf('assets/css/shifts-month-calendar.css');
-  const editorCss = index.indexOf('assets/css/shifts-month-editor.css');
-  const remediationCss = index.indexOf('assets/css/s38-app-remediation.css');
+  const weeklyCss = linkPosition('shifts-workspace.css');
+  const monthCss = linkPosition('shifts-month-calendar.css');
+  const editorCss = linkPosition('shifts-month-editor.css');
+  const remediationCss = linkPosition('s38-app-remediation');
   const weeklyJs = index.indexOf('assets/js/shifts-workspace.js');
   const monthJs = index.indexOf('assets/js/shifts-month-calendar.js');
   const bridgeJs = index.indexOf('assets/js/shifts-month-tab-bridge.js');
 
   assert.ok(weeklyCss >= 0 && weeklyCss < monthCss && monthCss < editorCss && editorCss < remediationCss);
+  // S88: all four share @layer atlas.legacy, so this link order is what decides the cascade.
+  for (const sheet of ['shifts-workspace.css', 'shifts-month-calendar.css', 'shifts-month-editor.css', 'legacy/s38-app-remediation--shifts-month.css']) {
+    assert.equal(layerOf(sheet), 'atlas.legacy', sheet);
+  }
   assert.ok(weeklyJs >= 0 && weeklyJs < monthJs && monthJs < bridgeJs);
 });
 

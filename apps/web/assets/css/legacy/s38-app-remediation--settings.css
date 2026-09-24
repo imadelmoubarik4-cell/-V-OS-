@@ -1,0 +1,70 @@
+/* S88 legacy fragment: the settings rules of s38-app-remediation.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where s38-app-remediation.css was).
+ * Owner: WP-ADMIN. Phase 2 merges these rules into settings-workspace.css
+ * using their effective values, then empties this file. */
+/*
+ * Atlas S38 — PDF app-remediation layer.
+ * Scope: presentation, interaction affordances and responsive layout only.
+ * Loaded last so every workspace shares one calm blue/white visual language.
+ */
+@layer atlas.legacy {
+/* Settings */
+.settings-view {
+  --settings-ink: var(--s38-ink);
+  --settings-muted: var(--s38-muted);
+  --settings-line: var(--s38-line);
+  --settings-soft: var(--s38-bg);
+  --settings-panel: #fff;
+  --settings-brass: var(--s38-blue);
+  --settings-brass-soft: var(--s38-blue-soft);
+  --settings-shadow: var(--s38-shadow);
+}
+.settings-shell { gap: 18px; padding: 26px 30px 44px; }
+.settings-hero {
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 20px;
+  padding: 28px;
+  border-color: var(--s38-blue-line);
+  border-radius: 24px;
+  background: linear-gradient(135deg, #fff, #f4f8ff);
+}
+.settings-hero::after { background: rgba(79, 125, 243, .1); }
+.settings-kicker { color: var(--s38-blue); }
+.settings-hero h1 { font-family: 'IBM Plex Sans', sans-serif; font-weight: 650; letter-spacing: -.045em; }
+.settings-tabs { top: 72px; border-color: var(--s38-line); background: rgba(255,255,255,.94); backdrop-filter: blur(16px); }
+.settings-tabs button.is-active,
+.settings-primary,
+.settings-hero aside button {
+  border-color: var(--s38-blue);
+  background: var(--s38-blue);
+  color: #fff;
+}
+.settings-primary:hover,
+.settings-hero aside button:hover {
+  background: var(--s38-blue-strong);
+}
+.settings-secondary { border-color: var(--s38-line); background: #fff; }
+.settings-quick-grid button:hover { border-color: var(--s38-blue-line); background: var(--s38-blue-soft); }
+@media (max-width: 1000px) {
+  .brain-hero,
+  .brain-layout,
+  .settings-hero { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .settings-shell { padding: 18px 14px 34px; }
+}
+
+
+/* Settings: compact cards and one notification control */
+.settings-notification-grid { display:none !important; }
+.settings-notification-coverage > div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:0 18px 18px; }
+.settings-notification-coverage > div > span { display:flex; align-items:center; gap:8px; min-height:42px; padding:9px 11px; border:1px solid var(--s38-line); border-radius:12px; background:var(--s38-bg); color:var(--s38-ink); font-size:10px; }
+@media (max-width: 760px) {
+  .settings-notification-coverage > div { grid-template-columns:1fr; }
+}
+
+@media (max-width: 480px) {
+  .shift-month-navigation > div > span { display:none; }
+}
+}

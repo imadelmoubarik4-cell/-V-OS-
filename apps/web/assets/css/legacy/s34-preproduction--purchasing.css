@@ -1,0 +1,19 @@
+/* S88 legacy fragment: the purchasing rules of s34-preproduction.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where s34-preproduction.css was).
+ * Owner: WP-INV. Phase 2 merges these rules into purchasing.css (from purchasing-polish)
+ * using their effective values, then empties this file. */
+@layer atlas.legacy {
+#purchase-order-panel{display:grid;gap:14px;max-width:none!important}
+#purchase-order-panel[hidden]{display:none}
+#purchase-order-panel>h2,#purchase-order-panel>p{margin:0}
+#purchase-order-form,.purchase-order-card{padding:18px;border:1px solid var(--atlas-line);border-radius:var(--atlas-card-radius);background:#fff}
+#purchase-order-form{display:grid;gap:12px}
+#purchase-order-form h3,#purchase-order-form label{margin:0}
+#purchase-order-form label{display:grid;gap:5px;color:var(--atlas-muted);font-size:11px}
+#purchase-order-form input,#purchase-order-form select,#purchase-order-form textarea{width:100%;margin:0}
+#purchase-order-form button,#purchase-order-panel>[data-refresh-orders],.purchase-order-card button{min-height:36px;padding:8px 12px;border:1px solid var(--atlas-line);border-radius:10px;background:#fff;color:var(--atlas-text);font-weight:600;cursor:pointer}
+#purchase-order-form button[type="submit"],.purchase-order-card [data-command="place"],.purchase-order-card [data-command="receive"]{border-color:var(--atlas-action);background:var(--atlas-action);color:#fff}
+.purchase-order-card{margin-top:10px}
+.purchase-order-card h3,.purchase-order-card p{margin:0 0 8px}
+.purchase-order-card [data-command="cancel"]{color:#a34f4f;border-color:#debcbc}
+}

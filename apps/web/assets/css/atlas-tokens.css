@@ -1,14 +1,36 @@
 /* Atlas design tokens — the single source of truth.
  *
- * Documented in docs/design/Atlas_Design_System.md. Loaded after every static
- * stylesheet so these definitions win. Values equal the ones that already won
- * the cascade before S87, so this file removes ambiguity without restyling;
- * the one deliberate change is that every "primary blue" alias now resolves
- * to the Atlas blue (#2f80ed) instead of three different blues.
+ * Documented in docs/design/Atlas_Design_System.md. Values equal the ones that
+ * already won the cascade before S87, so this file removes ambiguity without
+ * restyling; the one deliberate change is that every "primary blue" alias now
+ * resolves to the Atlas blue (#2f80ed) instead of three different blues.
  *
  * New CSS must use these tokens. Do not add new :root colour, radius or
- * spacing definitions in module stylesheets.
+ * spacing definitions in module stylesheets; css-hygiene-s88.test.js fails if
+ * any other stylesheet defines one of these names on :root.
+ *
+ * Linked FIRST in index.html because it also declares the cascade-layer order
+ * for every Atlas stylesheet (S88). Between layers, the later layer wins for
+ * normal declarations whatever the specificity or load order; for !important
+ * the order reverses (the earlier layer wins).
+ *
+ *   atlas.tokens      custom properties only (this file)
+ *   atlas.base        reset, typography, shell chrome (atlas-base.css, to come).
+ *                     Below legacy so a new element-level rule cannot restyle a
+ *                     page that has not been rebuilt yet; land a base rule
+ *                     together with deleting the legacy rule it replaces.
+ *   atlas.legacy      every pre-S88 stylesheet in its original order, plus the
+ *                     legacy/<source>--<module>.css fragments of the retired
+ *                     override files. Emptied module by module.
+ *   atlas.components  opt-in component classes (atlas-components.css, to come);
+ *                     they win over legacy rules on the same element.
+ *   atlas.modules     one consolidated stylesheet per module. Moving a module
+ *                     here from atlas.legacy removes its !important in the same
+ *                     commit (an !important left in atlas.legacy still wins).
  */
+@layer atlas.tokens, atlas.base, atlas.legacy, atlas.components, atlas.modules;
+
+@layer atlas.tokens {
 :root {
   /* Colour — surfaces */
   --atlas-bg: #ffffff;
@@ -121,12 +143,4 @@
   --blue-600: var(--atlas-accent);
   --blue-700: var(--atlas-accent-strong);
 }
-
-/* Focus is always visible for keyboard users. */
-:where(button, a[href], input, select, textarea, [role="button"], [tabindex="0"]):focus-visible {
-  outline: 2px solid var(--atlas-accent);
-  outline-offset: 2px;
 }
-
-/* Wide data tables scroll inside their card; the page never scrolls sideways. */
-.atlas-table-scroll { min-width: 0; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }

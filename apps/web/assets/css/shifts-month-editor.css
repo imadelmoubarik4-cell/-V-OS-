@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 .shift-month-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .shift-month-add,.shift-month-publish{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:8px 11px;border:1px solid var(--atlas-line);border-radius:10px;color:#fff;font:600 9px 'IBM Plex Sans',sans-serif;cursor:pointer}
 .shift-month-add{border-color:#a6814d;background:#a6814d}
@@ -368,4 +373,5 @@ button.shift-month-more{padding:5px 2px;color:var(--month-blue-strong);font-size
   .shift-month-navigation>button,.shift-month-refresh,.shift-month-view-select select,
   .shift-month-add,.shift-month-publish,.shift-month-open-week,.shift-month-cell,
   .shift-month-add-day,button.shift-month-chip{transition:none}
+}
 }

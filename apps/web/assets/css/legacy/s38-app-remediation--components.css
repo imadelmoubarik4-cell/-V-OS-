@@ -1,0 +1,58 @@
+/* S88 legacy fragment: the components rules of s38-app-remediation.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where s38-app-remediation.css was).
+ * Owner: WP-BASE. Phase 2 merges these rules into atlas-components.css (new)
+ * using their effective values, then empties this file. */
+/*
+ * Atlas S38 — PDF app-remediation layer.
+ * Scope: presentation, interaction affordances and responsive layout only.
+ * Loaded last so every workspace shares one calm blue/white visual language.
+ */
+@layer atlas.legacy {
+#home-focus.s38-attention-pulse,
+.checkpoint-a-home-prompt.s38-attention-pulse {
+  animation: s38-attention-pulse 3.2s ease-in-out 2;
+}
+
+@keyframes s38-attention-pulse {
+  0%, 100% { opacity:1; box-shadow:0 0 0 0 rgba(199,123,61,0),var(--s38-shadow); }
+  50% { opacity:.94; box-shadow:0 0 0 5px rgba(199,123,61,.10),var(--s38-shadow-raised); }
+}
+
+/* Purchasing */
+.purchasing-workspace-tabs { border-color: var(--s38-line); background: #f0f4fa; }
+.purchasing-workspace-tabs button { cursor: pointer; }
+.purchasing-workspace-tabs button.active {
+  background: var(--s38-blue);
+  color: #fff;
+  box-shadow: 0 5px 14px -10px rgba(53, 103, 232, .9);
+}
+.purchasing-workspace-tabs button:disabled { opacity: .42; cursor: not-allowed; }
+@media (max-width: 480px) {
+  .brain-metric-grid,
+  .shift-month-summary { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #home-focus.s38-attention-pulse,
+  .checkpoint-a-home-prompt.s38-attention-pulse { animation: none; }
+}
+
+#login-screen .login-card :is(input[type=email],input[type=password]) { min-height:48px; margin-bottom:18px; border:1px solid var(--s38-line); border-radius:13px; background:#f8faff; color:var(--s38-ink); }
+#login-screen .login-card :is(input[type=email],input[type=password]):focus { border-color:var(--s38-blue); box-shadow:0 0 0 4px rgba(79,125,243,.12); }
+#login-screen #login-btn { min-height:48px; border-radius:13px; background:var(--s38-blue); color:#fff; }
+#login-screen #login-btn:hover { background:var(--s38-blue-strong); }
+#login-screen .login-card > p:last-child { margin:18px 0 0; text-align:center; font-size:12px; }
+#home-focus .focus-row,
+#home-focus [data-atlas-brain-focus],
+#home-focus [data-atlas-business-focus]{
+  border-color:rgba(47,128,237,.20);
+  background:rgba(255,255,255,.78);
+  color:#405a75;
+}
+#home-focus .focus-row:hover,
+#home-focus [data-atlas-brain-focus]:hover,
+#home-focus [data-atlas-business-focus]:hover{background:#e7f1ff}
+@media (max-width: 760px) {
+  .recipe-foundation-card > summary small,.brain-intelligence-grid > .brain-card > summary small,.knowledge-editor-properties > summary small { display:none; }
+}
+}

@@ -1,0 +1,12 @@
+/* S88 legacy fragment: the operations rules of s34-preproduction.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where s34-preproduction.css was).
+ * Owner: WP-OPS-HOME. Phase 2 merges these rules into operations.css
+ * using their effective values, then empties this file. */
+@layer atlas.legacy {
+/* Shared cards and state surfaces. */
+:where(.metric-card,.recipe-gallery-card,.purchase-order-card,.knowledge-article-card,.settings-card,
+  .shift-card,.team-message,.checkpoint-a-panel){
+  border-radius:var(--atlas-card-radius);
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+}

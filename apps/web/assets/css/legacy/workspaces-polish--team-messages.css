@@ -1,0 +1,46 @@
+/* S88 legacy fragment: the team-messages rules of workspaces-polish.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where workspaces-polish.css was).
+ * Owner: WP-PEOPLE. Phase 2 merges these rules into team-messages.css
+ * using their effective values, then empties this file. */
+/* Atlas — remaining workspace passes.
+ *
+ * Marketing, Messages, Team, Shifts, Knowledge, Atlas Brain, Business
+ * Intelligence, Reports, Settings — plus the five placeholder views.
+ *
+ * Loads AFTER atlas-glass.css. Presentation only: no markup, renderer, data,
+ * auth or routing change. Every selector below is a class lifted from the
+ * module's own stylesheet in the repo, so a class a module doesn't render is
+ * inert rather than harmful.
+ *
+ * `!important` is load-order insurance: config.js injects these module
+ * stylesheets after window load, so they land later in <head> than this static
+ * link and would otherwise win every equal-specificity contest.
+ */
+@layer atlas.legacy {
+/* ---------- Messages ---------- */
+
+.team-messages-hero p,
+.team-messages-empty { color: var(--atlas-muted) !important; }
+
+/* Own messages read as the accent side of the conversation. */
+.team-message.is-own .team-message-content {
+  background: var(--blue-100) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+}
+
+/* System messages stay visually distinct — they are provenance, not chat. */
+.team-message.is-system .team-message-avatar {
+  background: var(--blue-700) !important;
+  color: #fff !important;
+}
+
+.team-message.is-system .team-message-content {
+  background: rgba(244, 249, 255, .8) !important;
+  border-style: dashed;
+}
+
+.team-message-link:hover {
+  background: var(--blue-50) !important;
+  border-color: var(--atlas-home-accent-line) !important;
+}
+}

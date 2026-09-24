@@ -1,0 +1,91 @@
+/* S88 legacy fragment: the team-messages rules of s38-app-remediation.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where s38-app-remediation.css was).
+ * Owner: WP-PEOPLE. Phase 2 merges these rules into team-messages.css
+ * using their effective values, then empties this file. */
+/*
+ * Atlas S38 — PDF app-remediation layer.
+ * Scope: presentation, interaction affordances and responsive layout only.
+ * Loaded last so every workspace shares one calm blue/white visual language.
+ */
+@layer atlas.legacy {
+/* Team messages */
+.team-messages-layout {
+  height: clamp(560px, calc(100dvh - 245px), 780px);
+  min-height: 0;
+  border-color: var(--s38-line);
+  border-radius: 22px;
+  background: #fff;
+}
+.team-channel-panel { min-height: 0; border-color: var(--s38-line); background: #f4f7fb; }
+.team-channel-list { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.team-channel.is-active { border-color: var(--s38-blue-line); background: #fff; }
+.team-channel-icon,
+.team-conversation-icon { background: var(--s38-blue-soft) !important; color: var(--s38-blue) !important; }
+.team-conversation-panel { min-height: 0; overflow: hidden; }
+.team-message-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scroll-behavior: smooth;
+}
+.team-composer-wrap { flex: 0 0 auto; background: #fff; }
+.team-send-button {
+  border-color: var(--s38-blue) !important;
+  background: var(--s38-blue) !important;
+  color: #fff !important;
+}
+.team-conversation-actions [data-team-star][aria-pressed='true'] {
+  border-color: #f0c66c;
+  background: #fff8df;
+  color: #9a6b00;
+}
+.team-channel-panel > footer { background: #eef4ff; color: var(--s38-blue-strong); }
+@media (max-width: 1000px) {
+  .team-messages-layout { height: auto; min-height: 660px; }
+}
+
+@media (max-width: 720px) {
+  .team-messages-layout { min-height: 720px; }
+}
+
+@media (max-width: 480px) {
+  .team-messages-layout { min-height: 760px; }
+}
+
+
+/* Team conversations: fixed header and composer, only history scrolls */
+.team-messages-layout { height:clamp(520px,calc(100dvh - 245px),760px) !important; min-height:520px !important; overflow:hidden !important; }
+.team-channel-panel,.team-conversation-panel { height:100%; min-height:0 !important; }
+.team-conversation-panel { display:flex !important; overflow:hidden !important; }
+.team-conversation-head,.team-composer-wrap { flex:0 0 auto; position:relative; z-index:2; background:#fff; }
+.team-message-list { flex:1 1 auto !important; min-height:0 !important; max-height:none !important; overflow-y:scroll !important; scrollbar-gutter:stable; scrollbar-color:#96b2f5 #edf3ff; }
+.team-message-list::-webkit-scrollbar { width:11px; }
+.team-message-list::-webkit-scrollbar-track { background:#edf3ff; }
+.team-message-list::-webkit-scrollbar-thumb { border:3px solid #edf3ff; border-radius:999px; background:#96b2f5; }
+.team-channel-filters { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin:0 10px 9px; padding:4px; border:1px solid var(--s38-line); border-radius:12px; background:#eaf0f9; }
+.team-channel-filters button { display:flex; align-items:center; justify-content:center; gap:5px; min-height:32px; border:0; border-radius:9px; background:transparent; color:var(--s38-muted); font-size:10px; font-weight:650; cursor:pointer; }
+.team-channel-filters button.is-active { background:#fff; color:var(--s38-blue-strong); box-shadow:0 2px 8px rgba(31,57,93,.08); }
+.team-channel-filters svg { width:13px; height:13px; }
+.team-channel-filter-empty { display:grid; place-items:center; gap:8px; padding:28px 14px; color:var(--s38-muted); text-align:center; font-size:10px; }
+.team-channel-filter-empty svg { width:20px; color:var(--s38-blue); }
+.team-conversation-actions [data-team-star][aria-pressed='true'] { border-color:var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
+.team-conversation-actions [data-team-star][aria-pressed='true'] svg,.team-channel-status .is-pinned { fill:currentColor; color:var(--s38-blue); }
+body.s38-team-active .fab-wrap { display:none !important; }
+body.s38-month-active .fab-wrap { display:none !important; }
+.shift-month-navigation > button { border-color:var(--s38-line); background:#fff; color:var(--s38-ink); }
+.shift-month-navigation > button:first-child { width:auto; padding-inline:13px; border-color:var(--s38-blue-line); background:var(--s38-blue-soft); color:var(--s38-blue-strong); }
+.settings-notification-coverage svg { width:16px; color:var(--s38-blue); }
+@media (max-width: 1000px) {
+  .team-messages-layout { height:clamp(520px,calc(100dvh - 220px),720px) !important; min-height:520px !important; }
+}
+
+@media (max-width: 760px) {
+  .team-messages-layout { display:block !important; height:auto !important; min-height:0 !important; overflow:visible !important; }
+  .team-channel-panel { height:auto; margin-bottom:10px; }
+  .team-channel-filters { grid-template-columns:auto auto; justify-content:start; }
+  .team-channel-filters button { min-width:82px; }
+  .team-conversation-panel { height:clamp(500px,72dvh,680px) !important; }
+  .team-composer-wrap { position:relative !important; bottom:auto !important; }
+}
+}

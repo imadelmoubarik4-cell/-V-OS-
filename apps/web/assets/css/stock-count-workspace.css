@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 .stock-count-workspace{display:grid;gap:18px;color:var(--atlas-text,#242522)}
 .stock-count-workspace[hidden]{display:none!important}
 .stock-count-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;padding:24px;border:1px solid var(--atlas-line,#dedcd4);border-radius:20px;background:linear-gradient(145deg,#fff,#f7f3ec)}
@@ -34,3 +39,4 @@
 body.stock-count-active #inventory-view > .toolbar,
 body.stock-count-active #inventory-view > #table-wrap,
 body.stock-count-active #inventory-view > #empty-state{display:none!important}
+}

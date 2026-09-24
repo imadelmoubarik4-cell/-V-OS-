@@ -1,0 +1,217 @@
+/* S88 legacy fragment: the inventory-scanner rules of s38-app-remediation.css, moved verbatim and kept in
+ * their original cascade position (linked consecutively where s38-app-remediation.css was).
+ * Owner: WP-INV. Phase 2 merges these rules into inventory-scanner.css
+ * using their effective values, then empties this file. */
+/*
+ * Atlas S38 — PDF app-remediation layer.
+ * Scope: presentation, interaction affordances and responsive layout only.
+ * Loaded last so every workspace shares one calm blue/white visual language.
+ */
+@layer atlas.legacy {
+/* Shared floating-card behaviour */
+:is(
+  .atlas-card,
+  .metric-card,
+  .stat-card,
+  .panel,
+  .operations-card,
+  .operations-summary-card,
+  .checkpoint-a-compact-card,
+  .checkpoint-a-summary-grid article,
+  .checkpoint-a-panel,
+  .checkpoint-a-routine,
+  .inventory-intelligence,
+  #inventory-view #table-wrap,
+  .inventory-scanner-capture,
+  .inventory-scanner-result,
+  .recipe-summary-card,
+  .recipe-card,
+  .recipe-foundation-card,
+  .purchasing-intelligence,
+  #suppliers-view > table,
+  .purchase-order-card,
+  .team-messages-layout,
+  .shift-month-summary article,
+  .shift-month-day-detail,
+  .brain-metric,
+  .brain-card,
+  .brain-phase3-card,
+  .brain-signal-card,
+  .settings-hero,
+  .settings-panel,
+  .settings-card,
+  .settings-summary-grid article
+) {
+  box-shadow: var(--s38-shadow);
+  transition:
+    transform 180ms cubic-bezier(.2, .7, .2, 1),
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+:is(
+  .atlas-card,
+  .metric-card,
+  .stat-card,
+  .panel,
+  .operations-card,
+  .operations-summary-card,
+  .checkpoint-a-compact-card,
+  .checkpoint-a-summary-grid article,
+  .checkpoint-a-panel,
+  .checkpoint-a-routine,
+  .inventory-intelligence,
+  .inventory-scanner-capture,
+  .inventory-scanner-result,
+  .recipe-summary-card,
+  .recipe-card,
+  .recipe-foundation-card,
+  .purchasing-intelligence,
+  .purchase-order-card,
+  .shift-month-summary article,
+  .shift-month-day-detail,
+  .brain-metric,
+  .brain-card,
+  .brain-phase3-card,
+  .brain-signal-card,
+  .settings-panel,
+  .settings-card,
+  .settings-summary-grid article
+):hover {
+  transform: translateY(-3px);
+  box-shadow: var(--s38-shadow-raised);
+  border-color: var(--s38-blue-line);
+}
+
+.inventory-scanner-backdrop {
+  background: rgba(24, 34, 48, .34);
+  backdrop-filter: blur(10px);
+}
+
+.inventory-scanner-panel {
+  overflow: hidden;
+  border-color: var(--s38-line);
+  border-radius: 24px;
+  background: var(--s38-bg);
+  box-shadow: 0 34px 100px rgba(24, 34, 48, .26);
+}
+
+.inventory-scanner-header {
+  align-items: center;
+  border-color: var(--s38-line);
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: blur(18px);
+}
+
+.inventory-scanner-header > div:first-child > span { color: var(--s38-blue); }
+.inventory-scanner-header h2 { color: var(--s38-ink); font-family: 'IBM Plex Sans', sans-serif; font-weight: 650; letter-spacing: -.03em; }
+.inventory-scanner-close {
+  position: relative;
+  z-index: 2;
+  border-color: var(--s38-line);
+  background: #fff;
+  color: var(--s38-ink);
+  touch-action: manipulation;
+}
+.inventory-scanner-close:hover { border-color: var(--s38-blue-line); background: var(--s38-blue-soft); color: var(--s38-blue-strong); }
+
+.inventory-scanner-capture,
+.inventory-scanner-result {
+  border-color: var(--s38-line);
+  background: #fff;
+}
+
+.inventory-scanner-viewport {
+  background: linear-gradient(145deg, #dfeafe, #f4f8ff);
+  color: var(--s38-ink);
+}
+.inventory-scanner-placeholder {
+  background: radial-gradient(circle at 50% 42%, #fff 0%, #edf3ff 74%);
+}
+.inventory-scanner-placeholder svg { color: var(--s38-blue); }
+.inventory-scanner-placeholder span { color: var(--s38-muted); }
+.inventory-scanner-viewport.is-scanning { background: #172130; color: #fff; }
+.inventory-scanner-viewport.is-scanning .inventory-scanner-placeholder { color: #fff; }
+.inventory-scanner-frame::before,
+.inventory-scanner-frame::after { border-color: var(--s38-blue); }
+.inventory-scanner-frame span { background: #78a3ff; box-shadow: 0 0 14px #78a3ff; }
+
+.inventory-scanner-primary,
+.inventory-scanner-manual button {
+  border-color: var(--s38-blue);
+  background: var(--s38-blue);
+  color: #fff;
+}
+.inventory-scanner-primary:hover:not(:disabled),
+.inventory-scanner-manual button:hover:not(:disabled) {
+  border-color: var(--s38-blue-strong);
+  background: var(--s38-blue-strong);
+}
+
+.inventory-scanner-quantity {
+  grid-template-columns: 42px minmax(84px, 1fr) 42px auto;
+  overflow: hidden;
+  border: 1px solid var(--s38-blue-line);
+  border-radius: 13px;
+  background: #fff;
+}
+.inventory-scanner-quantity button {
+  min-height: 42px;
+  border: 0;
+  background: var(--s38-blue-soft);
+  color: var(--s38-blue-strong);
+  font-size: 20px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.inventory-scanner-quantity button:hover { background: #dce8ff; }
+.inventory-scanner-quantity input {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  border-inline: 1px solid var(--s38-blue-line);
+  border-radius: 0;
+  background: #fff;
+  color: var(--s38-ink);
+  text-align: center;
+}
+.inventory-scanner-quantity em { padding: 0 11px; color: var(--s38-muted); font-size: 11px; font-style: normal; }
+.shift-month-weekdays span { border-color: var(--s38-line); color: var(--s38-muted); }
+.shift-month-navigation h2 { color: var(--s38-ink); font-family: 'IBM Plex Sans', sans-serif; font-weight: 650; }
+@media (max-width: 720px) {
+  .inventory-scanner-overlay { padding: 8px; }
+  .inventory-scanner-panel { max-height: calc(100dvh - 16px); border-radius: 20px; }
+  .inventory-scanner-header { padding: 17px; }
+  .inventory-scanner-layout { grid-template-columns: 1fr; padding: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(
+    .atlas-card,
+    .metric-card,
+    .stat-card,
+    .panel,
+    .operations-card,
+    .operations-summary-card,
+    .checkpoint-a-compact-card,
+    .checkpoint-a-summary-grid article,
+    .checkpoint-a-panel,
+    .checkpoint-a-routine,
+    .inventory-intelligence,
+    .inventory-scanner-capture,
+    .inventory-scanner-result,
+    .recipe-summary-card,
+    .recipe-card,
+    .recipe-foundation-card,
+    .purchasing-intelligence,
+    .purchase-order-card,
+    .shift-month-summary article,
+    .shift-month-day-detail,
+    .brain-metric,
+    .brain-card,
+    .settings-panel,
+    .settings-card
+  ) { transition: none; }
+}
+}

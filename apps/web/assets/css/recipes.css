@@ -1,3 +1,8 @@
+/* S88: cascade layer. Every legacy stylesheet sits in @layer atlas.legacy in the
+ * same order as before, so nothing changes visually. Phase 2 moves a module into
+ * @layer atlas.modules (and drops its !important) in one commit. See
+ * atlas-tokens.css for the layer order. */
+@layer atlas.legacy {
 /* Atlas Alpha 0.2 — Recipe Engine */
 
 body.atlas-modal-open {
@@ -1924,4 +1929,5 @@ body.recipe-service-open { overflow: hidden; }
   .recipe-service-shell { padding: 22px 16px; }
   .recipe-service-head h1 { font-size: 32px; }
   .recipe-service-ingredients li { grid-template-columns: 1fr; gap: 5px; }
+}
 }
