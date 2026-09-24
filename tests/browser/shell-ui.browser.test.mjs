@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { harnessAvailable, launchAtlas, USERS } from './harness.mjs';
-import { emptyFunctions } from './fixtures.mjs';
+import { emptyFunctions, settingsWorkspace } from './fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 const balance = (id, quantity) => ({ inventory_item_id: id, verified_quantity: quantity, freshness_state: 'current', verified_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 864000000).toISOString() });
@@ -376,6 +376,25 @@ test('toasts: one at a time, role=status, above the tab bar on phones', { skip }
     });
     assert.deepEqual(toast, { role: 'status', count: 1, text: 'Order createdView', above: true });
   } finally { await close(); }
+});
+
+test('brand line reads the venue from Settings, shows "Atlas" alone without one; Reports Ask Atlas is in the header', { skip }, async () => {
+  const venue = settingsWorkspace();
+  venue.sections.find((section) => section.section_key === 'venue').value.city = 'Reykjavík';
+  const withVenue = await launch({ fixtures: { ...fixtures, functions: { ...fixtures.functions, 'atlas-settings': { workspace: venue } } } });
+  try {
+    await withVenue.page.waitForFunction(() => !document.getElementById('atlas-brand-venue').hidden);
+    assert.equal(await withVenue.page.textContent('#atlas-brand-venue'), 'VÁ Bar · Reykjavík');
+    await withVenue.page.evaluate(() => window.AtlasShell.navigate('#reports'));
+    await withVenue.page.waitForSelector('.reports-hero .reports-ask-fab');
+    assert.equal(await withVenue.page.$eval('.reports-ask-fab', (node) => getComputedStyle(node).position), 'static');
+  } finally { await withVenue.close(); }
+  const without = await launch();
+  try {
+    await without.page.waitForTimeout(300);
+    assert.equal(await without.page.$eval('#atlas-brand-venue', (node) => node.hidden), true);
+    assert.equal(await without.page.textContent('.atlas-brand__name'), 'Atlas');
+  } finally { await without.close(); }
 });
 
 test('"/" types into fields instead of opening the palette; Tab stays inside open overlays', { skip }, async () => {

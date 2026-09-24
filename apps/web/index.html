@@ -312,8 +312,9 @@
   .atlas-content .btn{background:var(--atlas-text);color:white;border-radius:11px}.atlas-content .btn:hover{background:#3a3b37}.atlas-content .btn.ghost{background:var(--atlas-surface);color:var(--atlas-text);border-color:var(--atlas-line)}
   .atlas-content input,.atlas-content select{background:var(--atlas-surface);color:var(--atlas-text);border-color:var(--atlas-line)}
   .atlas-content table{background:var(--atlas-surface);border:1px solid var(--atlas-line);border-radius:14px;overflow:hidden}.atlas-content thead th{color:var(--atlas-muted);border-color:var(--atlas-line)}.atlas-content tbody tr{border-color:var(--atlas-line)}.atlas-content tbody tr:hover{background:#faf9f6}.atlas-content td{color:var(--atlas-text)}
-  .atlas-content .panel,.atlas-content .stat-card,.atlas-card{background:var(--atlas-surface)!important;border:1px solid var(--atlas-line)!important;border-radius:var(--atlas-radius)!important;box-shadow:none!important;color:var(--atlas-text)!important}
-  .atlas-card{padding:22px}.home-hero{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;margin-bottom:24px}.home-hero h1{font:500 38px/1.1 'Fraunces',serif;margin:0 0 8px}.home-hero p{margin:0;color:var(--atlas-muted)}.focus-list{display:grid;gap:0}.focus-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--atlas-line)}.focus-row:last-child{border:0}.focus-dot{width:9px;height:9px;border-radius:50%;background:var(--atlas-accent)}
+  /* .atlas-card is the design-system card (atlas-components.css); this legacy rule no longer forces it. */
+  .atlas-content .panel,.atlas-content .stat-card{background:var(--atlas-surface);border:1px solid var(--atlas-line);border-radius:var(--atlas-radius);box-shadow:none;color:var(--atlas-text)}
+  .home-hero{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;margin-bottom:24px}.home-hero h1{font:500 38px/1.1 'Fraunces',serif;margin:0 0 8px}.home-hero p{margin:0;color:var(--atlas-muted)}.focus-list{display:grid;gap:0}.focus-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--atlas-line)}.focus-row:last-child{border:0}.focus-dot{width:9px;height:9px;border-radius:50%;background:var(--atlas-accent)}
   .atlas-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:20px 0}.metric-card{padding:20px;background:var(--atlas-surface);border:1px solid var(--atlas-line);border-radius:var(--atlas-radius)}.metric-card .metric-icon{width:36px;height:36px;border-radius:10px;background:var(--atlas-accent-soft);display:grid;place-items:center;margin-bottom:18px}.metric-card .metric-icon svg{width:18px}.metric-card strong{font:500 26px 'Fraunces',serif;display:block}.metric-card span{font-size:12px;color:var(--atlas-muted)}
   .placeholder-view{display:none}.placeholder-head{margin-bottom:22px}.placeholder-head h2{font:500 30px 'Fraunces',serif;margin:0 0 6px}.placeholder-head p{color:var(--atlas-muted);margin:0}.empty-module{padding:42px;text-align:center;background:var(--atlas-surface);border:1px dashed var(--atlas-line);border-radius:var(--atlas-radius)}.empty-module svg{width:32px;height:32px;color:var(--atlas-accent);margin-bottom:10px}
   @media(max-width:1050px){.atlas-grid{grid-template-columns:repeat(2,1fr)}}
@@ -441,7 +442,6 @@
   <link rel="stylesheet" href="assets/css/legacy/inventory-operations-s58--purchasing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/inventory-operations-s58--inventory.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--reports.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--base.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--team-messages.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260926-s88">
   <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
@@ -476,7 +476,7 @@
     <main class="atlas-auth__column" aria-labelledby="login-title">
       <div class="atlas-auth__brand"><span class="atlas-brand__mark" aria-hidden="true">A</span><span class="atlas-auth__wordmark">Atlas</span></div>
       <h1 class="atlas-auth__title" id="login-title">Welcome back</h1>
-      <p class="atlas-auth__sub">Sign in to VÁ.</p>
+      <p class="atlas-auth__sub" id="login-sub">Sign in to continue.</p>
       <form id="login-form" class="atlas-auth__form">
         <div class="atlas-field">
           <label for="email">Email</label>
@@ -494,7 +494,7 @@
       </form>
       <p class="atlas-auth__link"><a href="recovery.html">Forgot your password?</a></p>
     </main>
-    <p class="atlas-auth__foot">VÁ · Reykjavík</p>
+    <p class="atlas-auth__foot" data-atlas-venue-line hidden></p>
   </div>
 
   <!-- ===================== APP · SHELL (spec §4; assets/js/atlas-chrome.js) ===================== -->
@@ -503,7 +503,7 @@
     <div class="atlas-shell">
       <aside class="atlas-sidebar" id="atlas-sidebar" aria-label="Sidebar">
         <div class="atlas-brand">
-          <a class="atlas-brand__link nav-home" href="#home" aria-label="Atlas, VÁ · Reykjavík — Home"><span class="atlas-brand__mark" aria-hidden="true">A</span><span class="atlas-brand__text"><span class="atlas-brand__name">Atlas</span><span class="atlas-brand__venue">VÁ · Reykjavík</span></span></a>
+          <a class="atlas-brand__link nav-home" href="#home" aria-label="Atlas — Home"><span class="atlas-brand__mark" aria-hidden="true">A</span><span class="atlas-brand__text"><span class="atlas-brand__name">Atlas</span><span class="atlas-brand__venue" id="atlas-brand-venue" hidden></span></span></a>
         </div>
         <nav class="atlas-nav" aria-label="Main">
           <div class="atlas-nav__scroll">
@@ -546,8 +546,8 @@
         </nav>
         <div class="atlas-sidebar__foot">
           <button type="button" class="atlas-account" id="atlas-account-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="atlas-account-menu">
-            <span class="atlas-avatar atlas-avatar--28" id="user-avatar" aria-hidden="true">V</span>
-            <span class="atlas-account__text"><span class="atlas-account__name" id="profile-name">VÁ Team</span><span class="atlas-account__role" id="profile-role"></span></span>
+            <span class="atlas-avatar" id="user-avatar" aria-hidden="true">V</span>
+            <span class="atlas-account__text"><span class="atlas-account__name" id="profile-name"></span><span class="atlas-account__role" id="profile-role"></span></span>
             <i data-lucide="chevron-down" aria-hidden="true"></i>
           </button>
           <span class="atlas-account__email" id="user-email" hidden></span>
@@ -776,7 +776,7 @@
 
               <div class="import-detail-backdrop" id="import-detail-backdrop" hidden></div>
               <aside class="import-detail-drawer" id="import-detail-drawer" hidden aria-labelledby="import-detail-title">
-                <header><div><p class="import-eyebrow">Import batch</p><h2 id="import-detail-title">Source file</h2></div><button type="button" class="top-icon" id="import-detail-close" aria-label="Close"><i data-lucide="x"></i></button></header>
+                <header><div><p class="import-eyebrow">Import batch</p><h2 id="import-detail-title">Source file</h2></div><button type="button" class="atlas-icon-btn" id="import-detail-close" aria-label="Close"><i data-lucide="x"></i></button></header>
                 <div class="import-detail-body">
                   <div class="import-detail-status"><span class="import-status-pill" id="import-detail-status">Uploaded</span><strong id="import-detail-progress">0%</strong></div>
                   <div class="import-detail-progress-track"><div id="import-detail-progress-bar"></div></div>

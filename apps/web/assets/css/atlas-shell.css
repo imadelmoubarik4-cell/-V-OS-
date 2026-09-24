@@ -9,60 +9,10 @@
  * The shell is a component: one @layer atlas.components block, above every
  * legacy rule. Values come from the spec tokens (atlas-tokens.css); each var()
  * carries the spec value as its fallback so the shell renders correctly while
- * the token file is being replaced.
+ * the token file is being replaced. Buttons, inputs, badges, avatars, menus,
+ * segmented controls, kbd and toasts are the atlas-components.css classes.
  */
 @layer atlas.components {
-
-/* ==========================================================================
-   Interim component fallbacks.
-   Button, icon button, input, field, badge, avatar, pill, segmented control,
-   menu, kbd and toast belong to atlas-components.css (spec §6). Until that
-   file ships, these :where() rules give the shell its component look with
-   zero specificity, so any rule in atlas-components.css wins over them.
-   Delete this block once atlas-components.css is linked.
-   ========================================================================== */
-:where(.atlas-btn) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: var(--r-md, 8px); border: 1px solid transparent; font: 500 14px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); white-space: nowrap; cursor: pointer; text-decoration: none; transition: background var(--dur-1, 120ms) var(--ease-out, ease), border-color var(--dur-1, 120ms), color var(--dur-1, 120ms); }
-:where(.atlas-btn--primary) { background: var(--accent, #1f6fdb); color: #fff; }
-:where(.atlas-btn--primary:hover) { background: var(--accent-hover, #195fc0); }
-:where(.atlas-btn--primary:active) { background: var(--accent-press, #154fa2); }
-:where(.atlas-btn--secondary) { background: var(--surface, #fff); border-color: var(--line-strong, #d4d4cf); color: var(--text, #17191e); box-shadow: var(--shadow-1, 0 1px 2px rgba(23, 25, 30, .05)); }
-:where(.atlas-btn--secondary:hover) { background: var(--bg-subtle, #f7f7f5); }
-:where(.atlas-btn--ghost) { background: transparent; color: var(--text, #17191e); }
-:where(.atlas-btn--ghost:hover) { background: var(--bg-muted, #efefec); }
-:where(.atlas-btn--sm) { height: 32px; padding: 0 10px; font-size: 13px; }
-:where(.atlas-btn--lg) { height: 44px; padding: 0 18px; font-size: 15px; }
-:where(.atlas-btn[disabled], .atlas-btn[aria-disabled="true"]) { opacity: .45; cursor: not-allowed; }
-:where(.atlas-btn.is-loading) { cursor: progress; }
-:where(.atlas-icon-btn) { display: inline-grid; place-items: center; position: relative; width: 36px; height: 36px; padding: 0; border: 0; border-radius: var(--r-md, 8px); background: transparent; color: var(--text-2, #5b616b); cursor: pointer; }
-:where(.atlas-icon-btn:hover) { background: var(--bg-muted, #efefec); color: var(--text, #17191e); }
-:where(.atlas-icon-btn) svg { width: 18px; height: 18px; stroke-width: 1.75; }
-:where(.atlas-icon-btn .dot) { position: absolute; top: 8px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--danger, #c0362c); box-shadow: 0 0 0 2px var(--bg, #fff); }
-:where(.atlas-field) { display: grid; gap: 6px; }
-:where(.atlas-field > label) { font: 500 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text, #17191e); margin: 0; }
-:where(.atlas-input) { width: 100%; height: 36px; margin: 0; padding: 0 12px; border: 1px solid var(--line-strong, #d4d4cf); border-radius: var(--r-md, 8px); background: var(--surface, #fff); color: var(--text, #17191e); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); transition: border-color var(--dur-1, 120ms), box-shadow var(--dur-1, 120ms); }
-:where(.atlas-input::placeholder) { color: var(--text-3, #80858e); }
-:where(.atlas-input:hover) { border-color: #c2c2bc; }
-:where(.atlas-input:focus) { outline: none; border-color: var(--accent, #1f6fdb); box-shadow: 0 0 0 3px rgba(31, 111, 219, .16); }
-:where(.atlas-input[aria-invalid="true"]) { border-color: var(--danger, #c0362c); }
-:where(.atlas-badge) { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill, 999px); background: var(--accent, #1f6fdb); color: #fff; font: 500 12px/1 var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); font-variant-numeric: tabular-nums; }
-:where(.atlas-badge--muted) { background: var(--neutral-soft, #f1f1ee); color: var(--text-2, #5b616b); }
-:where(.atlas-avatar) { display: inline-grid; place-items: center; flex: none; overflow: hidden; width: 28px; height: 28px; border-radius: 50%; background: #e8eaf2; color: #3d4a6b; font: 600 11px/1 var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
-:where(.atlas-avatar--40) { width: 40px; height: 40px; font-size: 14px; }
-:where(.atlas-avatar) img { width: 100%; height: 100%; object-fit: cover; display: block; }
-:where(.atlas-pill) { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--r-pill, 999px); background: var(--neutral-soft, #f1f1ee); color: var(--text-2, #5b616b); font: 500 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
-:where(.atlas-segmented) { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-md, 8px); background: var(--bg-muted, #efefec); }
-:where(.atlas-segmented) button { height: 28px; padding: 0 10px; border: 0; border-radius: var(--r-sm, 6px); background: transparent; color: var(--text-2, #5b616b); font: 500 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); cursor: pointer; }
-:where(.atlas-segmented) button[aria-checked="true"] { background: var(--surface, #fff); color: var(--text, #17191e); box-shadow: var(--shadow-1, 0 1px 2px rgba(23, 25, 30, .05)); }
-:where(.atlas-menu) { padding: 8px; border: 1px solid var(--line, #e7e7e3); border-radius: var(--r-lg, 12px); background: var(--surface, #fff); box-shadow: var(--shadow-pop, 0 2px 6px rgba(23, 25, 30, .06), 0 12px 32px rgba(23, 25, 30, .10)); }
-:where(.atlas-menu__item) { display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 10px; border: 0; border-radius: var(--r-md, 8px); background: transparent; color: var(--text, #17191e); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: left; cursor: pointer; }
-:where(.atlas-menu__item) svg { width: 16px; height: 16px; color: var(--text-2, #5b616b); flex: none; }
-:where(.atlas-menu__item:hover, .atlas-menu__item:focus-visible) { background: var(--bg-muted, #efefec); outline: none; }
-:where(.atlas-menu__item--danger), :where(.atlas-menu__item--danger) svg { color: var(--danger, #c0362c); }
-:where(.atlas-menu__divider) { height: 1px; margin: 6px 2px; background: var(--line-subtle, #f0f0ed); }
-:where(.kbd) { display: inline-flex; align-items: center; gap: 2px; height: 20px; padding: 0 6px; border-radius: var(--r-xs, 4px); border: 1px solid var(--line, #e7e7e3); background: var(--surface, #fff); color: var(--text-2, #5b616b); font: 500 12px/1 var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
-:where(.atlas-toast) { display: flex; align-items: center; gap: 12px; min-height: 44px; max-width: min(560px, calc(100vw - 32px)); padding: 10px 14px; border-radius: var(--r-lg, 12px); background: #1f2229; color: #fff; font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); box-shadow: var(--shadow-pop, 0 2px 6px rgba(23, 25, 30, .06), 0 12px 32px rgba(23, 25, 30, .10)); pointer-events: auto; }
-:where(.atlas-toast__action) { margin-left: auto; padding: 4px 6px; border: 0; border-radius: var(--r-sm, 6px); background: transparent; color: #9cc3ff; font: 500 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); cursor: pointer; }
-:where(.sr-only) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ==========================================================================
    Page canvas and layout grid (§4.1)
@@ -116,7 +66,6 @@ body.atlas-rail .atlas-shell { grid-template-columns: 64px minmax(0, 1fr); }
 .atlas-account__text { display: grid; min-width: 0; }
 .atlas-account__name { font: 500 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .atlas-account__role { font: 400 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text-2, #5b616b); }
-.atlas-account .atlas-avatar { width: 28px; height: 28px; }
 
 /* Rail: 64 px icons at 768–1279 and when collapsed at ≥1280 (§4.1). */
 body.atlas-rail:not(.atlas-sidebar-open) .atlas-sidebar { align-items: center; padding: 0 10px 12px; }
@@ -171,6 +120,10 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
    ========================================================================== */
 .atlas-layer { position: fixed; inset: 0; z-index: 90; }
 .atlas-scrim { position: absolute; inset: 0; background: var(--overlay, rgba(23, 25, 30, .32)); }
+/* Inside a shell layer the scrim sits under the layer's panel (.atlas-scrim is
+   also the modal.js scrim, which is fixed at --z-overlay). */
+.atlas-layer > .atlas-scrim { position: absolute; z-index: 0; }
+.atlas-layer > :not(.atlas-scrim) { z-index: 1; }
 .atlas-scrim--clear { background: transparent; }
 .atlas-sheet-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(100% - 12px); overflow-y: auto; overscroll-behavior: contain; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); border-radius: var(--r-xl, 16px) var(--r-xl, 16px) 0 0; background: var(--surface, #fff); box-shadow: var(--shadow-modal, 0 4px 12px rgba(23, 25, 30, .08), 0 32px 80px rgba(23, 25, 30, .20)); animation: atlas-sheet-in var(--dur-3, 240ms) var(--ease-out, ease) both; }
 .atlas-sheet-panel__grabber { width: 36px; height: 4px; margin: 0 auto 8px; border-radius: 2px; background: var(--line-strong, #d4d4cf); }

@@ -3,6 +3,11 @@
   const status = document.getElementById('status');
   const form = document.getElementById('accept-invitation');
   const checking = document.getElementById('invite-checking');
+  // Venue line: the name Settings last gave this device, never an invented one.
+  try {
+    const venue = JSON.parse(window.localStorage?.getItem('atlas.venue.v1') || 'null');
+    if (venue?.line) document.querySelectorAll?.('[data-atlas-venue-line]').forEach((node) => { node.textContent = venue.line; node.hidden = false; });
+  } catch (_) { /* no remembered venue */ }
   const token = new URLSearchParams(location.hash.slice(1)).get('token_hash');
   history.replaceState(null, '', location.pathname);
   const say = (text, tone = '') => {

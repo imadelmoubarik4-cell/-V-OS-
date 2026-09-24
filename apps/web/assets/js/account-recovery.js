@@ -6,6 +6,11 @@
   const request = document.getElementById('request-recovery');
   const complete = document.getElementById('complete-recovery');
   const title = document.getElementById('recovery-title');
+  // Venue line: the name Settings last gave this device, never an invented one.
+  try {
+    const venue = JSON.parse(window.localStorage?.getItem('atlas.venue.v1') || 'null');
+    if (venue?.line) document.querySelectorAll?.('[data-atlas-venue-line]').forEach((node) => { node.textContent = venue.line; node.hidden = false; });
+  } catch (_) { /* no remembered venue */ }
   let recoverySession = false;
   let client;
   const busy = (form, value) => {

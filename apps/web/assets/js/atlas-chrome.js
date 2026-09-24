@@ -26,6 +26,7 @@
     notifyFilter: 'all',
     notifyOpen: false,
     notifyTrigger: null,
+    venueKey: undefined,
     topbar: { title: null, back: null, actions: [], own: false },
     moreTrigger: null,
     menuTrigger: null,
@@ -70,11 +71,19 @@
     return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'A';
   }
 
+  // One of four muted tints, stable per profile (spec §6.20).
+  function avatarTint() {
+    const key = String(account().id || account().name || '');
+    let hash = 0;
+    for (const character of key) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+    return `atlas-avatar--${'abcd'[hash % 4]}`;
+  }
+
   function avatarMarkup(size = 28) {
     const source = $('user-avatar');
     const inner = source ? source.innerHTML : escape(initials(account().name));
     const photo = source?.classList.contains('has-profile-photo') ? ' has-profile-photo' : '';
-    return `<span class="atlas-avatar atlas-avatar--${size}${photo}" aria-hidden="true">${inner}</span>`;
+    return `<span class="atlas-avatar ${avatarTint()}${size >= 40 ? ' atlas-avatar--lg' : ''}${photo}" aria-hidden="true">${inner}</span>`;
   }
 
   function focusables(root) {
@@ -386,11 +395,11 @@
     const item = (action, label, iconName, extra = '') => `<button type="button" class="atlas-menu__item${extra}" role="menuitem" tabindex="-1" data-menu-action="${action}">${icon(iconName)}<span>${escape(label)}</span></button>`;
     menu.innerHTML = `
       <div class="atlas-account-menu__head">${avatarMarkup(40)}<div class="atlas-account-menu__who"><div class="atlas-account-menu__name">${escape(account().name)}</div><div class="atlas-account-menu__email">${escape(account().email)}</div>${ROLE_LABELS[role()] ? `<span class="atlas-pill atlas-account-menu__role">${escape(ROLE_LABELS[role()])}</span>` : ''}</div></div>
-      <div class="atlas-menu__divider" role="separator"></div>
+      <div class="atlas-menu__sep" role="separator"></div>
       ${item('profile', 'Your profile', 'circle-user-round')}
       ${item('preferences', 'Preferences', 'sliders-horizontal')}
       ${item('notification-settings', 'Notification settings', 'bell')}
-      <div class="atlas-menu__divider" role="separator"></div>
+      <div class="atlas-menu__sep" role="separator"></div>
       ${PHONE.matches ? '' : item('shortcuts', 'Keyboard shortcuts', 'keyboard')}
       ${item('sign-out', 'Sign out', 'log-out', ' atlas-menu__item--danger')}`;
   }
@@ -725,10 +734,74 @@
 
   // ---------- account ----------
 
-  function setAccount(account = {}) {
-    state.account = { ...state.account, ...account };
+  function setAccount(details = {}) {
+    state.account = { ...state.account, ...details };
+    const avatar = $('user-avatar');
+    if (avatar) {
+      avatar.classList.remove('atlas-avatar--a', 'atlas-avatar--b', 'atlas-avatar--c', 'atlas-avatar--d');
+      avatar.classList.add(avatarTint());
+    }
     applyRole();
     syncBadges();
+  }
+
+  // ---------- venue name (brand line, sign-in) ----------
+  // Read from Settings › Venue (business name and city). Never invented: with
+  // no venue on record the brand shows "Atlas" alone. The last value read is
+  // remembered on this device for the sign-in screen.
+  const VENUE_KEY = 'atlas.venue.v1';
+  let venueRequested = false;
+
+  function venueFromWorkspace(workspace) {
+    const value = (workspace?.sections || []).find((section) => section.section_key === 'venue')?.value || null;
+    const name = String(value?.business_name || '').trim();
+    if (!name) return null;
+    const city = String(value?.city || '').trim();
+    return { name, city, line: city ? `${name} · ${city}` : name };
+  }
+
+  function readCachedVenue() {
+    try { const value = JSON.parse(window.localStorage.getItem(VENUE_KEY) || 'null'); return value?.name ? value : null; } catch { return null; }
+  }
+
+  function applyVenue(venue) {
+    const line = $('atlas-brand-venue');
+    if (line) { line.textContent = venue ? venue.line : ''; line.hidden = !venue; }
+    const link = document.querySelector('.atlas-brand__link');
+    if (link) link.setAttribute('aria-label', venue ? `Atlas, ${venue.line} — Home` : 'Atlas — Home');
+    document.querySelectorAll('[data-atlas-venue-line]').forEach((node) => { node.textContent = venue ? venue.line : ''; node.hidden = !venue; });
+    const sub = $('login-sub');
+    if (sub) sub.textContent = venue ? `Sign in to ${venue.name}.` : 'Sign in to continue.';
+  }
+
+  function setVenue(venue) {
+    const key = JSON.stringify(venue || null);
+    if (state.venueKey === key) return;
+    state.venueKey = key;
+    applyVenue(venue);
+    try { if (venue) window.localStorage.setItem(VENUE_KEY, key); } catch { /* per-device convenience only */ }
+  }
+
+  async function loadVenue() {
+    const loaded = venueFromWorkspace(window.AtlasSettings?.snapshot?.());
+    if (loaded) { setVenue(loaded); return; }
+    if (venueRequested) return;
+    venueRequested = true;
+    const endpoint = String(window.VABAR_CONFIG?.SETTINGS_API || '').trim();
+    const client = window.atlasSupabase;
+    if (!endpoint || !client?.auth) { setVenue(null); return; }
+    try {
+      const session = (await client.auth.getSession())?.data?.session;
+      if (!session?.access_token) return;
+      const url = new URL(endpoint);
+      url.searchParams.set('action', 'snapshot');
+      const response = await fetch(url, { cache: 'no-store', headers: { authorization: `Bearer ${session.access_token}`, accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
+      const payload = response.ok ? await response.json().catch(() => ({})) : {};
+      setVenue(venueFromWorkspace(payload.workspace));
+    } catch (error) {
+      console.warn('Venue name unavailable; the brand shows Atlas only.', error?.message || error);
+      setVenue(null);
+    }
   }
 
   // ---------- offline bar (spec §4.11) ----------
@@ -805,7 +878,7 @@
       if (document.body.classList.contains('atlas-sidebar-open')) closeOverlaySidebar({ restoreFocus: false });
       if (state.initialHash === '#notifications' && detail.source === 'link') { state.initialHash = ''; shell.notify.open({ fromRoute: false }); }
     });
-    shell.on('profile:ready', () => applyRole());
+    shell.on('profile:ready', (profile) => { applyRole(); if (profile) loadVenue(); });
     shell.on('notify:changed', () => {
       syncBell();
       if (state.notifyOpen) renderNotify();
@@ -814,7 +887,15 @@
     applyRole();
     syncOnline();
     syncBadges();
-    state.pollTimer = window.setInterval(() => { if (!document.hidden) syncBadges(); }, 2500);
+    // Keeps badges current and picks up a venue name edited in Settings.
+    state.pollTimer = window.setInterval(() => {
+      if (document.hidden) return;
+      syncBadges();
+      const edited = venueFromWorkspace(window.AtlasSettings?.snapshot?.());
+      if (edited) setVenue(edited);
+    }, 2500);
+    // Sign-in screen: the venue last read on this device, else nothing.
+    applyVenue(readCachedVenue());
     refreshStaticIcons();
   }
 

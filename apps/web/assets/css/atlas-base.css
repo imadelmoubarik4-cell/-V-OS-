@@ -202,7 +202,7 @@ html.atlas-reduce-motion *::after {
 :where(:is( .atlas-search, .purchasing-search, .recipe-search, .team-attachment-controls label )) {
   border-radius: 999px;
 }
-:where(:is( #global-search, #supplier-search, #recipe-search, [data-team-target-search] )) {
+:where(:is( #supplier-search, #recipe-search, [data-team-target-search] )) {
   max-height: 42px;
   box-shadow: none;
 }

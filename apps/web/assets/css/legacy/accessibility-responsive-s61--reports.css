@@ -4,17 +4,16 @@
  * using their effective values, then empties this file. */
 /* S61: accessible responsive action ownership. */
 @layer atlas.legacy {
-/* Reports owns a fixed Ask Atlas action; do not stack Quick Actions over it. */
-@media (max-width: 760px) {
-  .reports-ask-fab,
+/* The Ask Atlas panel opens above the phone tab bar (S88 shell). */
+@media (max-width: 767px) {
   .reports-ask-panel {
     right: max(14px, env(safe-area-inset-right));
-    bottom: max(14px, env(safe-area-inset-bottom));
+    bottom: calc(56px + 12px + env(safe-area-inset-bottom));
   }
 
   .reports-ask-panel {
     width: calc(100vw - 28px);
-    max-height: calc(100dvh - 28px);
+    max-height: calc(100dvh - 140px);
   }
 }
 }
