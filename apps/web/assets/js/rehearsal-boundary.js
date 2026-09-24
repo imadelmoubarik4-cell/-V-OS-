@@ -1,10 +1,15 @@
 (function (root) {
   'use strict';
   const TARGET = 'dnefgcmjcgxlynycxkts';
+  // S88 Atlas AI live voice: the browser sends its WebRTC offer to this one
+  // endpoint with a 60-second client secret minted by atlas-ai. Nothing else
+  // on that host is reachable.
+  const REALTIME_CALLS = 'https://api.openai.com/v1/realtime/calls';
   function allowed(url, config, origin) {
     const value = new URL(url, origin);
     if (value.origin === origin) return true;
     if (value.origin === `https://${TARGET}.supabase.co`) return true;
+    if (`${value.origin}${value.pathname}` === REALTIME_CALLS && !value.search) return true;
     return false;
   }
   function validate(config) {

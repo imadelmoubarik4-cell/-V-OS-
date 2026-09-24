@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { harnessAvailable, launchAtlas, openView } from './harness.mjs';
-import { emptyFunctions } from './fixtures.mjs';
+import { emptyFunctions, venueClockBackend, weekHours } from './fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 const balance = (id, quantity) => ({ inventory_item_id: id, verified_quantity: quantity, freshness_state: 'current', verified_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 864000000).toISOString() });
@@ -22,7 +22,7 @@ function launch(options = {}) {
     ...options,
     fixtures: {
       tables: { inventory_items: inventory, recipes, suppliers: [], recipe_categories: [] },
-      functions: { ...emptyFunctions(), 'atlas-stock-counts': { counts: { verified_balances: [balance('pinot', 4), balance('lime', 5), balance('gin', 2)] } } }
+      functions: { ...emptyFunctions(), 'atlas-settings': (options.settings || venueClockBackend()).handler, 'atlas-stock-counts': { counts: { verified_balances: [balance('pinot', 4), balance('lime', 5), balance('gin', 2)] } } }
     }
   });
 }
@@ -146,7 +146,8 @@ test('Inventory ✕ deactivates the item instead of deleting its history', { ski
 });
 
 test('Home timeline text is not squeezed into the marker column', { skip }, async () => {
-  const { page, close } = await launch();
+  // The timeline exists only when business hours are saved (AtlasVenueClock).
+  const { page, close } = await launch({ settings: venueClockBackend({ hours: weekHours() }) });
   try {
     await page.waitForSelector('#home-timeline .brain-timeline-copy');
     const width = await page.$eval('#home-timeline .brain-timeline-copy', (node) => node.getBoundingClientRect().width);

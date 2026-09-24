@@ -42,8 +42,13 @@
     return document.getElementById('profile-name')?.textContent?.trim() || 'VÁ team';
   }
 
+  function venueClock() {
+    return window.AtlasVenueClock || null;
+  }
+
+  // Greeting by the hour at the venue (AtlasVenueClock), not the browser's zone.
   function greeting() {
-    const hour = new Date().getHours();
+    const hour = venueClock()?.parts?.()?.hour ?? 12;
     if (hour < 12) return 'Good morning';
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
@@ -206,25 +211,27 @@
     ];
   }
 
-  function venueSchedule(now = new Date()) {
-    const day = now.getDay();
-    const open = new Date(now);
-    open.setHours(11, 30, 0, 0);
-    const close = new Date(now);
-    if (day === 5 || day === 6) {
-      close.setDate(close.getDate() + 1);
-      close.setHours(0, 0, 0, 0);
-    } else {
-      close.setHours(22, 0, 0, 0);
-    }
-
-    if (now < open) return { phase: 'before', label: 'Opening in', target: open, open, close };
-    if (now < close) return { phase: 'open', label: 'Closes in', target: close, open, close };
-
-    const nextOpen = new Date(now);
-    nextOpen.setDate(nextOpen.getDate() + 1);
-    nextOpen.setHours(11, 30, 0, 0);
-    return { phase: 'after', label: 'Next opening in', target: nextOpen, open, close };
+  // Service phase from the saved business hours only (AtlasVenueClock). With
+  // no saved hours there is no countdown: Atlas never invents opening times.
+  function serviceClock(now = new Date()) {
+    const clock = venueClock();
+    const status = clock?.state?.().status || 'unavailable';
+    if (status === 'loading') return { kind: 'loading', label: 'Opening hours', heading: 'Checking hours', note: 'Loading the venue’s saved opening hours.', target: null };
+    if (status === 'unavailable') return { kind: 'unavailable', label: 'Opening hours', heading: 'Opening hours unavailable', note: 'Atlas could not read the venue’s opening hours.', target: null };
+    if (status === 'not_set') return { kind: 'not_set', label: 'Opening hours', heading: 'Opening hours not set', note: 'Add the weekly hours in Settings to see service countdowns.', target: null };
+    const open = clock.isOpenAt(now) === true;
+    const event = clock.nextEvent(now, { types: [open ? 'closes' : 'opens'] });
+    if (!event) return { kind: 'closed', label: 'Closed', heading: 'Closed', note: 'No opening hours are saved for the coming week.', target: null };
+    if (open) return { kind: 'countdown', phase: 'open', label: 'Closes in', heading: 'Service underway', note: `until closing at ${event.time}`, target: event.at };
+    const sameDay = event.businessDate === clock.businessDate(now);
+    return {
+      kind: 'countdown',
+      phase: sameDay ? 'before' : 'after',
+      label: sameDay ? 'Opening in' : 'Next opening in',
+      heading: 'VÁ Bar',
+      note: sameDay ? `until opening at ${event.time}` : `until ${clock.formatDate(event.at)}, ${event.time}`,
+      target: event.at
+    };
   }
 
   function durationLabel(ms) {
@@ -328,32 +335,6 @@
     return result.sort((a, b) => urgency(a) - urgency(b)).slice(0, 5);
   }
 
-  function timelineEntries(now = new Date()) {
-    const day = now.getDay();
-    const entries = [
-      { time: '11:00', title: 'Opening checks', detail: 'Complete the final service-readiness review.' },
-      { time: '11:30', title: 'Open', detail: 'VÁ opens for service.' },
-      { time: '15:00', title: 'Happy Hour', detail: 'Cocktail, wine and beer offers begin.' }
-    ];
-    if (day === 0) entries.push({ time: '18:00', title: 'Sunday beer promotion', detail: 'Two-for-one beer offer begins.' });
-    if (day === 5 || day === 6) entries.push({ time: '22:00', title: 'Late Happy Hour', detail: 'Friday and Saturday late offer begins.' });
-    entries.push({ time: (day === 5 || day === 6) ? '24:00' : '22:00', title: 'Close', detail: 'Complete closing checks and handover.' });
-
-    const minutesNow = now.getHours() * 60 + now.getMinutes();
-    let currentAssigned = false;
-    return entries.map((entry) => {
-      const [hoursRaw, minutesRaw] = entry.time.split(':').map(Number);
-      const minutes = hoursRaw === 24 ? 1440 : hoursRaw * 60 + minutesRaw;
-      let status = 'future';
-      if (minutes < minutesNow) status = 'past';
-      if (!currentAssigned && minutes >= minutesNow) {
-        status = 'current';
-        currentAssigned = true;
-      }
-      return { ...entry, status };
-    });
-  }
-
   function assistantResponse(question) {
     const query = String(question || '').trim().toLowerCase();
     const data = readiness();
@@ -441,8 +422,26 @@
     }).join('');
   }
 
-  function timelineMarkup() {
-    return timelineEntries().map((entry) => `<div class="brain-timeline-row is-${escape(entry.status)}"><time>${escape(entry.time)}</time><span class="brain-timeline-marker"></span><div class="brain-timeline-copy"><strong>${escape(entry.title)}</strong><span>${escape(entry.detail)}</span></div></div>`).join('');
+  function hoursSettingsButton(label = 'Set opening hours in Settings') {
+    return venueClock()?.state?.().canManageHours
+      ? ` <button type="button" class="brain-card-action" data-venue-hours-settings>${escape(label)}</button>`
+      : ' A manager can add them in Settings.';
+  }
+
+  // Today's timeline comes only from the saved hours and offers. Each state
+  // without hours says so truthfully instead of showing a schedule.
+  function timelineMarkup(now = new Date()) {
+    const clock = venueClock();
+    const status = clock?.state?.().status || 'unavailable';
+    if (status === 'loading') return '<div class="brain-empty" data-venue-clock-state="loading">Loading opening hours…</div>';
+    if (status === 'unavailable') return '<div class="brain-empty" data-venue-clock-state="unavailable">Opening hours unavailable. Atlas could not read the venue’s saved hours.</div>';
+    if (status === 'not_set') return `<div class="brain-empty" data-venue-clock-state="not_set">Opening hours not set.${hoursSettingsButton()}</div>`;
+    const entries = clock.timeline(clock.businessDate(now), now);
+    if (!entries.length) {
+      const next = clock.nextEvent(now, { types: ['opens'] });
+      return `<div class="brain-empty" data-venue-clock-state="closed">Closed today.${next ? ` Next opening ${escape(clock.formatDate(next.at))}, ${escape(next.time)}.` : ''}</div>`;
+    }
+    return entries.map((entry) => `<div class="brain-timeline-row is-${escape(entry.status)}"><time>${escape(entry.time)}</time><span class="brain-timeline-marker"></span><div class="brain-timeline-copy"><strong>${escape(entry.title)}</strong><span>${escape(entry.detail)}</span></div></div>`).join('');
   }
 
   function dataMarkup() {
@@ -465,21 +464,20 @@
     const suppliers = new Set(orders.map((entry) => entry.supplier));
     const coverage = dataCoverage();
     const connectedCount = coverage.filter((entry) => entry.connected).length;
-    const schedule = venueSchedule();
-    const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const answer = state.assistantAnswer || assistantResponse('attention');
+    const schedule = serviceClock();
+    const date = venueClock()?.formatDate?.(new Date(), { long: true, year: true }) || '';
 
     dom.shell.innerHTML = `
       <header class="brain-hero">
         <div class="brain-hero-copy">
           <span class="brain-kicker"><i data-lucide="brain-circuit"></i>Atlas Brain</span>
           <h1>${escape(greeting())}, ${escape(userName())}.</h1>
-          <p>${escape(date)}. Atlas is reading live stock, recipe, supplier and operations data to prepare one clear management briefing.</p>
+          <p>${date ? `${escape(date)}. ` : ''}Atlas is reading live stock, recipe, supplier and operations data to prepare one clear management briefing.</p>
           <div class="brain-briefing-line"><i data-lucide="sparkles"></i><span>${escape(topBriefing())}</span></div>
         </div>
         <aside class="brain-hero-panel">
-          <div class="brain-clock-label"><span id="brain-clock-phase">${escape(schedule.label)}</span><strong>${schedule.phase === 'open' ? 'Service underway' : 'VÁ Bar'}</strong></div>
-          <div class="brain-countdown"><strong id="brain-countdown">${escape(durationLabel(schedule.target - new Date()))}</strong><span>${schedule.phase === 'open' ? 'until today’s close' : 'until the next service opening'}</span><div class="brain-readiness-row"><div class="brain-readiness-track"><span style="width:${data.score}%"></span></div><b>${data.score}% ready</b></div></div>
+          <div class="brain-clock-label"><span id="brain-clock-phase">${escape(schedule.label)}</span><strong>${escape(schedule.heading)}</strong></div>
+          <div class="brain-countdown" data-venue-clock-state="${escape(schedule.kind)}">${schedule.target ? `<strong id="brain-countdown">${escape(durationLabel(schedule.target - new Date()))}</strong>` : ''}<span>${escape(schedule.note)}${schedule.kind === 'not_set' ? hoursSettingsButton('Open Settings') : ''}</span><div class="brain-readiness-row"><div class="brain-readiness-track"><span style="width:${data.score}%"></span></div><b>${data.score}% ready</b></div></div>
         </aside>
       </header>
 
@@ -492,8 +490,8 @@
       </section>
 
       <section class="brain-card brain-ask-card">
-        <header class="brain-card-head"><div><h2>Ask Atlas</h2><p>Live rule-based answers from the current operating data.</p></div></header>
-        <div class="brain-assistant"><div class="brain-assistant-answer" id="brain-assistant-answer">${escape(answer)}</div><div class="brain-prompt-row"><button type="button" data-brain-prompt="What needs attention today?">What needs attention?</button><button type="button" data-brain-prompt="What should I order?">What should I order?</button><button type="button" data-brain-prompt="Which recipe should I promote?">What should I feature?</button></div><form class="brain-assistant-form" id="brain-assistant-form"><input id="brain-assistant-input" aria-label="Ask Atlas" placeholder="Ask about stock, recipes, orders or readiness" autocomplete="off" /><button type="submit">Ask</button></form></div>
+        <header class="brain-card-head"><div><h2>Ask Atlas</h2><p>Questions now open in Atlas AI, with sources and anything it prepares for you to approve.</p></div></header>
+        <div class="brain-assistant"><div class="brain-prompt-row"><button type="button" data-brain-prompt="What needs attention today?">What needs attention?</button><button type="button" data-brain-prompt="What should I order?">What should I order?</button><button type="button" data-brain-prompt="Which recipe should I promote?">What should I feature?</button></div><form class="brain-assistant-form" id="brain-assistant-form"><input id="brain-assistant-input" aria-label="Ask Atlas" placeholder="Ask about stock, recipes, orders or readiness" autocomplete="off" /><button type="submit">Ask Atlas</button></form></div>
       </section>
 
       <div class="brain-intelligence-grid">
@@ -516,11 +514,15 @@
       </div>`;
 
     bindRenderedEvents();
-    updateClock();
+    startClock(schedule);
     if (window.lucide) window.lucide.createIcons();
     // Brain extensions (daily briefing, Phase 3, Checkpoint K) draw inside
     // #brain-shell and re-attach on this event instead of observing it.
     window.AtlasShell?.emit?.('brain:rendered', { shell: dom.shell });
+  }
+
+  function openHoursSettings() {
+    window.AtlasShell.show('settings', { section: 'general' });
   }
 
   function navigate(target) {
@@ -535,18 +537,13 @@
   function bindRenderedEvents() {
     dom.shell.querySelectorAll('[data-brain-target]').forEach((button) => button.addEventListener('click', () => navigate(button.dataset.brainTarget)));
     dom.shell.querySelector('[data-brain-refresh]')?.addEventListener('click', render);
-    // Questions the global Ask Atlas understands are answered by it, so both
-    // boxes give the same answer from the same data; the rest use the
-    // readiness summary below.
-    const answerQuestion = async (question) => {
-      const answer = document.getElementById('brain-assistant-answer');
-      let text = null;
-      try {
-        const shared = await window.AtlasSearch?.answerFor?.(question);
-        if (shared) text = [shared.text, ...(shared.lines || []).map((line) => `• ${line}`)].join('\n');
-      } catch { text = null; }
-      state.assistantAnswer = text || assistantResponse(question);
-      if (answer) answer.textContent = state.assistantAnswer;
+    dom.shell.querySelectorAll('[data-venue-hours-settings]').forEach((button) => button.addEventListener('click', openHoursSettings));
+    // S88: the Brain Ask card hands questions to Atlas AI (#ai), which falls
+    // back to the same deterministic answers when Atlas AI is switched off.
+    const answerQuestion = (question) => {
+      const text = String(question || '').trim();
+      if (window.AtlasAI?.ask) window.AtlasAI.ask({ question: text });
+      else window.AtlasShell.show('ai', text ? { new: '1', q: text } : { new: '1' });
     };
     dom.shell.querySelectorAll('[data-brain-prompt]').forEach((button) => button.addEventListener('click', () => answerQuestion(button.dataset.brainPrompt)));
     dom.shell.querySelector('#brain-assistant-form')?.addEventListener('submit', (event) => {
@@ -557,17 +554,40 @@
     });
   }
 
-  function updateClock() {
-    const schedule = venueSchedule();
-    const countdown = document.getElementById('brain-countdown');
-    const phase = document.getElementById('brain-clock-phase');
-    if (countdown) countdown.textContent = durationLabel(schedule.target - new Date());
-    if (phase) phase.textContent = schedule.label;
+  function brainVisible() {
+    return document.body.dataset.atlasView === 'brain';
   }
 
-  function startClock() {
+  function stopClock() {
     if (state.timer) window.clearInterval(state.timer);
+    state.timer = null;
+  }
+
+  // The countdown ticks only while Brain is on screen and a saved-hours target
+  // exists; otherwise no timer runs (S87 §10).
+  function updateClock() {
+    const countdown = document.getElementById('brain-countdown');
+    if (!countdown || !brainVisible()) { stopClock(); return; }
+    const schedule = serviceClock();
+    if (!schedule.target) { render(); return; }
+    const remaining = schedule.target - new Date();
+    if (remaining <= 0) { render(); return; }
+    countdown.textContent = durationLabel(remaining);
+    const phase = document.getElementById('brain-clock-phase');
+    if (phase && phase.textContent !== schedule.label) phase.textContent = schedule.label;
+  }
+
+  function startClock(schedule = serviceClock()) {
+    stopClock();
+    if (!schedule.target || !brainVisible()) return;
     state.timer = window.setInterval(updateClock, 1000);
+  }
+
+  function renderHomeTimeline(timeline) {
+    const target = timeline || document.getElementById('home-timeline');
+    if (!target) return;
+    target.innerHTML = `<header><div><span>Today</span><h2>Today’s timeline</h2></div><i data-lucide="clock-3"></i></header><div class="brain-timeline">${timelineMarkup()}</div>`;
+    target.querySelectorAll('[data-venue-hours-settings]').forEach((button) => button.addEventListener('click', openHoursSettings));
   }
 
   function renderHomeAugmentation() {
@@ -589,7 +609,7 @@
         metrics.insertAdjacentElement('afterend', timeline);
       }
       timeline.style.display = document.body.dataset.atlasView === 'dashboard' ? 'block' : 'none';
-      timeline.innerHTML = `<header><div><span>Today</span><h2>Today’s timeline</h2></div><i data-lucide="clock-3"></i></header><div class="brain-timeline">${timelineMarkup()}</div>`;
+      renderHomeTimeline(timeline);
     }
     if (typeof bindHomeLinks === 'function') bindHomeLinks();
     window.lucide?.createIcons?.();
@@ -606,6 +626,14 @@
       renderHomeAugmentation();
     });
     shell.registerHomeSection('brain', renderHomeAugmentation, 20);
+    shell.onView('brain', { show: () => startClock(), hide: stopClock });
+    // Hours arrive after sign-in and change when Settings saves them: update
+    // the Home timeline and the Brain hero in place.
+    venueClock()?.onChange?.(() => {
+      renderHomeTimeline();
+      window.lucide?.createIcons?.();
+      if (brainVisible()) render();
+    });
   }
 
   function init() {
@@ -616,7 +644,6 @@
     state.initialized = true;
     render();
     renderHomeAugmentation();
-    startClock();
     if (window.lucide) window.lucide.createIcons();
   }
 
