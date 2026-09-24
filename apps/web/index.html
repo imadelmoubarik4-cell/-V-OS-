@@ -1622,7 +1622,8 @@
     else {
       form.reset();
       status.textContent = 'Waste recorded and live stock updated.';
-      await Promise.all([loadItems(), loadRestockLog()]);
+      await loadRestockLog();
+      await loadItems();
     }
     submit.disabled = false;
   });
