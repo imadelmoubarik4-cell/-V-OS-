@@ -72,6 +72,12 @@ verify_jwt = false
 [functions.atlas-ai]
 verify_jwt = false
 
+# S89: visual inventory recognition. The handler verifies the production-Auth
+# JWT and the active profile (_shared/auth.mjs) for every action; its database
+# access is limited to the atlas_recognition_* RPCs (no stock writes).
+[functions.atlas-inventory-recognition]
+verify_jwt = false
+
 [functions.atlas-notifications]
 verify_jwt = true
 
