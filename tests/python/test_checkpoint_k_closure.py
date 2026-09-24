@@ -8,6 +8,8 @@ FOUNDATION = (ROOT / "supabase/migrations/20260805093732_atlas_brain_checkpoint_
 CONSOLIDATION = (ROOT / "supabase/migrations/20260805125412_atlas_intelligence_checkpoint_k_consolidation.sql").read_text()
 EDGE = (ROOT / "supabase/functions/atlas-phase3-intelligence/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
+DEAD_BEGIN_RUN = (ROOT / "supabase/migrations/20260926080000_s88_drop_dead_intelligence_begin_run.sql").read_text()
+REPLAY = (ROOT / "scripts/verify_full_migration_replay.sh").read_text()
 SHARED_STOCK = (ROOT / "supabase/functions/_shared/stock-provenance.mjs").read_text()
 
 
@@ -32,6 +34,23 @@ class CheckpointKClosureTests(unittest.TestCase):
             self.assertIn(f"drop table if exists atlas_private.{table}", CONSOLIDATION)
         self.assertIn("Cannot consolidate Checkpoint K", CONSOLIDATION)
         self.assertIn("contains records", CONSOLIDATION)
+
+    def test_orphaned_experiment_entry_point_is_dropped_only_without_its_table(self):
+        signature = "intelligence_begin_run(text,text,timestamptz,jsonb,text,uuid,text,text)"
+        self.assertIn("if to_regclass('atlas_private.intelligence_runs') is null then", DEAD_BEGIN_RUN)
+        self.assertIn(f"drop function if exists public.atlas_{signature};", DEAD_BEGIN_RUN)
+        self.assertIn(f"drop function if exists atlas_private.{signature};", DEAD_BEGIN_RUN)
+        self.assertNotIn("intelligence_begin_run", EDGE)
+        self.assertIn('assert state["dead_begin_run"] is False', REPLAY)
+        later = sorted(
+            path for path in (ROOT / "supabase/migrations").glob("*.sql")
+            if path.name > "20260805125412_atlas_intelligence_checkpoint_k_consolidation.sql"
+        )
+        for path in later:
+            text = path.read_text()
+            self.assertNotIn("create table if not exists atlas_private.intelligence_runs", text, path.name)
+            if path.name != "20260926080000_s88_drop_dead_intelligence_begin_run.sql":
+                self.assertNotIn("intelligence_begin_run", text, path.name)
 
     def test_checkpoint_k_is_manager_only_and_service_role_mediated(self):
         self.assertIn("async function requireManager", EDGE)
