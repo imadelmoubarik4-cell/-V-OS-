@@ -61,6 +61,12 @@ test('who is working: venue business date, today/tomorrow, unpublished flagged f
   assert.equal(schedule.data.week_start, '2026-09-21');
   assert.equal(schedule.data.unpublished_changes, 1);
   assert.equal(schedule.data.days.length, 7);
+  assert.deepEqual(schedule.data.gaps, [], 'no opening hours → gaps cannot be judged');
+  assert.ok(schedule.evidence.some((entry) => entry.kind === 'missing' && entry.label === 'Staffing gaps'));
+  const hours = [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, is_open: weekday !== 1, open_time: '16:00:00', close_time: '23:00:00' }));
+  const backend = createBackend({ venueClock: { timezone: 'Atlantic/Reykjavik', hours_configured: true, business_hours: hours, offers: [], venue_date: BUSINESS_DATE, business_date: BUSINESS_DATE } });
+  const withHours = await run('manager', 'shifts.schedule', { week_start: null }, { backend });
+  assert.deepEqual(withHours.data.gaps.map((gap) => gap.subject_key), ['2026-09-26', '2026-09-27'], 'open days from today on with nobody scheduled');
 });
 
 test('shift drafts: resolved person, overnight end, warnings, never published', async () => {

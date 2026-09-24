@@ -381,7 +381,11 @@ export async function executeProposal(kind, storedCommand, ctx) {
   if (!definition.executable) {
     return failure("not_executable", "Atlas does not make this change. Open the linked screen to review it yourself.");
   }
-  const services = ctx.services || createServices({ fetch: ctx.fetch, env: ctx.env, actor, now: ctx.now });
+  // Gateway services only (tests inject them); the runtime's ctx.services
+  // ({ rpc } for the Atlas AI tables) is never used to run Atlas commands.
+  const services = ctx.services && typeof ctx.services.stockCountStart === "function"
+    ? ctx.services
+    : createServices({ fetch: ctx.fetch, env: ctx.env, actor, now: Date.now() });
   try {
     switch (kind) {
       case "purchase_order.create": {
