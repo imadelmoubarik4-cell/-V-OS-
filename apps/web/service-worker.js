@@ -8,6 +8,8 @@ self.addEventListener('push', (event) => {
     body: payload.body || 'Open Atlas to review the update.',
     tag: payload.tag || `atlas-${route}`,
     renotify: Boolean(payload.renotify),
+    // Brand v1.0 platform icon (supplied kit file, docs/brand/README.md).
+    icon: 'assets/brand/favicon-192x192.png',
     data: { route, object_id: payload.object_id || null }
   }));
 });

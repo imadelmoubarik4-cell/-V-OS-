@@ -32,49 +32,65 @@
 
 @layer atlas.tokens {
 :root {
+  /* ---------- Brand v1.0 palette (docs/brand/README.md) ----------
+     The five kit colours, verbatim from docs/brand/Atlas_Brand_Identity_Kit_v1.0/
+     07_Developer/atlas-brand-tokens.css. Everything below derives from them.
+     The logo is always monochrome (Midnight on light, White on dark); Atlas
+     Blue is the product-interface accent, never a logo colour. */
+  --atlas-midnight: #0B0F14;
+  --atlas-slate: #1F2937;
+  --atlas-mist: #CBD5E1;
+  --atlas-snow: #F8FAFC;
+  --atlas-blue: #3B82F6;
+
   /* ---------- Colour: surfaces ---------- */
   --bg: #ffffff;                 /* content canvas */
-  --bg-subtle: #f7f7f5;          /* sidebar, table header, inset panels */
-  --bg-muted: #efefec;           /* hover on subtle, segmented track, skeleton */
-  --bg-hover: #fafaf8;           /* table row hover */
+  --bg-subtle: var(--atlas-snow);   /* sidebar, table header, inset panels */
+  --bg-muted: #f1f5f9;           /* hover on subtle, segmented track, skeleton (Snow, one step down) */
+  --bg-hover: #fbfcfd;           /* table row hover (between white and Snow) */
   --surface: #ffffff;            /* cards, sheets, popovers */
-  --overlay: rgba(23, 25, 30, .32);
+  --overlay: rgba(11, 15, 20, .32);  /* Midnight */
 
-  /* ---------- Colour: text ---------- */
-  --text: #17191e;               /* 17.4:1 on white */
-  --text-2: #5b616b;             /* secondary, 6.3:1 on white */
-  --text-3: #80858e;             /* placeholders, disabled, group labels — never body copy */
+  /* ---------- Colour: text (all ≥ 4.5:1 on --bg, --bg-subtle and --bg-muted) ---------- */
+  --text: var(--atlas-midnight); /* headings and primary text, 19.2:1 on white */
+  --text-2: #475569;             /* secondary (Slate family), 7.6:1 on white, 6.9:1 on --bg-muted */
+  --text-3: #606c80;             /* placeholders, group labels, meta — 5.3:1 on white, 4.9:1 on --bg-muted */
   --text-on-accent: #ffffff;
-  --ink: #1f2229;                /* tooltips, toasts, bulk bar */
+  --ink: var(--atlas-slate);     /* dark surfaces: tooltips, toasts, bulk bar (white text 14.7:1) */
 
-  /* ---------- Colour: lines ---------- */
-  --line: #e7e7e3;               /* card borders, dividers */
-  --line-strong: #d4d4cf;        /* inputs, secondary buttons */
-  --line-hover: #c2c2bc;         /* input hover */
-  --line-subtle: #f0f0ed;        /* row dividers inside cards and tables */
-  --control-border: #bdbdb7;     /* checkbox / radio outline */
-  --toggle-off: #cfcfca;
+  /* ---------- Colour: lines (Mist) ---------- */
+  --line: #e2e8f0;               /* card borders, dividers (hairline derived from Mist) */
+  --line-strong: var(--atlas-mist); /* inputs, secondary buttons */
+  --line-hover: #94a3b8;         /* input hover */
+  --line-subtle: #f1f5f9;        /* row dividers inside cards and tables */
+  --control-border: #94a3b8;     /* checkbox / radio outline */
+  --toggle-off: var(--atlas-mist);
 
-  /* ---------- Colour: accent (Atlas blue, darkened for AA) ---------- */
-  --accent: #1f6fdb;             /* 4.8:1 with white text */
-  --accent-hover: #195fc0;
-  --accent-press: #154fa2;
-  --accent-soft: #edf3fd;        /* selected rows, active chip, info tiles */
-  --accent-soft-hover: #e1ebfb;
-  --accent-text: #1a5ec0;        /* link / label text on white or accent-soft */
-  --accent-ring: rgba(31, 111, 219, .16);
-  --accent-illustration: #2f80ed; /* the pre-S88 blue: brand illustration only */
+  /* ---------- Colour: accent ----------
+     Atlas Blue #3B82F6 is the brand/interface accent: focus ring, selection
+     and active-nav indicators, icons, badges, charts. White text on it is
+     3.7:1 (fails WCAG AA 4.5:1), so text-bearing fills (primary buttons) and
+     blue text/links use the darker same-hue --accent #2563EB (5.2:1). */
+  --accent-brand: var(--atlas-blue); /* indicators, focus, icons, charts — never behind text */
+  --accent: #2563eb;             /* primary fills with white text (5.2:1), accent text/links */
+  --accent-hover: #1d4ed8;       /* 6.7:1 with white text */
+  --accent-press: #1e40af;
+  --accent-soft: #eff6ff;        /* selected rows, active chip, info tiles (wash of Atlas Blue) */
+  --accent-soft-hover: #dbeafe;
+  --accent-text: var(--accent);  /* link / label text: 5.2:1 on white, 4.8:1 on --accent-soft */
+  --accent-ring: rgba(59, 130, 246, .20);
+  --accent-illustration: var(--atlas-blue); /* charts and illustration */
 
   /* ---------- Colour: status (always paired with a word or icon) ---------- */
-  --positive: #177a52;
-  --positive-soft: #e9f5ef;
-  --warning: #93580a;
-  --warning-icon: #c07a12;
-  --warning-soft: #fdf3e2;
-  --danger: #c0362c;
-  --danger-soft: #fcecea;
-  --danger-ring: rgba(192, 54, 44, .10);
-  --neutral-soft: #f1f1ee;
+  --positive: #047857;           /* 5.5:1 on white, 5.2:1 on --positive-soft */
+  --positive-soft: #ecfdf5;
+  --warning: #b45309;            /* text: 5.0:1 on white, 4.8:1 on --warning-soft */
+  --warning-icon: #d97706;       /* icons only (3.2:1, non-text) */
+  --warning-soft: #fffbeb;
+  --danger: #c42020;             /* 5.9:1 on white (text and white-on-fill), 5.4:1 on --danger-soft */
+  --danger-soft: #fef2f2;
+  --danger-ring: rgba(196, 32, 32, .12);
+  --neutral-soft: #f1f5f9;
 
   /* ---------- Typography ---------- */
   --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -119,14 +135,14 @@
 
   /* ---------- Elevation (near flat; cards at rest have none) ---------- */
   --shadow-none: 0 0 0 0 transparent;
-  --shadow-1: 0 1px 2px rgba(23, 25, 30, .05);
-  --shadow-pop: 0 2px 6px rgba(23, 25, 30, .06), 0 12px 32px rgba(23, 25, 30, .10);
-  --shadow-modal: 0 4px 12px rgba(23, 25, 30, .08), 0 32px 80px rgba(23, 25, 30, .20);
+  --shadow-1: 0 1px 2px rgba(11, 15, 20, .05);
+  --shadow-pop: 0 2px 6px rgba(11, 15, 20, .06), 0 12px 32px rgba(11, 15, 20, .10);
+  --shadow-modal: 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20);
 
   /* ---------- Focus ---------- */
   --focus-width: 2px;
   --focus-offset: 2px;
-  --focus-color: var(--accent);
+  --focus-color: var(--accent-brand);   /* Atlas Blue: ≥ 3:1 on white, Snow, --bg-muted, --ink */
   --focus-outline: var(--focus-width) solid var(--focus-color);
   --focus-ring: 0 0 0 3px var(--accent-ring);   /* inputs: border + ring */
 
@@ -184,11 +200,11 @@
   --atlas-accent: var(--accent);
   --atlas-accent-strong: var(--accent-hover);
   --atlas-accent-soft: var(--accent-soft);
-  --atlas-accent-line: rgba(31, 111, 219, .24);
+  --atlas-accent-line: rgba(37, 99, 235, .24);
   --atlas-focus-ring: var(--focus-ring);
   --atlas-action: var(--accent);
   --atlas-action-hover: var(--accent-hover);
-  --atlas-action-focus: rgba(31, 111, 219, .24);
+  --atlas-action-focus: rgba(59, 130, 246, .24);
   --atlas-home-accent: var(--accent);
   --atlas-home-accent-strong: var(--accent-hover);
   --atlas-home-accent-soft: var(--accent-soft);

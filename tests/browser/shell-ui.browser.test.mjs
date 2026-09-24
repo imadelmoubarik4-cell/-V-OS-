@@ -45,7 +45,7 @@ test('sidebar: spec groups and role visibility (admin sees 13 + Settings, barten
         return { id: node.dataset.navId, bg: style.backgroundColor, color: style.color, count: document.querySelectorAll('.atlas-sidebar [aria-current="page"]').length };
       });
       assert.deepEqual([active.id, active.bg, active.count], ['home', 'rgb(255, 255, 255)', 1]);
-      assert.equal(active.color, 'rgb(23, 25, 30)');
+      assert.equal(active.color, 'rgb(11, 15, 20)');
       // Landmarks: one Main navigation visible, banner top bar, main content.
       assert.equal(await page.evaluate(() => document.querySelector('.atlas-sidebar nav.atlas-nav').getAttribute('aria-label')), 'Main');
       assert.equal(await page.evaluate(() => document.querySelector('main#atlas-main') !== null && document.querySelector('header.atlas-topbar') !== null), true);
@@ -361,7 +361,7 @@ test('phone: every shell control is at least 44 px; zoom is allowed; focus is vi
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
     const ring = await page.evaluate(() => { const style = getComputedStyle(document.activeElement); return `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`; });
-    assert.equal(ring, 'solid 2px rgb(31, 111, 219)');
+    assert.equal(ring, 'solid 2px rgb(59, 130, 246)');
   } finally { await close(); }
 });
 
@@ -393,7 +393,11 @@ test('brand line reads the venue from Settings, shows "Atlas" alone without one;
   try {
     await without.page.waitForTimeout(300);
     assert.equal(await without.page.$eval('#atlas-brand-venue', (node) => node.hidden), true);
-    assert.equal(await without.page.textContent('.atlas-brand__name'), 'Atlas');
+    // Brand v1.0: the supplied horizontal lockup, never typed text.
+    const lockup = await without.page.$eval('.atlas-brand__lockup', (img) => ({ alt: img.alt, src: img.getAttribute('src'), loaded: img.complete && img.naturalWidth > 0, width: img.getBoundingClientRect().width }));
+    assert.deepEqual({ ...lockup, width: undefined }, { alt: 'Atlas', src: 'assets/brand/Atlas_Primary_Horizontal_Midnight.svg', loaded: true, width: undefined });
+    assert.ok(lockup.width >= 96, `lockup ${lockup.width}px is below the 96 px minimum`);
+    assert.equal(await without.page.textContent('.atlas-brand__link'), '');
   } finally { await without.close(); }
 });
 

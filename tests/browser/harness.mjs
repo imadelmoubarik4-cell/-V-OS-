@@ -55,7 +55,8 @@ export function harnessAvailable() {
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.png': 'image/png', '.json': 'application/json', '.gz': 'application/gzip', '.svg': 'image/svg+xml'
+  '.png': 'image/png', '.json': 'application/json', '.gz': 'application/gzip', '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json', '.webm': 'video/webm', '.mp4': 'video/mp4'
 };
 
 export const USERS = {
@@ -86,12 +87,12 @@ function json(route, body, status = 200) {
  *   rpc:       { name: result | (body) => result }
  *   functions: { 'atlas-x': (ctx) => ({ status, body }) | body }
  */
-export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '' } = {}) {
+export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '', contextOptions = {} } = {}) {
   const playwright = loadPlaywright();
   const libs = resolveLibraries();
   if (!playwright || !libs) throw new Error('Browser harness dependencies are unavailable.');
   const browser = await playwright.chromium.launch({ executablePath: process.env.ATLAS_CHROMIUM || undefined });
-  const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
+  const context = await browser.newContext({ viewport, serviceWorkers: 'block', ...contextOptions });
   const page = await context.newPage();
   page.setDefaultTimeout(10000);
   const record = { requests: [], consoleErrors: [], pageErrors: [], dialogs: [] };

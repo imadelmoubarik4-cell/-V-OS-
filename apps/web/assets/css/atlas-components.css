@@ -133,7 +133,7 @@
    6.3 Buttons — .atlas-btn
    ========================================================================== */
 .atlas-btn {
-  --spin-track: rgba(23, 25, 30, .16);
+  --spin-track: rgba(11, 15, 20, .16);
   --spin-head: var(--text-2);
   position: relative;
   display: inline-flex;
@@ -193,8 +193,8 @@
   color: #ffffff;
   box-shadow: none;
 }
-.atlas-btn--danger-solid:hover:not(:disabled, [aria-disabled="true"]) { background: #a92f26; }
-.atlas-btn--danger-solid:active:not(:disabled, [aria-disabled="true"]) { background: #922820; }
+.atlas-btn--danger-solid:hover:not(:disabled, [aria-disabled="true"]) { background: #a51b1b; }
+.atlas-btn--danger-solid:active:not(:disabled, [aria-disabled="true"]) { background: #8a1616; }
 
 .atlas-btn--sm { height: var(--control-sm); padding: 0 10px; font-size: 13px; line-height: 18px; }
 .atlas-btn--lg { height: var(--control-lg); padding: 0 18px; font-size: 15px; line-height: 20px; }
@@ -308,7 +308,7 @@
 .atlas-textarea:hover:not(:disabled, :focus) { border-color: var(--line-hover); }
 .atlas-input:focus,
 .atlas-select:focus,
-.atlas-textarea:focus { border-color: var(--accent); box-shadow: var(--focus-ring); outline: none; }
+.atlas-textarea:focus { border-color: var(--accent-brand); box-shadow: var(--focus-ring); outline: none; }
 .atlas-input[aria-invalid="true"],
 .atlas-select[aria-invalid="true"],
 .atlas-textarea[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-ring); }
@@ -476,7 +476,7 @@ textarea.atlas-input,
   border-top-color: #ffffff;
   animation: atlas-spin 700ms linear infinite;
 }
-.atlas-toggle.is-pending:not([aria-checked="true"])::after { border-color: rgba(23, 25, 30, .12); border-top-color: var(--text-2); }
+.atlas-toggle.is-pending:not([aria-checked="true"])::after { border-color: rgba(11, 15, 20, .12); border-top-color: var(--text-2); }
 .atlas-toggle-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4); min-width: 0; }
 .atlas-toggle-row__label, .atlas-toggle-row .t { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--text); }
 .atlas-toggle-row__help, .atlas-toggle-row .h { margin: 2px 0 0; font: var(--type-caption); color: var(--text-2); }
@@ -571,7 +571,7 @@ textarea.atlas-input,
 .atlas-segmented > :is(button, a):is([aria-pressed="true"], [aria-checked="true"], [aria-current="page"], .is-active) {
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(23, 25, 30, .08), 0 0 0 1px rgba(23, 25, 30, .04);
+  box-shadow: 0 1px 2px rgba(11, 15, 20, .08), 0 0 0 1px rgba(11, 15, 20, .04);
 }
 .atlas-segmented > :is(button, a):focus-visible { outline: var(--focus-outline); outline-offset: 0; }
 .atlas-segmented > :is(button, a) > svg { width: var(--icon-sm); height: var(--icon-sm); }
@@ -680,7 +680,7 @@ textarea.atlas-input,
   color: inherit;
   cursor: pointer;
 }
-.atlas-chip__clear:hover { background: rgba(26, 94, 192, .12); }
+.atlas-chip__clear:hover { background: rgba(37, 99, 235, .12); }
 .atlas-chip__clear > svg { width: 12px; height: 12px; }
 .atlas-chip:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .atlas-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
@@ -1179,8 +1179,8 @@ body.atlas-modal-open { overflow: hidden; }
   height: 28px;
   flex: none;
   border-radius: 50%;
-  background: #e6e4df;
-  color: #3a3f48;
+  background: #e2e8f0;
+  color: #334155;
   font: 600 12px/1 var(--font-sans);
   text-transform: uppercase;
 }
@@ -1237,7 +1237,7 @@ body.atlas-modal-open { overflow: hidden; }
   display: block;
   height: 12px;
   border-radius: var(--r-xs);
-  background: linear-gradient(90deg, var(--bg-muted) 0, #f6f6f3 50%, var(--bg-muted) 100%);
+  background: linear-gradient(90deg, var(--bg-muted) 0, #f8fafc 50%, var(--bg-muted) 100%);
   background-size: 200% 100%;
   opacity: 0;
   animation: atlas-skel-show 1ms linear 150ms forwards, atlas-shimmer 1.4s ease-in-out 150ms infinite;
@@ -1412,7 +1412,7 @@ body.atlas-modal-open { overflow: hidden; }
   width: 16px;
   height: 16px;
   flex: none;
-  border: 2px solid rgba(23, 25, 30, .14);
+  border: 2px solid rgba(11, 15, 20, .14);
   border-top-color: var(--text-2);
   border-radius: 50%;
   animation: atlas-spin 700ms linear infinite;
@@ -1915,6 +1915,6 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 }
 :where(:is( #supplier-search, #recipe-search, [data-team-target-search] ):focus) {
   border-color: var(--s38-blue);
-  box-shadow: 0 0 0 4px rgba(31, 111, 219, .16);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, .16);
 }
 }

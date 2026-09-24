@@ -7,7 +7,7 @@ Netlify publishes only `apps/web`.
 - `apps/web/index.html` is the single browser entry point.
 - Browser styles, scripts, images and configuration belong under `apps/web`.
 - The canonical recipe stylesheet is `apps/web/assets/css/recipes.css`.
-- The canonical Atlas icon is `apps/web/assets/logo/atlas-icon.png`.
+- Atlas logos, favicons and platform icons live in `apps/web/assets/brand/`, byte-identical copies of the brand kit in `docs/brand/Atlas_Brand_Identity_Kit_v1.0/` (rules: `docs/brand/README.md`). Never redraw or re-export them.
 - Do not add repository-root copies such as `index.html`, `index_atlas_all_fixes.html`, `recipes.css` or `atlas-icon.png`.
 - Supabase migrations and Edge Functions remain under `supabase` and are not browser assets.
 

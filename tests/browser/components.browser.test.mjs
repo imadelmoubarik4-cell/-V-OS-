@@ -165,7 +165,7 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
     await page.screenshot({ path: path.join(SHOTS, 'components-1440.png'), fullPage: true });
     assert.deepEqual(errors, []);
     assert.equal(result.coarse, false);
-    assert.equal(result.tokens.accent, '#1f6fdb');
+    assert.equal(result.tokens.accent, '#2563eb');
     assert.equal(result.sizes.btnSm.h, 32);
     assert.equal(result.sizes.btnMd.h, 36);
     assert.equal(result.sizes.btnPrimary.h, 36);
@@ -201,7 +201,7 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
       const style = getComputedStyle(document.activeElement);
       return { width: style.outlineWidth, style: style.outlineStyle, color: style.outlineColor, offset: style.outlineOffset, test: document.activeElement.dataset.test };
     });
-    assert.deepEqual(ring, { width: '2px', style: 'solid', color: 'rgb(31, 111, 219)', offset: '2px', test: 'btn-secondary' });
+    assert.deepEqual(ring, { width: '2px', style: 'solid', color: 'rgb(59, 130, 246)', offset: '2px', test: 'btn-secondary' });
     // Inputs show the accent border and a 3 px ring instead of an outline.
     await page.focus('[data-test="input"]');
     await page.waitForTimeout(250);
@@ -209,8 +209,8 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
       const style = getComputedStyle(document.activeElement);
       return { border: style.borderTopColor, shadow: style.boxShadow };
     });
-    assert.equal(inputFocus.border, 'rgb(31, 111, 219)');
-    assert.match(inputFocus.shadow, /rgba\(31, 111, 219, 0\.16\) 0px 0px 0px 3px/);
+    assert.equal(inputFocus.border, 'rgb(59, 130, 246)');
+    assert.match(inputFocus.shadow, /rgba\(59, 130, 246, 0\.2\) 0px 0px 0px 3px/);
   } finally {
     await browser.close();
   }

@@ -4,7 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Atlas</title>
-<link rel="icon" type="image/png" href="assets/logo/atlas-icon.png">
+<!-- Brand v1.0: supplied kit files, byte-exact (docs/brand/README.md). -->
+<link rel="icon" href="assets/brand/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="assets/brand/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/brand/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/brand/favicon-48x48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta property="og:title" content="Atlas">
+<meta property="og:image" content="assets/brand/Atlas_OpenGraph_1200x630.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <!-- S88: atlas-tokens.css is linked first because it declares the cascade-layer
@@ -474,7 +483,17 @@
   <!-- ===================== SIGN IN (spec §7.17) ===================== -->
   <div id="login-screen" class="atlas-auth">
     <main class="atlas-auth__column" aria-labelledby="login-title">
-      <div class="atlas-auth__brand"><span class="atlas-brand__mark" aria-hidden="true">A</span><span class="atlas-auth__wordmark">Atlas</span></div>
+      <!-- Brand v1.0 sign-in intro (docs/brand/README.md): the owner's logo motion
+           plays once per browser session, muted and decorative, then settles on
+           the kit's static stacked lockup (the logo for assistive technology).
+           assets/js/atlas-signin-intro.js decides whether it may play at all. -->
+      <div class="atlas-auth__brand atlas-auth__brand--intro" data-atlas-signin-intro data-intro-state="static">
+        <video class="atlas-auth__intro" muted playsinline preload="none" disablepictureinpicture disableremoteplayback aria-hidden="true" tabindex="-1" hidden>
+          <source src="assets/brand/motion/atlas-signin-intro.webm" type="video/webm">
+          <source src="assets/brand/motion/atlas-signin-intro.mp4" type="video/mp4">
+        </video>
+        <img class="atlas-auth__lockup" src="assets/brand/Atlas_Primary_Stacked_Midnight.svg" alt="Atlas" width="128" height="113">
+      </div>
       <h1 class="atlas-auth__title" id="login-title">Welcome back</h1>
       <p class="atlas-auth__sub" id="login-sub">Sign in to continue.</p>
       <form id="login-form" class="atlas-auth__form">
@@ -503,7 +522,7 @@
     <div class="atlas-shell">
       <aside class="atlas-sidebar" id="atlas-sidebar" aria-label="Sidebar">
         <div class="atlas-brand">
-          <a class="atlas-brand__link nav-home" href="#home" aria-label="Atlas — Home"><span class="atlas-brand__mark" aria-hidden="true">A</span><span class="atlas-brand__text"><span class="atlas-brand__name">Atlas</span><span class="atlas-brand__venue" id="atlas-brand-venue" hidden></span></span></a>
+          <a class="atlas-brand__link nav-home" href="#home" aria-label="Atlas — Home"><img class="atlas-brand__lockup" src="assets/brand/Atlas_Primary_Horizontal_Midnight.svg" alt="Atlas" width="121" height="32"><img class="atlas-brand__mark" src="assets/brand/Atlas_Mark_Midnight.svg" alt="Atlas" width="27" height="24"><span class="atlas-brand__venue" id="atlas-brand-venue" hidden></span></a>
         </div>
         <nav class="atlas-nav" aria-label="Main">
           <div class="atlas-nav__scroll">
@@ -558,6 +577,7 @@
         <header class="atlas-topbar" id="atlas-topbar">
           <button type="button" class="atlas-icon-btn atlas-topbar__toggle" id="atlas-sidebar-toggle" aria-controls="atlas-sidebar" aria-expanded="true" aria-label="Collapse sidebar"><i data-lucide="panel-left" aria-hidden="true"></i></button>
           <button type="button" class="atlas-icon-btn atlas-topbar__back" id="atlas-topbar-back" aria-label="Back" hidden><i data-lucide="chevron-left" aria-hidden="true"></i></button>
+          <a class="atlas-topbar__mark" href="#home" aria-label="Atlas — Home"><img src="assets/brand/Atlas_Mark_Midnight.svg" alt="" width="25" height="22"></a>
           <div class="atlas-topbar__title" id="atlas-page-title">Home</div>
           <button type="button" class="atlas-omni" id="atlas-omni" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K /"><i data-lucide="search" aria-hidden="true"></i><span class="atlas-omni__label">Search or ask Atlas</span><kbd class="kbd atlas-omni__kbd" data-shortcut-hint>⌘K</kbd></button>
           <span class="atlas-topbar__spacer"></span>
@@ -1353,6 +1373,10 @@
       loginBtn.textContent = 'Sign in';
       if (data.session) {
         await onSignedIn(data.session);
+      } else {
+        // No session: the sign-in form is what this visitor sees (logo intro).
+        document.documentElement.dataset.atlasSignin = 'shown';
+        window.AtlasSignInIntro?.start();
       }
     } catch (error) {
       loginBtn.disabled = false;
@@ -2578,5 +2602,6 @@
 <script src="assets/js/atlas-search.js?v=20260926-s88"></script>
 <script src="assets/js/atlas-chrome.js?v=20260926-s88"></script>
 <script src="assets/js/atlas-palette.js?v=20260926-s88"></script>
+<script src="assets/js/atlas-signin-intro.js?v=20260924-brand1"></script>
 </body>
 </html>

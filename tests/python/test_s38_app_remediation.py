@@ -47,10 +47,10 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertLess(self.index.index(js_reference), self.index.index("</body>"))
 
     def test_shared_visual_contract(self):
-        # S88: the S38 blue is an alias of the single Atlas blue (--accent).
+        # S88: the S38 blue is an alias of the single Atlas blue (--accent; Brand v1.0 #2563eb).
         tokens = (ROOT / "apps/web/assets/css/atlas-tokens.css").read_text(encoding="utf-8")
         self.assertIn("--s38-blue: var(--accent);", tokens)
-        self.assertIn("--accent: #1f6fdb;", tokens)
+        self.assertIn("--accent: #2563eb;", tokens)
         self.assertNotIn("--s38-blue: #4f7df3", self.css)
         for token in (
             "--s38-card: #ffffff",

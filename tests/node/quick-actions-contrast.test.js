@@ -25,6 +25,6 @@ test('every former quick-action entry is a canonical action', () => {
 });
 
 test('palette rows show a visible keyboard focus and an active row', () => {
-  assert.match(css, /\.atlas-palette__item\.is-active \{ background: var\(--bg-muted, #efefec\); \}/);
-  assert.match(css, /:focus-visible \{ outline: 2px solid var\(--accent, #1f6fdb\); outline-offset: 2px; \}/);
+  assert.match(css, /\.atlas-palette__item\.is-active \{ background: var\(--bg-muted, #f1f5f9\); \}/);
+  assert.match(css, /:focus-visible \{ outline: 2px solid var\(--focus-color, #3b82f6\); outline-offset: 2px; \}/);
 });
