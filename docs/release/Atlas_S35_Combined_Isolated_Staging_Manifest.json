@@ -70,7 +70,8 @@
     {
       "name": "atlas-inventory-scanner",
       "sources": {
-        "supabase/functions/atlas-inventory-scanner/index.ts": "5d340c104d6ee5540404e3aa472243b03a577adb7a6fe5d43262710a67b5200a"
+        "supabase/functions/atlas-inventory-scanner/index.ts": "204ec0bb115107a47751bb3452d904f0edbd4a3235d6aab464e3a2316901d5ca",
+        "supabase/functions/_shared/product-identity.mjs": "077745f34ef4935cfb5dafb2195d9a0b33055dc603416cd6f90e2400f0f7379f"
       }
     },
     {
@@ -140,7 +141,7 @@
     {
       "name": "atlas-stock-counts",
       "sources": {
-        "supabase/functions/atlas-stock-counts/entrypoint.ts": "caf9577afd7deb589bccda5a18c346c33b66457a35c6b5982230ab091aebbdc6",
+        "supabase/functions/atlas-stock-counts/entrypoint.ts": "e5331059f8e30ea63091f1497d0ad2ba2832e95646ef13c7501eaacdd0f53261",
         "supabase/functions/atlas-stock-counts/index.ts": "e10cc53f0154e321bf27486e123d04918d97f20585115d1ffb3a6d60677de3ee"
       }
     },

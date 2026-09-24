@@ -107,7 +107,9 @@ export function metrics() {
     important,
     crossFileDuplicateSelectors: crossFileDuplicates,
     subElevenPxFontSizes: smallFonts,
-    stylesheetFiles: files.filter((source) => !source.name.startsWith('legacy/')).length,
+    // All stylesheet files, legacy fragments included: the design system adds
+    // atlas-base.css and atlas-components.css while it retires fragments.
+    stylesheetFiles: files.length,
     legacyFragmentFiles: files.filter((source) => source.name.startsWith('legacy/')).length,
     inlineAndInjectedStyleBlocks: sources.filter((source) => !source.file).length
   };

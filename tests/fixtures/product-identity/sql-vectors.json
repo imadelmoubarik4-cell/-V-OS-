@@ -1,0 +1,6611 @@
+{
+ "codes": [
+  {
+   "input": {
+    "raw": "012345678905"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "00012345678905"
+   }
+  },
+  {
+   "input": {
+    "raw": "0012345678905"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "00012345678905"
+   }
+  },
+  {
+   "input": {
+    "raw": "00012345678905"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "00012345678905"
+   }
+  },
+  {
+   "input": {
+    "raw": "5000299223017"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "05000299223017"
+   }
+  },
+  {
+   "input": {
+    "raw": "5000299223018"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": false,
+    "reason": "check_digit",
+    "symbology": "unknown",
+    "normalized": null
+   }
+  },
+  {
+   "input": {
+    "raw": "5 000299 223017"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "05000299223017"
+   }
+  },
+  {
+   "input": {
+    "raw": "5000-2992-23017"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "05000299223017"
+   }
+  },
+  {
+   "input": {
+    "raw": "96385074"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "00000096385074"
+   }
+  },
+  {
+   "input": {
+    "raw": "01234565",
+    "symbology": "UPC-E"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "upc_e",
+    "normalized": "00012345000065"
+   }
+  },
+  {
+   "input": {
+    "raw": "01234565",
+    "symbology": "upc_e"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "upc_e",
+    "normalized": "00012345000065"
+   }
+  },
+  {
+   "input": {
+    "raw": "01234565"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "00000001234565"
+   }
+  },
+  {
+   "input": {
+    "raw": "1234567890"
+   },
+   "result": {
+    "kind": "other_barcode",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "1234567890"
+   }
+  },
+  {
+   "input": {
+    "raw": "AB-12",
+    "kind": "sku"
+   },
+   "result": {
+    "kind": "sku",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "AB-12"
+   }
+  },
+  {
+   "input": {
+    "raw": "ab-12 x",
+    "kind": "sku"
+   },
+   "result": {
+    "kind": "sku",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "AB-12X"
+   }
+  },
+  {
+   "input": {
+    "raw": "ab 12",
+    "kind": "supplier_ref"
+   },
+   "result": {
+    "kind": "supplier_ref",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "AB12"
+   }
+  },
+  {
+   "input": {
+    "raw": "AB",
+    "kind": "sku"
+   },
+   "result": {
+    "kind": "sku",
+    "valid": false,
+    "reason": "length",
+    "symbology": "unknown",
+    "normalized": null
+   }
+  },
+  {
+   "input": {
+    "raw": "12345",
+    "kind": "gtin"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": false,
+    "reason": "length",
+    "symbology": "unknown",
+    "normalized": null
+   }
+  },
+  {
+   "input": {
+    "raw": "ABC123",
+    "kind": "gtin"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": false,
+    "reason": "not_numeric",
+    "symbology": "unknown",
+    "normalized": null
+   }
+  },
+  {
+   "input": {
+    "raw": "5000299223017",
+    "kind": "other_barcode"
+   },
+   "result": {
+    "kind": "other_barcode",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "5000299223017"
+   }
+  },
+  {
+   "input": {
+    "raw": "  \t "
+   },
+   "result": {
+    "kind": "other_barcode",
+    "valid": false,
+    "reason": "empty",
+    "symbology": "unknown",
+    "normalized": null
+   }
+  },
+  {
+   "input": {
+    "raw": "ÞÓR-123",
+    "kind": "sku"
+   },
+   "result": {
+    "kind": "sku",
+    "valid": true,
+    "reason": null,
+    "symbology": "unknown",
+    "normalized": "ÞÓR-123"
+   }
+  },
+  {
+   "input": {
+    "raw": "10012345678902",
+    "kind": "gtin",
+    "symbology": "ITF 14"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "itf_14",
+    "normalized": "10012345678902"
+   }
+  },
+  {
+   "input": {
+    "raw": "4006381333931",
+    "symbology": "EAN_13"
+   },
+   "result": {
+    "kind": "gtin",
+    "valid": true,
+    "reason": null,
+    "symbology": "ean_13",
+    "normalized": "04006381333931"
+   }
+  },
+  {
+   "input": {
+    "raw": "x",
+    "kind": "internal"
+   },
+   "result": {
+    "kind": "internal",
+    "valid": false,
+    "reason": "length",
+    "symbology": "unknown",
+    "normalized": null
+   }
+  }
+ ],
+ "items": [
+  {
+   "item": {
+    "name": "Giffard Vanille Syrup",
+    "unit": "bottles",
+    "size_ml": 1000
+   },
+   "package": {
+    "kind": "single",
+    "source": "size_ml",
+    "pack_text": null,
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard syrup vanille",
+   "pack_key": "1000ml",
+   "match_key": "giffard syrup vanilla",
+   "identity_key": "giffard syrup vanille|1000ml"
+  },
+  {
+   "item": {
+    "name": "Giffard Vanille Syrup 1L",
+    "unit": "bottles"
+   },
+   "package": {
+    "kind": "single",
+    "source": "name",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard syrup vanille",
+   "pack_key": "1000ml",
+   "match_key": "giffard syrup vanilla",
+   "identity_key": "giffard syrup vanille|1000ml"
+  },
+  {
+   "item": {
+    "name": "Fever-Tree Tonic",
+    "unit": "cases",
+    "package_size": "24 x 200 ml"
+   },
+   "package": {
+    "kind": "multipack",
+    "source": "package_size",
+    "pack_text": "24 x 200 ml",
+    "unit_base": "ml",
+    "unit_quantity": 200,
+    "units_per_pack": 24,
+    "ambiguous_reason": null
+   },
+   "name_key": "fever tonic tree",
+   "pack_key": "24x200ml",
+   "match_key": "fever tonic tree",
+   "identity_key": "fever tonic tree|24x200ml"
+  },
+  {
+   "item": {
+    "name": "Fever-Tree Tonic",
+    "unit": "bottles",
+    "size_ml": 200,
+    "package_size": "24 x 200 ml"
+   },
+   "package": {
+    "kind": "single",
+    "source": "size_ml",
+    "pack_text": "24 x 200 ml",
+    "unit_base": "ml",
+    "unit_quantity": 200,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "fever tonic tree",
+   "pack_key": "200ml",
+   "match_key": "fever tonic tree",
+   "identity_key": "fever tonic tree|200ml"
+  },
+  {
+   "item": {
+    "name": "Natrue Barista Oat Milk",
+    "unit": "cases",
+    "package_size": "6 x 1 L"
+   },
+   "package": {
+    "kind": "multipack",
+    "source": "package_size",
+    "pack_text": "6 x 1 l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": 6,
+    "ambiguous_reason": null
+   },
+   "name_key": "barista milk natrue oat",
+   "pack_key": "6x1000ml",
+   "match_key": "barista milk natrue oat",
+   "identity_key": "barista milk natrue oat|6x1000ml"
+  },
+  {
+   "item": {
+    "name": "Haframjólk Natrue Barista 1L",
+    "unit": "cartons"
+   },
+   "package": {
+    "kind": "single",
+    "source": "name",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "barista haframjólk natrue",
+   "pack_key": "1000ml",
+   "match_key": "barista milk natrue oat",
+   "identity_key": "barista haframjólk natrue|1000ml"
+  },
+  {
+   "item": {
+    "name": "Sítrónur 15kg",
+    "unit": "boxes"
+   },
+   "package": {
+    "kind": "single",
+    "source": "name",
+    "pack_text": "15kg",
+    "unit_base": "g",
+    "unit_quantity": 15000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "sítrónur",
+   "pack_key": "15000g",
+   "match_key": "lemon",
+   "identity_key": "sítrónur|15000g"
+  },
+  {
+   "item": {
+    "name": "Lemons 15 kg",
+    "unit": "Kassi"
+   },
+   "package": {
+    "kind": "single",
+    "source": "name",
+    "pack_text": "15 kg",
+    "unit_base": "g",
+    "unit_quantity": 15000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "lemons",
+   "pack_key": "15000g",
+   "match_key": "lemon",
+   "identity_key": "lemons|15000g"
+  },
+  {
+   "item": {
+    "name": "Straws",
+    "unit": "packs",
+    "package_size": "1250 pcs"
+   },
+   "package": {
+    "kind": "count",
+    "source": "package_size",
+    "pack_text": "1250 pcs",
+    "unit_base": "count",
+    "unit_quantity": 1250,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "straws",
+   "pack_key": "1250count",
+   "match_key": "straws",
+   "identity_key": "straws|1250count"
+  },
+  {
+   "item": {
+    "name": "Twinings Earl Grey",
+    "unit": "boxes",
+    "package_size": "25 x 2g tea bags"
+   },
+   "package": {
+    "kind": "multipack",
+    "source": "package_size",
+    "pack_text": "25 x 2g",
+    "unit_base": "g",
+    "unit_quantity": 2,
+    "units_per_pack": 25,
+    "ambiguous_reason": null
+   },
+   "name_key": "earl grey twinings",
+   "pack_key": "25x2g",
+   "match_key": "earl grey twinings",
+   "identity_key": "earl grey twinings|25x2g"
+  },
+  {
+   "item": {
+    "name": "Keg",
+    "unit": "kegs",
+    "package_size": "25 L keg"
+   },
+   "package": {
+    "kind": "single",
+    "source": "package_size",
+    "pack_text": "25 l",
+    "unit_base": "ml",
+    "unit_quantity": 25000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "pack_key": "25000ml",
+   "match_key": null,
+   "identity_key": null
+  },
+  {
+   "item": {
+    "name": "Milk",
+    "unit": "cartons",
+    "package_size": "1,000 ml"
+   },
+   "package": {
+    "kind": "ambiguous",
+    "source": null,
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": "decimal_comma_or_thousands"
+   },
+   "name_key": "milk",
+   "pack_key": "?",
+   "match_key": "milk",
+   "identity_key": "milk|?"
+  },
+  {
+   "item": {
+    "name": "Sugar",
+    "unit": "kg",
+    "package_weight_g": 1000
+   },
+   "package": {
+    "kind": "single",
+    "source": "package_weight_g",
+    "pack_text": null,
+    "unit_base": "g",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "sugar",
+   "pack_key": "1000g",
+   "match_key": "sugar",
+   "identity_key": "sugar|1000g"
+  },
+  {
+   "item": {
+    "name": "Syrup",
+    "unit": "units",
+    "unit_size_base": "count",
+    "unit_size_quantity": 1
+   },
+   "package": {
+    "kind": "count",
+    "source": "unit_size",
+    "pack_text": null,
+    "unit_base": "count",
+    "unit_quantity": 1,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "syrup",
+   "pack_key": "1count",
+   "match_key": "syrup",
+   "identity_key": "syrup|1count"
+  },
+  {
+   "item": {
+    "name": "Unknown thing",
+    "unit": "units"
+   },
+   "package": {
+    "kind": "none",
+    "source": null,
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "thing unknown",
+   "pack_key": "?",
+   "match_key": "thing unknown",
+   "identity_key": "thing unknown|?"
+  },
+  {
+   "item": {
+    "name": "Brand only",
+    "brand": "Giffard",
+    "size_ml": 1000,
+    "variant": "Vanille",
+    "product_name": "Vanille Syrup"
+   },
+   "package": {
+    "kind": "single",
+    "source": "size_ml",
+    "pack_text": null,
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard syrup vanille",
+   "pack_key": "1000ml",
+   "match_key": "giffard syrup vanilla",
+   "identity_key": "giffard syrup vanille|1000ml"
+  },
+  {
+   "item": {
+    "name": "Kaffi",
+    "brand": "Tár",
+    "package_size": "1 kíló",
+    "product_name": "   "
+   },
+   "package": {
+    "kind": "single",
+    "source": "package_size",
+    "pack_text": "1 kíló",
+    "unit_base": "g",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "kaffi tár",
+   "pack_key": "1000g",
+   "match_key": "coffee tar",
+   "identity_key": "kaffi tár|1000g"
+  },
+  {
+   "item": {
+    "name": "Prep",
+    "unit": "units",
+    "package_size": "2L prep batch"
+   },
+   "package": {
+    "kind": "single",
+    "source": "package_size",
+    "pack_text": "2l",
+    "unit_base": "ml",
+    "unit_quantity": 2000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "prep",
+   "pack_key": "2000ml",
+   "match_key": "prep",
+   "identity_key": "prep|2000ml"
+  },
+  {
+   "item": {
+    "name": "Coke",
+    "unit": "CASES",
+    "package_size": "24 x 330ml"
+   },
+   "package": {
+    "kind": "multipack",
+    "source": "package_size",
+    "pack_text": "24 x 330ml",
+    "unit_base": "ml",
+    "unit_quantity": 330,
+    "units_per_pack": 24,
+    "ambiguous_reason": null
+   },
+   "name_key": "coke",
+   "pack_key": "24x330ml",
+   "match_key": "coke",
+   "identity_key": "coke|24x330ml"
+  },
+  {
+   "item": {
+    "name": "Gull",
+    "unit": "cases",
+    "package_size": "6 x 1,000 ml"
+   },
+   "package": {
+    "kind": "ambiguous",
+    "source": null,
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": "decimal_comma_or_thousands"
+   },
+   "name_key": "gull",
+   "pack_key": "?",
+   "match_key": "gull",
+   "identity_key": "gull|?"
+  }
+ ],
+ "texts": [
+  {
+   "fold": "giffard vanille syrup",
+   "text": "Giffard Vanille Syrup",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard syrup vanille",
+   "match_key": "giffard syrup vanilla",
+   "name_tokens": [
+    "giffard",
+    "vanille",
+    "syrup"
+   ],
+   "search_fold": "giffard vanille syrup",
+   "match_tokens": [
+    "giffard",
+    "vanilla",
+    "syrup"
+   ]
+  },
+  {
+   "fold": "giffard vanille syrup 1l",
+   "text": "Giffard Vanille Syrup 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard syrup vanille",
+   "match_key": "giffard syrup vanilla",
+   "name_tokens": [
+    "giffard",
+    "vanille",
+    "syrup"
+   ],
+   "search_fold": "giffard vanille syrup 1l",
+   "match_tokens": [
+    "giffard",
+    "vanilla",
+    "syrup"
+   ]
+  },
+  {
+   "fold": "giffard sirop vanille 1l",
+   "text": "GIFFARD SIROP VANILLE 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard sirop vanille",
+   "match_key": "giffard syrup vanilla",
+   "name_tokens": [
+    "giffard",
+    "sirop",
+    "vanille"
+   ],
+   "search_fold": "giffard sirop vanille 1l",
+   "match_tokens": [
+    "giffard",
+    "syrup",
+    "vanilla"
+   ]
+  },
+  {
+   "fold": "vanille giffard syrup 1l",
+   "text": "Vanille Giffard Syrup 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard syrup vanille",
+   "match_key": "giffard syrup vanilla",
+   "name_tokens": [
+    "vanille",
+    "giffard",
+    "syrup"
+   ],
+   "search_fold": "vanille giffard syrup 1l",
+   "match_tokens": [
+    "vanilla",
+    "giffard",
+    "syrup"
+   ]
+  },
+  {
+   "fold": "giffard vanilla",
+   "text": "Giffard Vanilla",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard vanilla",
+   "match_key": "giffard vanilla",
+   "name_tokens": [
+    "giffard",
+    "vanilla"
+   ],
+   "search_fold": "giffard vanilla",
+   "match_tokens": [
+    "giffard",
+    "vanilla"
+   ]
+  },
+  {
+   "fold": "giffard vanille",
+   "text": "Giffard Vanille",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard vanille",
+   "match_key": "giffard vanilla",
+   "name_tokens": [
+    "giffard",
+    "vanille"
+   ],
+   "search_fold": "giffard vanille",
+   "match_tokens": [
+    "giffard",
+    "vanilla"
+   ]
+  },
+  {
+   "fold": "vanilla syrup",
+   "text": "Vanilla syrup",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "syrup vanilla",
+   "match_key": "syrup vanilla",
+   "name_tokens": [
+    "vanilla",
+    "syrup"
+   ],
+   "search_fold": "vanilla syrup",
+   "match_tokens": [
+    "vanilla",
+    "syrup"
+   ]
+  },
+  {
+   "fold": "giffard salted caramel syrup",
+   "text": "Giffard Salted Caramel Syrup",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "caramel giffard salted syrup",
+   "match_key": "caramel giffard salted syrup",
+   "name_tokens": [
+    "giffard",
+    "salted",
+    "caramel",
+    "syrup"
+   ],
+   "search_fold": "giffard salted caramel syrup",
+   "match_tokens": [
+    "giffard",
+    "salted",
+    "caramel",
+    "syrup"
+   ]
+  },
+  {
+   "fold": "giffard caramel",
+   "text": "Giffard Caramel",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "caramel giffard",
+   "match_key": "caramel giffard",
+   "name_tokens": [
+    "giffard",
+    "caramel"
+   ],
+   "search_fold": "giffard caramel",
+   "match_tokens": [
+    "giffard",
+    "caramel"
+   ]
+  },
+  {
+   "fold": "giffard banana syrup 1l",
+   "text": "Giffard Banana Syrup 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "banana giffard syrup",
+   "match_key": "banana giffard syrup",
+   "name_tokens": [
+    "giffard",
+    "banana",
+    "syrup"
+   ],
+   "search_fold": "giffard banana syrup 1l",
+   "match_tokens": [
+    "giffard",
+    "banana",
+    "syrup"
+   ]
+  },
+  {
+   "fold": "giffard banane du brésil 70cl",
+   "text": "Giffard Banane du Brésil 70cl",
+   "package": {
+    "kind": "single",
+    "pack_text": "70cl",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "banane brésil giffard",
+   "match_key": "banana bresil giffard",
+   "name_tokens": [
+    "giffard",
+    "banane",
+    "brésil"
+   ],
+   "search_fold": "giffard banane du bresil 70cl",
+   "match_tokens": [
+    "giffard",
+    "banana",
+    "bresil"
+   ]
+  },
+  {
+   "fold": "giffard ananas",
+   "text": "Giffard Ananas",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "ananas giffard",
+   "match_key": "giffard pineapple",
+   "name_tokens": [
+    "giffard",
+    "ananas"
+   ],
+   "search_fold": "giffard ananas",
+   "match_tokens": [
+    "giffard",
+    "pineapple"
+   ]
+  },
+  {
+   "fold": "giffard mango",
+   "text": "Giffard Mango",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard mango",
+   "match_key": "giffard mango",
+   "name_tokens": [
+    "giffard",
+    "mango"
+   ],
+   "search_fold": "giffard mango",
+   "match_tokens": [
+    "giffard",
+    "mango"
+   ]
+  },
+  {
+   "fold": "giffard noix de coco",
+   "text": "Giffard Noix de Coco",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "coco giffard noix",
+   "match_key": "coconut giffard noix",
+   "name_tokens": [
+    "giffard",
+    "noix",
+    "coco"
+   ],
+   "search_fold": "giffard noix de coco",
+   "match_tokens": [
+    "giffard",
+    "noix",
+    "coconut"
+   ]
+  },
+  {
+   "fold": "giffard peach",
+   "text": "Giffard Peach",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard peach",
+   "match_key": "giffard peach",
+   "name_tokens": [
+    "giffard",
+    "peach"
+   ],
+   "search_fold": "giffard peach",
+   "match_tokens": [
+    "giffard",
+    "peach"
+   ]
+  },
+  {
+   "fold": "giffard pistachio",
+   "text": "Giffard Pistachio",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard pistachio",
+   "match_key": "giffard pistachio",
+   "name_tokens": [
+    "giffard",
+    "pistachio"
+   ],
+   "search_fold": "giffard pistachio",
+   "match_tokens": [
+    "giffard",
+    "pistachio"
+   ]
+  },
+  {
+   "fold": "giffard strawberry",
+   "text": "Giffard Strawberry",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "giffard strawberry",
+   "match_key": "giffard strawberry",
+   "name_tokens": [
+    "giffard",
+    "strawberry"
+   ],
+   "search_fold": "giffard strawberry",
+   "match_tokens": [
+    "giffard",
+    "strawberry"
+   ]
+  },
+  {
+   "fold": "möndlusíróp orgeat",
+   "text": "Möndlusíróp / Orgeat",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "möndlusíróp orgeat",
+   "match_key": "almond orgeat syrup",
+   "name_tokens": [
+    "möndlusíróp",
+    "orgeat"
+   ],
+   "search_fold": "mondlusirop orgeat",
+   "match_tokens": [
+    "almond",
+    "syrup",
+    "orgeat"
+   ]
+  },
+  {
+   "fold": "britvic tonic 200ml",
+   "text": "Britvic Tonic 200ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "200ml",
+    "unit_base": "ml",
+    "unit_quantity": 200,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "britvic tonic",
+   "match_key": "britvic tonic",
+   "name_tokens": [
+    "britvic",
+    "tonic"
+   ],
+   "search_fold": "britvic tonic 200ml",
+   "match_tokens": [
+    "britvic",
+    "tonic"
+   ]
+  },
+  {
+   "fold": "fever tree pink grapefruit 200ml",
+   "text": "Fever-Tree Pink Grapefruit 200ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "200ml",
+    "unit_base": "ml",
+    "unit_quantity": 200,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "fever grapefruit pink tree",
+   "match_key": "fever grapefruit pink tree",
+   "name_tokens": [
+    "fever",
+    "tree",
+    "pink",
+    "grapefruit"
+   ],
+   "search_fold": "fever tree pink grapefruit 200ml",
+   "match_tokens": [
+    "fever",
+    "tree",
+    "pink",
+    "grapefruit"
+   ]
+  },
+  {
+   "fold": "fever tree premium indian tonic water 24 x 200 ml",
+   "text": "Fever-Tree Premium Indian Tonic Water 24 x 200 ml",
+   "package": {
+    "kind": "multipack",
+    "pack_text": "24 x 200 ml",
+    "unit_base": "ml",
+    "unit_quantity": 200,
+    "units_per_pack": 24,
+    "ambiguous_reason": null
+   },
+   "name_key": "fever indian premium tonic tree water",
+   "match_key": "fever indian premium tonic tree water",
+   "name_tokens": [
+    "fever",
+    "tree",
+    "premium",
+    "indian",
+    "tonic",
+    "water"
+   ],
+   "search_fold": "fever tree premium indian tonic water 24 x 200 ml",
+   "match_tokens": [
+    "fever",
+    "tree",
+    "premium",
+    "indian",
+    "tonic",
+    "water"
+   ]
+  },
+  {
+   "fold": "sítrónur 15kg",
+   "text": "Sítrónur 15kg",
+   "package": {
+    "kind": "single",
+    "pack_text": "15kg",
+    "unit_base": "g",
+    "unit_quantity": 15000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "sítrónur",
+   "match_key": "lemon",
+   "name_tokens": [
+    "sítrónur"
+   ],
+   "search_fold": "sitronur 15kg",
+   "match_tokens": [
+    "lemon"
+   ]
+  },
+  {
+   "fold": "lemons 15 kg",
+   "text": "Lemons 15 kg",
+   "package": {
+    "kind": "single",
+    "pack_text": "15 kg",
+    "unit_base": "g",
+    "unit_quantity": 15000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "lemons",
+   "match_key": "lemon",
+   "name_tokens": [
+    "lemons"
+   ],
+   "search_fold": "lemons 15 kg",
+   "match_tokens": [
+    "lemon"
+   ]
+  },
+  {
+   "fold": "sitronur 15kg",
+   "text": "Sitronur 15kg",
+   "package": {
+    "kind": "single",
+    "pack_text": "15kg",
+    "unit_base": "g",
+    "unit_quantity": 15000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "sitronur",
+   "match_key": "lemon",
+   "name_tokens": [
+    "sitronur"
+   ],
+   "search_fold": "sitronur 15kg",
+   "match_tokens": [
+    "lemon"
+   ]
+  },
+  {
+   "fold": "haframjólk natrue barista 1l",
+   "text": "Haframjólk Natrue Barista 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "barista haframjólk natrue",
+   "match_key": "barista milk natrue oat",
+   "name_tokens": [
+    "haframjólk",
+    "natrue",
+    "barista"
+   ],
+   "search_fold": "haframjolk natrue barista 1l",
+   "match_tokens": [
+    "oat",
+    "milk",
+    "natrue",
+    "barista"
+   ]
+  },
+  {
+   "fold": "natrue barista oat milk",
+   "text": "Natrue Barista Oat Milk",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "barista milk natrue oat",
+   "match_key": "barista milk natrue oat",
+   "name_tokens": [
+    "natrue",
+    "barista",
+    "oat",
+    "milk"
+   ],
+   "search_fold": "natrue barista oat milk",
+   "match_tokens": [
+    "natrue",
+    "barista",
+    "oat",
+    "milk"
+   ]
+  },
+  {
+   "fold": "sykur 1kg",
+   "text": "Sykur 1kg",
+   "package": {
+    "kind": "single",
+    "pack_text": "1kg",
+    "unit_base": "g",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "sykur",
+   "match_key": "sugar",
+   "name_tokens": [
+    "sykur"
+   ],
+   "search_fold": "sykur 1kg",
+   "match_tokens": [
+    "sugar"
+   ]
+  },
+  {
+   "fold": "white sugar garri",
+   "text": "White Sugar (Garri)",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "garri sugar white",
+   "match_key": "garri sugar white",
+   "name_tokens": [
+    "white",
+    "sugar",
+    "garri"
+   ],
+   "search_fold": "white sugar garri",
+   "match_tokens": [
+    "white",
+    "sugar",
+    "garri"
+   ]
+  },
+  {
+   "fold": "don simon trönuberjasafi 1l",
+   "text": "Don Simon trönuberjasafi 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "don simon trönuberjasafi",
+   "match_key": "cranberry don juice simon",
+   "name_tokens": [
+    "don",
+    "simon",
+    "trönuberjasafi"
+   ],
+   "search_fold": "don simon tronuberjasafi 1l",
+   "match_tokens": [
+    "don",
+    "simon",
+    "cranberry",
+    "juice"
+   ]
+  },
+  {
+   "fold": "don simon cranberry juice",
+   "text": "Don Simon Cranberry Juice",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "cranberry don juice simon",
+   "match_key": "cranberry don juice simon",
+   "name_tokens": [
+    "don",
+    "simon",
+    "cranberry",
+    "juice"
+   ],
+   "search_fold": "don simon cranberry juice",
+   "match_tokens": [
+    "don",
+    "simon",
+    "cranberry",
+    "juice"
+   ]
+  },
+  {
+   "fold": "botanica þurrkaður ananas 150g",
+   "text": "BOTANICA Þurrkaður Ananas 150g",
+   "package": {
+    "kind": "single",
+    "pack_text": "150g",
+    "unit_base": "g",
+    "unit_quantity": 150,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "ananas botanica þurrkaður",
+   "match_key": "botanica dried pineapple",
+   "name_tokens": [
+    "botanica",
+    "þurrkaður",
+    "ananas"
+   ],
+   "search_fold": "botanica thurrkadur ananas 150g",
+   "match_tokens": [
+    "botanica",
+    "dried",
+    "pineapple"
+   ]
+  },
+  {
+   "fold": "botanica dried pineapple",
+   "text": "BOTANICA Dried Pineapple",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "botanica dried pineapple",
+   "match_key": "botanica dried pineapple",
+   "name_tokens": [
+    "botanica",
+    "dried",
+    "pineapple"
+   ],
+   "search_fold": "botanica dried pineapple",
+   "match_tokens": [
+    "botanica",
+    "dried",
+    "pineapple"
+   ]
+  },
+  {
+   "fold": "joseph cartron passionfruit 500ml",
+   "text": "Joseph Cartron Passionfruit 500ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "500ml",
+    "unit_base": "ml",
+    "unit_quantity": 500,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "cartron joseph passionfruit",
+   "match_key": "cartron joseph passionfruit",
+   "name_tokens": [
+    "joseph",
+    "cartron",
+    "passionfruit"
+   ],
+   "search_fold": "joseph cartron passionfruit 500ml",
+   "match_tokens": [
+    "joseph",
+    "cartron",
+    "passionfruit"
+   ]
+  },
+  {
+   "fold": "passion fruit purée",
+   "text": "Passion fruit purée",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "fruit passion purée",
+   "match_key": "passionfruit puree",
+   "name_tokens": [
+    "passion",
+    "fruit",
+    "purée"
+   ],
+   "search_fold": "passion fruit puree",
+   "match_tokens": [
+    "passionfruit",
+    "puree"
+   ]
+  },
+  {
+   "fold": "patrón silver",
+   "text": "Patrón Silver",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "patrón silver",
+   "match_key": "patron silver",
+   "name_tokens": [
+    "patrón",
+    "silver"
+   ],
+   "search_fold": "patron silver",
+   "match_tokens": [
+    "patron",
+    "silver"
+   ]
+  },
+  {
+   "fold": "patrón reposado 700 ml",
+   "text": "Patrón Reposado 700 ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "700 ml",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "patrón reposado",
+   "match_key": "patron reposado",
+   "name_tokens": [
+    "patrón",
+    "reposado"
+   ],
+   "search_fold": "patron reposado 700 ml",
+   "match_tokens": [
+    "patron",
+    "reposado"
+   ]
+  },
+  {
+   "fold": "kristall án bragðefna",
+   "text": "Kristall án bragðefna",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "bragðefna kristall",
+   "match_key": "bragdefna kristall",
+   "name_tokens": [
+    "kristall",
+    "bragðefna"
+   ],
+   "search_fold": "kristall an bragdefna",
+   "match_tokens": [
+    "kristall",
+    "bragdefna"
+   ]
+  },
+  {
+   "fold": "crémant de loire",
+   "text": "Crémant de Loire",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "crémant loire",
+   "match_key": "cremant loire",
+   "name_tokens": [
+    "crémant",
+    "loire"
+   ],
+   "search_fold": "cremant de loire",
+   "match_tokens": [
+    "cremant",
+    "loire"
+   ]
+  },
+  {
+   "fold": "jack daniels old no. 7",
+   "text": "Jack Daniel's Old No. 7",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "7 daniels jack no old",
+   "match_key": "7 daniels jack no old",
+   "name_tokens": [
+    "jack",
+    "daniels",
+    "old",
+    "no",
+    "7"
+   ],
+   "search_fold": "jack daniels old no. 7",
+   "match_tokens": [
+    "jack",
+    "daniels",
+    "old",
+    "no",
+    "7"
+   ]
+  },
+  {
+   "fold": "jameson 12 year",
+   "text": "Jameson 12 year",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "12 jameson year",
+   "match_key": "12 jameson year",
+   "name_tokens": [
+    "jameson",
+    "12",
+    "year"
+   ],
+   "search_fold": "jameson 12 year",
+   "match_tokens": [
+    "jameson",
+    "12",
+    "year"
+   ]
+  },
+  {
+   "fold": "salt and pepper",
+   "text": "Salt & Pepper",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "pepper salt",
+   "match_key": "pepper salt",
+   "name_tokens": [
+    "salt",
+    "pepper"
+   ],
+   "search_fold": "salt and pepper",
+   "match_tokens": [
+    "salt",
+    "pepper"
+   ]
+  },
+  {
+   "fold": "24 x 330ml coke",
+   "text": "24×330ml Coke",
+   "package": {
+    "kind": "multipack",
+    "pack_text": "24 x 330ml",
+    "unit_base": "ml",
+    "unit_quantity": 330,
+    "units_per_pack": 24,
+    "ambiguous_reason": null
+   },
+   "name_key": "coke",
+   "match_key": "coke",
+   "name_tokens": [
+    "coke"
+   ],
+   "search_fold": "24 x 330ml coke",
+   "match_tokens": [
+    "coke"
+   ]
+  },
+  {
+   "fold": "coca cola zero 330ml can",
+   "text": "Coca-Cola Zero 330ml can",
+   "package": {
+    "kind": "single",
+    "pack_text": "330ml",
+    "unit_base": "ml",
+    "unit_quantity": 330,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "coca cola zero",
+   "match_key": "coca cola zero",
+   "name_tokens": [
+    "coca",
+    "cola",
+    "zero"
+   ],
+   "search_fold": "coca cola zero 330ml can",
+   "match_tokens": [
+    "coca",
+    "cola",
+    "zero"
+   ]
+  },
+  {
+   "fold": "demerara sugar cube",
+   "text": "Demerara Sugar Cube",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "cube demerara sugar",
+   "match_key": "cube demerara sugar",
+   "name_tokens": [
+    "demerara",
+    "sugar",
+    "cube"
+   ],
+   "search_fold": "demerara sugar cube",
+   "match_tokens": [
+    "demerara",
+    "sugar",
+    "cube"
+   ]
+  },
+  {
+   "fold": "demerara raw sugar 1 kg bag",
+   "text": "Demerara raw sugar 1 kg bag",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 kg",
+    "unit_base": "g",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "demerara raw sugar",
+   "match_key": "demerara raw sugar",
+   "name_tokens": [
+    "demerara",
+    "raw",
+    "sugar"
+   ],
+   "search_fold": "demerara raw sugar 1 kg bag",
+   "match_tokens": [
+    "demerara",
+    "raw",
+    "sugar"
+   ]
+  },
+  {
+   "fold": "twinings earl grey 25 x 2g tea bags",
+   "text": "Twinings Earl Grey 25 x 2g tea bags",
+   "package": {
+    "kind": "multipack",
+    "pack_text": "25 x 2g",
+    "unit_base": "g",
+    "unit_quantity": 2,
+    "units_per_pack": 25,
+    "ambiguous_reason": null
+   },
+   "name_key": "earl grey tea twinings",
+   "match_key": "earl grey tea twinings",
+   "name_tokens": [
+    "twinings",
+    "earl",
+    "grey",
+    "tea"
+   ],
+   "search_fold": "twinings earl grey 25 x 2g tea bags",
+   "match_tokens": [
+    "twinings",
+    "earl",
+    "grey",
+    "tea"
+   ]
+  },
+  {
+   "fold": "straws 1250 pcs",
+   "text": "Straws 1250 pcs",
+   "package": {
+    "kind": "count",
+    "pack_text": "1250 pcs",
+    "unit_base": "count",
+    "unit_quantity": 1250,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "straws",
+   "match_key": "straws",
+   "name_tokens": [
+    "straws"
+   ],
+   "search_fold": "straws 1250 pcs",
+   "match_tokens": [
+    "straws"
+   ]
+  },
+  {
+   "fold": "napkins 1000 stk",
+   "text": "Napkins 1000 stk",
+   "package": {
+    "kind": "count",
+    "pack_text": "1000 stk",
+    "unit_base": "count",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "napkins",
+   "match_key": "napkins",
+   "name_tokens": [
+    "napkins"
+   ],
+   "search_fold": "napkins 1000 stk",
+   "match_tokens": [
+    "napkins"
+   ]
+  },
+  {
+   "fold": "takeaway cup lids 6 x 50 lids",
+   "text": "Takeaway cup lids 6 x 50 lids",
+   "package": {
+    "kind": "multipack",
+    "pack_text": "6 x 50 lids",
+    "unit_base": "count",
+    "unit_quantity": 50,
+    "units_per_pack": 6,
+    "ambiguous_reason": null
+   },
+   "name_key": "cup lids takeaway",
+   "match_key": "cup lids takeaway",
+   "name_tokens": [
+    "takeaway",
+    "cup",
+    "lids"
+   ],
+   "search_fold": "takeaway cup lids 6 x 50 lids",
+   "match_tokens": [
+    "takeaway",
+    "cup",
+    "lids"
+   ]
+  },
+  {
+   "fold": "co2 cylinder 6 kg",
+   "text": "CO2 cylinder 6 kg",
+   "package": {
+    "kind": "single",
+    "pack_text": "6 kg",
+    "unit_base": "g",
+    "unit_quantity": 6000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "co2 cylinder",
+   "match_key": "co2 cylinder",
+   "name_tokens": [
+    "co2",
+    "cylinder"
+   ],
+   "search_fold": "co2 cylinder 6 kg",
+   "match_tokens": [
+    "co2",
+    "cylinder"
+   ]
+  },
+  {
+   "fold": "keg víking gylltur 25 l keg",
+   "text": "Keg Víking Gylltur 25 L keg",
+   "package": {
+    "kind": "single",
+    "pack_text": "25 l",
+    "unit_base": "ml",
+    "unit_quantity": 25000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "gylltur víking",
+   "match_key": "gylltur viking",
+   "name_tokens": [
+    "víking",
+    "gylltur"
+   ],
+   "search_fold": "keg viking gylltur 25 l keg",
+   "match_tokens": [
+    "viking",
+    "gylltur"
+   ]
+  },
+  {
+   "fold": "einstök white ale 33cl",
+   "text": "Einstök White Ale 33cl",
+   "package": {
+    "kind": "single",
+    "pack_text": "33cl",
+    "unit_base": "ml",
+    "unit_quantity": 330,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "ale einstök white",
+   "match_key": "ale einstok white",
+   "name_tokens": [
+    "einstök",
+    "white",
+    "ale"
+   ],
+   "search_fold": "einstok white ale 33cl",
+   "match_tokens": [
+    "einstok",
+    "white",
+    "ale"
+   ]
+  },
+  {
+   "fold": "brennivín 70cl",
+   "text": "Brennivín 70cl",
+   "package": {
+    "kind": "single",
+    "pack_text": "70cl",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "brennivín",
+   "match_key": "brennivin",
+   "name_tokens": [
+    "brennivín"
+   ],
+   "search_fold": "brennivin 70cl",
+   "match_tokens": [
+    "brennivin"
+   ]
+  },
+  {
+   "fold": "ölgerðin egils appelsín 2 lítrar",
+   "text": "Ölgerðin Egils Appelsín 2 lítrar",
+   "package": {
+    "kind": "single",
+    "pack_text": "2 lítrar",
+    "unit_base": "ml",
+    "unit_quantity": 2000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "appelsín egils ölgerðin",
+   "match_key": "appelsin egils olgerdin",
+   "name_tokens": [
+    "ölgerðin",
+    "egils",
+    "appelsín"
+   ],
+   "search_fold": "olgerdin egils appelsin 2 litrar",
+   "match_tokens": [
+    "olgerdin",
+    "egils",
+    "appelsin"
+   ]
+  },
+  {
+   "fold": "egils kristall 500 ml",
+   "text": "Egils Kristall 500 ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "500 ml",
+    "unit_base": "ml",
+    "unit_quantity": 500,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "egils kristall",
+   "match_key": "egils kristall",
+   "name_tokens": [
+    "egils",
+    "kristall"
+   ],
+   "search_fold": "egils kristall 500 ml",
+   "match_tokens": [
+    "egils",
+    "kristall"
+   ]
+  },
+  {
+   "fold": "mjólk 1 lítri",
+   "text": "Mjólk 1 lítri",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 lítri",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "mjólk",
+   "match_key": "milk",
+   "name_tokens": [
+    "mjólk"
+   ],
+   "search_fold": "mjolk 1 litri",
+   "match_tokens": [
+    "milk"
+   ]
+  },
+  {
+   "fold": "rjómi 250 ml",
+   "text": "Rjómi 250 ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "250 ml",
+    "unit_base": "ml",
+    "unit_quantity": 250,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "rjómi",
+   "match_key": "cream",
+   "name_tokens": [
+    "rjómi"
+   ],
+   "search_fold": "rjomi 250 ml",
+   "match_tokens": [
+    "cream"
+   ]
+  },
+  {
+   "fold": "skyr hreint 500 g",
+   "text": "Skyr hreint 500 g",
+   "package": {
+    "kind": "single",
+    "pack_text": "500 g",
+    "unit_base": "g",
+    "unit_quantity": 500,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "hreint skyr",
+   "match_key": "hreint skyr",
+   "name_tokens": [
+    "skyr",
+    "hreint"
+   ],
+   "search_fold": "skyr hreint 500 g",
+   "match_tokens": [
+    "skyr",
+    "hreint"
+   ]
+  },
+  {
+   "fold": "harðfiskur 100 grömm",
+   "text": "Harðfiskur 100 grömm",
+   "package": {
+    "kind": "single",
+    "pack_text": "100 grömm",
+    "unit_base": "g",
+    "unit_quantity": 100,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "harðfiskur",
+   "match_key": "hardfiskur",
+   "name_tokens": [
+    "harðfiskur"
+   ],
+   "search_fold": "hardfiskur 100 gromm",
+   "match_tokens": [
+    "hardfiskur"
+   ]
+  },
+  {
+   "fold": "súkkulaði 70",
+   "text": "Súkkulaði 70%",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "70 súkkulaði",
+   "match_key": "70 chocolate",
+   "name_tokens": [
+    "súkkulaði",
+    "70"
+   ],
+   "search_fold": "sukkuladi 70",
+   "match_tokens": [
+    "chocolate",
+    "70"
+   ]
+  },
+  {
+   "fold": "kaffi tár baunir 1 kíló",
+   "text": "Kaffi Tár baunir 1 kíló",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 kíló",
+    "unit_base": "g",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "baunir kaffi tár",
+   "match_key": "baunir coffee tar",
+   "name_tokens": [
+    "kaffi",
+    "tár",
+    "baunir"
+   ],
+   "search_fold": "kaffi tar baunir 1 kilo",
+   "match_tokens": [
+    "coffee",
+    "tar",
+    "baunir"
+   ]
+  },
+  {
+   "fold": "íslenskt vatn 330 ml",
+   "text": "Íslenskt vatn 330 ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "330 ml",
+    "unit_base": "ml",
+    "unit_quantity": 330,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "vatn íslenskt",
+   "match_key": "islenskt water",
+   "name_tokens": [
+    "íslenskt",
+    "vatn"
+   ],
+   "search_fold": "islenskt vatn 330 ml",
+   "match_tokens": [
+    "islenskt",
+    "water"
+   ]
+  },
+  {
+   "fold": "ýsa frosin 2 kg",
+   "text": "Ýsa frosin 2 kg",
+   "package": {
+    "kind": "single",
+    "pack_text": "2 kg",
+    "unit_base": "g",
+    "unit_quantity": 2000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "frosin ýsa",
+   "match_key": "frosin ysa",
+   "name_tokens": [
+    "ýsa",
+    "frosin"
+   ],
+   "search_fold": "ysa frosin 2 kg",
+   "match_tokens": [
+    "ysa",
+    "frosin"
+   ]
+  },
+  {
+   "fold": "þorskur 1,5 kg",
+   "text": "Þorskur 1,5 kg",
+   "package": {
+    "kind": "single",
+    "pack_text": "1,5 kg",
+    "unit_base": "g",
+    "unit_quantity": 1500,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "þorskur",
+   "match_key": "thorskur",
+   "name_tokens": [
+    "þorskur"
+   ],
+   "search_fold": "thorskur 1,5 kg",
+   "match_tokens": [
+    "thorskur"
+   ]
+  },
+  {
+   "fold": "æðardúnn",
+   "text": "Æðardúnn",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "æðardúnn",
+   "match_key": "aedardunn",
+   "name_tokens": [
+    "æðardúnn"
+   ],
+   "search_fold": "aedardunn",
+   "match_tokens": [
+    "aedardunn"
+   ]
+  },
+  {
+   "fold": "ö ö á á ð ð é é í í ó ó ú ú ý ý þ þ æ æ",
+   "text": "Ö ö Á á Ð ð É é Í í Ó ó Ú ú Ý ý Þ þ Æ æ",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "æ é ð ó ö ú ý þ",
+   "match_key": "ae d e o th u y",
+   "name_tokens": [
+    "ö",
+    "ö",
+    "ð",
+    "ð",
+    "é",
+    "é",
+    "ó",
+    "ó",
+    "ú",
+    "ú",
+    "ý",
+    "ý",
+    "þ",
+    "þ",
+    "æ",
+    "æ"
+   ],
+   "search_fold": "o o a a d d e e i i o o u u y y th th ae ae",
+   "match_tokens": [
+    "o",
+    "o",
+    "d",
+    "d",
+    "e",
+    "e",
+    "o",
+    "o",
+    "u",
+    "u",
+    "y",
+    "y",
+    "th",
+    "th",
+    "ae",
+    "ae"
+   ]
+  },
+  {
+   "fold": "áðéíóúýþæö",
+   "text": "ÁÐÉÍÓÚÝÞÆÖ",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "áðéíóúýþæö",
+   "match_key": "adeiouythaeo",
+   "name_tokens": [
+    "áðéíóúýþæö"
+   ],
+   "search_fold": "adeiouythaeo",
+   "match_tokens": [
+    "adeiouythaeo"
+   ]
+  },
+  {
+   "fold": "áðéíóúýþæö",
+   "text": "áðéíóúýþæö",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "áðéíóúýþæö",
+   "match_key": "adeiouythaeo",
+   "name_tokens": [
+    "áðéíóúýþæö"
+   ],
+   "search_fold": "adeiouythaeo",
+   "match_tokens": [
+    "adeiouythaeo"
+   ]
+  },
+  {
+   "fold": "grand marnier cordon rouge",
+   "text": "Grand Marnier Cordon Rouge",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "cordon grand marnier rouge",
+   "match_key": "cordon grand marnier rouge",
+   "name_tokens": [
+    "grand",
+    "marnier",
+    "cordon",
+    "rouge"
+   ],
+   "search_fold": "grand marnier cordon rouge",
+   "match_tokens": [
+    "grand",
+    "marnier",
+    "cordon",
+    "rouge"
+   ]
+  },
+  {
+   "fold": "crème de cassis",
+   "text": "Crème de Cassis",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "cassis crème",
+   "match_key": "cassis cream",
+   "name_tokens": [
+    "crème",
+    "cassis"
+   ],
+   "search_fold": "creme de cassis",
+   "match_tokens": [
+    "cream",
+    "cassis"
+   ]
+  },
+  {
+   "fold": "cointreau 70cl",
+   "text": "Cointreau 70cl",
+   "package": {
+    "kind": "single",
+    "pack_text": "70cl",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "cointreau",
+   "match_key": "cointreau",
+   "name_tokens": [
+    "cointreau"
+   ],
+   "search_fold": "cointreau 70cl",
+   "match_tokens": [
+    "cointreau"
+   ]
+  },
+  {
+   "fold": "aperol 1l",
+   "text": "Aperol 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "aperol",
+   "match_key": "aperol",
+   "name_tokens": [
+    "aperol"
+   ],
+   "search_fold": "aperol 1l",
+   "match_tokens": [
+    "aperol"
+   ]
+  },
+  {
+   "fold": "campari 1 l",
+   "text": "Campari 1 L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "campari",
+   "match_key": "campari",
+   "name_tokens": [
+    "campari"
+   ],
+   "search_fold": "campari 1 l",
+   "match_tokens": [
+    "campari"
+   ]
+  },
+  {
+   "fold": "martini rosso",
+   "text": "Martini Rosso",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "martini rosso",
+   "match_key": "martini rosso",
+   "name_tokens": [
+    "martini",
+    "rosso"
+   ],
+   "search_fold": "martini rosso",
+   "match_tokens": [
+    "martini",
+    "rosso"
+   ]
+  },
+  {
+   "fold": "noilly prat dry",
+   "text": "Noilly Prat Dry",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "dry noilly prat",
+   "match_key": "dry noilly prat",
+   "name_tokens": [
+    "noilly",
+    "prat",
+    "dry"
+   ],
+   "search_fold": "noilly prat dry",
+   "match_tokens": [
+    "noilly",
+    "prat",
+    "dry"
+   ]
+  },
+  {
+   "fold": "angostura bitters 200ml",
+   "text": "Angostura Bitters 200ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "200ml",
+    "unit_base": "ml",
+    "unit_quantity": 200,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "angostura bitters",
+   "match_key": "angostura bitters",
+   "name_tokens": [
+    "angostura",
+    "bitters"
+   ],
+   "search_fold": "angostura bitters 200ml",
+   "match_tokens": [
+    "angostura",
+    "bitters"
+   ]
+  },
+  {
+   "fold": "monin pure de fraise",
+   "text": "Monin Pure de Fraise",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "fraise monin pure",
+   "match_key": "monin puree strawberry",
+   "name_tokens": [
+    "monin",
+    "pure",
+    "fraise"
+   ],
+   "search_fold": "monin pure de fraise",
+   "match_tokens": [
+    "monin",
+    "puree",
+    "strawberry"
+   ]
+  },
+  {
+   "fold": "mint bunch",
+   "text": "Mint bunch",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "bunch mint",
+   "match_key": "bunch mint",
+   "name_tokens": [
+    "mint",
+    "bunch"
+   ],
+   "search_fold": "mint bunch",
+   "match_tokens": [
+    "mint",
+    "bunch"
+   ]
+  },
+  {
+   "fold": "limes loose",
+   "text": "Limes loose",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "limes loose",
+   "match_key": "lime loose",
+   "name_tokens": [
+    "limes",
+    "loose"
+   ],
+   "search_fold": "limes loose",
+   "match_tokens": [
+    "lime",
+    "loose"
+   ]
+  },
+  {
+   "fold": "passion fruit",
+   "text": "Passion fruit",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "fruit passion",
+   "match_key": "passionfruit",
+   "name_tokens": [
+    "passion",
+    "fruit"
+   ],
+   "search_fold": "passion fruit",
+   "match_tokens": [
+    "passionfruit"
+   ]
+  },
+  {
+   "fold": "cake whole",
+   "text": "Cake (whole)",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "cake whole",
+   "match_key": "cake whole",
+   "name_tokens": [
+    "cake",
+    "whole"
+   ],
+   "search_fold": "cake whole",
+   "match_tokens": [
+    "cake",
+    "whole"
+   ]
+  },
+  {
+   "fold": "apple pie",
+   "text": "Apple pie",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "apple pie",
+   "match_key": "apple pie",
+   "name_tokens": [
+    "apple",
+    "pie"
+   ],
+   "search_fold": "apple pie",
+   "match_tokens": [
+    "apple",
+    "pie"
+   ]
+  },
+  {
+   "fold": "chocolate cookie",
+   "text": "Chocolate cookie",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "chocolate cookie",
+   "match_key": "chocolate cookie",
+   "name_tokens": [
+    "chocolate",
+    "cookie"
+   ],
+   "search_fold": "chocolate cookie",
+   "match_tokens": [
+    "chocolate",
+    "cookie"
+   ]
+  },
+  {
+   "fold": "ice recipe reference",
+   "text": "Ice (recipe reference)",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "ice recipe reference",
+   "match_key": "ice recipe reference",
+   "name_tokens": [
+    "ice",
+    "recipe",
+    "reference"
+   ],
+   "search_fold": "ice recipe reference",
+   "match_tokens": [
+    "ice",
+    "recipe",
+    "reference"
+   ]
+  },
+  {
+   "fold": "hot water",
+   "text": "Hot Water",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "hot water",
+   "match_key": "hot water",
+   "name_tokens": [
+    "hot",
+    "water"
+   ],
+   "search_fold": "hot water",
+   "match_tokens": [
+    "hot",
+    "water"
+   ]
+  },
+  {
+   "fold": "sweet vermouth",
+   "text": "Sweet Vermouth",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "sweet vermouth",
+   "match_key": "sweet vermouth",
+   "name_tokens": [
+    "sweet",
+    "vermouth"
+   ],
+   "search_fold": "sweet vermouth",
+   "match_tokens": [
+    "sweet",
+    "vermouth"
+   ]
+  },
+  {
+   "fold": "ginger beer top",
+   "text": "Ginger Beer — top",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "beer ginger top",
+   "match_key": "beer ginger top",
+   "name_tokens": [
+    "ginger",
+    "beer",
+    "top"
+   ],
+   "search_fold": "ginger beer top",
+   "match_tokens": [
+    "ginger",
+    "beer",
+    "top"
+   ]
+  },
+  {
+   "fold": "orange",
+   "text": "Orange",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "orange",
+   "match_key": "orange",
+   "name_tokens": [
+    "orange"
+   ],
+   "search_fold": "orange",
+   "match_tokens": [
+    "orange"
+   ]
+  },
+  {
+   "fold": "2l prep batch",
+   "text": "2L prep batch",
+   "package": {
+    "kind": "single",
+    "pack_text": "2l",
+    "unit_base": "ml",
+    "unit_quantity": 2000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "batch prep",
+   "match_key": "batch prep",
+   "name_tokens": [
+    "prep",
+    "batch"
+   ],
+   "search_fold": "2l prep batch",
+   "match_tokens": [
+    "prep",
+    "batch"
+   ]
+  },
+  {
+   "fold": "1,000 ml",
+   "text": "1,000 ml",
+   "package": {
+    "kind": "ambiguous",
+    "pack_text": "1,000 ml",
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": "decimal_comma_or_thousands"
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "1,000 ml",
+   "match_tokens": []
+  },
+  {
+   "fold": "1,5 l",
+   "text": "1,5 l",
+   "package": {
+    "kind": "single",
+    "pack_text": "1,5 l",
+    "unit_base": "ml",
+    "unit_quantity": 1500,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "1,5 l",
+   "match_tokens": []
+  },
+  {
+   "fold": "1.5 l",
+   "text": "1.5 l",
+   "package": {
+    "kind": "single",
+    "pack_text": "1.5 l",
+    "unit_base": "ml",
+    "unit_quantity": 1500,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "1.5 l",
+   "match_tokens": []
+  },
+  {
+   "fold": "0,7 l",
+   "text": "0,7 L",
+   "package": {
+    "kind": "single",
+    "pack_text": "0,7 l",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "0,7 l",
+   "match_tokens": []
+  },
+  {
+   "fold": "priced per kg",
+   "text": "priced per kg",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "kg per priced",
+   "match_key": "kg per priced",
+   "name_tokens": [
+    "priced",
+    "per",
+    "kg"
+   ],
+   "search_fold": "priced per kg",
+   "match_tokens": [
+    "priced",
+    "per",
+    "kg"
+   ]
+  },
+  {
+   "fold": "12 x 1 l 1 l carton",
+   "text": "12 x 1 L (1 L carton)",
+   "package": {
+    "kind": "multipack",
+    "pack_text": "12 x 1 l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": 12,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "12 x 1 l 1 l carton",
+   "match_tokens": []
+  },
+  {
+   "fold": "6 x 750 ml",
+   "text": "6 x 750 ml",
+   "package": {
+    "kind": "multipack",
+    "pack_text": "6 x 750 ml",
+    "unit_base": "ml",
+    "unit_quantity": 750,
+    "units_per_pack": 6,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "6 x 750 ml",
+   "match_tokens": []
+  },
+  {
+   "fold": "6 x 1l",
+   "text": "6 x 1L",
+   "package": {
+    "kind": "multipack",
+    "pack_text": "6 x 1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": 6,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "6 x 1l",
+   "match_tokens": []
+  },
+  {
+   "fold": "24 x 330 ml",
+   "text": "24 x 330 ml",
+   "package": {
+    "kind": "multipack",
+    "pack_text": "24 x 330 ml",
+    "unit_base": "ml",
+    "unit_quantity": 330,
+    "units_per_pack": 24,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "24 x 330 ml",
+   "match_tokens": []
+  },
+  {
+   "fold": "25 l keg",
+   "text": "25 L keg",
+   "package": {
+    "kind": "single",
+    "pack_text": "25 l",
+    "unit_base": "ml",
+    "unit_quantity": 25000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "25 l keg",
+   "match_tokens": []
+  },
+  {
+   "fold": "700ml",
+   "text": "700ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "700ml",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "700ml",
+   "match_tokens": []
+  },
+  {
+   "fold": "700 ml",
+   "text": "700 ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "700 ml",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "700 ml",
+   "match_tokens": []
+  },
+  {
+   "fold": "70cl",
+   "text": "70cl",
+   "package": {
+    "kind": "single",
+    "pack_text": "70cl",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "70cl",
+   "match_tokens": []
+  },
+  {
+   "fold": "1l",
+   "text": "1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "1l",
+   "match_tokens": []
+  },
+  {
+   "fold": "1 l",
+   "text": "1 l",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "1 l",
+   "match_tokens": []
+  },
+  {
+   "fold": "750ml",
+   "text": "750ML",
+   "package": {
+    "kind": "single",
+    "pack_text": "750ml",
+    "unit_base": "ml",
+    "unit_quantity": 750,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "750ml",
+   "match_tokens": []
+  },
+  {
+   "fold": "1000 stk",
+   "text": "1000 stk",
+   "package": {
+    "kind": "count",
+    "pack_text": "1000 stk",
+    "unit_base": "count",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "1000 stk",
+   "match_tokens": []
+  },
+  {
+   "fold": "1250 pcs",
+   "text": "1250 pcs",
+   "package": {
+    "kind": "count",
+    "pack_text": "1250 pcs",
+    "unit_base": "count",
+    "unit_quantity": 1250,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "1250 pcs",
+   "match_tokens": []
+  },
+  {
+   "fold": "6 x 20 bags",
+   "text": "6 x 20 bags",
+   "package": {
+    "kind": "multipack",
+    "pack_text": "6 x 20 bags",
+    "unit_base": "count",
+    "unit_quantity": 20,
+    "units_per_pack": 6,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "6 x 20 bags",
+   "match_tokens": []
+  },
+  {
+   "fold": "20 tea bags",
+   "text": "20 tea bags",
+   "package": {
+    "kind": "count",
+    "pack_text": "20 tea bags",
+    "unit_base": "count",
+    "unit_quantity": 20,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "20 tea bags",
+   "match_tokens": []
+  },
+  {
+   "fold": "500 g",
+   "text": "500 g",
+   "package": {
+    "kind": "single",
+    "pack_text": "500 g",
+    "unit_base": "g",
+    "unit_quantity": 500,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "500 g",
+   "match_tokens": []
+  },
+  {
+   "fold": "1 kg",
+   "text": "1 kg",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 kg",
+    "unit_base": "g",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "1 kg",
+   "match_tokens": []
+  },
+  {
+   "fold": "1 kilo",
+   "text": "1 kilo",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 kilo",
+    "unit_base": "g",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "1 kilo",
+   "match_tokens": []
+  },
+  {
+   "fold": "2 lítrar",
+   "text": "2 lítrar",
+   "package": {
+    "kind": "single",
+    "pack_text": "2 lítrar",
+    "unit_base": "ml",
+    "unit_quantity": 2000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "2 litrar",
+   "match_tokens": []
+  },
+  {
+   "fold": "3 litrar",
+   "text": "3 litrar",
+   "package": {
+    "kind": "single",
+    "pack_text": "3 litrar",
+    "unit_base": "ml",
+    "unit_quantity": 3000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "3 litrar",
+   "match_tokens": []
+  },
+  {
+   "fold": "100 grömm",
+   "text": "100 grömm",
+   "package": {
+    "kind": "single",
+    "pack_text": "100 grömm",
+    "unit_base": "g",
+    "unit_quantity": 100,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "100 gromm",
+   "match_tokens": []
+  },
+  {
+   "fold": "250 gr",
+   "text": "250 gr",
+   "package": {
+    "kind": "single",
+    "pack_text": "250 gr",
+    "unit_base": "g",
+    "unit_quantity": 250,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "250 gr",
+   "match_tokens": []
+  },
+  {
+   "fold": "5 dl",
+   "text": "5 dl",
+   "package": {
+    "kind": "single",
+    "pack_text": "5 dl",
+    "unit_base": "ml",
+    "unit_quantity": 500,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "5 dl",
+   "match_tokens": []
+  },
+  {
+   "fold": "50 cl",
+   "text": "50 cl",
+   "package": {
+    "kind": "single",
+    "pack_text": "50 cl",
+    "unit_base": "ml",
+    "unit_quantity": 500,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "50 cl",
+   "match_tokens": []
+  },
+  {
+   "fold": "1 litre",
+   "text": "1 litre",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 litre",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "1 litre",
+   "match_tokens": []
+  },
+  {
+   "fold": "2 liters",
+   "text": "2 liters",
+   "package": {
+    "kind": "single",
+    "pack_text": "2 liters",
+    "unit_base": "ml",
+    "unit_quantity": 2000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "2 liters",
+   "match_tokens": []
+  },
+  {
+   "fold": "4 x 6 cans",
+   "text": "4 x 6 cans",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "4 6 x",
+   "match_key": "4 6 x",
+   "name_tokens": [
+    "4",
+    "x",
+    "6"
+   ],
+   "search_fold": "4 x 6 cans",
+   "match_tokens": [
+    "4",
+    "x",
+    "6"
+   ]
+  },
+  {
+   "fold": "box of 100 napkins",
+   "text": "Box of 100 napkins",
+   "package": {
+    "kind": "count",
+    "pack_text": "100 napkins",
+    "unit_base": "count",
+    "unit_quantity": 100,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "box of 100 napkins",
+   "match_tokens": []
+  },
+  {
+   "fold": "x",
+   "text": "x",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "x",
+   "match_key": "x",
+   "name_tokens": [
+    "x"
+   ],
+   "search_fold": "x",
+   "match_tokens": [
+    "x"
+   ]
+  },
+  {
+   "fold": "",
+   "text": "",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "",
+   "match_tokens": []
+  },
+  {
+   "fold": "",
+   "text": "   ",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "",
+   "match_tokens": []
+  },
+  {
+   "fold": "and",
+   "text": "&",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": null,
+   "match_key": null,
+   "name_tokens": [],
+   "search_fold": "and",
+   "match_tokens": []
+  },
+  {
+   "fold": "æ",
+   "text": "Æ",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "æ",
+   "match_key": "ae",
+   "name_tokens": [
+    "æ"
+   ],
+   "search_fold": "ae",
+   "match_tokens": [
+    "ae"
+   ]
+  },
+  {
+   "fold": "lorange",
+   "text": "l'Orange",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "lorange",
+   "match_key": "lorange",
+   "name_tokens": [
+    "lorange"
+   ],
+   "search_fold": "lorange",
+   "match_tokens": [
+    "lorange"
+   ]
+  },
+  {
+   "fold": "st. germain elderflower",
+   "text": "St. Germain Elderflower",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "elderflower germain st",
+   "match_key": "elderflower germain st",
+   "name_tokens": [
+    "st",
+    "germain",
+    "elderflower"
+   ],
+   "search_fold": "st. germain elderflower",
+   "match_tokens": [
+    "st",
+    "germain",
+    "elderflower"
+   ]
+  },
+  {
+   "fold": "gin and tonic",
+   "text": "Gin & Tonic",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "gin tonic",
+   "match_key": "gin tonic",
+   "name_tokens": [
+    "gin",
+    "tonic"
+   ],
+   "search_fold": "gin and tonic",
+   "match_tokens": [
+    "gin",
+    "tonic"
+   ]
+  },
+  {
+   "fold": "bombay sapphire 1 l",
+   "text": "Bombay Sapphire 1 L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "bombay sapphire",
+   "match_key": "bombay sapphire",
+   "name_tokens": [
+    "bombay",
+    "sapphire"
+   ],
+   "search_fold": "bombay sapphire 1 l",
+   "match_tokens": [
+    "bombay",
+    "sapphire"
+   ]
+  },
+  {
+   "fold": "tanqueray no. ten",
+   "text": "Tanqueray No. Ten",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "no tanqueray ten",
+   "match_key": "no tanqueray ten",
+   "name_tokens": [
+    "tanqueray",
+    "no",
+    "ten"
+   ],
+   "search_fold": "tanqueray no. ten",
+   "match_tokens": [
+    "tanqueray",
+    "no",
+    "ten"
+   ]
+  },
+  {
+   "fold": "hendricks gin 700ml",
+   "text": "Hendrick's Gin 700ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "700ml",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "gin hendricks",
+   "match_key": "gin hendricks",
+   "name_tokens": [
+    "hendricks",
+    "gin"
+   ],
+   "search_fold": "hendricks gin 700ml",
+   "match_tokens": [
+    "hendricks",
+    "gin"
+   ]
+  },
+  {
+   "fold": "roku gin 70cl",
+   "text": "Roku Gin 70cl",
+   "package": {
+    "kind": "single",
+    "pack_text": "70cl",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "gin roku",
+   "match_key": "gin roku",
+   "name_tokens": [
+    "roku",
+    "gin"
+   ],
+   "search_fold": "roku gin 70cl",
+   "match_tokens": [
+    "roku",
+    "gin"
+   ]
+  },
+  {
+   "fold": "absolut vodka 1l",
+   "text": "Absolut Vodka 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "absolut vodka",
+   "match_key": "absolut vodka",
+   "name_tokens": [
+    "absolut",
+    "vodka"
+   ],
+   "search_fold": "absolut vodka 1l",
+   "match_tokens": [
+    "absolut",
+    "vodka"
+   ]
+  },
+  {
+   "fold": "grey goose 70 cl",
+   "text": "Grey Goose 70 cl",
+   "package": {
+    "kind": "single",
+    "pack_text": "70 cl",
+    "unit_base": "ml",
+    "unit_quantity": 700,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "goose grey",
+   "match_key": "goose grey",
+   "name_tokens": [
+    "grey",
+    "goose"
+   ],
+   "search_fold": "grey goose 70 cl",
+   "match_tokens": [
+    "grey",
+    "goose"
+   ]
+  },
+  {
+   "fold": "havana club 3 años",
+   "text": "Havana Club 3 Años",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "3 años club havana",
+   "match_key": "3 anos club havana",
+   "name_tokens": [
+    "havana",
+    "club",
+    "3",
+    "años"
+   ],
+   "search_fold": "havana club 3 anos",
+   "match_tokens": [
+    "havana",
+    "club",
+    "3",
+    "anos"
+   ]
+  },
+  {
+   "fold": "bacardí carta blanca",
+   "text": "Bacardí Carta Blanca",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "bacardí blanca carta",
+   "match_key": "bacardi blanca carta",
+   "name_tokens": [
+    "bacardí",
+    "carta",
+    "blanca"
+   ],
+   "search_fold": "bacardi carta blanca",
+   "match_tokens": [
+    "bacardi",
+    "carta",
+    "blanca"
+   ]
+  },
+  {
+   "fold": "captain morgan spiced",
+   "text": "Captain Morgan Spiced",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "captain morgan spiced",
+   "match_key": "captain morgan spiced",
+   "name_tokens": [
+    "captain",
+    "morgan",
+    "spiced"
+   ],
+   "search_fold": "captain morgan spiced",
+   "match_tokens": [
+    "captain",
+    "morgan",
+    "spiced"
+   ]
+  },
+  {
+   "fold": "diplomático reserva exclusiva",
+   "text": "Diplomático Reserva Exclusiva",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "diplomático exclusiva reserva",
+   "match_key": "diplomatico exclusiva reserva",
+   "name_tokens": [
+    "diplomático",
+    "reserva",
+    "exclusiva"
+   ],
+   "search_fold": "diplomatico reserva exclusiva",
+   "match_tokens": [
+    "diplomatico",
+    "reserva",
+    "exclusiva"
+   ]
+  },
+  {
+   "fold": "olmeca altos plata",
+   "text": "Olmeca Altos Plata",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "altos olmeca plata",
+   "match_key": "altos olmeca plata",
+   "name_tokens": [
+    "olmeca",
+    "altos",
+    "plata"
+   ],
+   "search_fold": "olmeca altos plata",
+   "match_tokens": [
+    "olmeca",
+    "altos",
+    "plata"
+   ]
+  },
+  {
+   "fold": "del maguey vida mezcal",
+   "text": "Del Maguey Vida Mezcal",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "del maguey mezcal vida",
+   "match_key": "del maguey mezcal vida",
+   "name_tokens": [
+    "del",
+    "maguey",
+    "vida",
+    "mezcal"
+   ],
+   "search_fold": "del maguey vida mezcal",
+   "match_tokens": [
+    "del",
+    "maguey",
+    "vida",
+    "mezcal"
+   ]
+  },
+  {
+   "fold": "jägermeister 1l",
+   "text": "Jägermeister 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "jägermeister",
+   "match_key": "jagermeister",
+   "name_tokens": [
+    "jägermeister"
+   ],
+   "search_fold": "jagermeister 1l",
+   "match_tokens": [
+    "jagermeister"
+   ]
+  },
+  {
+   "fold": "fernet branca",
+   "text": "Fernet-Branca",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "branca fernet",
+   "match_key": "branca fernet",
+   "name_tokens": [
+    "fernet",
+    "branca"
+   ],
+   "search_fold": "fernet branca",
+   "match_tokens": [
+    "fernet",
+    "branca"
+   ]
+  },
+  {
+   "fold": "baileys original irish cream",
+   "text": "Baileys Original Irish Cream",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "baileys cream irish original",
+   "match_key": "baileys cream irish original",
+   "name_tokens": [
+    "baileys",
+    "original",
+    "irish",
+    "cream"
+   ],
+   "search_fold": "baileys original irish cream",
+   "match_tokens": [
+    "baileys",
+    "original",
+    "irish",
+    "cream"
+   ]
+  },
+  {
+   "fold": "kahlúa",
+   "text": "Kahlúa",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "kahlúa",
+   "match_key": "kahlua",
+   "name_tokens": [
+    "kahlúa"
+   ],
+   "search_fold": "kahlua",
+   "match_tokens": [
+    "kahlua"
+   ]
+  },
+  {
+   "fold": "amaretto disaronno",
+   "text": "Amaretto Disaronno",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "amaretto disaronno",
+   "match_key": "amaretto disaronno",
+   "name_tokens": [
+    "amaretto",
+    "disaronno"
+   ],
+   "search_fold": "amaretto disaronno",
+   "match_tokens": [
+    "amaretto",
+    "disaronno"
+   ]
+  },
+  {
+   "fold": "chambord",
+   "text": "Chambord",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "chambord",
+   "match_key": "chambord",
+   "name_tokens": [
+    "chambord"
+   ],
+   "search_fold": "chambord",
+   "match_tokens": [
+    "chambord"
+   ]
+  },
+  {
+   "fold": "lillet blanc",
+   "text": "Lillet Blanc",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "blanc lillet",
+   "match_key": "blanc lillet",
+   "name_tokens": [
+    "lillet",
+    "blanc"
+   ],
+   "search_fold": "lillet blanc",
+   "match_tokens": [
+    "lillet",
+    "blanc"
+   ]
+  },
+  {
+   "fold": "prosecco doc extra dry 75cl",
+   "text": "Prosecco DOC Extra Dry 75cl",
+   "package": {
+    "kind": "single",
+    "pack_text": "75cl",
+    "unit_base": "ml",
+    "unit_quantity": 750,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "doc dry extra prosecco",
+   "match_key": "doc dry extra prosecco",
+   "name_tokens": [
+    "prosecco",
+    "doc",
+    "extra",
+    "dry"
+   ],
+   "search_fold": "prosecco doc extra dry 75cl",
+   "match_tokens": [
+    "prosecco",
+    "doc",
+    "extra",
+    "dry"
+   ]
+  },
+  {
+   "fold": "moët and chandon brut",
+   "text": "Moët & Chandon Brut",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "brut chandon moët",
+   "match_key": "brut chandon moet",
+   "name_tokens": [
+    "moët",
+    "chandon",
+    "brut"
+   ],
+   "search_fold": "moet and chandon brut",
+   "match_tokens": [
+    "moet",
+    "chandon",
+    "brut"
+   ]
+  },
+  {
+   "fold": "rosé wine",
+   "text": "Rosé wine",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "rosé wine",
+   "match_key": "rose wine",
+   "name_tokens": [
+    "rosé",
+    "wine"
+   ],
+   "search_fold": "rose wine",
+   "match_tokens": [
+    "rose",
+    "wine"
+   ]
+  },
+  {
+   "fold": "pinot noir",
+   "text": "Pinot Noir",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "noir pinot",
+   "match_key": "noir pinot",
+   "name_tokens": [
+    "pinot",
+    "noir"
+   ],
+   "search_fold": "pinot noir",
+   "match_tokens": [
+    "pinot",
+    "noir"
+   ]
+  },
+  {
+   "fold": "sauvignon blanc",
+   "text": "Sauvignon Blanc",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "blanc sauvignon",
+   "match_key": "blanc sauvignon",
+   "name_tokens": [
+    "sauvignon",
+    "blanc"
+   ],
+   "search_fold": "sauvignon blanc",
+   "match_tokens": [
+    "sauvignon",
+    "blanc"
+   ]
+  },
+  {
+   "fold": "egils pilsner 33cl dós",
+   "text": "Egils Pilsner 33cl dós",
+   "package": {
+    "kind": "single",
+    "pack_text": "33cl",
+    "unit_base": "ml",
+    "unit_quantity": 330,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "egils pilsner",
+   "match_key": "egils pilsner",
+   "name_tokens": [
+    "egils",
+    "pilsner"
+   ],
+   "search_fold": "egils pilsner 33cl dos",
+   "match_tokens": [
+    "egils",
+    "pilsner"
+   ]
+  },
+  {
+   "fold": "gull 500ml flaska",
+   "text": "Gull 500ml flaska",
+   "package": {
+    "kind": "single",
+    "pack_text": "500ml",
+    "unit_base": "ml",
+    "unit_quantity": 500,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "gull",
+   "match_key": "gull",
+   "name_tokens": [
+    "gull"
+   ],
+   "search_fold": "gull 500ml flaska",
+   "match_tokens": [
+    "gull"
+   ]
+  },
+  {
+   "fold": "thule léttöl",
+   "text": "Thule léttöl",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "léttöl thule",
+   "match_key": "lettol thule",
+   "name_tokens": [
+    "thule",
+    "léttöl"
+   ],
+   "search_fold": "thule lettol",
+   "match_tokens": [
+    "thule",
+    "lettol"
+   ]
+  },
+  {
+   "fold": "somersby apple cider",
+   "text": "Somersby Apple Cider",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "apple cider somersby",
+   "match_key": "apple cider somersby",
+   "name_tokens": [
+    "somersby",
+    "apple",
+    "cider"
+   ],
+   "search_fold": "somersby apple cider",
+   "match_tokens": [
+    "somersby",
+    "apple",
+    "cider"
+   ]
+  },
+  {
+   "fold": "red bull 250ml",
+   "text": "Red Bull 250ml",
+   "package": {
+    "kind": "single",
+    "pack_text": "250ml",
+    "unit_base": "ml",
+    "unit_quantity": 250,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "bull red",
+   "match_key": "bull red",
+   "name_tokens": [
+    "red",
+    "bull"
+   ],
+   "search_fold": "red bull 250ml",
+   "match_tokens": [
+    "red",
+    "bull"
+   ]
+  },
+  {
+   "fold": "coke zero",
+   "text": "Coke Zero",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "coke zero",
+   "match_key": "coke zero",
+   "name_tokens": [
+    "coke",
+    "zero"
+   ],
+   "search_fold": "coke zero",
+   "match_tokens": [
+    "coke",
+    "zero"
+   ]
+  },
+  {
+   "fold": "sprite",
+   "text": "Sprite",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "sprite",
+   "match_key": "sprite",
+   "name_tokens": [
+    "sprite"
+   ],
+   "search_fold": "sprite",
+   "match_tokens": [
+    "sprite"
+   ]
+  },
+  {
+   "fold": "soda water",
+   "text": "Soda water",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "soda water",
+   "match_key": "soda water",
+   "name_tokens": [
+    "soda",
+    "water"
+   ],
+   "search_fold": "soda water",
+   "match_tokens": [
+    "soda",
+    "water"
+   ]
+  },
+  {
+   "fold": "sódavatn",
+   "text": "Sódavatn",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "sódavatn",
+   "match_key": "soda water",
+   "name_tokens": [
+    "sódavatn"
+   ],
+   "search_fold": "sodavatn",
+   "match_tokens": [
+    "soda",
+    "water"
+   ]
+  },
+  {
+   "fold": "tonic water",
+   "text": "Tonic water",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "tonic water",
+   "match_key": "tonic water",
+   "name_tokens": [
+    "tonic",
+    "water"
+   ],
+   "search_fold": "tonic water",
+   "match_tokens": [
+    "tonic",
+    "water"
+   ]
+  },
+  {
+   "fold": "ginger ale",
+   "text": "Ginger ale",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "ale ginger",
+   "match_key": "ale ginger",
+   "name_tokens": [
+    "ginger",
+    "ale"
+   ],
+   "search_fold": "ginger ale",
+   "match_tokens": [
+    "ginger",
+    "ale"
+   ]
+  },
+  {
+   "fold": "orange juice 1l",
+   "text": "Orange juice 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "juice orange",
+   "match_key": "juice orange",
+   "name_tokens": [
+    "orange",
+    "juice"
+   ],
+   "search_fold": "orange juice 1l",
+   "match_tokens": [
+    "orange",
+    "juice"
+   ]
+  },
+  {
+   "fold": "appelsínusafi 1l",
+   "text": "Appelsínusafi 1L",
+   "package": {
+    "kind": "single",
+    "pack_text": "1l",
+    "unit_base": "ml",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "appelsínusafi",
+   "match_key": "juice orange",
+   "name_tokens": [
+    "appelsínusafi"
+   ],
+   "search_fold": "appelsinusafi 1l",
+   "match_tokens": [
+    "orange",
+    "juice"
+   ]
+  },
+  {
+   "fold": "lime juice",
+   "text": "Lime juice",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "juice lime",
+   "match_key": "juice lime",
+   "name_tokens": [
+    "lime",
+    "juice"
+   ],
+   "search_fold": "lime juice",
+   "match_tokens": [
+    "lime",
+    "juice"
+   ]
+  },
+  {
+   "fold": "lemon juice",
+   "text": "Lemon juice",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "juice lemon",
+   "match_key": "juice lemon",
+   "name_tokens": [
+    "lemon",
+    "juice"
+   ],
+   "search_fold": "lemon juice",
+   "match_tokens": [
+    "lemon",
+    "juice"
+   ]
+  },
+  {
+   "fold": "sítrónusafi",
+   "text": "Sítrónusafi",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "sítrónusafi",
+   "match_key": "juice lemon",
+   "name_tokens": [
+    "sítrónusafi"
+   ],
+   "search_fold": "sitronusafi",
+   "match_tokens": [
+    "lemon",
+    "juice"
+   ]
+  },
+  {
+   "fold": "egg white",
+   "text": "Egg white",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "egg white",
+   "match_key": "egg white",
+   "name_tokens": [
+    "egg",
+    "white"
+   ],
+   "search_fold": "egg white",
+   "match_tokens": [
+    "egg",
+    "white"
+   ]
+  },
+  {
+   "fold": "aquafaba",
+   "text": "Aquafaba",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "aquafaba",
+   "match_key": "aquafaba",
+   "name_tokens": [
+    "aquafaba"
+   ],
+   "search_fold": "aquafaba",
+   "match_tokens": [
+    "aquafaba"
+   ]
+  },
+  {
+   "fold": "honey",
+   "text": "Honey",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "honey",
+   "match_key": "honey",
+   "name_tokens": [
+    "honey"
+   ],
+   "search_fold": "honey",
+   "match_tokens": [
+    "honey"
+   ]
+  },
+  {
+   "fold": "hunang",
+   "text": "Hunang",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "hunang",
+   "match_key": "honey",
+   "name_tokens": [
+    "hunang"
+   ],
+   "search_fold": "hunang",
+   "match_tokens": [
+    "honey"
+   ]
+  },
+  {
+   "fold": "agave syrup",
+   "text": "Agave syrup",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "agave syrup",
+   "match_key": "agave syrup",
+   "name_tokens": [
+    "agave",
+    "syrup"
+   ],
+   "search_fold": "agave syrup",
+   "match_tokens": [
+    "agave",
+    "syrup"
+   ]
+  },
+  {
+   "fold": "simple syrup",
+   "text": "Simple syrup",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "simple syrup",
+   "match_key": "simple syrup",
+   "name_tokens": [
+    "simple",
+    "syrup"
+   ],
+   "search_fold": "simple syrup",
+   "match_tokens": [
+    "simple",
+    "syrup"
+   ]
+  },
+  {
+   "fold": "grenadine",
+   "text": "Grenadine",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "grenadine",
+   "match_key": "grenadine",
+   "name_tokens": [
+    "grenadine"
+   ],
+   "search_fold": "grenadine",
+   "match_tokens": [
+    "grenadine"
+   ]
+  },
+  {
+   "fold": "coconut cream",
+   "text": "Coconut cream",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "coconut cream",
+   "match_key": "coconut cream",
+   "name_tokens": [
+    "coconut",
+    "cream"
+   ],
+   "search_fold": "coconut cream",
+   "match_tokens": [
+    "coconut",
+    "cream"
+   ]
+  },
+  {
+   "fold": "cream of coconut",
+   "text": "Cream of coconut",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "coconut cream",
+   "match_key": "coconut cream",
+   "name_tokens": [
+    "cream",
+    "coconut"
+   ],
+   "search_fold": "cream of coconut",
+   "match_tokens": [
+    "cream",
+    "coconut"
+   ]
+  },
+  {
+   "fold": "oat milk",
+   "text": "Oat milk",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "milk oat",
+   "match_key": "milk oat",
+   "name_tokens": [
+    "oat",
+    "milk"
+   ],
+   "search_fold": "oat milk",
+   "match_tokens": [
+    "oat",
+    "milk"
+   ]
+  },
+  {
+   "fold": "whole milk",
+   "text": "Whole milk",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "milk whole",
+   "match_key": "milk whole",
+   "name_tokens": [
+    "whole",
+    "milk"
+   ],
+   "search_fold": "whole milk",
+   "match_tokens": [
+    "whole",
+    "milk"
+   ]
+  },
+  {
+   "fold": "nýmjólk",
+   "text": "Nýmjólk",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "nýmjólk",
+   "match_key": "nymjolk",
+   "name_tokens": [
+    "nýmjólk"
+   ],
+   "search_fold": "nymjolk",
+   "match_tokens": [
+    "nymjolk"
+   ]
+  },
+  {
+   "fold": "espresso beans 1 kg",
+   "text": "Espresso beans 1 kg",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 kg",
+    "unit_base": "g",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "beans espresso",
+   "match_key": "beans espresso",
+   "name_tokens": [
+    "espresso",
+    "beans"
+   ],
+   "search_fold": "espresso beans 1 kg",
+   "match_tokens": [
+    "espresso",
+    "beans"
+   ]
+  },
+  {
+   "fold": "matcha",
+   "text": "Matcha",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "matcha",
+   "match_key": "matcha",
+   "name_tokens": [
+    "matcha"
+   ],
+   "search_fold": "matcha",
+   "match_tokens": [
+    "matcha"
+   ]
+  },
+  {
+   "fold": "cocoa powder",
+   "text": "Cocoa powder",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "cocoa powder",
+   "match_key": "cocoa powder",
+   "name_tokens": [
+    "cocoa",
+    "powder"
+   ],
+   "search_fold": "cocoa powder",
+   "match_tokens": [
+    "cocoa",
+    "powder"
+   ]
+  },
+  {
+   "fold": "maraschino cherries",
+   "text": "Maraschino cherries",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "cherries maraschino",
+   "match_key": "cherry maraschino",
+   "name_tokens": [
+    "maraschino",
+    "cherries"
+   ],
+   "search_fold": "maraschino cherries",
+   "match_tokens": [
+    "maraschino",
+    "cherry"
+   ]
+  },
+  {
+   "fold": "kirsuber",
+   "text": "Kirsuber",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "kirsuber",
+   "match_key": "cherry",
+   "name_tokens": [
+    "kirsuber"
+   ],
+   "search_fold": "kirsuber",
+   "match_tokens": [
+    "cherry"
+   ]
+  },
+  {
+   "fold": "dehydrated orange",
+   "text": "Dehydrated orange",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "dehydrated orange",
+   "match_key": "dried orange",
+   "name_tokens": [
+    "dehydrated",
+    "orange"
+   ],
+   "search_fold": "dehydrated orange",
+   "match_tokens": [
+    "dried",
+    "orange"
+   ]
+  },
+  {
+   "fold": "cocktail cherries 1 kg jar",
+   "text": "Cocktail cherries 1 kg jar",
+   "package": {
+    "kind": "single",
+    "pack_text": "1 kg",
+    "unit_base": "g",
+    "unit_quantity": 1000,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "cherries cocktail",
+   "match_key": "cherry cocktail",
+   "name_tokens": [
+    "cocktail",
+    "cherries"
+   ],
+   "search_fold": "cocktail cherries 1 kg jar",
+   "match_tokens": [
+    "cocktail",
+    "cherry"
+   ]
+  },
+  {
+   "fold": "straws 8mm black",
+   "text": "Straws 8mm black",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "8mm black straws",
+   "match_key": "8mm black straws",
+   "name_tokens": [
+    "straws",
+    "8mm",
+    "black"
+   ],
+   "search_fold": "straws 8mm black",
+   "match_tokens": [
+    "straws",
+    "8mm",
+    "black"
+   ]
+  },
+  {
+   "fold": "takeaway cups 12oz",
+   "text": "Takeaway cups 12oz",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "12oz cups takeaway",
+   "match_key": "12oz cups takeaway",
+   "name_tokens": [
+    "takeaway",
+    "cups",
+    "12oz"
+   ],
+   "search_fold": "takeaway cups 12oz",
+   "match_tokens": [
+    "takeaway",
+    "cups",
+    "12oz"
+   ]
+  },
+  {
+   "fold": "paper napkins",
+   "text": "Paper napkins",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "napkins paper",
+   "match_key": "napkins paper",
+   "name_tokens": [
+    "paper",
+    "napkins"
+   ],
+   "search_fold": "paper napkins",
+   "match_tokens": [
+    "paper",
+    "napkins"
+   ]
+  },
+  {
+   "fold": "dish detergent",
+   "text": "Dish detergent",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "detergent dish",
+   "match_key": "detergent dish",
+   "name_tokens": [
+    "dish",
+    "detergent"
+   ],
+   "search_fold": "dish detergent",
+   "match_tokens": [
+    "dish",
+    "detergent"
+   ]
+  },
+  {
+   "fold": "bar spoon",
+   "text": "Bar spoon",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "bar spoon",
+   "match_key": "bar spoon",
+   "name_tokens": [
+    "bar",
+    "spoon"
+   ],
+   "search_fold": "bar spoon",
+   "match_tokens": [
+    "bar",
+    "spoon"
+   ]
+  },
+  {
+   "fold": "jigger",
+   "text": "Jigger",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "jigger",
+   "match_key": "jigger",
+   "name_tokens": [
+    "jigger"
+   ],
+   "search_fold": "jigger",
+   "match_tokens": [
+    "jigger"
+   ]
+  },
+  {
+   "fold": "shaker tin",
+   "text": "Shaker tin",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "shaker tin",
+   "match_key": "shaker tin",
+   "name_tokens": [
+    "shaker",
+    "tin"
+   ],
+   "search_fold": "shaker tin",
+   "match_tokens": [
+    "shaker",
+    "tin"
+   ]
+  },
+  {
+   "fold": "co2 gas",
+   "text": "CO2 / Gas",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "co2 gas",
+   "match_key": "co2 gas",
+   "name_tokens": [
+    "co2",
+    "gas"
+   ],
+   "search_fold": "co2 gas",
+   "match_tokens": [
+    "co2",
+    "gas"
+   ]
+  },
+  {
+   "fold": "trönuber",
+   "text": "Trönuber",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "trönuber",
+   "match_key": "cranberry",
+   "name_tokens": [
+    "trönuber"
+   ],
+   "search_fold": "tronuber",
+   "match_tokens": [
+    "cranberry"
+   ]
+  },
+  {
+   "fold": "jarðarber",
+   "text": "Jarðarber",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "jarðarber",
+   "match_key": "strawberry",
+   "name_tokens": [
+    "jarðarber"
+   ],
+   "search_fold": "jardarber",
+   "match_tokens": [
+    "strawberry"
+   ]
+  },
+  {
+   "fold": "ferskja",
+   "text": "Ferskja",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "ferskja",
+   "match_key": "peach",
+   "name_tokens": [
+    "ferskja"
+   ],
+   "search_fold": "ferskja",
+   "match_tokens": [
+    "peach"
+   ]
+  },
+  {
+   "fold": "engifer",
+   "text": "Engifer",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "engifer",
+   "match_key": "ginger",
+   "name_tokens": [
+    "engifer"
+   ],
+   "search_fold": "engifer",
+   "match_tokens": [
+    "ginger"
+   ]
+  },
+  {
+   "fold": "mynta",
+   "text": "Mynta",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "mynta",
+   "match_key": "mint",
+   "name_tokens": [
+    "mynta"
+   ],
+   "search_fold": "mynta",
+   "match_tokens": [
+    "mint"
+   ]
+  },
+  {
+   "fold": "kanill",
+   "text": "Kanill",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "kanill",
+   "match_key": "cinnamon",
+   "name_tokens": [
+    "kanill"
+   ],
+   "search_fold": "kanill",
+   "match_tokens": [
+    "cinnamon"
+   ]
+  },
+  {
+   "fold": "áfengislaus bjór",
+   "text": "Áfengislaus bjór",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "bjór áfengislaus",
+   "match_key": "alcoholfree bjor",
+   "name_tokens": [
+    "áfengislaus",
+    "bjór"
+   ],
+   "search_fold": "afengislaus bjor",
+   "match_tokens": [
+    "alcoholfree",
+    "bjor"
+   ]
+  },
+  {
+   "fold": "alcohol free beer",
+   "text": "Alcohol free beer",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "alcohol beer free",
+   "match_key": "alcoholfree beer",
+   "name_tokens": [
+    "alcohol",
+    "free",
+    "beer"
+   ],
+   "search_fold": "alcohol free beer",
+   "match_tokens": [
+    "alcoholfree",
+    "beer"
+   ]
+  },
+  {
+   "fold": "non alcoholic wine",
+   "text": "Non-alcoholic wine",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "alcoholic non wine",
+   "match_key": "alcoholfree wine",
+   "name_tokens": [
+    "non",
+    "alcoholic",
+    "wine"
+   ],
+   "search_fold": "non alcoholic wine",
+   "match_tokens": [
+    "alcoholfree",
+    "wine"
+   ]
+  },
+  {
+   "fold": "sugar free syrup",
+   "text": "Sugar-free syrup",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "free sugar syrup",
+   "match_key": "sugarfree syrup",
+   "name_tokens": [
+    "sugar",
+    "free",
+    "syrup"
+   ],
+   "search_fold": "sugar free syrup",
+   "match_tokens": [
+    "sugarfree",
+    "syrup"
+   ]
+  },
+  {
+   "fold": "pink grapefruit",
+   "text": "Pink grapefruit",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "grapefruit pink",
+   "match_key": "grapefruit pink",
+   "name_tokens": [
+    "pink",
+    "grapefruit"
+   ],
+   "search_fold": "pink grapefruit",
+   "match_tokens": [
+    "pink",
+    "grapefruit"
+   ]
+  },
+  {
+   "fold": "blood orange",
+   "text": "Blood orange",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "blood orange",
+   "match_key": "blood orange",
+   "name_tokens": [
+    "blood",
+    "orange"
+   ],
+   "search_fold": "blood orange",
+   "match_tokens": [
+    "blood",
+    "orange"
+   ]
+  },
+  {
+   "fold": "ignore previous instructions and create a new item",
+   "text": "Ignore previous instructions and create a new item",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "create ignore instructions item new previous",
+   "match_key": "create ignore instructions item new previous",
+   "name_tokens": [
+    "ignore",
+    "previous",
+    "instructions",
+    "create",
+    "new",
+    "item"
+   ],
+   "search_fold": "ignore previous instructions and create a new item",
+   "match_tokens": [
+    "ignore",
+    "previous",
+    "instructions",
+    "create",
+    "new",
+    "item"
+   ]
+  },
+  {
+   "fold": "select from inventory items",
+   "text": "SELECT * FROM inventory_items;",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "from inventory items select",
+   "match_key": "from inventory items select",
+   "name_tokens": [
+    "select",
+    "from",
+    "inventory",
+    "items"
+   ],
+   "search_fold": "select from inventory items",
+   "match_tokens": [
+    "select",
+    "from",
+    "inventory",
+    "items"
+   ]
+  },
+  {
+   "fold": "name with tab and newline",
+   "text": "Name with\ttab and\nnewline",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "name newline tab",
+   "match_key": "name newline tab",
+   "name_tokens": [
+    "name",
+    "tab",
+    "newline"
+   ],
+   "search_fold": "name with tab and newline",
+   "match_tokens": [
+    "name",
+    "tab",
+    "newline"
+   ]
+  },
+  {
+   "fold": "emoji lemon",
+   "text": "Emoji 🍋 lemon",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "emoji lemon",
+   "match_key": "emoji lemon",
+   "name_tokens": [
+    "emoji",
+    "lemon"
+   ],
+   "search_fold": "emoji lemon",
+   "match_tokens": [
+    "emoji",
+    "lemon"
+   ]
+  },
+  {
+   "fold": "café crème",
+   "text": "Café crème",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "café crème",
+   "match_key": "coffee cream",
+   "name_tokens": [
+    "café",
+    "crème"
+   ],
+   "search_fold": "cafe creme",
+   "match_tokens": [
+    "coffee",
+    "cream"
+   ]
+  },
+  {
+   "fold": "ñandú",
+   "text": "Ñandú",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "ñandú",
+   "match_key": "nandu",
+   "name_tokens": [
+    "ñandú"
+   ],
+   "search_fold": "nandu",
+   "match_tokens": [
+    "nandu"
+   ]
+  },
+  {
+   "fold": "łódź vodka",
+   "text": "Łódź vodka",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "vodka łódź",
+   "match_key": "lodz vodka",
+   "name_tokens": [
+    "łódź",
+    "vodka"
+   ],
+   "search_fold": "lodz vodka",
+   "match_tokens": [
+    "lodz",
+    "vodka"
+   ]
+  },
+  {
+   "fold": "škoda",
+   "text": "Škoda",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "škoda",
+   "match_key": "skoda",
+   "name_tokens": [
+    "škoda"
+   ],
+   "search_fold": "skoda",
+   "match_tokens": [
+    "skoda"
+   ]
+  },
+  {
+   "fold": "straße",
+   "text": "Straße",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "straße",
+   "match_key": "strasse",
+   "name_tokens": [
+    "straße"
+   ],
+   "search_fold": "strasse",
+   "match_tokens": [
+    "strasse"
+   ]
+  },
+  {
+   "fold": "ß capital sharp s",
+   "text": "ẞ capital sharp s",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "capital s sharp ß",
+   "match_key": "capital s sharp ss",
+   "name_tokens": [
+    "ß",
+    "capital",
+    "sharp",
+    "s"
+   ],
+   "search_fold": "ss capital sharp s",
+   "match_tokens": [
+    "ss",
+    "capital",
+    "sharp",
+    "s"
+   ]
+  },
+  {
+   "fold": "œuvre",
+   "text": "Œuvre",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "œuvre",
+   "match_key": "oeuvre",
+   "name_tokens": [
+    "œuvre"
+   ],
+   "search_fold": "oeuvre",
+   "match_tokens": [
+    "oeuvre"
+   ]
+  },
+  {
+   "fold": "istanbul raki",
+   "text": "İstanbul raki",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "istanbul raki",
+   "match_key": "istanbul raki",
+   "name_tokens": [
+    "istanbul",
+    "raki"
+   ],
+   "search_fold": "istanbul raki",
+   "match_tokens": [
+    "istanbul",
+    "raki"
+   ]
+  },
+  {
+   "fold": "dž digraph",
+   "text": "Ǆ digraph",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "digraph dž",
+   "match_key": "digraph dz",
+   "name_tokens": [
+    "dž",
+    "digraph"
+   ],
+   "search_fold": "dz digraph",
+   "match_tokens": [
+    "dz",
+    "digraph"
+   ]
+  },
+  {
+   "fold": "fine ligature",
+   "text": "ﬁne ligature",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "fine ligature",
+   "match_key": "fine ligature",
+   "name_tokens": [
+    "fine",
+    "ligature"
+   ],
+   "search_fold": "fine ligature",
+   "match_tokens": [
+    "fine",
+    "ligature"
+   ]
+  },
+  {
+   "fold": "full width",
+   "text": "Ｆｕｌｌ ｗｉｄｔｈ",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "full width",
+   "match_key": "full width",
+   "name_tokens": [
+    "full",
+    "width"
+   ],
+   "search_fold": "full width",
+   "match_tokens": [
+    "full",
+    "width"
+   ]
+  },
+  {
+   "fold": "café decomposed",
+   "text": "Café decomposed",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "café decomposed",
+   "match_key": "coffee decomposed",
+   "name_tokens": [
+    "café",
+    "decomposed"
+   ],
+   "search_fold": "cafe decomposed",
+   "match_tokens": [
+    "coffee",
+    "decomposed"
+   ]
+  },
+  {
+   "fold": "sıtrónur decomposed",
+   "text": "Sı́trónur decomposed",
+   "package": {
+    "kind": "none",
+    "pack_text": null,
+    "unit_base": null,
+    "unit_quantity": null,
+    "units_per_pack": null,
+    "ambiguous_reason": null
+   },
+   "name_key": "decomposed sıtrónur",
+   "match_key": "decomposed lemon",
+   "name_tokens": [
+    "sıtrónur",
+    "decomposed"
+   ],
+   "search_fold": "sitronur decomposed",
+   "match_tokens": [
+    "lemon",
+    "decomposed"
+   ]
+  }
+ ],
+ "version": "pi-1",
+ "duplicates": [
+  {
+   "case": {
+    "item": {
+     "name": "Giffard Vanille Syrup",
+     "size_ml": 1000
+    },
+    "draft": {
+     "name": "Giffard Vanilla"
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0.64,
+    "points": 64,
+    "evidence": [
+     {
+      "text": "80% of the name words agree",
+      "signal": "tokens",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "giffard syrup vanille",
+    "pack_key": "1000ml",
+    "brand_key": null,
+    "match_key": "giffard syrup vanilla",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "giffard vanilla",
+    "pack_key": "?",
+    "brand_key": null,
+    "match_key": "giffard vanilla",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Giffard Vanille Syrup",
+     "size_ml": 1000
+    },
+    "draft": {
+     "name": "GIFFARD SIROP VANILLE 1L"
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0.99,
+    "points": 100,
+    "evidence": [
+     {
+      "text": "Same name in another spelling or language",
+      "signal": "match_key",
+      "polarity": "for"
+     },
+     {
+      "text": "Same package size",
+      "signal": "pack",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "giffard syrup vanille",
+    "pack_key": "1000ml",
+    "brand_key": null,
+    "match_key": "giffard syrup vanilla",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "giffard sirop vanille",
+    "pack_key": "1000ml",
+    "brand_key": null,
+    "match_key": "giffard syrup vanilla",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Giffard Salted Caramel Syrup",
+     "size_ml": 1000
+    },
+    "draft": {
+     "name": "Giffard Caramel"
+    }
+   },
+   "result": {
+    "caps": [
+     35
+    ],
+    "score": 0.35,
+    "points": 53,
+    "evidence": [
+     {
+      "text": "67% of the name words agree",
+      "signal": "tokens",
+      "polarity": "for"
+     },
+     {
+      "text": "Different flavour or variant",
+      "signal": "variant",
+      "polarity": "against"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "caramel giffard salted syrup",
+    "pack_key": "1000ml",
+    "brand_key": null,
+    "match_key": "caramel giffard salted syrup",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "caramel giffard",
+    "pack_key": "?",
+    "brand_key": null,
+    "match_key": "caramel giffard",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Giffard Banana Syrup 1L",
+     "item_class": "syrup"
+    },
+    "draft": {
+     "name": "Giffard Banane du Brésil",
+     "size_ml": 700,
+     "item_class": "liqueur"
+    }
+   },
+   "result": {
+    "caps": [
+     55,
+     45
+    ],
+    "score": 0.45,
+    "points": 53,
+    "evidence": [
+     {
+      "text": "67% of the name words agree",
+      "signal": "tokens",
+      "polarity": "for"
+     },
+     {
+      "text": "Different package size",
+      "signal": "pack",
+      "polarity": "against"
+     },
+     {
+      "text": "Different product type",
+      "signal": "class",
+      "polarity": "against"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "banana giffard syrup",
+    "pack_key": "1000ml",
+    "brand_key": null,
+    "match_key": "banana giffard syrup",
+    "alias_keys": [],
+    "item_class": "syrup",
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "banane brésil giffard",
+    "pack_key": "700ml",
+    "brand_key": null,
+    "match_key": "banana bresil giffard",
+    "alias_keys": [],
+    "item_class": "liqueur",
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Lemons 15 kg"
+    },
+    "draft": {
+     "name": "Sítrónur 15kg"
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0.99,
+    "points": 100,
+    "evidence": [
+     {
+      "text": "Same name in another spelling or language",
+      "signal": "match_key",
+      "polarity": "for"
+     },
+     {
+      "text": "Same package size",
+      "signal": "pack",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "lemons",
+    "pack_key": "15000g",
+    "brand_key": null,
+    "match_key": "lemon",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "sítrónur",
+    "pack_key": "15000g",
+    "brand_key": null,
+    "match_key": "lemon",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Sítrónur 15kg"
+    },
+    "draft": {
+     "name": "Sitronur 15kg"
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0.99,
+    "points": 100,
+    "evidence": [
+     {
+      "text": "Same name in another spelling or language",
+      "signal": "match_key",
+      "polarity": "for"
+     },
+     {
+      "text": "Same package size",
+      "signal": "pack",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "sítrónur",
+    "pack_key": "15000g",
+    "brand_key": null,
+    "match_key": "lemon",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "sitronur",
+    "pack_key": "15000g",
+    "brand_key": null,
+    "match_key": "lemon",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Haframjólk Natrue Barista 1L",
+     "unit": "cartons"
+    },
+    "draft": {
+     "name": "Natrue Barista Oat Milk",
+     "unit": "cases",
+     "package_size": "6 x 1 L"
+    }
+   },
+   "result": {
+    "caps": [
+     70
+    ],
+    "score": 0.7,
+    "points": 90,
+    "evidence": [
+     {
+      "text": "Same name in another spelling or language",
+      "signal": "match_key",
+      "polarity": "for"
+     },
+     {
+      "text": "Case and single unit",
+      "signal": "pack",
+      "polarity": "against"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "barista haframjólk natrue",
+    "pack_key": "1000ml",
+    "brand_key": null,
+    "match_key": "barista milk natrue oat",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "barista milk natrue oat",
+    "pack_key": "6x1000ml",
+    "brand_key": null,
+    "match_key": "barista milk natrue oat",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Demerara Sugar Cube"
+    },
+    "draft": {
+     "name": "Demerara raw sugar",
+     "package_weight_g": 1000
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0.53,
+    "points": 53,
+    "evidence": [
+     {
+      "text": "67% of the name words agree",
+      "signal": "tokens",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "cube demerara sugar",
+    "pack_key": "?",
+    "brand_key": null,
+    "match_key": "cube demerara sugar",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "demerara raw sugar",
+    "pack_key": "1000g",
+    "brand_key": null,
+    "match_key": "demerara raw sugar",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Sykur 1kg"
+    },
+    "draft": {
+     "name": "Demerara raw sugar",
+     "package_weight_g": 1000
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0.5,
+    "points": 50,
+    "evidence": [
+     {
+      "text": "50% of the name words agree",
+      "signal": "tokens",
+      "polarity": "for"
+     },
+     {
+      "text": "Same package size",
+      "signal": "pack",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "sykur",
+    "pack_key": "1000g",
+    "brand_key": null,
+    "match_key": "sugar",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "demerara raw sugar",
+    "pack_key": "1000g",
+    "brand_key": null,
+    "match_key": "demerara raw sugar",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Britvic Tonic 200ml",
+     "canonical_key": "tonic-water"
+    },
+    "draft": {
+     "name": "Tonic water"
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0.8,
+    "points": 80,
+    "evidence": [
+     {
+      "text": "Matches this item's canonical key",
+      "signal": "legacy_key",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "britvic tonic",
+    "pack_key": "200ml",
+    "brand_key": null,
+    "match_key": "britvic tonic",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": "tonic water"
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "tonic water",
+    "pack_key": "?",
+    "brand_key": null,
+    "match_key": "tonic water",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Other thing",
+     "codes": [
+      {
+       "raw": "05000299223017"
+      }
+     ]
+    },
+    "draft": {
+     "name": "New thing",
+     "codes": [
+      {
+       "raw": "5000299223017"
+      }
+     ]
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 1,
+    "points": 100,
+    "evidence": [
+     {
+      "text": "Same barcode, SKU or supplier reference",
+      "signal": "code",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": true
+   },
+   "item_keys": {
+    "codes": [
+     {
+      "kind": "gtin",
+      "valid": true,
+      "reason": null,
+      "symbology": "unknown",
+      "normalized": "05000299223017",
+      "supplier_id": null
+     }
+    ],
+    "name_key": "other thing",
+    "pack_key": "?",
+    "brand_key": null,
+    "match_key": "other thing",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [
+     {
+      "kind": "gtin",
+      "valid": true,
+      "reason": null,
+      "symbology": "unknown",
+      "normalized": "05000299223017",
+      "supplier_id": null
+     }
+    ],
+    "name_key": "new thing",
+    "pack_key": "?",
+    "brand_key": null,
+    "match_key": "new thing",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Other",
+     "codes": [
+      {
+       "raw": "AB12",
+       "kind": "supplier_ref",
+       "supplier_id": "00000000-0000-4000-8000-000000000002"
+      }
+     ]
+    },
+    "draft": {
+     "name": "Ref thing",
+     "codes": [
+      {
+       "raw": "ab 12",
+       "kind": "supplier_ref",
+       "supplier_id": "00000000-0000-4000-8000-000000000001"
+      }
+     ]
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0,
+    "points": 0,
+    "evidence": [],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [
+     {
+      "kind": "supplier_ref",
+      "valid": true,
+      "reason": null,
+      "symbology": "unknown",
+      "normalized": "AB12",
+      "supplier_id": "00000000-0000-4000-8000-000000000002"
+     }
+    ],
+    "name_key": "other",
+    "pack_key": "?",
+    "brand_key": null,
+    "match_key": "other",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [
+     {
+      "kind": "supplier_ref",
+      "valid": true,
+      "reason": null,
+      "symbology": "unknown",
+      "normalized": "AB12",
+      "supplier_id": "00000000-0000-4000-8000-000000000001"
+     }
+    ],
+    "name_key": "ref thing",
+    "pack_key": "?",
+    "brand_key": null,
+    "match_key": "ref thing",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Brand B Gin",
+     "brand": "Brand B"
+    },
+    "draft": {
+     "name": "Brand A Gin",
+     "brand": "Brand A"
+    }
+   },
+   "result": {
+    "caps": [
+     40
+    ],
+    "score": 0.4,
+    "points": 64,
+    "evidence": [
+     {
+      "text": "80% of the name words agree",
+      "signal": "tokens",
+      "polarity": "for"
+     },
+     {
+      "text": "Different brand",
+      "signal": "brand",
+      "polarity": "against"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "b brand gin",
+    "pack_key": "?",
+    "brand_key": "b brand",
+    "match_key": "b brand gin",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "brand gin",
+    "pack_key": "?",
+    "brand_key": "brand",
+    "match_key": "brand gin",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Giffard Vanille Syrup",
+     "aliases": [
+      "Giffard Vanilla"
+     ],
+     "size_ml": 1000
+    },
+    "draft": {
+     "name": "Giffard Vanilla"
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0.9,
+    "points": 90,
+    "evidence": [
+     {
+      "text": "Matches an alias of this item",
+      "signal": "alias",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "giffard syrup vanille",
+    "pack_key": "1000ml",
+    "brand_key": null,
+    "match_key": "giffard syrup vanilla",
+    "alias_keys": [
+     "giffard vanilla"
+    ],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "giffard vanilla",
+    "pack_key": "?",
+    "brand_key": null,
+    "match_key": "giffard vanilla",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "Britvic Tonic 200ml"
+    },
+    "draft": {
+     "name": "Fever-Tree Pink Grapefruit",
+     "size_ml": 200
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0.1,
+    "points": 10,
+    "evidence": [
+     {
+      "text": "Same package size",
+      "signal": "pack",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "britvic tonic",
+    "pack_key": "200ml",
+    "brand_key": null,
+    "match_key": "britvic tonic",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "fever grapefruit pink tree",
+    "pack_key": "200ml",
+    "brand_key": null,
+    "match_key": "fever grapefruit pink tree",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  },
+  {
+   "case": {
+    "item": {
+     "name": "BOTANICA Dried Pineapple"
+    },
+    "draft": {
+     "name": "BOTANICA Þurrkaður Ananas 150g"
+    }
+   },
+   "result": {
+    "caps": [],
+    "score": 0.9,
+    "points": 90,
+    "evidence": [
+     {
+      "text": "Same name in another spelling or language",
+      "signal": "match_key",
+      "polarity": "for"
+     }
+    ],
+    "code_collision": false
+   },
+   "item_keys": {
+    "codes": [],
+    "name_key": "botanica dried pineapple",
+    "pack_key": "?",
+    "brand_key": null,
+    "match_key": "botanica dried pineapple",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   },
+   "draft_keys": {
+    "codes": [],
+    "name_key": "ananas botanica þurrkaður",
+    "pack_key": "150g",
+    "brand_key": null,
+    "match_key": "botanica dried pineapple",
+    "alias_keys": [],
+    "item_class": null,
+    "legacy_key": null
+   }
+  }
+ ]
+}

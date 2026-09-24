@@ -8,36 +8,6 @@
  * Loaded last so every workspace shares one calm blue/white visual language.
  */
 @layer atlas.legacy {
-/* Compact Apple-style search controls */
-:is(
-  .purchasing-search,
-  .recipe-search,
-  .team-attachment-controls label
-) {
-  border-radius: 999px;
-}
-
-:is(
-  #supplier-search,
-  #recipe-search,
-  [data-team-target-search]
-) {
-  min-height: 38px !important;
-  max-height: 42px;
-  border-color: var(--s38-line) !important;
-  border-radius: 999px !important;
-  background: rgba(255, 255, 255, .9) !important;
-  box-shadow: inset 0 1px 2px rgba(31, 57, 93, .04);
-}
-
-:is(
-  #supplier-search,
-  #recipe-search,
-  [data-team-target-search]
-):focus {
-  border-color: var(--s38-blue) !important;
-  box-shadow: 0 0 0 4px rgba(79, 125, 243, .12) !important;
-}
 .purchase-order-card button { min-height:36px; padding:0 12px; border:1px solid var(--s38-blue-line); border-radius:10px; background:var(--s38-blue-soft); color:var(--s38-blue-strong); cursor:pointer; }
 .shift-month-view-select select { width:auto; min-height:36px; margin:0; padding:7px 30px 7px 10px; border:1px solid var(--s38-line); border-radius:10px; background:#fff; color:var(--s38-ink); font-size:10px; font-weight:650; }
 

@@ -21,7 +21,7 @@ test('current stock is the verified count, never the raw imported quantity', asy
   const angeloEvidence = result.evidence.find((entry) => entry.label === 'Current stock of Angelo Pinot Grigio');
   assert.equal(angeloEvidence.kind, 'fact');
   assert.match(angeloEvidence.value, /^10 bottle \(manager-verified count\)/);
-  assert.deepEqual(angeloEvidence.source, { type: 'inventory_item', id: IDS.angelo, label: 'Angelo Pinot Grigio', route: `#inventory?item=${IDS.angelo}` });
+  assert.deepEqual(angeloEvidence.source, { type: 'inventory_item', id: IDS.angelo, label: 'Angelo Pinot Grigio', route: `#inventory/item/${IDS.angelo}` });
   assert.equal(result.evidence.find((entry) => entry.label === 'Current stock of House Pinot Noir').kind, 'missing');
   assert.equal(angelo.cost_price, 3000, 'managers receive cost');
   const staff = await run('bartender', 'inventory.current_stock', { item_ids: [IDS.angelo], query: null, category: null, limit: null });
@@ -71,7 +71,7 @@ test('stale counts: never verified, historical, expired and older than the windo
 test('search, get and barcode lookup return records with routes and stock evidence', async () => {
   const search = await run('bartender', 'inventory.search', { query: 'pinot', category: null, include_inactive: null, limit: null });
   assert.deepEqual(search.data.items.map((item) => item.name).sort(), ['Angelo Pinot Grigio', 'House Pinot Noir']);
-  assert.ok(search.records.every((entry) => entry.route.startsWith('#inventory?item=')));
+  assert.ok(search.records.every((entry) => entry.route.startsWith('#inventory/item/')));
   const inactive = await run('manager', 'inventory.search', { query: 'ice', category: null, include_inactive: true, limit: null });
   assert.equal(inactive.data.items[0].quantity_status, 'inactive');
   const get = await run('manager', 'inventory.get', { item_id: IDS.angelo });

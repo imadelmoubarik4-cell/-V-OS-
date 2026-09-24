@@ -246,6 +246,26 @@ the card (transcripts are approximate).
   specialist reads the PO lines, the vision input yields observed items, Atlas
   explains matches and discrepancies and may prepare a **receiving proposal**
   — stock only changes after approval through the canonical receiving command.
+- Product recognition (S89): `inventory.identify_from_image` runs the visual
+  inventory pipeline (`_shared/recognition/*`, the same code as the
+  `atlas-inventory-recognition` function) in process on an attached photo: a
+  strict-schema vision reading (never shown the catalogue), then deterministic
+  retrieval and scoring through the `atlas_recognition_*` RPCs only (NOLOGIN
+  recognition definer, no stock writes). Results carry a band (High only for
+  an exact barcode or code, still confirmed by a person; Medium = options with
+  evidence; Low = no confident match), field-by-field confidence and the §7
+  evidence sentences. `inventory.resolve_name` is the canonical name resolver
+  (aliases, Icelandic/English spellings, sizes such as "70cl") that
+  `inventory.prepare_count`, `purchasing.prepare_draft_po` and
+  `purchasing.compare_delivery` use. `inventory.propose_alias`,
+  `inventory.propose_item` (duplicate check first) and
+  `inventory.report_wrong_match` are drafts: approving the card creates a
+  pending catalogue request (source `ai_proposal`, linked to the action); a
+  manager decides it in the approval queue, and that decision is written to
+  the Brain through `atlas_catalog_record_ai_decision`. Vision reads follow the
+  Atlas AI switch and the recognition limits in `ai_settings`
+  (`recognition_identifications_per_hour`, `recognition_vision_per_day`,
+  `recognition_vision_budget_usd_per_day`).
 - Retention: voice-note audio deleted after successful transcription;
   photos/documents kept 30 days (configurable in `ai_settings`), then purged by
   `atlas_ai_purge_expired_media()`; transcripts and messages follow conversation

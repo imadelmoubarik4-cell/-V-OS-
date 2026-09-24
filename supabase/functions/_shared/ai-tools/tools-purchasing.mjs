@@ -10,6 +10,7 @@ import {
   calculation, estimate, fact, formatIsk, formatNumber, interpretation, missing, ok, quantityLabel, record, source, ToolError, truncate,
 } from "./result.mjs";
 import { clampLimit, lower, matchByName, newId, numberOrNull, text, venueDates, withinDays, nowMillis } from "./helpers.mjs";
+import { resolveInventoryName } from "./tools-recognition.mjs";
 
 const MANAGERS = ["admin", "manager"];
 export const OPEN_ORDER_STATUSES = ["draft", "pending_approval", "approved", "ordered", "partially_received"];
@@ -215,9 +216,9 @@ const prepareDraftPo = {
       let item = null;
       if (line.item_id) item = items.find((candidate) => String(candidate.id) === line.item_id) || null;
       else if (line.item_query) {
-        const match = matchByName(items, line.item_query);
-        if (match.status === "unique") item = match.match;
-        else clarifications.push({ line: index, query: line.item_query, status: match.status === "none" ? "not_found" : "ambiguous", candidates: match.candidates.map((candidate) => ({ id: candidate.id, name: candidate.name })) });
+        const match = await resolveInventoryName(ctx, line.item_query, { universe: items });
+        if (match.status === "unique") item = items.find((candidate) => String(candidate.id) === String(match.match.item_id)) || null;
+        else clarifications.push({ line: index, query: line.item_query, status: match.status === "none" ? "not_found" : "ambiguous", candidates: match.candidates.map((candidate) => ({ id: candidate.item_id, name: candidate.item?.name ?? null })) });
       } else throw new ToolError("invalid_arguments", `Line ${index + 1} needs item_id or item_query.`);
       if (!item) {
         if (line.item_id) clarifications.push({ line: index, query: line.item_id, status: "not_found", candidates: [] });
@@ -363,10 +364,13 @@ const compareDelivery = {
       let line = null;
       if (entry.item_id) line = lines.find((candidate) => String(candidate.item_id) === entry.item_id) || null;
       else if (entry.name) {
-        const match = matchByName(lines, entry.name, { nameOf: (candidate) => candidate.item_name });
-        if (match.status === "unique") line = match.match;
+        // Canonical resolver restricted to this order's lines ("Aperol 70cl"
+        // on a delivery note is the Aperol line).
+        const universe = lines.map((candidate) => ({ id: String(candidate.item_id), name: candidate.item_name, unit: candidate.unit ?? null, active: true }));
+        const match = await resolveInventoryName(ctx, entry.name, { universe, context: { purchase_order_id: String(order.id) } });
+        if (match.status === "unique") line = lines.find((candidate) => String(candidate.item_id) === String(match.match.item_id)) || null;
         else if (match.status === "ambiguous") {
-          clarifications.push({ query: entry.name, candidates: match.candidates.map((candidate) => ({ id: candidate.item_id, name: candidate.item_name })) });
+          clarifications.push({ query: entry.name, candidates: match.candidates.map((candidate) => ({ id: candidate.item_id, name: candidate.item?.name ?? null })) });
           continue;
         }
       } else throw new ToolError("invalid_arguments", "Each observed entry needs item_id or name.");

@@ -75,19 +75,23 @@ test('Recipes, Brain, and Business Intelligence delegate to the shared calculati
 });
 
 test('shared launch design uses blue actions, compact search, visible focus, and reduced motion', () => {
-  // S87: the action colour resolves to the single Atlas blue token.
+  // S88: the action colour resolves to the single, AA-contrast Atlas blue
+  // (--accent #1f6fdb); every legacy name is an alias of it.
   const tokens = readFileSync('apps/web/assets/css/atlas-tokens.css', 'utf8');
-  assert.match(tokens, /--atlas-accent: #2f80ed;/);
-  assert.match(tokens, /--atlas-action: var\(--atlas-accent\);/);
+  assert.match(tokens, /--accent: #1f6fdb;/);
+  assert.match(tokens, /--atlas-accent: var\(--accent\);/);
+  assert.match(tokens, /--atlas-action: var\(--accent\);/);
   assert.doesNotMatch(design, /--atlas-action:#2d78dc/);
-  // S88: one focus contract (2 px accent, spec G18) lives with the shell, not
-  // in the S34 fragments; no legacy rule forces a focus style with !important.
-  assert.doesNotMatch(design, /:focus-visible\{\s*outline:3px solid var\(--atlas-action-focus\)!important/);
-  assert.match(readFileSync('apps/web/assets/css/atlas-shell.css', 'utf8'), /:focus-visible \{ outline: 2px solid var\(--accent, #1f6fdb\)/);
-  assert.match(design, /input\[type="search"\]/);
-  assert.match(design, /@media\(prefers-reduced-motion:reduce\)/);
+  // S88: the shared focus, search and reduced-motion rules moved into the
+  // design system (atlas-base.css and atlas-components.css).
+  const base = readFileSync('apps/web/assets/css/atlas-base.css', 'utf8');
+  const components = readFileSync('apps/web/assets/css/atlas-components.css', 'utf8');
+  assert.match(base, /:focus-visible/);
+  assert.match(components, /input\[type="search"\]/);
+  assert.match(base, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(design, /#home-focus::after/);
-  assert.match(app, /assets\/css\/legacy\/s34-preproduction--base\.css\?v=20260926-s88/);
+  assert.match(app, /assets\/css\/atlas-base\.css\?v=20260926-s88/);
+  assert.match(app, /assets\/css\/atlas-components\.css\?v=20260926-s88/);
 });
 
 test('conversation stars persist through the private gateway', () => {

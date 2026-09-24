@@ -52,39 +52,38 @@ function dedupeRecords(records) {
   });
 }
 
-// Hash routes the Atlas web shell understands (`#<view>?…`). The shell
+// Hash routes per the redesign route table (docs/design/Atlas_Experience_Redesign.md §3.4). The shell
 // selects the view from the part before `?`; the Atlas AI workspace reads the
 // query to open the record.
 const ROUTES = {
-  inventory_item: (id) => `#inventory?item=${enc(id)}`,
+  inventory_item: (id) => `#inventory/item/${enc(id)}`,
   inventory: () => "#inventory",
-  stock_count: (id) => (id ? `#inventory?section=stock-count&count=${enc(id)}` : "#inventory?section=stock-count"),
-  par_levels: (id) => (id ? `#inventory?section=par-levels&item=${enc(id)}` : "#inventory?section=par-levels"),
-  data_review: (id) => (id ? `#inventory?section=item-master&issue=${enc(id)}` : "#inventory?section=item-master"),
-  movement: (id) => `#movements?movement=${enc(id)}`,
-  waste: () => "#waste",
-  recipe: (id) => `#recipes?recipe=${enc(id)}`,
+  stock_count: (id) => (id ? `#inventory/counts/${enc(id)}` : "#inventory/counts"),
+  par_levels: (id) => (id ? `#data/pars?item=${enc(id)}` : "#data/pars"),
+  data_review: (id) => (id ? `#data/issues?issue=${enc(id)}` : "#data/issues"),
+  movement: (id) => `#inventory/movements?movement=${enc(id)}`,
+  waste: () => "#inventory/waste",
+  recipe: (id) => `#recipes/${enc(id)}`,
   recipes: () => "#recipes",
-  supplier: (id) => `#suppliers?supplier=${enc(id)}`,
-  purchase_order: (id) => (id ? `#suppliers?purchase_order=${enc(id)}` : "#suppliers?section=purchase-orders"),
+  supplier: (id) => `#purchasing/suppliers/${enc(id)}`,
+  purchase_order: (id) => (id ? `#purchasing/order/${enc(id)}` : "#purchasing"),
   report: (id) => `#reports/${enc(id || "overview")}`,
-  routine: (id) => `#dashboard?routine=${enc(id)}`,
-  operations: () => "#dashboard",
+  routine: (id) => `#operations/${enc(id)}`,
+  operations: () => "#operations",
   shift_week: (id) => `#shifts?week=${enc(id)}`,
   shift: (id) => `#shifts?shift=${enc(id)}`,
-  profile: (id) => `#team?profile=${enc(id)}`,
-  // Messages live at #messages; #team is the Team directory (S88 route table).
-  team_channel: (id) => `#messages?channel=${enc(id)}`,
-  knowledge_article: (id) => `#knowledge?article=${enc(id)}`,
+  profile: (id) => `#team/${enc(id)}`,
+  team_channel: (id) => `#messages/${enc(id)}`,
+  knowledge_article: (id) => `#knowledge/${enc(id)}`,
   knowledge: () => "#knowledge",
-  settings: (id) => (id ? `#settings?tab=${enc(id)}` : "#settings"),
-  brain_recommendation: (id) => `#dashboard?recommendation=${enc(id)}`,
-  brain_memory: () => "#dashboard?section=brain",
+  settings: (id) => `#settings/${enc(id || "venue")}`,
+  brain_recommendation: (id) => `#ai/decisions?recommendation=${enc(id)}`,
+  brain_memory: () => "#ai/decisions",
   marketing_recommendation: (id) => `#marketing?recommendation=${enc(id)}`,
   marketing: () => "#marketing",
-  integration: (id) => (id ? `#settings?tab=integrations&provider=${enc(id)}` : "#settings?tab=integrations"),
-  venue_clock: () => "#settings?tab=hours",
-  home: () => "#dashboard",
+  integration: (id) => (id ? `#settings/integrations?provider=${enc(id)}` : "#settings/integrations"),
+  venue_clock: () => "#settings/hours",
+  home: () => "#home",
 };
 
 function enc(value) {
@@ -93,9 +92,9 @@ function enc(value) {
 
 // Screen roots used when a route is asked for without a record id.
 const ROOTS = {
-  inventory_item: "#inventory", movement: "#movements", recipe: "#recipes", supplier: "#suppliers",
-  report: "#reports/overview", routine: "#dashboard", shift_week: "#shifts", shift: "#shifts", profile: "#team",
-  team_channel: "#messages", knowledge_article: "#knowledge", brain_recommendation: "#dashboard",
+  inventory_item: "#inventory", movement: "#inventory/movements", recipe: "#recipes", supplier: "#purchasing/suppliers",
+  report: "#reports/overview", routine: "#operations", shift_week: "#shifts", shift: "#shifts", profile: "#team",
+  team_channel: "#messages", knowledge_article: "#knowledge", brain_recommendation: "#ai/decisions",
   marketing_recommendation: "#marketing",
 };
 

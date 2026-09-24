@@ -4,13 +4,18 @@
  * using their effective values, then empties this file. */
 /* S61: accessible responsive action ownership. */
 @layer atlas.legacy {
-/* S87: the personal Reduce motion preference applies across every module. */
-html.atlas-reduce-motion *,
-html.atlas-reduce-motion *::before,
-html.atlas-reduce-motion *::after {
-  animation-duration: .001ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: .001ms !important;
-  scroll-behavior: auto !important;
+@media (max-width: 760px) {
+  .fab-wrap {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  .fab-menu {
+    width: min(270px, calc(100vw - 28px));
+    max-height: calc(100dvh - 104px);
+    overflow-y: auto;
+  }
 }
+
+
 }

@@ -11,7 +11,8 @@ const counts = readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8
 
 test('Purchasing keeps supplier controls scoped to the Suppliers tab', () => {
   assert.match(purchasing, /addSupplierButton\.hidden = !suppliersSelected/);
-  assert.match(css, /#add-supplier-btn\[hidden\]\{display:none!important\}/);
+  // S88: the global [hidden] rule in atlas-base.css hides the button (spec §9.1).
+  assert.match(readFileSync('apps/web/assets/css/atlas-base.css', 'utf8'), /\[hidden\] \{ display: none !important; \}/);
   assert.match(css, /#purchase-suppliers-panel\{display:grid;gap:12px/);
   assert.match(css, /#purchase-suppliers-panel>\.toolbar/);
 });

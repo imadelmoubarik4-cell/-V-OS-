@@ -109,6 +109,6 @@
     "question": "Open the stock count screen.",
     "actor": "bartender", "tool": "app.open",
     "args": { "target": "stock_count", "record_type": null, "record_id": null, "label": null },
-    "expected": { "ok": true, "data": { "data.route": "#inventory?section=stock-count" } }
+    "expected": { "ok": true, "data": { "data.route": "#inventory/counts" } }
   }
 ]
