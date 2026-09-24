@@ -71,7 +71,7 @@
       "name": "atlas-inventory-scanner",
       "sources": {
         "supabase/functions/atlas-inventory-scanner/index.ts": "204ec0bb115107a47751bb3452d904f0edbd4a3235d6aab464e3a2316901d5ca",
-        "supabase/functions/_shared/product-identity.mjs": "52bc36c7f351f397a0b34a1e8d65232091aa6326453ae3cb3b6662a1aa9dda86"
+        "supabase/functions/_shared/product-identity.mjs": "077745f34ef4935cfb5dafb2195d9a0b33055dc603416cd6f90e2400f0f7379f"
       }
     },
     {

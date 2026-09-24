@@ -49,7 +49,7 @@
     "expect": { "item": "Campari", "band": ["medium"], "must_not_match": ["Aperol Aperitivo"] } },
   { "id": "K-03", "note": "Gull Lite keg", "detections": [{ "b": ["Gull", 95], "pn": ["Lite", 90], "cls": ["beer_cider", 85], "pk": ["keg", 95], "sz": [25, "l", "25 L", 85] }],
     "expect": { "item": "Gull Lite Keg", "band": ["medium"], "must_not_match": ["Tuborg Classic Keg", "Boli Keg"] } },
-  { "id": "K-04", "note": "Boli X keg: two active items share one identity key (data finding); never High", "detections": [{ "b": ["Boli", 95], "pn": ["Boli X", 90], "pk": ["keg", 95], "sz": [25, "l", "25 L", 85] }],
+  { "id": "K-04", "note": "Boli X keg: distinct identity from Boli keg (\"x\" is not a stop word); never High without a code", "detections": [{ "b": ["Boli", 95], "pn": ["Boli X", 90], "pk": ["keg", 95], "sz": [25, "l", "25 L", 85] }],
     "expect": { "item": null, "band": ["medium", "low"], "top3_includes": ["Boli X Keg", "Boli Keg"] } },
   { "id": "K-05", "note": "Úlfrún menu name on a can", "detections": [{ "pn": ["Úlfrún Nr.34", 90], "cls": ["beer_cider", 85], "pk": ["can", 90], "sz": [330, "ml", "330 ml", 85], "lang": "is" }],
     "expect": { "item": "Úlfrún Session IPA", "band": ["medium"] } }

@@ -361,7 +361,7 @@ export const LEXICON = Object.freeze({
     te: "tea", tea: "tea",
   }),
   // Dropped from name keys (compared search-folded).
-  stop: Object.freeze(["and", "og", "de", "du", "des", "la", "le", "les", "of", "the", "a", "an", "en", "et", "with", "med", "i", "x"]),
+  stop: Object.freeze(["and", "og", "de", "du", "des", "la", "le", "les", "of", "the", "a", "an", "en", "et", "with", "med", "i"]),
   // Container and pack words (compared search-folded): packaging, not product.
   packaging: Object.freeze([
     "bottle", "bottles", "flaska", "floskur", "can", "cans", "dos", "dosir", "carton", "cartons", "ferna",
