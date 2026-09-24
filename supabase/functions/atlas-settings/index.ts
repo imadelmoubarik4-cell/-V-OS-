@@ -4,7 +4,7 @@ const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
   ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
 const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
   ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
-const FUNCTION_VERSION = "0.1.1";
+const FUNCTION_VERSION = "0.1.2";
 const MAX_BODY_BYTES = 256 * 1024;
 
 const CORS_HEADERS = {
@@ -149,7 +149,8 @@ async function branchRpc(name: string, payload: Record<string, unknown>): Promis
       : typeof parsed === "string" && parsed
       ? parsed
       : "The private Settings request failed.";
-    throw new ApiError(response.status >= 500 ? 500 : 400, message);
+    const conflict = /changed after this page was opened/i.test(message);
+    throw new ApiError(response.status >= 500 && !conflict ? 500 : conflict ? 409 : 400, message);
   }
   return parsed;
 }
@@ -301,8 +302,10 @@ function integerArray(value: unknown, label: string, min: number, max: number): 
 }
 
 function timeValue(value: unknown, label: string, required = true): string | null {
-  const normalized = stringValue(value, label, 5, required);
-  if (normalized === null) return null;
+  // Postgres time columns round-trip as HH:MM:SS; accept them and keep HH:MM.
+  const raw = stringValue(value, label, 8, required);
+  if (raw === null) return null;
+  const normalized = /^\d{2}:\d{2}:\d{2}$/.test(raw) ? raw.slice(0, 5) : raw;
   if (!TIME_PATTERN.test(normalized)) throw new ApiError(400, `${label} must use HH:MM.`);
   return `${normalized}:00`;
 }
@@ -314,7 +317,11 @@ function assertNoSensitiveKeys(value: unknown, path = "settings"): void {
   }
   if (!value || typeof value !== "object") return;
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (/(password|secret|token|api[_ -]?key|service[_ -]?role|credential)/i.test(key)) {
+    // Match whole credential-style key names. A substring match rejected
+    // ordinary booleans such as api_keys_visible and
+    // password_policy_managed_by_auth, so the Security section could never
+    // be saved. The database guard applies the same whole-key rule.
+    if (/^(password|secret|token|access[_ -]?token|refresh[_ -]?token|api[_ -]?key|service[_ -]?role([_ -]?key)?|credentials?|client[_ -]?secret|private[_ -]?key)$/i.test(key)) {
       throw new ApiError(400, `Sensitive field ${path}.${key} cannot be stored in Settings.`);
     }
     assertNoSensitiveKeys(child, `${path}.${key}`);

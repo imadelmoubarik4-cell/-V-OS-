@@ -38,3 +38,13 @@ body:has(#reports-view:not([style*="display: none"]):not([style*="display:none"]
     max-height: calc(100dvh - 28px);
   }
 }
+
+/* S87: the personal Reduce motion preference applies across every module. */
+html.atlas-reduce-motion *,
+html.atlas-reduce-motion *::before,
+html.atlas-reduce-motion *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+  scroll-behavior: auto !important;
+}

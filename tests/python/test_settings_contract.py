@@ -196,7 +196,11 @@ class SettingsCheckpointJContractTests(unittest.TestCase):
     def test_reports_ready_copy_matches_authenticated_isolated_acceptance(self):
         self.assertIn("settings_value->>'reports_state'='ready'", CLOSURE)
         self.assertIn("'{production_sync_enabled}','false'::jsonb,true", CLOSURE)
-        self.assertIn("Authenticated preview passed.", BROWSER)
+        # S87: the Reports state still renders on the Modules card, but product
+        # UI no longer shows preview/isolation engineering copy.
+        self.assertIn("value.reports_state === 'blocked' ? 'Reports blocked'", BROWSER)
+        self.assertNotIn("Authenticated preview passed.", BROWSER)
+        self.assertNotIn("Availability follows isolated validation.", BROWSER)
         self.assertNotIn("Reports remains a release blocker.", BROWSER)
 
 

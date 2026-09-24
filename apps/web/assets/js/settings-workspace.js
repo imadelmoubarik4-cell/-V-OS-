@@ -26,13 +26,20 @@
     viewer: 'Viewer'
   };
   const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const ROLE_KEYS = ['admin', 'manager', 'bartender', 'viewer'];
-  const NOTIFICATION_CHANNELS = ['in_app', 'browser', 'email'];
+  // Each start view maps to a real navigation destination. `briefing` is kept
+  // for stored preferences: the Daily Briefing lives inside Atlas Brain.
+  const START_VIEW_TARGETS = {
+    dashboard: 'dashboard', briefing: 'brain', brain: 'brain', operations: 'operations',
+    inventory: 'inventory', recipes: 'recipes', suppliers: 'suppliers', team: 'team',
+    shifts: 'shifts', knowledge: 'knowledge', reports: 'reports', settings: 'settings'
+  };
   const START_VIEWS = [
-    ['briefing', 'Daily Briefing'], ['brain', 'Atlas Brain'], ['operations', 'Operations'],
-    ['inventory', 'Inventory'], ['shifts', 'Shifts'], ['knowledge', 'Knowledge'],
-    ['reports', 'Reports'], ['system', 'System'], ['settings', 'Settings']
+    ['dashboard', 'Home'], ['briefing', 'Daily Briefing'], ['operations', 'Operations'],
+    ['inventory', 'Inventory'], ['recipes', 'Recipes'], ['suppliers', 'Purchasing'],
+    ['team', 'Messages'], ['shifts', 'Shifts'], ['knowledge', 'Knowledge'],
+    ['reports', 'Reports'], ['settings', 'Settings']
   ];
+  const PREFERENCE_CACHE_KEY = 'atlas.preferences.v1';
 
   const state = {
     workspace: null,
@@ -40,7 +47,11 @@
     policy: null,
     activeTab: 'overview',
     loading: false,
-    saving: false,
+    // Saves are tracked per form so one Save button never disables, relabels
+    // or reports on behalf of an unrelated form.
+    savingForms: new Set(),
+    formFeedback: {},
+    dirtyForms: new Set(),
     error: null,
     message: null,
     initialized: false,
@@ -89,7 +100,7 @@
 
   async function api(action = 'snapshot', options = {}) {
     const apiUrl = endpoint();
-    if (!apiUrl) throw new Error('Settings API is not configured for this preview.');
+    if (!apiUrl) throw new Error('Settings are not available in this environment.');
     const session = await activeSession();
     if (!session?.access_token) throw new Error('Sign in to Atlas to open Settings.');
 
@@ -180,8 +191,72 @@
       .filter(Boolean);
   }
 
-  function integerList(value) {
-    return [...new Set(commaList(value).map(Number).filter(Number.isInteger))];
+  // Postgres returns time columns as HH:MM:SS and <input type="time"> keeps
+  // the seconds it was given; the Settings API accepts HH:MM only.
+  function hhmm(value) {
+    const match = /^(\d{2}):(\d{2})/.exec(String(value || '').trim());
+    return match ? `${match[1]}:${match[2]}` : null;
+  }
+
+  function formKey(form) {
+    if (!form) return '';
+    if (form.dataset.settingsSectionForm) return `section:${form.dataset.settingsSectionForm}`;
+    if (form.hasAttribute('data-settings-hours-form')) return 'hours';
+    if (form.hasAttribute('data-settings-offer-form')) return `offer:${form.dataset.offerId || 'new'}`;
+    if (form.dataset.settingsRoleForm) return `role:${form.dataset.settingsRoleForm}`;
+    if (form.hasAttribute('data-settings-preferences-form')) return 'preferences';
+    return '';
+  }
+
+  function isSaving(key) {
+    return state.savingForms.has(key);
+  }
+
+  function formFeedbackMarkup(key) {
+    const feedback = state.formFeedback[key];
+    if (!feedback) return '';
+    return `<p class="settings-form-feedback is-${feedback.type === 'error' ? 'error' : 'success'}" role="${feedback.type === 'error' ? 'alert' : 'status'}"><i data-lucide="${feedback.type === 'error' ? 'triangle-alert' : 'circle-check-big'}"></i>${escapeHtml(feedback.text)}</p>`;
+  }
+
+  function saveButton(key, label) {
+    const busy = isSaving(key);
+    return `<button type="submit" class="settings-primary" ${busy ? 'disabled aria-busy="true"' : ''}><i data-lucide="save"></i>${busy ? 'Saving…' : escapeHtml(label)}</button>`;
+  }
+
+  // Re-rendering replaces the whole workspace. Unsaved edits in any form other
+  // than the one being saved are captured first and restored afterwards.
+  function captureDrafts() {
+    const element = host();
+    const drafts = {};
+    if (!element || !state.dirtyForms.size) return drafts;
+    element.querySelectorAll('form').forEach((form) => {
+      const key = formKey(form);
+      if (!key || !state.dirtyForms.has(key)) return;
+      drafts[key] = [...form.elements].filter((field) => field.name).map((field) => ({
+        name: field.name,
+        row: field.closest('[data-weekday]')?.dataset.weekday ?? null,
+        value: field.value,
+        checked: field.checked
+      }));
+    });
+    return drafts;
+  }
+
+  function restoreDrafts(drafts) {
+    const element = host();
+    if (!element) return;
+    Object.entries(drafts).forEach(([key, fields]) => {
+      if (!state.dirtyForms.has(key)) return;
+      const form = [...element.querySelectorAll('form')].find((candidate) => formKey(candidate) === key);
+      if (!form) return;
+      fields.forEach((entry) => {
+        const scope = entry.row === null ? form : form.querySelector(`[data-weekday="${CSS.escape(entry.row)}"]`);
+        const field = scope?.querySelector(`[name="${CSS.escape(entry.name)}"]`);
+        if (!field || field.disabled) return;
+        if (field.type === 'checkbox' || field.type === 'radio') field.checked = entry.checked;
+        else field.value = entry.value;
+      });
+    });
   }
 
   function feedbackMarkup() {
@@ -217,28 +292,25 @@
   }
 
   function heroMarkup() {
-    const workspace = state.workspace || {};
-    const trust = workspace.trust || {};
     return `<section class="settings-hero">
       <div>
-        <span class="settings-kicker"><i data-lucide="sliders-horizontal"></i>Checkpoint J</span>
+        <span class="settings-kicker"><i data-lucide="sliders-horizontal"></i>VÁ Bar</span>
         <h1>Settings</h1>
-        <p>Configure how Atlas works for VÁ while keeping production synchronization, destructive controls and automatic execution safely disabled.</p>
+        <p>Venue details, team access, notifications and your personal preferences.</p>
       </div>
       <aside>
-        <span>Environment</span>
-        <strong>${escapeHtml(humanize(trust.environment || 'isolated_branch'))}</strong>
-        <small>Version ${escapeHtml(workspace.version || 'not loaded')} · ${canManage() ? 'Organization manager access' : 'Personal preferences access'}</small>
+        <span>Your access</span>
+        <strong>${escapeHtml(ROLE_LABELS[state.staff?.role] || 'Staff')}</strong>
+        <small>${canManage() ? 'You can change venue settings' : 'You can change your own preferences'}</small>
         <button type="button" data-settings-refresh ${state.loading ? 'disabled' : ''}><i data-lucide="refresh-cw"></i>${state.loading ? 'Refreshing…' : 'Refresh'}</button>
       </aside>
     </section>`;
   }
 
   function safeguardStrip() {
-    const trust = state.workspace?.trust || {};
     return `<section class="settings-safeguard-strip">
       <i data-lucide="shield-check"></i>
-      <div><strong>Safety boundary</strong><span>Production sync ${trust.production_sync_enabled ? 'enabled' : 'off'} · Social auto-publishing off · Reorder execution off · Brain automatic execution off · No secrets returned</span></div>
+      <div><strong>Always reviewed by a person</strong><span>Atlas never publishes to social media, places supplier orders or acts on Brain recommendations by itself.</span></div>
     </section>`;
   }
 
@@ -248,10 +320,9 @@
     const integrations = workspace.integrations || [];
     const connected = integrations.filter((entry) => entry.status === 'connected').length;
     const requiredSafeguards = [
-      ['Production synchronization', !workspace.trust?.production_sync_enabled],
       ['Automatic social publishing', !workspace.trust?.automatic_social_publishing_enabled],
-      ['Automatic reorder execution', !workspace.trust?.automatic_reorder_execution_enabled],
-      ['Automatic Brain execution', !workspace.trust?.automatic_brain_execution_enabled]
+      ['Automatic supplier orders', !workspace.trust?.automatic_reorder_execution_enabled],
+      ['Automatic Brain actions', !workspace.trust?.automatic_brain_execution_enabled]
     ];
     const quickSections = [
       ['general', 'building-2', 'Venue & hours', 'Business identity, opening hours and active offers.'],
@@ -259,7 +330,7 @@
       ['operations', 'clipboard-check', 'Operational rules', 'Inventory, temperature and cleaning defaults.'],
       ['intelligence', 'brain-circuit', 'Marketing & Brain', 'Approval, learning, evidence and recommendation rules.'],
       ['integrations', 'plug-zap', 'Integrations', 'Verified connection and permission states.'],
-      ['preferences', 'palette', 'Preferences', 'Theme, language, density and personal notifications.']
+      ['preferences', 'user-round-cog', 'Preferences', 'Your start page and motion preference.']
     ];
     return `<div class="settings-overview">
       <section class="settings-summary-grid">
@@ -268,12 +339,12 @@
         <article><span><i data-lucide="plug-zap"></i>Connected integrations</span><strong>${connected}</strong><small>${Math.max(0, integrations.length - connected)} not fully connected</small></article>
         <article><span><i data-lucide="bell-ring"></i>Notification policies</span><strong>${(workspace.notification_policies || []).filter((entry) => entry.enabled).length}</strong><small>${(workspace.notification_policies || []).length} policies configured</small></article>
       </section>
-      ${sectionHead('Configuration map', 'Atlas control centre', 'Every business rule has one clear home and a visible safety boundary.')}
+      ${sectionHead('Sections', 'Where to find each setting', 'Open a section to review or change it.')}
       <section class="settings-quick-grid">${quickSections.map(([tab, icon, title, description]) => `<button type="button" data-settings-tab-jump="${tab}"><i data-lucide="${icon}"></i><span><strong>${title}</strong><small>${description}</small></span><i data-lucide="arrow-right"></i></button>`).join('')}</section>
       <section class="settings-overview-split">
         <article class="settings-panel">
-          <header><div><span>Safeguards</span><h2>Locked by policy</h2></div>${statusPill('active', 'Protected')}</header>
-          <div class="settings-safeguard-list">${requiredSafeguards.map(([label, safe]) => `<div><i data-lucide="${safe ? 'shield-check' : 'shield-alert'}"></i><span><strong>${label}</strong><small>${safe ? 'Disabled as required' : 'Needs immediate review'}</small></span>${statusPill(safe ? 'connected' : 'error', safe ? 'Off' : 'On')}</div>`).join('')}</div>
+          <header><div><span>Safeguards</span><h2>Always manual</h2></div>${statusPill('active', 'Protected')}</header>
+          <div class="settings-safeguard-list">${requiredSafeguards.map(([label, safe]) => `<div><i data-lucide="${safe ? 'shield-check' : 'shield-alert'}"></i><span><strong>${label}</strong><small>${safe ? 'A person always decides' : 'Needs immediate review'}</small></span>${statusPill(safe ? 'connected' : 'error', safe ? 'Off' : 'On')}</div>`).join('')}</div>
         </article>
         <article class="settings-panel">
           <header><div><span>Current venue</span><h2>${escapeHtml(section('venue')?.value?.business_name || 'VÁ Bar')}</h2></div></header>
@@ -312,8 +383,9 @@
   }
 
   function saveFooter(sectionData, label = 'Save changes') {
+    const key = `section:${sectionData?.section_key || ''}`;
     if (!sectionData?.can_edit) return `<footer class="settings-form-footer"><span><i data-lucide="eye"></i>Read-only for your role</span></footer>`;
-    return `<footer class="settings-form-footer"><span>Version ${Number(sectionData.version || 1)} · Last updated ${escapeHtml(formatDateTime(sectionData.updated_at))}</span><button type="submit" class="settings-primary" ${state.saving ? 'disabled' : ''}><i data-lucide="save"></i>${state.saving ? 'Saving…' : escapeHtml(label)}</button></footer>`;
+    return `${formFeedbackMarkup(key)}<footer class="settings-form-footer"><span>Version ${Number(sectionData.version || 1)} · Last updated ${escapeHtml(formatDateTime(sectionData.updated_at))}</span>${saveButton(key, label)}</footer>`;
   }
 
   function venueFormMarkup() {
@@ -331,7 +403,7 @@
         ${inputField('City', 'city', value.city, { disabled })}
         ${inputField('Country code', 'country_code', value.country_code, { disabled, max: 2 })}
         ${inputField('Timezone', 'timezone', value.timezone, { disabled, required: true })}
-        ${inputField('Currency', 'currency', value.currency, { disabled: true, note: 'Checkpoint J currently uses ISK.' })}
+        ${inputField('Currency', 'currency', value.currency, { disabled: true, note: 'Atlas uses ISK.' })}
         ${inputField('Primary language', 'primary_language', value.primary_language, { type: 'select', choices: [['en', 'English'], ['is', 'Íslenska']], disabled })}
         ${inputField('Email', 'email', value.email, { type: 'email', disabled })}
         ${inputField('Phone', 'phone', value.phone, { type: 'tel', disabled })}
@@ -343,7 +415,10 @@
   }
 
   function hoursMarkup() {
-    const hours = state.workspace?.business_hours || [];
+    // A venue with no saved hours still needs all seven rows; the save RPC
+    // requires seven days and creates any row that does not exist yet.
+    const saved = new Map((state.workspace?.business_hours || []).map((row) => [Number(row.weekday), row]));
+    const hours = WEEKDAYS.map((day, weekday) => saved.get(weekday) || { weekday, day_label: day, is_open: false });
     const editable = canManage();
     return `<form class="settings-card settings-hours-form" data-settings-hours-form>
       <header><div><span>Weekly schedule</span><h3>Business hours</h3><p>Opening, closing, kitchen close and last-order times for every day.</p></div>${editable ? statusPill('active', 'Editable') : statusPill('not_connected', 'Read only')}</header>
@@ -351,15 +426,15 @@
         <div class="settings-hours-head"><span>Day</span><span>Open</span><span>Opening</span><span>Closing</span><span>Next day</span><span>Kitchen close</span><span>Last order</span></div>
         ${hours.map((row) => `<div class="settings-hours-row" data-weekday="${Number(row.weekday)}">
           <strong>${escapeHtml(row.day_label)}</strong>
-          <label class="settings-mini-toggle"><input type="checkbox" name="is_open" ${row.is_open ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label>
-          <input type="time" name="open_time" value="${escapeHtml(row.open_time || '')}" ${editable ? '' : 'disabled'}>
-          <input type="time" name="close_time" value="${escapeHtml(row.close_time || '')}" ${editable ? '' : 'disabled'}>
-          <label class="settings-mini-toggle"><input type="checkbox" name="close_next_day" ${row.close_next_day ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label>
-          <input type="time" name="kitchen_close_time" value="${escapeHtml(row.kitchen_close_time || '')}" ${editable ? '' : 'disabled'}>
-          <input type="time" name="last_order_time" value="${escapeHtml(row.last_order_time || '')}" ${editable ? '' : 'disabled'}>
+          <label class="settings-mini-toggle"><input type="checkbox" name="is_open" aria-label="${escapeHtml(row.day_label)} open" ${row.is_open ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label>
+          <input type="time" name="open_time" aria-label="${escapeHtml(row.day_label)} opening time" value="${escapeHtml(hhmm(row.open_time) || '')}" ${editable ? '' : 'disabled'}>
+          <input type="time" name="close_time" aria-label="${escapeHtml(row.day_label)} closing time" value="${escapeHtml(hhmm(row.close_time) || '')}" ${editable ? '' : 'disabled'}>
+          <label class="settings-mini-toggle"><input type="checkbox" name="close_next_day" aria-label="${escapeHtml(row.day_label)} closes after midnight" ${row.close_next_day ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label>
+          <input type="time" name="kitchen_close_time" aria-label="${escapeHtml(row.day_label)} kitchen close" value="${escapeHtml(hhmm(row.kitchen_close_time) || '')}" ${editable ? '' : 'disabled'}>
+          <input type="time" name="last_order_time" aria-label="${escapeHtml(row.day_label)} last order" value="${escapeHtml(hhmm(row.last_order_time) || '')}" ${editable ? '' : 'disabled'}>
         </div>`).join('')}
       </div>
-      <footer class="settings-form-footer"><span>All times use Atlantic/Reykjavik.</span>${editable ? `<button type="submit" class="settings-primary" ${state.saving ? 'disabled' : ''}><i data-lucide="save"></i>Save hours</button>` : '<span><i data-lucide="eye"></i>Read-only for your role</span>'}</footer>
+      ${formFeedbackMarkup('hours')}<footer class="settings-form-footer"><span>All times use Atlantic/Reykjavik.</span>${editable ? saveButton('hours', 'Save hours') : '<span><i data-lucide="eye"></i>Read-only for your role</span>'}</footer>
     </form>`;
   }
 
@@ -374,8 +449,8 @@
         ${inputField('Offer key', 'offer_key', offer?.offer_key || '', { required: true, disabled: !editable, note: 'Lowercase letters, numbers and hyphens.' })}
         ${inputField('Name', 'name', offer?.name || '', { required: true, disabled: !editable })}
         ${inputField('Description', 'description', offer?.description || '', { type: 'textarea', full: true, disabled: !editable })}
-        ${inputField('Start time', 'start_time', offer?.start_time || '15:00', { type: 'time', required: true, disabled: !editable })}
-        ${inputField('End time', 'end_time', offer?.end_time || '18:00', { type: 'time', required: true, disabled: !editable })}
+        ${inputField('Start time', 'start_time', hhmm(offer?.start_time) || '15:00', { type: 'time', required: true, disabled: !editable })}
+        ${inputField('End time', 'end_time', hhmm(offer?.end_time) || '18:00', { type: 'time', required: true, disabled: !editable })}
         ${inputField('Booking URL', 'booking_url', offer?.booking_url || '', { type: 'url', full: true, disabled: !editable })}
         ${inputField('Pricing / offer JSON', 'pricing_json', pricing, { type: 'textarea', full: true, disabled: !editable, note: 'Example: {"cocktails_isk":1990,"wine_isk":1090}' })}
       </div>
@@ -384,7 +459,7 @@
         ${checkboxField('Offer active', 'active', offer?.active !== false, { disabled: !editable })}
         ${checkboxField('Ends next day', 'end_next_day', Boolean(offer?.end_next_day), { disabled: !editable })}
       </div>
-      <footer class="settings-form-footer"><span>${isNew ? 'Creates a new private offer rule.' : `Version ${Number(offer?.version || 1)}`}</span>${editable ? `<div class="settings-button-row">${isNew ? '<button type="button" class="settings-secondary" data-settings-cancel-offer>Cancel</button>' : ''}<button type="submit" class="settings-primary" ${state.saving ? 'disabled' : ''}><i data-lucide="save"></i>${isNew ? 'Create offer' : 'Save offer'}</button></div>` : '<span><i data-lucide="eye"></i>Read-only</span>'}</footer>
+      ${formFeedbackMarkup(`offer:${id || 'new'}`)}<footer class="settings-form-footer"><span>${isNew ? 'Creates a new offer.' : `Version ${Number(offer?.version || 1)}`}</span>${editable ? `<div class="settings-button-row">${isNew ? '<button type="button" class="settings-secondary" data-settings-cancel-offer>Cancel</button>' : ''}${saveButton(`offer:${id || 'new'}`, isNew ? 'Create offer' : 'Save offer')}</div>` : '<span><i data-lucide="eye"></i>Read-only</span>'}</footer>
     </form>`;
   }
 
@@ -420,31 +495,58 @@
       <div class="settings-role-grid">${roles.map((role) => `<form class="settings-card settings-role-card" data-settings-role-form="${escapeHtml(role.role_key)}" data-version="${Number(role.version || 1)}">
         <header><div><span>System role</span><h3>${escapeHtml(role.label)}</h3><p>${escapeHtml(role.description || '')}</p></div>${role.can_edit ? statusPill('active', 'Editable') : statusPill('not_connected', 'Protected')}</header>
         <div class="settings-permission-list">${permissions.map((permission) => `<label><input type="checkbox" name="permission_${escapeHtml(permission)}" ${role.permissions?.[permission] ? 'checked' : ''} ${role.can_edit ? '' : 'disabled'}><span><strong>${escapeHtml(humanize(permission))}</strong><small>${escapeHtml(permission)}</small></span></label>`).join('')}</div>
-        <footer class="settings-form-footer"><span>Version ${Number(role.version || 1)}</span>${role.can_edit ? `<button type="submit" class="settings-primary" ${state.saving ? 'disabled' : ''}><i data-lucide="save"></i>Save permissions</button>` : '<span><i data-lucide="lock-keyhole"></i>Protected role</span>'}</footer>
+        ${formFeedbackMarkup(`role:${role.role_key}`)}<footer class="settings-form-footer"><span>Version ${Number(role.version || 1)}</span>${role.can_edit ? saveButton(`role:${role.role_key}`, 'Save permissions') : '<span><i data-lucide="lock-keyhole"></i>Protected role</span>'}</footer>
       </form>`).join('')}</div>
       <section class="settings-note-card"><i data-lucide="info"></i><div><strong>Profile roles are assigned in Team Profiles</strong><span>This page defines capabilities. Changing a person’s active role remains in PEOPLE → Profiles.</span></div></section>
     </div>`;
   }
 
   function notificationsMarkup() {
-    const policies = state.workspace?.notification_policies || [];
     const device = window.AtlasNotifications?.snapshot?.() || {
-      status: 'unsupported', detail: 'Push setup is unavailable in this browser.'
+      status: 'unsupported', detail: 'Notifications are not available in this browser.'
     };
-    const canEnable = ['pending'].includes(device.status);
-    const deviceAction = device.status === 'enabled'
-      ? '<button type="button" class="settings-secondary" data-settings-push-disable>Turn notifications off</button>'
-      : canEnable
-        ? '<button type="button" class="settings-primary" data-settings-push-enable>Turn notifications on</button>'
-        : '';
+    const on = device.status === 'enabled';
+    const labels = {
+      enabled: 'On', pending: 'Off', unsynced: 'Needs reconnecting', denied: 'Blocked',
+      unavailable: 'Not set up', unsupported: 'Not supported'
+    };
+    let action = '';
+    if (state.notificationAction) action = '<button type="button" class="settings-secondary" disabled aria-busy="true">Updating…</button>';
+    else if (on) action = '<button type="button" class="settings-secondary" data-settings-push-disable>Turn notifications off</button>';
+    else if (device.status === 'pending') action = '<button type="button" class="settings-primary" data-settings-push-enable>Turn notifications on</button>';
+    else if (device.status === 'unsynced') action = '<button type="button" class="settings-primary" data-settings-push-enable>Reconnect this device</button>';
+    const tone = on ? 'connected' : ['denied', 'unavailable', 'unsynced'].includes(device.status) ? 'pending' : 'not_connected';
     return `<div class="settings-notifications">
-      ${sectionHead('One simple control', 'Notifications', 'Use one master switch for supported browser and mobile alerts. Individual notification-type switches are intentionally removed.')}
+      ${sectionHead('This device', 'Notifications', 'One switch for alerts on this browser or phone.')}
       <section class="settings-card settings-device-notifications is-${escapeHtml(device.status)}">
-        <header><div><span>Master notification control</span><h3>Atlas notifications</h3><p>${escapeHtml(device.detail)}</p></div>${statusPill(device.status, device.status === 'enabled' ? 'On' : 'Off')}</header>
-        <div><span><i data-lucide="${device.status === 'enabled' ? 'bell-ring' : device.status === 'denied' ? 'bell-off' : 'bell'}"></i></span><p>Atlas asks for browser permission only after you turn notifications on. Turning them off disables delivery on this device.</p>${state.notificationAction ? '<button type="button" class="settings-secondary" disabled>Updating…</button>' : deviceAction}</div>
+        <header><div><span>Master notification control</span><h3>Atlas notifications</h3><p>${escapeHtml(device.detail || '')}</p></div>${statusPill(tone, labels[device.status] || 'Off')}</header>
+        <div><span><i data-lucide="${on ? 'bell-ring' : device.status === 'denied' ? 'bell-off' : 'bell'}"></i></span><p>Atlas asks the browser for permission only when you turn notifications on. Turning them off unsubscribes this device.</p>${action}</div>
+        ${formFeedbackMarkup('push')}
       </section>
-      <section class="settings-card settings-notification-coverage"><header><div><span>Included alerts</span><h3>What the master switch covers</h3><p>${policies.length ? `${policies.filter((policy) => policy.enabled).length} of ${policies.length} server policies are currently active.` : 'Coverage is shown here without separate user switches.'}</p></div></header><div><span><i data-lucide="message-circle"></i>New direct messages</span><span><i data-lucide="at-sign"></i>Mentions</span><span><i data-lucide="calendar-clock"></i>Shift changes</span><span><i data-lucide="list-checks"></i>Assigned tasks</span><span><i data-lucide="truck"></i>Purchase-order and delivery updates</span><span><i data-lucide="package-search"></i>Low-stock alerts</span></div></section>
+      <section class="settings-card settings-notification-coverage"><header><div><span>Included alerts</span><h3>What the switch covers</h3><p>Only these alerts can be sent today.</p></div></header><div><span><i data-lucide="message-circle"></i>New team messages</span><span><i data-lucide="calendar-clock"></i>Published shift changes</span></div></section>
     </div>`;
+  }
+
+  // Which saved rules change Atlas behaviour today. Everything else is stored
+  // for upcoming features and is labelled so on the card.
+  const SETTING_USAGE = {
+    inventory: { automatic_reorder_suggestions: 'Atlas Brain purchase suggestions' },
+    brain: {
+      purchase_learning_enabled: 'Atlas Brain purchase suggestions',
+      menu_learning_enabled: 'Atlas Brain recipe readiness notes',
+      waste_learning_enabled: 'Atlas Brain waste notes'
+    }
+  };
+
+  function usageNote(key) {
+    const used = Object.values(SETTING_USAGE[key] || {});
+    if (!used.length) return `<p class="settings-usage-note is-stored"><i data-lucide="archive"></i>Saved for upcoming features — these values do not change Atlas yet.</p>`;
+    return `<p class="settings-usage-note is-partial"><i data-lucide="info"></i>Only switches marked “In use” change Atlas today; the rest are saved for upcoming features.</p>`;
+  }
+
+  function usedNote(sectionKey, field) {
+    const usedBy = SETTING_USAGE[sectionKey]?.[field];
+    return usedBy ? `In use: ${usedBy}.` : '';
   }
 
   function operationsSectionForm(key) {
@@ -460,7 +562,6 @@
       </div><div class="settings-toggle-grid">
         ${checkboxField('Shift confirmation required', 'shift_confirmation_required', Boolean(value.shift_confirmation_required), { disabled })}
         ${checkboxField('Service Mode enabled', 'service_mode_enabled', Boolean(value.service_mode_enabled), { disabled })}
-        ${checkboxField('Production shift sync', 'production_shift_sync_enabled', false, { disabled: true, note: 'Locked off in preview.' })}
       </div>`;
     } else if (key === 'inventory') {
       fields = `<div class="settings-form-grid">
@@ -469,7 +570,7 @@
         ${inputField('Waste tolerance %', 'waste_tolerance_percent', value.waste_tolerance_percent, { type: 'number', min: 0, max: 100, step: 0.1, disabled })}
       </div><div class="settings-toggle-grid">
         ${checkboxField('Low-stock warnings', 'low_stock_warning_enabled', Boolean(value.low_stock_warning_enabled), { disabled })}
-        ${checkboxField('Reorder suggestions', 'automatic_reorder_suggestions', Boolean(value.automatic_reorder_suggestions), { disabled })}
+        ${checkboxField('Reorder suggestions', 'automatic_reorder_suggestions', Boolean(value.automatic_reorder_suggestions), { disabled, note: usedNote('inventory', 'automatic_reorder_suggestions') })}
         ${checkboxField('Gallery in scanner', 'barcode_gallery_enabled', Boolean(value.barcode_gallery_enabled), { disabled })}
         ${checkboxField('Multiple barcodes per item', 'allow_multiple_barcodes', Boolean(value.allow_multiple_barcodes), { disabled })}
         ${checkboxField('Staff barcode linking', 'staff_barcode_linking', Boolean(value.staff_barcode_linking), { disabled })}
@@ -502,6 +603,7 @@
     }
     return `<form class="settings-card settings-form" data-settings-section-form="${escapeHtml(key)}" data-version="${Number(data?.version || 1)}">
       <header><div><span>${escapeHtml(data?.label || humanize(key))}</span><h3>${escapeHtml(data?.label || humanize(key))} rules</h3><p>${escapeHtml(data?.description || '')}</p></div>${statusPill(data?.status || 'active')}</header>
+      ${usageNote(key)}
       ${fields}
       ${saveFooter(data, `Save ${data?.label || humanize(key)}`)}
     </form>`;
@@ -521,6 +623,7 @@
     const disabled = !data?.can_edit;
     return `<form class="settings-card settings-form" data-settings-section-form="marketing" data-version="${Number(data?.version || 1)}">
       <header><div><span>Content governance</span><h3>Marketing</h3><p>${escapeHtml(data?.description || '')}</p></div>${statusPill(data?.status || 'active')}</header>
+      ${usageNote('marketing')}
       <div class="settings-form-grid">
         ${inputField('Brand voice', 'brand_voice', value.brand_voice, { type: 'textarea', full: true, disabled })}
         ${inputField('Default Story frames', 'default_story_frames', value.default_story_frames, { type: 'number', min: 1, max: 10, disabled })}
@@ -541,6 +644,7 @@
     const disabled = !data?.can_edit;
     return `<form class="settings-card settings-form" data-settings-section-form="brain" data-version="${Number(data?.version || 1)}">
       <header><div><span>Decision intelligence</span><h3>Atlas Brain</h3><p>${escapeHtml(data?.description || '')}</p></div>${statusPill(data?.status || 'active')}</header>
+      ${usageNote('brain')}
       <div class="settings-form-grid">
         ${inputField('Brain mode', 'mode', value.mode, { type: 'select', choices: [['assistant', 'Assistant only'], ['learning', 'Learning'], ['shadow', 'Shadow mode'], ['recommendation', 'Recommendation mode'], ['predictive', 'Predictive mode']], disabled })}
         ${inputField('Explanation level', 'explanation_level', value.explanation_level, { type: 'select', choices: [['brief', 'Brief'], ['evidence', 'Evidence cards'], ['technical', 'Technical']], disabled })}
@@ -548,9 +652,9 @@
       </div>
       <div class="settings-toggle-grid">
         ${checkboxField('Decision memory', 'decision_memory_enabled', Boolean(value.decision_memory_enabled), { disabled })}
-        ${checkboxField('Purchase learning', 'purchase_learning_enabled', Boolean(value.purchase_learning_enabled), { disabled })}
-        ${checkboxField('Menu learning', 'menu_learning_enabled', Boolean(value.menu_learning_enabled), { disabled })}
-        ${checkboxField('Waste learning', 'waste_learning_enabled', Boolean(value.waste_learning_enabled), { disabled })}
+        ${checkboxField('Purchase learning', 'purchase_learning_enabled', Boolean(value.purchase_learning_enabled), { disabled, note: usedNote('brain', 'purchase_learning_enabled') })}
+        ${checkboxField('Menu learning', 'menu_learning_enabled', Boolean(value.menu_learning_enabled), { disabled, note: usedNote('brain', 'menu_learning_enabled') })}
+        ${checkboxField('Waste learning', 'waste_learning_enabled', Boolean(value.waste_learning_enabled), { disabled, note: usedNote('brain', 'waste_learning_enabled') })}
         ${checkboxField('Forecast learning', 'forecast_learning_enabled', Boolean(value.forecast_learning_enabled), { disabled })}
         ${checkboxField('Automatic execution', 'automatic_execution_enabled', false, { disabled: true, note: 'Locked off. Recommendations require human approval.' })}
       </div>
@@ -585,49 +689,32 @@
   }
 
   function securityMarkup() {
-    const data = section('security');
-    const value = data?.value || {};
-    const editable = Boolean(data?.can_edit && canManageSecurity());
+    // Only protections that Atlas enforces today are listed as active. The
+    // earlier toggles (2FA, session timeout, trusted devices, lockdown) saved a
+    // value nothing read, and the form could not be saved at all.
+    const enforced = [
+      ['Staff sign-in', 'Every Atlas account signs in through Supabase Auth; passwords are never stored in Atlas.'],
+      ['Active profile required', 'Inactive or unknown profiles are signed out and every server request re-checks the profile.'],
+      ['Role-based access', 'Supplier costs, purchasing and master-data changes are limited to managers and administrators.'],
+      ['Server-side secrets', 'Service keys and integration credentials stay on the server and never reach the browser.']
+    ];
+    const unavailable = [
+      ['Two-factor authentication', 'Not enforced yet — needs Auth provider MFA setup.'],
+      ['Automatic sign-out after inactivity', 'Not enforced yet — sessions follow the Auth provider refresh policy.'],
+      ['Trusted devices', 'Not available yet.'],
+      ['Emergency lockdown', 'Not available yet — deactivate a profile in Team to remove access.']
+    ];
     return `<div class="settings-security">
-      ${sectionHead('Administrative safeguards', 'Security', 'Security preferences are separate from secrets, access tokens and authentication-provider controls.')}
-      <section class="settings-note-card is-warning"><i data-lucide="lock-keyhole"></i><div><strong>Administrator-only section</strong><span>Managers may review safeguards. Only an Administrator can save this section, and destructive or production controls remain locked off.</span></div></section>
-      <form class="settings-card settings-form" data-settings-section-form="security" data-version="${Number(data?.version || 1)}">
-        <header><div><span>Session & devices</span><h3>Security preferences</h3><p>${escapeHtml(data?.description || '')}</p></div>${statusPill(data?.status || 'locked')}</header>
-        <div class="settings-form-grid">
-          ${inputField('Session timeout (minutes)', 'session_timeout_minutes', value.session_timeout_minutes, { type: 'number', min: 15, max: 1440, disabled: !editable })}
-        </div>
-        <div class="settings-toggle-grid">
-          ${checkboxField('Require two-factor authentication', 'two_factor_required', Boolean(value.two_factor_required), { disabled: !editable, note: 'Requires Auth provider support.' })}
-          ${checkboxField('Trusted devices', 'trusted_devices_enabled', Boolean(value.trusted_devices_enabled), { disabled: !editable, note: 'Future device-approval boundary.' })}
-          ${checkboxField('Emergency lockdown', 'emergency_lockdown_enabled', Boolean(value.emergency_lockdown_enabled), { disabled: !editable, note: 'Preference only; no destructive action is wired.' })}
-          ${checkboxField('Password policy managed by Auth', 'password_policy_managed_by_auth', Boolean(value.password_policy_managed_by_auth), { disabled: !editable })}
-          ${checkboxField('API keys visible', 'api_keys_visible', false, { disabled: true, note: 'Always off.' })}
-          ${checkboxField('Production synchronization', 'production_sync_enabled', false, { disabled: true, note: 'Always off in preview.' })}
-          ${checkboxField('Destructive actions', 'destructive_actions_enabled', false, { disabled: true, note: 'Always off.' })}
-        </div>
-        ${editable ? saveFooter(data, 'Save security preferences') : '<footer class="settings-form-footer"><span><i data-lucide="lock-keyhole"></i>Administrator access required</span></footer>'}
-      </form>
-      ${safeguardStrip()}
+      ${sectionHead('Protection', 'Security', 'What Atlas enforces today, and what is not available yet.')}
+      <section class="settings-card">
+        <header><div><span>Active now</span><h3>Enforced protections</h3></div>${statusPill('active', 'Enforced')}</header>
+        <ul class="settings-capability-list">${enforced.map(([title, detail]) => `<li class="is-active"><i data-lucide="shield-check"></i><span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(detail)}</small></span></li>`).join('')}</ul>
+      </section>
+      <section class="settings-card">
+        <header><div><span>Not available yet</span><h3>Planned protections</h3></div>${statusPill('not_connected', 'Not active')}</header>
+        <ul class="settings-capability-list">${unavailable.map(([title, detail]) => `<li class="is-unavailable"><i data-lucide="circle-dashed"></i><span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(detail)}</small></span></li>`).join('')}</ul>
+      </section>
     </div>`;
-  }
-
-  function appearanceSectionMarkup() {
-    const data = section('appearance');
-    const value = data?.value || {};
-    const disabled = !data?.can_edit;
-    return `<form class="settings-card settings-form" data-settings-section-form="appearance" data-version="${Number(data?.version || 1)}">
-      <header><div><span>Organization defaults</span><h3>Default appearance</h3><p>${escapeHtml(data?.description || '')}</p></div>${statusPill(data?.status || 'active')}</header>
-      <div class="settings-form-grid">
-        ${inputField('Theme', 'theme', value.theme, { type: 'select', choices: [['dark', 'Dark'], ['light', 'Light'], ['system', 'System']], disabled })}
-        ${inputField('Density', 'density', value.density, { type: 'select', choices: [['comfortable', 'Comfortable'], ['compact', 'Compact']], disabled })}
-        ${inputField('Language', 'language', value.language, { type: 'select', choices: [['en', 'English'], ['is', 'Íslenska']], disabled })}
-        ${inputField('Date format', 'date_format', value.date_format, { type: 'select', choices: [['DD/MM/YYYY', 'DD/MM/YYYY'], ['YYYY-MM-DD', 'YYYY-MM-DD']], disabled })}
-        ${inputField('Time format', 'time_format', value.time_format, { type: 'select', choices: [['24h', '24 hour'], ['12h', '12 hour']], disabled })}
-        ${inputField('Start view', 'start_view', value.start_view, { type: 'select', choices: START_VIEWS, disabled })}
-      </div>
-      <div class="settings-toggle-grid">${checkboxField('Reduce motion by default', 'reduce_motion', Boolean(value.reduce_motion), { disabled })}</div>
-      ${saveFooter(data, 'Save defaults')}
-    </form>`;
   }
 
   function modulesMarkup() {
@@ -637,39 +724,42 @@
     const moduleKeys = ['operations', 'scanner', 'messages', 'marketing', 'profiles', 'shifts', 'knowledge', 'reports', 'system', 'settings'];
     return `<form class="settings-card settings-form" data-settings-section-form="modules" data-version="${Number(data?.version || 1)}">
       <header><div><span>Feature availability</span><h3>Modules</h3><p>${escapeHtml(data?.description || '')}</p></div>${statusPill(value.reports_state || 'active', value.reports_state === 'blocked' ? 'Reports blocked' : humanize(value.reports_state))}</header>
-      <div class="settings-toggle-grid">${moduleKeys.map((key) => checkboxField(humanize(key), key, Boolean(value[key]), { disabled: disabled || ['system', 'settings'].includes(key), note: ['system', 'settings'].includes(key) ? 'Core module.' : key === 'reports' ? (value.reports_state === 'ready' ? 'Authenticated preview passed.' : 'Availability follows isolated validation.') : '' })).join('')}</div>
+      <p class="settings-usage-note is-stored"><i data-lucide="archive"></i>Saved for upcoming features — switching a module off does not hide it yet.</p>
+      <div class="settings-toggle-grid">${moduleKeys.map((key) => checkboxField(humanize(key), key, Boolean(value[key]), { disabled: disabled || ['system', 'settings'].includes(key), note: ['system', 'settings'].includes(key) ? 'Core module.' : '' })).join('')}</div>
       <div class="settings-form-grid">
         ${inputField('Reports state', 'reports_state', value.reports_state, { type: 'select', choices: [['blocked', 'Blocked'], ['degraded', 'Degraded'], ['ready', 'Ready']], disabled })}
       </div>
-      ${checkboxField('Production synchronization', 'production_sync_enabled', false, { disabled: true, note: 'Locked off.' })}
       ${saveFooter(data, 'Save module availability')}
     </form>`;
   }
 
   function personalPreferencesMarkup() {
     const preference = state.workspace?.preferences || {};
+    const device = window.AtlasNotifications?.snapshot?.() || { status: 'unsupported' };
+    const startView = START_VIEW_TARGETS[preference.start_view] ? preference.start_view : 'dashboard';
     return `<form class="settings-card settings-form" data-settings-preferences-form>
-      <header><div><span>Your Atlas experience</span><h3>Personal preferences</h3><p>These values belong to your active profile and do not change organization defaults.</p></div>${statusPill('active', 'Personal')}</header>
+      <header><div><span>Your Atlas experience</span><h3>Personal preferences</h3><p>Saved to your profile and applied every time you sign in.</p></div>${statusPill('active', 'Personal')}</header>
       <div class="settings-form-grid">
-        ${inputField('Theme', 'theme', preference.theme || 'dark', { type: 'select', choices: [['dark', 'Dark'], ['light', 'Light'], ['system', 'System']] })}
-        ${inputField('Density', 'density', preference.density || 'comfortable', { type: 'select', choices: [['comfortable', 'Comfortable'], ['compact', 'Compact']] })}
-        ${inputField('Language', 'language', preference.language || 'en', { type: 'select', choices: [['en', 'English'], ['is', 'Íslenska']] })}
-        ${inputField('Start view', 'start_view', preference.start_view || 'briefing', { type: 'select', choices: START_VIEWS })}
-        ${inputField('Timezone', 'timezone', preference.timezone || 'Atlantic/Reykjavik', {})}
+        ${inputField('Start view', 'start_view', startView, { type: 'select', choices: START_VIEWS, note: 'The page Atlas opens after you sign in.' })}
       </div>
       <div class="settings-toggle-grid">
-        ${checkboxField('Reduce motion', 'reduce_motion', Boolean(preference.reduce_motion))}
-        ${checkboxField('Browser notifications', 'browser_notifications', Boolean(preference.browser_notifications), { note: 'Requires browser permission.' })}
-        ${checkboxField('Email notifications', 'email_notifications', Boolean(preference.email_notifications), { note: 'Delivery requires a connected email workflow.' })}
+        ${checkboxField('Reduce motion', 'reduce_motion', Boolean(preference.reduce_motion), { note: 'Turns off animations and transitions across Atlas.' })}
       </div>
-      <footer class="settings-form-footer"><span>Saved only for ${escapeHtml(state.staff?.label || 'your profile')}.</span><button type="submit" class="settings-primary" ${state.saving ? 'disabled' : ''}><i data-lucide="save"></i>Save preferences</button></footer>
+      <dl class="settings-definition-list settings-preference-facts">
+        <div><dt>Browser notifications</dt><dd>${escapeHtml(device.status === 'enabled' ? 'On for this device' : 'Off for this device')} · <button type="button" class="settings-link" data-settings-tab-jump="notifications">Manage</button></dd></div>
+        <div><dt>Theme</dt><dd>Light (the only Atlas theme)</dd></div>
+        <div><dt>Language</dt><dd>English (Icelandic is not available yet)</dd></div>
+        <div><dt>Time zone</dt><dd>Venue time, Atlantic/Reykjavik</dd></div>
+        <div><dt>Email notifications</dt><dd>Not available yet</dd></div>
+      </dl>
+      ${formFeedbackMarkup('preferences')}<footer class="settings-form-footer"><span>Saved only for ${escapeHtml(state.staff?.label || 'your profile')}.</span>${saveButton('preferences', 'Save preferences')}</footer>
     </form>`;
   }
 
   function preferencesMarkup() {
     return `<div class="settings-preferences">
-      ${sectionHead('Personal & organization defaults', 'Preferences & modules', 'Set your own Atlas experience and review organization-wide appearance and feature availability.')}
-      <div class="settings-two-column">${personalPreferencesMarkup()}${appearanceSectionMarkup()}${modulesMarkup()}</div>
+      ${sectionHead('Personal', 'Preferences', 'Choose how Atlas opens and behaves for you.')}
+      <div class="settings-two-column">${personalPreferencesMarkup()}${canManage() ? modulesMarkup() : ''}</div>
     </div>`;
   }
 
@@ -713,14 +803,15 @@
       window.lucide?.createIcons?.();
       return;
     }
+    const drafts = captureDrafts();
     element.innerHTML = `<section class="settings-shell">
       ${heroMarkup()}
       ${feedbackMarkup()}
       ${tabsMarkup()}
       <main class="settings-main">${activeTabMarkup()}</main>
     </section>`;
+    restoreDrafts(drafts);
     window.lucide?.createIcons?.();
-    applyPreferences();
   }
 
   function applyPayload(payload, message = null) {
@@ -729,11 +820,15 @@
     state.policy = payload.policy || state.policy;
     state.error = null;
     state.message = message;
+    applyPreferences();
     render();
   }
 
   async function load(options = {}) {
     if (state.loading) return;
+    // A background refresh would bump section versions underneath unsaved
+    // edits; keep the page stable until the person saves or discards them.
+    if (options.silent && state.dirtyForms.size) return;
     state.loading = true;
     if (!options.silent) state.error = null;
     render();
@@ -749,19 +844,29 @@
     }
   }
 
-  async function mutate(action, body, message) {
-    if (state.saving) return;
-    state.saving = true;
-    state.error = null;
+  function friendlySaveError(error) {
+    const text = error instanceof Error ? error.message : '';
+    if (/changed after this page was opened/i.test(text)) return 'Someone else saved this section after you opened it. Refresh to see the latest values, then save again.';
+    return text || 'Settings could not be saved.';
+  }
+
+  async function mutate(key, action, body, message) {
+    if (!key || isSaving(key)) return false;
+    state.savingForms.add(key);
+    delete state.formFeedback[key];
     state.message = null;
     render();
     try {
       const payload = await api(action, { method: 'POST', body });
-      applyPayload(payload, message);
+      state.dirtyForms.delete(key);
+      state.formFeedback[key] = { type: 'success', text: message };
+      applyPayload(payload);
+      return true;
     } catch (error) {
-      state.error = error instanceof Error ? error.message : 'Settings could not be saved.';
+      state.formFeedback[key] = { type: 'error', text: friendlySaveError(error) };
+      return false;
     } finally {
-      state.saving = false;
+      state.savingForms.delete(key);
       render();
     }
   }
@@ -769,17 +874,25 @@
   async function updatePushPreference(enable) {
     if (state.notificationAction || !window.AtlasNotifications) return;
     state.notificationAction = true;
-    state.error = null;
+    delete state.formFeedback.push;
     render();
     try {
-      await (enable ? window.AtlasNotifications.enable() : window.AtlasNotifications.disable());
-      state.message = enable ? 'Browser notifications enabled for this device.' : 'Browser notifications disabled for this device.';
+      const result = await (enable ? window.AtlasNotifications.enable() : window.AtlasNotifications.disable());
+      // The result, not the button pressed, decides what the person is told.
+      if (result?.status === 'enabled') state.formFeedback.push = { type: 'success', text: 'Notifications are on for this device.' };
+      else if (!enable && result?.status === 'pending') state.formFeedback.push = { type: 'success', text: 'Notifications are off for this device.' };
+      else state.formFeedback.push = { type: 'error', text: result?.detail || 'Notifications could not be turned on.' };
     } catch (error) {
-      state.error = error instanceof Error ? error.message : 'Browser notification setup failed.';
+      state.formFeedback.push = { type: 'error', text: error instanceof Error ? error.message : 'Notification setup failed.' };
     } finally {
       state.notificationAction = false;
       render();
     }
+  }
+
+  async function refreshDeviceStatus() {
+    try { await window.AtlasNotifications?.refresh?.(); } catch { /* snapshot keeps its last detail */ }
+    if (state.activeTab === 'notifications' && settingsVisible()) render();
   }
 
   function collectSectionValue(key, form) {
@@ -875,29 +988,6 @@
         automatic_execution_enabled: false
       };
     }
-    if (key === 'security') {
-      return {
-        session_timeout_minutes: numberValue(form, 'session_timeout_minutes', 480),
-        two_factor_required: boolValue(form, 'two_factor_required'),
-        trusted_devices_enabled: boolValue(form, 'trusted_devices_enabled'),
-        emergency_lockdown_enabled: boolValue(form, 'emergency_lockdown_enabled'),
-        password_policy_managed_by_auth: boolValue(form, 'password_policy_managed_by_auth'),
-        api_keys_visible: false,
-        production_sync_enabled: false,
-        destructive_actions_enabled: false
-      };
-    }
-    if (key === 'appearance') {
-      return {
-        theme: fieldValue(form, 'theme'),
-        density: fieldValue(form, 'density'),
-        language: fieldValue(form, 'language'),
-        date_format: fieldValue(form, 'date_format'),
-        time_format: fieldValue(form, 'time_format'),
-        start_view: fieldValue(form, 'start_view'),
-        reduce_motion: boolValue(form, 'reduce_motion')
-      };
-    }
     if (key === 'modules') {
       return {
         operations: boolValue(form, 'operations'),
@@ -921,10 +1011,11 @@
     const form = event.target instanceof HTMLFormElement ? event.target : null;
     if (!form || !host()?.contains(form)) return;
 
+    const key = formKey(form);
     const sectionKey = form.dataset.settingsSectionForm;
     if (sectionKey) {
       event.preventDefault();
-      await mutate('save-section', {
+      await mutate(key, 'save-section', {
         section_key: sectionKey,
         expected_version: Number(form.dataset.version || 1),
         value: collectSectionValue(sectionKey, form)
@@ -938,15 +1029,21 @@
         weekday: Number(row.dataset.weekday),
         day_label: WEEKDAYS[Number(row.dataset.weekday)],
         is_open: Boolean(row.querySelector('[name="is_open"]')?.checked),
-        open_time: row.querySelector('[name="open_time"]')?.value || null,
-        close_time: row.querySelector('[name="close_time"]')?.value || null,
+        open_time: hhmm(row.querySelector('[name="open_time"]')?.value),
+        close_time: hhmm(row.querySelector('[name="close_time"]')?.value),
         close_next_day: Boolean(row.querySelector('[name="close_next_day"]')?.checked),
-        kitchen_close_time: row.querySelector('[name="kitchen_close_time"]')?.value || null,
+        kitchen_close_time: hhmm(row.querySelector('[name="kitchen_close_time"]')?.value),
         kitchen_close_next_day: false,
-        last_order_time: row.querySelector('[name="last_order_time"]')?.value || null,
+        last_order_time: hhmm(row.querySelector('[name="last_order_time"]')?.value),
         last_order_next_day: false
       }));
-      await mutate('save-hours', { hours }, 'Business hours saved.');
+      const missing = hours.find((row) => row.is_open && (!row.open_time || !row.close_time));
+      if (missing) {
+        state.formFeedback[key] = { type: 'error', text: `${missing.day_label} is marked open — add its opening and closing times, or switch it off.` };
+        render();
+        return;
+      }
+      await mutate(key, 'save-hours', { hours }, 'Business hours saved.');
       return;
     }
 
@@ -956,26 +1053,26 @@
       try {
         pricing = JSON.parse(fieldValue(form, 'pricing_json') || '{}');
       } catch {
-        state.error = 'Offer pricing must be valid JSON.';
+        state.formFeedback[key] = { type: 'error', text: 'Offer pricing must be valid JSON.' };
         render();
         return;
       }
       const days = WEEKDAYS.map((_, weekday) => weekday).filter((weekday) => form.querySelector(`[name="day_${weekday}"]`)?.checked);
-      await mutate('save-offer', {
+      const saved = await mutate(key, 'save-offer', {
         offer_id: form.dataset.offerId || null,
         offer_key: fieldValue(form, 'offer_key').trim(),
         name: fieldValue(form, 'name').trim(),
         description: fieldValue(form, 'description').trim() || null,
         active: boolValue(form, 'active'),
         days,
-        start_time: fieldValue(form, 'start_time'),
-        end_time: fieldValue(form, 'end_time'),
+        start_time: hhmm(fieldValue(form, 'start_time')),
+        end_time: hhmm(fieldValue(form, 'end_time')),
         end_next_day: boolValue(form, 'end_next_day'),
         pricing,
         booking_url: fieldValue(form, 'booking_url').trim() || null,
         expected_version: form.dataset.offerId ? Number(form.dataset.version || 1) : null
       }, form.dataset.offerId ? 'Offer updated.' : 'Offer created.');
-      state.offerDraft = null;
+      if (saved && !form.dataset.offerId) { state.offerDraft = null; render(); }
       return;
     }
 
@@ -986,7 +1083,7 @@
       form.querySelectorAll('input[name^="permission_"]').forEach((input) => {
         permissions[input.name.slice('permission_'.length)] = Boolean(input.checked);
       });
-      await mutate('save-role', {
+      await mutate(key, 'save-role', {
         role_key: roleKey,
         permissions,
         expected_version: Number(form.dataset.version || 1)
@@ -994,46 +1091,24 @@
       return;
     }
 
-    const eventKey = form.dataset.settingsNotificationForm;
-    if (eventKey) {
-      event.preventDefault();
-      const channels = Object.fromEntries(NOTIFICATION_CHANNELS.map((channel) => [channel, boolValue(form, `channel_${channel}`)]));
-      const targetRoles = ROLE_KEYS.filter((role) => boolValue(form, `role_${role}`));
-      await mutate('save-notification', {
-        event_key: eventKey,
-        enabled: boolValue(form, 'enabled'),
-        channels,
-        target_roles: targetRoles,
-        reminder_minutes: integerList(fieldValue(form, 'reminder_minutes')),
-        escalation_minutes: fieldValue(form, 'escalation_minutes') === '' ? null : numberValue(form, 'escalation_minutes'),
-        manager_approval_required: boolValue(form, 'manager_approval_required'),
-        expected_version: Number(form.dataset.version || 1)
-      }, 'Notification policy saved.');
-      return;
-    }
-
     if (form.hasAttribute('data-settings-preferences-form')) {
       event.preventDefault();
-      const wantsBrowser = boolValue(form, 'browser_notifications');
-      let browserAllowed = wantsBrowser;
-      if (wantsBrowser) {
-        const result = await window.AtlasNotifications?.enable?.();
-        browserAllowed = result?.status === 'enabled';
-        if (!browserAllowed) { state.error = result?.detail || 'Browser notification permission was not granted.'; render(); return; }
-      } else if (window.AtlasNotifications?.snapshot?.()?.status === 'enabled') {
-        await window.AtlasNotifications.disable();
-      }
-      await mutate('save-preferences', {
-        theme: fieldValue(form, 'theme'),
-        density: fieldValue(form, 'density'),
-        language: fieldValue(form, 'language'),
+      const current = state.workspace?.preferences || {};
+      // Theme, density, language, time zone and email have no runtime
+      // implementation, so their stored values are sent back unchanged.
+      // Browser notifications mirror the real device subscription.
+      const saved = await mutate(key, 'save-preferences', {
+        theme: ['dark', 'light', 'system'].includes(current.theme) ? current.theme : 'light',
+        density: ['comfortable', 'compact'].includes(current.density) ? current.density : 'comfortable',
+        language: ['en', 'is'].includes(current.language) ? current.language : 'en',
         start_view: fieldValue(form, 'start_view'),
-        timezone: fieldValue(form, 'timezone').trim(),
+        timezone: current.timezone || 'Atlantic/Reykjavik',
         reduce_motion: boolValue(form, 'reduce_motion'),
-        browser_notifications: browserAllowed,
-        email_notifications: boolValue(form, 'email_notifications'),
+        browser_notifications: window.AtlasNotifications?.snapshot?.()?.status === 'enabled',
+        email_notifications: false,
         preferences: {}
-      }, 'Personal preferences saved.');
+      }, 'Preferences saved. They apply every time you sign in.');
+      if (saved) applyPreferences();
     }
   }
 
@@ -1041,21 +1116,12 @@
     const target = event.target instanceof Element ? event.target : null;
     if (!target || !host()?.contains(target)) return;
 
-    const tab = target.closest('[data-settings-tab]');
+    const tab = target.closest('[data-settings-tab], [data-settings-tab-jump]');
     if (tab) {
-      state.activeTab = tab.dataset.settingsTab;
-      state.error = null;
+      state.activeTab = tab.dataset.settingsTab || tab.dataset.settingsTabJump;
       state.message = null;
       render();
-      return;
-    }
-
-    const jump = target.closest('[data-settings-tab-jump]');
-    if (jump) {
-      state.activeTab = jump.dataset.settingsTabJump;
-      state.error = null;
-      state.message = null;
-      render();
+      if (state.activeTab === 'notifications' || state.activeTab === 'preferences') refreshDeviceStatus();
       return;
     }
 
@@ -1096,12 +1162,15 @@
   }
 
   function applyPreferences() {
-    const preference = state.workspace?.preferences || {};
-    const root = document.documentElement;
-    root.dataset.atlasTheme = preference.theme || 'dark';
-    root.dataset.atlasDensity = preference.density || 'comfortable';
-    root.lang = preference.language || 'en';
-    root.classList.toggle('atlas-reduce-motion', Boolean(preference.reduce_motion));
+    const preference = state.workspace?.preferences;
+    if (!preference) return;
+    const cached = {
+      user_id: state.staff?.id || null,
+      start_view: START_VIEW_TARGETS[preference.start_view] || 'dashboard',
+      reduce_motion: Boolean(preference.reduce_motion)
+    };
+    try { window.localStorage.setItem(PREFERENCE_CACHE_KEY, JSON.stringify(cached)); } catch { /* storage unavailable */ }
+    window.AtlasPreferences?.apply?.(cached);
   }
 
   function activate() {
@@ -1118,14 +1187,21 @@
 
     document.addEventListener('click', handleClick, true);
     document.addEventListener('submit', handleSubmit, true);
+    const markDirty = (event) => {
+      const form = event.target instanceof Element ? event.target.closest('form') : null;
+      if (!form || !host()?.contains(form)) return;
+      const key = formKey(form);
+      if (!key) return;
+      state.dirtyForms.add(key);
+      if (state.formFeedback[key]?.type === 'success') delete state.formFeedback[key];
+    };
+    document.addEventListener('input', markDirty, true);
+    document.addEventListener('change', markDirty, true);
     state.viewObserver = new MutationObserver(() => activate());
     state.viewObserver.observe(element, { attributes: true, attributeFilter: ['style', 'class'] });
     state.viewObserver.observe(document.getElementById('app-screen') || document.body, { attributes: true, attributeFilter: ['style', 'class'] });
 
-    window.setTimeout(async () => {
-      try { await window.AtlasNotifications?.refresh?.(); } catch { /* settings keeps the delivery state non-authoritative */ }
-      if (state.activeTab === 'notifications' && settingsVisible()) render();
-    }, 0);
+    window.setTimeout(refreshDeviceStatus, 0);
 
     window.addEventListener('focus', () => {
       if (settingsVisible() && state.workspace) load({ silent: true });
@@ -1153,6 +1229,7 @@
       if (TAB_ORDER.includes(tab)) {
         state.activeTab = tab;
         render();
+        if (tab === 'notifications') refreshDeviceStatus();
       }
     }
   };
