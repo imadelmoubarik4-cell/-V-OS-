@@ -191,9 +191,9 @@
     const {data:{user},error:userError}=await client.auth.getUser();
     if(userError)throw userError;
     if(!user)throw new Error('Your session has expired. Sign in again.');
-    const localKey=crypto.randomUUID();
+    const localKey=(window.crypto?.randomUUID?.() || ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, (c) => (c ^ (window.crypto?.getRandomValues?.(new Uint8Array(1))[0] ?? Math.random() * 256) & 15 >> c / 4).toString(16)));
     localUploadRow(localKey,file,'Creating queue record…');
-    const batchKey='upload-'+new Date().toISOString().replace(/[^0-9]/g,'').slice(0,14)+'-'+crypto.randomUUID();
+    const batchKey='upload-'+new Date().toISOString().replace(/[^0-9]/g,'').slice(0,14)+'-'+(window.crypto?.randomUUID?.() || ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, (c) => (c ^ (window.crypto?.getRandomValues?.(new Uint8Array(1))[0] ?? Math.random() * 256) & 15 >> c / 4).toString(16)));
     const ext=extensionOf(file.name);
     const insertPayload={
       batch_key:batchKey,

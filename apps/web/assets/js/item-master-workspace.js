@@ -482,7 +482,7 @@
       const payload = await api('publish', 'POST', {
         action: 'publish',
         draft_id: entry.draft.id,
-        request_id: `checkpoint-l2:${entry.item.id}:${crypto.randomUUID()}`,
+        request_id: `checkpoint-l2:${entry.item.id}:${(window.crypto?.randomUUID?.() || ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, (c) => (c ^ (window.crypto?.getRandomValues?.(new Uint8Array(1))[0] ?? Math.random() * 256) & 15 >> c / 4).toString(16)))}`,
       });
       state.workspace = payload;
       state.message = payload.message || 'Publication plan prepared.';

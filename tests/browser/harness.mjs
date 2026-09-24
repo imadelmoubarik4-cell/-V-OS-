@@ -17,7 +17,9 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(here, '../..');
 const WEB = path.join(ROOT, 'apps/web');
-export const ORIGIN = 'http://atlas.test';
+// localhost is a secure context, like production HTTPS (crypto.randomUUID,
+// service workers and PushManager behave as they do in production).
+export const ORIGIN = 'http://localhost:4173';
 export const SUPABASE = 'https://dnefgcmjcgxlynycxkts.supabase.co';
 export const PROJECT_REF = 'dnefgcmjcgxlynycxkts';
 
@@ -84,7 +86,7 @@ function json(route, body, status = 200) {
  *   rpc:       { name: result | (body) => result }
  *   functions: { 'atlas-x': (ctx) => ({ status, body }) | body }
  */
-export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true } = {}) {
+export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '' } = {}) {
   const playwright = loadPlaywright();
   const libs = resolveLibraries();
   if (!playwright || !libs) throw new Error('Browser harness dependencies are unavailable.');
@@ -96,7 +98,11 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
 
   page.on('console', (message) => { if (message.type() === 'error') record.consoleErrors.push(message.text()); });
   page.on('pageerror', (error) => record.pageErrors.push(String(error?.stack || error?.message || error)));
-  page.on('dialog', async (dialog) => { record.dialogs.push({ type: dialog.type(), message: dialog.message() }); await dialog.accept().catch(() => {}); });
+  page.on('dialog', async (dialog) => {
+    record.dialogs.push({ type: dialog.type(), message: dialog.message() });
+    const answer = typeof promptAnswer === 'function' ? promptAnswer(dialog.message()) : promptAnswer;
+    await (dialog.type() === 'prompt' ? dialog.accept(answer) : dialog.accept()).catch(() => {});
+  });
 
   await context.route('https://cdn.jsdelivr.net/**', (route) => {
     const url = route.request().url();

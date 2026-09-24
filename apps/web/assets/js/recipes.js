@@ -715,11 +715,15 @@
       <div><span class="recipe-profile-category">${escape(category.name)}</span><h2>${escape(recipe.name)}</h2><div class="recipe-profile-meta">${escape(recipe.glassware || 'Glassware not set')}<span></span>${escape(recipe.garnish || 'Garnish not set')}</div></div>
       <span class="recipe-profile-status ${status.className}">${escape(status.label)}</span>
     </div>
-    <div class="recipe-profile-actions"><button type="button" class="recipe-secondary-action" data-edit-recipe><i data-lucide="pencil-line"></i>Edit recipe</button><button type="button" class="recipe-secondary-action" data-delete-recipe><i data-lucide="trash-2"></i>Delete recipe</button><button type="button" class="recipe-primary-action" data-service-recipe><i data-lucide="monitor-up"></i>Service view</button></div>
+    <div class="recipe-profile-actions"><button type="button" class="recipe-secondary-action" data-edit-recipe><i data-lucide="pencil-line"></i>Edit recipe</button>${recipe.active === false
+      ? '<button type="button" class="recipe-secondary-action" data-restore-recipe><i data-lucide="archive-restore"></i>Restore</button><button type="button" class="recipe-secondary-action is-danger" data-delete-recipe><i data-lucide="trash-2"></i>Delete permanently</button>'
+      : '<button type="button" class="recipe-secondary-action" data-archive-recipe><i data-lucide="archive"></i>Archive</button>'}<button type="button" class="recipe-primary-action" data-service-recipe><i data-lucide="monitor-up"></i>Service view</button></div>
     <section class="recipe-profile-section"><div class="recipe-profile-section-head"><div><span>Ingredients</span><h3>Live inventory coverage</h3></div><strong>${ingredientRows.length}</strong></div><div class="recipe-profile-ingredients">${ingredientMarkup}</div></section>
     <section class="recipe-profile-section recipe-spec-grid"><div><span>Method</span><p>${escape(recipe.method || 'Preparation method has not been added.')}</p></div><div><span>Service notes</span><p>${escape(recipe.notes || 'No additional service notes.')}</p></div></section>`;
     dom.profile.querySelector('[data-edit-recipe]')?.addEventListener('click', () => openEditor(recipe));
     dom.profile.querySelector('[data-delete-recipe]')?.addEventListener('click', () => deleteRecipe(recipe));
+    dom.profile.querySelector('[data-archive-recipe]')?.addEventListener('click', () => setRecipeActive(recipe, false));
+    dom.profile.querySelector('[data-restore-recipe]')?.addEventListener('click', () => setRecipeActive(recipe, true));
     dom.profile.querySelector('[data-service-recipe]')?.addEventListener('click', () => openServiceView(recipe));
 
     const recommendation = healthRecommendation(recipe, status);
@@ -888,7 +892,8 @@
     }
     if (!file.type.startsWith('image/')) {
       event.target.value = '';
-      throw new Error('Please choose an image file.');
+      alert('Please choose a JPEG, PNG or WebP photo.');
+      return;
     }
     if (file.size > 10 * 1024 * 1024) {
       event.target.value = '';
@@ -910,11 +915,38 @@
     setRecipeImagePreview('');
   }
 
-  async function uploadRecipeImage(file) {
-    if (!file) return null;
+  // Photos are decoded and re-encoded on the device: large camera images are
+  // resized, and formats other browsers cannot display (HEIC) never reach the
+  // public menu. A photo the browser cannot decode is rejected with a reason.
+  async function prepareRecipeImage(file) {
+    const MAX_EDGE = 1600;
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file);
+    } catch {
+      throw new Error('This photo format cannot be shown on every device. Choose a JPEG, PNG or WebP photo.');
+    }
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      bitmap.close?.();
+      return file;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.86));
+    if (!blob) throw new Error('The photo could not be prepared. Try another photo.');
+    return new File([blob], (file.name.replace(/\.[^.]+$/, '') || 'recipe') + '.jpg', { type: 'image/jpeg' });
+  }
+
+  async function uploadRecipeImage(original) {
+    if (!original) return null;
+    const file = await prepareRecipeImage(original);
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
     const userId = currentUser?.id || 'unknown';
-    const objectName = `recipes/${userId}/${crypto.randomUUID()}.${ext}`;
+    const objectName = `recipes/${userId}/${(window.crypto?.randomUUID?.() || ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, (c) => (c ^ (window.crypto?.getRandomValues?.(new Uint8Array(1))[0] ?? Math.random() * 256) & 15 >> c / 4).toString(16)))}.${ext}`;
     const { data: upload, error: uploadError } = await sb.storage
       .from('atlas-media')
       .upload(objectName, file, {
@@ -1083,17 +1115,46 @@
     }
   }
 
+  // Archiving is the normal way to take a recipe off service: it keeps the
+  // recipe, its ingredient links and its history, and can be undone.
+  async function setRecipeActive(recipe, active) {
+    if (!recipe?.id) return;
+    if (!canManageCommercial()) {
+      alert('Recipe changes are limited to managers and administrators.');
+      return;
+    }
+    if (!active && !window.confirm(`Archive "${recipe.name}"?\n\nIt leaves service and the menu but keeps its ingredients and history. You can restore it at any time.`)) return;
+    const { error } = await sb.from('recipes').update({ active }).eq('id', recipe.id);
+    if (error) {
+      console.error(error);
+      alert(error.message || (active ? 'Could not restore recipe.' : 'Could not archive recipe.'));
+      return;
+    }
+    await loadAll();
+    if (activeView === 'recipes') await render();
+  }
+
+  // Permanent deletion is only offered for archived recipes and needs the
+  // recipe name typed back. The database refuses to delete an active recipe.
   async function deleteRecipe(recipe) {
     if (!recipe?.id) return;
     if (!canManageCommercial()) {
       alert('Recipe deletion is limited to managers and administrators.');
       return;
     }
+    if (recipe.active !== false) {
+      alert('Archive this recipe first. Only archived recipes can be deleted permanently.');
+      return;
+    }
 
-    const confirmed = window.confirm(
-      `Delete "${recipe.name}"?\n\nThis permanently removes the recipe and its ingredient links. Inventory items and stock quantities will not be changed.`
+    const typed = window.prompt(
+      `Permanently delete "${recipe.name}"?\n\nThis removes the recipe and its ingredient links and cannot be undone. Inventory items and stock are not changed.\n\nType the recipe name to confirm.`
     );
-    if (!confirmed) return;
+    if (typed === null) return;
+    if (typed.trim().toLowerCase() !== String(recipe.name).trim().toLowerCase()) {
+      alert('The name did not match. Nothing was deleted.');
+      return;
+    }
 
     const { error } = await sb.from('recipes').delete().eq('id', recipe.id);
     if (error) {
@@ -1224,6 +1285,13 @@
     // Search and Ask Atlas use the exact readiness shown on the Recipes page.
     recipeStatus,
     recipeBlockers,
+    openWithStatus: (status) => {
+      document.querySelector('.atlas-nav .nav-item[data-view="recipes"]')?.click();
+      window.setTimeout(() => {
+        const button = document.querySelector(`#recipe-status-filters [data-status="${status}"]`);
+        if (button) button.click();
+      }, 60);
+    },
     openRecipe: (recipeId) => {
       document.querySelector('.atlas-nav .nav-item[data-view="recipes"]')?.click();
       window.setTimeout(() => selectRecipe(recipeId, { focus: true }), 60);

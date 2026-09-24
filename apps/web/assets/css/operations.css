@@ -381,3 +381,16 @@
 @media (max-width: 480px) {
   .operations-summary-grid { grid-template-columns: 1fr; }
 }
+
+/* S87: summary cards are real buttons that open the matching filtered view. */
+button.operations-summary-card {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+button.operations-summary-card:hover { border-color: rgba(47, 128, 237, .35); box-shadow: 0 8px 22px rgba(16, 32, 60, .08); }
+button.operations-summary-card:active { transform: translateY(1px); }
+button.operations-summary-card:focus-visible { outline: 2px solid #2f80ed; outline-offset: 2px; }

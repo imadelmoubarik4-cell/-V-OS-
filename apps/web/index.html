@@ -925,7 +925,7 @@
               <div class="atlas-field"><label for="recipe-garnish">Garnish</label><input type="text" id="recipe-garnish" placeholder="e.g. 3 coffee beans" /></div>
               <div class="atlas-field full">
                 <label for="recipe-image-file">Recipe image</label>
-                <input type="file" id="recipe-image-file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" />
+                <input type="file" id="recipe-image-file" accept="image/jpeg,image/png,image/webp" />
                 <img id="recipe-image-preview" alt="Recipe image preview" hidden style="display:block;max-width:220px;max-height:220px;object-fit:cover;border-radius:12px;margin:10px 0;" />
                 <button type="button" class="btn ghost" id="recipe-image-remove">Remove image</button>
                 <label for="recipe-image-url" style="margin-top:12px;">Or paste an image URL</label>
@@ -1171,6 +1171,7 @@
   let draftIngredients = [];
   let activeCategory = 'all';
   let activeSubcategory = 'all';
+  let belowParOnly = false;
   let activeView = 'dashboard';
 
   const INVENTORY_GROUPS = [
@@ -1679,8 +1680,10 @@
       const subcategoryMatches = activeSubcategory === 'all' || inventorySubcategory(item, activeCategory) === activeSubcategory;
       const textMatches = !query || [item.name, item.category, item.subcategory, item.supplier, item.sku, item.brand]
         .some(value => String(value || '').toLowerCase().includes(query));
-      return groupMatches && subcategoryMatches && textMatches;
+      const parMatches = !belowParOnly || window.AtlasStockTruth.belowPar(item);
+      return groupMatches && subcategoryMatches && textMatches && parMatches;
     });
+    renderBelowParChip();
     const lowCount = items.filter(i => i.active !== false && window.AtlasStockTruth.belowPar(i)).length;
 
     if (lowCount > 0) {
@@ -1824,6 +1827,37 @@
 
   document.getElementById('add-item-btn').addEventListener('click', () => openModal(null));
   document.getElementById('inventory-search')?.addEventListener('input', () => renderTable());
+
+  // "Below par" is a filter, not a scroll target: Home, the low-stock banner,
+  // Operations and Search all open Inventory showing exactly those items.
+  function renderBelowParChip() {
+    const toolbar = document.querySelector('#inventory-view .inventory-filter-toolbar');
+    if (!toolbar) return;
+    let chip = toolbar.querySelector('[data-inventory-below-par-chip]');
+    if (!belowParOnly) { chip?.remove(); return; }
+    if (!chip) {
+      chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'inventory-filter-chip';
+      chip.dataset.inventoryBelowParChip = 'true';
+      chip.setAttribute('aria-label', 'Showing items below par. Clear this filter');
+      chip.innerHTML = '<span>Below par only</span><i data-lucide="x"></i>';
+      chip.addEventListener('click', () => { belowParOnly = false; renderTable(); });
+      toolbar.prepend(chip);
+      window.lucide?.createIcons?.();
+    }
+  }
+  function showBelowPar() {
+    activeCategory = 'all';
+    activeSubcategory = 'all';
+    belowParOnly = true;
+    const search = document.getElementById('inventory-search');
+    if (search) search.value = '';
+    setActiveView('inventory');
+    renderTabs();
+    renderTable();
+  }
+  window.AtlasInventory = Object.freeze({ showBelowPar });
   document.getElementById('cancel-item-btn').addEventListener('click', closeModal);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
 
@@ -2084,7 +2118,7 @@
     document.querySelectorAll('[data-target]').forEach(el=>{
       el.onclick=()=>{
         const target=el.dataset.target;
-        if(target==='inventory-low'){ activeCategory='all'; setActiveView('inventory'); setTimeout(()=>document.getElementById('low-stock-banner')?.scrollIntoView({behavior:'smooth',block:'center'}),60); }
+        if(target==='inventory-low'){ showBelowPar(); }
         else {
           const navButton=document.querySelector(`.atlas-nav .nav-item[data-view="${target}"]`);
           if(navButton) navButton.click();
@@ -2093,7 +2127,7 @@
       };
     });
     const banner=document.getElementById('low-stock-banner');
-    if(banner) banner.onclick=()=>setActiveView('inventory');
+    if(banner) banner.onclick=()=>showBelowPar();
   }
   document.querySelectorAll('[data-home-action]').forEach(button=>button.addEventListener('click',()=>{
     if(button.dataset.homeAction==='stock-count'){

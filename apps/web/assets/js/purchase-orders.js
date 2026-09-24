@@ -11,7 +11,7 @@
   let orders = [], draft = null, busy = false, activeSection = 'orders';
   const choices = () => window.atlasPurchasingData?.() || { items: [], suppliers: [] };
   const status = message => { panel.querySelector('[data-order-status]').textContent = message; };
-  const resetDraft = () => { draft = { id: crypto.randomUUID(), version: null, supplier_id: '', lines: [], note: '' }; };
+  const resetDraft = () => { draft = { id: (window.crypto?.randomUUID?.() || ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, (c) => (c ^ (window.crypto?.getRandomValues?.(new Uint8Array(1))[0] ?? Math.random() * 256) & 15 >> c / 4).toString(16))), version: null, supplier_id: '', lines: [], note: '' }; };
   const orderStatusLabel = value => ({
     draft: 'Draft', submitted: 'Submitted', ordered: 'Confirmed', confirmed: 'Confirmed',
     partially_received: 'Partially received', partial: 'Partially received', received: 'Received', cancelled: 'Cancelled'

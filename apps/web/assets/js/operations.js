@@ -336,15 +336,15 @@
 
     dom.center.innerHTML = `
       <header class="operations-hero">
-        <div><span class="operations-kicker">Atlas Alpha 0.4</span><h1>Operations Intelligence</h1><p>${escape(dateLabel)}. One calm view of service readiness, stock risk, recipe availability and the tasks that matter today.</p></div>
+        <div><span class="operations-kicker">Operations</span><h1>Operations Intelligence</h1><p>${escape(dateLabel)}. One calm view of service readiness, stock risk, recipe availability and the tasks that matter today.</p></div>
         <div class="operations-readiness"><span>Service readiness</span><strong>${data.score}%</strong><div class="operations-progress"><span style="width:${data.score}%"></span></div><small>${escape(data.label)}</small></div>
       </header>
 
       <section class="operations-summary-grid" aria-label="Operations summary">
-        <article class="operations-summary-card"><div class="summary-icon"><i data-lucide="package-search"></i></div><div><strong>${data.low.length}</strong><span>Inventory alerts</span></div></article>
-        <article class="operations-summary-card"><div class="summary-icon"><i data-lucide="martini"></i></div><div><strong>${data.issues.length}</strong><span>Recipes needing attention</span></div></article>
-        <article class="operations-summary-card"><div class="summary-icon"><i data-lucide="truck"></i></div><div><strong>${supplierCount}</strong><span>Suppliers in suggested order</span></div></article>
-        <article class="operations-summary-card"><div class="summary-icon"><i data-lucide="clipboard-check"></i></div><div><strong>${data.opening.complete}/${data.opening.total}</strong><span>Opening checks complete</span></div></article>
+        <button type="button" class="operations-summary-card" data-operation-target="inventory-low" aria-label="${data.low.length} inventory alerts — show items below par"><div class="summary-icon"><i data-lucide="package-search"></i></div><div><strong>${data.low.length}</strong><span>Inventory alerts</span></div></button>
+        <button type="button" class="operations-summary-card" data-operation-target="recipes-attention" aria-label="${data.issues.length} recipes needing attention — show them"><div class="summary-icon"><i data-lucide="martini"></i></div><div><strong>${data.issues.length}</strong><span>Recipes needing attention</span></div></button>
+        <button type="button" class="operations-summary-card" data-operation-target="operations-orders" aria-label="${supplierCount} suppliers in suggested order — show the order"><div class="summary-icon"><i data-lucide="truck"></i></div><div><strong>${supplierCount}</strong><span>Suppliers in suggested order</span></div></button>
+        <button type="button" class="operations-summary-card" data-operation-target="operations-checklist" data-checklist-open="opening" aria-label="${data.opening.complete} of ${data.opening.total} opening checks complete — open the checklist"><div class="summary-icon"><i data-lucide="clipboard-check"></i></div><div><strong>${data.opening.complete}/${data.opening.total}</strong><span>Opening checks complete</span></div></button>
       </section>
 
       <div class="operations-layout">
@@ -391,6 +391,12 @@
     dom.center.querySelectorAll('[data-operation-target]').forEach((button) => {
       button.addEventListener('click', () => {
         const target = button.dataset.operationTarget;
+        if (target === 'inventory-low') { window.AtlasInventory?.showBelowPar?.(); return; }
+        if (target === 'recipes-attention') { window.AtlasRecipes?.openWithStatus?.('attention'); return; }
+        if (button.dataset.checklistOpen && state.checklistType !== button.dataset.checklistOpen) {
+          state.checklistType = button.dataset.checklistOpen;
+          render();
+        }
         if (target === 'operations-orders' || target === 'operations-checklist') scrollOperationsTarget(target);
         else setActiveView(target);
       });
