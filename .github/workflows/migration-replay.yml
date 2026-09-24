@@ -55,3 +55,5 @@ jobs:
 
       - name: Run S88 acceptance (venue clock, shared daily checklists, inventory activation)
         run: bash scripts/verify_s88_previews.sh
+      - name: Run S88 purchasing and Data review acceptance
+        run: bash scripts/verify_s88_purchasing_previews.sh
