@@ -1,0 +1,8 @@
+ATLAS MASTER ARTWORK - SOURCE OF TRUTH
+
+All Atlas logos in this kit are derived programmatically from Atlas_Master_Artwork.svg.
+Do not redraw, regenerate, or substitute the Atlas mark or wordmark.
+Only layout, scale, and color may change. The geometry must remain identical.
+
+Selected identity: geometric A + horizon arc with wide-tracked ATLAS wordmark.
+Version: 1.0 Final Master

@@ -248,9 +248,11 @@ Internal view ids may stay (`team` element for Messages); only routes change.
 ### 4.2 Sidebar (≥768)
 
 Anatomy (reference `#home`):
-- Brand row, 56 px (aligns with the top bar): 26 px ink square with **A** (Fraunces
-  600, white), "Atlas" 15/600, venue "VÁ · Reykjavík" 12/16 secondary. Not a link
-  target except to Home.
+- Brand row, 56 px (aligns with the top bar): the supplied horizontal Midnight lockup
+  (`assets/brand/Atlas_Primary_Horizontal_Midnight.svg`, 32 px high, 121 px wide);
+  the mark alone on the rail and the phone top bar (Brand v1.0, 2026-09-24 —
+  replaces the 26 px ink "A" square and typed "Atlas"). Venue "VÁ · Reykjavík"
+  12/16 secondary below the lockup's clear space. Not a link target except to Home.
 - Items: 34 px tall, 10 px inline padding, 8 px radius, 16 px icon (stroke 1.75) + 14 px
   label, 10 px gap. Rest: `--text-2`. Hover: `--bg-muted`. **Active: white surface,
   1 px `--line` ring, 1 px shadow, `--text` 500** — neutral, not blue. The Atlas AI icon
@@ -530,6 +532,24 @@ pills, icon tiles, alerts and selected rows — never on whole cards or page sec
 no blue icon tiles as decoration (the current "blue square with icon" on every card is
 removed). Dark mode is out of scope for S88; tokens are named so a dark set can be
 added under `:root[data-theme="dark"]` later.
+
+> **2026-09-24 — Brand v1.0 supersedes accent `#1f6fdb` and the warm neutrals.**
+> The owner's Atlas Brand Identity Kit v1.0 (`docs/brand/`) is now the source of
+> truth. Palette: Midnight `#0B0F14`, Slate `#1F2937`, Mist `#CBD5E1`, Snow
+> `#F8FAFC`, Atlas Blue `#3B82F6`. The warm greys above are replaced by the cool
+> family: `--text` Midnight `#0b0f14`, `--text-2` `#475569`, `--text-3` `#606c80`
+> (AA on every surface), `--bg-subtle` Snow, `--bg-muted` `#f1f5f9`, `--line`
+> `#e2e8f0`, `--line-strong` Mist, `--ink` Slate, overlay and shadows from
+> Midnight. Atlas Blue `#3B82F6` (`--accent-brand`, `--focus-color`) is the
+> brand/interface accent for focus rings, selection and active-nav markers,
+> unread dots, icons, badges and charts. Because white text on it is 3.7:1
+> (fails AA), text-bearing fills and blue text use the same-hue `--accent`
+> `#2563EB` (5.2:1), hover `#1D4ED8`, press `#1E40AF`, soft `#EFF6FF`. Status
+> colours retuned for the cool palette: positive `#047857`, warning
+> `#b45309`/`#d97706`, danger `#c42020`. Every legacy alias still resolves. The
+> table above is kept as the S88 record; current values live in
+> `docs/design/Atlas_Design_System.md` §1 and `atlas-tokens.css`. The brand mark
+> (§4.2, §7.17) is the supplied kit SVG, never a typed "A" tile or wordmark.
 
 ### 5.3 Typography
 
@@ -1527,7 +1547,7 @@ Specified in §4.9. Settings › Notifications holds preferences.
 `index.html` login screen, `invitation.html`, `recovery.html` share one layout:
 ```
 White page (no gradient). Centred column 360 px, top third of viewport.
-[A] Atlas                      brand mark 32 + wordmark 17/600
+[stacked lockup]               Atlas_Primary_Stacked_Midnight.svg, 112 px wide, centred (Brand v1.0)
 Welcome back                   Fraunces 28/34
 Sign in to VÁ.                 body --text-2
 Email      [                 ]

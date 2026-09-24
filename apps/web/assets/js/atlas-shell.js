@@ -1031,8 +1031,22 @@
   // Menu: wires a trigger button to an .atlas-menu element (role=menu with
   // .atlas-menu__item children). Arrow keys, Home/End, type-ahead, Escape and
   // outside clicks behave as spec §6.19 describes; focus returns to the trigger.
+  //
+  // Idempotent, so modules can call it on every render of a list: binding the
+  // same trigger and menu again returns the existing handle (with the new
+  // options); binding a trigger or a menu that is already bound to something
+  // else first disposes that older binding. One binding per trigger and per
+  // menu, never duplicate listeners. handle.dispose() (alias destroy()) unbinds.
+  const menuBindings = typeof WeakMap === 'function' ? new WeakMap() : null;
   function bindMenu(trigger, menu, options = {}) {
     if (!trigger || !menu || typeof document === 'undefined') return null;
+    const existing = menuBindings?.get(trigger);
+    if (existing && existing.menu === menu && menuBindings.get(menu) === existing) {
+      existing.setOptions(options);
+      return existing.handle;
+    }
+    existing?.handle.destroy();
+    menuBindings?.get(menu)?.handle.destroy();
     const items = () => Array.from(menu.querySelectorAll('.atlas-menu__item, [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]'))
       .filter((item) => !item.hidden && !item.disabled && item.getAttribute('aria-disabled') !== 'true');
     if (!menu.id) menu.id = `atlas-menu-${Math.random().toString(36).slice(2, 9)}`;
@@ -1114,18 +1128,23 @@
     trigger.addEventListener('keydown', onTriggerKey);
     menu.addEventListener('keydown', onMenuKey);
     menu.addEventListener('click', onMenuClick);
-    return {
-      open,
-      close,
-      isOpen: () => !menu.hidden,
-      destroy() {
-        close(false);
-        trigger.removeEventListener('click', onTriggerClick);
-        trigger.removeEventListener('keydown', onTriggerKey);
-        menu.removeEventListener('keydown', onMenuKey);
-        menu.removeEventListener('click', onMenuClick);
-      }
-    };
+    let disposed = false;
+    const binding = { menu, setOptions: (next = {}) => { options = next; }, handle: null };
+    function destroy() {
+      if (disposed) return;
+      disposed = true;
+      close(false);
+      trigger.removeEventListener('click', onTriggerClick);
+      trigger.removeEventListener('keydown', onTriggerKey);
+      menu.removeEventListener('keydown', onMenuKey);
+      menu.removeEventListener('click', onMenuClick);
+      if (menuBindings?.get(trigger) === binding) menuBindings.delete(trigger);
+      if (menuBindings?.get(menu) === binding) menuBindings.delete(menu);
+    }
+    binding.handle = { open, close, isOpen: () => !menu.hidden, destroy, dispose: destroy };
+    menuBindings?.set(trigger, binding);
+    menuBindings?.set(menu, binding);
+    return binding.handle;
   }
 
   root.AtlasShell = {

@@ -76,9 +76,9 @@ test('Recipes, Brain, and Business Intelligence delegate to the shared calculati
 
 test('shared launch design uses blue actions, compact search, visible focus, and reduced motion', () => {
   // S88: the action colour resolves to the single, AA-contrast Atlas blue
-  // (--accent #1f6fdb); every legacy name is an alias of it.
+  // (--accent #2563eb since Brand v1.0); every legacy name is an alias of it.
   const tokens = readFileSync('apps/web/assets/css/atlas-tokens.css', 'utf8');
-  assert.match(tokens, /--accent: #1f6fdb;/);
+  assert.match(tokens, /--accent: #2563eb;/);
   assert.match(tokens, /--atlas-accent: var\(--accent\);/);
   assert.match(tokens, /--atlas-action: var\(--accent\);/);
   assert.doesNotMatch(design, /--atlas-action:#2d78dc/);

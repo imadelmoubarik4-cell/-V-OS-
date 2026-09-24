@@ -15,37 +15,43 @@
 
 @layer atlas.tokens {
 :root {
+  /* Brand v1.0 palette (docs/brand/README.md) */
+  --atlas-midnight: #0B0F14; --atlas-slate: #1F2937; --atlas-mist: #CBD5E1;
+  --atlas-snow: #F8FAFC; --atlas-blue: #3B82F6;
+
   /* Surfaces */
   --bg: #ffffff;              /* content canvas */
-  --bg-subtle: #f7f7f5;       /* sidebar, table header, inset */
-  --bg-muted: #efefec;        /* hover on subtle, active nav, skeleton */
+  --bg-subtle: #f8fafc;       /* Snow: sidebar, table header, inset */
+  --bg-muted: #f1f5f9;        /* hover on subtle, active nav, skeleton */
   --surface: #ffffff;         /* cards, sheets, popovers */
-  --overlay: rgba(23, 25, 30, .32);
+  --overlay: rgba(11, 15, 20, .32);
 
   /* Text */
-  --text: #17191e;
-  --text-2: #5b616b;          /* secondary — 5.9:1 on white */
-  --text-3: #80858e;          /* placeholder, disabled — never body copy */
+  --text: #0b0f14;            /* Midnight — 19.2:1 on white */
+  --text-2: #475569;          /* secondary — 7.6:1 on white */
+  --text-3: #606c80;          /* placeholder, meta — 5.3:1; never body copy */
   --text-on-accent: #ffffff;
+  --ink: #1f2937;             /* Slate: tooltips, toasts */
 
   /* Lines */
-  --line: #e7e7e3;
-  --line-strong: #d4d4cf;
-  --line-subtle: #f0f0ed;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;     /* Mist */
+  --line-subtle: #f1f5f9;
 
-  /* Accent (Atlas blue, darkened for AA) */
-  --accent: #1f6fdb;          /* 4.8:1 with white text */
-  --accent-hover: #195fc0;
-  --accent-press: #154fa2;
-  --accent-soft: #edf3fd;
-  --accent-soft-hover: #e1ebfb;
-  --accent-text: #1a5ec0;
+  /* Accent: Atlas Blue for indicators and focus; #2563eb where text sits on or is blue */
+  --accent-brand: #3b82f6;    /* never behind text (white on it is 3.7:1) */
+  --accent: #2563eb;          /* 5.2:1 with white text */
+  --accent-hover: #1d4ed8;
+  --accent-press: #1e40af;
+  --accent-soft: #eff6ff;
+  --accent-soft-hover: #dbeafe;
+  --accent-text: #2563eb;
 
   /* Status */
-  --positive: #177a52; --positive-soft: #e9f5ef;
-  --warning: #93580a;  --warning-icon: #c07a12; --warning-soft: #fdf3e2;
-  --danger: #c0362c;   --danger-soft: #fcecea;
-  --neutral-soft: #f1f1ee;
+  --positive: #047857; --positive-soft: #ecfdf5;
+  --warning: #b45309;  --warning-icon: #d97706; --warning-soft: #fffbeb;
+  --danger: #c42020;   --danger-soft: #fef2f2;
+  --neutral-soft: #f1f5f9;
 
   /* Type */
   --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -72,9 +78,9 @@
   --r-xs: 4px; --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 999px;
 
   /* Elevation */
-  --shadow-1: 0 1px 2px rgba(23, 25, 30, .05);
-  --shadow-pop: 0 2px 6px rgba(23, 25, 30, .06), 0 12px 32px rgba(23, 25, 30, .10);
-  --shadow-modal: 0 4px 12px rgba(23, 25, 30, .08), 0 32px 80px rgba(23, 25, 30, .20);
+  --shadow-1: 0 1px 2px rgba(11, 15, 20, .05);
+  --shadow-pop: 0 2px 6px rgba(11, 15, 20, .06), 0 12px 32px rgba(11, 15, 20, .10);
+  --shadow-modal: 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20);
 
   /* Controls */
   --control-sm: 32px; --control-md: 36px; --control-lg: 44px; --touch: 44px;
@@ -109,7 +115,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .icon { width: var(--icon-sm); height: var(--icon-sm); flex: none; fill: none; stroke: currentColor; stroke-width: var(--icon-stroke); stroke-linecap: round; stroke-linejoin: round; }
 .icon--md { width: var(--icon-md); height: var(--icon-md); }
 .icon--lg { width: var(--icon-lg); height: var(--icon-lg); }
-:where(button, a, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
+:where(button, a, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--accent-brand); outline-offset: 2px; border-radius: var(--r-sm); }
 .num { font-variant-numeric: tabular-nums; }
 .muted { color: var(--text-2); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -155,7 +161,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .atlas-input, .atlas-select { width: 100%; height: var(--control-md); padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); font: var(--type-body); color: var(--text); transition: border-color var(--dur-1), box-shadow var(--dur-1); }
 .atlas-input::placeholder { color: var(--text-3); }
 .atlas-input:hover, .atlas-select:hover { border-color: #c2c2bc; }
-.atlas-input:focus, .atlas-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(31, 111, 219, .16); }
+.atlas-input:focus, .atlas-select:focus { outline: none; border-color: var(--accent-brand); box-shadow: 0 0 0 3px rgba(59, 130, 246, .20); }
 .atlas-input[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(192, 54, 44, .10); }
 .atlas-select { appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235b616b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
 .atlas-affix { position: relative; }
@@ -178,7 +184,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* Segmented control */
 .atlas-segmented { display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--r-md); background: var(--bg-muted); }
 .atlas-segmented button { height: 28px; padding: 0 12px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: var(--type-label); }
-.atlas-segmented button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(23,25,30,.08), 0 0 0 1px rgba(23,25,30,.04); }
+.atlas-segmented button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(11,15,20,.08), 0 0 0 1px rgba(11,15,20,.04); }
 @media (pointer: coarse) { .atlas-segmented button { height: 36px; } }
 
 /* Tabs (page-level) */
@@ -263,7 +269,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .atlas-alert--info { background: var(--accent-soft); } .atlas-alert--info > .icon { color: var(--accent); }
 
 /* Toast */
-.atlas-toast { display: inline-flex; align-items: center; gap: var(--s-3); min-height: 44px; padding: 8px 8px 8px 14px; border-radius: var(--r-lg); background: #1f2229; color: #fff; box-shadow: var(--shadow-pop); font: var(--type-body); }
+.atlas-toast { display: inline-flex; align-items: center; gap: var(--s-3); min-height: 44px; padding: 8px 8px 8px 14px; border-radius: var(--r-lg); background: var(--ink); color: #fff; box-shadow: var(--shadow-pop); font: var(--type-body); }
 .atlas-toast .icon { color: #7fd1a8; }
 .atlas-toast button { background: transparent; border: 0; color: #9cc3ff; font: var(--type-label); font-size: 14px; height: 32px; padding: 0 10px; border-radius: var(--r-sm); }
 
@@ -311,18 +317,21 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 @layer atlas.modules {
 .shell { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: 100vh; }
 .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg-subtle); border-right: 1px solid var(--line); padding: 0 12px 12px; overflow-y: auto; }
-.brand { display: flex; align-items: center; gap: 10px; height: var(--topbar-h); padding: 0 8px; flex: none; }
-.brand__mark { width: 26px; height: 26px; border-radius: 7px; background: var(--text); color: #fff; display: grid; place-items: center; font: 600 14px/1 var(--font-display); letter-spacing: -.02em; }
-.brand__name { font: 600 15px/18px var(--font-sans); letter-spacing: -.01em; }
-.brand__venue { font: var(--type-caption); color: var(--text-2); }
+/* Brand v1.0: the kit SVGs, byte-exact via <img> (never redrawn or typed). */
+.brand { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px; min-height: var(--topbar-h); padding: 12px 8px 10px; flex: none; }
+.brand__lockup { display: block; width: 121px; height: 32px; margin-left: -2px; }
+.brand__mark { display: none; width: 27px; height: 24px; }
+.brand__venue { padding-left: 2px; font: var(--type-caption); color: var(--text-2); }
 .nav { display: grid; gap: 1px; margin-top: 4px; }
 .nav__label { font: 500 12px/16px var(--font-sans); color: var(--text-3); padding: 18px 10px 6px; }
 .nav__item { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--r-md); color: var(--text-2); font: 400 14px/20px var(--font-sans); text-decoration: none; }
 .nav__item:hover { background: var(--bg-muted); color: var(--text); text-decoration: none; }
-.nav__item[aria-current="page"] { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 2px rgba(23,25,30,.06), 0 0 0 1px var(--line); }
+.nav__item[aria-current="page"] { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 2px rgba(11,15,20,.06), 0 0 0 1px var(--line); }
 .nav__item[aria-current="page"] .icon { color: var(--text); }
+.nav__item { position: relative; }
+.nav__item[aria-current="page"]::before { content: ''; position: absolute; top: 9px; left: -12px; width: 3px; height: 16px; border-radius: 0 2px 2px 0; background: var(--accent-brand); }
 .nav__item .atlas-badge { margin-left: auto; }
-.nav__item--ai .icon { color: var(--accent); }
+.nav__item--ai .icon { color: var(--accent-brand); }
 .sidebar__foot { margin-top: auto; padding-top: 12px; }
 .me { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: var(--r-md); background: transparent; text-align: left; }
 .me:hover { background: var(--bg-muted); }
@@ -333,6 +342,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .main { min-width: 0; display: flex; flex-direction: column; }
 .topbar { position: sticky; top: 0; z-index: 20; height: var(--topbar-h); display: flex; align-items: center; gap: 8px; padding: 0 var(--page-gutter) 0 16px; background: #fff; border-bottom: 1px solid var(--line-subtle); }
 .topbar__title { display: none; font: 600 17px/22px var(--font-sans); letter-spacing: -.01em; }
+.topbar__mark { display: block; flex: none; width: 25px; height: 22px; margin-right: 12px; }
 .omni { display: flex; align-items: center; gap: 10px; width: 360px; height: 36px; padding: 0 8px 0 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg-subtle); color: var(--text-3); font: var(--type-body); text-align: left; }
 .omni:hover { border-color: var(--line-strong); }
 .omni__label { flex: 1; }
@@ -420,7 +430,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .ai-list__label { font: 500 12px/16px var(--font-sans); color: var(--text-3); padding: 16px 8px 6px; }
 .ai-conv { display: block; padding: 8px 10px; border-radius: var(--r-md); color: var(--text); text-decoration: none; }
 .ai-conv:hover { background: var(--bg-muted); text-decoration: none; }
-.ai-conv[aria-current="true"] { background: var(--surface); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(23,25,30,.05); }
+.ai-conv[aria-current="true"] { background: var(--surface); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(11,15,20,.05); }
 .ai-conv__t { font: var(--type-label); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ai-conv__m { font: var(--type-caption); color: var(--text-2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ai-thread { display: flex; flex-direction: column; min-height: 0; }
@@ -471,7 +481,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .msg-actions { display: flex; gap: 2px; margin-top: 10px; color: var(--text-3); }
 .msg-actions .atlas-icon-btn { width: 30px; height: 30px; }
 .composer-wrap { flex: none; padding: 0 var(--page-gutter) 20px; }
-.composer { max-width: var(--reading-max); margin: 0 auto; border: 1px solid var(--line-strong); border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 1px 2px rgba(23,25,30,.04), 0 8px 24px rgba(23,25,30,.05); padding: 10px 10px 8px 14px; }
+.composer { max-width: var(--reading-max); margin: 0 auto; border: 1px solid var(--line-strong); border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 1px 2px rgba(11,15,20,.04), 0 8px 24px rgba(11,15,20,.05); padding: 10px 10px 8px 14px; }
 .composer textarea { width: 100%; border: 0; resize: none; outline: none; font: var(--type-body-lg); min-height: 24px; height: 24px; padding: 2px 0; background: transparent; }
 .composer textarea::placeholder { color: var(--text-3); }
 .composer__bar { display: flex; align-items: center; gap: 2px; margin-top: 6px; }
@@ -535,8 +545,10 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 @media (max-width: 1279px) and (min-width: 768px) {
   .shell { grid-template-columns: var(--sidebar-rail) minmax(0, 1fr); }
   .sidebar { padding: 0 10px 12px; align-items: center; }
-  .brand { padding: 0; justify-content: center; }
-  .brand > div:last-child, .nav__label, .nav__item span, .nav__item .atlas-badge, .me > div, .me > .icon { display: none; }
+  .brand { padding: 0; align-items: center; }
+  .brand__mark { display: block; }
+  .nav__item[aria-current="page"]::before { top: 12px; left: -10px; }
+  .brand__lockup, .brand__venue, .nav__label, .nav__item span, .nav__item .atlas-badge, .me > div, .me > .icon { display: none; }
   .nav__label { display: block; font-size: 0; line-height: 0; height: 1px; width: 28px; padding: 0; margin: 10px auto; background: var(--line); }
   .nav__item { width: 44px; height: 40px; justify-content: center; padding: 0; }
   .me { justify-content: center; }
@@ -731,8 +743,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   <!-- ================= Sidebar ================= -->
   <nav class="sidebar" aria-label="Main">
     <div class="brand">
-      <div class="brand__mark" aria-hidden="true">A</div>
-      <div><div class="brand__name">Atlas</div><div class="brand__venue">VÁ · Reykjavík</div></div>
+      <img class="brand__lockup" src="../brand/Atlas_Brand_Identity_Kit_v1.0/02_Vector_Logos/Atlas_Primary_Horizontal_Midnight.svg" alt="Atlas" width="121" height="32">
+      <img class="brand__mark" src="../brand/Atlas_Brand_Identity_Kit_v1.0/02_Vector_Logos/Atlas_Mark_Midnight.svg" alt="Atlas" width="27" height="24">
+      <div class="brand__venue">VÁ · Reykjavík</div>
     </div>
     <div class="nav">
       <a class="nav__item" href="#home" data-nav="home"><svg class="icon"><use href="#i-house"/></svg><span>Home</span></a>
@@ -767,6 +780,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
     <header class="topbar" id="topbar">
       <button class="atlas-icon-btn only-desktop" type="button" aria-label="Collapse sidebar"><svg class="icon"><use href="#i-panel-left"/></svg></button>
       <button class="atlas-icon-btn only-phone ai-only" type="button" aria-label="Conversations" style="margin-left:-8px"><svg class="icon icon--lg"><use href="#i-history"/></svg></button>
+      <img class="topbar__mark only-phone not-ai" src="../brand/Atlas_Brand_Identity_Kit_v1.0/02_Vector_Logos/Atlas_Mark_Midnight.svg" alt="" width="25" height="22">
       <div class="topbar__title" id="phone-title">Home</div>
       <button class="omni" type="button" onclick="location.hash='palette'" aria-label="Search or ask Atlas (Command K)">
         <svg class="icon"><use href="#i-search"/></svg><span class="omni__label">Search or ask Atlas</span><span class="kbd">⌘K</span>

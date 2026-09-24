@@ -55,7 +55,8 @@ export function harnessAvailable() {
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.png': 'image/png', '.json': 'application/json', '.gz': 'application/gzip', '.svg': 'image/svg+xml'
+  '.png': 'image/png', '.json': 'application/json', '.gz': 'application/gzip', '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json', '.webm': 'video/webm', '.mp4': 'video/mp4'
 };
 
 export const USERS = {

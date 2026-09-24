@@ -45,7 +45,7 @@ test('sidebar: spec groups and role visibility (admin sees 13 + Settings, barten
         return { id: node.dataset.navId, bg: style.backgroundColor, color: style.color, count: document.querySelectorAll('.atlas-sidebar [aria-current="page"]').length };
       });
       assert.deepEqual([active.id, active.bg, active.count], ['home', 'rgb(255, 255, 255)', 1]);
-      assert.equal(active.color, 'rgb(23, 25, 30)');
+      assert.equal(active.color, 'rgb(11, 15, 20)');
       // Landmarks: one Main navigation visible, banner top bar, main content.
       assert.equal(await page.evaluate(() => document.querySelector('.atlas-sidebar nav.atlas-nav').getAttribute('aria-label')), 'Main');
       assert.equal(await page.evaluate(() => document.querySelector('main#atlas-main') !== null && document.querySelector('header.atlas-topbar') !== null), true);
@@ -361,7 +361,7 @@ test('phone: every shell control is at least 44 px; zoom is allowed; focus is vi
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
     const ring = await page.evaluate(() => { const style = getComputedStyle(document.activeElement); return `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`; });
-    assert.equal(ring, 'solid 2px rgb(31, 111, 219)');
+    assert.equal(ring, 'solid 2px rgb(59, 130, 246)');
   } finally { await close(); }
 });
 
@@ -393,7 +393,11 @@ test('brand line reads the venue from Settings, shows "Atlas" alone without one;
   try {
     await without.page.waitForTimeout(300);
     assert.equal(await without.page.$eval('#atlas-brand-venue', (node) => node.hidden), true);
-    assert.equal(await without.page.textContent('.atlas-brand__name'), 'Atlas');
+    // Brand v1.0: the supplied horizontal lockup, never typed text.
+    const lockup = await without.page.$eval('.atlas-brand__lockup', (img) => ({ alt: img.alt, src: img.getAttribute('src'), loaded: img.complete && img.naturalWidth > 0, width: img.getBoundingClientRect().width }));
+    assert.deepEqual({ ...lockup, width: undefined }, { alt: 'Atlas', src: 'assets/brand/Atlas_Primary_Horizontal_Midnight.svg', loaded: true, width: undefined });
+    assert.ok(lockup.width >= 96, `lockup ${lockup.width}px is below the 96 px minimum`);
+    assert.equal(await without.page.textContent('.atlas-brand__link'), '');
   } finally { await without.close(); }
 });
 
@@ -417,5 +421,55 @@ test('"/" types into fields instead of opening the palette; Tab stays inside ope
     assert.equal(await page.evaluate(() => document.querySelector('#atlas-more .atlas-more').contains(document.activeElement)), true);
     await page.keyboard.press('Escape');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'atlas-more-btn');
+  } finally { await close(); }
+});
+
+test('AtlasShell.menu is idempotent: re-binding on every render never duplicates handlers', { skip }, async () => {
+  const { page, record, close } = await launch();
+  try {
+    const result = await page.evaluate(() => {
+      const host = document.createElement('div');
+      host.innerHTML = '<button type="button" id="t-trigger">Row actions</button><div class="atlas-menu" id="t-menu"><button type="button" class="atlas-menu__item">Edit</button></div>';
+      document.body.append(host);
+      const trigger = document.getElementById('t-trigger');
+      const menu = document.getElementById('t-menu');
+      let selected = 0;
+      let lastOption = '';
+      const handles = [];
+      // A list re-rendered five times binds the same trigger and menu five times.
+      for (let i = 0; i < 5; i += 1) handles.push(window.AtlasShell.menu(trigger, menu, { onSelect: () => { selected += 1; lastOption = `render-${i}`; } }));
+      const sameHandle = handles.every((handle) => handle === handles[0]);
+      trigger.click();
+      const openAfterOneClick = !menu.hidden;
+      menu.querySelector('.atlas-menu__item').click();
+      const afterSelect = { selected, lastOption, closed: menu.hidden };
+      // Re-rendered menu element for the same trigger: the old one is unbound.
+      const fresh = document.createElement('div');
+      fresh.className = 'atlas-menu';
+      fresh.innerHTML = '<button type="button" class="atlas-menu__item">Delete</button>';
+      host.append(fresh);
+      let freshSelected = 0;
+      const second = window.AtlasShell.menu(trigger, fresh, { onSelect: () => { freshSelected += 1; } });
+      menu.hidden = false;
+      menu.querySelector('.atlas-menu__item').click();
+      const staleIgnored = selected === 1;
+      trigger.click();
+      fresh.querySelector('.atlas-menu__item').click();
+      second.dispose();
+      trigger.click();
+      const disposed = fresh.hidden;
+      host.remove();
+      return { sameHandle, openAfterOneClick, afterSelect, staleIgnored, freshSelected, newHandle: second !== handles[0], disposed };
+    });
+    assert.deepEqual(result, {
+      sameHandle: true,
+      openAfterOneClick: true,
+      afterSelect: { selected: 1, lastOption: 'render-4', closed: true },
+      staleIgnored: true,
+      freshSelected: 1,
+      newHandle: true,
+      disposed: true
+    });
+    assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });

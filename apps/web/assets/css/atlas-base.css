@@ -78,7 +78,7 @@ svg.lucide { stroke-width: var(--icon-stroke); flex: none; }
   outline-offset: var(--focus-offset);
 }
 
-::selection { background: rgba(31, 111, 219, .18); color: inherit; }
+::selection { background: rgba(59, 130, 246, .20); color: inherit; }
 
 /* The hidden attribute always hides (spec §9.1 allows !important here). */
 [hidden] { display: none !important; }
@@ -163,7 +163,7 @@ html.atlas-reduce-motion *::after {
 :where(.atlas-search input:focus, .atlas-content input:focus, .atlas-content select:focus, .atlas-content textarea:focus, .modal input:focus, .modal select:focus, .modal textarea:focus) {
   outline: none;
   border-color: var(--blue-400);
-  box-shadow: 0 0 0 3px rgba(31, 111, 219, .16);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .16);
 }
 /* ---------- from legacy/workspaces-polish--components.css ---------- */
 /* ---------- Shared surface treatment ---------- */

@@ -6,12 +6,14 @@ version of this file. The build specification is
 the visual north star is `docs/design/atlas-reference.html`. Where this file and
 the spec disagree, the spec wins; fix this file.
 
-Direction: light, warm-neutral, precise. White canvas, warm off-white insets,
-structure from type, spacing and hairlines rather than boxes. One accent colour
-(Atlas blue) for the primary action, links, focus, selection and the Atlas AI
-mark. No glass, no gradients, no blur, no coloured shadows. Functional truth
-before decoration: never style a control as available when its behaviour does
-not exist, never show a guessed number.
+Direction: light, cool-neutral, precise (Brand v1.0, `docs/brand/README.md`).
+White canvas, Snow insets, Midnight ink, Mist hairlines; structure from type,
+spacing and hairlines rather than boxes. The logo is always monochrome (the
+supplied kit files, never redrawn or typed). One accent colour, Atlas Blue, for
+the primary action, links, focus, selection and the Atlas AI mark. No glass, no
+gradients, no blur, no coloured shadows. Functional truth before decoration:
+never style a control as available when its behaviour does not exist, never
+show a guessed number.
 
 ## 0. Files and cascade
 
@@ -39,33 +41,49 @@ not exist, never show a guessed number.
   stylesheets; not part of the app bundle), checked by
   `tests/browser/components.browser.test.mjs` at 1440 and 390.
 
-## 1. Colour (spec §5.2)
+## 1. Colour (spec §5.2; Brand v1.0 from 2026-09-24)
+
+Brand palette (verbatim from the kit, `docs/brand/Atlas_Brand_Identity_Kit_v1.0/07_Developer/atlas-brand-tokens.css`):
+`--atlas-midnight #0B0F14`, `--atlas-slate #1F2937`, `--atlas-mist #CBD5E1`,
+`--atlas-snow #F8FAFC`, `--atlas-blue #3B82F6`. Every token below derives from
+them. Contrast ratios are checked by `tests/node/brand-kit-v1.test.js`.
 
 | Token | Value | Use |
 | --- | --- | --- |
 | `--bg` | `#ffffff` | Content canvas |
-| `--bg-subtle` | `#f7f7f5` | Sidebar, table header, inset panels, AI list |
-| `--bg-muted` | `#efefec` | Hover on subtle, segmented track, skeleton |
-| `--bg-hover` | `#fafaf8` | Table row hover |
+| `--bg-subtle` | `#f8fafc` (Snow) | Sidebar, table header, inset panels, AI list |
+| `--bg-muted` | `#f1f5f9` | Hover on subtle, segmented track, skeleton |
+| `--bg-hover` | `#fbfcfd` | Table row hover |
 | `--surface` | `#ffffff` | Cards, sheets, popovers |
-| `--overlay` | `rgba(23,25,30,.32)` | Scrim |
-| `--text` | `#17191e` | Primary text |
-| `--text-2` | `#5b616b` (6.3:1) | Secondary text, metadata, table headers |
-| `--text-3` | `#80858e` | Placeholders, disabled, group labels — never body copy |
-| `--ink` | `#1f2229` | Tooltips, toasts, bulk bar |
-| `--line` | `#e7e7e3` | Card borders, dividers |
-| `--line-strong` | `#d4d4cf` | Inputs, secondary buttons |
-| `--line-hover` | `#c2c2bc` | Input hover |
-| `--line-subtle` | `#f0f0ed` | Row dividers inside cards and tables |
-| `--accent` | `#1f6fdb` (4.8:1 with white) | Primary button, links, focus, selection, AI mark |
-| `--accent-hover` / `--accent-press` | `#195fc0` / `#154fa2` | Primary hover / pressed |
-| `--accent-soft` / `--accent-soft-hover` | `#edf3fd` / `#e1ebfb` | Selected rows, active chip, info tiles |
-| `--accent-text` | `#1a5ec0` | Link and label text on white or accent-soft |
-| `--positive` / `--positive-soft` | `#177a52` / `#e9f5ef` | Ready, counted, verified, done |
-| `--warning` / `--warning-icon` / `--warning-soft` | `#93580a` / `#c07a12` / `#fdf3e2` | Below par, due soon, draft |
-| `--danger` / `--danger-soft` | `#c0362c` / `#fcecea` | Out, failed, overdue, destructive |
-| `--neutral-soft` | `#f1f1ee` | Neutral pills, count badges, icon tiles |
-| `--accent-illustration` | `#2f80ed` | The pre-S88 blue; brand illustration only |
+| `--overlay` | `rgba(11,15,20,.32)` (Midnight) | Scrim |
+| `--text` | `#0b0f14` (Midnight, 19.2:1) | Headings and primary text |
+| `--text-2` | `#475569` (7.6:1; 6.9:1 on `--bg-muted`) | Secondary text, metadata, table headers |
+| `--text-3` | `#606c80` (5.3:1; 4.9:1 on `--bg-muted`) | Placeholders, disabled, group labels, meta — AA on every surface, still never body copy |
+| `--ink` | `#1f2937` (Slate) | Tooltips, toasts, bulk bar (white text 14.7:1) |
+| `--line` | `#e2e8f0` | Card borders, dividers (hairline derived from Mist) |
+| `--line-strong` | `#cbd5e1` (Mist) | Inputs, secondary buttons |
+| `--line-hover` / `--control-border` | `#94a3b8` | Input hover; checkbox / radio outline |
+| `--line-subtle` | `#f1f5f9` | Row dividers inside cards and tables |
+| `--accent-brand` | `#3b82f6` (Atlas Blue) | Focus ring, selection and active-nav markers, unread dots, icons, badges, charts, AI mark. Never behind text. |
+| `--accent` | `#2563eb` (5.2:1 with white) | Primary button fill, accent text and links, count badges |
+| `--accent-hover` / `--accent-press` | `#1d4ed8` / `#1e40af` | Primary hover / pressed |
+| `--accent-soft` / `--accent-soft-hover` | `#eff6ff` / `#dbeafe` | Selected rows, active chip, info tiles (washes of Atlas Blue) |
+| `--accent-text` | = `--accent` (4.8:1 on `--accent-soft`) | Link and label text on white or accent-soft |
+| `--accent-ring` | `rgba(59,130,246,.20)` | Input focus ring |
+| `--positive` / `--positive-soft` | `#047857` / `#ecfdf5` | Ready, counted, verified, done (5.2:1 on soft) |
+| `--warning` / `--warning-icon` / `--warning-soft` | `#b45309` / `#d97706` / `#fffbeb` | Below par, due soon, draft (text 4.8:1 on soft; icon colour non-text only) |
+| `--danger` / `--danger-soft` | `#c42020` / `#fef2f2` | Out, failed, overdue, destructive (5.4:1 on soft, 5.9:1 white-on-fill) |
+| `--neutral-soft` | `#f1f5f9` | Neutral pills, count badges, icon tiles |
+| `--accent-illustration` | = `--atlas-blue` | Charts and illustration |
+
+**Accessibility decision (Brand v1.0).** Atlas Blue `#3B82F6` is the brand and
+interface accent, but white text on it is 3.7:1 and fails WCAG AA (4.5:1).
+Therefore text-bearing accent fills (primary buttons, count badges) and blue
+text/links use the darker same-hue `--accent` `#2563EB` (5.2:1), hover
+`#1D4ED8` (6.7:1). Atlas Blue itself (`--accent-brand`, `--focus-color`) is
+used where no text sits on it: focus rings, markers, dots, icons and charts,
+where it clears the 3:1 non-text minimum on white (3.7), Snow (3.5),
+`--bg-muted` (3.4), `--accent-soft` (3.4) and Slate (4.0).
 
 Rules
 - Status colour always comes with a word or an icon.
@@ -174,9 +192,11 @@ and `html.atlas-reduce-motion` (the personal preference) cut every duration to
 
 ## 7. Focus and accessibility
 
-- `--focus-outline` (2 px solid `--accent`) with `--focus-offset` 2 px on every
-  interactive element (`:focus-visible`, `atlas-base.css`). Inputs show the
-  accent border plus `--focus-ring` (3 px `rgba(31,111,219,.16)`) instead.
+- `--focus-outline` (2 px solid `--focus-color` = Atlas Blue `#3b82f6`) with
+  `--focus-offset` 2 px on every interactive element (`:focus-visible`,
+  `atlas-base.css`). Inputs show the Atlas Blue border plus `--focus-ring`
+  (3 px `rgba(59,130,246,.20)`) instead. The ring is ≥ 3:1 against every
+  surface it can sit on (`tests/node/brand-kit-v1.test.js`).
 - Contrast AA: text ≥ 4.5:1, large text and UI ≥ 3:1 (checked by the gallery
   test). Touch targets ≥ 44 px under `(pointer: coarse)`; inputs use 16 px text
   on touch. Pinch zoom stays allowed.
@@ -247,7 +267,10 @@ Atlas AI module stylesheet.
   errors that need a decision.
 - `AtlasShell.menu(trigger, menuEl, { onSelect, align })`: `aria-haspopup` /
   `aria-expanded`, arrows, Home/End, type-ahead, Esc (focus back to the
-  trigger), outside click.
+  trigger), outside click. Idempotent: call it on every render of a list —
+  the same trigger + menu returns the existing handle (new options apply), a
+  re-rendered menu or trigger replaces the older binding, so listeners never
+  pile up. `handle.dispose()` (alias `destroy()`) unbinds.
 
 ## 10. Copy (spec §5.9)
 
