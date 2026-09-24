@@ -21,6 +21,8 @@ window.VABAR_CONFIG = {
   SYSTEM_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-system",
   SETTINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-settings",
   ITEM_MASTER_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-item-master",
+  // Atlas AI: conversations, approvals and voice. Answers "not configured" until the owner switches it on.
+  ATLAS_AI_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-ai",
   // Import processing remains fail-closed until its separate activation gate.
   IMPORT_WORKER_API: "",
   // Device subscriptions are opt-in; server-side push delivery remains disabled.

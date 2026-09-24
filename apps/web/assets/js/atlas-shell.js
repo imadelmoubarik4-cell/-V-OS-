@@ -269,6 +269,12 @@
         path = ['knowledge', article || takeParam(rest, 'section')];
         break;
       }
+      case 'ai': {
+        const conversation = takeParam(rest, 'conversation');
+        const fresh = takeParam(rest, 'new');
+        path = conversation ? ['ai', 'c', conversation] : fresh ? ['ai', 'new'] : ['ai', takeParam(rest, 'section')];
+        break;
+      }
       default: path = [name, takeParam(rest, 'section')];
     }
     const query = Object.entries(rest)

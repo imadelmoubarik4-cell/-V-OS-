@@ -33,3 +33,10 @@ test('normal online configuration preserves the existing fetch destination',asyn
   assert.equal(await window.fetch('https://dnefgcmjcgxlynycxkts.supabase.co/rest/v1/recipes'),'sent');
   assert.equal(requests.length,1);
 });
+test('production allows only the live voice offer endpoint on the voice service host',async()=>{
+  const {window,requests}=runtime(config);
+  assert.equal(await window.fetch('https://api.openai.com/v1/realtime/calls',{method:'POST'}),'sent');
+  for(const url of ['https://api.openai.com/v1/responses','https://api.openai.com/v1/realtime/calls/rtc_1/hangup','https://api.openai.com/v1/realtime/calls?x=1','https://api.openai.com.evil.test/v1/realtime/calls'])
+    await assert.rejects(window.fetch(url,{method:'POST'}));
+  assert.equal(requests.length,1);
+});

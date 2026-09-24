@@ -29,7 +29,11 @@ test('no service-role credential is shipped to the browser', () => {
 
 test('Netlify headers cover transport, browser capabilities and only production Supabase', () => {
   assert.match(netlify, /Strict-Transport-Security/);
-  assert.match(netlify, /Permissions-Policy\s*=\s*"camera=\(self\), microphone=\(\), geolocation=\(\), payment=\(\)"/);
+  // S88: Atlas AI voice notes and live voice need the microphone on this origin only.
+  assert.match(netlify, /Permissions-Policy\s*=\s*"camera=\(self\), microphone=\(self\), geolocation=\(\), payment=\(\)"/);
+  // Live voice exchanges its WebRTC offer with the realtime voice service; nothing else is added.
+  assert.match(netlify, /connect-src 'self' https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co wss:\/\/dnefgcmjcgxlynycxkts\.supabase\.co https:\/\/api\.openai\.com;/);
+  assert.match(netlify, /media-src 'self' blob:/);
   assert.match(netlify, /Content-Security-Policy/);
   assert.match(netlify, /dnefgcmjcgxlynycxkts\.supabase\.co/);
   assert.doesNotMatch(netlify, /uhbamqetppqmygesoeeh\.supabase\.co/);
