@@ -218,3 +218,6 @@
   .team-state-icon svg,.team-target-state svg{animation:none}
   *{scroll-behavior:auto!important}
 }
+/* S87: current profile photos on message avatars */
+.team-message-avatar{overflow:hidden}
+.team-message-avatar img{width:100%;height:100%;object-fit:cover;display:block}

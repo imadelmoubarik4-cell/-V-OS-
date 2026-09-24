@@ -552,6 +552,9 @@
       state.staff = payload.staff || state.staff;
       state.message = successMessage;
       state.modal = null;
+      // Names, roles and active state are shown in Messages, Shifts and the
+      // sidebar; tell those modules the roster changed.
+      window.dispatchEvent(new Event('atlas:team-roster-changed'));
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'The Team Profile change could not be saved.';
     } finally {

@@ -439,6 +439,15 @@
     });
     window.addEventListener('online', () => loadSnapshot({ force: true, silent: true }));
     window.addEventListener('atlas:team-profiles-rendered', scheduleDecorate);
+    // Messages and the sidebar show photos too, so load them at sign-in rather
+    // than waiting for someone to open Team Profiles.
+    const loadForSignedInApp = () => {
+      if (!appVisible()) return;
+      startRefreshTimer();
+      if (!state.lastLoadedAt) loadSnapshot({ force: true, silent: true });
+    };
+    window.addEventListener('atlas:profile-ready', () => window.setTimeout(loadForSignedInApp, 0));
+    loadForSignedInApp();
 
     if (ensureStarted()) return;
     state.bootstrapTimer = window.setInterval(() => {

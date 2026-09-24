@@ -54,6 +54,34 @@
     return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join('');
   }
 
+  // A visible name never shows an email address: an email-only label becomes
+  // its readable local part ("sara.jonsdottir@…" → "Sara Jonsdottir").
+  function safePersonLabel(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    if (!text.includes('@')) return text;
+    const local = text.split('@')[0].replace(/\d+$/, '');
+    const words = local.split(/[._+-]+/).filter(Boolean);
+    return words.length ? words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : '';
+  }
+
+  // Presentation identity is resolved from sender_id against the current
+  // profile roster; the stored sender_label is only a historical fallback for
+  // people who are no longer active. Audit history is never rewritten.
+  function senderIdentity(message) {
+    const member = message.sender_id ? state.members.find((entry) => entry.id === message.sender_id) : null;
+    const name = safePersonLabel(member?.label) || safePersonLabel(message.sender_label) || 'Former team member';
+    return { id: message.sender_id || null, name, role: member?.role || message.sender_role || '', current: Boolean(member) };
+  }
+
+  function avatarMarkup(identity) {
+    const photo = identity.id ? window.AtlasTeamProfilePhotos?.photoFor?.(identity.id) : null;
+    if (photo?.signed_url) {
+      return `<img src="${escapeHtml(photo.signed_url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`;
+    }
+    return escapeHtml(initials(identity.name));
+  }
+
   function formatDateTime(value) {
     if (!value) return '';
     const date = new Date(value);
@@ -215,10 +243,12 @@
 
     const system = message.message_type === 'system';
     const own = Boolean(message.is_own);
+    const identity = system ? { id: null, name: 'Atlas', role: '' } : senderIdentity(message);
+    const hasPhoto = !system && Boolean(identity.id && window.AtlasTeamProfilePhotos?.photoFor?.(identity.id)?.signed_url);
     return `<article class="team-message ${system ? 'is-system' : ''} ${own ? 'is-own' : ''}" data-team-message="${escapeHtml(message.id)}">
-      <div class="team-message-avatar">${system ? '<i data-lucide="sparkles"></i>' : escapeHtml(initials(message.sender_label))}</div>
+      <div class="team-message-avatar${hasPhoto ? ' has-profile-photo' : ''}" ${identity.id ? `data-team-sender="${escapeHtml(identity.id)}"` : ''} aria-hidden="true">${system ? '<i data-lucide="sparkles"></i>' : avatarMarkup(identity)}</div>
       <div class="team-message-content">
-        <header><div><strong>${escapeHtml(message.sender_label)}</strong><span>${escapeHtml(system ? 'System update' : humanize(message.sender_role))}</span></div><time>${escapeHtml(formatDateTime(message.created_at))}${message.edited_at ? ' · edited' : ''}</time></header>
+        <header><div><strong>${escapeHtml(system ? (message.sender_label || 'Atlas') : identity.name)}</strong><span>${escapeHtml(system ? 'System update' : humanize(identity.role))}${!system && !identity.current ? ' · no longer active' : ''}</span></div><time>${escapeHtml(formatDateTime(message.created_at))}${message.edited_at ? ' · edited' : ''}</time></header>
         <p>${formatBody(message.body)}</p>
         ${renderLink(message.link)}
         <footer>
@@ -760,6 +790,18 @@
     }
   }
 
+  function refreshAvatars() {
+    host()?.querySelectorAll('.team-message-avatar[data-team-sender]').forEach((avatar) => {
+      const message = (state.snapshot?.messages || []).find((entry) => entry.sender_id === avatar.dataset.teamSender);
+      if (!message) return;
+      const identity = senderIdentity(message);
+      const markup = avatarMarkup(identity);
+      if (avatar.innerHTML === markup) return;
+      avatar.innerHTML = markup;
+      avatar.classList.toggle('has-profile-photo', markup.startsWith('<img'));
+    });
+  }
+
   function handleVisibility() {
     if (document.hidden || !teamViewVisible()) stopPolling();
     else {
@@ -780,6 +822,13 @@
     document.addEventListener('change', handleChange);
     document.addEventListener('keydown', handleKeydown);
     document.addEventListener('visibilitychange', handleVisibility);
+    // Photos load independently; refresh only the avatars so an open composer
+    // or scroll position is not disturbed.
+    window.addEventListener('atlas:profile-photos-updated', refreshAvatars);
+    // A renamed or deactivated profile changes how existing messages are shown.
+    window.addEventListener('atlas:team-roster-changed', () => {
+      if (teamViewVisible()) loadSnapshot({ silent: true });
+    });
 
     state.viewObserver = new MutationObserver(() => {
       if (teamViewVisible()) {
