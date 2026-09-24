@@ -49,3 +49,6 @@ jobs:
 
       - name: Replay historical migrations and run security acceptance
         run: bash scripts/verify_full_migration_replay.sh
+
+      - name: Run S87 acceptance (recipe delete guard, media policies, Knowledge role matrix)
+        run: bash scripts/verify_s87_previews.sh
