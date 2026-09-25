@@ -31,8 +31,16 @@ begin
   end;
   insert into s87_inventory values ('manager cannot delete an item with recipe links', blocked);
 
-  update public.inventory_items set active=false where id='00000000-0000-4000-8000-000000087701';
-  insert into s87_inventory values ('manager can deactivate it', exists (select 1 from public.inventory_items where id='00000000-0000-4000-8000-000000087701' and active=false));
+  -- Before S89 20260928095000 a manager may deactivate with a direct update;
+  -- after it browsers have no direct UPDATE and deactivation goes through
+  -- atlas_set_inventory_item_active (checked below as the server).
+  blocked := false;
+  begin
+    update public.inventory_items set active=false where id='00000000-0000-4000-8000-000000087701';
+  exception when insufficient_privilege then blocked := true;
+  end;
+  insert into s87_inventory values ('a direct deactivation follows the UPDATE grant',
+    blocked = not has_table_privilege('authenticated', 'public.inventory_items', 'update'));
 
   delete from public.inventory_items where id='00000000-0000-4000-8000-000000087702';
   insert into s87_inventory values ('an unused item can still be deleted', not exists (select 1 from public.inventory_items where id='00000000-0000-4000-8000-000000087702'));
@@ -41,6 +49,9 @@ $probe$;
 
 reset role;
 reset session authorization;
+
+select public.atlas_set_inventory_item_active('00000000-0000-4000-8000-000000087701', false, 'S87 acceptance', null, '00000000-0000-4000-8000-000000087601', 'S87 manager');
+insert into s87_inventory values ('manager can deactivate it through the governed command', exists (select 1 from public.inventory_items where id='00000000-0000-4000-8000-000000087701' and active=false));
 
 insert into s87_inventory values ('recipe link survived', exists (select 1 from public.recipe_ingredients where recipe_id='00000000-0000-4000-8000-000000087801' and item_id='00000000-0000-4000-8000-000000087701'));
 

@@ -189,7 +189,8 @@ end
 $probe$;
 
 -- The S87 web path (direct browser update by an active manager) still works
--- and is now audited.
+-- and is now audited — until S89 20260928095000 revokes browser UPDATE, after
+-- which the direct update is refused and nothing is written.
 reset role;
 set role authenticated;
 select set_config('request.jwt.claim.role','authenticated',true);
@@ -197,8 +198,14 @@ select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000088301'
 
 do $probe$
 declare denied boolean := false;
+declare direct_blocked boolean := false;
 begin
-  update public.inventory_items set active=false where id='00000000-0000-4000-8000-000000088505';
+  begin
+    update public.inventory_items set active=false where id='00000000-0000-4000-8000-000000088505';
+  exception when insufficient_privilege then direct_blocked := true;
+  end;
+  insert into s88_activation values ('a direct manager deactivation follows the UPDATE grant',
+    direct_blocked = not has_table_privilege('authenticated', 'public.inventory_items', 'update'));
   begin
     perform public.atlas_set_inventory_item_active('00000000-0000-4000-8000-000000088505', true, null, null,
       '00000000-0000-4000-8000-000000088301', 'S88 manager');
@@ -237,11 +244,16 @@ $probe$;
 reset role;
 reset session authorization;
 
-insert into s88_activation values ('the direct browser deactivation is audited as direct_update', exists (
-  select 1 from atlas_private.item_master_events event
-  where event.external_item_id='00000000-0000-4000-8000-000000088505' and event.event_type='item_deactivated'
-    and event.actor_id='00000000-0000-4000-8000-000000088301' and event.actor_role='manager'
-    and event.payload->>'via'='direct_update' and event.payload->>'reason' is null));
+insert into s88_activation values ('the direct browser deactivation is audited as direct_update', case
+  when has_table_privilege('authenticated', 'public.inventory_items', 'update') then exists (
+    select 1 from atlas_private.item_master_events event
+    where event.external_item_id='00000000-0000-4000-8000-000000088505' and event.event_type='item_deactivated'
+      and event.actor_id='00000000-0000-4000-8000-000000088301' and event.actor_role='manager'
+      and event.payload->>'via'='direct_update' and event.payload->>'reason' is null)
+  else (select active from public.inventory_items where id='00000000-0000-4000-8000-000000088505')
+    and not exists (select 1 from atlas_private.item_master_events event
+      where event.external_item_id='00000000-0000-4000-8000-000000088505' and event.event_type='item_deactivated')
+  end);
 insert into s88_activation values ('the bartender attempt left the item active and unaudited', (
   select active from public.inventory_items where id='00000000-0000-4000-8000-000000088504')
   and not exists (select 1 from atlas_private.item_master_events where external_item_id='00000000-0000-4000-8000-000000088504'));

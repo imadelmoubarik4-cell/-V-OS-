@@ -97,15 +97,25 @@ select 'bartender_recipe_catalog_reads',count(*)=1,
        format('Bartender-visible redacted recipe rows: %s.',count(*))
 from public.recipe_catalog
 where id='00000000-0000-4000-8000-000000000201';
-with changed as (
-  update public.inventory_items set cost_price=cost_price
-  where id='00000000-0000-4000-8000-000000000101'
-  returning id
-)
-insert into phase1_role_acceptance
-select 'bartender_direct_update_denied',count(*)=0,
-       format('Rows reachable by bartender UPDATE policy: %s.',count(*))
-from changed;
+-- Denied by RLS (0 rows) or, after S89 20260928095000, by the missing UPDATE
+-- grant (42501).
+do $bartender_direct_update$
+declare reached integer := 0;
+begin
+  begin
+    with changed as (
+      update public.inventory_items set cost_price=cost_price
+      where id='00000000-0000-4000-8000-000000000101'
+      returning id
+    )
+    select count(*) into reached from changed;
+  exception when insufficient_privilege then reached := 0;
+  end;
+  insert into phase1_role_acceptance
+  select 'bartender_direct_update_denied',reached=0,
+         format('Rows reachable by bartender UPDATE policy: %s.',reached);
+end
+$bartender_direct_update$;
 with removed as (
   delete from public.inventory_items
   where id='00000000-0000-4000-8000-000000000101'
