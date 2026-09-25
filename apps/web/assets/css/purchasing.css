@@ -62,6 +62,7 @@
 .po-stepper__input { width: 96px; text-align: center; }
 .po-stepper .atlas-icon-btn { width: var(--control-md, 40px); height: var(--control-md, 40px); border: 1px solid var(--line); background: var(--surface); }
 .po-stepper .atlas-icon-btn:hover:not(:disabled) { border-color: var(--line-strong); }
+@media (pointer: coarse) { .po-stepper .atlas-icon-btn { width: var(--touch); height: var(--touch); } }
 .po-noorder { margin-top: var(--s-5); }
 .po-noorder > summary { min-height: var(--touch); font: var(--type-label); cursor: pointer; }
 .po-noorder > form { margin-top: var(--s-3); }

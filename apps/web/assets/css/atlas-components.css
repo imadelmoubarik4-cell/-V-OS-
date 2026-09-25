@@ -71,7 +71,7 @@
 .page-head__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); flex: 0 1 auto; min-width: 0; max-width: 100%; }
 /* Text that carries user content wraps even a very long unbroken token inside
    its (min-width: 0) column instead of overflowing the page. */
-:is(.page-head__title, .page-head__sub, .atlas-row__title, .atlas-row__meta, .atlas-card__title, .atlas-card__body, .atlas-sheet__title, .atlas-sheet__desc, .atlas-sheet__body, .atlas-dialog__title, .atlas-dialog__body, .atlas-alert__title, .atlas-alert__body, .atlas-empty__title, .atlas-empty__text, .atlas-stat__detail, .atlas-table th) { overflow-wrap: anywhere; }
+:is(.page-head__title, .page-head__sub, .atlas-row__title, .atlas-row__meta, .atlas-card__title, .atlas-card__body, .atlas-sheet__title, .atlas-sheet__desc, .atlas-sheet__body, .atlas-dialog__title, .atlas-dialog__body, .atlas-alert__title, .atlas-alert__body, .atlas-empty__title, .atlas-empty__text, .atlas-stat__detail) { overflow-wrap: anywhere; }
 /* Page rhythm (spec §5.4): header → tabs 16, tabs → toolbar 20, toolbar → content 12. */
 .page-head + .atlas-tabs { margin-top: var(--s-4); }
 .page-head + .atlas-toolbar { margin-top: var(--s-5); }
@@ -950,6 +950,7 @@ html.atlas-reduce-motion :is(.is-linked-target, .atlas-table tr.is-linked-target
 }
 .atlas-table { width: 100%; border-collapse: separate; border-spacing: 0; font: var(--type-body); color: var(--text); }
 .atlas-table th {
+  overflow-wrap: break-word;   /* a long token wraps; never mid-word in a narrow column */
   position: sticky;
   top: var(--table-sticky-top, 0);
   z-index: 1;

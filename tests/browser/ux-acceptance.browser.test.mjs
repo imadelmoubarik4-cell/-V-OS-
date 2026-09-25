@@ -221,6 +221,14 @@ test('P1-8: every interactive element on the key phone screens has a 44 px touch
           if (await page.evaluate(() => document.body.dataset.atlasView) === 'dashboard' && route !== '#home') continue; // a manager page the role can't open
           for (const small of await smallTargets(page)) failures.push(`${user.role} ${route}: ${small}`);
         }
+        if (group === 'INV' && user.role === 'admin') {
+          // Receiving a delivery (the phone stepper).
+          await navigateTo(page, `#purchasing/order/${INV.po2}`);
+          await page.click('[data-po-receive]');
+          await page.waitForSelector('[data-po-rqty]');
+          await settle(page);
+          for (const small of await smallTargets(page)) failures.push(`admin receive: ${small}`);
+        }
       } finally { await close(); }
     }
   }
