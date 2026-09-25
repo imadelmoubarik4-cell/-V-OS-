@@ -66,6 +66,7 @@ test('web checkpoint has no missing local asset references', async () => {
     if (/^(?:https?:|#|data:|mailto:)/.test(reference)) continue;
     await assert.doesNotReject(access(new URL(reference.split(/[?#]/)[0], root)), `Missing ${reference}`);
   }
-  assert.match(html, /assets\/js\/import-center\.js/);
-  assert.match(html, /id="import-queue-file-input"/);
+  // S88: Import Center is the Data page (assets/js/data-workspace.js).
+  assert.match(html, /assets\/js\/data-workspace\.js/);
+  assert.doesNotMatch(html, /assets\/js\/import-center\.js/);
 });

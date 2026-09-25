@@ -18,7 +18,7 @@ async function open({ user = USERS.admin, hash = '#knowledge', viewport, backend
 test('staff library: required reading first, categories, no drafts', { skip }, async () => {
   const { page, record, close } = await open({ user: USERS.bartender });
   try {
-    assert.equal(await page.textContent('.page-head__sub'), '3 articles · 1 required for you');
+    assert.equal(await page.textContent('#knowledge-view .page-head__sub'), '3 articles · 1 required for you');
     const tabs = await page.$$eval('.kn-tabs a', (nodes) => nodes.map((node) => node.textContent.replace(/\s+/g, ' ').trim()));
     assert.deepEqual(tabs, ['Library', 'Required reading 1', 'Training']);
     assert.match(await page.textContent('#kn-due-title + .kn-list'), /Closing the bar[\s\S]*Required · not read/);

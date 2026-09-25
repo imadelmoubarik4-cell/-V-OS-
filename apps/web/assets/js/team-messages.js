@@ -1141,10 +1141,6 @@
     // Workspaces register their own link types with AtlasShell (Knowledge
     // articles, for example); otherwise the route in the chip's href is used.
     if (window.AtlasShell?.openLink?.(type, key, { source: 'team-messages' })) return true;
-    if (type === 'routine' && window.AtlasCheckpointALayout?.openRoutine) {
-      window.AtlasCheckpointALayout.openRoutine(key);
-      return true;
-    }
     return false;
   }
 
@@ -1261,7 +1257,8 @@
         unread: Number(channel.unread_count || 0),
         route: `#messages/${channel.key}`,
         lastMessageAt: channel.last_message?.created_at || null,
-        preview: channel.last_message ? previewOf(channel) : ''
+        preview: channel.last_message ? previewOf(channel) : '',
+        lastMessage: channel.last_message ? { id: channel.last_message.id || null, sender: channel.last_message.message_type === 'system' ? 'Atlas' : senderIdentity(channel.last_message).name, body: channel.last_message.deleted ? '' : String(channel.last_message.body || '').slice(0, 140), deleted: Boolean(channel.last_message.deleted) } : null
       })).filter((entry) => entry.unread > 0)
     };
   }

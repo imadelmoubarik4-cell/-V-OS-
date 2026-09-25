@@ -8,16 +8,15 @@
 // team removes one, lower (or delete) its ceiling in the same commit.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const WEB = 'apps/web';
 
 const CEILINGS = Object.freeze({
-  // E2: new-offer draft defaults (start/end) prefilled in the offer form.
-  'assets/js/settings-workspace.js': 4,
-  // E4: default time for a Brain marketing recommendation without one.
-  'assets/js/marketing-workspace.js': 1
+  // E5 (done, Team D): new shifts start at the saved opening time or empty.
+  // E4 (done, Team C): marketing no longer defaults a suggestion to '12:00'.
+  // E2 (done, Team A): settings offer drafts no longer prefill times.
 });
 
 // Time-of-day literals: '11:30', "22:00:00", `…T11:30:00`. Midnight ('00:00',
@@ -75,25 +74,31 @@ test('no browser file contains hard-coded service hours beyond the ratchet ceili
   }
 });
 
-test('Brain and the Home timeline carry no hard-coded hours or browser-zone clock', () => {
-  const brain = readFileSync(path.join(WEB, 'assets/js/brain.js'), 'utf8');
-  assert.equal(findings()['assets/js/brain.js'], undefined);
-  for (const forbidden of ['getHours()', 'getDay()', 'setHours(', 'toLocaleDateString(', "'Happy Hour'", 'Sunday beer', 'Late Happy Hour']) {
-    assert.ok(!brain.includes(forbidden), `brain.js must not contain ${forbidden}`);
+test('Home, Operations and Settings carry no hard-coded hours or browser-zone clock', () => {
+  // S88 Team A: Brain is retired; Home (home.js) owns the context line and timeline.
+  for (const file of ['assets/js/home.js', 'assets/js/operations.js', 'assets/js/settings-workspace.js', 'assets/js/system-workspace.js']) {
+    const source = readFileSync(path.join(WEB, file), 'utf8');
+    assert.equal(findings()[file], undefined, file);
+    for (const forbidden of ['getHours()', 'getDay()', 'getDate()', 'setHours(', 'toLocaleDateString(', 'toLocaleString(', "'Atlantic/Reykjavik'", "'Happy Hour'"]) {
+      assert.ok(!source.includes(forbidden), `${file} must not contain ${forbidden}`);
+    }
   }
-  assert.match(brain, /AtlasVenueClock/);
-  assert.match(brain, /Opening hours not set/);
-  assert.match(brain, /Opening hours unavailable/);
+  const home = readFileSync(path.join(WEB, 'assets/js/home.js'), 'utf8');
+  assert.match(home, /AtlasVenueClock/);
+  assert.match(home, /Opening hours not set/);
+  assert.match(home, /Opening hours unavailable/);
+  assert.match(home, /Opening hours aren’t set/);
+  assert.ok(!existsSync(path.join(WEB, 'assets/js/brain.js')), 'brain.js is retired');
 });
 
-test('index.html loads the venue clock after the shell and config, before brain.js', () => {
+test('index.html loads the venue clock after the shell and config, before Home', () => {
   const index = readFileSync(path.join(WEB, 'index.html'), 'utf8');
   const at = (needle) => index.indexOf(needle);
   const clock = at('<script src="assets/js/atlas-venue-clock.js?v=20260926-s88"></script>');
   assert.ok(clock > 0, 'atlas-venue-clock.js is linked with ?v=20260926-s88');
   assert.ok(at('assets/js/atlas-shell.js') < clock);
   assert.ok(at('<script src="config.js"></script>') < clock);
-  assert.ok(clock < at('assets/js/brain.js'));
+  assert.ok(clock < at('assets/js/home.js'));
   assert.equal(index.split('atlas-venue-clock.js').length - 1, 1, 'linked once');
 });
 

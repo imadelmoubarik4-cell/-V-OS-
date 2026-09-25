@@ -18,7 +18,7 @@ async function open({ user = USERS.admin, hash = '#shifts', viewport, backend = 
 test('manager week: grid with people and days, today marked, summary line and unpublished shifts', { skip }, async () => {
   const { page, record, close } = await open();
   try {
-    assert.equal(await page.textContent('.page-head__title'), 'Shifts');
+    assert.equal(await page.textContent('#shifts-view .page-head__title'), 'Shifts');
     assert.equal(await page.textContent('[data-shifts-summary]'), '21–27 September · 10 shifts · 77.5 h · 2 awaiting confirmation');
     const days = await page.$$eval('.shifts-grid__day', (nodes) => nodes.map((node) => node.textContent.replace(/\s+/g, ' ').trim()));
     assert.deepEqual(days.slice(0, 2), ['Mon 21', 'Tue 22']);
@@ -33,7 +33,8 @@ test('manager week: grid with people and days, today marked, summary line and un
     // A conflict is explained, not colour-only.
     assert.match(await page.getAttribute('.shift-chip.has-warning', 'aria-label'), /Marked unavailable on this day|Change requested/);
     assert.deepEqual(record.pageErrors, []);
-    assert.equal(requestsTo(record, 'atlas-shifts', 'snapshot').length, 1);
+    // Shifts asks once; Home's own summary (home.js) may ask for the same week once.
+    assert.ok(requestsTo(record, 'atlas-shifts', 'snapshot').length <= 2);
   } finally { await close(); }
 });
 
@@ -175,7 +176,7 @@ test('empty week offers Copy last week; the API failing shows the last data or a
       backend.status = 200;
       await page.click('[data-shifts-retry]');
       await page.waitForSelector('.shifts-grid');
-      assert.equal(requestsTo(record, 'atlas-shifts', 'snapshot').length, 2);
+      assert.ok(requestsTo(record, 'atlas-shifts', 'snapshot').length >= 2, 'Try again asks the server again');
     } finally { await close(); }
   }
 });

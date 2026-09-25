@@ -3,7 +3,8 @@
 // notifications feed stay current outside Messages. While Messages is open it
 // reuses that page's snapshot so this poll never races its read cursor.
 //
-// Read API: count() · conversations() → [{ id, name, unread, route, lastMessageAt }]
+// Read API: count() · conversations() → [{ id, name, unread, route, lastMessageAt,
+// lastMessage: { id, sender, body, deleted } | null }]
 // · activeMembers() · refresh() · clear(). Each change is announced on the
 // shell as 'messages:unread' { total, conversations }.
 (function () {
@@ -18,6 +19,7 @@
     authSubscription: null,
     lastTotal: 0,
     conversations: [],
+    loaded: false,
     activeMembers: null,
     initialized: false
   };
@@ -48,6 +50,24 @@
     return Math.min(9999, Math.floor(parsed));
   }
 
+  // The sender label never shows an address (S87): 'sara.bartender@…' reads 'Sara Bartender'.
+  function safePersonLabel(value) {
+    const text = String(value || '').trim();
+    if (!text || !text.includes('@')) return text;
+    const words = text.split('@')[0].replace(/\d+$/, '').split(/[._+-]+/).filter(Boolean);
+    return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  }
+
+  function lastMessageOf(message) {
+    if (!message) return null;
+    return {
+      id: message.id || null,
+      sender: message.message_type === 'system' ? 'Atlas' : safePersonLabel(message.sender_label),
+      body: message.deleted ? '' : String(message.body || '').slice(0, 140),
+      deleted: Boolean(message.deleted)
+    };
+  }
+
   function conversationsFrom(channels) {
     return (Array.isArray(channels) ? channels : [])
       .map((channel) => ({
@@ -55,19 +75,23 @@
         name: String(channel.name || ''),
         unread: normalizeTotal(channel.unread_count),
         route: `#messages/${encodeURIComponent(String(channel.key || ''))}`,
-        lastMessageAt: channel.last_message?.created_at || null
+        lastMessageAt: channel.last_message?.created_at || null,
+        lastMessage: lastMessageOf(channel.last_message)
       }))
       .filter((entry) => entry.id && entry.unread > 0);
   }
 
   // The badge itself is rendered by the shell chrome from count(); this only
   // records the numbers and tells the shell they changed.
-  function setUnread(total, conversations) {
+  // loaded() turns true once a real snapshot (the server's or the open
+  // Messages page's) has been applied; a signed-out reset does not count.
+  function setUnread(total, conversations, { fromSnapshot = false } = {}) {
     const next = normalizeTotal(total);
     const list = Array.isArray(conversations) ? conversations : [];
     const changed = next !== state.lastTotal || JSON.stringify(list) !== JSON.stringify(state.conversations);
     state.lastTotal = next;
     state.conversations = list;
+    state.loaded = fromSnapshot;
     if (!changed) return;
     window.AtlasShell?.emit?.('messages:unread', { total: next, conversations: list });
   }
@@ -118,7 +142,8 @@
       }
       return {
         total: normalizeTotal(payload?.snapshot?.summary?.total_unread),
-        conversations: conversationsFrom(payload?.snapshot?.channels)
+        conversations: conversationsFrom(payload?.snapshot?.channels),
+        fromSnapshot: Boolean(payload?.snapshot)
       };
     } finally {
       window.clearTimeout(timer);
@@ -134,14 +159,14 @@
     // While Messages is open, reuse its current full snapshot so the background
     // poll does not race against the channel mark-as-read request.
     if (teamIsVisible() && window.AtlasTeamMessages?.snapshot?.()) {
-      setUnread(window.AtlasTeamMessages.unreadCount?.() || 0, conversationsFrom(window.AtlasTeamMessages.snapshot()?.channels));
+      setUnread(window.AtlasTeamMessages.unreadCount?.() || 0, conversationsFrom(window.AtlasTeamMessages.snapshot()?.channels), { fromSnapshot: true });
       return;
     }
 
     state.inFlight = true;
     try {
       const result = await fetchUnread();
-      setUnread(result.total, result.conversations);
+      setUnread(result.total, result.conversations, { fromSnapshot: result.fromSnapshot });
     } catch (error) {
       if (!options.silent) console.warn('Messages unread count could not refresh.');
     } finally {
@@ -199,7 +224,8 @@
     window.AtlasShell?.on?.('messages:unread', (detail) => {
       if (!detail || !teamIsVisible()) return;
       state.lastTotal = normalizeTotal(detail.total);
-      state.conversations = (detail.conversations || []).map(({ id, name, unread, route, lastMessageAt }) => ({ id, name, unread, route, lastMessageAt }));
+      state.loaded = true;
+      state.conversations = (detail.conversations || []).map(({ id, name, unread, route, lastMessageAt, lastMessage }) => ({ id, name, unread, route, lastMessageAt, lastMessage: lastMessage || null }));
     });
 
     if (!subscribeToAuth()) {
@@ -218,6 +244,7 @@
   window.AtlasTeamUnreadBadge = {
     refresh: () => refreshUnread(),
     count: () => state.lastTotal,
+    loaded: () => state.loaded,
     conversations: () => state.conversations.map((entry) => ({ ...entry })),
     activeMembers: () => state.activeMembers,
     clear: () => setUnread(0, [])

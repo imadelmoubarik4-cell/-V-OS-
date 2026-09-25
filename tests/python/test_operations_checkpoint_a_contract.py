@@ -9,7 +9,8 @@ SETTINGS_MIGRATION = (ROOT / "supabase/migrations/20260803014251_atlas_operation
 EDGE_FUNCTION = (ROOT / "supabase/functions/atlas-operations-checkpoint-a/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
-BROWSER_MODULE = (ROOT / "apps/web/assets/js/operations-checkpoint-a.js").read_text()
+BROWSER_MODULE = (ROOT / "apps/web/assets/js/operations.js").read_text()
+INDEX = (ROOT / "apps/web/index.html").read_text()
 
 
 class OperationsCheckpointAContractTests(unittest.TestCase):
@@ -94,7 +95,9 @@ class OperationsCheckpointAContractTests(unittest.TestCase):
 
     def test_browser_receives_no_service_role_or_direct_database_access(self):
         self.assertIn("OPERATIONS_CHECKPOINT_A_API", BROWSER_CONFIG)
-        self.assertIn("operations-checkpoint-a.js", BROWSER_CONFIG)
+        # S88 Team A: one Operations module (operations.js), loaded by index.html.
+        self.assertIn("assets/js/operations.js", INDEX)
+        self.assertNotIn("operations-checkpoint-a.js", BROWSER_CONFIG)
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER_MODULE)
         self.assertIsNone(re.search(r"(?:atlasSupabase|\bsb|\bclient)\.from\s*\(", BROWSER_MODULE))
         self.assertIn("No inventory quantity change from this module", BROWSER_MODULE)

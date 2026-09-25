@@ -31,8 +31,8 @@ import { captureFixtures, FROZEN_NOW } from './capture-fixtures.mjs';
 
 const HEIGHTS = { 1440: 900, 1024: 768, 768: 1024, 390: 844 };
 export const DEFAULT_VIEWS = [
-  'dashboard', 'operations', 'inventory', 'movements', 'waste', 'recipes', 'suppliers', 'imports', 'team',
-  'team-profiles', 'shifts', 'knowledge', 'brain', 'business', 'reports', 'marketing', 'system', 'settings', 'sprint3-review'
+  'dashboard', 'operations', 'inventory', 'movements', 'waste', 'recipes', 'suppliers', 'data', 'team',
+  'team-profiles', 'shifts', 'knowledge', 'brain', 'reports', 'marketing', 'system', 'settings'
 ];
 
 // Extra open states: [label, view, action(page)].

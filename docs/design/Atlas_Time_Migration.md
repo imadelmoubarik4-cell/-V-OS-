@@ -103,19 +103,27 @@ Line numbers are as of this commit.
 
 | Done | File:line | Current | Change to |
 | --- | --- | --- | --- |
-| [ ] | `index.html:2131-2145` `formatVenueDay()` / `venueGreeting()` | literal zone; `getHours()` fallback | `formatDate(new Date(), { long: true })`; `parts().hour` |
-| [ ] | `brain.js:171` `readiness()` fallback | invents `opening: { complete: 0, total: 9 }` | `opening: null` (unknown) until the server checklist (contract §2) answers |
-| [ ] | `brain-daily-briefing-v2.js:39-45` `formatDateTime` | `getDate/getHours` (browser zone) | `formatDateTime` |
-| [ ] | `operations.js:51-54` `dateKey()` | browser-local Y-M-D | `today()` (removed with the localStorage checklist, contract §2) |
-| [ ] | `operations.js:317` date label | `toLocaleDateString` without zone | `formatDate(today(), { long: true })` |
-| [ ] | `operations.js:48` money | `… ISK` | `formatKr` |
-| [ ] | `operations-checkpoint-a.js:46-52` `formatDateTime` | `getDate/getHours` | `formatDateTime` |
-| [ ] | `settings-workspace.js:150-158` `formatDateTime` | literal zone | `formatDateTime` |
-| [ ] | `settings-workspace.js:437`, `:778` | "All times use Atlantic/Reykjavik" text | `timeZone()` (+ "default" when `timezoneIsDefault()`) |
-| [ ] | `settings-workspace.js:1133` preferences timezone default | literal zone | `timeZone()` |
-| [ ] | `settings-workspace.js:452-453`, `:1175-1176` **ratchet (4)** | new offer prefilled 15:00–18:00 | empty time fields (required) — hours come from the manager |
-| [ ] | `system-workspace.js:125-135`, `:145` | literal zone | `formatDateTime`, `timeZone()` |
-| [ ] | `system-workspace.js:150-165` `relativeTime` | own relative formatter | `formatRelative` |
+| [x] | `index.html:2131-2145` `formatVenueDay()` / `venueGreeting()` | literal zone; `getHours()` fallback | `formatDate(new Date(), { long: true })`; `parts().hour` |
+| [x] | `brain.js:171` `readiness()` fallback | invents `opening: { complete: 0, total: 9 }` | `opening: null` (unknown) until the server checklist (contract §2) answers |
+| [x] | `brain-daily-briefing-v2.js:39-45` `formatDateTime` | `getDate/getHours` (browser zone) | `formatDateTime` |
+| [x] | `operations.js:51-54` `dateKey()` | browser-local Y-M-D | `today()` (removed with the localStorage checklist, contract §2) |
+| [x] | `operations.js:317` date label | `toLocaleDateString` without zone | `formatDate(today(), { long: true })` |
+| [x] | `operations.js:48` money | `… ISK` | `formatKr` |
+| [x] | `operations-checkpoint-a.js:46-52` `formatDateTime` | `getDate/getHours` | `formatDateTime` |
+| [x] | `settings-workspace.js:150-158` `formatDateTime` | literal zone | `formatDateTime` |
+| [x] | `settings-workspace.js:437`, `:778` | "All times use Atlantic/Reykjavik" text | `timeZone()` (+ "default" when `timezoneIsDefault()`) |
+| [x] | `settings-workspace.js:1133` preferences timezone default | literal zone | `timeZone()` |
+| [x] | `settings-workspace.js:452-453`, `:1175-1176` **ratchet (4)** | new offer prefilled 15:00–18:00 | empty time fields (required) — hours come from the manager |
+| [x] | `system-workspace.js:125-135`, `:145` | literal zone | `formatDateTime`, `timeZone()` |
+| [x] | `system-workspace.js:150-165` `relativeTime` | own relative formatter | `formatRelative` |
+
+S88 Team A: every row above is done. `formatVenueDay()`/`venueGreeting()` and `brain*.js`,
+`operations-checkpoint-a.js` are deleted; Home (`home.js`) greets with `parts().hour` and dates with
+`formatDate`; readiness keeps `opening: null` until the server checklist answers; Operations reads the
+business date from the server checklist (no device checklist, no money formatting); Settings and
+System health format through `AtlasVenueClock` (`formatDateTime`, `formatRelative`, `timeZone()`,
+`timezoneIsDefault()`, `formatKr`), and a new offer starts with empty times. No Team A file contains a
+literal zone or hour default (`tests/node/venue-hours-ratchet-s88.test.js`).
 
 ### Team B — Inventory · Purchasing · Stock count
 
@@ -135,21 +143,29 @@ Line numbers are as of this commit.
 
 | Done | File:line | Current | Change to |
 | --- | --- | --- | --- |
-| [ ] | `reports-workspace.js:1076-1088` comparison period | **wrong across months** (see §3) | `compareRange({ start, end })` |
-| [ ] | `reports-workspace.js:92-104`, `:106-114`, `:121` | literal zone | `formatDateTime` / `formatDate` |
-| [ ] | `reports-workspace.js:891` | literal zone fallback | `snapshot.timezone \|\| timeZone()` |
-| [ ] | `reports-workspace.js:77` money | `… ISK` | `formatKr` |
-| [ ] | `business.js:56-62` `periodStart()` | browser-local midnight, `setHours/setDate` | `zonedToInstant(addDays(today(), 1 - n), '00:00')` |
-| [ ] | `business.js:223-247` `monthKey` / `monthLabel` / 6-month buckets | browser-local months | `monthKey()`, buckets from `monthRange` |
-| [ ] | `business.js:24`, `recipes.js:57`, `atlas-calculations.js:155` money | `… ISK` (`en-US` grouping) | `formatKr` (change `AtlasCalculations.formatIsk` to delegate, then drop the fallbacks) |
-| [ ] | `import-center.js:42-45` `formatDate` | `toLocaleString([])` | `formatDateTime` (display only; `:217-218` UTC storage path stays) |
-| [ ] | `sprint3-review.js:53-57` `formatDate` | `toLocaleString` without zone | `formatDateTime` |
-| [ ] | `marketing-workspace.js:83-99` `dateKey` / `currentMonthRange` / `shiftMonth` | browser-local `getDate` / `new Date(y, m, d)` | `monthRange`, `addDays` |
-| [ ] | `marketing-workspace.js:101-109` `formatDate` | no `timeZone` | `formatDate` / `formatDateTime` |
-| [ ] | `marketing-workspace.js:116-128` `toLocalInput` / `inputToIso` | browser offset — **stores wrong instants** for non-Iceland browsers | `localInputValue` / `fromLocalInput` |
-| [ ] | `marketing-workspace.js:130-135` `venueDate()` | duplicate (correct) with literal zone | `venueDate()` |
-| [ ] | `marketing-workspace.js:139` **ratchet (1)** | default suggested time `'12:00'` | leave the time empty when the recommendation has none |
-| [ ] | `marketing-workspace.js:382-397`, `:413` calendar grid | `getDay/setDate/getDate` browser-local | date keys via `startOfWeek`, `addDays`, `weekday` |
+| [x] | `reports-workspace.js:1076-1088` comparison period | **wrong across months** (see §3) | `compareRange({ start, end })` |
+| [x] | `reports-workspace.js:92-104`, `:106-114`, `:121` | literal zone | `formatDateTime` / `formatDate` |
+| [x] | `reports-workspace.js:891` | literal zone fallback | `snapshot.timezone \|\| timeZone()` |
+| [x] | `reports-workspace.js:77` money | `… ISK` | `formatKr` |
+| [x] | `business.js:56-62` `periodStart()` | browser-local midnight, `setHours/setDate` | `zonedToInstant(addDays(today(), 1 - n), '00:00')` |
+| [x] | `business.js:223-247` `monthKey` / `monthLabel` / 6-month buckets | browser-local months | `monthKey()`, buckets from `monthRange` |
+| [x] | `business.js:24`, `recipes.js:57`, `atlas-calculations.js:155` money | `… ISK` (`en-US` grouping) | `formatKr` (change `AtlasCalculations.formatIsk` to delegate, then drop the fallbacks) |
+| [x] | `import-center.js:42-45` `formatDate` | `toLocaleString([])` | `formatDateTime` (display only; `:217-218` UTC storage path stays) |
+| [x] | `sprint3-review.js:53-57` `formatDate` | `toLocaleString` without zone | `formatDateTime` |
+| [x] | `marketing-workspace.js:83-99` `dateKey` / `currentMonthRange` / `shiftMonth` | browser-local `getDate` / `new Date(y, m, d)` | `monthRange`, `addDays` |
+| [x] | `marketing-workspace.js:101-109` `formatDate` | no `timeZone` | `formatDate` / `formatDateTime` |
+| [x] | `marketing-workspace.js:116-128` `toLocalInput` / `inputToIso` | browser offset — **stores wrong instants** for non-Iceland browsers | `localInputValue` / `fromLocalInput` |
+| [x] | `marketing-workspace.js:130-135` `venueDate()` | duplicate (correct) with literal zone | `venueDate()` |
+| [x] | `marketing-workspace.js:139` **ratchet (1)** | default suggested time `'12:00'` | leave the time empty when the recommendation has none |
+| [x] | `marketing-workspace.js:382-397`, `:413` calendar grid | `getDay/setDate/getDate` browser-local | date keys via `startOfWeek`, `addDays`, `weekday` |
+
+Team C notes (S88): Reports computes its period in the venue zone and asks for the
+`compareRange` comparison (`preset=custom`, `comparison=custom`); `atlas-reports` accepts a
+whole-previous-month comparison of a whole-month period. `business.js` is retired: its
+figures are Reports › Overview (`reports-overview.js`, period from venue date keys).
+`import-center.js` and `sprint3-review.js` are retired into `data-workspace.js` (venue
+`formatDateTime` / `formatRelative`). `AtlasCalculations.formatIsk` delegates to
+`AtlasFormat.money` when the clock is loaded. Marketing's ratchet row is removed (0).
 
 ### Team D — Shifts · Team · Messages · Knowledge
 
@@ -177,8 +193,8 @@ remains in the module.
 | [ ] | `atlas-search.js:16`, `:105-110` `venueDate(offset)` | duplicate (correct), literal zone | `today()` / `addDays(today(), n)` ("who works tomorrow" = `tomorrow()`) |
 | [ ] | `atlas-search.js:317` week bounds | `toISOString().slice(0, 10)` | `startOfWeek`, `addDays` |
 | [ ] | `atlas-chrome.js:505-513` `relativeTime` (notifications) | own relative formatter, no zone | `formatRelative` |
-| [ ] | `brain-phase3.js:40-46` `formatDateTime` (AI) | `getDate/getHours` | `formatDateTime` |
-| [ ] | `brain-phase3.js:407-418` defer until (AI) | `new Date(datetimeLocal).toISOString()` — **stores wrong instant** | `fromLocalInput(value)` (and `localInputValue` when prefilling) |
+| [x] | `brain-phase3.js:40-46` `formatDateTime` (AI) | `getDate/getHours` | `formatDateTime` (file retired with the Brain page, S88 Team A; Atlas AI › Decisions owns these) |
+| [x] | `brain-phase3.js:407-418` defer until (AI) | `new Date(datetimeLocal).toISOString()` — **stores wrong instant** | `fromLocalInput(value)` (and `localInputValue` when prefilling) (file retired with the Brain page, S88 Team A; Atlas AI › Decisions owns these) |
 
 ## 6. Server call sites (not browser; for reference)
 

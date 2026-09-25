@@ -63,8 +63,8 @@ test('one calculation rule gives saved and refetched fixture values', () => {
   assert.equal(calculator.formatIsk(saved.financials.perServing), '200 ISK');
 });
 
-test('Recipes, Brain, and Business Intelligence delegate to the shared calculation rule', () => {
-  for (const source of [read('apps/web/assets/js/recipes.js'), read('apps/web/assets/js/brain.js'), read('apps/web/assets/js/business.js')]) {
+test('Recipes and Reports › Overview delegate to the shared calculation rule (Brain retired in S88)', () => {
+  for (const source of [read('apps/web/assets/js/recipes.js'), read('apps/web/assets/js/reports-overview.js')]) {
     assert.match(source, /AtlasCalculations/);
   }
   assert.match(app, /assets\/js\/atlas-calculations\.js/);
@@ -89,7 +89,8 @@ test('shared launch design uses blue actions, compact search, visible focus, and
   assert.match(base, /:focus-visible/);
   assert.match(components, /input\[type="search"\]/);
   assert.match(base, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(design, /#home-focus::after/);
+  // S88 Team A: the pulsing Home focus card is retired (home.css has no animation).
+  assert.doesNotMatch(read('apps/web/assets/css/home.css'), /@keyframes|animation/);
   assert.match(app, /assets\/css\/atlas-base\.css\?v=20260926-s88/);
   assert.match(app, /assets\/css\/atlas-components\.css\?v=20260926-s88/);
 });

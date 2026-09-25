@@ -9,7 +9,8 @@ CSS_FRAGMENTS = sorted((ROOT / "apps/web/assets/css/legacy").glob("s38-app-remed
 JS = ROOT / "apps/web/assets/js/s38-app-remediation.js"
 # S88: each S38 fix lives in the module that renders the markup.
 SCANNER = ROOT / "apps/web/assets/js/inventory-scanner.js"
-LAYOUT = ROOT / "apps/web/assets/js/operations-checkpoint-a-layout.js"
+# S88 Team A: Home (home.js) owns the attention rows the retired Checkpoint A layout drew.
+HOME = ROOT / "apps/web/assets/js/home.js"
 PURCHASING = ROOT / "apps/web/assets/js/purchase-orders.js"
 MESSAGES = ROOT / "apps/web/assets/js/team-messages.js"
 SHIFTS = ROOT / "apps/web/assets/js/shifts-workspace.js"
@@ -25,7 +26,7 @@ class S38AppRemediationTests(unittest.TestCase):
         cls.javascript = JS.read_text(encoding="utf-8")
         cls.checklist = CHECKLIST.read_text(encoding="utf-8")
         cls.decisions = DECISIONS.read_text(encoding="utf-8")
-        cls.owners = {path.name: path.read_text(encoding="utf-8") for path in (SCANNER, LAYOUT, PURCHASING, MESSAGES, SHIFTS)}
+        cls.owners = {path.name: path.read_text(encoding="utf-8") for path in (SCANNER, HOME, PURCHASING, MESSAGES, SHIFTS)}
 
     def test_remediation_script_no_longer_patches_the_page(self):
         # The fixes moved to their owners; the script keeps only its marker.
@@ -56,11 +57,9 @@ class S38AppRemediationTests(unittest.TestCase):
             "--s38-card: #ffffff",
             "prefers-reduced-motion",
             "s38-attention-pulse",
-            ".checkpoint-a-compact-card::before",
             ".inventory-scanner-panel",
             ".inventory-scanner-quantity",
             ".purchasing-workspace-tabs button.active",
-            ".brain-hero",
             ".settings-hero",
         ):
             self.assertIn(token, self.css)
@@ -72,21 +71,16 @@ class S38AppRemediationTests(unittest.TestCase):
             self.assertNotIn(retired, self.css)
 
     def test_home_attention_and_removed_brain_card_follow_owner_contract(self):
-        operations_layout = self.owners["operations-checkpoint-a-layout.js"]
-        for contract in (
-            "setAttentionPulse",
-            "s38-attention-pulse",
-            "element.dataset.s38AttentionSignature",
-        ):
-            self.assertIn(contract, operations_layout)
-        self.assertIn("setAttentionPulse(prompt, prompt.dataset.attentionRequired === 'true')", operations_layout)
-        self.assertIn("animation: s38-attention-pulse 3.2s ease-in-out 2", self.css)
-        self.assertIn('data-attention-required="${attentionRequired}"', operations_layout)
-        self.assertIn("document.getElementById('home-focus') || document.getElementById('home-metrics')", operations_layout)
-        self.assertIn("homeAnchor.insertAdjacentHTML('beforebegin', markup)", operations_layout)
+        # S88 Team A: Home lists what needs attention as rows from every module
+        # (AtlasShell.home.contribute); the Brain page and its card are retired.
+        home = self.owners["home.js"]
+        self.assertIn("shell()?.home?.rows?.({ role: role() })", home)
+        self.assertIn("Nothing needs you right now", home)
+        self.assertNotIn("s38-attention-pulse", home)
         self.assertNotIn('id="home-focus"', self.index)
         self.assertNotIn("installHomeMark", self.javascript)
         self.assertNotIn("getElementById('home-focus').style.display", self.index)
+        self.assertFalse((ROOT / "apps/web/assets/js/brain.js").exists())
 
     def test_scanner_controls_are_wired(self):
         scanner_css = (ROOT / "apps/web/assets/css/inventory-scanner.css").read_text(encoding="utf-8")
@@ -125,7 +119,9 @@ class S38AppRemediationTests(unittest.TestCase):
         chrome = (ROOT / "apps/web/assets/js/atlas-chrome.js").read_text(encoding="utf-8")
         self.assertIn("shell.notify.setPanel(notifyPanel)", chrome)
         self.assertIn("navigate('#settings/notifications', action)", chrome)
-        self.assertIn("shell.notify.contribute('messages-unread'", chrome)
+        # S88 Team A: one notification item per conversation with unread messages.
+        self.assertNotIn("shell.notify.contribute('messages-unread'", chrome)
+        self.assertIn("notify.contribute('messages', messageItems)", self.owners["home.js"])
 
     def test_existing_server_backed_features_remain_present(self):
         purchase_orders = (ROOT / "apps/web/assets/js/purchase-orders.js").read_text(encoding="utf-8")
@@ -170,7 +166,7 @@ class S38AppRemediationTests(unittest.TestCase):
         shifts = (ROOT / "apps/web/assets/js/shifts-workspace.js").read_text(encoding="utf-8")
         recipes = (ROOT / "apps/web/assets/js/recipes.js").read_text(encoding="utf-8")
         knowledge = (ROOT / "apps/web/assets/js/knowledge-workspace.js").read_text(encoding="utf-8")
-        brain = (ROOT / "apps/web/assets/js/brain.js").read_text(encoding="utf-8")
+        home = self.owners["home.js"]
         settings = (ROOT / "apps/web/assets/js/settings-workspace.js").read_text(encoding="utf-8")
 
         self.assertNotIn("VÁ Bar · Staff only", self.index)
@@ -190,15 +186,15 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("function openShiftEditor({ date, shift = null } = {})", shifts)
         self.assertIn("addShift: (date) => openShiftEditor({ date })", shifts)
         self.assertIn('data-shifts-mode="month"', shifts)
-        self.assertIn("<details class=\"recipe-foundation-card", recipes)
+        # S88 Recipes (spec §7.7): tiles with availability replace the foundation cards.
+        self.assertIn("class=\"recipe-tile\"", recipes)
+        self.assertNotIn("recipe-foundation-card", recipes)
         self.assertIn("data-knowledge-editor-form", knowledge)
-        self.assertIn("brain-intelligence-grid", brain)
-        self.assertIn("home-timeline", brain)
-        self.assertIn("if (focusList) {", brain)
-        self.assertNotIn("if (!focusList) return;", brain)
-        self.assertIn("homeTimeline.style.display = view === 'dashboard' ? 'block' : 'none'", self.index)
-        self.assertIn("homeTimeline.setAttribute('aria-hidden', String(view !== 'dashboard'))", self.index)
-        self.assertIn("Master notification control", settings)
+        # Today's timeline belongs on Home (owner decision); it renders inside home.js.
+        self.assertIn("Opening and closing", home)
+        # One master On/Off control for notifications on this device.
+        self.assertIn("Turn notifications on", settings)
+        self.assertIn("Turn notifications off", settings)
         # The message history owns its scrolling (now the Messages module sheet).
         messages_css = (ROOT / "apps/web/assets/css/team-messages.css").read_text(encoding="utf-8")
         self.assertIn(".msg-thread__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto;", messages_css)

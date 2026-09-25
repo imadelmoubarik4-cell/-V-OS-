@@ -18,8 +18,8 @@ async function open({ user = USERS.admin, hash = '#team', viewport, status = 200
 test('admin directory: table with role, today’s shift, training and contact state', { skip }, async () => {
   const { page, record, close } = await open();
   try {
-    assert.equal(await page.textContent('.page-head__title'), 'Team');
-    assert.match(await page.textContent('.page-head__sub'), /^4 people · 1 with training due$/);
+    assert.equal(await page.textContent('#team-profiles-view .page-head__title'), 'Team');
+    assert.match(await page.textContent('#team-profiles-view .page-head__sub'), /^4 people · 1 with training due$/);
     const headers = await page.$$eval('.team-table th:not(.col-actions)', (nodes) => nodes.map((node) => node.textContent.trim()).filter(Boolean));
     assert.deepEqual(headers, ['Person', 'Role', 'On shift today', 'Training', 'Emergency contact']);
     const sara = await page.$eval(`tr[data-team-profile-select="${USERS.bartender.id}"]`, (row) => row.innerText.replace(/\s+/g, ' ').trim());

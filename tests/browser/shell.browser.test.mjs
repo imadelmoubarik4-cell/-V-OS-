@@ -58,7 +58,7 @@ test('sidebar navigation shows exactly one workspace, updates the address bar an
   const { page, record, close } = await launch();
   try {
     // Runtime modules register their views after window load.
-    await page.waitForFunction(() => ['marketing', 'system', 'team-profiles', 'operations', 'brain', 'business'].every((view) => window.AtlasShell.views().includes(view)));
+    await page.waitForFunction(() => ['marketing', 'team-profiles', 'operations', 'data'].every((view) => window.AtlasShell.views().includes(view)));
     // [view, root, address, page title (spec names), active sidebar item]
     const expectations = [
       ['inventory', 'inventory-view', '#inventory', 'Inventory', 'inventory'],
@@ -68,11 +68,10 @@ test('sidebar navigation shows exactly one workspace, updates the address bar an
       ['team', 'team-view', '#messages', 'Messages', 'team'],
       ['shifts', 'shifts-view', '#shifts', 'Shifts', 'shifts'],
       ['knowledge', 'knowledge-view', '#knowledge', 'Knowledge', 'knowledge'],
-      ['brain', 'brain-view', '#brain', 'Home', 'dashboard'],
-      ['business', 'business-view', '#business', 'Reports', 'reports'],
+      // S88: Business Intelligence is Reports › Overview; Data replaces Import Center.
       ['reports', 'reports-view', '#reports', 'Reports', 'reports'],
+      ['data', 'data-view', '#data', 'Data', 'data'],
       ['marketing', 'marketing-view', '#marketing', 'Marketing', 'marketing'],
-      ['system', 'system-view', '#settings/system', 'Settings', 'settings'],
       ['settings', 'settings-view', '#settings', 'Settings', 'settings'],
       ['dashboard', 'dashboard-view', '#home', 'Home', 'dashboard']
     ];
@@ -88,6 +87,14 @@ test('sidebar navigation shows exactly one workspace, updates the address bar an
     }
     const changes = await page.evaluate(() => window.__viewChanges);
     assert.deepEqual(changes.slice(-expectations.length), expectations.map(([view]) => view), 'atlas:view-change fires once per navigation');
+    // S88 Team A: the Brain page and the System page are retired. Their links
+    // open Home and Settings › System health.
+    assert.equal(await page.evaluate(() => window.AtlasShell.views().some((view) => view === 'brain' || view === 'system')), false);
+    await page.evaluate(() => window.AtlasShell.navigate('#settings/system'));
+    await page.waitForTimeout(200);
+    assert.equal((await state(page)).view, 'settings');
+    assert.equal((await state(page)).hash, '#settings/system');
+    assert.ok(await page.$('[data-settings-system-host]'), 'System health opens inside Settings');
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });
@@ -121,7 +128,7 @@ test('route table: #messages is Messages, #team is the Team directory, legacy ha
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'team');
     await page.waitForFunction(() => window.AtlasShell.views().includes('team-profiles'));
     for (const [hash, view] of [['#team', 'team-profiles'], ['#dashboard', 'dashboard'], ['#waste', 'waste'], ['#team-profiles', 'team-profiles'],
-      ['#home', 'dashboard'], ['#sprint3-review', 'sprint3-review'], ['#business', 'business'], ['#system', 'system']]) {
+      ['#home', 'dashboard'], ['#sprint3-review', 'data'], ['#business', 'reports'], ['#imports', 'data'], ['#system', 'settings'], ['#brain', 'dashboard']]) {
       await page.evaluate((target) => { location.hash = target; }, hash);
       await page.waitForFunction((expected) => document.body.dataset.atlasView === expected, view);
     }
@@ -153,10 +160,10 @@ test('Back and Forward move between opened workspaces', { skip }, async () => {
 test('each navigation renders its view once and Home composes its sections in order', { skip }, async () => {
   const { page, record, close } = await launch();
   try {
-    await page.waitForFunction(() => window.AtlasShell.homeSections().includes('checkpoint-a-prompt'));
-    assert.deepEqual(await page.evaluate(() => window.AtlasShell.homeSections()),
-      ['core', 'operations', 'brain', 'business', 'checkpoint-a', 'checkpoint-a-prompt']);
-    for (const view of ['operations', 'brain', 'business', 'recipes', 'suppliers', 'dashboard']) {
+    // S88 Team A: Home is one section (home.js); modules contribute rows, not DOM.
+    await page.waitForFunction(() => window.AtlasShell.homeSections().includes('home'));
+    assert.deepEqual(await page.evaluate(() => window.AtlasShell.homeSections()), ['home']);
+    for (const view of ['operations', 'recipes', 'suppliers', 'dashboard']) {
       const before = await page.evaluate(() => window.AtlasShell.debug());
       await clickNav(page, view);
       const after = await page.evaluate(() => window.AtlasShell.debug());
@@ -166,27 +173,22 @@ test('each navigation renders its view once and Home composes its sections in or
       assert.deepEqual(shows.map((event) => event.view), [view], `${view}: one view:show`);
       if (view === 'dashboard') {
         assert.equal(after.homeRenders - before.homeRenders, 1, 'Home composed once');
-        for (const section of ['core', 'operations', 'brain', 'business', 'checkpoint-a', 'checkpoint-a-prompt']) {
-          assert.equal((after.home[section] || 0) - (before.home[section] || 0), 1, `${section} rendered once`);
-        }
+        assert.equal((after.home.home || 0) - (before.home.home || 0), 1, 'home rendered once');
       }
     }
-    // Home was composed in registration order: the base metrics first, then
-    // Brain's timeline card placed right after them, visible only on Home.
     const composed = await page.evaluate(() => new Promise((resolve) => {
       window.AtlasShell.once('home:rendered', (detail) => resolve({
         sections: detail.sections,
-        timelineAfterMetrics: document.getElementById('home-metrics')?.nextElementSibling?.id === 'home-timeline',
-        timelineVisible: getComputedStyle(document.getElementById('home-timeline')).display !== 'none'
+        attention: Boolean(document.querySelector('#dashboard-view .home-attention')),
+        timeline: Boolean(document.querySelector('#dashboard-view #home-timeline'))
       }));
       window.renderAtlasHome();
     }));
-    assert.deepEqual(composed.sections, ['core', 'operations', 'brain', 'business', 'checkpoint-a', 'checkpoint-a-prompt']);
-    assert.ok(composed.timelineAfterMetrics, 'the Brain section places the timeline after the metrics');
-    assert.ok(composed.timelineVisible);
+    assert.deepEqual(composed.sections, ['home']);
+    assert.ok(composed.attention, 'Needs attention is on Home');
+    assert.ok(composed.timeline, 'the opening and closing timeline is on Home');
     await clickNav(page, 'inventory');
-    assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('home-timeline')).display), 'none');
-    assert.equal(await page.evaluate(() => document.getElementById('home-timeline').getAttribute('aria-hidden')), 'true');
+    assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('dashboard-view')).display), 'none');
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });

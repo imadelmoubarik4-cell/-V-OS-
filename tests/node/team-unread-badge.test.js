@@ -40,6 +40,16 @@ test('read API for the notifications feed: count, conversations, announcements o
   assert.match(messages, /window\.AtlasShell\?\.emit\?\.\('messages:unread', detail\)/);
 });
 
+test('the notifications feed on Home reads per-conversation unread from the worker', () => {
+  const home = readFileSync('apps/web/assets/js/home.js', 'utf8');
+  assert.match(badge, /lastMessage: lastMessageOf\(channel\.last_message\)/);
+  assert.match(badge, /sender: message\.message_type === 'system' \? 'Atlas' : safePersonLabel\(message\.sender_label\)/);
+  assert.match(badge, /loaded: \(\) => state\.loaded/);
+  assert.match(home, /badge\?\.loaded\?\.\(\) && typeof badge\.conversations === 'function'/);
+  assert.match(home, /atlas\.on\('messages:unread', \(detail\) => \{ if \(Array\.isArray\(detail\?\.conversations\)\) applyConversations\(detail\.conversations\); \}\);/);
+  assert.match(messages, /sender: channel\.last_message\.message_type === 'system' \? 'Atlas' : senderIdentity\(channel\.last_message\)\.name/);
+});
+
 test('unread worker uses authenticated API only', () => {
   assert.match(badge, /window\.atlasSupabase/);
   assert.match(badge, /authorization: `Bearer \$\{session\.access_token\}`/);

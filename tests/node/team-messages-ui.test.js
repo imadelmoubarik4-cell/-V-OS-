@@ -80,7 +80,9 @@ test('composer links server-verified Atlas records; recommendations are manager-
   assert.match(messages, /const types = LINK_TYPES\.filter\(\(entry\) => !entry\.managerOnly \|\| state\.staff\?\.can_link_brain_recommendations\);/);
   assert.match(messages, /Atlas recommendation \\u00b7 managers only|Atlas recommendation · managers only/);
   assert.match(messages, /if \(link\.type === 'inventory_item'\) return `#inventory\/item\/\$\{key\}`;/);
-  assert.match(messages, /AtlasCheckpointALayout\?\.openRoutine/);
+  // Brain and Checkpoint A are retired: recommendation links open Atlas AI decisions.
+  assert.doesNotMatch(messages, /AtlasCheckpointALayout|AtlasPhase3Brain/);
+  assert.match(messages, /if \(link.type === 'brain_recommendation'\) return '#ai\/decisions';/);
 });
 
 test('handover template posts the three sections to the Handover channel', () => {
