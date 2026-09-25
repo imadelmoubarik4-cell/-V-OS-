@@ -98,6 +98,14 @@
   function recipes() { return root.AtlasData?.recipes?.() || []; }
   function movements() { return root.AtlasData?.movements?.() || []; }
   function dataStatus() { return root.AtlasData?.status?.() || { items: 'ok' }; }
+  // Stock withheld by the shell (verified balances or movements failed to load):
+  // no quantity is shown as if it were complete.
+  function stockIncomplete() { return dataStatus().stock === 'partial'; }
+  function missingStockText() {
+    const missing = root.AtlasData?.health?.()?.stockMissing || [];
+    const names = missing.map((key) => (key === 'balances' ? 'verified counts' : key === 'movements' ? 'movements' : null)).filter(Boolean);
+    return names.length ? names.join(' and ') : 'stock data';
+  }
   function itemById(id) { return items().find((item) => String(item.id) === String(id)) || null; }
   async function reloadData() {
     if (typeof root.atlasReloadData === 'function') await root.atlasReloadData();
@@ -110,6 +118,9 @@
   function stockStatus(item) {
     if (item.active === false) return { key: 'inactive', label: 'Inactive', tone: '', rank: 6 };
     const status = truth()?.stockStatus ? truth().stockStatus(item) : 'unknown';
+    // Unknown with a reason: stock withheld because its inputs failed to load
+    // is "Unknown", not the never-counted "Not counted".
+    if (status === 'unknown' && truth()?.unknownReason?.(item) === 'stock_data_incomplete') return { key: 'unknown', label: 'Unknown', tone: '', rank: 4 };
     if (status === 'unknown') return { key: 'not_counted', label: 'Not counted', tone: '', rank: 4 };
     if (status === 'out') return { key: 'out', label: 'Out', tone: 'danger', rank: 0 };
     if (status === 'below_par') {
@@ -236,6 +247,7 @@
     if (dataStatus().items === 'error' && !active.length) return 'Inventory couldn’t be loaded';
     const last = lastCountedAt();
     const count = `${active.length} active ${active.length === 1 ? 'item' : 'items'}`;
+    if (stockIncomplete()) return `${count} · stock figures incomplete`;
     return last ? `${count} · counted ${dateText(last, { long: true })}` : `${count} · not counted yet`;
   }
 
@@ -534,6 +546,8 @@
     const alerts = [];
     if (dataStatus().items === 'error') {
       alerts.push(alertHtml('danger', 'Inventory couldn’t be loaded.', all.length ? `Showing the items loaded ${state.lastLoadedAt ? `at ${clock()?.formatTime?.(state.lastLoadedAt) || ''}` : 'earlier'}. Nothing was changed.` : 'Nothing was changed. Check your connection and try again.', '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-inv-retry>Try again</button>'));
+    } else if (stockIncomplete()) {
+      alerts.push(alertHtml('warning', `Stock figures are incomplete — ${missingStockText()} couldn’t load. Try again.`, 'No stock numbers are shown until everything loads. Nothing was changed.', '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-inv-retry>Try again</button>'));
     } else if (neverCounted()) {
       alerts.push(alertHtml('info', 'Stock hasn’t been counted yet.', 'Quantities appear after the first verified count.', canCount() ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-inv-count>Start stock count</button>' : ''));
     }
@@ -701,7 +715,7 @@
     const history = movements().filter((entry) => String(entry.item_id) === String(item.id)).slice(0, 10);
     const counts = history.filter((entry) => entry.movement_type === 'count');
     const facts = [
-      ['On hand', known ? `${qty(item.quantity)} ${unitWord(item, item.quantity)}` : 'Not counted'],
+      ['On hand', known ? `${qty(item.quantity)} ${unitWord(item, item.quantity)}` : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? 'Unknown (stock figures incomplete)' : 'Not counted'],
       ['Par', num(item.par_level) ? `${qty(item.par_level)} ${unitWord(item, item.par_level)}` : 'Not set'],
       ['Location', item.bin_location || 'Not set'],
       manager ? ['Supplier', item.supplier || 'Not set'] : null,
@@ -726,7 +740,7 @@
         <button type="button" class="atlas-icon-btn" data-inv-detail-menu aria-label="More actions for ${esc(item.name)}">${icon('ellipsis')}</button>
         <button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
       <div class="atlas-sheet__body">
-        <div class="inv-detail__hero"><p class="inv-detail__figure num">${known ? esc(qty(item.quantity)) : '—'}<span class="inv-detail__unit">${known ? esc(unitWord(item, item.quantity)) : 'Not counted'}</span></p><p class="inv-detail__hint">${known ? `Last verified count plus recorded movements${num(item.par_level) ? ` · par ${qty(item.par_level)}` : ''}.` : 'Quantities appear after the first verified count.'}</p></div>
+        <div class="inv-detail__hero"><p class="inv-detail__figure num">${known ? esc(qty(item.quantity)) : '—'}<span class="inv-detail__unit">${known ? esc(unitWord(item, item.quantity)) : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? 'Unknown' : 'Not counted'}</span></p><p class="inv-detail__hint">${known ? `Last verified count plus recorded movements${num(item.par_level) ? ` · par ${qty(item.par_level)}` : ''}.` : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? `Stock figures are incomplete — ${esc(missingStockText())} couldn’t load. Try again.` : 'Quantities appear after the first verified count.'}</p></div>
         <dl class="inv-detail__facts">${facts.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>
         ${manager && num(item.par_level) !== null ? '<p class="inv__muted inv-detail__note">Par levels are changed in <a href="#data/pars">Data › Par levels</a>.</p>' : manager ? '<p class="inv__muted inv-detail__note">Set a par level in <a href="#data/pars">Data › Par levels</a>.</p>' : ''}
         <section class="inv-detail__section" data-inv-detail-recipes><h3 class="inv-detail__heading">Used in</h3>${recipeChips}</section>

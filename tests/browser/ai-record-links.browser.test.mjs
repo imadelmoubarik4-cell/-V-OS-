@@ -2,7 +2,7 @@
 // Each route is the Tool Gateway's own (supabase/functions/_shared/ai-tools/result.mjs).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, navigateTo, USERS } from './harness.mjs';
 import { emptyFunctions } from './fixtures.mjs';
 import { inventoryWorld } from './inventory-fixtures.mjs';
 import { aiFixtures, AI_FIXTURE_NOW } from './atlas-ai-fixtures.mjs';
@@ -12,8 +12,7 @@ import { routeFor } from '../../supabase/functions/_shared/ai-tools/result.mjs';
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 
 async function go(page, route) {
-  await page.evaluate((target) => window.AtlasShell.navigate(target), route);
-  await page.waitForTimeout(300);
+  await navigateTo(page, route);
 }
 
 test('a movement link shows that movement in the ledger', { skip }, async () => {

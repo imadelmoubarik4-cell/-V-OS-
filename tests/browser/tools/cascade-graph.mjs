@@ -244,7 +244,7 @@ export async function buildGraph({ roles = ['admin', 'bartender'], widths = [144
   for (const role of roles) {
     for (const width of widths) {
       const user = USERS[role];
-      const app = await launchAtlas({ user, viewport: { width, height: HEIGHTS[width] || 900 }, fixtures: captureFixtures(user), initScript: `(() => { const R = Date; const o = performance.now(); const f = ${FROZEN_NOW}; const n = () => f + (performance.now() - o); class D extends R { constructor(...a) { if (a.length === 0) super(n()); else super(...a); } static now() { return Math.floor(n()); } } D.UTC = R.UTC; D.parse = R.parse; window.Date = D; })();` });
+      const app = await launchAtlas({ user, viewport: { width, height: HEIGHTS[width] || 900 }, fixtures: captureFixtures(user), initScript: `(() => { const R = Date; const o = performance.now(); const f = ${FROZEN_NOW}; const n = () => f + (performance.now() - o); class D extends R { constructor(...a) { if (a.length === 0) super(n()); else super(...a); } static now() { return Math.floor(n()); } } D.UTC = R.UTC; D.parse = R.parse; window.Date = D; })();`, fixedTime: null });
       const { page } = app;
       try {
         await settle(page, 2500);

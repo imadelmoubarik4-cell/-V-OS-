@@ -3,7 +3,7 @@
 // Messages identity (S87) is covered in messages.browser.test.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, requestsTo, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, requestsTo, settle, USERS } from './harness.mjs';
 import { teamFunctions, peopleFunctions, NOW } from './people-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -11,7 +11,7 @@ const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependenc
 async function open({ user = USERS.admin, hash = '#team', viewport, status = 200, contextOptions = {} } = {}) {
   const app = await launchAtlas({ user, hash, viewport, contextOptions, fixedTime: new Date(NOW), fixtures: { functions: peopleFunctions(teamFunctions({ user, status })) } });
   await app.page.waitForSelector('.team-table, .team-list, .atlas-alert--danger, .team-detail', { timeout: 12000 });
-  await app.page.waitForTimeout(300);
+  await settle(app.page);
   return app;
 }
 

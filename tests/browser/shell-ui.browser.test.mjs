@@ -4,11 +4,11 @@
 // review checklist (no horizontal scroll, 44 px targets, visible focus, zoom).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, USERS } from './harness.mjs';
+import { fixtureTime, harnessAvailable, launchAtlas, navigateTo, settle, USERS } from './harness.mjs';
 import { emptyFunctions, settingsWorkspace } from './fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
-const balance = (id, quantity) => ({ inventory_item_id: id, verified_quantity: quantity, freshness_state: 'current', verified_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 864000000).toISOString() });
+const balance = (id, quantity) => ({ inventory_item_id: id, verified_quantity: quantity, freshness_state: 'current', verified_at: fixtureTime(-86400000), expires_at: fixtureTime(864000000) });
 const fixtures = {
   tables: {
     inventory_items: [
@@ -146,7 +146,7 @@ test('palette: ⌘K / Ctrl K / "/" open it; arrows, Tab and Enter run an action;
   try {
     await page.evaluate(() => window.AtlasShell.navigate('#inventory'));
     await page.waitForFunction(() => document.body.dataset.atlasView === 'inventory');
-    await page.waitForTimeout(300);
+    await settle(page);
     for (const shortcut of ['Meta+k', 'Control+k', '/']) {
       // "/" opens the palette only when focus is not in a field.
       await page.evaluate(() => document.activeElement?.blur?.());
@@ -173,7 +173,7 @@ test('palette: ⌘K / Ctrl K / "/" open it; arrows, Tab and Enter run an action;
     await page.keyboard.press('Backspace');
     assert.equal(await page.$eval('.atlas-palette__ctx', (node) => node.hidden), true);
     await page.keyboard.type('camp');
-    await page.waitForTimeout(200);
+    await page.waitForFunction(() => document.getElementById('atlas-palette-list')?.dataset.answerState !== 'pending');
     const typed = await page.evaluate(() => ({
       sections: [...document.querySelectorAll('.atlas-palette__label-row')].map((node) => node.textContent),
       rows: [...document.querySelectorAll('.atlas-palette__item')].map((node) => node.querySelector('.atlas-palette__label').textContent),
@@ -197,7 +197,7 @@ test('palette: ⌘K / Ctrl K / "/" open it; arrows, Tab and Enter run an action;
     assert.equal(await page.evaluate(() => document.querySelector('.atlas-palette__item.is-active .atlas-palette__label').textContent), 'Campari Spritz');
     // Run an action: "Count Campari" opens the stock count route.
     await page.fill('#atlas-palette-input', 'count campari');
-    await page.waitForTimeout(200);
+    await page.waitForFunction(() => document.getElementById('atlas-palette-list')?.dataset.answerState !== 'pending');
     const index = await page.evaluate(() => [...document.querySelectorAll('.atlas-palette__item')].findIndex((node) => node.textContent.includes('Count Campari')));
     for (let i = 0; i < index; i += 1) await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
@@ -223,7 +223,7 @@ test('palette: Ask Atlas routes to #ai/new with the query; questions put it firs
   try {
     await page.click('#atlas-omni');
     await page.keyboard.type('what should I order?');
-    await page.waitForTimeout(200);
+    await page.waitForFunction(() => document.getElementById('atlas-palette-list')?.dataset.answerState !== 'pending');
     const first = await page.evaluate(() => ({ section: document.querySelector('.atlas-palette__label-row').textContent, active: document.querySelector('.atlas-palette__item.is-active .atlas-palette__label').textContent.trim() }));
     assert.deepEqual(first, { section: 'Ask Atlas', active: 'Ask Atlas “what should I order?”' });
     await page.keyboard.press('Enter');
@@ -237,7 +237,7 @@ test('palette: Ask Atlas routes to #ai/new with the query; questions put it firs
     // Opening a record remembers it for the empty palette.
     await page.click('#atlas-omni');
     await page.keyboard.type('campari');
-    await page.waitForTimeout(150);
+    await page.waitForFunction(() => document.getElementById('atlas-palette-list')?.dataset.answerState !== 'pending');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.body.dataset.atlasView === 'inventory');
     await page.evaluate(() => window.AtlasShell.navigate('#settings'));
@@ -346,7 +346,7 @@ test('account menu: keyboard navigation, profile link, Escape returns focus, sig
     await page.click('[data-menu-action="profile"]');
     await page.waitForFunction((id) => location.hash === `#team/${id}`, USERS.admin.id);
     // A loaded profile opens as a modal side sheet (spec §7.10); close it first.
-    await page.waitForTimeout(500);
+    await settle(page);
     if (await page.$('#team-profile-sheet')) {
       await page.keyboard.press('Escape');
       await page.waitForFunction(() => location.hash === '#team');
@@ -363,8 +363,7 @@ test('no horizontal page scroll at the six widths, for admin and bartender', { s
       const { page, close } = await launch({ user, viewport: { width, height } });
       try {
         for (const route of ['#home', '#inventory', '#recipes']) {
-          await page.evaluate((target) => window.AtlasShell.navigate(target), route);
-          await page.waitForTimeout(150);
+          await navigateTo(page, route);
           const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
           assert.ok(overflow <= 0, `${user.role} ${width} ${route}: page scrolls sideways by ${overflow}px`);
         }
@@ -448,7 +447,7 @@ test('brand line reads the venue from Settings, shows "Atlas" alone without one;
   } finally { await withVenue.close(); }
   const without = await launch();
   try {
-    await without.page.waitForTimeout(300);
+    await settle(without.page);
     assert.equal(await without.page.$eval('#atlas-brand-venue', (node) => node.hidden), true);
     // Brand v1.0: the supplied horizontal lockup, never typed text.
     const lockup = await without.page.$eval('.atlas-brand__lockup', (img) => ({ alt: img.alt, src: img.getAttribute('src'), loaded: img.complete && img.naturalWidth > 0, width: img.getBoundingClientRect().width }));

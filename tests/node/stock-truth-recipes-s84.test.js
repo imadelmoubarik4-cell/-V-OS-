@@ -235,8 +235,9 @@ test('Reports reads the owner confirmation evidence columns', () => {
 test('index.html cache keys track the shipped stock-truth and calculation modules', () => {
   const html = read('apps/web/index.html');
   const pins = {
-    // S89: the canonical stockStatus, hasCost, inventoryValue and purchaseSpend rules.
-    'atlas-stock-truth.js': { version: '20260928-s89t', sha256: '929537cfbe566d68bd81568553e6730ad8a8c55074e3bfb842715e80e7d97700' },
+    // S89: the canonical stockStatus, hasCost, inventoryValue and purchaseSpend rules,
+    // plus unknownReason/withhold for stock withheld when its inputs fail to load.
+    'atlas-stock-truth.js': { version: '20260928-s89t', sha256: '17e3606ddbf54ad25da28807a255ae6ac065041c93d2ac642f0933992a7ea7dc' },
     // S89: reference ingredients cost 0; the fallback money format is '3.900 kr'.
     'atlas-calculations.js': { version: '20260928-s89t', sha256: '7ed129f7cabd83724620772b53ad7264d9c0284c27d6b0c45f66e0033a4e0809' }
   };

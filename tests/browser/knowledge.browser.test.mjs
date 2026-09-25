@@ -3,7 +3,7 @@
 // boundaries, manager authoring and phones.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, requestsTo, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, requestsTo, settle, until, USERS } from './harness.mjs';
 import { knowledgeBackend, peopleFunctions, NOW } from './people-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -11,7 +11,7 @@ const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependenc
 async function open({ user = USERS.admin, hash = '#knowledge', viewport, backend = knowledgeBackend({ user }), contextOptions = {} } = {}) {
   const app = await launchAtlas({ user, hash, viewport, contextOptions, fixedTime: new Date(NOW), fixtures: { functions: peopleFunctions({ 'atlas-knowledge': backend.handler }) } });
   await app.page.waitForSelector('.kn-list, .kn-article, .atlas-empty, .atlas-alert--danger', { timeout: 12000 });
-  await app.page.waitForTimeout(300);
+  await settle(app.page);
   return { ...app, backend };
 }
 
@@ -35,7 +35,7 @@ test('search asks the server and shows matched snippets; a failing search falls 
     try {
       await page.fill('[data-knowledge-search]', 'cash');
       await page.waitForSelector('.kn-count');
-      for (let i = 0; i < 40 && !requestsTo(record, 'atlas-knowledge', 'search').length; i += 1) await page.waitForTimeout(100);
+      await until(() => requestsTo(record, 'atlas-knowledge', 'search').length, { message: 'the Knowledge search request' });
       const call = requestsTo(record, 'atlas-knowledge', 'search').at(-1);
       assert.match(call.search, /q=cash/);
       await page.fill('[data-knowledge-search]', 'complaint');
@@ -65,7 +65,8 @@ test('reading page: 720 column, checklists, Mark as read acknowledges the versio
     const width = await page.$eval('.kn-reading', (node) => node.getBoundingClientRect().width);
     assert.ok(width <= 720.5, `reading column ${width}`);
     assert.equal(await page.$$eval('.kn-checks input[type="checkbox"]', (nodes) => nodes.length), 3);
-    await page.waitForTimeout(300);
+    await until(() => requestsTo(record, 'atlas-knowledge', 'mark-read').length, { message: 'mark-read' });
+    await settle(page);
     assert.equal(requestsTo(record, 'atlas-knowledge', 'mark-read').length, 1, 'opening records a read');
     await page.click('[data-knowledge-acknowledge]');
     await page.waitForSelector('.kn-done');

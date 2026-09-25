@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { harnessAvailable, loadPlaywright, ROOT } from './harness.mjs';
+import { harnessAvailable, loadPlaywright, ROOT, settle } from './harness.mjs';
 
 const ORIGIN = 'http://atlas-gallery.test';
 const GALLERY = `${ORIGIN}/tests/browser/tools/component-gallery.html`;
@@ -50,8 +50,9 @@ async function openGallery({ width, height, mobile }) {
   page.on('response', (response) => { if (response.url().startsWith(ORIGIN) && response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
   await page.goto(GALLERY, { waitUntil: 'load' });
   await page.evaluate(() => document.fonts?.ready);
-  // Let the skeleton reveal (150 ms) and entrance animations settle.
-  await page.waitForTimeout(400);
+  // Wait for the skeleton reveal (a 150 ms CSS animation delay) and entrance
+  // animations to finish.
+  await settle(page);
   return { browser, page, errors };
 }
 
@@ -204,7 +205,7 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
     assert.deepEqual(ring, { width: '2px', style: 'solid', color: 'rgb(59, 130, 246)', offset: '2px', test: 'btn-secondary' });
     // Inputs show the accent border and a 3 px ring instead of an outline.
     await page.focus('[data-test="input"]');
-    await page.waitForTimeout(250);
+    await settle(page);
     const inputFocus = await page.evaluate(() => {
       const style = getComputedStyle(document.activeElement);
       return { border: style.borderTopColor, shadow: style.boxShadow };

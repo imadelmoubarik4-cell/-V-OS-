@@ -2,10 +2,11 @@
 // shaped like the production payloads of atlas-stock-counts, atlas-item-master,
 // atlas-inventory-recognition and the purchasing v2 RPCs.
 import { emptyFunctions } from './fixtures.mjs';
+import { fixtureTime } from './harness.mjs';
 
 const DAY = 86400000;
-export const iso = (offsetDays) => new Date(Date.now() + offsetDays * DAY).toISOString();
-export const dateKey = (offsetDays = 0) => new Date(Date.now() + offsetDays * DAY).toISOString().slice(0, 10);
+export const iso = (offsetDays) => fixtureTime(offsetDays * DAY);
+export const dateKey = (offsetDays = 0) => fixtureTime(offsetDays * DAY).slice(0, 10);
 
 export const IDS = Object.freeze({
   campari: '11111111-1111-4111-8111-111111111111', limes: '22222222-2222-4222-8222-222222222222',
@@ -141,7 +142,7 @@ export function purchasingBackend({ list = orders(), policyOverrides = {} } = {}
     calls.push(body);
     let order = state.orders.find((entry) => entry.id === body.p_id);
     if (body.p_action === 'create') {
-      order = { id: body.p_id, supplier_id: body.p_supplier_id, status: 'draft', version: 1, lines: body.p_lines.map((line) => ({ ...line, item_name: items.find((item) => item.id === line.item_id)?.name, unit: items.find((item) => item.id === line.item_id)?.unit })), note: body.p_note, created_at: new Date().toISOString(), expected_delivery_date: body.p_expected_delivery_date };
+      order = { id: body.p_id, supplier_id: body.p_supplier_id, status: 'draft', version: 1, lines: body.p_lines.map((line) => ({ ...line, item_name: items.find((item) => item.id === line.item_id)?.name, unit: items.find((item) => item.id === line.item_id)?.unit })), note: body.p_note, created_at: iso(0), expected_delivery_date: body.p_expected_delivery_date };
       state.orders.unshift(order);
       return order;
     }
@@ -155,7 +156,7 @@ export function purchasingBackend({ list = orders(), policyOverrides = {} } = {}
     } else if (next) order.status = next;
     if (body.p_action === 'set_delivery_date') order.expected_delivery_date = body.p_expected_delivery_date;
     order.version += 1;
-    order.events = [...(order.events || []), { id: `e${order.version}`, event_type: { place: 'ordered', receive_lines: 'received_partial' }[body.p_action] || body.p_action, created_at: new Date().toISOString(), payload: body.p_reason ? { reason: body.p_reason } : {} }];
+    order.events = [...(order.events || []), { id: `e${order.version}`, event_type: { place: 'ordered', receive_lines: 'received_partial' }[body.p_action] || body.p_action, created_at: iso(0), payload: body.p_reason ? { reason: body.p_reason } : {} }];
     return order;
   };
   return {
