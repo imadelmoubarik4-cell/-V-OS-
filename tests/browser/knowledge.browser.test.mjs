@@ -142,3 +142,23 @@ test('phone: the article has a sticky Mark as read bar; no sideways scroll; back
     assert.equal(await page.isVisible('.atlas-tabbar'), true);
   } finally { await close(); }
 });
+
+test('security G2: a source URL opens only when it is http(s), with noopener,noreferrer', { skip }, async () => {
+  const cases = [
+    ['javascript:fetch(1)', null],
+    ['data:text/html,<script>alert(1)</script>', null],
+    ['file:///etc/passwd', null],
+    ['https://drive.example/doc-1', 'https://drive.example/doc-1']
+  ];
+  for (const [sourceUrl, expected] of cases) {
+    const { page, close } = await open({ hash: '#knowledge/k-closing', backend: knowledgeBackend({ user: USERS.admin, sourceUrl }) });
+    try {
+      await page.evaluate(() => { window.__opened = []; window.open = (...args) => { window.__opened.push(args); return null; }; });
+      await page.click('[data-knowledge-source-open="src1"]');
+      await page.waitForTimeout(150);
+      const opened = await page.evaluate(() => window.__opened);
+      if (expected) assert.deepEqual(opened, [[expected, '_blank', 'noopener,noreferrer']], sourceUrl);
+      else assert.deepEqual(opened, [], `${sourceUrl} must not be opened`);
+    } finally { await close(); }
+  }
+});

@@ -163,6 +163,23 @@ function optionalText(value: unknown, maxLength: number): string | null {
   return normalized;
 }
 
+// Source URLs are opened by managers in a new tab: only absolute http(s) URLs
+// are stored (no javascript:, data:, file: or other schemes).
+function optionalHttpUrl(value: unknown, maxLength: number): string | null {
+  const normalized = optionalText(value, maxLength);
+  if (!normalized) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    throw new ApiError(400, "Source URL must be a full http or https address.");
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new ApiError(400, "Source URL must be a full http or https address.");
+  }
+  return normalized;
+}
+
 function requiredText(value: unknown, label: string, maxLength: number): string {
   const normalized = optionalText(value, maxLength);
   if (!normalized) throw new ApiError(400, `${label} is required.`);
@@ -519,7 +536,7 @@ Deno.serve(async (request: Request) => {
           p_source_type: requiredEnum(body.source_type, "Source type", SOURCE_TYPES),
           p_source_label: requiredText(body.source_label, "Source label", 220),
           p_source_reference: optionalText(body.source_reference, 1000),
-          p_source_url: optionalText(body.source_url, 3000),
+          p_source_url: optionalHttpUrl(body.source_url, 3000),
           p_source_version: optionalText(body.source_version, 300),
           p_connection_status: requiredEnum(body.connection_status ?? "manual_reference", "Source status", SOURCE_STATES),
           p_visible_to_staff: requiredBoolean(body.visible_to_staff ?? false, "Staff source visibility"),

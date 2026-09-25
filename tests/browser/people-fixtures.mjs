@@ -324,7 +324,7 @@ export function teamFunctions({ user = USERS.admin, status = 200, empty = false 
 
 // ---------- Knowledge (atlas-knowledge) ----------
 
-export function knowledgeBackend({ user = USERS.admin, status = 200, empty = false, searchStatus = 200 } = {}) {
+export function knowledgeBackend({ user = USERS.admin, status = 200, empty = false, searchStatus = 200, sourceUrl = 'https://drive.example/doc-1' } = {}) {
   const manager = ['admin', 'manager'].includes(user.role);
   const backend = { calls: [], status };
   const categories = [
@@ -345,7 +345,7 @@ export function knowledgeBackend({ user = USERS.admin, status = 200, empty = fal
     return {
       article: { ...article },
       version: { id: `${id}-v`, state: draft ? 'draft' : 'published', version_number: article.published_version_number || 1, title: article.title, summary: article.summary, content: '# Before you start\n\nMake sure the **last orders** call was made.\n\n## Steps\n\n- [ ] Count the till\n- [ ] Wipe the bar\n- [ ] Lock the walk-in\n\n1. Turn off the taps\n2. Switch off the lights\n\n> Ask a manager if anything is unclear.', published_at: article.published_at, updated_at: article.updated_at, change_note: 'Updated the cash-up step' },
-      sources: manager ? [{ id: 'src1', source_type: 'google_drive', source_label: 'Closing checklist (Drive)', source_reference: 'doc-1', source_url: 'https://drive.example/doc-1', source_version: 'rev 4', connection_status: 'manual_reference', visible_to_staff: true }] : [{ id: 'src1', source_type: 'google_drive', source_label: 'Closing checklist (Drive)', connection_status: 'manual_reference', visible_to_staff: true }],
+      sources: manager ? [{ id: 'src1', source_type: 'google_drive', source_label: 'Closing checklist (Drive)', source_reference: 'doc-1', source_url: sourceUrl, source_version: 'rev 4', connection_status: 'manual_reference', visible_to_staff: true }] : [{ id: 'src1', source_type: 'google_drive', source_label: 'Closing checklist (Drive)', connection_status: 'manual_reference', visible_to_staff: true }],
       acknowledgements: manager ? [{ user_label: 'Gunnar Karlsson', user_role: 'bartender', acknowledged_at: '2026-09-23T12:00:00Z' }] : [],
       version_history: manager ? [{ version_number: 2, title: article.title, state: 'published', published_at: '2026-09-22T10:00:00Z', change_note: 'Updated the cash-up step' }, { version_number: 1, title: article.title, state: 'superseded', published_at: '2026-06-01T10:00:00Z' }] : [],
       task_links: [], read: false, can_acknowledge: Boolean(article.required && article.required_due)

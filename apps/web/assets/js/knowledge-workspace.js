@@ -60,6 +60,16 @@
     })[character]);
   }
 
+  // Only absolute http(s) URLs are ever opened (no javascript:, data:, file:).
+  function safeHttpUrl(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return null;
+    try {
+      const url = new URL(text);
+      return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+    } catch { return null; }
+  }
+
   function icon(name) {
     return `<i data-lucide="${escapeHtml(name)}" aria-hidden="true"></i>`;
   }
@@ -883,7 +893,8 @@
     const sourceOpen = target.closest('[data-knowledge-source-open]');
     if (sourceOpen) {
       const source = (state.detail?.sources || []).find((entry) => entry.id === sourceOpen.dataset.knowledgeSourceOpen);
-      if (source?.source_url) window.open(source.source_url, '_blank', 'noopener,noreferrer');
+      const url = safeHttpUrl(source?.source_url);
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
       return;
     }
     const sourceRemove = target.closest('[data-knowledge-source-remove]');
@@ -968,7 +979,8 @@
     refresh: () => loadSnapshot(),
     snapshot: () => state.snapshot,
     detail: () => state.detail,
-    due: () => dueArticles().map((article) => ({ id: article.id, title: article.title }))
+    due: () => dueArticles().map((article) => ({ id: article.id, title: article.title })),
+    safeHttpUrl
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
