@@ -22,8 +22,8 @@ test('both views use live movement evidence instead of placeholder pages', () =>
   assert.match(inventory, /function movements\(\) \{ return root\.AtlasData\?\.movements\?\.\(\) \|\| \[\]; \}/);
   // Ordinary negative adjustments are never reclassified as waste.
   assert.match(inventory, /const list = movements\(\)\.filter\(\(entry\) => entry\.movement_type === 'waste'\);/);
-  assert.match(inventory, /p_movement_type: 'waste'/);
-  assert.match(inventory, /p_quantity_change: -quantity/);
+  assert.match(inventory, /type: 'waste'/);
+  assert.match(inventory, /change: -quantity/);
   assert.doesNotMatch(app + inventory, /data-unavailable-view="(?:movements|waste)"|showUnavailable/);
 });
 

@@ -455,6 +455,35 @@ async function updateOnboarding(context: AtlasContext, body: Record<string, unkn
   return result;
 }
 
+// s90-invite-helpers:start (pure; unit-tested by tests/node/workflow-integrity-s90.test.js)
+// The invite link lands on invitation.html (the set-password step) on the
+// configured app origin: ATLAS_APP_ORIGIN, else the first
+// ATLAS_INTEGRATIONS_APP_ORIGINS entry, else the production site. Only a bare
+// https origin is accepted (no credentials, path, query or fragment); Supabase
+// Auth still requires the URL on the project's Redirect URLs allow-list.
+const DEFAULT_APP_ORIGIN = "https://os-vabar.netlify.app";
+function invitationRedirect(...configured: unknown[]): string {
+  for (const value of configured) {
+    const raw = typeof value === "string" ? value.split(",")[0].trim() : "";
+    if (!raw) continue;
+    try {
+      const url = new URL(raw);
+      if (url.protocol === "https:" && !url.username && !url.password && url.pathname === "/" && !url.search && !url.hash && raw.replace(/\/$/, "") === url.origin) {
+        return `${url.origin}/invitation.html`;
+      }
+    } catch {
+      // Not a URL: fall through to the next configured value.
+    }
+  }
+  return `${DEFAULT_APP_ORIGIN}/invitation.html`;
+}
+// handle_new_user reads raw_user_meta_data->>'full_name' for the profile name;
+// display_name is kept for readers of the older key.
+function invitationMetadata(displayName: string | null): Record<string, string> {
+  return displayName ? { full_name: displayName, display_name: displayName } : {};
+}
+// s90-invite-helpers:end
+
 async function inviteAccount(context: AtlasContext, body: Record<string, unknown>) {
   requireManager(context);
   const email = requiredText(body.email, "Email", 320).toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Enter a valid email address.");
@@ -463,7 +492,7 @@ async function inviteAccount(context: AtlasContext, body: Record<string, unknown
   if (!serviceRoleKey) throw new ApiError(500, "Account invitations are temporarily unavailable.");
 
   const inviteUrl = new URL(`${productionAuthUrl()}/auth/v1/invite`);
-  inviteUrl.searchParams.set("redirect_to", "https://os-vabar.netlify.app");
+  inviteUrl.searchParams.set("redirect_to", invitationRedirect(Deno.env.get("ATLAS_APP_ORIGIN"), Deno.env.get("ATLAS_INTEGRATIONS_APP_ORIGINS")));
   const response = await fetch(inviteUrl, {
     method: "POST",
     headers: {
@@ -474,7 +503,7 @@ async function inviteAccount(context: AtlasContext, body: Record<string, unknown
     },
     body: JSON.stringify({
       email,
-      data: displayName ? { display_name: displayName } : {},
+      data: invitationMetadata(displayName),
     }),
   });
   const result = await response.json().catch(() => ({}));

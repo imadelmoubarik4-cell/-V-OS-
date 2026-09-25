@@ -129,7 +129,10 @@ with public_tables as (
     ('public.atlas_data_review_summary()', 'private.data_review_summary()'),
     ('public.atlas_data_review_rows(text,integer,integer)', 'private.data_review_rows(text,integer,integer)'),
     ('public.atlas_par_level_evidence(uuid[],numeric)', 'private.par_level_evidence(uuid[],numeric)'),
-    ('public.atlas_apply_par_levels(jsonb,text)', 'private.apply_par_levels(jsonb,text)')
+    ('public.atlas_apply_par_levels(jsonb,text)', 'private.apply_par_levels(jsonb,text)'),
+    -- S90: idempotent waste / delivery-without-an-order adjustment.
+    ('public.adjust_inventory_v2(text,uuid,numeric,text,numeric,uuid,text)',
+     'private.adjust_inventory_request(text,uuid,numeric,text,numeric,uuid,text)')
   ) as v(wrapper, impl)
 ), reviewed_browser_rpc_status as (
   select r.oid, r.wrapper,

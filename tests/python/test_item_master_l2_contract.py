@@ -166,9 +166,13 @@ class ItemMasterL2ContractTests(unittest.TestCase):
         self.assertNotRegex(BROWSER, r"\.from\s*\(\s*['\"]inventory_items['\"]\s*\)\s*\.\s*(?:insert|update|upsert|delete)")
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER)
         self.assertNotIn("inventory_movements", BROWSER)
-        # The only stock write on the page is manager waste, through adjust_inventory.
-        self.assertEqual(BROWSER.count("rpc('adjust_inventory'"), 1)
-        self.assertIn("p_movement_type: 'waste'", BROWSER)
+        # The only stock write on the page goes through the idempotent
+        # adjust_inventory_v2 (S90): manager waste here, and the delivery
+        # without an order that Purchasing routes through the same helper.
+        self.assertEqual(BROWSER.count("rpc('adjust_inventory"), 1)
+        self.assertEqual(BROWSER.count("rpc('adjust_inventory_v2'"), 1)
+        self.assertIn("p_movement_type: type", BROWSER)
+        self.assertIn("type: 'waste'", BROWSER)
 
 
 if __name__ == "__main__":

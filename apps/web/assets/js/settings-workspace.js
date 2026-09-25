@@ -145,6 +145,44 @@
     return visibleSections().length > 2 ? 'venue' : 'preferences';
   }
 
+  // Opening-hours conflicts (S90 P3): a zero-length day, a close before the
+  // open without "Next day", more than 24 hours, or a late close that runs
+  // into the next day's opening. Mirrors atlas-settings businessHoursProblem.
+  function hoursProblem(rows) {
+    const minutes = (value) => {
+      const match = /^(\d{2}):(\d{2})/.exec(String(value ?? ''));
+      return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+    };
+    const clockText = (total) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+    const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const byDay = new Map(rows.map((row) => [Number(row.weekday), row]));
+    for (const row of rows) {
+      if (!row || !row.is_open) continue;
+      const weekday = Number(row.weekday);
+      const day = names[weekday] || String(row.day_label || 'This day');
+      const open = minutes(row.open_time);
+      const close = minutes(row.close_time);
+      if (open === null || close === null) continue;
+      if (!row.close_next_day && close === open) {
+        return { weekday, text: `${day} opens and closes at the same time. Change the closing time, or tick Next day if it’s open around the clock.` };
+      }
+      if (!row.close_next_day && close < open) {
+        return { weekday, text: `${day} closes before it opens. Tick Next day if it closes after midnight.` };
+      }
+      if (row.close_next_day && close > open) {
+        return { weekday, text: `${day} would be open for more than 24 hours. Check the closing time.` };
+      }
+      if (row.close_next_day) {
+        const next = byDay.get((weekday + 1) % 7);
+        const nextOpen = next?.is_open ? minutes(next.open_time) : null;
+        if (nextOpen !== null && close > nextOpen) {
+          return { weekday, text: `${day} closes at ${clockText(close)} after midnight, but ${names[(weekday + 1) % 7]} opens at ${clockText(nextOpen)}. Change one so they don’t overlap.` };
+        }
+      }
+    }
+    return null;
+  }
+
   function hhmm(value) {
     const match = /^(\d{1,2}):(\d{2})/.exec(String(value || '').trim());
     return match ? `${match[1].padStart(2, '0')}:${match[2]}` : null;
@@ -1246,6 +1284,25 @@
         render();
         return;
       }
+      const conflict = hoursProblem(EDITOR_DAYS.map((weekday) => hours.find((row) => row.weekday === weekday)).filter(Boolean));
+      form.querySelectorAll('.settings-hours-row [aria-invalid]').forEach((input) => input.removeAttribute('aria-invalid'));
+      if (conflict) {
+        // Shown beside the form without re-rendering, so the typed hours stay.
+        const row = form.querySelector(`.settings-hours-row[data-weekday="${conflict.weekday}"]`);
+        row?.querySelectorAll('[name="open_time"], [name="close_time"]').forEach((input) => input.setAttribute('aria-invalid', 'true'));
+        let note = form.querySelector('[data-settings-hours-conflict]');
+        if (!note) {
+          note = document.createElement('p');
+          note.className = 'settings-form-feedback is-error';
+          note.setAttribute('role', 'alert');
+          note.dataset.settingsHoursConflict = '';
+          form.querySelector('.settings-hours')?.after(note);
+        }
+        note.textContent = conflict.text;
+        row?.querySelector('[name="close_time"]')?.focus();
+        return;
+      }
+      form.querySelector('[data-settings-hours-conflict]')?.remove();
       // Last orders after midnight belongs to the next day when the venue closes after midnight.
       hours.forEach((row) => {
         if (row.close_next_day && row.last_order_time && row.open_time && row.last_order_time < row.open_time) row.last_order_next_day = true;
@@ -1523,7 +1580,8 @@
     refresh: () => load(),
     snapshot: () => state.workspace,
     section: () => state.section,
-    tab: (key) => window.AtlasShell?.navigate?.(`#settings/${SECTION_ALIASES[key] || key}`)
+    tab: (key) => window.AtlasShell?.navigate?.(`#settings/${SECTION_ALIASES[key] || key}`),
+    hoursProblem
   };
 
   if (!init()) {

@@ -49,6 +49,7 @@
     [/already used for different quantities/i, 'This delivery was already recorded with other quantities. Refresh the order.'],
     [/not allowed for the current order state/i, 'The order’s status changed. Refresh and try again.'],
     [/manager access required|42501|permission denied/i, 'Purchasing is for managers.'],
+    [/already belongs to a different request/i, 'An order with other lines was already created for this supplier. Check Orders before creating it again.'],
     [/order not found/i, 'This order no longer exists.']
   ];
 
@@ -274,11 +275,38 @@
     return `<div class="atlas-table-wrap" aria-busy="true"><div class="po-skeleton">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(6)}</div></div>`;
   }
 
-  // Suggested order: the canonical AtlasOperations.orderSuggestions, not yet ordered.
+  // Suggested order: the canonical AtlasOperations.orderSuggestions for items
+  // not on any open order. Items already on a draft, pending, approved or
+  // placed order are listed separately with their order's state, never
+  // suggested again silently (S90 P2-7).
+  const ON_ORDER_LABEL = {
+    draft: 'on a draft order',
+    pending_approval: 'on an order waiting for approval',
+    approved: 'on an approved order',
+    ordered: 'on order',
+    partially_received: 'on a partly received order'
+  };
+  function itemOrderStatus(itemId) {
+    let furthest = null;
+    for (const order of state.orders) {
+      if (!OPEN_STATUSES.includes(order.status)) continue;
+      if (!linesOf(order).some((line) => String(line?.item_id) === String(itemId))) continue;
+      if (furthest === null || OPEN_STATUSES.indexOf(order.status) > OPEN_STATUSES.indexOf(furthest)) furthest = order.status;
+    }
+    return furthest;
+  }
   function suggestions() {
     const list = root.AtlasOperations?.orderSuggestions?.() || [];
     const ordered = root.AtlasPurchaseOrders.openItemIds();
     return list.filter((entry) => !entry.ordered && !ordered.has(entry.id));
+  }
+  function suggestionsOnOrder() {
+    const list = root.AtlasOperations?.orderSuggestions?.() || [];
+    return list.map((entry) => ({ ...entry, orderStatus: itemOrderStatus(entry.id) })).filter((entry) => entry.orderStatus);
+  }
+  function onOrderNote(list) {
+    if (!list.length) return '';
+    return `<p class="po__muted" data-po-on-order>Not suggested again: ${list.map((entry) => `${esc(entry.name)} (${esc(ON_ORDER_LABEL[entry.orderStatus] || 'on an open order')})`).join(', ')}.</p>`;
   }
   function suggestionGroups() {
     const groups = new Map();
@@ -299,7 +327,7 @@
     return `<section class="atlas-card atlas-card--pad po-suggest" aria-labelledby="po-suggest-title">
       <div class="po-suggest__text"><h2 class="po-suggest__title" id="po-suggest-title">Suggested order</h2>
       <p>${count} ${count === 1 ? 'item is' : 'items are'} below par across ${groups.length} ${groups.length === 1 ? 'supplier' : 'suppliers'}.</p>
-      <p class="po__muted">${groups.slice(0, 4).map((group) => `${esc(group.name)} ${group.lines.length}`).join(' · ')}</p></div>
+      <p class="po__muted">${groups.slice(0, 4).map((group) => `${esc(group.name)} ${group.lines.length}`).join(' · ')}</p>${onOrderNote(suggestionsOnOrder())}</div>
       <button type="button" class="atlas-btn atlas-btn--secondary" data-po-suggestions>Review suggestions</button></section>`;
   }
 
@@ -476,37 +504,111 @@
     });
   }
 
+  // One stable order id per supplier group (S90 P2-1). The id is chosen when
+  // the manager first presses Create and reused for every retry of that group,
+  // in memory and in sessionStorage keyed by the group's suggestion
+  // fingerprint (supplier + items), so a reload after a timeout still reuses
+  // it. The server's create is idempotent on the id: a retry of a create that
+  // did commit returns the same draft instead of a second one. Groups already
+  // created are never re-sent.
+  const SUGGEST_IDS_KEY = 'atlas.purchasing.suggested-order-ids.v1';
+  function readSuggestIds() {
+    try {
+      const parsed = JSON.parse(root.sessionStorage?.getItem(SUGGEST_IDS_KEY) || '{}');
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (_) { return {}; }
+  }
+  function writeSuggestIds(map) {
+    try {
+      if (Object.keys(map).length) root.sessionStorage?.setItem(SUGGEST_IDS_KEY, JSON.stringify(map));
+      else root.sessionStorage?.removeItem(SUGGEST_IDS_KEY);
+    } catch (_) { /* storage unavailable: the in-memory id still covers retries on this page */ }
+  }
+  function groupFingerprint(group) {
+    return `${group.supplier?.id || group.name}|${group.lines.map((line) => String(line.id)).sort().join(',')}`;
+  }
+
   function openSuggestionsSheet() {
     const groups = suggestionGroups();
+    const orderable = groups.filter((group) => group.supplier).length;
     const overlay = openOverlay(sheetHtml({
       title: 'Suggested order',
       desc: 'Items below par, grouped by supplier. Change quantities before creating the orders.',
-      body: `<form id="po-suggest-form" class="atlas-form">${groups.map((group, gIndex) => `<fieldset class="po-group" data-po-group="${gIndex}"${group.supplier ? '' : ' disabled'}><legend class="po-group__title">${esc(group.name)}</legend>
+      body: `<form id="po-suggest-form" class="atlas-form" novalidate>${onOrderNote(suggestionsOnOrder())}${groups.map((group, gIndex) => `<fieldset class="po-group" data-po-group="${gIndex}"${group.supplier ? '' : ' disabled'}><legend class="po-group__title">${esc(group.name)} <span data-po-group-state></span></legend>
         ${group.supplier ? '' : '<p class="po__muted">These items aren’t linked to a supplier in Atlas yet, so they can’t go on an order. Link a supplier in the item details.</p>'}
         <div class="atlas-table-wrap"><table class="atlas-table atlas-table--compact"><thead><tr><th class="col-check"><span class="sr-only">Include</span></th><th>Item</th><th class="is-num">On hand</th><th class="is-num">Par</th><th class="is-num">Order</th></tr></thead><tbody>
         ${group.lines.map((line) => `<tr><td class="col-check"><input type="checkbox" class="atlas-check" data-po-include checked aria-label="Include ${esc(line.name)}" value="${esc(line.id)}"></td><td><span class="cell-primary">${esc(line.name)}</span><span class="cell-sub">${line.cases ? `${line.cases} ${line.cases === 1 ? 'case' : 'cases'} · ` : ''}${esc(line.unit)}</span></td><td class="is-num">${qty(line.item?.quantity)}</td><td class="is-num">${qty(line.item?.par_level)}</td><td class="is-num"><input class="atlas-input po-suggest__qty num" type="number" inputmode="decimal" min="0.001" step="any" value="${esc(line.orderQuantity)}" data-po-suggest-qty="${esc(line.id)}" aria-label="Quantity of ${esc(line.name)}"></td></tr>`).join('')}
         </tbody></table></div></fieldset>`).join('')}<div data-po-alert></div></form>`,
-      foot: `<button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="po-suggest-form" class="atlas-btn atlas-btn--primary" data-po-create-many>Create ${groups.filter((group) => group.supplier).length} ${groups.filter((group) => group.supplier).length === 1 ? 'order' : 'orders'}</button>`
+      foot: `<button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="po-suggest-form" class="atlas-btn atlas-btn--primary" data-po-create-many>Create ${orderable} ${orderable === 1 ? 'order' : 'orders'}</button>`
     }), { label: 'Suggested order' });
     const form = overlay.panel.querySelector('#po-suggest-form');
+    const alert = form.querySelector('[data-po-alert]');
+    const stored = readSuggestIds();
+    const attempts = new Map();
+    groups.forEach((group, index) => {
+      if (!group.supplier) return;
+      const key = groupFingerprint(group);
+      attempts.set(index, { key, id: typeof stored[key] === 'string' ? stored[key] : null, created: false });
+    });
+    const includedLines = (group, fieldset) => group.lines.filter((line) => fieldset.querySelector(`[data-po-include][value="${CSS.escape(String(line.id))}"]`)?.checked);
+    const qtyInput = (fieldset, line) => fieldset.querySelector(`[data-po-suggest-qty="${CSS.escape(String(line.id))}"]`);
+    form.addEventListener('input', (event) => {
+      if (event.target.matches?.('[data-po-suggest-qty]')) event.target.removeAttribute('aria-invalid');
+    });
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const button = overlay.panel.querySelector('[data-po-create-many]');
+      // A blank or non-positive quantity is a visible field error, never a
+      // silent return to the suggested quantity (S90 P3).
+      form.querySelectorAll('[data-po-suggest-qty][aria-invalid]').forEach((input) => input.removeAttribute('aria-invalid'));
+      const invalid = [];
+      for (const [index, group] of groups.entries()) {
+        const attempt = attempts.get(index);
+        if (!attempt || attempt.created) continue;
+        const fieldset = form.querySelector(`[data-po-group="${index}"]`);
+        includedLines(group, fieldset).forEach((line) => {
+          const input = qtyInput(fieldset, line);
+          const raw = String(input?.value ?? '').trim();
+          if (raw === '' || !(Number(raw) > 0) || Number(raw) > 1000000) invalid.push([input, line]);
+        });
+      }
+      if (invalid.length) {
+        invalid.forEach(([input]) => { input?.setAttribute('aria-invalid', 'true'); input?.setAttribute('aria-describedby', 'po-suggest-error'); });
+        alert.innerHTML = `<div id="po-suggest-error">${alertHtml('danger', 'Check the quantities', `Enter a quantity above 0 for ${invalid.map(([, line]) => line.name).join(', ')}, or untick ${invalid.length === 1 ? 'it' : 'them'}.`)}</div>`;
+        lucide();
+        invalid[0][0]?.focus();
+        return;
+      }
       busy(button, true);
-      let created = 0;
       const failures = [];
       for (const [index, group] of groups.entries()) {
-        if (!group.supplier) continue;
+        const attempt = attempts.get(index);
+        if (!attempt || attempt.created) continue;
         const fieldset = form.querySelector(`[data-po-group="${index}"]`);
-        const lines = group.lines.filter((line) => fieldset.querySelector(`[data-po-include][value="${CSS.escape(String(line.id))}"]`)?.checked)
-          .map((line) => ({ item_id: line.id, quantity: Number(fieldset.querySelector(`[data-po-suggest-qty="${CSS.escape(String(line.id))}"]`)?.value) || line.orderQuantity, unit_cost: num(line.item?.cost_price) ?? 0 }));
+        const lines = includedLines(group, fieldset)
+          .map((line) => ({ item_id: line.id, quantity: Number(String(qtyInput(fieldset, line).value).trim()), unit_cost: num(line.item?.cost_price) ?? 0 }));
         if (!lines.length) continue;
-        try { await command('create', { id: uuid(), supplierId: group.supplier.id, lines, note: 'Created from the suggested order' }); created += 1; }
-        catch (error) { failures.push(`${group.name}: ${shown(error, 'Nothing was saved for this supplier. Try again.')}`); }
+        if (!attempt.id) {
+          attempt.id = uuid();
+          stored[attempt.key] = attempt.id;
+          writeSuggestIds(stored);
+        }
+        try {
+          await command('create', { id: attempt.id, supplierId: group.supplier.id, lines, note: 'Created from the suggested order' });
+          attempt.created = true;
+          delete stored[attempt.key];
+          writeSuggestIds(stored);
+          fieldset.disabled = true;
+          fieldset.dataset.poCreated = '';
+          fieldset.querySelector('[data-po-group-state]').innerHTML = '<span class="atlas-pill atlas-pill--positive">Draft created</span>';
+        } catch (error) { failures.push(`${group.name}: ${shown(error, 'Nothing was saved for this supplier. Try again.')}`); }
       }
       busy(button, false);
+      const created = [...attempts.values()].filter((attempt) => attempt.created).length;
       if (failures.length) {
-        form.querySelector('[data-po-alert]').innerHTML = alertHtml('danger', created ? `${created} created, ${failures.length} didn’t go through` : 'The orders weren’t created.', failures.join(' '));
+        const remaining = [...attempts.values()].filter((attempt) => !attempt.created).length;
+        button.textContent = `Create ${remaining} ${remaining === 1 ? 'order' : 'orders'}`;
+        alert.innerHTML = alertHtml('danger', created ? `${created} created, ${failures.length} didn’t go through` : 'The orders weren’t created.', `${failures.join(' ')} Trying again only sends ${failures.length === 1 ? 'this one' : 'these'}; ${created ? 'the created drafts aren’t sent again' : 'nothing is created twice'}.`);
         lucide();
         render();
         return;
@@ -532,6 +634,13 @@
 
   const EVENT_LABELS = { created: 'Created', updated: 'Edited', delivery_date_set: 'Delivery date changed', submitted: 'Submitted for approval', approved: 'Approved', rejected: 'Sent back', ordered: 'Marked as ordered', received: 'Received', received_partial: 'Part received', closed_short: 'Closed short', cancelled: 'Cancelled' };
 
+  function approveBlockedReason(order, policy) {
+    if (policy?.approval_approver_role === 'admin' && role() !== 'admin') return 'Only an administrator can approve this order.';
+    const me = shell.profile?.()?.id || root.atlasCurrentProfile?.id || null;
+    if (policy?.approval_separate_approver && me && order?.submitted_by && String(order.submitted_by) === String(me)) return 'You submitted this order, so another manager needs to approve it.';
+    return null;
+  }
+
   function detailHtml(data) {
     const order = data.order;
     const policy = data.policy || state.policy || {};
@@ -549,7 +658,11 @@
       else foot.push('<button type="button" class="atlas-btn atlas-btn--primary" data-po-cmd="place">Mark as ordered</button>');
     } else if (order.status === 'pending_approval') {
       secondary.push('<button type="button" class="atlas-btn atlas-btn--secondary" data-po-cmd="reject">Send back</button>');
-      foot.push('<button type="button" class="atlas-btn atlas-btn--primary" data-po-cmd="approve">Approve</button>');
+      // Approve only when the policy lets this person approve (S90 P3); the
+      // server enforces the same rules.
+      const blocked = approveBlockedReason(order, policy);
+      if (blocked) foot.push(`<p class="po__muted" data-po-approve-blocked>${esc(blocked)}</p>`);
+      else foot.push('<button type="button" class="atlas-btn atlas-btn--primary" data-po-cmd="approve">Approve</button>');
     } else if (order.status === 'approved') {
       foot.push('<button type="button" class="atlas-btn atlas-btn--primary" data-po-cmd="place">Mark as ordered</button>');
     } else if (['ordered', 'partially_received'].includes(order.status)) {
@@ -842,29 +955,56 @@
       } catch (error) { busy(button, false); toast(shown(error, 'This order couldn’t be opened. Nothing was changed; try again.')); }
     }));
     const form = panel.querySelector('#po-restock-form');
-    const item = form.elements.item;
+    // Not form.elements.item: that is HTMLFormControlsCollection.item(), a
+    // method, so the sheet threw before its handlers were bound.
+    const item = form.querySelector('#po-rs-item');
     item.addEventListener('change', () => {
       const chosen = itemById(item.value);
       if (!chosen) return;
       if (chosen.supplier_id && !form.elements.supplier.value) form.elements.supplier.value = chosen.supplier_id;
       if (chosen.cost_price != null && !form.elements.cost.value) form.elements.cost.value = chosen.cost_price;
     });
+    // One request id per form: a retry after an unconfirmed save replays the
+    // stored movement instead of receiving the delivery twice (S90 P2-2).
+    const requestId = uuid();
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const alert = form.querySelector('[data-po-alert]');
       const quantity = Number(form.elements.quantity.value);
       const chosen = itemById(item.value);
-      if (!chosen || !(quantity > 0)) { alert.innerHTML = alertHtml('danger', '', 'Choose an item and a quantity above 0.'); lucide(); return; }
       const cost = form.elements.cost.value === '' ? null : Number(form.elements.cost.value);
       const discount = form.elements.discount.value === '' ? 0 : Number(form.elements.discount.value);
+      const problems = [];
+      if (!chosen) problems.push([item, 'Choose an item.']);
+      if (!(quantity > 0)) problems.push([form.elements.quantity, 'Enter a quantity above 0.']);
+      if (cost !== null && !(cost >= 0)) problems.push([form.elements.cost, 'Enter a unit cost of 0 or more.']);
+      if (!(discount >= 0 && discount <= 100)) problems.push([form.elements.discount, 'Enter a discount between 0 and 100 %.']);
+      form.querySelectorAll('[aria-invalid]').forEach((input) => input.removeAttribute('aria-invalid'));
+      if (problems.length) {
+        problems.forEach(([input]) => input.setAttribute('aria-invalid', 'true'));
+        alert.innerHTML = alertHtml('danger', '', problems.map(([, text]) => text).join(' '));
+        lucide();
+        problems[0][0].focus();
+        return;
+      }
       const button = form.querySelector('[type="submit"]');
       busy(button, true);
-      const { error } = await client().rpc('adjust_inventory', {
-        p_item_id: chosen.id, p_quantity_change: quantity, p_movement_type: 'restock',
-        p_unit_cost: cost == null ? null : cost * (1 - discount / 100), p_supplier_id: form.elements.supplier.value || null,
-        p_note: discount ? `Supplier discount: ${discount}%` : 'Delivery without an order'
-      });
-      if (error) { busy(button, false); alert.innerHTML = alertHtml('danger', 'The delivery wasn’t recorded.', 'Stock is unchanged. Check your connection and try again.'); lucide(); return; }
+      const adjust = root.AtlasInventory?.adjustStock;
+      const { error } = adjust
+        ? await adjust({
+          requestId, itemId: chosen.id, change: quantity, type: 'restock',
+          unitCost: cost == null ? null : cost * (1 - discount / 100), supplierId: form.elements.supplier.value || null,
+          note: discount ? `Supplier discount: ${discount}%` : 'Delivery without an order'
+        })
+        : { error: { refused: true, text: 'Receiving isn’t available right now. Nothing was recorded.' } };
+      if (error) {
+        busy(button, false);
+        alert.innerHTML = error.refused
+          ? alertHtml('danger', 'The delivery wasn’t recorded.', error.text)
+          : alertHtml('warning', 'The delivery may not have been recorded.', error.text, '<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#inventory/movements" data-modal-close>Open Movements</a>');
+        lucide();
+        return;
+      }
       overlay.close('done');
       toast(`Received ${qty(quantity)} ${chosen.unit || ''} of ${chosen.name} · stock updated`);
       root.atlasReloadData?.();
@@ -1031,10 +1171,15 @@
     document.addEventListener('input', onInput);
   }
 
-  // Items on a placed order that hasn't fully arrived. Operations and the
-  // canonical order suggestions read "ordered" from here, never from storage.
+  // Items on any open order: a draft, one waiting for approval, approved,
+  // placed or partly received (S90 P2-7: a draft already covers the need, so
+  // suggesting it again invites double ordering). Operations and the canonical
+  // order suggestions read "on order" from here, never from storage.
   root.AtlasPurchaseOrders = Object.freeze({
-    openItemIds: () => new Set(state.orders.filter((order) => ['ordered', 'partially_received'].includes(order.status)).flatMap((order) => (order.lines || []).map((line) => line.item_id)).filter(Boolean))
+    openItemIds: () => new Set(state.orders.filter((order) => ['draft', 'pending_approval', 'approved', 'ordered', 'partially_received'].includes(order.status)).flatMap((order) => (order.lines || []).map((line) => line.item_id)).filter(Boolean)),
+    // The furthest-along open order each item is on, for honest labels
+    // ("On a draft order" is not "On order").
+    itemOrderStatus: (itemId) => itemOrderStatus(itemId)
   });
   root.AtlasPurchasing = Object.freeze({
     newOrder: (options = {}) => { shell.navigate('#purchasing/orders'); openOrderSheet(options); },

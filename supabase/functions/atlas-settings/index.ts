@@ -347,11 +347,51 @@ function assertNoSensitiveKeys(value: unknown, path = "settings"): void {
   }
 }
 
+// s90-hours-helpers:start (pure; unit-tested by tests/node/workflow-integrity-s90.test.js)
+// Opening-hours conflicts the editor also refuses (S90 P3): zero-length days,
+// a close before the open without close_next_day, more than 24 hours, and a
+// late close that runs into the next day's opening.
+function businessHoursProblem(rows: Record<string, unknown>[]): { weekday: number; text: string } | null {
+  const minutes = (value: unknown) => {
+    const match = /^(\d{2}):(\d{2})/.exec(String(value ?? ''));
+    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+  };
+  const clockText = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+  const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const byDay = new Map(rows.map((row: Record<string, unknown>) => [Number(row.weekday), row]));
+  for (const row of rows) {
+    if (!row || !row.is_open) continue;
+    const weekday = Number(row.weekday);
+    const day = names[weekday] || String(row.day_label || 'This day');
+    const open = minutes(row.open_time);
+    const close = minutes(row.close_time);
+    if (open === null || close === null) continue;
+    if (!row.close_next_day && close === open) {
+      return { weekday, text: `${day} opens and closes at the same time. Change the closing time, or tick Next day if it’s open around the clock.` };
+    }
+    if (!row.close_next_day && close < open) {
+      return { weekday, text: `${day} closes before it opens. Tick Next day if it closes after midnight.` };
+    }
+    if (row.close_next_day && close > open) {
+      return { weekday, text: `${day} would be open for more than 24 hours. Check the closing time.` };
+    }
+    if (row.close_next_day) {
+      const next = byDay.get((weekday + 1) % 7);
+      const nextOpen = next?.is_open ? minutes(next.open_time) : null;
+      if (nextOpen !== null && close > nextOpen) {
+        return { weekday, text: `${day} closes at ${clockText(close)} after midnight, but ${names[(weekday + 1) % 7]} opens at ${clockText(nextOpen)}. Change one so they don’t overlap.` };
+      }
+    }
+  }
+  return null;
+}
+// s90-hours-helpers:end
+
 function validateHours(value: unknown): Record<string, unknown>[] {
   const rows = arrayValue(value, "Business hours");
   if (rows.length !== 7) throw new ApiError(400, "Business hours must contain all seven days.");
   const weekdays = new Set<number>();
-  return rows.map((entry) => {
+  const validated = rows.map((entry) => {
     const row = objectValue(entry, "Business-hours row");
     const weekday = integerValue(row.weekday, "Weekday", 0, 6);
     if (weekdays.has(weekday)) throw new ApiError(400, "Each weekday may appear only once.");
@@ -370,6 +410,9 @@ function validateHours(value: unknown): Record<string, unknown>[] {
       last_order_next_day: Boolean(row.last_order_next_day),
     };
   });
+  const conflict = businessHoursProblem(validated);
+  if (conflict) throw new ApiError(400, conflict.text);
+  return validated;
 }
 
 Deno.serve(async (request: Request) => {

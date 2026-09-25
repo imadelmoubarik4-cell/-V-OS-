@@ -236,12 +236,25 @@ test('order suggestions match operations.js, with ordered from open purchase ord
   assert.deepEqual([byId.vodka.shortfall, byId.vodka.cases, byId.vodka.orderQuantity, byId.vodka.estimatedCost], [10, 2, 12, 60000]);
   // Lime: fractional stock rounds the shortfall up; one unit per case means no case rounding.
   assert.deepEqual([byId.lime.shortfall, byId.lime.cases, byId.lime.orderQuantity], [8, null, 8]);
-  // Wine: only the 'ordered' PO counts; the draft PO for Vodka does not.
+  // S90 P2-7: every open order counts — the placed PO for Wine and the draft
+  // PO for Vodka — so neither is suggested again; received and cancelled
+  // orders (Gin, Lime) do not.
   assert.equal(byId.wine.ordered, true);
-  assert.equal(byId.vodka.ordered, false);
+  assert.equal(byId.vodka.ordered, true);
+  assert.equal(byId.lime.ordered, false);
   assert.deepEqual([byId.wine.shortfall, byId.wine.cases, byId.wine.orderQuantity], [19, 2, 24]);
   assert.equal(byId.wine.supplierId, 's-vin');
   assert.deepEqual([...openPurchaseOrderItemIds(PURCHASE_ORDERS)], [...context.AtlasPurchaseOrders.openItemIds()]);
+  assert.deepEqual([...openPurchaseOrderItemIds(PURCHASE_ORDERS)].sort(), ['tonic', 'vodka', 'wine']);
+  // Draft, pending approval and approved orders are open in both.
+  const unplaced = [
+    { id: 'po-6', status: 'pending_approval', lines: [{ item_id: 'bitters', quantity: 1 }] },
+    { id: 'po-7', status: 'approved', lines: [{ item_id: 'cream', quantity: 1 }] },
+  ];
+  assert.deepEqual([...openPurchaseOrderItemIds(unplaced)], ['bitters', 'cream']);
+  context.state.orders = unplaced;
+  assert.deepEqual([...context.AtlasPurchaseOrders.openItemIds()], ['bitters', 'cream']);
+  context.state.orders = PURCHASE_ORDERS;
   assert.deepEqual(plain(orderGroups(serverSuggestions).map((group) => [group.supplier, group.suggestions.length, group.estimatedCost])),
     plain([['Globus', 2, byId.vodka.estimatedCost + byId.bitters.estimatedCost], ['Bananar', 1, byId.lime.estimatedCost], ['MS', 1, byId.cream.estimatedCost], ['Vínkaup', 1, byId.wine.estimatedCost]]));
   assert.equal(orderSuggestions(serverProjected, { orderedItemIds: ['lime'] }).find((entry) => entry.id === 'lime').ordered, true);

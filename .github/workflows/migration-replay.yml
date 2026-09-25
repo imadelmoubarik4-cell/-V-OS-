@@ -63,3 +63,5 @@ jobs:
         run: bash scripts/verify_s88_ai_previews.sh
       - name: Run S89 acceptance (Visual Inventory identity, duplicate guard, recognition privileges, governance, canonical report truth)
         run: bash scripts/verify_s89_visual_inventory_previews.sh
+      - name: Run S90 workflow-integrity acceptance (idempotent stock adjustments, count baselines at counted_at)
+        run: bash scripts/verify_s90_workflow_integrity_previews.sh

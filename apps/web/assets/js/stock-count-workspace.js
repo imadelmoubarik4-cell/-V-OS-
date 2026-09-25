@@ -119,6 +119,7 @@
     const text = String(message || '');
     if (status === 401) return 'Sign in again to continue.';
     if (status === 403) return 'This isn’t available for your role.';
+    if (/acknowledge the conflicts|source changed for/i.test(text)) return 'Stock changed for some items after this count started. Review the changes before verifying.';
     if (/version|changed|stale|refresh/i.test(text)) return 'This line changed on another device. It’s been refreshed; check it and save again.';
     if (/three decimal/i.test(text)) return 'Use up to three decimal places.';
     if (/zero or more/i.test(text)) return 'Enter a quantity of zero or more.';
@@ -691,12 +692,17 @@
   // ---------------------------------------------------------------------------
   // Saving
   // ---------------------------------------------------------------------------
+  // Plain decimal only (S90 P3): digits with an optional decimal point or
+  // comma. Hex (0x10), exponents (1e3), signs, inner spaces and Infinity are
+  // refused rather than read as a surprising quantity.
   function parseQuantity(raw) {
     const text = String(raw ?? '').trim().replace(',', '.');
     if (text === '') return { error: 'Enter how many there are. Use 0 if there are none.' };
+    if (!/^(\d+(\.\d*)?|\.\d+)$/.test(text)) return { error: 'Enter a number of 0 or more, like 2 or 1.5.' };
     const value = Number(text);
     if (!Number.isFinite(value) || value < 0) return { error: 'Enter a number of 0 or more.' };
-    if (Math.abs(value * 1000 - Math.round(value * 1000)) > 1e-6) return { error: 'Use up to three decimal places.' };
+    if (/\.\d{4,}$/.test(text) && Math.abs(value * 1000 - Math.round(value * 1000)) > 1e-6) return { error: 'Use up to three decimal places.' };
+    if (value > 1000000) return { error: 'Enter a number up to 1,000,000.' };
     return { value };
   }
 
@@ -772,13 +778,13 @@
     }
   }
 
-  function dialog({ title, body, confirm, tone = 'primary', field = null }) {
+  function dialog({ title, body, confirm, tone = 'primary', field = null, list = null, after = '' }) {
     return new Promise((resolve) => {
       const host = document.createElement('div');
       host.className = 'atlas-modal';
       host.dataset.atlasModal = '';
       host.hidden = true;
-      host.innerHTML = `<section class="atlas-dialog${field ? ' atlas-dialog--form' : ''}" data-modal-panel role="dialog" aria-modal="true" aria-labelledby="sc-dialog-title"><h2 class="atlas-dialog__title" id="sc-dialog-title">${esc(title)}</h2><form class="atlas-dialog__body" id="sc-dialog-form"><p>${esc(body)}</p>${field ? `<div class="atlas-field"><label for="sc-dialog-field">${esc(field.label)}</label><input class="atlas-input" id="sc-dialog-field" name="value" maxlength="${field.max || 1000}" value="${esc(field.value || '')}" ${field.required ? 'required' : ''}></div>` : ''}</form><div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="sc-dialog-form" class="atlas-btn atlas-btn--${tone}">${esc(confirm)}</button></div></section>`;
+      host.innerHTML = `<section class="atlas-dialog${field ? ' atlas-dialog--form' : ''}" data-modal-panel role="dialog" aria-modal="true" aria-labelledby="sc-dialog-title"><h2 class="atlas-dialog__title" id="sc-dialog-title">${esc(title)}</h2><form class="atlas-dialog__body" id="sc-dialog-form"><p>${esc(body)}</p>${list?.length ? `<ul class="sc-dialog__list" data-sc-dialog-list>${list.map((entry) => `<li>${esc(entry)}</li>`).join('')}</ul>` : ''}${after ? `<p>${esc(after)}</p>` : ''}${field ? `<div class="atlas-field"><label for="sc-dialog-field">${esc(field.label)}</label><input class="atlas-input" id="sc-dialog-field" name="value" maxlength="${field.max || 1000}" value="${esc(field.value || '')}" ${field.required ? 'required' : ''}></div>` : ''}</form><div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="sc-dialog-form" class="atlas-btn atlas-btn--${tone}">${esc(confirm)}</button></div></section>`;
       document.body.appendChild(host);
       let answered = false;
       root.AtlasModal.register(host, { onClose: () => { root.setTimeout(() => host.remove(), 0); if (!answered) resolve(null); } });
@@ -824,6 +830,36 @@
     void confirmText;
   }
 
+  // Movements recorded after each counted line (S90 P2-8). A verified count
+  // is the stock at the moment each line was counted (the server stamps the
+  // balance at counted_at), so these are added on top, never erased.
+  function changedAfterCount(lineList, movementList) {
+    const changed = [];
+    for (const line of Array.isArray(lineList) ? lineList : []) {
+      if (line?.line_status !== 'counted' || !line.counted_at) continue;
+      const countedAt = Date.parse(line.counted_at);
+      if (!Number.isFinite(countedAt)) continue;
+      const after = (Array.isArray(movementList) ? movementList : []).filter((movement) => movement
+        && String(movement.item_id) === String(line.inventory_item_id)
+        && String(movement.movement_type || '').toLowerCase() !== 'count'
+        && Number.isFinite(Date.parse(movement.created_at)) && Date.parse(movement.created_at) > countedAt
+        && num(movement.quantity_change) !== null);
+      if (!after.length) continue;
+      changed.push({
+        itemId: line.inventory_item_id,
+        name: line.item_name || 'Item',
+        unit: line.inventory_unit || '',
+        delta: round3(after.reduce((sum, movement) => sum + num(movement.quantity_change), 0)),
+        count: after.length
+      });
+    }
+    return changed;
+  }
+  function changedAfterCountText(entry) {
+    const change = entry.delta === 0 ? 'changes that net to 0' : `${entry.delta > 0 ? '+' : ''}${qty(entry.delta)}${entry.unit ? ` ${entry.unit}` : ''}`;
+    return `${entry.name}: ${change} recorded after it was counted`;
+  }
+
   async function verify() {
     const ok = await dialog({ title: 'Verify this count?', body: 'The counted quantities become the stock Atlas shows for these items. The count and who did it are kept.', confirm: 'Verify count' });
     if (!ok) return;
@@ -831,7 +867,14 @@
       await command('verify', null, { acknowledge_conflicts: false }, 'Count verified');
     } catch (error) {
       if (!/changed|conflict|acknowledge/i.test(String(error.message))) return;
-      const again = await dialog({ title: 'Stock changed during this count', body: 'Some items had deliveries or other changes after the count started. Verify anyway and keep the counted quantities?', confirm: 'Verify anyway' });
+      const changed = changedAfterCount(lines(), root.AtlasData?.movements?.() || []);
+      const again = await dialog({
+        title: 'Stock changed during this count',
+        body: 'Some items had deliveries or other changes after the count started. Each counted quantity is kept as the stock at the moment it was counted; anything recorded after that is added on top, so nothing is erased.',
+        list: changed.map(changedAfterCountText),
+        after: changed.length ? '' : 'Changes recorded before an item was counted are already part of its count.',
+        confirm: 'Verify anyway'
+      });
       if (again) await command('verify', null, { acknowledge_conflicts: true }, 'Count verified').catch(() => {});
     }
   }
@@ -1217,6 +1260,8 @@
     policy: () => state.policy,
     // Pure helpers, exported for tests.
     parseQuantity,
+    changedAfterCount,
+    changedAfterCountText,
     quantityFamily,
     countUnits,
     previewNormalization,
