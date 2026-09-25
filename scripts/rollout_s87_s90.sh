@@ -2,7 +2,7 @@
 # Atlas S87–S90 production rollout, one stage at a time, in the approved order.
 #
 #   scripts/rollout_s87_s90.sh check       read-only: ledger, pending files, secrets hint
-#   scripts/rollout_s87_s90.sh migrations  batch A (27 files), each in its own transaction
+#   scripts/rollout_s87_s90.sh migrations  batch A (28 files), each in its own transaction
 #   scripts/rollout_s87_s90.sh functions   deploy the Edge Functions (config.toml JWT settings)
 #   (deploy the web app: merge PR #91 so Netlify publishes main, then smoke test)
 #   scripts/rollout_s87_s90.sh revokes     the two release-gated item revokes, AFTER the web deploy
