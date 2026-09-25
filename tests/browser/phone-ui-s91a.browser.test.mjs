@@ -218,3 +218,23 @@ for (const who of ['admin', 'bartender']) {
     });
   }
 }
+
+test('Purchasing Status and Supplier filters open a visible menu on a 390 px phone', { skip }, async () => {
+  const { page, close } = await launchAtlas({ viewport: { width: 390, height: 844 }, contextOptions: { hasTouch: true, isMobile: true } });
+  try {
+    await page.evaluate(() => { location.hash = '#purchasing'; });
+    await page.waitForSelector('[data-po-menu-trigger="status"]');
+    for (const which of ['status', 'supplier']) {
+      await page.tap(`[data-po-menu-trigger="${which}"]`);
+      await page.waitForSelector(`[data-po-menu="${which}"]:not([hidden])`);
+      const visible = await page.evaluate((name) => {
+        const menu = document.querySelector(`[data-po-menu="${name}"]`);
+        const box = menu.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.left + box.width / 2, box.top + Math.min(20, box.height / 2));
+        return box.width > 0 && box.height > 0 && box.top >= 0 && box.bottom <= innerHeight + 1 && menu.contains(hit);
+      }, which);
+      assert.equal(visible, true, `${which} menu is on screen and on top`);
+      await page.keyboard.press('Escape');
+    }
+  } finally { await close(); }
+});
