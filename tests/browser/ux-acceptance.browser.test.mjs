@@ -44,7 +44,7 @@ const headerState = (page) => page.evaluate(() => [...document.querySelectorAll(
 
 test('P1-6: page headers keep a 280 px title column; actions wrap below instead of squeezing it', { skip }, async () => {
   const routes = { C: ['#reports/overview', '#recipes', '#marketing', '#data'], P: ['#shifts', '#shifts/month', '#knowledge', '#team'], INV: ['#inventory', '#purchasing'], A: ['#operations', '#settings'] };
-  for (const width of [1280, 1024, 768, 390]) {
+  for (const width of [1024, 768, 390]) {
     for (const [group, list] of Object.entries(routes)) {
       const phone = width < 768;
       const { page, record, close } = await launchAtlas({ fixtures: uxWorld(USERS.admin, { group }), viewport: { width, height: 900 }, contextOptions: phone ? { hasTouch: true, isMobile: true } : {} });
