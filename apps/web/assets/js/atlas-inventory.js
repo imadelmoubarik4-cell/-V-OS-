@@ -772,6 +772,8 @@
         detail = null;
         state.detailId = null;
         if (reason === 'replace' || reason === 'navigate') return;
+        // The list re-renders on the way back; focus the row that opened the item.
+        state.returnFocusId = String(item.id);
         if (/^#inventory\/item\//.test(location.hash)) {
           if (state.detailFromList && history.length > 1) history.back();
           else shell.navigate('#inventory');
@@ -1690,6 +1692,12 @@
       if (!state.rendered || !rootEl().querySelector('[data-inv-body]')) render();
       showDetail(params.item, params.section === 'recipes' ? 'recipes' : null);
     } else if (detail) closeDetail();
+    if (!params?.item && state.returnFocusId) {
+      const id = state.returnFocusId;
+      state.returnFocusId = null;
+      const link = [...rootEl().querySelectorAll('[data-inv-open]')].find((node) => node.dataset.invOpen === id && node.offsetParent !== null);
+      link?.focus({ preventScroll: false });
+    }
   }
 
   function onHide() {
@@ -1710,7 +1718,13 @@
       { id: 'inventory.waste.record', label: 'Record waste', icon: 'trash-2', keywords: ['waste', 'spoilage', 'breakage', 'spill'], roles: MANAGERS, contexts: ['inventory'], forRecord: 'inventory_item', recordLabel: 'Record waste for {name}', run: (ctx) => openWasteDialog(ctx?.record?.type === 'inventory_item' ? ctx.record.id : null) },
       { id: 'inventory.item.deactivate', label: 'Deactivate item', icon: 'archive', keywords: ['deactivate', 'archive', 'remove'], roles: MANAGERS, forRecord: 'inventory_item', recordLabel: 'Deactivate {name}', when: (ctx) => Boolean(ctx?.record?.id), run: (ctx) => { const item = itemById(ctx.record.id); if (item) openActivation(item, item.active === false); } }
     ];
-    actions.forEach((action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`) }));
+    const registerAction = (action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`) });
+    // Add item first; the rest after every module has loaded, so the palette
+    // suggests Add item and Start stock count (stock-count-workspace.js) first.
+    registerAction(actions[0]);
+    const registerRest = () => actions.slice(1).forEach(registerAction);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', registerRest, { once: true });
+    else registerRest();
 
     shell.onDataLoaded(() => {
       if (dataStatus().items !== 'error') state.lastLoadedAt = new Date();

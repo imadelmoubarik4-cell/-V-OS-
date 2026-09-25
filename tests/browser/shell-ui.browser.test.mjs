@@ -203,6 +203,11 @@ test('palette: ⌘K / Ctrl K / "/" open it; arrows, Tab and Enter run an action;
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => location.hash === '#inventory/counts');
     assert.equal(await page.$eval('#atlas-palette', (node) => node.hidden), true);
+    // S88 §7.6: with no count in progress it offers to start one for Campari
+    // (nothing starts until the counter chooses); close that sheet.
+    await page.waitForSelector('[data-atlas-modal].is-open .atlas-sheet');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('[data-atlas-modal].is-open'));
     // The + button opens Actions with an empty input.
     await page.click('#atlas-quick-actions');
     const actions = await page.evaluate(() => ({ value: document.getElementById('atlas-palette-input').value, active: document.querySelector('.atlas-palette__item.is-active')?.classList.contains('atlas-palette__item--action') }));
@@ -405,10 +410,10 @@ test('"/" types into fields instead of opening the palette; Tab stays inside ope
   const { page, close } = await launch();
   try {
     await page.evaluate(() => window.AtlasShell.navigate('#inventory'));
-    await page.focus('#inventory-search');
+    await page.focus('[data-inv-search]');
     await page.keyboard.press('/');
     assert.equal(await page.evaluate(() => window.AtlasPalette.isOpen()), false);
-    assert.equal(await page.inputValue('#inventory-search'), '/');
+    assert.equal(await page.inputValue('[data-inv-search]'), '/');
     // Focus trap: Tab from the palette input never leaves the dialog.
     await page.click('#atlas-omni');
     for (let i = 0; i < 6; i += 1) await page.keyboard.press('Tab');

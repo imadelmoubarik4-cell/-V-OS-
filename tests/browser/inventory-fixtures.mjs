@@ -206,6 +206,37 @@ export function recognitionBackend({ result = () => ({ detections: [detection()]
   return { handler, calls };
 }
 
+/**
+ * A stateful atlas-item-master mock: item_dependencies, set_item_active,
+ * create-item (duplicate guard: 'suspected' needs an acknowledgement with a
+ * reason, 'code' is a hard conflict) and catalog-request.
+ */
+export function itemMasterBackend({ duplicate = null, blockers = [] } = {}) {
+  const calls = [];
+  const candidate = { item_id: IDS.sugar, name: 'Demerara Sugar Cube', active: true, score: 0.82, band: 'likely', requires_ack: true, evidence: [{ signal: 'name', polarity: 'for', text: 'name and package match this item' }] };
+  const handler = (entry) => {
+    const action = entry.action || entry.body?.action;
+    calls.push({ ...entry, action });
+    if (action === 'item_dependencies') {
+      const id = new URLSearchParams(entry.search).get('item_id');
+      const item = items.find((row) => row.id === id);
+      return { dependencies: { item: item ? { id, name: item.name, active: item.active, updated_at: item.updated_at } : null, blockers, warnings: [], can_deactivate: !blockers.length, can_reactivate: true, recipes: [], open_orders: [] } };
+    }
+    if (action === 'set_item_active') return { result: { item_id: entry.body.item_id, active: entry.body.active, changed: true } };
+    if (action === 'create-item') {
+      const acknowledged = entry.body?.duplicate_ack?.acknowledged || [];
+      if (duplicate === 'code') return { __status: 409, body: { error: 'That code belongs to another item.', code: 'code_conflict', duplicate_check: { candidates: [{ ...candidate, score: 1, band: 'code', requires_ack: false }], requires_ack: [], code_conflicts: [{ code: '5000000000001', item_id: IDS.sugar, name: 'Demerara Sugar Cube' }], alias_conflicts: [], identity_conflict: null } } };
+      if (duplicate === 'suspected' && !acknowledged.some((ack) => ack.item_id === IDS.sugar && String(ack.reason || '').trim().length >= 3)) {
+        return { __status: 409, body: { error: 'Possible duplicate.', code: 'duplicate_suspected', duplicate_check: { candidates: [candidate], requires_ack: [IDS.sugar], code_conflicts: [], alias_conflicts: [], identity_conflict: null } } };
+      }
+      return { __status: 201, body: { result: { item_id: '17171717-1717-4717-8717-171717171717', item: { id: '17171717-1717-4717-8717-171717171717', name: entry.body.values?.name, quantity: 0 } } } };
+    }
+    if (action === 'catalog-request') return { __status: 201, body: { request: { id: '18181818-1818-4818-8818-181818181818', status: 'applied' } } };
+    return { __status: 400, body: { error: 'unknown action', code: 'invalid_request' } };
+  };
+  return { handler, calls };
+}
+
 /** The realistic Team B world. */
 export function inventoryWorld({ counts = countBackend(), purchasing = purchasingBackend(), recognition = recognitionBackend(), itemMaster = null, tables = {}, rpc = {}, functions = {} } = {}) {
   return {

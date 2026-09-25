@@ -909,10 +909,15 @@
     if (body) { renderSuppliers(body); lucide(); const input = body.querySelector('[data-po-supplier-search]'); input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }
   }
 
-  function onShow(params = {}) {
+  // The shell renders the page once per navigation (render), then onShow
+  // loads data and opens the order or supplier the route names.
+  function renderRoute(params = {}) {
     state.params = { ...params };
     state.section = ['orders', 'deliveries', 'suppliers'].includes(params.section) ? params.section : 'orders';
     render();
+  }
+
+  function onShow(params = {}) {
     if (!isManager()) return;
     if (!state.ordersLoaded) loadOrders().then(() => { if (shell.current() === 'suppliers') render(); });
     if (!state.policy) loadPolicy();
@@ -940,7 +945,16 @@
   }
 
   function register() {
-    shell.registerView('suppliers', { root: () => rootEl(), title: 'Purchasing', display: 'block', onShow, onHide });
+    shell.registerView('suppliers', {
+      root: () => rootEl(), title: 'Purchasing', display: 'block', render: (params) => renderRoute(params || {}), onShow, onHide,
+      // Staff reaching a Purchasing link go Home with a note (the page keeps a
+      // permission state as a fallback).
+      guard: () => {
+        if (isManager() || !shell.profile?.()) return true;
+        toast('That page is for managers. Ask an administrator if you need access.');
+        return 'dashboard';
+      }
+    });
     const actions = [
       { id: 'purchasing.order.new', label: 'New order', icon: 'shopping-cart', keywords: ['order', 'purchase', 'buy'], roles: MANAGERS, contexts: ['home', 'purchasing', 'suppliers'], forRecord: 'inventory_item', recordLabel: 'Add {name} to an order', run: (ctx = {}) => { if (shell.current() !== 'suppliers') shell.navigate('#purchasing/orders'); openOrderSheet({ itemIds: ctx.record?.type === 'inventory_item' ? [ctx.record.id] : (ctx.itemIds || []) }); } },
       { id: 'purchasing.delivery.receive', label: 'Receive a delivery', icon: 'truck', keywords: ['restock', 'delivery', 'receive'], roles: MANAGERS, contexts: ['home', 'inventory', 'purchasing', 'suppliers'], run: async () => { if (!state.ordersLoaded) await loadOrders(); openReceiveAny(); } },

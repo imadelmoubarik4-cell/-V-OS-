@@ -91,8 +91,10 @@ test('Enter on a record opens it in its module', { skip }, async () => {
     await page.keyboard.press('Enter');
     await page.waitForTimeout(300);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'inventory');
-    assert.equal(await page.inputValue('#inventory-search'), 'Angelo Pinot Grigio 750ml');
-    assert.equal(await page.$$eval('#items-body tr', (rows) => rows.length), 1);
+    // S88 §7.5: an item opens its detail (#inventory/item/<id>).
+    await page.waitForSelector('.inv-detail');
+    assert.equal(await page.evaluate(() => location.hash), '#inventory/item/pinot');
+    assert.equal(await page.textContent('#inv-detail-title'), 'Angelo Pinot Grigio 750ml');
   } finally { await close(); }
 });
 

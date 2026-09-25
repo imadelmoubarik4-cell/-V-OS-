@@ -1116,15 +1116,16 @@
   async function openForItem(itemId) {
     await loadSnapshot();
     const drafts = (state.snapshot?.sessions || []).filter((entry) => entry.status === 'draft');
-    let target = drafts[0] || null;
+    const target = drafts[0] || null;
     if (!target) {
+      // No count in progress: offer to start one for this item (nothing is
+      // started without the counter choosing it).
       if (!(state.snapshot?.permissions?.can_start ?? true)) { toast('Ask a manager to start a count.'); return; }
-      try {
-        const payload = await mutate('start', { title: 'Full count', scope_type: 'all', scope_value: null, notes: null, client_request_id: uuid() });
-        target = payload.detail?.session || null;
-      } catch (error) { toast(error.message); return; }
+      shell.navigate('#inventory/counts');
+      state.focusIds = new Set([String(itemId)]);
+      openStartSheet({ itemIds: [itemId] });
+      return;
     }
-    if (!target) return;
     await loadDetail(target.id);
     let line = lines().find((entry) => String(entry.inventory_item_id) === String(itemId));
     if (!line) {
