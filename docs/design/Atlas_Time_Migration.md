@@ -119,17 +119,22 @@ Line numbers are as of this commit.
 
 ### Team B — Inventory · Purchasing · Stock count
 
+Done in the S88 Team B rewrite: the inventory, movements, waste and supplier
+code left `index.html` for `assets/js/atlas-inventory.js` and
+`assets/js/atlas-purchasing.js`; the scanner, item-master and purchase-orders
+scripts were retired. Quantities keep an `en-GB` number format (never money).
+
 | Done | File:line | Current | Change to |
 | --- | --- | --- | --- |
-| [ ] | `index.html:1641-1649` `timeAgo()` | own relative formatter ("5m ago", "3d ago") | `formatRelative` |
-| [ ] | `index.html:1657`, `:1670` movements / waste date | `toLocaleString()` (browser zone + locale) | `formatDateTime` |
-| [ ] | `index.html:2351-2358` `monthKey()` / `monthLabel()` | browser-local month, `toLocaleDateString(undefined…)` | `monthKey()`, `formatDate`/month label from `monthRange` |
-| [ ] | `index.html:2403`, `:2509` `thisMonthKey` | `monthKey(new Date().toISOString())` | `monthKey(today())` |
-| [ ] | `index.html:1761`, `:2407`, `:2425`, `:2445`, `:2539`, `:2558-2559` money | `toLocaleString()` / `is-IS … ISK` | `formatKr` |
-| [ ] | `purchase-orders.js:22-23` overdue | `Date` vs `Date.now()` on `expected_delivery_at` | compare `expected_delivery_date` with `today()` (purchasing v2, contract §4) |
-| [ ] | `stock-count-workspace.js:73-81` `formatDate` | literal zone | `formatDateTime` |
-| [ ] | `item-master-workspace.js:59-66` `formatDate` | no `timeZone` (browser zone) | `formatDateTime` |
-| [ ] | `inventory-scanner.js:55` number format | ad-hoc grouping | keep for quantities; money via `formatKr` |
+| [x] | `index.html:1641-1649` `timeAgo()` | own relative formatter ("5m ago", "3d ago") | `formatRelative` (dashboard "last restock"; the inventory `timeAgo` left with the page) |
+| [x] | `index.html:1657`, `:1670` movements / waste date | `toLocaleString()` (browser zone + locale) | `formatDateTime` in `atlas-inventory.js` (Movements and Waste tabs) |
+| [x] | `index.html:2351-2358` `monthKey()` / `monthLabel()` | browser-local month, `toLocaleDateString(undefined…)` | `AtlasVenueClock.monthKey()`; label from the month key (no browser zone) |
+| [x] | `index.html:2403`, `:2509` `thisMonthKey` | `monthKey(new Date().toISOString())` | `monthKey(AtlasVenueClock.today())` |
+| [x] | `index.html:1761`, `:2407`, `:2425`, `:2445`, `:2539`, `:2558-2559` money | `toLocaleString()` / `is-IS … ISK` | `formatKr` (dashboard) and `AtlasVenueClock.formatKr` in the new modules |
+| [x] | `purchase-orders.js:22-23` overdue | `Date` vs `Date.now()` on `expected_delivery_at` | `atlas-purchasing.js` compares `expected_delivery_date` with `AtlasVenueClock.today()` (purchasing v2) |
+| [x] | `stock-count-workspace.js:73-81` `formatDate` | literal zone | `formatDate` / `formatDateTime` / `formatRelative` from `AtlasVenueClock` |
+| [x] | `item-master-workspace.js:59-66` `formatDate` | no `timeZone` (browser zone) | file removed; the item detail in `atlas-inventory.js` uses `formatDate` |
+| [x] | `inventory-scanner.js:55` number format | ad-hoc grouping | file removed; `atlas-capture.js` shows no money |
 
 ### Team C — Recipes · Reports · Data · Marketing
 
