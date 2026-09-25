@@ -37,6 +37,12 @@ A.2 removes all existing policies on the inventory/import target tables before i
 
 The five migration files before A.1 were recovered from the hosted migration ledger. Their SQL bodies are hash-locked by `tests/node/security-contract.test.js`; do not rewrite them.
 
+## Browser content security policy
+
+`netlify.toml` limits `script-src` to `'self'`, `blob:` and the exact pinned CDN files (supabase-js 2.45.4 from jsDelivr with an unpkg fallback, and Lucide 0.454.0). Each of these files also carries a reviewed SRI hash. The unused SheetJS (`xlsx@0.18.5`) include was removed in S89: spreadsheets are uploaded to private storage and parsed server-side.
+
+Known rollout follow-up (security review S88b G6): `'unsafe-inline'` remains in `script-src` because `index.html` and `menu.html` still contain inline app scripts. The next step is to move those scripts into files, or allow them by hash or nonce, and then drop `'unsafe-inline'`. Until then, HTML escaping in every renderer remains the main defence against XSS. The browser fuzz tests cover this escaping.
+
 ## Verification
 
 Run locally:

@@ -247,6 +247,35 @@ test('palette: Ask Atlas routes to #ai/new with the query; questions put it firs
   } finally { await close(); }
 });
 
+test('security G3: palette recents are keyed per user and cleared on user change and sign-out', { skip }, async () => {
+  const other = '00000000-0000-4000-8000-00000000abcd';
+  const managerRecent = JSON.stringify([{ type: 'supplier', id: 's-9', title: 'Private supplier contact', detail: 'owner@supplier.example', route: '#purchasing/suppliers/s-9' }]);
+  const { page, close } = await launch({ user: USERS.admin, storage: { 'atlas.palette.recent.v1': managerRecent, [`atlas.palette.recent.v1:${other}`]: managerRecent } });
+  const recentKeys = () => page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('atlas.palette.recent')).sort());
+  try {
+    // Another account's (and the legacy unscoped) recents are gone for this user.
+    assert.deepEqual(await recentKeys(), []);
+    await page.click('#atlas-omni');
+    assert.doesNotMatch(await page.textContent('#atlas-palette'), /Private supplier contact/);
+    await page.keyboard.press('Escape');
+    // Opening a record remembers it under this user's id only.
+    await page.click('#atlas-omni');
+    await page.keyboard.type('campari');
+    await page.waitForFunction(() => document.getElementById('atlas-palette-list')?.dataset.answerState !== 'pending');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'inventory');
+    assert.deepEqual(await recentKeys(), [`atlas.palette.recent.v1:${USERS.admin.id}`]);
+    // A different user on the same device does not inherit them.
+    await page.evaluate((id) => window.AtlasShell.profileReady({ id, role: 'manager', active: true }), other);
+    assert.deepEqual(await recentKeys(), []);
+    await page.evaluate((id) => window.AtlasShell.profileReady({ id, role: 'admin', active: true }), USERS.admin.id);
+    await page.evaluate((key) => localStorage.setItem(key, '[{"type":"inventory_item","id":"i1","title":"Campari"}]'), `atlas.palette.recent.v1:${USERS.admin.id}`);
+    // Sign-out clears them before the session ends.
+    const afterSignOut = await page.evaluate(() => { window.atlasSignOut(); return Object.keys(localStorage).filter((key) => key.startsWith('atlas.palette.recent')); });
+    assert.deepEqual(afterSignOut, []);
+  } finally { await close(); }
+});
+
 test('notifications: popover on desktop, needs-action filter, mark read, full screen #notifications on phones', { skip }, async () => {
   const { page, record, close } = await launch();
   try {

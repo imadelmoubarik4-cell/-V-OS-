@@ -12,7 +12,7 @@
 // render when Atlas AI is not configured, switched off, unreachable or the
 // device is offline, and are labelled as such. Record search is always on.
 //
-// Public: window.AtlasPalette = { open({ mode, query, trigger }), close(), isOpen() }.
+// Public: window.AtlasPalette = { open({ mode, query, trigger }), close(), isOpen(), clearRecent() }.
 (function () {
   'use strict';
 
@@ -21,7 +21,10 @@
 
   const PHONE = window.matchMedia('(max-width: 767px)');
   const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
-  const RECENT_KEY = 'atlas.palette.recent.v1';
+  // Recent records are per user (`atlas.palette.recent.v1:<user id>`) and are
+  // cleared at sign-out and whenever a different user signs in, so a shared
+  // device never shows one account's records to the next (security G3).
+  const RECENT_PREFIX = 'atlas.palette.recent.v1';
   const MAX_ROWS = 5;
   const QUESTION = /\?\s*$|^(who|what|when|where|why|how|can|could|do|does|did|is|are|should|will|which)\b/i;
   const ACTION_GROUPS = [
@@ -59,19 +62,43 @@
 
   // ---------- recent records ----------
 
-  function readRecent() {
+  function recentKey() {
+    const id = shell.profile()?.id;
+    return id ? `${RECENT_PREFIX}:${id}` : null;
+  }
+
+  // Removes every user's recents except `keepUserId`'s (none when omitted),
+  // including the legacy unscoped key.
+  function clearRecent(keepUserId = null) {
     try {
-      const value = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      const keep = keepUserId ? `${RECENT_PREFIX}:${keepUserId}` : null;
+      const storage = window.localStorage;
+      const keys = [];
+      for (let index = 0; index < storage.length; index += 1) keys.push(storage.key(index));
+      keys.filter((key) => key && (key === RECENT_PREFIX || key.startsWith(`${RECENT_PREFIX}:`)) && key !== keep).forEach((key) => storage.removeItem(key));
+    } catch { /* per-viewer convenience only */ }
+  }
+
+  function readRecent() {
+    const key = recentKey();
+    if (!key) return [];
+    try {
+      const value = JSON.parse(window.localStorage.getItem(key) || '[]');
       return Array.isArray(value) ? value.filter((entry) => entry && entry.title && entry.type) : [];
     } catch { return []; }
   }
 
   function remember(result) {
     if (!result?.type || !result.id || result.type === 'page' || result.type === 'knowledge_search') return;
+    const key = recentKey();
+    if (!key) return;
     const entry = { type: result.type, id: result.id, title: result.title, detail: result.detail || '', icon: result.icon, route: result.route || null };
     const next = [entry, ...readRecent().filter((item) => !(item.type === entry.type && item.id === entry.id))].slice(0, 8);
-    try { window.localStorage.setItem(RECENT_KEY, JSON.stringify(next)); } catch { /* per-viewer convenience only */ }
+    try { window.localStorage.setItem(key, JSON.stringify(next)); } catch { /* per-viewer convenience only */ }
   }
+
+  // A different (or no) user: drop everyone else's recents.
+  shell.on?.('profile:ready', (profile) => clearRecent(profile?.id || null));
 
   // ---------- rows ----------
   // Row: { id, kind: 'record'|'action'|'page'|'ask'|'more', label, meta, icon, hint, run() }
@@ -119,6 +146,8 @@
     // Atlas AI (E6) reads q from #ai/new; the context tag rides along.
     const params = [text ? `q=${encodeURIComponent(text)}` : '', state.context && state.context.id !== 'ai' ? `from=${encodeURIComponent(state.context.id)}` : ''].filter(Boolean).join('&');
     const route = `#ai/new${params ? `?${params}` : ''}`;
+    // The send intent rides in memory: the URL alone only prefills (G1).
+    if (text) window.AtlasAI?.intendSend?.(text);
     if (window.location.hash === route) shell.navigate(route, { source: 'palette' });
     else window.location.hash = route;
   }
@@ -526,5 +555,5 @@
 
   PHONE.addEventListener('change', () => { if (state.open) layer.classList.toggle('is-phone', PHONE.matches); });
 
-  window.AtlasPalette = { open, close, isOpen: () => state.open };
+  window.AtlasPalette = { open, close, isOpen: () => state.open, clearRecent: () => clearRecent() };
 })();

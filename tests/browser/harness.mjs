@@ -41,10 +41,7 @@ function resolveLibraries() {
   for (const base of roots) {
     const supabase = path.join(base, '@supabase/supabase-js/dist/umd/supabase.js');
     const lucide = path.join(base, 'lucide/dist/umd/lucide.min.js');
-    if (existsSync(supabase) && existsSync(lucide)) {
-      const xlsx = path.join(base, 'xlsx/dist/xlsx.full.min.js');
-      return { supabase, lucide, xlsx: existsSync(xlsx) ? xlsx : null };
-    }
+    if (existsSync(supabase) && existsSync(lucide)) return { supabase, lucide };
   }
   return null;
 }
@@ -129,7 +126,6 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
   await context.route('https://cdn.jsdelivr.net/**', (route) => {
     const url = route.request().url();
     if (url.includes('supabase-js')) return route.fulfill({ contentType: MIME['.js'], body: readFileSync(libs.supabase) });
-    if (url.includes('xlsx') && libs.xlsx) return route.fulfill({ contentType: MIME['.js'], body: readFileSync(libs.xlsx) });
     return route.fulfill({ status: 404, body: '' });
   });
   await context.route('https://unpkg.com/**', (route) => {

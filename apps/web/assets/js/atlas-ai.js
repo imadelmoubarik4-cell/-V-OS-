@@ -2761,9 +2761,13 @@
       if (!state.conv.messages.length || params.new) newConversation({ context, focus: !params.q });
       else if (context) { state.composer.context = context; renderComposerBar(); }
       if (params.q) {
+        // A route-supplied question only prefills the composer: a link (email,
+        // chat, QR code) must never send a turn as the signed-in user. Only an
+        // in-app intent (ask(), the palette's Ask Atlas row) sends, and that
+        // intent travels in memory (takePendingSend), never in the URL.
         const question = String(params.q).slice(0, 4000);
-        if (params.send === '0') { el('input').value = question; autoGrow(); renderComposerBar(); el('input').focus(); }
-        else send({ text: question });
+        if (params.send !== '0' && takePendingSend(question)) send({ text: question });
+        else { el('input').value = question; autoGrow(); renderComposerBar(); el('input').focus(); }
       }
       return;
     }
@@ -2783,6 +2787,24 @@
     root.AtlasChrome?.setTabBarHidden?.('ai', false);
   }
 
+  // One-shot, in-memory "send this question" intent. Set by in-app callers just
+  // before they open #ai/new?q=…, consumed by render(). A URL alone can never
+  // set it, so a crafted link only prefills the composer.
+  let pendingSend = null;
+  const PENDING_SEND_TTL_MS = 10000;
+
+  function intendSend(question) {
+    const text = String(question || '').slice(0, 4000);
+    pendingSend = text ? { text, at: Date.now() } : null;
+    return Boolean(pendingSend);
+  }
+
+  function takePendingSend(question) {
+    const pending = pendingSend;
+    pendingSend = null;
+    return Boolean(pending && pending.text === question && Date.now() - pending.at <= PENDING_SEND_TTL_MS);
+  }
+
   // Opens Atlas AI with an optional question and page context.
   function ask({ question = '', record = null, view = null, send: autoSend = true } = {}) {
     const params = { new: '1' };
@@ -2791,7 +2813,8 @@
       state.pendingContext = { type: record.type, id: String(record.id), label: record.label || contextLabel(record.type, record.id), view: view || root.AtlasShell?.current?.() || null };
     }
     if (question) params.q = question;
-    if (question && !autoSend) params.send = '0';
+    if (question && autoSend) intendSend(question);
+    else pendingSend = null;
     if (root.AtlasShell?.show) root.AtlasShell.show('ai', params, { source: 'action' });
     return true;
   }
@@ -2866,6 +2889,9 @@
   root.AtlasAI = {
     ask,
     askAbout: (record, question = '') => ask({ record, question, send: Boolean(question) }),
+    // In-app callers that route to #ai/new?q=… themselves (the palette) call
+    // this first so the question is sent; without it the question is prefilled.
+    intendSend,
     open: (conversationId) => root.AtlasShell?.show?.('ai', conversationId ? { conversation: conversationId } : {}),
     newConversation: () => root.AtlasShell?.show?.('ai', { new: '1' }),
     decisions: () => root.AtlasShell?.show?.('ai', { section: 'decisions' }),

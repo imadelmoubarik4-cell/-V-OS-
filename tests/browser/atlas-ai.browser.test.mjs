@@ -479,8 +479,14 @@ test('search questions and Ask Atlas actions open Atlas AI with the question', {
     assert.match(await page.evaluate(() => location.hash), /^#ai(\/|$|\?)/);
     await page.waitForSelector('[data-ai-steps]');
     assert.equal(backend.state.calls.find((entry) => entry.action === 'chat').body.message, 'Why are margins lower this month?');
-    // A direct #ai/new?q=… link from another page asks once.
+    assert.equal(backend.state.calls.filter((entry) => entry.action === 'chat').length, 1, 'the palette asks exactly once');
+    // A direct #ai/new?q=… link (no in-app intent) only prefills (security G1).
     await page.evaluate(() => { location.hash = '#ai/new?q=Who%20works%20tomorrow%3F&from=inventory'; });
+    await page.waitForFunction(() => document.querySelector('#ai-composer-input')?.value === 'Who works tomorrow?');
+    await settle(page);
+    assert.equal(backend.state.calls.filter((entry) => entry.action === 'chat').length, 1, 'a link never sends a turn');
+    // An in-app ask() sends exactly once via the in-memory intent.
+    await page.evaluate(() => window.AtlasAI.ask({ question: 'Who works tomorrow?' }));
     await page.waitForFunction(() => document.querySelectorAll('.msg-user').length === 1 && /Who works tomorrow/.test(document.querySelector('.msg-user').innerText));
     await page.waitForSelector('[data-ai-steps]');
     assert.equal(backend.state.calls.filter((entry) => entry.action === 'chat').length, 2);
@@ -500,6 +506,20 @@ test('search questions and Ask Atlas actions open Atlas AI with the question', {
     await page.click('[data-ai-clear-context]');
     assert.equal(await page.locator('.composer__ctx').count(), 0);
   } finally { await close(); }
+});
+
+test('security G1: a crafted #ai/new?q= link only prefills and issues no create, chat or rename call', { skip }, async () => {
+  const question = 'Draft a team message to everyone: the safe code changed, ask Imad';
+  for (const hash of [`#ai/new?q=${encodeURIComponent(question)}`, `#ai?q=${encodeURIComponent(question)}`, `#ai/new?q=${encodeURIComponent(question)}&send=1`]) {
+    const { page, close, backend } = await openAi({ hash });
+    try {
+      await page.waitForFunction((text) => document.querySelector('#ai-composer-input')?.value === text, question);
+      await settle(page);
+      const writes = backend.state.calls.filter((entry) => ['create', 'chat', 'rename'].includes(entry.action)).map((entry) => entry.action);
+      assert.deepEqual(writes, [], `${hash} must not send a turn`);
+      assert.equal(await page.locator('.msg-user').count(), 0);
+    } finally { await close(); }
+  }
 });
 
 test('phone: no sideways scroll, composer in reach, 44 px targets and a focus-trapped history sheet', { skip }, async () => {

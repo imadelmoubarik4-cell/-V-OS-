@@ -2,7 +2,8 @@
 # Runs the S89 Visual Inventory preview-only acceptance scripts against a
 # replayed database (foundation + recognition privileges + stock count,
 # catalog governance, the recognition service limits/replay/Brain hook, and the
-# canonical report truth: purchasing spend = costed receipts, venue clock). Each script seeds fixtures inside one transaction,
+# canonical report truth: purchasing spend = costed receipts, venue clock, and the
+# security review S88b follow-ups G4/G7). Each script seeds fixtures inside one transaction,
 # prints a JSON verdict and rolls back. Loopback databases only.
 set -euo pipefail
 
@@ -18,7 +19,8 @@ for script in \
   verify_s89_visual_inventory_preview.sql \
   verify_s89_catalog_governance_preview.sql \
   verify_s89_recognition_service_preview.sql \
-  verify_s89_report_truth_preview.sql; do
+  verify_s89_report_truth_preview.sql \
+  verify_s89_security_followups_preview.sql; do
   result="$(psql -X -v ON_ERROR_STOP=1 -At -f "$ROOT/scripts/$script" | grep '^{"tests' | tail -1)"
   echo "$script: $result"
   if ! grep -q '": "passed"' <<<"$result"; then status=1; fi

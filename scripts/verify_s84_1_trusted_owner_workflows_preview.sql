@@ -87,8 +87,15 @@ set role authenticated;
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000084101',true);
 
-update public.inventory_items set par_level=5,category='Prep batches',cost_price=100
-where id='00000000-0000-4000-8000-000000084201';
+-- S89 20260928095000 revokes browser UPDATE on inventory_items; the edit is
+-- then refused (42501) and the checks below hold with nothing changed.
+do $s841_master_edit$
+begin
+  update public.inventory_items set par_level=5,category='Prep batches',cost_price=100
+  where id='00000000-0000-4000-8000-000000084201';
+exception when insufficient_privilege then null;
+end
+$s841_master_edit$;
 insert into s841_acceptance
 select 'manager_master_edit_keeps_prep_confirmation',
        item.source_confirmed_at = before.source_confirmed_at and item.source_confirmed_quantity = before.source_confirmed_quantity,
@@ -108,8 +115,15 @@ begin
 end
 $manager_direct$;
 
-update public.inventory_items set source_type='owner_verified_count',source_confidence=100
-where id='00000000-0000-4000-8000-000000084204';
+-- S89 20260928095000 revokes browser UPDATE on inventory_items; the edit is
+-- then refused (42501) and the checks below hold with nothing changed.
+do $s841_promote_edit$
+begin
+  update public.inventory_items set source_type='owner_verified_count',source_confidence=100
+  where id='00000000-0000-4000-8000-000000084204';
+exception when insufficient_privilege then null;
+end
+$s841_promote_edit$;
 insert into s841_acceptance
 select 'manager_cannot_promote_row_to_owner_count',
        source_confirmed_at is null and source_confirmed_quantity is null,

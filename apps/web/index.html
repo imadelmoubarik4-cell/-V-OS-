@@ -181,9 +181,6 @@
 
 
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
-        integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
-        crossorigin="anonymous"></script>
 <script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"
         integrity="sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT"
         crossorigin="anonymous"></script>
@@ -431,6 +428,7 @@
   // Sign out (account menu, More sheet). Used by assets/js/atlas-chrome.js.
   async function signOut() {
     try {
+      window.AtlasPalette?.clearRecent?.();
       const client = await initializeSupabase();
       await client.auth.signOut();
     } finally {

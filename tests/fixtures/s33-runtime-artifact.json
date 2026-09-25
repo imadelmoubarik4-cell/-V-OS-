@@ -35,8 +35,8 @@
       "files": [
         {
           "path": "functions/atlas-knowledge/index.ts",
-          "source_sha256": "c92f276b7c9635aaaaaaf79eef1cc828700c44ab72806d55ff24bea856c89770",
-          "candidate_sha256": "7ccaecadd687366be9ba8d90b8803a639229bbf588785e9d2a438a0582227206"
+          "source_sha256": "a194b38b61e86379f3b33edbb4a0b3848c6f1607453835d15c68deaa7789d8c6",
+          "candidate_sha256": "5c4f0428efcadbc83ed261785dbfa40f5e95b43eb5819bc98d0a734ee92a5929"
         },
         {
           "path": "functions/_shared/auth.mjs",
