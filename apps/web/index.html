@@ -270,6 +270,28 @@
 
   const cfg = window.VABAR_CONFIG || {};
   let sb = null;
+
+  // Every workspace talks to Supabase (Edge Functions, PostgREST) through
+  // fetch, some directly. A 401 from the project, whichever module saw it,
+  // starts the same check: renew this device's session, or return to sign-in
+  // (see 'atlas:auth-required' below). Auth endpoints themselves are left out.
+  (function watchSupabaseAuth() {
+    const base = String(cfg.SUPABASE_URL || '').replace(/\/+$/, '');
+    if (!base || typeof window.fetch !== 'function' || window.fetch.atlasAuthWatch) return;
+    const original = window.fetch.bind(window);
+    const watched = async (input, init) => {
+      const response = await original(input, init);
+      try {
+        const url = typeof input === 'string' ? input : (input?.url || String(input));
+        if (response.status === 401 && url.startsWith(base) && !url.startsWith(`${base}/auth/`)) {
+          window.dispatchEvent(new CustomEvent('atlas:auth-required', { detail: { status: 401 } }));
+        }
+      } catch (_) { /* never break the request */ }
+      return response;
+    };
+    watched.atlasAuthWatch = true;
+    window.fetch = watched;
+  })();
   let supabaseReady = null;
 
   async function initializeSupabase() {
@@ -302,6 +324,11 @@
 
       sb = client;
       window.atlasSupabase = client;
+      // Supabase ends the session itself when a refresh is refused (the
+      // session was revoked or expired). Never stay half signed in.
+      client.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_OUT' && currentUser && !signingOut) sessionEnded();
+      });
       clearBootError();
       return client;
     })();
@@ -416,8 +443,12 @@
   ['email', 'password'].forEach((id) => document.getElementById(id)?.addEventListener('input', () => {
     if (document.getElementById(`${id}-error`)?.hidden === false) showFieldError(id, '');
   }));
+  // Set when start-up could not finish (connection, or the staff profile could
+  // not be read for a kept session): the button then retries start-up.
+  let bootRetry = false;
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (bootRetry) { location.reload(); return; }
     showLoginError('');
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -452,27 +483,50 @@
   });
 
   // Sign out (account menu, More sheet). Used by assets/js/atlas-chrome.js.
+  // Always this device only: supabase-js defaults to scope 'global', which
+  // revokes every session of the account and signs out the person's other
+  // phones and computers too.
+  let signingOut = false;
   async function signOut() {
+    signingOut = true;
     try {
       window.AtlasPalette?.clearRecent?.();
       const client = await initializeSupabase();
-      await client.auth.signOut();
+      await client.auth.signOut({ scope: 'local' });
     } finally {
       location.reload();
     }
   }
   window.atlasSignOut = signOut;
 
-  // AtlasApi (atlas-api.js) reports an expired session once per burst; offer
-  // sign-in instead of leaving a page of failed requests.
-  let authPromptShown = false;
+  // One consistent state when the session is over: this device's session is
+  // cleared (never the person's other devices) and Atlas returns to the
+  // sign-in screen with a clear message, keeping the page address so signing
+  // in again reopens it with every module loaded fresh. No page is left
+  // showing old data, spinning, or signed in while its requests fail.
+  const SESSION_ENDED_KEY = 'atlas:session-ended';
+  let sessionEnding = false;
+  async function sessionEnded() {
+    if (sessionEnding) return;
+    sessionEnding = true;
+    try { sessionStorage.setItem(SESSION_ENDED_KEY, '1'); } catch (_) { /* storage unavailable */ }
+    await signOut();
+  }
+
+  // AtlasApi (atlas-api.js) reports a 401 once per burst. First try to renew
+  // this device's session (an access token can simply have expired); only if
+  // that fails is the session really over.
+  let authCheck = null;
   window.addEventListener('atlas:auth-required', () => {
-    if (authPromptShown || !currentUser) return;
-    authPromptShown = true;
-    window.AtlasShell?.toast?.('Your session has ended. Sign in again to keep working.', {
-      action: { label: 'Sign in', onClick: () => signOut() }
-    });
-    setTimeout(() => { authPromptShown = false; }, 30000);
+    if (authCheck || sessionEnding || !currentUser) return;
+    authCheck = (async () => {
+      try {
+        const client = await initializeSupabase();
+        const { data, error } = await client.auth.refreshSession();
+        if (!error && data?.session) return;
+      } catch (_) { /* treated as ended below */ }
+      await sessionEnded();
+    })().finally(() => { authCheck = null; });
   });
 
   const INACTIVE_PROFILE_MESSAGE = 'This account is not an active VÁ staff profile. Ask an administrator to review access.';
@@ -484,13 +538,22 @@
       .maybeSingle();
 
     const allowedRoles = new Set(['admin', 'manager', 'bartender', 'viewer']);
-    if (error || !data?.active || !allowedRoles.has(data.role)) {
-      await sb.auth.signOut().catch(() => null);
-      // A read error is a connection problem; a missing, inactive or unknown
-      // profile is an access problem the person can act on (sign in with
-      // another account or ask an administrator).
-      const problem = new Error(error ? 'The staff profile could not be read.' : INACTIVE_PROFILE_MESSAGE);
-      problem.code = error ? 'profile_unavailable' : 'inactive_profile';
+    if (error) {
+      // A read error is a connection problem, not an access decision: keep
+      // the session (on this and every other device) and let the person retry.
+      const problem = new Error('The staff profile could not be read.');
+      problem.code = 'profile_unavailable';
+      throw problem;
+    }
+    if (!data?.active || !allowedRoles.has(data.role)) {
+      // A missing, inactive or unknown-role profile is an access problem the
+      // person can act on. Clear this device's session only.
+      signingOut = true;
+      await sb.auth.signOut({ scope: 'local' }).catch(() => null);
+      signingOut = false;
+      currentUser = null;
+      const problem = new Error(INACTIVE_PROFILE_MESSAGE);
+      problem.code = 'inactive_profile';
       throw problem;
     }
     currentProfile = data;
@@ -582,6 +645,13 @@
         // No session: the sign-in form is what this visitor sees (logo intro).
         document.documentElement.dataset.atlasSignin = 'shown';
         window.AtlasSignInIntro?.start();
+        let ended = false;
+        try { ended = sessionStorage.getItem(SESSION_ENDED_KEY) === '1'; sessionStorage.removeItem(SESSION_ENDED_KEY); } catch (_) { /* storage unavailable */ }
+        if (ended) {
+          // A notice, not a form error: the fields stay valid.
+          loginError.textContent = 'Your session ended. Sign in again to continue where you were.';
+          loginError.hidden = false;
+        }
       }
     } catch (error) {
       loginBtn.disabled = false;
@@ -598,6 +668,7 @@
         ['email', 'password'].forEach((id) => document.getElementById(id)?.setAttribute('aria-invalid', 'false'));
         return;
       }
+      bootRetry = true;
       loginBtn.textContent = 'Retry connection';
       showBootError(error.message);
     }

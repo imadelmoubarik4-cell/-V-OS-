@@ -977,7 +977,7 @@
     let content;
     if (state.status === 'idle' || (state.status === 'loading' && !state.workspace)) content = `<div aria-busy="true">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(5)}<span class="sr-only">Loading settings</span></div>`;
     else if (state.status === 'error' && !state.workspace) {
-      content = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Settings couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(state.error?.status === 403 ? 'Your profile can’t open Settings. Ask an administrator.' : 'Nothing was changed. Check the connection and try again.')}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-refresh>Try again</button></div></div>`;
+      content = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Settings couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(state.error?.status === 403 ? 'Your profile can’t open Settings. Ask an administrator.' : state.error?.status === 401 ? 'Your session has ended. Sign in again to see Settings. Nothing has changed.' : 'Nothing was changed. Check the connection and try again.')}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-refresh>Try again</button></div></div>`;
     } else content = sectionMarkup(current || defaultSection());
     const listOnly = showNav && phone() && !current;
     const drafts = captureDrafts(element);

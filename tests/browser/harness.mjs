@@ -169,7 +169,14 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
     record.requests.push(entry);
 
     if (url.pathname === '/auth/v1/user') return json(route, sessionFor(user).user);
-    if (url.pathname.startsWith('/auth/v1/token')) return json(route, sessionFor(user));
+    if (url.pathname.startsWith('/auth/v1/token')) {
+      // fixtures.auth.token may fail a token grant (for example a refresh after
+      // the session was revoked elsewhere): { __status, body }.
+      const handler = fixtures.auth?.token;
+      const result = typeof handler === 'function' ? await handler(entry) : handler;
+      if (result && result.__status) return json(route, result.body ?? {}, result.__status);
+      return json(route, sessionFor(user));
+    }
     if (url.pathname.startsWith('/auth/v1/logout')) return route.fulfill({ status: 204, body: '' });
 
     if (url.pathname.startsWith('/rest/v1/rpc/')) {

@@ -99,7 +99,11 @@ test('no module reassigns the shell globals or wraps browser APIs', () => {
   }
   // Legitimate browser-API guards, each owned by exactly one file.
   const fetchWrappers = SOURCES.filter(([, source]) => /window\.fetch\s*=(?!=)|root\.fetch\s*=(?!=)/.test(source)).map(([file]) => file);
-  assert.deepEqual(fetchWrappers, ['assets/js/rehearsal-boundary.js'], 'only the rehearsal boundary wraps fetch');
+  assert.deepEqual(fetchWrappers, ['assets/js/rehearsal-boundary.js', 'index.html'], 'only the rehearsal boundary and the index.html session watch wrap fetch');
+  // S91: index.html owns the one other fetch guard, the Supabase 401 watch
+  // (one consistent signed-out state); it only observes responses.
+  assert.equal((index.match(/window\.fetch\s*=(?!=)/g) || []).length, 1, 'index.html wraps fetch once');
+  assert.match(index, /function watchSupabaseAuth\(\)/);
   const iconGuards = SOURCES.filter(([, source]) => /createIcons\s*=(?!=)/.test(source)).map(([file]) => file);
   assert.deepEqual(iconGuards, ['config.js'], 'only config.js guards lucide.createIcons');
 });
@@ -243,7 +247,9 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'marketing-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }
-  for (const file of ['settings-workspace.js', 'reports-workspace.js']) {
+  // S91: the Settings session-ended message.
+  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91a'"), 'settings-workspace.js');
+  for (const file of ['reports-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260930-s90g'`), file);
   }
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
