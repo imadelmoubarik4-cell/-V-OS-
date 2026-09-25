@@ -1140,3 +1140,35 @@ test('credit notes count as minus amounts in the totals and in both exports', { 
     noErrors(record);
   } finally { await close(); }
 });
+
+test('a11y: sheets and dialogs are announced as modal dialogs; approve names the missing field; the drop zone shows focus', { skip }, async () => {
+  const { page, record, close } = await launch();
+  try {
+    await openAccounting(page);
+    await openDoc(page, IDS.review);
+    const roles = await page.$eval('#acc-document [data-modal-panel]', (panel) => [panel.getAttribute('role'), panel.getAttribute('aria-modal'), panel.getAttribute('aria-labelledby')]);
+    assert.deepEqual(roles, ['dialog', 'true', 'acc-doc-title']);
+    // Approve with no supplier, date or total: the alert says so and takes focus to the first missing field.
+    await page.click('#acc-document [data-acc-approve]');
+    await page.waitForSelector('#acc-document [data-acc-error-text]');
+    assert.match(await page.textContent('#acc-document [data-acc-error-text]'), /supplier, the document date and the total/);
+    const goTo = await page.$('#acc-document [data-acc-error] button');
+    assert.ok(goTo, 'a "Go to" button');
+    await goTo.click();
+    const focused = await page.evaluate(() => [document.activeElement?.name, document.activeElement?.getAttribute('aria-invalid')]);
+    assert.ok(['supplier_id', 'supplier_name'].includes(focused[0]), `focus on the supplier field, got ${focused[0]}`);
+    assert.equal(focused[1], 'true');
+    assert.equal(requestsTo(record, FN, 'command').length, 0, 'nothing was sent');
+    await page.keyboard.press('Escape');
+    await page.click('#accounting-view [data-acc-upload]');
+    await page.waitForSelector('#acc-upload.is-open');
+    assert.deepEqual(await page.$eval('#acc-upload [data-modal-panel]', (panel) => [panel.getAttribute('role'), panel.getAttribute('aria-modal')]), ['dialog', 'true']);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'acc-upload-title', 'the upload sheet opens on its heading');
+    await page.focus('#acc-upload [data-acc-files]');
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    const outline = await page.$eval('#acc-upload .acc-drop', (el) => getComputedStyle(el).outlineStyle);
+    assert.notEqual(outline, 'none', 'keyboard focus is visible on the drop zone');
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});

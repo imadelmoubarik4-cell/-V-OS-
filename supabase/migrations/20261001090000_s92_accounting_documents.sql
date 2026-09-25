@@ -246,9 +246,12 @@ revoke all on function atlas_private.accounting_log(uuid,text,uuid,text,jsonb) f
 -- One document as the gateway returns it: fields, labels and checks.
 -- p_full = false is the list form (workspace and export): no Atlas draft, and
 -- the duplicate check only for documents still to review, so a list of a
--- thousand documents stays a set of indexed lookups.
+-- thousand documents stays a set of indexed lookups. p_today is the venue date,
+-- worked out once by a caller that builds many documents (the venue clock
+-- validates the time zone on every call, about 10 ms).
 drop function if exists atlas_private.accounting_document_json(uuid);
-create or replace function atlas_private.accounting_document_json(p_id uuid, p_full boolean default true)
+drop function if exists atlas_private.accounting_document_json(uuid, boolean);
+create or replace function atlas_private.accounting_document_json(p_id uuid, p_full boolean default true, p_today date default null)
 returns jsonb
 language sql
 stable
@@ -285,7 +288,7 @@ as $function$
       -- Orders are priced in krónur: only a krónur document is compared.
       'order_difference', case when po.id is not null and d.total_amount is not null and d.currency = 'ISK'
         then d.total_amount - private.purchase_order_total(po.lines) end,
-      'overdue', d.status = 'approved' and d.due_date is not null and d.due_date < atlas_private.venue_date(),
+      'overdue', d.status = 'approved' and d.due_date is not null and d.due_date < coalesce(p_today, atlas_private.venue_date()),
       'possible_duplicates', case when (p_full or d.status = 'to_review') and d.supplier_fold is not null then coalesce((
         select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
           'id', o.id, 'status', o.status, 'document_number', o.document_number, 'issue_date', o.issue_date, 'total_amount', o.total_amount)
@@ -305,7 +308,7 @@ as $function$
   left join public.suppliers ps on ps.id = po.supplier_id
   where d.id = p_id;
 $function$;
-revoke all on function atlas_private.accounting_document_json(uuid, boolean) from public, anon, authenticated;
+revoke all on function atlas_private.accounting_document_json(uuid, boolean, date) from public, anon, authenticated;
 
 -- Validated editable fields from a jsonb payload. Unknown keys are ignored;
 -- a present key with an invalid value is refused (22023). Returns what
@@ -436,15 +439,24 @@ begin
   perform atlas_private.accounting_require_admin(p_actor_id);
   return pg_catalog.jsonb_build_object(
     'today', today,
+    -- Every open document (to review, unpaid, owed), however old, plus the
+    -- closed ones from the last 13 months (at most 3,000; 'complete' says
+    -- whether that cap cut any off, so the page never claims a month is empty).
     'documents', coalesce((
-      select pg_catalog.jsonb_agg(atlas_private.accounting_document_json(d.id, false) order by coalesce(d.issue_date, d.created_at::date) desc, d.created_at desc)
+      select pg_catalog.jsonb_agg(atlas_private.accounting_document_json(d.id, false, today) order by coalesce(d.issue_date, d.created_at::date) desc, d.created_at desc)
       from (
-        select id, issue_date, created_at from atlas_private.accounting_documents
-        where status in ('to_review','approved') or created_at >= pg_catalog.now() - interval '400 days'
-           or issue_date >= today - 400
-        order by created_at desc limit 1000
+        select id, issue_date, created_at from atlas_private.accounting_documents where status in ('to_review','approved')
+        union all
+        (select id, issue_date, created_at from atlas_private.accounting_documents
+         where status not in ('to_review','approved')
+           and (created_at >= pg_catalog.now() - interval '400 days' or issue_date >= today - 400)
+         order by created_at desc limit 3000)
       ) d
     ), '[]'::jsonb),
+    'complete', (
+      select count(*) <= 3000 from atlas_private.accounting_documents
+      where status not in ('to_review','approved')
+        and (created_at >= pg_catalog.now() - interval '400 days' or issue_date >= today - 400)),
     'suppliers', coalesce((
       select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('id', s.id, 'name', s.name) order by s.name)
       from public.suppliers s where s.active is not false
@@ -866,11 +878,12 @@ as $function$
 declare
   label text := atlas_private.accounting_require_admin(p_actor_id);
   result_rows jsonb;
+  today date := atlas_private.venue_date();
 begin
   if p_from is null or p_to is null or p_to < p_from or p_to - p_from > 400 then
     raise exception 'invalid range' using errcode = '22023', hint = 'atlas:invalid_request';
   end if;
-  select coalesce(pg_catalog.jsonb_agg(atlas_private.accounting_document_json(d.id, false)
+  select coalesce(pg_catalog.jsonb_agg(atlas_private.accounting_document_json(d.id, false, today)
            || pg_catalog.jsonb_build_object('storage_path', d.storage_path) order by d.issue_date, d.created_at), '[]'::jsonb)
   into result_rows
   from atlas_private.accounting_documents d

@@ -487,15 +487,23 @@ export function createAccountingHandler({ env, fetchImpl, newId = () => crypto.r
 
   async function exportRange(actor, from, to) {
     const result = await svc.rpc("atlas_accounting_export", { p_actor_id: actor.userId, p_from: requireDate(from), p_to: requireDate(to) });
-    const documents = [];
-    for (const entry of Array.isArray(result?.documents) ? result.documents : []) {
-      const { storage_path: path, ...document } = entry;
-      let url = null;
-      if (typeof path === "string" && path) {
-        try { url = await svc.sign(path, LIMITS.signedExportSeconds); } catch { url = null; }
+    // Links are signed 8 at a time: a busy month stays well inside the timeout.
+    const entries = Array.isArray(result?.documents) ? result.documents : [];
+    const documents = new Array(entries.length);
+    let next = 0;
+    const worker = async () => {
+      while (next < entries.length) {
+        const index = next;
+        next += 1;
+        const { storage_path: path, ...document } = entries[index];
+        let url = null;
+        if (typeof path === "string" && path) {
+          try { url = await svc.sign(path, LIMITS.signedExportSeconds); } catch { url = null; }
+        }
+        documents[index] = { ...document, file_url: url };
       }
-      documents.push({ ...document, file_url: url });
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(8, entries.length) }, worker));
     return { from: result.from, to: result.to, documents, expires_in: LIMITS.signedExportSeconds };
   }
 

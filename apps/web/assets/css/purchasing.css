@@ -99,6 +99,8 @@
   .acc-differs { color: var(--warning); }
   .acc-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .acc-drop { position: relative; cursor: pointer; }
+  /* The file input is visually hidden: its keyboard focus shows on the drop zone. */
+  .acc-drop:has(.acc-file-input:focus-visible), .acc-camera:has(.acc-file-input:focus-visible) { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
   /* The upload label and file card use spans (phrasing content); stack them
      as the component's title and help lines. */
   .acc-drop .atlas-upload__title, .acc-drop .atlas-upload__help,

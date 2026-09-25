@@ -332,7 +332,7 @@
         <select class="atlas-select acc-filter-select" data-acc-filter-select aria-label="Show">${FILTERS.map(([key, label]) => `<option value="${key}"${state.filter === key ? ' selected' : ''}>${label}</option>`).join('')}</select>
         <div class="atlas-toolbar__end">${plural(list.length, 'document', 'documents')}</div></div>
       ${list.length ? `<ul class="atlas-list">${list.map((doc) => row(doc)).join('')}</ul>` : '<p class="acc-muted">No documents match.</p>'}
-      <p class="acc-muted">Shows open documents and everything from the last 13 months. Use Export for older months.</p>`;
+      <p class="acc-muted">${state.workspace?.complete === false ? 'Shows every open document and the most recent closed ones. Use Export for a full month.' : 'Shows every open document and everything from the last 13 months. Use Export for older months.'}</p>`;
   }
 
   const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -359,8 +359,9 @@
     const counted = inMonth.filter((doc) => doc.status !== 'void');
     const vat = (rate) => counted.filter(isKronur).reduce((total, doc) => total + signOf(doc) * (doc.vat_lines || []).filter((line) => Number(line.rate) === rate).reduce((t, line) => t + (Number(line.vat) || 0), 0), 0);
     const waiting = documents().filter((doc) => doc.status === 'to_review' && (!doc.issue_date || inRange(doc, bounds))).length;
-    // The workspace holds the last 13 months: an empty month in it is really empty.
-    const nothing = !inMonth.length && month >= shiftMonth(current, -12);
+    // The workspace holds the last 13 months (unless the server says it had to
+    // leave older closed documents out): only then is an empty month really empty.
+    const nothing = !inMonth.length && month >= shiftMonth(current, -12) && state.workspace?.complete !== false;
     const exportedBefore = inMonth.some((doc) => doc.exported === true);
     const newSince = exportedBefore ? counted.filter((doc) => doc.exported === false).length : 0;
     const disabled = state.exporting || nothing ? ' disabled' : '';
@@ -1008,6 +1009,15 @@
       try { const next = await save(); if (next) await refresh(next, 'Saved.'); else busy(false); } catch (error) { await failed(error); }
     });
     root.querySelector('[data-acc-approve]')?.addEventListener('click', async () => {
+      // The fields approval needs, checked here first so the message can take
+      // the administrator to the field (the server checks them again).
+      const form = root.querySelector('[data-acc-form]');
+      const missing = form && [
+        [!form.elements.supplier_id?.value && !form.elements.supplier_name?.value.trim(), form.elements.supplier_id?.value === '' && form.elements.supplier_name && !form.elements.supplier_name.closest('[hidden]') ? form.elements.supplier_name : form.elements.supplier_id],
+        [!form.elements.issue_date?.value, form.elements.issue_date],
+        [!form.elements.total_amount?.value.trim(), form.elements.total_amount]
+      ].find(([empty, field]) => empty && field);
+      if (missing) { fail(ERROR_COPY.missing_fields, missing[1]); return; }
       busy(true);
       try {
         const saved = await save();
@@ -1067,7 +1077,7 @@
   function confirmDialog(heading, text, confirmLabel) {
     return new Promise((resolve) => {
       const root = modal('acc-confirm');
-      root.innerHTML = `<section class="atlas-dialog" data-modal-panel role="alertdialog" aria-labelledby="acc-confirm-title"><h2 class="atlas-dialog__title" id="acc-confirm-title">${escapeHtml(heading)}</h2><p class="atlas-dialog__body">${escapeHtml(text)}</p><div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="button" class="atlas-btn atlas-btn--primary" data-acc-yes>${escapeHtml(confirmLabel)}</button></div></section>`;
+      root.innerHTML = `<section class="atlas-dialog" data-modal-panel role="alertdialog" aria-modal="true" aria-labelledby="acc-confirm-title" aria-describedby="acc-confirm-body"><h2 class="atlas-dialog__title" id="acc-confirm-title">${escapeHtml(heading)}</h2><p class="atlas-dialog__body" id="acc-confirm-body">${escapeHtml(text)}</p><div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="button" class="atlas-btn atlas-btn--primary" data-acc-yes>${escapeHtml(confirmLabel)}</button></div></section>`;
       let answered = false;
       root.querySelector('[data-acc-yes]').addEventListener('click', () => { answered = true; window.AtlasModal.close(root, 'yes'); resolve(true); });
       root.addEventListener('atlas:modal-close', () => { if (!answered) resolve(false); }, { once: true });
