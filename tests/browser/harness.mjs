@@ -172,6 +172,8 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
       }
       let rows = table === 'profiles' ? profiles : (fixtures.tables?.[table] ?? []);
       if (typeof rows === 'function') rows = await rows(entry);
+      // A table handler may fail the read: { __status, body } (PostgREST error).
+      if (rows && !Array.isArray(rows) && rows.__status) return json(route, rows.body ?? { message: 'Harness read failure' }, rows.__status);
       const idFilter = url.searchParams.get('id');
       if (idFilter?.startsWith('eq.')) rows = rows.filter((row) => row.id === idFilter.slice(3));
       const single = (request.headers().accept || '').includes('application/vnd.pgrst.object');

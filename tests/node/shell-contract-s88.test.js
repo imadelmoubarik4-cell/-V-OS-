@@ -194,7 +194,7 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
   assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20260926-s88"><\/script>\s*<script src="config\.js"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
-  assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine \}\);\s+\}/);
+  assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine, health: window\.AtlasData\.health\(\) \}\);\s+\}/);
   assert.match(index, /function renderAtlasHome\(\)\{\s+return window\.AtlasShell\.renderHome\(\);\s+\}/);
   // Home is one module section (assets/js/home.js), not index.html's renderHomeCore.
   assert.doesNotMatch(index, /renderHomeCore|registerHomeSection\(/);

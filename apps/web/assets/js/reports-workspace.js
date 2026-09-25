@@ -269,15 +269,27 @@
 
   // ---------- Overview (absorbs Business Intelligence) ----------
 
+  // Stock withheld by the shell (verified balances or movements failed to load,
+  // index.html AtlasData.health()): no figure derived from partial inputs.
+  function stockIncomplete() {
+    return window.AtlasData?.health?.()?.stock === 'partial';
+  }
+
+  function stockIncompleteAlert() {
+    const missing = (window.AtlasData?.health?.()?.stockMissing || []).map((key) => (key === 'balances' ? 'verified counts' : key === 'movements' ? 'movements' : null)).filter(Boolean);
+    return alertMarkup({ tone: 'warning', title: `Stock figures are incomplete — ${missing.length ? missing.join(' and ') : 'stock data'} couldn’t load. Try again.`, body: 'Inventory value, suggested orders and count coverage are hidden until everything loads.', action: '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-reports-stock-retry>Try again</button>' });
+  }
+
   function overviewMarkup() {
     const overview = window.AtlasReportsOverview;
     const range = period();
-    const stock = overview?.inventoryValueParts?.() || null;
+    const incomplete = stockIncomplete();
+    const stock = incomplete ? null : overview?.inventoryValueParts?.() || null;
     const purchasing = report('purchasing').summary || {};
     const spendKpi = kpi('purchasing_spend') || kpi('purchasing');
     const waste = report('waste').summary || {};
     const costing = overview?.recipeCosting?.() || null;
-    const stockDetail = !stock ? 'Stock isn\'t loaded' : stock.value !== null ? 'Counted stock at unit cost, now' : `${stock.uncounted ? `${stock.uncounted} not counted` : ''}${stock.uncounted && stock.uncosted ? ' · ' : ''}${stock.uncosted ? `${stock.uncosted} without cost` : ''} — ${money(stock.knownValue)} known so far`;
+    const stockDetail = incomplete ? 'Stock figures are incomplete' : !stock ? 'Stock isn\'t loaded' : stock.value !== null ? 'Counted stock at unit cost, now' : `${stock.uncounted ? `${stock.uncounted} not counted` : ''}${stock.uncounted && stock.uncosted ? ' · ' : ''}${stock.uncosted ? `${stock.uncosted} without cost` : ''} — ${money(stock.knownValue)} known so far`;
     const spendValue = number(purchasing.spend);
     const wasteCount = number(waste.recorded_waste_count);
     const wasteValue = number(waste.estimated_waste_value);
@@ -301,13 +313,13 @@
     const takeaway = top && total ? `${top.name} is ${Math.round(top.spend / total * 100)} % of spend this period${Math.round(top.spend / total * 100) >= 70 ? ' — worth watching for price and supply risk' : ''}.` : '';
     const suppliersChart = barChart(bySupplier, { label: 'name', value: 'spend', format: money, title: 'Spend by supplier', takeaway })
       || `<figure class="reports-chart"><figcaption><span class="reports-chart__title">Spend by supplier</span></figcaption>${notEnough('Not enough data yet — needs deliveries with a supplier and a cost in this period.')}</figure>`;
-    const exposure = overview?.orderExposure?.() || null;
+    const exposure = incomplete ? null : overview?.orderExposure?.() || null;
     const salesSource = sources().find((source) => source.key === 'sales');
     const charts = `<section class="atlas-section" aria-labelledby="reports-money"><div class="atlas-section__head"><h2 class="atlas-section__title" id="reports-money">Money</h2></div>
         <div class="reports-chart-grid">${suppliersChart}
           <div class="atlas-card atlas-card--pad reports-facts"><ul class="atlas-list">
             <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Sales</p><p class="atlas-row__meta">${salesSource?.status === 'connected' ? 'Connected' : 'Not connected — no point-of-sale system sends sales to Atlas, so revenue and realised margin aren\'t shown.'}</p></div></li>
-            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Suggested order</p><p class="atlas-row__meta">${exposure && exposure.items ? `${exposure.items} items below par · about ${money(exposure.estimate)}${exposure.uncosted ? ` plus ${exposure.uncosted} without a cost` : ''}` : 'Nothing below par that isn\'t already ordered'}</p></div><div class="atlas-row__end"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="#purchasing">Purchasing</a></div></li>
+            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Suggested order</p><p class="atlas-row__meta">${incomplete ? 'Unknown — stock figures are incomplete' : exposure && exposure.items ? `${exposure.items} items below par · about ${money(exposure.estimate)}${exposure.uncosted ? ` plus ${exposure.uncosted} without a cost` : ''}` : 'Nothing below par that isn\'t already ordered'}</p></div><div class="atlas-row__end"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="#purchasing">Purchasing</a></div></li>
             <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Average cost per serve</p><p class="atlas-row__meta">${costing && costing.averageCostPerServe !== null ? `${money(costing.averageCostPerServe)} across ${costing.complete} fully costed recipes` : 'Needs recipes with every ingredient costed'}</p></div></li>
           </ul></div>
         </div></section>`;
@@ -320,13 +332,13 @@
             line('Items with a cost', complete.cost, '#data/issues?issue=inventory.missing_cost'),
             line('Items with a par level', complete.par, '#data/pars'),
             line('Items with a supplier', complete.supplier, '#data/issues?issue=inventory.missing_supplier'),
-            line('Items counted recently', complete.counted, '#inventory/counts'),
+            line('Items counted recently', incomplete ? null : complete.counted, '#inventory/counts'),
             line('Recipes fully costed', complete.recipesCosted, '#recipes')
           ].join('') : '<li class="reports-muted">Stock isn\'t loaded.</li>'}</ul></div>
           <div class="atlas-card atlas-card--pad"><ul class="atlas-list">${sources().map((source) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(source.name)}</p><p class="atlas-row__meta">${escapeHtml(source.note || (source.last_refreshed_at ? `Updated ${dateTime(source.last_refreshed_at)}` : ''))}</p></div><div class="atlas-row__end">${sourcePill(source.status)}</div></li>`).join('') || '<li class="reports-muted">No sources reported.</li>'}</ul></div>
         </div></section>`;
 
-    return `${stats}${attentionSection}${charts}${completeness}`;
+    return `${incomplete ? stockIncompleteAlert() : ''}${stats}${attentionSection}${charts}${completeness}`;
   }
 
   function sourcePill(status) {
@@ -473,7 +485,7 @@
       const stock = overview?.inventoryValueParts?.();
       const spend = number(report('purchasing').summary?.spend);
       return { columns: ['Figure', 'Value'], rows: [
-        ['Inventory value', stock?.value === null || !stock ? 'Unknown (not everything is counted and costed)' : money(stock.value)],
+        ['Inventory value', stockIncomplete() ? 'Unknown (stock figures are incomplete)' : stock?.value === null || !stock ? 'Unknown (not everything is counted and costed)' : money(stock.value)],
         ['Purchasing spend', spend === null ? 'None recorded' : money(spend)],
         ['Sales', 'Not connected'],
         ...(state.snapshot?.attention || []).map((entry) => ['Needs attention', `${entry.title} — ${entry.detail || ''}`])
@@ -520,6 +532,7 @@
     const target = event.target instanceof Element ? event.target : null;
     if (!target || !host()?.contains(target)) return;
     if (target.closest('[data-reports-retry]')) { loadSnapshot(); return; }
+    if (target.closest('[data-reports-stock-retry]')) { window.atlasReloadData?.(); return; }
     if (target.closest('[data-reports-ask]')) { askAtlas(); return; }
     const sort = target.closest('[data-reports-sort]');
     if (sort) {
