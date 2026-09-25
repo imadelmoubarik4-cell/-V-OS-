@@ -20,6 +20,8 @@ window.VABAR_CONFIG = {
   REPORTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-reports",
   SYSTEM_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-system",
   SETTINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-settings",
+  // Settings › Integrations: status and server-side OAuth (connect hop, test, disconnect).
+  INTEGRATIONS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-integrations",
   ITEM_MASTER_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-item-master",
   // Atlas AI: conversations, approvals and voice. Answers "not configured" until the owner switches it on.
   ATLAS_AI_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-ai",
@@ -90,43 +92,10 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
   else window.addEventListener('load', loader, { once: true });
 }
 
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/brain-daily-briefing.css?v=20260926-s88',
-  scriptPath: 'assets/js/brain-daily-briefing-v2.js?v=20260926-s88',
-  globalName: 'AtlasDailyBriefing',
-  dataAttribute: 'atlasDailyBriefing',
-}));
-
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/brain-phase3.css?v=20260926-s88',
-  scriptPath: 'assets/js/brain-phase3.js?v=20260926-s88',
-  globalName: 'AtlasPhase3Brain',
-  dataAttribute: 'atlasPhase3Brain',
-}));
-
-// Checkpoint K layers four evidence-gated intelligence tracks over the existing
-// decision-memory workspace. It reads role-permitted production sources through
-// a manager-only gateway and never mutates inventory, orders, menus or waste.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/brain-checkpoint-k.css?v=20260926-s88',
-  scriptPath: 'assets/js/brain-checkpoint-k.js?v=20260926-s88',
-  globalName: 'AtlasCheckpointK',
-  dataAttribute: 'atlasCheckpointK',
-}));
-
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/operations-checkpoint-a.css?v=20260926-s88',
-  scriptPath: 'assets/js/operations-checkpoint-a.js?v=20260926-s88',
-  globalName: 'AtlasCheckpointA',
-  dataAttribute: 'atlasCheckpointA',
-}));
-
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/operations-checkpoint-a-layout.css?v=20260926-s88',
-  scriptPath: 'assets/js/operations-checkpoint-a-layout.js?v=20260926-s88',
-  globalName: 'AtlasCheckpointALayout',
-  dataAttribute: 'atlasCheckpointALayout',
-}));
+// S88: the Brain page, its daily briefing, Phase 3 and Checkpoint K panels and
+// the Checkpoint A routine layers are retired. Home (assets/js/home.js) holds the
+// briefing, Atlas AI › Decisions the decision ledger, and Operations
+// (assets/js/operations.js, loaded by index.html) the server checklists.
 
 // Checkpoint B waits until the authenticated application shell is visible.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
@@ -256,11 +225,9 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasReports',
 }));
 
-// Checkpoint I adds a manager-only, read-only control room for application
-// health, environments, integrations, data freshness, jobs, incidents,
-// security posture, audit evidence and recovery references.
+// Settings › System health (administrators): read-only application health,
+// environments, data freshness, jobs, incidents and recovery references.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/system-workspace.css?v=20260926-s88',
   scriptPath: 'assets/js/system-workspace.js?v=20260926-s88',
   globalName: 'AtlasSystem',
   dataAttribute: 'atlasSystem',
@@ -282,35 +249,3 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   globalName: 'AtlasNotifications',
   dataAttribute: 'atlasNotifications',
 }));
-
-// A legacy Operations layout can still append its old connection cards to the
-// Settings placeholder. This bridge makes the Checkpoint J workspace authoritative.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/settings-mount-bridge.js?v=20260926-s88',
-  globalName: 'AtlasCheckpointJSettingsMount',
-  dataAttribute: 'atlasCheckpointJSettingsMount',
-}));
-
-/* CHECKPOINT_I_SYSTEM_ASSETS */
-;(() => {
-  const cfg = window.VABAR_CONFIG = window.VABAR_CONFIG || {};
-  cfg.SYSTEM_API = cfg.SYSTEM_API || `${cfg.SUPABASE_URL}/functions/v1/atlas-system`;
-
-  const cssHref = "assets/css/system-workspace.css?v=20260926-s88";
-  if (!document.querySelector(`link[href="${cssHref}"]`)) {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = cssHref;
-    document.head.appendChild(link);
-  }
-
-  const scriptSrc = "assets/js/system-workspace.js?v=20260926-s88";
-  if (window.AtlasShell?.load) {
-    window.AtlasShell.load(scriptSrc, { global: "AtlasSystem" }).catch((error) => console.error(error));
-  } else if (!document.querySelector(`script[src="${scriptSrc}"]`)) {
-    const script = document.createElement("script");
-    script.src = scriptSrc;
-    script.async = false;
-    document.head.appendChild(script);
-  }
-})();

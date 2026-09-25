@@ -11,7 +11,8 @@ function loadAtlas({ inventory = [], balances = [], recipes = [] } = {}) {
   const context = {
     Date, Number, Math, Map, Set, String, Array, Object, JSON, console, Intl,
     localStorage: { getItem: () => null, setItem() {} },
-    document: { readyState: 'loading', addEventListener() {}, getElementById: () => null, querySelector: () => null, querySelectorAll: () => [] }
+    document: { readyState: 'loading', addEventListener() {}, getElementById: () => null, querySelector: () => null, querySelectorAll: () => [] },
+    AtlasShell: { dataLoadedAt: () => 1, profile: () => ({ id: 'u1', role: 'admin' }) }
   };
   context.window = context;
   vm.createContext(context);
@@ -19,7 +20,7 @@ function loadAtlas({ inventory = [], balances = [], recipes = [] } = {}) {
   vm.runInContext(read('apps/web/assets/js/atlas-calculations.js'), context);
   context.items = context.AtlasStockTruth.project(inventory, balances, [], Date.parse('2026-09-24T12:00:00Z'));
   context.recipes = recipes;
-  for (const file of ['recipes.js', 'operations.js', 'brain.js']) vm.runInContext(read(`apps/web/assets/js/${file}`), context);
+  for (const file of ['recipes.js', 'operations.js', 'home.js']) vm.runInContext(read(`apps/web/assets/js/${file}`), context);
   return context;
 }
 
@@ -154,7 +155,7 @@ test('genuinely unmeasurable ingredients stay incomplete instead of guessing', (
   assert.equal(availability(recipes, 'Honey density').status, 'incomplete');
 });
 
-test('Recipes, Operations, Atlas Intelligence and Home agree on the same readiness state', () => {
+test('Recipes, Operations and Home agree on the same readiness state', () => {
   const recipes = [
     recipe('Angelo Pinot Grigio', [['angelo', 150, 'ml']]),
     recipe('Carlsberg 0.0%', [['carlsberg', 1, 'can']]),
@@ -173,8 +174,9 @@ test('Recipes, Operations, Atlas Intelligence and Home agree on the same readine
   assert.ok(operations.issues.every((entry) => entry.recipe.active !== false), 'inactive recipes never count');
   assert.equal(operations.issues[0].recipe.name, 'Margarita');
   assert.equal(atlas.AtlasRecipes.getHomeAlert().text, "Margarita can't be served right now.");
-  assert.equal(atlas.AtlasBrain.riskData().label, 'High');
-  assert.match(atlas.AtlasBrain.assistantResponse('what needs attention'), /Margarita/);
+  // S88: Brain retired; Home shows the same readiness (At a glance and the briefing).
+  assert.deepEqual(atlas.AtlasHome.recipeFacts().unavailable.map((entry) => entry.recipe.name), ['Margarita']);
+  assert.match(atlas.AtlasHome.briefing().join(' '), /Margarita can’t be served right now/);
   // Below-par and unknown signals come from active reconciled stock only.
   assert.ok(operations.low.every((item) => item.active !== false && atlas.AtlasStockTruth.known(item)));
   assert.ok(!operations.low.some((item) => item.name.includes('recipe reference')));

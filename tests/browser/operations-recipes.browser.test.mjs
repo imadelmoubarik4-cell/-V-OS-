@@ -1,4 +1,5 @@
-// S87 Operations card navigation and safe recipe removal.
+// Home glance navigation (S88 Team A; formerly the Operations summary cards)
+// and safe recipe removal.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { harnessAvailable, launchAtlas, openView } from './harness.mjs';
@@ -27,16 +28,13 @@ function launch(options = {}) {
   });
 }
 
-async function clickCard(page, target) {
-  await openView(page, 'operations');
-  await page.click(`button.operations-summary-card[data-operation-target="${target}"]`);
-  await page.waitForTimeout(400);
-}
-
-test('Inventory alerts opens Inventory filtered to items below par', { skip }, async () => {
+test('Home Stock opens Inventory filtered to items below par', { skip }, async () => {
   const { page, close } = await launch();
   try {
-    await clickCard(page, 'inventory-low');
+    await page.waitForSelector('.home-glance__item[href="#inventory?filter=below-par"]');
+    assert.match(await page.textContent('.home-glance__item[href="#inventory?filter=below-par"]'), /1\s*below par/);
+    await page.click('.home-glance__item[href="#inventory?filter=below-par"]');
+    await page.waitForTimeout(400);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'inventory');
     const rows = await page.$$eval('#items-body tr td.name span:first-child', (cells) => cells.map((cell) => cell.textContent));
     assert.deepEqual(rows, ['Angelo Pinot Grigio'], 'Gin is exactly at par and is not listed');
@@ -46,37 +44,17 @@ test('Inventory alerts opens Inventory filtered to items below par', { skip }, a
   } finally { await close(); }
 });
 
-test('Home "Items below par" opens the same filter', { skip }, async () => {
-  const { page, close } = await launch();
-  try {
-    await page.click('#home-metrics .metric-card[data-target="inventory-low"]');
-    await page.waitForTimeout(300);
-    assert.equal(await page.$$eval('#items-body tr', (list) => list.length), 1);
-    assert.ok(await page.$('[data-inventory-below-par-chip]'));
-  } finally { await close(); }
-});
-
 test('Recipes needing attention opens Recipes on the Attention filter', { skip }, async () => {
   const { page, close } = await launch();
   try {
-    await clickCard(page, 'recipes-attention');
+    // S88: Operations has no summary cards; Recipes' own entry point opens the preset.
+    await page.evaluate(() => window.AtlasRecipes.openWithStatus('attention'));
+    await page.waitForTimeout(400);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'recipes');
     // S88 Recipes: the attention preset shows as a clearable chip next to the segments.
     await page.waitForSelector('#recipes-view .atlas-chip.is-active[data-recipe-status="all"]');
     const names = await page.$$eval('#recipes-view .recipe-tile__name', (nodes) => nodes.map((node) => node.textContent));
     assert.ok(!names.includes('Old Special'), 'archived recipes are not in the attention list');
-  } finally { await close(); }
-});
-
-test('Suppliers and Opening checks cards bring their section into view', { skip }, async () => {
-  const { page, close } = await launch();
-  try {
-    await clickCard(page, 'operations-orders');
-    await page.waitForTimeout(600);
-    assert.ok(await page.$eval('#operations-orders', (node) => { const rect = node.getBoundingClientRect(); return rect.top < window.innerHeight && rect.bottom > 0; }));
-    await clickCard(page, 'operations-checklist');
-    await page.waitForTimeout(600);
-    assert.equal(await page.$eval('[data-checklist-tab].active', (node) => node.dataset.checklistTab), 'opening');
   } finally { await close(); }
 });
 
@@ -116,7 +94,7 @@ test('an archived recipe is deleted only after its name is typed', { skip }, asy
   } finally { await close(); }
 });
 
-test('Operations shows items on a placed purchase order as On order', { skip }, async () => {
+test('an item on a placed purchase order is suggested as ordered and not counted to order on Home', { skip }, async () => {
   const { page, close } = await launchAtlas({
     fixtures: {
       tables: {
@@ -127,11 +105,11 @@ test('Operations shows items on a placed purchase order as On order', { skip }, 
     }
   });
   try {
-    await openView(page, 'operations');
+    await page.waitForSelector('.home-glance__item[href="#purchasing"]');
     await page.waitForTimeout(300);
-    assert.match(await page.textContent('#operations-orders'), /On order/);
-    assert.equal(await page.$('#operations-orders [data-order-toggle="pinot"]'), null);
-    assert.match(await page.textContent('button.operations-summary-card[data-operation-target="operations-orders"]'), /^0/, 'no supplier still needs an order');
+    const suggestion = await page.evaluate(() => window.AtlasOperations.orderSuggestions().find((entry) => entry.id === 'pinot'));
+    assert.equal(suggestion?.ordered, true);
+    assert.match(await page.textContent('.home-glance__item[href="#purchasing"]'), /0\s*to order/, 'no item still needs an order');
   } finally { await close(); }
 });
 
@@ -152,8 +130,8 @@ test('Home timeline text is not squeezed into the marker column', { skip }, asyn
   // The timeline exists only when business hours are saved (AtlasVenueClock).
   const { page, close } = await launch({ settings: venueClockBackend({ hours: weekHours() }) });
   try {
-    await page.waitForSelector('#home-timeline .brain-timeline-copy');
-    const width = await page.$eval('#home-timeline .brain-timeline-copy', (node) => node.getBoundingClientRect().width);
+    await page.waitForSelector('#home-timeline .home-timeline__label');
+    const width = await page.$eval('#home-timeline .home-timeline__label', (node) => node.getBoundingClientRect().width);
     assert.ok(width > 80, `timeline text column is ${width}px wide`);
   } finally { await close(); }
 });
