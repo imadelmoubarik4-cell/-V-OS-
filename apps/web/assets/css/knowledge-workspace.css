@@ -59,7 +59,7 @@
 .kn-prose img { max-width: 100%; height: auto; }
 .kn-prose .kn-checks { display: grid; gap: var(--s-1); padding: 0; list-style: none; }
 .kn-prose .kn-checks li + li { margin-top: 0; }
-.kn-check { align-items: flex-start; min-height: 32px; font: inherit; }
+.kn-check { align-items: flex-start; font: inherit; }
 .kn-check input { margin-top: 5px; }
 .kn-live { margin-bottom: var(--s-6); }
 .kn-article__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: var(--s-8) 0 0; padding-top: var(--s-5); border-top: 1px solid var(--line); }

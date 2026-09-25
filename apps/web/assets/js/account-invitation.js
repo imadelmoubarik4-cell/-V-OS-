@@ -50,9 +50,17 @@
   form.addEventListener('submit', async event => {
     event.preventDefault();
     const password = document.getElementById('new-password').value;
-    if (!rules() || password.length < 10 || password !== document.getElementById('confirm-password').value) {
-      say('Passwords must match and have at least 10 characters.', 'error'); return;
+    const error = document.getElementById('confirm-password-error');
+    const confirmInput = document.getElementById('confirm-password');
+    if (!rules() || password.length < 10 || password !== confirmInput.value) {
+      // Inline field error (design system §6.6); the form is novalidate.
+      if (error) { error.textContent = password.length < 10 ? 'Use at least 10 characters.' : 'The passwords don’t match.'; error.hidden = false; }
+      confirmInput.setAttribute('aria-invalid', 'true');
+      confirmInput.focus();
+      return;
     }
+    if (error) error.hidden = true;
+    confirmInput.setAttribute('aria-invalid', 'false');
     const submit = form.querySelector('button');
     submit.disabled = true;
     submit.classList.add('is-loading');

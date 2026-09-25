@@ -229,7 +229,9 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
   }
 
   await page.goto(`${ORIGIN}/index.html${hash}`, { waitUntil: 'load' });
-  if (signedIn && waitReady) await page.waitForFunction(() => document.body.dataset.atlasReady === 'true', null, { timeout: 15000 });
+  // waitReady: true waits for atlasReady, false for the app screen, 'none' for nothing
+  // (a saved session that never reaches the app, for example a deactivated profile).
+  if (waitReady === 'none') { /* the test waits on its own condition */ } else if (signedIn && waitReady) await page.waitForFunction(() => document.body.dataset.atlasReady === 'true', null, { timeout: 15000 });
   else if (signedIn) await page.waitForFunction(() => document.getElementById('app-screen')?.style.display === 'block', null, { timeout: 15000 });
   return { browser, context, page, record, close: () => browser.close() };
 }

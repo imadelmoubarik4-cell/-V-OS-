@@ -17,6 +17,8 @@
 // No inventory quantity change from this module.
 (function () {
   'use strict';
+  // 24-hour time fields (AtlasVenueClock.TIME_INPUT_ATTRS): never the browser's 12-hour picker.
+  const TIME_FIELD = window.AtlasVenueClock?.TIME_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM" data-atlas-time';
 
   const WRITE_ROLES = ['admin', 'manager', 'bartender'];
   const MANAGER_ROLES = ['admin', 'manager'];
@@ -902,7 +904,7 @@
       body: `${field('Name', `<input class="atlas-input" name="name" required maxlength="140" value="${escape(template.name)}">`)}
         ${field('Description', `<textarea class="atlas-input atlas-textarea" name="description" rows="2" maxlength="3000">${escape(template.description || '')}</textarea>`)}
         <fieldset class="ops-days"><legend class="atlas-label">Days</legend><div class="atlas-chips">${days.map((label, index) => `<label class="atlas-check-row"><input type="checkbox" class="atlas-check" name="day" value="${index}"${selected.has(index) ? ' checked' : ''}> ${label}</label>`).join('')}</div></fieldset>
-        <div class="atlas-grid-2">${field('Available from', `<input class="atlas-input" name="from" type="time" value="${escape(time(template.available_from))}">`, 'Optional')}${field('Due by', `<input class="atlas-input" name="due" type="time" value="${escape(time(template.due_time))}">`, 'Optional')}</div>
+        <div class="atlas-grid-2">${field('Available from', `<input class="atlas-input" name="from" ${TIME_FIELD} value="${escape(time(template.available_from))}">`, 'Optional')}${field('Due by', `<input class="atlas-input" name="due" ${TIME_FIELD} value="${escape(time(template.due_time))}">`, 'Optional')}</div>
         ${field('Who does it', `<select class="atlas-select" name="role">${[['any_active_staff', 'Anyone on shift'], ['bartender', 'Bartenders'], ['manager', 'Managers'], ['admin', 'Administrators']].map(([value, label]) => `<option value="${value}"${template.assigned_role === value ? ' selected' : ''}>${label}</option>`).join('')}</select>`)}
         <label class="atlas-check-row"><input type="checkbox" class="atlas-check" name="signoff"${template.requires_manager_signoff ? ' checked' : ''}> Needs a manager to sign it off</label>
         <label class="atlas-check-row"><input type="checkbox" class="atlas-check" name="active"${template.active ? ' checked' : ''}> Active</label>

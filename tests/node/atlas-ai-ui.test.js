@@ -88,9 +88,9 @@ test('Atlas AI registers through AtlasShell with the spec routes and actions', (
 
 test('index loads the Atlas AI view root, style and scripts with the S88 cache key', () => {
   assert.match(index, /<div id="ai-view" style="display:none;"><\/div>/);
-  assert.match(index, /<link rel="stylesheet" href="assets\/css\/atlas-ai\.css\?v=20260926-s88">/);
-  assert.ok(index.indexOf('assets/js/atlas-ai-voice.js?v=20260926-s88') > index.indexOf('assets/js/atlas-search.js?v=20260928-s89t'));
-  assert.ok(index.indexOf('assets/js/atlas-ai.js?v=20260926-s88') > index.indexOf('assets/js/atlas-ai-voice.js?v=20260926-s88'));
+  assert.match(index, /<link rel="stylesheet" href="assets\/css\/atlas-ai\.css\?v=20260929-s90u">/);
+  assert.ok(index.indexOf('assets/js/atlas-ai-voice.js?v=20260926-s88') > index.indexOf('assets/js/atlas-search.js?v=20260929-s90u'));
+  assert.ok(index.indexOf('assets/js/atlas-ai.js?v=20260929-s90u') > index.indexOf('assets/js/atlas-ai-voice.js?v=20260926-s88'));
 });
 
 test('stylesheet defines no global tokens and honours reduced motion', () => {

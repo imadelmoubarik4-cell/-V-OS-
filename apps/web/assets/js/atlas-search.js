@@ -16,13 +16,16 @@
   const VENUE_TIME_ZONE = 'Atlantic/Reykjavik';
 
   // Destinations and their sections: [nav id, label, route, keywords, roles?].
+  // roles repeat the page's own guard (Inventory movements and waste, and the
+  // Settings sections in settings-workspace.js SECTIONS), so the palette never
+  // offers a page the role is redirected away from.
   // Top-level pages come from AtlasShell.nav; these are the linkable tabs.
   const MANAGERS = ['admin', 'manager'];
   const SECTIONS = [
     ['ai', 'Atlas AI › Decisions', '#ai/decisions', ['decisions', 'recommendations', 'outcomes'], MANAGERS],
     ['inventory', 'Inventory › Stock count', '#inventory/counts', ['stock count', 'count stock', 'stocktake', 'counts']],
-    ['inventory', 'Inventory › Movements', '#inventory/movements', ['movement', 'movements', 'history', 'ledger']],
-    ['inventory', 'Inventory › Waste', '#inventory/waste', ['waste', 'spoilage', 'breakage']],
+    ['inventory', 'Inventory › Movements', '#inventory/movements', ['movement', 'movements', 'history', 'ledger'], MANAGERS],
+    ['inventory', 'Inventory › Waste', '#inventory/waste', ['waste', 'spoilage', 'breakage'], MANAGERS],
     ['purchasing', 'Purchasing › Orders', '#purchasing/orders', ['order', 'orders', 'purchase order']],
     ['purchasing', 'Purchasing › Deliveries', '#purchasing/deliveries', ['delivery', 'deliveries', 'receive', 'restock']],
     ['purchasing', 'Purchasing › Suppliers', '#purchasing/suppliers', ['supplier', 'suppliers', 'vendor']],
@@ -41,10 +44,10 @@
     ['data', 'Data › Issues', '#data/issues', ['issues', 'data issues', 'fix']],
     ['data', 'Data › Par levels', '#data/pars', ['par', 'pars', 'par levels']],
     ['settings', 'Settings › Venue and opening hours', '#settings/general', ['opening hours', 'business hours', 'hours', 'venue']],
-    ['settings', 'Settings › Team access', '#settings/access', ['access', 'roles', 'permissions', 'invite']],
+    ['settings', 'Settings › Team access', '#settings/access', ['access', 'roles', 'permissions', 'invite'], ['admin']],
     ['settings', 'Settings › Operational rules', '#settings/operations', ['rules', 'operational rules']],
     ['settings', 'Settings › Integrations', '#settings/integrations', ['integrations', 'connections']],
-    ['settings', 'Settings › Security', '#settings/security', ['security', 'password', 'sessions']],
+    ['settings', 'Settings › Security', '#settings/security', ['security', 'password', 'sessions'], ['admin']],
     ['settings', 'Settings › Activity', '#settings/activity', ['activity', 'audit']],
     ['settings', 'Settings › System health', '#settings/system', ['system', 'health', 'status'], ['admin']],
     // Everyone's own settings (spec §3.3: staff reach these from the account menu).

@@ -45,14 +45,18 @@
 /* ==========================================================================
    6.1 Page header — .page-head
    ========================================================================== */
+/* The title column never shrinks below 280 px (or the full width when the
+   page is narrower): when the actions don't fit beside it they wrap onto
+   their own line under the title instead of squeezing the subtitle. */
 .page-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--s-6);
+  gap: var(--s-4) var(--s-6);
   min-width: 0;
 }
-.page-head__text { min-width: 0; }
+.page-head__text { flex: 1 1 280px; min-width: min(100%, 280px); max-width: 100%; }
 .page-head__title {
   margin: 0;
   font: var(--type-title);
@@ -64,7 +68,10 @@
   font: var(--type-body);
   color: var(--text-2);
 }
-.page-head__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); flex: none; }
+.page-head__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); flex: 0 1 auto; min-width: 0; max-width: 100%; }
+/* Text that carries user content wraps even a very long unbroken token inside
+   its (min-width: 0) column instead of overflowing the page. */
+:is(.page-head__title, .page-head__sub, .atlas-row__title, .atlas-row__meta, .atlas-card__title, .atlas-card__body, .atlas-sheet__title, .atlas-sheet__desc, .atlas-sheet__body, .atlas-dialog__title, .atlas-dialog__body, .atlas-alert__title, .atlas-alert__body, .atlas-empty__title, .atlas-empty__text, .atlas-stat__detail) { overflow-wrap: anywhere; }
 /* Page rhythm (spec §5.4): header → tabs 16, tabs → toolbar 20, toolbar → content 12. */
 .page-head + .atlas-tabs { margin-top: var(--s-4); }
 .page-head + .atlas-toolbar { margin-top: var(--s-5); }
@@ -80,6 +87,8 @@
 .atlas-toolbar__end { display: flex; align-items: center; gap: var(--s-2); margin-left: auto; font: var(--type-meta); color: var(--text-2); }
 @media (max-width: 767px) {
   .page-head { flex-direction: column; align-items: stretch; gap: var(--s-4); }
+  /* In the column the 280 px basis would be a height: the text takes its content height. */
+  .page-head__text { flex: none; }
   /* The phone top bar shows the page name; the H1 stays for assistive tech. */
   .page-head__title {
     position: absolute;
@@ -103,6 +112,20 @@
      instead of shrinking to its icon. */
   .atlas-toolbar > .atlas-search { flex: 0 0 240px; min-width: 200px; }
 }
+
+/* Text link used as an action — a <button> or <a> that reads as a link
+   ("Show all items", a post title that opens it). */
+.atlas-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.atlas-link:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 /* ==========================================================================
    6.2 Section header — .atlas-section__head
@@ -338,6 +361,8 @@ textarea.atlas-input,
 .atlas-input[type="date"],
 .atlas-input[type="time"],
 .atlas-input[type="datetime-local"] { padding-right: 8px; font-variant-numeric: tabular-nums; }
+/* 24-hour time field (AtlasVenueClock.TIME_INPUT_ATTRS): a text field for HH:MM. */
+.atlas-input[data-atlas-time] { font-variant-numeric: tabular-nums; }
 .atlas-input[type="number"] { font-variant-numeric: tabular-nums; }
 .atlas-range { display: flex; align-items: center; gap: var(--s-2); }
 .atlas-range > span { color: var(--text-2); font: var(--type-meta); }
@@ -691,6 +716,47 @@ textarea.atlas-input,
 .atlas-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 @media (pointer: coarse) { .atlas-chip { height: var(--touch); padding: 0 14px; } }
 
+/* Record chip — a link to a record (a recipe an item is used in, a record
+   attached to a message). 32 px; its touch hit area is 44 px (below). */
+.atlas-record-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: var(--control-sm);
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font: var(--type-label);
+  text-decoration: none;
+}
+a.atlas-record-chip:hover { border-color: var(--line-strong); background: var(--bg-subtle); text-decoration: none; }
+.atlas-record-chip > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.atlas-record-chip > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-2); }
+
+/* ==========================================================================
+   Touch hit areas (G20, spec §5.10): on coarse pointers every interactive
+   element is at least 44 px. Controls with a box (buttons, inputs, chips,
+   tabs, check rows) grow to 44 px above. Small inline controls — text
+   links, section links, record chips, disclosure summaries, a chip's clear
+   button, a linked cell — keep their visual size and get an invisible
+   44 px hit area (::after) centred on them.
+   ========================================================================== */
+@media (pointer: coarse) {
+  :is(.atlas-link, .atlas-section__link, .atlas-record-chip, .atlas-chip__clear, .atlas-hit, details > summary, a.cell-primary, a[href]:not([class])) { position: relative; }
+  :is(.atlas-link, .atlas-section__link, .atlas-record-chip, .atlas-chip__clear, .atlas-hit, details > summary, a.cell-primary, a[href]:not([class]))::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, var(--touch));
+    height: max(100%, var(--touch));
+    transform: translate(-50%, -50%);
+  }
+}
+
 /* ==========================================================================
    6.13 Status pill and badge — .atlas-pill, .atlas-badge
    ========================================================================== */
@@ -884,6 +950,7 @@ html.atlas-reduce-motion :is(.is-linked-target, .atlas-table tr.is-linked-target
 }
 .atlas-table { width: 100%; border-collapse: separate; border-spacing: 0; font: var(--type-body); color: var(--text); }
 .atlas-table th {
+  overflow-wrap: break-word;   /* a long token wraps; never mid-word in a narrow column */
   position: sticky;
   top: var(--table-sticky-top, 0);
   z-index: 1;
@@ -928,6 +995,11 @@ th[aria-sort="ascending"] :is(.atlas-th-sort, .th-sort) > svg { transform: rotat
 .atlas-table .col-check { width: 40px; padding-right: 0; }
 .atlas-table .col-actions { width: 48px; padding-right: 8px; text-align: right; }
 .atlas-table .cell-primary { font-weight: 500; }
+/* Truncated cell text: one line with an ellipsis inside a fixed-layout (or
+   width-limited) column; put the full text in the cell's title. Use it on the
+   td or on a span inside it. */
+.atlas-table .cell-clip { display: block; min-width: 0; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.atlas-table td.cell-clip { display: table-cell; }
 .atlas-table .cell-sub { display: block; margin-top: 1px; font: var(--type-caption); color: var(--text-2); }
 .atlas-table .unit { margin-left: 2px; color: var(--text-2); font: var(--type-caption); }
 .atlas-table .row-action { opacity: 0; transition: opacity var(--dur-1) var(--ease-out); }
@@ -1310,6 +1382,13 @@ body.atlas-modal-open { overflow: hidden; }
 .atlas-skel--row { height: 48px; border-radius: 0; }
 .atlas-skel--block { height: 96px; border-radius: var(--r-lg); }
 .atlas-skel--circle { width: 28px; height: 28px; border-radius: 50%; }
+/* Default page skeleton (AtlasShell.skeleton): the page header, a toolbar
+   bar and list rows, drawn while a view waits for the shell data. */
+.atlas-skel-page__sub { display: inline-block; width: 220px; max-width: 60%; vertical-align: middle; }
+.atlas-skel-page__toolbar { margin: var(--s-5) 0 var(--s-3); }
+.atlas-skel-page__toolbar > .atlas-skel { width: 280px; max-width: 100%; height: 36px; border-radius: var(--r-md); }
+.atlas-skel-page__list { display: grid; overflow: hidden; }
+.atlas-skel-page__list > .atlas-skel + .atlas-skel { border-top: 1px solid var(--line-subtle); }
 @keyframes atlas-skel-show { to { opacity: 1; } }
 @keyframes atlas-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
@@ -1374,6 +1453,8 @@ body.atlas-modal-open { overflow: hidden; }
 }
 .atlas-toast:not(:has(.atlas-toast__action)) { padding-right: 16px; }
 .atlas-toast > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: #7fd1a8; }
+.atlas-toast--info > svg { color: #9cc3ff; }
+.atlas-toast--warning > svg { color: #f5c46b; }
 .atlas-toast__text { min-width: 0; }
 .atlas-toast__action, .atlas-toast button {
   height: 32px;

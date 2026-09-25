@@ -744,7 +744,7 @@
           const done = number(routine.progress?.completed);
           const total = number(routine.progress?.required);
           const text = routine.status === 'completed' ? `${label} done${routine.completed_by_label ? ` · ${routine.completed_by_label}` : ''}` : `${label} ${done} of ${total} done`;
-          return `<a class="home-timeline__check" href="#operations/${encodeURIComponent(routine.id)}">${escape(text)}</a>`;
+          return `<a class="atlas-hit home-timeline__check" href="#operations/${encodeURIComponent(routine.id)}">${escape(text)}</a>`;
         };
         const rowClass = { past: 'is-done', current: 'is-now', future: '' };
         body = `<ol class="home-timeline">${entries.map((entry) => {
@@ -877,7 +877,14 @@
       show: () => { loadShifts(); refreshIntelligence(); startTicking(); },
       hide: stopTicking
     });
-    atlas.onDataLoaded(() => { if (!stockIncomplete()) state.dataErrors.delete('Stock figures'); queueRender(); });
+    atlas.onDataLoaded(() => {
+      if (!stockIncomplete()) state.dataErrors.delete('Stock figures');
+      // A later load that succeeds clears the shell's own failure rows.
+      const health = window.AtlasData?.health?.() || {};
+      if (health.recipes === 'ok') state.dataErrors.delete('Recipes');
+      if (health.inventory === 'ok') state.dataErrors.delete('Inventory');
+      queueRender();
+    });
     atlas.on('data:error', (detail) => { if (detail?.source) state.dataErrors.set(String(detail.source), detail); atlas.emit('notify:changed', { source: 'home:load-errors' }); queueRender(); });
     atlas.on('profile:ready', (profile) => {
       if (!profile?.id) return;

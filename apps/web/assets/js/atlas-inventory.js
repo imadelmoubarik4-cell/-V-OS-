@@ -755,7 +755,7 @@
     ].filter(Boolean);
     const codes = [['Barcode', item.barcode], ['SKU', item.sku], manager ? ['Supplier number', item.supplier_product_reference] : null].filter((entry) => entry && entry[1]);
     const recipeChips = used.length
-      ? `<div class="inv-detail__chips">${used.slice(0, 6).map((recipe) => `<a class="inv-record-chip" href="#recipes/${encodeURIComponent(recipe.id)}">${icon('martini')}${esc(recipe.name)}</a>`).join('')}${used.length > 6 ? `<span class="inv__muted">+${used.length - 6} more</span>` : ''}</div>`
+      ? `<div class="inv-detail__chips">${used.slice(0, 6).map((recipe) => `<a class="atlas-record-chip inv-record-chip" href="#recipes/${encodeURIComponent(recipe.id)}">${icon('martini')}${esc(recipe.name)}</a>`).join('')}${used.length > 6 ? `<span class="inv__muted">+${used.length - 6} more</span>` : ''}</div>`
       : '<p class="inv__muted">Not used in any recipe.</p>';
     const historyRows = history.length
       ? `<ul class="atlas-list inv-detail__history">${history.map((entry) => {
@@ -824,7 +824,9 @@
         state.returnFocusId = String(item.id);
         if (/^#inventory\/item\//.test(location.hash)) {
           if (state.detailFromList && history.length > 1) history.back();
-          else shell.navigate('#inventory');
+          // Closing a sheet opened from a link replaces its address, so Back
+          // doesn't reopen it.
+          else shell.navigate('#inventory', { replace: true });
         }
       }
     });
@@ -871,7 +873,7 @@
   };
 
   function openActivation(item, activate) {
-    if (!isManager()) { toast('Changing items is for managers.', { icon: false }); return; }
+    if (!isManager()) { toast('Changing items is for managers.', { tone: 'info' }); return; }
     const title = activate ? `Reactivate ${item.name}?` : `Deactivate ${item.name}?`;
     const overlay = openOverlay(`<h2 class="atlas-dialog__title">${esc(title)}</h2>
       <div class="atlas-dialog__body" data-activation-body><div class="atlas-stack atlas-stack--sm" aria-hidden="true"><span class="atlas-skel"></span><span class="atlas-skel" style="width:70%"></span></div><p class="sr-only" role="status">Checking what depends on this item…</p></div>
@@ -1300,7 +1302,7 @@
   }
 
   function openWasteDialog(itemId = null) {
-    if (!isManager()) { toast('Recording waste is for managers.', { icon: false }); return; }
+    if (!isManager()) { toast('Recording waste is for managers.', { tone: 'info' }); return; }
     const choices = items().filter((item) => item.active !== false && truth()?.known(item) && (num(item.quantity) || 0) > 0);
     const overlay = openOverlay(`<h2 class="atlas-dialog__title">Record waste</h2>
       <form class="atlas-dialog__body atlas-form" id="inv-waste-form" novalidate>
@@ -1830,7 +1832,7 @@
   }
 
   function register() {
-    const definition = (view) => ({ root: () => rootEl(), title: 'Inventory', display: 'block', onShow: (params) => onShow(view, params), onHide });
+    const definition = (view) => ({ root: () => rootEl(), title: 'Inventory', display: 'block', data: 'shell', onShow: (params) => onShow(view, params), onHide });
     shell.registerView('inventory', definition('inventory'));
     shell.home?.contribute?.('inventory', { focusRows: homeRows, order: 10 });
     shell.registerView('movements', { ...definition('movements'), guard: () => (isManager() ? true : 'inventory') });
@@ -1843,7 +1845,7 @@
       { id: 'inventory.waste.record', label: 'Record waste', icon: 'trash-2', keywords: ['waste', 'spoilage', 'breakage', 'spill'], roles: MANAGERS, contexts: ['inventory'], forRecord: 'inventory_item', recordLabel: 'Record waste for {name}', run: (ctx) => openWasteDialog(ctx?.record?.type === 'inventory_item' ? ctx.record.id : null) },
       { id: 'inventory.item.deactivate', label: 'Deactivate item', icon: 'archive', keywords: ['deactivate', 'archive', 'remove'], roles: MANAGERS, forRecord: 'inventory_item', recordLabel: 'Deactivate {name}', when: (ctx) => Boolean(ctx?.record?.id), run: (ctx) => { const item = itemById(ctx.record.id); if (item) openActivation(item, item.active === false); } }
     ];
-    const registerAction = (action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`, { icon: false }) });
+    const registerAction = (action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`, { tone: 'info' }) });
     // Add item first; the rest after every module has loaded, so the palette
     // suggests Add item and Start stock count (stock-count-workspace.js) first.
     registerAction(actions[0]);

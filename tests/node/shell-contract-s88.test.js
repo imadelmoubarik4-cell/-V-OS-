@@ -191,7 +191,7 @@ test('every event a module listens for is actually emitted', () => {
 });
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20260926-s88"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20260929-s90u"><\/script>\s*<script src="config\.js"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
   assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine, health: window\.AtlasData\.health\(\) \}\);\s+\}/);
@@ -220,21 +220,26 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 });
 
 test('changed scripts carry the S88 cache key', () => {
-  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'data-workspace.js', 'atlas-capture.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'shifts-workspace.js',
-    'knowledge-workspace.js', 's38-app-remediation.js']) {
+  for (const file of ['runtime-module-guard.js', 's38-app-remediation.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s88"></script>`), file);
   }
-  // S89 canonical business truth changed these; their cache key moved on.
-  for (const file of ['operations.js', 'home.js', 'reports-overview.js', 'recipes.js', 'atlas-inventory.js', 'atlas-search.js']) {
+  // S89 canonical business truth changed this; its cache key moved on.
+  for (const file of ['reports-overview.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260928-s89t"></script>`), file);
   }
+  // S90 UX acceptance remediation (shell, design system and page fixes).
+  for (const file of ['atlas-shell.js', 'data-workspace.js', 'atlas-capture.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'shifts-workspace.js',
+    'knowledge-workspace.js', 'operations.js', 'home.js', 'recipes.js', 'atlas-inventory.js', 'atlas-search.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
+  }
   const config = read('apps/web/config.js');
-  for (const file of ['team-messages.js', 'marketing-workspace.js',
-    'team-profiles-bootstrap.js', 'team-profile-photos.js', 'system-workspace.js',
-    'settings-workspace.js']) {
+  for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s88'`), file);
   }
-  assert.ok(config.includes("scriptPath: 'assets/js/reports-workspace.js?v=20260928-s89t'"), 'reports-workspace.js');
+  for (const file of ['team-messages.js', 'marketing-workspace.js', 'team-profile-photos.js', 'settings-workspace.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90u'`), file);
+  }
+  assert.ok(config.includes("scriptPath: 'assets/js/reports-workspace.js?v=20260929-s90u'"), 'reports-workspace.js');
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
 });
 

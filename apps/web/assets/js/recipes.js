@@ -1425,7 +1425,7 @@
     if (editing) {
       const recipe = recipeId === 'new' ? null : recipes.find((entry) => String(entry.id) === String(recipeId));
       if (!canManageCommercial()) {
-        window.AtlasShell?.toast?.('Recipe editing is for managers. Showing the recipe instead.', { icon: false });
+        window.AtlasShell?.toast?.('Recipe editing is for managers. Showing the recipe instead.', { tone: 'info' });
         openDetail(recipeId);
         return;
       }

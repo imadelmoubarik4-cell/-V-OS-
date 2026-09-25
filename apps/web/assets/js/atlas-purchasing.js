@@ -9,6 +9,8 @@
 // arrived; a person always confirms the quantities.
 (function (root) {
   'use strict';
+  // Date fields as YYYY-MM-DD text (AtlasVenueClock.DATE_INPUT_ATTRS): never the browser's mm/dd/yyyy.
+  const DATE_FIELD = window.AtlasVenueClock?.DATE_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
 
   const shell = root.AtlasShell;
   if (!shell || root.AtlasPurchasing) return;
@@ -395,7 +397,7 @@
   }
 
   function openOrderSheet({ order = null, itemIds = [], supplierId = null } = {}) {
-    if (!isManager()) { toast('Purchasing is for managers.', { icon: false }); return; }
+    if (!isManager()) { toast('Purchasing is for managers.', { tone: 'info' }); return; }
     const editing = Boolean(order);
     const presetLines = order ? order.lines : itemIds.map((id) => ({ item_id: id, quantity: 1, unit_cost: itemById(id)?.cost_price ?? '' }));
     const inferredSupplier = supplierId || order?.supplier_id || (itemIds.length ? itemById(itemIds[0])?.supplier_id : null) || '';
@@ -407,7 +409,7 @@
       body: `<form class="atlas-form" id="po-order-form" novalidate><div data-po-alert></div>
         ${active.length ? '' : alertHtml('warning', 'No active suppliers', 'Add a supplier before creating an order.', '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-add-supplier>Add supplier</button>')}
         <div class="atlas-grid-2"><div class="atlas-field"><label for="po-supplier">Supplier</label><select class="atlas-select" id="po-supplier" name="supplier" required><option value="">Choose a supplier</option>${active.map((supplier) => `<option value="${esc(supplier.id)}"${String(supplier.id) === String(inferredSupplier) ? ' selected' : ''}>${esc(supplier.name)}</option>`).join('')}</select></div>
-        <div class="atlas-field"><label for="po-date">Expected delivery <span class="optional">(optional)</span></label><input class="atlas-input" id="po-date" name="date" type="date" min="${esc(today())}" value="${esc(order?.expected_delivery_date || '')}"></div></div>
+        <div class="atlas-field"><label for="po-date">Expected delivery <span class="optional">(optional)</span></label><input class="atlas-input" id="po-date" name="date" ${DATE_FIELD} min="${esc(today())}" value="${esc(order?.expected_delivery_date || '')}"></div></div>
         <fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Lines</legend><div data-po-lines>${(presetLines.length ? presetLines : [{}]).map(lineRowHtml).join('')}</div>
         <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-po-add-line>${icon('plus')}Add line</button></fieldset>
         <div class="atlas-field"><label for="po-note">Note <span class="optional">(optional)</span></label><textarea class="atlas-textarea" id="po-note" name="note" maxlength="2000">${esc(order?.note || '')}</textarea></div>
@@ -681,7 +683,7 @@
   function datePrompt(current) {
     return new Promise((resolve) => {
       let answered = false;
-      const overlay = openOverlay(`<h2 class="atlas-dialog__title">Expected delivery</h2><form class="atlas-dialog__body" id="po-date-form"><div class="atlas-field"><label for="po-date-input">Date</label><input class="atlas-input" type="date" id="po-date-input" min="${esc(today())}" value="${esc(current || '')}"></div></form><div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="po-date-form" class="atlas-btn atlas-btn--primary">Save date</button></div>`,
+      const overlay = openOverlay(`<h2 class="atlas-dialog__title">Expected delivery</h2><form class="atlas-dialog__body" id="po-date-form"><div class="atlas-field"><label for="po-date-input">Date</label><input class="atlas-input" ${DATE_FIELD} id="po-date-input" min="${esc(today())}" value="${esc(current || '')}"></div></form><div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="po-date-form" class="atlas-btn atlas-btn--primary">Save date</button></div>`,
         { className: 'atlas-dialog', onClose: () => { if (!answered) resolve(null); } });
       overlay.panel.querySelector('form').addEventListener('submit', (event) => {
         event.preventDefault();
@@ -813,7 +815,7 @@
   // "Receive a delivery" (formerly the restock modal): pick an open order,
   // or record a delivery that has no order.
   function openReceiveAny() {
-    if (!isManager()) { toast('Receiving deliveries is for managers.', { icon: false }); return; }
+    if (!isManager()) { toast('Receiving deliveries is for managers.', { tone: 'info' }); return; }
     const open = state.orders.filter((order) => ['ordered', 'partially_received'].includes(order.status));
     const overlay = openOverlay(sheetHtml({
       title: 'Receive a delivery',
@@ -873,7 +875,7 @@
   // Suppliers
   // ---------------------------------------------------------------------------
   function openSupplierSheet() {
-    if (!isManager()) { toast('Suppliers are for managers.', { icon: false }); return; }
+    if (!isManager()) { toast('Suppliers are for managers.', { tone: 'info' }); return; }
     const overlay = openOverlay(sheetHtml({
       title: 'Add supplier',
       desc: 'Save a supplier once and use it for items, orders and deliveries.',
@@ -1015,7 +1017,7 @@
       { id: 'purchasing.supplier.add', label: 'Add supplier', icon: 'store', keywords: ['supplier', 'vendor'], roles: MANAGERS, contexts: ['purchasing', 'suppliers'], run: () => { shell.navigate('#purchasing/suppliers'); openSupplierSheet(); } },
       { id: 'purchasing.suggestions.review', label: 'Review suggested order', icon: 'list-checks', keywords: ['suggested', 'below par', 'reorder'], roles: MANAGERS, contexts: ['home', 'purchasing', 'suppliers'], when: () => suggestions().length > 0, run: () => { shell.navigate('#purchasing/orders'); openSuggestionsSheet(); } }
     ];
-    actions.forEach((action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`, { icon: false }) }));
+    actions.forEach((action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`, { tone: 'info' }) }));
     shell.home?.contribute?.('purchasing', { order: 40, focusRows: homeRows });
     shell.onDataLoaded(() => { if (shell.current() === 'suppliers') render(); });
     shell.on('profile:ready', () => {

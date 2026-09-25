@@ -8,6 +8,8 @@
 // so a browser in another zone stores the instant the manager meant.
 (function () {
   'use strict';
+  // Date fields as YYYY-MM-DD text (AtlasVenueClock.DATE_INPUT_ATTRS): never the browser's mm/dd/yyyy.
+  const DATE_FIELD = window.AtlasVenueClock?.DATE_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
 
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 15000;
@@ -160,7 +162,7 @@
 
   function postRow(item) {
     return `<li class="atlas-row atlas-row--link"><span class="atlas-row__icon"><i data-lucide="${item.content_type === 'reel' ? 'clapperboard' : item.content_type === 'story' ? 'gallery-vertical-end' : item.content_type === 'campaign_task' ? 'list-checks' : 'image'}"></i></span>
-        <div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([TYPES[item.content_type] || humanize(item.content_type), channelText(item.platforms), dateTime(item.scheduled_for)].join(' · '))}</p></div>
+        <div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-link mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([TYPES[item.content_type] || humanize(item.content_type), channelText(item.platforms), dateTime(item.scheduled_for)].join(' · '))}</p></div>
         <div class="atlas-row__end">${pill(item.status)}</div></li>`;
   }
 
@@ -176,7 +178,7 @@
     return `<section class="atlas-section" aria-labelledby="mk-coming"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-coming">Coming up</h2><span class="atlas-section__meta">Next 14 days</span></div>
         ${coming.length ? `<ul class="atlas-list">${coming.map(postRow).join('')}</ul>` : emptyMarkup('calendar', 'Nothing planned yet', 'Plan a post, story or campaign task and it shows here two weeks ahead.', newPostButton('New post draft', 'secondary'))}</section>
       <section class="atlas-section" aria-labelledby="mk-waiting"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-waiting">Waiting for approval</h2></div>
-        ${waiting.length ? `<ul class="atlas-list">${waiting.map((item) => `<li class="atlas-row"><div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([item.created_by_label, dateTime(item.scheduled_for)].filter(Boolean).join(' · '))}</p></div><div class="atlas-row__end">${item.can_approve ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-mk-open="${escapeHtml(item.id)}">Review</button>` : pill(item.status)}</div></li>`).join('')}</ul>` : '<p class="mk-muted">Nothing is waiting for approval.</p>'}</section>
+        ${waiting.length ? `<ul class="atlas-list">${waiting.map((item) => `<li class="atlas-row"><div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-link mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([item.created_by_label, dateTime(item.scheduled_for)].filter(Boolean).join(' · '))}</p></div><div class="atlas-row__end">${item.can_approve ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-mk-open="${escapeHtml(item.id)}">Review</button>` : pill(item.status)}</div></li>`).join('')}</ul>` : '<p class="mk-muted">Nothing is waiting for approval.</p>'}</section>
       ${ideas.length ? `<section class="atlas-section" aria-labelledby="mk-ideas"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-ideas">Suggestions</h2><span class="atlas-section__meta">From your venue's routines — nothing is posted automatically</span></div>
         <ul class="atlas-list">${ideas.map((entry) => `<li class="atlas-row${state.focusSuggestion && String(entry.id) === state.focusSuggestion ? ' is-linked-target' : ''}" data-mk-suggestion="${escapeHtml(entry.id)}"${state.focusSuggestion && String(entry.id) === state.focusSuggestion ? ' aria-current="true"' : ''}><span class="atlas-row__icon"><i data-lucide="lightbulb"></i></span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(entry.title)} <span class="atlas-pill">Suggestion</span></p><p class="atlas-row__meta">${escapeHtml(entry.summary || '')}</p></div><div class="atlas-row__end">${entry.is_due_today && state.staff?.can_create !== false ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-mk-plan="${escapeHtml(entry.id)}">Plan this</button>` : ''}</div></li>`).join('')}</ul></section>` : ''}`;
   }
@@ -423,7 +425,7 @@
         <form class="atlas-dialog__body atlas-form" data-mk-campaign-form>
           <div class="atlas-field"><label for="mk-c-name">Name</label><input class="atlas-input" id="mk-c-name" name="name" maxlength="180" required></div>
           <div class="atlas-field"><label for="mk-c-type">Type</label><select class="atlas-select" id="mk-c-type" name="campaign_type">${['promotion', 'event', 'seasonal', 'always_on', 'brand', 'other'].map((key) => `<option value="${key}">${humanize(key)}</option>`).join('')}</select></div>
-          <div class="atlas-grid-2"><div class="atlas-field"><label for="mk-c-start">Starts</label><input class="atlas-input" type="date" id="mk-c-start" name="start"></div><div class="atlas-field"><label for="mk-c-end">Ends</label><input class="atlas-input" type="date" id="mk-c-end" name="end"></div></div>
+          <div class="atlas-grid-2"><div class="atlas-field"><label for="mk-c-start">Starts</label><input class="atlas-input" ${DATE_FIELD} id="mk-c-start" name="start"></div><div class="atlas-field"><label for="mk-c-end">Ends</label><input class="atlas-input" ${DATE_FIELD} id="mk-c-end" name="end"></div></div>
           <div class="atlas-field"><label for="mk-c-desc">Goal <span class="optional">(optional)</span></label><textarea class="atlas-textarea" id="mk-c-desc" name="description" rows="3"></textarea></div>
           <p class="error" data-mk-error hidden></p>
           <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary">Create campaign</button></div>

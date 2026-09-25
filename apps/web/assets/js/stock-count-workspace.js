@@ -603,7 +603,7 @@
         <div class="sc-card__links"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-count-skip>Skip</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-count-open-item="${esc(line.inventory_item_id)}">Open item</button></div>
         <div data-count-alert></div>
       </section>
-      ${upNext.length ? `<section class="sc-upnext" aria-labelledby="sc-upnext-title"><div class="atlas-section__head"><h2 class="atlas-section__title" id="sc-upnext-title">Up next</h2><button type="button" class="atlas-section__link sc-link-btn" data-count-show-all>Show all items</button></div>
+      ${upNext.length ? `<section class="sc-upnext" aria-labelledby="sc-upnext-title"><div class="atlas-section__head"><h2 class="atlas-section__title" id="sc-upnext-title">Up next</h2><button type="button" class="atlas-link atlas-section__link" data-count-show-all>Show all items</button></div>
         <ul class="atlas-card atlas-list">${upNext.map((entry) => `<li class="atlas-row atlas-row--link"><button type="button" class="sc-row-btn" data-count-goto="${esc(entry.id)}"><span class="atlas-row__body"><span class="atlas-row__title">${esc(entry.item_name)}</span><span class="atlas-row__meta">${esc([entry.bin_location, entry.line_status === 'counted' ? `counted ${qty(entry.observed_input_quantity ?? entry.observed_quantity)}` : lastVerifiedText(entry).replace('Last verified', 'last')].filter(Boolean).join(' · '))}</span></span><span class="atlas-row__end">${linePill(entry)}</span></button></li>`).join('')}</ul></section>` : ''}
       <p class="sc-caption">Stock changes only after a manager verifies this count.</p>
       <footer class="sc-footer">

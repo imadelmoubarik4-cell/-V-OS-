@@ -16,6 +16,8 @@
 //              compareRange(period) · zonedToInstant(dateKey, 'HH:MM')
 //   format     formatTime · formatDate · formatDateTime · formatRelative · formatKr
 //   inputs     localInputValue(date, type) · fromLocalInput(value)
+//              TIME_INPUT_ATTRS · parseTimeInput(text)   (24 h time fields)
+//              DATE_INPUT_ATTRS · parseDateInput(text)   (YYYY-MM-DD date fields)
 //   hours      dayWindow(dateKey) · isOpenAt(at) · nextEvent(at, {types}) · timeline(dateKey, at)
 //
 // Rules (docs/design/Atlas_Time_Migration.md):
@@ -374,6 +376,73 @@
     return validDate(instant) ? instant.toISOString() : null;
   }
 
+  // ---------- 24-hour time fields ----------
+  //
+  // A native <input type="time"> shows "05:00 PM" in an en-US browser; Atlas
+  // is 24 h everywhere. Time fields are text fields with TIME_INPUT_ATTRS
+  // (data-atlas-time) that take and show HH:MM: "1730", "17.30" and "9" are
+  // read as 17:30 and 09:00 when the field is committed (change). The value
+  // stays 'HH:MM' (or '' when empty), the same as a native time input.
+  const TIME_INPUT_ATTRS = 'type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM" data-atlas-time';
+
+  /** 'HH:MM', '' for an empty field, or null when the text is not a time. */
+  function parseTimeInput(text) {
+    const value = String(text ?? '').trim();
+    if (!value) return '';
+    const match = /^(\d{1,2})(?:[:.h ]?(\d{2}))?(?::\d{2})?$/.exec(value);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2] || 0);
+    if (hours > 23 || minutes > 59) return null;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
+  function commitTimeInput(input) {
+    const parsed = parseTimeInput(input.value);
+    if (parsed !== null && parsed !== input.value) input.value = parsed;
+    input.setAttribute('aria-invalid', String(parsed === null));
+  }
+
+  // Date fields: a native <input type="date"> shows "mm/dd/yyyy" in an en-US
+  // browser. DATE_INPUT_ATTRS is a text field (data-atlas-date) whose value is
+  // the date key 'YYYY-MM-DD', like a native date input; "24.9.2026",
+  // "24/9/2026", "24.9" (this year) and "2026-9-24" are read when committed.
+  const DATE_INPUT_ATTRS = 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
+
+  /** 'YYYY-MM-DD', '' for an empty field, or null when the text is not a date. */
+  function parseDateInput(text) {
+    const value = String(text ?? '').trim();
+    if (!value) return '';
+    let year; let month; let day;
+    let match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value);
+    if (match) [, year, month, day] = match;
+    else {
+      match = /^(\d{1,2})[./ -](\d{1,2})(?:[./ -](\d{4}))?\.?$/.exec(value);
+      if (!match) return null;
+      [, day, month, year] = match;
+      year = year || today().slice(0, 4);
+    }
+    const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const noon = keyToNoon(key);
+    return noon && noonToKey(noon) === key ? key : null;
+  }
+
+  function commitDateInput(input) {
+    const parsed = parseDateInput(input.value);
+    if (parsed !== null && parsed !== input.value) input.value = parsed;
+    const early = parsed && input.getAttribute('min') && parsed < input.getAttribute('min');
+    input.setAttribute('aria-invalid', String(parsed === null || Boolean(early)));
+  }
+
+  // Registered before any module script, so it runs before their document
+  // change listeners (bubbling; no capture listener, no observer).
+  function bindTimeInputs() {
+    root.document?.addEventListener?.('change', (event) => {
+      if (event.target?.dataset?.atlasTime !== undefined) commitTimeInput(event.target);
+      else if (event.target?.dataset?.atlasDate !== undefined) commitDateInput(event.target);
+    });
+  }
+
   // ---------- hours ----------
 
   function hoursUsable() {
@@ -702,6 +771,10 @@
     // inputs
     localInputValue,
     fromLocalInput,
+    TIME_INPUT_ATTRS,
+    parseTimeInput,
+    DATE_INPUT_ATTRS,
+    parseDateInput,
     // hours
     dayWindow,
     isOpenAt,
@@ -714,4 +787,5 @@
   if (!root.AtlasFormat) root.AtlasFormat = Object.freeze({ money: formatKr });
 
   bind();
+  bindTimeInputs();
 })(typeof window === 'undefined' ? globalThis : window);

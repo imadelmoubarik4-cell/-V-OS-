@@ -449,9 +449,9 @@
     const iconName = LINK_ICONS[link.type] || 'link-2';
     // Recommendation titles are manager context; staff see only that one exists.
     if (link.type === 'brain_recommendation' && !isManager()) {
-      return `<span class="msg-link is-locked">${icon('lock')}<span>Atlas recommendation · managers only</span></span>`;
+      return `<span class="atlas-record-chip msg-link is-locked">${icon('lock')}<span>Atlas recommendation · managers only</span></span>`;
     }
-    return `<a class="msg-link" href="${escapeHtml(linkHref(link))}" data-team-open-link="${escapeHtml(link.type)}" data-team-link-key="${escapeHtml(link.key)}">${icon(iconName)}<span>${escapeHtml(link.label || 'Linked record')}</span></a>`;
+    return `<a class="atlas-record-chip msg-link" href="${escapeHtml(linkHref(link))}" data-team-open-link="${escapeHtml(link.type)}" data-team-link-key="${escapeHtml(link.key)}">${icon(iconName)}<span>${escapeHtml(link.label || 'Linked record')}</span></a>`;
   }
 
   function readStatusMarkup(message) {

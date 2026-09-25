@@ -8,8 +8,9 @@
   .mk-body > .atlas-section:first-child { margin-top: 0; }
   .mk-muted { margin: 0; font: var(--type-meta); color: var(--text-2); list-style: none; }
   .mk-skeleton { display: grid; gap: var(--s-2); }
-  .mk-link { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-  .mk-link:hover { color: var(--accent-text); text-decoration: underline; }
+  /* A post title that opens the post: the shared .atlas-link, in text colour. */
+  .mk-link { color: inherit; }
+  .mk-link:hover { color: var(--accent-text); }
   .mk-month { margin: 0 0 0 var(--s-2); font: var(--type-section); color: var(--text); }
 
   .mk-calendar { border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); }
