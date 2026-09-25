@@ -204,17 +204,22 @@ test('authorize URLs carry state, exact redirect, minimal scopes and S256 when u
   assert.throws(() => buildAuthorizeUrl(PROVIDERS['google-drive'], env, { redirectUri: 'r', state: 's', codeChallenge: null }));
 });
 
-test('providers report exactly what is missing when not configured', () => {
+test('providers report exactly what is missing when not configured: owner copy, names only in the setup list', () => {
   const empty = () => undefined;
   for (const key of PROVIDER_KEYS) {
     const config = providerConfiguration(PROVIDERS[key], empty);
     assert.equal(config.configured, false, key);
-    assert.match(config.message, /^Not available yet — requires /, key);
-    assert.match(config.message, /ATLAS_INTEGRATION_KEK_V1/, key);
+    assert.equal(config.message, 'Not set up yet.', key);
+    assert.doesNotMatch(JSON.stringify(config.missing), /ATLAS_|function secret/, `${key}: plain labels carry no secret names`);
+    assert.ok(config.missing_setup.some((entry) => entry.name === 'ATLAS_INTEGRATION_KEK_V1' && entry.label === 'the integration encryption key'), key);
+    assert.match(PROVIDERS[key].enables, /^[A-Z][^.]{10,90}\.$/, `${key}: one short sentence of what it enables`);
+    assert.doesNotMatch(PROVIDERS[key].enables, /ATLAS_|OAuth|API|secret/, key);
   }
-  assert.match(providerConfiguration(PROVIDERS.tiktok, empty).message, /ATLAS_TIKTOK_CLIENT_KEY/);
-  assert.match(providerConfiguration(PROVIDERS.facebook, empty).message, /ATLAS_META_APP_SECRET/);
-  assert.match(providerConfiguration(PROVIDERS.tripadvisor, empty).message, /Terra API/);
+  const names = (key) => providerConfiguration(PROVIDERS[key], empty).missing_setup.map((entry) => entry.name);
+  assert.ok(names('tiktok').includes('ATLAS_TIKTOK_CLIENT_KEY'));
+  assert.ok(names('facebook').includes('ATLAS_META_APP_SECRET'));
+  assert.ok(providerConfiguration(PROVIDERS.facebook, empty).missing.includes('its app secret'));
+  assert.match(providerConfiguration(PROVIDERS.tripadvisor, empty).missing.join(' '), /Terra API/);
   const bad = (name) => ({ ATLAS_INTEGRATION_KEK_V1: KEK, ATLAS_INTEGRATIONS_APP_ORIGINS: 'https://os.example.is', ATLAS_TRIPADVISOR_VERIFY_URL: 'https://evil.example/{location_id}', ATLAS_TRIPADVISOR_LOCATION_ID: '1' })[name];
   assert.equal(providerConfiguration(PROVIDERS.tripadvisor, bad).configured, false);
 });
@@ -373,7 +378,7 @@ function assertNoLeak(text) {
   }
 }
 
-test('unconfigured providers: status says "Not available yet", start and save-api-key refuse', async () => {
+test('unconfigured providers: status says "Not set up yet", start and save-api-key refuse', async () => {
   const { call } = harness();
   const status = await call('GET', 'status');
   assert.equal(status.status, 200);
@@ -382,16 +387,54 @@ test('unconfigured providers: status says "Not available yet", start and save-ap
   for (const provider of body.providers) {
     assert.equal(provider.connection_state, 'not_configured');
     assert.equal(provider.can_connect, false);
-    assert.match(provider.available_message, /^Not available yet — requires /);
+    assert.equal(provider.available_message, 'Not set up yet.');
+    assert.match(provider.enables, /\.$/);
+    assert.equal(provider.setup_details, null, 'managers get no technical setup list');
   }
+  assert.doesNotMatch(JSON.stringify(body), /ATLAS_|function secret/, 'a manager never sees secret names');
   const start = await call('POST', 'start', { provider_key: 'instagram', return_path: '#settings' });
   assert.equal(start.status, 409);
   const startBody = await start.json();
   assert.equal(startBody.error_code, 'not_configured');
-  assert.match(startBody.error, /^Not available yet — requires .*ATLAS_META_APP_ID/);
+  assert.equal(startBody.error, 'Instagram is not set up yet.');
+  assert.doesNotMatch(JSON.stringify(startBody), /ATLAS_/);
   const save = await call('POST', 'save-api-key', { provider_key: 'tripadvisor', api_key: 'ta-api-key-value' });
   assert.equal(save.status, 409);
   assertNoLeak(await save.text());
+});
+
+test('S91: administrators get an admin-only "Setup details" list with secret names, never values', async () => {
+  const partial = { ATLAS_INTEGRATION_KEK_V1: KEK, ATLAS_GOOGLE_OAUTH_CLIENT_SECRET: 'google-client-secret-value' };
+  const admin = harness({ role: 'admin', env: partial });
+  const body = await (await admin.call('GET', 'status')).json();
+  const drive = body.providers.find((provider) => provider.provider_key === 'google-drive');
+  assert.equal(drive.available_message, 'Not set up yet.');
+  assert.equal(drive.enables, 'Lets Atlas save and open files you choose in Google Drive.');
+  assert.match(drive.setup_details.summary, /Drive API/);
+  const listed = drive.setup_details.requirements.map((entry) => entry.name);
+  assert.ok(listed.includes('ATLAS_GOOGLE_OAUTH_CLIENT_ID'));
+  assert.ok(listed.includes('ATLAS_INTEGRATIONS_APP_ORIGINS'));
+  assert.ok(!listed.includes('ATLAS_INTEGRATION_KEK_V1'), 'a secret that is set is not listed as missing');
+  assert.ok(!listed.includes('ATLAS_GOOGLE_OAUTH_CLIENT_SECRET'));
+  for (const entry of drive.setup_details.requirements) assert.deepEqual(Object.keys(entry).sort(), ['label', 'name']);
+  assertNoLeak(JSON.stringify(body));
+
+  const manager = harness({ role: 'manager', env: partial });
+  const managerBody = await (await manager.call('GET', 'status')).json();
+  assert.ok(managerBody.providers.every((provider) => provider.setup_details === null));
+  assert.doesNotMatch(JSON.stringify(managerBody), /ATLAS_/);
+});
+
+test('S91: a missing or broken encryption key is reported in owner words', async () => {
+  const configured = { ...CONFIGURED_ENV };
+  delete configured.ATLAS_INTEGRATION_KEK_V1;
+  const { call } = harness({ env: configured });
+  const save = await call('POST', 'save-api-key', { provider_key: 'tripadvisor', api_key: 'ta-api-key-value' });
+  const text = await save.text();
+  assert.doesNotMatch(text, /ATLAS_|base64|32-byte/);
+  assertNoLeak(text);
+  const handler = readFileSync(`${FUNCTION_DIR}/handler.mjs`, 'utf8');
+  assert.doesNotMatch(handler, /ApiError\([^)]*ATLAS_INTEGRATION_KEK/, 'no secret name in a browser-facing error');
 });
 
 test('staff and viewers cannot manage integrations', async () => {

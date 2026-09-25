@@ -39,6 +39,7 @@ import {
   buildAuthorizeUrl,
   getProvider,
   providerConfiguration,
+  configurationResult,
 } from "./providers.mjs";
 
 export const FUNCTION_VERSION = "0.1.0";
@@ -199,11 +200,11 @@ export function createIntegrationsHandler(deps) {
   function configurationFor(provider) {
     const config = providerConfiguration(provider, env);
     if (provider.auth_kind === "oauth2" && !redirectUriFor(provider)) {
-      const missing = [...config.missing, "an https function URL on an allow-listed host (ATLAS_INTEGRATIONS_PUBLIC_URL / ATLAS_INTEGRATIONS_CALLBACK_HOSTS)"];
-      return { configured: false, missing, message: `Not available yet — requires ${missing.join(", ")}.` };
+      return configurationResult([...config.missing_setup,
+        { name: "ATLAS_INTEGRATIONS_PUBLIC_URL / ATLAS_INTEGRATIONS_CALLBACK_HOSTS", label: "a public https address for the connection service" }]);
     }
     if (config.configured && !appOrigin()) {
-      return { configured: false, missing: ["a valid https ATLAS_INTEGRATIONS_APP_ORIGINS value"], message: "Not available yet — requires a valid https ATLAS_INTEGRATIONS_APP_ORIGINS value." };
+      return configurationResult([{ name: "ATLAS_INTEGRATIONS_APP_ORIGINS", label: "a valid https Atlas web address" }]);
     }
     return config;
   }
@@ -211,7 +212,7 @@ export function createIntegrationsHandler(deps) {
   function requireConfigured(provider) {
     const config = configurationFor(provider);
     if (!config.configured) {
-      throw new ApiError(409, config.message, { error_code: "not_configured", provider_key: provider.key, missing_requirements: config.missing });
+      throw new ApiError(409, `${provider.label} is not set up yet.`, { error_code: "not_configured", provider_key: provider.key, missing_requirements: config.missing });
     }
     return config;
   }
@@ -224,18 +225,23 @@ export function createIntegrationsHandler(deps) {
   async function keyFor(version) {
     if (keyCache.has(version)) return keyCache.get(version);
     const material = env(`ATLAS_INTEGRATION_KEK_V${version}`);
-    if (!material) throw new ApiError(503, `Not available yet — requires the integration encryption key ATLAS_INTEGRATION_KEK_V${version}.`);
+    // Owner-facing text only; the administrator's setup details name the
+    // function secret (S91).
+    if (!material) throw new ApiError(503, "Integrations are not set up yet.", { error_code: "not_configured" });
     let key;
     try {
       key = await importAesKey(material);
     } catch {
-      throw new ApiError(503, `The integration encryption key ATLAS_INTEGRATION_KEK_V${version} is not a base64 32-byte key.`);
+      throw new ApiError(503, "Integrations are not set up correctly yet. An administrator can check the setup details.", { error_code: "not_configured" });
     }
     keyCache.set(version, key);
     return key;
   }
 
-  function publicProvider(provider, row, config) {
+  // S91: owner-facing copy for everyone ("Not set up yet." plus what it
+  // enables); the technical setup list (function secret names, never values)
+  // only for administrators.
+  function publicProvider(provider, row, config, role = null) {
     const hasCredential = Boolean(row?.has_credential);
     const status = row?.status ?? "not_connected";
     const expiresAt = row?.credential_access_expires_at ?? row?.token_expires_at ?? null;
@@ -255,6 +261,7 @@ export function createIntegrationsHandler(deps) {
       connection_state: connectionState,
       configured: config.configured,
       available_message: config.message,
+      enables: provider.enables ?? null,
       missing_requirements: config.missing,
       can_connect: config.configured && provider.auth_kind === "oauth2",
       can_save_api_key: config.configured && provider.auth_kind === "api_key",
@@ -272,7 +279,9 @@ export function createIntegrationsHandler(deps) {
       connected_at: row?.connected_at ?? null,
       disconnected_at: row?.disconnected_at ?? null,
       redirect_uri_to_register: provider.auth_kind === "oauth2" ? redirectUriFor(provider) : null,
-      owner_requirements_summary: provider.owner_requirements_summary,
+      setup_details: role === "admin" && !config.configured
+        ? { summary: provider.owner_requirements_summary, requirements: config.missing_setup.map((entry) => ({ name: entry.name, label: entry.label })) }
+        : null,
       recent_events: Array.isArray(row?.recent_events)
         ? row.recent_events.map((event) => ({ event_type: event.event_type, actor_label: event.actor_label ?? null, created_at: event.created_at }))
         : [],
@@ -287,7 +296,7 @@ export function createIntegrationsHandler(deps) {
 
   async function providerView(provider, actor) {
     const rows = await statusRows(actor);
-    return publicProvider(provider, rows.get(provider.key), configurationFor(provider));
+    return publicProvider(provider, rows.get(provider.key), configurationFor(provider), actor.role);
   }
 
   async function handleStatus(context) {
@@ -295,7 +304,7 @@ export function createIntegrationsHandler(deps) {
     return {
       providers: PROVIDER_KEYS.map((key) => {
         const provider = getProvider(key);
-        return publicProvider(provider, rows.get(key), configurationFor(provider));
+        return publicProvider(provider, rows.get(key), configurationFor(provider), context.profile.role);
       }),
       policy: {
         credentials_returned: false,

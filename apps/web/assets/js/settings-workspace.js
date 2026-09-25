@@ -64,7 +64,7 @@
     { key: 'audio_retention', type: 'select', label: 'Voice recordings', choices: [['delete_after_transcription', 'Delete after they are written down'], ['keep_with_media', 'Keep with photos and files']] }
   ];
   const INTEGRATION_STATES = {
-    not_configured: ['neutral', 'Not available yet'],
+    not_configured: ['neutral', 'Not set up yet'],
     ready: ['neutral', 'Not connected'],
     verifying: ['warning', 'Checking'],
     connected: ['positive', 'Connected'],
@@ -733,7 +733,7 @@
       case 'provider_check_failed': return `${name} didn’t accept the connection. Reconnect, or check the account on ${name}.`;
       case 'provider_refresh_failed': return `${name} didn’t renew access. Reconnect to continue.`;
       case 'credential_unreadable': return `Atlas can’t read the saved ${name} connection any more. Disconnect, then connect again.`;
-      case 'not_configured': return 'Not available yet — this connection isn’t set up on the server.';
+      case 'not_configured': return `${name === 'The provider' ? 'This connection' : name} isn’t set up yet. An administrator can set it up.`;
       case 'not_connected': return `${name} isn’t connected.`;
       case 'forbidden': return 'Only managers and administrators can change integrations.';
       case 'denied': return `You cancelled on ${name}. Nothing was connected.`;
@@ -808,7 +808,8 @@
     if (provider.connected_by_label && provider.connected_at) facts.push(`Connected by ${provider.connected_by_label} · ${formatDateTime(provider.connected_at)}`);
     if (provider.last_verified_at) facts.push(`Last checked ${formatDateTime(provider.last_verified_at)}`);
     const status = {
-      not_configured: '',
+      // Owner copy only: what connecting would enable (S91).
+      not_configured: provider.enables || '',
       ready: provider.auth_kind === 'api_key' ? 'Add the API key to connect.' : 'Ready to connect.',
       verifying: 'Atlas is checking the connection.',
       verification_failed: `The last check failed. Test again, or reconnect.`,
@@ -825,8 +826,12 @@
         ${field('API key', `<input class="atlas-input" type="password" name="api_key" autocomplete="off" spellcheck="false" minlength="8" maxlength="256" required${busy ? ' disabled' : ''}>`, { help: 'Saved encrypted on the server and never shown again.' })}
         <button type="submit" class="atlas-btn atlas-btn--secondary atlas-btn--sm${busy === 'save-api-key' ? ' is-loading' : ''}"${busy ? ' disabled' : ''}>Save key</button>
       </form>` : '';
-    const needs = provider.connection_state === 'not_configured'
-      ? `<details class="settings-needs"><summary>What it needs</summary><p>${escapeHtml(provider.available_message || 'Not available yet.')}</p>${provider.owner_requirements_summary ? `<p>${escapeHtml(provider.owner_requirements_summary)}</p>` : ''}<p>An administrator sets this up with whoever runs the Atlas server.</p></details>`
+    // The technical setup list is for administrators only (function secret
+    // names, never values); everyone else sees "Not set up yet" and what it
+    // enables (S91).
+    const setup = provider.setup_details;
+    const needs = provider.connection_state === 'not_configured' && isAdmin() && setup
+      ? `<details class="settings-needs" data-provider-setup><summary>Setup details</summary>${setup.summary ? `<p>${escapeHtml(setup.summary)}</p>` : ''}${Array.isArray(setup.requirements) && setup.requirements.length ? `<ul>${setup.requirements.map((entry) => `<li><code>${escapeHtml(entry.name)}</code> ${escapeHtml(entry.label)}</li>`).join('')}</ul>` : ''}<p>These are set as function secrets on the Atlas server. Their values are never shown here.</p></details>`
       : '';
     const linked = state.focusProvider === key;
     return `<li class="settings-provider${linked ? ' is-linked-target' : ''}" data-provider-card="${escapeHtml(key)}"${linked ? ' aria-current="true"' : ''}>
