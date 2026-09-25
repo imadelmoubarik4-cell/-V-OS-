@@ -142,6 +142,9 @@ export function purchasingBackend({ list = orders(), policyOverrides = {} } = {}
     calls.push(body);
     let order = state.orders.find((entry) => entry.id === body.p_id);
     if (body.p_action === 'create') {
+      // Like the server, create is idempotent on the order id: a retry of a
+      // create that committed returns the same draft.
+      if (order) return order;
       order = { id: body.p_id, supplier_id: body.p_supplier_id, status: 'draft', version: 1, lines: body.p_lines.map((line) => ({ ...line, item_name: items.find((item) => item.id === line.item_id)?.name, unit: items.find((item) => item.id === line.item_id)?.unit })), note: body.p_note, created_at: iso(0), expected_delivery_date: body.p_expected_delivery_date };
       state.orders.unshift(order);
       return order;

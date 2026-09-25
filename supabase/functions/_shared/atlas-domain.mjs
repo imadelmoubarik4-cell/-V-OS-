@@ -208,11 +208,14 @@ export function recipeCost(recipe, items, ingredients) {
 // Purchasing (operations.js orderSuggestions, atlas-purchasing.js openItemIds)
 // ---------------------------------------------------------------------------
 
-// atlas-purchasing.js AtlasPurchaseOrders.openItemIds: items on a placed order
-// that hasn't fully arrived (status 'ordered' or 'partially_received').
+// atlas-purchasing.js AtlasPurchaseOrders.openItemIds: items on any open
+// order — a draft, one waiting for approval, approved, placed or partly
+// received (S90 P2-7: a draft already covers the need, so suggesting it again
+// invites double ordering).
+export const OPEN_PURCHASE_ORDER_STATUSES = Object.freeze(["draft", "pending_approval", "approved", "ordered", "partially_received"]);
 export function openPurchaseOrderItemIds(purchaseOrders) {
   return new Set(asArray(purchaseOrders)
-    .filter((order) => order?.status === "ordered" || order?.status === "partially_received")
+    .filter((order) => OPEN_PURCHASE_ORDER_STATUSES.includes(order?.status))
     .flatMap((order) => asArray(order.lines).map((line) => line?.item_id))
     .filter(Boolean));
 }

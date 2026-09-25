@@ -1299,6 +1299,48 @@
       <div class="atlas-table-foot"><span>${list.length} ${list.length === 1 ? 'record' : 'records'}</span><span>Recording waste lowers stock straight away.</span></div>`;
   }
 
+  // Idempotent stock adjustments (S90 P2-2): waste and deliveries without an
+  // order go through adjust_inventory_v2 with one request id per dialog, so a
+  // retry after a timeout that did commit replays the stored movement instead
+  // of recording it twice. A refusal (the server answered: nothing was
+  // written) gets fixed copy with the reason; anything else is unconfirmed and
+  // never claims stock is unchanged.
+  const STOCK_UNCONFIRMED = 'We couldn’t confirm the save. Check Movements before trying again.';
+  const STOCK_REFUSALS = [
+    [/resulting quantity would be negative|item not found/i, 'Atlas’s stock record for this item is lower than that quantity, so nothing was recorded. Check the quantity, or count the item first.'],
+    [/unit cost must be 0 or more/i, 'The unit cost must be 0 or more, so nothing was recorded.'],
+    [/waste must lower stock|delivery must add stock|quantity change/i, 'Enter a quantity above 0, so nothing was recorded.'],
+    [/already used for a different change/i, 'This was already recorded with other details. Check Movements before recording it again.'],
+    [/request id is required/i, 'Atlas couldn’t record this change. Close this and try again.'],
+    [/invalid movement type/i, 'Atlas can’t record this kind of change here.'],
+    [/manager or administrator|permission denied|42501/i, 'Recording stock changes is for managers. Nothing was recorded.']
+  ];
+  function stockSaveProblem(error) {
+    const text = [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(' ');
+    const match = STOCK_REFUSALS.find(([pattern]) => pattern.test(text));
+    if (match) return { refused: true, text: match[1] };
+    // A PostgreSQL/PostgREST error code means the server answered and rolled
+    // back. A network failure, timeout or gateway error has no such code.
+    if (/^(22|23|42|P0|PGRST)/.test(String(error?.code || ''))) return { refused: true, text: 'Atlas didn’t accept this change, so nothing was recorded. Check the details and try again.' };
+    return { refused: false, text: STOCK_UNCONFIRMED };
+  }
+  async function adjustStock({ requestId, itemId, change, type, unitCost = null, supplierId = null, note = '' }) {
+    if (!root.atlasSupabase) return { error: { refused: false, text: STOCK_UNCONFIRMED } };
+    let result;
+    try {
+      result = await root.atlasSupabase.rpc('adjust_inventory_v2', {
+        p_request_id: requestId, p_item_id: itemId, p_quantity_change: change, p_movement_type: type,
+        p_unit_cost: unitCost, p_supplier_id: supplierId, p_note: note
+      });
+    } catch (_) {
+      return { error: { refused: false, text: STOCK_UNCONFIRMED } };
+    }
+    if (result?.error) return { error: stockSaveProblem(result.error) };
+    const movement = Array.isArray(result?.data) ? result.data[0] : result?.data;
+    return { movement: movement || null };
+  }
+  const movementsLink = '<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#inventory/movements" data-modal-close>Open Movements</a>';
+
   function openWasteDialog(itemId = null) {
     if (!isManager()) { toast('Recording waste is for managers.', { icon: false }); return; }
     const choices = items().filter((item) => item.active !== false && truth()?.known(item) && (num(item.quantity) || 0) > 0);
@@ -1314,6 +1356,8 @@
       </form>
       <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="inv-waste-form" class="atlas-btn atlas-btn--primary">Record waste</button></div>`, { className: 'atlas-dialog atlas-dialog--form' });
     const form = overlay.panel.querySelector('#inv-waste-form');
+    // One request id per dialog: every retry of this waste reuses it.
+    const requestId = uuid();
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const alert = form.querySelector('[data-inv-form-alert]');
@@ -1336,13 +1380,15 @@
       }
       const button = overlay.panel.querySelector('[type="submit"]');
       busy(button, true);
-      const { error } = await root.atlasSupabase.rpc('adjust_inventory', {
-        p_item_id: item.id, p_quantity_change: -quantity, p_movement_type: 'waste', p_unit_cost: item.cost_price || null, p_supplier_id: null,
-        p_note: `${(WASTE_REASONS.find(([value]) => value === reason) || [reason, reason])[1]}: ${note}`
+      const { error } = await adjustStock({
+        requestId, itemId: item.id, change: -quantity, type: 'waste', unitCost: num(item.cost_price) ?? null, supplierId: null,
+        note: `${(WASTE_REASONS.find(([value]) => value === reason) || [reason, reason])[1]}: ${note}`
       });
       if (error) {
         busy(button, false);
-        alert.innerHTML = alertHtml('danger', 'Waste wasn’t recorded.', 'Stock is unchanged. Check your connection and try again.');
+        alert.innerHTML = error.refused
+          ? alertHtml('danger', 'Waste wasn’t recorded.', error.text)
+          : alertHtml('warning', 'Waste may not have been recorded.', error.text, movementsLink);
         lucide();
         return;
       }
@@ -1814,7 +1860,9 @@
     out.slice(0, 3).forEach((item) => {
       const affected = recipeNamesUsing(item.id);
       const onOrder = ordered.has(item.id);
-      const detail = `${affected.length ? `${nameList(affected)} ${affected.length === 1 ? 'is' : 'are'} affected` : `0 of ${qty(item.par_level)} ${unitWord(item)} left`}${onOrder ? ' · on order' : ''}`;
+      // Open orders not yet placed say so (S90 P2-7): a draft isn't "on order".
+      const orderLabel = { draft: ' · on a draft order', pending_approval: ' · on an order waiting for approval', approved: ' · on an approved order' }[root.AtlasPurchaseOrders?.itemOrderStatus?.(item.id)] || ' · on order';
+      const detail = `${affected.length ? `${nameList(affected)} ${affected.length === 1 ? 'is' : 'are'} affected` : `0 of ${qty(item.par_level)} ${unitWord(item)} left`}${onOrder ? orderLabel : ''}`;
       const view = { label: 'View item', route: `#inventory/item/${encodeURIComponent(item.id)}` };
       rows.push({ id: `out:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name}: out of stock`, detail, action: onOrder ? view : { label: 'Add to order', actionId: 'purchasing.order.new', record: { type: 'inventory_item', id: item.id, label: item.name } }, roles: MANAGERS });
       rows.push({ id: `out-view:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name}: out of stock`, detail, action: view, roles: ['bartender', 'viewer'] });
@@ -1886,6 +1934,7 @@
     recordRecognitionChoice,
     recordRecognitionOutcome,
     duplicatesHtml,
+    adjustStock,
     render
   });
 

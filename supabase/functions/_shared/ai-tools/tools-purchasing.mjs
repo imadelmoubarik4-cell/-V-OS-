@@ -26,10 +26,13 @@ function orderTotal(lines) {
 async function suggestionState(ctx) {
   const [projected, orders] = await Promise.all([ctx.services.projectedItems(), ctx.services.purchaseOrders()]);
   const active = projected.filter((item) => item.active !== false);
-  // Partially received orders are still open; their items count as ordered.
-  const partiallyReceived = orders.filter((order) => order.status === "partially_received")
-    .flatMap((order) => (order.lines || []).map((line) => line?.item_id)).filter(Boolean);
-  const suggestions = orderSuggestions(active, { purchaseOrders: orders, orderedItemIds: partiallyReceived });
+  // The assistant labels items on a draft, pending or approved order
+  // (on_draft_order) instead of hiding them, so only placed and partly
+  // received orders mark an item "ordered" here. The canonical open-order
+  // rule (drafts included, S90 P2-7) is what Purchasing uses to leave them
+  // out of its own suggestions.
+  const placed = orders.filter((order) => RECEIVING_STATUSES.includes(order.status));
+  const suggestions = orderSuggestions(active, { purchaseOrders: placed });
   const onDraft = new Map();
   for (const order of orders.filter((candidate) => ["draft", "pending_approval", "approved"].includes(candidate.status))) {
     for (const line of order.lines || []) if (line?.item_id) onDraft.set(String(line.item_id), order);

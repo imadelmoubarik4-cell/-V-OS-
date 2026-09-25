@@ -29,9 +29,11 @@ test('Inventory uses supported Lucide icons and controlled waste writes', () => 
   for (const source of [inventory, counts, capture, purchasing]) {
     assert.doesNotMatch(source, /data-lucide="bottle"|icon\('bottle'\)/);
   }
-  // Waste is manager-only, capped at the stock on hand and written through adjust_inventory.
+  // Waste is manager-only, capped at the stock on hand and written through
+  // the idempotent adjust_inventory_v2 (S90 P2-2: one request id per dialog).
   assert.match(inventory, /shell\.registerView\('waste', \{ \.\.\.definition\('waste'\), guard: \(\) => \(isManager\(\) \? true : 'inventory'\) \}\)/);
   assert.match(inventory, /quantity > \(num\(item\.quantity\) \|\| 0\)/);
-  assert.match(inventory, /rpc\('adjust_inventory', \{\s*p_item_id: item\.id, p_quantity_change: -quantity, p_movement_type: 'waste'/);
+  assert.match(inventory, /adjustStock\(\{\s*requestId, itemId: item\.id, change: -quantity, type: 'waste'/);
+  assert.match(inventory, /rpc\('adjust_inventory_v2', \{\s*p_request_id: requestId,/);
   assert.match(inventory, /Waste wasn’t recorded\./);
 });
