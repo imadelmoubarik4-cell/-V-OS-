@@ -61,7 +61,7 @@ test('Reports stock classification agrees with the browser rule', () => {
 });
 
 test('no browser module re-implements the below-par comparison', () => {
-  for (const file of ['apps/web/index.html', 'apps/web/assets/js/brain.js', 'apps/web/assets/js/operations.js']) {
+  for (const file of ['apps/web/index.html', 'apps/web/assets/js/home.js', 'apps/web/assets/js/operations.js']) {
     const source = read(file);
     assert.doesNotMatch(source, /quantity\)?\s*<=?\s*(Number\()?\s*(i|item)\.par_level/, `${file} must use AtlasStockTruth.belowPar`);
   }

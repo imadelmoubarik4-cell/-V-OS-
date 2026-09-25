@@ -1,17 +1,17 @@
+// S88 Reports (spec §7.12): Overview absorbs Business Intelligence; the
+// comparison period comes from AtlasVenueClock.compareRange; Ask Atlas opens
+// Atlas AI with report context; sales stay "not connected".
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 const config = readFileSync('apps/web/config.js', 'utf8');
 const shell = readFileSync('apps/web/index.html', 'utf8');
 const ui = readFileSync('apps/web/assets/js/reports-workspace.js', 'utf8');
+const overview = readFileSync('apps/web/assets/js/reports-overview.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/reports-workspace.css', 'utf8');
 
-function expectLabels(source, labels) {
-  for (const label of labels) assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
-}
-
-test('Checkpoint H loads through the authenticated Reports gateway', () => {
+test('Reports loads through the authenticated Reports gateway', () => {
   assert.match(config, /REPORTS_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-reports"/);
   assert.match(config, /assets\/css\/reports-workspace\.css/);
   assert.match(config, /assets\/js\/reports-workspace\.js/);
@@ -19,127 +19,74 @@ test('Checkpoint H loads through the authenticated Reports gateway', () => {
   assert.doesNotMatch(config + ui, /SUPABASE_SERVICE_ROLE_KEY/);
 });
 
-test('Reports preserves the complete requested navigation surface', () => {
-  for (const section of [
-    'overview', 'sales', 'inventory', 'recipes', 'purchasing', 'suppliers',
-    'waste', 'labour', 'operations', 'knowledge', 'saved', 'exports'
-  ]) {
-    assert.match(ui, new RegExp(`['"]${section}['"]`));
+test('the spec tabs and #reports/<report> routes', () => {
+  assert.match(ui, /\['overview', 'Overview'\], \['inventory', 'Stock'\], \['purchasing', 'Purchasing'\],\s*\['recipes', 'Recipes'\], \['waste', 'Waste'\], \['labour', 'Labour'\]/);
+  assert.match(ui, /const ROUTE_NAMES = \{ inventory: 'stock' \}/);
+  assert.match(ui, /href="#reports\/\$\{ROUTE_NAMES\[key\] \|\| key\}"/);
+  assert.match(ui, /SECTION_ALIASES = \{ stock: 'inventory', suppliers: 'purchasing', business: 'overview' \}/);
+  assert.match(ui, /window\.AtlasShell\.onView\?\.\('reports', \{ show: onShow \}\)/);
+});
+
+test('period and comparison: venue-zone dates and compareRange (month-spanning bug fixed)', () => {
+  assert.match(ui, /clock\(\)\.compareRange\(range\)/);
+  assert.match(ui, /url\.searchParams\.set\('comparison_start_date', compare\.start\)/);
+  assert.match(ui, /url\.searchParams\.set\('preset', 'custom'\)/);
+  assert.doesNotMatch(ui, /setUTCDate\(start\.getUTCDate\(\)/, 'the old month-spanning comparison is gone');
+  assert.doesNotMatch(ui, /'Atlantic\/Reykjavik'|timeZone:/);
+  for (const label of ['Today', 'Last 7 days', 'Last 30 days', 'This month', 'Last month', 'Year to date', 'Custom dates', 'vs previous period', 'No comparison']) {
+    assert.match(ui, new RegExp(label));
   }
-  assert.match(ui, /const SECTION_ORDER/);
-  assert.match(ui, /data-reports-section=/);
-  assert.match(ui, /escapeHtml\(section\.name\)/);
 });
 
-test('period, comparison and custom date controls are functional', () => {
-  expectLabels(ui, [
-    'Today', 'Yesterday', 'Last 7 days', 'Last 30 days', 'This week', 'Last week',
-    'This month', 'Last month', 'This quarter', 'Year to date', 'Custom range',
-    'Previous period', 'Previous week', 'Previous month', 'Previous year', 'No comparison'
-  ]);
-  assert.match(ui, /comparison_start_date/);
-  assert.match(ui, /comparison_end_date/);
-  assert.match(ui, /data-reports-preset/);
-  assert.match(ui, /data-reports-comparison/);
+test('Overview has the former Business Intelligence figures, unknown stays unknown', () => {
+  for (const label of ['Inventory value', 'Purchasing spend', 'Waste', 'Recipe margin', 'Needs attention', 'Data completeness', 'Suggested order', 'Average cost per serve']) {
+    assert.match(ui, new RegExp(label));
+  }
+  assert.match(overview, /function inventoryValue\(\)[\s\S]+?return NaN/);
+  assert.match(overview, /supplierConcentration/);
+  assert.match(overview, /AtlasOperations\?\.orderSuggestions/);
+  assert.match(ui, /Not enough data yet/);
+  assert.match(ui, /#data\/issues/);
 });
 
-test('global filters expose selections as removable chips', () => {
-  assert.match(ui, /data-reports-filter=/);
-  assert.match(ui, /data-reports-remove-filter/);
-  assert.match(ui, /data-reports-clear-filters/);
-  assert.match(ui, /filter_options/);
-  expectLabels(ui, ['Category', 'Supplier', 'Employee', 'Status']);
-  assert.match(ui, /Clear \$\{count\}/);
+test('sales are shown as not connected; no revenue is invented', () => {
+  assert.match(ui, /Not connected — no point-of-sale system sends sales to Atlas/);
+  assert.match(ui, /Realised margin needs sales|realised margin need sales/i);
+  assert.doesNotMatch(ui, /Math\.random\(\)|sampleSales|fakeRevenue/i);
 });
 
-test('important report values are inspectable and exportable', () => {
-  assert.match(ui, /class="report-kpi"/);
-  assert.match(ui, /data-reports-sort/);
-  assert.match(ui, /data-reports-page/);
-  assert.match(ui, /data-reports-source/);
-  assert.match(ui, /data-reports-export="csv"/);
-  assert.match(ui, /print\(\)/);
-  assert.match(ui, /navigator\.clipboard/);
-  assert.match(ui, /Report,|Generated at|Currency/);
+test('Ask Atlas opens Atlas AI with the report context; the report ask endpoint UI is retired', () => {
+  assert.match(ui, /window\.AtlasAI\?\.askAbout\?\.\(\{ type: 'report'/);
+  assert.doesNotMatch(ui, /api\('ask'|action=ask|'ask', \{ method: 'POST'|reports-ask-panel|reports-ask-fab/);
+  assert.match(ui, /class="atlas-btn atlas-btn--ghost" data-reports-ask/);
 });
 
-test('inventory reporting distinguishes verified counts from non-current evidence', () => {
-  expectLabels(ui, ['Current verified', 'Needs current count', 'Never a live alert', 'Stock evidence quality']);
-  assert.match(ui, /summary\.historical_items/);
-  assert.match(ui, /summary\.stale_items/);
-  assert.match(ui, /summary\.unverified_items/);
-  assert.match(css, /\.report-status\.is-historical/);
-  assert.match(css, /\.report-status\.is-unverified/);
-});
-
-test('saved configurations remain permission-safe when reopened', () => {
-  assert.match(ui, /localStorage/);
-  assert.match(ui, /savedStorageKey/);
-  assert.match(ui, /data-reports-save(?:-view|=|\b)/);
-  assert.match(ui, /Save current view/);
-  assert.match(ui, /data-reports-saved-open/);
-  assert.match(ui, /data-reports-saved-rename/);
-  assert.match(ui, /data-reports-saved-duplicate/);
-  assert.match(ui, /data-reports-saved-archive/);
-  assert.match(ui, /data-reports-saved-remove/);
-  assert.match(ui, /Reopening always rechecks current permissions and live data/);
-});
-
-test('Ask Atlas stays grounded in the current report snapshot', () => {
-  assert.match(ui, /Ask Atlas/);
-  assert.match(ui, /data-reports-ask-form/);
-  assert.match(ui, /api\('ask'/);
-  assert.match(ui, /evidence/);
-  assert.match(ui, /limitations/);
-  assert.match(ui, /permission-filtered report snapshot/i);
-});
-
-test('unavailable sales data is never replaced with invented values', () => {
-  assert.match(ui, /Sales integration is not available|Sales integration has not been connected|Data source not connected/);
-  assert.match(ui, /missing data with sample values|No sample revenue|No values are invented|does not invent/i);
-  assert.doesNotMatch(ui, /Math\.random\(\).*sales|sampleSales|fakeRevenue/i);
+test('export stays: CSV, print and copy summary', () => {
+  assert.match(ui, /Download CSV/);
+  assert.match(ui, /Print or save as PDF/);
+  assert.match(ui, /Copy summary/);
 });
 
 test('browser uses the session gateway without direct private-table access', () => {
   assert.match(ui, /window\.atlasSupabase/);
-  assert.match(ui, /authorization:\s*`Bearer \$\{session\.access_token\}`/);
+  assert.match(ui, /authorization: `Bearer \$\{session\.access_token\}`/);
   assert.doesNotMatch(ui, /\.from\s*\(\s*['"]/);
   assert.doesNotMatch(ui, /atlas_private\.|inventory_movements|knowledge_acknowledgements/);
 });
 
-test('loading always reaches a terminal state when session recovery stalls', () => {
-  assert.match(ui, /const SESSION_TIMEOUT_MS = 8000/);
-  assert.match(ui, /withTimeout\(\s*client\.auth\.getSession\(\)/);
-  assert.match(ui, /Atlas could not confirm your session in time/);
-  assert.match(ui, /Reports took too long to respond/);
-  assert.match(ui, /data-reports-refresh/);
+test('errors never show raw server text and loading reaches a terminal state', () => {
+  assert.match(ui, /Reports couldn\\?'t be loaded\./);
+  assert.doesNotMatch(ui, /payload\.error/);
+  assert.match(ui, /REQUEST_TIMEOUT_MS/);
+  assert.match(ui, /data-reports-retry/);
 });
 
-test('the whole snapshot load has a terminal-state watchdog', () => {
-  assert.match(ui, /const LOAD_TIMEOUT_MS = 15000/);
-  assert.match(ui, /withTimeout\(\s*api\('snapshot'\),\s*LOAD_TIMEOUT_MS/);
-  assert.match(ui, /Reports did not finish loading/);
-  assert.match(ui, /viewVisible\(\) && !state\.snapshot && !state\.loading && !state\.error/);
-});
-
-test('Reports preserves the Atlas visual system and tablet-first behavior', () => {
-  assert.match(css, /--reports-surface:var\(--atlas-surface/);
-  assert.match(css, /'Fraunces'/);
-  assert.match(shell, /IBM\+Plex\+Sans|font-family:'IBM Plex Sans'/);
-  assert.match(css, /@media\(max-width:1180px\)/);
-  assert.match(css, /@media\(max-width:980px\)/);
-  assert.match(css, /@media\(max-width:720px\)/);
-  assert.match(css, /@media\(max-width:480px\)/);
-  assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
-  assert.doesNotMatch(css, /Caprasimo|Figtree|--color-accent-2/);
-  assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
-});
-
-test('Reports primary and Ask Atlas actions use the shared blue treatment', () => {
-  assert.match(css, /\.reports-primary\{[^}]*var\(--blue-600/);
-  // S88: Ask Atlas is a secondary header button; blue is only its sparkles mark
-  // (spec §2.4), and it no longer floats over the report.
-  assert.match(css, /\.reports-ask-fab svg\{[^}]*var\(--blue-600/);
-  assert.doesNotMatch(css, /\.reports-ask-fab\{[^}]*position:fixed/);
-  assert.match(css, /\.reports-ask-panel form button\{[^}]*var\(--blue-600/);
+test('Reports stylesheet is module layout only; Business Intelligence files are gone', () => {
+  assert.match(css.trim(), /^\/\*[\s\S]*?\*\/\s*@layer atlas\.modules \{[\s\S]*\}$/);
+  assert.doesNotMatch(css, /!important|:root|--[a-z-]+\s*:/);
+  for (const file of ['assets/js/business.js', 'assets/css/business.css', 'assets/css/legacy/atlas-glass--business.css', 'assets/css/legacy/polish-pass2--reports.css', 'assets/css/legacy/workspaces-polish--reports.css', 'assets/css/legacy/accessibility-responsive-s61--reports.css']) {
+    assert.ok(!existsSync(`apps/web/${file}`), file);
+    assert.doesNotMatch(shell, new RegExp(file.replace(/[.]/g, '\\.')));
+  }
+  assert.match(shell, /reports-overview\.js\?v=20260926-s88/);
 });

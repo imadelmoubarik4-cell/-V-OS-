@@ -105,8 +105,8 @@
         },
         {
           "path": "functions/atlas-reports/index.ts",
-          "source_sha256": "04db88b0cfe98a8e5bb32a4d7c4c0d7ccc9a2c745d23a209c2925cc0e1543fc6",
-          "candidate_sha256": "9e0ff06f983adbd46e181504d44540d6eaed305693d62a37db7840008c14e1d5"
+          "source_sha256": "20c09b1a12fb3154d368494598df798bd4c3510863963a098d3b294f75f5a5a6",
+          "candidate_sha256": "1b7013edd57a9c109d58f6548db7a0ca4ec58cf4d13182cebbe58039350f3734"
         },
         {
           "path": "functions/_shared/stock-provenance.mjs",

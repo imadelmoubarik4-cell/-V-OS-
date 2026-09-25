@@ -10,8 +10,8 @@ import { readFileSync } from 'node:fs';
 const shell = readFileSync('apps/web/index.html', 'utf8');
 const search = readFileSync('apps/web/assets/js/atlas-search.js', 'utf8');
 const palette = readFileSync('apps/web/assets/js/atlas-palette.js', 'utf8');
-const brain = readFileSync('apps/web/assets/js/brain.js', 'utf8');
-const business = readFileSync('apps/web/assets/js/business.js', 'utf8');
+const home = readFileSync('apps/web/assets/js/home.js', 'utf8');
+const reports = readFileSync('apps/web/assets/js/reports-workspace.js', 'utf8');
 
 test('the top-bar field is a button that opens the palette; the palette owns the input', () => {
   assert.match(shell, /<button type="button" class="atlas-omni" id="atlas-omni" aria-haspopup="dialog"/);
@@ -22,7 +22,7 @@ test('the top-bar field is a button that opens the palette; the palette owns the
 });
 
 test('no module navigates from a search field while typing', () => {
-  for (const source of [shell, brain, business]) {
+  for (const source of [shell, home, reports]) {
     assert.doesNotMatch(source, /getElementById\('global-search'\)\??\.addEventListener\('input'/);
   }
   // Typing re-renders results; only Enter, click or tap runs a row.

@@ -34,13 +34,13 @@ test('Knowledge does not loop on a 200 response without a workspace', { skip }, 
   } finally { await close(); }
 });
 
-test('returning to Home renders without errors and keeps metric cards linked', { skip }, async () => {
+test('returning to Home renders without errors and keeps its glance links working', { skip }, async () => {
   const { page, record, close } = await launchAtlas({ fixtures: { functions: emptyFunctions() } });
   try {
     await openView(page, 'operations');
     await openView(page, 'dashboard');
     assert.deepEqual(record.pageErrors, []);
-    await page.click('#home-metrics .metric-card[data-target="recipes"]');
+    await page.click('.home-glance__item[href="#recipes"]');
     await page.waitForTimeout(200);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'recipes');
   } finally { await close(); }

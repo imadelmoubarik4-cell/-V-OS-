@@ -1705,9 +1705,60 @@
     root.AtlasStockCounts?.leave?.();
   }
 
+  // ---------------------------------------------------------------------------
+  // Home › Needs attention ('inventory' key). Out-of-stock items name the
+  // recipes they stop; below-par items group into one row; unknown stock asks
+  // for a count instead of guessing. Stock count and Purchasing contribute
+  // their own rows ('stock-count', 'purchasing').
+  // ---------------------------------------------------------------------------
+  function nameList(names, max = 2) {
+    const shown = names.slice(0, max);
+    if (names.length > max) return `${shown.join(', ')} and ${names.length - max} more`;
+    if (shown.length < 2) return shown.join('');
+    return `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)}`;
+  }
+  function recipesUsing(itemId) {
+    return recipes().filter((recipe) => recipe.active !== false
+      && (recipe.recipe_ingredients || []).some((ingredient) => String(ingredient.item_id) === String(itemId)))
+      .map((recipe) => recipe.name);
+  }
+  function homeRows() {
+    if (!shell.dataLoadedAt?.() || dataStatus().items === 'error') return [];
+    const stock = truth();
+    const active = items().filter((item) => item.active !== false);
+    if (!stock || !active.length) return [];
+    const known = active.filter((item) => stock.known(item));
+    const rows = [];
+    if (!known.length) {
+      rows.push({ id: 'not-counted', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: `${active.length} ${active.length === 1 ? 'item has' : 'items have'} no verified count, so Atlas can’t tell what’s low.`, action: { label: 'Start stock count', actionId: 'inventory.count.start' }, roles: STAFF });
+      rows.push({ id: 'not-counted-view', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: 'Low stock shows here once a count is verified.', action: { label: 'View inventory', route: '#inventory' }, roles: ['viewer'] });
+      return rows;
+    }
+    const below = known.filter((item) => stock.belowPar(item));
+    const out = below.filter((item) => (num(item.quantity) ?? 0) <= 0);
+    const ordered = root.AtlasPurchaseOrders?.openItemIds?.() || new Set();
+    out.slice(0, 3).forEach((item) => {
+      const affected = recipesUsing(item.id);
+      const onOrder = ordered.has(item.id);
+      const detail = `${affected.length ? `${nameList(affected)} ${affected.length === 1 ? 'is' : 'are'} affected` : `0 of ${qty(item.par_level)} ${unitWord(item)} left`}${onOrder ? ' · on order' : ''}`;
+      const view = { label: 'View item', route: `#inventory/item/${encodeURIComponent(item.id)}` };
+      rows.push({ id: `out:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: onOrder ? view : { label: 'Add to order', actionId: 'purchasing.order.new', record: { type: 'inventory_item', id: item.id, label: item.name } }, roles: MANAGERS });
+      rows.push({ id: `out-view:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: view, roles: ['bartender', 'viewer'] });
+    });
+    const low = below.filter((item) => !out.includes(item));
+    if (low.length === 1) {
+      const item = low[0];
+      rows.push({ id: `low:${item.id}`, severity: 'warning', icon: 'package', title: `${item.name} is below par`, detail: `${qty(item.quantity)} of ${qty(item.par_level)} ${unitWord(item)} left`, action: { label: 'View items', route: '#inventory?filter=below-par' } });
+    } else if (low.length > 1) {
+      rows.push({ id: 'low', severity: 'warning', icon: 'package', title: `${low.length} items are below par`, detail: nameList(low.map((item) => item.name), 3), action: { label: 'View items', route: '#inventory?filter=below-par' } });
+    }
+    return rows;
+  }
+
   function register() {
     const definition = (view) => ({ root: () => rootEl(), title: 'Inventory', display: 'block', onShow: (params) => onShow(view, params), onHide });
     shell.registerView('inventory', definition('inventory'));
+    shell.home?.contribute?.('inventory', { focusRows: homeRows, order: 10 });
     shell.registerView('movements', { ...definition('movements'), guard: () => (isManager() ? true : 'inventory') });
     shell.registerView('waste', { ...definition('waste'), guard: () => (isManager() ? true : 'inventory') });
 
@@ -1750,6 +1801,7 @@
     openAddItem: (options) => openAddItemSheet(options || {}),
     openAddProductByCamera,
     stockStatus,
+    homeRows,
     inventoryGroup,
     inventorySubcategory,
     unknownSheet,

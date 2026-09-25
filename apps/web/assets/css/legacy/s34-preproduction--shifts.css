@@ -3,10 +3,32 @@
  * Owner: WP-PEOPLE. Phase 2 merges these rules into shifts-workspace.css
  * using their effective values, then empties this file. */
 @layer atlas.legacy {
-:where(.metric-card,.recipe-gallery-card,.purchase-order-card,.knowledge-article-card,.settings-card,
+:where(.metric-card,.recipe-gallery-card,.knowledge-article-card,.settings-card,
   .shift-card):hover{
   border-color:rgba(45,120,220,.34);
   box-shadow:var(--atlas-card-shadow-hover);
+  transform:translateY(-1px);
+}
+/* Moved from s34-preproduction--stock-count.css and --inventory-scanner.css (S88 Team B,
+   via the retired --settings fragment); only selectors that still render are kept. */
+:where(.team-feedback){border-radius:12px}
+:where(.knowledge-editor-modal,.knowledge-source-modal,.shift-modal>section){
+  max-height:min(92vh,900px)!important;
+  border-radius:20px!important;
+  overflow:hidden!important;
+}
+:where(.team-send-button,.knowledge-hero-actions .is-primary,
+  .knowledge-drawer footer .is-primary,.knowledge-editor-modal footer .is-primary,
+  .knowledge-source-modal footer .is-primary){
+  border-color:var(--atlas-action)!important;
+  background:var(--atlas-action)!important;
+  color:#fff!important;
+}
+:where(.team-send-button,.knowledge-hero-actions .is-primary,
+  .knowledge-drawer footer .is-primary,.knowledge-editor-modal footer .is-primary,
+  .knowledge-source-modal footer .is-primary):hover:not(:disabled){
+  background:var(--atlas-action-hover)!important;
+  border-color:var(--atlas-action-hover)!important;
   transform:translateY(-1px);
 }
 }

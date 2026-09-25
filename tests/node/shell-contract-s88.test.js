@@ -189,7 +189,9 @@ test('every event a module listens for is actually emitted', () => {
     const emitted = SHELL_CORE_EVENTS.has(type) || new RegExp(`emit\\??\\.?\\(?'${type}'`).test(all);
     assert.ok(emitted, `AtlasShell event ${type} is listened for but never emitted`);
   }
-  for (const type of ['operations:rendered', 'checkpoint-a:rendered', 'brain:rendered', 'brain-phase3:rendered', 'shifts:rendered', 'team-profiles:rendered', 'team-profile-photos:decorated']) {
+  // S88 Team A: Operations, Brain and Checkpoint A no longer re-attach to each
+  // other's renders; Home listens for operations:changed and data:error.
+  for (const type of ['operations:changed', 'data:error', 'shifts:rendered', 'team-profiles:rendered', 'team-profile-photos:decorated']) {
     assert.ok(shellListened.has(type), `${type} has a listener`);
   }
 });
@@ -200,33 +202,38 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
   assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine \}\);\s+\}/);
   assert.match(index, /function renderAtlasHome\(\)\{\s+return window\.AtlasShell\.renderHome\(\);\s+\}/);
-  assert.match(index, /window\.AtlasShell\.registerHomeSection\('core', renderHomeCore, 0\)/);
+  // Home is one module section (assets/js/home.js), not index.html's renderHomeCore.
+  assert.doesNotMatch(index, /renderHomeCore|registerHomeSection\(/);
   assert.match(index, /window\.AtlasShell\.profileReady\(window\.atlasCurrentProfile\)/);
   // Modules register instead of patching.
   const registrations = {
-    'operations.js': /shell\.registerView\('operations'[\s\S]+?shell\.onDataLoaded[\s\S]+?shell\.registerHomeSection\('operations', renderHomeAugmentation, 10\)/,
-    'brain.js': /shell\.registerView\('brain'[\s\S]+?shell\.registerHomeSection\('brain', renderHomeAugmentation, 20\)/,
-    'business.js': /shell\.registerView\('business'[\s\S]+?shell\.registerHomeSection\('business', renderHomeAugmentation, 30\)/,
-    'sprint3-review.js': /registerView\('sprint3-review'/,
-    'operations-checkpoint-a.js': /registerHomeSection\('checkpoint-a', renderHomeAlerts, 40\)/,
-    'operations-checkpoint-a-layout.js': /registerHomeSection\('checkpoint-a-prompt', syncHomePrompt, 50\)/,
+    'operations.js': /atlas\.registerView\('operations'[\s\S]+?atlas\.home\?\.contribute\?\.\('operations', \{ focusRows, order: 20 \}\)[\s\S]+?atlas\.onDataLoaded/,
+    'home.js': /atlas\.registerHomeSection\('home', render, 0\)[\s\S]+?atlas\.notify\.contribute\('messages', messageItems\)/,
+    // S88 Team B: Inventory, Stock count and Purchasing contribute their own Home rows.
+    'atlas-inventory.js': /shell\.home\?\.contribute\?\.\('inventory', \{ focusRows: homeRows, order: 10 \}\)/,
+    'stock-count-workspace.js': /home\?\.contribute\?\.\('stock-count'/,
+    'atlas-purchasing.js': /home\?\.contribute\?\.\('purchasing'/,
+    // S88 Team C: Business Intelligence is Reports › Overview; Import Center and
+    // Real VÁ Data are the Data page (home.contribute replaces a DOM Home section).
+    'data-workspace.js': /registerView\('data'[\s\S]+?registerView\('sprint3-review'[\s\S]+?home\?\.contribute\?\.\('data'/,
+    'recipes.js': /home\?\.contribute\?\.\('recipes'/,
+    'settings-workspace.js': /registerView\?\.\('settings'/,
     'marketing-workspace.js': /registerView\('marketing'/,
-    'system-workspace.js': /registerView\('system'/,
+    'system-workspace.js': /window\.AtlasSystem = \{\s+mount,/,
     'team-profiles-bootstrap.js': /registerView\('team-profiles'/
   };
   for (const [file, pattern] of Object.entries(registrations)) assert.match(read(`apps/web/assets/js/${file}`), pattern, file);
 });
 
 test('changed scripts carry the S88 cache key', () => {
-  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'brain.js', 'business.js', 'atlas-capture.js', 'atlas-inventory.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'shifts-workspace.js',
+  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'home.js', 'reports-overview.js', 'recipes.js', 'data-workspace.js', 'atlas-capture.js', 'atlas-inventory.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'shifts-workspace.js',
     'shifts-month-calendar.js', 'shifts-month-tab-bridge.js', 'knowledge-workspace.js', 'knowledge-team-link-bridge.js', 's38-app-remediation.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s88"></script>`), file);
   }
   const config = read('apps/web/config.js');
-  for (const file of ['sprint3-review.js', 'brain-daily-briefing-v2.js', 'brain-phase3.js', 'brain-checkpoint-k.js', 'operations-checkpoint-a.js',
-    'operations-checkpoint-a-layout.js', 'team-messages.js', 'marketing-workspace.js',
+  for (const file of ['team-messages.js', 'marketing-workspace.js',
     'team-profiles-bootstrap.js', 'team-profile-photos.js', 'team-profile-photo-gallery.js', 'reports-workspace.js', 'system-workspace.js',
-    'settings-workspace.js', 'settings-mount-bridge.js']) {
+    'settings-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s88'`), file);
   }
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);

@@ -1,8 +1,9 @@
-// S87 Settings + Notifications regressions, exercised in Chromium against the
-// real settings-workspace.js / notifications.js with a mocked backend.
+// Settings (S88 Team A: section nav, per-form save bars, Atlas AI settings,
+// integrations) + Notifications, exercised in Chromium against the real
+// settings-workspace.js / notifications.js with mocked backends.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, openView, requestsTo } from './harness.mjs';
+import { ORIGIN, USERS, harnessAvailable, launchAtlas, openView, requestsTo } from './harness.mjs';
 import { emptyFunctions, settingsBackend } from './fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -11,19 +12,50 @@ async function openSettings(options = {}) {
   const backend = settingsBackend(options);
   const app = await launchAtlas({ ...options, fixtures: { functions: { ...emptyFunctions(), 'atlas-settings': backend.handler, ...(options.functions || {}) } } });
   await openView(app.page, 'settings');
-  await app.page.waitForSelector('.settings-shell .settings-tabs');
+  await app.page.waitForSelector('.settings-layout [data-settings-content]');
   return { ...app, backend };
 }
 
-async function tab(page, name) {
-  await page.click(`[data-settings-tab="${name}"]`);
-  await page.waitForTimeout(150);
+async function section(page, key) {
+  await page.evaluate((hash) => window.AtlasShell.navigate(hash), `#settings/${key}`);
+  await page.waitForSelector(`.settings-nav__link[href="#settings/${key}"][aria-current="page"]`);
+  await page.waitForTimeout(100);
 }
+
+test('Settings lists its sections in a nav and opens each by route', { skip }, async () => {
+  const { page, record, close } = await openSettings();
+  try {
+    const links = await page.$$eval('.settings-nav__link', (nodes) => nodes.map((node) => node.getAttribute('href')));
+    for (const key of ['venue', 'hours', 'team-access', 'notifications', 'rules', 'integrations', 'security', 'system', 'preferences', 'activity']) {
+      assert.ok(links.includes(`#settings/${key}`), `${key} is listed`);
+    }
+    await section(page, 'security');
+    assert.match(await page.textContent('#settings-section-title'), /Security/);
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});
+
+test('the save bar appears only after a change, and Discard restores the saved value', { skip }, async () => {
+  const { page, backend, close } = await openSettings();
+  try {
+    await section(page, 'rules');
+    const bar = '[data-settings-section-form="inventory"] [data-settings-savebar]';
+    assert.equal(await page.$eval(bar, (node) => node.hidden), true, 'no save bar before a change');
+    await page.fill('[data-settings-section-form="inventory"] [name="variance_tolerance_percent"]', '7');
+    assert.equal(await page.$eval(bar, (node) => node.hidden), false);
+    assert.match(await page.textContent(bar), /Unsaved changes/);
+    await page.click(`${bar} [data-settings-discard]`);
+    await page.waitForTimeout(150);
+    assert.equal(await page.inputValue('[data-settings-section-form="inventory"] [name="variance_tolerance_percent"]'), '5');
+    assert.equal(backend.calls.filter((entry) => entry.method === 'POST').length, 0);
+  } finally { await close(); }
+});
 
 test('saving one Settings form never relabels or disables another form', { skip }, async () => {
   const { page, close } = await openSettings({ delayMs: 900 });
   try {
-    await tab(page, 'operations');
+    await section(page, 'rules');
+    await page.fill('[data-settings-section-form="inventory"] [name="variance_tolerance_percent"]', '6');
     await page.click('[data-settings-section-form="inventory"] button[type="submit"]');
     await page.waitForTimeout(150);
     const buttons = await page.$$eval('form[data-settings-section-form] button[type="submit"]', (nodes) => nodes.map((node) => ({
@@ -39,18 +71,20 @@ test('saving one Settings form never relabels or disables another form', { skip 
 test('unsaved edits in one form survive saving another form', { skip }, async () => {
   const { page, close } = await openSettings({ delayMs: 300 });
   try {
-    await tab(page, 'operations');
+    await section(page, 'rules');
     await page.fill('[data-settings-section-form="temperature"] [name="escalation_minutes"]', '45');
+    await page.fill('[data-settings-section-form="inventory"] [name="variance_tolerance_percent"]', '6');
     await page.click('[data-settings-section-form="inventory"] button[type="submit"]');
     await page.waitForSelector('[data-settings-section-form="inventory"] .settings-form-feedback.is-success');
     assert.equal(await page.inputValue('[data-settings-section-form="temperature"] [name="escalation_minutes"]'), '45');
+    assert.equal(await page.$eval('[data-settings-section-form="temperature"] [data-settings-savebar]', (node) => node.hidden), false, 'still marked unsaved');
   } finally { await close(); }
 });
 
 test('a background refresh does not overwrite unsaved edits', { skip }, async () => {
   const { page, record, close } = await openSettings();
   try {
-    await tab(page, 'general');
+    await section(page, 'venue');
     await page.fill('[data-settings-section-form="venue"] [name="city"]', 'Reykjavík');
     const before = requestsTo(record, 'atlas-settings', 'snapshot').length;
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
@@ -63,8 +97,9 @@ test('a background refresh does not overwrite unsaved edits', { skip }, async ()
 test('business hours render seven days when none are saved and save as HH:MM', { skip }, async () => {
   const { page, backend, close } = await openSettings();
   try {
-    await tab(page, 'general');
+    await section(page, 'hours');
     assert.equal(await page.$$eval('.settings-hours-row', (rows) => rows.length), 7);
+    assert.match(await page.textContent('[data-settings-hours-form]'), /No opening hours are saved yet/);
     await page.check('.settings-hours-row[data-weekday="5"] [name="is_open"]');
     await page.fill('.settings-hours-row[data-weekday="5"] [name="open_time"]', '16:00');
     await page.fill('.settings-hours-row[data-weekday="5"] [name="close_time"]', '01:00');
@@ -78,17 +113,19 @@ test('business hours render seven days when none are saved and save as HH:MM', {
       kitchen_close_time: null, kitchen_close_next_day: false, last_order_time: null, last_order_next_day: false
     });
     // Saved rows come back as HH:MM:SS; saving again must still send HH:MM.
+    await page.fill('.settings-hours-row[data-weekday="5"] [name="close_time"]', '02:00');
     await page.click('[data-settings-hours-form] button[type="submit"]');
     await page.waitForTimeout(300);
     const second = backend.calls.filter((entry) => entry.action === 'save-hours').at(-1).body.hours[5];
     assert.equal(second.open_time, '16:00');
+    assert.equal(second.close_time, '02:00');
   } finally { await close(); }
 });
 
 test('an open day without times is caught before any request', { skip }, async () => {
   const { page, backend, close } = await openSettings();
   try {
-    await tab(page, 'general');
+    await section(page, 'hours');
     await page.check('.settings-hours-row[data-weekday="1"] [name="is_open"]');
     await page.click('[data-settings-hours-form] button[type="submit"]');
     await page.waitForSelector('[data-settings-hours-form] .settings-form-feedback.is-error');
@@ -97,10 +134,32 @@ test('an open day without times is caught before any request', { skip }, async (
   } finally { await close(); }
 });
 
+test('a time zone the server rejects is explained under the field', { skip }, async () => {
+  const backend = settingsBackend();
+  const handler = async (entry) => {
+    if (entry.method === 'POST' && entry.action === 'save-section' && entry.body.section_key === 'venue' && entry.body.value.timezone === 'Mars/Olympus') {
+      return { __status: 400, body: { error: 'Unknown time zone Mars/Olympus' } };
+    }
+    return backend.handler(entry);
+  };
+  const app = await launchAtlas({ fixtures: { functions: { ...emptyFunctions(), 'atlas-settings': handler } } });
+  try {
+    await openView(app.page, 'settings');
+    await section(app.page, 'hours');
+    await app.page.fill('[data-settings-timezone-form] [name="timezone"]', 'Mars/Olympus');
+    await app.page.click('[data-settings-timezone-form] button[type="submit"]');
+    await app.page.waitForSelector('#settings-timezone-error');
+    const text = await app.page.textContent('#settings-timezone-error');
+    assert.match(text, /“Mars\/Olympus” isn’t a time zone Atlas recognises/);
+    assert.doesNotMatch(await app.page.textContent('[data-settings-timezone-form]'), /Unknown time zone/, 'server text is never shown');
+    assert.equal(await app.page.getAttribute('[data-settings-timezone-form] [name="timezone"]', 'aria-invalid'), 'true');
+  } finally { await app.close(); }
+});
+
 test('Security shows enforced protections only and has no dead toggles', { skip }, async () => {
   const { page, close } = await openSettings();
   try {
-    await tab(page, 'security');
+    await section(page, 'security');
     assert.equal(await page.$$eval('.settings-security input, .settings-security form', (nodes) => nodes.length), 0);
     const text = await page.textContent('.settings-security');
     assert.match(text, /Two-factor authentication/);
@@ -111,11 +170,12 @@ test('Security shows enforced protections only and has no dead toggles', { skip 
 test('preferences save only implemented values and apply them at the next sign-in', { skip }, async () => {
   const { page, backend, close } = await openSettings();
   try {
-    await tab(page, 'preferences');
+    await section(page, 'preferences');
     const selects = await page.$$eval('[data-settings-preferences-form] select', (nodes) => nodes.map((node) => node.name));
     assert.deepEqual(selects, ['start_view'], 'theme, density, language and timezone are not offered as working controls');
+    assert.equal(await page.$('[data-settings-preferences-form] option[value="brain"]'), null, 'the retired Brain page is not a start page');
     await page.selectOption('[data-settings-preferences-form] [name="start_view"]', 'shifts');
-    await page.click('[data-settings-preferences-form] label:has([name="reduce_motion"]) strong');
+    await page.check('[data-settings-preferences-form] [name="reduce_motion"]');
     await page.click('[data-settings-preferences-form] button[type="submit"]');
     await page.waitForSelector('[data-settings-preferences-form] .settings-form-feedback.is-success');
     const body = backend.calls.find((entry) => entry.action === 'save-preferences').body;
@@ -124,14 +184,27 @@ test('preferences save only implemented values and apply them at the next sign-i
     assert.equal(body.browser_notifications, false, 'mirrors the real device state');
     assert.equal(await page.evaluate(() => document.documentElement.classList.contains('atlas-reduce-motion')), true);
 
-    // S88: the address bar now follows the open view (#settings), and a #view
-    // link wins over the start view, so the next sign-in opens the bare app URL.
-    assert.match(page.url(), /#settings$/);
+    // The address bar follows the open section, and a #view link wins over the
+    // start view, so the next sign-in opens the bare app URL.
+    assert.match(page.url(), /#settings\/preferences$/);
     await page.goto(page.url().split('#')[0], { waitUntil: 'load' });
     await page.waitForFunction(() => document.body.dataset.atlasReady === 'true');
     await page.waitForTimeout(400);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'shifts');
     assert.equal(await page.evaluate(() => document.documentElement.classList.contains('atlas-reduce-motion')), true);
+  } finally { await close(); }
+});
+
+test('a bartender sees only personal sections, and a manager-only link opens their first section', { skip }, async () => {
+  const { page, close } = await openSettings({ user: USERS.bartender });
+  try {
+    const links = await page.$$eval('.settings-nav__link', (nodes) => nodes.map((node) => node.getAttribute('href')));
+    for (const key of ['team-access', 'rules', 'integrations', 'system', 'security']) {
+      assert.ok(!links.includes(`#settings/${key}`), `${key} is not offered to a bartender`);
+    }
+    await page.evaluate(() => window.AtlasShell.navigate('#settings/system'));
+    await page.waitForTimeout(300);
+    assert.equal(await page.$('[data-settings-system-host]'), null, 'System health stays with administrators');
   } finally { await close(); }
 });
 
@@ -142,6 +215,54 @@ test('a #view link opens that destination at sign-in', { skip }, async () => {
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'team');
   } finally { await close(); }
 });
+
+// ---------- Atlas AI settings (GET/POST atlas-ai?action=settings) ----------
+
+function aiBackend({ canEdit = true } = {}) {
+  const calls = [];
+  const settings = { enabled: true, media_retention_days: 30, audio_retention: 'delete_after_transcription', daily_turn_limit_per_user: 200, voice_sessions_per_day: 20, voice_minutes_per_day: 60, max_concurrent_voice_sessions: 1, upload_bytes_per_day: 262144000, upload_files_per_day: 100, updated_at: '2026-09-20T10:00:00Z', can_edit: canEdit, configured: true };
+  const handler = (entry) => {
+    calls.push(entry);
+    if (entry.action === 'settings' && entry.method === 'POST') { Object.assign(settings, entry.body.patch); return settings; }
+    if (entry.action === 'settings') return settings;
+    if (entry.action === 'preferences') return { reply_length: 'normal', speak_answers: false, voice_enabled: true, language: 'auto', stored: false };
+    return {};
+  };
+  return { handler, calls, settings };
+}
+
+test('Atlas AI settings render from the server response and save only the changed field', { skip }, async () => {
+  const ai = aiBackend();
+  const { page, close } = await openSettings({ functions: { 'atlas-ai': ai.handler } });
+  try {
+    await section(page, 'ai');
+    await page.waitForSelector('[data-settings-ai-form]');
+    for (const name of ['voice_sessions_per_day', 'voice_minutes_per_day', 'max_concurrent_voice_sessions', 'upload_files_per_day', 'upload_bytes_per_day']) {
+      assert.ok(await page.$(`[data-settings-ai-form] [name="${name}"]`), `${name} is shown`);
+    }
+    assert.equal(await page.inputValue('[data-settings-ai-form] [name="upload_bytes_per_day"]'), '250', 'bytes are shown as MB');
+    await page.fill('[data-settings-ai-form] [name="voice_minutes_per_day"]', '90');
+    await page.click('[data-settings-ai-form] button[type="submit"]');
+    await page.waitForSelector('[data-settings-ai-form] .settings-form-feedback.is-success');
+    const post = ai.calls.find((entry) => entry.method === 'POST' && entry.action === 'settings');
+    assert.deepEqual(post.body, { patch: { voice_minutes_per_day: 90 } });
+  } finally { await close(); }
+});
+
+test('Atlas AI settings hide fields the server does not send and are read-only without can_edit', { skip }, async () => {
+  const ai = aiBackend({ canEdit: false });
+  delete ai.settings.voice_sessions_per_day;
+  const { page, close } = await openSettings({ functions: { 'atlas-ai': ai.handler } });
+  try {
+    await section(page, 'ai');
+    await page.waitForSelector('[data-settings-ai-form]');
+    assert.equal(await page.$('[data-settings-ai-form] [name="voice_sessions_per_day"]'), null);
+    assert.equal(await page.$eval('[data-settings-ai-form] [name="voice_minutes_per_day"]', (node) => node.disabled), true);
+    assert.equal(await page.$('[data-settings-ai-form] [data-settings-savebar]'), null);
+  } finally { await close(); }
+});
+
+// ---------- Notifications ----------
 
 // Simulated browser push stack. `mode` controls the permission result.
 function pushStub(mode) {
@@ -157,7 +278,7 @@ function pushStub(mode) {
 
 async function openNotifications(notifications, mode = 'granted') {
   const app = await openSettings({ initScript: pushStub(mode), functions: { 'atlas-notifications': notifications } });
-  await tab(app.page, 'notifications');
+  await section(app.page, 'notifications');
   await app.page.waitForTimeout(300);
   return app;
 }
@@ -191,10 +312,9 @@ test('a failed server subscribe leaves the device unsubscribed and says so', { s
   });
   try {
     await page.click('[data-settings-push-enable]');
-    await page.waitForSelector('[data-settings-notifications-feedback], .settings-device-notifications .settings-form-feedback.is-error');
+    await page.waitForSelector('.settings-device-notifications .settings-form-feedback.is-error');
     assert.equal(await page.evaluate(() => window.__unsubscribed), 1, 'orphaned device subscription removed');
     assert.equal(await page.$('[data-settings-push-disable]'), null, 'never shows ON');
-    assert.match(await page.textContent('.settings-device-notifications'), /notification store is unavailable/);
   } finally { await close(); }
 });
 
@@ -215,19 +335,83 @@ test('blocked permission is reported as blocked, not as off', { skip }, async ()
   } finally { await close(); }
 });
 
-test('integrations without a connection flow say so and list what they need', { skip }, async () => {
-  const integrations = [{ provider_key: 'instagram', label: 'Instagram', category: 'social', status: 'not_connected', authorization_state: 'not_connected', requirements: { oauth: true, meta_app_review: true, professional_account: true } }];
-  const backend = settingsBackend();
-  backend.workspace.integrations = integrations;
-  const app = await launchAtlas({ fixtures: { functions: { ...emptyFunctions(), 'atlas-settings': backend.handler } } });
+// ---------- Integrations (atlas-integrations, S88 contract) ----------
+
+const PROVIDERS = [
+  { provider_key: 'instagram', label: 'Instagram', auth_kind: 'oauth2', connection_state: 'ready', configured: true, can_connect: true, can_save_api_key: false, can_test: false, can_disconnect: false },
+  { provider_key: 'tiktok', label: 'TikTok', auth_kind: 'oauth2', connection_state: 'not_configured', configured: false, can_connect: false, can_test: false, can_disconnect: false, available_message: 'Not available yet — requires a TikTok for Developers client key and its client secret.', owner_requirements_summary: 'A TikTok developer app with Content Posting API access.' }
+];
+
+function integrationsBackend(start) {
+  const calls = [];
+  const handler = (entry) => {
+    calls.push(entry);
+    if (entry.action === 'status') return { providers: PROVIDERS, policy: {}, staff: { role: entry.user?.role } };
+    if (entry.action === 'start') return start(entry);
+    return { __status: 409, body: { error: 'raw server text', error_code: 'not_configured' } };
+  };
+  return { handler, calls };
+}
+
+test('integrations that cannot connect say so and list what they need', { skip }, async () => {
+  const integrations = integrationsBackend(() => ({}));
+  const { page, close } = await openSettings({ functions: { 'atlas-integrations': integrations.handler } });
   try {
-    await openView(app.page, 'settings');
-    await app.page.waitForSelector('.settings-shell .settings-tabs');
-    await tab(app.page, 'integrations');
-    const card = await app.page.textContent('.settings-integration-card');
+    await section(page, 'integrations');
+    await page.waitForSelector('[data-provider-card="tiktok"]');
+    const card = await page.textContent('[data-provider-card="tiktok"]');
     assert.match(card, /Not available yet/);
-    assert.match(card, /no connection flow for Instagram/);
-    assert.match(card, /Meta app review/);
-    assert.equal(await app.page.$$eval('.settings-integration-card button, .settings-integration-card a', (nodes) => nodes.length), 0, 'no Connect button without a real flow');
+    assert.match(card, /TikTok for Developers client key/);
+    assert.equal(await page.$$eval('[data-provider-card="tiktok"] button', (nodes) => nodes.length), 0, 'no Connect button without a real flow');
+  } finally { await close(); }
+});
+
+test('Connect goes to the provider authorize_url exactly and the callback is handled once', { skip }, async () => {
+  const authorize = `${ORIGIN}/index.html?integration=instagram&result=connected#settings/integrations`;
+  const integrations = integrationsBackend(() => ({ authorize_url: authorize, expires_at: '2026-09-24T16:42:00Z' }));
+  const { page, close } = await openSettings({ functions: { 'atlas-integrations': integrations.handler } });
+  try {
+    await section(page, 'integrations');
+    await page.waitForSelector('[data-provider-card="instagram"] [data-integration-action="start"]');
+    const navigation = page.waitForNavigation({ url: (url) => url.search.includes('integration=instagram') });
+    await page.click('[data-provider-card="instagram"] [data-integration-action="start"]');
+    await navigation;
+    const start = integrations.calls.find((entry) => entry.action === 'start');
+    assert.equal(start.method, 'POST');
+    assert.equal(start.body.provider_key, 'instagram');
+    assert.equal(start.body.return_path, '#settings/integrations');
+    await page.waitForFunction(() => document.body.dataset.atlasReady === 'true');
+    await page.waitForSelector('[data-integration-notice]');
+    assert.match(await page.textContent('[data-integration-notice]'), /Instagram is connected/);
+    assert.equal(new URL(page.url()).search, '', 'the callback parameters are removed from the address bar');
+    assert.match(page.url(), /#settings\/integrations$/);
+  } finally { await close(); }
+});
+
+test('a failed callback shows the friendly reason for its error code, never server text', { skip }, async () => {
+  const integrations = integrationsBackend(() => ({}));
+  const backend = settingsBackend();
+  const app = await launchAtlas({
+    hash: '?integration=instagram&result=failed&reason=browser_mismatch#settings/integrations',
+    fixtures: { functions: { ...emptyFunctions(), 'atlas-settings': backend.handler, 'atlas-integrations': integrations.handler } }
+  });
+  try {
+    await app.page.waitForSelector('[data-integration-notice]');
+    assert.match(await app.page.textContent('[data-integration-notice]'), /started in another browser/);
+    assert.equal(new URL(app.page.url()).search, '');
   } finally { await app.close(); }
+});
+
+test('a refused Connect explains the error code on the card', { skip }, async () => {
+  const integrations = integrationsBackend(() => ({ __status: 409, body: { error: 'raw server text', error_code: 'not_configured' } }));
+  const { page, close } = await openSettings({ functions: { 'atlas-integrations': integrations.handler } });
+  try {
+    await section(page, 'integrations');
+    await page.waitForSelector('[data-provider-card="instagram"] [data-integration-action="start"]');
+    await page.click('[data-provider-card="instagram"] [data-integration-action="start"]');
+    await page.waitForSelector('[data-provider-card="instagram"] .settings-form-feedback.is-error');
+    const text = await page.textContent('[data-provider-card="instagram"]');
+    assert.match(text, /isn’t set up on the server/);
+    assert.doesNotMatch(text, /raw server text/);
+  } finally { await close(); }
 });
