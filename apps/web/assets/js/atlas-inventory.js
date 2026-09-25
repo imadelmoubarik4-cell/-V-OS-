@@ -526,9 +526,9 @@
     const onHand = known ? `${qty(item.quantity)}${parBar(item, status)}` : '<span class="inv__muted" title="No verified count yet">—</span>';
     return `<tr data-inv-row="${esc(item.id)}"${selected ? ' class="is-selected"' : ''}>
       ${manager ? `<td class="col-check"><input type="checkbox" class="atlas-check" data-inv-select="${esc(item.id)}" aria-label="Select ${esc(item.name)}"${selected ? ' checked' : ''}></td>` : ''}
-      <td class="inv-col--name"><a class="inv__item-link" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}" title="${esc(item.name)}"><span class="cell-primary inv__clip">${esc(item.name)}</span><span class="cell-sub inv__clip">${esc([unitWord(item), packLine(item)].filter(Boolean).join(' · '))}${known && item.stock_recount_due ? ' · recount due' : ''}</span></a></td>
-      <td class="inv-col--text" data-priority="3"><span class="inv__clip" title="${esc(item.category || '')}">${esc(item.category || '—')}</span></td>
-      ${manager ? `<td class="inv-col--text" data-priority="2"><span class="inv__clip" title="${esc(item.supplier || '')}">${esc(item.supplier || '—')}</span></td>` : ''}
+      <td class="inv-col--name"><a class="inv__item-link" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}" title="${esc(item.name)}"><span class="cell-primary cell-clip">${esc(item.name)}</span><span class="cell-sub cell-clip">${esc([unitWord(item), packLine(item)].filter(Boolean).join(' · '))}${known && item.stock_recount_due ? ' · recount due' : ''}</span></a></td>
+      <td class="inv-col--text" data-priority="3"><span class="cell-clip" title="${esc(item.category || '')}">${esc(item.category || '—')}</span></td>
+      ${manager ? `<td class="inv-col--text" data-priority="2"><span class="cell-clip" title="${esc(item.supplier || '')}">${esc(item.supplier || '—')}</span></td>` : ''}
       <td class="is-num">${onHand}</td>
       <td class="is-num" data-priority="2">${num(item.par_level) ? qty(item.par_level) : '—'}</td>
       <td class="inv-col--status">${statusPill(status)}</td>
@@ -755,7 +755,7 @@
     ].filter(Boolean);
     const codes = [['Barcode', item.barcode], ['SKU', item.sku], manager ? ['Supplier number', item.supplier_product_reference] : null].filter((entry) => entry && entry[1]);
     const recipeChips = used.length
-      ? `<div class="inv-detail__chips">${used.slice(0, 6).map((recipe) => `<a class="atlas-record-chip inv-record-chip" href="#recipes/${encodeURIComponent(recipe.id)}">${icon('martini')}${esc(recipe.name)}</a>`).join('')}${used.length > 6 ? `<span class="inv__muted">+${used.length - 6} more</span>` : ''}</div>`
+      ? `<div class="inv-detail__chips">${used.slice(0, 6).map((recipe) => `<a class="atlas-record-chip" href="#recipes/${encodeURIComponent(recipe.id)}">${icon('martini')}${esc(recipe.name)}</a>`).join('')}${used.length > 6 ? `<span class="inv__muted">+${used.length - 6} more</span>` : ''}</div>`
       : '<p class="inv__muted">Not used in any recipe.</p>';
     const historyRows = history.length
       ? `<ul class="atlas-list inv-detail__history">${history.map((entry) => {

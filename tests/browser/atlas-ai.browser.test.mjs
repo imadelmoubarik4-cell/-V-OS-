@@ -577,6 +577,18 @@ test('phone: no sideways scroll, composer in reach, 44 px targets and a focus-tr
       .map((node) => { const rect = node.getBoundingClientRect(); return { label: node.getAttribute('aria-label') || node.textContent.trim().slice(0, 30), h: Math.round(rect.height), w: Math.round(rect.width) }; })
       .filter((entry) => entry.h < 44 || entry.w < 44));
     assert.deepEqual(small, []);
+    // The composer field is a 44 px touch target (design-system --control-lg),
+    // and the frame around it gives back the added space, so the composer
+    // stays about as tall as before (<= 104 px with its button bar).
+    const field = await page.evaluate(() => {
+      const input = document.querySelector('.composer textarea');
+      const box = input.getBoundingClientRect();
+      return { h: Math.round(box.height), composer: Math.round(document.querySelector('.composer').getBoundingClientRect().height) };
+    });
+    assert.ok(field.h >= 44, `composer field is ${field.h}px tall`);
+    assert.ok(field.composer <= 104, `composer is ${field.composer}px tall`);
+    await page.fill('.composer textarea', 'One line');
+    assert.ok(await page.$eval('.composer textarea', (node) => node.getBoundingClientRect().height) >= 44, 'typing keeps the touch height');
     // Atlas AI owns the phone top bar: History and New, no search or bell (spec §8.7).
     assert.ok(await page.evaluate(() => document.body.classList.contains('atlas-topbar-own')));
     assert.deepEqual(await page.$$eval('#atlas-topbar-actions [data-topbar-action]', (nodes) => nodes.map((node) => node.getAttribute('aria-label'))), ['Conversations', 'New conversation']);

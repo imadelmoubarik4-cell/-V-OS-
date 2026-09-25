@@ -40,7 +40,6 @@
 .inv__table .inv-col--cost { width: 104px; }
 .inv__table .inv-col--date { width: 104px; }
 .inv__table :is(.inv-col--name, .inv-col--text) { overflow: hidden; }
-.inv__clip { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 @container inv-items (max-width: 1080px) { .inv__table [data-priority="3"] { display: none; } }
 @container inv-items (max-width: 860px) { .inv__table [data-priority="2"] { display: none; } }
 .inv__bulk-clear { margin-left: auto; }
@@ -75,9 +74,6 @@
 .inv-detail__section > .atlas-btn { justify-self: start; }
 .inv-detail__heading { margin: 0; font: var(--type-heading); color: var(--text); }
 .inv-detail__chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-.inv-record-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 var(--s-2); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--text); font: var(--type-label); text-decoration: none; }
-.inv-record-chip:hover { border-color: var(--line-strong); text-decoration: none; }
-.inv-record-chip > svg { width: var(--icon-sm); height: var(--icon-sm); color: var(--text-2); }
 .inv-detail__history { border: 1px solid var(--line); border-radius: var(--r-lg); }
 .inv-detail__counts { display: grid; gap: var(--s-1); margin: 0; padding: 0; list-style: none; font: var(--type-body); }
 .inv-detail__counts li { display: flex; justify-content: space-between; gap: var(--s-4); }
@@ -141,7 +137,6 @@
 .sc-unit-word { font: var(--type-label); color: var(--text-2); }
 .sc-upnext { margin-top: var(--s-8); }
 .sc-upnext .atlas-section__head { margin-bottom: var(--s-3); }
-.sc-link-btn { padding: 0; border: 0; background: none; cursor: pointer; }
 .sc-row-btn, .po-row-btn { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 56px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .sc-row-btn:focus-visible, .po-row-btn:focus-visible { outline: var(--focus-outline); outline-offset: 2px; border-radius: var(--r-sm); }
 .sc-row-btn .atlas-row__body, .po-row-btn .atlas-row__body { display: grid; flex: 1 1 auto; min-width: 0; }

@@ -227,6 +227,22 @@ test('count scan: a Sure match is pre-selected, saved with recognition evidence,
     await page.waitForSelector('[data-capture-result="count"]');
     const identify = recognition.calls.find((call) => call.action === 'identify');
     assert.equal(identify.body.client_barcodes[0].raw, '8000070099999', 'codes alone use the JSON fast path');
+    // "How sure Atlas is" is a 44 px touch target through the shared
+    // disclosure-summary hit area (coarse pointer), not a page-local size:
+    // every point of the 44 px band around it opens the disclosure.
+    const disclosure = await page.$eval('[data-capture-result="count"] .atlas-capture-more > summary', (summary) => {
+      const box = summary.getBoundingClientRect();
+      const hit = getComputedStyle(summary, '::after');
+      const cx = box.left + Math.min(box.width / 2, 40);
+      const cy = box.top + box.height / 2;
+      const probes = [-21, -15, 0, 15, 21].map((dy) => { const node = document.elementFromPoint(cx, cy + dy); return Boolean(node && (node === summary || summary.contains(node))); });
+      return { text: summary.textContent.trim(), height: Math.round(box.height), hitHeight: parseFloat(hit.height), probes };
+    });
+    assert.equal(disclosure.text, 'How sure Atlas is');
+    assert.ok(disclosure.hitHeight >= 44, `hit area ${disclosure.hitHeight}px (visual ${disclosure.height}px)`);
+    assert.deepEqual(disclosure.probes, [true, true, true, true, true], 'the whole 44 px band reaches the summary');
+    await page.tap('[data-capture-result="count"] .atlas-capture-more > summary');
+    assert.equal(await page.$eval('[data-capture-result="count"] .atlas-capture-more', (node) => node.open), true);
     await page.fill('[data-capture-result="count"] [data-count-qty]', '1.7');
     await page.click('[data-save-next]');
     await page.waitForFunction(() => !document.querySelector('[data-capture-result="count"]'));

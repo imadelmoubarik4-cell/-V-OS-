@@ -687,8 +687,13 @@
     if (!input) return;
     input.style.height = 'auto';
     const lineHeight = 24;
-    const max = lineHeight * 8 + 4;
-    input.style.height = `${Math.min(max, Math.max(lineHeight + 4, input.scrollHeight))}px`;
+    // The CSS min-height is the touch height on coarse pointers (44 px) and
+    // one line elsewhere; padding counts towards the eight-line maximum.
+    const style = root.getComputedStyle ? root.getComputedStyle(input) : null;
+    const padding = (parseFloat(style?.paddingTop) || 0) + (parseFloat(style?.paddingBottom) || 0);
+    const minimum = Math.max(lineHeight + 4, parseFloat(style?.minHeight) || 0);
+    const max = lineHeight * 8 + Math.max(4, padding);
+    input.style.height = `${Math.min(max, Math.max(minimum, input.scrollHeight))}px`;
     input.style.overflowY = input.scrollHeight > max ? 'auto' : 'hidden';
   }
 
