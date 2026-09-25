@@ -258,7 +258,7 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // S91: the Settings sign-in message; S91b: owner copy for integrations
   // that are not set up, with admin-only setup details.
-  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91b'"), 'settings-workspace.js');
+  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91c'"), 'settings-workspace.js');
   // S91: sign-in copy after the session fixes.
   for (const file of ['marketing-workspace.js', 'reports-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s91a'`), file);

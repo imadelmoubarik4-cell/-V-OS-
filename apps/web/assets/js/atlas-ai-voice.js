@@ -200,6 +200,15 @@
     // transcript call and close the call.
     function markInactive(error = null) {
       if (inactive) return;
+      const replaced = error?.code === 'voice_session_replaced';
+      // A call moved to another device may still save its last transcript
+      // lines once (the server keeps them for a few minutes); nothing else is
+      // sent for this session.
+      const last = replaced && conversationId && sessionKey() ? pendingTurns.splice(0, APPEND_BATCH) : [];
+      if (last.length) {
+        request('voice-append', { method: 'POST', body: { conversation_id: conversationId, voice_session_id: sessionKey(), turns: last } })
+          .then(() => emit('onTurnsSaved', last), () => {});
+      }
       inactive = true;
       pendingTurns.length = 0;
       root.clearTimeout(flushTimer);
@@ -252,8 +261,9 @@
         const turns = pendingTurns.splice(0, APPEND_BATCH);
         const last = final && !pendingTurns.length;
         try {
-          await request('voice-append', { method: 'POST', body: { conversation_id: conversationId, voice_session_id: sessionKey(), turns, ...(last ? { ended: true } : {}) } });
+          const saved = await request('voice-append', { method: 'POST', body: { conversation_id: conversationId, voice_session_id: sessionKey(), turns, ...(last ? { ended: true } : {}) } });
           emit('onTurnsSaved', turns);
+          if (saved?.voice_replaced === true) { markInactive({ code: 'voice_session_replaced' }); return false; }
           if (last) endedByAppend = true;
         } catch (error) {
           if (isInactive(error)) { markInactive(error); return false; }
@@ -390,7 +400,9 @@
       setState('connecting');
       let secret = null;
       try {
-        const body = conversationId ? { conversation_id: conversationId } : {};
+        // heartbeat: true tells the server this client renews the lease, so
+        // it may use the short one (S91 review P2-A).
+        const body = conversationId ? { conversation_id: conversationId, heartbeat: true } : { heartbeat: true };
         if (takeover === true) body.takeover = true;
         const session = await request('voice-session', { method: 'POST', body });
         secret = typeof session?.client_secret === 'string' ? session.client_secret : (session?.client_secret?.value || null);

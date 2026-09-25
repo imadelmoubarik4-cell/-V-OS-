@@ -278,10 +278,18 @@ the card (transcripts are approximate).
   confidence"), names products without a confident match as "not in Atlas",
   and returns next steps: a stock count draft via `inventory.prepare_count`
   (only for products that match Atlas items, matches confirmed first) or
-  Inventory › Counts. Recognition still never changes stock. Its figures are
-  grounding evidence; if the model's own answer still states figures that are
-  not supported, the recognition summary is used instead of the generic
-  "couldn't verify" reply. When photo recognition is off the answer says
+  Inventory › Counts. Recognition still never changes stock. For grounding,
+  only its visible counts become figures, bound to their unit ("about 4
+  bottles") and accepted only in a sentence worded as an estimate from the
+  photo and not as stock; confidence and match percentages pass only as
+  percentages next to "confidence"/"match"; sizes (70cl), ABV and boxes never
+  count (S91 review). The model gets the result as a user-role
+  `<photo_recognition_data>` item of structured facts (Atlas item names and
+  percentages, counted units, label words only after the shared injection
+  screen `_shared/ai-tools/injection.mjs`), never the OCR transcript or notes
+  and never in a system message. If the model's own answer still states
+  unsupported figures, an answer built from those facts is used instead of the
+  generic "couldn't verify" reply; it never echoes label text. When photo recognition is off the answer says
   "Photo counting isn't switched on yet" and how to count instead.
 - Retention: voice-note audio deleted after successful transcription;
   photos/documents kept 30 days (configurable in `ai_settings`), then purged by
@@ -368,11 +376,15 @@ editable before sending.
   conversation; otherwise `409 voice_session_inactive`. A session is live until
   it is ended (`POST ?action=voice-end {voice_session_id}`, or `voice-append`
   with `"ended": true`), until its idle lease lapses, or 60 minutes after it
-  started (the provider's maximum). S91: the lease is 2 minutes
-  (`limits.voiceLeaseSeconds`); the connected client renews it with
+  started (the provider's maximum). S91: a client that sends
+  `"heartbeat": true` on `voice-session` (the S91 web app) gets a 2-minute
+  lease (`limits.voiceLeaseSeconds`) and renews it with
   `POST ?action=voice-heartbeat {voice_session_id}` every 45 seconds
-  (`heartbeat_seconds` in the `voice-session` response), and tool calls and
-  transcript appends renew it too. A page that dies without `voice-end`
+  (`heartbeat_seconds` in the response; at most one heartbeat per 15 seconds
+  per session, else `429 rate_limited`). Without the flag the lease stays
+  10 minutes, so an older open tab that never heartbeats is not cut off; its
+  first heartbeat shortens the lease to 2 minutes. Tool calls and transcript
+  appends renew it too. A heartbeating page that dies without `voice-end`
   (iOS closing the tab, a signed-out device) frees its slot within 2 minutes.
 - **Device handoff (S91).** When `voice-session` is refused with
   `voice_quota_exceeded` / `concurrent`, the panel offers **Continue here**,
@@ -382,8 +394,11 @@ editable before sending.
   reserves the new one in the same transaction under the per-user lock; if a
   quota refuses the new session nothing is ended. Another person's sessions
   are never touched. The replaced device gets `409 voice_session_replaced` on
-  its next `voice-tool`, `voice-append` or `voice-heartbeat`, closes its call
-  and says "Live voice moved to another device." Migration
+  its next `voice-tool` or `voice-heartbeat`, closes its call and says "Live
+  voice moved to another device." Its last transcript lines are still saved
+  for 5 minutes after the handoff (`voice-append` answers `voice_replaced:
+  true`, and the device then stops the same way); later appends get
+  `voice_session_replaced`. Migration
   `20260930092000_s91_voice_lease_and_takeover.sql`.
   Transcript appends are still accepted for 5 minutes after the end (final
   flush). Tool calls and transcript appends are each limited to 30 per user per

@@ -3,12 +3,16 @@
 --
 -- Requires an isolated replay database (scripts/verify_full_migration_replay.sh).
 -- Seeds users inside one transaction and proves:
--- * a session is reserved with a 2-minute idle lease (hard cap still 60 min);
+-- * a client that heartbeats reserves a 2-minute idle lease (hard cap still
+--   60 min); without p_lease_seconds the lease stays 10 minutes, and the first
+--   heartbeat shortens it (review P2-A); heartbeats are limited to one per
+--   15 seconds (review P3-5);
 -- * without a heartbeat the lease lapses and the slot is free again;
 -- * a heartbeat renews the lease;
 -- * takeover ends only the same user's live sessions (end_reason replaced,
 --   replaced_by, one audit row) and reserves the new one; another user's
---   session is untouched; the replaced session is told it was replaced;
+--   session is untouched; the replaced session is told it was replaced, but
+--   its last transcript append is kept for 5 minutes (review P3-3);
 -- * daily sessions and minutes still count (including replaced sessions) and
 --   a refused takeover ends nothing;
 -- * grants: service role only, the old 5-argument start is gone.
@@ -85,7 +89,19 @@ begin
   bar_conv := (public.atlas_ai_conversation_create(bar, 'bartender', 'Voice', '{}'::jsonb)->>'id')::uuid;
 
   -- Lease -----------------------------------------------------------------------------
-  v1 := public.atlas_ai_voice_session_start(bar, 'bartender', bar_conv, '{}'::jsonb, 60);
+  -- Without p_lease_seconds (an older atlas-ai or a client that does not
+  -- heartbeat) the lease stays 10 minutes; a first heartbeat shortens it.
+  m1 := public.atlas_ai_voice_session_start(mgr, 'manager', mgr_conv, '{}'::jsonb, 60);
+  s := (select (lease_expires_at - started_at)::text from atlas_private.ai_voice_sessions where id = (m1->>'voice_session_id')::uuid);
+  r := public.atlas_ai_voice_session_touch(m1->>'voice_session_id', mgr, 'manager', 'heartbeat');
+  insert into s91_voice values ('without the heartbeat flag the lease stays 10 minutes; the first heartbeat makes it 2 minutes',
+    (m1->>'lease_seconds')::int = 600 and s = '00:10:00'
+    and (r->>'lease_seconds')::int = 120
+    and (select lease_expires_at from atlas_private.ai_voice_sessions where id = (m1->>'voice_session_id')::uuid) = now() + interval '2 minutes',
+    s || ' ' || r::text);
+  perform public.atlas_ai_voice_session_touch(m1->>'voice_session_id', mgr, 'manager', 'end');
+
+  v1 := public.atlas_ai_voice_session_start(bar, 'bartender', bar_conv, '{}'::jsonb, 60, false, 120);
   insert into s91_voice values ('a session is reserved with a 2-minute idle lease and the 60-minute hard cap',
     (v1->>'live')::boolean and (v1->>'lease_seconds')::int = 120 and (v1->>'replaced_sessions')::int = 0
     and (select lease_expires_at - started_at from atlas_private.ai_voice_sessions where id = (v1->>'voice_session_id')::uuid) = interval '2 minutes'
@@ -106,6 +122,10 @@ begin
     (r->>'live')::boolean and (r->>'heartbeats')::int = 1
     and (select lease_expires_at from atlas_private.ai_voice_sessions where id = (v1->>'voice_session_id')::uuid) = now() + interval '2 minutes',
     r::text);
+  s := public.s91v_expect(format('select public.atlas_ai_voice_session_touch(%L,%L,%L,%L)', v1->>'voice_session_id', bar, 'bartender', 'heartbeat'));
+  insert into s91_voice values ('heartbeats are limited to one per 15 seconds per session',
+    s = '53400 rate_limited: too many voice heartbeats'
+    and (select heartbeats from atlas_private.ai_voice_sessions where id = (v1->>'voice_session_id')::uuid) = 1, s);
 
   -- No heartbeat for longer than the lease: the session is no longer live, its
   -- slot is free and it cannot be renewed.
@@ -116,7 +136,7 @@ begin
   u := atlas_private.ai_voice_usage(bar);
   s := public.s91v_expect(format('select public.atlas_ai_voice_session_touch(%L,%L,%L,%L)', v1->>'voice_session_id', bar, 'bartender', 'heartbeat'));
   s2 := public.s91v_expect(format('select public.atlas_ai_voice_session_touch(%L,%L,%L,%L)', v1->>'voice_session_id', bar, 'bartender', 'tool'));
-  v2 := public.atlas_ai_voice_session_start(bar, 'bartender', bar_conv, '{}'::jsonb, 60);
+  v2 := public.atlas_ai_voice_session_start(bar, 'bartender', bar_conv, '{}'::jsonb, 60, false, 120);
   insert into s91_voice values ('without a heartbeat the lease lapses: the slot is free and the old session cannot be renewed',
     (u->>'live_sessions')::int = 0
     and s = '55000 voice_session_inactive: the voice session has ended'
@@ -126,7 +146,7 @@ begin
 
   -- Takeover ----------------------------------------------------------------------------
   m1 := public.atlas_ai_voice_session_start(mgr, 'manager', mgr_conv, '{}'::jsonb, 60);
-  v3 := public.atlas_ai_voice_session_start(bar, 'bartender', bar_conv, '{}'::jsonb, 60, true);
+  v3 := public.atlas_ai_voice_session_start(bar, 'bartender', bar_conv, '{}'::jsonb, 60, true, 120);
   insert into s91_voice values ('takeover ends the same user''s live session (replaced, audited) and reserves the new one',
     (v3->>'live')::boolean and (v3->>'replaced_sessions')::int = 1
     and exists (select 1 from atlas_private.ai_voice_sessions s where s.id = (v2->>'voice_session_id')::uuid
@@ -148,14 +168,22 @@ begin
     and (atlas_private.ai_voice_usage(mgr)->>'live_sessions')::int = 1, s);
 
   s := public.s91v_expect(format('select public.atlas_ai_voice_session_touch(%L,%L,%L,%L)', v2->>'voice_session_id', bar, 'bartender', 'tool'));
-  s2 := public.s91v_expect(format('select public.atlas_ai_voice_session_touch(%L,%L,%L,%L)', v2->>'voice_session_id', bar, 'bartender', 'append'));
   s3 := public.s91v_expect(format('select public.atlas_ai_voice_session_touch(%L,%L,%L,%L)', v2->>'voice_session_id', bar, 'bartender', 'heartbeat'));
   r := public.atlas_ai_voice_session_touch(v2->>'voice_session_id', bar, 'bartender', 'end');
   insert into s91_voice values ('the replaced session is told it was replaced; end stays idempotent',
     s = '55000 voice_session_replaced: live voice moved to another device'
-    and s2 = s and s3 = s
+    and s3 = s
     and r->>'end_reason' = 'replaced' and (r->>'replaced')::boolean and not (r->>'live')::boolean,
-    s || ' | ' || s2 || ' | ' || s3);
+    s || ' | ' || s3);
+  -- Its final transcript lines are kept for 5 minutes, then refused.
+  r := public.atlas_ai_voice_session_touch(v2->>'voice_session_id', bar, 'bartender', 'append');
+  update atlas_private.ai_voice_sessions set started_at = now() - interval '7 minutes', ended_at = now() - interval '6 minutes'
+  where id = (v2->>'voice_session_id')::uuid;
+  s2 := public.s91v_expect(format('select public.atlas_ai_voice_session_touch(%L,%L,%L,%L)', v2->>'voice_session_id', bar, 'bartender', 'append'));
+  update atlas_private.ai_voice_sessions set ended_at = now(), started_at = now() where id = (v2->>'voice_session_id')::uuid;
+  insert into s91_voice values ('a replaced device may save its last transcript lines for 5 minutes, then it is told it was replaced',
+    (r->>'replaced')::boolean and (r->>'appended_turns')::int = 1
+    and s2 = '55000 voice_session_replaced: live voice moved to another device', r::text || ' | ' || s2);
 
   -- Quotas --------------------------------------------------------------------------------
   u := atlas_private.ai_voice_usage(bar);
@@ -229,7 +257,7 @@ reset role;
 reset session authorization;
 
 select jsonb_build_object(
-  's91_voice_preview', case when bool_and(passed) and count(*) = 15 then 'passed' else 'failed' end,
+  's91_voice_preview', case when bool_and(passed) and count(*) = 18 then 'passed' else 'failed' end,
   'passed_count', count(*) filter (where passed),
   'failed_count', count(*) filter (where not passed),
   'tests', jsonb_agg(jsonb_build_object('test', test_name, 'passed', passed)

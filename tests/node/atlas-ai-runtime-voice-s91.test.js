@@ -22,10 +22,18 @@ const json = async (response) => ({ status: response.status, body: await respons
 const conversationFor = (services, user) => services.rpc('atlas_ai_conversation_create', { p_actor_id: user.id, p_actor_role: user.role, p_title: 'Voice', p_context: {} });
 const MIGRATION = new URL('../../supabase/migrations/20260930092000_s91_voice_lease_and_takeover.sql', import.meta.url);
 
-test('voice-session reserves a 2-minute lease and tells the client to heartbeat every 45 seconds', async () => {
+// The S91 web client says it heartbeats, so the server may use the short lease.
+async function startLive(handle, user, conversationId, extra = {}) {
+  const response = await handle(request('voice-session', { user, body: { conversation_id: conversationId, heartbeat: true, ...extra } }));
+  const body = await response.json();
+  if (response.status !== 200) throw new Error(`voice-session failed: ${response.status} ${JSON.stringify(body)}`);
+  return body;
+}
+
+test('a client that heartbeats gets a 2-minute lease and is told to heartbeat every 45 seconds', async () => {
   const { handle, db, services } = make();
   const conversation = await conversationFor(services, USERS.bartender);
-  const voice = await startVoice(handle, USERS.bartender, conversation.id);
+  const voice = await startLive(handle, USERS.bartender, conversation.id);
   assert.equal(voice.lease_seconds, 120);
   assert.equal(voice.heartbeat_seconds, 45);
   assert.equal(voice.replaced_sessions, 0);
@@ -39,10 +47,40 @@ test('voice-session reserves a 2-minute lease and tells the client to heartbeat 
   assert.equal(start.payload.p_lease_seconds, 120);
 });
 
-test('voice-heartbeat renews the lease; without it the session lapses and a new start works without reloading', async () => {
+test('an older client that sends no heartbeat flag keeps the 10-minute lease; its first heartbeat shortens it (review P2-A)', async () => {
   const { handle, db, services } = make();
   const conversation = await conversationFor(services, USERS.bartender);
   const voice = await startVoice(handle, USERS.bartender, conversation.id);
+  const start = db.calls.find((call) => call.name === 'atlas_ai_voice_session_start');
+  assert.ok(!('p_lease_seconds' in start.payload), 'the database default (600 s) applies');
+  assert.equal(voice.lease_seconds, 600);
+  const row = db.voiceSessions.get(voice.voice_session_id);
+  assert.ok(Math.abs(row.lease_expires_at - row.started_at - 600000) < 1000);
+  const beat = await json(await handle(request('voice-heartbeat', { user: USERS.bartender, body: { voice_session_id: voice.voice_session_id } })));
+  assert.equal(beat.status, 200);
+  assert.equal(row.lease_seconds, 120);
+  assert.ok(row.lease_expires_at - Date.now() <= 121000, 'a heartbeating client is on the short lease');
+  const sql = fs.readFileSync(MIGRATION, 'utf8');
+  assert.match(sql, /p_lease_seconds integer default 600/);
+  assert.match(sql, /lease_seconds = least\(s\.lease_seconds, 120\)/);
+});
+
+test('heartbeats are limited to one per 15 seconds per session (review P3-5)', async () => {
+  const { handle, services } = make();
+  const conversation = await conversationFor(services, USERS.bartender);
+  const voice = await startLive(handle, USERS.bartender, conversation.id);
+  const first = await json(await handle(request('voice-heartbeat', { user: USERS.bartender, body: { voice_session_id: voice.voice_session_id } })));
+  const second = await json(await handle(request('voice-heartbeat', { user: USERS.bartender, body: { voice_session_id: voice.voice_session_id } })));
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 429);
+  assert.equal(second.body.error_code, 'rate_limited');
+  assert.match(fs.readFileSync(MIGRATION, 'utf8'), /last_heartbeat_at > pg_catalog\.now\(\) - interval '15 seconds'/);
+});
+
+test('voice-heartbeat renews the lease; without it the session lapses and a new start works without reloading', async () => {
+  const { handle, db, services } = make();
+  const conversation = await conversationFor(services, USERS.bartender);
+  const voice = await startLive(handle, USERS.bartender, conversation.id);
   const row = db.voiceSessions.get(voice.voice_session_id);
   row.lease_expires_at = Date.now() + 5000; // 5 s left
   const beat = await json(await handle(request('voice-heartbeat', { user: USERS.bartender, body: { voice_session_id: voice.voice_session_id } })));
@@ -69,7 +107,7 @@ test('voice-heartbeat renews the lease; without it the session lapses and a new 
 test('tool calls and transcript appends renew the lease too, but never past the hard cap', async () => {
   const { handle, db, services } = make();
   const conversation = await conversationFor(services, USERS.manager);
-  const voice = await startVoice(handle, USERS.manager, conversation.id);
+  const voice = await startLive(handle, USERS.manager, conversation.id);
   const row = db.voiceSessions.get(voice.voice_session_id);
   row.lease_expires_at = Date.now() + 1000;
   const tool = await json(await handle(request('voice-tool', { body: { conversation_id: conversation.id, voice_session_id: voice.voice_session_id, name: 'inventory_current_stock', arguments: { query: null } } })));
@@ -104,11 +142,18 @@ test('takeover ("Continue here") ends only the same person\'s live session and r
   assert.equal(other.ended_at, null, 'another person\'s call is never touched');
   assert.equal(other.end_reason, null);
 
-  // The replaced device is told, on its next heartbeat, tool call or append.
+  // Its last transcript lines are still saved for a few minutes, and the
+  // result tells it the call moved (review P3-3).
+  const lastLines = await json(await handle(request('voice-append', { user: USERS.bartender, body: { conversation_id: barConversation.id, voice_session_id: phoneOld.voice_session_id, turns: [{ role: 'user', text: 'Six limes left', client_request_id: 'voice-s91-old-1' }] } })));
+  assert.equal(lastLines.status, 200);
+  assert.equal(lastLines.body.voice_replaced, true);
+  assert.ok(db.messages.some((entry) => entry.content === 'Six limes left'));
+  old.ended_at -= 6 * 60000;
+  // The replaced device is told, on its next heartbeat, tool call or (later) append.
   for (const [action, body] of [
     ['voice-heartbeat', { voice_session_id: phoneOld.voice_session_id }],
     ['voice-tool', { conversation_id: barConversation.id, voice_session_id: phoneOld.voice_session_id, name: 'inventory_current_stock', arguments: { query: null } }],
-    ['voice-append', { conversation_id: barConversation.id, voice_session_id: phoneOld.voice_session_id, turns: [{ role: 'user', text: 'Still here?', client_request_id: 'voice-s91-old-1' }] }],
+    ['voice-append', { conversation_id: barConversation.id, voice_session_id: phoneOld.voice_session_id, turns: [{ role: 'user', text: 'Still here?', client_request_id: 'voice-s91-old-2' }] }],
   ]) {
     const result = await json(await handle(request(action, { user: USERS.bartender, body })));
     assert.equal(result.status, 409, action);
@@ -156,7 +201,7 @@ test('the replaced error prefix maps to a fixed browser message; the migration k
   assert.equal(mapped.message, 'Live voice moved to another device.');
   const sql = fs.readFileSync(MIGRATION, 'utf8');
   assert.match(sql, /drop function if exists public\.atlas_ai_voice_session_start\(uuid, text, uuid, jsonb, integer\)/);
-  assert.match(sql, /p_takeover boolean default false,\s*p_lease_seconds integer default 120/);
+  assert.match(sql, /p_takeover boolean default false,\s*p_lease_seconds integer default 600/);
   assert.match(sql, /where s\.user_id = p_actor_id\s+and s\.ended_at is null/, 'takeover is scoped to the actor');
   assert.match(sql, /end_reason in \('client_end','mint_failed','replaced'\)/);
   assert.match(sql, /'public\.atlas_ai_voice_session_start\(uuid, text, uuid, jsonb, integer, boolean, integer\)'/);

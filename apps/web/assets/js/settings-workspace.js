@@ -858,7 +858,7 @@
     if (integrations.status === 'idle' || integrations.status === 'loading') body = `<div aria-busy="true">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(4)}<span class="sr-only">Loading integrations</span></div>`;
     else if (integrations.status === 'error') {
       body = integrations.error?.code === 'not_configured'
-        ? `<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon">${icon('plug')}</div><h3>Not available yet</h3><p>Integrations need the connection service on the Atlas server. An administrator sets it up.</p></div>`
+        ? `<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon">${icon('plug')}</div><h3>Not set up yet</h3><p>Integrations connect Atlas to your Google, Meta, TikTok and Tripadvisor accounts. An administrator can set them up.</p></div>`
         : `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Integrations couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(integrations.error?.status === 403 ? 'Only managers and administrators can see integrations.' : 'Nothing was changed. Try again.')}</p></div>${integrations.error?.status === 403 ? '' : '<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-integrations-retry>Try again</button></div>'}</div>`;
     } else if (!integrations.providers.length) body = '<p class="settings-muted">No integrations are available.</p>';
     else body = `<ul class="settings-providers">${integrations.providers.map(providerMarkup).join('')}</ul>`;

@@ -403,6 +403,19 @@ test('a manager sees owner copy only: no setup details and no secret names', { s
   } finally { await close(); }
 });
 
+test('when the integrations service itself is missing the page says "Not set up yet" in owner words', { skip }, async () => {
+  const missing = () => ({ __status: 503, body: { error: 'Integrations are not set up yet.', error_code: 'not_configured' } });
+  const { page, close } = await openSettings({ functions: { 'atlas-integrations': missing } });
+  try {
+    await section(page, 'integrations');
+    await page.waitForSelector('.settings-layout .atlas-empty');
+    const text = await page.textContent('.settings-layout [data-settings-content]');
+    assert.match(text, /Not set up yet/);
+    assert.match(text, /An administrator can set them up\./);
+    assert.doesNotMatch(text, /Not available yet|connection service|server|ATLAS_/);
+  } finally { await close(); }
+});
+
 test('Connect goes to the provider authorize_url exactly and the callback is handled once', { skip }, async () => {
   const authorize = `${ORIGIN}/index.html?integration=instagram&result=connected#settings/integrations`;
   const integrations = integrationsBackend(() => ({ authorize_url: authorize, expires_at: '2026-09-24T16:42:00Z' }));
