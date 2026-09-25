@@ -561,7 +561,7 @@
           ? '<button type="button" class="atlas-btn atlas-btn--secondary" data-restore-recipe><i data-lucide="archive-restore"></i>Restore to service</button><button type="button" class="atlas-btn atlas-btn--danger" data-delete-recipe><i data-lucide="trash-2"></i>Delete permanently</button>'
           : '<button type="button" class="atlas-btn atlas-btn--ghost" data-archive-recipe><i data-lucide="archive"></i>Archive</button>'}
       </section>` : '';
-    return `${recipe.image_url ? `<img class="recipe-hero-img" src="${escape(recipe.image_url)}" alt="${escape(recipe.name)}">` : ''}
+    return `${recipe.image_url ? `<img class="recipe-photo" src="${escape(recipe.image_url)}" alt="${escape(recipe.name)}">` : ''}
       <div class="recipe-detail-status"><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span><span class="recipe-muted">${escape(servingsText(recipe))}</span></div>
       ${alert}
       <section class="recipe-section" aria-labelledby="recipe-build-title"><h3 class="recipe-section__title" id="recipe-build-title">Build</h3>${build}</section>

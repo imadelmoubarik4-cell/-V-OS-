@@ -172,7 +172,7 @@ test('Recipes, Operations, Atlas Intelligence and Home agree on the same readine
   assert.equal(operations.issues.length, needing, 'Operations counts the same recipes as Recipes');
   assert.ok(operations.issues.every((entry) => entry.recipe.active !== false), 'inactive recipes never count');
   assert.equal(operations.issues[0].recipe.name, 'Margarita');
-  assert.equal(atlas.AtlasRecipes.getHomeAlert().text, 'Margarita cannot currently be served.');
+  assert.equal(atlas.AtlasRecipes.getHomeAlert().text, "Margarita can't be served right now.");
   assert.equal(atlas.AtlasBrain.riskData().label, 'High');
   assert.match(atlas.AtlasBrain.assistantResponse('what needs attention'), /Margarita/);
   // Below-par and unknown signals come from active reconciled stock only.

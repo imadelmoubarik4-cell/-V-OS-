@@ -460,6 +460,13 @@
     if (COMPLETE.has(batch.status)) return 'complete';
     return batch.current_stage || batch.status || 'uploaded';
   }
+  // Import processing stays fail-closed until its activation gate: the worker
+  // is used only when IMPORT_WORKER_API is exactly this project's
+  // atlas-import-worker (production ships it empty).
+  function workerEndpoint() {
+    const target = String(cfg.SUPABASE_URL || '').replace(/\/$/, '');
+    return cfg.SUPABASE_URL === target && cfg.IMPORT_WORKER_API === `${target}/functions/v1/atlas-import-worker` ? cfg.IMPORT_WORKER_API : '';
+  }
   function workerStatus(batch) {
     return batch?.record_counts?.worker === 'atlas-csv-1' ? batch.record_counts.processing_status : null;
   }
@@ -578,7 +585,7 @@
         ${step(reviewed, false, 3, 'Import')}
       </ol>`;
     const actions = [];
-    const workerOn = Boolean(cfg.IMPORT_WORKER_API);
+    const workerOn = Boolean(workerEndpoint());
     if (workerOn && !worker && batch.status === 'uploaded' && batch.entity_scope === 'inventory' && String(batch.file_extension || '').toLowerCase() === 'csv') actions.push(['stage', 'play', 'Read this file', 'primary']);
     if (workerOn && worker === 'claimed') actions.push(['stage', 'play', 'Continue reading', 'primary']);
     if (worker === 'staged' || batch.status === 'ready') actions.push(['review', 'list-checks', 'Review rows', worker === 'staged' ? 'secondary' : 'primary']);
@@ -658,7 +665,7 @@
         if (action === 'discard' && !await confirmDialog({ title: 'Discard this reading?', body: 'Unimported rows and their review decisions are removed. The uploaded file stays so you can read it again or delete it.', confirm: 'Discard reading', keep: 'Keep', danger: true })) return;
         state.imports.busy.add(batch.id);
         render();
-        const result = await edge(cfg.IMPORT_WORKER_API, null, { method: 'POST', body: { action, batch_id: batch.id } });
+        const result = await edge(workerEndpoint(), null, { method: 'POST', body: { action, batch_id: batch.id } });
         state.imports.busy.delete(batch.id);
         await loadImports({ quiet: true });
         toast(result?.status === 'promoted' ? 'Approved rows imported.' : result?.status === 'discarded' ? 'Reading discarded.' : 'File read. Review every row before importing.');

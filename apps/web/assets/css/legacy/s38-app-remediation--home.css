@@ -128,4 +128,15 @@
   #home-focus .atlas-home-brief-actions{display:grid}
   #home-focus .atlas-home-brief-actions .atlas-home-action{width:100%}
 }
+/* Moved from s38-app-remediation--import-center.css (retired with Import Center, S88 Team C);
+   same cascade position relative to this file's rules. */
+#home-focus .atlas-home-brief-actions .atlas-home-action{
+  min-height:42px;
+  padding:9px 16px;
+  border:1px solid #ccd6e3;
+  border-radius:12px;
+  background:rgba(255,255,255,.82);
+  color:#2d3746;
+  box-shadow:0 3px 8px rgba(31,49,70,.04);
+}
 }

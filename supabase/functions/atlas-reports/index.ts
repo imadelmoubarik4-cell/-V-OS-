@@ -413,6 +413,20 @@ function daysInRange(range: DateRange): number {
   return Math.round((dateFromIso(range.end).getTime() - dateFromIso(range.start).getTime()) / 86400000) + 1;
 }
 
+// A range that is exactly one whole calendar month.
+function isWholeMonth(range: DateRange): boolean {
+  const start = dateFromIso(range.start);
+  const end = dateFromIso(range.end);
+  if (start.getUTCDate() !== 1 || start.getUTCFullYear() !== end.getUTCFullYear() || start.getUTCMonth() !== end.getUTCMonth()) return false;
+  return addDays(end, 1).getUTCDate() === 1;
+}
+
+// `comparison` is the whole calendar month before the whole-month `period`.
+function isPreviousWholeMonth(period: DateRange, comparison: DateRange): boolean {
+  if (!isWholeMonth(period) || !isWholeMonth(comparison)) return false;
+  return isoDate(addDays(dateFromIso(comparison.end), 1)) === period.start;
+}
+
 function clampShiftMonth(date: Date, monthOffset: number): Date {
   const targetYear = date.getUTCFullYear();
   const targetMonth = date.getUTCMonth() + monthOffset;
@@ -508,7 +522,12 @@ function comparisonRange(period: DateRange, comparisonKey: string, url: URL): Da
       const startText = requireDateParam(url.searchParams.get("comparison_start_date"), "Comparison start date");
       const endText = requireDateParam(url.searchParams.get("comparison_end_date"), "Comparison end date");
       const range = { start: startText, end: endText, label: labelRange(startText, endText) };
-      if (daysInRange(range) !== days) throw new ApiError(400, "Custom comparison must use the same number of days as the reporting period.");
+      // AtlasVenueClock.compareRange: a whole calendar month compares with the
+      // whole previous calendar month, whatever its length; any other period
+      // needs a comparison of the same number of days.
+      if (daysInRange(range) !== days && !isPreviousWholeMonth(period, range)) {
+        throw new ApiError(400, "Custom comparison must use the same number of days as the reporting period.");
+      }
       return range;
     }
     case "previous_week":

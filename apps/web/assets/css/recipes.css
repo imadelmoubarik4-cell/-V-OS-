@@ -47,7 +47,7 @@
   /* Detail (sheet on desktop, full screen on phones). */
   .recipe-sheet__actions { display: flex; align-items: center; gap: var(--s-2); }
   .recipe-detail { display: grid; gap: var(--s-6); align-content: start; }
-  .recipe-hero-img { display: block; width: 100%; max-height: 320px; object-fit: cover; border-radius: var(--r-lg); background: var(--bg-subtle); }
+  .recipe-photo { display: block; width: 100%; max-height: 320px; object-fit: cover; border-radius: var(--r-lg); background: var(--bg-subtle); }
   .recipe-detail-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
   .recipe-muted { margin: 0; font: var(--type-meta); color: var(--text-2); }
   .recipe-section { display: grid; gap: var(--s-3); }

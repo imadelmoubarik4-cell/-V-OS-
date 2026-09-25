@@ -232,7 +232,8 @@ test('index.html cache keys track the shipped stock-truth and calculation module
   const html = read('apps/web/index.html');
   const pins = {
     'atlas-stock-truth.js': { version: '20260924-s87', sha256: 'b0df5d3302ab53985861fd0899a84bc405753fbc4bf4561f0f6754929ec12da0' },
-    'atlas-calculations.js': { version: '20260924-s87', sha256: '756c533a507f7d1edf9f7870dfb687a9408e87050f5852b3004e0bc8923f4fb9' }
+    // S88 Team C: formatIsk delegates to AtlasFormat.money ('3.900 kr').
+    'atlas-calculations.js': { version: '20260926-s88', sha256: '0d6102747ec33d753d8b7a911665b25f01175203e484a7867085c8ce7e47d568' }
   };
   for (const [file, pin] of Object.entries(pins)) {
     const sha256 = crypto.createHash('sha256').update(read(`apps/web/assets/js/${file}`)).digest('hex');

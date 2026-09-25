@@ -213,8 +213,10 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
   const registrations = {
     'operations.js': /shell\.registerView\('operations'[\s\S]+?shell\.onDataLoaded[\s\S]+?shell\.registerHomeSection\('operations', renderHomeAugmentation, 10\)/,
     'brain.js': /shell\.registerView\('brain'[\s\S]+?shell\.registerHomeSection\('brain', renderHomeAugmentation, 20\)/,
-    'business.js': /shell\.registerView\('business'[\s\S]+?shell\.registerHomeSection\('business', renderHomeAugmentation, 30\)/,
-    'sprint3-review.js': /registerView\('sprint3-review'/,
+    // S88 Team C: Business Intelligence is Reports › Overview; Import Center and
+    // Real VÁ Data are the Data page (home.contribute replaces a DOM Home section).
+    'data-workspace.js': /registerView\('data'[\s\S]+?registerView\('sprint3-review'[\s\S]+?home\?\.contribute\?\.\('data'/,
+    'recipes.js': /home\?\.contribute\?\.\('recipes'/,
     'operations-checkpoint-a.js': /registerHomeSection\('checkpoint-a', renderHomeAlerts, 40\)/,
     'operations-checkpoint-a-layout.js': /registerHomeSection\('checkpoint-a-prompt', syncHomePrompt, 50\)/,
     'marketing-workspace.js': /registerView\('marketing'/,
@@ -225,12 +227,12 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 });
 
 test('changed scripts carry the S88 cache key', () => {
-  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'brain.js', 'business.js', 'purchase-orders.js', 'shifts-workspace.js',
+  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'brain.js', 'reports-overview.js', 'recipes.js', 'data-workspace.js', 'purchase-orders.js', 'shifts-workspace.js',
     'shifts-month-calendar.js', 'shifts-month-tab-bridge.js', 'knowledge-workspace.js', 'knowledge-team-link-bridge.js', 's38-app-remediation.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s88"></script>`), file);
   }
   const config = read('apps/web/config.js');
-  for (const file of ['sprint3-review.js', 'brain-daily-briefing-v2.js', 'brain-phase3.js', 'brain-checkpoint-k.js', 'operations-checkpoint-a.js',
+  for (const file of ['brain-daily-briefing-v2.js', 'brain-phase3.js', 'brain-checkpoint-k.js', 'operations-checkpoint-a.js',
     'operations-checkpoint-a-layout.js', 'inventory-scanner-bootstrap.js', 'stock-count-bootstrap.js', 'team-messages.js', 'marketing-workspace.js',
     'team-profiles-bootstrap.js', 'team-profile-photos.js', 'team-profile-photo-gallery.js', 'reports-workspace.js', 'system-workspace.js',
     'settings-workspace.js', 'settings-mount-bridge.js']) {
