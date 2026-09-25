@@ -1322,12 +1322,18 @@
     const target = event.target instanceof Element ? event.target : null;
     if (!target || !host()?.contains(target)) return;
     if (target.matches('[data-acc-search]')) {
+      // Filter once typing pauses: the list can hold a few thousand rows.
       state.query = target.value;
-      const caret = target.selectionStart;
-      render();
-      const again = host().querySelector('[data-acc-search]');
-      again?.focus();
-      if (again && caret !== null) again.setSelectionRange(caret, caret);
+      window.clearTimeout(state.searchTimer);
+      state.searchTimer = window.setTimeout(() => {
+        const current = host()?.querySelector('[data-acc-search]');
+        const caret = current?.selectionStart ?? null;
+        const focused = document.activeElement === current;
+        render();
+        const again = host()?.querySelector('[data-acc-search]');
+        if (focused) again?.focus();
+        if (again && focused && caret !== null) again.setSelectionRange(caret, caret);
+      }, 180);
     }
     if (target.matches('[data-acc-month]') && /^\d{4}-\d{2}$/.test(target.value)) { state.month = target.value; render(); host().querySelector('[data-acc-month]')?.focus(); }
     if (target.matches('[data-acc-filter-select]')) { state.filter = target.value; render(); host().querySelector('[data-acc-filter-select]')?.focus(); }
