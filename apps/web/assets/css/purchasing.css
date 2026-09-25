@@ -73,3 +73,62 @@
 }
 
 }
+
+/* S92 Accounting (#accounting, .acc-*): the document sheet layout, the VAT grid
+   and small helpers. Kept here with Purchasing (spend and suppliers) so the
+   stylesheet count does not grow. */
+@layer atlas.modules {
+  .acc-lead { margin: 0 0 var(--s-4); font: var(--type-body); color: var(--text-2); max-width: 68ch; }
+  .acc-muted { margin: var(--s-3) 0 0; font: var(--type-caption); color: var(--text-2); }
+  .acc-body { margin-top: var(--s-5); }
+  .acc-stats { margin-bottom: var(--s-5); }
+  .acc-row__end { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+  .acc-toolbar { flex-wrap: wrap; gap: var(--s-3); }
+  .acc-filter { overflow-x: auto; max-width: 100%; }
+  .acc-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .acc-drop { position: relative; cursor: pointer; }
+  .acc-camera { position: relative; align-self: flex-start; }
+  @media (hover: hover) and (pointer: fine) { .acc-camera { display: none; } }
+  .acc-upload { display: flex; flex-direction: column; gap: var(--s-4); }
+  .acc-queue:empty { display: none; }
+  .acc-payer { border: 0; margin: 0; padding: 0; display: grid; gap: var(--s-3); min-width: 0; }
+  .acc-payer .atlas-chips { flex-wrap: wrap; }
+
+  .acc-doc { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-6); align-items: start; }
+  .acc-doc__file { position: sticky; top: 0; display: grid; gap: var(--s-3); min-width: 0; }
+  .acc-file { display: grid; gap: var(--s-3); justify-items: start; }
+  .acc-file__img { display: block; width: 100%; max-height: 70vh; object-fit: contain; border: 1px solid var(--line); border-radius: var(--radius-md, 8px); background: var(--surface-2, transparent); }
+  .acc-doc__form { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }
+  .acc-paid { display: flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-body); color: var(--positive, var(--text)); }
+  .acc-paid > svg, .acc-paid > i { width: var(--icon-sm, 16px); height: var(--icon-sm, 16px); flex: none; }
+
+  .acc-vat { border: 0; margin: 0; padding: 0; display: grid; gap: var(--s-3); min-width: 0; }
+  .acc-vat__row { display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1fr) 40px; gap: var(--s-3); align-items: end; }
+  .acc-vat__row .atlas-field { min-width: 0; }
+  .acc-vat__remove { margin-bottom: 2px; }
+  .acc-vat__tools { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .acc-amounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 88px; gap: var(--s-3); }
+  .acc-amounts .atlas-input, .acc-vat .atlas-input { font-variant-numeric: tabular-nums; }
+
+  .acc-details { border-top: 1px solid var(--line); padding-top: var(--s-3); }
+  .acc-details > summary { cursor: pointer; font: var(--type-label); color: var(--text-2); min-height: 44px; display: flex; align-items: center; }
+  .acc-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--s-2) var(--s-4); margin: var(--s-2) 0; }
+  .acc-kv dt { font: var(--type-caption); color: var(--text-2); }
+  .acc-kv dd { margin: 0; font: var(--type-body); overflow-wrap: anywhere; }
+
+  .acc-export { max-width: 880px; }
+  .acc-export__month { max-width: 240px; }
+  .acc-export__actions { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+
+  @media (max-width: 899px) {
+    .acc-doc { grid-template-columns: minmax(0, 1fr); }
+    .acc-doc__file { position: static; }
+    .acc-file__img { max-height: 45vh; }
+  }
+  @media (max-width: 599px) {
+    .acc-amounts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .acc-vat__row { grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1fr) 40px; gap: var(--s-2); }
+    .acc-row__end .atlas-row__action { width: 100%; }
+    .acc-export__actions .atlas-btn { width: 100%; }
+  }
+}
