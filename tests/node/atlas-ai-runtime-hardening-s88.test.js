@@ -411,6 +411,7 @@ test('F9 executeProposal maps downstream errors to fixed messages (including sto
   const services = {
     stockCountStart: async () => ({ result: { session: { id: 's1' }, lines: [{ id: 'l1', inventory_item_id: '11111111-1111-4111-8111-111111111113', version: 1 }] } }),
     stockCountSaveLine: async () => { throw backendError; },
+    purchaseOrders: async () => [],
     purchaseOrderCommand: async () => { throw backendError; },
   };
   const ctx = { actor: { userId: 'u', role: 'manager', active: true, token: 't' }, env: { get: () => undefined }, fetch: async () => new Response('{}'), services };

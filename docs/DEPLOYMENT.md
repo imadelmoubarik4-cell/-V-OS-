@@ -16,9 +16,32 @@ Netlify publishes `apps/web` as configured in `netlify.toml`. The application re
 
 The five recovered migrations are already recorded on the hosted project and must not be manually replayed there. They exist so clean environments have the same history. A.2 is intentionally not applied merely by deploying this repository.
 
+## Release-gated migrations: apply after the web deploy
+
+Two migrations must be applied only **after** the new `apps/web` is live. Apply every other migration first.
+
+- `20260927099000_s89_revoke_direct_item_insert.sql`
+- `20260928095000_s89_revoke_direct_item_update.sql`
+
+They revoke direct browser INSERT and UPDATE on `public.inventory_items`. Until the new web app is deployed, any client still running the old build gets "permission denied" when it adds or edits an item.
+
+Do not run `supabase db push` against production for this release:
+
+- It would apply these two files in filename order, before the web deploy.
+- The hosted ledger records migrations applied through the controlled workflow under their own version timestamps, so the file versions do not line up with the ledger.
+
+Apply each file explicitly, in the order given by the release's rollout plan:
+
+1. All pending migrations except these two.
+2. Functions.
+3. The web app, followed by a smoke test on the new build.
+4. `20260927099000`, then `20260928095000`.
+
+After step 4, re-run the smoke test for adding and editing an item.
+
 ## S90 workflow integrity rollout
 
-Order: migration first, then the web app. The migration is backward compatible: the current web app keeps calling `adjust_inventory`, and the stock-count verify signature does not change.
+Order: migration first, then the web app (the two release-gated revokes above come after the web deploy). The migration is backward compatible: the current web app keeps calling `adjust_inventory`, and the stock-count verify signature does not change.
 
 1. Apply `20260929090000_s90_stock_adjust_idempotency.sql` through the controlled migration workflow. It adds:
    - `public.adjust_inventory_v2`: an invoker wrapper over `private.adjust_inventory_request`, a manager-gated definer.

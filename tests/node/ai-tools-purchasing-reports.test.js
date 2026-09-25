@@ -3,7 +3,7 @@
 // truthful not-connected sales and unknown (not zero) values.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runTool, validateCommand } from '../../supabase/functions/_shared/ai-tools/index.mjs';
+import { executeProposal, runTool, validateCommand } from '../../supabase/functions/_shared/ai-tools/index.mjs';
 import { orderSuggestions, projectStock } from '../../supabase/functions/_shared/atlas-domain.mjs';
 import { balanceRows, createBackend, IDS, inventoryRows, makeCtx, movementRows, NOW, purchaseOrderRows } from './helpers/ai-tools-fixtures.js';
 
@@ -222,4 +222,26 @@ test('a supplier with a Draft gets purchase_order.update_draft on that draft (cu
   const same = await run('manager', 'purchasing.prepare_draft_po', { supplier_id: IDS.supplierVin, supplier_query: null, use_suggestions: null, lines: [{ item_id: IDS.angelo, item_query: null, quantity: 6, unit_cost: null }], note: null, expected_delivery_date: null }, { backend });
   assert.equal(same.proposal, null, 'nothing to change');
   assert.match(same.summary, /exactly these lines/);
+});
+
+test('approving a create proposal after another draft was saved for the supplier is refused; a retry of the same order is not', async () => {
+  const backend = createBackend();
+  const args = { supplier_id: IDS.supplierVin, supplier_query: null, use_suggestions: true, lines: null, note: null, expected_delivery_date: null };
+  const first = await run('manager', 'purchasing.prepare_draft_po', args, { backend });
+  const second = await run('manager', 'purchasing.prepare_draft_po', args, { backend });
+  assert.equal(first.proposal.kind, 'purchase_order.create');
+  assert.equal(second.proposal.kind, 'purchase_order.create');
+  assert.notEqual(first.proposal.command.p_id, second.proposal.command.p_id);
+
+  // The first proposal is approved and its draft now exists.
+  backend.data.purchaseOrders.push({ id: first.proposal.command.p_id, supplier_id: IDS.supplierVin, status: 'draft', version: 1, expected_delivery_date: null, note: 'Prepared with Atlas AI.', created_at: '2026-09-24T13:00:00Z', lines: [] });
+  const retry = await executeProposal(first.proposal.kind, first.proposal.command, makeCtx('manager', { backend }).ctx);
+  assert.equal(retry.ok, true, 'a retry of the order that already exists goes through (idempotent on p_id)');
+
+  const writesBefore = backend.writes.length;
+  const blocked = await executeProposal(second.proposal.kind, second.proposal.command, makeCtx('manager', { backend }).ctx);
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.error.code, 'conflict');
+  assert.match(blocked.error.message, /already has a Draft order/);
+  assert.equal(backend.writes.length, writesBefore, 'no second draft is written');
 });

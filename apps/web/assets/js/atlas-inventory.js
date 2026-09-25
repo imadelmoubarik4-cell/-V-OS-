@@ -1312,7 +1312,7 @@
     [/resulting quantity would be negative|item not found/i, 'Atlas’s stock record for this item is lower than that quantity, so nothing was recorded. Check the quantity, or count the item first.'],
     [/unit cost must be 0 or more/i, 'The unit cost must be 0 or more, so nothing was recorded.'],
     [/waste must lower stock|delivery must add stock|quantity change/i, 'Enter a quantity above 0, so nothing was recorded.'],
-    [/already used for a different change/i, 'This was already recorded with other details. Check Movements before recording it again.'],
+    [/already used for a different change/i, 'Your earlier try may already be saved, so Atlas won’t record different details from this dialog. Check Movements, then close this and start again if something is still missing.'],
     [/request id is required/i, 'Atlas couldn’t record this change. Close this and try again.'],
     [/invalid movement type/i, 'Atlas can’t record this kind of change here.'],
     [/manager or administrator|permission denied|42501/i, 'Recording stock changes is for managers. Nothing was recorded.']

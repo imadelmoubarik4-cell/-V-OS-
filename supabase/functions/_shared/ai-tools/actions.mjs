@@ -252,7 +252,7 @@ export function buildPreview(kind, command, extras = {}) {
         },
         recipients: [],
         will_change: [
-          `The existing Draft order for ${extras.supplierName || "the supplier"} is updated: ${addedCount} ${addedCount === 1 ? "line" : "lines"} added${changedCount ? `, ${changedCount} changed` : ""}. It stays a Draft.`,
+          `The existing Draft order for ${extras.supplierName || "the supplier"} is updated: ${[addedCount ? `${addedCount} ${addedCount === 1 ? "line" : "lines"} added` : null, changedCount ? `${changedCount} ${changedCount === 1 ? "line" : "lines"} changed` : null].filter(Boolean).join(", ") || "no line changes"}. It stays a Draft.`,
         ],
         will_not_change: [
           "No second order is created.",
@@ -591,6 +591,16 @@ export async function executeProposal(kind, storedCommand, ctx) {
   try {
     switch (kind) {
       case "purchase_order.create": {
+        // One draft per supplier: another proposal may have saved a draft for
+        // this supplier after this one was prepared. A retry of this same
+        // order (same p_id) is still allowed through.
+        const orders = await services.purchaseOrders();
+        const otherDraft = (Array.isArray(orders) ? orders : []).find((order) => order.status === "draft"
+          && String(order.supplier_id) === String(command.p_supplier_id)
+          && String(order.id) !== String(command.p_id));
+        if (otherDraft) {
+          return failure("conflict", "This supplier already has a Draft order in Purchasing, so Atlas did not create a second one. Ask Atlas again to add these lines to that draft.");
+        }
         const order = await services.purchaseOrderCommand({
           p_id: command.p_id,
           p_action: "create",
