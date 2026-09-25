@@ -2500,7 +2500,7 @@
       <form class="ai-sheet__form" data-ai-dec-form>
         <h3>Record a decision</h3>
         <div class="atlas-field"><label for="${id}-decision">Decision</label><select id="${id}-decision" class="atlas-select" name="decision"><option value="accept">Approve</option><option value="reject">Dismiss</option><option value="defer">Decide later</option></select></div>
-        <div class="atlas-field" data-ai-defer hidden><label for="${id}-until">Decide by</label><input id="${id}-until" class="atlas-input" type="datetime-local" name="until"></div>
+        <div class="atlas-field" data-ai-defer hidden><label for="${id}-until">Decide by</label><input id="${id}-until" class="atlas-input" type="datetime-local" step="60" name="until"></div>
         <div class="atlas-field"><label for="${id}-notes">Note (optional)</label><textarea id="${id}-notes" class="atlas-input" name="notes" rows="3" placeholder="What should Atlas remember about this?"></textarea></div>
         <div class="ai-sheet__error" data-ai-dec-error hidden role="alert"></div>
         <div class="ai-sheet__actions"><button type="submit" class="atlas-btn atlas-btn--primary">Save decision</button></div>

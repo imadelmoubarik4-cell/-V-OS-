@@ -358,11 +358,10 @@ textarea.atlas-input,
   resize: vertical;
   field-sizing: content;
 }
+/* Native date and time pickers (the platform control; the value stays ISO). */
 .atlas-input[type="date"],
 .atlas-input[type="time"],
 .atlas-input[type="datetime-local"] { padding-right: 8px; font-variant-numeric: tabular-nums; }
-/* 24-hour time field (AtlasVenueClock.TIME_INPUT_ATTRS): a text field for HH:MM. */
-.atlas-input[data-atlas-time] { font-variant-numeric: tabular-nums; }
 .atlas-input[type="number"] { font-variant-numeric: tabular-nums; }
 .atlas-range { display: flex; align-items: center; gap: var(--s-2); }
 .atlas-range > span { color: var(--text-2); font: var(--type-meta); }

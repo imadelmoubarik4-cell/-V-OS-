@@ -9,8 +9,9 @@
 // arrived; a person always confirms the quantities.
 (function (root) {
   'use strict';
-  // Date fields as YYYY-MM-DD text (AtlasVenueClock.DATE_INPUT_ATTRS): never the browser's mm/dd/yyyy.
-  const DATE_FIELD = window.AtlasVenueClock?.DATE_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
+  // Native date picker (design system: forms use the platform date and time
+  // controls). The value is 'YYYY-MM-DD'; AtlasVenueClock validates it inline.
+  const DATE_FIELD = 'type="date"';
 
   const shell = root.AtlasShell;
   if (!shell || root.AtlasPurchasing) return;

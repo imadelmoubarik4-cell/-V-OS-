@@ -348,3 +348,23 @@ test('the same answers under other process zones (child processes)', () => {
   const [venueDate, businessDate, time] = JSON.parse(reference);
   assert.deepEqual([venueDate, businessDate, time], ['2026-10-25', '2026-10-24', '00:40']);
 });
+
+test('native date and time fields: inline problems name the limit in Atlas wording (24 h, en-GB dates)', () => {
+  const clock = load({ now: '2026-09-24T12:00:00Z' });
+  clock.apply(clockPayload({ timezone: 'Atlantic/Reykjavik' }));
+  const field = (type, validity, extra = {}) => ({ type, validity, min: '', max: '', dataset: {}, ...extra });
+  assert.deepEqual([...clock.NATIVE_FIELD_TYPES], ['date', 'time', 'datetime-local']);
+  assert.equal(clock.nativeFieldProblem(field('date', {})), '');
+  assert.equal(clock.nativeFieldProblem(field('text', { badInput: true })), '', 'only native date/time fields');
+  assert.equal(clock.nativeFieldProblem(field('date', { badInput: true })), 'Enter a complete date.');
+  assert.equal(clock.nativeFieldProblem(field('date', { rangeUnderflow: true }, { min: '2026-09-24' })), 'Choose Thu 24 Sep or later.');
+  assert.equal(clock.nativeFieldProblem(field('date', { rangeOverflow: true }, { max: '2027-01-02' })), 'Choose Sat 2 Jan 2027 or earlier.');
+  assert.equal(clock.nativeFieldProblem(field('time', { rangeUnderflow: true }, { min: '17:00' })), 'Choose 17:00 or later.');
+  assert.equal(clock.nativeFieldProblem(field('time', { stepMismatch: true })), 'Use whole minutes.');
+  assert.equal(clock.nativeFieldProblem(field('datetime-local', { rangeUnderflow: true }, { min: '2026-09-24T17:30' })), 'Choose Thu 24 Sep, 17:30 or later.');
+  assert.equal(clock.nativeFieldProblem(field('date', { valueMissing: true })), '', 'an untouched required field is not flagged early');
+  assert.equal(clock.nativeFieldProblem(field('date', { valueMissing: true }, { dataset: { atlasTouched: '' } })), 'Choose a date.');
+  // The text-field replacements are gone: native pickers only.
+  assert.equal(clock.TIME_INPUT_ATTRS, undefined);
+  assert.equal(clock.DATE_INPUT_ATTRS, undefined);
+});

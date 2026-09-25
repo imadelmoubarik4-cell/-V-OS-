@@ -17,8 +17,9 @@
 // No inventory quantity change from this module.
 (function () {
   'use strict';
-  // 24-hour time fields (AtlasVenueClock.TIME_INPUT_ATTRS): never the browser's 12-hour picker.
-  const TIME_FIELD = window.AtlasVenueClock?.TIME_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM" data-atlas-time';
+  // Native time picker, whole minutes; the value is 'HH:MM' (24 h). Inside the
+  // control the device locale decides how it is shown.
+  const TIME_FIELD = 'type="time" step="60"';
 
   const WRITE_ROLES = ['admin', 'manager', 'bartender'];
   const MANAGER_ROLES = ['admin', 'manager'];

@@ -296,16 +296,28 @@ token (`overflow-wrap: anywhere`) instead of overflowing the page.
 Focus: a heading or sheet title focused programmatically (`tabindex="-1"`)
 shows no ring; keyboard focus on controls always does.
 
-Date fields: `<input … ${AtlasVenueClock.DATE_INPUT_ATTRS}>` (a text field with
-`data-atlas-date`, value `YYYY-MM-DD`), never `type="date"`, which shows
-mm/dd/yyyy in en-US browsers. "30.9.2026", "30/9/2026" and "30.9" are read on
-commit; an impossible date or one before `min` is marked `aria-invalid`.
+Forms — dates and times use native controls: `<input type="date">`,
+`<input type="time" step="60">` and `<input type="datetime-local"
+step="60">`. The platform picker is the accessible, phone-friendly choice
+(calendar and wheel pickers, screen-reader support, no custom widget), so
+Atlas does not replace it with text fields. Inside the control the device
+locale decides the display (an en-US browser may show mm/dd/yyyy or 5:00 PM);
+that is accepted. The value is always ISO — `YYYY-MM-DD`, `HH:MM`,
+`YYYY-MM-DDTHH:MM` — and a datetime is read and written in the venue zone
+with `AtlasVenueClock.localInputValue` / `fromLocalInput`.
 
-Time fields: `<input … ${AtlasVenueClock.TIME_INPUT_ATTRS}>` (a text field
-with `data-atlas-time`), never `type="time"`, which shows 12-hour times in
-en-US browsers. The venue clock reads "1730", "17.30" or "9" as 17:30 / 09:00
-when the field is committed; the value is `HH:MM` like a native time input.
-Displayed times go through `AtlasVenueClock.formatTime` (24 h).
+- Give every field its real limits: `min` / `max` (no delivery before the
+  venue date, no report period after today), `step="60"` for times.
+- An end date takes its start as `min` with
+  `data-atlas-min-from="<start field id>"`; the venue clock keeps it in step.
+- Inline validation is shared: when a native field is committed or left,
+  `AtlasVenueClock.validateNativeField` marks an incomplete, out-of-range or
+  off-step value `aria-invalid` and explains it under the field
+  (`.atlas-field__error[data-atlas-input-error]`, linked with
+  `aria-describedby`, e.g. "Choose Thu 24 Sep or later."). Modules keep
+  their own submit checks (required, end after start).
+- Times and dates Atlas renders itself (read-only text, tables, cards,
+  messages) stay 24 h through `AtlasVenueClock.formatTime` / `formatDate`.
 
 The Atlas AI components (spec §6.28: `.ai-conv`, messages, `.steps-line`,
 `.record-chip`, `.evidence`, `.approval`, `.composer`, `.voice`) live in the
