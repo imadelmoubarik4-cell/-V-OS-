@@ -181,7 +181,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // control centre for venue configuration, operating rules and personal preferences.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/settings-workspace.css',
-  scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91a',
+  scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91b',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
 }));
