@@ -83,7 +83,7 @@
   const money = (value) => (num(value) === null ? '—' : (clock()?.formatKr ? clock().formatKr(num(value)) : `${Math.round(num(value))} kr`));
   const dateText = (value, options) => (value && clock()?.formatDate ? clock().formatDate(value, options || {}) : '');
   const dateTimeText = (value) => (value && clock()?.formatDateTime ? clock().formatDateTime(value) : '');
-  const today = () => clock()?.today?.() || new Date().toISOString().slice(0, 10);
+  const today = () => clock()?.today?.() || '';
 
   function items() { return root.AtlasData?.items?.() || []; }
   function suppliers() { return root.AtlasData?.suppliers?.() || []; }
