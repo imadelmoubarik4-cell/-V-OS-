@@ -20,9 +20,13 @@
     categoryBySlug: new Map(),
     search: '',
     category: 'all',
-    viewMode: 'workspace',
+    viewMode: 'grid',
     statusFilter: 'all',
-    selectedRecipeId: localStorage.getItem('atlas.selectedRecipeId') || null,
+    selectedRecipeId: null,
+    phoneDetail: null,
+    missingRecipe: null,
+    pendingRoute: null,
+    wakeLock: null,
     draftIngredients: [],
     editingRecipe: null,
     pendingImageFile: null,
@@ -52,9 +56,10 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
+  // Money is "3.900 kr" (spec §11 decision 5) through the venue clock's formatter.
   function formatIsk(value, empty = '—') {
-    return window.AtlasCalculations?.formatIsk?.(value, empty)
-      || (!Number.isFinite(value) ? empty : `${Math.round(value).toLocaleString('en-US')} ISK`);
+    if (!Number.isFinite(value)) return empty;
+    return window.AtlasFormat?.money ? window.AtlasFormat.money(value, empty) : window.AtlasCalculations.formatIsk(value, empty);
   }
 
   function normalizeUnit(unit) {
@@ -266,7 +271,6 @@
         if (error) throw error;
         state.categories = data?.length ? data : FALLBACK_CATEGORIES;
       } catch (error) {
-        console.warn('Recipe categories fallback:', error);
         state.categories = FALLBACK_CATEGORIES;
       }
       state.categoryById = new Map(state.categories.filter((category) => category.id).map((category) => [category.id, category]));
@@ -278,243 +282,7 @@
     return state.loadingCategories;
   }
 
-  function ensureWorkspaceMarkup() {
-    const view = document.getElementById('recipes-view');
-    if (!view || view.dataset.alpha03 === 'true') return;
-    view.dataset.alpha03 = 'true';
-    view.innerHTML = `
-      <section class="recipe-alpha03">
-        <header class="recipe-alpha03-head">
-          <div>
-            <span class="recipe-kicker">Recipes</span>
-            <h1>Recipe Library</h1>
-            <p>Service specifications, live inventory availability and cost performance in one workspace.</p>
-          </div>
-          <button type="button" class="recipe-primary-action" id="add-recipe-btn"><i data-lucide="plus"></i><span>New recipe</span></button>
-        </header>
-
-        <div class="recipe-summary-grid recipe-alpha03-summary" aria-label="Recipe summary">
-          <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="book-open"></i></div><div><strong id="recipe-stat-total">0</strong><span>Total recipes</span></div></div>
-          <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="circle-check-big"></i></div><div><strong id="recipe-stat-active">0</strong><span>Active for service</span></div></div>
-          <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="badge-check"></i></div><div><strong id="recipe-stat-ready">0</strong><span>Ready today</span></div></div>
-          <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="triangle-alert"></i></div><div><strong id="recipe-stat-attention">0</strong><span>Need attention</span></div></div>
-        </div>
-
-        <section class="recipe-intelligence-panel recipe-alpha03-brief" aria-live="polite">
-          <div class="recipe-intelligence-icon"><i data-lucide="sparkles"></i></div>
-          <div class="recipe-intelligence-copy"><span>Atlas Intelligence</span><h3 id="recipe-intelligence-title">Checking recipe readiness…</h3><p id="recipe-intelligence-detail">Atlas is comparing every linked ingredient with current inventory.</p></div>
-          <button type="button" class="recipe-intelligence-action" id="recipe-intelligence-action" hidden>Review recipe</button>
-        </section>
-
-        <section class="recipe-gallery" aria-label="Recipe gallery">
-          <div class="recipe-gallery-toolbar">
-            <label class="recipe-search recipe-workspace-search"><i data-lucide="search"></i><input type="search" id="recipe-search" aria-label="Search recipes" placeholder="Search recipes…" /></label>
-            <div class="recipe-status-filters" id="recipe-status-filters" aria-label="Recipe health filters">
-              <button type="button" class="active" data-status="all">All</button>
-              <button type="button" data-status="ready">Ready</button>
-              <button type="button" data-status="attention">Attention</button>
-              <button type="button" data-status="draft">Draft</button>
-            </div>
-            <span class="recipe-gallery-count" id="recipe-library-count">0 recipes</span>
-            <button type="button" class="recipe-icon-action" id="recipe-library-add" aria-label="Create recipe"><i data-lucide="plus"></i></button>
-          </div>
-          <div class="recipe-category-row" id="recipe-category-row" aria-label="Recipe categories"></div>
-          <div id="recipes-grid-v2" class="recipe-gallery-grid"></div>
-          <div id="recipes-empty-v2" class="recipe-library-empty" hidden><i data-lucide="search-x"></i><strong>No recipes found</strong><span>Change the filters or create a new recipe.</span></div>
-        </section>
-
-        <div class="recipe-detail-sheet" id="recipe-detail-sheet" hidden>
-          <div class="recipe-detail-scrim" data-detail-close></div>
-          <div class="recipe-detail-shell" role="dialog" aria-modal="true" aria-label="Recipe detail">
-            <button type="button" class="recipe-detail-close" data-detail-close aria-label="Close recipe"><i data-lucide="x"></i></button>
-            <main class="recipe-profile-pane" id="recipe-profile-pane" tabindex="-1" aria-live="polite"></main>
-            <aside class="recipe-insight-pane" id="recipe-insight-pane" aria-label="Recipe intelligence"></aside>
-          </div>
-        </div>
-
-        <div class="recipe-foundation-panel recipe-alpha03-foundation">
-          <details class="recipe-foundation-card">
-            <summary><span><i data-lucide="package-check"></i><strong>Inventory connection</strong></span><small id="recipe-connection-summary">Live recipe links</small><i data-lucide="chevron-down"></i></summary>
-            <div class="recipe-foundation-body"><p>Recipe ingredients use live inventory quantities, costs and package sizes.</p>
-            <div class="inventory-connection-list">
-              <div class="inventory-connection-row"><span>Inventory items available</span><strong id="recipe-inventory-count">0</strong></div>
-              <div class="inventory-connection-row"><span>Ingredients connected</span><strong id="recipe-linked-count">0</strong></div>
-              <div class="inventory-connection-row"><span>Ingredients needing a link</span><strong id="recipe-unlinked-count">0</strong></div>
-            </div></div>
-          </details>
-          <details class="recipe-foundation-card recipe-featured-card"><summary><span><i data-lucide="sparkles"></i><strong>Featured recommendation</strong></span><small>Atlas recommendation</small><i data-lucide="chevron-down"></i></summary><div class="recipe-foundation-body" id="recipe-featured-card"></div></details>
-          <details class="recipe-foundation-card">
-            <summary><span><i data-lucide="qr-code"></i><strong>Public menu</strong></span><small>Guest-facing visibility</small><i data-lucide="chevron-down"></i></summary>
-            <div class="recipe-foundation-body"><p>Only recipes marked “Show on public menu” appear on the guest-facing menu.</p>
-            <div class="recipe-menu-share"><img id="menu-qr" alt="QR code to public menu" width="84" height="84" /><div><label for="menu-link">Menu link</label><input id="menu-link" readonly /><input id="menu-embed" readonly aria-label="Embed code" /></div></div></div>
-          </details>
-        </div>
-      </section>`;
-
-    if (!document.getElementById('recipe-service-overlay')) {
-      const service = document.createElement('div');
-      service.id = 'recipe-service-overlay';
-      service.className = 'recipe-service-overlay';
-      service.hidden = true;
-      service.innerHTML = '<div class="recipe-service-shell" id="recipe-service-shell"></div>';
-      document.body.appendChild(service);
-    }
-  }
-
-  function cacheDom() {
-    dom.view = document.getElementById('recipes-view');
-    dom.grid = document.getElementById('recipes-grid-v2');
-    dom.empty = document.getElementById('recipes-empty-v2');
-    dom.search = document.getElementById('recipe-search');
-    dom.categoryRow = document.getElementById('recipe-category-row');
-    dom.statusFilters = document.getElementById('recipe-status-filters');
-    dom.addButton = document.getElementById('add-recipe-btn');
-    dom.libraryAdd = document.getElementById('recipe-library-add');
-    dom.profile = document.getElementById('recipe-profile-pane');
-    dom.insight = document.getElementById('recipe-insight-pane');
-    dom.featured = document.getElementById('recipe-featured-card');
-    dom.modal = document.getElementById('recipe-overlay');
-    dom.form = document.getElementById('recipe-form');
-    dom.modalTitle = document.getElementById('recipe-modal-title');
-    dom.modalSubtitle = document.getElementById('recipe-modal-subtitle');
-    dom.categorySelect = document.getElementById('recipe-category-id');
-    dom.ingredientSelect = document.getElementById('ingredient-item');
-    dom.ingredientList = document.getElementById('ingredient-list');
-    dom.saveState = document.getElementById('recipe-save-state');
-    dom.imageFile = document.getElementById('recipe-image-file');
-    dom.imagePreview = document.getElementById('recipe-image-preview');
-    dom.imageRemove = document.getElementById('recipe-image-remove');
-    dom.detailSheet = document.getElementById('recipe-detail-sheet');
-    dom.serviceOverlay = document.getElementById('recipe-service-overlay');
-    dom.serviceShell = document.getElementById('recipe-service-shell');
-  }
-
-  function bindEvents() {
-    dom.addButton?.addEventListener('click', () => openEditor(null));
-    dom.libraryAdd?.addEventListener('click', () => openEditor(null));
-    dom.search?.addEventListener('input', (event) => {
-      state.search = event.target.value.trim().toLowerCase();
-      renderWorkspaceContent();
-    });
-    dom.statusFilters?.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-status]');
-      if (!button) return;
-      state.statusFilter = button.dataset.status || 'all';
-      dom.statusFilters.querySelectorAll('[data-status]').forEach((candidate) => candidate.classList.toggle('active', candidate === button));
-      renderWorkspaceContent();
-    });
-    document.querySelectorAll('[data-recipe-filter]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        state.category = button.dataset.recipeFilter || 'all';
-        setActiveView('recipes');
-        render();
-      });
-    });
-    document.getElementById('add-ingredient-btn')?.addEventListener('click', addIngredientFromForm);
-    dom.ingredientList?.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-remove-ingredient]');
-      if (!button) return;
-      state.draftIngredients.splice(Number(button.dataset.removeIngredient), 1);
-      renderIngredientList();
-    });
-    ['recipe-yield-qty', 'recipe-menu-price'].forEach((id) => document.getElementById(id)?.addEventListener('input', renderDraftFinancials));
-    dom.imageFile?.addEventListener('change', handleRecipeImageSelection);
-    dom.imageRemove?.addEventListener('click', clearRecipeImage);
-    dom.form?.addEventListener('submit', saveRecipe);
-    dom.modal?.addEventListener('atlas:modal-close', resetEditor);
-    dom.detailSheet?.addEventListener('click', (event) => {
-      if (event.target.closest('[data-detail-close]')) closeDetail();
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && dom.detailSheet && !dom.detailSheet.hidden && dom.serviceOverlay?.hidden !== false) closeDetail();
-    });
-    dom.serviceOverlay?.addEventListener('click', (event) => {
-      if (event.target === dom.serviceOverlay || event.target.closest('[data-service-close]')) closeServiceView();
-      const next = event.target.closest('[data-service-next]');
-      const previous = event.target.closest('[data-service-previous]');
-      if (next) stepServiceRecipe(1);
-      if (previous) stepServiceRecipe(-1);
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !dom.serviceOverlay?.hidden) closeServiceView();
-      if (!dom.serviceOverlay?.hidden && event.key === 'ArrowRight') stepServiceRecipe(1);
-      if (!dom.serviceOverlay?.hidden && event.key === 'ArrowLeft') stepServiceRecipe(-1);
-    });
-  }
-
-  function renderSummary() {
-    const activeRecipes = recipes.filter((recipe) => recipe.active !== false);
-    const availabilityEntries = activeRecipes.map((recipe) => ({ recipe, availability: recipeAvailability(recipe) }));
-    document.getElementById('recipe-stat-total').textContent = recipes.length;
-    document.getElementById('recipe-stat-active').textContent = activeRecipes.length;
-    document.getElementById('recipe-stat-ready').textContent = availabilityEntries.filter((entry) => entry.availability.status === 'ready').length;
-    document.getElementById('recipe-stat-attention').textContent = availabilityEntries.filter((entry) => entry.availability.status !== 'ready').length;
-    const totalIngredients = recipes.reduce((total, recipe) => total + (recipe.recipe_ingredients?.length || 0), 0);
-    const linkedIngredients = recipes.reduce((total, recipe) => total + (recipe.recipe_ingredients || []).filter((ingredient) => ingredient.item_id).length, 0);
-    document.getElementById('recipe-inventory-count').textContent = items.length;
-    document.getElementById('recipe-linked-count').textContent = linkedIngredients;
-    document.getElementById('recipe-unlinked-count').textContent = Math.max(0, totalIngredients - linkedIngredients);
-    renderIntelligence(availabilityEntries);
-  }
-
-  function urgencyRank(status) {
-    return ({ unavailable: 0, attention: 1, incomplete: 2, ready: 3 })[status] ?? 4;
-  }
-
-  function renderIntelligence(entries) {
-    const title = document.getElementById('recipe-intelligence-title');
-    const detail = document.getElementById('recipe-intelligence-detail');
-    const action = document.getElementById('recipe-intelligence-action');
-    if (!title || !detail || !action) return;
-    const issues = entries.filter((entry) => entry.availability.status !== 'ready').sort((a, b) => urgencyRank(a.availability.status) - urgencyRank(b.availability.status) || number(a.availability.servings, 999999) - number(b.availability.servings, 999999));
-    if (!issues.length) {
-      const featured = featuredRecipe();
-      title.textContent = entries.length ? 'Every active recipe is ready for service.' : 'Create your first connected recipe.';
-      detail.textContent = featured ? `${featured.recipe.name} is the strongest current promotion candidate based on availability and margin.` : 'Once ingredients are linked, Atlas will calculate cost and service availability.';
-      action.hidden = !featured;
-      action.textContent = featured ? 'Review recommendation' : '';
-      action.onclick = featured ? () => selectRecipe(featured.recipe.id, { focus: true }) : null;
-      return;
-    }
-    const issue = issues[0];
-    const limitingName = issue.availability.limiting?.item?.name || issue.availability.limiting?.ingredient?.item_name || 'an ingredient';
-    if (issue.availability.status === 'unavailable') {
-      title.textContent = `${issue.recipe.name} cannot currently be served.`;
-      detail.textContent = `${limitingName} is insufficient for one serving.`;
-    } else if (issue.availability.status === 'attention') {
-      title.textContent = `${issue.recipe.name}: approximately ${issue.availability.servings} servings available.`;
-      detail.textContent = `${limitingName} is the limiting ingredient${issue.availability.belowPar ? ' and is below par' : ''}.`;
-    } else {
-      title.textContent = `${issue.recipe.name} needs an inventory check.`;
-      detail.textContent = issue.availability.missing ? 'One or more ingredients are no longer linked to inventory.' : 'A fresh verified stock count and matching package units are required to calculate service availability.';
-    }
-    action.hidden = false;
-    action.textContent = 'Review recipe';
-    action.onclick = () => selectRecipe(issue.recipe.id, { focus: true });
-  }
-
-  function categoryCounts() {
-    const counts = new Map();
-    recipes.forEach((recipe) => {
-      const category = categoryFor(recipe);
-      counts.set(category.slug, (counts.get(category.slug) || 0) + 1);
-    });
-    return counts;
-  }
-
-  function renderCategoryChips() {
-    if (!dom.categoryRow) return;
-    const counts = categoryCounts();
-    dom.categoryRow.innerHTML = [
-      `<button type="button" class="recipe-category-chip ${state.category === 'all' ? 'active' : ''}" data-category="all"><span>All recipes</span><span class="count">${recipes.length}</span></button>`,
-      ...state.categories.map((category) => `<button type="button" class="recipe-category-chip ${state.category === category.slug ? 'active' : ''}" data-category="${escape(category.slug)}"><span>${escape(category.name)}</span><span class="count">${counts.get(category.slug) || 0}</span></button>`)
-    ].join('');
-    dom.categoryRow.querySelectorAll('[data-category]').forEach((button) => button.addEventListener('click', () => {
-      state.category = button.dataset.category;
-      renderWorkspaceContent();
-    }));
-  }
+  // ---------- canonical readiness (parity-tested with supabase/functions/_shared/atlas-domain.mjs) ----------
 
   function recipeStatus(recipe) {
     const availability = recipeAvailability(recipe);
@@ -523,92 +291,6 @@
     if (availability.status === 'attention') return { key: 'attention', label: 'Low availability', className: 'warn', availability };
     if (availability.status === 'incomplete') return { key: 'incomplete', label: 'Incomplete', className: 'warn', availability };
     return { key: 'ready', label: 'Ready', className: 'ready', availability };
-  }
-
-  function filteredRecipes() {
-    return recipes.filter((recipe) => {
-      const category = categoryFor(recipe);
-      const status = recipeStatus(recipe);
-      const categoryMatch = state.category === 'all' || category.slug === state.category;
-      const statusMatch = state.statusFilter === 'all' || (state.statusFilter === 'attention' ? ['attention', 'unavailable', 'incomplete'].includes(status.key) : status.key === state.statusFilter);
-      const searchText = [recipe.name, category.name, recipe.glassware, recipe.garnish, recipe.method, recipe.notes].filter(Boolean).join(' ').toLowerCase();
-      return categoryMatch && statusMatch && (!state.search || searchText.includes(state.search));
-    });
-  }
-
-  function selectRecipe(recipeId, options = {}) {
-    state.selectedRecipeId = recipeId || null;
-    if (recipeId) localStorage.setItem('atlas.selectedRecipeId', recipeId);
-    else localStorage.removeItem('atlas.selectedRecipeId');
-    renderWorkspaceContent();
-    if (options.focus) openDetail();
-  }
-
-  function openDetail() {
-    if (!dom.detailSheet || !state.selectedRecipeId) return;
-    dom.detailReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    dom.detailSheet.hidden = false;
-    document.body.classList.add('recipe-detail-open');
-    dom.profile?.focus({ preventScroll: true });
-  }
-
-  function closeDetail() {
-    if (!dom.detailSheet) return;
-    dom.detailSheet.hidden = true;
-    document.body.classList.remove('recipe-detail-open');
-    const returnFocus = dom.detailReturnFocus;
-    dom.detailReturnFocus = null;
-    if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
-  }
-
-  function renderCards() {
-    if (!dom.grid || !dom.empty) return;
-    const visible = filteredRecipes();
-    const count = document.getElementById('recipe-library-count');
-    if (count) count.textContent = `${visible.length} ${visible.length === 1 ? 'recipe' : 'recipes'}`;
-    if (!visible.length) {
-      dom.grid.innerHTML = '';
-      dom.empty.hidden = false;
-      state.selectedRecipeId = null;
-      closeDetail();
-      return;
-    }
-    dom.empty.hidden = true;
-    if (!visible.some((recipe) => recipe.id === state.selectedRecipeId)) state.selectedRecipeId = visible[0].id;
-    dom.grid.innerHTML = visible.map((recipe) => {
-      const category = categoryFor(recipe);
-      const status = recipeStatus(recipe);
-      const financials = recipeFinancials(recipe);
-      const availability = status.availability;
-      const coverage = Number.isFinite(availability.servings) ? `${availability.servings} servings` : status.label;
-      const specParts = [recipe.glassware, recipe.garnish].filter(Boolean).map((part) => escape(part));
-      const media = recipe.image_url
-        ? `<span class="recipe-gallery-media has-image"><img class="recipe-gallery-photo" src="${escape(recipe.image_url)}" alt="" loading="lazy" decoding="async" /><span class="recipe-gallery-status ${status.className}">${escape(status.label)}</span></span>`
-        : `<span class="recipe-gallery-media"><i data-lucide="martini"></i><span class="recipe-gallery-status ${status.className}">${escape(status.label)}</span></span>`;
-      const financeMarkup = canManageCommercial()
-        ? `<span class="recipe-gallery-stat"><span>Cost / serving</span><strong>${financials.incomplete ? 'Unknown' : formatIsk(financials.perServing)}</strong></span>
-           <span class="recipe-gallery-stat"><span>Margin</span><strong>${Number.isFinite(financials.margin) && !financials.incomplete ? `${financials.margin.toFixed(0)}%` : '—'}</strong></span>`
-        : '';
-      const attention = availability.missing
-        ? `<span class="recipe-gallery-flag">${availability.missing} ingredient${availability.missing === 1 ? '' : 's'} not linked to inventory</span>`
-        : availability.belowPar
-          ? '<span class="recipe-gallery-flag">An ingredient is below par</span>'
-          : '';
-      return `<button type="button" class="recipe-gallery-card ${recipe.id === state.selectedRecipeId ? 'selected' : ''}" data-recipe-id="${escape(recipe.id)}" aria-label="Open ${escape(recipe.name)}">
-        ${media}
-        <span class="recipe-gallery-body">
-          <span class="recipe-gallery-category">${escape(category.name)}</span>
-          <strong class="recipe-gallery-name">${escape(recipe.name)}</strong>
-          <span class="recipe-gallery-spec">${specParts.length ? specParts.join(' · ') : 'Specification incomplete'}</span>
-          <span class="recipe-gallery-stats">
-            <span class="recipe-gallery-stat"><span>Coverage</span><strong>${escape(coverage)}</strong></span>
-            ${financeMarkup}
-          </span>
-          ${attention}
-        </span>
-      </button>`;
-    }).join('');
-    dom.grid.querySelectorAll('[data-recipe-id]').forEach((button) => button.addEventListener('click', () => selectRecipe(button.dataset.recipeId, { focus: true })));
   }
 
   function ingredientIntelligence(recipe) {
@@ -639,207 +321,593 @@
       });
   }
 
-  function healthRecommendation(recipe, status) {
-    const limiting = status.availability.limiting?.item?.name || status.availability.limiting?.ingredient?.item_name;
-    if (status.key === 'draft') return { title: 'Recipe is not active', detail: 'Activate it when the service specification is complete.', action: 'Edit recipe' };
-    if (status.key === 'unavailable') return { title: 'Restock required', detail: `${limiting || 'The limiting ingredient'} prevents this recipe from being served.`, action: 'Review inventory' };
-    if (status.key === 'attention') return { title: 'Low service coverage', detail: `${limiting || 'The limiting ingredient'} will run out first. Plan a restock before the next busy service.`, action: 'Review inventory' };
+  // ---------- presentation of the canonical status (spec §7.7) ----------
+
+  function limitingName(availability) {
+    return availability?.limiting?.item?.name || availability?.limiting?.ingredient?.item_name || null;
+  }
+
+  // Pill word + tone and the one-line reason shown under unavailable tiles.
+  function availabilityView(recipe) {
+    const status = recipeStatus(recipe);
+    const availability = status.availability;
+    const limiting = limitingName(availability);
+    if (status.key === 'draft') return { status, pill: 'Draft', tone: 'neutral', line: 'Archived — off service and off the menu' };
+    if (status.key === 'unavailable') return { status, pill: 'Unavailable', tone: 'danger', line: limiting ? `${limiting} is out` : 'An ingredient is out' };
+    if (status.key === 'attention') {
+      const servings = Number.isFinite(availability.servings) ? availability.servings : null;
+      return {
+        status,
+        pill: servings !== null ? `Low · ${servings} left` : 'Low',
+        tone: 'warning',
+        line: limiting && servings !== null ? `${limiting} runs out after about ${servings} ${servings === 1 ? 'serve' : 'serves'}` : availability.belowPar ? 'An ingredient is below par' : ''
+      };
+    }
     if (status.key === 'incomplete') {
       const blocker = recipeBlockers(recipe)[0];
-      return { title: 'Setup is incomplete', detail: blocker ? `${blocker.name}: ${blocker.reason}.` : 'Check inventory links, package units and fresh verified stock counts.', action: 'Edit recipe' };
+      const notCounted = blocker && /verified stock count/.test(blocker.reason);
+      return { status, pill: notCounted ? 'Not counted' : 'Setup incomplete', tone: 'neutral', line: blocker ? `${blocker.name}: ${blocker.reason}` : 'Add ingredients to check availability' };
     }
-    return { title: 'Ready for service', detail: 'All linked ingredients currently support service.', action: 'Open Service Mode' };
+    return { status, pill: 'Available', tone: 'positive', line: '' };
   }
 
-  function renderProfile() {
-    if (!dom.profile || !dom.insight) return;
-    const recipe = recipes.find((candidate) => candidate.id === state.selectedRecipeId);
-    if (!recipe) {
-      dom.profile.innerHTML = '<div class="recipe-profile-empty"><i data-lucide="martini"></i><h2>Select a recipe</h2><p>Choose a recipe from the library to review its specification, stock coverage and cost.</p><button type="button" class="recipe-primary-action" data-empty-create><i data-lucide="plus"></i><span>Create recipe</span></button></div>';
-      dom.insight.innerHTML = '<div class="recipe-insight-empty"><i data-lucide="activity"></i><strong>Recipe intelligence</strong><span>Live analysis appears when a recipe is selected.</span></div>';
-      dom.profile.querySelector('[data-empty-create]')?.addEventListener('click', () => openEditor(null));
-      return;
+  function servingsText(recipe) {
+    const view = availabilityView(recipe);
+    const servings = view.status.availability.servings;
+    if (view.status.key === 'draft') return 'Not on service';
+    if (Number.isFinite(servings)) return servings === 0 ? 'None — an ingredient is out' : `About ${servings} ${servings === 1 ? 'serve' : 'serves'} from counted stock`;
+    return 'Unknown until every ingredient is counted and linked';
+  }
+
+  function stockPill(item) {
+    if (!item) return '<span class="atlas-pill">Not linked</span>';
+    if (!window.AtlasStockTruth?.known(item)) return '<span class="atlas-pill">Not counted</span>';
+    const quantity = Number(item.verified_quantity);
+    if (quantity <= 0) return '<span class="atlas-pill atlas-pill--danger">Out</span>';
+    if (window.AtlasStockTruth.belowPar(item)) return '<span class="atlas-pill atlas-pill--warning">Below par</span>';
+    return '<span class="atlas-pill atlas-pill--positive">In stock</span>';
+  }
+
+  function quantityText(ingredient) {
+    const quantity = number(ingredient.quantity, NaN);
+    const shown = Number.isFinite(quantity) ? String(Math.round(quantity * 100) / 100) : '—';
+    return `${shown} ${ingredient.unit || ''}`.trim();
+  }
+
+  function formatPercent(value) {
+    return Number.isFinite(value) ? `${Math.round(value)} %` : '—';
+  }
+
+  // ---------- library ----------
+
+  const SEGMENTS = [['all', 'All'], ['available', 'Available'], ['unavailable', 'Unavailable'], ['draft', 'Drafts']];
+
+  function matchesSegment(key) {
+    switch (state.statusFilter) {
+      case 'available': return key === 'ready' || key === 'attention';
+      case 'unavailable': return key === 'unavailable';
+      case 'draft': return key === 'draft';
+      case 'attention': return ['attention', 'unavailable', 'incomplete'].includes(key);
+      default: return key !== 'draft';
     }
-    const category = categoryFor(recipe);
-    const status = recipeStatus(recipe);
-    const financials = recipeFinancials(recipe);
-    const ingredientRows = ingredientIntelligence(recipe);
-    const image = recipe.image_url ? `<div class="recipe-profile-image" style="background-image:url('${escape(recipe.image_url)}')"></div>` : '<div class="recipe-profile-image recipe-profile-placeholder"><i data-lucide="martini"></i></div>';
-    const ingredientMarkup = ingredientRows.length ? ingredientRows.map(({ ingredient, availability, cost, servings }) => {
-      const item = availability.item;
-      const stock = item ? stockLabel(item) : 'Missing link';
-      const rowClass = !item ? 'missing' : availability.belowPar ? 'low' : servings === 0 ? 'out' : '';
-      const costMarkup = canManageCommercial()
-        ? `<div><span>Cost</span><strong>${cost.value == null ? 'Unknown' : formatIsk(cost.value)}</strong></div>`
-        : '';
-      return `<div class="recipe-profile-ingredient ${rowClass}">
-        <div><strong>${escape(ingredient.item_name)}</strong><span>${number(ingredient.quantity)} ${escape(ingredient.unit)} per recipe</span></div>
-        <div><span>Stock</span><strong>${stock}</strong></div>
-        <div><span>Coverage</span><strong>${Number.isFinite(servings) ? `${servings} servings` : escape(availability.reason || 'Unknown')}</strong></div>
-        ${costMarkup}
-      </div>`;
-    }).join('') : '<div class="recipe-section-empty">No ingredients have been added.</div>';
+  }
 
-    dom.profile.innerHTML = `${image}<div class="recipe-profile-header">
-      <div><span class="recipe-profile-category">${escape(category.name)}</span><h2>${escape(recipe.name)}</h2><div class="recipe-profile-meta">${escape(recipe.glassware || 'Glassware not set')}<span></span>${escape(recipe.garnish || 'Garnish not set')}</div></div>
-      <span class="recipe-profile-status ${status.className}">${escape(status.label)}</span>
-    </div>
-    <div class="recipe-profile-actions"><button type="button" class="recipe-secondary-action" data-edit-recipe><i data-lucide="pencil-line"></i>Edit recipe</button>${recipe.active === false
-      ? '<button type="button" class="recipe-secondary-action" data-restore-recipe><i data-lucide="archive-restore"></i>Restore</button><button type="button" class="recipe-secondary-action is-danger" data-delete-recipe><i data-lucide="trash-2"></i>Delete permanently</button>'
-      : '<button type="button" class="recipe-secondary-action" data-archive-recipe><i data-lucide="archive"></i>Archive</button>'}<button type="button" class="recipe-primary-action" data-service-recipe><i data-lucide="monitor-up"></i>Service view</button></div>
-    <section class="recipe-profile-section"><div class="recipe-profile-section-head"><div><span>Ingredients</span><h3>Live inventory coverage</h3></div><strong>${ingredientRows.length}</strong></div><div class="recipe-profile-ingredients">${ingredientMarkup}</div></section>
-    <section class="recipe-profile-section recipe-spec-grid"><div><span>Method</span><p>${escape(recipe.method || 'Preparation method has not been added.')}</p></div><div><span>Service notes</span><p>${escape(recipe.notes || 'No additional service notes.')}</p></div></section>`;
-    dom.profile.querySelector('[data-edit-recipe]')?.addEventListener('click', () => openEditor(recipe));
-    dom.profile.querySelector('[data-delete-recipe]')?.addEventListener('click', () => deleteRecipe(recipe));
-    dom.profile.querySelector('[data-archive-recipe]')?.addEventListener('click', () => setRecipeActive(recipe, false));
-    dom.profile.querySelector('[data-restore-recipe]')?.addEventListener('click', () => setRecipeActive(recipe, true));
-    dom.profile.querySelector('[data-service-recipe]')?.addEventListener('click', () => openServiceView(recipe));
+  function searchText(recipe) {
+    const ingredients = (recipe.recipe_ingredients || []).map((ingredient) => ingredient.item_name).join(' ');
+    return [recipe.name, categoryFor(recipe).name, recipe.glassware, recipe.garnish, ingredients].filter(Boolean).join(' ').toLowerCase();
+  }
 
-    const recommendation = healthRecommendation(recipe, status);
-    const limitingName = status.availability.limiting?.item?.name || status.availability.limiting?.ingredient?.item_name || '—';
-    dom.insight.innerHTML = `<div class="recipe-insight-head"><span>Live analysis</span><h2>Recipe health</h2></div>
-      <div class="recipe-health-card ${status.className}"><span class="recipe-health-label">Status</span><strong>${escape(status.label)}</strong><p>${escape(recommendation.detail)}</p></div>
-      <div class="recipe-insight-metrics">
-        ${canManageCommercial() ? `<div><span>Menu price</span><strong>${Number.isFinite(number(recipe.menu_price, NaN)) ? formatIsk(number(recipe.menu_price)) : 'Not set'}</strong></div>
-        <div><span>Cost per serving</span><strong>${financials.incomplete ? 'Unknown' : formatIsk(financials.perServing)}</strong></div>
-        <div><span>Cost percentage</span><strong>${Number.isFinite(financials.costPercent) && !financials.incomplete ? `${financials.costPercent.toFixed(1)}%` : '—'}</strong></div>
-        <div><span>Gross margin</span><strong>${Number.isFinite(financials.margin) && !financials.incomplete ? `${financials.margin.toFixed(1)}%` : '—'}</strong></div>
-        <div><span>Profit per serving</span><strong>${Number.isFinite(financials.profit) && !financials.incomplete ? formatIsk(financials.profit) : '—'}</strong></div>` : ''}
-        <div><span>Current coverage</span><strong>${Number.isFinite(status.availability.servings) ? `${status.availability.servings} servings` : 'Unknown'}</strong></div>
-      </div>
-      ${status.key === 'incomplete'
-        ? (() => { const blockers = recipeBlockers(recipe); return `<div class="recipe-limiting-card"><span>${blockers.length > 1 ? 'Blocking ingredients' : 'Blocking ingredient'}</span><strong>${escape(blockers[0]?.name || '—')}</strong><p>${escape(blockers.map((entry) => `${entry.name}: ${entry.reason}`).join(' · ') || 'Availability cannot be calculated yet.')}</p></div>`; })()
-        : `<div class="recipe-limiting-card"><span>Limiting ingredient</span><strong>${escape(limitingName)}</strong><p>${status.availability.belowPar ? 'Below its par level.' : 'This ingredient will run out first.'}</p></div>`}
-      <button type="button" class="recipe-insight-primary" data-health-action>${escape(recommendation.action)}</button>`;
-    dom.insight.querySelector('[data-health-action]')?.addEventListener('click', () => {
-      if (status.key === 'ready') openServiceView(recipe);
-      else if (['draft', 'incomplete'].includes(status.key)) openEditor(recipe);
-      else setActiveView('inventory');
+  function filteredRecipes() {
+    const query = state.search.trim().toLowerCase();
+    return recipes
+      .filter((recipe) => {
+        if (state.category !== 'all' && categoryFor(recipe).slug !== state.category) return false;
+        if (!matchesSegment(recipeStatus(recipe).key)) return false;
+        return !query || searchText(recipe).includes(query);
+      })
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  }
+
+  function headSub() {
+    const active = recipes.filter((recipe) => recipe.active !== false);
+    const unavailable = active.filter((recipe) => recipeStatus(recipe).key === 'unavailable').length;
+    const parts = [`${active.length} ${active.length === 1 ? 'recipe' : 'recipes'}`];
+    if (unavailable) parts.push(`${unavailable} unavailable tonight`);
+    else if (active.length && dataLoaded()) parts.push('none out of stock');
+    return parts.join(' · ');
+  }
+
+  function dataLoaded() {
+    return Boolean(window.AtlasShell?.dataLoadedAt?.());
+  }
+
+  function categoryChipMarkup() {
+    const counts = new Map();
+    recipes.filter((recipe) => matchesSegment(recipeStatus(recipe).key)).forEach((recipe) => {
+      const category = categoryFor(recipe);
+      counts.set(category.slug, (counts.get(category.slug) || 0) + 1);
     });
+    const selected = state.category === 'all' ? null : state.categories.find((category) => category.slug === state.category) || categoryFor({ type: state.category });
+    const options = [...counts.entries()]
+      .map(([slug, count]) => ({ slug, count, name: (state.categoryBySlug.get(slug) || categoryFor({ type: slug })).name, order: state.categoryBySlug.get(slug)?.display_order ?? 999 }))
+      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+    const menu = `<ul class="atlas-menu recipe-category-menu" role="menu" id="recipe-category-menu" aria-label="Category" hidden>
+        <li><button type="button" class="atlas-menu__item" role="menuitem" data-recipe-category="all">All categories</button></li>
+        ${options.map((option) => `<li><button type="button" class="atlas-menu__item" role="menuitem" data-recipe-category="${escape(option.slug)}">${escape(option.name)} <span class="atlas-badge atlas-badge--muted">${option.count}</span></button></li>`).join('')}
+      </ul>`;
+    return `<span class="recipe-category-picker"><button type="button" class="atlas-chip${selected ? ' is-active' : ''}" id="recipe-category-trigger" aria-haspopup="menu" aria-expanded="false">${escape(selected ? selected.name : 'Category')}<i data-lucide="chevron-down"></i></button>${selected ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-recipe-category="all" aria-label="Clear category"><i data-lucide="x"></i></button>` : ''}${menu}</span>`;
   }
 
-  function featuredRecipe() {
-    const candidates = recipes.map((recipe) => ({ recipe, status: recipeStatus(recipe), financials: recipeFinancials(recipe) })).filter((entry) => entry.recipe.active !== false && entry.status.key === 'ready' && !entry.financials.incomplete && Number.isFinite(entry.financials.margin));
-    candidates.forEach((entry) => { entry.score = entry.financials.margin + Math.min(30, number(entry.status.availability.servings)) * 0.45; });
-    return candidates.sort((a, b) => b.score - a.score)[0] || null;
+  function toolbarMarkup(count) {
+    const segments = SEGMENTS.filter(([key]) => key !== 'draft' || canManageCommercial());
+    const attention = state.statusFilter === 'attention'
+      ? '<button type="button" class="atlas-chip is-active" data-recipe-status="all">Needs attention<span class="atlas-chip__clear" aria-hidden="true"><i data-lucide="x"></i></span><span class="sr-only">Clear</span></button>'
+      : '';
+    return `<div class="atlas-toolbar recipe-toolbar">
+        <label class="atlas-search"><i data-lucide="search"></i><input class="atlas-input" type="search" id="recipe-search" placeholder="Search recipes or ingredients" aria-label="Search recipes or ingredients" value="${escape(state.search)}"></label>
+        <div class="atlas-segmented" role="group" aria-label="Availability">${segments.map(([key, label]) => `<button type="button" aria-pressed="${state.statusFilter === key}" data-recipe-status="${key}">${label}</button>`).join('')}</div>
+        ${attention}
+        ${categoryChipMarkup()}
+        <div class="atlas-toolbar__end"><span>${count} ${count === 1 ? 'recipe' : 'recipes'}</span>
+          <div class="atlas-segmented recipe-view-toggle" role="group" aria-label="Layout"><button type="button" aria-pressed="${state.viewMode === 'grid'}" data-recipe-view="grid" aria-label="Grid"><i data-lucide="layout-grid"></i></button><button type="button" aria-pressed="${state.viewMode === 'list'}" data-recipe-view="list" aria-label="List"><i data-lucide="list"></i></button></div>
+        </div>
+      </div>`;
   }
 
-  function renderFeatured() {
-    if (!dom.featured) return;
-    const featured = featuredRecipe();
-    if (!featured) {
-      dom.featured.innerHTML = '<h3>Featured recommendation</h3><p>Atlas needs one complete, active and service-ready recipe before it can recommend a feature.</p>';
-      return;
-    }
-    dom.featured.innerHTML = `<div class="recipe-featured-head"><div class="summary-icon"><i data-lucide="sparkles"></i></div><span>Featured recommendation</span></div><h3>${escape(featured.recipe.name)}</h3><p>Strong current margin and sufficient service coverage make this the best recipe to promote today.</p><div class="recipe-featured-stats"><span>${featured.financials.margin.toFixed(0)}% margin</span><span>${featured.status.availability.servings} servings available</span></div><button type="button" class="recipe-secondary-action" data-featured-review>Review recipe</button>`;
-    dom.featured.querySelector('[data-featured-review]')?.addEventListener('click', () => selectRecipe(featured.recipe.id, { focus: true }));
-  }
-
-  function renderMenuShare() {
-    const menuUrl = `${window.location.origin}/menu.html`;
-    const linkInput = document.getElementById('menu-link');
-    const embedInput = document.getElementById('menu-embed');
-    const qrImage = document.getElementById('menu-qr');
-    if (linkInput) linkInput.value = menuUrl;
-    if (embedInput) embedInput.value = `<iframe src="${menuUrl}" width="100%" height="600" style="border:none"></iframe>`;
-    if (qrImage) qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(menuUrl)}`;
-  }
-
-  function renderWorkspaceContent() {
-    renderCategoryChips();
-    renderCards();
-    renderProfile();
-    renderFeatured();
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  async function render() {
-    if (!state.initialized) init();
-    await loadCategories();
-    renderSummary();
-    renderWorkspaceContent();
-    renderMenuShare();
-    populateCategorySelect();
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  function serviceRecipes() {
-    return recipes.filter((recipe) => recipe.active !== false).sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  function openServiceLibrary() {
-    const serviceList = serviceRecipes();
-    if (!serviceList.length) {
-      setActiveView('recipes');
-      return;
-    }
-    const selected = serviceList.find((recipe) => recipe.id === state.selectedRecipeId) || serviceList[0];
-    openServiceView(selected);
-  }
-
-  function openServiceView(recipe) {
-    if (!recipe || !dom.serviceOverlay || !dom.serviceShell) return;
-    state.selectedRecipeId = recipe.id;
-    localStorage.setItem('atlas.selectedRecipeId', recipe.id);
+  function tileMarkup(recipe) {
+    const view = availabilityView(recipe);
     const category = categoryFor(recipe);
-    const status = recipeStatus(recipe);
-    const ingredientMarkup = (recipe.recipe_ingredients || []).map((ingredient) => `<li><strong>${number(ingredient.quantity)} ${escape(ingredient.unit)}</strong><span>${escape(ingredient.item_name)}</span></li>`).join('') || '<li><span>No ingredients added.</span></li>';
-    dom.serviceShell.innerHTML = `<header class="recipe-service-head"><div><span>${escape(category.name)}</span><h1>${escape(recipe.name)}</h1></div><button type="button" data-service-close aria-label="Close service view"><i data-lucide="x"></i></button></header>
-      <div class="recipe-service-status"><span class="recipe-profile-status ${status.className}">${escape(status.label)}</span><span>${Number.isFinite(status.availability.servings) ? `${status.availability.servings} servings currently available` : 'Availability needs setup'}</span></div>
-      <div class="recipe-service-layout"><section><h2>Ingredients</h2><ul class="recipe-service-ingredients">${ingredientMarkup}</ul></section><section class="recipe-service-spec"><div><span>Method</span><p>${escape(recipe.method || 'Method not added.')}</p></div><div><span>Glassware</span><p>${escape(recipe.glassware || 'Not set')}</p></div><div><span>Garnish</span><p>${escape(recipe.garnish || 'Not set')}</p></div><div><span>Service notes</span><p>${escape(recipe.notes || 'No service notes.')}</p></div></section></div>
-      <footer class="recipe-service-footer"><button type="button" data-service-previous><i data-lucide="arrow-left"></i>Previous</button><span>Use the arrow keys to move between recipes</span><button type="button" data-service-next>Next<i data-lucide="arrow-right"></i></button></footer>`;
-    dom.serviceOverlay.hidden = false;
-    document.body.classList.add('recipe-service-open');
+    const media = recipe.image_url
+      ? `<img class="recipe-tile__img" src="${escape(recipe.image_url)}" alt="" loading="lazy" decoding="async">`
+      : '<span class="recipe-tile__placeholder" aria-hidden="true"><i data-lucide="martini"></i></span>';
+    return `<a class="recipe-tile" href="#recipes/${escape(encodeURIComponent(recipe.id))}" data-recipe-id="${escape(recipe.id)}">
+        <span class="recipe-tile__media">${media}</span>
+        <span class="recipe-tile__body">
+          <span class="recipe-tile__name">${escape(recipe.name)}</span>
+          <span class="recipe-tile__meta">${escape([category.name, recipe.glassware].filter(Boolean).join(' · '))}</span>
+          <span class="recipe-tile__status"><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span></span>
+          ${view.line && view.status.key !== 'ready' ? `<span class="recipe-tile__line">${escape(view.line)}</span>` : ''}
+        </span>
+      </a>`;
+  }
+
+  function listMarkup(list) {
+    const manager = canManageCommercial();
+    return `<div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table">
+        <thead><tr><th>Recipe</th><th data-priority="2">Category</th><th data-priority="3">Glass</th><th>Availability</th>${manager ? '<th class="is-num">Cost</th><th class="is-num" data-priority="2">Price</th><th class="is-num">Margin</th>' : ''}</tr></thead>
+        <tbody>${list.map((recipe) => {
+          const view = availabilityView(recipe);
+          const financials = recipeFinancials(recipe);
+          const costKnown = !financials.incomplete && Number.isFinite(financials.perServing);
+          const price = number(recipe.menu_price, NaN);
+          return `<tr><td><a class="cell-primary" href="#recipes/${escape(encodeURIComponent(recipe.id))}">${escape(recipe.name)}</a>${view.line && view.status.key !== 'ready' ? `<span class="cell-sub">${escape(view.line)}</span>` : ''}</td>
+            <td data-priority="2">${escape(categoryFor(recipe).name)}</td><td data-priority="3">${escape(recipe.glassware || '—')}</td>
+            <td><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span></td>
+            ${manager ? `<td class="is-num">${costKnown ? formatIsk(financials.perServing) : '<span title="An ingredient has no cost or package size">—</span>'}</td><td class="is-num" data-priority="2">${Number.isFinite(price) ? formatIsk(price) : '<span title="No menu price">—</span>'}</td><td class="is-num">${costKnown && Number.isFinite(financials.margin) ? formatPercent(financials.margin) : '<span title="Needs every ingredient cost and a menu price">—</span>'}</td>` : ''}</tr>`;
+        }).join('')}</tbody></table></div>
+      <ul class="atlas-table-list">${list.map((recipe) => {
+        const view = availabilityView(recipe);
+        return `<li><a class="atlas-table-list__row" href="#recipes/${escape(encodeURIComponent(recipe.id))}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${escape(recipe.name)}</div><div class="atlas-table-list__meta">${escape(view.line || categoryFor(recipe).name)}</div></div><div class="atlas-table-list__value"><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span></div></a></li>`;
+      }).join('')}</ul>`;
+  }
+
+  function libraryMarkup() {
+    const manager = canManageCommercial();
+    const actions = manager ? [{ label: 'Public menu', icon: 'qr-code', variant: 'secondary', attrs: { 'data-recipe-menu-link': '' } }, { label: 'New recipe', icon: 'plus', variant: 'primary', attrs: { 'data-recipe-new': '' } }] : [];
+    const head = window.AtlasShell.pageHead({ title: 'Recipes', sub: headSub(), actions });
+    if (!dataLoaded() && !recipes.length) {
+      return `${head}${toolbarMarkup(0)}<div class="recipe-grid" aria-busy="true" aria-label="Loading recipes">${Array.from({ length: 8 }, () => '<span class="recipe-tile recipe-tile--skeleton"><span class="atlas-skel atlas-skel--block recipe-tile__media"></span><span class="recipe-tile__body"><span class="atlas-skel atlas-skel--title"></span><span class="atlas-skel atlas-skel--text"></span></span></span>').join('')}</div>`;
+    }
+    if (!recipes.length) {
+      return `${head}<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon"><i data-lucide="martini"></i></div><h3 class="atlas-empty__title">No recipes yet</h3><p class="atlas-empty__text">${manager ? 'Add your first recipe and link its ingredients to stock to see what you can serve.' : 'A manager adds recipes. They appear here with what you can serve tonight.'}</p>${manager ? '<div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-recipe-new><i data-lucide="plus"></i>New recipe</button></div>' : ''}</div>`;
+    }
+    const list = filteredRecipes();
+    let content;
+    if (!list.length) {
+      const what = state.search ? `“${state.search}”` : 'these filters';
+      content = `<div class="atlas-empty"><div class="atlas-empty__icon"><i data-lucide="search-x"></i></div><h3 class="atlas-empty__title">No recipes match ${escape(what)}</h3><p class="atlas-empty__text">Search looks at recipe names, categories, glassware and ingredients.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-recipe-clear>Clear filters</button></div></div>`;
+    } else if (state.viewMode === 'list') content = listMarkup(list);
+    else content = `<div class="recipe-grid">${list.map(tileMarkup).join('')}</div>`;
+    const stale = dataLoaded() && !navigator.onLine
+      ? '<div class="atlas-alert atlas-alert--warning"><i data-lucide="wifi-off"></i><div class="atlas-alert__content"><p class="atlas-alert__body">You\'re offline. Showing recipes and stock from the last time Atlas loaded.</p></div></div>'
+      : '';
+    return `${head}${stale}${toolbarMarkup(list.length)}${content}`;
+  }
+
+  // ---------- detail (#recipes/<id>) ----------
+
+  function methodMarkup(text) {
+    const value = String(text || '').trim();
+    if (!value) return '<p class="recipe-muted">No method yet.</p>';
+    const steps = value.split(/\n+/).map((line) => line.replace(/^\s*(\d+[.)]|[-•*])\s*/, '').trim()).filter(Boolean);
+    return steps.length > 1
+      ? `<ol class="recipe-method">${steps.map((step) => `<li>${escape(step)}</li>`).join('')}</ol>`
+      : `<p class="recipe-method recipe-method--single">${escape(steps[0] || value)}</p>`;
+  }
+
+  function detailBody(recipe) {
+    const manager = canManageCommercial();
+    const view = availabilityView(recipe);
+    const rows = ingredientIntelligence(recipe);
+    const financials = recipeFinancials(recipe);
+    const costKnown = !financials.incomplete && Number.isFinite(financials.perServing);
+    const price = number(recipe.menu_price, NaN);
+    const blockers = view.status.key === 'incomplete' ? recipeBlockers(recipe) : [];
+    const alert = view.status.key === 'unavailable' || view.status.key === 'attention'
+      ? `<div class="atlas-alert atlas-alert--${view.status.key === 'unavailable' ? 'danger' : 'warning'}"><i data-lucide="${view.status.key === 'unavailable' ? 'circle-alert' : 'triangle-alert'}"></i><div class="atlas-alert__content"><p class="atlas-alert__body">${escape(view.line || view.pill)}</p></div></div>`
+      : blockers.length
+        ? `<div class="atlas-alert atlas-alert--info"><i data-lucide="info"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Why availability is unknown</p><p class="atlas-alert__body">${blockers.map((entry) => `${escape(entry.name)}: ${escape(entry.reason)}`).join('<br>')}</p></div></div>`
+        : '';
+    const build = rows.length
+      ? `<ul class="recipe-build">${rows.map(({ ingredient, availability, cost }) => {
+          const item = availability.item;
+          const name = item?.name || ingredient.item_name || 'Ingredient';
+          const link = item?.id ? `<a href="#inventory/item/${escape(encodeURIComponent(item.id))}">${escape(name)}</a>` : escape(name);
+          return `<li class="recipe-build__row"><span class="recipe-build__qty num">${escape(quantityText(ingredient))}</span><span class="recipe-build__name">${link}</span><span class="recipe-build__end">${availability.reference ? '<span class="atlas-pill">Not stock-tracked</span>' : stockPill(item)}${manager ? `<span class="recipe-build__cost num">${cost.value == null ? '<span title="No cost or package size">—</span>' : formatIsk(cost.value)}</span>` : ''}</span></li>`;
+        }).join('')}</ul>`
+      : '<p class="recipe-muted">No ingredients yet.</p>';
+    const facts = [['Glass', recipe.glassware], ['Garnish', recipe.garnish], ['Makes', `${number(recipe.yield_quantity, 1)} ${recipe.yield_unit || 'serving'}`]];
+    const money = manager ? `<section class="recipe-section" aria-labelledby="recipe-money-title">
+        <h3 class="recipe-section__title" id="recipe-money-title">Cost and price</h3>
+        <div class="atlas-stats recipe-stats">
+          <div class="atlas-stat"><p class="atlas-stat__label">Cost per serve</p><p class="atlas-stat__value">${costKnown ? formatIsk(financials.perServing) : '—'}</p><p class="atlas-stat__detail">${costKnown ? 'From linked item costs' : `${financials.incomplete} ${financials.incomplete === 1 ? 'ingredient has' : 'ingredients have'} no cost or pack size`}</p></div>
+          <div class="atlas-stat"><p class="atlas-stat__label">Menu price</p><p class="atlas-stat__value">${Number.isFinite(price) ? formatIsk(price) : '—'}</p><p class="atlas-stat__detail">${Number.isFinite(price) ? 'Set on this recipe' : 'Not set'}</p></div>
+          <div class="atlas-stat"><p class="atlas-stat__label">Theoretical margin</p><p class="atlas-stat__value">${costKnown && Number.isFinite(financials.margin) ? formatPercent(financials.margin) : '—'}</p><p class="atlas-stat__detail">${costKnown && Number.isFinite(financials.profit) ? `${formatIsk(financials.profit)} per serve` : 'Needs costs and a price'}</p></div>
+        </div>
+        <p class="recipe-muted">Theoretical margin comes from recipe costs. Realised margin needs sales data, and no sales system is connected.</p>
+      </section>` : '';
+    const archive = manager ? `<section class="recipe-section recipe-manage">
+        ${recipe.active === false
+          ? '<button type="button" class="atlas-btn atlas-btn--secondary" data-restore-recipe><i data-lucide="archive-restore"></i>Restore to service</button><button type="button" class="atlas-btn atlas-btn--danger" data-delete-recipe><i data-lucide="trash-2"></i>Delete permanently</button>'
+          : '<button type="button" class="atlas-btn atlas-btn--ghost" data-archive-recipe><i data-lucide="archive"></i>Archive</button>'}
+      </section>` : '';
+    return `${recipe.image_url ? `<img class="recipe-hero-img" src="${escape(recipe.image_url)}" alt="${escape(recipe.name)}">` : ''}
+      <div class="recipe-detail-status"><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span><span class="recipe-muted">${escape(servingsText(recipe))}</span></div>
+      ${alert}
+      <section class="recipe-section" aria-labelledby="recipe-build-title"><h3 class="recipe-section__title" id="recipe-build-title">Build</h3>${build}</section>
+      <section class="recipe-section" aria-labelledby="recipe-method-title"><h3 class="recipe-section__title" id="recipe-method-title">Method</h3>${methodMarkup(recipe.method)}</section>
+      <dl class="recipe-facts">${facts.map(([label, value]) => `<div><dt>${label}</dt><dd>${escape(value || '—')}</dd></div>`).join('')}</dl>
+      ${recipe.notes ? `<section class="recipe-section"><h3 class="recipe-section__title">Notes</h3><p class="recipe-notes">${escape(recipe.notes)}</p></section>` : ''}
+      ${money}${archive}`;
+  }
+
+  function isPhone() {
+    return window.matchMedia?.('(max-width: 767px)').matches;
+  }
+
+  function detailSheet() {
+    let modal = document.getElementById('recipe-detail-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'recipe-detail-modal';
+      modal.className = 'atlas-modal';
+      modal.hidden = true;
+      modal.setAttribute('data-atlas-modal', '');
+      document.body.appendChild(modal);
+      window.AtlasModal.register(modal, { closeOnBackdrop: true, onClose: (reason) => onDetailClosed(reason) });
+      modal.addEventListener('click', handleDetailClick);
+    }
+    return modal;
+  }
+
+  function detailHeadActions(recipe) {
+    return `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-recipe-ask><i data-lucide="sparkles"></i>Ask Atlas</button>${canManageCommercial() ? `<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#recipes/${escape(encodeURIComponent(recipe.id))}/edit"><i data-lucide="pencil"></i>Edit</a>` : ''}`;
+  }
+
+  function openDetail(recipeId) {
+    const recipe = recipes.find((entry) => String(entry.id) === String(recipeId));
+    state.selectedRecipeId = recipe ? recipe.id : null;
+    if (!recipe) {
+      state.missingRecipe = recipeId;
+      render();
+      return;
+    }
+    state.missingRecipe = null;
+    if (isPhone()) {
+      closeDetailSheet('route');
+      state.phoneDetail = recipe.id;
+      render();
+      window.AtlasChrome?.setTopBar?.({ title: recipe.name, back: '#recipes', actions: [{ icon: 'sparkles', label: 'Ask Atlas', run: () => askAbout(recipe) }] });
+      keepAwake(true);
+      return;
+    }
+    state.phoneDetail = null;
+    const modal = detailSheet();
+    modal.dataset.recipeId = recipe.id;
+    const category = categoryFor(recipe);
+    modal.innerHTML = `<section class="atlas-sheet atlas-sheet--wide recipe-sheet" data-modal-panel aria-labelledby="recipe-detail-title">
+        <span class="atlas-sheet__grabber"></span>
+        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="recipe-detail-title">${escape(recipe.name)}</h2><p class="atlas-sheet__desc">${escape([category.name, recipe.glassware].filter(Boolean).join(' · '))}</p></div><div class="recipe-sheet__actions">${detailHeadActions(recipe)}</div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close><i data-lucide="x"></i></button></header>
+        <div class="atlas-sheet__body recipe-detail" tabindex="-1">${detailBody(recipe)}</div>
+      </section>`;
+    if (!window.AtlasModal.isOpen(modal)) window.AtlasModal.open(modal);
+    keepAwake(true);
     if (window.lucide) window.lucide.createIcons();
   }
 
-  function closeServiceView() {
-    if (!dom.serviceOverlay) return;
-    dom.serviceOverlay.hidden = true;
-    document.body.classList.remove('recipe-service-open');
+  function phoneDetailMarkup(recipe) {
+    return `<article class="recipe-screen" aria-labelledby="recipe-screen-title">
+        <h1 class="recipe-screen__title" id="recipe-screen-title">${escape(recipe.name)}</h1>
+        <p class="recipe-muted">${escape([categoryFor(recipe).name, recipe.glassware].filter(Boolean).join(' · '))}</p>
+        <div class="recipe-screen__actions">${detailHeadActions(recipe)}</div>
+        <div class="recipe-detail">${detailBody(recipe)}</div>
+      </article>`;
   }
 
-  function stepServiceRecipe(direction) {
-    const list = serviceRecipes();
-    if (!list.length) return;
-    const index = Math.max(0, list.findIndex((recipe) => recipe.id === state.selectedRecipeId));
-    openServiceView(list[(index + direction + list.length) % list.length]);
+  function closeDetailSheet(reason = 'route') {
+    const modal = document.getElementById('recipe-detail-modal');
+    if (modal && window.AtlasModal.isOpen(modal)) {
+      modal.dataset.closing = reason;
+      window.AtlasModal.close(modal, reason);
+    }
+  }
+
+  function onDetailClosed(reason) {
+    keepAwake(false);
+    const modal = document.getElementById('recipe-detail-modal');
+    const programmatic = modal?.dataset.closing;
+    if (modal) delete modal.dataset.closing;
+    if (programmatic) return;
+    // Closed by the user (Esc, close button, backdrop): return to the library route.
+    const route = window.AtlasShell?.parseRoute?.(location.hash);
+    if (route?.view === 'recipes' && route.params.recipe) window.AtlasShell.navigate('#recipes');
+    state.selectedRecipeId = null;
+  }
+
+  function handleDetailClick(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    const recipe = recipes.find((entry) => String(entry.id) === String(state.selectedRecipeId));
+    if (!recipe) return;
+    if (target.closest('[data-recipe-ask]')) { askAbout(recipe); return; }
+    if (target.closest('[data-archive-recipe]')) { setRecipeActive(recipe, false); return; }
+    if (target.closest('[data-restore-recipe]')) { setRecipeActive(recipe, true); return; }
+    if (target.closest('[data-delete-recipe]')) deleteRecipe(recipe);
+  }
+
+  function askAbout(recipe) {
+    window.AtlasAI?.askAbout?.({ type: 'recipe', id: recipe.id, label: recipe.name });
+  }
+
+  async function keepAwake(on) {
+    try {
+      if (on && !state.wakeLock && navigator.wakeLock?.request) state.wakeLock = await navigator.wakeLock.request('screen');
+      if (!on && state.wakeLock) { await state.wakeLock.release(); state.wakeLock = null; }
+    } catch {
+      state.wakeLock = null;
+    }
+  }
+
+  // ---------- editor (#recipes/<id>/edit, #recipes/new/edit) ----------
+
+  function editorMarkup(recipe) {
+    const units = ['ml', 'cl', 'l', 'g', 'kg', 'tsp', 'tbsp', 'each', 'bottle', 'can', 'dash', 'barspoon', 'piece'];
+    return `<section class="atlas-sheet atlas-sheet--wide recipe-sheet" data-modal-panel aria-labelledby="recipe-modal-title">
+      <span class="atlas-sheet__grabber"></span>
+      <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="recipe-modal-title">${recipe ? `Edit ${escape(recipe.name)}` : 'New recipe'}</h2><p class="atlas-sheet__desc" id="recipe-modal-subtitle">${recipe ? 'Changes apply to service as soon as you save.' : 'Link each ingredient to an item so availability and cost stay current.'}</p></div>
+        ${recipe ? `<span class="recipe-editor-more"><button type="button" class="atlas-icon-btn" id="recipe-editor-more" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><i data-lucide="ellipsis"></i></button><ul class="atlas-menu" role="menu" id="recipe-editor-menu" aria-label="Recipe actions" hidden>${recipe.active === false
+          ? '<li><button type="button" class="atlas-menu__item" role="menuitem" data-editor-action="restore"><i data-lucide="archive-restore"></i>Restore to service</button></li><li><button type="button" class="atlas-menu__item atlas-menu__item--danger" role="menuitem" data-editor-action="delete"><i data-lucide="trash-2"></i>Delete permanently</button></li>'
+          : '<li><button type="button" class="atlas-menu__item" role="menuitem" data-editor-action="archive"><i data-lucide="archive"></i>Archive</button></li>'}</ul></span>` : ''}
+        <button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close editor" data-modal-close><i data-lucide="x"></i></button></header>
+      <form id="recipe-form" class="recipe-form" novalidate>
+        <div class="atlas-sheet__body">
+          <input type="hidden" id="recipe-id">
+          <fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Details</legend>
+            <div class="atlas-field"><label for="recipe-name">Name</label><input class="atlas-input" id="recipe-name" required maxlength="160" placeholder="e.g. Espresso martini"></div>
+            <div class="atlas-field"><label for="recipe-category-id">Category</label><select class="atlas-select" id="recipe-category-id"></select></div>
+            <div class="atlas-field"><span class="atlas-label" id="recipe-photo-label">Photo <span class="optional">(optional)</span></span>
+              <div class="atlas-upload recipe-upload">
+                <div class="atlas-upload__thumb"><img id="recipe-image-preview" alt="Recipe photo" hidden><i data-lucide="image" id="recipe-image-icon"></i></div>
+                <div class="atlas-upload__body"><p class="atlas-upload__title">JPEG, PNG or WebP</p><p class="atlas-upload__help">Up to 10 MB. Large photos are resized on this device.</p></div>
+                <label class="atlas-btn atlas-btn--secondary atlas-btn--sm" for="recipe-image-file">Choose</label>
+                <input class="sr-only" type="file" id="recipe-image-file" accept="image/jpeg,image/png,image/webp,image/heic" aria-labelledby="recipe-photo-label">
+                <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" id="recipe-image-remove">Remove</button>
+              </div>
+              <input type="hidden" id="recipe-image-url">
+            </div>
+          </fieldset>
+          <fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Ingredients</legend>
+            <div class="recipe-ingredient-picker">
+              <div class="atlas-field recipe-ingredient-picker__item"><label for="ingredient-search">Item</label><input class="atlas-input" id="ingredient-search" type="search" placeholder="Search items" autocomplete="off"><select class="atlas-select" id="ingredient-item" aria-label="Item"></select></div>
+              <div class="atlas-field"><label for="ingredient-qty">Quantity</label><input class="atlas-input" id="ingredient-qty" inputmode="decimal" placeholder="45"></div>
+              <div class="atlas-field"><label for="ingredient-unit">Unit</label><select class="atlas-select" id="ingredient-unit">${units.map((unit) => `<option value="${unit}">${unit}</option>`).join('')}</select></div>
+              <button type="button" class="atlas-btn atlas-btn--secondary" id="add-ingredient-btn"><i data-lucide="plus"></i>Add</button>
+            </div>
+            <p class="error" id="ingredient-error" hidden></p>
+            <ul class="atlas-list recipe-ingredient-list" id="ingredient-list"></ul>
+          </fieldset>
+          <fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Method</legend>
+            <div class="atlas-field"><label for="recipe-method">Steps</label><textarea class="atlas-textarea" id="recipe-method" rows="5" placeholder="One step per line"></textarea><p class="help">One step per line — they show numbered at the bar.</p></div>
+          </fieldset>
+          <fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Service</legend>
+            <div class="atlas-grid-2">
+              <div class="atlas-field"><label for="recipe-glassware">Glass</label><input class="atlas-input" id="recipe-glassware" placeholder="e.g. Coupe"></div>
+              <div class="atlas-field"><label for="recipe-garnish">Garnish</label><input class="atlas-input" id="recipe-garnish" placeholder="e.g. Orange twist"></div>
+              <div class="atlas-field"><label for="recipe-yield-qty">Makes</label><input class="atlas-input" id="recipe-yield-qty" inputmode="decimal" value="1"></div>
+              <div class="atlas-field"><label for="recipe-yield-unit">Unit</label><input class="atlas-input" id="recipe-yield-unit" value="serving"></div>
+            </div>
+            <div class="atlas-field"><label for="recipe-notes">Notes <span class="optional">(optional)</span></label><textarea class="atlas-textarea" id="recipe-notes" rows="2" placeholder="Allergens, substitutions, prep"></textarea></div>
+            <label class="atlas-check-row"><input type="checkbox" class="atlas-check" id="recipe-active" checked>On service (unticked keeps it as an archived draft)</label>
+            <label class="atlas-check-row"><input type="checkbox" class="atlas-check" id="recipe-show-on-menu" checked>Show on the public menu</label>
+          </fieldset>
+          <fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Price</legend>
+            <div class="atlas-field"><label for="recipe-menu-price">Menu price</label><div class="atlas-affix"><input class="atlas-input" id="recipe-menu-price" inputmode="numeric" placeholder="3290"><span class="suffix">kr</span></div></div>
+            <dl class="recipe-cost-figures">
+              <div><dt>Recipe cost</dt><dd class="num" id="calc-total-cost">—</dd></div>
+              <div><dt>Cost per serve</dt><dd class="num" id="calc-cost-per-serving">—</dd></div>
+              <div><dt>Cost %</dt><dd class="num" id="calc-cost-pct">—</dd></div>
+              <div><dt>Profit per serve</dt><dd class="num" id="calc-profit">—</dd></div>
+            </dl>
+            <p class="help" id="recipe-cost-note"></p>
+            <p class="help" id="recipe-availability-note"><span></span></p>
+          </fieldset>
+        </div>
+        <footer class="atlas-sheet__foot"><span class="atlas-sheet__foot-start recipe-save-state" id="recipe-save-state" role="status"></span><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary">Save recipe</button></footer>
+      </form>
+    </section>`;
+  }
+
+  function editorModal() {
+    let modal = document.getElementById('recipe-overlay');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'recipe-overlay';
+      modal.className = 'atlas-modal';
+      modal.hidden = true;
+      modal.setAttribute('data-atlas-modal', '');
+      document.body.appendChild(modal);
+      window.AtlasModal.register(modal, { closeOnBackdrop: false, initialFocus: '#recipe-name', onClose: onEditorClosed });
+    }
+    return modal;
+  }
+
+  function cacheEditorDom(modal) {
+    dom.modal = modal;
+    dom.form = modal.querySelector('#recipe-form');
+    dom.modalTitle = modal.querySelector('#recipe-modal-title');
+    dom.modalSubtitle = modal.querySelector('#recipe-modal-subtitle');
+    dom.categorySelect = modal.querySelector('#recipe-category-id');
+    dom.ingredientSelect = modal.querySelector('#ingredient-item');
+    dom.ingredientSearch = modal.querySelector('#ingredient-search');
+    dom.ingredientList = modal.querySelector('#ingredient-list');
+    dom.saveState = modal.querySelector('#recipe-save-state');
+    dom.imageFile = modal.querySelector('#recipe-image-file');
+    dom.imagePreview = modal.querySelector('#recipe-image-preview');
+    dom.imageRemove = modal.querySelector('#recipe-image-remove');
+  }
+
+  function bindEditor(modal, recipe) {
+    modal.querySelector('#add-ingredient-btn').addEventListener('click', addIngredientFromForm);
+    dom.ingredientSearch.addEventListener('input', () => populateIngredientSelect(dom.ingredientSearch.value));
+    dom.ingredientSearch.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); modal.querySelector('#ingredient-qty').focus(); } });
+    modal.querySelector('#ingredient-qty').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); addIngredientFromForm(); } });
+    dom.ingredientList.addEventListener('click', (event) => {
+      const remove = event.target.closest('[data-remove-ingredient]');
+      const move = event.target.closest('[data-move-ingredient]');
+      if (remove) {
+        state.draftIngredients.splice(Number(remove.dataset.removeIngredient), 1);
+        renderIngredientList();
+      } else if (move) {
+        const index = Number(move.dataset.moveIngredient);
+        const to = index + Number(move.dataset.direction);
+        if (to < 0 || to >= state.draftIngredients.length) return;
+        const [entry] = state.draftIngredients.splice(index, 1);
+        state.draftIngredients.splice(to, 0, entry);
+        renderIngredientList();
+        dom.ingredientList.querySelector(`[data-move-ingredient="${to}"][data-direction="${move.dataset.direction}"]`)?.focus();
+      }
+    });
+    ['recipe-yield-qty', 'recipe-menu-price'].forEach((id) => modal.querySelector(`#${id}`)?.addEventListener('input', renderDraftFinancials));
+    dom.imageFile.addEventListener('change', handleRecipeImageSelection);
+    dom.imageRemove.addEventListener('click', clearRecipeImage);
+    dom.form.addEventListener('submit', saveRecipe);
+    const more = modal.querySelector('#recipe-editor-more');
+    const menu = modal.querySelector('#recipe-editor-menu');
+    if (more && menu && recipe) {
+      window.AtlasShell?.menu?.(more, menu, {
+        onSelect: (item) => {
+          const action = item?.dataset?.editorAction;
+          if (action === 'archive') setRecipeActive(recipe, false);
+          else if (action === 'restore') setRecipeActive(recipe, true);
+          else if (action === 'delete') deleteRecipe(recipe);
+        }
+      });
+    }
+  }
+
+  async function openEditor(recipe) {
+    if (!canManageCommercial()) {
+      window.AtlasShell?.toast?.('Recipe editing is for managers. Ask an administrator if you need access.');
+      return;
+    }
+    closeDetailSheet('route');
+    await loadCategories();
+    const modal = editorModal();
+    modal.innerHTML = editorMarkup(recipe);
+    cacheEditorDom(modal);
+    bindEditor(modal, recipe);
+    state.editingRecipe = recipe || null;
+    state.draftIngredients = (recipe?.recipe_ingredients || []).map((ingredient) => ({
+      item_id: ingredient.item_id,
+      item_name: ingredient.item_name,
+      quantity: number(ingredient.quantity),
+      unit: ingredient.unit
+    }));
+    document.getElementById('recipe-id').value = recipe?.id || '';
+    document.getElementById('recipe-name').value = recipe?.name || '';
+    populateCategorySelect(recipe?.category_id, recipe?.type || 'signature-cocktail');
+    revokePendingImageUrl();
+    state.pendingImageFile = null;
+    document.getElementById('recipe-image-url').value = recipe?.image_url || '';
+    setRecipeImagePreview(recipe?.image_url || '');
+    document.getElementById('recipe-glassware').value = recipe?.glassware || '';
+    document.getElementById('recipe-garnish').value = recipe?.garnish || '';
+    document.getElementById('recipe-method').value = recipe?.method || '';
+    document.getElementById('recipe-notes').value = recipe?.notes || '';
+    document.getElementById('recipe-yield-qty').value = number(recipe?.yield_quantity, 1);
+    document.getElementById('recipe-yield-unit').value = recipe?.yield_unit || 'serving';
+    document.getElementById('recipe-menu-price').value = recipe?.menu_price ?? '';
+    document.getElementById('recipe-active').checked = recipe?.active !== false;
+    document.getElementById('recipe-show-on-menu').checked = recipe?.show_on_menu !== false;
+    populateIngredientSelect('');
+    renderIngredientList();
+    if (!window.AtlasModal.isOpen(modal)) window.AtlasModal.open(modal);
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function onEditorClosed(reason) {
+    const saved = reason === 'saved';
+    const recipeId = state.editingRecipe?.id || null;
+    resetEditor();
+    if (reason === 'route' || saved) return;
+    const route = window.AtlasShell?.parseRoute?.(location.hash);
+    if (route?.view === 'recipes' && route.params.edit) window.AtlasShell.navigate(recipeId ? `#recipes/${encodeURIComponent(recipeId)}` : '#recipes');
+  }
+
+  function closeEditor(reason = 'route') {
+    const modal = document.getElementById('recipe-overlay');
+    if (modal && window.AtlasModal.isOpen(modal)) window.AtlasModal.close(modal, reason);
   }
 
   function populateCategorySelect(selectedId, selectedSlug) {
     if (!dom.categorySelect) return;
     dom.categorySelect.innerHTML = state.categories.map((category) => {
-      const selected = selectedId
-        ? category.id === selectedId
-        : category.slug === selectedSlug;
+      const selected = selectedId ? category.id === selectedId : category.slug === selectedSlug;
       return `<option value="${escape(category.id || '')}" data-slug="${escape(category.slug)}" ${selected ? 'selected' : ''}>${escape(category.name)}</option>`;
     }).join('');
   }
 
   function stockLabel(item) {
-    return item?.freshness_state === 'current' && item.verified_quantity != null
-      && Number.isFinite(Number(item.verified_quantity))
-      ? `${Number(item.verified_quantity)} ${escape(item.unit)}` : 'Unknown / Not counted';
+    return window.AtlasStockTruth?.known?.(item) && item.verified_quantity != null && Number.isFinite(Number(item.verified_quantity))
+      ? `${Number(item.verified_quantity)} ${item.unit || ''}`.trim() : 'Not counted';
   }
 
-  function populateIngredientSelect() {
+  function populateIngredientSelect(query = '') {
     if (!dom.ingredientSelect) return;
-    const available = items.filter((item) => item.active !== false);
-    dom.ingredientSelect.innerHTML = [
-      '<option value="">Select inventory item</option>',
-      ...available.map((item) => `<option value="${escape(item.id)}">${escape(item.name)} · ${escape(item.category || 'Other')} · ${stockLabel(item)}</option>`)
-    ].join('');
+    const text = String(query || '').trim().toLowerCase();
+    const available = items
+      .filter((item) => item.active !== false)
+      .filter((item) => !text || `${item.name} ${item.category || ''}`.toLowerCase().includes(text))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+      .slice(0, 200);
+    dom.ingredientSelect.innerHTML = available.length
+      ? available.map((item) => `<option value="${escape(item.id)}">${escape(item.name)} · ${escape(stockLabel(item))}</option>`).join('')
+      : `<option value="">${text ? 'No items match' : 'No active items'}</option>`;
   }
 
   function setRecipeImagePreview(src) {
     if (!dom.imagePreview) return;
+    const icon = document.getElementById('recipe-image-icon');
     if (src) {
       dom.imagePreview.src = src;
       dom.imagePreview.hidden = false;
+      if (icon) icon.hidden = true;
     } else {
       dom.imagePreview.removeAttribute('src');
       dom.imagePreview.hidden = true;
+      if (icon) icon.hidden = false;
     }
+    if (dom.imageRemove) dom.imageRemove.hidden = !src;
   }
 
   function revokePendingImageUrl() {
@@ -849,27 +917,31 @@
     }
   }
 
+  function setSaveState(message, error = false) {
+    if (!dom.saveState) return;
+    dom.saveState.textContent = message;
+    dom.saveState.className = `atlas-sheet__foot-start recipe-save-state${error ? ' is-error' : ''}`;
+  }
+
   function handleRecipeImageSelection(event) {
     const file = event.target.files?.[0] || null;
     revokePendingImageUrl();
     state.pendingImageFile = null;
-
     if (!file) {
-      const existing = document.getElementById('recipe-image-url')?.value.trim();
-      setRecipeImagePreview(existing || '');
+      setRecipeImagePreview(document.getElementById('recipe-image-url')?.value.trim() || '');
       return;
     }
     if (!file.type.startsWith('image/')) {
       event.target.value = '';
-      alert('Please choose a JPEG, PNG or WebP photo.');
+      setSaveState('Choose a JPEG, PNG or WebP photo.', true);
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
       event.target.value = '';
-      alert('Recipe images must be 10 MB or smaller.');
+      setSaveState('Photos must be 10 MB or smaller.', true);
       return;
     }
-
+    setSaveState('');
     state.pendingImageFile = file;
     state.pendingImageObjectUrl = URL.createObjectURL(file);
     setRecipeImagePreview(state.pendingImageObjectUrl);
@@ -893,7 +965,7 @@
     try {
       bitmap = await createImageBitmap(file);
     } catch {
-      throw new Error('This photo format cannot be shown on every device. Choose a JPEG, PNG or WebP photo.');
+      throw Object.assign(new Error('format'), { userMessage: 'This photo format can\'t be shown on every device. Choose a JPEG, PNG or WebP photo.' });
     }
     const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
     if (scale === 1 && ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -906,7 +978,7 @@
     canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close?.();
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.86));
-    if (!blob) throw new Error('The photo could not be prepared. Try another photo.');
+    if (!blob) throw Object.assign(new Error('prepare'), { userMessage: 'The photo couldn\'t be prepared. Try another photo.' });
     return new File([blob], (file.name.replace(/\.[^.]+$/, '') || 'recipe') + '.jpg', { type: 'image/jpeg' });
   }
 
@@ -923,60 +995,10 @@
         upsert: false,
         contentType: file.type || undefined
       });
-    if (uploadError) throw uploadError;
+    if (uploadError) throw Object.assign(new Error('upload'), { userMessage: 'The photo couldn\'t be uploaded. The recipe was not saved. Try again or remove the photo.' });
     const { data } = sb.storage.from('atlas-media').getPublicUrl(upload.path);
-    if (!data?.publicUrl) throw new Error('Image uploaded but Atlas could not create its public URL.');
+    if (!data?.publicUrl) throw Object.assign(new Error('link'), { userMessage: 'The photo uploaded but its link couldn\'t be created. Try again.' });
     return data.publicUrl;
-  }
-
-  async function openEditor(recipe) {
-    if (!dom.modal || !dom.form) {
-      alert('Recipe editor is unavailable. Refresh Atlas and try again.');
-      return;
-    }
-    if (!canManageCommercial()) {
-      alert('Recipe editing is limited to managers and administrators.');
-      return;
-    }
-    await loadCategories();
-    state.editingRecipe = recipe || null;
-    state.draftIngredients = (recipe?.recipe_ingredients || []).map((ingredient) => ({
-      item_id: ingredient.item_id,
-      item_name: ingredient.item_name,
-      quantity: number(ingredient.quantity),
-      unit: ingredient.unit
-    }));
-
-    dom.modalTitle.textContent = recipe ? 'Edit recipe' : 'New recipe';
-    dom.modalSubtitle.textContent = recipe
-      ? 'Update the recipe, service specification and inventory links.'
-      : 'Build a service-ready recipe connected to live inventory.';
-
-    document.getElementById('recipe-id').value = recipe?.id || '';
-    document.getElementById('recipe-name').value = recipe?.name || '';
-    populateCategorySelect(recipe?.category_id, recipe?.type || 'signature-cocktail');
-    revokePendingImageUrl();
-    state.pendingImageFile = null;
-    if (dom.imageFile) dom.imageFile.value = '';
-    document.getElementById('recipe-image-url').value = recipe?.image_url || '';
-    setRecipeImagePreview(recipe?.image_url || '');
-    document.getElementById('recipe-glassware').value = recipe?.glassware || '';
-    document.getElementById('recipe-garnish').value = recipe?.garnish || '';
-    document.getElementById('recipe-method').value = recipe?.method || '';
-    document.getElementById('recipe-notes').value = recipe?.notes || '';
-    document.getElementById('recipe-yield-qty').value = number(recipe?.yield_quantity, 1);
-    document.getElementById('recipe-yield-unit').value = recipe?.yield_unit || 'serving';
-    document.getElementById('recipe-menu-price').value = recipe?.menu_price ?? '';
-    document.getElementById('recipe-active').checked = recipe?.active !== false;
-    document.getElementById('recipe-show-on-menu').checked = recipe?.show_on_menu !== false;
-    dom.saveState.textContent = '';
-    dom.saveState.className = 'recipe-save-state';
-
-    populateIngredientSelect();
-    document.getElementById('ingredient-qty').value = '';
-    document.getElementById('ingredient-unit').value = 'ml';
-    renderIngredientList();
-    window.AtlasModal.open(dom.modal);
   }
 
   function resetEditor() {
@@ -984,104 +1006,106 @@
     state.draftIngredients = [];
     revokePendingImageUrl();
     state.pendingImageFile = null;
-    setRecipeImagePreview('');
-    dom.form?.reset();
-    if (dom.saveState) {
-      dom.saveState.textContent = '';
-      dom.saveState.className = 'recipe-save-state';
-    }
   }
 
   function addIngredientFromForm() {
     const itemId = dom.ingredientSelect.value;
-    const item = items.find((candidate) => candidate.id === itemId);
-    const quantity = number(document.getElementById('ingredient-qty').value, NaN);
+    const item = items.find((candidate) => String(candidate.id) === String(itemId));
+    const qtyInput = document.getElementById('ingredient-qty');
+    const quantity = number(String(qtyInput.value).replace(',', '.'), NaN);
     const unit = document.getElementById('ingredient-unit').value.trim();
-
-    if (!item) {
-      dom.ingredientSelect.focus();
-      return;
-    }
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      document.getElementById('ingredient-qty').focus();
-      return;
-    }
-
-    state.draftIngredients.push({
-      item_id: item.id,
-      item_name: item.name,
-      quantity,
-      unit: unit || 'ml'
-    });
-    document.getElementById('ingredient-qty').value = '';
+    const error = document.getElementById('ingredient-error');
+    const fail = (message, field) => {
+      error.hidden = false;
+      error.textContent = message;
+      field.setAttribute('aria-invalid', 'true');
+      field.focus();
+    };
+    if (!item) { fail('Choose an item from the list.', dom.ingredientSearch); return; }
+    if (!Number.isFinite(quantity) || quantity <= 0) { fail('Enter a quantity above 0.', qtyInput); return; }
+    error.hidden = true;
+    qtyInput.removeAttribute('aria-invalid');
+    dom.ingredientSearch.removeAttribute('aria-invalid');
+    state.draftIngredients.push({ item_id: item.id, item_name: item.name, quantity, unit: unit || 'ml' });
+    qtyInput.value = '';
+    dom.ingredientSearch.value = '';
+    populateIngredientSelect('');
     renderIngredientList();
+    dom.ingredientSearch.focus();
   }
 
   function renderIngredientList() {
     if (!dom.ingredientList) return;
-    if (!state.draftIngredients.length) {
-      dom.ingredientList.innerHTML = '<div class="ingredient-list-empty">No ingredients yet. Select an inventory item above to create the first live link.</div>';
-      renderDraftFinancials();
-      return;
-    }
-
-    dom.ingredientList.innerHTML = state.draftIngredients.map((ingredient, index) => {
-      const cost = ingredientCost(ingredient);
-      const item = cost.item;
-      const inventoryMeta = item
-        ? stockLabel(item)
-        : 'Inventory link missing';
-      return `
-        <div class="ingredient-line-v2">
-          <div class="ingredient-name-v2">
-            <strong>${escape(ingredient.item_name)}</strong>
-            <span>${inventoryMeta}</span>
-          </div>
-          <span class="ingredient-quantity-v2">${number(ingredient.quantity)} ${escape(ingredient.unit)}</span>
-          <span class="ingredient-cost-v2">${cost.value == null ? escape(cost.reason) : formatIsk(cost.value)}</span>
-          <button type="button" class="ingredient-remove-v2" data-remove-ingredient="${index}" aria-label="Remove ${escape(ingredient.item_name)}">×</button>
-        </div>
-      `;
-    }).join('');
+    const manager = canManageCommercial();
+    dom.ingredientList.innerHTML = state.draftIngredients.length
+      ? state.draftIngredients.map((ingredient, index) => {
+          const cost = ingredientCost(ingredient);
+          const item = cost.item;
+          return `<li class="atlas-row atlas-row--compact"><span class="recipe-build__qty num">${escape(quantityText(ingredient))}</span>
+              <div class="atlas-row__body"><p class="atlas-row__title">${escape(ingredient.item_name)}</p><p class="atlas-row__meta">${item ? escape(stockLabel(item)) : 'Not linked to an item'}${manager ? ` · ${cost.value == null ? escape(String(cost.reason || 'No cost')) : formatIsk(cost.value)}` : ''}</p></div>
+              <div class="atlas-row__end"><button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-move-ingredient="${index}" data-direction="-1" aria-label="Move ${escape(ingredient.item_name)} up"${index === 0 ? ' disabled' : ''}><i data-lucide="arrow-up"></i></button><button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-move-ingredient="${index}" data-direction="1" aria-label="Move ${escape(ingredient.item_name)} down"${index === state.draftIngredients.length - 1 ? ' disabled' : ''}><i data-lucide="arrow-down"></i></button><button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-remove-ingredient="${index}" aria-label="Remove ${escape(ingredient.item_name)}"><i data-lucide="trash-2"></i></button></div></li>`;
+        }).join('')
+      : '<li class="recipe-muted recipe-ingredient-empty">No ingredients yet. Search for an item above and add it with its quantity.</li>';
     renderDraftFinancials();
+    if (window.lucide) window.lucide.createIcons();
   }
 
   function renderDraftFinancials() {
     const menuPrice = document.getElementById('recipe-menu-price')?.value;
     const recipeYield = document.getElementById('recipe-yield-qty')?.value;
     const financials = recipeFinancials(state.draftIngredients, menuPrice, recipeYield);
-
-    document.getElementById('calc-total-cost').textContent = formatIsk(financials.total, state.draftIngredients.length ? 'Unknown' : 'Not configured');
-    document.getElementById('calc-cost-per-serving').textContent = formatIsk(financials.perServing, state.draftIngredients.length ? 'Unknown' : 'Not configured');
-    document.getElementById('calc-cost-pct').textContent = Number.isFinite(financials.costPercent) ? `${financials.costPercent.toFixed(1)}%` : '—';
-    document.getElementById('calc-profit').textContent = Number.isFinite(financials.profit) ? formatIsk(financials.profit) : '—';
-
+    const has = state.draftIngredients.length > 0;
+    const set = (id, text) => { const element = document.getElementById(id); if (element) element.textContent = text; };
+    set('calc-total-cost', has ? formatIsk(financials.total, '—') : '—');
+    set('calc-cost-per-serving', has ? formatIsk(financials.perServing, '—') : '—');
+    set('calc-cost-pct', Number.isFinite(financials.costPercent) ? formatPercent(financials.costPercent) : '—');
+    set('calc-profit', Number.isFinite(financials.profit) ? formatIsk(financials.profit) : '—');
     const note = document.getElementById('recipe-cost-note');
-    if (financials.incomplete) {
-      note.textContent = `${financials.incomplete} ingredient ${financials.incomplete === 1 ? 'needs' : 'need'} an inventory cost and package size before costing is complete.`;
-      note.className = 'recipe-cost-note warn';
-    } else {
-      note.textContent = state.draftIngredients.length
-        ? 'Costing is calculated from the linked inventory item cost and package size.'
-        : 'Add linked ingredients to calculate the recipe cost.';
-      note.className = 'recipe-cost-note';
+    if (note) {
+      note.textContent = !has
+        ? 'Add ingredients to see the cost.'
+        : financials.incomplete
+          ? `${financials.incomplete} ${financials.incomplete === 1 ? 'ingredient needs' : 'ingredients need'} a cost and pack size on its item before the cost is complete.`
+          : 'Cost comes from each linked item\'s cost and pack size.';
     }
-
-    const availabilityNote = document.getElementById('recipe-availability-note');
+    const availabilityNote = document.getElementById('recipe-availability-note')?.querySelector('span');
     if (availabilityNote) {
       const availability = recipeAvailability(state.draftIngredients, recipeYield);
-      const label = availabilityNote.querySelector('span');
-      availabilityNote.className = `recipe-availability-note ${availability.status}`;
-      if (!state.draftIngredients.length) {
-        label.textContent = 'Add linked ingredients to calculate current service availability.';
-      } else if (availability.status === 'incomplete') {
-        label.textContent = 'Availability is unknown until linked ingredients have a fresh verified stock count and compatible package units.';
-      } else if (availability.status === 'unavailable') {
-        label.textContent = `${availability.limiting?.item?.name || 'The limiting ingredient'} is insufficient for one serving.`;
-      } else {
-        label.textContent = `Current stock supports approximately ${availability.servings} servings before ${availability.limiting?.item?.name || 'the limiting ingredient'} runs out.`;
-      }
+      if (!has) availabilityNote.textContent = '';
+      else if (availability.status === 'incomplete') availabilityNote.textContent = 'Availability is unknown until every linked item is counted and its unit matches.';
+      else if (availability.status === 'unavailable') availabilityNote.textContent = `${limitingName(availability) || 'An ingredient'} is out, so this can't be served now.`;
+      else availabilityNote.textContent = `Counted stock covers about ${availability.servings} serves before ${limitingName(availability) || 'an ingredient'} runs out.`;
     }
+  }
+
+  // ---------- archive, restore, delete (S87 rules) ----------
+
+  function confirmDialog({ title, body, confirm, keep = 'Cancel', danger = false, typeName = null }) {
+    return new Promise((resolve) => {
+      let modal = document.getElementById('recipe-confirm-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'recipe-confirm-modal';
+        modal.className = 'atlas-modal';
+        modal.hidden = true;
+        modal.setAttribute('data-atlas-modal', '');
+        document.body.appendChild(modal);
+        window.AtlasModal.register(modal, { closeOnBackdrop: true });
+      }
+      modal.innerHTML = `<section class="atlas-dialog" data-modal-panel aria-labelledby="recipe-confirm-title">
+          <h2 class="atlas-dialog__title" id="recipe-confirm-title">${escape(title)}</h2>
+          <div class="atlas-dialog__body"><p>${escape(body)}</p>${typeName ? `<div class="atlas-field"><label for="recipe-confirm-name">Type <strong>${escape(typeName)}</strong> to confirm</label><input class="atlas-input" id="recipe-confirm-name" autocomplete="off"></div>` : ''}</div>
+          <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>${escape(keep)}</button><button type="button" class="atlas-btn atlas-btn--${danger ? 'danger-solid' : 'primary'}" data-recipe-confirm${typeName ? ' disabled' : ''}>${escape(confirm)}</button></div>
+        </section>`;
+      const button = modal.querySelector('[data-recipe-confirm]');
+      const input = modal.querySelector('#recipe-confirm-name');
+      if (input) input.addEventListener('input', () => { button.disabled = input.value.trim().toLowerCase() !== String(typeName).trim().toLowerCase(); });
+      let answered = false;
+      const done = (value) => { if (!answered) { answered = true; resolve(value); } };
+      button.addEventListener('click', () => { done(true); window.AtlasModal.close(modal, 'confirm'); });
+      modal.addEventListener('atlas:modal-close', () => done(false), { once: true });
+      window.AtlasModal.open(modal);
+    });
   }
 
   // Archiving is the normal way to take a recipe off service: it keeps the
@@ -1089,18 +1113,19 @@
   async function setRecipeActive(recipe, active) {
     if (!recipe?.id) return;
     if (!canManageCommercial()) {
-      alert('Recipe changes are limited to managers and administrators.');
+      window.AtlasShell?.toast?.('Recipe changes are for managers.');
       return;
     }
-    if (!active && !window.confirm(`Archive "${recipe.name}"?\n\nIt leaves service and the menu but keeps its ingredients and history. You can restore it at any time.`)) return;
+    if (!active && !await confirmDialog({ title: `Archive ${recipe.name}?`, body: 'It leaves service and the menu but keeps its ingredients and history. You can restore it at any time.', confirm: 'Archive', keep: 'Keep on service' })) return;
     const { error } = await sb.from('recipes').update({ active }).eq('id', recipe.id);
     if (error) {
-      console.error(error);
-      alert(error.message || (active ? 'Could not restore recipe.' : 'Could not archive recipe.'));
+      await confirmDialog({ title: active ? 'Couldn\'t restore the recipe' : 'Couldn\'t archive the recipe', body: 'Nothing was changed. Check your connection and try again.', confirm: 'OK', keep: 'Close' });
       return;
     }
+    window.AtlasShell?.toast?.(active ? `${recipe.name} is back on service.` : `${recipe.name} archived.`);
+    closeEditor('saved');
     await loadAll();
-    if (activeView === 'recipes') await render();
+    if (activeView === 'recipes') render();
   }
 
   // Permanent deletion is only offered for archived recipes and needs the
@@ -1108,60 +1133,57 @@
   async function deleteRecipe(recipe) {
     if (!recipe?.id) return;
     if (!canManageCommercial()) {
-      alert('Recipe deletion is limited to managers and administrators.');
+      window.AtlasShell?.toast?.('Deleting recipes is for managers.');
       return;
     }
     if (recipe.active !== false) {
-      alert('Archive this recipe first. Only archived recipes can be deleted permanently.');
+      await confirmDialog({ title: 'Archive it first', body: 'Only archived recipes can be deleted permanently.', confirm: 'OK', keep: 'Close' });
       return;
     }
-
-    const typed = window.prompt(
-      `Permanently delete "${recipe.name}"?\n\nThis removes the recipe and its ingredient links and cannot be undone. Inventory items and stock are not changed.\n\nType the recipe name to confirm.`
-    );
-    if (typed === null) return;
-    if (typed.trim().toLowerCase() !== String(recipe.name).trim().toLowerCase()) {
-      alert('The name did not match. Nothing was deleted.');
-      return;
-    }
-
+    const ok = await confirmDialog({
+      title: `Delete ${recipe.name} permanently?`,
+      body: 'This removes the recipe and its ingredient links and can\'t be undone. Items and stock are not changed.',
+      confirm: 'Delete recipe', keep: 'Keep recipe', danger: true, typeName: recipe.name
+    });
+    if (!ok) return;
     const { error } = await sb.from('recipes').delete().eq('id', recipe.id);
     if (error) {
-      console.error(error);
-      alert(error.message || 'Could not delete recipe.');
+      await confirmDialog({ title: 'Couldn\'t delete the recipe', body: 'Nothing was deleted. Check your connection and try again.', confirm: 'OK', keep: 'Close' });
       return;
     }
-
-    if (state.selectedRecipeId === recipe.id) {
-      state.selectedRecipeId = null;
-      localStorage.removeItem('atlas.selectedRecipeId');
-    }
-    closeDetail();
+    if (String(state.selectedRecipeId) === String(recipe.id)) state.selectedRecipeId = null;
+    closeEditor('saved');
+    closeDetailSheet('route');
+    window.AtlasShell?.toast?.(`${recipe.name} deleted.`);
+    window.AtlasShell?.navigate?.('#recipes');
     await loadAll();
-    if (activeView === 'recipes') await render();
+    if (activeView === 'recipes') render();
   }
 
   async function saveRecipe(event) {
     event.preventDefault();
     if (!canManageCommercial()) {
-      alert('Recipe editing is limited to managers and administrators.');
+      dom.saveState.textContent = 'Recipe editing is for managers.';
       return;
     }
     const submitButton = dom.form.querySelector('[type="submit"]');
     submitButton.disabled = true;
     dom.saveState.textContent = 'Saving…';
-    dom.saveState.className = 'recipe-save-state';
+    dom.saveState.className = 'atlas-sheet__foot-start recipe-save-state';
+    let saved = false;
 
     try {
       const selectedOption = dom.categorySelect.options[dom.categorySelect.selectedIndex];
       const categoryId = dom.categorySelect.value || null;
       const categorySlug = selectedOption?.dataset.slug || 'other';
       const recipeId = document.getElementById('recipe-id').value || null;
+      const name = document.getElementById('recipe-name').value.trim();
+      if (!name) throw Object.assign(new Error('name'), { userMessage: 'Give the recipe a name.' });
       const uploadedImageUrl = state.pendingImageFile
         ? await uploadRecipeImage(state.pendingImageFile)
         : null;
       const payload = {
-        name: document.getElementById('recipe-name').value.trim(),
+        name,
         category_id: categoryId,
         type: categorySlug,
         image_url: uploadedImageUrl || document.getElementById('recipe-image-url').value.trim() || null,
@@ -1179,8 +1201,6 @@
         updated_by: currentUser?.id || null
       };
 
-      if (!payload.name) throw new Error('Recipe name is required.');
-
       const { data: savedRecipeId, error } = await sb.rpc('atlas_save_recipe', {
         p_recipe_id: recipeId,
         p_recipe: payload,
@@ -1192,17 +1212,21 @@
         }))
       });
       if (error) throw error;
+      saved = true;
       // Retain the persisted identity if refreshing fails, so retry updates it.
       document.getElementById('recipe-id').value = savedRecipeId;
 
       dom.saveState.textContent = 'Saved';
       await loadAll();
       window.AtlasModal.close(dom.modal, 'saved');
+      window.AtlasShell?.toast?.(`${payload.name} saved.`);
+      window.AtlasShell?.navigate?.(`#recipes/${encodeURIComponent(savedRecipeId)}`);
       if (activeView === 'recipes') await render();
     } catch (error) {
-      console.error(error);
-      dom.saveState.textContent = error.message || 'Could not save recipe.';
-      dom.saveState.className = 'recipe-save-state error';
+      dom.saveState.textContent = saved
+        ? 'Saved. The recipe list couldn\'t refresh — reload the page to see the change.'
+        : error.userMessage || 'The recipe couldn\'t be saved. Nothing was changed. Try again.';
+      dom.saveState.className = 'atlas-sheet__foot-start recipe-save-state is-error';
     } finally {
       submitButton.disabled = false;
     }
@@ -1210,26 +1234,211 @@
 
   function init() {
     if (state.initialized) return;
-    ensureWorkspaceMarkup();
-    cacheDom();
+    dom.view = document.getElementById('recipes-view');
     if (!dom.view) return;
-    window.AtlasModal.register(dom.modal, { closeOnBackdrop: true, initialFocus: '#recipe-name' });
-    bindEvents();
     state.initialized = true;
+    state.viewMode = readViewMode();
+    dom.view.addEventListener('input', (event) => {
+      if (event.target.id !== 'recipe-search') return;
+      state.search = event.target.value;
+      renderLibrary({ keepFocus: true });
+    });
+    dom.view.addEventListener('click', handleLibraryClick);
+    registerWithShell();
+    loadCategories().then(() => { if (activeView === 'recipes') render(); });
+  }
+
+  // ---------- page render and routing ----------
+
+  function readViewMode() {
+    try { return localStorage.getItem('atlas.recipes.view') === 'list' ? 'list' : 'grid'; } catch { return 'grid'; }
+  }
+
+  function renderLibrary({ keepFocus = false } = {}) {
+    if (!dom.view) return;
+    const search = keepFocus ? document.getElementById('recipe-search') : null;
+    const caret = search ? search.selectionStart : null;
+    if (state.phoneDetail && isPhone()) {
+      const recipe = recipes.find((entry) => String(entry.id) === String(state.phoneDetail));
+      if (recipe) {
+        dom.view.innerHTML = `<div class="atlas-page recipes-page">${phoneDetailMarkup(recipe)}</div>`;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+      }
+    }
+    const missing = state.missingRecipe
+      ? `<div class="atlas-alert atlas-alert--warning"><i data-lucide="triangle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__title">That recipe isn't available</p><p class="atlas-alert__body">It may have been deleted or archived. The library below is up to date.</p></div></div>`
+      : '';
+    dom.view.innerHTML = `<div class="atlas-page recipes-page">${libraryMarkup().replace('</header>', `</header>${missing}`)}</div>`;
+    const trigger = document.getElementById('recipe-category-trigger');
+    const menu = document.getElementById('recipe-category-menu');
+    if (trigger && menu) {
+      window.AtlasShell?.menu?.(trigger, menu, {
+        onSelect: (item) => {
+          state.category = item?.dataset?.recipeCategory || 'all';
+          renderLibrary();
+        }
+      });
+    }
+    if (search) {
+      const next = document.getElementById('recipe-search');
+      next?.focus({ preventScroll: true });
+      if (next && caret !== null) next.setSelectionRange(caret, caret);
+    }
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  function handleLibraryClick(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    const status = target.closest('[data-recipe-status]');
+    if (status) { state.statusFilter = status.dataset.recipeStatus || 'all'; renderLibrary(); return; }
+    const view = target.closest('[data-recipe-view]');
+    if (view) {
+      state.viewMode = view.dataset.recipeView === 'list' ? 'list' : 'grid';
+      try { localStorage.setItem('atlas.recipes.view', state.viewMode); } catch { /* per-device preference only */ }
+      renderLibrary();
+      return;
+    }
+    const category = target.closest('button[data-recipe-category]');
+    if (category && !category.closest('.atlas-menu')) { state.category = 'all'; renderLibrary(); return; }
+    if (target.closest('[data-recipe-clear]')) { state.search = ''; state.category = 'all'; state.statusFilter = 'all'; renderLibrary(); return; }
+    if (target.closest('[data-recipe-new]')) { window.AtlasShell.navigate('#recipes/new/edit'); return; }
+    if (target.closest('[data-recipe-menu-link]')) { openMenuShare(); return; }
+    if (state.phoneDetail) {
+      const recipe = recipes.find((entry) => String(entry.id) === String(state.phoneDetail));
+      if (!recipe) return;
+      if (target.closest('[data-recipe-ask]')) askAbout(recipe);
+      else if (target.closest('[data-archive-recipe]')) setRecipeActive(recipe, false);
+      else if (target.closest('[data-restore-recipe]')) setRecipeActive(recipe, true);
+      else if (target.closest('[data-delete-recipe]')) deleteRecipe(recipe);
+    }
+  }
+
+  function openMenuShare() {
+    const url = `${window.location.origin}/menu.html`;
+    confirmDialog({ title: 'Public menu', body: `Recipes marked "Show on the public menu" appear at ${url}.`, confirm: 'Copy link', keep: 'Close' })
+      .then((copy) => {
+        if (!copy) return;
+        navigator.clipboard?.writeText?.(url).then(() => window.AtlasShell?.toast?.('Menu link copied.'), () => window.AtlasShell?.toast?.(`Menu link: ${url}`));
+      });
+  }
+
+  async function render() {
+    if (!state.initialized) init();
+    if (!dom.view) return;
+    renderLibrary();
+    const modal = document.getElementById('recipe-detail-modal');
+    if (modal && window.AtlasModal.isOpen(modal) && state.selectedRecipeId) {
+      const recipe = recipes.find((entry) => String(entry.id) === String(state.selectedRecipeId));
+      if (recipe) {
+        const body = modal.querySelector('.recipe-detail');
+        if (body) body.innerHTML = detailBody(recipe);
+        if (window.lucide) window.lucide.createIcons();
+      }
+    }
+  }
+
+  // AtlasShell calls this on every #recipes route: library, #recipes/<id>,
+  // #recipes/<id>/edit, #recipes/new/edit.
+  function show(params = {}) {
+    if (!state.initialized) init();
+    const recipeId = params.recipe || null;
+    const editing = Boolean(params.edit);
+    if (!recipeId) {
+      state.phoneDetail = null;
+      state.missingRecipe = null;
+      closeEditor('route');
+      closeDetailSheet('route');
+      keepAwake(false);
+      renderLibrary();
+      return;
+    }
+    if (editing) {
+      const recipe = recipeId === 'new' ? null : recipes.find((entry) => String(entry.id) === String(recipeId));
+      if (!canManageCommercial()) {
+        window.AtlasShell?.toast?.('Recipe editing is for managers. Showing the recipe instead.');
+        openDetail(recipeId);
+        return;
+      }
+      if (recipeId !== 'new' && !recipe) {
+        if (!dataLoaded()) { state.pendingRoute = params; return; }
+        state.missingRecipe = recipeId;
+        renderLibrary();
+        return;
+      }
+      state.phoneDetail = null;
+      renderLibrary();
+      openEditor(recipe);
+      return;
+    }
+    closeEditor('route');
+    if (!recipes.some((entry) => String(entry.id) === String(recipeId)) && !dataLoaded()) {
+      state.pendingRoute = params;
+      renderLibrary();
+      return;
+    }
+    renderLibrary();
+    openDetail(recipeId);
+  }
+
+  function registerWithShell() {
+    const shell = window.AtlasShell;
+    if (!shell) return;
+    shell.onDataLoaded?.(() => {
+      if (state.pendingRoute && activeView === 'recipes') {
+        const params = state.pendingRoute;
+        state.pendingRoute = null;
+        show(params);
+      }
+      shell.emit?.('notify:changed', { source: 'home:recipes' });
+    });
+    shell.on?.('view:hide', ({ view }) => {
+      if (view !== 'recipes') return;
+      closeEditor('route');
+      closeDetailSheet('route');
+      state.phoneDetail = null;
+      keepAwake(false);
+    });
+    shell.actions?.register?.({
+      id: 'recipes.edit', label: 'Edit recipe', icon: 'pencil', keywords: ['edit recipe', 'change recipe', 'price'],
+      roles: ['admin', 'manager'], forRecord: 'recipe', recordLabel: 'Edit {name}',
+      when: (ctx = {}) => Boolean(ctx.record?.type === 'recipe' && ctx.record?.id),
+      run: (ctx = {}) => shell.navigate(`#recipes/${encodeURIComponent(ctx.record.id)}/edit`)
+    });
+    shell.actions?.register?.({
+      id: 'recipes.ask', label: 'Ask Atlas about this recipe', icon: 'sparkles', keywords: ['ask', 'recipe'],
+      forRecord: 'recipe', recordLabel: 'Ask Atlas about {name}',
+      when: (ctx = {}) => Boolean(ctx.record?.type === 'recipe' && ctx.record?.id),
+      run: (ctx = {}) => window.AtlasAI?.askAbout?.({ type: 'recipe', id: ctx.record.id, label: ctx.record.label || '' })
+    });
+    shell.home?.contribute?.('recipes', {
+      order: 40,
+      focusRows: () => recipes
+        .filter((recipe) => recipe.active !== false && recipeStatus(recipe).key === 'unavailable')
+        .slice(0, 2)
+        .map((recipe) => ({
+          id: `unavailable:${recipe.id}`,
+          severity: 'warning',
+          icon: 'martini',
+          title: `${recipe.name} can't be served`,
+          detail: availabilityView(recipe).line,
+          action: { label: 'Open recipe', route: `#recipes/${encodeURIComponent(recipe.id)}` }
+        }))
+    });
   }
 
   function getHomeAlert() {
     const active = recipes.filter((recipe) => recipe.active !== false);
-    const issues = active.map((recipe) => ({ recipe, availability: recipeAvailability(recipe) })).filter((entry) => entry.availability.status !== 'ready').sort((a, b) => urgencyRank(a.availability.status) - urgencyRank(b.availability.status) || number(a.availability.servings, 999999) - number(b.availability.servings, 999999));
-    if (issues.length) {
-      const issue = issues[0];
-      if (issue.availability.status === 'unavailable') return { text: `${issue.recipe.name} cannot currently be served.` };
-      if (issue.availability.status === 'attention') return { text: `${issue.recipe.name}: only about ${issue.availability.servings} servings available.` };
-      return { text: `${issue.recipe.name} needs an inventory or package-size check.` };
-    }
-    const featured = featuredRecipe();
-    return featured ? { text: `Featured recommendation: ${featured.recipe.name} is ready with a ${featured.financials.margin.toFixed(0)}% margin.` } : null;
+    const rank = { unavailable: 0, attention: 1, incomplete: 2 };
+    const issue = active
+      .map((recipe) => ({ recipe, availability: recipeAvailability(recipe) }))
+      .filter((entry) => entry.availability.status !== 'ready')
+      .sort((a, b) => (rank[a.availability.status] ?? 3) - (rank[b.availability.status] ?? 3) || number(a.availability.servings, 999999) - number(b.availability.servings, 999999))[0];
+    if (!issue) return null;
+    if (issue.availability.status === 'unavailable') return { text: `${issue.recipe.name} can't be served right now.` };
+    if (issue.availability.status === 'attention') return { text: `${issue.recipe.name}: about ${issue.availability.servings} serves left.` };
+    return { text: `${issue.recipe.name} needs a stock count or an ingredient link.` };
   }
 
   function getHomeMetrics() {
@@ -1246,25 +1455,22 @@
   window.AtlasRecipes = {
     init,
     render,
-    openEditor,
+    show,
+    openEditor: (recipe) => window.AtlasShell?.navigate?.(recipe?.id ? `#recipes/${encodeURIComponent(recipe.id)}/edit` : '#recipes/new/edit'),
     getHomeAlert,
     getHomeMetrics,
     recipeAvailability,
     // Search and Ask Atlas use the exact readiness shown on the Recipes page.
     recipeStatus,
     recipeBlockers,
+    availabilityView,
     openWithStatus: (status) => {
-      document.querySelector('.atlas-nav .nav-item[data-view="recipes"]')?.click();
-      window.setTimeout(() => {
-        const button = document.querySelector(`#recipe-status-filters [data-status="${status}"]`);
-        if (button) button.click();
-      }, 60);
+      state.statusFilter = ['all', 'available', 'unavailable', 'draft', 'attention'].includes(status) ? status : 'all';
+      state.category = 'all';
+      window.AtlasShell?.navigate?.('#recipes');
+      renderLibrary();
     },
-    openRecipe: (recipeId) => {
-      document.querySelector('.atlas-nav .nav-item[data-view="recipes"]')?.click();
-      window.setTimeout(() => selectRecipe(recipeId, { focus: true }), 60);
-    },
-    openServiceLibrary,
+    openRecipe: (recipeId) => window.AtlasShell?.navigate?.(`#recipes/${encodeURIComponent(recipeId)}`),
     reloadCategories: () => loadCategories(true)
   };
 
