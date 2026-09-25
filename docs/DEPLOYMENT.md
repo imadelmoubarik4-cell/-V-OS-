@@ -39,6 +39,10 @@ Apply each file explicitly, in the order given by the release's rollout plan:
 
 After step 4, re-run the smoke test for adding and editing an item.
 
+`scripts/rollout_s87_s90.sh` runs this order: `check` (read-only), `migrations` (batch A, 28 files), `functions`, then `revokes` only with `WEB_DEPLOYED_AND_SMOKE_TESTED=yes`. It needs `SUPABASE_DB_URL` and, for functions, `SUPABASE_ACCESS_TOKEN`. Each file is applied and recorded in the ledger in one transaction, matched by name, and a re-run skips what is already applied.
+
+If the Supabase GitHub integration is set to deploy migrations to production when `main` changes, turn that off before merging this release. Otherwise the merge would apply every file in filename order: the revokes would run before the web deploy, and `20260924170000` would be replayed (production recorded it as `20260924150124`).
+
 ## S90 workflow integrity rollout
 
 Order: migration first, then the web app (the two release-gated revokes above come after the web deploy). The migration is backward compatible: the current web app keeps calling `adjust_inventory`, and the stock-count verify signature does not change.
