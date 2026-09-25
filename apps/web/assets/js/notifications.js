@@ -44,29 +44,23 @@
     return Uint8Array.from(atob(normalized), (character) => character.charCodeAt(0));
   }
 
-  async function session() {
-    const result = await window.atlasSupabase?.auth?.getSession?.();
-    if (result?.error) throw result.error;
-    if (!result?.data?.session?.access_token) throw new Error('Sign in to manage notifications.');
-    return result.data.session;
-  }
+  // Fixed copy for every failure (AtlasApi, atlas-api.js): server text is
+  // never shown.
+  const API_MESSAGES = {
+    not_configured: 'Notifications are not available in this environment.',
+    auth: 'Sign in to manage notifications.',
+    invalid: 'This device’s notification details weren’t accepted. Turn notifications off and on again.',
+    unavailable: 'The notification service isn’t available right now. Try again shortly.',
+    failed: 'The notification service didn’t respond as expected. Try again.'
+  };
 
   async function api(action, body) {
-    if (!endpoint()) throw new Error('Notifications are not available in this environment.');
-    const active = await session();
-    const response = await fetch(`${endpoint()}?action=${encodeURIComponent(action)}`, {
+    return window.AtlasApi.request(endpoint(), {
       method: body ? 'POST' : 'GET',
-      cache: 'no-store',
-      headers: {
-        authorization: `Bearer ${active.access_token}`,
-        accept: 'application/json',
-        ...(body ? { 'content-type': 'application/json' } : {})
-      },
-      body: body ? JSON.stringify(body) : undefined
+      params: { action },
+      body,
+      messages: API_MESSAGES
     });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `Notification request failed (${response.status}).`);
-    return payload;
   }
 
   async function registration() {

@@ -1,6 +1,7 @@
 // Shared Atlas caller authentication for Edge Functions.
 //
-// Same pattern every Atlas gateway uses: the caller's JWT is checked against
+// Every Atlas gateway authenticates through this module (no function calls
+// /auth/v1/user itself; tests/node/edge-auth-contract.test.js): the caller's JWT is checked against
 // `${ATLAS_AUTH_PROJECT_URL}/auth/v1/user`, then the caller's own profile row
 // is read from `/rest/v1/profiles` with that JWT (RLS applies). Only an
 // active profile with a known staff role is accepted. The service-role RPCs
@@ -59,6 +60,27 @@ export function bearerToken(request) {
   return match[1];
 }
 
+// Staff identity (S87, binding): a person is shown by their profile display
+// name, otherwise by a neutral label. An email address is never a label — not
+// in responses, not in stored actor/decided-by labels, not in model prompts.
+export const SAFE_ACTOR_LABEL = "Team member";
+
+// A display name that is safe to show: trimmed, bounded, and never an address.
+export function safeDisplayName(value) {
+  if (typeof value !== "string") return null;
+  const text = value.replace(/\s+/g, " ").trim();
+  if (!text || text.includes("@")) return null;
+  return text.slice(0, 120);
+}
+
+// The one canonical label for a staff member, from a profile row
+// ({ display_name }) or a resolved actor ({ displayName }).
+export function actorLabel(profile, fallback = SAFE_ACTOR_LABEL) {
+  const name = safeDisplayName(profile?.display_name) ?? safeDisplayName(profile?.displayName);
+  if (name) return name;
+  return safeDisplayName(fallback) ?? SAFE_ACTOR_LABEL;
+}
+
 async function readJson(response) {
   try {
     return await response.json();
@@ -67,11 +89,19 @@ async function readJson(response) {
   }
 }
 
+const PROFILE_COLUMNS = ["id", "email", "display_name", "role", "active"];
+
 // Resolves the calling user to an Atlas actor:
-// { userId, email, role, active, displayName, label, token }.
-// Throws AuthError 401 for a missing or expired session and 403 for a missing,
-// inactive or unknown-role profile. Pass { allowInactive: true } to receive an
-// inactive actor (active: false) instead of a 403.
+// { userId, email, role, active, displayName, label, token, profile }.
+// `profile` is the caller's own profile row (plus any `profileColumns` asked
+// for); `label` is actorLabel(profile) and never an email address.
+// Throws AuthError 401 for a missing or expired session, 403 for a missing,
+// inactive or unknown-role profile, 500 when unconfigured and 503 when Auth is
+// unreachable. Options:
+//   allowInactive: true   return an inactive actor (active: false) instead of a 403
+//   inactiveMessage       the 403 text for an inactive profile
+//   profileColumns        extra profile columns to read (e.g. ["updated_at"])
+//   timeoutMs             abort each Auth/profile lookup after this many ms
 export async function resolveActor(request, env, fetchImpl = globalThis.fetch, options = {}) {
   const token = bearerToken(request);
   const { projectUrl, publishableKey } = authConfig(env);
@@ -82,10 +112,15 @@ export async function resolveActor(request, env, fetchImpl = globalThis.fetch, o
     accept: "application/json",
     "cache-control": "no-store",
   };
+  // Optional per-request deadline; a timed-out lookup reads as 503.
+  const timeoutMs = Number(options.timeoutMs);
+  const requestInit = () => (Number.isFinite(timeoutMs) && timeoutMs > 0 && typeof AbortSignal?.timeout === "function"
+    ? { headers, signal: AbortSignal.timeout(timeoutMs) }
+    : { headers });
 
   let userResponse;
   try {
-    userResponse = await fetchImpl(`${projectUrl}/auth/v1/user`, { headers });
+    userResponse = await fetchImpl(`${projectUrl}/auth/v1/user`, requestInit());
   } catch {
     throw new AuthError(503, "Atlas authentication is temporarily unavailable.");
   }
@@ -96,12 +131,18 @@ export async function resolveActor(request, env, fetchImpl = globalThis.fetch, o
 
   const profileUrl = new URL(`${projectUrl}/rest/v1/profiles`);
   profileUrl.searchParams.set("id", `eq.${userId}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active");
+  const extra = Array.isArray(options.profileColumns) ? options.profileColumns : [];
+  for (const column of extra) {
+    if (typeof column !== "string" || !/^[a-z_]{1,63}$/.test(column)) {
+      throw new AuthError(500, "Atlas authentication is not configured.");
+    }
+  }
+  profileUrl.searchParams.set("select", [...new Set([...PROFILE_COLUMNS, ...extra])].join(","));
   profileUrl.searchParams.set("limit", "1");
 
   let profileResponse;
   try {
-    profileResponse = await fetchImpl(profileUrl.toString(), { headers });
+    profileResponse = await fetchImpl(profileUrl.toString(), requestInit());
   } catch {
     throw new AuthError(503, "Atlas authentication is temporarily unavailable.");
   }
@@ -116,12 +157,12 @@ export async function resolveActor(request, env, fetchImpl = globalThis.fetch, o
   }
   const active = profile.active === true;
   if (!active && options.allowInactive !== true) {
-    throw new AuthError(403, "This Atlas profile is inactive. Atlas access has been removed.");
+    throw new AuthError(403, typeof options.inactiveMessage === "string" && options.inactiveMessage
+      ? options.inactiveMessage
+      : "This Atlas profile is inactive. Atlas access has been removed.");
   }
 
-  const displayName = typeof profile.display_name === "string" && profile.display_name.trim()
-    ? profile.display_name.trim()
-    : null;
+  const displayName = safeDisplayName(profile.display_name);
   const email = typeof profile.email === "string" && profile.email.trim()
     ? profile.email.trim()
     : typeof user.email === "string" && user.email.trim() ? user.email.trim() : null;
@@ -131,8 +172,9 @@ export async function resolveActor(request, env, fetchImpl = globalThis.fetch, o
     role: profile.role,
     active,
     displayName,
-    label: displayName || email || "Atlas team member",
+    label: actorLabel(profile),
     token,
+    profile: { ...profile, active },
   };
 }
 

@@ -111,6 +111,10 @@
 
   function firstName() {
     const profile = root.AtlasShell?.profile?.() || {};
+    // The display name only (S87): never an email, never the "Team member" label.
+    // The shell profile carries id and role only; sign-in publishes the first
+    // name as atlasGreetingName (AtlasIdentity.firstName of the profile).
+    if (root.AtlasIdentity) return root.AtlasIdentity.firstName(profile) || String(root.atlasGreetingName || '').trim();
     const fromProfile = profile.display_name || profile.name || '';
     const fromShell = document.getElementById('profile-name')?.textContent || '';
     const candidate = String(fromProfile || fromShell).trim();
@@ -2727,6 +2731,12 @@
     if (section === 'decisions') {
       state.mode = 'decisions';
       applyMode();
+      // #ai/decisions?recommendation=<id> (Atlas AI record links) opens that decision.
+      const focus = params.recommendation ? String(params.recommendation) : '';
+      if (focus && isManager() && state.openedRecommendation !== focus) {
+        state.openedRecommendation = focus;
+        openDecision(focus);
+      } else if (!focus) state.openedRecommendation = null;
       return;
     }
     if (state.mode === 'decisions') { state.mode = 'conversations'; applyMode(); }

@@ -94,7 +94,7 @@
         "data.basis": "theoretical"
       },
       "evidence": [
-        { "kind": "calculation", "label": "Espresso Martini theoretical margin", "value": "86.9% (price 3,100 ISK, cost 407 ISK)" },
+        { "kind": "calculation", "label": "Espresso Martini theoretical margin", "value": "86.9% (price 3.100 kr, cost 407 kr)" },
         { "kind": "missing", "label": "Realised margin", "value": "not connected" }
       ],
       "records": ["recipe:@recipe.espresso", "recipe:@recipe.pintgull", "recipe:@recipe.negroni"],
@@ -119,9 +119,9 @@
     "args": { "recipe_id": null, "recipe_query": "Negroni" },
     "expected": {
       "ok": true,
-      "summary": ["Negroni costs 418 ISK per serving", "85.1%"],
+      "summary": ["Negroni costs 418 kr per serving", "85.1%"],
       "data": { "data.cost_per_serving": { "$approx": 417.857, "$tol": 0.01 }, "data.margin_percent": { "$approx": 85.077, "$tol": 0.01 }, "data.menu_price": 2800, "data.ingredients": { "$len": 3 } },
-      "evidence": [{ "kind": "calculation", "label": "Cost of Campari", "value": "123 ISK" }, { "kind": "fact", "label": "Menu price", "value": "2,800 ISK" }],
+      "evidence": [{ "kind": "calculation", "label": "Cost of Campari", "value": "123 kr" }, { "kind": "fact", "label": "Menu price", "value": "2.800 kr" }],
       "unknown": null
     },
     "notes": "30 ml Tanqueray (5200/700×30 = 222.86) + 30 ml Campari (4100/1000×30 = 123) + 30 ml Martini Rosso (2400/1000×30 = 72)."

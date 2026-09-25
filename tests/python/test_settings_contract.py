@@ -176,7 +176,8 @@ class SettingsCheckpointJContractTests(unittest.TestCase):
 
     def test_settings_gateway_revalidates_production_profile(self):
         self.assertIn("requireActiveProfile", EDGE)
-        self.assertIn("/auth/v1/user", EDGE)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE)
         self.assertIn("/rest/v1/profiles", EDGE)
         self.assertIn('new Set(["admin", "manager"])', EDGE)
         self.assertIn("SUPABASE_SERVICE_ROLE_KEY", EDGE)

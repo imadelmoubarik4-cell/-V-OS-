@@ -102,13 +102,16 @@
   // ---------- canonical facts (stock, recipes, purchasing) ----------
 
   // Live stock only (inactive rows are records, not stock). Unknown stays
-  // unknown: an item without a verified count is never "healthy".
+  // unknown: an item without a verified count is never "healthy". The one
+  // status rule (AtlasStockTruth.stockStatus): `below` and `out` are separate
+  // (an out item is never also below par); needs ordering = out + below.
   function stockFacts() {
     const truth = window.AtlasStockTruth;
     const active = items().filter((item) => item.active !== false);
-    const known = truth ? active.filter((item) => truth.known(item)) : [];
-    const below = truth ? known.filter((item) => truth.belowPar(item)) : [];
-    const out = below.filter((item) => number(item.verified_quantity ?? item.quantity, 0) <= 0);
+    const status = (item) => (truth?.stockStatus ? truth.stockStatus(item) : 'unknown');
+    const known = truth ? active.filter((item) => status(item) !== 'unknown') : [];
+    const below = known.filter((item) => status(item) === 'below_par');
+    const out = known.filter((item) => status(item) === 'out');
     const baselines = known.map((item) => number(item.stock_baseline_at, NaN)).filter(Number.isFinite);
     return {
       active: active.length,
@@ -543,7 +546,7 @@
       if (stock.active) {
         facts.sources.add('stock counts');
         if (!stock.known) risks.push('Stock hasn’t been counted yet, so Atlas can’t tell what’s low.');
-        else if (stock.out.length) risks.push(`${list(stock.out.map((item) => item.name))} ${stock.out.length === 1 ? 'is' : 'are'} out${stock.below.length > stock.out.length ? ` and ${plural(stock.below.length - stock.out.length, 'more item is', 'more items are')} below par` : ''}.`);
+        else if (stock.out.length) risks.push(`${list(stock.out.map((item) => item.name))} ${stock.out.length === 1 ? 'is' : 'are'} out${stock.below.length ? ` and ${plural(stock.below.length, 'more item is', 'more items are')} below par` : ''}.`);
         else if (stock.below.length) risks.push(`${list(stock.below.map((item) => item.name))} ${stock.below.length === 1 ? 'is' : 'are'} below par.`);
         else risks.push(stock.unknown ? `Nothing counted is below par; ${plural(stock.unknown, 'item hasn’t', 'items haven’t')} been counted.` : 'Nothing counted is below par.');
       }

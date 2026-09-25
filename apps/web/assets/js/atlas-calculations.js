@@ -74,6 +74,26 @@
   function isReference(item) {
     return item?.active === false || normalizeUnit(item?.unit) === 'untracked';
   }
+  const REFERENCE_COST_REASON = 'No cost (reference ingredient)';
+
+  // The canonical stock rules (AtlasStockTruth); the fallbacks keep this file
+  // usable on its own and give the same answers.
+  function stockKnown(item) {
+    const truth = window.AtlasStockTruth;
+    if (truth?.known) return truth.known(item);
+    return item?.freshness_state === 'current' && item.verified_quantity != null
+      && item.verified_quantity !== '' && Number.isFinite(Number(item.verified_quantity));
+  }
+  function stockStatusOf(item) {
+    const truth = window.AtlasStockTruth;
+    if (truth?.stockStatus) return truth.stockStatus(item);
+    if (!stockKnown(item)) return 'unknown';
+    const quantity = number(item.verified_quantity ?? item.quantity);
+    if (quantity <= 0) return 'out';
+    const par = number(item.par_level, NaN);
+    if (!Number.isFinite(par) || par <= 0) return 'no_par';
+    return quantity < par ? 'below_par' : 'ok';
+  }
 
   function ingredientMetrics(ingredient, inventory) {
     const item = inventory.find((candidate) => candidate.id === ingredient.item_id);
@@ -82,16 +102,18 @@
     const requested = convert(number(ingredient.quantity), ingredient.unit);
     const purchaseCost = number(item.cost_price, NaN);
     const hasCost = Number.isFinite(purchaseCost) && purchaseCost > 0;
+    // A reference ingredient (Ice, Water: inactive or 'untracked') is free:
+    // it costs 0 and never blocks the recipe cost, and it is not live stock.
     if (isReference(item)) {
-      return { item, cost: null, batches: null, reference: true, reason: 'Recipe reference, not stocked', belowPar: false };
+      return { item, cost: 0, costReason: REFERENCE_COST_REASON, batches: null, reference: true, reason: 'Recipe reference, not stocked', belowPar: false, stockStatus: null };
     }
     // Operational quantities are historical until a current verified balance is supplied.
-    const stockKnown = item.freshness_state === 'current' && item.verified_quantity != null
-      && Number.isFinite(Number(item.verified_quantity));
-    const stockUnits = stockKnown ? Math.max(0, Number(item.verified_quantity)) : null;
-    // Same rule as AtlasStockTruth.belowPar: strictly under a positive par.
-    const belowPar = stockKnown && number(item.par_level) > 0 && stockUnits < number(item.par_level);
-    if (requested.quantity <= 0) return { item, cost: null, batches: null, reason: 'Package size is missing', belowPar };
+    const known = stockKnown(item);
+    const stockUnits = known ? Math.max(0, Number(item.verified_quantity)) : null;
+    // The canonical stock status: an out ingredient is 'out', not below par.
+    const stockState = stockStatusOf(item);
+    const belowPar = stockState === 'below_par';
+    if (requested.quantity <= 0) return { item, cost: null, batches: null, reason: 'Package size is missing', belowPar, stockStatus: stockState };
 
     // Stock is counted in the item's own unit: a measure (kg, l, ml) is the
     // stock unit itself; a discrete count (bottle, can, pie) matches the same
@@ -105,14 +127,15 @@
     const cost = hasCost && costPacks !== null ? purchaseCost * costPacks : null;
     if (stockPacks === null) {
       const reason = !pack && !itemMeasure ? 'Package size is missing' : 'Inventory unit does not match recipe unit';
-      return { item, cost, batches: null, reason, belowPar };
+      return { item, cost, batches: null, reason, belowPar, stockStatus: stockState };
     }
     return {
       item,
       cost,
-      batches: stockKnown ? stockUnits / stockPacks : null,
-      reason: !hasCost ? 'Missing inventory cost' : !stockKnown ? 'Current stock is unknown / Not counted' : null,
-      belowPar
+      batches: known ? stockUnits / stockPacks : null,
+      reason: !hasCost ? 'Missing inventory cost' : !known ? 'Current stock is unknown / Not counted' : null,
+      belowPar,
+      stockStatus: stockState
     };
   }
 
@@ -157,8 +180,11 @@
   function formatIsk(value, fallback = '—') {
     if (!Number.isFinite(value)) return fallback;
     const money = typeof window !== 'undefined' ? window.AtlasFormat?.money : null;
-    return money ? money(value, fallback) : `${Math.round(value).toLocaleString('en-US')} ISK`;
+    if (money) return money(value, fallback);
+    // Same output as AtlasFormat.money: whole krónur, '.' thousands, "kr".
+    const rounded = Math.round(value);
+    return `${rounded < 0 ? '-' : ''}${String(Math.abs(rounded)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} kr`;
   }
 
-  window.AtlasCalculations = Object.freeze({ normalizeUnit, parsePackSize, ingredientMetrics, recipeMetrics, formatIsk });
+  window.AtlasCalculations = Object.freeze({ normalizeUnit, parsePackSize, isReference, REFERENCE_COST_REASON, ingredientMetrics, recipeMetrics, formatIsk });
 })();

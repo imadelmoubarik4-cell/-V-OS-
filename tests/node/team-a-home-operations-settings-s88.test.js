@@ -38,7 +38,7 @@ test('the Brain page and the Checkpoint A/K layers are retired and unreferenced'
   assert.doesNotMatch(index, /brain-view|brain-shell|data-view="brain"|data-view="system"/);
   // The endpoints stay: Decisions (Atlas AI) reads PHASE3_BRAIN_API and Home
   // runs the manager intelligence refresh once per session.
-  for (const name of ['PHASE3_BRAIN_API', 'PHASE3_INTELLIGENCE_API', 'SPRINT4_BRIEFING_API', 'OPERATIONS_CHECKPOINT_A_API']) {
+  for (const name of ['PHASE3_BRAIN_API', 'PHASE3_INTELLIGENCE_API', 'OPERATIONS_CHECKPOINT_A_API']) {
     assert.match(config, new RegExp(`${name}: "https://dnefgcmjcgxlynycxkts\\.supabase\\.co/functions/v1/`));
   }
   assert.match(home, /PHASE3_INTELLIGENCE_API/);
@@ -51,7 +51,7 @@ test('the Brain page and the Checkpoint A/K layers are retired and unreferenced'
 
 test('Home is the command centre: attention rows, venue clock, briefing entry, no KPI dump', () => {
   assert.match(index, /<div id="dashboard-view" style="display:none;"><\/div>/);
-  assert.match(index, /<script src="assets\/js\/home\.js\?v=20260926-s88"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/home\.js\?v=20260928-s89t"><\/script>/);
   assert.match(home, /atlas\.registerHomeSection\('home', render, 0\)/);
   assert.match(home, /shell\(\)\?\.home\?\.rows\?\.\(\{ role: role\(\) \}\)/);
   assert.match(home, /const VISIBLE_ROWS = 5;/);

@@ -591,7 +591,7 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        return fail(response.status === 404 ? 'Opening hours are unavailable.' : (payload?.error || `Opening hours could not be loaded (${response.status}).`));
+        return fail(response.status === 404 ? 'Opening hours are unavailable.' : 'Opening hours could not be loaded.');
       }
       return apply(payload, 'loaded');
     } catch (error) {

@@ -3,17 +3,17 @@
     "id": "live-pur-01", "category": "purchasing", "actor": "manager", "blocking": true,
     "question": "What do we need from Globus?",
     "truth": [{ "tool": "purchasing.suggest", "args": { "supplier_id": "@supplier.globus", "include_ordered": null } }],
-    "expect": { "tools_any": ["purchasing.suggest"], "must_mention": ["Campari", "tonic"], "numbers": ["72"], "rubric": "Campari 6 (1 case) and Fever-Tree tonic 72 (3 cases), about 37,560 ISK; Aperol is already on the overdue Globus order." }
+    "expect": { "tools_any": ["purchasing.suggest"], "must_mention": ["Campari", "tonic"], "numbers": ["72"], "rubric": "Campari 6 (1 case) and Fever-Tree tonic 72 (3 cases), about 37.560 kr; Aperol is already on the overdue Globus order." }
   },
   {
     "id": "live-pur-02", "category": "purchasing", "actor": "manager", "blocking": true,
     "question": "Draft the Vínnes order from the suggestions.",
-    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.vinnes", "p_lines[0].quantity": 18 } }, "rubric": "Prepares a draft Vínnes order for 18 Angelo Pinot Grigio (3 cases, about 52,200 ISK) for approval; says it is saved as a draft only after approval and is not sent." }
+    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.vinnes", "p_lines[0].quantity": 18 } }, "rubric": "Prepares a draft Vínnes order for 18 Angelo Pinot Grigio (3 cases, about 52.200 kr) for approval; says it is saved as a draft only after approval and is not sent." }
   },
   {
     "id": "live-pur-03", "category": "purchasing", "actor": "manager", "blocking": true,
     "question": "Order 2 cases of Tanqueray from Mekka.",
-    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.mekka", "p_lines[0].item_id": "@item.tanqueray", "p_lines[0].quantity": 12, "p_lines[0].unit_cost": 5200 } }, "rubric": "Draft order: 12 bottles of Tanqueray (2 cases of 6) at 5,200 ISK = 62,400 ISK, for approval." }
+    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.mekka", "p_lines[0].item_id": "@item.tanqueray", "p_lines[0].quantity": 12, "p_lines[0].unit_cost": 5200 } }, "rubric": "Draft order: 12 bottles of Tanqueray (2 cases of 6) at 5.200 kr = 62.400 kr, for approval." }
   },
   {
     "id": "live-pur-04", "category": "purchasing", "actor": "manager", "blocking": true,
@@ -52,7 +52,7 @@
   {
     "id": "live-pur-10", "category": "voice_transcript", "actor": "manager", "blocking": true, "source": "voice_note",
     "question": "Order two cases of Prosecco from Karl K.",
-    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.karlk", "p_lines[0].item_id": "@item.prosecco", "p_lines[0].quantity": 12 } }, "rubric": "Draft Karl K. Karlsson order: 12 Villa Sandi Prosecco (2 cases), 30,000 ISK, for approval." }
+    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.karlk", "p_lines[0].item_id": "@item.prosecco", "p_lines[0].quantity": 12 } }, "rubric": "Draft Karl K. Karlsson order: 12 Villa Sandi Prosecco (2 cases), 30.000 kr, for approval." }
   },
   {
     "id": "live-rep-01", "category": "reports", "actor": "bartender", "blocking": true,
@@ -69,25 +69,25 @@
     "id": "live-rep-03", "category": "reports", "actor": "manager", "blocking": true,
     "question": "What is our stock worth?",
     "truth": [{ "tool": "reports.inventory_value", "args": { "category": null } }],
-    "expect": { "tools_all": ["reports.inventory_value"], "numbers": ["285,400"], "must_mention_any": ["at least", "lower bound", "minimum", "only (the )?counted"], "rubric": "The total is unknown: 16 of 40 items have no current count and Orange Juice has no cost; counted, costed items are worth at least 285,400 ISK." }
+    "expect": { "tools_all": ["reports.inventory_value"], "numbers": ["285,400"], "must_mention_any": ["at least", "lower bound", "minimum", "only (the )?counted"], "rubric": "The total is unknown: 16 of 40 items have no current count and Orange Juice has no cost; counted, costed items are worth at least 285.400 kr." }
   },
   {
     "id": "live-rep-04", "category": "reports", "actor": "manager", "blocking": true,
     "question": "What is the wine stock worth?",
     "truth": [{ "tool": "reports.inventory_value", "args": { "category": "Wine" } }],
-    "expect": { "tools_all": ["reports.inventory_value"], "numbers": ["97,700"], "must_mention_any": ["at least", "lower bound", "unknown", "not (all )?counted"], "rubric": "At least 97,700 ISK; Rioja, Chablis and Whispering Angel have no current count, so the total is unknown." }
+    "expect": { "tools_all": ["reports.inventory_value"], "numbers": ["97,700"], "must_mention_any": ["at least", "lower bound", "unknown", "not (all )?counted"], "rubric": "At least 97.700 kr; Rioja, Chablis and Whispering Angel have no current count, so the total is unknown." }
   },
   {
     "id": "live-rep-05", "category": "reports", "actor": "manager", "blocking": true,
     "question": "How much did we spend with suppliers this month?",
     "truth": [{ "tool": "reports.spend", "args": { "days": null } }],
-    "expect": { "tools_all": ["reports.spend"], "numbers": ["191,340"], "rubric": "191,340 ISK of costed receipts in the last 30 days (Mekka 57,000, Globus 54,840, Ölgerðin 42,000, Vínnes 34,800, Innnes 2,700); one receipt has no cost; these are receipts, not invoices." }
+    "expect": { "tools_all": ["reports.spend"], "numbers": ["191,340"], "rubric": "191.340 kr of costed receipts in the last 30 days (Mekka 57,000, Globus 54,840, Ölgerðin 42,000, Vínnes 34,800, Innnes 2,700); one receipt has no cost; these are receipts, not invoices." }
   },
   {
     "id": "live-rep-06", "category": "reports", "actor": "manager", "blocking": true,
     "question": "What did we waste this month?",
     "truth": [{ "tool": "reports.waste", "args": { "days": null } }],
-    "expect": { "tools_all": ["reports.waste"], "numbers": ["4", "11,050"], "rubric": "4 logged entries (corked Angelo, broken Tanqueray and Prosecco, 10 mouldy limes), about 11,050 ISK; unlogged waste is unknown." }
+    "expect": { "tools_all": ["reports.waste"], "numbers": ["4", "11,050"], "rubric": "4 logged entries (corked Angelo, broken Tanqueray and Prosecco, 10 mouldy limes), about 11.050 kr; unlogged waste is unknown." }
   },
   {
     "id": "live-rep-07", "category": "reports", "actor": "bartender", "blocking": true,
@@ -104,7 +104,7 @@
     "id": "live-rep-09", "category": "reports", "actor": "manager", "blocking": false,
     "question": "How much do we spend with Mekka?",
     "truth": [{ "tool": "reports.spend", "args": { "days": null } }],
-    "expect": { "tools_any": ["reports.spend", "purchasing.get_supplier"], "numbers": ["57,000"], "rubric": "57,000 ISK in costed receipts over the last 30 days (Tanqueray and El Jimador)." }
+    "expect": { "tools_any": ["reports.spend", "purchasing.get_supplier"], "numbers": ["57,000"], "rubric": "57.000 kr in costed receipts over the last 30 days (Tanqueray and El Jimador)." }
   },
   {
     "id": "live-ops-01", "category": "operations", "actor": "bartender", "blocking": true,

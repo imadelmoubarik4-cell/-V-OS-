@@ -139,6 +139,7 @@ def _transform(source, target_origin, browser_origin, add_guard, typed):
             raise ValueError("Import worker entrypoint shape changed")
         source = head + "}));\n} else {\n  Deno.serve(async () => new Response(JSON.stringify({ error: 'Import is disabled.' }), {\n    status: 503,\n    headers: { 'content-type': 'application/json', 'access-control-allow-origin': '" + browser_origin + "' },\n  }));\n}" + tail
     source = source.replace("${AUTH_PROJECT_URL}/rest/v1/", "${S39_TARGET_ORIGIN}/rest/v1/")
+    source = source.replace("${productionAuthUrl()}/rest/v1/", "${S39_TARGET_ORIGIN}/rest/v1/")
     source = source.replace(
         '"access-control-allow-origin": "*"',
         f'"access-control-allow-origin": "{browser_origin}"',

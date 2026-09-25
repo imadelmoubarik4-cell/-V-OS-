@@ -126,8 +126,9 @@ test('Recipes and Purchasing use clean, honest in-page controls', () => {
 
 test('Inventory filters are chips over loaded records, with honest unknowns', () => {
   for (const label of ['Below par', 'Not counted', 'Out or almost out']) assert.match(inventory, new RegExp(`'${label}'`));
-  assert.match(inventory, /truth\(\)\?\.belowPar\(item\)/);
-  assert.match(inventory, /if \(!truth\(\)\?\.known\(item\)\) return \{ key: 'not_counted', label: 'Not counted'/);
+  // S89: the chips and pills read the canonical AtlasStockTruth.stockStatus.
+  assert.match(inventory, /truth\(\)\?\.stockStatus\?\.\(item\) !== 'below_par'/);
+  assert.match(inventory, /if \(status === 'unknown'\) return \{ key: 'not_counted', label: 'Not counted'/);
   assert.match(inventory, /manager \? '<th data-priority="2">Supplier<\/th>' : ''/);
   assert.doesNotMatch(inventory, /Flóki Single Malt barely moves|45,000 ISK in stock/);
   // The owner's primary and contextual category model (S38 decisions).

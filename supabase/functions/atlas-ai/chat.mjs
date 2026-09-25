@@ -89,12 +89,24 @@ async function safeRpc(services, name, payload) {
   }
 }
 
+// The venue for this turn from the venue clock (Settings -> venue.timezone and
+// the business date), so the prompt, the context block and every tool use the
+// same zone and business date as the pages. config.venue (name, default zone)
+// is only the fallback when the clock cannot be read.
+export async function resolveVenue(services, config, actor) {
+  const base = config?.venue ?? {};
+  const clock = await safeRpc(services, "atlas_settings_venue_clock", { p_actor_role: actor?.role ?? null });
+  const timezone = typeof clock?.timezone === "string" && clock.timezone ? clock.timezone : (base.timezone || "Atlantic/Reykjavik");
+  const businessDate = /^\d{4}-\d{2}-\d{2}$/.test(String(clock?.business_date ?? "")) ? String(clock.business_date) : null;
+  return Object.freeze({ ...base, timezone, ...(businessDate ? { businessDate } : {}), clockSource: clock ? "venue_clock" : "default" });
+}
+
 async function loadPreferences(services, actor) {
   return (await safeRpc(services, "atlas_ai_preferences_get", { p_actor_id: actor.userId, p_actor_role: actor.role })) ?? {};
 }
 
 // Shared by chat and ask_atlas: models, agent graph and runner.
-async function prepareAgent({ deps, config, actor, preferences, hasVision, nowIso }) {
+async function prepareAgent({ deps, config, actor, preferences, hasVision, nowIso, venue = config.venue }) {
   const provider = deps.modelProvider();
   const orchestratorName = hasVision ? config.models.vision : config.models.orchestrator;
   const models = {
@@ -119,7 +131,7 @@ async function prepareAgent({ deps, config, actor, preferences, hasVision, nowIs
     z: deps.z,
     gateway: deps.gateway,
     actor,
-    venue: config.venue,
+    venue,
     nowIso,
     preferences,
     models,
@@ -333,6 +345,7 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
     conversation, conversationId, messages, message, media, history, hasVisionHint, modelsUsed,
     runId, assistantId, userRow, preferences, nowIso,
   } = prepared;
+  const venue = await resolveVenue(services, config, actor);
   const turn = new TurnState({
     services,
     gateway: deps.gateway,
@@ -340,7 +353,7 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
     env: deps.env,
     fetchImpl: deps.fetchImpl,
     now: deps.now,
-    venue: config.venue,
+    venue,
     conversationId,
     messageId: assistantId,
     runId,
@@ -375,10 +388,10 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
   try {
     const { parts, notes } = await attachmentParts(media, { services: deps.services, limits: config.limits });
     documentText = parts.filter((part) => part.type === "input_text").map((part) => part.text).join("\n");
-    const { graph, runner } = await prepareAgent({ deps, config, actor, preferences, hasVision: hasVisionHint, nowIso });
+    const { graph, runner } = await prepareAgent({ deps, config, actor, preferences, hasVision: hasVisionHint, nowIso, venue });
     const session = new AtlasSession(conversationId, history);
     const turnInput = [
-      contextItem({ conversationContext: conversation?.context ?? {}, pageContext: input.pageContext, evidence: evidenceBefore, nowIso, venue: config.venue }),
+      contextItem({ conversationContext: conversation?.context ?? {}, pageContext: input.pageContext, evidence: evidenceBefore, nowIso, venue }),
       userItem(notes.length ? `${message}\n\n(${notes.map((note) => note.note).join(" ")})` : message, parts),
     ];
     result = await runner.run(graph.agent, turnInput, {
@@ -503,6 +516,7 @@ export async function runAskAtlas({ deps, config, actor, conversationId, request
   const { services } = deps;
   const nowIso = new Date(deps.now()).toISOString();
   const preferences = await loadPreferences(services, actor);
+  const askVenue = await resolveVenue(services, config, actor);
   const loaded = await services.rpc("atlas_ai_conversation_get", {
     p_conversation_id: conversationId,
     p_actor_id: actor.userId,
@@ -515,12 +529,12 @@ export async function runAskAtlas({ deps, config, actor, conversationId, request
   const context = loaded.conversation?.context ?? {};
   const turn = new TurnState({
     services, gateway: deps.gateway, actor, env: deps.env, fetchImpl: deps.fetchImpl, now: deps.now,
-    venue: config.venue, conversationId, messageId: null, runId, context,
+    venue: askVenue, conversationId, messageId: null, runId, context,
     emit: (event, data) => { if (event === "proposal") emitProposal?.(data); },
     toolOutputChars: config.limits.toolOutputChars,
   });
   const evidenceBefore = previousEvidence(messages);
-  const { graph, runner } = await prepareAgent({ deps, config, actor, preferences: { ...preferences, reply_length: "short" }, hasVision: false, nowIso });
+  const { graph, runner } = await prepareAgent({ deps, config, actor, preferences: { ...preferences, reply_length: "short" }, hasVision: false, nowIso, venue: askVenue });
   const session = new AtlasSession(conversationId, buildHistory(messages, {
     tokenBudget: config.limits.historyTokenBudget, maxMessages: config.limits.historyMessages,
   }));
@@ -528,7 +542,7 @@ export async function runAskAtlas({ deps, config, actor, conversationId, request
   let result = null;
   try {
     result = await runner.run(graph.agent, [
-      contextItem({ conversationContext: context, pageContext: null, evidence: evidenceBefore, nowIso, venue: config.venue }),
+      contextItem({ conversationContext: context, pageContext: null, evidence: evidenceBefore, nowIso, venue: askVenue }),
       { role: "user", content: `${request}\n\n(Spoken request. Answer in one to three short sentences suitable for speech.)` },
     ], { context: { turn, userText: request }, session, maxTurns: config.limits.maxTurns });
     text = String(result.finalOutput ?? "");

@@ -52,53 +52,28 @@
     })[character]);
   }
 
-  async function activeSession() {
-    const client = window.atlasSupabase;
-    if (!client?.auth) return null;
-    const result = await client.auth.getSession();
-    if (result.error) throw result.error;
-    return result.data.session || null;
-  }
+  // Fixed copy for every failure (AtlasApi, atlas-api.js): server text is
+  // never shown.
+  const API_MESSAGES = {
+    not_configured: 'Profile photos aren’t set up for this Atlas yet.',
+    auth: 'Sign in to Atlas to manage profile photos.',
+    forbidden: 'You can change only your own profile photo.',
+    not_found: 'That team member isn’t in Atlas any more. Refresh and try again.',
+    invalid: 'That photo wasn’t accepted. Use a JPEG, PNG or WebP image under 2 MB.',
+    too_large: 'That photo is too large. Use an image under 2 MB.',
+    timeout: 'The profile-photo service took too long to respond. Check the connection and try again.',
+    unavailable: 'Profile photos aren’t available right now. Try again shortly.',
+    failed: 'The photo service didn’t respond as expected. Try again.'
+  };
 
   async function request(action, options = {}) {
-    const api = endpoint();
-    if (!api) throw new Error('Team Profile photos API is not configured for this preview.');
-    const session = await activeSession();
-    if (!session?.access_token) throw new Error('Sign in to Atlas to manage profile photos.');
-
-    const url = new URL(api);
-    url.searchParams.set('action', action);
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    const headers = {
-      authorization: `Bearer ${session.access_token}`,
-      accept: 'application/json'
-    };
-    if (options.body && !(options.body instanceof FormData)) headers['content-type'] = 'application/json';
-
-    try {
-      const response = await fetch(url, {
-        method: options.method || 'GET',
-        cache: 'no-store',
-        signal: controller.signal,
-        headers,
-        body: options.body instanceof FormData
-          ? options.body
-          : options.body
-          ? JSON.stringify(options.body)
-          : undefined
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || `Profile-photo request failed (${response.status}).`);
-      return payload;
-    } catch (error) {
-      if (error?.name === 'AbortError') {
-        throw new Error('The profile-photo service took too long to respond. Check the connection and try again.');
-      }
-      throw error;
-    } finally {
-      window.clearTimeout(timer);
-    }
+    return window.AtlasApi.request(endpoint(), {
+      method: options.method || 'GET',
+      params: { action },
+      body: options.body,
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      messages: API_MESSAGES
+    });
   }
 
   function applyPayload(payload) {
