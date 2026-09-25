@@ -9,6 +9,8 @@
 // point-of-sale source exists — no revenue is ever invented.
 (function () {
   'use strict';
+  // Date fields as YYYY-MM-DD text (AtlasVenueClock.DATE_INPUT_ATTRS): never the browser's mm/dd/yyyy.
+  const DATE_FIELD = window.AtlasVenueClock?.DATE_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
 
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 30000;
@@ -242,7 +244,7 @@
     if (list.length) subParts.push(`${connected} of ${list.length} data sources connected`);
     if (!subParts.length) subParts.push('Stock, purchasing, recipes, waste and labour');
     const custom = state.preset === 'custom'
-      ? `<span class="reports-custom"><label class="sr-only" for="reports-start">From</label><input class="atlas-input" type="date" id="reports-start" value="${escapeHtml(state.customStart || range.start)}" data-reports-start><span aria-hidden="true">–</span><label class="sr-only" for="reports-end">To</label><input class="atlas-input" type="date" id="reports-end" value="${escapeHtml(state.customEnd || range.end)}" data-reports-end></span>`
+      ? `<span class="reports-custom"><label class="sr-only" for="reports-start">From</label><input class="atlas-input" ${DATE_FIELD} id="reports-start" value="${escapeHtml(state.customStart || range.start)}" data-reports-start><span aria-hidden="true">–</span><label class="sr-only" for="reports-end">To</label><input class="atlas-input" ${DATE_FIELD} id="reports-end" value="${escapeHtml(state.customEnd || range.end)}" data-reports-end></span>`
       : '';
     return `<header class="page-head reports-head">
         <div class="page-head__text"><h1 class="page-head__title">Reports</h1><p class="page-head__sub">${escapeHtml(subParts.join(' · '))}</p></div>

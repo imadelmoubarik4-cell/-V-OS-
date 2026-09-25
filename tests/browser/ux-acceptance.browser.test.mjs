@@ -383,3 +383,27 @@ test('P2: notification titles get two lines before they clamp', { skip }, async 
     assert.equal(title.lines, 2);
   } finally { await close(); }
 });
+
+test('P3: date fields are YYYY-MM-DD in an en-US browser (never mm/dd/yyyy)', { skip }, async () => {
+  const { page, close } = await launchAtlas({ fixtures: uxWorld(USERS.admin, { group: 'INV' }), contextOptions: { locale: 'en-US' } });
+  try {
+    const parsed = await page.evaluate(() => ['30.9.2026', '30/09/2026', '2026-9-30', '30.9', '31.9.2026', 'soon', ''].map((text) => window.AtlasVenueClock.parseDateInput(text)));
+    assert.deepEqual(parsed, ['2026-09-30', '2026-09-30', '2026-09-30', '2026-09-30', null, null, '']);
+    await navigateTo(page, '#purchasing');
+    await page.getByRole('button', { name: /new order/i }).filter({ visible: true }).first().click();
+    await page.waitForSelector('#po-date');
+    assert.deepEqual(await page.evaluate(() => { const input = document.getElementById('po-date'); return [input.type, input.placeholder]; }), ['text', 'YYYY-MM-DD']);
+    await page.fill('#po-date', '30.9.2026');
+    await page.press('#po-date', 'Tab');
+    assert.equal(await page.inputValue('#po-date'), '2026-09-30');
+  } finally { await close(); }
+});
+
+test('P2: toasts carry a tone; permission toasts are info, not a success check', { skip }, async () => {
+  const { page, close } = await launchAtlas({ user: USERS.bartender, fixtures: uxWorld(USERS.bartender, { group: 'INV' }) });
+  try {
+    await page.evaluate(() => window.AtlasShell.actions.run('inventory.item.add', { role: 'bartender' }).catch(() => null));
+    await page.waitForSelector('.atlas-toast');
+    assert.equal(await page.evaluate(() => document.querySelector('.atlas-toast').classList.contains('atlas-toast--info')), true);
+  } finally { await close(); }
+});

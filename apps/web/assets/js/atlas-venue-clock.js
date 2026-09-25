@@ -17,6 +17,7 @@
 //   format     formatTime · formatDate · formatDateTime · formatRelative · formatKr
 //   inputs     localInputValue(date, type) · fromLocalInput(value)
 //              TIME_INPUT_ATTRS · parseTimeInput(text)   (24 h time fields)
+//              DATE_INPUT_ATTRS · parseDateInput(text)   (YYYY-MM-DD date fields)
 //   hours      dayWindow(dateKey) · isOpenAt(at) · nextEvent(at, {types}) · timeline(dateKey, at)
 //
 // Rules (docs/design/Atlas_Time_Migration.md):
@@ -402,10 +403,44 @@
     input.setAttribute('aria-invalid', String(parsed === null));
   }
 
+  // Date fields: a native <input type="date"> shows "mm/dd/yyyy" in an en-US
+  // browser. DATE_INPUT_ATTRS is a text field (data-atlas-date) whose value is
+  // the date key 'YYYY-MM-DD', like a native date input; "24.9.2026",
+  // "24/9/2026", "24.9" (this year) and "2026-9-24" are read when committed.
+  const DATE_INPUT_ATTRS = 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
+
+  /** 'YYYY-MM-DD', '' for an empty field, or null when the text is not a date. */
+  function parseDateInput(text) {
+    const value = String(text ?? '').trim();
+    if (!value) return '';
+    let year; let month; let day;
+    let match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value);
+    if (match) [, year, month, day] = match;
+    else {
+      match = /^(\d{1,2})[./ -](\d{1,2})(?:[./ -](\d{4}))?\.?$/.exec(value);
+      if (!match) return null;
+      [, day, month, year] = match;
+      year = year || today().slice(0, 4);
+    }
+    const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const noon = keyToNoon(key);
+    return noon && noonToKey(noon) === key ? key : null;
+  }
+
+  function commitDateInput(input) {
+    const parsed = parseDateInput(input.value);
+    if (parsed !== null && parsed !== input.value) input.value = parsed;
+    const early = parsed && input.getAttribute('min') && parsed < input.getAttribute('min');
+    input.setAttribute('aria-invalid', String(parsed === null || Boolean(early)));
+  }
+
   // Registered before any module script, so it runs before their document
   // change listeners (bubbling; no capture listener, no observer).
   function bindTimeInputs() {
-    root.document?.addEventListener?.('change', (event) => { if (event.target?.dataset?.atlasTime !== undefined) commitTimeInput(event.target); });
+    root.document?.addEventListener?.('change', (event) => {
+      if (event.target?.dataset?.atlasTime !== undefined) commitTimeInput(event.target);
+      else if (event.target?.dataset?.atlasDate !== undefined) commitDateInput(event.target);
+    });
   }
 
   // ---------- hours ----------
@@ -738,6 +773,8 @@
     fromLocalInput,
     TIME_INPUT_ATTRS,
     parseTimeInput,
+    DATE_INPUT_ATTRS,
+    parseDateInput,
     // hours
     dayWindow,
     isOpenAt,

@@ -8,6 +8,8 @@
 // so a browser in another zone stores the instant the manager meant.
 (function () {
   'use strict';
+  // Date fields as YYYY-MM-DD text (AtlasVenueClock.DATE_INPUT_ATTRS): never the browser's mm/dd/yyyy.
+  const DATE_FIELD = window.AtlasVenueClock?.DATE_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
 
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 15000;
@@ -423,7 +425,7 @@
         <form class="atlas-dialog__body atlas-form" data-mk-campaign-form>
           <div class="atlas-field"><label for="mk-c-name">Name</label><input class="atlas-input" id="mk-c-name" name="name" maxlength="180" required></div>
           <div class="atlas-field"><label for="mk-c-type">Type</label><select class="atlas-select" id="mk-c-type" name="campaign_type">${['promotion', 'event', 'seasonal', 'always_on', 'brand', 'other'].map((key) => `<option value="${key}">${humanize(key)}</option>`).join('')}</select></div>
-          <div class="atlas-grid-2"><div class="atlas-field"><label for="mk-c-start">Starts</label><input class="atlas-input" type="date" id="mk-c-start" name="start"></div><div class="atlas-field"><label for="mk-c-end">Ends</label><input class="atlas-input" type="date" id="mk-c-end" name="end"></div></div>
+          <div class="atlas-grid-2"><div class="atlas-field"><label for="mk-c-start">Starts</label><input class="atlas-input" ${DATE_FIELD} id="mk-c-start" name="start"></div><div class="atlas-field"><label for="mk-c-end">Ends</label><input class="atlas-input" ${DATE_FIELD} id="mk-c-end" name="end"></div></div>
           <div class="atlas-field"><label for="mk-c-desc">Goal <span class="optional">(optional)</span></label><textarea class="atlas-textarea" id="mk-c-desc" name="description" rows="3"></textarea></div>
           <p class="error" data-mk-error hidden></p>
           <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary">Create campaign</button></div>

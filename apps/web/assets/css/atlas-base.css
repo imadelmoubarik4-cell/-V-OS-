@@ -86,6 +86,12 @@ svg.lucide { stroke-width: var(--icon-stroke); flex: none; }
   outline-offset: var(--focus-offset);
 }
 
+/* A title that receives focus programmatically (a dialog or sheet title, a
+   page heading after navigation: tabindex="-1") is a reading position, not a
+   control: no ring. Keyboard focus on controls stays visible. */
+:is(h1, h2, h3, h4, [tabindex="-1"]):focus:not(:focus-visible),
+:is(h1, h2, h3, h4)[tabindex="-1"]:focus { outline: none; }
+
 ::selection { background: rgba(59, 130, 246, .20); color: inherit; }
 
 /* The hidden attribute always hides (spec §9.1 allows !important here). */

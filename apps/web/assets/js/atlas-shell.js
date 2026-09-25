@@ -27,7 +27,7 @@
 //   nav       nav.items({ role }) · nav.allowed(idOrView, role) · nav.forRoute(hash) · nav.forView(view)
 //             (spec §3.1/§3.3 destinations and role visibility; atlas-chrome.js renders them)
 //   markup    pageHead({ title, sub, actions }) · skeleton({ title, sub, rows }) · escape(text)
-//   ui        toast(message, { action: { label, onClick }, duration }) · menu(trigger, menuEl, { onSelect })
+//   ui        toast(message, { tone: 'success'|'info'|'warning', action: { label, onClick }, duration }) · menu(trigger, menuEl, { onSelect })
 //
 // Loaded as a classic script before config.js and every module. It installs one
 // capture-phase and one bubbling document click listener (navigation) and the
@@ -1060,6 +1060,13 @@
   // only: markup uses the .atlas-toast / .atlas-menu classes from
   // atlas-components.css. One toast is visible at a time; it stays 4 s (8 s
   // with an action) and pauses while hovered or focused.
+  // Tones (spec §6.25): success (a completed action, the default), info (a
+  // permission or a neutral fact) and warning (something the person should
+  // know about what just happened).
+  const TOAST_ICONS = {
+    info: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+    warning: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>'
+  };
   const TOAST_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>';
   let toastRegion = null;
   let activeToast = null;
@@ -1083,8 +1090,9 @@
     if (activeToast) activeToast.dismiss(true);
     const action = options.action && options.action.label ? options.action : null;
     const node = document.createElement('div');
-    node.className = 'atlas-toast';
-    if (options.icon !== false) node.insertAdjacentHTML('beforeend', TOAST_ICON);
+    const tone = TOAST_ICONS[options.tone] ? options.tone : 'success';
+    node.className = `atlas-toast atlas-toast--${tone}`;
+    if (options.icon !== false) node.insertAdjacentHTML('beforeend', TOAST_ICONS[tone] || TOAST_ICON);
     const label = document.createElement('span');
     label.className = 'atlas-toast__text';
     label.textContent = text;

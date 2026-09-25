@@ -253,7 +253,7 @@ icon (spec §5.8 list); no emoji; no decorative icons.
 | 6.21, 6.24 | Empty, permission, unavailable | `.atlas-empty` (`--page`, `--inline`), `__icon`, `__title`, `__text`, `__actions` | 40 icon tile, one action. The action is `--secondary` when the page header already holds the primary (usually the same action); `--primary` only when it is the page's single main action |
 | 6.22 | Skeleton | `.atlas-skel` (`--text`, `--title`, `--row`, `--block`, `--circle`); `.atlas-skel-page` (`AtlasShell.skeleton()`: page header, toolbar bar, rows) | Appears after 150 ms, 1.4 s shimmer, static with reduced motion |
 | 6.23 | Alert | `.atlas-alert` + `--warning`/`--danger`/`--info`/`--positive`, `__content`, `__title`, `__body`, `__actions` | 12 × 16, 12 radius, tinted |
-| 6.25 | Toast | `.atlas-toast-region` > `.atlas-toast`, `__text`, `__action` | Ink, 44 min, bottom centre (above the tab bar on phones) |
+| 6.25 | Toast | `.atlas-toast-region` > `.atlas-toast` (`--success` default, `--info`, `--warning`), `__text`, `__action` | Ink, 44 min, bottom centre (above the tab bar on phones); `AtlasShell.toast(text, { tone })`: a permission or neutral fact is `info`, never the success check |
 | 6.26 | Stepper | `.atlas-steps` > `li.is-done`/`.is-current`, `.n`, `.sep`; `.atlas-steps-compact`; `.atlas-progress` (`--thin`) | 22 circles; phone "Step 2 of 3 · Review" + 4 px line |
 | 6.27 | Upload | `.atlas-upload` (`.is-dragover`, `--file`), `__thumb`, `__body`, `__title`, `__help`, `__error` | Dashed line-strong, 44 thumb |
 | 4.11 | Global feedback | `.atlas-offline-bar`, `.atlas-loading-line`, `.atlas-spinner` | 36 px offline bar, 2 px accent line |
@@ -286,6 +286,20 @@ Page container: the shell's `.atlas-content` owns the page gutter, the space
 above and below the page and its max width. A module's page wrapper
 (`.atlas-page`) adds no padding or margin of its own, so every page header
 starts at the same x and y.
+
+Tables: `.cell-clip` (on a `td` or a span inside it) truncates a long name to
+one line with an ellipsis in a fixed-layout or width-limited column; the full
+text goes in `title`. Shared text containers (row title/meta, card and sheet
+text, table headers, page header, alerts, empty states) wrap a long unbroken
+token (`overflow-wrap: anywhere`) instead of overflowing the page.
+
+Focus: a heading or sheet title focused programmatically (`tabindex="-1"`)
+shows no ring; keyboard focus on controls always does.
+
+Date fields: `<input … ${AtlasVenueClock.DATE_INPUT_ATTRS}>` (a text field with
+`data-atlas-date`, value `YYYY-MM-DD`), never `type="date"`, which shows
+mm/dd/yyyy in en-US browsers. "30.9.2026", "30/9/2026" and "30.9" are read on
+commit; an impossible date or one before `min` is marked `aria-invalid`.
 
 Time fields: `<input … ${AtlasVenueClock.TIME_INPUT_ATTRS}>` (a text field
 with `data-atlas-time`), never `type="time"`, which shows 12-hour times in

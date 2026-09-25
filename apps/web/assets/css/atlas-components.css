@@ -71,7 +71,7 @@
 .page-head__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); flex: 0 1 auto; min-width: 0; max-width: 100%; }
 /* Text that carries user content wraps even a very long unbroken token inside
    its (min-width: 0) column instead of overflowing the page. */
-:is(.page-head__title, .page-head__sub, .atlas-row__title, .atlas-row__meta, .atlas-card__title, .atlas-sheet__title, .atlas-sheet__desc, .atlas-dialog__title, .atlas-alert__title, .atlas-alert__body, .atlas-empty__title, .atlas-empty__text, .atlas-stat__detail) { overflow-wrap: anywhere; }
+:is(.page-head__title, .page-head__sub, .atlas-row__title, .atlas-row__meta, .atlas-card__title, .atlas-card__body, .atlas-sheet__title, .atlas-sheet__desc, .atlas-sheet__body, .atlas-dialog__title, .atlas-dialog__body, .atlas-alert__title, .atlas-alert__body, .atlas-empty__title, .atlas-empty__text, .atlas-stat__detail, .atlas-table th) { overflow-wrap: anywhere; }
 /* Page rhythm (spec §5.4): header → tabs 16, tabs → toolbar 20, toolbar → content 12. */
 .page-head + .atlas-tabs { margin-top: var(--s-4); }
 .page-head + .atlas-toolbar { margin-top: var(--s-5); }
@@ -992,6 +992,11 @@ th[aria-sort="ascending"] :is(.atlas-th-sort, .th-sort) > svg { transform: rotat
 .atlas-table .col-check { width: 40px; padding-right: 0; }
 .atlas-table .col-actions { width: 48px; padding-right: 8px; text-align: right; }
 .atlas-table .cell-primary { font-weight: 500; }
+/* Truncated cell text: one line with an ellipsis inside a fixed-layout (or
+   width-limited) column; put the full text in the cell's title. Use it on the
+   td or on a span inside it. */
+.atlas-table .cell-clip { display: block; min-width: 0; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.atlas-table td.cell-clip { display: table-cell; }
 .atlas-table .cell-sub { display: block; margin-top: 1px; font: var(--type-caption); color: var(--text-2); }
 .atlas-table .unit { margin-left: 2px; color: var(--text-2); font: var(--type-caption); }
 .atlas-table .row-action { opacity: 0; transition: opacity var(--dur-1) var(--ease-out); }
@@ -1445,6 +1450,8 @@ body.atlas-modal-open { overflow: hidden; }
 }
 .atlas-toast:not(:has(.atlas-toast__action)) { padding-right: 16px; }
 .atlas-toast > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: #7fd1a8; }
+.atlas-toast--info > svg { color: #9cc3ff; }
+.atlas-toast--warning > svg { color: #f5c46b; }
 .atlas-toast__text { min-width: 0; }
 .atlas-toast__action, .atlas-toast button {
   height: 32px;

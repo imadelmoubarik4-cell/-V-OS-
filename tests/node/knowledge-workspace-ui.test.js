@@ -146,6 +146,6 @@ test('module stylesheet: one atlas.modules layer, tokens only, nothing under 12 
 });
 
 test('production loads the Knowledge assets with a cache key', () => {
-  assert.match(index, /knowledge-workspace\.js\?v=20260926-s88/);
+  assert.match(index, /knowledge-workspace\.js\?v=20260929-s90u/);
   assert.match(index, /assets\/css\/knowledge-workspace\.css/);
 });

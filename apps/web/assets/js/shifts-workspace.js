@@ -9,6 +9,8 @@
 // shift starts at the day's saved opening time (or empty when hours are not set).
 (function () {
   'use strict';
+  // Date fields as YYYY-MM-DD text (AtlasVenueClock.DATE_INPUT_ATTRS): never the browser's mm/dd/yyyy.
+  const DATE_FIELD = window.AtlasVenueClock?.DATE_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
   // 24-hour time fields (AtlasVenueClock.TIME_INPUT_ATTRS): never the browser's 12-hour picker.
   const TIME_FIELD = window.AtlasVenueClock?.TIME_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM" data-atlas-time';
 
@@ -507,7 +509,7 @@
           <input type="hidden" name="shift_id" value="${escapeHtml(shift?.id || '')}">
           <div class="atlas-field"><label for="shift-person">Person</label><select class="atlas-select" id="shift-person" name="person_id" required><option value="" ${shift ? '' : 'selected'} disabled>Choose a person</option>${options}</select><p class="error" data-error-for="person_id" hidden>Choose who works this shift.</p></div>
           <div class="atlas-field"><label for="shift-role">Role <span class="optional">Optional</span></label><input class="atlas-input" id="shift-role" name="role_name" maxlength="120" value="${escapeHtml(shift?.role_name || '')}" placeholder="Bartender, opening, closing"></div>
-          <div class="atlas-field"><label for="shift-date">Date</label><input class="atlas-input" type="date" id="shift-date" name="date" required value="${escapeHtml(dateKey)}"></div>
+          <div class="atlas-field"><label for="shift-date">Date</label><input class="atlas-input" ${DATE_FIELD} id="shift-date" name="date" required value="${escapeHtml(dateKey)}"></div>
           <div class="atlas-grid-2">
             <div class="atlas-field"><label for="shift-start">Start</label><input class="atlas-input" ${TIME_FIELD} id="shift-start" name="start" required value="${escapeHtml(start.time)}"></div>
             <div class="atlas-field"><label for="shift-end">End</label><input class="atlas-input" ${TIME_FIELD} id="shift-end" name="end" required value="${escapeHtml(end)}"></div>
@@ -997,8 +999,8 @@
           ${manage ? `<div class="atlas-field"><label for="to-person">Person</label><select class="atlas-select" id="to-person" name="person_id">${choices.map((person) => `<option value="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</option>`).join('')}</select></div>` : `<input type="hidden" name="person_id" value="${escapeHtml(choices[0].id)}">`}
           <div class="atlas-field"><label for="to-type">Type</label><select class="atlas-select" id="to-type" name="request_type">${Object.entries(TIME_OFF_TYPES).map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}</select></div>
           <div class="atlas-grid-2">
-            <div class="atlas-field"><label for="to-start">First day</label><input class="atlas-input" type="date" id="to-start" name="starts_on" required value="${escapeHtml(start)}"></div>
-            <div class="atlas-field"><label for="to-end">Last day</label><input class="atlas-input" type="date" id="to-end" name="ends_on" required value="${escapeHtml(start)}"></div>
+            <div class="atlas-field"><label for="to-start">First day</label><input class="atlas-input" ${DATE_FIELD} id="to-start" name="starts_on" required value="${escapeHtml(start)}"></div>
+            <div class="atlas-field"><label for="to-end">Last day</label><input class="atlas-input" ${DATE_FIELD} id="to-end" name="ends_on" required value="${escapeHtml(start)}"></div>
           </div>
           <p class="error" data-to-error hidden>The last day can’t be before the first day.</p>
           <div class="atlas-field"><label for="to-note">Note <span class="optional">Optional</span></label><textarea class="atlas-input atlas-textarea" id="to-note" name="note" rows="3" maxlength="3000" placeholder="Anything your manager should know"></textarea></div>

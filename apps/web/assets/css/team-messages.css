@@ -25,7 +25,7 @@
 .msg-channel__icon { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: var(--r-sm); color: var(--text-2); }
 .msg-channel__icon svg { width: var(--icon-sm); height: var(--icon-sm); }
 .msg-channel__body { display: grid; flex: 1 1 auto; min-width: 0; }
-.msg-channel__name { display: flex; align-items: center; gap: var(--s-1); font: var(--type-label); }
+.msg-channel__name { display: flex; align-items: center; gap: var(--s-1); min-width: 0; font: var(--type-label); overflow-wrap: anywhere; }
 .msg-channel__name svg { width: 12px; height: 12px; color: var(--text-3); }
 .msg-channel.has-unread .msg-channel__name { font-weight: 600; }
 .msg-channel__preview { overflow: hidden; font: var(--type-meta); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
