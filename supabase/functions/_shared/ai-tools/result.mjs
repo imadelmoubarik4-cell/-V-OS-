@@ -53,8 +53,15 @@ function dedupeRecords(records) {
 }
 
 // Hash routes per the redesign route table (docs/design/Atlas_Experience_Redesign.md §3.4). The shell
-// selects the view from the part before `?`; the Atlas AI workspace reads the
-// query to open the record.
+// selects the view from the part before `?`; every query parameter used here is
+// read by its page (tests/node/ai-route-parity-s89.test.js):
+//   #data/pars?item=         Data › Par levels focuses the item
+//   #data/issues?issue=      Data › Issues opens that issue code
+//   #inventory/movements?movement=  Inventory › Movements shows that record
+//   #shifts?week=            Shifts opens that week
+//   #ai/decisions?recommendation=   Atlas AI › Decisions opens that decision
+//   #marketing?recommendation=      Marketing shows that suggestion
+//   #settings/integrations?provider= Settings › Integrations shows that provider
 const ROUTES = {
   inventory_item: (id) => `#inventory/item/${enc(id)}`,
   inventory: () => "#inventory",
@@ -71,7 +78,9 @@ const ROUTES = {
   routine: (id) => `#operations/${enc(id)}`,
   operations: () => "#operations",
   shift_week: (id) => `#shifts?week=${enc(id)}`,
-  shift: (id) => `#shifts?shift=${enc(id)}`,
+  // No page opens a single shift by id; a shift link opens Shifts (use
+  // shift_week with the week start to open the right week).
+  shift: () => "#shifts",
   profile: (id) => `#team/${enc(id)}`,
   team_channel: (id) => `#messages/${enc(id)}`,
   knowledge_article: (id) => `#knowledge/${enc(id)}`,

@@ -48,6 +48,7 @@
     selected: new Set(),
     movementType: null,
     movementQuery: '',
+    focusMovement: null,
     detailId: null,
     detailFromList: false,
     lastLoadedAt: null,
@@ -1212,6 +1213,14 @@
     const query = state.movementQuery.trim().toLowerCase();
     const list = movements().filter((entry) => (!state.movementType || entry.movement_type === state.movementType)
       && (!query || [entry.item_name, entry.note].some((value) => String(value || '').toLowerCase().includes(query))));
+    const focus = state.focusMovement;
+    // The linked record is always listed, even when it is older than the latest 300.
+    const shown = list.slice(0, 300);
+    if (focus && !shown.some((entry) => String(entry.id) === focus)) {
+      const linked = list.find((entry) => String(entry.id) === focus);
+      if (linked) shown.unshift(linked);
+    }
+    const focusAttrs = (entry) => ` data-movement-id="${esc(entry.id)}"${focus && String(entry.id) === focus ? ' class="is-focused" aria-current="true"' : ''}`;
     const types = [...new Set(movements().map((entry) => entry.movement_type).filter(Boolean))];
     body.innerHTML = `<div class="atlas-toolbar">
         <label class="atlas-search">${icon('search')}<input class="atlas-input" type="search" data-inv-movement-search placeholder="Search item or note" aria-label="Search movements" value="${esc(state.movementQuery)}"></label>
@@ -1219,9 +1228,9 @@
         <div class="atlas-toolbar__end">${list.length} ${list.length === 1 ? 'movement' : 'movements'}</div>
       </div>${menuHtml('mtype', types.map((type) => ['movementType', type, (MOVEMENT_TYPES[type] || [type])[0]]))}
       <div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table"><thead><tr><th>Date</th><th>Item</th><th>Type</th><th class="is-num">Change</th><th data-priority="2">Note</th></tr></thead>
-      <tbody>${list.slice(0, 300).map((entry) => { const change = num(entry.quantity_change) || 0; return `<tr><td>${esc(dateTimeText(entry.created_at))}</td><td><a href="#inventory/item/${encodeURIComponent(entry.item_id)}" class="cell-primary">${esc(entry.item_name || 'Inventory item')}</a></td><td>${movementPill(entry.movement_type)}</td><td class="is-num">${change > 0 ? '+' : ''}${qty(change)}</td><td data-priority="2" class="inv__note">${esc(entry.note || '—')}</td></tr>`; }).join('')}</tbody></table>
+      <tbody>${shown.map((entry) => { const change = num(entry.quantity_change) || 0; return `<tr${focusAttrs(entry)}><td>${esc(dateTimeText(entry.created_at))}</td><td><a href="#inventory/item/${encodeURIComponent(entry.item_id)}" class="cell-primary">${esc(entry.item_name || 'Inventory item')}</a></td><td>${movementPill(entry.movement_type)}</td><td class="is-num">${change > 0 ? '+' : ''}${qty(change)}</td><td data-priority="2" class="inv__note">${esc(entry.note || '—')}</td></tr>`; }).join('')}</tbody></table>
       ${list.length ? '' : `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('history')}</div><h3 class="atlas-empty__title">${movements().length ? 'No movements match' : 'No movements yet'}</h3><p class="atlas-empty__text">${movements().length ? 'Clear the search or type filter.' : 'Deliveries, counts, adjustments and waste appear here as they’re recorded.'}</p></div>`}</div>
-      <ul class="atlas-table-list">${list.slice(0, 200).map((entry) => { const change = num(entry.quantity_change) || 0; return `<li><a class="atlas-table-list__row" href="#inventory/item/${encodeURIComponent(entry.item_id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(entry.item_name || 'Inventory item')}</div><div class="atlas-table-list__meta">${esc(dateTimeText(entry.created_at))}${entry.note ? ` · ${esc(entry.note)}` : ''}</div></div><div class="atlas-table-list__value">${change > 0 ? '+' : ''}${qty(change)}<br>${movementPill(entry.movement_type)}</div></a></li>`; }).join('')}</ul>
+      <ul class="atlas-table-list">${shown.slice(0, 200).map((entry) => { const change = num(entry.quantity_change) || 0; return `<li${focusAttrs(entry)}><a class="atlas-table-list__row" href="#inventory/item/${encodeURIComponent(entry.item_id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(entry.item_name || 'Inventory item')}</div><div class="atlas-table-list__meta">${esc(dateTimeText(entry.created_at))}${entry.note ? ` · ${esc(entry.note)}` : ''}</div></div><div class="atlas-table-list__value">${change > 0 ? '+' : ''}${qty(change)}<br>${movementPill(entry.movement_type)}</div></a></li>`; }).join('')}</ul>
       <div class="atlas-table-foot"><span>${list.length > 300 ? 'Showing the latest 300' : ''}</span><span>Every restock, count, adjustment and waste record, newest first.</span></div>`;
     bindMenus(body);
   }
@@ -1684,8 +1693,17 @@
       if (filter === 'inactive') state.activity = 'inactive';
     }
     if (view === 'inventory' && params?.q != null) state.query = String(params.q);
+    // #inventory/movements?movement=<id> (Atlas AI evidence links) opens the
+    // ledger on that record: filters are cleared so the row is present.
+    state.focusMovement = view === 'movements' && params?.movement ? String(params.movement) : null;
+    if (state.focusMovement) { state.movementQuery = ''; state.movementType = null; }
     const countSession = view === 'inventory' && params?.section === 'stock-count' && params?.session;
     if (!countSession) render();
+    if (state.focusMovement) {
+      const row = rootEl().querySelector(`tr[data-movement-id="${CSS.escape(state.focusMovement)}"]`);
+      if (row && row.offsetParent !== null) row.scrollIntoView({ block: 'center' });
+      else rootEl().querySelector(`[data-movement-id="${CSS.escape(state.focusMovement)}"]`)?.scrollIntoView({ block: 'center' });
+    }
     if (countSession) root.AtlasStockCounts?.openSession?.(params.session, { mount: rootEl() });
     else if (!params?.item) topBar();
     if (view === 'inventory' && params?.item) {
