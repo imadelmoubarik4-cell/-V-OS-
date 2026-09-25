@@ -136,6 +136,7 @@ const RPC_ERRORS = [
   { test: (_code, message) => message.startsWith("voice_quota_exceeded:"), status: 429, code: "voice_quota_exceeded", message: "You've reached today's live voice limit. Voice notes and text still work.", extra: (message) => reasonAfter(message, "voice_quota_exceeded:", VOICE_QUOTA_REASONS) },
   { test: (_code, message) => message.startsWith("upload_quota_exceeded:"), status: 429, code: "upload_quota_exceeded", message: "You've reached today's upload limit for Atlas AI. It resets within 24 hours.", extra: (message) => reasonAfter(message, "upload_quota_exceeded:", UPLOAD_QUOTA_REASONS) },
   { test: (_code, message) => message.startsWith("voice_session_inactive:"), status: 409, code: "voice_session_inactive", message: "This live voice session has ended. Start a new one to continue." },
+  { test: (_code, message) => message.startsWith("voice_session_replaced:"), status: 409, code: "voice_session_replaced", message: "Live voice moved to another device." },
   { test: (_code, message) => message.startsWith("not_configured:"), status: 503, code: "not_configured", message: "Atlas AI is not configured" },
   { test: (code, message) => code === "42501" || message.startsWith("forbidden:"), status: 403, code: "forbidden", message: "This is not available for your Atlas role." },
   { test: (code, message) => code === "P0002" || message.startsWith("not_found:"), status: 404, code: "not_found", message: "That could not be found." },

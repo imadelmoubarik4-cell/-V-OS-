@@ -266,6 +266,23 @@ the card (transcripts are approximate).
   Atlas AI switch and the recognition limits in `ai_settings`
   (`recognition_identifications_per_hour`, `recognition_vision_per_day`,
   `recognition_vision_budget_usd_per_day`).
+- Photo questions in chat (S91, `atlas-ai/photos.mjs`): "Count these bottles"
+  or "What is this?" with an attached photo runs `inventory.identify_from_image`
+  on the photo (mode `count` or `identify`, up to three photos) before the
+  model answers, through the normal gateway, audit and evidence path; delivery
+  questions are left to the Purchasing tools. The media ids of the attached
+  files are listed in `<atlas_context>` so the model can call photo tools
+  itself. In mode `count` the vision reading adds `visible_units` per product
+  (a whole number with a confidence, or unknown); the tool reports them as
+  `estimate` evidence ("about 4 bottles, estimated from the photo, 85%
+  confidence"), names products without a confident match as "not in Atlas",
+  and returns next steps: a stock count draft via `inventory.prepare_count`
+  (only for products that match Atlas items, matches confirmed first) or
+  Inventory › Counts. Recognition still never changes stock. Its figures are
+  grounding evidence; if the model's own answer still states figures that are
+  not supported, the recognition summary is used instead of the generic
+  "couldn't verify" reply. When photo recognition is off the answer says
+  "Photo counting isn't switched on yet" and how to count instead.
 - Retention: voice-note audio deleted after successful transcription;
   photos/documents kept 30 days (configurable in `ai_settings`), then purged by
   `atlas_ai_purge_expired_media()`; transcripts and messages follow conversation
@@ -350,8 +367,24 @@ editable before sending.
   response) of a live session owned by the caller and bound to the same
   conversation; otherwise `409 voice_session_inactive`. A session is live until
   it is ended (`POST ?action=voice-end {voice_session_id}`, or `voice-append`
-  with `"ended": true`), until 10 minutes pass without a tool call or
-  transcript append, or 60 minutes after it started (the provider's maximum).
+  with `"ended": true`), until its idle lease lapses, or 60 minutes after it
+  started (the provider's maximum). S91: the lease is 2 minutes
+  (`limits.voiceLeaseSeconds`); the connected client renews it with
+  `POST ?action=voice-heartbeat {voice_session_id}` every 45 seconds
+  (`heartbeat_seconds` in the `voice-session` response), and tool calls and
+  transcript appends renew it too. A page that dies without `voice-end`
+  (iOS closing the tab, a signed-out device) frees its slot within 2 minutes.
+- **Device handoff (S91).** When `voice-session` is refused with
+  `voice_quota_exceeded` / `concurrent`, the panel offers **Continue here**,
+  which repeats `voice-session` with `"takeover": true`. The database ends
+  only the caller's own live voice sessions (`end_reason` `replaced`,
+  `replaced_by`, one row each in `atlas_private.ai_voice_session_events`) and
+  reserves the new one in the same transaction under the per-user lock; if a
+  quota refuses the new session nothing is ended. Another person's sessions
+  are never touched. The replaced device gets `409 voice_session_replaced` on
+  its next `voice-tool`, `voice-append` or `voice-heartbeat`, closes its call
+  and says "Live voice moved to another device." Migration
+  `20260930092000_s91_voice_lease_and_takeover.sql`.
   Transcript appends are still accepted for 5 minutes after the end (final
   flush). Tool calls and transcript appends are each limited to 30 per user per
   minute (`429 rate_limited`), durably in the database. `voice-tool`
@@ -428,6 +461,7 @@ editable before sending.
   | --- | --- | --- | --- |
   | `voice_quota_exceeded` | 429 | `voice-session` over the daily session cap, the concurrency cap or the estimated minutes budget | `reason`: `daily_sessions` \| `concurrent` \| `daily_minutes` |
   | `voice_session_inactive` | 409 | `voice-tool`, `voice-append` or `voice-end` without a live voice session of the caller | — |
+  | `voice_session_replaced` | 409 | (S91) `voice-tool`, `voice-append` or `voice-heartbeat` on a session another device of the same person took over | — |
   | `upload_quota_exceeded` | 429 | `upload` (or kept voice-note audio) over the daily files or bytes quota | `reason`: `daily_files` \| `daily_bytes` |
   | `attachments_too_large` | 413 | `chat` whose image/PDF attachments exceed 20 MB in total | — |
   | `rate_limited` | 429 | now also: turn limit reached at run start (race), voice mint throttle, voice tool or transcript append over 30 per minute | — |

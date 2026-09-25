@@ -231,14 +231,18 @@ test('changed scripts carry the S88 cache key', () => {
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
   for (const file of ['runtime-module-guard.js', 's38-app-remediation.js', 'shifts-workspace.js',
-    'atlas-venue-clock.js', 'atlas-ai-voice.js', 'atlas-chrome.js', 'modal.js', 'atlas-stock-truth.js']) {
+    'atlas-venue-clock.js', 'atlas-chrome.js', 'modal.js', 'atlas-stock-truth.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
   // and the UX acceptance round 2 fixes (toast placement, order lines on the
   // phone, one inventory value in Reports, hours validation in place).
-  for (const file of ['atlas-inventory.js', 'atlas-shell.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'operations.js', 'reports-overview.js', 'atlas-ai.js']) {
+  for (const file of ['atlas-inventory.js', 'atlas-shell.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'operations.js', 'reports-overview.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-s90g"></script>`), file);
+  }
+  // S91b: live voice lease heartbeat and "Continue here"; photo counting copy.
+  for (const file of ['atlas-ai-voice.js', 'atlas-ai.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s91b"></script>`), file);
   }
   // S91a phone UI fixes: the Recipes category menu and tile category.
   assert.ok(index.includes('<script src="assets/js/recipes.js?v=20260926-s91a"></script>'), 'recipes.js');
@@ -252,8 +256,9 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }
-  // S91: the Settings session-ended message.
-  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91a'"), 'settings-workspace.js');
+  // S91: the Settings sign-in message; S91b: owner copy for integrations
+  // that are not set up, with admin-only setup details.
+  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91b'"), 'settings-workspace.js');
   // S91: sign-in copy after the session fixes.
   for (const file of ['marketing-workspace.js', 'reports-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s91a'`), file);

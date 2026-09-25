@@ -14,7 +14,7 @@
 //   createVoiceNote({ onLevel })        → { start(), stop() → {blob, mime, duration}, cancel(), elapsed() }
 //   createLiveVoice({ request, sendOnExit, conversationId, onState, onTranscript,
 //                     onProposal, onRecords, onTurnsSaved, onError, onConversation })
-//                                       → { start(), mute(bool), end(), exit(), state(), conversationId(), voiceSessionId() }
+//                                       → { start({ takeover }), mute(bool), end(), exit(), state(), conversationId(), voiceSessionId() }
 //
 // Voice session contract (atlas-ai hardening): voice-session returns the Atlas
 // voice_session_id; it is kept for the life of the call and sent with every
@@ -22,6 +22,14 @@
 // transcript calls for that session (state 'inactive'); nothing is retried
 // against it. voice-end is sent on End and on normal teardown (pagehide).
 // The frontend never invents a session id.
+//
+// S91: while the call is connected the client sends voice-heartbeat every
+// heartbeat_seconds (45 s) so the server's 2-minute lease stays alive; a page
+// that dies without voice-end frees the slot within the lease. start({
+// takeover: true }) is "Continue here": the server ends this person's other
+// live voice session. The device that lost the call gets 409
+// voice_session_replaced on its next heartbeat, tool call or append and stops
+// with state 'replaced'.
 (function (root) {
   'use strict';
 
@@ -31,6 +39,7 @@
   const NOTE_TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/ogg'];
   const MAX_NOTE_SECONDS = 600;
   const APPEND_BATCH = 10;
+  const DEFAULT_HEARTBEAT_SECONDS = 45;
 
   function supported() {
     const media = Boolean(root.navigator?.mediaDevices?.getUserMedia);
@@ -159,7 +168,9 @@
     let conversationId = options.conversationId || null;
     let sessionId = null;          // provider session id (only a fallback key)
     let voiceSessionId = null;     // Atlas voice session id from voice-session
-    let inactive = false;          // 409 voice_session_inactive seen
+    let inactive = false;          // 409 voice_session_inactive or voice_session_replaced seen
+    let heartbeatTimer = 0;
+    let heartbeatSeconds = DEFAULT_HEARTBEAT_SECONDS;
     let endSent = false;
     let pc = null;
     let channel = null;
@@ -181,23 +192,40 @@
     }
 
     function isInactive(error) {
-      return error?.code === 'voice_session_inactive';
+      return error?.code === 'voice_session_inactive' || error?.code === 'voice_session_replaced';
     }
 
-    // The server ended this session (idle or absolute expiry, or ended
-    // elsewhere): stop every tool and transcript call and close the call.
-    function markInactive() {
+    // The server ended this session (idle or absolute expiry, ended
+    // elsewhere, or taken over on another device): stop every tool and
+    // transcript call and close the call.
+    function markInactive(error = null) {
       if (inactive) return;
       inactive = true;
       pendingTurns.length = 0;
       root.clearTimeout(flushTimer);
       teardown();
-      setState('inactive');
+      setState(error?.code === 'voice_session_replaced' ? 'replaced' : 'inactive');
+    }
+
+    // Keeps the server's idle lease alive while the call is connected. A
+    // failed request is not fatal: the lease outlasts two heartbeats.
+    async function heartbeat() {
+      if (inactive || ended || !sessionKey()) return;
+      try {
+        await request('voice-heartbeat', { method: 'POST', body: { voice_session_id: sessionKey() } });
+      } catch (error) {
+        if (isInactive(error)) markInactive(error);
+      }
+    }
+
+    function startHeartbeat() {
+      root.clearInterval(heartbeatTimer);
+      heartbeatTimer = root.setInterval(heartbeat, heartbeatSeconds * 1000);
     }
 
     function setState(next, detail = {}) {
-      if (inactive && next !== 'inactive') return;
-      if (ended && next !== 'ended' && next !== 'disconnected' && next !== 'error' && next !== 'inactive') return;
+      if (inactive && next !== 'inactive' && next !== 'replaced') return;
+      if (ended && next !== 'ended' && next !== 'disconnected' && next !== 'error' && next !== 'inactive' && next !== 'replaced') return;
       current = next;
       emit('onState', next, detail);
     }
@@ -228,7 +256,7 @@
           emit('onTurnsSaved', turns);
           if (last) endedByAppend = true;
         } catch (error) {
-          if (isInactive(error)) { markInactive(); return false; }
+          if (isInactive(error)) { markInactive(error); return false; }
           // Keep the turns for the next flush; the transcript is still on screen.
           pendingTurns.unshift(...turns);
           emit('onError', { code: error?.code || 'save_failed', recoverable: true, message: 'Part of the voice transcript could not be saved yet.' });
@@ -270,7 +298,7 @@
         proposals.forEach((proposal) => emit('onProposal', proposal));
         if (Array.isArray(result?.records) && result.records.length) emit('onRecords', result.records, result.evidence || []);
       } catch (error) {
-        if (isInactive(error)) { markInactive(); return; }
+        if (isInactive(error)) { markInactive(error); return; }
         if (error?.code === 'rate_limited') emit('onError', { code: 'rate_limited', recoverable: true });
         output = error?.code === 'forbidden'
           ? 'That is not available for this person. Say so plainly.'
@@ -356,18 +384,22 @@
       }
     }
 
-    async function start() {
+    async function start({ takeover = false } = {}) {
       if (!supported().liveVoice) throw Object.assign(new Error('Live voice is not supported in this browser.'), { code: 'unsupported' });
       ended = false;
       setState('connecting');
       let secret = null;
       try {
-        const session = await request('voice-session', { method: 'POST', body: conversationId ? { conversation_id: conversationId } : {} });
+        const body = conversationId ? { conversation_id: conversationId } : {};
+        if (takeover === true) body.takeover = true;
+        const session = await request('voice-session', { method: 'POST', body });
         secret = typeof session?.client_secret === 'string' ? session.client_secret : (session?.client_secret?.value || null);
         conversationId = session?.conversation_id || conversationId;
         voiceSessionId = typeof session?.voice_session_id === 'string' && session.voice_session_id ? session.voice_session_id : null;
         sessionId = typeof session?.session_id === 'string' && session.session_id ? session.session_id : null;
         expiresAt = session?.voice_session_expires_at || null;
+        const beat = Number(session?.heartbeat_seconds);
+        heartbeatSeconds = Number.isFinite(beat) && beat >= 10 && beat <= 300 ? beat : DEFAULT_HEARTBEAT_SECONDS;
         if (!secret || !sessionKey()) {
           // Tools and transcripts need the server's session id; never invent one.
           throw Object.assign(new Error('Live voice could not start.'), { code: 'provider_error' });
@@ -416,6 +448,7 @@
         if (!response.ok) throw Object.assign(new Error('Live voice could not connect.'), { code: 'provider_error', status: response.status });
         const answer = await response.text();
         await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+        startHeartbeat();
       } catch (error) {
         secret = null;
         teardown();
@@ -439,6 +472,8 @@
     }
 
     function teardown() {
+      root.clearInterval(heartbeatTimer);
+      heartbeatTimer = 0;
       try { channel?.close(); } catch { /* closed */ }
       try { pc?.close(); } catch { /* closed */ }
       stopStream(micStream);
@@ -482,8 +517,10 @@
       conversationId: () => conversationId,
       voiceSessionId: () => sessionKey(),
       expiresAt: () => expiresAt,
-      // Exposed for tests and diagnostics: feeds one data-channel event.
-      handleEvent
+      // Exposed for tests and diagnostics: feeds one data-channel event, or
+      // sends one heartbeat now.
+      handleEvent,
+      heartbeat
     };
   }
 

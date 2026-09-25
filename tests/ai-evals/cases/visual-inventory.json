@@ -210,5 +210,79 @@
     "args": { "item_id": "@item.giffardvanille", "suggested_item_id": null, "note": "Wrong syrup", "recognition_request_id": null },
     "expected": { "ok": false, "error": "forbidden" },
     "notes": "Viewers report wrong matches from the recognition screen (atlas-inventory-recognition report), not through an Atlas AI proposal."
+  },
+  {
+    "id": "vi-019", "category": "multimodal", "blocking": true, "world": "catalog",
+    "question": "[photo of the back bar] Count these bottles",
+    "actor": "bartender", "tool": "inventory.identify_from_image",
+    "args": { "media_id": "@media.backBarBottles", "mode": "count", "purchase_order_id": null, "count_session_id": null },
+    "expected": {
+      "ok": true,
+      "summary": ["3 products in the photo", "possibly Aperol", "about 4 bottles visible (estimated from the photo, 85% confidence)", "about 2 bottles visible", "Monin Lavender Syrup, not in Atlas", "about 3 bottles visible", "Nothing was changed", "stock count draft", "Inventory › Counts"],
+      "summary_excludes": ["couldn't verify", "in stock"],
+      "data": {
+        "data.detections": { "$len": 3 },
+        "data.detections[0].visible_units.value": 4,
+        "data.detections[0].visible_units.confidence": 85,
+        "data.detections[0].visible_units.estimate": true,
+        "data.detections[0].candidates[0].name": "Aperol",
+        "data.detections[1].visible_units.value": 2,
+        "data.detections[1].candidates[0].name": "Campari",
+        "data.detections[2].band": "low",
+        "data.detections[2].in_atlas": false,
+        "data.detections[2].read_name": "Monin Lavender Syrup",
+        "data.detections[2].visible_units.value": 3,
+        "data.detections": { "$every": { "preselected_item_id": null } },
+        "data.next_steps[0].kind": "stock_count_draft",
+        "data.next_steps[0].tool": "inventory.prepare_count",
+        "data.next_steps[0].entries": { "$len": 2 },
+        "data.next_steps[0].entries[0].item_id": "@item.aperol",
+        "data.next_steps[0].entries[0].quantity": 4,
+        "data.next_steps[0].entries[0].confirmed_match": false,
+        "data.next_steps[0].entries[1].item_id": "@item.campari",
+        "data.next_steps[0].entries[1].quantity": 2,
+        "data.next_steps[1].route": "#inventory/counts",
+        "data.stock_changed": false
+      },
+      "evidence_kinds": ["estimate", "interpretation"],
+      "evidence": [
+        { "kind": "estimate", "label": "Product 1: visible in the photo", "value": "about 4 bottles (estimated from the photo, 85% confidence)" },
+        { "kind": "estimate", "label": "Product 3: visible in the photo", "value": "about 3 bottles" }
+      ],
+      "records": ["inventory_item:@item.aperol", "inventory_item:@item.campari"],
+      "unknown": { "count": 1 },
+      "proposal": null
+    },
+    "notes": "S91 'Count these bottles': visible counts are estimates from the photo with a confidence; the Lavender syrup is 'not in Atlas'; the next step is a stock count draft (only for products that match Atlas items, matches confirmed first) or Inventory › Counts. Nothing is proposed or changed by the photo itself."
+  },
+  {
+    "id": "vi-020", "category": "missing_evidence", "blocking": true, "world": "catalog_vision_off",
+    "question": "[photo of the back bar] Count these bottles",
+    "actor": "bartender", "tool": "inventory.identify_from_image",
+    "args": { "media_id": "@media.backBarBottles", "mode": "count", "purchase_order_id": null, "count_session_id": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Photo counting isn't switched on yet", "Inventory › Counts", "tell me the quantities", "Nothing was changed"],
+      "summary_excludes": ["OPENAI", "ATLAS_", "key", "couldn't verify"],
+      "data": { "data.detections": { "$len": 0 }, "data.stock_changed": false, "data.next_steps[0].route": "#inventory/counts" },
+      "evidence_kinds": ["missing"],
+      "proposal": null
+    },
+    "notes": "S91: with photo recognition switched off the answer says so plainly and gives the ways to count instead; no setting or key names."
+  },
+  {
+    "id": "vi-021", "category": "multimodal", "blocking": true, "world": "catalog",
+    "question": "[photo of the back bar] What is this?",
+    "actor": "manager", "tool": "inventory.identify_from_image",
+    "args": { "media_id": "@media.backBarBottles", "mode": "identify", "purchase_order_id": null, "count_session_id": null },
+    "expected": {
+      "ok": true,
+      "summary": ["3 products in the photo", "possibly Aperol", "no confident Atlas inventory match found", "Nothing was changed"],
+      "summary_excludes": ["visible", "stock count draft"],
+      "data": { "data.stock_changed": false, "data.next_steps": { "$absent": true } },
+      "evidence_kinds_absent": ["estimate"],
+      "proposal": null
+    },
+    "notes": "Identify mode names what is in the photo without counting it."
   }
 ]

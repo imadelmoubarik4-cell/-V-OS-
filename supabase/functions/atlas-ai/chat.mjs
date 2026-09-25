@@ -23,6 +23,7 @@ import {
   redactSecrets,
 } from "./guardrails.mjs";
 import { TurnState } from "./turn.mjs";
+import { photoAnswer, photoContextItem, recognisePhotos } from "./photos.mjs";
 
 const SOURCES = new Set(["text", "voice_note", "quick_action"]);
 const CLIENT_REQUEST_ID = /^[A-Za-z0-9._:-]{8,100}$/;
@@ -384,14 +385,19 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
   let result = null;
   let finalText = "";
   let documentText = "";
+  let photos = [];
 
   try {
     const { parts, notes } = await attachmentParts(media, { services: deps.services, limits: config.limits });
     documentText = parts.filter((part) => part.type === "input_text").map((part) => part.text).join("\n");
+    // S91: "Count these bottles" / "What is this?" with a photo runs the
+    // recognition service on the photo first; its result is evidence.
+    photos = await recognisePhotos({ gateway: deps.gateway, turn, actor, media, message });
     const { graph, runner } = await prepareAgent({ deps, config, actor, preferences, hasVision: hasVisionHint, nowIso, venue });
     const session = new AtlasSession(conversationId, history);
     const turnInput = [
-      contextItem({ conversationContext: conversation?.context ?? {}, pageContext: input.pageContext, evidence: evidenceBefore, nowIso, venue }),
+      contextItem({ conversationContext: conversation?.context ?? {}, pageContext: input.pageContext, evidence: evidenceBefore, nowIso, venue, attachments: attachmentMeta(media) }),
+      ...(photos.length ? [photoContextItem(photos)] : []),
       userItem(notes.length ? `${message}\n\n(${notes.map((note) => note.note).join(" ")})` : message, parts),
     ];
     result = await runner.run(graph.agent, turnInput, {
@@ -451,6 +457,10 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
   } else if (!errorInfo) {
     const allowed = allowedNumbersFor(message, evidenceBefore, conversation?.context, documentText);
     grounding = guardrail ? { ok: true, replaced: false } : groundingCheck(finalText, { verifiedToolRan: turn.verified, allowedNumbers: allowed, evidenceNumbers: turn.evidenceNumbers });
+    // A photo was provided and recognised: answer from the recognition result
+    // rather than with "couldn't verify from Atlas data".
+    const fromPhoto = grounding.replaced ? photoAnswer(photos) : null;
+    if (fromPhoto) grounding = { ok: true, replaced: false, text: fromPhoto, photo: true };
     const finished = gate.finish(grounding.text ?? finalText);
     finalText = finished.text;
     if (finished.rest) send("delta", { text: finished.rest });
@@ -472,7 +482,7 @@ export async function streamChatTurn({ deps, config, actor, input, prepared, sen
       metadata: {
         models: modelsUsed,
         tool_calls: turn.toolCalls,
-        grounding: grounding.replaced ? "replaced_unverified" : "ok",
+        grounding: grounding.replaced ? "replaced_unverified" : grounding.photo ? "photo_recognition" : "ok",
         ...(guardrail ? { guardrail } : {}),
         ...(errorCode ? { error_code: errorCode } : {}),
       },

@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { createRecognitionHandler, imageMatches, mapRpcError, replayResponse } from '../../supabase/functions/atlas-inventory-recognition/handler.mjs';
 import {
   callVision, DEFAULT_VISION_MODEL, estimateVisionCostUsd, normalizeDetection, sanitizeExtraction, VISION_PRICE_USD_PER_MTOK,
-  VISION_SCHEMA, visionRequestBody,
+  VISION_INSTRUCTIONS, VISION_SCHEMA, visionRequestBody,
 } from '../../supabase/functions/_shared/recognition/extract.mjs';
 import { guardedRpc, localCandidates, localResolveCodes, RECOGNITION_RPCS } from '../../supabase/functions/_shared/recognition/retrieve.mjs';
 import { calibrate, FIELD_KEYS, bandFor } from '../../supabase/functions/_shared/recognition/bands.mjs';
@@ -144,7 +144,7 @@ test('a photo is stored privately, read with the strict schema without the catal
   assert.ok(detection.candidates.find((candidate) => candidate.item_id === CARAMEL).evidence.some((entry) => entry.polarity === 'against'));
   const record = calls.find((call) => call.name === 'atlas_recognition_record').args.p_request;
   assert.ok(record.vision_cost_usd > 0);
-  assert.equal(record.extractor_version, 'rx-1');
+  assert.equal(record.extractor_version, 'rx-2');
 });
 
 test('without an OpenAI key photos answer not_configured while barcodes still work', async () => {
@@ -247,7 +247,7 @@ test('the recognition client can call nothing but the recognition RPCs', async (
   assert.ok(RECOGNITION_RPCS.every((name) => name.startsWith('atlas_recognition_')));
 });
 
-test('model output is sanitised: at most 12 detections, clamped confidences, guessed sizes capped, no counts', () => {
+test('model output is sanitised: at most 12 detections, clamped confidences, guessed sizes capped, unknown fields dropped', () => {
   const raw = { image_quality: { usable: true, issues: ['blur', 'nonsense'] }, detections: Array.from({ length: 20 }, (_, index) => ({
     detection_index: index, brand: { value: 'X', confidence: 250 }, category_class: { value: 'rocket', confidence: 90 },
     unit_size: { quantity: 70, unit: 'cl', text: null, inferred: true, confidence: 95 }, visible_unit_count: { value: 6, confidence: 90 } })) };
@@ -258,9 +258,27 @@ test('model output is sanitised: at most 12 detections, clamped confidences, gue
   assert.equal(clean.detections[0].category_class.value, null);
   assert.equal(clean.detections[0].unit_size.confidence, 40);
   assert.ok(!('visible_unit_count' in clean.detections[0]));
+  assert.deepEqual(clean.detections[0].visible_units, { value: null, confidence: 0, evidence: null }, 'no visible count read means unknown, not zero');
   assert.ok(!JSON.stringify(VISION_SCHEMA).includes('fill'), 'no fill-level field in the schema');
   const normalized = normalizeDetection(clean.detections[0]);
   assert.equal(normalized.pack.inferred, true);
+});
+
+test('S91 visible units: a whole number 1..500 with a confidence, otherwise unknown; never part of matching', () => {
+  const detection = (visible_units) => sanitizeExtraction({ detections: [{ brand: { value: 'Aperol', confidence: 90 }, visible_units }] }).detections[0].visible_units;
+  assert.deepEqual(detection({ value: 6, confidence: 82, evidence: 'six bottles on the shelf' }), { value: 6, confidence: 82, evidence: 'six bottles on the shelf' });
+  assert.deepEqual(detection({ value: 0, confidence: 90 }), { value: null, confidence: 0, evidence: null }, 'zero is not a count from a photo');
+  assert.deepEqual(detection({ value: 2.5, confidence: 90 }), { value: null, confidence: 0, evidence: null });
+  assert.deepEqual(detection({ value: 900, confidence: 90 }), { value: null, confidence: 0, evidence: null });
+  assert.deepEqual(detection({ value: 4, confidence: 0 }), { value: null, confidence: 0, evidence: null }, 'no confidence means unknown');
+  assert.deepEqual(detection({ value: 4, confidence: 400 }).confidence, 100);
+  const schema = VISION_SCHEMA.properties.detections.items;
+  assert.ok(schema.required.includes('visible_units'), 'strict schema: the field is always present');
+  assert.deepEqual(schema.properties.visible_units.properties.value.type, ['integer', 'null']);
+  assert.match(VISION_INSTRUCTIONS, /count the whole units of it you can clearly see/);
+  assert.match(VISION_INSTRUCTIONS, /Do not estimate fill level/);
+  const clean = sanitizeExtraction({ detections: [{ brand: { value: 'Aperol', confidence: 90 }, visible_units: { value: 6, confidence: 90 } }] }).detections[0];
+  assert.doesNotMatch(JSON.stringify(normalizeDetection(clean)), /"visible_units"/, 'the count never feeds the match scorer');
 });
 
 test('vision defaults and the cost estimate follow the Atlas AI runtime configuration', async () => {

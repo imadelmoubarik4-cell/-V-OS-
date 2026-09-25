@@ -51,6 +51,11 @@ export const LIMITS = Object.freeze({
   realtimeSecretSeconds: 60,
   // Durable (database) mint throttle per user per minute.
   voiceMintsPerMinute: 6,
+  // Idle lease of a live voice session (S91). The connected client renews it
+  // with voice-heartbeat every voiceHeartbeatSeconds; a session whose page
+  // died without voice-end frees its slot within the lease.
+  voiceLeaseSeconds: 120,
+  voiceHeartbeatSeconds: 45,
   // Realtime per-response and per-turn input bounds (client_secrets session).
   realtimeMaxOutputTokens: 1024,
   realtimeRetentionRatio: 0.8,

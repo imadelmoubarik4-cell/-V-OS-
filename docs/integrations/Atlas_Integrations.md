@@ -175,8 +175,9 @@ Base URL: `https://<auth project>.supabase.co/functions/v1/atlas-integrations` (
       "auth_kind": "oauth2",
       "connection_state": "not_configured | ready | verifying | connected | verification_failed | needs_reauthorization | pending_review",
       "configured": false,
-      "available_message": "Not available yet — requires … and ….",
-      "missing_requirements": ["…"],
+      "available_message": "Not set up yet.",
+      "enables": "Lets Atlas save and open files you choose in Google Drive.",
+      "missing_requirements": ["the integration encryption key", "a Google Cloud OAuth client ID"],
       "can_connect": false,
       "can_save_api_key": false,
       "can_test": false,
@@ -193,7 +194,7 @@ Base URL: `https://<auth project>.supabase.co/functions/v1/atlas-integrations` (
       "connected_at": null,
       "disconnected_at": null,
       "redirect_uri_to_register": "https://<project>.supabase.co/functions/v1/atlas-integrations/callback/google-drive",
-      "owner_requirements_summary": "…",
+      "setup_details": null,
       "recent_events": [{ "event_type": "verified", "actor_label": "…", "created_at": "…" }]
     }
   ],
@@ -202,11 +203,18 @@ Base URL: `https://<auth project>.supabase.co/functions/v1/atlas-integrations` (
 }
 ```
 
+S91: the status is owner copy. `available_message` is "Not set up yet." and `enables` is one short
+sentence of what connecting gives; `missing_requirements` is plain language without secret names.
+Only an administrator's response carries `setup_details`
+`{ "summary": "Google Cloud project with the Drive API enabled, …", "requirements": [{ "name": "ATLAS_GOOGLE_OAUTH_CLIENT_ID", "label": "a Google Cloud OAuth client ID" }] }`
+(function secret names, never values); Settings › Integrations shows it behind a closed
+"Setup details" disclosure for administrators only. Managers get `setup_details: null`.
+
 States:
 
 | `connection_state` | Meaning | UI |
 | --- | --- | --- |
-| `not_configured` | Server prerequisites missing | Show `available_message`; no buttons. |
+| `not_configured` | Server prerequisites missing | "Not set up yet" and `enables`; administrators also get "Setup details"; no buttons. |
 | `ready` | Configured, no credential | **Connect** (OAuth) or an API key field (`can_save_api_key`). |
 | `verifying` | Credential stored, live check not yet successful | **Test**, **Disconnect**. |
 | `connected` | Credential stored and the last live check succeeded | Account label, last verified, **Test**, **Disconnect**. |
@@ -219,7 +227,7 @@ States:
 `200 { "provider_key", "authorize_url", "expires_at" }`. Navigate with `location.assign(authorize_url)`
 in the same browser (it is the Atlas authorize hop; it binds the flow to this browser and then
 redirects to the provider). Do not open it in another window or share it.
-`409 { "error": "Not available yet — requires …", "error_code": "not_configured", "provider_key", "missing_requirements" }`.
+`409 { "error": "Google Drive is not set up yet.", "error_code": "not_configured", "provider_key", "missing_requirements" }`.
 `400` for an API-key provider or an invalid `return_path` (hash routes only, default `#settings`).
 
 ### Callback (provider → function → browser)
