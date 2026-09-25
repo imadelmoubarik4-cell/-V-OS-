@@ -370,3 +370,39 @@ test('review follow-ups: a retried upload replays; no key spends nothing; the bu
   assert.equal(begin.args.p_daily_budget_usd, 5);
   assert.equal(begin.args.p_daily_limit, 60);
 });
+
+test('an unclear failure after storing keeps the file when the record was committed; a refusal removes it', async () => {
+  const committed = fakeServices({ rpc: (name, args) => {
+    if (name === 'atlas_accounting_create') throw mapRpcError(503, { code: 'XX000' });
+    if (name === 'atlas_accounting_find_file' && committed.calls.upload.length) return { replayed: true, document: { id: DOC_ID } };
+    return undefined;
+  } });
+  const first = handlerFor({ services: committed });
+  const lost = await body(await first.handle(uploadRequest(PDF)));
+  assert.equal(lost.status, 503);
+  assert.deepEqual(committed.calls.remove, [], 'the committed record keeps its file');
+
+  const absent = fakeServices({ rpc: (name) => { if (name === 'atlas_accounting_create') throw mapRpcError(503, { code: 'XX000' }); } });
+  const second = handlerFor({ services: absent });
+  await second.handle(uploadRequest(PDF));
+  assert.deepEqual(absent.calls.remove, [absent.calls.upload[0].path], 'no record: the stray file goes');
+});
+
+test('production wiring: a function env (as index.ts passes) authenticates through the shared resolver', async () => {
+  const env = { ATLAS_AUTH_PROJECT_URL: 'https://auth.test', ATLAS_AUTH_PUBLISHABLE_KEY: 'sb_publishable_test', SUPABASE_URL: 'https://branch.test', SUPABASE_SERVICE_ROLE_KEY: 'service' };
+  const profileFor = (role) => async (input) => {
+    const url = new URL(String(input instanceof Request ? input.url : input));
+    if (url.pathname === '/auth/v1/user') return new Response(JSON.stringify({ id: ADMIN.userId }), { status: 200 });
+    if (url.pathname === '/rest/v1/profiles') return new Response(JSON.stringify([{ id: ADMIN.userId, display_name: 'Owner', role, active: true }]), { status: 200 });
+    return new Response('{}', { status: 200 });
+  };
+  for (const [role, expected] of [['admin', 200], ['manager', 403], ['bartender', 403]]) {
+    const services = fakeServices();
+    const handle = createAccountingHandler({ env: (name) => env[name], fetchImpl: profileFor(role), newId, services });
+    const response = await handle(get('snapshot'));
+    assert.equal(response.status, expected, role);
+    assert.equal(services.calls.rpc.length, expected === 200 ? 1 : 0, `${role}: database calls`);
+  }
+  const noToken = createAccountingHandler({ env: (name) => env[name], fetchImpl: profileFor('admin'), newId, services: fakeServices() });
+  assert.equal((await noToken(new Request('https://fn.test/atlas-accounting?action=snapshot'))).status, 401);
+});

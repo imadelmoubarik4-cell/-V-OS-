@@ -339,7 +339,9 @@ export function createServices({ env, fetchImpl }) {
 // ---------------------------------------------------------------------------
 export function createAccountingHandler({ env, fetchImpl, newId = () => crypto.randomUUID(), resolveActor = null, services = null } = {}) {
   const svc = services ?? createServices({ env, fetchImpl });
-  const resolve = resolveActor ?? ((request) => sharedResolveActor(request, env, fetchImpl, {
+  // _shared/auth.mjs reads settings from an object with get() (Deno.env) or a
+  // plain object; index.ts passes a function, so it is wrapped here.
+  const resolve = resolveActor ?? ((request) => sharedResolveActor(request, { get: (name) => envValue(env, name) }, fetchImpl, {
     inactiveMessage: "This Atlas profile is inactive.",
   }));
 
@@ -394,7 +396,21 @@ export function createAccountingHandler({ env, fetchImpl, newId = () => crypto.r
       if (document?.replayed) await svc.remove(path);
       return { document, readable: READABLE.has(mime) && bytes.byteLength <= LIMITS.readBytes };
     } catch (error) {
-      await svc.remove(path);
+      // Remove the stored file only when the record certainly does not exist:
+      // a definite refusal (4xx), or no record found for this request after an
+      // unclear failure (the database may have committed before the reply was
+      // lost; that record keeps its file for 7 years).
+      const refused = error instanceof ApiError && error.status < 500;
+      let recorded = false;
+      if (!refused) {
+        try {
+          const again = await svc.rpc("atlas_accounting_find_file", { p_actor_id: actor.userId, p_sha256: sha256, p_request_id: requestId });
+          recorded = Boolean(again?.replayed);
+        } catch {
+          recorded = true;
+        }
+      }
+      if (!recorded) await svc.remove(path);
       throw error;
     }
   }

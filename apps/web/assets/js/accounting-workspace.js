@@ -250,14 +250,19 @@
   // currencies are listed beside it (otherCurrencies) or per currency (totalsText).
   const currencyOf = (doc) => String(doc.currency || 'ISK').toUpperCase();
   const isKronur = (doc) => currencyOf(doc) === 'ISK';
-  const sum = (list) => list.filter(isKronur).reduce((total, doc) => total + (Number(doc.total_amount) || 0), 0);
+  // Amounts are stored positive, also on a credit note (the database checks
+  // >= 0); a credit note reduces what is owed, so every total and export
+  // counts it with a minus sign.
+  const signOf = (doc) => (doc?.kind === 'credit_note' ? -1 : 1);
+  const signed = (doc, value) => (value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? value : signOf(doc) * Number(value));
+  const sum = (list) => list.filter(isKronur).reduce((total, doc) => total + signOf(doc) * (Number(doc.total_amount) || 0), 0);
   function byCurrency(list) {
     const groups = new Map();
     list.forEach((doc) => {
       const code = currencyOf(doc);
       if (!groups.has(code)) groups.set(code, { code, total: 0, docs: [] });
       const group = groups.get(code);
-      group.total += Number(doc.total_amount) || 0;
+      group.total += signOf(doc) * (Number(doc.total_amount) || 0);
       group.docs.push(doc);
     });
     return [...groups.values()].sort((a, b) => (a.code === 'ISK' ? -1 : b.code === 'ISK' ? 1 : a.code.localeCompare(b.code)));
@@ -352,7 +357,7 @@
     const months = Array.from({ length: 24 }, (_, index) => shiftMonth(current, -index));
     const inMonth = documents().filter((doc) => ['approved', 'paid', 'void'].includes(doc.status) && inRange(doc, bounds));
     const counted = inMonth.filter((doc) => doc.status !== 'void');
-    const vat = (rate) => counted.filter(isKronur).reduce((total, doc) => total + (doc.vat_lines || []).filter((line) => Number(line.rate) === rate).reduce((t, line) => t + (Number(line.vat) || 0), 0), 0);
+    const vat = (rate) => counted.filter(isKronur).reduce((total, doc) => total + signOf(doc) * (doc.vat_lines || []).filter((line) => Number(line.rate) === rate).reduce((t, line) => t + (Number(line.vat) || 0), 0), 0);
     const waiting = documents().filter((doc) => doc.status === 'to_review' && (!doc.issue_date || inRange(doc, bounds))).length;
     // The workspace holds the last 13 months: an empty month in it is really empty.
     const nothing = !inMonth.length && month >= shiftMonth(current, -12);
@@ -370,7 +375,7 @@
         </div>
         ${waiting ? alert('warning', `${waiting} ${waiting === 1 ? 'document is' : 'documents are'} still to review`, 'Only approved documents are exported. Review the ones dated in this month, or without a date, first.') : ''}
         ${newSince ? alert('info', `${newSince} ${newSince === 1 ? 'document in this month was' : 'documents in this month were'} approved after it was last exported`, 'Export the month again and send your accountant the new spreadsheet.') : ''}
-        <p class="acc-lead">For your accountant (Regla, Payday): every approved, paid and void document dated in this month. Open the spreadsheet in Excel, import the CSV into your accounting software, or send the ZIP: the original files plus the spreadsheet. Void documents are listed, marked “No – void” under Counted, and left out of the totals.</p>
+        <p class="acc-lead">For your accountant (Regla, Payday): every approved, paid and void document dated in this month. Open the spreadsheet in Excel, import the CSV into your accounting software, or send the ZIP: the original files plus both spreadsheets. Credit notes count as minus amounts. Void documents are listed, marked “No – void” under Counted, and left out of the totals.</p>
         ${nothing ? '<p class="acc-muted" data-acc-export-empty>Nothing approved is dated in this month.</p>' : ''}
         <div class="acc-export__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-acc-export="csv-is"${disabled}>${icon('file-spreadsheet')}Spreadsheet for Excel</button><button type="button" class="atlas-btn atlas-btn--secondary" data-acc-export="csv"${disabled}>${icon('file-spreadsheet')}CSV for Regla / Payday import</button><button type="button" class="atlas-btn atlas-btn--secondary" data-acc-export="zip"${disabled}>${icon('file-archive')}Download files (ZIP)</button></div>
         <p class="acc-muted" data-acc-export-status aria-live="polite"></p>
@@ -502,12 +507,12 @@
   }
 
   function openUpload() {
-    const root = modal('acc-upload');
+    const root = modal('acc-upload', { initialFocus: '#acc-upload-title' });
     const aiOn = state.workspace?.ai_enabled === true;
     const files = [];
     root.innerHTML = `<section class="atlas-sheet" data-modal-panel aria-labelledby="acc-upload-title">
         <span class="atlas-sheet__grabber"></span>
-        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="acc-upload-title">Upload invoices or receipts</h2><p class="atlas-sheet__desc">${aiOn ? 'Atlas reads each one and fills in what it can. You check and approve it.' : 'You type in the details and approve them. Atlas reading is off (Settings › Atlas AI).'}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close>${icon('x')}</button></header>
+        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="acc-upload-title" tabindex="-1">Upload invoices or receipts</h2><p class="atlas-sheet__desc">${aiOn ? 'Atlas reads each one and fills in what it can. You check and approve it.' : 'You type in the details and approve them. Atlas reading is off (Settings › Atlas AI).'}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close>${icon('x')}</button></header>
         <form class="atlas-sheet__body atlas-form acc-upload" data-acc-upload-form>
           ${errorSlot()}
           <label class="atlas-upload acc-drop" data-acc-drop><span class="atlas-upload__thumb">${icon('file-up')}</span><span class="atlas-upload__body"><span class="atlas-upload__title">Choose files</span><span class="atlas-upload__help">PDF or photo, up to 15 MB each. You can choose several.</span></span><input type="file" class="acc-file-input" data-acc-files accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.heic" multiple></label>
@@ -1154,7 +1159,8 @@
     ['Document date', (d) => d.issue_date], ['Due date', (d) => d.due_date], ['Type', (d) => KINDS[d.kind] || d.kind],
     ['Supplier', (d) => d.supplier_name], ['Supplier kennitala', (d) => d.supplier_kennitala], ['Number', (d) => d.document_number],
     ['Category', (d) => CATEGORIES[d.category] || ''], ['Currency', (d) => d.currency],
-    ['Net', (d) => d.net_amount, true], ['VAT 24%', (d) => vatFor(d, 24), true], ['VAT 11%', (d) => vatFor(d, 11), true], ['VAT', (d) => d.vat_amount, true], ['Total', (d) => d.total_amount, true],
+    // Credit notes are exported negative, so a column sum is the true figure.
+    ['Net', (d) => signed(d, d.net_amount), true], ['VAT 24%', (d) => signed(d, vatFor(d, 24)), true], ['VAT 11%', (d) => signed(d, vatFor(d, 11)), true], ['VAT', (d) => signed(d, d.vat_amount), true], ['Total', (d) => signed(d, d.total_amount), true],
     ['Status', (d) => ({ approved: d.paid_by === 'staff' ? 'To reimburse' : 'Unpaid', paid: d.paid_by === 'staff' ? 'Reimbursed' : 'Paid', void: 'Void' })[d.status] || d.status],
     ['Counted', (d) => (d.status === 'void' ? 'No – void' : 'Yes')],
     ['Paid on', (d) => d.paid_at], ['Payment method', (d) => METHODS[d.payment_method] || ''], ['Payment reference', (d) => d.payment_reference],
@@ -1255,7 +1261,11 @@
         say(`Spreadsheet downloaded: ${list.length} ${list.length === 1 ? 'document' : 'documents'}.`);
         return;
       }
-      const entries = [{ name: `Accounting ${month}.csv`, bytes: new TextEncoder().encode(toCsv(list)) }];
+      // Both spreadsheets travel with the originals: one for Excel, one for import.
+      const entries = [
+        { name: `Accounting ${month} (Excel).csv`, bytes: new TextEncoder().encode(toCsv(list, CSV_FORMATS.icelandic)) },
+        { name: `Accounting ${month}.csv`, bytes: new TextEncoder().encode(toCsv(list)) }
+      ];
       let missing = 0;
       for (const [index, doc] of list.entries()) {
         if (!doc.file_url) { if (doc.has_file) missing += 1; continue; }
@@ -1269,7 +1279,7 @@
         }
       }
       saveBlob(zip(entries), `Accounting ${month}.zip`);
-      say(missing ? `Downloaded, but ${missing} ${missing === 1 ? 'file' : 'files'} couldn’t be added. Try again.` : `Downloaded: the spreadsheet and ${entries.length - 1} ${entries.length === 2 ? 'file' : 'files'}.`);
+      say(missing ? `Downloaded, but ${missing} ${missing === 1 ? 'file' : 'files'} couldn’t be added. Try again.` : `Downloaded: the spreadsheets and ${entries.length - 2} ${entries.length === 3 ? 'file' : 'files'}.`);
     } catch (error) {
       say(errorText(error));
     } finally {

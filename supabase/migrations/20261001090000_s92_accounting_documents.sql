@@ -282,7 +282,8 @@ as $function$
         and abs(d.net_amount + d.vat_amount - d.total_amount) > 1,
       'vat_lines_mismatch', d.vat_amount is not null and pg_catalog.jsonb_array_length(d.vat_lines) > 0
         and abs(d.vat_amount - (select coalesce(sum((v->>'vat')::numeric), 0) from pg_catalog.jsonb_array_elements(d.vat_lines) v)) > 1,
-      'order_difference', case when po.id is not null and d.total_amount is not null
+      -- Orders are priced in krónur: only a krónur document is compared.
+      'order_difference', case when po.id is not null and d.total_amount is not null and d.currency = 'ISK'
         then d.total_amount - private.purchase_order_total(po.lines) end,
       'overdue', d.status = 'approved' and d.due_date is not null and d.due_date < atlas_private.venue_date(),
       'possible_duplicates', case when (p_full or d.status = 'to_review') and d.supplier_fold is not null then coalesce((

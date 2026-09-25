@@ -593,7 +593,8 @@ test('export: month select, CSV (standard and Icelandic Excel) with a Counted co
     assert.match(text, /1 document is still to review/, 'only the undated one; July is another month');
     assert.match(text, /4 documents in this month were approved after it was last exported/);
     assert.match(text, /Regla, Payday/);
-    assert.match(text, /original files plus the spreadsheet/);
+    assert.match(text, /original files plus both spreadsheets/);
+    assert.match(text, /Credit notes count as minus amounts/);
     // An empty month: nothing to download.
     await page.selectOption('#accounting-view #acc-month', '2026-06');
     await settle(page);
@@ -1105,5 +1106,37 @@ test('offline: when the Supabase project does not answer either, the generic con
     assert.match(await genericText(page), /Check the connection and try again\./);
     assert.equal(await notDeployedText(page), null);
     assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});
+
+test('credit notes count as minus amounts in the totals and in both exports', { skip }, async () => {
+  const backend = accountingBackend();
+  // August: Ölgerðin 49.600 kr (24%) plus a 5.000 kr credit note from them (VAT 24% 967,74).
+  backend.documents.push(doc({ id: 'a0000000-0000-4000-8000-000000000021', status: 'approved', approved_at: '2026-09-01T10:00:00.000Z', kind: 'credit_note', supplier_name: 'Ölgerðin', document_number: 'KR-12', issue_date: '2026-08-22', total_amount: 5000, net_amount: 4032.26, vat_amount: 967.74, vat_lines: [{ rate: 24, net: 4032.26, vat: 967.74 }] }));
+  const { page, record, close } = await launch({ backend });
+  try {
+    await openAccounting(page, '#accounting/export');
+    await page.selectOption('#accounting-view #acc-month', '2026-08');
+    await settle(page);
+    const stats = await page.textContent('#accounting-view .atlas-stats');
+    // Without the credit note August totals 68.500 kr (see the export test); the credit note takes 5.000 kr off.
+    assert.match(stats, /Total\s*63\.500 kr/);
+    const [standard] = await Promise.all([page.waitForEvent('download'), page.click('#accounting-view [data-acc-export="csv"]')]);
+    const rows = parseCsv((await readFile(await standard.path(), 'utf8')).replace(/^﻿/, ''));
+    const header = rows[0];
+    const credit = rows.find((row) => row[header.indexOf('Number')] === 'KR-12');
+    assert.equal(credit[header.indexOf('Type')], 'Credit note');
+    assert.equal(credit[header.indexOf('Total')], '-5000');
+    assert.equal(credit[header.indexOf('Net')], '-4032.26');
+    assert.equal(credit[header.indexOf('VAT 24%')], '-967.74');
+    assert.equal(credit[header.indexOf('VAT')], '-967.74');
+    const invoice = rows.find((row) => row[header.indexOf('Number')] === 'INV-7781');
+    assert.equal(invoice[header.indexOf('Total')], '49600', 'invoices stay positive');
+    const [excel] = await Promise.all([page.waitForEvent('download'), page.click('#accounting-view [data-acc-export="csv-is"]')]);
+    const excelRows = parseCsv((await readFile(await excel.path(), 'utf8')).replace(/^﻿/, ''), ';');
+    const excelCredit = excelRows.find((row) => row[excelRows[0].indexOf('Number')] === 'KR-12');
+    assert.equal(excelCredit[excelRows[0].indexOf('Total')], '-5000');
+    assert.equal(excelCredit[excelRows[0].indexOf('Net')], '-4032,26', 'minus sign with a decimal comma, no formula guard');
+    noErrors(record);
   } finally { await close(); }
 });
