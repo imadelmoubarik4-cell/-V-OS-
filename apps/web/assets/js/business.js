@@ -316,10 +316,6 @@
     return result.slice(0, 6);
   }
 
-  function topHomeInsight() {
-    return insights()[0] || null;
-  }
-
   function periodLabel() {
     return Number.isFinite(state.periodDays) ? `Last ${state.periodDays} days` : 'All recorded time';
   }
@@ -529,27 +525,15 @@
     dom.shell = document.getElementById('business-shell');
   }
 
-  function renderHomeAugmentation() {
-    const focusList = document.getElementById('focus-list');
-    if (!focusList) return;
-    focusList.querySelectorAll('[data-atlas-business-focus]').forEach((row) => row.remove());
-    const insight = topHomeInsight();
-    if (!insight) return;
-    focusList.insertAdjacentHTML('beforeend', `<div class="focus-row" data-target="business" data-atlas-business-focus><span class="focus-dot"></span><span>Business Intelligence: ${escape(insight.title)}.</span></div>`);
-    if (typeof bindHomeLinks === 'function') bindHomeLinks();
-  }
-
   // S88: Business Intelligence registers with AtlasShell instead of
   // reassigning the shell's setActiveView/loadAll/renderAtlasHome globals.
   function registerWithShell() {
     const shell = window.AtlasShell;
     if (!shell) return;
     shell.registerView('business', { root: dom.view, title: 'Business Intelligence', render });
-    shell.onDataLoaded(() => {
-      render();
-      renderHomeAugmentation();
-    });
-    shell.registerHomeSection('business', renderHomeAugmentation, 30);
+    // Home (assets/js/home.js) no longer shows Business insights (spec §7.1:
+    // business figures belong to Reports › Overview).
+    shell.onDataLoaded(() => render());
   }
 
   function init() {
@@ -559,7 +543,6 @@
     registerWithShell();
     state.initialized = true;
     render();
-    renderHomeAugmentation();
     if (window.lucide) window.lucide.createIcons();
   }
 

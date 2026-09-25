@@ -720,17 +720,8 @@
     bell.setAttribute('aria-label', unread ? `Notifications, ${unread} unread` : 'Notifications');
   }
 
-  // Interim feed source until the Home feed (E2) contributes per-conversation
-  // items: unread team messages appear in the panel.
-  shell.notify.contribute('messages-unread', () => (state.messagesUnread > 0 ? [{
-    id: `messages:unread:${state.messagesUnread}`,
-    type: 'message',
-    icon: 'messages-square',
-    title: `${state.messagesUnread} unread ${state.messagesUnread === 1 ? 'message' : 'messages'}`,
-    detail: 'Catch up in Messages.',
-    action: { label: 'Open', route: '#messages' },
-    needsAction: false
-  }] : []));
+  // Per-conversation message items come from the Home feed (assets/js/home.js,
+  // notify.contribute('messages')); the unread change above tells it to refresh.
 
   // ---------- account ----------
 

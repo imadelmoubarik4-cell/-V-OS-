@@ -1438,10 +1438,10 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
    ========================================================================== */
 /* ---------- from legacy/atlas-glass--components.css ---------- */
 /* Minimalist type: one sans across the app, no serif display faces. */
-:where(#app-screen, #app-screen h1, #app-screen h2, #app-screen h3, #app-screen h4, #app-screen .metric-card strong, #app-screen .home-hero h1, #app-screen .placeholder-head h2, #app-screen .service-head h1, #app-screen .service-card h3, #app-screen .atlas-logo, .modal h2, .modal h3, .recipe-alpha03 h1, .recipe-alpha03 h2, .recipe-alpha03 h3, .recipe-profile-pane h2, .recipe-profile-pane h3, .recipe-service-shell h1, .recipe-service-shell h2) {
+:where(#app-screen, #app-screen h1, #app-screen h2, #app-screen h3, #app-screen h4, #app-screen .placeholder-head h2, #app-screen .service-head h1, #app-screen .service-card h3, #app-screen .atlas-logo, .modal h2, .modal h3, .recipe-alpha03 h1, .recipe-alpha03 h2, .recipe-alpha03 h3, .recipe-profile-pane h2, .recipe-profile-pane h3, .recipe-service-shell h1, .recipe-service-shell h2) {
   font-family: var(--font-sans);
 }
-:where(#app-screen h1, #app-screen .home-hero h1, #app-screen .placeholder-head h2) {
+:where(#app-screen h1, #app-screen .placeholder-head h2) {
   font-weight: 600;
   letter-spacing: -.035em;
 }
@@ -1468,7 +1468,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   border-color: var(--glass-line);
 }
 /* Buttons */
-:where(.atlas-content .btn, .modal .btn, .recipe-primary-action, .atlas-home-action) {
+:where(.atlas-content .btn, .modal .btn, .recipe-primary-action) {
   background: var(--accent);
   border: 1px solid var(--blue-700);
   border-radius: var(--r-md);
@@ -1476,11 +1476,11 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   white-space: nowrap;
   box-shadow: none;
 }
-:where(.atlas-content .btn:hover, .modal .btn:hover, .recipe-primary-action:hover, .atlas-home-action:hover) {
+:where(.atlas-content .btn:hover, .modal .btn:hover, .recipe-primary-action:hover) {
   background: var(--blue-700);
   border-color: var(--blue-700);
 }
-:where(.atlas-content .btn.ghost, .modal .btn.ghost, .recipe-secondary-action, .recipe-intelligence-action, .atlas-home-action.secondary) {
+:where(.atlas-content .btn.ghost, .modal .btn.ghost, .recipe-secondary-action, .recipe-intelligence-action) {
   background: var(--glass-fill-strong);
   border: 1px solid var(--glass-line-strong);
   border-radius: var(--r-md);
@@ -1488,7 +1488,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   white-space: nowrap;
   box-shadow: var(--glass-highlight);
 }
-:where(.atlas-content .btn.ghost:hover, .modal .btn.ghost:hover, .recipe-secondary-action:hover, .recipe-intelligence-action:hover, .atlas-home-action.secondary:hover) {
+:where(.atlas-content .btn.ghost:hover, .modal .btn.ghost:hover, .recipe-secondary-action:hover, .recipe-intelligence-action:hover) {
   background: var(--blue-50);
   border-color: var(--atlas-home-accent-line);
   color: var(--blue-700);
@@ -1510,12 +1510,11 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   background: var(--ink);
   border-radius: var(--r-lg);
 }
-/* ---------- Module workspaces: Operations, Atlas Brain, Business Intelligence,
-   Import Center. Their own stylesheets carry warm sand fills, gold accents and
-   dark intelligence heroes; these rules bring all four onto the white + light
+/* ---------- Module workspaces: Business Intelligence, Import Center. Their own stylesheets carry warm sand fills, gold accents and
+   dark intelligence heroes; these rules bring both onto the white + light
    blue system without touching their markup or logic. Any selector a
    module doesn't use is simply inert. ---------- */
-:where(.operations-card, .operations-summary-card, .operations-readiness, .brain-card, .brain-metric, .business-metric, .import-card, .import-queue-summary-card) {
+:where(.business-metric, .import-card, .import-queue-summary-card) {
   background: var(--glass-fill);
   border: 1px solid var(--glass-line);
   border-radius: var(--atlas-radius);
@@ -1524,39 +1523,27 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 }
 /* Intelligence heroes: dark panels become light glass, with their inherited
    light text recoloured so nothing turns white-on-white. */
-:where(.brain-hero, .business-hero) {
+:where(.business-hero) {
   color: var(--atlas-text);
   background: var(--surface);
   border: 1px solid var(--glass-line);
   box-shadow: var(--glass-highlight), var(--glass-shadow);
 }
-:where(.brain-hero)::after,
 :where(.business-hero)::after {
   display: none;
 }
-:where(.brain-kicker, .business-kicker, .brain-briefing-line svg, .operations-kicker) {
+:where(.business-kicker) {
   color: var(--blue-600);
 }
-:where(.brain-hero h1, .business-hero h1) {
+:where(.business-hero h1) {
   color: var(--atlas-text);
   font-weight: 600;
   letter-spacing: -.035em;
 }
-:where(.brain-hero-copy > p, .business-hero p, .brain-clock-label, .brain-countdown span) {
+:where(.business-hero p) {
   color: var(--atlas-muted);
 }
-:where(.brain-readiness-track, .brain-stock-meter, .operations-progress) {
-  background: var(--blue-100);
-}
-:where(.brain-readiness-track span, .brain-stock-meter span, .operations-progress span, .operations-progress > div) {
-  background: var(--accent);
-}
-/* Warm sand fills and gold accents → light blue */
-:where(.brain-recipe-fact, .brain-assistant-answer, .brain-recommendation-icon, .operations-priority-icon) {
-  background: var(--blue-50);
-  border-color: var(--glass-line);
-}
-:where(.brain-feature-button, .brain-assistant-form button, .operations-card-action.is-primary, .business-period-control button.active) {
+:where(.business-period-control button.active) {
   background: var(--accent);
   border-color: var(--blue-700);
   color: #fff;
@@ -1572,19 +1559,19 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 /* ---------- App-wide type sweep.
    Fifteen module stylesheets set Fraunces on their own headings. One sweep
    keeps the whole product on a single typeface without editing any of them. */
-:where(.daily-briefing-shell, .phase3-shell, .checkpoint-k-panel, .review-shell, .checkpoint-a-shell, .knowledge-shell, .shifts-hero, .shift-month-navigation, .shift-month-summary, .shift-month-cell-head, .shift-month-day-detail, .shift-month-state, .shift-week-navigation, .shift-summary-grid, .shift-day-column, .shift-empty-week, .shift-empty-section, .shift-section-card, .shift-confirmation-date, .shift-modal, .shift-state, .reports-shell, #reports-view, .settings-shell, .marketing-shell, .system-shell, .business-shell, .brain-shell, .item-master-workspace, .stock-count-hero, .stock-count-panel, .stock-count-summary-strip, .l1-classification-strip, .inventory-scanner-header, .inventory-scanner-placeholder, .inventory-scanner-result, .inventory-scanner-mini-stats, .inventory-scanner-item-copy, .atlas-import-center, .operations-center) {
+:where(.review-shell, .knowledge-shell, .shifts-hero, .shift-month-navigation, .shift-month-summary, .shift-month-cell-head, .shift-month-day-detail, .shift-month-state, .shift-week-navigation, .shift-summary-grid, .shift-day-column, .shift-empty-week, .shift-empty-section, .shift-section-card, .shift-confirmation-date, .shift-modal, .shift-state, .reports-shell, #reports-view, .marketing-shell, .business-shell, .item-master-workspace, .stock-count-hero, .stock-count-panel, .stock-count-summary-strip, .l1-classification-strip, .inventory-scanner-header, .inventory-scanner-placeholder, .inventory-scanner-result, .inventory-scanner-mini-stats, .inventory-scanner-item-copy, .atlas-import-center) {
   font-family: var(--font-sans);
 }
-:where(.daily-briefing-shell h1, .daily-briefing-shell h2, .daily-briefing-shell h3, .phase3-shell h1, .phase3-shell h2, .phase3-shell h3, .phase3-shell strong, .checkpoint-k-panel h1, .checkpoint-k-panel h2, .checkpoint-k-panel h3, .review-shell h1, .review-shell h2, .review-shell h3, .review-shell strong, .checkpoint-a-shell h1, .checkpoint-a-shell h2, .checkpoint-a-shell h3, .checkpoint-a-compact-head h2, .checkpoint-a-compact-copy h3, .checkpoint-a-home-copy h3, .checkpoint-a-context-header h2, .checkpoint-a-settings-head h2, .checkpoint-a-settings-connection h3, .knowledge-shell h1, .knowledge-shell h2, .knowledge-shell h3, .shifts-hero h1, .shift-month-navigation h2, .shift-month-summary strong, .shift-month-cell-head strong, .shift-month-day-detail h3, .shift-month-state h2, .shift-week-navigation strong, .shift-summary-grid strong, .shift-day-column strong, .shift-empty-week h3, .shift-empty-section h3, .shift-section-card h2, .shift-confirmation-date strong, .shift-modal h2, .shift-state h2, .reports-hero h1, .reports-section-head h2, .report-kpi strong, .reports-panel h2, .reports-summary-grid article strong, .reports-bar-chart figcaption strong, .reports-ask-panel h2, .reports-state h2, .settings-shell h1, .settings-shell h2, .settings-shell h3, .settings-hero aside strong, .settings-summary-grid article strong, .settings-profile-summary strong, .marketing-shell h1, .marketing-shell h2, .marketing-shell h3, .marketing-stats strong, .marketing-recommendation-summary, .business-shell h1, .business-shell h2, .business-shell strong, .brain-shell h1, .brain-shell h2, .brain-shell h3, .brain-metric strong, .brain-stock-qty strong, .item-master-hero h1, .stock-count-hero h1, .stock-count-summary-strip strong, .l1-classification-strip strong, .inventory-scanner-header h2, .inventory-scanner-placeholder strong, .inventory-scanner-result h3, .inventory-scanner-mini-stats strong, .inventory-scanner-item-copy h3, .import-hero h1, .operations-hero h1, .operations-card h2, .operations-card h3) {
+:where(.review-shell h1, .review-shell h2, .review-shell h3, .review-shell strong, .knowledge-shell h1, .knowledge-shell h2, .knowledge-shell h3, .shifts-hero h1, .shift-month-navigation h2, .shift-month-summary strong, .shift-month-cell-head strong, .shift-month-day-detail h3, .shift-month-state h2, .shift-week-navigation strong, .shift-summary-grid strong, .shift-day-column strong, .shift-empty-week h3, .shift-empty-section h3, .shift-section-card h2, .shift-confirmation-date strong, .shift-modal h2, .shift-state h2, .reports-hero h1, .reports-section-head h2, .report-kpi strong, .reports-panel h2, .reports-summary-grid article strong, .reports-bar-chart figcaption strong, .reports-ask-panel h2, .reports-state h2, .marketing-shell h1, .marketing-shell h2, .marketing-shell h3, .marketing-stats strong, .marketing-recommendation-summary, .business-shell h1, .business-shell h2, .business-shell strong, .item-master-hero h1, .stock-count-hero h1, .stock-count-summary-strip strong, .l1-classification-strip strong, .inventory-scanner-header h2, .inventory-scanner-placeholder strong, .inventory-scanner-result h3, .inventory-scanner-mini-stats strong, .inventory-scanner-item-copy h3, .import-hero h1) {
   font-family: var(--font-sans);
   font-weight: 600;
   letter-spacing: -.03em;
 }
-:where(.daily-kicker, .review-kicker, .phase3-hero span, .import-eyebrow, .checkpoint-a-shell .checkpoint-a-hero span, .stock-count-scan-kicker) {
+:where(.review-kicker, .import-eyebrow, .stock-count-scan-kicker) {
   color: var(--blue-600);
 }
 /* Icon wrappers: the fill and the glyph colour both move to blue. */
-:where(.phase3-memory-marker, .phase3-state-icon, .review-summary-icon) {
+:where(.review-summary-icon) {
   background: var(--blue-50);
   color: var(--blue-700);
 }
@@ -1594,9 +1581,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 :where(.shift-month-chip, .reports-table th, .reports-export-grid button) {
   background: var(--blue-50);
 }
-:where(.l1-classification-strip article:nth-child(3)),
-:where(.phase3-recommendation):before,
-:where(.checkpoint-a-compact-card)::before {
+:where(.l1-classification-strip article:nth-child(3)) {
   background: var(--blue-600);
 }
 :where(.l1-classification-strip article:nth-child(3)) {
@@ -1611,29 +1596,24 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
    Knowledge, Marketing and System panels are deliberately absent: their
    container classes need a read of their renderers, which happens when those
    workspaces get their own pass. */
-:where(.phase3-panel, .phase3-recommendation, .phase3-modal-panel, .review-summary-card, .review-list-card, .review-detail-card, .review-issues-card, .checkpoint-a-panel, .checkpoint-a-routine, .reports-panel, .report-kpi, .reports-summary-grid article, .reports-ask-panel, .settings-profile-summary article, .shift-section-card, .shift-summary-grid article, .shift-modal, .stock-count-panel) {
+:where(.review-summary-card, .review-list-card, .review-detail-card, .review-issues-card, .reports-panel, .report-kpi, .reports-summary-grid article, .reports-ask-panel, .shift-section-card, .shift-summary-grid article, .shift-modal, .stock-count-panel) {
   background: var(--glass-fill);
   border-color: var(--glass-line);
   box-shadow: var(--glass-highlight), var(--glass-shadow);
 }
-/* The Phase 3 trust strip stays dark on purpose — it is an attestation surface,
-   not a content card. Only its accent moves to the blue scale. */
-:where(.phase3-trust-strip > svg) {
-  color: #9cc3ff;
-}
-:where(.phase3-modal-backdrop, .item-master-backdrop) {
+:where(.item-master-backdrop) {
   background: var(--overlay);
 }
 /* ---------- from legacy/workspaces-polish--components.css ---------- */
 /* ---------- Shared surface treatment ---------- */
-:where(.marketing-panel, .marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .marketing-modal, .team-messages-layout, .team-profiles-layout, .team-profiles-state, .team-profile-panel, .team-profile-detail, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .shift-month-state, .shift-card, .knowledge-article-card, .knowledge-summary-grid > *, .knowledge-trust-panel, .knowledge-training-hero, .knowledge-connection-card, .knowledge-state, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal, .business-card, .reports-hero-meta, .reports-filter-shell, .reports-table-panel, .reports-chart-empty, .settings-panel, .settings-card, .settings-activity-list article) {
+:where(.marketing-panel, .marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .marketing-modal, .team-messages-layout, .team-profiles-layout, .team-profiles-state, .team-profile-panel, .team-profile-detail, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .shift-month-state, .shift-card, .knowledge-article-card, .knowledge-summary-grid > *, .knowledge-trust-panel, .knowledge-training-hero, .knowledge-connection-card, .knowledge-state, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal, .business-card, .reports-hero-meta, .reports-filter-shell, .reports-table-panel, .reports-chart-empty) {
   background: var(--glass-fill);
   border: 1px solid var(--glass-line);
   border-radius: var(--atlas-radius);
   box-shadow: var(--glass-highlight), var(--glass-shadow);
 }
 /* Nested cards sit inside an already-glass panel: fill only, no second shadow. */
-:where(.marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .shift-card, .team-profile-panel, .settings-activity-list article) {
+:where(.marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .shift-card, .team-profile-panel) {
   background: var(--surface);
   box-shadow: none;
   border-radius: var(--r-lg);
@@ -1779,18 +1759,6 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   background: var(--warning-soft);
   border-color: var(--line-strong);
 }
-/* ---------- Atlas Brain ---------- */
-:where(.brain-card-head) {
-  border-bottom-color: var(--glass-line);
-}
-:where(.brain-card-head p, .brain-empty) {
-  color: var(--atlas-muted);
-}
-:where(.brain-card-action) {
-  background: var(--glass-fill-strong);
-  border-color: var(--glass-line-strong);
-  color: var(--atlas-text);
-}
 /* ---------- Business Intelligence ---------- */
 :where(.business-card-head) {
   border-bottom-color: var(--glass-line);
@@ -1817,23 +1785,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   background: var(--blue-100);
   color: var(--blue-600);
 }
-/* ---------- Settings ---------- */
-:where(.settings-hero) {
-  background: var(--surface);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--r-xl);
-  box-shadow: var(--glass-highlight), var(--glass-shadow);
-}
-:where(.settings-hero p, .settings-empty) {
-  color: var(--atlas-muted);
-}
-:where(.settings-activity-icon) {
-  background: var(--blue-100);
-  color: var(--blue-600);
-}
-:where(.settings-empty) {
-  border-color: var(--glass-line);
-}
+/* ---------- Placeholder pages ---------- */
 :where(.empty-module) {
   border: 1px dashed var(--glass-line-strong);
   background: var(--surface);
@@ -1843,7 +1795,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 /* Normalize workspace hierarchy without flattening the more expressive Home
    greeting. Dynamic module styles load later, so these rules are intentional
    important overrides. */
-:where(.recipe-hero h1, .recipe-alpha03-head h1, .operations-hero h1, .brain-hero h1, .business-hero h1, .marketing-hero h1, .team-messages-hero h1, .team-profiles-hero h1, .shifts-hero h1, .knowledge-hero h1, .reports-hero h1, .review-hero h1, .system-hero h1, .settings-hero h1, .item-master-hero h1, .import-hero h1) {
+:where(.recipe-hero h1, .recipe-alpha03-head h1, .business-hero h1, .marketing-hero h1, .team-messages-hero h1, .team-profiles-hero h1, .shifts-hero h1, .knowledge-hero h1, .reports-hero h1, .review-hero h1, .item-master-hero h1, .import-hero h1) {
   font-family: var(--font-sans);
   font-size: var(--fs-title);
   font-weight: 600;
@@ -1852,43 +1804,43 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 }
 /* Blue communicates selection consistently; neutral white remains the default
    action treatment used by the approved Inventory and Recipe references. */
-:where(.inventory-workspace-tab.active, .reports-navigation button.is-active, .settings-tabs button.is-active, .knowledge-tabs button.is-active, .knowledge-category-row button.is-active, .team-profiles-filters button.is-active, .business-period-control button.active) {
+:where(.inventory-workspace-tab.active, .reports-navigation button.is-active, .knowledge-tabs button.is-active, .knowledge-category-row button.is-active, .team-profiles-filters button.is-active, .business-period-control button.active) {
   border-color: var(--blue-500);
   background: var(--blue-100);
   color: var(--blue-700);
   box-shadow: none;
 }
-:where(.recipe-primary-action, .knowledge-hero-actions .is-primary, .settings-hero aside button, .system-hero aside button) {
+:where(.recipe-primary-action, .knowledge-hero-actions .is-primary) {
   border: 1px solid var(--atlas-line);
   background: var(--surface);
   color: var(--atlas-text);
   box-shadow: var(--glass-highlight);
 }
-:where(.recipe-primary-action:hover, .knowledge-hero-actions .is-primary:hover, .settings-hero aside button:hover, .system-hero aside button:hover) {
+:where(.recipe-primary-action:hover, .knowledge-hero-actions .is-primary:hover) {
   border-color: var(--blue-400);
   background: var(--blue-50);
   color: var(--blue-700);
 }
 /* Wide workspace content stays within the shared rail and advertises overflow
    at the component boundary instead of widening the full application. */
-:where(#inventory-view, #reports-view, #shifts-view, #knowledge-view, #settings-view, #system-view, #sprint3-review-view, .reports-shell, .shifts-shell, .knowledge-shell, .settings-shell, .system-shell, .review-shell) {
+:where(#inventory-view, #reports-view, #shifts-view, #knowledge-view, #sprint3-review-view, .reports-shell, .shifts-shell, .knowledge-shell, .review-shell) {
   min-width: 0;
   max-width: 100%;
 }
 /* ---------- Primary buttons: one blue primary across the product ----------
    Marketing shipped a near-black primary (--atlas-text), Shifts a brown one
-   (#a6814d), Operations a black compact button. (confirmed) */
-:where(.marketing-primary, .shift-primary, .checkpoint-a-compact-button, .knowledge-primary, .shifts-primary, .team-messages-primary) {
+   (#a6814d). (confirmed) */
+:where(.marketing-primary, .shift-primary, .knowledge-primary, .shifts-primary, .team-messages-primary) {
   background: var(--accent);
   border: 1px solid var(--blue-700);
   color: #fff;
   box-shadow: none;
 }
-:where(.marketing-primary:hover:not(:disabled), .shift-primary:hover, .checkpoint-a-compact-button:hover, .knowledge-primary:hover, .shifts-primary:hover, .team-messages-primary:hover) {
+:where(.marketing-primary:hover:not(:disabled), .shift-primary:hover, .knowledge-primary:hover, .shifts-primary:hover, .team-messages-primary:hover) {
   background: var(--blue-700);
 }
 /* ---------- Tab rails: sand troughs → light blue (confirmed) ---------- */
-:where(.marketing-tabs, .shift-tabs, .system-tabs) {
+:where(.marketing-tabs, .shift-tabs) {
   background: var(--blue-50);
   border-color: var(--glass-line);
 }
@@ -1899,7 +1851,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 }
 /* ---------- from legacy/s34-preproduction--search.css ---------- */
 /* Compact search field used across launch modules. */
-:where(:where(.atlas-search,.recipe-search,.purchasing-search,.knowledge-search,.team-attachment-controls label, .brain-search,.settings-search) input[type="search"], :where(.atlas-search) input) {
+:where(:where(.atlas-search,.recipe-search,.purchasing-search,.knowledge-search,.team-attachment-controls label) input[type="search"], :where(.atlas-search) input) {
   min-height:36px;
   height:36px;
   border-radius:var(--r-md);

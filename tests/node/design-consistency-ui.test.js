@@ -18,6 +18,7 @@ const itemMaster = readFileSync('apps/web/assets/js/item-master-workspace.js', '
 const reportsCss = readFileSync('apps/web/assets/css/reports-workspace.css', 'utf8');
 const settingsCss = readFileSync('apps/web/assets/css/settings-workspace.css', 'utf8');
 const finalPolishCss = legacyCss('polish-pass2');
+const homeJs = readFileSync('apps/web/assets/js/home.js', 'utf8');
 const iconSources = [
   app,
   readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8'),
@@ -62,8 +63,9 @@ test('navigation is organized into the spec groups: Home/Atlas AI/Messages, Venu
 
 test('workspace switching owns visibility, inventory state and scroll reset centrally', () => {
   assert.match(app, /function hideAtlasWorkspaceRoots\(keepView = ''\)/);
-  assert.match(app, /'sprint3-review': 'sprint3-review-view', system: 'system-view'/);
-  assert.match(app, /restoreAtlasWorkspaceInterior\(view\)/);
+  assert.match(app, /'sprint3-review': 'sprint3-review-view'\n/);
+  // S88 Team A: Brain and System are retired views (Home, Settings › System health).
+  assert.doesNotMatch(app, /brain-view|system-view|restoreAtlasWorkspaceInterior/);
   assert.match(app, /window\.scrollTo\(\{ top: 0, left: 0, behavior: 'auto' \}\)/);
   assert.match(app, /document\.body\.dataset\.atlasView = view/);
   assert.match(app, /window\.AtlasStockCounts\?\.close\?\.\(\)/);
@@ -77,22 +79,25 @@ test('workspace switching owns visibility, inventory state and scroll reset cent
 });
 
 test('shared polish removes duplicate Home metrics and normalizes workspace hierarchy', () => {
-  assert.match(finalPolishCss, /#dashboard-view > \.stat-grid/);
-  assert.match(finalPolishCss, /body\[data-atlas-view\]:not\(\[data-atlas-view="dashboard"\]\) \.checkpoint-a-home-prompt/);
+  // S88 Team A: Home has no stat grid or Operations prompt; one Home renderer (home.js).
+  assert.doesNotMatch(app, /class="stat-grid"|checkpoint-a-home-prompt/);
+  assert.doesNotMatch(homeJs, /stat-grid|metric-card|checkpoint-a/);
   // S88: the workspace page-title normalization is part of atlas-components.css.
-  assert.match(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.recipe-hero h1,[\s\S]*\.recipe-alpha03-head h1,[\s\S]*\.settings-hero h1/);
+  assert.match(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.recipe-hero h1,[\s\S]*\.recipe-alpha03-head h1,[\s\S]*\.item-master-hero h1/);
   assert.match(finalPolishCss, /\.team-profile-card-media[\s\S]*height: 176px !important/);
   assert.match(recipes, /<h1>Recipe Library<\/h1>/);
 });
 
 test('Home uses live values and supports expanded or compact navigation', () => {
-  assert.match(app, /id="home-date"/);
-  assert.match(app, /data-home-action="stock-count"/);
-  assert.match(app, /data-home-action="new-order"/);
-  assert.match(app, /id="home-margin">—<\/strong>/);
+  // S88 Team A (spec §7.1): no KPI cards; the date and greeting come from the
+  // venue clock, attention rows from AtlasShell.home.rows, facts from the
+  // canonical stock and recipe rules.
+  assert.doesNotMatch(app, /id="home-date"|id="home-metrics"|id="home-margin"|data-home-action=/);
   assert.doesNotMatch(app, /<strong>8<\/strong><span>Onboarding steps/);
-  assert.match(app, /window\.AtlasRecipes\?\.getHomeMetrics/);
-  assert.match(recipes, /function getHomeMetrics\(\)/);
+  assert.match(homeJs, /shell\(\)\?\.home\?\.rows\?\.\(\{ role: role\(\) \}\)/);
+  assert.match(homeJs, /formatDate\?\.\(new Date\(\), \{ long: true \}\)/);
+  assert.match(homeJs, /window\.AtlasStockTruth/);
+  assert.match(homeJs, /rules\.recipeAvailability\(recipe\)/);
   assert.doesNotMatch(app, /id="home-focus"/);
   assert.doesNotMatch(app, /home-focus'\)\.style\.display/);
   // Expanded sidebar (240) or the 64 px rail, per viewer (spec §4.1).
@@ -158,8 +163,9 @@ test('scan, add, stock count and Item Master share the Inventory header safely',
 test('Reports and Settings stay inside the shared responsive content rail', () => {
   assert.match(reportsCss, /#reports-view,[\s\S]*\.reports-shell[\s\S]*overflow-x: clip/);
   assert.match(reportsCss, /\.reports-layout > \*/);
-  assert.match(settingsCss, /\.settings-tabs\{display:flex;flex-wrap:wrap;gap:5px;overflow-x:visible/);
-  assert.match(settingsCss, /@media\(max-width:680px\)[\s\S]*\.settings-tabs\{[^}]*flex-wrap:nowrap;overflow-x:auto/);
+  // S88 Team A (spec §7.15): section nav 220 px + one reading column; one column on phones.
+  assert.match(settingsCss, /\.settings-layout \{ display: grid; grid-template-columns: 220px minmax\(0, var\(--reading-max\)\)/);
+  assert.match(settingsCss, /@media \(max-width: 767px\)[\s\S]*\.settings-layout, \.settings--single \.settings-layout \{ grid-template-columns: minmax\(0, 1fr\)/);
 });
 
 test('all audited Lucide placeholders use icons included in the pinned runtime', () => {

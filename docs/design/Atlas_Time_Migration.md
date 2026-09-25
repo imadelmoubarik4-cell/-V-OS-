@@ -103,19 +103,27 @@ Line numbers are as of this commit.
 
 | Done | File:line | Current | Change to |
 | --- | --- | --- | --- |
-| [ ] | `index.html:2131-2145` `formatVenueDay()` / `venueGreeting()` | literal zone; `getHours()` fallback | `formatDate(new Date(), { long: true })`; `parts().hour` |
-| [ ] | `brain.js:171` `readiness()` fallback | invents `opening: { complete: 0, total: 9 }` | `opening: null` (unknown) until the server checklist (contract §2) answers |
-| [ ] | `brain-daily-briefing-v2.js:39-45` `formatDateTime` | `getDate/getHours` (browser zone) | `formatDateTime` |
-| [ ] | `operations.js:51-54` `dateKey()` | browser-local Y-M-D | `today()` (removed with the localStorage checklist, contract §2) |
-| [ ] | `operations.js:317` date label | `toLocaleDateString` without zone | `formatDate(today(), { long: true })` |
-| [ ] | `operations.js:48` money | `… ISK` | `formatKr` |
-| [ ] | `operations-checkpoint-a.js:46-52` `formatDateTime` | `getDate/getHours` | `formatDateTime` |
-| [ ] | `settings-workspace.js:150-158` `formatDateTime` | literal zone | `formatDateTime` |
-| [ ] | `settings-workspace.js:437`, `:778` | "All times use Atlantic/Reykjavik" text | `timeZone()` (+ "default" when `timezoneIsDefault()`) |
-| [ ] | `settings-workspace.js:1133` preferences timezone default | literal zone | `timeZone()` |
-| [ ] | `settings-workspace.js:452-453`, `:1175-1176` **ratchet (4)** | new offer prefilled 15:00–18:00 | empty time fields (required) — hours come from the manager |
-| [ ] | `system-workspace.js:125-135`, `:145` | literal zone | `formatDateTime`, `timeZone()` |
-| [ ] | `system-workspace.js:150-165` `relativeTime` | own relative formatter | `formatRelative` |
+| [x] | `index.html:2131-2145` `formatVenueDay()` / `venueGreeting()` | literal zone; `getHours()` fallback | `formatDate(new Date(), { long: true })`; `parts().hour` |
+| [x] | `brain.js:171` `readiness()` fallback | invents `opening: { complete: 0, total: 9 }` | `opening: null` (unknown) until the server checklist (contract §2) answers |
+| [x] | `brain-daily-briefing-v2.js:39-45` `formatDateTime` | `getDate/getHours` (browser zone) | `formatDateTime` |
+| [x] | `operations.js:51-54` `dateKey()` | browser-local Y-M-D | `today()` (removed with the localStorage checklist, contract §2) |
+| [x] | `operations.js:317` date label | `toLocaleDateString` without zone | `formatDate(today(), { long: true })` |
+| [x] | `operations.js:48` money | `… ISK` | `formatKr` |
+| [x] | `operations-checkpoint-a.js:46-52` `formatDateTime` | `getDate/getHours` | `formatDateTime` |
+| [x] | `settings-workspace.js:150-158` `formatDateTime` | literal zone | `formatDateTime` |
+| [x] | `settings-workspace.js:437`, `:778` | "All times use Atlantic/Reykjavik" text | `timeZone()` (+ "default" when `timezoneIsDefault()`) |
+| [x] | `settings-workspace.js:1133` preferences timezone default | literal zone | `timeZone()` |
+| [x] | `settings-workspace.js:452-453`, `:1175-1176` **ratchet (4)** | new offer prefilled 15:00–18:00 | empty time fields (required) — hours come from the manager |
+| [x] | `system-workspace.js:125-135`, `:145` | literal zone | `formatDateTime`, `timeZone()` |
+| [x] | `system-workspace.js:150-165` `relativeTime` | own relative formatter | `formatRelative` |
+
+S88 Team A: every row above is done. `formatVenueDay()`/`venueGreeting()` and `brain*.js`,
+`operations-checkpoint-a.js` are deleted; Home (`home.js`) greets with `parts().hour` and dates with
+`formatDate`; readiness keeps `opening: null` until the server checklist answers; Operations reads the
+business date from the server checklist (no device checklist, no money formatting); Settings and
+System health format through `AtlasVenueClock` (`formatDateTime`, `formatRelative`, `timeZone()`,
+`timezoneIsDefault()`, `formatKr`), and a new offer starts with empty times. No Team A file contains a
+literal zone or hour default (`tests/node/venue-hours-ratchet-s88.test.js`).
 
 ### Team B — Inventory · Purchasing · Stock count
 
@@ -177,8 +185,8 @@ pattern. Delegating these must not change Shifts' outputs.
 | [ ] | `atlas-search.js:16`, `:105-110` `venueDate(offset)` | duplicate (correct), literal zone | `today()` / `addDays(today(), n)` ("who works tomorrow" = `tomorrow()`) |
 | [ ] | `atlas-search.js:317` week bounds | `toISOString().slice(0, 10)` | `startOfWeek`, `addDays` |
 | [ ] | `atlas-chrome.js:505-513` `relativeTime` (notifications) | own relative formatter, no zone | `formatRelative` |
-| [ ] | `brain-phase3.js:40-46` `formatDateTime` (AI) | `getDate/getHours` | `formatDateTime` |
-| [ ] | `brain-phase3.js:407-418` defer until (AI) | `new Date(datetimeLocal).toISOString()` — **stores wrong instant** | `fromLocalInput(value)` (and `localInputValue` when prefilling) |
+| [x] | `brain-phase3.js:40-46` `formatDateTime` (AI) | `getDate/getHours` | `formatDateTime` (file retired with the Brain page, S88 Team A; Atlas AI › Decisions owns these) |
+| [x] | `brain-phase3.js:407-418` defer until (AI) | `new Date(datetimeLocal).toISOString()` — **stores wrong instant** | `fromLocalInput(value)` (and `localInputValue` when prefilling) (file retired with the Brain page, S88 Team A; Atlas AI › Decisions owns these) |
 
 ## 6. Server call sites (not browser; for reference)
 
