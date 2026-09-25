@@ -116,7 +116,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/marketing-workspace.css?v=20260929-s90u',
-  scriptPath: 'assets/js/marketing-workspace.js?v=20260929-s90u',
+  scriptPath: 'assets/js/marketing-workspace.js?v=20260929-s90f',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
 }));
@@ -125,7 +125,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // bootstrap uses browser-native gzip decompression, then installs the Atlas CSS
 // and JavaScript through Blob URLs without inline eval.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/team-profiles-bootstrap.js?v=20260926-s88',
+  scriptPath: 'assets/js/team-profiles-bootstrap.js?v=20260929-s90f',
   globalName: 'AtlasTeamProfilesBootstrap',
   dataAttribute: 'atlasTeamProfilesBootstrap',
 }));
@@ -144,7 +144,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // availability, time-off, publishing and confirmation workspace.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/shifts-workspace.css',
-  scriptPath: 'assets/js/shifts-workspace.js?v=20260929-s90u',
+  scriptPath: 'assets/js/shifts-workspace.js?v=20260929-s90f',
   globalName: 'AtlasShifts',
   dataAttribute: 'atlasShifts',
 }));
@@ -163,8 +163,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // read-only analysis workspace. It pulls live source records through the
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/reports-workspace.css?v=20260926-s88',
-  scriptPath: 'assets/js/reports-workspace.js?v=20260929-s90u',
+  stylesheetPath: 'assets/css/reports-workspace.css?v=20260929-s90f',
+  scriptPath: 'assets/js/reports-workspace.js?v=20260929-s90f',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));
@@ -172,7 +172,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // Settings › System health (administrators): read-only application health,
 // environments, data freshness, jobs, incidents and recovery references.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/system-workspace.js?v=20260926-s88',
+  scriptPath: 'assets/js/system-workspace.js?v=20260929-s90f',
   globalName: 'AtlasSystem',
   dataAttribute: 'atlasSystem',
 }));
@@ -181,7 +181,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // control centre for venue configuration, operating rules and personal preferences.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/settings-workspace.css',
-  scriptPath: 'assets/js/settings-workspace.js?v=20260929-s90u',
+  scriptPath: 'assets/js/settings-workspace.js?v=20260929-s90f',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
 }));

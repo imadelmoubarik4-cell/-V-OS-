@@ -94,8 +94,8 @@ test('Home, Operations and Settings carry no hard-coded hours or browser-zone cl
 test('index.html loads the venue clock after the shell and config, before Home', () => {
   const index = readFileSync(path.join(WEB, 'index.html'), 'utf8');
   const at = (needle) => index.indexOf(needle);
-  const clock = at('<script src="assets/js/atlas-venue-clock.js?v=20260929-s90u"></script>');
-  assert.ok(clock > 0, 'atlas-venue-clock.js is linked with ?v=20260926-s88');
+  const clock = at('<script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>');
+  assert.ok(clock > 0, 'atlas-venue-clock.js is linked with ?v=20260929-s90f');
   assert.ok(at('assets/js/atlas-shell.js') < clock);
   assert.ok(at('<script src="config.js"></script>') < clock);
   assert.ok(clock < at('assets/js/home.js'));

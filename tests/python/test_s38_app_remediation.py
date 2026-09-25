@@ -48,7 +48,7 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertNotIn("s38-app-remediation--", self.index)
         self.assertEqual(self.index.count(js_reference), 1)
         self.assertLess(self.index.index("assets/js/atlas-purchasing.js"), self.index.index(js_reference))
-        self.assertIn(js_reference + "?v=20260926-s88", self.index)
+        self.assertIn(js_reference + "?v=20260929-s90f", self.index)
         self.assertLess(self.index.index(js_reference), self.index.index("</body>"))
 
     def test_shared_visual_contract(self):

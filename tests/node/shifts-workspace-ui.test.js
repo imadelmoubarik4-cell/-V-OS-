@@ -24,7 +24,7 @@ test('Shifts loads from the isolated Shifts API as one module', () => {
     assert.ok(!existsSync(`apps/web/${retired}`), `${retired} is deleted`);
     assert.doesNotMatch(config + index, new RegExp(retired.split('/').pop().replace('.', '\\.')));
   }
-  assert.match(index, /<script src="assets\/js\/shifts-workspace\.js\?v=20260929-s90u"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/shifts-workspace\.js\?v=20260929-s90f"><\/script>/);
 });
 
 test('routes: week, month, availability, time off, confirmations, activity', () => {
