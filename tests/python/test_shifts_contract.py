@@ -11,7 +11,7 @@ EDGE = (ROOT / "supabase/functions/atlas-shifts/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
 BROWSER = (ROOT / "apps/web/assets/js/shifts-workspace.js").read_text()
-GALLERY = (ROOT / "apps/web/assets/js/team-profile-photo-gallery.js").read_text()
+PHOTOS = (ROOT / "apps/web/assets/js/team-profile-photos.js").read_text()
 ALL_SQL = MIGRATION + WORKFLOWS + HARDENING + COPY_FIX
 
 
@@ -120,7 +120,7 @@ class ShiftsContractTests(unittest.TestCase):
         self.assertIn("shifts-workspace.js", BROWSER_CONFIG)
         self.assertIn("window.atlasSupabase", BROWSER)
         self.assertIn("authorization: `Bearer ${session.access_token}`", BROWSER)
-        self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER + GALLERY)
+        self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER + PHOTOS)
         self.assertNotRegex(
             BROWSER,
             r"(?:atlasSupabase|supabase|client)\s*\.\s*from\s*\(",
@@ -128,10 +128,12 @@ class ShiftsContractTests(unittest.TestCase):
         self.assertNotIn("atlas_private", BROWSER)
 
     def test_mobile_photo_picker_allows_gallery_selection(self):
-        self.assertIn("removeAttribute('capture')", GALLERY)
-        self.assertIn("camera or gallery", GALLERY)
-        self.assertIn("image/jpeg,image/png,image/webp", GALLERY)
-        self.assertNotIn("setAttribute('capture'", GALLERY)
+        # S88: the photo input never forces the camera, so the gallery shim is retired.
+        self.assertFalse((ROOT / "apps/web/assets/js/team-profile-photo-gallery.js").exists())
+        self.assertIn("from camera or library", PHOTOS)
+        self.assertIn('accept="image/jpeg,image/png,image/webp"', PHOTOS)
+        self.assertNotIn('capture="user"', PHOTOS)
+        self.assertNotIn("setAttribute('capture'", PHOTOS)
 
 
 if __name__ == "__main__":

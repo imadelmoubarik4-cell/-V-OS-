@@ -9,7 +9,6 @@
     [null, 'assets/js/team-unread-badge.js', 'AtlasTeamUnreadBadge'],
     [null, 'assets/js/team-profiles-bootstrap.js', 'AtlasTeamProfilesBootstrap'],
     ['assets/css/team-profile-photos.css', 'assets/js/team-profile-photos.js', 'AtlasTeamProfilePhotos'],
-    [null, 'assets/js/team-profile-photo-gallery.js', 'AtlasTeamProfileGallery'],
     ['assets/css/shifts-workspace.css', 'assets/js/shifts-workspace.js', 'AtlasShifts'],
     ['assets/css/knowledge-workspace.css', 'assets/js/knowledge-workspace.js', 'AtlasKnowledge'],
     ['assets/css/settings-workspace.css', 'assets/js/settings-workspace.js', 'AtlasSettings'],

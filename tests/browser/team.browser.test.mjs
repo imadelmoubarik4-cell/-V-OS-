@@ -1,104 +1,98 @@
-// S87 Team Messages identity: names and photos resolve from sender_id against
-// the current roster; stored sender labels are only a fallback.
+// Team (#team, #team/<profileId>, spec §7.10) in the real shell: directory,
+// profile sheet (a page on phones), role-shaped details and error states.
+// Messages identity (S87) is covered in messages.browser.test.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, openView, USERS } from './harness.mjs';
-import { emptyFunctions } from './fixtures.mjs';
+import { harnessAvailable, launchAtlas, requestsTo, USERS } from './harness.mjs';
+import { teamFunctions, peopleFunctions, NOW } from './people-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
-const FORMER = 'aaaaaaaa-0000-4000-8000-00000000dead';
-const PHOTO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
-function message(id, sender, label, extra = {}) {
-  return { id, sender_id: sender, sender_label: label, sender_role: 'bartender', body: `Message ${id}`, message_type: 'user', created_at: '2026-09-24T12:00:00Z', is_own: false, ...extra };
+async function open({ user = USERS.admin, hash = '#team', viewport, status = 200, contextOptions = {} } = {}) {
+  const app = await launchAtlas({ user, hash, viewport, contextOptions, fixedTime: new Date(NOW), fixtures: { functions: peopleFunctions(teamFunctions({ user, status })) } });
+  await app.page.waitForSelector('.team-table, .team-list, .atlas-alert--danger, .team-detail', { timeout: 12000 });
+  await app.page.waitForTimeout(300);
+  return app;
 }
 
-function teamFixtures({ members, messages, photos = [] }) {
-  return {
-    ...emptyFunctions(),
-    'atlas-team-messages': (entry) => entry.action === 'snapshot' || entry.method === 'POST' ? {
-      snapshot: { channels: [{ key: 'general', name: 'General', unread_count: 0 }], messages, selected_channel_key: 'general', summary: { total_unread: 0, active_members: members.length } },
-      members,
-      staff: { id: USERS.admin.id, label: USERS.admin.display_name, role: 'admin' }
-    } : {},
-    'atlas-team-profile-photos': { photos, staff: { id: USERS.admin.id, can_manage_team: true } }
-  };
-}
-
-async function openTeam(fixtures) {
-  const app = await launchAtlas({ fixtures: { functions: teamFixtures(fixtures) } });
-  await openView(app.page, 'team');
-  await app.page.waitForSelector('[data-team-message]');
-  await app.page.waitForTimeout(400);
-  const rows = await app.page.$$eval('[data-team-message]', (nodes) => nodes.map((node) => ({
-    id: node.dataset.teamMessage,
-    name: node.querySelector('.team-message-content header strong')?.textContent.trim(),
-    role: node.querySelector('.team-message-content header span')?.textContent.trim(),
-    avatar: node.querySelector('.team-message-avatar')?.textContent.trim(),
-    photo: node.querySelector('.team-message-avatar img')?.getAttribute('src') || null
-  })));
-  return { ...app, rows };
-}
-
-test('messages show the current display name, never an email address', { skip }, async () => {
-  const { rows, close } = await openTeam({
-    members: [{ id: USERS.admin.id, label: 'Imad El Moubarik', role: 'admin' }, { id: USERS.bartender.id, label: 'sara.jonsdottir@example.test', role: 'bartender' }],
-    messages: [
-      message('1', USERS.admin.id, 'owner@example.test', { is_own: true, sender_role: 'admin' }),
-      message('2', USERS.bartender.id, 'sara.jonsdottir@example.test')
-    ]
-  });
+test('admin directory: table with role, today’s shift, training and contact state', { skip }, async () => {
+  const { page, record, close } = await open();
   try {
-    assert.equal(rows[0].name, 'Imad El Moubarik', 'old email label replaced by the current profile name');
-    assert.equal(rows[1].name, 'Sara Jonsdottir', 'email-only profile shows a readable name');
-    assert.ok(rows.every((row) => !row.name.includes('@')));
-    assert.equal(rows[0].avatar, 'IE');
+    assert.equal(await page.textContent('#team-profiles-view .page-head__title'), 'Team');
+    assert.match(await page.textContent('#team-profiles-view .page-head__sub'), /^4 people · 1 with training due$/);
+    const headers = await page.$$eval('.team-table th:not(.col-actions)', (nodes) => nodes.map((node) => node.textContent.trim()).filter(Boolean));
+    assert.deepEqual(headers, ['Person', 'Role', 'On shift today', 'Training', 'Emergency contact']);
+    const sara = await page.$eval(`tr[data-team-profile-select="${USERS.bartender.id}"]`, (row) => row.innerText.replace(/\s+/g, ' ').trim());
+    assert.match(sara, /Sara Jónsdóttir Bartender · sara\.bartender@example\.test Bartender 16:00–00:00 2 of 3 Due Missing/);
+    assert.match(await page.textContent('tr[data-team-profile-select="p-jon"]'), /Schedule only/);
+    // Filters: Training due.
+    await page.click('[data-team-chip="training"]');
+    assert.deepEqual(await page.$$eval('.team-table tbody tr', (nodes) => nodes.map((node) => node.dataset.teamProfileSelect)), [USERS.bartender.id]);
+    assert.equal(requestsTo(record, 'atlas-team-profiles', 'snapshot').length, 1);
+    assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });
 
-test("another person's message shows their identity, not the viewer's", { skip }, async () => {
-  const { rows, close } = await openTeam({
-    members: [{ id: USERS.admin.id, label: 'Imad El Moubarik', role: 'admin' }, { id: USERS.bartender.id, label: 'Sara Jónsdóttir', role: 'bartender' }],
-    messages: [message('9', USERS.bartender.id, 'Sara')],
-    photos: [{ profile_id: USERS.admin.id, signed_url: PHOTO, version: 1 }]
-  });
+test('bartender directory: no emails, no emergency column, own profile editable', { skip }, async () => {
+  const { page, close } = await open({ user: USERS.bartender });
   try {
-    assert.equal(rows[0].name, 'Sara Jónsdóttir');
-    assert.equal(rows[0].photo, null, "the viewer's photo is not used for someone else");
-    assert.equal(rows[0].avatar, 'SJ');
+    const headers = await page.$$eval('.team-table th:not(.col-actions)', (nodes) => nodes.map((node) => node.textContent.trim()).filter(Boolean));
+    assert.deepEqual(headers, ['Person', 'Role', 'On shift today']);
+    assert.doesNotMatch(await page.textContent('.team-table'), /@example\.test/);
+    assert.equal(await page.$('[data-team-profile-add-member]'), null);
+    await page.click(`[data-team-profile-open="${USERS.admin.id}"]`);
+    await page.waitForSelector('#team-profile-sheet .team-detail');
+    const other = await page.textContent('#team-profile-sheet');
+    assert.doesNotMatch(other, /Emergency contact|Lina El Moubarik|Manager note|Access/);
+    assert.match(other, /\+354 555 0101/, 'a phone shared with the team is shown');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => location.hash === '#team');
+    await page.click(`[data-team-profile-open="${USERS.bartender.id}"]`);
+    await page.waitForSelector('#team-profile-sheet [data-team-profile-edit]');
+    assert.match(await page.textContent('#team-profile-sheet'), /Emergency contact[\s\S]*Add someone we can call/);
+    assert.match(await page.textContent('#team-profile-sheet'), /Open required reading/);
   } finally { await close(); }
 });
 
-test('a current profile photo is used for that sender', { skip }, async () => {
-  const { rows, close } = await openTeam({
-    members: [{ id: USERS.bartender.id, label: 'Sara Jónsdóttir', role: 'bartender' }],
-    messages: [message('3', USERS.bartender.id, 'Sara')],
-    photos: [{ profile_id: USERS.bartender.id, signed_url: PHOTO, version: 2 }]
-  });
+test('#team/<id> opens the profile sheet; emergency contacts stay masked until Show', { skip }, async () => {
+  const gunnar = 'c0ffee00-0000-4000-8000-000000000003';
+  const { page, close } = await open({ hash: `#team/${gunnar}` });
   try {
-    assert.equal(rows[0].photo, PHOTO);
+    await page.waitForSelector('#team-profile-sheet .team-detail__name');
+    assert.equal(await page.textContent('#team-profile-sheet .team-detail__name'), 'Gunnar Karlsson');
+    assert.doesNotMatch(await page.textContent('#team-profile-sheet'), /Anna Karlsdóttir/);
+    // Focus starts at the top of the sheet, not inside the Access form.
+    assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('atlas-sheet__close')), true);
+    await page.click('[data-team-reveal]');
+    await page.waitForFunction(() => document.querySelector('#team-profile-sheet').textContent.includes('Anna Karlsdóttir'));
+    assert.match(await page.textContent('#team-profile-sheet'), /Onboarding[\s\S]*3 of 3 required/);
+    assert.match(await page.textContent('#team-profile-sheet'), /Access[\s\S]*Save access/);
   } finally { await close(); }
 });
 
-test('a former member falls back safely to the historical label', { skip }, async () => {
-  const { rows, close } = await openTeam({
-    members: [{ id: USERS.admin.id, label: 'Imad El Moubarik', role: 'admin' }],
-    messages: [message('4', FORMER, 'jon.gudmundsson@example.test'), message('5', null, '')]
-  });
+test('phone: rows with avatar, role and today’s shift; the profile is a page with back', { skip }, async () => {
+  const { page, close } = await open({ user: USERS.bartender, viewport: { width: 390, height: 844 }, contextOptions: { hasTouch: true, isMobile: true } });
   try {
-    assert.equal(rows[0].name, 'Jon Gudmundsson');
-    assert.match(rows[0].role, /no longer active/);
-    assert.equal(rows[1].name, 'Former team member');
+    await page.waitForSelector('.team-list__row');
+    const first = await page.$eval('.team-list__row', (row) => ({ text: row.innerText.replace(/\s+/g, ' ').trim(), height: row.getBoundingClientRect().height }));
+    assert.match(first.text, /Imad El Moubarik Administrator · today 17:00–23:00/);
+    assert.ok(first.height >= 44);
+    await page.click(`.team-list__row[data-team-profile-open="${USERS.bartender.id}"]`);
+    await page.waitForSelector('.team--detail .team-detail__name');
+    assert.equal(await page.$('#team-profile-sheet'), null, 'no sheet on phones');
+    assert.equal(await page.isVisible('#atlas-topbar-back'), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+    await page.click('#atlas-topbar-back');
+    await page.waitForSelector('.team-list__row');
   } finally { await close(); }
 });
 
-test('system messages stay distinct', { skip }, async () => {
-  const { page, close } = await openTeam({
-    members: [{ id: USERS.admin.id, label: 'Imad El Moubarik', role: 'admin' }],
-    messages: [message('6', null, 'Atlas', { message_type: 'system' })]
-  });
+test('the API returning 503 shows a plain error and Try again works', { skip }, async () => {
+  const { page, close } = await open({ status: 503 });
   try {
-    assert.equal(await page.$eval('[data-team-message="6"]', (node) => node.classList.contains('is-system')), true);
-    assert.match(await page.textContent('[data-team-message="6"] header span'), /System update/);
+    const alert = await page.textContent('.atlas-alert--danger');
+    assert.match(alert, /The team couldn’t be loaded\./);
+    assert.doesNotMatch(alert, /503|rpc|Profiles are temporarily/);
+    assert.equal(await page.$('[data-team-profiles-refresh]') !== null, true);
   } finally { await close(); }
 });

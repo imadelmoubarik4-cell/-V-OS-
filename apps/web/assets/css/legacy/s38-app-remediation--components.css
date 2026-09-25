@@ -42,14 +42,11 @@
   .recipe-foundation-card > summary small,.brain-intelligence-grid > .brain-card > summary small,.knowledge-editor-properties > summary small { display:none; }
 }
 /* Moved from s38-app-remediation--inventory-scanner.css when Inventory was rebuilt (S88
-   Team B); only selectors that still render are kept (Brain, Checkpoint A, the old
-   Home cards and Settings panels were retired by Teams A and C). */
+   Team B); only selectors that still render are kept (the other cards were retired
+   by Teams A, C and D). */
 /* Shared floating-card behaviour */
 :is(
-  .atlas-card,
-  .team-messages-layout,
-  .shift-month-summary article,
-  .shift-month-day-detail
+  .atlas-card
 ) {
   box-shadow: var(--s38-shadow);
   transition:
@@ -60,9 +57,7 @@
 }
 
 :is(
-  .atlas-card,
-  .shift-month-summary article,
-  .shift-month-day-detail
+  .atlas-card
 ):hover {
   transform: translateY(-3px);
   box-shadow: var(--s38-shadow-raised);
@@ -71,8 +66,6 @@
 @media (prefers-reduced-motion: reduce) {
   :is(
     .atlas-card,
-    .shift-month-summary article,
-    .shift-month-day-detail
-  ) { transition: none; }
+      ) { transition: none; }
 }
 }

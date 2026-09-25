@@ -121,29 +121,22 @@ test('no bootstrap rewrites or Blob-evaluates another script', () => {
 // Ratchet ceilings (S88). A new observer or capture listener needs a reason and
 // an entry here; the ceilings may only go down.
 //
-// MutationObservers (was 27 at the S87 audit; the stock-count L1 observer went
-// with the S88 Team B count rewrite):
-//   team-unread-badge.js        childList only, on the two badge containers, to drop zero badges other
-//                               modules insert.
-const OBSERVER_ALLOWLIST = {
-  'assets/js/team-unread-badge.js': 1
-};
+// MutationObservers (was 27 at the S87 audit; the stock-count L1 observer went with
+// the S88 Team B count rewrite and the badge observer with Team D): none allowed.
+const OBSERVER_ALLOWLIST = {};
 
 // Capture-phase listeners (was 34 textual + 4 forced by the scanner bootstrap):
 //   atlas-shell.js (1)             the single navigation listener; must see sidebar/tab clicks first.
 //   rehearsal-boundary.js (1)      offline write boundary: blocks form submits before any module sees them.
-//   shifts-month-calendar.js (3)   Month owns its controls inside the weekly planner's host and stops the
-//                                  weekly bubbling handler.
-//   team-profile-photo-gallery.js (2)  makes the photo input gallery-friendly before the photo module's
-//                                  own click handler opens the picker.
 const CAPTURE_ALLOWLIST = {
   'assets/js/atlas-shell.js': 1,
-  'assets/js/rehearsal-boundary.js': 1,
-  'assets/js/shifts-month-calendar.js': 3,
-  'assets/js/team-profile-photo-gallery.js': 2
+  'assets/js/rehearsal-boundary.js': 1
 };
-const OBSERVER_CEILING = 1;
-const CAPTURE_CEILING = 7;
+// S88 Team D: the Month calendar merged into shifts-workspace.js (bubbling
+// listeners only), the photo gallery shim and the badge observer were retired;
+// S88 Team B: the stock-count L1 observer and capture listeners went with the count rewrite.
+const OBSERVER_CEILING = 0;
+const CAPTURE_CEILING = 2;
 
 test('MutationObservers stay within the documented ratchet ceiling', () => {
   const counts = countPerFile(/new\s+(?:window\.)?MutationObserver\s*\(/g);
@@ -163,7 +156,7 @@ test('capture-phase listeners stay within the documented ratchet ceiling', () =>
   }
   assert.ok(total(counts) <= CAPTURE_CEILING, `${total(counts)} capture listeners > ceiling ${CAPTURE_CEILING}`);
   const stopImmediate = SOURCES.filter(([, source]) => /stopImmediatePropagation/.test(source)).map(([file]) => file).sort();
-  assert.deepEqual(stopImmediate, ['assets/js/rehearsal-boundary.js', 'assets/js/shifts-month-calendar.js']);
+  assert.deepEqual(stopImmediate, ['assets/js/rehearsal-boundary.js']);
 });
 
 // Events the shell emits itself (atlas-shell.js) or from index.html's lifecycle.
@@ -191,7 +184,8 @@ test('every event a module listens for is actually emitted', () => {
   }
   // S88 Team A: Operations, Brain and Checkpoint A no longer re-attach to each
   // other's renders; Home listens for operations:changed and data:error.
-  for (const type of ['operations:changed', 'data:error', 'shifts:rendered', 'team-profiles:rendered', 'team-profile-photos:decorated']) {
+  // S88 Team D: Messages reports unread counts through messages:unread.
+  for (const type of ['operations:changed', 'data:error', 'team-profiles:rendered', 'messages:unread']) {
     assert.ok(shellListened.has(type), `${type} has a listener`);
   }
 });
@@ -227,12 +221,12 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 
 test('changed scripts carry the S88 cache key', () => {
   for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'home.js', 'reports-overview.js', 'recipes.js', 'data-workspace.js', 'atlas-capture.js', 'atlas-inventory.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'shifts-workspace.js',
-    'shifts-month-calendar.js', 'shifts-month-tab-bridge.js', 'knowledge-workspace.js', 'knowledge-team-link-bridge.js', 's38-app-remediation.js', 'atlas-search.js']) {
+    'knowledge-workspace.js', 's38-app-remediation.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s88"></script>`), file);
   }
   const config = read('apps/web/config.js');
   for (const file of ['team-messages.js', 'marketing-workspace.js',
-    'team-profiles-bootstrap.js', 'team-profile-photos.js', 'team-profile-photo-gallery.js', 'reports-workspace.js', 'system-workspace.js',
+    'team-profiles-bootstrap.js', 'team-profile-photos.js', 'reports-workspace.js', 'system-workspace.js',
     'settings-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s88'`), file);
   }

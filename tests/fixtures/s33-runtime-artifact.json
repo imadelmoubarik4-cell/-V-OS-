@@ -30,8 +30,8 @@
       "files": [
         {
           "path": "functions/atlas-knowledge/index.ts",
-          "source_sha256": "ce0248ba19f8bbdf446e75e6ca4179d4bcfff0f659b1b7e9e252edaff6358fb2",
-          "candidate_sha256": "39031b8ef3b684dbc01ae7371a1d81fb7cfafcef631b78a6578711815b29d23a"
+          "source_sha256": "d2c5edd2b95953139a17b0a5a27be8216220c0fa5829ba65138d3053dad707ca",
+          "candidate_sha256": "4c2ec3e1141a80e2e5dc101dc17aea4889dd88f9aaa42b78442f7b1983d644db"
         }
       ]
     },

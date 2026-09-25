@@ -17,7 +17,7 @@ for (const [view, fn] of [['knowledge', 'atlas-knowledge'], ['team', 'atlas-team
       const count = requestsTo(record, fn, 'snapshot').length;
       assert.ok(count <= 3, `${fn} sent ${count} snapshot requests in 5 s`);
       // The explicit retry control still works immediately.
-      const retry = { knowledge: '[data-knowledge-refresh]', team: '[data-team-refresh]', shifts: '[data-shifts-refresh]' }[view];
+      const retry = { knowledge: '[data-knowledge-refresh]', team: '[data-team-refresh]', shifts: '[data-shifts-retry]' }[view];
       await page.click(`#${view}-view ${retry}`);
       await page.waitForTimeout(500);
       assert.ok(requestsTo(record, fn, 'snapshot').length > count, 'Try again sends a new request');

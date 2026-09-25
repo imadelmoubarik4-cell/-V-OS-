@@ -17,12 +17,12 @@ const capture = readFileSync('apps/web/assets/js/atlas-capture.js', 'utf8');
 const stockCount = readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8');
 const reportsCss = readFileSync('apps/web/assets/css/reports-workspace.css', 'utf8');
 const settingsCss = readFileSync('apps/web/assets/css/settings-workspace.css', 'utf8');
-const finalPolishCss = legacyCss('polish-pass2');
+// S88: every polish-pass2 fragment has moved into a module sheet; none may come back.
+const finalPolishCss = (() => { try { return legacyCss('polish-pass2'); } catch { return ''; } })();
 const homeJs = readFileSync('apps/web/assets/js/home.js', 'utf8');
 const iconSources = [
   app,
   readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8'),
-  readFileSync('apps/web/assets/js/shifts-month-calendar.js', 'utf8'),
   readFileSync('apps/web/assets/js/reports-workspace.js', 'utf8'),
   readFileSync('apps/web/assets/js/system-workspace.js', 'utf8'),
 ].join('\n');
@@ -81,8 +81,10 @@ test('shared polish removes duplicate Home metrics and normalizes workspace hier
   assert.doesNotMatch(app, /class="stat-grid"|checkpoint-a-home-prompt/);
   assert.doesNotMatch(homeJs, /stat-grid|metric-card|checkpoint-a/);
   // S88: the workspace page-title normalization is part of atlas-components.css.
-  assert.match(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.team-messages-hero h1,[\s\S]*\.knowledge-hero h1/);
-  assert.match(finalPolishCss, /\.team-profile-card-media[\s\S]*height: 176px !important/);
+  // S88: the retired workspace heroes (Item Master, Stock count, Team) have no rules left.
+  assert.doesNotMatch(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.item-master-hero h1|\.stock-count-hero h1/);
+  // S88: Team was rebuilt on the shared table; its retired card grid rules are gone.
+  assert.doesNotMatch(finalPolishCss, /\.team-profile-card-media/);
   // S88 Recipes (spec §7.7): one page header, no hero.
   assert.match(recipes, /window\.AtlasShell\.pageHead\(\{ title: 'Recipes'/);
   assert.doesNotMatch(recipes, /Recipe Library|recipe-hero|recipe-summary-grid/);

@@ -167,13 +167,7 @@ html.atlas-reduce-motion *::after {
 }
 /* ---------- from legacy/workspaces-polish--components.css ---------- */
 /* ---------- Shared surface treatment ---------- */
-:where(.team-messages-layout, .team-profiles-layout, .team-profiles-state, .team-profile-panel, .team-profile-detail, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .shift-month-state, .shift-card, .knowledge-article-card, .knowledge-summary-grid > *, .knowledge-trust-panel, .knowledge-training-hero, .knowledge-connection-card, .knowledge-state, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal) {
-  color: var(--atlas-text);
-}
 /* Nested cards sit inside an already-glass panel: fill only, no second shadow. */
-:where(.team-message-content) {
-  box-shadow: var(--shadow-1);
-}
 /* ---------- Settings ---------- */
 :where(.empty-module svg) {
   color: var(--blue-400);
@@ -181,30 +175,21 @@ html.atlas-reduce-motion *::after {
 /* ---------- from legacy/polish-pass2--components.css ---------- */
 /* Wide workspace content stays within the shared rail and advertises overflow
    at the component boundary instead of widening the full application. */
-:where(.shift-month-grid) {
-  max-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-}
 /* ---------- from legacy/s34-preproduction--search.css ---------- */
 /* Compact search field used across launch modules. */
-:where(:where(.atlas-search,.knowledge-search,.team-attachment-controls label)) {
+:where(:where(.atlas-search)) {
   max-width:420px;
 }
 @media(max-width:680px) {
-  :where(:where(.atlas-search,.knowledge-search,.team-attachment-controls label)) {
+  :where(:where(.atlas-search)) {
     max-width:none;
     width:100%;
   }
 }
 /* ---------- from legacy/s38-app-remediation--search.css ---------- */
 /* Compact Apple-style search controls */
-:where(:is( .atlas-search, .team-attachment-controls label )) {
+:where(:is( .atlas-search)) {
   border-radius: 999px;
-}
-:where(:is( [data-team-target-search] )) {
-  max-height: 42px;
-  box-shadow: none;
 }
 /* ---------- from legacy/accessibility-responsive-s61--components.css ---------- */
 @media (max-width: 760px) {

@@ -16,7 +16,7 @@ INVENTORY = ROOT / "apps/web/assets/js/atlas-inventory.js"
 HOME = ROOT / "apps/web/assets/js/home.js"
 PURCHASING = ROOT / "apps/web/assets/js/atlas-purchasing.js"
 MESSAGES = ROOT / "apps/web/assets/js/team-messages.js"
-MONTH = ROOT / "apps/web/assets/js/shifts-month-calendar.js"
+SHIFTS = ROOT / "apps/web/assets/js/shifts-workspace.js"
 CHECKLIST = ROOT / "docs/release/Atlas_S38_PDF_App_Remediation_Checklist.md"
 DECISIONS = ROOT / "docs/release/Atlas_S38_Owner_Decisions_and_Acceptance.md"
 
@@ -29,7 +29,7 @@ class S38AppRemediationTests(unittest.TestCase):
         cls.javascript = JS.read_text(encoding="utf-8")
         cls.checklist = CHECKLIST.read_text(encoding="utf-8")
         cls.decisions = DECISIONS.read_text(encoding="utf-8")
-        cls.owners = {path.name: path.read_text(encoding="utf-8") for path in (CAPTURE, INVENTORY, HOME, PURCHASING, MESSAGES, MONTH)}
+        cls.owners = {path.name: path.read_text(encoding="utf-8") for path in (CAPTURE, INVENTORY, HOME, PURCHASING, MESSAGES, SHIFTS)}
 
     def test_remediation_script_no_longer_patches_the_page(self):
         # The fixes moved to their owners; the script keeps only its marker.
@@ -60,12 +60,14 @@ class S38AppRemediationTests(unittest.TestCase):
             "--s38-card: #ffffff",
             "prefers-reduced-motion",
             "s38-attention-pulse",
-            ".team-message-list",
-            ".shift-month-cell.is-today",
         ):
             self.assertIn(token, self.css)
         self.assertNotIn("background: #000", self.css)
         self.assertNotIn("background:#000", self.css)
+        # S88: Messages and Shifts were rebuilt as atlas.modules sheets; their
+        # S38 fragments are deleted, not merged.
+        for retired in (".team-message-list", ".shift-month-cell"):
+            self.assertNotIn(retired, self.css)
 
     def test_home_attention_and_removed_brain_card_follow_owner_contract(self):
         # S88 Team A: Home lists what needs attention as rows from every module
@@ -97,9 +99,11 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("['orders', 'Orders', '#purchasing/orders'], ['deliveries', 'Deliveries', '#purchasing/deliveries']", purchasing)
         messages = self.owners["team-messages.js"]
         self.assertIn('data-team-message-list role="log" aria-live="polite" aria-relevant="additions text"', messages)
-        self.assertIn("Notification delivery follows Settings", messages)
         self.assertNotIn("Push notifications off", messages)
-        self.assertIn("document.body.classList.add('s38-team-active')", messages)
+        # S88 redesign: no trust footer or FAB workaround; phones hide the tab
+        # bar inside a conversation instead (spec §7.3, §8.5).
+        self.assertIn("chrome?.setTabBarHidden?.('messages', inThread)", messages)
+        self.assertNotIn("s38-team-active", messages)
         # S88 redesign: the bell opens the notifications panel (spec §4.9), which
         # lists unread messages and links to #settings/notifications.
         chrome = (ROOT / "apps/web/assets/js/atlas-chrome.js").read_text(encoding="utf-8")
@@ -150,7 +154,7 @@ class S38AppRemediationTests(unittest.TestCase):
         stock = (ROOT / "apps/web/assets/js/stock-count-workspace.js").read_text(encoding="utf-8")
         purchasing = self.owners["atlas-purchasing.js"]
         messages = (ROOT / "apps/web/assets/js/team-messages.js").read_text(encoding="utf-8")
-        shifts = (ROOT / "apps/web/assets/js/shifts-month-calendar.js").read_text(encoding="utf-8")
+        shifts = (ROOT / "apps/web/assets/js/shifts-workspace.js").read_text(encoding="utf-8")
         recipes = (ROOT / "apps/web/assets/js/recipes.js").read_text(encoding="utf-8")
         knowledge = (ROOT / "apps/web/assets/js/knowledge-workspace.js").read_text(encoding="utf-8")
         home = self.owners["home.js"]
@@ -166,43 +170,42 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("function leave()", stock)
         self.assertIn("'Suppliers'", purchasing)
         self.assertIn("Partly received", purchasing)
-        self.assertIn("data-team-filter=\"pinned\"", messages)
-        self.assertIn("Pinned", messages)
+        self.assertIn('<p class="msg-side__group">Pinned</p>', messages)
         self.assertNotIn("Conversation starred", messages)
-        self.assertIn("person-tone-", shifts)
-        self.assertIn("data-shifts-month-add-day", shifts)
-        self.assertIn("function openShiftEditor(date)", shifts)
-        self.assertIn("addShift: openShiftEditor", shifts)
-        shifts_weekly = (ROOT / "apps/web/assets/js/shifts-workspace.js").read_text(encoding="utf-8")
-        self.assertIn("['month', 'calendar-range', 'Month']", shifts_weekly)
-        self.assertIn("window.AtlasShiftsMonth?.open?.()", shifts_weekly)
+        # One consistent colour per person (avatar tint from the person id).
+        self.assertIn("function avatarTint(key)", shifts)
+        self.assertIn("avatarTint(person?.id || name)", shifts)
+        self.assertIn("data-shifts-add", shifts)
+        self.assertIn("function openShiftEditor({ date, shift = null } = {})", shifts)
+        self.assertIn("addShift: (date) => openShiftEditor({ date })", shifts)
+        self.assertIn('data-shifts-mode="month"', shifts)
         # S88 Recipes (spec §7.7): tiles with availability replace the foundation cards.
         self.assertIn("class=\"recipe-tile\"", recipes)
         self.assertNotIn("recipe-foundation-card", recipes)
-        self.assertIn("knowledge-editor-properties", knowledge)
+        self.assertIn("data-knowledge-editor-form", knowledge)
         # Today's timeline belongs on Home (owner decision); it renders inside home.js.
         self.assertIn("Opening and closing", home)
         # One master On/Off control for notifications on this device.
         self.assertIn("Turn notifications on", settings)
         self.assertIn("Turn notifications off", settings)
-        self.assertIn("overflow-y:scroll !important", self.css)
+        # The message history owns its scrolling (now the Messages module sheet).
+        messages_css = (ROOT / "apps/web/assets/css/team-messages.css").read_text(encoding="utf-8")
+        self.assertIn(".msg-thread__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto;", messages_css)
 
-    def test_month_view_uses_final_atlas_skin_and_hides_global_fab(self):
-        month_css = (ROOT / "apps/web/assets/css/shifts-month-editor.css").read_text(encoding="utf-8")
+    def test_month_view_is_part_of_shifts_on_the_design_system(self):
+        css = (ROOT / "apps/web/assets/css/shifts-workspace.css").read_text(encoding="utf-8")
         for contract in (
-            "Final Atlas month calendar skin",
-            "--month-blue:#4f7df3",
-            "background:var(--month-blue-wash)",
-            "border-radius:16px",
-            ".shift-month-chip.person-tone-7",
-            "button.shift-month-empty",
-            "gap:4px",
-            "display:inline-grid!important",
+            "@layer atlas.modules {",
+            ".shifts-month__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }",
+            ".shifts-month__chip.is-unpublished { border-style: dashed;",
         ):
-            self.assertIn(contract, month_css)
-        month = self.owners["shifts-month-calendar.js"]
-        self.assertIn("function syncBodyState()", month)
-        self.assertIn("document.body.classList.toggle('s38-month-active', open)", month)
+            self.assertIn(contract, css)
+        self.assertNotIn("!important", css)
+        self.assertFalse((ROOT / "apps/web/assets/css/shifts-month-editor.css").exists())
+        self.assertFalse((ROOT / "apps/web/assets/js/shifts-month-calendar.js").exists())
+        shifts = self.owners["shifts-workspace.js"]
+        self.assertIn("function monthScheduleMarkup()", shifts)
+        self.assertNotIn("s38-month-active", shifts)
         # S88 redesign: the floating action is retired (spec §4.12); nothing to hide.
         self.assertNotIn(".fab-wrap", self.css)
 

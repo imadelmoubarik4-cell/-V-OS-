@@ -1508,169 +1508,27 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 /* ---------- App-wide type sweep.
    Fifteen module stylesheets set Fraunces on their own headings. One sweep
    keeps the whole product on a single typeface without editing any of them. */
-:where(.knowledge-shell, .shifts-hero, .shift-month-navigation, .shift-month-summary, .shift-month-cell-head, .shift-month-day-detail, .shift-month-state, .shift-week-navigation, .shift-summary-grid, .shift-day-column, .shift-empty-week, .shift-empty-section, .shift-section-card, .shift-confirmation-date, .shift-modal, .shift-state, .atlas-import-center) {
+:where( .atlas-import-center) {
   font-family: var(--font-sans);
-}
-:where(.knowledge-shell h1, .knowledge-shell h2, .knowledge-shell h3, .shifts-hero h1, .shift-month-navigation h2, .shift-month-summary strong, .shift-month-cell-head strong, .shift-month-day-detail h3, .shift-month-state h2, .shift-week-navigation strong, .shift-summary-grid strong, .shift-day-column strong, .shift-empty-week h3, .shift-empty-section h3, .shift-section-card h2, .shift-confirmation-date strong, .shift-modal h2, .shift-state h2) {
-  font-family: var(--font-sans);
-  font-weight: 600;
-  letter-spacing: -.03em;
 }
 /* Icon wrappers: the fill and the glyph colour both move to blue. */
 /* Containers that hold real copy: fill only. Their own text colours stand —
    month chips carry staff names and times, export tiles carry labels and
    descriptions, and recolouring either would tint content, not chrome. */
-:where(.shift-month-chip) {
-  background: var(--blue-50);
-}
 /* Glass surfaces for the panels these modules actually use. Every selector here
    is a named class lifted from the module's own stylesheet — no guesses about
    DOM structure, so a class a module doesn't use is inert rather than harmful.
    Knowledge, Marketing and System panels are deliberately absent: their
    container classes need a read of their renderers, which happens when those
    workspaces get their own pass. */
-:where(.shift-section-card, .shift-summary-grid article, .shift-modal) {
-  background: var(--glass-fill);
-  border-color: var(--glass-line);
-  box-shadow: var(--glass-highlight), var(--glass-shadow);
-}
 /* ---------- from legacy/workspaces-polish--components.css ---------- */
 /* ---------- Shared surface treatment ---------- */
-:where(.team-messages-layout, .team-profiles-layout, .team-profiles-state, .team-profile-panel, .team-profile-detail, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .shift-month-state, .shift-card, .knowledge-article-card, .knowledge-summary-grid > *, .knowledge-trust-panel, .knowledge-training-hero, .knowledge-connection-card, .knowledge-state, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal) {
-  background: var(--glass-fill);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--atlas-radius);
-  box-shadow: var(--glass-highlight), var(--glass-shadow);
-}
 /* Nested cards sit inside an already-glass panel: fill only, no second shadow. */
-:where(.shift-card, .team-profile-panel) {
-  background: var(--surface);
-  box-shadow: none;
-  border-radius: var(--r-lg);
-}
-:where(.team-message-list) {
-  background: var(--surface);
-}
-:where(.team-message-content) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-}
-:where(.team-message-avatar) {
-  background: var(--blue-100);
-  color: var(--blue-700);
-}
-:where(.team-message-link) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-  color: var(--atlas-text);
-}
 /* Trust strips carry an attestation — they keep their dark, deliberate weight. */
-:where(.team-messages-trust, .team-profiles-trust) {
-  background: var(--ink);
-  border-radius: var(--r-lg);
-}
-:where(.team-profiles-directory) {
-  background: var(--bg-subtle);
-  border-right-color: var(--glass-line);
-}
-:where(.team-profiles-search, .team-profile-toggle) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-}
-:where(.team-profile-avatar, .team-profile-detail-avatar) {
-  background: var(--blue-100);
-  color: var(--blue-700);
-}
-:where(.team-profile-detail) {
-  background: transparent;
-  box-shadow: none;
-}
-:where(.team-profile-detail-head) {
-  border-bottom-color: var(--glass-line);
-}
-:where(.team-profile-progress) {
-  background: var(--blue-100);
-}
-:where(.team-profile-progress > *) {
-  background: var(--accent);
-}
 /* A manager-only note is a permission boundary; it keeps a distinct tone. */
-:where(.team-profile-manager-note) {
-  background: var(--warning-soft);
-  border-color: var(--line-strong);
-  color: var(--warning);
-}
-:where(.team-profile-primary) {
-  background: var(--accent);
-  border-color: var(--blue-700);
-  color: #fff;
-}
-:where(.team-profile-secondary) {
-  background: var(--glass-fill-strong);
-  border-color: var(--glass-line-strong);
-  color: var(--atlas-text);
-}
-:where(.team-profile-modal-backdrop) {
-  background: var(--overlay);
-}
 /* ---------- Shifts ---------- */
-:where(.shifts-hero p, .shift-day-empty, .shift-month-empty, .shift-month-day-empty, .shift-empty-week p, .shift-empty-section p, .shift-state p) {
-  color: var(--atlas-muted);
-}
-:where(.shift-day-column) {
-  background: var(--bg-subtle);
-  border-color: var(--glass-line);
-  border-radius: var(--r-lg);
-}
-:where(.shift-month-day-list article, .shift-request-list article, .shift-confirmation-list article) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-}
-:where(.shift-activity-list article) {
-  border-bottom-color: var(--glass-line);
-}
-:where(.shift-activity-list article > span) {
-  background: var(--blue-100);
-  color: var(--blue-700);
-}
-:where(.shift-modal-note) {
-  background: var(--blue-50);
-  color: var(--atlas-muted);
-}
-:where(.shift-modal-backdrop) {
-  background: var(--overlay);
-}
-:where(.knowledge-article-icon, .knowledge-source-logo, .knowledge-card-arrow) {
-  background: var(--blue-100);
-  color: var(--blue-600);
-}
-:where(.knowledge-search) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-}
-:where(.knowledge-progress-track) {
-  background: var(--blue-100);
-}
-:where(.knowledge-progress-track > *) {
-  background: var(--accent);
-}
-:where(.knowledge-training-task, .knowledge-live-resource, .knowledge-detail-source, .knowledge-version-list article, .knowledge-ack-list article) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-}
-:where(.knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal) {
-  background: var(--surface);
-  border-radius: var(--r-xl);
-}
-:where(.knowledge-drawer-backdrop, .knowledge-modal-backdrop) {
-  background: var(--overlay);
-}
 /* A draft warning and a required-training state are publication states, not
    decoration: they keep their own tone. */
-:where(.knowledge-draft-warning) {
-  background: var(--warning-soft);
-  border-color: var(--line-strong);
-}
 /* ---------- Business Intelligence ---------- */
 /* ---------- Reports ---------- */
 /* ---------- Placeholder pages ---------- */
@@ -1683,63 +1541,17 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 /* Normalize workspace hierarchy without flattening the more expressive Home
    greeting. Dynamic module styles load later, so these rules are intentional
    important overrides. */
-:where(.team-messages-hero h1, .team-profiles-hero h1, .shifts-hero h1, .knowledge-hero h1) {
-  font-family: var(--font-sans);
-  font-size: var(--fs-title);
-  font-weight: 600;
-  line-height: 1.3333;
-  letter-spacing: -.035em;
-}
 /* Blue communicates selection consistently; neutral white remains the default
    action treatment used by the approved Inventory and Recipe references. */
-:where(.knowledge-tabs button.is-active, .knowledge-category-row button.is-active, .team-profiles-filters button.is-active) {
-  border-color: var(--blue-500);
-  background: var(--blue-100);
-  color: var(--blue-700);
-  box-shadow: none;
-}
-:where(.knowledge-hero-actions .is-primary) {
-  border: 1px solid var(--atlas-line);
-  background: var(--surface);
-  color: var(--atlas-text);
-  box-shadow: var(--glass-highlight);
-}
-:where(.knowledge-hero-actions .is-primary:hover) {
-  border-color: var(--blue-400);
-  background: var(--blue-50);
-  color: var(--blue-700);
-}
 /* Wide workspace content stays within the shared rail and advertises overflow
    at the component boundary instead of widening the full application. */
-:where(#shifts-view, #knowledge-view, .shifts-shell, .knowledge-shell) {
-  min-width: 0;
-  max-width: 100%;
-}
 /* ---------- Primary buttons: one blue primary across the product ----------
    Marketing shipped a near-black primary (--atlas-text), Shifts a brown one
    (#a6814d). (confirmed) */
-:where(.shift-primary, .knowledge-primary, .shifts-primary, .team-messages-primary) {
-  background: var(--accent);
-  border: 1px solid var(--blue-700);
-  color: #fff;
-  box-shadow: none;
-}
-:where(.shift-primary:hover, .knowledge-primary:hover, .shifts-primary:hover, .team-messages-primary:hover) {
-  background: var(--blue-700);
-}
 /* ---------- Tab rails: sand troughs → light blue (confirmed) ---------- */
-:where(.shift-tabs) {
-  background: var(--blue-50);
-  border-color: var(--glass-line);
-}
-:where(.shift-tabs button.is-active) {
-  background: #fff;
-  color: var(--blue-700);
-  box-shadow: var(--shadow-1);
-}
 /* ---------- from legacy/s34-preproduction--search.css ---------- */
 /* Compact search field used across launch modules. */
-:where(:where(.atlas-search,.knowledge-search,.team-attachment-controls label) input[type="search"], :where(.atlas-search) input) {
+:where(:where(.atlas-search) input[type="search"], :where(.atlas-search) input) {
   min-height:36px;
   height:36px;
   border-radius:var(--r-md);
@@ -1747,14 +1559,4 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 }
 /* ---------- from legacy/s38-app-remediation--search.css ---------- */
 /* Compact Apple-style search controls */
-:where(:is( [data-team-target-search] )) {
-  min-height: 38px;
-  border-color: var(--s38-line);
-  border-radius: 999px;
-  background: var(--surface);
-}
-:where(:is( [data-team-target-search] ):focus) {
-  border-color: var(--s38-blue);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, .16);
-}
 }
