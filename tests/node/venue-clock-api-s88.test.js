@@ -61,7 +61,7 @@ test('atlas-settings serves the venue clock to every active role before the snap
   assert.doesNotMatch(getBranch.slice(0, getBranch.indexOf('action !== "snapshot"')), /requireManager/);
   // requireActiveProfile is the only gate: an inactive profile is refused, all four roles pass.
   assert.match(EDGE, /const PROFILE_ROLES = new Set\(\["admin", "manager", "bartender", "viewer"\]\);/);
-  assert.match(EDGE, /if \(!profile\?\.active\) \{/);
+  assert.match(EDGE, /await resolveActor\(request, Deno\.env, fetch, \{\s*inactiveMessage: "This Atlas profile is inactive\. Settings access has been removed\."/);
   assert.match(EDGE, /const context = await requireActiveProfile\(request\);/);
 });
 

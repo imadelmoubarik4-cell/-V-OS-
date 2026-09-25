@@ -1,15 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { AuthError, MANAGER_ROLES, actorLabel, requireRole, resolveActor } from "../_shared/auth.mjs";
 
 // Atlas users authenticate against the production VÁ Auth project while the
 // Phase 3 Brain reads and writes only the isolated development branch. The
 // branch gateway JWT check is disabled in config.toml because a production JWT
 // cannot be validated by the branch gateway. This handler verifies the token
 // against production Auth, confirms an active manager/admin profile, and only
-// then calls service-role-only Phase 3 RPCs inside the branch.
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
+// then calls service-role-only Phase 3 RPCs inside the branch. Caller checks
+// use the shared Atlas gateway module (_shared/auth.mjs); its Auth project and
+// publishable key come only from the function environment.
 
 const MAX_BODY_BYTES = 64 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -35,8 +34,9 @@ class ApiError extends Error {
 }
 
 type ManagerContext = {
-  user: { id: string; email?: string | null };
-  profile: { id: string; email?: string | null; role: string; active: boolean };
+  user: { id: string };
+  profile: { id: string; display_name?: string | null; role: string; active: boolean };
+  label: string;
 };
 
 type JsonObject = Record<string, unknown>;
@@ -51,13 +51,6 @@ function jsonResponse(value: unknown, status = 200): Response {
       "x-atlas-phase3-version": "0.1.0",
     },
   });
-}
-
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
 }
 
 function stringValue(value: unknown, label: string, maxLength = 2000): string | null {
@@ -131,39 +124,9 @@ async function readJsonBody(request: Request): Promise<JsonObject> {
 }
 
 async function requireManager(request: Request): Promise<ManagerContext> {
-  const token = bearerToken(request);
-  const authHeaders = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers: authHeaders });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileResponse = await fetch(
-    `${AUTH_PROJECT_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=id,email,role,active`,
-    { headers: authHeaders },
-  );
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas role could not be verified.");
-
-  const profiles = await profileResponse.json() as Array<{
-    id: string;
-    email?: string | null;
-    role: string;
-    active: boolean;
-  }>;
-  const profile = profiles[0];
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive.");
-  if (profile.role !== "admin" && profile.role !== "manager") {
-    throw new ApiError(403, "Atlas Brain Phase 3 is limited to managers and administrators.");
-  }
-
-  return { user: { id: user.id, email: user.email }, profile };
+  const actor = await resolveActor(request, Deno.env, fetch);
+  requireRole(actor, MANAGER_ROLES, "Atlas Brain Phase 3 is limited to managers and administrators.");
+  return { user: { id: actor.userId }, profile: actor.profile, label: actorLabel(actor.profile) };
 }
 
 async function branchRpc(name: string, payload: JsonObject = {}): Promise<unknown> {
@@ -202,7 +165,7 @@ async function branchRpc(name: string, payload: JsonObject = {}): Promise<unknow
 function managerPayload(context: ManagerContext): JsonObject {
   return {
     id: context.user.id,
-    email: context.profile.email ?? context.user.email ?? null,
+    label: context.label,
     role: context.profile.role,
   };
 }
@@ -266,7 +229,7 @@ async function handlePost(request: Request, url: URL, context: ManagerContext): 
       p_modified_action: modifiedAction,
       p_deferred_until: deferredUntil,
       p_decided_by: context.user.id,
-      p_decided_by_label: context.profile.email ?? context.user.email ?? context.user.id,
+      p_decided_by_label: context.label,
       p_client_request_id: clientRequestId,
     });
     return jsonResponse({ result, manager: managerPayload(context) });
@@ -289,7 +252,7 @@ async function handlePost(request: Request, url: URL, context: ManagerContext): 
       p_notes: stringValue(body.notes, "notes", 2000),
       p_observed_at: optionalDate(body.observed_at, "observed_at") ?? new Date().toISOString(),
       p_recorded_by: context.user.id,
-      p_recorded_by_label: context.profile.email ?? context.user.email ?? context.user.id,
+      p_recorded_by_label: context.label,
       p_client_request_id: clientRequestId,
     });
     return jsonResponse({ result, manager: managerPayload(context) });
@@ -308,7 +271,7 @@ Deno.serve(async (request: Request) => {
     if (request.method === "POST") return await handlePost(request, url, context);
     throw new ApiError(405, "Method not allowed.");
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     console.error("Atlas Brain Phase 3 API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "Atlas Brain Phase 3 is temporarily unavailable." }, 500);
   }

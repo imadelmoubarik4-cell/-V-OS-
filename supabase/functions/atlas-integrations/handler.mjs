@@ -2,7 +2,7 @@
 //   env(name)            -> string | undefined   (Deno.env.get in production)
 //   fetchImpl(url, init) -> Response             (provider HTTP calls only)
 //   rpc(name, payload)   -> parsed JSON          (service-role PostgREST RPC)
-//   authenticate(req)    -> { user: {id}, profile: {role, display_name, email} }
+//   authenticate(req)    -> { user: {id}, profile: {role, display_name} }
 //   now()                -> epoch milliseconds
 // index.ts wires these for the Edge runtime; Node tests pass fakes.
 //
@@ -10,6 +10,7 @@
 // PKCE verifiers, OAuth state and ciphertext never leave this module: every
 // JSON response passes assertNoSecretFields() before it is sent.
 
+import { actorLabel as canonicalActorLabel } from "../_shared/auth.mjs";
 import {
   bindingClearCookie,
   bindingCookieName,
@@ -121,8 +122,10 @@ function textResponse(message, status) {
   });
 }
 
+// Stored connection/event labels use the canonical staff label: the display
+// name or a neutral fallback, never an email address (S87).
 function actorLabel(profile) {
-  return String(profile?.display_name || profile?.email || "Atlas manager").trim().slice(0, 200);
+  return canonicalActorLabel(profile).slice(0, 200);
 }
 
 function requireManager(context) {

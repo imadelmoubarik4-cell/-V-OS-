@@ -945,6 +945,15 @@
     restoreDrafts(element, drafts);
     if ((current || defaultSection()) === 'system' && !listOnly) window.AtlasSystem?.mount?.(element.querySelector('[data-settings-system-host]'));
     window.lucide?.createIcons?.();
+    // #settings/integrations?provider=<key> (Atlas AI record links): show that provider once it has loaded.
+    if (state.focusProvider) {
+      const card = [...element.querySelectorAll('[data-provider-card]')].find((node) => node.dataset.providerCard === state.focusProvider);
+      if (card) {
+        card.setAttribute('aria-current', 'true');
+        card.scrollIntoView({ block: 'center' });
+        state.focusProvider = null;
+      }
+    }
   }
 
   function formKey(form) {
@@ -1469,6 +1478,7 @@
   }
 
   function show(params = {}) {
+    state.focusProvider = params.provider ? String(params.provider) : null;
     const requested = params.section ? String(params.section) : null;
     const key = requested ? (SECTION_ALIASES[requested] || requested) : null;
     const allowed = visibleSections();

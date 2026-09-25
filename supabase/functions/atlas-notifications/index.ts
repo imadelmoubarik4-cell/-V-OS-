@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import webpush from "npm:web-push@3.6.7";
+import { AuthError, resolveActor } from "../_shared/auth.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -36,19 +37,13 @@ async function body(request: Request): Promise<Record<string, unknown>> {
   } catch { throw new ApiError(400, "Request body must be valid JSON."); }
 }
 
+// Any active staff profile may manage its own device subscriptions; the caller
+// check is the shared gateway module (_shared/auth.mjs), configured from env.
 async function activeUser(request: Request): Promise<{ id: string }> {
-  const authorization = request.headers.get("authorization") || "";
-  if (!/^Bearer\s+\S+$/i.test(authorization)) throw new ApiError(401, "A valid Atlas session is required.");
-  const project = requiredEnv("ATLAS_AUTH_PROJECT_URL");
-  const key = requiredEnv("ATLAS_AUTH_PUBLISHABLE_KEY");
-  const headers = { authorization, apikey: key, accept: "application/json" };
-  const userResponse = await fetch(`${project}/auth/v1/user`, { headers });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-  const user = await userResponse.json() as { id?: string };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-  const profile = await fetch(`${project}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&active=eq.true&select=id&limit=1`, { headers });
-  if (!profile.ok || !(await profile.json() as unknown[]).length) throw new ApiError(403, "An active Atlas staff profile is required.");
-  return { id: user.id };
+  const actor = await resolveActor(request, Deno.env, fetch, {
+    inactiveMessage: "An active Atlas staff profile is required.",
+  });
+  return { id: actor.userId };
 }
 
 async function rpc(name: string, payload: Record<string, unknown>): Promise<any> {
@@ -146,7 +141,7 @@ Deno.serve(async (request) => {
     }
     throw new ApiError(404, "Unknown notification action.");
   } catch (error) {
-    if (error instanceof ApiError) return json({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return json({ error: error.message }, error.status);
     console.error("Atlas notifications failed", error instanceof Error ? error.message : "unknown");
     return json({ error: "Notification service is temporarily unavailable." }, 500);
   }

@@ -9,7 +9,7 @@
 //   services           -> optional override of createServices() (tests)
 // index.ts wires these for the Edge runtime; tests pass fakes.
 
-import { resolveActor as sharedResolveActor, AuthError, MANAGER_ROLES } from "../_shared/auth.mjs";
+import { resolveActor as sharedResolveActor, actorLabel, AuthError, MANAGER_ROLES, safeDisplayName } from "../_shared/auth.mjs";
 import { loadConfig, openaiApiKey } from "./config.mjs";
 import {
   ApiError,
@@ -783,8 +783,8 @@ export function createAtlasAiHandler(deps) {
     if (!profile || profile.active !== true || !MANAGER_ROLES.includes(profile.role)) {
       throw new ApiError(503, "not_configured", "The background actor must be an active manager or administrator.");
     }
-    const label = profile.display_name || profile.email || "Atlas background";
-    return { userId: profile.id, role: profile.role, active: true, displayName: profile.display_name ?? null, label, email: profile.email ?? null, token: null, background: true };
+    const label = actorLabel(profile, "Atlas background");
+    return { userId: profile.id, role: profile.role, active: true, displayName: safeDisplayName(profile.display_name), label, email: profile.email ?? null, token: null, background: true };
   }
 
   async function signals(actor) {

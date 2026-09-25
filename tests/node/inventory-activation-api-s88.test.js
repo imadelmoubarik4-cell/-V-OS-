@@ -78,7 +78,8 @@ test('database refusals map to HTTP statuses the dialog can act on', { skip: !ca
 test('atlas-item-master exposes manager-only dependency and activation actions', () => {
   assert.match(EDGE, /const FUNCTION_VERSION = "0\.2\.0";/);
   assert.match(EDGE, /const MANAGER_ROLES = new Set\(\["admin", "manager"\]\);/);
-  assert.match(EDGE, /if \(!profile\?\.active\) throw new ApiError\(403/);
+  // Shared gateway check (_shared/auth.mjs): an inactive profile is refused, then the manager role.
+  assert.match(EDGE, /const actor = await resolveActor\(request, Deno\.env, fetch\);\s*requireRole\(actor, MANAGER_ROLES, "Checkpoint L2 is available only to managers and administrators\."\);/);
   const serve = EDGE.slice(EDGE.indexOf('Deno.serve('));
   assert.ok(serve.indexOf('await requireManager(request)') < serve.indexOf('item_dependencies'));
   assert.match(serve, /branchRpc\("atlas_inventory_item_dependencies", \{\s*p_item_id: activationItemId\(url\.searchParams\.get\("item_id"\)\),\s*p_actor_id: context\.user\.id,/);

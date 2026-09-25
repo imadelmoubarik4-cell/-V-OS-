@@ -81,9 +81,9 @@ class SystemContractTests(unittest.TestCase):
 
     def test_edge_gateway_revalidates_active_production_manager(self):
         self.assertIn("requireManagerProfile", EDGE)
-        self.assertIn("/auth/v1/user", EDGE)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE)
         self.assertIn("/rest/v1/profiles", EDGE)
-        self.assertIn("if (!profile?.active)", EDGE)
         self.assertIn('new Set(["admin", "manager"])', EDGE)
         self.assertIn("System is available only to managers and administrators", EDGE)
         self.assertIn('request.method !== "GET"', EDGE)

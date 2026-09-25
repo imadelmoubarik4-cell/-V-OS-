@@ -7,12 +7,15 @@ import {
   ATLAS_ROLES,
   AuthError,
   MANAGER_ROLES,
+  SAFE_ACTOR_LABEL,
   WRITE_ROLES,
+  actorLabel,
   authConfig,
   bearerToken,
   isManager,
   requireRole,
   resolveActor,
+  safeDisplayName,
 } from '../../supabase/functions/_shared/auth.mjs';
 
 const ENV = { ATLAS_AUTH_PROJECT_URL: 'https://auth.test/', ATLAS_AUTH_PUBLISHABLE_KEY: 'sb_publishable_test' };
@@ -56,6 +59,7 @@ test('resolveActor verifies the session, then reads the caller’s own profile w
     displayName: 'Anna',
     label: 'Anna',
     token: 'user-jwt',
+    profile: { id: USER_ID, email: 'staff@example.test', display_name: ' Anna ', role: 'bartender', active: true },
   });
   assert.equal(calls.length, 2);
   const profileUrl = new URL(calls[1].url);
@@ -113,4 +117,47 @@ test('requireRole and isManager gate on the verified role', () => {
   }
   assert.equal(isManager(actor('admin')), true);
   assert.throws(() => requireRole(null, ATLAS_ROLES), AuthError);
+});
+
+test('actorLabel is the display name or a neutral label, never an email address', () => {
+  assert.equal(SAFE_ACTOR_LABEL, 'Team member');
+  assert.equal(actorLabel({ display_name: '  Sara   Jónsdóttir ' }), 'Sara Jónsdóttir');
+  assert.equal(actorLabel({ displayName: 'Anna' }), 'Anna');
+  for (const profile of [
+    { display_name: null, email: 'sara.bartender@example.test' },
+    { display_name: '', email: 'sara@example.test' },
+    { display_name: 'sara@example.test', email: 'sara@example.test' },
+    { email: 'owner@example.test' },
+    null,
+    undefined,
+  ]) {
+    assert.equal(actorLabel(profile), 'Team member');
+  }
+  assert.equal(actorLabel({ email: 'x@example.test' }, 'Atlas background'), 'Atlas background');
+  assert.equal(actorLabel({ email: 'x@example.test' }, 'x@example.test'), 'Team member', 'an email fallback is refused too');
+  assert.equal(safeDisplayName('a@b'), null);
+  assert.equal(safeDisplayName('x'.repeat(200)).length, 120);
+});
+
+test('an actor without a display name is labelled without the email', async () => {
+  const { fetchImpl } = auth({ profile: [{ id: USER_ID, email: 'staff@example.test', display_name: null, role: 'manager', active: true }] });
+  const actor = await resolveActor(request(), ENV, fetchImpl);
+  assert.equal(actor.label, 'Team member');
+  assert.equal(actor.displayName, null);
+  assert.doesNotMatch(JSON.stringify({ label: actor.label, displayName: actor.displayName }), /@/);
+});
+
+test('gateway options: extra profile columns, inactive text and a lookup deadline', async () => {
+  const { calls, fetchImpl } = auth({ profile: [{ id: USER_ID, email: 'e@x.test', display_name: 'Ann', role: 'admin', active: true, updated_at: '2026-09-01' }] });
+  const actor = await resolveActor(request(), ENV, fetchImpl, { profileColumns: ['updated_at'], timeoutMs: 5000 });
+  assert.equal(new URL(calls[1].url).searchParams.get('select'), 'id,email,display_name,role,active,updated_at');
+  assert.equal(actor.profile.updated_at, '2026-09-01');
+  await rejects(resolveActor(request(), ENV, fetchImpl, { profileColumns: ['updated_at;drop'] }), 500);
+  await assert.rejects(
+    resolveActor(request(), ENV, auth({ profile: [{ id: USER_ID, role: 'viewer', active: false }] }).fetchImpl, { inactiveMessage: 'Reports access has been removed.' }),
+    (error) => error instanceof AuthError && error.status === 403 && error.message === 'Reports access has been removed.',
+  );
+  let signal = null;
+  await resolveActor(request(), ENV, async (url, init) => { signal = init.signal; return auth().fetchImpl(url, init); }, { timeoutMs: 1000 });
+  assert.ok(signal instanceof AbortSignal);
 });

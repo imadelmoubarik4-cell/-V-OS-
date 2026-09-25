@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { AuthError, actorLabel, authConfig, requireRole, resolveActor } from "../_shared/auth.mjs";
 // Canonical stock truth shared with Reports and the browser (AtlasStockTruth):
 // the historical cutoff, verified-stock projection and the below-par rule.
 import {
@@ -8,10 +9,6 @@ import {
   projectStock,
 } from "../_shared/atlas-domain.mjs";
 
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
 const FUNCTION_VERSION = "0.1.0";
 const MAX_ROWS = 5000;
 
@@ -63,18 +60,8 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
 function labelFor(context: ManagerContext): string {
-  return context.profile.display_name?.trim()
-    || context.profile.email?.trim()
-    || context.user.email?.trim()
-    || context.user.id;
+  return actorLabel(context.profile);
 }
 
 function text(value: unknown): string {
@@ -177,33 +164,20 @@ function ingredientCostAndAvailability(ingredient: JsonObject, item: JsonObject 
   return { cost: null, servings: null, reason: `unit ${ingredientUnit || "unknown"} is not safely compatible with ${itemUnit || "unknown"}` };
 }
 
+// The production Auth/REST project and its publishable key come only from the
+// function environment (_shared/auth.mjs authConfig); unconfigured fails closed.
+function productionAuthUrl(): string {
+  return authConfig(Deno.env).projectUrl;
+}
+
+function productionPublishableKey(): string {
+  return authConfig(Deno.env).publishableKey;
+}
+
 async function requireManager(request: Request): Promise<ManagerContext> {
-  const token = bearerToken(request);
-  const headers = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
-  profileUrl.searchParams.set("id", `eq.${user.id}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active");
-  profileUrl.searchParams.set("limit", "1");
-  const profileResponse = await fetch(profileUrl, { headers });
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas role could not be verified.");
-  const profiles = await profileResponse.json() as Array<ManagerContext["profile"]>;
-  const profile = profiles[0];
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive.");
-  if (!MANAGER_ROLES.has(profile.role)) {
-    throw new ApiError(403, "Checkpoint K is limited to managers and administrators.");
-  }
-  return { token, user: { id: user.id, email: user.email }, profile };
+  const actor = await resolveActor(request, Deno.env, fetch);
+  requireRole(actor, MANAGER_ROLES, "Checkpoint K is limited to managers and administrators.");
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as ManagerContext["profile"] };
 }
 
 async function productionRows(
@@ -212,14 +186,14 @@ async function productionRows(
   select: string,
   orderColumn: string,
 ): Promise<SourceResult> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/${table}`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/${table}`);
   url.searchParams.set("select", select);
   url.searchParams.set("order", `${orderColumn}.desc.nullslast`);
   url.searchParams.set("limit", String(MAX_ROWS));
   try {
     const response = await fetch(url, {
       headers: {
-        apikey: AUTH_PUBLISHABLE_KEY,
+        apikey: productionPublishableKey(),
         authorization: `Bearer ${context.token}`,
         accept: "application/json",
         "cache-control": "no-store",
@@ -764,7 +738,7 @@ Deno.serve(async (request: Request) => {
     const result = await build(context);
     return jsonResponse({
       ...result,
-      manager: { id: context.user.id, email: context.profile.email ?? context.user.email ?? null, role: context.profile.role },
+      manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
       policy: {
         shadow_mode: true,
         automatic_ordering: false,
@@ -777,7 +751,7 @@ Deno.serve(async (request: Request) => {
       },
     });
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     console.error("Checkpoint K intelligence error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "Checkpoint K intelligence is temporarily unavailable." }, 500);
   }

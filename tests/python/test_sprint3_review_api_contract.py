@@ -32,9 +32,9 @@ class Sprint3ReviewApiContractTests(unittest.TestCase):
         self.assertNotIn("security definer", self.sql)
 
     def test_edge_function_implements_custom_manager_auth(self) -> None:
-        self.assertIn("/auth/v1/user", self.function)
-        self.assertIn("/rest/v1/profiles", self.function)
-        self.assertIn("role !== \"admin\" && profile.role !== \"manager\"", self.function)
+        self.assertIn('from "../_shared/auth.mjs"', self.function)
+        self.assertIn("await resolveactor(request, deno.env, fetch", self.function)
+        self.assertIn("requirerole(actor, manager_roles", self.function)
         self.assertIn("supabase_service_role_key", self.function)
         self.assertNotIn("service_role_key =", self.function)
 
