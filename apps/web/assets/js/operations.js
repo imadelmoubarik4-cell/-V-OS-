@@ -192,7 +192,7 @@
     return { complete: completed, total: required, percent: required ? Math.round((completed / required) * 100) : 100 };
   }
 
-  // Kept for Reports (business.js); Operations itself no longer shows a score.
+  // Kept for Reports (Overview); Operations itself no longer shows a score.
   function readinessData() {
     const low = lowInventoryItems();
     const issues = recipeIssues();

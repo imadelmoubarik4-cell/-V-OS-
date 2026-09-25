@@ -17,8 +17,12 @@ export const IDS = {
   globus: 'c0a1b2c3-0000-4000-8000-00000000c003'
 };
 
-const hoursAgo = (hours) => new Date(Date.now() - hours * 3600000).toISOString();
-const inHours = (hours) => new Date(Date.now() + hours * 3600000).toISOString();
+// Fixture times are anchored to a fixed venue afternoon so grouping (Today /
+// Previous 7 days) and expiry never depend on when the suite runs. Tests pin
+// the browser clock to AI_FIXTURE_NOW.
+export const AI_FIXTURE_NOW = new Date('2026-09-24T17:00:00Z');
+const hoursAgo = (hours) => new Date(AI_FIXTURE_NOW.getTime() - hours * 3600000).toISOString();
+const inHours = (hours) => new Date(AI_FIXTURE_NOW.getTime() + hours * 3600000).toISOString();
 
 export function conversations() {
   return [

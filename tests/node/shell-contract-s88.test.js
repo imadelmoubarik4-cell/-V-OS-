@@ -216,9 +216,11 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
   const registrations = {
     'operations.js': /atlas\.registerView\('operations'[\s\S]+?atlas\.home\?\.contribute\?\.\('operations', \{ focusRows, order: 20 \}\)[\s\S]+?atlas\.onDataLoaded/,
     'home.js': /atlas\.registerHomeSection\('home', render, 0\)[\s\S]+?atlas\.home\.contribute\('inventory'[\s\S]+?atlas\.notify\.contribute\('messages', messageItems\)/,
-    'business.js': /shell\.registerView\('business'/,
+    // S88 Team C: Business Intelligence is Reports › Overview; Import Center and
+    // Real VÁ Data are the Data page (home.contribute replaces a DOM Home section).
+    'data-workspace.js': /registerView\('data'[\s\S]+?registerView\('sprint3-review'[\s\S]+?home\?\.contribute\?\.\('data'/,
+    'recipes.js': /home\?\.contribute\?\.\('recipes'/,
     'settings-workspace.js': /registerView\?\.\('settings'/,
-    'sprint3-review.js': /registerView\('sprint3-review'/,
     'marketing-workspace.js': /registerView\('marketing'/,
     'system-workspace.js': /window\.AtlasSystem = \{\s+mount,/,
     'team-profiles-bootstrap.js': /registerView\('team-profiles'/
@@ -227,12 +229,12 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 });
 
 test('changed scripts carry the S88 cache key', () => {
-  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'home.js', 'business.js', 'purchase-orders.js', 'shifts-workspace.js',
+  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'home.js', 'reports-overview.js', 'recipes.js', 'data-workspace.js', 'purchase-orders.js', 'shifts-workspace.js',
     'shifts-month-calendar.js', 'shifts-month-tab-bridge.js', 'knowledge-workspace.js', 'knowledge-team-link-bridge.js', 's38-app-remediation.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s88"></script>`), file);
   }
   const config = read('apps/web/config.js');
-  for (const file of ['sprint3-review.js', 'inventory-scanner-bootstrap.js', 'stock-count-bootstrap.js', 'team-messages.js', 'marketing-workspace.js',
+  for (const file of ['inventory-scanner-bootstrap.js', 'stock-count-bootstrap.js', 'team-messages.js', 'marketing-workspace.js',
     'team-profiles-bootstrap.js', 'team-profile-photos.js', 'team-profile-photo-gallery.js', 'reports-workspace.js', 'system-workspace.js',
     'settings-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s88'`), file);

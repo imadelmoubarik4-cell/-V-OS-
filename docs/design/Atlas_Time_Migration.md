@@ -143,21 +143,29 @@ literal zone or hour default (`tests/node/venue-hours-ratchet-s88.test.js`).
 
 | Done | File:line | Current | Change to |
 | --- | --- | --- | --- |
-| [ ] | `reports-workspace.js:1076-1088` comparison period | **wrong across months** (see §3) | `compareRange({ start, end })` |
-| [ ] | `reports-workspace.js:92-104`, `:106-114`, `:121` | literal zone | `formatDateTime` / `formatDate` |
-| [ ] | `reports-workspace.js:891` | literal zone fallback | `snapshot.timezone \|\| timeZone()` |
-| [ ] | `reports-workspace.js:77` money | `… ISK` | `formatKr` |
-| [ ] | `business.js:56-62` `periodStart()` | browser-local midnight, `setHours/setDate` | `zonedToInstant(addDays(today(), 1 - n), '00:00')` |
-| [ ] | `business.js:223-247` `monthKey` / `monthLabel` / 6-month buckets | browser-local months | `monthKey()`, buckets from `monthRange` |
-| [ ] | `business.js:24`, `recipes.js:57`, `atlas-calculations.js:155` money | `… ISK` (`en-US` grouping) | `formatKr` (change `AtlasCalculations.formatIsk` to delegate, then drop the fallbacks) |
-| [ ] | `import-center.js:42-45` `formatDate` | `toLocaleString([])` | `formatDateTime` (display only; `:217-218` UTC storage path stays) |
-| [ ] | `sprint3-review.js:53-57` `formatDate` | `toLocaleString` without zone | `formatDateTime` |
-| [ ] | `marketing-workspace.js:83-99` `dateKey` / `currentMonthRange` / `shiftMonth` | browser-local `getDate` / `new Date(y, m, d)` | `monthRange`, `addDays` |
-| [ ] | `marketing-workspace.js:101-109` `formatDate` | no `timeZone` | `formatDate` / `formatDateTime` |
-| [ ] | `marketing-workspace.js:116-128` `toLocalInput` / `inputToIso` | browser offset — **stores wrong instants** for non-Iceland browsers | `localInputValue` / `fromLocalInput` |
-| [ ] | `marketing-workspace.js:130-135` `venueDate()` | duplicate (correct) with literal zone | `venueDate()` |
-| [ ] | `marketing-workspace.js:139` **ratchet (1)** | default suggested time `'12:00'` | leave the time empty when the recommendation has none |
-| [ ] | `marketing-workspace.js:382-397`, `:413` calendar grid | `getDay/setDate/getDate` browser-local | date keys via `startOfWeek`, `addDays`, `weekday` |
+| [x] | `reports-workspace.js:1076-1088` comparison period | **wrong across months** (see §3) | `compareRange({ start, end })` |
+| [x] | `reports-workspace.js:92-104`, `:106-114`, `:121` | literal zone | `formatDateTime` / `formatDate` |
+| [x] | `reports-workspace.js:891` | literal zone fallback | `snapshot.timezone \|\| timeZone()` |
+| [x] | `reports-workspace.js:77` money | `… ISK` | `formatKr` |
+| [x] | `business.js:56-62` `periodStart()` | browser-local midnight, `setHours/setDate` | `zonedToInstant(addDays(today(), 1 - n), '00:00')` |
+| [x] | `business.js:223-247` `monthKey` / `monthLabel` / 6-month buckets | browser-local months | `monthKey()`, buckets from `monthRange` |
+| [x] | `business.js:24`, `recipes.js:57`, `atlas-calculations.js:155` money | `… ISK` (`en-US` grouping) | `formatKr` (change `AtlasCalculations.formatIsk` to delegate, then drop the fallbacks) |
+| [x] | `import-center.js:42-45` `formatDate` | `toLocaleString([])` | `formatDateTime` (display only; `:217-218` UTC storage path stays) |
+| [x] | `sprint3-review.js:53-57` `formatDate` | `toLocaleString` without zone | `formatDateTime` |
+| [x] | `marketing-workspace.js:83-99` `dateKey` / `currentMonthRange` / `shiftMonth` | browser-local `getDate` / `new Date(y, m, d)` | `monthRange`, `addDays` |
+| [x] | `marketing-workspace.js:101-109` `formatDate` | no `timeZone` | `formatDate` / `formatDateTime` |
+| [x] | `marketing-workspace.js:116-128` `toLocalInput` / `inputToIso` | browser offset — **stores wrong instants** for non-Iceland browsers | `localInputValue` / `fromLocalInput` |
+| [x] | `marketing-workspace.js:130-135` `venueDate()` | duplicate (correct) with literal zone | `venueDate()` |
+| [x] | `marketing-workspace.js:139` **ratchet (1)** | default suggested time `'12:00'` | leave the time empty when the recommendation has none |
+| [x] | `marketing-workspace.js:382-397`, `:413` calendar grid | `getDay/setDate/getDate` browser-local | date keys via `startOfWeek`, `addDays`, `weekday` |
+
+Team C notes (S88): Reports computes its period in the venue zone and asks for the
+`compareRange` comparison (`preset=custom`, `comparison=custom`); `atlas-reports` accepts a
+whole-previous-month comparison of a whole-month period. `business.js` is retired: its
+figures are Reports › Overview (`reports-overview.js`, period from venue date keys).
+`import-center.js` and `sprint3-review.js` are retired into `data-workspace.js` (venue
+`formatDateTime` / `formatRelative`). `AtlasCalculations.formatIsk` delegates to
+`AtlasFormat.money` when the clock is loaded. Marketing's ratchet row is removed (0).
 
 ### Team D — Shifts · Team · Messages · Knowledge
 

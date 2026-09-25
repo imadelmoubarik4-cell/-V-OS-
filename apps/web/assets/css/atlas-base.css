@@ -167,7 +167,7 @@ html.atlas-reduce-motion *::after {
 }
 /* ---------- from legacy/workspaces-polish--components.css ---------- */
 /* ---------- Shared surface treatment ---------- */
-:where(.marketing-panel, .marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .marketing-modal, .team-messages-layout, .team-profiles-layout, .team-profiles-state, .team-profile-panel, .team-profile-detail, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .shift-month-state, .shift-card, .knowledge-article-card, .knowledge-summary-grid > *, .knowledge-trust-panel, .knowledge-training-hero, .knowledge-connection-card, .knowledge-state, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal, .business-card, .reports-hero-meta, .reports-filter-shell, .reports-table-panel, .reports-chart-empty) {
+:where(.team-messages-layout, .team-profiles-layout, .team-profiles-state, .team-profile-panel, .team-profile-detail, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .shift-month-state, .shift-card, .knowledge-article-card, .knowledge-summary-grid > *, .knowledge-trust-panel, .knowledge-training-hero, .knowledge-connection-card, .knowledge-state, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal) {
   color: var(--atlas-text);
 }
 /* Nested cards sit inside an already-glass panel: fill only, no second shadow. */
@@ -181,28 +181,28 @@ html.atlas-reduce-motion *::after {
 /* ---------- from legacy/polish-pass2--components.css ---------- */
 /* Wide workspace content stays within the shared rail and advertises overflow
    at the component boundary instead of widening the full application. */
-:where(.reports-table-scroll, .shift-month-grid, #table-wrap) {
+:where(.shift-month-grid, #table-wrap) {
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
 }
 /* ---------- from legacy/s34-preproduction--search.css ---------- */
 /* Compact search field used across launch modules. */
-:where(:where(.atlas-search,.recipe-search,.purchasing-search,.knowledge-search,.team-attachment-controls label)) {
+:where(:where(.atlas-search,.purchasing-search,.knowledge-search,.team-attachment-controls label)) {
   max-width:420px;
 }
 @media(max-width:680px) {
-  :where(:where(.atlas-search,.recipe-search,.purchasing-search,.knowledge-search,.team-attachment-controls label)) {
+  :where(:where(.atlas-search,.purchasing-search,.knowledge-search,.team-attachment-controls label)) {
     max-width:none;
     width:100%;
   }
 }
 /* ---------- from legacy/s38-app-remediation--search.css ---------- */
 /* Compact Apple-style search controls */
-:where(:is( .atlas-search, .purchasing-search, .recipe-search, .team-attachment-controls label )) {
+:where(:is( .atlas-search, .purchasing-search, .team-attachment-controls label )) {
   border-radius: 999px;
 }
-:where(:is( #supplier-search, #recipe-search, [data-team-target-search] )) {
+:where(:is( #supplier-search, [data-team-target-search] )) {
   max-height: 42px;
   box-shadow: none;
 }

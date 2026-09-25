@@ -92,13 +92,6 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
   else window.addEventListener('load', loader, { once: true });
 }
 
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/sprint3-review.css?v=20260926-s88',
-  scriptPath: 'assets/js/sprint3-review.js?v=20260926-s88',
-  globalName: 'AtlasSprint3Review',
-  dataAttribute: 'atlasSprint3Review',
-}));
-
 // S88: the Brain page, its daily briefing, Phase 3 and Checkpoint K panels and
 // the Checkpoint A routine layers are retired. Home (assets/js/home.js) holds the
 // briefing, Atlas AI › Decisions the decision ledger, and Operations

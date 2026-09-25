@@ -59,7 +59,7 @@ function browser({ items, recipes = [], purchaseOrders = [] }) {
     'apps/web/assets/js/atlas-calculations.js',
     'apps/web/assets/js/recipes.js',
     'apps/web/assets/js/operations.js',
-    'apps/web/assets/js/business.js',
+    'apps/web/assets/js/reports-overview.js',
   ]) vm.runInContext(read(file), context, { filename: file });
 
   // purchase-orders.js needs the Purchasing DOM before it registers, so run
@@ -230,10 +230,10 @@ test('order suggestions match operations.js, with ordered from open purchase ord
   assert.equal(orderSuggestions(serverProjected, { orderedItemIds: ['lime'] }).find((entry) => entry.id === 'lime').ordered, true);
 });
 
-test('inventory value matches business.js and stays unknown while anything is unknown', () => {
+test('inventory value matches reports-overview.js (Reports › Overview, formerly business.js) and stays unknown while anything is unknown', () => {
   const { context, serverProjected } = fixture();
   const incomplete = inventoryValue(serverProjected);
-  assert.ok(Number.isNaN(context.AtlasBusiness.inventoryValue()));
+  assert.ok(Number.isNaN(context.AtlasReportsOverview.inventoryValue()));
   assert.equal(incomplete.value, null);
   assert.equal(incomplete.complete, false);
   assert.equal(incomplete.unknown_items, 2, 'rum and beer (inactive Ice is not stock)');
@@ -244,7 +244,7 @@ test('inventory value matches business.js and stays unknown while anything is un
   const browserComplete = browser({ items: complete });
   const value = inventoryValue(complete);
   assert.equal(value.complete, true);
-  assert.equal(value.value, browserComplete.AtlasBusiness.inventoryValue());
+  assert.equal(value.value, browserComplete.AtlasReportsOverview.inventoryValue());
   assert.equal(value.value, value.known_value);
 });
 

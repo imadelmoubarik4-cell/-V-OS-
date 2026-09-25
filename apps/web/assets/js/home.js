@@ -151,10 +151,11 @@
     return window.AtlasOperations?.today?.() || null;
   }
 
-  // ---------- attention contributions (interim for Inventory and Recipes) ----------
+  // ---------- attention contributions (interim for Inventory) ----------
   //
-  // Home renders AtlasShell.home.rows(); Inventory (Team B) and Recipes
-  // (Team C) own these keys and replace them by contributing the same key.
+  // Home renders AtlasShell.home.rows(); Inventory (Team B) owns the
+  // 'inventory' key and replaces these rows by contributing the same key.
+  // Recipes ('recipes') and Data ('data') contribute their own rows.
 
   function inventoryRows() {
     if (!dataLoaded()) return [];
@@ -184,19 +185,16 @@
     return rows;
   }
 
-  function recipeRows() {
-    if (!dataLoaded()) return [];
-    const facts = recipeFacts();
-    if (!facts.unavailable.length) return [];
-    const reported = new Set(stockFacts().out.slice(0, 3).map((item) => String(item.id)));
-    const unexplained = facts.unavailable.filter((entry) => !reported.has(String(entry.availability.limiting?.item?.id ?? '')));
-    if (!unexplained.length) return [];
-    if (unexplained.length === 1) {
-      const entry = unexplained[0];
-      const limiting = entry.availability.limiting?.item?.name;
-      return [{ id: `unavailable:${entry.recipe.id}`, severity: 'warning', icon: 'martini', title: `${entry.recipe.name} can’t be served`, detail: limiting ? `${limiting} is out` : 'An ingredient is out', action: { label: 'View recipe', route: `#recipes/${encodeURIComponent(entry.recipe.id)}` } }];
-    }
-    return [{ id: 'unavailable', severity: 'warning', icon: 'martini', title: `${unexplained.length} recipes can’t be served`, detail: list(unexplained.map((entry) => entry.recipe.name), 3), action: { label: 'View recipes', route: '#recipes' } }];
+  // Recipes (recipes.js) contributes a row per unservable recipe. When an
+  // out-of-stock row above already names the recipe, Home hides the repeat.
+  function recipesExplainedByOutRows() {
+    const explained = new Set();
+    stockFacts().out.slice(0, 3).forEach((item) => {
+      recipes().forEach((recipe) => {
+        if (recipe.active !== false && (recipe.recipe_ingredients || []).some((ingredient) => String(ingredient.item_id) === String(item.id))) explained.add(String(recipe.id));
+      });
+    });
+    return explained;
   }
 
   // A data load that failed (index.html showDataBoundaryError) is one neutral row.
@@ -462,7 +460,12 @@
   }
 
   function rowsForRole() {
-    return shell()?.home?.rows?.({ role: role() }) || [];
+    const rows = shell()?.home?.rows?.({ role: role() }) || [];
+    const explained = recipesExplainedByOutRows();
+    return rows.filter((row) => {
+      const match = row.source === 'recipes' && /^recipes:unavailable:(.+)$/.exec(String(row.id));
+      return !(match && explained.has(match[1]));
+    });
   }
 
   function attentionMarkup() {
@@ -802,8 +805,8 @@
     state.registered = true;
     atlas.registerHomeSection('home', render, 0);
     atlas.home.contribute('inventory', { focusRows: inventoryRows, order: 10 });
-    atlas.home.contribute('recipes', { focusRows: recipeRows, order: 30 });
-    atlas.home.contribute('data', { focusRows: dataErrorRows, order: 90 });
+    // 'data' belongs to the Data workspace (pending approvals); load errors use their own key.
+    atlas.home.contribute('load-errors', { focusRows: dataErrorRows, order: 90 });
     atlas.notify.contribute('messages', messageItems);
     atlas.actions.register({
       id: 'home.reload', label: 'Reload data', icon: 'refresh-cw', keywords: ['refresh', 'reload'],
@@ -816,7 +819,7 @@
       hide: stopTicking
     });
     atlas.onDataLoaded(() => queueRender());
-    atlas.on('data:error', (detail) => { if (detail?.source) state.dataErrors.add(String(detail.source)); atlas.emit('notify:changed', { source: 'home:data' }); queueRender(); });
+    atlas.on('data:error', (detail) => { if (detail?.source) state.dataErrors.add(String(detail.source)); atlas.emit('notify:changed', { source: 'home:load-errors' }); queueRender(); });
     atlas.on('profile:ready', (profile) => {
       if (!profile?.id) return;
       loadShifts(true);

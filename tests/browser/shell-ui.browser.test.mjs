@@ -402,8 +402,8 @@ test('brand line reads the venue from Settings, shows "Atlas" alone without one;
     await withVenue.page.waitForFunction(() => !document.getElementById('atlas-brand-venue').hidden);
     assert.equal(await withVenue.page.textContent('#atlas-brand-venue'), 'VÁ Bar · Reykjavík');
     await withVenue.page.evaluate(() => window.AtlasShell.navigate('#reports'));
-    await withVenue.page.waitForSelector('.reports-hero .reports-ask-fab');
-    assert.equal(await withVenue.page.$eval('.reports-ask-fab', (node) => getComputedStyle(node).position), 'static');
+    await withVenue.page.waitForSelector('.reports-head [data-reports-ask]');
+    assert.notEqual(await withVenue.page.$eval('.reports-head [data-reports-ask]', (node) => getComputedStyle(node).position), 'fixed', 'Ask Atlas sits in the header, not floating');
   } finally { await withVenue.close(); }
   const without = await launch();
   try {

@@ -152,8 +152,12 @@
     };
   }
 
+  // Money is "3.900 kr" (spec §11 decision 5): the venue clock's formatter
+  // (AtlasFormat.money) when it is loaded; plain whole krónur otherwise.
   function formatIsk(value, fallback = '—') {
-    return Number.isFinite(value) ? `${Math.round(value).toLocaleString('en-US')} ISK` : fallback;
+    if (!Number.isFinite(value)) return fallback;
+    const money = typeof window !== 'undefined' ? window.AtlasFormat?.money : null;
+    return money ? money(value, fallback) : `${Math.round(value).toLocaleString('en-US')} ISK`;
   }
 
   window.AtlasCalculations = Object.freeze({ normalizeUnit, parsePackSize, ingredientMetrics, recipeMetrics, formatIsk });

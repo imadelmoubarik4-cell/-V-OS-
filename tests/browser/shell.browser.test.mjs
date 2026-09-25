@@ -58,7 +58,7 @@ test('sidebar navigation shows exactly one workspace, updates the address bar an
   const { page, record, close } = await launch();
   try {
     // Runtime modules register their views after window load.
-    await page.waitForFunction(() => ['marketing', 'team-profiles', 'operations', 'business'].every((view) => window.AtlasShell.views().includes(view)));
+    await page.waitForFunction(() => ['marketing', 'team-profiles', 'operations', 'data'].every((view) => window.AtlasShell.views().includes(view)));
     // [view, root, address, page title (spec names), active sidebar item]
     const expectations = [
       ['inventory', 'inventory-view', '#inventory', 'Inventory', 'inventory'],
@@ -68,8 +68,9 @@ test('sidebar navigation shows exactly one workspace, updates the address bar an
       ['team', 'team-view', '#messages', 'Messages', 'team'],
       ['shifts', 'shifts-view', '#shifts', 'Shifts', 'shifts'],
       ['knowledge', 'knowledge-view', '#knowledge', 'Knowledge', 'knowledge'],
-      ['business', 'business-view', '#business', 'Reports', 'reports'],
+      // S88: Business Intelligence is Reports › Overview; Data replaces Import Center.
       ['reports', 'reports-view', '#reports', 'Reports', 'reports'],
+      ['data', 'data-view', '#data', 'Data', 'data'],
       ['marketing', 'marketing-view', '#marketing', 'Marketing', 'marketing'],
       ['settings', 'settings-view', '#settings', 'Settings', 'settings'],
       ['dashboard', 'dashboard-view', '#home', 'Home', 'dashboard']
@@ -127,7 +128,7 @@ test('route table: #messages is Messages, #team is the Team directory, legacy ha
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'team');
     await page.waitForFunction(() => window.AtlasShell.views().includes('team-profiles'));
     for (const [hash, view] of [['#team', 'team-profiles'], ['#dashboard', 'dashboard'], ['#waste', 'waste'], ['#team-profiles', 'team-profiles'],
-      ['#home', 'dashboard'], ['#sprint3-review', 'sprint3-review'], ['#business', 'business'], ['#system', 'settings'], ['#brain', 'dashboard']]) {
+      ['#home', 'dashboard'], ['#sprint3-review', 'data'], ['#business', 'reports'], ['#imports', 'data'], ['#system', 'settings'], ['#brain', 'dashboard']]) {
       await page.evaluate((target) => { location.hash = target; }, hash);
       await page.waitForFunction((expected) => document.body.dataset.atlasView === expected, view);
     }
@@ -162,7 +163,7 @@ test('each navigation renders its view once and Home composes its sections in or
     // S88 Team A: Home is one section (home.js); modules contribute rows, not DOM.
     await page.waitForFunction(() => window.AtlasShell.homeSections().includes('home'));
     assert.deepEqual(await page.evaluate(() => window.AtlasShell.homeSections()), ['home']);
-    for (const view of ['operations', 'business', 'recipes', 'suppliers', 'dashboard']) {
+    for (const view of ['operations', 'recipes', 'suppliers', 'dashboard']) {
       const before = await page.evaluate(() => window.AtlasShell.debug());
       await clickNav(page, view);
       const after = await page.evaluate(() => window.AtlasShell.debug());

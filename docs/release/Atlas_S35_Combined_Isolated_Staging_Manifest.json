@@ -110,7 +110,7 @@
       "name": "atlas-reports",
       "sources": {
         "supabase/functions/atlas-reports/entrypoint.ts": "52922c789f811d6c413a6ed2d0a93badf9c99968709e7108e0dd9169ed585b31",
-        "supabase/functions/atlas-reports/index.ts": "04db88b0cfe98a8e5bb32a4d7c4c0d7ccc9a2c745d23a209c2925cc0e1543fc6",
+        "supabase/functions/atlas-reports/index.ts": "20c09b1a12fb3154d368494598df798bd4c3510863963a098d3b294f75f5a5a6",
         "supabase/functions/_shared/stock-provenance.mjs": "9f1aa85342a4d2581ccb78373ce85eae1d551c8811742a53364ab76b06f49012"
       }
     },

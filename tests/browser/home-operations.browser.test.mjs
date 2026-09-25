@@ -106,7 +106,7 @@ test('an inventory load failure becomes an attention row with a retry', { skip }
     await page.waitForSelector('.home-attention .home-row');
     await page.evaluate(() => window.AtlasShell.emit('data:error', { source: 'Inventory' }));
     await page.waitForTimeout(300);
-    const rows = await page.evaluate(() => window.AtlasShell.home.rows({ role: 'admin' }).filter((row) => row.id === 'data:error:Inventory'));
+    const rows = await page.evaluate(() => window.AtlasShell.home.rows({ role: 'admin' }).filter((row) => row.id === 'load-errors:error:Inventory'));
     assert.equal(rows.length, 1);
     assert.equal(rows[0].title, 'Inventory couldn’t be loaded');
     assert.match(rows[0].detail, /may be incomplete/);
