@@ -29,9 +29,11 @@ export const LIMITS = Object.freeze({
   multipartOverheadBytes: 256 * 1024,
   jsonBytes: 64 * 1024,
   // What the model is sent. Larger files are stored but typed in by hand.
-  readBytes: 10 * 1024 * 1024,
+  readBytes: 5 * 1024 * 1024,
   readTimeoutMs: 45000,
   dailyReads: 60,
+  // Estimated model spend per 24 hours (ATLAS_ACCOUNTING_READ_BUDGET_USD overrides).
+  dailyBudgetUsd: 2,
   signedFileSeconds: 300,
   signedExportSeconds: 900,
 });
@@ -372,7 +374,9 @@ export function createAccountingHandler({ env, fetchImpl, newId = () => crypto.r
     if (!mime) throw new ApiError(415, "unsupported_type", MESSAGES.unsupported_type);
     const sha256 = await sha256Hex(bytes);
 
-    const existing = await svc.rpc("atlas_accounting_find_file", { p_actor_id: actor.userId, p_sha256: sha256 });
+    const existing = await svc.rpc("atlas_accounting_find_file", { p_actor_id: actor.userId, p_sha256: sha256, p_request_id: requestId });
+    // A retry of an upload that was already recorded replays it.
+    if (existing?.replayed) return { document: existing.document, readable: READABLE.has(mime) && bytes.byteLength <= LIMITS.readBytes, replayed: true };
     if (existing?.id) {
       throw new ApiError(409, "duplicate_file", MESSAGES.duplicate_file, { existing: { id: existing.id, status: existing.status } });
     }
@@ -397,12 +401,18 @@ export function createAccountingHandler({ env, fetchImpl, newId = () => crypto.r
 
   async function readDocument(actor, body) {
     const id = requireUuid(body.id);
-    const started = await svc.rpc("atlas_accounting_begin_read", { p_actor_id: actor.userId, p_id: id, p_daily_limit: LIMITS.dailyReads });
     const record = (payload) => svc.rpc("atlas_accounting_command", {
       p_actor_id: actor.userId, p_id: id, p_version: null, p_command: "record_read", p_payload: payload,
     });
     const apiKey = envValue(env, "OPENAI_API_KEY");
-    if (!started?.ai_enabled || !apiKey) return { document: await record({ outcome: "not_configured" }), outcome: "not_configured" };
+    // Without a key nothing is spent and the limit is not touched.
+    if (!apiKey) return { document: await record({ outcome: "not_configured" }), outcome: "not_configured" };
+    const budget = Number(envValue(env, "ATLAS_ACCOUNTING_READ_BUDGET_USD"));
+    const started = await svc.rpc("atlas_accounting_begin_read", {
+      p_actor_id: actor.userId, p_id: id, p_daily_limit: LIMITS.dailyReads,
+      p_daily_budget_usd: Number.isFinite(budget) && budget > 0 ? budget : LIMITS.dailyBudgetUsd,
+    });
+    if (!started?.ai_enabled) return { document: await record({ outcome: "not_configured" }), outcome: "not_configured" };
     if (!READABLE.has(started.mime_type)) return { document: await record({ outcome: "not_readable" }), outcome: "not_readable" };
     let result;
     try {

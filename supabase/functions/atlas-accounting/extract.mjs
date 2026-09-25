@@ -128,6 +128,7 @@ export async function callDocumentModel({
   const controller = typeof AbortController === "function" ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   let response;
+  let payload = null;
   try {
     response = await fetchImpl(`${String(baseUrl).replace(/\/+$/, "")}/responses`, {
       method: "POST",
@@ -135,13 +136,13 @@ export async function callDocumentModel({
       body: JSON.stringify(documentRequestBody({ model, mime, base64, fileName })),
       signal: controller?.signal,
     });
+    // The deadline covers the body too.
+    try { payload = await response.json(); } catch { payload = null; }
   } catch {
     throw new ReadError("failed", "Atlas could not read the document right now.");
   } finally {
     if (timer) clearTimeout(timer);
   }
-  let payload = null;
-  try { payload = await response.json(); } catch { payload = null; }
   if (!response.ok) throw new ReadError("failed", "Atlas could not read the document right now.");
   const { text, refusal } = outputText(payload);
   if (refusal) throw new ReadError("not_readable", "Atlas could not read this document.");

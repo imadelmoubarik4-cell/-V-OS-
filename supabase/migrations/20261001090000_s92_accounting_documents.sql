@@ -43,6 +43,32 @@ on conflict (id) do update set
 
 -- No storage.objects policy is created for this bucket on purpose.
 
+-- Folding and labels (used by the table's generated columns) ---------------
+
+-- Folded text for duplicate matching ("Ölgerðin ehf." / "ÖLGERÐIN EHF").
+create or replace function atlas_private.accounting_fold(p_value text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $function$
+  select nullif(pg_catalog.regexp_replace(pg_catalog.lower(coalesce(p_value, '')), '[^[:alnum:]]+', '', 'g'), '');
+$function$;
+revoke all on function atlas_private.accounting_fold(text) from public, anon, authenticated;
+
+-- A staff label that is safe to keep for 7 years: the display name, never an
+-- email address (mirrors _shared/auth.mjs safeDisplayName, S87 rule).
+create or replace function atlas_private.accounting_safe_label(p_name text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $function$
+  select case when p_name is null or pg_catalog.btrim(p_name) = '' or pg_catalog.strpos(p_name, '@') > 0 then 'Team member'
+              else pg_catalog.left(pg_catalog.regexp_replace(pg_catalog.btrim(p_name), '\s+', ' ', 'g'), 120) end;
+$function$;
+revoke all on function atlas_private.accounting_safe_label(text) from public, anon, authenticated;
+
 -- Tables ---------------------------------------------------------------------
 
 create table if not exists atlas_private.accounting_documents (
@@ -54,23 +80,27 @@ create table if not exists atlas_private.accounting_documents (
     check (kind in ('invoice','receipt','credit_note','other')),
   category text
     check (category is null or category in ('drinks','food','supplies','cleaning','repairs','rent','utilities','staff','marketing','other')),
+  -- supplier_name is always kept (copied from Purchasing when a supplier is
+  -- picked), so deleting a supplier there never blanks a kept record.
   supplier_id uuid references public.suppliers(id) on delete set null,
   supplier_name text check (supplier_name is null or char_length(supplier_name) between 1 and 200),
   supplier_kennitala text check (supplier_kennitala is null or supplier_kennitala ~ '^[0-9]{10}$'),
   document_number text check (document_number is null or char_length(document_number) between 1 and 80),
-  issue_date date,
-  due_date date,
+  issue_date date check (issue_date is null or issue_date between date '2000-01-01' and date '2100-12-31'),
+  due_date date check (due_date is null or due_date between date '2000-01-01' and date '2100-12-31'),
   currency text not null default 'ISK' check (currency ~ '^[A-Z]{3}$'),
-  net_amount numeric(14,2) check (net_amount is null or net_amount >= 0),
-  vat_amount numeric(14,2) check (vat_amount is null or vat_amount >= 0),
-  total_amount numeric(14,2) check (total_amount is null or total_amount >= 0),
+  net_amount numeric(14,2) check (net_amount is null or (net_amount >= 0 and net_amount <> 'NaN' and net_amount < 1e12)),
+  vat_amount numeric(14,2) check (vat_amount is null or (vat_amount >= 0 and vat_amount <> 'NaN' and vat_amount < 1e12)),
+  total_amount numeric(14,2) check (total_amount is null or (total_amount >= 0 and total_amount <> 'NaN' and total_amount < 1e12)),
   vat_lines jsonb not null default '[]'::jsonb
     check (jsonb_typeof(vat_lines) = 'array' and jsonb_array_length(vat_lines) <= 6),
   purchase_order_id uuid references public.purchase_orders(id) on delete set null,
   note text check (note is null or char_length(note) <= 2000),
   paid_by text not null default 'company' check (paid_by in ('company','staff')),
   paid_by_profile_id uuid references public.profiles(id) on delete set null,
-  paid_at date,
+  -- Who was reimbursed, kept as a label so it survives the profile.
+  paid_by_label text check (paid_by_label is null or char_length(paid_by_label) between 1 and 120),
+  paid_at date check (paid_at is null or paid_at between date '2000-01-01' and date '2100-12-31'),
   payment_method text check (payment_method is null or payment_method in ('bank_transfer','card','cash','other')),
   payment_reference text check (payment_reference is null or char_length(payment_reference) <= 120),
   void_reason text check (void_reason is null or char_length(void_reason) between 3 and 500),
@@ -92,8 +122,10 @@ create table if not exists atlas_private.accounting_documents (
   updated_at timestamptz not null default pg_catalog.now(),
   approved_by uuid references public.profiles(id),
   approved_at timestamptz,
+  supplier_fold text generated always as (atlas_private.accounting_fold(supplier_name)) stored,
+  number_fold text generated always as (atlas_private.accounting_fold(document_number)) stored,
   -- Staff-paid needs the team member from approval on (a draft may not have one yet).
-  constraint accounting_documents_staff_payer check (paid_by = 'company' or paid_by_profile_id is not null or status in ('to_review','discarded')),
+  constraint accounting_documents_staff_payer check (paid_by = 'company' or paid_by_label is not null or status in ('to_review','discarded')),
   constraint accounting_documents_paid_state check (
     (status = 'paid') = (paid_at is not null) or status = 'void'
   ),
@@ -110,7 +142,9 @@ create unique index if not exists accounting_documents_live_file
 create index if not exists accounting_documents_status_idx
   on atlas_private.accounting_documents (status, issue_date desc);
 create index if not exists accounting_documents_supplier_number_idx
-  on atlas_private.accounting_documents (lower(supplier_name), lower(document_number));
+  on atlas_private.accounting_documents (supplier_fold, number_fold);
+create index if not exists accounting_documents_supplier_date_idx
+  on atlas_private.accounting_documents (supplier_fold, issue_date, total_amount);
 
 create table if not exists atlas_private.accounting_document_events (
   id bigint generated always as identity primary key,
@@ -126,7 +160,9 @@ create table if not exists atlas_private.accounting_document_events (
 create index if not exists accounting_document_events_document_idx
   on atlas_private.accounting_document_events (document_id, id);
 create index if not exists accounting_document_events_reads_idx
-  on atlas_private.accounting_document_events (created_at) where action = 'read_started';
+  on atlas_private.accounting_document_events (created_at) where action in ('read_started','read');
+create index if not exists accounting_document_events_action_idx
+  on atlas_private.accounting_document_events (document_id, action);
 
 alter table atlas_private.accounting_documents enable row level security;
 alter table atlas_private.accounting_document_events enable row level security;
@@ -138,6 +174,10 @@ create policy "service role manages accounting document events" on atlas_private
   for all to service_role using (true) with check (true);
 revoke all on atlas_private.accounting_documents from public, anon, authenticated;
 revoke all on atlas_private.accounting_document_events from public, anon, authenticated;
+-- The atlas_private default privileges give service_role everything; take
+-- back what retention forbids (TRUNCATE would skip the row triggers).
+revoke delete, truncate, references, trigger on atlas_private.accounting_documents from service_role;
+revoke update, delete, truncate, references, trigger on atlas_private.accounting_document_events from service_role;
 grant select, insert, update on atlas_private.accounting_documents to service_role;
 grant select, insert on atlas_private.accounting_document_events to service_role;
 
@@ -160,6 +200,12 @@ create trigger accounting_documents_no_delete before delete on atlas_private.acc
 drop trigger if exists accounting_document_events_append_only on atlas_private.accounting_document_events;
 create trigger accounting_document_events_append_only before update or delete on atlas_private.accounting_document_events
   for each row execute function atlas_private.accounting_retention_guard();
+drop trigger if exists accounting_documents_no_truncate on atlas_private.accounting_documents;
+create trigger accounting_documents_no_truncate before truncate on atlas_private.accounting_documents
+  for each statement execute function atlas_private.accounting_retention_guard();
+drop trigger if exists accounting_document_events_no_truncate on atlas_private.accounting_document_events;
+create trigger accounting_document_events_no_truncate before truncate on atlas_private.accounting_document_events
+  for each statement execute function atlas_private.accounting_retention_guard();
 
 -- Helpers --------------------------------------------------------------------
 
@@ -180,7 +226,7 @@ begin
   if actor.id is null or actor.active is not true or actor.role <> 'admin' then
     raise exception 'accounting is for administrators' using errcode = '42501', hint = 'atlas:forbidden';
   end if;
-  return coalesce(nullif(pg_catalog.btrim(actor.display_name), ''), 'Team member');
+  return atlas_private.accounting_safe_label(actor.display_name);
 end
 $function$;
 revoke all on function atlas_private.accounting_require_admin(uuid) from public, anon, authenticated;
@@ -192,22 +238,17 @@ security definer
 set search_path = ''
 as $function$
   insert into atlas_private.accounting_document_events (document_id, action, actor_id, actor_label, details)
-  values (p_document_id, p_action, p_actor_id, coalesce(nullif(pg_catalog.btrim(p_actor_label), ''), 'Team member'), coalesce(p_details, '{}'::jsonb));
+  values (p_document_id, p_action, p_actor_id, atlas_private.accounting_safe_label(p_actor_label), coalesce(p_details, '{}'::jsonb));
 $function$;
 revoke all on function atlas_private.accounting_log(uuid,text,uuid,text,jsonb) from public, anon, authenticated;
 
-create or replace function atlas_private.accounting_fold(p_value text)
-returns text
-language sql
-immutable
-set search_path = ''
-as $function$
-  select nullif(pg_catalog.regexp_replace(pg_catalog.lower(coalesce(p_value, '')), '[^[:alnum:]]+', '', 'g'), '');
-$function$;
-revoke all on function atlas_private.accounting_fold(text) from public, anon, authenticated;
 
 -- One document as the gateway returns it: fields, labels and checks.
-create or replace function atlas_private.accounting_document_json(p_id uuid)
+-- p_full = false is the list form (workspace and export): no Atlas draft, and
+-- the duplicate check only for documents still to review, so a list of a
+-- thousand documents stays a set of indexed lookups.
+drop function if exists atlas_private.accounting_document_json(uuid);
+create or replace function atlas_private.accounting_document_json(p_id uuid, p_full boolean default true)
 returns jsonb
 language sql
 stable
@@ -222,14 +263,15 @@ as $function$
     'currency', d.currency, 'net_amount', d.net_amount, 'vat_amount', d.vat_amount, 'total_amount', d.total_amount,
     'vat_lines', d.vat_lines, 'purchase_order_id', d.purchase_order_id, 'note', d.note,
     'paid_by', d.paid_by, 'paid_by_profile_id', d.paid_by_profile_id,
-    'paid_by_label', case when d.paid_by = 'staff' then coalesce(nullif(pg_catalog.btrim(pp.display_name), ''), 'Team member') end,
+    'paid_by_label', case when d.paid_by = 'staff' then coalesce(d.paid_by_label, atlas_private.accounting_safe_label(pp.display_name)) end,
     'paid_at', d.paid_at, 'payment_method', d.payment_method, 'payment_reference', d.payment_reference,
     'void_reason', d.void_reason,
     'has_file', d.storage_path is not null, 'mime_type', d.mime_type, 'byte_size', d.byte_size, 'file_name', d.file_name,
-    'extraction_status', d.extraction_status, 'extraction', d.extraction,
+    'extraction_status', d.extraction_status, 'extraction', case when p_full then d.extraction end,
     'created_by_label', d.created_by_label, 'created_at', d.created_at, 'updated_at', d.updated_at,
     'approved_at', d.approved_at,
-    'approved_by_label', case when d.approved_by is not null then coalesce(nullif(pg_catalog.btrim(ap.display_name), ''), 'Team member') end,
+    'approved_by_label', case when d.approved_by is not null then atlas_private.accounting_safe_label(ap.display_name) end,
+    'exported', exists (select 1 from atlas_private.accounting_document_events x where x.document_id = d.id and x.action = 'exported'),
     'order', case when po.id is not null then pg_catalog.jsonb_build_object(
       'id', po.id, 'status', po.status, 'total', private.purchase_order_total(po.lines),
       'supplier_name', ps.name, 'ordered_at', po.ordered_at, 'received_at', po.received_at) end,
@@ -241,21 +283,15 @@ as $function$
       'order_difference', case when po.id is not null and d.total_amount is not null
         then d.total_amount - private.purchase_order_total(po.lines) end,
       'overdue', d.status = 'approved' and d.due_date is not null and d.due_date < atlas_private.venue_date(),
-      'possible_duplicates', coalesce((
+      'possible_duplicates', case when (p_full or d.status = 'to_review') and d.supplier_fold is not null then coalesce((
         select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
           'id', o.id, 'status', o.status, 'document_number', o.document_number, 'issue_date', o.issue_date, 'total_amount', o.total_amount)
           order by o.created_at)
         from atlas_private.accounting_documents o
-        left join public.suppliers os on os.id = o.supplier_id
-        where o.id <> d.id and o.status not in ('discarded','void')
-          and atlas_private.accounting_fold(coalesce(o.supplier_name, os.name, '')) = atlas_private.accounting_fold(coalesce(d.supplier_name, s.name, ''))
-          and atlas_private.accounting_fold(coalesce(d.supplier_name, s.name, '')) is not null
-          and (
-            (atlas_private.accounting_fold(o.document_number) is not null
-              and atlas_private.accounting_fold(o.document_number) = atlas_private.accounting_fold(d.document_number))
-            or (o.total_amount is not null and o.total_amount = d.total_amount and o.issue_date = d.issue_date)
-          )
-      ), '[]'::jsonb)
+        where o.id <> d.id and o.status not in ('discarded','void') and o.supplier_fold = d.supplier_fold
+          and ((d.number_fold is not null and o.number_fold = d.number_fold)
+               or (d.total_amount is not null and o.total_amount = d.total_amount and o.issue_date = d.issue_date))
+      ), '[]'::jsonb) else '[]'::jsonb end
     )
   )
   from atlas_private.accounting_documents d
@@ -266,12 +302,14 @@ as $function$
   left join public.suppliers ps on ps.id = po.supplier_id
   where d.id = p_id;
 $function$;
-revoke all on function atlas_private.accounting_document_json(uuid) from public, anon, authenticated;
+revoke all on function atlas_private.accounting_document_json(uuid, boolean) from public, anon, authenticated;
 
 -- Validated editable fields from a jsonb payload. Unknown keys are ignored;
--- a present key with an invalid value is refused (22023).
+-- a present key with an invalid value is refused (22023). Returns what
+-- changed as {field: [before, after]}, which the history keeps.
+drop function if exists atlas_private.accounting_apply_fields(uuid, jsonb, uuid);
 create or replace function atlas_private.accounting_apply_fields(p_id uuid, p_fields jsonb, p_actor_id uuid)
-returns void
+returns jsonb
 language plpgsql
 security definer
 set search_path = ''
@@ -280,6 +318,12 @@ declare
   f jsonb := coalesce(p_fields, '{}'::jsonb);
   line jsonb;
   supplier uuid;
+  clean_lines jsonb := '[]'::jsonb;
+  before jsonb;
+  after jsonb;
+  tracked constant text[] := array['kind','category','supplier_id','supplier_name','supplier_kennitala','document_number',
+    'issue_date','due_date','currency','net_amount','vat_amount','total_amount','vat_lines','purchase_order_id','note',
+    'paid_by','paid_by_profile_id','paid_by_label'];
 begin
   if jsonb_typeof(f) <> 'object' then
     raise exception 'fields must be an object' using errcode = '22023', hint = 'atlas:invalid_request';
@@ -303,13 +347,22 @@ begin
       raise exception 'invalid vat lines' using errcode = '22023', hint = 'atlas:invalid_request';
     end if;
     for line in select value from jsonb_array_elements(f->'vat_lines') loop
-      if jsonb_typeof(line) <> 'object'
+      if jsonb_typeof(line) <> 'object' or not line ? 'rate'
+         or exists (select 1 from jsonb_object_keys(line) k where k not in ('rate','net','vat'))
          or (line->>'rate')::numeric not in (0, 11, 24)
-         or coalesce((line->>'net')::numeric, 0) < 0 or coalesce((line->>'vat')::numeric, 0) < 0 then
+         or coalesce((line->>'net')::numeric, 0) not between 0 and 999999999999
+         or coalesce((line->>'vat')::numeric, 0) not between 0 and 999999999999
+         or (line->>'net')::numeric = 'NaN' or (line->>'vat')::numeric = 'NaN' then
         raise exception 'invalid vat line' using errcode = '22023', hint = 'atlas:invalid_request';
       end if;
+      clean_lines := clean_lines || pg_catalog.jsonb_build_array(pg_catalog.jsonb_build_object(
+        'rate', (line->>'rate')::numeric,
+        'net', round((line->>'net')::numeric, 2),
+        'vat', round((line->>'vat')::numeric, 2)));
     end loop;
   end if;
+
+  select pg_catalog.to_jsonb(d) into before from atlas_private.accounting_documents d where d.id = p_id;
 
   update atlas_private.accounting_documents d set
     kind = case when f ? 'kind' then coalesce(nullif(f->>'kind', ''), d.kind) else d.kind end,
@@ -324,7 +377,7 @@ begin
     net_amount = case when f ? 'net_amount' then nullif(f->>'net_amount', '')::numeric else d.net_amount end,
     vat_amount = case when f ? 'vat_amount' then nullif(f->>'vat_amount', '')::numeric else d.vat_amount end,
     total_amount = case when f ? 'total_amount' then nullif(f->>'total_amount', '')::numeric else d.total_amount end,
-    vat_lines = case when f ? 'vat_lines' then f->'vat_lines' else d.vat_lines end,
+    vat_lines = case when f ? 'vat_lines' then clean_lines else d.vat_lines end,
     purchase_order_id = case when f ? 'purchase_order_id' then nullif(f->>'purchase_order_id', '')::uuid else d.purchase_order_id end,
     note = case when f ? 'note' then nullif(pg_catalog.btrim(f->>'note'), '') else d.note end,
     paid_by = case when f ? 'paid_by' then coalesce(nullif(f->>'paid_by', ''), 'company') else d.paid_by end,
@@ -335,6 +388,22 @@ begin
     updated_by = p_actor_id,
     updated_at = pg_catalog.now()
   where d.id = p_id;
+
+  -- Kept labels: the Purchasing supplier's name and the team member's name,
+  -- so the record reads the same after either is deleted.
+  update atlas_private.accounting_documents d set
+    supplier_name = coalesce(d.supplier_name, (select s.name from public.suppliers s where s.id = d.supplier_id)),
+    paid_by_label = case when d.paid_by = 'staff' and d.paid_by_profile_id is not null
+      then (select atlas_private.accounting_safe_label(p.display_name) from public.profiles p where p.id = d.paid_by_profile_id)
+      when d.paid_by = 'staff' then d.paid_by_label end
+  where d.id = p_id;
+
+  select pg_catalog.to_jsonb(d) into after from atlas_private.accounting_documents d where d.id = p_id;
+  return coalesce((
+    select pg_catalog.jsonb_object_agg(k, pg_catalog.jsonb_build_array(before->k, after->k))
+    from pg_catalog.unnest(tracked) k
+    where (before->k) is distinct from (after->k)
+  ), '{}'::jsonb);
 exception
   when invalid_text_representation or datetime_field_overflow or invalid_datetime_format or numeric_value_out_of_range then
     raise exception 'invalid field value' using errcode = '22023', hint = 'atlas:invalid_request';
@@ -362,7 +431,7 @@ begin
   return pg_catalog.jsonb_build_object(
     'today', today,
     'documents', coalesce((
-      select pg_catalog.jsonb_agg(atlas_private.accounting_document_json(d.id) order by coalesce(d.issue_date, d.created_at::date) desc, d.created_at desc)
+      select pg_catalog.jsonb_agg(atlas_private.accounting_document_json(d.id, false) order by coalesce(d.issue_date, d.created_at::date) desc, d.created_at desc)
       from (
         select id, issue_date, created_at from atlas_private.accounting_documents
         where status in ('to_review','approved') or created_at >= pg_catalog.now() - interval '400 days'
@@ -385,7 +454,7 @@ begin
     ), '[]'::jsonb),
     'team', coalesce((
       select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-        'id', p.id, 'label', coalesce(nullif(pg_catalog.btrim(p.display_name), ''), 'Team member'), 'active', p.active)
+        'id', p.id, 'label', atlas_private.accounting_safe_label(p.display_name), 'active', p.active)
         order by p.active desc, p.display_name)
       from public.profiles p
     ), '[]'::jsonb),
@@ -420,16 +489,27 @@ begin
 end
 $function$;
 
--- A live document already holds this file (the gateway checks before storing).
-create or replace function public.atlas_accounting_find_file(p_actor_id uuid, p_sha256 text)
+-- Before storing a file the gateway asks: is this request a retry of one
+-- already recorded (return it, so the retry replays), or does a live
+-- document already hold this file (refuse)?
+drop function if exists public.atlas_accounting_find_file(uuid, text);
+create or replace function public.atlas_accounting_find_file(p_actor_id uuid, p_sha256 text, p_request_id uuid default null)
 returns jsonb
 language plpgsql
 stable
 security definer
 set search_path = ''
 as $function$
+declare
+  replay uuid;
 begin
   perform atlas_private.accounting_require_admin(p_actor_id);
+  if p_request_id is not null then
+    select d.id into replay from atlas_private.accounting_documents d where d.created_by = p_actor_id and d.request_id = p_request_id;
+    if replay is not null then
+      return pg_catalog.jsonb_build_object('replayed', true, 'document', atlas_private.accounting_document_json(replay));
+    end if;
+  end if;
   return (
     select pg_catalog.jsonb_build_object('id', d.id, 'status', d.status, 'supplier_name', d.supplier_name,
       'document_number', d.document_number, 'created_at', d.created_at)
@@ -484,10 +564,13 @@ begin
 end
 $function$;
 
--- Daily limit for Atlas reading documents (a cost guard). Marks the document
--- as being read and logs it; the gateway then calls the model, only when
--- Atlas AI is switched on (Settings › Atlas AI, ai_settings.enabled).
-create or replace function public.atlas_accounting_begin_read(p_actor_id uuid, p_id uuid, p_daily_limit integer default 60)
+-- Cost guard for Atlas reading documents: at most p_daily_limit reads and
+-- p_daily_budget_usd of estimated model cost in any 24 hours. Nothing is
+-- spent or logged while Atlas AI is off (Settings › Atlas AI). Marks the
+-- document as being read and logs it; the gateway then calls the model.
+drop function if exists public.atlas_accounting_begin_read(uuid, uuid, integer);
+create or replace function public.atlas_accounting_begin_read(
+  p_actor_id uuid, p_id uuid, p_daily_limit integer default 60, p_daily_budget_usd numeric default 2)
 returns jsonb
 language plpgsql
 security definer
@@ -497,6 +580,8 @@ declare
   label text := atlas_private.accounting_require_admin(p_actor_id);
   doc atlas_private.accounting_documents%rowtype;
   used integer;
+  spent numeric;
+  enabled boolean := coalesce((select a.enabled from atlas_private.ai_settings a limit 1), false);
 begin
   select * into doc from atlas_private.accounting_documents d where d.id = p_id for update;
   if doc.id is null then
@@ -505,15 +590,24 @@ begin
   if doc.status <> 'to_review' or doc.storage_path is null then
     raise exception 'only a document to review can be read' using errcode = '40001', hint = 'atlas:stale_request';
   end if;
-  select count(*) into used from atlas_private.accounting_document_events e
-  where e.action = 'read_started' and e.created_at >= pg_catalog.now() - interval '24 hours';
-  if used >= greatest(1, least(coalesce(p_daily_limit, 60), 500)) then
+  if not enabled then
+    return pg_catalog.jsonb_build_object('id', doc.id, 'ai_enabled', false);
+  end if;
+  -- One reader at a time checks the limits, so two reads cannot both slip under.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('atlas_accounting_reads'));
+  select count(*) filter (where e.action = 'read_started'),
+         coalesce(sum((e.details->>'est_cost_usd')::numeric) filter (where e.action = 'read'), 0)
+    into used, spent
+  from atlas_private.accounting_document_events e
+  where e.action in ('read_started','read') and e.created_at >= pg_catalog.now() - interval '24 hours';
+  if used >= greatest(1, least(coalesce(p_daily_limit, 60), 500))
+     or spent >= greatest(0.01, least(coalesce(p_daily_budget_usd, 2), 100)) then
     raise exception 'rate_limited: daily document reading limit' using errcode = 'P0001';
   end if;
   update atlas_private.accounting_documents set extraction_status = 'reading', updated_at = pg_catalog.now() where id = p_id;
   perform atlas_private.accounting_log(p_id, 'read_started', p_actor_id, label, '{}'::jsonb);
   return pg_catalog.jsonb_build_object('id', doc.id, 'storage_path', doc.storage_path, 'mime_type', doc.mime_type, 'file_name', doc.file_name,
-    'ai_enabled', coalesce((select a.enabled from atlas_private.ai_settings a limit 1), false));
+    'ai_enabled', true);
 end
 $function$;
 
@@ -540,6 +634,8 @@ declare
   fields jsonb;
   draft jsonb;
   prefill jsonb;
+  changes jsonb;
+  ever_edited boolean;
   removed_path text;
   current_json jsonb;
   paid_date date;
@@ -560,9 +656,11 @@ begin
       raise exception 'only a document to review can be edited' using errcode = '40001', hint = 'atlas:stale_request';
     end if;
     fields := coalesce(payload->'fields', '{}'::jsonb);
-    perform atlas_private.accounting_apply_fields(p_id, fields, p_actor_id);
-    perform atlas_private.accounting_log(p_id, 'edited', p_actor_id, label,
-      pg_catalog.jsonb_build_object('fields', (select coalesce(pg_catalog.jsonb_agg(k order by k), '[]'::jsonb) from pg_catalog.jsonb_object_keys(fields) k)));
+    changes := atlas_private.accounting_apply_fields(p_id, fields, p_actor_id);
+    -- The history keeps each changed value, before and after.
+    if changes <> '{}'::jsonb then
+      perform atlas_private.accounting_log(p_id, 'edited', p_actor_id, label, pg_catalog.jsonb_build_object('changes', changes));
+    end if;
 
   when 'record_read' then
     if payload->>'outcome' = 'read' then
@@ -577,16 +675,17 @@ begin
       prefill := coalesce(draft->'prefill', '{}'::jsonb);
       -- Prefill only fields that are still empty, and only while to review:
       -- whatever an administrator typed is never overwritten.
+      ever_edited := exists (select 1 from atlas_private.accounting_document_events e where e.document_id = p_id and e.action = 'edited');
       if doc.status = 'to_review' then
         fields := pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
-          'kind', case when doc.kind = 'invoice' and prefill->>'kind' in ('receipt','credit_note','other') then prefill->>'kind' end,
+          'kind', case when not ever_edited and doc.kind = 'invoice' and prefill->>'kind' in ('receipt','credit_note','other') then prefill->>'kind' end,
           'supplier_name', case when doc.supplier_name is null and doc.supplier_id is null then prefill->>'supplier_name' end,
-          'supplier_id', case when doc.supplier_id is null then prefill->>'supplier_id' end,
+          'supplier_id', case when doc.supplier_id is null and doc.supplier_name is null then prefill->>'supplier_id' end,
           'supplier_kennitala', case when doc.supplier_kennitala is null then prefill->>'supplier_kennitala' end,
           'document_number', case when doc.document_number is null then prefill->>'document_number' end,
           'issue_date', case when doc.issue_date is null then prefill->>'issue_date' end,
           'due_date', case when doc.due_date is null then prefill->>'due_date' end,
-          'currency', case when doc.currency = 'ISK' then prefill->>'currency' end,
+          'currency', case when not ever_edited and doc.currency = 'ISK' then prefill->>'currency' end,
           'net_amount', case when doc.net_amount is null then prefill->>'net_amount' end,
           'vat_amount', case when doc.vat_amount is null then prefill->>'vat_amount' end,
           'total_amount', case when doc.total_amount is null then prefill->>'total_amount' end,
@@ -689,8 +788,12 @@ begin
       pg_catalog.jsonb_build_object('reason', pg_catalog.left(pg_catalog.btrim(payload->>'reason'), 500), 'was', doc.status));
 
   when 'discard' then
-    if doc.status <> 'to_review' then
-      raise exception 'only a document to review can be discarded' using errcode = '40001', hint = 'atlas:stale_request';
+    -- Only a mistaken upload that was never approved or exported: once a
+    -- document has been approved (even if reopened since), it can only be voided.
+    if doc.status <> 'to_review' or doc.approved_at is not null
+       or exists (select 1 from atlas_private.accounting_document_events e
+                  where e.document_id = p_id and e.action in ('approved','exported')) then
+      raise exception 'an approved document can only be voided' using errcode = '40001', hint = 'atlas:stale_request';
     end if;
     removed_path := doc.storage_path;
     update atlas_private.accounting_documents set status = 'discarded', storage_path = null,
@@ -723,7 +826,12 @@ begin
   if doc.id is null or doc.storage_path is null then
     raise exception 'file not found' using errcode = 'P0002', hint = 'atlas:not_found';
   end if;
-  perform atlas_private.accounting_log(p_id, 'file_opened', p_actor_id, label, '{}'::jsonb);
+  -- At most one "file opened" entry per person and document per hour.
+  if not exists (select 1 from atlas_private.accounting_document_events e
+                 where e.document_id = p_id and e.action = 'file_opened' and e.actor_id = p_actor_id
+                   and e.created_at >= pg_catalog.now() - interval '1 hour') then
+    perform atlas_private.accounting_log(p_id, 'file_opened', p_actor_id, label, '{}'::jsonb);
+  end if;
   return pg_catalog.jsonb_build_object('storage_path', doc.storage_path, 'mime_type', doc.mime_type, 'file_name', doc.file_name);
 end
 $function$;
@@ -743,7 +851,7 @@ begin
   if p_from is null or p_to is null or p_to < p_from or p_to - p_from > 400 then
     raise exception 'invalid range' using errcode = '22023', hint = 'atlas:invalid_request';
   end if;
-  select coalesce(pg_catalog.jsonb_agg(atlas_private.accounting_document_json(d.id)
+  select coalesce(pg_catalog.jsonb_agg(atlas_private.accounting_document_json(d.id, false)
            || pg_catalog.jsonb_build_object('storage_path', d.storage_path) order by d.issue_date, d.created_at), '[]'::jsonb)
   into result_rows
   from atlas_private.accounting_documents d
@@ -757,17 +865,17 @@ $function$;
 
 revoke all on function public.atlas_accounting_snapshot(uuid) from public, anon, authenticated;
 revoke all on function public.atlas_accounting_document(uuid,uuid) from public, anon, authenticated;
-revoke all on function public.atlas_accounting_find_file(uuid,text) from public, anon, authenticated;
+revoke all on function public.atlas_accounting_find_file(uuid,text,uuid) from public, anon, authenticated;
 revoke all on function public.atlas_accounting_create(uuid,uuid,jsonb,jsonb) from public, anon, authenticated;
-revoke all on function public.atlas_accounting_begin_read(uuid,uuid,integer) from public, anon, authenticated;
+revoke all on function public.atlas_accounting_begin_read(uuid,uuid,integer,numeric) from public, anon, authenticated;
 revoke all on function public.atlas_accounting_command(uuid,uuid,integer,text,jsonb) from public, anon, authenticated;
 revoke all on function public.atlas_accounting_file(uuid,uuid) from public, anon, authenticated;
 revoke all on function public.atlas_accounting_export(uuid,date,date) from public, anon, authenticated;
 grant execute on function public.atlas_accounting_snapshot(uuid) to service_role;
 grant execute on function public.atlas_accounting_document(uuid,uuid) to service_role;
-grant execute on function public.atlas_accounting_find_file(uuid,text) to service_role;
+grant execute on function public.atlas_accounting_find_file(uuid,text,uuid) to service_role;
 grant execute on function public.atlas_accounting_create(uuid,uuid,jsonb,jsonb) to service_role;
-grant execute on function public.atlas_accounting_begin_read(uuid,uuid,integer) to service_role;
+grant execute on function public.atlas_accounting_begin_read(uuid,uuid,integer,numeric) to service_role;
 grant execute on function public.atlas_accounting_command(uuid,uuid,integer,text,jsonb) to service_role;
 grant execute on function public.atlas_accounting_file(uuid,uuid) to service_role;
 grant execute on function public.atlas_accounting_export(uuid,date,date) to service_role;

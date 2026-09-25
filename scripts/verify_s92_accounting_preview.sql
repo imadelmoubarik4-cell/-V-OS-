@@ -32,7 +32,11 @@ insert into public.profiles (id,email,display_name,role,active) values
   ('00000000-0000-4000-8000-00000092a003','s92-bar@example.invalid','S92 Anna','bartender',true),
   ('00000000-0000-4000-8000-00000092a004','s92-old@example.invalid','S92 Former admin','admin',false)
 on conflict (id) do update set role=excluded.role, active=excluded.active, display_name=excluded.display_name;
-insert into public.suppliers (id, name, active) values ('00000000-0000-4000-8000-00000092b001', 'S92 Ölgerðin', true);
+insert into public.suppliers (id, name, active) values ('00000000-0000-4000-8000-00000092b001', 'S92 Ölgerðin', true),
+  ('00000000-0000-4000-8000-00000092b002', 'S92 Globus', true);
+insert into public.profiles (id,email,display_name,role,active)
+select '00000000-0000-4000-8000-00000092a005','s92-mail@example.invalid','boss@example.com','admin',true
+where exists (select 1 from auth.users where id = '00000000-0000-4000-8000-00000092a005');
 
 -- Privileges ------------------------------------------------------------------
 insert into s92_acc select 'only service_role may execute the accounting RPCs',
@@ -41,8 +45,8 @@ insert into s92_acc select 'only service_role may execute the accounting RPCs',
     and not has_function_privilege('anon', f, 'execute'))
   from unnest(array[
     'public.atlas_accounting_snapshot(uuid)', 'public.atlas_accounting_document(uuid,uuid)',
-    'public.atlas_accounting_find_file(uuid,text)', 'public.atlas_accounting_create(uuid,uuid,jsonb,jsonb)',
-    'public.atlas_accounting_begin_read(uuid,uuid,integer)', 'public.atlas_accounting_command(uuid,uuid,integer,text,jsonb)',
+    'public.atlas_accounting_find_file(uuid,text,uuid)', 'public.atlas_accounting_create(uuid,uuid,jsonb,jsonb)',
+    'public.atlas_accounting_begin_read(uuid,uuid,integer,numeric)', 'public.atlas_accounting_command(uuid,uuid,integer,text,jsonb)',
     'public.atlas_accounting_file(uuid,uuid)', 'public.atlas_accounting_export(uuid,date,date)']) f;
 insert into s92_acc select 'browsers have no table privileges; RLS is on',
   not has_table_privilege('authenticated', 'atlas_private.accounting_documents', 'select')
@@ -110,6 +114,11 @@ update s92_doc set value = public.atlas_accounting_command('00000000-0000-4000-8
 insert into s92_acc select 'save edits fields and moves the version on',
   (select (value->>'version')::int = 2 and value->>'supplier_name' = 'S92 Ölgerðin' and value->>'document_number' = 'F-1001' from s92_doc where key = 'a');
 
+insert into s92_acc select 'while Atlas AI is off a read spends nothing and logs nothing',
+  (public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 60)->>'ai_enabled') = 'false';
+insert into s92_acc select 'no read was logged while Atlas AI was off',
+  not exists (select 1 from atlas_private.accounting_document_events where action = 'read_started');
+update atlas_private.ai_settings set enabled = true;
 select public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 60);
 update s92_doc set value = public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', null, 'record_read',
   jsonb_build_object('outcome','read','model','test','tokens_in',1000,'tokens_out',200,'est_cost_usd',0.01,
@@ -212,6 +221,67 @@ insert into s92_acc select 'export returns approved, paid and void documents in 
   and pg_temp.refused($q$select public.atlas_accounting_export('00000000-0000-4000-8000-00000092a001', date '2020-01-01', date '2026-09-30')$q$) like '22023%';
 insert into s92_acc select 'the export is logged on each exported document',
   (select count(*) = 2 from atlas_private.accounting_document_events where action = 'exported');
+
+-- Review follow-ups ------------------------------------------------------------
+insert into s92_acc select 'every edit is kept with its before and after values',
+  exists (select 1 from atlas_private.accounting_document_events
+          where document_id = '00000000-0000-4000-8000-00000092d001' and action = 'edited'
+            and details->'changes'->'document_number' = '[null, "F-1001"]'::jsonb);
+
+-- A reopened (once approved) document can never be discarded.
+select public.atlas_accounting_create('00000000-0000-4000-8000-00000092a001', '00000000-0000-4000-8000-00000092c005',
+  jsonb_build_object('document_id','00000000-0000-4000-8000-00000092d005',
+    'storage_path','documents/00000000-0000-4000-8000-00000092d005/00000000-0000-4000-8000-00000092e005.pdf',
+    'mime_type','application/pdf','byte_size',1000,'sha256',repeat('f',64)),
+  '{"supplier_id":"00000000-0000-4000-8000-00000092b002","issue_date":"2026-08-02","total_amount":"5000"}');
+select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 1, 'approve', '{}');
+select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 2, 'reopen', '{}');
+insert into s92_acc select 'a reopened document that was approved cannot be discarded (40001)',
+  pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 3, 'discard', '{}')$q$) like '40001%';
+insert into s92_acc select 'picking a Purchasing supplier keeps its name on the record',
+  (select supplier_name = 'S92 Globus' from atlas_private.accounting_documents where id = '00000000-0000-4000-8000-00000092d005');
+delete from public.suppliers where id = '00000000-0000-4000-8000-00000092b002';
+insert into s92_acc select 'deleting the supplier in Purchasing keeps the name on the record',
+  (public.atlas_accounting_document('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005')->>'supplier_name') = 'S92 Globus';
+
+insert into s92_acc select 'the reimbursed team member''s name is kept on the record',
+  (select paid_by_label = 'S92 Anna' from atlas_private.accounting_documents where id = '00000000-0000-4000-8000-00000092d003');
+
+insert into s92_acc select 'NaN, infinity and far-future values are refused (22023)',
+  pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 3, 'save', '{"fields":{"total_amount":"NaN"}}')$q$) like '22023%'
+  and pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 3, 'save', '{"fields":{"issue_date":"infinity"}}')$q$) like '22023%'
+  and pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 3, 'save', '{"fields":{"due_date":"9999-01-01"}}')$q$) like '22023%'
+  and pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 3, 'save', '{"fields":{"vat_lines":[{"vat":1}]}}')$q$) like '22023%'
+  and pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 3, 'save', '{"fields":{"vat_lines":[{"rate":24,"net":1,"vat":"NaN"}]}}')$q$) like '22023%'
+  and pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 3, 'save', '{"fields":{"vat_lines":[{"rate":24,"net":1,"vat":1,"x":"<img>"}]}}')$q$) like '22023%';
+
+insert into s92_acc select 'service_role cannot delete or truncate; truncate is also blocked by trigger',
+  not has_table_privilege('service_role', 'atlas_private.accounting_documents', 'delete')
+  and not has_table_privilege('service_role', 'atlas_private.accounting_documents', 'truncate')
+  and not has_table_privilege('service_role', 'atlas_private.accounting_document_events', 'truncate')
+  and not has_table_privilege('service_role', 'atlas_private.accounting_document_events', 'update')
+  and pg_temp.refused($q$truncate atlas_private.accounting_document_events$q$) like '42501%';
+
+insert into s92_acc select 'an upload retry with the same request id replays instead of refusing the file',
+  (public.atlas_accounting_find_file('00000000-0000-4000-8000-00000092a001', repeat('f',64), '00000000-0000-4000-8000-00000092c005')->>'replayed') = 'true'
+  and (public.atlas_accounting_find_file('00000000-0000-4000-8000-00000092a001', repeat('f',64), gen_random_uuid())->>'id') = '00000000-0000-4000-8000-00000092d005';
+
+insert into s92_acc select 'an email display name is never kept as a label',
+  atlas_private.accounting_safe_label('boss@example.com') = 'Team member'
+  and atlas_private.accounting_safe_label('  Sara   Jónsdóttir ') = 'Sara Jónsdóttir';
+
+-- The spend budget stops reads once the estimated cost reaches it.
+insert into s92_acc select 'the daily spend budget refuses reads with rate_limited',
+  pg_temp.refused($q$select public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d004', 60, 0.01)$q$) like 'P0001 rate_limited%';
+
+select public.atlas_accounting_file('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d004');
+select public.atlas_accounting_file('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d004');
+insert into s92_acc select 'opening a file twice within an hour is logged once',
+  (select count(*) = 1 from atlas_private.accounting_document_events where document_id = '00000000-0000-4000-8000-00000092d004' and action = 'file_opened');
+
+insert into s92_acc select 'the workspace list leaves out Atlas drafts; the single view keeps them',
+  (select bool_and(d->'extraction' = 'null'::jsonb) from jsonb_array_elements(public.atlas_accounting_snapshot('00000000-0000-4000-8000-00000092a001')->'documents') d)
+  and (public.atlas_accounting_document('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001')->'extraction') ? 'prefill';
 
 select jsonb_build_object(
   's92_accounting', case when bool_and(passed) then 'passed' else 'failed' end,

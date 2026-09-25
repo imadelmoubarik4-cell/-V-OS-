@@ -348,3 +348,25 @@ test('the reader request stays within the strict schema and never stores the fil
   assert.match(DOCUMENT_INSTRUCTIONS, /Gjalddagi/);
   assert.deepEqual(pickFields({ status: 'paid', total_amount: 1, approved_by: 'x' }), { total_amount: 1 });
 });
+
+test('review follow-ups: a retried upload replays; no key spends nothing; the budget is passed', async () => {
+  const replay = fakeServices({ rpc: (name, args) => (name === 'atlas_accounting_find_file' && args.p_request_id === REQ_ID
+    ? { replayed: true, document: { id: DOC_ID, status: 'to_review' } } : undefined) });
+  const first = handlerFor({ services: replay });
+  const replayed = await body(await first.handle(uploadRequest(PDF)));
+  assert.equal(replayed.status, 200);
+  assert.equal(replayed.json.document.id, DOC_ID);
+  assert.equal(replay.calls.upload.length, 0, 'nothing is stored again');
+
+  const noKey = fakeServices();
+  const second = handlerFor({ services: noKey, env: {} });
+  await second.handle(post('read', { id: DOC_ID }));
+  assert.ok(!noKey.calls.rpc.some((call) => call.name === 'atlas_accounting_begin_read'), 'no key: the read limit is not touched');
+
+  const budget = fakeServices();
+  const third = handlerFor({ services: budget, env: { OPENAI_API_KEY: 'k', ATLAS_ACCOUNTING_READ_BUDGET_USD: '5' }, fetchImpl: async () => modelReply(READ) });
+  await third.handle(post('read', { id: DOC_ID }));
+  const begin = budget.calls.rpc.find((call) => call.name === 'atlas_accounting_begin_read');
+  assert.equal(begin.args.p_daily_budget_usd, 5);
+  assert.equal(begin.args.p_daily_limit, 60);
+});
