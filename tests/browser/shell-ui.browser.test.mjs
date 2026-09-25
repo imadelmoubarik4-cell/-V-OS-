@@ -261,7 +261,7 @@ test('security G3: palette recents are keyed per user and cleared on user change
     // Opening a record remembers it under this user's id only.
     await page.click('#atlas-omni');
     await page.keyboard.type('campari');
-    await page.waitForTimeout(150);
+    await page.waitForFunction(() => document.getElementById('atlas-palette-list')?.dataset.answerState !== 'pending');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.body.dataset.atlasView === 'inventory');
     assert.deepEqual(await recentKeys(), [`atlas.palette.recent.v1:${USERS.admin.id}`]);

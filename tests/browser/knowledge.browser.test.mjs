@@ -156,7 +156,7 @@ test('security G2: a source URL opens only when it is http(s), with noopener,nor
     try {
       await page.evaluate(() => { window.__opened = []; window.open = (...args) => { window.__opened.push(args); return null; }; });
       await page.click('[data-knowledge-source-open="src1"]');
-      await page.waitForTimeout(150);
+      await settle(page);
       const opened = await page.evaluate(() => window.__opened);
       if (expected) assert.deepEqual(opened, [[expected, '_blank', 'noopener,noreferrer']], sourceUrl);
       else assert.deepEqual(opened, [], `${sourceUrl} must not be opened`);

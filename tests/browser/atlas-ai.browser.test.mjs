@@ -483,7 +483,7 @@ test('search questions and Ask Atlas actions open Atlas AI with the question', {
     // A direct #ai/new?q=… link (no in-app intent) only prefills (security G1).
     await page.evaluate(() => { location.hash = '#ai/new?q=Who%20works%20tomorrow%3F&from=inventory'; });
     await page.waitForFunction(() => document.querySelector('#ai-composer-input')?.value === 'Who works tomorrow?');
-    await page.waitForTimeout(300);
+    await settle(page);
     assert.equal(backend.state.calls.filter((entry) => entry.action === 'chat').length, 1, 'a link never sends a turn');
     // An in-app ask() sends exactly once via the in-memory intent.
     await page.evaluate(() => window.AtlasAI.ask({ question: 'Who works tomorrow?' }));
@@ -514,7 +514,7 @@ test('security G1: a crafted #ai/new?q= link only prefills and issues no create,
     const { page, close, backend } = await openAi({ hash });
     try {
       await page.waitForFunction((text) => document.querySelector('#ai-composer-input')?.value === text, question);
-      await page.waitForTimeout(1200);
+      await settle(page);
       const writes = backend.state.calls.filter((entry) => ['create', 'chat', 'rename'].includes(entry.action)).map((entry) => entry.action);
       assert.deepEqual(writes, [], `${hash} must not send a turn`);
       assert.equal(await page.locator('.msg-user').count(), 0);
