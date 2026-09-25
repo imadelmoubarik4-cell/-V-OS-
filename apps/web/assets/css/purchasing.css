@@ -85,6 +85,15 @@
   .acc-row__end { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-2); }
   .acc-toolbar { flex-wrap: wrap; gap: var(--s-3); }
   .acc-filter { overflow-x: auto; max-width: 100%; }
+  .acc-filter-select { display: none; }
+  .acc-error { grid-column: 1 / -1; }
+  .acc-owed__all { margin-left: auto; align-self: center; }
+  .acc-owed .atlas-section__head { gap: var(--s-3); }
+  /* Field hints: what Atlas filled in, and where what it read differs. */
+  .acc-filled, .acc-differs { display: flex; align-items: flex-start; gap: var(--s-1); }
+  .acc-filled > svg, .acc-differs > svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+  .acc-filled > svg { color: var(--accent); }
+  .acc-differs { color: var(--warning); }
   .acc-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .acc-drop { position: relative; cursor: pointer; }
   /* The upload label and file card use spans (phrasing content); stack them
@@ -94,6 +103,9 @@
   .acc-camera { position: relative; align-self: flex-start; }
   @media (hover: hover) and (pointer: fine) { .acc-camera { display: none; } }
   .acc-upload { display: flex; flex-direction: column; gap: var(--s-4); }
+  /* The sheet body is a scrolling column: its children keep their height
+     (the photo button stays 44 px however long the queue grows). */
+  .acc-upload > * { flex: none; }
   .acc-queue:empty { display: none; }
   .acc-payer { border: 0; margin: 0; padding: 0; display: grid; gap: var(--s-3); min-width: 0; }
   .acc-payer .atlas-chips { flex-wrap: wrap; }
@@ -103,7 +115,7 @@
   .acc-doc { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-6); align-items: start; }
   .acc-doc__file { position: sticky; top: 0; display: grid; gap: var(--s-3); min-width: 0; }
   .acc-file { display: grid; gap: var(--s-3); justify-items: start; }
-  .acc-file__img { display: block; width: 100%; max-height: 70vh; object-fit: contain; border: 1px solid var(--line); border-radius: var(--radius-md, 8px); background: var(--surface-2, transparent); }
+  .acc-file__img { display: block; width: 100%; max-height: 70vh; object-fit: contain; border: 1px solid var(--line); border-radius: var(--radius-md, 8px); background: var(--bg-subtle); }
   .acc-doc__form { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }
   .acc-paid { display: flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-body); color: var(--positive, var(--text)); }
   .acc-paid > svg, .acc-paid > i { width: var(--icon-sm, 16px); height: var(--icon-sm, 16px); flex: none; }
@@ -115,6 +127,8 @@
   .acc-vat__tools { display: flex; flex-wrap: wrap; gap: var(--s-2); }
   .acc-amounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 88px; gap: var(--s-3); }
   .acc-amounts .atlas-input, .acc-vat .atlas-input { font-variant-numeric: tabular-nums; }
+  /* A hint under one field must not stretch its neighbours' label and control apart. */
+  .acc-doc__form .atlas-field { align-content: start; }
 
   .acc-details { border-top: 1px solid var(--line); padding-top: var(--s-3); }
   .acc-details > summary { cursor: pointer; font: var(--type-label); color: var(--text-2); min-height: 44px; display: flex; align-items: center; }
@@ -138,5 +152,10 @@
     .acc-row { flex-wrap: wrap; }
     .acc-row__end { flex: 1 0 100%; justify-content: flex-start; padding-left: 44px; }
     .acc-export__actions .atlas-btn { width: 100%; }
+    /* All: search and a filter select, each the full width (six segments don't fit). */
+    .acc-toolbar { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+    .acc-toolbar > .atlas-search { flex: 1 1 100%; min-width: 0; }
+    .acc-filter { display: none; }
+    .acc-filter-select { display: block; flex: 1 1 100%; }
   }
 }

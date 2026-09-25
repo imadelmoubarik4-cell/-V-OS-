@@ -38,7 +38,7 @@ function doc(overrides = {}) {
     paid_by: 'company', paid_by_profile_id: null, paid_by_label: null,
     paid_at: null, payment_method: null, payment_reference: null, void_reason: null,
     has_file: true, mime_type: 'application/pdf', byte_size: 2048, file_name: 'reikningur.pdf',
-    extraction_status: null, extraction: null,
+    extraction_status: null, extraction: null, exported: false,
     created_by_label: 'Imad El Moubarik', created_at: '2026-09-23T10:00:00.000Z', updated_at: '2026-09-23T10:00:00.000Z',
     approved_at: null, approved_by_label: null, order: null,
     checks: { totals_mismatch: false, vat_lines_mismatch: false, order_difference: null, overdue: false, possible_duplicates: [] },
@@ -60,7 +60,8 @@ function seedDocuments() {
   ];
 }
 
-const withoutHistory = ({ history, ...rest }) => rest;
+// Lists (snapshot, export) carry no history and no Atlas draft (extraction).
+const withoutHistory = ({ history, ...rest }) => ({ ...rest, extraction: null });
 const fail = (status, code) => ({ __status: status, body: { error_code: code, message: `server text for ${code}` } });
 
 /**
@@ -69,18 +70,23 @@ const fail = (status, code) => ({ __status: status, body: { error_code: code, me
  * version guard (stale_request), missing_fields and an optional
  * possible_duplicate on approve.
  */
-function accountingBackend({ aiEnabled = true, documents = seedDocuments(), duplicateOnApprove = false } = {}) {
-  const backend = { documents, calls: [], uploads: [], nextId: 1 };
+function accountingBackend({ aiEnabled = true, documents = seedDocuments(), duplicateOnApprove = false, failPay = [], holdSnapshot = false } = {}) {
+  const backend = { documents, calls: [], uploads: [], nextId: 1, failPay: new Set(failPay) };
+  // holdSnapshot: the first snapshot waits until the test calls backend.release().
+  let release = () => {};
+  const gate = holdSnapshot ? new Promise((resolve) => { release = resolve; }) : null;
+  backend.release = () => release();
   const find = (id) => backend.documents.find((entry) => entry.id === id);
   const event = (target, action, details = {}) => { target.history.unshift({ action, actor_label: USERS.admin.display_name, details, created_at: '2026-09-24T14:00:00.000Z' }); };
   const bump = (target) => { target.version += 1; target.updated_at = '2026-09-24T14:00:00.000Z'; };
   const out = (target) => ({ ...target, history: [...target.history] });
   backend.handler = (entry) => {
-    backend.calls.push(entry);
+    if (!entry.gated) backend.calls.push(entry);
     const params = new URLSearchParams(entry.search);
     const action = entry.action;
     if (entry.method === 'GET') {
       if (action === 'snapshot') {
+        if (gate && !entry.gated) return gate.then(() => backend.handler({ ...entry, gated: true }));
         return { workspace: { today: TODAY, documents: backend.documents.map(withoutHistory), suppliers: SUPPLIERS, orders: [], team: [{ id: USERS.admin.id, label: USERS.admin.display_name, active: true }, { id: USERS.bartender.id, label: USERS.bartender.display_name, active: true }, { id: MANAGER.id, label: MANAGER.display_name, active: true }], ai_enabled: aiEnabled, reads_today: 0 } };
       }
       if (action === 'document') { const target = find(params.get('id')); return target ? { document: out(target) } : fail(404, 'not_found'); }
@@ -111,7 +117,8 @@ function accountingBackend({ aiEnabled = true, documents = seedDocuments(), dupl
       if (!target) return fail(404, 'not_found');
       const read = { supplier_name: 'Globus hf.', document_number: 'G-1001', issue_date: '2026-09-20', net_amount: 10000, vat_amount: 2400, total_amount: 12400, currency: 'ISK', line_items: [{ description: 'Campari 1 L', quantity: 4, amount: 12400 }] };
       target.extraction_status = 'read';
-      target.extraction = { version: 1, fields: read };
+      const prefill = Object.fromEntries(['supplier_name', 'document_number', 'issue_date', 'net_amount', 'vat_amount', 'total_amount'].map((key) => [key, read[key]]));
+      target.extraction = { version: 1, fields: read, prefill };
       for (const key of ['supplier_name', 'document_number', 'issue_date', 'net_amount', 'vat_amount', 'total_amount']) if (target[key] === null) target[key] = read[key];
       bump(target); event(target, 'read');
       return { document: out(target), outcome: 'read' };
@@ -124,6 +131,7 @@ function accountingBackend({ aiEnabled = true, documents = seedDocuments(), dupl
       if (command === 'save') {
         if (target.status !== 'to_review') return fail(409, 'conflict');
         const f = payload.fields || {};
+        const before = { ...target };
         Object.assign(target, {
           kind: f.kind, category: f.category || null, supplier_id: f.supplier_id || null, supplier_known: Boolean(f.supplier_id),
           supplier_name: f.supplier_id ? SUPPLIERS.find((s) => s.id === f.supplier_id)?.name : (f.supplier_name || null),
@@ -134,7 +142,8 @@ function accountingBackend({ aiEnabled = true, documents = seedDocuments(), dupl
           paid_by: f.paid_by, paid_by_profile_id: f.paid_by_profile_id || null,
           paid_by_label: f.paid_by === 'staff' ? PROFILES.find((p) => p.id === f.paid_by_profile_id)?.display_name : null
         });
-        bump(target); event(target, 'edited');
+        const changes = Object.fromEntries(Object.keys(f).filter((key) => JSON.stringify(before[key] ?? null) !== JSON.stringify(target[key] ?? null)).map((key) => [key, [before[key] ?? null, target[key] ?? null]]));
+        bump(target); event(target, 'edited', { changes });
         return { document: out(target) };
       }
       if (command === 'approve') {
@@ -146,6 +155,7 @@ function accountingBackend({ aiEnabled = true, documents = seedDocuments(), dupl
       }
       if (command === 'mark_paid') {
         if (target.status !== 'approved') return fail(409, 'conflict');
+        if (backend.failPay.has(id)) { backend.failPay.delete(id); return fail(503, 'unavailable'); }
         Object.assign(target, { status: 'paid', paid_at: payload.paid_at, payment_method: payload.payment_method, payment_reference: payload.payment_reference || null });
         bump(target); event(target, 'paid');
         return { document: out(target) };
@@ -187,8 +197,8 @@ async function openAccounting(page, hash = '#accounting') {
 }
 
 async function openDoc(page, id) {
-  await page.click(`#accounting-view [data-acc-open="${id}"]`);
-  await page.waitForSelector('#acc-document.is-open [data-acc-form]');
+  await page.click(`#accounting-view .atlas-row__link[data-acc-open="${id}"]`);
+  await page.waitForSelector('#acc-document.is-open .acc-doc__form');
   await settle(page);
 }
 
@@ -202,14 +212,14 @@ const noErrors = (record, expectedStatuses = []) => {
 const noHorizontalScroll = (page, width) => page.evaluate((limit) => document.documentElement.scrollWidth <= limit, width);
 
 /** Parses RFC 4180 CSV (quoted cells, doubled quotes, CRLF). */
-function parseCsv(text) {
+function parseCsv(text, separator = ',') {
   const rows = []; let row = []; let cell = ''; let quoted = false;
   for (let i = 0; i < text.length; i += 1) {
     const ch = text[i];
     if (quoted) {
       if (ch === '"' && text[i + 1] === '"') { cell += '"'; i += 1; } else if (ch === '"') quoted = false; else cell += ch;
     } else if (ch === '"') quoted = true;
-    else if (ch === ',') { row.push(cell); cell = ''; } else if (ch === '\r') { /* CRLF */ } else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; } else cell += ch;
+    else if (ch === separator) { row.push(cell); cell = ''; } else if (ch === '\r') { /* CRLF */ } else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; } else cell += ch;
   }
   if (cell || row.length) { row.push(cell); rows.push(row); }
   return rows;
@@ -282,7 +292,13 @@ test('review: edit supplier, date and VAT lines, fill totals, save, then approve
     // File preview area (a signed link for a PDF), the read banner and the fields.
     await page.waitForSelector(`${sheet} [data-acc-file] a[href*="/storage/v1/object/sign/"]`);
     assert.match(await page.textContent(`${sheet} [data-acc-file]`), /Open PDF/);
-    assert.match(await page.textContent(`${sheet} .atlas-alert`), /Let Atlas fill it in/);
+    assert.match(await page.textContent(`${sheet} .acc-doc__form .atlas-alert`), /Let Atlas fill it in/);
+    // It opens at the top with focus on the heading, the URL names the document.
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'acc-doc-title');
+    assert.equal(await page.evaluate(() => location.hash), `#accounting/document/${IDS.review}`);
+    // P3: plain "Net (án VSK)" label, currency as a select.
+    assert.equal(await page.textContent(`${sheet} label[for="acc-net"]`), 'Net (án VSK)');
+    assert.deepEqual(await page.$$eval(`${sheet} #acc-currency option`, (options) => options.map((option) => option.value)), ['ISK', 'EUR', 'USD', 'GBP', 'DKK', 'NOK', 'SEK']);
     for (const field of ['#acc-supplier', '#acc-supplier-name', '#acc-date', '#acc-net', '#acc-vat-total', '#acc-total']) assert.ok(await page.$(`${sheet} ${field}`), field);
     // With the file beside the form, amounts still have room for "16418.42".
     const amountWidth = await page.$eval(`${sheet} #acc-total`, (node) => node.getBoundingClientRect().width);
@@ -300,6 +316,22 @@ test('review: edit supplier, date and VAT lines, fill totals, save, then approve
     await page.fill(`${sheet} #acc-vat-vat-1`, '110');
     await page.click(`${sheet} [data-acc-vat-fill]`);
     assert.deepEqual(await page.evaluate(() => ['acc-net', 'acc-vat-total', 'acc-total'].map((id) => document.getElementById(id).value)), ['13345.5', '3072.92', '16418.42']);
+
+    // A bad amount: a danger alert at the top of the sheet, the field marked
+    // until it is edited; nothing is sent.
+    await page.fill(`${sheet} #acc-total`, 'abc');
+    await page.click(`${sheet} [data-acc-save]`);
+    await page.waitForSelector(`${sheet} .acc-error:not([hidden])`);
+    const problem = await page.evaluate(() => {
+      const box = document.querySelector('#acc-document .acc-error');
+      const body = document.querySelector('#acc-document .atlas-sheet__body');
+      const a = box.getBoundingClientRect(); const b = body.getBoundingClientRect();
+      return { role: box.getAttribute('role'), danger: box.classList.contains('atlas-alert--danger'), first: body.firstElementChild === box, inView: a.top >= b.top - 1 && a.bottom <= b.bottom + 1, text: box.textContent.trim(), invalid: document.getElementById('acc-total').getAttribute('aria-invalid') };
+    });
+    assert.deepEqual(problem, { role: 'alert', danger: true, first: true, inView: true, text: 'Enter amounts as numbers, like 12.345 or 12345,50.', invalid: 'true' });
+    assert.equal(backend.commands('save').length, 0);
+    await page.fill(`${sheet} #acc-total`, '16418.42');
+    assert.equal(await page.getAttribute(`${sheet} #acc-total`, 'aria-invalid'), null, 'editing clears the mark');
 
     await page.click(`${sheet} [data-acc-save]`);
     await until(() => backend.commands('save').length, { message: 'save command' });
@@ -330,6 +362,18 @@ test('review: edit supplier, date and VAT lines, fill totals, save, then approve
     assert.deepEqual(backend.commands('approve')[1].body.payload, { confirm_duplicate: true });
     await page.waitForSelector('#acc-document [data-acc-void]');
     assert.match(await page.textContent('#acc-document .atlas-sheet__desc'), /Unpaid/);
+    // Approved: a read-only list of facts, not disabled inputs.
+    assert.equal(await page.$$eval('#acc-document .acc-doc input, #acc-document .acc-doc select, #acc-document .acc-doc textarea', (nodes) => nodes.length), 0);
+    const facts = await page.$$eval('#acc-document [data-acc-facts] > div', (rows) => Object.fromEntries(rows.map((row) => [row.querySelector('dt').textContent, row.querySelector('dd').textContent])));
+    assert.equal(facts.Supplier, 'Globus hf.');
+    assert.equal(facts.Total, '16.418 kr');
+    assert.equal(facts['Supplier kennitala'], '—');
+    assert.equal(facts['VAT lines'], '24%: 2.963 kr on 12.346 kr · 11%: 110 kr on 1.000 kr');
+    // History: the edit lists what changed, amounts before → after.
+    await page.click('#acc-document .acc-details:last-of-type > summary');
+    const history = await page.textContent('#acc-document .acc-details:last-of-type');
+    assert.match(history, /Edited.*Supplier: — → Globus hf\./s);
+    assert.match(history, /Total: — → 16\.418 kr/);
     await settle(page);
     assert.match(await page.textContent('#accounting-view .acc-body'), /Nothing to review/);
     noErrors(record, [409]);
@@ -350,9 +394,12 @@ test('upload: a PDF paid by a team member needs a person, posts multipart, reads
     assert.equal(await page.isVisible('#acc-upload .acc-payer__who'), true);
     await page.click('#acc-upload [data-acc-start]');
     await page.waitForSelector('#acc-upload [data-acc-error]:not([hidden])');
-    assert.equal(await page.textContent('#acc-upload [data-acc-error]'), 'Choose the team member who paid.');
+    assert.equal(await page.textContent('#acc-upload [data-acc-error-text]'), 'Choose the team member who paid.');
+    assert.equal(await page.getAttribute('#acc-upload [data-acc-error]', 'class'), 'atlas-alert atlas-alert--danger acc-error');
+    assert.equal(await page.getAttribute('#acc-upload #acc-up-payer', 'aria-invalid'), 'true');
     assert.equal(backend.uploads.length, 0, 'nothing is sent without the person');
     await page.selectOption('#acc-upload #acc-up-payer', USERS.bartender.id);
+    assert.equal(await page.getAttribute('#acc-upload #acc-up-payer', 'aria-invalid'), null);
     await page.click('#acc-upload [data-acc-start]');
     await page.waitForSelector('#acc-document.is-open [data-acc-form]');
     await settle(page);
@@ -368,8 +415,12 @@ test('upload: a PDF paid by a team member needs a person, posts multipart, reads
     assert.equal(reads.length, 1, 'Atlas reads it when Atlas AI is on');
     assert.equal(reads[0].body.id, backend.documents[0].id);
     assert.equal(await page.isHidden('#acc-upload'), true, 'a single upload closes the upload sheet');
-    assert.match(await page.textContent('#acc-document .atlas-alert'), /Atlas read this document/);
+    assert.match(await page.textContent('#acc-document .acc-doc__form .atlas-alert'), /Atlas read this document/);
     assert.equal(await page.inputValue('#acc-document #acc-supplier-name'), 'Globus hf.');
+    // Fields Atlas filled say so.
+    const filled = await page.$$eval('#acc-document .acc-filled', (nodes) => nodes.map((node) => node.closest('.atlas-field').querySelector('label').getAttribute('for')));
+    assert.deepEqual(filled, ['acc-supplier-name', 'acc-number', 'acc-date', 'acc-net', 'acc-vat-total', 'acc-total']);
+    assert.equal(await page.textContent('#acc-document .acc-filled'), 'Filled by Atlas');
     assert.equal(await page.isChecked('#acc-document input[name="paid_by"][value="staff"]'), true);
     noErrors(record);
   } finally { await close(); }
@@ -399,6 +450,10 @@ test('unpaid: Mark paid records date, method and reference; Owed to team groups 
     const body = await page.textContent('#accounting-view .acc-body');
     assert.match(body, /Ölgerðin/);
     assert.doesNotMatch(body, /Bónus/, 'staff-paid receipts are not in Unpaid');
+    // Krónur as elsewhere in Atlas, whole in the summary.
+    assert.equal(await page.textContent('#accounting-view .atlas-stat__value'), '50.600 kr');
+    assert.match(await page.textContent(`#accounting-view [data-acc-row="${IDS.unpaid}"] .atlas-row__meta`), /49\.600 kr/);
+    assert.equal(await page.getAttribute(`#accounting-view [data-acc-pay="${IDS.unpaid}"]`, 'aria-label'), 'Mark paid: Ölgerðin');
     await page.click(`#accounting-view [data-acc-pay="${IDS.unpaid}"]`);
     await page.waitForSelector('#acc-pay.is-open form');
     assert.equal(await page.inputValue('#acc-pay #acc-paid-on'), TODAY);
@@ -484,7 +539,8 @@ test('void needs a reason; discard removes a to-review upload', { skip }, async 
     await page.waitForSelector('#acc-reason.is-open form');
     await page.click('#acc-reason [type="submit"]');
     await page.waitForSelector('#acc-reason [data-acc-error]:not([hidden])');
-    assert.equal(await page.textContent('#acc-reason [data-acc-error]'), 'Say why, in a few words.');
+    assert.equal(await page.textContent('#acc-reason [data-acc-error-text]'), 'Say why, in a few words.');
+    assert.equal(await page.getAttribute('#acc-reason #acc-reason-text', 'aria-invalid'), 'true');
     assert.equal(backend.commands('void').length, 0);
     await page.fill('#acc-reason #acc-reason-text', 'Sent twice by the supplier');
     await page.click('#acc-reason [type="submit"]');
@@ -494,6 +550,8 @@ test('void needs a reason; discard removes a to-review upload', { skip }, async 
     assert.match(await page.textContent('#acc-document'), /Sent twice by the supplier/);
     await page.click('#acc-document .atlas-sheet__foot [data-modal-close]');
     await page.waitForFunction(() => document.getElementById('acc-document').hidden);
+    // Closing returns to the tab the sheet was opened from.
+    await page.waitForFunction(() => location.hash === '#accounting/unpaid');
 
     await navigateTo(page, '#accounting');
     await openDoc(page, IDS.review);
@@ -514,42 +572,78 @@ test('void needs a reason; discard removes a to-review upload', { skip }, async 
   } finally { await close(); }
 });
 
-test('export: month picker and a CSV with the header, one row per document and formula-safe cells', { skip }, async () => {
-  const { page, record, close } = await launch();
+test('export: month select, CSV (standard and Icelandic Excel) with a Counted column and formula-safe cells', { skip }, async () => {
+  const backend = accountingBackend();
+  // A void document in August, one approved after August was last exported, and
+  // a document to review dated in July (not counted as waiting for August).
+  backend.documents.push(
+    doc({ id: 'a0000000-0000-4000-8000-000000000011', status: 'void', void_reason: 'Duplicate', supplier_name: 'Nói Síríus', issue_date: '2026-08-15', total_amount: 3000, net_amount: 2419.35, vat_amount: 580.65, vat_lines: [{ rate: 24, net: 2419.35, vat: 580.65 }], exported: true }),
+    doc({ id: 'a0000000-0000-4000-8000-000000000012', supplier_name: 'Innnes', issue_date: '2026-07-10', total_amount: 900 })
+  );
+  backend.documents.find((entry) => entry.id === IDS.paid).exported = true;
+  const { page, record, close } = await launch({ backend });
   try {
     await openAccounting(page, '#accounting/export');
+    const months = await page.$$eval('#accounting-view #acc-month option', (options) => options.map((option) => [option.value, option.textContent]));
+    assert.equal(months.length, 24);
+    assert.deepEqual(months[0], ['2026-09', 'September 2026']);
+    assert.deepEqual(months.at(-1), ['2024-10', 'October 2024']);
     assert.equal(await page.inputValue('#accounting-view #acc-month'), '2026-08', 'defaults to last month');
-    // September first: one approved document (the staff receipt).
-    await page.fill('#accounting-view #acc-month', '2026-09');
-    await page.waitForFunction(() => document.querySelector('#accounting-view #acc-month')?.value === '2026-09');
+    let text = await page.textContent('#accounting-view .acc-export');
+    assert.match(text, /1 document is still to review/, 'only the undated one; July is another month');
+    assert.match(text, /4 documents in this month were approved after it was last exported/);
+    assert.match(text, /Regla, Payday/);
+    assert.match(text, /original files plus the spreadsheet/);
+    // An empty month: nothing to download.
+    await page.selectOption('#accounting-view #acc-month', '2026-06');
+    await settle(page);
+    assert.deepEqual(await page.$$eval('#accounting-view [data-acc-export]', (buttons) => buttons.map((button) => button.disabled)), [true, true, true]);
+    assert.match(await page.textContent('#accounting-view .acc-export'), /Nothing approved is dated in this month/);
+    // September: one approved document (the staff receipt).
+    await page.selectOption('#accounting-view #acc-month', '2026-09');
     await settle(page);
     assert.match(await page.textContent('#accounting-view .atlas-stats'), /Documents\s*1/);
-    await page.fill('#accounting-view #acc-month', '2026-08');
+    await page.selectOption('#accounting-view #acc-month', '2026-08');
     await settle(page);
-    assert.match(await page.textContent('#accounting-view .atlas-stats'), /Documents\s*5/);
+    text = await page.textContent('#accounting-view .atlas-stats');
+    assert.match(text, /Documents\s*5\s*1 void/);
+    assert.match(text, /Total\s*68\.500 kr/, 'whole krónur, void left out');
 
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      page.click('#accounting-view [data-acc-export="csv"]')
-    ]);
+    const [download] = await Promise.all([page.waitForEvent('download'), page.click('#accounting-view [data-acc-export="csv"]')]);
     assert.equal(download.suggestedFilename(), 'Accounting 2026-08.csv');
-    const text = await readFile(await download.path(), 'utf8');
-    assert.equal(text.charCodeAt(0), 0xfeff, 'UTF-8 BOM for spreadsheet apps');
-    const rows = parseCsv(text.slice(1));
-    assert.deepEqual(rows[0], ['Document date', 'Due date', 'Type', 'Supplier', 'Supplier kennitala', 'Number', 'Category', 'Currency', 'Net', 'VAT 24%', 'VAT 11%', 'VAT', 'Total', 'Status', 'Paid on', 'Payment method', 'Payment reference', 'Paid by', 'Void reason', 'Note', 'File']);
+    const csv = await readFile(await download.path(), 'utf8');
+    assert.equal(csv.charCodeAt(0), 0xfeff, 'UTF-8 BOM for spreadsheet apps');
+    const rows = parseCsv(csv.slice(1));
+    const HEADER = ['Document date', 'Due date', 'Type', 'Supplier', 'Supplier kennitala', 'Number', 'Category', 'Currency', 'Net', 'VAT 24%', 'VAT 11%', 'VAT', 'Total', 'Status', 'Counted', 'Paid on', 'Payment method', 'Payment reference', 'Paid by', 'Void reason', 'Note', 'File'];
+    assert.deepEqual(rows[0], HEADER);
     const range = requestsTo(record, FN, 'export')[0];
     assert.equal(new URLSearchParams(range.search).get('from'), '2026-08-01');
     assert.equal(new URLSearchParams(range.search).get('to'), '2026-08-31');
-    assert.equal(rows.length, 1 + 5, 'one row per document');
-    const bySupplier = Object.fromEntries(rows.slice(1).map((row) => [row[3], row]));
+    assert.equal(rows.length, 1 + 6, 'one row per document, the void one included');
+    const col = Object.fromEntries(HEADER.map((name, index) => [name, index]));
+    const bySupplier = Object.fromEntries(rows.slice(1).map((row) => [row[col.Supplier], row]));
     const formula = bySupplier[`'=HYPERLINK("http://evil.example","x")`];
     assert.ok(formula, `formula supplier is prefixed: ${Object.keys(bySupplier)}`);
-    assert.equal(formula[5], "'+99", 'a leading + is neutralised too');
+    assert.equal(formula[col.Number], "'+99", 'a leading + is neutralised too');
+    assert.equal(formula[col.Net], '806.45');
     const paid = bySupplier['Vífilfell'];
-    assert.deepEqual([paid[13], paid[14], paid[15], paid[16], paid[17]], ['Paid', '2026-08-10', 'Bank transfer', 'MB-1', 'The business']);
+    assert.deepEqual(['Status', 'Counted', 'Paid on', 'Payment method', 'Payment reference', 'Paid by'].map((name) => paid[col[name]]), ['Paid', 'Yes', '2026-08-10', 'Bank transfer', 'MB-1', 'The business']);
     const staff = bySupplier['Bónus'];
-    assert.deepEqual([staff[10], staff[12], staff[13], staff[17]], ['396', '4000', 'To reimburse', USERS.bartender.display_name]);
-    await page.waitForFunction(() => /Spreadsheet downloaded: 5 documents/.test(document.querySelector('[data-acc-export-status]')?.textContent || ''));
+    assert.deepEqual(['VAT 11%', 'Total', 'Status', 'Paid by'].map((name) => staff[col[name]]), ['396', '4000', 'To reimburse', USERS.bartender.display_name]);
+    const voided = bySupplier['Nói Síríus'];
+    assert.deepEqual(['Total', 'Status', 'Counted', 'Void reason'].map((name) => voided[col[name]]), ['3000', 'Void', 'No – void', 'Duplicate']);
+    await page.waitForFunction(() => /Spreadsheet downloaded: 6 documents/.test(document.querySelector('[data-acc-export-status]')?.textContent || ''));
+
+    // Icelandic Excel: semicolons between columns, decimal commas.
+    const [excel] = await Promise.all([page.waitForEvent('download'), page.click('#accounting-view [data-acc-export="csv-is"]')]);
+    assert.equal(excel.suggestedFilename(), 'Accounting 2026-08 (Excel).csv');
+    const excelText = await readFile(await excel.path(), 'utf8');
+    const excelRows = parseCsv(excelText.slice(1), ';');
+    assert.deepEqual(excelRows[0], HEADER);
+    assert.ok(excelText.split('\r\n')[0].includes('Document date;Due date;Type'));
+    const excelFormula = excelRows.find((row) => row[col.Supplier].startsWith("'=HYPERLINK"));
+    assert.deepEqual([excelFormula[col.Net], excelFormula[col.VAT], excelFormula[col.Total]], ['806,45', '193,55', '1000']);
+    assert.equal(await page.isDisabled('#accounting-view [data-acc-export="csv"]'), false);
     noErrors(record);
   } finally { await close(); }
 });
@@ -647,9 +741,159 @@ test('#accounting/document/<id> opens that document once the workspace loads', {
     await navigateTo(page, `#accounting/document/${IDS.paid}`);
     await page.waitForSelector('#acc-document.is-open [data-acc-unpay]');
     assert.match(await page.textContent('#acc-document .acc-paid'), /Paid on .* · Bank transfer · MB-1/);
-    assert.equal(await page.isDisabled('#acc-document #acc-total'), true, 'a paid document is read-only');
+    // A paid document reads as facts, not ~15 disabled inputs.
+    assert.equal(await page.$$eval('#acc-document .acc-doc input, #acc-document .acc-doc select', (nodes) => nodes.length), 0);
+    const facts = await page.$$eval('#acc-document [data-acc-facts] > div', (rows) => Object.fromEntries(rows.map((row) => [row.querySelector('dt').textContent, row.querySelector('dd').textContent])));
+    assert.deepEqual([facts.Supplier, facts.Number, facts.Total, facts['Net (án VSK)'], facts['Due date'], facts.Note, facts['Who paid']], ['Vífilfell', '5521', '12.400 kr', '10.000 kr', '—', '—', 'The business']);
     assert.equal(await page.getAttribute('#accounting-view .acc-tabs a[aria-current="page"]', 'href'), '#accounting/all');
     assert.equal(requestsTo(record, FN, 'snapshot').length, 1);
     noErrors(record);
   } finally { await close(); }
+});
+
+test('owed to team: "Mark all reimbursed" asks once, marks each in turn and reports a partial failure', { skip }, async () => {
+  const backend = accountingBackend({ failPay: [IDS.owedSara2] });
+  const { page, record, close } = await launch({ backend });
+  try {
+    await openAccounting(page, '#accounting/owed');
+    const heads = await page.$$eval('#accounting-view .acc-owed', (sections) => sections.map((section) => section.querySelector('[data-acc-pay-all]')?.getAttribute('aria-label') || null));
+    assert.deepEqual(heads, [`Mark all reimbursed: ${USERS.bartender.display_name}`, null], 'only a person with several receipts gets it');
+    await page.click(`#accounting-view [data-acc-pay-all="${USERS.bartender.id}"]`);
+    await page.waitForSelector('#acc-pay.is-open form');
+    assert.match(await page.textContent('#acc-pay form > p'), /2 receipts · 5\.500 kr/);
+    assert.equal(await page.textContent('#acc-pay [type="submit"]'), 'Mark 2 reimbursed');
+    await page.selectOption('#acc-pay #acc-method', 'cash');
+    await page.click('#acc-pay [type="submit"]');
+    await page.waitForSelector('#acc-pay [data-acc-error]:not([hidden])');
+    assert.match(await page.textContent('#acc-pay [data-acc-error-text]'), /^1 of 2 marked reimbursed; 1 couldn’t be\. Accounting is unavailable right now/);
+    const first = backend.commands('mark_paid');
+    assert.deepEqual(first.map((call) => [call.body.id, call.body.payload.payment_method]), [[IDS.owedSara, 'cash'], [IDS.owedSara2, 'cash']]);
+    // Trying again sends only the one that failed.
+    await page.click('#acc-pay [type="submit"]');
+    await page.waitForFunction(() => document.getElementById('acc-pay').hidden);
+    assert.deepEqual(backend.commands('mark_paid').slice(2).map((call) => call.body.id), [IDS.owedSara2]);
+    await settle(page);
+    assert.equal(await page.$$eval('#accounting-view .acc-owed', (sections) => sections.length), 1);
+    noErrors(record, [503]);
+  } finally { await close(); }
+});
+
+test('upload: button waits for the workspace; several files stay listed as row links and Cancel becomes Done', { skip }, async () => {
+  const backend = accountingBackend({ aiEnabled: false, holdSnapshot: true });
+  const { page, record, close } = await launch({ backend, viewport: { width: 390, height: 844 } });
+  try {
+    await page.evaluate(() => { window.AtlasShell.navigate('#accounting'); });
+    await page.waitForSelector('#accounting-view .page-head [data-acc-upload]');
+    assert.equal(await page.isDisabled('#accounting-view .page-head [data-acc-upload]'), true, 'disabled while loading');
+    backend.release();
+    await page.waitForSelector('#accounting-view .acc-tabs a .count');
+    assert.equal(await page.isDisabled('#accounting-view .page-head [data-acc-upload]'), false);
+    // The To review tab doesn't repeat "To review" on every row.
+    assert.equal(await page.$$eval('#accounting-view .acc-body .atlas-pill', (pills) => pills.filter((pill) => pill.textContent === 'To review').length), 0);
+
+    await page.tap('#accounting-view .page-head [data-acc-upload]');
+    await page.waitForSelector('#acc-upload.is-open');
+    const pdf = (name) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from(`%PDF-1.4\n% ${name}\n%%EOF\n`) });
+    await page.setInputFiles('#acc-upload [data-acc-files]', [pdf('one.pdf'), pdf('two.pdf'), pdf('three.pdf')]);
+    const camera = await page.$eval('#acc-upload .acc-camera', (node) => node.getBoundingClientRect().height);
+    assert.ok(camera >= 44, `"Take a photo" keeps its height with a queue (${camera})`);
+    assert.equal(await page.textContent('#acc-upload [data-acc-cancel]'), 'Cancel');
+    await page.tap('#acc-upload [data-acc-start]');
+    await page.waitForFunction(() => document.querySelectorAll('#acc-upload [data-acc-queue] .atlas-row__link[data-acc-q-open]').length === 3);
+    assert.equal(await page.isVisible('#acc-upload'), true, 'several uploads stay listed');
+    assert.equal(await page.textContent('#acc-upload [data-acc-cancel]'), 'Done');
+    const link = await page.$eval('#acc-upload [data-acc-queue] li:nth-child(2) .atlas-row__link', (node) => node.dataset.accQOpen);
+    const box = await page.$eval('#acc-upload [data-acc-queue] li:nth-child(2)', (node) => { const rect = node.getBoundingClientRect(); return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }; });
+    await page.touchscreen.tap(box.x, box.y);
+    await page.waitForSelector('#acc-document.is-open [data-acc-form]');
+    assert.equal(await page.evaluate(() => location.hash), `#accounting/document/${link}`);
+    noErrors(record);
+  } finally { await close(); }
+});
+
+test('phone: the sheet opens at the top on its heading; Back closes it; tabs and the All filter fit', { skip }, async () => {
+  const width = 390;
+  const backend = accountingBackend();
+  // A to-review document Atlas read, with warnings, so the form starts well below the fold.
+  const read = { supplier_name: 'Globus hf.', issue_date: '2026-09-18', total_amount: 13000, net_amount: 10484, vat_amount: 2516, currency: 'ISK', line_items: [] };
+  Object.assign(backend.documents[0], {
+    extraction_status: 'read', extraction: { version: 1, fields: read, prefill: { supplier_name: 'Globus hf.', issue_date: '2026-09-18', total_amount: 13000 } },
+    supplier_name: 'Globus hf.', issue_date: '2026-09-18', total_amount: 12400,
+    checks: { totals_mismatch: true, vat_lines_mismatch: false, order_difference: null, overdue: false, possible_duplicates: [{ id: IDS.paid, document_number: '5521', status: 'paid' }] },
+    history: [
+      { action: 'edited', actor_label: 'Imad El Moubarik', details: { changes: { total_amount: [13000, 12400], note: [null, 'x'] } }, created_at: '2026-09-23T11:00:00.000Z' },
+      { action: 'file_opened', actor_label: 'Imad El Moubarik', details: {}, created_at: '2026-09-23T10:30:00.000Z' },
+      { action: 'uploaded', actor_label: 'Imad El Moubarik', details: {}, created_at: '2026-09-23T10:00:00.000Z' }
+    ]
+  });
+  const { page, record, close } = await launch({ backend, viewport: { width, height: 844 } });
+  try {
+    await openAccounting(page, '#accounting/export');
+    const strip = await page.$eval('#accounting-view .acc-tabs', (node) => {
+      const active = node.querySelector('[aria-current="page"]').getBoundingClientRect(); const box = node.getBoundingClientRect();
+      return { scrolled: node.scrollLeft > 0, visible: active.left >= box.left - 1 && active.right <= box.right + 1 };
+    });
+    assert.deepEqual(strip, { scrolled: true, visible: true }, 'the current tab is scrolled into view');
+
+    await openAccounting(page, '#accounting/all');
+    const toolbar = await page.evaluate(() => {
+      const search = document.querySelector('#accounting-view .acc-toolbar .atlas-search').getBoundingClientRect();
+      const select = document.querySelector('#accounting-view [data-acc-filter-select]');
+      return { search: Math.round(search.width), select: select.getClientRects().length ? Math.round(select.getBoundingClientRect().width) : 0, segmented: document.querySelector('#accounting-view .acc-filter').getClientRects().length };
+    });
+    assert.deepEqual(toolbar, { search: width - 32, select: width - 32, segmented: 0 });
+    await page.selectOption('#accounting-view [data-acc-filter-select]', 'paid');
+    await page.waitForFunction(() => document.querySelectorAll('#accounting-view [data-acc-row]').length === 1);
+    assert.match(await page.textContent('#accounting-view .acc-body .atlas-list'), /Vífilfell/);
+
+    await openAccounting(page, '#accounting');
+    await page.tap(`#accounting-view .atlas-row__link[data-acc-open="${IDS.review}"]`);
+    await page.waitForSelector('#acc-document.is-open [data-acc-form]');
+    await settle(page);
+    const opened = await page.evaluate(() => ({ scrollTop: document.querySelector('#acc-document .atlas-sheet__body').scrollTop, focus: document.activeElement?.id, hash: location.hash }));
+    assert.deepEqual(opened, { scrollTop: 0, focus: 'acc-doc-title', hash: `#accounting/document/${IDS.review}` });
+    // Hints: filled by Atlas where the value is Atlas's; a warning where it differs.
+    const hints = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#acc-document .acc-filled, #acc-document .acc-differs')].map((node) => [`${node.closest('.atlas-field').querySelector('label').getAttribute('for')}:${node.classList.contains('acc-filled') ? 'filled' : 'differs'}`, node.textContent.trim()])));
+    assert.deepEqual(hints, {
+      'acc-supplier-name:filled': 'Filled by Atlas',
+      'acc-date:filled': 'Filled by Atlas',
+      'acc-total:differs': 'Atlas read 13.000 kr. Check it against the document.'
+    });
+    assert.match(await page.textContent('#acc-document [data-acc-file]'), /Opens in a new tab\./);
+    assert.doesNotMatch(await page.textContent('#acc-document [data-acc-file]'), /5 minutes/);
+    // History: no "File opened"; the edit says what changed.
+    const history = await page.$$eval('#acc-document .acc-details:last-of-type li', (rows) => rows.map((row) => row.textContent.replace(/\s+/g, ' ').trim()));
+    assert.equal(history.length, 2);
+    assert.match(history[0], /^Edited ?Total: 13\.000 kr → 12\.400 kr · Note ?Imad/);
+    assert.doesNotMatch(history.join(' '), /File opened/);
+
+    // The phone's Back closes the sheet and returns to the list.
+    await page.goBack();
+    await page.waitForFunction(() => document.getElementById('acc-document').hidden);
+    assert.equal(await page.evaluate(() => location.hash), '#accounting');
+    assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'accounting');
+    noErrors(record);
+  } finally { await close(); }
+});
+
+test('other currencies keep their decimals; ISK reads as krónur', { skip }, async () => {
+  const backend = accountingBackend();
+  backend.documents.push(doc({ id: 'a0000000-0000-4000-8000-000000000013', status: 'approved', supplier_name: 'Amazon EU', issue_date: '2026-09-05', currency: 'EUR', total_amount: 49.9 }));
+  const { page, record, close } = await launch({ backend });
+  try {
+    await openAccounting(page, '#accounting/unpaid');
+    const meta = await page.textContent('#accounting-view [data-acc-row="a0000000-0000-4000-8000-000000000013"] .atlas-row__meta');
+    assert.match(meta, /49[.,]90/);
+    assert.match(meta, /€|EUR/);
+    assert.match(await page.textContent(`#accounting-view [data-acc-row="${IDS.unpaid}"] .atlas-row__meta`), /49\.600 kr/);
+    noErrors(record);
+  } finally { await close(); }
+});
+
+test('stylesheet: the Accounting block uses defined tokens only', { skip }, async () => {
+  const css = await readFile(new URL('../../apps/web/assets/css/purchasing.css', import.meta.url), 'utf8');
+  const tokens = await readFile(new URL('../../apps/web/assets/css/atlas-tokens.css', import.meta.url), 'utf8');
+  const block = css.slice(css.indexOf('S92 Accounting'));
+  const used = [...new Set([...block.matchAll(/var\((--[a-z0-9-]+)/g)].map((match) => match[1]))];
+  assert.deepEqual(used.filter((name) => !tokens.includes(`${name}:`)), []);
 });
