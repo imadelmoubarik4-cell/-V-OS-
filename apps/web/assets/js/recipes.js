@@ -473,11 +473,19 @@
     const options = [...counts.entries()]
       .map(([slug, count]) => ({ slug, count, name: (state.categoryBySlug.get(slug) || categoryFor({ type: slug })).name, order: state.categoryBySlug.get(slug)?.display_order ?? 999 }))
       .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+    const item = (slug, label) => `<li role="none"><button type="button" class="atlas-menu__item" role="menuitemradio" aria-checked="${state.category === slug}" data-recipe-category="${escape(slug)}">${label}</button></li>`;
+    // The menu is rendered outside the toolbar (categoryMenuMarkup): on phones
+    // the toolbar scrolls sideways under a fade mask, and a mask clips every
+    // descendant, fixed popovers included (S91a: the menu never showed).
     const menu = `<ul class="atlas-menu recipe-category-menu" role="menu" id="recipe-category-menu" aria-label="Category" hidden>
-        <li><button type="button" class="atlas-menu__item" role="menuitem" data-recipe-category="all">All categories</button></li>
-        ${options.map((option) => `<li><button type="button" class="atlas-menu__item" role="menuitem" data-recipe-category="${escape(option.slug)}">${escape(option.name)} <span class="atlas-badge atlas-badge--muted">${option.count}</span></button></li>`).join('')}
+        <li class="recipe-category-menu__head" role="none"><span class="atlas-menu__label">Category</span></li>
+        ${item('all', 'All categories')}
+        ${options.map((option) => item(option.slug, `<span class="recipe-category-menu__name">${escape(option.name)}</span> <span class="atlas-badge atlas-badge--muted">${option.count}</span>`)).join('')}
       </ul>`;
-    return `<span class="recipe-category-picker"><button type="button" class="atlas-chip${selected ? ' is-active' : ''}" id="recipe-category-trigger" aria-haspopup="menu" aria-expanded="false">${escape(selected ? selected.name : 'Category')}<i data-lucide="chevron-down"></i></button>${selected ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-recipe-category="all" aria-label="Clear category"><i data-lucide="x"></i></button>` : ''}${menu}</span>`;
+    return {
+      chip: `<span class="recipe-category-picker"><button type="button" class="atlas-chip${selected ? ' is-active' : ''}" id="recipe-category-trigger" aria-haspopup="menu" aria-expanded="false">${escape(selected ? selected.name : 'Category')}<i data-lucide="chevron-down"></i></button>${selected ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-recipe-category="all" aria-label="Clear category"><i data-lucide="x"></i></button>` : ''}</span>`,
+      menu
+    };
   }
 
   function toolbarMarkup(count) {
@@ -485,17 +493,18 @@
     const attention = state.statusFilter === 'attention'
       ? '<button type="button" class="atlas-chip is-active" data-recipe-status="all">Needs attention<span class="atlas-chip__clear" aria-hidden="true"><i data-lucide="x"></i></span><span class="sr-only">Clear</span></button>'
       : '';
+    const category = categoryChipMarkup();
     // Phones get the search on its own row above the filters (spec §8.3).
     return `<label class="atlas-search recipe-search--phone"><i data-lucide="search"></i><input class="atlas-input" type="search" id="recipe-search-phone" placeholder="Search recipes or ingredients" aria-label="Search recipes" value="${escape(state.search)}"></label>
       <div class="atlas-toolbar recipe-toolbar">
         <label class="atlas-search recipe-search--desktop"><i data-lucide="search"></i><input class="atlas-input" type="search" id="recipe-search" placeholder="Search recipes or ingredients" aria-label="Search recipes or ingredients" value="${escape(state.search)}"></label>
         <div class="atlas-segmented" role="group" aria-label="Availability">${segments.map(([key, label]) => `<button type="button" aria-pressed="${state.statusFilter === key}" data-recipe-status="${key}">${label}</button>`).join('')}</div>
         ${attention}
-        ${categoryChipMarkup()}
+        ${category.chip}
         <div class="atlas-toolbar__end"><span>${count} ${count === 1 ? 'recipe' : 'recipes'}</span>
           <div class="atlas-segmented recipe-view-toggle" role="group" aria-label="Layout"><button type="button" aria-pressed="${state.viewMode === 'grid'}" data-recipe-view="grid" aria-label="Grid"><i data-lucide="layout-grid"></i></button><button type="button" aria-pressed="${state.viewMode === 'list'}" data-recipe-view="list" aria-label="List"><i data-lucide="list"></i></button></div>
         </div>
-      </div>`;
+      </div>${category.menu}`;
   }
 
   function tileMarkup(recipe) {
@@ -510,7 +519,7 @@
         ${media}
         <span class="recipe-tile__body">
           <span class="recipe-tile__name">${escape(recipe.name)}</span>
-          <span class="recipe-tile__meta">${escape([category.name, recipe.glassware].filter(Boolean).join(' · '))}</span>
+          <span class="recipe-tile__meta"><span class="recipe-tile__category">${escape(category.name)}</span>${recipe.glassware ? `<span class="recipe-tile__glass"> · ${escape(recipe.glassware)}</span>` : ''}</span>
           <span class="recipe-tile__status"><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span></span>
           ${view.line && view.status.key !== 'ready' ? `<span class="recipe-tile__line">${escape(view.line)}</span>` : ''}
         </span>
@@ -1305,6 +1314,11 @@
     });
     dom.view.addEventListener('click', handleLibraryClick);
     registerWithShell();
+    // The category menu is a popover on desktop and a bottom sheet on phones;
+    // crossing the breakpoint re-binds it in the right mode.
+    window.matchMedia?.('(max-width: 767px)').addEventListener?.('change', () => {
+      if (activeView === 'recipes' && !state.phoneDetail && document.getElementById('recipe-category-menu')?.hidden !== false) renderLibrary();
+    });
     loadCategories().then(() => { if (activeView === 'recipes') render(); });
   }
 
@@ -1334,11 +1348,30 @@
     const trigger = document.getElementById('recipe-category-trigger');
     const menu = document.getElementById('recipe-category-menu');
     if (trigger && menu) {
-      window.AtlasShell?.menu?.(trigger, menu, {
+      // Desktop: a popover under the chip (placed by AtlasShell.menu). Phone:
+      // a bottom sheet placed by recipes.css, so it is never off screen.
+      const handle = window.AtlasShell?.menu?.(trigger, menu, {
+        align: 'start',
+        position: isPhone() ? false : undefined,
         onSelect: (item) => {
           state.category = item?.dataset?.recipeCategory || 'all';
-          renderLibrary();
+          // Re-render after AtlasShell.menu has closed the old menu, then give
+          // focus back to the new chip and keep it in view in the scrolling toolbar.
+          queueMicrotask(() => {
+            renderLibrary();
+            const next = document.getElementById('recipe-category-trigger');
+            next?.focus({ preventScroll: true });
+            revealInToolbar(next?.closest('.recipe-category-picker'));
+          });
         }
+      });
+      // The phone sheet's backdrop is the menu's own ::before: a tap on it lands
+      // on the menu element outside its box, and closes the sheet without
+      // reaching the recipe underneath.
+      menu.addEventListener('click', (event) => {
+        if (event.target !== menu) return;
+        const rect = menu.getBoundingClientRect();
+        if (event.clientY < rect.top || event.clientY > rect.bottom || event.clientX < rect.left || event.clientX > rect.right) handle?.close?.(true);
       });
     }
     if (search) {
@@ -1347,6 +1380,20 @@
       if (next && caret !== null) next.setSelectionRange(caret, caret);
     }
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  // The phone toolbar scrolls sideways and fades under its padding: scroll it
+  // so the whole control sits inside the padding box.
+  function revealInToolbar(control) {
+    const toolbar = control?.closest('.atlas-toolbar');
+    if (!toolbar || toolbar.scrollWidth <= toolbar.clientWidth) return;
+    const style = getComputedStyle(toolbar);
+    const bar = toolbar.getBoundingClientRect();
+    const box = control.getBoundingClientRect();
+    const past = Math.ceil(box.right - (bar.right - parseFloat(style.paddingRight || '0')));
+    const before = Math.floor(box.left - (bar.left + parseFloat(style.paddingLeft || '0')));
+    if (past > 0) toolbar.scrollLeft += past;
+    else if (before < 0) toolbar.scrollLeft += before;
   }
 
   function handleLibraryClick(event) {
