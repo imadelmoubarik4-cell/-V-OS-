@@ -732,7 +732,15 @@ export function createAtlasAiHandler(deps) {
       if (!role || !content || !/^[A-Za-z0-9._:-]{8,128}$/.test(requestId)) {
         throw new ApiError(400, "invalid_request", "Each turn needs a role (user or assistant), text and a client_request_id.");
       }
-      return { role, content, source: "live_voice", items: historyItemsFor({ role, content, status: "complete" }), client_request_id: requestId };
+      // Transcripts come from the browser: stored as client-transcribed and
+      // untrusted, with no evidence, records or proposals (security G5).
+      // Assistant-role turns replay to the model only as quoted transcript.
+      const metadata = { source: "live_voice_client", untrusted: true };
+      return {
+        role, content, source: "live_voice", metadata, evidence: [], records: [], proposals: [],
+        items: historyItemsFor({ role, content, source: "live_voice", metadata, status: "complete" }),
+        client_request_id: requestId,
+      };
     });
     const appended = await services.rpc("atlas_ai_messages_append", { p_conversation_id: conversationId, ...actorArgs(actor), p_messages: messages });
     if (body.ended === true) await touchVoiceSession(actor, body, "end");
