@@ -1,0 +1,3484 @@
+{
+ "source": "Read-only production product snapshot 2026-09-24 (names, categories, packs, aliases; no people, no costs) with synthetic codes and suppliers for the code paths.",
+ "suppliers": [
+  {
+   "id": "5a000000-0000-4000-8000-000000000001",
+   "name": "Synthetic supplier A (spirits)"
+  },
+  {
+   "id": "5a000000-0000-4000-8000-000000000002",
+   "name": "Synthetic supplier B (produce)"
+  },
+  {
+   "id": "5a000000-0000-4000-8000-000000000003",
+   "name": "Synthetic supplier C (drinks)"
+  }
+ ],
+ "items": [
+  {
+   "id": "b0bf2e5e-1594-404d-8b9c-981197627969",
+   "name": "1757 Vermouth",
+   "category": "Vermouth / Aperitivo",
+   "subcategory": "Vermouth",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1000ml",
+   "active": true,
+   "canonical_key": "1757-vermouth"
+  },
+  {
+   "id": "97adecfb-f1c1-4b66-b694-98fe54a0e193",
+   "name": "7UP ZERO",
+   "category": "Soda & Mixer",
+   "subcategory": "Soft Drink",
+   "unit": "units",
+   "size_ml": 330,
+   "package_size": "24 x 330ml",
+   "units_per_case": 24,
+   "active": true
+  },
+  {
+   "id": "10a6fe13-7917-4197-87db-66eeb93167a2",
+   "name": "Amaretto Gozio 700ml",
+   "category": "Liqueur",
+   "subcategory": "Amaretto",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "amaretto",
+   "aliases": [
+    {
+     "alias": "Amaretto",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "a51a27fa-2848-442f-a40a-984acd46c3fa",
+   "name": "Amaro di Angostura",
+   "category": "Liqueur",
+   "subcategory": "Amaro",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "amaro-di-angostura"
+  },
+  {
+   "id": "c208c4a7-e5eb-4a51-9fb6-f8e651644981",
+   "name": "Ananas Purée Capfruit",
+   "category": "Bar Ingredients",
+   "subcategory": "Purée",
+   "unit": "units",
+   "package_weight_g": 1000,
+   "package_size": "2 x 1 kg",
+   "units_per_case": 2,
+   "active": true,
+   "canonical_key": "ananas-puree-capfruit-1kg",
+   "aliases": [
+    {
+     "alias": "Ananas Purée",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "ef1c8e31-b5a5-42a6-88a5-a47cd3f77051",
+   "name": "Angelo Pinot Grigio",
+   "category": "White wine",
+   "subcategory": "Pinot Grigio",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "6 x 750 ml",
+   "units_per_case": 6,
+   "active": true,
+   "canonical_key": "angelo-pinot-grigio"
+  },
+  {
+   "id": "35ec3995-6a49-4930-a222-e1c7ab772bd8",
+   "name": "Angostura Bitters",
+   "category": "Bitters",
+   "subcategory": "Aromatic Bitters",
+   "unit": "bottles",
+   "size_ml": 150,
+   "package_size": "150ml",
+   "active": true
+  },
+  {
+   "id": "78bf19a0-0097-41f8-9b9b-ec9628d7fac0",
+   "name": "Angostura Caribbean Reserva",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": false,
+   "canonical_key": "angostura-caribbean-reserva"
+  },
+  {
+   "id": "75e9f1b7-368e-472c-9920-06df0795efe5",
+   "name": "Antica Formula Vermouth",
+   "category": "Vermouth / Aperitivo",
+   "subcategory": "Vermouth",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750 ml",
+   "active": true,
+   "canonical_key": "antica-formula-vermouth",
+   "aliases": [
+    {
+     "alias": "Sweet Vermouth",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "68f8fabf-3076-4ac9-8f6b-0e5f70dec93e",
+   "name": "Aperol Aperitivo",
+   "category": "Vermouth / Aperitivo",
+   "subcategory": "Aperitivo",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1 bottle / 1,000 ml",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "aperol",
+   "supplier_id": "5a000000-0000-4000-8000-000000000001",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "8004400000518",
+     "pack_level": "unit",
+     "status": "active"
+    },
+    {
+     "kind": "supplier_ref",
+     "code": "APE-1000",
+     "supplier_id": "5a000000-0000-4000-8000-000000000001",
+     "status": "active"
+    }
+   ],
+   "aliases": [
+    {
+     "alias": "Aperol",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "5d7b3272-c1ca-43ad-8895-77e8a705468c",
+   "name": "Appelsín",
+   "category": "Soda & Mixer",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "24 x 330ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "applecin-with-sugar"
+  },
+  {
+   "id": "f6b3be51-b6e7-4f4f-953a-be3594c1ba57",
+   "name": "Appelsín án sykurs",
+   "category": "Soda & Mixer",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "24 x 330ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "applecin-no-sugar"
+  },
+  {
+   "id": "515d99e8-ffe2-40d7-b952-dd2c6562b291",
+   "name": "Apple Juice (Floridana)",
+   "category": "Soda & Mixer",
+   "unit": "units",
+   "size_ml": 250,
+   "package_size": "24 x 250ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "apple-juice-floridana"
+  },
+  {
+   "id": "abcecfba-1d9d-4764-88c3-805921d3e738",
+   "name": "Ardbeg 10yo",
+   "category": "Whiskey",
+   "subcategory": "Scotch Whisky",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "ardbeg-10yo"
+  },
+  {
+   "id": "1dd63d9c-bffd-4733-a074-0c514a76ff0c",
+   "name": "Bacardi Carta Blanca",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "bacardi-carta-blanca"
+  },
+  {
+   "id": "332d798e-2f3c-44b5-89b4-76a3d354c825",
+   "name": "Bacardi Diez 700ml",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "bacardi-gran-reserva-10yo"
+  },
+  {
+   "id": "b3e281c8-7387-41f7-8f85-8f4cee718eb8",
+   "name": "Bacardi Oro 700ml",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "bacardi-carta-oro"
+  },
+  {
+   "id": "ad78ca3b-e0f8-4589-a323-971c0a8827c8",
+   "name": "Bacardi Spiced 700ml",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "bacardi-spiced",
+   "aliases": [
+    {
+     "alias": "Bacardi Spiced",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "74573f95-293f-4dd4-9c02-2388267f56e0",
+   "name": "Bailey's Original",
+   "category": "Liqueur",
+   "subcategory": "Cream Liqueur",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1 L",
+   "active": true,
+   "canonical_key": "baileys",
+   "aliases": [
+    {
+     "alias": "Baileys",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "b4528c24-0ce6-4b8e-950e-6ce1500c1a94",
+   "name": "BARA Maracuja og Lime",
+   "category": "Beer & Cider",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "24 x 330 ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "bara maracuja lime",
+   "aliases": [
+    {
+     "alias": "Bara Passionfruit",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "772268e6-939a-4215-9b8e-a678dca18d83",
+   "name": "BARA Strawberry Lime",
+   "category": "Beer & Cider",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "24 x 330 ml",
+   "units_per_case": 24,
+   "active": true
+  },
+  {
+   "id": "ea21f153-a78e-4923-8621-c332a2b59ed5",
+   "name": "Barista Regular Milk",
+   "category": "Milk",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": false,
+   "canonical_key": "barista-regular-milk"
+  },
+  {
+   "id": "6692a9cc-0b00-49c2-8282-64f2682e70e5",
+   "name": "Basil 1 kg",
+   "category": "Fresh Herbs",
+   "unit": "units",
+   "package_weight_g": 1000,
+   "package_size": "1 kg",
+   "active": false,
+   "aliases": [
+    {
+     "alias": "Basil",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "57a1d4d8-7e18-493d-b446-b38dc6ca31ff",
+   "name": "Basil 50 g",
+   "category": "Fresh Herbs",
+   "subcategory": "Basil",
+   "unit": "packs",
+   "package_weight_g": 50,
+   "package_size": "50 g",
+   "active": true
+  },
+  {
+   "id": "d9f3190e-96c2-4f22-93b2-dbd33ef77730",
+   "name": "Basil Syrup",
+   "category": "Syrups",
+   "subcategory": "Prep Syrup",
+   "unit": "liters",
+   "size_ml": 2000,
+   "package_size": "2L prep batch",
+   "active": true,
+   "canonical_key": "basil-syrup"
+  },
+  {
+   "id": "cf9508c5-9069-40fe-8c30-dad12651ef9b",
+   "name": "Beefeater Pink 700ml",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "beefeater-pink-strawberry"
+  },
+  {
+   "id": "f040a2c9-dbc2-4ed2-93ae-fd06a7de8ce5",
+   "name": "Black Cocktail Napkins 20cm 3-ply (150 pcs)",
+   "category": "Consumables",
+   "subcategory": "Napkins",
+   "unit": "packs",
+   "package_size": "150 pcs",
+   "units_per_case": 24,
+   "active": true
+  },
+  {
+   "id": "5dd0fc82-5be0-4040-b9b6-28909f5be856",
+   "name": "Black Coffee Cup Lids 12oz (1000 pcs)",
+   "category": "Consumables",
+   "subcategory": "Takeaway Cup Lids",
+   "unit": "boxes",
+   "package_size": "1000 pcs",
+   "units_per_case": 1,
+   "active": true
+  },
+  {
+   "id": "531a8cd4-12d6-45c1-8840-08579c2d3a15",
+   "name": "Black Fiber Straws 5x140mm (250 pcs)",
+   "category": "Consumables",
+   "subcategory": "Straws",
+   "unit": "packs",
+   "package_size": "250 pcs",
+   "units_per_case": 40,
+   "active": true,
+   "codes": [
+    {
+     "kind": "sku",
+     "code": "STR-5140-250",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "ac13ec49-f144-40a9-bf2a-f6aad0cb5de2",
+   "name": "Black Fiber Straws 8x230mm (200 pcs)",
+   "category": "Consumables",
+   "subcategory": "Straws",
+   "unit": "packs",
+   "package_size": "200 pcs",
+   "active": true
+  },
+  {
+   "id": "5eb8f256-d136-4e8b-beec-d1bc90454cec",
+   "name": "Boli Keg",
+   "category": "Beer & Cider",
+   "subcategory": "Keg",
+   "unit": "kegs",
+   "size_ml": 25000,
+   "package_size": "25 L keg",
+   "units_per_case": 1,
+   "active": true
+  },
+  {
+   "id": "48d406be-cd16-449f-87b0-48c421166633",
+   "name": "Boli X Keg",
+   "category": "Beer & Cider",
+   "subcategory": "Keg",
+   "unit": "kegs",
+   "size_ml": 25000,
+   "package_size": "25 L keg",
+   "units_per_case": 1,
+   "active": true
+  },
+  {
+   "id": "800b96ec-8296-4534-a89f-8d0001900044",
+   "name": "Bombay Gin",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1,000 ml",
+   "active": true,
+   "canonical_key": "bombay-sapphire",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "5011032000017",
+     "pack_level": "unit",
+     "status": "retired"
+    }
+   ],
+   "aliases": [
+    {
+     "alias": "Bombay Sapphire",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "89f95b2f-bb0b-45f1-88b4-a01206cb3766",
+   "name": "BOTANICA Dried Pineapple",
+   "category": "Other",
+   "unit": "units",
+   "package_weight_g": 150,
+   "package_size": "150 g",
+   "active": false
+  },
+  {
+   "id": "7ca097a8-99fb-4672-9f8f-db1812f06f22",
+   "name": "BOTANICA Very Aquafaba Vloeba",
+   "category": "Bar Ingredients",
+   "unit": "units",
+   "package_weight_g": 1000,
+   "package_size": "1 kg / 1 unit",
+   "units_per_case": 1,
+   "active": true
+  },
+  {
+   "id": "48ef228e-3842-4f2e-94c0-281839243953",
+   "name": "BOTANICA Þurrkaður Ananas 150g",
+   "category": "Garnish",
+   "subcategory": "Dehydrated Fruit",
+   "unit": "packs",
+   "package_weight_g": 150,
+   "package_size": "150g",
+   "active": true,
+   "canonical_key": "dehydrated-pineapple"
+  },
+  {
+   "id": "a8c68402-2b4c-4d29-ba81-64eee2263ea3",
+   "name": "Bottega Limoncello",
+   "category": "Liqueur",
+   "subcategory": "Citrus Liqueur",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "500 ml",
+   "active": true,
+   "canonical_key": "limoncello",
+   "aliases": [
+    {
+     "alias": "Limoncello",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "bbec6d28-419e-4162-a52e-1c8ccb813359",
+   "name": "Bottega Limoncino Non Alco",
+   "category": "Liqueur",
+   "subcategory": "Alcohol-Free Liqueur",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "1 bottle / 500 ml",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "alcohol-free-limoncello",
+   "aliases": [
+    {
+     "alias": "Alcohol-Free Limoncello",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "e6412b44-acdc-4594-8b05-0b4bd3ec9428",
+   "name": "Bottega Non-Alco Bianco",
+   "category": "Sparkling",
+   "subcategory": "Alcohol-Free Sparkling",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "6 x 750 ml",
+   "units_per_case": 6,
+   "active": true,
+   "canonical_key": "bottega-non-alco-bianco",
+   "aliases": [
+    {
+     "alias": "Alcohol-Free Sparkling",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "e01b2f8d-646f-4f50-a8ce-bd0f51464252",
+   "name": "Brennivín Original",
+   "category": "Aquavit / Brennivín",
+   "subcategory": "Brennivín",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "brenniv-n-original"
+  },
+  {
+   "id": "3ea1ddcb-6670-4aa8-90bf-a671c12b3172",
+   "name": "Brennivín Rúgbrauð Edition 700ml",
+   "category": "Aquavit / Brennivín",
+   "subcategory": "Brennivín",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "brenniv-n-bread-edition"
+  },
+  {
+   "id": "97c21577-2ea0-49cc-95be-c82f3e471391",
+   "name": "Bríó Alcohol-Free",
+   "category": "Beer & Cider",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "330ml can",
+   "units_per_case": 10,
+   "active": true
+  },
+  {
+   "id": "755c59a9-858e-4e9f-b620-95450b7be110",
+   "name": "Britvic Ginger Ale",
+   "category": "Soda & Mixer",
+   "unit": "cans",
+   "size_ml": 200,
+   "package_size": "24 x 200ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "ginger-ale"
+  },
+  {
+   "id": "0ced6b4c-4c03-40b7-9c3d-6b7450e7f898",
+   "name": "Britvic Ginger Beer",
+   "category": "Soda & Mixer",
+   "unit": "units",
+   "size_ml": 200,
+   "package_size": "24 x 200ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "ginger-beer",
+   "aliases": [
+    {
+     "alias": "Ginger Beer — top",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "41695856-a105-4a02-934b-8a0671fca47a",
+   "name": "Britvic Tonic 200ml",
+   "category": "Soda & Mixer",
+   "unit": "cans",
+   "size_ml": 200,
+   "package_size": "24 x 200ml",
+   "units_per_case": 24,
+   "brand": "Britvic",
+   "active": true,
+   "canonical_key": "tonic-water",
+   "supplier_id": "5a000000-0000-4000-8000-000000000003",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "5000112000016",
+     "pack_level": "unit",
+     "status": "active"
+    },
+    {
+     "kind": "gtin",
+     "code": "15000112000013",
+     "pack_level": "case",
+     "units_in_pack": 24,
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "790c5e05-3175-43c8-8a5c-5f3da1406363",
+   "name": "Bulleit Bourbon",
+   "category": "Whiskey",
+   "subcategory": "Bourbon",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "bulleit-bourbon"
+  },
+  {
+   "id": "d86b116f-591f-4dc8-8fee-616a0dac3e35",
+   "name": "Bulleit Rye",
+   "category": "Whiskey",
+   "subcategory": "Rye",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "bulleit-rye"
+  },
+  {
+   "id": "156c49bb-3d61-4213-9d7b-3317179cbe8d",
+   "name": "Cacao",
+   "category": "Coffee & Hot Drinks",
+   "unit": "kg",
+   "package_size": "Kg",
+   "active": false
+  },
+  {
+   "id": "ad3def57-8e25-4571-b2e9-ffd58804317e",
+   "name": "Campari",
+   "category": "Vermouth / Aperitivo",
+   "subcategory": "Aperitivo",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1000ml",
+   "active": true,
+   "canonical_key": "campari",
+   "supplier_id": "5a000000-0000-4000-8000-000000000001",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "8000040000802",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "885a78dc-f0c5-4a5c-a73a-7f5ecac5a6cc",
+   "name": "Carlsberg 0.0%",
+   "category": "Beer & Cider",
+   "subcategory": "Alcohol-Free Beer",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "24 x 330 ml",
+   "units_per_case": 24,
+   "active": true
+  },
+  {
+   "id": "55ecabf2-6cf5-4a67-9770-8cc7d0730f93",
+   "name": "Cartron Banana",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cartron-banana"
+  },
+  {
+   "id": "b5764390-2237-4985-bca5-f31691257d83",
+   "name": "Cartron Cacao",
+   "category": "Liqueur",
+   "subcategory": "Chocolate Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cartron-cacao"
+  },
+  {
+   "id": "a9d1ecf2-5880-4cb1-975e-581c6bbc7dee",
+   "name": "Cartron Crème de Cassis",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cartron-cr-me-de-cassis"
+  },
+  {
+   "id": "c2f3f3b1-69f7-4b4d-ad00-2966eba73101",
+   "name": "Cartron Crème de Myrtille",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cartron-cr-me-de-myrtille"
+  },
+  {
+   "id": "4081edf7-8f5e-438b-be96-9f49690bf184",
+   "name": "Cartron Curaçao Blue",
+   "category": "Liqueur",
+   "subcategory": "Blue Curaçao",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cartron-cura-ao-blue"
+  },
+  {
+   "id": "f36b4b6e-6ffd-4aba-b592-ea3a21683bf2",
+   "name": "Cartron Fraise des Bois",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "33571cf3-d086-4df5-920b-6664a696bc59",
+   "name": "Cartron Mango",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cartron-mango"
+  },
+  {
+   "id": "7260318b-2835-499d-a8de-5904fe426f1c",
+   "name": "Cartron Miel",
+   "category": "Liqueur",
+   "subcategory": "Honey Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cartron-miel"
+  },
+  {
+   "id": "0eca868b-0e1d-42e2-ba63-d303f79de5a8",
+   "name": "Cartron Pastèque",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "6377a115-4f95-4337-9215-4ddd50b31c8c",
+   "name": "Cartron Pêche de Vigne",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "fbf556d9-bc3f-413e-a27c-50a84d5f722e",
+   "name": "Cartron Pomme Verte",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cartron-pomme-verte"
+  },
+  {
+   "id": "d349b1ed-748e-4ded-a806-7388535374fa",
+   "name": "Cartron Sureau",
+   "category": "Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": false,
+   "canonical_key": "cartron-sureau"
+  },
+  {
+   "id": "46a6ddb3-8dc2-4ca2-b5f8-697c651185a1",
+   "name": "Cartron Violette",
+   "category": "Liqueur",
+   "subcategory": "Floral Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cartron-violette"
+  },
+  {
+   "id": "7df65fd1-00c2-4228-8d2d-9d1a4ec14738",
+   "name": "Casamigos Tequila Blanco 700ml",
+   "category": "Tequila / Mezcal",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "casamigos-blanco"
+  },
+  {
+   "id": "e18e3c4b-3364-4a55-a0da-4fbc9f25fb05",
+   "name": "Casamigos Tequila Reposado 700ml",
+   "category": "Tequila / Mezcal",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "casamigos-reposado"
+  },
+  {
+   "id": "4745f6df-c997-48f1-b6f8-9f4963a37b69",
+   "name": "Castillo de Molina Cabernet Sauvignon",
+   "category": "Red wine",
+   "subcategory": "Cabernet Sauvignon",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "6 x 750 ml",
+   "units_per_case": 6,
+   "active": true,
+   "canonical_key": "castillo-de-molina-cabernet-sauvignon"
+  },
+  {
+   "id": "c1bfb179-1f0e-4b3b-b05e-7a465f2b75a4",
+   "name": "Chambord",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "500ml",
+   "active": true,
+   "canonical_key": "chambord"
+  },
+  {
+   "id": "3dd6ed70-9438-478b-b767-4bb6ae8fe838",
+   "name": "Cherries",
+   "category": "Garnish",
+   "unit": "kg",
+   "package_weight_g": 2000,
+   "package_size": "6 x 2 kg",
+   "units_per_case": 6,
+   "active": false
+  },
+  {
+   "id": "e9c4237c-de34-4154-941b-25a9b78a00aa",
+   "name": "Chili Powder",
+   "category": "Garnish",
+   "unit": "units",
+   "active": false,
+   "canonical_key": "chili-powder",
+   "aliases": [
+    {
+     "alias": "Chili Powder",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "1b37bb99-e7da-49b7-b3f9-c64adc527ca6",
+   "name": "Chivas Regal 18yo",
+   "category": "Whiskey",
+   "subcategory": "Scotch Whisky",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "chivas-regal-18yo"
+  },
+  {
+   "id": "9ab298aa-fcde-4f6f-8574-e4d91e34ca59",
+   "name": "Chupa Chups",
+   "category": "Bar Ingredients",
+   "unit": "units",
+   "package_weight_g": 250,
+   "package_size": "250 g",
+   "active": true,
+   "canonical_key": "chupa-chups-250g"
+  },
+  {
+   "id": "965e9e5d-9ca9-4b0e-84c5-9670855e8001",
+   "name": "Chupa Chups Infused Patrón",
+   "category": "Bar Ingredients",
+   "subcategory": "Infusion Prep",
+   "unit": "ml",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "chupa-chups-infused-patron"
+  },
+  {
+   "id": "4999dc36-0697-4eb1-bbc7-9003a75298d8",
+   "name": "City Coffee Cups 12oz (640 pcs)",
+   "category": "Consumables",
+   "subcategory": "Takeaway Cups",
+   "unit": "boxes",
+   "package_size": "640 pcs",
+   "units_per_case": 1,
+   "active": true
+  },
+  {
+   "id": "c18334f4-2c66-4cab-9651-090845e26664",
+   "name": "Clear Plastic Cups 250ml (1250 pcs)",
+   "category": "Consumables",
+   "unit": "boxes",
+   "size_ml": 250,
+   "package_size": "1250 pcs",
+   "units_per_case": 1,
+   "active": true
+  },
+  {
+   "id": "e58f60fa-4526-48e9-8595-aae6a78ee73a",
+   "name": "Coca-Cola Regular",
+   "category": "Soda & Mixer",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "20 x 330 ml cans",
+   "units_per_case": 20,
+   "active": true,
+   "canonical_key": "coca-cola-regular"
+  },
+  {
+   "id": "d8c0b301-cd06-47f5-ac41-e0553d4914fe",
+   "name": "Coca-Cola Zero",
+   "category": "Soda & Mixer",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "20 x 330ml",
+   "units_per_case": 20,
+   "active": true,
+   "canonical_key": "coca-cola-zero",
+   "supplier_id": "5a000000-0000-4000-8000-000000000003",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "5449000130723",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "4904ce86-e956-42e5-a273-cfc6ea24dbe3",
+   "name": "Cointreau",
+   "category": "Liqueur",
+   "subcategory": "Orange Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cointreau"
+  },
+  {
+   "id": "c8ac3625-a4b4-4794-8637-71f240a0cd13",
+   "name": "Cointreau Cassis",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "cointreau-cassis"
+  },
+  {
+   "id": "512f218a-ff1c-4717-b7b1-a013e2efa8f7",
+   "name": "COLLAB Ástaraldin og límóna",
+   "category": "Soda & Mixer",
+   "subcategory": "Energy Drink",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "24 x 330ml",
+   "units_per_case": 24,
+   "brand": "COLLAB",
+   "active": true
+  },
+  {
+   "id": "b0abb754-b671-4185-a48c-0a3896a3f9b4",
+   "name": "Cookies dökkar með súkkulaðibitum 80g",
+   "category": "Dessert",
+   "subcategory": "Cookie",
+   "unit": "cookies",
+   "package_weight_g": 3200,
+   "package_size": "40 x 80 g (3.2 kg)",
+   "units_per_case": 40,
+   "active": true
+  },
+  {
+   "id": "859c457d-d16f-4d7e-9577-bf4f5f9072de",
+   "name": "Decaff",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Decaf Coffee",
+   "unit": "packs",
+   "package_size": "250gr",
+   "active": true
+  },
+  {
+   "id": "dd307377-b40c-426a-9f39-f5aab42ab343",
+   "name": "Dehydrated Apple",
+   "category": "Garnish",
+   "subcategory": "Dehydrated Fruit",
+   "unit": "packs",
+   "package_size": "Pack",
+   "active": true
+  },
+  {
+   "id": "122a2131-db51-4872-a746-936bf6e27c00",
+   "name": "Dehydrated Chili",
+   "category": "Garnish",
+   "subcategory": "Dehydrated Spice",
+   "unit": "packs",
+   "package_size": "Pack",
+   "active": true
+  },
+  {
+   "id": "75e6704a-4515-4308-9d49-8e61e45817cd",
+   "name": "Dehydrated Lime",
+   "category": "Garnish",
+   "unit": "packs",
+   "active": false,
+   "canonical_key": "dehydrated-lime"
+  },
+  {
+   "id": "663d5499-f24f-4186-b89f-a89e0af28972",
+   "name": "Dehydrated Pear",
+   "category": "Garnish",
+   "subcategory": "Dehydrated Fruit",
+   "unit": "packs",
+   "package_size": "Pack",
+   "active": true
+  },
+  {
+   "id": "b0447cf8-11c7-4b1e-893c-f554e89a8d23",
+   "name": "Del Maguey VIDA",
+   "category": "Tequila / Mezcal",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750ml",
+   "active": false,
+   "canonical_key": "del-maguey-vida"
+  },
+  {
+   "id": "d4bb8435-f44a-4ae0-b535-4b66ced6055f",
+   "name": "Demerara Raw Sugar 1kg",
+   "category": "Bar Ingredients",
+   "subcategory": "Sugar",
+   "unit": "kg",
+   "package_weight_g": 1000,
+   "package_size": "1 kg",
+   "units_per_case": 10,
+   "active": true,
+   "canonical_key": "demerara-raw-sugar",
+   "codes": [
+    {
+     "kind": "sku",
+     "code": "DEM-RAW-1KG",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "40598b7b-3239-40cc-9667-c687f59efb0a",
+   "name": "Demerara Sugar Cube",
+   "category": "Bar Ingredients",
+   "unit": "units",
+   "active": false,
+   "canonical_key": "demerara-sugar-cube",
+   "aliases": [
+    {
+     "alias": "Demerara Sugar Cube",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "d27f5e6b-0fa9-4ceb-8fd8-09b164ed8482",
+   "name": "Demerara Sugar Cubes 500g",
+   "category": "Bar Ingredients",
+   "subcategory": "Sugar",
+   "unit": "packs",
+   "package_weight_g": 500,
+   "package_size": "500g",
+   "units_per_case": 10,
+   "active": true,
+   "canonical_key": "sugar-cubes"
+  },
+  {
+   "id": "ae0e6f44-df27-421e-b9b4-fab2ddd80355",
+   "name": "Diadem Pear Purée Base",
+   "category": "Prep / Fruit",
+   "unit": "kg",
+   "package_weight_g": 1000,
+   "package_size": "1kg costing unit",
+   "active": false,
+   "canonical_key": "diadem-pear-puree-base",
+   "aliases": [
+    {
+     "alias": "Pear Purée",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "003ceafd-062e-4547-a5c8-a8af09593c11",
+   "name": "Dolin Vermouth",
+   "category": "Vermouth / Aperitivo",
+   "subcategory": "Vermouth",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750ml",
+   "active": true,
+   "canonical_key": "dolin-vermouth"
+  },
+  {
+   "id": "f339b8b1-b1ab-434a-a293-392e5c751dc6",
+   "name": "Dom Bénédictine",
+   "category": "Liqueur",
+   "subcategory": "Herbal Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "dom-b-n-dictine"
+  },
+  {
+   "id": "485db7be-b60c-411f-b676-9cb1d1016538",
+   "name": "Don Simon Cranberry Juice",
+   "category": "Soda & Mixer",
+   "subcategory": "Juice",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "12 x 1 L",
+   "units_per_case": 12,
+   "active": false
+  },
+  {
+   "id": "f5daee2f-d36b-4ba8-a65a-501872b58f29",
+   "name": "Don Simon Disfruta eplasafi / Apple Juice",
+   "category": "Soda & Mixer",
+   "subcategory": "Juice",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "12 x 1 L (1 L carton)",
+   "units_per_case": 12,
+   "active": true,
+   "canonical_key": "apple-juice"
+  },
+  {
+   "id": "13d99007-8e87-40d0-b5c3-f4cdba6dd78c",
+   "name": "Don Simon Orange Juice",
+   "category": "Soda & Mixer",
+   "subcategory": "Juice",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "12 x 1 L",
+   "units_per_case": 12,
+   "active": true,
+   "canonical_key": "don-simon-appelsinusafi-1l-78110006000"
+  },
+  {
+   "id": "02e5553e-e23c-446f-a32f-4b62567ef837",
+   "name": "Don Simon trönuberjasafi 1L",
+   "category": "Soda & Mixer",
+   "subcategory": "Juice",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "units_per_case": 12,
+   "active": true,
+   "canonical_key": "cranberry-juice",
+   "aliases": [
+    {
+     "alias": "Don Simon Cranberry Juice",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "bbd50cbf-7ee6-4195-a65c-5b3d61d064fd",
+   "name": "Elephant Gin",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "500ml",
+   "active": false,
+   "canonical_key": "elephant-gin"
+  },
+  {
+   "id": "c2d0aada-cad3-4fd2-9b3d-0f82c526f3a4",
+   "name": "Eminente Ron de Cuba 700ml",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "eminente-ron-de-cuba-7yo"
+  },
+  {
+   "id": "24b81cad-a838-434f-bf4f-2ac3cdffcd80",
+   "name": "English Breakfast Tea 20 stk",
+   "category": "Coffee & Hot Drinks",
+   "unit": "boxes",
+   "package_size": "20 tea bags",
+   "units_per_case": 6,
+   "active": false,
+   "canonical_key": "english-breakfast-tea-20stk-2092400gl"
+  },
+  {
+   "id": "8e2a44b1-1f00-41ca-93db-7837de747f2b",
+   "name": "Eplapæ / Apple Cake",
+   "category": "Dessert",
+   "subcategory": "Cake",
+   "unit": "pies",
+   "package_weight_g": 1000,
+   "package_size": "5 x 1 kg",
+   "units_per_case": 5,
+   "active": true,
+   "canonical_key": "eplapae-10-sneidar-430b181c10"
+  },
+  {
+   "id": "71d83bbd-07c9-4d3b-99ee-7e6113b92986",
+   "name": "Espolon Blanco Tequila 700ml",
+   "category": "Tequila / Mezcal",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "a76cc4e4-04c3-4710-b593-576228c22507",
+   "name": "Fernet Branca",
+   "category": "Liqueur",
+   "subcategory": "Amaro",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "fernet-branca"
+  },
+  {
+   "id": "bfb3e08d-bacd-4684-833e-0ebb49006dbb",
+   "name": "Fever-Tree Pink Grapefruit Soda",
+   "category": "Soda & Mixer",
+   "unit": "units",
+   "size_ml": 200,
+   "package_size": "24 x 200ml",
+   "units_per_case": 24,
+   "brand": "Fever-Tree",
+   "active": true,
+   "canonical_key": "grapefruit-tonic",
+   "supplier_id": "5a000000-0000-4000-8000-000000000003",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "5060108450027",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "586488b3-84ec-4599-91f2-644ad093d0f8",
+   "name": "Finlandia",
+   "category": "Vodka",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1000 ml",
+   "active": true,
+   "canonical_key": "finlandia"
+  },
+  {
+   "id": "c7ebc073-5c5c-4a57-8d45-f363a21b3e82",
+   "name": "Floridana Appelsínusafi",
+   "category": "Soda & Mixer",
+   "unit": "units",
+   "size_ml": 250,
+   "package_size": "24 x 250ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "orange-juice-floridana"
+  },
+  {
+   "id": "b3cfa0f5-c642-40a2-b70a-71e5d66243a2",
+   "name": "Four Roses Single Barrel",
+   "category": "Whiskey",
+   "subcategory": "Bourbon",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "four-roses-single-barrel"
+  },
+  {
+   "id": "3c854ae5-1e52-40d1-b885-c55308cec557",
+   "name": "Francois Martenot Pinot Noir",
+   "category": "Red wine",
+   "subcategory": "Pinot Noir",
+   "unit": "bottles",
+   "active": true,
+   "canonical_key": "francois-martenot-pinot-noir"
+  },
+  {
+   "id": "16343ebb-5db5-4371-bacd-eda3f6b61391",
+   "name": "Frangelico",
+   "category": "Liqueur",
+   "subcategory": "Nut Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "frangelico"
+  },
+  {
+   "id": "4c628de4-38c0-423f-a6e3-6a4c07d0ee6b",
+   "name": "Fresh Orange Juice",
+   "category": "Bar Ingredients",
+   "subcategory": "Fresh Juice Prep",
+   "unit": "liters",
+   "size_ml": 1000,
+   "package_size": "1L costing unit",
+   "active": true,
+   "canonical_key": "fresh-orange-juice"
+  },
+  {
+   "id": "dba84611-9d19-4be7-9521-3441b0cc860e",
+   "name": "Frontera Chardonnay",
+   "category": "White wine",
+   "subcategory": "Chardonnay",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750ml",
+   "active": true,
+   "canonical_key": "frontera-chardonnay"
+  },
+  {
+   "id": "f989353c-0cdc-4f0e-9367-584d2d539318",
+   "name": "G mjólk",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Dairy Milk",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "12 x 1 L",
+   "units_per_case": 12,
+   "active": true,
+   "canonical_key": "g-mjolk-1l"
+  },
+  {
+   "id": "a0e9d9c1-05f1-4847-b21c-1567c2cd71ae",
+   "name": "Gato Negro",
+   "category": "Red wine",
+   "subcategory": "Cabernet Sauvignon",
+   "unit": "bottles",
+   "active": true,
+   "aliases": [
+    {
+     "alias": "Gato Negro Cabernet",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "0e1e3e68-8984-4d1f-8bca-646b289f6f00",
+   "name": "Giffard Ananas",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true
+  },
+  {
+   "id": "3f7c1c92-b24a-438e-8761-6c7ccbb4c936",
+   "name": "Giffard Banana Syrup 1L",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "giffard-banana",
+   "aliases": [
+    {
+     "alias": "Giffard Banana",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "4802399f-8f46-4f40-9030-e9716f7dbc52",
+   "name": "Giffard Caramel",
+   "category": "Syrups",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": false,
+   "canonical_key": "giffard-caramel",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "3590714000047",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "6f838c0b-8e38-407d-89c6-af054bd4ed81",
+   "name": "Giffard Mango",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "giffard-mango",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "3590714000030",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "94121ccf-f242-4b3c-a537-22a9ac6517fc",
+   "name": "Giffard Möndlusíróp / Orgeat",
+   "category": "Syrups",
+   "subcategory": "Orgeat",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1,000 ml",
+   "active": true
+  },
+  {
+   "id": "80bb0981-ce02-4576-828a-57717ca6d98b",
+   "name": "Giffard Noix de Coco / Coconut Syrup",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1 L",
+   "active": true,
+   "canonical_key": "giffard-noix-de-coco",
+   "aliases": [
+    {
+     "alias": "Giffard de Coco",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "fb2815de-93d0-4785-ba26-a2c52e87cdb7",
+   "name": "Giffard Peach Syrup 1L",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "giffard-peach",
+   "aliases": [
+    {
+     "alias": "Giffard Peach",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "3808330b-a3d9-4cc9-8884-273604c7e523",
+   "name": "Giffard Pistachio",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true
+  },
+  {
+   "id": "e9524d92-f463-46e1-99de-43557a2a4029",
+   "name": "Giffard Salted Caramel Syrup",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1 L",
+   "units_per_case": 1,
+   "brand": "Giffard",
+   "active": true,
+   "canonical_key": "giffard-salted-caramel-syrup",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "3590714000023",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "680c3b8d-7413-4cb6-91c8-70229665c23e",
+   "name": "Giffard Strawberry Syrup",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "giffard-strawberry",
+   "aliases": [
+    {
+     "alias": "Giffard Strawberry",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "fc7709f3-2767-4338-a3ca-6195d7dfb14e",
+   "name": "Giffard Vanille Syrup",
+   "category": "Syrups",
+   "subcategory": "Vanilla Syrup",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1 L",
+   "units_per_case": 1,
+   "brand": "Giffard",
+   "active": true,
+   "canonical_key": "giffard-vanilla",
+   "supplier_id": "5a000000-0000-4000-8000-000000000001",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "3590714000016",
+     "pack_level": "unit",
+     "status": "active"
+    },
+    {
+     "kind": "supplier_ref",
+     "code": "GIF-VAN-1L",
+     "supplier_id": "5a000000-0000-4000-8000-000000000001",
+     "status": "active"
+    }
+   ],
+   "aliases": [
+    {
+     "alias": "Giffard Vanilla",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "42e92d25-e70a-494c-8403-40a4f2b210b0",
+   "name": "Gordon's London Dry Gin 700ml",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "gordon-s-london-dry"
+  },
+  {
+   "id": "6955740f-f5c8-4935-85b9-db6177efe468",
+   "name": "Gordon's Premium Pink Gin 700ml",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "gordon-s-premium-pink"
+  },
+  {
+   "id": "2de55690-cb53-4911-819a-9608306119da",
+   "name": "Grand Marnier",
+   "category": "Liqueur",
+   "subcategory": "Orange Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "grand-marnier"
+  },
+  {
+   "id": "49edfc99-3743-4a1a-83be-044d88ebbda2",
+   "name": "Grapefruit",
+   "category": "Fresh Fruit",
+   "subcategory": "Citrus",
+   "unit": "kg",
+   "package_weight_g": 15000,
+   "package_size": "15 kg case / sold by kg",
+   "active": true,
+   "supplier_id": "5a000000-0000-4000-8000-000000000002"
+  },
+  {
+   "id": "bb4086e7-5ba5-450a-adb8-6f8bc85f8384",
+   "name": "Green Tea with Lemon",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Tea",
+   "unit": "packs",
+   "package_size": "6 x 20 bags",
+   "units_per_case": 6,
+   "active": true,
+   "canonical_key": "green-tea-with-lemon-20stk-2092414gl"
+  },
+  {
+   "id": "0b04ae61-ea35-4e4b-8d6f-f3ffd1ad95e8",
+   "name": "Grey Goose",
+   "category": "Vodka",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "grey-goose"
+  },
+  {
+   "id": "bff27f57-77de-4de6-acb0-205f6f4eb93b",
+   "name": "Guinness",
+   "category": "Beer & Cider",
+   "unit": "cans",
+   "size_ml": 440,
+   "package_size": "24 x 440 ml",
+   "units_per_case": 24,
+   "active": true
+  },
+  {
+   "id": "ecc881a8-6260-42ac-9418-4bb1d5d6bed3",
+   "name": "Gull Lite Keg",
+   "category": "Beer & Cider",
+   "subcategory": "Keg",
+   "unit": "kegs",
+   "size_ml": 25000,
+   "package_size": "25 L keg",
+   "units_per_case": 1,
+   "active": true
+  },
+  {
+   "id": "be5815a2-49c3-4826-a4ad-04c1d2a82b26",
+   "name": "Haframjólk Natrue Barista 1L",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Plant Milk",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "units_per_case": 6,
+   "active": true,
+   "canonical_key": "haframjolk-natrue-barista-1l-50810694",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "5690000000114",
+     "pack_level": "unit",
+     "status": "active"
+    },
+    {
+     "kind": "gtin",
+     "code": "15690000000111",
+     "pack_level": "case",
+     "units_in_pack": 6,
+     "status": "active"
+    }
+   ],
+   "aliases": [
+    {
+     "alias": "Natrue Barista Oat Milk",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "7d9bb7f5-53d4-4cc0-853c-2cb8b7115448",
+   "name": "Hennessy VS 700ml",
+   "category": "Cognac & Brandy",
+   "subcategory": "Cognac",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true
+  },
+  {
+   "id": "f9ffaca3-c9fc-42c5-9c86-e338fb8f6259",
+   "name": "Hennessy VSOP 700ml",
+   "category": "Cognac & Brandy",
+   "subcategory": "Cognac",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "aliases": [
+    {
+     "alias": "Hennessy VOSP",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "c023f77a-1fcf-48f9-bc97-cd09c4c5ca8b",
+   "name": "Hennessy XO 700ml",
+   "category": "Cognac & Brandy",
+   "subcategory": "Cognac",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "a9a76a61-e966-406d-84f1-821dfb180706",
+   "name": "Hibiki Japanese Harmony",
+   "category": "Whiskey",
+   "subcategory": "Japanese Whisky",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": false,
+   "canonical_key": "hibiki-japanese-harmony"
+  },
+  {
+   "id": "5ba697bf-4796-49b9-a166-dc329c4c1c89",
+   "name": "Homie Green",
+   "category": "Soda & Mixer",
+   "subcategory": "Energy Drink",
+   "unit": "cans",
+   "active": false
+  },
+  {
+   "id": "03ac5790-9884-4f81-b719-38ff487bdf0b",
+   "name": "Homie Pink",
+   "category": "Soda & Mixer",
+   "subcategory": "Energy Drink",
+   "unit": "cans",
+   "active": false
+  },
+  {
+   "id": "7b0805b2-37ba-4a27-b6c1-ad57872fbf6d",
+   "name": "Homie Pink Zero Caffeine",
+   "category": "Soda & Mixer",
+   "subcategory": "Energy Drink",
+   "unit": "cans",
+   "active": false
+  },
+  {
+   "id": "be6908e1-7a9d-4fe2-b85a-596af3ff36d3",
+   "name": "Homie Yellow",
+   "category": "Soda & Mixer",
+   "subcategory": "Energy Drink",
+   "unit": "cans",
+   "active": false
+  },
+  {
+   "id": "a78ac488-f7ca-48a8-8f62-73c2c17572cc",
+   "name": "Hot Chocolate Base",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Hot Drink Prep",
+   "unit": "ml",
+   "size_ml": 120,
+   "package_size": "120ml prep batch",
+   "active": true,
+   "canonical_key": "hot-chocolate-base"
+  },
+  {
+   "id": "a7bc9f0c-1296-40a2-ab71-46f7611b51f0",
+   "name": "Hunang Jakobsens",
+   "category": "Bar Ingredients",
+   "subcategory": "Sweetener",
+   "unit": "units",
+   "package_weight_g": 3000,
+   "package_size": "1 x 3 kg",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "honey"
+  },
+  {
+   "id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "name": "Ice (recipe reference)",
+   "category": "Bar Ingredients",
+   "unit": "untracked",
+   "active": false,
+   "canonical_key": "recipe-reference-ice",
+   "aliases": [
+    {
+     "alias": "Ice",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "ffbb63ef-9328-43c9-98f2-398ec1e447a1",
+   "name": "Italicus Rosolio di Bergamotto",
+   "category": "Liqueur",
+   "subcategory": "Rosolio",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "italicus-rosolio-di-bergamotto"
+  },
+  {
+   "id": "0cc6e582-6011-40d8-8ce1-6d2eb1e7ac04",
+   "name": "Jack Daniel's",
+   "category": "Whiskey",
+   "subcategory": "Tennessee Whiskey",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "jack-daniel-s"
+  },
+  {
+   "id": "3cdac063-06bc-4970-8d0d-97e94b28915c",
+   "name": "Jack Daniel's Honey",
+   "category": "Whiskey",
+   "subcategory": "Tennessee Whiskey",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "jack-daniel-s-honey"
+  },
+  {
+   "id": "d4456586-8a2e-4286-8b31-13bb688bf7c6",
+   "name": "Jägermeister",
+   "category": "Liqueur",
+   "subcategory": "Herbal Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "j-germeister"
+  },
+  {
+   "id": "9d1358fe-a43e-4b8d-b35c-b8f5191a7742",
+   "name": "Jameson 700ml",
+   "category": "Whiskey",
+   "subcategory": "Irish Whiskey",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "jameson-irish",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "5011013000104",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ],
+   "aliases": [
+    {
+     "alias": "Jameson Irish",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "3101c44d-5944-4638-9ddf-28a6ce0da83c",
+   "name": "Jameson Caskmates Stout 700ml",
+   "category": "Whiskey",
+   "subcategory": "Irish Whiskey",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "jameson-stout-edition"
+  },
+  {
+   "id": "a425003b-81ef-4dd2-8b61-d327d154d31a",
+   "name": "Jarðarberja Purée Capfruit 1kg",
+   "category": "Bar Ingredients",
+   "subcategory": "Purée",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_weight_g": 1000,
+   "package_size": "1kg",
+   "units_per_case": 2,
+   "active": true,
+   "canonical_key": "strawberry-pur-e-capfruit",
+   "aliases": [
+    {
+     "alias": "Strawberry Purée (Capfruit)",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "5577722b-5563-4051-88f5-0bfcda6ecccd",
+   "name": "Johnnie Walker Black Label 12yo",
+   "category": "Whiskey",
+   "subcategory": "Scotch Whisky",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "johnnie-walker-black-label"
+  },
+  {
+   "id": "a875cf56-7962-4252-8432-7420f9b1a360",
+   "name": "Joseph Cartron Passionfruit 500ml",
+   "category": "Liqueur",
+   "subcategory": "Passionfruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "500ml",
+   "brand": "Joseph Cartron",
+   "active": false,
+   "canonical_key": "joseph-cartron-passionfruit-500ml"
+  },
+  {
+   "id": "9f04f6d0-0ddf-4afc-803f-5998c1ace82e",
+   "name": "Joseph Cartron Passionfruit 500ml",
+   "category": "Liqueur",
+   "subcategory": "Passionfruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "500ml",
+   "brand": "Joseph Cartron",
+   "active": true,
+   "canonical_key": "joseph-cartron-passionfruit-500ml"
+  },
+  {
+   "id": "b0b26b97-c882-46af-a43f-a460efdc6783",
+   "name": "Joseph Cartron Peach 500ml",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "500ml",
+   "active": true,
+   "canonical_key": "cartron-p-che-de-vigne"
+  },
+  {
+   "id": "5d35fa37-16c2-4e7f-8f97-b8c0602dedde",
+   "name": "Joseph Cartron Strawberry",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "500ml",
+   "active": true,
+   "canonical_key": "cartron-fraise-des-bois"
+  },
+  {
+   "id": "36f8748d-cc19-4cc4-af67-e277dec8e5dc",
+   "name": "Joseph Cartron Triple Sec",
+   "category": "Liqueur",
+   "subcategory": "Orange Liqueur",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "500 ml",
+   "active": true,
+   "canonical_key": "cartron-triple-sec",
+   "aliases": [
+    {
+     "alias": "Cartron Triple Sec",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "65aaa69b-c6c0-4b30-b42c-68b98d2fec60",
+   "name": "Joseph Cartron Watermelon 500ml",
+   "category": "Liqueur",
+   "subcategory": "Fruit Liqueur",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "500ml",
+   "active": true,
+   "canonical_key": "cartron-past-que"
+  },
+  {
+   "id": "d4e1e9b6-f100-4119-a0a1-479aa9889968",
+   "name": "JP. Chente VSOP",
+   "category": "Whiskey / Cognac",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "jp-chente-vsop"
+  },
+  {
+   "id": "e9b80539-374d-4a90-a712-a4298fc9d1df",
+   "name": "Jurtarjómi Millac Gold",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Cream",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "12 x 1 L",
+   "units_per_case": 12,
+   "active": true,
+   "canonical_key": "jurtarjomi-millac-gold-1l"
+  },
+  {
+   "id": "b75bdc83-7b90-4db7-a109-ccfabd44d712",
+   "name": "Kahlúa Coffee Liqueur",
+   "category": "Liqueur",
+   "subcategory": "Coffee Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "kahl-a-coffee-liqueur"
+  },
+  {
+   "id": "3c881c64-d69c-479b-a429-606f0ed44cfd",
+   "name": "Kakó Cocoa Fantasy",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Cocoa Powder",
+   "unit": "kg",
+   "package_weight_g": 1000,
+   "package_size": "10 x 1 kg",
+   "units_per_case": 10,
+   "active": true,
+   "canonical_key": "kako-cocoa-fantasy",
+   "aliases": [
+    {
+     "alias": "Cacao",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "fc4701c3-f095-4b75-ab40-011f4c4ce1d8",
+   "name": "Kakó powder Plein Arôme 1kg",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Cocoa Powder",
+   "unit": "kg",
+   "package_weight_g": 1000,
+   "package_size": "6 x 1 kg (1 kg bag)",
+   "units_per_case": 6,
+   "active": true
+  },
+  {
+   "id": "83db8761-d92f-45e7-8a5f-6c2bd251bf35",
+   "name": "Ketel One",
+   "category": "Vodka",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "ketel-one"
+  },
+  {
+   "id": "46be4972-b85c-4760-9f74-861821c77697",
+   "name": "Kirsuber m/stilk rauð 2kg",
+   "category": "Garnish",
+   "subcategory": "Cocktail Cherry",
+   "unit": "units",
+   "package_weight_g": 2000,
+   "package_size": "2kg",
+   "units_per_case": 6,
+   "active": true,
+   "canonical_key": "kirsuber-m-stilk-raud-2kg-12060460",
+   "aliases": [
+    {
+     "alias": "Cherries",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "3034a221-f8c7-4a9b-8ad7-5c27e4e6edea",
+   "name": "Kókosrjómi 20/22% 400ml",
+   "category": "Bar Ingredients",
+   "unit": "liters",
+   "size_ml": 400,
+   "package_size": "400ml can",
+   "units_per_case": 12,
+   "active": true
+  },
+  {
+   "id": "9293c9ac-253d-4bc5-b308-8253b06a00da",
+   "name": "Kolsýrukútur 6 kg (minni) – bjór og gostæki",
+   "category": "Bar Equipment",
+   "subcategory": "CO2 / Gas",
+   "unit": "units",
+   "package_weight_g": 6000,
+   "active": true,
+   "codes": [
+    {
+     "kind": "sku",
+     "code": "CO2-6KG",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "e397b02a-26d0-48e9-8a67-d10102633353",
+   "name": "Kopparberg Cider",
+   "category": "Beer & Cider",
+   "unit": "bottles",
+   "size_ml": 330,
+   "package_size": "330ml",
+   "active": false
+  },
+  {
+   "id": "4c098f6f-a16c-46a4-89fe-fb3fdfc3084c",
+   "name": "Kristall án bragðefna / Kristall Blue",
+   "category": "Soda & Mixer",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "24 x 330 ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "kristall-blue",
+   "aliases": [
+    {
+     "alias": "Kristall Blue",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "608a4ddd-3ab4-4bbd-9c98-824eaaa2e9e7",
+   "name": "Kristall Mexican Lime",
+   "category": "Soda & Mixer",
+   "unit": "units",
+   "size_ml": 330,
+   "package_size": "24 x 330 ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "mexican-lime-soda",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "5690000002101",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "35165ccb-f08f-4465-bbc6-42aef9700814",
+   "name": "Kristalssalt flögur",
+   "category": "Bar Ingredients",
+   "unit": "units",
+   "package_weight_g": 500,
+   "package_size": "4 x 500 g",
+   "units_per_case": 4,
+   "active": true,
+   "canonical_key": "kristalssalt-flogur-500g"
+  },
+  {
+   "id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "name": "L'OR Harmonieux Espresso Beans",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Coffee Beans",
+   "unit": "kg",
+   "package_weight_g": 1000,
+   "package_size": "6 x 1 kg (1 kg per bag)",
+   "units_per_case": 6,
+   "active": true,
+   "aliases": [
+    {
+     "alias": "Coffee Beans",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "819411e9-c9a7-43fd-9e3c-76cb29d9fb12",
+   "name": "La Baume Pinot Noir Rosé",
+   "category": "Rosé",
+   "subcategory": "Pinot Noir Rosé",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750ml",
+   "active": true,
+   "canonical_key": "domaine-de-la-baume-ros"
+  },
+  {
+   "id": "b414f736-1872-4ac6-b7bc-93417cba316f",
+   "name": "La Celia Reserva Malbec",
+   "category": "Red wine",
+   "subcategory": "Malbec",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "12 x 750 ml",
+   "units_per_case": 12,
+   "active": true,
+   "canonical_key": "la-celia-reserva-malbec"
+  },
+  {
+   "id": "b442737e-cfbb-4595-ae63-26964977106d",
+   "name": "Lagavulin 16yo",
+   "category": "Whiskey",
+   "subcategory": "Scotch Whisky",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750ml",
+   "active": true,
+   "canonical_key": "lagavulin-16yo"
+  },
+  {
+   "id": "cc61b985-454d-4cf3-ab32-bc9a69739c53",
+   "name": "Lemon Juice",
+   "category": "Bar Ingredients",
+   "subcategory": "Fresh Juice Prep",
+   "unit": "liters",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "lemon-juice"
+  },
+  {
+   "id": "0bb62a86-2445-427f-b06c-2f93aeca67a8",
+   "name": "Lemons 15 kg",
+   "category": "Fresh Fruit",
+   "subcategory": "Citrus",
+   "unit": "Kg",
+   "package_weight_g": 15000,
+   "package_size": "15 kg",
+   "active": true,
+   "canonical_key": "lemons-15kg-mata-1347",
+   "supplier_id": "5a000000-0000-4000-8000-000000000002",
+   "codes": [
+    {
+     "kind": "supplier_ref",
+     "code": "10021",
+     "supplier_id": "5a000000-0000-4000-8000-000000000002",
+     "status": "active"
+    }
+   ],
+   "aliases": [
+    {
+     "alias": "Sítrónur 15kg",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "b1202156-f3f5-4fbf-bddb-0e4aeb52df7b",
+   "name": "Licor 43",
+   "category": "Liqueur",
+   "subcategory": "Herbal Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "licor-43"
+  },
+  {
+   "id": "1e6849e3-6d2a-40ae-a274-3abc5ca203c6",
+   "name": "Lime 4.5 kg",
+   "category": "Fresh Fruit",
+   "subcategory": "Citrus",
+   "unit": "boxes",
+   "package_weight_g": 4500,
+   "package_size": "4.5 kg box",
+   "active": true,
+   "supplier_id": "5a000000-0000-4000-8000-000000000002"
+  },
+  {
+   "id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "name": "Lime Juice",
+   "category": "Bar Ingredients",
+   "subcategory": "Fresh Juice Prep",
+   "unit": "liters",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "lime-juice"
+  },
+  {
+   "id": "009a9c04-631b-42f5-93fd-c07de903373f",
+   "name": "Ljóst Agave síróp Jakobsens / Agave syrup",
+   "category": "Syrups",
+   "subcategory": "Agave",
+   "unit": "units",
+   "package_weight_g": 2500,
+   "package_size": "2.5 kg",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "agave"
+  },
+  {
+   "id": "037ffa9a-34d9-4b07-9b18-54f72af51398",
+   "name": "Lost Explorer Mezcal Espadín 700ml",
+   "category": "Tequila / Mezcal",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "lost-explorer-mezcal"
+  },
+  {
+   "id": "d8d51d59-4747-4068-b299-2ff264f3a7b4",
+   "name": "Malfy Blood Orange",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "fbf57680-32b4-4cb2-90c8-3708ecc2de5d",
+   "name": "Malibu",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1,000 ml",
+   "active": true,
+   "canonical_key": "malibu-coconut",
+   "aliases": [
+    {
+     "alias": "Malibu Coconut",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "c496dddf-f001-4d8f-88e2-f4b7e13464a6",
+   "name": "Mango Purée",
+   "category": "Bar Ingredients",
+   "subcategory": "Purée",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": false
+  },
+  {
+   "id": "11df2bb0-0efd-46bc-b5ca-373112cd4aa3",
+   "name": "Marberg Barrel Aged",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "06fdb5a7-0554-4fc4-8188-265a81d3caa6",
+   "name": "Marberg Coast Guard",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "ca8e54a3-d5ab-4fab-97c9-5bf68a36e7b4",
+   "name": "Marberg Icelandic Dry",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "b662b89e-ae15-465b-9e74-a53e7df357d0",
+   "name": "Martell VSOP 700ml",
+   "category": "Cognac & Brandy",
+   "subcategory": "Cognac",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "cde7a360-0f49-4308-88a4-645e68f6d184",
+   "name": "Martell X.O 700ml",
+   "category": "Cognac & Brandy",
+   "subcategory": "Cognac",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true
+  },
+  {
+   "id": "fadf7891-9f64-4ba4-b536-0edbc07ae7f2",
+   "name": "Matcha Bio",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Matcha",
+   "unit": "units",
+   "package_weight_g": 350,
+   "package_size": "6 x 350 g",
+   "units_per_case": 6,
+   "active": true,
+   "canonical_key": "japanskt-graent-te-matcha-bio-350g-50547200033"
+  },
+  {
+   "id": "b26c30f0-92b2-4dcf-bf29-c1ffbca4930a",
+   "name": "Mirka Icelandic 12yo",
+   "category": "Whiskey",
+   "subcategory": "Icelandic Whisky",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "mirka-icelandic-12yo"
+  },
+  {
+   "id": "c5d58a88-3f8c-4b7e-b4f2-75712962ed5d",
+   "name": "Moillard Cremant Prestige Brut",
+   "category": "Sparkling",
+   "subcategory": "Crémant",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750 ml",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "moillard-cr-mant-chardonnay"
+  },
+  {
+   "id": "16b85d04-3fba-4137-898b-8aea6d5eb24f",
+   "name": "Monkey 47 Dry Gin 500ml",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 500,
+   "package_size": "500ml",
+   "active": true,
+   "canonical_key": "monkey-47"
+  },
+  {
+   "id": "fb16cc2b-7899-422e-892d-4c43ffa3cfef",
+   "name": "Mynta / Mint 1 kg",
+   "category": "Fresh Herbs",
+   "unit": "units",
+   "package_weight_g": 1000,
+   "package_size": "1 kg",
+   "active": false,
+   "aliases": [
+    {
+     "alias": "Mint",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "f67480d4-640f-4c19-87b9-344de8425ce8",
+   "name": "Mynta / Mint 50 g",
+   "category": "Fresh Herbs",
+   "subcategory": "Mint",
+   "unit": "packs",
+   "package_weight_g": 50,
+   "package_size": "50 g",
+   "active": true
+  },
+  {
+   "id": "3091405d-f4b9-4932-85ea-197e2beb4d5b",
+   "name": "Natrue Barista Oat Milk",
+   "category": "Milk",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "6 x 1 L",
+   "units_per_case": 6,
+   "active": false
+  },
+  {
+   "id": "18aa98da-3581-4e82-9530-60663f28c4d4",
+   "name": "Noisette/Hazelnut",
+   "category": "Syrups",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "noisette-hazelnut"
+  },
+  {
+   "id": "3954e289-7fe7-4abf-8738-b6cd5c03eb37",
+   "name": "Ocho Plata",
+   "category": "Tequila / Mezcal",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": false,
+   "canonical_key": "ocho-plata"
+  },
+  {
+   "id": "e51bfda1-9f65-4616-b153-c64cbf30e368",
+   "name": "Olde Icelandia",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "units_per_case": 12,
+   "active": true,
+   "canonical_key": "olde-icelandia",
+   "aliases": [
+    {
+     "alias": "Old islandia",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "b8e5e252-3bf0-4426-872e-e1f175779b6b",
+   "name": "Olde Icelandia",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": false
+  },
+  {
+   "id": "df769dd1-b6f5-4030-808f-a9b653c42526",
+   "name": "Olmeca Blanco Tequila",
+   "category": "Tequila / Mezcal",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "olmeca-silver",
+   "aliases": [
+    {
+     "alias": "Olmeca Silver",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "e8276d9b-f482-4013-a37f-6a9798edb553",
+   "name": "Opal Purple",
+   "category": "Liqueur",
+   "subcategory": "Licorice Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "opal-purple"
+  },
+  {
+   "id": "841ae69a-dc7d-4945-8c1e-198bb5bc5de4",
+   "name": "Opal Red",
+   "category": "Liqueur",
+   "subcategory": "Licorice Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "opal-red"
+  },
+  {
+   "id": "b4792a3e-f8f3-46bc-b7aa-22c2e75c8d96",
+   "name": "Oranges (Mata price observation)",
+   "category": "Fresh Fruit",
+   "unit": "units",
+   "package_size": "priced per kg",
+   "active": false
+  },
+  {
+   "id": "e65855f5-80f3-469c-8054-12e2865f7078",
+   "name": "Oranges 48/56 count",
+   "category": "Fresh Fruit",
+   "subcategory": "Citrus",
+   "unit": "pieces",
+   "package_weight_g": 16000,
+   "package_size": "16 kg case",
+   "active": true
+  },
+  {
+   "id": "07e204a3-4b7c-40d5-bf53-3b985209426a",
+   "name": "Passion Fruit 2 kg",
+   "category": "Fresh Fruit",
+   "subcategory": "Passion Fruit",
+   "unit": "boxes",
+   "package_weight_g": 2000,
+   "package_size": "2 kg",
+   "active": true
+  },
+  {
+   "id": "5d7f6681-0daa-451c-8ef7-dd5e4823441d",
+   "name": "Passion Fruit Mango Breezer",
+   "category": "Beer & Cider",
+   "unit": "bottles",
+   "size_ml": 275,
+   "package_size": "275ml",
+   "active": false
+  },
+  {
+   "id": "49b55466-7e8e-4c4c-a059-62842eb92a90",
+   "name": "Passion Purée",
+   "category": "Bar Ingredients",
+   "subcategory": "Purée",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_weight_g": 1000,
+   "package_size": "5 x 1 kg",
+   "units_per_case": 5,
+   "active": true,
+   "canonical_key": "passion-fruit-pur-e",
+   "aliases": [
+    {
+     "alias": "Passion Fruit Purée",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "63033629-25b0-4a79-add8-a72ee624a1b2",
+   "name": "Patrón Añejo Tequila 700ml",
+   "category": "Tequila / Mezcal",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "patr-n-a-ejo"
+  },
+  {
+   "id": "111e2f71-39c3-48b6-b14b-3ebf23c6fe64",
+   "name": "Patrón Reposado Tequila 700ml",
+   "category": "Tequila / Mezcal",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "patr-n-reposado"
+  },
+  {
+   "id": "1a66f0fe-14b2-4e7c-8da6-b7044c6aba87",
+   "name": "Patrón Silver Tequila 700ml",
+   "category": "Tequila / Mezcal",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "patr-n-silver",
+   "aliases": [
+    {
+     "alias": "Patrón Silver",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "de87c69a-4459-4bfd-a770-1a5c80f1a736",
+   "name": "Peach Purée",
+   "category": "Bar Ingredients",
+   "subcategory": "Purée",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true
+  },
+  {
+   "id": "5e2602dd-e728-4f88-90eb-2375d894a731",
+   "name": "Pear Liquid Syrup (Diadem)",
+   "category": "Syrups",
+   "subcategory": "Prep Syrup",
+   "unit": "liters",
+   "size_ml": 1000,
+   "package_size": "1L costing unit",
+   "active": true,
+   "canonical_key": "pear-liquid-syrup-diadem"
+  },
+  {
+   "id": "092d78c5-3b88-413b-be80-a9c1bd7f209e",
+   "name": "Pear Syrup",
+   "category": "Syrups",
+   "subcategory": "Prep Syrup",
+   "unit": "liters",
+   "size_ml": 1000,
+   "package_size": "1L prep batch",
+   "active": true,
+   "canonical_key": "pear-syrup"
+  },
+  {
+   "id": "018d6121-b94d-4390-8d5a-dd5fc044f72b",
+   "name": "Pecan Pie",
+   "category": "Dessert",
+   "subcategory": "Pie",
+   "unit": "pies",
+   "package_weight_g": 1200,
+   "package_size": "1 x 1.2 kg",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "pecan-pie-12-sneidar-24552121"
+  },
+  {
+   "id": "3a214321-3894-4987-91ad-039c3c10bdd9",
+   "name": "Pepsi Max",
+   "category": "Soda & Mixer",
+   "unit": "cans",
+   "size_ml": 330,
+   "package_size": "24 x 330ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "pepsi-max",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "5690000003108",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "8907dfea-89a5-486a-ae93-279d6a89979a",
+   "name": "Peru Puré Capfruit 1kg",
+   "category": "Bar Ingredients",
+   "subcategory": "Purée",
+   "unit": "units",
+   "package_weight_g": 1000,
+   "package_size": "1kg",
+   "units_per_case": 2,
+   "active": true,
+   "canonical_key": "pear-pur-e"
+  },
+  {
+   "id": "e96ce40f-1d38-4faf-8d71-36d9e4f61c26",
+   "name": "Perur Diadem",
+   "category": "Food / Fruit",
+   "unit": "cans",
+   "package_weight_g": 2650,
+   "package_size": "6 x 2.65 kg cans",
+   "units_per_case": 6,
+   "active": false,
+   "canonical_key": "perur-diadem-2-65kg"
+  },
+  {
+   "id": "50a099e6-13d6-4772-9d40-b8b47c8762af",
+   "name": "Piccini Prosecco",
+   "category": "Sparkling",
+   "subcategory": "Prosecco",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "6 x 750 ml",
+   "units_per_case": 6,
+   "active": true,
+   "canonical_key": "piccini-prosecco",
+   "aliases": [
+    {
+     "alias": "Prosecco Piccini",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "67edb7b2-cd76-474a-a212-419bcabf59e5",
+   "name": "Pickwick Finest Earl Grey",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Tea",
+   "unit": "boxes",
+   "package_size": "25 x 2g tea bags",
+   "active": true,
+   "canonical_key": "pickwick-finest-earl-grey",
+   "codes": [
+    {
+     "kind": "other_barcode",
+     "code": "SHELF-TEA-01",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "298f568e-db48-4352-a732-f27d73f806cd",
+   "name": "Pickwick Finest English Tea",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Tea",
+   "unit": "boxes",
+   "package_size": "25 x 2g tea bags",
+   "units_per_case": 4,
+   "active": true,
+   "canonical_key": "pickwick-finest-english-tea-342049",
+   "codes": [
+    {
+     "kind": "other_barcode",
+     "code": "SHELF-TEA-01",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "f5af3311-64dd-4034-9eb5-d995db306338",
+   "name": "Pickwick Finest Ginger Tea",
+   "category": "Coffee & Hot Drinks",
+   "unit": "boxes",
+   "package_size": "25 x 2g tea bags",
+   "units_per_case": 4,
+   "active": false,
+   "canonical_key": "pickwick-finest-ginger-tea-342055"
+  },
+  {
+   "id": "9abdc44c-2fc0-4151-adaa-76dcf8e2b8ef",
+   "name": "Pickwick Green Tea",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Tea",
+   "unit": "boxes",
+   "package_size": "25 tea bags",
+   "active": true,
+   "canonical_key": "pickwick-green-tea"
+  },
+  {
+   "id": "335449b1-3a70-487b-9b28-0d8d6bbd0b34",
+   "name": "Pickwick Peppermint",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Tea",
+   "unit": "boxes",
+   "package_size": "25 x 2g tea bags",
+   "active": true,
+   "canonical_key": "pickwick-peppermint"
+  },
+  {
+   "id": "5500bc6e-c9cf-42c9-913d-8377104fc0d7",
+   "name": "Pineapple Juice",
+   "category": "Soda & Mixer",
+   "subcategory": "Juice",
+   "unit": "units",
+   "size_ml": 1500,
+   "package_size": "1.5L",
+   "active": true,
+   "canonical_key": "pineapple-juice"
+  },
+  {
+   "id": "60cabb07-7178-4b49-8b57-ccdf51141b10",
+   "name": "Popcorn",
+   "category": "Bar Ingredients",
+   "unit": "units",
+   "package_weight_g": 175,
+   "package_size": "175g",
+   "active": true,
+   "canonical_key": "popcorn"
+  },
+  {
+   "id": "a80013fc-b0c0-49e9-9d7f-679d449a5c17",
+   "name": "Popcorn-infused Woodford Bourbon",
+   "category": "Bar Ingredients",
+   "subcategory": "Infusion Prep",
+   "unit": "ml",
+   "size_ml": 700,
+   "package_size": "700ml prep batch",
+   "active": true,
+   "canonical_key": "popcorn-infused-woodford-bourbon"
+  },
+  {
+   "id": "2d72bbc1-3138-4f1b-a4b9-1f40319730fa",
+   "name": "Púðursykur Garri",
+   "category": "Bar Ingredients",
+   "subcategory": "Sugar",
+   "unit": "units",
+   "package_weight_g": 1000,
+   "package_size": "12 x 1 kg",
+   "units_per_case": 12,
+   "active": true,
+   "canonical_key": "sugar-ur"
+  },
+  {
+   "id": "43e18e27-82e6-4a26-bd58-10ae09789e95",
+   "name": "Pure Camomile Tea",
+   "category": "Coffee & Hot Drinks",
+   "subcategory": "Tea",
+   "unit": "packs",
+   "package_size": "6 x 20 bags",
+   "units_per_case": 6,
+   "active": true,
+   "canonical_key": "pure-camomile-tea-20stk-2092491gl"
+  },
+  {
+   "id": "ec47d154-d053-4693-b86c-534fdeb32d32",
+   "name": "Rhubarb",
+   "category": "Syrups",
+   "unit": "units",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "rhubarb"
+  },
+  {
+   "id": "a626bf16-cee4-418d-8bd5-78be434d0ab5",
+   "name": "Ron Zacapa Centenario 23 700ml",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "zacapa-solera-23"
+  },
+  {
+   "id": "5f9af2ba-d6e5-4308-872f-ab66f81e10df",
+   "name": "Saline Solution",
+   "category": "Bar Ingredients",
+   "subcategory": "Modifier Prep",
+   "unit": "ml",
+   "size_ml": 200,
+   "package_size": "200ml prep batch",
+   "active": true,
+   "canonical_key": "saline-solution"
+  },
+  {
+   "id": "b2ccfb17-8bdc-4e13-8ee0-80e7aeda4363",
+   "name": "Sambuca",
+   "category": "Liqueur",
+   "subcategory": "Anise Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "sambuca"
+  },
+  {
+   "id": "c1446f3e-9a9c-4832-9660-b49dd5d3b6d9",
+   "name": "Sarti Rosa",
+   "category": "Vermouth / Aperitivo",
+   "subcategory": "Aperitivo",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "1 bottle / 700 ml",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "sarti",
+   "aliases": [
+    {
+     "alias": "Sarti",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "36228192-32b0-4ebd-8348-d25d5d013784",
+   "name": "Schloss Johannisberg Riesling Bronzelack",
+   "category": "White wine",
+   "subcategory": "Riesling",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750 ml",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "schloss-johannisberg-riesling-bronzelack"
+  },
+  {
+   "id": "c6d70891-755a-4b38-b11d-8e2460e65158",
+   "name": "Segura Viudas Brut Reserva 200ml",
+   "category": "Sparkling",
+   "subcategory": "Cava",
+   "unit": "bottles",
+   "size_ml": 200,
+   "package_size": "24 x 200 ml",
+   "units_per_case": 24,
+   "active": true,
+   "canonical_key": "segura-viudas-brut-cava-200ml",
+   "aliases": [
+    {
+     "alias": "Segura Viudas Brut Cava",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "ba7bf0a2-6b93-45e1-87b1-94e0886c8166",
+   "name": "Segura Viudas Brut Reserva 750ml",
+   "category": "Sparkling",
+   "subcategory": "Cava",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "6 x 750 ml",
+   "units_per_case": 6,
+   "active": true,
+   "canonical_key": "segura-viudas-brut-cava-750ml"
+  },
+  {
+   "id": "6d0bd678-7b47-4149-883e-f97a5d7503d5",
+   "name": "Selected Tea Bag (recipe choice)",
+   "category": "Coffee & Hot Drinks",
+   "unit": "untracked",
+   "active": false,
+   "canonical_key": "recipe-reference-selected-tea-bag",
+   "aliases": [
+    {
+     "alias": "Selected Tea Bag",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "65f362f5-44cb-43a4-a894-4600d17b7834",
+   "name": "Shanky's Whip",
+   "category": "Liqueur",
+   "subcategory": "Cream Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "shanky-s-whip"
+  },
+  {
+   "id": "49172b0a-620b-450a-b248-09276fad0556",
+   "name": "Simple Syrup",
+   "category": "Syrups",
+   "subcategory": "Prep Syrup",
+   "unit": "liters",
+   "size_ml": 2000,
+   "package_size": "2L prep batch",
+   "active": true,
+   "canonical_key": "simple-syrup"
+  },
+  {
+   "id": "f0c417e9-fbd3-4102-bb78-247d3c3ebdc2",
+   "name": "Sítrónur 15kg",
+   "category": "Fresh Fruit",
+   "unit": "boxes",
+   "package_weight_g": 15000,
+   "package_size": "15kg box",
+   "active": false
+  },
+  {
+   "id": "3f6d1eee-4d81-4442-9ff0-986aa7ee60c6",
+   "name": "Smirnoff",
+   "category": "Vodka",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1000ml",
+   "active": true,
+   "canonical_key": "smirnoff"
+  },
+  {
+   "id": "be306da0-56cc-4ae6-b861-9fb535c11e46",
+   "name": "Somersby 4.5% Keg",
+   "category": "Beer & Cider",
+   "subcategory": "Keg",
+   "unit": "kegs",
+   "size_ml": 25000,
+   "package_size": "25 L keg",
+   "units_per_case": 1,
+   "active": true
+  },
+  {
+   "id": "cbee35ad-b913-46cd-871a-69ba591bb38a",
+   "name": "Somersby Pear AF",
+   "category": "Beer & Cider",
+   "unit": "bottles",
+   "size_ml": 330,
+   "package_size": "24 x 330 ml",
+   "units_per_case": 24,
+   "active": true
+  },
+  {
+   "id": "19356efb-17e9-43a8-b89f-9152e39fc2f1",
+   "name": "St-Germain Elderflower Liqueur",
+   "category": "Liqueur",
+   "subcategory": "Elderflower Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "st-germain",
+   "aliases": [
+    {
+     "alias": "St-Germain",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "dd391f7c-4cdc-4b0c-8436-d2c2d3137fed",
+   "name": "Stambeco Italy Tiramisú",
+   "category": "Liqueur",
+   "subcategory": "Cream Liqueur",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "stambeco-italy-tiramis"
+  },
+  {
+   "id": "ac8b22ce-b6e8-42df-a180-3009ed0a81f1",
+   "name": "Stemmari Rosé",
+   "category": "Rosé",
+   "subcategory": "Nero d'Avola Rosé",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750ml",
+   "active": true,
+   "canonical_key": "stemmari-ros"
+  },
+  {
+   "id": "51a6c27e-acd1-4712-a1a2-590392d90c07",
+   "name": "Strawberry Breezer",
+   "category": "Beer & Cider",
+   "unit": "bottles",
+   "size_ml": 275,
+   "package_size": "275ml",
+   "active": false
+  },
+  {
+   "id": "ecec6016-b2e1-4426-9552-2b2a7707b860",
+   "name": "Strawberry Purée (Capfruit)",
+   "category": "Bar Ingredients",
+   "subcategory": "Purée",
+   "unit": "units",
+   "package_size": "1kg",
+   "active": false
+  },
+  {
+   "id": "ea316d7a-460e-4ae3-9636-c71321be2478",
+   "name": "Sykur 1kg",
+   "category": "Bar Ingredients",
+   "subcategory": "Sugar",
+   "unit": "units",
+   "package_weight_g": 1000,
+   "package_size": "1kg",
+   "units_per_case": 10,
+   "active": true,
+   "canonical_key": "sugar"
+  },
+  {
+   "id": "2f81acb4-2c9d-47b4-87b4-88c86b6fee49",
+   "name": "Takamaka Dark Spiced Rum",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "takamaka-dark",
+   "aliases": [
+    {
+     "alias": "Takamaka Dark",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "ffcafab8-cde3-410b-86fa-62fbd104f8fc",
+   "name": "Takamaka Extra Noir 700ml",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "takamaka-extra-noir"
+  },
+  {
+   "id": "98beda18-7c59-448a-91e5-cc5fb69b6331",
+   "name": "Takamaka Rum Blanc",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "takamaka-blanc",
+   "aliases": [
+    {
+     "alias": "Takamaka Blanc",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "c328cca5-a9f4-462d-9dfc-2170d6f64a77",
+   "name": "Takamaka Rum Zenn 700ml",
+   "category": "Rum",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "takamaka-zenn"
+  },
+  {
+   "id": "a06ec168-8d4f-4165-a448-9a2035c5d10b",
+   "name": "Talisker 10yo",
+   "category": "Whiskey",
+   "subcategory": "Scotch Whisky",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "talisker-10yo"
+  },
+  {
+   "id": "cce76242-301e-46ec-bb80-ceecbc8430e7",
+   "name": "Tanqueray Blackcurrant Royale 700ml",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "tanqueray-royale-blackcurrant"
+  },
+  {
+   "id": "37b220e8-2479-4b0e-805d-8a76f0cf10c7",
+   "name": "Tanqueray Flor de Sevilla 700ml",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "tanqueray-sevilla"
+  },
+  {
+   "id": "b104139b-4862-4608-ae8b-724a9033cfd3",
+   "name": "Tanqueray London Dry 1L",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "tanqueray-london-dry",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "5000291020713",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "c9d253d4-91a6-4203-88b5-1698682250cc",
+   "name": "Tanqueray No. Ten 700ml",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "tanqueray-ten",
+   "codes": [
+    {
+     "kind": "gtin",
+     "code": "5000291020720",
+     "pack_level": "unit",
+     "status": "active"
+    }
+   ]
+  },
+  {
+   "id": "d30e0296-d60d-4702-88c3-33ebf0164fa7",
+   "name": "Teisseire Cinnamon",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true
+  },
+  {
+   "id": "acd43535-c38f-472b-9eb6-c402cebc66de",
+   "name": "Teisseire Passion Fruit",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "tessiere-passion-fruit"
+  },
+  {
+   "id": "a2f58dda-2706-440e-979b-6f87229fb484",
+   "name": "Teisseire Pomegranate Grenadine",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "teisseire-pomegranate-grenadine-343011"
+  },
+  {
+   "id": "6f43278c-36cc-4416-9a26-c9e54ee5ec5a",
+   "name": "Teisseire Pomme Verte",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true,
+   "canonical_key": "tessiere-pomme-verte"
+  },
+  {
+   "id": "f655969e-4b3b-40d3-8e06-c149b59b8935",
+   "name": "Teisseire Yuzu Citron",
+   "category": "Syrups",
+   "unit": "bottles",
+   "size_ml": 1000,
+   "package_size": "1L",
+   "active": true
+  },
+  {
+   "id": "7b0b34b3-b1ad-4537-b377-d12d49415ddb",
+   "name": "Tommasi Amarone",
+   "category": "Red wine",
+   "subcategory": "Amarone",
+   "unit": "bottles",
+   "active": true,
+   "canonical_key": "tommasi-amarone"
+  },
+  {
+   "id": "5d36c4da-420f-4ead-a78b-fff97cfd1771",
+   "name": "Tuborg Classic Keg",
+   "category": "Beer & Cider",
+   "subcategory": "Keg",
+   "unit": "kegs",
+   "size_ml": 25000,
+   "package_size": "25 L keg",
+   "units_per_case": 1,
+   "active": true
+  },
+  {
+   "id": "ce170933-6967-49cb-bc4c-af07e25969b2",
+   "name": "Úlfrún Session IPA",
+   "category": "Beer & Cider",
+   "unit": "units",
+   "size_ml": 330,
+   "package_size": "24 x 330 ml",
+   "units_per_case": 24,
+   "active": true,
+   "aliases": [
+    {
+     "alias": "Úlfrún Nr.34",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "37cf5cd3-2a1c-4f65-a486-9e44d4a360b6",
+   "name": "Veuve Clicquot Brut Champagne",
+   "category": "Sparkling",
+   "subcategory": "Champagne",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750 ml",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "veuve-clicquot-brut-champagne"
+  },
+  {
+   "id": "499f8f1e-97b4-444a-a63c-26c82cd183f9",
+   "name": "Vionta Albariño Sobre Lías",
+   "category": "White wine",
+   "subcategory": "Albariño",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750 ml",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "vionta-albar-no"
+  },
+  {
+   "id": "c28435b9-7439-43d2-92d9-6171f4092950",
+   "name": "Von Winning Sauvignon Blanc I",
+   "category": "White wine",
+   "subcategory": "Sauvignon Blanc",
+   "unit": "bottles",
+   "size_ml": 750,
+   "package_size": "750 ml",
+   "units_per_case": 1,
+   "active": true,
+   "canonical_key": "von-winning-sauvignon-blanc"
+  },
+  {
+   "id": "0a277aff-44df-4436-a6f5-a8f8b26bf0a4",
+   "name": "Water (recipe reference)",
+   "category": "Bar Ingredients",
+   "unit": "untracked",
+   "active": false,
+   "canonical_key": "recipe-reference-water",
+   "aliases": [
+    {
+     "alias": "Cold Water",
+     "alias_kind": null,
+     "status": null
+    },
+    {
+     "alias": "Hot Water",
+     "alias_kind": null,
+     "status": null
+    }
+   ]
+  },
+  {
+   "id": "c1e5fbc6-4b2d-42e6-a9be-135d62383d43",
+   "name": "White Egg",
+   "category": "Other",
+   "unit": "units",
+   "size_ml": 2500,
+   "package_size": "2.5 L",
+   "active": false,
+   "canonical_key": "white-egg"
+  },
+  {
+   "id": "79d29876-9933-432d-89dc-7e722c55094c",
+   "name": "White Sugar (Garri)",
+   "category": "Bar Ingredients",
+   "unit": "units",
+   "package_weight_g": 1000,
+   "package_size": "10 x 1 kg",
+   "units_per_case": 10,
+   "active": false
+  },
+  {
+   "id": "ce1c0350-e5f7-48b8-b765-67355ace5fa4",
+   "name": "Wild Icelandic Dry",
+   "category": "Gin",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": false,
+   "canonical_key": "wild-icelandic-dry"
+  },
+  {
+   "id": "3b576166-4ca8-4648-902a-86d213c42611",
+   "name": "Wild Turkey Bourbon",
+   "category": "Whiskey",
+   "subcategory": "Bourbon",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700 ml",
+   "active": true,
+   "canonical_key": "wild-turkey-bourbon"
+  },
+  {
+   "id": "e38dd0c7-0666-4785-be36-c4c7b4bdef31",
+   "name": "Woodford Reserve",
+   "category": "Whiskey",
+   "subcategory": "Bourbon",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "woodford-reserve"
+  },
+  {
+   "id": "7cd984d5-36a0-42e3-a7f3-cad658000e17",
+   "name": "Woodford Rye",
+   "category": "Whiskey",
+   "subcategory": "Rye",
+   "unit": "bottles",
+   "size_ml": 700,
+   "package_size": "700ml",
+   "active": true,
+   "canonical_key": "woodford-rye"
+  }
+ ]
+}

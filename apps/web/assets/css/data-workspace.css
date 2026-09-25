@@ -1,0 +1,63 @@
+/* Data (#data) — module layout only (spec §7.14). Components come from
+   atlas-components.css; this file places them. */
+@layer atlas.modules {
+  .data-body { margin-top: var(--s-5); }
+  .data-body > * + * { margin-top: var(--s-3); }
+  .data-body > :first-child { margin-top: 0; }
+  .data-body > .atlas-alert + .atlas-toolbar { margin-top: var(--s-4); }
+  .data-caption { margin: 0; font: var(--type-meta); color: var(--text-2); }
+  .data-caption a { color: var(--accent-text); }
+  .data-skeleton { display: grid; gap: var(--s-2); padding-top: var(--s-3); }
+
+  .data-filter { width: auto; min-width: 150px; }
+  .data-cover { display: flex; align-items: center; gap: var(--s-2); }
+  .data-cover .atlas-affix { width: 150px; }
+
+  .data-issue-chips { flex-wrap: wrap; margin-bottom: var(--s-3); }
+
+  /* A link-styled button in a table cell; a phone list row keeps its row padding. */
+  .data-link:not(.atlas-table-list__row) {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .data-link.cell-primary:hover, a.cell-primary:hover { color: var(--accent-text); text-decoration: underline; }
+
+  .data-par-input { width: 96px; margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+  .data-suggestion { display: inline-flex; align-items: center; gap: var(--s-2); }
+
+  .data-back { margin-left: calc(-1 * var(--s-2)); }
+  .data-import-detail { display: grid; gap: var(--s-5); margin-top: var(--s-3); }
+  .data-import-detail .atlas-section__head { justify-content: flex-start; gap: var(--s-3); margin: 0; }
+  .data-actions { flex-wrap: wrap; }
+
+  .data-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--s-3) var(--s-6);
+    margin: 0;
+  }
+  .data-facts div { min-width: 0; }
+  .data-facts dt { font: var(--type-caption); color: var(--text-2); }
+  .data-facts dd { margin: 2px 0 0; font: var(--type-body); color: var(--text); overflow-wrap: anywhere; }
+
+  .data-sheet-heading { margin: 0; font: var(--type-heading); color: var(--text); }
+  .data-raw summary { cursor: pointer; font: var(--type-label); color: var(--text-2); }
+  .data-raw[open] summary { margin-bottom: var(--s-3); }
+  .data-upload-note { margin: 0; font: var(--type-meta); color: var(--text-2); }
+  .data-upload-drop { cursor: pointer; }
+
+  @media (max-width: 767px) {
+    .data-par-input { width: 80px; }
+    /* An import on a phone is a detail screen: the top bar carries its name and back. */
+    .data-page.is-detail :is(.page-head__sub, .page-head__actions), .data-page.is-detail > .atlas-tabs, .data-page.is-detail .data-back { display: none; }
+    .data-page.is-detail .data-body { margin-top: 0; }
+    .data-par-bar .atlas-btn--primary { margin-left: auto; }
+    .data-cover .atlas-affix { width: 130px; }
+    .data-actions > .atlas-btn { flex: 1 1 auto; }
+  }
+}

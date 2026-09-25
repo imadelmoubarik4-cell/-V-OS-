@@ -1,9 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
+import { AuthError, actorLabel, resolveActor } from "../_shared/auth.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -17,15 +13,51 @@ const CORS_HEADERS = {
 const WRITE_ROLES = new Set(["admin", "manager", "bartender"]);
 const MANAGER_ROLES = new Set(["admin", "manager"]);
 const MAX_BODY_BYTES = 64 * 1024;
+const FUNCTION_VERSION = "0.2.0";
 
 class ApiError extends Error {
   status: number;
+  code: string | null;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code: string | null = null) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
+
+// s88-operations-helpers:start (pure; unit-tested by tests/node/daily-checklists-api-s88.test.js)
+const RPC_ERROR_STATUS: Record<string, number> = {
+  forbidden: 403,
+  not_found: 404,
+  routine_closed: 409,
+  checklist_day_closed: 409,
+  invalid_date: 400,
+};
+
+function rpcErrorCode(hint: unknown): string | null {
+  const match = typeof hint === "string" ? hint.match(/^atlas:([a-z_]+)$/) : null;
+  return match ? match[1] : null;
+}
+
+function rpcErrorStatus(status: number, code: string | null): number {
+  if (code && RPC_ERROR_STATUS[code]) return RPC_ERROR_STATUS[code];
+  if (status >= 500) return 500;
+  return status === 403 ? 403 : 400;
+}
+
+function dailyChecklistSummary(checklist: any) {
+  if (!checklist || typeof checklist !== "object") return null;
+  const items = Array.isArray(checklist.items) ? checklist.items : [];
+  const required = items.filter((item: any) => item && item.required !== false);
+  return {
+    instance_id: checklist.id ?? null,
+    status: checklist.status ?? null,
+    required: required.length,
+    completed: required.filter((item: any) => item.completed === true).length,
+  };
+}
+// s88-operations-helpers:end
 
 type AtlasContext = {
   user: { id: string; email?: string | null };
@@ -45,59 +77,18 @@ function jsonResponse(value: unknown, status = 200): Response {
       ...CORS_HEADERS,
       "content-type": "application/json; charset=utf-8",
       "x-content-type-options": "nosniff",
-      "x-atlas-operations-version": "0.1.0",
+      "x-atlas-operations-version": FUNCTION_VERSION,
     },
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
-function actorLabel(context: AtlasContext): string {
-  return context.profile.display_name?.trim()
-    || context.profile.email?.trim()
-    || context.user.email?.trim()
-    || "Atlas staff";
+function contextLabel(context: AtlasContext): string {
+  return actorLabel(context.profile);
 }
 
 async function requireActiveProfile(request: Request): Promise<AtlasContext> {
-  const token = bearerToken(request);
-  const authHeaders = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, {
-    headers: authHeaders,
-  });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileResponse = await fetch(
-    `${AUTH_PROJECT_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=id,email,display_name,role,active`,
-    { headers: authHeaders },
-  );
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas role could not be verified.");
-
-  const profiles = await profileResponse.json() as AtlasContext["profile"][];
-  const profile = profiles[0];
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive.");
-  if (!["admin", "manager", "bartender", "viewer"].includes(profile.role)) {
-    throw new ApiError(403, "This Atlas profile cannot access operational routines.");
-  }
-
-  return {
-    user: { id: user.id, email: user.email },
-    profile,
-  };
+  const actor = await resolveActor(request, Deno.env, fetch);
+  return { user: { id: actor.userId }, profile: actor.profile as AtlasContext["profile"] };
 }
 
 function requireWriter(context: AtlasContext): void {
@@ -115,7 +106,7 @@ function requireManager(context: AtlasContext): void {
 function staffPayload(context: AtlasContext) {
   return {
     id: context.user.id,
-    label: actorLabel(context),
+    label: contextLabel(context),
     role: context.profile.role,
     can_write: WRITE_ROLES.has(context.profile.role),
     can_manage: MANAGER_ROLES.has(context.profile.role),
@@ -203,6 +194,22 @@ async function readJson(request: Request): Promise<Record<string, unknown>> {
   }
 }
 
+// S88 hardening (F9): database text reaches the browser only when it is an
+// Atlas-authored message (raised by our SQL) without schema detail; anything
+// else (constraint, column, relation or permission text) becomes the fixed
+// fallback. The SQLSTATE is logged instead.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed as { code?: unknown; message?: unknown };
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
+}
+
 async function branchRpc(name: string, payload: Record<string, unknown> = {}): Promise<unknown> {
   const branchUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -231,14 +238,30 @@ async function branchRpc(name: string, payload: Record<string, unknown> = {}): P
   }
 
   if (!response.ok) {
-    const message = typeof parsed === "object" && parsed && "message" in parsed
-      ? String((parsed as { message: unknown }).message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : "The Checkpoint A database request failed.";
-    throw new ApiError(response.status >= 500 ? 500 : 400, message);
+    const message = safeDbMessage(parsed, "The Checkpoint A database request failed.");
+    if (message === "The Checkpoint A database request failed.") {
+      console.warn("Checkpoint A RPC failed", response.status, typeof parsed === "object" && parsed ? String((parsed as { code?: unknown }).code ?? "-") : "-");
+    }
+    const code = typeof parsed === "object" && parsed && "hint" in parsed
+      ? rpcErrorCode((parsed as { hint: unknown }).hint)
+      : null;
+    throw new ApiError(rpcErrorStatus(response.status, code), message, code);
   }
   return parsed;
+}
+
+// The operational day follows the venue business date (a closing checklist
+// at 01:30 still belongs to the previous day). Falls back to the venue
+// calendar date only if the S88 database read is not deployed yet.
+async function businessDate(): Promise<string> {
+  try {
+    const value = await branchRpc("atlas_operations_business_date");
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 500) throw error;
+    console.warn("Checkpoint A business date unavailable; using the venue calendar date");
+  }
+  return venueDate();
 }
 
 function venueDate(): string {
@@ -263,7 +286,7 @@ Deno.serve(async (request: Request) => {
     if (request.method === "GET") {
       if (action === "snapshot") {
         const requestedDate = url.searchParams.get("date");
-        const localDate = requestedDate ? requireDate(requestedDate) : venueDate();
+        const localDate = requestedDate ? requireDate(requestedDate) : await businessDate();
         const operations = await branchRpc("atlas_operations_today", { p_local_date: localDate });
         return jsonResponse({
           operations,
@@ -272,6 +295,26 @@ Deno.serve(async (request: Request) => {
             private_branch: true,
             manager_review_for_settings: true,
             direct_table_access: false,
+            operational_history_preserved: true,
+          },
+        });
+      }
+
+      if (action === "daily-checklists") {
+        const requestedDate = url.searchParams.get("date");
+        const checklists = await branchRpc("atlas_operations_daily_checklists", {
+          p_business_date: requestedDate ? requireDate(requestedDate) : null,
+        }) as Record<string, unknown>;
+        return jsonResponse({
+          checklists,
+          summary: {
+            opening: dailyChecklistSummary(checklists?.opening),
+            closing: dailyChecklistSummary(checklists?.closing),
+          },
+          staff: staffPayload(context),
+          policy: {
+            shared_between_devices: true,
+            device_storage: false,
             operational_history_preserved: true,
           },
         });
@@ -296,7 +339,7 @@ Deno.serve(async (request: Request) => {
 
     if (request.method !== "POST") throw new ApiError(405, "Method not allowed.");
     const body = await readJson(request);
-    const actor = actorLabel(context);
+    const actor = contextLabel(context);
     let result: unknown;
 
     switch (action) {
@@ -404,7 +447,10 @@ Deno.serve(async (request: Request) => {
       },
     });
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError) {
+      return jsonResponse(error.code ? { error: error.message, code: error.code } : { error: error.message }, error.status);
+    }
     console.error("Checkpoint A operations API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The Checkpoint A operations service is temporarily unavailable." }, 500);
   }

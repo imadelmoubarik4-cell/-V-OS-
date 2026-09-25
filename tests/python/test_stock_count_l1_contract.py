@@ -8,7 +8,9 @@ PUBLICATION_MIGRATION = ROOT / "supabase/migrations/20260805211000_atlas_stock_c
 NAMED_ARGUMENTS_MIGRATION = ROOT / "supabase/migrations/20260909083100_atlas_stock_counts_named_arguments.sql"
 EDGE_FUNCTION = ROOT / "supabase/functions/atlas-stock-counts/entrypoint.ts"
 SUPABASE_CONFIG = ROOT / "supabase/config.toml"
-INVENTORY_BOOTSTRAP = ROOT / "apps/web/assets/js/inventory-scanner-bootstrap.js"
+# S88: the stock-count module loads directly from index.html (bootstraps retired).
+STOCK_COUNT_MODULE = ROOT / "apps/web/assets/js/stock-count-workspace.js"
+WEB_INDEX = ROOT / "apps/web/index.html"
 
 
 class CheckpointL1ContractTests(unittest.TestCase):
@@ -19,7 +21,8 @@ class CheckpointL1ContractTests(unittest.TestCase):
         cls.named_arguments_sql = NAMED_ARGUMENTS_MIGRATION.read_text()
         cls.edge = EDGE_FUNCTION.read_text()
         cls.supabase_config = SUPABASE_CONFIG.read_text()
-        cls.inventory_bootstrap = INVENTORY_BOOTSTRAP.read_text()
+        cls.stock_count_module = STOCK_COUNT_MODULE.read_text()
+        cls.web_index = WEB_INDEX.read_text()
 
     def test_original_and_normalized_count_evidence_are_preserved(self):
         for token in (
@@ -82,7 +85,8 @@ class CheckpointL1ContractTests(unittest.TestCase):
 
     def test_gateway_revalidates_profile_and_manager_role(self):
         self.assertIn("requireActiveProfile", self.edge)
-        self.assertIn("profile?.active", self.edge)
+        self.assertIn('from "../_shared/auth.mjs"', self.edge)
+        self.assertIn("await resolveActor(request, Deno.env, fetch, { timeoutMs: 10_000 })", self.edge)
         self.assertIn("requireManager(context)", self.edge)
         self.assertIn('case "prepare-publication"', self.edge)
         self.assertIn('case "publish"', self.edge)
@@ -90,8 +94,9 @@ class CheckpointL1ContractTests(unittest.TestCase):
     def test_runtime_configuration_uses_the_new_entrypoint(self):
         self.assertIn("[functions.atlas-stock-counts]", self.supabase_config)
         self.assertIn('entrypoint = "./functions/atlas-stock-counts/entrypoint.ts"', self.supabase_config)
-        self.assertIn("STOCK_COUNTS_API", self.inventory_bootstrap)
-        self.assertIn("stock-count-bootstrap.js", self.inventory_bootstrap)
+        self.assertIn("STOCK_COUNTS_API", self.stock_count_module)
+        self.assertIn("assets/js/stock-count-workspace.js", self.web_index)
+        self.assertNotIn("stock-count-bootstrap.js", self.web_index)
 
     def test_production_projection_tolerates_unreleased_optional_columns(self):
         self.assertIn("readCompatibleRelation", self.edge)

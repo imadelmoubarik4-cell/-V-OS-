@@ -19,7 +19,12 @@ class IsolatedRehearsalBuildTests(unittest.TestCase):
             headers = (output / '_headers').read_text()
             manifest = json.loads((output / 'rehearsal-manifest.json').read_text())
             self.assertIn(builder.TARGET, config)
+            # 17 historical endpoints (S89 removed the unread SPRINT4_BRIEFING_API and
+            # INVENTORY_SCANNER_API keys) plus ATLAS_AI_API and INTEGRATIONS_API (S88),
+            # all disabled in the rehearsal.
             self.assertEqual(len(manifest['disabled_runtime_settings']), 19)
+            self.assertIn('ATLAS_AI_API', manifest['disabled_runtime_settings'])
+            self.assertIn('INTEGRATIONS_API', manifest['disabled_runtime_settings'])
             for forbidden in ('dnefgcmjcgxlynycxkts', 'uhbamqetppqmygesoeeh'):
                 self.assertNotIn(forbidden, config)
                 self.assertNotIn(forbidden, headers)

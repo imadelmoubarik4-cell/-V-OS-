@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-import { buildStockReport } from '../../supabase/functions/atlas-reports/stock-provenance.mjs';
+import { buildStockReport } from '../../supabase/functions/_shared/stock-provenance.mjs';
 
 const read = (path) => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const NOW = Date.parse('2026-09-24T10:00:00Z');
@@ -143,8 +143,12 @@ test('Inventory table and quick adjustments read the reconciled quantity, never 
   const html = read('apps/web/index.html');
   assert.doesNotMatch(html, /live_quantity|hasManagerLiveQuantity|liveQuantityById/);
   assert.match(html, /items = window\.AtlasStockTruth\.project\(data \|\| \[\], balances, inventoryMovements\);/);
-  assert.match(html, /const displayQuantity = stockKnown \? Number\(item\.quantity\) : null;/);
-  assert.equal((html.match(/const currentQty = window\.AtlasStockTruth\.known\(item\) \? Number\(item\.quantity\) : NaN;/g) || []).length, 3);
+  // S88: the Inventory page lives in atlas-inventory.js and shows a quantity
+  // only when AtlasStockTruth knows it; quick adjustments were retired.
+  const inventory = read('apps/web/assets/js/atlas-inventory.js');
+  assert.doesNotMatch(inventory, /live_quantity|hasManagerLiveQuantity|liveQuantityById/);
+  assert.match(inventory, /if \(key === 'onhand'\) return truth\(\)\?\.known\(item\) \? num\(item\.quantity\) : null;/);
+  assert.match(inventory, /\['On hand', known \? `\$\{qty\(item\.quantity\)\}/);
 });
 
 // Issue 3: the confirmation has its own timestamp and quantity.
@@ -231,8 +235,13 @@ test('Reports reads the owner confirmation evidence columns', () => {
 test('index.html cache keys track the shipped stock-truth and calculation modules', () => {
   const html = read('apps/web/index.html');
   const pins = {
-    'atlas-stock-truth.js': { version: '20260924-s84-1', sha256: 'bc94c9df693104f6d49ab2f1478c265ea9cdc7c023db81698e446a96d23a053f' },
-    'atlas-calculations.js': { version: '20260924-s85', sha256: 'a6207cccb0b8564b39b012ae54bfa89e01a8a1beb8d9f1f87609b69168e8d458' }
+    // S89: the canonical stockStatus, hasCost, inventoryValue and purchaseSpend rules,
+    // plus unknownReason/withhold for stock withheld when its inputs fail to load.
+    'atlas-stock-truth.js': { version: '20260929-s90f', sha256: '17e3606ddbf54ad25da28807a255ae6ac065041c93d2ac642f0933992a7ea7dc' },
+    // S89: reference ingredients cost 0; the fallback money format is '3.900 kr'.
+    // S90: an ingredient counted out makes the recipe unavailable even when its
+    // unit can't be converted (Home and Recipes agree).
+    'atlas-calculations.js': { version: '20260929-s90p', sha256: 'c45ea16e7ac5ed2097a9bad431acaf510b107e990a83219bc2eec26e16f05dd2' }
   };
   for (const [file, pin] of Object.entries(pins)) {
     const sha256 = crypto.createHash('sha256').update(read(`apps/web/assets/js/${file}`)).digest('hex');

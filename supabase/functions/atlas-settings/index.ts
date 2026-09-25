@@ -1,10 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
 
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
-const FUNCTION_VERSION = "0.1.1";
+const FUNCTION_VERSION = "0.1.3";
 const MAX_BODY_BYTES = 256 * 1024;
 
 const CORS_HEADERS = {
@@ -50,6 +47,37 @@ class ApiError extends Error {
   }
 }
 
+// s88-settings-helpers:start (pure; unit-tested by tests/node/venue-clock-api-s88.test.js)
+const DEFAULT_VENUE_TIME_ZONE = "Atlantic/Reykjavik";
+const TIME_ZONE_PATTERN = /^[A-Za-z][A-Za-z0-9_+-]*(?:\/[A-Za-z0-9_+-]+){0,2}$/;
+
+function isValidTimeZone(value: unknown): boolean {
+  if (typeof value !== "string" || value !== value.trim() || !TIME_ZONE_PATTERN.test(value)) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format(0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function timeZoneProblem(value: unknown): string | null {
+  if (value === undefined) return null;
+  if (isValidTimeZone(value)) return null;
+  const shown = typeof value === "string" && value.trim() ? value.trim().slice(0, 64) : "(empty)";
+  return `Time zone ${shown} is not recognised. Use an IANA name such as ${DEFAULT_VENUE_TIME_ZONE}.`;
+}
+
+function venueClockStaff(role: string, id: string) {
+  return {
+    id,
+    role,
+    active: true,
+    can_manage_hours: role === "admin" || role === "manager",
+  };
+}
+// s88-settings-helpers:end
+
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
     status,
@@ -62,54 +90,30 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
 function profileLabel(profile: Partial<AtlasProfile> | null | undefined): string {
-  return profile?.display_name?.trim()
-    || profile?.email?.trim()
-    || "Atlas team member";
+  return actorLabel(profile);
 }
 
 function isManager(context: AtlasContext): boolean {
   return MANAGER_ROLES.has(context.profile.role);
 }
 
+// The production Auth/REST project and its publishable key come only from the
+// function environment (_shared/auth.mjs authConfig); unconfigured fails closed.
+function productionAuthUrl(): string {
+  return authConfig(Deno.env).projectUrl;
+}
+
+function productionPublishableKey(): string {
+  return authConfig(Deno.env).publishableKey;
+}
+
 async function requireActiveProfile(request: Request): Promise<AtlasContext> {
-  const token = bearerToken(request);
-  const headers = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
-  profileUrl.searchParams.set("id", `eq.${user.id}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active,updated_at");
-  profileUrl.searchParams.set("limit", "1");
-  const profileResponse = await fetch(profileUrl, { headers });
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas staff profile could not be verified.");
-
-  const profiles = await profileResponse.json() as AtlasProfile[];
-  const profile = profiles[0];
-  if (!profile?.active) {
-    throw new ApiError(403, "This Atlas profile is inactive. Settings access has been removed.");
-  }
-  if (!PROFILE_ROLES.has(profile.role)) {
-    throw new ApiError(403, "This Atlas profile cannot access Settings.");
-  }
-
-  return { token, user: { id: user.id, email: user.email }, profile };
+  const actor = await resolveActor(request, Deno.env, fetch, {
+    inactiveMessage: "This Atlas profile is inactive. Settings access has been removed.",
+    profileColumns: ["updated_at"],
+  });
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
 }
 
 function requireManager(context: AtlasContext): void {
@@ -125,6 +129,22 @@ function branchCredentials() {
     throw new ApiError(500, "The private Settings service is unavailable.");
   }
   return { branchUrl, serviceRoleKey };
+}
+
+// S88 hardening (F9): database text reaches the browser only when it is an
+// Atlas-authored message (raised by our SQL) without schema detail; anything
+// else (constraint, column, relation or permission text) becomes the fixed
+// fallback. The SQLSTATE is logged instead.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed as { code?: unknown; message?: unknown };
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
 }
 
 async function branchRpc(name: string, payload: Record<string, unknown>): Promise<any> {
@@ -144,25 +164,25 @@ async function branchRpc(name: string, payload: Record<string, unknown>): Promis
   let parsed: any = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : "The private Settings request failed.";
-    throw new ApiError(response.status >= 500 ? 500 : 400, message);
+    const message = safeDbMessage(parsed, "The private Settings request failed.");
+    if (message === "The private Settings request failed.") {
+      console.warn("Settings RPC failed", name, response.status, parsed && typeof parsed === "object" ? String(parsed.code ?? "-") : "-");
+    }
+    const conflict = /changed after this page was opened/i.test(message);
+    throw new ApiError(response.status >= 500 && !conflict ? 500 : conflict ? 409 : 400, message);
   }
   return parsed;
 }
 
 async function productionProfiles(context: AtlasContext): Promise<AtlasProfile[]> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/profiles`);
   url.searchParams.set("select", "id,email,display_name,role,active,updated_at");
   if (!isManager(context)) url.searchParams.set("id", `eq.${context.user.id}`);
   url.searchParams.set("order", "active.desc,display_name.asc.nullslast,email.asc");
   url.searchParams.set("limit", "500");
   const response = await fetch(url, {
     headers: {
-      apikey: AUTH_PUBLISHABLE_KEY,
+      apikey: productionPublishableKey(),
       authorization: `Bearer ${context.token}`,
       accept: "application/json",
       "cache-control": "no-store",
@@ -301,8 +321,10 @@ function integerArray(value: unknown, label: string, min: number, max: number): 
 }
 
 function timeValue(value: unknown, label: string, required = true): string | null {
-  const normalized = stringValue(value, label, 5, required);
-  if (normalized === null) return null;
+  // Postgres time columns round-trip as HH:MM:SS; accept them and keep HH:MM.
+  const raw = stringValue(value, label, 8, required);
+  if (raw === null) return null;
+  const normalized = /^\d{2}:\d{2}:\d{2}$/.test(raw) ? raw.slice(0, 5) : raw;
   if (!TIME_PATTERN.test(normalized)) throw new ApiError(400, `${label} must use HH:MM.`);
   return `${normalized}:00`;
 }
@@ -314,18 +336,62 @@ function assertNoSensitiveKeys(value: unknown, path = "settings"): void {
   }
   if (!value || typeof value !== "object") return;
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (/(password|secret|token|api[_ -]?key|service[_ -]?role|credential)/i.test(key)) {
+    // Match whole credential-style key names. A substring match rejected
+    // ordinary booleans such as api_keys_visible and
+    // password_policy_managed_by_auth, so the Security section could never
+    // be saved. The database guard applies the same whole-key rule.
+    if (/^(password|secret|token|access[_ -]?token|refresh[_ -]?token|api[_ -]?key|service[_ -]?role([_ -]?key)?|credentials?|client[_ -]?secret|private[_ -]?key)$/i.test(key)) {
       throw new ApiError(400, `Sensitive field ${path}.${key} cannot be stored in Settings.`);
     }
     assertNoSensitiveKeys(child, `${path}.${key}`);
   }
 }
 
+// s90-hours-helpers:start (pure; unit-tested by tests/node/workflow-integrity-s90.test.js)
+// Opening-hours conflicts the editor also refuses (S90 P3): zero-length days,
+// a close before the open without close_next_day, more than 24 hours, and a
+// late close that runs into the next day's opening.
+function businessHoursProblem(rows: Record<string, unknown>[]): { weekday: number; text: string } | null {
+  const minutes = (value: unknown) => {
+    const match = /^(\d{2}):(\d{2})/.exec(String(value ?? ''));
+    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+  };
+  const clockText = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+  const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const byDay = new Map(rows.map((row: Record<string, unknown>) => [Number(row.weekday), row]));
+  for (const row of rows) {
+    if (!row || !row.is_open) continue;
+    const weekday = Number(row.weekday);
+    const day = names[weekday] || String(row.day_label || 'This day');
+    const open = minutes(row.open_time);
+    const close = minutes(row.close_time);
+    if (open === null || close === null) continue;
+    if (!row.close_next_day && close === open) {
+      return { weekday, text: `${day} opens and closes at the same time. Change the closing time, or tick Next day if it’s open around the clock.` };
+    }
+    if (!row.close_next_day && close < open) {
+      return { weekday, text: `${day} closes before it opens. Tick Next day if it closes after midnight.` };
+    }
+    if (row.close_next_day && close > open) {
+      return { weekday, text: `${day} would be open for more than 24 hours. Check the closing time.` };
+    }
+    if (row.close_next_day) {
+      const next = byDay.get((weekday + 1) % 7);
+      const nextOpen = next?.is_open ? minutes(next.open_time) : null;
+      if (nextOpen !== null && close > nextOpen) {
+        return { weekday, text: `${day} closes at ${clockText(close)} after midnight, but ${names[(weekday + 1) % 7]} opens at ${clockText(nextOpen)}. Change one so they don’t overlap.` };
+      }
+    }
+  }
+  return null;
+}
+// s90-hours-helpers:end
+
 function validateHours(value: unknown): Record<string, unknown>[] {
   const rows = arrayValue(value, "Business hours");
   if (rows.length !== 7) throw new ApiError(400, "Business hours must contain all seven days.");
   const weekdays = new Set<number>();
-  return rows.map((entry) => {
+  const validated = rows.map((entry) => {
     const row = objectValue(entry, "Business-hours row");
     const weekday = integerValue(row.weekday, "Weekday", 0, 6);
     if (weekdays.has(weekday)) throw new ApiError(400, "Each weekday may appear only once.");
@@ -344,6 +410,9 @@ function validateHours(value: unknown): Record<string, unknown>[] {
       last_order_next_day: Boolean(row.last_order_next_day),
     };
   });
+  const conflict = businessHoursProblem(validated);
+  if (conflict) throw new ApiError(400, conflict.text);
+  return validated;
 }
 
 Deno.serve(async (request: Request) => {
@@ -355,6 +424,15 @@ Deno.serve(async (request: Request) => {
     const action = url.searchParams.get("action") || "snapshot";
 
     if (request.method === "GET") {
+      if (action === "venue-clock") {
+        // Every active role may read the venue clock: hours, offers, time
+        // zone and dates are operational, not commercial.
+        const clock = await branchRpc("atlas_settings_venue_clock", {
+          p_actor_role: context.profile.role,
+          p_actor_id: context.user.id,
+        });
+        return jsonResponse({ clock, staff: venueClockStaff(context.profile.role, context.user.id) });
+      }
       if (action !== "snapshot") throw new ApiError(404, "Unknown Settings action.");
       return jsonResponse(await snapshot(context));
     }
@@ -370,6 +448,10 @@ Deno.serve(async (request: Request) => {
         const sectionKey = enumValue(body.section_key, "Settings section", SECTION_KEYS);
         const value = objectValue(body.value, "Settings value");
         assertNoSensitiveKeys(value);
+        if (sectionKey === "venue") {
+          const problem = timeZoneProblem(value.timezone);
+          if (problem) throw new ApiError(400, problem);
+        }
         result = await branchRpc("atlas_settings_save_section", {
           p_section_key: sectionKey,
           p_value: value,
@@ -466,13 +548,16 @@ Deno.serve(async (request: Request) => {
       case "save-preferences": {
         const preferences = optionalObject(body.preferences, "Preferences");
         assertNoSensitiveKeys(preferences);
+        const preferenceZone = stringValue(body.timezone, "Timezone", 100, true);
+        const preferenceZoneProblem = timeZoneProblem(preferenceZone);
+        if (preferenceZoneProblem) throw new ApiError(400, preferenceZoneProblem);
         result = await branchRpc("atlas_settings_save_preferences", {
           p_user_id: context.user.id,
           p_theme: enumValue(body.theme, "Theme", new Set(["dark", "light", "system"])),
           p_density: enumValue(body.density, "Density", new Set(["comfortable", "compact"])),
           p_language: enumValue(body.language, "Language", new Set(["en", "is"])),
           p_start_view: stringValue(body.start_view, "Start view", 80, true),
-          p_timezone: stringValue(body.timezone, "Timezone", 100, true),
+          p_timezone: preferenceZone,
           p_reduce_motion: booleanValue(body.reduce_motion, "Reduce motion"),
           p_browser_notifications: booleanValue(body.browser_notifications, "Browser notifications"),
           p_email_notifications: booleanValue(body.email_notifications, "Email notifications"),
@@ -490,7 +575,7 @@ Deno.serve(async (request: Request) => {
 
     return jsonResponse({ result, ...(await snapshot(context)) });
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     console.error("Settings API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The Settings service is temporarily unavailable." }, 500);
   }

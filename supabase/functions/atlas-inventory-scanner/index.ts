@@ -1,9 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
+// S89: scanning identifies products; it never changes stock. The former
+// `count` action (which could call adjust_inventory when live apply was on)
+// is removed; counts are saved only through the stock-count workflow and
+// reach stock only through manager verification. Codes use the shared
+// product-identity normalisation (GTIN check digit, GTIN-14).
+import { normalizeCode as normalizeProductCode } from "../_shared/product-identity.mjs";
+import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -14,9 +16,7 @@ const CORS_HEADERS = {
   "vary": "authorization",
 };
 
-const WRITE_ROLES = new Set(["admin", "manager", "bartender"]);
 const MANAGER_ROLES = new Set(["admin", "manager"]);
-const SCAN_SOURCES = new Set(["camera_native", "camera_zxing", "image_native", "image_zxing", "manual"]);
 const MAX_BODY_BYTES = 64 * 1024;
 const INVENTORY_SELECT = "id,name,category,quantity,unit,barcode,sku,image_url,bin_location,updated_at,active";
 
@@ -69,71 +69,33 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
-function actorLabel(context: AtlasContext): string {
-  return context.profile.display_name?.trim()
-    || context.profile.email?.trim()
-    || context.user.email?.trim()
-    || "Atlas staff";
+function contextLabel(context: AtlasContext): string {
+  return actorLabel(context.profile);
 }
 
 function staffPayload(context: AtlasContext) {
   return {
     id: context.user.id,
-    label: actorLabel(context),
+    label: contextLabel(context),
     role: context.profile.role,
-    can_count: WRITE_ROLES.has(context.profile.role),
+    can_count: false,
     can_link: MANAGER_ROLES.has(context.profile.role),
   };
 }
 
-async function requireActiveProfile(request: Request): Promise<AtlasContext> {
-  const token = bearerToken(request);
-  const authHeaders = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers: authHeaders });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
-  profileUrl.searchParams.set("id", `eq.${user.id}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active");
-  profileUrl.searchParams.set("limit", "1");
-
-  const profileResponse = await fetch(profileUrl, { headers: authHeaders });
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas role could not be verified.");
-
-  const profiles = await profileResponse.json() as AtlasProfile[];
-  const profile = profiles[0];
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive.");
-  if (!["admin", "manager", "bartender", "viewer"].includes(profile.role)) {
-    throw new ApiError(403, "This Atlas profile cannot access the inventory scanner.");
-  }
-
-  return {
-    token,
-    user: { id: user.id, email: user.email },
-    profile,
-  };
+// The production Auth/REST project and its publishable key come only from the
+// function environment (_shared/auth.mjs authConfig); unconfigured fails closed.
+function productionAuthUrl(): string {
+  return authConfig(Deno.env).projectUrl;
 }
 
-function requireWriter(context: AtlasContext): void {
-  if (!WRITE_ROLES.has(context.profile.role)) {
-    throw new ApiError(403, "Inventory counts are limited to active operational staff.");
-  }
+function productionPublishableKey(): string {
+  return authConfig(Deno.env).publishableKey;
+}
+
+async function requireActiveProfile(request: Request): Promise<AtlasContext> {
+  const actor = await resolveActor(request, Deno.env, fetch);
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
 }
 
 function requireManager(context: AtlasContext): void {
@@ -156,10 +118,10 @@ function normalizeCode(value: unknown): string {
   if (typeof value !== "string") throw new ApiError(400, "Barcode or SKU is required.");
   const trimmed = value.trim();
   if (!trimmed) throw new ApiError(400, "Barcode or SKU is required.");
-  const normalized = /^[0-9\s-]+$/.test(trimmed)
-    ? trimmed.replace(/[^0-9]/g, "")
-    : trimmed.replace(/\s+/g, "").toUpperCase();
-  if (normalized.length < 3 || normalized.length > 128) {
+  const code = normalizeProductCode(trimmed);
+  // A numeric code that fails the GTIN check can still be an internal barcode.
+  const normalized = code.valid ? code.normalized : normalizeProductCode(trimmed, { kind: "other_barcode" }).normalized;
+  if (!normalized) {
     throw new ApiError(400, "Barcode or SKU must contain between 3 and 128 characters.");
   }
   return normalized;
@@ -174,24 +136,10 @@ function optionalText(value: unknown, maxLength: number): string | null {
   return normalized;
 }
 
-function requireNumber(value: unknown, label: string, min: number, max: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
-    throw new ApiError(400, `${label} must be between ${min} and ${max}.`);
-  }
-  return parsed;
-}
-
 function normalizeSymbology(value: unknown): string {
   const raw = typeof value === "string" ? value.trim().toLowerCase() : "unknown";
   const normalized = raw.replace(/[\s-]+/g, "_").slice(0, 64);
   return normalized || "unknown";
-}
-
-function normalizeSource(value: unknown): string {
-  const source = typeof value === "string" ? value.trim().toLowerCase() : "manual";
-  if (!SCAN_SOURCES.has(source)) throw new ApiError(400, "Scanner source is invalid.");
-  return source;
 }
 
 async function readJson(request: Request): Promise<Record<string, unknown>> {
@@ -251,7 +199,7 @@ async function productionJson(context: AtlasContext, url: URL, init: RequestInit
   const response = await fetch(url, {
     ...init,
     headers: {
-      apikey: AUTH_PUBLISHABLE_KEY,
+      apikey: productionPublishableKey(),
       authorization: `Bearer ${context.token}`,
       accept: "application/json",
       "cache-control": "no-store",
@@ -280,7 +228,7 @@ async function productionJson(context: AtlasContext, url: URL, init: RequestInit
 }
 
 async function inventoryCatalog(context: AtlasContext): Promise<InventoryItem[]> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/inventory_items`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/inventory_items`);
   url.searchParams.set("select", INVENTORY_SELECT);
   url.searchParams.set("active", "eq.true");
   url.searchParams.set("order", "category.asc,name.asc");
@@ -290,7 +238,7 @@ async function inventoryCatalog(context: AtlasContext): Promise<InventoryItem[]>
 }
 
 async function inventoryItem(context: AtlasContext, id: string): Promise<InventoryItem | null> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/inventory_items`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/inventory_items`);
   url.searchParams.set("select", INVENTORY_SELECT);
   url.searchParams.set("id", `eq.${id}`);
   url.searchParams.set("active", "eq.true");
@@ -365,33 +313,6 @@ async function scannerSnapshot(context: AtlasContext) {
   return { scanner, items };
 }
 
-async function applyLiveCount(
-  context: AtlasContext,
-  item: InventoryItem,
-  observedQuantity: number,
-  rawCode: string,
-  note: string | null,
-) {
-  const previous = Number(item.quantity);
-  const delta = observedQuantity - previous;
-  if (Math.abs(delta) < 0.0000001) return item;
-
-  const rpcUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/rpc/adjust_inventory`);
-  const result = await productionJson(context, rpcUrl, {
-    method: "POST",
-    body: JSON.stringify({
-      p_item_id: item.id,
-      p_quantity_change: delta,
-      p_movement_type: "count",
-      p_unit_cost: null,
-      p_supplier_id: null,
-      p_note: `Bottle scanner count · ${rawCode}${note ? ` · ${note}` : ""}`.slice(0, 1000),
-    }),
-  });
-  if (Array.isArray(result)) return result[0] ?? item;
-  return result && typeof result === "object" ? result : item;
-}
-
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
 
@@ -410,7 +331,8 @@ Deno.serve(async (request: Request) => {
             camera_images_uploaded: false,
             direct_browser_table_access: false,
             code_link_requires_manager: true,
-            preview_live_apply_enabled: Boolean(payload.scanner?.settings?.live_apply_enabled),
+            scanner_changes_stock: false,
+            counts_use_stock_count_workflow: true,
           },
         });
       }
@@ -445,7 +367,7 @@ Deno.serve(async (request: Request) => {
         p_item_category: item.category ?? null,
         p_item_unit: item.unit ?? null,
         p_actor_id: context.user.id,
-        p_actor_label: actorLabel(context),
+        p_actor_label: contextLabel(context),
         p_client_request_id: clientRequestId,
       });
 
@@ -454,130 +376,13 @@ Deno.serve(async (request: Request) => {
     }
 
     if (action === "count") {
-      requireWriter(context);
-      const rawCode = optionalText(body.code, 256);
-      if (!rawCode) throw new ApiError(400, "Barcode or SKU is required.");
-      const normalizedCode = normalizeCode(rawCode);
-      const itemId = requireUuid(body.item_id, "Inventory item");
-      const clientRequestId = requireUuid(body.client_request_id, "Client request ID");
-      const source = normalizeSource(body.source);
-      const symbology = normalizeSymbology(body.symbology);
-      const note = optionalText(body.note, 2000);
-
-      const scanner = await branchRpc("atlas_inventory_scanner_snapshot");
-      const maxQuantity = Number(scanner?.settings?.max_observed_quantity ?? 100000);
-      const observedQuantity = requireNumber(body.observed_quantity, "Observed quantity", 0, maxQuantity);
-      const item = await inventoryItem(context, itemId);
-      if (!item) throw new ApiError(404, "The selected inventory item is no longer active.");
-
-      const lookup = await lookupCode(context, rawCode);
-      const verifiedMatch = lookup.matched && lookup.item?.id === item.id;
-      if (!verifiedMatch && !itemCodeMatches(item, normalizedCode)) {
-        throw new ApiError(409, "This barcode is not linked to the selected inventory item.");
-      }
-
-      const previousQuantity = Number(item.quantity);
-      const commonPayload = {
-        p_client_request_id: clientRequestId,
-        p_raw_code: rawCode,
-        p_symbology: symbology,
-        p_item_id: item.id,
-        p_item_name: item.name,
-        p_item_category: item.category ?? null,
-        p_previous_quantity: previousQuantity,
-        p_observed_quantity: observedQuantity,
-        p_unit: item.unit ?? null,
-        p_note: note,
-        p_source: source,
-        p_actor_id: context.user.id,
-        p_actor_label: actorLabel(context),
-      };
-
-      if (!scanner?.settings?.live_apply_enabled) {
-        const audit = await branchRpc("atlas_inventory_scanner_record_count", {
-          ...commonPayload,
-          p_applied_quantity: null,
-          p_status: "shadow_recorded",
-          p_metadata: {
-            inventory_mutated: false,
-            preview_safety: true,
-            match_source: lookup.match_source,
-          },
-        });
-        return jsonResponse({
-          mode: "shadow",
-          inventory_mutated: false,
-          item,
-          observed_quantity: observedQuantity,
-          audit,
-          staff: staffPayload(context),
-        });
-      }
-
-      // Shadow observations remain available to operational staff. Any
-      // production mutation, including a no-change live acknowledgement,
-      // requires a freshly verified manager/admin profile.
-      requireManager(context);
-
-      if (Math.abs(observedQuantity - previousQuantity) < 0.0000001) {
-        const audit = await branchRpc("atlas_inventory_scanner_record_count", {
-          ...commonPayload,
-          p_applied_quantity: previousQuantity,
-          p_status: "no_change",
-          p_metadata: { inventory_mutated: false, match_source: lookup.match_source },
-        });
-        return jsonResponse({
-          mode: "live",
-          inventory_mutated: false,
-          no_change: true,
-          item,
-          audit,
-          staff: staffPayload(context),
-        });
-      }
-
-      const pending = await branchRpc("atlas_inventory_scanner_record_count", {
-        ...commonPayload,
-        p_applied_quantity: null,
-        p_status: "pending_live",
-        p_metadata: { inventory_mutated: false, match_source: lookup.match_source },
-      });
-      const eventId = pending?.event?.id;
-      if (!eventId) throw new ApiError(500, "The scanner audit event could not be created.");
-
-      try {
-        const updatedItem = await applyLiveCount(context, item, observedQuantity, rawCode, note);
-        const appliedQuantity = Number(updatedItem?.quantity ?? observedQuantity);
-        const audit = await branchRpc("atlas_inventory_scanner_finalize_count", {
-          p_event_id: eventId,
-          p_status: "live_applied",
-          p_applied_quantity: appliedQuantity,
-          p_metadata: { inventory_mutated: true },
-        });
-        return jsonResponse({
-          mode: "live",
-          inventory_mutated: true,
-          item: updatedItem,
-          audit,
-          staff: staffPayload(context),
-        });
-      } catch (error) {
-        await branchRpc("atlas_inventory_scanner_finalize_count", {
-          p_event_id: eventId,
-          p_status: "failed",
-          p_applied_quantity: previousQuantity,
-          p_metadata: {
-            inventory_mutated: false,
-            error: error instanceof Error ? error.message.slice(0, 500) : "Unknown live inventory error",
-          },
-        }).catch(() => null);
-        throw error;
-      }
+      // Removed in S89: recognition and scanning stop at identification.
+      throw new ApiError(410, "Scanner counts moved to Stock count. Scan inside a count and save the line there.");
     }
 
     throw new ApiError(404, "Unknown inventory scanner action.");
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     console.error("Inventory scanner API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The inventory scanner service is temporarily unavailable." }, 500);
   }

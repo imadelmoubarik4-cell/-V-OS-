@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 
@@ -7,7 +7,6 @@ const read = (path) => readFileSync(path, 'utf8');
 const app = read('apps/web/index.html');
 const config = read('apps/web/config.js');
 const runtime = read('apps/web/assets/js/runtime-module-guard.js');
-const design = read('apps/web/assets/css/s34-preproduction.css');
 const messages = read('apps/web/assets/js/team-messages.js');
 const messageApi = read('supabase/functions/atlas-team-messages/index.ts');
 const shiftsApi = read('supabase/functions/atlas-shifts/index.ts');
@@ -19,7 +18,7 @@ const indexMigration = read('supabase/migrations/20260911124006_s34_foreign_key_
 
 test('runtime module guard preserves Team destinations when runtime config is reduced', () => {
   assert.match(app, /assets\/js\/runtime-module-guard\.js/);
-  for (const asset of ['team-messages.js', 'team-profiles-bootstrap.js', 'team-profile-photos.js', 'team-profile-photo-gallery.js']) {
+  for (const asset of ['team-messages.js', 'team-unread-badge.js', 'team-profiles-bootstrap.js', 'team-profile-photos.js']) {
     assert.match(runtime, new RegExp(asset.replaceAll('.', '\\.')));
   }
   assert.match(runtime, /Object\.freeze/);
@@ -29,14 +28,15 @@ test('runtime module guard preserves Team destinations when runtime config is re
 
 test('inventory, purchasing, and close-control regressions stay wired', () => {
   assert.match(app, /await loadAll\(\);/);
-  assert.match(app, /item\?\.subcategory/);
-  assert.match(app, /id="purchase-deliveries-tab"/);
-  const purchasing = read('apps/web/assets/js/purchase-orders.js');
-  assert.match(purchasing, /openSection\('orders'\)/);
-  assert.match(purchasing, /openSection\('deliveries'\)/);
+  // S88: Purchasing (atlas-purchasing.js) routes its tabs; Inventory sheets close via data-modal-close.
+  const purchasing = read('apps/web/assets/js/atlas-purchasing.js');
+  assert.match(purchasing, /'#purchasing\/orders'/);
+  assert.match(purchasing, /'#purchasing\/deliveries'/);
   for (const source of [
     read('apps/web/assets/js/recipes.js'),
     read('apps/web/assets/js/stock-count-workspace.js'),
+    read('apps/web/assets/js/atlas-inventory.js'),
+    purchasing,
     read('apps/web/assets/js/shifts-workspace.js'),
     read('apps/web/assets/js/knowledge-workspace.js')
   ]) assert.match(source, /data-[a-z-]*close|data-close-[a-z-]+/);
@@ -59,11 +59,13 @@ test('one calculation rule gives saved and refetched fixture values', () => {
   assert.equal(saved.financials.profit, 300);
   assert.equal(saved.financials.margin, 60);
   assert.deepEqual(JSON.parse(JSON.stringify(saved)), JSON.parse(JSON.stringify(refetched)));
-  assert.equal(calculator.formatIsk(saved.financials.perServing), '200 ISK');
+  // Without AtlasFormat loaded the fallback prints the same '3.900 kr' format.
+  assert.equal(calculator.formatIsk(saved.financials.perServing), '200 kr');
+  assert.equal(calculator.formatIsk(3900), '3.900 kr');
 });
 
-test('Recipes, Brain, and Business Intelligence delegate to the shared calculation rule', () => {
-  for (const source of [read('apps/web/assets/js/recipes.js'), read('apps/web/assets/js/brain.js'), read('apps/web/assets/js/business.js')]) {
+test('Recipes and Reports › Overview delegate to the shared calculation rule (Brain retired in S88)', () => {
+  for (const source of [read('apps/web/assets/js/recipes.js'), read('apps/web/assets/js/reports-overview.js')]) {
     assert.match(source, /AtlasCalculations/);
   }
   assert.match(app, /assets\/js\/atlas-calculations\.js/);
@@ -74,12 +76,25 @@ test('Recipes, Brain, and Business Intelligence delegate to the shared calculati
 });
 
 test('shared launch design uses blue actions, compact search, visible focus, and reduced motion', () => {
-  assert.match(design, /--atlas-action:#2d78dc/);
-  assert.match(design, /:focus-visible/);
-  assert.match(design, /input\[type="search"\]/);
-  assert.match(design, /@media\(prefers-reduced-motion:reduce\)/);
-  assert.match(design, /#home-focus::after/);
-  assert.match(app, /assets\/css\/s34-preproduction\.css/);
+  // S88: the action colour resolves to the single, AA-contrast Atlas blue
+  // (--accent #2563eb since Brand v1.0); every legacy name is an alias of it.
+  const tokens = readFileSync('apps/web/assets/css/atlas-tokens.css', 'utf8');
+  assert.match(tokens, /--accent: #2563eb;/);
+  assert.match(tokens, /--atlas-accent: var\(--accent\);/);
+  assert.match(tokens, /--atlas-action: var\(--accent\);/);
+  // S88: the shared focus, search and reduced-motion rules moved into the
+  // design system (atlas-base.css and atlas-components.css); the s34 override
+  // stylesheet and its legacy fragments are gone.
+  assert.ok(!existsSync('apps/web/assets/css/legacy'), 'no legacy stylesheet directory');
+  const base = readFileSync('apps/web/assets/css/atlas-base.css', 'utf8');
+  const components = readFileSync('apps/web/assets/css/atlas-components.css', 'utf8');
+  assert.match(base, /:focus-visible/);
+  assert.match(components, /\.atlas-search > \.atlas-input \{ padding-left: 34px;/);
+  assert.match(base, /@media \(prefers-reduced-motion: reduce\)/);
+  // S88 Team A: the pulsing Home focus card is retired (home.css has no animation).
+  assert.doesNotMatch(read('apps/web/assets/css/home.css'), /@keyframes|animation/);
+  assert.match(app, /assets\/css\/atlas-base\.css\?v=20260929-s90u/);
+  assert.match(app, /assets\/css\/atlas-components\.css\?v=20260930-s90g/);
 });
 
 test('conversation stars persist through the private gateway', () => {
@@ -98,6 +113,8 @@ test('push opt-in covers unsupported, denied, pending, and enabled states', () =
   assert.match(worker, /addEventListener\('push'/);
   assert.match(worker, /addEventListener\('notificationclick'/);
   assert.match(worker, /route === 'shifts' \? 'shifts' : 'team'/);
+  // S88: message notifications open #messages (the spec route table gives #team to Team).
+  assert.match(worker, /new URL\(`\.\/#\$\{route === 'shifts' \? 'shifts' : 'messages'\}`/);
   assert.match(notificationApi, /ATLAS_PUSH_DELIVERY_ENABLED/);
   assert.match(notificationApi, /delivery: "disabled"/);
   assert.match(notificationApi, /npm:web-push@3\.6\.7/);

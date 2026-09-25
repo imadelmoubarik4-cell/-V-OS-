@@ -43,6 +43,14 @@ def _browser_origin(value):
     return f"https://{parsed.netloc}"
 
 
+def _runtime_path(function_name, source_path):
+    """Keep supabase/functions/_shared modules shared so ../_shared imports resolve."""
+    source = Path(source_path)
+    if source.parent == Path("supabase/functions/_shared"):
+        return Path("functions") / "_shared" / source.name
+    return Path("functions") / function_name / source.name
+
+
 def _entrypoint(function):
     preferred = {
         "atlas-reports": "entrypoint.ts",
@@ -131,6 +139,7 @@ def _transform(source, target_origin, browser_origin, add_guard, typed):
             raise ValueError("Import worker entrypoint shape changed")
         source = head + "}));\n} else {\n  Deno.serve(async () => new Response(JSON.stringify({ error: 'Import is disabled.' }), {\n    status: 503,\n    headers: { 'content-type': 'application/json', 'access-control-allow-origin': '" + browser_origin + "' },\n  }));\n}" + tail
     source = source.replace("${AUTH_PROJECT_URL}/rest/v1/", "${S39_TARGET_ORIGIN}/rest/v1/")
+    source = source.replace("${productionAuthUrl()}/rest/v1/", "${S39_TARGET_ORIGIN}/rest/v1/")
     source = source.replace(
         '"access-control-allow-origin": "*"',
         f'"access-control-allow-origin": "{browser_origin}"',
@@ -215,7 +224,7 @@ def build(destination, browser_origin):
                     add_guard=source_path == entrypoint,
                     typed=Path(source_path).suffix == ".ts",
                 ).encode("utf-8")
-                relative = Path("functions") / function["name"] / Path(source_path).name
+                relative = _runtime_path(function["name"], source_path)
                 target = output / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(generated)

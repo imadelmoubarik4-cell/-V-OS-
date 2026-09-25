@@ -1,0 +1,19 @@
+{
+  "note": "S88 CSS hygiene ratchet (tests/node/css-hygiene-s88.test.js). Ceilings may only go down; lower them in the same commit that lowers a count. stylesheetFiles counts every stylesheet file, legacy/ fragments included (S88 WP-BASE; 119 before atlas-base.css and atlas-components.css landed; 110 with the Atlas AI module stylesheet atlas-ai.css, spec §9.2 E6; 68 after Team C (Recipes, Reports, Marketing, Data) and Team A (Home, Operations, Settings; Brain, Checkpoint A/K, settings bridge and System stylesheets retired) merged; 46 after Team D (Shifts, Team, Messages, Knowledge) merged: Month calendar, Month editor and 20 legacy fragments retired). S88 design-system consolidation: 19 stylesheet files, 0 legacy fragments, no inline style block, 0 cross-file duplicate selectors, 0 sizes under 11 px; the 10 remaining !important are the documented atlas-base.css contracts ([hidden] 1, role gating 1, reduced motion 8), pinned there by the structure test.",
+  "measured_before_s88": {
+    "important": 850,
+    "crossFileDuplicateSelectors": 738,
+    "subElevenPxFontSizes": 563,
+    "stylesheetFiles": 44,
+    "legacyFragmentFiles": 0,
+    "inlineAndInjectedStyleBlocks": 4
+  },
+  "ceilings": {
+    "important": 10,
+    "crossFileDuplicateSelectors": 0,
+    "subElevenPxFontSizes": 0,
+    "stylesheetFiles": 19,
+    "legacyFragmentFiles": 0,
+    "inlineAndInjectedStyleBlocks": 0
+  }
+}

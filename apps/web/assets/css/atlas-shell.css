@@ -1,0 +1,397 @@
+/* Atlas shell (spec docs/design/Atlas_Experience_Redesign.md §4, §7.17).
+ *
+ * Sidebar (240) and rail (64), top bar (56), phone top bar (52) + tab bar (56)
+ * + More sheet, command palette, notifications panel, account menu, toasts,
+ * offline bar, and the sign-in / invitation / recovery layout. Markup lives in
+ * index.html (static chrome), assets/js/atlas-chrome.js and
+ * assets/js/atlas-palette.js.
+ *
+ * The shell is a component: one @layer atlas.components block. Values come
+ * from the spec tokens (atlas-tokens.css); each var()
+ * carries the spec value as its fallback so the shell renders correctly while
+ * the token file is being replaced. Buttons, inputs, badges, avatars, menus,
+ * segmented controls, kbd and toasts are the atlas-components.css classes.
+ */
+@layer atlas.components {
+
+/* ==========================================================================
+   Page canvas and layout grid (§4.1)
+   ========================================================================== */
+/* The app stays hidden until sign-in resolves (index.html shows it). */
+#app-screen { display: none; min-height: 100vh; background: var(--bg, #fff); color: var(--text, #0b0f14); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
+body.atlas-rail .atlas-shell { grid-template-columns: 64px minmax(0, 1fr); }
+.atlas-main { grid-column: 2; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; background: var(--bg, #fff); }
+.atlas-content, .atlas-content.standard-view { width: 100%; max-width: calc(1200px + 2 * var(--page-gutter, 40px)); margin: 0 auto; padding: 32px var(--page-gutter, 40px) 80px; background: transparent; }
+.atlas-content > main { width: 100%; max-width: none; margin: 0; padding: 0; }
+.atlas-content > main:focus { outline: none; }
+/* Wide (data) pages: 1400 px (§4.1). */
+:is(body[data-atlas-view="inventory"], body[data-atlas-view="movements"], body[data-atlas-view="waste"], body[data-atlas-view="suppliers"], body[data-atlas-view="reports"], body[data-atlas-view="business"], body[data-atlas-view="shifts"], body[data-atlas-view="imports"], body[data-atlas-view="sprint3-review"], body[data-atlas-view="data"]) .atlas-content,
+.atlas-content:has(.page--wide) { max-width: calc(1400px + 2 * var(--page-gutter, 40px)); }
+/* Full-height page (spec §7.3, Messages): a view registered with
+   { fullHeight: true } fills the content area under the top bar, edge to edge,
+   and its root (.page--full-height) scrolls inside itself. Phones keep the
+   normal flow (the page owns its own screens). */
+body.atlas-page-full-height .atlas-content, body.atlas-page-full-height .atlas-content.standard-view { max-width: none; padding: 0; }
+.page--full-height { height: calc(100vh - var(--topbar-h)); height: calc(100dvh - var(--topbar-h)); min-height: 420px; }
+/* View roots that still hold their loading placeholder are hidden until the
+   shell shows them (it sets display inline). */
+.placeholder-view { display: none; }
+.atlas-view-loading { margin: 0; padding: var(--s-20, 80px) 0; color: var(--text-2, #475569); font: var(--type-body, 400 14px/20px sans-serif); text-align: center; }
+
+/* Skip link (G18) */
+.atlas-skip-link { position: fixed; top: 8px; left: 8px; z-index: 120; min-height: 44px; padding: 12px 14px; border-radius: var(--r-md, 8px); background: var(--surface, #fff); color: var(--text, #0b0f14); font: 500 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-decoration: none; transform: translateY(-200%); }
+.atlas-skip-link:focus, .atlas-skip-link:focus-visible { transform: none; box-shadow: var(--shadow-pop, 0 12px 32px rgba(11, 15, 20, .10)); outline: 2px solid var(--focus-color, #3b82f6); outline-offset: 2px; }
+
+/* ==========================================================================
+   Sidebar (§4.2)
+   ========================================================================== */
+.atlas-sidebar { grid-column: 1; position: sticky; top: 0; z-index: 40; display: flex; flex-direction: column; width: 100%; height: 100vh; height: 100dvh; min-width: 0; padding: 0 12px 12px; background: var(--bg-subtle, #f8fafc); border-right: 1px solid var(--line, #e2e8f0); }
+/* Brand v1.0 (docs/brand/README.md): the supplied kit SVGs as <img>, never
+   redrawn or typed. Sidebar: the horizontal Midnight lockup at 32 px high
+   (121 px wide; minimum 96 px). Rail and phone top bar: the mark alone
+   (minimum 20 px high). Clear space around the art is at least the height of
+   the horizon arc (about 9 px at this size). The venue line is ordinary
+   secondary text below that clear space, not part of the lockup. */
+.atlas-brand { display: flex; align-items: center; flex: none; min-height: 56px; padding: 12px 8px 10px; }
+.atlas-brand__link { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; color: var(--text, #0b0f14); text-decoration: none; border-radius: var(--r-md, 8px); }
+.atlas-brand__link:hover { text-decoration: none; }
+.atlas-brand__lockup { display: block; flex: none; width: 121px; height: 32px; margin-left: -2px; }
+.atlas-brand__mark { display: none; flex: none; width: 27px; height: 24px; }
+.atlas-brand__venue { max-width: 100%; padding-left: 2px; font: 400 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text-2, #475569); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Atlas AI empty state: the kit mark (the page already says Atlas), 32 px
+   high, above the greeting. Decorative, from the supplied file, never redrawn;
+   here rather than in atlas-ai.css so the AI module stays untouched. */
+.atlas-ai .ai-empty:not(.ai-empty--off)::before { content: ''; display: block; width: 36px; height: 32px; margin-bottom: 8px; background: url("../brand/Atlas_Mark_Midnight.svg") center / contain no-repeat; }
+
+.atlas-nav { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; padding: 0; overflow: visible; }
+.atlas-nav__scroll { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -12px; padding: 4px 12px 8px; scrollbar-width: thin; }
+.atlas-nav__foot { flex: none; padding-top: 12px; }
+.atlas-nav .nav-group { display: grid; gap: 1px; margin: 0; }
+.atlas-nav .nav-label { margin: 0; padding: 18px 10px 6px; color: var(--text-3, #606c80); font: 500 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); letter-spacing: 0; text-transform: none; }
+.atlas-nav .nav-item { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; min-height: 34px; margin: 0; padding: 0 10px; border: 0; border-radius: var(--r-md, 8px); background: transparent; color: var(--text-2, #475569); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: left; text-decoration: none; box-shadow: none; cursor: pointer; transition: background var(--dur-1, 120ms) var(--ease-out, ease), color var(--dur-1, 120ms); }
+.atlas-nav .nav-item svg { flex: none; width: 16px; height: 16px; stroke-width: 1.75; color: currentColor; }
+.atlas-nav .nav-item:hover { background: var(--bg-muted, #f1f5f9); color: var(--text, #0b0f14); text-decoration: none; }
+.atlas-nav .nav-item.active, .atlas-nav .nav-item[aria-current="page"] { background: var(--surface, #fff); color: var(--text, #0b0f14); font-weight: 500; box-shadow: 0 1px 2px rgba(11, 15, 20, .06), 0 0 0 1px var(--line, #e2e8f0); }
+/* Active marker: a short Atlas Blue bar at the sidebar edge (Brand v1.0: blue
+   marks selection; the item itself stays neutral). */
+.atlas-nav .nav-item.active::before, .atlas-nav .nav-item[aria-current="page"]::before { content: ''; position: absolute; top: 9px; left: -12px; width: 3px; height: 16px; border-radius: 0 2px 2px 0; background: var(--accent-brand, #3b82f6); }
+.atlas-nav .nav-item--ai svg { color: var(--accent-brand, #3b82f6); }
+.atlas-nav .nav-item-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Unread count ([data-nav-badge], written by atlas-chrome.js), right-aligned. */
+.atlas-nav__badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill, 999px); background: var(--accent, #2563eb); color: #fff; font: 500 12px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: center; font-variant-numeric: tabular-nums; }
+.atlas-nav .atlas-badge--muted.atlas-nav__badge { background: var(--neutral-soft, #f1f5f9); color: var(--text-2, #475569); }
+
+.atlas-sidebar__foot { flex: none; padding-top: 4px; }
+.atlas-account { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px; border: 0; border-radius: var(--r-md, 8px); background: transparent; color: var(--text, #0b0f14); text-align: left; cursor: pointer; }
+.atlas-account:hover, .atlas-account[aria-expanded="true"] { background: var(--bg-muted, #f1f5f9); }
+.atlas-account > svg { flex: none; width: 16px; height: 16px; margin-left: auto; color: var(--text-3, #606c80); }
+.atlas-account__text { display: grid; min-width: 0; }
+.atlas-account__name { font: 500 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-account__role { font: 400 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text-2, #475569); }
+
+/* Rail: 64 px icons at 768–1279 and when collapsed at ≥1280 (§4.1). */
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-sidebar { align-items: center; padding: 0 10px 12px; }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-brand { justify-content: center; min-height: 56px; padding: 0; }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-brand__link { align-items: center; padding: 6px; }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-brand__mark { display: block; }
+body.atlas-rail:not(.atlas-sidebar-open) :is(.atlas-brand__lockup, .atlas-brand__venue, .nav-item-label, .atlas-account__text, .atlas-account > svg) { display: none; }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav { width: 100%; align-items: center; }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav__scroll { width: calc(100% + 20px); margin: 0 -10px; padding: 4px 10px 8px; }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav .nav-group { justify-items: center; }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav .nav-label { width: 28px; height: 1px; margin: 10px auto; padding: 0; overflow: hidden; background: var(--line, #e2e8f0); font-size: 0; line-height: 0; color: transparent; }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav .nav-item { justify-content: center; width: 44px; height: 40px; min-height: 40px; padding: 0; }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav .nav-item:is(.active, [aria-current="page"])::before { top: 12px; left: -10px; }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav__badge { position: absolute; top: 8px; right: 9px; min-width: 0; width: 8px; height: 8px; padding: 0; overflow: hidden; font-size: 0; line-height: 0; box-shadow: 0 0 0 2px var(--bg-subtle, #f8fafc); }
+body.atlas-rail:not(.atlas-sidebar-open) .atlas-account { justify-content: center; width: 44px; padding: 8px 0; }
+/* Overlay sidebar at 768–1279 (toggle; scrim, Esc closes). */
+body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 70; width: 240px; box-shadow: var(--shadow-modal, 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20)); }
+.atlas-sidebar-scrim { position: fixed; inset: 0; z-index: 69; background: var(--overlay, rgba(11, 15, 20, .32)); }
+
+/* Rail tooltips: the .atlas-tooltip component, positioned by atlas-chrome.js after 400 ms. */
+
+/* ==========================================================================
+   Top bar (§4.3) and phone top bar (§4.4)
+   ========================================================================== */
+.atlas-topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 8px; height: 56px; min-height: 56px; padding: 0 var(--page-gutter, 40px) 0 16px; background: #fff; border-bottom: 1px solid var(--line-subtle, #f1f5f9); backdrop-filter: none; box-shadow: none; }
+/* The app loading line (spec §4.11) sits on the top bar's bottom edge while the
+   shell data loads, so the page below never shifts. */
+.atlas-topbar > .atlas-loading-line { position: absolute; right: 0; bottom: -1px; left: 0; }
+.atlas-topbar__title { display: none; min-width: 0; margin: 0; color: var(--text, #0b0f14); font: 600 17px/22px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-topbar__spacer { flex: 1; }
+.atlas-topbar__phone, .atlas-topbar__back, .atlas-topbar__actions, .atlas-topbar__mark { display: none; }
+/* Phone top bar: the mark alone (22 px) before the page title; hidden when a
+   page owns the bar (back chevron). */
+.atlas-topbar__mark img { display: block; width: 25px; height: 22px; }
+.atlas-omni { display: flex; align-items: center; gap: 10px; flex: 0 1 360px; width: 360px; min-width: 0; height: 36px; padding: 0 8px 0 12px; border: 1px solid var(--line, #e2e8f0); border-radius: var(--r-md, 8px); background: var(--bg-subtle, #f8fafc); color: var(--text-3, #606c80); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: left; cursor: text; transition: border-color var(--dur-1, 120ms); }
+.atlas-omni:hover { border-color: var(--line-strong, #cbd5e1); }
+.atlas-omni > svg { flex: none; width: 16px; height: 16px; color: var(--text-2, #475569); }
+.atlas-omni__label { flex: 1; min-width: 0; color: var(--text-2, #475569); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-omni__kbd { flex: none; }
+.atlas-topbar .atlas-icon-btn svg { width: 18px; height: 18px; }
+
+/* Offline bar (§4.11) */
+.atlas-offline { position: sticky; top: 56px; z-index: 29; display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 8px var(--page-gutter, 40px); background: var(--warning-soft, #fffbeb); color: var(--warning, #b45309); font: 500 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-offline svg { width: 16px; height: 16px; flex: none; }
+
+/* ==========================================================================
+   Phone tab bar (§4.4)
+   ========================================================================== */
+.atlas-tabbar { display: none; }
+.atlas-tabbar__item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--text-2, #475569); font: 500 12px/14px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.atlas-tabbar__item:hover { text-decoration: none; }
+.atlas-tabbar__item svg { width: 22px; height: 22px; stroke-width: 1.6; }
+.atlas-tabbar__item[aria-current="page"] { color: var(--accent, #2563eb); }
+.atlas-tabbar__item[aria-current="page"] svg { stroke-width: 2; }
+.atlas-tabbar__badge { position: absolute; top: 5px; left: calc(50% + 6px); }
+
+/* ==========================================================================
+   Overlays: layers, scrims, sheets, dialogs
+   ========================================================================== */
+.atlas-layer { position: fixed; inset: 0; z-index: 90; }
+/* Inside a shell layer the scrim (.atlas-scrim component) fills the layer
+   under its panel. */
+.atlas-layer > .atlas-scrim { position: absolute; inset: 0; z-index: 0; }
+.atlas-layer > :not(.atlas-scrim) { z-index: 1; }
+.atlas-scrim--clear { background: transparent; }
+.atlas-sheet-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(100% - 12px); overflow-y: auto; overscroll-behavior: contain; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); border-radius: var(--r-xl, 16px) var(--r-xl, 16px) 0 0; background: var(--surface, #fff); box-shadow: var(--shadow-modal, 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20)); animation: atlas-shell-sheet-up var(--dur-3, 240ms) var(--ease-out, ease) both; }
+.atlas-sheet-panel__grabber { width: 36px; height: 4px; margin: 0 auto 8px; border-radius: 2px; background: var(--line-strong, #cbd5e1); }
+@keyframes atlas-shell-sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes atlas-shell-pop-in { from { transform: translateY(-4px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* More sheet */
+.atlas-more__account { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 8px 16px; border: 0; background: transparent; color: var(--text, #0b0f14); text-align: left; cursor: pointer; }
+.atlas-more__account-text { display: grid; flex: 1; min-width: 0; }
+.atlas-more__account-name { font: 600 15px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-more__account-role { font: 400 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text-2, #475569); }
+.atlas-more__list { margin: 0; padding: 0; list-style: none; }
+.atlas-more__divider { height: 1px; margin: 6px 16px; background: var(--line, #e2e8f0); }
+.atlas-more__row { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 52px; padding: 0 16px; border: 0; background: transparent; color: var(--text, #0b0f14); font: 400 15px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: left; text-decoration: none; cursor: pointer; }
+.atlas-more__row:hover, .atlas-more__account:hover { background: var(--bg-subtle, #f8fafc); text-decoration: none; }
+.atlas-more__row > svg:first-child { width: 20px; height: 20px; color: var(--text-2, #475569); flex: none; }
+.atlas-more__row[aria-current="page"] { color: var(--accent-text, #2563eb); font-weight: 500; }
+.atlas-more__row[aria-current="page"] > svg:first-child { color: var(--accent-brand, #3b82f6); }
+.atlas-more__label { flex: 1; min-width: 0; }
+.atlas-more__chevron { width: 16px; height: 16px; color: var(--text-3, #606c80); flex: none; }
+
+/* Account menu (§4.10): popover above the sidebar account button; phone sheet. */
+.atlas-account-menu { position: absolute; width: 280px; max-width: calc(100vw - 16px); animation: atlas-shell-pop-in var(--dur-2, 180ms) var(--ease-out, ease) both; }
+.atlas-account-menu__head { display: flex; align-items: flex-start; gap: 12px; padding: 8px 8px 10px; }
+.atlas-account-menu__who { display: grid; gap: 2px; min-width: 0; }
+.atlas-account-menu__name { font: 600 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text, #0b0f14); }
+.atlas-account-menu__email { font: 400 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text-2, #475569); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-account-menu__role { justify-self: start; margin-top: 4px; }
+.atlas-layer--menu.is-sheet .atlas-scrim--clear { background: var(--overlay, rgba(11, 15, 20, .32)); }
+.atlas-layer--menu.is-sheet .atlas-account-menu { left: 0; right: 0; bottom: 0; width: auto; max-width: none; padding: 12px 8px calc(12px + env(safe-area-inset-bottom)); border-radius: var(--r-xl, 16px) var(--r-xl, 16px) 0 0; animation-name: atlas-shell-sheet-up; }
+.atlas-layer--menu.is-sheet .atlas-menu__item { height: 48px; font-size: 15px; }
+
+/* Dialog (keyboard shortcuts) */
+.atlas-dialog-panel { position: absolute; top: 50%; left: 50%; width: 440px; max-width: calc(100vw - 32px); padding: 24px; border-radius: var(--r-xl, 16px); background: var(--surface, #fff); box-shadow: var(--shadow-modal, 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20)); transform: translate(-50%, -50%); }
+.atlas-dialog-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.atlas-dialog-panel__head h2 { margin: 0; font: 600 17px/24px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text, #0b0f14); letter-spacing: -.005em; }
+.atlas-shortcuts { display: grid; }
+.atlas-shortcuts__row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; border-top: 1px solid var(--line-subtle, #f1f5f9); color: var(--text, #0b0f14); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-shortcuts__row:first-child { border-top: 0; }
+.atlas-shortcuts__keys { display: inline-flex; gap: 4px; }
+
+/* ==========================================================================
+   Notifications panel (§4.9)
+   ========================================================================== */
+.atlas-layer--popover { z-index: 85; }
+.atlas-notify { position: absolute; top: 60px; right: 16px; display: flex; flex-direction: column; width: 400px; max-width: calc(100vw - 16px); max-height: min(560px, calc(100vh - 72px)); overflow: hidden; border: 1px solid var(--line, #e2e8f0); border-radius: var(--r-lg, 12px); background: var(--surface, #fff); box-shadow: var(--shadow-pop, 0 2px 6px rgba(11, 15, 20, .06), 0 12px 32px rgba(11, 15, 20, .10)); animation: atlas-shell-pop-in var(--dur-2, 180ms) var(--ease-out, ease) both; }
+.atlas-notify__head { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 8px 12px 16px; border-bottom: 1px solid var(--line-subtle, #f1f5f9); }
+.atlas-notify__back { display: none; }
+.atlas-notify__title { flex: 1; margin: 0; color: var(--text, #0b0f14); font: 600 15px/22px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); white-space: nowrap; }
+.atlas-notify__count { color: var(--text-2, #475569); font-weight: 400; font-size: 13px; }
+.atlas-notify__menu { position: absolute; top: calc(100% - 4px); right: 8px; z-index: 2; width: 240px; }
+.atlas-notify__body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.atlas-notify__list { margin: 0; padding: 4px 0; list-style: none; }
+.atlas-notify__item { display: flex; align-items: center; gap: 8px; padding-right: 12px; }
+.atlas-notify__item + .atlas-notify__item { border-top: 1px solid var(--line-subtle, #f1f5f9); }
+.atlas-notify__row { display: grid; grid-template-columns: 6px 32px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; flex: 1; min-width: 0; min-height: 64px; padding: 10px 4px 10px 10px; border: 0; background: transparent; color: var(--text, #0b0f14); text-align: left; cursor: pointer; }
+.atlas-notify__row:hover { background: var(--bg-subtle, #f8fafc); }
+.atlas-notify__unread { width: 6px; height: 6px; border-radius: 50%; background: transparent; }
+.is-unread .atlas-notify__unread { background: var(--accent-brand, #3b82f6); }
+.atlas-notify__tile { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-md, 8px); background: var(--neutral-soft, #f1f5f9); color: var(--text-2, #475569); }
+.atlas-notify__tile svg { width: 16px; height: 16px; }
+.atlas-notify__tile--danger { background: var(--danger-soft, #fef2f2); color: var(--danger, #c42020); }
+.atlas-notify__tile--warning { background: var(--warning-soft, #fffbeb); color: var(--warning-icon, #d97706); }
+.atlas-notify__tile--accent { background: var(--accent-soft, #eff6ff); color: var(--accent, #2563eb); }
+.atlas-notify__text { display: grid; gap: 2px; min-width: 0; }
+/* Titles get two lines before they clamp (a one-line cut hid the fact). */
+.atlas-notify__item-title { font: 500 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.atlas-notify__detail { color: var(--text-2, #475569); font: 400 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.atlas-notify__time { align-self: start; padding-top: 2px; color: var(--text-3, #606c80); font: 400 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); white-space: nowrap; }
+.atlas-notify__action { flex: none; }
+.atlas-notify__empty { display: grid; justify-items: center; gap: 6px; padding: 40px 24px 44px; text-align: center; }
+.atlas-notify__empty > svg { box-sizing: content-box; width: 20px; height: 20px; padding: 10px; border-radius: var(--r-md, 8px); background: var(--neutral-soft, #f1f5f9); color: var(--text-2, #475569); }
+.atlas-notify__empty-title { margin: 6px 0 0; color: var(--text, #0b0f14); font: 600 15px/22px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-notify__empty-text { margin: 0; color: var(--text-2, #475569); font: 400 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+
+/* ==========================================================================
+   Command palette (§4.7)
+   ========================================================================== */
+.atlas-layer--palette { z-index: 100; }
+.atlas-palette { position: absolute; top: 12vh; left: 50%; display: flex; flex-direction: column; width: 640px; max-width: calc(100vw - 32px); max-height: calc(88vh - 24px); overflow: hidden; border-radius: var(--r-xl, 16px); background: var(--surface, #fff); box-shadow: var(--shadow-modal, 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20)); transform: translateX(-50%); animation: atlas-palette-in var(--dur-3, 240ms) var(--ease-out, ease) both; }
+@keyframes atlas-palette-in { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translateX(-50%); } }
+.atlas-palette__input { display: flex; align-items: center; gap: 12px; flex: none; height: 56px; padding: 0 16px; border-bottom: 1px solid var(--line, #e2e8f0); }
+.atlas-palette__input > svg { flex: none; width: 18px; height: 18px; color: var(--text-2, #475569); }
+.atlas-palette__input input { flex: 1; min-width: 0; height: 100%; margin: 0; padding: 0; border: 0; outline: none; background: transparent; box-shadow: none; color: var(--text, #0b0f14); font: 400 16px/24px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-palette__input input::placeholder { color: var(--text-3, #606c80); }
+.atlas-palette__ctx { flex: none; padding: 3px 8px; border-radius: var(--r-sm, 6px); background: var(--bg-subtle, #f8fafc); color: var(--text-2, #475569); font: 400 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-palette__close { display: none; }
+.atlas-palette__body { flex: 1; min-height: 0; max-height: 420px; overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px 8px; }
+.atlas-palette__label-row { padding: 12px 10px 6px; color: var(--text-3, #606c80); font: 500 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-palette__item { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 10px; border-radius: var(--r-md, 8px); color: var(--text, #0b0f14); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); cursor: pointer; }
+.atlas-palette__item > svg { flex: none; width: 16px; height: 16px; color: var(--text-2, #475569); }
+.atlas-palette__item.is-active { background: var(--bg-muted, #f1f5f9); }
+.atlas-palette__label { flex: none; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-palette__meta { flex: 1; min-width: 0; color: var(--text-2, #475569); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-palette__hint { display: inline-flex; gap: 4px; margin-left: auto; flex: none; }
+.atlas-palette__item--ask > svg { color: var(--accent-brand, #3b82f6); }
+.atlas-palette__item--ask b { font-weight: 500; }
+.atlas-palette__item--more { color: var(--text-2, #475569); }
+.atlas-palette__empty { margin: 0; padding: 20px 10px; color: var(--text-2, #475569); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-palette__answer { margin: 6px 2px 4px; padding: 12px 14px; border-radius: var(--r-lg, 12px); background: var(--bg-subtle, #f8fafc); color: var(--text, #0b0f14); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-palette__answer-label { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: var(--accent-text, #2563eb); font: 500 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-palette__answer p { margin: 0; }
+.atlas-palette__answer ul { margin: 6px 0 0; padding-left: 18px; color: var(--text-2, #475569); font-size: 13px; line-height: 18px; }
+.atlas-palette__answer .atlas-btn { margin-top: 10px; }
+.atlas-palette__foot { display: flex; flex-wrap: wrap; gap: 16px; flex: none; padding: 10px 16px; border-top: 1px solid var(--line-subtle, #f1f5f9); background: var(--bg-subtle, #f8fafc); color: var(--text-2, #475569); font: 400 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-palette__foot span { display: inline-flex; align-items: center; gap: 6px; }
+.atlas-palette__foot .kbd + .kbd { margin-left: -2px; }
+
+/* ==========================================================================
+   Toasts (§4.11)
+   ========================================================================== */
+/* The toast region and toast are the .atlas-toast components. */
+
+/* ==========================================================================
+   Sign in, invitation, recovery (§7.17)
+   ========================================================================== */
+.atlas-auth { position: relative; display: block; min-height: 100vh; min-height: 100dvh; margin: 0; padding: max(48px, 16vh) 16px 96px; background: var(--bg-subtle, #f8fafc); color: var(--text, #0b0f14); font: 400 15px/22px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); overflow: visible; }
+.atlas-auth__column { width: 100%; max-width: 360px; margin: 0 auto; padding: 0; }
+/* Sign-in, invitation, recovery: the stacked Midnight lockup (brand hero),
+   centred with the heading; clear space above the title exceeds the arc. */
+.atlas-auth__brand { display: flex; justify-content: center; }
+.atlas-auth__lockup { display: block; width: 112px; height: 99px; }
+/* Sign-in logo intro (index.html only; assets/js/atlas-signin-intro.js). A
+   16:9 stage the width of the clip's frame. The clip's light-grey studio
+   background is lifted to Snow and its edges dissolve into the page through a
+   radial mask, so no rectangle shows. The kit lockup sits where the clip's
+   logo lands and is what shows before, after and instead of the motion. */
+.atlas-auth__brand--intro { position: relative; width: clamp(240px, 70vw, 320px); aspect-ratio: 16 / 9; margin: -8px auto 0; }
+.atlas-auth__brand--intro .atlas-auth__lockup { position: absolute; left: 30%; top: 16.5%; width: 40%; height: auto; opacity: 1; transition: opacity 400ms var(--ease-out, ease-out); }
+.atlas-auth__intro { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; pointer-events: none; filter: brightness(1.07); -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 60%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 60%, transparent 100%); transition: opacity 400ms var(--ease-out, ease-out); }
+.atlas-auth__brand--intro[data-intro-state="playing"] .atlas-auth__intro { opacity: 1; transition-duration: 200ms; }
+.atlas-auth__brand--intro[data-intro-state="playing"] .atlas-auth__lockup { opacity: 0; transition: opacity 0s linear 200ms; }
+.atlas-auth__brand--intro + .atlas-auth__title { margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) { .atlas-auth__brand--intro :is(.atlas-auth__intro, .atlas-auth__lockup) { transition: none; } }
+.atlas-auth__title { margin: 32px 0 6px; text-align: center; color: var(--text, #0b0f14); font: 500 28px/34px var(--font-display, 'Fraunces', Georgia, serif); letter-spacing: -.02em; font-variation-settings: 'opsz' 72; }
+.atlas-auth__sub { margin: 0; text-align: center; color: var(--text-2, #475569); font: 400 15px/22px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-auth__form { display: grid; gap: 16px; margin: 28px 0 0; }
+.atlas-auth__form[hidden] { display: none; }
+.atlas-auth .atlas-field > label { display: block; font-size: 13px; letter-spacing: 0; }
+.atlas-auth .atlas-input { height: 44px; font-size: 16px; line-height: 22px; }
+.atlas-auth__readonly { display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--r-md, 8px); background: var(--bg-subtle, #f8fafc); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-auth__readonly span { color: var(--text-2, #475569); font-size: 13px; }
+.atlas-auth__password { position: relative; }
+.atlas-auth__password .atlas-input { padding-right: 48px; }
+.atlas-auth__reveal { position: absolute; top: 4px; right: 4px; }
+.atlas-auth__rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; color: var(--text-2, #475569); font: 400 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-auth__rules li { display: flex; align-items: center; gap: 6px; }
+.atlas-auth__rules li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong, #cbd5e1); }
+.atlas-auth__rules li.is-met { color: var(--positive, #047857); }
+.atlas-auth__rules li.is-met::before { background: var(--positive, #047857); }
+.atlas-auth__error { display: flex; gap: 6px; margin: 0; color: var(--danger, #c42020); font: 400 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-auth__status { margin: 16px 0 0; color: var(--text-2, #475569); font: 400 15px/22px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-auth__status.is-error { color: var(--danger, #c42020); }
+.atlas-auth__submit { width: 100%; margin-top: 4px; }
+.atlas-auth__link { margin: 20px 0 0; text-align: center; font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+.atlas-auth__link a, .atlas-auth a { color: var(--accent-text, #2563eb); text-decoration: none; }
+.atlas-auth__link a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.atlas-auth__skeleton { display: grid; gap: 10px; margin-top: 28px; }
+.atlas-auth__skeleton span { height: 44px; border-radius: var(--r-md, 8px); background: var(--bg-muted, #f1f5f9); }
+.atlas-auth__skeleton span:first-child { width: 60%; height: 16px; border-radius: var(--r-xs, 4px); }
+.atlas-auth__foot { position: absolute; left: 0; right: 0; bottom: 24px; margin: 0; color: var(--text-3, #606c80); font: 400 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: center; }
+
+/* Focus (G18): 2 px accent outline on every shell control. */
+:is(.atlas-shell, .atlas-tabbar, .atlas-layer, .atlas-auth, .atlas-toast-region) :is(a, button, input, [tabindex]):focus-visible { outline: 2px solid var(--focus-color, #3b82f6); outline-offset: 2px; }
+.atlas-layer .atlas-palette__input input:focus-visible { outline: none; }
+.atlas-nav .nav-item:focus-visible { outline-offset: 0; }
+
+/* ==========================================================================
+   Breakpoints (§4.1)
+   ========================================================================== */
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .atlas-content, .atlas-content.standard-view { max-width: calc(1200px + 2 * var(--page-gutter, 32px)); padding-inline: var(--page-gutter, 32px); }
+  .atlas-topbar { padding-right: var(--page-gutter, 32px); }
+}
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .atlas-content, .atlas-content.standard-view { padding-inline: var(--page-gutter, 32px); }
+  .atlas-topbar { padding-right: var(--page-gutter, 32px); }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .atlas-content, .atlas-content.standard-view { padding-inline: var(--page-gutter, 24px); }
+  .atlas-topbar { padding-right: var(--page-gutter, 24px); }
+  .atlas-omni { flex-basis: 280px; width: 280px; }
+}
+@media (min-width: 768px) {
+  .atlas-tabbar, .atlas-topbar__phone, .atlas-notify__back { display: none; }
+}
+@media (max-width: 767px) {
+  .atlas-shell { display: block; }
+  .atlas-sidebar, .atlas-sidebar-scrim, .atlas-topbar__toggle, .atlas-topbar__desktop, .atlas-omni { display: none; }
+  .atlas-main { min-height: 100vh; }
+  .atlas-topbar { height: calc(52px + env(safe-area-inset-top)); min-height: calc(52px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 4px 0 var(--page-gutter, 16px); gap: 0; border-bottom-color: transparent; background: rgba(255, 255, 255, .96); }
+  .atlas-topbar.is-scrolled { border-bottom-color: var(--line-subtle, #f1f5f9); }
+  .atlas-topbar__title { display: block; flex: 1; }
+  .atlas-topbar__mark { display: inline-flex; align-items: center; flex: none; min-height: 44px; margin-right: 12px; border-radius: var(--r-md, 8px); }
+  body.atlas-topbar-own .atlas-topbar__mark { display: none; }
+  .atlas-topbar__spacer { display: none; }
+  .atlas-topbar__phone { display: inline-grid; }
+  /* Page-owned phone top bar (AtlasChrome.setTopBar): back chevron, own actions. */
+  .atlas-topbar__back { display: inline-grid; margin-left: calc(-1 * var(--page-gutter, 16px) + 4px); }
+  .atlas-topbar__actions { display: inline-flex; align-items: center; }
+  body.atlas-topbar-own .atlas-topbar__global { display: none; }
+  .atlas-topbar .atlas-icon-btn { width: 44px; height: 44px; }
+  .atlas-topbar .atlas-icon-btn svg { width: 20px; height: 20px; }
+  .atlas-offline { top: calc(52px + env(safe-area-inset-top)); padding-inline: var(--page-gutter, 16px); }
+  .atlas-content, .atlas-content.standard-view { padding: 12px var(--page-gutter, 16px) calc(56px + env(safe-area-inset-bottom) + 40px); }
+
+  .atlas-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); height: calc(56px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: rgba(255, 255, 255, .97); border-top: 1px solid var(--line, #e2e8f0); }
+  body.atlas-palette-open .atlas-tabbar, body.stock-count-active .atlas-tabbar, body[data-atlas-tabbar-hidden]:not([data-atlas-tabbar-hidden=""]) .atlas-tabbar { display: none; }
+
+  .atlas-layer--popover.is-fullscreen .atlas-scrim { display: none; }
+  .atlas-layer--popover.is-fullscreen .atlas-notify { inset: 0; width: auto; max-width: none; max-height: none; border: 0; border-radius: 0; padding-top: env(safe-area-inset-top); animation: none; }
+  .atlas-notify__head { padding: 6px 4px 10px 4px; }
+  .atlas-notify__back { display: inline-grid; width: 44px; height: 44px; }
+  .atlas-notify__title { font-size: 17px; }
+  .atlas-notify__filter { order: 3; flex-basis: 100%; margin: 4px 12px 0; }
+  .atlas-notify__filter button { flex: 1; min-height: 44px; }
+  .atlas-notify__head [data-notify-more] { width: 44px; height: 44px; }
+  .atlas-notify__menu .atlas-menu__item { height: 44px; }
+
+  .atlas-layer--palette .atlas-scrim { display: none; }
+  .atlas-palette { inset: 0; top: 0; left: 0; width: 100%; max-width: none; height: 100%; max-height: none; border-radius: 0; transform: none; animation: none; }
+  .atlas-palette__input { height: calc(56px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 4px 0 16px; }
+  .atlas-palette__ctx { display: none; }
+  .atlas-palette__close { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: var(--accent-text, #2563eb); font: 500 15px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); cursor: pointer; }
+  .atlas-palette__body { max-height: none; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .atlas-palette__foot, .atlas-palette__hint { display: none; }
+  .atlas-palette__item { min-height: 48px; font-size: 15px; }
+  .atlas-palette__label { max-width: 70%; }
+  .atlas-account-menu .atlas-menu__item { height: 48px; }
+
+  .atlas-auth { padding-top: max(40px, 12vh); }
+  .page--full-height { height: auto; min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-sheet-panel, .atlas-notify, .atlas-palette, .atlas-account-menu, .atlas-toast { animation-duration: 1ms; }
+  .atlas-nav .nav-item, .atlas-omni { transition: none; }
+}
+html.atlas-reduce-motion :is(.atlas-sheet-panel, .atlas-notify, .atlas-palette, .atlas-account-menu, .atlas-toast) { animation-duration: 1ms; }
+
+/* Hidden always wins inside the shell (attribute toggled by the chrome). */
+:is(.atlas-shell, .atlas-tabbar, .atlas-layer, .atlas-auth, #app-screen) [hidden], .atlas-layer[hidden], .atlas-sidebar-scrim[hidden] { display: none; }
+}

@@ -7,11 +7,23 @@ Netlify publishes only `apps/web`.
 - `apps/web/index.html` is the single browser entry point.
 - Browser styles, scripts, images and configuration belong under `apps/web`.
 - The canonical recipe stylesheet is `apps/web/assets/css/recipes.css`.
-- The canonical Atlas icon is `apps/web/assets/logo/atlas-icon.png`.
+- Atlas logos, favicons and platform icons live in `apps/web/assets/brand/`, byte-identical copies of the brand kit in `docs/brand/Atlas_Brand_Identity_Kit_v1.0/` (rules: `docs/brand/README.md`). Never redraw or re-export them.
 - Do not add repository-root copies such as `index.html`, `index_atlas_all_fixes.html`, `recipes.css` or `atlas-icon.png`.
 - Supabase migrations and Edge Functions remain under `supabase` and are not browser assets.
 
 The Node contract `tests/node/repository-layout.test.js` protects this boundary so a legacy root file cannot silently become a second edit target.
+
+## Shared Edge Function code
+
+`supabase/functions/_shared` holds the canonical server domain layer. Functions import it with `../_shared/<module>.mjs`, which the Supabase bundler includes at deploy time; the `_`-prefixed folder is never deployed as a function.
+
+- `stock-provenance.mjs`: stock evidence, trust states, the historical cutoff, the Reports stock and recipe reports.
+- `atlas-domain.mjs`: stock projection, below par, recipe status, blockers and cost, order suggestions and inventory value. Each rule is a port of the browser rule it names and is parity-tested against the shipped browser modules (`tests/node/domain-parity-s88.test.js`).
+- `auth.mjs`: caller authentication for every gateway (`resolveActor`, `requireRole`, `isManager`) and the one staff label (`actorLabel`: display name, otherwise "Team member", never an email address). No function calls `/auth/v1/user` itself or hard-codes an Auth project URL or publishable key; configuration comes from `ATLAS_AUTH_PROJECT_URL` / `ATLAS_AUTH_PUBLISHABLE_KEY` and an unconfigured function refuses every request (`tests/node/edge-auth-contract.test.js`).
+
+Shared modules stay plain ESM with no Deno APIs so Node tests import them directly. A function that imports a shared module must list it among its reviewed sources in the release manifests (`tests/node/shared-modules-s88.test.js`); the runtime builders keep `_shared` beside the function folders.
+
+`atlas-stock-counts` and `atlas-reports` deploy `entrypoint.ts` (`supabase/config.toml`). The former second stock-count implementation (`atlas-stock-counts/index.ts`) was deleted together with its S35 manifest and S33 fixture records; `atlas-reports/entrypoint.ts` only loads `index.ts`, which handles optional production columns explicitly.
 
 ## Rollback discipline
 

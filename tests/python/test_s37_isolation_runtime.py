@@ -37,7 +37,10 @@ class S37IsolationRuntimeTests(unittest.TestCase):
             output = Path(directory) / "runtime"
             result = builder.build(output)
             self.assertEqual(result["functions"], 18)
-            self.assertEqual(result["files"], 23)
+            # S89: the scanner also packages _shared/product-identity.mjs; every
+            # gateway but the import worker packages _shared/auth.mjs, and the dead
+            # atlas-stock-counts/index.ts is gone.
+            self.assertEqual(result["files"], 42)
             runtime = json.loads((output / "runtime-manifest.json").read_text())
             self.assertEqual(len(runtime["functions"]), 18)
             self.assertFalse(runtime["production_fallbacks"])

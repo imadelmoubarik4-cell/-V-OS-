@@ -3,150 +3,157 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const app = readFileSync('apps/web/index.html', 'utf8');
-const inventoryCss = readFileSync('apps/web/assets/css/inventory-polish.css', 'utf8');
-const homeCss = readFileSync('apps/web/assets/css/home-polish.css', 'utf8');
-const recipesCss = readFileSync('apps/web/assets/css/recipes-gallery.css', 'utf8');
-const purchasingCss = readFileSync('apps/web/assets/css/purchasing-polish.css', 'utf8');
-const shellCss = readFileSync('apps/web/assets/css/atlas-glass.css', 'utf8');
+const inventoryCss = readFileSync('apps/web/assets/css/inventory.css', 'utf8');
+const recipesCss = readFileSync('apps/web/assets/css/recipes.css', 'utf8');
+const purchasingCss = readFileSync('apps/web/assets/css/purchasing.css', 'utf8');
+const inventory = readFileSync('apps/web/assets/js/atlas-inventory.js', 'utf8');
+const purchasing = readFileSync('apps/web/assets/js/atlas-purchasing.js', 'utf8');
+const shellCss = readFileSync('apps/web/assets/css/atlas-shell.css', 'utf8');
+const shellJs = readFileSync('apps/web/assets/js/atlas-shell.js', 'utf8');
+const chrome = readFileSync('apps/web/assets/js/atlas-chrome.js', 'utf8');
 const recipes = readFileSync('apps/web/assets/js/recipes.js', 'utf8');
-const scanner = readFileSync('apps/web/assets/js/inventory-scanner.js', 'utf8');
+const capture = readFileSync('apps/web/assets/js/atlas-capture.js', 'utf8');
 const stockCount = readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8');
-const itemMaster = readFileSync('apps/web/assets/js/item-master-workspace.js', 'utf8');
 const reportsCss = readFileSync('apps/web/assets/css/reports-workspace.css', 'utf8');
 const settingsCss = readFileSync('apps/web/assets/css/settings-workspace.css', 'utf8');
-const finalPolishCss = readFileSync('apps/web/assets/css/polish-pass2.css', 'utf8');
+const homeJs = readFileSync('apps/web/assets/js/home.js', 'utf8');
 const iconSources = [
   app,
   readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8'),
-  readFileSync('apps/web/assets/js/shifts-month-calendar.js', 'utf8'),
   readFileSync('apps/web/assets/js/reports-workspace.js', 'utf8'),
   readFileSync('apps/web/assets/js/system-workspace.js', 'utf8'),
 ].join('\n');
 
-test('Inventory uses one compact section rail for every approved workspace', () => {
-  assert.match(app, /id="inventory-section-header"/);
-  for (const section of ['items', 'stock-count', 'item-master', 'movements', 'waste', 'imports']) {
-    assert.match(app, new RegExp(`data-inventory-section="${section}"`));
-  }
-  assert.match(inventoryCss, /\.inventory-workspace-tabs/);
-  assert.match(app, /syncInventorySectionHeader\(view\)/);
-  assert.match(app, /view === 'inventory' \? 'grid' : 'block'/);
+test('Inventory is one module-owned page with in-page tabs (S88 §7.5)', () => {
+  // The inventory markup lives in assets/js/atlas-inventory.js; index.html keeps an empty root.
+  assert.match(app, /<div id="inventory-view" style="display:none;"><\/div>/);
+  assert.doesNotMatch(app, /id="inventory-section-header"|data-inventory-section=|syncInventorySectionHeader/);
+  for (const view of ['inventory', 'movements', 'waste']) assert.match(inventory, new RegExp(`shell\\.registerView\\('${view}'`));
+  assert.match(inventory, /shell\.pageHead\(\{ title: 'Inventory'/);
+  assert.match(inventoryCss, /^@layer atlas\.modules \{/m);
+  assert.match(app, /if \(root\) root\.style\.display = entry\.display;/);
 });
 
 test('sidebar keeps one destination per workspace without duplicate category menus', () => {
-  assert.match(app, /class="nav-item" data-view="inventory"><i data-lucide="package"><\/i><span>Inventory<\/span><\/button>/);
-  assert.match(app, /class="nav-item" data-view="recipes"><i data-lucide="martini"><\/i><span>Recipes<\/span><\/button>/);
-  assert.match(app, /class="nav-item" data-view="suppliers"><i data-lucide="truck"><\/i><span>Purchasing<\/span><\/button>/);
+  // S88 redesign (spec §3.1, §4.2): real links, one per destination, keeping
+  // the .atlas-nav .nav-item[data-view] contract the harness and modules use.
+  assert.match(app, /<a class="nav-item" href="#inventory" data-view="inventory" data-nav-id="inventory" aria-label="Inventory"><i data-lucide="package" aria-hidden="true"><\/i><span class="nav-item-label">Inventory<\/span><\/a>/);
+  assert.match(app, /<a class="nav-item" href="#recipes" data-view="recipes" data-nav-id="recipes" aria-label="Recipes"><i data-lucide="martini" aria-hidden="true"><\/i><span class="nav-item-label">Recipes<\/span><\/a>/);
+  assert.match(app, /<a class="nav-item" href="#purchasing" data-view="suppliers" data-nav-id="purchasing" aria-label="Purchasing" hidden><i data-lucide="truck" aria-hidden="true"><\/i><span class="nav-item-label">Purchasing<\/span><\/a>/);
   assert.doesNotMatch(app, /<button[^>]+data-default=|<div class="nav-sub"/);
   assert.doesNotMatch(app, /data-recipe-filter="signature-cocktail"/);
-  assert.doesNotMatch(app, /class="nav-item" data-view="imports"/);
+  // Retired destinations keep a hidden link only (their modules find it and inject nothing).
+  assert.match(app, /<div class="atlas-nav__retired" hidden data-sprint3-review-nav="true">/);
 });
 
-test('navigation is organized into one-row workspace groups', () => {
-  for (const group of ['home', 'operations', 'people', 'growth', 'insights', 'system']) assert.match(app, new RegExp(`\\['${group}'`));
-  assert.match(app, /team:'Messages','team-profiles':'Team'/);
-  assert.match(app, /operations:'Operations Center'/);
-  assert.match(app, /brain:'Atlas Brain',business:'Business Intelligence'/);
-  assert.match(app, /new MutationObserver/);
-  assert.match(app, /button\.setAttribute\('aria-label',label\)/);
-  assert.match(app, /updateMenuButtonLabel\(collapsed\)/);
+test('navigation is organized into the spec groups: Home/Atlas AI/Messages, Venue, People, Business', () => {
+  for (const group of ['main', 'venue', 'people', 'business']) assert.match(app, new RegExp(`data-nav-group="${group}"`));
+  for (const label of ['Venue', 'People', 'Business']) assert.match(app, new RegExp(`<div class="nav-label" role="presentation">${label}</div>`));
+  assert.match(shellJs, /const NAV_GROUPS = Object\.freeze\(\[null, 'Venue', 'People', 'Business'\]\);/);
+  // Role visibility comes from one model (AtlasShell.nav), not per-module CSS.
+  assert.match(chrome, /link\.hidden = !shell\.nav\.allowed\(link\.dataset\.navId, current\);/);
+  assert.doesNotMatch(app, /navigationObserver|organizeAtlasNavigation|scheduleNavigationLayout/);
+  assert.match(chrome, /toggle\.setAttribute\('aria-label', overlay \? \(open \? 'Close navigation' : 'Open navigation'\) : \(open \? 'Collapse sidebar' : 'Expand sidebar'\)\);/);
 });
 
 test('workspace switching owns visibility, inventory state and scroll reset centrally', () => {
   assert.match(app, /function hideAtlasWorkspaceRoots\(keepView = ''\)/);
-  assert.match(app, /'sprint3-review': 'sprint3-review-view', system: 'system-view'/);
-  assert.match(app, /restoreAtlasWorkspaceInterior\(view\)/);
+  assert.match(app, /'team-profiles': 'team-profiles-view'\n/);
+  assert.match(app, /data: 'data-view'/);
+  // S88 Team A: Brain and System are retired views (Home, Settings › System health).
+  assert.doesNotMatch(app, /brain-view|system-view|restoreAtlasWorkspaceInterior/);
   assert.match(app, /window\.scrollTo\(\{ top: 0, left: 0, behavior: 'auto' \}\)/);
   assert.match(app, /document\.body\.dataset\.atlasView = view/);
-  assert.match(app, /window\.AtlasStockCounts\?\.close\?\.\(\)/);
-  assert.match(app, /window\.AtlasItemMaster\?\.close\?\.\(\)/);
-  assert.match(app, /sidebarDestination\.dataset\.atlasBaseViewBound !== 'true' && viewMap\[view\]/);
-  assert.match(app, /btn\.dataset\.atlasBaseViewBound = 'true'/);
+  // S88: one navigation path. AtlasShell routes every sidebar click once and
+  // the base shell's chrome is its layout hook; no per-button double binding.
+  assert.match(app, /window\.AtlasShell\.setLayout\(layoutAtlasView\)/);
+  assert.match(app, /function layoutAtlasView\(view, entry, context\)/);
+  // Leaving Inventory pauses an open stock count (atlas-inventory.js onHide).
+  assert.match(inventory, /function onHide\(\) \{[\s\S]*?root\.AtlasStockCounts\?\.leave\?\.\(\);/);
+  assert.doesNotMatch(app, /atlasBaseViewBound/);
 });
 
 test('shared polish removes duplicate Home metrics and normalizes workspace hierarchy', () => {
-  assert.match(finalPolishCss, /#dashboard-view > \.stat-grid/);
-  assert.match(finalPolishCss, /body\[data-atlas-view\]:not\(\[data-atlas-view="dashboard"\]\) \.checkpoint-a-home-prompt/);
-  assert.match(finalPolishCss, /\.recipe-hero h1,[\s\S]*\.recipe-alpha03-head h1,[\s\S]*\.settings-hero h1/);
-  assert.match(finalPolishCss, /\.team-profile-card-media[\s\S]*height: 176px !important/);
-  assert.match(recipes, /<h1>Recipe Library<\/h1>/);
+  // S88 Team A: Home has no stat grid or Operations prompt; one Home renderer (home.js).
+  assert.doesNotMatch(app, /class="stat-grid"|checkpoint-a-home-prompt/);
+  assert.doesNotMatch(homeJs, /stat-grid|metric-card|checkpoint-a/);
+  // S88: the workspace page-title normalization is part of atlas-components.css.
+  // S88: the retired workspace heroes (Item Master, Stock count, Team) have no rules left.
+  assert.doesNotMatch(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.item-master-hero h1|\.stock-count-hero h1/);
+  // S88: Team was rebuilt on the shared table; its retired card grid rules are gone.
+  assert.doesNotMatch(readFileSync('apps/web/assets/css/team-profiles.source.css', 'utf8'), /\.team-profile-card-media/);
+  // S88 Recipes (spec §7.7): one page header, no hero.
+  assert.match(recipes, /window\.AtlasShell\.pageHead\(\{ title: 'Recipes'/);
+  assert.doesNotMatch(recipes, /Recipe Library|recipe-hero|recipe-summary-grid/);
 });
 
 test('Home uses live values and supports expanded or compact navigation', () => {
-  assert.match(app, /id="home-date"/);
-  assert.match(app, /data-home-action="stock-count"/);
-  assert.match(app, /data-home-action="new-order"/);
-  assert.match(app, /id="home-margin">—<\/strong>/);
+  // S88 Team A (spec §7.1): no KPI cards; the date and greeting come from the
+  // venue clock, attention rows from AtlasShell.home.rows, facts from the
+  // canonical stock and recipe rules.
+  assert.doesNotMatch(app, /id="home-date"|id="home-metrics"|id="home-margin"|data-home-action=/);
   assert.doesNotMatch(app, /<strong>8<\/strong><span>Onboarding steps/);
-  assert.match(app, /window\.AtlasRecipes\?\.getHomeMetrics/);
-  assert.match(recipes, /function getHomeMetrics\(\)/);
+  assert.match(homeJs, /shell\(\)\?\.home\?\.rows\?\.\(\{ role: role\(\) \}\)/);
+  assert.match(homeJs, /formatDate\?\.\(new Date\(\), \{ long: true \}\)/);
+  assert.match(homeJs, /window\.AtlasStockTruth/);
+  // S90: At a glance reads the Recipes page's own summary (canonical recipeStatus).
+  assert.match(homeJs, /window\.AtlasRecipes\?\.summary\?\.\(\)/);
   assert.doesNotMatch(app, /id="home-focus"/);
   assert.doesNotMatch(app, /home-focus'\)\.style\.display/);
-  assert.match(shellCss, /body\.atlas-sidebar-collapsed/);
+  // Expanded sidebar (240) or the 64 px rail, per viewer (spec §4.1).
+  assert.match(shellCss, /body\.atlas-rail \.atlas-shell \{ grid-template-columns: 64px minmax\(0, 1fr\); \}/);
+  assert.match(chrome, /document\.body\.classList\.toggle\('atlas-rail', RAIL\.matches \|\| collapsed\);/);
 });
 
-test('Service Mode uses the shared light Atlas design without black surfaces', () => {
-  assert.match(app, /body\.service-mode\{background:#f4f8ff\}/);
-  assert.match(app, /\.service-card\{[^}]*background:rgba\(255,255,255,\.92\)/);
-  assert.match(app, /\.service-card svg\{[^}]*background:#e6f1ff[^}]*color:#2f80ed/);
-  assert.match(app, /\.service-card:hover\{[^}]*background:#edf5ff/);
-  assert.doesNotMatch(app, /body\.service-mode\{background:#111310\}/);
-  assert.doesNotMatch(app, /\.service-card\{[^}]*background:#20231f/);
+test('Service Mode is retired; Home and the phone tab bar are the service surface', () => {
+  // Spec §4.12, owner decision 2.
+  assert.doesNotMatch(app, /service-mode|service-view|service-card|Service Mode/);
+  assert.doesNotMatch(shellJs, /data-service-view|SERVICE_SELECTOR/);
+  assert.match(app, /<nav class="atlas-tabbar" id="atlas-tabbar" aria-label="Main">/);
 });
 
 test('Recipes and Purchasing use clean, honest in-page controls', () => {
-  assert.match(recipesCss, /#recipes-view \.recipe-status-filters \{[^}]*background: transparent/s);
-  assert.match(app, /class="purchasing-workspace-tabs"/);
-  assert.match(app, /id="purchase-orders-tab" disabled/);
-  assert.match(app, /id="purchase-deliveries-tab" disabled/);
-  assert.match(readFileSync('apps/web/assets/js/purchase-orders.js', 'utf8'), /openSection\('orders'\)/);
-  assert.match(readFileSync('apps/web/assets/js/purchase-orders.js', 'utf8'), /openSection\('deliveries'\)/);
-  assert.match(app, /id="purchasing-intelligence-title"/);
-  assert.match(app, /Spend appears only when a costed restock is recorded/);
-  assert.match(purchasingCss, /\.purchasing-intelligence \{[^}]*var\(--atlas-home-accent-soft/s);
+  assert.match(recipesCss, /@layer atlas\.modules \{/);
+  assert.match(recipes, /<div class="atlas-segmented" role="group" aria-label="Availability">/);
+  // S88 §7.8: Purchasing is module-owned (atlas-purchasing.js) with Orders, Deliveries and Suppliers tabs.
+  assert.match(app, /<div id="suppliers-view" style="display:none;"><\/div>/);
+  for (const tab of ['Orders', 'Deliveries', 'Suppliers']) assert.match(purchasing, new RegExp(`'${tab}'`));
+  assert.match(purchasing, /shell\.registerView\('suppliers'/);
+  assert.match(purchasingCss, /^@layer atlas\.modules \{/m);
 });
 
-test('Inventory filters use the approved primary and contextual category model', () => {
-  for (const label of [
-    'Spirits', 'Wine', 'Beer', 'Mixers', 'Syrups', 'Bitters', 'Fresh Fruit',
-    'Fresh Herbs', 'Garnish', 'Bar Ingredients', 'Consumables', 'Bar Equipment', 'Coffee',
-  ]) {
-    assert.match(app, new RegExp(`'${label.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&')}'`));
+test('Inventory filters are chips over loaded records, with honest unknowns', () => {
+  for (const label of ['Below par', 'Not counted', 'Out or almost out']) assert.match(inventory, new RegExp(`'${label}'`));
+  // S89: the chips and pills read the canonical AtlasStockTruth.stockStatus.
+  assert.match(inventory, /truth\(\)\?\.stockStatus\?\.\(item\) !== 'below_par'/);
+  assert.match(inventory, /if \(status === 'unknown'\) return \{ key: 'not_counted', label: 'Not counted'/);
+  assert.match(inventory, /manager \? '<th class="inv-col--supplier" data-priority="2">Supplier<\/th>' : ''/);
+  assert.doesNotMatch(inventory, /Flóki Single Malt barely moves|45,000 ISK in stock/);
+  // The owner's primary and contextual category model (S38 decisions).
+  for (const label of ['Spirits', 'Wine', 'Beer', 'Mixers', 'Syrups', 'Bitters', 'Fresh fruit', 'Fresh herbs', 'Garnish', 'Bar ingredients', 'Consumables', 'Bar equipment', 'Coffee']) {
+    assert.match(inventory, new RegExp(`'${label}'\\]`));
   }
-  assert.match(app, /function inventoryGroup\(item\)/);
-  assert.match(app, /function inventorySubcategory\(item/);
-  assert.match(app, /if \(group === 'spirits'\)[\s\S]*if \(stored\) return stored\.replace/);
-  assert.match(app, /if \(group === 'beer'\)[\s\S]*if \(stored\) return stored\.replace/);
-  assert.match(app, /\/whisk\(\?:e\)\?y\|bourbon\|scotch\|rye/);
-  assert.match(app, /\/cider\/\.test\(name\).*?!\/beer\/\.test\(category\)/);
-  assert.match(app, /id="subcategory-tabs"/);
-  assert.match(app, /result\.set\(label, \(result\.get\(label\) \|\| 0\) \+ 1\)/);
+  assert.match(inventory, /function inventoryGroup\(item\)/);
+  assert.match(inventory, /function inventorySubcategory\(item, group = inventoryGroup\(item\)\)/);
+  assert.match(inventory, /const WINE_TYPES = \['Red', 'White', 'Rosé', 'Sparkling'\];/);
 });
 
-test('Inventory insight and table values remain grounded in loaded records', () => {
-  assert.match(app, /function renderInventoryIntelligence\(\)/);
-  assert.match(app, /currentItems\.filter\(item => window\.AtlasStockTruth\.known\(item\) && item\.par_level/);
-  assert.match(app, /item\.cost_price/);
-  assert.match(app, /item\.supplier \|\| '—'/);
-  assert.match(app, /<th data-commercial-only>Supplier<\/th>/);
-  assert.match(app, /<th data-commercial-only class="numeric">Cost<\/th>/);
-  assert.doesNotMatch(app, /Flóki Single Malt barely moves|45,000 ISK in stock/);
-});
-
-test('scan, add, stock count and Item Master share the Inventory header safely', () => {
-  assert.match(scanner, /document\.querySelector\('\.inventory-section-actions'\)/);
-  assert.match(stockCount, /const actions = document\.querySelector\('\.inventory-section-actions'\)/);
-  assert.match(itemMaster, /document\.body\.classList\.add\('item-master-active'\)/);
-  assert.match(itemMaster, /document\.querySelectorAll\('\[data-item-master-l2\]'\)/);
-  assert.match(app, /requireCommercialManager\('Direct inventory adjustment'\)/);
-  assert.match(app, /requireCommercialManager\('Inventory master editing'\)/);
+test('scan, add and stock count share one capture module and the shell top bar', () => {
+  assert.match(capture, /root\.AtlasCapture = /);
+  assert.match(inventory, /root\.AtlasCapture/);
+  assert.match(stockCount, /root\.AtlasCapture/);
+  assert.match(stockCount, /document\.body\.classList\.add\('stock-count-active'\)/);
+  assert.match(inventory, /AtlasChrome\?\.setTopBar\?\./);
+  assert.match(app, /requireCommercialManager\(action = 'This action'\)/);
 });
 
 test('Reports and Settings stay inside the shared responsive content rail', () => {
-  assert.match(reportsCss, /#reports-view,[\s\S]*\.reports-shell[\s\S]*overflow-x: clip/);
-  assert.match(reportsCss, /\.reports-layout > \*/);
-  assert.match(settingsCss, /\.settings-tabs\{display:flex;flex-wrap:wrap;gap:5px;overflow-x:visible/);
-  assert.match(settingsCss, /@media\(max-width:680px\)[\s\S]*\.settings-tabs\{[^}]*flex-wrap:nowrap;overflow-x:auto/);
+  // S88 Reports: an .atlas-page with module layout only (spec §7.12).
+  assert.match(reportsCss, /@layer atlas\.modules \{/);
+  assert.match(readFileSync('apps/web/assets/js/reports-workspace.js', 'utf8'), /<div class="atlas-page reports-page/);
+  // S88 Team A (spec §7.15): section nav 220 px + one reading column; one column on phones.
+  assert.match(settingsCss, /\.settings-layout \{ display: grid; grid-template-columns: 220px minmax\(0, var\(--reading-max\)\)/);
+  assert.match(settingsCss, /@media \(max-width: 767px\)[\s\S]*\.settings-layout, \.settings--single \.settings-layout \{ grid-template-columns: minmax\(0, 1fr\)/);
 });
 
 test('all audited Lucide placeholders use icons included in the pinned runtime', () => {

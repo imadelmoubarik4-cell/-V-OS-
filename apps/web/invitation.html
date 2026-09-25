@@ -1,5 +1,40 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Join Atlas</title>
-<style>body{font:16px system-ui;background:#f5f3ee;color:#25251f;margin:0}main{max-width:440px;margin:6vh auto;padding:24px;background:white;border:1px solid #ddd;border-radius:16px}label,input,button{display:block;box-sizing:border-box;width:100%;margin:12px 0}input,button{padding:12px;font:inherit}button{background:#292b26;color:white;border:0;border-radius:8px}button:disabled{opacity:.5}a{color:#334638}[hidden]{display:none!important}#status{line-height:1.5}@media(max-width:500px){main{margin:20px 12px}}</style></head>
-<body data-atlas-standalone="true"><main><p>VÁ · Atlas</p><h1>Set up your Atlas login</h1><p id="status" role="status">Checking your invitation…</p><form id="accept-invitation" hidden><label for="new-password">New password</label><input id="new-password" type="password" autocomplete="new-password" minlength="10" required><label for="confirm-password">Confirm password</label><input id="confirm-password" type="password" autocomplete="new-password" minlength="10" required><button type="submit">Set password</button></form><a href="index.html">Back to Atlas sign in</a></main>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><title>Set up your login · Atlas</title>
+<link rel="icon" href="assets/brand/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="assets/brand/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32x32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260929-s90f">
+<link rel="stylesheet" href="assets/css/atlas-base.css?v=20260929-s90u">
+<link rel="stylesheet" href="assets/css/atlas-components.css?v=20260930-s90g">
+<link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260929-s90u">
+</head>
+<body data-atlas-standalone="true">
+<div class="atlas-auth">
+  <main class="atlas-auth__column" aria-labelledby="invite-title">
+    <div class="atlas-auth__brand"><img class="atlas-auth__lockup" src="assets/brand/Atlas_Primary_Stacked_Midnight.svg" alt="Atlas" width="112" height="99"></div>
+    <h1 class="atlas-auth__title" id="invite-title">Set up your Atlas login</h1>
+    <p class="atlas-auth__sub" id="invite-sub">Choose a password to finish setting up your account.</p>
+    <div class="atlas-auth__skeleton" id="invite-checking" aria-hidden="true"><span></span><span></span><span></span></div>
+    <p class="atlas-auth__status" id="status" role="status">Checking your invitation…</p>
+    <form id="accept-invitation" class="atlas-auth__form" novalidate hidden>
+      <div class="atlas-auth__readonly" id="invite-account" hidden><span>Email</span><strong id="invite-email"></strong></div>
+      <div class="atlas-field">
+        <label for="new-password">New password</label>
+        <input class="atlas-input" id="new-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="invite-rules">
+      </div>
+      <ul class="atlas-auth__rules" id="invite-rules" aria-live="polite"><li data-rule="length">At least 10 characters</li><li data-rule="match">Both passwords match</li></ul>
+      <div class="atlas-field">
+        <label for="confirm-password">Confirm password</label>
+        <input class="atlas-input" id="confirm-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="confirm-password-error">
+        <p class="atlas-field__error" id="confirm-password-error" hidden></p>
+      </div>
+      <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit">Create login</button>
+    </form>
+    <p class="atlas-auth__link"><a href="index.html">Back to sign in</a></p>
+  </main>
+  <p class="atlas-auth__foot" data-atlas-venue-line hidden></p>
+</div>
 <script src="config.js"></script><script src="assets/js/rehearsal-boundary.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script><script src="assets/js/account-invitation.js"></script></body></html>

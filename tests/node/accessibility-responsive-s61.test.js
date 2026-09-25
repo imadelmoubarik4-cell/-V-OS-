@@ -3,36 +3,46 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const shell = readFileSync('apps/web/index.html', 'utf8');
-const month = readFileSync('apps/web/assets/js/shifts-month-calendar.js', 'utf8');
-const css = readFileSync('apps/web/assets/css/accessibility-responsive-s61.css', 'utf8');
+const month = readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8');
 const sources = [
   shell,
   readFileSync('apps/web/assets/js/recipes.js', 'utf8'),
   readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8'),
-  readFileSync('apps/web/assets/js/sprint3-review.js', 'utf8'),
-  readFileSync('apps/web/assets/js/item-master-workspace.js', 'utf8'),
+  readFileSync('apps/web/assets/js/data-workspace.js', 'utf8'),
+  readFileSync('apps/web/assets/js/atlas-inventory.js', 'utf8'),
+  readFileSync('apps/web/assets/js/atlas-purchasing.js', 'utf8'),
   readFileSync('apps/web/assets/js/team-messages.js', 'utf8'),
   readFileSync('apps/web/assets/js/knowledge-workspace.js', 'utf8'),
+  readFileSync('apps/web/assets/js/team-profiles.source.js', 'utf8'),
 ].join('\n');
 
 test('audited search and stock-count filter controls have explicit accessible names', () => {
   for (const label of [
-    'Search recipes', 'Search suppliers', 'Search import files', 'Search stock-count items',
-    'Filter stock-count lines', 'Search review records', 'Search item master',
-    'Search available Atlas records', 'Search Knowledge'
+    // S88: Item Master is part of Inventory; the count flow has one search.
+    'Search recipes or ingredients', 'Search suppliers', 'Search files', 'Search this count',
+    'Search records', 'Search items, suppliers or codes',
+    'Search conversations', 'Search people', 'Search Knowledge'
   ]) assert.match(sources, new RegExp(`aria-label="${label}"`));
 });
 
-test('every empty Month cell names the exact date in its Add shift action', () => {
-  assert.match(month, /class="shift-month-empty"[\s\S]+?aria-label="Add shift on \$\{escapeHtml\(formatDay\(date/);
-  assert.match(month, /aria-label="Add shift on \$\{escapeHtml\(formatDay\(state\.selectedDate/);
-  assert.match(month, /aria-label="Add first shift on \$\{escapeHtml\(formatDay\(state\.selectedDate/);
+test('every Shifts add control and Month day names the exact date', () => {
+  // S88: the Month calendar is part of shifts-workspace.js (one canonical module).
+  assert.match(month, /aria-label="Add a shift for \$\{escapeHtml\(person\.display_name\)\} on \$\{escapeHtml\(longDate\(key\)\)\}"/);
+  assert.match(month, /const labelParts = \[longDate\(key\)/);
+  assert.match(month, /class="shifts-month__cell[\s\S]+?aria-label="\$\{escapeHtml\(labelParts\.join/);
 });
 
-test('narrow layouts reserve space for the single owning floating action', () => {
-  assert.match(css, /#reports-view[\s\S]+?\.fab-wrap[\s\S]+?display:\s*none !important/);
-  assert.match(css, /padding-bottom:\s*calc\(96px \+ env\(safe-area-inset-bottom\)\)/);
-  assert.match(css, /max-height:\s*calc\(100dvh - 104px\)/);
-  assert.match(shell, /accessibility-responsive-s61\.css\?v=20260917-s61/);
-  assert.match(shell, /shifts-month-calendar\.js\?v=20260917-s62/);
+test('narrow layouts reserve space for the phone tab bar, not a floating action', () => {
+  // S88 redesign (spec §4.12): the floating + button is retired; the phone tab
+  // bar owns the bottom edge and pages pad above it.
+  assert.doesNotMatch(shell, /class="fab-wrap"|id="fab-btn"/);
+  // Messages (the page that used this rule) now pads its own list above the tab bar
+  // and keeps the composer above the safe area (S88 module stylesheet).
+  const messagesCss = readFileSync('apps/web/assets/css/team-messages.css', 'utf8');
+  assert.match(messagesCss, /calc\(var\(--tabbar-h\) \+ var\(--s-10\)\)/);
+  assert.match(messagesCss, /env\(safe-area-inset-bottom\)/);
+  // S88: every S61 fragment moved into its module sheet (Reports, Messages); none is linked.
+  assert.doesNotMatch(shell, /legacy\/accessibility-responsive-s61--/);
+  assert.match(shell, /shifts-workspace\.js\?v=20260929-s90f/);
+  assert.doesNotMatch(shell, /shifts-month-calendar\.js|shifts-month-tab-bridge\.js/);
 });

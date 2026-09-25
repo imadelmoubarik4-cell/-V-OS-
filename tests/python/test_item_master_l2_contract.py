@@ -10,8 +10,10 @@ PRODUCTION = (ROOT / "supabase/migrations/20260806000552_atlas_item_master_check
 NAMED_ARGUMENTS = (ROOT / "supabase/migrations/20260908192309_atlas_item_master_l2_named_arguments.sql").read_text()
 EDGE = (ROOT / "supabase/functions/atlas-item-master/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
-BOOTSTRAP = (ROOT / "apps/web/assets/js/stock-count-bootstrap.js").read_text()
-BROWSER = (ROOT / "apps/web/assets/js/item-master-workspace.js").read_text()
+# S88: the Item Master workspace is absorbed into the Inventory item detail
+# (assets/js/atlas-inventory.js); it loads directly from index.html.
+INDEX = (ROOT / "apps/web/index.html").read_text()
+BROWSER = (ROOT / "apps/web/assets/js/atlas-inventory.js").read_text()
 
 
 class ItemMasterL2ContractTests(unittest.TestCase):
@@ -128,8 +130,9 @@ class ItemMasterL2ContractTests(unittest.TestCase):
 
     def test_edge_gateway_is_custom_manager_authenticated(self):
         self.assertIn("requireManager", EDGE)
-        self.assertIn("/auth/v1/user", EDGE)
-        self.assertIn("/rest/v1/profiles", EDGE)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE)
+        self.assertIn("requireRole(actor, MANAGER_ROLES", EDGE)
         self.assertIn('new Set(["admin", "manager"])', EDGE)
         self.assertIn("Checkpoint L2 is available only to managers and administrators", EDGE)
         self.assertIn("[functions.atlas-item-master]", CONFIG)
@@ -152,16 +155,24 @@ class ItemMasterL2ContractTests(unittest.TestCase):
         self.assertIn("missing_fields", EDGE)
 
     def test_browser_uses_gateway_and_no_direct_operational_mutation(self):
-        self.assertIn("ITEM_MASTER_API", BOOTSTRAP)
-        self.assertIn("item-master-workspace.js", BOOTSTRAP)
-        self.assertIn("item-master-workspace.css", BOOTSTRAP)
-        self.assertIn("window.atlasSupabase", BROWSER)
-        self.assertIn("Save private draft", BROWSER)
-        self.assertIn("Preview publication disabled", BROWSER)
-        self.assertNotRegex(BROWSER, r"\.from\s*\(\s*['\"]")
-        self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BOOTSTRAP + BROWSER)
-        self.assertNotIn("adjust_inventory", BROWSER)
+        self.assertIn("ITEM_MASTER_API", BROWSER)
+        self.assertIn("assets/js/atlas-inventory.js", INDEX)
+        self.assertFalse((ROOT / "apps/web/assets/js/item-master-workspace.js").exists())
+        self.assertNotIn("item-master-workspace", INDEX)
+        self.assertIn("root.atlasSupabase", BROWSER)
+        self.assertIn("itemMaster('create-item'", BROWSER)
+        self.assertIn("itemMaster('set_item_active'", BROWSER)
+        self.assertIn("kind: 'metadata_correction'", BROWSER)
+        self.assertNotRegex(BROWSER, r"\.from\s*\(\s*['\"]inventory_items['\"]\s*\)\s*\.\s*(?:insert|update|upsert|delete)")
+        self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER)
         self.assertNotIn("inventory_movements", BROWSER)
+        # The only stock write on the page goes through the idempotent
+        # adjust_inventory_v2 (S90): manager waste here, and the delivery
+        # without an order that Purchasing routes through the same helper.
+        self.assertEqual(BROWSER.count("rpc('adjust_inventory"), 1)
+        self.assertEqual(BROWSER.count("rpc('adjust_inventory_v2'"), 1)
+        self.assertIn("p_movement_type: type", BROWSER)
+        self.assertIn("type: 'waste'", BROWSER)
 
 
 if __name__ == "__main__":

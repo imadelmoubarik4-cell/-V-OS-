@@ -1,36 +1,65 @@
+// Messages — #messages, #messages/<conversationId> (docs/design/Atlas_Experience_Redesign.md §7.3, §8.5).
+//
+// Conversation list + thread with composer. Internal AtlasShell view id stays
+// 'team' (spec §3.4: only the route changed; #team is the Team directory).
+//
+// Identity rules (S87, binding): a sender is shown by sender_id → the current
+// roster's display name → a safe label derived from the stored sender_label →
+// "Former team member". An email address is never shown. Photos come from
+// AtlasTeamProfilePhotos.photoFor(sender_id). Atlas recommendation links are
+// manager-only: the composer offers them only when the server says
+// can_link_brain_recommendations, and staff see such a link without its title.
+//
+// Unread state: channel counts come from the same server snapshot that the
+// shell badge (AtlasTeamUnreadBadge) polls; AtlasTeamMessages.unread() exposes
+// the per-conversation counts for the notifications feed.
 (function () {
   'use strict';
 
   const cfg = window.VABAR_CONFIG || {};
   const POLL_FALLBACK_MS = 6000;
   const REQUEST_TIMEOUT_MS = 15000;
+  const GROUP_WINDOW_MS = 5 * 60 * 1000;
+  const MANAGER_ROLES = ['admin', 'manager'];
+  const HANDOVER_CHANNEL = 'shift-handover';
+  const PHONE = window.matchMedia ? window.matchMedia('(max-width: 767px)') : { matches: false, addEventListener() {} };
+  const LINK_TYPES = [
+    { type: 'inventory_item', label: 'Item', icon: 'package', noun: 'items' },
+    { type: 'routine', label: 'Checklist', icon: 'clipboard-check', noun: 'checklists due today' },
+    { type: 'shift', label: 'Shift', icon: 'calendar-days', noun: 'shifts' },
+    { type: 'brain_recommendation', label: 'Recommendation', icon: 'sparkles', noun: 'Atlas recommendations', managerOnly: true }
+  ];
+  const LINK_ICONS = { inventory_item: 'package', routine: 'clipboard-check', shift: 'calendar-days', brain_recommendation: 'sparkles', knowledge_article: 'book-open' };
 
   const state = {
     snapshot: null,
     staff: null,
     members: [],
-    selectedChannel: 'general',
-    conversationFilter: 'all',
+    selectedChannel: null,
+    routeChannel: null,
+    search: '',
     loading: false,
-    refreshing: false,
+    channelLoading: false,
     submitting: false,
     markingRead: false,
     starring: false,
     error: null,
-    message: null,
+    failedAt: 0,
     drafts: Object.create(null),
+    failed: Object.create(null),
+    unreadFrom: Object.create(null),
     editingMessageId: null,
-    attachmentOpen: false,
-    linkType: 'none',
-    linkQuery: '',
-    linkTargets: [],
     selectedTarget: null,
-    targetLoading: false,
-    targetTimer: null,
     pollTimer: null,
-    viewObserver: null,
-    initialized: false
+    visible: false,
+    initialized: false,
+    root: null,
+    renderedIds: '',
+    pendingNew: 0,
+    loadSerial: 0
   };
+
+  // ---------- helpers ----------
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (character) => ({
@@ -42,35 +71,103 @@
     return escapeHtml(value).replace(/\n/g, '<br>');
   }
 
-  function humanize(value) {
-    return String(value || '')
-      .replace(/[_-]+/g, ' ')
-      .replace(/\b\w/g, (character) => character.toUpperCase());
-  }
-
   function initials(value) {
     const words = String(value || 'Atlas').trim().split(/\s+/).filter(Boolean);
     if (!words.length) return 'A';
     return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join('');
   }
 
-  function formatDateTime(value) {
+  const ROLE_LABELS = { admin: 'Administrator', manager: 'Manager', bartender: 'Bartender', viewer: 'Viewer' };
+  function roleLabel(role) {
+    return ROLE_LABELS[role] || String(role || '').replace(/[_-]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+  }
+
+  // A visible name never shows an email address: an email-only label becomes
+  // its readable local part ("sara.jonsdottir@…" → "Sara Jonsdottir").
+  function safePersonLabel(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    if (!text.includes('@')) return text;
+    const local = text.split('@')[0].replace(/\d+$/, '');
+    const words = local.split(/[._+-]+/).filter(Boolean);
+    return words.length ? words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : '';
+  }
+
+  // Presentation identity is resolved from sender_id against the current
+  // profile roster; the stored sender_label is only a historical fallback for
+  // people who are no longer active. Audit history is never rewritten.
+  function senderIdentity(message) {
+    const member = message.sender_id ? state.members.find((entry) => entry.id === message.sender_id) : null;
+    const name = safePersonLabel(member?.label) || safePersonLabel(message.sender_label) || 'Former team member';
+    return { id: message.sender_id || null, name, role: member?.role || message.sender_role || '', current: Boolean(member) };
+  }
+
+  function avatarTint(key) {
+    const text = String(key || 'atlas');
+    let hash = 0;
+    for (let index = 0; index < text.length; index += 1) hash = ((hash * 31) + text.charCodeAt(index)) >>> 0;
+    return `atlas-avatar--${'abcd'[hash % 4]}`;
+  }
+
+  function avatarMarkup(identity, size = '') {
+    const photo = identity.id ? window.AtlasTeamProfilePhotos?.photoFor?.(identity.id) : null;
+    const classes = `atlas-avatar ${size} ${avatarTint(identity.id || identity.name)} msg-avatar${photo?.signed_url ? ' has-profile-photo' : ''}`;
+    const inner = photo?.signed_url
+      ? `<img src="${escapeHtml(photo.signed_url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
+      : escapeHtml(initials(identity.name));
+    return `<span class="${classes}" ${identity.id ? `data-team-sender="${escapeHtml(identity.id)}"` : ''} aria-hidden="true">${inner}</span>`;
+  }
+
+  function clock() {
+    return window.AtlasVenueClock || null;
+  }
+
+  function venueDateOf(value) {
+    return clock()?.venueDate?.(value) || '';
+  }
+
+  // Same-day check in the venue zone (Atlas_Time_Migration.md, Team D).
+  function formatStamp(value) {
     if (!value) return '';
+    const vc = clock();
+    if (!vc) return '';
+    return venueDateOf(value) === venueDateOf(new Date()) ? vc.formatTime(value) : vc.formatDateTime(value);
+  }
+
+  function dayLabel(value) {
+    const vc = clock();
+    if (!vc) return '';
+    const key = venueDateOf(value);
+    const today = venueDateOf(new Date());
+    if (key === today) return 'Today';
+    if (key === vc.addDays(today, -1)) return 'Yesterday';
+    return vc.formatDate(key, { long: true });
+  }
+
+  function isoOf(value) {
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    const now = new Date();
-    const sameDate = date.getFullYear() === now.getFullYear()
-      && date.getMonth() === now.getMonth()
-      && date.getDate() === now.getDate();
-    return new Intl.DateTimeFormat('en-GB', sameDate
-      ? { hour: '2-digit', minute: '2-digit', hour12: false }
-      : { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }
-    ).format(date);
+    return Number.isNaN(date.getTime()) ? '' : date.toISOString();
   }
 
   function requestId() {
     if (window.crypto?.randomUUID) return window.crypto.randomUUID();
-    return `team-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => Math.floor(Math.random() * 16).toString(16));
+  }
+
+  function icon(name) {
+    return `<i data-lucide="${escapeHtml(name)}" aria-hidden="true"></i>`;
+  }
+
+  function paintIcons() {
+    window.lucide?.createIcons?.();
+  }
+
+  function role() {
+    return state.staff?.role || window.AtlasShell?.profile?.()?.role || window.atlasCurrentProfile?.role || null;
+  }
+
+  function isManager() {
+    return MANAGER_ROLES.includes(role());
   }
 
   function host() {
@@ -84,8 +181,9 @@
   function teamViewVisible() {
     const element = host();
     if (!element) return false;
+    const app = document.getElementById('app-screen');
     return window.getComputedStyle(element).display !== 'none'
-      && window.getComputedStyle(document.getElementById('app-screen')).display !== 'none';
+      && (!app || window.getComputedStyle(app).display !== 'none');
   }
 
   async function activeSession() {
@@ -96,11 +194,25 @@
     return result.data.session || null;
   }
 
+  class MessagesError extends Error {
+    constructor(message, status) {
+      super(message);
+      this.status = status;
+      this.atlasFixed = true;
+    }
+  }
+  // Only this module's own fixed copy (atlasFixed) is shown; a JavaScript error
+  // or server text reads as the fallback (AtlasApi.message).
+  function shown(error, fallback) {
+    if (window.AtlasApi?.message) return window.AtlasApi.message(error, fallback);
+    return error?.atlasFixed ? error.message : fallback;
+  }
+
   async function api(action, options = {}) {
     const endpoint = teamApi();
-    if (!endpoint) throw new Error('Checkpoint C team-message API is not configured for this preview.');
+    if (!endpoint) throw new MessagesError('Messages are not set up for this Atlas yet.', 0);
     const session = await activeSession();
-    if (!session?.access_token) throw new Error('Sign in to Atlas to open Team Messages.');
+    if (!session?.access_token) throw new MessagesError('Sign in again to read messages.', 401);
 
     const url = new URL(endpoint);
     url.searchParams.set('action', action);
@@ -123,34 +235,57 @@
         body: options.body ? JSON.stringify(options.body) : undefined
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || `Team-message request failed (${response.status}).`);
+      if (!response.ok) throw new MessagesError(friendlyError(response.status, payload.error), response.status);
       return payload;
     } catch (error) {
-      if (error?.name === 'AbortError') throw new Error('Team Messages took too long to respond. Check the connection and try again.');
-      throw error;
+      if (error?.name === 'AbortError') throw new MessagesError('Messages took too long to answer. Check the connection and try again.', 0);
+      if (error instanceof MessagesError) throw error;
+      throw new MessagesError('Messages couldn’t be reached. Check the connection and try again.', 0);
     } finally {
       window.clearTimeout(timer);
     }
   }
 
-  function channels() {
-    return Array.isArray(state.snapshot?.channels) ? state.snapshot.channels : [];
+  // Server messages are shown only when they are already written for people
+  // (4xx validation answers); anything else becomes a plain sentence.
+  // Fixed copy only (AtlasApi, atlas-api.js): server text is never shown,
+  // whatever its length or wording.
+  const API_MESSAGES = {
+    auth: 'Your session has ended. Sign in again to keep reading.',
+    forbidden: 'Your role can’t do that in Messages.',
+    not_found: 'That conversation or message isn’t available any more.',
+    conflict: 'This changed while you were writing. Refresh and try again.',
+    invalid: 'That message couldn’t be sent. Check it and try again.',
+    rate_limited: 'You’re sending messages quickly. Wait a moment, then try again.',
+    unavailable: 'Messages are temporarily unavailable.',
+    failed: 'Messages are temporarily unavailable.'
+  };
+
+  function friendlyError(status, message) {
+    const api = window.AtlasApi;
+    return api ? api.friendlyMessage(api.kindFor(status, null), null, API_MESSAGES) : 'Messages are temporarily unavailable.';
   }
 
-  function filteredChannels() {
-    return state.conversationFilter === 'pinned'
-      ? channels().filter((channel) => channel.starred)
-      : channels();
+  // ---------- data ----------
+
+  function channels() {
+    return Array.isArray(state.snapshot?.channels) ? state.snapshot.channels : [];
   }
 
   function messages() {
     return Array.isArray(state.snapshot?.messages) ? state.snapshot.messages : [];
   }
 
+  function channelByKey(key) {
+    return channels().find((channel) => channel.key === key) || null;
+  }
+
   function selectedChannel() {
-    return channels().find((channel) => channel.key === state.selectedChannel)
-      || channels()[0]
-      || null;
+    return channelByKey(state.selectedChannel) || null;
+  }
+
+  function snapshotChannelKey() {
+    return state.snapshot?.selected_channel_key || null;
   }
 
   function currentDraft() {
@@ -161,275 +296,494 @@
     state.drafts[state.selectedChannel] = String(value ?? '');
   }
 
+  function totalUnread() {
+    return Number(state.snapshot?.summary?.total_unread || 0);
+  }
+
+  function canPostIn(channel) {
+    return Boolean(state.staff?.can_post && channel?.can_post);
+  }
+
   function userIsInteracting() {
     const element = document.activeElement;
     const inside = element && host()?.contains(element);
-    return Boolean(
-      state.editingMessageId
-      || state.attachmentOpen
-      || currentDraft().trim()
-      || (inside && ['TEXTAREA', 'INPUT', 'SELECT'].includes(element.tagName))
-    );
+    return Boolean(state.editingMessageId || (inside && ['TEXTAREA', 'INPUT', 'SELECT'].includes(element.tagName) && currentDraft().trim()));
   }
 
-  function renderChannelButton(channel) {
+  // ---------- skeleton ----------
+
+  function ensureRoot() {
+    const element = host();
+    if (!element) return null;
+    if (element.classList.contains('placeholder-view')) element.classList.remove('placeholder-view');
+    if (element.dataset.msgReady === 'true' && state.root?.isConnected) return state.root;
+    element.dataset.msgReady = 'true';
+    element.classList.add('msg-host', 'page--full-height');
+    element.innerHTML = `<div class="msg" data-msg-view="list">
+      <aside class="msg-side" aria-label="Conversations">
+        <header class="page-head msg-side__head"><div class="page-head__text"><h1 class="page-head__title">Messages</h1></div></header>
+        <label class="atlas-search msg-side__search">${icon('search')}<input class="atlas-input" type="search" placeholder="Search conversations" aria-label="Search conversations" data-msg-search autocomplete="off"></label>
+        <nav class="msg-side__list" aria-label="Conversations" data-msg-list></nav>
+      </aside>
+      <section class="msg-thread" data-msg-thread aria-labelledby="msg-thread-title">
+        <header class="msg-thread__head" data-msg-head></header>
+        <div class="msg-thread__alert" data-msg-alert></div>
+        <div class="msg-thread__scroll" data-msg-scroll>
+          <div class="msg-log" data-msg-log data-team-message-list role="log" aria-live="polite" aria-relevant="additions text" aria-labelledby="msg-thread-title"></div>
+        </div>
+        <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm msg-jump" data-msg-jump hidden>${icon('arrow-down')}<span data-msg-jump-label>New messages</span></button>
+        <div class="msg-composer" data-msg-composer></div>
+      </section>
+    </div>`;
+    state.root = element.querySelector('.msg');
+    const scroll = element.querySelector('[data-msg-scroll]');
+    scroll?.addEventListener('scroll', () => {
+      if (nearBottom()) hideJump();
+    }, { passive: true });
+    paintIcons();
+    return state.root;
+  }
+
+  function region(name) {
+    return state.root?.querySelector(`[data-msg-${name}]`) || null;
+  }
+
+  // ---------- conversation list ----------
+
+  function channelIcon(channel) {
+    if (channel.key === 'announcements') return 'megaphone';
+    if (channel.key === HANDOVER_CHANNEL) return 'repeat-2';
+    return 'hash';
+  }
+
+  function previewOf(channel) {
+    const last = channel.last_message;
+    if (!last) return channel.description || 'No messages yet';
+    if (last.deleted) return 'Message deleted';
+    const who = last.message_type === 'system' ? 'Atlas' : safePersonLabel(last.sender_label);
+    return who ? `${who}: ${last.body || ''}` : String(last.body || '');
+  }
+
+  function channelRowMarkup(channel) {
     const unread = Number(channel.unread_count || 0);
-    return `<button type="button" class="team-channel ${channel.key === state.selectedChannel ? 'is-active' : ''}" data-team-channel="${escapeHtml(channel.key)}">
-      <span class="team-channel-icon is-${escapeHtml(channel.tone || 'neutral')}"><i data-lucide="${escapeHtml(channel.icon || 'message-circle')}"></i></span>
-      <span class="team-channel-copy"><strong>${escapeHtml(channel.name)}</strong><small>${escapeHtml(channel.last_message?.body || channel.description || '')}</small></span>
-      <span class="team-channel-status">${channel.starred ? '<i data-lucide="pin" class="is-pinned" aria-label="Pinned conversation"></i>' : ''}${unread > 0 ? `<span class="team-unread-count">${unread > 99 ? '99+' : unread}</span>` : ''}</span>
-    </button>`;
+    const current = channel.key === state.selectedChannel && (!PHONE.matches || state.routeChannel);
+    const time = channel.last_message?.created_at ? formatStamp(channel.last_message.created_at) : '';
+    return `<a class="msg-channel${unread ? ' has-unread' : ''}" href="#messages/${encodeURIComponent(channel.key)}" data-team-channel="${escapeHtml(channel.key)}" ${current ? 'aria-current="page"' : ''} aria-label="${escapeHtml(channel.name)}${unread ? `, ${unread} unread` : ''}">
+      <span class="msg-channel__icon">${icon(channelIcon(channel))}</span>
+      <span class="msg-channel__body">
+        <span class="msg-channel__name">${escapeHtml(channel.name)}${channel.starred ? `<span class="sr-only"> (pinned)</span>${icon('pin')}` : ''}</span>
+        <span class="msg-channel__preview">${escapeHtml(previewOf(channel))}</span>
+      </span>
+      <span class="msg-channel__end">${time ? `<time class="msg-channel__time" datetime="${escapeHtml(isoOf(channel.last_message.created_at))}">${escapeHtml(time)}</time>` : ''}${unread ? `<span class="atlas-badge">${unread > 99 ? '99+' : unread}</span>` : ''}</span>
+    </a>`;
   }
 
-  function renderReadStatus(message) {
+  function renderList() {
+    const list = region('list');
+    if (!list) return;
+    if (!state.snapshot) {
+      list.innerHTML = state.error
+        ? '<p class="msg-side__empty">Conversations couldn’t be loaded.</p>'
+        : `<div class="msg-side__skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(5)}<span class="sr-only">Loading conversations</span></div>`;
+      return;
+    }
+    const query = state.search.trim().toLowerCase();
+    const rows = channels().filter((channel) => !query || [channel.name, channel.description, previewOf(channel)].some((text) => String(text || '').toLowerCase().includes(query)));
+    const pinned = rows.filter((channel) => channel.starred);
+    const others = rows.filter((channel) => !channel.starred);
+    if (!rows.length) {
+      list.innerHTML = `<p class="msg-side__empty">No conversations match “${escapeHtml(state.search.trim())}”.</p>`;
+      return;
+    }
+    list.innerHTML = `${pinned.length ? `<p class="msg-side__group">Pinned</p>${pinned.map(channelRowMarkup).join('')}` : ''}
+      <p class="msg-side__group">Channels</p>${others.map(channelRowMarkup).join('')}`;
+    paintIcons();
+  }
+
+  // ---------- thread ----------
+
+  function renderHead() {
+    const head = region('head');
+    if (!head) return;
+    const channel = selectedChannel();
+    if (!channel) {
+      head.innerHTML = `<h2 class="msg-thread__title" id="msg-thread-title">${state.snapshot || state.error ? 'Messages' : 'Loading…'}</h2>`;
+      return;
+    }
+    const handover = channel.key === HANDOVER_CHANNEL && canPostIn(channel);
+    head.innerHTML = `<div class="msg-thread__text">
+        <h2 class="msg-thread__title" id="msg-thread-title">${icon(channelIcon(channel))}<span>${escapeHtml(channel.name)}</span></h2>
+        ${channel.description ? `<p class="msg-thread__desc">${escapeHtml(channel.description)}</p>` : ''}
+      </div>
+      <div class="msg-thread__actions">
+        ${handover ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-msg-handover>${icon('notebook-pen')}Write handover</button>` : ''}
+        <button type="button" class="atlas-icon-btn" data-team-star aria-pressed="${channel.starred ? 'true' : 'false'}" aria-label="${channel.starred ? 'Unpin' : 'Pin'} ${escapeHtml(channel.name)}" ${state.starring ? 'disabled' : ''}>${icon(channel.starred ? 'pin-off' : 'pin')}</button>
+      </div>`;
+    paintIcons();
+  }
+
+  function renderAlert() {
+    const alert = region('alert');
+    if (!alert) return;
+    if (!state.error) { alert.innerHTML = ''; return; }
+    alert.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">${escapeHtml(state.snapshot ? 'Messages couldn’t be updated.' : 'Messages couldn’t be loaded.')}</p><p class="atlas-alert__body">${escapeHtml(state.error)} Nothing you wrote has been lost.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-team-refresh>Try again</button></div></div>`;
+    paintIcons();
+  }
+
+  function linkHref(link) {
+    const key = encodeURIComponent(String(link.key || ''));
+    if (link.type === 'inventory_item') return `#inventory/item/${key}`;
+    if (link.type === 'knowledge_article') return `#knowledge/${key}`;
+    if (link.type === 'routine') return '#operations';
+    if (link.type === 'shift') {
+      const starts = link.metadata?.starts_at;
+      const week = starts && clock() ? clock().startOfWeek(clock().businessDate(starts)) : null;
+      return week ? `#shifts?week=${week}` : '#shifts';
+    }
+    if (link.type === 'brain_recommendation') return link.key ? `#ai/decisions?recommendation=${encodeURIComponent(link.key)}` : '#ai/decisions';
+    return '#home';
+  }
+
+  function linkMarkup(link) {
+    if (!link) return '';
+    const iconName = LINK_ICONS[link.type] || 'link-2';
+    // Recommendation titles are manager context; staff see only that one exists.
+    if (link.type === 'brain_recommendation' && !isManager()) {
+      return `<span class="atlas-record-chip msg-link is-locked">${icon('lock')}<span>Atlas recommendation · managers only</span></span>`;
+    }
+    return `<a class="atlas-record-chip msg-link" href="${escapeHtml(linkHref(link))}" data-team-open-link="${escapeHtml(link.type)}" data-team-link-key="${escapeHtml(link.key)}">${icon(iconName)}<span>${escapeHtml(link.label || 'Linked record')}</span></a>`;
+  }
+
+  function readStatusMarkup(message) {
     if (!message.is_own || message.message_type !== 'user') return '';
     const readers = Array.isArray(message.read_by) ? message.read_by : [];
     const count = Number(message.read_by_count || readers.length || 0);
-    if (!count) return '<span class="team-read-status">Sent</span>';
-    const names = readers.map((reader) => reader.user_label).filter(Boolean).join(', ');
-    return `<span class="team-read-status" ${names ? `title="${escapeHtml(names)}"` : ''}><i data-lucide="check-check"></i>Read by ${count}</span>`;
+    if (!count) return '<span class="msg-item__read">Sent</span>';
+    const names = readers.map((reader) => safePersonLabel(state.members.find((member) => member.id === reader.user_id)?.label || reader.user_label)).filter(Boolean).join(', ');
+    return `<span class="msg-item__read" ${names ? `title="Read by ${escapeHtml(names)}"` : ''}>${icon('check-check')}Read by ${count}</span>`;
   }
 
-  function renderLink(link) {
-    if (!link) return '';
-    const icons = {
-      inventory_item: 'package',
-      routine: 'clipboard-check',
-      shift: 'calendar-clock',
-      brain_recommendation: 'brain-circuit'
-    };
-    return `<button type="button" class="team-message-link" data-team-open-link="${escapeHtml(link.type)}" data-team-link-key="${escapeHtml(link.key)}" data-team-link-route="${escapeHtml(link.route || '')}">
-      <span><i data-lucide="${escapeHtml(icons[link.type] || 'link-2')}"></i></span>
-      <span><small>${escapeHtml(humanize(link.type))}</small><strong>${escapeHtml(link.label)}</strong></span>
-      <i data-lucide="arrow-up-right"></i>
-    </button>`;
-  }
-
-  function renderMessage(message) {
+  function messageMarkup(message, previous) {
+    const time = message.created_at;
+    const stamp = `<time class="msg-item__time" datetime="${escapeHtml(isoOf(time))}">${escapeHtml(formatStamp(time))}${message.edited_at ? ' · edited' : ''}</time>`;
     if (message.deleted) {
-      return `<article class="team-message is-deleted">
-        <div class="team-message-avatar"><i data-lucide="message-square-x"></i></div>
-        <div class="team-message-content"><p>Message deleted</p><small>${escapeHtml(formatDateTime(message.created_at))}</small></div>
+      return `<article class="msg-item is-deleted" data-team-message="${escapeHtml(message.id)}">
+        <span class="msg-item__gutter"></span>
+        <div class="msg-item__body"><p class="msg-item__text">Message deleted</p>${stamp}</div>
       </article>`;
     }
-
     const system = message.message_type === 'system';
-    const own = Boolean(message.is_own);
-    return `<article class="team-message ${system ? 'is-system' : ''} ${own ? 'is-own' : ''}" data-team-message="${escapeHtml(message.id)}">
-      <div class="team-message-avatar">${system ? '<i data-lucide="sparkles"></i>' : escapeHtml(initials(message.sender_label))}</div>
-      <div class="team-message-content">
-        <header><div><strong>${escapeHtml(message.sender_label)}</strong><span>${escapeHtml(system ? 'System update' : humanize(message.sender_role))}</span></div><time>${escapeHtml(formatDateTime(message.created_at))}${message.edited_at ? ' · edited' : ''}</time></header>
-        <p>${formatBody(message.body)}</p>
-        ${renderLink(message.link)}
-        <footer>
-          ${renderReadStatus(message)}
-          <span class="team-message-actions">
-            ${message.can_edit ? `<button type="button" data-team-edit="${escapeHtml(message.id)}">Edit</button>` : ''}
-            ${message.can_delete ? `<button type="button" data-team-delete="${escapeHtml(message.id)}">Delete</button>` : ''}
-          </span>
-        </footer>
+    const identity = system ? { id: null, name: 'Atlas', role: '', current: true } : senderIdentity(message);
+    const grouped = !system && previous && !previous.deleted && previous.message_type !== 'system'
+      && previous.sender_id && previous.sender_id === message.sender_id
+      && venueDateOf(previous.created_at) === venueDateOf(time)
+      && (new Date(time) - new Date(previous.created_at)) < GROUP_WINDOW_MS;
+    const roleText = system ? 'System update' : `${roleLabel(identity.role)}${identity.current ? '' : ' · no longer active'}`;
+    const actions = [
+      message.can_edit ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-edit="${escapeHtml(message.id)}">Edit</button>` : '',
+      message.can_delete ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-delete="${escapeHtml(message.id)}">Delete</button>` : ''
+    ].join('');
+    const readStatus = readStatusMarkup(message);
+    return `<article class="msg-item${grouped ? ' is-grouped' : ''}${system ? ' is-system' : ''}${message.is_own ? ' is-own' : ''}" data-team-message="${escapeHtml(message.id)}">
+      <span class="msg-item__gutter">${grouped ? '' : system ? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">${icon('sparkles')}</span>` : avatarMarkup(identity)}</span>
+      <div class="msg-item__body">
+        ${grouped ? '' : `<header class="msg-item__meta"><strong class="msg-item__name">${escapeHtml(identity.name)}</strong><span class="msg-item__role">${escapeHtml(roleText)}</span>${stamp}</header>`}
+        <p class="msg-item__text">${formatBody(message.body)}</p>
+        ${linkMarkup(message.link)}
+        ${readStatus ? `<footer class="msg-item__foot">${readStatus}</footer>` : ''}
+        ${actions ? `<span class="msg-item__actions">${actions}</span><button type="button" class="atlas-icon-btn atlas-icon-btn--sm msg-item__more" data-msg-more="${escapeHtml(message.id)}" aria-label="Message options">${icon('ellipsis')}</button>` : ''}
       </div>
     </article>`;
   }
 
-  function emptyMessagesMarkup() {
-    return `<div class="team-messages-empty"><div><i data-lucide="messages-square"></i></div><h3>No messages yet</h3><p>Start the conversation in ${escapeHtml(selectedChannel()?.name || 'this channel')}.</p></div>`;
-  }
-
-  function attachmentSummary() {
-    if (!state.selectedTarget) return '';
-    return `<div class="team-selected-link"><span><i data-lucide="link-2"></i><strong>${escapeHtml(state.selectedTarget.label)}</strong><small>${escapeHtml(state.selectedTarget.description || humanize(state.selectedTarget.type))}</small></span><button type="button" data-team-remove-link aria-label="Remove linked record"><i data-lucide="x"></i></button></div>`;
-  }
-
-  function targetResultsMarkup() {
-    if (state.targetLoading) return '<div class="team-target-state"><i data-lucide="loader-circle"></i>Loading available records…</div>';
-    if (!state.linkTargets.length) return `<div class="team-target-state">${state.linkType === 'shift' ? 'No shifts are available yet.' : 'No matching records found.'}</div>`;
-    return state.linkTargets.map((target) => `<button type="button" class="team-target-option ${state.selectedTarget?.key === target.key ? 'is-selected' : ''}" data-team-select-target="${escapeHtml(target.key)}">
-      <span><strong>${escapeHtml(target.label)}</strong><small>${escapeHtml(target.description || '')}</small></span><i data-lucide="${state.selectedTarget?.key === target.key ? 'circle-check-big' : 'circle'}"></i>
-    </button>`).join('');
-  }
-
-  function attachmentPanelMarkup() {
-    if (!state.attachmentOpen || state.editingMessageId) return '';
-    return `<section class="team-attachment-panel">
-      <header><div><strong>Link an Atlas record</strong><span>The target is verified by the server before the message is sent.</span></div><button type="button" data-team-close-attachment aria-label="Close linked-record picker"><i data-lucide="x"></i></button></header>
-      <div class="team-attachment-controls">
-        <select data-team-link-type aria-label="Link type">
-          <option value="none" ${state.linkType === 'none' ? 'selected' : ''}>Choose a record type</option>
-          <option value="inventory_item" ${state.linkType === 'inventory_item' ? 'selected' : ''}>Inventory item</option>
-          <option value="routine" ${state.linkType === 'routine' ? 'selected' : ''}>Checklist / routine</option>
-          <option value="shift" ${state.linkType === 'shift' ? 'selected' : ''}>Shift</option>
-          <option value="brain_recommendation" ${state.linkType === 'brain_recommendation' ? 'selected' : ''}>Atlas recommendation</option>
-        </select>
-        <label><i data-lucide="search"></i><input type="search" aria-label="Search available Atlas records" data-team-target-search placeholder="Search available records" value="${escapeHtml(state.linkQuery)}" ${state.linkType === 'none' ? 'disabled' : ''} /></label>
+  function failedMarkup() {
+    const failed = state.failed[state.selectedChannel] || [];
+    return failed.map((entry) => `<article class="msg-item is-own is-failed" data-msg-failed="${escapeHtml(entry.id)}">
+      <span class="msg-item__gutter"></span>
+      <div class="msg-item__body">
+        <p class="msg-item__text">${formatBody(entry.body)}</p>
+        <footer class="msg-item__foot"><span class="msg-item__failed">${icon('circle-alert')}Not sent</span><span class="msg-item__actions"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-msg-retry="${escapeHtml(entry.id)}">Retry</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-msg-discard="${escapeHtml(entry.id)}">Discard</button></span></footer>
       </div>
-      <div class="team-target-list">${state.linkType === 'none' ? '<div class="team-target-state">Choose a record type to continue.</div>' : targetResultsMarkup()}</div>
-    </section>`;
+    </article>`).join('');
   }
 
-  function composerMarkup(channel) {
-    const canPost = Boolean(state.staff?.can_post && channel?.can_post);
-    if (!canPost) {
-      const reason = channel?.manager_post_only
-        ? 'Only managers and administrators can post in Announcements.'
-        : 'Your current role can read messages but cannot post.';
-      return `<div class="team-composer-locked"><i data-lucide="lock-keyhole"></i><span>${escapeHtml(reason)}</span></div>`;
-    }
-
-    const editing = messages().find((message) => message.id === state.editingMessageId);
-    const buttonLabel = editing ? 'Save edit' : 'Send';
-    return `<div class="team-composer-wrap">
-      ${editing ? `<div class="team-editing-banner"><span><i data-lucide="pencil"></i>Editing your message</span><button type="button" data-team-cancel-edit>Cancel</button></div>` : ''}
-      ${attachmentSummary()}
-      ${attachmentPanelMarkup()}
-      <form class="team-composer" data-team-composer>
-        <textarea rows="3" maxlength="4000" data-team-draft placeholder="Message ${escapeHtml(channel?.name || 'the team')}…" ${state.submitting ? 'disabled' : ''}>${escapeHtml(currentDraft())}</textarea>
-        <footer>
-          <div>
-            ${editing ? '' : `<button type="button" class="team-composer-tool ${state.attachmentOpen ? 'is-active' : ''}" data-team-toggle-attachment><i data-lucide="paperclip"></i><span>Link record</span></button>`}
-            <span class="team-composer-hint">Ctrl/⌘ + Enter to send</span>
-          </div>
-          <button type="submit" class="team-send-button" ${state.submitting || !currentDraft().trim() ? 'disabled' : ''}><i data-lucide="${editing ? 'save' : 'send'}"></i>${escapeHtml(buttonLabel)}</button>
-        </footer>
-      </form>
-    </div>`;
-  }
-
-  function loadingMarkup() {
-    return `<section class="team-messages-shell is-state"><div class="team-state-icon"><i data-lucide="loader-circle"></i></div><h2>Loading Team Messages</h2><p>Checking active staff, channels, unread counts and recent conversations.</p></section>`;
-  }
-
-  function errorMarkup() {
-    return `<section class="team-messages-shell is-state"><div class="team-state-icon is-error"><i data-lucide="message-square-warning"></i></div><h2>Team Messages unavailable</h2><p>${escapeHtml(state.error || 'The workspace could not load.')}</p><button type="button" class="team-send-button" data-team-refresh><i data-lucide="refresh-cw"></i>Try again</button></section>`;
-  }
-
-  function shellMarkup() {
+  function logMarkup() {
     const channel = selectedChannel();
-    const memberCount = Number(state.snapshot?.summary?.active_members || state.members.length || 0);
-    const messageList = messages();
-    return `<section class="team-messages-shell">
-      <header class="team-messages-hero">
-        <div><span><i data-lucide="messages-square"></i>Checkpoint C · Internal communication</span><h1>Team Messages</h1><p>Operations, handovers, announcements and marketing conversations in one private staff workspace.</p></div>
-        <div class="team-messages-hero-actions"><span><i data-lucide="users"></i>${memberCount} active staff</span><button type="button" data-team-refresh aria-label="Refresh messages"><i data-lucide="refresh-cw"></i>Refresh</button></div>
-      </header>
+    if (!state.snapshot && state.error) return '';
+    if (!state.snapshot || state.channelLoading || snapshotChannelKey() !== state.selectedChannel) {
+      return `<div class="msg-log__skel" aria-busy="true">${'<div class="msg-skel"><span class="atlas-skel atlas-skel--circle"></span><span class="atlas-skel atlas-skel--text"></span></div>'.repeat(4)}<span class="sr-only">Loading messages</span></div>`;
+    }
+    const list = messages();
+    if (!list.length && !(state.failed[state.selectedChannel] || []).length) {
+      return `<div class="atlas-empty msg-log__empty"><div class="atlas-empty__icon">${icon('messages-square')}</div><h3 class="atlas-empty__title">No messages yet</h3><p class="atlas-empty__text">${canPostIn(channel) ? 'Say hello to the team.' : `Nothing has been posted in ${escapeHtml(channel?.name || 'this channel')} yet.`}</p></div>`;
+    }
+    const lastRead = state.unreadFrom[state.selectedChannel];
+    const lastReadAt = lastRead ? new Date(lastRead).getTime() : null;
+    let previous = null;
+    let dividerShown = false;
+    const parts = [];
+    list.forEach((message) => {
+      const day = venueDateOf(message.created_at);
+      if (!previous || venueDateOf(previous.created_at) !== day) {
+        parts.push(`<div class="msg-divider" role="separator"><span>${escapeHtml(dayLabel(message.created_at))}</span></div>`);
+        previous = null;
+      }
+      const created = new Date(message.created_at).getTime();
+      if (!dividerShown && lastRead !== undefined && !message.is_own && (lastReadAt === null || created > lastReadAt)) {
+        parts.push('<div class="msg-divider msg-divider--new" role="separator"><span>New</span></div>');
+        dividerShown = true;
+        previous = null;
+      }
+      parts.push(messageMarkup(message, previous));
+      previous = message;
+    });
+    return parts.join('') + failedMarkup();
+  }
 
-      ${state.message ? `<div class="team-feedback is-success"><i data-lucide="circle-check-big"></i>${escapeHtml(state.message)}</div>` : ''}
-      ${state.error ? `<div class="team-feedback is-error"><i data-lucide="triangle-alert"></i>${escapeHtml(state.error)}</div>` : ''}
+  function nearBottom() {
+    const scroll = region('scroll');
+    if (!scroll) return true;
+    return scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 80;
+  }
 
-      <div class="team-messages-layout">
-        <aside class="team-channel-panel">
-          <header><strong>Conversations</strong><span>${Number(state.snapshot?.summary?.total_unread || 0)} unread</span></header>
-          <nav class="team-channel-filters" aria-label="Conversation filters"><button type="button" data-team-filter="all" class="${state.conversationFilter === 'all' ? 'is-active' : ''}">All</button><button type="button" data-team-filter="pinned" class="${state.conversationFilter === 'pinned' ? 'is-active' : ''}"><i data-lucide="pin"></i>Pinned</button></nav>
-          <div class="team-channel-list">${filteredChannels().map(renderChannelButton).join('') || '<div class="team-channel-filter-empty"><i data-lucide="pin"></i><span>No pinned conversations yet.</span></div>'}</div>
-          <footer><i data-lucide="bell"></i><span>Browser and supported mobile notifications are controlled by the master switch in Settings.</span></footer>
-        </aside>
+  function scrollToBottom() {
+    const scroll = region('scroll');
+    if (!scroll) return;
+    window.requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
+  }
 
-        <main class="team-conversation-panel">
-          <header class="team-conversation-head">
-            <div><span class="team-conversation-icon is-${escapeHtml(channel?.tone || 'neutral')}"><i data-lucide="${escapeHtml(channel?.icon || 'message-circle')}"></i></span><div><h2>${escapeHtml(channel?.name || 'Team Messages')}</h2><p>${escapeHtml(channel?.description || '')}</p></div></div>
-            <div class="team-conversation-actions">
-              ${channel?.manager_post_only ? '<span class="team-manager-only"><i data-lucide="shield-check"></i>Manager posts only</span>' : ''}
-              <button type="button" data-team-star aria-pressed="${Boolean(channel?.starred)}" ${state.starring ? 'disabled' : ''} aria-label="${channel?.starred ? 'Unpin' : 'Pin'} ${escapeHtml(channel?.name || 'conversation')}"><i data-lucide="pin"></i><span>${channel?.starred ? 'Pinned' : 'Pin'}</span></button>
-            </div>
-          </header>
+  function hideJump() {
+    state.pendingNew = 0;
+    const jump = region('jump');
+    if (jump) jump.hidden = true;
+  }
 
-          <div class="team-message-list" data-team-message-list>${messageList.length ? messageList.map(renderMessage).join('') : emptyMessagesMarkup()}</div>
-          ${composerMarkup(channel)}
-        </main>
+  function showJump(count) {
+    const jump = region('jump');
+    if (!jump) return;
+    state.pendingNew += count;
+    jump.querySelector('[data-msg-jump-label]').textContent = `${state.pendingNew} new ${state.pendingNew === 1 ? 'message' : 'messages'}`;
+    jump.hidden = false;
+  }
+
+  function renderLog(options = {}) {
+    const log = region('log');
+    if (!log) return;
+    const ids = messages().map((message) => `${message.id}:${message.edited_at || ''}:${message.deleted ? 1 : 0}:${message.read_by_count || 0}`).join('|')
+      + `#${(state.failed[state.selectedChannel] || []).length}#${state.channelLoading}#${snapshotChannelKey()}#${state.selectedChannel}`;
+    if (options.silent && ids === state.renderedIds) return;
+    const stick = !options.silent || nearBottom();
+    const previousIds = new Set([...log.querySelectorAll('[data-team-message]')].map((node) => node.dataset.teamMessage));
+    log.innerHTML = logMarkup();
+    state.renderedIds = ids;
+    paintIcons();
+    if (stick) {
+      hideJump();
+      scrollToBottom();
+    } else {
+      const added = messages().filter((message) => !previousIds.has(message.id) && !message.is_own).length;
+      if (added) showJump(added);
+    }
+  }
+
+  // ---------- composer ----------
+
+  function composerMarkup() {
+    const channel = selectedChannel();
+    if (!channel || !state.staff) return '';
+    if (!canPostIn(channel)) {
+      const text = !state.staff?.can_post
+        ? 'You can read messages. Ask a manager if you need to post.'
+        : 'Only managers can post in Announcements. You can read everything here.';
+      return `<p class="msg-composer__locked">${icon('lock')}<span>${escapeHtml(text)}</span></p>`;
+    }
+    const editing = messages().find((message) => message.id === state.editingMessageId);
+    const target = state.selectedTarget;
+    return `<form class="msg-compose" data-team-composer novalidate>
+      ${editing ? `<div class="msg-compose__context">${icon('pencil')}<span>Editing your message</span><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-cancel-edit>Cancel</button></div>` : ''}
+      ${target && !editing ? `<div class="msg-compose__context">${icon(LINK_ICONS[target.type] || 'link-2')}<span><strong>${escapeHtml(target.label)}</strong>${target.description ? ` · ${escapeHtml(target.description)}` : ''}</span><button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-team-remove-link aria-label="Remove linked record">${icon('x')}</button></div>` : ''}
+      <div class="msg-compose__box">
+        ${editing ? '' : `<button type="button" class="atlas-icon-btn msg-compose__tool" data-team-toggle-attachment aria-label="Link a record" data-atlas-tooltip="Link a record">${icon('paperclip')}</button>`}
+        <label class="sr-only" for="msg-draft">Message ${escapeHtml(channel.name)}</label>
+        <textarea id="msg-draft" class="msg-compose__input" rows="1" maxlength="4000" data-team-draft placeholder="Message ${escapeHtml(channel.name)}" ${state.submitting ? 'disabled' : ''}>${escapeHtml(currentDraft())}</textarea>
+        <button type="submit" class="atlas-btn atlas-btn--primary msg-compose__send" aria-label="${editing ? 'Save edit' : 'Send'}" ${state.submitting || !currentDraft().trim() ? 'disabled' : ''}>${icon(editing ? 'check' : 'arrow-up')}</button>
       </div>
-
-      <footer class="team-messages-trust"><i data-lucide="shield-check"></i><span>Active staff only · Manager-only announcements · Message revisions audited · Inactive profiles denied on every request · Push notifications off</span></footer>
-    </section>`;
+      <p class="msg-compose__note">Messages are visible to everyone in this channel.</p>
+    </form>`;
   }
 
-  function updateUnreadBadges() {
-    const total = Number(state.snapshot?.summary?.total_unread || 0);
-    const teamButton = document.querySelector('.nav-item[data-view="team"]');
-    if (teamButton) {
-      let badge = teamButton.querySelector('.team-nav-unread');
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'team-nav-unread';
-        teamButton.appendChild(badge);
-      }
-      badge.textContent = total > 99 ? '99+' : String(total);
-      badge.hidden = total <= 0;
-    }
-
-    const bell = document.querySelector('.atlas-topbar .top-icon[title="Notifications"]');
-    if (bell) {
-      let badge = bell.querySelector('.team-bell-unread');
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'team-bell-unread';
-        bell.appendChild(badge);
-      }
-      badge.textContent = total > 99 ? '99+' : String(total);
-      badge.hidden = total <= 0;
-    }
+  function autosize(textarea) {
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
   }
 
-  function render() {
-    const element = host();
-    if (!element) return;
-    element.classList.remove('placeholder-view');
-    if (state.loading && !state.snapshot) element.innerHTML = loadingMarkup();
-    else if (state.error && !state.snapshot) element.innerHTML = errorMarkup();
-    else element.innerHTML = shellMarkup();
-    updateUnreadBadges();
-    window.lucide?.createIcons?.();
+  function renderComposer(options = {}) {
+    const composer = region('composer');
+    if (!composer) return;
+    const focused = document.activeElement?.matches?.('[data-team-draft]');
+    composer.innerHTML = composerMarkup();
+    const textarea = composer.querySelector('[data-team-draft]');
+    autosize(textarea);
+    if (textarea && (focused || options.focus)) {
+      textarea.focus({ preventScroll: true });
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }
+    paintIcons();
+  }
 
-    const list = element.querySelector('[data-team-message-list]');
-    if (list && !state.refreshing) requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
+  // ---------- layout & routing ----------
+
+  function syncPhoneChrome() {
+    const chrome = window.AtlasChrome;
+    const inThread = PHONE.matches && Boolean(state.routeChannel);
+    const channel = selectedChannel();
+    state.root?.setAttribute('data-msg-view', inThread ? 'thread' : 'list');
+    if (!state.visible) return;
+    chrome?.setTabBarHidden?.('messages', inThread);
+    if (inThread) {
+      // The thread header is hidden on phones; its actions move to the top bar.
+      const actions = [];
+      if (channel?.key === HANDOVER_CHANNEL && canPostIn(channel)) actions.push({ icon: 'notebook-pen', label: 'Write handover', run: openHandoverSheet });
+      if (channel) actions.push({ icon: channel.starred ? 'pin-off' : 'pin', label: channel.starred ? `Unpin ${channel.name}` : `Pin ${channel.name}`, run: setConversationStar });
+      chrome?.setTopBar?.({ title: channel ? channel.name : 'Messages', back: () => routeTo('team', {}), actions });
+    }
+    else chrome?.setTopBar?.({});
+  }
+
+  function renderAll() {
+    if (!ensureRoot()) return;
+    renderList();
+    renderHead();
+    renderAlert();
+    renderLog();
+    renderComposer();
+    syncPhoneChrome();
+  }
+
+  function defaultChannelKey() {
+    const list = channels();
+    const unread = list.find((channel) => Number(channel.unread_count || 0) > 0);
+    return (unread || list.find((channel) => channel.key === 'general') || list[0] || { key: 'general' }).key;
+  }
+
+  function show(params = {}) {
+    state.visible = true;
+    ensureRoot();
+    const requested = params.conversation ? String(params.conversation) : null;
+    state.routeChannel = requested;
+    const next = requested || state.selectedChannel || (state.snapshot ? defaultChannelKey() : 'general');
+    const changed = next !== state.selectedChannel;
+    if (changed) {
+      state.selectedChannel = next;
+      state.editingMessageId = null;
+      state.selectedTarget = null;
+    }
+    renderAll();
+    const needsLoad = !state.snapshot || snapshotChannelKey() !== state.selectedChannel;
+    if (needsLoad) {
+      if (changed || (!state.loading && Date.now() - state.failedAt >= 20000)) loadSnapshot({ channelSwitch: Boolean(state.snapshot) });
+    } else {
+      markSelectedChannelRead();
+    }
+    startPolling();
+  }
+
+  function hide() {
+    state.visible = false;
+    stopPolling();
+    window.AtlasChrome?.setTabBarHidden?.('messages', false);
+  }
+
+  // Moves between this page's routes; AtlasShell.show() writes the address.
+  function routeTo(view, params = {}) {
+    window.AtlasShell?.show?.(view, params, { source: 'route' });
+  }
+
+  function openChannel(key, options = {}) {
+    const shell = window.AtlasShell;
+    if (shell?.show) routeTo('team', { conversation: key });
+  }
+
+  // ---------- server calls ----------
+
+  function applyPayload(payload) {
+    if (payload.snapshot) state.snapshot = payload.snapshot;
+    if (payload.staff) state.staff = payload.staff;
+    if (Array.isArray(payload.members)) state.members = payload.members;
+    publishUnread();
+  }
+
+  function rememberReadMark() {
+    const key = snapshotChannelKey();
+    if (!key || state.unreadFrom[key] !== undefined) return;
+    const channel = channelByKey(key);
+    if (!channel) return;
+    state.unreadFrom[key] = Number(channel.unread_count || 0) > 0 ? (channel.last_read_at || null) : new Date().toISOString();
+  }
+
+  async function loadSnapshot(options = {}) {
+    // Silent polls never overlap a request; a channel switch supersedes one.
+    if (options.silent && state.loading) return;
+    const channelKey = state.selectedChannel || 'general';
+    const serial = ++state.loadSerial;
+    state.loading = true;
+    state.channelLoading = Boolean(options.channelSwitch);
+    if (!options.silent) state.error = null;
+    if (!options.silent) { renderAlert(); renderLog(); }
+    let ok = false;
+    try {
+      const payload = await api('snapshot', { params: { channel: channelKey, limit: 60 } });
+      if (serial !== state.loadSerial) return;
+      if (!payload?.snapshot) throw new MessagesError('Messages are temporarily unavailable.', 0);
+      applyPayload(payload);
+      if (!state.selectedChannel || !channelByKey(state.selectedChannel)) state.selectedChannel = snapshotChannelKey() || defaultChannelKey();
+      rememberReadMark();
+      state.error = null;
+      state.failedAt = 0;
+      ok = true;
+    } catch (error) {
+      if (serial !== state.loadSerial) return;
+      if (!options.silent || !state.snapshot) {
+        state.error = shown(error, 'Messages couldn’t be loaded. Your messages are safe; check the connection and try again.');
+        state.failedAt = Date.now();
+      }
+    } finally {
+      if (serial === state.loadSerial) {
+        state.loading = false;
+        state.channelLoading = false;
+        if (state.root && state.visible) {
+          renderList();
+          renderHead();
+          renderAlert();
+          renderLog({ silent: options.silent });
+          if (!options.silent || !region('composer')?.innerHTML) renderComposer();
+          syncPhoneChrome();
+        }
+      }
+    }
+    if (ok) markSelectedChannelRead();
   }
 
   async function markSelectedChannelRead() {
     const channel = selectedChannel();
-    if (!channel || state.markingRead || Number(channel.unread_count || 0) <= 0 || !teamViewVisible()) return;
+    if (!channel || state.markingRead || Number(channel.unread_count || 0) <= 0 || !state.visible || !teamViewVisible()) return;
+    if (PHONE.matches && !state.routeChannel) return;
+    if (snapshotChannelKey() !== channel.key) return;
+    rememberReadMark();
     state.markingRead = true;
     try {
-      const payload = await api('mark-read', {
-        method: 'POST',
-        body: { channel_key: state.selectedChannel, limit: 60 }
-      });
-      if (payload.snapshot) state.snapshot = payload.snapshot;
-      if (Array.isArray(payload.members)) state.members = payload.members;
-      updateUnreadBadges();
-      render();
+      const payload = await api('mark-read', { method: 'POST', body: { channel_key: channel.key, limit: 60 } });
+      if (channel.key === state.selectedChannel) {
+        applyPayload(payload);
+        renderList();
+        renderLog({ silent: true });
+      }
+      window.AtlasTeamUnreadBadge?.refresh?.();
     } catch (error) {
-      console.warn('Team message read state could not be updated:', error?.message || error);
+      // Read state is a convenience; the thread is already on screen.
     } finally {
       state.markingRead = false;
-    }
-  }
-
-  async function loadSnapshot(options = {}) {
-    if (state.loading || !teamViewVisible()) return;
-    state.loading = !state.snapshot;
-    state.refreshing = Boolean(options.silent);
-    if (!options.silent) {
-      state.error = null;
-      state.message = null;
-    }
-    render();
-    try {
-      const payload = await api('snapshot', {
-        params: { channel: state.selectedChannel, limit: 60 }
-      });
-      state.snapshot = payload.snapshot || {};
-      state.staff = payload.staff || state.staff;
-      state.members = Array.isArray(payload.members) ? payload.members : state.members;
-      state.selectedChannel = state.snapshot.selected_channel_key || state.selectedChannel;
-      state.error = null;
-      render();
-      await markSelectedChannelRead();
-      startPolling();
-    } catch (error) {
-      state.error = error instanceof Error ? error.message : 'Team Messages could not load.';
-      render();
-    } finally {
-      state.loading = false;
-      state.refreshing = false;
     }
   }
 
@@ -437,29 +791,30 @@
     const channel = selectedChannel();
     if (!channel || state.starring) return;
     state.starring = true;
-    state.error = null;
-    render();
+    renderHead();
     try {
-      const payload = await api('star', {
-        method: 'POST',
-        body: { channel_key: channel.key, starred: !channel.starred, limit: 60 }
-      });
-      if (payload.snapshot) state.snapshot = payload.snapshot;
-      if (Array.isArray(payload.members)) state.members = payload.members;
-      state.message = channel.starred ? 'Conversation unpinned.' : 'Conversation pinned.';
+      const payload = await api('star', { method: 'POST', body: { channel_key: channel.key, starred: !channel.starred, limit: 60 } });
+      applyPayload(payload);
+      window.AtlasShell?.toast?.(channel.starred ? `${channel.name} unpinned` : `${channel.name} pinned to the top`);
     } catch (error) {
-      state.error = error instanceof Error ? error.message : 'The conversation pin could not be saved.';
+      window.AtlasShell?.toast?.(`${channel.name} couldn’t be ${channel.starred ? 'unpinned' : 'pinned'}. Try again.`);
     } finally {
       state.starring = false;
-      render();
+      renderList();
+      renderHead();
+      syncPhoneChrome();
     }
   }
 
   function startPolling() {
     stopPolling();
+    if (!state.visible) return;
     const interval = Math.max(4000, Number(state.snapshot?.policy?.poll_after_ms || POLL_FALLBACK_MS));
     state.pollTimer = window.setInterval(() => {
-      if (!teamViewVisible() || document.hidden || userIsInteracting() || state.submitting) return;
+      if (!state.visible || !teamViewVisible() || document.hidden || state.submitting || state.loading) return;
+      if (state.editingMessageId || document.querySelector('.msg-layer')) return;
+      // Back off after a failure; Try again still loads at once.
+      if (state.error && Date.now() - state.failedAt < 20000) return;
       loadSnapshot({ silent: true });
     }, interval);
   }
@@ -474,244 +829,337 @@
   function resetComposer() {
     setCurrentDraft('');
     state.editingMessageId = null;
-    state.attachmentOpen = false;
-    state.linkType = 'none';
-    state.linkQuery = '';
-    state.linkTargets = [];
     state.selectedTarget = null;
-    state.targetLoading = false;
+  }
+
+  async function sendBody(body, link, clientRequestId, channelKey) {
+    return api('send', {
+      method: 'POST',
+      body: {
+        channel_key: channelKey,
+        body,
+        client_request_id: clientRequestId,
+        link_type: link?.type || 'none',
+        link_key: link?.key || null
+      }
+    });
   }
 
   async function sendOrEdit() {
     const body = currentDraft().trim();
     if (!body || state.submitting) return;
+    const channelKey = state.selectedChannel;
     state.submitting = true;
-    state.error = null;
-    state.message = null;
-    render();
-    try {
-      if (state.editingMessageId) {
-        await api('edit', {
-          method: 'POST',
-          body: {
-            channel_key: state.selectedChannel,
-            message_id: state.editingMessageId,
-            body
-          }
-        });
-        state.message = 'Message updated.';
-      } else {
-        await api('send', {
-          method: 'POST',
-          body: {
-            channel_key: state.selectedChannel,
-            body,
-            client_request_id: requestId(),
-            link_type: state.selectedTarget?.type || 'none',
-            link_key: state.selectedTarget?.key || null
-          }
-        });
-        state.message = 'Message sent.';
+    renderComposer();
+    if (state.editingMessageId) {
+      try {
+        const payload = await api('edit', { method: 'POST', body: { channel_key: channelKey, message_id: state.editingMessageId, body } });
+        applyPayload(payload);
+        resetComposer();
+        window.AtlasShell?.toast?.('Message updated');
+      } catch (error) {
+        state.error = shown(error, 'The edit couldn’t be saved. Try again.');
+        renderAlert();
+      } finally {
+        state.submitting = false;
+        renderLog();
+        renderComposer({ focus: true });
       }
-      resetComposer();
-      await loadSnapshot({ silent: true });
+      return;
+    }
+    const link = state.selectedTarget;
+    const entry = { id: requestId(), body, link };
+    resetComposer();
+    try {
+      const payload = await sendBody(body, link, entry.id, channelKey);
+      if (channelKey === state.selectedChannel) applyPayload(payload);
+      state.error = null;
     } catch (error) {
-      state.error = error instanceof Error ? error.message : 'The message could not be saved.';
-      render();
+      // Unsent messages stay in the thread with "Not sent · Retry" (spec §7.3).
+      state.failed[channelKey] = [...(state.failed[channelKey] || []), entry];
     } finally {
       state.submitting = false;
-      render();
+      renderAlert();
+      renderList();
+      renderLog();
+      renderComposer({ focus: true });
     }
+  }
+
+  async function retryFailed(id) {
+    const channelKey = state.selectedChannel;
+    const list = state.failed[channelKey] || [];
+    const entry = list.find((item) => item.id === id);
+    if (!entry || state.submitting) return;
+    state.submitting = true;
+    try {
+      // The same client request id makes a retry safe to repeat.
+      const payload = await sendBody(entry.body, entry.link, entry.id, channelKey);
+      state.failed[channelKey] = list.filter((item) => item.id !== id);
+      applyPayload(payload);
+    } catch (error) {
+      window.AtlasShell?.toast?.('Still not sent. Check the connection and try again.');
+    } finally {
+      state.submitting = false;
+      renderList();
+      renderLog();
+      renderComposer();
+    }
+  }
+
+  function discardFailed(id) {
+    const channelKey = state.selectedChannel;
+    state.failed[channelKey] = (state.failed[channelKey] || []).filter((item) => item.id !== id);
+    renderLog();
   }
 
   async function deleteMessage(messageId) {
     const message = messages().find((candidate) => candidate.id === messageId);
     if (!message || state.submitting) return;
     const deletingAnother = message.sender_id !== state.staff?.id;
-    let reason = null;
-    if (deletingAnother) {
-      reason = window.prompt('Manager reason for deleting this message:');
-      if (!reason?.trim()) return;
-    } else if (!window.confirm('Delete this message? The audit history will be preserved.')) {
-      return;
-    }
-
+    const answer = await confirmDialog({
+      title: 'Delete this message?',
+      body: deletingAnother
+        ? 'The message is replaced by “Message deleted” for everyone. The reason is kept in the audit history.'
+        : 'The message is replaced by “Message deleted” for everyone. The audit history keeps a record.',
+      confirmLabel: 'Delete message',
+      danger: true,
+      field: deletingAnother ? { label: 'Reason', required: true, placeholder: 'Why this message is removed' } : null
+    });
+    if (!answer) return;
     state.submitting = true;
-    state.error = null;
     try {
-      await api('delete', {
-        method: 'POST',
-        body: {
-          channel_key: state.selectedChannel,
-          message_id: messageId,
-          reason: reason?.trim() || null
-        }
-      });
-      state.message = 'Message deleted. Its audit history was preserved.';
-      await loadSnapshot({ silent: true });
+      const payload = await api('delete', { method: 'POST', body: { channel_key: state.selectedChannel, message_id: messageId, reason: answer.value || null } });
+      applyPayload(payload);
+      window.AtlasShell?.toast?.('Message deleted');
     } catch (error) {
-      state.error = error instanceof Error ? error.message : 'The message could not be deleted.';
+      state.error = shown(error, 'The message couldn’t be deleted. Try again.');
+      renderAlert();
     } finally {
       state.submitting = false;
-      render();
+      renderList();
+      renderLog();
+      renderComposer();
     }
   }
 
-  async function loadTargets() {
-    if (state.linkType === 'none') {
-      state.linkTargets = [];
-      state.selectedTarget = null;
-      state.targetLoading = false;
-      render();
-      return;
-    }
+  // ---------- layers (sheets and dialogs through AtlasModal) ----------
 
-    state.targetLoading = true;
-    state.error = null;
-    render();
-    try {
-      const payload = await api('targets', {
-        params: { type: state.linkType, q: state.linkQuery }
-      });
-      state.linkTargets = Array.isArray(payload.targets) ? payload.targets : [];
-      if (state.selectedTarget && !state.linkTargets.some((target) => target.key === state.selectedTarget.key)) {
-        state.selectedTarget = null;
+  // Layers and dialogs are the shared AtlasModal ones (modal.js).
+  function openLayer({ id, panel, onClose, initialFocus }) {
+    const root = window.AtlasModal.layer({ id, panel, className: 'msg-layer', onClose, initialFocus });
+    paintIcons();
+    return root;
+  }
+
+  function closeLayer(root) {
+    if (root) window.AtlasModal.dismiss(root);
+  }
+
+  // Resolves { value } (the note when `field` is given) or null when dismissed.
+  function confirmDialog({ title, body, confirmLabel, danger = false, field = null }) {
+    const options = { id: 'msg-confirm', title, body, confirmLabel, danger };
+    if (!field) return window.AtlasModal.confirm(options).then((ok) => (ok ? { value: '' } : null));
+    return window.AtlasModal.prompt({ ...options, label: field.label, value: field.value, placeholder: field.placeholder, required: field.required, maxLength: 1000 })
+      .then((value) => (value === null ? null : { value }));
+  }
+
+  function openHandoverSheet() {
+    const channel = selectedChannel();
+    if (!channel || !canPostIn(channel)) return;
+    const root = openLayer({
+      id: 'msg-handover',
+      panel: `<section class="atlas-sheet" data-modal-panel aria-labelledby="msg-handover-title">
+        <span class="atlas-sheet__grabber" aria-hidden="true"></span>
+        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="msg-handover-title">Write handover</h2><p class="atlas-sheet__desc">Posted in ${escapeHtml(channel.name)} for the next shift.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
+        <form class="atlas-sheet__body" id="msg-handover-form" novalidate>
+          <div class="atlas-field"><label for="msg-ho-happened">What happened</label><textarea class="atlas-input atlas-textarea" id="msg-ho-happened" name="happened" rows="3" maxlength="1300"></textarea></div>
+          <div class="atlas-field"><label for="msg-ho-stock">Stock issues <span class="optional">Optional</span></label><textarea class="atlas-input atlas-textarea" id="msg-ho-stock" name="stock" rows="2" maxlength="1300"></textarea></div>
+          <div class="atlas-field"><label for="msg-ho-next">For the next shift <span class="optional">Optional</span></label><textarea class="atlas-input atlas-textarea" id="msg-ho-next" name="next" rows="3" maxlength="1300"></textarea><p class="error" data-msg-ho-error hidden>Write at least one section.</p></div>
+        </form>
+        <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="msg-handover-form" class="atlas-btn atlas-btn--primary">Post handover</button></footer>
+      </section>`
+    });
+    root.querySelector('#msg-handover-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const sections = [['What happened', form.happened.value], ['Stock issues', form.stock.value], ['For the next shift', form.next.value]]
+        .map(([label, value]) => [label, String(value || '').trim()]).filter(([, value]) => value);
+      if (!sections.length) {
+        root.querySelector('[data-msg-ho-error]').hidden = false;
+        form.happened.focus();
+        return;
       }
-    } catch (error) {
-      state.error = error instanceof Error ? error.message : 'Linked records could not be loaded.';
-      state.linkTargets = [];
-    } finally {
-      state.targetLoading = false;
-      render();
-    }
+      const body = sections.map(([label, value]) => `${label}\n${value}`).join('\n\n');
+      closeLayer(root);
+      setCurrentDraft(body);
+      await sendOrEdit();
+    });
   }
 
-  function debounceTargets() {
-    if (state.targetTimer) window.clearTimeout(state.targetTimer);
-    state.targetTimer = window.setTimeout(loadTargets, 280);
+  // Phones: Edit and Delete sit behind a "…" button in a small action sheet.
+  function openMessageActions(messageId) {
+    const message = messages().find((candidate) => candidate.id === messageId);
+    if (!message) return;
+    const root = openLayer({
+      id: 'msg-actions',
+      panel: `<section class="atlas-sheet msg-actions" data-modal-panel aria-labelledby="msg-actions-title">
+        <span class="atlas-sheet__grabber" aria-hidden="true"></span>
+        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="msg-actions-title">Message</h2><p class="atlas-sheet__desc">${escapeHtml(String(message.body || '').slice(0, 80))}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
+        <div class="atlas-sheet__body msg-actions__list">
+          ${message.can_edit ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg atlas-btn--block" data-msg-action="edit">${icon('pencil')}Edit message</button>` : ''}
+          ${message.can_delete ? `<button type="button" class="atlas-btn atlas-btn--danger atlas-btn--lg atlas-btn--block" data-msg-action="delete">${icon('trash-2')}Delete message</button>` : ''}
+        </div>
+      </section>`
+    });
+    root.addEventListener('click', (event) => {
+      const action = event.target.closest('[data-msg-action]')?.dataset.msgAction;
+      if (!action) return;
+      closeLayer(root);
+      if (action === 'edit') {
+        state.editingMessageId = message.id;
+        state.selectedTarget = null;
+        setCurrentDraft(message.body || '');
+        renderComposer({ focus: true });
+      } else {
+        deleteMessage(message.id);
+      }
+    });
   }
 
-  function navigateView(view) {
-    const button = document.querySelector(`.nav-item[data-view="${CSS.escape(view)}"]`);
-    if (button) button.click();
-    else if (typeof window.setActiveView === 'function') window.setActiveView(view);
+  function openLinkSheet() {
+    const types = LINK_TYPES.filter((entry) => !entry.managerOnly || state.staff?.can_link_brain_recommendations);
+    let current = types.some((entry) => entry.type === state.selectedTarget?.type) ? state.selectedTarget.type : types[0].type;
+    let query = '';
+    let results = [];
+    let chosen = state.selectedTarget;
+    let timer = null;
+    let serial = 0;
+    const root = openLayer({
+      id: 'msg-link',
+      panel: `<section class="atlas-sheet" data-modal-panel aria-labelledby="msg-link-title">
+        <span class="atlas-sheet__grabber" aria-hidden="true"></span>
+        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="msg-link-title">Link a record</h2><p class="atlas-sheet__desc">People can open it straight from the message.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
+        <div class="atlas-sheet__body">
+          <div class="atlas-segmented msg-link__types" role="group" aria-label="Record type">${types.map((entry) => `<button type="button" data-msg-link-type="${entry.type}" aria-pressed="${entry.type === current}">${escapeHtml(entry.label)}</button>`).join('')}</div>
+          <label class="atlas-search">${icon('search')}<input class="atlas-input" type="search" placeholder="Search" aria-label="Search records" data-team-target-search autocomplete="off"></label>
+          <div class="msg-link__results" data-msg-link-results role="listbox" aria-label="Records"></div>
+        </div>
+        <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="button" class="atlas-btn atlas-btn--primary" data-msg-link-attach disabled>Attach</button></footer>
+      </section>`
+    });
+    const resultsEl = root.querySelector('[data-msg-link-results]');
+    const attach = root.querySelector('[data-msg-link-attach]');
+    const noun = () => types.find((entry) => entry.type === current)?.noun || 'records';
+    const paintResults = (status) => {
+      if (status === 'loading') {
+        resultsEl.innerHTML = `${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(3)}<span class="sr-only">Loading</span>`;
+      } else if (status === 'error') {
+        resultsEl.innerHTML = `<p class="msg-link__state">${escapeHtml(noun().charAt(0).toUpperCase() + noun().slice(1))} couldn’t be loaded. Try again in a moment.</p>`;
+      } else if (!results.length) {
+        resultsEl.innerHTML = `<p class="msg-link__state">${query ? `No ${escapeHtml(noun())} match “${escapeHtml(query)}”.` : `No ${escapeHtml(noun())} to link.`}</p>`;
+      } else {
+        resultsEl.innerHTML = results.map((target) => `<button type="button" class="msg-link__option" role="option" aria-selected="${chosen?.key === target.key && chosen?.type === target.type}" data-team-select-target="${escapeHtml(target.key)}">
+          <span class="msg-link__option-body"><span class="msg-link__option-title">${escapeHtml(target.label)}</span>${target.description ? `<span class="msg-link__option-meta">${escapeHtml(target.description)}</span>` : ''}</span>${icon(chosen?.key === target.key ? 'circle-check' : 'circle')}</button>`).join('');
+      }
+      attach.disabled = !chosen;
+      paintIcons();
+    };
+    const load = async () => {
+      const mine = ++serial;
+      paintResults('loading');
+      try {
+        const payload = await api('targets', { params: { type: current, q: query } });
+        if (mine !== serial) return;
+        results = Array.isArray(payload.targets) ? payload.targets : [];
+        paintResults();
+      } catch (error) {
+        if (mine !== serial) return;
+        results = [];
+        paintResults('error');
+      }
+    };
+    root.addEventListener('click', (event) => {
+      const typeButton = event.target.closest('[data-msg-link-type]');
+      if (typeButton) {
+        current = typeButton.dataset.msgLinkType;
+        root.querySelectorAll('[data-msg-link-type]').forEach((button) => button.setAttribute('aria-pressed', String(button === typeButton)));
+        load();
+        return;
+      }
+      const option = event.target.closest('[data-team-select-target]');
+      if (option) {
+        chosen = results.find((target) => target.key === option.dataset.teamSelectTarget) || null;
+        paintResults();
+        return;
+      }
+      if (event.target.closest('[data-msg-link-attach]') && chosen) {
+        state.selectedTarget = chosen;
+        closeLayer(root);
+        renderComposer({ focus: true });
+      }
+    });
+    root.querySelector('[data-team-target-search]')?.addEventListener('input', (event) => {
+      query = event.target.value.trim();
+      window.clearTimeout(timer);
+      timer = window.setTimeout(load, 250);
+    });
+    load();
   }
+
+  // ---------- events ----------
 
   function openLinkedRecord(type, key) {
-    if (type === 'routine') {
-      if (window.AtlasCheckpointALayout?.openRoutine) window.AtlasCheckpointALayout.openRoutine(key);
-      else navigateView('operations');
-      return;
-    }
-    if (type === 'brain_recommendation') {
-      navigateView('brain');
-      window.setTimeout(() => window.AtlasPhase3Brain?.openRecommendation?.(key), 250);
-      return;
-    }
-    if (type === 'shift') {
-      navigateView('shifts');
-      return;
-    }
-    navigateView('inventory');
+    // Workspaces register their own link types with AtlasShell (Knowledge
+    // articles, for example); otherwise the route in the chip's href is used.
+    if (window.AtlasShell?.openLink?.(type, key, { source: 'team-messages' })) return true;
+    return false;
   }
 
   function handleClick(event) {
     const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
+    if (!target || !host()?.contains(target)) return;
 
-    const filterButton = target.closest('[data-team-filter]');
-    if (filterButton && host()?.contains(filterButton)) {
+    const channelLink = target.closest('[data-team-channel]');
+    if (channelLink) {
+      if (event.metaKey || event.ctrlKey || event.shiftKey) return;
       event.preventDefault();
-      state.conversationFilter = filterButton.dataset.teamFilter === 'pinned' ? 'pinned' : 'all';
-      render();
+      openChannel(channelLink.dataset.teamChannel, { source: 'list' });
       return;
     }
-
-    const channelButton = target.closest('[data-team-channel]');
-    if (channelButton && host()?.contains(channelButton)) {
-      event.preventDefault();
-      state.selectedChannel = channelButton.dataset.teamChannel || 'general';
-      resetComposer();
-      state.snapshot = null;
-      loadSnapshot();
-      return;
-    }
-
-    if (target.closest('[data-team-refresh]') && host()?.contains(target)) {
-      event.preventDefault();
-      loadSnapshot();
-      return;
-    }
-
-    if (target.closest('[data-team-star]') && host()?.contains(target)) {
-      event.preventDefault();
-      setConversationStar();
-      return;
-    }
+    if (target.closest('[data-team-refresh]')) { event.preventDefault(); state.failedAt = 0; loadSnapshot(); return; }
+    if (target.closest('[data-team-star]')) { event.preventDefault(); setConversationStar(); return; }
+    if (target.closest('[data-msg-handover]')) { event.preventDefault(); openHandoverSheet(); return; }
+    if (target.closest('[data-msg-jump]')) { event.preventDefault(); hideJump(); scrollToBottom(); return; }
 
     const editButton = target.closest('[data-team-edit]');
-    if (editButton && host()?.contains(editButton)) {
+    if (editButton) {
       const message = messages().find((candidate) => candidate.id === editButton.dataset.teamEdit);
       if (!message) return;
       state.editingMessageId = message.id;
-      state.attachmentOpen = false;
       state.selectedTarget = null;
       setCurrentDraft(message.body || '');
-      render();
-      requestAnimationFrame(() => host()?.querySelector('[data-team-draft]')?.focus());
+      renderComposer({ focus: true });
       return;
     }
+    if (target.closest('[data-team-cancel-edit]')) { event.preventDefault(); resetComposer(); renderComposer({ focus: true }); return; }
 
-    if (target.closest('[data-team-cancel-edit]') && host()?.contains(target)) {
-      event.preventDefault();
-      resetComposer();
-      render();
-      return;
-    }
+    const more = target.closest('[data-msg-more]');
+    if (more) { event.preventDefault(); openMessageActions(more.dataset.msgMore); return; }
 
     const deleteButton = target.closest('[data-team-delete]');
-    if (deleteButton && host()?.contains(deleteButton)) {
-      event.preventDefault();
-      deleteMessage(deleteButton.dataset.teamDelete);
-      return;
-    }
+    if (deleteButton) { event.preventDefault(); deleteMessage(deleteButton.dataset.teamDelete); return; }
 
-    if (target.closest('[data-team-toggle-attachment]') && host()?.contains(target)) {
-      event.preventDefault();
-      state.attachmentOpen = !state.attachmentOpen;
-      if (state.attachmentOpen && state.linkType !== 'none' && !state.linkTargets.length) loadTargets();
-      else render();
-      return;
-    }
+    const retry = target.closest('[data-msg-retry]');
+    if (retry) { event.preventDefault(); retryFailed(retry.dataset.msgRetry); return; }
+    const discard = target.closest('[data-msg-discard]');
+    if (discard) { event.preventDefault(); discardFailed(discard.dataset.msgDiscard); return; }
 
-    if (target.closest('[data-team-close-attachment]') && host()?.contains(target)) {
-      event.preventDefault();
-      state.attachmentOpen = false;
-      render();
-      return;
-    }
-
-    if (target.closest('[data-team-remove-link]') && host()?.contains(target)) {
-      event.preventDefault();
-      state.selectedTarget = null;
-      render();
-      return;
-    }
-
-    const targetOption = target.closest('[data-team-select-target]');
-    if (targetOption && host()?.contains(targetOption)) {
-      event.preventDefault();
-      state.selectedTarget = state.linkTargets.find((candidate) => candidate.key === targetOption.dataset.teamSelectTarget) || null;
-      state.attachmentOpen = false;
-      render();
-      return;
-    }
+    if (target.closest('[data-team-toggle-attachment]')) { event.preventDefault(); openLinkSheet(); return; }
+    if (target.closest('[data-team-remove-link]')) { event.preventDefault(); state.selectedTarget = null; renderComposer({ focus: true }); return; }
 
     const linkedRecord = target.closest('[data-team-open-link]');
-    if (linkedRecord && host()?.contains(linkedRecord)) {
-      event.preventDefault();
-      openLinkedRecord(linkedRecord.dataset.teamOpenLink, linkedRecord.dataset.teamLinkKey);
-    }
+    if (linkedRecord && openLinkedRecord(linkedRecord.dataset.teamOpenLink, linkedRecord.dataset.teamLinkKey)) event.preventDefault();
   }
 
   function handleSubmit(event) {
@@ -724,79 +1172,115 @@
   function handleInput(event) {
     const target = event.target;
     if (!(target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement)) return;
+    if (!host()?.contains(target)) return;
     if (target.matches('[data-team-draft]')) {
       setCurrentDraft(target.value);
-      const sendButton = host()?.querySelector('.team-send-button[type="submit"]');
+      autosize(target);
+      const sendButton = host()?.querySelector('.msg-compose__send');
       if (sendButton) sendButton.disabled = state.submitting || !target.value.trim();
     }
-    if (target.matches('[data-team-target-search]')) {
-      state.linkQuery = target.value;
-      debounceTargets();
+    if (target.matches('[data-msg-search]')) {
+      state.search = target.value;
+      renderList();
     }
-  }
-
-  function handleChange(event) {
-    const target = event.target;
-    if (!(target instanceof HTMLSelectElement) || !target.matches('[data-team-link-type]')) return;
-    state.linkType = target.value;
-    state.linkQuery = '';
-    state.linkTargets = [];
-    state.selectedTarget = null;
-    loadTargets();
   }
 
   function handleKeydown(event) {
     if (!(event.target instanceof HTMLTextAreaElement) || !event.target.matches('[data-team-draft]')) return;
-    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+    // Enter sends on a keyboard; Shift+Enter adds a line. Phones keep Enter as a new line.
+    const coarse = window.matchMedia?.('(pointer: coarse)').matches;
+    if (event.key === 'Enter' && !event.isComposing && ((event.metaKey || event.ctrlKey) || (!coarse && !event.shiftKey))) {
       event.preventDefault();
       sendOrEdit();
     }
+    if (event.key === 'Escape' && state.editingMessageId) {
+      resetComposer();
+      renderComposer({ focus: true });
+    }
+  }
+
+  function refreshAvatars() {
+    host()?.querySelectorAll('.msg-avatar[data-team-sender]').forEach((avatar) => {
+      const message = messages().find((entry) => entry.sender_id === avatar.dataset.teamSender);
+      if (!message) return;
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = avatarMarkup(senderIdentity(message));
+      const next = wrapper.firstElementChild;
+      if (next && next.outerHTML !== avatar.outerHTML) avatar.replaceWith(next);
+    });
   }
 
   function handleVisibility() {
-    if (document.hidden || !teamViewVisible()) stopPolling();
+    if (document.hidden || !state.visible) stopPolling();
     else {
       startPolling();
       if (!userIsInteracting()) loadSnapshot({ silent: true });
     }
   }
 
+  // ---------- unread for the shell (badge, notifications feed) ----------
+
+  function unread() {
+    return {
+      total: totalUnread(),
+      conversations: channels().map((channel) => ({
+        id: channel.key,
+        name: channel.name,
+        unread: Number(channel.unread_count || 0),
+        route: `#messages/${channel.key}`,
+        lastMessageAt: channel.last_message?.created_at || null,
+        preview: channel.last_message ? previewOf(channel) : '',
+        lastMessage: channel.last_message ? { id: channel.last_message.id || null, sender: channel.last_message.message_type === 'system' ? 'Atlas' : senderIdentity(channel.last_message).name, body: channel.last_message.deleted ? '' : String(channel.last_message.body || '').slice(0, 140), deleted: Boolean(channel.last_message.deleted) } : null
+      })).filter((entry) => entry.unread > 0)
+    };
+  }
+
+  function publishUnread() {
+    const detail = unread();
+    window.AtlasShell?.emit?.('messages:unread', detail);
+  }
+
+  function registerWithShell() {
+    const shell = window.AtlasShell;
+    if (!shell?.registerView) return;
+    shell.registerView('team', { root: () => host(), title: 'Messages', fullHeight: true, render: show, onHide: hide });
+    shell.actions?.register?.({
+      id: 'messages.handover', label: 'Write handover', icon: 'notebook-pen', keywords: ['handover', 'shift', 'next shift', 'message'],
+      roles: ['admin', 'manager', 'bartender'], contexts: ['team', 'shifts', 'home'],
+      run: () => {
+        openChannel(HANDOVER_CHANNEL, { source: 'action' });
+        window.setTimeout(() => { if (selectedChannel()?.key === HANDOVER_CHANNEL) openHandoverSheet(); }, 600);
+      }
+    });
+    // The Messages view may already be showing (deep link opened before this
+    // module loaded): take over now.
+    if (shell.current?.() === 'team') show(shell.params?.() || {});
+  }
+
   function init() {
     if (state.initialized) return;
     state.initialized = true;
-    const element = host();
-    if (!element) return;
+    if (!host()) return;
 
     document.addEventListener('click', handleClick);
     document.addEventListener('submit', handleSubmit);
     document.addEventListener('input', handleInput);
-    document.addEventListener('change', handleChange);
     document.addEventListener('keydown', handleKeydown);
     document.addEventListener('visibilitychange', handleVisibility);
-
-    state.viewObserver = new MutationObserver(() => {
-      if (teamViewVisible()) {
-        if (!state.snapshot && !state.loading) loadSnapshot();
-        else startPolling();
-      } else {
-        stopPolling();
-      }
-    });
-    state.viewObserver.observe(element, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
-
-    if (teamViewVisible()) loadSnapshot();
-    else render();
+    // Photos load independently; refresh only the avatars so the composer and
+    // scroll position are not disturbed.
+    window.addEventListener('atlas:profile-photos-updated', refreshAvatars);
+    // A renamed or deactivated profile changes how existing messages are shown.
+    window.addEventListener('atlas:team-roster-changed', () => { if (state.visible) loadSnapshot({ silent: true }); });
+    PHONE.addEventListener?.('change', () => { if (state.visible) { renderList(); syncPhoneChrome(); } });
+    registerWithShell();
   }
 
   window.AtlasTeamMessages = {
     refresh: () => loadSnapshot(),
-    openChannel: (channelKey = 'general') => {
-      state.selectedChannel = channelKey;
-      navigateView('team');
-      state.snapshot = null;
-      window.setTimeout(loadSnapshot, 100);
-    },
-    unreadCount: () => Number(state.snapshot?.summary?.total_unread || 0),
+    openChannel: (channelKey = 'general') => openChannel(channelKey, { source: 'api' }),
+    unreadCount: () => totalUnread(),
+    unread,
     snapshot: () => state.snapshot
   };
 

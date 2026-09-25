@@ -22,7 +22,15 @@ def _runtime_endpoints(source):
     endpoints = dict(pairs)
     # Item Master was intentionally outside the historical S35 deployment.
     endpoints.pop("ITEM_MASTER_API", None)
+    # So was Atlas AI (S88); the historical preview never configures it.
+    endpoints.pop("ATLAS_AI_API", None)
+    # And the S88 integrations gateway (Settings › Integrations).
+    endpoints.pop("INTEGRATIONS_API", None)
     endpoints["NOTIFICATIONS_API"] = "atlas-notifications"
+    # The historical preview also configured two endpoints no browser module
+    # reads any more (removed from config.js in S89).
+    endpoints.setdefault("SPRINT4_BRIEFING_API", "atlas-sprint4-briefing")
+    endpoints.setdefault("INVENTORY_SCANNER_API", "atlas-inventory-scanner")
     endpoints["IMPORT_WORKER_API"] = "atlas-import-worker"
     if len(endpoints) != 18:
         raise ValueError(f"Expected 18 runtime endpoints, found {len(endpoints)}.")

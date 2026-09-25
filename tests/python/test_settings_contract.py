@@ -9,7 +9,6 @@ MIGRATION = (
 ).read_text()
 EDGE = (ROOT / "supabase/functions/atlas-settings/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
-BRIDGE = (ROOT / "apps/web/assets/js/settings-mount-bridge.js").read_text()
 BROWSER = (ROOT / "apps/web/assets/js/settings-workspace.js").read_text()
 CLOSURE = (
     ROOT
@@ -177,7 +176,8 @@ class SettingsCheckpointJContractTests(unittest.TestCase):
 
     def test_settings_gateway_revalidates_production_profile(self):
         self.assertIn("requireActiveProfile", EDGE)
-        self.assertIn("/auth/v1/user", EDGE)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE)
         self.assertIn("/rest/v1/profiles", EDGE)
         self.assertIn('new Set(["admin", "manager"])', EDGE)
         self.assertIn("SUPABASE_SERVICE_ROLE_KEY", EDGE)
@@ -188,15 +188,20 @@ class SettingsCheckpointJContractTests(unittest.TestCase):
         )
 
     def test_primary_settings_actions_keep_readable_contrast(self):
-        self.assertIn("BUTTON_CONTRAST_STYLE_ID", BRIDGE)
-        self.assertIn(".settings-view .settings-primary", BRIDGE)
-        self.assertIn("color:#fff", BRIDGE)
-        self.assertIn("ensureButtonContrast", BRIDGE)
+        # S88 Team A: the settings bridge is retired; Save uses the design-system
+        # primary button, whose contrast atlas-components.css guarantees.
+        self.assertFalse((ROOT / "apps/web/assets/js/settings-mount-bridge.js").exists())
+        self.assertIn("atlas-btn atlas-btn--primary", BROWSER)
+        self.assertNotIn("ensureButtonContrast", BROWSER)
 
     def test_reports_ready_copy_matches_authenticated_isolated_acceptance(self):
         self.assertIn("settings_value->>'reports_state'='ready'", CLOSURE)
         self.assertIn("'{production_sync_enabled}','false'::jsonb,true", CLOSURE)
-        self.assertIn("Authenticated preview passed.", BROWSER)
+        # S88 Team A: Settings has no Modules card (spec §7.15); product UI never
+        # shows preview/isolation engineering copy.
+        self.assertNotIn("Reports blocked", BROWSER)
+        self.assertNotIn("Authenticated preview passed.", BROWSER)
+        self.assertNotIn("Availability follows isolated validation.", BROWSER)
         self.assertNotIn("Reports remains a release blocker.", BROWSER)
 
 

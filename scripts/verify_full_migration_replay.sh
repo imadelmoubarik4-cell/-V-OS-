@@ -265,6 +265,8 @@ select jsonb_build_object(
   'settings_sections',to_regclass('atlas_private.settings_sections') is not null,
   'brain_snapshots',to_regclass('atlas_private.brain_intelligence_snapshots') is not null,
   'experimental_runs',to_regclass('atlas_private.intelligence_runs') is not null,
+  'dead_begin_run',to_regprocedure('atlas_private.intelligence_begin_run(text,text,timestamptz,jsonb,text,uuid,text,text)') is not null
+    or to_regprocedure('public.atlas_intelligence_begin_run(text,text,timestamptz,jsonb,text,uuid,text,text)') is not null,
   'stock_count_summary',to_regclass('public.stock_count_summary') is not null,
   'item_master_drafts',to_regclass('atlas_private.item_master_drafts') is not null,
   'auth_users',(select count(*) from auth.users where deleted_at is null),
@@ -278,6 +280,7 @@ assert state["ledger_count"] == expected_migration_count, state
 assert state["settings_sections"] is True, state
 assert state["brain_snapshots"] is True, state
 assert state["experimental_runs"] is False, state
+assert state["dead_begin_run"] is False, state
 assert state["stock_count_summary"] is True, state
 assert state["item_master_drafts"] is True, state
 assert state["auth_users"] == 0, state

@@ -2,23 +2,31 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
+// S88 redesign (spec §4.7, §4.12): the floating quick-action button and its
+// menu are retired. Quick actions are the command palette in Actions mode,
+// opened from the top-bar + button; every former menu entry is a canonical
+// action (AtlasShell.actions) the palette lists per role.
 const shell = readFileSync('apps/web/index.html', 'utf8');
-const glass = readFileSync('apps/web/assets/css/atlas-glass.css', 'utf8');
+const palette = readFileSync('apps/web/assets/js/atlas-palette.js', 'utf8');
+const css = readFileSync('apps/web/assets/css/atlas-shell.css', 'utf8');
 
-test('Quick Actions keeps the existing Atlas action surface', () => {
-  assert.match(shell, /id="fab-menu"/);
-  assert.match(shell, /id="fab-add-item"/);
-  assert.match(shell, /id="fab-log-restock"/);
-  assert.match(shell, /id="fab-add-recipe"/);
-  assert.match(shell, /id="fab-add-supplier"/);
+test('Quick Actions is the + button that opens the palette in Actions mode', () => {
+  assert.match(shell, /id="atlas-quick-actions" aria-haspopup="dialog" aria-label="Quick actions"/);
+  assert.match(palette, /trigger\.id === 'atlas-quick-actions' \? 'actions' : 'search'/);
+  assert.doesNotMatch(shell, /id="fab-menu"|id="fab-btn"|class="fab-wrap"/);
 });
 
-test('Quick Actions uses dark foregrounds on the light glass menu', () => {
-  assert.match(glass, /#fab-menu\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*\.9\)/s);
-  assert.match(glass, /#fab-menu button\s*\{[^}]*color:\s*var\(--atlas-text\)/s);
-  assert.match(glass, /#fab-menu button:hover,[\s\S]*#fab-menu button:focus-visible\s*\{[^}]*background:\s*var\(--blue-100\)[^}]*color:\s*var\(--atlas-text\)/s);
+test('every former quick-action entry is a canonical action', () => {
+  // S88: Inventory and Purchasing register their own actions from their modules.
+  const sources = [shell, readFileSync('apps/web/assets/js/atlas-inventory.js', 'utf8'), readFileSync('apps/web/assets/js/atlas-purchasing.js', 'utf8')].join('\n');
+  for (const id of ['inventory.item.add', 'purchasing.delivery.receive', 'recipes.new', 'purchasing.supplier.add']) {
+    assert.match(sources, new RegExp(`id: ?'${id.replace(/\./g, '\\.')}'`), id);
+  }
+  // No emoji labels (spec §5.8) and no "Log a restock" name (§4.8).
+  assert.doesNotMatch(sources, /📦|🍸|🚚|label: ?'Log a restock'/);
 });
 
-test('Quick Actions exposes a visible keyboard focus indicator', () => {
-  assert.match(glass, /#fab-menu button:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--blue-600\)[^}]*outline-offset:\s*2px/s);
+test('palette rows show a visible keyboard focus and an active row', () => {
+  assert.match(css, /\.atlas-palette__item\.is-active \{ background: var\(--bg-muted, #f1f5f9\); \}/);
+  assert.match(css, /:focus-visible \{ outline: 2px solid var\(--focus-color, #3b82f6\); outline-offset: 2px; \}/);
 });

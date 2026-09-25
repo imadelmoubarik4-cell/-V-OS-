@@ -1,0 +1,75 @@
+/* Purchasing (spec §7.8): Orders · Deliveries · Suppliers, order detail and
+ * receiving sheets. Module layout only; every control is the shared component
+ * from atlas-components.css. Tokens only; no :root variables; no !important.
+ * Roots: #suppliers-view (.po) and the sheets it opens (.po-*).
+ */
+@layer atlas.modules {
+
+.po a.cell-primary { color: var(--text); }
+
+.po { display: block; min-width: 0; }
+.po > .atlas-tabs { margin-top: var(--s-4); }
+.po__body { min-width: 0; }
+.po__body > .atlas-alert { margin-top: var(--s-5); }
+.po__muted { color: var(--text-2); }
+.po__caption { margin: var(--s-5) 0 var(--s-3); font: var(--type-meta); color: var(--text-2); }
+.po__chev { display: inline-flex; color: var(--text-3); }
+.po__chev > svg { width: var(--icon-sm); height: var(--icon-sm); }
+.po__total { margin: 0; font: var(--type-heading); text-align: right; font-variant-numeric: tabular-nums; }
+.po__body tbody tr[data-po-open], .po__body tbody tr[data-po-supplier] { cursor: pointer; }
+.po-skeleton { display: grid; gap: var(--s-2); padding: var(--s-3); }
+
+/* Suggested order summary */
+.po-suggest { display: flex; align-items: center; justify-content: space-between; gap: var(--s-5); margin-top: var(--s-5); }
+.po-suggest__text { min-width: 0; }
+.po-suggest > .atlas-btn { flex: none; }
+.po .atlas-table .po-col--text { max-width: 0; width: 40%; }
+.po-suggest__text p { margin: var(--s-1) 0 0; font: var(--type-body); }
+.po-suggest__title { margin: 0; font: var(--type-heading); }
+.po-suggest__qty { width: 96px; height: 32px; text-align: right; }
+.po-group { display: grid; gap: var(--s-3); min-width: 0; margin: 0; padding: 0; border: 0; }
+.po-group + .po-group { margin-top: var(--s-5); }
+.po-group__title { margin: 0; padding: 0; font: var(--type-heading); }
+.po-group[disabled] .atlas-table-wrap { opacity: .6; }
+
+/* Order form lines */
+.po-line { display: grid; grid-template-columns: minmax(0, 1fr) 96px 132px 36px; align-items: end; gap: var(--s-2); }
+.po-line + .po-line { margin-top: var(--s-3); }
+.po-line__remove { margin-bottom: 0; }
+
+/* Order detail */
+.po-detail__pills { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
+.po-detail__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3) var(--s-6); margin: 0; }
+.po-detail__facts dt { font: var(--type-meta); color: var(--text-2); }
+.po-detail__facts dd { margin: 2px 0 0; font: var(--type-body); overflow-wrap: anywhere; }
+.po-detail__heading { margin: 0 0 var(--s-3); font: var(--type-heading); }
+.po-timeline { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.po-timeline li { display: flex; justify-content: space-between; gap: var(--s-4); padding-bottom: var(--s-2); border-bottom: 1px solid var(--line-subtle); font: var(--type-body); }
+.po-timeline__what { min-width: 0; overflow-wrap: anywhere; }
+.po-timeline__when { flex: none; font: var(--type-meta); color: var(--text-2); }
+
+/* Receiving */
+.po-photo { margin-bottom: var(--s-2); }
+.po-receive { display: grid; gap: var(--s-3); }
+.po-receive__line { display: grid; gap: var(--s-2); padding: var(--s-3) var(--s-4); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.po-receive__head { display: grid; gap: 2px; }
+.po-receive__name { margin: 0; font: var(--type-heading); }
+.po-receive__head .po__muted { margin: 0; font: var(--type-meta); }
+.po-receive__controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.po-stepper { display: flex; align-items: center; gap: var(--s-2); }
+.po-stepper__input { width: 96px; text-align: center; }
+.po-stepper .atlas-icon-btn { width: var(--control-md, 40px); height: var(--control-md, 40px); border: 1px solid var(--line); background: var(--surface); }
+.po-stepper .atlas-icon-btn:hover:not(:disabled) { border-color: var(--line-strong); }
+@media (pointer: coarse) { .po-stepper .atlas-icon-btn { width: var(--touch); height: var(--touch); } }
+.po-noorder { margin-top: var(--s-5); }
+.po-noorder > summary { min-height: var(--touch); font: var(--type-label); cursor: pointer; }
+.po-noorder > form { margin-top: var(--s-3); }
+
+@media (max-width: 767px) {
+  .po-suggest { flex-direction: column; align-items: stretch; }
+  .po-line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px; }
+  .po-line__item { grid-column: 1 / -1; }
+  .po-detail__facts { grid-template-columns: minmax(0, 1fr); }
+}
+
+}

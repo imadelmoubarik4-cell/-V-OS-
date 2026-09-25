@@ -1,0 +1,13 @@
+{
+  "brand": {
+    "midnight": "#0B0F14",
+    "slate": "#1F2937",
+    "mist": "#CBD5E1",
+    "snow": "#F8FAFC",
+    "blue": "#3B82F6"
+  },
+  "logo": {
+    "master": "../00_MASTER_DO_NOT_EDIT/Atlas_Master_Artwork.svg",
+    "rule": "Do not redraw. All variants use identical geometry."
+  }
+}

@@ -6,7 +6,7 @@ import {
   buildStockReport,
   buildRecipeReport,
   quantityTrustState,
-} from '../../supabase/functions/atlas-reports/stock-provenance.mjs';
+} from '../../supabase/functions/_shared/stock-provenance.mjs';
 
 test('S64F unknown valuation and alert coverage are not displayed as zero', () => {
   const items = [{id:'unverified', name:'Test item', quantity:0, cost_price:100}];
@@ -53,11 +53,15 @@ test('historical, stale and unverified zeros never become live stock alerts', ()
     historical_items: 1,
     unverified_items: 1,
     needs_current_count: 3,
-    estimated_value: 800,
+    // S89 canonical value: unknown while any item is not counted; the
+    // counted, costed items are the lower bound.
+    estimated_value: null,
+    known_value: 800,
     current_missing_cost: 0,
     valuation_excluded_items: 3,
     below_par: 1,
     out_of_stock: 1,
+    needs_ordering: 2,
     missing_cost: 0,
     missing_supplier: 0,
     missing_par: 0,

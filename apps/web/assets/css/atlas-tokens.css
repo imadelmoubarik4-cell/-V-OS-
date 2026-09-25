@@ -1,0 +1,322 @@
+/* Atlas design tokens — the single source of truth.
+ *
+ * Canonical reference: docs/design/Atlas_Design_System.md (S88 redesign,
+ * spec docs/design/Atlas_Experience_Redesign.md §5). New CSS uses the short
+ * names (--bg, --text-2, --accent, --r-md, --s-4, --type-body, --dur-2 …).
+ * The older names further down are aliases of the new values, kept for module
+ * code that still reads them; new CSS never uses them.
+ *
+ * Do not define :root custom properties anywhere else;
+ * css-hygiene-s88.test.js fails if another stylesheet redefines one of these.
+ *
+ * Linked FIRST in index.html because it also declares the cascade-layer order
+ * for every Atlas stylesheet. Between layers, the later layer wins for normal
+ * declarations whatever the specificity or load order; for !important the
+ * order reverses (the earlier layer wins).
+ *
+ *   atlas.tokens      custom properties only (this file)
+ *   atlas.base        reset, typography, focus, reduced motion, role gating,
+ *                     layout primitives (atlas-base.css)
+ *   atlas.components  component classes (atlas-components.css) and the shell
+ *                     (atlas-shell.css)
+ *   atlas.modules     one stylesheet per module: layout and module-specific
+ *                     pieces only, never !important
+ *
+ * S88 retired the atlas.legacy layer (the pre-S88 page CSS, the inline
+ * index.html style block and the legacy/ fragments of the old override files);
+ * nothing may reintroduce it (css-hygiene-s88.test.js).
+ */
+@layer atlas.tokens, atlas.base, atlas.components, atlas.modules;
+
+@layer atlas.tokens {
+:root {
+  /* ---------- Brand v1.0 palette (docs/brand/README.md) ----------
+     The five kit colours, verbatim from docs/brand/Atlas_Brand_Identity_Kit_v1.0/
+     07_Developer/atlas-brand-tokens.css. Everything below derives from them.
+     The logo is always monochrome (Midnight on light, White on dark); Atlas
+     Blue is the product-interface accent, never a logo colour. */
+  --atlas-midnight: #0B0F14;
+  --atlas-slate: #1F2937;
+  --atlas-mist: #CBD5E1;
+  --atlas-snow: #F8FAFC;
+  --atlas-blue: #3B82F6;
+
+  /* ---------- Colour: surfaces ---------- */
+  --bg: #ffffff;                 /* content canvas */
+  --bg-subtle: var(--atlas-snow);   /* sidebar, table header, inset panels */
+  --bg-muted: #f1f5f9;           /* hover on subtle, segmented track, skeleton (Snow, one step down) */
+  --bg-hover: #fbfcfd;           /* table row hover (between white and Snow) */
+  --surface: #ffffff;            /* cards, sheets, popovers */
+  --overlay: rgba(11, 15, 20, .32);  /* Midnight */
+
+  /* ---------- Colour: text (all ≥ 4.5:1 on --bg, --bg-subtle and --bg-muted) ---------- */
+  --text: var(--atlas-midnight); /* headings and primary text, 19.2:1 on white */
+  --text-2: #475569;             /* secondary (Slate family), 7.6:1 on white, 6.9:1 on --bg-muted */
+  --text-3: #606c80;             /* placeholders, group labels, meta — 5.3:1 on white, 4.9:1 on --bg-muted */
+  --text-on-accent: #ffffff;
+  --ink: var(--atlas-slate);     /* dark surfaces: tooltips, toasts, bulk bar (white text 14.7:1) */
+
+  /* ---------- Colour: lines (Mist) ---------- */
+  --line: #e2e8f0;               /* card borders, dividers (hairline derived from Mist) */
+  --line-strong: var(--atlas-mist); /* inputs, secondary buttons */
+  --line-hover: #94a3b8;         /* input hover */
+  --line-subtle: #f1f5f9;        /* row dividers inside cards and tables */
+  --control-border: #94a3b8;     /* checkbox / radio outline */
+  --toggle-off: var(--atlas-mist);
+
+  /* ---------- Colour: accent ----------
+     Atlas Blue #3B82F6 is the brand/interface accent: focus ring, selection
+     and active-nav indicators, icons, badges, charts. White text on it is
+     3.7:1 (fails WCAG AA 4.5:1), so text-bearing fills (primary buttons) and
+     blue text/links use the darker same-hue --accent #2563EB (5.2:1). */
+  --accent-brand: var(--atlas-blue); /* indicators, focus, icons, charts — never behind text */
+  --accent: #2563eb;             /* primary fills with white text (5.2:1), accent text/links */
+  --accent-hover: #1d4ed8;       /* 6.7:1 with white text */
+  --accent-press: #1e40af;
+  --accent-soft: #eff6ff;        /* selected rows, active chip, info tiles (wash of Atlas Blue) */
+  --accent-soft-hover: #dbeafe;
+  --accent-text: var(--accent);  /* link / label text: 5.2:1 on white, 4.8:1 on --accent-soft */
+  --accent-ring: rgba(59, 130, 246, .20);
+  --accent-illustration: var(--atlas-blue); /* charts and illustration */
+
+  /* ---------- Colour: status (always paired with a word or icon) ---------- */
+  --positive: #047857;           /* 5.5:1 on white, 5.2:1 on --positive-soft */
+  --positive-soft: #ecfdf5;
+  --warning: #b45309;            /* text: 5.0:1 on white, 4.8:1 on --warning-soft */
+  --warning-icon: #d97706;       /* icons only (3.2:1, non-text) */
+  --warning-soft: #fffbeb;
+  --danger: #c42020;             /* 5.9:1 on white (text and white-on-fill), 5.4:1 on --danger-soft */
+  --danger-soft: #fef2f2;
+  --danger-ring: rgba(196, 32, 32, .12);
+  --neutral-soft: #f1f5f9;
+
+  /* ---------- Typography ---------- */
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Role shorthands: font: var(--type-body); letter-spacing where given. */
+  --type-display: 500 32px/38px var(--font-display);  --track-display: -0.02em;
+  --type-title:   600 24px/32px var(--font-sans);     --track-title: -0.015em;
+  --type-section: 600 17px/24px var(--font-sans);     --track-section: -0.005em;
+  --type-heading: 600 15px/22px var(--font-sans);
+  --type-body:    400 14px/20px var(--font-sans);
+  --type-body-lg: 400 15px/24px var(--font-sans);
+  --type-label:   500 13px/18px var(--font-sans);
+  --type-meta:    400 13px/18px var(--font-sans);
+  --type-caption: 400 12px/16px var(--font-sans);     /* the minimum size */
+  --type-kpi:     500 28px/32px var(--font-sans);     --track-kpi: -0.02em;
+  --type-num:     500 14px/20px var(--font-sans);
+
+  /* Sizes for rules that set font-size only. */
+  --fs-display: 32px;
+  --fs-title: 24px;
+  --fs-section: 17px;
+  --fs-heading: 15px;
+  --fs-body: 14px;
+  --fs-body-lg: 15px;
+  --fs-label: 13px;
+  --fs-caption: 12px;
+  --fs-kpi: 28px;
+
+  /* ---------- Spacing (4 px base) ---------- */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px; --s-20: 80px;
+
+  /* ---------- Radius ---------- */
+  --r-xs: 4px;     /* checkbox, kbd, skeleton */
+  --r-sm: 6px;     /* segmented inner, small tags, tooltip */
+  --r-md: 8px;     /* buttons, inputs, nav items, record chips */
+  --r-lg: 12px;    /* cards, tables, alerts, popovers, toasts */
+  --r-xl: 16px;    /* dialogs, sheets, palette, composer */
+  --r-pill: 999px; /* pills, chips, avatars, toggles */
+
+  /* ---------- Elevation (near flat; cards at rest have none) ---------- */
+  --shadow-none: 0 0 0 0 transparent;
+  --shadow-1: 0 1px 2px rgba(11, 15, 20, .05);
+  --shadow-pop: 0 2px 6px rgba(11, 15, 20, .06), 0 12px 32px rgba(11, 15, 20, .10);
+  --shadow-modal: 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20);
+
+  /* ---------- Focus ---------- */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+  --focus-color: var(--accent-brand);   /* Atlas Blue: ≥ 3:1 on white, Snow, --bg-muted, --ink */
+  --focus-outline: var(--focus-width) solid var(--focus-color);
+  --focus-ring: 0 0 0 3px var(--accent-ring);   /* inputs: border + ring */
+
+  /* ---------- Controls and icons ---------- */
+  --control-sm: 32px;
+  --control-md: 36px;
+  --control-lg: 44px;
+  --touch: 44px;
+  --icon-sm: 16px;     /* inline, buttons, rows */
+  --icon-md: 18px;     /* top bar, header icon buttons */
+  --icon-lg: 20px;     /* sheet close, phone top bar */
+  --icon-xl: 22px;     /* phone tab bar */
+  --icon-stroke: 1.75;
+  --icon-stroke-xl: 1.6;
+  --icon-stroke-strong: 2;
+
+  /* ---------- Shell geometry ---------- */
+  --sidebar-rail: 64px;
+  --topbar-h: 56px;
+  --tabbar-h: 56px;
+  --page-max: 1200px;
+  --page-gutter: 40px;
+  --reading-max: 720px;
+
+  /* ---------- Motion ---------- */
+  --dur-1: 120ms;   /* hover, press, colour */
+  --dur-2: 180ms;   /* menus, popovers, toggles, tabs, row expand */
+  --dur-3: 240ms;   /* sheets, dialogs, palette */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-in-out: cubic-bezier(.4, 0, .2, 1);
+
+  /* ---------- Layers ---------- */
+  --z-sticky: 20;
+  --z-overlay: 60;
+  --z-toast: 1600;
+
+  /* ================================================================
+     Legacy names. Each resolves to a value above (spec §5.2 table), so
+     the pre-S88 pages shift with the system. Do not use them in new CSS.
+     ================================================================ */
+
+  /* Surfaces and text */
+  --atlas-bg: var(--bg);
+  --atlas-surface: var(--surface);
+  --atlas-surface-solid: var(--surface);
+  --atlas-surface-sunken: var(--bg-subtle);
+  --atlas-sidebar: var(--bg-subtle);
+  --atlas-text: var(--text);
+  --atlas-muted: var(--text-2);
+  --atlas-subtle: var(--text-3);
+  --atlas-line: var(--line);
+  --atlas-line-strong: var(--line-strong);
+
+  /* Accent: every module "primary blue" is the one Atlas blue */
+  --atlas-accent: var(--accent);
+  --atlas-accent-strong: var(--accent-hover);
+  --atlas-accent-soft: var(--accent-soft);
+  --atlas-accent-line: rgba(37, 99, 235, .24);
+  --atlas-focus-ring: var(--focus-ring);
+  --atlas-action: var(--accent);
+  --atlas-action-hover: var(--accent-hover);
+  --atlas-action-focus: rgba(59, 130, 246, .24);
+  --atlas-home-accent: var(--accent);
+  --atlas-home-accent-strong: var(--accent-hover);
+  --atlas-home-accent-soft: var(--accent-soft);
+  --atlas-home-accent-line: var(--line-strong);
+  --s38-blue: var(--accent);
+  --s38-blue-strong: var(--accent-hover);
+  --s38-blue-soft: var(--accent-soft);
+  --s38-blue-line: var(--line-strong);
+  --blue-50: var(--bg-subtle);
+  --blue-100: var(--accent-soft);
+  --blue-200: var(--accent-soft-hover);
+  --blue-400: var(--accent);
+  --blue-500: var(--accent);
+  --blue-600: var(--accent);
+  --blue-700: var(--accent-hover);
+
+  /* Status */
+  --atlas-green: var(--positive);
+  --atlas-green-soft: var(--positive-soft);
+  --atlas-warn: var(--warning-icon);
+  --atlas-warn-soft: var(--warning-soft);
+  --atlas-danger: var(--danger);
+  --atlas-danger-soft: var(--danger-soft);
+  --atlas-info: var(--accent);
+  --atlas-info-soft: var(--accent-soft);
+  --atlas-home-teal: var(--positive);
+  --atlas-home-teal-soft: var(--positive-soft);
+  --atlas-home-warning: var(--warning-icon);
+  --atlas-home-warning-soft: var(--warning-soft);
+
+  /* S38 palette */
+  --s38-ink: var(--text);
+  --s38-muted: var(--text-2);
+  --s38-bg: var(--bg);
+  --s38-line: var(--line);
+  --s38-shadow: var(--shadow-none);
+  --s38-shadow-raised: var(--shadow-pop);
+  --s38-radius: var(--r-lg);
+
+  /* Glass: retired. Surfaces are opaque, borders are hairlines, no blur. */
+  --glass-blur: none;
+  --glass-fill: var(--surface);
+  --glass-fill-strong: var(--surface);
+  --glass-fill-soft: var(--bg-subtle);
+  --glass-line: var(--line);
+  --glass-line-strong: var(--line-strong);
+  --glass-highlight: var(--shadow-none);
+  --glass-shadow: var(--shadow-none);
+  --glass-shadow-raised: var(--shadow-pop);
+  --atlas-home-shadow: var(--shadow-none);
+  --atlas-home-shadow-raised: var(--shadow-pop);
+
+  /* Cards, radius and elevation */
+  --atlas-radius: var(--r-lg);
+  --atlas-card-radius: var(--r-lg);
+  --atlas-card-shadow: var(--shadow-none);
+  --atlas-card-shadow-hover: var(--shadow-1);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-pill: var(--r-pill);
+  --shadow-2: var(--shadow-pop);
+  --shadow-popover: var(--shadow-pop);
+
+  /* Semantic aliases (S87) */
+  --color-primary: var(--accent);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-2);
+  --color-text-tertiary: var(--text-3);
+  --color-border: var(--line);
+  --color-background: var(--bg);
+  --color-surface: var(--surface);
+  --color-positive: var(--positive);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-information: var(--accent);
+
+  /* Spacing, type sizes, weights, controls and motion (S87 names) */
+  --space-1: var(--s-1);
+  --space-2: var(--s-2);
+  --space-3: var(--s-3);
+  --space-4: var(--s-4);
+  --space-5: var(--s-5);
+  --space-6: var(--s-6);
+  --space-8: var(--s-8);
+  --space-10: var(--s-10);
+  --space-12: var(--s-12);
+  --space-16: var(--s-16);
+  --text-display: var(--fs-title);     /* page title */
+  --text-title: var(--fs-section);     /* section heading */
+  --text-heading: var(--fs-heading);   /* card heading */
+  --text-body: var(--fs-body);
+  --text-meta: var(--fs-label);
+  --text-caption: var(--fs-caption);
+  --text-micro: var(--fs-caption);     /* micro labels are retired: 12 px minimum */
+  --text-kpi: var(--fs-kpi);
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --touch-target: var(--touch);
+  --motion-fast: var(--dur-1);
+  --motion-base: var(--dur-2);
+  --ease-standard: var(--ease-out);
+}
+@media (max-width: 1279px) { :root { --page-gutter: 32px; } }
+@media (max-width: 1023px) { :root { --page-gutter: 24px; } }
+@media (max-width: 767px) {
+  :root {
+    --page-gutter: 16px;
+    --type-display: 500 28px/34px var(--font-display);
+    --type-title: 600 22px/28px var(--font-sans);
+    --type-body: 400 15px/22px var(--font-sans);
+    --type-kpi: 500 22px/28px var(--font-sans);
+  }
+}
+}

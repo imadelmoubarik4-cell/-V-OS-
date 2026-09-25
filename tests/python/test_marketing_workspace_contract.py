@@ -152,7 +152,8 @@ class MarketingWorkspaceContractTests(unittest.TestCase):
 
     def test_edge_function_revalidates_active_profile_and_roles(self):
         self.assertIn("requireActiveProfile", EDGE_FUNCTION)
-        self.assertIn("if (!profile?.active)", EDGE_FUNCTION)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE_FUNCTION)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE_FUNCTION)
         self.assertIn("Marketing workspace access has been removed", EDGE_FUNCTION)
         self.assertIn('new Set(["admin", "manager", "bartender"])', EDGE_FUNCTION)
         self.assertIn('new Set(["admin", "manager"])', EDGE_FUNCTION)

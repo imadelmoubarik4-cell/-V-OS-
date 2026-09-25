@@ -7,5 +7,9 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Strict-Transport-Security = "max-age=63072000; includeSubDomains"
-    Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=()"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://api.qrserver.com https://dnefgcmjcgxlynycxkts.supabase.co; connect-src 'self' https://dnefgcmjcgxlynycxkts.supabase.co wss://dnefgcmjcgxlynycxkts.supabase.co; worker-src 'self' blob:; media-src 'self' blob:; frame-ancestors 'self' https://xn--vbar-5na.is; base-uri 'self'; form-action 'self'; object-src 'none'"
+    Permissions-Policy = "camera=(self), microphone=(self), geolocation=(), payment=()"
+    # script-src allows only the exact pinned CDN files (each also carries SRI).
+    # Known follow-up (security review S88b G6): 'unsafe-inline' stays until the
+    # inline app script in index.html (and menu.html) moves to a file or gets a
+    # hash/nonce; see docs/SECURITY.md.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://api.qrserver.com https://dnefgcmjcgxlynycxkts.supabase.co; connect-src 'self' https://dnefgcmjcgxlynycxkts.supabase.co wss://dnefgcmjcgxlynycxkts.supabase.co https://api.openai.com; worker-src 'self' blob:; media-src 'self' blob:; frame-ancestors 'self' https://xn--vbar-5na.is; base-uri 'self'; form-action 'self'; object-src 'none'"

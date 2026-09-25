@@ -32,6 +32,14 @@ if (
 """
 
 
+def _runtime_path(function_name, source_path):
+    """Keep supabase/functions/_shared modules shared so ../_shared imports resolve."""
+    source = Path(source_path)
+    if source.parent == Path("supabase/functions/_shared"):
+        return Path("functions") / "_shared" / source.name
+    return Path("functions") / function_name / source.name
+
+
 def _entrypoint(function):
     sources = list(function["sources"])
     preferred = {
@@ -67,6 +75,11 @@ def _transform(source, add_guard):
     # is always read from the exact isolated runtime origin guarded above.
     source = source.replace(
         "${AUTH_PROJECT_URL}/rest/v1/",
+        "${S37_TARGET_ORIGIN}/rest/v1/",
+    )
+    # S89 gateways read the Auth/REST origin through the env-only getter.
+    source = source.replace(
+        "${productionAuthUrl()}/rest/v1/",
         "${S37_TARGET_ORIGIN}/rest/v1/",
     )
     source = re.sub(r"\bproductionRows\b", "isolatedRows", source)
@@ -160,7 +173,7 @@ def build(destination):
                     raw.decode("utf-8"),
                     add_guard=source_path == entrypoint,
                 ).encode("utf-8")
-                relative = Path("functions") / function["name"] / Path(source_path).name
+                relative = _runtime_path(function["name"], source_path)
                 target = output / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(generated)

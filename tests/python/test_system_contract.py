@@ -81,9 +81,9 @@ class SystemContractTests(unittest.TestCase):
 
     def test_edge_gateway_revalidates_active_production_manager(self):
         self.assertIn("requireManagerProfile", EDGE)
-        self.assertIn("/auth/v1/user", EDGE)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE)
         self.assertIn("/rest/v1/profiles", EDGE)
-        self.assertIn("if (!profile?.active)", EDGE)
         self.assertIn('new Set(["admin", "manager"])', EDGE)
         self.assertIn("System is available only to managers and administrators", EDGE)
         self.assertIn('request.method !== "GET"', EDGE)
@@ -102,6 +102,7 @@ class SystemContractTests(unittest.TestCase):
     def test_browser_uses_authenticated_gateway_without_direct_private_access(self):
         self.assertIn("SYSTEM_API", BROWSER_CONFIG)
         self.assertIn("system-workspace.js", BROWSER_CONFIG)
+        self.assertNotIn("system-workspace.css", BROWSER_CONFIG)
         self.assertIn("window.atlasSupabase", BROWSER)
         self.assertIn("authorization: `Bearer ${session.access_token}`", BROWSER)
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER)
@@ -116,9 +117,10 @@ class SystemContractTests(unittest.TestCase):
 
     def test_system_ui_is_view_only(self):
         self.assertIn("Retry controls are disabled", BROWSER)
-        self.assertIn("Incident mutation is disabled", BROWSER)
+        # S88 Team A: System health is a read-only Settings section.
+        self.assertIn("Incidents are read-only here", BROWSER)
         self.assertIn("Rollback unavailable", BROWSER)
-        self.assertIn("Secrets and tokens never returned", BROWSER)
+        self.assertIn("Passwords, keys and sign-in secrets are never shown here.", BROWSER)
         self.assertNotRegex(BROWSER, r"method:\s*['\"]POST['\"]")
         self.assertNotRegex(BROWSER, r"\bDELETE\b|\bPATCH\b|\bPUT\b")
 

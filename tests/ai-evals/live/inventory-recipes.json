@@ -1,0 +1,158 @@
+[
+  {
+    "id": "live-inv-01", "category": "inventory", "actor": "manager", "blocking": true,
+    "question": "How many bottles of Angelo Pinot Grigio do we have?",
+    "truth": [{ "tool": "inventory.current_stock", "args": { "item_ids": null, "query": "Angelo", "category": null, "limit": null } }],
+    "expect": { "tools_any": ["inventory.current_stock", "inventory.get", "inventory.search"], "numbers": ["10"], "forbidden_numbers": ["40"], "records": ["inventory_item:@item.angelo"], "rubric": "10 bottles (750 ml) from the verified count on 22 Sep; below its par of 12." }
+  },
+  {
+    "id": "live-inv-02", "category": "inventory", "actor": "bartender", "blocking": true,
+    "question": "Hvað eigum við margar flöskur af Tanqueray?",
+    "truth": [{ "tool": "inventory.current_stock", "args": { "item_ids": null, "query": "Tanqueray", "category": null, "limit": null } }],
+    "expect": { "tools_any": ["inventory.current_stock", "inventory.get", "inventory.search"], "numbers": ["4"], "forbidden_numbers": ["11"], "rubric": "Answers in Icelandic: 4 flöskur (5 counted on 22 Sep, one broken since). No cost or supplier." }
+  },
+  {
+    "id": "live-inv-03", "category": "inventory", "actor": "manager", "blocking": true,
+    "question": "Is anything below par?",
+    "truth": [{ "tool": "inventory.below_par", "args": { "category": null, "limit": null } }],
+    "expect": { "tools_any": ["inventory.below_par", "purchasing.suggest", "operations.alerts"], "must_mention": ["Aperol"], "numbers_any": [["24", "26"]], "rubric": "Aperol is out of stock and 8 items are below par (Angelo, Tanqueray, Campari, El Jimador, Prosecco, Gull, tonic, limes); 24 items have no par and 2 have a par but no current count, so they cannot be judged." }
+  },
+  {
+    "id": "live-inv-04", "category": "inventory", "actor": "manager", "blocking": true,
+    "question": "Which wines are running low?",
+    "truth": [{ "tool": "inventory.below_par", "args": { "category": "Wine", "limit": null } }],
+    "expect": { "tools_any": ["inventory.below_par", "inventory.current_stock"], "must_mention": ["Angelo", "Prosecco"], "rubric": "Angelo Pinot Grigio (10 < 12) and Villa Sandi Prosecco (8 < 12); Whispering Angel has a par but no count; 3 wines have no par." }
+  },
+  {
+    "id": "live-inv-05", "category": "missing_evidence", "actor": "bartender", "blocking": true,
+    "question": "How much Kahlúa is there?",
+    "truth": [{ "tool": "inventory.get", "args": { "item_id": "@item.kahlua" } }],
+    "expect": { "tools_any": ["inventory.get", "inventory.current_stock", "inventory.search"], "must_mention_any": ["unknown", "not (been )?counted", "expired", "no (current|verified)", "don't know"], "forbidden_numbers": ["3", "5"], "rubric": "Stock is unknown: the last count expired; suggests a recount. Never says 3 or 5 bottles." }
+  },
+  {
+    "id": "live-inv-06", "category": "missing_evidence", "actor": "manager", "blocking": true,
+    "question": "How much Brennivín is in the cellar?",
+    "truth": [{ "tool": "inventory.current_stock", "args": { "item_ids": null, "query": "Brennivín", "category": null, "limit": null } }],
+    "expect": { "tools_any": ["inventory.current_stock", "inventory.get", "inventory.search"], "must_mention_any": ["unknown", "not (been )?counted", "old imported", "historical", "no (current|verified)"], "forbidden_numbers": ["18"], "rubric": "Unknown: only an old imported quantity exists, not counted since opening. The imported 18 is not stock." }
+  },
+  {
+    "id": "live-inv-07", "category": "inventory", "actor": "bartender", "blocking": true,
+    "question": "I scanned 5000291020706 — what is it and how many do we have?",
+    "truth": [{ "tool": "inventory.lookup_barcode", "args": { "code": "5000291020706" } }],
+    "expect": { "tools_all": ["inventory.lookup_barcode"], "must_mention": ["Tanqueray"], "numbers": ["4"], "rubric": "Tanqueray London Dry Gin; 4 bottles verified." }
+  },
+  {
+    "id": "live-inv-08", "category": "inventory", "actor": "manager", "blocking": false,
+    "question": "Give me a stock overview.",
+    "truth": [{ "tool": "inventory.current_stock", "args": { "item_ids": null, "query": null, "category": null, "limit": null } }],
+    "expect": { "tools_any": ["inventory.current_stock", "inventory.stale_counts", "inventory.below_par"], "numbers_any": [["16"], ["24", "40"]], "rubric": "24 of 40 active items have verified stock; 16 are unknown (6 expired, 3 historical, 7 never counted). Highlights low items." }
+  },
+  {
+    "id": "live-inv-09", "category": "inventory", "actor": "manager", "blocking": true,
+    "question": "How much Havana Club do we have?",
+    "truth": [{ "tool": "inventory.current_stock", "args": { "item_ids": null, "query": "Havana", "category": null, "limit": null } }],
+    "expect": { "tools_any": ["inventory.current_stock", "inventory.get", "inventory.search"], "numbers": ["4"], "forbidden_numbers": ["6"], "forbidden_numbers_may_be_in_tools": true, "rubric": "4 bottles from the owner-confirmed count on 20 Sep." }
+  },
+  {
+    "id": "live-inv-10", "category": "inventory", "actor": "manager", "blocking": false,
+    "question": "Do we need to recount the lemons?",
+    "truth": [{ "tool": "inventory.get", "args": { "item_id": "@item.lemons" } }],
+    "expect": { "tools_any": ["inventory.get", "inventory.stale_counts", "inventory.current_stock"], "must_mention_any": ["recount", "due", "count"], "rubric": "Yes: 25 lemons from an owner confirmation on 10 Sep, now due for a recount." }
+  },
+  {
+    "id": "live-inv-11", "category": "inventory", "actor": "viewer", "blocking": true,
+    "question": "How many cans of Egils Pilsner are there?",
+    "truth": [{ "tool": "inventory.current_stock", "args": { "item_ids": null, "query": "Egils", "category": null, "limit": null } }],
+    "expect": { "tools_any": ["inventory.current_stock", "inventory.get", "inventory.search"], "numbers": ["60"], "forbidden_numbers": ["96"], "rubric": "60 cans (counted 12 Sep, so a recount is sensible)." }
+  },
+  {
+    "id": "live-inv-12", "category": "inventory", "actor": "bartender", "blocking": true,
+    "question": "How many Fever-Tree tonics are in the fridge?",
+    "truth": [{ "tool": "inventory.current_stock", "args": { "item_ids": null, "query": "tonic", "category": null, "limit": null } }],
+    "expect": { "tools_any": ["inventory.current_stock", "inventory.get", "inventory.search"], "numbers": ["30"], "forbidden_numbers": ["60"], "rubric": "30 bottles of Fever-Tree Indian Tonic, below par (48)." }
+  },
+  {
+    "id": "live-inv-13", "category": "ambiguous", "actor": "manager", "blocking": true,
+    "question": "How much gin do we have?",
+    "truth": [{ "tool": "inventory.current_stock", "args": { "item_ids": null, "query": "gin", "category": null, "limit": null } }],
+    "expect": { "tools_any": ["inventory.current_stock", "inventory.search", "inventory.get"], "must_mention": ["Tanqueray", "Beefeater"], "numbers": ["4", "5"], "rubric": "Two gins: Tanqueray 4 bottles, Beefeater 5 bottles (verified)." }
+  },
+  {
+    "id": "live-rec-01", "category": "recipes", "actor": "bartender", "blocking": true,
+    "question": "How many Negronis can we make tonight?",
+    "truth": [{ "tool": "recipes.can_make", "args": { "recipe_id": null, "recipe_query": "Negroni", "servings": null } }],
+    "expect": { "tools_all": ["recipes.can_make"], "numbers": ["66"], "must_mention": ["Campari"], "rubric": "66, limited by Campari (2 × 1 L ÷ 30 ml); Tanqueray and Campari are below par." }
+  },
+  {
+    "id": "live-rec-02", "category": "recipes", "actor": "bartender", "blocking": true,
+    "question": "Can we serve Aperol Spritz tonight?",
+    "truth": [{ "tool": "recipes.can_make", "args": { "recipe_id": null, "recipe_query": "Aperol Spritz", "servings": null } }],
+    "expect": { "tools_any": ["recipes.can_make", "recipes.get", "recipes.search"], "must_mention": ["Aperol"], "must_mention_any": ["\\bno\\b", "out of stock", "can't", "cannot", "unavailable", "none"], "rubric": "No: Aperol was counted at zero; the Globus delivery with Aperol is overdue." }
+  },
+  {
+    "id": "live-rec-03", "category": "missing_evidence", "actor": "bartender", "blocking": true,
+    "question": "Can we make 10 Espresso Martinis?",
+    "truth": [{ "tool": "recipes.can_make", "args": { "recipe_id": null, "recipe_query": "Espresso Martini", "servings": 10 } }],
+    "expect": { "tools_all": ["recipes.can_make"], "must_mention": ["Kahl[uú]a"], "must_mention_any": ["unknown", "can't confirm", "cannot confirm", "not (been )?counted", "no (current|verified)", "not sure", "can't say"], "rubric": "Cannot confirm: Kahlúa has no current verified count; suggests counting it. Does not say yes or no." }
+  },
+  {
+    "id": "live-rec-04", "category": "recipes", "actor": "manager", "blocking": true,
+    "question": "Why is Tequila Sunrise incomplete?",
+    "truth": [{ "tool": "recipes.get", "args": { "recipe_id": null, "recipe_query": "Tequila Sunrise" } }],
+    "expect": { "tools_any": ["recipes.get", "recipes.can_make", "recipes.search"], "must_mention": ["Grenadine", "Orange Juice"], "rubric": "Grenadine is not linked to an inventory item and Orange Juice has no usable package size (and no count)." }
+  },
+  {
+    "id": "live-rec-05", "category": "recipes", "actor": "manager", "blocking": true,
+    "question": "What does a Negroni cost us to make?",
+    "truth": [{ "tool": "recipes.cost", "args": { "recipe_id": null, "recipe_query": "Negroni" } }],
+    "expect": { "tools_all": ["recipes.cost"], "numbers_any": [["418", "417.86", "417.9"], ["85.1", "85"]], "rubric": "About 418 kr per serving (Tanqueray 223, Campari 123, Martini Rosso 72) against a 2.800 kr price: theoretical margin 85.1%." }
+  },
+  {
+    "id": "live-rec-06", "category": "missing_evidence", "actor": "manager", "blocking": true,
+    "question": "What is the cost of a Tequila Sunrise?",
+    "truth": [{ "tool": "recipes.cost", "args": { "recipe_id": null, "recipe_query": "Tequila Sunrise" } }],
+    "expect": { "tools_all": ["recipes.cost"], "must_mention_any": ["unknown", "can't (be )?calculat", "cannot (be )?calculat", "missing", "no cost"], "rubric": "Unknown: Orange Juice has no cost and Grenadine is not linked, so no partial total is given." }
+  },
+  {
+    "id": "live-rec-07", "category": "recipes", "actor": "bartender", "blocking": false,
+    "question": "Which drinks can't we make right now?",
+    "truth": [{ "tool": "recipes.search", "args": { "query": null, "status": "unavailable", "limit": null } }],
+    "expect": { "tools_any": ["recipes.search", "operations.alerts", "recipes.can_make"], "must_mention": ["Aperol Spritz"], "rubric": "Aperol Spritz (no Aperol). Also flags Espresso Martini, Tequila Sunrise and Mojito as unconfirmed (incomplete)." }
+  },
+  {
+    "id": "live-rec-08", "category": "recipes", "actor": "bartender", "blocking": true,
+    "question": "How many Palomas can we make?",
+    "truth": [{ "tool": "recipes.can_make", "args": { "recipe_id": null, "recipe_query": "Paloma", "servings": null } }],
+    "expect": { "tools_all": ["recipes.can_make"], "numbers": ["20"], "must_mention": ["grapefruit"], "rubric": "20, limited by the Fever-Tree Pink Grapefruit (one bottle each)." }
+  },
+  {
+    "id": "live-rec-09", "category": "recipes", "actor": "bartender", "blocking": true,
+    "question": "How many glasses of Angelo Pinot Grigio can we pour?",
+    "truth": [{ "tool": "recipes.can_make", "args": { "recipe_id": "@recipe.glassangelo", "recipe_query": null, "servings": null } }],
+    "expect": { "tools_any": ["recipes.can_make", "inventory.current_stock", "inventory.get"], "numbers": ["42"], "rubric": "42 glasses of 175 ml from 10 bottles." }
+  },
+  {
+    "id": "live-rec-10", "category": "recipes", "actor": "manager", "blocking": false,
+    "question": "Of the drinks we can actually serve right now, which has the best margin?",
+    "truth": [{ "tool": "recipes.best_margin", "args": { "limit": null, "ready_only": true, "menu_only": null } }],
+    "expect": { "tools_any": ["recipes.best_margin"], "must_mention": ["Villa Maria"], "numbers": ["63.2"], "rubric": "Only the Glass of Villa Maria Sauvignon Blanc is fully ready (63.2% theoretical); everything else has low or unknown availability." }
+  },
+  {
+    "id": "live-rec-11", "category": "recipes", "actor": "bartender", "blocking": true,
+    "question": "Can we do 20 Margaritas for the hen party?",
+    "truth": [{ "tool": "recipes.can_make", "args": { "recipe_id": null, "recipe_query": "Margarita", "servings": 20 } }],
+    "expect": { "tools_all": ["recipes.can_make"], "must_mention_any": ["\\byes\\b", "can make", "enough", "able to"], "numbers_any": [["28", "20"]], "rubric": "Yes: 28 are possible from verified stock (El Jimador is the limit)." }
+  },
+  {
+    "id": "live-rec-12", "category": "missing_evidence", "actor": "manager", "blocking": true,
+    "question": "Can we make Mojitos tonight?",
+    "truth": [{ "tool": "recipes.can_make", "args": { "recipe_id": null, "recipe_query": "Mojito", "servings": null } }],
+    "expect": { "tools_any": ["recipes.can_make", "recipes.get"], "must_mention_any": ["soda", "Kristall"], "rubric": "Cannot confirm: the Kristall soda water has never been counted. Mojito also has no menu price and is not on the menu." }
+  },
+  {
+    "id": "live-rec-13", "category": "multi_domain", "actor": "manager", "blocking": true,
+    "question": "Can we run a Margarita happy hour on Friday for 40 guests?",
+    "truth": [{ "tool": "recipes.can_make", "args": { "recipe_id": null, "recipe_query": "Margarita", "servings": 40 } }],
+    "expect": { "tools_all": ["recipes.can_make"], "numbers": ["28"], "must_mention_any": ["\\bno\\b", "not enough", "only 28", "short", "order"], "rubric": "Not from current stock: 28 possible (El Jimador). Suggests ordering El Jimador (1 case from Mekka suggested) before Friday; notes opening hours/happy hour are not set in Settings." }
+  }
+]

@@ -61,8 +61,22 @@ verify_jwt = false
 [functions.atlas-settings]
 verify_jwt = false
 
+# S88: OAuth callbacks arrive from Google/Meta/TikTok without an Atlas JWT; the
+# handler checks the JWT and active manager/admin profile for every other action.
+[functions.atlas-integrations]
+verify_jwt = false
+
+# S88: Atlas AI. The handler verifies the production-Auth JWT and the active
+# profile (_shared/auth.mjs) for every action; scheduled maintenance and
+# background signals use a separate service secret header instead.
+[functions.atlas-ai]
+verify_jwt = false
+
+# S89: visual inventory recognition. The handler verifies the production-Auth
+# JWT and the active profile (_shared/auth.mjs) for every action; its database
+# access is limited to the atlas_recognition_* RPCs (no stock writes).
+[functions.atlas-inventory-recognition]
+verify_jwt = false
+
 [functions.atlas-notifications]
 verify_jwt = true
-
-[functions.atlas-import-worker]
-verify_jwt = false

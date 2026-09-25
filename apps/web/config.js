@@ -5,11 +5,9 @@ window.VABAR_CONFIG = {
   SUPABASE_URL: "https://dnefgcmjcgxlynycxkts.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp",
   SPRINT3_REVIEW_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-sprint3-review",
-  SPRINT4_BRIEFING_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-sprint4-briefing",
   PHASE3_BRAIN_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-phase3-brain",
   PHASE3_INTELLIGENCE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-phase3-intelligence",
   OPERATIONS_CHECKPOINT_A_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-operations-checkpoint-a",
-  INVENTORY_SCANNER_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-inventory-scanner",
   STOCK_COUNTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-stock-counts",
   TEAM_MESSAGES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-messages",
   MARKETING_WORKSPACE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-workspace",
@@ -20,7 +18,11 @@ window.VABAR_CONFIG = {
   REPORTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-reports",
   SYSTEM_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-system",
   SETTINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-settings",
+  // Settings › Integrations: status and server-side OAuth (connect hop, test, disconnect).
+  INTEGRATIONS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-integrations",
   ITEM_MASTER_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-item-master",
+  // Atlas AI: conversations, approvals and voice. Answers "not configured" until the owner switches it on.
+  ATLAS_AI_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-ai",
   // Import processing remains fail-closed until its separate activation gate.
   IMPORT_WORKER_API: "",
   // Device subscriptions are opt-in; server-side push delivery remains disabled.
@@ -67,6 +69,14 @@ function loadAtlasAssetOnce({ stylesheetPath, scriptPath, globalName, dataAttrib
     document.head.appendChild(stylesheet);
   }
   if (!scriptPath) return;
+  // S88: AtlasShell.load (assets/js/atlas-shell.js) is the one runtime script
+  // loader; it deduplicates by path whatever the cache key. Pages without the
+  // shell (the public menu) keep the direct fallback.
+  if (window.AtlasShell?.load) {
+    window.AtlasShell.load(scriptPath, { global: globalName, async: true, dataset: dataAttribute ? { [dataAttribute]: 'true' } : {} })
+      .catch((error) => console.error(error));
+    return;
+  }
   if ((globalName && window[globalName]) || document.querySelector(`script[src="${scriptPath}"]`)) return;
   const script = document.createElement('script');
   script.src = scriptPath;
@@ -80,71 +90,20 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
   else window.addEventListener('load', loader, { once: true });
 }
 
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/sprint3-review.css',
-  scriptPath: 'assets/js/sprint3-review.js',
-  globalName: 'AtlasSprint3Review',
-  dataAttribute: 'atlasSprint3Review',
-}));
+// S88: the Brain page, its daily briefing, Phase 3 and Checkpoint K panels and
+// the Checkpoint A routine layers are retired. Home (assets/js/home.js) holds the
+// briefing, Atlas AI › Decisions the decision ledger, and Operations
+// (assets/js/operations.js, loaded by index.html) the server checklists.
 
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/brain-daily-briefing.css',
-  scriptPath: 'assets/js/brain-daily-briefing-v2.js',
-  globalName: 'AtlasDailyBriefing',
-  dataAttribute: 'atlasDailyBriefing',
-}));
-
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/brain-phase3.css',
-  scriptPath: 'assets/js/brain-phase3.js',
-  globalName: 'AtlasPhase3Brain',
-  dataAttribute: 'atlasPhase3Brain',
-}));
-
-// Checkpoint K layers four evidence-gated intelligence tracks over the existing
-// decision-memory workspace. It reads role-permitted production sources through
-// a manager-only gateway and never mutates inventory, orders, menus or waste.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/brain-checkpoint-k.css',
-  scriptPath: 'assets/js/brain-checkpoint-k.js',
-  globalName: 'AtlasCheckpointK',
-  dataAttribute: 'atlasCheckpointK',
-}));
-
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/operations-checkpoint-a.css',
-  scriptPath: 'assets/js/operations-checkpoint-a.js',
-  globalName: 'AtlasCheckpointA',
-  dataAttribute: 'atlasCheckpointA',
-}));
-
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/operations-checkpoint-a-layout.css',
-  scriptPath: 'assets/js/operations-checkpoint-a-layout.js',
-  globalName: 'AtlasCheckpointALayout',
-  dataAttribute: 'atlasCheckpointALayout',
-}));
-
-// Checkpoint B waits until the authenticated application shell is visible.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/inventory-scanner-bootstrap.js',
-  globalName: 'AtlasInventoryScannerBootstrap',
-  dataAttribute: 'atlasInventoryScannerBootstrap',
-}));
-
-// Checkpoint L1 adds mobile, unit-aware stock-count sessions. Count
-// observations and manager verification remain private; only the explicit
-// manager publication boundary may create controlled count adjustments.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/stock-count-bootstrap.js',
-  globalName: 'AtlasStockCountBootstrap',
-  dataAttribute: 'atlasStockCountBootstrap',
-}));
+// Inventory, stock count, Purchasing and the shared Visual Inventory capture
+// (atlas-inventory.js, stock-count-workspace.js, atlas-purchasing.js,
+// atlas-capture.js) load with index.html. Recognition never changes stock; a
+// count changes stock only after a manager verifies it.
 
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/team-messages.css',
-  scriptPath: 'assets/js/team-messages.js',
+  scriptPath: 'assets/js/team-messages.js?v=20260929-s90u',
   globalName: 'AtlasTeamMessages',
   dataAttribute: 'atlasTeamMessages',
 }));
@@ -156,8 +115,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/marketing-workspace.css',
-  scriptPath: 'assets/js/marketing-workspace.js',
+  stylesheetPath: 'assets/css/marketing-workspace.css?v=20260929-s90u',
+  scriptPath: 'assets/js/marketing-workspace.js?v=20260929-s90f',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
 }));
@@ -166,7 +125,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // bootstrap uses browser-native gzip decompression, then installs the Atlas CSS
 // and JavaScript through Blob URLs without inline eval.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/team-profiles-bootstrap.js',
+  scriptPath: 'assets/js/team-profiles-bootstrap.js?v=20260929-s90f',
   globalName: 'AtlasTeamProfilesBootstrap',
   dataAttribute: 'atlasTeamProfilesBootstrap',
 }));
@@ -176,52 +135,18 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // the browser never receives direct Storage credentials or privileged server keys.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/team-profile-photos.css',
-  scriptPath: 'assets/js/team-profile-photos.js',
+  scriptPath: 'assets/js/team-profile-photos.js?v=20260929-s90u',
   globalName: 'AtlasTeamProfilePhotos',
   dataAttribute: 'atlasTeamProfilePhotos',
-}));
-
-// Mobile profile-photo selection uses the normal operating-system image picker.
-// This preserves both gallery/file access and any camera option offered by the
-// device instead of forcing a front-camera capture.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/team-profile-photo-gallery.js',
-  globalName: 'AtlasTeamProfileGallery',
-  dataAttribute: 'atlasTeamProfileGallery',
 }));
 
 // Checkpoint F replaces the Shifts placeholder with a private weekly planner,
 // availability, time-off, publishing and confirmation workspace.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/shifts-workspace.css',
-  scriptPath: 'assets/js/shifts-workspace.js',
+  scriptPath: 'assets/js/shifts-workspace.js?v=20260929-s90f',
   globalName: 'AtlasShifts',
   dataAttribute: 'atlasShifts',
-}));
-
-// Checkpoint F.1 introduced the complete month grid. F.2 turns that grid into
-// the primary monthly planning surface: managers edit any date in the month and
-// publish one immutable month revision for staff while weekly drill-down remains
-// available for detailed review and confirmations.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/shifts-month-calendar.css',
-  scriptPath: 'assets/js/shifts-month-calendar.js?v=20260917-s62',
-  globalName: 'AtlasShiftsMonth',
-  dataAttribute: 'atlasShiftsMonth',
-}));
-
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/shifts-month-editor.css',
-  dataAttribute: 'atlasShiftsMonthEditor',
-}));
-
-// The weekly workspace and the Month extension both listen to the shared tab
-// bar. This bridge keeps the dedicated Month capture handler authoritative so
-// the older weekly bubbling handler cannot rebuild the tabs during the click.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/shifts-month-tab-bridge.js',
-  globalName: 'AtlasShiftsMonthTabBridge',
-  dataAttribute: 'atlasShiftsMonthTabBridge',
 }));
 
 // Checkpoint G replaces the Knowledge placeholder with a version-controlled,
@@ -229,36 +154,25 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // published versions and their version-specific acknowledgement state.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/knowledge-workspace.css',
-  scriptPath: 'assets/js/knowledge-workspace.js',
+  scriptPath: 'assets/js/knowledge-workspace.js?v=20260929-s90u',
   globalName: 'AtlasKnowledge',
   dataAttribute: 'atlasKnowledge',
-}));
-
-// Published Knowledge updates can appear as linked Team announcements. This
-// capture bridge keeps the new Knowledge link type from falling through to the
-// older Team Messages default route.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/knowledge-team-link-bridge.js',
-  globalName: 'AtlasKnowledgeTeamLinkBridge',
-  dataAttribute: 'atlasKnowledgeTeamLinkBridge',
 }));
 
 // Checkpoint H replaces the Reports placeholder with a permission-aware,
 // read-only analysis workspace. It pulls live source records through the
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/reports-workspace.css?v=20260917-s60',
-  scriptPath: 'assets/js/reports-workspace.js?v=20260917-s60',
+  stylesheetPath: 'assets/css/reports-workspace.css?v=20260929-s90f',
+  scriptPath: 'assets/js/reports-workspace.js?v=20260930-s90g',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));
 
-// Checkpoint I adds a manager-only, read-only control room for application
-// health, environments, integrations, data freshness, jobs, incidents,
-// security posture, audit evidence and recovery references.
+// Settings › System health (administrators): read-only application health,
+// environments, data freshness, jobs, incidents and recovery references.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/system-workspace.css',
-  scriptPath: 'assets/js/system-workspace.js',
+  scriptPath: 'assets/js/system-workspace.js?v=20260929-s90f',
   globalName: 'AtlasSystem',
   dataAttribute: 'atlasSystem',
 }));
@@ -267,7 +181,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // control centre for venue configuration, operating rules and personal preferences.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/settings-workspace.css',
-  scriptPath: 'assets/js/settings-workspace.js',
+  scriptPath: 'assets/js/settings-workspace.js?v=20260930-s90g',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
 }));
@@ -279,33 +193,3 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   globalName: 'AtlasNotifications',
   dataAttribute: 'atlasNotifications',
 }));
-
-// A legacy Operations layout can still append its old connection cards to the
-// Settings placeholder. This bridge makes the Checkpoint J workspace authoritative.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/settings-mount-bridge.js',
-  globalName: 'AtlasCheckpointJSettingsMount',
-  dataAttribute: 'atlasCheckpointJSettingsMount',
-}));
-
-/* CHECKPOINT_I_SYSTEM_ASSETS */
-;(() => {
-  const cfg = window.VABAR_CONFIG = window.VABAR_CONFIG || {};
-  cfg.SYSTEM_API = cfg.SYSTEM_API || `${cfg.SUPABASE_URL}/functions/v1/atlas-system`;
-
-  const cssHref = "assets/css/system-workspace.css";
-  if (!document.querySelector(`link[href="${cssHref}"]`)) {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = cssHref;
-    document.head.appendChild(link);
-  }
-
-  const scriptSrc = "assets/js/system-workspace.js";
-  if (!document.querySelector(`script[src="${scriptSrc}"]`)) {
-    const script = document.createElement("script");
-    script.src = scriptSrc;
-    script.async = false;
-    document.head.appendChild(script);
-  }
-})();

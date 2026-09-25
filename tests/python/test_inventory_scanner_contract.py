@@ -7,8 +7,10 @@ MIGRATION = (ROOT / "supabase/migrations/20260803100513_atlas_inventory_scanner_
 EDGE_FUNCTION = (ROOT / "supabase/functions/atlas-inventory-scanner/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
-BROWSER_BOOTSTRAP = (ROOT / "apps/web/assets/js/inventory-scanner-bootstrap.js").read_text()
-BROWSER_MODULE = (ROOT / "apps/web/assets/js/inventory-scanner.js").read_text()
+# S88: the scanner UI is retired; the shared capture module talks to
+# atlas-inventory-recognition and never writes stock.
+BROWSER_INDEX = (ROOT / "apps/web/index.html").read_text()
+BROWSER_MODULE = (ROOT / "apps/web/assets/js/atlas-capture.js").read_text()
 
 
 class InventoryScannerContractTests(unittest.TestCase):
@@ -58,34 +60,36 @@ class InventoryScannerContractTests(unittest.TestCase):
 
     def test_edge_function_uses_custom_profile_authorization(self):
         self.assertIn("requireActiveProfile", EDGE_FUNCTION)
-        self.assertIn('new Set(["admin", "manager", "bartender"])', EDGE_FUNCTION)
         self.assertIn('new Set(["admin", "manager"])', EDGE_FUNCTION)
-        self.assertIn("requireWriter(context)", EDGE_FUNCTION)
         self.assertIn("requireManager(context)", EDGE_FUNCTION)
         self.assertIn("SUPABASE_SERVICE_ROLE_KEY", EDGE_FUNCTION)
         self.assertIn("[functions.atlas-inventory-scanner]", CONFIG)
         self.assertIn("verify_jwt = false", CONFIG)
 
-    def test_live_inventory_path_is_server_side_and_setting_gated(self):
-        self.assertIn("scanner?.settings?.live_apply_enabled", EDGE_FUNCTION)
-        self.assertIn("applyLiveCount", EDGE_FUNCTION)
-        self.assertIn("/rest/v1/rpc/adjust_inventory", EDGE_FUNCTION)
-        self.assertIn('p_movement_type: "count"', EDGE_FUNCTION)
-        self.assertIn("pending_live", EDGE_FUNCTION)
-        self.assertIn("atlas_inventory_scanner_finalize_count", EDGE_FUNCTION)
+    def test_scanner_never_changes_stock_s89(self):
+        # S89 owner gate: scanning stops at identification. The former live
+        # count path (adjust_inventory behind live_apply_enabled) is removed
+        # and the setting can no longer be enabled.
+        self.assertNotIn("applyLiveCount", EDGE_FUNCTION)
+        self.assertNotIn("/rest/v1/rpc/adjust_inventory", EDGE_FUNCTION)
+        self.assertNotIn("atlas_inventory_scanner_record_count", EDGE_FUNCTION)
+        self.assertNotIn("atlas_inventory_scanner_finalize_count", EDGE_FUNCTION)
+        self.assertIn("throw new ApiError(410,", EDGE_FUNCTION)
+        self.assertIn("scanner_changes_stock: false", EDGE_FUNCTION)
+        foundation = (ROOT / "supabase/migrations/20260927090000_s89_visual_inventory_foundation.sql").read_text()
+        self.assertIn("check (live_apply_enabled = false)", foundation)
 
     def test_browser_has_no_service_key_or_direct_database_access(self):
-        self.assertIn("INVENTORY_SCANNER_API", BROWSER_CONFIG)
-        self.assertIn("inventory-scanner-bootstrap.js", BROWSER_CONFIG)
-        self.assertIn("SCANNER_SCRIPT = 'assets/js/inventory-scanner.js'", BROWSER_BOOTSTRAP)
-        self.assertNotIn(
-            "SUPABASE_SERVICE_ROLE_KEY",
-            BROWSER_CONFIG + BROWSER_BOOTSTRAP + BROWSER_MODULE,
-        )
+        # The retired scanner UI and its bootstrap are gone and unreferenced.
+        for name in ("inventory-scanner.js", "inventory-scanner-bootstrap.js"):
+            self.assertFalse((ROOT / "apps/web/assets/js" / name).exists(), name)
+            self.assertNotIn(name, BROWSER_CONFIG + BROWSER_INDEX)
+        self.assertIn("assets/js/atlas-capture.js", BROWSER_INDEX)
+        self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER_MODULE)
         self.assertNotRegex(BROWSER_MODULE, r"(?:atlasSupabase|supabase|client)\s*\.\s*from\s*\(")
         self.assertNotIn("adjust_inventory", BROWSER_MODULE)
-        self.assertIn("Images not uploaded", BROWSER_MODULE)
-        self.assertIn("Uncertain matches never change inventory", BROWSER_MODULE)
+        self.assertIn("atlas-inventory-recognition", BROWSER_MODULE)
+        self.assertIn("payload.stock_changed === true", BROWSER_MODULE)
 
 
 if __name__ == "__main__":

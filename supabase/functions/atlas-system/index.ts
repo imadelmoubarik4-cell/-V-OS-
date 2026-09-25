@@ -1,9 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { AuthError, actorLabel, authConfig, requireRole, resolveActor } from "../_shared/auth.mjs";
 
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
 const FUNCTION_VERSION = "0.2.0";
 const GITHUB_BRANCH_URL = "https://api.github.com/repos/imadelmoubarik4-cell/-V-OS-/commits/codex/pr26-live-validation-fixes";
 
@@ -66,50 +63,32 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
+function profileLabel(profile: Partial<AtlasProfile> | null | undefined): string {
+  return actorLabel(profile);
 }
 
-function profileLabel(profile: Partial<AtlasProfile> | null | undefined): string {
-  return profile?.display_name?.trim()
-    || profile?.email?.trim()
-    || "Atlas manager";
+// The production Auth/REST project and its publishable key come only from the
+// function environment (_shared/auth.mjs authConfig); unconfigured fails closed.
+function productionAuthUrl(): string {
+  return authConfig(Deno.env).projectUrl;
+}
+
+function productionPublishableKey(): string {
+  return authConfig(Deno.env).publishableKey;
 }
 
 async function requireManagerProfile(request: Request): Promise<AtlasContext> {
-  const token = bearerToken(request);
-  const headers = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
-  profileUrl.searchParams.set("id", `eq.${user.id}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active,updated_at");
-  profileUrl.searchParams.set("limit", "1");
-  const profileResponse = await fetch(profileUrl, { headers });
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas staff profile could not be verified.");
-  const profiles = await profileResponse.json() as AtlasProfile[];
-  const profile = profiles[0];
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive. System access has been removed.");
-  if (!MANAGER_ROLES.has(profile.role)) throw new ApiError(403, "System is available only to managers and administrators.");
-
-  return { token, user: { id: user.id, email: user.email }, profile };
+  const actor = await resolveActor(request, Deno.env, fetch, {
+    inactiveMessage: "This Atlas profile is inactive. System access has been removed.",
+    profileColumns: ["updated_at"],
+  });
+  requireRole(actor, MANAGER_ROLES, "System is available only to managers and administrators.");
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
 }
 
 function productionHeaders(context: AtlasContext, extra: Record<string, string> = {}) {
   return {
-    apikey: AUTH_PUBLISHABLE_KEY,
+    apikey: productionPublishableKey(),
     authorization: `Bearer ${context.token}`,
     accept: "application/json",
     "cache-control": "no-store",
@@ -118,7 +97,7 @@ function productionHeaders(context: AtlasContext, extra: Record<string, string> 
 }
 
 async function productionProfiles(context: AtlasContext): Promise<AtlasProfile[]> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/profiles`);
   url.searchParams.set("select", "id,email,display_name,role,active,updated_at");
   url.searchParams.set("order", "active.desc,display_name.asc.nullslast,email.asc");
   url.searchParams.set("limit", "500");
@@ -145,7 +124,7 @@ async function productionSource(
     trustedForBrain: boolean;
   },
 ): Promise<ProductionSource> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/${definition.table}`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/${definition.table}`);
   url.searchParams.set("select", `id,${definition.latestColumn}`);
   url.searchParams.set("order", `${definition.latestColumn}.desc.nullslast`);
   url.searchParams.set("limit", "1");
@@ -375,7 +354,7 @@ Deno.serve(async (request: Request) => {
       },
     });
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     console.error("System API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The System service is temporarily unavailable." }, 500);
   }

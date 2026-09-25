@@ -1,0 +1,156 @@
+[
+  {
+    "id": "mm-001", "category": "multimodal", "blocking": true,
+    "question": "[photo of the Globus delivery note] Does this match our order?",
+    "actor": "manager", "tool": "purchasing.compare_delivery",
+    "args": { "purchase_order_id": "@po.globusOrdered", "observed": [{ "item_id": null, "name": "Aperol", "quantity": 12, "unit_cost": 3700 }, { "item_id": null, "name": "Cointreau", "quantity": 5, "unit_cost": null }, { "item_id": null, "name": "Campari", "quantity": 6, "unit_cost": null }], "note": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Globus delivery: 1 lines match, 3 discrepancies", "stock changes only if you approve it"],
+      "data": {
+        "data.lines[0]": { "name": "Aperol", "status": "match", "price_changed": true, "ordered_unit_cost": 3600, "observed_unit_cost": 3700 },
+        "data.lines[1]": { "name": "Cointreau", "status": "short", "observed": 5, "remaining": 6, "to_receive": 5 },
+        "data.unexpected": [{ "item_id": null, "name": "Campari", "quantity": 6 }],
+        "data.discrepancies": { "$len": 3 }
+      },
+      "evidence": [
+        { "kind": "calculation", "label": "Cointreau", "value": "5 delivered vs 6 outstanding (short)" },
+        { "kind": "interpretation", "label": "Unexpected item: Campari", "value": "6 delivered but not on this order" },
+        { "kind": "calculation", "label": "Price change: Aperol", "value": "3.700 kr delivered vs 3.600 kr ordered" }
+      ],
+      "proposal": {
+        "kind": "purchase_order.receive", "required_roles": ["admin", "manager"],
+        "command": { "p_version": 3, "p_receipt": [{ "item_id": "@item.aperol", "quantity": 12, "unit_cost": 3700, "note": null }, { "item_id": "@item.cointreau", "quantity": 5, "unit_cost": null, "note": null }] },
+        "preview": { "will_not_change": { "$includes": "Unexpected items found in the delivery are not added." } }
+      }
+    },
+    "notes": "Observed items as a vision model would extract them from the delivery photo."
+  },
+  {
+    "id": "mm-002", "category": "multimodal", "blocking": true,
+    "question": "[photo] Receive the Globus delivery as counted.",
+    "actor": "manager", "tool": "purchasing.compare_delivery",
+    "args": { "purchase_order_id": "@po.globusOrdered", "observed": [{ "item_id": "@item.aperol", "name": null, "quantity": 12, "unit_cost": null }, { "item_id": "@item.cointreau", "name": null, "quantity": 6, "unit_cost": null }], "note": "Checked against the delivery note photo" },
+    "expected": { "ok": true, "data": { "data.discrepancies": { "$len": 0 } }, "proposal": { "kind": "purchase_order.receive" } },
+    "execute": {
+      "as": "manager",
+      "expected": { "ok": true, "writes": ["atlas_purchase_order_command_v2"], "summary": ["2 lines posted to stock", "received"], "write_args": { "[0].args.p_action": "receive_lines", "[0].args.p_version": 3 } },
+      "after": { "tool": "inventory.get", "args": { "item_id": "@item.aperol" }, "data": { "data.item.quantity": 12 } }
+    },
+    "notes": "Aperol stock (verified 0) becomes 12 only after the manager approves the receiving proposal."
+  },
+  {
+    "id": "mm-003", "category": "multimodal", "blocking": true,
+    "question": "[photo of the Ölgerðin delivery] Everything here?",
+    "actor": "manager", "tool": "purchasing.compare_delivery",
+    "args": { "purchase_order_id": "@po.olgerdinOrdered", "observed": [{ "item_id": null, "name": "Gull Lager 50 l keg", "quantity": 2, "unit_cost": null }, { "item_id": null, "name": "Coca-Cola", "quantity": 24, "unit_cost": 120 }], "note": null },
+    "expected": { "ok": true, "summary": ["2 lines match, 0 discrepancies"], "data": { "data.discrepancies": { "$len": 0 } }, "proposal": { "kind": "purchase_order.receive", "command": { "p_receipt": { "$len": 2 } } } }
+  },
+  {
+    "id": "mm-004", "category": "multimodal", "blocking": true,
+    "question": "[photo] The Vínnes wine just arrived — check it against the order.",
+    "actor": "manager", "tool": "purchasing.compare_delivery",
+    "args": { "purchase_order_id": "@po.vinnesDraft", "observed": [{ "item_id": null, "name": "Angelo Pinot Grigio", "quantity": 6, "unit_cost": null }], "note": null },
+    "expected": { "ok": true, "summary": ["cannot be received yet"], "data": { "data.receiving_note": { "$includes": "The order is draft" } }, "proposal": null },
+    "notes": "The Vínnes order is still a draft: it was never placed, so nothing can be received."
+  },
+  {
+    "id": "mm-005", "category": "multimodal", "blocking": true,
+    "question": "[photo] The rest of the Innnes citrus came.",
+    "actor": "manager", "tool": "purchasing.compare_delivery",
+    "args": { "purchase_order_id": "@po.innnesPartial", "observed": [{ "item_id": null, "name": "Limes", "quantity": 40, "unit_cost": null }, { "item_id": null, "name": "Lemons", "quantity": 50, "unit_cost": null }], "note": null },
+    "expected": { "ok": true, "data": { "data.lines[0]": { "name": "Limes", "already_received": 60, "remaining": 40, "status": "match" }, "data.discrepancies": { "$len": 0 } }, "proposal": { "kind": "purchase_order.receive", "command": { "p_version": 4 } } }
+  },
+  {
+    "id": "mm-006", "category": "multimodal", "blocking": true,
+    "question": "[photo] Ölgerðin sent 30 cans of Coke and no kegs.",
+    "actor": "manager", "tool": "purchasing.compare_delivery",
+    "args": { "purchase_order_id": "@po.olgerdinOrdered", "observed": [{ "item_id": null, "name": "Coca-Cola", "quantity": 30, "unit_cost": null }], "note": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.lines[0]": { "name": "Gull Lager 50 l keg", "status": "missing" }, "data.lines[1]": { "status": "over", "to_receive": 24, "over_tolerance": true }, "data.discrepancies": { "$len": 2 } },
+      "proposal": { "kind": "purchase_order.receive", "command": { "p_receipt": [{ "item_id": "@item.coke", "quantity": 24, "unit_cost": null, "note": null }] } }
+    },
+    "notes": "Over-delivery beyond the 0% tolerance is not received; the missing kegs are reported."
+  },
+  {
+    "id": "mm-007", "category": "multimodal", "blocking": true,
+    "question": "[photo] Check this delivery.",
+    "actor": "bartender", "tool": "purchasing.compare_delivery",
+    "args": { "purchase_order_id": "@po.globusOrdered", "observed": [{ "item_id": null, "name": "Aperol", "quantity": 12, "unit_cost": null }], "note": null },
+    "expected": { "ok": false, "error": "forbidden" }
+  },
+  {
+    "id": "voice-001", "category": "voice_transcript", "blocking": true,
+    "question": "Atlas, I just counted six bottles of Tanqueray and two Campari",
+    "actor": "bartender", "tool": "inventory.prepare_count",
+    "args": { "entries": [{ "item_id": null, "item_query": "Tanqueray", "quantity": 6, "unit": "bottle", "note": null }, { "item_id": null, "item_query": "Campari", "quantity": 2, "unit": "bottle", "note": null }], "title": null, "note": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Prepared a stock count with 2 counted lines", "Nothing is saved until you approve"],
+      "evidence": [{ "kind": "fact", "label": "Counted Tanqueray London Dry Gin", "value": "6 bottle (reported by you)" }, { "kind": "fact", "label": "Current stock of Tanqueray London Dry Gin", "value": "4 bottle" }],
+      "records": ["inventory_item:@item.tanqueray", "inventory_item:@item.campari"],
+      "proposal": {
+        "kind": "stock_count.draft", "required_roles": ["admin", "manager", "bartender"],
+        "command": { "scope_type": "category", "scope_value": "Spirits", "title": "Atlas count 2026-09-24", "entries": [{ "item_id": "@item.tanqueray", "item_name": "Tanqueray London Dry Gin", "quantity": 6, "unit": "bottle", "note": null }, { "item_id": "@item.campari", "item_name": "Campari", "quantity": 2, "unit": "bottle", "note": null }] },
+        "preview": { "will_not_change": { "$includes": "No direct stock adjustment is made." } }
+      }
+    }
+  },
+  {
+    "id": "voice-002", "category": "voice_transcript", "blocking": true,
+    "question": "Atlas, I just counted six bottles of Tanqueray and two Campari — go ahead.",
+    "actor": "bartender", "tool": "inventory.prepare_count",
+    "args": { "entries": [{ "item_id": null, "item_query": "Tanqueray", "quantity": 6, "unit": "bottle", "note": null }, { "item_id": null, "item_query": "Campari", "quantity": 2, "unit": "bottle", "note": null }], "title": null, "note": null },
+    "expected": { "ok": true, "proposal": { "kind": "stock_count.draft" } },
+    "execute": {
+      "as": "bartender",
+      "expected": { "ok": true, "writes": ["stock-counts:start", "stock-counts:save-line", "stock-counts:save-line"], "summary": ["2 of 2 counted lines saved", "stock has not changed"], "write_args": { "[0].body.scope_type": "category", "[1].body.observed_input_quantity": 6 } },
+      "after": { "tool": "inventory.get", "args": { "item_id": "@item.tanqueray" }, "data": { "data.item.quantity": 4 } }
+    },
+    "notes": "Approval starts a count session; stock stays 4 until a manager verifies the count."
+  },
+  {
+    "id": "voice-003", "category": "voice_transcript", "blocking": true,
+    "question": "Counted eighteen limes and a case of tonic in the walk-in.",
+    "actor": "bartender", "tool": "inventory.prepare_count",
+    "args": { "entries": [{ "item_id": null, "item_query": "limes", "quantity": 18, "unit": "unit", "note": null }, { "item_id": null, "item_query": "tonic", "quantity": 1, "unit": "case", "note": "walk-in" }], "title": null, "note": null },
+    "expected": { "ok": true, "proposal": { "kind": "stock_count.draft", "command": { "scope_type": "all", "scope_value": null, "entries[1].unit": "case", "entries[1].note": "walk-in" } } }
+  },
+  {
+    "id": "voice-004", "category": "voice_transcript", "blocking": true,
+    "question": "Um, Angelo… we've got ten bottles of the Angelo Pinot Grigio.",
+    "actor": "manager", "tool": "inventory.prepare_count",
+    "args": { "entries": [{ "item_id": null, "item_query": "Angelo", "quantity": 10, "unit": "bottle", "note": null }], "title": "Cellar recount", "note": null },
+    "expected": { "ok": true, "proposal": { "kind": "stock_count.draft", "command": { "title": "Cellar recount", "scope_value": "Wine", "entries[0].item_id": "@item.angelo" } } }
+  },
+  {
+    "id": "voice-005", "category": "voice_transcript", "blocking": true,
+    "question": "Order two cases of Prosecco from Karl K.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": null, "supplier_query": "Karl K", "use_suggestions": null, "lines": [{ "item_id": null, "item_query": "Prosecco", "quantity": 12, "unit_cost": null }], "note": "Voice note", "expected_delivery_date": null },
+    "expected": { "ok": true, "data": { "data.estimated_total": 30000 }, "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.karlk", "p_lines[0].item_id": "@item.prosecco", "p_note": "Voice note" } } }
+  },
+  {
+    "id": "voice-006", "category": "voice_transcript", "blocking": true,
+    "question": "Put Jón on Wednesday next week, six till midnight.",
+    "actor": "manager", "tool": "shifts.prepare_draft",
+    "args": { "person_id": null, "person_query": "Jón", "date": "2026-09-30", "start_time": "18:00", "end_time": "00:00", "role_name": null, "break_minutes": null, "note": null },
+    "expected": { "ok": true, "data": { "data.warnings[0]": { "$includes": "already has 1 overlapping shift" } }, "proposal": { "kind": "shift.draft" } },
+    "notes": "Jón already works 17:00–00:00 that Wednesday; Atlas warns about the overlap."
+  },
+  {
+    "id": "voice-007", "category": "voice_transcript", "blocking": false,
+    "question": "Hey Atlas, who's working tonight?",
+    "actor": "bartender", "tool": "shifts.who_is_working",
+    "args": { "day": "today", "date": null },
+    "expected": { "ok": true, "data": { "data.shifts": { "$len": 3 } } }
+  },
+  {
+    "id": "voice-008", "category": "voice_transcript", "blocking": true,
+    "question": "Atlas, set Tanqueray to forty bottles.",
+    "actor": "viewer", "tool": "inventory.prepare_count",
+    "args": { "entries": [{ "item_id": null, "item_query": "Tanqueray", "quantity": 40, "unit": "bottle", "note": null }], "title": null, "note": null },
+    "expected": { "ok": false, "error": "forbidden" }
+  }
+]

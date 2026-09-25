@@ -49,3 +49,19 @@ jobs:
 
       - name: Replay historical migrations and run security acceptance
         run: bash scripts/verify_full_migration_replay.sh
+
+      - name: Run S87 acceptance (recipe delete guard, media policies, Knowledge role matrix)
+        run: bash scripts/verify_s87_previews.sh
+
+      - name: Run S88 acceptance (venue clock, shared daily checklists, inventory activation)
+        run: bash scripts/verify_s88_previews.sh
+      - name: Run S88 purchasing and Data review acceptance
+        run: bash scripts/verify_s88_purchasing_previews.sh
+      - name: Run S88 integrations acceptance (credential isolation, single-use OAuth state)
+        run: bash scripts/verify_s88_integrations_previews.sh
+      - name: Run S88 Atlas AI acceptance (ownership, proposals, Brain, Knowledge search, media)
+        run: bash scripts/verify_s88_ai_previews.sh
+      - name: Run S89 acceptance (Visual Inventory identity, duplicate guard, recognition privileges, governance, canonical report truth)
+        run: bash scripts/verify_s89_visual_inventory_previews.sh
+      - name: Run S90 workflow-integrity acceptance (idempotent stock adjustments, count baselines at counted_at)
+        run: bash scripts/verify_s90_workflow_integrity_previews.sh

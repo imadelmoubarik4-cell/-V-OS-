@@ -1,0 +1,114 @@
+[
+  {
+    "id": "ops-001", "category": "operations", "blocking": true,
+    "question": "Show me everything that requires my attention today.",
+    "actor": "manager", "tool": "briefing.today",
+    "args": {},
+    "expected": {
+      "ok": true,
+      "summary": ["Business date 2026-09-24", "Opening hours are not set", "7 alerts (4 high)", "5 items to order"],
+      "data": {
+        "data.hours": null, "data.alerts": { "$len": 7 }, "data.working_today.shifts": { "$len": 3 },
+        "data.purchasing": { "suggested_items": 5, "estimated_total": 170760, "open_orders": 4 },
+        "data.operations.overdue": ["Clean coffee machine"],
+        "data.data_quality[0]": { "code": "inventory.missing_par", "count": 24 }
+      },
+      "evidence": [{ "kind": "missing", "label": "Opening hours", "value": "not set in Settings" }],
+      "unknown": { "count": 16 }
+    }
+  },
+  {
+    "id": "ops-002", "category": "operations", "blocking": true,
+    "question": "What do I need to know before my shift?",
+    "actor": "bartender", "tool": "briefing.today",
+    "args": {},
+    "expected": {
+      "ok": true,
+      "data": { "data.purchasing": { "$absent": true }, "data.data_quality": { "$absent": true }, "data.alerts": { "$len": 6 }, "data.working_today.shifts": { "$len": 3 } }
+    },
+    "notes": "Staff briefing: operational parts only (no order suggestions, deliveries or data review)."
+  },
+  {
+    "id": "ops-003", "category": "operations", "blocking": true,
+    "question": "Brief me for today.",
+    "actor": "manager", "world": "hours", "tool": "briefing.today",
+    "args": {},
+    "expected": {
+      "ok": true,
+      "summary": ["Open 16:00–01:00"],
+      "data": { "data.hours.is_open": true, "data.hours.close_next_day": true },
+      "evidence": [{ "kind": "fact", "label": "Opening hours today", "value": "16:00–01:00" }]
+    }
+  },
+  {
+    "id": "ops-004", "category": "operations", "blocking": true,
+    "question": "What's overdue on today's checklists?",
+    "actor": "bartender", "tool": "operations.status",
+    "args": { "date": null },
+    "expected": {
+      "ok": true,
+      "summary": ["2026-09-24: 1 of 4 routines completed, 1 overdue", "Opening checklist completed"],
+      "data": { "data.routines": { "$some": { "name": "Clean coffee machine", "status": "overdue" } }, "data.checklists.configured": true, "data.temperature.outside_range_points": 1 },
+      "evidence": [{ "kind": "fact", "label": "Temperature log", "value": "2 of 4 points logged, 1 out of range" }],
+      "records": ["routine:@routine.coffee"]
+    }
+  },
+  {
+    "id": "ops-005", "category": "operations", "blocking": true,
+    "question": "What needs attention right now?",
+    "actor": "manager", "tool": "operations.alerts",
+    "args": {},
+    "expected": {
+      "ok": true,
+      "summary": ["7 things need attention (4 high)", "only the 24 items with a current count"],
+      "data": { "data.alerts": { "$some": { "title": "2 deliveries are overdue" } }, "data.stock_summary": { "below_par": 8, "out_of_stock": 1, "missing_par": 24 }, "data.recipe_summary.unavailable": 1 },
+      "evidence": [{ "kind": "missing", "label": "Stock alerts coverage", "value": "16 of 40 items have no current verified count" }, { "kind": "calculation", "label": "Recipe readiness", "value": "1 ready, 6 low, 1 unavailable, 3 incomplete" }],
+      "unknown": { "count": 16 }
+    }
+  },
+  {
+    "id": "ops-006", "category": "operations", "blocking": true,
+    "question": "Anything I should know about?",
+    "actor": "viewer", "tool": "operations.alerts",
+    "args": {},
+    "expected": { "ok": true, "data": { "data.alerts": { "$len": 6 }, "data.alerts[0].severity": "high" }, "evidence": [{ "kind": "missing", "label": "Stock alerts coverage" }] },
+    "notes": "No purchasing alert for staff."
+  },
+  {
+    "id": "ops-007", "category": "operations", "blocking": false,
+    "question": "Did we decide anything about the Angelo order before?",
+    "actor": "manager", "tool": "decisions.history",
+    "args": { "query": "Angelo", "subject_type": null, "subject_key": null, "limit": null },
+    "expected": {
+      "ok": true,
+      "data": { "data.decisions": { "$len": 1 }, "data.decisions[0]": { "action": "defer", "reason": "delivery_expected", "by": "Maria Manager" } },
+      "evidence": [{ "kind": "fact", "label": "defer: Order Angelo Pinot Grigio", "value": "2026-09-10" }]
+    }
+  },
+  {
+    "id": "ops-008", "category": "operations", "blocking": false,
+    "question": "History for this item?",
+    "actor": "manager", "tool": "decisions.history",
+    "args": { "query": null, "subject_type": "inventory_item", "subject_key": "@item.angelo", "limit": 5 },
+    "expected": { "ok": true, "data": { "data.decisions": { "$len": 1 } } }
+  },
+  {
+    "id": "ops-009", "category": "operations", "blocking": false,
+    "question": "Any marketing posts due today?",
+    "actor": "bartender", "tool": "marketing.suggestions",
+    "args": { "date": null },
+    "expected": {
+      "ok": true,
+      "summary": ["2 marketing ideas for 2026-09-24 (seeded templates, not data-driven)"],
+      "data": { "data.suggestions": { "$some": { "title": "Happy hour reminder", "due_today": true } } },
+      "evidence": [{ "kind": "interpretation", "label": "Basis", "value": "Seeded templates" }]
+    }
+  },
+  {
+    "id": "ops-010", "category": "operations", "blocking": false,
+    "question": "Open the stock count screen.",
+    "actor": "bartender", "tool": "app.open",
+    "args": { "target": "stock_count", "record_type": null, "record_id": null, "label": null },
+    "expected": { "ok": true, "data": { "data.route": "#inventory/counts" } }
+  }
+]

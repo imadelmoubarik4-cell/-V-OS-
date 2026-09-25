@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atlas reference</title>
+<meta name="description" content="North-star visual reference for the Atlas experience redesign. Static; data is illustrative.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   Atlas reference — refined tokens (mirrors docs/design/Atlas_Experience_Redesign.md §3)
+   ========================================================================== */
+@layer atlas.tokens, atlas.base, atlas.components, atlas.modules;
+
+@layer atlas.tokens {
+:root {
+  /* Brand v1.0 palette (docs/brand/README.md) */
+  --atlas-midnight: #0B0F14; --atlas-slate: #1F2937; --atlas-mist: #CBD5E1;
+  --atlas-snow: #F8FAFC; --atlas-blue: #3B82F6;
+
+  /* Surfaces */
+  --bg: #ffffff;              /* content canvas */
+  --bg-subtle: #f8fafc;       /* Snow: sidebar, table header, inset */
+  --bg-muted: #f1f5f9;        /* hover on subtle, active nav, skeleton */
+  --surface: #ffffff;         /* cards, sheets, popovers */
+  --overlay: rgba(11, 15, 20, .32);
+
+  /* Text */
+  --text: #0b0f14;            /* Midnight — 19.2:1 on white */
+  --text-2: #475569;          /* secondary — 7.6:1 on white */
+  --text-3: #606c80;          /* placeholder, meta — 5.3:1; never body copy */
+  --text-on-accent: #ffffff;
+  --ink: #1f2937;             /* Slate: tooltips, toasts */
+
+  /* Lines */
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;     /* Mist */
+  --line-subtle: #f1f5f9;
+
+  /* Accent: Atlas Blue for indicators and focus; #2563eb where text sits on or is blue */
+  --accent-brand: #3b82f6;    /* never behind text (white on it is 3.7:1) */
+  --accent: #2563eb;          /* 5.2:1 with white text */
+  --accent-hover: #1d4ed8;
+  --accent-press: #1e40af;
+  --accent-soft: #eff6ff;
+  --accent-soft-hover: #dbeafe;
+  --accent-text: #2563eb;
+
+  /* Status */
+  --positive: #047857; --positive-soft: #ecfdf5;
+  --warning: #b45309;  --warning-icon: #d97706; --warning-soft: #fffbeb;
+  --danger: #c42020;   --danger-soft: #fef2f2;
+  --neutral-soft: #f1f5f9;
+
+  /* Type */
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --type-display: 500 32px/38px var(--font-display);  --track-display: -0.02em;
+  --type-title:   600 24px/32px var(--font-sans);     --track-title: -0.015em;
+  --type-section: 600 17px/24px var(--font-sans);     --track-section: -0.005em;
+  --type-heading: 600 15px/22px var(--font-sans);
+  --type-body:    400 14px/20px var(--font-sans);
+  --type-body-lg: 400 15px/24px var(--font-sans);
+  --type-label:   500 13px/18px var(--font-sans);
+  --type-meta:    400 13px/18px var(--font-sans);
+  --type-caption: 400 12px/16px var(--font-sans);
+  --type-kpi:     500 28px/32px var(--font-sans);     --track-kpi: -0.02em;
+  --type-num:     500 14px/20px var(--font-sans);
+
+  /* Space (4px base) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px; --s-20: 80px;
+
+  /* Radius */
+  --r-xs: 4px; --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 999px;
+
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgba(11, 15, 20, .05);
+  --shadow-pop: 0 2px 6px rgba(11, 15, 20, .06), 0 12px 32px rgba(11, 15, 20, .10);
+  --shadow-modal: 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20);
+
+  /* Controls */
+  --control-sm: 32px; --control-md: 36px; --control-lg: 44px; --touch: 44px;
+  --icon-sm: 16px; --icon-md: 18px; --icon-lg: 20px; --icon-stroke: 1.75;
+
+  /* Shell */
+  --sidebar-w: 240px; --sidebar-rail: 64px; --topbar-h: 56px; --tabbar-h: 56px;
+  --page-max: 1200px; --page-gutter: 40px; --reading-max: 720px;
+
+  /* Motion */
+  --dur-1: 120ms; --dur-2: 180ms; --dur-3: 240ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-in-out: cubic-bezier(.4, 0, .2, 1);
+}
+@media (max-width: 1279px) { :root { --page-gutter: 32px; } }
+@media (max-width: 1023px) { :root { --page-gutter: 24px; } }
+@media (max-width: 767px)  { :root { --page-gutter: 16px; --type-title: 600 22px/28px var(--font-sans); --type-body: 400 15px/22px var(--font-sans); --type-display: 500 28px/34px var(--font-display); } }
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+@layer atlas.base {
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: var(--type-body); -webkit-font-smoothing: antialiased; font-feature-settings: 'tnum' 0; }
+h1, h2, h3, h4, p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.icon { width: var(--icon-sm); height: var(--icon-sm); flex: none; fill: none; stroke: currentColor; stroke-width: var(--icon-stroke); stroke-linecap: round; stroke-linejoin: round; }
+.icon--md { width: var(--icon-md); height: var(--icon-md); }
+.icon--lg { width: var(--icon-lg); height: var(--icon-lg); }
+:where(button, a, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--accent-brand); outline-offset: 2px; border-radius: var(--r-sm); }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-2); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; } }
+}
+
+/* ==========================================================================
+   Components
+   ========================================================================== */
+@layer atlas.components {
+/* Buttons */
+.atlas-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); height: var(--control-md); padding: 0 14px; border-radius: var(--r-md); border: 1px solid transparent; font: var(--type-label); font-size: 14px; white-space: nowrap; transition: background var(--dur-1) var(--ease-out), border-color var(--dur-1), color var(--dur-1); }
+.atlas-btn .icon { margin-left: -2px; }
+.atlas-btn--primary { background: var(--accent); color: var(--text-on-accent); }
+.atlas-btn--primary:hover { background: var(--accent-hover); }
+.atlas-btn--primary:active { background: var(--accent-press); }
+.atlas-btn--secondary { background: var(--surface); border-color: var(--line-strong); color: var(--text); box-shadow: var(--shadow-1); }
+.atlas-btn--secondary:hover { background: var(--bg-subtle); }
+.atlas-btn--ghost { background: transparent; color: var(--text); }
+.atlas-btn--ghost:hover { background: var(--bg-muted); }
+.atlas-btn--danger { background: var(--surface); border-color: var(--line-strong); color: var(--danger); }
+.atlas-btn--danger-solid { background: var(--danger); color: #fff; }
+.atlas-btn--sm { height: var(--control-sm); padding: 0 10px; font-size: 13px; }
+.atlas-btn--lg { height: var(--control-lg); padding: 0 18px; font-size: 15px; }
+.atlas-btn[disabled], .atlas-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+.atlas-btn.is-loading { color: transparent; position: relative; }
+.atlas-btn.is-loading::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; animation: spin 700ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.atlas-icon-btn { display: inline-grid; place-items: center; width: var(--control-md); height: var(--control-md); border-radius: var(--r-md); border: 0; background: transparent; color: var(--text-2); position: relative; }
+.atlas-icon-btn:hover { background: var(--bg-muted); color: var(--text); }
+.atlas-icon-btn .dot { position: absolute; top: 8px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg); }
+@media (pointer: coarse) { .atlas-btn { height: var(--control-lg); } .atlas-btn--sm { height: 40px; } .atlas-icon-btn { width: var(--touch); height: var(--touch); } }
+
+/* Keyboard hint */
+.kbd { display: inline-flex; align-items: center; gap: 2px; height: 20px; padding: 0 6px; border-radius: var(--r-xs); border: 1px solid var(--line); background: var(--surface); color: var(--text-2); font: 500 12px/1 var(--font-sans); }
+
+/* Inputs */
+.atlas-field { display: grid; gap: 6px; }
+.atlas-field > label, .atlas-label { font: var(--type-label); color: var(--text); }
+.atlas-field .help { font: var(--type-caption); color: var(--text-2); }
+.atlas-field .error { font: var(--type-caption); color: var(--danger); display: flex; gap: 6px; align-items: center; }
+.atlas-input, .atlas-select { width: 100%; height: var(--control-md); padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); font: var(--type-body); color: var(--text); transition: border-color var(--dur-1), box-shadow var(--dur-1); }
+.atlas-input::placeholder { color: var(--text-3); }
+.atlas-input:hover, .atlas-select:hover { border-color: #c2c2bc; }
+.atlas-input:focus, .atlas-select:focus { outline: none; border-color: var(--accent-brand); box-shadow: 0 0 0 3px rgba(59, 130, 246, .20); }
+.atlas-input[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(192, 54, 44, .10); }
+.atlas-select { appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235b616b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+.atlas-affix { position: relative; }
+.atlas-affix .atlas-input { padding-right: 44px; }
+.atlas-affix .suffix { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-2); font: var(--type-meta); }
+@media (pointer: coarse) { .atlas-input, .atlas-select { height: var(--control-lg); font-size: 16px; } }
+.atlas-search { position: relative; }
+.atlas-search .icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-3); pointer-events: none; }
+.atlas-search .atlas-input { padding-left: 34px; }
+
+/* Toggle / checkbox */
+.atlas-toggle { position: relative; width: 36px; height: 20px; border-radius: var(--r-pill); background: #cfcfca; border: 0; flex: none; transition: background var(--dur-2) var(--ease-out); padding: 0; }
+.atlas-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform var(--dur-2) var(--ease-out); }
+.atlas-toggle[aria-checked="true"] { background: var(--accent); }
+.atlas-toggle[aria-checked="true"]::after { transform: translateX(16px); }
+.atlas-check { width: 16px; height: 16px; border-radius: var(--r-xs); border: 1.5px solid #bdbdb7; background: var(--surface); display: inline-grid; place-items: center; flex: none; }
+.atlas-check.is-on { background: var(--accent); border-color: var(--accent); }
+.atlas-check.is-on::after { content: ''; width: 8px; height: 4px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(1px, -1px); }
+
+/* Segmented control */
+.atlas-segmented { display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--r-md); background: var(--bg-muted); }
+.atlas-segmented button { height: 28px; padding: 0 12px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: var(--type-label); }
+.atlas-segmented button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(11,15,20,.08), 0 0 0 1px rgba(11,15,20,.04); }
+@media (pointer: coarse) { .atlas-segmented button { height: 36px; } }
+
+/* Tabs (page-level) */
+.atlas-tabs { display: flex; gap: var(--s-6); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.atlas-tabs a { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 40px; color: var(--text-2); font: var(--type-label); font-size: 14px; white-space: nowrap; text-decoration: none; }
+.atlas-tabs a:hover { color: var(--text); }
+.atlas-tabs a[aria-current="page"] { color: var(--text); }
+.atlas-tabs a[aria-current="page"]::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: var(--text); }
+.atlas-tabs .count { font: var(--type-caption); color: var(--text-2); background: var(--neutral-soft); border-radius: var(--r-pill); padding: 1px 6px; }
+
+/* Chips */
+.atlas-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font: var(--type-label); white-space: nowrap; }
+.atlas-chip .icon { color: var(--text-2); }
+.atlas-chip.is-active { background: var(--accent-soft); border-color: transparent; color: var(--accent-text); }
+.atlas-chip.is-active .icon { color: var(--accent-text); }
+.atlas-chip--dashed { border-style: dashed; color: var(--text-2); }
+@media (pointer: coarse) { .atlas-chip { height: 36px; padding: 0 12px; } }
+
+/* Status pill */
+.atlas-pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--r-pill); font: 500 12px/16px var(--font-sans); white-space: nowrap; background: var(--neutral-soft); color: var(--text-2); }
+.atlas-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .9; }
+.atlas-pill--positive { background: var(--positive-soft); color: var(--positive); }
+.atlas-pill--warning { background: var(--warning-soft); color: var(--warning); }
+.atlas-pill--danger { background: var(--danger-soft); color: var(--danger); }
+.atlas-pill--info { background: var(--accent-soft); color: var(--accent-text); }
+.atlas-pill--plain::before { display: none; }
+
+/* Badge (counts) */
+.atlas-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--r-pill); background: var(--accent); color: #fff; font: 600 11px/1 var(--font-sans); }
+.atlas-badge--muted { background: var(--bg-muted); color: var(--text-2); }
+
+/* Cards and sections */
+.atlas-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.atlas-section { margin-top: var(--s-10); }
+.atlas-section__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-3); }
+.atlas-section__title { font: var(--type-section); letter-spacing: var(--track-section); display: flex; align-items: center; gap: var(--s-2); }
+.atlas-section__meta { font: var(--type-meta); color: var(--text-2); }
+
+/* List rows */
+.atlas-list { list-style: none; margin: 0; padding: 0; }
+.atlas-row { display: flex; align-items: center; gap: var(--s-3); min-height: 60px; padding: 10px var(--s-4); border-top: 1px solid var(--line-subtle); }
+.atlas-row:first-child { border-top: 0; }
+.atlas-row__icon { width: 32px; height: 32px; border-radius: var(--r-md); display: grid; place-items: center; flex: none; background: var(--neutral-soft); color: var(--text-2); }
+.atlas-row__icon--warning { background: var(--warning-soft); color: var(--warning-icon); }
+.atlas-row__icon--danger { background: var(--danger-soft); color: var(--danger); }
+.atlas-row__icon--info { background: var(--accent-soft); color: var(--accent); }
+.atlas-row__body { flex: 1; min-width: 0; }
+.atlas-row__title { font: var(--type-label); font-size: 14px; color: var(--text); }
+.atlas-row__meta { font: var(--type-meta); color: var(--text-2); margin-top: 2px; }
+.atlas-row__end { display: flex; align-items: center; gap: var(--s-2); flex: none; }
+
+/* Avatar */
+.atlas-avatar { width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; font: 600 12px/1 var(--font-sans); color: #3a3f48; background: #e6e4df; flex: none; }
+.atlas-avatar--sm { width: 24px; height: 24px; font-size: 11px; }
+.atlas-avatar--lg { width: 40px; height: 40px; font-size: 14px; }
+.av-a { background: #e3e9f4; color: #2c4a78; } .av-b { background: #efe5dc; color: #6b4424; } .av-c { background: #e2efe8; color: #245a41; } .av-d { background: #ece6f2; color: #54406e; }
+
+/* Table */
+.atlas-table-wrap { border: 1px solid var(--line); border-radius: var(--r-lg); overflow: auto; background: var(--surface); }
+.atlas-table { width: 100%; border-collapse: separate; border-spacing: 0; font: var(--type-body); }
+.atlas-table th { position: sticky; top: 0; z-index: 1; height: 36px; padding: 0 12px; text-align: left; font: 500 12px/16px var(--font-sans); color: var(--text-2); background: var(--bg-subtle); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.atlas-table td { height: 48px; padding: 0 12px; border-bottom: 1px solid var(--line-subtle); white-space: nowrap; }
+.atlas-table tr:last-child td { border-bottom: 0; }
+.atlas-table tbody tr:hover td { background: #fafaf8; }
+.atlas-table tbody tr.is-selected td { background: var(--accent-soft); }
+.atlas-table .is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.atlas-table .col-check { width: 40px; padding-right: 0; }
+.atlas-table .col-actions { width: 48px; text-align: right; padding-right: 8px; }
+.atlas-table .cell-primary { font-weight: 500; }
+.atlas-table .cell-sub { display: block; font: var(--type-caption); color: var(--text-2); margin-top: 1px; }
+.atlas-table .row-action { opacity: 0; }
+.atlas-table tr:hover .row-action, .atlas-table tr:focus-within .row-action, .atlas-table tr.is-selected .row-action { opacity: 1; }
+@media (pointer: coarse) { .atlas-table .row-action { opacity: 1; } }
+.th-sort { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Alerts */
+.atlas-alert { display: flex; gap: var(--s-3); padding: 12px var(--s-4); border-radius: var(--r-lg); background: var(--neutral-soft); font: var(--type-body); }
+.atlas-alert .icon { margin-top: 2px; }
+.atlas-alert__title { font-weight: 500; }
+.atlas-alert--warning { background: var(--warning-soft); } .atlas-alert--warning > .icon { color: var(--warning-icon); }
+.atlas-alert--danger { background: var(--danger-soft); } .atlas-alert--danger > .icon { color: var(--danger); }
+.atlas-alert--info { background: var(--accent-soft); } .atlas-alert--info > .icon { color: var(--accent); }
+
+/* Toast */
+.atlas-toast { display: inline-flex; align-items: center; gap: var(--s-3); min-height: 44px; padding: 8px 8px 8px 14px; border-radius: var(--r-lg); background: var(--ink); color: #fff; box-shadow: var(--shadow-pop); font: var(--type-body); }
+.atlas-toast .icon { color: #7fd1a8; }
+.atlas-toast button { background: transparent; border: 0; color: #9cc3ff; font: var(--type-label); font-size: 14px; height: 32px; padding: 0 10px; border-radius: var(--r-sm); }
+
+/* Skeleton */
+.atlas-skel { background: linear-gradient(90deg, var(--bg-muted) 0, #f6f6f3 50%, var(--bg-muted) 100%); background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite; border-radius: var(--r-xs); height: 12px; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Empty state */
+.atlas-empty { display: grid; justify-items: center; text-align: center; gap: var(--s-2); padding: var(--s-12) var(--s-6); }
+.atlas-empty .atlas-empty__icon { width: 40px; height: 40px; border-radius: var(--r-lg); display: grid; place-items: center; background: var(--neutral-soft); color: var(--text-2); margin-bottom: var(--s-2); }
+.atlas-empty h3 { font: var(--type-heading); }
+.atlas-empty p { font: var(--type-body); color: var(--text-2); max-width: 360px; }
+.atlas-empty .atlas-btn { margin-top: var(--s-3); }
+
+/* Stepper (workflow) */
+.atlas-steps { display: flex; align-items: center; gap: var(--s-2); list-style: none; margin: 0; padding: 0; font: var(--type-label); color: var(--text-2); }
+.atlas-steps li { display: flex; align-items: center; gap: var(--s-2); }
+.atlas-steps .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line-strong); font: 600 12px/1 var(--font-sans); }
+.atlas-steps .is-done .n { background: var(--text); border-color: var(--text); color: #fff; }
+.atlas-steps .is-current { color: var(--text); }
+.atlas-steps .is-current .n { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.atlas-steps .sep { width: 24px; height: 1px; background: var(--line-strong); }
+
+/* Sheet / modal */
+.atlas-scrim { position: fixed; inset: 0; background: var(--overlay); z-index: 60; }
+.atlas-sheet { position: fixed; top: 8px; right: 8px; bottom: 8px; width: 480px; z-index: 61; background: var(--surface); border-radius: var(--r-xl); box-shadow: var(--shadow-modal); display: flex; flex-direction: column; overflow: hidden; }
+.atlas-sheet__head { display: flex; align-items: flex-start; gap: var(--s-3); padding: 20px 24px 16px; border-bottom: 1px solid var(--line-subtle); }
+.atlas-sheet__head h2 { font: var(--type-section); font-size: 18px; letter-spacing: var(--track-section); }
+.atlas-sheet__head p { font: var(--type-meta); color: var(--text-2); margin-top: 2px; }
+.atlas-sheet__body { flex: 1; overflow: auto; padding: 20px 24px 24px; display: grid; gap: 20px; align-content: start; }
+.atlas-sheet__foot { display: flex; justify-content: flex-end; gap: var(--s-2); padding: 12px 24px; border-top: 1px solid var(--line); background: var(--surface); }
+.atlas-form-group { display: grid; gap: 16px; }
+.atlas-form-group__title { font: var(--type-heading); padding-top: 4px; }
+.atlas-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.atlas-upload { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px dashed var(--line-strong); border-radius: var(--r-lg); color: var(--text-2); font: var(--type-meta); }
+.atlas-upload .thumb { width: 44px; height: 44px; border-radius: var(--r-md); background: var(--bg-subtle); display: grid; place-items: center; color: var(--text-3); }
+.atlas-toggle-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.atlas-toggle-row .t { font: var(--type-label); font-size: 14px; }
+.atlas-toggle-row .h { font: var(--type-caption); color: var(--text-2); margin-top: 2px; }
+}
+
+/* ==========================================================================
+   Shell
+   ========================================================================== */
+@layer atlas.modules {
+.shell { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: 100vh; }
+.sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg-subtle); border-right: 1px solid var(--line); padding: 0 12px 12px; overflow-y: auto; }
+/* Brand v1.0: the kit SVGs, byte-exact via <img> (never redrawn or typed). */
+.brand { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px; min-height: var(--topbar-h); padding: 12px 8px 10px; flex: none; }
+.brand__lockup { display: block; width: 121px; height: 32px; margin-left: -2px; }
+.brand__mark { display: none; width: 27px; height: 24px; }
+.brand__venue { padding-left: 2px; font: var(--type-caption); color: var(--text-2); }
+.nav { display: grid; gap: 1px; margin-top: 4px; }
+.nav__label { font: 500 12px/16px var(--font-sans); color: var(--text-3); padding: 18px 10px 6px; }
+.nav__item { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--r-md); color: var(--text-2); font: 400 14px/20px var(--font-sans); text-decoration: none; }
+.nav__item:hover { background: var(--bg-muted); color: var(--text); text-decoration: none; }
+.nav__item[aria-current="page"] { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 2px rgba(11,15,20,.06), 0 0 0 1px var(--line); }
+.nav__item[aria-current="page"] .icon { color: var(--text); }
+.nav__item { position: relative; }
+.nav__item[aria-current="page"]::before { content: ''; position: absolute; top: 9px; left: -12px; width: 3px; height: 16px; border-radius: 0 2px 2px 0; background: var(--accent-brand); }
+.nav__item .atlas-badge { margin-left: auto; }
+.nav__item--ai .icon { color: var(--accent-brand); }
+.sidebar__foot { margin-top: auto; padding-top: 12px; }
+.me { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: var(--r-md); background: transparent; text-align: left; }
+.me:hover { background: var(--bg-muted); }
+.me__name { font: var(--type-label); }
+.me__role { font: var(--type-caption); color: var(--text-2); }
+.me .icon { margin-left: auto; color: var(--text-3); }
+
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { position: sticky; top: 0; z-index: 20; height: var(--topbar-h); display: flex; align-items: center; gap: 8px; padding: 0 var(--page-gutter) 0 16px; background: #fff; border-bottom: 1px solid var(--line-subtle); }
+.topbar__title { display: none; font: 600 17px/22px var(--font-sans); letter-spacing: -.01em; }
+.topbar__mark { display: block; flex: none; width: 25px; height: 22px; margin-right: 12px; }
+.omni { display: flex; align-items: center; gap: 10px; width: 360px; height: 36px; padding: 0 8px 0 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg-subtle); color: var(--text-3); font: var(--type-body); text-align: left; }
+.omni:hover { border-color: var(--line-strong); }
+.omni__label { flex: 1; }
+.topbar__spacer { flex: 1; }
+.content { flex: 1; }
+.page { max-width: calc(var(--page-max) + 2 * var(--page-gutter)); margin: 0 auto; padding: 32px var(--page-gutter) 80px; }
+.page--wide { max-width: none; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.page-head__title { font: var(--type-title); letter-spacing: var(--track-title); }
+.page-head__sub { font: var(--type-body); color: var(--text-2); margin-top: 4px; }
+.page-head__actions { display: flex; gap: 8px; flex: none; }
+.tabbar { display: none; }
+
+/* Screens */
+.screen { display: none; }
+.screen.is-active { display: block; }
+
+/* Home */
+.home-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
+.home-date { font: var(--type-label); color: var(--text-2); }
+.home-greeting { font: var(--type-display); letter-spacing: var(--track-display); margin-top: 6px; font-variation-settings: 'opsz' 72; }
+.home-context { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font: var(--type-body); color: var(--text-2); }
+.home-context span { display: inline-flex; align-items: center; gap: 6px; }
+.home-context .icon { color: var(--text-3); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warning-icon); box-shadow: 0 0 0 3px var(--warning-soft); }
+.home-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 40px; margin-top: 40px; }
+.briefing { padding: 20px 20px 16px; }
+.briefing__head { display: flex; align-items: center; gap: 8px; font: var(--type-heading); }
+.briefing__head .icon { color: var(--accent); }
+.briefing__time { margin-left: auto; font: var(--type-caption); color: var(--text-2); font-weight: 400; }
+.briefing__text { font: var(--type-body-lg); margin-top: 10px; color: var(--text); }
+.briefing__text p + p { margin-top: 8px; }
+.briefing__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-subtle); }
+.sources { font: var(--type-caption); color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { display: grid; grid-template-columns: 48px 16px 1fr; align-items: start; gap: 10px; padding: 6px 0; }
+.timeline .t { font: var(--type-num); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.timeline .m { position: relative; height: 20px; display: grid; place-items: center; }
+.timeline .m::before { content: ''; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--surface); position: relative; z-index: 1; }
+.timeline li:not(:last-child) .m::after { content: ''; position: absolute; top: 14px; height: 30px; width: 1px; background: var(--line); }
+.timeline .is-done .m::before { background: var(--text-2); border-color: var(--text-2); }
+.timeline .is-now .m::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.timeline .l { font: var(--type-body); }
+.timeline .l small { display: block; font: var(--type-caption); color: var(--text-2); }
+.staff { display: flex; flex-direction: column; gap: 10px; }
+.staff__row { display: flex; align-items: center; gap: 10px; }
+.staff__row .n { font: var(--type-label); font-size: 14px; }
+.staff__row .r { font: var(--type-caption); color: var(--text-2); }
+.staff__row .h { margin-left: auto; font: var(--type-meta); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.glance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.glance > a { display: block; padding: 20px 24px 20px 0; color: inherit; text-decoration: none; }
+.glance > a + a { padding-left: 24px; border-left: 1px solid var(--line); }
+.glance > a:hover .glance__link { color: var(--accent-text); }
+.glance__label { font: var(--type-label); color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+.glance__value { font: var(--type-kpi); letter-spacing: var(--track-kpi); margin-top: 8px; font-variant-numeric: tabular-nums; }
+.glance__value small { font: var(--type-body); color: var(--text-2); letter-spacing: 0; margin-left: 6px; }
+.glance__detail { font: var(--type-meta); color: var(--text-2); margin-top: 4px; }
+.glance__link { font: var(--type-label); color: var(--text-2); margin-top: 12px; display: inline-flex; align-items: center; gap: 4px; }
+.col-title { font: var(--type-heading); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: baseline; }
+.col-title a { font: var(--type-label); }
+.stack-24 > * + * { margin-top: 32px; }
+
+/* Inventory */
+.toolbar { display: flex; align-items: center; gap: 8px; margin: 20px 0 12px; flex-wrap: wrap; }
+.toolbar .atlas-search { width: 280px; }
+.toolbar__end { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--text-2); font: var(--type-meta); }
+.bulkbar { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 8px 0 14px; margin-bottom: 12px; border-radius: var(--r-lg); background: var(--text); color: #fff; font: var(--type-label); font-size: 14px; }
+.bulkbar .atlas-btn--ghost { color: #fff; }
+.bulkbar .atlas-btn--ghost:hover { background: rgba(255,255,255,.1); }
+.bulkbar .sep { width: 1px; height: 20px; background: rgba(255,255,255,.2); margin: 0 4px; }
+.qty { display: inline-flex; align-items: baseline; gap: 4px; }
+.qty small { color: var(--text-2); font: var(--type-caption); }
+.bar { display: inline-block; width: 44px; height: 4px; border-radius: 2px; background: var(--bg-muted); vertical-align: middle; margin-left: 8px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 2px; background: var(--text-3); }
+.bar--warn i { background: var(--warning-icon); } .bar--danger i { background: var(--danger); }
+.inv-list { display: none; }
+.table-foot { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px; font: var(--type-meta); color: var(--text-2); }
+
+/* Atlas AI */
+.ai { display: grid; grid-template-columns: 272px minmax(0, 1fr); height: calc(100vh - var(--topbar-h)); }
+.ai-list { border-right: 1px solid var(--line); background: var(--bg-subtle); display: flex; flex-direction: column; min-height: 0; }
+.ai-list__head { display: flex; gap: 8px; padding: 16px 12px 8px; }
+.ai-list__head .atlas-btn { flex: 1; justify-content: flex-start; }
+.ai-list__scroll { overflow: auto; padding: 0 8px 16px; }
+.ai-list__label { font: 500 12px/16px var(--font-sans); color: var(--text-3); padding: 16px 8px 6px; }
+.ai-conv { display: block; padding: 8px 10px; border-radius: var(--r-md); color: var(--text); text-decoration: none; }
+.ai-conv:hover { background: var(--bg-muted); text-decoration: none; }
+.ai-conv[aria-current="true"] { background: var(--surface); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(11,15,20,.05); }
+.ai-conv__t { font: var(--type-label); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-conv__m { font: var(--type-caption); color: var(--text-2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-thread { display: flex; flex-direction: column; min-height: 0; }
+.ai-thread__head { display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 16px 0 24px; border-bottom: 1px solid var(--line-subtle); flex: none; }
+.ai-thread__title { font: var(--type-heading); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-scroll { flex: 1; overflow: auto; padding: 32px var(--page-gutter) 24px; }
+.ai-col { max-width: var(--reading-max); margin: 0 auto; }
+.msg-user { display: flex; justify-content: flex-end; margin-bottom: 28px; }
+.msg-user__bubble { max-width: 80%; padding: 10px 14px; border-radius: 16px 16px 4px 16px; background: var(--bg-muted); font: var(--type-body-lg); }
+.msg-user__attach { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.photo-thumb { width: 120px; height: 84px; border-radius: var(--r-lg); background: linear-gradient(135deg, #d9d4ca, #bfb6a6); position: relative; overflow: hidden; border: 1px solid var(--line); }
+.photo-thumb::after { content: 'Delivery note.jpg'; position: absolute; left: 6px; bottom: 6px; font: 500 11px/1 var(--font-sans); color: #fff; background: rgba(0,0,0,.35); padding: 3px 5px; border-radius: 4px; }
+.msg-ai { margin-bottom: 32px; }
+.msg-ai__who { display: flex; align-items: center; gap: 8px; font: var(--type-label); margin-bottom: 8px; }
+.ai-mark { width: 22px; height: 22px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.ai-mark .icon { width: 14px; height: 14px; }
+.msg-ai__text { font: var(--type-body-lg); color: var(--text); }
+.msg-ai__text p + p { margin-top: 10px; }
+.msg-ai__text strong { font-weight: 600; }
+.msg-ai__text ul { margin: 8px 0 0; padding-left: 20px; }
+.msg-ai__text li + li { margin-top: 4px; }
+.steps-line { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 4px 10px 4px 8px; border-radius: var(--r-pill); background: var(--bg-subtle); color: var(--text-2); font: var(--type-meta); border: 0; text-align: left; }
+.steps-line .icon { color: var(--positive); }
+.records { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.record-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); font: var(--type-label); color: var(--text); text-decoration: none; }
+.record-chip:hover { border-color: var(--line-strong); text-decoration: none; }
+.record-chip .icon { color: var(--text-2); width: 14px; height: 14px; }
+.evidence { margin-top: 16px; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.evidence__head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; font: var(--type-label); background: var(--bg-subtle); border-bottom: 1px solid var(--line-subtle); }
+.evidence__head .muted { font-weight: 400; margin-left: auto; font-size: 12px; }
+.evidence__row { display: grid; grid-template-columns: 124px 1fr auto; gap: 12px; align-items: baseline; padding: 10px 14px; border-top: 1px solid var(--line-subtle); font: var(--type-body); }
+.evidence__row:first-of-type { border-top: 0; }
+.evidence__row .src { font: var(--type-caption); color: var(--text-2); white-space: nowrap; }
+.kind { font: 500 12px/16px var(--font-sans); white-space: nowrap; }
+.kind--fact { color: var(--positive); } .kind--calc { color: var(--accent-text); } .kind--missing { color: var(--warning); } .kind--est { color: var(--text-2); }
+.approval { margin-top: 16px; border: 1px solid var(--line-strong); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: hidden; background: var(--surface); }
+.approval__head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; }
+.approval__head h4 { font: var(--type-heading); }
+.approval__head p { font: var(--type-caption); color: var(--text-2); }
+.approval__lines { margin: 0 16px; border-top: 1px solid var(--line-subtle); }
+.approval__line { display: grid; grid-template-columns: 1fr 72px 96px; gap: 12px; padding: 8px 0; font: var(--type-body); border-bottom: 1px solid var(--line-subtle); }
+.approval__line .is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.approval__line--total { font-weight: 600; border-bottom: 0; }
+.approval__note { display: flex; gap: 8px; align-items: flex-start; margin: 4px 16px 0; padding: 10px 0 0; font: var(--type-caption); color: var(--text-2); }
+.approval__note .icon { width: 14px; height: 14px; margin-top: 1px; }
+.approval__foot { display: flex; align-items: center; gap: 8px; padding: 12px 16px; margin-top: 12px; border-top: 1px solid var(--line-subtle); background: var(--bg-subtle); }
+.approval__foot .spacer { flex: 1; font: var(--type-caption); color: var(--text-2); }
+.msg-actions { display: flex; gap: 2px; margin-top: 10px; color: var(--text-3); }
+.msg-actions .atlas-icon-btn { width: 30px; height: 30px; }
+.composer-wrap { flex: none; padding: 0 var(--page-gutter) 20px; }
+.composer { max-width: var(--reading-max); margin: 0 auto; border: 1px solid var(--line-strong); border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 1px 2px rgba(11,15,20,.04), 0 8px 24px rgba(11,15,20,.05); padding: 10px 10px 8px 14px; }
+.composer textarea { width: 100%; border: 0; resize: none; outline: none; font: var(--type-body-lg); min-height: 24px; height: 24px; padding: 2px 0; background: transparent; }
+.composer textarea::placeholder { color: var(--text-3); }
+.composer__bar { display: flex; align-items: center; gap: 2px; margin-top: 6px; }
+.composer__bar .spacer { flex: 1; }
+.composer__ctx { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; margin-left: 4px; border-radius: var(--r-sm); background: var(--bg-subtle); font: var(--type-caption); color: var(--text-2); }
+.send { width: 32px; height: 32px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--accent); color: #fff; }
+.send .icon { width: 16px; height: 16px; stroke-width: 2; }
+.composer-hint { max-width: var(--reading-max); margin: 8px auto 0; text-align: center; font: var(--type-caption); color: var(--text-3); }
+.voice { display: none; }
+
+/* Palette */
+.palette { position: fixed; top: 12vh; left: 50%; transform: translateX(-50%); width: 640px; max-width: calc(100vw - 32px); z-index: 61; background: var(--surface); border-radius: var(--r-xl); box-shadow: var(--shadow-modal); overflow: hidden; }
+.palette__input { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+.palette__input input { flex: 1; border: 0; outline: none; font: 400 16px/24px var(--font-sans); background: transparent; }
+.palette__input .icon { color: var(--text-2); }
+.palette__ctx { font: var(--type-caption); color: var(--text-2); background: var(--bg-subtle); border-radius: var(--r-sm); padding: 3px 8px; }
+.palette__body { max-height: 420px; overflow: auto; padding: 6px 8px 8px; }
+.palette__label { font: 500 12px/16px var(--font-sans); color: var(--text-3); padding: 12px 10px 6px; }
+.palette__item { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 10px; border-radius: var(--r-md); font: var(--type-body); color: var(--text); }
+.palette__item .icon { color: var(--text-2); }
+.palette__item .hint { margin-left: auto; font: var(--type-caption); color: var(--text-3); display: flex; gap: 4px; }
+.palette__item.is-active { background: var(--bg-muted); }
+.palette__item--ask .icon { color: var(--accent); }
+.palette__item--ask b { font-weight: 500; }
+.palette__foot { display: flex; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--line-subtle); background: var(--bg-subtle); font: var(--type-caption); color: var(--text-2); }
+.palette__foot span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Stock count */
+.count { max-width: 560px; margin: 0 auto; }
+.count-head { display: flex; align-items: center; gap: 12px; }
+.count-progress { height: 4px; border-radius: 2px; background: var(--bg-muted); overflow: hidden; margin-top: 16px; }
+.count-progress i { display: block; height: 100%; width: 30%; background: var(--accent); border-radius: 2px; }
+.count-card { margin-top: 24px; padding: 24px; }
+.count-item { font: 600 22px/28px var(--font-sans); letter-spacing: -.015em; }
+.count-meta { font: var(--type-meta); color: var(--text-2); margin-top: 4px; }
+.count-meta b { font-weight: 500; color: var(--text); }
+.stepper { display: grid; grid-template-columns: 64px 1fr 64px; gap: 12px; align-items: center; margin-top: 24px; }
+.stepper button { height: 64px; border-radius: var(--r-lg); border: 1px solid var(--line-strong); background: var(--surface); display: grid; place-items: center; color: var(--text); }
+.stepper button .icon { width: 22px; height: 22px; }
+.stepper output { display: grid; place-items: center; height: 64px; border-radius: var(--r-lg); background: var(--bg-subtle); font: 500 36px/1 var(--font-sans); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.stepper output small { font: var(--type-meta); color: var(--text-2); letter-spacing: 0; margin-top: -10px; }
+.partials { display: flex; gap: 8px; margin-top: 12px; }
+.partials .atlas-chip { flex: 1; justify-content: center; height: 40px; }
+.count-actions { display: grid; grid-template-columns: auto 1fr; gap: 8px; margin-top: 24px; }
+.count-next { margin-top: 32px; }
+
+/* Components gallery */
+.gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.gallery .atlas-card { padding: 20px; }
+.gallery h3 { font: var(--type-heading); margin-bottom: 14px; }
+.row-wrap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.type-spec > div { display: flex; align-items: baseline; gap: 16px; padding: 6px 0; border-top: 1px solid var(--line-subtle); }
+.type-spec > div:first-child { border-top: 0; }
+.type-spec code { font: var(--type-caption); color: var(--text-2); width: 140px; flex: none; font-family: var(--font-mono); }
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.swatch { border-radius: var(--r-md); border: 1px solid var(--line); overflow: hidden; font: var(--type-caption); }
+.swatch i { display: block; height: 36px; }
+.swatch span { display: block; padding: 6px 8px; color: var(--text-2); }
+
+/* ===== Rail: 768–1279 ===== */
+@media (max-width: 1279px) and (min-width: 768px) {
+  .shell { grid-template-columns: var(--sidebar-rail) minmax(0, 1fr); }
+  .sidebar { padding: 0 10px 12px; align-items: center; }
+  .brand { padding: 0; align-items: center; }
+  .brand__mark { display: block; }
+  .nav__item[aria-current="page"]::before { top: 12px; left: -10px; }
+  .brand__lockup, .brand__venue, .nav__label, .nav__item span, .nav__item .atlas-badge, .me > div, .me > .icon { display: none; }
+  .nav__label { display: block; font-size: 0; line-height: 0; height: 1px; width: 28px; padding: 0; margin: 10px auto; background: var(--line); }
+  .nav__item { width: 44px; height: 40px; justify-content: center; padding: 0; }
+  .me { justify-content: center; }
+  .home-grid { grid-template-columns: 1fr; gap: 32px; }
+  .ai { grid-template-columns: 240px minmax(0,1fr); }
+}
+@media (max-width: 1023px) and (min-width: 768px) {
+  .atlas-table .col-opt { display: none; }
+  .ai { grid-template-columns: minmax(0,1fr); }
+  .ai-list { display: none; }
+  .omni { width: 280px; }
+  .glance > a { padding-right: 16px; } .glance > a + a { padding-left: 16px; }
+}
+
+/* ===== Phone: < 768 ===== */
+@media (max-width: 767px) {
+  .shell { display: block; }
+  .sidebar { display: none; }
+  .topbar { height: 52px; padding: 0 8px 0 var(--page-gutter); border-bottom-color: transparent; background: rgba(255,255,255,.96); }
+  .topbar.is-scrolled { border-bottom-color: var(--line-subtle); }
+  .topbar__title { display: block; }
+  .omni, .only-desktop { display: none !important; }
+  body.is-ai .topbar .not-ai { display: none; }
+  body:not(.is-ai) .topbar .ai-only { display: none; }
+  .page { padding: 12px var(--page-gutter) calc(var(--tabbar-h) + 40px); }
+  .page-head { flex-direction: column; align-items: stretch; gap: 16px; }
+  .page-head__actions .atlas-btn { flex: 1; }
+  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; height: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: rgba(255,255,255,.97); border-top: 1px solid var(--line); }
+  .tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--text-2); font: 500 12px/14px var(--font-sans); text-decoration: none; position: relative; }
+  .tabbar a .icon { width: 22px; height: 22px; stroke-width: 1.6; }
+  .tabbar a[aria-current="page"] { color: var(--accent); }
+  .tabbar a[aria-current="page"] .icon { stroke-width: 2; }
+  .tabbar .atlas-badge { position: absolute; top: 5px; left: calc(50% + 6px); }
+
+  .home-head { flex-direction: column; align-items: flex-start; gap: 0; }
+  .home-context { gap: 4px 12px; font-size: 14px; }
+  .home-grid { grid-template-columns: 1fr; gap: 32px; margin-top: 32px; }
+  .atlas-section { margin-top: 28px; }
+  .atlas-row { padding: 12px 14px; align-items: flex-start; }
+  .atlas-row__end .atlas-btn { display: none; }
+  .atlas-row__end .only-phone { display: inline-grid; }
+  .glance { grid-template-columns: 1fr; border-bottom: 0; }
+  .glance > a, .glance > a + a { padding: 16px 0; border-left: 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  .glance__value { margin-top: 0; font-size: 22px; line-height: 28px; grid-column: 2; grid-row: 1 / span 2; }
+  .glance__detail { grid-column: 1; }
+  .glance__link { display: none; }
+
+  .toolbar { margin: 12px 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--page-gutter)); padding-inline: var(--page-gutter); }
+  .toolbar .atlas-search { display: none; }
+  .toolbar__end { display: none; }
+  .phone-search { display: block !important; margin-top: 4px; }
+  .atlas-table-wrap, .bulkbar, .table-foot { display: none; }
+  .inv-list { display: block; margin-inline: calc(-1 * var(--page-gutter)); border-top: 1px solid var(--line); }
+  .inv-row { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px var(--page-gutter); border-bottom: 1px solid var(--line-subtle); }
+  .inv-row__body { flex: 1; min-width: 0; }
+  .inv-row__t { font: 500 15px/20px var(--font-sans); }
+  .inv-row__m { font: var(--type-meta); color: var(--text-2); margin-top: 2px; }
+  .inv-row__q { text-align: right; font: 500 15px/20px var(--font-sans); font-variant-numeric: tabular-nums; }
+  .inv-row__q small { display: block; margin-top: 3px; }
+  .page-head .page-head__title { display: none; }
+  .page-head:has(.page-head__sub:only-child) { display: none; }
+
+  .ai { display: block; height: auto; }
+  .ai-list { display: none; }
+  .ai-thread__head { display: none; }
+  .ai-scroll { padding: 12px var(--page-gutter) 200px; }
+  .msg-user__bubble { max-width: 88%; }
+  .evidence__row { grid-template-columns: 1fr; gap: 2px; }
+  .evidence__row .kind { font-size: 12px; }
+  .approval__line { grid-template-columns: 1fr 48px 84px; }
+  .approval__foot { flex-wrap: wrap; }
+  .approval__foot .spacer { flex-basis: 100%; order: 3; }
+  .approval__foot .atlas-btn--primary { flex: 1; }
+  .composer-wrap { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(rgba(255,255,255,0), #fff 18px); }
+  .composer-hint { display: none; }
+  body.is-ai .tabbar { display: none; }
+  .voice { display: flex; flex-direction: column; gap: 10px; max-width: var(--reading-max); margin: 0 auto 8px; padding: 14px 14px 12px; border-radius: var(--r-xl); background: #1b1e24; color: #fff; box-shadow: var(--shadow-pop); }
+  .voice__top { display: flex; align-items: center; gap: 10px; }
+  .voice__state { font: var(--type-label); font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .voice__state::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #5fd49a; box-shadow: 0 0 0 4px rgba(95,212,154,.18); }
+  .voice__time { margin-left: auto; font: var(--type-caption); color: rgba(255,255,255,.6); font-variant-numeric: tabular-nums; }
+  .voice__transcript { font: var(--type-body); color: rgba(255,255,255,.86); }
+  .voice__transcript span { color: rgba(255,255,255,.5); }
+  .voice__wave { display: flex; align-items: center; gap: 3px; height: 28px; }
+  .voice__wave i { width: 3px; border-radius: 2px; background: rgba(255,255,255,.85); }
+  .voice__controls { display: flex; gap: 8px; }
+  .voice__controls button { flex: 1; height: 44px; border-radius: var(--r-lg); border: 0; background: rgba(255,255,255,.1); color: #fff; font: var(--type-label); font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .voice__controls .end { background: #e5484d; }
+  .is-voice .composer { display: none; }
+
+  .atlas-sheet { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: calc(100% - 12px); border-radius: var(--r-xl) var(--r-xl) 0 0; }
+  .atlas-sheet__head, .atlas-sheet__body { padding-left: 16px; padding-right: 16px; }
+  .atlas-sheet__foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .atlas-sheet__foot .atlas-btn { flex: 1; }
+  .atlas-grid-2 { grid-template-columns: 1fr; }
+  .grabber { display: block !important; }
+
+  .palette { top: 0; left: 0; transform: none; width: 100%; max-width: none; height: 100%; border-radius: 0; }
+  .palette__body { max-height: none; }
+  .palette__foot, .palette__item .hint { display: none; }
+  .palette__item { height: 48px; }
+
+  .count-card { padding: 20px 16px; margin-top: 16px; }
+  .stepper { grid-template-columns: 72px 1fr 72px; }
+  .stepper button, .stepper output { height: 72px; }
+  body.is-count .tabbar { display: none; }
+  .count-actions { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px var(--page-gutter) calc(12px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); margin: 0; }
+
+  .gallery { grid-template-columns: 1fr; }
+  .swatches { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 768px) { .only-phone { display: none !important; } }
+@media (max-width: 767px) { .hide-phone { display: none !important; } }
+.phone-search, .grabber { display: none; }
+}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></symbol>
+<symbol id="i-messages-square" viewBox="0 0 24 24"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></symbol>
+<symbol id="i-package" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/></symbol>
+<symbol id="i-martini" viewBox="0 0 24 24"><path d="M8 22h8"/><path d="M12 11v11"/><path d="m19 3-7 8-7-8Z"/></symbol>
+<symbol id="i-truck" viewBox="0 0 24 24"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></symbol>
+<symbol id="i-clipboard-check" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></symbol>
+<symbol id="i-calendar-days" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="i-book-open" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+<symbol id="i-chart-no-axes-column" viewBox="0 0 24 24"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></symbol>
+<symbol id="i-megaphone" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+<symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+<symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+<symbol id="i-list-filter" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+<symbol id="i-circle-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></symbol>
+<symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+<symbol id="i-thermometer" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+<symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+<symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></symbol>
+<symbol id="i-audio-lines" viewBox="0 0 24 24"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></symbol>
+<symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+<symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
+<symbol id="i-scan-barcode" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></symbol>
+<symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+<symbol id="i-panel-left" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
+<symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+<symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+<symbol id="i-command" viewBox="0 0 24 24"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/></symbol>
+<symbol id="i-corner-down-left" viewBox="0 0 24 24"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></symbol>
+<symbol id="i-file-text" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+<symbol id="i-list-checks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
+<symbol id="i-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol>
+<symbol id="i-mic-off" viewBox="0 0 24 24"><line x1="2" x2="22" y1="2" y2="22"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><line x1="12" x2="12" y1="19" y2="22"/></symbol>
+<symbol id="i-phone-off" viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="22" x2="2" y1="2" y2="22"/></symbol>
+<symbol id="i-square" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+<symbol id="i-external-link" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+<symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+<symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
+<symbol id="i-circle-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></symbol>
+<symbol id="i-keyboard" viewBox="0 0 24 24"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+<symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol>
+<symbol id="i-ellipsis-vertical" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></symbol></svg>
+
+<div class="shell">
+  <!-- ================= Sidebar ================= -->
+  <nav class="sidebar" aria-label="Main">
+    <div class="brand">
+      <img class="brand__lockup" src="../brand/Atlas_Brand_Identity_Kit_v1.0/02_Vector_Logos/Atlas_Primary_Horizontal_Midnight.svg" alt="Atlas" width="121" height="32">
+      <img class="brand__mark" src="../brand/Atlas_Brand_Identity_Kit_v1.0/02_Vector_Logos/Atlas_Mark_Midnight.svg" alt="Atlas" width="27" height="24">
+      <div class="brand__venue">VÁ · Reykjavík</div>
+    </div>
+    <div class="nav">
+      <a class="nav__item" href="#home" data-nav="home"><svg class="icon"><use href="#i-house"/></svg><span>Home</span></a>
+      <a class="nav__item nav__item--ai" href="#ai" data-nav="ai"><svg class="icon"><use href="#i-sparkles"/></svg><span>Atlas AI</span></a>
+      <a class="nav__item" href="#home" data-nav="messages"><svg class="icon"><use href="#i-messages-square"/></svg><span>Messages</span><span class="atlas-badge">3</span></a>
+      <div class="nav__label">Venue</div>
+      <a class="nav__item" href="#home" data-nav="operations"><svg class="icon"><use href="#i-clipboard-check"/></svg><span>Operations</span></a>
+      <a class="nav__item" href="#inventory" data-nav="inventory"><svg class="icon"><use href="#i-package"/></svg><span>Inventory</span></a>
+      <a class="nav__item" href="#home" data-nav="recipes"><svg class="icon"><use href="#i-martini"/></svg><span>Recipes</span></a>
+      <a class="nav__item" href="#home" data-nav="purchasing"><svg class="icon"><use href="#i-truck"/></svg><span>Purchasing</span></a>
+      <div class="nav__label">People</div>
+      <a class="nav__item" href="#home" data-nav="shifts"><svg class="icon"><use href="#i-calendar-days"/></svg><span>Shifts</span></a>
+      <a class="nav__item" href="#home" data-nav="team"><svg class="icon"><use href="#i-users"/></svg><span>Team</span></a>
+      <a class="nav__item" href="#home" data-nav="knowledge"><svg class="icon"><use href="#i-book-open"/></svg><span>Knowledge</span></a>
+      <div class="nav__label">Business</div>
+      <a class="nav__item" href="#home" data-nav="reports"><svg class="icon"><use href="#i-chart-no-axes-column"/></svg><span>Reports</span></a>
+      <a class="nav__item" href="#home" data-nav="marketing"><svg class="icon"><use href="#i-megaphone"/></svg><span>Marketing</span></a>
+      <a class="nav__item" href="#components" data-nav="data"><svg class="icon"><use href="#i-database"/></svg><span>Data</span><span class="atlas-badge atlas-badge--muted">12</span></a>
+    </div>
+    <div class="sidebar__foot">
+      <a class="nav__item" href="#components" data-nav="settings"><svg class="icon"><use href="#i-settings"/></svg><span>Settings</span></a>
+      <button class="me" type="button" aria-haspopup="menu" aria-label="Account: Imad El Moubarik, Administrator">
+        <span class="atlas-avatar av-a">IE</span>
+        <div><div class="me__name">Imad El Moubarik</div><div class="me__role">Administrator</div></div>
+        <svg class="icon"><use href="#i-chevron-down"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ================= Main ================= -->
+  <div class="main">
+    <header class="topbar" id="topbar">
+      <button class="atlas-icon-btn only-desktop" type="button" aria-label="Collapse sidebar"><svg class="icon"><use href="#i-panel-left"/></svg></button>
+      <button class="atlas-icon-btn only-phone ai-only" type="button" aria-label="Conversations" style="margin-left:-8px"><svg class="icon icon--lg"><use href="#i-history"/></svg></button>
+      <img class="topbar__mark only-phone not-ai" src="../brand/Atlas_Brand_Identity_Kit_v1.0/02_Vector_Logos/Atlas_Mark_Midnight.svg" alt="" width="25" height="22">
+      <div class="topbar__title" id="phone-title">Home</div>
+      <button class="omni" type="button" onclick="location.hash='palette'" aria-label="Search or ask Atlas (Command K)">
+        <svg class="icon"><use href="#i-search"/></svg><span class="omni__label">Search or ask Atlas</span><span class="kbd">⌘K</span>
+      </button>
+      <div class="topbar__spacer"></div>
+      <button class="atlas-icon-btn only-phone not-ai" type="button" aria-label="Search or ask Atlas" onclick="location.hash='palette'"><svg class="icon icon--lg"><use href="#i-search"/></svg></button>
+      <button class="atlas-icon-btn only-phone ai-only" type="button" aria-label="New conversation"><svg class="icon icon--lg"><use href="#i-pencil"/></svg></button>
+      <button class="atlas-icon-btn only-desktop" type="button" aria-label="Quick actions"><svg class="icon icon--md"><use href="#i-plus"/></svg></button>
+      <button class="atlas-icon-btn not-ai" type="button" aria-label="Notifications, 4 unread"><svg class="icon icon--md"><use href="#i-bell"/></svg><span class="dot"></span></button>
+    </header>
+
+    <main class="content" id="content">
+
+<!-- =============================== HOME =============================== -->
+<section class="screen" id="s-home" data-title="Home" data-nav="home">
+  <div class="page">
+    <div class="home-head">
+      <div>
+        <div class="home-date">Thursday 24 September</div>
+        <h1 class="home-greeting">Good afternoon, Imad</h1>
+        <div class="home-context">
+          <span><i class="status-dot" aria-hidden="true"></i>Opens at 17:00 · opening checks in progress</span>
+          <span><svg class="icon"><use href="#i-users"/></svg>3 on shift tonight</span>
+          <span><svg class="icon"><use href="#i-calendar"/></svg>Quiz night · 40 booked</span>
+        </div>
+      </div>
+      <div class="page-head__actions only-desktop">
+        <button class="atlas-btn atlas-btn--secondary" type="button"><svg class="icon"><use href="#i-list-checks"/></svg>Opening checklist</button>
+      </div>
+    </div>
+
+    <div class="atlas-section">
+      <div class="atlas-section__head">
+        <h2 class="atlas-section__title">Needs attention <span class="atlas-badge atlas-badge--muted">4</span></h2>
+        <a class="atlas-section__meta" href="#home">View all</a>
+      </div>
+      <ul class="atlas-list atlas-card">
+        <li class="atlas-row">
+          <span class="atlas-row__icon atlas-row__icon--danger"><svg class="icon"><use href="#i-package"/></svg></span>
+          <div class="atlas-row__body"><div class="atlas-row__title">Campari is almost out</div><div class="atlas-row__meta">1 of 4 bottles left · Negroni and Boulevardier are affected</div></div>
+          <div class="atlas-row__end"><button class="atlas-btn atlas-btn--secondary atlas-btn--sm" type="button">Add to order</button><svg class="icon only-phone" style="color:var(--text-3)"><use href="#i-chevron-right"/></svg></div>
+        </li>
+        <li class="atlas-row">
+          <span class="atlas-row__icon atlas-row__icon--warning"><svg class="icon"><use href="#i-list-checks"/></svg></span>
+          <div class="atlas-row__body"><div class="atlas-row__title">Opening checklist is 4 of 9 done</div><div class="atlas-row__meta">Due by 17:00 · Sara is on it</div></div>
+          <div class="atlas-row__end"><button class="atlas-btn atlas-btn--secondary atlas-btn--sm" type="button">Open checklist</button><svg class="icon only-phone" style="color:var(--text-3)"><use href="#i-chevron-right"/></svg></div>
+        </li>
+        <li class="atlas-row">
+          <span class="atlas-row__icon atlas-row__icon--info"><svg class="icon"><use href="#i-truck"/></svg></span>
+          <div class="atlas-row__body"><div class="atlas-row__title">Globus order is waiting for your approval</div><div class="atlas-row__meta">6 lines · 58.200 kr · prepared by Sara at 15:10</div></div>
+          <div class="atlas-row__end"><button class="atlas-btn atlas-btn--secondary atlas-btn--sm" type="button">Review order</button><svg class="icon only-phone" style="color:var(--text-3)"><use href="#i-chevron-right"/></svg></div>
+        </li>
+        <li class="atlas-row">
+          <span class="atlas-row__icon atlas-row__icon--warning"><svg class="icon"><use href="#i-thermometer"/></svg></span>
+          <div class="atlas-row__body"><div class="atlas-row__title">Fridge 2 temperature not logged today</div><div class="atlas-row__meta">Last reading 3.8 °C yesterday at 16:05</div></div>
+          <div class="atlas-row__end"><button class="atlas-btn atlas-btn--secondary atlas-btn--sm" type="button">Log reading</button><svg class="icon only-phone" style="color:var(--text-3)"><use href="#i-chevron-right"/></svg></div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="home-grid">
+      <div class="stack-24">
+        <div class="atlas-card briefing">
+          <div class="briefing__head"><svg class="icon"><use href="#i-sparkles"/></svg>Today's briefing<span class="briefing__time">Updated 16:32</span></div>
+          <div class="briefing__text">
+            <p>A busier Thursday than usual: quiz night has 40 booked, so expect the rush between 20:00 and 22:00. Three people are on — one fewer than last quiz night.</p>
+            <p>Campari and limes are the only stock risks for tonight. Globus can deliver tomorrow morning if the order is approved before 18:00.</p>
+          </div>
+          <div class="briefing__foot">
+            <span class="sources"><svg class="icon" style="width:14px;height:14px"><use href="#i-check"/></svg>From stock counts, shifts, bookings and orders</span>
+            <a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="#ai">Ask a follow-up<svg class="icon"><use href="#i-arrow-right"/></svg></a>
+          </div>
+        </div>
+
+        <div>
+          <div class="glance">
+            <a href="#inventory">
+              <div class="glance__label"><svg class="icon"><use href="#i-package"/></svg>Stock</div>
+              <div class="glance__value">6<small>below par</small></div>
+              <div class="glance__detail">2 out · last count Tuesday</div>
+              <span class="glance__link">View inventory<svg class="icon" style="width:14px;height:14px"><use href="#i-arrow-right"/></svg></span>
+            </a>
+            <a href="#home">
+              <div class="glance__label"><svg class="icon"><use href="#i-martini"/></svg>Recipes</div>
+              <div class="glance__value">2<small>unavailable</small></div>
+              <div class="glance__detail">Negroni, Paloma</div>
+              <span class="glance__link">View recipes<svg class="icon" style="width:14px;height:14px"><use href="#i-arrow-right"/></svg></span>
+            </a>
+            <a href="#home">
+              <div class="glance__label"><svg class="icon"><use href="#i-truck"/></svg>Purchasing</div>
+              <div class="glance__value">1<small>to approve</small></div>
+              <div class="glance__detail">Ölgerðin delivery due 14:00 tomorrow</div>
+              <span class="glance__link">View orders<svg class="icon" style="width:14px;height:14px"><use href="#i-arrow-right"/></svg></span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack-24">
+        <div>
+          <div class="col-title">Tonight <a href="#home">Shifts</a></div>
+          <div class="staff">
+            <div class="staff__row"><span class="atlas-avatar av-b">SJ</span><div><div class="n">Sara Jónsdóttir</div><div class="r">Bartender · opening</div></div><span class="h">16:00–00:00</span></div>
+            <div class="staff__row"><span class="atlas-avatar av-c">GK</span><div><div class="n">Gunnar Kristjánsson</div><div class="r">Bartender</div></div><span class="h">18:00–01:30</span></div>
+            <div class="staff__row"><span class="atlas-avatar av-d">EH</span><div><div class="n">Elín Hauksdóttir</div><div class="r">Floor</div></div><span class="h">19:00–01:30</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="col-title">Opening and closing</div>
+          <ol class="timeline">
+            <li class="is-done"><span class="t">16:00</span><span class="m"></span><span class="l">Opening checks started<small>Sara · 4 of 9 done</small></span></li>
+            <li class="is-now"><span class="t">17:00</span><span class="m"></span><span class="l">Doors open</span></li>
+            <li><span class="t">17:00</span><span class="m"></span><span class="l">Happy hour until 19:00</span></li>
+            <li><span class="t">00:30</span><span class="m"></span><span class="l">Last orders</span></li>
+            <li><span class="t">01:00</span><span class="m"></span><span class="l">Close and closing checklist</span></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== INVENTORY =============================== -->
+<section class="screen" id="s-inventory" data-title="Inventory" data-nav="inventory">
+  <div class="page page--wide" style="max-width:1400px">
+    <div class="page-head">
+      <div><h1 class="page-head__title">Inventory</h1><p class="page-head__sub">84 active items · counted Tuesday 22 September</p></div>
+      <div class="page-head__actions">
+        <a class="atlas-btn atlas-btn--secondary" href="#count"><svg class="icon"><use href="#i-list-checks"/></svg>Count stock</a>
+        <a class="atlas-btn atlas-btn--primary" href="#inventory-new"><svg class="icon"><use href="#i-plus"/></svg>Add item</a>
+      </div>
+    </div>
+    <div class="atlas-search phone-search"><svg class="icon"><use href="#i-search"/></svg><input class="atlas-input" type="search" placeholder="Search items" aria-label="Search items"></div>
+    <nav class="atlas-tabs" aria-label="Inventory sections" style="margin-top:16px">
+      <a href="#inventory" aria-current="page">Items</a><a href="#count">Counts</a><a href="#inventory">Movements</a><a href="#inventory">Waste</a>
+    </nav>
+    <div class="toolbar">
+      <label class="atlas-search"><svg class="icon"><use href="#i-search"/></svg><input class="atlas-input" type="search" placeholder="Search items, suppliers or codes" aria-label="Search items"></label>
+      <button class="atlas-chip is-active" type="button">Below par<svg class="icon" style="width:14px;height:14px"><use href="#i-x"/></svg></button>
+      <button class="atlas-chip" type="button">Category<svg class="icon" style="width:14px;height:14px"><use href="#i-chevron-down"/></svg></button>
+      <button class="atlas-chip" type="button">Supplier<svg class="icon" style="width:14px;height:14px"><use href="#i-chevron-down"/></svg></button>
+      <button class="atlas-chip atlas-chip--dashed" type="button"><svg class="icon" style="width:14px;height:14px"><use href="#i-list-filter"/></svg>More filters</button>
+      <div class="toolbar__end">6 of 84 items<button class="atlas-icon-btn" type="button" aria-label="Export"><svg class="icon"><use href="#i-download"/></svg></button></div>
+    </div>
+    <div class="bulkbar" role="region" aria-label="Selection">
+      2 selected<span class="sep"></span>
+      <button class="atlas-btn atlas-btn--ghost atlas-btn--sm" type="button"><svg class="icon"><use href="#i-truck"/></svg>Add to order</button>
+      <button class="atlas-btn atlas-btn--ghost atlas-btn--sm" type="button"><svg class="icon"><use href="#i-list-checks"/></svg>Count these</button>
+      <span style="flex:1"></span>
+      <button class="atlas-btn atlas-btn--ghost atlas-btn--sm" type="button">Clear</button>
+    </div>
+    <div class="atlas-table-wrap">
+      <table class="atlas-table">
+        <thead><tr>
+          <th class="col-check"><span class="atlas-check" role="checkbox" aria-checked="mixed" aria-label="Select all"></span></th>
+          <th><span class="th-sort">Item<svg class="icon" style="width:14px;height:14px"><use href="#i-chevron-down"/></svg></span></th><th class="col-opt">Category</th><th>Supplier</th>
+          <th class="is-num">On hand</th><th class="is-num">Par</th><th>Status</th><th class="is-num">Unit cost</th><th class="col-opt">Counted</th><th class="col-actions"><span class="sr-only">Actions</span></th>
+        </tr></thead>
+        <tbody>
+          <tr class="is-selected"><td class="col-check"><span class="atlas-check is-on" role="checkbox" aria-checked="true" aria-label="Select Campari"></span></td><td><span class="cell-primary">Campari</span><span class="cell-sub">1 L bottle · Back bar</span></td><td class="col-opt">Aperitif</td><td>Globus</td><td class="is-num"><span class="qty">1<span class="bar bar--danger"><i style="width:25%"></i></span></span></td><td class="is-num">4</td><td><span class="atlas-pill atlas-pill--danger">Almost out</span></td><td class="is-num">3.900 kr</td><td class="muted col-opt">Tue</td><td class="col-actions"><button class="atlas-icon-btn row-action" type="button" aria-label="Actions for Campari"><svg class="icon"><use href="#i-ellipsis"/></svg></button></td></tr>
+          <tr class="is-selected"><td class="col-check"><span class="atlas-check is-on" role="checkbox" aria-checked="true" aria-label="Select Limes"></span></td><td><span class="cell-primary">Limes</span><span class="cell-sub">each · Walk-in fridge</span></td><td class="col-opt">Fresh fruit</td><td>Mata</td><td class="is-num"><span class="qty">0<span class="bar bar--danger"><i style="width:0"></i></span></span></td><td class="is-num">40</td><td><span class="atlas-pill atlas-pill--danger">Out</span></td><td class="is-num">60 kr</td><td class="muted col-opt">Tue</td><td class="col-actions"><button class="atlas-icon-btn row-action" type="button" aria-label="Actions for Limes"><svg class="icon"><use href="#i-ellipsis"/></svg></button></td></tr>
+          <tr><td class="col-check"><span class="atlas-check" role="checkbox" aria-checked="false" aria-label="Select Tanqueray"></span></td><td><span class="cell-primary">Tanqueray London Dry</span><span class="cell-sub">1 L bottle · Back bar</span></td><td class="col-opt">Gin</td><td>Globus</td><td class="is-num"><span class="qty">3<span class="bar bar--warn"><i style="width:50%"></i></span></span></td><td class="is-num">6</td><td><span class="atlas-pill atlas-pill--warning">Below par</span></td><td class="is-num">4.200 kr</td><td class="muted col-opt">Tue</td><td class="col-actions"><button class="atlas-icon-btn row-action" type="button" aria-label="Actions for Tanqueray"><svg class="icon"><use href="#i-ellipsis"/></svg></button></td></tr>
+          <tr><td class="col-check"><span class="atlas-check" role="checkbox" aria-checked="false" aria-label="Select Aperol"></span></td><td><span class="cell-primary">Aperol</span><span class="cell-sub">1 L bottle · Back bar</span></td><td class="col-opt">Aperitif</td><td>Globus</td><td class="is-num"><span class="qty">2<span class="bar bar--warn"><i style="width:50%"></i></span></span></td><td class="is-num">4</td><td><span class="atlas-pill atlas-pill--warning">Below par</span></td><td class="is-num">3.300 kr</td><td class="muted col-opt">Tue</td><td class="col-actions"><button class="atlas-icon-btn row-action" type="button" aria-label="Actions for Aperol"><svg class="icon"><use href="#i-ellipsis"/></svg></button></td></tr>
+          <tr><td class="col-check"><span class="atlas-check" role="checkbox" aria-checked="false" aria-label="Select Fever-Tree"></span></td><td><span class="cell-primary">Fever-Tree Tonic</span><span class="cell-sub">200 ml bottle · Store room</span></td><td class="col-opt">Mixer</td><td>Ölgerðin</td><td class="is-num"><span class="qty">48<span class="bar bar--warn"><i style="width:66%"></i></span></span></td><td class="is-num">72</td><td><span class="atlas-pill atlas-pill--warning">Below par</span></td><td class="is-num">190 kr</td><td class="muted col-opt">Tue</td><td class="col-actions"><button class="atlas-icon-btn row-action" type="button" aria-label="Actions for Fever-Tree"><svg class="icon"><use href="#i-ellipsis"/></svg></button></td></tr>
+          <tr><td class="col-check"><span class="atlas-check" role="checkbox" aria-checked="false" aria-label="Select Angostura"></span></td><td><span class="cell-primary">Angostura Bitters</span><span class="cell-sub">200 ml bottle · Back bar</span></td><td class="col-opt">Bitters</td><td>Globus</td><td class="is-num"><span class="qty">1<span class="bar bar--warn"><i style="width:50%"></i></span></span></td><td class="is-num">2</td><td><span class="atlas-pill atlas-pill--warning">Below par</span></td><td class="is-num">2.900 kr</td><td class="muted col-opt">Tue</td><td class="col-actions"><button class="atlas-icon-btn row-action" type="button" aria-label="Actions for Angostura"><svg class="icon"><use href="#i-ellipsis"/></svg></button></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-foot"><span>Showing 6 below-par items</span><span>Quantities are from the last verified count plus recorded movements.</span></div>
+
+    <div class="inv-list" role="list">
+      <div class="inv-row" role="listitem"><div class="inv-row__body"><div class="inv-row__t">Campari</div><div class="inv-row__m">Aperitif · Globus · Back bar</div></div><div class="inv-row__q">1 <span class="muted" style="font-weight:400">/ 4</span><small><span class="atlas-pill atlas-pill--danger">Almost out</span></small></div></div>
+      <div class="inv-row" role="listitem"><div class="inv-row__body"><div class="inv-row__t">Limes</div><div class="inv-row__m">Fresh fruit · Mata · Walk-in</div></div><div class="inv-row__q">0 <span class="muted" style="font-weight:400">/ 40</span><small><span class="atlas-pill atlas-pill--danger">Out</span></small></div></div>
+      <div class="inv-row" role="listitem"><div class="inv-row__body"><div class="inv-row__t">Tanqueray London Dry</div><div class="inv-row__m">Gin · Globus · Back bar</div></div><div class="inv-row__q">3 <span class="muted" style="font-weight:400">/ 6</span><small><span class="atlas-pill atlas-pill--warning">Below par</span></small></div></div>
+      <div class="inv-row" role="listitem"><div class="inv-row__body"><div class="inv-row__t">Aperol</div><div class="inv-row__m">Aperitif · Globus · Back bar</div></div><div class="inv-row__q">2 <span class="muted" style="font-weight:400">/ 4</span><small><span class="atlas-pill atlas-pill--warning">Below par</span></small></div></div>
+      <div class="inv-row" role="listitem"><div class="inv-row__body"><div class="inv-row__t">Fever-Tree Tonic</div><div class="inv-row__m">Mixer · Ölgerðin · Store room</div></div><div class="inv-row__q">48 <span class="muted" style="font-weight:400">/ 72</span><small><span class="atlas-pill atlas-pill--warning">Below par</span></small></div></div>
+      <div class="inv-row" role="listitem"><div class="inv-row__body"><div class="inv-row__t">Angostura Bitters</div><div class="inv-row__m">Bitters · Globus · Back bar</div></div><div class="inv-row__q">1 <span class="muted" style="font-weight:400">/ 2</span><small><span class="atlas-pill atlas-pill--warning">Below par</span></small></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== ATLAS AI =============================== -->
+<section class="screen" id="s-ai" data-title="Atlas AI" data-nav="ai">
+  <div class="ai">
+    <aside class="ai-list" aria-label="Conversations">
+      <div class="ai-list__head">
+        <button class="atlas-btn atlas-btn--secondary" type="button"><svg class="icon"><use href="#i-plus"/></svg>New conversation</button>
+        <button class="atlas-icon-btn" type="button" aria-label="Search conversations"><svg class="icon"><use href="#i-search"/></svg></button>
+      </div>
+      <div class="ai-list__scroll">
+        <div class="ai-list__label">Pinned</div>
+        <a class="ai-conv" href="#ai"><div class="ai-conv__t">Weekly par review</div><div class="ai-conv__m">Monday</div></a>
+        <div class="ai-list__label">Today</div>
+        <a class="ai-conv" href="#ai" aria-current="true"><div class="ai-conv__t">Negroni tonight and Campari order</div><div class="ai-conv__m">Order draft ready for approval</div></a>
+        <a class="ai-conv" href="#ai"><div class="ai-conv__t">Does this delivery match our order?</div><div class="ai-conv__m">Ölgerðin · 2 differences</div></a>
+        <div class="ai-list__label">Earlier</div>
+        <a class="ai-conv" href="#ai"><div class="ai-conv__t">Quiz night staffing</div><div class="ai-conv__m">Tuesday</div></a>
+        <a class="ai-conv" href="#ai"><div class="ai-conv__t">Cost of a Paloma</div><div class="ai-conv__m">Last week</div></a>
+        <a class="ai-conv" href="#ai"><div class="ai-conv__t">Closing checklist changes</div><div class="ai-conv__m">Last week</div></a>
+      </div>
+    </aside>
+    <div class="ai-thread">
+      <div class="ai-thread__head">
+        <div class="ai-thread__title">Negroni tonight and Campari order</div>
+        <button class="atlas-icon-btn" type="button" aria-label="Pin conversation"><svg class="icon"><use href="#i-pin"/></svg></button>
+        <button class="atlas-icon-btn" type="button" aria-label="More"><svg class="icon"><use href="#i-ellipsis"/></svg></button>
+      </div>
+      <div class="ai-scroll">
+        <div class="ai-col">
+          <div class="msg-user"><div class="msg-user__bubble">Can we still make Negronis tonight? If not, sort out the Campari.</div></div>
+
+          <div class="msg-ai">
+            <div class="msg-ai__who"><span class="ai-mark"><svg class="icon"><use href="#i-sparkles"/></svg></span>Atlas</div>
+            <button class="steps-line" type="button" aria-expanded="false"><svg class="icon" style="width:14px;height:14px"><use href="#i-circle-check"/></svg>Checked stock, the Negroni recipe and Globus prices<svg class="icon" style="width:14px;height:14px;color:var(--text-3)"><use href="#i-chevron-down"/></svg></button>
+            <div class="msg-ai__text">
+              <p><strong>Yes, but only about 30 Negronis.</strong> You have one bottle of Campari left and each Negroni uses 30 ml. On a quiz night you usually sell 40–50.</p>
+              <p>I've prepared an order with Globus so Campari arrives tomorrow morning. Approve it before 18:00 to make their cut-off.</p>
+            </div>
+            <div class="records">
+              <a class="record-chip" href="#inventory"><svg class="icon"><use href="#i-package"/></svg>Campari</a>
+              <a class="record-chip" href="#home"><svg class="icon"><use href="#i-martini"/></svg>Negroni</a>
+              <a class="record-chip" href="#home"><svg class="icon"><use href="#i-truck"/></svg>Globus</a>
+            </div>
+            <div class="evidence" role="group" aria-label="Evidence">
+              <div class="evidence__head"><svg class="icon" style="width:14px;height:14px"><use href="#i-file-text"/></svg>How Atlas knows<span class="muted">4 sources</span></div>
+              <div class="evidence__row"><span class="kind kind--fact">Verified</span><span>Campari: 1 bottle (1 L) on hand</span><span class="src">Count · Tue 22 Sep</span></div>
+              <div class="evidence__row"><span class="kind kind--calc">Calculated</span><span>1,000 ml ÷ 30 ml ≈ 33 Negronis</span><span class="src">Recipe · Negroni</span></div>
+              <div class="evidence__row"><span class="kind kind--est">Estimate</span><span>40–50 Negronis on the last 4 quiz nights</span><span class="src">Reports · sales</span></div>
+              <div class="evidence__row"><span class="kind kind--missing">Missing</span><span>Sales since Tuesday's count are not recorded</span><span class="src">No POS link</span></div>
+            </div>
+
+            <div class="approval" role="group" aria-label="Order draft for approval">
+              <div class="approval__head">
+                <span class="atlas-row__icon atlas-row__icon--info"><svg class="icon"><use href="#i-truck"/></svg></span>
+                <div style="flex:1"><h4>Order from Globus</h4><p>Draft · delivery Friday 25 September, morning</p></div>
+                <span class="atlas-pill atlas-pill--info">Needs approval</span>
+              </div>
+              <div class="approval__lines">
+                <div class="approval__line"><span>Campari 1 L</span><span class="is-num">6</span><span class="is-num">23.400 kr</span></div>
+                <div class="approval__line"><span>Aperol 1 L</span><span class="is-num">3</span><span class="is-num">9.900 kr</span></div>
+                <div class="approval__line"><span>Angostura Bitters 200 ml</span><span class="is-num">2</span><span class="is-num">5.800 kr</span></div>
+                <div class="approval__line approval__line--total"><span>Total</span><span class="is-num"></span><span class="is-num">39.100 kr</span></div>
+              </div>
+              <div class="approval__note"><svg class="icon"><use href="#i-info"/></svg>Approving creates the order in Purchasing. Nothing is sent to Globus until you send it from there.</div>
+              <div class="approval__foot">
+                <span class="spacer">Expires tomorrow at 16:40</span>
+                <button class="atlas-btn atlas-btn--ghost atlas-btn--sm" type="button">Dismiss</button>
+                <button class="atlas-btn atlas-btn--secondary atlas-btn--sm" type="button">Edit</button>
+                <button class="atlas-btn atlas-btn--primary atlas-btn--sm" type="button"><svg class="icon"><use href="#i-check"/></svg>Create order</button>
+              </div>
+            </div>
+            <div class="msg-actions">
+              <button class="atlas-icon-btn" type="button" aria-label="Copy answer"><svg class="icon"><use href="#i-copy"/></svg></button>
+              <button class="atlas-icon-btn" type="button" aria-label="Try again"><svg class="icon"><use href="#i-refresh-cw"/></svg></button>
+            </div>
+          </div>
+
+          <div class="msg-user">
+            <div>
+              <div class="msg-user__attach"><div class="photo-thumb" role="img" aria-label="Photo: delivery note"></div></div>
+              <div class="msg-user__bubble">And does this Ölgerðin delivery match what we ordered?</div>
+            </div>
+          </div>
+          <div class="msg-ai">
+            <div class="msg-ai__who"><span class="ai-mark"><svg class="icon"><use href="#i-sparkles"/></svg></span>Atlas</div>
+            <button class="steps-line" type="button" aria-live="polite"><svg class="icon" style="width:14px;height:14px;color:var(--accent);animation:spin 1s linear infinite"><use href="#i-loader-circle"/></svg>Reading the delivery note…</button>
+            <div class="atlas-skel" style="width:92%;height:14px;margin-top:6px"></div>
+            <div class="atlas-skel" style="width:74%;height:14px;margin-top:10px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="composer-wrap" id="composer-wrap">
+        <div class="voice" role="region" aria-label="Live voice">
+          <div class="voice__top"><span class="voice__state">Listening</span><span class="voice__time">0:42</span></div>
+          <div class="voice__wave" aria-hidden="true">
+            <i style="height:8px"></i><i style="height:14px"></i><i style="height:22px"></i><i style="height:12px"></i><i style="height:26px"></i><i style="height:18px"></i><i style="height:9px"></i><i style="height:16px"></i><i style="height:24px"></i><i style="height:12px"></i><i style="height:6px"></i><i style="height:14px"></i><i style="height:20px"></i><i style="height:10px"></i><i style="height:5px"></i><i style="height:5px"></i><i style="height:5px"></i><i style="height:5px"></i>
+          </div>
+          <div class="voice__transcript">“Six bottles of Tanqueray and two Campari <span>on the back bar…</span>”</div>
+          <div class="voice__controls">
+            <button type="button"><svg class="icon"><use href="#i-mic-off"/></svg>Mute</button>
+            <button type="button" class="end"><svg class="icon"><use href="#i-phone-off"/></svg>End</button>
+          </div>
+        </div>
+        <div class="composer">
+          <label class="sr-only" for="ask">Message Atlas</label>
+          <textarea id="ask" rows="1" placeholder="Ask Atlas about stock, recipes, shifts…"></textarea>
+          <div class="composer__bar">
+            <button class="atlas-icon-btn" type="button" aria-label="Add photo or file"><svg class="icon icon--md"><use href="#i-plus"/></svg></button>
+            <span class="composer__ctx"><svg class="icon" style="width:13px;height:13px"><use href="#i-martini"/></svg>Negroni</span>
+            <span class="spacer"></span>
+            <button class="atlas-icon-btn" type="button" aria-label="Record a voice note"><svg class="icon icon--md"><use href="#i-mic"/></svg></button>
+            <button class="atlas-icon-btn" type="button" aria-label="Start live voice"><svg class="icon icon--md"><use href="#i-audio-lines"/></svg></button>
+            <button class="send" type="button" aria-label="Send"><svg class="icon"><use href="#i-arrow-up"/></svg></button>
+          </div>
+        </div>
+        <div class="composer-hint">Atlas prepares changes for you to approve. It never changes stock, orders or shifts on its own.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== STOCK COUNT (phone-first) =============================== -->
+<section class="screen" id="s-count" data-title="Back bar count" data-nav="inventory">
+  <div class="page">
+    <div class="count">
+      <div class="count-head" style="align-items:center">
+        <div style="flex:1"><h1 class="page-head__title hide-phone">Back bar count</h1><div class="page-head__sub">12 of 40 counted · started 15:45 by Sara</div></div>
+        <button class="atlas-btn atlas-btn--ghost atlas-btn--sm" type="button">Pause</button>
+      </div>
+      <div class="count-progress" role="progressbar" aria-valuenow="12" aria-valuemin="0" aria-valuemax="40" aria-label="Count progress"><i></i></div>
+      <div class="atlas-card count-card">
+        <div class="count-meta">Shelf 2 · item 13 of 40</div>
+        <div class="count-item" style="margin-top:6px">Campari 1 L</div>
+        <div class="count-meta">Last verified <b>1</b> on Tuesday · par 4</div>
+        <div class="stepper">
+          <button type="button" aria-label="One less"><svg class="icon"><use href="#i-minus"/></svg></button>
+          <output aria-live="polite" aria-label="Counted quantity">1½</output>
+          <button type="button" aria-label="One more"><svg class="icon"><use href="#i-plus"/></svg></button>
+        </div>
+        <div class="partials" role="group" aria-label="Partial bottle">
+          <button class="atlas-chip" type="button">+ ¼</button><button class="atlas-chip is-active" type="button">+ ½</button><button class="atlas-chip" type="button">+ ¾</button>
+        </div>
+      </div>
+      <div class="count-actions">
+        <button class="atlas-btn atlas-btn--secondary atlas-btn--lg" type="button" aria-label="Scan barcode"><svg class="icon icon--md"><use href="#i-scan-barcode"/></svg></button>
+        <button class="atlas-btn atlas-btn--primary atlas-btn--lg" type="button">Save and next<svg class="icon"><use href="#i-arrow-right"/></svg></button>
+      </div>
+      <div class="count-next">
+        <div class="col-title">Up next</div>
+        <ul class="atlas-list atlas-card">
+          <li class="atlas-row"><div class="atlas-row__body"><div class="atlas-row__title">Aperol 1 L</div><div class="atlas-row__meta">Shelf 2 · last 2</div></div><span class="atlas-pill">Not counted</span></li>
+          <li class="atlas-row"><div class="atlas-row__body"><div class="atlas-row__title">Martini Rosso 1 L</div><div class="atlas-row__meta">Shelf 2 · last 5</div></div><span class="atlas-pill">Not counted</span></li>
+          <li class="atlas-row"><div class="atlas-row__body"><div class="atlas-row__title">Tanqueray London Dry 1 L</div><div class="atlas-row__meta">Shelf 1 · counted 3</div></div><span class="atlas-pill atlas-pill--positive">Counted</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== COMPONENTS =============================== -->
+<section class="screen" id="s-components" data-title="Components" data-nav="settings">
+  <div class="page">
+    <div class="page-head"><div><h1 class="page-head__title">Components</h1><p class="page-head__sub">The canonical set. Every page is built from these.</p></div></div>
+    <div class="gallery" style="margin-top:24px">
+      <div class="atlas-card">
+        <h3>Buttons</h3>
+        <div class="row-wrap">
+          <button class="atlas-btn atlas-btn--primary" type="button">Create order</button>
+          <button class="atlas-btn atlas-btn--secondary" type="button"><svg class="icon"><use href="#i-download"/></svg>Export</button>
+          <button class="atlas-btn atlas-btn--ghost" type="button">Cancel</button>
+          <button class="atlas-btn atlas-btn--danger" type="button">Delete item</button>
+        </div>
+        <div class="row-wrap" style="margin-top:12px">
+          <button class="atlas-btn atlas-btn--primary is-loading" type="button" aria-busy="true">Saving</button>
+          <button class="atlas-btn atlas-btn--primary" type="button" disabled>Create order</button>
+          <button class="atlas-btn atlas-btn--secondary atlas-btn--sm" type="button">Small</button>
+          <button class="atlas-icon-btn" type="button" aria-label="More"><svg class="icon"><use href="#i-ellipsis"/></svg></button>
+        </div>
+      </div>
+      <div class="atlas-card">
+        <h3>Status and chips</h3>
+        <div class="row-wrap">
+          <span class="atlas-pill atlas-pill--positive">Ready</span><span class="atlas-pill atlas-pill--warning">Below par</span><span class="atlas-pill atlas-pill--danger">Out</span><span class="atlas-pill atlas-pill--info">Needs approval</span><span class="atlas-pill">Draft</span>
+        </div>
+        <div class="row-wrap" style="margin-top:12px">
+          <button class="atlas-chip is-active" type="button">Below par<svg class="icon" style="width:14px;height:14px"><use href="#i-x"/></svg></button><button class="atlas-chip" type="button">Supplier<svg class="icon" style="width:14px;height:14px"><use href="#i-chevron-down"/></svg></button>
+          <div class="atlas-segmented" role="group" aria-label="View"><button type="button" aria-pressed="true">Week</button><button type="button" aria-pressed="false">Month</button></div>
+        </div>
+      </div>
+      <div class="atlas-card">
+        <h3>Form controls</h3>
+        <div style="display:grid;gap:14px">
+          <div class="atlas-field"><label for="c1">Item name</label><input class="atlas-input" id="c1" value="Campari 1 L"></div>
+          <div class="atlas-field"><label for="c2">Par level</label><input class="atlas-input" id="c2" aria-invalid="true" value="-2" aria-describedby="c2e"><span class="error" id="c2e"><svg class="icon" style="width:14px;height:14px"><use href="#i-circle-alert"/></svg>Par level can't be negative.</span></div>
+          <div class="atlas-toggle-row"><div><div class="t">Include in stock counts</div><div class="h">Shown on the count list for its location.</div></div><button class="atlas-toggle" role="switch" aria-checked="true" aria-label="Include in stock counts" type="button"></button></div>
+          <div style="display:flex;gap:16px;align-items:center"><span class="atlas-check is-on" role="checkbox" aria-checked="true" aria-label="checked"></span><span class="atlas-check" role="checkbox" aria-checked="false" aria-label="unchecked"></span></div>
+        </div>
+      </div>
+      <div class="atlas-card">
+        <h3>Feedback</h3>
+        <div style="display:grid;gap:10px">
+          <div class="atlas-alert atlas-alert--warning"><svg class="icon"><use href="#i-triangle-alert"/></svg><div><div class="atlas-alert__title">Shifts couldn't be loaded</div><div class="muted">Your changes are safe. Try again, or check your connection.</div></div></div>
+          <div><span class="atlas-toast" role="status"><svg class="icon"><use href="#i-circle-check"/></svg>Order created<button type="button">View</button></span></div>
+          <div class="atlas-card" style="padding:14px;display:grid;gap:10px"><div class="atlas-skel" style="width:40%"></div><div class="atlas-skel" style="width:90%"></div><div class="atlas-skel" style="width:70%"></div></div>
+        </div>
+      </div>
+      <div class="atlas-card">
+        <h3>Empty state</h3>
+        <div class="atlas-empty" style="padding:16px">
+          <span class="atlas-empty__icon"><svg class="icon icon--md"><use href="#i-truck"/></svg></span>
+          <h3>No orders yet</h3>
+          <p>Orders you create or approve appear here with their delivery status.</p>
+          <button class="atlas-btn atlas-btn--secondary" type="button">New order</button>
+        </div>
+      </div>
+      <div class="atlas-card">
+        <h3>Workflow stepper</h3>
+        <ol class="atlas-steps"><li class="is-done"><span class="n">✓</span>Upload</li><li class="sep" aria-hidden="true"></li><li class="is-current"><span class="n">2</span>Review</li><li class="sep" aria-hidden="true"></li><li><span class="n">3</span>Import</li></ol>
+        <h3 style="margin-top:20px">Type</h3>
+        <div class="type-spec">
+          <div><code>title 24/32</code><span style="font:var(--type-title);letter-spacing:var(--track-title)">Inventory</span></div>
+          <div><code>section 17/24</code><span style="font:var(--type-section)">Needs attention</span></div>
+          <div><code>body 14/20</code><span>Campari is almost out.</span></div>
+          <div><code>meta 13/18</code><span class="muted" style="font:var(--type-meta)">1 of 4 bottles left</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Add-item sheet (shown on #inventory-new) -->
+<div id="sheet" hidden>
+  <div class="atlas-scrim"></div>
+  <div class="atlas-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="grabber" style="width:36px;height:4px;border-radius:2px;background:var(--line-strong);margin:8px auto 0"></div>
+    <div class="atlas-sheet__head">
+      <div style="flex:1"><h2 id="sheet-title">Add item</h2><p>Items appear in counts, recipes and orders.</p></div>
+      <a class="atlas-icon-btn" href="#inventory" aria-label="Close"><svg class="icon icon--md"><use href="#i-x"/></svg></a>
+    </div>
+    <form class="atlas-sheet__body" onsubmit="return false">
+      <div class="atlas-form-group">
+        <div class="atlas-field"><label for="f-name">Name</label><input class="atlas-input" id="f-name" value="Campari" autocomplete="off"></div>
+        <div class="atlas-grid-2">
+          <div class="atlas-field"><label for="f-cat">Category</label><select class="atlas-select" id="f-cat"><option>Aperitif</option></select></div>
+          <div class="atlas-field"><label for="f-sup">Supplier</label><select class="atlas-select" id="f-sup"><option>Globus</option></select></div>
+        </div>
+        <div class="atlas-field"><span class="atlas-label" id="f-unit-l">Counted in</span>
+          <div class="atlas-segmented" role="group" aria-labelledby="f-unit-l"><button type="button" aria-pressed="true">Bottle</button><button type="button" aria-pressed="false">Can</button><button type="button" aria-pressed="false">Each</button><button type="button" aria-pressed="false">kg</button></div>
+        </div>
+      </div>
+      <div class="atlas-form-group">
+        <div class="atlas-form-group__title">Stock and cost</div>
+        <div class="atlas-grid-2">
+          <div class="atlas-field"><label for="f-size">Bottle size</label><div class="atlas-affix"><input class="atlas-input num" id="f-size" value="1000" inputmode="decimal"><span class="suffix">ml</span></div></div>
+          <div class="atlas-field"><label for="f-cost">Cost per bottle</label><div class="atlas-affix"><input class="atlas-input num" id="f-cost" value="3.900" inputmode="decimal"><span class="suffix">kr</span></div></div>
+        </div>
+        <div class="atlas-field"><label for="f-par">Par level</label><input class="atlas-input num" id="f-par" aria-invalid="true" aria-describedby="f-par-e f-par-h" value="" placeholder="e.g. 4" inputmode="decimal">
+          <span class="error" id="f-par-e"><svg class="icon" style="width:14px;height:14px"><use href="#i-circle-alert"/></svg>Enter a par level so Atlas can tell you when to reorder.</span>
+          <span class="help" id="f-par-h">The quantity you want on hand after a delivery.</span></div>
+        <div class="atlas-field"><label for="f-loc">Location</label><select class="atlas-select" id="f-loc"><option>Back bar · shelf 2</option></select></div>
+      </div>
+      <div class="atlas-form-group">
+        <div class="atlas-toggle-row"><div><div class="t">Include in stock counts</div><div class="h">Shown on the count list for its location.</div></div><button class="atlas-toggle" role="switch" aria-checked="true" aria-label="Include in stock counts" type="button"></button></div>
+        <div class="atlas-upload"><span class="thumb"><svg class="icon icon--md"><use href="#i-camera"/></svg></span><div style="flex:1"><div style="color:var(--text);font-weight:500">Add a photo</div>Helps the team find it on the shelf.</div><button class="atlas-btn atlas-btn--secondary atlas-btn--sm" type="button">Choose</button></div>
+      </div>
+    </form>
+    <div class="atlas-sheet__foot">
+      <a class="atlas-btn atlas-btn--ghost" href="#inventory">Cancel</a>
+      <button class="atlas-btn atlas-btn--primary" type="button">Add item</button>
+    </div>
+  </div>
+</div>
+
+<!-- Command palette (shown on #palette) -->
+<div id="palette" hidden>
+  <div class="atlas-scrim"></div>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Search and quick actions">
+    <div class="palette__input">
+      <svg class="icon icon--md"><use href="#i-search"/></svg>
+      <input value="camp" aria-label="Search or ask Atlas" role="combobox" aria-expanded="true" aria-controls="pal-list">
+      <span class="palette__ctx">Home</span>
+      <a class="atlas-icon-btn only-phone" href="#home" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></a>
+    </div>
+    <div class="palette__body" id="pal-list" role="listbox">
+      <div class="palette__label">Items and recipes</div>
+      <div class="palette__item is-active" role="option" aria-selected="true"><svg class="icon"><use href="#i-package"/></svg>Campari<span class="muted" style="font-size:13px">1 of 4 · Back bar</span><span class="hint"><span class="kbd">↵</span></span></div>
+      <div class="palette__item" role="option"><svg class="icon"><use href="#i-martini"/></svg>Campari Spritz<span class="muted" style="font-size:13px">Recipe · available</span></div>
+      <div class="palette__label">Actions</div>
+      <div class="palette__item" role="option"><svg class="icon"><use href="#i-truck"/></svg>Add Campari to an order</div>
+      <div class="palette__item" role="option"><svg class="icon"><use href="#i-list-checks"/></svg>Count Campari</div>
+      <div class="palette__item" role="option"><svg class="icon"><use href="#i-trash-2"/></svg>Record waste for Campari</div>
+      <div class="palette__label">Ask Atlas</div>
+      <div class="palette__item palette__item--ask" role="option"><svg class="icon"><use href="#i-sparkles"/></svg><span>Ask Atlas “<b>camp</b>”</span><span class="hint"><span class="kbd">⌘</span><span class="kbd">↵</span></span></div>
+    </div>
+    <div class="palette__foot"><span><span class="kbd">↑</span><span class="kbd">↓</span>Move</span><span><span class="kbd">↵</span>Open</span><span><span class="kbd">⌘↵</span>Ask Atlas</span><span><span class="kbd">esc</span>Close</span></div>
+  </div>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a href="#home" data-tab="home"><svg class="icon"><use href="#i-house"/></svg>Home</a>
+  <a href="#inventory" data-tab="inventory"><svg class="icon"><use href="#i-package"/></svg>Inventory</a>
+  <a href="#ai" data-tab="ai"><svg class="icon"><use href="#i-sparkles"/></svg>Atlas</a>
+  <a href="#home" data-tab="recipes"><svg class="icon"><use href="#i-martini"/></svg>Recipes</a>
+  <a href="#components" data-tab="more"><svg class="icon"><use href="#i-ellipsis"/></svg>More<span class="atlas-badge">3</span></a>
+</nav>
+
+<script>
+(function () {
+  var map = { 'home': 'home', 'inventory': 'inventory', 'inventory-new': 'inventory', 'ai': 'ai', 'ai-voice': 'ai', 'ai-approval': 'ai', 'count': 'count', 'components': 'components', 'palette': 'home' };
+  function show() {
+    var h = (location.hash || '#home').slice(1);
+    var screen = map[h] || 'home';
+    document.querySelectorAll('.screen').forEach(function (s) { s.classList.toggle('is-active', s.id === 's-' + screen); });
+    var el = document.getElementById('s-' + screen);
+    document.getElementById('phone-title').textContent = el.dataset.title;
+    var nav = el.dataset.nav;
+    document.querySelectorAll('.nav__item').forEach(function (a) { a.toggleAttribute('aria-current', false); if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); });
+    document.querySelectorAll('.tabbar a').forEach(function (a) { a.removeAttribute('aria-current'); if (a.dataset.tab === (nav === 'settings' ? 'more' : nav)) a.setAttribute('aria-current', 'page'); });
+    document.getElementById('sheet').hidden = h !== 'inventory-new';
+    document.getElementById('palette').hidden = h !== 'palette';
+    document.body.classList.toggle('is-ai', screen === 'ai');
+    document.body.classList.toggle('is-count', screen === 'count');
+    document.getElementById('composer-wrap').classList.toggle('is-voice', h === 'ai-voice');
+    document.querySelector('.voice').style.display = h === 'ai-voice' ? '' : 'none';
+    if (h !== 'ai-voice') document.querySelector('.voice').style.display = 'none';
+    window.scrollTo(0, 0);
+    if (h === 'ai-approval') { var sc = document.querySelector('.ai-scroll'); sc.scrollTop = 420; window.scrollTo(0, 900); }
+  }
+  window.addEventListener('hashchange', show);
+  window.addEventListener('scroll', function () { document.getElementById('topbar').classList.toggle('is-scrolled', window.scrollY > 4); }, { passive: true });
+  show();
+})();
+</script>
+</body>
+</html>

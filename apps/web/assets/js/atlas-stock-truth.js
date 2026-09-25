@@ -130,5 +130,157 @@
     });
   }
 
-  root.AtlasStockTruth = Object.freeze({ known, project, effectiveStock });
+  // The par test: verified stock strictly under a positive par level (an
+  // item exactly at par is not under par). True for an out item that has a
+  // par. Summaries and pills use stockStatus below, which reports out and
+  // below par separately.
+  function belowPar(item) {
+    if (!known(item)) return false;
+    const par = numberOrNull(item.par_level);
+    const quantity = numberOrNull(item.verified_quantity ?? item.quantity);
+    return par !== null && par > 0 && quantity !== null && quantity < par;
+  }
+
+  // ---------------------------------------------------------------------------
+  // S89 canonical business truth. One rule per question, ported line for line
+  // to supabase/functions/_shared/stock-provenance.mjs (stockStatus, hasCost,
+  // purchaseReceiptAmount) and atlas-domain.mjs (inventoryValue, purchaseSpend)
+  // and parity-tested in tests/node/canonical-truth-s89.test.js. Change both.
+  // ---------------------------------------------------------------------------
+
+  // The one stock status. Precedence, first match wins:
+  //   'unknown'   no current verified quantity (never counted, expired, stale);
+  //   'out'       known and quantity <= 0, with or without a par level;
+  //   'below_par' known, par > 0 and quantity strictly under par;
+  //   'no_par'    known, quantity > 0 and no positive par (cannot be judged low);
+  //   'ok'        known and at or above a positive par.
+  // Summaries report 'below_par' and 'out' as separate counts (an out item is
+  // never also counted as below par). "Needs ordering" = out + below_par.
+  const STOCK_STATUSES = Object.freeze(['unknown', 'out', 'below_par', 'no_par', 'ok']);
+
+  function stockStatus(item) {
+    if (!known(item)) return 'unknown';
+    const quantity = numberOrNull(item.verified_quantity ?? item.quantity) ?? 0;
+    if (quantity <= 0) return 'out';
+    const par = numberOrNull(item.par_level);
+    if (par === null || par <= 0) return 'no_par';
+    return quantity < par ? 'below_par' : 'ok';
+  }
+
+  // Why stockStatus() is 'unknown' (null when it is not). An item whose stock
+  // was withheld because the shell's inputs (verified balances or movements)
+  // failed to load carries stock_unknown_reason 'stock_data_incomplete'; any
+  // other unknown item has simply not been counted (or its count expired).
+  const INCOMPLETE = 'stock_data_incomplete';
+  function unknownReason(item) {
+    if (stockStatus(item) !== 'unknown') return null;
+    return item?.stock_unknown_reason === INCOMPLETE ? INCOMPLETE : 'not_counted';
+  }
+
+  // Withholds stock when its inputs are incomplete: every item becomes
+  // unknown with reason 'stock_data_incomplete' instead of a projection from
+  // stale counts or no balances (index.html loadItems, AtlasData.health()).
+  function withhold(items, reason = INCOMPLETE) {
+    return (items || []).map((item) => ({
+      ...item, quantity: null, verified_quantity: null, freshness_state: 'unknown', stock_source: null,
+      stock_baseline_at: null, stock_movement_delta: 0, stock_recount_due: false, stock_unknown_reason: reason
+    }));
+  }
+
+  function needsOrdering(item) {
+    const status = stockStatus(item);
+    return status === 'out' || status === 'below_par';
+  }
+
+  // Counts for a list of items (inactive rows are records, not stock).
+  function stockCounts(items) {
+    const counts = { active: 0, known: 0, unknown: 0, out: 0, below_par: 0, no_par: 0, ok: 0, needs_ordering: 0 };
+    for (const item of items || []) {
+      if (!item || item.active === false) continue;
+      const status = stockStatus(item);
+      counts.active += 1;
+      counts[status] += 1;
+      if (status !== 'unknown') counts.known += 1;
+      if (status === 'out' || status === 'below_par') counts.needs_ordering += 1;
+    }
+    return counts;
+  }
+
+  // A usable inventory cost is a finite cost_price above zero. Null, zero,
+  // negative or non-numeric cost is "missing cost" everywhere (recipe cost,
+  // stock value, order estimates, Reports, Atlas AI).
+  function hasCost(item) {
+    const cost = numberOrNull(item?.cost_price);
+    return cost !== null && cost > 0;
+  }
+
+  // Stock value: null (unknown) unless every active item is counted AND
+  // costed; known_value is the lower bound over counted, costed items (null
+  // when there are none), with the counts of what is missing.
+  function inventoryValue(items) {
+    const active = (items || []).filter((item) => item && item.active !== false);
+    let knownValue = null;
+    let unknownItems = 0;
+    let missingCostItems = 0;
+    for (const item of active) {
+      const counted = known(item);
+      const costed = hasCost(item);
+      if (!counted) unknownItems += 1;
+      if (!costed) missingCostItems += 1;
+      if (counted && costed) knownValue = (knownValue ?? 0) + Math.max(0, numberOrNull(item.quantity) ?? 0) * Number(item.cost_price);
+    }
+    const complete = unknownItems === 0 && missingCostItems === 0;
+    return {
+      value: complete ? (knownValue ?? 0) : null,
+      complete,
+      known_value: knownValue,
+      active_items: active.length,
+      unknown_items: unknownItems,
+      missing_cost_items: missingCostItems
+    };
+  }
+
+  // Purchasing spend is costed purchase receipts. The receiving path posts
+  // 'restock' (public.adjust_inventory); the other names are accepted for
+  // imported history. Only positive quantities are receipts; waste, sales,
+  // counts, transfers and adjustments are never spend. The amount is
+  // total_cost when positive, else unit_cost x quantity when unit_cost is
+  // positive; otherwise the receipt is uncosted (counted, not added).
+  const PURCHASE_RECEIPT_TYPES = Object.freeze(['restock', 'purchase', 'delivery', 'receive', 'receipt']);
+
+  function purchaseReceiptAmount(movement) {
+    if (!PURCHASE_RECEIPT_TYPES.includes(String(movement?.movement_type || '').trim().toLowerCase())) return undefined;
+    const quantity = numberOrNull(movement.quantity_change);
+    if (quantity === null || quantity <= 0) return undefined;
+    const total = numberOrNull(movement.total_cost);
+    if (total !== null && total > 0) return total;
+    const unit = numberOrNull(movement.unit_cost);
+    return unit !== null && unit > 0 ? unit * quantity : null;
+  }
+
+  // { total, receipts, costed, uncosted } over the movements for which
+  // `include(movement)` is true (the caller's period test).
+  function purchaseSpend(movements, include = () => true) {
+    const result = { total: 0, receipts: 0, costed: 0, uncosted: 0 };
+    for (const movement of movements || []) {
+      const amount = purchaseReceiptAmount(movement);
+      if (amount === undefined || !include(movement)) continue;
+      result.receipts += 1;
+      if (amount === null) result.uncosted += 1;
+      else { result.costed += 1; result.total += amount; }
+    }
+    return result;
+  }
+
+  // Movement rows read for projections and reports: the newest 5 000, read in
+  // pages of 1 000 (the PostgREST max-rows default). Same number on the server
+  // (atlas-domain MOVEMENT_ROW_LIMIT).
+  const MOVEMENT_ROW_LIMIT = 5000;
+  const MOVEMENT_PAGE_SIZE = 1000;
+
+  root.AtlasStockTruth = Object.freeze({
+    known, belowPar, project, effectiveStock,
+    STOCK_STATUSES, stockStatus, unknownReason, withhold, needsOrdering, stockCounts, hasCost, inventoryValue,
+    PURCHASE_RECEIPT_TYPES, purchaseReceiptAmount, purchaseSpend, MOVEMENT_ROW_LIMIT, MOVEMENT_PAGE_SIZE
+  });
 })(window);

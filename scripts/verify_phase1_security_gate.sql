@@ -116,6 +116,42 @@ with public_tables as (
     as recipe_save_safe
   from pg_proc p
   where p.oid = to_regprocedure('public.atlas_save_recipe(uuid,jsonb,jsonb)')
+), reviewed_browser_rpc as (
+  -- S88 browser RPCs (purchasing v2, Data review, par levels). Each entry is
+  -- an invoker wrapper whose manager-gated definer body is named beside it.
+  -- Optional until the S88 migrations are installed.
+  select v.wrapper, v.impl, to_regprocedure(v.wrapper) as oid, to_regprocedure(v.impl) as impl_oid
+  from (values
+    ('public.atlas_purchase_order_command_v2(uuid,text,integer,uuid,jsonb,text,date,jsonb,text,text)',
+     'private.purchase_order_command_v2(uuid,text,integer,uuid,jsonb,text,date,jsonb,text,text)'),
+    ('public.atlas_purchase_order_policy()', 'private.purchase_order_policy()'),
+    ('public.atlas_purchase_order_detail(uuid)', 'private.purchase_order_detail(uuid)'),
+    ('public.atlas_data_review_summary()', 'private.data_review_summary()'),
+    ('public.atlas_data_review_rows(text,integer,integer)', 'private.data_review_rows(text,integer,integer)'),
+    ('public.atlas_par_level_evidence(uuid[],numeric)', 'private.par_level_evidence(uuid[],numeric)'),
+    ('public.atlas_apply_par_levels(jsonb,text)', 'private.apply_par_levels(jsonb,text)'),
+    -- S90: idempotent waste / delivery-without-an-order adjustment.
+    ('public.adjust_inventory_v2(text,uuid,numeric,text,numeric,uuid,text)',
+     'private.adjust_inventory_request(text,uuid,numeric,text,numeric,uuid,text)'),
+    -- S90g: item-master publication (atlas-item-master, manager token).
+    ('public.atlas_apply_item_master_update(uuid,jsonb,uuid[],jsonb,text)',
+     'private.apply_item_master_update(uuid,jsonb,uuid[],jsonb,text)')
+  ) as v(wrapper, impl)
+), reviewed_browser_rpc_status as (
+  select r.oid, r.wrapper,
+    not p.prosecdef
+    and coalesce('search_path=""' = any(p.proconfig), false)
+    and has_function_privilege('authenticated', p.oid, 'execute')
+    and not has_function_privilege('anon', p.oid, 'execute')
+    and coalesce(impl.prosecdef, false)
+    and coalesce('search_path=""' = any(impl.proconfig), false)
+    and not coalesce(has_function_privilege('anon', impl.oid, 'execute'), true)
+    and coalesce(impl.prosrc like '%auth.uid() is null or not private.is_manager_or_admin()%', false)
+    and coalesce(impl.prosrc like '%errcode=''42501''%', false)
+    as reviewed_rpc_safe
+  from reviewed_browser_rpc r
+  join pg_proc p on p.oid = r.oid
+  left join pg_proc impl on impl.oid = r.impl_oid
 ), browser_functions as (
   select p.oid, p.proname, pg_get_function_identity_arguments(p.oid) as args
   from pg_proc p
@@ -133,6 +169,10 @@ with public_tables as (
     and not exists (
       select 1 from purchase_order_status po
       where po.oid = p.oid and po.purchase_order_safe
+    )
+    and not exists (
+      select 1 from reviewed_browser_rpc_status rr
+      where rr.oid = p.oid and rr.reviewed_rpc_safe
     )
 ), fingerprint as (
   select
@@ -186,8 +226,14 @@ select jsonb_build_object(
     case when exists (select 1 from purchase_order_status where not purchase_order_safe)
       then 'purchase order wrapper, grants or table boundary is unsafe' end,
     case when exists (select 1 from recipe_save_status where not recipe_save_safe)
-      then 'recipe save is not a caller-evaluated manager-only RPC' end
+      then 'recipe save is not a caller-evaluated manager-only RPC' end,
+    case when exists (select 1 from reviewed_browser_rpc_status where not reviewed_rpc_safe)
+      then 'an S88 browser RPC is not an invoker wrapper over a manager-gated definer body' end
   ]::text[], null)),
+  'reviewed_browser_rpcs', coalesce((
+    select jsonb_agg(jsonb_build_object('function', wrapper, 'safe', reviewed_rpc_safe) order by wrapper)
+    from reviewed_browser_rpc_status
+  ), '[]'::jsonb),
   'browser_function_exposure', coalesce((
     select jsonb_agg(jsonb_build_object('function', proname, 'args', args) order by proname, args)
     from browser_functions

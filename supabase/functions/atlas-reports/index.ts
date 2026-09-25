@@ -1,16 +1,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
 import {
+  MOVEMENT_PAGE_SIZE,
+  MOVEMENT_ROW_LIMIT,
   applyStockTrustToWorkspace,
   buildRecipeReport,
   buildStockReport,
+  formatKr,
   sanitizeSnapshotInventory,
   sanitizeSnapshotRecipes,
-} from "./stock-provenance.mjs";
+} from "../_shared/stock-provenance.mjs";
 
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -24,7 +24,11 @@ const CORS_HEADERS = {
 const PROFILE_ROLES = new Set(["admin", "manager", "bartender", "viewer"]);
 const MANAGER_ROLES = new Set(["admin", "manager"]);
 const MAX_BODY_BYTES = 64 * 1024;
-const TIMEZONE = "Atlantic/Reykjavik";
+// Fallback only: the reporting zone and business date come from the venue
+// clock (Settings -> venue.timezone, atlas_settings_venue_clock) per request.
+const DEFAULT_TIMEZONE = "Atlantic/Reykjavik";
+
+type VenueClock = { timezone: string; businessDate: string | null };
 
 type AtlasProfile = {
   id: string;
@@ -55,14 +59,19 @@ type ReportSources = {
   profiles: AtlasProfile[];
   tasks: any[];
   progress: any[];
+  // "<table>.<column>" for optional source columns the production schema lacks.
+  missingColumns: string[];
 };
 
 class ApiError extends Error {
   status: number;
+  // Server-side diagnostic only (logged, never sent to the browser).
+  detail: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, detail = "") {
     super(message);
     this.status = status;
+    this.detail = detail;
   }
 }
 
@@ -78,17 +87,8 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
 function profileLabel(profile: Partial<AtlasProfile> | null | undefined): string {
-  return profile?.display_name?.trim()
-    || profile?.email?.trim()
-    || "Atlas team member";
+  return actorLabel(profile);
 }
 
 function isManager(context: AtlasContext): boolean {
@@ -107,10 +107,10 @@ function staffPayload(context: AtlasContext) {
   };
 }
 
-function policyPayload(context: AtlasContext) {
+function policyPayload(context: AtlasContext, clock: VenueClock) {
   return {
     read_only: true,
-    reporting_timezone: TIMEZONE,
+    reporting_timezone: clock.timezone,
     currency: "ISK",
     sales_integration_connected: false,
     source_data_mutation_enabled: false,
@@ -120,33 +120,21 @@ function policyPayload(context: AtlasContext) {
   };
 }
 
+// The production Auth/REST project and its publishable key come only from the
+// function environment (_shared/auth.mjs authConfig); unconfigured fails closed.
+function productionAuthUrl(): string {
+  return authConfig(Deno.env).projectUrl;
+}
+
+function productionPublishableKey(): string {
+  return authConfig(Deno.env).publishableKey;
+}
+
 async function requireActiveProfile(request: Request): Promise<AtlasContext> {
-  const token = bearerToken(request);
-  const headers = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
-  profileUrl.searchParams.set("id", `eq.${user.id}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active");
-  profileUrl.searchParams.set("limit", "1");
-
-  const profileResponse = await fetch(profileUrl, { headers });
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas staff profile could not be verified.");
-  const profiles = await profileResponse.json() as AtlasProfile[];
-  const profile = profiles[0];
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive. Reports access has been removed.");
-  if (!PROFILE_ROLES.has(profile.role)) throw new ApiError(403, "This Atlas profile cannot access Reports.");
-
-  return { token, user: { id: user.id, email: user.email }, profile };
+  const actor = await resolveActor(request, Deno.env, fetch, {
+    inactiveMessage: "This Atlas profile is inactive. Reports access has been removed.",
+  });
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
 }
 
 function branchCredentials() {
@@ -218,12 +206,12 @@ async function branchRpc(name: string, payload: Record<string, unknown>): Promis
   let parsed: any = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
+    // Fixed browser text; the database message is logged server-side only.
+    const detail = parsed && typeof parsed === "object" && "message" in parsed
       ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : "The private Reports request failed.";
-    throw new ApiError(response.status >= 500 ? 500 : 400, message);
+      : typeof parsed === "string" ? parsed : "";
+    console.error("Reports private RPC failed", name, response.status, detail.slice(0, 300));
+    throw new ApiError(response.status >= 500 ? 500 : 400, "The private Reports request failed.", detail);
   }
   return parsed;
 }
@@ -231,7 +219,7 @@ async function branchRpc(name: string, payload: Record<string, unknown>): Promis
 async function productionJson(context: AtlasContext, url: URL): Promise<any> {
   const response = await fetch(url, {
     headers: {
-      apikey: AUTH_PUBLISHABLE_KEY,
+      apikey: productionPublishableKey(),
       authorization: `Bearer ${context.token}`,
       accept: "application/json",
       "cache-control": "no-store",
@@ -242,29 +230,96 @@ async function productionJson(context: AtlasContext, url: URL): Promise<any> {
   let parsed: any = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : "Connected Atlas report data could not be read.";
-    throw new ApiError(response.status === 401 ? 401 : response.status === 403 ? 403 : 400, message);
+    // The browser gets a fixed message; the PostgREST text stays server-side.
+    const detail = parsed && typeof parsed === "object"
+      ? String(parsed.message || parsed.details || "")
+      : typeof parsed === "string" ? parsed : "";
+    throw new ApiError(
+      response.status === 401 ? 401 : response.status === 403 ? 403 : 400,
+      "Connected Atlas report data could not be read.",
+      detail,
+    );
   }
   return parsed;
+}
+
+// Explicit column handling for production reads (replaces the former global
+// fetch override). A column listed here may be absent while a production
+// migration is pending: the read is retried without it and the column is
+// reported as missing data (workspace.missing_columns and the Inventory source
+// note), never dropped silently. Any other missing column fails the request.
+const OPTIONAL_PRODUCTION_COLUMNS: Record<string, readonly string[]> = {
+  inventory_items: ["brand", "subcategory", "needs_review"],
+};
+
+function missingColumnName(message: string): string | null {
+  const patterns = [
+    /Could not find the ['"]([^'"]+)['"] column/i,
+    /column [^\s.]+\.([^\s]+) does not exist/i,
+    /column ['"]?([^'"\s]+)['"]? does not exist/i,
+  ];
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match?.[1]) return match[1].replace(/["']/g, "").trim();
+  }
+  return null;
 }
 
 async function productionRows(
   context: AtlasContext,
   table: string,
   select: string,
-  options: { order?: string; filters?: Record<string, string>; limit?: number } = {},
+  options: { order?: string; filters?: Record<string, string>; limit?: number; missing?: string[] } = {},
 ): Promise<any[]> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/${table}`);
-  url.searchParams.set("select", select);
-  if (options.order) url.searchParams.set("order", options.order);
-  url.searchParams.set("limit", String(Math.min(5000, Math.max(1, options.limit ?? 5000))));
-  for (const [key, value] of Object.entries(options.filters || {})) {
-    url.searchParams.set(key, value);
+  const optional = new Set(OPTIONAL_PRODUCTION_COLUMNS[table] || []);
+  let columns = select.split(",").map((value) => value.trim()).filter(Boolean);
+  for (let attempt = 0; attempt <= optional.size; attempt += 1) {
+    const url = new URL(`${productionAuthUrl()}/rest/v1/${table}`);
+    url.searchParams.set("select", columns.join(","));
+    if (options.order) url.searchParams.set("order", options.order);
+    url.searchParams.set("limit", String(Math.min(5000, Math.max(1, options.limit ?? 5000))));
+    for (const [key, value] of Object.entries(options.filters || {})) {
+      url.searchParams.set(key, value);
+    }
+    try {
+      const rows = await productionJson(context, url);
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      const column = error instanceof ApiError && error.status === 400 ? missingColumnName(error.detail) : null;
+      if (!column) {
+        if (error instanceof ApiError && error.detail) console.error("Reports production read failed", table, error.detail);
+        throw error;
+      }
+      if (!optional.has(column) || !columns.includes(column)) {
+        console.error("Reports production read is missing a required column", `${table}.${column}`);
+        throw new ApiError(
+          502,
+          `Reports source data is missing ${table}.${column}. Ask an administrator to apply the pending database migration.`,
+        );
+      }
+      columns = columns.filter((value) => value !== column);
+      options.missing?.push(`${table}.${column}`);
+      console.warn("Reports read continues without an optional column", `${table}.${column}`);
+    }
   }
-  const rows = await productionJson(context, url);
-  return Array.isArray(rows) ? rows : [];
+  throw new ApiError(502, "Connected Atlas report data could not be read.");
+}
+
+// The newest MOVEMENT_ROW_LIMIT movements (the same cap as the browser and
+// Atlas AI), read in MOVEMENT_PAGE_SIZE pages so a PostgREST max-rows setting
+// cannot silently truncate the projection.
+async function productionMovements(context: AtlasContext, select: string): Promise<any[]> {
+  const rows: any[] = [];
+  for (let offset = 0; offset < MOVEMENT_ROW_LIMIT; offset += MOVEMENT_PAGE_SIZE) {
+    const page = await productionRows(context, "inventory_movements", select, {
+      order: "created_at.desc,id.desc",
+      limit: MOVEMENT_PAGE_SIZE,
+      filters: { offset: String(offset) },
+    });
+    rows.push(...page);
+    if (page.length < MOVEMENT_PAGE_SIZE) break;
+  }
+  return rows.slice(0, MOVEMENT_ROW_LIMIT);
 }
 
 async function productionProfiles(context: AtlasContext): Promise<AtlasProfile[]> {
@@ -286,7 +341,7 @@ async function onboardingTasks(context: AtlasContext): Promise<any[]> {
 }
 
 async function onboardingProgress(context: AtlasContext): Promise<any[]> {
-  const filters = isManager(context) ? {} : { user_id: `eq.${context.user.id}` };
+  const filters: Record<string, string> = isManager(context) ? {} : { user_id: `eq.${context.user.id}` };
   return productionRows(
     context,
     "onboarding_progress",
@@ -296,6 +351,7 @@ async function onboardingProgress(context: AtlasContext): Promise<any[]> {
 }
 
 async function reportSources(context: AtlasContext): Promise<ReportSources> {
+  const missingColumns: string[] = [];
   const [inventory, recipes, recipeIngredients, suppliers, movements, profiles, tasks, progress] = await Promise.all([
     productionRows(
       context,
@@ -303,7 +359,7 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
       "id,name,category,quantity,unit,par_level,updated_at,source_updated_at,source_type,source_confidence,source_confirmed_at,source_confirmed_quantity,supplier_id,supplier,cost_price,sku,barcode,bin_location,size_ml,active,sell_price,package_size,brand,subcategory,needs_review",
       // Inactive rows are read so recipes can recognise references such as Ice
       // and Water; live stock metrics still include active rows only.
-      { order: "name.asc" },
+      { order: "name.asc", missing: missingColumns },
     ),
     productionRows(
       context,
@@ -323,11 +379,9 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
       "id,name,contact_name,email,phone,active,created_at,updated_at",
       { order: "name.asc", filters: { active: "eq.true" } },
     ),
-    productionRows(
+    productionMovements(
       context,
-      "inventory_movements",
       "id,item_id,item_name,movement_type,quantity_change,unit_cost,total_cost,supplier_id,note,created_by,created_at",
-      { order: "created_at.desc" },
     ),
     productionProfiles(context),
     onboardingTasks(context),
@@ -335,7 +389,7 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
   ]);
 
   if (isManager(context)) {
-    return { inventory, recipes, recipeIngredients, suppliers, movements, profiles, tasks, progress };
+    return { inventory, recipes, recipeIngredients, suppliers, movements, profiles, tasks, progress, missingColumns };
   }
 
   // Staff receive current operational quantities and recipe availability, but
@@ -367,6 +421,7 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
     profiles: profiles.filter((profile) => profile.id === context.user.id),
     tasks,
     progress,
+    missingColumns,
   };
 }
 
@@ -388,15 +443,30 @@ function addDays(date: Date, days: number): Date {
   return next;
 }
 
-function venueDate(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
+// The venue calendar date in `timeZone` (fallback when the clock has no business date).
+function calendarDate(timeZone: string): string {
+  let parts;
+  try {
+    parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  } catch {
+    parts = new Intl.DateTimeFormat("en-CA", { timeZone: DEFAULT_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  }
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+// The venue clock: Settings time zone and business date (a close after
+// midnight still belongs to the previous business day). Falls back to the
+// default zone's calendar date when the clock cannot be read.
+async function venueClock(context: AtlasContext): Promise<VenueClock> {
+  try {
+    const clock = await branchRpc("atlas_settings_venue_clock", { p_actor_role: context.profile.role });
+    const timezone = typeof clock?.timezone === "string" && clock.timezone ? clock.timezone : DEFAULT_TIMEZONE;
+    const businessDate = /^\d{4}-\d{2}-\d{2}$/.test(String(clock?.business_date || "")) ? String(clock.business_date) : null;
+    return { timezone, businessDate };
+  } catch {
+    return { timezone: DEFAULT_TIMEZONE, businessDate: null };
+  }
 }
 
 function startOfWeek(date: Date): Date {
@@ -411,6 +481,20 @@ function startOfQuarter(date: Date): Date {
 
 function daysInRange(range: DateRange): number {
   return Math.round((dateFromIso(range.end).getTime() - dateFromIso(range.start).getTime()) / 86400000) + 1;
+}
+
+// A range that is exactly one whole calendar month.
+function isWholeMonth(range: DateRange): boolean {
+  const start = dateFromIso(range.start);
+  const end = dateFromIso(range.end);
+  if (start.getUTCDate() !== 1 || start.getUTCFullYear() !== end.getUTCFullYear() || start.getUTCMonth() !== end.getUTCMonth()) return false;
+  return addDays(end, 1).getUTCDate() === 1;
+}
+
+// `comparison` is the whole calendar month before the whole-month `period`.
+function isPreviousWholeMonth(period: DateRange, comparison: DateRange): boolean {
+  if (!isWholeMonth(period) || !isWholeMonth(comparison)) return false;
+  return isoDate(addDays(dateFromIso(comparison.end), 1)) === period.start;
 }
 
 function clampShiftMonth(date: Date, monthOffset: number): Date {
@@ -438,9 +522,9 @@ function requireDateParam(value: string | null, label: string): string {
   return value!;
 }
 
-function dateRangeFromRequest(url: URL): { period: DateRange; preset: string } {
+function dateRangeFromRequest(url: URL, clock: VenueClock): { period: DateRange; preset: string } {
   const preset = url.searchParams.get("preset") || "last_30_days";
-  const today = dateFromIso(venueDate());
+  const today = dateFromIso(clock.businessDate ?? calendarDate(clock.timezone));
   let start = today;
   let end = today;
 
@@ -508,7 +592,12 @@ function comparisonRange(period: DateRange, comparisonKey: string, url: URL): Da
       const startText = requireDateParam(url.searchParams.get("comparison_start_date"), "Comparison start date");
       const endText = requireDateParam(url.searchParams.get("comparison_end_date"), "Comparison end date");
       const range = { start: startText, end: endText, label: labelRange(startText, endText) };
-      if (daysInRange(range) !== days) throw new ApiError(400, "Custom comparison must use the same number of days as the reporting period.");
+      // AtlasVenueClock.compareRange: a whole calendar month compares with the
+      // whole previous calendar month, whatever its length; any other period
+      // needs a comparison of the same number of days.
+      if (daysInRange(range) !== days && !isPreviousWholeMonth(period, range)) {
+        throw new ApiError(400, "Custom comparison must use the same number of days as the reporting period.");
+      }
       return range;
     }
     case "previous_week":
@@ -545,7 +634,8 @@ function filterPayload(url: URL): Record<string, string> {
 }
 
 async function snapshot(context: AtlasContext, url: URL) {
-  const { period, preset } = dateRangeFromRequest(url);
+  const clock = await venueClock(context);
+  const { period, preset } = dateRangeFromRequest(url, clock);
   const comparisonKey = url.searchParams.get("comparison") || "previous_period";
   const comparison = comparisonRange(period, comparisonKey, url);
   const [sources, verifiedBalances] = await Promise.all([
@@ -606,11 +696,12 @@ async function snapshot(context: AtlasContext, url: URL) {
     issues: snapshotInventory.issues,
     degraded,
   });
+  reportMissingColumns(workspace, sources.missingColumns);
 
   return {
     workspace,
     staff: staffPayload(context),
-    policy: policyPayload(context),
+    policy: policyPayload(context, clock),
     controls: {
       selected_preset: preset,
       selected_comparison: comparisonKey,
@@ -620,15 +711,30 @@ async function snapshot(context: AtlasContext, url: URL) {
   };
 }
 
+// Optional source columns the production schema did not return are missing
+// data: listed on the workspace and on the Inventory source, which reads partial.
+function reportMissingColumns(workspace: any, missing: string[]): void {
+  if (!workspace || typeof workspace !== "object") return;
+  workspace.missing_columns = [...new Set(missing)];
+  if (!missing.length) return;
+  const inventorySource = Array.isArray(workspace.data_sources)
+    ? workspace.data_sources.find((source: any) => source?.key === "inventory")
+    : null;
+  if (inventorySource) {
+    const names = [...new Set(missing.map((entry) => entry.split(".").pop()))].join(", ");
+    inventorySource.status = "partial";
+    inventorySource.note = `${inventorySource.note ? `${inventorySource.note} ` : ""}Missing from the source: ${names}.`;
+  }
+}
+
 function safeNumber(value: unknown): number | null {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
 
+// The canonical "3.900 kr" (formatKr, the port of AtlasFormat.money).
 function formatIsk(value: unknown): string {
-  const number = safeNumber(value);
-  if (number === null) return "unavailable";
-  return `${Math.round(number).toLocaleString("en-US")} ISK`;
+  return formatKr(safeNumber(value), "unavailable");
 }
 
 function deterministicReportAnswer(question: string, workspace: any): { answer: string; evidence: any[]; limitations: string[] } {
@@ -680,7 +786,7 @@ function deterministicReportAnswer(question: string, workspace: any): { answer: 
 
   if (/purchase|supplier|spend|order|price/.test(lower)) {
     return {
-      answer: `For ${period}, the connected evidence shows ${formatIsk(purchasing.spend)} in costed inventory movements across ${purchasing.movement_count ?? 0} records. Purchase-order metrics remain unavailable until a PO source is connected.`,
+      answer: `For ${period}, the connected evidence shows ${formatIsk(purchasing.spend)} in costed purchase receipts across ${purchasing.movement_count ?? 0} deliveries${purchasing.uncosted_receipts ? ` (${purchasing.uncosted_receipts} more without a cost)` : ""}. Waste is reported separately. Purchase-order metrics remain unavailable until a PO source is connected.`,
       evidence: [
         { label: "Purchasing spend", value: purchasing.spend ?? 0, unit: "ISK" },
         { label: "Movement count", value: purchasing.movement_count ?? 0 },
@@ -764,7 +870,7 @@ Deno.serve(async (request: Request) => {
 
     throw new ApiError(404, "Unknown Reports action.");
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     console.error("Reports API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The Reports service is temporarily unavailable." }, 500);
   }

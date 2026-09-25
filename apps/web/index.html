@@ -2,992 +2,199 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-<title>VÁ OS · Project Atlas</title>
-<link rel="icon" type="image/png" href="assets/logo/atlas-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Atlas</title>
+<!-- Brand v1.0: supplied kit files, byte-exact (docs/brand/README.md). -->
+<link rel="icon" href="assets/brand/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="assets/brand/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/brand/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/brand/favicon-48x48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta property="og:title" content="Atlas">
+<meta property="og:image" content="assets/brand/Atlas_OpenGraph_1200x630.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/recipes.css">
-<style>
-  :root{
-    --bg:        #12181A;
-    --surface:   #1B2321;
-    --surface-2: #202A27;
-    --line:      #2E3634;
-    --brass:     #B8874A;
-    --brass-hi:  #D1A268;
-    --wine:      #7A2430;
-    --text:      #EDE8E0;
-    --text-mute: #94A099;
-    --ok:        #6B8F71;
-    --warn:      #C97A4A;
-    --radius: 10px;
-  }
-  *{ box-sizing:border-box; }
-  html,body{ height:100%; }
-  body{
-    margin:0;
-    background:var(--bg);
-    color:var(--text);
-    font-family:'IBM Plex Sans', sans-serif;
-    -webkit-font-smoothing:antialiased;
-  }
-  .display{ font-family:'Fraunces', serif; }
-  .mono{ font-family:'IBM Plex Mono', monospace; }
-  button{ font-family:inherit; }
-  a{ color:var(--brass); }
-
-  /* ---------- LOGIN ---------- */
-  #login-screen{
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    position:relative;
-    overflow:hidden;
-    padding:24px;
-  }
-  .watermark{
-    position:absolute;
-    top:-8vw;
-    right:-4vw;
-    font-family:'Fraunces', serif;
-    font-size:38vw;
-    line-height:1;
-    color:var(--surface-2);
-    font-weight:500;
-    user-select:none;
-    pointer-events:none;
-    z-index:0;
-  }
-  .login-card{
-    position:relative;
-    z-index:1;
-    width:100%;
-    max-width:380px;
-    background:var(--surface);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:40px 32px;
-  }
-  .login-atlas-mark{
-    width:54px; height:54px; object-fit:contain; display:block; margin:0 0 18px;
-  }
-  .login-card .eyebrow{
-    color:var(--brass);
-    letter-spacing:.14em;
-    text-transform:uppercase;
-    font-size:11px;
-    font-weight:600;
-    margin:0 0 6px;
-  }
-  .login-card h1{
-    font-size:32px;
-    font-weight:500;
-    margin:0 0 4px;
-  }
-  .login-card p.sub{
-    color:var(--text-mute);
-    font-size:14px;
-    margin:0 0 28px;
-  }
-  label{
-    display:block;
-    font-size:12px;
-    color:var(--text-mute);
-    margin:0 0 6px;
-    letter-spacing:.02em;
-  }
-  input[type=email], input[type=password], input[type=text], input[type=number], select{
-    width:100%;
-    background:var(--bg);
-    border:1px solid var(--line);
-    color:var(--text);
-    padding:11px 12px;
-    border-radius:8px;
-    font-size:14px;
-    margin-bottom:18px;
-    outline:none;
-    transition:border-color .15s;
-  }
-  input:focus, select:focus{
-    border-color:var(--brass);
-  }
-  .btn{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-    background:var(--brass);
-    color:#181410;
-    border:none;
-    padding:11px 18px;
-    border-radius:8px;
-    font-size:14px;
-    font-weight:600;
-    cursor:pointer;
-    transition:background .15s;
-  }
-  .btn:hover{ background:var(--brass-hi); }
-  .btn:disabled{ opacity:.5; cursor:default; }
-  .btn.full{ width:100%; }
-  .btn.ghost{
-    background:transparent;
-    color:var(--text-mute);
-    border:1px solid var(--line);
-  }
-  .btn.ghost:hover{ color:var(--text); border-color:var(--text-mute); background:transparent;}
-  .btn.danger{ background:var(--wine); color:var(--text); }
-  .btn.danger:hover{ background:#8f2c3a; }
-
-  .error-msg{
-    background:rgba(122,36,48,.18);
-    border:1px solid var(--wine);
-    color:#e8b9bf;
-    font-size:13px;
-    padding:10px 12px;
-    border-radius:8px;
-    margin-bottom:16px;
-    display:none;
-  }
-
-  /* ---------- DASHBOARD ---------- */
-  #app-screen{ display:none; min-height:100vh; }
-  header.top{
-    position:sticky; top:0; z-index:5;
-    display:flex; align-items:center; justify-content:space-between;
-    padding:16px 24px;
-    background:var(--bg);
-    border-bottom:1px solid var(--line);
-  }
-  .brand{ display:flex; align-items:baseline; gap:10px; }
-  .brand .mark{
-    font-family:'Fraunces', serif;
-    font-size:22px;
-    color:var(--brass);
-  }
-  .brand .title{ font-size:14px; color:var(--text-mute); letter-spacing:.06em; text-transform:uppercase; }
-  .who{ display:flex; align-items:center; gap:14px; font-size:13px; color:var(--text-mute); }
-
-  main{ max-width:960px; margin:0 auto; padding:24px; }
-
-  .toolbar{
-    display:flex; align-items:center; justify-content:space-between;
-    gap:12px; margin-bottom:20px; flex-wrap:wrap;
-  }
-  .tabs{ display:flex; gap:6px; flex-wrap:wrap; }
-  .tab{
-    padding:7px 14px; border-radius:20px; border:1px solid var(--line);
-    background:transparent; color:var(--text-mute); font-size:13px; cursor:pointer;
-  }
-  .tab.active{ background:var(--surface); color:var(--text); border-color:var(--brass); }
-
-  .low-stock-banner{
-    display:none;
-    align-items:center; gap:8px;
-    background:rgba(201,122,74,.12);
-    border:1px solid var(--warn);
-    color:var(--warn);
-    font-size:13px;
-    padding:10px 14px;
-    border-radius:8px;
-    margin-bottom:16px;
-  }
-
-  table{ width:100%; border-collapse:collapse; }
-  thead th{
-    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.08em;
-    color:var(--text-mute); font-weight:600; padding:0 10px 10px; border-bottom:1px solid var(--line);
-  }
-  tbody tr{ border-bottom:1px solid var(--line); }
-  tbody tr:hover{ background:var(--surface); }
-  td{ padding:12px 10px; font-size:14px; vertical-align:middle; }
-  td.name{ font-weight:500; }
-  td.cat{ color:var(--text-mute); font-size:12px; text-transform:capitalize; }
-  .qty-input{
-    width:80px; margin:0; padding:7px 8px; font-size:14px;
-    background:var(--surface); border:1px solid var(--line); border-radius:6px; color:var(--text);
-  }
-  .qty-input:focus{ border-color:var(--brass); }
-  .unit{ color:var(--text-mute); font-size:12px; margin-left:6px; }
-  .qty-cell{ display:flex; align-items:center; gap:6px; }
-  .step-btn{
-    width:26px; height:26px; border-radius:6px; border:1px solid var(--line);
-    background:var(--surface); color:var(--text); font-size:14px; cursor:pointer; line-height:1;
-  }
-  .step-btn:hover{ border-color:var(--brass); color:var(--brass-hi); }
-  .low-flag{
-    color:var(--warn); font-family:'Fraunces', serif; font-size:16px; margin-left:6px;
-  }
-  .meta{ color:var(--text-mute); font-size:12px; }
-  .row-actions{ display:flex; gap:6px; }
-  .icon-btn{
-    background:transparent; border:1px solid var(--line); color:var(--text-mute);
-    width:30px; height:30px; border-radius:6px; cursor:pointer; font-size:14px;
-  }
-  .icon-btn:hover{ color:var(--text); border-color:var(--text-mute); }
-
-  .empty-state{
-    text-align:center; padding:60px 20px; color:var(--text-mute);
-  }
-  .empty-state .mark{ font-family:'Fraunces', serif; font-size:40px; color:var(--surface-2); display:block; margin-bottom:12px; }
-
-  /* ---------- MODAL ---------- */
-  .overlay{
-    display:none; position:fixed; inset:0; background:rgba(10,12,11,.6);
-    align-items:center; justify-content:center; z-index:20; padding:20px;
-  }
-  .modal{
-    background:var(--surface); border:1px solid var(--line); border-radius:16px;
-    width:100%; max-width:420px; max-height:calc(100vh - 40px);
-    overflow-y:auto; overscroll-behavior:contain; padding:28px;
-    box-shadow:0 22px 70px rgba(30,25,18,.18);
-  }
-  .modal.item-modal{ max-width:920px; padding:0; overflow:hidden; display:flex; flex-direction:column; }
-  .modal-header{
-    display:flex; align-items:center; justify-content:space-between; gap:16px;
-    padding:24px 28px 18px; border-bottom:1px solid var(--line); flex:0 0 auto;
-  }
-  .modal-header h2{ margin:0; }
-  .modal-close{
-    width:38px; height:38px; border:1px solid var(--line); border-radius:10px;
-    background:var(--surface); color:var(--text); cursor:pointer; font-size:22px; line-height:1;
-  }
-  .modal-scroll{ padding:24px 28px 8px; overflow-y:auto; min-height:0; }
-  .item-form-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 26px; }
-  .form-field{ min-width:0; }
-  .modal-footer{
-    display:flex; justify-content:flex-end; gap:10px; padding:16px 28px;
-    border-top:1px solid var(--line); background:rgba(255,255,255,.96);
-    position:sticky; bottom:0; z-index:2; flex:0 0 auto;
-  }
-  .modal-footer .btn{ min-width:120px; }
-  .modal h2{ font-family:'Fraunces', serif; font-weight:500; font-size:22px; margin:0 0 20px; }
-  .modal-actions{ display:flex; gap:10px; margin-top:4px; }
-  .modal-actions .btn{ flex:1; }
-
-  @media (max-width:720px){
-    thead th:nth-child(3), td:nth-child(3){ display:none; } /* hide "updated" col on mobile */
-    .login-card{ padding:32px 22px; }
-    .overlay{ padding:0; align-items:flex-end; }
-    .modal.item-modal{ max-width:none; width:100%; max-height:94vh; border-radius:18px 18px 0 0; }
-    .item-form-grid{ grid-template-columns:1fr; }
-    .modal-header{ padding:18px 20px 14px; }
-    .modal-scroll{ padding:18px 20px 4px; }
-    .modal-footer{ padding:14px 20px calc(14px + env(safe-area-inset-bottom)); }
-    .modal-footer .btn{ flex:1; min-width:0; }
-  }
-
-  /* ---------- VIEW SWITCH ---------- */
-  .view-switch{ display:flex; gap:6px; margin-bottom:20px; }
-  .view-btn{
-    padding:8px 16px; border-radius:8px; border:1px solid var(--line);
-    background:transparent; color:var(--text-mute); font-size:13px; cursor:pointer; font-weight:500;
-  }
-  .view-btn.active{ background:var(--brass); color:#181410; border-color:var(--brass); }
-
-  /* ---------- ALERT (low stock) ---------- */
-  .alert-banner{
-    display:none; align-items:center; gap:10px;
-    background:rgba(201,122,74,.15);
-    border:1px solid var(--warn);
-    color:var(--warn);
-    font-size:14px; font-weight:500;
-    padding:14px 16px;
-    border-radius:8px;
-    margin-bottom:20px;
-  }
-  .alert-banner .dot{
-    width:8px; height:8px; border-radius:50%; background:var(--warn); flex-shrink:0;
-    animation:pulse 1.6s infinite;
-  }
-  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
-
-  /* ---------- FLOATING QUICK ACTION ---------- */
-  .fab-wrap{ position:fixed; right:24px; bottom:24px; z-index:30; display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
-  .fab-menu{
-    display:none; flex-direction:column; gap:8px;
-    background:var(--surface); border:1px solid var(--line); border-radius:10px;
-    padding:8px; min-width:200px;
-    box-shadow:0 10px 30px rgba(0,0,0,.4);
-  }
-  .fab-menu.open{ display:flex; }
-  .fab-menu button{
-    background:transparent; border:none; color:var(--text); text-align:left;
-    padding:10px 12px; border-radius:6px; font-size:14px; cursor:pointer; display:flex; align-items:center; gap:10px;
-  }
-  .fab-menu button:hover{ background:var(--surface-2); }
-  .fab{
-    width:58px; height:58px; border-radius:50%; background:var(--brass); color:#181410;
-    border:none; font-size:26px; cursor:pointer; box-shadow:0 8px 24px rgba(184,135,74,.4);
-    display:flex; align-items:center; justify-content:center; transition:transform .15s, background .15s;
-  }
-  .fab:hover{ background:var(--brass-hi); }
-  .fab.open{ transform:rotate(45deg); }
-
-  /* ---------- DASHBOARD ---------- */
-  .stat-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:28px; }
-  .stat-card{
-    background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px;
-  }
-  .stat-card .label{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-mute); margin-bottom:10px; }
-  .stat-card .value{ font-family:'Fraunces', serif; font-size:30px; color:var(--text); }
-  .stat-card.warn .value{ color:var(--warn); }
-  .stat-card .sub{ font-size:12px; color:var(--text-mute); margin-top:4px; }
-  @media (max-width:760px){ .stat-grid{ grid-template-columns:repeat(2, 1fr); } }
-
-  .panel{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:22px; margin-bottom:20px; }
-  .panel h3{ font-family:'Fraunces', serif; font-weight:500; font-size:18px; margin:0 0 16px; }
-  .bar-row{ display:flex; align-items:center; gap:12px; padding:8px 0; font-size:13px; }
-  .bar-row .bar-label{ width:110px; color:var(--text-mute); flex-shrink:0; }
-  .bar-row .bar-track{ flex:1; height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
-  .bar-row .bar-fill{ height:100%; background:var(--brass); border-radius:4px; }
-  .bar-row .bar-value{ width:90px; text-align:right; flex-shrink:0; }
-  .empty-dash{ color:var(--text-mute); font-size:13px; padding:10px 0; }
-
-  .list-row{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:10px 0; border-bottom:1px solid var(--line); font-size:14px;
-  }
-  .list-row:last-child{ border-bottom:none; }
-  .list-row .item-info{ display:flex; align-items:center; gap:10px; }
-  .list-row .item-info .name{ font-weight:500; }
-  .list-row .item-info .cat{ color:var(--text-mute); font-size:12px; }
-  .list-row .qty-badge{ color:var(--warn); font-size:13px; font-weight:500; }
-  .activity-row{ padding:10px 0; border-bottom:1px solid var(--line); font-size:14px; }
-  .activity-row:last-child{ border-bottom:none; }
-  .activity-row .who{ font-weight:500; }
-  .activity-row .when{ color:var(--text-mute); font-size:12px; margin-left:8px; }
-
-  /* ---------- RECIPES ---------- */
-  .card-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px; }
-  .recipe-card{
-    background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px;
-    cursor:pointer; transition:border-color .15s;
-  }
-  .recipe-card:hover{ border-color:var(--brass); }
-  .recipe-card .type{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-mute); margin-bottom:8px; }
-  .recipe-card h4{ font-family:'Fraunces', serif; font-weight:500; font-size:19px; margin:0 0 14px; }
-  .recipe-card .rline{ display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:var(--text-mute); }
-  .recipe-card .rline strong{ color:var(--text); font-weight:500; }
-  .recipe-card .rline.profit strong{ color:var(--ok); }
-
-  .modal.wide{ max-width:640px; }
-  .ingredient-builder{
-    display:flex; gap:8px; align-items:flex-end; margin-bottom:14px; flex-wrap:wrap;
-  }
-  .ingredient-builder select{ flex:2; min-width:160px; margin-bottom:0; }
-  .ingredient-builder input{ flex:1; min-width:70px; margin-bottom:0; }
-  .ingredient-list{ margin-bottom:18px; }
-  .ingredient-row{
-    display:flex; justify-content:space-between; align-items:center;
-    padding:8px 0; border-bottom:1px solid var(--line); font-size:14px;
-  }
-  .ingredient-row .remove-ing{ background:none; border:none; color:var(--text-mute); cursor:pointer; font-size:15px; }
-  .ingredient-row .remove-ing:hover{ color:var(--wine); }
-  .cost-panel{
-    background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:18px;
-  }
-  .cost-row{ display:flex; justify-content:space-between; font-size:14px; padding:6px 0; }
-  .cost-row.total strong, .cost-row.profit strong{ color:var(--text); }
-  .cost-row.profit strong.pos{ color:var(--ok); }
-  .cost-row.profit strong.neg{ color:var(--wine); }
-  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-
-
-
-  /* ========== PROJECT ATLAS DESIGN SYSTEM ========== */
-  :root{
-    --atlas-bg:#f6f5f1; --atlas-surface:#ffffff; --atlas-sidebar:#eeece6;
-    --atlas-text:#242522; --atlas-muted:#777970; --atlas-line:#dedcd4;
-    --atlas-accent:#b6925e; --atlas-accent-soft:#e8dfd1; --atlas-green:#6f8d75;
-    --atlas-warn:#c28552; --atlas-danger:#b76565; --atlas-radius:16px;
-    --sidebar-w:268px;
-  }
-  #app-screen{background:var(--atlas-bg);color:var(--atlas-text);min-height:100vh;}
-  .atlas-shell{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);min-height:100vh;}
-  .atlas-sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);background:var(--atlas-sidebar);border-right:1px solid var(--atlas-line);display:flex;flex-direction:column;z-index:30;}
-  .atlas-brand{padding:24px 22px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--atlas-line);}
-  .atlas-logo{width:40px;height:40px;border-radius:12px;background:var(--atlas-text);color:white;display:grid;place-items:center;font-family:'Fraunces',serif;font-size:22px;}
-  .atlas-brand strong{display:block;font-size:15px;letter-spacing:.02em}.atlas-brand small{color:var(--atlas-muted);font-size:11px}
-  .atlas-nav{padding:16px 12px;overflow-y:auto;scrollbar-width:thin;flex:1;}
-  .nav-group{margin-bottom:18px}.nav-label{font-size:10px;letter-spacing:.12em;color:#989990;padding:0 10px 7px;font-weight:600;}
-  .nav-item{width:100%;border:0;background:transparent;color:var(--atlas-muted);display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:11px;font-size:14px;text-align:left;cursor:pointer;margin:2px 0;}
-  .nav-item svg{width:18px;height:18px;stroke-width:1.8}.nav-item:hover{background:rgba(255,255,255,.58);color:var(--atlas-text)}
-  .nav-item.active{background:var(--atlas-surface);color:var(--atlas-text);box-shadow:0 1px 0 rgba(0,0,0,.04)}
-  .nav-item .chev{margin-left:auto;width:15px;height:15px}.nav-sub{display:none;padding-left:24px}.nav-parent.open + .nav-sub{display:block}.nav-sub .nav-item{font-size:13px;padding:8px 11px}
-  .atlas-profile{border-top:1px solid var(--atlas-line);padding:14px 16px;display:flex;align-items:center;gap:10px}.avatar{width:34px;height:34px;border-radius:50%;background:var(--atlas-accent-soft);display:grid;place-items:center;font-weight:600}.profile-copy{min-width:0;flex:1}.profile-copy strong,.profile-copy small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.profile-copy strong{font-size:13px}.profile-copy small{font-size:11px;color:var(--atlas-muted)}
-  .atlas-main{grid-column:2;min-width:0}.atlas-topbar{position:sticky;top:0;z-index:20;height:70px;background:rgba(246,245,241,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--atlas-line);display:flex;align-items:center;gap:14px;padding:0 28px}.atlas-page-title{font-family:'Fraunces',serif;font-size:22px;font-weight:500}.atlas-search{margin-left:auto;max-width:360px;flex:1;position:relative}.atlas-search input{margin:0;background:var(--atlas-surface);border-color:var(--atlas-line);color:var(--atlas-text);padding-left:38px}.atlas-search svg{position:absolute;left:12px;top:10px;width:17px;color:var(--atlas-muted)}
-  .top-icon{width:38px;height:38px;border-radius:11px;border:1px solid var(--atlas-line);background:var(--atlas-surface);color:var(--atlas-muted);display:grid;place-items:center;cursor:pointer}.top-icon svg{width:18px}.service-toggle{border:0;background:var(--atlas-text);color:white;padding:10px 14px;border-radius:11px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600}.service-toggle svg{width:17px}
-  .atlas-content{max-width:1240px;margin:0 auto;padding:30px}.atlas-content main{max-width:none;margin:0;padding:0}.view-switch,header.top{display:none!important}
-  .atlas-content .btn{background:var(--atlas-text);color:white;border-radius:11px}.atlas-content .btn:hover{background:#3a3b37}.atlas-content .btn.ghost{background:var(--atlas-surface);color:var(--atlas-text);border-color:var(--atlas-line)}
-  .atlas-content input,.atlas-content select{background:var(--atlas-surface);color:var(--atlas-text);border-color:var(--atlas-line)}
-  .atlas-content table{background:var(--atlas-surface);border:1px solid var(--atlas-line);border-radius:14px;overflow:hidden}.atlas-content thead th{color:var(--atlas-muted);border-color:var(--atlas-line)}.atlas-content tbody tr{border-color:var(--atlas-line)}.atlas-content tbody tr:hover{background:#faf9f6}.atlas-content td{color:var(--atlas-text)}
-  .atlas-content .panel,.atlas-content .stat-card,.atlas-card{background:var(--atlas-surface)!important;border:1px solid var(--atlas-line)!important;border-radius:var(--atlas-radius)!important;box-shadow:none!important;color:var(--atlas-text)!important}
-  .atlas-card{padding:22px}.home-hero{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;margin-bottom:24px}.home-hero h1{font:500 38px/1.1 'Fraunces',serif;margin:0 0 8px}.home-hero p{margin:0;color:var(--atlas-muted)}.focus-list{display:grid;gap:0}.focus-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--atlas-line)}.focus-row:last-child{border:0}.focus-dot{width:9px;height:9px;border-radius:50%;background:var(--atlas-accent)}
-  .atlas-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:20px 0}.metric-card{padding:20px;background:var(--atlas-surface);border:1px solid var(--atlas-line);border-radius:var(--atlas-radius)}.metric-card .metric-icon{width:36px;height:36px;border-radius:10px;background:var(--atlas-accent-soft);display:grid;place-items:center;margin-bottom:18px}.metric-card .metric-icon svg{width:18px}.metric-card strong{font:500 26px 'Fraunces',serif;display:block}.metric-card span{font-size:12px;color:var(--atlas-muted)}
-  .placeholder-view{display:none}.placeholder-head{margin-bottom:22px}.placeholder-head h2{font:500 30px 'Fraunces',serif;margin:0 0 6px}.placeholder-head p{color:var(--atlas-muted);margin:0}.empty-module{padding:42px;text-align:center;background:var(--atlas-surface);border:1px dashed var(--atlas-line);border-radius:var(--atlas-radius)}.empty-module svg{width:32px;height:32px;color:var(--atlas-accent);margin-bottom:10px}
-  .mobile-menu{display:none}.sidebar-backdrop{display:none}
-  body.service-mode{background:#f4f8ff}body.service-mode .atlas-sidebar,body.service-mode .atlas-topbar{display:none}body.service-mode .atlas-main{grid-column:1/-1;min-height:100vh;background:radial-gradient(circle at 85% 5%,rgba(79,125,243,.12),transparent 34%),linear-gradient(180deg,#f8fbff 0%,#eef5ff 100%)}body.service-mode .atlas-shell{display:block}body.service-mode .atlas-content{max-width:1180px;padding:36px;color:#182234}.service-view{display:none}.service-mode .service-view{display:block!important}.service-mode .standard-view{display:none!important}.service-head{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:24px}.service-head h1{margin:0;color:#182234;font:650 34px/1.1 'IBM Plex Sans',sans-serif;letter-spacing:-.03em}.service-head p{margin:7px 0 0;color:#6f7f95;font-size:15px}.service-exit{min-height:48px;padding:13px 20px;border:0;border-radius:15px;background:#2f80ed;color:#fff;font-weight:650;box-shadow:0 10px 24px rgba(47,128,237,.2);cursor:pointer;transition:transform .18s ease,background .18s ease,box-shadow .18s ease}.service-exit:hover{background:#246fd2;transform:translateY(-2px);box-shadow:0 14px 28px rgba(47,128,237,.25)}.service-exit:focus-visible,.service-card:focus-visible{outline:3px solid rgba(47,128,237,.3);outline-offset:3px}.service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.service-card{min-height:170px;padding:24px;border:1px solid #d8e5f7;border-radius:22px;background:rgba(255,255,255,.92);color:#182234;text-align:left;cursor:pointer;box-shadow:0 12px 30px rgba(49,84,139,.09);transition:transform .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease}.service-card:hover{background:#edf5ff;border-color:#9fc1f5;transform:translateY(-3px);box-shadow:0 18px 38px rgba(49,84,139,.14)}.service-card svg{box-sizing:border-box;width:42px;height:42px;padding:9px;border-radius:13px;background:#e6f1ff;color:#2f80ed}.service-card h3{margin:22px 0 7px;color:#182234;font:650 22px/1.2 'IBM Plex Sans',sans-serif;letter-spacing:-.02em}.service-card p{margin:0;color:#6f7f95;font-size:15px;line-height:1.45}
-  @media(max-width:1050px){:root{--sidebar-w:224px}.atlas-grid{grid-template-columns:repeat(2,1fr)}.atlas-search{max-width:260px}}
-  @media(max-width:760px){.atlas-shell{display:block}.atlas-sidebar{transform:translateX(-101%);transition:transform .2s ease}.atlas-sidebar.open{transform:translateX(0)}.sidebar-backdrop.open{display:block;position:fixed;inset:0;background:rgba(20,20,18,.35);z-index:25}.atlas-main{grid-column:auto}.mobile-menu{display:grid}.atlas-topbar{padding:0 14px}.atlas-search{display:none}.atlas-content{padding:20px 14px}.home-hero h1{font-size:30px}.atlas-grid{grid-template-columns:1fr 1fr}.service-grid{grid-template-columns:1fr 1fr}}
-  @media(max-width:480px){.atlas-grid,.service-grid{grid-template-columns:1fr}.atlas-page-title{font-size:18px}.service-toggle span{display:none}}
-
-
-  .focus-row[data-target],.metric-card[data-target],#low-stock-banner{cursor:pointer;transition:background .15s ease,transform .15s ease,border-color .15s ease;}
-  .focus-row[data-target]:hover{background:rgba(182,146,94,.08);}
-  .metric-card[data-target]:hover{transform:translateY(-2px);border-color:var(--atlas-accent);}
-  #low-stock-banner:hover{background:rgba(182,146,94,.14);}
-  .supplier-modal .two-col{gap:14px;}
-  .toast{position:fixed;right:24px;bottom:96px;z-index:1600;background:var(--atlas-text);color:#fff;padding:13px 16px;border-radius:12px;box-shadow:0 12px 35px rgba(0,0,0,.2);display:none;}
-  .toast.show{display:block;animation:toastIn .2s ease;}
-  @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-  .atlas-logo svg{width:100%;height:100%;display:block;}
-
-  /* PHASE1_SECURITY_GATE_UI
-     Commercial controls are hidden unless the verified profile is manager/admin.
-     Database grants and RLS remain the authoritative boundary. */
-  body:not(.atlas-commercial-manager) [data-commercial-only],
-  body:not(.atlas-commercial-manager) [data-default="suppliers"],
-  body:not(.atlas-commercial-manager) [data-view="suppliers"],
-  body:not(.atlas-commercial-manager) [data-view="imports"],
-  body:not(.atlas-commercial-manager) [data-service-action="restock"],
-  body:not(.atlas-commercial-manager) [data-service-action="add-item"],
-  body:not(.atlas-commercial-manager) #add-item-btn,
-  body:not(.atlas-commercial-manager) #add-supplier-btn,
-  body:not(.atlas-commercial-manager) #add-recipe-btn,
-  body:not(.atlas-commercial-manager) #recipe-library-add,
-  body:not(.atlas-commercial-manager) .fab-wrap,
-  body:not(.atlas-commercial-manager) .row-actions,
-  body:not(.atlas-commercial-manager) .step-btn,
-  body:not(.atlas-commercial-manager) [data-edit-recipe],
-  body:not(.atlas-commercial-manager) [data-empty-create],
-  body:not(.atlas-commercial-manager) .recipe-library-item-finance,
-  body:not(.atlas-commercial-manager) .recipe-profile-ingredient > div:last-child,
-  body:not(.atlas-commercial-manager) .recipe-insight-metrics > div:nth-child(-n+5),
-  body:not(.atlas-commercial-manager) .recipe-featured-card,
-  body:not(.atlas-commercial-manager) .recipe-cost-strip,
-  body:not(.atlas-commercial-manager) .recipe-cost-note,
-  body:not(.atlas-commercial-manager) .ingredient-cost-v2 {
-    display:none!important;
-  }
-  body:not(.atlas-commercial-manager) #inventory-view .qty-input {
-    pointer-events:none;
-    opacity:.72;
-  }
-</style>
-  <link rel="stylesheet" href="assets/css/operations.css">
-  <link rel="stylesheet" href="assets/css/brain.css">
-  <link rel="stylesheet" href="assets/css/business.css?v=20260917-s60">
-  <link rel="stylesheet" href="assets/css/import-center.css">
-  <link rel="stylesheet" href="assets/css/home-polish.css">
-  <link rel="stylesheet" href="assets/css/inventory-polish.css">
-  <link rel="stylesheet" href="assets/css/recipes-gallery.css">
-  <link rel="stylesheet" href="assets/css/purchasing-polish.css">
-  <link rel="stylesheet" href="assets/css/import-polish.css">
-  <link rel="stylesheet" href="assets/css/review-polish.css">
-  <link rel="stylesheet" href="assets/css/atlas-glass.css">
-  <link rel="stylesheet" href="assets/css/workspaces-polish.css">
-  <link rel="stylesheet" href="assets/css/system-polish.css">
-  <link rel="stylesheet" href="assets/css/polish-pass2.css">
-  <link rel="stylesheet" href="assets/css/s34-preproduction.css">
+  <!-- atlas-tokens.css is linked first because it declares the cascade-layer
+       order (atlas.tokens, atlas.base, atlas.components, atlas.modules).
+       atlas-base.css, atlas-components.css and atlas-shell.css are the design
+       system; every module stylesheet is one @layer atlas.modules block (runtime
+       module sheets included, so config.js, runtime-module-guard.js and the
+       bootstraps find them already present and inject nothing). There is no
+       legacy layer and no inline style block. -->
+  <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260929-s90f">
+  <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260929-s90u">
+  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20260930-s90g">
+  <link rel="stylesheet" href="assets/css/recipes.css?v=20260929-s90u">
+  <link rel="stylesheet" href="assets/css/operations.css?v=20260930-s90g">
+  <link rel="stylesheet" href="assets/css/home.css?v=20260929-s90u">
   <link rel="stylesheet" href="assets/css/shifts-workspace.css">
-  <link rel="stylesheet" href="assets/css/shifts-month-calendar.css">
-  <link rel="stylesheet" href="assets/css/shifts-month-editor.css">
   <link rel="stylesheet" href="assets/css/knowledge-workspace.css">
-  <link rel="stylesheet" href="assets/css/s38-app-remediation.css">
-  <link rel="stylesheet" href="assets/css/knowledge-s56.css?v=20260917-s56">
-  <link rel="stylesheet" href="assets/css/team-s57.css?v=20260917-s57">
-  <link rel="stylesheet" href="assets/css/inventory-operations-s58.css?v=20260917-s58">
-  <link rel="stylesheet" href="assets/css/accessibility-responsive-s61.css?v=20260917-s61">
+  <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260929-s90u">
+  <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
+       append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
+       or data attribute); the five also named by runtime-module-guard.js keep
+       their unversioned href for that reason. inventory.css and purchasing.css
+       are the rebuilt Inventory and Purchasing modules (@layer atlas.modules). -->
+  <link rel="stylesheet" href="assets/css/team-messages.css">
+  <link rel="stylesheet" href="assets/css/marketing-workspace.css?v=20260929-s90u">
+  <link rel="stylesheet" href="assets/css/team-profile-photos.css">
+  <link rel="stylesheet" href="assets/css/reports-workspace.css?v=20260929-s90f">
+  <link rel="stylesheet" href="assets/css/data-workspace.css?v=20260930-s90g">
+  <link rel="stylesheet" href="assets/css/settings-workspace.css">
+  <link rel="stylesheet" href="assets/css/atlas-ai.css?v=20260929-s90f">
+  <link rel="stylesheet" href="assets/css/inventory.css?v=20260929-s90f">
+  <link rel="stylesheet" href="assets/css/purchasing.css?v=20260930-s90g">
 </head>
 <body>
 
-  <!-- ===================== LOGIN ===================== -->
-  <div id="login-screen">
-    <div class="login-card">
-      <div class="login-brand" aria-label="Atlas">
-        <img class="login-atlas-mark" src="assets/logo/atlas-icon.png" alt="" />
-        <span>Atlas</span>
+  <!-- ===================== SIGN IN (spec §7.17) ===================== -->
+  <div id="login-screen" class="atlas-auth">
+    <main class="atlas-auth__column" aria-labelledby="login-title">
+      <!-- Brand v1.0 sign-in intro (docs/brand/README.md): the owner's logo motion
+           plays once per browser session, muted and decorative, then settles on
+           the kit's static stacked lockup (the logo for assistive technology).
+           assets/js/atlas-signin-intro.js decides whether it may play at all. -->
+      <div class="atlas-auth__brand atlas-auth__brand--intro" data-atlas-signin-intro data-intro-state="static">
+        <video class="atlas-auth__intro" muted playsinline preload="none" disablepictureinpicture disableremoteplayback aria-hidden="true" tabindex="-1" hidden>
+          <source src="assets/brand/motion/atlas-signin-intro.webm" type="video/webm">
+          <source src="assets/brand/motion/atlas-signin-intro.mp4" type="video/mp4">
+        </video>
+        <img class="atlas-auth__lockup" src="assets/brand/Atlas_Primary_Stacked_Midnight.svg" alt="Atlas" width="128" height="113">
       </div>
-      <h1 class="display">Welcome back</h1>
-      <p class="sub">Sign in to continue to your workspace.</p>
-
-      <div class="error-msg" id="login-error"></div>
-
-      <form id="login-form">
-        <label for="email">Email</label>
-        <input type="email" id="email" autocomplete="username" required />
-        <label for="password">Password</label>
-        <input type="password" id="password" autocomplete="current-password" required />
-        <button type="submit" class="btn full" id="login-btn">Sign in</button>
+      <h1 class="atlas-auth__title" id="login-title">Welcome back</h1>
+      <p class="atlas-auth__sub" id="login-sub">Sign in to continue.</p>
+      <form id="login-form" class="atlas-auth__form" novalidate>
+        <div class="atlas-field">
+          <label for="email">Email</label>
+          <input class="atlas-input" type="email" id="email" name="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required aria-describedby="email-error login-error" />
+          <p class="atlas-field__error" id="email-error" hidden></p>
+        </div>
+        <div class="atlas-field">
+          <label for="password">Password</label>
+          <div class="atlas-auth__password">
+            <input class="atlas-input" type="password" id="password" name="password" autocomplete="current-password" required aria-describedby="password-error login-error" />
+            <button type="button" class="atlas-icon-btn atlas-auth__reveal" id="login-password-toggle" aria-label="Show password" aria-pressed="false" aria-controls="password"><i data-lucide="eye" aria-hidden="true"></i></button>
+          </div>
+          <p class="atlas-field__error" id="password-error" hidden></p>
+        </div>
+        <p class="atlas-auth__error" id="login-error" role="alert" hidden></p>
+        <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit" id="login-btn">Sign in</button>
       </form>
-      <p><a href="recovery.html">Forgot your password?</a></p>
-    </div>
+      <p class="atlas-auth__link"><a href="recovery.html">Forgot your password?</a></p>
+    </main>
+    <p class="atlas-auth__foot" data-atlas-venue-line hidden></p>
   </div>
 
-  <!-- ===================== APP · PROJECT ATLAS ===================== -->
+  <!-- ===================== APP · SHELL (spec §4; assets/js/atlas-chrome.js) ===================== -->
   <div id="app-screen">
+    <a class="atlas-skip-link" href="#atlas-main" data-atlas-skip>Skip to content</a>
     <div class="atlas-shell">
-      <aside class="atlas-sidebar" id="atlas-sidebar">
-        <div class="atlas-brand"><div class="atlas-logo" aria-hidden="true"><svg viewBox="0 0 48 48" role="img"><rect x="2" y="2" width="44" height="44" rx="12" fill="#20211f"/><path d="M11 15V9h26v26h-6" fill="none" stroke="#d4b278" stroke-width="2.6" stroke-linecap="round"/><path d="M17.5 34L24 13l6.5 21M20 27h8" fill="none" stroke="#f4efe6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><strong>ATLAS</strong><small>Hospitality OS · VÁ</small></div></div>
-        <nav class="atlas-nav">
-          <div class="nav-group" data-nav-group="home"><div class="nav-label">HOME</div><button class="nav-item active" data-view="dashboard"><i data-lucide="house"></i><span>Home</span></button></div>
-          <div class="nav-group" data-nav-group="operations"><div class="nav-label">OPERATIONS</div>
-            <button class="nav-item" data-view="inventory"><i data-lucide="package"></i><span>Inventory</span></button>
-            <button class="nav-item" data-view="recipes"><i data-lucide="martini"></i><span>Recipes</span></button>
-            <button class="nav-item" data-view="suppliers"><i data-lucide="truck"></i><span>Purchasing</span></button>
+      <aside class="atlas-sidebar" id="atlas-sidebar" aria-label="Sidebar">
+        <div class="atlas-brand">
+          <a class="atlas-brand__link nav-home" href="#home" aria-label="Atlas — Home"><img class="atlas-brand__lockup" src="assets/brand/Atlas_Primary_Horizontal_Midnight.svg" alt="Atlas" width="121" height="32"><img class="atlas-brand__mark" src="assets/brand/Atlas_Mark_Midnight.svg" alt="Atlas" width="27" height="24"><span class="atlas-brand__venue" id="atlas-brand-venue" hidden></span></a>
+        </div>
+        <nav class="atlas-nav" aria-label="Main">
+          <div class="atlas-nav__scroll">
+            <div class="nav-group" data-nav-group="main">
+              <a class="nav-item" href="#home" data-view="dashboard" data-nav-id="home" aria-label="Home"><i data-lucide="house" aria-hidden="true"></i><span class="nav-item-label">Home</span></a>
+              <a class="nav-item nav-item--ai" href="#ai" data-view="ai" data-nav-id="ai" aria-label="Atlas AI"><i data-lucide="sparkles" aria-hidden="true"></i><span class="nav-item-label">Atlas AI</span></a>
+              <a class="nav-item" href="#messages" data-view="team" data-nav-id="messages" aria-label="Messages"><i data-lucide="messages-square" aria-hidden="true"></i><span class="nav-item-label">Messages</span><span class="atlas-badge atlas-nav__badge" data-nav-badge="messages" aria-hidden="true" hidden></span></a>
+            </div>
+            <div class="nav-group" data-nav-group="venue">
+              <div class="nav-label" role="presentation">Venue</div>
+              <a class="nav-item" href="#operations" data-view="operations" data-nav-id="operations" aria-label="Operations"><i data-lucide="clipboard-check" aria-hidden="true"></i><span class="nav-item-label">Operations</span></a>
+              <a class="nav-item" href="#inventory" data-view="inventory" data-nav-id="inventory" aria-label="Inventory"><i data-lucide="package" aria-hidden="true"></i><span class="nav-item-label">Inventory</span></a>
+              <a class="nav-item" href="#recipes" data-view="recipes" data-nav-id="recipes" aria-label="Recipes"><i data-lucide="martini" aria-hidden="true"></i><span class="nav-item-label">Recipes</span></a>
+              <a class="nav-item" href="#purchasing" data-view="suppliers" data-nav-id="purchasing" aria-label="Purchasing" hidden><i data-lucide="truck" aria-hidden="true"></i><span class="nav-item-label">Purchasing</span></a>
+            </div>
+            <div class="nav-group" data-nav-group="people">
+              <div class="nav-label" role="presentation">People</div>
+              <a class="nav-item" href="#shifts" data-view="shifts" data-nav-id="shifts" aria-label="Shifts"><i data-lucide="calendar-days" aria-hidden="true"></i><span class="nav-item-label">Shifts</span></a>
+              <a class="nav-item" href="#team" data-view="team-profiles" data-nav-id="team" aria-label="Team"><i data-lucide="users" aria-hidden="true"></i><span class="nav-item-label">Team</span></a>
+              <a class="nav-item" href="#knowledge" data-view="knowledge" data-nav-id="knowledge" aria-label="Knowledge"><i data-lucide="book-open" aria-hidden="true"></i><span class="nav-item-label">Knowledge</span></a>
+            </div>
+            <div class="nav-group" data-nav-group="business" hidden>
+              <div class="nav-label" role="presentation">Business</div>
+              <a class="nav-item" href="#reports" data-view="reports" data-nav-id="reports" aria-label="Reports" hidden><i data-lucide="chart-no-axes-column" aria-hidden="true"></i><span class="nav-item-label">Reports</span></a>
+              <a class="nav-item" href="#marketing" data-view="marketing" data-nav-id="marketing" aria-label="Marketing" hidden><i data-lucide="megaphone" aria-hidden="true"></i><span class="nav-item-label">Marketing</span></a>
+              <a class="nav-item" href="#data" data-view="data" data-nav-id="data" aria-label="Data" hidden><i data-lucide="database" aria-hidden="true"></i><span class="nav-item-label">Data</span><span class="atlas-badge atlas-badge--muted atlas-nav__badge" data-nav-badge="data" hidden></span></a>
+            </div>
+            <!-- Retired destinations (spec §3.1) keep a hidden link so their modules
+                 find one and never inject a sidebar item; their routes still open. -->
+            <div class="atlas-nav__retired" hidden data-sprint3-review-nav="true">
+              <a class="nav-item" href="#data/import-review" data-view="sprint3-review" tabindex="-1">Import review</a>
+            </div>
           </div>
-          <div class="nav-group" data-nav-group="people"><div class="nav-label">PEOPLE</div><button class="nav-item" data-view="team"><i data-lucide="messages-square"></i><span>Messages</span></button><button class="nav-item" data-view="shifts"><i data-lucide="calendar-days"></i><span>Shifts</span></button><button class="nav-item" data-view="knowledge"><i data-lucide="book-open"></i><span>Knowledge</span></button></div>
-          <div class="nav-group" data-nav-group="insights"><div class="nav-label">INSIGHTS</div><button class="nav-item" data-view="reports"><i data-lucide="chart-no-axes-combined"></i><span>Reports</span></button></div>
-          <div class="nav-group" data-nav-group="system"><div class="nav-label">SYSTEM</div><button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>Settings</span></button></div>
+          <div class="atlas-nav__foot">
+            <a class="nav-item" href="#settings" data-view="settings" data-nav-id="settings" aria-label="Settings" hidden><i data-lucide="settings" aria-hidden="true"></i><span class="nav-item-label">Settings</span></a>
+          </div>
         </nav>
-        <div class="atlas-profile"><div class="avatar" id="user-avatar">V</div><div class="profile-copy"><strong id="profile-name">VÁ Team</strong><small id="user-email"></small></div><button class="top-icon" id="logout-btn" title="Sign out" aria-label="Sign out"><i data-lucide="log-out"></i></button></div>
+        <div class="atlas-sidebar__foot">
+          <button type="button" class="atlas-account" id="atlas-account-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="atlas-account-menu">
+            <span class="atlas-avatar" id="user-avatar" aria-hidden="true">V</span>
+            <span class="atlas-account__text"><span class="atlas-account__name" id="profile-name"></span><span class="atlas-account__role" id="profile-role"></span></span>
+            <i data-lucide="chevron-down" aria-hidden="true"></i>
+          </button>
+          <span class="atlas-account__email" id="user-email" hidden></span>
+        </div>
       </aside>
-      <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+      <div class="atlas-sidebar-scrim" id="atlas-sidebar-scrim" hidden></div>
       <section class="atlas-main">
-        <header class="atlas-topbar"><button type="button" class="top-icon mobile-menu" id="mobile-menu-btn" aria-label="Collapse navigation" title="Collapse navigation"><i data-lucide="menu"></i></button><div class="atlas-page-title" id="atlas-page-title">Home</div><div class="atlas-search"><i data-lucide="search"></i><input id="global-search" type="text" placeholder="Search or ask Atlas…" aria-label="Jump to a page or command" title="Pages and commands only — operational records are not indexed." data-search-scope="navigation" autocomplete="off" /></div><button type="button" class="top-icon" title="Notifications" aria-label="Notifications"><i data-lucide="bell"></i></button><button type="button" class="service-toggle" id="service-mode-btn"><i data-lucide="zap"></i><span>Service Mode</span></button></header>
-        <div class="atlas-content standard-view"><main>
-          <div id="home-intro" class="home-hero atlas-home-hero"><div class="atlas-home-hero-copy"><span class="atlas-home-date" id="home-date">Today</span><h1><span id="home-greeting">Good day</span>, <span id="greeting-name">VÁ team</span>.</h1></div><div class="atlas-home-hero-actions"><button type="button" class="atlas-home-action secondary" data-home-action="stock-count"><i data-lucide="clipboard-check"></i>Start stock count</button><button type="button" class="atlas-home-action" data-home-action="new-order" data-commercial-only><i data-lucide="plus"></i>New order</button></div></div>
-          <div id="home-metrics" class="atlas-grid atlas-home-metrics"><div class="metric-card" data-target="inventory"><div class="metric-icon"><i data-lucide="package"></i></div><div class="metric-copy"><span>Inventory items</span><strong id="home-items">—</strong><small id="home-items-note">Live catalog</small></div></div><div class="metric-card" data-target="inventory-low"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><div class="metric-copy"><span>Items below par</span><strong id="home-low">—</strong><small id="home-low-note">Checking levels</small></div></div><div class="metric-card" data-target="recipes"><div class="metric-icon"><i data-lucide="martini"></i></div><div class="metric-copy"><span>Average recipe margin</span><strong id="home-margin">—</strong><small id="home-margin-note">Verified recipes only</small></div></div><div class="metric-card" data-target="team-profiles"><div class="metric-icon"><i data-lucide="users"></i></div><div class="metric-copy"><span>Team members</span><strong id="home-team">—</strong><small id="home-team-note">Loading live profiles</small></div></div></div>
+        <header class="atlas-topbar" id="atlas-topbar">
+          <button type="button" class="atlas-icon-btn atlas-topbar__toggle" id="atlas-sidebar-toggle" aria-controls="atlas-sidebar" aria-expanded="true" aria-label="Collapse sidebar"><i data-lucide="panel-left" aria-hidden="true"></i></button>
+          <button type="button" class="atlas-icon-btn atlas-topbar__back" id="atlas-topbar-back" aria-label="Back" hidden><i data-lucide="chevron-left" aria-hidden="true"></i></button>
+          <a class="atlas-topbar__mark" href="#home" aria-label="Atlas — Home"><img src="assets/brand/Atlas_Mark_Midnight.svg" alt="" width="25" height="22"></a>
+          <div class="atlas-topbar__title" id="atlas-page-title">Home</div>
+          <button type="button" class="atlas-omni" id="atlas-omni" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K /"><i data-lucide="search" aria-hidden="true"></i><span class="atlas-omni__label">Search or ask Atlas</span><kbd class="kbd atlas-omni__kbd" data-shortcut-hint>⌘K</kbd></button>
+          <span class="atlas-topbar__spacer"></span>
+          <span class="atlas-topbar__actions" id="atlas-topbar-actions"></span>
+          <button type="button" class="atlas-icon-btn atlas-topbar__phone atlas-topbar__global" id="atlas-phone-search" aria-haspopup="dialog" aria-label="Search or ask Atlas"><i data-lucide="search" aria-hidden="true"></i></button>
+          <button type="button" class="atlas-icon-btn atlas-topbar__desktop" id="atlas-quick-actions" aria-haspopup="dialog" aria-label="Quick actions"><i data-lucide="plus" aria-hidden="true"></i></button>
+          <button type="button" class="atlas-icon-btn atlas-topbar__global" id="atlas-notifications-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="atlas-notifications" aria-label="Notifications"><i data-lucide="bell" aria-hidden="true"></i><span class="dot" hidden></span></button>
+          <div class="atlas-loading-line" id="atlas-loading-line" role="progressbar" aria-label="Loading Atlas" hidden></div>
+        </header>
+        <div class="atlas-content standard-view"><main id="atlas-main" tabindex="-1">
 
-          <div class="alert-banner" id="low-stock-banner"><span class="dot"></span><span id="low-stock-text"></span></div>
-          <section class="inventory-section-header" id="inventory-section-header" hidden>
-            <div class="inventory-section-row">
-              <nav class="inventory-workspace-tabs" aria-label="Inventory sections">
-                <button type="button" class="inventory-workspace-tab" data-view="inventory" data-subview="Items" data-inventory-section="items">Items</button>
-                <button type="button" class="inventory-workspace-tab" data-view="inventory" data-subview="Stock count" data-inventory-section="stock-count">Stock count</button>
-                <button type="button" class="inventory-workspace-tab" data-item-master-l2 data-inventory-section="item-master">Item master</button>
-                <button type="button" class="inventory-workspace-tab" data-view="movements" data-subview="Inventory movements" data-inventory-section="movements">Movements</button>
-                <button type="button" class="inventory-workspace-tab" data-view="waste" data-subview="Waste" data-inventory-section="waste">Waste</button>
-                <button type="button" class="inventory-workspace-tab" data-view="imports" data-inventory-section="imports">Import</button>
-              </nav>
-              <div class="inventory-section-actions">
-                <button class="btn" id="add-item-btn" type="button"><i data-lucide="plus"></i>Add item</button>
-              </div>
-            </div>
-            <div class="inventory-intelligence" id="inventory-intelligence" role="status" aria-live="polite">
-              <span class="inventory-intelligence-icon"><i data-lucide="package"></i></span>
-              <p><strong id="inventory-intelligence-title">Checking inventory readiness.</strong> <span id="inventory-intelligence-detail">Atlas is reviewing verified stock data.</span></p>
-              <button type="button" id="inventory-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
-            </div>
-          </section>
-          <div id="inventory-view" style="display:none;"><div class="toolbar inventory-filter-toolbar"><div class="tabs" id="category-tabs" aria-label="Inventory categories"></div><div class="tabs inventory-subcategory-tabs" id="subcategory-tabs" aria-label="Inventory subcategories" hidden></div></div><div id="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th data-commercial-only>Supplier</th><th data-commercial-only class="numeric">Cost</th><th>Updated</th><th>Quantity</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="items-body"></tbody></table><div class="empty-state" id="empty-state" style="display:none;"><span class="mark">Á</span>Nothing matches these inventory filters.</div></div></div>
-          <div id="dashboard-view" style="display:none;"><div class="stat-grid"><div class="stat-card"><div class="label">Total items</div><div class="value" id="stat-total-items">0</div></div><div class="stat-card warn"><div class="label">Low stock</div><div class="value" id="stat-low-stock">0</div></div><div class="stat-card" data-commercial-only><div class="label">Spent this month</div><div class="value" id="stat-month-spend">0</div><div class="sub">ISK</div></div><div class="stat-card" data-commercial-only><div class="label">Suppliers</div><div class="value" id="stat-suppliers">0</div></div></div><div class="panel"><h3>Low inventory</h3><div id="low-inventory-rows"><div class="empty-dash">Nothing below par right now.</div></div></div><div class="panel"><h3>Recent activity</h3><div id="activity-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by month</h3><div id="monthly-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by supplier — this month</h3><div id="supplier-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div></div>
-          <div id="recipes-view" style="display:none;">
-            <section class="recipe-dashboard">
-              <div class="recipe-hero">
-                <div class="recipe-hero-copy">
-                  <h1>Recipe Library</h1>
-                  <p>Build service-ready recipes, connect every ingredient to inventory, and keep costing in one calm workspace.</p>
-                </div>
-                <button type="button" class="recipe-primary-action" id="add-recipe-btn"><i data-lucide="plus"></i>New recipe</button>
-              </div>
-
-              <div class="recipe-summary-grid" aria-label="Recipe summary">
-                <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="book-open"></i></div><div><strong id="recipe-stat-total">0</strong><span>Total recipes</span></div></div>
-                <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="circle-check-big"></i></div><div><strong id="recipe-stat-active">0</strong><span>Active for service</span></div></div>
-                <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="badge-check"></i></div><div><strong id="recipe-stat-ready">0</strong><span>Ready today</span></div></div>
-                <div class="recipe-summary-card"><div class="summary-icon"><i data-lucide="triangle-alert"></i></div><div><strong id="recipe-stat-attention">0</strong><span>Need attention</span></div></div>
-              </div>
-
-              <section class="recipe-intelligence-panel" aria-live="polite">
-                <div class="recipe-intelligence-icon"><i data-lucide="sparkles"></i></div>
-                <div class="recipe-intelligence-copy"><span>Atlas Intelligence</span><h3 id="recipe-intelligence-title">Checking recipe readiness…</h3><p id="recipe-intelligence-detail">Atlas is comparing every linked ingredient with current inventory.</p></div>
-                <button type="button" class="recipe-intelligence-action" id="recipe-intelligence-action" hidden>Review recipe</button>
-              </section>
-
-              <div class="recipe-controls">
-                <label class="recipe-search"><i data-lucide="search"></i><input type="search" id="recipe-search" aria-label="Search recipes" placeholder="Search recipes, glassware, garnish…" /></label>
-                <div class="recipe-view-toggle" aria-label="Recipe view">
-                  <button type="button" data-recipe-view-mode="grid" class="active" aria-label="Grid view"><i data-lucide="layout-grid"></i></button>
-                  <button type="button" data-recipe-view-mode="list" aria-label="List view"><i data-lucide="rows-3"></i></button>
-                </div>
-              </div>
-
-              <div class="recipe-category-row" id="recipe-category-row" aria-label="Recipe categories"></div>
-              <div id="recipes-grid-v2" class="recipe-grid"></div>
-              <div id="recipes-empty-v2" class="recipe-empty-v2" hidden>
-                <div><div class="empty-icon"><i data-lucide="martini"></i></div><h3>No recipes in this view</h3><p>Create a recipe or choose another category. Ingredients will link directly to live inventory.</p><button type="button" class="btn" onclick="window.AtlasRecipes.openEditor(null)">Create recipe</button></div>
-              </div>
-
-              <div class="recipe-foundation-panel">
-                <article class="recipe-foundation-card">
-                  <h3>Inventory connection</h3>
-                  <p>Recipe ingredients use the live inventory table. Updating an inventory item keeps every linked recipe connected.</p>
-                  <div class="inventory-connection-list">
-                    <div class="inventory-connection-row"><span>Inventory items available</span><strong id="recipe-inventory-count">0</strong></div>
-                    <div class="inventory-connection-row"><span>Ingredients connected</span><strong id="recipe-linked-count">0</strong></div>
-                    <div class="inventory-connection-row"><span>Ingredients needing a link</span><strong id="recipe-unlinked-count">0</strong></div>
-                  </div>
-                </article>
-                <article class="recipe-foundation-card">
-                  <h3>Public menu</h3>
-                  <p>Only recipes marked “Show on public menu” appear on the guest-facing menu.</p>
-                  <div style="display:flex;gap:14px;align-items:center;margin-top:16px;">
-                    <img id="menu-qr" alt="QR code to public menu" width="92" height="92" style="background:#fff;padding:6px;border:1px solid var(--atlas-line);border-radius:11px;" />
-                    <div style="min-width:0;flex:1;"><label style="font-size:11px;color:var(--atlas-muted);">Menu link</label><input id="menu-link" readonly style="margin:5px 0 8px;" /><input id="menu-embed" readonly aria-label="Embed code" /></div>
-                  </div>
-                </article>
-              </div>
-            </section>
-          </div>
-          <div id="suppliers-view" style="display:none;">
-            <section class="purchasing-workspace-head">
-              <nav class="purchasing-workspace-tabs" aria-label="Purchasing sections">
-                <button type="button" id="purchase-suppliers-tab" class="active" aria-current="page">Suppliers</button>
-                <button type="button" id="purchase-orders-tab" disabled title="Orders are not enabled in this environment">Orders</button>
-                <button type="button" id="purchase-deliveries-tab" disabled title="Review ordered and received deliveries">Deliveries</button>
-              </nav>
-              <button class="btn" id="add-supplier-btn"><i data-lucide="plus"></i>New supplier</button>
-            </section>
-            <div id="purchase-suppliers-panel">
-              <section class="purchasing-intelligence" aria-live="polite">
-                <span class="purchasing-intelligence-icon"><i data-lucide="truck"></i></span>
-                <p><strong id="purchasing-intelligence-title">Checking purchasing readiness.</strong> <span id="purchasing-intelligence-detail">Atlas is reviewing suppliers and recorded restocks.</span></p>
-                <button type="button" id="purchasing-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
-              </section>
-              <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" aria-label="Search suppliers" placeholder="Search suppliers..."/></label></div>
-              <table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table>
-              <div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div>
-            </div>
-            <section id="purchase-order-panel" hidden></section>
-          </div>
-          <div id="imports-view" style="display:none;">
-            <section class="atlas-import-center import-queue-center">
-              <div class="import-hero">
-                <div>
-                  <p class="import-eyebrow">Phase A.1 · Knowledge Import Engine</p>
-                  <h1>Import Queue</h1>
-                  <p>Upload source files once, track every processing stage, and keep a complete record before Atlas changes live business data.</p>
-                </div>
-                <div class="import-hero-actions">
-                  <button type="button" class="btn ghost" id="import-queue-refresh"><i data-lucide="refresh-cw"></i>Refresh</button>
-                  <button type="button" class="btn" id="import-queue-upload-button"><i data-lucide="upload"></i>Upload files</button>
-                </div>
-              </div>
-
-              <div class="import-queue-summary" aria-label="Import queue summary">
-                <article class="import-queue-summary-card"><span>All files</span><strong id="import-queue-total">0</strong><small>Recorded batches</small></article>
-                <article class="import-queue-summary-card"><span>In progress</span><strong id="import-queue-active">0</strong><small>Waiting or processing</small></article>
-                <article class="import-queue-summary-card"><span>Ready</span><strong id="import-queue-ready">0</strong><small>Waiting for approval</small></article>
-                <article class="import-queue-summary-card"><span>Completed</span><strong id="import-queue-complete">0</strong><small>Successfully processed</small></article>
-                <article class="import-queue-summary-card danger"><span>Needs attention</span><strong id="import-queue-failed">0</strong><small>Failed or cancelled</small></article>
-              </div>
-
-              <div class="import-layout import-queue-layout">
-                <article class="import-card import-upload-card">
-                  <div class="import-card-heading">
-                    <i data-lucide="cloud-upload"></i>
-                    <div><h2>Add source files</h2><p>PDF, Excel, CSV, JSON, text and product images up to 50 MB each.</p></div>
-                  </div>
-
-                  <label class="import-scope-field" for="import-entity-scope">
-                    <span>What does this file contain?</span>
-                    <select id="import-entity-scope">
-                      <option value="inventory">Inventory and stock counts</option>
-                      <option value="recipe">Recipes and preparation sheets</option>
-                      <option value="supplier">Supplier catalogues and price lists</option>
-                      <option value="menu">Menus and selling prices</option>
-                      <option value="invoice">Supplier invoices</option>
-                      <option value="purchase">Purchase and delivery history</option>
-                      <option value="image">Product and menu images</option>
-                    </select>
-                  </label>
-
-                  <div class="import-drop-zone import-queue-drop" id="import-queue-drop" tabindex="0" role="button" aria-label="Upload files">
-                    <div class="import-drop-icon"><i data-lucide="files"></i></div>
-                    <h2>Drop files here</h2>
-                    <p>Atlas stores the original source privately, creates one tracked batch per file, and waits for the extraction engine.</p>
-                    <button type="button" class="btn" id="import-queue-browse">Choose files</button>
-                    <input id="import-queue-file-input" type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.json,.txt,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,text/csv,text/plain,application/json,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/*" hidden />
-                  </div>
-
-                  <div class="import-upload-list" id="import-upload-list" aria-live="polite"></div>
-                  <div class="import-message" id="import-queue-message" role="status" aria-live="polite"></div>
-                </article>
-
-                <article class="import-card import-pipeline-card">
-                  <div class="import-card-heading">
-                    <i data-lucide="workflow"></i>
-                    <div><h2>Phase A pipeline</h2><p>Every file follows the same controlled path.</p></div>
-                  </div>
-                  <ol class="import-pipeline" id="import-pipeline">
-                    <li data-stage="uploaded"><span>1</span><div><strong>Upload</strong><small>Original source stored privately</small></div></li>
-                    <li data-stage="reading"><span>2</span><div><strong>Read</strong><small>Identify pages, sheets and structure</small></div></li>
-                    <li data-stage="extracting"><span>3</span><div><strong>Extract</strong><small>Convert source content into records</small></div></li>
-                    <li data-stage="matching"><span>4</span><div><strong>Match</strong><small>Find existing Atlas records</small></div></li>
-                    <li data-stage="ready"><span>5</span><div><strong>Review</strong><small>Approve matches and new records</small></div></li>
-                    <li data-stage="importing"><span>6</span><div><strong>Import</strong><small>Commit approved changes</small></div></li>
-                  </ol>
-                  <div class="import-next-phase-note"><i data-lucide="sparkles"></i><p><strong>Next: Phase A.2</strong><br>The extraction engine will automatically move uploaded files through Read, Extract and Match.</p></div>
-                </article>
-              </div>
-
-              <section class="import-card import-queue-panel">
-                <div class="import-queue-toolbar">
-                  <div>
-                    <p class="import-eyebrow">Live Supabase queue</p>
-                    <h2>Source files</h2>
-                  </div>
-                  <div class="import-queue-controls">
-                    <label class="import-search"><i data-lucide="search"></i><input id="import-queue-search" type="search" aria-label="Search import files" placeholder="Search files…" /></label>
-                    <select id="import-queue-filter" aria-label="Filter import queue">
-                      <option value="all">All statuses</option>
-                      <option value="active">In progress</option>
-                      <option value="uploaded">Uploaded</option>
-                      <option value="ready">Ready</option>
-                      <option value="complete">Completed</option>
-                      <option value="failed">Needs attention</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="import-queue-table-wrap">
-                  <table class="import-queue-table">
-                    <thead><tr><th>Source file</th><th>Type</th><th>Stage</th><th>Progress</th><th>Added</th><th></th></tr></thead>
-                    <tbody id="import-queue-rows"></tbody>
-                  </table>
-                  <div class="import-queue-empty" id="import-queue-empty" hidden>
-                    <i data-lucide="inbox"></i><h3>No files in this view</h3><p>Upload the first source file or change the current filter.</p>
-                  </div>
-                  <div class="import-queue-loading" id="import-queue-loading" hidden><span></span><p>Loading import queue…</p></div>
-                </div>
-              </section>
-
-              <div class="import-detail-backdrop" id="import-detail-backdrop" hidden></div>
-              <aside class="import-detail-drawer" id="import-detail-drawer" hidden aria-labelledby="import-detail-title">
-                <header><div><p class="import-eyebrow">Import batch</p><h2 id="import-detail-title">Source file</h2></div><button type="button" class="top-icon" id="import-detail-close" aria-label="Close"><i data-lucide="x"></i></button></header>
-                <div class="import-detail-body">
-                  <div class="import-detail-status"><span class="import-status-pill" id="import-detail-status">Uploaded</span><strong id="import-detail-progress">0%</strong></div>
-                  <div class="import-detail-progress-track"><div id="import-detail-progress-bar"></div></div>
-                  <dl class="import-detail-grid">
-                    <div><dt>Content type</dt><dd id="import-detail-scope">—</dd></div>
-                    <div><dt>File size</dt><dd id="import-detail-size">—</dd></div>
-                    <div><dt>Created</dt><dd id="import-detail-created">—</dd></div>
-                    <div><dt>Updated</dt><dd id="import-detail-updated">—</dd></div>
-                    <div><dt>Current stage</dt><dd id="import-detail-stage">—</dd></div>
-                    <div><dt>Records</dt><dd id="import-detail-counts">—</dd></div>
-                  </dl>
-                  <section class="import-detail-section"><h3>Source location</h3><p id="import-detail-path">Not stored yet.</p></section>
-                  <section class="import-detail-section" id="import-detail-error-section" hidden><h3>Needs attention</h3><p class="import-detail-error" id="import-detail-error"></p></section>
-                  <section class="import-detail-section"><h3>Notes</h3><p id="import-detail-notes">No notes.</p></section>
-                </div>
-                <footer>
-                  <button type="button" class="btn ghost" id="import-detail-view-source"><i data-lucide="external-link"></i>View source</button>
-                  <div class="import-detail-actions">
-                    <button type="button" class="btn ghost" id="import-detail-retry">Retry</button>
-                    <button type="button" class="btn ghost" id="import-detail-cancel">Cancel</button>
-                    <button type="button" class="btn danger-button" id="import-detail-delete">Delete</button>
-                  </div>
-                </footer>
-              </aside>
-            </section>
-          </div>
-          <div id="team-view" class="placeholder-view"><div class="placeholder-head"><h2>Team</h2><p>Profiles, roles, emergency contacts and training status.</p></div><div class="empty-module"><i data-lucide="users"></i><h3>Team workspace is ready</h3><p>Next: connect live staff profiles from Supabase.</p></div></div>
-          <div id="shifts-view" class="placeholder-view"><div class="placeholder-head"><h2>Shifts</h2><p>A calm weekly planner built for hospitality.</p></div><div class="empty-module"><i data-lucide="calendar-days"></i><h3>Shift planner foundation is ready</h3><p>Next: weekly schedule, availability and publishing.</p></div></div>
-          <div id="knowledge-view" class="placeholder-view"><div class="placeholder-head"><h2>Knowledge</h2><p>Documents, onboarding, training and checklists.</p></div><div class="empty-module"><i data-lucide="book-open"></i><h3>Knowledge hub foundation is ready</h3><p>Eight onboarding steps already exist in Supabase.</p></div></div>
-          <div id="movements-view" class="inventory-ledger-view" style="display:none;">
-            <header class="inventory-ledger-head"><div><span>Inventory evidence</span><h2>Movement history</h2><p>Every recorded restock, count, adjustment, transfer, sale and explicit waste event.</p></div><button type="button" class="btn ghost" id="inventory-ledger-refresh"><i data-lucide="refresh-cw"></i>Refresh</button></header>
-            <div class="inventory-ledger-summary" aria-label="Inventory movement summary"><article><span>Total records</span><strong id="movement-total">0</strong></article><article><span>Restocks</span><strong id="movement-restocks">0</strong></article><article><span>Explicit waste</span><strong id="movement-waste">0</strong></article></div>
-            <section class="inventory-ledger-table"><table><thead><tr><th>Date</th><th>Item</th><th>Type</th><th>Change</th><th>Note</th></tr></thead><tbody id="movement-history-body"></tbody></table><div class="inventory-ledger-empty" id="movement-history-empty" hidden><i data-lucide="history"></i><h3>No movement records yet</h3><p>Verified stock operations will appear here without inference.</p></div></section>
-          </div>
-          <div id="waste-view" class="inventory-ledger-view" style="display:none;">
-            <header class="inventory-ledger-head"><div><span>Controlled inventory workflow</span><h2>Waste</h2><p>Record explicit waste only. Ordinary negative adjustments are never reclassified as waste.</p></div></header>
-            <section class="inventory-waste-entry" data-commercial-only>
-              <div><i data-lucide="recycle"></i><span><strong>Log waste</strong><small>This immediately reduces live stock and creates an immutable movement record.</small></span></div>
-              <form id="inventory-waste-form">
-                <label><span>Inventory item</span><select name="item_id" id="inventory-waste-item" required><option value="">Choose item</option></select></label>
-                <label><span>Quantity wasted</span><input type="number" name="quantity" min="0.000001" step="any" required /></label>
-                <label><span>Reason</span><select name="reason" required><option value="">Choose reason</option><option value="spoilage">Spoilage</option><option value="breakage">Breakage</option><option value="spill">Spill</option><option value="expiry">Expiry</option><option value="preparation">Preparation waste</option><option value="other">Other</option></select></label>
-                <label class="is-wide"><span>Note</span><input name="note" maxlength="900" required placeholder="What happened and where" /></label>
-                <button type="submit" class="btn"><i data-lucide="minus-circle"></i>Record waste</button>
-              </form>
-              <p role="status" id="inventory-waste-status" aria-live="polite"></p>
-            </section>
-            <section class="inventory-ledger-table"><table><thead><tr><th>Date</th><th>Item</th><th>Quantity</th><th>Recorded reason</th></tr></thead><tbody id="waste-history-body"></tbody></table><div class="inventory-ledger-empty" id="waste-history-empty" hidden><i data-lucide="recycle"></i><h3>No explicit waste records</h3><p>Atlas will not infer waste from ordinary adjustments.</p></div></section>
-          </div>
-          <div id="reports-view" class="placeholder-view"><div class="placeholder-head"><h2>Reports</h2><p>Inventory, usage, waste, labour and purchasing insights.</p></div><div class="empty-module"><i data-lucide="chart-no-axes-combined"></i><h3>Reports are coming next</h3></div></div>
-          <div id="settings-view" class="placeholder-view"><div class="placeholder-head"><h2>Settings</h2><p>Venue, team access and VÁ OS preferences.</p></div><div class="empty-module"><i data-lucide="settings"></i><h3>Project Atlas</h3><p>Built with care for VÁ Bar, Reykjavík.</p></div></div>
+          <!-- Inventory (#inventory, #inventory/item/<id>, #inventory/counts[/<id>], movements, waste):
+               rendered by assets/js/atlas-inventory.js and stock-count-workspace.js. -->
+          <div id="inventory-view" style="display:none;"></div>
+          <div id="dashboard-view" style="display:none;"></div>
+          <div id="recipes-view" style="display:none;"></div>
+          <!-- Purchasing (#purchasing/…): rendered by assets/js/atlas-purchasing.js. -->
+          <div id="suppliers-view" style="display:none;"></div>
+          <div id="team-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Team…</p></div>
+          <div id="shifts-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Shifts…</p></div>
+          <div id="knowledge-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Knowledge…</p></div>
+          <div id="reports-view" style="display:none;"></div>
+          <div id="ai-view" style="display:none;"></div>
+          <div id="not-found-view" style="display:none;"></div>
+          <div id="settings-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Settings…</p></div>
         </main></div>
-        <div class="atlas-content service-view"><div class="service-head"><div><h1>Service Mode</h1><p>Fast access for a busy shift.</p></div><button class="service-exit" id="service-exit-btn">Exit Service Mode</button></div><div class="service-grid"><button class="service-card" data-service-view="inventory"><i data-lucide="package"></i><h3>Stock</h3><p>Adjust inventory in seconds.</p></button><button class="service-card" data-service-view="recipes"><i data-lucide="martini"></i><h3>Recipes</h3><p>Fast cocktail and prep reference.</p></button><button class="service-card" data-service-view="shifts"><i data-lucide="users"></i><h3>Today's Team</h3><p>See who is working now.</p></button><button class="service-card" data-service-action="restock"><i data-lucide="truck"></i><h3>Delivery</h3><p>Log incoming stock.</p></button><button class="service-card" data-service-view="knowledge"><i data-lucide="shield-alert"></i><h3>Emergency</h3><p>Procedures and contacts.</p></button><button class="service-card" data-service-action="add-item"><i data-lucide="plus"></i><h3>Quick Action</h3><p>Add an item or make an adjustment.</p></button></div></div>
       </section>
     </div>
+    <nav class="atlas-tabbar" id="atlas-tabbar" aria-label="Main">
+      <a class="atlas-tabbar__item" href="#home" data-nav-id="home"><i data-lucide="house" aria-hidden="true"></i><span>Home</span></a>
+      <a class="atlas-tabbar__item" href="#inventory" data-nav-id="inventory"><i data-lucide="package" aria-hidden="true"></i><span>Inventory</span></a>
+      <a class="atlas-tabbar__item atlas-tabbar__item--ai" href="#ai" data-nav-id="ai"><i data-lucide="sparkles" aria-hidden="true"></i><span>Atlas</span></a>
+      <a class="atlas-tabbar__item" href="#recipes" data-nav-id="recipes"><i data-lucide="martini" aria-hidden="true"></i><span>Recipes</span></a>
+      <button type="button" class="atlas-tabbar__item" id="atlas-more-btn" data-nav-id="more" aria-haspopup="dialog" aria-expanded="false" aria-controls="atlas-more"><i data-lucide="ellipsis" aria-hidden="true"></i><span>More</span><span class="atlas-badge atlas-tabbar__badge" data-nav-badge="more" hidden></span></button>
+    </nav>
   </div>
 
-  <!-- ===================== QUICK ACTION ===================== -->
-  <div class="fab-wrap">
-    <div class="fab-menu" id="fab-menu">
-      <button id="fab-add-item">+ Add new item</button>
-      <button id="fab-log-restock">📦 Log a restock</button>
-      <button id="fab-add-recipe">🍸 Add new recipe</button>
-      <button id="fab-add-supplier">🚚 Add supplier</button>
-    </div>
-    <button class="fab" id="fab-btn">+</button>
-  </div>
 
-  <!-- ===================== ADD/EDIT MODAL ===================== -->
-  <div class="overlay" id="item-overlay">
-    <div class="modal item-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div class="modal-header">
-        <h2 id="modal-title">Add new inventory item</h2>
-        <button type="button" class="modal-close" id="close-item-btn" aria-label="Close">×</button>
-      </div>
-      <form id="item-form" style="display:flex; flex-direction:column; min-height:0;">
-        <input type="hidden" id="item-id" />
-        <div class="modal-scroll">
-          <div class="item-form-grid">
-            <div class="form-field"><label for="item-name">Item name</label><input type="text" id="item-name" required placeholder="e.g. Reyka Vodka" /></div>
-            <div class="form-field"><label for="item-category">Category</label><input type="text" id="item-category" list="category-suggestions" placeholder="e.g. Spirits, Mixers, Glassware..." required /><datalist id="category-suggestions"></datalist></div>
-            <div class="form-field"><label for="item-quantity">Quantity (controlled stock workflow)</label><input type="number" id="item-quantity" step="0.1" value="0" disabled /></div>
-            <div class="form-field"><label for="item-unit">Unit</label><input type="text" id="item-unit" placeholder="bottles, kg, cans..." required /></div>
-            <div class="form-field"><label for="item-par">Par level (low-stock alert below this)</label><input type="number" id="item-par" step="0.1" placeholder="optional" /></div>
-            <div class="form-field"><label for="item-supplier">Supplier</label><input type="text" id="item-supplier" list="supplier-suggestions" placeholder="Supplier name" /><datalist id="supplier-suggestions"></datalist></div>
-            <div class="form-field"><label for="item-sku">SKU / barcode <span style="color:var(--text-mute); font-weight:400;">(optional)</span></label><input type="text" id="item-sku" placeholder="optional" /></div>
-            <div class="form-field"><label for="item-bin">Storage location</label><input type="text" id="item-bin" placeholder="e.g. Back bar shelf 2" /></div>
-            <div class="form-field"><label for="item-units-per-case">Units per case</label><input type="number" id="item-units-per-case" step="1" placeholder="optional" /></div>
-            <div class="form-field"><label for="item-case-cost">Case cost <span style="color:var(--text-mute); font-weight:400;">(fills unit cost)</span></label><input type="number" id="item-case-cost" step="0.01" placeholder="optional" /></div>
-            <div class="form-field"><label for="item-cost">Cost price (per unit)</label><input type="number" id="item-cost" step="0.01" placeholder="optional" /></div>
-            <div class="form-field"><label for="item-discount">Standard supplier discount %</label><input type="number" id="item-discount" step="0.1" placeholder="0" /></div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn ghost" id="cancel-item-btn">Cancel</button>
-          <button type="submit" class="btn">Save item</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
-  <!-- ===================== RESTOCK MODAL ===================== -->
-  <div class="overlay" id="restock-overlay">
-    <div class="modal">
-      <h2>Log a restock</h2>
-      <form id="restock-form">
-        <label for="restock-item">Item</label>
-        <select id="restock-item" required></select>
-
-        <label for="restock-qty">Quantity added</label>
-        <input type="number" id="restock-qty" step="0.1" required />
-
-        <label for="restock-supplier">Supplier</label>
-        <input type="text" id="restock-supplier" />
-
-        <label for="restock-cost">Unit cost (what you paid, per unit)</label>
-        <input type="number" id="restock-cost" step="0.01" />
-
-        <label for="restock-discount">Discount % applied</label>
-        <input type="number" id="restock-discount" step="0.1" placeholder="0" />
-
-        <div class="modal-actions">
-          <button type="button" class="btn ghost" id="cancel-restock-btn">Cancel</button>
-          <button type="submit" class="btn">Log restock</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ===================== SUPPLIER MODAL ===================== -->
-  <div class="overlay" id="supplier-overlay" aria-hidden="true">
-    <div class="modal wide supplier-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-modal-title">
-      <div class="item-modal-head"><div><h2 id="supplier-modal-title">Add new supplier</h2><p>Save a supplier once and use it across inventory, deliveries and purchasing.</p></div><button type="button" class="modal-close" id="close-supplier-btn" aria-label="Close supplier form">×</button></div>
-      <form id="supplier-form">
-        <div class="two-col">
-          <div><label for="supplier-name">Supplier name *</label><input id="supplier-name" required placeholder="Supplier name" /></div>
-          <div><label for="supplier-contact">Contact person</label><input id="supplier-contact" placeholder="optional" /></div>
-          <div><label for="supplier-email">Email</label><input id="supplier-email" type="email" placeholder="orders@example.com" /></div>
-          <div><label for="supplier-phone">Phone</label><input id="supplier-phone" placeholder="optional" /></div>
-        </div>
-        <label for="supplier-notes">Notes</label><textarea id="supplier-notes" rows="3" placeholder="Delivery days, account number, minimum order or other useful details."></textarea>
-        <div class="modal-actions"><button type="button" class="btn ghost" id="cancel-supplier-btn">Cancel</button><button type="submit" class="btn">Save supplier</button></div>
-      </form>
-    </div>
-  </div>
-  <div class="toast" id="atlas-toast" role="status" aria-live="polite"></div>
-
-  <!-- ===================== RECIPE MODAL · REUSABLE ATLAS SHELL ===================== -->
-  <div id="recipe-overlay" data-atlas-modal hidden aria-hidden="true">
-    <section class="atlas-modal-panel" data-modal-panel role="dialog" aria-modal="true" aria-labelledby="recipe-modal-title">
-      <div class="atlas-modal-header">
-        <div><h2 id="recipe-modal-title">New recipe</h2><p id="recipe-modal-subtitle">Build a service-ready recipe connected to live inventory.</p></div>
-        <button type="button" class="atlas-modal-close" data-modal-close aria-label="Close recipe editor">×</button>
-      </div>
-      <form id="recipe-form" style="display:flex;flex-direction:column;min-height:0;">
-        <input type="hidden" id="recipe-id" />
-        <div class="atlas-modal-body">
-          <section class="atlas-form-section">
-            <div class="atlas-section-heading"><div><h3>Recipe details</h3><p>The information your team needs to identify and serve the recipe.</p></div></div>
-            <div class="atlas-form-grid">
-              <div class="atlas-field"><label for="recipe-name">Recipe name *</label><input type="text" id="recipe-name" required placeholder="e.g. Espresso Martini" /></div>
-              <div class="atlas-field"><label for="recipe-category-id">Category *</label><select id="recipe-category-id" required></select></div>
-              <div class="atlas-field"><label for="recipe-glassware">Glassware</label><input type="text" id="recipe-glassware" placeholder="e.g. Coupe" /></div>
-              <div class="atlas-field"><label for="recipe-garnish">Garnish</label><input type="text" id="recipe-garnish" placeholder="e.g. 3 coffee beans" /></div>
-              <div class="atlas-field full">
-                <label for="recipe-image-file">Recipe image</label>
-                <input type="file" id="recipe-image-file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" />
-                <img id="recipe-image-preview" alt="Recipe image preview" hidden style="display:block;max-width:220px;max-height:220px;object-fit:cover;border-radius:12px;margin:10px 0;" />
-                <button type="button" class="btn ghost" id="recipe-image-remove">Remove image</button>
-                <label for="recipe-image-url" style="margin-top:12px;">Or paste an image URL</label>
-                <input type="url" id="recipe-image-url" placeholder="https://…" />
-              </div>
-            </div>
-          </section>
-
-          <section class="atlas-form-section">
-            <div class="atlas-section-heading"><div><h3>Inventory-linked ingredients</h3><p>Select real inventory items. Atlas keeps the recipe connected when stock data changes.</p></div></div>
-            <div class="ingredient-builder-v2">
-              <div class="ingredient-column"><label for="ingredient-item">Inventory item</label><select id="ingredient-item"></select></div>
-              <div class="ingredient-column"><label for="ingredient-qty">Quantity</label><input type="number" id="ingredient-qty" min="0" step="0.01" placeholder="45" /></div>
-              <div class="ingredient-column"><label for="ingredient-unit">Unit</label><select id="ingredient-unit"><option value="ml">ml</option><option value="g">g</option><option value="each">each</option><option value="bottle">bottle</option><option value="can">can</option><option value="dash">dash</option><option value="tsp">tsp</option></select></div>
-              <button type="button" class="ingredient-add-button" id="add-ingredient-btn">Add ingredient</button>
-            </div>
-            <div id="ingredient-list" class="ingredient-list-v2"></div>
-          </section>
-
-          <section class="atlas-form-section">
-            <div class="atlas-section-heading"><div><h3>Service specification</h3><p>Method, yield and the details that create consistency during service.</p></div></div>
-            <div class="atlas-form-grid">
-              <div class="atlas-field full"><label for="recipe-method">Method</label><textarea id="recipe-method" placeholder="Shake hard with ice, then fine strain into a chilled coupe."></textarea></div>
-              <div class="atlas-field"><label for="recipe-yield-qty">Recipe yield</label><input type="number" id="recipe-yield-qty" min="0.01" step="0.01" value="1" /></div>
-              <div class="atlas-field"><label for="recipe-yield-unit">Yield unit</label><input type="text" id="recipe-yield-unit" value="serving" /></div>
-              <div class="atlas-field full"><label for="recipe-notes">Service notes</label><textarea id="recipe-notes" placeholder="Allergens, substitutions, prep notes or service guidance."></textarea></div>
-            </div>
-          </section>
-
-          <section class="atlas-form-section">
-            <div class="atlas-section-heading"><div><h3>Pricing and availability</h3><p>Costing uses the linked inventory cost and package size where available.</p></div></div>
-            <div class="atlas-form-grid">
-              <div class="atlas-field"><label for="recipe-menu-price">Menu price (ISK)</label><input type="number" id="recipe-menu-price" min="0" step="1" placeholder="3290" /></div>
-              <div class="atlas-field"><label>Availability</label><div class="recipe-toggle-row"><label class="recipe-check"><input type="checkbox" id="recipe-active" checked />Active for service</label><label class="recipe-check"><input type="checkbox" id="recipe-show-on-menu" checked />Show on public menu</label></div></div>
-            </div>
-            <div class="recipe-cost-strip">
-              <div class="recipe-cost-box"><span>Total recipe cost</span><strong id="calc-total-cost">Not configured</strong></div>
-              <div class="recipe-cost-box"><span>Cost per serving</span><strong id="calc-cost-per-serving">Not configured</strong></div>
-              <div class="recipe-cost-box"><span>Cost percentage</span><strong id="calc-cost-pct">—</strong></div>
-              <div class="recipe-cost-box"><span>Profit per serving</span><strong id="calc-profit">—</strong></div>
-            </div>
-            <p class="recipe-cost-note" id="recipe-cost-note">Add linked ingredients to calculate the recipe cost.</p>
-            <div class="recipe-availability-note" id="recipe-availability-note"><i data-lucide="package-check"></i><span>Add linked ingredients to calculate current service availability.</span></div>
-          </section>
-        </div>
-        <div class="atlas-modal-footer">
-          <span class="recipe-save-state" id="recipe-save-state"></span>
-          <div class="atlas-modal-actions"><button type="button" class="atlas-modal-secondary" data-modal-close>Cancel</button><button type="submit" class="atlas-modal-primary">Save recipe</button></div>
-        </div>
-      </form>
-    </section>
-  </div>
-
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
-        integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
-        crossorigin="anonymous"></script>
 <script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"
         integrity="sha384-m/CoPp6wBQz6MoZXP+VveuxfvSx0NGXiQyyakzXVOVHgG1fP5bM/UiO4pSNPV6PT"
         crossorigin="anonymous"></script>
+<script src="assets/js/atlas-shell.js?v=20260930-s90g"></script>
 <script src="config.js"></script>
-<script src="assets/js/runtime-module-guard.js"></script>
+<script src="assets/js/runtime-module-guard.js?v=20260929-s90f"></script>
 <script src="assets/js/rehearsal-boundary.js"></script>
-<script src="assets/js/atlas-stock-truth.js?v=20260924-s84-1"></script>
+<script src="assets/js/atlas-stock-truth.js?v=20260929-s90f"></script>
+<script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>
+<script src="assets/js/atlas-api.js?v=20260929-s90u"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -998,15 +205,16 @@
   function showBootError(msg, prefix = 'Setup problem') {
     const err = document.getElementById('login-error');
     if (!err) return;
-    err.textContent = prefix + ': ' + msg;
-    err.style.display = 'block';
+    console.error(prefix, msg);
+    err.textContent = "Atlas couldn't connect. Check your connection, then try again.";
+    err.hidden = false;
   }
 
   function clearBootError() {
     const err = document.getElementById('login-error');
     if (!err) return;
     err.textContent = '';
-    err.style.display = 'none';
+    err.hidden = true;
   }
 
   function loadScriptWithTimeout(src, timeoutMs = 15000) {
@@ -1128,7 +336,7 @@
 
   function requireCommercialManager(action = 'This action') {
     if (canManageCommercial()) return true;
-    alert(`${action} is limited to managers and administrators.`);
+    window.AtlasShell.toast(`${action} is for managers. Ask an administrator if you need access.`, { tone: 'info' });
     return false;
   }
 
@@ -1137,22 +345,13 @@
     window.atlasCurrentProfile = currentProfile
       ? { id: currentProfile.id, role: currentProfile.role, active: currentProfile.active }
       : null;
-    window.dispatchEvent(new CustomEvent('atlas:profile-ready', { detail: window.atlasCurrentProfile }));
+    // Emits the shell's profile:ready event (mirrored as window 'atlas:profile-ready').
+    window.AtlasShell.profileReady(window.atlasCurrentProfile);
   }
 
   function showDataBoundaryError(label) {
-    const banner = document.getElementById('low-stock-banner');
-    const copy = document.getElementById('low-stock-text');
-    if (banner && copy) {
-      banner.style.display = 'flex';
-      copy.textContent = `${label} is unavailable until the Phase 1 security migration is published.`;
-    }
-    const intelligenceTitle = document.getElementById('inventory-intelligence-title');
-    const intelligenceDetail = document.getElementById('inventory-intelligence-detail');
-    if (label === 'Inventory' && intelligenceTitle && intelligenceDetail) {
-      intelligenceTitle.textContent = 'Inventory data is unavailable.';
-      intelligenceDetail.textContent = 'Atlas could not load the role-approved inventory catalogue. Retry after the security migration is available.';
-    }
+    // Home shows one neutral "couldn't be loaded" row with Try again (home.js).
+    window.AtlasShell.emit('data:error', { source: label });
   }
 
   let items = [];
@@ -1160,62 +359,123 @@
   let inventoryMovements = [];
   let recipes = [];
   let suppliers = [];
+  let countSnapshot = null;
+  let itemsStatus = 'loading';
+  // Health of each shell data input: 'loading' | 'ok' | 'failed', plus the
+  // derived stock state: 'ok' | 'partial' (items loaded but verified balances
+  // or movements did not, so no stock figure is projected) | 'failed'.
+  let dataHealth = { inventory: 'loading', balances: 'loading', movements: 'loading', recipes: 'loading', suppliers: 'loading', stock: 'loading', stockMissing: [] };
+  // Read-only access to the loaded, role-filtered records for other modules
+  // (Inventory, Purchasing, Search). Returns the same arrays every page renders
+  // from; status() says whether the last inventory load failed (the previous
+  // rows are kept, never blanked) or is 'partial' (stock withheld); health()
+  // says which input failed.
+  window.AtlasData = Object.freeze({
+    items: () => items,
+    recipes: () => recipes,
+    suppliers: () => suppliers,
+    movements: () => inventoryMovements,
+    countSnapshot: () => countSnapshot,
+    status: () => ({ items: itemsStatus, stock: dataHealth.stock }),
+    health: () => ({ ...dataHealth, stockMissing: [...dataHealth.stockMissing] })
+  });
   let draftIngredients = [];
-  let activeCategory = 'all';
-  let activeSubcategory = 'all';
   let activeView = 'dashboard';
 
-  const INVENTORY_GROUPS = [
-    ['spirits', 'Spirits'], ['wine', 'Wine'], ['beer', 'Beer'], ['mixers', 'Mixers'],
-    ['syrups', 'Syrups'], ['bitters', 'Bitters'], ['fresh-fruit', 'Fresh Fruit'],
-    ['fresh-herbs', 'Fresh Herbs'], ['garnish', 'Garnish'], ['bar-ingredients', 'Bar Ingredients'],
-    ['consumables', 'Consumables'], ['bar-equipment', 'Bar Equipment'], ['coffee', 'Coffee']
-  ];
-
-  const DEFAULT_CATEGORIES = [
-    'Vodka', 'Gin', 'Whiskey', 'Rum', 'Tequila & Mezcal', 'Brandy & Cognac',
-    'Vermouth', 'Liqueurs', 'Bitters',
-    'Wine', 'Beer — bottles/cans', 'Beer — kegs', 'Ready-to-drink',
-    'Mixers', 'Juices', 'Fruit & garnish', 'Syrups',
-    'Coffee', 'Non-alcoholic', 'Food / tapas', 'Glassware', 'Cleaning supplies', 'Other'
-  ];
 
   // ---------- AUTH ----------
+  function setLoginBusy(busy, label = 'Sign in') {
+    loginBtn.disabled = busy;
+    loginBtn.classList.toggle('is-loading', busy);
+    loginBtn.setAttribute('aria-busy', String(busy));
+    loginBtn.textContent = label;
+  }
+  function showLoginError(message) {
+    loginError.textContent = message;
+    loginError.hidden = !message;
+    ['email', 'password'].forEach((id) => document.getElementById(id)?.setAttribute('aria-invalid', String(Boolean(message))));
+  }
+  // Inline field errors (design system §6.6) instead of the browser's
+  // validation bubble: the form is novalidate and says what to fix under the
+  // field, linked with aria-describedby.
+  function showFieldError(id, message) {
+    const input = document.getElementById(id);
+    const error = document.getElementById(`${id}-error`);
+    if (error) { error.textContent = message; error.hidden = !message; }
+    input?.setAttribute('aria-invalid', String(Boolean(message)));
+  }
+  function validateLogin(email, password) {
+    const emailProblem = !email ? 'Enter your email.' : (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? '' : 'Enter an email address like name@example.com.');
+    const passwordProblem = password ? '' : 'Enter your password.';
+    showFieldError('email', emailProblem);
+    showFieldError('password', passwordProblem);
+    if (emailProblem) document.getElementById('email')?.focus();
+    else if (passwordProblem) document.getElementById('password')?.focus();
+    return !emailProblem && !passwordProblem;
+  }
+  ['email', 'password'].forEach((id) => document.getElementById(id)?.addEventListener('input', () => {
+    if (document.getElementById(`${id}-error`)?.hidden === false) showFieldError(id, '');
+  }));
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    loginError.style.display = 'none';
-    loginBtn.disabled = true;
-    loginBtn.textContent = 'Signing in…';
+    showLoginError('');
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
+    if (!validateLogin(email, password)) return;
+    setLoginBusy(true, 'Signing in…');
     try {
       const client = await initializeSupabase();
       const { data, error } = await client.auth.signInWithPassword({ email, password });
-      loginBtn.disabled = false;
-      loginBtn.textContent = 'Sign in';
+      setLoginBusy(false);
       if (error) {
-        loginError.textContent = 'Error: ' + error.message + ' (status: ' + (error.status || 'n/a') + ')';
-        loginError.style.display = 'block';
+        console.warn('Sign-in failed', error.status || '', error.message);
+        showLoginError(error.status === 400 || /invalid/i.test(error.message || '')
+          ? 'Email or password is incorrect.'
+          : "Atlas couldn't sign you in right now. Check your connection and try again.");
         return;
       }
       await onSignedIn(data.session);
     } catch (e) {
-      loginBtn.disabled = false;
-      loginBtn.textContent = 'Sign in';
-      loginError.textContent = 'Unexpected error: ' + e.message;
-      loginError.style.display = 'block';
+      console.error('Sign-in failed', e);
+      setLoginBusy(false);
+      showLoginError(e?.code === 'inactive_profile' ? INACTIVE_PROFILE_MESSAGE : "Atlas couldn't sign you in right now. Check your connection and try again.");
     }
   });
+  document.getElementById('login-password-toggle')?.addEventListener('click', (event) => {
+    const input = document.getElementById('password');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    event.currentTarget.setAttribute('aria-pressed', String(show));
+    event.currentTarget.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    event.currentTarget.innerHTML = `<i data-lucide="${show ? 'eye-off' : 'eye'}" aria-hidden="true"></i>`;
+    window.lucide?.createIcons?.();
+  });
 
-  document.getElementById('logout-btn').addEventListener('click', async () => {
+  // Sign out (account menu, More sheet). Used by assets/js/atlas-chrome.js.
+  async function signOut() {
     try {
+      window.AtlasPalette?.clearRecent?.();
       const client = await initializeSupabase();
       await client.auth.signOut();
     } finally {
       location.reload();
     }
+  }
+  window.atlasSignOut = signOut;
+
+  // AtlasApi (atlas-api.js) reports an expired session once per burst; offer
+  // sign-in instead of leaving a page of failed requests.
+  let authPromptShown = false;
+  window.addEventListener('atlas:auth-required', () => {
+    if (authPromptShown || !currentUser) return;
+    authPromptShown = true;
+    window.AtlasShell?.toast?.('Your session has ended. Sign in again to keep working.', {
+      action: { label: 'Sign in', onClick: () => signOut() }
+    });
+    setTimeout(() => { authPromptShown = false; }, 30000);
   });
 
+  const INACTIVE_PROFILE_MESSAGE = 'This account is not an active VÁ staff profile. Ask an administrator to review access.';
   async function loadActiveProfile(session) {
     const { data, error } = await sb
       .from('profiles')
@@ -1226,7 +486,12 @@
     const allowedRoles = new Set(['admin', 'manager', 'bartender', 'viewer']);
     if (error || !data?.active || !allowedRoles.has(data.role)) {
       await sb.auth.signOut().catch(() => null);
-      throw new Error('This account is not an active VÁ staff profile. Ask an administrator to review access.');
+      // A read error is a connection problem; a missing, inactive or unknown
+      // profile is an access problem the person can act on (sign in with
+      // another account or ask an administrator).
+      const problem = new Error(error ? 'The staff profile could not be read.' : INACTIVE_PROFILE_MESSAGE);
+      problem.code = error ? 'profile_unavailable' : 'inactive_profile';
+      throw problem;
     }
     currentProfile = data;
     applyRoleVisibility();
@@ -1236,22 +501,70 @@
   async function onSignedIn(session) {
     currentUser = session.user;
     const profile = await loadActiveProfile(session);
-    const accountName = currentUser.user_metadata?.full_name?.trim()
-      || currentUser.user_metadata?.name?.trim()
-      || currentUser.email.split('@')[0];
-    const displayName = profile.display_name?.trim() || accountName;
-    const greetingName = displayName.includes(' ')
-      ? displayName.split(/\s+/)[0]
-      : (/^imad/i.test(displayName) ? 'Imad' : displayName.replace(/[._-]+/g, ' ').split(/\s+/)[0]);
-    userEmailEl.textContent = currentUser.email;
+    // S87 identity rule: the profile display name (AtlasIdentity, atlas-api.js),
+    // otherwise "Team member". An email address is never shown or turned into
+    // a name; without a display name the greeting has no name.
+    const identity = window.AtlasIdentity;
+    const displayName = identity.label(profile);
+    userEmailEl.textContent = '';
     document.getElementById('profile-name').textContent = displayName;
-    document.getElementById('greeting-name').textContent = greetingName;
-    document.getElementById('user-avatar').textContent = displayName.charAt(0).toUpperCase();
+    window.atlasGreetingName = identity.firstName(profile);
+    document.getElementById('user-avatar').textContent = identity.initials(identity.safeName(profile.display_name));
+    window.AtlasChrome?.setAccount?.({ id: profile.id, name: displayName, email: '', role: profile.role });
     loginScreen.style.display = 'none';
     appScreen.style.display = 'block';
-    await loadAll();
-    setActiveView('dashboard');
+    const preferences = cachedPreferences(currentUser.id);
+    window.AtlasPreferences.apply(preferences);
+    // From here the shell keeps the address bar in step with the open view, so
+    // #view links, Back and Forward work.
+    window.AtlasShell.startRouting();
+    // Spec §4.11: never a blank screen. The requested page opens at once with
+    // its header and skeletons (views that read the shell data render their
+    // loading state until data:loaded) and the correct navigation item, while
+    // the 2 px loading line runs under the top bar.
+    openInitialView(preferences);
     if (window.lucide) window.lucide.createIcons();
+    setAppLoading(true);
+    try { await loadAll(); } finally { setAppLoading(false); }
+    document.body.dataset.atlasReady = 'true';
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function setAppLoading(loading) {
+    const line = document.getElementById('atlas-loading-line');
+    if (line) line.hidden = !loading;
+    document.getElementById('atlas-main')?.setAttribute('aria-busy', loading ? 'true' : 'false');
+  }
+
+  // Personal preferences are cached per user by Settings after every load or
+  // save, so they apply at sign-in without waiting for the Settings module.
+  const PREFERENCE_CACHE_KEY = 'atlas.preferences.v1';
+  function cachedPreferences(userId) {
+    try {
+      const value = JSON.parse(window.localStorage.getItem(PREFERENCE_CACHE_KEY) || 'null');
+      return value && value.user_id === userId ? value : null;
+    } catch (_) { return null; }
+  }
+  window.AtlasPreferences = {
+    apply(preferences) {
+      document.documentElement.classList.toggle('atlas-reduce-motion', Boolean(preferences?.reduce_motion));
+    }
+  };
+  // A #view link (for example a notification tap opening #team) wins over the
+  // saved start view; unknown or unavailable destinations fall back to Home.
+  // Links may carry a section and parameters (#reports/inventory, #inventory?item=…);
+  // AtlasShell.parseRoute is the one parser for them.
+  function openInitialView(preferences) {
+    const route = window.AtlasShell.parseRoute(location.hash);
+    if (location.hash.length > 1 && !window.AtlasShell.isKnownRoute(location.hash)) {
+      window.AtlasShell.show('not-found', { path: route.route }, { source: 'link', history: false });
+      return;
+    }
+    for (const { view, params } of [route, { view: preferences?.start_view, params: {} }]) {
+      if (!view || view === 'dashboard') continue;
+      if (window.AtlasShell.nav.allowed(view) && (window.AtlasShell.nav.forView(view) || window.AtlasShell.view(view))) { window.AtlasShell.show(view, params, { source: 'link', route: location.hash }); return; }
+    }
+    window.AtlasShell.show('dashboard', {}, { source: 'link' });
   }
 
   (async function init() {
@@ -1265,9 +578,26 @@
       loginBtn.textContent = 'Sign in';
       if (data.session) {
         await onSignedIn(data.session);
+      } else {
+        // No session: the sign-in form is what this visitor sees (logo intro).
+        document.documentElement.dataset.atlasSignin = 'shown';
+        window.AtlasSignInIntro?.start();
       }
     } catch (error) {
       loginBtn.disabled = false;
+      if (error?.code === 'inactive_profile') {
+        // The saved session belonged to a deactivated (or unknown-role)
+        // profile and has been signed out: show the sign-in form with the
+        // access message, not a connection error with a retry that can't work.
+        loginBtn.textContent = 'Sign in';
+        loginScreen.style.display = '';
+        appScreen.style.display = 'none';
+        document.documentElement.dataset.atlasSignin = 'shown';
+        window.AtlasSignInIntro?.start();
+        showLoginError(INACTIVE_PROFILE_MESSAGE);
+        ['email', 'password'].forEach((id) => document.getElementById(id)?.setAttribute('aria-invalid', 'false'));
+        return;
+      }
       loginBtn.textContent = 'Retry connection';
       showBootError(error.message);
     }
@@ -1283,47 +613,77 @@
       .order('name', { ascending: true });
     if (error) {
       console.error(`${relation} could not be loaded`, error);
-      items = [];
-      renderTabs();
-      renderTable();
+      itemsStatus = 'error';
+      dataHealth.inventory = 'failed';
+      dataHealth.stock = 'failed';
       showDataBoundaryError('Inventory');
       return;
     }
+    dataHealth.inventory = 'ok';
     let balances = [];
     try {
       const session = (await sb.auth.getSession()).data?.session;
       const endpoint = window.VABAR_CONFIG?.STOCK_COUNTS_API;
-      if (session?.access_token && endpoint) {
-        const url = new URL(endpoint); url.searchParams.set('action', 'snapshot');
-        const response = await fetch(url, {headers: {authorization: `Bearer ${session.access_token}`}, signal: AbortSignal.timeout(12000)});
-        if (!response.ok) throw new Error('Verified stock unavailable');
-        balances = (await response.json()).counts?.verified_balances || [];
-      }
-    } catch (error) { console.warn('Stock remains unknown until verified balances can be read.'); }
+      if (!session?.access_token || !endpoint) throw new Error('Verified stock unavailable');
+      const url = new URL(endpoint); url.searchParams.set('action', 'snapshot');
+      const response = await fetch(url, {headers: {authorization: `Bearer ${session.access_token}`}, signal: AbortSignal.timeout(12000)});
+      if (!response.ok) throw new Error('Verified stock unavailable');
+      countSnapshot = (await response.json()).counts || null;
+      balances = countSnapshot?.verified_balances || [];
+      dataHealth.balances = 'ok';
+    } catch (error) {
+      console.warn('Stock remains unknown until verified balances can be read.');
+      dataHealth.balances = 'failed';
+    }
     // Every workspace, including this table, reads the single reconciled quantity.
-    items = window.AtlasStockTruth.project(data || [], balances, inventoryMovements);
-    renderTabs();
-    renderTable();
-    renderInventoryOperations();
-  }
-
-  async function loadRestockLog() {
-    const relation = canManageCommercial() ? 'inventory_movements' : 'inventory_movement_catalog';
-    let query = sb.from(relation);
-    query = canManageCommercial()
-      ? query.select('*, suppliers(name)')
-      : query.select('*');
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) {
-      console.error(`${relation} could not be loaded`, error);
-      inventoryMovements = [];
-      restockLog = [];
-      renderInventoryOperations();
+    // A projection from partial inputs is not stock truth: without verified
+    // balances every item would read "Not counted", and without movements every
+    // quantity would be its last count without sales or waste since. Stock is
+    // then withheld (unknown, reason stock_data_incomplete) and the pages say so.
+    const missing = [dataHealth.balances === 'ok' ? null : 'balances', dataHealth.movements === 'ok' ? null : 'movements'].filter(Boolean);
+    dataHealth.stockMissing = missing;
+    if (missing.length) {
+      dataHealth.stock = 'partial';
+      itemsStatus = 'partial';
+      items = window.AtlasStockTruth.withhold(data || []);
+      window.AtlasShell.emit('data:error', { source: 'Stock figures', kind: 'stock_incomplete', missing: [...missing] });
       return;
     }
-    inventoryMovements = data || [];
+    items = window.AtlasStockTruth.project(data || [], balances, inventoryMovements);
+    dataHealth.stock = 'ok';
+    itemsStatus = 'ok';
+  }
+
+  // The newest AtlasStockTruth.MOVEMENT_ROW_LIMIT movements (5 000, the same
+  // cap as Reports and Atlas AI), read in pages so the PostgREST max-rows
+  // default (1 000) cannot silently cut the stock projection short.
+  async function loadRestockLog() {
+    const relation = canManageCommercial() ? 'inventory_movements' : 'inventory_movement_catalog';
+    const limit = window.AtlasStockTruth?.MOVEMENT_ROW_LIMIT || 5000;
+    const pageSize = window.AtlasStockTruth?.MOVEMENT_PAGE_SIZE || 1000;
+    const rows = [];
+    for (let from = 0; from < limit; from += pageSize) {
+      let query = sb.from(relation);
+      query = canManageCommercial()
+        ? query.select('*, suppliers(name)')
+        : query.select('*');
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, Math.min(from + pageSize, limit) - 1);
+      if (error) {
+        console.error(`${relation} could not be loaded`, error);
+        inventoryMovements = [];
+        restockLog = [];
+        dataHealth.movements = 'failed';
+        return;
+      }
+      rows.push(...(data || []));
+      if (!data || data.length < pageSize) break;
+    }
+    dataHealth.movements = 'ok';
+    inventoryMovements = rows;
     restockLog = inventoryMovements.filter(entry => entry.movement_type === 'restock');
-    renderInventoryOperations();
   }
 
   async function loadRecipes() {
@@ -1335,9 +695,12 @@
       if (error) {
         console.error(error);
         recipes = [];
+        dataHealth.recipes = 'failed';
+        showDataBoundaryError('Recipes');
         return;
       }
       recipes = data || [];
+      dataHealth.recipes = 'ok';
       return;
     }
 
@@ -1358,14 +721,18 @@
     if (result.error) {
       console.error('The staff recipe catalogue could not be loaded', result.error);
       recipes = [];
+      dataHealth.recipes = 'failed';
+      showDataBoundaryError('Recipes');
       return;
     }
     recipes = result.data || [];
+    dataHealth.recipes = 'ok';
   }
 
   async function loadSuppliersData() {
     if (!canManageCommercial()) {
       suppliers = [];
+      dataHealth.suppliers = 'ok';
       return;
     }
     const { data, error } = await sb
@@ -1375,12 +742,20 @@
     if (error) {
       console.warn('Supplier list could not be loaded:', error.message);
       suppliers = [];
+      dataHealth.suppliers = 'failed';
       return;
     }
     suppliers = data || [];
+    dataHealth.suppliers = 'ok';
   }
 
+  // loadAll() loads the shell data, then emits data:loaded. Modules refresh
+  // through AtlasShell.onDataLoaded() instead of wrapping this function.
   async function loadAll() {
+    await loadAtlasData();
+    window.AtlasShell.dataLoaded({ online: navigator.onLine, health: window.AtlasData.health() });
+  }
+  async function loadAtlasData() {
     // Keep the last loaded, role-filtered in-memory snapshot during an outage.
     // No offline login, persistent commercial cache, or automatic write replay.
     if (!navigator.onLine) return;
@@ -1388,493 +763,51 @@
     // balances can be adjusted by audited restocks, waste, sales and transfers.
     await loadRestockLog();
     await Promise.all([loadItems(), loadRecipes(), loadSuppliersData()]);
-    renderDashboard();
     renderRecipes();
-    renderSuppliers();
   }
   window.atlasPurchasingData = () => canManageCommercial()
     ? { items: structuredClone(items), suppliers: structuredClone(suppliers) }
     : { items: [], suppliers: [] };
-  window.atlasReloadPurchasingData = loadAll;
-
-  function inventoryGroup(item) {
-    const category = String(item?.category || '').toLowerCase();
-    const name = String(item?.name || '').toLowerCase();
-    const value = `${category} ${name}`;
-
-    // Stored Item Master category is authoritative. Product-name words such as
-    // "Ginger Beer", "Jameson Stout Edition", or "Four Roses" must not move
-    // an item into Beer or Rosé when its category says otherwise.
-    if (/wine|champagne|prosecco|cava|sparkling|ros[eé]/.test(category)) return 'wine';
-    if (/soda|mixer|juice|tonic|soft drink|energy drink/.test(category)) return 'mixers';
-    if (/vodka|gin|whisk(?:e)?y|rum|tequila|mezcal|brandy|cognac|aquavit|brenniv[ií]n|liqueur|aperitif|vermouth|spirit|shot/.test(category)) return 'spirits';
-    if (/beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/.test(category)) return 'beer';
-
-    if (/bitters?/.test(value)) return 'bitters';
-    if (/syrup/.test(value)) return 'syrups';
-    if (/coffee|espresso|hot drink/.test(value)) return 'coffee';
-    if (/glassware|equipment|tool|utensil/.test(value)) return 'bar-equipment';
-    if (/cleaning|consumable|napkin|straw|receipt roll/.test(value)) return 'consumables';
-    if (/herb|mint|basil|rosemary|thyme/.test(value)) return 'fresh-herbs';
-    if (/garnish|olive|cherry|dehydrated|zest/.test(value)) return 'garnish';
-    if (/fruit|lemon|lime|orange|grapefruit|berry/.test(value)) return 'fresh-fruit';
-    if (/mixer|juice|tonic|soda|soft drink|energy drink|ginger beer/.test(value)) return 'mixers';
-    if (/vodka|gin|whisk(?:e)?y|rum|tequila|mezcal|brandy|cognac|aquavit|brenniv[ií]n|liqueur|aperitif|vermouth|spirit|shot/.test(value)) return 'spirits';
-    if (/beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/.test(value)) return 'beer';
-    if (/ingredient|food|tapas|salt|sugar|cream|milk|egg/.test(value)) return 'bar-ingredients';
-    return 'other';
-  }
-
-  function inventorySubcategory(item, group = inventoryGroup(item)) {
-    const stored = String(item?.subcategory || '').trim();
-    const category = String(item?.category || '').toLowerCase();
-    const name = String(item?.name || '').toLowerCase();
-    const value = `${stored} ${category} ${name} ${item?.unit || ''}`.toLowerCase();
-    if (group === 'wine') {
-      const categoryValue = `${stored} ${category}`.toLowerCase();
-      if (/champagne|sparkling|prosecco|cava|cr[eé]mant|franciacorta/.test(categoryValue)) return 'Sparkling';
-      if (/ros[eé]/.test(categoryValue)) return 'Rosé';
-      if (/red wine|\bred\b/.test(categoryValue)) return 'Red';
-      if (/white wine|\bwhite\b/.test(categoryValue)) return 'White';
-      if (/champagne|sparkling|prosecco|cava|cr[eé]mant|franciacorta/.test(name)) return 'Sparkling';
-      if (/ros[eé]/.test(name)) return 'Rosé';
-      return 'White';
-    }
-    if (group === 'spirits') {
-      if (/whisk(?:e)?y|bourbon|scotch|rye/.test(value)) return 'Whiskey';
-      if (/gin/.test(value)) return 'Gin';
-      if (/vodka/.test(value)) return 'Vodka';
-      if (/rum/.test(value)) return 'Rum';
-      if (/tequila|mezcal/.test(value)) return 'Tequila & Mezcal';
-      if (/brandy|cognac/.test(value)) return 'Brandy & Cognac';
-      if (/aquavit|brenniv[ií]n/.test(value)) return 'Aquavit';
-      if (/shot/.test(value)) return 'Shots';
-      return 'Liqueurs & Aperitifs';
-    }
-    if (group === 'beer') {
-      if (/\bkeg|30l|20l|50l/.test(value)) return 'Kegs';
-      if (/cider/.test(name) || (/cider/.test(category) && !/beer/.test(category))) return 'Cider';
-      if (/ready.to.drink|\brtd\b|breezer/.test(value)) return 'RTD';
-      return 'Bottles';
-    }
-    if (stored) return stored.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
-    return String(item?.category || 'Other').trim() || 'Other';
-  }
-
-  function renderInventoryIntelligence() {
-    const title = document.getElementById('inventory-intelligence-title');
-    const detail = document.getElementById('inventory-intelligence-detail');
-    if (!title || !detail) return;
-    const currentItems = items.filter(item => item.active !== false);
-    const low = currentItems.filter(item => window.AtlasStockTruth.known(item) && item.par_level != null && Number(item.quantity) <= Number(item.par_level));
-    const missingCost = currentItems.filter(item => item.cost_price == null || item.cost_price === '');
-    if (low.length) {
-      const item = low[0];
-      title.textContent = `${item.name} is at or below par.`;
-      detail.textContent = `${item.quantity} ${item.unit || 'units'} on hand against a par level of ${item.par_level}.`;
-    } else if (missingCost.length && canManageCommercial()) {
-      title.textContent = `${missingCost.length} item${missingCost.length === 1 ? '' : 's'} need cost prices.`;
-      detail.textContent = 'Complete Item Master to improve inventory value and recipe costing.';
-    } else {
-      title.textContent = 'Inventory is ready for review.';
-      detail.textContent = `${currentItems.length} active item${currentItems.length === 1 ? '' : 's'} are available in the current catalogue.`;
-    }
-  }
-
-  function renderTabs() {
-    const currentItems = items.filter(item => item.active !== false);
-    const uniqueCats = [...new Set(currentItems.map(i => i.category))];
-    const presentGroups = new Set(currentItems.map(inventoryGroup));
-    const cats = [['all', 'All'], ...INVENTORY_GROUPS];
-    if (presentGroups.has('other')) cats.push(['other', 'Other']);
-    const wrap = document.getElementById('category-tabs');
-    wrap.innerHTML = '';
-    cats.forEach(([cat, label]) => {
-      const btn = document.createElement('button');
-      btn.className = 'tab' + (cat === activeCategory ? ' active' : '');
-      btn.textContent = label;
-      btn.setAttribute('aria-pressed', String(cat === activeCategory));
-      btn.addEventListener('click', () => { activeCategory = cat; activeSubcategory = 'all'; renderTabs(); renderTable(); });
-      wrap.appendChild(btn);
-    });
-
-    const subWrap = document.getElementById('subcategory-tabs');
-    const groupItems = activeCategory === 'all' ? [] : currentItems.filter(item => inventoryGroup(item) === activeCategory);
-    const counts = groupItems.reduce((result, item) => {
-      const label = inventorySubcategory(item, activeCategory);
-      result.set(label, (result.get(label) || 0) + 1);
-      return result;
-    }, new Map());
-    subWrap.innerHTML = '';
-    subWrap.hidden = !counts.size;
-    if (counts.size || activeCategory === 'wine') {
-      const subcategories = activeCategory === 'wine'
-        ? ['Red', 'White', 'Rosé', 'Sparkling'].map(label => [label, counts.get(label) || 0])
-        : [...counts].sort(([left], [right]) => left.localeCompare(right));
-      subWrap.hidden = false;
-      [['all', 'All', groupItems.length], ...subcategories.map(([label, count]) => [label, label, count])].forEach(([value, label, count]) => {
-        const btn = document.createElement('button');
-        btn.className = 'tab' + (value === activeSubcategory ? ' active' : '');
-        btn.setAttribute('aria-pressed', String(value === activeSubcategory));
-        btn.innerHTML = `${escapeHtml(label)} <span>${count}</span>`;
-        btn.addEventListener('click', () => { activeSubcategory = value; renderTabs(); renderTable(); });
-        subWrap.appendChild(btn);
-      });
-    }
-
-    const datalist = document.getElementById('category-suggestions');
-    datalist.innerHTML = '';
-    const allSuggested = [...new Set([...DEFAULT_CATEGORIES, ...uniqueCats])];
-    allSuggested.forEach(cat => {
-      const opt = document.createElement('option');
-      opt.value = cat;
-      datalist.appendChild(opt);
-    });
-
-    const supplierList = document.getElementById('supplier-suggestions');
-    const uniqueSuppliers = [...new Set(items.map(i => i.supplier).filter(Boolean))];
-    supplierList.innerHTML = '';
-    uniqueSuppliers.forEach(sup => {
-      const opt = document.createElement('option');
-      opt.value = sup;
-      supplierList.appendChild(opt);
-    });
-    renderInventoryIntelligence();
-  }
-
-  function timeAgo(dateStr) {
-    const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-    return Math.floor(diff / 86400) + 'd ago';
-  }
-
-  function movementTypeLabel(value) {
-    return String(value || 'adjustment').replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
-  }
-
-  function movementRow(entry) {
-    const quantity = Number(entry.quantity_change || 0);
-    return `<tr><td>${escapeHtml(new Date(entry.created_at).toLocaleString())}</td><td><strong>${escapeHtml(entry.item_name || 'Inventory item')}</strong></td><td><span class="inventory-movement-type is-${escapeHtml(entry.movement_type || 'adjustment')}">${escapeHtml(movementTypeLabel(entry.movement_type))}</span></td><td class="numeric ${quantity < 0 ? 'is-negative' : 'is-positive'}">${quantity > 0 ? '+' : ''}${escapeHtml(quantity)}</td><td>${escapeHtml(entry.note || '—')}</td></tr>`;
-  }
-
-  function renderInventoryOperations() {
-    const movementBody = document.getElementById('movement-history-body');
-    const wasteBody = document.getElementById('waste-history-body');
-    if (!movementBody || !wasteBody) return;
-    const explicitWaste = inventoryMovements.filter(entry => entry.movement_type === 'waste');
-    document.getElementById('movement-total').textContent = inventoryMovements.length;
-    document.getElementById('movement-restocks').textContent = restockLog.length;
-    document.getElementById('movement-waste').textContent = explicitWaste.length;
-    movementBody.innerHTML = inventoryMovements.map(movementRow).join('');
-    document.getElementById('movement-history-empty').hidden = inventoryMovements.length > 0;
-    wasteBody.innerHTML = explicitWaste.map(entry => `<tr><td>${escapeHtml(new Date(entry.created_at).toLocaleString())}</td><td><strong>${escapeHtml(entry.item_name || 'Inventory item')}</strong></td><td class="numeric">${escapeHtml(Math.abs(Number(entry.quantity_change || 0)))}</td><td>${escapeHtml(entry.note || 'Explicit waste')}</td></tr>`).join('');
-    document.getElementById('waste-history-empty').hidden = explicitWaste.length > 0;
-    const select = document.getElementById('inventory-waste-item');
-    const selected = select.value;
-    select.innerHTML = `<option value="">Choose item</option>${items.filter(item => item.active !== false && Number(item.quantity || 0) > 0).map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} · ${escapeHtml(item.quantity)} ${escapeHtml(item.unit || 'units')}</option>`).join('')}`;
-    if ([...select.options].some(option => option.value === selected)) select.value = selected;
-    window.lucide?.createIcons?.();
-  }
-
-  async function refreshInventoryOperations() {
-    const status = document.getElementById('inventory-waste-status');
-    if (status) status.textContent = 'Refreshing movement history…';
-    await loadRestockLog();
-    if (status) status.textContent = '';
-  }
-
-  document.getElementById('inventory-ledger-refresh').addEventListener('click', refreshInventoryOperations);
-  document.getElementById('inventory-waste-form').addEventListener('submit', async event => {
-    event.preventDefault();
-    if (!requireCommercialManager('Waste recording')) return;
-    const form = event.currentTarget;
-    const status = document.getElementById('inventory-waste-status');
-    const item = items.find(entry => entry.id === form.elements.item_id.value);
-    const quantity = Number(form.elements.quantity.value);
-    const reason = form.elements.reason.value;
-    const note = form.elements.note.value.trim();
-    if (!item || !Number.isFinite(quantity) || quantity <= 0 || quantity > Number(item.quantity || 0)) {
-      status.textContent = 'Choose an item and enter a quantity no greater than current stock.';
-      return;
-    }
-    if (!reason || !note) { status.textContent = 'Choose a reason and add a factual note.'; return; }
-    if (!window.confirm(`Record ${quantity} ${item.unit || 'units'} of ${item.name} as waste? This reduces live stock immediately.`)) return;
-    const submit = form.querySelector('button[type="submit"]');
-    submit.disabled = true;
-    status.textContent = 'Recording waste…';
-    const { error } = await sb.rpc('adjust_inventory', {
-      p_item_id: item.id,
-      p_quantity_change: -quantity,
-      p_movement_type: 'waste',
-      p_unit_cost: item.cost_price || null,
-      p_supplier_id: null,
-      p_note: `${movementTypeLabel(reason)}: ${note}`
-    });
-    if (error) status.textContent = error.message || 'Waste could not be recorded.';
-    else {
-      form.reset();
-      status.textContent = 'Waste recorded and live stock updated.';
-      await loadRestockLog();
-      await loadItems();
-    }
-    submit.disabled = false;
-  });
-
-  function renderTable() {
-    const body = document.getElementById('items-body');
-    const emptyState = document.getElementById('empty-state');
-    const banner = document.getElementById('low-stock-banner');
-    body.innerHTML = '';
-
-    const visible = items.filter(item => {
-      if (item.active === false) return false;
-      const groupMatches = activeCategory === 'all' || inventoryGroup(item) === activeCategory;
-      const subcategoryMatches = activeSubcategory === 'all' || inventorySubcategory(item, activeCategory) === activeSubcategory;
-      return groupMatches && subcategoryMatches;
-    });
-    const lowCount = items.filter(i => i.active !== false && window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;
-
-    if (lowCount > 0) {
-      banner.style.display = 'flex';
-      document.getElementById('low-stock-text').textContent = `${lowCount} item${lowCount > 1 ? 's' : ''} at or below par level`;
-    } else {
-      banner.style.display = 'none';
-    }
-
-    if (visible.length === 0) {
-      emptyState.style.display = 'block';
-    } else {
-      emptyState.style.display = 'none';
-    }
-
-    visible.forEach(item => {
-      const stockKnown = window.AtlasStockTruth.known(item);
-      const displayQuantity = stockKnown ? Number(item.quantity) : null;
-      const isLow = stockKnown
-        && item.par_level != null
-        && Number(displayQuantity) <= Number(item.par_level);
-      const cost = item.cost_price == null || item.cost_price === ''
-        ? '—'
-        : `${new Intl.NumberFormat('is-IS', { maximumFractionDigits: 0 }).format(Number(item.cost_price))} ISK`;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="name"><span>${escapeHtml(item.name)}</span>${isLow ? '<span class="below-par-badge">Below par</span>' : ''}${stockKnown && item.stock_recount_due ? '<span class="below-par-badge recount-due-badge" title="Owner-confirmed count is past its freshness window">Recount due</span>' : ''}</td>
-        <td class="cat">${escapeHtml(item.category)}</td>
-        <td class="supplier" data-commercial-only>${escapeHtml(item.supplier || '—')}</td>
-        <td class="cost numeric" data-commercial-only>${cost}</td>
-        <td class="meta">${timeAgo(item.updated_at)}</td>
-        <td>
-          <div class="qty-cell">
-            ${stockKnown ? `
-              <button class="step-btn step-down" data-id="${item.id}" type="button" ${canManageCommercial() ? '' : 'disabled'}>−</button>
-              <input type="number" step="0.1" min="0" class="qty-input mono" value="${displayQuantity ?? ''}" data-id="${item.id}" ${canManageCommercial() ? '' : 'disabled'} />
-              <button class="step-btn step-up" data-id="${item.id}" type="button" ${canManageCommercial() ? '' : 'disabled'}>+</button>
-              <span class="unit">${escapeHtml(item.unit)}</span>
-            ` : `
-              <span class="qty-unknown">Unknown</span>
-              <span class="unit">${escapeHtml(item.unit)}</span>
-            `}
-          </div>
-        </td>
-        <td>
-          <div class="row-actions">
-            <button class="icon-btn edit-btn" data-id="${item.id}" title="Edit">✎</button>
-            <button class="icon-btn delete-btn" data-id="${item.id}" title="Delete">✕</button>
-          </div>
-        </td>
-      `;
-      body.appendChild(tr);
-    });
-
-    async function applyQuantityChange(id, newQty) {
-      if (!requireCommercialManager('Direct inventory adjustment')) return;
-      if (isNaN(newQty) || newQty < 0) return;
-      const item = items.find(i => i.id === id);
-      if (!item) return;
-      // Movements are deltas from the reconciled quantity the manager can see.
-      const currentQty = window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN;
-      if (!Number.isFinite(currentQty) || newQty === currentQty) return;
-      const quantityChange = newQty - currentQty;
-      const { error } = await sb.rpc('adjust_inventory', {
-        p_item_id: item.id,
-        p_quantity_change: quantityChange,
-        p_movement_type: quantityChange > 0 ? 'restock' : 'adjustment',
-        p_unit_cost: quantityChange > 0 ? (item.cost_price || null) : null,
-        p_supplier_id: item.supplier_id || null,
-        p_note: 'Quick quantity adjustment',
-      });
-      if (error) {
-        alert(error.message);
-        return;
-      }
-      await loadAll();
-    }
-
-    document.querySelectorAll('.qty-input').forEach(inp => {
-      inp.addEventListener('change', (e) => {
-        applyQuantityChange(e.target.dataset.id, parseFloat(e.target.value));
-      });
-    });
-
-    document.querySelectorAll('.step-up').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const item = items.find(i => i.id === btn.dataset.id);
-        if (item) {
-          const currentQty = window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN;
-          if (Number.isFinite(currentQty)) applyQuantityChange(item.id, currentQty + 1);
-        }
-      });
-    });
-    document.querySelectorAll('.step-down').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const item = items.find(i => i.id === btn.dataset.id);
-        if (item) {
-          const currentQty = window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN;
-          if (Number.isFinite(currentQty)) applyQuantityChange(item.id, Math.max(0, currentQty - 1));
-        }
-      });
-    });
-
-    document.querySelectorAll('[data-set-real-stock]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!requireCommercialManager('Set real stock')) return;
-        const stockTab = document.querySelector('.inventory-workspace-tab[data-inventory-section="stock-count"]');
-        if (stockTab) stockTab.click();
-        try {
-          if (window.AtlasStockCounts?.openForItem) {
-            await window.AtlasStockCounts.openForItem(btn.dataset.setRealStock);
-          } else {
-            window.AtlasStockCounts?.open?.();
-          }
-        } catch (error) {
-          alert(error instanceof Error ? error.message : 'The stock count could not be opened.');
-        }
-      });
-    });
-
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-      btn.addEventListener('click', () => openModal(items.find(i => i.id === btn.dataset.id)));
-    });
-
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!requireCommercialManager('Inventory deletion')) return;
-        if (!confirm('Remove this item from inventory?')) return;
-        const { error } = await sb.from('inventory_items').delete().eq('id', btn.dataset.id);
-        if (error) { alert(error.message); return; }
-        await loadAll();
-      });
-    });
-  }
+  // Purchasing reloads the shell data only; Inventory and Purchasing reload
+  // everything (and re-render through data:loaded) after a change they made.
+  window.atlasReloadPurchasingData = loadAtlasData;
+  window.atlasReloadData = loadAll;
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   }
 
-  // ---------- MODAL ----------
-  const overlay = document.getElementById('item-overlay');
-  const itemForm = document.getElementById('item-form');
-
-  document.getElementById('add-item-btn').addEventListener('click', () => openModal(null));
-  document.getElementById('cancel-item-btn').addEventListener('click', closeModal);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
-
-  function recalcUnitCostFromCase() {
-    const perCase = parseFloat(document.getElementById('item-units-per-case').value);
-    const caseCost = parseFloat(document.getElementById('item-case-cost').value);
-    if (perCase > 0 && caseCost >= 0) {
-      document.getElementById('item-cost').value = (caseCost / perCase).toFixed(2);
-    }
-  }
-  document.getElementById('item-units-per-case').addEventListener('input', recalcUnitCostFromCase);
-  document.getElementById('item-case-cost').addEventListener('input', recalcUnitCostFromCase);
-
-  function openModal(item) {
-    if (!requireCommercialManager('Inventory master editing')) return;
-    document.getElementById('modal-title').textContent = item ? 'Edit item' : 'Add item';
-    document.getElementById('item-id').value = item ? item.id : '';
-    document.getElementById('item-name').value = item ? item.name : '';
-    document.getElementById('item-category').value = item ? item.category : '';
-    document.getElementById('item-quantity').value = item ? (window.AtlasStockTruth.known(item) ? item.quantity : '') : 0;
-    document.getElementById('item-unit').value = item ? item.unit : 'bottles';
-    document.getElementById('item-par').value = item && item.par_level != null ? item.par_level : '';
-    document.getElementById('item-supplier').value = item && item.supplier ? item.supplier : '';
-    document.getElementById('item-sku').value = item && item.sku ? item.sku : '';
-    document.getElementById('item-bin').value = item && item.bin_location ? item.bin_location : '';
-    document.getElementById('item-units-per-case').value = item && item.units_per_case != null ? item.units_per_case : '';
-    document.getElementById('item-case-cost').value = item && item.case_cost != null ? item.case_cost : '';
-    document.getElementById('item-cost').value = item && item.cost_price != null ? item.cost_price : '';
-    document.getElementById('item-discount').value = item && item.discount_percent != null ? item.discount_percent : '';
-    overlay.style.display = 'flex';
-  }
-
-  function closeModal() {
-    overlay.style.display = 'none';
-    itemForm.reset();
-  }
-
-  itemForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!requireCommercialManager('Inventory master editing')) return;
-    const id = document.getElementById('item-id').value;
-    const payload = {
-      name: document.getElementById('item-name').value.trim(),
-      category: document.getElementById('item-category').value,
-      unit: document.getElementById('item-unit').value.trim(),
-      par_level: document.getElementById('item-par').value === '' ? null : parseFloat(document.getElementById('item-par').value),
-      supplier: document.getElementById('item-supplier').value.trim() || null,
-      sku: document.getElementById('item-sku').value.trim() || null,
-      bin_location: document.getElementById('item-bin').value.trim() || null,
-      units_per_case: document.getElementById('item-units-per-case').value === '' ? null : parseFloat(document.getElementById('item-units-per-case').value),
-      case_cost: document.getElementById('item-case-cost').value === '' ? null : parseFloat(document.getElementById('item-case-cost').value),
-      cost_price: document.getElementById('item-cost').value === '' ? null : parseFloat(document.getElementById('item-cost').value),
-      discount_percent: document.getElementById('item-discount').value === '' ? 0 : parseFloat(document.getElementById('item-discount').value),
-    };
-    const { error: saveError } = id
-      ? await sb.from('inventory_items').update(payload).eq('id', id)
-      : await sb.from('inventory_items').insert({ ...payload, quantity: 0 });
-    if (saveError) { alert(saveError.message); return; }
-    closeModal();
-    await loadAll();
-  });
-
   // ---------- PROJECT ATLAS NAVIGATION ----------
+  // AtlasShell (assets/js/atlas-shell.js) owns navigation. The base shell
+  // registers its own views here; modules register theirs through
+  // AtlasShell.registerView() and never write into these tables.
+  // Inventory (inventory, movements, waste) and Purchasing (suppliers) are
+  // registered by assets/js/atlas-inventory.js and assets/js/atlas-purchasing.js.
   const viewMap = {
-    inventory: document.getElementById('inventory-view'),
     dashboard: document.getElementById('dashboard-view'),
     recipes: document.getElementById('recipes-view'),
-    suppliers: document.getElementById('suppliers-view'),
-    imports: document.getElementById('imports-view'),
+
     team: document.getElementById('team-view'), shifts: document.getElementById('shifts-view'),
-    knowledge: document.getElementById('knowledge-view'), movements: document.getElementById('movements-view'),
-    waste: document.getElementById('waste-view'), reports: document.getElementById('reports-view'),
-    settings: document.getElementById('settings-view')
+    knowledge: document.getElementById('knowledge-view'), reports: document.getElementById('reports-view'),
+    settings: document.getElementById('settings-view'),
+    'not-found': document.getElementById('not-found-view')
   };
-  const titleMap = {dashboard:'Home',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',imports:'Import Center',team:'Messages',shifts:'Shifts',knowledge:'Knowledge',movements:'Inventory movements',waste:'Waste',reports:'Reports',settings:'Settings'};
-  const inventoryViews = new Set(['inventory', 'movements', 'waste', 'imports']);
+  const titleMap = {'not-found':'Page not found',dashboard:'Home',recipes:'Recipes',imports:'Data',team:'Messages',shifts:'Shifts',knowledge:'Knowledge',reports:'Reports',settings:'Settings'};
   const workspaceRootIds = {
     dashboard: 'dashboard-view', inventory: 'inventory-view', recipes: 'recipes-view', suppliers: 'suppliers-view',
-    imports: 'imports-view', team: 'team-view', shifts: 'shifts-view', knowledge: 'knowledge-view',
-    movements: 'movements-view', waste: 'waste-view', reports: 'reports-view', settings: 'settings-view',
-    operations: 'operations-view', brain: 'brain-view', business: 'business-view', marketing: 'marketing-view',
-    'team-profiles': 'team-profiles-view', 'sprint3-review': 'sprint3-review-view', system: 'system-view'
+    data: 'data-view', team: 'team-view', shifts: 'shifts-view', knowledge: 'knowledge-view',
+    movements: 'inventory-view', waste: 'inventory-view', reports: 'reports-view', settings: 'settings-view',
+    operations: 'operations-view', marketing: 'marketing-view',
+    'team-profiles': 'team-profiles-view'
   };
   function hideAtlasWorkspaceRoots(keepView = '') {
-    const keepId = workspaceRootIds[keepView] || '';
+    const keepId = workspaceRootIds[keepView] || window.AtlasShell.view(keepView)?.root?.id || '';
     const main = document.querySelector('.atlas-content.standard-view main');
     if (!main) return;
     [...main.children].forEach((element) => {
-      if (!element.id || (!element.id.endsWith('-view') && element.id !== 'operations-center')) return;
+      if (!element.id || !element.id.endsWith('-view')) return;
       if (element.id !== keepId) element.style.display = 'none';
     });
-  }
-  function restoreAtlasWorkspaceInterior(view) {
-    const interior = view === 'brain' ? document.getElementById('brain-shell')
-      : view === 'operations' ? document.getElementById('operations-center')
-      : null;
-    if (interior) interior.style.removeProperty('display');
   }
   function resetAtlasWorkspaceScroll() {
     window.requestAnimationFrame(() => {
@@ -1883,633 +816,93 @@
       document.querySelector('.atlas-content')?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
     });
   }
-  function syncInventorySectionHeader(view) {
-    const header = document.getElementById('inventory-section-header');
-    if (!header) return;
-    header.hidden = !inventoryViews.has(view);
-    const intelligence = document.getElementById('inventory-intelligence');
-    const stockCountOpen = document.body.classList.contains('stock-count-active');
-    const itemMasterOpen = document.body.classList.contains('item-master-active');
-    if (intelligence) intelligence.hidden = view !== 'inventory' || stockCountOpen;
-    const actions = header.querySelector('.inventory-section-actions');
-    if (actions) actions.hidden = view !== 'inventory' || stockCountOpen || itemMasterOpen;
-    const lowStockBanner = document.getElementById('low-stock-banner');
-    if (lowStockBanner) lowStockBanner.hidden = view !== 'dashboard';
-    document.querySelectorAll('.inventory-workspace-tab').forEach(button => {
-      const isItems = button.dataset.inventorySection === 'items' && view === 'inventory' && !stockCountOpen;
-      const isStock = button.dataset.inventorySection === 'stock-count' && view === 'inventory' && stockCountOpen;
-      const isItemMaster = button.dataset.inventorySection === 'item-master' && view === 'inventory' && itemMasterOpen;
-      const isOther = button.dataset.view === view && view !== 'inventory';
-      button.classList.toggle('active', isItems || isStock || isItemMaster || isOther);
-    });
-  }
-  function setActiveView(view) {
-    if (!canManageCommercial() && ['suppliers', 'imports'].includes(view)) {
-      alert('This workspace is limited to managers and administrators.');
-      view = 'dashboard';
-    }
-    if (view !== 'inventory') {
-      window.AtlasStockCounts?.close?.();
-      window.AtlasItemMaster?.close?.();
-    }
+  // The base shell chrome for every destination. AtlasShell.show() runs it once
+  // per navigation, before the view's render and onShow hooks.
+  function layoutAtlasView(view, entry, context) {
     activeView = view;
     document.body.dataset.atlasView = view;
     hideAtlasWorkspaceRoots(view);
     Object.values(viewMap).forEach(v => { if(v) v.style.display='none'; });
-    document.getElementById('home-intro').style.display = view === 'dashboard' ? 'flex' : 'none';
-    document.getElementById('home-metrics').style.display = view === 'dashboard' ? 'grid' : 'none';
-    const homeTimeline = document.getElementById('home-timeline');
-    if (homeTimeline) homeTimeline.style.display = view === 'dashboard' ? 'block' : 'none';
-    if (viewMap[view]) viewMap[view].style.display = view === 'inventory' ? 'grid' : 'block';
-    restoreAtlasWorkspaceInterior(view);
-    syncInventorySectionHeader(view);
-    document.getElementById('atlas-page-title').textContent = titleMap[view] || 'VÁ OS';
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    if(view==='dashboard'){ renderDashboard(); renderAtlasHome(); }
-    if(view==='recipes') renderRecipes();
-    if(view==='suppliers') renderSuppliers();
-    if(view==='movements' || view==='waste') renderInventoryOperations();
-    if(view==='imports') window.AtlasImportCenter?.render?.();
-    closeMobileSidebar();
+    const root = viewMap[view] || window.AtlasShell.view(view)?.root;
+    if (root) root.style.display = entry.display;
+    // The page title in the phone top bar, the active navigation item and the
+    // overlay sidebar follow view:show in assets/js/atlas-chrome.js.
     resetAtlasWorkspaceScroll();
   }
-  window.AtlasShell = { hideWorkspaceRoots: hideAtlasWorkspaceRoots, resetScroll: resetAtlasWorkspaceScroll, restoreWorkspaceInterior: restoreAtlasWorkspaceInterior };
-  document.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
-    const inventoryTab = target.closest('.inventory-workspace-tab');
-    const sidebarDestination = target.closest('.atlas-nav .nav-item[data-view]');
-    if (inventoryTab) {
-      const section = inventoryTab.dataset.inventorySection;
-      if (section !== 'stock-count') window.AtlasStockCounts?.close?.();
-      if (section !== 'item-master') window.AtlasItemMaster?.close?.();
-      window.setTimeout(() => syncInventorySectionHeader(inventoryTab.dataset.view || 'inventory'), 0);
-    }
-    if (sidebarDestination) {
-      const view = sidebarDestination.dataset.view;
-      window.AtlasStockCounts?.close?.();
-      window.AtlasItemMaster?.close?.();
-      document.body.dataset.atlasView = view;
-      hideAtlasWorkspaceRoots(view);
-      resetAtlasWorkspaceScroll();
-      if (sidebarDestination.dataset.atlasBaseViewBound !== 'true' && viewMap[view]) setActiveView(view);
-    }
-  }, true);
-  document.querySelectorAll('[data-view]').forEach(btn => {
-    btn.dataset.atlasBaseViewBound = 'true';
-    btn.addEventListener('click',()=>{ setActiveView(btn.dataset.view); if(btn.dataset.subview && !btn.dataset.inventorySection) document.getElementById('atlas-page-title').textContent=btn.dataset.subview; });
-  });
-  document.querySelectorAll('.nav-parent').forEach(btn => btn.addEventListener('click',()=>{ btn.classList.toggle('open'); const target=btn.dataset.default; if(target) setActiveView(target); }));
-  function formatVenueDay(now = new Date()) {
-    try {
-      return new Intl.DateTimeFormat('en-GB', { weekday:'long', day:'numeric', month:'long', timeZone:'Atlantic/Reykjavik' }).format(now);
-    } catch (_) {
-      return new Intl.DateTimeFormat('en-GB', { weekday:'long', day:'numeric', month:'long' }).format(now);
-    }
+  function commercialWorkspaceGuard() {
+    if (canManageCommercial()) return true;
+    window.AtlasShell.toast('That page is for managers. Ask an administrator if you need access.', { tone: 'info' });
+    return 'dashboard';
   }
-  function venueGreeting(now = new Date()) {
-    let hour = now.getHours();
-    try { hour = Number(new Intl.DateTimeFormat('en-GB', { hour:'2-digit', hour12:false, timeZone:'Atlantic/Reykjavik' }).format(now)); }
-    catch (_) { /* Use the browser-local hour as a safe fallback. */ }
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+  window.AtlasShell.setLayout(layoutAtlasView);
+  [
+    ['dashboard', { render: () => renderAtlasHome() }],
+    ['recipes', { render: () => renderRecipes(), onShow: (params) => window.AtlasRecipes?.show?.(params) }],
+    // Import Center and Real VÁ Data are one manager page now: Data (assets/js/data-workspace.js).
+    ['imports', { guard: () => 'data' }],
+    ['team', {}], ['shifts', {}], ['knowledge', {}], ['reports', {}], ['settings', {}],
+    // An address Atlas doesn't know (#bogus) opens this page instead of
+    // leaving the previous page on screen (AtlasShell.isKnownRoute).
+    ['not-found', { render: () => renderNotFound() }]
+  ].forEach(([view, definition]) => window.AtlasShell.registerView(view, { root: viewMap[view], title: titleMap[view], ...definition }));
+  // Compatibility shim: modules and tests still call the global by name. It is
+  // a thin call into the shell and is never reassigned (tests/node/shell-contract-s88).
+  function setActiveView(view) {
+    return window.AtlasShell.show(view);
   }
-  function updateHomeTeamMetric() {
-    const value = document.getElementById('home-team');
-    const note = document.getElementById('home-team-note');
-    const profiles = window.AtlasTeamProfiles?.snapshot?.();
-    const count = Number(profiles?.summary?.active_profiles);
-    if (Number.isFinite(count)) {
-      value.textContent = count;
-      note.textContent = count === 1 ? 'Active Atlas profile' : 'Active Atlas profiles';
-      return;
-    }
-    const messages = window.AtlasTeamMessages?.snapshot?.();
-    const messageCount = Number(messages?.summary?.active_members);
-    if (Number.isFinite(messageCount)) {
-      value.textContent = messageCount;
-      note.textContent = messageCount === 1 ? 'Active staff member' : 'Active staff members';
-      return;
-    }
-    value.textContent = '—';
-    note.textContent = 'Open Team to load';
+  Object.assign(window.AtlasShell, { hideWorkspaceRoots: hideAtlasWorkspaceRoots, resetScroll: resetAtlasWorkspaceScroll });
+  function renderNotFound() {
+    const root = viewMap['not-found'];
+    if (!root) return;
+    root.innerHTML = `${window.AtlasShell.pageHead({ title: 'Page not found' })}<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon"><i data-lucide="compass" aria-hidden="true"></i></div><h2 class="atlas-empty__title">This page doesn’t exist</h2><p class="atlas-empty__text">The link may be old or mistyped. Nothing was changed.</p><div class="atlas-empty__actions"><a class="atlas-btn atlas-btn--secondary" href="#home">Go to Home</a></div></div>`;
+    window.lucide?.createIcons?.();
   }
+
+  // Home (assets/js/home.js) is the one Home section; modules contribute
+  // attention rows with AtlasShell.home.contribute() instead of drawing into it.
   function renderAtlasHome(){
-    // Home reports live stock: inactive rows stay in Inventory records but never count here.
-    const activeItems = items.filter(item => item.active !== false);
-    const low = activeItems.filter(
-      item =>
-        window.AtlasStockTruth.known(item) &&
-        item.par_level != null &&
-        Number(item.quantity) < Number(item.par_level)
-    );
-    document.getElementById('home-date').textContent=formatVenueDay();
-    document.getElementById('home-greeting').textContent=venueGreeting();
-    document.getElementById('home-items').textContent = activeItems.length;
-    const unknownStock = activeItems.filter(
-      item => !window.AtlasStockTruth.known(item)
-    ).length;
-    document.getElementById('home-low').textContent=unknownStock ? 'Unknown' : low.length;
-    document.getElementById('home-items-note').textContent=activeItems.length===1?'Live catalog item':'Live catalog items';
-    document.getElementById('home-low-note').textContent=unknownStock ? `${unknownStock} items not counted / verified` : low.length?'Review before service':'Verified stock levels healthy';
-    const recipeMetrics=window.AtlasRecipes?.getHomeMetrics?.();
-    const averageMargin=recipeMetrics?.marginRecipeCount > 0 && recipeMetrics?.averageMargin != null ? Number(recipeMetrics.averageMargin) : NaN;
-    document.getElementById('home-margin').textContent=Number.isFinite(averageMargin)?`${Math.round(averageMargin)}%`:'—';
-    document.getElementById('home-margin-note').textContent=Number.isFinite(averageMargin)?`${recipeMetrics.marginRecipeCount} costed ${recipeMetrics.marginRecipeCount===1?'recipe':'recipes'}`:'Complete recipe costing';
-    updateHomeTeamMetric();
-    const focus=[];
-    if(low.length) focus.push({text:`${low.length} inventory ${low.length===1?'item is':'items are'} below par.`,target:'inventory-low'});
-    else focus.push({text:unknownStock ? 'Stock remains unknown until a count is verified.' : 'Verified inventory levels look healthy today.',target:'inventory'});
-    const recipeAlert=window.AtlasRecipes?.getHomeAlert?.();
-    if(recipeAlert) focus.push({text:recipeAlert.text,target:'recipes'});
-    focus.push({text:'Check today’s team and shift coverage before service.',target:'shifts'});
-    document.getElementById('home-brief-headline').textContent=low.length
-      ? `${low.length} ${low.length===1?'item needs':'items need'} attention before service.`
-      : unknownStock ? 'Stock verification is incomplete.' : 'Verified inventory is ready for today’s service.';
-    document.getElementById('home-brief-detail').textContent=recipeAlert?.text
-      || 'Atlas is using the latest available inventory, recipe, and operations data.';
-    document.getElementById('focus-list').innerHTML=focus.map(entry=>`<div class="focus-row" data-target="${entry.target}"><span class="focus-dot"></span><span>${entry.text}</span></div>`).join('');
-    bindHomeLinks();
+    return window.AtlasShell.renderHome();
   }
 
-  function bindHomeLinks(){
-    document.querySelectorAll('[data-target]').forEach(el=>{
-      el.onclick=()=>{
-        const target=el.dataset.target;
-        if(target==='inventory-low'){ activeCategory='all'; setActiveView('inventory'); setTimeout(()=>document.getElementById('low-stock-banner')?.scrollIntoView({behavior:'smooth',block:'center'}),60); }
-        else {
-          const navButton=document.querySelector(`.atlas-nav .nav-item[data-view="${target}"]`);
-          if(navButton) navButton.click();
-          else setActiveView(target);
-        }
-      };
-    });
-    const banner=document.getElementById('low-stock-banner');
-    if(banner) banner.onclick=()=>setActiveView('inventory');
-  }
-  document.querySelectorAll('[data-home-action]').forEach(button=>button.addEventListener('click',()=>{
-    if(button.dataset.homeAction==='stock-count'){
-      setActiveView('inventory');
-      window.setTimeout(()=>document.querySelector('[data-inventory-section="stock-count"]')?.click(),40);
-      return;
-    }
-    if(button.dataset.homeAction==='new-order') document.querySelector('.atlas-nav .nav-item[data-view="suppliers"]')?.click();
-  }));
-  document.getElementById('inventory-intelligence-action')?.addEventListener('click', () => {
-    document.querySelector('.nav-item[data-view="reports"]')?.click();
-  });
-  const sidebar=document.getElementById('atlas-sidebar');
-  const backdrop=document.getElementById('sidebar-backdrop');
-  const navigationPlan=[
-    ['home','HOME',['dashboard']],
-    ['operations','OPERATIONS',['operations','inventory','recipes','suppliers']],
-    ['people','PEOPLE',['team','team-profiles','shifts','knowledge']],
-    ['growth','GROWTH',['marketing','accounting']],
-    ['insights','INSIGHTS',['brain','business','reports','sprint3-review']],
-    ['system','SYSTEM',['system','settings']]
-  ];
-  const navigationLabels={dashboard:'Home',operations:'Operations Center',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',team:'Messages','team-profiles':'Team',shifts:'Shifts',knowledge:'Knowledge',marketing:'Marketing',accounting:'Accounting',brain:'Atlas Brain',business:'Business Intelligence',reports:'Reports','sprint3-review':'Real VÁ Data',system:'System',settings:'Settings'};
-  let navigationFrame=null;
-  const navigationObserver=new MutationObserver(()=>{
-    if(navigationFrame) return;
-    navigationFrame=requestAnimationFrame(()=>{navigationFrame=null;organizeAtlasNavigation();});
-  });
-  function setNavigationLabel(button,label){
-    let text=button.querySelector(':scope > .nav-item-label')
-      || [...button.children].find(child=>child.tagName==='SPAN'&&!child.matches('.team-nav-unread,.review-nav-count,.system-nav-status'));
-    if(!text){
-      [...button.childNodes].filter(node=>node.nodeType===Node.TEXT_NODE).forEach(node=>node.remove());
-      text=document.createElement('span');
-      text.className='nav-item-label';
-      const trailing=[...button.children].find(child=>child.matches('.team-nav-unread,.review-nav-count,.system-nav-status'));
-      button.insertBefore(text,trailing||null);
-    }
-    text.classList.add('nav-item-label');
-    text.textContent=label;
-    button.setAttribute('aria-label',label);
-    button.setAttribute('title',label);
-  }
-  function organizeAtlasNavigation(){
-    const nav=document.querySelector('.atlas-nav');
-    if(!nav) return;
-    navigationObserver.disconnect();
-    navigationPlan.forEach(([key,label,views])=>{
-      let group=nav.querySelector(`.nav-group[data-nav-group="${key}"]`);
-      const hasView=views.some(view=>nav.querySelector(`.nav-item[data-view="${view}"]`));
-      if(!group&&hasView){
-        group=document.createElement('div');
-        group.className='nav-group';
-        group.dataset.navGroup=key;
-        group.innerHTML=`<div class="nav-label">${label}</div>`;
-      }
-      if(!group) return;
-      views.forEach(view=>{
-        const button=nav.querySelector(`.nav-item[data-view="${view}"]`);
-        if(!button) return;
-        button.classList.remove('nav-parent','open');
-        button.removeAttribute('data-default');
-        setNavigationLabel(button,navigationLabels[view]||view);
-        group.appendChild(button);
-      });
-      nav.appendChild(group);
-    });
-    nav.querySelectorAll('.nav-sub').forEach(node=>node.remove());
-    nav.querySelectorAll('.nav-group').forEach(group=>{if(!group.querySelector('.nav-item')) group.remove();});
-    navigationObserver.observe(nav,{childList:true,subtree:true});
-  }
-  organizeAtlasNavigation();
-  function closeMobileSidebar(){sidebar.classList.remove('open');backdrop.classList.remove('open');}
-  const menuButton=document.getElementById('mobile-menu-btn');
-  function updateMenuButtonLabel(collapsed){
-    const label=window.matchMedia('(max-width:760px)').matches?'Open navigation':collapsed?'Expand navigation':'Collapse navigation';
-    menuButton.setAttribute('aria-label',label);
-    menuButton.setAttribute('title',label);
-  }
-  function syncDesktopSidebarPreference(){
-    if(window.matchMedia('(max-width:760px)').matches){updateMenuButtonLabel(false);return;}
-    const collapsed=localStorage.getItem('atlas.sidebarCollapsed')==='true';
-    document.body.classList.toggle('atlas-sidebar-collapsed',collapsed);
-    menuButton.setAttribute('aria-expanded',String(!collapsed));
-    updateMenuButtonLabel(collapsed);
-  }
-  syncDesktopSidebarPreference();
-  menuButton.addEventListener('click',()=>{
-    if(window.matchMedia('(max-width:760px)').matches){sidebar.classList.add('open');backdrop.classList.add('open');return;}
-    const collapsed=document.body.classList.toggle('atlas-sidebar-collapsed');
-    localStorage.setItem('atlas.sidebarCollapsed',String(collapsed));
-    menuButton.setAttribute('aria-expanded',String(!collapsed));
-    updateMenuButtonLabel(collapsed);
-  });
-  backdrop.addEventListener('click',closeMobileSidebar);
-  const enterService=()=>{document.body.classList.add('service-mode');};
-  const exitService=()=>{document.body.classList.remove('service-mode');};
-  document.getElementById('service-mode-btn').addEventListener('click',enterService);
-  document.getElementById('service-exit-btn').addEventListener('click',exitService);
-  document.querySelectorAll('[data-service-view]').forEach(btn=>btn.addEventListener('click',()=>{exitService();setActiveView(btn.dataset.serviceView);}));
-  document.querySelector('[data-service-action="restock"]').addEventListener('click',()=>{exitService();openRestockModal();});
-  document.querySelector('[data-service-action="add-item"]').addEventListener('click',()=>{exitService();openModal(null);});
-  document.addEventListener('keydown',(e)=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();document.getElementById('global-search').focus();}if(e.key==='Escape'&&document.body.classList.contains('service-mode'))exitService();});
-  document.getElementById('global-search').addEventListener('input',(e)=>{
-    const q=e.target.value.toLowerCase().trim();
-    if(q.includes('recipe'))setActiveView('recipes');
-    else if(q.includes('supplier')||q.includes('order')||q.includes('purchase'))setActiveView('suppliers');
-    else if(q.includes('profile')||q.includes('staff directory')||q.includes('team member'))document.querySelector('.nav-item[data-view="team-profiles"]')?.click();
-    else if(q.includes('message')||q.includes('chat')||q.includes('team'))setActiveView('team');
-    else if(q.includes('shift')||q.includes('schedule'))setActiveView('shifts');
-    else if(q.includes('knowledge')||q.includes('document')||q.includes('checklist'))setActiveView('knowledge');
-    else if(q.includes('import')||q.includes('excel')||q.includes('csv'))setActiveView('imports');
-    else if(q.includes('movement'))setActiveView('movements');
-    else if(q.includes('waste')||q.includes('spoilage')||q.includes('breakage'))setActiveView('waste');
-    else if(q.includes('inventory')||q.includes('item')||q.includes('stock')||q.includes('count'))setActiveView('inventory');
-    else if(q.includes('report'))setActiveView('reports');
-    else if(q.includes('setting'))setActiveView('settings');
-    else if(q.includes('home')||q.includes('dashboard'))setActiveView('dashboard');
-  });
-
-  // ---------- QUICK ACTION (FAB) ----------
-  const fabBtn = document.getElementById('fab-btn');
-  const fabMenu = document.getElementById('fab-menu');
-  fabBtn.addEventListener('click', () => {
-    fabMenu.classList.toggle('open');
-    fabBtn.classList.toggle('open');
-  });
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.fab-wrap')) {
-      fabMenu.classList.remove('open');
-      fabBtn.classList.remove('open');
-    }
-  });
-  document.getElementById('fab-add-item').addEventListener('click', () => {
-    fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
-    openModal(null);
-  });
-  document.getElementById('fab-log-restock').addEventListener('click', () => {
-    fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
-    openRestockModal();
-  });
-  document.getElementById('fab-add-supplier').addEventListener('click', () => {
-    fabMenu.classList.remove('open'); fabBtn.classList.remove('open');
-    setActiveView('suppliers');
-    openSupplierModal();
-  });
-
-  // ---------- RESTOCK MODAL ----------
-  const restockOverlay = document.getElementById('restock-overlay');
-  const restockForm = document.getElementById('restock-form');
-  const restockItemSelect = document.getElementById('restock-item');
-
-  function openRestockModal() {
-    if (!requireCommercialManager('Restock logging')) return;
-    restockItemSelect.innerHTML = '';
-    items.forEach(item => {
-      const opt = document.createElement('option');
-      opt.value = item.id;
-      opt.textContent = `${item.name} (${item.quantity ?? 'Unknown'} ${item.unit})`;
-      restockItemSelect.appendChild(opt);
-    });
-    prefillRestockFromItem();
-    restockOverlay.style.display = 'flex';
-  }
-
-  function prefillRestockFromItem() {
-    const item = items.find(i => i.id === restockItemSelect.value);
-    if (!item) return;
-    document.getElementById('restock-supplier').value = item.supplier || '';
-    document.getElementById('restock-cost').value = item.cost_price != null ? item.cost_price : '';
-    document.getElementById('restock-discount').value = item.discount_percent != null ? item.discount_percent : 0;
-  }
-  restockItemSelect.addEventListener('change', prefillRestockFromItem);
-
-  document.getElementById('cancel-restock-btn').addEventListener('click', () => {
-    restockOverlay.style.display = 'none';
-    restockForm.reset();
-  });
-  restockOverlay.addEventListener('click', (e) => { if (e.target === restockOverlay) { restockOverlay.style.display = 'none'; restockForm.reset(); } });
-
-  restockForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!requireCommercialManager('Restock logging')) return;
-    const item = items.find(i => i.id === restockItemSelect.value);
-    if (!item) return;
-    const qtyAdded = parseFloat(document.getElementById('restock-qty').value);
-    const unitCost = document.getElementById('restock-cost').value === '' ? null : parseFloat(document.getElementById('restock-cost').value);
-    const discount = document.getElementById('restock-discount').value === '' ? 0 : parseFloat(document.getElementById('restock-discount').value);
-    const supplier = document.getElementById('restock-supplier').value.trim() || null;
-
-    let supplierId = null;
-    if (supplier) {
-      const { data: existingSupplier } = await sb
-        .from('suppliers')
-        .select('id')
-        .ilike('name', supplier)
-        .maybeSingle();
-      supplierId = existingSupplier?.id || null;
-
-      if (!supplierId) {
-        const { data: createdSupplier, error: supplierError } = await sb
-          .from('suppliers')
-          .insert({ name: supplier })
-          .select('id')
-          .single();
-        if (supplierError) {
-          alert(supplierError.message);
-          return;
-        }
-        supplierId = createdSupplier.id;
-      }
-    }
-
-    const netUnitCost = unitCost == null ? null : unitCost * (1 - discount / 100);
-    const { error } = await sb.rpc('adjust_inventory', {
-      p_item_id: item.id,
-      p_quantity_change: qtyAdded,
-      p_movement_type: 'restock',
-      p_unit_cost: netUnitCost,
-      p_supplier_id: supplierId,
-      p_note: discount ? `Supplier discount: ${discount}%` : null,
-    });
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    restockOverlay.style.display = 'none';
-    restockForm.reset();
-    await loadAll();
-  });
-
-  // ---------- DASHBOARD ----------
-  function monthKey(dateStr) {
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }
-  function monthLabel(key) {
-    const [y, m] = key.split('-');
-    return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  }
-
-  function renderDashboard() {
-    // Stock cards describe live inventory; inactive rows are records, not stock.
-    const activeItems = items.filter(item => item.active !== false);
-    const lowCount = activeItems.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level).length;
-    const suppliers = new Set(items.map(i => i.supplier).filter(Boolean));
-    document.getElementById('stat-total-items').textContent = activeItems.length;
-    document.getElementById('stat-low-stock').textContent = activeItems.some(item => !window.AtlasStockTruth.known(item)) ? 'Unknown' : lowCount;
-    document.getElementById('stat-suppliers').textContent = suppliers.size;
-
-    // Low inventory list — actual items, not just a count
-    const lowItems = activeItems.filter(i => window.AtlasStockTruth.known(i) && i.par_level != null && i.quantity <= i.par_level);
-    const lowRows = document.getElementById('low-inventory-rows');
-    if (lowItems.length === 0) {
-      lowRows.innerHTML = activeItems.some(item => !window.AtlasStockTruth.known(item)) ? '<div class="empty-dash">Stock status unknown — verify a physical count.</div>' : '<div class="empty-dash">Nothing below par in verified stock.</div>';
-    } else {
-      lowRows.innerHTML = lowItems.map(i => `
-        <div class="list-row">
-          <div class="item-info">
-            <span class="name">${escapeHtml(i.name)}</span>
-            <span class="cat">${escapeHtml(i.category)}</span>
-          </div>
-          <span class="qty-badge">${i.quantity} / ${i.par_level} ${escapeHtml(i.unit)}</span>
-        </div>
-      `).join('');
-    }
-
-    // Recent activity — latest restocks
-    const activityRows = document.getElementById('activity-rows');
-    const recent = restockLog.slice(0, 8);
-    if (recent.length === 0) {
-      activityRows.innerHTML = '<div class="empty-dash">No restocks logged yet.</div>';
-    } else {
-      activityRows.innerHTML = recent.map(r => {
-        const who = r.created_by ? 'Staff' : 'System';
-        return `
-          <div class="activity-row">
-            <span class="who">${escapeHtml(who)}</span> added ${Math.abs(r.quantity_change)} of ${escapeHtml(r.item_name)}
-            <span class="when">${timeAgo(r.created_at)}</span>
-          </div>
-        `;
-      }).join('');
-    }
-
-    const thisMonthKey = monthKey(new Date().toISOString());
-    const thisMonthSpend = restockLog
-      .filter(r => monthKey(r.created_at) === thisMonthKey)
-      .reduce((sum, r) => sum + (r.total_cost || 0), 0);
-    document.getElementById('stat-month-spend').textContent = Math.round(thisMonthSpend).toLocaleString();
-
-    // Spend by month, last 6 months with any activity
-    const byMonth = {};
-    restockLog.forEach(r => {
-      const key = monthKey(r.created_at);
-      byMonth[key] = (byMonth[key] || 0) + (r.total_cost || 0);
-    });
-    const monthKeys = Object.keys(byMonth).sort().reverse().slice(0, 6);
-    const monthRows = document.getElementById('monthly-spend-rows');
-    if (monthKeys.length === 0) {
-      monthRows.innerHTML = '<div class="empty-dash">No restocks logged yet.</div>';
-    } else {
-      const maxVal = Math.max(...monthKeys.map(k => byMonth[k]));
-      monthRows.innerHTML = monthKeys.map(k => `
-        <div class="bar-row">
-          <div class="bar-label">${monthLabel(k)}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${maxVal ? (byMonth[k] / maxVal * 100) : 0}%"></div></div>
-          <div class="bar-value mono">${Math.round(byMonth[k]).toLocaleString()} ISK</div>
-        </div>
-      `).join('');
-    }
-
-    // Spend by supplier, this month only
-    const bySupplier = {};
-    restockLog
-      .filter(r => monthKey(r.created_at) === thisMonthKey && r.suppliers?.name)
-      .forEach(r => { bySupplier[r.suppliers.name] = (bySupplier[r.suppliers.name] || 0) + (r.total_cost || 0); });
-    const supplierKeys = Object.keys(bySupplier).sort((a, b) => bySupplier[b] - bySupplier[a]);
-    const supplierRows = document.getElementById('supplier-spend-rows');
-    if (supplierKeys.length === 0) {
-      supplierRows.innerHTML = '<div class="empty-dash">No restocks logged this month yet.</div>';
-    } else {
-      const maxVal = Math.max(...supplierKeys.map(k => bySupplier[k]));
-      supplierRows.innerHTML = supplierKeys.map(k => `
-        <div class="bar-row">
-          <div class="bar-label">${escapeHtml(k)}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${maxVal ? (bySupplier[k] / maxVal * 100) : 0}%"></div></div>
-          <div class="bar-value mono">${Math.round(bySupplier[k]).toLocaleString()} ISK</div>
-        </div>
-      `).join('');
-    }
-  }
+  // Canonical actions owned by the base shell (spec §4.8). The command palette
+  // and the + button list them per role; everything the retired quick-action
+  // button and service grid offered is here. The editors keep their own manager
+  // check, so a denied action runs the same function, which explains the limit.
+  // recipes.new is an interim registration until the Recipes (E4) module
+  // registers its own (same id). Inventory, stock count and Purchasing actions
+  // are registered by their modules (atlas-inventory.js, stock-count-workspace.js,
+  // atlas-purchasing.js).
+  const MANAGERS=['admin','manager'];
+  [
+    { id:'recipes.new', label:'New recipe', icon:'martini', keywords:['recipe','cocktail','drink'], roles:MANAGERS, contexts:['recipes'], run:()=>{ setActiveView('recipes'); window.AtlasRecipes?.openEditor?.(null); } }
+  ].forEach(action=>window.AtlasShell.actions.register({ ...action, denied:action.run }));
 
   // ---------- RECIPES · ATLAS ALPHA 0.2 ----------
   function renderRecipes() {
     if (window.AtlasRecipes) window.AtlasRecipes.render();
   }
 
-  // ---------- SUPPLIER FORM ----------
-  const supplierOverlay = document.getElementById('supplier-overlay');
-  const supplierForm = document.getElementById('supplier-form');
-  function showToast(message){
-    const toast=document.getElementById('atlas-toast');
-    toast.textContent=message;
-    toast.classList.add('show');
-    window.setTimeout(()=>toast.classList.remove('show'),2200);
-  }
-  function openSupplierModal(){
-    if (!requireCommercialManager('Supplier management')) return;
-    supplierForm.reset();
-    supplierOverlay.style.display='flex';
-    supplierOverlay.setAttribute('aria-hidden','false');
-    document.getElementById('supplier-name').focus();
-  }
-  function closeSupplierModal(){
-    supplierOverlay.style.display='none';
-    supplierOverlay.setAttribute('aria-hidden','true');
-    supplierForm.reset();
-  }
-  document.getElementById('add-supplier-btn').addEventListener('click',openSupplierModal);
-  document.getElementById('close-supplier-btn').addEventListener('click',closeSupplierModal);
-  document.getElementById('cancel-supplier-btn').addEventListener('click',closeSupplierModal);
-  supplierOverlay.addEventListener('click',event=>{if(event.target===supplierOverlay)closeSupplierModal();});
-  supplierForm.addEventListener('submit',async event=>{
-    event.preventDefault();
-    if (!requireCommercialManager('Supplier management')) return;
-    const payload={
-      name:document.getElementById('supplier-name').value.trim(),
-      contact_name:document.getElementById('supplier-contact').value.trim()||null,
-      email:document.getElementById('supplier-email').value.trim()||null,
-      phone:document.getElementById('supplier-phone').value.trim()||null,
-      notes:document.getElementById('supplier-notes').value.trim()||null
-    };
-    if(!payload.name) return;
-    let result=await sb.from('suppliers').insert(payload);
-    if(result.error){
-      result=await sb.from('suppliers').insert({name:payload.name});
-    }
-    if(result.error){ alert(result.error.message); return; }
-    closeSupplierModal();
-    await loadAll();
-    setActiveView('suppliers');
-    showToast('Supplier added');
-  });
-
-  // ---------- SUPPLIERS ----------
-  let supplierSearchTerm = '';
-  document.getElementById('supplier-search').addEventListener('input', (e) => {
-    supplierSearchTerm = e.target.value.trim().toLowerCase();
-    renderSuppliers();
-  });
-  document.getElementById('purchasing-intelligence-action').addEventListener('click', () => setActiveView('reports'));
-
-  function renderSuppliers() {
-    const thisMonthKey = monthKey(new Date().toISOString());
-    const names = [...new Set([...suppliers.map(s=>s.name).filter(Boolean), ...items.map(i => i.supplier).filter(Boolean)])];
-
-    const allRows = names
-      .map(name => {
-        const itemCount = items.filter(i => i.supplier === name).length;
-        const monthSpend = restockLog
-          .filter(r => r.suppliers?.name === name && monthKey(r.created_at) === thisMonthKey)
-          .reduce((sum, r) => sum + (r.total_cost || 0), 0);
-        const allTimeSpend = restockLog
-          .filter(r => r.suppliers?.name === name)
-          .reduce((sum, r) => sum + (r.total_cost || 0), 0);
-        const supplier = suppliers.find(entry => entry.name === name) || {};
-        return { name, itemCount, monthSpend, allTimeSpend, supplier };
-      })
-      .sort((a, b) => b.allTimeSpend - a.allTimeSpend);
-    const rows = allRows.filter(row => row.name.toLowerCase().includes(supplierSearchTerm));
-
-    const connectedItems = allRows.reduce((sum, row) => sum + row.itemCount, 0);
-    const totalMonthSpend = allRows.reduce((sum, row) => sum + row.monthSpend, 0);
-    const leadSupplier = [...allRows].sort((a, b) => b.monthSpend - a.monthSpend)[0];
-    const insightTitle = document.getElementById('purchasing-intelligence-title');
-    const insightDetail = document.getElementById('purchasing-intelligence-detail');
-    if (insightTitle && insightDetail) {
-      if (!allRows.length) {
-        insightTitle.textContent = 'Add your first supplier to connect purchasing.';
-        insightDetail.textContent = 'Supplier spend and inventory coverage will appear here once records are available.';
-      } else if (totalMonthSpend > 0 && leadSupplier) {
-        const share = Math.round((leadSupplier.monthSpend / totalMonthSpend) * 100);
-        insightTitle.textContent = `${leadSupplier.name} represents ${share}% of recorded spend this month.`;
-        insightDetail.textContent = `${Math.round(totalMonthSpend).toLocaleString()} ISK is supported by recorded restock evidence.`;
-      } else {
-        insightTitle.textContent = `${allRows.length} ${allRows.length === 1 ? 'supplier is' : 'suppliers are'} connected to ${connectedItems} inventory ${connectedItems === 1 ? 'item' : 'items'}.`;
-        insightDetail.textContent = 'Spend appears only when a costed restock is recorded.';
-      }
-    }
-
-    const body = document.getElementById('suppliers-body');
-    const empty = document.getElementById('suppliers-empty');
-    if (rows.length === 0) {
-      body.innerHTML = '';
-      empty.style.display = 'block';
-      return;
-    }
-    empty.style.display = 'none';
-    body.innerHTML = rows.map(r => `
-      <tr>
-        <td class="name"><span class="purchasing-supplier"><span class="purchasing-supplier-avatar">${escapeHtml(r.name.slice(0,2).toUpperCase())}</span><span><strong>${escapeHtml(r.name)}</strong><small>${escapeHtml(r.supplier.email || r.supplier.contact_name || `${r.itemCount} linked ${r.itemCount === 1 ? 'item' : 'items'}`)}</small></span></span></td>
-        <td>${r.itemCount}</td>
-        <td class="mono">${Math.round(r.monthSpend).toLocaleString()} ISK</td>
-        <td class="mono">${Math.round(r.allTimeSpend).toLocaleString()} ISK</td>
-      </tr>
-    `).join('');
-  }
   if (window.lucide) window.lucide.createIcons();
 </script>
-<script src="assets/js/atlas-calculations.js?v=20260924-s85"></script>
-<script src="assets/js/modal.js?v=20260922-s73"></script>
-<script src="assets/js/recipes.js?v=20260924-s85"></script>
-<script src="assets/js/operations.js"></script>
-<script src="assets/js/brain.js"></script>
-<script src="assets/js/business.js?v=20260917-s60"></script>
-<script src="assets/js/import-center.js"></script>
-<script src="assets/js/purchase-orders.js"></script>
-<script src="assets/js/shifts-workspace.js"></script>
-<script src="assets/js/shifts-month-calendar.js?v=20260917-s62"></script>
-<script src="assets/js/shifts-month-tab-bridge.js"></script>
-<script src="assets/js/knowledge-workspace.js?v=20260917-s56"></script>
-<script src="assets/js/knowledge-team-link-bridge.js"></script>
-<script src="assets/js/s38-app-remediation.js"></script>
+<script src="assets/js/atlas-calculations.js?v=20260929-s90p"></script>
+<script src="assets/js/modal.js?v=20260929-s90f"></script>
+<script src="assets/js/recipes.js?v=20260930-s90g"></script>
+<script src="assets/js/operations.js?v=20260930-s90g"></script>
+<script src="assets/js/atlas-capture.js?v=20260929-s90u"></script>
+<script src="assets/js/atlas-inventory.js?v=20260930-s90g"></script>
+<script src="assets/js/stock-count-workspace.js?v=20260930-s90g"></script>
+<script src="assets/js/atlas-purchasing.js?v=20260930-s90g"></script>
+<script src="assets/js/home.js?v=20260929-s90u"></script>
+<script src="assets/js/reports-overview.js?v=20260930-s90g"></script>
+<script src="assets/js/data-workspace.js?v=20260929-s90u"></script>
+<script src="assets/js/shifts-workspace.js?v=20260929-s90f"></script>
+<script src="assets/js/knowledge-workspace.js?v=20260929-s90u"></script>
+<script src="assets/js/s38-app-remediation.js?v=20260929-s90f"></script>
+<script src="assets/js/atlas-search.js?v=20260929-s90u"></script>
+<script src="assets/js/atlas-chrome.js?v=20260929-s90f"></script>
+<script src="assets/js/atlas-palette.js?v=20260929-s90u"></script>
+<script src="assets/js/atlas-ai-voice.js?v=20260929-s90f"></script>
+<script src="assets/js/atlas-ai.js?v=20260930-s90g"></script>
+<script src="assets/js/atlas-signin-intro.js?v=20260924-brand1"></script>
 </body>
 </html>

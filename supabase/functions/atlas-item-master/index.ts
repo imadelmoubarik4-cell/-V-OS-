@@ -1,12 +1,20 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+// Canonical stock truth shared with Reports and the browser (AtlasStockTruth):
+// owner-confirmed and manager-verified evidence, the historical cutoff and the
+// below-par rule.
+import {
+  balanceFromCountActivity,
+  belowPar as canonicalBelowPar,
+  projectStock,
+  quantityTrustState as canonicalQuantityTrustState,
+} from "../_shared/atlas-domain.mjs";
+// S89: one product-identity normalisation shared with SQL, the scanner and
+// the import engine (Icelandic letters kept; codes GTIN-validated).
+import { normalizeCode as normalizeProductCode, searchFoldText } from "../_shared/product-identity.mjs";
+import { AuthError, actorLabel, authConfig, requireRole, resolveActor } from "../_shared/auth.mjs";
 
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
-const FUNCTION_VERSION = "0.1.0";
+const FUNCTION_VERSION = "0.2.0";
 const MAX_ROWS = 5000;
-const HISTORICAL_OPENING_CUTOFF = "2026-07-31";
 const MANAGER_ROLES = new Set(["admin", "manager"]);
 
 const MASTER_FIELDS = [
@@ -24,6 +32,19 @@ const MASTER_FIELDS = [
   "bin_location",
   "lead_time_days",
   "minimum_order_quantity",
+];
+
+// S89 product attributes (published through atlas_apply_item_master_update).
+const S89_MASTER_FIELDS = [
+  "brand",
+  "product_name",
+  "variant",
+  "item_class",
+  "packaging_type",
+  "unit_size_quantity",
+  "unit_size_base",
+  "abv_percent",
+  "subcategory",
 ];
 
 const FIELD_LABELS = {
@@ -59,11 +80,253 @@ const CORS_HEADERS = {
 };
 
 class ApiError extends Error {
-  constructor(status, message) {
+  status;
+  code;
+  details;
+
+  constructor(status, message, code = null, details = null) {
     super(message);
     this.status = status;
+    this.code = code;
+    this.details = details;
   }
 }
+
+// s88-activation-helpers:start (pure; unit-tested by tests/node/inventory-activation-api-s88.test.js)
+const ACTIVATION_ERROR_STATUS = {
+  forbidden: 403,
+  not_found: 404,
+  stale_item: 409,
+  open_purchase_order: 409,
+  active_duplicate_name: 409,
+  invalid_request: 400,
+  // S89 catalogue governance
+  duplicate_suspected: 409,
+  duplicate_identity: 409,
+  code_conflict: 409,
+  alias_conflict: 409,
+  stale_request: 409,
+  invalid_code: 400,
+  open_count: 409,
+  stock_on_duplicate: 409,
+  append_only: 409,
+};
+const ACTIVATION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// S88 hardening (F9): database text reaches the browser only when it is an
+// Atlas-authored message (raised by our SQL) without schema detail; anything
+// else (constraint, column, relation or permission text) becomes the fixed
+// fallback. The SQLSTATE is logged instead.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed, fallback) {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed;
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
+}
+
+function rpcErrorCode(hint) {
+  const match = typeof hint === "string" ? hint.match(/^atlas:([a-z_]+)$/) : null;
+  return match ? match[1] : null;
+}
+
+function activationErrorStatus(status, code) {
+  if (code && ACTIVATION_ERROR_STATUS[code]) return ACTIVATION_ERROR_STATUS[code];
+  return status >= 500 ? 500 : 400;
+}
+
+function activationItemId(value) {
+  const id = typeof value === "string" ? value.trim() : "";
+  if (!ACTIVATION_UUID.test(id)) throw new ApiError(400, "Inventory item is invalid.", "invalid_request");
+  return id.toLowerCase();
+}
+
+function activationRequest(body) {
+  const source = body && typeof body === "object" && !Array.isArray(body) ? body : {};
+  if (typeof source.active !== "boolean") {
+    throw new ApiError(400, "Active must be true or false.", "invalid_request");
+  }
+  let reason = null;
+  if (source.reason !== undefined && source.reason !== null && source.reason !== "") {
+    if (typeof source.reason !== "string") throw new ApiError(400, "Reason must be text.", "invalid_request");
+    reason = source.reason.trim() || null;
+    if (reason && reason.length > 500) {
+      throw new ApiError(400, "Reason is limited to 500 characters.", "invalid_request");
+    }
+  }
+  let expectedUpdatedAt = null;
+  if (source.expected_updated_at !== undefined && source.expected_updated_at !== null && source.expected_updated_at !== "") {
+    const parsed = typeof source.expected_updated_at === "string" ? new Date(source.expected_updated_at) : null;
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      throw new ApiError(400, "Expected update time is invalid.", "invalid_request");
+    }
+    // Keep the original string: Postgres timestamps carry microseconds that
+    // a JavaScript Date would round away.
+    expectedUpdatedAt = source.expected_updated_at;
+  }
+  return {
+    p_item_id: activationItemId(source.item_id),
+    p_active: source.active,
+    p_reason: reason,
+    p_expected_updated_at: expectedUpdatedAt,
+  };
+}
+// s88-activation-helpers:end
+
+// s89-catalog-helpers:start (pure; unit-tested by tests/node/catalog-governance-api-s89.test.js)
+const CATALOG_KINDS = new Set([
+  "alias", "code", "new_item", "duplicate_resolution", "metadata_correction", "wrong_match_report", "code_conflict",
+]);
+const CATALOG_STATUSES = new Set(["pending", "approved", "rejected", "applied", "failed", "withdrawn", "superseded", "all"]);
+const CATALOG_SOURCES = new Set(["manager", "data_review", "backfill", "import", "ai_proposal", "recognition"]);
+const CATALOG_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CATALOG_MAX_JSON = 64 * 1024;
+
+function catalogObject(value, label) {
+  if (value === undefined || value === null) return {};
+  if (typeof value !== "object" || Array.isArray(value)) throw new ApiError(400, `${label} must be an object.`, "invalid_request");
+  if (JSON.stringify(value).length > CATALOG_MAX_JSON) throw new ApiError(413, `${label} is too large.`, "invalid_request");
+  return value;
+}
+
+function catalogList(value, label, max = 20) {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > max) throw new ApiError(400, `${label} must be a list of up to ${max}.`, "invalid_request");
+  return value;
+}
+
+function catalogUuid(value, label, required = true) {
+  if ((value === undefined || value === null || value === "") && !required) return null;
+  const id = typeof value === "string" ? value.trim() : "";
+  if (!CATALOG_UUID.test(id)) throw new ApiError(400, `${label} is invalid.`, "invalid_request");
+  return id.toLowerCase();
+}
+
+function catalogRequestId(value) {
+  const id = typeof value === "string" ? value.trim() : "";
+  if (!id || id.length > 200) throw new ApiError(400, "A request id is required.", "invalid_request");
+  return id;
+}
+
+// POST action=create-item. The legacy Add item form fields sku and barcode
+// become codes; quantity is never accepted (items start at 0). The database
+// runs the mandatory duplicate check.
+function createItemRequest(body) {
+  const source = catalogObject(body, "Request");
+  const values = { ...catalogObject(source.values, "Item values") };
+  const codes = [...catalogList(source.codes, "Codes")];
+  for (const [field, kind] of [["sku", "sku"], ["barcode", null]]) {
+    const raw = typeof values[field] === "string" ? values[field].trim() : "";
+    if (raw) codes.push(kind ? { kind, code: raw } : { code: raw });
+    delete values[field];
+  }
+  delete values.quantity;
+  return {
+    p_values: values,
+    p_codes: codes,
+    p_aliases: catalogList(source.aliases, "Aliases"),
+    p_media_id: catalogUuid(source.media_id, "Image", false),
+    p_duplicate_ack: source.duplicate_ack === undefined || source.duplicate_ack === null
+      ? null
+      : Array.isArray(source.duplicate_ack)
+        ? { acknowledged: source.duplicate_ack }
+        : catalogObject(source.duplicate_ack, "Duplicate acknowledgement"),
+    p_change_request_id: catalogUuid(source.change_request_id, "Change request", false),
+    p_request_id: catalogRequestId(source.request_id),
+  };
+}
+
+function findDuplicatesRequest(body) {
+  const source = catalogObject(body, "Request");
+  const limit = source.limit === undefined ? 10 : Number(source.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new ApiError(400, "Limit must be between 1 and 50.", "invalid_request");
+  const request = createItemRequest({ ...source, request_id: "find-duplicates" });
+  return {
+    p_values: request.p_values,
+    p_codes: request.p_codes,
+    p_aliases: request.p_aliases,
+    p_exclude_item_id: catalogUuid(source.exclude_item_id, "Excluded item", false),
+    p_limit: limit,
+  };
+}
+
+function catalogDecideRequest(body) {
+  const source = catalogObject(body, "Request");
+  const decision = typeof source.decision === "string" ? source.decision.trim().toLowerCase() : "";
+  if (!["approve", "reject"].includes(decision)) throw new ApiError(400, "Decision must be approve or reject.", "invalid_request");
+  const note = source.note === undefined || source.note === null ? null : String(source.note).trim() || null;
+  if (note && note.length > 2000) throw new ApiError(400, "Note is limited to 2000 characters.", "invalid_request");
+  let version = null;
+  if (source.expected_version !== undefined && source.expected_version !== null) {
+    version = Number(source.expected_version);
+    if (!Number.isInteger(version) || version < 1) throw new ApiError(400, "Expected version is invalid.", "invalid_request");
+  }
+  return {
+    p_id: catalogUuid(source.id ?? source.change_request_id, "Change request"),
+    p_decision: decision,
+    p_note: note,
+    p_expected_version: version,
+    p_resolution: catalogObject(source.resolution, "Resolution"),
+  };
+}
+
+function catalogCreateRequest(body) {
+  const source = catalogObject(body, "Request");
+  const kind = typeof source.kind === "string" ? source.kind.trim() : "";
+  if (!CATALOG_KINDS.has(kind)) throw new ApiError(400, "Unknown catalogue request type.", "invalid_request");
+  const origin = typeof source.source === "string" && source.source.trim() ? source.source.trim() : "manager";
+  if (!CATALOG_SOURCES.has(origin)) throw new ApiError(400, "Unknown request source.", "invalid_request");
+  return {
+    p_kind: kind,
+    p_subject_item_id: catalogUuid(source.subject_item_id, "Item", false),
+    p_payload: catalogObject(source.payload, "Payload"),
+    p_evidence: catalogObject(source.evidence, "Evidence"),
+    p_source: origin,
+    p_ai_action_id: catalogUuid(source.ai_action_id, "Atlas AI action", false),
+    p_recognition_request_id: catalogUuid(source.recognition_request_id, "Recognition result", false),
+    p_media_id: catalogUuid(source.media_id, "Image", false),
+    p_request_id: catalogRequestId(source.request_id),
+    p_self_approve: source.self_approve === true,
+  };
+}
+
+function catalogQueueQuery(params) {
+  const status = (params.get("status") || "pending").trim().toLowerCase();
+  if (!CATALOG_STATUSES.has(status)) throw new ApiError(400, "Status is invalid.", "invalid_request");
+  const kind = (params.get("kind") || "").trim();
+  if (kind && !CATALOG_KINDS.has(kind)) throw new ApiError(400, "Unknown catalogue request type.", "invalid_request");
+  const limit = Number(params.get("limit") || 50);
+  const offset = Number(params.get("offset") || 0);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new ApiError(400, "Limit must be between 1 and 200.", "invalid_request");
+  if (!Number.isInteger(offset) || offset < 0) throw new ApiError(400, "Offset is invalid.", "invalid_request");
+  return { p_kind: kind || null, p_status: status, p_limit: limit, p_offset: offset };
+}
+
+// The database puts the duplicate check (candidates, conflicts) in the error
+// detail of duplicate_suspected / duplicate_identity / code_conflict /
+// alias_conflict refusals.
+function catalogErrorDetails(details) {
+  if (typeof details !== "string" || !details.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(details);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+// A decided request that came from an approved Atlas AI proposal is also
+// written to the Brain (atlas_catalog_record_ai_decision -> brain_decisions).
+function shouldRecordAiDecision(request) {
+  return Boolean(request && typeof request === "object" && request.source === "ai_proposal"
+    && typeof request.ai_action_id === "string" && request.ai_action_id
+    && ["applied", "rejected", "failed"].includes(String(request.status)));
+}
+// s89-catalog-helpers:end
 
 function jsonResponse(value, status = 200) {
   return new Response(JSON.stringify(value), {
@@ -75,13 +338,6 @@ function jsonResponse(value, status = 200) {
       "x-atlas-item-master-version": FUNCTION_VERSION,
     },
   });
-}
-
-function bearerToken(request) {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
 }
 
 function text(value) {
@@ -103,23 +359,17 @@ function numberValue(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function dateValue(value) {
-  if (!value) return null;
-  const parsed = new Date(String(value));
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
+// Search-only comparison key for recipe ingredient names (never stored).
 function normalizeName(value) {
-  return text(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+  return searchFoldText(value).replace(/[.,]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Shared code normalisation: GTIN-14 for valid GTINs, otherwise the code
+// with whitespace removed and ASCII letters upper-cased (hyphens kept).
 function normalizeCode(value) {
-  return lower(value).replace(/[^a-z0-9]/g, "");
+  const code = normalizeProductCode(text(value));
+  if (code.valid) return code.normalized;
+  return normalizeProductCode(text(value), { kind: "other_barcode" }).normalized ?? "";
 }
 
 function stableHash(value) {
@@ -133,49 +383,28 @@ function stableHash(value) {
 }
 
 function labelFor(context) {
-  return text(context.profile.display_name)
-    || text(context.profile.email)
-    || text(context.user.email)
-    || context.user.id;
+  return actorLabel(context.profile);
+}
+
+// The production Auth/REST project and its publishable key come only from the
+// function environment (_shared/auth.mjs authConfig); unconfigured fails closed.
+function productionAuthUrl(): string {
+  return authConfig(Deno.env).projectUrl;
+}
+
+function productionPublishableKey(): string {
+  return authConfig(Deno.env).publishableKey;
 }
 
 async function requireManager(request) {
-  const token = bearerToken(request);
-  const headers = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-  const user = await userResponse.json();
-  if (!user?.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
-  profileUrl.searchParams.set("id", `eq.${user.id}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active");
-  profileUrl.searchParams.set("limit", "1");
-  const profileResponse = await fetch(profileUrl, { headers });
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas staff profile could not be verified.");
-  const profiles = await profileResponse.json();
-  const profile = Array.isArray(profiles) ? profiles[0] : null;
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive.");
-  if (!MANAGER_ROLES.has(profile.role)) {
-    throw new ApiError(403, "Checkpoint L2 is available only to managers and administrators.");
-  }
-
-  return {
-    token,
-    user: { id: user.id, email: user.email ?? null },
-    profile,
-  };
+  const actor = await resolveActor(request, Deno.env, fetch);
+  requireRole(actor, MANAGER_ROLES, "Checkpoint L2 is available only to managers and administrators.");
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile };
 }
 
 function productionHeaders(context, extra = {}) {
   return {
-    apikey: AUTH_PUBLISHABLE_KEY,
+    apikey: productionPublishableKey(),
     authorization: `Bearer ${context.token}`,
     accept: "application/json",
     "cache-control": "no-store",
@@ -184,7 +413,7 @@ function productionHeaders(context, extra = {}) {
 }
 
 async function productionRows(context, table, select, orderColumn, filters = {}) {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/${table}`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/${table}`);
   url.searchParams.set("select", select);
   if (orderColumn) url.searchParams.set("order", `${orderColumn}.asc.nullslast`);
   url.searchParams.set("limit", String(MAX_ROWS));
@@ -200,9 +429,7 @@ async function productionRows(context, table, select, orderColumn, filters = {})
     let parsed = [];
     try { parsed = body ? JSON.parse(body) : []; } catch { parsed = []; }
     if (!response.ok) {
-      const message = parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.message
-        ? String(parsed.message)
-        : `${table} returned ${response.status}`;
+      const message = safeDbMessage(parsed, `${table} returned ${response.status}`);
       return { table, status: "degraded", rows: [], error: message, statusCode: response.status };
     }
     const rows = Array.isArray(parsed)
@@ -214,7 +441,7 @@ async function productionRows(context, table, select, orderColumn, filters = {})
       table,
       status: "degraded",
       rows: [],
-      error: error instanceof Error ? error.message : `${table} could not be read`,
+      error: `${table} could not be read`,
       statusCode: 0,
     };
   }
@@ -226,7 +453,8 @@ async function inventoryRows(context) {
     "supplier_id", "supplier", "supplier_product_reference", "units_per_case",
     "size_ml", "package_weight_g", "package_size", "cost_price", "case_cost",
     "bin_location", "lead_time_days", "minimum_order_quantity", "sku", "barcode",
-    "active", "source_file", "source_updated_at", "updated_at",
+    "active", "source_file", "source_updated_at", "source_type", "source_confidence",
+    "source_confirmed_at", "source_confirmed_quantity", "updated_at",
   ].join(",");
   const legacySelect = [
     "id", "name", "category", "quantity", "unit", "par_level", "supplier_id",
@@ -234,6 +462,11 @@ async function inventoryRows(context) {
     "bin_location", "sku", "barcode", "active", "source_file", "source_updated_at",
     "updated_at",
   ].join(",");
+
+  const s89 = await productionRows(context, "inventory_items", `${richSelect},${S89_MASTER_FIELDS.join(",")}`, "name", { active: "eq.true" });
+  if (s89.status !== "degraded") {
+    return { ...s89, schemaState: "s89_columns_available" };
+  }
 
   const rich = await productionRows(context, "inventory_items", richSelect, "name", { active: "eq.true" });
   if (rich.status !== "degraded") {
@@ -282,12 +515,13 @@ async function branchRpc(name, payload = {}) {
   let parsed = null;
   try { parsed = body ? JSON.parse(body) : null; } catch { parsed = body; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && parsed.message
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : `Checkpoint L2 database request ${name} failed.`;
-    throw new ApiError(response.status >= 500 ? 500 : 400, message);
+    const message = safeDbMessage(parsed, "The item master database request failed.");
+    if (message === "The item master database request failed.") {
+      console.warn("Checkpoint L2 RPC failed", name, response.status, parsed && typeof parsed === "object" ? String(parsed.code ?? "-") : "-");
+    }
+    const code = parsed && typeof parsed === "object" ? rpcErrorCode(parsed.hint) : null;
+    const details = parsed && typeof parsed === "object" ? catalogErrorDetails(parsed.details) : null;
+    throw new ApiError(code ? activationErrorStatus(response.status, code) : response.status >= 500 ? 500 : 400, message, code, details);
   }
   return parsed;
 }
@@ -295,6 +529,10 @@ async function branchRpc(name, payload = {}) {
 function masterValues(item) {
   const values = {};
   for (const field of MASTER_FIELDS) values[field] = item[field] ?? null;
+  // S89 fields join the optimistic check only once the columns exist.
+  for (const field of S89_MASTER_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(item, field)) values[field] = item[field] ?? null;
+  }
   return values;
 }
 
@@ -309,7 +547,9 @@ function sourceSnapshot(item) {
     source_file: item.source_file ?? null,
     source_updated_at: item.source_updated_at ?? null,
     master_values: values,
-    master_fingerprint: stableHash(values),
+    // The fingerprint stays on the legacy fields so drafts saved before S89
+    // still match their source.
+    master_fingerprint: stableHash(Object.fromEntries(MASTER_FIELDS.map((field) => [field, values[field]]))),
   };
 }
 
@@ -318,15 +558,10 @@ function isImportantServiceCategory(category) {
   return SERVICE_CATEGORY_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
-function quantityTrustState(item, countActivity) {
-  const now = Date.now();
-  if (countActivity?.verification_status === "current") {
-    const expires = dateValue(countActivity.expires_at);
-    if (!expires || expires.getTime() > now) return "current";
-  }
-  if (countActivity?.verified_at) return "stale";
-  if (text(item.source_updated_at) && text(item.source_updated_at) <= HISTORICAL_OPENING_CUTOFF) return "historical";
-  return "unverified";
+// Same trust states as Reports (current / stale / historical / unverified):
+// a current manager count or a newer owner-confirmed count is current.
+function quantityTrustState(item, countActivity, nowMillis = Date.now()) {
+  return canonicalQuantityTrustState(item, balanceFromCountActivity(countActivity), nowMillis);
 }
 
 function createEnvironment(sources) {
@@ -388,6 +623,13 @@ function createEnvironment(sources) {
     aliasByCode.set(normalizeCode(alias.normalized_code || alias.code), alias);
   }
   const countByItem = new Map((sources.branch.count_activity ?? []).map((entry) => [text(entry.inventory_item_id), entry]));
+  const nowMillis = Date.now();
+  const projectedByItem = new Map(projectStock(
+    items,
+    [...countByItem.values()].map(balanceFromCountActivity).filter(Boolean),
+    sources.movements.rows,
+    nowMillis,
+  ).map((projected) => [text(projected.id), projected]));
   const supplierById = new Map(sources.suppliers.rows.map((supplier) => [text(supplier.id), supplier]));
 
   return {
@@ -401,6 +643,8 @@ function createEnvironment(sources) {
     aliasesByItem,
     aliasByCode,
     countByItem,
+    projectedByItem,
+    nowMillis,
     supplierById,
   };
 }
@@ -462,10 +706,12 @@ function assessItem(item, environment, draftOverride = undefined) {
   const countActivity = environment.countByItem.get(itemId) ?? null;
   const movementCount = environment.movementByItem.get(itemId) ?? 0;
   const adjustmentCount = environment.adjustmentByItem.get(itemId) ?? 0;
-  const quantityStatus = quantityTrustState(item, countActivity);
+  const quantityStatus = quantityTrustState(item, countActivity, environment.nowMillis);
+  const projected = environment.projectedByItem.get(itemId) ?? null;
   const historicalZero = quantityStatus === "historical" && numberValue(item.quantity) <= 0;
-  const belowPar = nullableNumber(effective.par_level) !== null
-    && numberValue(item.quantity) <= numberValue(effective.par_level);
+  // The canonical AtlasStockTruth.belowPar on verified stock, against the
+  // effective (draft-aware) par. Unverified stock is never below par.
+  const belowPar = Boolean(projected) && canonicalBelowPar({ ...projected, par_level: effective.par_level });
   const usedByActiveRecipe = linkedRecipes.length > 0 || recipeLinkCandidates.length > 0;
   const importantCategory = isImportantServiceCategory(item.category);
 
@@ -486,7 +732,7 @@ function assessItem(item, environment, draftOverride = undefined) {
     priorityReasons.push("Historical zero requires a verified current count");
   } else if (belowPar) {
     priorityScore += 30;
-    priorityReasons.push("Current quantity is at or below configured par");
+    priorityReasons.push("Verified current quantity is below configured par");
   }
   if (numberValue(countActivity?.count_observations) >= 2) {
     const score = Math.min(20, numberValue(countActivity.count_observations) * 4);
@@ -548,8 +794,10 @@ function assessItem(item, environment, draftOverride = undefined) {
     barcode_aliases: aliases,
     proposed_barcode_aliases: proposedAliases,
     quantity_status: quantityStatus,
-    verified_quantity: countActivity?.verified_quantity ?? null,
-    verified_at: countActivity?.verified_at ?? null,
+    verified_quantity: projected?.verified_quantity ?? null,
+    verified_at: projected?.stock_baseline_at ? new Date(projected.stock_baseline_at).toISOString() : null,
+    quantity_source: projected?.stock_source ?? null,
+    recount_due: projected?.stock_recount_due === true,
     count_observations: numberValue(countActivity?.count_observations),
     movement_count: movementCount,
     adjustment_count: adjustmentCount,
@@ -714,8 +962,52 @@ function sanitizeProposedValues(input, item, environment) {
 
   const location = text(input.bin_location);
   if (location) values.bin_location = location.slice(0, 240);
+  Object.assign(values, sanitizeProductAttributes(input));
   if (leadTime !== null) values.lead_time_days = leadTime;
   if (minimumOrder !== null) values.minimum_order_quantity = minimumOrder;
+  return values;
+}
+
+const ITEM_CLASSES = new Set([
+  "spirit", "liqueur", "wine", "sparkling", "beer_cider", "non_alcoholic", "syrup", "bar_ingredient", "dairy_alt",
+  "coffee_tea", "produce", "garnish", "food", "consumable", "cleaning", "equipment", "gas", "prep", "reference",
+]);
+const PACKAGING_TYPES = new Set([
+  "bottle", "can", "carton", "keg", "bag", "box", "case", "jar", "tub", "pouch", "sachet", "tray", "bundle", "loose",
+  "cup", "wrapped", "cylinder", "tool", "other",
+]);
+
+// S89 product attributes. Text keeps every letter as typed (no folding).
+function sanitizeProductAttributes(input) {
+  const values = {};
+  for (const field of ["brand", "product_name", "variant", "subcategory"]) {
+    const value = text(input[field]);
+    if (value) values[field] = value.slice(0, 240);
+  }
+  const itemClass = lower(input.item_class);
+  if (itemClass) {
+    if (!ITEM_CLASSES.has(itemClass)) throw new ApiError(400, "Product type is not in the Atlas taxonomy.");
+    values.item_class = itemClass;
+  }
+  const packagingType = lower(input.packaging_type);
+  if (packagingType) {
+    if (!PACKAGING_TYPES.has(packagingType)) throw new ApiError(400, "Package type is not supported.");
+    values.packaging_type = packagingType;
+  }
+  const unitSize = optionalNumber(input.unit_size_quantity, "unit_size_quantity", { exclusiveMin: 0 });
+  const unitBase = lower(input.unit_size_base);
+  if (unitSize !== null || unitBase) {
+    if (unitSize === null || !["ml", "g", "count"].includes(unitBase)) {
+      throw new ApiError(400, "Unit size needs a quantity and a unit (ml, g or count).");
+    }
+    values.unit_size_quantity = unitSize;
+    values.unit_size_base = unitBase;
+  }
+  const abv = optionalNumber(input.abv_percent, "abv_percent", { min: 0 });
+  if (abv !== null) {
+    if (abv > 100) throw new ApiError(400, "ABV must be between 0 and 100.");
+    values.abv_percent = abv;
+  }
   return values;
 }
 
@@ -812,7 +1104,7 @@ async function saveDraft(context, body) {
 }
 
 async function productionRpc(context, name, payload) {
-  const response = await fetch(`${AUTH_PROJECT_URL}/rest/v1/rpc/${name}`, {
+  const response = await fetch(`${productionAuthUrl()}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: productionHeaders(context, {
       "content-type": "application/json",
@@ -824,11 +1116,7 @@ async function productionRpc(context, name, payload) {
   let parsed = null;
   try { parsed = body ? JSON.parse(body) : null; } catch { parsed = body; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && parsed.message
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : `Production item-master publication failed (${response.status}).`;
+    const message = safeDbMessage(parsed, `Production item-master publication failed (${response.status}).`);
     throw new ApiError(response.status >= 500 ? 500 : 409, message);
   }
   return parsed;
@@ -923,6 +1211,23 @@ Deno.serve(async (request) => {
     const actionFromUrl = lower(url.searchParams.get("action")) || "snapshot";
 
     if (request.method === "GET") {
+      if (actionFromUrl === "item_dependencies" || actionFromUrl === "item-dependencies") {
+        const dependencies = await branchRpc("atlas_inventory_item_dependencies", {
+          p_item_id: activationItemId(url.searchParams.get("item_id")),
+          p_actor_id: context.user.id,
+        });
+        return jsonResponse({
+          dependencies,
+          manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
+        });
+      }
+      if (actionFromUrl === "catalog-queue" || actionFromUrl === "catalog_queue") {
+        const queue = await branchRpc("atlas_catalog_queue", {
+          ...catalogQueueQuery(url.searchParams),
+          p_actor_id: context.user.id,
+        });
+        return jsonResponse({ queue, stock_changed: false, manager: { id: context.user.id, label: labelFor(context), role: context.profile.role } });
+      }
       if (actionFromUrl !== "snapshot") throw new ApiError(404, "Unknown Checkpoint L2 action.");
       const built = await buildWorkspace(context);
       return jsonResponse({
@@ -941,6 +1246,81 @@ Deno.serve(async (request) => {
         manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
       });
     }
+    if (action === "set_item_active" || action === "set-item-active") {
+      const result = await branchRpc("atlas_set_inventory_item_active", {
+        ...activationRequest(body),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({
+        result,
+        manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
+      });
+    }
+    if (action === "create-item" || action === "create_item") {
+      const result = await branchRpc("atlas_catalog_create_item", {
+        ...createItemRequest(body),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({
+        result,
+        stock_changed: false,
+        manager: { id: context.user.id, label: labelFor(context), role: context.profile.role },
+      }, result?.replayed ? 200 : 201);
+    }
+    if (action === "find-duplicates" || action === "find_duplicates") {
+      const duplicates = await branchRpc("atlas_catalog_find_duplicates", {
+        ...findDuplicatesRequest(body),
+        p_actor_id: context.user.id,
+      });
+      return jsonResponse({ duplicates, stock_changed: false });
+    }
+    if (action === "catalog-request" || action === "catalog_request") {
+      const request = await branchRpc("atlas_catalog_request_create", {
+        ...catalogCreateRequest(body),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({ request, stock_changed: false }, 201);
+    }
+    if (action === "catalog-decide" || action === "catalog_decide") {
+      const request = await branchRpc("atlas_catalog_request_decide", {
+        ...catalogDecideRequest(body),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      let brainDecision = null;
+      if (shouldRecordAiDecision(request)) {
+        // Best effort: the catalogue decision stands even if the Brain write fails.
+        brainDecision = await branchRpc("atlas_catalog_record_ai_decision", {
+          p_change_request_id: request.id,
+          p_actor_id: context.user.id,
+          p_actor_label: labelFor(context),
+        }).catch(() => ({ recorded: false, reason: "unavailable" }));
+      }
+      return jsonResponse({ request, brain_decision: brainDecision, stock_changed: false });
+    }
+    if (action === "catalog-withdraw" || action === "catalog_withdraw") {
+      const request = await branchRpc("atlas_catalog_request_withdraw", {
+        p_id: catalogUuid(body.id ?? body.change_request_id, "Change request"),
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({ request, stock_changed: false });
+    }
+    if (action === "catalog-backfill" || action === "catalog_backfill") {
+      const limit = body.limit === undefined ? 100 : Number(body.limit);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+        throw new ApiError(400, "Limit must be between 1 and 500.", "invalid_request");
+      }
+      const proposals = await branchRpc("atlas_catalog_propose_backfill", {
+        p_limit: limit,
+        p_actor_id: context.user.id,
+        p_actor_label: labelFor(context),
+      });
+      return jsonResponse({ proposals, stock_changed: false });
+    }
     if (action === "publish") {
       const result = await publishDraft(context, body);
       return jsonResponse({
@@ -950,7 +1330,12 @@ Deno.serve(async (request) => {
     }
     throw new ApiError(404, "Unknown Checkpoint L2 action.");
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError) {
+      const payload = error.code ? { error: error.message, code: error.code } : { error: error.message };
+      if (error.details) payload.duplicate_check = error.details;
+      return jsonResponse(payload, error.status);
+    }
     console.error("Checkpoint L2 item-master error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "Checkpoint L2 is temporarily unavailable." }, 500);
   }

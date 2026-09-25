@@ -23,13 +23,11 @@
     "automatic_import_authorized": false
   },
   "files": {
-    "apps/web/config.js": "b3fac2d5026bae4258de8e413313fcda0c2bf6d454f4e322ba996f7f74739283",
-    "apps/web/assets/js/rehearsal-boundary.js": "7f93c10cb909568b56395b4fbfad559991a08e6129111b7be55f1ac73b8fbf1f",
-    "apps/web/assets/js/inventory-scanner-bootstrap.js": "29e643af6012f3a82a646ed859ef52d14029dbf0d247aa2b5327b52f0ae179a9",
-    "apps/web/assets/js/stock-count-bootstrap.js": "ce0f80bed26c22d3ac575afe66853b8fb411045dd8137d2363dfdbc52972f52e",
-    "apps/web/assets/js/stock-count-workspace.js": "ee3fc89fc5fd70fc0a211b12434e009d879bed6343bb8b535564239b81c097ec",
-    "apps/web/assets/js/import-center.js": "c8da1f649f535a6d8171f5f317692220f60e3519761ccdb27c69c68fe89ef5d5",
-    "netlify.toml": "d951de030dedcd5696cb824a3fb7f2d72fe3142f18f527c25b9bee8ae8e1e395",
-    "supabase/config.toml": "9b533a4ae579c5dbef11e20b762c1f1fb12501fb759df557c6704862e57a3f5a"
+    "apps/web/config.js": "6eb01e9cc366c819df4ddecb7d335be9686239064078033a4cb8f07a2561a03a",
+    "apps/web/assets/js/rehearsal-boundary.js": "202b4748bb354ee61aec47a2b30e13753a2d8ddb0e71192c6fccf5276ba87c45",
+    "apps/web/assets/js/stock-count-workspace.js": "dfa512e7494d0d789fd64ce634da3a7682e3063b2396fd12835c03d9f9d70d57",
+    "apps/web/assets/js/data-workspace.js": "e9af170e2dd28ae53bd9571e6a7bef5ee7f1c481ebfe28e886f188a24ce33080",
+    "netlify.toml": "babc916fd41b7028f248207d896656a804f718ca204f48a8a06c04cf89d61fb6",
+    "supabase/config.toml": "801c15dd426274431ea0d3438a607a657373c6588ee7c2bc0c59c5a85266499a"
   }
 }
