@@ -42,7 +42,8 @@ test('Overview has the former Business Intelligence figures, unknown stays unkno
   for (const label of ['Inventory value', 'Purchasing spend', 'Waste', 'Recipe margin', 'Needs attention', 'Data completeness', 'Suggested order', 'Average cost per serve']) {
     assert.match(ui, new RegExp(label));
   }
-  assert.match(overview, /function inventoryValue\(\)[\s\S]+?return NaN/);
+  assert.match(overview, /function inventoryValue\(\)[\s\S]+?: NaN;/);
+  assert.match(overview, /AtlasStockTruth/);
   assert.match(overview, /supplierConcentration/);
   assert.match(overview, /AtlasOperations\?\.orderSuggestions/);
   assert.match(ui, /Not enough data yet/);
@@ -88,5 +89,5 @@ test('Reports stylesheet is module layout only; Business Intelligence files are 
     assert.ok(!existsSync(`apps/web/${file}`), file);
     assert.doesNotMatch(shell, new RegExp(file.replace(/[.]/g, '\\.')));
   }
-  assert.match(shell, /reports-overview\.js\?v=20260926-s88/);
+  assert.match(shell, /reports-overview\.js\?v=20260928-s89t/);
 });

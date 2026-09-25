@@ -47,15 +47,15 @@ test('the Brain page and the Checkpoint A/K layers are retired and unreferenced'
   assert.match(home, /PHASE3_INTELLIGENCE_API/);
   assert.match(home, /if \(state\.intelligenceRequested \|\| !isManager\(\)\) return;/);
   // Team Messages links to Brain recommendations open Atlas AI › Decisions
-  // with the recommendation selected (#ai/decisions?decision=<id>).
-  assert.match(home, /links\?\.register\?\.\('brain_recommendation', \(key\) => \{ atlas\.navigate\(key \? `#ai\/decisions\?decision=\$\{encodeURIComponent\(key\)\}` : '#ai\/decisions'\)/);
+  // with the recommendation selected (#ai/decisions?recommendation=<id>).
+  assert.match(home, /links\?\.register\?\.\('brain_recommendation', \(key\) => \{ atlas\.navigate\(key \? `#ai\/decisions\?recommendation=\$\{encodeURIComponent\(key\)\}` : '#ai\/decisions'\)/);
   assert.match(operations, /links\?\.register\?\.\('routine'/);
   assert.doesNotMatch(config, /SUPABASE_SERVICE_ROLE_KEY/);
 });
 
 test('Home is the command centre: attention rows, venue clock, briefing entry, no KPI dump', () => {
   assert.match(index, /<div id="dashboard-view" style="display:none;"><\/div>/);
-  assert.match(index, /<script src="assets\/js\/home\.js\?v=20260926-s88"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/home\.js\?v=20260928-s89t"><\/script>/);
   assert.match(home, /atlas\.registerHomeSection\('home', render, 0\)/);
   assert.match(home, /shell\(\)\?\.home\?\.rows\?\.\(\{ role: role\(\) \}\)/);
   assert.match(home, /const VISIBLE_ROWS = 5;/);

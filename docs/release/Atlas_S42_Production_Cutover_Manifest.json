@@ -8,7 +8,7 @@
     "supabase_origin": "https://dnefgcmjcgxlynycxkts.supabase.co",
     "browser_origin": "https://os-vabar.netlify.app",
     "runtime_function_count": 19,
-    "configured_frontend_endpoint_count": 19
+    "configured_frontend_endpoint_count": 18
   },
   "inactive_features": {
     "import_worker": true,
@@ -23,11 +23,11 @@
     "automatic_import_authorized": false
   },
   "files": {
-    "apps/web/config.js": "d69b3c1ed1c6401b69334427cf22625e261f30683e2b6c03b292062935de75a7",
+    "apps/web/config.js": "5cc2a8a5a605f87138b826faeef812e7ae85fdac536c1a2965a2f8d974ab2aae",
     "apps/web/assets/js/rehearsal-boundary.js": "c46eeb8f8f73b42024fb89b4084b80d5980b8007c117394002f6677a1fb05faf",
     "apps/web/assets/js/stock-count-workspace.js": "6b576a1bbec26ee1fa9ab65c9ac8faa49bd11a1dc09c905c12acf3cd8e0da324",
     "apps/web/assets/js/data-workspace.js": "40448f10cd6f6a12fdbc9ea9d5470d1895dd58dcd36e20077316f56917a90bfb",
     "netlify.toml": "f77f3621009d2a74a1dda8987e65c2c45c216d3d9c6ca962ace51b6b074bcee2",
-    "supabase/config.toml": "75ee57ce03ad5312f3a5877cbedb7f70896d54e44ba07ce13b310abc1a7c251b"
+    "supabase/config.toml": "801c15dd426274431ea0d3438a607a657373c6588ee7c2bc0c59c5a85266499a"
   }
 }

@@ -277,7 +277,7 @@
     const spendKpi = kpi('purchasing_spend') || kpi('purchasing');
     const waste = report('waste').summary || {};
     const costing = overview?.recipeCosting?.() || null;
-    const stockDetail = !stock ? 'Stock isn\'t loaded' : stock.value !== null ? 'Counted stock at unit cost, now' : `${stock.uncounted ? `${stock.uncounted} not counted` : ''}${stock.uncounted && stock.uncosted ? ' · ' : ''}${stock.uncosted ? `${stock.uncosted} without cost` : ''} — ${money(stock.knownValue)} known so far`;
+    const stockDetail = !stock ? 'Stock isn\'t loaded' : stock.value !== null ? 'Counted stock at unit cost, now' : stockValueGap(stock.knownValue, stock.uncounted, stock.uncosted);
     const spendValue = number(purchasing.spend);
     const wasteCount = number(waste.recorded_waste_count);
     const wasteValue = number(waste.estimated_waste_value);
@@ -396,13 +396,22 @@
       <div class="atlas-table-foot"><span>${start + 1}–${Math.min(start + PAGE_SIZE, rows.length)} of ${rows.length}</span><span class="atlas-btn-group">${state.page > 1 ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-reports-page="${state.page - 1}">Previous</button>` : ''}${state.page < pages ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-reports-page="${state.page + 1}">Next</button>` : ''}</span></div>`;
   }
 
+  // The one "stock value is unknown" wording (Overview and the Inventory
+  // report): the lower bound plus the counts of what is missing. The value
+  // itself is null unless every active item is counted and costed.
+  function stockValueGap(knownValue, uncounted, uncosted) {
+    const missing = [uncounted ? `${formatNumber(uncounted)} not counted` : '', uncosted ? `${formatNumber(uncosted)} without a cost` : ''].filter(Boolean).join(' · ');
+    const floor = number(knownValue) === null ? 'Nothing counted and costed yet' : `At least ${money(knownValue)}`;
+    return missing ? `${floor} — ${missing}` : floor;
+  }
+
   function sectionMarkup(section) {
     const data = report(section);
     const summary = data.summary || {};
     let figures = '';
     let chart = '';
     if (section === 'inventory') {
-      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Counted stock value', value: number(summary.estimated_value) === null ? '—' : escapeHtml(money(summary.estimated_value)), detail: number(summary.estimated_value) === null ? `${formatNumber(summary.needs_current_count)} items need a current count` : 'Current counts only' })}${statMarkup({ label: 'Below par', value: escapeHtml(formatNumber(summary.below_par)), unit: 'items' })}${statMarkup({ label: 'Out of stock', value: escapeHtml(formatNumber(summary.out_of_stock)), unit: 'items' })}${statMarkup({ label: 'Counted recently', value: escapeHtml(`${formatNumber(summary.current_items)} of ${formatNumber(summary.active_items)}`) })}</div>`;
+      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Stock value', value: number(summary.estimated_value) === null ? '—' : escapeHtml(money(summary.estimated_value)), detail: number(summary.estimated_value) === null ? stockValueGap(summary.known_value, summary.needs_current_count, summary.missing_cost) : 'Current counts at unit cost' })}${statMarkup({ label: 'Below par', value: escapeHtml(formatNumber(summary.below_par)), unit: 'items' })}${statMarkup({ label: 'Out of stock', value: escapeHtml(formatNumber(summary.out_of_stock)), unit: 'items' })}${statMarkup({ label: 'Counted recently', value: escapeHtml(`${formatNumber(summary.current_items)} of ${formatNumber(summary.active_items)}`) })}</div>`;
       const categories = (data.categories || []).map((row) => ({ name: row.category, value: number(row.estimated_value) }));
       const top = categories.slice().sort((a, b) => (b.value || 0) - (a.value || 0))[0];
       chart = barChart(categories, { label: 'name', value: 'value', format: money, title: 'Counted stock value by category', takeaway: top ? `${top.name} holds the most value.` : '' }) || notEnough('Not enough data yet — needs a current stock count with costs.');

@@ -304,7 +304,7 @@ Atlas AI module stylesheet.
   `[data-nav-badge="more"]` (tab bar) show the Messages unread count from
   `AtlasTeamUnreadBadge.count()`; `atlas-chrome.js` updates them on every
   `messages:unread` event.
-- `AtlasAI.openDecision(recommendationId)` opens `#ai/decisions?decision=<id>`:
+- `AtlasAI.openDecision(recommendationId)` opens `#ai/decisions?recommendation=<id>` (the one decision route):
   Decisions with that row selected and its detail sheet open (Messages links,
   palette records and `AtlasShell.links` `brain_recommendation` use it).
 - `AtlasShell.toast(message, { action: { label, onClick }, duration })`: one

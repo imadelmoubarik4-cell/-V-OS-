@@ -361,10 +361,11 @@
 
   function stockPill(item) {
     if (!item) return '<span class="atlas-pill">Not linked</span>';
-    if (!window.AtlasStockTruth?.known(item)) return '<span class="atlas-pill">Not counted</span>';
-    const quantity = Number(item.verified_quantity);
-    if (quantity <= 0) return '<span class="atlas-pill atlas-pill--danger">Out</span>';
-    if (window.AtlasStockTruth.belowPar(item)) return '<span class="atlas-pill atlas-pill--warning">Below par</span>';
+    // The canonical AtlasStockTruth.stockStatus.
+    const status = window.AtlasStockTruth?.stockStatus ? window.AtlasStockTruth.stockStatus(item) : 'unknown';
+    if (status === 'unknown') return '<span class="atlas-pill">Not counted</span>';
+    if (status === 'out') return '<span class="atlas-pill atlas-pill--danger">Out</span>';
+    if (status === 'below_par') return '<span class="atlas-pill atlas-pill--warning">Below par</span>';
     return '<span class="atlas-pill atlas-pill--positive">In stock</span>';
   }
 

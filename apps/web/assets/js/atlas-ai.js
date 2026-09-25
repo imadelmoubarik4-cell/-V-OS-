@@ -111,6 +111,10 @@
 
   function firstName() {
     const profile = root.AtlasShell?.profile?.() || {};
+    // The display name only (S87): never an email, never the "Team member" label.
+    // The shell profile carries id and role only; sign-in publishes the first
+    // name as atlasGreetingName (AtlasIdentity.firstName of the profile).
+    if (root.AtlasIdentity) return root.AtlasIdentity.firstName(profile) || String(root.atlasGreetingName || '').trim();
     const fromProfile = profile.display_name || profile.name || '';
     const fromShell = document.getElementById('profile-name')?.textContent || '';
     const candidate = String(fromProfile || fromShell).trim();
@@ -395,7 +399,7 @@
     settings: { icon: 'settings', label: 'Settings', route: (id) => (id ? `#settings/${encodeURIComponent(id)}` : '#settings') },
     marketing: { icon: 'megaphone', label: 'Marketing', route: () => '#marketing' },
     marketing_recommendation: { icon: 'megaphone', label: 'Marketing', route: () => '#marketing' },
-    brain_recommendation: { icon: 'sparkles', label: 'Decision', route: (id) => (id ? `#ai/decisions?decision=${encodeURIComponent(id)}` : '#ai/decisions') },
+    brain_recommendation: { icon: 'sparkles', label: 'Decision', route: (id) => (id ? `#ai/decisions?recommendation=${encodeURIComponent(id)}` : '#ai/decisions') },
     brain_memory: { icon: 'sparkles', label: 'Decisions', route: () => '#ai/decisions' },
     briefing: { icon: 'sparkles', label: 'Today’s briefing', route: () => '#home' },
     integration: { icon: 'settings', label: 'Integration', route: () => '#settings/integrations' },
@@ -2429,7 +2433,7 @@
     }
   }
 
-  // #ai/decisions?decision=<recommendation id> (AtlasAI.openDecision, Messages
+  // #ai/decisions?recommendation=<id> (AtlasAI.openDecision, Messages
   // and palette links) selects the row and opens its detail sheet.
   async function openDecision(recommendationId) {
     if (!recommendationId) return;
@@ -2442,7 +2446,8 @@
       onClose: () => {
         state.decisions.openId = null;
         if (state.mode === 'decisions') renderDecisions();
-        if (state.lastParams?.decision) { state.lastParams = { section: 'decisions' }; routeTo({ section: 'decisions' }); }
+        state.openedRecommendation = null;
+        if (state.lastParams?.recommendation) { state.lastParams = { section: 'decisions' }; routeTo({ section: 'decisions' }); }
       },
       markup: `<div class="ai-sheet__head"><div><h2 id="${id}-title">Decision</h2><p>Loading…</p></div><button type="button" class="atlas-icon-btn" data-ai-layer-close aria-label="Close">${icon('x')}</button></div><div class="ai-sheet__body" aria-busy="true">${'<div class="atlas-skel"></div>'.repeat(4)}</div>`
     });
@@ -2737,7 +2742,13 @@
     if (section === 'decisions') {
       state.mode = 'decisions';
       applyMode();
-      if (params.decision && String(params.decision) !== state.decisions.openId) openDecision(String(params.decision));
+      // #ai/decisions?recommendation=<id> (AtlasAI.openDecision, Messages and
+      // record links) selects that decision and opens its sheet.
+      const focus = params.recommendation ? String(params.recommendation) : '';
+      if (focus && isManager() && state.openedRecommendation !== focus) {
+        state.openedRecommendation = focus;
+        openDecision(focus);
+      } else if (!focus) state.openedRecommendation = null;
       return;
     }
     if (state.mode === 'decisions') { state.mode = 'conversations'; applyMode(); }
@@ -2859,7 +2870,7 @@
     newConversation: () => root.AtlasShell?.show?.('ai', { new: '1' }),
     decisions: () => root.AtlasShell?.show?.('ai', { section: 'decisions' }),
     // Opens Decisions with this recommendation selected and its detail open.
-    openDecision: (recommendationId) => root.AtlasShell?.show?.('ai', recommendationId ? { section: 'decisions', decision: String(recommendationId) } : { section: 'decisions' }),
+    openDecision: (recommendationId) => root.AtlasShell?.show?.('ai', recommendationId ? { section: 'decisions', recommendation: String(recommendationId) } : { section: 'decisions' }),
     // Pure helpers, exported for tests.
     parseEventBlock,
     splitEvents,

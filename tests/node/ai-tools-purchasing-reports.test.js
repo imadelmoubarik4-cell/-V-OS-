@@ -22,7 +22,7 @@ test('order suggestions come from the canonical orderSuggestions, grouped by sup
   assert.equal(result.unknown.count, 5);
   const canonical = orderSuggestions(projectStock(inventoryRows(), balanceRows(), movementRows(), NOW).filter((item) => item.active !== false), { purchaseOrders: purchaseOrderRows() });
   assert.deepEqual(canonical.map((entry) => [entry.id, entry.orderQuantity, entry.ordered]), [[IDS.angelo, 18, false], [IDS.aperol, 6, true]]);
-  assert.ok(result.evidence.some((entry) => entry.kind === 'estimate' && entry.value === '54,000 ISK'));
+  assert.ok(result.evidence.some((entry) => entry.kind === 'estimate' && entry.value === '54.000 kr'));
   assert.ok(result.evidence.some((entry) => entry.kind === 'calculation' && /verified 10 bottle < par 12; target 24, shortfall 14, 3 case\(s\) = 18/.test(entry.value)));
   const withOrdered = await run('manager', 'purchasing.suggest', { supplier_id: null, include_ordered: true });
   assert.equal(withOrdered.data.groups.flatMap((entry) => entry.lines).length, 2);
@@ -43,7 +43,7 @@ test('draft purchase order is a proposal with a pre-generated p_id and the exact
   assert.equal(proposal.command.p_expected_delivery_date, '2026-09-26');
   assert.equal(validateCommand('purchase_order.create', proposal.command).ok, true);
   assert.equal(proposal.preview.totals.estimated_total, 54000);
-  assert.deepEqual(proposal.preview.lines, [{ label: 'Angelo Pinot Grigio', detail: '18 bottle × 3,000 ISK = 54,000 ISK' }]);
+  assert.deepEqual(proposal.preview.lines, [{ label: 'Angelo Pinot Grigio', detail: '18 bottle × 3.000 kr = 54.000 kr' }]);
   assert.ok(proposal.preview.will_not_change.some((line) => /not placed/.test(line)));
   assert.equal(proposal.subject_type, 'purchase_order');
   assert.deepEqual(backend.writes, [], 'drafting writes nothing');
@@ -83,7 +83,7 @@ test('compare delivery: matches and discrepancies, receiving proposal only for w
   assert.equal(lines.Aperol.status, 'short');
   assert.deepEqual(result.data.unexpected, [{ item_id: null, name: 'Campari', quantity: 2 }]);
   assert.deepEqual(result.data.discrepancies.map((entry) => [entry.item, entry.issue, entry.price]), [
-    ['Tequila Blanco', 'quantity matches', 'unit cost 4,800 ISK vs ordered 4,500 ISK'],
+    ['Tequila Blanco', 'quantity matches', 'unit cost 4.800 kr vs ordered 4.500 kr'],
     ['Aperol', 'short by 2', null],
     ['Campari', 'not on this order (2 delivered)', null],
   ]);
@@ -150,7 +150,7 @@ test('inventory value is unknown (null), never zero, with a lower bound and coun
   assert.equal(result.data.unknown_items, 3);
   assert.equal(result.unknown.breakdown.unknown_stock, 3);
   assert.ok(result.evidence.some((entry) => entry.kind === 'missing' && entry.label === 'Total stock value'));
-  assert.ok(result.evidence.some((entry) => entry.kind === 'estimate' && entry.value === '51,600 ISK'));
+  assert.ok(result.evidence.some((entry) => entry.kind === 'estimate' && entry.value === '51.600 kr'));
   const mixers = await run('manager', 'reports.inventory_value', { category: 'Mixers' });
   assert.equal(mixers.data.value, 1600);
   assert.equal(mixers.unknown, null);

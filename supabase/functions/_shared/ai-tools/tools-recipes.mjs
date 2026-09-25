@@ -1,7 +1,7 @@
 // Recipe tools. Readiness, blockers and cost come only from the canonical
 // _shared/atlas-domain recipe rules over projected (verified) stock.
 
-import { recipeBlockers, recipeMetrics, recipeStatus } from "../atlas-domain.mjs";
+import { REFERENCE_COST_REASON, recipeBlockers, recipeMetrics, recipeStatus } from "../atlas-domain.mjs";
 import { parsePackSize } from "../stock-provenance.mjs";
 import { S } from "./schema.mjs";
 import {
@@ -267,11 +267,15 @@ const cost = {
       quantity: numberOrNull(row.ingredient?.quantity),
       unit: row.ingredient?.unit ?? null,
       cost: Number.isFinite(row.cost) ? row.cost : null,
-      issue: Number.isFinite(row.cost) ? null : (row.item ? (row.reference ? "Recipe reference (no cost)" : row.reason || "Missing inventory cost") : "Not linked to an inventory item"),
+      reference: row.reference === true,
+      issue: Number.isFinite(row.cost) ? null : (row.item ? row.reason || "Missing inventory cost" : "Not linked to an inventory item"),
     }));
     const menuPrice = numberOrNull(recipe.menu_price);
     const complete = financials.incomplete === 0 && lines.length > 0;
-    const evidence = lines.map((line) => line.cost !== null
+    // A reference ingredient (Ice, Water) costs 0 (canonical REFERENCE_COST_REASON).
+    const evidence = lines.map((line) => line.reference
+      ? fact(`Cost of ${line.name}`, `${formatIsk(0)} (${REFERENCE_COST_REASON})`, line.item_id ? source("inventory_item", line.item_id, line.name) : recipeSource(recipe))
+      : line.cost !== null
       ? calculation(`Cost of ${line.name}`, `${formatNumber(line.quantity ?? 0)} ${line.unit || ""} = ${formatIsk(line.cost)}`, line.item_id ? source("inventory_item", line.item_id, line.name) : recipeSource(recipe))
       : missing(`Cost of ${line.name}`, line.issue, line.item_id ? source("inventory_item", line.item_id, line.name) : recipeSource(recipe)));
     evidence.push(menuPrice !== null ? fact("Menu price", formatIsk(menuPrice), recipeSource(recipe)) : missing("Menu price", "not set", recipeSource(recipe)));

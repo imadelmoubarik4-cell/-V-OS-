@@ -4,7 +4,7 @@
 import { applyStockTrustToWorkspace, buildRecipeReport } from "../stock-provenance.mjs";
 import { S } from "./schema.mjs";
 import { buildProposal } from "./actions.mjs";
-import { fact, calculation, interpretation, missing, ok, record, source, ToolError } from "./result.mjs";
+import { fact, calculation, interpretation, missing, ok, record, routeFor, source, ToolError } from "./result.mjs";
 import { OPEN_ORDER_STATUSES, PURCHASING_TOOLS } from "./tools-purchasing.mjs";
 import { addDays, isManagerActor, matchByName, mondayOf, resolveDay, text, venueDates, weekdayName } from "./helpers.mjs";
 
@@ -101,12 +101,12 @@ async function collectAlerts(ctx) {
   const trusted = applyStockTrustToWorkspace({ attention: [] }, stockReport, recipeReport).attention;
   const alerts = trusted.map((alert) => ({ key: alert.key, severity: alert.tone === "danger" ? "high" : "medium", title: alert.title, detail: alert.detail, area: alert.section, route: alert.section === "recipes" ? "#recipes" : "#inventory" }));
   for (const alert of ops.operations.alerts || []) {
-    alerts.push({ key: alert.key, severity: alert.severity || "medium", title: alert.title, detail: alert.detail, area: "operations", route: alert.routine_id ? `#dashboard?routine=${alert.routine_id}` : "#dashboard" });
+    alerts.push({ key: alert.key, severity: alert.severity || "medium", title: alert.title, detail: alert.detail, area: "operations", route: alert.routine_id ? routeFor("routine", alert.routine_id) : routeFor("operations") });
   }
   if (manager) {
     const orders = await ctx.services.purchaseOrders().catch(() => []);
     const overdue = orders.filter((order) => ["ordered", "partially_received"].includes(order.status) && order.expected_delivery_date && order.expected_delivery_date < ops.dates.businessDate);
-    if (overdue.length) alerts.push({ key: "purchasing-overdue", severity: "medium", title: `${overdue.length} deliveries are overdue`, detail: "Placed orders past their expected delivery date.", area: "purchasing", route: "#suppliers?section=purchase-orders" });
+    if (overdue.length) alerts.push({ key: "purchasing-overdue", severity: "medium", title: `${overdue.length} deliveries are overdue`, detail: "Placed orders past their expected delivery date.", area: "purchasing", route: routeFor("purchase_order") });
   }
   const order = { high: 0, medium: 1, low: 2 };
   alerts.sort((a, b) => (order[a.severity] ?? 3) - (order[b.severity] ?? 3));

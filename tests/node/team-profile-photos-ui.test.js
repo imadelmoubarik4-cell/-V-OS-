@@ -54,8 +54,14 @@ test('phones get the photo library and the camera (no forced capture); the galle
 });
 
 test('browser uses the authenticated gateway and no direct Storage or table writes', () => {
-  assert.match(client, /window\.atlasSupabase/);
-  assert.match(client, /authorization: `Bearer \$\{session\.access_token\}`/);
+  // S89: requests go through the shared AtlasApi helper (atlas-api.js), which
+  // adds the session bearer token and maps failures to fixed copy.
+  assert.match(client, /window\.AtlasApi\.request\(endpoint\(\), \{/);
+  assert.match(client, /messages: API_MESSAGES/);
+  assert.doesNotMatch(client, /payload\.error/, 'server text is never shown');
+  const api = readFileSync('apps/web/assets/js/atlas-api.js', 'utf8');
+  assert.match(api, /window\.atlasSupabase/);
+  assert.match(api, /authorization: `Bearer \$\{token\}`/);
   assert.doesNotMatch(client, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(client, /\.from\s*\(/);
   assert.doesNotMatch(client, /storage\.from|storage\/v1\/object/);

@@ -178,7 +178,7 @@
       <section class="atlas-section" aria-labelledby="mk-waiting"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-waiting">Waiting for approval</h2></div>
         ${waiting.length ? `<ul class="atlas-list">${waiting.map((item) => `<li class="atlas-row"><div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([item.created_by_label, dateTime(item.scheduled_for)].filter(Boolean).join(' · '))}</p></div><div class="atlas-row__end">${item.can_approve ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-mk-open="${escapeHtml(item.id)}">Review</button>` : pill(item.status)}</div></li>`).join('')}</ul>` : '<p class="mk-muted">Nothing is waiting for approval.</p>'}</section>
       ${ideas.length ? `<section class="atlas-section" aria-labelledby="mk-ideas"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-ideas">Suggestions</h2><span class="atlas-section__meta">From your venue's routines — nothing is posted automatically</span></div>
-        <ul class="atlas-list">${ideas.map((entry) => `<li class="atlas-row"><span class="atlas-row__icon"><i data-lucide="lightbulb"></i></span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(entry.title)} <span class="atlas-pill">Suggestion</span></p><p class="atlas-row__meta">${escapeHtml(entry.summary || '')}</p></div><div class="atlas-row__end">${entry.is_due_today && state.staff?.can_create !== false ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-mk-plan="${escapeHtml(entry.id)}">Plan this</button>` : ''}</div></li>`).join('')}</ul></section>` : ''}`;
+        <ul class="atlas-list">${ideas.map((entry) => `<li class="atlas-row" data-mk-suggestion="${escapeHtml(entry.id)}"${state.focusSuggestion && String(entry.id) === state.focusSuggestion ? ' aria-current="true"' : ''}><span class="atlas-row__icon"><i data-lucide="lightbulb"></i></span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(entry.title)} <span class="atlas-pill">Suggestion</span></p><p class="atlas-row__meta">${escapeHtml(entry.summary || '')}</p></div><div class="atlas-row__end">${entry.is_due_today && state.staff?.can_create !== false ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-mk-plan="${escapeHtml(entry.id)}">Plan this</button>` : ''}</div></li>`).join('')}</ul></section>` : ''}`;
   }
 
   function calendarMarkup() {
@@ -271,6 +271,12 @@
         <div class="mk-body">${body}</div>
       </div>`;
     window.lucide?.createIcons?.();
+    // #marketing?recommendation=<id> (Atlas AI record links): show that suggestion.
+    if (state.focusSuggestion && state.workspace) {
+      const row = [...element.querySelectorAll('[data-mk-suggestion]')].find((node) => node.dataset.mkSuggestion === state.focusSuggestion);
+      if (row) { row.scrollIntoView({ block: 'center' }); row.querySelector('[data-mk-plan]')?.focus({ preventScroll: true }); }
+      state.focusSuggestion = null;
+    }
   }
 
   // ---------- sheets ----------
@@ -465,7 +471,8 @@
   }
 
   function onShow(params = {}) {
-    const tab = TAB_ALIASES[params.section] || params.section || 'overview';
+    state.focusSuggestion = params.recommendation ? String(params.recommendation) : null;
+    const tab = state.focusSuggestion ? 'overview' : TAB_ALIASES[params.section] || params.section || 'overview';
     state.tab = TABS.some(([key]) => key === tab) ? tab : 'overview';
     render();
     if (isManager() && !state.workspace && !state.loading) load();

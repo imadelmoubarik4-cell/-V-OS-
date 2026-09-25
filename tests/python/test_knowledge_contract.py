@@ -112,7 +112,8 @@ class KnowledgeContractTests(unittest.TestCase):
 
     def test_edge_function_revalidates_active_profiles_and_roles(self):
         self.assertIn("requireActiveProfile", EDGE_FUNCTION)
-        self.assertIn("if (!profile?.active)", EDGE_FUNCTION)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE_FUNCTION)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE_FUNCTION)
         self.assertIn("Knowledge access has been removed", EDGE_FUNCTION)
         self.assertIn('new Set(["admin", "manager", "bartender", "viewer"])', EDGE_FUNCTION)
         self.assertIn('new Set(["admin", "manager"])', EDGE_FUNCTION)

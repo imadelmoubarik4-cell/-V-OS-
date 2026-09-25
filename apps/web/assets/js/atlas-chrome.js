@@ -397,7 +397,7 @@
     const menu = ensureMenu().querySelector('.atlas-menu');
     const item = (action, label, iconName, extra = '') => `<button type="button" class="atlas-menu__item${extra}" role="menuitem" tabindex="-1" data-menu-action="${action}">${icon(iconName)}<span>${escape(label)}</span></button>`;
     menu.innerHTML = `
-      <div class="atlas-account-menu__head">${avatarMarkup(40)}<div class="atlas-account-menu__who"><div class="atlas-account-menu__name">${escape(account().name)}</div><div class="atlas-account-menu__email">${escape(account().email)}</div>${ROLE_LABELS[role()] ? `<span class="atlas-pill atlas-account-menu__role">${escape(ROLE_LABELS[role()])}</span>` : ''}</div></div>
+      <div class="atlas-account-menu__head">${avatarMarkup(40)}<div class="atlas-account-menu__who"><div class="atlas-account-menu__name">${escape(account().name)}</div>${ROLE_LABELS[role()] ? `<span class="atlas-pill atlas-account-menu__role">${escape(ROLE_LABELS[role()])}</span>` : ''}</div></div>
       <div class="atlas-menu__sep" role="separator"></div>
       ${item('profile', 'Your profile', 'circle-user-round')}
       ${item('preferences', 'Preferences', 'sliders-horizontal')}

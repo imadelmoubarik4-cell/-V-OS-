@@ -220,16 +220,21 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 });
 
 test('changed scripts carry the S88 cache key', () => {
-  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'home.js', 'reports-overview.js', 'recipes.js', 'data-workspace.js', 'atlas-capture.js', 'atlas-inventory.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'shifts-workspace.js',
-    'knowledge-workspace.js', 's38-app-remediation.js', 'atlas-search.js']) {
+  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'data-workspace.js', 'atlas-capture.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'shifts-workspace.js',
+    'knowledge-workspace.js', 's38-app-remediation.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s88"></script>`), file);
+  }
+  // S89 canonical business truth changed these; their cache key moved on.
+  for (const file of ['operations.js', 'home.js', 'reports-overview.js', 'recipes.js', 'atlas-inventory.js', 'atlas-search.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260928-s89t"></script>`), file);
   }
   const config = read('apps/web/config.js');
   for (const file of ['team-messages.js', 'marketing-workspace.js',
-    'team-profiles-bootstrap.js', 'team-profile-photos.js', 'reports-workspace.js', 'system-workspace.js',
+    'team-profiles-bootstrap.js', 'team-profile-photos.js', 'system-workspace.js',
     'settings-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s88'`), file);
   }
+  assert.ok(config.includes("scriptPath: 'assets/js/reports-workspace.js?v=20260928-s89t'"), 'reports-workspace.js');
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
 });
 

@@ -132,14 +132,14 @@ test('AtlasAI.openDecision selects the recommendation in #ai/decisions and opens
   try {
     await page.waitForFunction(() => typeof window.AtlasAI?.openDecision === 'function');
     await page.evaluate(() => window.AtlasAI.openDecision('r-1'));
-    await page.waitForFunction(() => location.hash === '#ai/decisions?decision=r-1');
+    await page.waitForFunction(() => location.hash === '#ai/decisions?recommendation=r-1');
     await page.waitForSelector('.ai-layer.ai-sheet');
     await page.waitForSelector('[data-ai-dec-open="r-1"].is-selected[aria-current="true"]');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => location.hash === '#ai/decisions');
     assert.equal(await page.$('[data-ai-dec-open="r-1"].is-selected'), null);
     // Messages links and the palette route the same way.
-    assert.equal(await page.evaluate(() => window.AtlasAI.recordRoute({ type: 'brain_recommendation', id: 'r-9' })), '#ai/decisions?decision=r-9');
+    assert.equal(await page.evaluate(() => window.AtlasAI.recordRoute({ type: 'brain_recommendation', id: 'r-9' })), '#ai/decisions?recommendation=r-9');
   } finally { await close(); }
 });
 

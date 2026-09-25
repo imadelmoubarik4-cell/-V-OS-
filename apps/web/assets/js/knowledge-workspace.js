@@ -182,13 +182,21 @@
     constructor(message, status) { super(message); this.status = status; }
   }
 
+  // Fixed copy only (AtlasApi, atlas-api.js): server text is never shown,
+  // whatever its length or wording.
+  const API_MESSAGES = {
+    auth: 'Your session has ended. Sign in again to read Knowledge.',
+    forbidden: 'Your role can’t open that in Knowledge.',
+    not_found: 'This article isn’t available. It may have been retired or isn’t shared with your role.',
+    conflict: 'This article changed while you were editing. Refresh and try again.',
+    invalid: 'Knowledge couldn’t accept that. Check the details and try again.',
+    unavailable: 'Knowledge is temporarily unavailable.',
+    failed: 'Knowledge is temporarily unavailable.'
+  };
+
   function friendlyError(status, message) {
-    const text = String(message || '').trim();
-    if (status === 401) return 'Your session has ended. Sign in again to read Knowledge.';
-    if (status === 403) return text && !/rpc|jwt|token|schema|postgres/i.test(text) ? text : 'Your role can’t open that in Knowledge.';
-    if (status === 404) return 'This article isn’t available. It may have been retired or isn’t shared with your role.';
-    if (status >= 400 && status < 500 && text && text.length < 200 && !/rpc|jwt|token|schema|postgres|function|violates|constraint/i.test(text)) return text;
-    return 'Knowledge is temporarily unavailable.';
+    const api = window.AtlasApi;
+    return api ? api.friendlyMessage(api.kindFor(status, null), null, API_MESSAGES) : 'Knowledge is temporarily unavailable.';
   }
 
   async function activeSession() {

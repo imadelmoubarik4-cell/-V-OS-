@@ -8,7 +8,6 @@ window.VABAR_CONFIG = {
   PHASE3_BRAIN_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-phase3-brain",
   PHASE3_INTELLIGENCE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-phase3-intelligence",
   OPERATIONS_CHECKPOINT_A_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-operations-checkpoint-a",
-  INVENTORY_SCANNER_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-inventory-scanner",
   STOCK_COUNTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-stock-counts",
   TEAM_MESSAGES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-messages",
   MARKETING_WORKSPACE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-workspace",
@@ -165,7 +164,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/reports-workspace.css?v=20260926-s88',
-  scriptPath: 'assets/js/reports-workspace.js?v=20260926-s88',
+  scriptPath: 'assets/js/reports-workspace.js?v=20260928-s89t',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));

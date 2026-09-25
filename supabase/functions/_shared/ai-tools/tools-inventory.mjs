@@ -8,7 +8,7 @@ import { buildProposal, COUNT_UNITS } from "./actions.mjs";
 import {
   calculation, fact, interpretation, missing, ok, quantityLabel, record, source, ToolError, truncate,
 } from "./result.mjs";
-import { clampLimit, isManagerActor, lower, newId, numberOrNull, text, withinDays, nowMillis } from "./helpers.mjs";
+import { clampLimit, isManagerActor, lower, newId, numberOrNull, text, venueDates, withinDays, nowMillis } from "./helpers.mjs";
 import { resolveInventoryName } from "./tools-recognition.mjs";
 
 const ALL = ["admin", "manager", "bartender", "viewer"];
@@ -58,6 +58,7 @@ export function stockRowView(row, manager) {
     recount_due: row.recount_due === true,
     par_level: numberOrNull(row.par_level),
     status: row.status,
+    stock_status: row.stock_status ?? null,
     bin_location: row.bin_location ?? null,
   };
   if (manager) {
@@ -233,35 +234,39 @@ const belowParTool = {
     const manager = isManagerActor(ctx.actor);
     const stock = await report(ctx, args.category ? { category: args.category } : {});
     const rows = stock.rows;
-    const below = rows.filter((row) => row.status === "below_par");
-    const out = rows.filter((row) => row.status === "out_of_stock");
+    // The canonical stock status (stock-provenance stockStatus) on every row:
+    // out and below par are separate; unknown stock and counted stock without a
+    // par cannot be judged low.
+    const below = rows.filter((row) => row.stock_status === "below_par");
+    const out = rows.filter((row) => row.stock_status === "out");
     const noPar = rows.filter((row) => (numberOrNull(row.par_level) ?? 0) <= 0).length;
-    const parUnknownStock = rows.filter((row) => (numberOrNull(row.par_level) ?? 0) > 0 && row.quantity_status !== "current").length;
-    const undeterminable = rows.filter((row) => (numberOrNull(row.par_level) ?? 0) <= 0 || row.quantity_status !== "current").length;
+    const parUnknownStock = rows.filter((row) => (numberOrNull(row.par_level) ?? 0) > 0 && row.stock_status === "unknown").length;
+    const undeterminable = rows.filter((row) => row.stock_status === "unknown" || row.stock_status === "no_par").length;
     const limit = clampLimit(args.limit, 25, 50);
     const flagged = [...out, ...below];
     const page = truncate(flagged.map((row) => stockRowView(row, manager)), limit);
-    const evidence = flagged.slice(0, limit).map((row) => row.status === "out_of_stock"
+    const evidence = flagged.slice(0, limit).map((row) => row.stock_status === "out"
       ? fact(`${row.name} is out of stock`, `verified ${quantityLabel(row.quantity, row.unit)}`, itemSource(row))
       : calculation(`${row.name} is below par`, `${quantityLabel(row.quantity, row.unit)} verified < par ${numberOrNull(row.par_level)}`, itemSource(row)));
     evidence.push(missing("Items with no par level", `${noPar} of ${rows.length} active items — Atlas cannot say whether they are low`, source("par_levels", null, "Par levels")));
     if (parUnknownStock) evidence.push(missing("Items with a par but no current count", `${parUnknownStock} items`, source("stock_count", null, "Stock count")));
     return ok({
-      summary: `${below.length} below par and ${out.length} out of stock from current verified counts. ${undeterminable} of ${rows.length} active items cannot be judged (${noPar} have no par level, ${parUnknownStock} have a par but no current count).`,
+      summary: `${below.length} below par and ${out.length} out of stock from current verified counts (${below.length + out.length} need ordering). ${undeterminable} of ${rows.length} active items cannot be judged (no current count, or counted with no par level); ${noPar} have no par level and ${parUnknownStock} have a par but no current count.`,
       data: {
-        below_par: page.rows.filter((row) => row.status === "below_par"),
-        out_of_stock: page.rows.filter((row) => row.status === "out_of_stock"),
+        below_par: page.rows.filter((row) => row.stock_status === "below_par"),
+        out_of_stock: page.rows.filter((row) => row.stock_status === "out"),
         truncated: page.truncated,
         counts: {
           active_items: rows.length,
           current_items: rows.filter((row) => row.quantity_status === "current").length,
           below_par: below.length,
           out_of_stock: out.length,
+          needs_ordering: below.length + out.length,
           missing_par: noPar,
           par_but_unknown_stock: parUnknownStock,
           undeterminable,
         },
-        rule: "Below par = current verified stock strictly under a positive par level. Unknown stock is never below par.",
+        rule: "One stock status: unknown (no current verified count) > out (verified quantity at or below zero) > below par (strictly under a positive par) > no par > ok. Out and below par are counted separately; needs ordering = out + below par. Unknown stock is never low.",
       },
       evidence,
       records: page.rows.map((row) => record("inventory_item", row.id, row.name)),
@@ -404,7 +409,7 @@ const prepareCount = {
     const stock = await report(ctx);
     const categories = [...new Set(resolved.map(({ item }) => text(item.category)).filter(Boolean))];
     const scope = categories.length === 1 && resolved.every(({ item }) => text(item.category)) ? { type: "category", value: categories[0] } : { type: "all", value: null };
-    const date = new Date(nowMillis(ctx)).toISOString().slice(0, 10);
+    const date = (await venueDates(ctx, ctx.services)).businessDate;
     const command = {
       title: args.title || `Atlas count ${date}`,
       scope_type: scope.type,

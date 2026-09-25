@@ -241,12 +241,22 @@
 
   // Server messages are shown only when they are already written for people
   // (4xx validation answers); anything else becomes a plain sentence.
+  // Fixed copy only (AtlasApi, atlas-api.js): server text is never shown,
+  // whatever its length or wording.
+  const API_MESSAGES = {
+    auth: 'Your session has ended. Sign in again to keep reading.',
+    forbidden: 'Your role can’t do that in Messages.',
+    not_found: 'That conversation or message isn’t available any more.',
+    conflict: 'This changed while you were writing. Refresh and try again.',
+    invalid: 'That message couldn’t be sent. Check it and try again.',
+    rate_limited: 'You’re sending messages quickly. Wait a moment, then try again.',
+    unavailable: 'Messages are temporarily unavailable.',
+    failed: 'Messages are temporarily unavailable.'
+  };
+
   function friendlyError(status, message) {
-    const text = String(message || '').trim();
-    if (status === 401) return 'Your session has ended. Sign in again to keep reading.';
-    if (status === 403) return text && !/rpc|jwt|token|schema|postgres/i.test(text) ? text : 'Your role can’t do that in Messages.';
-    if (status >= 400 && status < 500 && text && text.length < 200 && !/rpc|jwt|token|schema|postgres|function/i.test(text)) return text;
-    return 'Messages are temporarily unavailable.';
+    const api = window.AtlasApi;
+    return api ? api.friendlyMessage(api.kindFor(status, null), null, API_MESSAGES) : 'Messages are temporarily unavailable.';
   }
 
   // ---------- data ----------
@@ -423,7 +433,7 @@
       const week = starts && clock() ? clock().startOfWeek(clock().businessDate(starts)) : null;
       return week ? `#shifts?week=${week}` : '#shifts';
     }
-    if (link.type === 'brain_recommendation') return link.key ? `#ai/decisions?decision=${encodeURIComponent(link.key)}` : '#ai/decisions';
+    if (link.type === 'brain_recommendation') return link.key ? `#ai/decisions?recommendation=${encodeURIComponent(link.key)}` : '#ai/decisions';
     return '#home';
   }
 

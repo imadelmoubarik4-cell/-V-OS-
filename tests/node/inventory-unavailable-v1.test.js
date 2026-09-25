@@ -15,7 +15,9 @@ test('Movements and Waste navigate to dedicated views inside Inventory', () => {
 });
 
 test('both views use live movement evidence instead of placeholder pages', () => {
-  assert.match(app, /inventoryMovements = data \|\| \[\]/);
+  // S89: movements are read in pages up to AtlasStockTruth.MOVEMENT_ROW_LIMIT.
+  assert.match(app, /rows\.push\(\.\.\.\(data \|\| \[\]\)\);/);
+  assert.match(app, /inventoryMovements = rows;/);
   assert.match(app, /movements: \(\) => inventoryMovements,/);
   assert.match(inventory, /function movements\(\) \{ return root\.AtlasData\?\.movements\?\.\(\) \|\| \[\]; \}/);
   // Ordinary negative adjustments are never reclassified as waste.

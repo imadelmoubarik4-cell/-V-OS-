@@ -283,12 +283,21 @@
     constructor(message, status) { super(message); this.status = status; }
   }
 
+  // Fixed copy only (AtlasApi, atlas-api.js): server text is never shown,
+  // whatever its length or wording.
+  const API_MESSAGES = {
+    auth: 'Your session has ended. Sign in again to see shifts.',
+    forbidden: 'Your role can’t do that in Shifts.',
+    not_found: 'That shift isn’t available any more. Refresh and try again.',
+    conflict: 'This week changed while you were working. Refresh and try again.',
+    invalid: 'Shifts couldn’t accept that. Check the details and try again.',
+    unavailable: 'Shifts are temporarily unavailable.',
+    failed: 'Shifts are temporarily unavailable.'
+  };
+
   function friendlyError(status, message) {
-    const text = String(message || '').trim();
-    if (status === 401) return 'Your session has ended. Sign in again to see shifts.';
-    if (status === 403) return text && !/rpc|jwt|token|schema|postgres/i.test(text) ? text : 'Your role can’t do that in Shifts.';
-    if (status >= 400 && status < 500 && text && text.length < 200 && !/rpc|jwt|token|schema|postgres|function|violates|constraint/i.test(text)) return text;
-    return 'Shifts are temporarily unavailable.';
+    const api = window.AtlasApi;
+    return api ? api.friendlyMessage(api.kindFor(status, null), null, API_MESSAGES) : 'Shifts are temporarily unavailable.';
   }
 
   async function activeSession() {

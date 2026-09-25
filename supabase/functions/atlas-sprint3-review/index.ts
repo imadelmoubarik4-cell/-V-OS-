@@ -1,13 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { AuthError, MANAGER_ROLES, actorLabel, requireRole, resolveActor } from "../_shared/auth.mjs";
 
 // This branch function deliberately uses custom authentication because Atlas users
 // sign in against the production VÁ project while review rows live on the isolated
 // Sprint 3 branch. The incoming production access token is verified against the
-// production Auth API, then the caller's active manager/admin profile is confirmed.
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
+// production Auth API, then the caller's active manager/admin profile is confirmed
+// (shared gateway check: _shared/auth.mjs; configuration comes only from env).
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -26,8 +24,8 @@ class ApiError extends Error {
 }
 
 type ManagerContext = {
-  user: { id: string; email?: string | null };
-  profile: { id: string; email?: string | null; role: string; active: boolean };
+  user: { id: string };
+  profile: { id: string; display_name?: string | null; role: string; active: boolean };
 };
 
 function jsonResponse(value: unknown, status = 200): Response {
@@ -37,49 +35,10 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
 async function requireManager(request: Request): Promise<ManagerContext> {
-  const token = bearerToken(request);
-  const authHeaders = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, {
-    headers: authHeaders,
-  });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileResponse = await fetch(
-    `${AUTH_PROJECT_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=id,email,role,active`,
-    { headers: { ...authHeaders, accept: "application/json" } },
-  );
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas role could not be verified.");
-  const profiles = await profileResponse.json() as Array<{
-    id: string;
-    email?: string | null;
-    role: string;
-    active: boolean;
-  }>;
-  const profile = profiles[0];
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive.");
-  if (profile.role !== "admin" && profile.role !== "manager") {
-    throw new ApiError(403, "Sprint 3 review access is limited to managers and administrators.");
-  }
-
-  return {
-    user: { id: user.id, email: user.email },
-    profile,
-  };
+  const actor = await resolveActor(request, Deno.env, fetch);
+  requireRole(actor, MANAGER_ROLES, "Sprint 3 review access is limited to managers and administrators.");
+  return { user: { id: actor.userId }, profile: actor.profile };
 }
 
 async function branchRpc(name: string, payload: Record<string, unknown> = {}): Promise<unknown> {
@@ -173,7 +132,7 @@ async function handleDecision(request: Request, context: ManagerContext): Promis
   }
 
   const rowId = uuid(body.row_id, "row_id");
-  const reviewerLabel = context.profile.email ?? context.user.email ?? context.user.id;
+  const reviewerLabel = actorLabel(context.profile);
   let result: unknown;
 
   if (rowKind === "inventory") {
@@ -218,7 +177,7 @@ Deno.serve(async (request: Request) => {
     }
     throw new ApiError(405, "Method not allowed.");
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     console.error("Sprint 3 review API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "Sprint 3 review is temporarily unavailable." }, 500);
   }

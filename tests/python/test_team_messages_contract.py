@@ -52,7 +52,8 @@ class TeamMessagesContractTests(unittest.TestCase):
 
     def test_inactive_profiles_are_denied_on_every_gateway_request(self):
         self.assertIn("requireActiveProfile", EDGE_FUNCTION)
-        self.assertIn("if (!profile?.active)", EDGE_FUNCTION)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE_FUNCTION)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE_FUNCTION)
         self.assertIn("Team-message access has been removed", EDGE_FUNCTION)
         self.assertIn("inactive_profile_access", EDGE_FUNCTION)
         self.assertIn("denied_on_every_request", EDGE_FUNCTION)

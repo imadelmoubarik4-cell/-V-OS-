@@ -60,9 +60,9 @@ class Sprint4DailyBriefingContractTests(unittest.TestCase):
         self.assertNotRegex(ORDERING_MIGRATION.lower(), r"\b(insert|update|delete|truncate)\b\s+(into\s+|from\s+|table\s+)?atlas_private\.")
 
     def test_edge_function_enforces_custom_manager_authentication(self) -> None:
-        self.assertIn('/auth/v1/user', EDGE)
-        self.assertIn('/rest/v1/profiles', EDGE)
-        self.assertIn('profile.role !== "admin" && profile.role !== "manager"', EDGE)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE)
+        self.assertIn('requireRole(actor, MANAGER_ROLES', EDGE)
         self.assertIn('request.method !== "GET"', EDGE)
         self.assertIn('branchRpc("atlas_sprint4_daily_briefing")', EDGE)
         self.assertIn('SUPABASE_SERVICE_ROLE_KEY', EDGE)

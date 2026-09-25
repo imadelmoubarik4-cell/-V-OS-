@@ -88,7 +88,7 @@ test('composer links server-verified Atlas records; recommendations are manager-
   // Brain and Checkpoint A are retired: recommendation links open Atlas AI decisions.
   assert.doesNotMatch(messages, /AtlasCheckpointALayout|AtlasPhase3Brain/);
   // …with that recommendation selected (AtlasAI.openDecision route).
-  assert.match(messages, /if \(link\.type === 'brain_recommendation'\) return link\.key \? `#ai\/decisions\?decision=\$\{encodeURIComponent\(link\.key\)\}` : '#ai\/decisions';/);
+  assert.match(messages, /if \(link\.type === 'brain_recommendation'\) return link\.key \? `#ai\/decisions\?recommendation=\$\{encodeURIComponent\(link\.key\)\}` : '#ai\/decisions';/);
 });
 
 test('handover template posts the three sections to the Handover channel', () => {

@@ -54,9 +54,10 @@ class CheckpointKClosureTests(unittest.TestCase):
 
     def test_checkpoint_k_is_manager_only_and_service_role_mediated(self):
         self.assertIn("async function requireManager", EDGE)
-        self.assertIn("/auth/v1/user", EDGE)
-        self.assertIn("/rest/v1/profiles", EDGE)
-        self.assertIn("if (!profile?.active)", EDGE)
+        # S89: the shared gateway check (_shared/auth.mjs) verifies the session and active profile.
+        self.assertIn('from "../_shared/auth.mjs"', EDGE)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE)
+        self.assertIn("requireRole(actor, MANAGER_ROLES", EDGE)
         self.assertIn('const MANAGER_ROLES = new Set(["admin", "manager"])', EDGE)
         self.assertIn("Checkpoint K is limited to managers and administrators", EDGE)
         self.assertIn('branchRpc("atlas_phase3_intelligence_settings")', EDGE)

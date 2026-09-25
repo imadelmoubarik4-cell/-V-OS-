@@ -26,9 +26,9 @@ BROWSER = (ROOT / "apps/web/assets/js/reports-workspace.js").read_text()
 class ReportsContractTests(unittest.TestCase):
     def test_gateway_revalidates_production_session_and_profile(self):
         self.assertIn("requireActiveProfile", EDGE)
-        self.assertIn("/auth/v1/user", EDGE)
-        self.assertIn("/rest/v1/profiles", EDGE)
-        self.assertIn("if (!profile?.active)", EDGE)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE)
+        self.assertIn('"profiles",', EDGE)
         self.assertIn("Reports access has been removed", EDGE)
         self.assertIn('new Set(["admin", "manager", "bartender", "viewer"])', EDGE)
         self.assertIn("[functions.atlas-reports]", CONFIG)
@@ -67,11 +67,16 @@ class ReportsContractTests(unittest.TestCase):
             "p_tasks",
             "p_progress",
         ):
-            self.assertIn(f'"{argument}"', ENTRYPOINT)
-        self.assertIn("normalizeRecordsetRows", ENTRYPOINT)
-        self.assertIn("Array.isArray(value)", ENTRYPOINT)
-        self.assertIn('typeof row === "object"', ENTRYPOINT)
-        self.assertIn("!Array.isArray(row)", ENTRYPOINT)
+            self.assertIn(f'"{argument}"', EDGE)
+        # S89: the entrypoint no longer replaces the global fetch; index.ts
+        # normalizes the payload and handles optional production columns.
+        self.assertNotIn("globalThis.fetch =", ENTRYPOINT)
+        self.assertIn('await import("./index.ts");', ENTRYPOINT)
+        self.assertIn("Array.isArray(value)", EDGE)
+        self.assertIn('typeof row === "object"', EDGE)
+        self.assertIn("!Array.isArray(row)", EDGE)
+        self.assertIn("OPTIONAL_PRODUCTION_COLUMNS", EDGE)
+        self.assertIn("workspace.missing_columns", EDGE)
         self.assertIn("normalizeBranchRpcPayload", EDGE)
         self.assertIn("normalizeReportRecordset", EDGE)
         self.assertIn("const normalizedPayload", EDGE)
@@ -130,7 +135,11 @@ class ReportsContractTests(unittest.TestCase):
         self.assertIn("sales_integration_connected: false", EDGE)
         self.assertIn("source_data_mutation_enabled: false", EDGE)
         self.assertIn("direct_browser_table_access: false", EDGE)
-        self.assertIn('const TIMEZONE = "Atlantic/Reykjavik"', EDGE)
+        # S89: the reporting zone and business date come from the venue clock;
+        # Atlantic/Reykjavik is only the fallback.
+        self.assertIn('const DEFAULT_TIMEZONE = "Atlantic/Reykjavik"', EDGE)
+        self.assertIn('branchRpc("atlas_settings_venue_clock"', EDGE)
+        self.assertIn("reporting_timezone: clock.timezone", EDGE)
         self.assertIn('currency: "ISK"', EDGE)
         self.assertIn('x-atlas-reports-version', EDGE)
         self.assertIn('"0.3.0"', EDGE)

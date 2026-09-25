@@ -59,7 +59,9 @@ test('one calculation rule gives saved and refetched fixture values', () => {
   assert.equal(saved.financials.profit, 300);
   assert.equal(saved.financials.margin, 60);
   assert.deepEqual(JSON.parse(JSON.stringify(saved)), JSON.parse(JSON.stringify(refetched)));
-  assert.equal(calculator.formatIsk(saved.financials.perServing), '200 ISK');
+  // Without AtlasFormat loaded the fallback prints the same '3.900 kr' format.
+  assert.equal(calculator.formatIsk(saved.financials.perServing), '200 kr');
+  assert.equal(calculator.formatIsk(3900), '3.900 kr');
 });
 
 test('Recipes and Reports › Overview delegate to the shared calculation rule (Brain retired in S88)', () => {
