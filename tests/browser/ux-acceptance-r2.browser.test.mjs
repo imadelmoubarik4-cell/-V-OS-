@@ -236,11 +236,17 @@ test('N-5: the toast Undo is a 44 px touch target on the phone', { skip }, async
     const { page, close } = await launchAtlas({ user, fixtures: uxWorld(user, { group: 'INV' }), ...PHONE });
     try {
       await saveCount(page);
-      const state = await page.evaluate(() => {
-        const action = document.querySelector('.atlas-toast__action').getBoundingClientRect();
-        const toast = document.querySelector('.atlas-toast').getBoundingClientRect();
+      // Pause the toast (as hovering does) and measure in the same task, so a
+      // slow run can't let it time out between the wait and the measurement.
+      const state = await (await page.waitForFunction(() => {
+        const node = document.querySelector('.atlas-toast:not(.is-leaving)');
+        const button = node && node.querySelector('.atlas-toast__action');
+        if (!button) return null;
+        node.dispatchEvent(new MouseEvent('mouseenter'));
+        const action = button.getBoundingClientRect();
+        const toast = node.getBoundingClientRect();
         return { width: action.width, height: action.height, inside: action.top >= toast.top - 0.5 && action.bottom <= toast.bottom + 0.5 };
-      });
+      })).jsonValue();
       assert.ok(state.height >= 44 && state.width >= 44, `${user.role}: ${JSON.stringify(state)}`);
       assert.equal(state.inside, true, 'the target stays inside the toast');
     } finally { await close(); }
