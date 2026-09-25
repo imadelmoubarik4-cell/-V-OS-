@@ -227,13 +227,13 @@ test('changed scripts carry the S88 cache key', () => {
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
   for (const file of ['runtime-module-guard.js', 's38-app-remediation.js', 'shifts-workspace.js',
-    'atlas-venue-clock.js', 'atlas-ai.js', 'atlas-ai-voice.js', 'atlas-chrome.js', 'modal.js', 'atlas-stock-truth.js']) {
+    'atlas-venue-clock.js', 'atlas-ai-voice.js', 'atlas-chrome.js', 'modal.js', 'atlas-stock-truth.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
   // and the UX acceptance round 2 fixes (toast placement, order lines on the
   // phone, one inventory value in Reports, hours validation in place).
-  for (const file of ['atlas-inventory.js', 'atlas-shell.js', 'recipes.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'operations.js', 'reports-overview.js']) {
+  for (const file of ['atlas-inventory.js', 'atlas-shell.js', 'recipes.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'operations.js', 'reports-overview.js', 'atlas-ai.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-s90g"></script>`), file);
   }
   const config = read('apps/web/config.js');

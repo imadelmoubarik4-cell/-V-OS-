@@ -53,7 +53,7 @@
     const totals = new Map();
     activeItems().forEach((item) => {
       if (!rule.known(item) || !rule.hasCost(item)) return;
-      const name = String(item.category || '').trim() || 'No category';
+      const name = String(item.category || '').trim() || 'Uncategorised';
       totals.set(name, (totals.get(name) || 0) + Math.max(0, number(item.quantity)) * Number(item.cost_price));
     });
     return [...totals.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);

@@ -241,7 +241,7 @@ test('approving a create proposal after another draft was saved for the supplier
   const writesBefore = backend.writes.length;
   const blocked = await executeProposal(second.proposal.kind, second.proposal.command, makeCtx('manager', { backend }).ctx);
   assert.equal(blocked.ok, false);
-  assert.equal(blocked.error.code, 'conflict');
+  assert.equal(blocked.error.code, 'draft_exists');
   assert.match(blocked.error.message, /already has a Draft order/);
   assert.equal(backend.writes.length, writesBefore, 'no second draft is written');
 });

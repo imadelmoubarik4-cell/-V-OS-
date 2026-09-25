@@ -169,6 +169,7 @@ const ACTION_ERROR_MESSAGES = Object.freeze({
   forbidden: "Your Atlas role cannot run this action.",
   not_found: "Something this action needs could not be found. Nothing was changed.",
   conflict: "The record changed since this was prepared. Nothing was changed; prepare it again.",
+  draft_exists: "This supplier already has a Draft order in Purchasing, so Atlas did not create a second one. Ask Atlas again to add these lines to that draft.",
   invalid_arguments: "The stored action is not valid and was not run.",
   not_executable: "Atlas does not make this change. Open the linked screen to review it yourself.",
   unavailable: "Atlas could not complete this action right now. Nothing was confirmed.",

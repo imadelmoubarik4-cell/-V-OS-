@@ -599,7 +599,7 @@ export async function executeProposal(kind, storedCommand, ctx) {
           && String(order.supplier_id) === String(command.p_supplier_id)
           && String(order.id) !== String(command.p_id));
         if (otherDraft) {
-          return failure("conflict", "This supplier already has a Draft order in Purchasing, so Atlas did not create a second one. Ask Atlas again to add these lines to that draft.");
+          return failure("draft_exists", "This supplier already has a Draft order in Purchasing, so Atlas did not create a second one. Ask Atlas again to add these lines to that draft.");
         }
         const order = await services.purchaseOrderCommand({
           p_id: command.p_id,

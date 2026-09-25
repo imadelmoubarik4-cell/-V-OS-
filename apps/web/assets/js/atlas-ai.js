@@ -1485,6 +1485,7 @@
         root.console?.warn?.('[atlas-ai] proposal failed', result?.error?.code || 'failed');
         const code = result?.error?.code;
         const text = code === 'forbidden' ? 'Your role can’t approve this. Nothing was changed.'
+          : code === 'draft_exists' ? 'This supplier already has a Draft order, so nothing new was created. Ask Atlas to add these lines to that draft.'
           : code === 'conflict' ? 'Something changed since Atlas prepared this. Nothing was changed. Ask Atlas to prepare it again.'
             : code === 'not_found' ? 'A record in this proposal no longer exists. Nothing was changed. Ask Atlas to prepare it again.'
               : 'Nothing was changed. Ask Atlas to prepare it again, or make the change in its page.';
