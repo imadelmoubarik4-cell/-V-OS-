@@ -694,11 +694,22 @@ test('upload limits and sizes show fixed copy and nothing is sent', { skip }, as
 test('photos over 20 MB together are stopped before sending; a 413 from the server is explained', { skip }, async () => {
   const { page, close, backend } = await openAi({ backend: { overrides: { chat: () => ({ __status: 413, body: { error_code: 'attachments_too_large', message: 'Attachments in one message can be up to 20 MB in total.' } }) } } });
   try {
-    const big = Buffer.alloc(11 * 1024 * 1024, 1);
-    big.write('\x89PNG', 0, 'binary');
-    // 22 MB through the file input is CPU-heavy on a loaded runner: allow it the
-    // same 20 s as the chip check below instead of the 10 s default.
-    await page.setInputFiles('[data-ai-file-any]', [{ name: 'a.png', mimeType: 'image/png', buffer: big }, { name: 'b.png', mimeType: 'image/png', buffer: big }], { timeout: 20000 });
+    // Two 11 MB PNGs are built inside the page and handed to the real file
+    // input. Pushing 22 MB through page.setInputFiles crossed the automation
+    // protocol and could exceed its timeout on a loaded runner (the flake).
+    await page.evaluate(() => {
+      const input = document.querySelector('[data-ai-file-any]');
+      const png = (name) => {
+        const bytes = new Uint8Array(11 * 1024 * 1024).fill(1);
+        bytes.set([0x89, 0x50, 0x4e, 0x47], 0);
+        return new File([bytes], name, { type: 'image/png' });
+      };
+      const transfer = new DataTransfer();
+      transfer.items.add(png('a.png'));
+      transfer.items.add(png('b.png'));
+      input.files = transfer.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
     await page.waitForFunction(() => document.querySelectorAll('[data-ai-att] .file-chip__meta').length === 2, null, { timeout: 20000 });
     await page.fill('#ai-composer-input', 'Do these match?');
     await page.keyboard.press('Enter');
