@@ -33,6 +33,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* A long unbroken token (a pasted code, a URL-like name) wraps instead of
+     pushing the page sideways. */
+  overflow-wrap: break-word;
 }
 @media (max-width: 767px) {
   body { font-size: var(--fs-body-lg); line-height: 1.4667; }
@@ -125,16 +128,12 @@ body:not(.atlas-commercial-manager) :is([data-commercial-only], [data-view="supp
 .atlas-cluster--nowrap { flex-wrap: nowrap; }
 .atlas-auto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--grid-min, 240px)), 1fr)); gap: var(--grid-gap, var(--s-4)); }
 .atlas-spacer { flex: 1 1 auto; }
-.atlas-page {
-  max-width: calc(var(--page-max) + 2 * var(--page-gutter));
-  margin: 0 auto;
-  padding: var(--s-8) var(--page-gutter) var(--s-20);
-}
+/* Page container contract: the shell's .atlas-content owns the gutter, the
+   top and bottom space and the max width (atlas-shell.css). A module's page
+   wrapper adds none of its own, so every page header starts at the same x/y. */
+.atlas-page { min-width: 0; margin: 0; padding: 0; }
 .atlas-page--wide { max-width: none; }
 .atlas-reading { max-width: var(--reading-max); }
-@media (max-width: 767px) {
-  .atlas-page { padding: var(--s-3) var(--page-gutter) calc(var(--tabbar-h) + var(--s-10)); }
-}
 
 /* ---------- Reduced motion ----------
    prefers-reduced-motion and the personal Reduce motion preference

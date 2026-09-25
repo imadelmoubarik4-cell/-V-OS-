@@ -713,7 +713,7 @@
           const done = number(routine.progress?.completed);
           const total = number(routine.progress?.required);
           const text = routine.status === 'completed' ? `${label} done${routine.completed_by_label ? ` · ${routine.completed_by_label}` : ''}` : `${label} ${done} of ${total} done`;
-          return `<a class="home-timeline__check" href="#operations/${encodeURIComponent(routine.id)}">${escape(text)}</a>`;
+          return `<a class="atlas-hit home-timeline__check" href="#operations/${encodeURIComponent(routine.id)}">${escape(text)}</a>`;
         };
         const rowClass = { past: 'is-done', current: 'is-now', future: '' };
         body = `<ol class="home-timeline">${entries.map((entry) => {

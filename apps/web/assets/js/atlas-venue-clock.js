@@ -16,6 +16,7 @@
 //              compareRange(period) · zonedToInstant(dateKey, 'HH:MM')
 //   format     formatTime · formatDate · formatDateTime · formatRelative · formatKr
 //   inputs     localInputValue(date, type) · fromLocalInput(value)
+//              TIME_INPUT_ATTRS · parseTimeInput(text)   (24 h time fields)
 //   hours      dayWindow(dateKey) · isOpenAt(at) · nextEvent(at, {types}) · timeline(dateKey, at)
 //
 // Rules (docs/design/Atlas_Time_Migration.md):
@@ -374,6 +375,39 @@
     return validDate(instant) ? instant.toISOString() : null;
   }
 
+  // ---------- 24-hour time fields ----------
+  //
+  // A native <input type="time"> shows "05:00 PM" in an en-US browser; Atlas
+  // is 24 h everywhere. Time fields are text fields with TIME_INPUT_ATTRS
+  // (data-atlas-time) that take and show HH:MM: "1730", "17.30" and "9" are
+  // read as 17:30 and 09:00 when the field is committed (change). The value
+  // stays 'HH:MM' (or '' when empty), the same as a native time input.
+  const TIME_INPUT_ATTRS = 'type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM" data-atlas-time';
+
+  /** 'HH:MM', '' for an empty field, or null when the text is not a time. */
+  function parseTimeInput(text) {
+    const value = String(text ?? '').trim();
+    if (!value) return '';
+    const match = /^(\d{1,2})(?:[:.h ]?(\d{2}))?(?::\d{2})?$/.exec(value);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2] || 0);
+    if (hours > 23 || minutes > 59) return null;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
+  function commitTimeInput(input) {
+    const parsed = parseTimeInput(input.value);
+    if (parsed !== null && parsed !== input.value) input.value = parsed;
+    input.setAttribute('aria-invalid', String(parsed === null));
+  }
+
+  // Registered before any module script, so it runs before their document
+  // change listeners (bubbling; no capture listener, no observer).
+  function bindTimeInputs() {
+    root.document?.addEventListener?.('change', (event) => { if (event.target?.dataset?.atlasTime !== undefined) commitTimeInput(event.target); });
+  }
+
   // ---------- hours ----------
 
   function hoursUsable() {
@@ -702,6 +736,8 @@
     // inputs
     localInputValue,
     fromLocalInput,
+    TIME_INPUT_ATTRS,
+    parseTimeInput,
     // hours
     dayWindow,
     isOpenAt,
@@ -714,4 +750,5 @@
   if (!root.AtlasFormat) root.AtlasFormat = Object.freeze({ money: formatKr });
 
   bind();
+  bindTimeInputs();
 })(typeof window === 'undefined' ? globalThis : window);

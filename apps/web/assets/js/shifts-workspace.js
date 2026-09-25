@@ -9,6 +9,8 @@
 // shift starts at the day's saved opening time (or empty when hours are not set).
 (function () {
   'use strict';
+  // 24-hour time fields (AtlasVenueClock.TIME_INPUT_ATTRS): never the browser's 12-hour picker.
+  const TIME_FIELD = window.AtlasVenueClock?.TIME_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM" data-atlas-time';
 
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 18000;
@@ -501,8 +503,8 @@
           <div class="atlas-field"><label for="shift-role">Role <span class="optional">Optional</span></label><input class="atlas-input" id="shift-role" name="role_name" maxlength="120" value="${escapeHtml(shift?.role_name || '')}" placeholder="Bartender, opening, closing"></div>
           <div class="atlas-field"><label for="shift-date">Date</label><input class="atlas-input" type="date" id="shift-date" name="date" required value="${escapeHtml(dateKey)}"></div>
           <div class="atlas-grid-2">
-            <div class="atlas-field"><label for="shift-start">Start</label><input class="atlas-input" type="time" id="shift-start" name="start" required value="${escapeHtml(start.time)}"></div>
-            <div class="atlas-field"><label for="shift-end">End</label><input class="atlas-input" type="time" id="shift-end" name="end" required value="${escapeHtml(end)}"></div>
+            <div class="atlas-field"><label for="shift-start">Start</label><input class="atlas-input" ${TIME_FIELD} id="shift-start" name="start" required value="${escapeHtml(start.time)}"></div>
+            <div class="atlas-field"><label for="shift-end">End</label><input class="atlas-input" ${TIME_FIELD} id="shift-end" name="end" required value="${escapeHtml(end)}"></div>
           </div>
           <p class="help shifts-editor__hint" data-shifts-start-note ${start.note ? '' : 'hidden'}>${escapeHtml(start.note)}</p>
           <p class="help shifts-editor__hint" data-shifts-next-day hidden>Ends the next day.</p>
@@ -806,7 +808,7 @@
       </div>
       <div class="atlas-row__end">
         ${unpublished ? pill('Not published', 'warning') : (own || manage) && (response || own) ? pill(status.label, status.tone) : ''}
-        ${showConfirm ? `<button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm" data-shifts-respond="confirmed" data-shift-id="${escapeHtml(shift.id)}">Confirm</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-shifts-respond="change_requested" data-shift-id="${escapeHtml(shift.id)}">Request change</button>` : ''}
+        ${showConfirm ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-respond="confirmed" data-shift-id="${escapeHtml(shift.id)}">Confirm</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-shifts-respond="change_requested" data-shift-id="${escapeHtml(shift.id)}">Request change</button>` : ''}
         ${manage ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-shifts-edit="${escapeHtml(shift.id)}" aria-label="Edit ${escapeHtml(nameOf(shift, ws))}'s shift">${icon('pencil')}</button>` : ''}
       </div>
     </li>`;
@@ -814,7 +816,7 @@
 
   function weekEmptyMarkup() {
     if (canManage()) {
-      return `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar-plus')}</div><h3 class="atlas-empty__title">No shifts this week</h3><p class="atlas-empty__text">Start from last week’s schedule or add shifts one by one. Nothing is visible to the team until you publish.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-shifts-copy>${icon('copy')}Copy last week</button><button type="button" class="atlas-btn atlas-btn--primary" data-shifts-add="${escapeHtml(state.weekStart <= today() && today() <= addDays(state.weekStart, 6) ? today() : state.weekStart)}">${icon('plus')}Add shift</button></div></div>`;
+      return `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar-plus')}</div><h3 class="atlas-empty__title">No shifts this week</h3><p class="atlas-empty__text">Start from last week’s schedule or add shifts one by one. Nothing is visible to the team until you publish.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-shifts-copy>${icon('copy')}Copy last week</button><button type="button" class="atlas-btn atlas-btn--secondary" data-shifts-add="${escapeHtml(state.weekStart <= today() && today() <= addDays(state.weekStart, 6) ? today() : state.weekStart)}">${icon('plus')}Add shift</button></div></div>`;
     }
     return `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar')}</div><h3 class="atlas-empty__title">No published shifts this week</h3><p class="atlas-empty__text">Your manager hasn’t published this week yet. Published shifts appear here.</p></div>`;
   }
@@ -933,7 +935,7 @@
         return `<li class="shifts-avail__row"><form class="shifts-avail__form" data-shifts-availability-form data-person-id="${escapeHtml(person.id)}" data-weekday="${day}" novalidate>
           <span class="shifts-avail__day" id="avail-day-${day}">${DAY_NAMES[day]}</span>
           <span class="shifts-avail__toggle"><button type="button" class="atlas-toggle" role="switch" aria-checked="${available}" aria-labelledby="avail-day-${day} avail-state-${day}" data-shifts-availability-toggle></button><span class="shifts-avail__state" id="avail-state-${day}">${available ? 'Available' : 'Unavailable'}</span></span>
-          <span class="shifts-avail__times"><label class="sr-only" for="avail-from-${day}">${DAY_NAMES[day]} from</label><input class="atlas-input" type="time" id="avail-from-${day}" name="available_from" value="${escapeHtml(String(entry.available_from || '').slice(0, 5))}" ${available ? '' : 'disabled'} aria-describedby="avail-hint-${day}"><span aria-hidden="true">–</span><label class="sr-only" for="avail-to-${day}">${DAY_NAMES[day]} until</label><input class="atlas-input" type="time" id="avail-to-${day}" name="available_to" value="${escapeHtml(String(entry.available_to || '').slice(0, 5))}" ${available ? '' : 'disabled'}><span class="sr-only" id="avail-hint-${day}">Leave empty for any time</span></span>
+          <span class="shifts-avail__times"><label class="sr-only" for="avail-from-${day}">${DAY_NAMES[day]} from</label><input class="atlas-input" ${TIME_FIELD} id="avail-from-${day}" name="available_from" value="${escapeHtml(String(entry.available_from || '').slice(0, 5))}" ${available ? '' : 'disabled'} aria-describedby="avail-hint-${day}"><span aria-hidden="true">–</span><label class="sr-only" for="avail-to-${day}">${DAY_NAMES[day]} until</label><input class="atlas-input" ${TIME_FIELD} id="avail-to-${day}" name="available_to" value="${escapeHtml(String(entry.available_to || '').slice(0, 5))}" ${available ? '' : 'disabled'}><span class="sr-only" id="avail-hint-${day}">Leave empty for any time</span></span>
           <span class="shifts-avail__note"><label class="sr-only" for="avail-note-${day}">${DAY_NAMES[day]} note</label><input class="atlas-input" id="avail-note-${day}" name="note" maxlength="2000" value="${escapeHtml(entry.note || '')}" placeholder="Note"></span>
           <input type="hidden" name="unavailable" value="${available ? 'false' : 'true'}">
           <button type="submit" class="atlas-btn atlas-btn--secondary atlas-btn--sm shifts-avail__save" disabled>Save</button>
@@ -1270,7 +1272,7 @@
       toggle.setAttribute('aria-checked', String(available));
       form.querySelector('.shifts-avail__state').textContent = available ? 'Available' : 'Unavailable';
       form.elements.namedItem('unavailable').value = available ? 'false' : 'true';
-      form.querySelectorAll('input[type="time"]').forEach((input) => { input.disabled = !available; });
+      form.querySelectorAll('input[name="available_from"], input[name="available_to"]').forEach((input) => { input.disabled = !available; });
       form.querySelector('.shifts-avail__save').disabled = false;
     }
   }

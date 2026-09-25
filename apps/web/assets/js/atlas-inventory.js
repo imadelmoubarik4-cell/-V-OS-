@@ -726,7 +726,7 @@
     ].filter(Boolean);
     const codes = [['Barcode', item.barcode], ['SKU', item.sku], manager ? ['Supplier number', item.supplier_product_reference] : null].filter((entry) => entry && entry[1]);
     const recipeChips = used.length
-      ? `<div class="inv-detail__chips">${used.slice(0, 6).map((recipe) => `<a class="inv-record-chip" href="#recipes/${encodeURIComponent(recipe.id)}">${icon('martini')}${esc(recipe.name)}</a>`).join('')}${used.length > 6 ? `<span class="inv__muted">+${used.length - 6} more</span>` : ''}</div>`
+      ? `<div class="inv-detail__chips">${used.slice(0, 6).map((recipe) => `<a class="atlas-record-chip inv-record-chip" href="#recipes/${encodeURIComponent(recipe.id)}">${icon('martini')}${esc(recipe.name)}</a>`).join('')}${used.length > 6 ? `<span class="inv__muted">+${used.length - 6} more</span>` : ''}</div>`
       : '<p class="inv__muted">Not used in any recipe.</p>';
     const historyRows = history.length
       ? `<ul class="atlas-list inv-detail__history">${history.map((entry) => {
@@ -795,7 +795,9 @@
         state.returnFocusId = String(item.id);
         if (/^#inventory\/item\//.test(location.hash)) {
           if (state.detailFromList && history.length > 1) history.back();
-          else shell.navigate('#inventory');
+          // Closing a sheet opened from a link replaces its address, so Back
+          // doesn't reopen it.
+          else shell.navigate('#inventory', { replace: true });
         }
       }
     });
@@ -1793,7 +1795,7 @@
   }
 
   function register() {
-    const definition = (view) => ({ root: () => rootEl(), title: 'Inventory', display: 'block', onShow: (params) => onShow(view, params), onHide });
+    const definition = (view) => ({ root: () => rootEl(), title: 'Inventory', display: 'block', data: 'shell', onShow: (params) => onShow(view, params), onHide });
     shell.registerView('inventory', definition('inventory'));
     shell.home?.contribute?.('inventory', { focusRows: homeRows, order: 10 });
     shell.registerView('movements', { ...definition('movements'), guard: () => (isManager() ? true : 'inventory') });

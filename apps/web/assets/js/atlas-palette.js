@@ -27,6 +27,8 @@
   const RECENT_PREFIX = 'atlas.palette.recent.v1';
   const MAX_ROWS = 5;
   const QUESTION = /\?\s*$|^(who|what|when|where|why|how|can|could|do|does|did|is|are|should|will|which)\b/i;
+  // Words of a question that name no record.
+  const QUESTION_WORDS = new Set(['who', 'what', 'whats', 'when', 'where', 'why', 'how', 'many', 'much', 'can', 'could', 'should', 'will', 'which', 'does', 'did', 'are', 'was', 'were', 'have', 'has', 'had', 'got', 'the', 'and', 'any', 'our', 'for', 'there', 'left', 'still', 'you', 'this', 'that', 'tonight', 'today', 'need', 'enough', 'stock']);
   const ACTION_GROUPS = [
     ['Stock', /^inventory\./], ['Purchasing', /^purchasing\./], ['Service', /^(operations|recipes|ai)\./],
     ['People', /^(shifts|messages|team|knowledge)\./], ['Business', /^(data|marketing|reports|settings)\./]
@@ -198,6 +200,16 @@
       const byHead = byTail.length ? [] : findRecords(head);
       if (byTail.length) { records = byTail; actionQuery = head; }
       else if (byHead.length) { records = byHead; actionQuery = tail; }
+    }
+    // A question ("how many limes do we have?") still lists the record it is
+    // about under the Ask row (spec §4.6, §8.2): look up its content words.
+    if (!records.length && (QUESTION.test(query) || state.intent)) {
+      const terms = words.map((word) => word.replace(/[^\p{L}\p{N}-]/gu, '')).filter((word) => word.length > 2 && !QUESTION_WORDS.has(word.toLowerCase()));
+      for (const term of terms) {
+        records = findRecords(term);
+        if (!records.length && /s$/i.test(term)) records = findRecords(term.slice(0, -1));
+        if (records.length) break;
+      }
     }
     const byType = new Map();
     records.forEach((result) => { if (!byType.has(result.group)) byType.set(result.group, []); byType.get(result.group).push(result); });

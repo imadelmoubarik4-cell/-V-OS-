@@ -13,6 +13,8 @@
 // the owner hardening brief §5–6) and AtlasSystem (System health).
 (function () {
   'use strict';
+  // 24-hour time fields (AtlasVenueClock.TIME_INPUT_ATTRS): never the browser's 12-hour picker.
+  const TIME_FIELD = window.AtlasVenueClock?.TIME_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM" data-atlas-time';
 
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 22000;
@@ -361,6 +363,13 @@
     </form>`;
   }
 
+  // Open/closed switch: a closed day's time fields are unavailable.
+  function syncHoursRow(row) {
+    const open = Boolean(row.querySelector('[name="is_open"]')?.checked);
+    if (!canManage()) return;
+    row.querySelectorAll('[name="open_time"], [name="close_time"], [name="close_next_day"], [name="last_order_time"], [name="kitchen_close_time"]').forEach((entry) => { entry.disabled = !open; });
+  }
+
   function hoursFormMarkup() {
     const saved = new Map((state.workspace?.business_hours || []).map((row) => [Number(row.weekday), row]));
     const editable = canManage();
@@ -368,14 +377,16 @@
     const rows = EDITOR_DAYS.map((weekday) => {
       const row = saved.get(weekday) || { weekday, day_label: WEEKDAYS[weekday], is_open: false };
       const day = WEEKDAYS[weekday];
+      // A closed day's times are kept but can't be edited until it is open.
+      const timeOff = disabled || (row.is_open ? '' : ' disabled');
       return `<tr class="settings-hours-row" data-weekday="${weekday}">
         <th scope="row">${escapeHtml(day)}</th>
         <td data-label="Open"><label class="settings-hours__tap"><input type="checkbox" class="atlas-check" name="is_open" aria-label="${escapeHtml(day)} open"${row.is_open ? ' checked' : ''}${disabled}></label></td>
-        <td data-label="Opens"><input class="atlas-input" type="time" name="open_time" aria-label="${escapeHtml(day)} opening time" value="${escapeHtml(hhmm(row.open_time) || '')}"${disabled}></td>
-        <td data-label="Closes"><input class="atlas-input" type="time" name="close_time" aria-label="${escapeHtml(day)} closing time" value="${escapeHtml(hhmm(row.close_time) || '')}"${disabled}></td>
-        <td data-label="Next day"><label class="settings-hours__tap"><input type="checkbox" class="atlas-check" name="close_next_day" aria-label="${escapeHtml(day)} closes after midnight"${row.close_next_day ? ' checked' : ''}${disabled}></label></td>
-        <td data-label="Last orders"><input class="atlas-input" type="time" name="last_order_time" aria-label="${escapeHtml(day)} last orders" value="${escapeHtml(hhmm(row.last_order_time) || '')}"${disabled}></td>
-        <td data-label="Kitchen"><input class="atlas-input" type="time" name="kitchen_close_time" aria-label="${escapeHtml(day)} kitchen closes" value="${escapeHtml(hhmm(row.kitchen_close_time) || '')}"${disabled}></td>
+        <td data-label="Opens"><input class="atlas-input" ${TIME_FIELD} name="open_time" aria-label="${escapeHtml(day)} opening time" value="${escapeHtml(hhmm(row.open_time) || '')}"${timeOff}></td>
+        <td data-label="Closes"><input class="atlas-input" ${TIME_FIELD} name="close_time" aria-label="${escapeHtml(day)} closing time" value="${escapeHtml(hhmm(row.close_time) || '')}"${timeOff}></td>
+        <td data-label="Next day"><label class="settings-hours__tap"><input type="checkbox" class="atlas-check" name="close_next_day" aria-label="${escapeHtml(day)} closes after midnight"${row.close_next_day ? ' checked' : ''}${timeOff}></label></td>
+        <td data-label="Last orders"><input class="atlas-input" ${TIME_FIELD} name="last_order_time" aria-label="${escapeHtml(day)} last orders" value="${escapeHtml(hhmm(row.last_order_time) || '')}"${timeOff}></td>
+        <td data-label="Kitchen"><input class="atlas-input" ${TIME_FIELD} name="kitchen_close_time" aria-label="${escapeHtml(day)} kitchen closes" value="${escapeHtml(hhmm(row.kitchen_close_time) || '')}"${timeOff}></td>
       </tr>`;
     }).join('');
     const empty = !saved.size ? `<div class="atlas-alert atlas-alert--info">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">No opening hours are saved yet, so Home shows no timeline and nothing counts down. Atlas never guesses hours.</p></div></div>` : '';
@@ -1410,6 +1421,7 @@
           if (!source) return;
           if (entry.type === 'checkbox') entry.checked = source.checked; else entry.value = source.value;
         });
+        syncHoursRow(row);
       });
       markDirty({ target: form });
       return;
@@ -1501,6 +1513,9 @@
     document.addEventListener('submit', handleSubmit);
     document.addEventListener('input', markDirty);
     document.addEventListener('change', markDirty);
+    document.addEventListener('change', (event) => {
+      if (event.target?.name === 'is_open') { const row = event.target.closest?.('.settings-hours-row'); if (row) syncHoursRow(row); }
+    });
     readIntegrationCallback();
     const shell = window.AtlasShell;
     shell?.registerView?.('settings', { root: 'settings-view', title: 'Settings', render: (params) => show(params) });

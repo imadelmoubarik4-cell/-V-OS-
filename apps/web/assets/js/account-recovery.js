@@ -17,6 +17,15 @@
     const button = form.querySelector('button');
     button.disabled = value;
     button.classList?.toggle('is-loading', value);
+    button.setAttribute?.('aria-busy', String(value));
+  };
+  // Inline field errors (design system §6.6); the forms are novalidate so the
+  // browser's validation bubble never shows.
+  const fieldError = (id, message) => {
+    const error = document.getElementById(`${id}-error`);
+    if (error) { error.textContent = message; error.hidden = !message; }
+    document.getElementById(id)?.setAttribute?.('aria-invalid', String(Boolean(message)));
+    if (message) document.getElementById(id)?.focus?.();
   };
   const setTitle = (text) => { if (title) title.textContent = text; };
   const rules = () => {
@@ -46,15 +55,27 @@
       history.replaceState(null, '', location.pathname);
     }
   } catch (_) {
+    // Nothing is in progress: the send button is unavailable (no spinner) and
+    // the page offers a reload.
     status.textContent = "Password reset couldn't connect. Check your connection and reload the page.";
-    busy(request, true); return;
+    const button = request.querySelector('button');
+    button.disabled = true;
+    button.classList?.remove('is-loading');
+    const reload = document.getElementById('recovery-reload');
+    if (reload) { reload.hidden = false; reload.addEventListener?.('click', () => location.reload()); }
+    return;
   }
   ['new-password', 'confirm-password'].forEach((id) => document.getElementById(id)?.addEventListener?.('input', rules));
   request.addEventListener('submit', async event => {
-    event.preventDefault(); busy(request, true);
+    event.preventDefault();
+    const email = document.getElementById('recovery-email').value.trim();
+    const problem = !email ? 'Enter your email.' : (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? '' : 'Enter an email address like name@example.com.');
+    fieldError('recovery-email', problem);
+    if (problem) return;
+    busy(request, true);
     try {
       const redirectTo = new URL('recovery.html', location.href).href;
-      const { error } = await client.auth.resetPasswordForEmail(document.getElementById('recovery-email').value.trim(), { redirectTo });
+      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
       request.hidden = true;
       setTitle('Check your email');
@@ -67,8 +88,10 @@
     const password = document.getElementById('new-password').value;
     if (!recoverySession) { status.textContent = 'Request a new reset link first.'; return; }
     if (password.length < 10 || password !== document.getElementById('confirm-password').value) {
-      status.textContent = 'Passwords must match and have at least 10 characters.'; return;
+      fieldError('confirm-password', password.length < 10 ? 'Use at least 10 characters.' : 'The passwords don’t match.');
+      return;
     }
+    fieldError('confirm-password', '');
     busy(complete, true);
     try {
       const { error } = await client.auth.updateUser({ password });

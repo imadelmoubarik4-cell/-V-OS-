@@ -530,7 +530,7 @@
     }
     if (!imports.loaded || (imports.loading && !imports.rows.length)) return skeletonRows();
     if (!imports.rows.length) {
-      return emptyMarkup({ icon: 'file-up', title: 'No imports yet', text: 'Upload a spreadsheet, invoice or stock count. Nothing changes live records until you review it.', action: '<button type="button" class="atlas-btn atlas-btn--primary" data-data-upload><i data-lucide="upload"></i>Import a file</button>' });
+      return emptyMarkup({ icon: 'file-up', title: 'No imports yet', text: 'Upload a spreadsheet, invoice or stock count. Nothing changes live records until you review it.', action: '<button type="button" class="atlas-btn atlas-btn--secondary" data-data-upload><i data-lucide="upload"></i>Import a file</button>' });
     }
     const rows = filteredImports();
     const segmented = [['all', 'All'], ['attention', 'Needs attention'], ['imported', 'Imported']]

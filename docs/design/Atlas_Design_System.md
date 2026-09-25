@@ -227,8 +227,9 @@ icon (spec §5.8 list); no emoji; no decorative icons.
 
 | § | Component | Classes | Key specs |
 | --- | --- | --- | --- |
-| 6.1 | Page header | `.page-head`, `__text`, `__title` (h1), `__sub`, `__actions`; `.atlas-toolbar`, `__end` | Title 24/32; phone: title visually hidden (top bar shows it), actions full width; the toolbar scrolls sideways and its `.atlas-search` keeps 240 px |
+| 6.1 | Page header | `.page-head`, `__text`, `__title` (h1), `__sub`, `__actions`; `.atlas-toolbar`, `__end` | Title 24/32; the title column is never narrower than 280 px (or the full width): actions that don't fit beside it wrap onto their own line under it, at every width, so modules add no header breakpoints; phone: title visually hidden (top bar shows it), actions full width; the toolbar scrolls sideways and its `.atlas-search` keeps 240 px |
 | 6.2 | Section | `.atlas-section`, `__head`, `__title`, `__meta`, `__link` | 17/24 title, 12 to content, 40 above (28 phone) |
+| — | Text link action | `.atlas-link` (a `<button>` or `<a>` that reads as a link: "Show all items", a post title that opens it) | Accent text, underline on hover; 44 px touch hit area |
 | 6.3 | Button | `.atlas-btn` + `--primary`/`--secondary`/`--ghost`/`--danger`/`--danger-solid`, `--sm`/`--lg`/`--block`, `.is-loading` (+`aria-busy`), `:disabled`/`[aria-disabled]`; `.atlas-btn-group` | 32/36/44; coarse 44/44/44; radius 8; one primary per context |
 | 6.4 | Icon button | `.atlas-icon-btn` (+`--sm`/`--md`/`--lg`), `.dot`; `.kbd` | 36 (44 touch); always `aria-label` |
 | 6.5 | Inputs | `.atlas-input`, `.atlas-select`, `.atlas-textarea` (or `textarea.atlas-input`), `.atlas-affix` + `.suffix`, `.atlas-search` + `.atlas-search__clear`, `.atlas-range` | 36 (44 + 16 px text on touch), 8 radius, focus accent + ring, `aria-invalid` danger |
@@ -239,6 +240,7 @@ icon (spec §5.8 list); no emoji; no decorative icons.
 | 6.10 | Segmented | `.atlas-segmented` > `button[aria-pressed]` / `[aria-checked]` | 28 (44 touch) |
 | 6.11 | Tabs | `.atlas-tabs` > `a[aria-current=page]` / `[role=tab][aria-selected]`, `.count` | 40 tall, ink underline (not blue), scrolls with a fade on phones |
 | 6.12 | Chips | `.atlas-chip`, `.is-active` / `[aria-pressed=true]`, `--dashed`, `__clear`; `.atlas-chips` | 30 (44 touch) |
+| — | Record chip | `.atlas-record-chip` (a link to a record: "Used in" recipes, a record attached to a message), `> svg`, `> span` (ellipsis) | 32, 8 radius, hairline; 44 px touch hit area |
 | 6.13 | Pill, badge | `.atlas-pill` + `--positive`/`--warning`/`--danger`/`--info`/`--neutral`/`--plain`; `.atlas-badge`, `--muted` | Pill 22, 12/16 500, word mandatory; badge 18 |
 | 6.14 | Card | `.atlas-card`, `--pad`/`--pad-sm`/`--pad-lg`, `--link` (or `a`/`button`), `__head`, `__title`, `__body`, `__foot` | White, 1 px line, 12 radius, no shadow, never tinted |
 | 6.15 | Row | `.atlas-list` > `.atlas-row` (`--compact`, `--link`), `__icon` (+tones), `__body`, `__title`, `__link`, `__meta`, `__end`, `__value`, `__action`, `__chevron` | Min 60; phone: action collapses to chevron. Row link: the title is an `<a>`/`<button class="atlas-row__link">` whose hit area is the whole row (hover and focus ring on the row); controls in `__end` stay clickable above it |
@@ -248,8 +250,8 @@ icon (spec §5.8 list); no emoji; no decorative icons.
 | 6.18 | Dialog, sheet | `.atlas-modal` (modal.js root / scrim) or `.atlas-scrim`; `.atlas-dialog` (`--form`), `__title`, `__body`, `__error`, `__foot`; `.atlas-sheet` (`--wide`, `--full-phone`), `__grabber`, `__head`, `__title`, `__desc`, `__close`, `__body`, `__foot`, `__foot-start` | Dialog 440/560, sheet 480/640 inset 8; bottom sheet on phones, or a whole screen with `--full-phone`; opaque scrim, no blur |
 | 6.19 | Menu, popover, tooltip | `.atlas-menu`, `__item` (`--danger`), `__sep`, `__label`; `.atlas-popover`; `.atlas-tooltip`, `[data-atlas-tooltip]` (`data-atlas-tooltip-align="start"`/`"end"`) | Items 36 (44 touch), tooltip ink 12/16 after 400 ms; a hidden tooltip is not rendered, so a trigger at the viewport edge never widens the page |
 | 6.20 | Avatar | `.atlas-avatar` (`--sm` 24, default 28, `--lg` 40, `--xl` 64), tints `--a`…`--d`, `__status` | Initials 600 |
-| 6.21, 6.24 | Empty, permission, unavailable | `.atlas-empty` (`--page`, `--inline`), `__icon`, `__title`, `__text`, `__actions` | 40 icon tile, one action |
-| 6.22 | Skeleton | `.atlas-skel` (`--text`, `--title`, `--row`, `--block`, `--circle`) | Appears after 150 ms, 1.4 s shimmer, static with reduced motion |
+| 6.21, 6.24 | Empty, permission, unavailable | `.atlas-empty` (`--page`, `--inline`), `__icon`, `__title`, `__text`, `__actions` | 40 icon tile, one action. The action is `--secondary` when the page header already holds the primary (usually the same action); `--primary` only when it is the page's single main action |
+| 6.22 | Skeleton | `.atlas-skel` (`--text`, `--title`, `--row`, `--block`, `--circle`); `.atlas-skel-page` (`AtlasShell.skeleton()`: page header, toolbar bar, rows) | Appears after 150 ms, 1.4 s shimmer, static with reduced motion |
 | 6.23 | Alert | `.atlas-alert` + `--warning`/`--danger`/`--info`/`--positive`, `__content`, `__title`, `__body`, `__actions` | 12 × 16, 12 radius, tinted |
 | 6.25 | Toast | `.atlas-toast-region` > `.atlas-toast`, `__text`, `__action` | Ink, 44 min, bottom centre (above the tab bar on phones) |
 | 6.26 | Stepper | `.atlas-steps` > `li.is-done`/`.is-current`, `.n`, `.sep`; `.atlas-steps-compact`; `.atlas-progress` (`--thin`) | 22 circles; phone "Step 2 of 3 · Review" + 4 px line |
@@ -267,10 +269,29 @@ sets `body.atlas-page-full-height`: no content padding or max width; its root
 itself; phones keep the normal flow), `.placeholder-view` +
 `.atlas-view-loading` (a view root before its module renders).
 
-Touch (`pointer: coarse`): every shared control is at least 44 px — buttons of
-every size, icon buttons, inputs and selects (16 px text), chips, segmented
-buttons, menu items, check rows, notification row actions. Modules never add
-their own touch sizes for shared controls.
+Touch (`pointer: coarse`): every interactive element is at least 44 px —
+buttons of every size, icon buttons, inputs and selects (16 px text), chips,
+segmented buttons, menu items, check rows, notification row actions grow to
+44 px. Small inline controls keep their visual size and get an invisible 44 px
+hit area (`::after`): `.atlas-link`, `.atlas-section__link`,
+`.atlas-record-chip`, `.atlas-chip__clear`, `details > summary`,
+`a.cell-primary`, class-less text links (`a[href]:not([class])`, for example
+an email or a "Manage" link in a sentence) and `.atlas-hit` for anything else.
+Modules never add their own touch sizes for shared controls and never give a
+link or summary a one-off class that opts it out; they use these classes.
+`tests/browser/ux-acceptance.browser.test.mjs` enumerates every visible
+interactive element on the key phone screens and fails under 44 px.
+
+Page container: the shell's `.atlas-content` owns the page gutter, the space
+above and below the page and its max width. A module's page wrapper
+(`.atlas-page`) adds no padding or margin of its own, so every page header
+starts at the same x and y.
+
+Time fields: `<input … ${AtlasVenueClock.TIME_INPUT_ATTRS}>` (a text field
+with `data-atlas-time`), never `type="time"`, which shows 12-hour times in
+en-US browsers. The venue clock reads "1730", "17.30" or "9" as 17:30 / 09:00
+when the field is committed; the value is `HH:MM` like a native time input.
+Displayed times go through `AtlasVenueClock.formatTime` (24 h).
 
 The Atlas AI components (spec §6.28: `.ai-conv`, messages, `.steps-line`,
 `.record-chip`, `.evidence`, `.approval`, `.composer`, `.voice`) live in the
@@ -298,7 +319,19 @@ Atlas AI module stylesheet.
   `AtlasModal.dismiss(root)` closes one.
 - Routes: `AtlasShell.show()` / `navigate()` always write the address for the
   view shown, including a shorter route (`#messages/general` → `#messages`);
-  modules never write `location.hash` themselves.
+  modules never write `location.hash` themselves. A legacy alias (`#dashboard`,
+  `#business`, `#brain`) is rewritten to its canonical address with
+  `replaceState`; an address Atlas doesn't know (`AtlasShell.isKnownRoute`)
+  opens the "Page not found" view. `navigate(hash, { replace: true })` writes
+  with `replaceState` (closing a sheet opened from a link, so Back doesn't
+  reopen it).
+- Loading (spec §4.11): the requested page opens at once after sign-in, with
+  the correct navigation item and the 2 px `.atlas-loading-line` under the top
+  bar while the shell data loads. A view that reads the shell data registers
+  with `data: 'shell'` (and optionally `skeleton: (params) => markup`); until
+  `data:loaded` the shell draws its skeleton (default `AtlasShell.skeleton({
+  title })`) and runs its render/onShow once the data is in. Views that load
+  their own data render their own skeleton on show.
 - `AtlasShell.notify.open({ filter: 'needs-action' | 'all' })` preselects the
   notifications filter (also `#notifications?filter=needs-action`).
 - Badges: `[data-nav-badge="messages"]` (sidebar link, rail dot) and

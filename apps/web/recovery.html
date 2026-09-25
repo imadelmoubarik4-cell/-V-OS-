@@ -17,14 +17,15 @@
     <div class="atlas-auth__brand"><img class="atlas-auth__lockup" src="assets/brand/Atlas_Primary_Stacked_Midnight.svg" alt="Atlas" width="112" height="99"></div>
     <h1 class="atlas-auth__title" id="recovery-title">Reset your password</h1>
     <p class="atlas-auth__sub" id="status" role="status">Enter your email and we'll send you a link to choose a new password.</p>
-    <form id="request-recovery" class="atlas-auth__form">
+    <form id="request-recovery" class="atlas-auth__form" novalidate>
       <div class="atlas-field">
         <label for="recovery-email">Email</label>
-        <input class="atlas-input" id="recovery-email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required>
+        <input class="atlas-input" id="recovery-email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required aria-describedby="recovery-email-error">
+        <p class="atlas-field__error" id="recovery-email-error" hidden></p>
       </div>
       <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit">Send reset link</button>
     </form>
-    <form id="complete-recovery" class="atlas-auth__form" hidden>
+    <form id="complete-recovery" class="atlas-auth__form" novalidate hidden>
       <div class="atlas-field">
         <label for="new-password">New password</label>
         <input class="atlas-input" id="new-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="recovery-rules">
@@ -32,10 +33,12 @@
       <ul class="atlas-auth__rules" id="recovery-rules" aria-live="polite"><li data-rule="length">At least 10 characters</li><li data-rule="match">Both passwords match</li></ul>
       <div class="atlas-field">
         <label for="confirm-password">Confirm new password</label>
-        <input class="atlas-input" id="confirm-password" type="password" autocomplete="new-password" minlength="10" required>
+        <input class="atlas-input" id="confirm-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="confirm-password-error">
+        <p class="atlas-field__error" id="confirm-password-error" hidden></p>
       </div>
       <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit">Save new password</button>
     </form>
+    <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg atlas-auth__submit" id="recovery-reload" hidden>Reload page</button>
     <p class="atlas-auth__link"><a href="index.html">Back to sign in</a></p>
   </main>
   <p class="atlas-auth__foot" data-atlas-venue-line hidden></p>

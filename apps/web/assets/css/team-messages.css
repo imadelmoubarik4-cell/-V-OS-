@@ -88,10 +88,8 @@
 .msg-actions__list { gap: var(--s-2); }
 
 /* Linked record chip (spec §6.28 record chip pattern). */
-.msg-link { display: inline-flex; align-items: center; gap: var(--s-2); max-width: 100%; margin-top: var(--s-2); padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); font: var(--type-label); color: var(--text); text-decoration: none; }
-.msg-link span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.msg-link svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-2); }
-a.msg-link:hover { border-color: var(--line-strong); background: var(--bg-subtle); }
+/* The record chip itself is the shared .atlas-record-chip (atlas-components.css). */
+.msg-link { margin-top: var(--s-2); }
 .msg-link.is-locked { color: var(--text-2); }
 
 .msg-jump { position: absolute; left: 50%; bottom: 112px; z-index: 2; transform: translateX(-50%); box-shadow: var(--shadow-pop); }

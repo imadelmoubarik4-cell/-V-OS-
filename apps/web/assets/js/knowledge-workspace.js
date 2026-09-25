@@ -382,7 +382,7 @@
     const rows = filtered();
     const due = state.category === 'all' ? dueArticles() : [];
     if (!articles().length) {
-      return `<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon">${icon('book-open')}</div><h3 class="atlas-empty__title">${canManage() ? 'No articles yet' : 'Nothing here yet'}</h3><p class="atlas-empty__text">${canManage() ? 'Write the procedures and policies your team needs, and mark the ones everyone must read.' : 'Your manager will add procedures and training.'}</p>${canManage() ? `<div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-knowledge-new>${icon('plus')}New article</button></div>` : ''}</div>`;
+      return `<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon">${icon('book-open')}</div><h3 class="atlas-empty__title">${canManage() ? 'No articles yet' : 'Nothing here yet'}</h3><p class="atlas-empty__text">${canManage() ? 'Write the procedures and policies your team needs, and mark the ones everyone must read.' : 'Your manager will add procedures and training.'}</p>${canManage() ? `<div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-knowledge-new>${icon('plus')}New article</button></div>` : ''}</div>`;
     }
     const sorted = rows.slice().sort((a, b) => String(b.published_at || b.updated_at || '').localeCompare(String(a.published_at || a.updated_at || '')));
     return `${due.length ? `<section class="kn-section" aria-labelledby="kn-due-title"><h2 class="kn-section__title" id="kn-due-title">Required for you</h2><ul class="atlas-list kn-list">${due.map((article) => articleRow(article)).join('')}</ul></section>` : ''}

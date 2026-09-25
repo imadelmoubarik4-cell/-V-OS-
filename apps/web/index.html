@@ -65,17 +65,19 @@
       </div>
       <h1 class="atlas-auth__title" id="login-title">Welcome back</h1>
       <p class="atlas-auth__sub" id="login-sub">Sign in to continue.</p>
-      <form id="login-form" class="atlas-auth__form">
+      <form id="login-form" class="atlas-auth__form" novalidate>
         <div class="atlas-field">
           <label for="email">Email</label>
-          <input class="atlas-input" type="email" id="email" name="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required aria-describedby="login-error" />
+          <input class="atlas-input" type="email" id="email" name="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required aria-describedby="email-error login-error" />
+          <p class="atlas-field__error" id="email-error" hidden></p>
         </div>
         <div class="atlas-field">
           <label for="password">Password</label>
           <div class="atlas-auth__password">
-            <input class="atlas-input" type="password" id="password" name="password" autocomplete="current-password" required aria-describedby="login-error" />
+            <input class="atlas-input" type="password" id="password" name="password" autocomplete="current-password" required aria-describedby="password-error login-error" />
             <button type="button" class="atlas-icon-btn atlas-auth__reveal" id="login-password-toggle" aria-label="Show password" aria-pressed="false" aria-controls="password"><i data-lucide="eye" aria-hidden="true"></i></button>
           </div>
+          <p class="atlas-field__error" id="password-error" hidden></p>
         </div>
         <p class="atlas-auth__error" id="login-error" role="alert" hidden></p>
         <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit" id="login-btn">Sign in</button>
@@ -151,6 +153,7 @@
           <button type="button" class="atlas-icon-btn atlas-topbar__phone atlas-topbar__global" id="atlas-phone-search" aria-haspopup="dialog" aria-label="Search or ask Atlas"><i data-lucide="search" aria-hidden="true"></i></button>
           <button type="button" class="atlas-icon-btn atlas-topbar__desktop" id="atlas-quick-actions" aria-haspopup="dialog" aria-label="Quick actions"><i data-lucide="plus" aria-hidden="true"></i></button>
           <button type="button" class="atlas-icon-btn atlas-topbar__global" id="atlas-notifications-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="atlas-notifications" aria-label="Notifications"><i data-lucide="bell" aria-hidden="true"></i><span class="dot" hidden></span></button>
+          <div class="atlas-loading-line" id="atlas-loading-line" role="progressbar" aria-label="Loading Atlas" hidden></div>
         </header>
         <div class="atlas-content standard-view"><main id="atlas-main" tabindex="-1">
 
@@ -166,6 +169,7 @@
           <div id="knowledge-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Knowledge…</p></div>
           <div id="reports-view" style="display:none;"></div>
           <div id="ai-view" style="display:none;"></div>
+          <div id="not-found-view" style="display:none;"></div>
           <div id="settings-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Settings…</p></div>
         </main></div>
       </section>
@@ -391,12 +395,34 @@
     loginError.hidden = !message;
     ['email', 'password'].forEach((id) => document.getElementById(id)?.setAttribute('aria-invalid', String(Boolean(message))));
   }
+  // Inline field errors (design system §6.6) instead of the browser's
+  // validation bubble: the form is novalidate and says what to fix under the
+  // field, linked with aria-describedby.
+  function showFieldError(id, message) {
+    const input = document.getElementById(id);
+    const error = document.getElementById(`${id}-error`);
+    if (error) { error.textContent = message; error.hidden = !message; }
+    input?.setAttribute('aria-invalid', String(Boolean(message)));
+  }
+  function validateLogin(email, password) {
+    const emailProblem = !email ? 'Enter your email.' : (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? '' : 'Enter an email address like name@example.com.');
+    const passwordProblem = password ? '' : 'Enter your password.';
+    showFieldError('email', emailProblem);
+    showFieldError('password', passwordProblem);
+    if (emailProblem) document.getElementById('email')?.focus();
+    else if (passwordProblem) document.getElementById('password')?.focus();
+    return !emailProblem && !passwordProblem;
+  }
+  ['email', 'password'].forEach((id) => document.getElementById(id)?.addEventListener('input', () => {
+    if (document.getElementById(`${id}-error`)?.hidden === false) showFieldError(id, '');
+  }));
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     showLoginError('');
-    setLoginBusy(true, 'Signing in…');
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
+    if (!validateLogin(email, password)) return;
+    setLoginBusy(true, 'Signing in…');
     try {
       const client = await initializeSupabase();
       const { data, error } = await client.auth.signInWithPassword({ email, password });
@@ -412,7 +438,7 @@
     } catch (e) {
       console.error('Sign-in failed', e);
       setLoginBusy(false);
-      showLoginError(e?.message && /staff profile/.test(e.message) ? e.message : "Atlas couldn't sign you in right now. Check your connection and try again.");
+      showLoginError(e?.code === 'inactive_profile' ? INACTIVE_PROFILE_MESSAGE : "Atlas couldn't sign you in right now. Check your connection and try again.");
     }
   });
   document.getElementById('login-password-toggle')?.addEventListener('click', (event) => {
@@ -449,6 +475,7 @@
     setTimeout(() => { authPromptShown = false; }, 30000);
   });
 
+  const INACTIVE_PROFILE_MESSAGE = 'This account is not an active VÁ staff profile. Ask an administrator to review access.';
   async function loadActiveProfile(session) {
     const { data, error } = await sb
       .from('profiles')
@@ -459,7 +486,12 @@
     const allowedRoles = new Set(['admin', 'manager', 'bartender', 'viewer']);
     if (error || !data?.active || !allowedRoles.has(data.role)) {
       await sb.auth.signOut().catch(() => null);
-      throw new Error('This account is not an active VÁ staff profile. Ask an administrator to review access.');
+      // A read error is a connection problem; a missing, inactive or unknown
+      // profile is an access problem the person can act on (sign in with
+      // another account or ask an administrator).
+      const problem = new Error(error ? 'The staff profile could not be read.' : INACTIVE_PROFILE_MESSAGE);
+      problem.code = error ? 'profile_unavailable' : 'inactive_profile';
+      throw problem;
     }
     currentProfile = data;
     applyRoleVisibility();
@@ -483,21 +515,26 @@
     appScreen.style.display = 'block';
     const preferences = cachedPreferences(currentUser.id);
     window.AtlasPreferences.apply(preferences);
-    navigatedDuringLoad = false;
     // From here the shell keeps the address bar in step with the open view, so
     // #view links, Back and Forward work.
     window.AtlasShell.startRouting();
-    await loadAll();
-    // Someone who opened a page while data was loading stays there.
-    if (!navigatedDuringLoad) openInitialView(preferences);
+    // Spec §4.11: never a blank screen. The requested page opens at once with
+    // its header and skeletons (views that read the shell data render their
+    // loading state until data:loaded) and the correct navigation item, while
+    // the 2 px loading line runs under the top bar.
+    openInitialView(preferences);
+    if (window.lucide) window.lucide.createIcons();
+    setAppLoading(true);
+    try { await loadAll(); } finally { setAppLoading(false); }
     document.body.dataset.atlasReady = 'true';
     if (window.lucide) window.lucide.createIcons();
   }
 
-  let navigatedDuringLoad = false;
-  window.AtlasShell.on('view:show', (event) => {
-    if (event.source === 'nav' && event.event?.isTrusted) navigatedDuringLoad = true;
-  });
+  function setAppLoading(loading) {
+    const line = document.getElementById('atlas-loading-line');
+    if (line) line.hidden = !loading;
+    document.getElementById('atlas-main')?.setAttribute('aria-busy', loading ? 'true' : 'false');
+  }
 
   // Personal preferences are cached per user by Settings after every load or
   // save, so they apply at sign-in without waiting for the Settings module.
@@ -519,6 +556,10 @@
   // AtlasShell.parseRoute is the one parser for them.
   function openInitialView(preferences) {
     const route = window.AtlasShell.parseRoute(location.hash);
+    if (location.hash.length > 1 && !window.AtlasShell.isKnownRoute(location.hash)) {
+      window.AtlasShell.show('not-found', { path: route.route }, { source: 'link', history: false });
+      return;
+    }
     for (const { view, params } of [route, { view: preferences?.start_view, params: {} }]) {
       if (!view || view === 'dashboard') continue;
       if (window.AtlasShell.nav.allowed(view) && (window.AtlasShell.nav.forView(view) || window.AtlasShell.view(view))) { window.AtlasShell.show(view, params, { source: 'link', route: location.hash }); return; }
@@ -544,6 +585,19 @@
       }
     } catch (error) {
       loginBtn.disabled = false;
+      if (error?.code === 'inactive_profile') {
+        // The saved session belonged to a deactivated (or unknown-role)
+        // profile and has been signed out: show the sign-in form with the
+        // access message, not a connection error with a retry that can't work.
+        loginBtn.textContent = 'Sign in';
+        loginScreen.style.display = '';
+        appScreen.style.display = 'none';
+        document.documentElement.dataset.atlasSignin = 'shown';
+        window.AtlasSignInIntro?.start();
+        showLoginError(INACTIVE_PROFILE_MESSAGE);
+        ['email', 'password'].forEach((id) => document.getElementById(id)?.setAttribute('aria-invalid', 'false'));
+        return;
+      }
       loginBtn.textContent = 'Retry connection';
       showBootError(error.message);
     }
@@ -733,9 +787,10 @@
 
     team: document.getElementById('team-view'), shifts: document.getElementById('shifts-view'),
     knowledge: document.getElementById('knowledge-view'), reports: document.getElementById('reports-view'),
-    settings: document.getElementById('settings-view')
+    settings: document.getElementById('settings-view'),
+    'not-found': document.getElementById('not-found-view')
   };
-  const titleMap = {dashboard:'Home',recipes:'Recipes',imports:'Data',team:'Messages',shifts:'Shifts',knowledge:'Knowledge',reports:'Reports',settings:'Settings'};
+  const titleMap = {'not-found':'Page not found',dashboard:'Home',recipes:'Recipes',imports:'Data',team:'Messages',shifts:'Shifts',knowledge:'Knowledge',reports:'Reports',settings:'Settings'};
   const workspaceRootIds = {
     dashboard: 'dashboard-view', inventory: 'inventory-view', recipes: 'recipes-view', suppliers: 'suppliers-view',
     data: 'data-view', team: 'team-view', shifts: 'shifts-view', knowledge: 'knowledge-view',
@@ -783,7 +838,10 @@
     ['recipes', { render: () => renderRecipes(), onShow: (params) => window.AtlasRecipes?.show?.(params) }],
     // Import Center and Real VÁ Data are one manager page now: Data (assets/js/data-workspace.js).
     ['imports', { guard: () => 'data' }],
-    ['team', {}], ['shifts', {}], ['knowledge', {}], ['reports', {}], ['settings', {}]
+    ['team', {}], ['shifts', {}], ['knowledge', {}], ['reports', {}], ['settings', {}],
+    // An address Atlas doesn't know (#bogus) opens this page instead of
+    // leaving the previous page on screen (AtlasShell.isKnownRoute).
+    ['not-found', { render: () => renderNotFound() }]
   ].forEach(([view, definition]) => window.AtlasShell.registerView(view, { root: viewMap[view], title: titleMap[view], ...definition }));
   // Compatibility shim: modules and tests still call the global by name. It is
   // a thin call into the shell and is never reassigned (tests/node/shell-contract-s88).
@@ -791,6 +849,13 @@
     return window.AtlasShell.show(view);
   }
   Object.assign(window.AtlasShell, { hideWorkspaceRoots: hideAtlasWorkspaceRoots, resetScroll: resetAtlasWorkspaceScroll });
+  function renderNotFound() {
+    const root = viewMap['not-found'];
+    if (!root) return;
+    root.innerHTML = `${window.AtlasShell.pageHead({ title: 'Page not found' })}<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon"><i data-lucide="compass" aria-hidden="true"></i></div><h2 class="atlas-empty__title">This page doesn’t exist</h2><p class="atlas-empty__text">The link may be old or mistyped. Nothing was changed.</p><div class="atlas-empty__actions"><a class="atlas-btn atlas-btn--secondary" href="#home">Go to Home</a></div></div>`;
+    window.lucide?.createIcons?.();
+  }
+
   // Home (assets/js/home.js) is the one Home section; modules contribute
   // attention rows with AtlasShell.home.contribute() instead of drawing into it.
   function renderAtlasHome(){

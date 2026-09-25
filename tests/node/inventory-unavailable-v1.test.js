@@ -31,5 +31,6 @@ test('search recognizes Movements and Waste as pages', () => {
   // S88: the palette's "Go to" section lists them under Inventory (spec §3.4 routes).
   const search = readFileSync('apps/web/assets/js/atlas-search.js', 'utf8');
   assert.match(search, /\['inventory', 'Inventory › Movements', '#inventory\/movements', \['movement'/);
-  assert.match(search, /\['inventory', 'Inventory › Waste', '#inventory\/waste', \['waste', 'spoilage', 'breakage'\]\]/);
+  // Manager pages: offered only to the roles the Inventory guard lets in.
+  assert.match(search, /\['inventory', 'Inventory › Waste', '#inventory\/waste', \['waste', 'spoilage', 'breakage'\], MANAGERS\]/);
 });

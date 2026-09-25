@@ -6,8 +6,9 @@
 // effective call chain depended on script arrival order. Modules now register
 // with this API instead of wrapping each other:
 //
-//   views     registerView(name, { root, title, display, render, onShow, onHide, guard })
+//   views     registerView(name, { root, title, display, render, onShow, onHide, guard, data, skeleton })
 //             show(name, params, options) · current() · params() · onView(name, { show, hide })
+//             options.replace: true writes the address with replaceState (closing a sheet)
 //   events    on(type, fn) / off / once / emit(type, detail)
 //             view:before-show · view:hide · view:show · data:loaded · profile:ready
 //             home:rendered · view:registered · view:unregistered
@@ -25,7 +26,7 @@
 //   modules   modules.ensure({ js, global }) · load(src, options)       (deduplicated loader)
 //   nav       nav.items({ role }) · nav.allowed(idOrView, role) · nav.forRoute(hash) · nav.forView(view)
 //             (spec §3.1/§3.3 destinations and role visibility; atlas-chrome.js renders them)
-//   markup    pageHead({ title, sub, actions }) · escape(text)
+//   markup    pageHead({ title, sub, actions }) · skeleton({ title, sub, rows }) · escape(text)
 //   ui        toast(message, { action: { label, onClick }, duration }) · menu(trigger, menuEl, { onSelect })
 //
 // Loaded as a classic script before config.js and every module. It installs one
@@ -71,6 +72,7 @@
   let pending = null;
   let lastProfile = null;
   let dataLoadedAt = 0;
+  let waitingForData = null;
   let notifyPanel = null;
   let notifyIsOpen = false;
   let readIds = null;
@@ -116,7 +118,7 @@
   function onView(name, hooks = {}) {
     const key = canonicalName(name);
     const removers = [];
-    if (typeof hooks.show === 'function') removers.push(on('view:show', (detail) => { if (detail.view === key) hooks.show(detail.params || {}, detail); }));
+    if (typeof hooks.show === 'function') removers.push(on('view:show', (detail) => { if (detail.view === key && !detail.loading) hooks.show(detail.params || {}, detail); }));
     if (typeof hooks.hide === 'function') removers.push(on('view:hide', (detail) => { if (detail.view === key) hooks.hide(detail); }));
     return () => removers.forEach((remove) => remove());
   }
@@ -187,8 +189,33 @@
     'team-profiles': () => [['team-profiles']]
   };
 
+  // Legacy aliases open their page and then show its canonical address.
+  const LEGACY_ROUTE_HEADS = new Set(['dashboard', 'suppliers', 'imports', 'sprint3-review', 'movements', 'waste', 'brain', 'business', 'system', 'team-profiles']);
+
   function decode(value) {
     try { return decodeURIComponent(value); } catch { return value; }
+  }
+
+  function routeHead(input) {
+    let text = String(input ?? '').trim();
+    const hashAt = text.indexOf('#');
+    if (hashAt >= 0) text = text.slice(hashAt + 1);
+    return decode(text.split(/[/?]/)[0] || '');
+  }
+
+  function isLegacyRoute(input) {
+    return LEGACY_ROUTE_HEADS.has(routeHead(input));
+  }
+
+  // A route Atlas knows: a spec or legacy route, a registered view or a
+  // navigation destination. Anything else (#bogus) opens the not-found page.
+  function isKnownRoute(input) {
+    const head = routeHead(input);
+    if (!head || head === 'notifications' || Object.prototype.hasOwnProperty.call(ROUTES, head)) return true;
+    // An in-page anchor (the skip link's #atlas-main) is not a route.
+    if (!/[/?]/.test(String(input).split('#').pop() || '') && root.document?.getElementById?.(head)) return true;
+    const view = parseRoute(input).view;
+    return views.has(view) || Boolean(navForView(view));
   }
 
   function chooseCandidate(candidates) {
@@ -305,11 +332,17 @@
   // answering #ai) keeps its spec address.
   function writeRoute(name, params, route) {
     if (!routing || !root.history || !root.location) return;
-    const replace = replaceNextRoute;
+    let replace = replaceNextRoute;
     replaceNextRoute = false;
-    if (sameRoute(parseRoute(root.location.hash), name, params)) return;
+    const legacy = isLegacyRoute(root.location.hash);
+    if (sameRoute(parseRoute(root.location.hash), name, params)) {
+      if (!legacy) return;
+      // A legacy alias (#dashboard, #business) already names this page: swap
+      // in the canonical address without a new history entry.
+      replace = true;
+    }
     const typed = typeof route === 'string' && route.includes('#') ? `#${route.split('#').slice(1).join('#')}` : '';
-    const target = typed && parseRoute(typed).view === name ? typed : href(name, params);
+    const target = typed && !isLegacyRoute(typed) && parseRoute(typed).view === name ? typed : href(name, params);
     try {
       if (replace) root.history.replaceState(root.history.state, '', target);
       else root.history.pushState(null, '', target);
@@ -320,8 +353,21 @@
     if (!routing) return;
     const route = parseRoute(root.location.hash);
     if (route.panel === 'notifications') { openNotifications({ ...route.params, fromRoute: true }); return; }
-    if (route.view === current && sameRoute(route, current, currentParams) && routeMatches(route, current, currentParams)) return;
+    if (!isKnownRoute(root.location.hash)) { showNotFound(route, { history: false, source: 'history' }); return; }
+    if (route.view === current && sameRoute(route, current, currentParams) && routeMatches(route, current, currentParams)) {
+      if (isLegacyRoute(root.location.hash)) writeRoute(current, currentParams);
+      return;
+    }
+    // A legacy alias is rewritten to its canonical address (replaceState).
+    if (isLegacyRoute(root.location.hash)) { replaceNextRoute = true; show(route.view, route.params, { source: 'history' }); return; }
     show(route.view, route.params, { history: false, source: 'history' });
+  }
+
+  // The not-found page (registered as 'not-found' by the base shell); the
+  // address keeps what was typed so the person can see and correct it.
+  function showNotFound(route, options = {}) {
+    if (!views.has('not-found')) return false;
+    return show('not-found', { path: route?.route || '' }, { ...options, history: false });
   }
 
   function startRouting() {
@@ -355,6 +401,13 @@
       // fullHeight: the page fills the content area edge to edge under the top
       // bar (spec §7.3); body.atlas-page-full-height while it is shown.
       fullHeight: Boolean(definition.fullHeight),
+      // data: 'shell' — the view reads the shell data (index.html loadAll). Until
+      // data:loaded the shell draws the view's loading state (its skeleton()
+      // markup, or the default page header + skeleton rows) and runs the
+      // view's render/onShow once the data is in (spec §4.11: never blank,
+      // never a guessed zero).
+      data: definition.data === 'shell' ? 'shell' : null,
+      skeleton: typeof definition.skeleton === 'function' ? definition.skeleton : null,
       sequence: ++registrationSequence
     };
     views.set(key, entry);
@@ -430,6 +483,7 @@
     metrics.shows[key] = (metrics.shows[key] || 0) + 1;
     safe(layout || defaultLayout, key, entry, context);
     root.document?.body?.classList?.toggle?.('atlas-page-full-height', entry.fullHeight);
+    if (options.replace) replaceNextRoute = true;
     if (options.history !== false) writeRoute(key, currentParams, options.route);
     if (token !== showToken) return true;
 
@@ -438,6 +492,17 @@
       if (previousEntry?.onHide) safe(previousEntry.onHide, { view: previous, next: key, source });
       emit('view:hide', { view: previous, next: key, source });
       if (token !== showToken) return true;
+    }
+
+    if (entry.data === 'shell' && !dataLoadedAt) {
+      renderLoadingState(entry, context);
+      emit('view:show', { ...context, loading: true });
+      return true;
+    }
+    if (waitingForData) {
+      const waiting = views.get(waitingForData);
+      if (waiting) resolveRoot(waiting)?.removeAttribute?.('aria-busy');
+      waitingForData = null;
     }
 
     if (entry.render) {
@@ -456,6 +521,13 @@
   function navigate(target, options = {}) {
     const route = typeof target === 'string' ? parseRoute(target) : { view: canonicalName(target?.view), params: target?.params || {} };
     if (route.panel === 'notifications') return openNotifications({ ...route.params, ...options });
+    if (typeof target === 'string' && !isKnownRoute(target)) {
+      const typed = target.includes('#') ? `#${target.split('#').slice(1).join('#')}` : `#${target}`;
+      if (routing && root.history && root.location && root.location.hash !== typed) {
+        try { root.history.pushState(null, '', typed); } catch (error) { report(error); }
+      }
+      return showNotFound(route, { source: 'link', ...options });
+    }
     return show(route.view, route.params, { source: 'link', ...(typeof target === 'string' ? { route: target } : {}), ...options });
   }
 
@@ -543,8 +615,31 @@
 
   function onDataLoaded(fn) { return on('data:loaded', fn); }
 
+  // The loading state of a view that waits for the shell data (spec §4.11).
+  function renderLoadingState(entry, context) {
+    waitingForData = entry.name;
+    const element = resolveRoot(entry);
+    if (!element) return;
+    const markup = entry.skeleton ? safe(entry.skeleton, context.params, context) : null;
+    element.innerHTML = typeof markup === 'string' ? markup : skeleton({ title: entry.title || '' });
+    element.setAttribute('aria-busy', 'true');
+  }
+
+  // Default page skeleton: the real page header (title), then a toolbar and
+  // list rows from the design-system .atlas-skel shapes.
+  function skeleton({ title = '', sub = '', rows = 6 } = {}) {
+    const head = `<header class="page-head"><div class="page-head__text"><h1 class="page-head__title">${escapeHtml(title)}</h1>${sub ? `<p class="page-head__sub">${escapeHtml(sub)}</p>` : '<p class="page-head__sub"><span class="atlas-skel atlas-skel--text atlas-skel-page__sub"></span></p>'}</div></header>`;
+    const list = Array.from({ length: Math.max(1, Number(rows) || 6) }, () => '<span class="atlas-skel atlas-skel--row"></span>').join('');
+    return `<div class="atlas-skel-page" data-shell-skeleton>${head}<div class="atlas-skel-page__toolbar" aria-hidden="true"><span class="atlas-skel atlas-skel--text"></span></div><div class="atlas-skel-page__list atlas-card" aria-hidden="true">${list}</div><p class="sr-only" role="status">Loading ${escapeHtml(title || 'the page')}</p></div>`;
+  }
+
   function dataLoaded(detail = {}) {
     dataLoadedAt = Date.now();
+    // A view that opened before the data arrived now renders for real, before
+    // modules react to data:loaded.
+    if (waitingForData && waitingForData === current) {
+      show(current, currentParams, { source: 'data', history: false });
+    }
     emit('data:loaded', { at: dataLoadedAt, ...detail });
     emit('notify:changed', { source: 'data' });
   }
@@ -1181,6 +1276,7 @@
     parseRoute,
     href,
     startRouting,
+    isKnownRoute,
     // Home
     home: {
       contribute: contributeHome,
@@ -1239,6 +1335,7 @@
     },
     // page markup (spec §4.5, §6.1)
     pageHead,
+    skeleton,
     escape: escapeHtml,
     // design-system helpers (toast §6.25, menu §6.19)
     toast: showToast,
