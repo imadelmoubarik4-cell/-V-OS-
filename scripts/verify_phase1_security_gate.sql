@@ -132,7 +132,10 @@ with public_tables as (
     ('public.atlas_apply_par_levels(jsonb,text)', 'private.apply_par_levels(jsonb,text)'),
     -- S90: idempotent waste / delivery-without-an-order adjustment.
     ('public.adjust_inventory_v2(text,uuid,numeric,text,numeric,uuid,text)',
-     'private.adjust_inventory_request(text,uuid,numeric,text,numeric,uuid,text)')
+     'private.adjust_inventory_request(text,uuid,numeric,text,numeric,uuid,text)'),
+    -- S90g: item-master publication (atlas-item-master, manager token).
+    ('public.atlas_apply_item_master_update(uuid,jsonb,uuid[],jsonb,text)',
+     'private.apply_item_master_update(uuid,jsonb,uuid[],jsonb,text)')
   ) as v(wrapper, impl)
 ), reviewed_browser_rpc_status as (
   select r.oid, r.wrapper,

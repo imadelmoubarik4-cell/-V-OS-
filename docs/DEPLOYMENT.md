@@ -39,9 +39,17 @@ Apply each file explicitly, in the order given by the release's rollout plan:
 
 After step 4, re-run the smoke test for adding and editing an item.
 
-`scripts/rollout_s87_s90.sh` runs this order: `check` (read-only), `migrations` (batch A, 28 files), `functions`, then `revokes` only with `WEB_DEPLOYED_AND_SMOKE_TESTED=yes`. It needs `SUPABASE_DB_URL` and, for functions, `SUPABASE_ACCESS_TOKEN`. Each file is applied and recorded in the ledger in one transaction, matched by name, and a re-run skips what is already applied.
+`scripts/rollout_s87_s90.sh` runs this order: `check` (read-only), `migrations` (batch A, 29 files), `functions`, then `revokes` only with `WEB_DEPLOYED_AND_SMOKE_TESTED=yes`. It needs `SUPABASE_DB_URL` and, for functions, `SUPABASE_ACCESS_TOKEN`. Each file is applied and recorded in the ledger in one transaction, matched by name, and a re-run skips what is already applied.
 
 If the Supabase GitHub integration is set to deploy migrations to production when `main` changes, turn that off before merging this release. Otherwise the merge would apply every file in filename order: the revokes would run before the web deploy, and `20260924170000` would be replayed (production recorded it as `20260924150124`).
+
+## S90g: item-master publication behind a private definer
+
+`20260930090000_s90g_item_master_update_definer.sql` is part of batch A and must be applied before the revokes. On production, `public.atlas_apply_item_master_update` is a SECURITY INVOKER function that `authenticated` may execute: production applied the Phase 1 grant reset before this function existed, while the repository history resets grants after it. `atlas-item-master` calls it with the signed-in manager's token, so after `20260928095000` revokes UPDATE on `inventory_items`, publishing would fail with "permission denied".
+
+The migration keeps the signature and messages. It moves the body into `private.apply_item_master_update` (SECURITY DEFINER, not exposed by the API) behind an invoker wrapper with the manager check. The security gate lists it with the other reviewed browser RPCs, and `scripts/verify_s90g_item_master_definer_preview.sql` proves that a manager can publish after the revokes, a bartender gets 42501, and anon has no access.
+
+Temporary `pg_net`: an earlier rollout attempt enabled `pg_net` (it installed in `public`). Nothing uses it. Remove it once its queue is empty: `select count(*) from net.http_request_queue;` must return 0, then run `drop extension if exists pg_net;`.
 
 ## S90 workflow integrity rollout
 
