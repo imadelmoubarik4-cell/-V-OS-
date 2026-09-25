@@ -212,6 +212,22 @@ function branchCredentials() {
   return { branchUrl, privilegedKey };
 }
 
+// S89 (review P2-9): database text reaches the browser only when it is an
+// Atlas-authored message raised by our SQL, without schema detail; anything
+// else becomes the fixed fallback and the SQLSTATE is logged instead (same
+// rule as atlas-operations-checkpoint-a).
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed as { code?: unknown; message?: unknown };
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
+}
+
 async function branchRpc(name: string, payload: Record<string, unknown> = {}): Promise<any> {
   const { branchUrl, privilegedKey } = branchCredentials();
   const response = await fetch(`${branchUrl}/rest/v1/rpc/${name}`, {
@@ -229,11 +245,8 @@ async function branchRpc(name: string, payload: Record<string, unknown> = {}): P
   let parsed: any = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : "The private Knowledge request failed.";
+    const message = safeDbMessage(parsed, "The private Knowledge request failed.");
+    if (message === "The private Knowledge request failed.") console.warn("Knowledge RPC failed", name, response.status, parsed && typeof parsed === "object" ? String(parsed.code ?? "-") : "-");
     throw new ApiError(response.status >= 500 ? 500 : 400, message);
   }
   return parsed;
@@ -252,9 +265,9 @@ async function productionJson(context: AtlasContext, url: URL): Promise<any> {
   let parsed: any = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : "Connected Atlas training data could not be read.";
+    // Production PostgREST text is never shown; the status is enough.
+    const message = "Connected Atlas training data could not be read.";
+    console.warn("Knowledge production read failed", response.status, parsed && typeof parsed === "object" ? String(parsed.code ?? "-") : "-");
     throw new ApiError(response.status === 401 ? 401 : response.status === 403 ? 403 : 400, message);
   }
   return parsed;

@@ -35,8 +35,8 @@
       "files": [
         {
           "path": "functions/atlas-knowledge/index.ts",
-          "source_sha256": "2914ef901cb2968b683ccf979b5dfe765be914f7dbf0a37fe80292d9dbe90057",
-          "candidate_sha256": "1a37f2998979f9e148b64811a5a7891c96aa72ab6857f09d410f1419f3a13ecb"
+          "source_sha256": "c92f276b7c9635aaaaaaf79eef1cc828700c44ab72806d55ff24bea856c89770",
+          "candidate_sha256": "7ccaecadd687366be9ba8d90b8803a639229bbf588785e9d2a438a0582227206"
         },
         {
           "path": "functions/_shared/auth.mjs",
@@ -174,8 +174,8 @@
       "files": [
         {
           "path": "functions/atlas-shifts/index.ts",
-          "source_sha256": "fec4f8012ecd4a8b98eb111389b5ca2a112d573511f00eb94a2926149bb25050",
-          "candidate_sha256": "cda737f3ec47f2783494580e8f5c304442ca5aa50a3b8e186b5de0f71a143756"
+          "source_sha256": "acd12aa862da1fdb338c75b6bde3138735db13a3dec30f2b32b5defd0ff9f6f2",
+          "candidate_sha256": "b8cc46379f5d08b0112050cb8aa39d26f7f84e169394762119e82f9e125a3e52"
         },
         {
           "path": "functions/_shared/auth.mjs",
@@ -259,8 +259,8 @@
       "files": [
         {
           "path": "functions/atlas-team-messages/index.ts",
-          "source_sha256": "573aaec359360c58a20a7e5e4287e5d1e22032d351828d9d2c188be7caec5087",
-          "candidate_sha256": "d7d2b228c4c9162de2908e349245bf2ff2e18eee49e05a70b1c7a212092c8343"
+          "source_sha256": "038b4295c8132d49e60828e1a78dc47346c6099402516ec9e5803c9eecd08850",
+          "candidate_sha256": "86a048dd8b80b2f2a29890fd59e001bdc22de4c782da67560548ac09b7dd3cfc"
         },
         {
           "path": "functions/_shared/auth.mjs",

@@ -394,6 +394,7 @@
 <script src="assets/js/rehearsal-boundary.js"></script>
 <script src="assets/js/atlas-stock-truth.js?v=20260924-s87"></script>
 <script src="assets/js/atlas-venue-clock.js?v=20260926-s88"></script>
+<script src="assets/js/atlas-api.js?v=20260927-s89"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -633,6 +634,18 @@
   }
   window.atlasSignOut = signOut;
 
+  // AtlasApi (atlas-api.js) reports an expired session once per burst; offer
+  // sign-in instead of leaving a page of failed requests.
+  let authPromptShown = false;
+  window.addEventListener('atlas:auth-required', () => {
+    if (authPromptShown || !currentUser) return;
+    authPromptShown = true;
+    window.AtlasShell?.toast?.('Your session has ended. Sign in again to keep working.', {
+      action: { label: 'Sign in', onClick: () => signOut() }
+    });
+    setTimeout(() => { authPromptShown = false; }, 30000);
+  });
+
   async function loadActiveProfile(session) {
     const { data, error } = await sb
       .from('profiles')
@@ -653,19 +666,16 @@
   async function onSignedIn(session) {
     currentUser = session.user;
     const profile = await loadActiveProfile(session);
-    const accountName = currentUser.user_metadata?.full_name?.trim()
-      || currentUser.user_metadata?.name?.trim()
-      || currentUser.email.split('@')[0];
-    const displayName = profile.display_name?.trim() || accountName;
-    const greetingName = displayName.includes(' ')
-      ? displayName.split(/\s+/)[0]
-      : (/^imad/i.test(displayName) ? 'Imad' : displayName.replace(/[._-]+/g, ' ').split(/\s+/)[0]);
-    userEmailEl.textContent = currentUser.email;
+    // S87 identity rule: the profile display name (AtlasIdentity, atlas-api.js),
+    // otherwise "Team member". An email address is never shown or turned into
+    // a name; without a display name the greeting has no name.
+    const identity = window.AtlasIdentity;
+    const displayName = identity.label(profile);
+    userEmailEl.textContent = '';
     document.getElementById('profile-name').textContent = displayName;
-    window.atlasGreetingName = greetingName;
-    const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'A';
-    document.getElementById('user-avatar').textContent = initials;
-    window.AtlasChrome?.setAccount?.({ id: profile.id, name: displayName, email: currentUser.email, role: profile.role });
+    window.atlasGreetingName = identity.firstName(profile);
+    document.getElementById('user-avatar').textContent = identity.initials(identity.safeName(profile.display_name));
+    window.AtlasChrome?.setAccount?.({ id: profile.id, name: displayName, email: '', role: profile.role });
     loginScreen.style.display = 'none';
     appScreen.style.display = 'block';
     const preferences = cachedPreferences(currentUser.id);
