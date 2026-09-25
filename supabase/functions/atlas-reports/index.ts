@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
 import {
   MOVEMENT_PAGE_SIZE,
   MOVEMENT_ROW_LIMIT,
@@ -10,10 +11,6 @@ import {
   sanitizeSnapshotRecipes,
 } from "../_shared/stock-provenance.mjs";
 
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -62,14 +59,19 @@ type ReportSources = {
   profiles: AtlasProfile[];
   tasks: any[];
   progress: any[];
+  // "<table>.<column>" for optional source columns the production schema lacks.
+  missingColumns: string[];
 };
 
 class ApiError extends Error {
   status: number;
+  // Server-side diagnostic only (logged, never sent to the browser).
+  detail: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, detail = "") {
     super(message);
     this.status = status;
+    this.detail = detail;
   }
 }
 
@@ -85,17 +87,8 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
 function profileLabel(profile: Partial<AtlasProfile> | null | undefined): string {
-  return profile?.display_name?.trim()
-    || profile?.email?.trim()
-    || "Atlas team member";
+  return actorLabel(profile);
 }
 
 function isManager(context: AtlasContext): boolean {
@@ -127,33 +120,21 @@ function policyPayload(context: AtlasContext, clock: VenueClock) {
   };
 }
 
+// The production Auth/REST project and its publishable key come only from the
+// function environment (_shared/auth.mjs authConfig); unconfigured fails closed.
+function productionAuthUrl(): string {
+  return authConfig(Deno.env).projectUrl;
+}
+
+function productionPublishableKey(): string {
+  return authConfig(Deno.env).publishableKey;
+}
+
 async function requireActiveProfile(request: Request): Promise<AtlasContext> {
-  const token = bearerToken(request);
-  const headers = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
-  profileUrl.searchParams.set("id", `eq.${user.id}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active");
-  profileUrl.searchParams.set("limit", "1");
-
-  const profileResponse = await fetch(profileUrl, { headers });
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas staff profile could not be verified.");
-  const profiles = await profileResponse.json() as AtlasProfile[];
-  const profile = profiles[0];
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive. Reports access has been removed.");
-  if (!PROFILE_ROLES.has(profile.role)) throw new ApiError(403, "This Atlas profile cannot access Reports.");
-
-  return { token, user: { id: user.id, email: user.email }, profile };
+  const actor = await resolveActor(request, Deno.env, fetch, {
+    inactiveMessage: "This Atlas profile is inactive. Reports access has been removed.",
+  });
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
 }
 
 function branchCredentials() {
@@ -225,12 +206,12 @@ async function branchRpc(name: string, payload: Record<string, unknown>): Promis
   let parsed: any = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
+    // Fixed browser text; the database message is logged server-side only.
+    const detail = parsed && typeof parsed === "object" && "message" in parsed
       ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : "The private Reports request failed.";
-    throw new ApiError(response.status >= 500 ? 500 : 400, message);
+      : typeof parsed === "string" ? parsed : "";
+    console.error("Reports private RPC failed", name, response.status, detail.slice(0, 300));
+    throw new ApiError(response.status >= 500 ? 500 : 400, "The private Reports request failed.", detail);
   }
   return parsed;
 }
@@ -238,7 +219,7 @@ async function branchRpc(name: string, payload: Record<string, unknown>): Promis
 async function productionJson(context: AtlasContext, url: URL): Promise<any> {
   const response = await fetch(url, {
     headers: {
-      apikey: AUTH_PUBLISHABLE_KEY,
+      apikey: productionPublishableKey(),
       authorization: `Bearer ${context.token}`,
       accept: "application/json",
       "cache-control": "no-store",
@@ -249,29 +230,79 @@ async function productionJson(context: AtlasContext, url: URL): Promise<any> {
   let parsed: any = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : "Connected Atlas report data could not be read.";
-    throw new ApiError(response.status === 401 ? 401 : response.status === 403 ? 403 : 400, message);
+    // The browser gets a fixed message; the PostgREST text stays server-side.
+    const detail = parsed && typeof parsed === "object"
+      ? String(parsed.message || parsed.details || "")
+      : typeof parsed === "string" ? parsed : "";
+    throw new ApiError(
+      response.status === 401 ? 401 : response.status === 403 ? 403 : 400,
+      "Connected Atlas report data could not be read.",
+      detail,
+    );
   }
   return parsed;
+}
+
+// Explicit column handling for production reads (replaces the former global
+// fetch override). A column listed here may be absent while a production
+// migration is pending: the read is retried without it and the column is
+// reported as missing data (workspace.missing_columns and the Inventory source
+// note), never dropped silently. Any other missing column fails the request.
+const OPTIONAL_PRODUCTION_COLUMNS: Record<string, readonly string[]> = {
+  inventory_items: ["brand", "subcategory", "needs_review"],
+};
+
+function missingColumnName(message: string): string | null {
+  const patterns = [
+    /Could not find the ['"]([^'"]+)['"] column/i,
+    /column [^\s.]+\.([^\s]+) does not exist/i,
+    /column ['"]?([^'"\s]+)['"]? does not exist/i,
+  ];
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match?.[1]) return match[1].replace(/["']/g, "").trim();
+  }
+  return null;
 }
 
 async function productionRows(
   context: AtlasContext,
   table: string,
   select: string,
-  options: { order?: string; filters?: Record<string, string>; limit?: number } = {},
+  options: { order?: string; filters?: Record<string, string>; limit?: number; missing?: string[] } = {},
 ): Promise<any[]> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/${table}`);
-  url.searchParams.set("select", select);
-  if (options.order) url.searchParams.set("order", options.order);
-  url.searchParams.set("limit", String(Math.min(5000, Math.max(1, options.limit ?? 5000))));
-  for (const [key, value] of Object.entries(options.filters || {})) {
-    url.searchParams.set(key, value);
+  const optional = new Set(OPTIONAL_PRODUCTION_COLUMNS[table] || []);
+  let columns = select.split(",").map((value) => value.trim()).filter(Boolean);
+  for (let attempt = 0; attempt <= optional.size; attempt += 1) {
+    const url = new URL(`${productionAuthUrl()}/rest/v1/${table}`);
+    url.searchParams.set("select", columns.join(","));
+    if (options.order) url.searchParams.set("order", options.order);
+    url.searchParams.set("limit", String(Math.min(5000, Math.max(1, options.limit ?? 5000))));
+    for (const [key, value] of Object.entries(options.filters || {})) {
+      url.searchParams.set(key, value);
+    }
+    try {
+      const rows = await productionJson(context, url);
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      const column = error instanceof ApiError && error.status === 400 ? missingColumnName(error.detail) : null;
+      if (!column) {
+        if (error instanceof ApiError && error.detail) console.error("Reports production read failed", table, error.detail);
+        throw error;
+      }
+      if (!optional.has(column) || !columns.includes(column)) {
+        console.error("Reports production read is missing a required column", `${table}.${column}`);
+        throw new ApiError(
+          502,
+          `Reports source data is missing ${table}.${column}. Ask an administrator to apply the pending database migration.`,
+        );
+      }
+      columns = columns.filter((value) => value !== column);
+      options.missing?.push(`${table}.${column}`);
+      console.warn("Reports read continues without an optional column", `${table}.${column}`);
+    }
   }
-  const rows = await productionJson(context, url);
-  return Array.isArray(rows) ? rows : [];
+  throw new ApiError(502, "Connected Atlas report data could not be read.");
 }
 
 // The newest MOVEMENT_ROW_LIMIT movements (the same cap as the browser and
@@ -310,7 +341,7 @@ async function onboardingTasks(context: AtlasContext): Promise<any[]> {
 }
 
 async function onboardingProgress(context: AtlasContext): Promise<any[]> {
-  const filters = isManager(context) ? {} : { user_id: `eq.${context.user.id}` };
+  const filters: Record<string, string> = isManager(context) ? {} : { user_id: `eq.${context.user.id}` };
   return productionRows(
     context,
     "onboarding_progress",
@@ -320,6 +351,7 @@ async function onboardingProgress(context: AtlasContext): Promise<any[]> {
 }
 
 async function reportSources(context: AtlasContext): Promise<ReportSources> {
+  const missingColumns: string[] = [];
   const [inventory, recipes, recipeIngredients, suppliers, movements, profiles, tasks, progress] = await Promise.all([
     productionRows(
       context,
@@ -327,7 +359,7 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
       "id,name,category,quantity,unit,par_level,updated_at,source_updated_at,source_type,source_confidence,source_confirmed_at,source_confirmed_quantity,supplier_id,supplier,cost_price,sku,barcode,bin_location,size_ml,active,sell_price,package_size,brand,subcategory,needs_review",
       // Inactive rows are read so recipes can recognise references such as Ice
       // and Water; live stock metrics still include active rows only.
-      { order: "name.asc" },
+      { order: "name.asc", missing: missingColumns },
     ),
     productionRows(
       context,
@@ -357,7 +389,7 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
   ]);
 
   if (isManager(context)) {
-    return { inventory, recipes, recipeIngredients, suppliers, movements, profiles, tasks, progress };
+    return { inventory, recipes, recipeIngredients, suppliers, movements, profiles, tasks, progress, missingColumns };
   }
 
   // Staff receive current operational quantities and recipe availability, but
@@ -389,6 +421,7 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
     profiles: profiles.filter((profile) => profile.id === context.user.id),
     tasks,
     progress,
+    missingColumns,
   };
 }
 
@@ -663,6 +696,7 @@ async function snapshot(context: AtlasContext, url: URL) {
     issues: snapshotInventory.issues,
     degraded,
   });
+  reportMissingColumns(workspace, sources.missingColumns);
 
   return {
     workspace,
@@ -675,6 +709,22 @@ async function snapshot(context: AtlasContext, url: URL) {
       comparison_options: ["previous_period", "previous_week", "previous_month", "previous_year", "custom", "none"],
     },
   };
+}
+
+// Optional source columns the production schema did not return are missing
+// data: listed on the workspace and on the Inventory source, which reads partial.
+function reportMissingColumns(workspace: any, missing: string[]): void {
+  if (!workspace || typeof workspace !== "object") return;
+  workspace.missing_columns = [...new Set(missing)];
+  if (!missing.length) return;
+  const inventorySource = Array.isArray(workspace.data_sources)
+    ? workspace.data_sources.find((source: any) => source?.key === "inventory")
+    : null;
+  if (inventorySource) {
+    const names = [...new Set(missing.map((entry) => entry.split(".").pop()))].join(", ");
+    inventorySource.status = "partial";
+    inventorySource.note = `${inventorySource.note ? `${inventorySource.note} ` : ""}Missing from the source: ${names}.`;
+  }
 }
 
 function safeNumber(value: unknown): number | null {
@@ -820,7 +870,7 @@ Deno.serve(async (request: Request) => {
 
     throw new ApiError(404, "Unknown Reports action.");
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     console.error("Reports API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The Reports service is temporarily unavailable." }, 500);
   }

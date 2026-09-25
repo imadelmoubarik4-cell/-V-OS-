@@ -1,9 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
+import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -58,17 +54,8 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
 function profileLabel(profile: Partial<AtlasProfile> | null | undefined): string {
-  return profile?.display_name?.trim()
-    || profile?.email?.trim()
-    || "Atlas team member";
+  return actorLabel(profile);
 }
 
 function isManager(context: AtlasContext): boolean {
@@ -89,43 +76,22 @@ function staffPayload(context: AtlasContext) {
   };
 }
 
+// The production Auth/REST project and its publishable key come only from the
+// function environment (_shared/auth.mjs authConfig); unconfigured fails closed.
+function productionAuthUrl(): string {
+  return authConfig(Deno.env).projectUrl;
+}
+
+function productionPublishableKey(): string {
+  return authConfig(Deno.env).publishableKey;
+}
+
 async function requireActiveProfile(request: Request): Promise<AtlasContext> {
-  const token = bearerToken(request);
-  const headers = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
-  profileUrl.searchParams.set("id", `eq.${user.id}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active,created_at,updated_at");
-  profileUrl.searchParams.set("limit", "1");
-
-  const profileResponse = await fetch(profileUrl, { headers });
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas staff profile could not be verified.");
-
-  const profiles = await profileResponse.json() as AtlasProfile[];
-  const profile = profiles[0];
-  if (!profile?.active) {
-    throw new ApiError(403, "This Atlas profile is inactive. Team access has been removed.");
-  }
-  if (!PROFILE_ROLES.has(profile.role)) {
-    throw new ApiError(403, "This Atlas profile cannot access Team Profiles.");
-  }
-
-  return {
-    token,
-    user: { id: user.id, email: user.email },
-    profile,
-  };
+  const actor = await resolveActor(request, Deno.env, fetch, {
+    inactiveMessage: "This Atlas profile is inactive. Team access has been removed.",
+    profileColumns: ["created_at", "updated_at"],
+  });
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
 }
 
 function requireManager(context: AtlasContext): void {
@@ -272,7 +238,7 @@ async function productionJson(
   const response = await fetch(url, {
     ...init,
     headers: {
-      apikey: AUTH_PUBLISHABLE_KEY,
+      apikey: productionPublishableKey(),
       authorization: `Bearer ${context.token}`,
       accept: "application/json",
       "cache-control": "no-store",
@@ -301,7 +267,7 @@ async function productionJson(
 }
 
 async function profiles(context: AtlasContext): Promise<AtlasProfile[]> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/profiles`);
   url.searchParams.set("select", "id,email,display_name,role,active,created_at,updated_at");
   url.searchParams.set("order", "active.desc,display_name.asc.nullslast,email.asc");
   url.searchParams.set("limit", "500");
@@ -310,7 +276,7 @@ async function profiles(context: AtlasContext): Promise<AtlasProfile[]> {
 }
 
 async function onboardingTasks(context: AtlasContext): Promise<any[]> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/onboarding_tasks`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/onboarding_tasks`);
   url.searchParams.set("select", "id,title,description,category,sort_order,required,active");
   url.searchParams.set("active", "eq.true");
   url.searchParams.set("order", "sort_order.asc,title.asc");
@@ -320,7 +286,7 @@ async function onboardingTasks(context: AtlasContext): Promise<any[]> {
 }
 
 async function onboardingProgress(context: AtlasContext): Promise<any[]> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/onboarding_progress`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/onboarding_progress`);
   url.searchParams.set("select", "id,task_id,user_id,completed_at,completed_by,note");
   if (!isManager(context)) url.searchParams.set("user_id", `eq.${context.user.id}`);
   url.searchParams.set("limit", "5000");
@@ -329,7 +295,7 @@ async function onboardingProgress(context: AtlasContext): Promise<any[]> {
 }
 
 async function profileById(context: AtlasContext, profileId: string): Promise<AtlasProfile | null> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/profiles`);
   url.searchParams.set("select", "id,email,display_name,role,active,created_at,updated_at");
   url.searchParams.set("id", `eq.${profileId}`);
   url.searchParams.set("limit", "1");
@@ -412,7 +378,7 @@ async function updateProfileAccess(context: AtlasContext, body: Record<string, u
     }
   }
 
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/profiles`);
   url.searchParams.set("id", `eq.${profileId}`);
   url.searchParams.set("select", "id,email,display_name,role,active,created_at,updated_at");
   const rows = await productionJson(context, url, {
@@ -456,7 +422,7 @@ async function updateOnboarding(context: AtlasContext, body: Record<string, unkn
 
   let result: unknown;
   if (completed) {
-    const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/onboarding_progress`);
+    const url = new URL(`${productionAuthUrl()}/rest/v1/onboarding_progress`);
     url.searchParams.set("on_conflict", "task_id,user_id");
     result = await productionJson(context, url, {
       method: "POST",
@@ -470,7 +436,7 @@ async function updateOnboarding(context: AtlasContext, body: Record<string, unkn
       }),
     });
   } else {
-    const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/onboarding_progress`);
+    const url = new URL(`${productionAuthUrl()}/rest/v1/onboarding_progress`);
     url.searchParams.set("task_id", `eq.${taskId}`);
     url.searchParams.set("user_id", `eq.${profileId}`);
     result = await productionJson(context, url, {
@@ -496,7 +462,7 @@ async function inviteAccount(context: AtlasContext, body: Record<string, unknown
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!serviceRoleKey) throw new ApiError(500, "Account invitations are temporarily unavailable.");
 
-  const inviteUrl = new URL(`${AUTH_PROJECT_URL}/auth/v1/invite`);
+  const inviteUrl = new URL(`${productionAuthUrl()}/auth/v1/invite`);
   inviteUrl.searchParams.set("redirect_to", "https://os-vabar.netlify.app");
   const response = await fetch(inviteUrl, {
     method: "POST",
@@ -534,7 +500,7 @@ async function createLoginMember(context: AtlasContext, body: Record<string, unk
   const role = requiredEnum(body.login_role, "Atlas access", new Set(["bartender", "viewer"]));
   const project = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!key || project !== AUTH_PROJECT_URL) throw new ApiError(503, "Account setup requires the same Atlas authentication project.");
+  if (!key || project !== productionAuthUrl()) throw new ApiError(503, "Account setup requires the same Atlas authentication project.");
   const admin = createClient(project!, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: existing, error: lookupError } = await admin.from("profiles").select("id").ilike("email", email.replace(/[%_]/g, "\\$&"));
   if (lookupError) throw new ApiError(503, "Could not check existing accounts.");
@@ -566,7 +532,7 @@ async function renewMemberSetup(context: AtlasContext, body: Record<string, unkn
   const id = requireUuid(body.profile_id, "Team member");
   const project = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!key || project !== AUTH_PROJECT_URL) throw new ApiError(503, "Account setup is unavailable.");
+  if (!key || project !== productionAuthUrl()) throw new ApiError(503, "Account setup is unavailable.");
   const admin = createClient(project!, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await admin.auth.admin.getUserById(id);
   if (error || !data.user?.app_metadata?.atlas_invited_by || data.user.email_confirmed_at) {
@@ -681,7 +647,7 @@ Deno.serve(async (request: Request) => {
     const refreshed = await snapshot(context);
     return jsonResponse({ result, ...refreshed });
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     console.error("Team Profiles API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The Team Profiles service is temporarily unavailable." }, 500);
   }

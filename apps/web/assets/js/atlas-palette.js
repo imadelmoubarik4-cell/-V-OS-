@@ -333,15 +333,12 @@
     if (!base) { state.ai = 'off'; return Promise.resolve('off'); }
     state.aiCheck = (async () => {
       try {
-        const session = await window.atlasSupabase?.auth?.getSession?.();
-        const token = session?.data?.session?.access_token;
-        if (!token) return 'off';
-        const url = new URL(base);
-        url.searchParams.set('action', 'settings');
-        const response = await fetch(url, { cache: 'no-store', headers: { authorization: `Bearer ${token}`, accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
-        const body = response.ok ? await response.json().catch(() => null) : null;
+        const body = await window.AtlasApi.request(base, { params: { action: 'settings' }, timeoutMs: 8000 });
         state.ai = body?.configured === true && body?.enabled !== false ? 'on' : 'off';
-      } catch {
+      } catch (error) {
+        // Not configured, unreachable or failing: the offline fallback answers.
+        // Without a session yet, answer offline now and ask again next time.
+        if (error?.kind === 'auth') return 'off';
         state.ai = 'off';
       }
       return state.ai;

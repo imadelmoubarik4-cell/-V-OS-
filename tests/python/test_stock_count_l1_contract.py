@@ -85,7 +85,8 @@ class CheckpointL1ContractTests(unittest.TestCase):
 
     def test_gateway_revalidates_profile_and_manager_role(self):
         self.assertIn("requireActiveProfile", self.edge)
-        self.assertIn("profile?.active", self.edge)
+        self.assertIn('from "../_shared/auth.mjs"', self.edge)
+        self.assertIn("await resolveActor(request, Deno.env, fetch, { timeoutMs: 10_000 })", self.edge)
         self.assertIn("requireManager(context)", self.edge)
         self.assertIn('case "prepare-publication"', self.edge)
         self.assertIn('case "publish"', self.edge)

@@ -40,12 +40,12 @@ test('the Brain page and the Checkpoint A/K layers are retired and unreferenced'
   // the one intelligence producer (Atlas AI background signals, architecture
   // §12a) once per manager session; it no longer triggers the Checkpoint K
   // refresh, which wrote a second set of recommendations for the same signals.
-  for (const name of ['PHASE3_BRAIN_API', 'PHASE3_INTELLIGENCE_API', 'SPRINT4_BRIEFING_API', 'OPERATIONS_CHECKPOINT_A_API']) {
+  for (const name of ['PHASE3_BRAIN_API', 'PHASE3_INTELLIGENCE_API', 'OPERATIONS_CHECKPOINT_A_API']) {
     assert.match(config, new RegExp(`${name}: "https://dnefgcmjcgxlynycxkts\\.supabase\\.co/functions/v1/`));
   }
   assert.doesNotMatch(home, /PHASE3_INTELLIGENCE_API/);
   assert.match(home, /ATLAS_AI_API/);
-  assert.match(home, /searchParams\.set\('action', 'refresh-signals'\)/);
+  assert.match(home, /window\.AtlasApi\.request\(base, \{ method: 'POST', params: \{ action: 'refresh-signals' \}, body: \{\} \}\)/);
   assert.match(home, /if \(state\.intelligenceRequested \|\| !isManager\(\)\) return;/);
   // Team Messages links to Brain recommendations open Atlas AI › Decisions.
   assert.match(home, /links\?\.register\?\.\('brain_recommendation', \(\) => \{ atlas\.navigate\('#ai\/decisions'\)/);

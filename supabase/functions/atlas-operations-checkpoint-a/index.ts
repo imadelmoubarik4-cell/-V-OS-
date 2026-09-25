@@ -1,9 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
+import { AuthError, actorLabel, resolveActor } from "../_shared/auth.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -86,54 +82,13 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
-function actorLabel(context: AtlasContext): string {
-  return context.profile.display_name?.trim()
-    || context.profile.email?.trim()
-    || context.user.email?.trim()
-    || "Atlas staff";
+function contextLabel(context: AtlasContext): string {
+  return actorLabel(context.profile);
 }
 
 async function requireActiveProfile(request: Request): Promise<AtlasContext> {
-  const token = bearerToken(request);
-  const authHeaders = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, {
-    headers: authHeaders,
-  });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileResponse = await fetch(
-    `${AUTH_PROJECT_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=id,email,display_name,role,active`,
-    { headers: authHeaders },
-  );
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas role could not be verified.");
-
-  const profiles = await profileResponse.json() as AtlasContext["profile"][];
-  const profile = profiles[0];
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive.");
-  if (!["admin", "manager", "bartender", "viewer"].includes(profile.role)) {
-    throw new ApiError(403, "This Atlas profile cannot access operational routines.");
-  }
-
-  return {
-    user: { id: user.id, email: user.email },
-    profile,
-  };
+  const actor = await resolveActor(request, Deno.env, fetch);
+  return { user: { id: actor.userId }, profile: actor.profile as AtlasContext["profile"] };
 }
 
 function requireWriter(context: AtlasContext): void {
@@ -151,7 +106,7 @@ function requireManager(context: AtlasContext): void {
 function staffPayload(context: AtlasContext) {
   return {
     id: context.user.id,
-    label: actorLabel(context),
+    label: contextLabel(context),
     role: context.profile.role,
     can_write: WRITE_ROLES.has(context.profile.role),
     can_manage: MANAGER_ROLES.has(context.profile.role),
@@ -384,7 +339,7 @@ Deno.serve(async (request: Request) => {
 
     if (request.method !== "POST") throw new ApiError(405, "Method not allowed.");
     const body = await readJson(request);
-    const actor = actorLabel(context);
+    const actor = contextLabel(context);
     let result: unknown;
 
     switch (action) {
@@ -492,6 +447,7 @@ Deno.serve(async (request: Request) => {
       },
     });
   } catch (error) {
+    if (error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     if (error instanceof ApiError) {
       return jsonResponse(error.code ? { error: error.message, code: error.code } : { error: error.message }, error.status);
     }

@@ -353,12 +353,12 @@
     const base = String(window.VABAR_CONFIG?.ATLAS_AI_API || '').trim();
     if (!base) return;
     state.intelligenceRequested = true;
-    accessToken().then((token) => {
-      if (!token) { state.intelligenceRequested = false; return; }
-      const url = new URL(base);
-      url.searchParams.set('action', 'refresh-signals');
-      return fetch(url, { method: 'POST', cache: 'no-store', headers: { authorization: `Bearer ${token}`, accept: 'application/json', 'content-type': 'application/json' }, body: '{}' });
-    }).catch(() => { /* the ledger keeps its last refresh */ });
+    window.AtlasApi.request(base, { method: 'POST', params: { action: 'refresh-signals' }, body: {} })
+      .catch((error) => {
+        // No session yet: try again on the next Home visit. Otherwise the
+        // ledger keeps its last refresh.
+        if (error?.kind === 'auth') state.intelligenceRequested = false;
+      });
   }
 
   // ---------- messages (notifications feed) ----------

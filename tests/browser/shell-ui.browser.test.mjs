@@ -303,7 +303,8 @@ test('account menu: keyboard navigation, profile link, Escape returns focus, sig
       focused: document.activeElement?.textContent.trim(),
       expanded: document.getElementById('atlas-account-btn').getAttribute('aria-expanded')
     }));
-    assert.equal(menu.head, 'IE Imad El Moubarik owner@example.test Administrator');
+    // S87: the account menu shows the display name, never the email address.
+    assert.equal(menu.head, 'IE Imad El Moubarik Administrator');
     assert.deepEqual(menu.items, ['Your profile', 'Preferences', 'Notification settings', 'Keyboard shortcuts', 'Sign out']);
     assert.deepEqual([menu.focused, menu.expanded], ['Your profile', 'true']);
     await page.keyboard.press('ArrowDown');

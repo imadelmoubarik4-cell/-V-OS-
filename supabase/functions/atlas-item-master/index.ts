@@ -11,11 +11,8 @@ import {
 // S89: one product-identity normalisation shared with SQL, the scanner and
 // the import engine (Icelandic letters kept; codes GTIN-validated).
 import { normalizeCode as normalizeProductCode, searchFoldText } from "../_shared/product-identity.mjs";
+import { AuthError, actorLabel, authConfig, requireRole, resolveActor } from "../_shared/auth.mjs";
 
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
 const FUNCTION_VERSION = "0.2.0";
 const MAX_ROWS = 5000;
 const MANAGER_ROLES = new Set(["admin", "manager"]);
@@ -343,13 +340,6 @@ function jsonResponse(value, status = 200) {
   });
 }
 
-function bearerToken(request) {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
 function text(value) {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
 }
@@ -393,49 +383,28 @@ function stableHash(value) {
 }
 
 function labelFor(context) {
-  return text(context.profile.display_name)
-    || text(context.profile.email)
-    || text(context.user.email)
-    || context.user.id;
+  return actorLabel(context.profile);
+}
+
+// The production Auth/REST project and its publishable key come only from the
+// function environment (_shared/auth.mjs authConfig); unconfigured fails closed.
+function productionAuthUrl(): string {
+  return authConfig(Deno.env).projectUrl;
+}
+
+function productionPublishableKey(): string {
+  return authConfig(Deno.env).publishableKey;
 }
 
 async function requireManager(request) {
-  const token = bearerToken(request);
-  const headers = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-  const user = await userResponse.json();
-  if (!user?.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
-  profileUrl.searchParams.set("id", `eq.${user.id}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active");
-  profileUrl.searchParams.set("limit", "1");
-  const profileResponse = await fetch(profileUrl, { headers });
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas staff profile could not be verified.");
-  const profiles = await profileResponse.json();
-  const profile = Array.isArray(profiles) ? profiles[0] : null;
-  if (!profile?.active) throw new ApiError(403, "This Atlas profile is inactive.");
-  if (!MANAGER_ROLES.has(profile.role)) {
-    throw new ApiError(403, "Checkpoint L2 is available only to managers and administrators.");
-  }
-
-  return {
-    token,
-    user: { id: user.id, email: user.email ?? null },
-    profile,
-  };
+  const actor = await resolveActor(request, Deno.env, fetch);
+  requireRole(actor, MANAGER_ROLES, "Checkpoint L2 is available only to managers and administrators.");
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile };
 }
 
 function productionHeaders(context, extra = {}) {
   return {
-    apikey: AUTH_PUBLISHABLE_KEY,
+    apikey: productionPublishableKey(),
     authorization: `Bearer ${context.token}`,
     accept: "application/json",
     "cache-control": "no-store",
@@ -444,7 +413,7 @@ function productionHeaders(context, extra = {}) {
 }
 
 async function productionRows(context, table, select, orderColumn, filters = {}) {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/${table}`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/${table}`);
   url.searchParams.set("select", select);
   if (orderColumn) url.searchParams.set("order", `${orderColumn}.asc.nullslast`);
   url.searchParams.set("limit", String(MAX_ROWS));
@@ -1135,7 +1104,7 @@ async function saveDraft(context, body) {
 }
 
 async function productionRpc(context, name, payload) {
-  const response = await fetch(`${AUTH_PROJECT_URL}/rest/v1/rpc/${name}`, {
+  const response = await fetch(`${productionAuthUrl()}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: productionHeaders(context, {
       "content-type": "application/json",
@@ -1361,6 +1330,7 @@ Deno.serve(async (request) => {
     }
     throw new ApiError(404, "Unknown Checkpoint L2 action.");
   } catch (error) {
+    if (error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     if (error instanceof ApiError) {
       const payload = error.code ? { error: error.message, code: error.code } : { error: error.message };
       if (error.details) payload.duplicate_check = error.details;
