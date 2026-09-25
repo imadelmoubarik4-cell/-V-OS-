@@ -1,8 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
+  MOVEMENT_PAGE_SIZE,
+  MOVEMENT_ROW_LIMIT,
   applyStockTrustToWorkspace,
   buildRecipeReport,
   buildStockReport,
+  formatKr,
   sanitizeSnapshotInventory,
   sanitizeSnapshotRecipes,
 } from "../_shared/stock-provenance.mjs";
@@ -24,7 +27,11 @@ const CORS_HEADERS = {
 const PROFILE_ROLES = new Set(["admin", "manager", "bartender", "viewer"]);
 const MANAGER_ROLES = new Set(["admin", "manager"]);
 const MAX_BODY_BYTES = 64 * 1024;
-const TIMEZONE = "Atlantic/Reykjavik";
+// Fallback only: the reporting zone and business date come from the venue
+// clock (Settings -> venue.timezone, atlas_settings_venue_clock) per request.
+const DEFAULT_TIMEZONE = "Atlantic/Reykjavik";
+
+type VenueClock = { timezone: string; businessDate: string | null };
 
 type AtlasProfile = {
   id: string;
@@ -107,10 +114,10 @@ function staffPayload(context: AtlasContext) {
   };
 }
 
-function policyPayload(context: AtlasContext) {
+function policyPayload(context: AtlasContext, clock: VenueClock) {
   return {
     read_only: true,
-    reporting_timezone: TIMEZONE,
+    reporting_timezone: clock.timezone,
     currency: "ISK",
     sales_integration_connected: false,
     source_data_mutation_enabled: false,
@@ -267,6 +274,23 @@ async function productionRows(
   return Array.isArray(rows) ? rows : [];
 }
 
+// The newest MOVEMENT_ROW_LIMIT movements (the same cap as the browser and
+// Atlas AI), read in MOVEMENT_PAGE_SIZE pages so a PostgREST max-rows setting
+// cannot silently truncate the projection.
+async function productionMovements(context: AtlasContext, select: string): Promise<any[]> {
+  const rows: any[] = [];
+  for (let offset = 0; offset < MOVEMENT_ROW_LIMIT; offset += MOVEMENT_PAGE_SIZE) {
+    const page = await productionRows(context, "inventory_movements", select, {
+      order: "created_at.desc,id.desc",
+      limit: MOVEMENT_PAGE_SIZE,
+      filters: { offset: String(offset) },
+    });
+    rows.push(...page);
+    if (page.length < MOVEMENT_PAGE_SIZE) break;
+  }
+  return rows.slice(0, MOVEMENT_ROW_LIMIT);
+}
+
 async function productionProfiles(context: AtlasContext): Promise<AtlasProfile[]> {
   return await productionRows(
     context,
@@ -323,11 +347,9 @@ async function reportSources(context: AtlasContext): Promise<ReportSources> {
       "id,name,contact_name,email,phone,active,created_at,updated_at",
       { order: "name.asc", filters: { active: "eq.true" } },
     ),
-    productionRows(
+    productionMovements(
       context,
-      "inventory_movements",
       "id,item_id,item_name,movement_type,quantity_change,unit_cost,total_cost,supplier_id,note,created_by,created_at",
-      { order: "created_at.desc" },
     ),
     productionProfiles(context),
     onboardingTasks(context),
@@ -388,15 +410,30 @@ function addDays(date: Date, days: number): Date {
   return next;
 }
 
-function venueDate(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
+// The venue calendar date in `timeZone` (fallback when the clock has no business date).
+function calendarDate(timeZone: string): string {
+  let parts;
+  try {
+    parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  } catch {
+    parts = new Intl.DateTimeFormat("en-CA", { timeZone: DEFAULT_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  }
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+// The venue clock: Settings time zone and business date (a close after
+// midnight still belongs to the previous business day). Falls back to the
+// default zone's calendar date when the clock cannot be read.
+async function venueClock(context: AtlasContext): Promise<VenueClock> {
+  try {
+    const clock = await branchRpc("atlas_settings_venue_clock", { p_actor_role: context.profile.role });
+    const timezone = typeof clock?.timezone === "string" && clock.timezone ? clock.timezone : DEFAULT_TIMEZONE;
+    const businessDate = /^\d{4}-\d{2}-\d{2}$/.test(String(clock?.business_date || "")) ? String(clock.business_date) : null;
+    return { timezone, businessDate };
+  } catch {
+    return { timezone: DEFAULT_TIMEZONE, businessDate: null };
+  }
 }
 
 function startOfWeek(date: Date): Date {
@@ -452,9 +489,9 @@ function requireDateParam(value: string | null, label: string): string {
   return value!;
 }
 
-function dateRangeFromRequest(url: URL): { period: DateRange; preset: string } {
+function dateRangeFromRequest(url: URL, clock: VenueClock): { period: DateRange; preset: string } {
   const preset = url.searchParams.get("preset") || "last_30_days";
-  const today = dateFromIso(venueDate());
+  const today = dateFromIso(clock.businessDate ?? calendarDate(clock.timezone));
   let start = today;
   let end = today;
 
@@ -564,7 +601,8 @@ function filterPayload(url: URL): Record<string, string> {
 }
 
 async function snapshot(context: AtlasContext, url: URL) {
-  const { period, preset } = dateRangeFromRequest(url);
+  const clock = await venueClock(context);
+  const { period, preset } = dateRangeFromRequest(url, clock);
   const comparisonKey = url.searchParams.get("comparison") || "previous_period";
   const comparison = comparisonRange(period, comparisonKey, url);
   const [sources, verifiedBalances] = await Promise.all([
@@ -629,7 +667,7 @@ async function snapshot(context: AtlasContext, url: URL) {
   return {
     workspace,
     staff: staffPayload(context),
-    policy: policyPayload(context),
+    policy: policyPayload(context, clock),
     controls: {
       selected_preset: preset,
       selected_comparison: comparisonKey,
@@ -644,10 +682,9 @@ function safeNumber(value: unknown): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
+// The canonical "3.900 kr" (formatKr, the port of AtlasFormat.money).
 function formatIsk(value: unknown): string {
-  const number = safeNumber(value);
-  if (number === null) return "unavailable";
-  return `${Math.round(number).toLocaleString("en-US")} ISK`;
+  return formatKr(safeNumber(value), "unavailable");
 }
 
 function deterministicReportAnswer(question: string, workspace: any): { answer: string; evidence: any[]; limitations: string[] } {
@@ -699,7 +736,7 @@ function deterministicReportAnswer(question: string, workspace: any): { answer: 
 
   if (/purchase|supplier|spend|order|price/.test(lower)) {
     return {
-      answer: `For ${period}, the connected evidence shows ${formatIsk(purchasing.spend)} in costed inventory movements across ${purchasing.movement_count ?? 0} records. Purchase-order metrics remain unavailable until a PO source is connected.`,
+      answer: `For ${period}, the connected evidence shows ${formatIsk(purchasing.spend)} in costed purchase receipts across ${purchasing.movement_count ?? 0} deliveries${purchasing.uncosted_receipts ? ` (${purchasing.uncosted_receipts} more without a cost)` : ""}. Waste is reported separately. Purchase-order metrics remain unavailable until a PO source is connected.`,
       evidence: [
         { label: "Purchasing spend", value: purchasing.spend ?? 0, unit: "ISK" },
         { label: "Movement count", value: purchasing.movement_count ?? 0 },

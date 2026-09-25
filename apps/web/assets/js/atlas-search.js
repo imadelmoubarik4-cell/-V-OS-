@@ -6,7 +6,7 @@
   //
   // It renders nothing itself. Records come from data other modules have
   // already loaded, and answers reuse the same shared truth those modules show
-  // (AtlasStockTruth.belowPar, AtlasRecipes.recipeStatus,
+  // (AtlasStockTruth.stockStatus, AtlasRecipes.recipeStatus,
   // AtlasOperations.orderSuggestions, the Shifts snapshot). When the source
   // data is not available, the answer says so instead of guessing. Role rules
   // come from AtlasShell.nav (spec §3.3): a hidden destination is never a
@@ -112,7 +112,8 @@
   function stockLine(item) {
     const truth = window.AtlasStockTruth;
     if (!truth?.known(item)) return 'Not counted — no verified stock';
-    const low = truth.belowPar(item) ? ' · below par' : '';
+    const status = truth.stockStatus(item);
+    const low = status === 'out' ? ' · out' : status === 'below_par' ? ' · below par' : '';
     const due = item.stock_recount_due ? ' · recount due' : '';
     return `${formatNumber(item.quantity)} ${item.unit || 'units'}${low}${due}`;
   }
@@ -219,14 +220,20 @@
     if (!list.length) return { text: 'Inventory has not loaded yet, so Atlas cannot say what is low.', tone: 'unknown' };
     const truth = window.AtlasStockTruth;
     const counted = list.filter((item) => truth.known(item));
-    const low = list.filter((item) => truth.belowPar(item))
+    // The canonical status: out items first, then below par (lowest first).
+    const out = list.filter((item) => truth.stockStatus(item) === 'out');
+    const below = list.filter((item) => truth.stockStatus(item) === 'below_par')
       .sort((a, b) => (Number(a.quantity) / Number(a.par_level)) - (Number(b.quantity) / Number(b.par_level)));
+    const low = [...out, ...below];
     const unknown = list.length - counted.length;
     const unknownNote = unknown ? ` ${unknown} ${unknown === 1 ? 'item has' : 'items have'} no verified count, so ${unknown === 1 ? 'it is' : 'they are'} not included.` : '';
     if (!counted.length) return { text: `No item has a verified count yet, so Atlas cannot tell what is low.${unknownNote}`, tone: 'unknown', action: { label: 'Start stock count', run: () => openRoute('#inventory/counts') } };
-    if (!low.length) return { text: `Nothing with a verified count is below par.${unknownNote}`, tone: 'good' };
-    const lines = low.slice(0, 6).map((item) => `${item.name}: ${formatNumber(item.quantity)} of ${formatNumber(item.par_level)} ${item.unit || 'units'}`);
-    return { text: `${low.length} ${low.length === 1 ? 'item is' : 'items are'} below par.${unknownNote}`, lines, tone: 'warn', action: { label: 'Open Inventory', run: () => openView('inventory') } };
+    if (!low.length) return { text: `Nothing with a verified count is out or below par.${unknownNote}`, tone: 'good' };
+    const lines = low.slice(0, 6).map((item) => (truth.stockStatus(item) === 'out'
+      ? `${item.name}: out`
+      : `${item.name}: ${formatNumber(item.quantity)} of ${formatNumber(item.par_level)} ${item.unit || 'units'}`));
+    const parts = [out.length ? `${out.length} ${out.length === 1 ? 'item is' : 'items are'} out` : '', below.length ? `${below.length} ${below.length === 1 ? 'item is' : 'items are'} below par` : ''].filter(Boolean);
+    return { text: `${parts.join(' and ')}.${unknownNote}`, lines, tone: 'warn', action: { label: 'Open Inventory', run: () => openView('inventory') } };
   }
 
   function findRecipe(subject) {
@@ -277,7 +284,7 @@
       const known = window.AtlasStockTruth?.known(item);
       return {
         text: known ? `${item.name}: ${stockLine(item)}.` : `${item.name} has no verified count, so Atlas does not know how many remain.`,
-        tone: known ? (window.AtlasStockTruth.belowPar(item) ? 'warn' : 'good') : 'unknown',
+        tone: known ? (window.AtlasStockTruth.needsOrdering(item) ? 'warn' : 'good') : 'unknown',
         action: { label: `Show ${item.name}`, run: () => openInventoryItem(item) }
       };
     }

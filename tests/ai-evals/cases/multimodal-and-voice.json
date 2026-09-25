@@ -16,7 +16,7 @@
       "evidence": [
         { "kind": "calculation", "label": "Cointreau", "value": "5 delivered vs 6 outstanding (short)" },
         { "kind": "interpretation", "label": "Unexpected item: Campari", "value": "6 delivered but not on this order" },
-        { "kind": "calculation", "label": "Price change: Aperol", "value": "3,700 ISK delivered vs 3,600 ISK ordered" }
+        { "kind": "calculation", "label": "Price change: Aperol", "value": "3.700 kr delivered vs 3.600 kr ordered" }
       ],
       "proposal": {
         "kind": "purchase_order.receive", "required_roles": ["admin", "manager"],

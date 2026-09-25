@@ -31,7 +31,8 @@ export const COMMERCIAL_KEYS = Object.freeze(new Set([
   "lead_time_days", "minimum_order_quantity", "manager_notes", "emergency_contacts", "emergency_contact_count",
 ]));
 const COMMERCIAL_SOURCE_TYPES = new Set(["supplier", "purchase_order", "movement"]);
-const COMMERCIAL_LABEL = /\b(cost|costs|supplier|suppliers|margin|spend|value of|stock value|price change|ISK)\b/i;
+// Money is written "3.900 kr" (formatKr); "ISK" is kept for older text.
+const COMMERCIAL_LABEL = /\b(cost|costs|supplier|suppliers|margin|spend|value of|stock value|price change|ISK|kr)\b/i;
 
 function stripKeys(value, depth = 0) {
   if (depth > 12) return null;

@@ -136,8 +136,10 @@
     return Array.isArray(globalThis.recipes) ? globalThis.recipes : [];
   }
 
+  // Items that need ordering: the canonical AtlasStockTruth.stockStatus
+  // 'out' or 'below_par' (atlas-domain needsOrderingItems).
   function lowInventoryItems() {
-    return (items() || []).filter((item) => item.active !== false && window.AtlasStockTruth?.belowPar(item));
+    return (items() || []).filter((item) => item.active !== false && window.AtlasStockTruth?.needsOrdering(item));
   }
 
   function recipeIssues() {
@@ -153,7 +155,8 @@
       });
   }
 
-  // Suggested order lines for everything below par. "Ordered" means the item
+  // Suggested order lines for everything that needs ordering (out or below
+  // par). "Ordered" means the item
   // is on a placed purchase order (shared across devices); the device-local
   // "Mark ordered" notes are retired with the Operations purchasing card.
   // Mirrors supabase/functions/_shared orderSuggestions (domain-parity-s88).
@@ -167,7 +170,8 @@
       const unitsPerCase = Math.max(0, number(item.units_per_case));
       const cases = unitsPerCase > 1 ? Math.max(1, Math.ceil(shortfall / unitsPerCase)) : null;
       const orderQuantity = cases ? cases * unitsPerCase : shortfall;
-      const cost = Math.max(0, number(item.cost_price));
+      // No usable cost → no estimate (null), never 0 kr (AtlasStockTruth.hasCost).
+      const cost = window.AtlasStockTruth?.hasCost(item) ? number(item.cost_price) : null;
       return {
         id: item.id,
         name: item.name,
@@ -176,7 +180,7 @@
         shortfall,
         orderQuantity,
         cases,
-        estimatedCost: cost * orderQuantity,
+        estimatedCost: cost === null ? null : cost * orderQuantity,
         ordered: ordered.has(item.id)
       };
     });

@@ -392,7 +392,7 @@
 <script src="config.js"></script>
 <script src="assets/js/runtime-module-guard.js?v=20260926-s88"></script>
 <script src="assets/js/rehearsal-boundary.js"></script>
-<script src="assets/js/atlas-stock-truth.js?v=20260924-s87"></script>
+<script src="assets/js/atlas-stock-truth.js?v=20260928-s89t"></script>
 <script src="assets/js/atlas-venue-clock.js?v=20260926-s88"></script>
 <script>
   const SUPABASE_CDN_URLS = [
@@ -767,20 +767,33 @@
     itemsStatus = 'ok';
   }
 
+  // The newest AtlasStockTruth.MOVEMENT_ROW_LIMIT movements (5 000, the same
+  // cap as Reports and Atlas AI), read in pages so the PostgREST max-rows
+  // default (1 000) cannot silently cut the stock projection short.
   async function loadRestockLog() {
     const relation = canManageCommercial() ? 'inventory_movements' : 'inventory_movement_catalog';
-    let query = sb.from(relation);
-    query = canManageCommercial()
-      ? query.select('*, suppliers(name)')
-      : query.select('*');
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) {
-      console.error(`${relation} could not be loaded`, error);
-      inventoryMovements = [];
-      restockLog = [];
-      return;
+    const limit = window.AtlasStockTruth?.MOVEMENT_ROW_LIMIT || 5000;
+    const pageSize = window.AtlasStockTruth?.MOVEMENT_PAGE_SIZE || 1000;
+    const rows = [];
+    for (let from = 0; from < limit; from += pageSize) {
+      let query = sb.from(relation);
+      query = canManageCommercial()
+        ? query.select('*, suppliers(name)')
+        : query.select('*');
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, Math.min(from + pageSize, limit) - 1);
+      if (error) {
+        console.error(`${relation} could not be loaded`, error);
+        inventoryMovements = [];
+        restockLog = [];
+        return;
+      }
+      rows.push(...(data || []));
+      if (!data || data.length < pageSize) break;
     }
-    inventoryMovements = data || [];
+    inventoryMovements = rows;
     restockLog = inventoryMovements.filter(entry => entry.movement_type === 'restock');
   }
 
@@ -962,21 +975,21 @@
 
   if (window.lucide) window.lucide.createIcons();
 </script>
-<script src="assets/js/atlas-calculations.js?v=20260926-s88"></script>
+<script src="assets/js/atlas-calculations.js?v=20260928-s89t"></script>
 <script src="assets/js/modal.js?v=20260922-s73"></script>
-<script src="assets/js/recipes.js?v=20260926-s88"></script>
-<script src="assets/js/operations.js?v=20260926-s88"></script>
+<script src="assets/js/recipes.js?v=20260928-s89t"></script>
+<script src="assets/js/operations.js?v=20260928-s89t"></script>
 <script src="assets/js/atlas-capture.js?v=20260926-s88"></script>
-<script src="assets/js/atlas-inventory.js?v=20260926-s88"></script>
+<script src="assets/js/atlas-inventory.js?v=20260928-s89t"></script>
 <script src="assets/js/stock-count-workspace.js?v=20260926-s88"></script>
 <script src="assets/js/atlas-purchasing.js?v=20260926-s88"></script>
-<script src="assets/js/home.js?v=20260926-s88"></script>
-<script src="assets/js/reports-overview.js?v=20260926-s88"></script>
+<script src="assets/js/home.js?v=20260928-s89t"></script>
+<script src="assets/js/reports-overview.js?v=20260928-s89t"></script>
 <script src="assets/js/data-workspace.js?v=20260926-s88"></script>
 <script src="assets/js/shifts-workspace.js?v=20260926-s88"></script>
 <script src="assets/js/knowledge-workspace.js?v=20260926-s88"></script>
 <script src="assets/js/s38-app-remediation.js?v=20260926-s88"></script>
-<script src="assets/js/atlas-search.js?v=20260926-s88"></script>
+<script src="assets/js/atlas-search.js?v=20260928-s89t"></script>
 <script src="assets/js/atlas-chrome.js?v=20260926-s88"></script>
 <script src="assets/js/atlas-palette.js?v=20260926-s88"></script>
 <script src="assets/js/atlas-ai-voice.js?v=20260926-s88"></script>

@@ -35,13 +35,13 @@
     "args": { "category": null },
     "expected": {
       "ok": true,
-      "summary": ["Total stock value is unknown: 16 of 40 items have no current verified count and 1 have no cost", "at least 285,400 ISK"],
+      "summary": ["Total stock value is unknown: 16 of 40 items have no current verified count and 1 have no cost", "at least 285.400 kr"],
       "data": { "data.value": null, "data.complete": false, "data.known_value": 285400, "data.unknown_items": 16, "data.missing_cost_items": 1, "data.active_items": 40 },
       "evidence_kinds": ["missing", "estimate", "fact"],
-      "evidence": [{ "kind": "estimate", "label": "Value of verified, costed items (lower bound)", "value": "285,400 ISK" }],
+      "evidence": [{ "kind": "estimate", "label": "Value of verified, costed items (lower bound)", "value": "285.400 kr" }],
       "unknown": { "count": 16, "breakdown": { "unknown_stock": 16, "missing_cost": 1 } }
     },
-    "notes": "Unknown is null, never zero; 285,400 ISK is a lower bound over the 24 counted, costed items."
+    "notes": "Unknown is null, never zero; 285.400 kr is a lower bound over the 24 counted, costed items."
   },
   {
     "id": "rep-005", "category": "reports", "blocking": true,
@@ -56,7 +56,7 @@
     "question": "What are the syrups worth?",
     "actor": "admin", "tool": "reports.inventory_value",
     "args": { "category": "Syrups" },
-    "expected": { "ok": true, "summary": ["Stock value 2,500 ISK for Syrups"], "data": { "data.value": 2500, "data.complete": true }, "evidence": [{ "kind": "calculation", "label": "Stock value", "value": "2,500 ISK" }], "unknown": null }
+    "expected": { "ok": true, "summary": ["Stock value 2.500 kr for Syrups"], "data": { "data.value": 2500, "data.complete": true }, "evidence": [{ "kind": "calculation", "label": "Stock value", "value": "2.500 kr" }], "unknown": null }
   },
   {
     "id": "rep-007", "category": "reports", "blocking": true,
@@ -65,7 +65,7 @@
     "args": { "days": null },
     "expected": {
       "ok": true,
-      "summary": ["191,340 ISK of costed stock receipts in the last 30 days across 5 supplier(s)", "1 receipts have no cost"],
+      "summary": ["191.340 kr of costed stock receipts in the last 30 days across 5 supplier(s)", "1 receipts have no cost"],
       "data": { "data.total": 191340, "data.receipts": 9, "data.uncosted_receipts": 1, "data.by_supplier[0]": { "supplier": "Mekka Wines & Spirits", "amount": 57000 }, "data.by_supplier": { "$some": { "supplier": "Globus", "amount": 54840 } } },
       "evidence": [{ "kind": "interpretation", "label": "Basis", "value": "invoices are not connected" }],
       "unknown": { "count": 1 }
@@ -85,17 +85,17 @@
     "args": { "days": null },
     "expected": {
       "ok": true,
-      "summary": ["4 waste/variance entries for 4 items in the last 30 days", "logged cost about 11,050 ISK"],
+      "summary": ["4 waste/variance entries for 4 items in the last 30 days", "logged cost about 11.050 kr"],
       "data": { "data.entries": 4, "data.estimated_cost": 11050, "data.items": { "$some": { "name": "Limes", "quantity": 10 } } },
-      "evidence": [{ "kind": "estimate", "label": "Cost of logged waste", "value": "11,050 ISK" }, { "kind": "missing", "label": "Unlogged waste" }]
+      "evidence": [{ "kind": "estimate", "label": "Cost of logged waste", "value": "11.050 kr" }, { "kind": "missing", "label": "Unlogged waste" }]
     },
-    "notes": "Angelo 2,900 + Tanqueray 5,200 + Prosecco 2,500 + 10 limes × 45 = 11,050 ISK."
+    "notes": "Angelo 2,900 + Tanqueray 5,200 + Prosecco 2,500 + 10 limes × 45 = 11.050 kr."
   },
   {
     "id": "rep-010", "category": "reports", "blocking": true,
     "question": "What got thrown out this month?",
     "actor": "bartender", "tool": "reports.waste",
     "args": { "days": null },
-    "expected": { "ok": true, "summary": ["4 waste/variance entries"], "summary_excludes": ["ISK"], "data": { "data.entries": 4, "data.estimated_cost": { "$absent": true } } }
+    "expected": { "ok": true, "summary": ["4 waste/variance entries"], "summary_excludes": ["ISK", " kr"], "data": { "data.entries": 4, "data.estimated_cost": { "$absent": true } } }
   }
 ]

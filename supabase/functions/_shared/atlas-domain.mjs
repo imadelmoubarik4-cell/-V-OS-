@@ -10,12 +10,45 @@
 
 import {
   HISTORICAL_OPENING_CUTOFF,
+  MOVEMENT_PAGE_SIZE,
+  MOVEMENT_ROW_LIMIT,
+  PURCHASE_RECEIPT_TYPES,
+  REFERENCE_COST_REASON,
+  STOCK_STATUSES,
   currentQuantityEvidence,
+  formatKr,
+  hasCost,
+  inventoryValue,
+  isReference,
+  isStockKnown,
+  needsOrdering,
+  purchaseReceiptAmount,
   quantityTrustState,
   recipeMetrics as provenanceRecipeMetrics,
+  stockCounts,
+  stockStatus,
 } from "./stock-provenance.mjs";
 
-export { HISTORICAL_OPENING_CUTOFF, quantityTrustState };
+// The S89 canonical rules live beside the stock evidence rules in
+// stock-provenance.mjs (so Reports needs one import) and are re-exported here.
+export {
+  HISTORICAL_OPENING_CUTOFF,
+  MOVEMENT_PAGE_SIZE,
+  MOVEMENT_ROW_LIMIT,
+  PURCHASE_RECEIPT_TYPES,
+  REFERENCE_COST_REASON,
+  STOCK_STATUSES,
+  formatKr,
+  hasCost,
+  inventoryValue,
+  isReference,
+  isStockKnown,
+  needsOrdering,
+  purchaseReceiptAmount,
+  quantityTrustState,
+  stockCounts,
+  stockStatus,
+};
 
 // Same coercion as the browser modules: Number(), finite or the fallback.
 function number(value, fallback = 0) {
@@ -77,14 +110,9 @@ export function balanceFromCountActivity(entry) {
   };
 }
 
-// AtlasStockTruth.known: the item carries a current verified quantity.
-export function isStockKnown(item) {
-  return item?.freshness_state === "current" && item.verified_quantity != null
-    && item.verified_quantity !== "" && Number.isFinite(Number(item.verified_quantity));
-}
-
-// AtlasStockTruth.belowPar: verified stock strictly under a positive par.
-// Unknown or unverified stock is never below par; an item at par is not.
+// AtlasStockTruth.belowPar, the par test: verified stock strictly under a
+// positive par (true for an out item that has a par). Unknown or unverified
+// stock is never under par; an item at par is not. Summaries use stockStatus.
 export function belowPar(item) {
   if (!isStockKnown(item)) return false;
   const par = numberOrNull(item.par_level);
@@ -92,9 +120,15 @@ export function belowPar(item) {
   return par !== null && par > 0 && quantity !== null && quantity < par;
 }
 
-// operations.js lowInventoryItems: active items that are below par.
+// Active items under par (the par test; includes out items with a par).
 export function belowParItems(projectedItems) {
   return asArray(projectedItems).filter((item) => item && item.active !== false && belowPar(item));
+}
+
+// operations.js lowInventoryItems: active items that need ordering
+// (stockStatus 'out' or 'below_par').
+export function needsOrderingItems(projectedItems) {
+  return asArray(projectedItems).filter((item) => item && item.active !== false && needsOrdering(item));
 }
 
 // ---------------------------------------------------------------------------
@@ -183,14 +217,15 @@ export function openPurchaseOrderItemIds(purchaseOrders) {
     .filter(Boolean));
 }
 
-// operations.js orderSuggestions. Target is twice par; the shortfall is at
-// least one unit; case packs round up to whole cases. "Ordered" comes from
-// open purchase orders (plus any explicit `orderedItemIds`), never from
-// browser storage.
+// operations.js orderSuggestions for every item that needs ordering. Target
+// is twice par; the shortfall is at least one unit; case packs round up to
+// whole cases. estimatedCost is null when the item has no usable cost (never
+// 0 kr). "Ordered" comes from open purchase orders (plus any explicit
+// `orderedItemIds`), never from browser storage.
 export function orderSuggestions(projectedItems, { purchaseOrders = [], orderedItemIds = [] } = {}) {
   const ordered = openPurchaseOrderItemIds(purchaseOrders);
   for (const id of orderedItemIds || []) ordered.add(id);
-  return belowParItems(projectedItems).map((item) => {
+  return needsOrderingItems(projectedItems).map((item) => {
     const par = Math.max(0, number(item.par_level));
     const current = Math.max(0, number(item.quantity));
     const target = Math.max(par, Math.ceil(par * 2));
@@ -198,7 +233,7 @@ export function orderSuggestions(projectedItems, { purchaseOrders = [], orderedI
     const unitsPerCase = Math.max(0, number(item.units_per_case));
     const cases = unitsPerCase > 1 ? Math.max(1, Math.ceil(shortfall / unitsPerCase)) : null;
     const orderQuantity = cases ? cases * unitsPerCase : shortfall;
-    const cost = Math.max(0, number(item.cost_price));
+    const cost = hasCost(item) ? number(item.cost_price) : null;
     return {
       id: item.id,
       name: item.name,
@@ -208,7 +243,7 @@ export function orderSuggestions(projectedItems, { purchaseOrders = [], orderedI
       shortfall,
       orderQuantity,
       cases,
-      estimatedCost: cost * orderQuantity,
+      estimatedCost: cost === null ? null : cost * orderQuantity,
       ordered: ordered.has(item.id),
     };
   });
@@ -224,42 +259,41 @@ export function orderGroups(suggestions) {
   return Array.from(groups, ([supplier, entries]) => ({
     supplier,
     suggestions: entries,
-    estimatedCost: entries.reduce((sum, entry) => sum + entry.estimatedCost, 0),
+    estimatedCost: entries.reduce((sum, entry) => sum + (Number.isFinite(entry.estimatedCost) ? entry.estimatedCost : 0), 0),
+    uncosted: entries.filter((entry) => !Number.isFinite(entry.estimatedCost)).length,
   })).sort((a, b) => b.suggestions.length - a.suggestions.length || a.supplier.localeCompare(b.supplier));
 }
 
 // ---------------------------------------------------------------------------
-// Inventory value (business.js inventoryValue)
+// Order exposure (reports-overview.js orderExposure): suggestions not yet on
+// an order, the estimate over costed lines and how many lines have no cost.
 // ---------------------------------------------------------------------------
-
-// `value` is the browser total: null (the browser shows NaN, "—") when any
-// active item lacks verified stock or a cost, so an unknown is never reported
-// as a smaller number. `known_value` is the sum over items that do have both
-// (null when there are none), for "at least" wording.
-export function inventoryValue(projectedItems) {
-  const active = asArray(projectedItems).filter((item) => item && item.active !== false);
-  const unknownItems = active.filter((item) => !isStockKnown(item)).length;
-  const missingCostItems = active.filter((item) => item.cost_price == null).length;
-  let knownValue = null;
-  for (const item of active) {
-    if (!isStockKnown(item)) continue;
-    const cost = number(item.cost_price, NaN);
-    if (!Number.isFinite(cost) || cost <= 0) continue;
-    knownValue = (knownValue ?? 0) + Math.max(0, number(item.quantity)) * cost;
-  }
-  const complete = unknownItems === 0 && missingCostItems === 0;
-  const value = complete
-    ? active.reduce((sum, item) => {
-      const cost = number(item.cost_price, NaN);
-      return sum + (Number.isFinite(cost) && cost > 0 ? Math.max(0, number(item.quantity)) * cost : 0);
-    }, 0)
-    : null;
+export function orderExposure(suggestions) {
+  const open = asArray(suggestions).filter((entry) => entry && !entry.ordered);
+  const costed = open.filter((entry) => Number.isFinite(entry.estimatedCost));
   return {
-    value,
-    complete,
-    known_value: knownValue,
-    active_items: active.length,
-    unknown_items: unknownItems,
-    missing_cost_items: missingCostItems,
+    items: open.length,
+    estimate: costed.reduce((sum, entry) => sum + Math.max(0, entry.estimatedCost), 0),
+    uncosted: open.length - costed.length,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Purchasing spend (AtlasStockTruth.purchaseSpend): costed purchase receipts
+// (purchaseReceiptAmount) in the period; waste and adjustments are never spend.
+// `include(movement)` is the caller's period test.
+// ---------------------------------------------------------------------------
+export function purchaseSpend(movements, include = () => true) {
+  const result = { total: 0, receipts: 0, costed: 0, uncosted: 0 };
+  for (const movement of asArray(movements)) {
+    const amount = purchaseReceiptAmount(movement);
+    if (amount === undefined || !include(movement)) continue;
+    result.receipts += 1;
+    if (amount === null) result.uncosted += 1;
+    else {
+      result.costed += 1;
+      result.total += amount;
+    }
+  }
+  return result;
 }

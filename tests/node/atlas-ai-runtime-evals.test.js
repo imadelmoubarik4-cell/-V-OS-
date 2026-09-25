@@ -108,7 +108,7 @@ test('specialists: "Prepare Friday." fans out to shifts, purchasing and operatio
           ...toolCall('ask_operations', { input: 'Are opening hours set?' }, 'call_ops'),
         ];
       }
-      return message('Friday: Bjarni, Sigrún, Kári and Anna are on (Anna is an unpublished change). 6 items to order across 4 suppliers, about 222,960 ISK. Opening hours are not set in Settings. ');
+      return message('Friday: Bjarni, Sigrún, Kári and Anna are on (Anna is an unpublished change). 6 items to order across 4 suppliers, about 222.960 kr. Opening hours are not set in Settings. ');
     }
     const specialist = specialistOf(req);
     if (hasToolOutput(req)) return message(`Briefing: ${lastToolOutput(req)?.summary}`);
@@ -131,7 +131,7 @@ test('specialists: "Prepare Friday." fans out to shifts, purchasing and operatio
   assert.deepEqual(tools, ['purchasing.suggest', 'settings.read', 'shifts.who_is_working']);
   const evidence = events.find((entry) => entry.event === 'evidence').data.items;
   assert.ok(evidence.some((item) => item.kind === 'missing' && item.label === 'Opening hours'));
-  assert.ok(evidence.some((item) => item.kind === 'estimate' && item.value === '52,200 ISK'));
+  assert.ok(evidence.some((item) => item.kind === 'estimate' && item.value === '52.200 kr'));
   assert.ok(evidence.some((item) => item.label === 'Anna' && item.value === '20:00–03:00 · Bar'));
   const models = new Set(rt.modelLog.map((entry) => entry.model));
   assert.ok(models.has('gpt-5.6-sol') && models.has('gpt-5.6-luna'));
