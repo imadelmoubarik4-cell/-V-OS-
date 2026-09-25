@@ -15,7 +15,7 @@
 //           confident Atlas inventory match found." The unknown-item flow.
 
 export const SCORER_VERSION = "rs-1";
-export const EXTRACTOR_VERSION = "rx-1";
+export const EXTRACTOR_VERSION = "rx-2";
 
 export const BANDS = Object.freeze(["high", "medium", "low"]);
 

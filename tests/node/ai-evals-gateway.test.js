@@ -77,7 +77,7 @@ test('the Layer 1 checker itself fails on wrong numbers, missing evidence and st
 
 for (const entry of CASES) {
   test(`[${entry.category}] ${entry.id}: ${entry.question}`, async () => {
-    const world = createWorld({ hours: entry.world === 'hours', catalog: entry.world === 'catalog' });
+    const world = createWorld({ hours: entry.world === 'hours', catalog: ['catalog', 'catalog_vision_off'].includes(entry.world), visionEnabled: entry.world !== 'catalog_vision_off' });
     const { ctx, audits } = gatewayCtx(entry.actor, world);
     const args = resolveAliases(entry.args);
     const result = await runTool(entry.tool, args, ctx);

@@ -97,7 +97,7 @@ const EVIDENCE = {
   "inventory.stale_counts": "calculation totals; fact per reason",
   "inventory.lookup_barcode": "fact match; fact/missing stock",
   "inventory.prepare_count": "fact counted (user-reported) and current stock",
-  "inventory.identify_from_image": "interpretation label reading and each candidate's evidence sentence; fact exact code match (High); missing unreadable fields",
+  "inventory.identify_from_image": "interpretation label reading and each candidate's evidence sentence; fact exact code match (High); missing unreadable fields; estimate units visible in the photo (mode count, for a person to confirm)",
   "inventory.resolve_name": "fact exact name or code; interpretation name/alias match; missing no match",
   "inventory.propose_alias": "fact item; interpretation current resolution; missing not recognised yet",
   "inventory.propose_item": "interpretation possible existing matches with score and evidence; missing none found",

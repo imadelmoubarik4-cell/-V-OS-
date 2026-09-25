@@ -95,6 +95,7 @@ function readView(detection, normalized, clientCodes) {
     sku_or_supplier_ref: detection.sku_or_supplier_ref,
     abv_percent: detection.abv_percent,
     language: detection.language,
+    visible_units: detection.visible_units ?? { value: null, confidence: 0, evidence: null },
     visible_text: detection.visible_text,
     code_conflict: normalized.code_conflict,
   };

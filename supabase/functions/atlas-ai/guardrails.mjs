@@ -5,7 +5,9 @@
 // * the grounding check: an answer that states operational quantities or
 //   prices is replaced unless every stated figure appears in the question,
 //   the previous answer's evidence or the output of a tool that returned
-//   operational evidence in the same run.
+//   operational evidence in the same run. The photo recognition tool is such
+//   a tool: its visible counts are "estimate" evidence (labelled as estimates
+//   from the photo), so an answer that repeats them is grounded (S91).
 
 const INJECTION_PATTERNS = [
   { reason: "override_instructions", re: /\b(ignore|disregard|forget|override)\b[^.\n]{0,40}\b(previous|prior|above|earlier|all|your|system)\b[^.\n]{0,20}\b(instructions?|rules|prompts?|guidelines|directions)\b/i },
