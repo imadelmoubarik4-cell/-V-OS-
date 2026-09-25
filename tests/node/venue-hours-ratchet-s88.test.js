@@ -14,10 +14,9 @@ import path from 'node:path';
 const WEB = 'apps/web';
 
 const CEILINGS = Object.freeze({
-  // E5: new-shift editor defaults (start 11:30, end 17:00).
-  'assets/js/shifts-workspace.js': 2,
-  'assets/js/shifts-month-calendar.js': 2
+  // E5 (done, Team D): new shifts start at the saved opening time or empty.
   // E4 (done, Team C): marketing no longer defaults a suggestion to '12:00'.
+  // E2 (done, Team A): settings offer drafts no longer prefill times.
 });
 
 // Time-of-day literals: '11:30', "22:00:00", `…T11:30:00`. Midnight ('00:00',

@@ -153,15 +153,6 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasTeamProfilePhotos',
 }));
 
-// Mobile profile-photo selection uses the normal operating-system image picker.
-// This preserves both gallery/file access and any camera option offered by the
-// device instead of forcing a front-camera capture.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/team-profile-photo-gallery.js?v=20260926-s88',
-  globalName: 'AtlasTeamProfileGallery',
-  dataAttribute: 'atlasTeamProfileGallery',
-}));
-
 // Checkpoint F replaces the Shifts placeholder with a private weekly planner,
 // availability, time-off, publishing and confirmation workspace.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
@@ -169,31 +160,6 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/shifts-workspace.js?v=20260926-s88',
   globalName: 'AtlasShifts',
   dataAttribute: 'atlasShifts',
-}));
-
-// Checkpoint F.1 introduced the complete month grid. F.2 turns that grid into
-// the primary monthly planning surface: managers edit any date in the month and
-// publish one immutable month revision for staff while weekly drill-down remains
-// available for detailed review and confirmations.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/shifts-month-calendar.css?v=20260926-s88',
-  scriptPath: 'assets/js/shifts-month-calendar.js?v=20260926-s88',
-  globalName: 'AtlasShiftsMonth',
-  dataAttribute: 'atlasShiftsMonth',
-}));
-
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/shifts-month-editor.css?v=20260926-s88',
-  dataAttribute: 'atlasShiftsMonthEditor',
-}));
-
-// The weekly workspace and the Month extension both listen to the shared tab
-// bar. This bridge keeps the dedicated Month capture handler authoritative so
-// the older weekly bubbling handler cannot rebuild the tabs during the click.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/shifts-month-tab-bridge.js?v=20260926-s88',
-  globalName: 'AtlasShiftsMonthTabBridge',
-  dataAttribute: 'atlasShiftsMonthTabBridge',
 }));
 
 // Checkpoint G replaces the Knowledge placeholder with a version-controlled,
@@ -204,15 +170,6 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/knowledge-workspace.js?v=20260926-s88',
   globalName: 'AtlasKnowledge',
   dataAttribute: 'atlasKnowledge',
-}));
-
-// Published Knowledge updates can appear as linked Team announcements. This
-// capture bridge keeps the new Knowledge link type from falling through to the
-// older Team Messages default route.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/knowledge-team-link-bridge.js?v=20260926-s88',
-  globalName: 'AtlasKnowledgeTeamLinkBridge',
-  dataAttribute: 'atlasKnowledgeTeamLinkBridge',
 }));
 
 // Checkpoint H replaces the Reports placeholder with a permission-aware,

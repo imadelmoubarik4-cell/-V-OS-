@@ -377,6 +377,19 @@
     return Array.isArray(snapshot?.channels) ? snapshot.channels : [];
   }
 
+  // Per-conversation unread from AtlasTeamUnreadBadge.conversations() or the
+  // 'messages:unread' event, in the channel shape messageItems() reads.
+  function applyConversations(list) {
+    state.messages.channels = (Array.isArray(list) ? list : []).map((entry) => ({
+      key: entry.id,
+      name: entry.name,
+      unread_count: entry.unread,
+      last_message: entry.lastMessage ? { id: entry.lastMessage.id, sender_label: entry.lastMessage.sender, body: entry.lastMessage.body, deleted: entry.lastMessage.deleted, created_at: entry.lastMessageAt } : (entry.lastMessageAt ? { created_at: entry.lastMessageAt } : null)
+    }));
+    state.messages.fetchedAt = Date.now();
+    shell()?.emit?.('notify:changed', { source: 'messages-feed' });
+  }
+
   async function loadMessages(force = false) {
     const current = state.messages;
     if (current.inflight || !messagesEndpoint() || !profileId()) return;
@@ -385,6 +398,12 @@
       current.channels = channelsFromSnapshot(open);
       current.fetchedAt = Date.now();
       shell()?.emit?.('notify:changed', { source: 'messages-feed' });
+      return;
+    }
+    // The unread worker (team-unread-badge.js) already polls the snapshot; reuse it.
+    const badge = window.AtlasTeamUnreadBadge;
+    if (badge?.loaded?.() && typeof badge.conversations === 'function') {
+      applyConversations(badge.conversations());
       return;
     }
     if (!force && Date.now() - current.fetchedAt < MESSAGES_REFRESH_MS) return;
@@ -826,6 +845,8 @@
       loadMessages(true);
       queueRender();
     });
+    // Messages and its unread worker announce every per-conversation change.
+    atlas.on('messages:unread', (detail) => { if (Array.isArray(detail?.conversations)) applyConversations(detail.conversations); });
     atlas.on('notify:changed', (detail) => {
       if (detail?.source === 'messages') loadMessages(true);
       if (detail?.source !== 'messages-feed') queueRender();

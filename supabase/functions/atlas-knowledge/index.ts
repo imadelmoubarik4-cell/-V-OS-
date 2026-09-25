@@ -352,6 +352,37 @@ async function detail(context: AtlasContext, articleId: string, preferDraft = fa
   return { article, staff: staffPayload(context), policy: policyPayload() };
 }
 
+// Server full-text search (public.atlas_knowledge_search, migration
+// 20260926103000_s88_knowledge_search.sql) as the verified actor. Staff match
+// only the published version of articles targeted to their role; drafts and
+// source metadata never reach them. The role filter below is a second guard.
+async function search(context: AtlasContext, query: string, limit: number) {
+  const payload = await branchRpc("atlas_knowledge_search", {
+    p_query: query,
+    p_actor_id: context.user.id,
+    p_actor_role: context.profile.role,
+    p_limit: limit,
+  });
+  const rows = Array.isArray(payload?.results) ? payload.results : [];
+  const manager = isManager(context);
+  const results = rows
+    .filter((row: any) => manager || (row?.version_state === "published" && row?.status === "published"))
+    .map((row: any) => ({
+      article_id: row.article_id,
+      version_id: row.version_id,
+      version_number: row.version_number,
+      title: row.title,
+      category: row.category,
+      category_key: row.category_key,
+      article_type: row.article_type,
+      required: Boolean(row.required),
+      status: row.status,
+      version_state: row.version_state,
+      snippet: typeof row.snippet === "string" ? row.snippet.slice(0, 600) : "",
+    }));
+  return { query, results, count: results.length, staff: staffPayload(context) };
+}
+
 async function validateTaskIds(context: AtlasContext, values: string[]): Promise<string[]> {
   if (!values.length) return [];
   const tasks = await onboardingTasks(context);
@@ -372,6 +403,12 @@ Deno.serve(async (request: Request) => {
 
     if (request.method === "GET") {
       if (action === "snapshot") return jsonResponse(await snapshot(context));
+      if (action === "search") {
+        const query = requiredText(url.searchParams.get("q"), "Search text", 200);
+        const rawLimit = Number(url.searchParams.get("limit") || 12);
+        const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(25, Math.trunc(rawLimit))) : 12;
+        return jsonResponse(await search(context, query, limit));
+      }
       if (action === "detail") {
         const articleId = requireUuid(url.searchParams.get("article_id"), "Knowledge article");
         const preferDraft = url.searchParams.get("prefer_draft") === "true";

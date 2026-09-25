@@ -77,7 +77,7 @@
     {
       "name": "atlas-knowledge",
       "sources": {
-        "supabase/functions/atlas-knowledge/index.ts": "ce0248ba19f8bbdf446e75e6ca4179d4bcfff0f659b1b7e9e252edaff6358fb2"
+        "supabase/functions/atlas-knowledge/index.ts": "d2c5edd2b95953139a17b0a5a27be8216220c0fa5829ba65138d3053dad707ca"
       }
     },
     {
