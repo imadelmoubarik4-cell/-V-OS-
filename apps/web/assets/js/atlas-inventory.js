@@ -1717,7 +1717,7 @@
     if (shown.length < 2) return shown.join('');
     return `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)}`;
   }
-  function recipesUsing(itemId) {
+  function recipeNamesUsing(itemId) {
     return recipes().filter((recipe) => recipe.active !== false
       && (recipe.recipe_ingredients || []).some((ingredient) => String(ingredient.item_id) === String(itemId)))
       .map((recipe) => recipe.name);
@@ -1738,7 +1738,7 @@
     const out = below.filter((item) => (num(item.quantity) ?? 0) <= 0);
     const ordered = root.AtlasPurchaseOrders?.openItemIds?.() || new Set();
     out.slice(0, 3).forEach((item) => {
-      const affected = recipesUsing(item.id);
+      const affected = recipeNamesUsing(item.id);
       const onOrder = ordered.has(item.id);
       const detail = `${affected.length ? `${nameList(affected)} ${affected.length === 1 ? 'is' : 'are'} affected` : `0 of ${qty(item.par_level)} ${unitWord(item)} left`}${onOrder ? ' · on order' : ''}`;
       const view = { label: 'View item', route: `#inventory/item/${encodeURIComponent(item.id)}` };

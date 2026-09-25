@@ -16,12 +16,12 @@ function stubShell(own) {
   const noop = new Proxy(function () {}, { get: (target, key) => (key === Symbol.toPrimitive ? undefined : noop), apply: () => noop });
   return new Proxy(own, { get: (target, key) => (key in target ? target[key] : noop) });
 }
-function renderHome(rawItems, balances = [], { role = 'admin' } = {}) {
+function renderHome(rawItems, balances = [], { role = 'admin', recipes = [] } = {}) {
   const context = {
     Date, Number, Math, Map, Set, String, Array, Object, JSON, console, Intl,
     document: { readyState: 'loading', addEventListener() {}, getElementById: () => null, querySelectorAll: () => [] },
     AtlasShell: stubShell({ dataLoadedAt: () => NOW, profile: () => ({ id: 'u1', role }) }),
-    AtlasData: { items: () => context.items, recipes: () => [], status: () => ({ items: 'ok' }) },
+    AtlasData: { items: () => context.items, recipes: () => recipes, status: () => ({ items: 'ok' }) },
     recipes: []
   };
   context.window = context;
@@ -38,7 +38,8 @@ function renderHome(rawItems, balances = [], { role = 'admin' } = {}) {
     low: glance.value,
     lowNote: glance.detail,
     unknown: facts.unknown,
-    rows: rows.map((row) => row.title).join(' | ')
+    rows: rows.map((row) => row.title).join(' | '),
+    details: rows.map((row) => row.detail).join(' | ')
   };
 }
 
@@ -158,4 +159,12 @@ test('Inventory records keep inactive rows; only live-stock surfaces filter them
   assert.match(inventory, /if \(item\.active === false\) return \{ key: 'inactive', label: 'Inactive'/);
   assert.match(inventory, /itemMaster\('set_item_active'/);
   assert.doesNotMatch(inventory, /update\(\{\s*active:/);
+});
+
+test('S88 Team B: an out-of-stock row names the recipes it stops', () => {
+  const rows = [activeCounted('lime', 0, 4), activeCounted('gin', 5, 2)];
+  const recipes = [{ id: 'r1', name: 'Gimlet', active: true, recipe_ingredients: [{ item_id: 'lime' }, { item_id: 'gin' }] }];
+  const home = renderHome(rows, [verified('lime', 0), verified('gin', 5)], { recipes });
+  assert.match(home.rows, /lime is out/);
+  assert.match(home.details, /Gimlet is affected/);
 });
