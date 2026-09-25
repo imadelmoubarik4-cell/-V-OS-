@@ -110,6 +110,8 @@
     // Atlas AI (E6) reads q from #ai/new; the context tag rides along.
     const params = [text ? `q=${encodeURIComponent(text)}` : '', state.context && state.context.id !== 'ai' ? `from=${encodeURIComponent(state.context.id)}` : ''].filter(Boolean).join('&');
     const route = `#ai/new${params ? `?${params}` : ''}`;
+    // The send intent rides in memory: the URL alone only prefills (G1).
+    if (text) window.AtlasAI?.intendSend?.(text);
     if (window.location.hash === route) shell.navigate(route, { source: 'palette' });
     else window.location.hash = route;
   }
