@@ -97,7 +97,7 @@
   }
 
   function errorText(error, what) {
-    if (error?.status === 401) return 'Your session has ended. Sign in again, then try again.';
+    if (error?.status === 401) return 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.';
     if (error?.status === 403) return 'Your role can\'t do this. Ask an administrator.';
     if (error?.status === 404) return 'Marketing isn\'t switched on for this venue yet.';
     if (error?.status === 409) return `${what} changed while you were working. It has been reloaded — check it and try again.`;

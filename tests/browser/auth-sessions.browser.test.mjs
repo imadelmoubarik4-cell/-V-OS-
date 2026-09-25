@@ -135,3 +135,75 @@ test('signing out on purpose shows no "session ended" notice', { skip }, async (
     assert.doesNotMatch(await page.textContent('#login-error'), /session ended/i);
   } finally { await close(); }
 });
+
+// Independent review of S91 (P1-1, P1-2): no renewal storm, and an Auth
+// outage never signs anyone out or reloads in a loop.
+const keepSignedOut = () => { try { if (sessionStorage.getItem('atlas:harness-signed-out') === '1') localStorage.clear(); } catch { /* storage unavailable */ } };
+const tokenRefreshes = (record) => record.requests.filter((entry) => entry.path.startsWith('/auth/v1/token') && entry.search.includes('grant_type=refresh_token')).length;
+
+test('an endpoint that keeps answering 401 after a renewal causes at most one renewal and no sign-out', { skip }, async () => {
+  const { page, record, close } = await launchAtlas({
+    fixtures: { functions: new Proxy({}, { get: () => () => ({ __status: 401, body: { error: 'unauthorized' } }) }) }
+  });
+  try {
+    // Many modules hit the endpoint repeatedly (the unread badge polls too).
+    for (let i = 0; i < 25; i += 1) {
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent('atlas:auth-required', { detail: { status: 401 } })));
+    }
+    for (const hash of ['#messages', '#reports', '#settings', '#inventory/counts']) {
+      await page.evaluate((h) => { location.hash = h; }, hash);
+      await settle(page);
+    }
+    assert.ok(tokenRefreshes(record) <= 1, `token refreshes: ${tokenRefreshes(record)}`);
+    assert.equal(logouts(record).length, 0, 'nobody is signed out');
+    assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('app-screen')).display === 'none'), false, 'still in the app');
+  } finally { await close(); }
+});
+
+test('when sign-in cannot be checked (Auth unavailable) the session is kept and nothing reloads', { skip, timeout: 120000 }, async () => {
+  let loads = 0;
+  // Auth becomes unavailable while Atlas is already open.
+  const outage = { on: false };
+  const { page, record, close } = await launchAtlas({
+    // supabase-js retries a refresh that failed with a 5xx for about 30 s,
+    // measured on the page clock: this test needs the real clock.
+    fixedTime: null,
+    fixtures: {
+      auth: { token: (entry) => (outage.on && entry.search.includes('grant_type=refresh_token') ? { __status: 503, body: { message: 'upstream unavailable' } } : null) },
+      functions: new Proxy({}, { get: () => () => (outage.on ? { __status: 401, body: { error: 'unauthorized' } } : {}) })
+    }
+  });
+  page.on('load', () => { loads += 1; });
+  outage.on = true;
+  try {
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('atlas:auth-required', { detail: { status: 401 } })));
+    await page.waitForSelector('.atlas-toast:has-text("can’t check your sign-in")', { timeout: 60000 });
+    await page.evaluate(() => { location.hash = '#reports'; });
+    await settle(page);
+    assert.equal(logouts(record).length, 0, 'no logout of any scope');
+    assert.equal(loads, 0, 'no reload');
+    assert.equal(await storedSession(page), true, 'the session is kept');
+    assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('app-screen')).display === 'none'), false);
+  } finally { await close(); }
+});
+
+test('a deliberate sign-out still signs this device out when Auth cannot be reached', { skip }, async () => {
+  const { page, close } = await launchAtlas({
+    initScript: keepSignedOut,
+    fixtures: { auth: { logout: { __status: 503, body: { message: 'upstream unavailable' } } } }
+  });
+  try {
+    // Whether this device still held a session when the page went away is
+    // recorded at pagehide (the harness would put one back on the next load).
+    await page.evaluate((key) => {
+      try { sessionStorage.setItem('atlas:harness-signed-out', '1'); } catch { /* storage unavailable */ }
+      window.addEventListener('pagehide', () => {
+        try { sessionStorage.setItem('atlas:harness-had-session', localStorage.getItem(key) ? 'yes' : 'no'); } catch { /* storage unavailable */ }
+      });
+    }, `sb-${PROJECT_REF}-auth-token`);
+    await page.click('#atlas-account-btn');
+    await Promise.all([page.waitForEvent('load'), page.click('[data-menu-action="sign-out"]')]);
+    assert.equal(await page.evaluate(() => sessionStorage.getItem('atlas:harness-had-session')), 'no', 'the stored session was removed before the reload');
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('login-screen')).display !== 'none', null, { timeout: 15000 });
+  } finally { await close(); }
+});

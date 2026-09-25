@@ -194,7 +194,7 @@
 <script src="assets/js/rehearsal-boundary.js"></script>
 <script src="assets/js/atlas-stock-truth.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>
-<script src="assets/js/atlas-api.js?v=20260929-s90u"></script>
+<script src="assets/js/atlas-api.js?v=20260926-s91a"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -486,16 +486,26 @@
   // Always this device only: supabase-js defaults to scope 'global', which
   // revokes every session of the account and signs out the person's other
   // phones and computers too.
+  // If Auth cannot be reached, supabase-js keeps the stored session; this
+  // device must still end up signed out (a shared bar tablet), so the stored
+  // session is removed here.
   let signingOut = false;
   async function signOut() {
     signingOut = true;
     try {
       window.AtlasPalette?.clearRecent?.();
       const client = await initializeSupabase();
-      await client.auth.signOut({ scope: 'local' });
+      const result = await client.auth.signOut({ scope: 'local' }).catch((error) => ({ error }));
+      if (result?.error) forgetStoredSession(client);
+    } catch (_) {
+      forgetStoredSession(sb);
     } finally {
       location.reload();
     }
+  }
+  function forgetStoredSession(client) {
+    const key = client?.auth?.storageKey || (cfg.SUPABASE_URL ? `sb-${new URL(cfg.SUPABASE_URL).hostname.split('.')[0]}-auth-token` : null);
+    try { if (key) localStorage.removeItem(key); } catch (_) { /* storage unavailable */ }
   }
   window.atlasSignOut = signOut;
 
@@ -505,27 +515,69 @@
   // in again reopens it with every module loaded fresh. No page is left
   // showing old data, spinning, or signed in while its requests fail.
   const SESSION_ENDED_KEY = 'atlas:session-ended';
+  const SESSION_ENDED_AT_KEY = 'atlas:session-ended-at';
+  const RENEW_COOLDOWN_MS = 60000;
   let sessionEnding = false;
   async function sessionEnded() {
     if (sessionEnding) return;
     sessionEnding = true;
-    try { sessionStorage.setItem(SESSION_ENDED_KEY, '1'); } catch (_) { /* storage unavailable */ }
+    // Never reload in a loop: a second automatic sign-out within a minute
+    // (the first one could not clear the session) stays on this page.
+    let recent = false;
+    try {
+      recent = Date.now() - Number(sessionStorage.getItem(SESSION_ENDED_AT_KEY) || 0) < RENEW_COOLDOWN_MS;
+      sessionStorage.setItem(SESSION_ENDED_AT_KEY, String(Date.now()));
+      sessionStorage.setItem(SESSION_ENDED_KEY, '1');
+    } catch (_) { /* storage unavailable */ }
+    if (recent) {
+      forgetStoredSession(sb);
+      window.AtlasShell?.toast?.('Your session ended. Reload Atlas and sign in again.', { tone: 'warning', duration: 15000 });
+      return;
+    }
     await signOut();
   }
 
-  // AtlasApi (atlas-api.js) reports a 401 once per burst. First try to renew
-  // this device's session (an access token can simply have expired); only if
-  // that fails is the session really over.
+  // Sign-in could not be checked (Auth busy or unreachable): the session is
+  // kept and the person is told once a minute, nothing is signed out.
+  let authNoticeAt = 0;
+  function authUnavailableNotice() {
+    if (Date.now() - authNoticeAt < RENEW_COOLDOWN_MS) return;
+    authNoticeAt = Date.now();
+    window.AtlasShell?.toast?.('Atlas can’t check your sign-in right now. You’re still signed in; try again in a moment.', { tone: 'warning' });
+  }
+  // A refresh error is final only when Auth says the session is gone.
+  function sessionIsGone(error) {
+    if (!error) return false;
+    if (error.name === 'AuthSessionMissingError') return true;
+    const status = Number(error.status || 0);
+    return status === 400 || status === 401 || status === 403;
+  }
+
+  // A 401 from any module first renews this device's session (an access token
+  // can simply have expired). At most one renewal per minute: a 401 that
+  // persists after a fresh renewal is the endpoint's problem, not the
+  // session's, and must never loop or sign anyone out.
   let authCheck = null;
+  let lastRenewedAt = 0;
   window.addEventListener('atlas:auth-required', () => {
-    if (authCheck || sessionEnding || !currentUser) return;
+    if (authCheck || sessionEnding || signingOut || !currentUser) return;
+    if (Date.now() - lastRenewedAt < RENEW_COOLDOWN_MS) return;
     authCheck = (async () => {
+      let result = null;
       try {
         const client = await initializeSupabase();
-        const { data, error } = await client.auth.refreshSession();
-        if (!error && data?.session) return;
-      } catch (_) { /* treated as ended below */ }
-      await sessionEnded();
+        result = await client.auth.refreshSession();
+      } catch (error) {
+        result = { error };
+      }
+      if (!result?.error && result?.data?.session) {
+        lastRenewedAt = Date.now();
+        window.dispatchEvent(new CustomEvent('atlas:auth-renewed'));
+        return;
+      }
+      if (sessionIsGone(result?.error)) { await sessionEnded(); return; }
+      lastRenewedAt = Date.now();
+      authUnavailableNotice();
     })().finally(() => { authCheck = null; });
   });
 
@@ -563,6 +615,7 @@
 
   async function onSignedIn(session) {
     currentUser = session.user;
+    try { sessionStorage.removeItem(SESSION_ENDED_KEY); } catch (_) { /* storage unavailable */ }
     const profile = await loadActiveProfile(session);
     // S87 identity rule: the profile display name (AtlasIdentity, atlas-api.js),
     // otherwise "Team member". An email address is never shown or turned into

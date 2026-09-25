@@ -116,7 +116,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/marketing-workspace.css?v=20260929-s90u',
-  scriptPath: 'assets/js/marketing-workspace.js?v=20260929-s90f',
+  scriptPath: 'assets/js/marketing-workspace.js?v=20260926-s91a',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
 }));
@@ -164,7 +164,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/reports-workspace.css?v=20260929-s90f',
-  scriptPath: 'assets/js/reports-workspace.js?v=20260930-s90g',
+  scriptPath: 'assets/js/reports-workspace.js?v=20260926-s91a',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));

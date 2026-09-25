@@ -249,13 +249,14 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['team-profile-photos.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90u'`), file);
   }
-  for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'marketing-workspace.js', 'shifts-workspace.js']) {
+  for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }
   // S91: the Settings session-ended message.
   assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91a'"), 'settings-workspace.js');
-  for (const file of ['reports-workspace.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260930-s90g'`), file);
+  // S91: sign-in copy after the session fixes.
+  for (const file of ['marketing-workspace.js', 'reports-workspace.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s91a'`), file);
   }
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
 });

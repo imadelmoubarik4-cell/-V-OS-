@@ -264,7 +264,7 @@
   // Fixed copy only (AtlasApi, atlas-api.js): server text is never shown,
   // whatever its length or wording.
   const API_MESSAGES = {
-    auth: 'Your session has ended. Sign in again to keep reading.',
+    auth: 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.',
     forbidden: 'Your role can’t do that in Messages.',
     not_found: 'That conversation or message isn’t available any more.',
     conflict: 'This changed while you were writing. Refresh and try again.',

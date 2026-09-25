@@ -177,7 +177,12 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
       if (result && result.__status) return json(route, result.body ?? {}, result.__status);
       return json(route, sessionFor(user));
     }
-    if (url.pathname.startsWith('/auth/v1/logout')) return route.fulfill({ status: 204, body: '' });
+    if (url.pathname.startsWith('/auth/v1/logout')) {
+      const handler = fixtures.auth?.logout;
+      const result = typeof handler === 'function' ? await handler(entry) : handler;
+      if (result && result.__status) return json(route, result.body ?? {}, result.__status);
+      return route.fulfill({ status: 204, body: '' });
+    }
 
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
       const name = url.pathname.slice('/rest/v1/rpc/'.length);
