@@ -4,5 +4,4 @@
 @layer atlas.modules {
 .team-profile-photo-controls { display: inline-flex; align-items: center; gap: var(--s-1); }
 .atlas-avatar.has-profile-photo, #user-avatar.has-profile-photo { overflow: hidden; color: transparent; }
-.atlas-avatar > img, #user-avatar > img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: center; }
 }

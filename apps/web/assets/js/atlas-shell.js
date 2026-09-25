@@ -164,7 +164,7 @@
     },
     shifts: (rest) => [['shifts', section(rest[0])]],
     team: (rest) => [['team-profiles', rest[0] ? { profile: rest[0] } : {}]],
-    knowledge: (rest) => [['knowledge', ['required', 'training'].includes(rest[0]) ? section(rest[0]) : rest[0] ? { article: rest[0] } : {}]],
+    knowledge: (rest) => [['knowledge', ['required', 'training', 'sources', 'activity'].includes(rest[0]) ? section(rest[0]) : rest[0] ? { article: rest[0] } : {}]],
     reports: (rest) => [['reports', section(rest[0])]],
     marketing: (rest) => [['marketing', section(rest[0])]],
     data: (rest) => {
@@ -291,6 +291,15 @@
     ));
   }
 
+  // The address already names exactly this view and these params: every param
+  // shown matches, and the address carries no param the view no longer has
+  // (#messages/general → #messages must rewrite the address).
+  function sameRoute(route, name, params) {
+    if (!routeMatches(route, name, params)) return false;
+    const present = (value) => value != null && value !== '' && typeof value !== 'object' && typeof value !== 'function';
+    return Object.entries(route.params).every(([key, value]) => !present(value) || (present(params?.[key]) && String(params[key]) === String(value)));
+  }
+
   // `route` is the link the user followed (navigate('#ai')): it is written as
   // typed when it resolves to the view being shown, so a fallback page (Brain
   // answering #ai) keeps its spec address.
@@ -298,7 +307,7 @@
     if (!routing || !root.history || !root.location) return;
     const replace = replaceNextRoute;
     replaceNextRoute = false;
-    if (routeMatches(parseRoute(root.location.hash), name, params)) return;
+    if (sameRoute(parseRoute(root.location.hash), name, params)) return;
     const typed = typeof route === 'string' && route.includes('#') ? `#${route.split('#').slice(1).join('#')}` : '';
     const target = typed && parseRoute(typed).view === name ? typed : href(name, params);
     try {
@@ -310,9 +319,8 @@
   function handleRouteChange() {
     if (!routing) return;
     const route = parseRoute(root.location.hash);
-    if (route.panel === 'notifications') { openNotifications(); return; }
-    const sameParams = Object.keys(route.params).length === Object.keys(currentParams).filter((key) => currentParams[key] != null).length;
-    if (route.view === current && routeMatches(route, current, currentParams) && sameParams) return;
+    if (route.panel === 'notifications') { openNotifications({ ...route.params, fromRoute: true }); return; }
+    if (route.view === current && sameRoute(route, current, currentParams) && routeMatches(route, current, currentParams)) return;
     show(route.view, route.params, { history: false, source: 'history' });
   }
 
@@ -344,6 +352,9 @@
       onShow: definition.onShow || null,
       onHide: definition.onHide || null,
       guard: definition.guard || null,
+      // fullHeight: the page fills the content area edge to edge under the top
+      // bar (spec §7.3); body.atlas-page-full-height while it is shown.
+      fullHeight: Boolean(definition.fullHeight),
       sequence: ++registrationSequence
     };
     views.set(key, entry);
@@ -418,6 +429,7 @@
     pending = null;
     metrics.shows[key] = (metrics.shows[key] || 0) + 1;
     safe(layout || defaultLayout, key, entry, context);
+    root.document?.body?.classList?.toggle?.('atlas-page-full-height', entry.fullHeight);
     if (options.history !== false) writeRoute(key, currentParams, options.route);
     if (token !== showToken) return true;
 
@@ -443,7 +455,7 @@
 
   function navigate(target, options = {}) {
     const route = typeof target === 'string' ? parseRoute(target) : { view: canonicalName(target?.view), params: target?.params || {} };
-    if (route.panel === 'notifications') return openNotifications();
+    if (route.panel === 'notifications') return openNotifications({ ...route.params, ...options });
     return show(route.view, route.params, { source: 'link', ...(typeof target === 'string' ? { route: target } : {}), ...options });
   }
 

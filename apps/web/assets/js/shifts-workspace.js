@@ -451,62 +451,23 @@
 
   // ---------- layers (AtlasModal sheets and dialogs) ----------
 
-  function openLayer({ id, panel, onClose }) {
-    document.getElementById(id)?.remove();
-    const root = document.createElement('div');
-    root.id = id;
-    root.className = 'atlas-modal shifts-layer';
-    root.setAttribute('data-atlas-modal', '');
-    root.hidden = true;
-    root.innerHTML = panel;
-    document.body.appendChild(root);
+  // Layers and dialogs are the shared AtlasModal ones (modal.js).
+  function openLayer({ id, panel, onClose, initialFocus }) {
+    const root = window.AtlasModal.layer({ id, panel, className: 'shifts-layer', onClose, initialFocus });
     paintIcons();
-    if (window.AtlasModal) {
-      window.AtlasModal.register(root, { onClose: (reason) => { root.remove(); onClose?.(reason); } });
-      window.AtlasModal.open(root);
-    } else {
-      root.hidden = false;
-      root.classList.add('is-open');
-    }
     return root;
   }
 
   function closeLayer(root) {
-    if (!root) return;
-    if (window.AtlasModal?.isOpen?.(root)) window.AtlasModal.close(root);
-    else root.remove();
+    if (root) window.AtlasModal.dismiss(root);
   }
 
+  // Resolves { value } (the note when `field` is given) or null when dismissed.
   function confirmDialog({ title, body, confirmLabel, danger = false, field = null }) {
-    return new Promise((resolve) => {
-      let settled = false;
-      const finish = (value) => { if (!settled) { settled = true; resolve(value); } };
-      const root = openLayer({
-        id: 'shifts-confirm',
-        panel: `<section class="atlas-dialog${field ? ' atlas-dialog--form' : ''}" data-modal-panel aria-labelledby="shifts-confirm-title">
-          <h2 class="atlas-dialog__title" id="shifts-confirm-title">${escapeHtml(title)}</h2>
-          <form class="atlas-dialog__body" data-shifts-confirm-form novalidate>
-            <p>${escapeHtml(body)}</p>
-            ${field ? `<div class="atlas-field"><label for="shifts-confirm-input">${escapeHtml(field.label)}${field.required ? '' : ' <span class="optional">Optional</span>'}</label><textarea class="atlas-input atlas-textarea" id="shifts-confirm-input" rows="3" maxlength="3000" placeholder="${escapeHtml(field.placeholder || '')}">${escapeHtml(field.value || '')}</textarea><p class="error" data-shifts-confirm-error hidden>${escapeHtml(field.label)} is required.</p></div>` : ''}
-            <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn ${danger ? 'atlas-btn--danger-solid' : 'atlas-btn--primary'}">${escapeHtml(confirmLabel)}</button></div>
-          </form>
-        </section>`,
-        onClose: () => finish(null)
-      });
-      root.querySelector('[data-shifts-confirm-form]')?.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const input = root.querySelector('#shifts-confirm-input');
-        const value = input ? input.value.trim() : '';
-        if (field?.required && !value) {
-          input.setAttribute('aria-invalid', 'true');
-          root.querySelector('[data-shifts-confirm-error]').hidden = false;
-          input.focus();
-          return;
-        }
-        finish({ value });
-        closeLayer(root);
-      });
-    });
+    const options = { id: 'shifts-confirm', title, body, confirmLabel, danger };
+    if (!field) return window.AtlasModal.confirm(options).then((ok) => (ok ? { value: '' } : null));
+    return window.AtlasModal.prompt({ ...options, label: field.label, value: field.value, placeholder: field.placeholder, required: field.required, maxLength: 3000 })
+      .then((value) => (value === null ? null : { value }));
   }
 
   // ---------- shift editor ----------
@@ -1114,15 +1075,9 @@
     return params;
   }
 
-  // AtlasShell.show() does not rewrite the address when the new route has
-  // fewer parts than the current one (#messages/general → #messages), so this
-  // page moves between its own routes through the address itself.
+  // Moves between this page's routes; AtlasShell.show() writes the address.
   function routeTo(view, params = {}) {
-    const shell = window.AtlasShell;
-    if (!shell?.href) return;
-    const target = shell.href(view, params);
-    if (window.location.hash !== target) window.location.hash = target;
-    else shell.show(view, params, { history: false, source: 'route' });
+    window.AtlasShell?.show?.(view, params, { source: 'route' });
   }
 
   function go(next = {}) {

@@ -311,7 +311,7 @@
     if (element.classList.contains('placeholder-view')) element.classList.remove('placeholder-view');
     if (element.dataset.msgReady === 'true' && state.root?.isConnected) return state.root;
     element.dataset.msgReady = 'true';
-    element.classList.add('msg-host');
+    element.classList.add('msg-host', 'page--full-height');
     element.innerHTML = `<div class="msg" data-msg-view="list">
       <aside class="msg-side" aria-label="Conversations">
         <header class="page-head msg-side__head"><div class="page-head__text"><h1 class="page-head__title">Messages</h1></div></header>
@@ -433,7 +433,7 @@
       const week = starts && clock() ? clock().startOfWeek(clock().businessDate(starts)) : null;
       return week ? `#shifts?week=${week}` : '#shifts';
     }
-    if (link.type === 'brain_recommendation') return '#ai/decisions';
+    if (link.type === 'brain_recommendation') return link.key ? `#ai/decisions?recommendation=${encodeURIComponent(link.key)}` : '#ai/decisions';
     return '#home';
   }
 
@@ -687,15 +687,9 @@
     window.AtlasChrome?.setTabBarHidden?.('messages', false);
   }
 
-  // AtlasShell.show() does not rewrite the address when the new route has
-  // fewer parts than the current one (#messages/general → #messages), so this
-  // page moves between its own routes through the address itself.
+  // Moves between this page's routes; AtlasShell.show() writes the address.
   function routeTo(view, params = {}) {
-    const shell = window.AtlasShell;
-    if (!shell?.href) return;
-    const target = shell.href(view, params);
-    if (window.location.hash !== target) window.location.hash = target;
-    else shell.show(view, params, { history: false, source: 'route' });
+    window.AtlasShell?.show?.(view, params, { source: 'route' });
   }
 
   function openChannel(key, options = {}) {
@@ -943,63 +937,23 @@
 
   // ---------- layers (sheets and dialogs through AtlasModal) ----------
 
+  // Layers and dialogs are the shared AtlasModal ones (modal.js).
   function openLayer({ id, panel, onClose, initialFocus }) {
-    document.getElementById(id)?.remove();
-    const root = document.createElement('div');
-    root.id = id;
-    root.className = 'atlas-modal msg-layer';
-    root.setAttribute('data-atlas-modal', '');
-    root.hidden = true;
-    root.innerHTML = panel;
-    document.body.appendChild(root);
+    const root = window.AtlasModal.layer({ id, panel, className: 'msg-layer', onClose, initialFocus });
     paintIcons();
-    if (window.AtlasModal) {
-      window.AtlasModal.register(root, { initialFocus, onClose: (reason) => { root.remove(); onClose?.(reason); } });
-      window.AtlasModal.open(root);
-    } else {
-      root.hidden = false;
-      root.style.display = 'block';
-      root.classList.add('is-open');
-    }
     return root;
   }
 
   function closeLayer(root) {
-    if (!root) return;
-    if (window.AtlasModal?.isOpen?.(root)) window.AtlasModal.close(root);
-    else root.remove();
+    if (root) window.AtlasModal.dismiss(root);
   }
 
+  // Resolves { value } (the note when `field` is given) or null when dismissed.
   function confirmDialog({ title, body, confirmLabel, danger = false, field = null }) {
-    return new Promise((resolve) => {
-      let settled = false;
-      const finish = (value) => { if (!settled) { settled = true; resolve(value); } };
-      const root = openLayer({
-        id: 'msg-confirm',
-        panel: `<section class="atlas-dialog${field ? ' atlas-dialog--form' : ''}" data-modal-panel aria-labelledby="msg-confirm-title">
-          <h2 class="atlas-dialog__title" id="msg-confirm-title">${escapeHtml(title)}</h2>
-          <form class="atlas-dialog__body" data-msg-confirm-form novalidate>
-            <p>${escapeHtml(body)}</p>
-            ${field ? `<div class="atlas-field"><label for="msg-confirm-input">${escapeHtml(field.label)}${field.required ? '' : ' <span class="optional">Optional</span>'}</label><textarea class="atlas-input atlas-textarea" id="msg-confirm-input" rows="3" maxlength="1000" placeholder="${escapeHtml(field.placeholder || '')}"></textarea><p class="error" data-msg-confirm-error hidden>${escapeHtml(field.label)} is required.</p></div>` : ''}
-            <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn ${danger ? 'atlas-btn--danger-solid' : 'atlas-btn--primary'}">${escapeHtml(confirmLabel)}</button></div>
-          </form>
-        </section>`,
-        onClose: () => finish(null)
-      });
-      root.querySelector('[data-msg-confirm-form]')?.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const input = root.querySelector('#msg-confirm-input');
-        const value = input ? input.value.trim() : '';
-        if (field?.required && !value) {
-          input.setAttribute('aria-invalid', 'true');
-          root.querySelector('[data-msg-confirm-error]').hidden = false;
-          input.focus();
-          return;
-        }
-        finish({ value });
-        closeLayer(root);
-      });
-    });
+    const options = { id: 'msg-confirm', title, body, confirmLabel, danger };
+    if (!field) return window.AtlasModal.confirm(options).then((ok) => (ok ? { value: '' } : null));
+    return window.AtlasModal.prompt({ ...options, label: field.label, value: field.value, placeholder: field.placeholder, required: field.required, maxLength: 1000 })
+      .then((value) => (value === null ? null : { value }));
   }
 
   function openHandoverSheet() {
@@ -1281,7 +1235,7 @@
   function registerWithShell() {
     const shell = window.AtlasShell;
     if (!shell?.registerView) return;
-    shell.registerView('team', { root: () => host(), title: 'Messages', render: show, onHide: hide });
+    shell.registerView('team', { root: () => host(), title: 'Messages', fullHeight: true, render: show, onHide: hide });
     shell.actions?.register?.({
       id: 'messages.handover', label: 'Write handover', icon: 'notebook-pen', keywords: ['handover', 'shift', 'next shift', 'message'],
       roles: ['admin', 'manager', 'bartender'], contexts: ['team', 'shifts', 'home'],

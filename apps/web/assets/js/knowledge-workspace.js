@@ -300,62 +300,23 @@
 
   // ---------- layers ----------
 
+  // Layers and dialogs are the shared AtlasModal ones (modal.js).
   function openLayer({ id, panel, onClose, initialFocus }) {
-    document.getElementById(id)?.remove();
-    const root = document.createElement('div');
-    root.id = id;
-    root.className = 'atlas-modal kn-layer';
-    root.setAttribute('data-atlas-modal', '');
-    root.hidden = true;
-    root.innerHTML = panel;
-    document.body.appendChild(root);
+    const root = window.AtlasModal.layer({ id, panel, className: 'kn-layer', onClose, initialFocus });
     paintIcons();
-    if (window.AtlasModal) {
-      window.AtlasModal.register(root, { initialFocus, onClose: (reason) => { root.remove(); onClose?.(reason); } });
-      window.AtlasModal.open(root);
-    } else {
-      root.hidden = false;
-      root.classList.add('is-open');
-    }
     return root;
   }
 
   function closeLayer(root) {
-    if (!root) return;
-    if (window.AtlasModal?.isOpen?.(root)) window.AtlasModal.close(root);
-    else root.remove();
+    if (root) window.AtlasModal.dismiss(root);
   }
 
+  // Resolves { value } (the note when `field` is given) or null when dismissed.
   function confirmDialog({ title, body, confirmLabel, danger = false, field = null }) {
-    return new Promise((resolve) => {
-      let settled = false;
-      const finish = (value) => { if (!settled) { settled = true; resolve(value); } };
-      const root = openLayer({
-        id: 'kn-confirm',
-        panel: `<section class="atlas-dialog${field ? ' atlas-dialog--form' : ''}" data-modal-panel aria-labelledby="kn-confirm-title">
-          <h2 class="atlas-dialog__title" id="kn-confirm-title">${escapeHtml(title)}</h2>
-          <form class="atlas-dialog__body" data-kn-confirm-form novalidate>
-            <p>${escapeHtml(body)}</p>
-            ${field ? `<div class="atlas-field"><label for="kn-confirm-input">${escapeHtml(field.label)}${field.required ? '' : ' <span class="optional">Optional</span>'}</label><textarea class="atlas-input atlas-textarea" id="kn-confirm-input" rows="3" maxlength="3000">${escapeHtml(field.value || '')}</textarea><p class="error" data-kn-confirm-error hidden>${escapeHtml(field.label)} is required.</p></div>` : ''}
-            <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn ${danger ? 'atlas-btn--danger-solid' : 'atlas-btn--primary'}">${escapeHtml(confirmLabel)}</button></div>
-          </form>
-        </section>`,
-        onClose: () => finish(null)
-      });
-      root.querySelector('[data-kn-confirm-form]')?.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const input = root.querySelector('#kn-confirm-input');
-        const value = input ? input.value.trim() : '';
-        if (field?.required && !value) {
-          input.setAttribute('aria-invalid', 'true');
-          root.querySelector('[data-kn-confirm-error]').hidden = false;
-          input.focus();
-          return;
-        }
-        finish({ value });
-        closeLayer(root);
-      });
-    });
+    const options = { id: 'kn-confirm', title, body, confirmLabel, danger };
+    if (!field) return window.AtlasModal.confirm(options).then((ok) => (ok ? { value: '' } : null));
+    return window.AtlasModal.prompt({ ...options, label: field.label, value: field.value, placeholder: field.placeholder, required: field.required, maxLength: 3000 })
+      .then((value) => (value === null ? null : { value }));
   }
 
   // ---------- list pages ----------
@@ -814,11 +775,8 @@
   function render(params = {}) {
     state.visible = true;
     const section = params.section || '';
-    let article = params.article ? String(params.article) : null;
-    // #knowledge/sources and #knowledge/activity arrive as article ids from the
-    // shell's route table (it knows only required and training as sections).
-    if (article && TABS.some((tab) => tab.key === article)) { state.tab = article; article = null; }
-    else if (TABS.some((tab) => tab.key === section)) state.tab = section;
+    const article = params.article ? String(params.article) : null;
+    if (TABS.some((tab) => tab.key === section)) state.tab = section;
     else if (!article) state.tab = 'library';
     const changed = article !== state.articleId;
     state.articleId = article;
@@ -844,7 +802,7 @@
       if (event.metaKey || event.ctrlKey) return;
       event.preventDefault();
       const key = tab.dataset.knowledgeTab;
-      routeTo('knowledge', key === 'library' ? {} : key === 'required' || key === 'training' ? { section: key } : { article: key });
+      routeTo('knowledge', key === 'library' ? {} : { section: key });
       return;
     }
     const open = target.closest('[data-knowledge-open]');
@@ -930,15 +888,9 @@
     if (target.matches?.('[data-kn-check]')) state.checks.set(target.dataset.knCheck, target.checked);
   }
 
-  // AtlasShell.show() does not rewrite the address when the new route has
-  // fewer parts than the current one (#messages/general → #messages), so this
-  // page moves between its own routes through the address itself.
+  // Moves between this page's routes; AtlasShell.show() writes the address.
   function routeTo(view, params = {}) {
-    const shell = window.AtlasShell;
-    if (!shell?.href) return;
-    const target = shell.href(view, params);
-    if (window.location.hash !== target) window.location.hash = target;
-    else shell.show(view, params, { history: false, source: 'route' });
+    window.AtlasShell?.show?.(view, params, { source: 'route' });
   }
 
   function openArticleFromLink(articleId) {

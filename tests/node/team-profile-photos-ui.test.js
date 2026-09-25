@@ -80,7 +80,9 @@ test('photo decoration is idempotent and follows Team render events', () => {
 test('portrait styling is a small atlas.modules sheet on the shared avatar', () => {
   assert.equal((css.match(/@layer/g) || []).length, 1);
   assert.match(css, /@layer atlas\.modules \{/);
-  assert.match(css, /object-fit: cover/);
+  // The photo fit itself is the shared .atlas-avatar > img component rule.
+  assert.match(css, /\.atlas-avatar\.has-profile-photo/);
+  assert.match(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.atlas-avatar > img \{[^}]*object-fit: cover/);
   assert.doesNotMatch(css, /!important|:root|#[0-9a-f]{3,6}\b|font-size/i);
   assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length);
 });

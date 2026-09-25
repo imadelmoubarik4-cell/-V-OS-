@@ -4,9 +4,6 @@
   .data-body { margin-top: var(--s-5); }
   .data-body > * + * { margin-top: var(--s-3); }
   .data-body > :first-child { margin-top: 0; }
-  /* The legacy index.html table defaults (uppercase, tracked th) leak into
-     .atlas-table headers; design-system request filed. Removable. */
-  .data-page .atlas-table th { text-transform: none; letter-spacing: 0; }
   .data-body > .atlas-alert + .atlas-toolbar { margin-top: var(--s-4); }
   .data-caption { margin: 0; font: var(--type-meta); color: var(--text-2); }
   .data-caption a { color: var(--accent-text); }
@@ -30,18 +27,8 @@
   .data-link.cell-primary:hover, a.cell-primary:hover { color: var(--accent-text); text-decoration: underline; }
   button.atlas-table-list__row { width: 100%; }
 
-  /* index.html's legacy phone rule hides every table's third column
-     (design-system request filed); the par editor needs Current par. */
-  .data-par-table .atlas-table :is(th, td):nth-child(3) { display: table-cell; }
   .data-par-input { width: 96px; margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
   .data-suggestion { display: inline-flex; align-items: center; gap: var(--s-2); }
-  .data-par-bar {
-    position: sticky;
-    bottom: var(--s-4);
-    z-index: 2;
-    width: fit-content;
-    margin: var(--s-4) 0 0 auto;
-  }
 
   .data-back { margin-left: calc(-1 * var(--s-2)); }
   .data-import-detail { display: grid; gap: var(--s-5); margin-top: var(--s-3); }
@@ -58,9 +45,6 @@
   .data-facts dt { font: var(--type-caption); color: var(--text-2); }
   .data-facts dd { margin: 2px 0 0; font: var(--type-body); color: var(--text); overflow-wrap: anywhere; }
 
-  /* fieldset.atlas-form-group has no reset in the components yet (design-system request). */
-  :is(#data-duplicate-modal, #data-request-modal) fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
-  :is(#data-duplicate-modal, #data-request-modal) legend { padding: 0; margin-bottom: var(--s-2); }
   .data-sheet-heading { margin: 0; font: var(--type-heading); color: var(--text); }
   .data-raw summary { cursor: pointer; font: var(--type-label); color: var(--text-2); }
   .data-raw[open] summary { margin-bottom: var(--s-3); }
@@ -68,16 +52,10 @@
   .data-upload-drop { cursor: pointer; }
 
   @media (max-width: 767px) {
-    /* The toolbar scrolls sideways on phones; keep the search usable instead
-       of shrinking to its icon (design-system request filed). */
-    .data-page .atlas-toolbar .atlas-search { flex: 0 0 240px; }
     .data-par-input { width: 80px; }
     /* An import on a phone is a detail screen: the top bar carries its name and back. */
     .data-page.is-detail :is(.page-head__sub, .page-head__actions), .data-page.is-detail > .atlas-tabs, .data-page.is-detail .data-back { display: none; }
     .data-page.is-detail .data-body { margin-top: 0; }
-    /* The bulk bar is hidden on phones (components §6.16); the par editor's
-       save bar must stay reachable. Design-system request filed. */
-    .data-par-bar.atlas-bulkbar { display: flex; bottom: calc(var(--tabbar-h) + var(--s-3)); width: auto; margin-left: 0; }
     .data-par-bar .atlas-btn--primary { margin-left: auto; }
     .data-cover .atlas-affix { width: 130px; }
     .data-actions > .atlas-btn { flex: 1 1 auto; }

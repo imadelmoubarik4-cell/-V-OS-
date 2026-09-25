@@ -8,14 +8,8 @@
 .ops-body > * + * { margin-top: var(--s-4); }
 
 /* Today: one row per checklist (name, meta, 120 px progress, status, action). */
-.ops-row { position: relative; }
-.ops-row__open { color: var(--text); font: 500 15px/22px var(--font-sans); text-decoration: none; }
-.ops-row__open::after { content: ''; position: absolute; inset: 0; }
-.ops-row__open:hover { text-decoration: none; }
-.ops-row__open:focus-visible { outline: none; }
-.ops-row:has(.ops-row__open:focus-visible) { outline: var(--focus-outline); outline-offset: -2px; }
-.ops-row:hover { background: var(--bg-hover); }
-.ops-row .atlas-row__end { position: relative; z-index: 1; }
+/* The row is a row link (.atlas-row__link); names read 15/22. */
+.ops-row__open { font: 500 15px/22px var(--font-sans); }
 .ops-progress { display: block; width: 120px; flex: none; }
 .ops-row__status { flex: none; width: 104px; }
 .ops-foot { margin: var(--s-3) 0 0; font: var(--type-caption); color: var(--text-2); }
@@ -76,22 +70,15 @@
 .ops-check__error { color: var(--danger); }
 .ops-detail__foot { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: var(--s-2); margin-top: var(--s-4); padding: var(--s-3) 0; background: var(--bg); }
 
-/* Temperature table. The inline index.html `thead th` rule leaks uppercase into
-   .atlas-table; removable once atlas-components.css resets it (DS request). */
-.ops .atlas-table th { text-transform: none; letter-spacing: 0; }
+/* Temperature table. */
 .ops-temp__actions { display: flex; justify-content: flex-end; gap: var(--s-2); }
 .ops-points { flex-wrap: wrap; height: auto; }
-.ops-days { margin: 0; padding: 0; border: 0; }
 .ops-days .atlas-chips { gap: var(--s-3); }
-.ops-dialog__error:empty { display: none; }
 
 @media (max-width: 1023px) {
   .ops-progress { width: 80px; }
 }
 /* Touch: small buttons in Operations grow to 44 px (spec §6; the design system's .atlas-btn--sm is 40 px). */
-@media (pointer: coarse) {
-  .ops .atlas-btn--sm { min-height: 44px; }
-}
 @media (max-width: 767px) {
   .ops-row { flex-wrap: wrap; }
   .ops-row .ops-progress { display: none; }

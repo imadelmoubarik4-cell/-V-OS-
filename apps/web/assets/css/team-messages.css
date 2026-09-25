@@ -4,10 +4,8 @@
  * No tokens are defined here. */
 @layer atlas.modules {
 
-/* Full-height page (spec §7.3 "page--full-height"): the conversation list and
-   the thread fill the content area under the top bar. */
-body[data-atlas-view="team"] .atlas-content.standard-view { max-width: none; padding: 0; }
-#team-view.msg-host { height: calc(100vh - var(--topbar-h)); height: calc(100dvh - var(--topbar-h)); min-height: 420px; }
+/* The page is a full-height page (.page--full-height, atlas-shell.css): the
+   conversation list and the thread fill the content area under the top bar. */
 
 .msg { display: grid; grid-template-columns: 280px minmax(0, 1fr); height: 100%; min-height: 0; background: var(--bg); }
 
@@ -134,7 +132,6 @@ a.msg-link:hover { border-color: var(--line-strong); background: var(--bg-subtle
   .msg-thread__head, .msg-log, .msg-composer, .msg-thread__alert { padding-left: var(--s-4); padding-right: var(--s-4); }
 }
 @media (max-width: 767px) {
-  #team-view.msg-host { height: auto; min-height: 0; }
   .msg { display: block; height: auto; }
   .msg[data-msg-view="thread"] .msg-side, .msg[data-msg-view="list"] .msg-thread { display: none; }
 

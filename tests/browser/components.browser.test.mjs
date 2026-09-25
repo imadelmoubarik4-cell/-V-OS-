@@ -225,15 +225,16 @@ test('component gallery at 390 (coarse pointer): 44 px touch targets, phone layo
     await page.screenshot({ path: path.join(SHOTS, 'components-390.png'), fullPage: true });
     assert.deepEqual(errors, []);
     assert.equal(result.coarse, true);
-    assert.equal(result.sizes.btnSm.h, 40);
+    // S88 consolidation: every shared control is 44 px on touch (no module overrides).
+    assert.equal(result.sizes.btnSm.h, 44);
     assert.equal(result.sizes.btnMd.h, 44);
     assert.equal(result.sizes.btnLg.h, 44);
     assert.equal(result.sizes.iconBtn.h, 44);
     assert.equal(result.sizes.input.h, 44);
     assert.equal(result.sizes.input.fontSize, 16, 'inputs use 16 px on touch so iOS does not zoom');
     assert.equal(result.sizes.select.h, 44);
-    assert.equal(result.sizes.chip.h, 36);
-    assert.equal(result.sizes.segment.h, 36);
+    assert.equal(result.sizes.chip.h, 44);
+    assert.equal(result.sizes.segment.h, 44);
     assert.equal(result.sizes.menuItem.h, 44);
     assertContrast(Object.fromEntries(Object.entries(result.pairs).filter(([name]) => !['th', 'cellSub', 'selectedRow'].includes(name))));
     assert.ok(result.smallest.size >= 12, `text below 12 px: ${JSON.stringify(result.smallest)}`);
