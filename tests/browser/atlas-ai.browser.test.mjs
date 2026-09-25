@@ -4,7 +4,7 @@
 // atlas-ai.js / atlas-ai-voice.js in Chromium against a mocked atlas-ai.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, settle, until, USERS } from './harness.mjs';
+import { advanceTimers, harnessAvailable, launchAtlas, settle, until, USERS } from './harness.mjs';
 import { aiFixtures, IDS, fakeMediaInit, orderProposal, AI_FIXTURE_NOW } from './atlas-ai-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -41,6 +41,7 @@ async function openAi(options = {}) {
     viewport: options.viewport,
     contextOptions: options.contextOptions,
     fixedTime: options.fixedTime ?? AI_FIXTURE_NOW,
+    controlTimers: options.controlTimers ?? false,
     storage: { 'atlas.ai.voice.explained.v1': 'yes', ...(options.storage || {}) },
     initScript: options.initScript
   });
@@ -707,7 +708,7 @@ test('an inactive voice session stops tools and transcripts and offers a fresh s
 });
 
 test('voice limits show fixed, friendly copy for each reason', { skip }, async () => {
-  const reasons = [['concurrent', /already open in another tab or device/, true], ['daily_minutes', /used today’s live voice time/, false], ['daily_sessions', /used today’s live voice sessions/, false]];
+  const reasons = [['concurrent', /still open on another device or tab\. Continue here to move it to this device\./, true], ['daily_minutes', /used today’s live voice time/, false], ['daily_sessions', /used today’s live voice sessions/, false]];
   for (const [reason, copy, retry] of reasons) {
     const { page, close, backend } = await openAi({
       initScript: fakeMediaInit,
@@ -722,6 +723,7 @@ test('voice limits show fixed, friendly copy for each reason', { skip }, async (
       assert.match(text, copy, reason);
       assert.doesNotMatch(text, /raw quota text/);
       assert.equal(await page.locator('[data-ai-live-reconnect]').count(), retry ? 1 : 0, `${reason} retry offered: ${retry}`);
+      assert.equal(await page.locator('[data-ai-live-takeover]').count(), reason === 'concurrent' ? 1 : 0, `${reason} Continue here offered only for a call open elsewhere`);
       assert.equal(calls(backend, 'voice-tool').length, 0);
     } finally { await close(); }
   }
@@ -735,6 +737,116 @@ test('voice limits show fixed, friendly copy for each reason', { skip }, async (
     await page.waitForSelector('.voice[data-state="error"]');
     await page.waitForFunction(() => /Wait a minute/.test(document.querySelector('.voice__error')?.textContent || ''));
     assert.doesNotMatch(await page.textContent('.voice'), /mint throttle/);
+  } finally { await close(); }
+});
+
+// ---------- S91 live voice: lease heartbeat and device handoff ----------
+
+// Jumps the page's fake clock (due timers fire at most once; the wave
+// animation frames are skipped), then lets the mocked backend answer.
+async function jumpTimers(page, ms) {
+  await page.clock.fastForward(ms);
+  await settle(page, { quietMs: 20 });
+}
+
+// A call still open on another device (or a session whose page died without
+// voice-end) refuses the start with reason concurrent.
+function concurrentUntil(release) {
+  return (entry, state) => {
+    if (release(entry, state)) return undefined; // the default mock starts the call
+    return { __status: 429, body: { error_code: 'voice_quota_exceeded', reason: 'concurrent', message: 'raw quota text from the database' } };
+  };
+}
+
+test('live voice open elsewhere: "Continue here" moves the call to this device', { skip }, async () => {
+  const { page, context, close, backend } = await openAi({
+    initScript: fakeMediaInit,
+    hash: `#ai/c/${IDS.convNegroni}`,
+    backend: { overrides: { 'voice-session': concurrentUntil((entry) => entry.body?.takeover === true) } }
+  });
+  try {
+    await context.route('https://api.openai.com/**', (route) => (route.request().method() === 'OPTIONS'
+      ? route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST' } })
+      : route.fulfill({ status: 201, contentType: 'application/sdp', headers: { 'access-control-allow-origin': '*' }, body: 'v=0 harness-answer' })));
+    await page.click('[data-ai-live]');
+    await page.waitForSelector('.voice[data-state="error"] [data-ai-live-takeover]');
+    const panel = await page.textContent('.voice');
+    assert.match(panel, /Live voice is still open on another device or tab\. Continue here to move it to this device\./);
+    assert.match(panel, /Continue here[\s\S]*Try again/);
+    assert.doesNotMatch(panel, /raw quota text|concurrent|voice_quota/);
+    assert.deepEqual(calls(backend, 'voice-session').map((entry) => entry.body.takeover ?? null), [null], 'the first start never takes over');
+
+    await page.click('[data-ai-live-takeover]');
+    await page.waitForSelector('.voice[data-state="listening"]');
+    const starts = calls(backend, 'voice-session').map((entry) => entry.body);
+    assert.equal(starts.length, 2);
+    assert.equal(starts[1].takeover, true, 'Continue here asks the server to end this person\'s other call');
+    assert.equal(starts[1].conversation_id, IDS.convNegroni);
+    await page.click('[data-ai-live-end]');
+    await until(() => calls(backend, 'voice-end').length, { message: 'voice-end' });
+  } finally { await close(); }
+});
+
+test('live voice open elsewhere: "Try again" after the lease lapses starts without reloading', { skip }, async () => {
+  const { page, context, close, backend } = await openAi({
+    initScript: fakeMediaInit,
+    hash: `#ai/c/${IDS.convNegroni}`,
+    backend: { overrides: { 'voice-session': concurrentUntil((_entry, state) => state.calls.filter((call) => call.action === 'voice-session').length > 1) } }
+  });
+  try {
+    await context.route('https://api.openai.com/**', (route) => (route.request().method() === 'OPTIONS'
+      ? route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST' } })
+      : route.fulfill({ status: 201, contentType: 'application/sdp', headers: { 'access-control-allow-origin': '*' }, body: 'v=0 harness-answer' })));
+    await page.evaluate(() => { window.__sameDocument = true; });
+    await page.click('[data-ai-live]');
+    await page.waitForSelector('.voice[data-state="error"] [data-ai-live-reconnect]');
+    await page.click('[data-ai-live-reconnect]');
+    await page.waitForSelector('.voice[data-state="listening"]');
+    const starts = calls(backend, 'voice-session').map((entry) => entry.body);
+    assert.equal(starts.length, 2);
+    assert.equal(starts[1].takeover, undefined, 'Try again never ends another call');
+    assert.equal(await page.evaluate(() => window.__sameDocument), true, 'no reload was needed');
+  } finally { await close(); }
+});
+
+test('a connected call renews its lease every 45 s; a call moved to another device stops cleanly', { skip }, async () => {
+  let replaced = false;
+  const { page, context, close, backend } = await openAi({
+    initScript: fakeMediaInit,
+    hash: `#ai/c/${IDS.convNegroni}`,
+    controlTimers: true,
+    backend: { overrides: { 'voice-heartbeat': () => (replaced ? { __status: 409, body: { error_code: 'voice_session_replaced', message: 'raw server detail' } } : undefined) } }
+  });
+  try {
+    await context.route('https://api.openai.com/**', (route) => (route.request().method() === 'OPTIONS'
+      ? route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST' } })
+      : route.fulfill({ status: 201, contentType: 'application/sdp', headers: { 'access-control-allow-origin': '*' }, body: 'v=0 harness-answer' })));
+    await page.click('[data-ai-live]');
+    await until(async () => { await advanceTimers(page, 250); return page.locator('.voice[data-state="listening"]').count(); }, { message: 'the call to connect' });
+    assert.equal(calls(backend, 'voice-heartbeat').length, 0);
+    await jumpTimers(page, 46000);
+    assert.equal(calls(backend, 'voice-heartbeat').length, 1, 'one heartbeat after 45 s');
+    assert.deepEqual(calls(backend, 'voice-heartbeat')[0].body, { voice_session_id: IDS.voiceSession });
+    await jumpTimers(page, 45000);
+    assert.equal(calls(backend, 'voice-heartbeat').length, 2);
+
+    // Another device of the same person pressed Continue here.
+    replaced = true;
+    await jumpTimers(page, 45000);
+    await page.waitForSelector('.voice[data-state="replaced"]');
+    const panel = await page.textContent('.voice');
+    assert.match(panel, /Moved to another device[\s\S]*Live voice moved to another device\./);
+    assert.doesNotMatch(panel, /raw server detail/);
+    assert.equal(await page.locator('[data-ai-live-takeover]').count(), 1, 'this device can take the call back');
+    assert.equal(await page.evaluate(() => window.__pc.connectionState), 'closed', 'the call on this device is closed');
+    const beats = calls(backend, 'voice-heartbeat').length;
+    await page.evaluate(() => window.__dc.serverEvent({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u7', transcript: 'Hello?' }));
+    await jumpTimers(page, 90000);
+    assert.equal(calls(backend, 'voice-heartbeat').length, beats, 'no more heartbeats for a replaced session');
+    assert.equal(calls(backend, 'voice-append').length, 0);
+    await page.click('[data-ai-live-end]');
+    await until(async () => { await advanceTimers(page, 100); return (await page.locator('.voice').count()) === 0; }, { message: 'the panel to close' });
+    assert.equal(calls(backend, 'voice-end').length, 0, 'a replaced session is not ended again');
   } finally { await close(); }
 });
 

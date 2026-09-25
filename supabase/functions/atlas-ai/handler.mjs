@@ -579,7 +579,10 @@ export function createAtlasAiHandler(deps) {
   // (enabled, durable per-minute throttle, daily turn limit, daily voice
   // sessions, concurrency and the estimated minutes budget) before the
   // provider is called. The returned voice_session_id (or the provider
-  // session_id) must accompany voice-tool and voice-append calls.
+  // session_id) must accompany voice-tool, voice-append and voice-heartbeat
+  // calls. S91: the reservation has a short idle lease the connected client
+  // renews (voice-heartbeat); `takeover: true` ("Continue here") ends the
+  // same person's other live voice sessions in the same transaction.
   async function voiceSession(body, actor) {
     const gateway = gatewayOrUnavailable();
     await requireAi(actor, { count: true });
@@ -601,6 +604,8 @@ export function createAtlasAiHandler(deps) {
       p_conversation_id: conversationId,
       p_models: { realtime: config.models.realtime },
       p_mints_per_minute: config.limits.voiceMintsPerMinute,
+      p_takeover: body.takeover === true,
+      p_lease_seconds: config.limits.voiceLeaseSeconds,
     });
     const voiceSessionId = reserved?.voice_session_id ?? null;
     const runId = reserved?.run_id ?? null;
@@ -631,6 +636,9 @@ export function createAtlasAiHandler(deps) {
       session_id: providerSessionId,
       voice_session_id: voiceSessionId,
       voice_session_expires_at: reserved?.hard_expires_at ?? null,
+      lease_seconds: Number(reserved?.lease_seconds) || config.limits.voiceLeaseSeconds,
+      heartbeat_seconds: config.limits.voiceHeartbeatSeconds,
+      replaced_sessions: Number(reserved?.replaced_sessions) || 0,
       conversation_id: conversationId,
       run_id: runId,
     };
@@ -638,7 +646,8 @@ export function createAtlasAiHandler(deps) {
 
   // The live voice session owned by the actor (Atlas voice_session_id, or the
   // provider session_id returned by voice-session). Throws
-  // voice_session_inactive when it is missing, unknown or over.
+  // voice_session_inactive when it is missing, unknown or over, and
+  // voice_session_replaced when another device took the call over.
   async function touchVoiceSession(actor, body, event) {
     const raw = typeof body.voice_session_id === "string" && body.voice_session_id.trim()
       ? body.voice_session_id
@@ -748,6 +757,19 @@ export function createAtlasAiHandler(deps) {
     return appended;
   }
 
+  // The connected live client renews its idle lease (about every 45 s). A
+  // session whose page died without voice-end then frees its slot within
+  // the lease instead of blocking the next call.
+  async function voiceHeartbeat(body, actor) {
+    const voice = await touchVoiceSession(actor, body, "heartbeat");
+    return {
+      live: voice?.live === true,
+      voice_session_id: voice?.voice_session_id ?? null,
+      lease_expires_at: voice?.lease_expires_at ?? null,
+      hard_expires_at: voice?.hard_expires_at ?? null,
+    };
+  }
+
   // Ends a live voice session: frees the concurrency slot and stops Atlas
   // serving its tools. The browser closes the Realtime call itself; the
   // server cannot force-close an established call.
@@ -829,6 +851,7 @@ export function createAtlasAiHandler(deps) {
     "voice-session": { methods: ["POST"], body: true, run: (body, actor) => voiceSession(body, actor) },
     "voice-tool": { methods: ["POST"], body: true, run: (body, actor) => voiceTool(body, actor) },
     "voice-append": { methods: ["POST"], body: true, run: (body, actor) => voiceAppend(body, actor) },
+    "voice-heartbeat": { methods: ["POST"], body: true, run: (body, actor) => voiceHeartbeat(body, actor) },
     "voice-end": { methods: ["POST"], body: true, run: (body, actor) => voiceEnd(body, actor) },
   };
 

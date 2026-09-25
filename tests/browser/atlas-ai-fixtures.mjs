@@ -167,7 +167,10 @@ export function atlasAiBackend({ configured = true, chat = null, delayChatMs = 0
         return { text: 'I just counted six bottles of Tanqueray and two Campari', duration: 4.2, source: 'voice_note', media_id: null, audio_retained: false };
       case 'voice-session':
         state.voiceActive = true;
-        return { client_secret: 'ek_harness_secret', expires_at: null, model: 'realtime', voice: 'marin', session_id: 'sess_harness', voice_session_id: IDS.voiceSession, voice_session_expires_at: inHours(1), conversation_id: body.conversation_id || IDS.created, run_id: 'run-voice' };
+        return { client_secret: 'ek_harness_secret', expires_at: null, model: 'realtime', voice: 'marin', session_id: 'sess_harness', voice_session_id: IDS.voiceSession, voice_session_expires_at: inHours(1), lease_seconds: 120, heartbeat_seconds: 45, replaced_sessions: body.takeover === true ? 1 : 0, conversation_id: body.conversation_id || IDS.created, run_id: 'run-voice' };
+      case 'voice-heartbeat':
+        if (!liveSession(body)) return inactive;
+        return { live: true, voice_session_id: body.voice_session_id, lease_expires_at: inHours(0.03), hard_expires_at: inHours(1) };
       case 'voice-end':
         if (!liveSession(body)) return inactive;
         state.voiceActive = false;
