@@ -36,12 +36,15 @@ const headerState = (page) => page.evaluate(() => [...document.querySelectorAll(
   const sub = head.querySelector('.page-head__sub');
   const lines = sub ? Math.round(sub.getBoundingClientRect().height / (parseFloat(getComputedStyle(sub).lineHeight) || 20)) : 0;
   const outside = [...head.querySelectorAll('.page-head__actions *')].some((node) => { const r = node.getBoundingClientRect(); return r.width > 0 && (r.right > box.right + 1 || r.left < box.left - 1); });
-  return { title: head.querySelector('.page-head__title')?.textContent.trim(), head: Math.round(box.width), text: Math.round(text.width), lines, clipped: sub ? sub.scrollWidth > sub.clientWidth + 1 : false, outside };
+  // Empty space under the text block (a flex basis read as a height in the phone column).
+  const bottoms = [...head.querySelector('.page-head__text').children].map((node) => node.getBoundingClientRect()).filter((r) => r.height > 1).map((r) => r.bottom);
+  const slack = bottoms.length ? Math.round(text.bottom - Math.max(...bottoms)) : 0;
+  return { title: head.querySelector('.page-head__title')?.textContent.trim(), head: Math.round(box.width), text: Math.round(text.width), slack, lines, clipped: sub ? sub.scrollWidth > sub.clientWidth + 1 : false, outside };
 }));
 
 test('P1-6: page headers keep a 280 px title column; actions wrap below instead of squeezing it', { skip }, async () => {
   const routes = { C: ['#reports/overview', '#recipes', '#marketing', '#data'], P: ['#shifts', '#shifts/month', '#knowledge', '#team'], INV: ['#inventory', '#purchasing'], A: ['#operations', '#settings'] };
-  for (const width of [1280, 1024, 768, 430]) {
+  for (const width of [1280, 1024, 768, 390]) {
     for (const [group, list] of Object.entries(routes)) {
       const phone = width < 768;
       const { page, record, close } = await launchAtlas({ fixtures: uxWorld(USERS.admin, { group }), viewport: { width, height: 900 }, contextOptions: phone ? { hasTouch: true, isMobile: true } : {} });
@@ -53,6 +56,7 @@ test('P1-6: page headers keep a 280 px title column; actions wrap below instead 
             assert.ok(head.text >= Math.min(280, head.head) - 1, `title column squeezed, ${where}`);
             assert.equal(head.clipped, false, `subtitle clipped, ${where}`);
             assert.equal(head.outside, false, `header action outside the header, ${where}`);
+            assert.ok(head.slack <= 2, `empty space under the header text, ${where}`);
             if (width >= 768) assert.ok(head.lines <= 2, `subtitle wraps to ${head.lines} lines, ${where}`);
           }
         }

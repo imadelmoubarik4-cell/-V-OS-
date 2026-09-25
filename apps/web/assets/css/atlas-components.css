@@ -87,6 +87,8 @@
 .atlas-toolbar__end { display: flex; align-items: center; gap: var(--s-2); margin-left: auto; font: var(--type-meta); color: var(--text-2); }
 @media (max-width: 767px) {
   .page-head { flex-direction: column; align-items: stretch; gap: var(--s-4); }
+  /* In the column the 280 px basis would be a height: the text takes its content height. */
+  .page-head__text { flex: none; }
   /* The phone top bar shows the page name; the H1 stays for assistive tech. */
   .page-head__title {
     position: absolute;

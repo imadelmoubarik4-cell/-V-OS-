@@ -834,7 +834,7 @@
 
   function weekEmptyMarkup() {
     if (canManage()) {
-      return `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar-plus')}</div><h3 class="atlas-empty__title">No shifts this week</h3><p class="atlas-empty__text">Start from last week’s schedule or add shifts one by one. Nothing is visible to the team until you publish.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-shifts-copy>${icon('copy')}Copy last week</button><button type="button" class="atlas-btn atlas-btn--secondary" data-shifts-add="${escapeHtml(state.weekStart <= today() && today() <= addDays(state.weekStart, 6) ? today() : state.weekStart)}">${icon('plus')}Add shift</button></div></div>`;
+      return `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar-plus')}</div><h3 class="atlas-empty__title">No shifts this week</h3><p class="atlas-empty__text">Start from last week’s schedule or add shifts one by one. Nothing is visible to the team until you publish.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-shifts-copy>${icon('copy')}Copy last week</button><button type="button" class="atlas-btn atlas-btn--primary" data-shifts-add="${escapeHtml(state.weekStart <= today() && today() <= addDays(state.weekStart, 6) ? today() : state.weekStart)}">${icon('plus')}Add shift</button></div></div>`;
     }
     return `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar')}</div><h3 class="atlas-empty__title">No published shifts this week</h3><p class="atlas-empty__text">Your manager hasn’t published this week yet. Published shifts appear here.</p></div>`;
   }
