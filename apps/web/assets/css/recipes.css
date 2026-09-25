@@ -41,6 +41,9 @@
   .recipe-tile__meta { font: var(--type-meta); color: var(--text-2); }
   .recipe-tile__status { margin-top: var(--s-1); }
   .recipe-tile__line { font: var(--type-caption); color: var(--text-2); }
+  /* Long Icelandic names and reasons stay two lines; the tile's link keeps
+     the full name for assistive tech and the detail shows it whole. */
+  .recipe-tile :is(.recipe-tile__name, .recipe-tile__line) { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
   .recipe-tile--skeleton .recipe-tile__body { gap: var(--s-2); }
   /* A recipe without a photo: a compact row-shaped tile, the category's glass
      icon on a calm neutral square beside the name. */
@@ -133,7 +136,7 @@
     .recipe-tile--plain .recipe-tile__body { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--s-3); padding: 0; }
     .recipe-tile--plain .recipe-tile__status { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
     .recipe-tile--plain .recipe-tile__line { grid-column: 1; }
-    .recipe-tile--plain :is(.recipe-tile__name, .recipe-tile__line) { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .recipe-tile--plain :is(.recipe-tile__name, .recipe-tile__line) { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .recipe-view-toggle { display: none; }
     .recipe-build__row, .recipe-method { font: 400 var(--fs-section)/26px var(--font-sans); }
     .recipe-build__row { grid-template-columns: minmax(80px, auto) minmax(0, 1fr); }

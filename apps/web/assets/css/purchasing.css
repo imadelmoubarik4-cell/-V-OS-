@@ -22,6 +22,9 @@
 /* Suggested order summary */
 .po-suggest { display: flex; align-items: center; justify-content: space-between; gap: var(--s-5); margin-top: var(--s-5); }
 .po-suggest__text { min-width: 0; }
+.po-suggest > .atlas-btn { flex: none; }
+.po .atlas-table .po-col--text { max-width: 0; width: 40%; }
+.po__clip { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .po-suggest__text p { margin: var(--s-1) 0 0; font: var(--type-body); }
 .po-suggest__title { margin: 0; font: var(--type-heading); }
 .po-suggest__qty { width: 96px; height: 32px; text-align: right; }
