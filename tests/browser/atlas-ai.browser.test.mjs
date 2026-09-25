@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { harnessAvailable, launchAtlas, requestsTo, USERS } from './harness.mjs';
-import { aiFixtures, IDS, fakeMediaInit, orderProposal } from './atlas-ai-fixtures.mjs';
+import { aiFixtures, IDS, fakeMediaInit, orderProposal, AI_FIXTURE_NOW } from './atlas-ai-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 
@@ -40,6 +40,7 @@ async function openAi(options = {}) {
     hash: options.hash || '#ai/new',
     viewport: options.viewport,
     contextOptions: options.contextOptions,
+    fixedTime: options.fixedTime ?? AI_FIXTURE_NOW,
     storage: { 'atlas.ai.voice.explained.v1': 'yes', ...(options.storage || {}) },
     initScript: options.initScript
   });
@@ -165,7 +166,7 @@ test('a failed approval says so and never shows success', { skip }, async () => 
   fixtures.functions['atlas-ai'] = (entry) => (entry.action === 'execute-action'
     ? { ok: false, action: { id: IDS.action, status: 'failed' }, result: null, error: { code: 'conflict', message: 'raw database text' } }
     : original(entry));
-  const { page, close } = await launchAtlas({ fixtures, hash: `#ai/c/${IDS.convNegroni}` });
+  const { page, close } = await launchAtlas({ fixtures, fixedTime: AI_FIXTURE_NOW, hash: `#ai/c/${IDS.convNegroni}` });
   try {
     await page.waitForSelector('[data-ai-approve]');
     await page.click('[data-ai-approve]');
@@ -221,7 +222,7 @@ test('a 503 on the first question switches to the truthful off state', { skip },
     ? { __status: 403, body: { error_code: 'forbidden', message: 'Managers only.' } }
     : entry.action === 'chat' ? { __status: 503, body: { error_code: 'not_configured', message: 'Atlas AI is not configured' } }
       : original(entry));
-  const { page, close } = await launchAtlas({ fixtures, hash: '#ai/new' });
+  const { page, close } = await launchAtlas({ fixtures, fixedTime: AI_FIXTURE_NOW, hash: '#ai/new' });
   try {
     await page.waitForSelector('#ai-composer-input');
     await page.waitForTimeout(300);
@@ -446,7 +447,7 @@ test('Decisions opens a record sheet and saves a decision', { skip }, async () =
     if (entry.action === 'detail') return { detail: { recommendation: { id: 'r-1', title: 'Order Campari before Friday', summary: 'One bottle left.', explanation: 'Negroni needs Campari.', evidence: [{ label: 'Campari on hand', value: { bottles: 1 } }] }, memory: [] } };
     return { snapshot: { recommendations: [{ id: 'r-1', title: 'Order Campari before Friday', summary: 'One bottle left.', status: 'active', generated_by: 'atlas-ai/s88', recommendation_type: 'purchasing' }], memory: [] } };
   };
-  const { page, close } = await launchAtlas({ fixtures, hash: '#ai/decisions' });
+  const { page, close } = await launchAtlas({ fixtures, fixedTime: AI_FIXTURE_NOW, hash: '#ai/decisions' });
   try {
     await page.click('[data-ai-dec-open="r-1"]');
     await page.waitForSelector('.ai-sheet [data-ai-dec-form]');
@@ -463,7 +464,7 @@ test('Decisions opens a record sheet and saves a decision', { skip }, async () =
 
 test('search questions and Ask Atlas actions open Atlas AI with the question', { skip }, async () => {
   const { fixtures, backend } = aiFixtures();
-  const { page, close } = await launchAtlas({ fixtures });
+  const { page, close } = await launchAtlas({ fixtures, fixedTime: AI_FIXTURE_NOW });
   try {
     // The palette's Ask Atlas row (and ⌘/Ctrl+Enter) opens #ai/new?q=…&from=<page>.
     await page.click('#atlas-omni');
