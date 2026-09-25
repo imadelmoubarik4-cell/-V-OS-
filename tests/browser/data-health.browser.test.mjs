@@ -50,9 +50,9 @@ test('movements fail: no stock is projected from stale counts; Home, Inventory a
     assert.deepEqual(health.stockMissing, ['movements']);
     assert.equal(await page.evaluate(() => window.AtlasData.status().items), 'partial');
     // Every item is unknown with a reason — never its baseline count as if complete.
-    const items = await page.evaluate(() => window.AtlasData.items().map((item) => ({ id: item.id, quantity: item.quantity, known: window.AtlasStockTruth.known(item), reason: item.stock_unknown_reason })));
+    const items = await page.evaluate(() => window.AtlasData.items().map((item) => ({ id: item.id, quantity: item.quantity, status: window.AtlasStockTruth.stockStatus(item), reason: window.AtlasStockTruth.unknownReason(item) })));
     assert.ok(items.length > 0);
-    assert.ok(items.every((item) => item.quantity === null && item.known === false && item.reason === 'stock_data_incomplete'), JSON.stringify(items));
+    assert.ok(items.every((item) => item.quantity === null && item.status === 'unknown' && item.reason === 'stock_data_incomplete'), JSON.stringify(items));
 
     // Home: one clear attention row with Try again; the glance shows no number.
     await page.waitForSelector('.home-glance__item');
@@ -86,6 +86,9 @@ test('movements fail: no stock is projected from stale counts; Home, Inventory a
     await page.click('[data-reports-stock-retry]');
     await page.waitForFunction(() => window.AtlasData.health().stock === 'ok');
     assert.ok(backend.movementReads > readsBefore);
+    // Recovered stock is projected again; a never-counted item is 'not_counted', not incomplete.
+    const recovered = await page.evaluate(() => window.AtlasData.items().map((item) => window.AtlasStockTruth.unknownReason(item)));
+    assert.ok(recovered.includes(null) && !recovered.includes('stock_data_incomplete'), JSON.stringify(recovered));
     await page.waitForFunction(() => !/Stock figures are incomplete/.test(document.querySelector('.reports-body')?.textContent || ''));
     await navigate(page, '#', '.home-glance__item');
     await page.waitForFunction(() => /below par/.test(document.querySelector('.home-glance__item')?.textContent || ''));

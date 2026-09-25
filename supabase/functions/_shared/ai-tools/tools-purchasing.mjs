@@ -3,7 +3,7 @@
 // open purchase orders as input; drafts are proposals executed only through
 // atlas_purchase_order_command_v2 after a person approves.
 
-import { orderGroups, orderSuggestions } from "../atlas-domain.mjs";
+import { orderGroups, orderSuggestions, purchaseReceiptAmount, stockStatus } from "../atlas-domain.mjs";
 import { S } from "./schema.mjs";
 import { buildProposal } from "./actions.mjs";
 import {
@@ -15,7 +15,6 @@ import { resolveInventoryName } from "./tools-recognition.mjs";
 const MANAGERS = ["admin", "manager"];
 export const OPEN_ORDER_STATUSES = ["draft", "pending_approval", "approved", "ordered", "partially_received"];
 const RECEIVING_STATUSES = ["ordered", "partially_received"];
-const RECEIPT_MOVEMENT_TYPES = new Set(["restock", "purchase", "delivery", "receive", "receipt"]);
 export const DEFAULT_DRAFT_PO_CAP_ISK = 5_000_000;
 
 const uuidFor = (ctx) => (ctx.newId ? ctx.newId() : newId());
@@ -78,24 +77,29 @@ const suggest = {
     for (const entry of list.slice(0, 20)) {
       const item = byId.get(String(entry.id));
       const par = numberOrNull(item?.par_level) ?? 0;
-      evidence.push(calculation(`Order ${entry.name}`, `verified ${quantityLabel(item?.quantity, entry.unit)} < par ${par}; target ${Math.max(par, Math.ceil(par * 2))}, shortfall ${entry.shortfall}${entry.cases ? `, ${entry.cases} case(s) = ${entry.orderQuantity}` : ""}`, source("inventory_item", entry.id, entry.name)));
-      evidence.push(entry.estimatedCost > 0
+      const why = item && stockStatus(item) === "out"
+        ? `out of stock (verified ${quantityLabel(item?.quantity, entry.unit)})${par > 0 ? `, par ${par}` : ", no par level"}`
+        : `verified ${quantityLabel(item?.quantity, entry.unit)} < par ${par}`;
+      evidence.push(calculation(`Order ${entry.name}`, `${why}; target ${Math.max(par, Math.ceil(par * 2))}, shortfall ${entry.shortfall}${entry.cases ? `, ${entry.cases} case(s) = ${entry.orderQuantity}` : ""}`, source("inventory_item", entry.id, entry.name)));
+      evidence.push(Number.isFinite(entry.estimatedCost) && entry.estimatedCost > 0
         ? estimate(`Estimated cost of ${entry.name}`, formatIsk(entry.estimatedCost), source("inventory_item", entry.id, entry.name))
         : missing(`Cost of ${entry.name}`, "no inventory cost set", source("inventory_item", entry.id, entry.name)));
     }
     if (ordered.length) evidence.push(fact("Already on open orders", `${ordered.length} below-par items`, source("purchase_order", null, "Purchase orders")));
     evidence.push(missing("Items that cannot be judged", `${state.noPar} with no par level, ${state.unknownWithPar} with a par but no current count`, source("par_levels", null, "Par levels")));
     const total = groups.reduce((sum, group) => sum + group.estimated_cost, 0);
+    const uncosted = list.filter((entry) => !Number.isFinite(entry.estimatedCost)).length;
     return ok({
       summary: list.length
-        ? `${list.length} items to order across ${groups.length} supplier(s), estimated ${formatIsk(total)}. ${ordered.length} more are already on open orders. ${state.noPar} items have no par level and ${state.unknownWithPar} have no current count, so they are not assessed.`
+        ? `${list.length} items to order across ${groups.length} supplier(s), estimated ${formatIsk(total)}${uncosted ? ` plus ${uncosted} without a cost` : ""}. ${ordered.length} more are already on open orders. ${state.noPar} items have no par level and ${state.unknownWithPar} have no current count, so they are not assessed.`
         : `Nothing to order from current verified counts. ${ordered.length} below-par items are already on open orders; ${state.noPar} items have no par and ${state.unknownWithPar} have no current count, so they are not assessed.`,
       data: {
         groups,
         estimated_total: total,
+        uncosted_items: uncosted,
         already_ordered: ordered.map((entry) => ({ item_id: entry.id, name: entry.name })),
         counts: { suggested: list.length, already_ordered: ordered.length, missing_par: state.noPar, par_but_unknown_stock: state.unknownWithPar },
-        rule: "Suggest only verified stock strictly below par. Target = 2 × par, at least one unit, rounded up to whole cases.",
+        rule: "Suggest items that need ordering: verified out of stock, or verified stock strictly below par. Target = 2 × par, at least one unit, rounded up to whole cases. Items without a cost have no estimate (counted as uncosted, never 0 kr).",
       },
       evidence,
       records: list.slice(0, 25).map((entry) => record("inventory_item", entry.id, entry.name)),
@@ -488,7 +492,7 @@ const costChanges = {
     const nowMs = nowMillis(ctx);
     const movements = await ctx.services.movements();
     const receipts = movements
-      .filter((movement) => RECEIPT_MOVEMENT_TYPES.has(lower(movement.movement_type)) && numberOrNull(movement.unit_cost) > 0 && numberOrNull(movement.quantity_change) > 0)
+      .filter((movement) => purchaseReceiptAmount(movement) !== undefined && numberOrNull(movement.unit_cost) > 0)
       .sort((a, b) => text(a.created_at).localeCompare(text(b.created_at)));
     const byItem = new Map();
     for (const movement of receipts) {

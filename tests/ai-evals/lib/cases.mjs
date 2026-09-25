@@ -237,7 +237,7 @@ export function checkGatewayResult(entry, result, { isStaff }) {
     const leaked = STAFF_FORBIDDEN_KEYS.filter((key) => keys.has(key));
     if (leaked.length) fail(`commercial fields leaked to staff: ${leaked.join(', ')}`);
     const text = JSON.stringify(result.evidence);
-    if (/\bISK\b/.test(text)) fail('an ISK amount leaked to staff in evidence');
+    if (/\bISK\b|\d kr\b/.test(text)) fail('an ISK amount leaked to staff in evidence');
     if (result.records.some((record) => ['supplier', 'purchase_order', 'movement'].includes(record.type))) fail('a commercial record leaked to staff');
   }
   return failures;

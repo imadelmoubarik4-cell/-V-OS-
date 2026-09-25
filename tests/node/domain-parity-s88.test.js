@@ -23,6 +23,12 @@ import {
   recipeBlockers,
   recipeCost,
   recipeStatus,
+  hasCost,
+  needsOrdering,
+  orderExposure,
+  purchaseSpend,
+  stockCounts,
+  stockStatus,
 } from '../../supabase/functions/_shared/atlas-domain.mjs';
 
 const read = (path) => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
@@ -260,4 +266,57 @@ test('the domain module never mutates its inputs', () => {
   orderSuggestions(projected, { purchaseOrders: PURCHASE_ORDERS });
   inventoryValue(projected);
   assert.equal(JSON.stringify({ ITEMS, BALANCES, MOVEMENTS, PURCHASE_ORDERS, RECIPES }), snapshot);
+});
+
+// S89: the canonical status, cost, spend and exposure rules give the same
+// answer in both ports for every fixture item (tests/node/canonical-truth-s89
+// checks the Home / Inventory / Reports / Atlas AI surfaces on the probe).
+test('S89 stock status, needs ordering, cost and counts match the browser for every item', () => {
+  const { context, browserProjected, serverProjected } = fixture();
+  const statuses = {};
+  for (const [index, item] of serverProjected.entries()) {
+    assert.equal(stockStatus(item), context.AtlasStockTruth.stockStatus(browserProjected[index]), `stockStatus ${item.id}`);
+    assert.equal(needsOrdering(item), context.AtlasStockTruth.needsOrdering(browserProjected[index]), `needsOrdering ${item.id}`);
+    assert.equal(hasCost(item), context.AtlasStockTruth.hasCost(browserProjected[index]), `hasCost ${item.id}`);
+    statuses[item.id] = stockStatus(item);
+  }
+  assert.deepEqual(statuses, {
+    vodka: 'below_par', gin: 'ok', rum: 'unknown', syrup: 'no_par', lime: 'below_par', tonic: 'ok', foam: 'ok', ice: 'unknown',
+    bitters: 'below_par', cream: 'out', beer: 'unknown', wine: 'below_par', retired: 'below_par', nocost: 'no_par', atpar: 'ok',
+  });
+  assert.deepEqual(plain(context.AtlasStockTruth.stockCounts(browserProjected)), stockCounts(serverProjected));
+  // Out (cream) is not below par; needs ordering is out + below par and is
+  // exactly the order suggestion list.
+  assert.deepEqual(serverProjected.filter((item) => item.active !== false && needsOrdering(item)).map((item) => item.id),
+    orderSuggestions(serverProjected).map((entry) => entry.id));
+});
+
+test('S89 purchase spend, order exposure and inventory value match the browser', () => {
+  const { context, serverProjected } = fixture();
+  const movements = [
+    { movement_type: 'restock', quantity_change: 2, total_cost: 1000 },
+    { movement_type: 'Restock', quantity_change: 3, unit_cost: 200, total_cost: null },
+    { movement_type: 'restock', quantity_change: -1, total_cost: 500 },
+    { movement_type: 'restock', quantity_change: 1, unit_cost: 0, total_cost: 0 },
+    { movement_type: 'waste', quantity_change: -1, total_cost: 700 },
+    { movement_type: 'adjustment', quantity_change: 4, total_cost: 900 },
+    { movement_type: 'sale', quantity_change: -1, total_cost: 300 },
+  ];
+  assert.deepEqual(purchaseSpend(movements), { total: 1600, receipts: 3, costed: 2, uncosted: 1 });
+  assert.deepEqual(plain(context.AtlasStockTruth.purchaseSpend(movements)), purchaseSpend(movements));
+  assert.deepEqual(plain(context.AtlasReportsOverview.orderExposure()), orderExposure(orderSuggestions(serverProjected, { purchaseOrders: PURCHASE_ORDERS })));
+  assert.deepEqual(plain(context.AtlasStockTruth.inventoryValue(context.items)), inventoryValue(serverProjected));
+});
+
+test('S89 a reference ingredient costs 0 in both ports', () => {
+  const { context, serverProjected } = fixture();
+  const recipe = { id: 'r-ice', name: 'Vodka on ice', active: true, yield_quantity: 1, menu_price: 2000, recipe_ingredients: [ingredient('vodka', 50, 'ml'), ingredient('ice', 2, 'each')] };
+  const browserCost = context.AtlasCalculations.recipeMetrics(recipe, context.items).financials;
+  const serverCost = recipeCost(recipe, serverProjected);
+  assert.deepEqual(plain(serverCost), plain(browserCost));
+  assert.equal(serverCost.incomplete, 0);
+  assert.equal(serverCost.complete, true);
+  assert.ok(Math.abs(serverCost.perServing - (5000 / 700) * 50) < 1e-9);
+  // The reference-only recipe is now fully costed at 0 kr (no menu price → not complete).
+  assert.equal(recipeCost(RECIPES[9], serverProjected).total, 0);
 });

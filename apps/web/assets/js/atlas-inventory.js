@@ -111,15 +111,21 @@
     else if (typeof root.atlasReloadPurchasingData === 'function') { await root.atlasReloadPurchasingData(); shell.dataLoaded?.({}); }
   }
 
+  // The pill for the canonical AtlasStockTruth.stockStatus. "Almost out" is
+  // only a display tier of below par (at or under ALMOST_OUT_RATIO of par): it
+  // counts as below par everywhere (filters, Home, Reports, Atlas AI).
   function stockStatus(item) {
     if (item.active === false) return { key: 'inactive', label: 'Inactive', tone: '', rank: 6 };
-    if (item.stock_unknown_reason === 'stock_data_incomplete') return { key: 'unknown', label: 'Unknown', tone: '', rank: 4 };
-    if (!truth()?.known(item)) return { key: 'not_counted', label: 'Not counted', tone: '', rank: 4 };
-    const quantity = num(item.quantity) ?? 0;
-    const par = num(item.par_level);
-    if (quantity <= 0) return { key: 'out', label: 'Out', tone: 'danger', rank: 0 };
-    if (par && par > 0 && quantity <= par * ALMOST_OUT_RATIO) return { key: 'almost_out', label: 'Almost out', tone: 'danger', rank: 1 };
-    if (truth().belowPar(item)) return { key: 'below_par', label: 'Below par', tone: 'warning', rank: 2 };
+    const status = truth()?.stockStatus ? truth().stockStatus(item) : 'unknown';
+    // Unknown with a reason: stock withheld because its inputs failed to load
+    // is "Unknown", not the never-counted "Not counted".
+    if (status === 'unknown' && truth()?.unknownReason?.(item) === 'stock_data_incomplete') return { key: 'unknown', label: 'Unknown', tone: '', rank: 4 };
+    if (status === 'unknown') return { key: 'not_counted', label: 'Not counted', tone: '', rank: 4 };
+    if (status === 'out') return { key: 'out', label: 'Out', tone: 'danger', rank: 0 };
+    if (status === 'below_par') {
+      if ((num(item.quantity) ?? 0) <= (num(item.par_level) ?? 0) * ALMOST_OUT_RATIO) return { key: 'almost_out', label: 'Almost out', tone: 'danger', rank: 1 };
+      return { key: 'below_par', label: 'Below par', tone: 'warning', rank: 2 };
+    }
     return { key: 'ok', label: '', tone: '', rank: 5 };
   }
   function statusPill(status) {
@@ -382,7 +388,7 @@
       if (state.location && String(item.bin_location || '') !== state.location) return false;
       if (state.status) {
         const status = stockStatus(item).key;
-        if (state.status === 'below-par' && !(truth()?.belowPar(item))) return false;
+        if (state.status === 'below-par' && truth()?.stockStatus?.(item) !== 'below_par') return false;
         if (state.status === 'not-counted' && status !== 'not_counted') return false;
         if (state.status === 'out' && !['out', 'almost_out'].includes(status)) return false;
       }
@@ -708,7 +714,7 @@
     const history = movements().filter((entry) => String(entry.item_id) === String(item.id)).slice(0, 10);
     const counts = history.filter((entry) => entry.movement_type === 'count');
     const facts = [
-      ['On hand', known ? `${qty(item.quantity)} ${unitWord(item, item.quantity)}` : item.stock_unknown_reason === 'stock_data_incomplete' ? 'Unknown (stock figures incomplete)' : 'Not counted'],
+      ['On hand', known ? `${qty(item.quantity)} ${unitWord(item, item.quantity)}` : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? 'Unknown (stock figures incomplete)' : 'Not counted'],
       ['Par', num(item.par_level) ? `${qty(item.par_level)} ${unitWord(item, item.par_level)}` : 'Not set'],
       ['Location', item.bin_location || 'Not set'],
       manager ? ['Supplier', item.supplier || 'Not set'] : null,
@@ -733,7 +739,7 @@
         <button type="button" class="atlas-icon-btn" data-inv-detail-menu aria-label="More actions for ${esc(item.name)}">${icon('ellipsis')}</button>
         <button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
       <div class="atlas-sheet__body">
-        <div class="inv-detail__hero"><p class="inv-detail__figure num">${known ? esc(qty(item.quantity)) : '—'}<span class="inv-detail__unit">${known ? esc(unitWord(item, item.quantity)) : item.stock_unknown_reason === 'stock_data_incomplete' ? 'Unknown' : 'Not counted'}</span></p><p class="inv-detail__hint">${known ? `Last verified count plus recorded movements${num(item.par_level) ? ` · par ${qty(item.par_level)}` : ''}.` : item.stock_unknown_reason === 'stock_data_incomplete' ? `Stock figures are incomplete — ${esc(missingStockText())} couldn’t load. Try again.` : 'Quantities appear after the first verified count.'}</p></div>
+        <div class="inv-detail__hero"><p class="inv-detail__figure num">${known ? esc(qty(item.quantity)) : '—'}<span class="inv-detail__unit">${known ? esc(unitWord(item, item.quantity)) : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? 'Unknown' : 'Not counted'}</span></p><p class="inv-detail__hint">${known ? `Last verified count plus recorded movements${num(item.par_level) ? ` · par ${qty(item.par_level)}` : ''}.` : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? `Stock figures are incomplete — ${esc(missingStockText())} couldn’t load. Try again.` : 'Quantities appear after the first verified count.'}</p></div>
         <dl class="inv-detail__facts">${facts.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>
         ${manager && num(item.par_level) !== null ? '<p class="inv__muted inv-detail__note">Par levels are changed in <a href="#data/pars">Data › Par levels</a>.</p>' : manager ? '<p class="inv__muted inv-detail__note">Set a par level in <a href="#data/pars">Data › Par levels</a>.</p>' : ''}
         <section class="inv-detail__section" data-inv-detail-recipes><h3 class="inv-detail__heading">Used in</h3>${recipeChips}</section>
@@ -1739,15 +1745,16 @@
     const stock = truth();
     const active = items().filter((item) => item.active !== false);
     if (!stock || !active.length) return [];
-    const known = active.filter((item) => stock.known(item));
+    const known = active.filter((item) => stock.stockStatus(item) !== 'unknown');
     const rows = [];
     if (!known.length) {
       rows.push({ id: 'not-counted', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: `${active.length} ${active.length === 1 ? 'item has' : 'items have'} no verified count, so Atlas can’t tell what’s low.`, action: { label: 'Start stock count', actionId: 'inventory.count.start' }, roles: STAFF });
       rows.push({ id: 'not-counted-view', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: 'Low stock shows here once a count is verified.', action: { label: 'View inventory', route: '#inventory' }, roles: ['viewer'] });
       return rows;
     }
-    const below = known.filter((item) => stock.belowPar(item));
-    const out = below.filter((item) => (num(item.quantity) ?? 0) <= 0);
+    // The canonical partition: out and below par are separate sets.
+    const out = known.filter((item) => stock.stockStatus(item) === 'out');
+    const below = known.filter((item) => stock.stockStatus(item) === 'below_par');
     const ordered = root.AtlasPurchaseOrders?.openItemIds?.() || new Set();
     out.slice(0, 3).forEach((item) => {
       const affected = recipeNamesUsing(item.id);
@@ -1757,7 +1764,7 @@
       rows.push({ id: `out:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: onOrder ? view : { label: 'Add to order', actionId: 'purchasing.order.new', record: { type: 'inventory_item', id: item.id, label: item.name } }, roles: MANAGERS });
       rows.push({ id: `out-view:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: view, roles: ['bartender', 'viewer'] });
     });
-    const low = below.filter((item) => !out.includes(item));
+    const low = below;
     if (low.length === 1) {
       const item = low[0];
       rows.push({ id: `low:${item.id}`, severity: 'warning', icon: 'package', title: `${item.name} is below par`, detail: `${qty(item.quantity)} of ${qty(item.par_level)} ${unitWord(item)} left`, action: { label: 'View items', route: '#inventory?filter=below-par' } });

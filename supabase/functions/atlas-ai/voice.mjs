@@ -53,11 +53,11 @@ export function realtimeTools(gateway, role) {
   ];
 }
 
-export function buildRealtimeSession({ config, actor, gateway, keywords, preferences, nowIso, conversationId }) {
+export function buildRealtimeSession({ config, actor, gateway, keywords, preferences, nowIso, conversationId, venue = config.venue }) {
   return {
     type: "realtime",
     model: config.models.realtime,
-    instructions: voiceInstructions({ actor, venue: config.venue, nowIso, preferences }),
+    instructions: voiceInstructions({ actor, venue, nowIso, preferences }),
     output_modalities: ["audio"],
     // Per-response output cap and a bounded conversation window (tokens
     // after the instructions) so one turn's input cost stays bounded. The

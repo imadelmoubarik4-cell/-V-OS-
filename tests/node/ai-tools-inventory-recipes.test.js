@@ -31,7 +31,8 @@ test('current stock is the verified count, never the raw imported quantity', asy
 
 test('below par: strict rule on verified stock and full disclosure of what cannot be judged', async () => {
   const result = await run('viewer', 'inventory.below_par', { category: null, limit: null });
-  assert.deepEqual(result.data.counts, { active_items: 7, current_items: 4, below_par: 1, out_of_stock: 1, missing_par: 3, par_but_unknown_stock: 2, undeterminable: 5 });
+  // S89: out and below par are separate; needs ordering = out + below par.
+  assert.deepEqual(result.data.counts, { active_items: 7, current_items: 4, below_par: 1, out_of_stock: 1, needs_ordering: 2, missing_par: 3, par_but_unknown_stock: 2, undeterminable: 5 });
   assert.deepEqual(result.data.below_par.map((item) => item.name), ['Angelo Pinot Grigio']);
   assert.deepEqual(result.data.out_of_stock.map((item) => item.name), ['Aperol']);
   assert.ok(!result.data.below_par.some((item) => item.name === 'Tequila Blanco'), 'stale stock is never below par');

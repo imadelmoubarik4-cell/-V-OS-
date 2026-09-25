@@ -47,7 +47,9 @@ test('Below par is a shareable filter chip that clears back to every item', { sk
     await settle(page);
     assert.match(await page.evaluate(() => location.hash), /#inventory\?filter=below-par/);
     const names = await rowNames(page);
-    assert.ok(names.includes('Campari') && names.includes('Limes'));
+    // S89 canonical status: Limes (verified 0) is out, not below par; the
+    // "Out or almost out" chip lists it.
+    assert.ok(names.includes('Campari') && !names.includes('Limes'));
     assert.ok(!names.includes('Giffard Vanille Syrup'), 'items at or above par are not listed');
     assert.ok(!names.includes('Demerara Sugar Cube'), 'unknown stock is never reported as below par');
     await page.click('[data-inv-clear="status"]');

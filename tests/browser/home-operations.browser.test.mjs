@@ -37,7 +37,7 @@ test('Home for an administrator: venue clock, attention rows, briefing, glance, 
     // At a glance: real counts, no KPI dump.
     const glance = await page.$$eval('.home-glance__item', (nodes) => nodes.map((node) => node.querySelector('.home-glance__label').textContent.trim()));
     assert.deepEqual(glance, ['Stock', 'Recipes', 'Purchasing']);
-    assert.match(await text(page, '.home-glance__item[href="#inventory?filter=below-par"]'), /5\s*below par 2 out · 1 not counted/);
+    assert.match(await text(page, '.home-glance__item[href="#inventory?filter=below-par"]'), /3\s*below par 2 out · 1 not counted/);
     // Tonight lists who works, from the published week.
     assert.equal(await page.$$eval('.home-staff__row', (nodes) => nodes.length), 3);
     // The timeline links the server checklists.

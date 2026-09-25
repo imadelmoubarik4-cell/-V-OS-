@@ -2,7 +2,7 @@
 // recipes, restock log, suppliers). Formerly Business Intelligence
 // (business.js). Pure: no DOM, no requests. Unknown stays unknown:
 // inventoryValue() is NaN while any active item is not counted or has no cost
-// (parity with supabase/functions/_shared/atlas-domain.mjs inventoryValue).
+// (AtlasStockTruth.inventoryValue, parity with atlas-domain inventoryValue).
 (function (root) {
   'use strict';
 
@@ -16,35 +16,33 @@
   function sourceRecipes() {
     try { return typeof recipes !== 'undefined' && Array.isArray(recipes) ? recipes : []; } catch { return []; } // eslint-disable-line no-undef
   }
+  // Every loaded movement (AtlasData.movements), else the legacy restock log;
+  // the canonical purchase-receipt rule picks the spend rows either way.
   function sourceMovements() {
+    const all = root.AtlasData?.movements?.();
+    if (Array.isArray(all)) return all;
     try { return typeof restockLog !== 'undefined' && Array.isArray(restockLog) ? restockLog : []; } catch { return []; } // eslint-disable-line no-undef
   }
   function activeItems() {
     return sourceItems().filter((item) => item.active !== false);
   }
-  function known(item) {
-    return Boolean(root.AtlasStockTruth?.known(item));
+  function truth() {
+    return root.AtlasStockTruth || null;
   }
 
-  // Counted stock at cost. NaN (unknown) while anything is not counted or uncosted.
+  // The canonical stock value (AtlasStockTruth.inventoryValue, atlas-domain
+  // inventoryValue): unknown (NaN here) unless every active item is counted
+  // AND has a usable cost (cost_price > 0).
   function inventoryValue() {
-    if (activeItems().some((item) => !known(item) || item.cost_price == null)) return NaN;
-    return activeItems().reduce((sum, item) => {
-      const quantity = Math.max(0, number(item.quantity));
-      const cost = number(item.cost_price, NaN);
-      return sum + (Number.isFinite(cost) && cost > 0 ? quantity * cost : 0);
-    }, 0);
+    const result = truth()?.inventoryValue?.(sourceItems());
+    return result && result.value !== null ? result.value : NaN;
   }
 
-  // What is known so far: value of counted, costed items and what is missing.
+  // What is known so far: the lower bound over counted, costed items and the
+  // counts of what is missing (not counted; no usable cost, counted or not).
   function inventoryValueParts() {
-    const list = activeItems();
-    const uncounted = list.filter((item) => !known(item)).length;
-    const uncosted = list.filter((item) => known(item) && item.cost_price == null).length;
-    const knownValue = list.filter((item) => known(item) && item.cost_price != null)
-      .reduce((sum, item) => sum + Math.max(0, number(item.quantity)) * Math.max(0, number(item.cost_price)), 0);
-    const value = inventoryValue();
-    return { value: Number.isFinite(value) ? value : null, knownValue, uncounted, uncosted, items: list.length };
+    const result = truth()?.inventoryValue?.(sourceItems()) || { value: null, known_value: null, unknown_items: 0, missing_cost_items: 0, active_items: activeItems().length };
+    return { value: result.value, knownValue: result.known_value, uncounted: result.unknown_items, uncosted: result.missing_cost_items, items: result.active_items };
   }
 
   // Movements with created_at inside [start, end] (venue date keys).
@@ -56,8 +54,11 @@
     });
   }
 
+  // Purchasing spend: the canonical costed purchase receipts in the period
+  // (AtlasStockTruth.purchaseSpend; same rule as Reports SQL and Atlas AI).
+  // Waste and adjustments are never spend.
   function spend(start, end) {
-    return movementsBetween(start, end).reduce((sum, movement) => sum + Math.max(0, number(movement.total_cost)), 0);
+    return truth()?.purchaseSpend?.(movementsBetween(start, end)).total ?? 0;
   }
 
   // Share of costed deliveries per supplier in the period, largest first.
@@ -65,7 +66,7 @@
     const totals = new Map();
     movementsBetween(start, end).forEach((movement) => {
       const name = movement.suppliers?.name || movement.supplier || null;
-      const cost = Math.max(0, number(movement.total_cost));
+      const cost = truth()?.purchaseReceiptAmount?.(movement) || 0;
       if (!name || !cost) return;
       totals.set(name, (totals.get(name) || 0) + cost);
     });
@@ -77,7 +78,8 @@
 
   function recipeCosting() {
     const list = sourceRecipes().filter((recipe) => recipe.active !== false);
-    const metrics = list.map((recipe) => root.AtlasCalculations?.recipeMetrics(recipe, activeItems())?.financials).filter(Boolean);
+    // Every item, inactive references (Ice, Water) included: a reference costs 0.
+    const metrics = list.map((recipe) => root.AtlasCalculations?.recipeMetrics(recipe, sourceItems())?.financials).filter(Boolean);
     const complete = metrics.filter((entry) => entry.complete);
     const average = (values) => (values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null);
     return {
@@ -94,10 +96,10 @@
     const costing = recipeCosting();
     return {
       items: list.length,
-      cost: share((item) => number(item.cost_price) > 0),
+      cost: share((item) => Boolean(truth()?.hasCost?.(item))),
       par: share((item) => item.par_level != null && number(item.par_level) > 0),
       supplier: share((item) => Boolean(item.supplier_id || String(item.supplier || '').trim())),
-      counted: share((item) => known(item)),
+      counted: share((item) => Boolean(truth()?.known?.(item))),
       recipesCosted: costing.total ? costing.complete / costing.total * 100 : null,
       recipes: costing.total
     };
@@ -107,10 +109,12 @@
   function orderExposure() {
     const suggestions = root.AtlasOperations?.orderSuggestions?.() || [];
     const open = suggestions.filter((entry) => !entry.ordered);
-    const costed = open.filter((entry) => Number.isFinite(Number(entry.estimatedCost)));
+    // estimatedCost is null for an item without a usable cost: it is counted
+    // as uncosted, never added as 0 kr (atlas-domain orderExposure).
+    const costed = open.filter((entry) => typeof entry.estimatedCost === 'number' && Number.isFinite(entry.estimatedCost));
     return {
       items: open.length,
-      estimate: costed.reduce((sum, entry) => sum + Math.max(0, number(entry.estimatedCost)), 0),
+      estimate: costed.reduce((sum, entry) => sum + Math.max(0, entry.estimatedCost), 0),
       uncosted: open.length - costed.length
     };
   }

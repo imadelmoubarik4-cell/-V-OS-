@@ -17,7 +17,7 @@
 // Plain ESM; `fetch` and `env` are injected so Node tests run it against an
 // in-memory fake backend.
 
-import { projectStock } from "../atlas-domain.mjs";
+import { MOVEMENT_PAGE_SIZE, MOVEMENT_ROW_LIMIT, projectStock } from "../atlas-domain.mjs";
 import { buildStockReport } from "../stock-provenance.mjs";
 import { ATLAS_ROLES, MANAGER_ROLES, WRITE_ROLES } from "../auth.mjs";
 import { callVision, estimateVisionCostUsd, RecognitionError, visionModelFrom } from "../recognition/extract.mjs";
@@ -206,6 +206,19 @@ export function createServices({ fetch: fetchImpl = globalThis.fetch, env, actor
     }
   }
 
+  // The newest MOVEMENT_ROW_LIMIT rows in MOVEMENT_PAGE_SIZE pages (the same
+  // cap as the browser and Reports), so a PostgREST max-rows setting cannot
+  // silently truncate the stock projection.
+  async function restPages(table, { select, order }) {
+    const rows = [];
+    for (let offset = 0; offset < MOVEMENT_ROW_LIMIT; offset += MOVEMENT_PAGE_SIZE) {
+      const page = await rest(table, { select, order, limit: MOVEMENT_PAGE_SIZE, filters: offset ? { offset: String(offset) } : {} });
+      rows.push(...page);
+      if (page.length < MOVEMENT_PAGE_SIZE) break;
+    }
+    return rows.slice(0, MOVEMENT_ROW_LIMIT);
+  }
+
   // PostgREST RPC with the caller's JWT; the database checks the role.
   async function userRpc(name, args = {}) {
     return send(`${config.authUrl}/rest/v1/rpc/${name}`, {
@@ -277,8 +290,8 @@ export function createServices({ fetch: fetchImpl = globalThis.fetch, env, actor
     },
     movements() {
       return once("movements", () => manager
-        ? rest("inventory_movements", { select: MOVEMENT_MANAGER_FIELDS, order: "created_at.desc" })
-        : rest("inventory_movement_catalog", { select: MOVEMENT_STAFF_FIELDS, order: "created_at.desc" }));
+        ? restPages("inventory_movements", { select: MOVEMENT_MANAGER_FIELDS, order: "created_at.desc,id.desc" })
+        : restPages("inventory_movement_catalog", { select: MOVEMENT_STAFF_FIELDS, order: "created_at.desc,id.desc" }));
     },
     // Canonical projection: _shared/atlas-domain projectStock (unknown = null).
     async projectedItems() {

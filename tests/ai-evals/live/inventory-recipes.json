@@ -105,7 +105,7 @@
     "id": "live-rec-05", "category": "recipes", "actor": "manager", "blocking": true,
     "question": "What does a Negroni cost us to make?",
     "truth": [{ "tool": "recipes.cost", "args": { "recipe_id": null, "recipe_query": "Negroni" } }],
-    "expect": { "tools_all": ["recipes.cost"], "numbers_any": [["418", "417.86", "417.9"], ["85.1", "85"]], "rubric": "About 418 ISK per serving (Tanqueray 223, Campari 123, Martini Rosso 72) against a 2,800 ISK price: theoretical margin 85.1%." }
+    "expect": { "tools_all": ["recipes.cost"], "numbers_any": [["418", "417.86", "417.9"], ["85.1", "85"]], "rubric": "About 418 kr per serving (Tanqueray 223, Campari 123, Martini Rosso 72) against a 2.800 kr price: theoretical margin 85.1%." }
   },
   {
     "id": "live-rec-06", "category": "missing_evidence", "actor": "manager", "blocking": true,

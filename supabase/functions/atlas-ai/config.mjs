@@ -118,7 +118,9 @@ export function loadConfig(env) {
     apiKeyPresent: Boolean(apiKey),
     venue: Object.freeze({
       name: read(env, "ATLAS_VENUE_NAME") || "VÁ",
-      timezone: read(env, "ATLAS_VENUE_TIMEZONE") || "Atlantic/Reykjavik",
+      // Fallback only: each turn reads the zone and business date from the
+      // venue clock (chat.mjs resolveVenue). ATLAS_VENUE_TIMEZONE is retired.
+      timezone: "Atlantic/Reykjavik",
     }),
     limits: LIMITS,
   });

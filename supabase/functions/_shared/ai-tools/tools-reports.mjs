@@ -2,7 +2,7 @@
 // realised margin or labour-vs-sales figure anywhere in Atlas; the tools say
 // so rather than inventing one. Unknown values are null, never zero.
 
-import { inventoryValue } from "../atlas-domain.mjs";
+import { inventoryValue, purchaseReceiptAmount } from "../atlas-domain.mjs";
 import { S } from "./schema.mjs";
 import { marginRows } from "./tools-recipes.mjs";
 import {
@@ -12,7 +12,6 @@ import { clampLimit, isManagerActor, lower, numberOrNull, withinDays, nowMillis 
 
 const ALL = ["admin", "manager", "bartender", "viewer"];
 const MANAGERS = ["admin", "manager"];
-const RECEIPT_TYPES = new Set(["restock", "purchase", "delivery", "receive", "receipt"]);
 export const WASTE_TYPES = new Set(["waste", "variance", "spoilage", "breakage", "loss"]);
 
 const sales = {
@@ -120,14 +119,17 @@ const spend = {
     const nowMs = nowMillis(ctx);
     const [movements, suppliers] = await Promise.all([ctx.services.movements(), ctx.services.suppliers()]);
     const names = new Map(suppliers.map((supplier) => [String(supplier.id), supplier.name]));
-    const receipts = movements.filter((movement) => RECEIPT_TYPES.has(lower(movement.movement_type))
-      && numberOrNull(movement.quantity_change) > 0 && withinDays(movement.created_at, days, nowMs));
+    // The canonical purchase receipt (atlas-domain purchaseReceiptAmount, the
+    // same rule as Reports and the SQL snapshot): positive restock/receipt
+    // movements; waste and adjustments are never spend.
+    const receipts = movements.filter((movement) => purchaseReceiptAmount(movement) !== undefined
+      && withinDays(movement.created_at, days, nowMs));
     let total = 0;
     let uncosted = 0;
     const bySupplier = new Map();
     const byItem = new Map();
     for (const movement of receipts) {
-      const amount = numberOrNull(movement.total_cost) ?? (numberOrNull(movement.unit_cost) !== null ? Number(movement.unit_cost) * Number(movement.quantity_change) : null);
+      const amount = purchaseReceiptAmount(movement);
       if (amount === null) {
         uncosted += 1;
         continue;
@@ -144,7 +146,7 @@ const spend = {
     const items = [...byItem.values()].sort((a, b) => b.amount - a.amount).slice(0, 10);
     return ok({
       summary: `${formatIsk(total)} of costed stock receipts in the last ${days} days across ${suppliersList.length} supplier(s)${uncosted ? `; ${uncosted} receipts have no cost and are not included` : ""}.`,
-      data: { days, total, receipts: receipts.length, uncosted_receipts: uncosted, by_supplier: suppliersList, top_items: items, basis: "Costed stock receipts in Atlas (not supplier invoices)." },
+      data: { days, total, receipts: receipts.length, uncosted_receipts: uncosted, by_supplier: suppliersList, top_items: items, basis: "Costed stock receipts in Atlas (not supplier invoices). Waste and adjustments are not spend (see reports.waste)." },
       evidence: [
         calculation("Purchasing spend", `${formatIsk(total)} from ${receipts.length - uncosted} costed receipts`, source("report", "purchasing", "Purchasing report")),
         ...suppliersList.slice(0, 5).map((row) => calculation(`Spend with ${row.supplier}`, formatIsk(row.amount), source("report", "purchasing", "Purchasing report"))),

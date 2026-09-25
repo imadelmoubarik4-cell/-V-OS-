@@ -130,7 +130,11 @@ class ReportsContractTests(unittest.TestCase):
         self.assertIn("sales_integration_connected: false", EDGE)
         self.assertIn("source_data_mutation_enabled: false", EDGE)
         self.assertIn("direct_browser_table_access: false", EDGE)
-        self.assertIn('const TIMEZONE = "Atlantic/Reykjavik"', EDGE)
+        # S89: the reporting zone and business date come from the venue clock;
+        # Atlantic/Reykjavik is only the fallback.
+        self.assertIn('const DEFAULT_TIMEZONE = "Atlantic/Reykjavik"', EDGE)
+        self.assertIn('branchRpc("atlas_settings_venue_clock"', EDGE)
+        self.assertIn("reporting_timezone: clock.timezone", EDGE)
         self.assertIn('currency: "ISK"', EDGE)
         self.assertIn('x-atlas-reports-version', EDGE)
         self.assertIn('"0.3.0"', EDGE)

@@ -23,7 +23,7 @@ import {
   requireUuid,
   uuidOrNull,
 } from "./http.mjs";
-import { prepareChatTurn, streamChatTurn, validateChatBody, runAskAtlas, startRun, finishRun, safeRpc } from "./chat.mjs";
+import { prepareChatTurn, streamChatTurn, validateChatBody, runAskAtlas, startRun, finishRun, safeRpc, resolveVenue } from "./chat.mjs";
 import {
   AUDIO_TYPES,
   buildRealtimeSession,
@@ -591,8 +591,9 @@ export function createAtlasAiHandler(deps) {
     }
     const preferencesValue = (await safeRpc(services, "atlas_ai_preferences_get", actorArgs(actor))) ?? {};
     const keywords = await transcriptionKeywords(services, actor, 60);
+    const venue = await resolveVenue(services, config, actor);
     const session = buildRealtimeSession({
-      config, actor, gateway, keywords, preferences: preferencesValue, nowIso: new Date(now()).toISOString(), conversationId,
+      config, actor, gateway, keywords, preferences: preferencesValue, nowIso: new Date(now()).toISOString(), conversationId, venue,
     });
     const reserved = await services.rpc("atlas_ai_voice_session_start", {
       ...actorArgs(actor),
