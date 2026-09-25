@@ -66,6 +66,11 @@
     failed: 'The photo service didn’t respond as expected. Try again.'
   };
 
+  // The photo checks' own copy is fixed and shown; anything else is not.
+  function photoError(text) {
+    return window.AtlasApi.fixed(text);
+  }
+
   async function request(action, options = {}) {
     return window.AtlasApi.request(endpoint(), {
       method: options.method || 'GET',
@@ -208,7 +213,7 @@
       });
       image.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error('Atlas could not read this image. Use a JPEG, PNG, or WebP photo.'));
+        reject(photoError('Atlas could not read this image. Use a JPEG, PNG, or WebP photo.'));
       };
       image.src = url;
     });
@@ -231,13 +236,13 @@
   }
 
   async function preparePhoto(file) {
-    if (!(file instanceof File)) throw new Error('Choose a profile photo first.');
-    if (!ACCEPTED_TYPES.has(file.type)) throw new Error('Use a JPEG, PNG, or WebP profile photo.');
-    if (file.size < 1 || file.size > MAX_SOURCE_BYTES) throw new Error('Choose an image smaller than 12 MB.');
+    if (!(file instanceof File)) throw photoError('Choose a profile photo first.');
+    if (!ACCEPTED_TYPES.has(file.type)) throw photoError('Use a JPEG, PNG, or WebP profile photo.');
+    if (file.size < 1 || file.size > MAX_SOURCE_BYTES) throw photoError('Choose an image smaller than 12 MB.');
 
     const decoded = await decodedImage(file);
     try {
-      if (decoded.width < 64 || decoded.height < 64) throw new Error('Profile photos must be at least 64 × 64 pixels.');
+      if (decoded.width < 64 || decoded.height < 64) throw photoError('Profile photos must be at least 64 × 64 pixels.');
       const target = 512;
       const crop = Math.min(decoded.width, decoded.height);
       const sx = Math.max(0, (decoded.width - crop) / 2);
@@ -246,7 +251,7 @@
       canvas.width = target;
       canvas.height = target;
       const context = canvas.getContext('2d', { alpha: false });
-      if (!context) throw new Error('This browser cannot prepare the profile photo.');
+      if (!context) throw photoError('This browser cannot prepare the profile photo.');
       context.fillStyle = '#f1eee7';
       context.fillRect(0, 0, target, target);
       context.drawImage(decoded.source, sx, sy, crop, crop, 0, 0, target, target);
@@ -259,11 +264,11 @@
         mime = 'image/jpeg';
         extension = 'jpg';
       }
-      if (!blob) throw new Error('Atlas could not prepare this profile photo.');
+      if (!blob) throw photoError('Atlas could not prepare this profile photo.');
       if (blob.size > MAX_UPLOAD_BYTES) {
         blob = await canvasBlob(canvas, mime, 0.68);
       }
-      if (!blob || blob.size > MAX_UPLOAD_BYTES) throw new Error('The prepared photo is still larger than 2 MB. Choose a simpler image.');
+      if (!blob || blob.size > MAX_UPLOAD_BYTES) throw photoError('The prepared photo is still larger than 2 MB. Choose a simpler image.');
       return {
         file: new File([blob], `profile.${extension}`, { type: mime, lastModified: Date.now() }),
         width: target,
@@ -288,7 +293,7 @@
       applyPayload(await request('upload', { method: 'POST', body: form }));
       showFeedback('Photo saved');
     } catch (error) {
-      showFeedback(error instanceof Error ? error.message : 'The photo couldn\u2019t be saved. Try again.');
+      showFeedback(window.AtlasApi.message(error, 'The photo couldn\u2019t be saved. Try again.'));
     } finally {
       state.busyProfileId = null;
       scheduleDecorate();
@@ -320,7 +325,7 @@
       applyPayload(await request('remove', { method: 'POST', body: { profile_id: profileId } }));
       showFeedback('Photo removed');
     } catch (error) {
-      showFeedback(error instanceof Error ? error.message : 'The photo couldn\u2019t be removed. Try again.');
+      showFeedback(window.AtlasApi.message(error, 'The photo couldn\u2019t be removed. Try again.'));
     } finally {
       state.busyProfileId = null;
       scheduleDecorate();

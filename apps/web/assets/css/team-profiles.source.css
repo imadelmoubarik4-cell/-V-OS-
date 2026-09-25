@@ -42,7 +42,7 @@
 .team-detail__row { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--s-3); }
 .team-detail__row dt { font: var(--type-meta); color: var(--text-2); }
 .team-detail__row dd { margin: 0; font: var(--type-body); color: var(--text); overflow-wrap: anywhere; }
-.team-detail a { color: var(--accent-text); text-decoration: none; }
+.team-detail a:not([class*="atlas-"]) { color: var(--accent-text); text-decoration: none; }
 .team-detail a.atlas-btn { color: inherit; }
 .team-contacts .atlas-row { padding-left: 0; padding-right: 0; }
 

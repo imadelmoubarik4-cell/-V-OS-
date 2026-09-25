@@ -136,8 +136,25 @@
   }
 
   // The message to show for any error (an AtlasApiError, or anything else).
+  // Only copy Atlas wrote itself is ever shown: an AtlasApiError (including
+  // fixed()) or a module error marked `atlasFixed` (AtlasCapture's
+  // CaptureError). A JavaScript error (TypeError, …) or server text reads as
+  // `fallback` and is logged to the console only.
   function message(error, fallback = MESSAGES.failed) {
-    return error instanceof AtlasApiError ? error.message : String(fallback);
+    if (error instanceof AtlasApiError || (error && error.atlasFixed === true && typeof error.message === 'string' && error.message)) return error.message;
+    if (error && typeof error === 'object' && error.name !== 'AbortError') {
+      try { console.warn('[atlas] shown as fixed copy:', error); } catch (_) { /* no console */ }
+    }
+    return String(fallback);
+  }
+
+  // A module's own fixed, friendly copy as a showable error. `props` keeps
+  // machine fields (code, status, …) for the module's own branching.
+  function fixed(text, props = {}) {
+    const error = new AtlasApiError(props.kind || 'failed', String(text || MESSAGES.failed), Number(props.status) || 0, props.code ?? null);
+    error.atlasFixed = true;
+    Object.keys(props).forEach((key) => { if (!['kind', 'status', 'code', 'message'].includes(key)) error[key] = props[key]; });
+    return error;
   }
 
   // ---- identity -----------------------------------------------------------
@@ -161,6 +178,6 @@
     return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'A';
   }
 
-  window.AtlasApi = Object.freeze({ request, message, kindFor, friendlyMessage, MESSAGES, AtlasApiError });
+  window.AtlasApi = Object.freeze({ request, message, fixed, kindFor, friendlyMessage, MESSAGES, AtlasApiError });
   window.AtlasIdentity = Object.freeze({ label, safeName, firstName, initials });
 })();

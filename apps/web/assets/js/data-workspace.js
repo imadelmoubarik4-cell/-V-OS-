@@ -1140,7 +1140,7 @@
         <label class="atlas-search"><i data-lucide="search"></i><input class="atlas-input" type="search" placeholder="Search records" aria-label="Search records" value="${attr(review.query)}" data-data-review-search data-focus-key="review-search"></label>
         <select class="atlas-select data-filter" aria-label="Type" data-data-review-scope>${REVIEW_SCOPES.map(([key, label]) => `<option value="${key}"${review.scope === key ? ' selected' : ''}>${label}</option>`).join('')}</select>
         <select class="atlas-select data-filter" aria-label="Status" data-data-review-status>${REVIEW_STATUSES.map(([key, label]) => `<option value="${key}"${review.status === key ? ' selected' : ''}>${label}</option>`).join('')}</select>
-        <div class="atlas-toolbar__end">${plural(review.total, 'record', 'records')}</div>
+        <div class="atlas-toolbar__end">${review.error && !review.rows.length ? '' : plural(review.total, 'record', 'records')}</div>
       </div>${body}`;
   }
 

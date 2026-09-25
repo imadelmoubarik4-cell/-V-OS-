@@ -137,6 +137,11 @@ test('answers are escaped and lightly formatted', () => {
   const api = loadHelpers();
   const html = api.formatAnswer('Yes, but only about 30. You have <b>one</b> bottle.\n\n- Campari\n- Aperol', { emphasiseFirst: true });
   assert.match(html, /^<p><strong>Yes, but only about 30\.<\/strong> You have &lt;b&gt;one&lt;\/b&gt; bottle\.<\/p><ul><li>Campari<\/li><li>Aperol<\/li><\/ul>$/);
+  // S90: bold that runs past the first full stop is not sliced into garbled HTML.
+  const across = api.formatAnswer('Campari is **out. Negroni** can’t be served tonight.', { emphasiseFirst: true });
+  assert.equal(across, '<p>Campari is <strong>out. Negroni</strong> can’t be served tonight.</p>');
+  const inside = api.formatAnswer('You have **2** bottles. Order more.', { emphasiseFirst: true });
+  assert.equal(inside, '<p><strong>You have <strong>2</strong> bottles.</strong> Order more.</p>');
   assert.equal(api.recordRoute({ type: 'inventory_item', id: 'abc' }), '#inventory/item/abc');
   assert.equal(api.recordRoute({ type: 'purchase_order', id: 'po 1' }), '#purchasing/order/po%201');
   assert.equal(api.recordRoute({ type: 'unknown_type', route: '#reports/stock' }), '#reports/stock');

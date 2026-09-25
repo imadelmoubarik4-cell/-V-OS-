@@ -24,6 +24,25 @@
 .inv__item-link { display: block; color: inherit; text-decoration: none; }
 .inv__item-link:hover .cell-primary { text-decoration: underline; text-underline-offset: 2px; }
 .inv__table tbody tr { cursor: pointer; }
+/* Column sizing (review P1-5, spec §6.16). A fixed layout keeps the table to
+ * the page width: long Icelandic names and supplier names truncate with an
+ * ellipsis (the full text is the cell's title), while quantities, Status and
+ * Unit cost keep their width and never scroll out of view. Lower-priority
+ * columns drop by the table's own width (container query), not only by the
+ * viewport breakpoints. */
+.inv__body { container: inv-items / inline-size; }
+.inv__table > .atlas-table { table-layout: fixed; }
+.inv__table .inv-col--category { width: 13%; }
+.inv__table .inv-col--supplier { width: 15%; }
+.inv__table .inv-col--qty { width: 96px; }
+.inv__table .inv-col--par { width: 64px; }
+.inv__table th.inv-col--status { width: 120px; }
+.inv__table .inv-col--cost { width: 104px; }
+.inv__table .inv-col--date { width: 104px; }
+.inv__table :is(.inv-col--name, .inv-col--text) { overflow: hidden; }
+.inv__clip { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+@container inv-items (max-width: 1080px) { .inv__table [data-priority="3"] { display: none; } }
+@container inv-items (max-width: 860px) { .inv__table [data-priority="2"] { display: none; } }
 .inv__bulk-clear { margin-left: auto; }
 .inv__list-empty, .sc-list-empty { display: none; }
 .inv-bullets { margin: var(--s-1) 0 0; padding-left: var(--s-5); font: var(--type-body); color: var(--text-2); }
@@ -79,9 +98,8 @@
 .inv-dup__percent { font: var(--type-num); }
 
 /* ---------- Stock count: counts tab ---------- */
-.sc-start { margin-left: var(--s-2); }
 .sc-caption { margin: 0 0 var(--s-3); font: var(--type-meta); color: var(--text-2); }
-.sc-skeleton { display: grid; gap: var(--s-2); padding: var(--s-3); }
+.sc-skeleton, .inv-skeleton { display: grid; gap: var(--s-2); padding: var(--s-3); }
 .sc-areas { display: grid; gap: var(--s-2); min-width: 0; margin: 0; padding: 0; border: 0; }
 .sc-areas__label { margin: var(--s-3) 0 0; font: var(--type-label); color: var(--text-2); }
 .sc-area { display: flex; align-items: center; gap: var(--s-3); min-height: var(--touch); padding: var(--s-2) var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); cursor: pointer; }

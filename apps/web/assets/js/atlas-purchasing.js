@@ -92,7 +92,9 @@
   function itemById(id) { return items().find((item) => String(item.id) === String(id)) || null; }
   function supplierName(order) { return supplierById(order.supplier_id)?.name || 'Supplier'; }
   function orderRef(order) { return String(order.id || '').slice(0, 6).toUpperCase(); }
-  function orderTotal(order) { return (order.lines || []).reduce((sum, line) => sum + (num(line.quantity) || 0) * (num(line.unit_cost) || 0), 0); }
+  // Rows are read defensively: a wrongly shaped answer is never a crash.
+  function linesOf(order) { return Array.isArray(order?.lines) ? order.lines : []; }
+  function orderTotal(order) { return linesOf(order).reduce((sum, line) => sum + (num(line.quantity) || 0) * (num(line.unit_cost) || 0), 0); }
 
   function friendlyError(error) {
     const text = [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(' ');
@@ -102,11 +104,24 @@
     return 'That didn’t go through. Nothing was changed; refresh the order and try again.';
   }
 
+  // Errors Purchasing shows carry fixed copy only (AtlasApi.fixed); anything
+  // else (a JavaScript error, server text) reads as the fallback via shown().
+  function fixedError(text, props = {}) {
+    return root.AtlasApi?.fixed ? root.AtlasApi.fixed(text, props) : Object.assign(new Error(text), props, { atlasFixed: true });
+  }
+  function shown(error, fallback = 'That didn’t go through. Nothing was changed; refresh the order and try again.') {
+    if (root.AtlasApi?.message) return root.AtlasApi.message(error, fallback);
+    return error?.atlasFixed ? error.message : fallback;
+  }
+  function isNotFound(error) {
+    return /order not found|no longer exists/i.test([error?.raw?.message, error?.message].filter(Boolean).join(' ')) || error?.raw?.code === 'P0002';
+  }
+
   async function rpc(name, args) {
-    if (!client()) throw new Error('Purchasing isn’t available right now.');
-    if (root.navigator?.onLine === false && name === 'atlas_purchase_order_command_v2') throw new Error('You’re offline. Nothing was saved; reconnect and try again.');
+    if (!client()) throw fixedError('Purchasing isn’t available right now.');
+    if (root.navigator?.onLine === false && name === 'atlas_purchase_order_command_v2') throw fixedError('You’re offline. Nothing was saved; reconnect and try again.');
     const { data, error } = await client().rpc(name, args);
-    if (error) throw Object.assign(new Error(friendlyError(error)), { raw: error });
+    if (error) throw fixedError(friendlyError(error), { raw: error });
     return data;
   }
 
@@ -130,7 +145,7 @@
     try {
       const { data, error } = await client().from('purchase_orders').select('*').order('created_at', { ascending: false }).limit(200);
       if (error) throw error;
-      state.orders = Array.isArray(data) ? data : [];
+      state.orders = Array.isArray(data) ? data.filter((order) => order && typeof order === 'object' && order.id) : [];
       state.ordersError = null;
     } catch (_) {
       state.ordersError = 'Orders couldn’t be loaded. Your orders are safe; check your connection and try again.';
@@ -223,14 +238,14 @@
   function subtitle() {
     const open = state.orders.filter((order) => OPEN_STATUSES.includes(order.status));
     const waiting = state.orders.filter((order) => order.status === 'pending_approval').length;
-    if (!state.ordersLoaded) return 'Orders, deliveries and suppliers';
+    if (!state.ordersLoaded || (state.ordersError && !state.orders.length)) return 'Orders, deliveries and suppliers';
     return `${open.length} open ${open.length === 1 ? 'order' : 'orders'}${waiting ? ` · ${waiting} waiting for approval` : ''}`;
   }
 
   function render() {
     const element = rootEl();
     if (!isManager()) {
-      element.innerHTML = `${shell.pageHead({ title: 'Purchasing' })}<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon">${icon('lock')}</div><h3 class="atlas-empty__title">Purchasing is for managers</h3><p class="atlas-empty__text">Ask an administrator for access.</p><a class="atlas-btn atlas-btn--secondary" href="#home">Go to Home</a></div>`;
+      element.innerHTML = `${shell.pageHead({ title: 'Purchasing' })}<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon">${icon('lock')}</div><h3 class="atlas-empty__title">Purchasing is for managers</h3><p class="atlas-empty__text">Orders, deliveries and suppliers are managed by managers. Ask an administrator for access.</p><div class="atlas-empty__actions"><a class="atlas-btn atlas-btn--secondary" href="#home">Go to Home</a></div></div>`;
       lucide();
       return;
     }
@@ -290,12 +305,19 @@
     if (!list.length) return '';
     return `<div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table">
       <thead><tr><th>Order</th><th>Supplier</th><th>Status</th><th class="is-num" data-priority="2">Lines</th><th class="is-num">Total</th><th>${deliveries ? 'Expected' : 'Delivery'}</th><th class="col-actions"><span class="sr-only">Open</span></th></tr></thead>
-      <tbody>${list.map((order) => `<tr data-po-open="${esc(order.id)}"><td><a class="cell-primary" href="#purchasing/order/${encodeURIComponent(order.id)}">${esc(dateText(order.created_at) || 'Order')}</a><span class="cell-sub po-ref">${esc(orderRef(order))}</span></td><td>${esc(supplierName(order))}</td><td>${statusPill(order)}</td><td class="is-num" data-priority="2">${(order.lines || []).length}</td><td class="is-num">${money(orderTotal(order))}</td><td>${esc(deliveryText(order))}</td><td class="col-actions"><span class="po__chev" aria-hidden="true">${icon('chevron-right')}</span></td></tr>`).join('')}</tbody></table></div>
-      <ul class="atlas-table-list">${list.map((order) => `<li><a class="atlas-table-list__row" href="#purchasing/order/${encodeURIComponent(order.id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(supplierName(order))}</div><div class="atlas-table-list__meta">${esc([`${(order.lines || []).length} lines`, money(orderTotal(order)), order.expected_delivery_date ? `delivery ${deliveryText(order)}` : ''].filter(Boolean).join(' · '))}</div></div><div class="atlas-table-list__value">${statusPill(order)}</div></a></li>`).join('')}</ul>`;
+      <tbody>${list.map((order) => `<tr data-po-open="${esc(order.id)}"><td><a class="cell-primary" href="#purchasing/order/${encodeURIComponent(order.id)}">${esc(dateText(order.created_at) || 'Order')}</a><span class="cell-sub po-ref">${esc(orderRef(order))}</span></td><td>${esc(supplierName(order))}</td><td>${statusPill(order)}</td><td class="is-num" data-priority="2">${linesOf(order).length}</td><td class="is-num">${money(orderTotal(order))}</td><td>${esc(deliveryText(order))}</td><td class="col-actions"><span class="po__chev" aria-hidden="true">${icon('chevron-right')}</span></td></tr>`).join('')}</tbody></table></div>
+      <ul class="atlas-table-list">${list.map((order) => `<li><a class="atlas-table-list__row" href="#purchasing/order/${encodeURIComponent(order.id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(supplierName(order))}</div><div class="atlas-table-list__meta">${esc([`${linesOf(order).length} lines`, money(orderTotal(order)), order.expected_delivery_date ? `delivery ${deliveryText(order)}` : ''].filter(Boolean).join(' · '))}</div></div><div class="atlas-table-list__value">${statusPill(order)}</div></a></li>`).join('')}</ul>`;
+  }
+
+  // A failed load never reads as an empty venue: no "0 orders", no "No
+  // orders yet", only what failed, that the orders are safe, and Try again.
+  function ordersFailedHtml() {
+    return alertHtml('danger', 'Orders couldn’t be loaded.', state.ordersError.replace('Orders couldn’t be loaded. ', ''), '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-retry>Try again</button>');
   }
 
   function renderOrders(body) {
     if (!state.ordersLoaded) { body.innerHTML = loadingRows(); return; }
+    if (state.ordersError && !state.orders.length) { body.innerHTML = ordersFailedHtml(); return; }
     const list = state.orders.filter((order) => (!state.statusFilter || order.status === state.statusFilter) && (!state.supplierFilter || String(order.supplier_id) === String(state.supplierFilter)));
     const statusLabel = state.statusFilter ? (STATUS[state.statusFilter] || [state.statusFilter])[0] : null;
     const supplierLabel = state.supplierFilter ? supplierById(state.supplierFilter)?.name || 'Supplier' : null;
@@ -303,7 +325,7 @@
     const empty = state.orders.length
       ? `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('search-x')}</div><h3 class="atlas-empty__title">No orders match these filters</h3><button type="button" class="atlas-btn atlas-btn--secondary" data-po-clear-all>Clear filters</button></div>`
       : `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('truck')}</div><h3 class="atlas-empty__title">No orders yet</h3><p class="atlas-empty__text">Orders you create or approve appear here with their delivery status.</p><button type="button" class="atlas-btn atlas-btn--secondary" data-po-new>New order</button></div>`;
-    body.innerHTML = `${state.ordersError ? alertHtml('danger', 'Orders couldn’t be loaded.', state.ordersError.replace('Orders couldn’t be loaded. ', ''), '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-retry>Try again</button>') : ''}
+    body.innerHTML = `${state.ordersError ? ordersFailedHtml() : ''}
       ${suggestedCard()}
       <div class="atlas-toolbar">${filterChip(statusLabel || 'Status', { active: Boolean(statusLabel), clear: 'status', menu: 'status' })}${filterChip(supplierLabel || 'Supplier', { active: Boolean(supplierLabel), clear: 'supplier', menu: 'supplier' })}<div class="atlas-toolbar__end">${list.length} ${list.length === 1 ? 'order' : 'orders'}</div></div>
       <ul class="atlas-menu" data-po-menu="status" hidden>${Object.entries(STATUS).map(([key, [label]]) => `<li><button type="button" class="atlas-menu__item" data-po-filter="status" data-value="${key}">${esc(label)}</button></li>`).join('')}</ul>
@@ -317,6 +339,7 @@
 
   function renderDeliveries(body) {
     if (!state.ordersLoaded) { body.innerHTML = loadingRows(); return; }
+    if (state.ordersError && !state.orders.length) { body.innerHTML = ordersFailedHtml(); return; }
     const list = state.orders.filter((order) => ['ordered', 'partially_received', 'received'].includes(order.status))
       .sort((a, b) => (a.status === 'received') - (b.status === 'received') || String(a.expected_delivery_date || '9999').localeCompare(String(b.expected_delivery_date || '9999')));
     body.innerHTML = `<p class="po__caption">Deliveries you’re waiting for and what has arrived. Receiving updates stock.</p>
@@ -336,6 +359,12 @@
   }
 
   function renderSuppliers(body) {
+    const health = root.AtlasData?.health?.() || {};
+    if (health.suppliers === 'loading' && !suppliers().length) { body.innerHTML = loadingRows(); return; }
+    if (health.suppliers === 'failed' && !suppliers().length) {
+      body.innerHTML = alertHtml('danger', 'Suppliers couldn’t be loaded.', 'Your suppliers and orders are safe. Check your connection and try again.', '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-retry-data>Try again</button>');
+      return;
+    }
     const query = state.supplierQuery.trim().toLowerCase();
     const list = suppliers().filter((supplier) => !query || [supplier.name, supplier.contact_name, supplier.email].some((value) => String(value || '').toLowerCase().includes(query)));
     const rows = list.map((supplier) => ({ supplier, ...supplierStats(supplier) }));
@@ -434,7 +463,7 @@
         if (editing) openOrderDetail(id);
       } catch (error) {
         busy(save, false);
-        alert.innerHTML = alertHtml('danger', editing ? 'The order wasn’t saved.' : 'The order wasn’t created.', error.message);
+        alert.innerHTML = alertHtml('danger', editing ? 'The order wasn’t saved.' : 'The order wasn’t created.', shown(error, 'Nothing was saved. Check your connection and try again.'));
         lucide();
       }
     });
@@ -466,7 +495,7 @@
           .map((line) => ({ item_id: line.id, quantity: Number(fieldset.querySelector(`[data-po-suggest-qty="${CSS.escape(String(line.id))}"]`)?.value) || line.orderQuantity, unit_cost: num(line.item?.cost_price) ?? 0 }));
         if (!lines.length) continue;
         try { await command('create', { id: uuid(), supplierId: group.supplier.id, lines, note: 'Created from the suggested order' }); created += 1; }
-        catch (error) { failures.push(`${group.name}: ${error.message}`); }
+        catch (error) { failures.push(`${group.name}: ${shown(error, 'Nothing was saved for this supplier. Try again.')}`); }
       }
       busy(button, false);
       if (failures.length) {
@@ -559,9 +588,32 @@
       });
       state.detailSheet = { id: String(id), overlay, data: null };
     }
+    const back = '<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#purchasing/orders" data-po-back>Back to orders</a>';
+    const showProblem = (body) => {
+      overlay.panel.innerHTML = sheetHtml({ title: 'Order', body });
+      lucide();
+      overlay.panel.querySelector('[data-po-reload]')?.addEventListener('click', () => openOrderDetail(id));
+      overlay.panel.querySelector('[data-po-back]')?.addEventListener('click', (event) => { event.preventDefault(); overlay.close('back'); shell.navigate('#purchasing/orders'); });
+    };
+    let data;
     try {
-      const [data] = await Promise.all([rpc('atlas_purchase_order_detail', { p_id: id }), state.policy ? null : loadPolicy()]);
+      [data] = await Promise.all([rpc('atlas_purchase_order_detail', { p_id: id }), state.policy ? null : loadPolicy()]);
+    } catch (error) {
       if (state.detailSheet?.overlay !== overlay) return;
+      console.warn('[purchasing] order detail failed', error?.raw || error);
+      showProblem(isNotFound(error)
+        ? alertHtml('info', 'This order no longer exists.', 'It may have been deleted, or the link is out of date. Your other orders are unchanged.', back)
+        : alertHtml('danger', 'This order couldn’t be loaded.', 'Nothing was changed. Check your connection and try again.', `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-reload>Try again</button>${back}`));
+      return;
+    }
+    if (state.detailSheet?.overlay !== overlay) return;
+    // An empty answer (deleted order, stale notification link) is "not found",
+    // never a crash on a missing order.
+    if (!data || typeof data !== 'object' || !data.order || !data.order.id) {
+      showProblem(alertHtml('info', 'This order no longer exists.', 'It may have been deleted, or the link is out of date. Your other orders are unchanged.', back));
+      return;
+    }
+    try {
       state.detailSheet.data = data;
       if (data?.policy) state.policy = { ...(state.policy || {}), ...data.policy };
       const index = state.orders.findIndex((order) => order.id === data.order.id);
@@ -570,9 +622,8 @@
       lucide();
       bindDetail(overlay, data);
     } catch (error) {
-      overlay.panel.innerHTML = sheetHtml({ title: 'Order', body: alertHtml('danger', 'This order couldn’t be loaded.', error.message, '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-reload>Try again</button>') });
-      lucide();
-      overlay.panel.querySelector('[data-po-reload]')?.addEventListener('click', () => openOrderDetail(id));
+      console.warn('[purchasing] order detail could not be shown', error);
+      showProblem(alertHtml('danger', 'This order couldn’t be shown.', 'Nothing was changed. Try again, or go back to your orders.', `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-reload>Try again</button>${back}`));
     }
   }
 
@@ -580,7 +631,7 @@
     const order = data.order;
     const panel = overlay.panel;
     const alertHost = panel.querySelector('[data-po-alert]');
-    const fail = (error) => { alertHost.innerHTML = alertHtml('danger', 'That didn’t go through.', error.message); lucide(); alertHost.scrollIntoView({ block: 'nearest' }); if (/changed|refresh/i.test(error.message)) openOrderDetail(order.id); };
+    const fail = (error) => { const text = shown(error); alertHost.innerHTML = alertHtml('danger', 'That didn’t go through.', text); lucide(); alertHost.scrollIntoView({ block: 'nearest' }); if (/changed|refresh/i.test(text)) openOrderDetail(order.id); };
     panel.querySelector('[data-po-edit]')?.addEventListener('click', () => { overlay.close('replace'); state.detailSheet = null; openOrderSheet({ order }); });
     panel.querySelector('[data-po-receive]')?.addEventListener('click', () => openReceiveSheet(data));
     panel.querySelector('[data-po-date]')?.addEventListener('click', async () => {
@@ -711,7 +762,7 @@
         busy(submit, false);
         updateLabel();
         // The same request id is kept, so trying again can't receive twice.
-        alertHost.innerHTML = alertHtml('danger', 'The delivery wasn’t received.', `${error.message} Trying again is safe; it won’t be counted twice.`);
+        alertHost.innerHTML = alertHtml('danger', 'The delivery wasn’t received.', `${shown(error, 'Nothing was received.')} Trying again is safe; it won’t be counted twice.`);
         lucide();
       }
     });
@@ -762,7 +813,7 @@
     const overlay = openOverlay(sheetHtml({
       title: 'Receive a delivery',
       desc: 'Choose the order it belongs to. Receiving updates stock.',
-      body: `${open.length ? `<ul class="atlas-card atlas-list">${open.map((order) => `<li class="atlas-row atlas-row--link"><button type="button" class="po-row-btn" data-po-receive-order="${esc(order.id)}"><span class="atlas-row__body"><span class="atlas-row__title">${esc(supplierName(order))}</span><span class="atlas-row__meta">${esc([`${(order.lines || []).length} lines`, order.expected_delivery_date ? `expected ${deliveryText(order)}` : ''].filter(Boolean).join(' · '))}</span></span><span class="atlas-row__end">${statusPill(order)}</span></button></li>`).join('')}</ul>` : '<p class="po__muted">No orders are waiting for delivery.</p>'}
+      body: `${open.length ? `<ul class="atlas-card atlas-list">${open.map((order) => `<li class="atlas-row atlas-row--link"><button type="button" class="po-row-btn" data-po-receive-order="${esc(order.id)}"><span class="atlas-row__body"><span class="atlas-row__title">${esc(supplierName(order))}</span><span class="atlas-row__meta">${esc([`${linesOf(order).length} lines`, order.expected_delivery_date ? `expected ${deliveryText(order)}` : ''].filter(Boolean).join(' · '))}</span></span><span class="atlas-row__end">${statusPill(order)}</span></button></li>`).join('')}</ul>` : '<p class="po__muted">No orders are waiting for delivery.</p>'}
         <details class="po-noorder"${open.length ? '' : ' open'}><summary>No order? Record a delivery without one</summary>
         <form class="atlas-form" id="po-restock-form" novalidate><div data-po-alert></div>
           <div class="atlas-field"><label for="po-rs-item">Item</label><select class="atlas-select" id="po-rs-item" name="item" required><option value="">Choose an item</option>${items().filter((item) => item.active !== false).map((item) => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('')}</select></div>
@@ -778,9 +829,10 @@
       busy(button, true);
       try {
         const data = await rpc('atlas_purchase_order_detail', { p_id: button.dataset.poReceiveOrder });
+        if (!data?.order?.id) { busy(button, false); toast('This order no longer exists. Your other orders are unchanged.'); return; }
         overlay.close('replace');
         openReceiveSheet(data);
-      } catch (error) { busy(button, false); toast(error.message); }
+      } catch (error) { busy(button, false); toast(shown(error, 'This order couldn’t be opened. Nothing was changed; try again.')); }
     }));
     const form = panel.querySelector('#po-restock-form');
     const item = form.elements.item;
@@ -869,7 +921,7 @@
         </dl>
         ${supplier.notes ? `<section><h3 class="po-detail__heading">Ordering notes</h3><p>${esc(supplier.notes)}</p></section>` : ''}
         <section><h3 class="po-detail__heading">Items</h3>${supplierItems.length ? `<ul class="atlas-list">${supplierItems.slice(0, 30).map((item) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><a class="atlas-row__title" href="#inventory/item/${encodeURIComponent(item.id)}">${esc(item.name)}</a><p class="atlas-row__meta">${esc(item.category || '')}</p></div><div class="atlas-row__end">${root.AtlasStockTruth?.known(item) ? `<span class="num">${qty(item.quantity)}</span>` : '<span class="atlas-pill">Not counted</span>'}</div></li>`).join('')}</ul>` : '<p class="po__muted">No items are linked to this supplier.</p>'}</section>
-        <section><h3 class="po-detail__heading">Orders</h3>${orders.length ? `<ul class="atlas-list">${orders.map((order) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><a class="atlas-row__title" href="#purchasing/order/${encodeURIComponent(order.id)}">${esc(dateText(order.created_at))} · ${money(orderTotal(order))}</a><p class="atlas-row__meta">${(order.lines || []).length} lines</p></div><div class="atlas-row__end">${statusPill(order)}</div></li>`).join('')}</ul>` : '<p class="po__muted">No orders yet.</p>'}</section>`,
+        <section><h3 class="po-detail__heading">Orders</h3>${orders.length ? `<ul class="atlas-list">${orders.map((order) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><a class="atlas-row__title" href="#purchasing/order/${encodeURIComponent(order.id)}">${esc(dateText(order.created_at))} · ${money(orderTotal(order))}</a><p class="atlas-row__meta">${linesOf(order).length} lines</p></div><div class="atlas-row__end">${statusPill(order)}</div></li>`).join('')}</ul>` : '<p class="po__muted">No orders yet.</p>'}</section>`,
       foot: supplier.active === false ? '' : '<button type="button" class="atlas-btn atlas-btn--primary" data-po-new-for>New order</button>'
     }), {
       onClose: (reason) => {
@@ -893,6 +945,7 @@
     if (target.closest('[data-po-add-supplier]')) { openSupplierSheet(); return; }
     if (target.closest('[data-po-suggestions]')) { openSuggestionsSheet(); return; }
     if (target.closest('[data-po-retry]')) { loadOrders().then(render); return; }
+    if (target.closest('[data-po-retry-data]')) { Promise.resolve(root.atlasReloadData?.()).then(render); return; }
     if (target.closest('[data-po-clear-all]')) { state.statusFilter = null; state.supplierFilter = null; render(); return; }
     const clear = target.closest('[data-po-clear]');
     if (clear) { if (clear.dataset.poClear === 'status') state.statusFilter = null; else state.supplierFilter = null; render(); return; }
@@ -935,7 +988,7 @@
   function homeRows() {
     if (!isManager()) return [];
     const rows = [];
-    state.orders.filter((order) => order.status === 'pending_approval').slice(0, 2).forEach((order) => rows.push({ id: `approve:${order.id}`, severity: 'warning', icon: 'truck', title: `Order from ${supplierName(order)} needs approval`, detail: `${(order.lines || []).length} lines · ${money(orderTotal(order))}`, action: { label: 'Review', route: `#purchasing/order/${order.id}` }, roles: MANAGERS }));
+    state.orders.filter((order) => order.status === 'pending_approval').slice(0, 2).forEach((order) => rows.push({ id: `approve:${order.id}`, severity: 'warning', icon: 'truck', title: `Order from ${supplierName(order)} needs approval`, detail: `${linesOf(order).length} lines · ${money(orderTotal(order))}`, action: { label: 'Review', route: `#purchasing/order/${order.id}` }, roles: MANAGERS }));
     state.orders.filter((order) => ['ordered', 'partially_received'].includes(order.status) && order.expected_delivery_date && order.expected_delivery_date <= today()).slice(0, 2).forEach((order) => rows.push({
       id: `delivery:${order.id}`, severity: order.expected_delivery_date < today() ? 'danger' : 'info', icon: 'package-check',
       title: order.expected_delivery_date < today() ? `Delivery from ${supplierName(order)} is overdue` : `Delivery from ${supplierName(order)} is due today`,
@@ -947,13 +1000,9 @@
   function register() {
     shell.registerView('suppliers', {
       root: () => rootEl(), title: 'Purchasing', display: 'block', render: (params) => renderRoute(params || {}), onShow, onHide,
-      // Staff reaching a Purchasing link go Home with a note (the page keeps a
-      // permission state as a fallback).
-      guard: () => {
-        if (isManager() || !shell.profile?.()) return true;
-        toast('That page is for managers. Ask an administrator if you need access.');
-        return 'dashboard';
-      }
+      // Staff following a Purchasing link (an order, a notification) see the
+      // page's permission state, like Reports, Data and Decisions (G17): never
+      // a silent jump to Home.
     });
     const actions = [
       { id: 'purchasing.order.new', label: 'New order', icon: 'shopping-cart', keywords: ['order', 'purchase', 'buy'], roles: MANAGERS, contexts: ['home', 'purchasing', 'suppliers'], forRecord: 'inventory_item', recordLabel: 'Add {name} to an order', run: (ctx = {}) => { if (shell.current() !== 'suppliers') shell.navigate('#purchasing/orders'); openOrderSheet({ itemIds: ctx.record?.type === 'inventory_item' ? [ctx.record.id] : (ctx.itemIds || []) }); } },

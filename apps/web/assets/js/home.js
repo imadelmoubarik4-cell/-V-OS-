@@ -136,18 +136,25 @@
     };
   }
 
+  // The Recipes page's own summary (AtlasRecipes.summary: canonical
+  // recipeStatus), so Home and Recipes never disagree (S90, review P1-4).
   function recipeFacts() {
-    const rules = window.AtlasRecipes;
-    const active = recipes().filter((recipe) => recipe.active !== false);
-    if (!rules?.recipeAvailability) return { active: active.length, unavailable: [], attention: [], known: false };
-    const entries = active.map((recipe) => ({ recipe, availability: rules.recipeAvailability(recipe) }));
+    const summary = window.AtlasRecipes?.summary?.();
+    if (!summary) return { state: 'loading', active: 0, unavailable: [], attention: [], unchecked: [], known: false };
+    const wrap = (list) => list.map((recipe) => ({ recipe }));
     return {
-      active: active.length,
-      unavailable: entries.filter((entry) => entry.availability.status === 'unavailable'),
-      attention: entries.filter((entry) => entry.availability.status === 'attention'),
-      unchecked: entries.filter((entry) => !['ready', 'attention', 'unavailable'].includes(entry.availability.status)),
-      known: true
+      state: summary.state,
+      active: summary.active,
+      unavailable: wrap(summary.unavailable),
+      attention: wrap(summary.attention),
+      unchecked: wrap(summary.unchecked),
+      known: summary.state === 'ok'
     };
+  }
+
+  // Load health of a shell input ('loading' | 'ok' | 'failed').
+  function health(key) {
+    return window.AtlasData?.health?.()?.[key] || (dataLoaded() ? 'ok' : 'loading');
   }
 
   function recipesUsing(itemId) {
@@ -615,8 +622,9 @@
   // "Not counted" — never "0 below par" or "healthy" (S88 truth rule).
   function stockGlance(loaded = dataLoaded()) {
     const stock = stockFacts();
-    let value; let unit = ''; let detail;
-    if (!loaded) { value = '—'; detail = 'Loading stock'; }
+    let value; let unit = ''; let detail; let failed = false;
+    if (health('inventory') === 'failed' && !stock.active) { value = '—'; detail = 'Stock couldn’t be loaded. Nothing was changed.'; failed = true; }
+    else if (!loaded) { value = '—'; detail = 'Loading stock'; }
     else if (!stock.active) { value = '—'; detail = 'No items yet'; }
     else if (stockIncomplete()) { value = 'Incomplete'; detail = `Stock figures are incomplete — ${missingStockInputs()} couldn’t load`; }
     else if (!stock.known) { value = 'Not counted'; detail = 'No verified count yet'; }
@@ -630,6 +638,7 @@
       if (counted) parts.push(`last count ${counted}`);
       detail = parts.join(' · ') || 'Counted items are at or above par';
     }
+    if (failed) return { icon: 'package', label: 'Stock', value, unit, detail, failed: true };
     return { href: stock.known ? '#inventory?filter=below-par' : '#inventory', icon: 'package', label: 'Stock', value, unit, detail, link: 'View inventory', text: value === 'Not counted' || value === 'Incomplete' };
   }
 
@@ -642,19 +651,34 @@
     // Recipes
     const recipeInfo = recipeFacts();
     let recipeValue; let recipeUnit = ''; let recipeDetail;
-    if (!loaded || !recipeInfo.known) { recipeValue = '—'; recipeDetail = loaded ? 'Availability unavailable' : 'Loading recipes'; }
-    else if (!recipeInfo.active) { recipeValue = '—'; recipeDetail = 'No recipes yet'; }
-    else {
-      recipeValue = String(recipeInfo.unavailable.length);
-      recipeUnit = 'unavailable';
-      recipeDetail = recipeInfo.unavailable.length ? list(recipeInfo.unavailable.map((entry) => entry.recipe.name))
-        : recipeInfo.unchecked.length ? `${plural(recipeInfo.unchecked.length, 'recipe', 'recipes')} can’t be checked yet`
-          : `All ${plural(recipeInfo.active, 'recipe', 'recipes')} can be served`;
+    if (recipeInfo.state === 'failed') {
+      blocks.push({ icon: 'martini', label: 'Recipes', value: '—', unit: '', detail: 'Recipes couldn’t be loaded. Nothing was changed.', failed: true });
+    } else {
+      if (!loaded || !recipeInfo.known) { recipeValue = '—'; recipeDetail = 'Loading recipes'; }
+      else if (!recipeInfo.active) { recipeValue = '—'; recipeDetail = 'No recipes yet'; }
+      else if (recipeInfo.unavailable.length) {
+        // A known count; recipes that can't be checked are named as a fact.
+        recipeValue = String(recipeInfo.unavailable.length);
+        recipeUnit = 'unavailable';
+        recipeDetail = [list(recipeInfo.unavailable.map((entry) => entry.recipe.name)), recipeInfo.unchecked.length ? `${plural(recipeInfo.unchecked.length, 'more recipe', 'more recipes')} can’t be checked yet` : ''].filter(Boolean).join(' · ');
+      } else if (recipeInfo.unchecked.length) {
+        // Unknown is not 0: never "0 unavailable" while recipes can't be checked.
+        recipeValue = '—';
+        recipeDetail = `${plural(recipeInfo.unchecked.length, 'recipe', 'recipes')} can’t be checked yet`;
+      } else {
+        recipeValue = '0';
+        recipeUnit = 'unavailable';
+        recipeDetail = `All ${plural(recipeInfo.active, 'recipe', 'recipes')} can be served`;
+      }
+      blocks.push({ href: '#recipes', icon: 'martini', label: 'Recipes', value: recipeValue, unit: recipeUnit, detail: recipeDetail, link: 'View recipes' });
     }
-    blocks.push({ href: '#recipes', icon: 'martini', label: 'Recipes', value: recipeValue, unit: recipeUnit, detail: recipeDetail, link: 'View recipes' });
     if (isManager()) {
       const purchasing = loaded ? purchasingFacts() : null;
-      blocks.push(purchasing
+      // Suggestions come from stock: a failed or incomplete stock load is
+      // never "Nothing below par to order".
+      if (health('inventory') === 'failed' && !items().length) blocks.push({ icon: 'truck', label: 'Purchasing', value: '—', unit: '', detail: 'Order suggestions need stock, which couldn’t be loaded.', failed: true });
+      else if (loaded && stockIncomplete()) blocks.push({ href: '#purchasing', icon: 'truck', label: 'Purchasing', value: '—', unit: '', detail: 'Order suggestions wait for complete stock figures', link: 'View orders' });
+      else blocks.push(purchasing
         ? { href: '#purchasing', icon: 'truck', label: 'Purchasing', value: String(purchasing.toOrder.length), unit: 'to order', detail: purchasing.toOrder.length ? list(purchasing.suppliers) : 'Nothing below par to order', link: 'View orders' }
         : { href: '#purchasing', icon: 'truck', label: 'Purchasing', value: '—', unit: '', detail: loaded ? 'Order suggestions unavailable' : 'Loading orders', link: 'View orders' });
     } else {
@@ -664,7 +688,14 @@
         ? { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: shiftDate(shift) === venue.today() ? 'Today' : venue.formatDate(shiftDate(shift)), unit: '', detail: `${shiftTime(shift.starts_local)}–${shiftTime(shift.ends_local)}${shift.role_name ? ` · ${shift.role_name}` : ''}`, link: 'View shifts', text: true }
         : { href: '#shifts', icon: 'calendar-days', label: 'My next shift', value: '—', unit: '', detail: state.shifts.status === 'ready' ? 'No shifts published for you' : state.shifts.status === 'error' ? 'Shifts couldn’t be loaded' : 'Loading shifts', link: 'View shifts' });
     }
-    return `<section class="home-glance" aria-label="At a glance">${blocks.map((block) => `<a class="home-glance__item" href="${escape(block.href)}">
+    // A tile whose source failed says so and offers Try again: never an
+    // empty-state claim ("No items yet") for data that didn't load.
+    return `<section class="home-glance" aria-label="At a glance">${blocks.map((block) => block.failed ? `<div class="home-glance__item home-glance__item--failed" data-home-glance-failed>
+      <span class="home-glance__label">${icon(block.icon)}${escape(block.label)}</span>
+      <span class="home-glance__value">${escape(block.value)}</span>
+      <span class="home-glance__detail">${escape(block.detail)}</span>
+      <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm home-glance__retry" data-home-reload>${icon('refresh-cw')}Try again</button>
+    </div>` : `<a class="home-glance__item" href="${escape(block.href)}">
       <span class="home-glance__label">${icon(block.icon)}${escape(block.label)}</span>
       <span class="home-glance__value${block.text ? ' home-glance__value--text' : ''}">${escape(block.value)}${block.unit ? `<small>${escape(block.unit)}</small>` : ''}</span>
       <span class="home-glance__detail">${escape(block.detail)}</span>
@@ -794,7 +825,20 @@
       else shell()?.navigate?.(`#ai/new?context=briefing:${encodeURIComponent(date)}`);
       return;
     }
-    if (target.closest('[data-home-shifts-retry]')) { loadShifts(true); queueRender(); }
+    if (target.closest('[data-home-shifts-retry]')) { loadShifts(true); queueRender(); return; }
+    const reload = target.closest('[data-home-reload]');
+    if (reload) {
+      reload.disabled = true;
+      reload.classList.add('is-loading');
+      Promise.resolve(reloadData()).catch(() => {}).finally(() => queueRender());
+    }
+  }
+
+  // Reloads the shell data (index.html) and re-renders every page from it.
+  function reloadData() {
+    state.dataErrors.clear();
+    if (typeof window.atlasReloadPurchasingData === 'function') return window.atlasReloadPurchasingData().then(() => shell()?.dataLoaded?.({ online: navigator.onLine }));
+    return null;
   }
 
   function startTicking() {
@@ -824,7 +868,7 @@
     atlas.notify.contribute('messages', messageItems);
     atlas.actions.register({
       id: 'home.reload', label: 'Reload data', icon: 'refresh-cw', keywords: ['refresh', 'reload'],
-      run: () => { state.dataErrors.clear(); if (typeof window.atlasReloadPurchasingData === 'function') return window.atlasReloadPurchasingData().then(() => atlas.dataLoaded({ online: navigator.onLine })); return null; }
+      run: () => reloadData()
     });
     // Team Messages recommendation links open Atlas AI › Decisions with that
     // recommendation selected (AtlasAI.openDecision; Brain retired).

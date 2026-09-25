@@ -280,7 +280,13 @@
   }
 
   class ShiftsError extends Error {
-    constructor(message, status) { super(message); this.status = status; }
+    constructor(message, status) { super(message); this.status = status; this.atlasFixed = true; }
+  }
+  // Only this module's own fixed copy (atlasFixed) is shown; a JavaScript error
+  // or server text reads as the fallback (AtlasApi.message).
+  function shown(error, fallback) {
+    if (window.AtlasApi?.message) return window.AtlasApi.message(error, fallback);
+    return error?.atlasFixed ? error.message : fallback;
   }
 
   // Fixed copy only (AtlasApi, atlas-api.js): server text is never shown,
@@ -366,7 +372,7 @@
       publishToday();
     } catch (error) {
       if (serial !== slot.serial) return;
-      slot.error = error.message;
+      slot.error = shown(error, 'Shifts couldn’t be loaded. Your rota is safe; check the connection and try again.');
       state.failedAt = Date.now();
     } finally {
       if (serial === slot.serial) {
@@ -396,7 +402,7 @@
       slot.error = null;
     } catch (error) {
       if (serial !== slot.serial) return;
-      slot.error = error.message;
+      slot.error = shown(error, 'Shifts couldn’t be loaded. Your rota is safe; check the connection and try again.');
     } finally {
       if (serial === slot.serial) {
         slot.loading = false;
@@ -437,7 +443,7 @@
       publishToday();
       return true;
     } catch (error) {
-      window.AtlasShell?.toast?.(error.message || 'The change couldn’t be saved.');
+      window.AtlasShell?.toast?.(shown(error, 'The change couldn’t be saved. Nothing was changed; try again.'));
       if (options.throwOnError) throw error;
       return false;
     } finally {

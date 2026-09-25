@@ -403,14 +403,14 @@
       try {
         await mutate('decide-approval', { content_id: item.id, decision, note }, decision === 'approved' ? 'Approved.' : decision === 'rejected' ? 'Rejected.' : 'Changes requested.');
         window.AtlasModal.close(root, 'saved');
-      } catch (error) { fail(error.userMessage); busy(false); }
+      } catch (error) { fail(error.userMessage || 'Nothing was changed. Try again.'); busy(false); }
     }));
     root.querySelector('[data-mk-published]')?.addEventListener('click', async () => {
       busy(true);
       try {
         await mutate('mark-published', { content_id: item.id, published_at: new Date().toISOString(), external_publication_ids: {}, note: null }, 'Marked as published. Nothing was posted by Atlas.');
         window.AtlasModal.close(root, 'saved');
-      } catch (error) { fail(error.userMessage); busy(false); }
+      } catch (error) { fail(error.userMessage || 'Nothing was changed. Try again.'); busy(false); }
     });
     window.AtlasModal.open(root);
     window.lucide?.createIcons?.();
@@ -437,7 +437,7 @@
       try {
         await mutate('create-campaign', { name: form.elements.name.value.trim(), campaign_type: form.elements.campaign_type.value, campaign_start_date: form.elements.start.value || null, campaign_end_date: form.elements.end.value || null, platforms: [], objective: '', target_audience: '', description: form.elements.description.value }, 'Campaign created.', 'The campaign');
         window.AtlasModal.close(root, 'saved');
-      } catch (error) { line.hidden = false; line.textContent = error.userMessage; }
+      } catch (error) { line.hidden = false; line.textContent = error.userMessage || 'Nothing was changed. Try again.'; }
     });
     window.AtlasModal.open(root);
   }

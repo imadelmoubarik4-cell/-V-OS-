@@ -291,7 +291,7 @@
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
       root.console?.warn?.('[atlas-ai]', action, response.status, payload?.error_code || '', response.headers.get('x-request-id') || '');
-      throw new AiError(response.status, payload?.error_code || (response.status === 503 ? 'not_configured' : 'failed'), payload?.message, payload?.reason);
+      throw new AiError(response.status, payload?.error_code || (response.status === 503 ? 'unavailable' : 'failed'), payload?.message, payload?.reason);
     }
     if (stream) return response;
     if (response.status === 204) return {};
@@ -325,7 +325,7 @@
           if (xhr.status >= 200 && xhr.status < 300) resolve(payload);
           else {
             root.console?.warn?.('[atlas-ai]', action, xhr.status, payload?.error_code || '');
-            reject(new AiError(xhr.status, payload?.error_code || (xhr.status === 503 ? 'not_configured' : 'failed'), payload?.message, payload?.reason));
+            reject(new AiError(xhr.status, payload?.error_code || (xhr.status === 503 ? 'unavailable' : 'failed'), payload?.message, payload?.reason));
           }
         };
         xhr.onerror = () => reject(new AiError(0, 'network', 'Atlas couldn’t be reached.'));
@@ -349,7 +349,10 @@
     unauthorized: 'Your session has ended. Sign in again to continue.',
     message_too_long: 'That message is too long. Shorten it and try again.',
     voice_session_inactive: 'This live voice session has ended. Start a new one to continue.',
-    not_configured: 'Atlas AI isn’t switched on yet.'
+    not_configured: 'Atlas AI isn’t switched on yet.',
+    // A 503 without the server's not_configured code is an outage, not an
+    // unconfigured venue (S90, review P2-5).
+    unavailable: 'Atlas AI isn’t available right now. Nothing was changed. Try again shortly.'
   };
   const QUOTA_COPY = {
     voice_quota_exceeded: {
@@ -490,9 +493,17 @@
       }
       let paragraph = lines.map(inline).join('<br>');
       if (emphasiseFirst && blockIndex === 0 && !/^\*\*/.test(block.trim())) {
-        const sentence = /^([^.!?\n]{3,200}[.!?])(\s|$)/.exec(block.trim());
-        if (sentence && sentence[1].length < block.trim().length) {
-          paragraph = `<strong>${inline(sentence[1])}</strong>${lines.map(inline).join('<br>').slice(inline(sentence[1]).length)}`;
+        const whole = block.trim();
+        const sentence = /^([^.!?\n]{3,200}[.!?])(\s|$)/.exec(whole);
+        // Emphasise the first sentence only when its own markup is balanced:
+        // bold or code that runs past the full stop is left as written, never
+        // sliced into garbled HTML.
+        const balanced = (part) => (part.match(/\*\*/g) || []).length % 2 === 0
+          && (part.replace(/\*\*/g, '').match(/\*/g) || []).length % 2 === 0
+          && (part.match(/`/g) || []).length % 2 === 0;
+        if (sentence && sentence[1].length < whole.length && balanced(sentence[1])) {
+          const rest = whole.slice(sentence[1].length);
+          paragraph = `<strong>${inline(sentence[1])}</strong>${rest.split('\n').map(inline).join('<br>')}`;
         }
       }
       return `<p>${paragraph}</p>`;

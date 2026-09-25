@@ -126,7 +126,8 @@
   function isManager() { return ['admin', 'manager'].includes(role()); }
 
   function section(key) {
-    return (state.workspace?.sections || []).find((entry) => entry.section_key === key) || null;
+    const sections = state.workspace?.sections;
+    return (Array.isArray(sections) ? sections : []).find((entry) => entry?.section_key === key) || null;
   }
 
   function canManage() {
@@ -1347,7 +1348,7 @@
       else if (!enable && result?.status === 'pending') state.formFeedback.push = { type: 'success', text: 'Notifications are off for this device.' };
       else state.formFeedback.push = { type: 'error', text: result?.detail || 'Notifications couldn’t be turned on.' };
     } catch (error) {
-      state.formFeedback.push = { type: 'error', text: error instanceof Error ? error.message : 'Notifications couldn’t be set up.' };
+      state.formFeedback.push = { type: 'error', text: window.AtlasApi ? window.AtlasApi.message(error, 'Notifications couldn’t be set up. Try again.') : 'Notifications couldn’t be set up. Try again.' };
     } finally {
       state.notificationAction = false;
       render();

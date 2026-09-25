@@ -355,7 +355,10 @@
     const view = availabilityView(recipe);
     const servings = view.status.availability.servings;
     if (view.status.key === 'draft') return 'Not on service';
-    if (Number.isFinite(servings)) return servings === 0 ? 'None — an ingredient is out' : `About ${servings} ${servings === 1 ? 'serve' : 'serves'} from counted stock`;
+    if (Number.isFinite(servings)) {
+      const limiting = limitingName(view.status.availability);
+      return servings === 0 ? (limiting ? `None tonight: ${limiting} is out` : 'None tonight: an ingredient is out') : `About ${servings} ${servings === 1 ? 'serve' : 'serves'} from counted stock`;
+    }
     return 'Unknown until every ingredient is counted and linked';
   }
 
@@ -410,16 +413,54 @@
   }
 
   function headSub() {
+    if (recipesHealth() === 'failed' && !recipes.length) return 'Recipes couldn’t be loaded';
+    if (recipesHealth() === 'loading' && !recipes.length) return 'Loading recipes…';
     const active = recipes.filter((recipe) => recipe.active !== false);
     const unavailable = active.filter((recipe) => recipeStatus(recipe).key === 'unavailable').length;
     const parts = [`${active.length} ${active.length === 1 ? 'recipe' : 'recipes'}`];
     if (unavailable) parts.push(`${unavailable} unavailable tonight`);
-    else if (active.length && dataLoaded()) parts.push('none out of stock');
+    // "None out of stock" only when every stock input loaded (never a guess).
+    else if (active.length && dataLoaded() && stockHealth() === 'ok') parts.push('none out of stock');
     return parts.join(' · ');
   }
 
   function dataLoaded() {
     return Boolean(window.AtlasShell?.dataLoadedAt?.());
+  }
+
+  // Load health (index.html AtlasData.health()): 'loading' | 'ok' | 'failed'.
+  // A failed load is never shown as an empty library (S90, review P1-3).
+  function recipesHealth() {
+    const health = window.AtlasData?.health?.()?.recipes;
+    if (health) return health;
+    return dataLoaded() ? 'ok' : 'loading';
+  }
+  function stockHealth() {
+    const health = window.AtlasData?.health?.()?.stock;
+    if (health) return health;
+    return dataLoaded() ? 'ok' : 'loading';
+  }
+
+  // One summary for every surface (Home "At a glance", Recipes head): the same
+  // canonical recipeStatus the library pills use. `unchecked` recipes are
+  // unknown, never counted as available or as 0 unavailable.
+  function summary() {
+    const health = recipesHealth();
+    const active = recipes.filter((recipe) => recipe.active !== false);
+    const statuses = active.map((recipe) => ({ recipe, status: recipeStatus(recipe) }));
+    return {
+      state: health === 'failed' && !recipes.length ? 'failed' : health === 'loading' && !recipes.length ? 'loading' : 'ok',
+      stale: health === 'failed' && recipes.length > 0,
+      stock: stockHealth(),
+      active: active.length,
+      unavailable: statuses.filter((entry) => entry.status.key === 'unavailable').map((entry) => entry.recipe),
+      attention: statuses.filter((entry) => entry.status.key === 'attention').map((entry) => entry.recipe),
+      unchecked: statuses.filter((entry) => entry.status.key === 'incomplete').map((entry) => entry.recipe)
+    };
+  }
+
+  function loadFailedMarkup() {
+    return `<div class="atlas-alert atlas-alert--danger" role="alert"><i data-lucide="circle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Recipes couldn’t be loaded.</p><p class="atlas-alert__body">Nothing was changed and your recipes are safe. Check your connection and try again.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-recipe-retry>Try again</button></div></div>`;
   }
 
   function categoryChipMarkup() {
@@ -498,11 +539,12 @@
     const manager = canManageCommercial();
     const actions = manager ? [{ label: 'Public menu', icon: 'qr-code', variant: 'secondary', attrs: { 'data-recipe-menu-link': '' } }, { label: 'New recipe', icon: 'plus', variant: 'primary', attrs: { 'data-recipe-new': '' } }] : [];
     const head = window.AtlasShell.pageHead({ title: 'Recipes', sub: headSub(), actions });
-    if (!dataLoaded() && !recipes.length) {
+    if (recipesHealth() === 'failed' && !recipes.length) return `${head}${loadFailedMarkup()}`;
+    if ((!dataLoaded() || recipesHealth() === 'loading') && !recipes.length) {
       return `${head}${toolbarMarkup(0)}<div class="recipe-grid" aria-busy="true" aria-label="Loading recipes">${Array.from({ length: 8 }, () => '<span class="recipe-tile recipe-tile--skeleton"><span class="atlas-skel atlas-skel--block recipe-tile__media"></span><span class="recipe-tile__body"><span class="atlas-skel atlas-skel--title"></span><span class="atlas-skel atlas-skel--text"></span></span></span>').join('')}</div>`;
     }
     if (!recipes.length) {
-      return `${head}<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon"><i data-lucide="martini"></i></div><h3 class="atlas-empty__title">No recipes yet</h3><p class="atlas-empty__text">${manager ? 'Add your first recipe and link its ingredients to stock to see what you can serve.' : 'A manager adds recipes. They appear here with what you can serve tonight.'}</p>${manager ? '<div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-recipe-new><i data-lucide="plus"></i>New recipe</button></div>' : ''}</div>`;
+      return `${head}<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon"><i data-lucide="martini"></i></div><h3 class="atlas-empty__title">No recipes yet</h3><p class="atlas-empty__text">${manager ? 'Add your first recipe and link its ingredients to stock to see what you can serve.' : 'A manager adds recipes. They appear here with what you can serve tonight.'}</p>${manager ? '<div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-recipe-new><i data-lucide="plus"></i>New recipe</button></div>' : ''}</div>`;
     }
     const list = filteredRecipes();
     let content;
@@ -513,7 +555,9 @@
     else content = `<div class="recipe-grid">${list.map(tileMarkup).join('')}</div>`;
     const stale = dataLoaded() && !navigator.onLine
       ? '<div class="atlas-alert atlas-alert--warning"><i data-lucide="wifi-off"></i><div class="atlas-alert__content"><p class="atlas-alert__body">You\'re offline. Showing recipes and stock from the last time Atlas loaded.</p></div></div>'
-      : '';
+      : recipesHealth() === 'failed'
+        ? '<div class="atlas-alert atlas-alert--warning"><i data-lucide="triangle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__body">Recipes couldn’t be refreshed. Showing them as they were last loaded; nothing was changed.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-recipe-retry>Try again</button></div></div>'
+        : '';
     return `${head}${stale}${toolbarMarkup(list.length)}${content}`;
   }
 
@@ -608,7 +652,10 @@
     const recipe = recipes.find((entry) => String(entry.id) === String(recipeId));
     state.selectedRecipeId = recipe ? recipe.id : null;
     if (!recipe) {
-      state.missingRecipe = recipeId;
+      // Recipes that failed to load: reopen this recipe after Try again,
+      // never "it may have been deleted".
+      if (recipesHealth() === 'failed') state.pendingRoute = { recipe: recipeId };
+      else state.missingRecipe = recipeId;
       render();
       return;
     }
@@ -1277,7 +1324,7 @@
         return;
       }
     }
-    const missing = state.missingRecipe
+    const missing = state.missingRecipe && recipesHealth() !== 'failed'
       ? `<div class="atlas-alert atlas-alert--warning"><i data-lucide="triangle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__title">That recipe isn't available</p><p class="atlas-alert__body">It may have been deleted or archived. The library below is up to date.</p></div></div>`
       : '';
     dom.view.innerHTML = `<div class="atlas-page recipes-page">${libraryMarkup().replace('</header>', `</header>${missing}`)}</div>`;
@@ -1313,6 +1360,13 @@
     }
     const category = target.closest('button[data-recipe-category]');
     if (category && !category.closest('.atlas-menu')) { state.category = 'all'; renderLibrary(); return; }
+    const retry = target.closest('[data-recipe-retry]');
+    if (retry) {
+      retry.disabled = true;
+      retry.classList.add('is-loading');
+      Promise.resolve(window.atlasReloadData?.()).catch(() => {}).finally(() => renderLibrary());
+      return;
+    }
     if (target.closest('[data-recipe-clear]')) { state.search = ''; state.category = 'all'; state.statusFilter = 'all'; renderLibrary(); return; }
     if (target.closest('[data-recipe-new]')) { window.AtlasShell.navigate('#recipes/new/edit'); return; }
     if (target.closest('[data-recipe-menu-link]')) { openMenuShare(); return; }
@@ -1470,6 +1524,7 @@
     openEditor: (recipe) => window.AtlasShell?.navigate?.(recipe?.id ? `#recipes/${encodeURIComponent(recipe.id)}/edit` : '#recipes/new/edit'),
     getHomeAlert,
     getHomeMetrics,
+    summary,
     recipeAvailability,
     // Search and Ask Atlas use the exact readiness shown on the Recipes page.
     recipeStatus,

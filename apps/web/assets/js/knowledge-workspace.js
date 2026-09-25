@@ -189,7 +189,13 @@
   // ---------- API ----------
 
   class KnowledgeError extends Error {
-    constructor(message, status) { super(message); this.status = status; }
+    constructor(message, status) { super(message); this.status = status; this.atlasFixed = true; }
+  }
+  // Only this module's own fixed copy (atlasFixed) is shown; a JavaScript error
+  // or server text reads as the fallback (AtlasApi.message).
+  function shown(error, fallback) {
+    if (window.AtlasApi?.message) return window.AtlasApi.message(error, fallback);
+    return error?.atlasFixed ? error.message : fallback;
   }
 
   // Fixed copy only (AtlasApi, atlas-api.js): server text is never shown,
@@ -468,6 +474,9 @@
     if (state.detailLoading && !state.detail) {
       return `<div class="kn-article kn-reading" aria-busy="true"><div class="atlas-skel atlas-skel--title"></div>${'<div class="atlas-skel atlas-skel--text"></div>'.repeat(6)}<span class="sr-only">Loading article</span></div>`;
     }
+    if (!state.detail && state.detailError && !state.detailMissing) {
+      return `<div class="kn-reading"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm kn-back" href="#knowledge">${icon('chevron-left')}Knowledge</a><div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">This article couldn’t be opened.</p><p class="atlas-alert__body">${escapeHtml(state.detailError)}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-kn-article-retry>Try again</button></div></div></div>`;
+    }
     if (!state.detail) {
       return `<div class="kn-reading"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm kn-back" href="#knowledge">${icon('chevron-left')}Knowledge</a><div class="atlas-empty"><div class="atlas-empty__icon">${icon('book-x')}</div><h1 class="atlas-empty__title">This article isn’t available</h1><p class="atlas-empty__text">${escapeHtml(state.detailError || 'It may have been retired, or it isn’t shared with your role.')}</p><div class="atlas-empty__actions"><a class="atlas-btn atlas-btn--secondary" href="#knowledge">Back to Knowledge</a></div></div></div>`;
     }
@@ -658,7 +667,7 @@
       state.failedAt = 0;
       contribute();
     } catch (error) {
-      if (!options.silent || !state.snapshot) state.error = error.message;
+      if (!options.silent || !state.snapshot) state.error = shown(error, 'Knowledge couldn’t be loaded. Your articles are safe; check the connection and try again.');
       state.failedAt = Date.now();
     } finally {
       state.loading = false;
@@ -670,6 +679,7 @@
     const serial = articleId;
     state.detailLoading = true;
     state.detailError = null;
+    state.detailMissing = false;
     if (state.detail?.article?.id !== articleId) state.detail = null;
     paint();
     try {
@@ -685,7 +695,8 @@
     } catch (error) {
       if (state.articleId !== serial) return;
       state.detail = null;
-      state.detailError = error.message;
+      state.detailMissing = error?.status === 404 || error?.status === 403;
+      state.detailError = shown(error, 'Nothing was changed. Check the connection and try again.');
     } finally {
       if (state.articleId === serial) {
         state.detailLoading = false;
@@ -704,7 +715,7 @@
       contribute();
       return true;
     } catch (error) {
-      window.AtlasShell?.toast?.(error.message || 'The change couldn’t be saved.');
+      window.AtlasShell?.toast?.(shown(error, 'The change couldn’t be saved. Nothing was changed; try again.'));
       return false;
     } finally {
       state.submitting = false;
@@ -797,6 +808,7 @@
     const target = event.target instanceof Element ? event.target : null;
     if (!target || !host()?.contains(target)) return;
 
+    if (target.closest('[data-kn-article-retry]')) { if (state.articleId) loadArticle(state.articleId); return; }
     const tab = target.closest('[data-knowledge-tab]');
     if (tab) {
       if (event.metaKey || event.ctrlKey) return;

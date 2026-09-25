@@ -155,13 +155,18 @@
     const stockRows = rows.filter((row) => !row.reference);
     const references = rows.length - stockRows.length;
     const known = stockRows.filter((row) => Number.isFinite(row.batches));
-    const limiting = known.length ? known.reduce((smallest, row) => row.batches < smallest.batches ? row : smallest, known[0]) : null;
-    const knownServings = limiting ? Math.max(0, Math.floor(limiting.batches * recipeYield)) : null;
+    const smallest = known.length ? known.reduce((least, row) => row.batches < least.batches ? row : least, known[0]) : null;
+    const knownServings = smallest ? Math.max(0, Math.floor(smallest.batches * recipeYield)) : null;
     const unknown = stockRows.length - known.length;
     const missing = rows.filter((row) => !row.item).length;
     const belowPar = rows.filter((row) => row.belowPar).length;
-    // A verified shortage cannot be served whatever the other ingredients say.
-    const shortage = knownServings !== null && knownServings <= 0;
+    // A verified shortage cannot be served whatever the other ingredients say:
+    // the smallest known ingredient is at zero, or an ingredient is counted out
+    // (stock status 'out') even where its unit can't be converted (S90: Home and
+    // Recipes agree that a recipe using an out item is unavailable).
+    const outRow = stockRows.find((row) => row.stockStatus === 'out') || null;
+    const shortage = (knownServings !== null && knownServings <= 0) || Boolean(outRow);
+    const limiting = shortage && !(knownServings !== null && knownServings <= 0) ? outRow : smallest;
     const servings = shortage ? 0 : limiting && !unknown ? knownServings : null;
     let availabilityStatus = 'ready';
     if (shortage) availabilityStatus = 'unavailable';
