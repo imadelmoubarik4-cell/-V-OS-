@@ -8,7 +8,14 @@
   {
     "id": "live-pur-02", "category": "purchasing", "actor": "manager", "blocking": true,
     "question": "Draft the Vínnes order from the suggestions.",
-    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.vinnes", "p_lines[0].quantity": 18 } }, "rubric": "Prepares a draft Vínnes order for 18 Angelo Pinot Grigio (3 cases, about 52.200 kr) for approval; says it is saved as a draft only after approval and is not sent." }
+    "truth": [{ "tool": "purchasing.prepare_draft_po", "args": { "supplier_id": null, "supplier_query": "Vínnes", "use_suggestions": true, "lines": null, "note": null, "expected_delivery_date": null } }],
+    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": null, "must_mention_any": ["already", "existing draft"], "rubric": "A Vínnes draft already exists (6 Angelo Pinot Grigio, 17.400 kr, expected 26 Sep) and already covers the only Vínnes suggestion, so Atlas links that draft instead of preparing a second one; offers to add lines to it or to open it in Purchasing." }
+  },
+  {
+    "id": "live-pur-16", "category": "purchasing", "actor": "manager", "blocking": true,
+    "question": "Add a case of Villa Maria to the Vínnes order.",
+    "truth": [{ "tool": "purchasing.prepare_draft_po", "args": { "supplier_id": null, "supplier_query": "Vínnes", "use_suggestions": null, "lines": [{ "item_id": "@item.villamaria", "item_query": null, "quantity": 6, "unit_cost": null }], "note": null, "expected_delivery_date": null } }],
+    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.update_draft", "command": { "p_id": "@po.vinnesDraft", "p_version": 1, "p_lines": { "$len": 2 } } }, "must_mention_any": ["existing draft", "already has a draft", "the draft"], "rubric": "Proposes adding 6 Villa Maria Sauvignon Blanc (18.000 kr) to the existing Vínnes draft (total 17.400 → 35.400 kr) for approval; no second draft; notes Villa Maria is normally supplied by Karl K. Karlsson." }
   },
   {
     "id": "live-pur-03", "category": "purchasing", "actor": "manager", "blocking": true,

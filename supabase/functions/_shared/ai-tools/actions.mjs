@@ -41,6 +41,22 @@ const COMMAND_SCHEMAS = {
     p_note: S.string(null, { minLength: 0, maxLength: 2000 }),
     p_expected_delivery_date: S.nullable(S.date()),
   }),
+  // Adds lines to the supplier's existing Draft instead of a second draft.
+  // p_lines is the draft's full line set after the change (update replaces
+  // lines); p_version guards against a draft that changed since preparing.
+  "purchase_order.update_draft": S.object({
+    p_id: S.uuid(),
+    p_action: S.enum(["update"]),
+    p_version: S.integer(null, { minimum: 1 }),
+    p_supplier_id: S.uuid(),
+    p_lines: S.array(S.object({
+      item_id: S.uuid(),
+      quantity: S.number(null, { minimum: 0.0001, maximum: 1000000 }),
+      unit_cost: S.number(null, { minimum: 0, maximum: 100000000 }),
+    }), null, { minItems: 1, maxItems: 100 }),
+    p_note: S.string(null, { minLength: 0, maxLength: 2000 }),
+    p_expected_delivery_date: S.nullable(S.date()),
+  }),
   "purchase_order.receive": S.object({
     p_id: S.uuid(),
     p_action: S.enum(["receive_lines"]),
@@ -155,6 +171,7 @@ const COMMAND_SCHEMAS = {
 // Per kind: who may approve/execute, and whether Atlas runs anything at all.
 export const PROPOSAL_KINDS = Object.freeze({
   "purchase_order.create": { roles: MANAGERS, executable: true, subject: "purchase_order" },
+  "purchase_order.update_draft": { roles: MANAGERS, executable: true, subject: "purchase_order" },
   "purchase_order.receive": { roles: MANAGERS, executable: true, subject: "purchase_order" },
   "stock_count.draft": { roles: OPERATIONAL, executable: true, subject: "stock_count" },
   "shift.draft": { roles: MANAGERS, executable: true, subject: "shift_week" },
@@ -205,6 +222,43 @@ export function buildPreview(kind, command, extras = {}) {
         will_not_change: [
           "The order is not placed or sent to the supplier.",
           "Stock and item costs do not change.",
+        ],
+        route: routeFor("purchase_order", command.p_id),
+      };
+    }
+    case "purchase_order.update_draft": {
+      const names = extras.itemNames || {};
+      const units = extras.itemUnits || {};
+      const before = extras.previousQuantities || {};
+      const total = command.p_lines.reduce((sum, line) => sum + line.quantity * line.unit_cost, 0);
+      const addedCount = command.p_lines.filter((line) => !Object.hasOwn(before, line.item_id)).length;
+      const changedCount = command.p_lines.filter((line) => Object.hasOwn(before, line.item_id) && before[line.item_id] !== line.quantity).length;
+      return {
+        headline: `Add to the draft purchase order for ${extras.supplierName || "the supplier"}`,
+        lines: command.p_lines.map((line) => {
+          const was = Object.hasOwn(before, line.item_id) ? before[line.item_id] : null;
+          const marker = was === null ? "new line: " : was !== line.quantity ? `was ${formatNumber(was)}, now ` : "unchanged: ";
+          return {
+            label: names[line.item_id] || line.item_id,
+            detail: `${marker}${formatNumber(line.quantity)} ${units[line.item_id] || "units"} × ${formatIsk(line.unit_cost)} = ${formatIsk(line.quantity * line.unit_cost)}`,
+          };
+        }),
+        totals: {
+          lines: command.p_lines.length,
+          estimated_total: total,
+          estimated_total_label: formatIsk(total),
+          previous_total: Number.isFinite(extras.previousTotal) ? extras.previousTotal : null,
+          previous_total_label: Number.isFinite(extras.previousTotal) ? formatIsk(extras.previousTotal) : null,
+        },
+        recipients: [],
+        will_change: [
+          `The existing Draft order for ${extras.supplierName || "the supplier"} is updated: ${addedCount} ${addedCount === 1 ? "line" : "lines"} added${changedCount ? `, ${changedCount} changed` : ""}. It stays a Draft.`,
+        ],
+        will_not_change: [
+          "No second order is created.",
+          "The order is not placed or sent to the supplier.",
+          "Stock and item costs do not change.",
+          "If the draft was changed in Purchasing after this was prepared, nothing is saved; prepare it again.",
         ],
         route: routeFor("purchase_order", command.p_id),
       };
@@ -550,6 +604,25 @@ export async function executeProposal(kind, storedCommand, ctx) {
           result: {
             summary: "Draft purchase order saved in Purchasing. It has not been placed with the supplier.",
             data: { order_id: order?.id ?? command.p_id, status: order?.status ?? "draft", version: order?.version ?? null },
+            records: [record("purchase_order", order?.id ?? command.p_id, "Draft purchase order")],
+          },
+        };
+      }
+      case "purchase_order.update_draft": {
+        const order = await services.purchaseOrderCommand({
+          p_id: command.p_id,
+          p_action: "update",
+          p_version: command.p_version,
+          p_supplier_id: command.p_supplier_id,
+          p_lines: command.p_lines,
+          p_note: command.p_note,
+          p_expected_delivery_date: command.p_expected_delivery_date,
+        });
+        return {
+          ok: true,
+          result: {
+            summary: `Draft purchase order updated in Purchasing (${command.p_lines.length} ${command.p_lines.length === 1 ? "line" : "lines"}). It is still a Draft and has not been placed with the supplier.`,
+            data: { order_id: order?.id ?? command.p_id, status: order?.status ?? "draft", version: order?.version ?? null, lines: command.p_lines.length },
             records: [record("purchase_order", order?.id ?? command.p_id, "Draft purchase order")],
           },
         };

@@ -6,10 +6,10 @@
     "args": {},
     "expected": {
       "ok": true,
-      "summary": ["Business date 2026-09-24", "Opening hours are not set", "7 alerts (4 high)", "6 items to order"],
+      "summary": ["Business date 2026-09-24", "Opening hours are not set", "7 alerts (4 high)", "5 items to order"],
       "data": {
         "data.hours": null, "data.alerts": { "$len": 7 }, "data.working_today.shifts": { "$len": 3 },
-        "data.purchasing": { "suggested_items": 6, "estimated_total": 222960, "open_orders": 4 },
+        "data.purchasing": { "suggested_items": 5, "estimated_total": 170760, "open_orders": 4 },
         "data.operations.overdue": ["Clean coffee machine"],
         "data.data_quality[0]": { "code": "inventory.missing_par", "count": 24 }
       },

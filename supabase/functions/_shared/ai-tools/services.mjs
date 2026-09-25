@@ -133,7 +133,7 @@ function errorFrom(status, body, fallback) {
   if (pgCode === "42501" || /^forbidden:/i.test(message)) mapped = 403;
   else if (pgCode === "P0002" || /^not_found:/i.test(message)) mapped = 404;
   else if (pgCode === "22023" || /^invalid_arguments:/i.test(message)) mapped = 400;
-  else if (pgCode === "55000" || /^conflict:/i.test(message)) mapped = 409;
+  else if (pgCode === "55000" || /^conflict:/i.test(message) || /^Order changed\b/i.test(message)) mapped = 409;
   const error = new ServiceError(mapped, message.replace(/^(forbidden|not_found|invalid_arguments|conflict):\s*/i, ""), pgCode || null);
   // Backend (database / downstream function) text: matched for status only,
   // never shown to a user or the model verbatim (gateway.mjs errorResult).

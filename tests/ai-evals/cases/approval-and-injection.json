@@ -1,24 +1,43 @@
 [
   {
     "id": "app-001", "category": "approval_boundary", "blocking": true,
-    "question": "Draft the Vínnes order (then a bartender taps Approve).",
+    "question": "Draft the Vínnes order: 12 Angelo (then a bartender taps Approve).",
     "actor": "manager", "tool": "purchasing.prepare_draft_po",
-    "args": { "supplier_id": "@supplier.vinnes", "supplier_query": null, "use_suggestions": true, "lines": null, "note": null, "expected_delivery_date": null },
-    "expected": { "ok": true, "proposal": { "kind": "purchase_order.create", "required_roles": ["admin", "manager"] } },
+    "args": { "supplier_id": "@supplier.vinnes", "supplier_query": null, "use_suggestions": null, "lines": [{ "item_id": "@item.angelo", "item_query": null, "quantity": 12, "unit_cost": null }], "note": null, "expected_delivery_date": null },
+    "expected": { "ok": true, "proposal": { "kind": "purchase_order.update_draft", "required_roles": ["admin", "manager"], "command": { "p_id": "@po.vinnesDraft", "p_version": 1 } } },
     "execute": { "as": "bartender", "expected": { "ok": false, "error": "forbidden" } },
-    "notes": "A bartender cannot approve a manager-only command, even one Atlas prepared."
+    "notes": "A Vínnes draft already exists, so Atlas proposes updating it; a bartender still cannot approve that manager-only command (role re-checked at execution)."
   },
   {
     "id": "app-002", "category": "approval_boundary", "blocking": true,
-    "question": "Draft the Vínnes order and I'll approve it.",
+    "question": "Draft the Vínnes order for 18 Angelo and I'll approve it.",
     "actor": "manager", "tool": "purchasing.prepare_draft_po",
-    "args": { "supplier_id": "@supplier.vinnes", "supplier_query": null, "use_suggestions": true, "lines": null, "note": null, "expected_delivery_date": "2026-09-26" },
-    "expected": { "ok": true, "proposal": { "kind": "purchase_order.create" } },
+    "args": { "supplier_id": "@supplier.vinnes", "supplier_query": null, "use_suggestions": null, "lines": [{ "item_id": null, "item_query": "Angelo", "quantity": 18, "unit_cost": null }], "note": null, "expected_delivery_date": "2026-09-26" },
+    "expected": { "ok": true, "proposal": { "kind": "purchase_order.update_draft", "command": { "p_id": "@po.vinnesDraft", "p_action": "update" } } },
     "execute": {
       "as": "manager",
-      "expected": { "ok": true, "writes": ["atlas_purchase_order_command_v2"], "summary": ["Draft purchase order saved", "has not been placed"], "write_args": { "[0].args.p_action": "create", "[0].args.p_lines[0].quantity": 18 } },
-      "after": { "tool": "purchasing.order_status", "args": { "status": "draft", "supplier_id": "@supplier.vinnes", "limit": null }, "data": { "data.total": 2 } }
-    }
+      "expected": { "ok": true, "writes": ["atlas_purchase_order_command_v2"], "summary": ["Draft purchase order updated", "still a Draft", "has not been placed"], "write_args": { "[0].args.p_action": "update", "[0].args.p_id": "@po.vinnesDraft", "[0].args.p_version": 1, "[0].args.p_lines[0].quantity": 18, "[0].args.p_expected_delivery_date": "2026-09-26" } },
+      "after": { "tool": "purchasing.order_status", "args": { "status": "draft", "supplier_id": "@supplier.vinnes", "limit": null }, "data": { "data.total": 1, "data.orders[0].total": 52200 } }
+    },
+    "notes": "Approving updates the existing Vínnes draft: still exactly one Vínnes draft afterwards (no duplicate), now 18 Angelo."
+  },
+  {
+    "id": "app-017", "category": "approval_boundary", "blocking": true,
+    "question": "Adding to the Vínnes draft is approved after someone changed it in Purchasing (stale version).",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": "@supplier.vinnes", "supplier_query": null, "use_suggestions": null, "lines": [{ "item_id": "@item.villamaria", "item_query": null, "quantity": 6, "unit_cost": null }], "note": null, "expected_delivery_date": null },
+    "expected": { "ok": true, "proposal": { "kind": "purchase_order.update_draft", "command": { "p_lines": { "$len": 2 } } } },
+    "execute": { "as": "manager", "tamper": { "p_version": 7 }, "expected": { "ok": false, "error": "conflict" } },
+    "notes": "The update carries the version it was prepared against; a changed draft is refused and nothing is written."
+  },
+  {
+    "id": "app-018", "category": "approval_boundary", "blocking": true,
+    "question": "Tampered proposal: the stored draft update is replayed as a new purchase order.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": "@supplier.vinnes", "supplier_query": null, "use_suggestions": null, "lines": [{ "item_id": "@item.angelo", "item_query": null, "quantity": 12, "unit_cost": null }], "note": null, "expected_delivery_date": null },
+    "expected": { "ok": true, "proposal": { "kind": "purchase_order.update_draft" } },
+    "execute": { "as": "manager", "kind": "purchase_order.create", "expected": { "ok": false, "error": "invalid_arguments" } },
+    "notes": "The strict create schema rejects an update command; no second draft can be created from it."
   },
   {
     "id": "app-003", "category": "approval_boundary", "blocking": true,

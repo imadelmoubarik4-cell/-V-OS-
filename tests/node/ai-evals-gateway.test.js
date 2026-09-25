@@ -67,8 +67,8 @@ test('the Layer 1 checker itself fails on wrong numbers, missing evidence and st
   const { ctx } = gatewayCtx('manager', world);
   const result = await runTool('purchasing.suggest', { supplier_id: null, include_ordered: null }, ctx);
   const base = { id: 'self-test', expected: { ok: true } };
-  assert.deepEqual(checkGatewayResult({ ...base, expected: { ok: true, data: { 'data.estimated_total': 222960 } } }, result, { isStaff: false }), []);
-  assert.equal(checkGatewayResult({ ...base, expected: { ok: true, data: { 'data.estimated_total': 222961 } } }, result, { isStaff: false }).length, 1);
+  assert.deepEqual(checkGatewayResult({ ...base, expected: { ok: true, data: { 'data.estimated_total': 170760 } } }, result, { isStaff: false }), []);
+  assert.equal(checkGatewayResult({ ...base, expected: { ok: true, data: { 'data.estimated_total': 170761 } } }, result, { isStaff: false }).length, 1);
   assert.equal(checkGatewayResult({ ...base, expected: { ok: true, evidence: [{ kind: 'fact', label: 'Order Angelo' }] } }, result, { isStaff: false }).length, 1, 'wrong evidence kind');
   assert.equal(checkGatewayResult({ ...base, expected: { ok: true, unknown: null } }, result, { isStaff: false }).length, 1, 'unknown disclosure required');
   assert.ok(checkGatewayResult(base, result, { isStaff: true }).some((failure) => /leaked/.test(failure)), 'manager data would leak to staff');

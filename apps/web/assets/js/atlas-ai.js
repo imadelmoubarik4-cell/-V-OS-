@@ -1311,6 +1311,7 @@
 
   const KINDS = {
     'purchase_order.create': { icon: 'truck', verb: 'Create order', done: 'Order created', view: 'View order', executable: true },
+    'purchase_order.update_draft': { icon: 'truck', verb: 'Update draft order', done: 'Draft order updated', view: 'View order', executable: true },
     'purchase_order.receive': { icon: 'truck', verb: 'Receive delivery', done: 'Delivery received', view: 'View order', executable: true },
     'stock_count.draft': { icon: 'list-checks', verb: 'Save count for review', done: 'Count saved for review', view: 'View count', executable: true },
     'shift.draft': { icon: 'calendar-days', verb: 'Save as draft', done: 'Shift draft saved', view: 'View shifts', executable: true },

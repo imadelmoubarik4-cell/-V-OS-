@@ -174,3 +174,52 @@ test('spend, margin and waste reports', async () => {
   assert.ok(!('estimated_cost' in staffWaste.data));
   assert.equal((await run('bartender', 'reports.spend', { days: 30 })).error.code, 'forbidden');
 });
+
+// One truth for open orders (canonical openPurchaseOrderItemIds): a draft, an
+// order waiting for approval and an approved order already cover an item.
+test('an item on an order waiting for approval is covered: not suggested again, labelled, and no draft is prepared for it', async () => {
+  const pending = { id: '00000000-0000-4000-8000-0000000000e1', supplier_id: IDS.supplierVin, status: 'pending_approval', version: 2, expected_delivery_date: null, note: '', created_at: '2026-09-23T10:00:00Z',
+    lines: [{ item_id: IDS.angelo, item_name: 'Angelo Pinot Grigio', unit: 'bottle', quantity: 12, unit_cost: 3000 }] };
+  const backend = createBackend({ purchaseOrders: [...purchaseOrderRows(), pending] });
+  const result = await run('manager', 'purchasing.suggest', { supplier_id: null, include_ordered: null }, { backend });
+  assert.equal(result.data.counts.suggested, 0);
+  assert.deepEqual(result.data.already_ordered.map((entry) => [entry.name, entry.on_order.label]).sort(), [['Angelo Pinot Grigio', 'waiting for approval'], ['Aperol', 'ordered']]);
+  assert.match(result.summary, /1 waiting for approval/);
+  const draft = await run('manager', 'purchasing.prepare_draft_po', { supplier_id: IDS.supplierVin, supplier_query: null, use_suggestions: true, lines: null, note: null, expected_delivery_date: null }, { backend });
+  assert.equal(draft.proposal, null);
+  assert.match(draft.summary, /already on an open order \(1 waiting for approval\)/);
+  // An order waiting for approval cannot be edited here: an explicit line is
+  // a new draft, with a warning that the item is already on that order.
+  const explicit = await run('manager', 'purchasing.prepare_draft_po', { supplier_id: IDS.supplierVin, supplier_query: null, use_suggestions: null, lines: [{ item_id: IDS.angelo, item_query: null, quantity: 6, unit_cost: null }], note: null, expected_delivery_date: null }, { backend });
+  assert.equal(explicit.proposal.kind, 'purchase_order.create');
+  assert.deepEqual(explicit.data.warnings, ['Angelo Pinot Grigio is already on an open order (waiting for approval).']);
+  assert.deepEqual(backend.writes, []);
+});
+
+test('a supplier with a Draft gets purchase_order.update_draft on that draft (current version, full line set, note kept), never a second draft', async () => {
+  const draftId = '00000000-0000-4000-8000-0000000000e2';
+  const existing = { id: draftId, supplier_id: IDS.supplierVin, status: 'draft', version: 4, expected_delivery_date: '2026-09-28', note: 'Weekend wine', created_at: '2026-09-23T10:00:00Z',
+    lines: [{ item_id: IDS.angelo, item_name: 'Angelo Pinot Grigio', unit: 'bottle', quantity: 6, unit_cost: 3000 }] };
+  const backend = createBackend({ purchaseOrders: [...purchaseOrderRows(), existing] });
+  const linked = await run('manager', 'purchasing.prepare_draft_po', { supplier_id: IDS.supplierVin, supplier_query: null, use_suggestions: true, lines: null, note: null, expected_delivery_date: null }, { backend });
+  assert.equal(linked.proposal, null, 'the draft already covers the suggestion');
+  assert.equal(linked.data.existing_draft.id, draftId);
+  assert.match(linked.summary, /already has a draft order/);
+  assert.ok(linked.records.some((entry) => entry.type === 'purchase_order' && entry.id === draftId && entry.route === `#purchasing/order/${draftId}`));
+
+  const result = await run('manager', 'purchasing.prepare_draft_po', { supplier_id: IDS.supplierVin, supplier_query: null, use_suggestions: null, lines: [{ item_id: IDS.angelo, item_query: null, quantity: 18, unit_cost: null }], note: null, expected_delivery_date: null }, { backend });
+  const { proposal } = result;
+  assert.equal(proposal.kind, 'purchase_order.update_draft');
+  assert.deepEqual(proposal.required_roles, ['admin', 'manager']);
+  assert.deepEqual(proposal.command, { p_id: draftId, p_action: 'update', p_version: 4, p_supplier_id: IDS.supplierVin, p_lines: [{ item_id: IDS.angelo, quantity: 18, unit_cost: 3000 }], p_note: 'Weekend wine', p_expected_delivery_date: null });
+  assert.equal(validateCommand('purchase_order.update_draft', proposal.command).ok, true);
+  assert.equal(validateCommand('purchase_order.create', proposal.command).ok, false, 'an update can never be replayed as a create');
+  assert.deepEqual(proposal.preview.lines, [{ label: 'Angelo Pinot Grigio', detail: 'was 6, now 18 bottle × 3.000 kr = 54.000 kr' }]);
+  assert.equal(proposal.preview.totals.previous_total, 18000);
+  assert.deepEqual(result.data.changed, [IDS.angelo]);
+  assert.deepEqual(backend.writes, [], 'drafting writes nothing');
+
+  const same = await run('manager', 'purchasing.prepare_draft_po', { supplier_id: IDS.supplierVin, supplier_query: null, use_suggestions: null, lines: [{ item_id: IDS.angelo, item_query: null, quantity: 6, unit_cost: null }], note: null, expected_delivery_date: null }, { backend });
+  assert.equal(same.proposal, null, 'nothing to change');
+  assert.match(same.summary, /exactly these lines/);
+});

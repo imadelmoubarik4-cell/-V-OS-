@@ -5,11 +5,12 @@
     "truth": [{ "tool": "purchasing.suggest", "args": { "supplier_id": null, "include_ordered": null } }],
     "expect": {
       "tools_any": ["purchasing.suggest", "briefing.today"], "specialists": ["purchasing"],
-      "must_mention": ["Angelo", "Tanqueray", "Campari", "Jimador", "Prosecco", "Tonic"],
+      "must_mention": ["Tanqueray", "Campari", "Jimador", "Prosecco", "Tonic"],
+      "must_mention_any": ["draft"],
       "numbers_any": [["24", "26"]],
-      "proposal": { "kind_any": ["purchase_order.create"], "optional": true },
-      "records": ["inventory_item:@item.angelo", "inventory_item:@item.tanqueray"],
-      "rubric": "Lists the six below-par items to order (Angelo, Tanqueray, Campari, El Jimador, Prosecco, tonic), notes Aperol, Gull and limes are already on order, and says how many items could not be judged (24 without par, 2 without a current count). No invented quantities."
+      "proposal": { "kind_any": ["purchase_order.create", "purchase_order.update_draft"], "optional": true },
+      "records": ["inventory_item:@item.tanqueray", "purchase_order:@po.vinnesDraft"],
+      "rubric": "Lists the five below-par items to order (Tanqueray, Campari, El Jimador, Prosecco, tonic), notes Angelo is already on the Vínnes draft order and Aperol, Gull and limes are already on order, and says how many items could not be judged (24 without par, 2 without a current count). No invented quantities."
     }
   },
   {
@@ -109,7 +110,7 @@
     "expect": {
       "tools_any": ["briefing.today", "operations.alerts"],
       "must_mention": ["coffee machine", "Aperol"], "must_mention_any": ["overdue", "late"],
-      "rubric": "Covers: overdue coffee-machine cleaning, Fridge 2 above 5°C, Aperol out of stock (Aperol Spritz unavailable), 8 items below par, 2 overdue deliveries (Globus, Innnes), 6 items to order, and that opening hours are not set and 16 items have no current count."
+      "rubric": "Covers: overdue coffee-machine cleaning, Fridge 2 above 5°C, Aperol out of stock (Aperol Spritz unavailable), 8 items below par, 2 overdue deliveries (Globus, Innnes), 5 items to order, and that opening hours are not set and 16 items have no current count."
     }
   },
   {
@@ -118,8 +119,8 @@
     "truth": [{ "tool": "purchasing.suggest", "args": { "supplier_id": null, "include_ordered": null } }],
     "expect": {
       "tools_any": ["purchasing.suggest"], "must_mention": ["Globus", "Mekka", "V[ií]nnes", "Karl K"],
-      "proposal": { "kind_any": ["purchase_order.create"], "optional": true },
-      "rubric": "Groups the six lines by supplier — Globus (Campari 6, tonic 72), Mekka (Tanqueray 12, El Jimador 6), Vínnes (Angelo 18), Karl K. Karlsson (Prosecco 18) — with estimated costs, and offers to draft orders for approval."
+      "proposal": { "kind_any": ["purchase_order.create", "purchase_order.update_draft"], "optional": true },
+      "rubric": "Groups the five lines by supplier — Globus (Campari 6, tonic 72), Mekka (Tanqueray 12, El Jimador 6), Karl K. Karlsson (Prosecco 18) — with estimated costs, notes Vínnes needs nothing new because Angelo is already on the Vínnes draft, and offers to draft orders for approval."
     }
   },
   {
