@@ -87,6 +87,10 @@
   .acc-filter { overflow-x: auto; max-width: 100%; }
   .acc-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .acc-drop { position: relative; cursor: pointer; }
+  /* The upload label and file card use spans (phrasing content); stack them
+     as the component's title and help lines. */
+  .acc-drop .atlas-upload__title, .acc-drop .atlas-upload__help,
+  .acc-file .atlas-upload__title, .acc-file .atlas-upload__help { display: block; }
   .acc-camera { position: relative; align-self: flex-start; }
   @media (hover: hover) and (pointer: fine) { .acc-camera { display: none; } }
   .acc-upload { display: flex; flex-direction: column; gap: var(--s-4); }
@@ -94,6 +98,8 @@
   .acc-payer { border: 0; margin: 0; padding: 0; display: grid; gap: var(--s-3); min-width: 0; }
   .acc-payer .atlas-chips { flex-wrap: wrap; }
 
+  /* The file beside the form needs more room than a 640 px wide sheet. */
+  @media (min-width: 768px) { .atlas-sheet.acc-sheet { width: min(1000px, calc(100% - 16px)); } }
   .acc-doc { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-6); align-items: start; }
   .acc-doc__file { position: sticky; top: 0; display: grid; gap: var(--s-3); min-width: 0; }
   .acc-file { display: grid; gap: var(--s-3); justify-items: start; }
@@ -127,8 +133,10 @@
   }
   @media (max-width: 599px) {
     .acc-amounts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-    .acc-vat__row { grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1fr) 40px; gap: var(--s-2); }
-    .acc-row__end .atlas-row__action { width: 100%; }
+    .acc-vat__row { grid-template-columns: 88px minmax(0, 1fr) minmax(0, 1fr) 40px; gap: var(--s-2); }
+    /* Status pills go under the title so a long supplier name keeps the width. */
+    .acc-row { flex-wrap: wrap; }
+    .acc-row__end { flex: 1 0 100%; justify-content: flex-start; padding-left: 44px; }
     .acc-export__actions .atlas-btn { width: 100%; }
   }
 }
