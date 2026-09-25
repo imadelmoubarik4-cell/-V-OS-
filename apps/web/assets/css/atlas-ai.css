@@ -424,7 +424,7 @@ html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::befo
   .atlas-ai .approval__foot { flex-wrap: wrap; }
   .atlas-ai .approval__foot .spacer { flex-basis: 100%; order: 3; }
   .atlas-ai .approval__foot .atlas-btn--primary { flex: 1; }
-  .atlas-ai .composer-wrap { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; padding: 18px 12px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(rgba(255, 255, 255, 0), #fff 18px); }
+  .atlas-ai .composer-wrap { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line, #e7e7e3); background: var(--bg, #ffffff); }
   .atlas-ai .composer-hint { display: none; }
   /* The empty state keeps the phone tab bar; the composer sits above it. */
   .atlas-ai.has-tabbar .composer-wrap { bottom: calc(56px + env(safe-area-inset-bottom)); }

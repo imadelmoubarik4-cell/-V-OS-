@@ -141,6 +141,11 @@
   function dayKey(value) { return fmt({ year: 'numeric', month: '2-digit', day: '2-digit' }, value); }
   function timeLabel(value) { return fmt({ hour: '2-digit', minute: '2-digit', hour12: false }, value); }
 
+  // 'Tue 15 Sep' as everywhere in Atlas (ICU en-GB prints 'Sept').
+  function shortDate(date) {
+    return fmt({ weekday: 'short', day: 'numeric', month: 'short' }, date).replace(',', '').replace(/\bSept\b/, 'Sep');
+  }
+
   function relativeDay(input) {
     const date = new Date(input);
     if (Number.isNaN(date.getTime())) return '';
@@ -148,7 +153,7 @@
     if (dayKey(date) === dayKey(now)) return timeLabel(date);
     if (dayKey(date) === dayKey(new Date(now.getTime() - DAY))) return 'Yesterday';
     if (now - date < 6 * DAY) return fmt({ weekday: 'long' }, date);
-    return fmt({ weekday: 'short', day: 'numeric', month: 'short' }, date).replace(',', '');
+    return shortDate(date);
   }
 
   function whenLabel(input) {
@@ -166,7 +171,7 @@
     const time = timeLabel(date);
     if (dayKey(date) === dayKey(now)) return `Expires today at ${time}`;
     if (dayKey(date) === dayKey(new Date(now.getTime() + DAY))) return `Expires tomorrow at ${time}`;
-    return `Expires ${fmt({ weekday: 'short', day: 'numeric', month: 'short' }, date).replace(',', '')} at ${time}`;
+    return `Expires ${shortDate(date)} at ${time}`;
   }
 
   function durationLabel(seconds) {

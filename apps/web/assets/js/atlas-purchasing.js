@@ -91,7 +91,12 @@
   function supplierById(id) { return suppliers().find((supplier) => String(supplier.id) === String(id)) || null; }
   function itemById(id) { return items().find((item) => String(item.id) === String(id)) || null; }
   function supplierName(order) { return supplierById(order.supplier_id)?.name || 'Supplier'; }
-  function orderRef(order) { return String(order.id || '').slice(0, 6).toUpperCase(); }
+  // What is on the order, in words (never a UUID fragment, review P3).
+  function orderSummary(order) {
+    const names = linesOf(order).map((line) => line.item_name || itemById(line.item_id)?.name).filter(Boolean);
+    if (!names.length) return '';
+    return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
+  }
   // Rows are read defensively: a wrongly shaped answer is never a crash.
   function linesOf(order) { return Array.isArray(order?.lines) ? order.lines : []; }
   function orderTotal(order) { return linesOf(order).reduce((sum, line) => sum + (num(line.quantity) || 0) * (num(line.unit_cost) || 0), 0); }
@@ -305,7 +310,7 @@
     if (!list.length) return '';
     return `<div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table">
       <thead><tr><th>Order</th><th>Supplier</th><th>Status</th><th class="is-num" data-priority="2">Lines</th><th class="is-num">Total</th><th>${deliveries ? 'Expected' : 'Delivery'}</th><th class="col-actions"><span class="sr-only">Open</span></th></tr></thead>
-      <tbody>${list.map((order) => `<tr data-po-open="${esc(order.id)}"><td><a class="cell-primary" href="#purchasing/order/${encodeURIComponent(order.id)}">${esc(dateText(order.created_at) || 'Order')}</a><span class="cell-sub po-ref">${esc(orderRef(order))}</span></td><td>${esc(supplierName(order))}</td><td>${statusPill(order)}</td><td class="is-num" data-priority="2">${linesOf(order).length}</td><td class="is-num">${money(orderTotal(order))}</td><td>${esc(deliveryText(order))}</td><td class="col-actions"><span class="po__chev" aria-hidden="true">${icon('chevron-right')}</span></td></tr>`).join('')}</tbody></table></div>
+      <tbody>${list.map((order) => `<tr data-po-open="${esc(order.id)}"><td><a class="cell-primary" href="#purchasing/order/${encodeURIComponent(order.id)}">${esc(dateText(order.created_at) || 'Order')}</a><span class="cell-sub">${esc(orderSummary(order))}</span></td><td>${esc(supplierName(order))}</td><td>${statusPill(order)}</td><td class="is-num" data-priority="2">${linesOf(order).length}</td><td class="is-num">${money(orderTotal(order))}</td><td>${esc(deliveryText(order))}</td><td class="col-actions"><span class="po__chev" aria-hidden="true">${icon('chevron-right')}</span></td></tr>`).join('')}</tbody></table></div>
       <ul class="atlas-table-list">${list.map((order) => `<li><a class="atlas-table-list__row" href="#purchasing/order/${encodeURIComponent(order.id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(supplierName(order))}</div><div class="atlas-table-list__meta">${esc([`${linesOf(order).length} lines`, money(orderTotal(order)), order.expected_delivery_date ? `delivery ${deliveryText(order)}` : ''].filter(Boolean).join(' · '))}</div></div><div class="atlas-table-list__value">${statusPill(order)}</div></a></li>`).join('')}</ul>`;
   }
 
@@ -390,7 +395,7 @@
   }
 
   function openOrderSheet({ order = null, itemIds = [], supplierId = null } = {}) {
-    if (!isManager()) { toast('Purchasing is for managers.'); return; }
+    if (!isManager()) { toast('Purchasing is for managers.', { icon: false }); return; }
     const editing = Boolean(order);
     const presetLines = order ? order.lines : itemIds.map((id) => ({ item_id: id, quantity: 1, unit_cost: itemById(id)?.cost_price ?? '' }));
     const inferredSupplier = supplierId || order?.supplier_id || (itemIds.length ? itemById(itemIds[0])?.supplier_id : null) || '';
@@ -554,7 +559,7 @@
     const canSetDate = ['draft', 'pending_approval', 'approved', 'ordered', 'partially_received'].includes(order.status);
     return sheetHtml({
       title: `${supplier?.name || 'Supplier'} order`,
-      desc: `${esc(dateText(order.created_at, { long: true }))} · <span class="po-ref">${esc(orderRef(order))}</span>`,
+      desc: esc(dateText(order.created_at, { long: true })),
       headExtra: `<div class="po-detail__pills">${statusPill(order)}${needsApproval && order.status === 'draft' ? '<span class="atlas-pill atlas-pill--info">Needs approval</span>' : ''}</div>`,
       body: `${stepperHtml(order)}
         <div data-po-alert></div>
@@ -808,7 +813,7 @@
   // "Receive a delivery" (formerly the restock modal): pick an open order,
   // or record a delivery that has no order.
   function openReceiveAny() {
-    if (!isManager()) { toast('Receiving deliveries is for managers.'); return; }
+    if (!isManager()) { toast('Receiving deliveries is for managers.', { icon: false }); return; }
     const open = state.orders.filter((order) => ['ordered', 'partially_received'].includes(order.status));
     const overlay = openOverlay(sheetHtml({
       title: 'Receive a delivery',
@@ -868,7 +873,7 @@
   // Suppliers
   // ---------------------------------------------------------------------------
   function openSupplierSheet() {
-    if (!isManager()) { toast('Suppliers are for managers.'); return; }
+    if (!isManager()) { toast('Suppliers are for managers.', { icon: false }); return; }
     const overlay = openOverlay(sheetHtml({
       title: 'Add supplier',
       desc: 'Save a supplier once and use it for items, orders and deliveries.',
@@ -1010,7 +1015,7 @@
       { id: 'purchasing.supplier.add', label: 'Add supplier', icon: 'store', keywords: ['supplier', 'vendor'], roles: MANAGERS, contexts: ['purchasing', 'suppliers'], run: () => { shell.navigate('#purchasing/suppliers'); openSupplierSheet(); } },
       { id: 'purchasing.suggestions.review', label: 'Review suggested order', icon: 'list-checks', keywords: ['suggested', 'below par', 'reorder'], roles: MANAGERS, contexts: ['home', 'purchasing', 'suppliers'], when: () => suggestions().length > 0, run: () => { shell.navigate('#purchasing/orders'); openSuggestionsSheet(); } }
     ];
-    actions.forEach((action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`) }));
+    actions.forEach((action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`, { icon: false }) }));
     shell.home?.contribute?.('purchasing', { order: 40, focusRows: homeRows });
     shell.onDataLoaded(() => { if (shell.current() === 'suppliers') render(); });
     shell.on('profile:ready', () => {

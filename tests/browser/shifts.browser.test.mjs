@@ -25,8 +25,8 @@ test('manager week: grid with people and days, today marked, summary line and un
     assert.equal(await page.getAttribute('.shifts-grid__day.is-today', 'aria-current'), 'date');
     assert.match(await page.textContent('.shifts-grid__day.is-today'), /Thu 24/);
     assert.equal(await page.$$eval('.shifts-grid .shift-chip.is-unpublished', (nodes) => nodes.length), 1);
-    assert.match(await page.textContent('.shifts-toolbar'), /Published · changes not published/);
-    assert.match(await page.textContent('.shifts-publish'), /Publish week[\s\S]*1 shift changed since publishing/);
+    assert.match(await page.textContent('.shifts-toolbar'), /Unpublished changes/);
+    assert.match(await page.textContent('.shifts-publish'), /1 shift changed since publishing[\s\S]*Publish week/);
     assert.equal(await page.isEnabled('[data-shifts-publish]'), true);
     // Who is on today and tomorrow (venue business date).
     assert.match(await page.textContent('.shifts-now'), /Today Thu 24 Sep[\s\S]*Sara 16:00–00:00[\s\S]*Tomorrow Fri 25 Sep/);
@@ -168,6 +168,8 @@ test('empty week offers Copy last week; the API failing shows the last data or a
     const { page, close } = await open({ backend: shiftsBackend({ empty: true }) });
     try {
       assert.match(await page.textContent('.atlas-empty'), /No shifts this week[\s\S]*Copy last week[\s\S]*Add shift/);
+      // S90: nothing to publish in an empty week, so Add shift is the one primary.
+      assert.deepEqual(await page.$$eval('#shifts-view .atlas-btn--primary', (nodes) => nodes.filter((node) => node.offsetParent).map((node) => node.textContent.trim())), ['Add shift']);
     } finally { await close(); }
   }
   {

@@ -930,7 +930,7 @@
       <div class="atlas-capture__actions atlas-capture__actions--count">
         <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-save-next>Save and scan next</button>
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-open-item>Open item</button>
-        <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--lg" data-wrong>Wrong product</button>
+        <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-wrong>Wrong product</button>
       </div></div>`, (sheet) => {
       const input = sheet.querySelector('[data-count-qty]');
       bindStepper(sheet);

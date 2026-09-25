@@ -174,7 +174,7 @@
     const waiting = items().filter((item) => item.status === 'pending_approval');
     const ideas = suggestions().filter((entry) => entry.available_for_today !== false);
     return `<section class="atlas-section" aria-labelledby="mk-coming"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-coming">Coming up</h2><span class="atlas-section__meta">Next 14 days</span></div>
-        ${coming.length ? `<ul class="atlas-list">${coming.map(postRow).join('')}</ul>` : emptyMarkup('calendar', 'Nothing planned yet', 'Plan a post, story or campaign task and it shows here two weeks ahead.', newPostButton())}</section>
+        ${coming.length ? `<ul class="atlas-list">${coming.map(postRow).join('')}</ul>` : emptyMarkup('calendar', 'Nothing planned yet', 'Plan a post, story or campaign task and it shows here two weeks ahead.', newPostButton('New post draft', 'secondary'))}</section>
       <section class="atlas-section" aria-labelledby="mk-waiting"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-waiting">Waiting for approval</h2></div>
         ${waiting.length ? `<ul class="atlas-list">${waiting.map((item) => `<li class="atlas-row"><div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="mk-link" data-mk-open="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button></p><p class="atlas-row__meta">${escapeHtml([item.created_by_label, dateTime(item.scheduled_for)].filter(Boolean).join(' · '))}</p></div><div class="atlas-row__end">${item.can_approve ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm atlas-row__action" data-mk-open="${escapeHtml(item.id)}">Review</button>` : pill(item.status)}</div></li>`).join('')}</ul>` : '<p class="mk-muted">Nothing is waiting for approval.</p>'}</section>
       ${ideas.length ? `<section class="atlas-section" aria-labelledby="mk-ideas"><div class="atlas-section__head"><h2 class="atlas-section__title" id="mk-ideas">Suggestions</h2><span class="atlas-section__meta">From your venue's routines — nothing is posted automatically</span></div>
@@ -226,7 +226,7 @@
       return !FINAL.has(item.status);
     });
     return `<div class="atlas-toolbar"><div class="atlas-segmented" role="group" aria-label="Show">${filters.map(([key, label]) => `<button type="button" aria-pressed="${state.postFilter === key}" data-mk-filter="${key}">${label}</button>`).join('')}</div><div class="atlas-toolbar__end">${list.length} ${list.length === 1 ? 'post' : 'posts'}</div></div>
-      ${list.length ? `<ul class="atlas-list">${list.map(postRow).join('')}</ul>` : emptyMarkup('file-pen-line', 'No posts here', 'Drafts, posts waiting for approval and approved posts appear here.', newPostButton())}`;
+      ${list.length ? `<ul class="atlas-list">${list.map(postRow).join('')}</ul>` : emptyMarkup('file-pen-line', 'No posts here', 'Drafts, posts waiting for approval and approved posts appear here.', newPostButton('New post draft', 'secondary'))}`;
   }
 
   function campaignsMarkup() {

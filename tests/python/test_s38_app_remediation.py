@@ -179,7 +179,7 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("addShift: (date) => openShiftEditor({ date })", shifts)
         self.assertIn('data-shifts-mode="month"', shifts)
         # S88 Recipes (spec §7.7): tiles with availability replace the foundation cards.
-        self.assertIn("class=\"recipe-tile\"", recipes)
+        self.assertIn("class=\"recipe-tile${recipe.image_url ? '' : ' recipe-tile--plain'}\"", recipes)
         self.assertNotIn("recipe-foundation-card", recipes)
         self.assertIn("data-knowledge-editor-form", knowledge)
         # Today's timeline belongs on Home (owner decision); it renders inside home.js.

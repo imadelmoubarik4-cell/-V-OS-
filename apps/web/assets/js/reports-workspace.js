@@ -394,7 +394,8 @@
   function tableMarkup(section) {
     const columns = COLUMNS[section] || [];
     const rows = sortedRows(section);
-    if (!rows.length) return notEnough('No records for this period.');
+    // Stock is a snapshot, not a period: its empty table says so.
+    if (!rows.length) return notEnough(section === 'inventory' ? 'No item rows to show.' : 'No records for this period.');
     const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     state.page = Math.min(Math.max(1, state.page), pages);
     const start = (state.page - 1) * PAGE_SIZE;
@@ -413,8 +414,10 @@
   // itself is null unless every active item is counted and costed.
   function stockValueGap(knownValue, uncounted, uncosted) {
     const missing = [uncounted ? `${formatNumber(uncounted)} not counted` : '', uncosted ? `${formatNumber(uncosted)} without a cost` : ''].filter(Boolean).join(' · ');
-    const floor = number(knownValue) === null ? 'Nothing counted and costed yet' : `At least ${money(knownValue)}`;
-    return missing ? `${floor} — ${missing}` : floor;
+    // A payload without a lower bound (undefined) says only what is missing;
+    // "nothing counted" is claimed only when the server says so (null).
+    const floor = knownValue === undefined ? '' : number(knownValue) === null ? 'Nothing counted and costed yet' : `At least ${money(knownValue)}`;
+    return [floor, missing].filter(Boolean).join(' — ') || 'Unknown until every item is counted and costed';
   }
 
   function sectionMarkup(section) {

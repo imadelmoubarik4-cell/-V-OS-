@@ -871,7 +871,7 @@
   };
 
   function openActivation(item, activate) {
-    if (!isManager()) { toast('Changing items is for managers.'); return; }
+    if (!isManager()) { toast('Changing items is for managers.', { icon: false }); return; }
     const title = activate ? `Reactivate ${item.name}?` : `Deactivate ${item.name}?`;
     const overlay = openOverlay(`<h2 class="atlas-dialog__title">${esc(title)}</h2>
       <div class="atlas-dialog__body" data-activation-body><div class="atlas-stack atlas-stack--sm" aria-hidden="true"><span class="atlas-skel"></span><span class="atlas-skel" style="width:70%"></span></div><p class="sr-only" role="status">Checking what depends on this item…</p></div>
@@ -1300,7 +1300,7 @@
   }
 
   function openWasteDialog(itemId = null) {
-    if (!isManager()) { toast('Recording waste is for managers.'); return; }
+    if (!isManager()) { toast('Recording waste is for managers.', { icon: false }); return; }
     const choices = items().filter((item) => item.active !== false && truth()?.known(item) && (num(item.quantity) || 0) > 0);
     const overlay = openOverlay(`<h2 class="atlas-dialog__title">Record waste</h2>
       <form class="atlas-dialog__body atlas-form" id="inv-waste-form" novalidate>
@@ -1433,7 +1433,7 @@
           ${canCount() ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="count"${selected && item?.active !== false ? '' : ' disabled'}>${icon('list-checks')}Count item</button>` : ''}
           <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="recipes"${selected ? '' : ' disabled'}>${icon('martini')}View recipes</button>
           <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="ask">${icon('sparkles')}Ask Atlas</button>
-          <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--lg" data-id-action="wrong">${icon('thumbs-down')}Wrong product</button>
+          <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="wrong">${icon('thumbs-down')}Wrong product</button>
         </div>
         <p class="atlas-capture-note">Identifying never changes stock or items.</p>
       </div>`, (sheet) => {
@@ -1485,7 +1485,7 @@
     ctl.showSheet(`<div class="atlas-capture-result"><h3 class="atlas-capture-result__title">Search inventory</h3>
       <form class="atlas-capture-search" data-capture-search-form><label class="atlas-search">${icon('search')}<input class="atlas-input" type="search" name="q" value="${esc(guess)}" aria-label="Search inventory" data-autofocus autocomplete="off"></label><button type="submit" class="atlas-btn atlas-btn--primary">Search</button></form>
       <div data-capture-search-results></div>
-      <div class="atlas-capture__actions"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--lg" data-back>Back</button></div></div>`, (sheet) => {
+      <div class="atlas-capture__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-back>Back</button></div></div>`, (sheet) => {
       const results = sheet.querySelector('[data-capture-search-results]');
       sheet.querySelector('[data-back]').addEventListener('click', () => (detection && detection.band !== 'low' ? identifyOrCount() : unknownSheet(result, detection, ctl, { onChoose })));
       function identifyOrCount() { onChoose.back ? onChoose.back() : unknownSheet(result, detection, ctl, { onChoose }); }
@@ -1519,7 +1519,7 @@
     onChoose.usedFor = onChoose.usedFor || options.usedFor || 'identify';
     const candidates = detection?.candidates || [];
     ctl.showSheet(`<div class="atlas-capture-result" data-capture-result="unknown">
-      <div class="atlas-capture-result__head"><span class="atlas-capture-result__img" aria-hidden="true">${icon('scan-search')}</span><div class="atlas-capture-result__text"><h3 class="atlas-capture-result__title">No confident Atlas inventory match found.</h3><p class="atlas-capture-muted">Nothing was created or changed.</p></div>${detection ? R().band(detection) : ''}</div>
+      <div class="atlas-capture-result__head"><span class="atlas-capture-result__img" aria-hidden="true">${icon('scan-search')}</span><div class="atlas-capture-result__text"><h3 class="atlas-capture-result__title">Atlas couldn’t tell which item this is.</h3><p class="atlas-capture-muted">Nothing was created or changed.</p></div>${detection ? R().band(detection) : ''}</div>
       ${detection ? `<details class="atlas-capture-more" open><summary>What Atlas could read</summary>${R().fields(detection, { keys: ['identity', 'brand', 'variant', 'category', 'package_type', 'unit_size', 'barcode'] }) || '<p class="atlas-capture-muted">Nothing readable. Try a closer photo of the label.</p>'}</details>` : ''}
       <div class="atlas-capture__actions atlas-capture__actions--grid">
         <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-unknown="retry">${icon('scan-line')}Retry scan</button>
@@ -1542,7 +1542,7 @@
   function possibleMatchesSheet(result, detection, ctl, onChoose, options) {
     ctl.showSheet(`<div class="atlas-capture-result"><h3 class="atlas-capture-result__title">Possible matches</h3><p class="atlas-capture-muted">Atlas isn’t sure about any of these. Choose one only if it’s the product in your hand.</p>
       ${R().candidates(detection, { action: 'Choose' })}
-      <div class="atlas-capture__actions"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--lg" data-back>Back</button></div></div>`, (sheet) => {
+      <div class="atlas-capture__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-back>Back</button></div></div>`, (sheet) => {
       sheet.querySelector('[data-back]').addEventListener('click', () => unknownSheet(result, detection, ctl, { ...options, onChoose }));
       sheet.querySelectorAll('[data-capture-choose]').forEach((button) => button.addEventListener('click', () => {
         recordRecognitionChoice(recognitionRef(result, detection), button.dataset.captureChoose, onChoose.usedFor, Number(button.dataset.rank) || null, 'chose_candidate');
@@ -1816,8 +1816,8 @@
       const onOrder = ordered.has(item.id);
       const detail = `${affected.length ? `${nameList(affected)} ${affected.length === 1 ? 'is' : 'are'} affected` : `0 of ${qty(item.par_level)} ${unitWord(item)} left`}${onOrder ? ' · on order' : ''}`;
       const view = { label: 'View item', route: `#inventory/item/${encodeURIComponent(item.id)}` };
-      rows.push({ id: `out:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: onOrder ? view : { label: 'Add to order', actionId: 'purchasing.order.new', record: { type: 'inventory_item', id: item.id, label: item.name } }, roles: MANAGERS });
-      rows.push({ id: `out-view:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: view, roles: ['bartender', 'viewer'] });
+      rows.push({ id: `out:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name}: out of stock`, detail, action: onOrder ? view : { label: 'Add to order', actionId: 'purchasing.order.new', record: { type: 'inventory_item', id: item.id, label: item.name } }, roles: MANAGERS });
+      rows.push({ id: `out-view:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name}: out of stock`, detail, action: view, roles: ['bartender', 'viewer'] });
     });
     const low = below;
     if (low.length === 1) {
@@ -1843,7 +1843,7 @@
       { id: 'inventory.waste.record', label: 'Record waste', icon: 'trash-2', keywords: ['waste', 'spoilage', 'breakage', 'spill'], roles: MANAGERS, contexts: ['inventory'], forRecord: 'inventory_item', recordLabel: 'Record waste for {name}', run: (ctx) => openWasteDialog(ctx?.record?.type === 'inventory_item' ? ctx.record.id : null) },
       { id: 'inventory.item.deactivate', label: 'Deactivate item', icon: 'archive', keywords: ['deactivate', 'archive', 'remove'], roles: MANAGERS, forRecord: 'inventory_item', recordLabel: 'Deactivate {name}', when: (ctx) => Boolean(ctx?.record?.id), run: (ctx) => { const item = itemById(ctx.record.id); if (item) openActivation(item, item.active === false); } }
     ];
-    const registerAction = (action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`) });
+    const registerAction = (action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`, { icon: false }) });
     // Add item first; the rest after every module has loaded, so the palette
     // suggests Add item and Start stock count (stock-count-workspace.js) first.
     registerAction(actions[0]);

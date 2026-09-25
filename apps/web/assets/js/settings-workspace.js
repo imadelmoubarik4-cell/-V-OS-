@@ -493,13 +493,13 @@
     brain: { purchase_learning_enabled: 'Used for order suggestions.', menu_learning_enabled: 'Used for recipe availability notes.', waste_learning_enabled: 'Used for waste notes.' }
   };
 
-  function ruleForm(key, title, fields) {
+  function ruleForm(key, title, fields, description = null) {
     const data = section(key);
     if (!data) return '';
     const disabled = !data.can_edit;
     const used = Object.keys(SETTING_USAGE[key] || {}).length;
     return `<form class="settings-form atlas-card" data-settings-section-form="${escapeHtml(key)}" data-version="${Number(data.version || 1)}">
-      ${formHead(title, used ? 'Settings marked “in use” change Atlas today; the rest are saved for upcoming features.' : 'Saved for upcoming features — these don’t change Atlas yet.', readOnlyNote(!disabled))}
+      ${formHead(title, description || (used ? 'Settings marked “in use” change Atlas today; the rest are saved for upcoming features.' : 'Saved for upcoming features — these don’t change Atlas yet.'), readOnlyNote(!disabled))}
       ${fields(data.value || {}, disabled)}
       ${sectionVersion(data)}
       ${feedback(`section:${key}`)}
@@ -654,17 +654,11 @@
   }
 
   function decisionsForm() {
-    return ruleForm('brain', 'Suggestions and learning', (value, disabled) => `<div class="settings-grid">
-      ${field('How Atlas suggests', select('mode', value.mode, [['assistant', 'Answers only'], ['learning', 'Learns, suggests nothing yet'], ['shadow', 'Suggestions for review'], ['recommendation', 'Recommendations'], ['predictive', 'Forecasts']], { disabled }))}
-      ${field('Evidence required', select('evidence_mode', value.evidence_mode, [['strict', 'Strict — only verified records'], ['normal', 'Normal'], ['experimental', 'Loose — for testing']], { disabled }))}
-      ${field('Explanations', select('explanation_level', value.explanation_level, [['brief', 'Brief'], ['evidence', 'With the evidence'], ['technical', 'Full detail']], { disabled }))}
-    </div>
-    ${checkRow('decision_memory_enabled', value.decision_memory_enabled, 'Remember decisions (Atlas AI › Decisions)', { disabled })}
+    return ruleForm('brain', 'Suggestions and learning', (value, disabled) => `
     ${checkRow('purchase_learning_enabled', value.purchase_learning_enabled, 'Learn from orders', { disabled, help: usedHelp('brain', 'purchase_learning_enabled') })}
     ${checkRow('menu_learning_enabled', value.menu_learning_enabled, 'Learn from recipes', { disabled, help: usedHelp('brain', 'menu_learning_enabled') })}
     ${checkRow('waste_learning_enabled', value.waste_learning_enabled, 'Learn from waste', { disabled, help: usedHelp('brain', 'waste_learning_enabled') })}
-    ${checkRow('forecast_learning_enabled', value.forecast_learning_enabled, 'Learn for forecasts', { disabled })}
-    <p class="settings-muted">${icon('lock')}Atlas never acts on a suggestion by itself; a person approves every change.</p>`);
+    <p class="settings-muted">${icon('lock')}Atlas never acts on a suggestion by itself; a person approves every change.</p>`, 'What Atlas AI learns from when it suggests things. Each setting changes Atlas today.');
   }
 
   function aiMarkup() {
@@ -875,7 +869,7 @@
         <dl class="settings-facts">
           <div><dt>Notifications on this device</dt><dd>${escapeHtml(device.status === 'enabled' ? 'On' : 'Off')} · <a href="#settings/notifications">Manage</a></dd></div>
           <div><dt>Theme</dt><dd>Light (the only theme for now)</dd></div>
-          <div><dt>Language</dt><dd>English (Icelandic isn’t available yet)</dd></div>
+          <div><dt>Language</dt><dd>English</dd></div>
           <div><dt>Time zone</dt><dd>The venue’s time, ${escapeHtml(clock()?.timeZone?.() || '')}</dd></div>
         </dl>
         ${feedback('preferences')}
@@ -1151,14 +1145,9 @@
     if (key === 'brain') {
       return {
         ...current,
-        mode: fieldValue(form, 'mode'),
-        decision_memory_enabled: boolValue(form, 'decision_memory_enabled'),
         purchase_learning_enabled: boolValue(form, 'purchase_learning_enabled'),
         menu_learning_enabled: boolValue(form, 'menu_learning_enabled'),
         waste_learning_enabled: boolValue(form, 'waste_learning_enabled'),
-        forecast_learning_enabled: boolValue(form, 'forecast_learning_enabled'),
-        explanation_level: fieldValue(form, 'explanation_level'),
-        evidence_mode: fieldValue(form, 'evidence_mode'),
         automatic_execution_enabled: false
       };
     }

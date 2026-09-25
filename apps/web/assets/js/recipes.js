@@ -333,7 +333,7 @@
     const availability = status.availability;
     const limiting = limitingName(availability);
     if (status.key === 'draft') return { status, pill: 'Draft', tone: 'neutral', line: 'Archived — off service and off the menu' };
-    if (status.key === 'unavailable') return { status, pill: 'Unavailable', tone: 'danger', line: limiting ? `${limiting} is out` : 'An ingredient is out' };
+    if (status.key === 'unavailable') return { status, pill: 'Unavailable', tone: 'danger', line: limiting ? `${limiting}: out of stock` : 'An ingredient is out of stock' };
     if (status.key === 'attention') {
       const servings = Number.isFinite(availability.servings) ? availability.servings : null;
       return {
@@ -357,7 +357,7 @@
     if (view.status.key === 'draft') return 'Not on service';
     if (Number.isFinite(servings)) {
       const limiting = limitingName(view.status.availability);
-      return servings === 0 ? (limiting ? `None tonight: ${limiting} is out` : 'None tonight: an ingredient is out') : `About ${servings} ${servings === 1 ? 'serve' : 'serves'} from counted stock`;
+      return servings === 0 ? (limiting ? `None tonight. ${limiting}: out of stock` : 'None tonight. An ingredient is out of stock') : `About ${servings} ${servings === 1 ? 'serve' : 'serves'} from counted stock`;
     }
     return 'Unknown until every ingredient is counted and linked';
   }
@@ -501,11 +501,13 @@
   function tileMarkup(recipe) {
     const view = availabilityView(recipe);
     const category = categoryFor(recipe);
+    // No photo: a calm compact tile with the category's glass icon, never a
+    // large grey placeholder (review P2-3, spec §8.3 recipe lookup).
     const media = recipe.image_url
-      ? `<img class="recipe-tile__img" src="${escape(recipe.image_url)}" alt="" loading="lazy" decoding="async">`
-      : '<span class="recipe-tile__placeholder" aria-hidden="true"><i data-lucide="martini"></i></span>';
-    return `<a class="recipe-tile" href="#recipes/${escape(encodeURIComponent(recipe.id))}" data-recipe-id="${escape(recipe.id)}">
-        <span class="recipe-tile__media">${media}</span>
+      ? `<span class="recipe-tile__media"><img class="recipe-tile__img" src="${escape(recipe.image_url)}" alt="" loading="lazy" decoding="async"></span>`
+      : `<span class="recipe-tile__glyph" aria-hidden="true"><i data-lucide="${escape(category.icon || 'martini')}"></i></span>`;
+    return `<a class="recipe-tile${recipe.image_url ? '' : ' recipe-tile--plain'}" href="#recipes/${escape(encodeURIComponent(recipe.id))}" data-recipe-id="${escape(recipe.id)}">
+        ${media}
         <span class="recipe-tile__body">
           <span class="recipe-tile__name">${escape(recipe.name)}</span>
           <span class="recipe-tile__meta">${escape([category.name, recipe.glassware].filter(Boolean).join(' · '))}</span>
@@ -552,7 +554,7 @@
       const what = state.search ? `“${state.search}”` : 'these filters';
       content = `<div class="atlas-empty"><div class="atlas-empty__icon"><i data-lucide="search-x"></i></div><h3 class="atlas-empty__title">No recipes match ${escape(what)}</h3><p class="atlas-empty__text">Search looks at recipe names, categories, glassware and ingredients.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-recipe-clear>Clear filters</button></div></div>`;
     } else if (state.viewMode === 'list') content = listMarkup(list);
-    else content = `<div class="recipe-grid">${list.map(tileMarkup).join('')}</div>`;
+    else content = `<div class="recipe-grid${list.some((recipe) => recipe.image_url) ? '' : ' recipe-grid--plain'}">${list.map(tileMarkup).join('')}</div>`;
     const stale = dataLoaded() && !navigator.onLine
       ? '<div class="atlas-alert atlas-alert--warning"><i data-lucide="wifi-off"></i><div class="atlas-alert__content"><p class="atlas-alert__body">You\'re offline. Showing recipes and stock from the last time Atlas loaded.</p></div></div>'
       : recipesHealth() === 'failed'
@@ -765,7 +767,8 @@
           </fieldset>
           <fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Ingredients</legend>
             <div class="recipe-ingredient-picker">
-              <div class="atlas-field recipe-ingredient-picker__item"><label for="ingredient-search">Item</label><input class="atlas-input" id="ingredient-search" type="search" placeholder="Search items" autocomplete="off"><select class="atlas-select" id="ingredient-item" aria-label="Item"></select></div>
+              <div class="atlas-field recipe-ingredient-picker__search"><label for="ingredient-search">Find an item</label><input class="atlas-input" id="ingredient-search" type="search" placeholder="Search items" autocomplete="off"></div>
+              <div class="atlas-field recipe-ingredient-picker__item"><label for="ingredient-item">Item</label><select class="atlas-select" id="ingredient-item"></select></div>
               <div class="atlas-field"><label for="ingredient-qty">Quantity</label><input class="atlas-input" id="ingredient-qty" inputmode="decimal" placeholder="45"></div>
               <div class="atlas-field"><label for="ingredient-unit">Unit</label><select class="atlas-select" id="ingredient-unit">${units.map((unit) => `<option value="${unit}">${unit}</option>`).join('')}</select></div>
               <button type="button" class="atlas-btn atlas-btn--secondary" id="add-ingredient-btn"><i data-lucide="plus"></i>Add</button>
@@ -1130,7 +1133,7 @@
       const availability = recipeAvailability(state.draftIngredients, recipeYield);
       if (!has) availabilityNote.textContent = '';
       else if (availability.status === 'incomplete') availabilityNote.textContent = 'Availability is unknown until every linked item is counted and its unit matches.';
-      else if (availability.status === 'unavailable') availabilityNote.textContent = `${limitingName(availability) || 'An ingredient'} is out, so this can't be served now.`;
+      else if (availability.status === 'unavailable') availabilityNote.textContent = limitingName(availability) ? `${limitingName(availability)}: out of stock, so this can't be served now.` : 'An ingredient is out of stock, so this can\'t be served now.';
       else availabilityNote.textContent = `Counted stock covers about ${availability.servings} serves before ${limitingName(availability) || 'an ingredient'} runs out.`;
     }
   }
@@ -1422,7 +1425,7 @@
     if (editing) {
       const recipe = recipeId === 'new' ? null : recipes.find((entry) => String(entry.id) === String(recipeId));
       if (!canManageCommercial()) {
-        window.AtlasShell?.toast?.('Recipe editing is for managers. Showing the recipe instead.');
+        window.AtlasShell?.toast?.('Recipe editing is for managers. Showing the recipe instead.', { icon: false });
         openDetail(recipeId);
         return;
       }

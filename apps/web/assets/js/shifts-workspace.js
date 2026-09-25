@@ -658,7 +658,7 @@
     if (!info) return '';
     if (!canManage()) return info.published ? pill('Published', 'positive') : '';
     if (!info.published) return info.empty ? pill('Draft') : pill('Draft · not visible to the team', 'warning');
-    if (info.pending) return pill('Published · changes not published', 'warning');
+    if (info.pending) return pill('Unpublished changes', 'warning');
     return pill('Published', 'positive');
   }
 
@@ -677,7 +677,7 @@
         <button type="button" class="atlas-icon-btn" data-shifts-step="1" aria-label="Next ${month ? 'month' : 'week'}">${icon('chevron-right')}</button>
       </div>
       <div class="atlas-segmented" role="group" aria-label="Calendar view"><button type="button" data-shifts-mode="week" aria-pressed="${!month}">Week</button><button type="button" data-shifts-mode="month" aria-pressed="${month}">Month</button></div>` : '';
-    const primary = info ? `<div class="shifts-publish"><button type="button" class="atlas-btn atlas-btn--primary" data-shifts-publish ${publishDisabled ? 'disabled' : ''}>${icon('send')}${publishLabel}</button>${caption ? `<span class="shifts-publish__caption">${escapeHtml(caption)}</span>` : ''}</div>` : '';
+    const primary = info && !info.empty ? `<div class="shifts-publish">${caption ? `<span class="shifts-publish__caption" id="shifts-publish-caption">${escapeHtml(caption)}</span>` : ''}<button type="button" class="atlas-btn atlas-btn--primary" data-shifts-publish ${publishDisabled ? 'disabled' : ''}${caption ? ' aria-describedby="shifts-publish-caption"' : ''}>${icon('send')}${publishLabel}</button></div>` : '';
     return `<header class="page-head shifts-head">
       <div class="page-head__text"><h1 class="page-head__title">Shifts</h1><p class="page-head__sub" data-shifts-summary>${escapeHtml(summaryText())}</p></div>
       ${nav || primary ? `<div class="page-head__actions shifts-head__actions">${nav}${primary}</div>` : ''}
@@ -728,6 +728,16 @@
     }).join('')}${canManage() || canRespond() ? '<a class="atlas-btn atlas-btn--ghost atlas-btn--sm shifts-now__handover" href="#messages/shift-handover">' + icon('notebook-pen') + 'Handover</a>' : ''}</section>`;
   }
 
+  // One word for a chip's warnings; the full text is the chip's title and label.
+  function warningWord(warnings) {
+    if (warnings.length > 1) return `${warnings.length} issues`;
+    const text = warnings[0] || '';
+    if (/overlap/i.test(text)) return 'Overlap';
+    if (/unavailable|available/i.test(text)) return 'Not free';
+    if (/change requested/i.test(text)) return 'Change';
+    return 'Time off';
+  }
+
   function chipMarkup(shift, ws) {
     const warnings = warningsFor(shift, ws);
     const unpublished = isUnpublished(shift, ws);
@@ -739,7 +749,7 @@
     return `<${tag} class="shift-chip${unpublished ? ' is-unpublished' : ''}${warnings.length ? ' has-warning' : ''}" ${canManage() ? `data-shifts-edit="${escapeHtml(shift.id)}"` : ''} aria-label="${escapeHtml(label)}" ${warnings.length ? `title="${escapeHtml(warnings.join(' · '))}"` : ''}>
       <span class="shift-chip__time num">${escapeHtml(timeOf(shift.starts_local))}–${escapeHtml(timeOf(shift.ends_local))}</span>
       ${shift.role_name ? `<span class="shift-chip__role">${escapeHtml(shift.role_name)}</span>` : ''}
-      ${warnings.length ? `<span class="shift-chip__warn">${icon('triangle-alert')}</span>` : ''}
+      ${warnings.length ? `<span class="shift-chip__warn">${icon('triangle-alert')}<span>${escapeHtml(warningWord(warnings))}</span></span>` : ''}
     </${close}>`;
   }
 
@@ -812,7 +822,7 @@
       </div>
       <div class="atlas-row__end">
         ${unpublished ? pill('Not published', 'warning') : (own || manage) && (response || own) ? pill(status.label, status.tone) : ''}
-        ${showConfirm ? `<button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm" data-shifts-respond="confirmed" data-shift-id="${escapeHtml(shift.id)}">Confirm</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-shifts-respond="change_requested" data-shift-id="${escapeHtml(shift.id)}">Request change</button>` : ''}
+        ${showConfirm ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-respond="confirmed" data-shift-id="${escapeHtml(shift.id)}">Confirm</button><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-shifts-respond="change_requested" data-shift-id="${escapeHtml(shift.id)}">Request change</button>` : ''}
         ${manage ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--sm" data-shifts-edit="${escapeHtml(shift.id)}" aria-label="Edit ${escapeHtml(nameOf(shift, ws))}'s shift">${icon('pencil')}</button>` : ''}
       </div>
     </li>`;

@@ -52,7 +52,7 @@ test('header: summary line, week navigator, Week · Month, one primary Publish',
 
 test('draft versus published is shown in words and on each changed shift', () => {
   assert.match(shifts, /pill\('Draft \\u00b7 not visible to the team', 'warning'\)|Draft · not visible to the team/);
-  assert.match(shifts, /Published · changes not published|Published \\u00b7 changes not published/);
+  assert.match(shifts, /Unpublished changes/);
   assert.match(shifts, /function isUnpublished\(shift, ws\)/);
   assert.match(shifts, /shift\.last_published_revision == null/);
   assert.match(css, /\.shift-chip\.is-unpublished \{ border-style: dashed;/);

@@ -573,7 +573,7 @@
       else if (stock.active) {
         facts.sources.add('stock counts');
         if (!stock.known) risks.push('Stock hasn’t been counted yet, so Atlas can’t tell what’s low.');
-        else if (stock.out.length) risks.push(`${list(stock.out.map((item) => item.name))} ${stock.out.length === 1 ? 'is' : 'are'} out${stock.below.length ? ` and ${plural(stock.below.length, 'more item is', 'more items are')} below par` : ''}.`);
+        else if (stock.out.length) risks.push(`Out of stock: ${list(stock.out.map((item) => item.name))}${stock.below.length ? `; ${plural(stock.below.length, 'more item is', 'more items are')} below par` : ''}.`);
         else if (stock.below.length) risks.push(`${list(stock.below.map((item) => item.name))} ${stock.below.length === 1 ? 'is' : 'are'} below par.`);
         else risks.push(stock.unknown ? `Nothing counted is below par; ${plural(stock.unknown, 'item hasn’t', 'items haven’t')} been counted.` : 'Nothing counted is below par.');
       }
