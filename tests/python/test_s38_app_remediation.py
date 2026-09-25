@@ -8,9 +8,12 @@ INDEX = ROOT / "apps/web/index.html"
 CSS_FRAGMENTS = sorted((ROOT / "apps/web/assets/css/legacy").glob("s38-app-remediation--*.css"))
 JS = ROOT / "apps/web/assets/js/s38-app-remediation.js"
 # S88: each S38 fix lives in the module that renders the markup.
-SCANNER = ROOT / "apps/web/assets/js/inventory-scanner.js"
+# S88 Team B: the scanner became the shared capture module, and Inventory and
+# Purchasing are rebuilt modules (atlas-inventory.js, atlas-purchasing.js).
+CAPTURE = ROOT / "apps/web/assets/js/atlas-capture.js"
+INVENTORY = ROOT / "apps/web/assets/js/atlas-inventory.js"
 LAYOUT = ROOT / "apps/web/assets/js/operations-checkpoint-a-layout.js"
-PURCHASING = ROOT / "apps/web/assets/js/purchase-orders.js"
+PURCHASING = ROOT / "apps/web/assets/js/atlas-purchasing.js"
 MESSAGES = ROOT / "apps/web/assets/js/team-messages.js"
 MONTH = ROOT / "apps/web/assets/js/shifts-month-calendar.js"
 CHECKLIST = ROOT / "docs/release/Atlas_S38_PDF_App_Remediation_Checklist.md"
@@ -25,7 +28,7 @@ class S38AppRemediationTests(unittest.TestCase):
         cls.javascript = JS.read_text(encoding="utf-8")
         cls.checklist = CHECKLIST.read_text(encoding="utf-8")
         cls.decisions = DECISIONS.read_text(encoding="utf-8")
-        cls.owners = {path.name: path.read_text(encoding="utf-8") for path in (SCANNER, LAYOUT, PURCHASING, MESSAGES, MONTH)}
+        cls.owners = {path.name: path.read_text(encoding="utf-8") for path in (CAPTURE, INVENTORY, LAYOUT, PURCHASING, MESSAGES, MONTH)}
 
     def test_remediation_script_no_longer_patches_the_page(self):
         # The fixes moved to their owners; the script keeps only its marker.
@@ -42,7 +45,7 @@ class S38AppRemediationTests(unittest.TestCase):
             self.assertEqual(self.index.count(css_reference), 1)
             self.assertLess(self.index.index(css_reference), self.index.index("</head>"))
         self.assertEqual(self.index.count(js_reference), 1)
-        self.assertLess(self.index.index("assets/js/purchase-orders.js"), self.index.index(js_reference))
+        self.assertLess(self.index.index("assets/js/atlas-purchasing.js"), self.index.index(js_reference))
         self.assertIn(js_reference + "?v=20260926-s88", self.index)
         self.assertLess(self.index.index(js_reference), self.index.index("</body>"))
 
@@ -57,9 +60,6 @@ class S38AppRemediationTests(unittest.TestCase):
             "prefers-reduced-motion",
             "s38-attention-pulse",
             ".checkpoint-a-compact-card::before",
-            ".inventory-scanner-panel",
-            ".inventory-scanner-quantity",
-            ".purchasing-workspace-tabs button.active",
             ".team-message-list",
             ".shift-month-cell.is-today",
             ".brain-hero",
@@ -87,30 +87,21 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertNotIn("getElementById('home-focus').style.display", self.index)
 
     def test_scanner_controls_are_wired(self):
-        scanner_css = (ROOT / "apps/web/assets/css/inventory-scanner.css").read_text(encoding="utf-8")
-        scanner = self.owners["inventory-scanner.js"]
-        for contract in (
-            "function stepQuantity(delta)",
-            "[data-scanner-close]",
-            "[data-scanner-step]",
-            "closeScanner();",
-            "Math.max(0",
-            "dispatchEvent(new Event('change'",
-            "document.addEventListener('click', handleClick, true)",
-            'inputmode="decimal" aria-label="Observed inventory quantity"',
-        ):
-            self.assertIn(contract, scanner)
-        self.assertIn("Final Atlas scanner skin", scanner_css)
-        self.assertIn(".inventory-scanner-trust{border-color:#cbdafe;background:#edf3ff", scanner_css)
-        self.assertIn(".inventory-scanner-primary,.inventory-scanner-manual button{border-color:#4f7df3;background:#4f7df3", scanner_css)
+        # The capture overlay owns its close and manual-entry controls; the
+        # count stepper lives in the stock-count flow and never goes below zero.
+        capture = self.owners["atlas-capture.js"]
+        for contract in ("data-capture-close", "data-capture-manual", 'inputmode="numeric"', "setTabBarHidden?.('capture', true)"):
+            self.assertIn(contract, capture)
+        stock = (ROOT / "apps/web/assets/js/stock-count-workspace.js").read_text(encoding="utf-8")
+        self.assertIn("Math.max(0, current + Number(button.dataset.step))", stock)
+        self.assertIn('inputmode="decimal"', stock)
+        inventory_css = (ROOT / "apps/web/assets/css/inventory.css").read_text(encoding="utf-8")
+        self.assertIn(".atlas-capture", inventory_css)
 
     def test_purchasing_and_message_controls_are_wired(self):
-        purchasing = self.owners["purchase-orders.js"]
-        self.assertIn("trigger.title = 'Open purchase orders'; trigger.setAttribute('aria-disabled', 'false')", purchasing)
-        self.assertIn("deliveriesTrigger.title = 'Open ordered and received deliveries'", purchasing)
-        # Purchasing sections are routes (#suppliers/orders, #suppliers/deliveries).
-        self.assertIn("function openPurchasingSection(section)", self.index)
-        self.assertIn("orders: 'purchase-orders-tab', deliveries: 'purchase-deliveries-tab'", self.index)
+        purchasing = self.owners["atlas-purchasing.js"]
+        # Purchasing sections are routes (#purchasing/orders, /deliveries, /suppliers).
+        self.assertIn("['orders', 'Orders', '#purchasing/orders'], ['deliveries', 'Deliveries', '#purchasing/deliveries']", purchasing)
         messages = self.owners["team-messages.js"]
         self.assertIn('data-team-message-list role="log" aria-live="polite" aria-relevant="additions text"', messages)
         self.assertIn("Notification delivery follows Settings", messages)
@@ -124,12 +115,13 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("shell.notify.contribute('messages-unread'", chrome)
 
     def test_existing_server_backed_features_remain_present(self):
-        purchase_orders = (ROOT / "apps/web/assets/js/purchase-orders.js").read_text(encoding="utf-8")
+        purchase_orders = self.owners["atlas-purchasing.js"]
+        inventory = self.owners["atlas-inventory.js"]
         team_messages = (ROOT / "apps/web/assets/js/team-messages.js").read_text(encoding="utf-8")
         notifications = (ROOT / "apps/web/assets/js/notifications.js").read_text(encoding="utf-8")
-        self.assertIn("function inventorySubcategory", self.index)
-        self.assertIn("group === 'wine'", self.index)
-        self.assertIn("atlas_purchase_order_command", purchase_orders)
+        self.assertIn("function inventorySubcategory", inventory)
+        self.assertIn("group === 'wine'", inventory)
+        self.assertIn("atlas_purchase_order_command_v2", purchase_orders)
         self.assertIn("data-team-star", team_messages)
         self.assertIn("subscribe", notifications)
 
@@ -159,9 +151,9 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("Superseded by `Atlas_S38_Owner_Decisions_and_Acceptance.md`", self.checklist)
 
     def test_visible_owner_requirements_are_implemented(self):
-        scanner = (ROOT / "apps/web/assets/js/inventory-scanner.js").read_text(encoding="utf-8")
+        inventory = self.owners["atlas-inventory.js"]
         stock = (ROOT / "apps/web/assets/js/stock-count-workspace.js").read_text(encoding="utf-8")
-        purchasing = (ROOT / "apps/web/assets/js/purchase-orders.js").read_text(encoding="utf-8")
+        purchasing = self.owners["atlas-purchasing.js"]
         messages = (ROOT / "apps/web/assets/js/team-messages.js").read_text(encoding="utf-8")
         shifts = (ROOT / "apps/web/assets/js/shifts-month-calendar.js").read_text(encoding="utf-8")
         recipes = (ROOT / "apps/web/assets/js/recipes.js").read_text(encoding="utf-8")
@@ -171,12 +163,14 @@ class S38AppRemediationTests(unittest.TestCase):
 
         self.assertNotIn("VÁ Bar · Staff only", self.index)
         self.assertIn("Welcome back", self.index)
-        self.assertIn("return 'Sparkling'", self.index)
-        self.assertNotIn("return 'Champagne'", self.index)
-        self.assertIn("state.dirty && !window.confirm", scanner)
-        self.assertIn("stock-count-category-group", stock)
-        self.assertIn("purchase-suppliers-panel", self.index)
-        self.assertIn("deliveryStatusLabel", purchasing)
+        # Wine offers exactly four types (owner decision), from atlas-inventory.js.
+        self.assertIn("const WINE_TYPES = ['Red', 'White', 'Rosé', 'Sparkling'];", inventory)
+        self.assertIn("return 'Sparkling'", inventory)
+        self.assertNotIn("return 'Champagne'", inventory)
+        # Leaving a count keeps the work: it pauses, it is not discarded.
+        self.assertIn("function leave()", stock)
+        self.assertIn("'Suppliers'", purchasing)
+        self.assertIn("Partly received", purchasing)
         self.assertIn("data-team-filter=\"pinned\"", messages)
         self.assertIn("Pinned", messages)
         self.assertNotIn("Conversation starred", messages)

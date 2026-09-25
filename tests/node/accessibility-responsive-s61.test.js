@@ -11,15 +11,17 @@ const sources = [
   readFileSync('apps/web/assets/js/recipes.js', 'utf8'),
   readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8'),
   readFileSync('apps/web/assets/js/sprint3-review.js', 'utf8'),
-  readFileSync('apps/web/assets/js/item-master-workspace.js', 'utf8'),
+  readFileSync('apps/web/assets/js/atlas-inventory.js', 'utf8'),
+  readFileSync('apps/web/assets/js/atlas-purchasing.js', 'utf8'),
   readFileSync('apps/web/assets/js/team-messages.js', 'utf8'),
   readFileSync('apps/web/assets/js/knowledge-workspace.js', 'utf8'),
 ].join('\n');
 
 test('audited search and stock-count filter controls have explicit accessible names', () => {
   for (const label of [
-    'Search recipes', 'Search suppliers', 'Search import files', 'Search stock-count items',
-    'Filter stock-count lines', 'Search review records', 'Search item master',
+    // S88: Item Master is part of Inventory; the count flow has one search.
+    'Search recipes', 'Search suppliers', 'Search import files', 'Search this count',
+    'Search review records', 'Search items, suppliers or codes',
     'Search available Atlas records', 'Search Knowledge'
   ]) assert.match(sources, new RegExp(`aria-label="${label}"`));
 });

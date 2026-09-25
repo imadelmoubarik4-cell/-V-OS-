@@ -7,8 +7,10 @@ MIGRATION = (ROOT / "supabase/migrations/20260803100513_atlas_inventory_scanner_
 EDGE_FUNCTION = (ROOT / "supabase/functions/atlas-inventory-scanner/index.ts").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
-BROWSER_BOOTSTRAP = (ROOT / "apps/web/assets/js/inventory-scanner-bootstrap.js").read_text()
-BROWSER_MODULE = (ROOT / "apps/web/assets/js/inventory-scanner.js").read_text()
+# S88: the scanner UI is retired; the shared capture module talks to
+# atlas-inventory-recognition and never writes stock.
+BROWSER_INDEX = (ROOT / "apps/web/index.html").read_text()
+BROWSER_MODULE = (ROOT / "apps/web/assets/js/atlas-capture.js").read_text()
 
 
 class InventoryScannerContractTests(unittest.TestCase):
@@ -78,17 +80,16 @@ class InventoryScannerContractTests(unittest.TestCase):
         self.assertIn("check (live_apply_enabled = false)", foundation)
 
     def test_browser_has_no_service_key_or_direct_database_access(self):
-        self.assertIn("INVENTORY_SCANNER_API", BROWSER_CONFIG)
-        self.assertIn("inventory-scanner-bootstrap.js", BROWSER_CONFIG)
-        self.assertIn("SCANNER_SCRIPT = 'assets/js/inventory-scanner.js?v=20260926-s88'", BROWSER_BOOTSTRAP)
-        self.assertNotIn(
-            "SUPABASE_SERVICE_ROLE_KEY",
-            BROWSER_CONFIG + BROWSER_BOOTSTRAP + BROWSER_MODULE,
-        )
+        # The retired scanner UI and its bootstrap are gone and unreferenced.
+        for name in ("inventory-scanner.js", "inventory-scanner-bootstrap.js"):
+            self.assertFalse((ROOT / "apps/web/assets/js" / name).exists(), name)
+            self.assertNotIn(name, BROWSER_CONFIG + BROWSER_INDEX)
+        self.assertIn("assets/js/atlas-capture.js", BROWSER_INDEX)
+        self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", BROWSER_CONFIG + BROWSER_MODULE)
         self.assertNotRegex(BROWSER_MODULE, r"(?:atlasSupabase|supabase|client)\s*\.\s*from\s*\(")
         self.assertNotIn("adjust_inventory", BROWSER_MODULE)
-        self.assertIn("Images not uploaded", BROWSER_MODULE)
-        self.assertIn("Uncertain matches never change inventory", BROWSER_MODULE)
+        self.assertIn("atlas-inventory-recognition", BROWSER_MODULE)
+        self.assertIn("payload.stock_changed === true", BROWSER_MODULE)
 
 
 if __name__ == "__main__":

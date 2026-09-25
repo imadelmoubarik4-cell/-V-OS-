@@ -110,47 +110,40 @@ test('no bootstrap rewrites or Blob-evaluates another script', () => {
   // settings-workspace-bootstrap.js orphan was deleted in the S88 CSS split).
   assert.deepEqual(blobScripts, ['assets/js/team-profiles-bootstrap.js']);
   assert.ok(!/settings-workspace-bootstrap/.test(index + read('apps/web/config.js')), 'the orphan bootstrap stays unloaded');
-  const stockCount = read('apps/web/assets/js/stock-count-bootstrap.js');
-  assert.doesNotMatch(stockCount, /await response\.text\(\)|\.replace\(schedulerSource|sourceURL=/);
+  // S88 Team B: the scanner and stock-count bootstraps were deleted; their
+  // modules load as plain scripts from index.html.
+  for (const file of ['stock-count-bootstrap.js', 'inventory-scanner-bootstrap.js']) {
+    assert.ok(!fs.existsSync(`apps/web/assets/js/${file}`), `${file} stays deleted`);
+    assert.ok(!(index + read('apps/web/config.js')).includes(file), `${file} stays unloaded`);
+  }
 });
 
 // Ratchet ceilings (S88). A new observer or capture listener needs a reason and
 // an entry here; the ceilings may only go down.
 //
-// MutationObservers (was 27 at the S87 audit):
-//   stock-count-l1-verified.js  enhances count forms that stock-count-workspace renders; scoped to
-//                               #inventory-view, ignores Lucide-only mutations (moved out of the bootstrap's
-//                               source rewrite). Replace with a stock-count render event (E3).
+// MutationObservers (was 27 at the S87 audit; the stock-count L1 observer went
+// with the S88 Team B count rewrite):
 //   team-unread-badge.js        childList only, on the two badge containers, to drop zero badges other
 //                               modules insert.
 const OBSERVER_ALLOWLIST = {
-  'assets/js/stock-count-l1-verified.js': 1,
   'assets/js/team-unread-badge.js': 1
 };
 
 // Capture-phase listeners (was 34 textual + 4 forced by the scanner bootstrap):
 //   atlas-shell.js (1)             the single navigation listener; must see sidebar/tab clicks first.
-//   inventory-scanner.js (4)       full-screen overlay above every workspace; taps must never be swallowed
-//                                  (previously forced by replacing document.addEventListener).
 //   rehearsal-boundary.js (1)      offline write boundary: blocks form submits before any module sees them.
 //   shifts-month-calendar.js (3)   Month owns its controls inside the weekly planner's host and stops the
 //                                  weekly bubbling handler.
-//   stock-count-workspace.js (4)   count forms render inside #inventory-view next to the legacy inventory
-//                                  handlers (S42-pinned; E3 moves them to bubbling with the page rewrite).
-//   stock-count-l1-verified.js (1) publication controls inside the count workspace.
 //   team-profile-photo-gallery.js (2)  makes the photo input gallery-friendly before the photo module's
 //                                  own click handler opens the picker.
 const CAPTURE_ALLOWLIST = {
   'assets/js/atlas-shell.js': 1,
-  'assets/js/inventory-scanner.js': 4,
   'assets/js/rehearsal-boundary.js': 1,
   'assets/js/shifts-month-calendar.js': 3,
-  'assets/js/stock-count-workspace.js': 4,
-  'assets/js/stock-count-l1-verified.js': 1,
   'assets/js/team-profile-photo-gallery.js': 2
 };
-const OBSERVER_CEILING = 2;
-const CAPTURE_CEILING = 16;
+const OBSERVER_CEILING = 1;
+const CAPTURE_CEILING = 7;
 
 test('MutationObservers stay within the documented ratchet ceiling', () => {
   const counts = countPerFile(/new\s+(?:window\.)?MutationObserver\s*\(/g);
@@ -225,13 +218,13 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 });
 
 test('changed scripts carry the S88 cache key', () => {
-  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'brain.js', 'business.js', 'purchase-orders.js', 'shifts-workspace.js',
+  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'brain.js', 'business.js', 'atlas-capture.js', 'atlas-inventory.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'shifts-workspace.js',
     'shifts-month-calendar.js', 'shifts-month-tab-bridge.js', 'knowledge-workspace.js', 'knowledge-team-link-bridge.js', 's38-app-remediation.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s88"></script>`), file);
   }
   const config = read('apps/web/config.js');
   for (const file of ['sprint3-review.js', 'brain-daily-briefing-v2.js', 'brain-phase3.js', 'brain-checkpoint-k.js', 'operations-checkpoint-a.js',
-    'operations-checkpoint-a-layout.js', 'inventory-scanner-bootstrap.js', 'stock-count-bootstrap.js', 'team-messages.js', 'marketing-workspace.js',
+    'operations-checkpoint-a-layout.js', 'team-messages.js', 'marketing-workspace.js',
     'team-profiles-bootstrap.js', 'team-profile-photos.js', 'team-profile-photo-gallery.js', 'reports-workspace.js', 'system-workspace.js',
     'settings-workspace.js', 'settings-mount-bridge.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s88'`), file);

@@ -40,6 +40,7 @@
     query: '',
     status: null,
     category: null,
+    subcategory: null,
     supplier: null,
     location: null,
     activity: 'active',
@@ -276,12 +277,97 @@
   // ---------------------------------------------------------------------------
   // Items
   // ---------------------------------------------------------------------------
+  // The owner's category model (S38 owner decisions): a primary group from the
+  // stored category (authoritative over product-name words such as "Ginger
+  // Beer" or "Four Roses"), then a contextual subcategory. Wine always offers
+  // exactly Red, White, Rosé and Sparkling.
+  const GROUPS = [
+    ['spirits', 'Spirits'], ['wine', 'Wine'], ['beer', 'Beer'], ['mixers', 'Mixers'], ['syrups', 'Syrups'], ['bitters', 'Bitters'],
+    ['fresh-fruit', 'Fresh fruit'], ['fresh-herbs', 'Fresh herbs'], ['garnish', 'Garnish'], ['bar-ingredients', 'Bar ingredients'],
+    ['consumables', 'Consumables'], ['bar-equipment', 'Bar equipment'], ['coffee', 'Coffee'], ['other', 'Other']
+  ];
+  const WINE_TYPES = ['Red', 'White', 'Rosé', 'Sparkling'];
+  const SPIRITS = /vodka|gin|whisk(?:e)?y|rum|tequila|mezcal|brandy|cognac|aquavit|brenniv[ií]n|liqueur|aperitif|vermouth|spirit|shot/;
+  const BEERS = /beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/;
+  function inventoryGroup(item) {
+    const category = String(item?.category || '').toLowerCase();
+    const value = `${category} ${String(item?.name || '').toLowerCase()}`;
+    if (/wine|champagne|prosecco|cava|sparkling|ros[eé]/.test(category)) return 'wine';
+    if (/soda|mixer|juice|tonic|soft drink|energy drink/.test(category)) return 'mixers';
+    if (SPIRITS.test(category)) return 'spirits';
+    if (BEERS.test(category)) return 'beer';
+    if (/bitters?/.test(value)) return 'bitters';
+    if (/syrup/.test(value)) return 'syrups';
+    if (/coffee|espresso|hot drink/.test(value)) return 'coffee';
+    if (/glassware|equipment|tool|utensil/.test(value)) return 'bar-equipment';
+    if (/cleaning|consumable|napkin|straw|receipt roll/.test(value)) return 'consumables';
+    if (/herb|mint|basil|rosemary|thyme/.test(value)) return 'fresh-herbs';
+    if (/garnish|olive|cherry|dehydrated|zest/.test(value)) return 'garnish';
+    if (/fruit|lemon|lime|orange|grapefruit|berry/.test(value)) return 'fresh-fruit';
+    if (/mixer|juice|tonic|soda|soft drink|energy drink|ginger beer/.test(value)) return 'mixers';
+    if (SPIRITS.test(value)) return 'spirits';
+    if (BEERS.test(value)) return 'beer';
+    if (/ingredient|food|tapas|salt|sugar|cream|milk|egg/.test(value)) return 'bar-ingredients';
+    return 'other';
+  }
+  function inventorySubcategory(item, group = inventoryGroup(item)) {
+    const stored = String(item?.subcategory || '').trim();
+    const category = String(item?.category || '').toLowerCase();
+    const name = String(item?.name || '').toLowerCase();
+    const value = `${stored} ${category} ${name} ${item?.unit || ''}`.toLowerCase();
+    if (group === 'wine') {
+      const categoryValue = `${stored} ${category}`.toLowerCase();
+      if (/champagne|sparkling|prosecco|cava|cr[eé]mant|franciacorta/.test(categoryValue)) return 'Sparkling';
+      if (/ros[eé]/.test(categoryValue)) return 'Rosé';
+      if (/red wine|\bred\b/.test(categoryValue)) return 'Red';
+      if (/white wine|\bwhite\b/.test(categoryValue)) return 'White';
+      if (/champagne|sparkling|prosecco|cava|cr[eé]mant|franciacorta/.test(name)) return 'Sparkling';
+      if (/ros[eé]/.test(name)) return 'Rosé';
+      return 'White';
+    }
+    if (group === 'spirits') {
+      if (/whisk(?:e)?y|bourbon|scotch|rye/.test(value)) return 'Whiskey';
+      if (/gin/.test(value)) return 'Gin';
+      if (/vodka/.test(value)) return 'Vodka';
+      if (/rum/.test(value)) return 'Rum';
+      if (/tequila|mezcal/.test(value)) return 'Tequila and mezcal';
+      if (/brandy|cognac/.test(value)) return 'Brandy and cognac';
+      if (/aquavit|brenniv[ií]n/.test(value)) return 'Aquavit';
+      if (/shot/.test(value)) return 'Shots';
+      return 'Liqueurs and aperitifs';
+    }
+    if (group === 'beer') {
+      if (/\bkeg|30l|20l|50l/.test(value)) return 'Kegs';
+      if (/cider/.test(name) || (/cider/.test(category) && !/beer/.test(category))) return 'Cider';
+      if (/ready.to.drink|\brtd\b|breezer/.test(value)) return 'Ready to drink';
+      return 'Bottles';
+    }
+    if (stored) return stored.replace(/[_-]+/g, ' ').replace(/^\w/, (letter) => letter.toUpperCase());
+    return String(item?.category || 'Other').trim() || 'Other';
+  }
+  const groupLabel = (key) => (GROUPS.find(([value]) => value === key) || [key, key])[1];
+  function groupCounts() {
+    const counts = new Map();
+    items().filter((item) => item.active !== false).forEach((item) => { const group = inventoryGroup(item); counts.set(group, (counts.get(group) || 0) + 1); });
+    return GROUPS.filter(([key]) => counts.has(key)).map(([key, label]) => [key, label, counts.get(key)]);
+  }
+  function subcategoryCounts(group) {
+    const counts = new Map(group === 'wine' ? WINE_TYPES.map((label) => [label, 0]) : []);
+    items().filter((item) => item.active !== false && inventoryGroup(item) === group).forEach((item) => {
+      const label = inventorySubcategory(item, group);
+      counts.set(label, (counts.get(label) || 0) + 1);
+    });
+    const list = [...counts];
+    return group === 'wine' ? list : list.sort((a, b) => a[0].localeCompare(b[0]));
+  }
+
   function filtered() {
     const query = state.query.trim().toLowerCase();
     return items().filter((item) => {
       if (state.activity === 'active' && item.active === false) return false;
       if (state.activity === 'inactive' && item.active !== false) return false;
-      if (state.category && String(item.category || '') !== state.category) return false;
+      if (state.category && inventoryGroup(item) !== state.category) return false;
+      if (state.category && state.subcategory && inventorySubcategory(item) !== state.subcategory) return false;
       if (state.supplier && String(item.supplier || '') !== state.supplier) return false;
       if (state.location && String(item.bin_location || '') !== state.location) return false;
       if (state.status) {
@@ -344,14 +430,16 @@
     const chips = [];
     const statusLabel = STATUS_FILTERS.find(([value]) => value === state.status)?.[1];
     chips.push(state.status ? chip(statusLabel, { active: true, clear: 'status' }) : chip('Status', { menu: 'status' }));
-    chips.push(state.category ? chip(state.category, { active: true, clear: 'category' }) : chip('Category', { menu: 'category' }));
+    chips.push(state.category ? chip(groupLabel(state.category), { active: true, clear: 'category' }) : chip('Category', { menu: 'category' }));
+    if (state.category) chips.push(state.subcategory ? chip(state.subcategory, { active: true, clear: 'subcategory' }) : chip('Type', { menu: 'subcategory' }));
     if (isManager()) chips.push(state.supplier ? chip(state.supplier, { active: true, clear: 'supplier' }) : chip('Supplier', { menu: 'supplier' }));
     if (state.location) chips.push(chip(state.location, { active: true, clear: 'location' }));
     if (state.activity !== 'active') chips.push(chip(state.activity === 'inactive' ? 'Inactive items' : 'All items', { active: true, clear: 'activity' }));
     chips.push(chip('More filters', { menu: 'more', dashed: true, iconName: 'list-filter' }));
     const menus = [
       menuHtml('status', STATUS_FILTERS.map(([value, label]) => ['status', value, label])),
-      menuHtml('category', distinct('category').map(([value, n]) => ['category', value, `${value} · ${n}`])),
+      menuHtml('category', groupCounts().map(([value, label, n]) => ['category', value, `${label} · ${n}`])),
+      state.category ? menuHtml('subcategory', subcategoryCounts(state.category).map(([value, n]) => ['subcategory', value, `${value} · ${n}`])) : '',
       isManager() ? menuHtml('supplier', distinct('supplier').map(([value, n]) => ['supplier', value, `${value} · ${n}`])) : '',
       menuHtml('more', [
         ...distinct('bin_location').slice(0, 12).map(([value]) => ['location', value, `Location: ${value}`]),
@@ -486,7 +574,8 @@
     if (filter === 'tool') { runTool(value); return; }
     if (filter === 'movementType') { state.movementType = value; render(); return; }
     if (filter === 'status') state.status = value;
-    else if (filter === 'category') state.category = value;
+    else if (filter === 'category') { state.category = value; state.subcategory = null; }
+    else if (filter === 'subcategory') state.subcategory = value;
     else if (filter === 'supplier') state.supplier = value;
     else if (filter === 'location') state.location = value;
     else if (filter === 'activity') state.activity = value;
@@ -1502,11 +1591,12 @@
     if (target.closest('[data-inv-count]')) { shell.actions.run('inventory.count.start', { context: 'inventory' }); return; }
     if (target.closest('[data-inv-waste]')) { openWasteDialog(); return; }
     if (target.closest('[data-inv-retry]')) { reloadData(); return; }
-    if (target.closest('[data-inv-clear-all]')) { Object.assign(state, { query: '', status: null, category: null, supplier: null, location: null, activity: 'active' }); syncFilterRoute(); renderItemsOnly(); return; }
+    if (target.closest('[data-inv-clear-all]')) { Object.assign(state, { query: '', status: null, category: null, subcategory: null, supplier: null, location: null, activity: 'active' }); syncFilterRoute(); renderItemsOnly(); return; }
     const clear = target.closest('[data-inv-clear]');
     if (clear) {
       const key = clear.dataset.invClear;
       if (key === 'activity') state.activity = 'active'; else state[key] = null;
+      if (key === 'category') state.subcategory = null;
       syncFilterRoute();
       if (activeTab() === 'items') renderItemsOnly(); else render();
       return;
@@ -1646,6 +1736,8 @@
     openAddItem: (options) => openAddItemSheet(options || {}),
     openAddProductByCamera,
     stockStatus,
+    inventoryGroup,
+    inventorySubcategory,
     unknownSheet,
     searchSheet,
     wrongProduct,

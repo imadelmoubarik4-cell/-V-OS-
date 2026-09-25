@@ -143,8 +143,12 @@ test('Inventory table and quick adjustments read the reconciled quantity, never 
   const html = read('apps/web/index.html');
   assert.doesNotMatch(html, /live_quantity|hasManagerLiveQuantity|liveQuantityById/);
   assert.match(html, /items = window\.AtlasStockTruth\.project\(data \|\| \[\], balances, inventoryMovements\);/);
-  assert.match(html, /const displayQuantity = stockKnown \? Number\(item\.quantity\) : null;/);
-  assert.equal((html.match(/const currentQty = window\.AtlasStockTruth\.known\(item\) \? Number\(item\.quantity\) : NaN;/g) || []).length, 3);
+  // S88: the Inventory page lives in atlas-inventory.js and shows a quantity
+  // only when AtlasStockTruth knows it; quick adjustments were retired.
+  const inventory = read('apps/web/assets/js/atlas-inventory.js');
+  assert.doesNotMatch(inventory, /live_quantity|hasManagerLiveQuantity|liveQuantityById/);
+  assert.match(inventory, /if \(key === 'onhand'\) return truth\(\)\?\.known\(item\) \? num\(item\.quantity\) : null;/);
+  assert.match(inventory, /\['On hand', known \? `\$\{qty\(item\.quantity\)\}/);
 });
 
 // Issue 3: the confirmation has its own timestamp and quantity.

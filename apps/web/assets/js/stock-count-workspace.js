@@ -233,6 +233,75 @@
 
   function bottleLike(line) { return BOTTLE_UNITS.test(String(line.inventory_unit || '').trim()); }
 
+  // Count units. The service converts the observed input to the item's unit;
+  // this preview mirrors that rule so the counter sees what will be saved.
+  // Packaged units (boxes, packs, cases) are counted as they are.
+  const PACKAGED_UNITS = /^(box|boxes|pack|packs|case|cases)$/i;
+  function quantityFamily(unit) {
+    const normalized = String(unit || '').trim().toLowerCase();
+    if (['l', 'ltr', 'litre', 'litres', 'liter', 'liters'].includes(normalized)) return 'litre';
+    if (['ml', 'millilitre', 'millilitres', 'milliliter', 'milliliters'].includes(normalized)) return 'millilitre';
+    if (['kg', 'kilogram', 'kilograms'].includes(normalized)) return 'kilogram';
+    if (['g', 'gram', 'grams'].includes(normalized)) return 'gram';
+    if (['bottle', 'bottles'].includes(normalized)) return 'bottle';
+    return 'unit';
+  }
+  function countUnits(line) {
+    const supported = Array.isArray(line.supported_count_units) && line.supported_count_units.length ? line.supported_count_units : ['inventory'];
+    return PACKAGED_UNITS.test(String(line.inventory_unit || '').trim()) ? ['inventory'] : supported;
+  }
+  function previewNormalization(line, inputQuantity, inputUnit) {
+    if (inputQuantity == null || String(inputQuantity).trim() === '') return null;
+    if (PACKAGED_UNITS.test(String(line.inventory_unit || '').trim()) && inputUnit !== 'inventory') return null;
+    const quantity = Number(String(inputQuantity).trim().replace(',', '.'));
+    if (!Number.isFinite(quantity) || quantity < 0) return null;
+    const family = quantityFamily(line.inventory_unit);
+    const unitsPerCase = num(line.units_per_case_snapshot) || 0;
+    const sizeMl = num(line.size_ml_snapshot) || 0;
+    const weightG = num(line.package_weight_g_snapshot) || 0;
+    const volume = (ml) => (family === 'litre' ? ml / 1000 : ml);
+    const weight = (grams) => (family === 'kilogram' ? grams / 1000 : grams);
+    let normalized = quantity;
+    if (inputUnit === 'case') {
+      if (!unitsPerCase) return null;
+      if (['unit', 'bottle'].includes(family)) normalized = quantity * unitsPerCase;
+      else if (['litre', 'millilitre'].includes(family) && sizeMl) normalized = volume(quantity * unitsPerCase * sizeMl);
+      else if (['kilogram', 'gram'].includes(family) && weightG) normalized = weight(quantity * unitsPerCase * weightG);
+      else return null;
+    } else if (inputUnit === 'bottle' || inputUnit === 'unit') {
+      if (['litre', 'millilitre'].includes(family)) {
+        if (!sizeMl) return null;
+        normalized = volume(quantity * sizeMl);
+      } else if (['kilogram', 'gram'].includes(family)) {
+        if (!weightG) return null;
+        normalized = weight(quantity * weightG);
+      }
+    } else if (inputUnit === 'litre' || inputUnit === 'millilitre') {
+      const ml = inputUnit === 'litre' ? quantity * 1000 : quantity;
+      if (['litre', 'millilitre'].includes(family)) normalized = volume(ml);
+      else if (['unit', 'bottle'].includes(family) && sizeMl) normalized = ml / sizeMl;
+      else return null;
+    } else if (inputUnit === 'kilogram' || inputUnit === 'gram') {
+      const grams = inputUnit === 'kilogram' ? quantity * 1000 : quantity;
+      if (['kilogram', 'gram'].includes(family)) normalized = weight(grams);
+      else if (['unit', 'bottle'].includes(family) && weightG) normalized = grams / weightG;
+      else return null;
+    }
+    return { normalized: round3(normalized) };
+  }
+  function previewText(line, inputQuantity, inputUnit) {
+    if (!inputUnit || inputUnit === 'inventory') return 'Up to three decimals for part containers, e.g. 1.7';
+    if (String(inputQuantity ?? '').trim() === '') return `Counted in ${UNIT_LABELS[inputUnit] || inputUnit}; Atlas converts to ${line.inventory_unit || 'units'}.`;
+    const result = previewNormalization(line, inputQuantity, inputUnit);
+    return result ? `Saves as ${qty(result.normalized)} ${line.inventory_unit || 'units'}.` : 'This item is missing its pack size, so count it in its own unit.';
+  }
+  // Variance against the last verified count; no baseline means unknown, never zero.
+  function varianceText(change) {
+    if (change === null) return 'No earlier count';
+    if (change === 0) return 'No difference';
+    return `${change > 0 ? '+' : ''}${qty(change)}`;
+  }
+
   function orderedLines() {
     const list = lines();
     if (state.focusIds?.size) return list.filter((line) => state.focusIds.has(String(line.inventory_item_id)));
@@ -488,14 +557,16 @@
   const perm = () => permissions();
 
   function stepperHtml(line, value, { idPrefix = 'sc' } = {}) {
-    const units = Array.isArray(line.supported_count_units) && line.supported_count_units.length > 1 && !/^(box|boxes|pack|packs|case|cases)$/i.test(String(line.inventory_unit || '')) ? line.supported_count_units : null;
+    const allowed = countUnits(line);
+    const units = allowed.length > 1 ? allowed : null;
+    const unit = units && units.includes(line.observed_input_unit) ? line.observed_input_unit : 'inventory';
     return `<div class="sc-stepper" data-stepper>
         <button type="button" class="sc-stepper__btn" data-step="-1" aria-label="One less">${icon('minus')}</button>
         <label class="sc-stepper__value"><span class="sr-only">Quantity of ${esc(line.item_name)} in ${esc(line.inventory_unit || 'units')}</span><input class="sc-stepper__input num" id="${idPrefix}-qty" data-count-qty type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${esc(value ?? '')}" placeholder="0"></label>
         <button type="button" class="sc-stepper__btn" data-step="1" aria-label="One more">${icon('plus')}</button>
       </div>
       ${bottleLike(line) ? `<div class="sc-partials" role="group" aria-label="Add part of a container">${[['0.25', '+ ¼'], ['0.5', '+ ½'], ['0.75', '+ ¾']].map(([step, label]) => `<button type="button" class="atlas-chip sc-partial" data-step="${step}">${label}</button>`).join('')}</div>` : ''}
-      <div class="sc-unit-row">${units ? `<label class="sc-unit"><span class="sr-only">Count unit</span><select class="atlas-select" data-count-unit>${units.map((unit) => `<option value="${esc(unit)}"${(line.observed_input_unit || 'inventory') === unit ? ' selected' : ''}>${esc(unit === 'inventory' ? `${line.inventory_unit || 'units'}` : UNIT_LABELS[unit] || unit)}</option>`).join('')}</select></label>` : `<span class="sc-unit-word">${esc(line.inventory_unit || 'units')}</span>`}<span class="sc-hint" data-count-hint>Up to three decimals for part containers, e.g. 1.7</span></div>`;
+      <div class="sc-unit-row" data-count-line-id="${esc(line.id)}">${units ? `<label class="sc-unit"><span class="sr-only">Count unit</span><select class="atlas-select" data-count-unit>${units.map((option) => `<option value="${esc(option)}"${unit === option ? ' selected' : ''}>${esc(option === 'inventory' ? `${line.inventory_unit || 'units'}` : UNIT_LABELS[option] || option)}</option>`).join('')}</select></label>` : `<span class="sc-unit-word">${esc(line.inventory_unit || 'units')}</span>`}<span class="sc-hint" data-count-hint aria-live="polite">${esc(previewText(line, value, unit))}</span></div>`;
   }
 
   function cardHtml() {
@@ -595,8 +666,8 @@
       ${publication?.status === 'blocked' ? `<div class="atlas-alert atlas-alert--warning">${icon('triangle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">The stock update is blocked.</p><p class="atlas-alert__body">${esc(publication.blocked_reason || 'Review the count first.')}</p></div></div>` : ''}
       ${s.publication_status === 'published' ? `<div class="atlas-alert atlas-alert--positive">${icon('circle-check')}<div class="atlas-alert__content"><p class="atlas-alert__body">This count updated stock. The count and the earlier quantities are kept in the history.</p></div></div>` : ''}
       <div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table"><thead><tr><th>Item</th><th class="is-num">Last verified</th><th class="is-num">Counted</th><th class="is-num">Difference</th><th>Status</th></tr></thead>
-      <tbody>${list.map((line) => { const item = catalogItem(line.inventory_item_id); const change = variance(line); return `<tr${bigVariance(line) ? ' class="sc-row--flag"' : ''}><td><span class="cell-primary">${esc(line.item_name)}</span><span class="cell-sub">${esc([line.bin_location, line.counted_by_label].filter(Boolean).join(' · '))}</span></td><td class="is-num">${num(item?.verified_quantity) !== null ? qty(item.verified_quantity) : '—'}</td><td class="is-num">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}</td><td class="is-num">${change === null ? '—' : `${change > 0 ? '+' : ''}${qty(change)}`}</td><td>${linePill(line)}</td></tr>`; }).join('')}</tbody></table></div>
-      <ul class="atlas-table-list">${list.map((line) => { const change = variance(line); return `<li><div class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(line.item_name)}</div><div class="atlas-table-list__meta">${esc(line.bin_location || '')}${change !== null ? ` · ${change > 0 ? '+' : ''}${qty(change)}` : ''}</div></div><div class="atlas-table-list__value">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}<br>${linePill(line)}</div></div></li>`; }).join('')}</ul>
+      <tbody>${list.map((line) => { const item = catalogItem(line.inventory_item_id); const change = variance(line); return `<tr${bigVariance(line) ? ' class="sc-row--flag"' : ''}><td><span class="cell-primary">${esc(line.item_name)}</span><span class="cell-sub">${esc([line.bin_location, line.counted_by_label].filter(Boolean).join(' · '))}</span></td><td class="is-num">${num(item?.verified_quantity) !== null ? qty(item.verified_quantity) : '—'}</td><td class="is-num">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}</td><td class="is-num">${line.line_status === 'counted' ? esc(varianceText(change)) : '—'}</td><td>${linePill(line)}</td></tr>`; }).join('')}</tbody></table></div>
+      <ul class="atlas-table-list">${list.map((line) => { const change = variance(line); return `<li><div class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(line.item_name)}</div><div class="atlas-table-list__meta">${esc(line.bin_location || '')}${line.line_status === 'counted' ? ` · ${esc(varianceText(change))}` : ''}</div></div><div class="atlas-table-list__value">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}<br>${linePill(line)}</div></div></li>`; }).join('')}</ul>
       <div data-count-alert></div>
       ${actions.length ? `<footer class="sc-footer sc-footer--plain">${actions.join('')}</footer>` : ''}
     </div>`;
@@ -898,6 +969,15 @@
       input.removeAttribute('aria-invalid');
     }));
     input?.addEventListener('input', () => input.removeAttribute('aria-invalid'));
+    const row = scope.querySelector('[data-count-line-id]');
+    const line = row && lines().find((entry) => String(entry.id) === row.dataset.countLineId);
+    const hint = row?.querySelector('[data-count-hint]');
+    const unit = row?.querySelector('[data-count-unit]');
+    if (!line || !hint || !unit) return;
+    const update = () => { hint.textContent = previewText(line, input?.value, unit.value); };
+    unit.addEventListener('change', update);
+    input?.addEventListener('input', update);
+    scope.querySelectorAll('[data-step]').forEach((button) => button.addEventListener('click', update));
   }
 
   function bindFlow(host) {
@@ -1120,6 +1200,11 @@
     policy: () => state.policy,
     // Pure helpers, exported for tests.
     parseQuantity,
+    quantityFamily,
+    countUnits,
+    previewNormalization,
+    previewText,
+    varianceText,
     homeRows
   };
   init();

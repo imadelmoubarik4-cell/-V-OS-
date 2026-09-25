@@ -192,6 +192,12 @@ test('6. inactive recipe references such as Ice and Water may stay unverified wi
 test('Inventory records keep inactive rows; only live-stock surfaces filter them', () => {
   const html = read('apps/web/index.html');
   assert.match(html, /items = window\.AtlasStockTruth\.project\(data \|\| \[\], balances, inventoryMovements\);/);
-  assert.match(html, /const lowCount = items\.filter\(i => i\.active !== false && window\.AtlasStockTruth\.belowPar\(i\)\)/);
+  assert.match(html, /const activeItems = items\.filter\(item => item\.active !== false\);\n    const lowCount = activeItems\.filter\(i => window\.AtlasStockTruth\.belowPar\(i\)\)/);
   assert.doesNotMatch(html, /update\(\{\s*active:\s*true/);
+  // S88: the Inventory page (atlas-inventory.js) lists inactive rows under the
+  // Inactive filter, and (de)activation goes through set_item_active only.
+  const inventory = read('apps/web/assets/js/atlas-inventory.js');
+  assert.match(inventory, /if \(item\.active === false\) return \{ key: 'inactive', label: 'Inactive'/);
+  assert.match(inventory, /itemMaster\('set_item_active'/);
+  assert.doesNotMatch(inventory, /update\(\{\s*active:/);
 });
