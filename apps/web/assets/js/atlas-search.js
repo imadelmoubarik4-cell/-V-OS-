@@ -102,7 +102,12 @@
     return new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 }).format(number);
   }
 
+  // The venue business date from the venue clock (a close after midnight is
+  // still the previous day), the same "today" as Home, Shifts and Atlas AI.
+  // The calendar date in the default zone is only the fallback.
   function venueDate(offsetDays = 0) {
+    const clock = window.AtlasVenueClock;
+    if (clock?.today && clock?.addDays) return clock.addDays(clock.today(), offsetDays);
     const parts = new Intl.DateTimeFormat('en-CA', { timeZone: VENUE_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const date = new Date(`${parts}T12:00:00Z`);
     date.setUTCDate(date.getUTCDate() + offsetDays);
