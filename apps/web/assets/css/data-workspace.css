@@ -15,7 +15,8 @@
 
   .data-issue-chips { flex-wrap: wrap; margin-bottom: var(--s-3); }
 
-  .data-link {
+  /* A link-styled button in a table cell; a phone list row keeps its row padding. */
+  .data-link:not(.atlas-table-list__row) {
     padding: 0;
     border: 0;
     background: none;
@@ -25,7 +26,6 @@
     cursor: pointer;
   }
   .data-link.cell-primary:hover, a.cell-primary:hover { color: var(--accent-text); text-decoration: underline; }
-  button.atlas-table-list__row { width: 100%; }
 
   .data-par-input { width: 96px; margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
   .data-suggestion { display: inline-flex; align-items: center; gap: var(--s-2); }

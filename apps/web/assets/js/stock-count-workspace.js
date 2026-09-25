@@ -607,7 +607,7 @@
       ${upNext.length ? `<section class="sc-upnext" aria-labelledby="sc-upnext-title"><div class="atlas-section__head"><h2 class="atlas-section__title" id="sc-upnext-title">Up next</h2><button type="button" class="atlas-link atlas-section__link" data-count-show-all>Show all items</button></div>
         <ul class="atlas-card atlas-list">${upNext.map((entry) => `<li class="atlas-row atlas-row--link"><button type="button" class="sc-row-btn" data-count-goto="${esc(entry.id)}"><span class="atlas-row__body"><span class="atlas-row__title">${esc(entry.item_name)}</span><span class="atlas-row__meta">${esc([entry.bin_location, entry.line_status === 'counted' ? `counted ${qty(entry.observed_input_quantity ?? entry.observed_quantity)}` : lastVerifiedText(entry).replace('Last verified', 'last')].filter(Boolean).join(' · '))}</span></span><span class="atlas-row__end">${linePill(entry)}</span></button></li>`).join('')}</ul></section>` : ''}
       <p class="sc-caption">Stock changes only after a manager verifies this count.</p>
-      <footer class="sc-footer">
+      <footer class="sc-footer" data-atlas-sticky-actions>
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg sc-footer__scan" data-count-scan aria-label="Scan item">${icon('scan-line')}</button>
         <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg sc-footer__save" data-count-save>Save and next${icon('arrow-right')}</button>
       </footer>
@@ -652,7 +652,7 @@
         <div data-count-alert></div>
       </section>
       <p class="sc-caption">Stock changes only after a manager verifies this count.</p>
-      <footer class="sc-footer">
+      <footer class="sc-footer" data-atlas-sticky-actions>
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-count-back-card>Keep counting</button>
         ${perm().can_submit ? `<button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg sc-footer__save" data-count-submit${canSubmit ? '' : ' disabled title="Count or skip every item first."'}>Submit for verification</button>` : ''}
       </footer></div>`;

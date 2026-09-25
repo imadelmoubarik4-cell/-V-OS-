@@ -160,7 +160,8 @@ test('the Settings hours editor refuses zero-length, backwards, over-24h and ove
     if (expected === null) assert.equal(problem, null, JSON.stringify(rows));
     else assert.match(problem?.text || '', expected);
   }
-  assert.match(source, /const conflict = hoursProblem\(/);
+  // A missing time or a conflict: the submit checks both before saving.
+  assert.match(source, /const problem = missing[\s\S]{0,400}: hoursProblem\(/);
   assert.match(source, /data-settings-hours-conflict/);
 });
 

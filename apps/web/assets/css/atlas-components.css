@@ -70,8 +70,12 @@
 }
 .page-head__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); flex: 0 1 auto; min-width: 0; max-width: 100%; }
 /* Text that carries user content wraps even a very long unbroken token inside
-   its (min-width: 0) column instead of overflowing the page. */
-:is(.page-head__title, .page-head__sub, .atlas-row__title, .atlas-row__meta, .atlas-card__title, .atlas-card__body, .atlas-sheet__title, .atlas-sheet__desc, .atlas-sheet__body, .atlas-dialog__title, .atlas-dialog__body, .atlas-alert__title, .atlas-alert__body, .atlas-empty__title, .atlas-empty__text, .atlas-stat__detail) { overflow-wrap: anywhere; }
+   its (min-width: 0) column instead of overflowing the page. Leaf text
+   elements break anywhere; the containers (card, sheet and dialog bodies)
+   only break a token that cannot fit on its own line (break-word), so the
+   labels, steps and table headers inside them never split mid-word. */
+:is(.page-head__title, .page-head__sub, .atlas-row__title, .atlas-row__meta, .atlas-card__title, .atlas-sheet__title, .atlas-sheet__desc, .atlas-dialog__title, .atlas-alert__title, .atlas-alert__body, .atlas-empty__title, .atlas-empty__text, .atlas-stat__detail) { overflow-wrap: anywhere; }
+:is(.atlas-card__body, .atlas-sheet__body, .atlas-dialog__body) { overflow-wrap: break-word; }
 /* Page rhythm (spec §5.4): header → tabs 16, tabs → toolbar 20, toolbar → content 12. */
 .page-head + .atlas-tabs { margin-top: var(--s-4); }
 .page-head + .atlas-toolbar { margin-top: var(--s-5); }
@@ -106,6 +110,10 @@
     scrollbar-width: none;
     margin: var(--s-3) calc(-1 * var(--page-gutter));
     padding-inline: var(--page-gutter);
+    /* The row scrolls sideways: controls past the edge fade out under the
+       right gutter (as the tab strips do) instead of being cut mid-label. */
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--page-gutter)), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - var(--page-gutter)), transparent);
   }
   .atlas-toolbar__end { display: none; }
   /* The toolbar scrolls sideways on phones; the search keeps a usable width
@@ -642,12 +650,15 @@ textarea.atlas-input,
 .atlas-tabs > :is(a, button, [role="tab"]):is([aria-current="page"], [aria-selected="true"], .is-active)::after {
   content: '';
   position: absolute;
+  top: auto;
   left: 0;
   right: 0;
   bottom: -1px;
+  width: auto;
   height: 2px;
   border-radius: 2px;
   background: var(--text);
+  transform: none;
 }
 .atlas-tabs > :is(a, button, [role="tab"]):focus-visible { outline: var(--focus-outline); outline-offset: -2px; border-radius: var(--r-sm); }
 .atlas-tabs .count {
@@ -742,10 +753,13 @@ a.atlas-record-chip:hover { border-color: var(--line-strong); background: var(--
    links, section links, record chips, disclosure summaries, a chip's clear
    button, a linked cell — keep their visual size and get an invisible
    44 px hit area (::after) centred on them.
+   The hit area never applies to the items of a tab set or segmented
+   control: they already have a 44 px box, and a tab draws its indicator
+   with ::after (a merged ::after moved the indicator through the label).
    ========================================================================== */
 @media (pointer: coarse) {
-  :is(.atlas-link, .atlas-section__link, .atlas-record-chip, .atlas-chip__clear, .atlas-hit, details > summary, a.cell-primary, a[href]:not([class])) { position: relative; }
-  :is(.atlas-link, .atlas-section__link, .atlas-record-chip, .atlas-chip__clear, .atlas-hit, details > summary, a.cell-primary, a[href]:not([class]))::after {
+  :is(.atlas-link, .atlas-section__link, .atlas-record-chip, .atlas-chip__clear, .atlas-hit, details > summary, a.cell-primary, a[href]:not([class])):not(:is(.atlas-tabs, .atlas-segmented) > *) { position: relative; }
+  :is(.atlas-link, .atlas-section__link, .atlas-record-chip, .atlas-chip__clear, .atlas-hit, details > summary, a.cell-primary, a[href]:not([class])):not(:is(.atlas-tabs, .atlas-segmented) > *)::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -1048,6 +1062,7 @@ th[aria-sort="ascending"] :is(.atlas-th-sort, .th-sort) > svg { transform: rotat
   font: var(--type-meta);
   color: var(--text-2);
 }
+.atlas-table-foot > :first-child { flex: none; white-space: nowrap; }   /* the count ("3 files") never wraps */
 /* Phone (<768): the table is replaced by a row list with the same state. */
 .atlas-table-list { display: none; margin: 0; padding: 0; list-style: none; }
 @media (max-width: 767px) {
@@ -1064,10 +1079,12 @@ th[aria-sort="ascending"] :is(.atlas-th-sort, .th-sort) > svg { transform: rotat
     color: var(--text);
     text-decoration: none;
   }
+  /* A row that opens a sheet in place is a button: same row, no button chrome. */
+  button.atlas-table-list__row { width: 100%; margin: 0; border-width: 0 0 1px; background: none; font: inherit; text-align: left; cursor: pointer; }
   .atlas-table-list__body { flex: 1 1 auto; min-width: 0; }
   .atlas-table-list__title { font: 500 15px/20px var(--font-sans); }
   .atlas-table-list__meta { margin-top: 2px; font: var(--type-meta); color: var(--text-2); }
-  .atlas-table-list__value { font: 500 15px/20px var(--font-sans); font-variant-numeric: tabular-nums; text-align: right; }
+  .atlas-table-list__value { font: 500 15px/20px var(--font-sans); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 }
 
 /* ==========================================================================
@@ -1221,7 +1238,10 @@ body.atlas-modal-open { overflow: hidden; }
   .atlas-sheet__grabber { display: block; width: 36px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line-strong); flex: none; }
   .atlas-sheet__head, .atlas-sheet__body { padding-left: var(--s-4); padding-right: var(--s-4); }
   .atlas-sheet__foot { padding: var(--s-3) var(--s-4) calc(var(--s-3) + env(safe-area-inset-bottom)); }
-  .atlas-sheet__foot > .atlas-btn, .atlas-dialog__foot > .atlas-btn { flex: 1 1 0; }
+  .atlas-sheet__foot > .atlas-btn, .atlas-dialog__foot > .atlas-btn { flex: 1 1 0; min-width: max-content; }
+  /* Equal-width buttons while their labels fit; a label that doesn't fit
+     moves its button to a second row instead of spilling past its border. */
+  .atlas-sheet__foot { flex-wrap: wrap; }
 }
 
 /* ==========================================================================
@@ -1468,6 +1488,9 @@ body.atlas-modal-open { overflow: hidden; }
 }
 .atlas-toast__action:hover, .atlas-toast button:hover { background: rgba(255, 255, 255, .08); }
 .atlas-toast__action:focus-visible, .atlas-toast button:focus-visible { outline: 2px solid #9cc3ff; outline-offset: 0; }
+/* Touch: the action (Undo) is a full 44 px target; the negative block margin
+   takes it into the toast's own padding, so the toast keeps its height. */
+@media (pointer: coarse) { .atlas-toast__action, .atlas-toast button { height: var(--touch); margin-block: -8px; } }
 .atlas-toast.is-leaving { opacity: 0; transition: opacity calc(var(--dur-2) * .7) var(--ease-out); }
 @keyframes atlas-toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (max-width: 767px) {
@@ -1488,7 +1511,10 @@ body.atlas-modal-open { overflow: hidden; }
   font: var(--type-label);
   color: var(--text-2);
 }
-.atlas-steps > li { display: flex; align-items: center; gap: var(--s-2); }
+/* Step labels never break inside a word (a sheet body wraps long user text
+   anywhere; a step label is not user text). */
+.atlas-steps { overflow-wrap: normal; }
+.atlas-steps > li { display: flex; flex: none; align-items: center; gap: var(--s-2); white-space: nowrap; }
 .atlas-steps .n {
   display: grid;
   place-items: center;
@@ -1509,6 +1535,15 @@ body.atlas-modal-open { overflow: hidden; }
 .atlas-progress > i, .atlas-progress > span { display: block; height: 100%; border-radius: 2px; background: var(--accent); transition: width var(--dur-2) var(--ease-out); }
 .atlas-progress--thin { height: 2px; }
 @media (max-width: 767px) {
+  .atlas-steps:has(+ .atlas-steps-compact) { display: none; }
+  .atlas-steps-compact { display: grid; gap: var(--s-2); font: var(--type-label); color: var(--text); }
+}
+/* A stepper in a narrow container (an order sheet is 640 px): wrapped in
+   .atlas-steps-wrap it shows the compact form whenever the container is
+   narrower than a full row of labelled steps, instead of splitting labels
+   or scrolling them out of view. */
+.atlas-steps-wrap { container-type: inline-size; min-width: 0; }
+@container (max-width: 719px) {
   .atlas-steps:has(+ .atlas-steps-compact) { display: none; }
   .atlas-steps-compact { display: grid; gap: var(--s-2); font: var(--type-label); color: var(--text); }
 }
@@ -1543,6 +1578,7 @@ body.atlas-modal-open { overflow: hidden; }
 }
 .atlas-upload__thumb > img { width: 100%; height: 100%; object-fit: cover; }
 .atlas-upload__body { flex: 1 1 auto; min-width: 0; }
+.atlas-upload > .atlas-btn { flex: none; }   /* the text column wraps; the button keeps its label */
 .atlas-upload__title { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--text); overflow-wrap: anywhere; }
 .atlas-upload__help { margin: 2px 0 0; font: var(--type-caption); color: var(--text-2); }
 .atlas-upload__error { margin: 2px 0 0; font: var(--type-caption); color: var(--danger); }

@@ -1279,28 +1279,41 @@
         last_order_time: hhmm(row.querySelector('[name="last_order_time"]')?.value),
         last_order_next_day: false
       })).sort((a, b) => a.weekday - b.weekday);
+      // A problem is shown on the day itself (a row under it), its fields are
+      // marked invalid and described by the message, and focus moves to the
+      // first one, so the message is in view where the person is looking.
+      // Nothing re-renders: the typed hours stay.
       const missing = hours.find((row) => row.is_open && (!row.open_time || !row.close_time));
-      if (missing) {
-        state.formFeedback[key] = { type: 'error', text: `${missing.day_label} is marked open — add its opening and closing times, or switch it off.` };
-        render();
-        return;
-      }
-      const conflict = hoursProblem(EDITOR_DAYS.map((weekday) => hours.find((row) => row.weekday === weekday)).filter(Boolean));
-      form.querySelectorAll('.settings-hours-row [aria-invalid]').forEach((input) => input.removeAttribute('aria-invalid'));
-      if (conflict) {
-        // Shown beside the form without re-rendering, so the typed hours stay.
-        const row = form.querySelector(`.settings-hours-row[data-weekday="${conflict.weekday}"]`);
-        row?.querySelectorAll('[name="open_time"], [name="close_time"]').forEach((input) => input.setAttribute('aria-invalid', 'true'));
-        let note = form.querySelector('[data-settings-hours-conflict]');
-        if (!note) {
-          note = document.createElement('p');
-          note.className = 'settings-form-feedback is-error';
-          note.setAttribute('role', 'alert');
-          note.dataset.settingsHoursConflict = '';
-          form.querySelector('.settings-hours')?.after(note);
-        }
-        note.textContent = conflict.text;
-        row?.querySelector('[name="close_time"]')?.focus();
+      const problem = missing
+        ? { weekday: missing.weekday, text: `${missing.day_label} is marked open — add its opening and closing times, or switch it off.`, fields: ['open_time', 'close_time'].filter((name) => !missing[name]) }
+        : hoursProblem(EDITOR_DAYS.map((weekday) => hours.find((row) => row.weekday === weekday)).filter(Boolean));
+      form.querySelectorAll('.settings-hours-row [aria-invalid]').forEach((input) => {
+        input.removeAttribute('aria-invalid');
+        const described = String(input.getAttribute('aria-describedby') || '').split(/\s+/).filter((id) => id && id !== 'settings-hours-problem');
+        if (described.length) input.setAttribute('aria-describedby', described.join(' ')); else input.removeAttribute('aria-describedby');
+      });
+      form.querySelector('.settings-hours__problem')?.remove();
+      if (problem) {
+        const row = form.querySelector(`.settings-hours-row[data-weekday="${problem.weekday}"]`);
+        const fields = (problem.fields || ['open_time', 'close_time']).map((name) => row?.querySelector(`[name="${name}"]`)).filter(Boolean);
+        const holder = document.createElement('tr');
+        holder.className = 'settings-hours__problem';
+        holder.innerHTML = '<td colspan="7"><p class="settings-form-feedback is-error" role="alert" id="settings-hours-problem" data-settings-hours-conflict></p></td>';
+        const note = holder.querySelector('p');
+        note.innerHTML = icon('circle-alert');
+        note.append(document.createTextNode(problem.text));
+        if (row) row.after(holder); else form.querySelector('.settings-hours tbody')?.append(holder);
+        window.lucide?.createIcons?.();
+        fields.forEach((input) => {
+          input.setAttribute('aria-invalid', 'true');
+          const described = new Set(String(input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+          described.add('settings-hours-problem');
+          input.setAttribute('aria-describedby', [...described].join(' '));
+        });
+        const target = fields[missing ? 0 : fields.length - 1];
+        target?.focus({ preventScroll: true });
+        // The day and its message together, clear of the sticky top bar and save bar.
+        (row || holder).scrollIntoView({ block: 'center', behavior: 'auto' });
         return;
       }
       form.querySelector('[data-settings-hours-conflict]')?.remove();

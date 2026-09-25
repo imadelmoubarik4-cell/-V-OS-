@@ -89,5 +89,5 @@ test('Reports stylesheet is module layout only; Business Intelligence files are 
     assert.ok(!existsSync(`apps/web/${file}`), file);
     assert.doesNotMatch(shell, new RegExp(file.replace(/[.]/g, '\\.')));
   }
-  assert.match(shell, /reports-overview\.js\?v=20260928-s89t/);
+  assert.match(shell, /reports-overview\.js\?v=20260930-s90g/);
 });

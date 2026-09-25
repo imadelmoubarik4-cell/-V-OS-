@@ -593,6 +593,12 @@
     </div>`;
   }
 
+  function tempStatusPill(log) {
+    return log?.range_status === 'outside_range' ? '<span class="atlas-pill atlas-pill--danger">Out of range</span>'
+      : log?.range_status === 'inside_range' || log?.range_status === 'within_range' || log?.range_status === 'in_range' ? '<span class="atlas-pill atlas-pill--positive">In range</span>'
+        : log ? '<span class="atlas-pill atlas-pill--neutral">Logged</span>' : '<span class="atlas-pill atlas-pill--warning">Not logged</span>';
+  }
+
   function temperatureMarkup() {
     if (state.status === 'loading' || state.status === 'idle') return skeletonRows(3);
     if (state.status === 'error') return errorMarkup();
@@ -602,13 +608,11 @@
     }
     const unconfigured = number(tempSummary.range_unconfigured_points);
     return `${unconfigured ? `<div class="atlas-alert atlas-alert--warning" role="status">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">${escape(`${plural(unconfigured, 'point has', 'points have')} no target range yet. Readings are saved, but Atlas can’t say whether they are in range until a manager sets one.`)}</p></div></div>` : ''}
-    <div class="atlas-table-wrap ops-temp"><table class="atlas-table">
+    <div class="atlas-table-wrap atlas-table-wrap--responsive ops-temp"><table class="atlas-table">
       <thead><tr><th scope="col">Point</th><th scope="col">Target range</th><th scope="col" class="is-num">Today</th><th scope="col">Logged</th><th scope="col">Status</th><th scope="col" class="col-actions"><span class="sr-only">Actions</span></th></tr></thead>
       <tbody>${points.map((point) => {
         const log = point.latest_log;
-        const status = log?.range_status === 'outside_range' ? '<span class="atlas-pill atlas-pill--danger">Out of range</span>'
-          : log?.range_status === 'inside_range' || log?.range_status === 'within_range' || log?.range_status === 'in_range' ? '<span class="atlas-pill atlas-pill--positive">In range</span>'
-            : log ? '<span class="atlas-pill atlas-pill--neutral">Logged</span>' : '<span class="atlas-pill atlas-pill--warning">Not logged</span>';
+        const status = tempStatusPill(log);
         return `<tr>
           <td><span class="cell-primary">${escape(point.name)}</span>${point.location ? `<span class="cell-sub">${escape(point.location)}</span>` : ''}</td>
           <td>${escape(rangeText(point))}</td>
@@ -619,6 +623,13 @@
         </tr>`;
       }).join('')}</tbody>
     </table></div>
+    <ul class="atlas-table-list ops-temp-list">${points.map((point) => {
+      // Phone (<768): one row per point, nothing cut at the edge.
+      const log = point.latest_log;
+      const actions = `${canWrite() ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ops-log="${escape(point.id)}">${log ? 'Log again' : 'Log reading'}</button>` : ''}${canManage() ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-ops-range="${escape(point.id)}">Edit range</button>` : ''}`;
+      const reading = log ? `${temperatureText(log.temperature_c)} · ${log.logged_by_label ? `${log.logged_by_label} · ` : ''}${formatWhen(log.reading_at)}` : 'Not logged today';
+      return `<li class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${escape(point.name)}</div><div class="atlas-table-list__meta">${escape([point.location, rangeText(point)].filter(Boolean).join(' · '))}</div><div class="atlas-table-list__meta">${escape(reading)}</div>${actions ? `<div class="ops-temp-list__actions">${actions}</div>` : ''}</div><div class="atlas-table-list__value">${tempStatusPill(log)}</div></li>`;
+    }).join('')}</ul>
     <p class="ops-foot">Readings are kept with who logged them and when. Today’s last reading is shown.</p>`;
   }
 

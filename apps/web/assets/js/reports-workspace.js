@@ -53,6 +53,8 @@
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
+  // The noun for a count: "1 item", "3 items" (the count itself is shown apart).
+  const noun = (count, one, many) => (number(count) === 1 ? one : many);
   function formatNumber(value, digits = 0) {
     const n = number(value);
     if (n === null) return '—';
@@ -288,24 +290,36 @@
     return alertMarkup({ tone: 'warning', title: `Stock figures are incomplete — ${missing.length ? missing.join(' and ') : 'stock data'} couldn’t load. Try again.`, body: 'Inventory value, suggested orders and count coverage are hidden until everything loads.', action: '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-reports-stock-retry>Try again</button>' });
   }
 
+  // The one inventory value (Overview and the Stock tab): the canonical
+  // AtlasStockTruth value over the loaded items (AtlasReportsOverview), never
+  // a second figure from another source.
+  function inventoryValueStat(label) {
+    const incomplete = stockIncomplete();
+    const stock = incomplete ? null : window.AtlasReportsOverview?.inventoryValueParts?.() || null;
+    const detail = incomplete ? 'Stock figures are incomplete'
+      : !stock ? 'Stock isn\'t loaded'
+      : stock.items === 0 ? 'No active items yet'
+      : stock.value !== null ? 'Counted stock at unit cost, now'
+      : stockValueGap(stock.knownValue, stock.uncounted, stock.uncosted);
+    return statMarkup({ label, value: stock && stock.value !== null ? escapeHtml(money(stock.value)) : '—', detail });
+  }
+
   function overviewMarkup() {
     const overview = window.AtlasReportsOverview;
     const range = period();
     const incomplete = stockIncomplete();
-    const stock = incomplete ? null : overview?.inventoryValueParts?.() || null;
     const purchasing = report('purchasing').summary || {};
     const spendKpi = kpi('purchasing_spend') || kpi('purchasing');
     const waste = report('waste').summary || {};
     const costing = overview?.recipeCosting?.() || null;
-    const stockDetail = incomplete ? 'Stock figures are incomplete' : !stock ? 'Stock isn\'t loaded' : stock.value !== null ? 'Counted stock at unit cost, now' : stockValueGap(stock.knownValue, stock.uncounted, stock.uncosted);
     const spendValue = number(purchasing.spend);
     const wasteCount = number(waste.recorded_waste_count);
     const wasteValue = number(waste.estimated_waste_value);
     const stats = `<div class="atlas-stats reports-stats">
-        ${statMarkup({ label: 'Inventory value', value: stock?.value !== null && stock ? escapeHtml(money(stock.value)) : '—', detail: stockDetail })}
+        ${inventoryValueStat('Inventory value')}
         ${statMarkup({ label: 'Purchasing spend', value: spendValue === null ? '—' : escapeHtml(money(spendValue)), delta: deltaMarkup(spendKpi), detail: spendValue === null ? 'No deliveries with a cost in this period' : 'Costed deliveries in this period' })}
-        ${statMarkup({ label: 'Waste', value: wasteValue !== null ? escapeHtml(money(wasteValue)) : wasteCount === 0 ? 'None' : '—', detail: wasteCount === 0 ? 'No waste recorded in this period' : wasteValue === null ? `${formatNumber(wasteCount)} entries; some have no cost` : `${formatNumber(wasteCount)} entries` })}
-        ${statMarkup({ label: 'Recipe margin', value: costing && costing.averageMargin !== null ? escapeHtml(percent(costing.averageMargin)) : '—', detail: costing && costing.total ? `Theoretical · ${costing.complete} of ${costing.total} recipes fully costed` : 'No active recipes' })}
+        ${statMarkup({ label: 'Waste', value: wasteValue !== null ? escapeHtml(money(wasteValue)) : wasteCount === 0 ? 'None' : '—', detail: wasteCount === 0 ? 'No waste recorded in this period' : wasteValue === null ? `${formatNumber(wasteCount)} ${noun(wasteCount, 'entry', 'entries')}; some have no cost` : `${formatNumber(wasteCount)} ${noun(wasteCount, 'entry', 'entries')}` })}
+        ${statMarkup({ label: 'Recipe margin', value: costing && costing.averageMargin !== null ? escapeHtml(percent(costing.averageMargin)) : '—', detail: costing && costing.total ? `Theoretical · ${costing.complete} of ${costing.total} ${noun(costing.total, 'recipe', 'recipes')} fully costed` : 'No active recipes' })}
       </div>`;
 
     const attention = Array.isArray(state.snapshot?.attention) ? state.snapshot.attention : [];
@@ -327,8 +341,8 @@
         <div class="reports-chart-grid">${suppliersChart}
           <div class="atlas-card atlas-card--pad reports-facts"><ul class="atlas-list">
             <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Sales</p><p class="atlas-row__meta">${salesSource?.status === 'connected' ? 'Connected' : 'Not connected — no point-of-sale system sends sales to Atlas, so revenue and realised margin aren\'t shown.'}</p></div></li>
-            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Suggested order</p><p class="atlas-row__meta">${incomplete ? 'Unknown — stock figures are incomplete' : exposure && exposure.items ? `${exposure.items} items below par · about ${money(exposure.estimate)}${exposure.uncosted ? ` plus ${exposure.uncosted} without a cost` : ''}` : 'Nothing below par that isn\'t already ordered'}</p></div><div class="atlas-row__end"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="#purchasing">Purchasing</a></div></li>
-            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Average cost per serve</p><p class="atlas-row__meta">${costing && costing.averageCostPerServe !== null ? `${money(costing.averageCostPerServe)} across ${costing.complete} fully costed recipes` : 'Needs recipes with every ingredient costed'}</p></div></li>
+            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Suggested order</p><p class="atlas-row__meta">${incomplete ? 'Unknown — stock figures are incomplete' : exposure && exposure.items ? `${exposure.items} ${noun(exposure.items, 'item', 'items')} below par · about ${money(exposure.estimate)}${exposure.uncosted ? ` plus ${exposure.uncosted} without a cost` : ''}` : 'Nothing below par that isn\'t already ordered'}</p></div><div class="atlas-row__end"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="#purchasing">Purchasing</a></div></li>
+            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Average cost per serve</p><p class="atlas-row__meta">${costing && costing.averageCostPerServe !== null ? `${money(costing.averageCostPerServe)} across ${costing.complete} fully costed ${noun(costing.complete, 'recipe', 'recipes')}` : 'Needs recipes with every ingredient costed'}</p></div></li>
           </ul></div>
         </div></section>`;
 
@@ -403,7 +417,9 @@
     const columns = COLUMNS[section] || [];
     const rows = sortedRows(section);
     // Stock is a snapshot, not a period: its empty table says so.
-    if (!rows.length) return notEnough(section === 'inventory' ? 'No item rows to show.' : 'No records for this period.');
+    // Labour totals can exist without a per-person breakdown: the empty
+    // table must not contradict the figures above it.
+    if (!rows.length) return notEnough(section === 'inventory' ? 'No item rows to show.' : section === 'labour' && number(report('labour').summary?.shift_count) > 0 ? 'No per-person breakdown for this period yet.' : 'No records for this period.');
     const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     state.page = Math.min(Math.max(1, state.page), pages);
     const start = (state.page - 1) * PAGE_SIZE;
@@ -434,12 +450,13 @@
     let figures = '';
     let chart = '';
     if (section === 'inventory') {
-      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Stock value', value: number(summary.estimated_value) === null ? '—' : escapeHtml(money(summary.estimated_value)), detail: number(summary.active_items) === 0 ? 'No active items yet' : number(summary.estimated_value) === null ? stockValueGap(summary.known_value, summary.needs_current_count, summary.missing_cost) : 'Current counts at unit cost' })}${statMarkup({ label: 'Below par', value: escapeHtml(formatNumber(summary.below_par)), unit: 'items' })}${statMarkup({ label: 'Out of stock', value: escapeHtml(formatNumber(summary.out_of_stock)), unit: 'items' })}${statMarkup({ label: 'Counted recently', value: escapeHtml(`${formatNumber(summary.current_items)} of ${formatNumber(summary.active_items)}`) })}</div>`;
-      const categories = (data.categories || []).map((row) => ({ name: row.category, value: number(row.estimated_value) }));
+      figures = `<div class="atlas-stats reports-stats">${inventoryValueStat('Stock value')}${statMarkup({ label: 'Below par', value: escapeHtml(formatNumber(summary.below_par)), unit: noun(summary.below_par, 'item', 'items') })}${statMarkup({ label: 'Out of stock', value: escapeHtml(formatNumber(summary.out_of_stock)), unit: noun(summary.out_of_stock, 'item', 'items') })}${statMarkup({ label: 'Counted recently', value: escapeHtml(`${formatNumber(summary.current_items)} of ${formatNumber(summary.active_items)}`) })}</div>`;
+      // The same canonical source as the Stock value above (never a second figure).
+      const categories = stockIncomplete() ? [] : window.AtlasReportsOverview?.inventoryValueByCategory?.() || [];
       const top = categories.slice().sort((a, b) => (b.value || 0) - (a.value || 0))[0];
       chart = barChart(categories, { label: 'name', value: 'value', format: money, title: 'Counted stock value by category', takeaway: top ? `${top.name} holds the most value.` : '' }) || notEnough('Not enough data yet — needs a current stock count with costs.');
     } else if (section === 'recipes') {
-      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Available', value: escapeHtml(formatNumber(summary.ready)), unit: 'recipes' })}${statMarkup({ label: 'Running low', value: escapeHtml(formatNumber(summary.needs_attention)), unit: 'recipes' })}${statMarkup({ label: 'Unavailable', value: escapeHtml(formatNumber(summary.unavailable)), unit: 'recipes' })}${statMarkup({ label: 'Setup incomplete', value: escapeHtml(formatNumber(summary.incomplete_setup)), unit: 'recipes' })}</div>`;
+      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Available', value: escapeHtml(formatNumber(summary.ready)), unit: noun(summary.ready, 'recipe', 'recipes') })}${statMarkup({ label: 'Running low', value: escapeHtml(formatNumber(summary.needs_attention)), unit: noun(summary.needs_attention, 'recipe', 'recipes') })}${statMarkup({ label: 'Unavailable', value: escapeHtml(formatNumber(summary.unavailable)), unit: noun(summary.unavailable, 'recipe', 'recipes') })}${statMarkup({ label: 'Setup incomplete', value: escapeHtml(formatNumber(summary.incomplete_setup)), unit: noun(summary.incomplete_setup, 'recipe', 'recipes') })}</div>`;
       chart = `<p class="reports-muted">Margins are theoretical, from recipe costs and menu prices. Popularity and realised margin need sales, which aren't connected.</p>`;
     } else if (section === 'purchasing') {
       const spendKpi = kpi('purchasing_spend') || kpi('purchasing');
@@ -453,7 +470,7 @@
       figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Entries', value: escapeHtml(formatNumber(count)) })}${statMarkup({ label: 'Value', value: number(summary.estimated_waste_value) === null ? '—' : escapeHtml(money(summary.estimated_waste_value)), detail: number(summary.estimated_waste_value) === null && count ? 'Some entries have no cost' : '' })}</div>`;
       if (!count) chart = notEnough('No waste recorded in this period.');
     } else if (section === 'labour') {
-      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Shifts', value: escapeHtml(formatNumber(summary.shift_count)) })}${statMarkup({ label: 'Scheduled hours', value: escapeHtml(formatNumber(summary.scheduled_hours, 1)), unit: 'h' })}${statMarkup({ label: 'Not published', value: escapeHtml(formatNumber(summary.unpublished_shift_entries)), unit: 'shifts' })}</div>`;
+      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Shifts', value: escapeHtml(formatNumber(summary.shift_count)) })}${statMarkup({ label: 'Scheduled hours', value: escapeHtml(formatNumber(summary.scheduled_hours, 1)), unit: 'h' })}${statMarkup({ label: 'Not published', value: escapeHtml(formatNumber(summary.unpublished_shift_entries)), unit: noun(summary.unpublished_shift_entries, 'shift', 'shifts') })}</div>`;
       chart = '<p class="reports-muted">Scheduled hours only. Labour cost needs pay rates, which Atlas doesn\'t store.</p>';
     }
     return `${figures}<section class="atlas-section"><div class="atlas-section__head"><h2 class="atlas-section__title">${escapeHtml(TABS.find(([key]) => key === section)?.[1] || '')} detail</h2></div>${chart}${tableMarkup(section)}</section>`;

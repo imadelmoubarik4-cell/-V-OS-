@@ -1133,7 +1133,7 @@
       const availability = recipeAvailability(state.draftIngredients, recipeYield);
       if (!has) availabilityNote.textContent = '';
       else if (availability.status === 'incomplete') availabilityNote.textContent = 'Availability is unknown until every linked item is counted and its unit matches.';
-      else if (availability.status === 'unavailable') availabilityNote.textContent = limitingName(availability) ? `${limitingName(availability)}: out of stock, so this can't be served now.` : 'An ingredient is out of stock, so this can\'t be served now.';
+      else if (availability.status === 'unavailable') availabilityNote.textContent = limitingName(availability) ? `${limitingName(availability)}: out of stock, so this can’t be served now.` : 'An ingredient is out of stock, so this can’t be served now.';
       else availabilityNote.textContent = `Counted stock covers about ${availability.servings} serves before ${limitingName(availability) || 'an ingredient'} runs out.`;
     }
   }
@@ -1489,7 +1489,7 @@
           id: `unavailable:${recipe.id}`,
           severity: 'warning',
           icon: 'martini',
-          title: `${recipe.name} can't be served`,
+          title: `${recipe.name} can’t be served`,
           detail: availabilityView(recipe).line,
           action: { label: 'Open recipe', route: `#recipes/${encodeURIComponent(recipe.id)}` }
         }))
@@ -1504,7 +1504,7 @@
       .filter((entry) => entry.availability.status !== 'ready')
       .sort((a, b) => (rank[a.availability.status] ?? 3) - (rank[b.availability.status] ?? 3) || number(a.availability.servings, 999999) - number(b.availability.servings, 999999))[0];
     if (!issue) return null;
-    if (issue.availability.status === 'unavailable') return { text: `${issue.recipe.name} can't be served right now.` };
+    if (issue.availability.status === 'unavailable') return { text: `${issue.recipe.name} can’t be served right now.` };
     if (issue.availability.status === 'attention') return { text: `${issue.recipe.name}: about ${issue.availability.servings} serves left.` };
     return { text: `${issue.recipe.name} needs a stock count or an ingredient link.` };
   }

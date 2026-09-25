@@ -80,8 +80,12 @@
 }
 /* Touch: small buttons in Operations grow to 44 px (spec §6; the design system's .atlas-btn--sm is 40 px). */
 @media (max-width: 767px) {
-  .ops-row { flex-wrap: wrap; }
+  /* Phone: icon | name, meta and status | chevron, the same on every row. */
+  .ops-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--s-3); row-gap: var(--s-2); }
   .ops-row .ops-progress { display: none; }
+  .ops-row > .atlas-row__icon { grid-row: 1 / span 2; }
+  .ops-row > .atlas-row__body, .ops-row > .ops-row__status { grid-column: 2; }
+  .ops-row > .atlas-row__end { grid-column: 3; grid-row: 1 / span 2; align-self: center; }
   .ops-row__status { width: auto; }
   .ops-check__toggle { grid-template-columns: 22px minmax(0, 1fr); min-height: 56px; }
   .ops-check__who { grid-column: 2; white-space: normal; }
@@ -89,7 +93,6 @@
   .ops-check__note, .ops-check__error { padding-left: 50px; }
   .ops-detail__foot { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); padding: var(--s-3) 0; }
   .ops-detail__foot > .atlas-btn { flex: 1 1 0; }
-  .ops-temp .atlas-table th:nth-child(4), .ops-temp .atlas-table td:nth-child(4) { display: none; }
-  .ops-temp__actions { flex-direction: column; align-items: stretch; }
+  .ops-temp-list__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
 }
 }

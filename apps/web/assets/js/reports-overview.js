@@ -45,6 +45,20 @@
     return { value: result.value, knownValue: result.known_value, uncounted: result.unknown_items, uncosted: result.missing_cost_items, items: result.active_items };
   }
 
+  // The counted, costed part of that value per category (the same items and
+  // rule as inventoryValueParts, so the chart adds up to its lower bound).
+  function inventoryValueByCategory() {
+    const rule = truth();
+    if (!rule?.known || !rule?.hasCost) return [];
+    const totals = new Map();
+    activeItems().forEach((item) => {
+      if (!rule.known(item) || !rule.hasCost(item)) return;
+      const name = String(item.category || '').trim() || 'No category';
+      totals.set(name, (totals.get(name) || 0) + Math.max(0, number(item.quantity)) * Number(item.cost_price));
+    });
+    return [...totals.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }
+
   // Movements with created_at inside [start, end] (venue date keys).
   function movementsBetween(start, end) {
     const clock = root.AtlasVenueClock;
@@ -122,6 +136,7 @@
   root.AtlasReportsOverview = Object.freeze({
     inventoryValue,
     inventoryValueParts,
+    inventoryValueByCategory,
     spend,
     supplierConcentration,
     recipeCosting,

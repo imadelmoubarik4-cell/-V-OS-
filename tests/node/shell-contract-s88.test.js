@@ -191,7 +191,7 @@ test('every event a module listens for is actually emitted', () => {
 });
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20260929-s90u"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20260930-s90g"><\/script>\s*<script src="config\.js"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
   assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine, health: window\.AtlasData\.health\(\) \}\);\s+\}/);
@@ -220,28 +220,31 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 });
 
 test('changed scripts carry the S88 cache key', () => {
-  // S89 canonical business truth changed this; its cache key moved on.
-  for (const file of ['reports-overview.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260928-s89t"></script>`), file);
-  }
   // S90 UX acceptance remediation (shell, design system and page fixes).
-  for (const file of ['atlas-shell.js', 'data-workspace.js', 'atlas-capture.js', 'knowledge-workspace.js', 'home.js', 'recipes.js', 'atlas-search.js']) {
+  for (const file of ['data-workspace.js', 'atlas-capture.js', 'knowledge-workspace.js', 'home.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
   }
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
-  for (const file of ['runtime-module-guard.js', 's38-app-remediation.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'shifts-workspace.js',
-    'operations.js', 'atlas-venue-clock.js', 'atlas-ai.js', 'atlas-ai-voice.js', 'atlas-chrome.js', 'modal.js', 'atlas-stock-truth.js']) {
+  for (const file of ['runtime-module-guard.js', 's38-app-remediation.js', 'shifts-workspace.js',
+    'atlas-venue-clock.js', 'atlas-ai.js', 'atlas-ai-voice.js', 'atlas-chrome.js', 'modal.js', 'atlas-stock-truth.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
-  // Engineering re-acceptance follow-up: clearer waste/delivery retry message.
-  assert.ok(index.includes('<script src="assets/js/atlas-inventory.js?v=20260930-s90g"></script>'), 'atlas-inventory.js');
+  // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
+  // and the UX acceptance round 2 fixes (toast placement, order lines on the
+  // phone, one inventory value in Reports, hours validation in place).
+  for (const file of ['atlas-inventory.js', 'atlas-shell.js', 'recipes.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'operations.js', 'reports-overview.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-s90g"></script>`), file);
+  }
   const config = read('apps/web/config.js');
   for (const file of ['team-messages.js', 'team-profile-photos.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90u'`), file);
   }
-  for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'marketing-workspace.js', 'settings-workspace.js', 'reports-workspace.js', 'shifts-workspace.js']) {
+  for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'marketing-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
+  }
+  for (const file of ['settings-workspace.js', 'reports-workspace.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260930-s90g'`), file);
   }
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
 });

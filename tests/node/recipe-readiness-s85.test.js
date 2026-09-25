@@ -173,7 +173,7 @@ test('Recipes, Operations and Home agree on the same readiness state', () => {
   assert.equal(operations.issues.length, needing, 'Operations counts the same recipes as Recipes');
   assert.ok(operations.issues.every((entry) => entry.recipe.active !== false), 'inactive recipes never count');
   assert.equal(operations.issues[0].recipe.name, 'Margarita');
-  assert.equal(atlas.AtlasRecipes.getHomeAlert().text, "Margarita can't be served right now.");
+  assert.equal(atlas.AtlasRecipes.getHomeAlert().text, 'Margarita can’t be served right now.');
   // S88: Brain retired; Home shows the same readiness (At a glance and the briefing).
   assert.deepEqual(atlas.AtlasHome.recipeFacts().unavailable.map((entry) => entry.recipe.name), ['Margarita']);
   assert.match(atlas.AtlasHome.briefing().join(' '), /Margarita can’t be served right now/);

@@ -253,8 +253,8 @@ icon (spec §5.8 list); no emoji; no decorative icons.
 | 6.21, 6.24 | Empty, permission, unavailable | `.atlas-empty` (`--page`, `--inline`), `__icon`, `__title`, `__text`, `__actions` | 40 icon tile, one action. The action is `--secondary` when the page header already holds the primary (usually the same action); `--primary` only when it is the page's single main action |
 | 6.22 | Skeleton | `.atlas-skel` (`--text`, `--title`, `--row`, `--block`, `--circle`); `.atlas-skel-page` (`AtlasShell.skeleton()`: page header, toolbar bar, rows) | Appears after 150 ms, 1.4 s shimmer, static with reduced motion |
 | 6.23 | Alert | `.atlas-alert` + `--warning`/`--danger`/`--info`/`--positive`, `__content`, `__title`, `__body`, `__actions` | 12 × 16, 12 radius, tinted |
-| 6.25 | Toast | `.atlas-toast-region` > `.atlas-toast` (`--success` default, `--info`, `--warning`), `__text`, `__action` | Ink, 44 min, bottom centre (above the tab bar on phones); `AtlasShell.toast(text, { tone })`: a permission or neutral fact is `info`, never the success check |
-| 6.26 | Stepper | `.atlas-steps` > `li.is-done`/`.is-current`, `.n`, `.sep`; `.atlas-steps-compact`; `.atlas-progress` (`--thin`) | 22 circles; phone "Step 2 of 3 · Review" + 4 px line |
+| 6.25 | Toast | `.atlas-toast-region` > `.atlas-toast` (`--success` default, `--info`, `--warning`), `__text`, `__action` | Ink, 44 min, bottom centre (above the tab bar on phones, and above a sticky action bar marked `[data-atlas-sticky-actions]` or `.atlas-bulkbar--sticky`); action 44 px on touch; `AtlasShell.toast(text, { tone })`: a permission or neutral fact is `info`, never the success check |
+| 6.26 | Stepper | `.atlas-steps` > `li.is-done`/`.is-current`, `.n`, `.sep`; `.atlas-steps-compact`; `.atlas-steps-wrap`; `.atlas-progress` (`--thin`) | 22 circles; labels never wrap or split; phone "Step 2 of 3 · Review" + 4 px line. In a narrow container (a sheet) wrap both in `.atlas-steps-wrap`: under 720 px of container width the compact form shows |
 | 6.27 | Upload | `.atlas-upload` (`.is-dragover`, `--file`), `__thumb`, `__body`, `__title`, `__help`, `__error` | Dashed line-strong, 44 thumb |
 | 4.11 | Global feedback | `.atlas-offline-bar`, `.atlas-loading-line`, `.atlas-spinner` | 36 px offline bar, 2 px accent line |
 
@@ -277,7 +277,12 @@ hit area (`::after`): `.atlas-link`, `.atlas-section__link`,
 `.atlas-record-chip`, `.atlas-chip__clear`, `details > summary`,
 `a.cell-primary`, class-less text links (`a[href]:not([class])`, for example
 an email or a "Manage" link in a sentence) and `.atlas-hit` for anything else.
-Modules never add their own touch sizes for shared controls and never give a
+The items of a tab set (`.atlas-tabs`) and a segmented control
+(`.atlas-segmented`) never get this hit area: they are 44 px boxes already and a
+tab draws its active indicator with its own `::after` (a merged `::after` once
+drew the indicator through the label). A component that draws with `::after`
+is excluded the same way rather than hijacked. The toast action (Undo) is a
+44 px box on touch. Modules never add their own touch sizes for shared controls and never give a
 link or summary a one-off class that opts it out; they use these classes.
 `tests/browser/ux-acceptance.browser.test.mjs` enumerates every visible
 interactive element on the key phone screens and fails under 44 px.
@@ -290,8 +295,15 @@ starts at the same x and y.
 Tables: `.cell-clip` (on a `td` or a span inside it) truncates a long name to
 one line with an ellipsis in a fixed-layout or width-limited column; the full
 text goes in `title`. Shared text containers (row title/meta, card and sheet
-text, table headers, page header, alerts, empty states) wrap a long unbroken
-token (`overflow-wrap: anywhere`) instead of overflowing the page.
+text, page header, alerts, empty states) wrap a long unbroken token
+(`overflow-wrap: anywhere`) instead of overflowing the page. The card, sheet
+and dialog bodies only break a token that cannot fit its line
+(`overflow-wrap: break-word`), so labels, step names and table headers inside
+them never split mid-word; table headers wrap between words only.
+Phone lists: below 768 a table becomes an `.atlas-table-list` (the order lines
+in an order sheet, temperature points, every list page), so no page or sheet
+scrolls sideways; a phone toolbar that scrolls sideways fades out under the
+right gutter like the tab strips.
 
 Focus: a heading or sheet title focused programmatically (`tabindex="-1"`)
 shows no ring; keyboard focus on controls always does.
@@ -318,6 +330,14 @@ with `AtlasVenueClock.localInputValue` / `fromLocalInput`.
   their own submit checks (required, end after start).
 - Times and dates Atlas renders itself (read-only text, tables, cards,
   messages) stay 24 h through `AtlasVenueClock.formatTime` / `formatDate`.
+- Known platform exception: inside a native field the device locale decides
+  the display, so an en-US device shows 12 h ("05:00 PM") and mm/dd/yyyy in
+  Opening hours, Shifts and Marketing fields. Icelandic and UK devices show
+  24 h and d.m.y. This is the only place Atlas shows 12 h.
+- A submit check that fails marks the field `aria-invalid`, describes it with
+  the message placed next to it (Opening hours: a row under that day), moves
+  focus to the field and scrolls it into view; it never re-renders the form
+  (typed values stay).
 
 The Atlas AI components (spec §6.28: `.ai-conv`, messages, `.steps-line`,
 `.record-chip`, `.evidence`, `.approval`, `.composer`, `.voice`) live in the

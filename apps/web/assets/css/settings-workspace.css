@@ -100,15 +100,17 @@
 
 /* Opening hours editor */
 .settings-hours .atlas-table { table-layout: fixed; min-width: 600px; }
-.settings-hours__day { width: 88px; }
-.settings-hours__check { width: 52px; }
+.settings-hours__day { width: 100px; }
+.settings-hours__check { width: 64px; }
 .settings-hours .atlas-table td { padding-left: var(--s-2); padding-right: var(--s-2); }
 .settings-hours .atlas-input { width: 100%; min-width: 0; padding-left: var(--s-2); padding-right: var(--s-1); }
 /* The table is narrow; typing and arrow keys set the time, so the picker icon
    makes room for 12-hour values such as "05:00 PM". */
 .settings-hours .atlas-input::-webkit-calendar-picker-indicator { display: none; }
 .settings-hours th[scope="row"] { font: 500 14px/20px var(--font-sans); white-space: nowrap; }
-.settings-hours thead th { white-space: normal; }
+.settings-hours thead th { white-space: normal; overflow-wrap: normal; }
+/* A day's problem sits in a row directly under that day. */
+.settings-hours .atlas-table .settings-hours__problem > td { height: auto; padding-top: var(--s-2); padding-bottom: var(--s-2); white-space: normal; }
 .settings-grid > .atlas-field { align-content: start; }
 
 /* Team access */
@@ -170,6 +172,9 @@
   .settings-hours .atlas-table th[scope="row"], .settings-hours .atlas-table td { display: flex; flex-direction: column; gap: 4px; height: auto; padding: 0; border: 0; background: transparent; }
   .settings-hours .atlas-table th[scope="row"] { position: static; grid-column: 1 / -1; }
   .settings-hours td::before { content: attr(data-label); font: var(--type-caption); color: var(--text-2); }
+  .settings-hours .settings-hours__problem { padding-top: 0; border-top: 0; }
+  .settings-hours .atlas-table .settings-hours__problem > td { grid-column: 1 / -1; }
+  .settings-hours .settings-hours__problem > td::before { display: none; }
   .settings-hours td[data-label="Open"], .settings-hours td[data-label="Next day"] { flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: var(--s-2); }
   .settings-hours td[data-label="Open"], .settings-hours td[data-label="Next day"] { grid-column: 1 / -1; }
 }

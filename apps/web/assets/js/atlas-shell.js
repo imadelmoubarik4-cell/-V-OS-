@@ -1083,6 +1083,21 @@
     return toastRegion;
   }
 
+  // A toast never covers a sticky action bar (Save and next, a bulk bar):
+  // the region rises above the highest one in view, else keeps its place.
+  function placeToastRegion(host) {
+    host.style.bottom = '';
+    const height = window.innerHeight || document.documentElement.clientHeight;
+    const tops = [...document.querySelectorAll('[data-atlas-sticky-actions], .atlas-bulkbar--sticky')]
+      .map((bar) => bar.getBoundingClientRect())
+      .filter((box) => box.width > 0 && box.height > 0 && box.bottom > 0 && box.top < height)
+      .map((box) => box.top);
+    if (!tops.length) return;
+    const needed = height - Math.min(...tops) + 12;
+    const base = parseFloat(getComputedStyle(host).bottom) || 0;
+    if (needed > base) host.style.bottom = `${Math.round(needed)}px`;
+  }
+
   function showToast(message, options = {}) {
     const host = toastHost();
     const text = String(message || '').trim();
@@ -1105,6 +1120,7 @@
       button.textContent = String(action.label);
       node.appendChild(button);
     }
+    placeToastRegion(host);
     host.appendChild(node);
 
     const duration = Number(options.duration) > 0 ? Number(options.duration) : (action ? 8000 : 4000);
