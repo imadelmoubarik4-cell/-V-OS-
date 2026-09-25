@@ -640,6 +640,7 @@ textarea.atlas-input,
     padding-right: var(--s-6);
   }
 }
+@media (pointer: coarse) { .atlas-tabs > :is(a, button, [role="tab"]) { height: var(--touch); } }
 
 /* ==========================================================================
    6.12 Chips — .atlas-chip
