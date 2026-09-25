@@ -10,7 +10,7 @@ const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependenc
 
 async function openSettings(options = {}) {
   const backend = settingsBackend(options);
-  const app = await launchAtlas({ ...options, fixtures: { functions: { ...emptyFunctions(), 'atlas-settings': backend.handler, ...(options.functions || {}) } } });
+  const app = await launchAtlas({ ...options, fixtures: { ...(options.profiles ? { profiles: options.profiles } : {}), functions: { ...emptyFunctions(), 'atlas-settings': backend.handler, ...(options.functions || {}) } } });
   await openView(app.page, 'settings');
   await app.page.waitForSelector('.settings-layout [data-settings-content]');
   return { ...app, backend };
@@ -324,6 +324,8 @@ test('a failed server subscribe leaves the device unsubscribed and says so', { s
 test('a server without a push key reports "Not set up" and offers no switch', { skip }, async () => {
   const { page, close } = await openNotifications((entry) => (entry.action === 'configuration' ? { public_key: null, delivery_enabled: false, enabled: false } : {}));
   try {
+    // The device status is checked asynchronously ("Not checked yet" first).
+    await page.waitForFunction(() => !/Not checked yet/.test(document.querySelector('.settings-device-notifications')?.textContent || ''));
     assert.match(await page.textContent('.settings-device-notifications'), /Not set up/);
     assert.equal(await page.$('[data-settings-push-enable]'), null);
   } finally { await close(); }
@@ -342,30 +344,75 @@ test('blocked permission is reported as blocked, not as off', { skip }, async ()
 
 const PROVIDERS = [
   { provider_key: 'instagram', label: 'Instagram', auth_kind: 'oauth2', connection_state: 'ready', configured: true, can_connect: true, can_save_api_key: false, can_test: false, can_disconnect: false },
-  { provider_key: 'tiktok', label: 'TikTok', auth_kind: 'oauth2', connection_state: 'not_configured', configured: false, can_connect: false, can_test: false, can_disconnect: false, available_message: 'Not available yet — requires a TikTok for Developers client key and its client secret.', owner_requirements_summary: 'A TikTok developer app with Content Posting API access.' }
+  { provider_key: 'tiktok', label: 'TikTok', auth_kind: 'oauth2', connection_state: 'not_configured', configured: false, can_connect: false, can_test: false, can_disconnect: false, available_message: 'Not set up yet.', enables: 'Shows your TikTok account in Atlas.', missing_requirements: ['the integration encryption key', 'a TikTok for Developers client key'] }
 ];
+// What atlas-integrations adds for an administrator only (S91): secret names,
+// never values.
+const ADMIN_SETUP = { tiktok: { summary: 'TikTok for Developers app with Login Kit, approved app review, registered redirect URI.', requirements: [{ name: 'ATLAS_INTEGRATION_KEK_V1', label: 'the integration encryption key' }, { name: 'ATLAS_TIKTOK_CLIENT_KEY', label: 'a TikTok for Developers client key' }] } };
 
-function integrationsBackend(start) {
+const MANAGER = { id: '7d3c1f10-0000-4000-8000-000000000004', email: 'mgr@example.test', display_name: 'Þórdís Ævarsdóttir', role: 'manager', active: true };
+
+function integrationsBackend(start, { role = 'admin' } = {}) {
   const calls = [];
   const handler = (entry) => {
     calls.push(entry);
-    if (entry.action === 'status') return { providers: PROVIDERS, policy: {}, staff: { role: entry.user?.role } };
+    if (entry.action === 'status') {
+      const admin = role === 'admin';
+      return { providers: PROVIDERS.map((provider) => ({ ...provider, setup_details: admin ? ADMIN_SETUP[provider.provider_key] ?? null : null })), policy: {}, staff: { role } };
+    }
     if (entry.action === 'start') return start(entry);
     return { __status: 409, body: { error: 'raw server text', error_code: 'not_configured' } };
   };
   return { handler, calls };
 }
 
-test('integrations that cannot connect say so and list what they need', { skip }, async () => {
+test('integrations that cannot connect say "Not set up yet" and what they enable; setup details are for administrators', { skip }, async () => {
   const integrations = integrationsBackend(() => ({}));
-  const { page, close } = await openSettings({ functions: { 'atlas-integrations': integrations.handler } });
+  const { page, close } = await openSettings({ user: USERS.admin, functions: { 'atlas-integrations': integrations.handler } });
   try {
     await section(page, 'integrations');
     await page.waitForSelector('[data-provider-card="tiktok"]');
     const card = await page.textContent('[data-provider-card="tiktok"]');
-    assert.match(card, /Not available yet/);
-    assert.match(card, /TikTok for Developers client key/);
+    assert.match(card, /Not set up yet/);
+    assert.match(card, /Shows your TikTok account in Atlas\./);
+    assert.doesNotMatch(card, /Not available yet — requires/);
+    // The technical list is behind a closed "Setup details" disclosure.
+    const details = page.locator('[data-provider-card="tiktok"] [data-provider-setup]');
+    assert.equal(await details.count(), 1);
+    assert.equal(await details.evaluate((node) => node.open), false, 'closed until the administrator opens it');
+    assert.equal(await page.textContent('[data-provider-card="tiktok"] [data-provider-setup] summary'), 'Setup details');
+    await page.click('[data-provider-card="tiktok"] [data-provider-setup] summary');
+    const setup = await details.textContent();
+    assert.match(setup, /ATLAS_TIKTOK_CLIENT_KEY/);
+    assert.match(setup, /Their values are never shown here/);
     assert.equal(await page.$$eval('[data-provider-card="tiktok"] button', (nodes) => nodes.length), 0, 'no Connect button without a real flow');
+  } finally { await close(); }
+});
+
+test('a manager sees owner copy only: no setup details and no secret names', { skip }, async () => {
+  const integrations = integrationsBackend(() => ({}), { role: 'manager' });
+  const { page, close } = await openSettings({ user: MANAGER, profiles: [USERS.admin, USERS.bartender, MANAGER], functions: { 'atlas-integrations': integrations.handler } });
+  try {
+    await section(page, 'integrations');
+    await page.waitForSelector('[data-provider-card="tiktok"]');
+    const card = await page.textContent('[data-provider-card="tiktok"]');
+    assert.match(card, /Not set up yet/);
+    assert.match(card, /Shows your TikTok account in Atlas\./);
+    assert.equal(await page.locator('[data-provider-setup]').count(), 0);
+    assert.doesNotMatch(await page.textContent('#settings-view, .settings-layout'), /ATLAS_|encryption key|function secret|requires/);
+  } finally { await close(); }
+});
+
+test('when the integrations service itself is missing the page says "Not set up yet" in owner words', { skip }, async () => {
+  const missing = () => ({ __status: 503, body: { error: 'Integrations are not set up yet.', error_code: 'not_configured' } });
+  const { page, close } = await openSettings({ functions: { 'atlas-integrations': missing } });
+  try {
+    await section(page, 'integrations');
+    await page.waitForSelector('.settings-layout .atlas-empty');
+    const text = await page.textContent('.settings-layout [data-settings-content]');
+    assert.match(text, /Not set up yet/);
+    assert.match(text, /An administrator can set them up\./);
+    assert.doesNotMatch(text, /Not available yet|connection service|server|ATLAS_/);
   } finally { await close(); }
 });
 
@@ -414,7 +461,7 @@ test('a refused Connect explains the error code on the card', { skip }, async ()
     await page.click('[data-provider-card="instagram"] [data-integration-action="start"]');
     await page.waitForSelector('[data-provider-card="instagram"] .settings-form-feedback.is-error');
     const text = await page.textContent('[data-provider-card="instagram"]');
-    assert.match(text, /isn’t set up on the server/);
+    assert.match(text, /Instagram isn’t set up yet\. An administrator can set it up\./);
     assert.doesNotMatch(text, /raw server text/);
   } finally { await close(); }
 });

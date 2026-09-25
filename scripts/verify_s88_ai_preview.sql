@@ -47,7 +47,8 @@ select 'every ai_* table has RLS and no anon/authenticated/public privilege',
     and not has_table_privilege('authenticated', c.oid, 'select,insert,update,delete,truncate,references,trigger')
     and has_table_privilege('service_role', c.oid, 'select,insert,update,delete'))
   -- 8 S88 tables + ai_voice_sessions and ai_rate_events (20260926106000_s88_ai_hardening.sql)
-  and count(*) = 10,
+  -- + ai_voice_session_events (20260930092000_s91_voice_lease_and_takeover.sql)
+  and count(*) = 11,
   string_agg(c.relname, ',' order by c.relname)
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'atlas_private' and c.relkind = 'r' and c.relname like 'ai\_%';

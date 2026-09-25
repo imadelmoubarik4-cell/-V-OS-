@@ -25,8 +25,8 @@
        legacy layer and no inline style block. -->
   <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260929-s90f">
   <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260929-s90u">
-  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20260930-s90g">
-  <link rel="stylesheet" href="assets/css/recipes.css?v=20260929-s90u">
+  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20260926-s91a">
+  <link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">
   <link rel="stylesheet" href="assets/css/operations.css?v=20260930-s90g">
   <link rel="stylesheet" href="assets/css/home.css?v=20260929-s90u">
   <link rel="stylesheet" href="assets/css/shifts-workspace.css">
@@ -194,7 +194,7 @@
 <script src="assets/js/rehearsal-boundary.js"></script>
 <script src="assets/js/atlas-stock-truth.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>
-<script src="assets/js/atlas-api.js?v=20260929-s90u"></script>
+<script src="assets/js/atlas-api.js?v=20260926-s91a"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -270,6 +270,28 @@
 
   const cfg = window.VABAR_CONFIG || {};
   let sb = null;
+
+  // Every workspace talks to Supabase (Edge Functions, PostgREST) through
+  // fetch, some directly. A 401 from the project, whichever module saw it,
+  // starts the same check: renew this device's session, or return to sign-in
+  // (see 'atlas:auth-required' below). Auth endpoints themselves are left out.
+  (function watchSupabaseAuth() {
+    const base = String(cfg.SUPABASE_URL || '').replace(/\/+$/, '');
+    if (!base || typeof window.fetch !== 'function' || window.fetch.atlasAuthWatch) return;
+    const original = window.fetch.bind(window);
+    const watched = async (input, init) => {
+      const response = await original(input, init);
+      try {
+        const url = typeof input === 'string' ? input : (input?.url || String(input));
+        if (response.status === 401 && url.startsWith(base) && !url.startsWith(`${base}/auth/`)) {
+          window.dispatchEvent(new CustomEvent('atlas:auth-required', { detail: { status: 401 } }));
+        }
+      } catch (_) { /* never break the request */ }
+      return response;
+    };
+    watched.atlasAuthWatch = true;
+    window.fetch = watched;
+  })();
   let supabaseReady = null;
 
   async function initializeSupabase() {
@@ -302,6 +324,15 @@
 
       sb = client;
       window.atlasSupabase = client;
+      // Supabase ends the session itself when a refresh is refused (the
+      // session was revoked or expired). Never stay half signed in.
+      client.auth.onAuthStateChange((event) => {
+        if (event !== 'SIGNED_OUT' || !currentUser || signingOut) return;
+        let deliberate = false;
+        try { deliberate = Date.now() - Number(localStorage.getItem(SIGNED_OUT_AT_KEY) || 0) < 15000; } catch (_) { /* storage unavailable */ }
+        if (deliberate) { signingOut = true; location.reload(); return; }
+        sessionEnded();
+      });
       clearBootError();
       return client;
     })();
@@ -416,8 +447,12 @@
   ['email', 'password'].forEach((id) => document.getElementById(id)?.addEventListener('input', () => {
     if (document.getElementById(`${id}-error`)?.hidden === false) showFieldError(id, '');
   }));
+  // Set when start-up could not finish (connection, or the staff profile could
+  // not be read for a kept session): the button then retries start-up.
+  let bootRetry = false;
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (bootRetry) { location.reload(); return; }
     showLoginError('');
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -452,27 +487,121 @@
   });
 
   // Sign out (account menu, More sheet). Used by assets/js/atlas-chrome.js.
+  // Always this device only: supabase-js defaults to scope 'global', which
+  // revokes every session of the account and signs out the person's other
+  // phones and computers too.
+  // If Auth cannot be reached, supabase-js keeps the stored session; this
+  // device must still end up signed out (a shared bar tablet), so the stored
+  // session is removed here.
+  let signingOut = false;
+  const SIGNED_OUT_AT_KEY = 'atlas:signed-out-at';
   async function signOut() {
+    signingOut = true;
+    // Other tabs of this browser receive SIGNED_OUT too; this tells them it
+    // was on purpose (no "session ended" notice there).
+    try { localStorage.setItem(SIGNED_OUT_AT_KEY, String(Date.now())); } catch (_) { /* storage unavailable */ }
     try {
       window.AtlasPalette?.clearRecent?.();
       const client = await initializeSupabase();
-      await client.auth.signOut();
+      const result = await client.auth.signOut({ scope: 'local' }).catch((error) => ({ error }));
+      if (result?.error) forgetStoredSession(client);
+    } catch (_) {
+      forgetStoredSession(sb);
     } finally {
       location.reload();
     }
   }
+  function forgetStoredSession(client) {
+    const key = client?.auth?.storageKey || (cfg.SUPABASE_URL ? `sb-${new URL(cfg.SUPABASE_URL).hostname.split('.')[0]}-auth-token` : null);
+    try { if (key) localStorage.removeItem(key); } catch (_) { /* storage unavailable */ }
+  }
   window.atlasSignOut = signOut;
 
-  // AtlasApi (atlas-api.js) reports an expired session once per burst; offer
-  // sign-in instead of leaving a page of failed requests.
-  let authPromptShown = false;
+  // One consistent state when the session is over: this device's session is
+  // cleared (never the person's other devices) and Atlas returns to the
+  // sign-in screen with a clear message, keeping the page address so signing
+  // in again reopens it with every module loaded fresh. No page is left
+  // showing old data, spinning, or signed in while its requests fail.
+  const SESSION_ENDED_KEY = 'atlas:session-ended';
+  const SESSION_ENDED_AT_KEY = 'atlas:session-ended-at';
+  const RENEW_COOLDOWN_MS = 60000;
+  let sessionEnding = false;
+  async function sessionEnded() {
+    if (sessionEnding) return;
+    sessionEnding = true;
+    // Never reload in a loop: a second automatic sign-out within a minute
+    // (the first one could not clear the session) stays on this page.
+    let recent = false;
+    try {
+      recent = Date.now() - Number(sessionStorage.getItem(SESSION_ENDED_AT_KEY) || 0) < RENEW_COOLDOWN_MS;
+      sessionStorage.setItem(SESSION_ENDED_AT_KEY, String(Date.now()));
+      sessionStorage.setItem(SESSION_ENDED_KEY, '1');
+    } catch (_) { /* storage unavailable */ }
+    if (recent) {
+      forgetStoredSession(sb);
+      window.AtlasShell?.toast?.('Your session ended. Reload Atlas and sign in again.', { tone: 'warning', duration: 15000 });
+      return;
+    }
+    await signOut();
+  }
+
+  // Sign-in could not be checked (Auth busy or unreachable): the session is
+  // kept and the person is told once a minute, nothing is signed out.
+  let authNoticeAt = 0;
+  function authUnavailableNotice() {
+    if (Date.now() - authNoticeAt < RENEW_COOLDOWN_MS) return;
+    authNoticeAt = Date.now();
+    window.AtlasShell?.toast?.('Atlas can’t check your sign-in right now. You’re still signed in; try again in a moment.', { tone: 'warning' });
+  }
+  // A refresh error is final only when Auth says the session is gone.
+  function sessionIsGone(error) {
+    if (!error) return false;
+    if (error.name === 'AuthSessionMissingError') return true;
+    const status = Number(error.status || 0);
+    return status === 400 || status === 401 || status === 403;
+  }
+
+  // A 401 from any module first renews this device's session (an access token
+  // can simply have expired). At most one renewal per minute: a 401 that
+  // persists after a fresh renewal is the endpoint's problem, not the
+  // session's, and must never loop or sign anyone out.
+  let authCheck = null;
+  let lastRenewedAt = 0;
   window.addEventListener('atlas:auth-required', () => {
-    if (authPromptShown || !currentUser) return;
-    authPromptShown = true;
-    window.AtlasShell?.toast?.('Your session has ended. Sign in again to keep working.', {
-      action: { label: 'Sign in', onClick: () => signOut() }
-    });
-    setTimeout(() => { authPromptShown = false; }, 30000);
+    if (authCheck || sessionEnding || signingOut || !currentUser) return;
+    if (Date.now() - lastRenewedAt < RENEW_COOLDOWN_MS) return;
+    authCheck = (async () => {
+      let result = null;
+      try {
+        const client = await initializeSupabase();
+        // A token that is not about to expire is checked first: if Auth still
+        // accepts the session, the 401 is the endpoint's problem and nothing
+        // is renewed (fewer renewals, so no renewal rate limit either).
+        const current = (await client.auth.getSession()).data?.session;
+        const expiresInMs = current?.expires_at ? current.expires_at * 1000 - Date.now() : 0;
+        if (current && expiresInMs > 60000) {
+          const check = await client.auth.getUser().catch((error) => ({ error }));
+          if (!check?.error && check?.data?.user) { lastRenewedAt = Date.now(); return; }
+          const status = Number(check?.error?.status || 0);
+          if (!(status === 400 || status === 401 || status === 403 || check?.error?.name === 'AuthSessionMissingError')) {
+            lastRenewedAt = Date.now();
+            authUnavailableNotice();
+            return;
+          }
+        }
+        result = await client.auth.refreshSession();
+      } catch (error) {
+        result = { error };
+      }
+      if (!result?.error && result?.data?.session) {
+        lastRenewedAt = Date.now();
+        window.dispatchEvent(new CustomEvent('atlas:auth-renewed'));
+        return;
+      }
+      if (sessionIsGone(result?.error)) { await sessionEnded(); return; }
+      lastRenewedAt = Date.now();
+      authUnavailableNotice();
+    })().finally(() => { authCheck = null; });
   });
 
   const INACTIVE_PROFILE_MESSAGE = 'This account is not an active VÁ staff profile. Ask an administrator to review access.';
@@ -484,13 +613,22 @@
       .maybeSingle();
 
     const allowedRoles = new Set(['admin', 'manager', 'bartender', 'viewer']);
-    if (error || !data?.active || !allowedRoles.has(data.role)) {
-      await sb.auth.signOut().catch(() => null);
-      // A read error is a connection problem; a missing, inactive or unknown
-      // profile is an access problem the person can act on (sign in with
-      // another account or ask an administrator).
-      const problem = new Error(error ? 'The staff profile could not be read.' : INACTIVE_PROFILE_MESSAGE);
-      problem.code = error ? 'profile_unavailable' : 'inactive_profile';
+    if (error) {
+      // A read error is a connection problem, not an access decision: keep
+      // the session (on this and every other device) and let the person retry.
+      const problem = new Error('The staff profile could not be read.');
+      problem.code = 'profile_unavailable';
+      throw problem;
+    }
+    if (!data?.active || !allowedRoles.has(data.role)) {
+      // A missing, inactive or unknown-role profile is an access problem the
+      // person can act on. Clear this device's session only.
+      signingOut = true;
+      await sb.auth.signOut({ scope: 'local' }).catch(() => null);
+      signingOut = false;
+      currentUser = null;
+      const problem = new Error(INACTIVE_PROFILE_MESSAGE);
+      problem.code = 'inactive_profile';
       throw problem;
     }
     currentProfile = data;
@@ -500,6 +638,7 @@
 
   async function onSignedIn(session) {
     currentUser = session.user;
+    try { sessionStorage.removeItem(SESSION_ENDED_KEY); sessionStorage.removeItem(SESSION_ENDED_AT_KEY); } catch (_) { /* storage unavailable */ }
     const profile = await loadActiveProfile(session);
     // S87 identity rule: the profile display name (AtlasIdentity, atlas-api.js),
     // otherwise "Team member". An email address is never shown or turned into
@@ -582,6 +721,13 @@
         // No session: the sign-in form is what this visitor sees (logo intro).
         document.documentElement.dataset.atlasSignin = 'shown';
         window.AtlasSignInIntro?.start();
+        let ended = false;
+        try { ended = sessionStorage.getItem(SESSION_ENDED_KEY) === '1'; sessionStorage.removeItem(SESSION_ENDED_KEY); } catch (_) { /* storage unavailable */ }
+        if (ended) {
+          // A notice, not a form error: the fields stay valid.
+          loginError.textContent = 'Your session ended. Sign in again to continue where you were.';
+          loginError.hidden = false;
+        }
       }
     } catch (error) {
       loginBtn.disabled = false;
@@ -598,6 +744,7 @@
         ['email', 'password'].forEach((id) => document.getElementById(id)?.setAttribute('aria-invalid', 'false'));
         return;
       }
+      bootRetry = true;
       loginBtn.textContent = 'Retry connection';
       showBootError(error.message);
     }
@@ -886,7 +1033,7 @@
 </script>
 <script src="assets/js/atlas-calculations.js?v=20260929-s90p"></script>
 <script src="assets/js/modal.js?v=20260929-s90f"></script>
-<script src="assets/js/recipes.js?v=20260930-s90g"></script>
+<script src="assets/js/recipes.js?v=20260926-s91a"></script>
 <script src="assets/js/operations.js?v=20260930-s90g"></script>
 <script src="assets/js/atlas-capture.js?v=20260929-s90u"></script>
 <script src="assets/js/atlas-inventory.js?v=20260930-s90g"></script>
@@ -901,8 +1048,8 @@
 <script src="assets/js/atlas-search.js?v=20260929-s90u"></script>
 <script src="assets/js/atlas-chrome.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-palette.js?v=20260929-s90u"></script>
-<script src="assets/js/atlas-ai-voice.js?v=20260929-s90f"></script>
-<script src="assets/js/atlas-ai.js?v=20260930-s90g"></script>
+<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>
+<script src="assets/js/atlas-ai.js?v=20260926-s91b"></script>
 <script src="assets/js/atlas-signin-intro.js?v=20260924-brand1"></script>
 </body>
 </html>

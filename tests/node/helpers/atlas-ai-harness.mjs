@@ -48,6 +48,7 @@ export function createFakeDb({ users = USERS } = {}) {
       upload_bytes_per_day: 262144000, upload_files_per_day: 100,
     },
     voiceSessions: new Map(),
+    voiceEvents: [],
     rateEvents: [],
     conversations: new Map(),
     messages: [],
@@ -79,7 +80,8 @@ export function createFakeDb({ users = USERS } = {}) {
     return { ...rest, status: row.status === 'proposed' && Date.parse(row.expires_at) <= Date.now() ? 'expired' : row.status };
   };
 
-  // Mirrors the S88 hardening SQL (20260926106000_s88_ai_hardening.sql).
+  // Mirrors the S88 hardening SQL (20260926106000_s88_ai_hardening.sql) and
+  // the S91 voice lease and takeover (20260930092000).
   const turnsUsed = (userId) => [...db.runs.values()].filter((run) => run.user_id === userId && !['voice_tool', 'background'].includes(run.channel)).length;
   const rateTake = (userId, bucket, limit) => {
     const now = Date.now();
@@ -98,8 +100,10 @@ export function createFakeDb({ users = USERS } = {}) {
     voice_session_id: row.id, conversation_id: row.conversation_id, run_id: row.run_id, provider_session_id: row.provider_session_id,
     started_at: new Date(row.started_at).toISOString(), lease_expires_at: new Date(row.lease_expires_at).toISOString(),
     hard_expires_at: new Date(row.hard_expires_at).toISOString(), ended_at: row.ended_at ? new Date(row.ended_at).toISOString() : null,
-    end_reason: row.end_reason, live: liveVoice(row), tool_calls: row.tool_calls, appended_turns: row.appended_turns,
+    end_reason: row.end_reason, replaced: row.end_reason === 'replaced', live: liveVoice(row), tool_calls: row.tool_calls,
+    appended_turns: row.appended_turns, heartbeats: row.heartbeats ?? 0, lease_seconds: row.lease_seconds ?? 120,
   });
+  const renew = (row) => { row.lease_expires_at = Math.max(row.lease_expires_at, Math.min(row.hard_expires_at, Date.now() + (row.lease_seconds ?? 120) * 1000)); };
 
   const rpcs = {
     atlas_ai_rate_check: ({ p_actor_id, p_actor_role }) => {
@@ -222,22 +226,39 @@ export function createFakeDb({ users = USERS } = {}) {
       db.runs.set(run.id, run);
       return { run_id: run.id, status: 'running' };
     },
-    atlas_ai_voice_session_start: ({ p_actor_id, p_actor_role, p_conversation_id, p_models, p_mints_per_minute }) => {
+    // Mirrors 20260930092000_s91_voice_lease_and_takeover.sql: a short
+    // renewable lease and a same-user takeover that is rolled back when a
+    // quota refuses the new session.
+    atlas_ai_voice_session_start: ({ p_actor_id, p_actor_role, p_conversation_id, p_models, p_mints_per_minute, p_takeover = false, p_lease_seconds = 600 }) => {
       requireActor(p_actor_id, p_actor_role);
       if (p_conversation_id) owned(p_conversation_id, p_actor_id);
       if (!db.settings.enabled) fail('55000', 'not_configured: Atlas AI is disabled');
       if (!rateTake(p_actor_id, 'voice_mint', p_mints_per_minute ?? 6)) fail('53400', 'rate_limited: too many voice sessions started this minute');
       if (turnsUsed(p_actor_id) >= db.settings.daily_turn_limit_per_user) fail('53400', 'rate_limited: daily Atlas AI limit reached');
+      const now = Date.now();
+      const replaced = p_takeover === true
+        ? [...db.voiceSessions.values()].filter((row) => row.user_id === p_actor_id && liveVoice(row))
+        : [];
+      const saved = replaced.map((row) => ({ row, ended_at: row.ended_at, end_reason: row.end_reason }));
+      for (const row of replaced) Object.assign(row, { ended_at: Math.max(row.started_at, now), end_reason: 'replaced' });
       const usage = voiceUsage(p_actor_id);
-      if (usage.sessions_used >= db.settings.voice_sessions_per_day) fail('53400', 'voice_quota_exceeded: daily_sessions');
-      if (usage.live_sessions >= db.settings.max_concurrent_voice_sessions) fail('53400', 'voice_quota_exceeded: concurrent');
-      if (usage.minutes_used_estimate >= db.settings.voice_minutes_per_day) fail('53400', 'voice_quota_exceeded: daily_minutes');
+      const refuse = usage.sessions_used >= db.settings.voice_sessions_per_day ? 'daily_sessions'
+        : usage.live_sessions >= db.settings.max_concurrent_voice_sessions ? 'concurrent'
+          : usage.minutes_used_estimate >= db.settings.voice_minutes_per_day ? 'daily_minutes' : null;
+      if (refuse) {
+        for (const entry of saved) Object.assign(entry.row, { ended_at: entry.ended_at, end_reason: entry.end_reason });
+        fail('53400', `voice_quota_exceeded: ${refuse}`);
+      }
       const run = { id: uuid(), user_id: p_actor_id, role: p_actor_role, conversation_id: p_conversation_id, channel: 'voice', models: p_models, status: 'running' };
       db.runs.set(run.id, run);
-      const now = Date.now();
-      const row = { id: uuid(), user_id: p_actor_id, conversation_id: p_conversation_id, run_id: run.id, provider_session_id: null, started_at: now, lease_expires_at: now + 600000, hard_expires_at: now + 3600000, ended_at: null, end_reason: null, tool_calls: 0, appended_turns: 0 };
+      const lease = Math.min(600, Math.max(30, Number(p_lease_seconds) || 600));
+      const row = { id: uuid(), user_id: p_actor_id, conversation_id: p_conversation_id, run_id: run.id, provider_session_id: null, started_at: now, lease_seconds: lease, lease_expires_at: now + lease * 1000, hard_expires_at: now + 3600000, ended_at: null, end_reason: null, replaced_by: null, tool_calls: 0, appended_turns: 0, heartbeats: 0 };
       db.voiceSessions.set(row.id, row);
-      return voiceJson(row);
+      for (const old of replaced) {
+        old.replaced_by = row.id;
+        db.voiceEvents.push({ voice_session_id: old.id, user_id: p_actor_id, actor_role: p_actor_role, event: 'replaced', replaced_by: row.id });
+      }
+      return { ...voiceJson(row), replaced_sessions: replaced.length };
     },
     atlas_ai_voice_session_touch: ({ p_voice_session_id, p_actor_id, p_actor_role, p_event, p_provider_session_id }) => {
       requireActor(p_actor_id, p_actor_role);
@@ -247,21 +268,30 @@ export function createFakeDb({ users = USERS } = {}) {
       if (!row) fail('55000', 'voice_session_inactive: unknown voice session');
       const live = liveVoice(row);
       const end = row.ended_at ?? Math.min(row.lease_expires_at, row.hard_expires_at);
+      if (!['activate', 'heartbeat', 'tool', 'append', 'end', 'mint_failed'].includes(p_event)) fail('22023', 'invalid_arguments: event');
       if (p_event === 'end' || p_event === 'mint_failed') {
         if (!row.ended_at) Object.assign(row, { ended_at: Math.max(row.started_at, Math.min(Date.now(), row.lease_expires_at, row.hard_expires_at)), end_reason: p_event === 'mint_failed' ? 'mint_failed' : 'client_end' });
         return voiceJson(row);
       }
+      if (row.end_reason === 'replaced' && (p_event !== 'append' || Date.now() > row.ended_at + 300000)) fail('55000', 'voice_session_replaced: live voice moved to another device');
       if (p_event === 'append') {
         if (!live && Date.now() > end + 300000) fail('55000', 'voice_session_inactive: the voice session has ended');
         if (!rateTake(p_actor_id, 'voice_append', 30)) fail('53400', 'rate_limited: too many voice transcript updates this minute');
         row.appended_turns += 1;
+        if (live) renew(row);
         return voiceJson(row);
       }
       if (!live) fail('55000', 'voice_session_inactive: the voice session has ended');
       if (p_event === 'tool') {
         if (!rateTake(p_actor_id, 'voice_tool', 30)) fail('53400', 'rate_limited: too many voice tool calls this minute');
         row.tool_calls += 1;
-        row.lease_expires_at = Math.min(row.hard_expires_at, Date.now() + 600000);
+        renew(row);
+      } else if (p_event === 'heartbeat') {
+        if (row.last_heartbeat_at && Date.now() - row.last_heartbeat_at < 15000) fail('53400', 'rate_limited: too many voice heartbeats');
+        row.heartbeats = (row.heartbeats ?? 0) + 1;
+        row.last_heartbeat_at = Date.now();
+        row.lease_seconds = Math.min(row.lease_seconds ?? 600, 120);
+        row.lease_expires_at = Math.min(row.hard_expires_at, Date.now() + row.lease_seconds * 1000);
       } else if (p_event === 'activate') {
         row.provider_session_id = row.provider_session_id ?? p_provider_session_id ?? null;
       }

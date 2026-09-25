@@ -107,7 +107,9 @@ test('Recipes on a phone: compact tiles without photos, full-screen detail with 
     assert.equal(columns, 1);
     assert.equal(await page.$('#recipes-view .recipe-tile__placeholder, #recipes-view .recipe-tile--plain .recipe-tile__media'), null);
     const tallest = await page.$$eval('#recipes-view .recipe-tile', (nodes) => Math.max(...nodes.map((node) => node.getBoundingClientRect().height)));
-    assert.ok(tallest <= 80, `a tile without a photo is compact (${tallest} px)`);
+    // S91a: the category row is shown on phones again (name, category, reason).
+    assert.ok(tallest <= 88, `a tile without a photo is compact (${tallest} px)`);
+    assert.equal(await page.$$eval('#recipes-view .recipe-tile[data-recipe-id] .recipe-tile__category', (nodes) => nodes.every((node) => node.getBoundingClientRect().width > 0)), true, 'the category shows under the name');
     assert.ok(await noHorizontalScroll(page));
     const small = await page.$$eval('#recipes-view .atlas-segmented button, #recipes-view .recipe-tile', (nodes) => nodes.filter((node) => node.getBoundingClientRect().height < 44 && node.offsetParent).length);
     assert.equal(small, 0, 'touch targets are at least 44 px');

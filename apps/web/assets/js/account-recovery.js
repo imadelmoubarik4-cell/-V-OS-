@@ -97,11 +97,13 @@
       const { error } = await client.auth.updateUser({ password });
       if (error) throw error;
       complete.reset(); complete.hidden = true; recoverySession = false;
-      const { error: signOutError } = await client.auth.signOut();
+      // Deliberately every device: after a password reset, sessions opened
+      // with the old password (possibly by someone else) must end too.
+      const { error: signOutError } = await client.auth.signOut({ scope: 'global' });
       setTitle('Password updated');
       status.textContent = signOutError
         ? 'Your password is updated. Sign out before using another account on this device.'
-        : 'Your password is updated. You can sign in with it now.';
+        : 'Your password is updated and you are signed out on every device. Sign in with the new password.';
     } catch (_) { status.textContent = "The password couldn't be updated. Check the requirements, or request a new link."; }
     finally { busy(complete, false); }
   });

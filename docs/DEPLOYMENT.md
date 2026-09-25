@@ -39,9 +39,28 @@ Apply each file explicitly, in the order given by the release's rollout plan:
 
 After step 4, re-run the smoke test for adding and editing an item.
 
-`scripts/rollout_s87_s90.sh` runs this order: `check` (read-only), `migrations` (batch A, 29 files), `functions`, then `revokes` only with `WEB_DEPLOYED_AND_SMOKE_TESTED=yes`. It needs `SUPABASE_DB_URL` and, for functions, `SUPABASE_ACCESS_TOKEN`. Each file is applied and recorded in the ledger in one transaction, matched by name, and a re-run skips what is already applied.
+`scripts/rollout_s87_s90.sh` runs this order: `check` (read-only), `migrations` (batch A, 31 files), `functions`, then `revokes` only with `WEB_DEPLOYED_AND_SMOKE_TESTED=yes`. It needs `SUPABASE_DB_URL` and, for functions, `SUPABASE_ACCESS_TOKEN`. Each file is applied and recorded in the ledger in one transaction, matched by name, and a re-run skips what is already applied.
 
 If the Supabase GitHub integration is set to deploy migrations to production when `main` changes, turn that off before merging this release. Otherwise the merge would apply every file in filename order: the revokes would run before the web deploy, and `20260924170000` would be replayed (production recorded it as `20260924150124`).
+
+## S91: live voice lease and device handoff
+
+`20260930092000_s91_voice_lease_and_takeover.sql` is the last file of batch A. Apply it, then deploy
+`atlas-ai`, then the web app (`atlas-ai.js` / `atlas-ai-voice.js` `?v=20260926-s91b`), close together:
+the new web app sends `heartbeat: true` on `voice-session`, gets a 2-minute idle lease and renews it
+with `voice-heartbeat` every 45 seconds. Without that flag (the currently deployed atlas-ai, or a tab
+still running an older web app) the lease stays 10 minutes as before, so an open older tab is not cut
+off. The migration keeps the old `atlas_ai_voice_session_start` parameters first with the same
+defaults, so the currently deployed `atlas-ai` keeps working until it is redeployed. The web app's
+`atlas-ai-voice.js` changed again in S91c (the heartbeat flag and saving a replaced device's last
+lines): its `index.html` key must move to `?v=20260926-s91c`.
+`scripts/verify_s91_voice_preview.sql` (run by `verify_s90_workflow_integrity_previews.sh`) proves the
+lease, the heartbeat, the same-user takeover and that quotas still count.
+
+The same `atlas-ai` deploy carries the photo-count fix ("Count these bottles") and the recognition
+tool change (`_shared/ai-tools`, `_shared/recognition`); deploy `atlas-inventory-recognition` too, as it
+shares the recognition modules. `atlas-integrations` carries the owner-facing "Not set up yet" copy and
+the admin-only setup details; the web app's `settings-workspace.js` (`?v=20260926-s91b`) shows them.
 
 ## S90g: item-master publication behind a private definer
 

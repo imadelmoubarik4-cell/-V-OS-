@@ -102,6 +102,19 @@
     return { id: message.sender_id || null, name, role: member?.role || message.sender_role || '', current: Boolean(member) };
   }
 
+  // "Own" is the signed-in profile's id against the message's sender_id (the
+  // staff record the service returns, else the shell profile); never an email.
+  // Without a known viewer id the service's is_own flag is used.
+  function viewerId() {
+    return state.staff?.id || window.AtlasShell?.profile?.()?.id || null;
+  }
+
+  function isOwn(message) {
+    if (!message || message.message_type === 'system') return false;
+    const me = viewerId();
+    return me ? Boolean(message.sender_id) && message.sender_id === me : message.is_own === true;
+  }
+
   function avatarTint(key) {
     const text = String(key || 'atlas');
     let hash = 0;
@@ -251,7 +264,7 @@
   // Fixed copy only (AtlasApi, atlas-api.js): server text is never shown,
   // whatever its length or wording.
   const API_MESSAGES = {
-    auth: 'Your session has ended. Sign in again to keep reading.',
+    auth: 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.',
     forbidden: 'Your role can’t do that in Messages.',
     not_found: 'That conversation or message isn’t available any more.',
     conflict: 'This changed while you were writing. Refresh and try again.',
@@ -455,7 +468,7 @@
   }
 
   function readStatusMarkup(message) {
-    if (!message.is_own || message.message_type !== 'user') return '';
+    if (!isOwn(message) || message.message_type !== 'user') return '';
     const readers = Array.isArray(message.read_by) ? message.read_by : [];
     const count = Number(message.read_by_count || readers.length || 0);
     if (!count) return '<span class="msg-item__read">Sent</span>';
@@ -466,8 +479,9 @@
   function messageMarkup(message, previous) {
     const time = message.created_at;
     const stamp = `<time class="msg-item__time" datetime="${escapeHtml(isoOf(time))}">${escapeHtml(formatStamp(time))}${message.edited_at ? ' · edited' : ''}</time>`;
+    const own = isOwn(message);
     if (message.deleted) {
-      return `<article class="msg-item is-deleted" data-team-message="${escapeHtml(message.id)}">
+      return `<article class="msg-item is-deleted${own ? ' is-own' : ''}" data-team-message="${escapeHtml(message.id)}">
         <span class="msg-item__gutter"></span>
         <div class="msg-item__body"><p class="msg-item__text">Message deleted</p>${stamp}</div>
       </article>`;
@@ -484,10 +498,15 @@
       message.can_delete ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-delete="${escapeHtml(message.id)}">Delete</button>` : ''
     ].join('');
     const readStatus = readStatusMarkup(message);
-    return `<article class="msg-item${grouped ? ' is-grouped' : ''}${system ? ' is-system' : ''}${message.is_own ? ' is-own' : ''}" data-team-message="${escapeHtml(message.id)}">
-      <span class="msg-item__gutter">${grouped ? '' : system ? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">${icon('sparkles')}</span>` : avatarMarkup(identity)}</span>
+    // Own messages sit on the right without an avatar; the header keeps the
+    // time and says "You" to assistive tech only.
+    const header = own
+      ? `<header class="msg-item__meta"><strong class="msg-item__name sr-only">You</strong>${stamp}</header>`
+      : `<header class="msg-item__meta"><strong class="msg-item__name">${escapeHtml(identity.name)}</strong><span class="msg-item__role">${escapeHtml(roleText)}</span>${stamp}</header>`;
+    return `<article class="msg-item${grouped ? ' is-grouped' : ''}${system ? ' is-system' : ''}${own ? ' is-own' : ''}" data-team-message="${escapeHtml(message.id)}">
+      <span class="msg-item__gutter">${grouped || own ? '' : system ? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">${icon('sparkles')}</span>` : avatarMarkup(identity)}</span>
       <div class="msg-item__body">
-        ${grouped ? '' : `<header class="msg-item__meta"><strong class="msg-item__name">${escapeHtml(identity.name)}</strong><span class="msg-item__role">${escapeHtml(roleText)}</span>${stamp}</header>`}
+        ${grouped ? '' : header}
         <p class="msg-item__text">${formatBody(message.body)}</p>
         ${linkMarkup(message.link)}
         ${readStatus ? `<footer class="msg-item__foot">${readStatus}</footer>` : ''}
@@ -529,7 +548,7 @@
         previous = null;
       }
       const created = new Date(message.created_at).getTime();
-      if (!dividerShown && lastRead !== undefined && !message.is_own && (lastReadAt === null || created > lastReadAt)) {
+      if (!dividerShown && lastRead !== undefined && !isOwn(message) && (lastReadAt === null || created > lastReadAt)) {
         parts.push('<div class="msg-divider msg-divider--new" role="separator"><span>New</span></div>');
         dividerShown = true;
         previous = null;
@@ -581,7 +600,7 @@
       hideJump();
       scrollToBottom();
     } else {
-      const added = messages().filter((message) => !previousIds.has(message.id) && !message.is_own).length;
+      const added = messages().filter((message) => !previousIds.has(message.id) && !isOwn(message)).length;
       if (added) showJump(added);
     }
   }

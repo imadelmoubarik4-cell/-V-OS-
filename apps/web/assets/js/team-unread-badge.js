@@ -130,7 +130,9 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) return { total: 0, conversations: [] };
+        // Not allowed or sign-in not confirmed: keep the last known count
+        // rather than showing a false 0.
+        if (response.status === 401 || response.status === 403) throw new Error(`Unread count unavailable (${response.status}).`);
         throw new Error(`Unread count unavailable (${response.status}).`);
       }
       // The same lightweight snapshot carries the active staff count that
@@ -197,14 +199,21 @@
   function subscribeToAuth() {
     const client = window.atlasSupabase;
     if (!client?.auth?.onAuthStateChange || state.authSubscription) return false;
-    const subscription = client.auth.onAuthStateChange((_event, session) => {
+    let userId = null;
+    const subscription = client.auth.onAuthStateChange((event, session) => {
       if (!session) {
+        userId = null;
         setUnread(0, []);
         stopPolling();
         return;
       }
       startPolling();
-      window.setTimeout(() => refreshUnread(), 0);
+      // Fetch on sign-in or a different person only. A token renewal
+      // (TOKEN_REFRESHED) must not trigger a fetch: a 401 that renews the
+      // token would otherwise fetch, 401 and renew again in a loop.
+      const changed = session.user?.id !== userId;
+      userId = session.user?.id || null;
+      if (changed || event === 'SIGNED_IN') window.setTimeout(() => refreshUnread(), 0);
     });
     state.authSubscription = subscription?.data?.subscription || subscription?.subscription || null;
     return true;

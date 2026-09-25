@@ -191,7 +191,7 @@
 
   function errorText(error) {
     if (!error) return '';
-    if (error.status === 401) return 'Your session has ended. Sign in again, then try again.';
+    if (error.status === 401) return 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.';
     if (error.status === 403) return 'Reports are for managers. Ask an administrator for access.';
     if (error.status === 404) return 'Reports aren\'t switched on for this venue yet.';
     if (error.name === 'AbortError') return 'The connection timed out. Nothing was changed. Try again.';

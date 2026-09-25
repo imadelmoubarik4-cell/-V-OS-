@@ -83,7 +83,7 @@ test('AtlasIdentity and AtlasApi: fixed copy by status and code, never server te
     ]);
     for (const failure of result.failures) assert.doesNotMatch(failure.message, /column|relation|does not exist|atlas_private/);
     assert.equal(result.unconfigured, 'not_configured');
-    assert.deepEqual(result.expired, ['auth', 'Your session has ended. Sign in again, then try again.']);
+    assert.deepEqual(result.expired, ['auth', 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.']);
     assert.equal(result.authEvent, true, 'a 401 asks the shell to offer sign-in');
     assert.deepEqual(result.labels, ['Team member', 'Team member', 'Ada Lovelace']);
     assert.deepEqual(result.kinds, ['auth', 'forbidden', 'not_found', 'conflict', 'too_large', 'rate_limited', 'invalid', 'unavailable', 'failed']);

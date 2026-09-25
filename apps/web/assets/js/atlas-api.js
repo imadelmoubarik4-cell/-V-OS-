@@ -20,7 +20,7 @@
   'use strict';
 
   const MESSAGES = Object.freeze({
-    auth: 'Your session has ended. Sign in again, then try again.',
+    auth: 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.',
     forbidden: 'Your Atlas role can’t do this. Ask a manager if you need access.',
     not_found: 'That isn’t available any more. Refresh and try again.',
     conflict: 'This changed while you were working. Refresh and try again.',

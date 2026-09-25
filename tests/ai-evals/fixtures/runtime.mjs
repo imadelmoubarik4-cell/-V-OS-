@@ -18,8 +18,8 @@ export const RUNTIME_ENV = Object.freeze({
   OPENAI_API_KEY: 'sk-test-openai-key-never-returned-000000',
 });
 
-export function createWorldRuntime({ sdk, z, modelProvider, hours = false, env = {}, now = () => NOW, gateway: gatewayImpl = gateway } = {}) {
-  const world = createWorld({ hours });
+export function createWorldRuntime({ sdk, z, modelProvider, hours = false, visionEnabled = true, env = {}, now = () => NOW, gateway: gatewayImpl = gateway } = {}) {
+  const world = createWorld({ hours, visionEnabled });
   const fake = createFakeDb({ users: ACTORS });
   const mergedEnv = { ...RUNTIME_ENV, ...env };
   const handle = createAtlasAiHandler({

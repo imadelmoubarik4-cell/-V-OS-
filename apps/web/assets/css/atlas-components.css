@@ -115,6 +115,9 @@
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--page-gutter)), transparent);
     mask-image: linear-gradient(to right, #000 calc(100% - var(--page-gutter)), transparent);
   }
+  /* A mask clips every descendant, fixed-position popovers included: while a
+     menu opened from the toolbar is showing, drop the fade. */
+  .atlas-toolbar:has([aria-expanded="true"]) { -webkit-mask-image: none; mask-image: none; }
   .atlas-toolbar__end { display: none; }
   /* The toolbar scrolls sideways on phones; the search keeps a usable width
      instead of shrinking to its icon. */

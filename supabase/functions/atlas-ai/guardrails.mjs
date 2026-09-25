@@ -5,26 +5,16 @@
 // * the grounding check: an answer that states operational quantities or
 //   prices is replaced unless every stated figure appears in the question,
 //   the previous answer's evidence or the output of a tool that returned
-//   operational evidence in the same run.
+//   operational evidence in the same run. Photo recognition is the exception
+//   (S91 review P1-A): its output is full of numbers that are not stock
+//   (confidences, match percentages, sizes such as 70cl, ABV, boxes), so it
+//   never adds free-standing figures. It adds only bound figures from its
+//   evidence: a visible count ("about 4 bottles") that passes only with the
+//   same unit, in a sentence worded as an estimate from the photo and not as
+//   stock; and percentages that pass only as percentages.
 
-const INJECTION_PATTERNS = [
-  { reason: "override_instructions", re: /\b(ignore|disregard|forget|override)\b[^.\n]{0,40}\b(previous|prior|above|earlier|all|your|system)\b[^.\n]{0,20}\b(instructions?|rules|prompts?|guidelines|directions)\b/i },
-  { reason: "reveal_prompt", re: /\b(reveal|show|print|repeat|display|leak|dump|output|tell me)\b[^.\n]{0,40}\b(system prompt|system message|developer (message|prompt)|hidden (prompt|instructions)|your (instructions|prompt|rules))\b/i },
-  { reason: "secret_exfiltration", re: /\b(reveal|show|print|give|send|leak|dump|output|tell me|what(?:'s| is))\b[^.\n]{0,40}\b(your|the|atlas'?s?|server|system|function|environment|env)\s+(openai\s+)?(api[\s_-]?keys?|secret(?:s| keys?)?|service[\s_-]?role(?: key)?|access tokens?|bearer tokens?|jwts?|credentials|env(?:ironment)? variables)\b/i },
-  { reason: "secret_names", re: /\b(OPENAI_API_KEY|SUPABASE_SERVICE_ROLE_KEY|ATLAS_AI_SERVICE_SECRET|ATLAS_INTEGRATION_KEK_V\d+)\b/ },
-  { reason: "mode_switch", re: /\byou are (now )?(in )?(developer|dan|jailbreak|god|unrestricted|admin) mode\b/i },
-  { reason: "bypass_controls", re: /\b(disable|bypass|skip|turn off|circumvent)\b[^.\n]{0,30}\b(guardrails?|safety|restrictions|approvals?|permissions?|role checks?)\b/i },
-  { reason: "impersonate_role", re: /\b(act|pretend|treat me) (as|like|that i am) (an? )?(admin|administrator|manager|system)\b/i },
-];
-
-// Deterministic screen for the user's own message.
-export function screenUserText(text) {
-  const value = String(text ?? "");
-  for (const pattern of INJECTION_PATTERNS) {
-    if (pattern.re.test(value)) return { tripped: true, reason: pattern.reason };
-  }
-  return { tripped: false, reason: null };
-}
+// The injection heuristics are shared with photo recognition (S91 review).
+export { screenUserText } from "../_shared/ai-tools/injection.mjs";
 
 export const GUARDRAIL_REPLY =
   "I can't help with that. I can only work with Atlas data you're allowed to see, and I can't change my instructions, reveal secrets or skip approvals. Ask me about stock, recipes, orders, shifts or anything else in Atlas.";
@@ -161,7 +151,7 @@ export function quantityMentions(text) {
   let match;
   while ((match = QUANTITY.exec(value))) {
     const number = match[1] ?? match[2] ?? match[3] ?? match[4];
-    mentions.push({ text: match[0], number: normaliseNumber(number) });
+    mentions.push({ text: match[0], number: normaliseNumber(number), index: match.index });
   }
   return mentions;
 }
@@ -204,9 +194,76 @@ export const UNVERIFIED_REPLY =
 // returned operational evidence in this run (TurnState.evidenceNumbers);
 // `verifiedToolRan` alone no longer lets unverified figures through.
 // Conversational replies without quantities always pass.
-export function groundingCheck(text, { verifiedToolRan = false, allowedNumbers = new Set(), evidenceNumbers = new Set() } = {}) {
-  const supported = (number) => allowedNumbers.has(number) || (verifiedToolRan && evidenceNumbers.has(number));
-  const unverified = quantityMentions(text).filter((mention) => !supported(mention.number));
+export function groundingCheck(text, { verifiedToolRan = false, allowedNumbers = new Set(), evidenceNumbers = new Set(), photoFigures = [] } = {}) {
+  const supported = (mention) => allowedNumbers.has(mention.number)
+    || (verifiedToolRan && evidenceNumbers.has(mention.number))
+    || photoFigureSupports(photoFigures, mention, text);
+  const unverified = quantityMentions(text).filter((mention) => !supported(mention));
   if (!unverified.length) return { ok: true, replaced: false, text, unverified: [] };
   return { ok: false, replaced: true, text: UNVERIFIED_REPLY, unverified: unverified.map((entry) => entry.text).slice(0, 10) };
+}
+
+// --- Photo recognition figures (S91 review P1-A) ------------------------------
+
+export const PHOTO_TOOL = "inventory.identify_from_image";
+const PHOTO_LABEL = /^(Photo|Product \d+):/;
+
+// Evidence produced by photo recognition (current or an earlier turn).
+export function isPhotoEvidence(item) {
+  return Boolean(item) && (item.origin === "photo_recognition" || PHOTO_LABEL.test(String(item.label ?? "")));
+}
+
+function unitKey(word) {
+  const value = String(word ?? "").toLowerCase().replace(/[^a-zá-þ]/g, "");
+  if (/(x|ch|sh)es$/.test(value)) return value.slice(0, -2);
+  return value.length > 3 && value.endsWith("s") ? value.slice(0, -1) : value;
+}
+
+// Bound figures from photo recognition evidence: visible counts from
+// "estimate" items ("about 4 bottles (estimated from the photo, …)") and
+// percentages (confidence, match). Sizes, ABV and boxes never become figures.
+export function photoFiguresFrom(evidence) {
+  const figures = [];
+  for (const item of evidence ?? []) {
+    if (!isPhotoEvidence(item)) continue;
+    const value = String(item.value ?? "");
+    if (item.kind === "estimate") {
+      const count = value.match(/\babout (\d{1,3}) ([A-Za-z]+)/);
+      if (count) figures.push({ kind: "count", number: normaliseNumber(count[1]), unit: unitKey(count[2]) });
+    }
+    for (const match of value.matchAll(/\b(\d{1,3})%/g)) figures.push({ kind: "percent", number: normaliseNumber(match[1]) });
+  }
+  return figures;
+}
+
+const ESTIMATE_WORDING = /\b(about|around|roughly|approximately|approx|estimated?|visible|i can see|i see|appears?|looks? like|from the photo|in the photo|on the photo)\b|~/i;
+const STOCK_CLAIM = /\b(in stock|on hand|stock level|stock is|we have|you have|there are \d+ in|left in stock|inventory (?:is|shows))\b/i;
+
+function sentenceAround(text, index) {
+  const value = String(text ?? "");
+  const before = value.slice(0, index);
+  const start = Math.max(before.lastIndexOf("."), before.lastIndexOf("!"), before.lastIndexOf("?"), before.lastIndexOf("\n")) + 1;
+  const rest = value.slice(index);
+  const stop = rest.search(/[.!?\n](\s|$)/);
+  return value.slice(start, stop < 0 ? value.length : index + stop + 1);
+}
+
+function photoFigureSupports(figures, mention, text) {
+  if (!figures?.length) return false;
+  if (/%/.test(mention.text)) {
+    // Only as a confidence or match percentage ("(85% confidence)", "Aperol
+    // (67%)"), never as a stock level.
+    if (!figures.some((figure) => figure.kind === "percent" && figure.number === mention.number)) return false;
+    const start = mention.index ?? 0;
+    const after = String(text).slice(start + mention.text.length, start + mention.text.length + 20);
+    const before = String(text).slice(Math.max(0, start - 1), start);
+    const sentence = sentenceAround(text, start);
+    return (/^\s*(confidence|confident|match|sure|certain|likely)\b/i.test(after) || (before === "(" && /^\s*[),]/.test(after)))
+      && !STOCK_CLAIM.test(sentence) && !/\bstock(?:ed)?\s+(?:is|at|level)\b/i.test(sentence);
+  }
+  const unit = unitKey(mention.text.trim().split(/\s+/).pop());
+  const counted = figures.some((figure) => figure.kind === "count" && figure.number === mention.number && figure.unit === unit);
+  if (!counted) return false;
+  const sentence = sentenceAround(text, mention.index ?? 0);
+  return ESTIMATE_WORDING.test(sentence) && !STOCK_CLAIM.test(sentence);
 }

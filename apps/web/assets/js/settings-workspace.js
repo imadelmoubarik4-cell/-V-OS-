@@ -64,7 +64,7 @@
     { key: 'audio_retention', type: 'select', label: 'Voice recordings', choices: [['delete_after_transcription', 'Delete after they are written down'], ['keep_with_media', 'Keep with photos and files']] }
   ];
   const INTEGRATION_STATES = {
-    not_configured: ['neutral', 'Not available yet'],
+    not_configured: ['neutral', 'Not set up yet'],
     ready: ['neutral', 'Not connected'],
     verifying: ['warning', 'Checking'],
     connected: ['positive', 'Connected'],
@@ -733,7 +733,7 @@
       case 'provider_check_failed': return `${name} didn’t accept the connection. Reconnect, or check the account on ${name}.`;
       case 'provider_refresh_failed': return `${name} didn’t renew access. Reconnect to continue.`;
       case 'credential_unreadable': return `Atlas can’t read the saved ${name} connection any more. Disconnect, then connect again.`;
-      case 'not_configured': return 'Not available yet — this connection isn’t set up on the server.';
+      case 'not_configured': return `${name === 'The provider' ? 'This connection' : name} isn’t set up yet. An administrator can set it up.`;
       case 'not_connected': return `${name} isn’t connected.`;
       case 'forbidden': return 'Only managers and administrators can change integrations.';
       case 'denied': return `You cancelled on ${name}. Nothing was connected.`;
@@ -808,7 +808,8 @@
     if (provider.connected_by_label && provider.connected_at) facts.push(`Connected by ${provider.connected_by_label} · ${formatDateTime(provider.connected_at)}`);
     if (provider.last_verified_at) facts.push(`Last checked ${formatDateTime(provider.last_verified_at)}`);
     const status = {
-      not_configured: '',
+      // Owner copy only: what connecting would enable (S91).
+      not_configured: provider.enables || '',
       ready: provider.auth_kind === 'api_key' ? 'Add the API key to connect.' : 'Ready to connect.',
       verifying: 'Atlas is checking the connection.',
       verification_failed: `The last check failed. Test again, or reconnect.`,
@@ -825,8 +826,12 @@
         ${field('API key', `<input class="atlas-input" type="password" name="api_key" autocomplete="off" spellcheck="false" minlength="8" maxlength="256" required${busy ? ' disabled' : ''}>`, { help: 'Saved encrypted on the server and never shown again.' })}
         <button type="submit" class="atlas-btn atlas-btn--secondary atlas-btn--sm${busy === 'save-api-key' ? ' is-loading' : ''}"${busy ? ' disabled' : ''}>Save key</button>
       </form>` : '';
-    const needs = provider.connection_state === 'not_configured'
-      ? `<details class="settings-needs"><summary>What it needs</summary><p>${escapeHtml(provider.available_message || 'Not available yet.')}</p>${provider.owner_requirements_summary ? `<p>${escapeHtml(provider.owner_requirements_summary)}</p>` : ''}<p>An administrator sets this up with whoever runs the Atlas server.</p></details>`
+    // The technical setup list is for administrators only (function secret
+    // names, never values); everyone else sees "Not set up yet" and what it
+    // enables (S91).
+    const setup = provider.setup_details;
+    const needs = provider.connection_state === 'not_configured' && isAdmin() && setup
+      ? `<details class="settings-needs" data-provider-setup><summary>Setup details</summary>${setup.summary ? `<p>${escapeHtml(setup.summary)}</p>` : ''}${Array.isArray(setup.requirements) && setup.requirements.length ? `<ul>${setup.requirements.map((entry) => `<li><code>${escapeHtml(entry.name)}</code> ${escapeHtml(entry.label)}</li>`).join('')}</ul>` : ''}<p>These are set as function secrets on the Atlas server. Their values are never shown here.</p></details>`
       : '';
     const linked = state.focusProvider === key;
     return `<li class="settings-provider${linked ? ' is-linked-target' : ''}" data-provider-card="${escapeHtml(key)}"${linked ? ' aria-current="true"' : ''}>
@@ -853,7 +858,7 @@
     if (integrations.status === 'idle' || integrations.status === 'loading') body = `<div aria-busy="true">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(4)}<span class="sr-only">Loading integrations</span></div>`;
     else if (integrations.status === 'error') {
       body = integrations.error?.code === 'not_configured'
-        ? `<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon">${icon('plug')}</div><h3>Not available yet</h3><p>Integrations need the connection service on the Atlas server. An administrator sets it up.</p></div>`
+        ? `<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon">${icon('plug')}</div><h3>Not set up yet</h3><p>Integrations connect Atlas to your Google, Meta, TikTok and Tripadvisor accounts. An administrator can set them up.</p></div>`
         : `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Integrations couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(integrations.error?.status === 403 ? 'Only managers and administrators can see integrations.' : 'Nothing was changed. Try again.')}</p></div>${integrations.error?.status === 403 ? '' : '<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-integrations-retry>Try again</button></div>'}</div>`;
     } else if (!integrations.providers.length) body = '<p class="settings-muted">No integrations are available.</p>';
     else body = `<ul class="settings-providers">${integrations.providers.map(providerMarkup).join('')}</ul>`;
@@ -977,7 +982,7 @@
     let content;
     if (state.status === 'idle' || (state.status === 'loading' && !state.workspace)) content = `<div aria-busy="true">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(5)}<span class="sr-only">Loading settings</span></div>`;
     else if (state.status === 'error' && !state.workspace) {
-      content = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Settings couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(state.error?.status === 403 ? 'Your profile can’t open Settings. Ask an administrator.' : 'Nothing was changed. Check the connection and try again.')}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-refresh>Try again</button></div></div>`;
+      content = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Settings couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(state.error?.status === 403 ? 'Your profile can’t open Settings. Ask an administrator.' : state.error?.status === 401 ? 'Atlas couldn’t confirm your sign-in for this. Nothing has changed. Try again in a moment.' : 'Nothing was changed. Check the connection and try again.')}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-refresh>Try again</button></div></div>`;
     } else content = sectionMarkup(current || defaultSection());
     const listOnly = showNav && phone() && !current;
     const drafts = captureDrafts(element);

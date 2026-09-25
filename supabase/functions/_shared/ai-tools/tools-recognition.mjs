@@ -15,7 +15,7 @@
 
 import { S } from "./schema.mjs";
 import { buildProposal } from "./actions.mjs";
-import { fact, interpretation, missing, ok, record, source, ToolError } from "./result.mjs";
+import { estimate, fact, interpretation, missing, ok, record, source, ToolError } from "./result.mjs";
 import { isManagerActor, newId, text } from "./helpers.mjs";
 import { ServiceError } from "./services.mjs";
 import { identify, resolveName } from "../recognition/pipeline.mjs";
@@ -23,6 +23,7 @@ import { ITEM_CLASSES, PACKAGING_TYPES, RecognitionError } from "../recognition/
 import { localCandidates } from "../recognition/retrieve.mjs";
 import { percent } from "../recognition/bands.mjs";
 import { normalizeCode } from "../product-identity.mjs";
+import { safeLabelText } from "./injection.mjs";
 
 const ALL = ["admin", "manager", "bartender", "viewer"];
 const OPERATIONAL = ["admin", "manager", "bartender"];
@@ -81,16 +82,71 @@ export function candidateSummary(entry) {
 // ---------------------------------------------------------------------------
 // inventory.identify_from_image
 // ---------------------------------------------------------------------------
+
+// Plain answer when the photo cannot be read at all: what is off and how to
+// count or identify instead (owner copy, no settings or key names).
+function unreadableSummary(reason, counting) {
+  if (reason === "not_configured" || reason === "disabled") {
+    return counting
+      ? "Photo counting isn't switched on yet, so Atlas can't count from this photo. Count in Inventory › Counts, or tell me the quantities (for example \"six Aperol, two Campari\") and I'll prepare a count for you to approve. Nothing was changed."
+      : "Photo recognition isn't switched on yet, so Atlas can't read this photo. Scan the barcode or search Inventory instead. Nothing was changed.";
+  }
+  return counting
+    ? "Atlas can't read this photo (use a JPEG, PNG or WebP photo), so nothing was counted. Count in Inventory › Counts, or tell me the quantities and I'll prepare a count for you to approve. Nothing was changed."
+    : "Atlas can't read this photo (use a JPEG, PNG or WebP photo), so nothing was identified. Scan the barcode or search Inventory instead. Nothing was changed.";
+}
+
+function unreadableReason(configuredByKey, limits) {
+  return !configuredByKey ? "not_configured" : !limits?.vision_enabled ? "disabled" : "unsupported_image";
+}
+
+// What the label says, as a short name ("Monin Lavender Syrup"). Label text
+// is read from an image anyone could write on: every word passes the
+// injection screen first (S91 review P2-C), and the whole name again.
+function readName(read) {
+  const words = [];
+  for (const field of [read?.brand, read?.product_name, read?.variant]) {
+    const value = safeLabelText(typeof field?.value === "string" ? field.value : "") ?? "";
+    if (value && field.confidence >= 50 && !words.some((word) => word.toLowerCase().includes(value.toLowerCase()))) words.push(value);
+  }
+  return safeLabelText(words.join(" "), 120) ?? "";
+}
+
+// The size as printed ("70cl"), screened, or null.
+function readSize(read) {
+  const size = read?.unit_size;
+  if (!size) return null;
+  return safeLabelText(size.text ?? (size.quantity && size.unit ? `${size.quantity} ${size.unit}` : ""), 20);
+}
+
+const PACKAGE_WORDS = {
+  bottle: ["bottle", "bottles"], can: ["can", "cans"], case: ["case", "cases"], keg: ["keg", "kegs"], box: ["box", "boxes"],
+  bag: ["bag", "bags"], carton: ["carton", "cartons"], jar: ["jar", "jars"], pack: ["pack", "packs"],
+};
+
+function unitWord(read, count) {
+  const words = PACKAGE_WORDS[read?.packaging_type?.value] ?? ["unit", "units"];
+  return count === 1 ? words[0] : words[1];
+}
+
+// Units of the product visible in the photo (S91), or null when unknown.
+function visibleUnits(read) {
+  const units = read?.visible_units;
+  return units && Number.isInteger(units.value) && units.value > 0 && units.confidence > 0 ? units : null;
+}
+
 function readingText(read) {
   const parts = [];
   const add = (label, field) => {
-    if (field?.value) parts.push(`${label} ${field.value} (${field.confidence}%)`);
+    const value = safeLabelText(field?.value);
+    if (value) parts.push(`${label} ${value} (${field.confidence}%)`);
   };
   add("brand", read.brand);
   add("product", read.product_name);
   add("variant", read.variant);
   if (read.unit_size?.quantity || read.unit_size?.text) {
-    parts.push(`size ${read.unit_size.text ?? `${read.unit_size.quantity} ${read.unit_size.unit}`} (${read.unit_size.confidence}%${read.unit_size.inferred ? ", guessed from shape" : ""})`);
+    const size = readSize(read);
+    if (size) parts.push(`size ${size} (${read.unit_size.confidence}%${read.unit_size.inferred ? ", guessed from shape" : ""})`);
   }
   add("package", read.packaging_type);
   return parts.join(", ");
@@ -102,7 +158,7 @@ const identifyFromImage = {
   roles: ALL,
   specialist: "inventory",
   progress: "Reading the photo",
-  description: "Identify inventory items in a photo the user attached (media_id): reads the label, then matches it to Atlas inventory with a band (high = exact barcode or code, still needs the user's confirmation; medium = likely options with evidence; low = no confident match), field-by-field confidence and evidence. Present medium and low results as options, never as fact. It never counts, links, creates or changes anything. Mode 'receiving' (managers) compares against a purchase order.",
+  description: "Identify inventory items in a photo the user attached (media_id from the attachments listed in <atlas_context>): reads the label, then matches it to Atlas inventory with a band (high = exact barcode or code, still needs the user's confirmation; medium = likely options with evidence; low = no confident match, 'not in Atlas'), field-by-field confidence and evidence. Present medium and low results as options, never as fact. Mode 'count' (e.g. 'Count these bottles') also estimates how many units of each product are visible, with a confidence: an estimate from the photo that a person confirms (offer a stock count draft via inventory.prepare_count, or Inventory › Counts); it never changes stock. It never links, creates or changes anything. Mode 'receiving' (managers) compares against a purchase order.",
   parameters: S.object({
     media_id: S.uuid("Id of the photo attachment"),
     mode: S.enum(["identify", "count", "receiving"], "Why the photo was taken"),
@@ -159,21 +215,31 @@ const identifyFromImage = {
     } catch (error) {
       if (error instanceof RecognitionError && error.code === "invalid_request") {
         // No readable image and no barcode: nothing to identify.
+        const reason = unreadableReason(services.visionConfigured(), limits);
         return ok({
-          summary: "Atlas cannot read this photo right now, so nothing was identified. Scan the barcode or search inventory instead.",
-          data: { vision: { configured, reason: !services.visionConfigured() ? "not_configured" : !limits?.vision_enabled ? "disabled" : "unsupported_image" }, detections: [], stock_changed: false },
-          evidence: [missing("Photo recognition", !services.visionConfigured() ? "not configured" : !limits?.vision_enabled ? "switched off in Atlas AI settings" : "this image type cannot be read")],
-          records: [],
+          summary: unreadableSummary(reason, args.mode === "count"),
+          data: {
+            vision: { configured, reason }, detections: [], stock_changed: false,
+            ...(args.mode === "count" ? { next_steps: [{ kind: "open", label: "Count in Inventory", route: "#inventory/counts" }] } : {}),
+          },
+          evidence: [missing("Photo recognition", reason === "not_configured" ? "not switched on yet" : reason === "disabled" ? "switched off in Atlas AI settings" : "this image type cannot be read")],
+          records: args.mode === "count" ? [record("stock_count", "", "Stock counts")] : [],
         });
       }
       throw error;
     }
+    const counting = args.mode === "count";
     const detections = response.detections.map((detection) => ({
       detection_id: detection.detection_id,
       detection_index: detection.detection_index,
       band: detection.band,
       preselected_item_id: detection.preselected_item_id,
       in_atlas: detection.in_atlas,
+      read_name: readName(detection.read) || null,
+      size: readSize(detection.read),
+      visible_units: visibleUnits(detection.read)
+        ? { value: detection.read.visible_units.value, confidence: detection.read.visible_units.confidence, unit: unitWord(detection.read, detection.read.visible_units.value), estimate: true }
+        : null,
       field_confidence: detection.field_confidence,
       candidates: detection.candidates.slice(0, 3).map((candidate) => ({
         item_id: candidate.item_id, name: candidate.item?.name ?? null, unit: candidate.item?.unit ?? null,
@@ -199,17 +265,67 @@ const identifyFromImage = {
         evidence.push(interpretation(`${label}: possible match`, candidate.explanation, source("inventory_item", candidate.item_id, candidate.item?.name)));
         records.push(record("inventory_item", candidate.item_id, candidate.item?.name ?? "Item"));
       }
+      // S91: a count read from the photo is an estimate for a person to
+      // confirm (a stock count draft); it never changes stock.
+      const units = visibleUnits(detection.read);
+      if (counting && units) {
+        evidence.push(estimate(`${label}: visible in the photo`,
+          `about ${units.value} ${unitWord(detection.read, units.value)} (estimated from the photo, ${units.confidence}% confidence)`,
+          detection.band === "high" && top ? source("inventory_item", top.item_id, top.item.name) : null));
+      } else if (counting) {
+        evidence.push(missing(`${label}: visible count`, "could not be counted from the photo", null));
+      }
     }
+    const countText = (detection) => {
+      if (!counting) return "";
+      const units = visibleUnits(detection.read);
+      return units
+        ? `about ${units.value} ${unitWord(detection.read, units.value)} visible (estimated from the photo, ${units.confidence}% confidence)`
+        : "count not readable from the photo";
+    };
     const lines = response.detections.map((detection) => {
       const top = detection.candidates[0];
       const label = response.detections.length > 1 ? `${detection.detection_index + 1}) ` : "";
-      if (detection.band === "high") return `${label}${top.item.name} (${top.percent}%, matched by code; confirm before using it)`;
-      if (detection.band === "medium") return `${label}possibly ${detection.candidates.slice(0, 3).map((candidate) => `${candidate.item.name} ${candidate.percent}%`).join(" or ")} — ask which`;
-      return `${label}no confident Atlas inventory match found`;
+      const count = countText(detection);
+      const suffix = count ? `: ${count}` : "";
+      if (detection.band === "high") return `${label}${top.item.name} (${top.percent}%, matched by code; confirm before using it)${suffix}`;
+      if (detection.band === "medium") return `${label}possibly ${detection.candidates.slice(0, 3).map((candidate) => `${candidate.item.name} ${candidate.percent}%`).join(" or ")} — ask which${suffix}`;
+      const name = counting ? readName(detection.read) : "";
+      return name
+        ? `${label}${name}, not in Atlas (no confident Atlas inventory match found)${suffix}`
+        : `${label}no confident Atlas inventory match found${suffix}`;
     });
-    const summary = !response.vision.used && !response.detections.length
-      ? `Photo recognition is ${response.vision.reason === "disabled" ? "switched off" : "not available"}, so nothing was identified. Scan the barcode or search inventory instead.`
-      : `${response.detections.length} ${response.detections.length === 1 ? "product" : "products"} in the photo: ${lines.join("; ")}. Nothing was changed.`;
+    // Counts that could go into a stock count draft: only products that match
+    // an Atlas item (Medium matches are confirmed by the person first).
+    const countable = counting
+      ? response.detections.filter((detection) => detection.band !== "low" && detection.candidates[0] && visibleUnits(detection.read))
+      : [];
+    const nextSteps = [];
+    if (countable.length) {
+      nextSteps.push({
+        kind: "stock_count_draft",
+        label: "Add these counts to a stock count draft for approval",
+        tool: "inventory.prepare_count",
+        confirm_first: countable.filter((detection) => detection.band !== "high")
+          .map((detection) => detection.candidates.slice(0, 3).map((candidate) => candidate.item.name).join(" or ")),
+        entries: countable.map((detection) => ({
+          item_id: String(detection.candidates[0].item_id),
+          item_name: detection.candidates[0].item?.name ?? null,
+          quantity: detection.read.visible_units.value,
+          confirmed_match: detection.band === "high",
+        })),
+      });
+    }
+    if (counting) nextSteps.push({ kind: "open", label: "Count in Inventory", route: "#inventory/counts" });
+    const nextText = !counting ? ""
+      : countable.length
+        ? " Next step: I can add these counts to a stock count draft for you to check and approve (confirm which item each one is first), or you can count in Inventory › Counts."
+        : " Next step: count in Inventory › Counts, or tell me the quantities and I'll prepare a count for you to approve.";
+    const unreadable = !response.vision.used && !response.detections.length;
+    const summary = unreadable
+      ? unreadableSummary(["disabled", "not_configured"].includes(response.vision.reason) ? response.vision.reason : "unsupported_image", counting)
+      : `${response.detections.length} ${response.detections.length === 1 ? "product" : "products"} in the photo: ${lines.join("; ")}. Nothing was changed.${nextText}`;
+    if (counting) records.push(record("stock_count", "", "Stock counts"));
     return ok({
       summary,
       data: {
@@ -219,6 +335,10 @@ const identifyFromImage = {
         image_quality: response.image_quality,
         detections,
         rule: "High = exact barcode or code match (pre-selected, still needs confirmation). Medium = options with evidence; the user chooses. Low = no confident match.",
+        ...(counting ? {
+          count_rule: "Visible counts are estimates from the photo: a suggestion for a stock count draft that a person checks and approves. They never change stock.",
+          next_steps: nextSteps,
+        } : {}),
         stock_changed: false,
       },
       evidence: evidence.slice(0, 30),

@@ -21,10 +21,16 @@ const GOOGLE_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 
+// Requirements: `env` is the function secret an administrator sets (its NAME
+// is shown only in the admin-only setup details; values never leave the
+// server); `label` is plain language without secret names (S91).
 const INFRA_REQUIREMENTS = [
-  { env: "ATLAS_INTEGRATION_KEK_V1", label: "the integration encryption key function secret (ATLAS_INTEGRATION_KEK_V1)" },
-  { env: "ATLAS_INTEGRATIONS_APP_ORIGINS", label: "the allow-listed Atlas web origin (ATLAS_INTEGRATIONS_APP_ORIGINS)" },
+  { env: "ATLAS_INTEGRATION_KEK_V1", label: "the integration encryption key" },
+  { env: "ATLAS_INTEGRATIONS_APP_ORIGINS", label: "the Atlas web address" },
 ];
+
+// Owner-facing copy for a provider that is not set up (S91).
+export const NOT_SET_UP_MESSAGE = "Not set up yet.";
 
 function metaVersion(env) {
   const value = String(env("ATLAS_META_GRAPH_VERSION") ?? "").trim();
@@ -47,10 +53,11 @@ export const PROVIDERS = Object.freeze({
     clientIdParam: "client_id",
     extraAuthorizeParams: { access_type: "offline", prompt: "consent", include_granted_scopes: "true" },
     credentials: [
-      { env: "ATLAS_GOOGLE_OAUTH_CLIENT_ID", label: "a Google Cloud OAuth client ID (ATLAS_GOOGLE_OAUTH_CLIENT_ID)" },
-      { env: "ATLAS_GOOGLE_OAUTH_CLIENT_SECRET", label: "its client secret (ATLAS_GOOGLE_OAUTH_CLIENT_SECRET)" },
+      { env: "ATLAS_GOOGLE_OAUTH_CLIENT_ID", label: "a Google Cloud OAuth client ID" },
+      { env: "ATLAS_GOOGLE_OAUTH_CLIENT_SECRET", label: "its client secret" },
     ],
     extraRequirements: [],
+    enables: "Shows your Google reviews and business listing in Atlas.",
     owner_requirements_summary:
       "Google Cloud project, approved Business Profile API access, published OAuth consent screen (business.manage is a sensitive scope), OAuth web client.",
     verify: verifyGoogleBusinessProfile,
@@ -75,10 +82,11 @@ export const PROVIDERS = Object.freeze({
     clientIdParam: "client_id",
     extraAuthorizeParams: { access_type: "offline", prompt: "consent", include_granted_scopes: "true" },
     credentials: [
-      { env: "ATLAS_GOOGLE_OAUTH_CLIENT_ID", label: "a Google Cloud OAuth client ID (ATLAS_GOOGLE_OAUTH_CLIENT_ID)" },
-      { env: "ATLAS_GOOGLE_OAUTH_CLIENT_SECRET", label: "its client secret (ATLAS_GOOGLE_OAUTH_CLIENT_SECRET)" },
+      { env: "ATLAS_GOOGLE_OAUTH_CLIENT_ID", label: "a Google Cloud OAuth client ID" },
+      { env: "ATLAS_GOOGLE_OAUTH_CLIENT_SECRET", label: "its client secret" },
     ],
     extraRequirements: [],
+    enables: "Lets Atlas save and open files you choose in Google Drive.",
     owner_requirements_summary:
       "Google Cloud project with the Drive API enabled, OAuth consent screen, OAuth web client. drive.file only (files the owner picks).",
     verify: verifyGoogleDrive,
@@ -103,10 +111,11 @@ export const PROVIDERS = Object.freeze({
     clientIdParam: "client_id",
     extraAuthorizeParams: {},
     credentials: [
-      { env: "ATLAS_META_APP_ID", label: "a Meta app ID (ATLAS_META_APP_ID)" },
-      { env: "ATLAS_META_APP_SECRET", label: "its app secret (ATLAS_META_APP_SECRET)" },
+      { env: "ATLAS_META_APP_ID", label: "a Meta app ID" },
+      { env: "ATLAS_META_APP_SECRET", label: "its app secret" },
     ],
     extraRequirements: [],
+    enables: "Shows your Facebook Page and its activity in Atlas.",
     owner_requirements_summary:
       "Meta Business app with Facebook Login for Business, business verification, App Review for Page permissions, app in Live mode.",
     verify: verifyFacebookPages,
@@ -129,10 +138,11 @@ export const PROVIDERS = Object.freeze({
     clientIdParam: "client_id",
     extraAuthorizeParams: {},
     credentials: [
-      { env: "ATLAS_META_APP_ID", label: "a Meta app ID (ATLAS_META_APP_ID)" },
-      { env: "ATLAS_META_APP_SECRET", label: "its app secret (ATLAS_META_APP_SECRET)" },
+      { env: "ATLAS_META_APP_ID", label: "a Meta app ID" },
+      { env: "ATLAS_META_APP_SECRET", label: "its app secret" },
     ],
     extraRequirements: [],
+    enables: "Shows your Instagram business account in Atlas.",
     owner_requirements_summary:
       "Instagram professional account linked to the VÁ Facebook Page; same Meta app; App Review for Instagram permissions.",
     verify: verifyInstagramAccount,
@@ -157,10 +167,11 @@ export const PROVIDERS = Object.freeze({
     clientIdParam: "client_key",
     extraAuthorizeParams: {},
     credentials: [
-      { env: "ATLAS_TIKTOK_CLIENT_KEY", label: "a TikTok for Developers client key (ATLAS_TIKTOK_CLIENT_KEY)" },
-      { env: "ATLAS_TIKTOK_CLIENT_SECRET", label: "its client secret (ATLAS_TIKTOK_CLIENT_SECRET)" },
+      { env: "ATLAS_TIKTOK_CLIENT_KEY", label: "a TikTok for Developers client key" },
+      { env: "ATLAS_TIKTOK_CLIENT_SECRET", label: "its client secret" },
     ],
     extraRequirements: [],
+    enables: "Shows your TikTok account in Atlas.",
     owner_requirements_summary:
       "TikTok for Developers app with Login Kit, approved app review, registered redirect URI. Publishing needs Content Posting API audit.",
     verify: verifyTikTok,
@@ -190,10 +201,11 @@ export const PROVIDERS = Object.freeze({
     extraRequirements: [
       {
         env: "ATLAS_TRIPADVISOR_VERIFY_URL",
-        label: "a confirmed Tripadvisor Terra API location-details URL (ATLAS_TRIPADVISOR_VERIFY_URL, https://terra.tripadvisor.com/..., may contain {location_id})",
+        label: "a confirmed Tripadvisor Terra API location-details address (https://terra.tripadvisor.com/..., may contain {location_id})",
       },
-      { env: "ATLAS_TRIPADVISOR_LOCATION_ID", label: "the VÁ Tripadvisor location ID (ATLAS_TRIPADVISOR_LOCATION_ID)" },
+      { env: "ATLAS_TRIPADVISOR_LOCATION_ID", label: "the VÁ Tripadvisor location ID" },
     ],
+    enables: "Shows your Tripadvisor listing and rating in Atlas.",
     owner_requirements_summary:
       "Tripadvisor Terra API key (pay-as-you-go), the VÁ location ID and the confirmed location-details endpoint. Read-only.",
     verify: verifyTripadvisor,
@@ -214,34 +226,36 @@ function present(env, name) {
 }
 
 // Truthful configuration: which server-side prerequisites are missing.
+// `missing` is plain language (any manager may see it); `missing_setup` adds
+// the function secret NAMES for the admin-only setup details. No values.
 export function providerConfiguration(provider, env) {
-  const missing = [];
+  const missingSetup = [];
   for (const requirement of INFRA_REQUIREMENTS) {
-    if (!present(env, requirement.env)) missing.push(requirement.label);
+    if (!present(env, requirement.env)) missingSetup.push({ name: requirement.env, label: requirement.label });
   }
   for (const requirement of [...provider.credentials, ...provider.extraRequirements]) {
-    if (!present(env, requirement.env)) missing.push(requirement.label);
+    if (!present(env, requirement.env)) missingSetup.push({ name: requirement.env, label: requirement.label });
   }
   if (provider.key === "tripadvisor" && present(env, "ATLAS_TRIPADVISOR_VERIFY_URL")) {
     if (!tripadvisorVerifyUrl(env, "0")) {
-      missing.push("an https ATLAS_TRIPADVISOR_VERIFY_URL on terra.tripadvisor.com");
+      missingSetup.push({ name: "ATLAS_TRIPADVISOR_VERIFY_URL", label: "an https Tripadvisor Terra API address on terra.tripadvisor.com" });
     }
   }
-  const configured = missing.length === 0;
+  return configurationResult(missingSetup);
+}
+
+export function configurationResult(missingSetup) {
+  const configured = missingSetup.length === 0;
   return {
     configured,
-    missing,
-    message: configured ? null : notAvailableMessage(missing),
+    missing: missingSetup.map((entry) => entry.label),
+    missing_setup: missingSetup,
+    message: configured ? null : NOT_SET_UP_MESSAGE,
   };
 }
 
-export function notAvailableMessage(missing) {
-  return `Not available yet — requires ${joinList(missing)}.`;
-}
-
-function joinList(items) {
-  if (items.length <= 1) return items.join("");
-  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+export function notAvailableMessage() {
+  return NOT_SET_UP_MESSAGE;
 }
 
 // ---------------------------------------------------------------- authorize

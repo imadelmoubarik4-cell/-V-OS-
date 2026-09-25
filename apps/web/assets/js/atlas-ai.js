@@ -354,6 +354,7 @@
     unauthorized: 'Your session has ended. Sign in again to continue.',
     message_too_long: 'That message is too long. Shorten it and try again.',
     voice_session_inactive: 'This live voice session has ended. Start a new one to continue.',
+    voice_session_replaced: 'Live voice moved to another device.',
     not_configured: 'Atlas AI isn’t switched on yet.',
     // A 503 without the server's not_configured code is an outage, not an
     // unconfigured venue (S90, review P2-5).
@@ -363,7 +364,7 @@
     voice_quota_exceeded: {
       daily_sessions: 'You’ve used today’s live voice sessions. Voice notes and text still work.',
       daily_minutes: 'You’ve used today’s live voice time. Voice notes and text still work.',
-      concurrent: 'Live voice is already open in another tab or device. End it there, then try again.',
+      concurrent: 'Live voice is still open on another device or tab. Continue here to move it to this device.',
       default: 'You’ve reached today’s live voice limit. Voice notes and text still work.'
     },
     upload_quota_exceeded: {
@@ -2096,7 +2097,7 @@
   const LIVE_LABELS = {
     connecting: 'Connecting', listening: 'Listening', thinking: 'Thinking', speaking: 'Speaking', muted: 'Muted',
     interrupted: 'Listening', disconnected: 'Disconnected', error: 'Couldn’t connect', ended: 'Ended', reconnecting: 'Reconnecting',
-    inactive: 'Session ended'
+    inactive: 'Session ended', replaced: 'Moved to another device'
   };
 
   function liveErrorText(detail = {}) {
@@ -2112,16 +2113,24 @@
     const status = live.state;
     const label = LIVE_LABELS[status] || 'Connecting';
     const lines = live.lines.slice(-2).map((line) => `<span class="${line.final ? 'is-final' : 'is-interim'}${line.role === 'assistant' ? ' is-atlas' : ''}">${escapeHtml(line.text)}</span>`).join(' ');
-    const broken = status === 'disconnected' || status === 'error' || status === 'inactive';
+    const broken = status === 'disconnected' || status === 'error' || status === 'inactive' || status === 'replaced';
     const retryable = !(status === 'error' && live.blocked);
+    // Refused because a call is still open elsewhere (S91), or this device
+    // lost the call to another one: offer to move it here.
+    const handoff = (status === 'error' && live.concurrent) || status === 'replaced';
+    const message = status === 'inactive' ? FIXED_COPY.voice_session_inactive
+      : status === 'replaced' ? FIXED_COPY.voice_session_replaced
+        : status === 'error' && live.errorText ? live.errorText : 'Live voice disconnected. Your conversation is saved.';
+    const retry = retryable && status !== 'replaced'
+      ? `<button type="button" data-ai-live-reconnect>${icon('refresh-cw')}${status === 'inactive' ? 'Start a new session' : status === 'error' ? 'Try again' : 'Reconnect'}</button>` : '';
     return `<div class="voice" role="region" aria-label="Live voice" data-state="${escapeHtml(status)}">
       <div class="voice__top"><span class="voice__state" aria-live="polite">${escapeHtml(label)}</span><span class="voice__time" data-ai-live-time>${durationLabel((Date.now() - live.startedAt) / 1000)}</span>
         <button type="button" class="voice__toggle" data-ai-live-transcript aria-pressed="${live.showTranscript}">${live.showTranscript ? 'Hide transcript' : 'Show transcript'}</button></div>
-      ${broken ? `<div class="voice__error" role="alert">${escapeHtml(status === 'inactive' ? FIXED_COPY.voice_session_inactive : status === 'error' && live.errorText ? live.errorText : 'Live voice disconnected. Your conversation is saved.')}</div>` : `<div class="voice__wave" aria-hidden="true">${'<i></i>'.repeat(18)}</div>`}
+      ${broken ? `<div class="voice__error" role="alert">${escapeHtml(message)}</div>` : `<div class="voice__wave" aria-hidden="true">${'<i></i>'.repeat(18)}</div>`}
       ${live.showTranscript && lines ? `<div class="voice__transcript">${lines}</div>` : ''}
       <div class="voice__controls">
         ${broken
-          ? (retryable ? `<button type="button" data-ai-live-reconnect>${icon('refresh-cw')}${status === 'inactive' ? 'Start a new session' : status === 'error' ? 'Try again' : 'Reconnect'}</button>` : '')
+          ? `${handoff ? `<button type="button" data-ai-live-takeover>${icon('audio-lines')}Continue here</button>` : ''}${retry}`
           : `<button type="button" data-ai-live-mute aria-pressed="${status === 'muted'}">${icon(status === 'muted' ? 'mic' : 'mic-off')}${status === 'muted' ? 'Unmute' : 'Mute'}</button>`}
         <button type="button" class="end" data-ai-live-end>${icon('phone-off')}End</button>
       </div>
@@ -2155,7 +2164,7 @@
     live.frame = root.requestAnimationFrame(waveLoop);
   }
 
-  async function startLive({ skipExplain = false } = {}) {
+  async function startLive({ skipExplain = false, takeover = false } = {}) {
     if (state.live || state.streaming) return;
     let explained = false;
     try { explained = root.localStorage?.getItem(VOICE_EXPLAINED_KEY) === 'yes'; } catch { explained = false; }
@@ -2174,7 +2183,7 @@
       toast(friendly(error, 'Live voice'));
       return;
     }
-    const live = { state: 'connecting', startedAt: Date.now(), lines: [], showTranscript: true, errorText: '', blocked: false, session: null, frame: 0, liveMessage: null };
+    const live = { state: 'connecting', startedAt: Date.now(), lines: [], showTranscript: true, errorText: '', blocked: false, concurrent: false, session: null, frame: 0, liveMessage: null };
     state.live = live;
     renderLive();
     renderComposerBar();
@@ -2191,9 +2200,11 @@
           live.errorText = liveErrorText(detail || {});
           // Daily limits do not lift by retrying now; offer no retry for them.
           live.blocked = detail?.code === 'voice_quota_exceeded' && detail?.reason !== 'concurrent';
+          live.concurrent = detail?.code === 'voice_quota_exceeded' && detail?.reason === 'concurrent';
           if (detail?.code === 'not_configured') { state.configured = false; renderThread(); }
         }
         if (next === 'inactive') announce(FIXED_COPY.voice_session_inactive);
+        if (next === 'replaced') announce(FIXED_COPY.voice_session_replaced);
         if (next === 'ended') { finishLive(); return; }
         renderLive();
       },
@@ -2218,13 +2229,14 @@
     live.session = session;
     waveLoop();
     try {
-      await session.start();
+      await session.start({ takeover });
     } catch (error) {
       // The panel shows fixed copy for the reason; the console keeps the code.
       root.console?.warn?.('[atlas-ai] live voice could not start', error?.code || error?.name || 'error', error?.status || '');
       if (state.live === live && live.state === 'error') {
         live.errorText = liveErrorText({ code: error?.name === 'NotAllowedError' ? 'microphone_blocked' : error?.code, reason: error?.reason });
         live.blocked = error?.code === 'voice_quota_exceeded' && error?.reason !== 'concurrent';
+        live.concurrent = error?.code === 'voice_quota_exceeded' && error?.reason === 'concurrent';
         if (error?.code === 'not_configured') { state.configured = false; renderThread(); }
         renderLive();
       }
@@ -2672,10 +2684,13 @@
     if (hit('[data-ai-live-end]')) { endLive(); return; }
     if (hit('[data-ai-live-mute]')) { if (state.live?.session) state.live.session.mute(); return; }
     if (hit('[data-ai-live-transcript]')) { if (state.live) { state.live.showTranscript = !state.live.showTranscript; renderLive(); el('voiceSlot').querySelector('[data-ai-live-transcript]')?.focus(); } return; }
-    if (hit('[data-ai-live-reconnect]')) {
+    if (hit('[data-ai-live-reconnect]') || hit('[data-ai-live-takeover]')) {
+      // "Continue here" asks the server to end this person's other live
+      // voice session and start this one; "Try again" just starts again.
+      const takeover = Boolean(hit('[data-ai-live-takeover]'));
       const old = state.live;
       if (old) { root.cancelAnimationFrame(old.frame); old.session?.end?.(); state.live = null; }
-      startLive({ skipExplain: true });
+      startLive({ skipExplain: true, takeover });
       return;
     }
     if ((node = hit('[data-ai-dec-open]'))) { openDecision(node.dataset.aiDecOpen); return; }

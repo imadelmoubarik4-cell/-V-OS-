@@ -5,7 +5,11 @@
   .recipe-toolbar .atlas-toolbar__end { gap: var(--s-3); }
   .recipe-search--phone { display: none; }
   .recipe-category-picker { position: relative; display: inline-flex; align-items: center; gap: var(--s-1); }
-  .recipe-category-menu { position: absolute; top: calc(100% + var(--s-1)); left: 0; z-index: var(--z-popover, 30); min-width: 220px; }
+  /* The category menu sits after the toolbar (never inside its phone fade
+     mask); AtlasShell.menu places it under the chip on desktop. */
+  .recipe-category-menu { position: fixed; z-index: var(--z-overlay); min-width: 220px; }
+  .recipe-category-menu__head { display: none; }
+  .recipe-category-menu__name { min-width: 0; overflow-wrap: anywhere; }
   .recipe-view-toggle button { display: inline-grid; place-items: center; }
 
   /* Library grid: 4 columns ≥1280, 3 ≥1024, 2 below (spec §7.7). */
@@ -128,15 +132,37 @@
     .recipes-page .page-head__actions [data-recipe-menu-link] { display: none; }
     .recipe-tile__media { aspect-ratio: 1 / 1; }
     .recipe-tile__body { padding: var(--s-2) var(--s-3) var(--s-3); }
-    .recipe-tile__meta { display: none; }
+    /* Category always shows under the name; glassware follows when it fits. */
+    .recipe-tile__meta { display: flex; min-width: 0; white-space: nowrap; }
+    .recipe-tile__category { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .recipe-tile__glass { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre; }
+    /* Category menu: a bottom sheet over a dimmed page. Its ::before is the
+       tap-to-close backdrop (recipes.js), so a tap outside never opens a recipe. */
+    .recipe-category-menu {
+      inset: auto 0 0 0;
+      width: auto;
+      min-width: 0;
+      max-width: none;
+      max-height: min(70dvh, 520px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: var(--s-2) var(--s-2) calc(var(--s-2) + env(safe-area-inset-bottom));
+      border-width: 1px 0 0;
+      border-radius: var(--r-xl) var(--r-xl) 0 0;
+      box-shadow: 0 0 0 100vmax var(--overlay), var(--shadow-pop);
+      animation-name: atlas-sheet-up;
+    }
+    .recipe-category-menu::before { content: ''; position: fixed; inset: 0; z-index: -1; }
+    .recipe-category-menu__head { display: block; }
+    .recipe-category-menu .atlas-menu__item { height: auto; min-height: var(--touch); }
     /* Without photos the library is a one-column list of compact tiles, so a
        bartender sees most of the menu on one screen. */
     .recipe-grid--plain { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
     .recipe-tile--plain { align-items: center; padding: var(--s-2) var(--s-3); }
     .recipe-tile--plain .recipe-tile__body { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--s-3); padding: 0; }
     .recipe-tile--plain .recipe-tile__status { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
-    .recipe-tile--plain .recipe-tile__line { grid-column: 1; }
-    .recipe-tile--plain :is(.recipe-tile__name, .recipe-tile__line) { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .recipe-tile--plain :is(.recipe-tile__meta, .recipe-tile__line) { grid-column: 1; }
+    .recipe-tile--plain .recipe-tile__line { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .recipe-view-toggle { display: none; }
     .recipe-build__row, .recipe-method { font: 400 var(--fs-section)/26px var(--font-sans); }
     .recipe-build__row { grid-template-columns: minmax(80px, auto) minmax(0, 1fr); }
