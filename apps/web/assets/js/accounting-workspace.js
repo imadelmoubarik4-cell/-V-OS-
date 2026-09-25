@@ -194,7 +194,7 @@
   function row(doc, action = '') {
     return `<li class="atlas-row atlas-row--link acc-row" data-acc-row="${escapeHtml(doc.id)}">
         <span class="atlas-row__icon">${icon(doc.mime_type === 'application/pdf' ? 'file-text' : 'receipt-text')}</span>
-        <div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-link acc-link" data-acc-open="${escapeHtml(doc.id)}">${escapeHtml(title(doc))}</button></p><p class="atlas-row__meta">${escapeHtml(meta(doc))}</p></div>
+        <div class="atlas-row__body"><p class="atlas-row__title"><button type="button" class="atlas-row__link acc-link" data-acc-open="${escapeHtml(doc.id)}">${escapeHtml(title(doc))}</button></p><p class="atlas-row__meta">${escapeHtml(meta(doc))}</p></div>
         <div class="atlas-row__end acc-row__end">${flagPills(doc)}${statusPill(doc)}${action}</div></li>`;
   }
 
@@ -323,6 +323,11 @@
       element.setAttribute('data-atlas-modal', '');
       document.body.appendChild(element);
       window.AtlasModal.register(element, { closeOnBackdrop: true });
+    } else if (!element.classList.contains('is-open')) {
+      // Modal roots share one z-index: the last in the page paints on top and
+      // is the one Escape closes. A reused dialog (Mark paid from the list,
+      // then from inside a document sheet) moves to the end before it opens.
+      document.body.appendChild(element);
     }
     return element;
   }
@@ -354,8 +359,8 @@
     const staff = doc?.paid_by === 'staff';
     const people = team().filter((person) => person.active || person.id === doc?.paid_by_profile_id);
     return `<fieldset class="acc-payer" ${disabled ? 'disabled' : ''}><legend class="atlas-label">Who paid?</legend>
-        <div class="atlas-chips"><label class="atlas-check-row"><input type="radio" class="atlas-check" name="paid_by" value="company"${staff ? '' : ' checked'}>The business</label>
-        <label class="atlas-check-row"><input type="radio" class="atlas-check" name="paid_by" value="staff"${staff ? ' checked' : ''}>A team member, with their own money</label></div>
+        <div class="atlas-chips"><label class="atlas-check-row"><input type="radio" class="atlas-radio" name="paid_by" value="company"${staff ? '' : ' checked'}>The business</label>
+        <label class="atlas-check-row"><input type="radio" class="atlas-radio" name="paid_by" value="staff"${staff ? ' checked' : ''}>A team member, with their own money</label></div>
         <div class="atlas-field acc-payer__who"${staff ? '' : ' hidden'}><label for="${prefix}-payer">Team member</label><select class="atlas-select" id="${prefix}-payer" name="paid_by_profile_id"><option value="">Choose who paid</option>${people.map((person) => `<option value="${escapeHtml(person.id)}"${person.id === doc?.paid_by_profile_id ? ' selected' : ''}>${escapeHtml(person.label)}</option>`).join('')}</select><p class="help">They show under Owed to team until you mark them reimbursed.</p></div>
       </fieldset>`;
   }
