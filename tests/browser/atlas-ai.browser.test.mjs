@@ -4,7 +4,7 @@
 // atlas-ai.js / atlas-ai-voice.js in Chromium against a mocked atlas-ai.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, requestsTo, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, settle, until, USERS } from './harness.mjs';
 import { aiFixtures, IDS, fakeMediaInit, orderProposal, AI_FIXTURE_NOW } from './atlas-ai-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -46,7 +46,7 @@ async function openAi(options = {}) {
   });
   try {
     await launched.page.waitForFunction(() => document.body.dataset.atlasView === 'ai' && document.querySelector('#ai-view [data-ai-composer]'));
-    await launched.page.waitForTimeout(300);
+    await settle(launched.page);
   } catch (error) {
     await launched.close();
     throw error;
@@ -189,7 +189,7 @@ test('a bartender sees manager-only proposals as waiting, with approve disabled'
     assert.equal(await button.isDisabled(), true);
     assert.equal(await button.getAttribute('title'), 'Only a manager can approve this');
     await button.click({ force: true });
-    await page.waitForTimeout(200);
+    await settle(page);
     assert.equal(calls(backend, 'execute-action').length, 0);
     assert.equal(await page.locator('[data-ai-mode="decisions"]').filter({ visible: true }).count(), 0, 'no Decisions tab for staff');
   } finally { await close(); }
@@ -225,7 +225,7 @@ test('a 503 on the first question switches to the truthful off state', { skip },
   const { page, close } = await launchAtlas({ fixtures, fixedTime: AI_FIXTURE_NOW, hash: '#ai/new' });
   try {
     await page.waitForSelector('#ai-composer-input');
-    await page.waitForTimeout(300);
+    await settle(page);
     await typeAndSend(page, 'Who works tomorrow?');
     await page.waitForSelector('.msg-ai__label');
     assert.equal(await page.$$eval('.msg-user', (nodes) => nodes.length), 1, 'the question appears once');
@@ -329,7 +329,7 @@ test('live voice connects over WebRTC, runs tools through the server and shows p
     assert.deepEqual(sent[1], { type: 'response.create' });
     // The same call delivered twice runs once.
     await page.evaluate(() => window.__dc.serverEvent({ type: 'response.function_call_arguments.done', call_id: 'call_1', name: 'stock_count_draft', arguments: '{}' }));
-    await page.waitForTimeout(150);
+    await settle(page);
     assert.equal(calls(backend, 'voice-tool').length, 1);
     await page.waitForSelector(`[data-ai-approval="${IDS.voiceAction}"]`);
     assert.match(await page.textContent(`[data-ai-approval="${IDS.voiceAction}"]`), /Back bar count[\s\S]*Save count for review/);
@@ -347,7 +347,7 @@ test('live voice connects over WebRTC, runs tools through the server and shows p
 
     await page.click('[data-ai-live-end]');
     await page.waitForSelector('.voice', { state: 'detached' });
-    for (let tries = 0; tries < 40 && calls(backend, 'voice-append').flatMap((entry) => entry.body.turns).length < 2; tries += 1) await page.waitForTimeout(100);
+    await until(() => calls(backend, 'voice-append').flatMap((entry) => entry.body.turns).length >= 2, { message: 'both voice turns appended' });
     await page.waitForFunction(() => document.querySelector('.composer') && getComputedStyle(document.querySelector('.composer')).display !== 'none');
     const appendCalls = calls(backend, 'voice-append');
     const appended = appendCalls.flatMap((entry) => entry.body.turns);
@@ -367,9 +367,11 @@ test('history: search, rename, pin and delete with confirmation', { skip }, asyn
 
     await page.click('[data-ai-search-toggle]');
     await page.fill('#ai-list-search-input', 'paloma');
-    await page.waitForTimeout(400);
+    await page.waitForFunction(() => [...document.querySelectorAll('.ai-conv__t')].map((node) => node.textContent).join('|') === 'Cost of a Paloma');
     assert.deepEqual(await page.$$eval('.ai-conv__t', (nodes) => nodes.map((node) => node.textContent)), ['Cost of a Paloma']);
-    assert.ok(calls(backend, 'conversations').some((entry) => new URLSearchParams(entry.search).get('q') === 'paloma'));
+    await until(() => calls(backend, 'conversations').some((entry) => new URLSearchParams(entry.search).get('q') === 'paloma'), { message: 'the server search for paloma' });
+    await settle(page);
+    assert.deepEqual(await page.$$eval('.ai-conv__t', (nodes) => nodes.map((node) => node.textContent)), ['Cost of a Paloma']);
     await page.keyboard.press('Escape');
     assert.equal(await page.$$eval('.ai-conv', (nodes) => nodes.length), 4);
 
@@ -469,7 +471,7 @@ test('search questions and Ask Atlas actions open Atlas AI with the question', {
     // The palette's Ask Atlas row (and ⌘/Ctrl+Enter) opens #ai/new?q=…&from=<page>.
     await page.click('#atlas-omni');
     await page.fill('#atlas-palette-input', 'Why are margins lower this month?');
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => document.getElementById('atlas-palette-list')?.dataset.answerState !== 'pending' && document.querySelector('.atlas-palette__item--ask'));
     const options = await page.$$eval('.atlas-palette__item', (nodes) => nodes.map((node) => node.innerText.replace(/\s+/g, ' ').trim()));
     assert.ok(options.some((option) => /Ask Atlas “Why are margins lower this month\?”/.test(option)), JSON.stringify(options));
     await page.keyboard.press('Control+Enter');
@@ -571,7 +573,7 @@ test('live voice ends its session with voice-end on End, after saving the transc
     // No transcript: End sends voice-end with the Atlas voice session id.
     await page.click('[data-ai-live-end]');
     await page.waitForSelector('.voice', { state: 'detached' });
-    for (let tries = 0; tries < 30 && !calls(backend, 'voice-end').length; tries += 1) await page.waitForTimeout(100);
+    await until(() => calls(backend, 'voice-end').length, { message: 'voice-end' });
     assert.deepEqual(calls(backend, 'voice-end').map((entry) => entry.body), [{ voice_session_id: IDS.voiceSession }]);
     assert.equal(backend.state.voiceActive, false);
 
@@ -579,7 +581,7 @@ test('live voice ends its session with voice-end on End, after saving the transc
     await startLiveCall(page, context);
     await page.evaluate(() => window.__dc.serverEvent({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u9', transcript: 'Two limes left' }));
     await page.click('[data-ai-live-end]');
-    for (let tries = 0; tries < 30 && backend.state.voiceActive; tries += 1) await page.waitForTimeout(100);
+    await until(() => !backend.state.voiceActive, { message: 'the voice session to end' });
     const appends = calls(backend, 'voice-append').map((entry) => entry.body);
     assert.ok(appends.every((body) => body.voice_session_id === IDS.voiceSession));
     assert.deepEqual(appends.flatMap((body) => body.turns.map((turn) => turn.text)), ['Two limes left']);
@@ -595,7 +597,7 @@ test('leaving the page sends voice-end for the live session', { skip }, async ()
   try {
     await startLiveCall(page, context);
     await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false })));
-    for (let tries = 0; tries < 30 && !calls(backend, 'voice-end').length; tries += 1) await page.waitForTimeout(100);
+    await until(() => calls(backend, 'voice-end').length, { message: 'voice-end on pagehide' });
     assert.deepEqual(calls(backend, 'voice-end').map((entry) => entry.body), [{ voice_session_id: IDS.voiceSession }]);
   } finally { await close(); }
 });
@@ -619,7 +621,7 @@ test('an inactive voice session stops tools and transcripts and offers a fresh s
       window.__dc.serverEvent({ type: 'response.output_item.done', item: { type: 'function_call', status: 'completed', call_id: 'call_y', name: 'inventory_search', arguments: '{}' } });
       window.__dc.serverEvent({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u5', transcript: 'Anything' });
     });
-    await page.waitForTimeout(700);
+    await settle(page);
     assert.equal(calls(backend, 'voice-tool').length, 1);
     assert.equal(calls(backend, 'voice-append').length, 0);
     assert.equal(calls(backend, 'voice-session').length, 1, 'never silently retried');
@@ -682,7 +684,7 @@ test('upload limits and sizes show fixed copy and nothing is sent', { skip }, as
       assert.doesNotMatch(text, /raw storage detail/);
       await page.fill('#ai-composer-input', 'What is this?');
       await page.keyboard.press('Enter');
-      await page.waitForTimeout(300);
+      await settle(page);
       const chat = calls(backend, 'chat')[0];
       assert.ok(!chat || !chat.body.attachments, 'a failed upload is never attached');
     } finally { await close(); }
@@ -694,7 +696,9 @@ test('photos over 20 MB together are stopped before sending; a 413 from the serv
   try {
     const big = Buffer.alloc(11 * 1024 * 1024, 1);
     big.write('\x89PNG', 0, 'binary');
-    await page.setInputFiles('[data-ai-file-any]', [{ name: 'a.png', mimeType: 'image/png', buffer: big }, { name: 'b.png', mimeType: 'image/png', buffer: big }]);
+    // 22 MB through the file input is CPU-heavy on a loaded runner: allow it the
+    // same 20 s as the chip check below instead of the 10 s default.
+    await page.setInputFiles('[data-ai-file-any]', [{ name: 'a.png', mimeType: 'image/png', buffer: big }, { name: 'b.png', mimeType: 'image/png', buffer: big }], { timeout: 20000 });
     await page.waitForFunction(() => document.querySelectorAll('[data-ai-att] .file-chip__meta').length === 2, null, { timeout: 20000 });
     await page.fill('#ai-composer-input', 'Do these match?');
     await page.keyboard.press('Enter');

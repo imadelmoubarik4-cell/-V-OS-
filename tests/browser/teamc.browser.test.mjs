@@ -3,7 +3,7 @@
 // vs bartender, phone 390 (no horizontal scroll, 44 px targets) and keyboard.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, requestsTo, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, requestsTo, settle, until, USERS } from './harness.mjs';
 import { teamCBackend, IDS, NOW } from './teamc-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -149,8 +149,9 @@ test('Reports: a whole month compares with the whole previous month (compareRang
     assert.equal(params.get('section'), 'inventory');
     assert.deepEqual([params.get('start_date'), params.get('end_date')], ['2026-08-01', '2026-08-31']);
     assert.deepEqual([params.get('comparison'), params.get('comparison_start_date'), params.get('comparison_end_date')], ['custom', '2026-07-01', '2026-07-31']);
+    const snapshots = requestsTo(record, 'atlas-reports', 'snapshot').length;
     await page.selectOption('#reports-view [data-reports-preset]', 'last_30_days');
-    await page.waitForTimeout(300);
+    await until(() => requestsTo(record, 'atlas-reports', 'snapshot').length > snapshots, { message: 'the new Reports snapshot' });
     const rolling = new URLSearchParams(requestsTo(record, 'atlas-reports', 'snapshot').at(-1).search);
     assert.deepEqual([rolling.get('start_date'), rolling.get('end_date'), rolling.get('comparison_start_date'), rolling.get('comparison_end_date')],
       ['2026-08-26', '2026-09-24', '2026-07-27', '2026-08-25'], 'a 30-day period compares with the 30 days before it');
@@ -197,7 +198,8 @@ test('Marketing: overview lists what is coming up and waiting; drafts store venu
     await page.fill('#mk-caption', 'Six new drinks from Thursday.');
     assert.match(await page.textContent('#mk-editor [data-mk-preview-when]'), /Thu 1 Oct, 18:00/);
     await page.click('#mk-editor [data-mk-save]');
-    await page.waitForTimeout(400);
+    await until(() => requestsTo(record, 'atlas-marketing-workspace', 'create-content').length, { message: 'create-content' });
+    await settle(page);
     const create = requestsTo(record, 'atlas-marketing-workspace', 'create-content').at(-1);
     assert.equal(create.body.scheduled_for, '2026-10-01T18:00:00.000Z', 'Reykjavík wall time, whatever the browser zone');
     assert.equal(create.body.reminder_at, null);
@@ -213,7 +215,7 @@ test('Marketing: approving from the sheet; staff see the permission state; phone
     await page.click('#mk-editor [data-mk-decide="changes_requested"]');
     assert.match(await page.textContent('#mk-editor [data-mk-error]'), /Add a note/);
     await page.click('#mk-editor [data-mk-decide="approved"]');
-    await page.waitForTimeout(300);
+    await until(() => requestsTo(record, 'atlas-marketing-workspace', 'decide-approval').some((entry) => entry.body?.decision === 'approved'), { message: 'the approval' });
     assert.equal(requestsTo(record, 'atlas-marketing-workspace', 'decide-approval').at(-1).body.decision, 'approved');
   } finally { await close(); }
   const staff = await launch({ user: USERS.bartender });
@@ -283,7 +285,8 @@ test('Data: par levels suggest only after days of cover are typed and save only 
     await page.waitForSelector('#data-view [data-data-par-save]:not([disabled])');
     assert.match(await page.textContent('#data-view [data-data-par-save]'), /Save 2 changes/);
     await page.click('#data-view [data-data-par-save]');
-    await page.waitForTimeout(400);
+    await until(() => backend.calls.rpc.some((entry) => entry.name === 'atlas_apply_par_levels'), { message: 'atlas_apply_par_levels' });
+    await settle(page);
     const call = backend.calls.rpc.find((entry) => entry.name === 'atlas_apply_par_levels');
     const byItem = Object.fromEntries(call.body.p_changes.map((change) => [change.item_id, change]));
     assert.equal(byItem[IDS.campari].par_level, 20);
@@ -323,7 +326,8 @@ test('Data: approvals decide with the request version, show the record, and feed
     assert.match(sheet, /Monin Vanilla Syrup/);
     assert.match(sheet, /Requested/);
     await page.click('#data-request-modal [data-data-request-decide="approve"]');
-    await page.waitForTimeout(400);
+    await until(() => requestsTo(record, 'atlas-item-master', 'catalog-decide').length, { message: 'catalog-decide' });
+    await settle(page);
     const decide = requestsTo(record, 'atlas-item-master', 'catalog-decide').at(-1);
     assert.equal(decide.body.id, IDS.requestNew);
     assert.equal(decide.body.expected_version, 2);
@@ -331,7 +335,8 @@ test('Data: approvals decide with the request version, show the record, and feed
     // Backfill only proposes.
     await page.click('#data-view [data-data-backfill]');
     await page.click('#data-confirm-modal [data-data-confirm]');
-    await page.waitForTimeout(300);
+    await until(() => requestsTo(record, 'atlas-item-master', 'catalog-backfill').length, { message: 'catalog-backfill' });
+    await settle(page);
     assert.equal(requestsTo(record, 'atlas-item-master', 'catalog-backfill').length, 1);
   } finally { await close(); }
   const staff = await launch({ user: USERS.bartender });

@@ -3,13 +3,13 @@
 // atlas-search.js (provider) and atlas-palette.js (UI) in Chromium.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, USERS } from './harness.mjs';
+import { fixtureTime, HARNESS_NOW_MS, harnessAvailable, launchAtlas, USERS } from './harness.mjs';
 import { emptyFunctions } from './fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 
 function venueDate(offset = 0) {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Atlantic/Reykjavik', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Atlantic/Reykjavik', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(HARNESS_NOW_MS));
   const date = new Date(`${parts}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() + offset);
   return date.toISOString().slice(0, 10);
@@ -22,7 +22,7 @@ const inventory = [
   { id: 'triple', name: 'Triple Sec', category: 'Liqueurs', unit: 'bottles', par_level: 2, supplier: 'Globus', active: true, cost_price: 3000 },
   { id: 'agave', name: 'Agave syrup', category: 'Syrups', unit: 'bottles', par_level: 1, supplier: 'Mata', active: true, cost_price: 1500 }
 ];
-const balance = (id, quantity) => ({ inventory_item_id: id, verified_quantity: quantity, freshness_state: 'current', verified_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 10 * 86400000).toISOString() });
+const balance = (id, quantity) => ({ inventory_item_id: id, verified_quantity: quantity, freshness_state: 'current', verified_at: fixtureTime(-86400000), expires_at: fixtureTime(10 * 86400000) });
 const recipes = [
   { id: 'margarita', name: 'Margarita', active: true, yield_quantity: 1, menu_price: 2990, recipe_ingredients: [
     { id: 'r1', item_id: 'tequila', item_name: 'Olmeca Blanco Tequila 1L', quantity: 50, unit: 'ml' },
@@ -41,7 +41,7 @@ function fixtures({ balances, shifts = null } = {}) {
       'atlas-stock-counts': { counts: { verified_balances: balances ?? [balance('pinot', 4), balance('tequila', 3), balance('lime', 5), balance('triple', 2)] } },
       'atlas-knowledge': { workspace: { articles: [{ id: 'k1', title: 'Opening checklist', category_name: 'Checklists', summary: 'Before doors open' }] } },
       'atlas-shifts': shifts ?? { workspace: {
-        week: { status: 'published', week_start: venueDate(-((new Date().getUTCDay() + 6) % 7)) },
+        week: { status: 'published', week_start: venueDate(-((new Date(HARNESS_NOW_MS).getUTCDay() + 6) % 7)) },
         people: [{ id: 'p-sara', display_name: 'Sara Jónsdóttir', active: true }],
         shifts: [{ id: 'sh1', person_id: 'p-sara', starts_local: `${venueDate(1)}T17:00:00`, ends_local: `${venueDate(1)}T23:30:00`, role_name: 'Bartender' }]
       } }
@@ -138,8 +138,7 @@ test('Enter on a record opens it in its module', { skip }, async () => {
     await ask(page, 'angelo');
     // The first row (the item) is selected by default.
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(300);
-    assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'inventory');
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'inventory');
     // S88 §7.5: an item opens its detail (#inventory/item/<id>).
     await page.waitForSelector('.inv-detail');
     assert.equal(await page.evaluate(() => location.hash), '#inventory/item/pinot');

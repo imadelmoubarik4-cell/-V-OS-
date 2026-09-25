@@ -180,7 +180,9 @@ async function capture(args) {
         user,
         viewport: { width, height: HEIGHTS[width] || 900 },
         fixtures: captureFixtures(user),
-        initScript: clockScript(FROZEN_NOW)
+        initScript: clockScript(FROZEN_NOW),
+        // This tool freezes Date itself (clockScript); keep the harness clock out.
+        fixedTime: null
       });
       const { page, record } = app;
       try {

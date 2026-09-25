@@ -3,7 +3,7 @@
 // states. Fixtures: tests/browser/team-a-fixtures.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, requestsTo, until, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, navigateTo, requestsTo, settle, until, USERS } from './harness.mjs';
 import { teamAFixtures, VIEWER } from './team-a-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -17,7 +17,7 @@ function launch(user = USERS.admin, options = {}) {
 }
 
 const text = (page, selector) => page.$eval(selector, (node) => node.textContent.replace(/\s+/g, ' ').trim());
-const go = async (page, hash) => { await page.evaluate((target) => window.AtlasShell.navigate(target), hash); await page.waitForTimeout(300); };
+const go = (page, hash) => navigateTo(page, hash);
 
 // ---------- Home ----------
 
@@ -114,7 +114,7 @@ test('a viewer sees only the attention rows on Home', { skip }, async () => {
   const { page, record, close } = await launch(viewer);
   try {
     await page.waitForSelector('.home-attention');
-    await page.waitForTimeout(300);
+    await settle(page);
     for (const selector of ['.home-glance', '.home-briefing', '#home-timeline', '.home-staff', '.home-grid']) {
       assert.equal(await page.$(`#dashboard-view ${selector}`), null, `${selector} is hidden from viewers`);
     }
@@ -127,7 +127,7 @@ test('an inventory load failure becomes an attention row with a retry', { skip }
   try {
     await page.waitForSelector('.home-attention .home-row');
     await page.evaluate(() => window.AtlasShell.emit('data:error', { source: 'Inventory' }));
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => window.AtlasShell.home.rows({ role: 'admin' }).some((row) => row.id === 'load-errors:error:Inventory'));
     const rows = await page.evaluate(() => window.AtlasShell.home.rows({ role: 'admin' }).filter((row) => row.id === 'load-errors:error:Inventory'));
     assert.equal(rows.length, 1);
     assert.equal(rows[0].title, 'Inventory couldn’t be loaded');
@@ -144,8 +144,8 @@ test('with everything in order Home says so and shows when it last checked', { s
   fixtures.tables.recipes = [];
   const { page, close } = await launchAtlas({ user: USERS.admin, fixtures, fixedTime: NOW });
   try {
-    await page.waitForSelector('.home-attention');
-    await page.waitForTimeout(400);
+    await page.waitForFunction(() => /Nothing needs you right now/.test(document.querySelector('.home-attention')?.textContent || ''));
+    await settle(page);
     assert.match(await text(page, '.home-attention'), /Nothing needs you right now/);
     assert.match(await text(page, '.home-attention'), /Last checked \d{2}:\d{2}/);
   } finally { await close(); }
@@ -157,7 +157,8 @@ test('the notifications feed lists each conversation with unread messages', { sk
     await page.waitForSelector('.home-attention .home-row');
     await page.click('#atlas-notifications-btn');
     await page.waitForSelector('#atlas-notifications .atlas-notify', { state: 'visible' });
-    await page.waitForTimeout(300);
+    await page.waitForSelector('.atlas-notify__item-title');
+    await settle(page);
     const titles = await page.$$eval('.atlas-notify__item-title', (nodes) => nodes.map((node) => node.textContent));
     assert.ok(titles.some((title) => /General/.test(title)), titles.join(' | '));
     assert.ok(titles.some((title) => /Managers/.test(title)), titles.join(' | '));
@@ -209,7 +210,7 @@ test('old device ticks are imported only when the person chooses "Tick them as m
     assert.equal(requestsTo(record, 'atlas-operations-checkpoint-a', 'set-item').length, 0, 'nothing is imported silently');
     await page.click('[data-ops-import]');
     await page.waitForFunction(() => !document.querySelector('[data-ops-import]'));
-    await page.waitForTimeout(300);
+    await settle(page);
     const writes = requestsTo(record, 'atlas-operations-checkpoint-a', 'set-item');
     // cash-pos was already done on the server; only the two open items are ticked.
     assert.equal(writes.length, 2);

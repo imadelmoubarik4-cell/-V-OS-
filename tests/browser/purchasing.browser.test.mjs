@@ -1,7 +1,7 @@
 // S88 Team B: Purchasing (§7.8) on the v2 order commands, in a real browser.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, navigateTo, settle, until, USERS } from './harness.mjs';
 import { IDS, inventoryWorld, purchasingBackend, orders } from './inventory-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -13,8 +13,7 @@ async function launch({ user = USERS.admin, purchasing = purchasingBackend(), vi
 }
 
 async function go(page, route) {
-  await page.evaluate((target) => window.AtlasShell.navigate(target), route);
-  await page.waitForTimeout(300);
+  await navigateTo(page, route);
 }
 
 async function confirm(page, reason = null) {
@@ -79,7 +78,7 @@ test('partial receiving uses a fresh request id per delivery, then closes short'
     await page.click('[data-po-receive-submit]');
     await page.waitForFunction(() => !document.querySelector('#po-receive-form'));
     await page.waitForSelector('[data-po-cmd="close_short"]');
-    await page.waitForTimeout(300);
+    await settle(page);
     await page.click('[data-po-receive]');
     await page.waitForSelector('[data-po-rqty]');
     assert.equal(await page.inputValue('[data-po-rqty]'), '28', 'the remaining quantity is suggested');
@@ -87,7 +86,7 @@ test('partial receiving uses a fresh request id per delivery, then closes short'
     await page.click('[data-po-receive-submit]');
     await page.waitForFunction(() => !document.querySelector('#po-receive-form'));
     await page.waitForSelector('[data-po-cmd="close_short"]');
-    await page.waitForTimeout(300);
+    await settle(page);
     const receipts = commands(purchasing, 'receive_lines');
     assert.equal(receipts.length, 2);
     assert.deepEqual(receipts[0].p_receipt.map((line) => [line.item_id, line.quantity]), [[IDS.tonic, 20]]);
@@ -95,7 +94,8 @@ test('partial receiving uses a fresh request id per delivery, then closes short'
     assert.notEqual(receipts[0].p_request_id, receipts[1].p_request_id);
     await page.click('[data-po-cmd="close_short"]');
     await confirm(page, 'Supplier out of stock');
-    await page.waitForTimeout(400);
+    await until(() => commands(purchasing, 'close_short').length, { message: 'close_short' });
+    await settle(page);
     const short = commands(purchasing, 'close_short')[0];
     assert.equal(short.p_reason, 'Supplier out of stock');
     assert.equal(purchasing.state.orders.find((order) => order.id === IDS.po2).status, 'received');
@@ -112,7 +112,7 @@ test('a refused command shows fixed, friendly copy and keeps the order', { skip 
     await page.waitForSelector('[data-po-cmd="approve"]');
     await page.evaluate((id) => { const order = window.AtlasPurchasing.orders().find((entry) => entry.id === id); if (order) order.version = 3; }, IDS.po1);
     await page.click('[data-po-cmd="approve"]');
-    await page.waitForTimeout(500);
+    await settle(page);
     const body = await page.textContent('body');
     assert.doesNotMatch(body, /Order changed\. Refresh before continuing|PGRST|violates/);
     assert.equal(original.status, 'pending_approval');

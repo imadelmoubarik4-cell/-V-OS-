@@ -2,7 +2,7 @@
 // identity (S87), sending with a failed-send retry, unread, roles and phones.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, requestsTo, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, requestsTo, settle, until, USERS } from './harness.mjs';
 import { messagesBackend, peopleFunctions, MEMBERS, NOW } from './people-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -14,7 +14,7 @@ async function open({ user = USERS.admin, hash = '#messages/general', backend = 
     fixtures: { functions: peopleFunctions({ 'atlas-team-messages': backend.handler, 'atlas-team-profile-photos': { photos, staff: { id: user.id, can_manage_team: true } } }) }
   });
   if (ready) await app.page.waitForSelector(ready, { timeout: 10000 });
-  await app.page.waitForTimeout(300);
+  await settle(app.page);
   return { ...app, backend };
 }
 
@@ -43,7 +43,8 @@ test('thread: current names from sender_id, never an email; grouping, dividers a
     assert.deepEqual(dividers, ['Yesterday', 'Today', 'New']);
     assert.equal(await page.getAttribute('[data-msg-log]', 'role'), 'log');
     // Opening the channel marks it read once.
-    await page.waitForTimeout(300);
+    await until(() => requestsTo(record, 'atlas-team-messages', 'mark-read').length, { message: 'mark-read' });
+    await settle(page);
     assert.equal(requestsTo(record, 'atlas-team-messages', 'mark-read').length, 1);
     assert.match(await page.textContent('.msg-link'), /Campari/);
     assert.equal(await page.getAttribute('.msg-link', 'href'), '#inventory/item/campari');
@@ -111,7 +112,7 @@ test('linking a record: staff get no recommendations; managers do; staff never s
       assert.match(await page.textContent('.msg-compose__context'), /Campari/);
       await page.fill('[data-team-draft]', 'We are low');
       await page.keyboard.press('Enter');
-      await page.waitForTimeout(400);
+      await settle(page);
       await page.goto(page.url().replace(/#.*$/, '#messages/announcements'));
       await page.waitForSelector('[data-team-message="a2"]');
       assert.match(await page.textContent('[data-team-message="a2"] .msg-link'), /Atlas recommendation · managers only/);
@@ -139,7 +140,8 @@ test('handover template posts the three sections to Shift handover', { skip }, a
     await page.fill('#msg-ho-happened', 'Busy night');
     await page.fill('#msg-ho-next', 'Restock limes');
     await page.click('#msg-handover [type="submit"]');
-    await page.waitForTimeout(500);
+    await until(() => backend.sent.length, { message: 'the handover message' });
+    await settle(page);
     assert.equal(backend.sent.length, 1);
     assert.equal(backend.sent[0].channel_key, 'shift-handover');
     assert.equal(backend.sent[0].body, 'What happened\nBusy night\n\nFor the next shift\nRestock limes');

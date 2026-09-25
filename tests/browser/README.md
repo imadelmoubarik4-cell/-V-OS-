@@ -16,6 +16,24 @@ npm run test:browser
 Environment overrides: `ATLAS_BROWSER_LIBS` (library `node_modules`),
 `ATLAS_PLAYWRIGHT` (Playwright package path), `ATLAS_CHROMIUM` (browser binary).
 
+## Writing tests: time and waiting
+
+- **No wall clock.** Every page runs on a frozen clock: `launchAtlas` defaults
+  `fixedTime` to `HARNESS_NOW` (Thursday 24 September 2026, 14:00 in
+  Reykjavík). A test file with its own fixture time passes it as `fixedTime`.
+  Fixture data is built from the same anchor (`fixtureTime(offsetMs)`,
+  `HARNESS_NOW_MS`), never from `Date.now()` or `new Date()` in Node.
+- **No fixed sleeps.** `page.waitForTimeout` is not used
+  (`tests/node/browser-suite-hygiene.test.js` enforces it). Wait on the
+  condition instead:
+  - something in the page: `page.waitForSelector` / `page.waitForFunction`;
+  - a request the page sends: `until(() => requestsTo(record, fn, action).length)`;
+  - "nothing else happens": `settle(page)` (no mocked request in flight for
+    50 ms, two animation frames, finite animations and transitions finished);
+  - navigation: `navigateTo(page, hash)` or `openView(page, view)`;
+  - retry or backoff windows: launch with `controlTimers: true` and call
+    `advanceTimers(page, ms)` instead of sleeping through the window.
+
 ## Shell screenshots (`tools/shell-shots.mjs`, not run by `npm run test:browser`)
 
 `node tests/browser/tools/shell-shots.mjs --out DIR [--quick]` captures the S88

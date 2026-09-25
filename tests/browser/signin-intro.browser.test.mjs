@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { harnessAvailable, launchAtlas, ROOT } from './harness.mjs';
+import { harnessAvailable, launchAtlas, ROOT, settle } from './harness.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 const KIT_LOCKUP = readFileSync(path.join(ROOT, 'docs/brand/Atlas_Brand_Identity_Kit_v1.0/02_Vector_Logos/Atlas_Primary_Stacked_Midnight.svg'), 'utf8');
@@ -62,7 +62,8 @@ test('sign-in intro plays once, muted, never loops, then settles on the kit lock
     // Same browser session: static immediately, the clip never starts.
     await page.reload({ waitUntil: 'load' });
     await waitForSignIn(page);
-    await page.waitForTimeout(600);
+    await page.waitForFunction(() => document.querySelector('[data-atlas-signin-intro]')?.dataset.introState === 'static');
+    await settle(page);
     const again = await intro(page);
     assert.deepEqual([again.state, again.hidden, again.played, again.lockupOpacity], ['static', true, 0, 1]);
     assert.deepEqual(record.pageErrors, []);
@@ -73,7 +74,8 @@ test('reduced motion shows the static lockup and never plays the clip', { skip }
   const { page, close } = await signIn({ contextOptions: { reducedMotion: 'reduce' } });
   try {
     await waitForSignIn(page);
-    await page.waitForTimeout(800);
+    await page.waitForFunction(() => document.querySelector('[data-atlas-signin-intro]')?.dataset.introState === 'static');
+    await settle(page);
     const state = await intro(page);
     assert.deepEqual([state.state, state.hidden, state.played, state.currentTime, state.lockupOpacity, state.flag], ['static', true, 0, 0, 1, null]);
   } finally { await close(); }
@@ -87,7 +89,8 @@ test('refused autoplay and Save-Data fall back to the static lockup', { skip }, 
     const { page, record, close } = await signIn({ initScript });
     try {
       await waitForSignIn(page);
-      await page.waitForTimeout(800);
+      await page.waitForFunction(() => document.querySelector('[data-atlas-signin-intro]')?.dataset.introState === 'static');
+      await settle(page);
       const state = await intro(page);
       assert.deepEqual([state.state, state.hidden, state.lockupOpacity, state.flag], ['static', true, 1, null]);
       assert.deepEqual(record.pageErrors, []);
@@ -115,7 +118,7 @@ test('at 390 the intro stays compact, the form stays above the fold and nothing 
 test('the intro never plays inside the signed-in app', { skip }, async () => {
   const { page, close } = await launchAtlas();
   try {
-    await page.waitForTimeout(500);
+    await settle(page);
     const state = await intro(page);
     assert.deepEqual([state.state, state.hidden, state.played, state.flag], ['static', true, 0, null]);
     assert.equal(await page.evaluate(() => document.querySelector('[data-atlas-signin-intro] video').preload), 'none');

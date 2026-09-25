@@ -2,7 +2,7 @@
 // and navigation made while the first data load is still running.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, openView, requestsTo } from './harness.mjs';
+import { advanceTimers, harnessAvailable, launchAtlas, openView, requestsTo, settle, until } from './harness.mjs';
 import { emptyFunctions } from './fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -10,26 +10,26 @@ const DOWN = { __status: 503, body: { error: 'Service unavailable' } };
 
 for (const [view, fn] of [['knowledge', 'atlas-knowledge'], ['team', 'atlas-team-messages'], ['shifts', 'atlas-shifts']]) {
   test(`${view} does not retry in a loop while its API is failing`, { skip }, async () => {
-    const { page, record, close } = await launchAtlas({ fixtures: { functions: { ...emptyFunctions(), [fn]: DOWN } } });
+    const { page, record, close } = await launchAtlas({ controlTimers: true, fixtures: { functions: { ...emptyFunctions(), [fn]: DOWN } } });
     try {
       await openView(page, view);
-      await page.waitForTimeout(5000);
+      // Five seconds of timer time (retries, backoff), without sleeping.
+      await advanceTimers(page, 5000);
       const count = requestsTo(record, fn, 'snapshot').length;
       assert.ok(count <= 3, `${fn} sent ${count} snapshot requests in 5 s`);
       // The explicit retry control still works immediately.
       const retry = { knowledge: '[data-knowledge-refresh]', team: '[data-team-refresh]', shifts: '[data-shifts-retry]' }[view];
       await page.click(`#${view}-view ${retry}`);
-      await page.waitForTimeout(500);
-      assert.ok(requestsTo(record, fn, 'snapshot').length > count, 'Try again sends a new request');
+      await until(() => requestsTo(record, fn, 'snapshot').length > count, { message: 'Try again sends a new request' });
     } finally { await close(); }
   });
 }
 
 test('Knowledge does not loop on a 200 response without a workspace', { skip }, async () => {
-  const { page, record, close } = await launchAtlas({ fixtures: { functions: { ...emptyFunctions(), 'atlas-knowledge': {} } } });
+  const { page, record, close } = await launchAtlas({ controlTimers: true, fixtures: { functions: { ...emptyFunctions(), 'atlas-knowledge': {} } } });
   try {
     await openView(page, 'knowledge');
-    await page.waitForTimeout(4000);
+    await advanceTimers(page, 4000);
     assert.ok(requestsTo(record, 'atlas-knowledge', 'snapshot').length <= 3);
   } finally { await close(); }
 });
@@ -41,7 +41,7 @@ test('returning to Home renders without errors and keeps its glance links workin
     await openView(page, 'dashboard');
     assert.deepEqual(record.pageErrors, []);
     await page.click('.home-glance__item[href="#recipes"]');
-    await page.waitForTimeout(200);
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'recipes');
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'recipes');
   } finally { await close(); }
 });
@@ -66,7 +66,7 @@ test('an idle page does not churn the DOM every frame', { skip }, async () => {
     // Rendering Messages once used to start a self-sustaining observer loop.
     await openView(page, 'team');
     await openView(page, 'shifts');
-    await page.waitForTimeout(1000);
+    await settle(page);
     const mutations = await page.evaluate(() => new Promise((resolve) => {
       let count = 0;
       const observer = new MutationObserver((records) => { count += records.length; });

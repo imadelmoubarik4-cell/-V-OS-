@@ -301,7 +301,7 @@ export function teamBackend({ user = USERS.admin, status = 200, empty = false } 
     const body = entry.body || {};
     if (entry.method === 'POST') {
       const row = base.find((item) => item.id === body.profile_id);
-      if (entry.action === 'save-emergency-contact' && row) row.contacts = [...row.contacts.filter((c) => c.id !== body.contact_id), { id: body.contact_id || `ec${Date.now()}`, contact_name: body.contact_name, relationship: body.relationship, phone: body.phone, priority: body.priority, note: body.note }];
+      if (entry.action === 'save-emergency-contact' && row) row.contacts = [...row.contacts.filter((c) => c.id !== body.contact_id), { id: body.contact_id || `ec-new-${row.contacts.length + 1}`, contact_name: body.contact_name, relationship: body.relationship, phone: body.phone, priority: body.priority, note: body.note }];
       if (entry.action === 'remove-emergency-contact' && row) row.contacts = row.contacts.filter((c) => c.id !== body.contact_id);
       if (entry.action === 'update-access' && row) { row.role = body.role; row.active = body.active; }
       if (entry.action === 'save-details' && row) { row.phone = body.phone || null; row.job_title = body.job_title ?? row.job_title; row.display_name = body.preferred_name || row.display_name; row.name = row.display_name; }

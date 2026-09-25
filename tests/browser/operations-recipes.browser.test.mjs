@@ -2,11 +2,11 @@
 // and safe recipe removal.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, openView } from './harness.mjs';
+import { fixtureTime, harnessAvailable, launchAtlas, openView, settle, until } from './harness.mjs';
 import { emptyFunctions, venueClockBackend, weekHours } from './fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
-const balance = (id, quantity) => ({ inventory_item_id: id, verified_quantity: quantity, freshness_state: 'current', verified_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 864000000).toISOString() });
+const balance = (id, quantity) => ({ inventory_item_id: id, verified_quantity: quantity, freshness_state: 'current', verified_at: fixtureTime(-86400000), expires_at: fixtureTime(864000000) });
 const inventory = [
   { id: 'pinot', name: 'Angelo Pinot Grigio', category: 'Wine', unit: 'bottles', par_level: 6, supplier: 'Globus', active: true, cost_price: 2100 },
   { id: 'lime', name: 'Lime juice', category: 'Juices', unit: 'l', par_level: 2, supplier: 'Mata', active: true, cost_price: 900 },
@@ -37,12 +37,14 @@ test('Home Stock opens Inventory filtered to items below par', { skip }, async (
     await page.waitForSelector('.home-glance__item[href="#inventory?filter=below-par"]');
     assert.match(await page.textContent('.home-glance__item[href="#inventory?filter=below-par"]'), /1\s*below par/);
     await page.click('.home-glance__item[href="#inventory?filter=below-par"]');
-    await page.waitForTimeout(400);
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'inventory');
+    await settle(page);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'inventory');
     assert.deepEqual(await inventoryRows(page), ['Angelo Pinot Grigio'], 'Gin is exactly at par and is not listed');
     // The filter is a chip; clearing it shows every item.
     await page.click('[data-inv-clear="status"]');
-    await page.waitForTimeout(150);
+    await page.waitForFunction(() => location.hash === '#inventory');
+    await settle(page);
     assert.equal((await inventoryRows(page)).length, 3, 'clearing the chip shows every item');
   } finally { await close(); }
 });
@@ -52,7 +54,8 @@ test('Recipes needing attention opens Recipes on the Attention filter', { skip }
   try {
     // S88: Operations has no summary cards; Recipes' own entry point opens the preset.
     await page.evaluate(() => window.AtlasRecipes.openWithStatus('attention'));
-    await page.waitForTimeout(400);
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'recipes');
+    await settle(page);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'recipes');
     // S88 Recipes: the attention preset shows as a clearable chip next to the segments.
     await page.waitForSelector('#recipes-view .atlas-chip.is-active[data-recipe-status="all"]');
@@ -63,7 +66,7 @@ test('Recipes needing attention opens Recipes on the Attention filter', { skip }
 
 async function openRecipe(page, id) {
   await page.evaluate((recipeId) => window.AtlasRecipes.openRecipe(recipeId), id);
-  await page.waitForTimeout(400);
+  await settle(page);
 }
 
 test('an active recipe can be archived but not deleted', { skip }, async () => {
@@ -74,7 +77,7 @@ test('an active recipe can be archived but not deleted', { skip }, async () => {
     await page.click('[data-archive-recipe]');
     // Archive asks first (atlas dialog), then writes active=false.
     await page.click('#recipe-confirm-modal [data-recipe-confirm]');
-    await page.waitForTimeout(400);
+    await until(() => record.requests.some((entry) => entry.path.endsWith('/rest/v1/recipes') && entry.method === 'PATCH'), { message: 'the archive write' });
     const write = record.requests.find((entry) => entry.path.endsWith('/rest/v1/recipes') && entry.method === 'PATCH');
     assert.deepEqual(write?.body, { active: false });
     assert.ok(!record.requests.some((entry) => entry.path.endsWith('/rest/v1/recipes') && entry.method === 'DELETE'));
@@ -92,7 +95,7 @@ test('an archived recipe is deleted only after its name is typed', { skip }, asy
     assert.ok(!record.requests.some((entry) => entry.method === 'DELETE'), 'a wrong name deletes nothing');
     await page.fill('#recipe-confirm-name', 'Old Special');
     await page.click('#recipe-confirm-modal [data-recipe-confirm]');
-    await page.waitForTimeout(400);
+    await until(() => record.requests.some((entry) => entry.path.endsWith('/rest/v1/recipes') && entry.method === 'DELETE'), { message: 'the delete' });
     assert.ok(record.requests.some((entry) => entry.path.endsWith('/rest/v1/recipes') && entry.method === 'DELETE'));
   } finally { await close(); }
 });
@@ -109,7 +112,7 @@ test('an item on a placed purchase order is suggested as ordered and not counted
   });
   try {
     await page.waitForSelector('.home-glance__item[href="#purchasing"]');
-    await page.waitForTimeout(300);
+    await settle(page);
     const suggestion = await page.evaluate(() => window.AtlasOperations.orderSuggestions().find((entry) => entry.id === 'pinot'));
     assert.equal(suggestion?.ordered, true);
     assert.match(await page.textContent('.home-glance__item[href="#purchasing"]'), /0\s*to order/, 'no item still needs an order');
@@ -132,7 +135,7 @@ test('Inventory deactivates an item instead of deleting its history', { skip }, 
     await page.click('[data-row-action="deactivate"]');
     await page.waitForSelector('[data-activation-confirm]:not([disabled])');
     await page.click('[data-activation-confirm]');
-    await page.waitForTimeout(300);
+    await until(() => calls.some((entry) => entry.action === 'set_item_active'), { message: 'set_item_active' });
     const write = calls.find((entry) => entry.action === 'set_item_active');
     assert.equal(write?.body?.item_id, 'pinot');
     assert.equal(write?.body?.active, false);
