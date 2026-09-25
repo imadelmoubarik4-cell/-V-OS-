@@ -16,9 +16,6 @@ const WEB = 'apps/web';
 const CEILINGS = Object.freeze({
   // E2: new-offer draft defaults (start/end) prefilled in the offer form.
   'assets/js/settings-workspace.js': 4,
-  // E5: new-shift editor defaults (start 11:30, end 17:00).
-  'assets/js/shifts-workspace.js': 2,
-  'assets/js/shifts-month-calendar.js': 2,
   // E4: default time for a Brain marketing recommendation without one.
   'assets/js/marketing-workspace.js': 1
 });

@@ -66,7 +66,7 @@
       await load();
       if (window.AtlasShell.current() === 'team-profiles') window.AtlasShell.show('team-profiles', params, { history: false });
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Team Profiles could not open.');
+      window.AtlasShell?.toast?.('Team couldn\u2019t open. Reload Atlas and try again.');
     } finally {
       setButtonLoading(button, false);
     }
@@ -97,7 +97,7 @@
       if (!window.AtlasTeamProfiles) {
         window.AtlasShell.registerView('team-profiles', {
           root: () => document.getElementById('team-profiles-view'),
-          title: 'Team Profiles',
+          title: 'Team',
           onShow: profilesShown
         });
       }

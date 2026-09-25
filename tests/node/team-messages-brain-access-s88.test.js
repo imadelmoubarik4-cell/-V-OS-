@@ -97,5 +97,8 @@ for (const role of ['manager', 'admin']) {
 
 test('the composer only offers Atlas recommendations to managers', () => {
   const source = fs.readFileSync(new URL('../../apps/web/assets/js/team-messages.js', import.meta.url), 'utf8');
-  assert.match(source, /state\.staff\?\.can_link_brain_recommendations \? `<option value="brain_recommendation"/);
+  assert.match(source, /const types = LINK_TYPES\.filter\(\(entry\) => !entry\.managerOnly \|\| state\.staff\?\.can_link_brain_recommendations\);/);
+  assert.match(source, /\{ type: 'brain_recommendation', label: 'Recommendation', icon: 'sparkles', noun: 'Atlas recommendations', managerOnly: true \}/);
+  // Staff see that a recommendation was linked, never its title.
+  assert.match(source, /if \(link\.type === 'brain_recommendation' && !isManager\(\)\)/);
 });

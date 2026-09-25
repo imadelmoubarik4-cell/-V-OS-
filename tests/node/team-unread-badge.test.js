@@ -5,25 +5,27 @@ import { readFileSync } from 'node:fs';
 const config = readFileSync('apps/web/config.js', 'utf8');
 const badge = readFileSync('apps/web/assets/js/team-unread-badge.js', 'utf8');
 const messages = readFileSync('apps/web/assets/js/team-messages.js', 'utf8');
+const chrome = readFileSync('apps/web/assets/js/atlas-chrome.js', 'utf8');
 
-test('Team unread worker is loaded after the message workspace', () => {
+test('the unread worker is loaded after Messages', () => {
   assert.match(config, /assets\/js\/team-messages\.js/);
   assert.match(config, /assets\/js\/team-unread-badge\.js/);
   assert.ok(config.indexOf('assets/js/team-unread-badge.js') > config.indexOf('assets/js/team-messages.js'));
   assert.match(config, /AtlasTeamUnreadBadge/);
 });
 
-test('zero badges are removed instead of rendered as a visible zero', () => {
-  assert.match(badge, /if \(total <= 0\) \{\s*badge\?\.remove\(\)/);
-  assert.match(badge, /cleanLegacyZeroBadges/);
-  assert.match(badge, /if \(badge\.hidden \|\| total <= 0\) badge\.remove\(\)/);
-  assert.doesNotMatch(badge, /badge\.textContent\s*=\s*['"]0['"]/);
+test('the shell chrome renders the badge; the worker writes no badge markup', () => {
+  // S88: atlas-chrome.js draws the Messages badge from count(); a zero is never shown.
+  assert.match(chrome, /window\.AtlasTeamUnreadBadge\?\.count\?\.\(\)/);
+  assert.match(chrome, /badge\.hidden = count <= 0;/);
+  assert.doesNotMatch(badge, /createElement\('span'\)|team-nav-unread|team-bell-unread|MutationObserver/);
 });
 
-test('unread total refreshes outside Team without racing its read cursor', () => {
+test('unread total and per-conversation counts refresh outside Messages without racing its read cursor', () => {
   assert.match(badge, /const POLL_MS = 8000/);
   assert.match(badge, /action', 'snapshot/);
   assert.match(badge, /payload\?\.snapshot\?\.summary\?\.total_unread/);
+  assert.match(badge, /conversationsFrom\(payload\?\.snapshot\?\.channels\)/);
   assert.match(badge, /teamIsVisible\(\)/);
   assert.match(badge, /AtlasTeamMessages\.unreadCount/);
   assert.match(badge, /document\.hidden/);
@@ -31,11 +33,11 @@ test('unread total refreshes outside Team without racing its read cursor', () =>
   assert.match(badge, /onAuthStateChange/);
 });
 
-test('badge observer is narrowly scoped and avoids self-triggering rewrites', () => {
-  assert.match(badge, /observe\(container, \{ childList: true \}\)/);
-  assert.match(badge, /scheduleZeroCleanup/);
-  assert.doesNotMatch(badge, /subtree:\s*true/);
-  assert.doesNotMatch(badge, /attributes:\s*true/);
+test('read API for the notifications feed: count, conversations, announcements on the shell', () => {
+  assert.match(badge, /conversations: \(\) => state\.conversations\.map/);
+  assert.match(badge, /route: `#messages\/\$\{encodeURIComponent\(String\(channel\.key \|\| ''\)\)\}`/);
+  assert.match(badge, /window\.AtlasShell\?\.emit\?\.\('messages:unread', \{ total: next, conversations: list \}\)/);
+  assert.match(messages, /window\.AtlasShell\?\.emit\?\.\('messages:unread', detail\)/);
 });
 
 test('unread worker uses authenticated API only', () => {

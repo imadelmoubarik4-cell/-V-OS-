@@ -1,3 +1,11 @@
+// Messages unread worker. Polls the Messages snapshot while the app is signed
+// in so the shell's Messages badge (atlas-chrome.js reads count()) and the
+// notifications feed stay current outside Messages. While Messages is open it
+// reuses that page's snapshot so this poll never races its read cursor.
+//
+// Read API: count() · conversations() → [{ id, name, unread, route, lastMessageAt }]
+// · activeMembers() · refresh() · clear(). Each change is announced on the
+// shell as 'messages:unread' { total, conversations }.
 (function () {
   'use strict';
 
@@ -7,10 +15,9 @@
   const state = {
     inFlight: false,
     timer: null,
-    badgeObserver: null,
-    badgeCleanupFrame: null,
     authSubscription: null,
     lastTotal: 0,
+    conversations: [],
     activeMembers: null,
     initialized: false
   };
@@ -41,62 +48,28 @@
     return Math.min(9999, Math.floor(parsed));
   }
 
-  function badgeTargets() {
-    return [
-      {
-        container: document.querySelector('.nav-item[data-view="team"]'),
-        className: 'team-nav-unread'
-      },
-      {
-        container: document.querySelector('.atlas-topbar .top-icon[title="Notifications"]'),
-        className: 'team-bell-unread'
-      }
-    ];
+  function conversationsFrom(channels) {
+    return (Array.isArray(channels) ? channels : [])
+      .map((channel) => ({
+        id: String(channel.key || ''),
+        name: String(channel.name || ''),
+        unread: normalizeTotal(channel.unread_count),
+        route: `#messages/${encodeURIComponent(String(channel.key || ''))}`,
+        lastMessageAt: channel.last_message?.created_at || null
+      }))
+      .filter((entry) => entry.id && entry.unread > 0);
   }
 
-  function updateOneBadge(container, className, total) {
-    if (!container) return;
-    let badge = container.querySelector(`.${className}`);
-
-    // A zero is not a notification. Removing it is more reliable than relying
-    // on hidden because the badge's CSS uses an explicit display value.
-    if (total <= 0) {
-      badge?.remove();
-      return;
-    }
-
-    if (!badge) {
-      badge = document.createElement('span');
-      badge.className = className;
-      container.appendChild(badge);
-    }
-
-    const nextText = total > 99 ? '99+' : String(total);
-    if (badge.textContent !== nextText) badge.textContent = nextText;
-    badge.hidden = false;
-    badge.style.display = 'inline-grid';
-    badge.setAttribute('aria-label', `${total} unread team message${total === 1 ? '' : 's'}`);
-  }
-
-  function setUnreadTotal(value) {
-    const total = normalizeTotal(value);
-    state.lastTotal = total;
-    badgeTargets().forEach(({ container, className }) => updateOneBadge(container, className, total));
-  }
-
-  function cleanLegacyZeroBadges() {
-    document.querySelectorAll('.team-nav-unread,.team-bell-unread').forEach((badge) => {
-      const total = normalizeTotal(badge.textContent);
-      if (badge.hidden || total <= 0) badge.remove();
-    });
-  }
-
-  function scheduleZeroCleanup() {
-    if (state.badgeCleanupFrame) return;
-    state.badgeCleanupFrame = window.requestAnimationFrame(() => {
-      state.badgeCleanupFrame = null;
-      cleanLegacyZeroBadges();
-    });
+  // The badge itself is rendered by the shell chrome from count(); this only
+  // records the numbers and tells the shell they changed.
+  function setUnread(total, conversations) {
+    const next = normalizeTotal(total);
+    const list = Array.isArray(conversations) ? conversations : [];
+    const changed = next !== state.lastTotal || JSON.stringify(list) !== JSON.stringify(state.conversations);
+    state.lastTotal = next;
+    state.conversations = list;
+    if (!changed) return;
+    window.AtlasShell?.emit?.('messages:unread', { total: next, conversations: list });
   }
 
   async function activeSession() {
@@ -107,12 +80,12 @@
     return result.data.session || null;
   }
 
-  async function fetchUnreadTotal() {
+  async function fetchUnread() {
     const api = endpoint();
-    if (!api) throw new Error('Team Messages API is not configured.');
+    if (!api) throw new Error('Messages are not set up.');
 
     const session = await activeSession();
-    if (!session?.access_token) return 0;
+    if (!session?.access_token) return { total: 0, conversations: [] };
 
     const url = new URL(api);
     url.searchParams.set('action', 'snapshot');
@@ -133,41 +106,44 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) return 0;
-        throw new Error(payload.error || `Unread-count request failed (${response.status}).`);
+        if (response.status === 401 || response.status === 403) return { total: 0, conversations: [] };
+        throw new Error(`Unread count unavailable (${response.status}).`);
       }
       // The same lightweight snapshot carries the active staff count that
-      // Home shows, so Home does not need Team to be opened first.
+      // Home shows, so Home does not need Messages to be opened first.
       const members = Number(payload?.snapshot?.summary?.active_members);
       if (Number.isFinite(members) && members !== state.activeMembers) {
         state.activeMembers = members;
         window.dispatchEvent(new CustomEvent('atlas:team-summary', { detail: { activeMembers: members } }));
       }
-      return normalizeTotal(payload?.snapshot?.summary?.total_unread);
+      return {
+        total: normalizeTotal(payload?.snapshot?.summary?.total_unread),
+        conversations: conversationsFrom(payload?.snapshot?.channels)
+      };
     } finally {
       window.clearTimeout(timer);
     }
   }
 
   async function refreshUnread(options = {}) {
-    cleanLegacyZeroBadges();
     if (state.inFlight || document.hidden || !appIsSignedIn()) {
-      if (!appIsSignedIn()) setUnreadTotal(0);
+      if (!appIsSignedIn()) setUnread(0, []);
       return;
     }
 
-    // While Team is open, reuse its current full snapshot so the background
+    // While Messages is open, reuse its current full snapshot so the background
     // poll does not race against the channel mark-as-read request.
     if (teamIsVisible() && window.AtlasTeamMessages?.snapshot?.()) {
-      setUnreadTotal(window.AtlasTeamMessages.unreadCount?.() || 0);
+      setUnread(window.AtlasTeamMessages.unreadCount?.() || 0, conversationsFrom(window.AtlasTeamMessages.snapshot()?.channels));
       return;
     }
 
     state.inFlight = true;
     try {
-      setUnreadTotal(await fetchUnreadTotal());
+      const result = await fetchUnread();
+      setUnread(result.total, result.conversations);
     } catch (error) {
-      if (!options.silent) console.warn('Team unread badge could not refresh:', error?.message || error);
+      if (!options.silent) console.warn('Messages unread count could not refresh.');
     } finally {
       state.inFlight = false;
     }
@@ -193,24 +169,12 @@
     refreshUnread();
   }
 
-  function attachBadgeObserver() {
-    state.badgeObserver?.disconnect();
-    state.badgeObserver = new MutationObserver(scheduleZeroCleanup);
-
-    // Observe only direct badge additions/removals. Never rewrite a positive
-    // badge from inside the observer; that would create a self-triggering loop.
-    badgeTargets().forEach(({ container }) => {
-      if (!container) return;
-      state.badgeObserver.observe(container, { childList: true });
-    });
-  }
-
   function subscribeToAuth() {
     const client = window.atlasSupabase;
     if (!client?.auth?.onAuthStateChange || state.authSubscription) return false;
     const subscription = client.auth.onAuthStateChange((_event, session) => {
       if (!session) {
-        setUnreadTotal(0);
+        setUnread(0, []);
         stopPolling();
         return;
       }
@@ -225,14 +189,18 @@
     if (state.initialized) return;
     state.initialized = true;
 
-    attachBadgeObserver();
-    cleanLegacyZeroBadges();
     startPolling();
     refreshUnread();
 
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', () => refreshUnread({ silent: true }));
     window.addEventListener('online', () => refreshUnread());
+    // Messages announces every snapshot it applies (a read, a send).
+    window.AtlasShell?.on?.('messages:unread', (detail) => {
+      if (!detail || !teamIsVisible()) return;
+      state.lastTotal = normalizeTotal(detail.total);
+      state.conversations = (detail.conversations || []).map(({ id, name, unread, route, lastMessageAt }) => ({ id, name, unread, route, lastMessageAt }));
+    });
 
     if (!subscribeToAuth()) {
       const authTimer = window.setInterval(() => {
@@ -243,8 +211,6 @@
 
     window.addEventListener('pagehide', () => {
       stopPolling();
-      state.badgeObserver?.disconnect();
-      if (state.badgeCleanupFrame) window.cancelAnimationFrame(state.badgeCleanupFrame);
       state.authSubscription?.unsubscribe?.();
     }, { once: true });
   }
@@ -252,8 +218,9 @@
   window.AtlasTeamUnreadBadge = {
     refresh: () => refreshUnread(),
     count: () => state.lastTotal,
+    conversations: () => state.conversations.map((entry) => ({ ...entry })),
     activeMembers: () => state.activeMembers,
-    clear: () => setUnreadTotal(0)
+    clear: () => setUnread(0, [])
   };
 
   if (document.readyState === 'loading') {

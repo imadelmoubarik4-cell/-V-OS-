@@ -1572,10 +1572,10 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 /* ---------- App-wide type sweep.
    Fifteen module stylesheets set Fraunces on their own headings. One sweep
    keeps the whole product on a single typeface without editing any of them. */
-:where(.daily-briefing-shell, .phase3-shell, .checkpoint-k-panel, .review-shell, .checkpoint-a-shell, .knowledge-shell, .shifts-hero, .shift-month-navigation, .shift-month-summary, .shift-month-cell-head, .shift-month-day-detail, .shift-month-state, .shift-week-navigation, .shift-summary-grid, .shift-day-column, .shift-empty-week, .shift-empty-section, .shift-section-card, .shift-confirmation-date, .shift-modal, .shift-state, .reports-shell, #reports-view, .settings-shell, .marketing-shell, .system-shell, .business-shell, .brain-shell, .item-master-workspace, .stock-count-hero, .stock-count-panel, .stock-count-summary-strip, .l1-classification-strip, .inventory-scanner-header, .inventory-scanner-placeholder, .inventory-scanner-result, .inventory-scanner-mini-stats, .inventory-scanner-item-copy, .atlas-import-center, .operations-center) {
+:where(.daily-briefing-shell, .phase3-shell, .checkpoint-k-panel, .review-shell, .checkpoint-a-shell, .reports-shell, #reports-view, .settings-shell, .marketing-shell, .system-shell, .business-shell, .brain-shell, .item-master-workspace, .stock-count-hero, .stock-count-panel, .stock-count-summary-strip, .l1-classification-strip, .inventory-scanner-header, .inventory-scanner-placeholder, .inventory-scanner-result, .inventory-scanner-mini-stats, .inventory-scanner-item-copy, .atlas-import-center, .operations-center) {
   font-family: var(--font-sans);
 }
-:where(.daily-briefing-shell h1, .daily-briefing-shell h2, .daily-briefing-shell h3, .phase3-shell h1, .phase3-shell h2, .phase3-shell h3, .phase3-shell strong, .checkpoint-k-panel h1, .checkpoint-k-panel h2, .checkpoint-k-panel h3, .review-shell h1, .review-shell h2, .review-shell h3, .review-shell strong, .checkpoint-a-shell h1, .checkpoint-a-shell h2, .checkpoint-a-shell h3, .checkpoint-a-compact-head h2, .checkpoint-a-compact-copy h3, .checkpoint-a-home-copy h3, .checkpoint-a-context-header h2, .checkpoint-a-settings-head h2, .checkpoint-a-settings-connection h3, .knowledge-shell h1, .knowledge-shell h2, .knowledge-shell h3, .shifts-hero h1, .shift-month-navigation h2, .shift-month-summary strong, .shift-month-cell-head strong, .shift-month-day-detail h3, .shift-month-state h2, .shift-week-navigation strong, .shift-summary-grid strong, .shift-day-column strong, .shift-empty-week h3, .shift-empty-section h3, .shift-section-card h2, .shift-confirmation-date strong, .shift-modal h2, .shift-state h2, .reports-hero h1, .reports-section-head h2, .report-kpi strong, .reports-panel h2, .reports-summary-grid article strong, .reports-bar-chart figcaption strong, .reports-ask-panel h2, .reports-state h2, .settings-shell h1, .settings-shell h2, .settings-shell h3, .settings-hero aside strong, .settings-summary-grid article strong, .settings-profile-summary strong, .marketing-shell h1, .marketing-shell h2, .marketing-shell h3, .marketing-stats strong, .marketing-recommendation-summary, .business-shell h1, .business-shell h2, .business-shell strong, .brain-shell h1, .brain-shell h2, .brain-shell h3, .brain-metric strong, .brain-stock-qty strong, .item-master-hero h1, .stock-count-hero h1, .stock-count-summary-strip strong, .l1-classification-strip strong, .inventory-scanner-header h2, .inventory-scanner-placeholder strong, .inventory-scanner-result h3, .inventory-scanner-mini-stats strong, .inventory-scanner-item-copy h3, .import-hero h1, .operations-hero h1, .operations-card h2, .operations-card h3) {
+:where(.daily-briefing-shell h1, .daily-briefing-shell h2, .daily-briefing-shell h3, .phase3-shell h1, .phase3-shell h2, .phase3-shell h3, .phase3-shell strong, .checkpoint-k-panel h1, .checkpoint-k-panel h2, .checkpoint-k-panel h3, .review-shell h1, .review-shell h2, .review-shell h3, .review-shell strong, .checkpoint-a-shell h1, .checkpoint-a-shell h2, .checkpoint-a-shell h3, .checkpoint-a-compact-head h2, .checkpoint-a-compact-copy h3, .checkpoint-a-home-copy h3, .checkpoint-a-context-header h2, .checkpoint-a-settings-head h2, .checkpoint-a-settings-connection h3, .reports-hero h1, .reports-section-head h2, .report-kpi strong, .reports-panel h2, .reports-summary-grid article strong, .reports-bar-chart figcaption strong, .reports-ask-panel h2, .reports-state h2, .settings-shell h1, .settings-shell h2, .settings-shell h3, .settings-hero aside strong, .settings-summary-grid article strong, .settings-profile-summary strong, .marketing-shell h1, .marketing-shell h2, .marketing-shell h3, .marketing-stats strong, .marketing-recommendation-summary, .business-shell h1, .business-shell h2, .business-shell strong, .brain-shell h1, .brain-shell h2, .brain-shell h3, .brain-metric strong, .brain-stock-qty strong, .item-master-hero h1, .stock-count-hero h1, .stock-count-summary-strip strong, .l1-classification-strip strong, .inventory-scanner-header h2, .inventory-scanner-placeholder strong, .inventory-scanner-result h3, .inventory-scanner-mini-stats strong, .inventory-scanner-item-copy h3, .import-hero h1, .operations-hero h1, .operations-card h2, .operations-card h3) {
   font-family: var(--font-sans);
   font-weight: 600;
   letter-spacing: -.03em;
@@ -1591,7 +1591,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 /* Containers that hold real copy: fill only. Their own text colours stand —
    month chips carry staff names and times, export tiles carry labels and
    descriptions, and recolouring either would tint content, not chrome. */
-:where(.shift-month-chip, .reports-table th, .reports-export-grid button) {
+:where( .reports-table th, .reports-export-grid button) {
   background: var(--blue-50);
 }
 :where(.l1-classification-strip article:nth-child(3)),
@@ -1611,7 +1611,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
    Knowledge, Marketing and System panels are deliberately absent: their
    container classes need a read of their renderers, which happens when those
    workspaces get their own pass. */
-:where(.phase3-panel, .phase3-recommendation, .phase3-modal-panel, .review-summary-card, .review-list-card, .review-detail-card, .review-issues-card, .checkpoint-a-panel, .checkpoint-a-routine, .reports-panel, .report-kpi, .reports-summary-grid article, .reports-ask-panel, .settings-profile-summary article, .shift-section-card, .shift-summary-grid article, .shift-modal, .stock-count-panel) {
+:where(.phase3-panel, .phase3-recommendation, .phase3-modal-panel, .review-summary-card, .review-list-card, .review-detail-card, .review-issues-card, .checkpoint-a-panel, .checkpoint-a-routine, .reports-panel, .report-kpi, .reports-summary-grid article, .reports-ask-panel, .settings-profile-summary article, .stock-count-panel) {
   background: var(--glass-fill);
   border-color: var(--glass-line);
   box-shadow: var(--glass-highlight), var(--glass-shadow);
@@ -1626,14 +1626,14 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 }
 /* ---------- from legacy/workspaces-polish--components.css ---------- */
 /* ---------- Shared surface treatment ---------- */
-:where(.marketing-panel, .marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .marketing-modal, .team-messages-layout, .team-profiles-layout, .team-profiles-state, .team-profile-panel, .team-profile-detail, .shift-schedule-panel, .shift-month-toolbar, .shift-week-toolbar, .shift-month-state, .shift-card, .knowledge-article-card, .knowledge-summary-grid > *, .knowledge-trust-panel, .knowledge-training-hero, .knowledge-connection-card, .knowledge-state, .knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal, .business-card, .reports-hero-meta, .reports-filter-shell, .reports-table-panel, .reports-chart-empty, .settings-panel, .settings-card, .settings-activity-list article) {
+:where(.marketing-panel, .marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .marketing-modal, .business-card, .reports-hero-meta, .reports-filter-shell, .reports-table-panel, .reports-chart-empty, .settings-panel, .settings-card, .settings-activity-list article) {
   background: var(--glass-fill);
   border: 1px solid var(--glass-line);
   border-radius: var(--atlas-radius);
   box-shadow: var(--glass-highlight), var(--glass-shadow);
 }
 /* Nested cards sit inside an already-glass panel: fill only, no second shadow. */
-:where(.marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .shift-card, .team-profile-panel, .settings-activity-list article) {
+:where(.marketing-content-card, .marketing-campaign-card, .marketing-connection-card, .settings-activity-list article) {
   background: var(--surface);
   box-shadow: none;
   border-radius: var(--r-lg);
@@ -1656,129 +1656,11 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 :where(.marketing-modal-backdrop) {
   background: var(--overlay);
 }
-:where(.team-message-list) {
-  background: var(--surface);
-}
-:where(.team-message-content) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-}
-:where(.team-message-avatar) {
-  background: var(--blue-100);
-  color: var(--blue-700);
-}
-:where(.team-message-link) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-  color: var(--atlas-text);
-}
 /* Trust strips carry an attestation — they keep their dark, deliberate weight. */
-:where(.team-messages-trust, .team-profiles-trust) {
-  background: var(--ink);
-  border-radius: var(--r-lg);
-}
-:where(.team-profiles-directory) {
-  background: var(--bg-subtle);
-  border-right-color: var(--glass-line);
-}
-:where(.team-profiles-search, .team-profile-toggle) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-}
-:where(.team-profile-avatar, .team-profile-detail-avatar) {
-  background: var(--blue-100);
-  color: var(--blue-700);
-}
-:where(.team-profile-detail) {
-  background: transparent;
-  box-shadow: none;
-}
-:where(.team-profile-detail-head) {
-  border-bottom-color: var(--glass-line);
-}
-:where(.team-profile-progress) {
-  background: var(--blue-100);
-}
-:where(.team-profile-progress > *) {
-  background: var(--accent);
-}
 /* A manager-only note is a permission boundary; it keeps a distinct tone. */
-:where(.team-profile-manager-note) {
-  background: var(--warning-soft);
-  border-color: var(--line-strong);
-  color: var(--warning);
-}
-:where(.team-profile-primary) {
-  background: var(--accent);
-  border-color: var(--blue-700);
-  color: #fff;
-}
-:where(.team-profile-secondary) {
-  background: var(--glass-fill-strong);
-  border-color: var(--glass-line-strong);
-  color: var(--atlas-text);
-}
-:where(.team-profile-modal-backdrop) {
-  background: var(--overlay);
-}
 /* ---------- Shifts ---------- */
-:where(.shifts-hero p, .shift-day-empty, .shift-month-empty, .shift-month-day-empty, .shift-empty-week p, .shift-empty-section p, .shift-state p) {
-  color: var(--atlas-muted);
-}
-:where(.shift-day-column) {
-  background: var(--bg-subtle);
-  border-color: var(--glass-line);
-  border-radius: var(--r-lg);
-}
-:where(.shift-month-day-list article, .shift-request-list article, .shift-confirmation-list article) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-}
-:where(.shift-activity-list article) {
-  border-bottom-color: var(--glass-line);
-}
-:where(.shift-activity-list article > span) {
-  background: var(--blue-100);
-  color: var(--blue-700);
-}
-:where(.shift-modal-note) {
-  background: var(--blue-50);
-  color: var(--atlas-muted);
-}
-:where(.shift-modal-backdrop) {
-  background: var(--overlay);
-}
-:where(.knowledge-article-icon, .knowledge-source-logo, .knowledge-card-arrow) {
-  background: var(--blue-100);
-  color: var(--blue-600);
-}
-:where(.knowledge-search) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-}
-:where(.knowledge-progress-track) {
-  background: var(--blue-100);
-}
-:where(.knowledge-progress-track > *) {
-  background: var(--accent);
-}
-:where(.knowledge-training-task, .knowledge-live-resource, .knowledge-detail-source, .knowledge-version-list article, .knowledge-ack-list article) {
-  background: var(--surface);
-  border-color: var(--glass-line);
-}
-:where(.knowledge-drawer, .knowledge-editor-modal, .knowledge-source-modal) {
-  background: var(--surface);
-  border-radius: var(--r-xl);
-}
-:where(.knowledge-drawer-backdrop, .knowledge-modal-backdrop) {
-  background: var(--overlay);
-}
 /* A draft warning and a required-training state are publication states, not
    decoration: they keep their own tone. */
-:where(.knowledge-draft-warning) {
-  background: var(--warning-soft);
-  border-color: var(--line-strong);
-}
 /* ---------- Atlas Brain ---------- */
 :where(.brain-card-head) {
   border-bottom-color: var(--glass-line);
@@ -1843,7 +1725,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 /* Normalize workspace hierarchy without flattening the more expressive Home
    greeting. Dynamic module styles load later, so these rules are intentional
    important overrides. */
-:where(.recipe-hero h1, .recipe-alpha03-head h1, .operations-hero h1, .brain-hero h1, .business-hero h1, .marketing-hero h1, .team-messages-hero h1, .team-profiles-hero h1, .shifts-hero h1, .knowledge-hero h1, .reports-hero h1, .review-hero h1, .system-hero h1, .settings-hero h1, .item-master-hero h1, .import-hero h1) {
+:where(.recipe-hero h1, .recipe-alpha03-head h1, .operations-hero h1, .brain-hero h1, .business-hero h1, .marketing-hero h1, .reports-hero h1, .review-hero h1, .system-hero h1, .settings-hero h1, .item-master-hero h1, .import-hero h1) {
   font-family: var(--font-sans);
   font-size: var(--fs-title);
   font-weight: 600;
@@ -1852,54 +1734,54 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 }
 /* Blue communicates selection consistently; neutral white remains the default
    action treatment used by the approved Inventory and Recipe references. */
-:where(.inventory-workspace-tab.active, .reports-navigation button.is-active, .settings-tabs button.is-active, .knowledge-tabs button.is-active, .knowledge-category-row button.is-active, .team-profiles-filters button.is-active, .business-period-control button.active) {
+:where(.inventory-workspace-tab.active, .reports-navigation button.is-active, .settings-tabs button.is-active, .business-period-control button.active) {
   border-color: var(--blue-500);
   background: var(--blue-100);
   color: var(--blue-700);
   box-shadow: none;
 }
-:where(.recipe-primary-action, .knowledge-hero-actions .is-primary, .settings-hero aside button, .system-hero aside button) {
+:where(.recipe-primary-action, .settings-hero aside button, .system-hero aside button) {
   border: 1px solid var(--atlas-line);
   background: var(--surface);
   color: var(--atlas-text);
   box-shadow: var(--glass-highlight);
 }
-:where(.recipe-primary-action:hover, .knowledge-hero-actions .is-primary:hover, .settings-hero aside button:hover, .system-hero aside button:hover) {
+:where(.recipe-primary-action:hover, .settings-hero aside button:hover, .system-hero aside button:hover) {
   border-color: var(--blue-400);
   background: var(--blue-50);
   color: var(--blue-700);
 }
 /* Wide workspace content stays within the shared rail and advertises overflow
    at the component boundary instead of widening the full application. */
-:where(#inventory-view, #reports-view, #shifts-view, #knowledge-view, #settings-view, #system-view, #sprint3-review-view, .reports-shell, .shifts-shell, .knowledge-shell, .settings-shell, .system-shell, .review-shell) {
+:where(#inventory-view, #reports-view, #settings-view, #system-view, #sprint3-review-view, .reports-shell, .settings-shell, .system-shell, .review-shell) {
   min-width: 0;
   max-width: 100%;
 }
 /* ---------- Primary buttons: one blue primary across the product ----------
    Marketing shipped a near-black primary (--atlas-text), Shifts a brown one
    (#a6814d), Operations a black compact button. (confirmed) */
-:where(.marketing-primary, .shift-primary, .checkpoint-a-compact-button, .knowledge-primary, .shifts-primary, .team-messages-primary) {
+:where(.marketing-primary, .checkpoint-a-compact-button) {
   background: var(--accent);
   border: 1px solid var(--blue-700);
   color: #fff;
   box-shadow: none;
 }
-:where(.marketing-primary:hover:not(:disabled), .shift-primary:hover, .checkpoint-a-compact-button:hover, .knowledge-primary:hover, .shifts-primary:hover, .team-messages-primary:hover) {
+:where(.marketing-primary:hover:not(:disabled), .checkpoint-a-compact-button:hover) {
   background: var(--blue-700);
 }
 /* ---------- Tab rails: sand troughs → light blue (confirmed) ---------- */
-:where(.marketing-tabs, .shift-tabs, .system-tabs) {
+:where(.marketing-tabs, .system-tabs) {
   background: var(--blue-50);
   border-color: var(--glass-line);
 }
-:where(.marketing-tabs button.is-active, .shift-tabs button.is-active) {
+:where(.marketing-tabs button.is-active) {
   background: #fff;
   color: var(--blue-700);
   box-shadow: var(--shadow-1);
 }
 /* ---------- from legacy/s34-preproduction--search.css ---------- */
 /* Compact search field used across launch modules. */
-:where(:where(.atlas-search,.recipe-search,.purchasing-search,.knowledge-search,.team-attachment-controls label, .brain-search,.settings-search) input[type="search"], :where(.atlas-search) input) {
+:where(:where(.atlas-search,.recipe-search,.purchasing-search, .brain-search,.settings-search) input[type="search"], :where(.atlas-search) input) {
   min-height:36px;
   height:36px;
   border-radius:var(--r-md);
@@ -1907,13 +1789,13 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
 }
 /* ---------- from legacy/s38-app-remediation--search.css ---------- */
 /* Compact Apple-style search controls */
-:where(:is( #supplier-search, #recipe-search, [data-team-target-search] )) {
+:where(:is( #supplier-search, #recipe-search)) {
   min-height: 38px;
   border-color: var(--s38-line);
   border-radius: 999px;
   background: var(--surface);
 }
-:where(:is( #supplier-search, #recipe-search, [data-team-target-search] ):focus) {
+:where(:is( #supplier-search, #recipe-search):focus) {
   border-color: var(--s38-blue);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, .16);
 }

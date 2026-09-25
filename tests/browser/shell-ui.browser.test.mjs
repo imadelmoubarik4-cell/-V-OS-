@@ -308,6 +308,12 @@ test('account menu: keyboard navigation, profile link, Escape returns focus, sig
     await page.click('#atlas-account-btn');
     await page.click('[data-menu-action="profile"]');
     await page.waitForFunction((id) => location.hash === `#team/${id}`, USERS.admin.id);
+    // A loaded profile opens as a modal side sheet (spec §7.10); close it first.
+    await page.waitForTimeout(500);
+    if (await page.$('#team-profile-sheet')) {
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => location.hash === '#team');
+    }
     await page.click('#atlas-account-btn');
     await Promise.all([page.waitForEvent('load'), page.click('[data-menu-action="sign-out"]')]);
     assert.ok(record.requests.some((entry) => entry.path.startsWith('/auth/v1/logout')), 'sign out reached Auth');

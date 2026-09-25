@@ -21,7 +21,6 @@ const finalPolishCss = legacyCss('polish-pass2');
 const iconSources = [
   app,
   readFileSync('apps/web/assets/js/shifts-workspace.js', 'utf8'),
-  readFileSync('apps/web/assets/js/shifts-month-calendar.js', 'utf8'),
   readFileSync('apps/web/assets/js/reports-workspace.js', 'utf8'),
   readFileSync('apps/web/assets/js/system-workspace.js', 'utf8'),
 ].join('\n');
@@ -81,7 +80,8 @@ test('shared polish removes duplicate Home metrics and normalizes workspace hier
   assert.match(finalPolishCss, /body\[data-atlas-view\]:not\(\[data-atlas-view="dashboard"\]\) \.checkpoint-a-home-prompt/);
   // S88: the workspace page-title normalization is part of atlas-components.css.
   assert.match(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.recipe-hero h1,[\s\S]*\.recipe-alpha03-head h1,[\s\S]*\.settings-hero h1/);
-  assert.match(finalPolishCss, /\.team-profile-card-media[\s\S]*height: 176px !important/);
+  // S88: Team was rebuilt on the shared table; its retired card grid rules are gone.
+  assert.doesNotMatch(finalPolishCss, /\.team-profile-card-media/);
   assert.match(recipes, /<h1>Recipe Library<\/h1>/);
 });
 

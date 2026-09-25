@@ -155,20 +155,20 @@ Line numbers are as of this commit.
 
 | Done | File:line | Current | Change to |
 | --- | --- | --- | --- |
-| [ ] | `shifts-workspace.js:54-63` `venueDate()` | duplicate (correct), literal zone | `venueDate()` / `today()` |
-| [ ] | `shifts-workspace.js:98-106` `formatDateTime` | literal zone | `formatDateTime` |
-| [ ] | `shifts-workspace.js:468-469` **ratchet (2)** | new shift defaults `T11:30` – `T17:00` | `dayWindow(date).state === 'open'` → prefill its open time; else empty with "Business hours are not set — enter a start time" |
-| [ ] | `shifts-month-calendar.js:71-80` `venueDate()` | duplicate, literal zone | `venueDate()` / `today()` |
-| [ ] | `shifts-month-calendar.js:456-457` **ratchet (2)** | same defaults as above | same as above |
-| [ ] | `team-messages.js:85-97` `formatDateTime` | same-day check in browser zone, format without zone | `venueDate(a) === venueDate(b)`, `formatTime` / `formatDateTime` |
-| [ ] | `team-profiles.source.js:63-70`, `:72-79` (rebuild `.gz`) | no `timeZone`; date keys at local noon | `formatDate` / `formatDateTime` |
-| [ ] | `knowledge-workspace.js:43-55`, `:57-64` | no `timeZone` | `formatDateTime` / `formatDate` |
+| [x] | `shifts-workspace.js:54-63` `venueDate()` | duplicate (correct), literal zone | `venueDate()` / `today()` — S88: the module keeps no zone of its own; `today()` delegates to `AtlasVenueClock.today()` |
+| [x] | `shifts-workspace.js:98-106` `formatDateTime` | literal zone | `formatDateTime` — S88: timestamps go through `AtlasVenueClock.formatDateTime` / `formatRelative` |
+| [x] | `shifts-workspace.js:468-469` **ratchet (2)** | new shift defaults `T11:30` – `T17:00` | S88: `defaultStart(date)` prefills the open time from `dayWindow(date)` when the day is open; otherwise the start is empty with "Business hours are not set — enter a start time." (or the closed-day note). The end is never invented. Ratchet ceiling removed. |
+| [x] | `shifts-month-calendar.js:71-80` `venueDate()` | duplicate, literal zone | S88: file deleted — the month calendar is part of `shifts-workspace.js` |
+| [x] | `shifts-month-calendar.js:456-457` **ratchet (2)** | same defaults as above | S88: file deleted; the one editor uses `defaultStart(date)` |
+| [x] | `team-messages.js:85-97` `formatDateTime` | same-day check in browser zone, format without zone | S88: `venueDate(a) === venueDate(b)` → `formatTime`, else `formatDateTime`; day dividers use venue dates |
+| [x] | `team-profiles.source.js:63-70`, `:72-79` (rebuild `.gz`) | no `timeZone`; date keys at local noon | S88: `formatDate` / `formatDateTime` / `formatRelative`; bundle rebuilt with `node scripts/build_team_profiles_bundle.mjs` |
+| [x] | `knowledge-workspace.js:43-55`, `:57-64` | no `timeZone` | S88: `formatDateTime` / `formatDate` / `formatRelative` |
 
-Not defects (keep): Shifts `datetime-local` values (`shifts-workspace.js:478-479`,
-`shifts-month-calendar.js:468-469`) are sent as venue-local strings and converted
-server-side with `shift_settings.timezone`; Shifts `formatDate` with `timeZone: 'UTC'` on
-date keys (`shifts-workspace.js:86-96`, `shifts-month-calendar.js:105-120`) is the UTC-noon
-pattern. Delegating these must not change Shifts' outputs.
+Not defects (kept): Shifts sends venue-local `YYYY-MM-DDTHH:MM` strings (`starts_local`,
+`ends_local`; an end at or before the start is the next day) and the server converts them
+with `shift_settings.timezone`. Date keys are plain `YYYY-MM-DD` strings moved with
+`AtlasVenueClock.addDays` / `startOfWeek` / `weekday`, so no browser-zone arithmetic
+remains in the module.
 
 ### Shell (E1) and Atlas AI (E6)
 

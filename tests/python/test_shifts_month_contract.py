@@ -10,7 +10,8 @@ PUBLISH_FIX = (
     ROOT / "supabase/migrations/20260803225245_atlas_shifts_month_publish_complete_weeks.sql"
 ).read_text()
 EDGE = (ROOT / "supabase/functions/atlas-shifts/index.ts").read_text()
-BROWSER = (ROOT / "apps/web/assets/js/shifts-month-calendar.js").read_text()
+# S88: the Month calendar is part of the one Shifts module.
+BROWSER = (ROOT / "apps/web/assets/js/shifts-workspace.js").read_text()
 CONFIG = (ROOT / "apps/web/config.js").read_text()
 ALL_SQL = MONTH_MIGRATION + PUBLISH_FIX
 
@@ -86,7 +87,8 @@ class ShiftsMonthContractTests(unittest.TestCase):
 
     def test_browser_month_editor_uses_authenticated_gateway_only(self):
         self.assertIn("SHIFTS_API", CONFIG)
-        self.assertIn("shifts-month-editor.css", CONFIG)
+        self.assertIn("shifts-workspace.js", CONFIG)
+        self.assertNotIn("shifts-month-editor.css", CONFIG)
         self.assertIn("window.atlasSupabase", BROWSER)
         self.assertIn("authorization: `Bearer ${session.access_token}`", BROWSER)
         self.assertIn("api('month-snapshot'", BROWSER)

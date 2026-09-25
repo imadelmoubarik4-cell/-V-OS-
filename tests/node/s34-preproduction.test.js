@@ -20,7 +20,7 @@ const indexMigration = read('supabase/migrations/20260911124006_s34_foreign_key_
 
 test('runtime module guard preserves Team destinations when runtime config is reduced', () => {
   assert.match(app, /assets\/js\/runtime-module-guard\.js/);
-  for (const asset of ['team-messages.js', 'team-profiles-bootstrap.js', 'team-profile-photos.js', 'team-profile-photo-gallery.js']) {
+  for (const asset of ['team-messages.js', 'team-unread-badge.js', 'team-profiles-bootstrap.js', 'team-profile-photos.js']) {
     assert.match(runtime, new RegExp(asset.replaceAll('.', '\\.')));
   }
   assert.match(runtime, /Object\.freeze/);

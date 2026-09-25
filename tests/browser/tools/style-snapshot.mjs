@@ -37,7 +37,7 @@ export const DEFAULT_VIEWS = [
 
 // Extra open states: [label, view, action(page)].
 export const STATES = [
-  ['shifts-month', 'shifts', async (page) => { await page.click('#shifts-view [data-shifts-tab="month"]', { timeout: 3000 }); }],
+  ['shifts-month', 'shifts', async (page) => { await page.click('#shifts-view [data-shifts-mode="month"]', { timeout: 3000 }); }],
   ['recipe-detail', 'recipes', async (page) => {
     await page.evaluate(() => document.querySelector('#recipes-view [data-recipe-id], #recipes-view [data-recipe-select]')?.click());
   }],

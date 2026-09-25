@@ -11,7 +11,7 @@ EDGE_FUNCTION = (ROOT / "supabase/functions/atlas-knowledge/index.ts").read_text
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
 BROWSER_MODULE = (ROOT / "apps/web/assets/js/knowledge-workspace.js").read_text()
-TEAM_BRIDGE = (ROOT / "apps/web/assets/js/knowledge-team-link-bridge.js").read_text()
+TEAM_MESSAGES = (ROOT / "apps/web/assets/js/team-messages.js").read_text()
 
 
 class KnowledgeContractTests(unittest.TestCase):
@@ -75,11 +75,12 @@ class KnowledgeContractTests(unittest.TestCase):
         self.assertIn("'knowledge'", HARDENING)
         # S88: the link type is registered with the shell's link registry by the
         # Knowledge workspace; Team Messages resolves it before its own routes.
-        self.assertIn("registerLink?.('knowledge_article', openArticleFromLink)", BROWSER_MODULE)
-        self.assertIn("AtlasShell?.openLink?.('knowledge_article'", TEAM_BRIDGE)
-        team = (ROOT / "apps/web/assets/js/team-messages.js").read_text()
-        self.assertIn("window.AtlasShell?.openLink?.(type, key, { source: 'team-messages' })", team)
-        self.assertNotIn("stopImmediatePropagation", TEAM_BRIDGE)
+        self.assertIn("shell.links?.register?.('knowledge_article', openArticleFromLink)", BROWSER_MODULE)
+        self.assertIn("window.AtlasShell?.openLink?.(type, key, { source: 'team-messages' })", TEAM_MESSAGES)
+        self.assertIn("return `#knowledge/${key}`", TEAM_MESSAGES)
+        # The capture-phase bridge is retired (S88 Team D).
+        self.assertFalse((ROOT / "apps/web/assets/js/knowledge-team-link-bridge.js").exists())
+        self.assertNotIn("stopImmediatePropagation", TEAM_MESSAGES + BROWSER_MODULE)
 
     def test_public_rpc_surface_is_service_role_only_and_named(self):
         signatures = (
@@ -100,6 +101,14 @@ class KnowledgeContractTests(unittest.TestCase):
         self.assertIn("p_profiles jsonb", NAMED_ARGS)
         self.assertIn("p_article_id uuid", NAMED_ARGS)
         self.assertNotIn("security definer", (MIGRATION + HARDENING + NAMED_ARGS).lower())
+
+    def test_search_runs_as_the_verified_actor_and_hides_drafts_from_staff(self):
+        self.assertIn('if (action === "search")', EDGE_FUNCTION)
+        self.assertIn('branchRpc("atlas_knowledge_search", {', EDGE_FUNCTION)
+        self.assertIn("p_actor_id: context.user.id,", EDGE_FUNCTION)
+        self.assertIn("p_actor_role: context.profile.role,", EDGE_FUNCTION)
+        self.assertIn('manager || (row?.version_state === "published" && row?.status === "published")', EDGE_FUNCTION)
+        self.assertIn("api('search', { params: { q: query, limit: 25 } })", BROWSER_MODULE)
 
     def test_edge_function_revalidates_active_profiles_and_roles(self):
         self.assertIn("requireActiveProfile", EDGE_FUNCTION)
@@ -135,7 +144,7 @@ class KnowledgeContractTests(unittest.TestCase):
             EDGE_FUNCTION,
             BROWSER_CONFIG,
             BROWSER_MODULE,
-            TEAM_BRIDGE,
+            TEAM_MESSAGES,
         ))
         self.assertNotIn("docs.google.com/document/d/", public_files)
         self.assertNotRegex(public_files, re.compile(r"alarm\s*(code|pin)\s*[:=]", re.I))
