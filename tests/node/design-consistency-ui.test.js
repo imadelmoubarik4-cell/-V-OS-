@@ -96,7 +96,8 @@ test('Home uses live values and supports expanded or compact navigation', () => 
   assert.match(homeJs, /shell\(\)\?\.home\?\.rows\?\.\(\{ role: role\(\) \}\)/);
   assert.match(homeJs, /formatDate\?\.\(new Date\(\), \{ long: true \}\)/);
   assert.match(homeJs, /window\.AtlasStockTruth/);
-  assert.match(homeJs, /rules\.recipeAvailability\(recipe\)/);
+  // S90: At a glance reads the Recipes page's own summary (canonical recipeStatus).
+  assert.match(homeJs, /window\.AtlasRecipes\?\.summary\?\.\(\)/);
   assert.doesNotMatch(app, /id="home-focus"/);
   assert.doesNotMatch(app, /home-focus'\)\.style\.display/);
   // Expanded sidebar (240) or the 64 px rail, per viewer (spec §4.1).
@@ -126,7 +127,7 @@ test('Inventory filters are chips over loaded records, with honest unknowns', ()
   // S89: the chips and pills read the canonical AtlasStockTruth.stockStatus.
   assert.match(inventory, /truth\(\)\?\.stockStatus\?\.\(item\) !== 'below_par'/);
   assert.match(inventory, /if \(status === 'unknown'\) return \{ key: 'not_counted', label: 'Not counted'/);
-  assert.match(inventory, /manager \? '<th data-priority="2">Supplier<\/th>' : ''/);
+  assert.match(inventory, /manager \? '<th class="inv-col--supplier" data-priority="2">Supplier<\/th>' : ''/);
   assert.doesNotMatch(inventory, /Flóki Single Malt barely moves|45,000 ISK in stock/);
   // The owner's primary and contextual category model (S38 decisions).
   for (const label of ['Spirits', 'Wine', 'Beer', 'Mixers', 'Syrups', 'Bitters', 'Fresh fruit', 'Fresh herbs', 'Garnish', 'Bar ingredients', 'Consumables', 'Bar equipment', 'Coffee']) {

@@ -103,6 +103,9 @@ const ITEMS = [
   { id: 'nocost', name: 'Salt (no cost)', quantity: 1, par_level: 0, unit: 'kg', cost_price: null, active: true, category: 'Dry' },
   { id: 'atpar', name: 'Olives (at par)', quantity: 0, par_level: 4, unit: 'jars', cost_price: 700, active: true, category: 'Dry' },
 ];
+// S90 recipe-only rows (kept out of ITEMS so the stock tests' lists stay put):
+// counted out, no package size (its unit can't be converted to ml).
+const RECIPE_ITEMS = [{ id: 'campari', name: 'Campari', quantity: 0, par_level: 2, unit: 'bottles', cost_price: 4200, active: true, category: 'Spirits' }];
 const BALANCES = [
   balance('vodka', 2),
   balance('gin', 4),
@@ -144,12 +147,17 @@ const RECIPES = [
   { id: 'r-batch', name: 'Bitters batch', active: true, yield_quantity: 4, menu_price: null, recipe_ingredients: [ingredient('bitters', 10, 'ml'), ingredient('tonic', 2, 'cans')] },
   { id: 'r-empty', name: 'Empty draft', active: true, yield_quantity: 1, menu_price: 1000, recipe_ingredients: [] },
   { id: 'r-reference-only', name: 'Ice water', active: true, yield_quantity: 1, menu_price: 0, recipe_ingredients: [ingredient('ice', 2, 'each')] },
+  // S90: an ingredient counted out makes the recipe unavailable even when its
+  // unit can't be converted and another ingredient is uncounted.
+  { id: 'r-out-unconvertible', name: 'Negroni', active: true, yield_quantity: 1, menu_price: 3200, recipe_ingredients: [ingredient('campari', 30, 'ml'), ingredient('rum', 30, 'ml')] },
 ];
 
-function fixture() {
+function fixture({ recipeItems = false } = {}) {
   const { AtlasStockTruth } = browser({ items: [] });
-  const browserProjected = AtlasStockTruth.project(ITEMS, BALANCES, MOVEMENTS, NOW);
-  const serverProjected = projectStock(ITEMS, BALANCES, MOVEMENTS, NOW);
+  const items = recipeItems ? [...ITEMS, ...RECIPE_ITEMS] : ITEMS;
+  const balances = recipeItems ? [...BALANCES, balance('campari', 0)] : BALANCES;
+  const browserProjected = AtlasStockTruth.project(items, balances, MOVEMENTS, NOW);
+  const serverProjected = projectStock(items, balances, MOVEMENTS, NOW);
   const context = browser({ items: browserProjected, recipes: RECIPES, purchaseOrders: PURCHASE_ORDERS });
   return { context, browserProjected, serverProjected };
 }
@@ -178,7 +186,7 @@ test('known and below par agree with the browser for every item', () => {
 });
 
 test('recipe status, availability and blockers match recipes.js', () => {
-  const { context, serverProjected } = fixture();
+  const { context, serverProjected } = fixture({ recipeItems: true });
   const keys = {};
   for (const recipe of RECIPES) {
     const browserStatus = context.AtlasRecipes.recipeStatus(recipe);
@@ -191,8 +199,10 @@ test('recipe status, availability and blockers match recipes.js', () => {
   assert.deepEqual(keys, {
     'r-ready': 'ready', 'r-attention': 'attention', 'r-unknown': 'incomplete', 'r-mismatch': 'incomplete',
     'r-package': 'incomplete', 'r-out': 'unavailable', 'r-archived': 'draft', 'r-batch': 'attention',
-    'r-empty': 'incomplete', 'r-reference-only': 'incomplete',
+    'r-empty': 'incomplete', 'r-reference-only': 'incomplete', 'r-out-unconvertible': 'unavailable',
   });
+  const negroni = recipeAvailability(RECIPES.find((recipe) => recipe.id === 'r-out-unconvertible'), serverProjected);
+  assert.deepEqual([negroni.servings, negroni.limiting.item.name], [0, 'Campari'], 'the out ingredient is the limiting one');
   assert.deepEqual(recipeBlockers(RECIPES[2], serverProjected), [{ name: 'Rum (never counted)', reason: 'no verified stock count' }]);
   assert.deepEqual(recipeBlockers(RECIPES[3], serverProjected), [{ name: 'Tonic', reason: 'inventory unit does not match recipe unit' }]);
   assert.deepEqual(recipeBlockers(RECIPES[0], serverProjected), []);

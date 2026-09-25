@@ -217,7 +217,8 @@ test('no module patches the shell in the running app and runtime modules load on
     assert.ok(report.stockCountOpenNative, 'AtlasStockCounts.open is not wrapped');
     // The Stock count route opens the Counts tab of Inventory through the shell.
     await page.evaluate(() => window.AtlasShell.navigate('#inventory/counts'));
-    await page.waitForSelector('#inventory-view [data-count-start]');
+    // The header carries the one Start stock count action (S90: one primary).
+    await page.waitForSelector('#inventory-view .page-head [data-inv-count]');
     assert.equal(await page.evaluate(() => location.hash), '#inventory/counts');
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'inventory');
     assert.deepEqual(record.pageErrors, []);
@@ -261,10 +262,15 @@ test('a bartender sees staff actions only and the purchasing link explains its l
     assert.ok(actions.includes('inventory.count.start'));
     assert.ok(!actions.includes('purchasing.order.new'), 'manager-only actions are not listed for staff');
     await navigateTo(page, '#purchasing');
-    assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'dashboard');
-    // No alert() (spec §4.12): a toast says who can open it.
+    // G17: a permission state like Reports, Data and Decisions, never a silent
+    // jump to Home, and no alert() (spec §4.12).
+    assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'suppliers');
     assert.deepEqual(record.dialogs, []);
-    assert.match(await page.textContent('#atlas-toast-region'), /That page is for managers/);
+    assert.match(await page.textContent('#suppliers-view'), /Purchasing is for managers/);
+    assert.equal(await page.$('#suppliers-view [data-po-new]'), null);
+    await navigateTo(page, '#purchasing/order/00000000-0000-4000-8000-00000000abcd');
+    assert.match(await page.textContent('#suppliers-view'), /Purchasing is for managers/);
+    assert.equal(await page.$('.atlas-modal:not([hidden]) [role="dialog"]'), null, 'no order sheet opens for staff');
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });

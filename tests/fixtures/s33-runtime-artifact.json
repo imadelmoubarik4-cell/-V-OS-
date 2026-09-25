@@ -113,8 +113,8 @@
         },
         {
           "path": "functions/_shared/stock-provenance.mjs",
-          "source_sha256": "c037eb7386372c0765de1401e38b463b79dae72bc93c54067690bacd8eddbe20",
-          "candidate_sha256": "9f5b726a48af62e67dcf5841293c05d5994bdbc3aae0f6cb1e610993c5e5ff14"
+          "source_sha256": "dde174cf079fe0a345719b521afb6bca7721e2427de68b158320867d57f84eba",
+          "candidate_sha256": "020119f1aa96992f7cc7a857b28fbe1c8a574833aeb60ebb728d48d5c674ea63"
         },
         {
           "path": "functions/_shared/auth.mjs",
@@ -140,8 +140,8 @@
         },
         {
           "path": "functions/_shared/stock-provenance.mjs",
-          "source_sha256": "c037eb7386372c0765de1401e38b463b79dae72bc93c54067690bacd8eddbe20",
-          "candidate_sha256": "9f5b726a48af62e67dcf5841293c05d5994bdbc3aae0f6cb1e610993c5e5ff14"
+          "source_sha256": "dde174cf079fe0a345719b521afb6bca7721e2427de68b158320867d57f84eba",
+          "candidate_sha256": "020119f1aa96992f7cc7a857b28fbe1c8a574833aeb60ebb728d48d5c674ea63"
         },
         {
           "path": "functions/_shared/auth.mjs",

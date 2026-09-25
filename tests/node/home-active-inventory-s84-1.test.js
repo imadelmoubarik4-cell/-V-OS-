@@ -165,6 +165,6 @@ test('S88 Team B: an out-of-stock row names the recipes it stops', () => {
   const rows = [activeCounted('lime', 0, 4), activeCounted('gin', 5, 2)];
   const recipes = [{ id: 'r1', name: 'Gimlet', active: true, recipe_ingredients: [{ item_id: 'lime' }, { item_id: 'gin' }] }];
   const home = renderHome(rows, [verified('lime', 0), verified('gin', 5)], { recipes });
-  assert.match(home.rows, /lime is out/);
+  assert.match(home.rows, /lime: out of stock/);
   assert.match(home.details, /Gimlet is affected/);
 });

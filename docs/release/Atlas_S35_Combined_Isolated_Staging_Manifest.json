@@ -108,7 +108,7 @@
       "sources": {
         "supabase/functions/atlas-phase3-intelligence/index.ts": "87d16c3cf037f9ed50b087a9e2796cb49b0bd136473305db10ba60444e10fd2d",
         "supabase/functions/_shared/atlas-domain.mjs": "38d8352a813d1f6c85c3126e0ce847985608226a880410014149d9fd2279b67e",
-        "supabase/functions/_shared/stock-provenance.mjs": "c037eb7386372c0765de1401e38b463b79dae72bc93c54067690bacd8eddbe20",
+        "supabase/functions/_shared/stock-provenance.mjs": "dde174cf079fe0a345719b521afb6bca7721e2427de68b158320867d57f84eba",
         "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
@@ -117,7 +117,7 @@
       "sources": {
         "supabase/functions/atlas-reports/entrypoint.ts": "033d1b40a32481345b8a970fd0c84f6271e5a601bb3dabee9fbf5d2d238306ba",
         "supabase/functions/atlas-reports/index.ts": "0a1c0e1ff00f7c3d7a535a1d5587f2f3676a211703d0adf01b023e6286cc7395",
-        "supabase/functions/_shared/stock-provenance.mjs": "c037eb7386372c0765de1401e38b463b79dae72bc93c54067690bacd8eddbe20",
+        "supabase/functions/_shared/stock-provenance.mjs": "dde174cf079fe0a345719b521afb6bca7721e2427de68b158320867d57f84eba",
         "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },

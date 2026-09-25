@@ -441,6 +441,46 @@ test('deep links open a conversation and Decisions for managers', { skip }, asyn
   } finally { await staff.close(); }
 });
 
+// S90 (review P1-2): Atlas AI's own reset never overrides design-system
+// buttons. The approval card's primary keeps its white label (AA 4.5:1) and the
+// staff Decisions permission link is a normal secondary button.
+function contrastOf(locator) {
+  return locator.evaluate((node) => {
+    const parse = (value) => (value.match(/[\d.]+/g) || []).slice(0, 4).map(Number);
+    const channel = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const lum = ([r, g, b]) => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+    const style = getComputedStyle(node);
+    let background = parse(style.backgroundColor);
+    for (let el = node.parentElement; el && (background.length < 3 || background[3] === 0); el = el.parentElement) background = parse(getComputedStyle(el).backgroundColor);
+    const [a, b] = [lum(parse(style.color)), lum(background)];
+    return { ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), color: style.color, label: node.textContent.trim() };
+  });
+}
+
+test('approval card buttons keep the design-system colours and pass AA contrast', { skip }, async () => {
+  const { page, record, close } = await openAi({ hash: `#ai/c/${IDS.convNegroni}` });
+  try {
+    await page.waitForSelector('[data-ai-approval] .atlas-btn--primary');
+    const primary = await contrastOf(page.locator('[data-ai-approval] .atlas-btn--primary').first());
+    assert.equal(primary.color, 'rgb(255, 255, 255)', `${primary.label}: the primary label is white, got ${primary.color}`);
+    assert.ok(primary.ratio >= 4.5, `${primary.label}: ${primary.ratio.toFixed(2)}:1`);
+    const buttons = page.locator('[data-ai-approval] .atlas-btn');
+    for (let index = 0; index < await buttons.count(); index += 1) {
+      const button = await contrastOf(buttons.nth(index));
+      assert.ok(button.ratio >= 4.5, `${button.label}: ${button.ratio.toFixed(2)}:1`);
+    }
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+  const staff = await openAi({ user: USERS.bartender, hash: '#ai/decisions' });
+  try {
+    await staff.page.waitForSelector('[data-ai-decisions] a.atlas-btn--secondary');
+    const link = await contrastOf(staff.page.locator('[data-ai-decisions] a.atlas-btn--secondary').first());
+    assert.ok(link.ratio >= 4.5, `${link.label}: ${link.ratio.toFixed(2)}:1`);
+    const accent = await staff.page.evaluate(() => { const probe = document.createElement('span'); probe.style.color = 'var(--accent-text)'; document.body.appendChild(probe); const value = getComputedStyle(probe).color; probe.remove(); return value; });
+    assert.notEqual(link.color, accent, 'a secondary button, not an accent text link');
+  } finally { await staff.close(); }
+});
+
 test('Decisions opens a record sheet and saves a decision', { skip }, async () => {
   const { fixtures } = aiFixtures();
   const posts = [];

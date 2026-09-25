@@ -100,7 +100,7 @@
     try {
       configuration = await serverConfiguration();
     } catch (error) {
-      return set(subscription ? 'unsynced' : 'pending', `Atlas could not confirm notification status: ${error instanceof Error ? error.message : 'unknown error'}`);
+      return set(subscription ? 'unsynced' : 'pending', window.AtlasApi ? `Atlas couldn’t confirm notification status. ${window.AtlasApi.message(error, 'Check the connection and try again.')}` : 'Atlas couldn’t confirm notification status. Check the connection and try again.');
     }
     if (!configuration.public_key) {
       return set('unavailable', 'Notifications are not set up on the Atlas server yet.');
@@ -159,7 +159,8 @@
         await api('unsubscribe', { endpoint: endpointUrl });
       } catch (error) {
         set('pending', 'Notifications are off for this device.');
-        throw new Error(`This device is unsubscribed, but Atlas could not update the server: ${error instanceof Error ? error.message : 'unknown error'}`);
+        const text = 'This device is unsubscribed, but Atlas couldn’t update the server. Try again when you’re online.';
+        throw window.AtlasApi ? window.AtlasApi.fixed(text) : new Error(text);
       }
     }
     return set('pending', 'Notifications are off for this device.');

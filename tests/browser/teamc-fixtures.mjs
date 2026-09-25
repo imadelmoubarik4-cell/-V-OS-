@@ -158,7 +158,7 @@ export function reportsSnapshot({ preset = 'last_30_days', start = '2026-08-26',
       reports: {
         overview: { summary: {} },
         sales: { message: 'No point-of-sale system is connected.' },
-        inventory: { summary: { active_items: 8, current_items: 6, estimated_value: null, below_par: 3, out_of_stock: 1, needs_current_count: 2, missing_cost: 0 }, categories: [{ category: 'Aperitif', estimated_value: 6600 }, { category: 'Gin', estimated_value: 12600 }], rows: [] },
+        inventory: { summary: { active_items: 8, current_items: 6, estimated_value: null, known_value: 19200, below_par: 3, out_of_stock: 1, needs_current_count: 2, missing_cost: 0 }, categories: [{ category: 'Aperitif', estimated_value: 6600 }, { category: 'Gin', estimated_value: 12600 }], rows: [] },
         recipes: { summary: { active_recipes: 4, ready: 1, needs_attention: 1, unavailable: 1, incomplete_setup: 1 }, rows: [] },
         purchasing: { summary: { spend: 412300, movement_count: 14 }, rows: [
           { id: 'm1', created_at: iso(-2), item_name: 'Tanqueray London Dry', movement_type: 'restock', supplier: 'Globus', quantity_change: 6, unit_cost: 4200, total_cost: 25200, note: '' },

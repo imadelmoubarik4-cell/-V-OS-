@@ -7,7 +7,7 @@
 .shifts-host { display: block; }
 .shifts-head .page-head__actions { flex-wrap: wrap; align-items: center; }
 .shifts-nav { display: inline-flex; align-items: center; gap: var(--s-1); }
-.shifts-publish { display: inline-grid; justify-items: end; gap: 2px; }
+.shifts-publish { display: inline-flex; align-items: center; gap: var(--s-3); }
 .shifts-publish__caption { font: var(--type-caption); color: var(--text-2); }
 .shifts-tabs { margin-top: var(--s-4); }
 .shifts-body { margin-top: var(--s-5); }
@@ -58,8 +58,9 @@ button.shift-chip:hover { border-color: var(--line-strong); background: var(--bg
 .shift-chip.is-unpublished { border-style: dashed; border-color: var(--line-hover); }
 .shift-chip__time { font: 500 13px/18px var(--font-sans); }
 .shift-chip__role { overflow: hidden; font: var(--type-caption); color: var(--text-2); white-space: nowrap; text-overflow: ellipsis; }
-.shift-chip__warn { position: absolute; top: 5px; right: 5px; display: grid; color: var(--warning-icon); }
-.shift-chip__warn svg { width: 14px; height: 14px; }
+.shift-chip__warn { display: inline-flex; align-items: center; gap: 4px; min-width: 0; font: var(--type-caption); color: var(--warning); }
+.shift-chip__warn svg { flex: none; width: 14px; height: 14px; color: var(--warning-icon); }
+.shift-chip__warn > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .shift-chip--legend { display: inline-block; width: 18px; height: 12px; padding: 0; }
 .shift-chip--legend::before { display: none; }
 
@@ -121,9 +122,9 @@ button.shift-chip:hover { border-color: var(--line-strong); background: var(--bg
 @media (max-width: 767px) {
   .shifts-head .page-head__actions { display: grid; grid-template-columns: auto 1fr; gap: var(--s-2); }
   .shifts-head .atlas-segmented { justify-self: end; }
-  .shifts-publish { grid-column: 1 / -1; justify-items: stretch; }
-  .shifts-publish .atlas-btn { width: 100%; }
-  .shifts-publish__caption { text-align: center; }
+  .shifts-publish { grid-column: 1 / -1; display: grid; justify-items: stretch; gap: 2px; }
+  .shifts-publish .atlas-btn { width: 100%; grid-row: 1; }
+  .shifts-publish__caption { grid-row: 2; text-align: center; }
   .shifts-tabs { margin-top: var(--s-2); }
   .shifts-body { margin-top: var(--s-4); }
   .shifts-now { gap: var(--s-2) var(--s-5); }

@@ -98,6 +98,14 @@
   function recipes() { return root.AtlasData?.recipes?.() || []; }
   function movements() { return root.AtlasData?.movements?.() || []; }
   function dataStatus() { return root.AtlasData?.status?.() || { items: 'ok' }; }
+  // One shell input's load health ('loading' | 'ok' | 'failed').
+  function inputHealth(key) { return root.AtlasData?.health?.()?.[key] || 'ok'; }
+  function loadFailedHtml(title, body) {
+    return alertHtml('danger', title, body, '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-inv-retry>Try again</button>');
+  }
+  function loadingRowsHtml() {
+    return `<div class="atlas-table-wrap" aria-busy="true" aria-label="Loading"><div class="inv-skeleton">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(6)}</div></div>`;
+  }
   // Stock withheld by the shell (verified balances or movements failed to load):
   // no quantity is shown as if it were complete.
   function stockIncomplete() { return dataStatus().stock === 'partial'; }
@@ -127,10 +135,12 @@
       if ((num(item.quantity) ?? 0) <= (num(item.par_level) ?? 0) * ALMOST_OUT_RATIO) return { key: 'almost_out', label: 'Almost out', tone: 'danger', rank: 1 };
       return { key: 'below_par', label: 'Below par', tone: 'warning', rank: 2 };
     }
-    return { key: 'ok', label: '', tone: '', rank: 5 };
+    return { key: 'ok', label: 'In stock', tone: '', rank: 5 };
   }
   function statusPill(status) {
     if (!status.label) return '';
+    // In stock is the normal state: quiet text, not a pill (review P3).
+    if (status.key === 'ok') return `<span class="inv__muted">${esc(status.label)}</span>`;
     return `<span class="atlas-pill${status.tone ? ` atlas-pill--${status.tone}` : ''}">${esc(status.label)}</span>`;
   }
   function packLine(item) {
@@ -146,19 +156,29 @@
     return /^(bottles|cans|cases|bags|packs|jars|kegs|litres|units|cartons)$/i.test(unit) ? unit.slice(0, -1) : unit;
   }
 
+  // Errors Inventory shows carry fixed copy only; a JavaScript error or server
+  // text reads as the fallback (AtlasApi.message) and goes to the console.
+  function fixedError(text, props = {}) {
+    return root.AtlasApi?.fixed ? root.AtlasApi.fixed(text, props) : Object.assign(new Error(text), props, { atlasFixed: true });
+  }
+  function shown(error, fallback = 'That didn’t go through. Nothing was changed; try again.') {
+    if (root.AtlasApi?.message) return root.AtlasApi.message(error, fallback);
+    return error?.atlasFixed ? error.message : fallback;
+  }
+
   async function session() {
     const client = root.atlasSupabase;
     const result = client?.auth ? await client.auth.getSession() : null;
     const token = result?.data?.session?.access_token;
-    if (!token) throw Object.assign(new Error('Sign in again to continue.'), { code: 'unauthorized' });
+    if (!token) throw fixedError('Sign in again to continue.', { code: 'unauthorized' });
     return token;
   }
 
   // atlas-item-master: create-item, activation, catalogue requests (managers).
   async function itemMaster(action, { method = 'POST', body = null, params = {} } = {}) {
     const base = String(root.VABAR_CONFIG?.ITEM_MASTER_API || '').trim();
-    if (!base) throw Object.assign(new Error('Item changes aren’t available right now.'), { code: 'unavailable' });
-    if (navigator.onLine === false) throw Object.assign(new Error('You’re offline. Nothing was saved; reconnect and try again.'), { code: 'offline' });
+    if (!base) throw fixedError('Item changes aren’t available right now.', { code: 'unavailable' });
+    if (navigator.onLine === false) throw fixedError('You’re offline. Nothing was saved; reconnect and try again.', { code: 'offline' });
     const token = await session();
     const url = new URL(base);
     url.searchParams.set('action', action);
@@ -172,12 +192,12 @@
         body: body ? JSON.stringify({ action, ...body }) : undefined
       });
     } catch (_) {
-      throw Object.assign(new Error('Atlas couldn’t reach the server. Nothing was saved; check your connection and try again.'), { code: 'network' });
+      throw fixedError('Atlas couldn’t reach the server. Nothing was saved; check your connection and try again.', { code: 'network' });
     }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const code = payload.code || (response.status === 403 ? 'forbidden' : response.status === 404 ? 'not_found' : response.status >= 500 ? 'unavailable' : 'invalid_request');
-      throw Object.assign(new Error(ITEM_MASTER_ERRORS[code] || 'Atlas couldn’t save this right now. Nothing was changed; try again.'), { code, status: response.status, duplicateCheck: payload.duplicate_check || null });
+      throw fixedError(ITEM_MASTER_ERRORS[code] || 'Atlas couldn’t save this right now. Nothing was changed; try again.', { code, status: response.status, duplicateCheck: payload.duplicate_check || null });
     }
     return payload;
   }
@@ -245,16 +265,18 @@
   function subtitle() {
     const active = items().filter((item) => item.active !== false);
     if (dataStatus().items === 'error' && !active.length) return 'Inventory couldn’t be loaded';
+    if (dataStatus().items === 'loading' && !active.length) return 'Loading items…';
     const last = lastCountedAt();
     const count = `${active.length} active ${active.length === 1 ? 'item' : 'items'}`;
     if (stockIncomplete()) return `${count} · stock figures incomplete`;
     return last ? `${count} · counted ${dateText(last, { long: true })}` : `${count} · not counted yet`;
   }
 
-  function headActions() {
+  function headActions(tab = 'items') {
     const actions = [];
-    if (canCount()) actions.push({ label: 'Count stock', icon: 'list-checks', variant: isManager() ? 'secondary' : 'primary', attrs: { 'data-inv-count': '' } });
-    if (isManager()) actions.push({ label: 'Add item', icon: 'plus', variant: 'primary', attrs: { 'data-inv-add': '' } });
+    const countPrimary = tab === 'counts' || !isManager();
+    if (canCount()) actions.push({ label: 'Start stock count', icon: 'list-checks', variant: countPrimary ? 'primary' : 'secondary', attrs: { 'data-inv-count': '' } });
+    if (isManager()) actions.push({ label: 'Add item', icon: 'plus', variant: tab === 'counts' ? 'secondary' : 'primary', attrs: { 'data-inv-add': '' } });
     return actions;
   }
 
@@ -272,7 +294,7 @@
       lucide();
       return;
     }
-    const head = shell.pageHead({ title: 'Inventory', sub: subtitle(), actions: tab === 'items' || tab === 'counts' ? headActions() : (tab === 'waste' ? [{ label: 'Record waste', icon: 'trash-2', variant: 'primary', attrs: { 'data-inv-waste': '' } }] : []) });
+    const head = shell.pageHead({ title: 'Inventory', sub: subtitle(), actions: tab === 'items' || tab === 'counts' ? headActions(tab) : (tab === 'waste' && inputHealth('movements') !== 'failed' ? [{ label: 'Record waste', icon: 'trash-2', variant: 'primary', attrs: { 'data-inv-waste': '' } }] : []) });
     element.innerHTML = `${head}${tabsHtml(tab)}<div class="inv__body" data-inv-body></div>`;
     const body = element.querySelector('[data-inv-body]');
     if (tab === 'counts') renderCounts(body);
@@ -504,12 +526,12 @@
     const onHand = known ? `${qty(item.quantity)}${parBar(item, status)}` : '<span class="inv__muted" title="No verified count yet">—</span>';
     return `<tr data-inv-row="${esc(item.id)}"${selected ? ' class="is-selected"' : ''}>
       ${manager ? `<td class="col-check"><input type="checkbox" class="atlas-check" data-inv-select="${esc(item.id)}" aria-label="Select ${esc(item.name)}"${selected ? ' checked' : ''}></td>` : ''}
-      <td><a class="inv__item-link" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}"><span class="cell-primary">${esc(item.name)}</span><span class="cell-sub">${esc([unitWord(item), packLine(item)].filter(Boolean).join(' · '))}${known && item.stock_recount_due ? ' · recount due' : ''}</span></a></td>
-      <td data-priority="3">${esc(item.category || '—')}</td>
-      ${manager ? `<td data-priority="2">${esc(item.supplier || '—')}</td>` : ''}
+      <td class="inv-col--name"><a class="inv__item-link" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}" title="${esc(item.name)}"><span class="cell-primary inv__clip">${esc(item.name)}</span><span class="cell-sub inv__clip">${esc([unitWord(item), packLine(item)].filter(Boolean).join(' · '))}${known && item.stock_recount_due ? ' · recount due' : ''}</span></a></td>
+      <td class="inv-col--text" data-priority="3"><span class="inv__clip" title="${esc(item.category || '')}">${esc(item.category || '—')}</span></td>
+      ${manager ? `<td class="inv-col--text" data-priority="2"><span class="inv__clip" title="${esc(item.supplier || '')}">${esc(item.supplier || '—')}</span></td>` : ''}
       <td class="is-num">${onHand}</td>
       <td class="is-num" data-priority="2">${num(item.par_level) ? qty(item.par_level) : '—'}</td>
-      <td>${statusPill(status)}</td>
+      <td class="inv-col--status">${statusPill(status)}</td>
       ${manager ? `<td class="is-num" data-priority="2">${money(item.cost_price)}</td>` : ''}
       <td data-priority="3">${counted ? esc(dateText(counted)) : '—'}</td>
       <td class="col-actions"><button type="button" class="atlas-icon-btn row-action" data-inv-row-menu="${esc(item.id)}" aria-label="Actions for ${esc(item.name)}">${icon('ellipsis')}</button></td>
@@ -522,13 +544,13 @@
     const par = num(item.par_level);
     const meta = [item.category, isManager() ? item.supplier : null, item.bin_location].filter(Boolean).join(' · ') || unitWord(item);
     const value = known ? `<span class="num">${qty(item.quantity)}</span>${par ? `<span class="inv__par"> / ${qty(par)}</span>` : ''}` : '<span class="inv__muted">—</span>';
-    return `<li><a class="atlas-table-list__row" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(item.name)}</div><div class="atlas-table-list__meta">${esc(meta)}</div></div><div class="atlas-table-list__value">${value}${status.label ? `<br>${statusPill(status)}` : ''}</div></a></li>`;
+    return `<li><a class="atlas-table-list__row" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(item.name)}</div><div class="atlas-table-list__meta">${esc(meta)}</div></div><div class="atlas-table-list__value">${value}${status.label && status.key !== 'ok' ? `<br>${statusPill(status)}` : ''}</div></a></li>`;
   }
 
   function emptyItemsHtml(total) {
     if (!items().length) {
       if (dataStatus().items === 'error') return '';
-      return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('package')}</div><h3 class="atlas-empty__title">No items yet</h3><p class="atlas-empty__text">Items you add appear here, ready to count and order.</p>${isManager() ? `<div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-inv-add>${icon('plus')}Add item</button><a class="atlas-btn atlas-btn--secondary" href="#data">Import a file</a></div>` : ''}</div>`;
+      return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('package')}</div><h3 class="atlas-empty__title">No items yet</h3><p class="atlas-empty__text">Items you add appear here, ready to count and order.</p>${isManager() ? `<div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-inv-add>${icon('plus')}Add item</button><a class="atlas-btn atlas-btn--ghost" href="#data">Import a file</a></div>` : ''}</div>`;
     }
     const what = state.query ? `“${state.query}”` : 'these filters';
     return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('search-x')}</div><h3 class="atlas-empty__title">No items match ${esc(what)}</h3><p class="atlas-empty__text">${total} ${total === 1 ? 'item is' : 'items are'} hidden by the search or filters.</p><button type="button" class="atlas-btn atlas-btn--secondary" data-inv-clear-all>Clear filters</button></div>`;
@@ -543,6 +565,13 @@
     const visibleIds = new Set(visible.map((item) => String(item.id)));
     [...state.selected].forEach((id) => { if (!visibleIds.has(id)) state.selected.delete(id); });
 
+    // Loading and failed loads are never shown as an empty inventory: no
+    // "0 items", no "No items yet" (S90, review P1-3).
+    if (!all.length && dataStatus().items === 'loading') { body.innerHTML = loadingRowsHtml(); return; }
+    if (!all.length && dataStatus().items === 'error') {
+      body.innerHTML = loadFailedHtml('Inventory couldn’t be loaded.', 'Nothing was changed and your items are safe. Check your connection and try again.');
+      return;
+    }
     const alerts = [];
     if (dataStatus().items === 'error') {
       alerts.push(alertHtml('danger', 'Inventory couldn’t be loaded.', all.length ? `Showing the items loaded ${state.lastLoadedAt ? `at ${clock()?.formatTime?.(state.lastLoadedAt) || ''}` : 'earlier'}. Nothing was changed.` : 'Nothing was changed. Check your connection and try again.', '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-inv-retry>Try again</button>'));
@@ -560,14 +589,14 @@
     const table = `<div class="atlas-table-wrap atlas-table-wrap--responsive inv__table"><table class="atlas-table">
       <thead><tr>
         ${manager ? `<th class="col-check"><input type="checkbox" class="atlas-check" data-inv-select-all aria-label="Select all shown items"${allChecked ? ' checked' : ''}${someChecked ? ' data-indeterminate' : ''}></th>` : ''}
-        ${thSort('name', 'Item')}
-        <th data-priority="3">Category</th>
-        ${manager ? '<th data-priority="2">Supplier</th>' : ''}
-        ${thSort('onhand', 'On hand', ' class="is-num"')}
-        ${thSort('par', 'Par', ' class="is-num" data-priority="2"')}
-        ${thSort('status', 'Status')}
-        ${manager ? thSort('cost', 'Unit cost', ' class="is-num" data-priority="2"') : ''}
-        ${thSort('counted', 'Counted', ' data-priority="3"')}
+        ${thSort('name', 'Item', ' class="inv-col--name"')}
+        <th class="inv-col--category" data-priority="3">Category</th>
+        ${manager ? '<th class="inv-col--supplier" data-priority="2">Supplier</th>' : ''}
+        ${thSort('onhand', 'On hand', ' class="is-num inv-col--qty"')}
+        ${thSort('par', 'Par', ' class="is-num inv-col--par" data-priority="2"')}
+        ${thSort('status', 'Status', ' class="inv-col--status"')}
+        ${manager ? thSort('cost', 'Unit cost', ' class="is-num inv-col--cost" data-priority="2"') : ''}
+        ${thSort('counted', 'Counted', ' class="inv-col--date" data-priority="3"')}
         <th class="col-actions"><span class="sr-only">Actions</span></th>
       </tr></thead>
       <tbody>${visible.map(rowHtml).join('')}</tbody></table>
@@ -842,7 +871,7 @@
   };
 
   function openActivation(item, activate) {
-    if (!isManager()) { toast('Changing items is for managers.'); return; }
+    if (!isManager()) { toast('Changing items is for managers.', { icon: false }); return; }
     const title = activate ? `Reactivate ${item.name}?` : `Deactivate ${item.name}?`;
     const overlay = openOverlay(`<h2 class="atlas-dialog__title">${esc(title)}</h2>
       <div class="atlas-dialog__body" data-activation-body><div class="atlas-stack atlas-stack--sm" aria-hidden="true"><span class="atlas-skel"></span><span class="atlas-skel" style="width:70%"></span></div><p class="sr-only" role="status">Checking what depends on this item…</p></div>
@@ -864,7 +893,7 @@
       lucide();
       body.querySelector('input')?.focus();
     }).catch((error) => {
-      body.innerHTML = alertHtml('danger', 'Atlas couldn’t check this item.', `${error.message} Nothing was changed.`);
+      body.innerHTML = alertHtml('danger', 'Atlas couldn’t check this item.', `${shown(error, 'Atlas couldn’t reach the server.')} Nothing was changed.`);
       lucide();
     });
     confirm.addEventListener('click', async () => {
@@ -877,7 +906,7 @@
         await reloadData();
       } catch (error) {
         busy(confirm, false);
-        body.insertAdjacentHTML('afterbegin', alertHtml('danger', activate ? 'Reactivation didn’t go through.' : 'Deactivation didn’t go through.', `${error.message}`));
+        body.insertAdjacentHTML('afterbegin', alertHtml('danger', activate ? 'Reactivation didn’t go through.' : 'Deactivation didn’t go through.', shown(error)));
         lucide();
       }
     });
@@ -1092,7 +1121,7 @@
             ackMode = false; lastCheck = null; dupHost.innerHTML = ''; submit.disabled = false; submit.textContent = 'Add item'; submit.removeAttribute('title');
           });
         } else {
-          alertHost.innerHTML = alertHtml('danger', 'The item wasn’t added.', error.message);
+          alertHost.innerHTML = alertHtml('danger', 'The item wasn’t added.', shown(error, 'Nothing was saved. Check your connection and try again.'));
           lucide();
           alertHost.scrollIntoView({ block: 'nearest' });
         }
@@ -1128,7 +1157,7 @@
         toast(dupes.length ? 'Sent for approval. A manager will compare it with similar items first.' : 'Sent for approval. A manager will check it.');
       } catch (error) {
         busy(submit, false);
-        alertHost.innerHTML = alertHtml('danger', 'Your suggestion wasn’t sent.', `${error.message}`);
+        alertHost.innerHTML = alertHtml('danger', 'Your suggestion wasn’t sent.', shown(error, 'Nothing was sent. Check your connection and try again.'));
         lucide();
       }
     });
@@ -1187,7 +1216,7 @@
         await reloadData();
       } catch (error) {
         busy(submit, false);
-        alertHost.innerHTML = alertHtml('danger', 'Your changes weren’t saved.', error.message);
+        alertHost.innerHTML = alertHtml('danger', 'Your changes weren’t saved.', shown(error, 'Nothing was saved. Check your connection and try again.'));
         lucide();
       }
     });
@@ -1213,7 +1242,7 @@
         toast(manager ? `Barcode linked to ${item.name}` : 'Sent for approval');
       } catch (error) {
         busy(button, false);
-        form.querySelector('[data-inv-form-alert]').innerHTML = alertHtml('danger', '', error.message);
+        form.querySelector('[data-inv-form-alert]').innerHTML = alertHtml('danger', '', shown(error, 'The barcode wasn’t linked. Nothing was changed; try again.'));
         lucide();
       }
     });
@@ -1227,7 +1256,13 @@
     return `<span class="atlas-pill${tone && tone !== 'neutral' ? ` atlas-pill--${tone}` : ''}">${esc(label)}</span>`;
   }
 
+  function movementsFailedHtml(what) {
+    return loadFailedHtml(`${what} couldn’t be loaded.`, 'Nothing was changed; your records are safe. Check your connection and try again.');
+  }
+
   function renderMovements(body) {
+    if (inputHealth('movements') === 'loading' && !movements().length) { body.innerHTML = loadingRowsHtml(); return; }
+    if (inputHealth('movements') === 'failed') { body.innerHTML = movementsFailedHtml('Movements'); return; }
     const query = state.movementQuery.trim().toLowerCase();
     const list = movements().filter((entry) => (!state.movementType || entry.movement_type === state.movementType)
       && (!query || [entry.item_name, entry.note].some((value) => String(value || '').toLowerCase().includes(query))));
@@ -1254,6 +1289,8 @@
   }
 
   function renderWaste(body) {
+    if (inputHealth('movements') === 'loading' && !movements().length) { body.innerHTML = loadingRowsHtml(); return; }
+    if (inputHealth('movements') === 'failed') { body.innerHTML = movementsFailedHtml('Waste records'); return; }
     const list = movements().filter((entry) => entry.movement_type === 'waste');
     body.innerHTML = `<div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table"><thead><tr><th>Date</th><th>Item</th><th class="is-num">Quantity</th><th>Reason</th></tr></thead>
       <tbody>${list.map((entry) => `<tr><td>${esc(dateTimeText(entry.created_at))}</td><td class="cell-primary">${esc(entry.item_name || 'Inventory item')}</td><td class="is-num">${qty(Math.abs(num(entry.quantity_change) || 0))}</td><td class="inv__note">${esc(entry.note || 'Waste')}</td></tr>`).join('')}</tbody></table>
@@ -1263,7 +1300,7 @@
   }
 
   function openWasteDialog(itemId = null) {
-    if (!isManager()) { toast('Recording waste is for managers.'); return; }
+    if (!isManager()) { toast('Recording waste is for managers.', { icon: false }); return; }
     const choices = items().filter((item) => item.active !== false && truth()?.known(item) && (num(item.quantity) || 0) > 0);
     const overlay = openOverlay(`<h2 class="atlas-dialog__title">Record waste</h2>
       <form class="atlas-dialog__body atlas-form" id="inv-waste-form" novalidate>
@@ -1396,7 +1433,7 @@
           ${canCount() ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="count"${selected && item?.active !== false ? '' : ' disabled'}>${icon('list-checks')}Count item</button>` : ''}
           <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="recipes"${selected ? '' : ' disabled'}>${icon('martini')}View recipes</button>
           <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="ask">${icon('sparkles')}Ask Atlas</button>
-          <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--lg" data-id-action="wrong">${icon('thumbs-down')}Wrong product</button>
+          <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="wrong">${icon('thumbs-down')}Wrong product</button>
         </div>
         <p class="atlas-capture-note">Identifying never changes stock or items.</p>
       </div>`, (sheet) => {
@@ -1448,7 +1485,7 @@
     ctl.showSheet(`<div class="atlas-capture-result"><h3 class="atlas-capture-result__title">Search inventory</h3>
       <form class="atlas-capture-search" data-capture-search-form><label class="atlas-search">${icon('search')}<input class="atlas-input" type="search" name="q" value="${esc(guess)}" aria-label="Search inventory" data-autofocus autocomplete="off"></label><button type="submit" class="atlas-btn atlas-btn--primary">Search</button></form>
       <div data-capture-search-results></div>
-      <div class="atlas-capture__actions"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--lg" data-back>Back</button></div></div>`, (sheet) => {
+      <div class="atlas-capture__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-back>Back</button></div></div>`, (sheet) => {
       const results = sheet.querySelector('[data-capture-search-results]');
       sheet.querySelector('[data-back]').addEventListener('click', () => (detection && detection.band !== 'low' ? identifyOrCount() : unknownSheet(result, detection, ctl, { onChoose })));
       function identifyOrCount() { onChoose.back ? onChoose.back() : unknownSheet(result, detection, ctl, { onChoose }); }
@@ -1468,7 +1505,7 @@
             onChoose(button.dataset.captureChoose, Number(button.dataset.rank) || null, 'chose_by_search');
           }));
         } catch (error) {
-          results.innerHTML = alertHtml('danger', 'Search didn’t work.', error.message);
+          results.innerHTML = alertHtml('danger', 'Search didn’t work.', shown(error, 'Check your connection and try again.'));
           lucide();
         }
       });
@@ -1482,7 +1519,7 @@
     onChoose.usedFor = onChoose.usedFor || options.usedFor || 'identify';
     const candidates = detection?.candidates || [];
     ctl.showSheet(`<div class="atlas-capture-result" data-capture-result="unknown">
-      <div class="atlas-capture-result__head"><span class="atlas-capture-result__img" aria-hidden="true">${icon('scan-search')}</span><div class="atlas-capture-result__text"><h3 class="atlas-capture-result__title">No confident Atlas inventory match found.</h3><p class="atlas-capture-muted">Nothing was created or changed.</p></div>${detection ? R().band(detection) : ''}</div>
+      <div class="atlas-capture-result__head"><span class="atlas-capture-result__img" aria-hidden="true">${icon('scan-search')}</span><div class="atlas-capture-result__text"><h3 class="atlas-capture-result__title">Atlas couldn’t tell which item this is.</h3><p class="atlas-capture-muted">Nothing was created or changed.</p></div>${detection ? R().band(detection) : ''}</div>
       ${detection ? `<details class="atlas-capture-more" open><summary>What Atlas could read</summary>${R().fields(detection, { keys: ['identity', 'brand', 'variant', 'category', 'package_type', 'unit_size', 'barcode'] }) || '<p class="atlas-capture-muted">Nothing readable. Try a closer photo of the label.</p>'}</details>` : ''}
       <div class="atlas-capture__actions atlas-capture__actions--grid">
         <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-unknown="retry">${icon('scan-line')}Retry scan</button>
@@ -1505,7 +1542,7 @@
   function possibleMatchesSheet(result, detection, ctl, onChoose, options) {
     ctl.showSheet(`<div class="atlas-capture-result"><h3 class="atlas-capture-result__title">Possible matches</h3><p class="atlas-capture-muted">Atlas isn’t sure about any of these. Choose one only if it’s the product in your hand.</p>
       ${R().candidates(detection, { action: 'Choose' })}
-      <div class="atlas-capture__actions"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--lg" data-back>Back</button></div></div>`, (sheet) => {
+      <div class="atlas-capture__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-back>Back</button></div></div>`, (sheet) => {
       sheet.querySelector('[data-back]').addEventListener('click', () => unknownSheet(result, detection, ctl, { ...options, onChoose }));
       sheet.querySelectorAll('[data-capture-choose]').forEach((button) => button.addEventListener('click', () => {
         recordRecognitionChoice(recognitionRef(result, detection), button.dataset.captureChoose, onChoose.usedFor, Number(button.dataset.rank) || null, 'chose_candidate');
@@ -1779,8 +1816,8 @@
       const onOrder = ordered.has(item.id);
       const detail = `${affected.length ? `${nameList(affected)} ${affected.length === 1 ? 'is' : 'are'} affected` : `0 of ${qty(item.par_level)} ${unitWord(item)} left`}${onOrder ? ' · on order' : ''}`;
       const view = { label: 'View item', route: `#inventory/item/${encodeURIComponent(item.id)}` };
-      rows.push({ id: `out:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: onOrder ? view : { label: 'Add to order', actionId: 'purchasing.order.new', record: { type: 'inventory_item', id: item.id, label: item.name } }, roles: MANAGERS });
-      rows.push({ id: `out-view:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: view, roles: ['bartender', 'viewer'] });
+      rows.push({ id: `out:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name}: out of stock`, detail, action: onOrder ? view : { label: 'Add to order', actionId: 'purchasing.order.new', record: { type: 'inventory_item', id: item.id, label: item.name } }, roles: MANAGERS });
+      rows.push({ id: `out-view:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name}: out of stock`, detail, action: view, roles: ['bartender', 'viewer'] });
     });
     const low = below;
     if (low.length === 1) {
@@ -1806,7 +1843,7 @@
       { id: 'inventory.waste.record', label: 'Record waste', icon: 'trash-2', keywords: ['waste', 'spoilage', 'breakage', 'spill'], roles: MANAGERS, contexts: ['inventory'], forRecord: 'inventory_item', recordLabel: 'Record waste for {name}', run: (ctx) => openWasteDialog(ctx?.record?.type === 'inventory_item' ? ctx.record.id : null) },
       { id: 'inventory.item.deactivate', label: 'Deactivate item', icon: 'archive', keywords: ['deactivate', 'archive', 'remove'], roles: MANAGERS, forRecord: 'inventory_item', recordLabel: 'Deactivate {name}', when: (ctx) => Boolean(ctx?.record?.id), run: (ctx) => { const item = itemById(ctx.record.id); if (item) openActivation(item, item.active === false); } }
     ];
-    const registerAction = (action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`) });
+    const registerAction = (action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`, { icon: false }) });
     // Add item first; the rest after every module has loaded, so the palette
     // suggests Add item and Start stock count (stock-count-workspace.js) first.
     registerAction(actions[0]);

@@ -32,10 +32,14 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 .ai-layer *, .ai-layer *::before, .ai-layer *::after { box-sizing: border-box; }
 .atlas-ai h1, .atlas-ai h2, .atlas-ai h3, .atlas-ai h4, .atlas-ai p,
 .ai-layer h2, .ai-layer h3, .ai-layer p { margin: 0; }
-.atlas-ai button, .atlas-ai input, .atlas-ai textarea, .atlas-ai select,
-.ai-layer button, .ai-layer input, .ai-layer textarea, .ai-layer select { font: inherit; color: inherit; }
+/* The reset is for Atlas AI's own controls only. This layer (atlas.modules)
+ * beats atlas.components whatever the specificity, so design-system parts
+ * (.atlas-btn, .atlas-input, …; every class starting "atlas-") are excluded:
+ * a primary button keeps its --text-on-accent label (S90, review P1-2). */
+.atlas-ai :is(button, input, textarea, select):not([class*="atlas-"]),
+.ai-layer :is(button, input, textarea, select):not([class*="atlas-"]) { font: inherit; color: inherit; }
 .atlas-ai button, .ai-layer button { cursor: pointer; }
-.atlas-ai a { color: var(--accent-text, #1a5ec0); text-decoration: none; }
+.atlas-ai a:not([class*="atlas-"]) { color: var(--accent-text, #1a5ec0); text-decoration: none; }
 .atlas-ai .icon, .ai-layer .icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .atlas-ai .icon--md { width: 18px; height: 18px; }
 .atlas-ai .icon--lg { width: 20px; height: 20px; }
@@ -420,7 +424,7 @@ html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::befo
   .atlas-ai .approval__foot { flex-wrap: wrap; }
   .atlas-ai .approval__foot .spacer { flex-basis: 100%; order: 3; }
   .atlas-ai .approval__foot .atlas-btn--primary { flex: 1; }
-  .atlas-ai .composer-wrap { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; padding: 18px 12px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(rgba(255, 255, 255, 0), #fff 18px); }
+  .atlas-ai .composer-wrap { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line, #e7e7e3); background: var(--bg, #ffffff); }
   .atlas-ai .composer-hint { display: none; }
   /* The empty state keeps the phone tab bar; the composer sits above it. */
   .atlas-ai.has-tabbar .composer-wrap { bottom: calc(56px + env(safe-area-inset-bottom)); }

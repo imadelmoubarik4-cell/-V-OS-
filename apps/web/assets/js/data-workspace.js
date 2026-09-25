@@ -530,7 +530,7 @@
     }
     if (!imports.loaded || (imports.loading && !imports.rows.length)) return skeletonRows();
     if (!imports.rows.length) {
-      return emptyMarkup({ icon: 'file-up', title: 'No imports yet', text: 'Upload a spreadsheet, invoice or stock count. Nothing changes live records until you review it.', action: '<button type="button" class="atlas-btn atlas-btn--primary" data-data-upload><i data-lucide="upload"></i>Import a file</button>' });
+      return emptyMarkup({ icon: 'file-up', title: 'No imports yet', text: 'Upload a spreadsheet, invoice or stock count. Nothing changes live records until you review it.', action: '<button type="button" class="atlas-btn atlas-btn--secondary" data-data-upload><i data-lucide="upload"></i>Import a file</button>' });
     }
     const rows = filteredImports();
     const segmented = [['all', 'All'], ['attention', 'Needs attention'], ['imported', 'Imported']]
@@ -842,8 +842,13 @@
       return alertMarkup({ title: 'Record issues couldn\'t be loaded.', body: friendlyError(state.summaryError, 'Your records are safe. Try again.'), action: retryButton('summary') });
     }
     if (!state.summary) return skeletonRows();
-    const issues = (state.summary.issues || []).filter((entry) => Number(entry.count) > 0);
-    if (!issues.length) return emptyMarkup({ icon: 'circle-check', title: 'No record issues', text: 'Every active item and recipe has its supplier, cost, package, par and links in place.' });
+    const all = (state.summary.issues || []).filter((entry) => Number(entry.count) > 0);
+    // Requests waiting for a decision have their own tab (Waiting for
+    // approval); they are linked from here, not a second chip (review P2-18).
+    const waiting = all.filter((entry) => entry.entity_type === 'catalog_change_request').reduce((sum, entry) => sum + Number(entry.count), 0);
+    const waitingNote = waiting ? `<p class="data-caption">${plural(waiting, 'change is', 'changes are')} waiting for a decision in <a href="#data/approvals">Waiting for approval</a>.</p>` : '';
+    const issues = all.filter((entry) => entry.entity_type !== 'catalog_change_request');
+    if (!issues.length) return `${waitingNote}${emptyMarkup({ icon: 'circle-check', title: 'No record issues', text: 'Every active item and recipe has its supplier, cost, package, par and links in place.' })}`;
     if (!issues.some((entry) => entry.code === state.issues.code)) {
       state.issues.code = issues[0].code;
       state.issues.offset = 0;
@@ -867,6 +872,7 @@
     }
     return `<div class="atlas-chips data-issue-chips" role="group" aria-label="Issue types">${chips}</div>
       <p class="data-caption">Counts refresh when you come back after fixing a record.</p>
+      ${waitingNote}
       ${table}`;
   }
 
@@ -1140,7 +1146,7 @@
         <label class="atlas-search"><i data-lucide="search"></i><input class="atlas-input" type="search" placeholder="Search records" aria-label="Search records" value="${attr(review.query)}" data-data-review-search data-focus-key="review-search"></label>
         <select class="atlas-select data-filter" aria-label="Type" data-data-review-scope>${REVIEW_SCOPES.map(([key, label]) => `<option value="${key}"${review.scope === key ? ' selected' : ''}>${label}</option>`).join('')}</select>
         <select class="atlas-select data-filter" aria-label="Status" data-data-review-status>${REVIEW_STATUSES.map(([key, label]) => `<option value="${key}"${review.status === key ? ' selected' : ''}>${label}</option>`).join('')}</select>
-        <div class="atlas-toolbar__end">${plural(review.total, 'record', 'records')}</div>
+        <div class="atlas-toolbar__end">${review.error && !review.rows.length ? '' : plural(review.total, 'record', 'records')}</div>
       </div>${body}`;
   }
 
