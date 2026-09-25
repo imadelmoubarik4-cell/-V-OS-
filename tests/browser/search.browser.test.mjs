@@ -49,20 +49,69 @@ function fixtures({ balances, shifts = null } = {}) {
   };
 }
 
-// Opens the palette from the top-bar field (or the phone search button) and types.
-async function ask(page, text, { wait = 350 } = {}) {
+// Opens the palette from the top-bar field (or the phone search button), types
+// and waits until the instant-answer step has settled (data-answer-state).
+async function ask(page, text) {
   if (!(await page.evaluate(() => window.AtlasPalette.isOpen()))) {
     const phone = await page.evaluate(() => window.matchMedia('(max-width: 767px)').matches);
     await page.click(phone ? '#atlas-phone-search' : '#atlas-omni');
   }
   await page.fill('#atlas-palette-input', text);
-  await page.waitForTimeout(wait);
+  await page.waitForFunction(() => document.getElementById('atlas-palette-list')?.dataset.answerState !== 'pending');
   return page.evaluate(() => ({
     answer: document.querySelector('.atlas-palette__answer')?.innerText.replace(/\s+/g, ' ').trim() || null,
+    answerState: document.getElementById('atlas-palette-list')?.dataset.answerState || null,
     options: [...document.querySelectorAll('.atlas-palette__item')].map((node) => node.innerText.replace(/\s+/g, ' ').trim()),
     view: document.body.dataset.atlasView
   }));
 }
+
+// Atlas AI switched on and configured (atlas-ai?action=settings → configured).
+function aiOn(calls = []) {
+  return (entry) => {
+    calls.push(entry.action);
+    if (entry.action === 'settings') return { enabled: true, configured: true, key_present: true, can_edit: true };
+    if (entry.action === 'conversations') return { conversations: [] };
+    if (entry.action === 'preferences') return { reply_length: 'normal', speak_answers: false, voice_enabled: true, language: 'auto' };
+    return {};
+  };
+}
+
+test('Atlas AI on: questions offer "Ask Atlas" first and render no deterministic answer; records still search', { skip }, async () => {
+  const calls = [];
+  const base = fixtures();
+  const { page, close } = await launchAtlas({ fixtures: { ...base, functions: { ...base.functions, 'atlas-ai': aiOn(calls) } } });
+  try {
+    for (const question of ['What is low in stock?', 'Can we make Margarita?', 'low stock']) {
+      const result = await ask(page, question);
+      assert.equal(result.answerState, 'ai', question);
+      assert.equal(result.answer, null, `${question}: no inline regex answer while Atlas AI is on`);
+      assert.match(result.options[0], new RegExp(`^Ask Atlas “${question.replace('?', '\\?')}”`), `${question}: Ask Atlas is the first row`);
+    }
+    assert.equal(calls.filter((action) => action === 'settings').length, 1, 'the palette checks Atlas AI once per session');
+    // Record search stays on.
+    assert.ok((await ask(page, 'pinot')).options.some((option) => /Angelo Pinot Grigio/.test(option)));
+    // Enter on the first row hands the question to Atlas AI.
+    await ask(page, 'What needs ordering?');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.hash.startsWith('#ai/new'));
+    assert.match(await page.evaluate(() => decodeURIComponent(location.hash)), /^#ai\/new\?q=What needs ordering\?/);
+  } finally { await close(); }
+});
+
+test('Atlas AI off: the deterministic answer is the labelled offline fallback', { skip }, async () => {
+  const base = fixtures();
+  const off = (entry) => (entry.action === 'settings' ? { enabled: false, configured: false, key_present: false } : { __status: 503, body: { error_code: 'not_configured' } });
+  const { page, close } = await launchAtlas({ fixtures: { ...base, functions: { ...base.functions, 'atlas-ai': off } } });
+  try {
+    const result = await ask(page, 'What is low in stock?');
+    assert.equal(result.answerState, 'answered');
+    assert.match(result.answer, /^Quick answer · Atlas AI is off/);
+    assert.match(result.answer, /1 item is below par/);
+    assert.equal(await page.$eval('.atlas-palette__answer', (node) => node.dataset.answerSource), 'offline');
+    assert.match(result.options[0], /^Ask Atlas/, 'Ask Atlas is still offered');
+  } finally { await close(); }
+});
 
 test('typing never navigates away from the current page', { skip }, async () => {
   const { page, close } = await launchAtlas({ fixtures: fixtures() });
@@ -143,7 +192,7 @@ test('"What needs ordering?" uses the shared order suggestions', { skip }, async
 test('"Who works tomorrow?" reads the published schedule', { skip }, async () => {
   const { page, close } = await launchAtlas({ fixtures: fixtures() });
   try {
-    const { answer } = await ask(page, 'Who works tomorrow?', { wait: 900 });
+    const { answer } = await ask(page, 'Who works tomorrow?');
     assert.match(answer, /1 person works tomorrow/);
     assert.match(answer, /Sara Jónsdóttir: 17:00–23:30 · Bartender/);
   } finally { await close(); }
@@ -154,7 +203,7 @@ test('questions without source data say so instead of answering', { skip }, asyn
   try {
     assert.match((await ask(page, 'What is low in stock?')).answer, /No item has a verified count yet/);
     assert.match((await ask(page, 'What needs ordering?')).answer, /Nothing needs ordering based on verified stock\. Items without a verified count \(5\)/);
-    assert.match((await ask(page, 'Who works today?', { wait: 1500 })).answer, /could not load the schedule/);
+    assert.match((await ask(page, 'Who works today?')).answer, /could not load the schedule/);
   } finally { await close(); }
 });
 
