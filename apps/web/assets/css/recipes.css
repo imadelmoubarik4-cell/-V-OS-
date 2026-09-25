@@ -5,6 +5,7 @@
   /* Legacy index.html th defaults leak into .atlas-table (design-system request). */
   .recipes-page .atlas-table th { text-transform: none; letter-spacing: 0; }
   .recipe-toolbar .atlas-toolbar__end { gap: var(--s-3); }
+  .recipe-search--phone { display: none; }
   .recipe-category-picker { position: relative; display: inline-flex; align-items: center; gap: var(--s-1); }
   .recipe-category-menu { position: absolute; top: calc(100% + var(--s-1)); left: 0; z-index: var(--z-popover, 30); min-width: 220px; }
   .recipe-view-toggle button { display: inline-grid; place-items: center; }
@@ -87,7 +88,7 @@
   /* Editor */
   .recipe-form { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
   .recipe-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
-  .recipe-form legend { padding: 0; }
+  .recipe-form legend { padding: 0; margin-bottom: var(--s-4); }
   .recipe-ingredient-picker {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(72px, 1fr) minmax(88px, 1fr) auto;
@@ -114,6 +115,10 @@
      the detail reads at the bar — build and method 17/26. */
   @media (max-width: 767px) {
     .recipe-grid { gap: var(--s-3); }
+    /* Search on its own row; the toolbar keeps the filters (spec §8.3). */
+    .recipe-search--phone { display: block; margin-top: var(--s-3); }
+    .recipe-search--desktop { display: none; }
+    .recipes-page .page-head__actions [data-recipe-menu-link] { display: none; }
     .recipe-tile__media { aspect-ratio: 1 / 1; }
     .recipe-tile__body { padding: var(--s-2) var(--s-3) var(--s-3); }
     .recipe-tile__meta { display: none; }

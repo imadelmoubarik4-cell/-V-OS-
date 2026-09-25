@@ -264,6 +264,6 @@ export function teamCBackend({ user, clock = venueClockBackend({ hours: weekHour
     atlas_apply_par_levels: (body) => { calls.rpc.push({ name: 'atlas_apply_par_levels', body }); return { status: 'applied', request_id: body.p_request_id, changed: body.p_changes.map((change) => ({ item_id: change.item_id, from: change.expected_par_level, to: change.par_level })), unchanged: [], conflicts: [], replayed: false }; },
     ...(overrides.rpc || {})
   };
-  const tables = { inventory_items: inventory, recipes, recipe_catalog: recipes, suppliers: [], recipe_categories: [], import_batches: () => state.batches, ...(overrides.tables || {}) };
+  const tables = { inventory_items: inventory, inventory_catalog: inventory.map(({ cost_price, ...item }) => item), recipes, recipe_catalog: recipes, suppliers: [], recipe_categories: [], import_batches: () => state.batches, ...(overrides.tables || {}) };
   return { fixtures: { tables, rpc, functions, writes: overrides.writes }, calls, state };
 }

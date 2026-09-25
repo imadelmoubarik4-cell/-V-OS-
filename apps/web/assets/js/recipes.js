@@ -443,8 +443,10 @@
     const attention = state.statusFilter === 'attention'
       ? '<button type="button" class="atlas-chip is-active" data-recipe-status="all">Needs attention<span class="atlas-chip__clear" aria-hidden="true"><i data-lucide="x"></i></span><span class="sr-only">Clear</span></button>'
       : '';
-    return `<div class="atlas-toolbar recipe-toolbar">
-        <label class="atlas-search"><i data-lucide="search"></i><input class="atlas-input" type="search" id="recipe-search" placeholder="Search recipes or ingredients" aria-label="Search recipes or ingredients" value="${escape(state.search)}"></label>
+    // Phones get the search on its own row above the filters (spec §8.3).
+    return `<label class="atlas-search recipe-search--phone"><i data-lucide="search"></i><input class="atlas-input" type="search" id="recipe-search-phone" placeholder="Search recipes or ingredients" aria-label="Search recipes" value="${escape(state.search)}"></label>
+      <div class="atlas-toolbar recipe-toolbar">
+        <label class="atlas-search recipe-search--desktop"><i data-lucide="search"></i><input class="atlas-input" type="search" id="recipe-search" placeholder="Search recipes or ingredients" aria-label="Search recipes or ingredients" value="${escape(state.search)}"></label>
         <div class="atlas-segmented" role="group" aria-label="Availability">${segments.map(([key, label]) => `<button type="button" aria-pressed="${state.statusFilter === key}" data-recipe-status="${key}">${label}</button>`).join('')}</div>
         ${attention}
         ${categoryChipMarkup()}
@@ -479,7 +481,7 @@
           const view = availabilityView(recipe);
           const financials = recipeFinancials(recipe);
           const costKnown = !financials.incomplete && Number.isFinite(financials.perServing);
-          const price = number(recipe.menu_price, NaN);
+          const price = recipe.menu_price == null || recipe.menu_price === '' ? NaN : number(recipe.menu_price, NaN);
           return `<tr><td><a class="cell-primary" href="#recipes/${escape(encodeURIComponent(recipe.id))}">${escape(recipe.name)}</a>${view.line && view.status.key !== 'ready' ? `<span class="cell-sub">${escape(view.line)}</span>` : ''}</td>
             <td data-priority="2">${escape(categoryFor(recipe).name)}</td><td data-priority="3">${escape(recipe.glassware || '—')}</td>
             <td><span class="atlas-pill atlas-pill--${view.tone}">${escape(view.pill)}</span></td>
@@ -531,7 +533,7 @@
     const rows = ingredientIntelligence(recipe);
     const financials = recipeFinancials(recipe);
     const costKnown = !financials.incomplete && Number.isFinite(financials.perServing);
-    const price = number(recipe.menu_price, NaN);
+    const price = recipe.menu_price == null || recipe.menu_price === '' ? NaN : number(recipe.menu_price, NaN);
     const blockers = view.status.key === 'incomplete' ? recipeBlockers(recipe) : [];
     const alert = view.status.key === 'unavailable' || view.status.key === 'attention'
       ? `<div class="atlas-alert atlas-alert--${view.status.key === 'unavailable' ? 'danger' : 'warning'}"><i data-lucide="${view.status.key === 'unavailable' ? 'circle-alert' : 'triangle-alert'}"></i><div class="atlas-alert__content"><p class="atlas-alert__body">${escape(view.line || view.pill)}</p></div></div>`
@@ -1246,9 +1248,9 @@
     state.initialized = true;
     state.viewMode = readViewMode();
     dom.view.addEventListener('input', (event) => {
-      if (event.target.id !== 'recipe-search') return;
+      if (!['recipe-search', 'recipe-search-phone'].includes(event.target.id)) return;
       state.search = event.target.value;
-      renderLibrary({ keepFocus: true });
+      renderLibrary({ keepFocus: event.target.id });
     });
     dom.view.addEventListener('click', handleLibraryClick);
     registerWithShell();
@@ -1263,7 +1265,8 @@
 
   function renderLibrary({ keepFocus = false } = {}) {
     if (!dom.view) return;
-    const search = keepFocus ? document.getElementById('recipe-search') : null;
+    const searchId = typeof keepFocus === 'string' ? keepFocus : 'recipe-search';
+    const search = keepFocus ? document.getElementById(searchId) : null;
     const caret = search ? search.selectionStart : null;
     if (state.phoneDetail && isPhone()) {
       const recipe = recipes.find((entry) => String(entry.id) === String(state.phoneDetail));
@@ -1288,7 +1291,7 @@
       });
     }
     if (search) {
-      const next = document.getElementById('recipe-search');
+      const next = document.getElementById(searchId);
       next?.focus({ preventScroll: true });
       if (next && caret !== null) next.setSelectionRange(caret, caret);
     }

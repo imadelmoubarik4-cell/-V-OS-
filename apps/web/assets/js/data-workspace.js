@@ -438,7 +438,7 @@
       icons();
       return;
     }
-    state.root.innerHTML = `<div class="atlas-page data-page">
+    state.root.innerHTML = `<div class="atlas-page data-page${state.tab === 'import' ? ' is-detail' : ''}">
       ${root.AtlasShell.pageHead({ title: 'Data', sub: headSub(), actions: [{ label: 'Import a file', icon: 'upload', variant: 'primary', attrs: { 'data-data-upload': '' } }] })}
       ${tabsMarkup()}
       <div class="data-body">${bodyMarkup()}</div>
@@ -1040,7 +1040,7 @@
             <td class="is-num" data-priority="2">${stock.known ? escapeHtml(stock.text) : `<span class="atlas-pill">${escapeHtml(stock.text)}</span>`}</td>
             <td class="is-num">${row.par_level === null || row.par_level === undefined ? '<span title="No par level set">—</span>' : escapeHtml(formatQuantity(row.par_level))}</td>
             <td data-priority="2">${suggestionCell}</td>
-            <td class="is-num"><input class="atlas-input data-par-input" type="text" inputmode="decimal" aria-label="New par for ${attr(row.name)}" value="${attr(edit)}" placeholder="${attr(row.par_level ?? '')}" data-data-par-input="${attr(id)}" data-focus-key="par-${attr(id)}"${conflict ? ' aria-invalid="true"' : ''}></td></tr>`;
+            <td class="is-num"><input class="atlas-input data-par-input" type="text" inputmode="decimal" aria-label="New par for ${attr(row.name)}" value="${attr(edit)}" data-data-par-input="${attr(id)}" data-focus-key="par-${attr(id)}"${conflict ? ' aria-invalid="true"' : ''}></td></tr>`;
         }).join('')}</tbody></table></div>`
       : emptyMarkup({ icon: 'search-x', title: 'No items match these filters', action: '<button type="button" class="atlas-btn atlas-btn--secondary" data-data-par-clear>Clear filters</button>' });
     return `${conflicts}${saveError}
@@ -1048,7 +1048,7 @@
         <label class="atlas-search"><i data-lucide="search"></i><input class="atlas-input" type="search" placeholder="Search items" aria-label="Search items" value="${attr(pars.query)}" data-data-par-search data-focus-key="par-search"></label>
         <select class="atlas-select data-filter" aria-label="Category" data-data-par-category><option value="">All categories</option>${categories.map((name) => `<option${pars.category === name ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('')}</select>
         ${supplierNames.length ? `<select class="atlas-select data-filter" aria-label="Supplier" data-data-par-supplier><option value="">All suppliers</option>${supplierNames.map((name) => `<option${pars.supplier === name ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('')}</select>` : ''}
-        <form class="data-cover" data-data-cover-form><label class="sr-only" for="data-cover-days">Days of cover</label><span class="atlas-affix"><input class="atlas-input" id="data-cover-days" inputmode="decimal" placeholder="Days of cover" value="${attr(pars.cover)}" data-focus-key="cover"><span class="suffix">days</span></span><button type="submit" class="atlas-btn atlas-btn--secondary">Suggest pars</button></form>
+        <form class="data-cover" data-data-cover-form><span class="atlas-affix"><input class="atlas-input" id="data-cover-days" inputmode="decimal" placeholder="Days of cover" aria-label="Days of cover" value="${attr(pars.cover)}" data-focus-key="cover"><span class="suffix">days</span></span><button type="submit" class="atlas-btn atlas-btn--secondary">Suggest pars</button></form>
         <div class="atlas-toolbar__end">${plural(rows.length, 'item', 'items')}</div>
       </div>
       <p class="data-caption">Suggestions use only verified counts and recorded deliveries (at least ${state.pars.rule?.min_observations || 3} counts over ${state.pars.rule?.min_span_days || 14} days). Nothing is saved until you press Save.</p>
