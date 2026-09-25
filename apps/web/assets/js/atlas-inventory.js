@@ -103,14 +103,18 @@
     else if (typeof root.atlasReloadPurchasingData === 'function') { await root.atlasReloadPurchasingData(); shell.dataLoaded?.({}); }
   }
 
+  // The pill for the canonical AtlasStockTruth.stockStatus. "Almost out" is
+  // only a display tier of below par (at or under ALMOST_OUT_RATIO of par): it
+  // counts as below par everywhere (filters, Home, Reports, Atlas AI).
   function stockStatus(item) {
     if (item.active === false) return { key: 'inactive', label: 'Inactive', tone: '', rank: 6 };
-    if (!truth()?.known(item)) return { key: 'not_counted', label: 'Not counted', tone: '', rank: 4 };
-    const quantity = num(item.quantity) ?? 0;
-    const par = num(item.par_level);
-    if (quantity <= 0) return { key: 'out', label: 'Out', tone: 'danger', rank: 0 };
-    if (par && par > 0 && quantity <= par * ALMOST_OUT_RATIO) return { key: 'almost_out', label: 'Almost out', tone: 'danger', rank: 1 };
-    if (truth().belowPar(item)) return { key: 'below_par', label: 'Below par', tone: 'warning', rank: 2 };
+    const status = truth()?.stockStatus ? truth().stockStatus(item) : 'unknown';
+    if (status === 'unknown') return { key: 'not_counted', label: 'Not counted', tone: '', rank: 4 };
+    if (status === 'out') return { key: 'out', label: 'Out', tone: 'danger', rank: 0 };
+    if (status === 'below_par') {
+      if ((num(item.quantity) ?? 0) <= (num(item.par_level) ?? 0) * ALMOST_OUT_RATIO) return { key: 'almost_out', label: 'Almost out', tone: 'danger', rank: 1 };
+      return { key: 'below_par', label: 'Below par', tone: 'warning', rank: 2 };
+    }
     return { key: 'ok', label: '', tone: '', rank: 5 };
   }
   function statusPill(status) {
@@ -372,7 +376,7 @@
       if (state.location && String(item.bin_location || '') !== state.location) return false;
       if (state.status) {
         const status = stockStatus(item).key;
-        if (state.status === 'below-par' && !(truth()?.belowPar(item))) return false;
+        if (state.status === 'below-par' && truth()?.stockStatus?.(item) !== 'below_par') return false;
         if (state.status === 'not-counted' && status !== 'not_counted') return false;
         if (state.status === 'out' && !['out', 'almost_out'].includes(status)) return false;
       }
@@ -1727,15 +1731,16 @@
     const stock = truth();
     const active = items().filter((item) => item.active !== false);
     if (!stock || !active.length) return [];
-    const known = active.filter((item) => stock.known(item));
+    const known = active.filter((item) => stock.stockStatus(item) !== 'unknown');
     const rows = [];
     if (!known.length) {
       rows.push({ id: 'not-counted', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: `${active.length} ${active.length === 1 ? 'item has' : 'items have'} no verified count, so Atlas can’t tell what’s low.`, action: { label: 'Start stock count', actionId: 'inventory.count.start' }, roles: STAFF });
       rows.push({ id: 'not-counted-view', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: 'Low stock shows here once a count is verified.', action: { label: 'View inventory', route: '#inventory' }, roles: ['viewer'] });
       return rows;
     }
-    const below = known.filter((item) => stock.belowPar(item));
-    const out = below.filter((item) => (num(item.quantity) ?? 0) <= 0);
+    // The canonical partition: out and below par are separate sets.
+    const out = known.filter((item) => stock.stockStatus(item) === 'out');
+    const below = known.filter((item) => stock.stockStatus(item) === 'below_par');
     const ordered = root.AtlasPurchaseOrders?.openItemIds?.() || new Set();
     out.slice(0, 3).forEach((item) => {
       const affected = recipeNamesUsing(item.id);
@@ -1745,7 +1750,7 @@
       rows.push({ id: `out:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: onOrder ? view : { label: 'Add to order', actionId: 'purchasing.order.new', record: { type: 'inventory_item', id: item.id, label: item.name } }, roles: MANAGERS });
       rows.push({ id: `out-view:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: view, roles: ['bartender', 'viewer'] });
     });
-    const low = below.filter((item) => !out.includes(item));
+    const low = below;
     if (low.length === 1) {
       const item = low[0];
       rows.push({ id: `low:${item.id}`, severity: 'warning', icon: 'package', title: `${item.name} is below par`, detail: `${qty(item.quantity)} of ${qty(item.par_level)} ${unitWord(item)} left`, action: { label: 'View items', route: '#inventory?filter=below-par' } });

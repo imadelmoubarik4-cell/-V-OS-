@@ -11,6 +11,7 @@
 //             label, value, source: { type, id, label, route } | null }
 // RecordRef: { type, id, label, route }
 // Unknown:  { count, reason, breakdown? }
+import { formatKr } from "../atlas-domain.mjs";
 
 export const EVIDENCE_KINDS = Object.freeze(["fact", "calculation", "interpretation", "estimate", "missing"]);
 export const ERROR_CODES = Object.freeze([
@@ -141,10 +142,14 @@ export function formatNumber(value, digits = 2) {
   return String(rounded);
 }
 
+// Money in tool summaries and evidence uses the canonical "3.900 kr" format
+// (atlas-domain formatKr, the port of AtlasFormat.money) so Atlas AI answers
+// read exactly like every page. Unknown stays "unknown", never 0 kr.
 export function formatIsk(value) {
-  if (!Number.isFinite(value)) return "unknown";
-  return `${Math.round(value).toLocaleString("en-US")} ISK`;
+  if (typeof value !== "number" || !Number.isFinite(value)) return "unknown";
+  return formatKr(value, "unknown");
 }
+export { formatKr };
 
 export function quantityLabel(quantity, unit) {
   if (quantity === null || quantity === undefined || !Number.isFinite(Number(quantity))) return "unknown";

@@ -83,13 +83,13 @@
         },
         {
           "path": "functions/_shared/atlas-domain.mjs",
-          "source_sha256": "67253b04669cada29b75254501f88e77ebbc3bd677e2ea218e6378c954d446f6",
-          "candidate_sha256": "6f1e0e8ff4beb80dd2d9237ce9cf8bfb5b99e3fbd6ba06658cb632ff8f073da9"
+          "source_sha256": "38d8352a813d1f6c85c3126e0ce847985608226a880410014149d9fd2279b67e",
+          "candidate_sha256": "0aa60fcc76f03abd32327c785d96564b052900af6d02882461a717aed25b26e8"
         },
         {
           "path": "functions/_shared/stock-provenance.mjs",
-          "source_sha256": "9f1aa85342a4d2581ccb78373ce85eae1d551c8811742a53364ab76b06f49012",
-          "candidate_sha256": "947afba61eb61b22666f572be9dc3c8be667bfb2e9636aaab85cf94327c5cf7d"
+          "source_sha256": "c037eb7386372c0765de1401e38b463b79dae72bc93c54067690bacd8eddbe20",
+          "candidate_sha256": "9f5b726a48af62e67dcf5841293c05d5994bdbc3aae0f6cb1e610993c5e5ff14"
         }
       ]
     },
@@ -105,13 +105,13 @@
         },
         {
           "path": "functions/atlas-reports/index.ts",
-          "source_sha256": "20c09b1a12fb3154d368494598df798bd4c3510863963a098d3b294f75f5a5a6",
-          "candidate_sha256": "1b7013edd57a9c109d58f6548db7a0ca4ec58cf4d13182cebbe58039350f3734"
+          "source_sha256": "32fb5b616a5c587f62c1964b3bf8fc5572dcb431f911484ac51c89c45be600ac",
+          "candidate_sha256": "a39b70fd1824e81c208abcbbe5aa6dcab36486cd6ec6086b924d9ced9e8b986c"
         },
         {
           "path": "functions/_shared/stock-provenance.mjs",
-          "source_sha256": "9f1aa85342a4d2581ccb78373ce85eae1d551c8811742a53364ab76b06f49012",
-          "candidate_sha256": "947afba61eb61b22666f572be9dc3c8be667bfb2e9636aaab85cf94327c5cf7d"
+          "source_sha256": "c037eb7386372c0765de1401e38b463b79dae72bc93c54067690bacd8eddbe20",
+          "candidate_sha256": "9f5b726a48af62e67dcf5841293c05d5994bdbc3aae0f6cb1e610993c5e5ff14"
         }
       ]
     },

@@ -166,7 +166,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/reports-workspace.css?v=20260926-s88',
-  scriptPath: 'assets/js/reports-workspace.js?v=20260926-s88',
+  scriptPath: 'assets/js/reports-workspace.js?v=20260928-s89t',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));

@@ -135,15 +135,136 @@ export function quantityTrustState(item, balance, nowMillis = Date.now()) {
   return "unverified";
 }
 
+// ---------------------------------------------------------------------------
+// S89 canonical business truth: a line-for-line port of the rules in
+// apps/web/assets/js/atlas-stock-truth.js (stockStatus, needsOrdering,
+// stockCounts, hasCost, inventoryValue, purchaseReceiptAmount). atlas-domain.mjs
+// re-exports them; tests/node/canonical-truth-s89.test.js runs both on the same
+// rows and checks Home, Inventory, Reports and Atlas AI agree. Change both.
+// ---------------------------------------------------------------------------
+
+// Browser coercion (AtlasStockTruth.numberOrNull): Number(), finite or null.
+function looseNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+// AtlasStockTruth.known: the item carries a current verified quantity.
+export function isStockKnown(item) {
+  return item?.freshness_state === "current" && item.verified_quantity != null
+    && item.verified_quantity !== "" && Number.isFinite(Number(item.verified_quantity));
+}
+
+// The one stock status. Precedence, first match wins:
+//   "unknown"   no current verified quantity (never counted, expired, stale);
+//   "out"       known and quantity <= 0, with or without a par level;
+//   "below_par" known, par > 0 and quantity strictly under par;
+//   "no_par"    known, quantity > 0 and no positive par (cannot be judged low);
+//   "ok"        known and at or above a positive par.
+// Summaries report below_par and out separately; needs ordering = out + below_par.
+export const STOCK_STATUSES = Object.freeze(["unknown", "out", "below_par", "no_par", "ok"]);
+
+export function stockStatus(item) {
+  if (!isStockKnown(item)) return "unknown";
+  const quantity = looseNumber(item.verified_quantity ?? item.quantity) ?? 0;
+  if (quantity <= 0) return "out";
+  const par = looseNumber(item.par_level);
+  if (par === null || par <= 0) return "no_par";
+  return quantity < par ? "below_par" : "ok";
+}
+
+export function needsOrdering(item) {
+  const status = stockStatus(item);
+  return status === "out" || status === "below_par";
+}
+
+export function stockCounts(items) {
+  const counts = { active: 0, known: 0, unknown: 0, out: 0, below_par: 0, no_par: 0, ok: 0, needs_ordering: 0 };
+  for (const item of Array.isArray(items) ? items : []) {
+    if (!item || item.active === false) continue;
+    const status = stockStatus(item);
+    counts.active += 1;
+    counts[status] += 1;
+    if (status !== "unknown") counts.known += 1;
+    if (status === "out" || status === "below_par") counts.needs_ordering += 1;
+  }
+  return counts;
+}
+
+// A usable cost is a finite cost_price above zero; anything else is "missing cost".
+export function hasCost(item) {
+  const cost = looseNumber(item?.cost_price);
+  return cost !== null && cost > 0;
+}
+
+// Stock value: null unless every active item is counted AND costed;
+// known_value is the lower bound over counted, costed items (null when none).
+export function inventoryValue(items) {
+  const active = (Array.isArray(items) ? items : []).filter((item) => item && item.active !== false);
+  let knownValue = null;
+  let unknownItems = 0;
+  let missingCostItems = 0;
+  for (const item of active) {
+    const counted = isStockKnown(item);
+    const costed = hasCost(item);
+    if (!counted) unknownItems += 1;
+    if (!costed) missingCostItems += 1;
+    if (counted && costed) knownValue = (knownValue ?? 0) + Math.max(0, looseNumber(item.quantity) ?? 0) * Number(item.cost_price);
+  }
+  const complete = unknownItems === 0 && missingCostItems === 0;
+  return {
+    value: complete ? (knownValue ?? 0) : null,
+    complete,
+    known_value: knownValue,
+    active_items: active.length,
+    unknown_items: unknownItems,
+    missing_cost_items: missingCostItems,
+  };
+}
+
+// Purchasing spend = costed purchase receipts. The receiving path posts
+// 'restock'; the other names are accepted for imported history. Positive
+// quantities only; waste, sales, counts, transfers and adjustments are never
+// spend. total_cost when positive, else unit_cost x quantity when unit_cost is
+// positive, else null (an uncosted receipt). undefined = not a receipt.
+export const PURCHASE_RECEIPT_TYPES = Object.freeze(["restock", "purchase", "delivery", "receive", "receipt"]);
+
+export function purchaseReceiptAmount(movement) {
+  if (!PURCHASE_RECEIPT_TYPES.includes(lower(movement?.movement_type))) return undefined;
+  const quantity = looseNumber(movement.quantity_change);
+  if (quantity === null || quantity <= 0) return undefined;
+  const total = looseNumber(movement.total_cost);
+  if (total !== null && total > 0) return total;
+  const unit = looseNumber(movement.unit_cost);
+  return unit !== null && unit > 0 ? unit * quantity : null;
+}
+
+// Movement rows read for projections and reports: the newest 5 000 in pages
+// of 1 000 (PostgREST max-rows). Same numbers as AtlasStockTruth.
+export const MOVEMENT_ROW_LIMIT = 5000;
+export const MOVEMENT_PAGE_SIZE = 1000;
+
+// Money is "3.900 kr" everywhere (spec §11 decision 5): a line-for-line port
+// of AtlasFormat.money / AtlasVenueClock.formatKr (whole krónur, "." between
+// thousands). Unknown is the fallback, never 0 kr.
+export function formatKr(value, fallback = "unknown") {
+  const amount = typeof value === "string" && value.trim() === "" ? NaN : Number(value);
+  if (value === null || value === undefined || !Number.isFinite(amount)) return fallback;
+  const rounded = Math.round(amount);
+  const grouped = String(Math.abs(rounded)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${rounded < 0 ? "-" : ""}${grouped} kr`;
+}
+
+// Reports vocabulary on top of the canonical stock status.
 function inventoryStatus(item, quantityStatus, quantity) {
   if (quantityStatus !== "current") return quantityStatus;
-  const par = numberOrNull(item.par_level);
-  if (quantity !== null && quantity <= 0) return "out_of_stock";
-  if (quantity !== null && par !== null && par > 0 && quantity < par) return "below_par";
-  const cost = numberOrNull(item.cost_price);
-  if (cost === null || cost <= 0) return "missing_cost";
+  const status = stockStatus({ ...item, freshness_state: "current", verified_quantity: quantity, quantity });
+  if (status === "out") return "out_of_stock";
+  if (status === "below_par") return "below_par";
+  if (!hasCost(item)) return "missing_cost";
   if (!text(item.supplier) && !text(item.supplier_id)) return "missing_supplier";
-  if (par === null || par <= 0) return "missing_par";
+  if (status === "no_par") return "missing_par";
   return "ok";
 }
 
@@ -180,6 +301,10 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
       const rawQuantity = numberOrNull(item.quantity);
       const cost = numberOrNull(item.cost_price);
       const status = inventoryStatus(item, quantityStatus, verifiedQuantity);
+      // The canonical status (unknown | out | below_par | no_par | ok).
+      const canonicalStatus = quantityStatus === "current"
+        ? stockStatus({ ...item, freshness_state: "current", verified_quantity: verifiedQuantity, quantity: verifiedQuantity })
+        : "unknown";
       return {
         id: item.id,
         name: item.name,
@@ -198,6 +323,7 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
           ? verifiedQuantity * cost
           : null,
         status,
+        stock_status: canonicalStatus,
         bin_location: item.bin_location,
         needs_review: item.needs_review === true,
         source_updated_at: item.source_updated_at ?? null,
@@ -211,10 +337,19 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
 
   const rows = allRows.filter((row) => matchesFilters(row, filters));
   const currentRows = rows.filter((row) => row.quantity_status === "current");
-  const currentWithCost = currentRows.filter((row) => numberOrNull(row.cost_price) > 0 && numberOrNull(row.quantity) !== null);
-  const currentMissingCost = currentRows.filter((row) => (numberOrNull(row.cost_price) ?? 0) <= 0).length;
+  const currentMissingCost = currentRows.filter((row) => !hasCost(row)).length;
   const needsCurrentCount = rows.length - currentRows.length;
   const sevenDaysAgo = nowMillis - 7 * 24 * 60 * 60 * 1000;
+  // The canonical stock value over the reported rows (AtlasStockTruth.inventoryValue).
+  const valuation = inventoryValue(rows.map((row) => ({
+    active: true,
+    freshness_state: row.quantity_status === "current" ? "current" : "unknown",
+    verified_quantity: row.quantity,
+    quantity: row.quantity,
+    cost_price: row.cost_price,
+  })));
+  const belowParCount = rows.filter((row) => row.status === "below_par").length;
+  const outCount = rows.filter((row) => row.status === "out_of_stock").length;
   const summary = {
     active_items: rows.length,
     current_items: currentRows.length,
@@ -222,14 +357,18 @@ export function buildStockReport(inventory, balances, filters = {}, nowMillis = 
     historical_items: rows.filter((row) => row.quantity_status === "historical").length,
     unverified_items: rows.filter((row) => row.quantity_status === "unverified").length,
     needs_current_count: needsCurrentCount,
-    estimated_value: currentWithCost.length ? currentWithCost.reduce((sum, row) => sum + Math.max(0, numberOrNull(row.quantity) ?? 0) * (numberOrNull(row.cost_price) ?? 0), 0) : null,
+    // Null unless every reported item is counted and costed (a partial sum is
+    // never shown as the total); known_value is the lower bound.
+    estimated_value: valuation.value,
+    known_value: valuation.known_value,
     current_missing_cost: currentMissingCost,
-    valuation_excluded_items: needsCurrentCount + currentMissingCost,
-    below_par: rows.filter((row) => row.status === "below_par").length,
-    out_of_stock: rows.filter((row) => row.status === "out_of_stock").length,
-    missing_cost: rows.filter((row) => (numberOrNull(row.cost_price) ?? 0) <= 0).length,
+    valuation_excluded_items: rows.filter((row) => row.quantity_status !== "current" || !hasCost(row)).length,
+    below_par: belowParCount,
+    out_of_stock: outCount,
+    needs_ordering: belowParCount + outCount,
+    missing_cost: valuation.missing_cost_items,
     missing_supplier: rows.filter((row) => !text(row.supplier_id) && row.supplier === "Unassigned").length,
-    missing_par: rows.filter((row) => (numberOrNull(row.par_level) ?? 0) <= 0).length,
+    missing_par: rows.filter((row) => { const par = looseNumber(row.par_level); return par === null || par <= 0; }).length,
     recently_updated: currentRows.filter((row) => (dateMillis(row.verified_at) ?? 0) >= sevenDaysAgo).length,
   };
 
@@ -386,7 +525,11 @@ function packsFor(pack, requested) {
   return null;
 }
 
-function isReference(item) {
+export const REFERENCE_COST_REASON = "No cost (reference ingredient)";
+
+// AtlasCalculations.isReference: inactive or 'untracked' items are recipe
+// references (Ice, Water, recipe choices): no stock, no cost.
+export function isReference(item) {
   return item?.active === false || normalizeUnit(item?.unit) === "untracked";
 }
 
@@ -397,14 +540,17 @@ export function ingredientMetrics(ingredient, itemsById) {
   const requested = convertQuantity(calcNumber(ingredient.quantity), ingredient.unit);
   const purchaseCost = calcNumber(item.cost_price, NaN);
   const hasCost = Number.isFinite(purchaseCost) && purchaseCost > 0;
+  // A reference ingredient (Ice, Water: inactive or 'untracked') is free: it
+  // costs 0 and never blocks the recipe cost, and it is not live stock.
   if (isReference(item)) {
-    return { item, cost: null, batches: null, reference: true, reason: "Recipe reference, not stocked", belowPar: false };
+    return { item, cost: 0, costReason: REFERENCE_COST_REASON, batches: null, reference: true, reason: "Recipe reference, not stocked", belowPar: false, stockStatus: null };
   }
-  const stockKnown = item.freshness_state === "current" && numberOrNull(item.verified_quantity) !== null;
-  const stockUnits = stockKnown ? Math.max(0, numberOrNull(item.verified_quantity)) : null;
-  // Same rule as AtlasStockTruth.belowPar: strictly under a positive par.
-  const belowPar = stockKnown && calcNumber(item.par_level) > 0 && stockUnits < calcNumber(item.par_level);
-  if (requested.quantity <= 0) return { item, cost: null, batches: null, reason: "Package size is missing", belowPar };
+  const stockKnown = isStockKnown(item);
+  const stockUnits = stockKnown ? Math.max(0, Number(item.verified_quantity)) : null;
+  // The canonical stock status: an out ingredient is 'out', not below par.
+  const stockState = stockStatus(item);
+  const belowPar = stockState === "below_par";
+  if (requested.quantity <= 0) return { item, cost: null, batches: null, reason: "Package size is missing", belowPar, stockStatus: stockState };
 
   const itemMeasure = MEASURES[normalizeUnit(item.unit)];
   const requestedCount = countUnit(ingredient.unit);
@@ -415,7 +561,7 @@ export function ingredientMetrics(ingredient, itemsById) {
   const cost = hasCost && costPacks !== null ? purchaseCost * costPacks : null;
   if (stockPacks === null) {
     const reason = !pack && !itemMeasure ? "Package size is missing" : "Inventory unit does not match recipe unit";
-    return { item, cost, batches: null, reason, belowPar };
+    return { item, cost, batches: null, reason, belowPar, stockStatus: stockState };
   }
   return {
     item,
@@ -423,6 +569,7 @@ export function ingredientMetrics(ingredient, itemsById) {
     batches: stockKnown ? stockUnits / stockPacks : null,
     reason: !hasCost ? "Missing inventory cost" : !stockKnown ? "Current stock is unknown / Not counted" : null,
     belowPar,
+    stockStatus: stockState,
   };
 }
 
@@ -530,7 +677,7 @@ export function buildRecipeReport(recipes, ingredients, inventory, stockReport, 
         missing_costs: lines.filter((line) => line.item && !line.reference && !Number.isFinite(line.cost)).length,
         incompatible_units: stockLines.filter((line) => line.item && UNIT_REASONS.has(line.reason)).length,
         below_par_items: availability?.belowPar ?? 0,
-        out_items: stockLines.filter((line) => line.item?.freshness_state === "current" && (numberOrNull(line.item.verified_quantity) ?? 0) <= 0).length,
+        out_items: stockLines.filter((line) => line.stockStatus === "out").length,
         reference_ingredients: availability?.references ?? 0,
         untrusted_stock_items: stockLines.filter((line) => line.item && line.item.freshness_state !== "current").length,
         stock_evidence_status: stockLines.some((line) => line.item && line.item.freshness_state !== "current") ? "unverified" : "current",
@@ -670,9 +817,16 @@ export function applyStockTrustToWorkspace(workspace, stockReport, recipeReport,
         : "No current verified counts; historical, stale and unverified quantities are excluded.",
     } : kpi?.key === "inventory_value" ? {
       ...kpi,
+      // Canonical: unknown (null) unless every active item is counted and
+      // costed; lower_bound is the value of the counted, costed items.
       value: stockReport.summary.estimated_value,
-      status: stockReport.summary.valuation_excluded_items === 0 && stockReport.summary.current_items > 0 ? "complete" : "partial",
-      detail: "Current manager-verified quantities × configured costs. Unverified quantities and missing costs are excluded.",
+      lower_bound: stockReport.summary.known_value ?? null,
+      missing_count: stockReport.summary.needs_current_count,
+      missing_cost: stockReport.summary.missing_cost,
+      status: stockReport.summary.estimated_value !== null && stockReport.summary.current_items > 0 ? "complete" : "partial",
+      detail: stockReport.summary.estimated_value !== null
+        ? "Current manager-verified quantities × configured costs."
+        : `Unknown until every item is counted and costed: ${stockReport.summary.needs_current_count} not counted, ${stockReport.summary.missing_cost} without a cost.`,
       change_value: null, change_percent: null, comparison_value: null, trend: "not_comparable",
     } : kpi?.key === "recipes_attention" && recipeReport?.summary ? {
       ...kpi,

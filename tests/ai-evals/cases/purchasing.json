@@ -6,7 +6,7 @@
     "args": { "supplier_id": null, "include_ordered": null },
     "expected": {
       "ok": true,
-      "summary": ["6 items to order across 4 supplier(s), estimated 222,960 ISK", "3 more are already on open orders", "24 items have no par level and 2 have no current count"],
+      "summary": ["6 items to order across 4 supplier(s), estimated 222.960 kr", "3 more are already on open orders", "24 items have no par level and 2 have no current count"],
       "data": {
         "data.counts": { "suggested": 6, "already_ordered": 3, "missing_par": 24, "par_but_unknown_stock": 2 },
         "data.estimated_total": 222960,
@@ -16,7 +16,7 @@
       "evidence_kinds": ["calculation", "estimate", "fact", "missing"],
       "evidence": [
         { "kind": "calculation", "label": "Order Angelo Pinot Grigio", "value": "verified 10 bottle < par 12; target 24, shortfall 14, 3 case(s) = 18" },
-        { "kind": "estimate", "label": "Estimated cost of Angelo Pinot Grigio", "value": "52,200 ISK" },
+        { "kind": "estimate", "label": "Estimated cost of Angelo Pinot Grigio", "value": "52.200 kr" },
         { "kind": "fact", "label": "Already on open orders", "value": "3 below-par items" },
         { "kind": "missing", "label": "Items that cannot be judged", "value": "24 with no par level, 2 with a par but no current count" }
       ],
@@ -41,7 +41,7 @@
         "data.groups[0].estimated_cost": 37560,
         "data.groups[0].lines": { "$len": 2 }
       },
-      "evidence": [{ "kind": "estimate", "label": "Estimated cost of Tanqueray London Dry Gin", "value": "62,400 ISK" }]
+      "evidence": [{ "kind": "estimate", "label": "Estimated cost of Tanqueray London Dry Gin", "value": "62.400 kr" }]
     },
     "notes": "Globus 37,560 (Campari 6 + tonic 72), Mekka 88,200 (Tanqueray 12 + El Jimador 6), Vínnes 52,200, Karl K. Karlsson 45,000."
   },
@@ -73,9 +73,9 @@
     "args": { "supplier_id": null, "supplier_query": "Vínnes", "use_suggestions": true, "lines": null, "note": null, "expected_delivery_date": null },
     "expected": {
       "ok": true,
-      "summary": ["Prepared a draft order for Vínnes: 1 line, estimated 52,200 ISK", "Nothing is saved until you approve"],
+      "summary": ["Prepared a draft order for Vínnes: 1 line, estimated 52.200 kr", "Nothing is saved until you approve"],
       "data": { "data.estimated_total": 52200, "data.lines[0].quantity": 18, "data.lines[0].units_per_case": 6 },
-      "evidence": [{ "kind": "calculation", "label": "Estimated order total", "value": "52,200 ISK" }],
+      "evidence": [{ "kind": "calculation", "label": "Estimated order total", "value": "52.200 kr" }],
       "records": ["supplier:@supplier.vinnes", "inventory_item:@item.angelo"],
       "proposal": {
         "kind": "purchase_order.create", "required_roles": ["admin", "manager"], "executable": true,
@@ -136,7 +136,7 @@
       "records": ["purchase_order:@po.globusOrdered", "purchase_order:@po.innnesPartial", "purchase_order:@po.olgerdinOrdered", "purchase_order:@po.vinnesDraft"],
       "records_exclude": ["purchase_order:@po.karlkReceived"]
     },
-    "notes": "Globus total: 12 × 3600 + 6 × 5600 = 76,800 ISK."
+    "notes": "Globus total: 12 × 3600 + 6 × 5600 = 76.800 kr."
   },
   {
     "id": "pur-010", "category": "purchasing", "blocking": false,
@@ -159,7 +159,7 @@
       "evidence": [{ "kind": "fact", "label": "Email" }, { "kind": "fact", "label": "Linked active items", "value": "9" }],
       "records": ["supplier:@supplier.olgerdin", "purchase_order:@po.olgerdinOrdered"]
     },
-    "notes": "Open order: 2 kegs × 21,000 + 24 cans × 120 = 44,880 ISK."
+    "notes": "Open order: 2 kegs × 21,000 + 24 cans × 120 = 44.880 kr."
   },
   {
     "id": "pur-012", "category": "purchasing", "blocking": false,
@@ -190,8 +190,8 @@
         "data.increases": { "$none": { "name": "Aperol" } }
       },
       "evidence": [
-        { "kind": "fact", "label": "Angelo Pinot Grigio previous receipt", "value": "2,700 ISK on 2026-07-15", "source": "movement:@movement.m1" },
-        { "kind": "fact", "label": "Angelo Pinot Grigio latest receipt", "value": "2,900 ISK on 2026-09-01", "source": "movement:@movement.m2" },
+        { "kind": "fact", "label": "Angelo Pinot Grigio previous receipt", "value": "2.700 kr on 2026-07-15", "source": "movement:@movement.m1" },
+        { "kind": "fact", "label": "Angelo Pinot Grigio latest receipt", "value": "2.900 kr on 2026-09-01", "source": "movement:@movement.m2" },
         { "kind": "calculation", "label": "Angelo Pinot Grigio cost change", "value": "+7.4%" }
       ],
       "unknown": { "count": 3 }
