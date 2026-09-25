@@ -541,7 +541,7 @@
   }
 
   function readBanner(doc) {
-    const canRead = doc.status === 'to_review' && doc.has_file && /pdf|jpeg|png|webp/.test(doc.mime_type || '') && state.workspace?.ai_enabled;
+    const canRead = doc.status === 'to_review' && doc.has_file && Number(doc.byte_size || 0) <= 5 * 1024 * 1024 && /pdf|jpeg|png|webp/.test(doc.mime_type || '') && state.workspace?.ai_enabled;
     const again = canRead ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-read>Read again</button>' : '';
     const alert = (tone, head, text, actions = '') => `<div class="atlas-alert atlas-alert--${tone}" role="status">${icon(tone === 'info' ? 'sparkles' : 'circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">${escapeHtml(head)}</p>${text ? `<p class="atlas-alert__body">${escapeHtml(text)}</p>` : ''}</div>${actions ? `<div class="atlas-alert__actions">${actions}</div>` : ''}</div>`;
     switch (doc.extraction_status) {

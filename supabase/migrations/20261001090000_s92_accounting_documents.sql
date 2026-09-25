@@ -160,7 +160,7 @@ create table if not exists atlas_private.accounting_document_events (
 create index if not exists accounting_document_events_document_idx
   on atlas_private.accounting_document_events (document_id, id);
 create index if not exists accounting_document_events_reads_idx
-  on atlas_private.accounting_document_events (created_at) where action in ('read_started','read');
+  on atlas_private.accounting_document_events (created_at) where action in ('read_started','read','read_failed');
 create index if not exists accounting_document_events_action_idx
   on atlas_private.accounting_document_events (document_id, action);
 
@@ -271,7 +271,9 @@ as $function$
     'created_by_label', d.created_by_label, 'created_at', d.created_at, 'updated_at', d.updated_at,
     'approved_at', d.approved_at,
     'approved_by_label', case when d.approved_by is not null then atlas_private.accounting_safe_label(ap.display_name) end,
-    'exported', exists (select 1 from atlas_private.accounting_document_events x where x.document_id = d.id and x.action = 'exported'),
+    -- Exported since it was last approved (a reopened and re-approved document counts as new).
+    'exported', exists (select 1 from atlas_private.accounting_document_events x where x.document_id = d.id and x.action = 'exported'
+      and x.id > coalesce((select max(a.id) from atlas_private.accounting_document_events a where a.document_id = d.id and a.action = 'approved'), 0)),
     'order', case when po.id is not null then pg_catalog.jsonb_build_object(
       'id', po.id, 'status', po.status, 'total', private.purchase_order_total(po.lines),
       'supplier_name', ps.name, 'ordered_at', po.ordered_at, 'received_at', po.received_at) end,
@@ -347,7 +349,7 @@ begin
       raise exception 'invalid vat lines' using errcode = '22023', hint = 'atlas:invalid_request';
     end if;
     for line in select value from jsonb_array_elements(f->'vat_lines') loop
-      if jsonb_typeof(line) <> 'object' or not line ? 'rate'
+      if jsonb_typeof(line) <> 'object' or jsonb_typeof(line->'rate') is distinct from 'number'
          or exists (select 1 from jsonb_object_keys(line) k where k not in ('rate','net','vat'))
          or (line->>'rate')::numeric not in (0, 11, 24)
          or coalesce((line->>'net')::numeric, 0) not between 0 and 999999999999
@@ -368,7 +370,10 @@ begin
     kind = case when f ? 'kind' then coalesce(nullif(f->>'kind', ''), d.kind) else d.kind end,
     category = case when f ? 'category' then nullif(f->>'category', '') else d.category end,
     supplier_id = case when f ? 'supplier_id' then nullif(f->>'supplier_id', '')::uuid else d.supplier_id end,
-    supplier_name = case when f ? 'supplier_name' then nullif(pg_catalog.btrim(f->>'supplier_name'), '') else d.supplier_name end,
+    supplier_name = case when f ? 'supplier_name' then nullif(pg_catalog.btrim(f->>'supplier_name'), '')
+      -- A different supplier picked without a name: take the new supplier's name below.
+      when f ? 'supplier_id' and nullif(f->>'supplier_id', '')::uuid is distinct from d.supplier_id then null
+      else d.supplier_name end,
     supplier_kennitala = case when f ? 'supplier_kennitala' then nullif(pg_catalog.regexp_replace(coalesce(f->>'supplier_kennitala', ''), '[^0-9]', '', 'g'), '') else d.supplier_kennitala end,
     document_number = case when f ? 'document_number' then nullif(pg_catalog.btrim(f->>'document_number'), '') else d.document_number end,
     issue_date = case when f ? 'issue_date' then nullif(f->>'issue_date', '')::date else d.issue_date end,
@@ -569,8 +574,10 @@ $function$;
 -- spent or logged while Atlas AI is off (Settings › Atlas AI). Marks the
 -- document as being read and logs it; the gateway then calls the model.
 drop function if exists public.atlas_accounting_begin_read(uuid, uuid, integer);
+drop function if exists public.atlas_accounting_begin_read(uuid, uuid, integer, numeric);
 create or replace function public.atlas_accounting_begin_read(
-  p_actor_id uuid, p_id uuid, p_daily_limit integer default 60, p_daily_budget_usd numeric default 2)
+  p_actor_id uuid, p_id uuid, p_daily_limit integer default 60, p_daily_budget_usd numeric default 2,
+  p_max_bytes integer default 5242880)
 returns jsonb
 language plpgsql
 security definer
@@ -593,13 +600,18 @@ begin
   if not enabled then
     return pg_catalog.jsonb_build_object('id', doc.id, 'ai_enabled', false);
   end if;
+  -- Too large to send to the model: typed by hand, nothing spent.
+  if doc.byte_size > greatest(1, coalesce(p_max_bytes, 5242880)) then
+    return pg_catalog.jsonb_build_object('id', doc.id, 'ai_enabled', true, 'too_large', true);
+  end if;
   -- One reader at a time checks the limits, so two reads cannot both slip under.
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('atlas_accounting_reads'));
   select count(*) filter (where e.action = 'read_started'),
-         coalesce(sum((e.details->>'est_cost_usd')::numeric) filter (where e.action = 'read'), 0)
+         coalesce(sum((e.details->>'est_cost_usd')::numeric)
+           filter (where e.action in ('read','read_failed') and jsonb_typeof(e.details->'est_cost_usd') = 'number'), 0)
     into used, spent
   from atlas_private.accounting_document_events e
-  where e.action in ('read_started','read') and e.created_at >= pg_catalog.now() - interval '24 hours';
+  where e.action in ('read_started','read','read_failed') and e.created_at >= pg_catalog.now() - interval '24 hours';
   if used >= greatest(1, least(coalesce(p_daily_limit, 60), 500))
      or spent >= greatest(0.01, least(coalesce(p_daily_budget_usd, 2), 100)) then
     raise exception 'rate_limited: daily document reading limit' using errcode = 'P0001';
@@ -663,6 +675,10 @@ begin
     end if;
 
   when 'record_read' then
+    -- A read that ends after the document left review changes nothing.
+    if doc.status <> 'to_review' then
+      return atlas_private.accounting_document_json(p_id);
+    end if;
     if payload->>'outcome' = 'read' then
       draft := payload->'extraction';
       if draft is null or jsonb_typeof(draft) <> 'object' or octet_length(draft::text) > 65536 then
@@ -709,7 +725,9 @@ begin
         updated_at = pg_catalog.now()
       where id = p_id;
       perform atlas_private.accounting_log(p_id, 'read_failed', null, 'Atlas',
-        pg_catalog.jsonb_build_object('reason', pg_catalog.left(coalesce(payload->>'outcome', 'failed'), 40)));
+        pg_catalog.jsonb_build_object('reason', pg_catalog.left(coalesce(payload->>'outcome', 'failed'), 40))
+        || case when jsonb_typeof(payload->'est_cost_usd') = 'number'
+             then pg_catalog.jsonb_build_object('est_cost_usd', payload->'est_cost_usd') else '{}'::jsonb end);
     end if;
     -- The version moves on (below), so a form opened before the read reloads
     -- instead of saving its empty fields over what Atlas filled in.
@@ -867,7 +885,7 @@ revoke all on function public.atlas_accounting_snapshot(uuid) from public, anon,
 revoke all on function public.atlas_accounting_document(uuid,uuid) from public, anon, authenticated;
 revoke all on function public.atlas_accounting_find_file(uuid,text,uuid) from public, anon, authenticated;
 revoke all on function public.atlas_accounting_create(uuid,uuid,jsonb,jsonb) from public, anon, authenticated;
-revoke all on function public.atlas_accounting_begin_read(uuid,uuid,integer,numeric) from public, anon, authenticated;
+revoke all on function public.atlas_accounting_begin_read(uuid,uuid,integer,numeric,integer) from public, anon, authenticated;
 revoke all on function public.atlas_accounting_command(uuid,uuid,integer,text,jsonb) from public, anon, authenticated;
 revoke all on function public.atlas_accounting_file(uuid,uuid) from public, anon, authenticated;
 revoke all on function public.atlas_accounting_export(uuid,date,date) from public, anon, authenticated;
@@ -875,7 +893,7 @@ grant execute on function public.atlas_accounting_snapshot(uuid) to service_role
 grant execute on function public.atlas_accounting_document(uuid,uuid) to service_role;
 grant execute on function public.atlas_accounting_find_file(uuid,text,uuid) to service_role;
 grant execute on function public.atlas_accounting_create(uuid,uuid,jsonb,jsonb) to service_role;
-grant execute on function public.atlas_accounting_begin_read(uuid,uuid,integer,numeric) to service_role;
+grant execute on function public.atlas_accounting_begin_read(uuid,uuid,integer,numeric,integer) to service_role;
 grant execute on function public.atlas_accounting_command(uuid,uuid,integer,text,jsonb) to service_role;
 grant execute on function public.atlas_accounting_file(uuid,uuid) to service_role;
 grant execute on function public.atlas_accounting_export(uuid,date,date) to service_role;

@@ -411,8 +411,10 @@ export function createAccountingHandler({ env, fetchImpl, newId = () => crypto.r
     const started = await svc.rpc("atlas_accounting_begin_read", {
       p_actor_id: actor.userId, p_id: id, p_daily_limit: LIMITS.dailyReads,
       p_daily_budget_usd: Number.isFinite(budget) && budget > 0 ? budget : LIMITS.dailyBudgetUsd,
+      p_max_bytes: LIMITS.readBytes,
     });
     if (!started?.ai_enabled) return { document: await record({ outcome: "not_configured" }), outcome: "not_configured" };
+    if (started.too_large) return { document: await record({ outcome: "not_readable" }), outcome: "not_readable" };
     if (!READABLE.has(started.mime_type)) return { document: await record({ outcome: "not_readable" }), outcome: "not_readable" };
     let result;
     try {
@@ -427,9 +429,11 @@ export function createAccountingHandler({ env, fetchImpl, newId = () => crypto.r
       });
     } catch (error) {
       const outcome = error instanceof ReadError ? error.outcome : "failed";
-      return { document: await record({ outcome }), outcome };
+      // A model call that was paid for still counts against the budget.
+      const cost = Number(error?.est_cost_usd);
+      return { document: await record({ outcome, ...(Number.isFinite(cost) && cost > 0 ? { est_cost_usd: cost } : {}) }), outcome };
     }
-    if (!result.read.usable) return { document: await record({ outcome: "not_readable" }), outcome: "not_readable" };
+    if (!result.read.usable) return { document: await record({ outcome: "not_readable", est_cost_usd: result.est_cost_usd }), outcome: "not_readable" };
     const prefill = prefillFrom(result.read, await svc.suppliers());
     const document = await record({
       outcome: "read", model: result.model, tokens_in: result.tokens_in, tokens_out: result.tokens_out, est_cost_usd: result.est_cost_usd,

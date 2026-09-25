@@ -144,12 +144,14 @@ export async function callDocumentModel({
     if (timer) clearTimeout(timer);
   }
   if (!response.ok) throw new ReadError("failed", "Atlas could not read the document right now.");
-  const { text, refusal } = outputText(payload);
-  if (refusal) throw new ReadError("not_readable", "Atlas could not read this document.");
-  let parsed;
-  try { parsed = JSON.parse(String(text ?? "")); } catch { throw new ReadError("not_readable", "Atlas could not read this document."); }
   const tokensIn = Number(payload?.usage?.input_tokens) || 0;
   const tokensOut = Number(payload?.usage?.output_tokens) || 0;
+  const unreadable = () => Object.assign(new ReadError("not_readable", "Atlas could not read this document."),
+    { est_cost_usd: estimateVisionCostUsd(model, tokensIn, tokensOut) });
+  const { text, refusal } = outputText(payload);
+  if (refusal) throw unreadable();
+  let parsed;
+  try { parsed = JSON.parse(String(text ?? "")); } catch { throw unreadable(); }
   const usedModel = typeof payload?.model === "string" ? payload.model.slice(0, 100) : model;
   return {
     read: sanitizeDocument(parsed, { today }),

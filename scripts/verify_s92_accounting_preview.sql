@@ -46,7 +46,7 @@ insert into s92_acc select 'only service_role may execute the accounting RPCs',
   from unnest(array[
     'public.atlas_accounting_snapshot(uuid)', 'public.atlas_accounting_document(uuid,uuid)',
     'public.atlas_accounting_find_file(uuid,text,uuid)', 'public.atlas_accounting_create(uuid,uuid,jsonb,jsonb)',
-    'public.atlas_accounting_begin_read(uuid,uuid,integer,numeric)', 'public.atlas_accounting_command(uuid,uuid,integer,text,jsonb)',
+    'public.atlas_accounting_begin_read(uuid,uuid,integer,numeric,integer)', 'public.atlas_accounting_command(uuid,uuid,integer,text,jsonb)',
     'public.atlas_accounting_file(uuid,uuid)', 'public.atlas_accounting_export(uuid,date,date)']) f;
 insert into s92_acc select 'browsers have no table privileges; RLS is on',
   not has_table_privilege('authenticated', 'atlas_private.accounting_documents', 'select')
@@ -282,6 +282,13 @@ insert into s92_acc select 'opening a file twice within an hour is logged once',
 insert into s92_acc select 'the workspace list leaves out Atlas drafts; the single view keeps them',
   (select bool_and(d->'extraction' = 'null'::jsonb) from jsonb_array_elements(public.atlas_accounting_snapshot('00000000-0000-4000-8000-00000092a001')->'documents') d)
   and (public.atlas_accounting_document('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001')->'extraction') ? 'prefill';
+
+insert into s92_acc select 'a VAT line with a null rate is refused',
+  pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 3, 'save', '{"fields":{"vat_lines":[{"rate":null,"vat":1}]}}')$q$) like '22023%';
+insert into s92_acc select 'a late read result never changes a document that left review',
+  (public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d003', null, 'record_read', '{"outcome":"not_configured"}')->>'extraction_status') = 'none';
+insert into s92_acc select 'a file larger than the read cap is not read and nothing is spent',
+  (public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d004', 60, 2, 10)->>'too_large') = 'true';
 
 select jsonb_build_object(
   's92_accounting', case when bool_and(passed) then 'passed' else 'failed' end,
