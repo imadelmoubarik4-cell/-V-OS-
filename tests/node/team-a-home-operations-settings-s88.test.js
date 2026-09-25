@@ -46,9 +46,11 @@ test('the Brain page and the Checkpoint A/K layers are retired and unreferenced'
   assert.doesNotMatch(home, /PHASE3_INTELLIGENCE_API/);
   assert.match(home, /ATLAS_AI_API/);
   assert.match(home, /window\.AtlasApi\.request\(base, \{ method: 'POST', params: \{ action: 'refresh-signals' \}, body: \{\} \}\)/);
+  assert.doesNotMatch(config, /SPRINT4_BRIEFING_API|sprint4-briefing/);
   assert.match(home, /if \(state\.intelligenceRequested \|\| !isManager\(\)\) return;/);
-  // Team Messages links to Brain recommendations open Atlas AI › Decisions.
-  assert.match(home, /links\?\.register\?\.\('brain_recommendation', \(\) => \{ atlas\.navigate\('#ai\/decisions'\)/);
+  // Team Messages links to Brain recommendations open Atlas AI › Decisions
+  // with the recommendation selected (#ai/decisions?recommendation=<id>).
+  assert.match(home, /links\?\.register\?\.\('brain_recommendation', \(key\) => \{ atlas\.navigate\(key \? `#ai\/decisions\?recommendation=\$\{encodeURIComponent\(key\)\}` : '#ai\/decisions'\)/);
   assert.match(operations, /links\?\.register\?\.\('routine'/);
   assert.doesNotMatch(config, /SUPABASE_SERVICE_ROLE_KEY/);
 });

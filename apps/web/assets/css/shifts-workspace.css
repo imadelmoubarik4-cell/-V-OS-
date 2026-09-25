@@ -126,7 +126,6 @@ button.shift-chip:hover { border-color: var(--line-strong); background: var(--bg
   .shifts-publish__caption { text-align: center; }
   .shifts-tabs { margin-top: var(--s-2); }
   .shifts-body { margin-top: var(--s-4); }
-  .shifts .atlas-btn--sm { min-height: 44px; }
   .shifts-now { gap: var(--s-2) var(--s-5); }
   .shifts-now__handover { margin-left: 0; }
   .shifts-row__time { font: 600 17px/24px var(--font-sans); }

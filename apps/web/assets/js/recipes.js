@@ -625,7 +625,7 @@
     const modal = detailSheet();
     modal.dataset.recipeId = recipe.id;
     const category = categoryFor(recipe);
-    modal.innerHTML = `<section class="atlas-sheet atlas-sheet--wide recipe-sheet" data-modal-panel aria-labelledby="recipe-detail-title">
+    modal.innerHTML = `<section class="atlas-sheet atlas-sheet--wide atlas-sheet--full-phone recipe-sheet" data-modal-panel aria-labelledby="recipe-detail-title">
         <span class="atlas-sheet__grabber"></span>
         <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="recipe-detail-title">${escape(recipe.name)}</h2><p class="atlas-sheet__desc">${escape([category.name, recipe.glassware].filter(Boolean).join(' · '))}</p></div><div class="recipe-sheet__actions">${detailHeadActions(recipe)}</div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close><i data-lucide="x"></i></button></header>
         <div class="atlas-sheet__body recipe-detail" tabindex="-1">${detailBody(recipe)}</div>
@@ -692,7 +692,7 @@
 
   function editorMarkup(recipe) {
     const units = ['ml', 'cl', 'l', 'g', 'kg', 'tsp', 'tbsp', 'each', 'bottle', 'can', 'dash', 'barspoon', 'piece'];
-    return `<section class="atlas-sheet atlas-sheet--wide recipe-sheet" data-modal-panel aria-labelledby="recipe-modal-title">
+    return `<section class="atlas-sheet atlas-sheet--wide atlas-sheet--full-phone recipe-sheet" data-modal-panel aria-labelledby="recipe-modal-title">
       <span class="atlas-sheet__grabber"></span>
       <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="recipe-modal-title">${recipe ? `Edit ${escape(recipe.name)}` : 'New recipe'}</h2><p class="atlas-sheet__desc" id="recipe-modal-subtitle">${recipe ? 'Changes apply to service as soon as you save.' : 'Link each ingredient to an item so availability and cost stay current.'}</p></div>
         ${recipe ? `<span class="recipe-editor-more"><button type="button" class="atlas-icon-btn" id="recipe-editor-more" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><i data-lucide="ellipsis"></i></button><ul class="atlas-menu" role="menu" id="recipe-editor-menu" aria-label="Recipe actions" hidden>${recipe.active === false

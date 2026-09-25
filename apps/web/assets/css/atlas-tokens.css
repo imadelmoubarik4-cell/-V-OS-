@@ -3,8 +3,8 @@
  * Canonical reference: docs/design/Atlas_Design_System.md (S88 redesign,
  * spec docs/design/Atlas_Experience_Redesign.md §5). New CSS uses the short
  * names (--bg, --text-2, --accent, --r-md, --s-4, --type-body, --dur-2 …).
- * Every older name further down is an alias of a new value, so pages that have
- * not been rebuilt yet already take the new palette, radii and elevation.
+ * The older names further down are aliases of the new values, kept for module
+ * code that still reads them; new CSS never uses them.
  *
  * Do not define :root custom properties anywhere else;
  * css-hygiene-s88.test.js fails if another stylesheet redefines one of these.
@@ -15,20 +15,18 @@
  * order reverses (the earlier layer wins).
  *
  *   atlas.tokens      custom properties only (this file)
- *   atlas.base        reset, typography, focus, reduced motion, layout
- *                     primitives (atlas-base.css). Below legacy on purpose: an
- *                     element-level base rule never restyles a page that has
- *                     not been rebuilt yet.
- *   atlas.legacy      every pre-S88 stylesheet in its original order, plus the
- *                     legacy/<source>--<module>.css fragments of the retired
- *                     override files. Emptied module by module.
- *   atlas.components  component classes (atlas-components.css); they win over
- *                     legacy rules on the same element.
- *   atlas.modules     one consolidated stylesheet per module. Moving a module
- *                     here from atlas.legacy removes its !important in the same
- *                     commit (an !important left in atlas.legacy still wins).
+ *   atlas.base        reset, typography, focus, reduced motion, role gating,
+ *                     layout primitives (atlas-base.css)
+ *   atlas.components  component classes (atlas-components.css) and the shell
+ *                     (atlas-shell.css)
+ *   atlas.modules     one stylesheet per module: layout and module-specific
+ *                     pieces only, never !important
+ *
+ * S88 retired the atlas.legacy layer (the pre-S88 page CSS, the inline
+ * index.html style block and the legacy/ fragments of the old override files);
+ * nothing may reintroduce it (css-hygiene-s88.test.js).
  */
-@layer atlas.tokens, atlas.base, atlas.legacy, atlas.components, atlas.modules;
+@layer atlas.tokens, atlas.base, atlas.components, atlas.modules;
 
 @layer atlas.tokens {
 :root {

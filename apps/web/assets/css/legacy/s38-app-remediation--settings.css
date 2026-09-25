@@ -1,9 +1,0 @@
-/* S88 legacy fragment: what remains of the settings rules of s38-app-remediation.css
- * after the Settings redesign (assets/css/settings-workspace.css). The rule below
- * styles the Shifts month header (Team D) and moves with that page.
- * Kept in its original cascade position. */
-@layer atlas.legacy {
-@media (max-width: 480px) {
-  .shift-month-navigation > div > span { display:none; }
-}
-}

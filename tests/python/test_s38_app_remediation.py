@@ -3,9 +3,11 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / "apps/web/index.html"
-# S88: the S38 rules were split verbatim into per-module fragments,
-# apps/web/assets/css/legacy/s38-app-remediation--<module>.css.
-CSS_FRAGMENTS = sorted((ROOT / "apps/web/assets/css/legacy").glob("s38-app-remediation--*.css"))
+# S88: the S38 rules were split into per-module fragments
+# (apps/web/assets/css/legacy/s38-app-remediation--<module>.css), then taken
+# over by their modules and the design system; the legacy directory is gone.
+LEGACY_CSS = ROOT / "apps/web/assets/css/legacy"
+CSS_FRAGMENTS = sorted(LEGACY_CSS.glob("s38-app-remediation--*.css")) if LEGACY_CSS.exists() else []
 JS = ROOT / "apps/web/assets/js/s38-app-remediation.js"
 # S88: each S38 fix lives in the module that renders the markup.
 # S88 Team B: the scanner became the shared capture module, and Inventory and
@@ -40,11 +42,10 @@ class S38AppRemediationTests(unittest.TestCase):
 
     def test_remediation_assets_load_last(self):
         js_reference = "assets/js/s38-app-remediation.js"
-        self.assertTrue(CSS_FRAGMENTS)
-        for path in CSS_FRAGMENTS:
-            css_reference = f"assets/css/legacy/{path.name}"
-            self.assertEqual(self.index.count(css_reference), 1)
-            self.assertLess(self.index.index(css_reference), self.index.index("</head>"))
+        # S88 design-system consolidation: no S38 stylesheet fragment remains.
+        self.assertEqual(CSS_FRAGMENTS, [])
+        self.assertFalse(LEGACY_CSS.exists())
+        self.assertNotIn("s38-app-remediation--", self.index)
         self.assertEqual(self.index.count(js_reference), 1)
         self.assertLess(self.index.index("assets/js/atlas-purchasing.js"), self.index.index(js_reference))
         self.assertIn(js_reference + "?v=20260926-s88", self.index)
@@ -56,12 +57,10 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertIn("--s38-blue: var(--accent);", tokens)
         self.assertIn("--accent: #2563eb;", tokens)
         self.assertNotIn("--s38-blue: #4f7df3", self.css)
-        for token in (
-            "--s38-card: #ffffff",
-            "prefers-reduced-motion",
-            "s38-attention-pulse",
-        ):
-            self.assertIn(token, self.css)
+        # The S38 card, pulse and reduced-motion rules are retired: cards are the
+        # .atlas-card component and reduced motion is atlas-base.css.
+        self.assertIn("@media (prefers-reduced-motion: reduce)", (ROOT / "apps/web/assets/css/atlas-base.css").read_text(encoding="utf-8"))
+        self.assertNotIn("s38-attention-pulse", self.index)
         self.assertNotIn("background: #000", self.css)
         self.assertNotIn("background:#000", self.css)
         # S88: Messages and Shifts were rebuilt as atlas.modules sheets; their

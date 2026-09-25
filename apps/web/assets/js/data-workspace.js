@@ -1002,7 +1002,7 @@
   function parsFooterMarkup() {
     const { changes, invalid } = pendingParChanges();
     if (!changes.length && !invalid) return '';
-    return `<div class="atlas-bulkbar data-par-bar" role="region" aria-label="Unsaved par levels">
+    return `<div class="atlas-bulkbar atlas-bulkbar--sticky data-par-bar" role="region" aria-label="Unsaved par levels">
         <span>${invalid ? `${plural(invalid, 'value needs', 'values need')} fixing` : `${plural(changes.length, 'change', 'changes')} not saved`}</span><span class="atlas-bulkbar__sep"></span>
         <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-data-par-discard>Discard</button>
         <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm" data-data-par-save${invalid || !changes.length || state.pars.saving ? ' disabled' : ''}${state.pars.saving ? ' aria-busy="true"' : ''}>Save ${plural(changes.length, 'change', 'changes')}</button>

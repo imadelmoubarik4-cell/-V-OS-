@@ -298,13 +298,16 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 .atlas-ai .ai-decisions__title:focus { outline: none; }
 .atlas-ai .ai-decisions__sub { color: var(--text-2, #5b616b); margin-top: 4px; }
 .atlas-ai .ai-decisions__toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 12px; }
-.atlas-ai .ai-decisions__toolbar .atlas-select { width: auto; min-width: 150px; height: 32px; font-size: 13px; }
+.atlas-ai .ai-decisions__toolbar .atlas-select { width: auto; min-width: 150px; }
+/* Compact filters with a mouse; touch keeps the shared 44 px / 16 px select. */
+@media (pointer: fine) { .atlas-ai .ai-decisions__toolbar .atlas-select { height: 32px; font-size: 13px; } }
 .atlas-ai .ai-decisions__skel { display: grid; gap: 16px; padding: 16px 0; }
 .atlas-ai .ai-decisions__foot { margin-top: 12px; color: var(--text-2, #5b616b); font: var(--type-meta, 400 13px/18px var(--font-sans, sans-serif)); }
 .atlas-ai .ai-dec-table { border: 1px solid var(--line, #e7e7e3); border-radius: var(--r-lg, 12px); overflow: hidden; background: var(--surface, #fff); }
 .atlas-ai .ai-dec-row { display: grid; grid-template-columns: minmax(0, 2.4fr) 96px 116px minmax(0, 1fr) 128px minmax(0, 1.2fr); gap: 12px; align-items: center; width: 100%; min-height: 56px; margin: 0; padding: 10px 16px; border: 0; border-top: 1px solid var(--line-subtle, #f0f0ed); border-radius: 0; background: transparent; text-align: left; font: var(--type-body, 400 14px/20px var(--font-sans, sans-serif)); color: var(--text, #17191e); }
 .atlas-ai .ai-dec-row:not(.ai-dec-row--head):not([disabled]):hover { background: #fafaf8; }
 .atlas-ai .ai-dec-row[disabled] { cursor: default; }
+.atlas-ai .ai-dec-row.is-selected { background: var(--accent-soft); }
 .atlas-ai .ai-dec-row--head { min-height: 36px; border-top: 0; background: var(--bg-subtle, #f7f7f5); font: 500 12px/16px var(--font-sans, sans-serif); color: var(--text-2, #5b616b); }
 .atlas-ai .ai-dec-row__main { display: grid; gap: 2px; min-width: 0; }
 .atlas-ai .ai-dec-row__t { font-weight: 500; overflow-wrap: anywhere; }
@@ -364,10 +367,7 @@ html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::befo
 /* ---------- touch targets ---------- */
 
 @media (pointer: coarse) {
-  .atlas-ai .atlas-btn--sm, .ai-layer .atlas-btn--sm { height: 44px; }
   .atlas-ai .msg-actions .atlas-icon-btn { width: 44px; height: 44px; }
-  .atlas-ai .atlas-chip { height: 44px; padding: 0 14px; }
-  .atlas-ai .atlas-segmented button { height: 40px; }
   .atlas-ai .send { width: 44px; height: 44px; }
   .atlas-ai .record-chip { height: 44px; }
   .atlas-ai .evidence__row a.src { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }

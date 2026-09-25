@@ -6,8 +6,8 @@
  * index.html (static chrome), assets/js/atlas-chrome.js and
  * assets/js/atlas-palette.js.
  *
- * The shell is a component: one @layer atlas.components block, above every
- * legacy rule. Values come from the spec tokens (atlas-tokens.css); each var()
+ * The shell is a component: one @layer atlas.components block. Values come
+ * from the spec tokens (atlas-tokens.css); each var()
  * carries the spec value as its fallback so the shell renders correctly while
  * the token file is being replaced. Buttons, inputs, badges, avatars, menus,
  * segmented controls, kbd and toasts are the atlas-components.css classes.
@@ -17,7 +17,8 @@
 /* ==========================================================================
    Page canvas and layout grid (§4.1)
    ========================================================================== */
-#app-screen { min-height: 100vh; background: var(--bg, #fff); color: var(--text, #0b0f14); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
+/* The app stays hidden until sign-in resolves (index.html shows it). */
+#app-screen { display: none; min-height: 100vh; background: var(--bg, #fff); color: var(--text, #0b0f14); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
 .atlas-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
 body.atlas-rail .atlas-shell { grid-template-columns: 64px minmax(0, 1fr); }
 .atlas-main { grid-column: 2; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; background: var(--bg, #fff); }
@@ -27,6 +28,16 @@ body.atlas-rail .atlas-shell { grid-template-columns: 64px minmax(0, 1fr); }
 /* Wide (data) pages: 1400 px (§4.1). */
 :is(body[data-atlas-view="inventory"], body[data-atlas-view="movements"], body[data-atlas-view="waste"], body[data-atlas-view="suppliers"], body[data-atlas-view="reports"], body[data-atlas-view="business"], body[data-atlas-view="shifts"], body[data-atlas-view="imports"], body[data-atlas-view="sprint3-review"], body[data-atlas-view="data"]) .atlas-content,
 .atlas-content:has(.page--wide) { max-width: calc(1400px + 2 * var(--page-gutter, 40px)); }
+/* Full-height page (spec §7.3, Messages): a view registered with
+   { fullHeight: true } fills the content area under the top bar, edge to edge,
+   and its root (.page--full-height) scrolls inside itself. Phones keep the
+   normal flow (the page owns its own screens). */
+body.atlas-page-full-height .atlas-content, body.atlas-page-full-height .atlas-content.standard-view { max-width: none; padding: 0; }
+.page--full-height { height: calc(100vh - var(--topbar-h)); height: calc(100dvh - var(--topbar-h)); min-height: 420px; }
+/* View roots that still hold their loading placeholder are hidden until the
+   shell shows them (it sets display inline). */
+.placeholder-view { display: none; }
+.atlas-view-loading { margin: 0; padding: var(--s-20, 80px) 0; color: var(--text-2, #475569); font: var(--type-body, 400 14px/20px sans-serif); text-align: center; }
 
 /* Skip link (G18) */
 .atlas-skip-link { position: fixed; top: 8px; left: 8px; z-index: 120; padding: 10px 14px; border-radius: var(--r-md, 8px); background: var(--surface, #fff); color: var(--text, #0b0f14); font: 500 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-decoration: none; transform: translateY(-200%); }
@@ -67,8 +78,8 @@ body.atlas-rail .atlas-shell { grid-template-columns: 64px minmax(0, 1fr); }
 .atlas-nav .nav-item.active::before, .atlas-nav .nav-item[aria-current="page"]::before { content: ''; position: absolute; top: 9px; left: -12px; width: 3px; height: 16px; border-radius: 0 2px 2px 0; background: var(--accent-brand, #3b82f6); }
 .atlas-nav .nav-item--ai svg { color: var(--accent-brand, #3b82f6); }
 .atlas-nav .nav-item-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Messages unread count (rendered by the Messages module), right-aligned. */
-.atlas-nav .team-nav-unread, .atlas-nav__badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill, 999px); background: var(--accent, #2563eb); color: #fff; font: 500 12px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: center; font-variant-numeric: tabular-nums; }
+/* Unread count ([data-nav-badge], written by atlas-chrome.js), right-aligned. */
+.atlas-nav__badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill, 999px); background: var(--accent, #2563eb); color: #fff; font: 500 12px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: center; font-variant-numeric: tabular-nums; }
 .atlas-nav .atlas-badge--muted.atlas-nav__badge { background: var(--neutral-soft, #f1f5f9); color: var(--text-2, #475569); }
 
 .atlas-sidebar__foot { flex: none; padding-top: 4px; }
@@ -91,15 +102,13 @@ body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav .nav-group { justify-items: 
 body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav .nav-label { width: 28px; height: 1px; margin: 10px auto; padding: 0; overflow: hidden; background: var(--line, #e2e8f0); font-size: 0; line-height: 0; color: transparent; }
 body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav .nav-item { justify-content: center; width: 44px; height: 40px; min-height: 40px; padding: 0; }
 body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav .nav-item:is(.active, [aria-current="page"])::before { top: 12px; left: -10px; }
-body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav .team-nav-unread,
 body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav__badge { position: absolute; top: 8px; right: 9px; min-width: 0; width: 8px; height: 8px; padding: 0; overflow: hidden; font-size: 0; line-height: 0; box-shadow: 0 0 0 2px var(--bg-subtle, #f8fafc); }
 body.atlas-rail:not(.atlas-sidebar-open) .atlas-account { justify-content: center; width: 44px; padding: 8px 0; }
 /* Overlay sidebar at 768–1279 (toggle; scrim, Esc closes). */
 body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 70; width: 240px; box-shadow: var(--shadow-modal, 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20)); }
 .atlas-sidebar-scrim { position: fixed; inset: 0; z-index: 69; background: var(--overlay, rgba(11, 15, 20, .32)); }
 
-/* Rail tooltips (atlas-chrome.js positions one after 400 ms). */
-.atlas-tooltip { position: fixed; z-index: 130; max-width: 240px; padding: 4px 8px; border-radius: var(--r-sm, 6px); background: var(--ink, #1f2937); color: #fff; font: 400 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); pointer-events: none; white-space: nowrap; }
+/* Rail tooltips: the .atlas-tooltip component, positioned by atlas-chrome.js after 400 ms. */
 
 /* ==========================================================================
    Top bar (§4.3) and phone top bar (§4.4)
@@ -137,16 +146,15 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
    Overlays: layers, scrims, sheets, dialogs
    ========================================================================== */
 .atlas-layer { position: fixed; inset: 0; z-index: 90; }
-.atlas-scrim { position: absolute; inset: 0; background: var(--overlay, rgba(11, 15, 20, .32)); }
-/* Inside a shell layer the scrim sits under the layer's panel (.atlas-scrim is
-   also the modal.js scrim, which is fixed at --z-overlay). */
-.atlas-layer > .atlas-scrim { position: absolute; z-index: 0; }
+/* Inside a shell layer the scrim (.atlas-scrim component) fills the layer
+   under its panel. */
+.atlas-layer > .atlas-scrim { position: absolute; inset: 0; z-index: 0; }
 .atlas-layer > :not(.atlas-scrim) { z-index: 1; }
 .atlas-scrim--clear { background: transparent; }
-.atlas-sheet-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(100% - 12px); overflow-y: auto; overscroll-behavior: contain; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); border-radius: var(--r-xl, 16px) var(--r-xl, 16px) 0 0; background: var(--surface, #fff); box-shadow: var(--shadow-modal, 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20)); animation: atlas-sheet-in var(--dur-3, 240ms) var(--ease-out, ease) both; }
+.atlas-sheet-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(100% - 12px); overflow-y: auto; overscroll-behavior: contain; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); border-radius: var(--r-xl, 16px) var(--r-xl, 16px) 0 0; background: var(--surface, #fff); box-shadow: var(--shadow-modal, 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20)); animation: atlas-shell-sheet-up var(--dur-3, 240ms) var(--ease-out, ease) both; }
 .atlas-sheet-panel__grabber { width: 36px; height: 4px; margin: 0 auto 8px; border-radius: 2px; background: var(--line-strong, #cbd5e1); }
-@keyframes atlas-sheet-in { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes atlas-pop-in { from { transform: translateY(-4px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes atlas-shell-sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes atlas-shell-pop-in { from { transform: translateY(-4px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* More sheet */
 .atlas-more__account { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 8px 16px; border: 0; background: transparent; color: var(--text, #0b0f14); text-align: left; cursor: pointer; }
@@ -164,14 +172,14 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
 .atlas-more__chevron { width: 16px; height: 16px; color: var(--text-3, #606c80); flex: none; }
 
 /* Account menu (§4.10): popover above the sidebar account button; phone sheet. */
-.atlas-account-menu { position: absolute; width: 280px; max-width: calc(100vw - 16px); animation: atlas-pop-in var(--dur-2, 180ms) var(--ease-out, ease) both; }
+.atlas-account-menu { position: absolute; width: 280px; max-width: calc(100vw - 16px); animation: atlas-shell-pop-in var(--dur-2, 180ms) var(--ease-out, ease) both; }
 .atlas-account-menu__head { display: flex; align-items: flex-start; gap: 12px; padding: 8px 8px 10px; }
 .atlas-account-menu__who { display: grid; gap: 2px; min-width: 0; }
 .atlas-account-menu__name { font: 600 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text, #0b0f14); }
 .atlas-account-menu__email { font: 400 13px/18px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); color: var(--text-2, #475569); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .atlas-account-menu__role { justify-self: start; margin-top: 4px; }
 .atlas-layer--menu.is-sheet .atlas-scrim--clear { background: var(--overlay, rgba(11, 15, 20, .32)); }
-.atlas-layer--menu.is-sheet .atlas-account-menu { left: 0; right: 0; bottom: 0; width: auto; max-width: none; padding: 12px 8px calc(12px + env(safe-area-inset-bottom)); border-radius: var(--r-xl, 16px) var(--r-xl, 16px) 0 0; animation-name: atlas-sheet-in; }
+.atlas-layer--menu.is-sheet .atlas-account-menu { left: 0; right: 0; bottom: 0; width: auto; max-width: none; padding: 12px 8px calc(12px + env(safe-area-inset-bottom)); border-radius: var(--r-xl, 16px) var(--r-xl, 16px) 0 0; animation-name: atlas-shell-sheet-up; }
 .atlas-layer--menu.is-sheet .atlas-menu__item { height: 48px; font-size: 15px; }
 
 /* Dialog (keyboard shortcuts) */
@@ -187,7 +195,7 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
    Notifications panel (§4.9)
    ========================================================================== */
 .atlas-layer--popover { z-index: 85; }
-.atlas-notify { position: absolute; top: 60px; right: 16px; display: flex; flex-direction: column; width: 400px; max-width: calc(100vw - 16px); max-height: min(560px, calc(100vh - 72px)); overflow: hidden; border: 1px solid var(--line, #e2e8f0); border-radius: var(--r-lg, 12px); background: var(--surface, #fff); box-shadow: var(--shadow-pop, 0 2px 6px rgba(11, 15, 20, .06), 0 12px 32px rgba(11, 15, 20, .10)); animation: atlas-pop-in var(--dur-2, 180ms) var(--ease-out, ease) both; }
+.atlas-notify { position: absolute; top: 60px; right: 16px; display: flex; flex-direction: column; width: 400px; max-width: calc(100vw - 16px); max-height: min(560px, calc(100vh - 72px)); overflow: hidden; border: 1px solid var(--line, #e2e8f0); border-radius: var(--r-lg, 12px); background: var(--surface, #fff); box-shadow: var(--shadow-pop, 0 2px 6px rgba(11, 15, 20, .06), 0 12px 32px rgba(11, 15, 20, .10)); animation: atlas-shell-pop-in var(--dur-2, 180ms) var(--ease-out, ease) both; }
 .atlas-notify__head { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 8px 12px 16px; border-bottom: 1px solid var(--line-subtle, #f1f5f9); }
 .atlas-notify__back { display: none; }
 .atlas-notify__title { flex: 1; margin: 0; color: var(--text, #0b0f14); font: 600 15px/22px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); white-space: nowrap; }
@@ -252,9 +260,7 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
 /* ==========================================================================
    Toasts (§4.11)
    ========================================================================== */
-.atlas-toast-region { position: fixed; left: 50%; bottom: 24px; z-index: 110; display: grid; justify-items: center; width: max-content; max-width: calc(100vw - 32px); transform: translateX(-50%); pointer-events: none; }
-.atlas-toast { animation: atlas-toast-in var(--dur-2, 180ms) var(--ease-out, ease) both; }
-@keyframes atlas-toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* The toast region and toast are the .atlas-toast components. */
 
 /* ==========================================================================
    Sign in, invitation, recovery (§7.17)
@@ -351,7 +357,6 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
 
   .atlas-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); height: calc(56px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: rgba(255, 255, 255, .97); border-top: 1px solid var(--line, #e2e8f0); }
   body.atlas-palette-open .atlas-tabbar, body.stock-count-active .atlas-tabbar, body[data-atlas-tabbar-hidden]:not([data-atlas-tabbar-hidden=""]) .atlas-tabbar { display: none; }
-  .atlas-toast-region { bottom: calc(56px + env(safe-area-inset-bottom) + 12px); }
 
   .atlas-layer--popover.is-fullscreen .atlas-scrim { display: none; }
   .atlas-layer--popover.is-fullscreen .atlas-notify { inset: 0; width: auto; max-width: none; max-height: none; border: 0; border-radius: 0; padding-top: env(safe-area-inset-top); animation: none; }
@@ -375,10 +380,7 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
   .atlas-account-menu .atlas-menu__item { height: 48px; }
 
   .atlas-auth { padding-top: max(40px, 12vh); }
-}
-@media (pointer: coarse) {
-  .atlas-menu__item { min-height: 44px; }
-  .atlas-segmented button { min-height: 44px; }
+  .page--full-height { height: auto; min-height: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .atlas-sheet-panel, .atlas-notify, .atlas-palette, .atlas-account-menu, .atlas-toast { animation-duration: 1ms; }

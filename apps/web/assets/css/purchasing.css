@@ -5,11 +5,6 @@
  */
 @layer atlas.modules {
 
-/* Temporary (design-system request): see inventory.css — the legacy S38 card
-   shadow and hover lift on .atlas-card. */
-.po .atlas-card, .po .atlas-card:hover, .atlas-sheet .atlas-card:hover { box-shadow: var(--shadow-none); transform: none; border-color: var(--line); }
-
-.po .atlas-table th { text-transform: none; letter-spacing: 0; }
 .po a.cell-primary { color: var(--text); }
 
 .po { display: block; min-width: 0; }

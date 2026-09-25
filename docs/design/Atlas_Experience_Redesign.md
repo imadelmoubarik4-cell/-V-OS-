@@ -1,6 +1,13 @@
 # Atlas Experience Redesign — build specification
 
-Status: S88 design spec, ready to build. Owner: lead product designer.
+Status: S88 design spec, built. Owner: lead product designer.
+Implementation status (2026-09-25): every module team has merged and the
+design-system owner's final consolidation is done — all module requests are
+implemented centrally in `atlas-tokens/base/components/shell`, the module
+workarounds are removed, and the legacy layer (§9.1 step 3) is retired: no
+`atlas.legacy` layer, no `assets/css/legacy/`, no inline `index.html` style,
+`!important` only in base for `[hidden]`, reduced motion and role gating. The
+canonical inventory is `docs/design/Atlas_Design_System.md`.
 Visual north star: `docs/design/atlas-reference.html` (open it in a browser; screens
 via `#home`, `#inventory`, `#inventory-new`, `#ai`, `#ai-approval`, `#ai-voice`,
 `#count`, `#palette`, `#components`). Where this document and the reference

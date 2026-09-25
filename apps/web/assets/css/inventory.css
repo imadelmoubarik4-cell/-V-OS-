@@ -7,15 +7,6 @@
  */
 @layer atlas.modules {
 
-/* Temporary (design-system request): a legacy S38 rule still gives every
-   .atlas-card a shadow and a 3 px hover lift (spec §6.14: no shadow, no lift).
-   Remove once legacy/s38-app-remediation--components.css drops .atlas-card. */
-.inv .atlas-card, .inv .atlas-card:hover { box-shadow: var(--shadow-none); transform: none; border-color: var(--line); }
-
-/* Temporary (design-system request): the inline legacy `thead th` rule in
-   index.html uppercases and letter-spaces every table header (spec §6.16:
-   12/16 500, sentence case). Remove once .atlas-table th resets it. */
-.inv .atlas-table th, .atlas-sheet .atlas-table th { text-transform: none; letter-spacing: 0; }
 .inv a.cell-primary, .atlas-sheet a.cell-primary { color: var(--text); }
 .inv-detail .atlas-sheet__title:focus { outline: none; }
 
@@ -40,7 +31,6 @@
 .inv-scan-product { justify-self: start; }
 .inv-size { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: var(--s-2); }
 .inv-item-form__new-category { margin-top: var(--s-2); }
-.inv-item-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .inv-item-form fieldset > * + * { margin-top: var(--s-4); }
 @media (max-width: 767px) {
   .inv__list-empty, .sc-list-empty { display: block; }

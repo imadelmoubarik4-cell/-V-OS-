@@ -1,12 +1,15 @@
-// S88 CSS hygiene ratchet.
+// S88 CSS hygiene ratchet and the final design-system structure.
 //
 // These counts describe the stylesheets that reach the Atlas page. They may
 // only go down: when a change lowers one, lower its ceiling in
-// tests/node/css-hygiene-s88.baseline.json in the same commit. The Phase 4
-// lock-in replaces the ceilings with absolute limits (docs/design/
-// Atlas_Design_System.md §17).
+// tests/node/css-hygiene-s88.baseline.json in the same commit. After the S88
+// consolidation the ceilings are the end state (docs/design/
+// Atlas_Design_System.md §0, §13): no legacy layer, no legacy fragments, no
+// inline or injected style, no cross-file duplicate selector, no text under
+// 11 px, and !important only in atlas-base.css for [hidden], reduced motion
+// and role gating.
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import path from 'node:path';
 import test from 'node:test';
@@ -128,13 +131,23 @@ test('cascade layers are declared first and every stylesheet is layered', () => 
   const links = [...index.matchAll(/<link rel="stylesheet" href="(assets\/css\/[^"?]+)/g)].map((match) => match[1]);
   assert.equal(links[0], 'assets/css/atlas-tokens.css', 'atlas-tokens.css declares the layer order and must be the first Atlas stylesheet');
   const tokens = readFileSync(path.join(CSS, 'atlas-tokens.css'), 'utf8');
-  assert.match(stripComments(tokens), /^\s*@layer atlas\.tokens, atlas\.base, atlas\.legacy, atlas\.components, atlas\.modules;/);
-  assert.ok(index.indexOf('assets/css/atlas-tokens.css') < index.indexOf('<style'), 'the inline <style> comes after the layer statement');
+  // S88 retired atlas.legacy: four layers, in this order.
+  assert.match(stripComments(tokens), /^\s*@layer atlas\.tokens, atlas\.base, atlas\.components, atlas\.modules;/);
+  assert.doesNotMatch(index, /<style\b/, 'index.html has no inline style block');
+  assert.doesNotMatch(index, /assets\/css\/legacy\//, 'index.html links no legacy fragment');
+  assert.ok(!existsSync(path.join(CSS, 'legacy')), 'apps/web/assets/css/legacy/ is gone');
   // Unlayered CSS beats every layer; nothing may ship outside a layer.
   for (const source of cssSources().filter((entry) => !entry.js)) {
     const text = stripComments(source.text).trim();
     if (source.name === 'atlas-tokens.css') continue;
-    assert.match(text, /^@layer atlas\.(base|legacy|components|modules)\s*\{[\s\S]*\}$/, `${source.name} must be one @layer block`);
+    assert.doesNotMatch(text, /atlas\.legacy/, `${source.name} names the retired legacy layer`);
+    assert.match(text, /^@layer atlas\.(base|components|modules)\s*\{[\s\S]*\}$/, `${source.name} must be one @layer block`);
+  }
+  // The design system owns base and components; every other sheet is a module.
+  const owners = { 'atlas-base.css': 'base', 'atlas-components.css': 'components', 'atlas-shell.css': 'components' };
+  for (const source of cssSources().filter((entry) => entry.file && entry.name !== 'atlas-tokens.css')) {
+    const layer = stripComments(source.text).match(/@layer atlas\.(\w+)/)[1];
+    assert.equal(layer, owners[source.name] || 'modules', `${source.name} is in atlas.${layer}`);
   }
 });
 
@@ -147,6 +160,20 @@ test('custom properties on :root are defined only in atlas-tokens.css', () => {
       if (!splitSelectors(rule.selector).some((selector) => selector.startsWith(':root') || selector === 'html')) continue;
       const clash = [...defined(rule.body)].filter((name) => tokens.has(name));
       assert.deepEqual(clash, [], `${source.name} redefines token(s) on ${rule.selector}`);
+    }
+  }
+});
+
+test('!important appears only in atlas-base.css for [hidden], reduced motion and role gating', () => {
+  for (const source of cssSources()) {
+    const found = rules(source.text).filter((rule) => /!\s*important/i.test(rule.body));
+    if (source.name !== 'atlas-base.css') { assert.deepEqual(found.map((rule) => rule.selector), [], `${source.name} uses !important`); continue; }
+    for (const rule of found) {
+      const allowed = rule.selector === '[hidden]'
+        || rule.selector.startsWith('body:not(.atlas-commercial-manager)')
+        || (/prefers-reduced-motion/.test(rule.media) && rule.selector === '*, *::before, *::after')
+        || rule.selector.startsWith('html.atlas-reduce-motion *');
+      assert.ok(allowed, `atlas-base.css: !important on ${rule.selector}`);
     }
   }
 });

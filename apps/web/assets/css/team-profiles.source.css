@@ -15,9 +15,6 @@
 .team-chevron svg { width: var(--icon-sm); height: var(--icon-sm); }
 
 .team-table__row { cursor: pointer; }
-/* Removable: a legacy global `thead th` rule (index.html) uppercases headers;
-   .atlas-table th does not reset it yet (design-system request). */
-.team-table th { text-transform: none; letter-spacing: 0; }
 .team-table__row.is-inactive .cell-primary { color: var(--text-2); }
 .team-person { display: flex; align-items: center; gap: var(--s-3); min-width: 0; color: inherit; text-decoration: none; }
 .team-person__text { display: grid; min-width: 0; }
