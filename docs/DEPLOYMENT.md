@@ -43,6 +43,34 @@ After step 4, re-run the smoke test for adding and editing an item.
 
 If the Supabase GitHub integration is set to deploy migrations to production when `main` changes, turn that off before merging this release. Otherwise the merge would apply every file in filename order: the revokes would run before the web deploy, and `20260924170000` would be replayed (production recorded it as `20260924150124`).
 
+## S92: Accounting (invoices, receipts, reimbursements)
+
+Apply only after S91 is live and the desktop/phone retest has passed. The release is additive: nothing existing changes.
+
+Order, with `scripts/rollout_s92.sh`:
+
+1. `check`: read-only. It confirms that S91 is recorded, that its dependencies exist, and that S92 is pending.
+2. `migration`: applies `20261001090000_s92_accounting_documents.sql` and records it in the ledger, in one transaction. It creates:
+   - the private tables `atlas_private.accounting_documents` and `atlas_private.accounting_document_events` (RLS on, service role only);
+   - the private bucket `atlas-accounting-documents`, with no storage policy;
+   - the `public.atlas_accounting_*` RPCs, which only `service_role` may execute. Each one checks again that the actor is an active admin.
+3. `function`: deploys `atlas-accounting`. It uses the same secrets as `atlas-inventory-recognition`. `OPENAI_API_KEY` is optional: without it, or while Atlas AI is off in Settings, documents are typed in by hand.
+4. Web: merge the S92 PR so that Netlify publishes it. `accounting-workspace.js?v=20261001-s92a` and `purchasing.css?v=20261001-s92a` must load.
+
+Checks:
+- `scripts/verify_s92_accounting_preview.sql` covers the roles, the workflow, retention and export. It runs on a replayed database via `verify_s90_workflow_integrity_previews.sh`.
+- After the rollout, sign in as an admin: Accounting appears under Business. Sign in as a manager: it does not appear, and `#accounting` shows the administrators-only notice.
+
+Retention (Icelandic bookkeeping law, 7 years): documents cannot be deleted, and their history is append-only.
+- A mistaken upload that was never approved is discarded. Its file is removed; the record and its history are kept.
+- An approved document can only be voided, with a reason. It keeps its file.
+
+Atlas reads a document only when both of these hold:
+- Atlas AI is on (Settings › Atlas AI, `ai_settings.enabled`);
+- a key is set.
+
+Reads are limited to 60 per rolling 24 hours. A read only fills empty fields and never approves anything.
+
 ## S91: live voice lease and device handoff
 
 `20260930092000_s91_voice_lease_and_takeover.sql` is the last file of batch A. Apply it, then deploy
