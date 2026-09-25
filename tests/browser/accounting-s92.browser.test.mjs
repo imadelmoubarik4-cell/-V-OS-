@@ -326,7 +326,7 @@ test('review: edit supplier, date and VAT lines, fill totals, save, then approve
       const box = document.querySelector('#acc-document .acc-error');
       const body = document.querySelector('#acc-document .atlas-sheet__body');
       const a = box.getBoundingClientRect(); const b = body.getBoundingClientRect();
-      return { role: box.getAttribute('role'), danger: box.classList.contains('atlas-alert--danger'), first: body.firstElementChild === box, inView: a.top >= b.top - 1 && a.bottom <= b.bottom + 1, text: box.textContent.trim(), invalid: document.getElementById('acc-total').getAttribute('aria-invalid') };
+      return { role: box.getAttribute('role'), danger: box.classList.contains('atlas-alert--danger'), first: body.firstElementChild === box, inView: a.top >= b.top - 1 && a.bottom <= b.bottom + 1, text: box.querySelector('[data-acc-error-text]').textContent, invalid: document.getElementById('acc-total').getAttribute('aria-invalid') };
     });
     assert.deepEqual(problem, { role: 'alert', danger: true, first: true, inView: true, text: 'Enter amounts as numbers, like 12.345 or 12345,50.', invalid: 'true' });
     assert.equal(backend.commands('save').length, 0);
@@ -896,4 +896,125 @@ test('stylesheet: the Accounting block uses defined tokens only', { skip }, asyn
   const block = css.slice(css.indexOf('S92 Accounting'));
   const used = [...new Set([...block.matchAll(/var\((--[a-z0-9-]+)/g)].map((match) => match[1]))];
   assert.deepEqual(used.filter((name) => !tokens.includes(`${name}:`)), []);
+});
+
+test('totals never add currencies: krónur totals plus a line per other currency', { skip }, async () => {
+  const backend = accountingBackend();
+  const EUR = 'a0000000-0000-4000-8000-000000000021';
+  const EUR_STAFF = 'a0000000-0000-4000-8000-000000000022';
+  backend.documents.push(
+    doc({ id: EUR, status: 'approved', supplier_name: 'Riedel GmbH', issue_date: '2026-08-18', currency: 'EUR', net_amount: 322.58, vat_amount: 77.42, total_amount: 400, vat_lines: [{ rate: 24, net: 322.58, vat: 77.42 }] }),
+    doc({ id: EUR_STAFF, status: 'approved', kind: 'receipt', supplier_name: 'Ryanair', issue_date: '2026-09-03', currency: 'EUR', total_amount: 40, paid_by: 'staff', paid_by_profile_id: USERS.bartender.id, paid_by_label: USERS.bartender.display_name })
+  );
+  const { page, record, close } = await launch({ backend });
+  try {
+    await openAccounting(page, '#accounting/unpaid');
+    const unpaid = await page.$eval('#accounting-view .atlas-stat', (node) => node.innerText.replace(/\s+/g, ' ').trim());
+    assert.match(unpaid, /^Unpaid 50\.600 kr 3 documents Plus €400\.00 in 1 EUR invoice \(not in this total\)$/);
+
+    await navigateTo(page, '#accounting/export');
+    const stats = await page.$eval('#accounting-view .atlas-stats', (node) => node.innerText.replace(/\s+/g, ' '));
+    assert.match(stats, /Total 68\.500 kr Plus €400\.00 in 1 EUR invoice \(not in this total\)/);
+    assert.match(stats, /VAT 24% 12\.484 kr/, 'the EUR invoice\'s VAT is not added to krónur');
+
+    await navigateTo(page, '#accounting/owed');
+    const owed = await page.$eval(`#accounting-view [data-acc-owed="${USERS.bartender.id}"] .atlas-section__meta`, (node) => node.textContent);
+    assert.equal(owed, 'Owed 5.500 kr + €40.00');
+    await page.click(`#accounting-view [data-acc-pay-all="${USERS.bartender.id}"]`);
+    await page.waitForSelector('#acc-pay.is-open form');
+    assert.match(await page.textContent('#acc-pay form > p'), /^3 receipts · 5\.500 kr \+ €40\.00\./);
+    noErrors(record);
+  } finally { await close(); }
+});
+
+test('phone rows: the icon sits beside the title and the pills line up with it; the owed header stacks', { skip }, async () => {
+  const backend = accountingBackend();
+  backend.documents.find((entry) => entry.id === IDS.unpaid).supplier_name = 'Ölgerðin Egill Skallagrímsson hf. — heildsala og dreifing';
+  const { page, record, close } = await launch({ backend, viewport: { width: 390, height: 844 } });
+  try {
+    for (const route of ['#accounting/unpaid', '#accounting/all']) {
+      await openAccounting(page, route);
+      const rows = await page.$$eval('#accounting-view [data-acc-row]', (list) => list.map((row) => {
+        const icon = row.querySelector('.atlas-row__icon').getBoundingClientRect();
+        const title = row.querySelector('.atlas-row__title').getBoundingClientRect();
+        const pills = row.querySelector('.acc-row__end').getBoundingClientRect();
+        return { id: row.dataset.accRow, iconInTitleRow: icon.top >= title.top - 8 && icon.top <= title.top + 8, iconLeftOfTitle: icon.right <= title.left, pillsAligned: Math.abs(pills.left - title.left) < 1, pillsBelow: pills.top >= title.bottom - 1 };
+      }));
+      assert.ok(rows.length >= 2, route);
+      rows.forEach((row) => assert.deepEqual(row, { id: row.id, iconInTitleRow: true, iconLeftOfTitle: true, pillsAligned: true, pillsBelow: true }, `${route} ${row.id}`));
+    }
+    // The review row without an amount leaves out the dash.
+    await openAccounting(page, '#accounting');
+    assert.equal(await page.textContent(`#accounting-view [data-acc-row="${IDS.review}"] .atlas-row__meta`), 'Invoice · No date');
+
+    await openAccounting(page, '#accounting/owed');
+    const head = await page.$eval(`#accounting-view [data-acc-owed="${USERS.bartender.id}"] .acc-owed__head`, (node) => {
+      const box = node.getBoundingClientRect();
+      const title = node.querySelector('.atlas-section__title').getBoundingClientRect();
+      const meta = node.querySelector('.atlas-section__meta').getBoundingClientRect();
+      const button = node.querySelector('[data-acc-pay-all]').getBoundingClientRect();
+      return { titleLines: Math.round(title.height / 20) <= 2, titleFull: Math.abs(title.width - box.width) < 1, metaBelow: meta.top >= title.bottom - 1, metaLeft: Math.abs(meta.left - box.left) < 1, buttonRight: Math.abs(button.right - box.right) < 1, sameLine: Math.abs((meta.top + meta.height / 2) - (button.top + button.height / 2)) < 4 };
+    });
+    assert.deepEqual(head, { titleLines: true, titleFull: true, metaBelow: true, metaLeft: true, buttonRight: true, sameLine: true });
+    noErrors(record);
+  } finally { await close(); }
+});
+
+test('desktop owed header: name left, amount and action grouped right', { skip }, async () => {
+  const { page, record, close } = await launch();
+  try {
+    await openAccounting(page, '#accounting/owed');
+    const heads = await page.$$eval('#accounting-view .acc-owed__head', (list) => list.map((node) => {
+      const box = node.getBoundingClientRect();
+      const title = node.querySelector('.atlas-section__title').getBoundingClientRect();
+      const end = node.querySelector('.acc-owed__end').getBoundingClientRect();
+      return { titleLeft: Math.abs(title.left - box.left) < 1, endRight: Math.abs(end.right - box.right) < 1, oneLine: Math.abs(title.top - end.top) < 12 };
+    }));
+    assert.equal(heads.length, 2);
+    heads.forEach((head) => assert.deepEqual(head, { titleLeft: true, endRight: true, oneLine: true }));
+    noErrors(record);
+  } finally { await close(); }
+});
+
+test('errors: "Go to <field>" focuses the field; dialog alerts draw their icon; approved-by is a fact', { skip }, async () => {
+  const { page, record, backend, close } = await launch();
+  try {
+    await openAccounting(page);
+    await openDoc(page, IDS.review);
+    await page.fill('#acc-document #acc-kt', '12345');
+    await page.locator('#acc-document [data-acc-save]').click();
+    await page.waitForSelector('#acc-document .acc-error:not([hidden]) [data-acc-error-go]');
+    assert.equal(await page.textContent('#acc-document [data-acc-error-go]'), 'Go to Supplier kennitala');
+    await page.evaluate(() => { document.getElementById('acc-doc-title').focus(); document.querySelector('#acc-document .atlas-sheet__body').scrollTop = 0; });
+    await page.click('#acc-document [data-acc-error-go]');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'acc-kt');
+    assert.equal(await page.$eval('#acc-document .acc-error', (node) => Boolean(node.querySelector('svg'))), true, 'the alert icon is drawn');
+    assert.equal(backend.commands('save').length, 0);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.getElementById('acc-document').hidden);
+
+    await openAccounting(page, '#accounting/unpaid');
+    await openDoc(page, IDS.unpaid);
+    assert.doesNotMatch(await page.textContent('#acc-document .atlas-sheet__desc'), /Approved by/, 'the header stays short');
+    const facts = await page.$$eval('#acc-document [data-acc-facts] > div', (rows) => Object.fromEntries(rows.map((row) => [row.querySelector('dt').textContent, row.querySelector('dd').textContent])));
+    assert.match(facts['Approved by'], /^Imad El Moubarik · /);
+    await page.click('#acc-document [data-acc-void]');
+    await page.waitForSelector('#acc-reason.is-open form');
+    await page.click('#acc-reason [type="submit"]');
+    await page.waitForSelector('#acc-reason [data-acc-error]:not([hidden])');
+    assert.equal(await page.$eval('#acc-reason [data-acc-error]', (node) => Boolean(node.querySelector('svg'))), true, 'reason dialog alert icon');
+    assert.equal(await page.textContent('#acc-reason [data-acc-error-go]'), 'Go to Reason');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.getElementById('acc-reason').hidden);
+    await page.click('#acc-document .atlas-sheet__foot [data-acc-pay]');
+    await page.waitForSelector('#acc-pay.is-open form');
+    await page.fill('#acc-pay #acc-paid-on', '');
+    await page.click('#acc-pay [type="submit"]');
+    await page.waitForSelector('#acc-pay [data-acc-error]:not([hidden])');
+    assert.equal(await page.$eval('#acc-pay [data-acc-error]', (node) => Boolean(node.querySelector('svg'))), true, 'pay dialog alert icon');
+    assert.equal(await page.textContent('#acc-pay [data-acc-error-go]'), 'Go to Paid on');
+    // Sheet footers are sticky actions, so a toast rises above them.
+    assert.equal(await page.$eval('#acc-document .atlas-sheet__foot', (node) => node.hasAttribute('data-atlas-sticky-actions')), true);
+    noErrors(record);
+  } finally { await close(); }
 });

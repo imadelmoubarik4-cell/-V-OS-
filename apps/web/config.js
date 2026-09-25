@@ -126,7 +126,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // S92 Accounting (administrators only): invoices, receipts, reimbursements
 // and the accountant's monthly export, through the atlas-accounting gateway.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/accounting-workspace.js?v=20261001-s92b',
+  scriptPath: 'assets/js/accounting-workspace.js?v=20261001-s92c',
   globalName: 'AtlasAccounting',
   dataAttribute: 'atlasAccounting',
 }));

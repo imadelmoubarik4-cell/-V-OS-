@@ -192,7 +192,7 @@
       KINDS[doc.kind] || 'Document',
       doc.document_number ? `No. ${doc.document_number}` : null,
       dateOnly(doc.issue_date),
-      money(doc.total_amount, doc.currency),
+      doc.total_amount === null || doc.total_amount === undefined || doc.total_amount === '' ? null : money(doc.total_amount, doc.currency),
       doc.status === 'approved' && doc.due_date ? `Due ${dateOnly(doc.due_date)}` : null,
       doc.paid_by === 'staff' ? `Paid by ${doc.paid_by_label || 'a team member'}` : null
     ].filter(Boolean).join(' · ');
@@ -211,7 +211,32 @@
     return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon(iconName)}</div><h3 class="atlas-empty__title">${escapeHtml(heading)}</h3>${text ? `<p class="atlas-empty__text">${escapeHtml(text)}</p>` : ''}${action ? `<div class="atlas-empty__actions">${action}</div>` : ''}</div>`;
   }
   const uploadButton = (variant = 'primary') => `<button type="button" class="atlas-btn atlas-btn--${variant}" data-acc-upload>${icon('upload')}Upload</button>`;
-  const sum = (list) => list.reduce((total, doc) => total + (Number(doc.total_amount) || 0), 0);
+  // Totals never add different currencies: sum() is krónur only; other
+  // currencies are listed beside it (otherCurrencies) or per currency (totalsText).
+  const currencyOf = (doc) => String(doc.currency || 'ISK').toUpperCase();
+  const isKronur = (doc) => currencyOf(doc) === 'ISK';
+  const sum = (list) => list.filter(isKronur).reduce((total, doc) => total + (Number(doc.total_amount) || 0), 0);
+  function byCurrency(list) {
+    const groups = new Map();
+    list.forEach((doc) => {
+      const code = currencyOf(doc);
+      if (!groups.has(code)) groups.set(code, { code, total: 0, docs: [] });
+      const group = groups.get(code);
+      group.total += Number(doc.total_amount) || 0;
+      group.docs.push(doc);
+    });
+    return [...groups.values()].sort((a, b) => (a.code === 'ISK' ? -1 : b.code === 'ISK' ? 1 : a.code.localeCompare(b.code)));
+  }
+  const nounFor = (docs) => {
+    const kinds = new Set(docs.map((doc) => doc.kind));
+    const noun = kinds.size === 1 ? { invoice: ['invoice', 'invoices'], receipt: ['receipt', 'receipts'], credit_note: ['credit note', 'credit notes'] }[[...kinds][0]] : null;
+    return noun || ['document', 'documents'];
+  };
+  // "Plus €400.00 in 1 EUR invoice (not in this total)", one line per other currency.
+  const otherCurrencies = (list) => byCurrency(list).filter((group) => group.code !== 'ISK')
+    .map((group) => { const [one, many] = nounFor(group.docs); return `<p class="atlas-stat__detail acc-other-currency">${escapeHtml(`Plus ${money(group.total, group.code)} in ${group.docs.length} ${group.code} ${group.docs.length === 1 ? one : many} (not in this total)`)}</p>`; }).join('');
+  // "5.500 kr + €40.00": each currency on its own.
+  const totalsText = (list) => byCurrency(list).map((group) => money(group.total, group.code)).join(' + ') || money(0);
   const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
 
   // ---------- tabs ----------
@@ -229,8 +254,8 @@
     if (!list.length) return empty('circle-check', 'Nothing unpaid', 'Approved invoices that still need paying appear here, soonest due first.');
     const overdue = list.filter((doc) => doc.checks?.overdue);
     return `<div class="atlas-stats acc-stats">
-        <div class="atlas-stat"><p class="atlas-stat__label">Unpaid</p><p class="atlas-stat__value">${escapeHtml(money(sum(list)))}</p><p class="atlas-stat__detail">${plural(list.length, 'document', 'documents')}</p></div>
-        <div class="atlas-stat"><p class="atlas-stat__label">Overdue</p><p class="atlas-stat__value">${escapeHtml(money(sum(overdue)))}</p><p class="atlas-stat__detail">${plural(overdue.length, 'document', 'documents')}</p></div>
+        <div class="atlas-stat"><p class="atlas-stat__label">Unpaid</p><p class="atlas-stat__value">${escapeHtml(money(sum(list)))}</p><p class="atlas-stat__detail">${plural(list.length, 'document', 'documents')}</p>${otherCurrencies(list)}</div>
+        <div class="atlas-stat"><p class="atlas-stat__label">Overdue</p><p class="atlas-stat__value">${escapeHtml(money(sum(overdue)))}</p><p class="atlas-stat__detail">${plural(overdue.length, 'document', 'documents')}</p>${otherCurrencies(overdue)}</div>
       </div>
       <ul class="atlas-list">${list.map((doc) => row(doc, rowAction(doc, 'Mark paid', 'data-acc-pay'))).join('')}</ul>`;
   }
@@ -248,7 +273,7 @@
   function owedMarkup() {
     const groups = owedGroups();
     if (!groups.size) return empty('hand-coins', 'Nobody is owed money', 'When a team member pays with their own money, upload the receipt and choose who paid. It shows here until you reimburse them.');
-    return [...groups.values()].map((group) => `<section class="atlas-section acc-owed" data-acc-owed="${escapeHtml(group.key)}"><div class="atlas-section__head"><h2 class="atlas-section__title">${escapeHtml(group.label)}</h2><span class="atlas-section__meta">Owed ${escapeHtml(money(sum(group.docs)))}</span>${group.docs.length > 1 ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm acc-owed__all" data-acc-pay-all="${escapeHtml(group.key)}" aria-label="${escapeHtml(`Mark all reimbursed: ${group.label}`)}">Mark all reimbursed</button>` : ''}</div>
+    return [...groups.values()].map((group) => `<section class="atlas-section acc-owed" data-acc-owed="${escapeHtml(group.key)}"><div class="atlas-section__head acc-owed__head"><h2 class="atlas-section__title">${escapeHtml(group.label)}</h2><div class="acc-owed__end"><span class="atlas-section__meta">Owed ${escapeHtml(totalsText(group.docs))}</span>${group.docs.length > 1 ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm acc-owed__all" data-acc-pay-all="${escapeHtml(group.key)}" aria-label="${escapeHtml(`Mark all reimbursed: ${group.label}`)}">Mark all reimbursed</button>` : ''}</div></div>
         <ul class="atlas-list">${group.docs.map((doc) => row(doc, rowAction(doc, 'Mark reimbursed', 'data-acc-pay'))).join('')}</ul></section>`).join('');
   }
 
@@ -292,7 +317,7 @@
     const months = Array.from({ length: 24 }, (_, index) => shiftMonth(current, -index));
     const inMonth = documents().filter((doc) => ['approved', 'paid', 'void'].includes(doc.status) && inRange(doc, bounds));
     const counted = inMonth.filter((doc) => doc.status !== 'void');
-    const vat = (rate) => counted.reduce((total, doc) => total + (doc.vat_lines || []).filter((line) => Number(line.rate) === rate).reduce((t, line) => t + (Number(line.vat) || 0), 0), 0);
+    const vat = (rate) => counted.filter(isKronur).reduce((total, doc) => total + (doc.vat_lines || []).filter((line) => Number(line.rate) === rate).reduce((t, line) => t + (Number(line.vat) || 0), 0), 0);
     const waiting = documents().filter((doc) => doc.status === 'to_review' && (!doc.issue_date || inRange(doc, bounds))).length;
     // The workspace holds the last 13 months: an empty month in it is really empty.
     const nothing = !inMonth.length && month >= shiftMonth(current, -12);
@@ -304,16 +329,15 @@
         <div class="atlas-field acc-export__month"><label for="acc-month">Month</label><select class="atlas-select" id="acc-month" data-acc-month>${months.map((key) => `<option value="${key}"${key === month ? ' selected' : ''}>${monthLabel(key)}</option>`).join('')}</select></div>
         <div class="atlas-stats acc-stats">
           <div class="atlas-stat"><p class="atlas-stat__label">Documents</p><p class="atlas-stat__value">${counted.length}</p><p class="atlas-stat__detail">${inMonth.length - counted.length} void</p></div>
-          <div class="atlas-stat"><p class="atlas-stat__label">Total</p><p class="atlas-stat__value">${escapeHtml(money(sum(counted)))}</p></div>
+          <div class="atlas-stat"><p class="atlas-stat__label">Total</p><p class="atlas-stat__value">${escapeHtml(money(sum(counted)))}</p>${otherCurrencies(counted)}</div>
           <div class="atlas-stat"><p class="atlas-stat__label">VAT 24%</p><p class="atlas-stat__value">${escapeHtml(money(vat(24)))}</p></div>
           <div class="atlas-stat"><p class="atlas-stat__label">VAT 11%</p><p class="atlas-stat__value">${escapeHtml(money(vat(11)))}</p></div>
         </div>
         ${waiting ? alert('warning', `${waiting} ${waiting === 1 ? 'document is' : 'documents are'} still to review`, 'Only approved documents are exported. Review the ones dated in this month, or without a date, first.') : ''}
         ${newSince ? alert('info', `${newSince} ${newSince === 1 ? 'document in this month was' : 'documents in this month were'} approved after it was last exported`, 'Export the month again and send your accountant the new spreadsheet.') : ''}
-        <p class="acc-lead">For your accountant (Regla, Payday): every approved, paid and void document dated in this month. The spreadsheet (CSV) opens in a spreadsheet app or imports into accounting software; the ZIP has the original files plus the spreadsheet. Void documents are listed, marked “No – void” under Counted, and left out of the totals.</p>
+        <p class="acc-lead">For your accountant (Regla, Payday): every approved, paid and void document dated in this month. Open the spreadsheet in Excel, import the CSV into your accounting software, or send the ZIP: the original files plus the spreadsheet. Void documents are listed, marked “No – void” under Counted, and left out of the totals.</p>
         ${nothing ? '<p class="acc-muted" data-acc-export-empty>Nothing approved is dated in this month.</p>' : ''}
-        <div class="acc-export__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-acc-export="csv"${disabled}>${icon('file-spreadsheet')}Download spreadsheet</button><button type="button" class="atlas-btn atlas-btn--secondary" data-acc-export="csv-is"${disabled}>${icon('file-spreadsheet')}Spreadsheet (Excel, Icelandic)</button><button type="button" class="atlas-btn atlas-btn--secondary" data-acc-export="zip"${disabled}>${icon('file-archive')}Download files (ZIP)</button></div>
-        <p class="atlas-field__help">Use “Excel, Icelandic” when Excel on this computer writes decimals with a comma: its columns are separated by semicolons.</p>
+        <div class="acc-export__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-acc-export="csv-is"${disabled}>${icon('file-spreadsheet')}Spreadsheet for Excel</button><button type="button" class="atlas-btn atlas-btn--secondary" data-acc-export="csv"${disabled}>${icon('file-spreadsheet')}CSV for Regla / Payday import</button><button type="button" class="atlas-btn atlas-btn--secondary" data-acc-export="zip"${disabled}>${icon('file-archive')}Download files (ZIP)</button></div>
         <p class="acc-muted" data-acc-export-status aria-live="polite"></p>
       </div>`;
   }
@@ -383,8 +407,19 @@
     if (!box) return;
     box.hidden = !message;
     box.querySelector('[data-acc-error-text]').textContent = message || '';
+    box.querySelector('.atlas-alert__actions')?.remove();
     if (!message) return;
-    if (field) { field.setAttribute('aria-invalid', 'true'); field.focus({ preventScroll: true }); }
+    if (field) {
+      field.setAttribute('aria-invalid', 'true');
+      // The alert names the field and takes the reader to it.
+      const label = field.id ? root.querySelector(`label[for="${field.id}"]`) : null;
+      const name = (label?.firstChild?.textContent || '').trim();
+      if (name) {
+        box.insertAdjacentHTML('beforeend', `<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-error-go>Go to ${escapeHtml(name)}</button></div>`);
+        box.querySelector('[data-acc-error-go]').addEventListener('click', () => { field.scrollIntoView?.({ block: 'center' }); field.focus({ preventScroll: true }); });
+      }
+      field.focus({ preventScroll: true });
+    }
     box.scrollIntoView?.({ block: 'nearest' });
   }
   function clearInvalidOnEdit(root) {
@@ -444,7 +479,7 @@
           <ul class="atlas-list acc-queue" data-acc-queue aria-live="polite"></ul>
           ${payerFields('acc-up')}
         </form>
-        <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close data-acc-cancel>Cancel</button><button type="button" class="atlas-btn atlas-btn--primary" data-acc-start disabled>Upload</button></footer>
+        <footer class="atlas-sheet__foot" data-atlas-sticky-actions><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close data-acc-cancel>Cancel</button><button type="button" class="atlas-btn atlas-btn--primary" data-acc-start disabled>Upload</button></footer>
       </section>`;
     const queue = root.querySelector('[data-acc-queue]');
     const start = root.querySelector('[data-acc-start]');
@@ -454,7 +489,7 @@
       queue.innerHTML = files.map((entry, index) => {
         const name = escapeHtml(entry.file.name || 'Photo');
         const titleMarkup = entry.docId ? `<button type="button" class="atlas-row__link" data-acc-q-open="${escapeHtml(entry.docId)}">${name}</button>` : name;
-        const end = entry.docId ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-acc-q-open="${escapeHtml(entry.docId)}" aria-label="Open ${name}">Open</button>` : entry.started ? '' : `<button type="button" class="atlas-icon-btn" data-acc-q-remove="${index}" aria-label="Remove ${name}">${icon('x')}</button>`;
+        const end = entry.docId ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-acc-q-open="${escapeHtml(entry.docId)}" aria-label="Open ${name}">Open</button><span class="atlas-row__chevron">${icon('chevron-right')}</span>` : entry.started ? '' : `<button type="button" class="atlas-icon-btn" data-acc-q-remove="${index}" aria-label="Remove ${name}">${icon('x')}</button>`;
         return `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon">${icon(entry.file.type === 'application/pdf' ? 'file-text' : 'image')}</span><div class="atlas-row__body"><p class="atlas-row__title">${titleMarkup}</p><p class="atlas-row__meta" data-acc-q-status="${index}">${escapeHtml(entry.status || `${Math.max(1, Math.round(entry.file.size / 1024))} KB`)}</p></div><div class="atlas-row__end">${end}</div></li>`;
       }).join('');
       const waiting = files.filter((entry) => !entry.started).length;
@@ -749,7 +784,8 @@
       ['VAT lines', lines || null],
       ['Total', doc.total_amount !== null && doc.total_amount !== undefined ? money(doc.total_amount, doc.currency) : null],
       ['Currency', doc.currency], ['Purchase order', order],
-      ['Who paid', doc.paid_by === 'staff' ? doc.paid_by_label || 'A team member' : 'The business'], ['Note', doc.note]
+      ['Who paid', doc.paid_by === 'staff' ? doc.paid_by_label || 'A team member' : 'The business'], ['Note', doc.note],
+      ['Approved by', doc.approved_by_label ? [doc.approved_by_label, doc.approved_at ? dateOnly(String(doc.approved_at).slice(0, 10)) : null].filter(Boolean).join(' · ') : null]
     ];
     return `<dl class="acc-kv acc-facts" data-acc-facts>${facts.map(([key, value]) => `<div><dt>${escapeHtml(key)}</dt><dd>${escapeHtml(dash(value))}</dd></div>`).join('')}</dl>`;
   }
@@ -805,13 +841,13 @@
       : `<div class="acc-doc__form">${voidLine}${paidLine}${readBanner(doc)}${checksMarkup(doc)}${factsMarkup(doc)}${readDetails(doc)}${historyMarkup(doc)}</div>`;
     root.innerHTML = `<section class="atlas-sheet atlas-sheet--wide acc-sheet" data-modal-panel aria-labelledby="acc-doc-title">
         <span class="atlas-sheet__grabber"></span>
-        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="acc-doc-title" tabindex="-1">${escapeHtml(title(doc))}</h2><p class="atlas-sheet__desc">${statusPill(doc)} ${escapeHtml([KINDS[doc.kind], `Uploaded by ${doc.created_by_label}`, dateOnly(String(doc.created_at || '').slice(0, 10))].filter(Boolean).join(' · '))}${doc.approved_by_label ? ` · Approved by ${escapeHtml(doc.approved_by_label)}` : ''}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close>${icon('x')}</button></header>
+        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="acc-doc-title" tabindex="-1">${escapeHtml(title(doc))}</h2><p class="atlas-sheet__desc">${statusPill(doc)} ${escapeHtml([KINDS[doc.kind], `Uploaded by ${doc.created_by_label}`, dateOnly(String(doc.created_at || '').slice(0, 10))].filter(Boolean).join(' · '))}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close>${icon('x')}</button></header>
         <div class="atlas-sheet__body acc-doc">
           ${errorSlot()}
           <div class="acc-doc__file">${fileMarkup(doc)}</div>
           ${details}
         </div>
-        <footer class="atlas-sheet__foot">${footer}</footer>
+        <footer class="atlas-sheet__foot" data-atlas-sticky-actions>${footer}</footer>
       </section>`;
     root.querySelector('.atlas-sheet__body').scrollTop = keep;
     wireDocument(root, doc);
@@ -1002,7 +1038,7 @@
     return new Promise((resolve) => {
       const root = modal('acc-reason');
       root.innerHTML = `<section class="atlas-dialog atlas-dialog--form" data-modal-panel aria-labelledby="acc-reason-title"><h2 class="atlas-dialog__title" id="acc-reason-title">${escapeHtml(heading)}</h2>
-          <form class="atlas-dialog__body atlas-form">${errorSlot()}<p>${escapeHtml(text)}</p><div class="atlas-field"><label for="acc-reason-text">Reason${required ? '' : ' <span class="optional">(optional)</span>'}</label><textarea class="atlas-textarea" id="acc-reason-text" name="reason" rows="2" maxlength="500"></textarea></div>
+          <form class="atlas-dialog__body atlas-form" novalidate>${errorSlot()}<p>${escapeHtml(text)}</p><div class="atlas-field"><label for="acc-reason-text">Reason${required ? '' : ' <span class="optional">(optional)</span>'}</label><textarea class="atlas-textarea" id="acc-reason-text" name="reason" rows="2" maxlength="500"></textarea></div>
           <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--danger">${escapeHtml(confirmLabel)}</button></div></form></section>`;
       let answered = false;
       clearInvalidOnEdit(root);
@@ -1016,6 +1052,7 @@
         resolve(reason);
       });
       root.addEventListener('atlas:modal-close', () => { if (!answered) resolve(null); }, { once: true });
+      window.lucide?.createIcons?.();
       window.AtlasModal.open(root);
     });
   }
@@ -1031,10 +1068,9 @@
     const many = docs.length > 1;
     const who = escapeHtml(first.paid_by_label || 'the team member');
     const done = new Set();
-    const total = docs.reduce((amount, doc) => amount + (Number(doc.total_amount) || 0), 0);
-    const summary = many ? `${plural(docs.length, 'receipt', 'receipts')} · ${money(total, first.currency)}` : `${title(first)} · ${money(first.total_amount, first.currency)}`;
+    const summary = many ? `${plural(docs.length, 'receipt', 'receipts')} · ${totalsText(docs)}` : `${title(first)} · ${money(first.total_amount, first.currency)}`;
     root.innerHTML = `<section class="atlas-dialog atlas-dialog--form" data-modal-panel aria-labelledby="acc-pay-title"><h2 class="atlas-dialog__title" id="acc-pay-title">${staff ? `Reimburse ${who}` : 'Mark as paid'}</h2>
-        <form class="atlas-dialog__body atlas-form">${errorSlot()}<p>${escapeHtml(summary)}. Atlas doesn’t move money; this records that ${staff ? 'you paid them back' : 'it was paid'}.</p>
+        <form class="atlas-dialog__body atlas-form" novalidate>${errorSlot()}<p>${escapeHtml(summary)}. Atlas doesn’t move money; this records that ${staff ? 'you paid them back' : 'it was paid'}.</p>
           <div class="atlas-grid-2"><div class="atlas-field"><label for="acc-paid-on">${staff ? 'Reimbursed on' : 'Paid on'}</label><input class="atlas-input" type="date" id="acc-paid-on" name="paid_at" value="${escapeHtml(venueToday())}" max="${escapeHtml(venueToday())}" required></div>
           <div class="atlas-field"><label for="acc-method">How</label><select class="atlas-select" id="acc-method" name="payment_method">${Object.entries(METHODS).map(([key, label]) => `<option value="${key}">${label}</option>`).join('')}</select></div></div>
           <div class="atlas-field"><label for="acc-ref">Reference <span class="optional">(optional)</span></label><input class="atlas-input" id="acc-ref" name="payment_reference" maxlength="120" placeholder="e.g. bank transfer reference"></div>
@@ -1071,6 +1107,7 @@
       showError(root, many ? `${done.size} of ${docs.length} marked reimbursed; ${left} couldn’t be. ${errorText(firstError)}` : errorText(firstError));
       if (firstError?.code === 'stale_request') load();
     });
+    window.lucide?.createIcons?.();
     window.AtlasModal.open(root);
   }
 

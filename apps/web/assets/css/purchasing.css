@@ -87,8 +87,11 @@
   .acc-filter { overflow-x: auto; max-width: 100%; }
   .acc-filter-select { display: none; }
   .acc-error { grid-column: 1 / -1; }
-  .acc-owed__all { margin-left: auto; align-self: center; }
-  .acc-owed .atlas-section__head { gap: var(--s-3); }
+  /* Owed to team: the person's name left; what they're owed and the action right. */
+  .acc-owed__head { align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
+  .acc-owed__head > .atlas-section__title { flex: 1 1 auto; min-width: 0; }
+  .acc-owed__end { display: flex; align-items: center; gap: var(--s-3); margin-left: auto; }
+  .acc-other-currency { margin-top: 2px; }
   /* Field hints: what Atlas filled in, and where what it read differs. */
   .acc-filled, .acc-differs { display: flex; align-items: flex-start; gap: var(--s-1); }
   .acc-filled > svg, .acc-differs > svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
@@ -148,9 +151,16 @@
   @media (max-width: 599px) {
     .acc-amounts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
     .acc-vat__row { grid-template-columns: 88px minmax(0, 1fr) minmax(0, 1fr) 40px; gap: var(--s-2); }
-    /* Status pills go under the title so a long supplier name keeps the width. */
-    .acc-row { flex-wrap: wrap; }
-    .acc-row__end { flex: 1 0 100%; justify-content: flex-start; padding-left: 44px; }
+    /* A grid: the icon in its own column beside the title, the pills under
+       the title and aligned with it, however long the supplier name is. */
+    .acc-row { display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: var(--s-3); row-gap: var(--s-2); align-items: start; }
+    .acc-row > .atlas-row__icon { grid-column: 1; grid-row: 1 / span 2; }
+    .acc-row > .atlas-row__body { grid-column: 2; grid-row: 1; }
+    .acc-row > .acc-row__end { grid-column: 2; grid-row: 2; justify-content: flex-start; }
+    .acc-row > .acc-row__end:empty { display: none; }
+    /* Owed header: the name on its own line, the amount and action below it. */
+    .acc-owed__head > .atlas-section__title { flex-basis: 100%; }
+    .acc-owed__end { margin-left: 0; width: 100%; justify-content: space-between; }
     .acc-export__actions .atlas-btn { width: 100%; }
     /* All: search and a filter select, each the full width (six segments don't fit). */
     .acc-toolbar { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
