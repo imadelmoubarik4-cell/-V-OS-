@@ -657,7 +657,7 @@
         state.imports.rows = state.imports.rows.filter((entry) => entry.id !== batch.id);
         state.imports.busy.delete(batch.id);
         toast('Import deleted.');
-        root.AtlasShell.navigate('#data');
+        if (root.location.hash !== '#data') root.location.hash = '#data';
         return;
       }
       if (['stage', 'promote', 'discard'].includes(action)) {
@@ -1612,7 +1612,7 @@
     // Retired view ids (Real VÁ Data) open the matching Data tab.
     root.AtlasShell.registerView('sprint3-review', { root: null, guard: () => { root.AtlasShell.navigate('#data/import-review'); return false; } });
     root.AtlasShell.home?.contribute?.('data', { order: 60, focusRows });
-    root.AtlasShell.actions?.register?.({ id: 'data.import', label: 'Import a file', icon: 'upload', keywords: ['import', 'upload', 'csv', 'excel', 'spreadsheet'], roles: MANAGERS, contexts: ['data'], run: () => { root.AtlasShell.navigate('#data'); root.setTimeout(openUpload, 0); } });
+    root.AtlasShell.actions?.register?.({ id: 'data.import', label: 'Import a file', icon: 'upload', keywords: ['import', 'upload', 'csv', 'excel', 'spreadsheet'], roles: MANAGERS, contexts: ['data'], run: () => { if (root.location.hash !== '#data') root.location.hash = '#data'; root.setTimeout(openUpload, 0); } });
     root.AtlasShell.actions?.register?.({ id: 'data.pars', label: 'Set par levels', icon: 'gauge', keywords: ['par', 'par levels', 'reorder'], roles: MANAGERS, contexts: ['data', 'inventory'], run: () => root.AtlasShell.navigate('#data/pars') });
     root.AtlasShell.actions?.register?.({ id: 'data.approvals', label: 'Review catalogue changes', icon: 'badge-check', keywords: ['approve', 'alias', 'barcode', 'duplicate', 'catalogue'], roles: MANAGERS, contexts: ['data', 'home'], run: () => root.AtlasShell.navigate('#data/approvals') });
     root.AtlasShell.on?.('profile:ready', () => { loadSummary({ force: true }); if (visible()) render(); });

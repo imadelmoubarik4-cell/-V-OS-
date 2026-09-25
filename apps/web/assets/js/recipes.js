@@ -571,6 +571,13 @@
       ${money}${archive}`;
   }
 
+  // Moving to a shorter route of the same view (#recipes/<id> → #recipes)
+  // through the hash, so the address bar and history follow.
+  function go(hash) {
+    if (location.hash === hash) return;
+    location.hash = hash;
+  }
+
   function isPhone() {
     return window.matchMedia?.('(max-width: 767px)').matches;
   }
@@ -650,7 +657,7 @@
     if (programmatic) return;
     // Closed by the user (Esc, close button, backdrop): return to the library route.
     const route = window.AtlasShell?.parseRoute?.(location.hash);
-    if (route?.view === 'recipes' && route.params.recipe) window.AtlasShell.navigate('#recipes');
+    if (route?.view === 'recipes' && route.params.recipe) go('#recipes');
     state.selectedRecipeId = null;
   }
 
@@ -861,7 +868,7 @@
     resetEditor();
     if (reason === 'route' || saved) return;
     const route = window.AtlasShell?.parseRoute?.(location.hash);
-    if (route?.view === 'recipes' && route.params.edit) window.AtlasShell.navigate(recipeId ? `#recipes/${encodeURIComponent(recipeId)}` : '#recipes');
+    if (route?.view === 'recipes' && route.params.edit) go(recipeId ? `#recipes/${encodeURIComponent(recipeId)}` : '#recipes');
   }
 
   function closeEditor(reason = 'route') {
@@ -1155,7 +1162,7 @@
     closeEditor('saved');
     closeDetailSheet('route');
     window.AtlasShell?.toast?.(`${recipe.name} deleted.`);
-    window.AtlasShell?.navigate?.('#recipes');
+    go('#recipes');
     await loadAll();
     if (activeView === 'recipes') render();
   }
@@ -1220,7 +1227,7 @@
       await loadAll();
       window.AtlasModal.close(dom.modal, 'saved');
       window.AtlasShell?.toast?.(`${payload.name} saved.`);
-      window.AtlasShell?.navigate?.(`#recipes/${encodeURIComponent(savedRecipeId)}`);
+      if (typeof go === 'function') go(`#recipes/${encodeURIComponent(savedRecipeId)}`);
       if (activeView === 'recipes') await render();
     } catch (error) {
       dom.saveState.textContent = saved
@@ -1467,7 +1474,7 @@
     openWithStatus: (status) => {
       state.statusFilter = ['all', 'available', 'unavailable', 'draft', 'attention'].includes(status) ? status : 'all';
       state.category = 'all';
-      window.AtlasShell?.navigate?.('#recipes');
+      go('#recipes');
       renderLibrary();
     },
     openRecipe: (recipeId) => window.AtlasShell?.navigate?.(`#recipes/${encodeURIComponent(recipeId)}`),
