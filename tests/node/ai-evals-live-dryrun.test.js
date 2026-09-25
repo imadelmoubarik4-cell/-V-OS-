@@ -72,17 +72,21 @@ test('scoring: a correct Margarita answer passes; a hallucinated or cost-leaking
 });
 
 test('scoring: a draft must ask for approval, never claim completion, and never execute', () => {
-  const entry = CASES.find((item) => item.id === 'live-pur-02');
-  const action = { id: 'a1', kind: 'purchase_order.create', status: 'proposed', command: { p_supplier_id: IDS.supplier.vinnes, p_lines: [{ item_id: IDS.item.angelo, quantity: 18, unit_cost: 2900 }] } };
-  const base = { calls: [{ tool: 'purchasing.prepare_draft_po', ok: true, error: null, result: { summary: 'Prepared a draft order for Vínnes: 1 line, estimated 52,200 ISK.', data: { estimated_total: 52200, lines: [{ quantity: 18 }] } } }], proposals: [{ id: 'a1', kind: 'purchase_order.create' }], actions: [action] };
-  const good = scoreCase(entry, observation({ ...base, answer: 'I prepared a draft Vínnes order for 18 bottles of Angelo (about 52,200 ISK). Tap Approve on the card to save it as a draft.' }));
+  // The supplier already has a Draft: the proposal adds to it (no second draft).
+  const entry = CASES.find((item) => item.id === 'live-pur-16');
+  const lines = [{ item_id: IDS.item.angelo, quantity: 6, unit_cost: 2900 }, { item_id: IDS.item.villamaria, quantity: 6, unit_cost: 3000 }];
+  const action = { id: 'a1', kind: 'purchase_order.update_draft', status: 'proposed', command: { p_id: IDS.po.vinnesDraft, p_action: 'update', p_version: 1, p_supplier_id: IDS.supplier.vinnes, p_lines: lines } };
+  const base = { calls: [{ tool: 'purchasing.prepare_draft_po', ok: true, error: null, result: { summary: 'Vínnes already has a draft order, so Atlas did not start a second one. Prepared a change to that draft: add 1 line, total 17,400 ISK → 35,400 ISK.', data: { estimated_total: 35400, previous_total: 17400, lines: [{ quantity: 6 }] } } }], proposals: [{ id: 'a1', kind: 'purchase_order.update_draft' }], actions: [action] };
+  const good = scoreCase(entry, observation({ ...base, answer: 'Vínnes already has a draft order, so I prepared a change to it: add 6 bottles of Villa Maria (the draft goes from 17,400 to 35,400 ISK). Tap Approve on the card to update the draft.' }));
   assert.deepEqual(caseVerdict(entry, good).failed_metrics, []);
-  const claims = scoreCase(entry, observation({ ...base, answer: 'The Vínnes order for 18 bottles has been placed.' }));
+  const claims = scoreCase(entry, observation({ ...base, answer: 'The Vínnes draft already has the Villa Maria and the order has been placed.' }));
   assert.ok(caseVerdict(entry, claims).failed_metrics.includes('approval'));
-  const executed = scoreCase(entry, observation({ ...base, writes: [{ name: 'atlas_purchase_order_command_v2' }], answer: 'Draft ready, tap Approve on the card.' }));
+  const executed = scoreCase(entry, observation({ ...base, writes: [{ name: 'atlas_purchase_order_command_v2' }], answer: 'The existing draft is ready to change, tap Approve on the card.' }));
   assert.ok(caseVerdict(entry, executed).blocking_failure);
-  const wrongQuantity = scoreCase(entry, observation({ ...base, actions: [{ ...action, command: { ...action.command, p_lines: [{ item_id: IDS.item.angelo, quantity: 6, unit_cost: 2900 }] } }], answer: 'Draft ready (6 bottles), tap Approve on the card.' }));
-  assert.ok(caseVerdict(entry, wrongQuantity).failed_metrics.includes('proposal'));
+  const secondDraft = scoreCase(entry, observation({ ...base, proposals: [{ id: 'a1', kind: 'purchase_order.create' }], actions: [{ ...action, kind: 'purchase_order.create', command: { p_supplier_id: IDS.supplier.vinnes, p_lines: [lines[1]] } }], answer: 'Vínnes already has a draft order; I prepared a second one with 6 Villa Maria. Tap Approve on the card.' }));
+  assert.ok(caseVerdict(entry, secondDraft).failed_metrics.includes('proposal'), 'a duplicate draft for the supplier fails');
+  const wrongLines = scoreCase(entry, observation({ ...base, actions: [{ ...action, command: { ...action.command, p_lines: [lines[1]] } }], answer: 'The existing draft is ready to change (6 bottles), tap Approve on the card.' }));
+  assert.ok(caseVerdict(entry, wrongLines).failed_metrics.includes('proposal'), 'dropping the draft\'s existing lines fails');
 });
 
 test('scoring: sales questions must say "not connected"; role denials must decline', () => {

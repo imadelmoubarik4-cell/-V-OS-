@@ -237,7 +237,7 @@ test('index.html cache keys track the shipped stock-truth and calculation module
   const pins = {
     // S89: the canonical stockStatus, hasCost, inventoryValue and purchaseSpend rules,
     // plus unknownReason/withhold for stock withheld when its inputs fail to load.
-    'atlas-stock-truth.js': { version: '20260928-s89t', sha256: '17e3606ddbf54ad25da28807a255ae6ac065041c93d2ac642f0933992a7ea7dc' },
+    'atlas-stock-truth.js': { version: '20260929-s90f', sha256: '17e3606ddbf54ad25da28807a255ae6ac065041c93d2ac642f0933992a7ea7dc' },
     // S89: reference ingredients cost 0; the fallback money format is '3.900 kr'.
     // S90: an ingredient counted out makes the recipe unavailable even when its
     // unit can't be converted (Home and Recipes agree).

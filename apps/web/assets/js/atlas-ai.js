@@ -687,8 +687,13 @@
     if (!input) return;
     input.style.height = 'auto';
     const lineHeight = 24;
-    const max = lineHeight * 8 + 4;
-    input.style.height = `${Math.min(max, Math.max(lineHeight + 4, input.scrollHeight))}px`;
+    // The CSS min-height is the touch height on coarse pointers (44 px) and
+    // one line elsewhere; padding counts towards the eight-line maximum.
+    const style = root.getComputedStyle ? root.getComputedStyle(input) : null;
+    const padding = (parseFloat(style?.paddingTop) || 0) + (parseFloat(style?.paddingBottom) || 0);
+    const minimum = Math.max(lineHeight + 4, parseFloat(style?.minHeight) || 0);
+    const max = lineHeight * 8 + Math.max(4, padding);
+    input.style.height = `${Math.min(max, Math.max(minimum, input.scrollHeight))}px`;
     input.style.overflowY = input.scrollHeight > max ? 'auto' : 'hidden';
   }
 
@@ -1311,6 +1316,7 @@
 
   const KINDS = {
     'purchase_order.create': { icon: 'truck', verb: 'Create order', done: 'Order created', view: 'View order', executable: true },
+    'purchase_order.update_draft': { icon: 'truck', verb: 'Update draft order', done: 'Draft order updated', view: 'View order', executable: true },
     'purchase_order.receive': { icon: 'truck', verb: 'Receive delivery', done: 'Delivery received', view: 'View order', executable: true },
     'stock_count.draft': { icon: 'list-checks', verb: 'Save count for review', done: 'Count saved for review', view: 'View count', executable: true },
     'shift.draft': { icon: 'calendar-days', verb: 'Save as draft', done: 'Shift draft saved', view: 'View shifts', executable: true },
@@ -2499,7 +2505,7 @@
       <form class="ai-sheet__form" data-ai-dec-form>
         <h3>Record a decision</h3>
         <div class="atlas-field"><label for="${id}-decision">Decision</label><select id="${id}-decision" class="atlas-select" name="decision"><option value="accept">Approve</option><option value="reject">Dismiss</option><option value="defer">Decide later</option></select></div>
-        <div class="atlas-field" data-ai-defer hidden><label for="${id}-until">Decide by</label><input id="${id}-until" class="atlas-input" type="datetime-local" name="until"></div>
+        <div class="atlas-field" data-ai-defer hidden><label for="${id}-until">Decide by</label><input id="${id}-until" class="atlas-input" type="datetime-local" step="60" name="until"></div>
         <div class="atlas-field"><label for="${id}-notes">Note (optional)</label><textarea id="${id}-notes" class="atlas-input" name="notes" rows="3" placeholder="What should Atlas remember about this?"></textarea></div>
         <div class="ai-sheet__error" data-ai-dec-error hidden role="alert"></div>
         <div class="ai-sheet__actions"><button type="submit" class="atlas-btn atlas-btn--primary">Save decision</button></div>

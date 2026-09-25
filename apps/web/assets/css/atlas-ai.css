@@ -383,7 +383,12 @@ html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::befo
   .atlas-ai .composer__ctx-x, .atlas-ai .file-chip__x { width: 44px; height: 44px; }
   .atlas-ai .ai-thread__title-btn { min-height: 44px; }
   .atlas-ai .voice__toggle { min-height: 44px; }
-  .atlas-ai .composer textarea { font-size: 16px; }
+  /* Design-system touch height for the field (--control-lg, 44 px): the one
+     line of text sits in the middle and the frame loses the same space above,
+     so the composer does not look taller. */
+  .atlas-ai .composer { padding-top: 2px; }
+  .atlas-ai .composer__bar { margin-top: 0; }
+  .atlas-ai .composer textarea { font-size: 16px; min-height: var(--control-lg, 44px); height: var(--control-lg, 44px); padding: 10px 0; }
 }
 
 /* ---------- widths ---------- */

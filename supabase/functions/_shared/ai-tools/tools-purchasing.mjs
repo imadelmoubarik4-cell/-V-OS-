@@ -2,20 +2,37 @@
 // manager-only by RLS). Suggestions use the canonical orderSuggestions with
 // open purchase orders as input; drafts are proposals executed only through
 // atlas_purchase_order_command_v2 after a person approves.
+//
+// One truth for "already on an order": the canonical rule
+// (_shared/atlas-domain.mjs openPurchaseOrderItemIds, the browser's
+// AtlasPurchaseOrders.openItemIds) counts draft, pending-approval, approved,
+// placed and partly received orders. The assistant uses that same rule: an
+// item on a draft is covered and is not suggested again, and a supplier's
+// existing draft is added to instead of a second draft being created.
 
-import { orderGroups, orderSuggestions, purchaseReceiptAmount, stockStatus } from "../atlas-domain.mjs";
+import { OPEN_PURCHASE_ORDER_STATUSES, orderGroups, orderSuggestions, purchaseReceiptAmount, stockStatus } from "../atlas-domain.mjs";
 import { S } from "./schema.mjs";
 import { buildProposal } from "./actions.mjs";
 import {
-  calculation, estimate, fact, formatIsk, formatNumber, interpretation, missing, ok, quantityLabel, record, source, ToolError, truncate,
+  calculation, estimate, fact, formatIsk, formatNumber, interpretation, missing, ok, quantityLabel, record, routeFor, source, ToolError, truncate,
 } from "./result.mjs";
 import { clampLimit, lower, matchByName, newId, numberOrNull, text, venueDates, withinDays, nowMillis } from "./helpers.mjs";
 import { resolveInventoryName } from "./tools-recognition.mjs";
 
 const MANAGERS = ["admin", "manager"];
-export const OPEN_ORDER_STATUSES = ["draft", "pending_approval", "approved", "ordered", "partially_received"];
+export const OPEN_ORDER_STATUSES = [...OPEN_PURCHASE_ORDER_STATUSES];
 const RECEIVING_STATUSES = ["ordered", "partially_received"];
 export const DEFAULT_DRAFT_PO_CAP_ISK = 5_000_000;
+const MAX_ORDER_LINES = 100;
+
+// Plain words for where an item already is.
+export const ON_ORDER_LABELS = Object.freeze({
+  draft: "on a draft order",
+  pending_approval: "waiting for approval",
+  approved: "approved, not yet placed",
+  ordered: "ordered",
+  partially_received: "partly received",
+});
 
 const uuidFor = (ctx) => (ctx.newId ? ctx.newId() : newId());
 
@@ -23,23 +40,52 @@ function orderTotal(lines) {
   return (Array.isArray(lines) ? lines : []).reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unit_cost) || 0), 0);
 }
 
+function statusLabel(status) {
+  return ON_ORDER_LABELS[status] || String(status || "open").replace(/_/g, " ");
+}
+
+// Most recent first, independent of how the service sorted the rows.
+function newestFirst(orders) {
+  return [...orders].sort((a, b) => text(b.created_at).localeCompare(text(a.created_at)));
+}
+
+// item id -> { order, status, label } for every open order (canonical rule).
+// When an item is on several open orders the one furthest along wins
+// (placed before approved before pending before draft).
+function openOrderIndex(orders) {
+  const rank = (status) => OPEN_ORDER_STATUSES.indexOf(status);
+  const index = new Map();
+  for (const order of newestFirst(orders).filter((candidate) => OPEN_ORDER_STATUSES.includes(candidate.status))) {
+    for (const line of order.lines || []) {
+      if (!line?.item_id) continue;
+      const key = String(line.item_id);
+      const previous = index.get(key);
+      if (!previous || rank(order.status) > rank(previous.status)) index.set(key, { order, status: order.status, label: statusLabel(order.status) });
+    }
+  }
+  return index;
+}
+
 async function suggestionState(ctx) {
   const [projected, orders] = await Promise.all([ctx.services.projectedItems(), ctx.services.purchaseOrders()]);
   const active = projected.filter((item) => item.active !== false);
-  // The assistant labels items on a draft, pending or approved order
-  // (on_draft_order) instead of hiding them, so only placed and partly
-  // received orders mark an item "ordered" here. The canonical open-order
-  // rule (drafts included, S90 P2-7) is what Purchasing uses to leave them
-  // out of its own suggestions.
-  const placed = orders.filter((order) => RECEIVING_STATUSES.includes(order.status));
-  const suggestions = orderSuggestions(active, { purchaseOrders: placed });
-  const onDraft = new Map();
-  for (const order of orders.filter((candidate) => ["draft", "pending_approval", "approved"].includes(candidate.status))) {
-    for (const line of order.lines || []) if (line?.item_id) onDraft.set(String(line.item_id), order);
-  }
+  // Canonical rule: drafts, orders waiting for approval and approved orders
+  // count as "already on an order", exactly as in Purchasing (S90 P2-7).
+  const suggestions = orderSuggestions(active, { purchaseOrders: orders });
+  const onOrder = openOrderIndex(orders);
   const noPar = active.filter((item) => (numberOrNull(item.par_level) ?? 0) <= 0).length;
   const unknownWithPar = active.filter((item) => (numberOrNull(item.par_level) ?? 0) > 0 && item.freshness_state !== "current").length;
-  return { active, orders, suggestions, onDraft, noPar, unknownWithPar };
+  return { active, orders, suggestions, onOrder, noPar, unknownWithPar };
+}
+
+// "1 on a draft order, 3 ordered"
+function onOrderBreakdown(entries, onOrder) {
+  const counts = new Map();
+  for (const entry of entries) {
+    const label = onOrder.get(String(entry.id))?.label || "on an open order";
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+  return Array.from(counts, ([label, count]) => `${count} ${label}`).join(", ");
 }
 
 const suggest = {
@@ -48,10 +94,10 @@ const suggest = {
   roles: MANAGERS,
   specialist: "purchasing",
   progress: "Working out what to order",
-  description: "Manager only. Order suggestions grouped by supplier for items whose verified stock is below par: target is twice par, rounded up to whole cases, with estimated cost. Items already on a placed or partially received order are marked ordered; items on a draft/pending order are flagged. Also reports how many items cannot be judged (no par level or no current count) — never suggest those.",
+  description: "Manager only. Order suggestions grouped by supplier for items whose verified stock is below par: target is twice par, rounded up to whole cases, with estimated cost. Items already on any open order — a draft, one waiting for approval, approved, placed or partly received — are covered and are not suggested again; they are listed with where they are (on_order.label, e.g. \"on a draft order\", \"waiting for approval\"). Also reports how many items cannot be judged (no par level or no current count) — never suggest those.",
   parameters: S.object({
     supplier_id: S.nullable(S.uuid("Only this supplier")),
-    include_ordered: S.nullable(S.boolean("Include items already on an open order (default false)")),
+    include_ordered: S.nullable(S.boolean("Include items already on an open order, drafts included (default false)")),
   }),
   async execute(args, ctx) {
     const state = await suggestionState(ctx);
@@ -59,6 +105,10 @@ const suggest = {
     if (args.supplier_id) list = list.filter((entry) => String(entry.supplierId) === args.supplier_id);
     const ordered = list.filter((entry) => entry.ordered);
     if (!args.include_ordered) list = list.filter((entry) => !entry.ordered);
+    const onOrderOf = (entry) => {
+      const hit = state.onOrder.get(String(entry.id));
+      return hit ? { order_id: hit.order.id, status: hit.status, label: hit.label } : null;
+    };
     const groups = orderGroups(list).map((group) => ({
       supplier: group.supplier,
       supplier_id: group.suggestions[0]?.supplierId ?? null,
@@ -72,7 +122,7 @@ const suggest = {
         shortfall: entry.shortfall,
         estimated_cost: entry.estimatedCost,
         ordered: entry.ordered,
-        on_draft_order: state.onDraft.has(String(entry.id)) ? state.onDraft.get(String(entry.id)).id : null,
+        on_order: onOrderOf(entry),
       })),
     }));
     const byId = new Map(state.active.map((item) => [String(item.id), item]));
@@ -88,24 +138,42 @@ const suggest = {
         ? estimate(`Estimated cost of ${entry.name}`, formatIsk(entry.estimatedCost), source("inventory_item", entry.id, entry.name))
         : missing(`Cost of ${entry.name}`, "no inventory cost set", source("inventory_item", entry.id, entry.name)));
     }
-    if (ordered.length) evidence.push(fact("Already on open orders", `${ordered.length} below-par items`, source("purchase_order", null, "Purchase orders")));
+    const breakdown = onOrderBreakdown(ordered, state.onOrder);
+    if (ordered.length) evidence.push(fact("Already on open orders", `${ordered.length} below-par items (${breakdown})`, source("purchase_order", null, "Purchase orders")));
+    for (const entry of ordered.slice(0, 10)) {
+      const hit = state.onOrder.get(String(entry.id));
+      if (hit) evidence.push(fact(`${entry.name} already covered`, hit.label, source("purchase_order", hit.order.id, `${entry.supplier} order`)));
+    }
     evidence.push(missing("Items that cannot be judged", `${state.noPar} with no par level, ${state.unknownWithPar} with a par but no current count`, source("par_levels", null, "Par levels")));
     const total = groups.reduce((sum, group) => sum + group.estimated_cost, 0);
     const uncosted = list.filter((entry) => !Number.isFinite(entry.estimatedCost)).length;
+    const coveredNote = !ordered.length
+      ? "No below-par item is on an open order."
+      : list.length
+        ? `${ordered.length} more ${ordered.length === 1 ? "is already on an open order" : "are already on open orders"} (${breakdown}), so ${ordered.length === 1 ? "it is" : "they are"} not suggested again.`
+        : `${ordered.length} below-par ${ordered.length === 1 ? "item is already on an open order" : "items are already on open orders"} (${breakdown}).`;
+    const coveredOrders = new Map();
+    for (const entry of ordered) {
+      const hit = state.onOrder.get(String(entry.id));
+      if (hit && !coveredOrders.has(String(hit.order.id))) coveredOrders.set(String(hit.order.id), hit);
+    }
     return ok({
       summary: list.length
-        ? `${list.length} items to order across ${groups.length} supplier(s), estimated ${formatIsk(total)}${uncosted ? ` plus ${uncosted} without a cost` : ""}. ${ordered.length} more are already on open orders. ${state.noPar} items have no par level and ${state.unknownWithPar} have no current count, so they are not assessed.`
-        : `Nothing to order from current verified counts. ${ordered.length} below-par items are already on open orders; ${state.noPar} items have no par and ${state.unknownWithPar} have no current count, so they are not assessed.`,
+        ? `${list.length} items to order across ${groups.length} supplier(s), estimated ${formatIsk(total)}${uncosted ? ` plus ${uncosted} without a cost` : ""}. ${coveredNote} ${state.noPar} items have no par level and ${state.unknownWithPar} have no current count, so they are not assessed.`
+        : `Nothing to order from current verified counts. ${coveredNote} ${state.noPar} items have no par and ${state.unknownWithPar} have no current count, so they are not assessed.`,
       data: {
         groups,
         estimated_total: total,
         uncosted_items: uncosted,
-        already_ordered: ordered.map((entry) => ({ item_id: entry.id, name: entry.name })),
+        already_ordered: ordered.map((entry) => ({ item_id: entry.id, name: entry.name, supplier: entry.supplier, on_order: onOrderOf(entry) })),
         counts: { suggested: list.length, already_ordered: ordered.length, missing_par: state.noPar, par_but_unknown_stock: state.unknownWithPar },
-        rule: "Suggest items that need ordering: verified out of stock, or verified stock strictly below par. Target = 2 × par, at least one unit, rounded up to whole cases. Items without a cost have no estimate (counted as uncosted, never 0 kr).",
+        rule: "Suggest items that need ordering: verified out of stock, or verified stock strictly below par, and not already on an open order (a draft, one waiting for approval, approved, placed or partly received). Target = 2 × par, at least one unit, rounded up to whole cases. Items without a cost have no estimate (counted as uncosted, never 0 kr).",
       },
       evidence,
-      records: list.slice(0, 25).map((entry) => record("inventory_item", entry.id, entry.name)),
+      records: [
+        ...list.slice(0, 25).map((entry) => record("inventory_item", entry.id, entry.name)),
+        ...Array.from(coveredOrders.values()).slice(0, 10).map((hit) => record("purchase_order", hit.order.id, `Order (${hit.label})`)),
+      ],
       unknown: { count: state.noPar + state.unknownWithPar, reason: "No par level or no current verified count", breakdown: { missing_par: state.noPar, par_but_unknown_stock: state.unknownWithPar } },
     });
   },
@@ -173,13 +241,53 @@ const getSupplier = {
   },
 };
 
+// The supplier's existing Draft order (newest first) and its other open
+// orders. Only a Draft can be changed (atlas_purchase_order_command_v2
+// update); pending, approved and placed orders are linked, never edited.
+function supplierOpenOrders(orders, supplierId) {
+  const open = newestFirst(orders).filter((order) => String(order.supplier_id) === String(supplierId) && OPEN_ORDER_STATUSES.includes(order.status));
+  return { draft: open.find((order) => order.status === "draft") || null, drafts: open.filter((order) => order.status === "draft"), open };
+}
+
+const STATUS_WORDS = Object.freeze({ draft: "draft", pending_approval: "waiting for approval", approved: "approved", ordered: "ordered", partially_received: "partly received" });
+
+function orderLabel(supplier, order) {
+  return `${supplier.name} order (${STATUS_WORDS[order.status] || statusLabel(order.status)})`;
+}
+
+function existingDraftData(draft) {
+  return {
+    id: draft.id,
+    status: draft.status,
+    version: Number(draft.version) || null,
+    expected_delivery_date: draft.expected_delivery_date ?? null,
+    lines: (draft.lines || []).map((line) => ({ item_id: line.item_id, name: line.item_name ?? null, quantity: Number(line.quantity) || 0, unit_cost: numberOrNull(line.unit_cost) })),
+    total: orderTotal(draft.lines),
+    route: routeFor("purchase_order", draft.id),
+  };
+}
+
+// "A draft already covers this": link the draft, change nothing.
+function linkExistingDraft(supplier, draft, summary, extraEvidence = []) {
+  const src = source("purchase_order", draft.id, orderLabel(supplier, draft));
+  return ok({
+    summary,
+    data: { lines: [], existing_draft: existingDraftData(draft), created: false },
+    evidence: [
+      fact("Existing draft order", `${(draft.lines || []).length} ${(draft.lines || []).length === 1 ? "line" : "lines"}, ${formatIsk(orderTotal(draft.lines))}${draft.expected_delivery_date ? `, expected ${draft.expected_delivery_date}` : ""}`, src),
+      ...extraEvidence,
+    ],
+    records: [record("purchase_order", draft.id, `${supplier.name} draft order`), record("supplier", supplier.id, supplier.name)],
+  });
+}
+
 const prepareDraftPo = {
   name: "purchasing.prepare_draft_po",
   level: "draft",
   roles: MANAGERS,
   specialist: "purchasing",
   progress: "Preparing a draft order",
-  description: "Manager only. Prepare (not save) a draft purchase order for one supplier. Give explicit lines, or set use_suggestions to take the current below-par suggestions for that supplier. unit_cost null uses the item's current inventory cost. Returns a proposal the user must approve; approval saves a Draft order in Purchasing — it is never placed or sent automatically. Ambiguous item or supplier names are returned for clarification instead.",
+  description: "Manager only. Prepare (not save) a draft purchase order for one supplier. Give explicit lines, or set use_suggestions to take the current below-par suggestions for that supplier (items already on any open order, drafts included, are not suggested again). unit_cost null uses the item's current inventory cost. If the supplier already has a Draft order, Atlas never creates a second one: it proposes adding the lines to that draft (purchase_order.update_draft; for an item already on the draft, quantity is the new line total), or, when the draft already covers everything, links it and changes nothing. Returns a proposal the user must approve; approval saves a Draft order in Purchasing — it is never placed or sent automatically. Ambiguous item or supplier names are returned for clarification instead.",
   parameters: S.object({
     supplier_id: S.nullable(S.uuid("Supplier id")),
     supplier_query: S.nullable(S.string("Supplier name", { maxLength: 120 })),
@@ -187,7 +295,7 @@ const prepareDraftPo = {
     lines: S.nullable(S.array(S.object({
       item_id: S.nullable(S.uuid("Inventory item id")),
       item_query: S.nullable(S.string("Item name", { maxLength: 120 })),
-      quantity: S.number("Quantity in the item's inventory unit", { minimum: 0.001, maximum: 100000 }),
+      quantity: S.number("Quantity in the item's inventory unit (for an item already on the supplier's draft: the new line total)", { minimum: 0.001, maximum: 100000 }),
       unit_cost: S.nullable(S.number("Unit cost in ISK; null = current inventory cost", { minimum: 0, maximum: 100000000 })),
     }), "Order lines", { minItems: 1, maxItems: 50 })),
     note: S.nullable(S.string("Order note", { maxLength: 500 })),
@@ -198,19 +306,37 @@ const prepareDraftPo = {
     if (resolved.candidates) return clarifySupplier(args.supplier_query, resolved.candidates);
     const supplier = resolved.supplier;
     if (supplier.active === false) throw new ToolError("invalid_arguments", `${supplier.name} is inactive; choose an active supplier.`);
-    const items = (await ctx.services.inventory()).filter((item) => item.active !== false);
+    const [inventory, orders] = await Promise.all([ctx.services.inventory(), ctx.services.purchaseOrders()]);
+    const items = inventory.filter((item) => item.active !== false);
+    const { draft, drafts, open } = supplierOpenOrders(orders, supplier.id);
+    const onOrder = openOrderIndex(orders);
     let requested = args.lines || [];
     if (!requested.length && args.use_suggestions) {
       const state = await suggestionState(ctx);
-      requested = state.suggestions
-        .filter((entry) => String(entry.supplierId) === String(supplier.id) && !entry.ordered)
+      const forSupplier = state.suggestions.filter((entry) => String(entry.supplierId) === String(supplier.id));
+      requested = forSupplier
+        .filter((entry) => !entry.ordered)
         .map((entry) => ({ item_id: String(entry.id), item_query: null, quantity: entry.orderQuantity, unit_cost: null }));
       if (!requested.length) {
+        const covered = forSupplier.filter((entry) => entry.ordered);
+        const coveredEvidence = covered.map((entry) => {
+          const hit = state.onOrder.get(String(entry.id));
+          return fact(`${entry.name} already covered`, hit ? hit.label : "on an open order", source("purchase_order", hit?.order.id ?? null, hit ? orderLabel(supplier, hit.order) : "Purchase orders"));
+        });
+        if (draft) {
+          return linkExistingDraft(
+            supplier, draft,
+            `${supplier.name} already has a draft order (${(draft.lines || []).length} ${(draft.lines || []).length === 1 ? "line" : "lines"}, ${formatIsk(orderTotal(draft.lines))}) and it already covers everything suggested for ${supplier.name}, so no second draft was prepared. Open the draft in Purchasing to review, change or place it.`,
+            coveredEvidence,
+          );
+        }
         return ok({
-          summary: `There are no current order suggestions for ${supplier.name}, so no draft was prepared.`,
-          data: { lines: [] },
-          evidence: [fact("Order suggestions for supplier", "0", source("supplier", supplier.id, supplier.name))],
-          records: [record("supplier", supplier.id, supplier.name)],
+          summary: covered.length
+            ? `Everything suggested for ${supplier.name} is already on an open order (${onOrderBreakdown(covered, state.onOrder)}), so no draft was prepared.`
+            : `There are no current order suggestions for ${supplier.name}, so no draft was prepared.`,
+          data: { lines: [], created: false },
+          evidence: [fact("Order suggestions for supplier", "0", source("supplier", supplier.id, supplier.name)), ...coveredEvidence],
+          records: [record("supplier", supplier.id, supplier.name), ...open.map((order) => record("purchase_order", order.id, orderLabel(supplier, order)))],
         });
       }
     }
@@ -231,7 +357,8 @@ const prepareDraftPo = {
         if (line.item_id) clarifications.push({ line: index, query: line.item_id, status: "not_found", candidates: [] });
         continue;
       }
-      const unitCost = line.unit_cost ?? (numberOrNull(item.cost_price) > 0 ? numberOrNull(item.cost_price) : null);
+      const onDraftLine = draft ? (draft.lines || []).find((existing) => String(existing.item_id) === String(item.id)) : null;
+      const unitCost = line.unit_cost ?? (onDraftLine && numberOrNull(onDraftLine.unit_cost) !== null ? numberOrNull(onDraftLine.unit_cost) : (numberOrNull(item.cost_price) > 0 ? numberOrNull(item.cost_price) : null));
       if (unitCost === null) {
         clarifications.push({ line: index, query: item.name, status: "missing_unit_cost", candidates: [{ id: item.id, name: item.name }] });
         continue;
@@ -242,6 +369,10 @@ const prepareDraftPo = {
       }
       if (item.supplier_id && String(item.supplier_id) !== String(supplier.id)) {
         warnings.push(`${item.name} is normally supplied by ${item.supplier || "another supplier"}.`);
+      }
+      const elsewhere = onOrder.get(String(item.id));
+      if (elsewhere && (!draft || String(elsewhere.order.id) !== String(draft.id))) {
+        warnings.push(`${item.name} is already on an open order (${elsewhere.label}).`);
       }
       lines.push({ item, quantity: line.quantity, unit_cost: unitCost });
     }
@@ -257,8 +388,15 @@ const prepareDraftPo = {
     if (args.expected_delivery_date && args.expected_delivery_date < dates.businessDate) {
       throw new ToolError("invalid_arguments", `The expected delivery date cannot be before ${dates.businessDate}.`);
     }
-    const total = lines.reduce((sum, line) => sum + line.quantity * line.unit_cost, 0);
     const cap = Number(ctx.limits?.maxDraftPurchaseOrderIsk) || DEFAULT_DRAFT_PO_CAP_ISK;
+    const lineEvidence = lines.map((line) => calculation(`${line.item.name}`, `${formatNumber(line.quantity)} ${line.item.unit || "units"} × ${formatIsk(line.unit_cost)} = ${formatIsk(line.quantity * line.unit_cost)}`, source("inventory_item", line.item.id, line.item.name)));
+    const itemNames = Object.fromEntries(lines.map((line) => [String(line.item.id), line.item.name]));
+    const itemUnits = Object.fromEntries(lines.map((line) => [String(line.item.id), line.item.unit || "units"]));
+    const lineData = lines.map((line) => ({ item_id: String(line.item.id), quantity: line.quantity, unit_cost: line.unit_cost, name: line.item.name, unit: line.item.unit ?? null, units_per_case: numberOrNull(line.item.units_per_case) }));
+
+    if (draft) return addToExistingDraft({ args, supplier, draft, drafts, lines, lineData, lineEvidence, warnings, items, itemNames, itemUnits, cap });
+
+    const total = lines.reduce((sum, line) => sum + line.quantity * line.unit_cost, 0);
     if (total > cap) throw new ToolError("limit_exceeded", `This draft would total ${formatIsk(total)}, above the Atlas AI draft limit of ${formatIsk(cap)}. Create it in Purchasing instead.`);
     const command = {
       p_id: uuidFor(ctx),
@@ -268,28 +406,114 @@ const prepareDraftPo = {
       p_note: args.note ?? "Prepared with Atlas AI.",
       p_expected_delivery_date: args.expected_delivery_date ?? null,
     };
-    const evidence = lines.map((line) => calculation(`${line.item.name}`, `${formatNumber(line.quantity)} ${line.item.unit || "units"} × ${formatIsk(line.unit_cost)} = ${formatIsk(line.quantity * line.unit_cost)}`, source("inventory_item", line.item.id, line.item.name)));
-    evidence.push(calculation("Estimated order total", formatIsk(total), source("supplier", supplier.id, supplier.name)));
+    const evidence = [...lineEvidence, calculation("Estimated order total", formatIsk(total), source("supplier", supplier.id, supplier.name))];
+    for (const order of open) evidence.push(fact("Other open order for this supplier", statusLabel(order.status), source("purchase_order", order.id, orderLabel(supplier, order))));
     for (const warning of warnings) evidence.push(interpretation("Supplier check", warning, null));
     const proposal = buildProposal("purchase_order.create", command, {
       title: `Draft order: ${supplier.name} (${lines.length} ${lines.length === 1 ? "line" : "lines"})`,
       subjectKey: command.p_id,
       evidence,
-      extras: {
-        supplierName: supplier.name,
-        itemNames: Object.fromEntries(lines.map((line) => [String(line.item.id), line.item.name])),
-        itemUnits: Object.fromEntries(lines.map((line) => [String(line.item.id), line.item.unit || "units"])),
-      },
+      extras: { supplierName: supplier.name, itemNames, itemUnits },
     });
     return ok({
-      summary: `Prepared a draft order for ${supplier.name}: ${lines.length} ${lines.length === 1 ? "line" : "lines"}, estimated ${formatIsk(total)}. Nothing is saved until you approve, and the order is not placed.`,
-      data: { supplier: { id: supplier.id, name: supplier.name }, lines: command.p_lines.map((line, index) => ({ ...line, name: lines[index].item.name, unit: lines[index].item.unit ?? null, units_per_case: numberOrNull(lines[index].item.units_per_case) })), estimated_total: total, warnings },
+      summary: `Prepared a draft order for ${supplier.name}: ${lines.length} ${lines.length === 1 ? "line" : "lines"}, estimated ${formatIsk(total)}. Nothing is saved until you approve, and the order is not placed.${open.length ? ` ${supplier.name} also has ${open.length} open ${open.length === 1 ? "order" : "orders"} that cannot be changed here (${open.map((order) => statusLabel(order.status)).join(", ")}).` : ""}`,
+      data: { supplier: { id: supplier.id, name: supplier.name }, lines: lineData, estimated_total: total, warnings, created: true },
       evidence,
-      records: [record("supplier", supplier.id, supplier.name), ...lines.map((line) => record("inventory_item", line.item.id, line.item.name))],
+      records: [record("supplier", supplier.id, supplier.name), ...lines.map((line) => record("inventory_item", line.item.id, line.item.name)), ...open.map((order) => record("purchase_order", order.id, orderLabel(supplier, order)))],
       proposal,
     });
   },
 };
+
+// The supplier already has a Draft: propose updating THAT draft (same id,
+// current version) with its lines plus the requested ones. No second draft.
+function addToExistingDraft({ args, supplier, draft, drafts, lines, lineData, lineEvidence, warnings, items, itemNames, itemUnits, cap }) {
+  const existing = (draft.lines || []).map((line) => ({ item_id: String(line.item_id), quantity: Number(line.quantity) || 0, unit_cost: Number(line.unit_cost) || 0, name: line.item_name ?? null, unit: line.unit ?? null }));
+  const unavailable = existing.filter((line) => !items.some((item) => String(item.id) === line.item_id));
+  if (unavailable.length) {
+    return linkExistingDraft(
+      supplier, draft,
+      `${supplier.name} already has a draft order, but ${unavailable.length} of its lines ${unavailable.length === 1 ? "is an item that is" : "are items that are"} no longer active, so Atlas cannot add to it. Open the draft in Purchasing to fix it; no second draft was prepared.`,
+      unavailable.map((line) => missing(`${line.name || "Item"} on the draft`, "item is no longer active", source("purchase_order", draft.id, orderLabel(supplier, draft)))),
+    );
+  }
+  const previous = Object.fromEntries(existing.map((line) => [line.item_id, line.quantity]));
+  const merged = existing.map((line) => ({ item_id: line.item_id, quantity: line.quantity, unit_cost: line.unit_cost }));
+  const added = [];
+  const changed = [];
+  for (const line of lines) {
+    const id = String(line.item.id);
+    const at = merged.findIndex((entry) => entry.item_id === id);
+    if (at === -1) {
+      merged.push({ item_id: id, quantity: line.quantity, unit_cost: line.unit_cost });
+      added.push(line);
+    } else if (merged[at].quantity !== line.quantity || merged[at].unit_cost !== line.unit_cost) {
+      merged[at] = { item_id: id, quantity: line.quantity, unit_cost: line.unit_cost };
+      changed.push(line);
+    }
+  }
+  for (const line of existing) {
+    if (!itemNames[line.item_id]) itemNames[line.item_id] = line.name || line.item_id;
+    if (!itemUnits[line.item_id]) itemUnits[line.item_id] = line.unit || "units";
+  }
+  const otherDrafts = drafts.filter((order) => String(order.id) !== String(draft.id));
+  const src = source("purchase_order", draft.id, orderLabel(supplier, draft));
+  if (!added.length && !changed.length) {
+    return linkExistingDraft(
+      supplier, draft,
+      `${supplier.name} already has a draft order with exactly these lines, so nothing needs changing and no second draft was prepared. Open it in Purchasing to review or place it.`,
+    );
+  }
+  if (merged.length > MAX_ORDER_LINES) throw new ToolError("limit_exceeded", `The ${supplier.name} draft would have more than ${MAX_ORDER_LINES} lines. Change it in Purchasing instead.`);
+  const previousTotal = orderTotal(existing);
+  const total = orderTotal(merged);
+  if (total > cap) throw new ToolError("limit_exceeded", `The ${supplier.name} draft would total ${formatIsk(total)}, above the Atlas AI draft limit of ${formatIsk(cap)}. Change it in Purchasing instead.`);
+  const command = {
+    p_id: String(draft.id),
+    p_action: "update",
+    p_version: Number(draft.version),
+    p_supplier_id: String(supplier.id),
+    p_lines: merged,
+    // update replaces the note; keep the draft's own note unless one was given.
+    p_note: args.note ?? String(draft.note ?? ""),
+    p_expected_delivery_date: args.expected_delivery_date ?? null,
+  };
+  const evidence = [
+    fact("Existing draft order", `${existing.length} ${existing.length === 1 ? "line" : "lines"}, ${formatIsk(previousTotal)}${draft.expected_delivery_date ? `, expected ${draft.expected_delivery_date}` : ""}`, src),
+    ...lineEvidence,
+    calculation("Draft total after the change", `${formatIsk(previousTotal)} → ${formatIsk(total)}`, src),
+  ];
+  for (const line of changed) evidence.push(interpretation(`${line.item.name} already on the draft`, `quantity ${formatNumber(previous[String(line.item.id)])} → ${formatNumber(line.quantity)}`, src));
+  for (const order of otherDrafts) evidence.push(fact("Another draft for this supplier", "left unchanged", source("purchase_order", order.id, orderLabel(supplier, order))));
+  for (const warning of warnings) evidence.push(interpretation("Supplier check", warning, null));
+  const changeWords = [
+    added.length ? `add ${added.length} ${added.length === 1 ? "line" : "lines"}` : null,
+    changed.length ? `change ${changed.length} ${changed.length === 1 ? "line" : "lines"}` : null,
+  ].filter(Boolean).join(" and ");
+  const proposal = buildProposal("purchase_order.update_draft", command, {
+    title: `Add to draft order: ${supplier.name} (${changeWords})`,
+    subjectKey: String(draft.id),
+    evidence,
+    extras: { supplierName: supplier.name, itemNames, itemUnits, previousQuantities: previous, previousTotal },
+  });
+  return ok({
+    summary: `${supplier.name} already has a draft order, so Atlas did not start a second one. Prepared a change to that draft: ${changeWords}, total ${formatIsk(previousTotal)} → ${formatIsk(total)}. Nothing is saved until you approve, and the order is not placed.`,
+    data: {
+      supplier: { id: supplier.id, name: supplier.name },
+      lines: lineData,
+      existing_draft: existingDraftData(draft),
+      added: added.map((line) => String(line.item.id)),
+      changed: changed.map((line) => String(line.item.id)),
+      estimated_total: total,
+      previous_total: previousTotal,
+      warnings,
+      created: false,
+    },
+    evidence,
+    records: [record("purchase_order", draft.id, `${supplier.name} draft order`), record("supplier", supplier.id, supplier.name), ...lines.map((line) => record("inventory_item", line.item.id, line.item.name))],
+    proposal,
+  });
+}
 
 const orderStatus = {
   name: "purchasing.order_status",

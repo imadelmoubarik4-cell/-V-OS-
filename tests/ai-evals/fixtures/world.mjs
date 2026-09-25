@@ -855,6 +855,23 @@ export function createWorld({ hours = false, catalog = false, env = ENV } = {}) 
       });
       return { id: args.p_id, status: 'draft', version: 1 };
     }
+    if (args.p_action === 'update') {
+      // Mirrors atlas_purchase_order_command_v2 update: Draft only, current
+      // version, active supplier; replaces the line set and note.
+      const order = data.purchaseOrders.find((row) => row.id === args.p_id);
+      if (!order) return pgError(404, 'not_found: purchase order', 'P0002');
+      const supplier = data.suppliers.find((row) => row.id === args.p_supplier_id);
+      if (!supplier || !supplier.active) return pgError(400, 'invalid_arguments: supplier is not active', '22023');
+      if (Number(args.p_version) !== order.version) return pgError(409, 'conflict: the order changed; reload it', '55000');
+      if (order.status !== 'draft') return pgError(409, 'conflict: only a draft can be changed', '55000');
+      order.supplier_id = args.p_supplier_id;
+      order.lines = args.p_lines.map((line) => ({ ...line, item_name: itemById(line.item_id)?.name ?? null, unit: itemById(line.item_id)?.unit ?? null, received_quantity: 0 }));
+      order.note = args.p_note ?? '';
+      if (args.p_expected_delivery_date) order.expected_delivery_date = args.p_expected_delivery_date;
+      order.version += 1;
+      order.updated_at = new Date(NOW).toISOString();
+      return { id: order.id, status: order.status, version: order.version };
+    }
     if (args.p_action === 'receive_lines') {
       const order = data.purchaseOrders.find((row) => row.id === args.p_id);
       if (!order) return pgError(404, 'not_found: purchase order', 'P0002');

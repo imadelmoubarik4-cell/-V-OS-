@@ -108,7 +108,7 @@ test('specialists: "Prepare Friday." fans out to shifts, purchasing and operatio
           ...toolCall('ask_operations', { input: 'Are opening hours set?' }, 'call_ops'),
         ];
       }
-      return message('Friday: Bjarni, Sigrún, Kári and Anna are on (Anna is an unpublished change). 6 items to order across 4 suppliers, about 222.960 kr. Opening hours are not set in Settings. ');
+      return message('Friday: Bjarni, Sigrún, Kári and Anna are on (Anna is an unpublished change). 5 items to order across 3 suppliers, about 170.760 kr; Angelo is already on the Vínnes draft. Opening hours are not set in Settings. ');
     }
     const specialist = specialistOf(req);
     if (hasToolOutput(req)) return message(`Briefing: ${lastToolOutput(req)?.summary}`);
@@ -131,7 +131,8 @@ test('specialists: "Prepare Friday." fans out to shifts, purchasing and operatio
   assert.deepEqual(tools, ['purchasing.suggest', 'settings.read', 'shifts.who_is_working']);
   const evidence = events.find((entry) => entry.event === 'evidence').data.items;
   assert.ok(evidence.some((item) => item.kind === 'missing' && item.label === 'Opening hours'));
-  assert.ok(evidence.some((item) => item.kind === 'estimate' && item.value === '52.200 kr'));
+  assert.ok(evidence.some((item) => item.kind === 'estimate' && item.value === '62.400 kr'));
+  assert.ok(evidence.some((item) => item.kind === 'fact' && item.label === 'Angelo Pinot Grigio already covered' && item.value === 'on a draft order'), 'the Vínnes draft counts as already on an order');
   assert.ok(evidence.some((item) => item.label === 'Anna' && item.value === '20:00–03:00 · Bar'));
   const models = new Set(rt.modelLog.map((entry) => entry.model));
   assert.ok(models.has('gpt-5.6-sol') && models.has('gpt-5.6-luna'));
@@ -139,13 +140,13 @@ test('specialists: "Prepare Friday." fans out to shifts, purchasing and operatio
 
 test('proposal → execute-action → canonical command with the approver JWT → system note and Brain decision', opts, async () => {
   const rt = setup((req) => (hasToolOutput(req) ? answerFromTool(req)
-    : toolCall('purchasing_prepare_draft_po', { supplier_id: null, supplier_query: 'Vínnes', use_suggestions: true, lines: null, note: null, expected_delivery_date: '2026-09-26' })));
-  const { events } = await rt.chat('manager', { message: 'Draft the Vínnes order from the suggestions.', client_request_id: 'eval-po-0001' });
+    : toolCall('purchasing_prepare_draft_po', { supplier_id: null, supplier_query: 'Karl K', use_suggestions: true, lines: null, note: null, expected_delivery_date: '2026-09-26' })));
+  const { events } = await rt.chat('manager', { message: 'Draft the Karl K. Karlsson order from the suggestions.', client_request_id: 'eval-po-0001' });
   const done = doneOf(events);
   const [proposal] = proposalsOf(events);
   assert.equal(proposal.kind, 'purchase_order.create');
   assert.deepEqual(proposal.required_roles, ['admin', 'manager']);
-  assert.equal(proposal.preview.totals.estimated_total, 52200);
+  assert.equal(proposal.preview.totals.estimated_total, 45000);
   assert.ok(events.findIndex((entry) => entry.event === 'proposal') < events.findIndex((entry) => entry.event === 'done'));
   assert.match(done.content, /Nothing is saved until you approve/);
   assert.doesNotMatch(done.content, /\b(has been|was|is now) (ordered|saved|placed|sent)\b/i);
@@ -161,16 +162,49 @@ test('proposal → execute-action → canonical command with the approver JWT �
   const write = rt.world.writes[0];
   assert.equal(write.name, 'atlas_purchase_order_command_v2');
   assert.equal(write.token, tokenFor(ACTORS.manager), 'the command runs with the approver JWT');
-  assert.deepEqual(write.args.p_lines, [{ item_id: IDS.item.angelo, quantity: 18, unit_cost: 2900 }], 'stored command, never the client payload');
+  assert.deepEqual(write.args.p_lines, [{ item_id: IDS.item.prosecco, quantity: 18, unit_cost: 2500 }], 'stored command, never the client payload');
   assert.equal(write.args.p_id, action.command.p_id);
   assert.equal(rt.db.actions.get(proposal.id).status, 'executed');
   const note = rt.db.messages.find((entry) => entry.role === 'system_note');
-  assert.match(note.content, /^Approved by Maria Manager: Draft order: Vínnes \(1 line\)\. Done\. Draft purchase order saved in Purchasing\. It has not been placed/);
+  assert.match(note.content, /^Approved by Maria Manager: Draft order: Karl K\. Karlsson \(1 line\)\. Done\. Draft purchase order saved in Purchasing\. It has not been placed/);
   assert.deepEqual(rt.db.decisions.map((entry) => entry.decision), ['approve']);
   assert.ok(rt.world.data.purchaseOrders.some((order) => order.id === action.command.p_id && order.status === 'draft'));
   const again = await rt.call('execute-action', { actor: 'manager', body: { action_id: proposal.id } });
   assert.equal(again.status, 409, 'single use');
   assert.equal(rt.world.writes.length, 1);
+});
+
+test('a supplier with a Draft: Atlas proposes adding to that draft, approval updates it (no second draft), a bartender cannot approve it', opts, async () => {
+  const rt = setup((req) => (hasToolOutput(req) ? answerFromTool(req)
+    : toolCall('purchasing_prepare_draft_po', { supplier_id: null, supplier_query: 'Vínnes', use_suggestions: null, lines: [{ item_id: null, item_query: 'Angelo', quantity: 18, unit_cost: null }, { item_id: IDS.item.villamaria, item_query: null, quantity: 6, unit_cost: null }], note: null, expected_delivery_date: null })));
+  const { events } = await rt.chat('manager', { message: 'Put 18 Angelo and a case of Villa Maria on the Vínnes order.', client_request_id: 'eval-po-upd-01' });
+  const done = doneOf(events);
+  const [proposal] = proposalsOf(events);
+  assert.equal(proposal.kind, 'purchase_order.update_draft');
+  assert.deepEqual(proposal.required_roles, ['admin', 'manager']);
+  assert.equal(proposal.preview.totals.estimated_total, 70200);
+  assert.equal(proposal.preview.totals.previous_total, 17400);
+  assert.ok(proposal.preview.will_not_change.includes('No second order is created.'));
+  assert.match(done.content, /already has a draft order/);
+  assert.deepEqual(rt.world.writes, [], 'drafting changes nothing');
+
+  const bartender = await rt.call('execute-action', { actor: 'bartender', body: { action_id: proposal.id } });
+  assert.notEqual(bartender.status, 200, 'a bartender cannot approve a manager-only draft update');
+  assert.deepEqual(rt.world.writes, []);
+
+  const executed = await rt.call('execute-action', { actor: 'manager', body: { action_id: proposal.id } });
+  assert.equal(executed.status, 200, JSON.stringify(executed.body));
+  assert.equal(rt.world.writes.length, 1);
+  const write = rt.world.writes[0];
+  assert.equal(write.args.p_action, 'update');
+  assert.equal(write.args.p_id, IDS.po.vinnesDraft);
+  assert.equal(write.args.p_version, 1);
+  assert.equal(write.token, tokenFor(ACTORS.manager));
+  const vinnesDrafts = rt.world.data.purchaseOrders.filter((order) => order.supplier_id === IDS.supplier.vinnes && order.status === 'draft');
+  assert.equal(vinnesDrafts.length, 1, 'still exactly one Vínnes draft');
+  assert.deepEqual(vinnesDrafts[0].lines.map((line) => [line.item_id, line.quantity]), [[IDS.item.angelo, 18], [IDS.item.villamaria, 6]]);
+  const note = rt.db.messages.find((entry) => entry.role === 'system_note');
+  assert.match(note.content, /Draft purchase order updated in Purchasing/);
 });
 
 test('reject, expiry and role: a rejected or expired proposal never runs; a bartender cannot approve a manager proposal', opts, async () => {
@@ -277,6 +311,7 @@ test('follow-ups through structured context: "What about tomorrow?", "Only wines
     [/who.*working today/i, 'shifts_who_is_working', { day: 'today', date: null }],
     [/below par/i, 'inventory_below_par', { category: null, limit: null }],
     [/need from vínnes/i, 'purchasing_suggest', { supplier_id: IDS.supplier.vinnes, include_ordered: null }],
+    [/need from karl/i, 'purchasing_suggest', { supplier_id: IDS.supplier.karlk, include_ordered: null }],
     [/30 margaritas/i, 'recipes_can_make', { recipe_id: null, recipe_query: 'Margarita', servings: 30 }],
   ]));
   let conversationId = null;
@@ -301,7 +336,14 @@ test('follow-ups through structured context: "What about tomorrow?", "Only wines
   assert.match(wines.done.content, /2 below par and 0 out of stock/);
   assert.equal(wines.context.filters.category, 'Wine');
 
-  await say('What do we need from Vínnes?', 'eval-follow-05');
+  // One truth for open orders: Angelo is on the Vínnes draft, so there is
+  // nothing new to prepare and no second Vínnes draft.
+  await say('What do we need from Vínnes?', 'eval-follow-05a');
+  const covered = await say('Prepare that', 'eval-follow-05b');
+  assert.deepEqual(proposalsOf(covered.events), [], 'no second draft for a supplier that already has one');
+  assert.match(covered.done.content, /already has a draft order/);
+
+  await say('What do we need from Karl K. Karlsson?', 'eval-follow-05');
   const prepared = await say('Prepare that', 'eval-follow-06');
   const [first] = proposalsOf(prepared.events);
   assert.equal(first.kind, 'purchase_order.create');
@@ -324,7 +366,7 @@ test('follow-ups through structured context: "What about tomorrow?", "Only wines
 test('follow-ups on a count: "Change the Campari to three" and "Change it to three cases" re-draft the proposal', opts, async () => {
   const rt = setup(followUpModel([
     [/counted six bottles of Tanqueray and two Campari/i, 'inventory_prepare_count', { entries: [{ item_id: null, item_query: 'Tanqueray', quantity: 6, unit: 'bottle', note: null }, { item_id: null, item_query: 'Campari', quantity: 2, unit: 'bottle', note: null }], title: null, note: null }],
-    [/order one case of angelo/i, 'purchasing_prepare_draft_po', { supplier_id: null, supplier_query: 'Vínnes', use_suggestions: null, lines: [{ item_id: null, item_query: 'Angelo', quantity: 6, unit_cost: null }], note: null, expected_delivery_date: null }],
+    [/order one case of prosecco/i, 'purchasing_prepare_draft_po', { supplier_id: null, supplier_query: 'Karl K', use_suggestions: null, lines: [{ item_id: null, item_query: 'Villa Sandi Prosecco', quantity: 6, unit_cost: null }], note: null, expected_delivery_date: null }],
   ]));
   const count = await rt.chat('bartender', { message: 'Atlas, I just counted six bottles of Tanqueray and two Campari', client_request_id: 'eval-count-01' });
   const conversationId = doneOf(count.events).conversation_id;
@@ -332,12 +374,12 @@ test('follow-ups on a count: "Change the Campari to three" and "Change it to thr
   const [proposal] = proposalsOf(revised.events);
   assert.deepEqual(rt.db.actions.get(proposal.id).command.entries.map((entry) => [entry.item_name, entry.quantity]), [['Tanqueray London Dry Gin', 6], ['Campari', 3]]);
 
-  const order = await rt.chat('manager', { message: 'Order one case of Angelo from Vínnes', client_request_id: 'eval-cases-01' });
+  const order = await rt.chat('manager', { message: 'Order one case of Prosecco from Karl K', client_request_id: 'eval-cases-01' });
   const orderConversation = doneOf(order.events).conversation_id;
   const threeCases = await rt.chat('manager', { conversation_id: orderConversation, message: 'Change it to three cases', client_request_id: 'eval-cases-02' });
   const [po] = proposalsOf(threeCases.events);
   assert.equal(rt.db.actions.get(po.id).command.p_lines[0].quantity, 18);
-  assert.equal(rt.db.actions.get(po.id).preview.totals.estimated_total, 52200);
+  assert.equal(rt.db.actions.get(po.id).preview.totals.estimated_total, 45000);
 });
 
 test('image attachment: media fetched server-side, input_image sent to the vision model, delivery compared, receiving proposal only', opts, async () => {

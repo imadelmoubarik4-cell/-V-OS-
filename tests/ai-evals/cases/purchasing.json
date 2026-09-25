@@ -6,25 +6,26 @@
     "args": { "supplier_id": null, "include_ordered": null },
     "expected": {
       "ok": true,
-      "summary": ["6 items to order across 4 supplier(s), estimated 222.960 kr", "3 more are already on open orders", "24 items have no par level and 2 have no current count"],
+      "summary": ["5 items to order across 3 supplier(s), estimated 170.760 kr", "4 more are already on open orders (1 on a draft order, 2 ordered, 1 partly received)", "not suggested again", "24 items have no par level and 2 have no current count"],
       "data": {
-        "data.counts": { "suggested": 6, "already_ordered": 3, "missing_par": 24, "par_but_unknown_stock": 2 },
-        "data.estimated_total": 222960,
-        "data.groups": { "$len": 4 },
+        "data.counts": { "suggested": 5, "already_ordered": 4, "missing_par": 24, "par_but_unknown_stock": 2 },
+        "data.estimated_total": 170760,
+        "data.groups": { "$len": 3 },
         "data.already_ordered": { "$some": { "name": "Aperol" } }
       },
       "evidence_kinds": ["calculation", "estimate", "fact", "missing"],
       "evidence": [
-        { "kind": "calculation", "label": "Order Angelo Pinot Grigio", "value": "verified 10 bottle < par 12; target 24, shortfall 14, 3 case(s) = 18" },
-        { "kind": "estimate", "label": "Estimated cost of Angelo Pinot Grigio", "value": "52.200 kr" },
-        { "kind": "fact", "label": "Already on open orders", "value": "3 below-par items" },
+        { "kind": "calculation", "label": "Order Tanqueray London Dry Gin", "value": "verified 4 bottle < par 6; target 12, shortfall 8, 2 case(s) = 12" },
+        { "kind": "estimate", "label": "Estimated cost of Villa Sandi Prosecco", "value": "45.000 kr" },
+        { "kind": "fact", "label": "Already on open orders", "value": "4 below-par items (1 on a draft order, 2 ordered, 1 partly received)" },
+        { "kind": "fact", "label": "Angelo Pinot Grigio already covered", "value": "on a draft order" },
         { "kind": "missing", "label": "Items that cannot be judged", "value": "24 with no par level, 2 with a par but no current count" }
       ],
-      "records": ["inventory_item:@item.angelo", "inventory_item:@item.tanqueray", "inventory_item:@item.campari", "inventory_item:@item.eljimador", "inventory_item:@item.prosecco", "inventory_item:@item.tonic"],
-      "records_exclude": ["inventory_item:@item.aperol", "inventory_item:@item.gull", "inventory_item:@item.limes"],
+      "records": ["inventory_item:@item.tanqueray", "inventory_item:@item.campari", "inventory_item:@item.eljimador", "inventory_item:@item.prosecco", "inventory_item:@item.tonic", "purchase_order:@po.vinnesDraft"],
+      "records_exclude": ["inventory_item:@item.angelo", "inventory_item:@item.aperol", "inventory_item:@item.gull", "inventory_item:@item.limes"],
       "unknown": { "count": 26 }
     },
-    "notes": "Aperol (Globus, ordered), Gull (Ölgerðin, arriving Friday) and Limes (Innnes, partially received) are already on order."
+    "notes": "One truth for open orders: Angelo Pinot Grigio is on the Vínnes draft, so it is covered and not suggested again (the same rule Purchasing uses). Aperol (Globus, ordered), Gull (Ölgerðin, arriving Friday) and Limes (Innnes, partially received) are also already on order."
   },
   {
     "id": "pur-002", "category": "purchasing", "blocking": true,
@@ -43,7 +44,7 @@
       },
       "evidence": [{ "kind": "estimate", "label": "Estimated cost of Tanqueray London Dry Gin", "value": "62.400 kr" }]
     },
-    "notes": "Globus 37,560 (Campari 6 + tonic 72), Mekka 88,200 (Tanqueray 12 + El Jimador 6), Vínnes 52,200, Karl K. Karlsson 45,000."
+    "notes": "Globus 37,560 (Campari 6 + tonic 72), Mekka 88,200 (Tanqueray 12 + El Jimador 6), Karl K. Karlsson 45,000. Vínnes has no group: its only below-par item is already on the Vínnes draft."
   },
   {
     "id": "pur-003", "category": "purchasing", "blocking": false,
@@ -52,7 +53,11 @@
     "args": { "supplier_id": null, "include_ordered": true },
     "expected": {
       "ok": true,
-      "data": { "data.counts.suggested": 9, "data.groups": { "$some": { "supplier": "Globus", "lines": { "$some": { "name": "Aperol", "ordered": true } } } } }
+      "data": {
+        "data.counts.suggested": 9,
+        "data.groups": { "$some": { "supplier": "Globus", "lines": { "$some": { "name": "Aperol", "ordered": true } } } },
+        "data.already_ordered": { "$some": { "name": "Angelo Pinot Grigio", "on_order": { "order_id": "@po.vinnesDraft", "status": "draft", "label": "on a draft order" } } }
+      }
     }
   },
   {
@@ -73,16 +78,13 @@
     "args": { "supplier_id": null, "supplier_query": "Vínnes", "use_suggestions": true, "lines": null, "note": null, "expected_delivery_date": null },
     "expected": {
       "ok": true,
-      "summary": ["Prepared a draft order for Vínnes: 1 line, estimated 52.200 kr", "Nothing is saved until you approve"],
-      "data": { "data.estimated_total": 52200, "data.lines[0].quantity": 18, "data.lines[0].units_per_case": 6 },
-      "evidence": [{ "kind": "calculation", "label": "Estimated order total", "value": "52.200 kr" }],
-      "records": ["supplier:@supplier.vinnes", "inventory_item:@item.angelo"],
-      "proposal": {
-        "kind": "purchase_order.create", "required_roles": ["admin", "manager"], "executable": true,
-        "command": { "p_action": "create", "p_supplier_id": "@supplier.vinnes", "p_lines": [{ "item_id": "@item.angelo", "quantity": 18, "unit_cost": 2900 }] },
-        "preview": { "will_change": { "$includes": "A new purchase order is saved in Purchasing with status Draft." }, "will_not_change": { "$includes": "The order is not placed or sent to the supplier." } }
-      }
-    }
+      "summary": ["Vínnes already has a draft order (1 line, 17.400 kr)", "no second draft was prepared", "Open the draft in Purchasing"],
+      "data": { "data.lines": { "$len": 0 }, "data.created": false, "data.existing_draft.id": "@po.vinnesDraft", "data.existing_draft.total": 17400, "data.existing_draft.lines[0].item_id": "@item.angelo" },
+      "evidence": [{ "kind": "fact", "label": "Existing draft order", "value": "1 line, 17.400 kr, expected 2026-09-26" }, { "kind": "fact", "label": "Angelo Pinot Grigio already covered", "value": "on a draft order" }],
+      "records": ["purchase_order:@po.vinnesDraft", "supplier:@supplier.vinnes"],
+      "proposal": null
+    },
+    "notes": "A Vínnes draft already covers Angelo (the only Vínnes suggestion), so Atlas links it instead of preparing a second draft."
   },
   {
     "id": "pur-006", "category": "purchasing", "blocking": true,
@@ -218,5 +220,56 @@
     "actor": "manager", "tool": "purchasing.prepare_draft_po",
     "args": { "supplier_id": null, "supplier_query": "Rolf Johansen", "use_suggestions": true, "lines": null, "note": null, "expected_delivery_date": null },
     "expected": { "ok": false, "error": "invalid_arguments", "message": ["inactive"] }
+  },
+  {
+    "id": "pur-017", "category": "purchasing", "blocking": true,
+    "question": "Put 18 Angelo and a case of Villa Maria on the Vínnes order.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": null, "supplier_query": "Vínnes", "use_suggestions": null, "lines": [{ "item_id": null, "item_query": "Angelo", "quantity": 18, "unit_cost": null }, { "item_id": "@item.villamaria", "item_query": null, "quantity": 6, "unit_cost": null }], "note": null, "expected_delivery_date": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Vínnes already has a draft order, so Atlas did not start a second one", "add 1 line and change 1 line", "17.400 kr → 70.200 kr", "Nothing is saved until you approve"],
+      "data": { "data.created": false, "data.existing_draft.id": "@po.vinnesDraft", "data.estimated_total": 70200, "data.previous_total": 17400, "data.added": ["@item.villamaria"], "data.changed": ["@item.angelo"] },
+      "evidence": [
+        { "kind": "fact", "label": "Existing draft order", "value": "1 line, 17.400 kr" },
+        { "kind": "interpretation", "label": "Angelo Pinot Grigio already on the draft", "value": "quantity 6 → 18" },
+        { "kind": "calculation", "label": "Draft total after the change", "value": "17.400 kr → 70.200 kr" }
+      ],
+      "records": ["purchase_order:@po.vinnesDraft", "supplier:@supplier.vinnes"],
+      "proposal": {
+        "kind": "purchase_order.update_draft", "required_roles": ["admin", "manager"], "executable": true,
+        "command": { "p_id": "@po.vinnesDraft", "p_action": "update", "p_version": 1, "p_supplier_id": "@supplier.vinnes", "p_note": "Draft — top up Pinot Grigio", "p_lines": [{ "item_id": "@item.angelo", "quantity": 18, "unit_cost": 2900 }, { "item_id": "@item.villamaria", "quantity": 6, "unit_cost": 3000 }] },
+        "preview": { "will_not_change": { "$includes": "No second order is created." } }
+      }
+    },
+    "notes": "Adds to the existing Vínnes draft (same id, current version, draft note kept) instead of creating a duplicate draft."
+  },
+  {
+    "id": "pur-018", "category": "purchasing", "blocking": true,
+    "question": "Order 12 Aperol from Globus.",
+    "actor": "manager", "tool": "purchasing.prepare_draft_po",
+    "args": { "supplier_id": null, "supplier_query": "Globus", "use_suggestions": null, "lines": [{ "item_id": "@item.aperol", "item_query": null, "quantity": 12, "unit_cost": null }], "note": null, "expected_delivery_date": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Prepared a draft order for Globus", "Globus also has 1 open order that cannot be changed here (ordered)"],
+      "data": { "data.created": true, "data.warnings": ["Aperol is already on an open order (ordered)."] },
+      "evidence": [{ "kind": "fact", "label": "Other open order for this supplier", "value": "ordered" }, { "kind": "interpretation", "label": "Supplier check", "value": "already on an open order (ordered)" }],
+      "records": ["purchase_order:@po.globusOrdered"],
+      "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.globus", "p_lines[0].item_id": "@item.aperol" } }
+    },
+    "notes": "Globus has no draft (its open order is placed), so a new draft is allowed; Atlas warns Aperol is already on the placed Globus order."
+  },
+  {
+    "id": "pur-019", "category": "purchasing", "blocking": false,
+    "question": "What do we need from Vínnes?",
+    "actor": "manager", "tool": "purchasing.suggest",
+    "args": { "supplier_id": "@supplier.vinnes", "include_ordered": null },
+    "expected": {
+      "ok": true,
+      "summary": ["Nothing to order from current verified counts", "1 below-par item is already on an open order (1 on a draft order)"],
+      "data": { "data.counts.suggested": 0, "data.counts.already_ordered": 1, "data.already_ordered[0]": { "name": "Angelo Pinot Grigio", "on_order": { "order_id": "@po.vinnesDraft", "label": "on a draft order" } } },
+      "records": ["purchase_order:@po.vinnesDraft"]
+    },
+    "notes": "The Vínnes draft already covers Angelo; the assistant says so instead of suggesting it again."
   }
 ]

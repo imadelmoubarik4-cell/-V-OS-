@@ -9,8 +9,9 @@
 // point-of-sale source exists — no revenue is ever invented.
 (function () {
   'use strict';
-  // Date fields as YYYY-MM-DD text (AtlasVenueClock.DATE_INPUT_ATTRS): never the browser's mm/dd/yyyy.
-  const DATE_FIELD = window.AtlasVenueClock?.DATE_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
+  // Native date picker (design system: forms use the platform date and time
+  // controls). The value is 'YYYY-MM-DD'; AtlasVenueClock validates it inline.
+  const DATE_FIELD = 'type="date"';
 
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 30000;
@@ -80,6 +81,11 @@
   }
 
   // ---------- period (venue zone) ----------
+
+  function venueToday() {
+    const c = clock();
+    return c?.venueDate ? c.venueDate() : new Date().toISOString().slice(0, 10);
+  }
 
   function period() {
     const c = clock();
@@ -244,7 +250,7 @@
     if (list.length) subParts.push(`${connected} of ${list.length} data sources connected`);
     if (!subParts.length) subParts.push('Stock, purchasing, recipes, waste and labour');
     const custom = state.preset === 'custom'
-      ? `<span class="reports-custom"><label class="sr-only" for="reports-start">From</label><input class="atlas-input" ${DATE_FIELD} id="reports-start" value="${escapeHtml(state.customStart || range.start)}" data-reports-start><span aria-hidden="true">–</span><label class="sr-only" for="reports-end">To</label><input class="atlas-input" ${DATE_FIELD} id="reports-end" value="${escapeHtml(state.customEnd || range.end)}" data-reports-end></span>`
+      ? `<span class="reports-custom"><label class="sr-only" for="reports-start">From</label><input class="atlas-input" ${DATE_FIELD} id="reports-start" value="${escapeHtml(state.customStart || range.start)}" max="${escapeHtml(state.customEnd || range.end)}" data-reports-start><span aria-hidden="true">–</span><label class="sr-only" for="reports-end">To</label><input class="atlas-input" ${DATE_FIELD} id="reports-end" value="${escapeHtml(state.customEnd || range.end)}" min="${escapeHtml(state.customStart || range.start)}" max="${escapeHtml(venueToday())}" data-reports-end></span>`
       : '';
     return `<header class="page-head reports-head">
         <div class="page-head__text"><h1 class="page-head__title">Reports</h1><p class="page-head__sub">${escapeHtml(subParts.join(' · '))}</p></div>
@@ -578,6 +584,9 @@
     if (target.matches('[data-reports-start]') || target.matches('[data-reports-end]')) {
       if (target.matches('[data-reports-start]')) state.customStart = target.value;
       else state.customEnd = target.value;
+      // Keep the native pickers' limits in step: From never after To.
+      host()?.querySelector('[data-reports-end]')?.setAttribute('min', state.customStart || '');
+      host()?.querySelector('[data-reports-start]')?.setAttribute('max', state.customEnd || '');
       if (state.customStart && state.customEnd && state.customStart <= state.customEnd) loadSnapshot();
       else target.setAttribute('aria-invalid', 'true');
     }

@@ -15,9 +15,8 @@
 //              addDays(dateKey, n) · startOfWeek(date) · monthKey(date) · monthRange(date)
 //              compareRange(period) · zonedToInstant(dateKey, 'HH:MM')
 //   format     formatTime · formatDate · formatDateTime · formatRelative · formatKr
-//   inputs     localInputValue(date, type) · fromLocalInput(value)
-//              TIME_INPUT_ATTRS · parseTimeInput(text)   (24 h time fields)
-//              DATE_INPUT_ATTRS · parseDateInput(text)   (YYYY-MM-DD date fields)
+//   inputs     localInputValue(date, type) · fromLocalInput(value) · validateNativeField(input)
+//              native <input type="date|time|datetime-local"> fields; values stay ISO
 //   hours      dayWindow(dateKey) · isOpenAt(at) · nextEvent(at, {types}) · timeline(dateKey, at)
 //
 // Rules (docs/design/Atlas_Time_Migration.md):
@@ -376,71 +375,102 @@
     return validDate(instant) ? instant.toISOString() : null;
   }
 
-  // ---------- 24-hour time fields ----------
+  // ---------- native date and time fields ----------
   //
-  // A native <input type="time"> shows "05:00 PM" in an en-US browser; Atlas
-  // is 24 h everywhere. Time fields are text fields with TIME_INPUT_ATTRS
-  // (data-atlas-time) that take and show HH:MM: "1730", "17.30" and "9" are
-  // read as 17:30 and 09:00 when the field is committed (change). The value
-  // stays 'HH:MM' (or '' when empty), the same as a native time input.
-  const TIME_INPUT_ATTRS = 'type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM" data-atlas-time';
+  // Dates and times use the platform controls: <input type="date">,
+  // <input type="time" step="60"> and <input type="datetime-local"
+  // step="60">. They are the accessible, phone-friendly choice (wheel and
+  // calendar pickers, screen-reader support); inside the control the device
+  // locale decides how the value is shown. The value itself is always ISO
+  // ('YYYY-MM-DD', 'HH:MM', 'YYYY-MM-DDTHH:MM' in the venue zone through
+  // localInputValue / fromLocalInput), and every time Atlas renders itself
+  // stays 24 h (formatTime, formatDate).
+  //
+  // Inline validation: when a native field is committed (change) or left
+  // (focusout), an incomplete value or one outside min/max is marked
+  // aria-invalid and explained under the field (.atlas-field__error,
+  // data-atlas-input-error, linked with aria-describedby). Modules keep their
+  // own submit checks (required fields, end after start).
+  const NATIVE_FIELD_TYPES = Object.freeze(['date', 'time', 'datetime-local']);
 
-  /** 'HH:MM', '' for an empty field, or null when the text is not a time. */
-  function parseTimeInput(text) {
-    const value = String(text ?? '').trim();
-    if (!value) return '';
-    const match = /^(\d{1,2})(?:[:.h ]?(\d{2}))?(?::\d{2})?$/.exec(value);
-    if (!match) return null;
-    const hours = Number(match[1]);
-    const minutes = Number(match[2] || 0);
-    if (hours > 23 || minutes > 59) return null;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  function limitLabel(input, value) {
+    if (input.type === 'date') return formatDate(value, { year: value.slice(0, 4) !== today().slice(0, 4) });
+    if (input.type === 'time') return hhmm(value);
+    const [dateKey, time] = String(value).split('T');
+    return `${formatDate(dateKey)}, ${hhmm(time || '')}`;
   }
 
-  function commitTimeInput(input) {
-    const parsed = parseTimeInput(input.value);
-    if (parsed !== null && parsed !== input.value) input.value = parsed;
-    input.setAttribute('aria-invalid', String(parsed === null));
+  /** The inline message for a native date/time field, or '' when it is valid. */
+  function nativeFieldProblem(input) {
+    if (!input || !NATIVE_FIELD_TYPES.includes(input.type)) return '';
+    const validity = input.validity || {};
+    const noun = input.type === 'time' ? 'time' : input.type === 'date' ? 'date' : 'date and time';
+    if (validity.badInput) return `Enter a complete ${noun}.`;
+    if (validity.rangeUnderflow) return `Choose ${limitLabel(input, input.min)} or later.`;
+    if (validity.rangeOverflow) return `Choose ${limitLabel(input, input.max)} or earlier.`;
+    if (validity.stepMismatch) return 'Use whole minutes.';
+    if (validity.valueMissing && input.dataset?.atlasTouched !== undefined) return `Choose a ${noun}.`;
+    return '';
   }
 
-  // Date fields: a native <input type="date"> shows "mm/dd/yyyy" in an en-US
-  // browser. DATE_INPUT_ATTRS is a text field (data-atlas-date) whose value is
-  // the date key 'YYYY-MM-DD', like a native date input; "24.9.2026",
-  // "24/9/2026", "24.9" (this year) and "2026-9-24" are read when committed.
-  const DATE_INPUT_ATTRS = 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
-
-  /** 'YYYY-MM-DD', '' for an empty field, or null when the text is not a date. */
-  function parseDateInput(text) {
-    const value = String(text ?? '').trim();
-    if (!value) return '';
-    let year; let month; let day;
-    let match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value);
-    if (match) [, year, month, day] = match;
-    else {
-      match = /^(\d{1,2})[./ -](\d{1,2})(?:[./ -](\d{4}))?\.?$/.exec(value);
-      if (!match) return null;
-      [, day, month, year] = match;
-      year = year || today().slice(0, 4);
+  function inlineErrorFor(input, create) {
+    const id = `${input.id || input.name || 'field'}-native-error`;
+    let node = input.ownerDocument.getElementById(id);
+    if (!node && create) {
+      node = input.ownerDocument.createElement('p');
+      node.className = 'atlas-field__error';
+      node.id = id;
+      node.dataset.atlasInputError = '';
+      node.setAttribute('role', 'status');
+      (input.closest('.atlas-field') || input.parentElement)?.appendChild(node);
     }
-    const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const noon = keyToNoon(key);
-    return noon && noonToKey(noon) === key ? key : null;
+    return node;
   }
 
-  function commitDateInput(input) {
-    const parsed = parseDateInput(input.value);
-    if (parsed !== null && parsed !== input.value) input.value = parsed;
-    const early = parsed && input.getAttribute('min') && parsed < input.getAttribute('min');
-    input.setAttribute('aria-invalid', String(parsed === null || Boolean(early)));
+  /** Marks a native field valid or invalid and shows the reason under it. */
+  function validateNativeField(input) {
+    if (!input || !NATIVE_FIELD_TYPES.includes(input.type)) return true;
+    input.dataset.atlasTouched = '';
+    const problem = nativeFieldProblem(input);
+    const node = inlineErrorFor(input, Boolean(problem));
+    const describedBy = new Set(String(input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+    if (problem) {
+      node.textContent = problem;
+      node.hidden = false;
+      describedBy.add(node.id);
+      input.setAttribute('aria-invalid', 'true');
+    } else {
+      if (node) { node.textContent = ''; node.hidden = true; describedBy.delete(node.id); }
+      if (input.getAttribute('aria-invalid') === 'true' && input.dataset.atlasNativeInvalid !== undefined) input.removeAttribute('aria-invalid');
+    }
+    if (problem) input.dataset.atlasNativeInvalid = ''; else delete input.dataset.atlasNativeInvalid;
+    if (describedBy.size) input.setAttribute('aria-describedby', [...describedBy].join(' '));
+    else input.removeAttribute('aria-describedby');
+    return !problem;
+  }
+
+  // A field with data-atlas-min-from="<id>" (an end date) takes the other
+  // field's value (the start date) as its min, so its picker starts there and
+  // an earlier end is flagged inline.
+  function followMin(source) {
+    if (!source.id) return;
+    source.ownerDocument.querySelectorAll(`[data-atlas-min-from="${source.id}"]`).forEach((target) => {
+      if (source.value) target.setAttribute('min', source.value); else target.removeAttribute('min');
+      if (target.value && target.dataset.atlasTouched !== undefined) validateNativeField(target);
+    });
   }
 
   // Registered before any module script, so it runs before their document
   // change listeners (bubbling; no capture listener, no observer).
-  function bindTimeInputs() {
-    root.document?.addEventListener?.('change', (event) => {
-      if (event.target?.dataset?.atlasTime !== undefined) commitTimeInput(event.target);
-      else if (event.target?.dataset?.atlasDate !== undefined) commitDateInput(event.target);
-    });
+  function bindNativeFields() {
+    const handler = (event) => {
+      const target = event.target;
+      if (!target || !NATIVE_FIELD_TYPES.includes(target.type) || target.disabled) return;
+      validateNativeField(target);
+      if (event.type === 'change') followMin(target);
+    };
+    root.document?.addEventListener?.('change', handler);
+    root.document?.addEventListener?.('focusout', handler);
   }
 
   // ---------- hours ----------
@@ -771,10 +801,9 @@
     // inputs
     localInputValue,
     fromLocalInput,
-    TIME_INPUT_ATTRS,
-    parseTimeInput,
-    DATE_INPUT_ATTRS,
-    parseDateInput,
+    NATIVE_FIELD_TYPES,
+    nativeFieldProblem,
+    validateNativeField,
     // hours
     dayWindow,
     isOpenAt,
@@ -787,5 +816,5 @@
   if (!root.AtlasFormat) root.AtlasFormat = Object.freeze({ money: formatKr });
 
   bind();
-  bindTimeInputs();
+  bindNativeFields();
 })(typeof window === 'undefined' ? globalThis : window);

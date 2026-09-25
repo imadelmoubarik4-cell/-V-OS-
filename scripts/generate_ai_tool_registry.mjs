@@ -20,6 +20,7 @@ const ROLE_SHORT = { admin: 'A', manager: 'M', bartender: 'B', viewer: 'V' };
 
 const EXECUTION = {
   'purchase_order.create': 'PostgREST RPC `atlas_purchase_order_command_v2` action `create` (user JWT; p_id pre-generated, idempotent)',
+  'purchase_order.update_draft': 'PostgREST RPC `atlas_purchase_order_command_v2` action `update` on the supplier\'s existing Draft (user JWT; current p_version, full line set; never a second draft)',
   'purchase_order.receive': 'PostgREST RPC `atlas_purchase_order_command_v2` action `receive_lines` (user JWT; p_version + new p_request_id)',
   'stock_count.draft': '`atlas-stock-counts` `start` then `save-line` per counted line (user JWT); left for normal submit/verify',
   'shift.draft': '`atlas-shifts` `save-shift` (user JWT); never publishes',
@@ -44,12 +45,13 @@ function inputs(schema) {
 
 function approval(entry) {
   if (entry.level === 'read') return 'None (read only)';
-  const kind = String(entry.proposalKind || '').split(' ')[0];
+  const kinds = String(entry.proposalKind || '').split(' or ').map((part) => part.split(' ')[0]);
+  const kind = kinds[0];
   const definition = PROPOSAL_KINDS[kind];
   if (!definition) return 'Proposal';
   const roles = definition.roles.map((role) => ROLE_SHORT[role]).join(' ');
   return definition.executable
-    ? `Proposal \`${kind}\`; a person taps Approve (${roles}${kind === 'team_message.send' ? '; announcements A M' : ''})`
+    ? `Proposal ${kinds.map((name) => `\`${name}\``).join(' or ')}; a person taps Approve (${roles}${kind === 'team_message.send' ? '; announcements A M' : ''})`
     : `Suggestion \`${kind}\`; link only, Atlas never executes`;
 }
 

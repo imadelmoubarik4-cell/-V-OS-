@@ -19,7 +19,7 @@
   { "id": "role-018", "category": "role_restriction", "blocking": true, "question": "Send a message to the team.", "actor": "viewer", "tool": "team.prepare_message", "args": { "channel_key": "general", "body": "Hi all", "link_type": null, "link_key": null, "link_label": null }, "expected": { "ok": false, "error": "forbidden" } },
   {
     "id": "role-019", "category": "role_restriction", "blocking": true, "question": "What needs ordering?", "actor": "admin", "tool": "purchasing.suggest", "args": { "supplier_id": null, "include_ordered": null },
-    "expected": { "ok": true, "data": { "data.counts.suggested": 6, "data.estimated_total": 222960 } }
+    "expected": { "ok": true, "data": { "data.counts.suggested": 5, "data.estimated_total": 170760 } }
   },
   {
     "id": "role-020", "category": "role_restriction", "blocking": true, "question": "What does a Margarita cost?", "actor": "admin", "tool": "recipes.cost", "args": { "recipe_id": null, "recipe_query": "Margarita" },

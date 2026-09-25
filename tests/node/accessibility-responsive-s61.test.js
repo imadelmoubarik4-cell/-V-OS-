@@ -43,6 +43,6 @@ test('narrow layouts reserve space for the phone tab bar, not a floating action'
   assert.match(messagesCss, /env\(safe-area-inset-bottom\)/);
   // S88: every S61 fragment moved into its module sheet (Reports, Messages); none is linked.
   assert.doesNotMatch(shell, /legacy\/accessibility-responsive-s61--/);
-  assert.match(shell, /shifts-workspace\.js\?v=20260929-s90u/);
+  assert.match(shell, /shifts-workspace\.js\?v=20260929-s90f/);
   assert.doesNotMatch(shell, /shifts-month-calendar\.js|shifts-month-tab-bridge\.js/);
 });

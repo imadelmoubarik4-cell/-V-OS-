@@ -24,7 +24,8 @@ Order: migration first, then the web app. The migration is backward compatible: 
    - `public.adjust_inventory_v2`: an invoker wrapper over `private.adjust_inventory_request`, a manager-gated definer.
    - `atlas_private.stock_adjustment_requests`: a private ledger of request ids, one row per actor and request id.
    - A new `atlas_private.stock_count_verify` that stamps each verified balance at the line's `counted_at`.
-2. Run `scripts/verify_s90_workflow_integrity_previews.sh` against a replayed database. `scripts/verify_phase1_security_gate.sql` now reviews `adjust_inventory_v2` alongside the other browser RPCs.
+   Then apply `20260929092000_s90f_ai_update_draft_order_kind.sql`. It adds the Atlas AI proposal kind `purchase_order.update_draft` to `atlas_private.ai_action_allowed_roles` (admin and manager only). Apply it before deploying `atlas-ai`: until then, a proposal to add lines to a supplier's existing draft is refused as an unknown kind.
+2. Run `scripts/verify_s90_workflow_integrity_previews.sh` against a replayed database (it also runs `verify_s90f_ai_update_draft_preview.sql`). `scripts/verify_phase1_security_gate.sql` now reviews `adjust_inventory_v2` alongside the other browser RPCs.
 3. Deploy `apps/web`. Recording waste and deliveries without an order now uses `adjust_inventory_v2`. The asset `?v=` query strings in `index.html` belong to the shell work, so bump them in the same release so browsers do not keep the old scripts.
 4. Deploy `atlas-team-profiles` and `atlas-settings`:
    - `atlas-team-profiles`: invitations send `full_name` (the key `handle_new_user` reads) and `display_name`. They redirect to `<app origin>/invitation.html`. The app origin comes from `ATLAS_APP_ORIGIN`, falling back to the first entry of `ATLAS_INTEGRATIONS_APP_ORIGINS` and then `https://os-vabar.netlify.app`. Only a bare https origin is accepted.

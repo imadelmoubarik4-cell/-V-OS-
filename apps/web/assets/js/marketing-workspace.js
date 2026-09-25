@@ -8,8 +8,9 @@
 // so a browser in another zone stores the instant the manager meant.
 (function () {
   'use strict';
-  // Date fields as YYYY-MM-DD text (AtlasVenueClock.DATE_INPUT_ATTRS): never the browser's mm/dd/yyyy.
-  const DATE_FIELD = window.AtlasVenueClock?.DATE_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
+  // Native date picker (design system: forms use the platform date and time
+  // controls). The value is 'YYYY-MM-DD'; AtlasVenueClock validates it inline.
+  const DATE_FIELD = 'type="date"';
 
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 15000;
@@ -328,8 +329,8 @@
           <div class="atlas-field"><label for="mk-caption">Text</label><textarea class="atlas-textarea" id="mk-caption" name="caption_draft" rows="5" maxlength="10000"${editable ? '' : ' disabled'}>${escapeHtml(values.caption)}</textarea></div>
           <div class="atlas-field"><label for="mk-media">Photos or video needed <span class="optional">(optional)</span></label><input class="atlas-input" id="mk-media" name="media" maxlength="2000" value="${escapeHtml(values.media)}" placeholder="e.g. Close-up of the new espresso martini"${editable ? '' : ' disabled'}><p class="help">Attach media when you post; Atlas doesn't store post media yet.</p></div>
           <div class="atlas-grid-2">
-            <div class="atlas-field"><label for="mk-when">Post on <span class="optional">(venue time)</span></label><input class="atlas-input" type="datetime-local" id="mk-when" name="scheduled_for" value="${escapeHtml(values.scheduled)}"${editable ? '' : ' disabled'}></div>
-            <div class="atlas-field"><label for="mk-reminder">Remind me <span class="optional">(optional)</span></label><input class="atlas-input" type="datetime-local" id="mk-reminder" name="reminder_at" value="${escapeHtml(values.reminder)}"${editable ? '' : ' disabled'}></div>
+            <div class="atlas-field"><label for="mk-when">Post on <span class="optional">(venue time)</span></label><input class="atlas-input" type="datetime-local" step="60" id="mk-when" name="scheduled_for" value="${escapeHtml(values.scheduled)}"${editable ? '' : ' disabled'}></div>
+            <div class="atlas-field"><label for="mk-reminder">Remind me <span class="optional">(optional)</span></label><input class="atlas-input" type="datetime-local" step="60" id="mk-reminder" name="reminder_at" value="${escapeHtml(values.reminder)}"${editable ? '' : ' disabled'}></div>
           </div>
           <section class="mk-preview" aria-label="Preview"><p class="atlas-label">Preview</p><div class="mk-preview__card"><p class="mk-preview__channel" data-mk-preview-channel>${escapeHtml(channelText(values.platforms))}</p><p class="mk-preview__text" data-mk-preview-text>${escapeHtml(values.caption || 'Your text appears here.')}</p><p class="mk-preview__when" data-mk-preview-when>${escapeHtml(values.scheduled && fromInput(values.scheduled) ? dateTime(fromInput(values.scheduled)) : 'Not scheduled')}</p></div></section>
           ${item?.can_approve && item.status === 'pending_approval' ? '<div class="atlas-field"><label for="mk-note">Note for the team <span class="optional">(needed to request changes or reject)</span></label><textarea class="atlas-textarea" id="mk-note" name="note" rows="2"></textarea></div>' : ''}
@@ -425,7 +426,7 @@
         <form class="atlas-dialog__body atlas-form" data-mk-campaign-form>
           <div class="atlas-field"><label for="mk-c-name">Name</label><input class="atlas-input" id="mk-c-name" name="name" maxlength="180" required></div>
           <div class="atlas-field"><label for="mk-c-type">Type</label><select class="atlas-select" id="mk-c-type" name="campaign_type">${['promotion', 'event', 'seasonal', 'always_on', 'brand', 'other'].map((key) => `<option value="${key}">${humanize(key)}</option>`).join('')}</select></div>
-          <div class="atlas-grid-2"><div class="atlas-field"><label for="mk-c-start">Starts</label><input class="atlas-input" ${DATE_FIELD} id="mk-c-start" name="start"></div><div class="atlas-field"><label for="mk-c-end">Ends</label><input class="atlas-input" ${DATE_FIELD} id="mk-c-end" name="end"></div></div>
+          <div class="atlas-grid-2"><div class="atlas-field"><label for="mk-c-start">Starts</label><input class="atlas-input" ${DATE_FIELD} id="mk-c-start" name="start"></div><div class="atlas-field"><label for="mk-c-end">Ends</label><input class="atlas-input" ${DATE_FIELD} id="mk-c-end" name="end" data-atlas-min-from="mk-c-start"></div></div>
           <div class="atlas-field"><label for="mk-c-desc">Goal <span class="optional">(optional)</span></label><textarea class="atlas-textarea" id="mk-c-desc" name="description" rows="3"></textarea></div>
           <p class="error" data-mk-error hidden></p>
           <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary">Create campaign</button></div>

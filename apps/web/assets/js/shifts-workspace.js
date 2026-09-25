@@ -9,10 +9,12 @@
 // shift starts at the day's saved opening time (or empty when hours are not set).
 (function () {
   'use strict';
-  // Date fields as YYYY-MM-DD text (AtlasVenueClock.DATE_INPUT_ATTRS): never the browser's mm/dd/yyyy.
-  const DATE_FIELD = window.AtlasVenueClock?.DATE_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="YYYY-MM-DD" data-atlas-date';
-  // 24-hour time fields (AtlasVenueClock.TIME_INPUT_ATTRS): never the browser's 12-hour picker.
-  const TIME_FIELD = window.AtlasVenueClock?.TIME_INPUT_ATTRS || 'type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM" data-atlas-time';
+  // Native date picker (design system: forms use the platform date and time
+  // controls). The value is 'YYYY-MM-DD'; AtlasVenueClock validates it inline.
+  const DATE_FIELD = 'type="date"';
+  // Native time picker, whole minutes; the value is 'HH:MM' (24 h). Inside the
+  // control the device locale decides how it is shown.
+  const TIME_FIELD = 'type="time" step="60"';
 
   const cfg = window.VABAR_CONFIG || {};
   const REQUEST_TIMEOUT_MS = 18000;
@@ -1000,7 +1002,7 @@
           <div class="atlas-field"><label for="to-type">Type</label><select class="atlas-select" id="to-type" name="request_type">${Object.entries(TIME_OFF_TYPES).map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}</select></div>
           <div class="atlas-grid-2">
             <div class="atlas-field"><label for="to-start">First day</label><input class="atlas-input" ${DATE_FIELD} id="to-start" name="starts_on" required value="${escapeHtml(start)}"></div>
-            <div class="atlas-field"><label for="to-end">Last day</label><input class="atlas-input" ${DATE_FIELD} id="to-end" name="ends_on" required value="${escapeHtml(start)}"></div>
+            <div class="atlas-field"><label for="to-end">Last day</label><input class="atlas-input" ${DATE_FIELD} id="to-end" name="ends_on" required min="${escapeHtml(start)}" data-atlas-min-from="to-start" value="${escapeHtml(start)}"></div>
           </div>
           <p class="error" data-to-error hidden>The last day can’t be before the first day.</p>
           <div class="atlas-field"><label for="to-note">Note <span class="optional">Optional</span></label><textarea class="atlas-input atlas-textarea" id="to-note" name="note" rows="3" maxlength="3000" placeholder="Anything your manager should know"></textarea></div>

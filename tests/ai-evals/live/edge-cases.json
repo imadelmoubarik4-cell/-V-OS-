@@ -236,13 +236,13 @@
     "id": "live-fu-03", "category": "follow_up", "actor": "manager", "blocking": true,
     "setup": ["What do we need from Vínnes?"],
     "question": "Prepare that",
-    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_supplier_id": "@supplier.vinnes", "p_lines[0].quantity": 18 } }, "rubric": "Draft Vínnes order for 18 Angelo (3 cases) for approval." }
+    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": null, "must_mention_any": ["already", "existing draft"], "rubric": "Nothing new is needed from Vínnes: Angelo is already on the Vínnes draft (6 bottles), so Atlas links that draft and does not prepare a second one." }
   },
   {
     "id": "live-fu-04", "category": "follow_up", "actor": "manager", "blocking": true,
-    "setup": ["What do we need from Vínnes?", "Prepare that"],
+    "setup": ["Put 18 Angelo on the Vínnes order."],
     "question": "Change it to two cases",
-    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.create", "command": { "p_lines[0].item_id": "@item.angelo", "p_lines[0].quantity": 12 } }, "rubric": "Revised draft: 12 bottles (2 cases of 6) of Angelo; replaces the previous card." }
+    "expect": { "tools_all": ["purchasing.prepare_draft_po"], "proposal": { "kind": "purchase_order.update_draft", "command": { "p_id": "@po.vinnesDraft", "p_lines[0].item_id": "@item.angelo", "p_lines[0].quantity": 12 } }, "rubric": "Revised change to the existing Vínnes draft: Angelo 12 bottles (2 cases of 6), was 6 on the draft; replaces the previous card; no second draft." }
   },
   {
     "id": "live-fu-05", "category": "follow_up", "actor": "manager", "blocking": false,

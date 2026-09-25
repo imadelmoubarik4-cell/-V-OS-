@@ -358,27 +358,28 @@ test('P2: a question in the palette lists the record it is about under Ask Atlas
   } finally { await close(); }
 });
 
-// ---------- 24-hour time fields ----------
+// ---------- native date and time pickers ----------
+// Owner direction: dates and times use the platform pickers (accessible,
+// phone-friendly); the value stays ISO and Atlas' own text stays 24 h.
 
-test('P2: opening hours are 24-hour fields in an en-US browser; a closed day cannot be edited', { skip }, async () => {
+test('P2: opening hours use native time pickers with whole-minute steps; a closed day cannot be edited', { skip }, async () => {
   const { page, close } = await launchAtlas({ fixtures: uxWorld(USERS.admin), contextOptions: { locale: 'en-US' } });
   try {
     await navigateTo(page, '#settings/hours');
     await page.waitForSelector('.settings-hours-row');
-    const fields = await page.$$eval('.settings-hours-row [name="open_time"], .settings-hours-row [name="close_time"]', (nodes) => nodes.map((node) => ({ type: node.type, value: node.value, disabled: node.disabled, open: node.closest('tr').querySelector('[name="is_open"]').checked })));
+    const fields = await page.$$eval('.settings-hours-row [name="open_time"], .settings-hours-row [name="close_time"]', (nodes) => nodes.map((node) => ({ type: node.type, step: node.step, value: node.value, disabled: node.disabled, open: node.closest('tr').querySelector('[name="is_open"]').checked })));
     assert.ok(fields.length >= 14);
     for (const field of fields) {
-      assert.equal(field.type, 'text');
-      if (field.value) assert.match(field.value, /^([01]\d|2[0-3]):[0-5]\d$/);
+      assert.equal(field.type, 'time');
+      assert.equal(field.step, '60');
+      if (field.value) assert.match(field.value, /^([01]\d|2[0-3]):[0-5]\d$/, 'the value is HH:MM (24 h) whatever the device locale shows');
       assert.equal(field.disabled, !field.open, 'a closed day’s times are unavailable');
     }
     const row = '.settings-hours-row[data-weekday="3"]';
-    await page.fill(`${row} [name="open_time"]`, '930');
+    await page.fill(`${row} [name="open_time"]`, '09:30');
     await page.press(`${row} [name="open_time"]`, 'Tab');
     assert.equal(await page.inputValue(`${row} [name="open_time"]`), '09:30');
-    await page.fill(`${row} [name="close_time"]`, '25:00');
-    await page.press(`${row} [name="close_time"]`, 'Tab');
-    assert.equal(await page.getAttribute(`${row} [name="close_time"]`, 'aria-invalid'), 'true');
+    assert.notEqual(await page.getAttribute(`${row} [name="open_time"]`, 'aria-invalid'), 'true');
     await page.uncheck(`${row} [name="is_open"]`);
     assert.equal(await page.isDisabled(`${row} [name="open_time"]`), true);
   } finally { await close(); }
@@ -396,18 +397,35 @@ test('P2: notification titles get two lines before they clamp', { skip }, async 
   } finally { await close(); }
 });
 
-test('P3: date fields are YYYY-MM-DD in an en-US browser (never mm/dd/yyyy)', { skip }, async () => {
+test('P3: date fields are native pickers with ISO values, min/max limits and inline validation', { skip }, async () => {
   const { page, close } = await launchAtlas({ fixtures: uxWorld(USERS.admin, { group: 'INV' }), contextOptions: { locale: 'en-US' } });
   try {
-    const parsed = await page.evaluate(() => ['30.9.2026', '30/09/2026', '2026-9-30', '30.9', '31.9.2026', 'soon', ''].map((text) => window.AtlasVenueClock.parseDateInput(text)));
-    assert.deepEqual(parsed, ['2026-09-30', '2026-09-30', '2026-09-30', '2026-09-30', null, null, '']);
     await navigateTo(page, '#purchasing');
     await page.getByRole('button', { name: /new order/i }).filter({ visible: true }).first().click();
     await page.waitForSelector('#po-date');
-    assert.deepEqual(await page.evaluate(() => { const input = document.getElementById('po-date'); return [input.type, input.placeholder]; }), ['text', 'YYYY-MM-DD']);
-    await page.fill('#po-date', '30.9.2026');
+    const field = await page.evaluate(() => { const input = document.getElementById('po-date'); return { type: input.type, min: input.min, today: window.AtlasVenueClock.today() }; });
+    assert.equal(field.type, 'date');
+    assert.equal(field.min, field.today, 'no expected delivery before the venue date');
+    const later = await page.evaluate((key) => window.AtlasVenueClock.addDays(key, 6), field.today);
+    await page.fill('#po-date', later);
     await page.press('#po-date', 'Tab');
-    assert.equal(await page.inputValue('#po-date'), '2026-09-30');
+    assert.equal(await page.inputValue('#po-date'), later, 'the value is YYYY-MM-DD in an en-US browser');
+    assert.notEqual(await page.getAttribute('#po-date', 'aria-invalid'), 'true');
+    const earlier = await page.evaluate((key) => window.AtlasVenueClock.addDays(key, -3), field.today);
+    await page.fill('#po-date', earlier);
+    await page.press('#po-date', 'Tab');
+    assert.equal(await page.getAttribute('#po-date', 'aria-invalid'), 'true');
+    const message = await page.evaluate(() => {
+      const input = document.getElementById('po-date');
+      const ids = (input.getAttribute('aria-describedby') || '').split(/\s+/);
+      const node = ids.map((id) => document.getElementById(id)).find((el) => el?.matches('[data-atlas-input-error]'));
+      return node && !node.hidden ? node.textContent : null;
+    });
+    assert.match(message || '', /^Choose \w{3} \d{1,2} \w{3}.* or later\.$/, 'the inline message names the earliest date in Atlas wording');
+    await page.fill('#po-date', later);
+    await page.press('#po-date', 'Tab');
+    assert.notEqual(await page.getAttribute('#po-date', 'aria-invalid'), 'true', 'fixing the value clears the message');
+    assert.equal(await page.evaluate(() => document.querySelector('#po-date-native-error')?.hidden), true);
   } finally { await close(); }
 });
 
