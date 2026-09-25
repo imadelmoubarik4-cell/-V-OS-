@@ -241,9 +241,10 @@ test('changed scripts carry the S88 cache key', () => {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-s90g"></script>`), file);
   }
   // S91b: live voice lease heartbeat and "Continue here"; photo counting copy.
-  for (const file of ['atlas-ai-voice.js', 'atlas-ai.js']) {
+  for (const file of ['atlas-ai.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s91b"></script>`), file);
   }
+  assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
   assert.ok(index.includes('<script src="assets/js/recipes.js?v=20260926-s91a"></script>'), 'recipes.js');
   assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">'), 'recipes.css');

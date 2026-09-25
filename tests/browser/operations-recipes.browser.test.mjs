@@ -149,6 +149,8 @@ test('Home timeline text is not squeezed into the marker column', { skip }, asyn
   const { page, close } = await launch({ settings: venueClockBackend({ hours: weekHours() }) });
   try {
     await page.waitForSelector('#home-timeline .home-timeline__label');
+    // Measured once laid out (under load the node can exist before layout).
+    await page.waitForFunction(() => document.querySelector('#home-timeline .home-timeline__label')?.getBoundingClientRect().width > 0);
     const width = await page.$eval('#home-timeline .home-timeline__label', (node) => node.getBoundingClientRect().width);
     assert.ok(width > 80, `timeline text column is ${width}px wide`);
   } finally { await close(); }
