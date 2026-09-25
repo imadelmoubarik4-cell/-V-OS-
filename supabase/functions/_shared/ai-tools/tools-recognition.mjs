@@ -23,6 +23,7 @@ import { ITEM_CLASSES, PACKAGING_TYPES, RecognitionError } from "../recognition/
 import { localCandidates } from "../recognition/retrieve.mjs";
 import { percent } from "../recognition/bands.mjs";
 import { normalizeCode } from "../product-identity.mjs";
+import { safeLabelText } from "./injection.mjs";
 
 const ALL = ["admin", "manager", "bartender", "viewer"];
 const OPERATIONAL = ["admin", "manager", "bartender"];
@@ -99,14 +100,23 @@ function unreadableReason(configuredByKey, limits) {
   return !configuredByKey ? "not_configured" : !limits?.vision_enabled ? "disabled" : "unsupported_image";
 }
 
-// What the label says, as a short name ("Monin Lavender Syrup").
+// What the label says, as a short name ("Monin Lavender Syrup"). Label text
+// is read from an image anyone could write on: every word passes the
+// injection screen first (S91 review P2-C), and the whole name again.
 function readName(read) {
   const words = [];
   for (const field of [read?.brand, read?.product_name, read?.variant]) {
-    const value = typeof field?.value === "string" ? field.value.trim() : "";
+    const value = safeLabelText(typeof field?.value === "string" ? field.value : "") ?? "";
     if (value && field.confidence >= 50 && !words.some((word) => word.toLowerCase().includes(value.toLowerCase()))) words.push(value);
   }
-  return words.join(" ").slice(0, 120);
+  return safeLabelText(words.join(" "), 120) ?? "";
+}
+
+// The size as printed ("70cl"), screened, or null.
+function readSize(read) {
+  const size = read?.unit_size;
+  if (!size) return null;
+  return safeLabelText(size.text ?? (size.quantity && size.unit ? `${size.quantity} ${size.unit}` : ""), 20);
 }
 
 const PACKAGE_WORDS = {
@@ -128,13 +138,15 @@ function visibleUnits(read) {
 function readingText(read) {
   const parts = [];
   const add = (label, field) => {
-    if (field?.value) parts.push(`${label} ${field.value} (${field.confidence}%)`);
+    const value = safeLabelText(field?.value);
+    if (value) parts.push(`${label} ${value} (${field.confidence}%)`);
   };
   add("brand", read.brand);
   add("product", read.product_name);
   add("variant", read.variant);
   if (read.unit_size?.quantity || read.unit_size?.text) {
-    parts.push(`size ${read.unit_size.text ?? `${read.unit_size.quantity} ${read.unit_size.unit}`} (${read.unit_size.confidence}%${read.unit_size.inferred ? ", guessed from shape" : ""})`);
+    const size = readSize(read);
+    if (size) parts.push(`size ${size} (${read.unit_size.confidence}%${read.unit_size.inferred ? ", guessed from shape" : ""})`);
   }
   add("package", read.packaging_type);
   return parts.join(", ");
@@ -224,6 +236,7 @@ const identifyFromImage = {
       preselected_item_id: detection.preselected_item_id,
       in_atlas: detection.in_atlas,
       read_name: readName(detection.read) || null,
+      size: readSize(detection.read),
       visible_units: visibleUnits(detection.read)
         ? { value: detection.read.visible_units.value, confidence: detection.read.visible_units.confidence, unit: unitWord(detection.read, detection.read.visible_units.value), estimate: true }
         : null,

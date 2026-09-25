@@ -5,7 +5,7 @@
 // Tool arguments never change the actor: the gateway context is built here
 // from the verified actor, and every tool call goes through gateway.runTool.
 
-import { evidenceNumbersFrom, redactArguments, redactSecrets } from "./guardrails.mjs";
+import { evidenceNumbersFrom, PHOTO_TOOL, photoFiguresFrom, redactArguments, redactSecrets } from "./guardrails.mjs";
 
 // Tools whose success is not operational evidence (navigation only).
 const NON_EVIDENCE_TOOLS = new Set(["app.open"]);
@@ -121,6 +121,8 @@ export class TurnState {
     // unknown); the grounding check only accepts stated figures from here or
     // from the user's own words.
     this.evidenceNumbers = new Set();
+    // Photo recognition adds bound figures only (guardrails photoFiguresFrom).
+    this.photoFigures = [];
     this.toolCalls = 0;
     this.auditCount = 0;
     this.lastProgress = null;
@@ -226,13 +228,20 @@ export class TurnState {
     if (result.ok !== true) return null;
     if (isEvidenceResult(entry, result)) {
       this.verified = true;
-      for (const number of evidenceNumbersFrom([result.summary ?? "", result.evidence ?? [], result.data ?? null, result.unknown ?? null])) {
-        this.evidenceNumbers.add(number);
+      if (entry?.name === PHOTO_TOOL) {
+        // S91 review P1-A: confidences, match %, sizes (70cl), ABV and boxes
+        // in a recognition result are not stock figures.
+        this.photoFigures.push(...photoFiguresFrom((result.evidence ?? []).map((item) => ({ ...item, origin: "photo_recognition" }))));
+      } else {
+        for (const number of evidenceNumbersFrom([result.summary ?? "", result.evidence ?? [], result.data ?? null, result.unknown ?? null])) {
+          this.evidenceNumbers.add(number);
+        }
       }
     }
     const seen = new Set(this.evidence.map(evidenceKey));
     for (const raw of result.evidence ?? []) {
       const item = cleanEvidence(raw);
+      if (item && entry?.name === PHOTO_TOOL) item.origin = "photo_recognition";
       if (!item || this.evidence.length >= MAX_EVIDENCE) continue;
       const key = evidenceKey(item);
       if (seen.has(key)) continue;
