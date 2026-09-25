@@ -112,7 +112,13 @@
   // ---------- API ----------
 
   class TeamError extends Error {
-    constructor(message, status) { super(message); this.status = status; }
+    constructor(message, status) { super(message); this.status = status; this.atlasFixed = true; }
+  }
+  // Only this module's own fixed copy (atlasFixed) is shown; a JavaScript error
+  // or server text reads as the fallback (AtlasApi.message).
+  function shown(error, fallback) {
+    if (window.AtlasApi?.message) return window.AtlasApi.message(error, fallback);
+    return error?.atlasFixed ? error.message : fallback;
   }
 
   function friendlyError(status, message) {
@@ -253,7 +259,7 @@
   function headerMarkup() {
     const all = profiles().filter((profile) => profile.active);
     const due = isManager() ? all.filter(trainingDue).length : 0;
-    const sub = state.workspace ? [`${all.length} ${all.length === 1 ? 'person' : 'people'}`, due ? `${due} with training due` : null].filter(Boolean).join(' · ') : 'Loading the team…';
+    const sub = state.workspace ? [`${all.length} ${all.length === 1 ? 'person' : 'people'}`, due ? `${due} with training due` : null].filter(Boolean).join(' · ') : state.error ? 'The team couldn’t be loaded' : 'Loading the team…';
     const actions = [];
     if (state.staff?.can_manage_team && state.staff?.account_invitations_enabled) actions.push(`<button type="button" class="atlas-btn atlas-btn--secondary" data-team-profile-invite>${icon('mail')}Invite by email</button>`);
     if (state.staff?.can_manage_team) actions.push(`<button type="button" class="atlas-btn atlas-btn--primary" data-team-profile-add-member>${icon('user-plus')}Add team member</button>`);
@@ -329,7 +335,7 @@
     }
     const rows = filteredProfiles();
     if (!profiles().length) {
-      return `<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon">${icon('users')}</div><h3 class="atlas-empty__title">No team members yet</h3><p class="atlas-empty__text">${state.staff?.can_manage_team ? 'Add the people who work here so you can plan shifts and share updates.' : 'Your manager adds the team here.'}</p>${state.staff?.can_manage_team ? `<div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-team-profile-add-member>${icon('user-plus')}Add team member</button></div>` : ''}</div>`;
+      return `<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon">${icon('users')}</div><h3 class="atlas-empty__title">No team members yet</h3><p class="atlas-empty__text">${state.staff?.can_manage_team ? 'Add the people who work here so you can plan shifts and share updates.' : 'Your manager adds the team here.'}</p>${state.staff?.can_manage_team ? `<div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-team-profile-add-member>${icon('user-plus')}Add team member</button></div>` : ''}</div>`;
     }
     if (!rows.length) {
       return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('search')}</div><h3 class="atlas-empty__title">${state.search.trim() ? `No one matches “${escapeHtml(state.search.trim())}”` : 'No one matches these filters'}</h3><p class="atlas-empty__text">Try another search or clear the filters.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-team-clear>Clear filters</button></div></div>`;
@@ -621,7 +627,7 @@
         loadSnapshot({ silent: true });
       } catch (error) {
         submit.disabled = false;
-        window.AtlasShell?.toast?.(error.message || 'The team member couldn’t be added.');
+        window.AtlasShell?.toast?.(shown(error, 'The team member couldn’t be added. Nothing was changed; try again.'));
       }
     });
   }
@@ -696,7 +702,7 @@
       state.failedAt = 0;
       window.dispatchEvent(new CustomEvent('atlas:team-summary', { detail: { activeProfiles: Number(state.workspace?.summary?.active_profiles) } }));
     } catch (error) {
-      state.error = error.message;
+      state.error = shown(error, 'The team couldn’t be loaded. Check the connection and try again.');
       state.failedAt = Date.now();
     } finally {
       state.loading = false;
@@ -716,7 +722,7 @@
       window.dispatchEvent(new Event('atlas:team-roster-changed'));
       return true;
     } catch (error) {
-      window.AtlasShell?.toast?.(error.message || 'The change couldn’t be saved.');
+      window.AtlasShell?.toast?.(shown(error, 'The change couldn’t be saved. Nothing was changed; try again.'));
       return false;
     } finally {
       state.submitting = false;
@@ -736,7 +742,7 @@
       view.innerHTML = `<div class="team team--detail">${state.workspace ? `<div class="team-detail">${detailMarkup(profile, { titleId: 'team-page-title' })}</div>` : alertMarkup() || `<div class="team-skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(4)}</div>`}</div>`;
       window.AtlasChrome?.setTopBar?.({ title: profile?.name || 'Team', back: () => routeTo('team-profiles', {}) });
     } else {
-      view.innerHTML = `<div class="team">${headerMarkup()}${alertMarkup()}${toolbarMarkup()}<div class="team-body">${directoryMarkup()}</div></div>`;
+      view.innerHTML = `<div class="team">${headerMarkup()}${alertMarkup()}${!state.workspace && state.error ? '' : toolbarMarkup()}<div class="team-body">${directoryMarkup()}</div></div>`;
       window.AtlasChrome?.setTopBar?.({});
     }
     paintIcons();
@@ -851,7 +857,7 @@
         const payload = await api('renew-member-setup', { method: 'POST', body: { profile_id: renew.dataset.teamMemberRenew } });
         showSetupLink(payload.result);
       } catch (error) {
-        window.AtlasShell?.toast?.(error.message || 'A new setup link couldn’t be made.');
+        window.AtlasShell?.toast?.(shown(error, 'A new setup link couldn’t be made. Try again.'));
       } finally {
         state.submitting = false;
       }

@@ -64,7 +64,7 @@ test('movements fail: no stock is projected from stale counts; Home, Inventory a
     assert.match(glance, /Incomplete/);
     assert.match(glance, /Stock figures are incomplete — movements couldn’t load/);
     assert.doesNotMatch(glance, /below par|not counted/);
-    assert.doesNotMatch(await text(page, '.home-briefing'), /is out|below par/);
+    assert.doesNotMatch(await text(page, '.home-briefing'), /out of stock|below par/);
 
     // Inventory: the warning alert, and no quantity or "Not counted" status.
     await navigate(page, '#inventory', '.inv .atlas-alert');

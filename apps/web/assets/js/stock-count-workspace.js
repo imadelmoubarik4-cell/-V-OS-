@@ -86,21 +86,31 @@
   // ---------------------------------------------------------------------------
   function endpoint() { return String(root.VABAR_CONFIG?.STOCK_COUNTS_API || '').trim(); }
 
+  // Errors this page shows carry fixed copy only; a JavaScript error or server
+  // text reads as the fallback (AtlasApi.message) and goes to the console.
+  function fixedError(text, props = {}) {
+    return root.AtlasApi?.fixed ? root.AtlasApi.fixed(text, props) : Object.assign(new Error(text), props, { atlasFixed: true });
+  }
+  function shown(error, fallback = 'That didn’t work. Your saved counts are safe; try again.') {
+    if (root.AtlasApi?.message) return root.AtlasApi.message(error, fallback);
+    return error?.atlasFixed ? error.message : fallback;
+  }
+
   function withTimeout(promise, ms, message) {
     let timer = null;
     return Promise.race([
       Promise.resolve(promise).finally(() => root.clearTimeout(timer)),
-      new Promise((_, reject) => { timer = root.setTimeout(() => reject(new Error(message)), ms); })
+      new Promise((_, reject) => { timer = root.setTimeout(() => reject(fixedError(message)), ms); })
     ]);
   }
 
   async function token() {
     const client = root.atlasSupabase;
-    if (!client?.auth) throw new Error('Sign in again to continue.');
+    if (!client?.auth) throw fixedError('Sign in again to continue.');
     // getSession() waits on the auth lock without a deadline of its own.
     const result = await withTimeout(client.auth.getSession(), SESSION_TIMEOUT_MS, 'Atlas couldn’t confirm your session in time. Check the connection, then try again.');
     const access = result?.data?.session?.access_token;
-    if (!access) throw new Error('Sign in again to continue.');
+    if (!access) throw fixedError('Sign in again to continue.');
     return access;
   }
 
@@ -121,8 +131,8 @@
 
   async function api(action, { method = 'GET', body = null, params = {} } = {}) {
     const base = endpoint();
-    if (!base) throw new Error('Stock counts aren’t available here.');
-    if (method !== 'GET' && root.navigator?.onLine === false) throw new Error('You’re offline. Nothing was saved; reconnect and try again.');
+    if (!base) throw fixedError('Stock counts aren’t available here.');
+    if (method !== 'GET' && root.navigator?.onLine === false) throw fixedError('You’re offline. Nothing was saved; reconnect and try again.');
     const access = await token();
     const url = new URL(base);
     url.searchParams.set('action', action);
@@ -135,23 +145,28 @@
         headers: { authorization: `Bearer ${access}`, accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) },
         body: body ? JSON.stringify(body) : undefined
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw Object.assign(new Error(friendly(response.status, payload.error)), { status: response.status });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw fixedError(friendly(response.status, payload && typeof payload === 'object' ? payload.error : ''), { status: response.status });
+      // A 200 that isn't a JSON object is a failure with fixed copy, never a
+      // JavaScript error on the page or an endless skeleton (S90).
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw fixedError(MALFORMED, { status: response.status });
       return payload;
     } catch (error) {
-      if (error?.name === 'AbortError') throw new Error('The stock count service took too long. Your saved counts are safe; try again.');
-      if (error instanceof TypeError) throw new Error('Atlas couldn’t reach the stock count service. Check your connection; nothing was lost.');
+      if (error?.name === 'AbortError') throw fixedError('The stock count service took too long. Your saved counts are safe; try again.');
+      if (error instanceof TypeError) throw fixedError('Atlas couldn’t reach the stock count service. Check your connection; nothing was lost.');
       throw error;
     } finally {
       root.clearTimeout(timer);
     }
   }
 
+  const MALFORMED = 'The stock count service sent an answer Atlas couldn’t read. Your saved counts are safe; try again.';
+
   function applyPayload(payload) {
-    if (payload.counts) state.snapshot = payload.counts;
+    if (payload.counts && typeof payload.counts === 'object') state.snapshot = { ...payload.counts, sessions: Array.isArray(payload.counts.sessions) ? payload.counts.sessions : [] };
     if (payload.staff) state.staff = payload.staff;
     if (payload.policy) state.policy = payload.policy;
-    if (payload.detail) { state.detail = payload.detail; state.sessionId = payload.detail.session?.id || state.sessionId; }
+    if (payload.detail && typeof payload.detail === 'object') { state.detail = payload.detail; state.sessionId = payload.detail.session?.id || state.sessionId; }
   }
 
   async function loadSnapshot(force = false) {
@@ -165,7 +180,7 @@
       applyPayload(payload);
       shell?.emit?.('notify:changed', { source: 'stock-count' });
     } catch (error) {
-      if (serial === state.loadSerial) state.error = error.message;
+      if (serial === state.loadSerial) state.error = shown(error, 'Your counts are safe. Check your connection and try again.');
     } finally {
       if (serial === state.loadSerial) state.loading = false;
     }
@@ -174,7 +189,8 @@
 
   async function loadDetail(id) {
     const payload = await api('detail', { params: { id } });
-    state.detail = payload.count || null;
+    if (!payload.count || typeof payload.count !== 'object' || !payload.count.session) throw fixedError(MALFORMED);
+    state.detail = payload.count;
     if (payload.policy) state.policy = payload.policy;
     state.sessionId = state.detail?.session?.id || id;
     return state.detail;
@@ -351,7 +367,6 @@
     const toolbar = `<div class="atlas-toolbar">
       <div class="atlas-segmented" role="group" aria-label="Show counts">${[['active', 'In progress'], ['verified', 'Verified'], ['all', 'All']].map(([value, label]) => `<button type="button" aria-pressed="${state.listFilter === value}" data-count-filter="${value}">${label}</button>`).join('')}</div>
       <div class="atlas-toolbar__end"></div>
-      ${canStart ? `<button type="button" class="atlas-btn atlas-btn--primary sc-start" data-count-start>${icon('plus')}Start stock count</button>` : ''}
     </div>
     <p class="sc-caption">Counts update stock only after a manager verifies them.</p>`;
     if (!state.snapshot && state.loading) {
@@ -442,7 +457,7 @@
       } catch (error) {
         submit.disabled = false;
         submit.classList.remove('is-loading');
-        host.querySelector('[data-sc-start-alert]').innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">The count didn’t start.</p><p class="atlas-alert__body">${esc(error.message)}</p></div></div>`;
+        host.querySelector('[data-sc-start-alert]').innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">The count didn’t start.</p><p class="atlas-alert__body">${esc(shown(error))}</p></div></div>`;
         lucide();
       }
     });
@@ -501,7 +516,7 @@
       try {
         await Promise.all([loadDetail(id), state.snapshot ? null : loadSnapshot()]);
       } catch (error) {
-        host.innerHTML = `<div class="sc-flow"><div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">This count couldn’t be opened.</p><p class="atlas-alert__body">${esc(error.message)}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-count-reopen="${esc(id)}">Try again</button></div></div><a class="atlas-btn atlas-btn--ghost" href="#inventory/counts">${icon('chevron-left')}All counts</a></div>`;
+        host.innerHTML = `<div class="sc-flow"><div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">This count couldn’t be opened.</p><p class="atlas-alert__body">${esc(shown(error))}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-count-reopen="${esc(id)}">Try again</button></div></div><a class="atlas-btn atlas-btn--ghost" href="#inventory/counts">${icon('chevron-left')}All counts</a></div>`;
         lucide();
         return;
       }
@@ -716,7 +731,7 @@
       toast(`${line.item_name} restored`);
       renderFlow();
     } catch (error) {
-      toast(error.message);
+      toast(shown(error));
     }
   }
 
@@ -749,7 +764,7 @@
       if (nextInput && root.matchMedia?.('(pointer: fine)').matches) nextInput.focus();
     } catch (error) {
       if (/changed on another device/.test(error.message)) { await loadDetail(session().id).catch(() => {}); renderFlow(); }
-      showCardError(error.message);
+      showCardError(shown(error));
     } finally {
       state.saving = false;
       button?.classList.remove('is-loading');
@@ -789,7 +804,7 @@
       const next = pendingIndex(state.lineIndex + 1);
       if (next < 0) state.finishing = true; else state.lineIndex = next;
       renderFlow();
-    } catch (error) { showCardError(error.message); }
+    } catch (error) { showCardError(shown(error)); }
   }
 
   async function command(action, confirmText, body, successMessage) {
@@ -802,8 +817,8 @@
       renderFlow();
       if (['verify', 'publish'].includes(action)) root.atlasReloadData?.();
     } catch (error) {
-      if (alert) { alert.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${esc(error.message)}</p></div></div>`; lucide(); }
-      else toast(error.message);
+      if (alert) { alert.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${esc(shown(error))}</p></div></div>`; lucide(); }
+      else toast(shown(error));
       throw error;
     }
     void confirmText;
@@ -888,7 +903,7 @@
           } catch (error) {
             button.disabled = false;
             button.classList.remove('is-loading');
-            sheet.querySelector('[data-sheet-alert]').innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${esc(error.message)}</p></div></div>`;
+            sheet.querySelector('[data-sheet-alert]').innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${esc(shown(error))}</p></div></div>`;
             lucide();
           }
         });
@@ -915,7 +930,7 @@
       <div class="atlas-capture__actions atlas-capture__actions--count">
         <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-save-next>Save and scan next</button>
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-open-item>Open item</button>
-        <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--lg" data-wrong>Wrong product</button>
+        <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-wrong>Wrong product</button>
       </div></div>`, (sheet) => {
       const input = sheet.querySelector('[data-count-qty]');
       bindStepper(sheet);
@@ -940,7 +955,7 @@
         } catch (error) {
           button.disabled = false;
           button.classList.remove('is-loading');
-          alert.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${esc(error.message)}</p></div></div>`;
+          alert.innerHTML = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__body">${esc(shown(error))}</p></div></div>`;
           lucide();
         }
       });
@@ -1016,8 +1031,8 @@
       if (head) head.textContent = `${(num(sum.counted_lines) || 0) + (num(sum.skipped_lines) || 0)} of ${num(sum.total_lines) || lines().length} counted`;
     } catch (error) {
       input.setAttribute('aria-invalid', 'true');
-      input.title = error.message;
-      toast(error.message);
+      input.title = shown(error);
+      toast(shown(error));
     }
   }
 
@@ -1129,7 +1144,7 @@
     await loadDetail(target.id);
     let line = lines().find((entry) => String(entry.inventory_item_id) === String(itemId));
     if (!line) {
-      try { await mutate('add-line', { session_id: target.id, item_id: itemId }); line = lines().find((entry) => String(entry.inventory_item_id) === String(itemId)); } catch (error) { toast(error.message); }
+      try { await mutate('add-line', { session_id: target.id, item_id: itemId }); line = lines().find((entry) => String(entry.inventory_item_id) === String(itemId)); } catch (error) { toast(shown(error)); }
     }
     state.focusIds = null;
     state.lineIndex = Math.max(0, lines().findIndex((entry) => line && entry.id === line.id));
@@ -1147,7 +1162,8 @@
   }
 
   function homeRows() {
-    const sessions = state.snapshot?.sessions || root.AtlasData?.countSnapshot?.()?.sessions || [];
+    const shared = root.AtlasData?.countSnapshot?.()?.sessions;
+    const sessions = state.snapshot?.sessions || (Array.isArray(shared) ? shared : []);
     const rows = [];
     sessions.filter((entry) => entry.status === 'draft').slice(0, 2).forEach((entry) => {
       const s = entry.summary || {};

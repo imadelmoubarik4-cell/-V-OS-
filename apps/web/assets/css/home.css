@@ -67,12 +67,13 @@
 .home-glance__detail { margin-top: var(--s-1); font: var(--type-meta); color: var(--text-2); }
 .home-glance__link { display: inline-flex; align-items: center; gap: 4px; margin-top: var(--s-3); font: var(--type-label); color: var(--text-2); }
 .home-glance__link > svg { width: 14px; height: 14px; }
+/* A tile whose source failed to load (never an empty-state claim). */
+.home-glance__retry { align-self: flex-start; margin-top: var(--s-2); margin-left: calc(-1 * var(--s-2)); }
 
 .home-col__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); }
 .home-col__head h2 { margin: 0; font: var(--type-heading); color: var(--text); }
 .home-staff { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .home-staff__row { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.home-staff__row.is-mine .home-staff__name { color: var(--accent-text); }
 .home-staff__who { display: flex; flex-direction: column; min-width: 0; }
 .home-staff__name { font: 500 14px/20px var(--font-sans); color: var(--text); }
 .home-staff__role { font: var(--type-caption); color: var(--text-2); }

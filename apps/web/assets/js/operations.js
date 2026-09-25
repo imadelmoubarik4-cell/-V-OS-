@@ -618,7 +618,7 @@
         </tr>`;
       }).join('')}</tbody>
     </table></div>
-    <p class="ops-foot">Readings are kept with who logged them and when. History charts come later; today’s last reading is shown.</p>`;
+    <p class="ops-foot">Readings are kept with who logged them and when. Today’s last reading is shown.</p>`;
   }
 
   function scheduleMarkup() {

@@ -26,7 +26,8 @@
   root.AtlasRehearsalBoundary = api;
   const config = root.VABAR_CONFIG || {};
   let failure = null;
-  try { validate(config); } catch (error) { failure = error; }
+  // The configuration problem goes to the console; people see fixed copy.
+  try { validate(config); } catch (error) { root.console?.error?.('Atlas configuration:', error); failure = new Error('Atlas isn’t set up correctly here. Nothing can be saved; tell your administrator.'); }
   const originalFetch = root.fetch.bind(root);
   root.fetch = function (input, init) {
     const url = typeof input === 'string' || input instanceof URL ? String(input) : input.url;

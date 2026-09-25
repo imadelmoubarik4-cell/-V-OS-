@@ -36,7 +36,7 @@ test('Recipes: library tiles show canonical availability and the limiting ingred
       line: node.querySelector('.recipe-tile__line')?.textContent || ''
     })));
     const negroni = tiles.find((tile) => tile.name === 'Negroni');
-    assert.deepEqual(negroni, { name: 'Negroni', pill: 'Unavailable', line: 'Campari is out' });
+    assert.deepEqual(negroni, { name: 'Negroni', pill: 'Unavailable', line: 'Campari: out of stock' });
     assert.ok(!tiles.some((tile) => tile.name === 'Old special'), 'drafts are not in All');
     assert.equal(await page.textContent('#recipes-view .page-head__sub'), '4 recipes · 1 unavailable tonight');
     // Segments and search.
@@ -97,12 +97,17 @@ test('Recipes: the editor route opens a sheet with sticky save; saving sends the
   } finally { await close(); }
 });
 
-test('Recipes on a phone: two-column tiles, full-screen detail with the top bar, no horizontal scroll', { skip }, async () => {
+test('Recipes on a phone: compact tiles without photos, full-screen detail with the top bar, no horizontal scroll', { skip }, async () => {
   const { page, record, close } = await launch({ hash: '#recipes', viewport: PHONE, contextOptions: { hasTouch: true, isMobile: true } });
   try {
     await page.waitForSelector('#recipes-view .recipe-tile');
+    // S90 (review P2-3): no recipe has a photo, so the library is one column
+    // of compact tiles with the category glyph, no grey placeholder blocks.
     const columns = await page.$eval('#recipes-view .recipe-grid', (node) => getComputedStyle(node).gridTemplateColumns.split(' ').length);
-    assert.equal(columns, 2);
+    assert.equal(columns, 1);
+    assert.equal(await page.$('#recipes-view .recipe-tile__placeholder, #recipes-view .recipe-tile--plain .recipe-tile__media'), null);
+    const tallest = await page.$$eval('#recipes-view .recipe-tile', (nodes) => Math.max(...nodes.map((node) => node.getBoundingClientRect().height)));
+    assert.ok(tallest <= 80, `a tile without a photo is compact (${tallest} px)`);
     assert.ok(await noHorizontalScroll(page));
     const small = await page.$$eval('#recipes-view .atlas-segmented button, #recipes-view .recipe-tile', (nodes) => nodes.filter((node) => node.getBoundingClientRect().height < 44 && node.offsetParent).length);
     assert.equal(small, 0, 'touch targets are at least 44 px');
@@ -257,7 +262,10 @@ test('Data: issues list every non-empty code with a Fix action to the canonical 
   try {
     await page.waitForSelector('#data-view [data-data-issue]');
     const chips = await page.$$eval('#data-view [data-data-issue]', (nodes) => nodes.map((node) => node.dataset.dataIssue));
-    assert.deepEqual(chips, ['inventory.supplier_text_unlinked', 'inventory.missing_cost', 'inventory.package_missing', 'inventory.missing_par', 'recipe.missing_price', 'inventory.possible_duplicate', 'catalog.pending_approval', 'inventory.category_unmapped']);
+    // S90: requests waiting for approval link to their own tab instead of a chip.
+    assert.deepEqual(chips, ['inventory.supplier_text_unlinked', 'inventory.missing_cost', 'inventory.package_missing', 'inventory.missing_par', 'recipe.missing_price', 'inventory.possible_duplicate', 'inventory.category_unmapped']);
+    assert.match(await page.textContent('#data-view'), /3 changes are waiting for a decision in Waiting for approval\./);
+    assert.ok(await page.$('#data-view a[href="#data/approvals"]'));
     await page.waitForSelector('#data-view tbody a[href^="#inventory/item/"]');
     await page.click('#data-view [data-data-issue="recipe.missing_price"]');
     await page.waitForSelector(`#data-view tbody a[href="#recipes/${IDS.espresso}/edit"]`);

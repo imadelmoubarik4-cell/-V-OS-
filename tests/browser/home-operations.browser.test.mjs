@@ -31,8 +31,8 @@ test('Home for an administrator: venue clock, attention rows, briefing, glance, 
     // Needs attention: at most five rows and a count; Campari and Limes are out.
     const rows = await page.$$eval('.home-attention .home-row .home-row__open', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.ok(rows.length >= 3 && rows.length <= 5, `${rows.length} rows`);
-    assert.ok(rows.includes('Campari is out'));
-    assert.ok(rows.includes('Limes is out'));
+    assert.ok(rows.includes('Campari: out of stock'));
+    assert.ok(rows.includes('Limes: out of stock'));
     assert.ok(await page.$('.home-attention [data-home-view-all]'));
     // At a glance: real counts, no KPI dump.
     const glance = await page.$$eval('.home-glance__item', (nodes) => nodes.map((node) => node.querySelector('.home-glance__label').textContent.trim()));

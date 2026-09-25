@@ -198,7 +198,14 @@
     constructor(message, status) {
       super(message);
       this.status = status;
+      this.atlasFixed = true;
     }
+  }
+  // Only this module's own fixed copy (atlasFixed) is shown; a JavaScript error
+  // or server text reads as the fallback (AtlasApi.message).
+  function shown(error, fallback) {
+    if (window.AtlasApi?.message) return window.AtlasApi.message(error, fallback);
+    return error?.atlasFixed ? error.message : fallback;
   }
 
   async function api(action, options = {}) {
@@ -400,7 +407,7 @@
     if (!head) return;
     const channel = selectedChannel();
     if (!channel) {
-      head.innerHTML = `<h2 class="msg-thread__title" id="msg-thread-title">${state.snapshot ? 'Conversation' : 'Loading…'}</h2>`;
+      head.innerHTML = `<h2 class="msg-thread__title" id="msg-thread-title">${state.snapshot || state.error ? 'Messages' : 'Loading…'}</h2>`;
       return;
     }
     const handover = channel.key === HANDOVER_CHANNEL && canPostIn(channel);
@@ -502,6 +509,7 @@
 
   function logMarkup() {
     const channel = selectedChannel();
+    if (!state.snapshot && state.error) return '';
     if (!state.snapshot || state.channelLoading || snapshotChannelKey() !== state.selectedChannel) {
       return `<div class="msg-log__skel" aria-busy="true">${'<div class="msg-skel"><span class="atlas-skel atlas-skel--circle"></span><span class="atlas-skel atlas-skel--text"></span></div>'.repeat(4)}<span class="sr-only">Loading messages</span></div>`;
     }
@@ -737,7 +745,7 @@
     } catch (error) {
       if (serial !== state.loadSerial) return;
       if (!options.silent || !state.snapshot) {
-        state.error = error instanceof Error ? error.message : 'Messages are temporarily unavailable.';
+        state.error = shown(error, 'Messages couldn’t be loaded. Your messages are safe; check the connection and try again.');
         state.failedAt = Date.now();
       }
     } finally {
@@ -850,7 +858,7 @@
         resetComposer();
         window.AtlasShell?.toast?.('Message updated');
       } catch (error) {
-        state.error = error instanceof Error ? error.message : 'The edit couldn’t be saved.';
+        state.error = shown(error, 'The edit couldn’t be saved. Try again.');
         renderAlert();
       } finally {
         state.submitting = false;
@@ -925,7 +933,7 @@
       applyPayload(payload);
       window.AtlasShell?.toast?.('Message deleted');
     } catch (error) {
-      state.error = error instanceof Error ? error.message : 'The message couldn’t be deleted.';
+      state.error = shown(error, 'The message couldn’t be deleted. Try again.');
       renderAlert();
     } finally {
       state.submitting = false;

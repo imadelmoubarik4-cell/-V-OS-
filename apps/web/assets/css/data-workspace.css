@@ -13,7 +13,7 @@
   .data-cover { display: flex; align-items: center; gap: var(--s-2); }
   .data-cover .atlas-affix { width: 150px; }
 
-  .data-issue-chips { flex-wrap: wrap; }
+  .data-issue-chips { flex-wrap: wrap; margin-bottom: var(--s-3); }
 
   .data-link {
     padding: 0;

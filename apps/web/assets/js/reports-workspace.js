@@ -394,7 +394,8 @@
   function tableMarkup(section) {
     const columns = COLUMNS[section] || [];
     const rows = sortedRows(section);
-    if (!rows.length) return notEnough('No records for this period.');
+    // Stock is a snapshot, not a period: its empty table says so.
+    if (!rows.length) return notEnough(section === 'inventory' ? 'No item rows to show.' : 'No records for this period.');
     const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     state.page = Math.min(Math.max(1, state.page), pages);
     const start = (state.page - 1) * PAGE_SIZE;
@@ -413,8 +414,10 @@
   // itself is null unless every active item is counted and costed.
   function stockValueGap(knownValue, uncounted, uncosted) {
     const missing = [uncounted ? `${formatNumber(uncounted)} not counted` : '', uncosted ? `${formatNumber(uncosted)} without a cost` : ''].filter(Boolean).join(' · ');
-    const floor = number(knownValue) === null ? 'Nothing counted and costed yet' : `At least ${money(knownValue)}`;
-    return missing ? `${floor} — ${missing}` : floor;
+    // A payload without a lower bound (undefined) says only what is missing;
+    // "nothing counted" is claimed only when the server says so (null).
+    const floor = knownValue === undefined ? '' : number(knownValue) === null ? 'Nothing counted and costed yet' : `At least ${money(knownValue)}`;
+    return [floor, missing].filter(Boolean).join(' — ') || 'Unknown until every item is counted and costed';
   }
 
   function sectionMarkup(section) {
@@ -423,7 +426,7 @@
     let figures = '';
     let chart = '';
     if (section === 'inventory') {
-      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Stock value', value: number(summary.estimated_value) === null ? '—' : escapeHtml(money(summary.estimated_value)), detail: number(summary.estimated_value) === null ? stockValueGap(summary.known_value, summary.needs_current_count, summary.missing_cost) : 'Current counts at unit cost' })}${statMarkup({ label: 'Below par', value: escapeHtml(formatNumber(summary.below_par)), unit: 'items' })}${statMarkup({ label: 'Out of stock', value: escapeHtml(formatNumber(summary.out_of_stock)), unit: 'items' })}${statMarkup({ label: 'Counted recently', value: escapeHtml(`${formatNumber(summary.current_items)} of ${formatNumber(summary.active_items)}`) })}</div>`;
+      figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Stock value', value: number(summary.estimated_value) === null ? '—' : escapeHtml(money(summary.estimated_value)), detail: number(summary.active_items) === 0 ? 'No active items yet' : number(summary.estimated_value) === null ? stockValueGap(summary.known_value, summary.needs_current_count, summary.missing_cost) : 'Current counts at unit cost' })}${statMarkup({ label: 'Below par', value: escapeHtml(formatNumber(summary.below_par)), unit: 'items' })}${statMarkup({ label: 'Out of stock', value: escapeHtml(formatNumber(summary.out_of_stock)), unit: 'items' })}${statMarkup({ label: 'Counted recently', value: escapeHtml(`${formatNumber(summary.current_items)} of ${formatNumber(summary.active_items)}`) })}</div>`;
       const categories = (data.categories || []).map((row) => ({ name: row.category, value: number(row.estimated_value) }));
       const top = categories.slice().sort((a, b) => (b.value || 0) - (a.value || 0))[0];
       chart = barChart(categories, { label: 'name', value: 'value', format: money, title: 'Counted stock value by category', takeaway: top ? `${top.name} holds the most value.` : '' }) || notEnough('Not enough data yet — needs a current stock count with costs.');

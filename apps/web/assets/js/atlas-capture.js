@@ -93,6 +93,8 @@
       super(message);
       this.name = 'CaptureError';
       this.code = code;
+      // Fixed copy Atlas wrote (ERROR_COPY), safe to show (AtlasApi.message).
+      this.atlasFixed = true;
       Object.assign(this, extra);
     }
   }
