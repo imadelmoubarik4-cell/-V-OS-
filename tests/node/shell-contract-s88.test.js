@@ -230,7 +230,7 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
-  for (const file of ['runtime-module-guard.js', 's38-app-remediation.js', 'shifts-workspace.js',
+  for (const file of ['s38-app-remediation.js', 'shifts-workspace.js',
     'atlas-venue-clock.js', 'atlas-chrome.js', 'modal.js', 'atlas-stock-truth.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
@@ -249,11 +249,16 @@ test('changed scripts carry the S88 cache key', () => {
   assert.ok(index.includes('<script src="assets/js/recipes.js?v=20260926-s91a"></script>'), 'recipes.js');
   assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">'), 'recipes.css');
   const config = read('apps/web/config.js');
-  // S91a: own messages on the right, others on the left.
-  assert.ok(config.includes("scriptPath: 'assets/js/team-messages.js?v=20260926-s91a'"), 'team-messages.js');
-  for (const file of ['team-profile-photos.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90u'`), file);
+  // S92: every message shows its sender's real name and photo (own on the
+  // right with the viewer's name and avatar); photos load when Messages opens.
+  for (const file of ['team-messages.js', 'team-unread-badge.js', 'team-profile-photos.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260930-s92m'`), file);
   }
+  // The guarded stylesheet keeps one href in index.html, config.js and the guard.
+  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/team-messages.css?v=20260930-s92m">'), 'team-messages.css');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/team-messages.css?v=20260930-s92m'"), 'team-messages.css loader');
+  assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20260930-s92m'"), 'team-messages.css guard');
+  assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20260930-s92m"></script>'), 'runtime-module-guard.js');
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }

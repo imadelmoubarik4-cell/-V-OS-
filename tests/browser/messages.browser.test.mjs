@@ -36,7 +36,7 @@ test('thread: current names from sender_id, never an email; grouping, dividers a
     const list = await rows(page);
     assert.deepEqual(list.map((row) => row.id), ['m1', 'm2', 'm3', 'm4']);
     assert.equal(list[0].name, 'Sara Jónsdóttir', 'the roster name replaces the stored email label');
-    assert.equal(list[2].name, 'Gunnar Karlsson', 'an email-only profile becomes a readable name');
+    assert.equal(list[2].name, 'Gunnar Karlsson', 'the roster display name');
     assert.ok(list.every((row) => !String(row.name || '').includes('@')));
     assert.equal(list[3].grouped, true, 'same sender within five minutes collapses avatar and name');
     const dividers = await page.$$eval('.msg-divider', (nodes) => nodes.map((node) => node.textContent.trim()));
@@ -64,12 +64,14 @@ test('photos come from the sender id; former members fall back safely; system me
     const list = await rows(page);
     const byId = Object.fromEntries(list.map((row) => [row.id, row]));
     assert.equal(byId.m1.photo, PHOTO, "Sara's own photo");
-    assert.equal(byId.m2.photo, null, "the viewer's photo is never used for someone else");
-    // S91a: the viewer's own messages sit on the right without an avatar.
-    assert.equal(byId.m2.avatar, null);
-    assert.equal(byId.m2.name, 'You');
-    assert.equal(byId.x1.name, 'Jon Gudmundsson');
+    assert.equal(byId.m2.photo, null, "Sara's photo is never used for someone else");
+    // S92: the viewer's own messages carry their real name and avatar (initials without a photo).
+    assert.equal(byId.m2.avatar, 'IE');
+    assert.equal(byId.m2.name, 'Imad El Moubarik');
+    // An address is never turned into a name (S87), not even its local part.
+    assert.equal(byId.x1.name, 'Former team member');
     assert.match(byId.x1.role, /no longer active/);
+    assert.ok(list.every((row) => !String(row.name || '').includes('@') && !/Gudmundsson/.test(row.name || '')));
     assert.equal(byId.x2.name, 'Former team member');
     assert.equal(byId.x3.system, true);
     assert.match(byId.x3.role, /System update/);
@@ -205,5 +207,197 @@ test('unread counts reach the shell badge and the per-conversation read API', { 
     await page.waitForFunction(() => window.AtlasTeamMessages.unreadCount() === 0);
     await page.waitForFunction(() => document.querySelector('.atlas-sidebar .nav-item[data-nav-id="messages"]')?.getAttribute('aria-label') === 'Messages', null, { timeout: 6000 });
     assert.equal(MEMBERS.length, 3);
+  } finally { await close(); }
+});
+
+// ---------- S92: sender identity (production: "Team member" everywhere, no photo on own messages) ----------
+
+const ADMIN_PHOTO = 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#2f6f5e"/></svg>').toString('base64');
+
+async function identityRows(page) {
+  return page.$$eval('[data-team-message]', (nodes) => {
+    const log = document.querySelector('[data-msg-log]');
+    const style = getComputedStyle(log);
+    const left = log.getBoundingClientRect().left + parseFloat(style.paddingLeft);
+    const right = log.getBoundingClientRect().right - parseFloat(style.paddingRight);
+    return nodes.map((node) => {
+      const body = node.querySelector('.msg-item__body').getBoundingClientRect();
+      const avatar = node.querySelector('.msg-avatar');
+      const box = avatar?.getBoundingClientRect();
+      const time = node.querySelector('.msg-item__time');
+      return {
+        id: node.dataset.teamMessage,
+        own: node.classList.contains('is-own'),
+        grouped: node.classList.contains('is-grouped'),
+        name: node.querySelector('.msg-item__name')?.textContent.trim() || null,
+        photo: avatar?.querySelector('img')?.getAttribute('src') || null,
+        initials: avatar && !avatar.querySelector('img') ? avatar.textContent.trim() : null,
+        icon: Boolean(avatar?.querySelector('svg, i[data-lucide]')),
+        avatarVisible: Boolean(box && box.width > 0 && box.height > 0),
+        avatarSide: box ? (box.left >= body.right - 1 ? 'right' : box.right <= body.left + 1 ? 'left' : 'overlap') : null,
+        fromLeft: body.left - left,
+        fromRight: right - body.right,
+        time: time?.textContent.trim() || '',
+        datetime: time?.getAttribute('datetime') || ''
+      };
+    });
+  });
+}
+
+for (const [label, viewport, contextOptions] of [
+  ['desktop 1440', { width: 1440, height: 900 }, {}],
+  ['phone 390 touch', { width: 390, height: 844 }, { hasTouch: true, isMobile: true }]
+]) {
+  test(`S92 ${label}: real names and photos on own and others' messages, initials otherwise, own right / others left`, { skip }, async () => {
+    const photos = [{ profile_id: USERS.admin.id, signed_url: ADMIN_PHOTO, version: 1 }];
+    const { page, record, close } = await open({ viewport, contextOptions, photos });
+    try {
+      await page.waitForSelector('[data-team-message="m2"] .msg-avatar img');
+      const rows = Object.fromEntries((await identityRows(page)).map((row) => [row.id, row]));
+      // Own (the admin viewer): real name, own photo, on the right with the avatar to its right.
+      assert.equal(rows.m2.own, true);
+      assert.equal(rows.m2.name, 'Imad El Moubarik');
+      assert.equal(rows.m2.photo, ADMIN_PHOTO);
+      assert.equal(rows.m2.avatarVisible, true);
+      assert.equal(rows.m2.avatarSide, 'right');
+      assert.ok(rows.m2.fromRight <= 48, `own bubble next to the right-hand avatar (${rows.m2.fromRight})`);
+      assert.ok(rows.m2.fromLeft > 40, `own bubble away from the left (${rows.m2.fromLeft})`);
+      assert.equal(await page.$eval('[data-team-message="m2"] .msg-item__meta', (node) => node.textContent.includes('(you)')), true, 'assistive tech hears it is yours');
+      // Others: their real names, initials without a photo, on the left with the avatar to the left.
+      for (const [id, name, initials] of [['m1', 'Sara Jónsdóttir', 'SJ'], ['m3', 'Gunnar Karlsson', 'GK']]) {
+        assert.equal(rows[id].own, false);
+        assert.equal(rows[id].name, name);
+        assert.equal(rows[id].photo, null);
+        assert.equal(rows[id].initials, initials);
+        assert.equal(rows[id].avatarSide, 'left');
+        assert.ok(rows[id].fromLeft <= 48, `${id}: next to the left-hand avatar (${rows[id].fromLeft})`);
+        assert.ok(rows[id].fromRight >= 24, `${id}: away from the right (${rows[id].fromRight})`);
+      }
+      // Grouping still collapses the repeat; timestamps are the venue-clock ones.
+      assert.equal(rows.m4.grouped, true);
+      assert.equal(rows.m4.name, null);
+      for (const row of Object.values(rows).filter((entry) => !entry.grouped)) {
+        assert.ok(row.time, `${row.id}: has a time`);
+        assert.match(row.datetime, /^\d{4}-\d{2}-\d{2}T/);
+      }
+      assert.match(rows.m1.time, /Sep/, 'yesterday shows a date');
+      assert.match(rows.m3.time, /^\d{2}:\d{2}$/, 'today shows only the time');
+      assert.ok(Object.values(rows).every((row) => !String(row.name || '').includes('@')));
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no horizontal scroll');
+      assert.deepEqual(record.pageErrors, []);
+    } finally { await close(); }
+  });
+
+  test(`S92 ${label}: the conversation list preview names the live sender; unread badge and time unchanged`, { skip }, async () => {
+    const backend = messagesBackend();
+    // A stored neutral label (display_name was empty when it was sent) resolves to the live roster name.
+    backend.threads.general.at(-1).sender_label = 'Team member';
+    const { page, close } = await open({ backend, viewport, contextOptions, hash: '#messages', ready: '.msg-channel' });
+    try {
+      await page.waitForSelector('.msg-channel[data-team-channel="general"]');
+      const general = await page.$eval('.msg-channel[data-team-channel="general"]', (node) => ({
+        preview: node.querySelector('.msg-channel__preview').textContent.trim(),
+        time: node.querySelector('.msg-channel__time')?.textContent.trim() || '',
+        datetime: node.querySelector('.msg-channel__time')?.getAttribute('datetime') || '',
+        badge: node.querySelector('.atlas-badge')?.textContent.trim() || null,
+        label: node.getAttribute('aria-label')
+      }));
+      assert.equal(general.preview, 'Gunnar Karlsson: I put a note on it.');
+      assert.match(general.time, /^\d{2}:\d{2}$/);
+      assert.match(general.datetime, /^\d{4}-\d{2}-\d{2}T/);
+      if (viewport.width < 768) {
+        // Phones open on the list: nothing is read yet, the badge shows.
+        assert.equal(general.badge, '2');
+        assert.equal(general.label, 'General, 2 unread');
+      }
+      const empty = await page.$eval('.msg-channel[data-team-channel="marketing"] .msg-channel__preview', (node) => node.textContent.trim());
+      assert.match(empty, /Content ideas/, 'a channel without messages keeps its description');
+      const feed = await page.evaluate(() => window.AtlasTeamMessages.unread().conversations.map((row) => [row.id, row.lastMessage?.sender]));
+      if (viewport.width < 768) assert.deepEqual(feed, [['general', 'Gunnar Karlsson']]);
+    } finally { await close(); }
+  });
+}
+
+test('S92 production shape: a neutral roster label never hides a real name; a nameless member gets a person icon, never "TM"', { skip }, async () => {
+  const backend = messagesBackend();
+  const NONAME = 'c0ffee00-0000-4000-8000-000000000004';
+  // Gunnar's profile has no display name yet (the gateway says "Team member");
+  // the gateway's sender_name / the stored name still carry his real name.
+  backend.members = [...MEMBERS.slice(0, 2), { ...MEMBERS[2], label: 'Team member' }, { id: NONAME, label: 'Team member', role: 'bartender' }];
+  backend.threads.general[2].sender_label = 'Team member';
+  backend.threads.general[2].sender_name = 'Gunnar Karlsson';
+  backend.threads.general[3].sender_label = 'Gunnar Karlsson';
+  backend.threads.general.push({ id: 'n1', sender_id: NONAME, sender_label: 'Team member', sender_name: 'Team member', sender_role: 'bartender', body: 'Hi all', message_type: 'user', created_at: NOW, read_by: [], read_by_count: 0 });
+  const { page, close } = await open({ backend });
+  try {
+    const rows = Object.fromEntries((await identityRows(page)).map((row) => [row.id, row]));
+    assert.equal(rows.m3.name, 'Gunnar Karlsson', "the gateway's sender_name beats the neutral roster label");
+    assert.equal(rows.m3.initials, 'GK');
+    assert.equal(rows.n1.name, 'Team member');
+    assert.equal(rows.n1.icon, true, 'a person icon');
+    assert.equal(rows.n1.initials, '', 'no "TM" initials');
+    assert.doesNotMatch(await page.$eval('[data-team-message="n1"] .msg-item__role', (node) => node.textContent), /no longer active/);
+  } finally { await close(); }
+});
+
+test('S92 hydration: photos that arrive after the thread swap in place; a broken photo URL falls back to initials and asks for fresh URLs', { skip }, async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let photoCalls = 0;
+  let broken = false;
+  const photosHandler = async () => {
+    photoCalls += 1;
+    await gate;
+    const url = broken ? '/missing-profile-photo.png' : ADMIN_PHOTO;
+    return { photos: [{ profile_id: USERS.bartender.id, signed_url: url, version: photoCalls }, { profile_id: USERS.admin.id, signed_url: url, version: photoCalls }], staff: { id: USERS.admin.id, can_manage_team: true } };
+  };
+  const app = await launchAtlas({
+    user: USERS.admin, hash: '#messages/general', fixedTime: new Date(NOW),
+    fixtures: { functions: peopleFunctions({ 'atlas-team-messages': messagesBackend().handler, 'atlas-team-profile-photos': photosHandler }) }
+  });
+  const { page, close } = app;
+  try {
+    // The photo request is held open, so the page never "settles" here.
+    await page.waitForSelector('[data-team-message="m2"] .msg-avatar');
+    let rows = Object.fromEntries((await identityRows(page)).map((row) => [row.id, row]));
+    assert.equal(rows.m1.initials, 'SJ', 'initials while photos load');
+    assert.equal(rows.m2.initials, 'IE');
+    await page.$eval('[data-team-message="m1"]', (node) => { node.dataset.sameNode = 'yes'; });
+    release();
+    await page.waitForSelector('[data-team-message="m1"] .msg-avatar img');
+    await page.waitForSelector('[data-team-message="m2"] .msg-avatar img');
+    assert.equal(await page.$eval('[data-team-message="m1"]', (node) => node.dataset.sameNode), 'yes', 'only the avatars changed');
+    // The signed URLs expire (or go missing): the image fails, initials return, fresh URLs are asked for.
+    broken = true;
+    const before = photoCalls;
+    await page.evaluate(() => window.AtlasTeamProfilePhotos.refresh());
+    await page.waitForFunction(() => document.querySelector('[data-team-message="m1"] .msg-avatar')?.textContent.trim() === 'SJ', null, { timeout: 8000 });
+    rows = Object.fromEntries((await identityRows(page)).map((row) => [row.id, row]));
+    assert.equal(rows.m1.photo, null);
+    assert.equal(rows.m2.initials, 'IE');
+    // refresh() once, then the failed image asks for fresh URLs once more.
+    await until(() => photoCalls >= before + 2, { message: 'fresh photo URLs after the failure' });
+  } finally { await close(); }
+});
+
+test('S92 Messages asks for the photo snapshot when it never loaded', { skip }, async () => {
+  let calls = 0;
+  let fail = true;
+  const photosHandler = async () => {
+    calls += 1;
+    if (fail) return { __status: 503, body: { error: 'unavailable' } };
+    return { photos: [{ profile_id: USERS.bartender.id, signed_url: ADMIN_PHOTO, version: 1 }], staff: { id: USERS.admin.id, can_manage_team: true } };
+  };
+  const { page, close } = await launchAtlas({
+    user: USERS.admin, hash: '#home', fixedTime: new Date(NOW),
+    fixtures: { functions: peopleFunctions({ 'atlas-team-messages': messagesBackend().handler, 'atlas-team-profile-photos': photosHandler }) }
+  });
+  try {
+    await until(() => calls >= 1, { message: 'the sign-in photo load' });
+    await settle(page);
+    fail = false;
+    await page.evaluate(() => window.AtlasShell.navigate('#messages/general'));
+    await page.waitForSelector('[data-team-message="m1"] .msg-avatar img', { timeout: 8000 });
+    assert.ok(calls >= 2, 'opening Messages retried the photo snapshot');
   } finally { await close(); }
 });

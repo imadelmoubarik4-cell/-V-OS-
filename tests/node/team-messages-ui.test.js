@@ -111,17 +111,68 @@ test('unread per conversation is exposed for the shell feed', () => {
   assert.match(messages, /window\.AtlasShell\?\.emit\?\.\('messages:unread', detail\)/);
 });
 
-test('identity: sender_id → display name → safe label → former member; never email', () => {
+test('identity (S92): sender_id → roster name → sender_name → stored name → neutral; never an email', () => {
   const start = messages.indexOf('  function safePersonLabel(value) {');
   const end = messages.indexOf('  function avatarTint(key) {');
-  const scope = { state: { members: [{ id: 'a', label: 'Sara Jónsdóttir', role: 'bartender' }, { id: 'b', label: 'gunnar.k@example.test', role: 'bartender' }] } };
+  const scope = {
+    window: {},
+    state: {
+      staff: { id: 'me', label: 'Imad El Moubarik', role: 'admin' },
+      members: [
+        { id: 'a', label: 'Sara Jónsdóttir', role: 'bartender' },
+        { id: 'b', label: 'gunnar.k@example.test', role: 'bartender' },
+        { id: 'c', label: 'Team member', role: 'bartender' },
+        { id: 'me', label: 'Imad El Moubarik', role: 'admin' }
+      ]
+    }
+  };
   vm.createContext(scope);
   vm.runInContext(messages.slice(start, end), scope);
-  assert.equal(scope.senderIdentity({ sender_id: 'a', sender_label: 'old@example.test' }).name, 'Sara Jónsdóttir');
-  assert.equal(scope.senderIdentity({ sender_id: 'b' }).name, 'Gunnar K');
-  assert.equal(scope.senderIdentity({ sender_id: 'gone', sender_label: 'jon.gudmundsson@example.test' }).name, 'Jon Gudmundsson');
-  assert.equal(scope.senderIdentity({ sender_id: null, sender_label: '' }).name, 'Former team member');
+  const name = (message) => scope.senderIdentity(message).name;
+  assert.equal(name({ sender_id: 'a', sender_label: 'old@example.test' }), 'Sara Jónsdóttir', 'the live roster name wins');
+  // An address is never a name, nor is its local part (S87).
+  assert.equal(name({ sender_id: 'b', sender_label: 'gunnar.k@example.test' }), 'Team member');
+  assert.equal(name({ sender_id: 'gone', sender_label: 'jon.gudmundsson@example.test' }), 'Former team member');
+  // A neutral roster label never hides a real name from the gateway or the stored label.
+  assert.equal(name({ sender_id: 'c', sender_label: 'Team member', sender_name: 'Kári Stefánsson' }), 'Kári Stefánsson');
+  assert.equal(name({ sender_id: 'c', sender_label: 'Kári' }), 'Kári');
+  assert.equal(name({ sender_id: 'c', sender_label: 'Team member' }), 'Team member');
+  assert.equal(scope.senderIdentity({ sender_id: 'c' }).current, true);
+  // Someone who left keeps the name they had; the role says they left.
+  const former = scope.senderIdentity({ sender_id: 'gone', sender_label: 'Jón Guðmundsson', sender_role: 'bartender' });
+  assert.equal(former.name, 'Jón Guðmundsson');
+  assert.equal(former.current, false);
+  assert.equal(name({ sender_id: null, sender_label: '' }), 'Former team member');
+  // Own messages carry the viewer's real name (roster, else the staff record).
+  assert.equal(name({ sender_id: 'me', sender_label: 'Team member' }), 'Imad El Moubarik');
+  scope.state.members = [];
+  assert.equal(name({ sender_id: 'me', sender_label: 'Team member' }), 'Imad El Moubarik');
+  assert.equal(scope.senderIdentity({ sender_id: 'me' }).own, true);
+  // A conversation preview from an older snapshot without sender_id is not "former".
+  assert.equal(name({ sender_label: 'Team member' }), 'Team member');
   assert.match(messages, /window\.AtlasTeamProfilePhotos\?\.photoFor\?\.\(identity\.id\)/);
+});
+
+test('own and others\' messages both carry name and avatar; previews and read receipts use live names', () => {
+  // Own messages: the viewer's name is visible, "(you)" for assistive tech, the avatar in the gutter.
+  assert.match(messages, /<strong class="msg-item__name">\$\{escapeHtml\(identity\.name\)\}<\/strong><span class="sr-only"> \(you\)<\/span>/);
+  assert.match(messages, /<span class="msg-item__gutter">\$\{grouped \? '' : system \?/);
+  assert.doesNotMatch(messages, /msg-item__name sr-only">You/);
+  // Avatars: photo, else initials of a real name, else a person icon (never "TM").
+  assert.match(messages, /return realName\(identity\.name\) \? escapeHtml\(initials\(identity\.name\)\) : icon\('user'\);/);
+  // Channel preview: the same live identity as the thread.
+  assert.match(messages, /const who = last\.message_type === 'system' \? 'Atlas' : senderIdentity\(last\)\.name;/);
+  assert.match(messages, /realName\(reader\.user_name\)/);
+  // Hydration: photos loaded later swap avatars in place; a failed photo falls back and asks for fresh URLs.
+  assert.match(messages, /window\.addEventListener\('atlas:profile-photos-updated', refreshAvatars\);/);
+  assert.match(messages, /window\.AtlasTeamProfilePhotos\?\.ensureFresh\?\.\(\);/);
+  assert.match(messages, /image\.addEventListener\('error', handlePhotoError, \{ once: true \}\);/);
+  // A rename repaints the thread even when no message changed.
+  assert.match(messages, /senderIdentity\(message\)\.name\}`\)\.join\('\|'\)/);
+  // Layout: own avatar in a right-hand gutter.
+  assert.match(css, /\.msg-item\.is-own \{ grid-template-columns: minmax\(0, 1fr\) 28px; \}/);
+  assert.match(css, /\.msg-item\.is-own > \.msg-item__gutter \{ grid-column: 2; grid-row: 1; \}/);
+  assert.doesNotMatch(css, /\.msg-item\.is-own > \.msg-item__gutter \{ display: none; \}/);
 });
 
 test('times use the venue clock (same-day check in the venue zone)', () => {

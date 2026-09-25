@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
+import { withSenderNames } from "./identity.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -54,7 +55,7 @@ function jsonResponse(value: unknown, status = 200): Response {
       ...CORS_HEADERS,
       "content-type": "application/json; charset=utf-8",
       "x-content-type-options": "nosniff",
-      "x-atlas-team-messages-version": "0.2.0-s34",
+      "x-atlas-team-messages-version": "0.3.0-s92",
     },
   });
 }
@@ -291,7 +292,7 @@ function formatShiftLabel(shift: any, profiles: AtlasProfile[]): string {
 
 async function messageSnapshot(context: AtlasContext, channelKey: string, limit: number) {
   const members = await activeProfiles(context);
-  const [snapshot, starredChannels] = await Promise.all([
+  const [rawSnapshot, starredChannels] = await Promise.all([
     branchRpc("atlas_team_messages_snapshot", {
       p_user_id: context.user.id,
       p_user_role: context.profile.role,
@@ -301,6 +302,10 @@ async function messageSnapshot(context: AtlasContext, channelKey: string, limit:
     }),
     branchRpc("atlas_team_conversation_stars_snapshot", { p_user_id: context.user.id }),
   ]);
+  // S92: every message, read receipt and conversation preview carries the
+  // sender's live name (sender_id → roster display name → stored name →
+  // neutral label); email-shaped stored labels never leave the gateway.
+  const snapshot = withSenderNames(rawSnapshot, members);
   const starred = new Set(Array.isArray(starredChannels) ? starredChannels.map(String) : []);
   if (Array.isArray(snapshot?.channels)) {
     snapshot.channels = snapshot.channels.map((channel: Record<string, unknown>) => ({
