@@ -436,55 +436,24 @@
 
   // ---------- layers ----------
 
+  // Layers and dialogs are the shared AtlasModal ones (modal.js).
   function openLayer({ id, panel, onClose, initialFocus }) {
-    document.getElementById(id)?.remove();
-    const root = document.createElement('div');
-    root.id = id;
-    root.className = 'atlas-modal team-layer';
-    root.setAttribute('data-atlas-modal', '');
-    root.hidden = true;
-    root.innerHTML = panel;
-    document.body.appendChild(root);
+    const root = window.AtlasModal.layer({ id, panel, className: 'team-layer', onClose, initialFocus });
     paintIcons();
-    if (window.AtlasModal) {
-      window.AtlasModal.register(root, { initialFocus, onClose: (reason) => { root.remove(); onClose?.(reason); } });
-      window.AtlasModal.open(root);
-    } else {
-      root.hidden = false;
-      root.classList.add('is-open');
-    }
     window.AtlasShell?.emit?.('team-profiles:rendered', { host: root });
     return root;
   }
 
   function closeLayer(root) {
-    if (!root) return;
-    if (window.AtlasModal?.isOpen?.(root)) window.AtlasModal.close(root);
-    else root.remove();
+    if (root) window.AtlasModal.dismiss(root);
   }
 
+  // Resolves { value } (the note when `field` is given) or null when dismissed.
   function confirmDialog({ title, body, confirmLabel, danger = false, field = null }) {
-    return new Promise((resolve) => {
-      let settled = false;
-      const finish = (value) => { if (!settled) { settled = true; resolve(value); } };
-      const root = openLayer({
-        id: 'team-confirm',
-        panel: `<section class="atlas-dialog${field ? ' atlas-dialog--form' : ''}" data-modal-panel aria-labelledby="team-confirm-title">
-          <h2 class="atlas-dialog__title" id="team-confirm-title">${escapeHtml(title)}</h2>
-          <form class="atlas-dialog__body" data-team-confirm-form novalidate>
-            <p>${escapeHtml(body)}</p>
-            ${field ? `<div class="atlas-field"><label for="team-confirm-input">${escapeHtml(field.label)} <span class="optional">Optional</span></label><textarea class="atlas-input atlas-textarea" id="team-confirm-input" rows="2" maxlength="1000"></textarea></div>` : ''}
-            <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn ${danger ? 'atlas-btn--danger-solid' : 'atlas-btn--primary'}">${escapeHtml(confirmLabel)}</button></div>
-          </form>
-        </section>`,
-        onClose: () => finish(null)
-      });
-      root.querySelector('[data-team-confirm-form]')?.addEventListener('submit', (event) => {
-        event.preventDefault();
-        finish({ value: root.querySelector('#team-confirm-input')?.value.trim() || '' });
-        closeLayer(root);
-      });
-    });
+    const options = { id: 'team-confirm', title, body, confirmLabel, danger };
+    if (!field) return window.AtlasModal.confirm(options).then((ok) => (ok ? { value: '' } : null));
+    return window.AtlasModal.prompt({ ...options, label: field.label, value: field.value, placeholder: field.placeholder, required: field.required, maxLength: 1000 })
+      .then((value) => (value === null ? null : { value }));
   }
 
   // Profile: side sheet on wider screens, a full page on phones (spec §7.10).
@@ -515,15 +484,9 @@
     root.dataset.profileId = profile?.id || '';
   }
 
-  // AtlasShell.show() does not rewrite the address when the new route has
-  // fewer parts than the current one (#messages/general → #messages), so this
-  // page moves between its own routes through the address itself.
+  // Moves between this page's routes; AtlasShell.show() writes the address.
   function routeTo(view, params = {}) {
-    const shell = window.AtlasShell;
-    if (!shell?.href) return;
-    const target = shell.href(view, params);
-    if (window.location.hash !== target) window.location.hash = target;
-    else shell.show(view, params, { history: false, source: 'route' });
+    window.AtlasShell?.show?.(view, params, { source: 'route' });
   }
 
   function closeProfileSheet() {

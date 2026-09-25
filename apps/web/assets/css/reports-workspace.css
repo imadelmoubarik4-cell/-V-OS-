@@ -14,8 +14,6 @@
   .reports-period { margin: 0 0 var(--s-3); font: var(--type-label); color: var(--text); }
   .reports-period span { font: var(--type-meta); color: var(--text-2); }
   .reports-skeleton { display: grid; gap: var(--s-2); margin-top: var(--s-8); }
-  /* Legacy index.html th defaults leak into .atlas-table (design-system request). */
-  .reports-page .atlas-table th { text-transform: none; letter-spacing: 0; }
 
   .reports-delta { font: var(--type-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
   .reports-delta.is-good { color: var(--positive); }

@@ -469,7 +469,7 @@
       const action = canWrite() && !done ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ops-log>Log reading</button>' : '<a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="#operations/temperature">View</a>';
       return `<li class="atlas-row ops-row">
         <span class="atlas-row__icon ${outside ? 'atlas-row__icon--danger' : done ? 'atlas-row__icon--positive' : 'atlas-row__icon--warning'}">${icon('thermometer')}</span>
-        <div class="atlas-row__body"><a class="ops-row__open" href="#operations/temperature">Temperature log</a><p class="atlas-row__meta">${escape(`${logged} of ${plural(required, 'point', 'points')} logged today`)}${outside ? escape(` · ${outside} out of range`) : ''}</p></div>
+        <div class="atlas-row__body"><a class="atlas-row__link ops-row__open" href="#operations/temperature">Temperature log</a><p class="atlas-row__meta">${escape(`${logged} of ${plural(required, 'point', 'points')} logged today`)}${outside ? escape(` · ${outside} out of range`) : ''}</p></div>
         ${progressBar(required ? (logged / required) * 100 : 0, 'Temperature readings logged')}
         <div class="ops-row__status">${pill}</div>
         <div class="atlas-row__end">${action}<span class="atlas-row__chevron">${icon('chevron-right')}</span></div>
@@ -485,7 +485,7 @@
     const tone = routine.status === 'completed' ? 'positive' : routine.status === 'overdue' ? 'danger' : progress.completed ? 'warning' : '';
     return `<li class="atlas-row ops-row">
       <span class="atlas-row__icon${tone ? ` atlas-row__icon--${tone}` : ''}">${icon(row.kind === 'checklist' ? 'list-checks' : 'calendar-check')}</span>
-      <div class="atlas-row__body"><a class="ops-row__open" href="${route}">${escape(row.name)}</a><p class="atlas-row__meta">${escape(meta)}</p></div>
+      <div class="atlas-row__body"><a class="atlas-row__link ops-row__open" href="${route}">${escape(row.name)}</a><p class="atlas-row__meta">${escape(meta)}</p></div>
       ${progressBar(progress.percent, `${row.name} progress`)}
       <div class="ops-row__status">${statusPill(routine)}</div>
       <div class="atlas-row__end"><a class="atlas-btn atlas-btn--${label === 'View' ? 'ghost' : 'secondary'} atlas-btn--sm" href="${route}">${label}</a><span class="atlas-row__chevron">${icon('chevron-right')}</span></div>
@@ -698,54 +698,11 @@
     shell()?.emit?.('operations:changed', { status: state.status });
   }
 
-  // ---------- dialogs (AtlasModal + .atlas-dialog) ----------
+  // ---------- dialogs: the shared AtlasModal.form (modal.js) ----------
 
+  // onSubmit(form) returns an error text (the dialog stays open) or null.
   function openDialog({ title, body, submitLabel, danger = false, onSubmit, wide = false }) {
-    const id = `ops-dialog-${Date.now().toString(36)}`;
-    const root = document.createElement('div');
-    root.className = 'atlas-modal';
-    root.dataset.atlasModal = '';
-    root.hidden = true;
-    root.innerHTML = `<form class="atlas-dialog${wide ? ' atlas-dialog--form' : ''}" data-modal-panel aria-labelledby="${id}-title" novalidate>
-      <h2 class="atlas-dialog__title" id="${id}-title">${escape(title)}</h2>
-      <div class="atlas-dialog__body">${body}</div>
-      <p class="atlas-field__error ops-dialog__error" role="alert" hidden></p>
-      <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--${danger ? 'danger-solid' : 'primary'}">${escape(submitLabel)}</button></div>
-    </form>`;
-    document.body.appendChild(root);
-    const form = root.querySelector('form');
-    const error = root.querySelector('.ops-dialog__error');
-    const modal = window.AtlasModal;
-    const close = () => { if (modal) modal.close(root); else root.remove(); };
-    if (modal) {
-      modal.register(root, { onClose: () => window.setTimeout(() => root.remove(), 0) });
-      modal.open(root);
-    } else {
-      root.hidden = false;
-    }
-    window.lucide?.createIcons?.();
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const submit = form.querySelector('button[type="submit"]');
-      error.hidden = true;
-      submit.disabled = true;
-      submit.classList.add('is-loading');
-      submit.setAttribute('aria-busy', 'true');
-      try {
-        const problem = await onSubmit(form);
-        if (problem) {
-          error.textContent = problem;
-          error.hidden = false;
-          return;
-        }
-        close();
-      } finally {
-        submit.disabled = false;
-        submit.classList.remove('is-loading');
-        submit.removeAttribute('aria-busy');
-      }
-    });
-    return { root, form, close };
+    return window.AtlasModal.form({ title, body, submitLabel, danger, wide, onSubmit });
   }
 
   let fieldSequence = 0;

@@ -348,7 +348,7 @@ test('phone: every shell control is at least 44 px; zoom is allowed; focus is vi
   try {
     const meta = await page.getAttribute('meta[name="viewport"]', 'content');
     assert.doesNotMatch(meta, /maximum-scale|user-scalable\s*=\s*no/);
-    // .atlas-notify__action is tracked by the todo test below (design-system request).
+    // Row actions (.atlas-btn--sm) are 44 px under pointer: coarse; the touch test below checks them.
     const small = async () => page.evaluate(() => [...document.querySelectorAll('.atlas-topbar button, .atlas-tabbar__item, #atlas-more .atlas-more__row, #atlas-more .atlas-more__account, .atlas-palette__close, .atlas-palette__item, .atlas-notify button:not(.atlas-notify__action)')]
       .filter((node) => node.getClientRects().length > 0)
       .map((node) => ({ id: node.id || node.className, h: node.getBoundingClientRect().height, w: node.getBoundingClientRect().width }))
@@ -379,11 +379,8 @@ test('phone: every shell control is at least 44 px; zoom is allowed; focus is vi
   } finally { await close(); }
 });
 
-test('phone: notification row actions are at least 44 px', {
-  skip,
-  todo: 'design-system request (S88 Team A): .atlas-notify__action is atlas-btn--sm, 32 px tall on phones (atlas-shell.css)'
-}, async () => {
-  const { page, close } = await launch({ viewport: { width: 390, height: 844 } });
+test('phone: notification row actions are at least 44 px (atlas-btn--sm is 44 px on touch)', { skip }, async () => {
+  const { page, close } = await launch({ viewport: { width: 390, height: 844 }, contextOptions: { hasTouch: true, isMobile: true } });
   try {
     await page.click('#atlas-notifications-btn');
     await page.waitForSelector('.atlas-notify__action');

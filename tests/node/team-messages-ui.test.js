@@ -25,7 +25,12 @@ test('Messages load from the isolated team-message API', () => {
 });
 
 test('routes: #messages list and #messages/<conversationId> thread (view id stays team)', () => {
-  assert.match(messages, /shell\.registerView\('team', \{ root: \(\) => host\(\), title: 'Messages', render: show, onHide: hide \}\)/);
+  // A full-height page (AtlasShell fullHeight + .page--full-height, spec §7.3).
+  assert.match(messages, /shell\.registerView\('team', \{ root: \(\) => host\(\), title: 'Messages', fullHeight: true, render: show, onHide: hide \}\)/);
+  assert.match(messages, /element\.classList\.add\('msg-host', 'page--full-height'\)/);
+  // AtlasShell.show() writes the address (#messages/general → #messages too): no local hash workaround.
+  assert.match(messages, /function routeTo\(view, params = \{\}\) \{\n    window\.AtlasShell\?\.show\?\.\(view, params, \{ source: 'route' \}\);\n  \}/);
+  assert.doesNotMatch(messages, /window\.location\.hash = target/);
   assert.match(messages, /const requested = params\.conversation \? String\(params\.conversation\) : null;/);
   assert.match(messages, /href="#messages\/\$\{encodeURIComponent\(channel\.key\)\}"/);
   assert.match(messages, /routeTo\('team', \{ conversation: key \}/);
@@ -82,7 +87,8 @@ test('composer links server-verified Atlas records; recommendations are manager-
   assert.match(messages, /if \(link\.type === 'inventory_item'\) return `#inventory\/item\/\$\{key\}`;/);
   // Brain and Checkpoint A are retired: recommendation links open Atlas AI decisions.
   assert.doesNotMatch(messages, /AtlasCheckpointALayout|AtlasPhase3Brain/);
-  assert.match(messages, /if \(link.type === 'brain_recommendation'\) return '#ai\/decisions';/);
+  // …with that recommendation selected (AtlasAI.openDecision route).
+  assert.match(messages, /if \(link\.type === 'brain_recommendation'\) return link\.key \? `#ai\/decisions\?decision=\$\{encodeURIComponent\(link\.key\)\}` : '#ai\/decisions';/);
 });
 
 test('handover template posts the three sections to the Handover channel', () => {

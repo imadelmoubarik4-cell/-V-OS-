@@ -120,7 +120,7 @@ test('staff: my shifts from today with Confirm and Request change; manager tabs 
     await page.click('[data-shift-id="s7"] [data-shifts-respond="change_requested"]');
     await page.waitForSelector('#shifts-confirm');
     await page.click('#shifts-confirm [type="submit"]');
-    assert.equal(await page.isVisible('[data-shifts-confirm-error]'), true, 'a note is required');
+    assert.equal(await page.isVisible('#shifts-confirm [data-atlas-dialog-error]'), true, 'a note is required');
     await page.fill('#shifts-confirm-input', 'Can I start at 19:00?');
     await page.click('#shifts-confirm [type="submit"]');
     await page.waitForTimeout(400);

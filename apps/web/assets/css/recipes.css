@@ -2,8 +2,6 @@
    from atlas-components.css; this file places them. */
 @layer atlas.modules {
   .recipes-page .atlas-alert { margin-top: var(--s-4); }
-  /* Legacy index.html th defaults leak into .atlas-table (design-system request). */
-  .recipes-page .atlas-table th { text-transform: none; letter-spacing: 0; }
   .recipe-toolbar .atlas-toolbar__end { gap: var(--s-3); }
   .recipe-search--phone { display: none; }
   .recipe-category-picker { position: relative; display: inline-flex; align-items: center; gap: var(--s-1); }
@@ -87,7 +85,6 @@
 
   /* Editor */
   .recipe-form { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
-  .recipe-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
   .recipe-form legend { padding: 0; margin-bottom: var(--s-4); }
   .recipe-ingredient-picker {
     display: grid;
@@ -126,7 +123,6 @@
     .recipe-build__row, .recipe-method { font: 400 var(--fs-section)/26px var(--font-sans); }
     .recipe-build__row { grid-template-columns: minmax(80px, auto) minmax(0, 1fr); }
     .recipe-build__end { grid-column: 2; }
-    .recipe-sheet.atlas-sheet { top: 0; max-height: none; border-radius: 0; }
     .recipe-sheet__actions { display: none; }
     .recipe-ingredient-picker { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
     .recipe-ingredient-picker__item { grid-column: 1 / -1; }

@@ -5,7 +5,6 @@ window.VABAR_CONFIG = {
   SUPABASE_URL: "https://dnefgcmjcgxlynycxkts.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp",
   SPRINT3_REVIEW_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-sprint3-review",
-  SPRINT4_BRIEFING_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-sprint4-briefing",
   PHASE3_BRAIN_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-phase3-brain",
   PHASE3_INTELLIGENCE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-phase3-intelligence",
   OPERATIONS_CHECKPOINT_A_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-operations-checkpoint-a",

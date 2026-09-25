@@ -57,9 +57,8 @@
 .settings-hours__tap { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 
 /* Touch: every Settings control is at least 44 px (spec §6). A checkbox's
-   target is its label; the design system's .atlas-btn--sm is 40 px. */
+   target is its label (shared buttons are 44 px on touch already). */
 @media (pointer: coarse) {
-  .settings-layout .atlas-btn--sm { min-height: 44px; }
   .settings-hours__tap { min-width: 44px; min-height: 44px; }
   .settings-check, .settings-inline-check { min-height: 44px; align-items: center; }
   .settings-check > .atlas-check { margin-top: 0; }
@@ -111,9 +110,6 @@
 .settings-hours th[scope="row"] { font: 500 14px/20px var(--font-sans); white-space: nowrap; }
 .settings-hours thead th { white-space: normal; }
 .settings-grid > .atlas-field { align-content: start; }
-/* The inline index.html `thead th` rule (uppercase, tracked) leaks into
-   .atlas-table; removable once atlas-components.css resets it (DS request). */
-.settings .atlas-table th { text-transform: none; letter-spacing: 0; }
 
 /* Team access */
 .settings-permissions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2) var(--s-4); margin: 0; padding: 0; list-style: none; }

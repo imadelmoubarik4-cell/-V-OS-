@@ -1,7 +1,10 @@
 # Atlas Design System
 
 Status: canonical from S88 (the Atlas experience redesign). It replaces the S87
-version of this file. The build specification is
+version of this file. Final S88 consolidation (2026-09-25): every module team's
+design-system request is implemented here, the module workarounds are gone and
+the legacy layer is retired — there is no `atlas.legacy` layer, no
+`assets/css/legacy/` directory and no inline style block in `index.html`. The build specification is
 `docs/design/Atlas_Experience_Redesign.md` (§5 visual language, §6 components);
 the visual north star is `docs/design/atlas-reference.html`. Where this file and
 the spec disagree, the spec wins; fix this file.
@@ -20,23 +23,31 @@ show a guessed number.
 | File | Layer | Holds |
 | --- | --- | --- |
 | `apps/web/assets/css/atlas-tokens.css` | `atlas.tokens` | Every custom property (the only file that defines `:root` variables) and the layer order statement. Linked first. |
-| `apps/web/assets/css/atlas-base.css` | `atlas.base` | Reset, body type, links, focus, selection, `[hidden]`, reduced motion, icon sizing, layout primitives, and (transitional) legacy defaults. |
-| `apps/web/assets/css/atlas-components.css` | `atlas.components` | Every shared component (§6.1–6.27 of the spec) and (transitional) the legacy bridge. |
-| module sheets | `atlas.legacy` → `atlas.modules` | One stylesheet per module, rewritten against the components. |
+| `apps/web/assets/css/atlas-base.css` | `atlas.base` | Reset (including `fieldset`/`legend`), body type, links, focus, selection, `[hidden]`, role gating, reduced motion, icon sizing, layout primitives. |
+| `apps/web/assets/css/atlas-components.css` | `atlas.components` | Every shared component (§6.1–6.27 of the spec). |
+| `apps/web/assets/css/atlas-shell.css` | `atlas.components` | The shell (sidebar, rail, top bars, tab bar, More, palette, notifications, account menu, sign-in), full-height pages, view placeholders. |
+| module sheets (`home.css`, `inventory.css`, `team-messages.css`, …) | `atlas.modules` | One stylesheet per module: layout and module-specific pieces only. |
 
-`@layer atlas.tokens, atlas.base, atlas.legacy, atlas.components, atlas.modules;`
+`@layer atlas.tokens, atlas.base, atlas.components, atlas.modules;`
 
 - A later layer beats an earlier one for normal declarations whatever the
   specificity or load order; for `!important` the order reverses (the earlier
   layer wins).
-- `atlas.base` sits **below** `atlas.legacy`: an element rule in base never
-  overrides a pre-S88 page; it only fills in browser defaults.
-- `atlas.components` sits **above** legacy: adding a component class to a
-  legacy element restyles it without `!important`.
-- `!important` is allowed only in base for `[hidden]`, reduced motion and role
-  gating. Nowhere else.
-- Every stylesheet is exactly one `@layer` block
+- There is no legacy layer: S88 retired `atlas.legacy`, the inline
+  `index.html` style block and the `assets/css/legacy/` fragments. Nothing may
+  reintroduce them (`tests/node/css-hygiene-s88.test.js` fails).
+- `!important` exists only in `atlas-base.css`, for `[hidden]`, reduced motion
+  and role gating (`body:not(.atlas-commercial-manager)` hides
+  `[data-commercial-only]` and the Purchasing link; RLS stays the boundary).
+  Nowhere else (the hygiene test pins the three rules).
+- Every stylesheet is exactly one `@layer` block; `atlas-base.css` is
+  `atlas.base`, `atlas-components.css` and `atlas-shell.css` are
+  `atlas.components`, everything else is `atlas.modules`
   (`tests/node/css-hygiene-s88.test.js`).
+- Hygiene end state (`tests/node/css-hygiene-s88.baseline.json`): 19
+  stylesheets, 0 legacy fragments, 0 inline or injected style blocks, 0
+  cross-file duplicate selectors, 0 font sizes under 11 px (the floor is
+  12 px), 10 `!important` (the base contracts above).
 - Living gallery: `tests/browser/tools/component-gallery.html` (loads the real
   stylesheets; not part of the app bundle), checked by
   `tests/browser/components.browser.test.mjs` at 1440 and 390.
@@ -216,25 +227,25 @@ icon (spec §5.8 list); no emoji; no decorative icons.
 
 | § | Component | Classes | Key specs |
 | --- | --- | --- | --- |
-| 6.1 | Page header | `.page-head`, `__text`, `__title` (h1), `__sub`, `__actions`; `.atlas-toolbar`, `__end` | Title 24/32; phone: title visually hidden (top bar shows it), actions full width |
+| 6.1 | Page header | `.page-head`, `__text`, `__title` (h1), `__sub`, `__actions`; `.atlas-toolbar`, `__end` | Title 24/32; phone: title visually hidden (top bar shows it), actions full width; the toolbar scrolls sideways and its `.atlas-search` keeps 240 px |
 | 6.2 | Section | `.atlas-section`, `__head`, `__title`, `__meta`, `__link` | 17/24 title, 12 to content, 40 above (28 phone) |
-| 6.3 | Button | `.atlas-btn` + `--primary`/`--secondary`/`--ghost`/`--danger`/`--danger-solid`, `--sm`/`--lg`/`--block`, `.is-loading` (+`aria-busy`), `:disabled`/`[aria-disabled]`; `.atlas-btn-group` | 32/36/44; coarse 40/44/44; radius 8; one primary per context |
+| 6.3 | Button | `.atlas-btn` + `--primary`/`--secondary`/`--ghost`/`--danger`/`--danger-solid`, `--sm`/`--lg`/`--block`, `.is-loading` (+`aria-busy`), `:disabled`/`[aria-disabled]`; `.atlas-btn-group` | 32/36/44; coarse 44/44/44; radius 8; one primary per context |
 | 6.4 | Icon button | `.atlas-icon-btn` (+`--sm`/`--md`/`--lg`), `.dot`; `.kbd` | 36 (44 touch); always `aria-label` |
 | 6.5 | Inputs | `.atlas-input`, `.atlas-select`, `.atlas-textarea` (or `textarea.atlas-input`), `.atlas-affix` + `.suffix`, `.atlas-search` + `.atlas-search__clear`, `.atlas-range` | 36 (44 + 16 px text on touch), 8 radius, focus accent + ring, `aria-invalid` danger |
 | 6.6 | Field | `.atlas-field` > `label` / `.atlas-label`, `.optional`, `.help`, `.error` (or `__help`, `__error`) | Label 13/500, help and error 12 |
-| 6.7 | Forms | `.atlas-form`, `.atlas-form-group`, `__title`, `.atlas-grid-2`, `.atlas-form-foot`, `__start` | 16 between fields, 24 between groups, single column on phones |
+| 6.7 | Forms | `.atlas-form`, `.atlas-form-group` (a `<fieldset>` with its `<legend class="atlas-form-group__title">`; base resets fieldset/legend), `__title`, `.atlas-grid-2`, `.atlas-form-foot`, `__start` | 16 between fields, 24 between groups, legend 8 above the fields, single column on phones |
 | 6.8 | Toggle | `button.atlas-toggle[role=switch][aria-checked]`, `.is-pending`; `.atlas-toggle-row`, `__label`, `__help`, `__error` | 36 × 20, 44 hit area |
 | 6.9 | Check / radio | `input.atlas-check`, `input.atlas-radio` (`:checked`, `:indeterminate`), `.atlas-check-row` | 16 px, native input kept |
-| 6.10 | Segmented | `.atlas-segmented` > `button[aria-pressed]` / `[aria-checked]` | 28 (36 touch) |
+| 6.10 | Segmented | `.atlas-segmented` > `button[aria-pressed]` / `[aria-checked]` | 28 (44 touch) |
 | 6.11 | Tabs | `.atlas-tabs` > `a[aria-current=page]` / `[role=tab][aria-selected]`, `.count` | 40 tall, ink underline (not blue), scrolls with a fade on phones |
-| 6.12 | Chips | `.atlas-chip`, `.is-active` / `[aria-pressed=true]`, `--dashed`, `__clear`; `.atlas-chips` | 30 (36 touch) |
+| 6.12 | Chips | `.atlas-chip`, `.is-active` / `[aria-pressed=true]`, `--dashed`, `__clear`; `.atlas-chips` | 30 (44 touch) |
 | 6.13 | Pill, badge | `.atlas-pill` + `--positive`/`--warning`/`--danger`/`--info`/`--neutral`/`--plain`; `.atlas-badge`, `--muted` | Pill 22, 12/16 500, word mandatory; badge 18 |
 | 6.14 | Card | `.atlas-card`, `--pad`/`--pad-sm`/`--pad-lg`, `--link` (or `a`/`button`), `__head`, `__title`, `__body`, `__foot` | White, 1 px line, 12 radius, no shadow, never tinted |
-| 6.15 | Row | `.atlas-list` > `.atlas-row` (`--compact`, `--link`), `__icon` (+tones), `__body`, `__title`, `__meta`, `__end`, `__value`, `__action`, `__chevron` | Min 60; phone: action collapses to chevron |
-| 6.16 | Table | `.atlas-table-wrap` (`--scroll`, `--responsive`), `.atlas-table` (`--compact`), `.atlas-th-sort`, `.is-num`, `.col-check`, `.col-actions`, `.cell-primary`, `.cell-sub`, `.unit`, `.row-action`, `[data-priority]`, `.atlas-par`, `.atlas-bulkbar`, `__sep`, `.atlas-table-foot`, `.atlas-table-list`, `__row`, `__body`, `__title`, `__meta`, `__value` | Header 36 sticky (`--table-sticky-top`), rows 48 / 40 compact, priority 3 hides ≤1279, 2 ≤1023; row list below 768 |
+| 6.15 | Row | `.atlas-list` > `.atlas-row` (`--compact`, `--link`), `__icon` (+tones), `__body`, `__title`, `__link`, `__meta`, `__end`, `__value`, `__action`, `__chevron` | Min 60; phone: action collapses to chevron. Row link: the title is an `<a>`/`<button class="atlas-row__link">` whose hit area is the whole row (hover and focus ring on the row); controls in `__end` stay clickable above it |
+| 6.16 | Table | `.atlas-table-wrap` (`--scroll`, `--responsive`), `.atlas-table` (`--compact`), `.atlas-th-sort`, `.is-num`, `.col-check`, `.col-actions`, `.cell-primary`, `.cell-sub`, `.unit`, `.row-action`, `[data-priority]`, `.atlas-par`, `.atlas-bulkbar` (`--sticky`), `__sep`, `.atlas-table-foot`, `.atlas-table-list`, `__row`, `__body`, `__title`, `__meta`, `__value` | Header 36 sticky (`--table-sticky-top`), 12/16 500 sentence case (no uppercase, no tracking), rows 48 / 40 compact, priority 3 hides ≤1279, 2 ≤1023 (columns hide only by `data-priority`); row list below 768; the bulk bar hides below 768 except `--sticky` (a save bar pinned above the tab bar) |
 | 6.17 | Stat | `.atlas-stats` > `.atlas-stat`, `__label`, `__value`, `__unit`, `__detail`, `__link` | Hairline-divided row, ≤4, KPI 28/32 |
-| 6.18 | Dialog, sheet | `.atlas-modal` (modal.js root / scrim) or `.atlas-scrim`; `.atlas-dialog` (`--form`), `__title`, `__body`, `__foot`; `.atlas-sheet` (`--wide`), `__grabber`, `__head`, `__title`, `__desc`, `__close`, `__body`, `__foot`, `__foot-start` | Dialog 440/560, sheet 480/640 inset 8; bottom sheet on phones |
-| 6.19 | Menu, popover, tooltip | `.atlas-menu`, `__item` (`--danger`), `__sep`, `__label`; `.atlas-popover`; `.atlas-tooltip`, `[data-atlas-tooltip]` | Items 36 (44 touch), tooltip ink 12/16 after 400 ms |
+| 6.18 | Dialog, sheet | `.atlas-modal` (modal.js root / scrim) or `.atlas-scrim`; `.atlas-dialog` (`--form`), `__title`, `__body`, `__error`, `__foot`; `.atlas-sheet` (`--wide`, `--full-phone`), `__grabber`, `__head`, `__title`, `__desc`, `__close`, `__body`, `__foot`, `__foot-start` | Dialog 440/560, sheet 480/640 inset 8; bottom sheet on phones, or a whole screen with `--full-phone`; opaque scrim, no blur |
+| 6.19 | Menu, popover, tooltip | `.atlas-menu`, `__item` (`--danger`), `__sep`, `__label`; `.atlas-popover`; `.atlas-tooltip`, `[data-atlas-tooltip]` (`data-atlas-tooltip-align="start"`/`"end"`) | Items 36 (44 touch), tooltip ink 12/16 after 400 ms; a hidden tooltip is not rendered, so a trigger at the viewport edge never widens the page |
 | 6.20 | Avatar | `.atlas-avatar` (`--sm` 24, default 28, `--lg` 40, `--xl` 64), tints `--a`…`--d`, `__status` | Initials 600 |
 | 6.21, 6.24 | Empty, permission, unavailable | `.atlas-empty` (`--page`, `--inline`), `__icon`, `__title`, `__text`, `__actions` | 40 icon tile, one action |
 | 6.22 | Skeleton | `.atlas-skel` (`--text`, `--title`, `--row`, `--block`, `--circle`) | Appears after 150 ms, 1.4 s shimmer, static with reduced motion |
@@ -248,6 +259,17 @@ Layout primitives (`atlas-base.css`): `.atlas-stack` (`--xs`/`--sm`/`--md`/`--lg
 or `--stack-gap`), `.atlas-cluster` (`--end`, `--between`, `--nowrap`),
 `.atlas-auto-grid` (`--grid-min`, `--grid-gap`), `.atlas-spacer`, `.atlas-page`
 (`--wide`), `.atlas-reading`, `.sr-only`, `.num`, `.atlas-table-scroll`.
+Page shapes (`atlas-shell.css`): `.page--wide` (1400 content), full-height
+pages (a view registered with `AtlasShell.registerView(name, { fullHeight: true })`
+sets `body.atlas-page-full-height`: no content padding or max width; its root
+`.page--full-height` fills the height under the top bar and scrolls inside
+itself; phones keep the normal flow), `.placeholder-view` +
+`.atlas-view-loading` (a view root before its module renders).
+
+Touch (`pointer: coarse`): every shared control is at least 44 px — buttons of
+every size, icon buttons, inputs and selects (16 px text), chips, segmented
+buttons, menu items, check rows, notification row actions. Modules never add
+their own touch sizes for shared controls.
 
 The Atlas AI components (spec §6.28: `.ai-conv`, messages, `.steps-line`,
 `.record-chip`, `.evidence`, `.approval`, `.composer`, `.voice`) live in the
@@ -261,6 +283,30 @@ Atlas AI module stylesheet.
   field (or the title for read-only dialogs), Tab is trapped, Esc closes, focus
   returns to the trigger, the rest of the page is `inert` and body scroll is
   locked (`body.atlas-modal-open`).
+- Shared dialogs (`modal.js`; modules never build their own confirm or prompt):
+  `AtlasModal.confirm({ title, body, confirmLabel, cancelLabel, danger, id })`
+  → `Promise<boolean>`; `AtlasModal.prompt({ title, body, label, value,
+  placeholder, required, multiline, rows, maxLength, type, confirmLabel,
+  danger, id })` → `Promise<string | null>` (a required value is asked for in
+  the dialog's error line); `AtlasModal.form({ title, body, submitLabel, danger,
+  wide, id, onSubmit(form) })` → `Promise<boolean>` that also carries
+  `{ root, form, close }`; `onSubmit` may be async and returns an error text to
+  keep the dialog open. Text is escaped; `form()`'s `body` is trusted markup.
+  `AtlasModal.layer({ id, panel, className, onClose, initialFocus })` opens a
+  one-off `.atlas-modal` around a sheet or dialog and removes it on close;
+  `AtlasModal.dismiss(root)` closes one.
+- Routes: `AtlasShell.show()` / `navigate()` always write the address for the
+  view shown, including a shorter route (`#messages/general` → `#messages`);
+  modules never write `location.hash` themselves.
+- `AtlasShell.notify.open({ filter: 'needs-action' | 'all' })` preselects the
+  notifications filter (also `#notifications?filter=needs-action`).
+- Badges: `[data-nav-badge="messages"]` (sidebar link, rail dot) and
+  `[data-nav-badge="more"]` (tab bar) show the Messages unread count from
+  `AtlasTeamUnreadBadge.count()`; `atlas-chrome.js` updates them on every
+  `messages:unread` event.
+- `AtlasAI.openDecision(recommendationId)` opens `#ai/decisions?decision=<id>`:
+  Decisions with that row selected and its detail sheet open (Messages links,
+  palette records and `AtlasShell.links` `brain_recommendation` use it).
 - `AtlasShell.toast(message, { action: { label, onClick }, duration })`: one
   toast at a time, 4 s (8 s with an action), pauses on hover and focus,
   announced through a `role="status"` region. Completed actions only; never for
@@ -308,17 +354,16 @@ tokens: `--sidebar-rail`, `--topbar-h`, `--tabbar-h`, `--page-max`,
   duration means a new token here first. No `:root` variables elsewhere.
 - Modules never ship their own button, input, chip, pill, card, tab or colour:
   extend `atlas-components.css` through its owner.
-- No new override layers, no `!important` (except base: `[hidden]`, reduced
-  motion, role gating).
-- Transitional sections: "Legacy defaults" at the end of `atlas-base.css` and
-  the "Legacy bridge" at the end of `atlas-components.css` hold the global rules
-  of the retired override stylesheets (atlas-glass, workspaces-polish,
-  polish-pass2, s34, s38 search, s61) at zero specificity, de-glassed. Module
-  owners delete their selectors there when they rebuild their page; both
-  sections go when the last legacy page does.
-- Legacy fragments (`assets/css/legacy/<source>--<module>.css`) belong to the
-  module they style. Consolidating a module: rewrite it against the components
-  in `@layer atlas.modules`, drop its `!important`, delete its fragments.
+- No override layers, no inline style blocks, no `!important` (except base:
+  `[hidden]`, reduced motion, role gating).
+- A selector is owned by one file: no cross-file duplicate selectors (the
+  hygiene ratchet is at 0). Keyframe names are unique per file (the shell's
+  are `atlas-shell-*`).
+- A missing or wrong shared pattern is fixed here (tokens, base, components,
+  shell) and then consumed; a module never works around it locally. Module
+  requests are filed with the design-system owner.
+- The S88 legacy layer, its bridge sections and every `legacy/` fragment are
+  retired; do not recreate them.
 - Evidence for a CSS change: `tests/browser/tools/style-snapshot.mjs`
   (computed styles and screenshots), `cascade-graph.mjs`, the gallery test, and
   the hygiene ratchet `tests/node/css-hygiene-s88.test.js` (ceilings may only go

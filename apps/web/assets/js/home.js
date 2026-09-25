@@ -488,7 +488,7 @@
     return `<li class="atlas-row home-row">
       <span class="atlas-row__icon atlas-row__icon--${tone}">${icon(row.icon || 'circle-alert')}</span>
       <div class="atlas-row__body">
-        <button type="button" class="home-row__open" data-home-row="${index}"${row.action?.label ? ` aria-label="${escape(`${row.title}. ${row.action.label}`)}"` : ''}>${escape(row.title)}</button>
+        <button type="button" class="atlas-row__link home-row__open" data-home-row="${index}"${row.action?.label ? ` aria-label="${escape(`${row.title}. ${row.action.label}`)}"` : ''}>${escape(row.title)}</button>
         ${row.detail ? `<p class="atlas-row__meta">${escape(row.detail)}</p>` : ''}
       </div>
       <div class="atlas-row__end">${action}<span class="atlas-row__chevron">${icon('chevron-right')}</span></div>
@@ -802,8 +802,9 @@
       id: 'home.reload', label: 'Reload data', icon: 'refresh-cw', keywords: ['refresh', 'reload'],
       run: () => { state.dataErrors.clear(); if (typeof window.atlasReloadPurchasingData === 'function') return window.atlasReloadPurchasingData().then(() => atlas.dataLoaded({ online: navigator.onLine })); return null; }
     });
-    // Team Messages recommendation links open Atlas AI › Decisions (Brain retired).
-    atlas.links?.register?.('brain_recommendation', () => { atlas.navigate('#ai/decisions'); return true; });
+    // Team Messages recommendation links open Atlas AI › Decisions with that
+    // recommendation selected (AtlasAI.openDecision; Brain retired).
+    atlas.links?.register?.('brain_recommendation', (key) => { atlas.navigate(key ? `#ai/decisions?decision=${encodeURIComponent(key)}` : '#ai/decisions'); return true; });
     atlas.onView('dashboard', {
       show: () => { loadShifts(); refreshIntelligence(); startTicking(); },
       hide: stopTicking

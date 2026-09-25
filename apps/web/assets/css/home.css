@@ -30,22 +30,7 @@
 /* ---------- needs attention ---------- */
 .home-attention .atlas-section__title { display: flex; align-items: center; gap: var(--s-2); }
 .home-attention__all { color: var(--text-2); }
-.home-row { position: relative; }
-.home-row:hover { background: var(--bg-hover); }
-.home-row__open {
-  display: block;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: 500 14px/20px var(--font-sans);
-  text-align: left;
-  cursor: pointer;
-}
-.home-row__open::after { content: ''; position: absolute; inset: 0; }
-.home-row__open:focus-visible { outline: none; }
-.home-row:has(.home-row__open:focus-visible) { outline: var(--focus-outline); outline-offset: -2px; }
-.home-row .atlas-row__end { position: relative; z-index: 1; }
+/* Attention rows are row links (.atlas-row__link, atlas-components.css). */
 .home-skel-title { width: 36%; }
 .home-skel-meta { width: 56%; margin-top: var(--s-2); }
 
@@ -107,9 +92,6 @@
 .home-timeline__check:hover { color: var(--accent-text); }
 
 /* Touch: small buttons on Home grow to 44 px (spec §6; the design system's .atlas-btn--sm is 40 px). */
-@media (pointer: coarse) {
-  .home .atlas-btn--sm { min-height: 44px; }
-}
 
 /* ---------- responsive ---------- */
 @media (max-width: 1279px) {

@@ -5,12 +5,9 @@
  * docs/design/Atlas_Design_System.md. Values come only from atlas-tokens.css.
  * Class names match docs/design/atlas-reference.html.
  *
- * Layer atlas.components beats atlas.legacy, so a component class restyles a
- * legacy element it is added to without !important. Modules extend this file
- * through its owner; they never ship their own button, input, chip, pill,
- * card, tab or colour.
- *
- * The last section is a TRANSITIONAL LEGACY BRIDGE (see there).
+ * Modules extend this file through its owner; they never ship their own
+ * button, input, chip, pill, card, tab, dialog or colour, and they never
+ * resize a shared control (touch sizes are set here under pointer: coarse).
  */
 @layer atlas.components {
 /* ==========================================================================
@@ -102,6 +99,9 @@
     padding-inline: var(--page-gutter);
   }
   .atlas-toolbar__end { display: none; }
+  /* The toolbar scrolls sideways on phones; the search keeps a usable width
+     instead of shrinking to its icon. */
+  .atlas-toolbar > .atlas-search { flex: 0 0 240px; min-width: 200px; }
 }
 
 /* ==========================================================================
@@ -275,9 +275,10 @@
 }
 
 /* Touch: every control is at least 44 px tall (spec §6). */
+/* Touch: every shared control is at least 44 px (spec §5.4, G17). */
 @media (pointer: coarse) {
   .atlas-btn { height: var(--control-lg); }
-  .atlas-btn--sm { height: 40px; }
+  .atlas-btn--sm { height: var(--touch); }
   .atlas-icon-btn, .atlas-icon-btn--sm { width: var(--touch); height: var(--touch); }
 }
 
@@ -425,6 +426,9 @@ textarea.atlas-input,
 
 .atlas-form { display: grid; gap: var(--s-6); min-width: 0; }
 .atlas-form-group { display: grid; gap: var(--s-4); min-width: 0; }
+/* fieldset.atlas-form-group: the base fieldset reset applies; the legend is the
+   group title and sits above the grid. */
+.atlas-form-group > legend { margin-bottom: var(--s-2); }
 .atlas-form-group__title { margin: 0; padding-top: var(--s-1); font: var(--type-heading); color: var(--text); }
 .atlas-grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-3) var(--s-4); }
 .atlas-form-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); }
@@ -575,7 +579,7 @@ textarea.atlas-input,
 }
 .atlas-segmented > :is(button, a):focus-visible { outline: var(--focus-outline); outline-offset: 0; }
 .atlas-segmented > :is(button, a) > svg { width: var(--icon-sm); height: var(--icon-sm); }
-@media (pointer: coarse) { .atlas-segmented > :is(button, a) { height: 36px; } }
+@media (pointer: coarse) { .atlas-segmented > :is(button, a) { height: var(--touch); } }
 
 /* ==========================================================================
    6.11 Tabs — .atlas-tabs (page-level peers; links with routes)
@@ -684,7 +688,7 @@ textarea.atlas-input,
 .atlas-chip__clear > svg { width: 12px; height: 12px; }
 .atlas-chip:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .atlas-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-@media (pointer: coarse) { .atlas-chip { height: 36px; padding: 0 12px; } }
+@media (pointer: coarse) { .atlas-chip { height: var(--touch); padding: 0 14px; } }
 
 /* ==========================================================================
    6.13 Status pill and badge — .atlas-pill, .atlas-badge
@@ -799,6 +803,28 @@ a.atlas-row, button.atlas-row, .atlas-row--link {
 }
 a.atlas-row:hover, button.atlas-row:hover, .atlas-row--link:hover { background: var(--bg-hover); text-decoration: none; }
 a.atlas-row:focus-visible, button.atlas-row:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+/* Row link: the row's title is the link (.atlas-row__link, an <a> or a
+   <button>) and the whole row is its hit area; controls in __end stay
+   separately clickable above it. */
+.atlas-row:has(.atlas-row__link) { position: relative; }
+.atlas-row:has(.atlas-row__link):hover { background: var(--bg-hover); }
+.atlas-row:has(.atlas-row__link:focus-visible) { outline: var(--focus-outline); outline-offset: -2px; }
+.atlas-row__link {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: 500 14px/20px var(--font-sans);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.atlas-row__link::after { content: ''; position: absolute; inset: 0; }
+.atlas-row__link:hover { text-decoration: none; }
+.atlas-row__link:focus-visible { outline: none; }
+.atlas-row:has(.atlas-row__link) .atlas-row__end { position: relative; z-index: 1; }
 .atlas-row__icon {
   display: grid;
   place-items: center;
@@ -849,6 +875,8 @@ a.atlas-row:focus-visible, button.atlas-row:focus-visible { outline: var(--focus
   background: var(--bg-subtle);
   color: var(--text-2);
   font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
   text-align: left;
   white-space: nowrap;
 }
@@ -913,6 +941,15 @@ th[aria-sort="ascending"] :is(.atlas-th-sort, .th-sort) > svg { transform: rotat
 .atlas-bulkbar .atlas-btn--ghost { color: #ffffff; }
 .atlas-bulkbar .atlas-btn--ghost:hover:not(:disabled) { background: rgba(255, 255, 255, .1); }
 .atlas-bulkbar__sep { width: 1px; height: 20px; margin: 0 4px; background: rgba(255, 255, 255, .2); }
+/* Sticky save bar (bulk edits such as par levels): pinned to the bottom of the
+   viewport while its table scrolls, and visible on phones above the tab bar. */
+.atlas-bulkbar--sticky {
+  position: sticky;
+  bottom: var(--s-4);
+  z-index: 2;
+  width: fit-content;
+  margin: var(--s-4) 0 0 auto;
+}
 .atlas-table-foot {
   display: flex;
   align-items: center;
@@ -926,6 +963,7 @@ th[aria-sort="ascending"] :is(.atlas-th-sort, .th-sort) > svg { transform: rotat
 .atlas-table-list { display: none; margin: 0; padding: 0; list-style: none; }
 @media (max-width: 767px) {
   .atlas-table-wrap--responsive, .atlas-bulkbar { display: none; }
+  .atlas-bulkbar--sticky { display: flex; bottom: calc(var(--tabbar-h) + var(--s-3) + env(safe-area-inset-bottom)); width: auto; margin-left: 0; }
   .atlas-table-list { display: block; margin-inline: calc(-1 * var(--page-gutter)); border-top: 1px solid var(--line); }
   .atlas-table-list__row {
     display: flex;
@@ -1088,6 +1126,9 @@ body.atlas-modal-open { overflow: hidden; }
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     animation-name: atlas-sheet-up;
   }
+  /* A sheet that is a whole screen on phones (recipe detail and editor). */
+  .atlas-sheet--full-phone { top: 0; max-height: none; border-radius: 0; }
+  .atlas-sheet--full-phone .atlas-sheet__grabber { display: none; }
   .atlas-sheet__grabber { display: block; width: 36px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line-strong); flex: none; }
   .atlas-sheet__head, .atlas-sheet__body { padding-left: var(--s-4); padding-right: var(--s-4); }
   .atlas-sheet__foot { padding: var(--s-3) var(--s-4) calc(var(--s-3) + env(safe-area-inset-bottom)); }
@@ -1147,25 +1188,29 @@ body.atlas-modal-open { overflow: hidden; }
   white-space: nowrap;
   pointer-events: none;
 }
-.atlas-tooltip { position: fixed; z-index: var(--z-toast); max-width: 280px; white-space: normal; }
+.atlas-tooltip { position: fixed; z-index: var(--z-toast); max-width: 240px; padding: 4px 8px; font: 400 12px/16px var(--font-sans); }
 /* CSS tooltip for icon buttons: the same text as aria-label, after 400 ms. */
 [data-atlas-tooltip] { position: relative; }
+/* A hidden tooltip is not rendered at all, so a trigger at the viewport edge
+   never widens the page; it fades in after 400 ms. Triggers at the end (or
+   start) of a row align it with data-atlas-tooltip-align="end" ("start"). */
 [data-atlas-tooltip]::after {
   content: attr(data-atlas-tooltip);
   position: absolute;
   top: calc(100% + 6px);
   left: 50%;
   z-index: var(--z-toast);
-  opacity: 0;
-  visibility: hidden;
+  display: none;
+  max-width: min(280px, calc(100vw - 16px));
   transform: translateX(-50%);
-  transition: opacity var(--dur-1) var(--ease-out) 0s, visibility 0s linear var(--dur-1);
 }
 [data-atlas-tooltip]:is(:hover, :focus-visible)::after {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity var(--dur-1) var(--ease-out) 400ms, visibility 0s linear 400ms;
+  display: block;
+  animation: atlas-tooltip-in var(--dur-1) var(--ease-out) 400ms both;
 }
+[data-atlas-tooltip][data-atlas-tooltip-align="end"]::after { left: auto; right: 0; transform: none; }
+[data-atlas-tooltip][data-atlas-tooltip-align="start"]::after { left: 0; transform: none; }
+@keyframes atlas-tooltip-in { from { opacity: 0; } to { opacity: 1; } }
 @media (pointer: coarse) { [data-atlas-tooltip]::after { display: none; } }
 
 /* ==========================================================================
@@ -1184,7 +1229,7 @@ body.atlas-modal-open { overflow: hidden; }
   font: 600 12px/1 var(--font-sans);
   text-transform: uppercase;
 }
-.atlas-avatar > img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.atlas-avatar > img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: center; }
 .atlas-avatar--sm { width: 24px; height: 24px; }
 .atlas-avatar--lg { width: 40px; height: 40px; font-size: 14px; }
 .atlas-avatar--xl { width: 64px; height: 64px; font-size: 20px; }
@@ -1307,7 +1352,7 @@ body.atlas-modal-open { overflow: hidden; }
   box-shadow: var(--shadow-pop);
   font: 400 14px/20px var(--font-sans);
   pointer-events: auto;
-  animation: atlas-toast-in var(--dur-2) var(--ease-out);
+  animation: atlas-toast-in var(--dur-2) var(--ease-out) both;
 }
 .atlas-toast:not(:has(.atlas-toast__action)) { padding-right: 16px; }
 .atlas-toast > svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: #7fd1a8; }
@@ -1326,7 +1371,7 @@ body.atlas-modal-open { overflow: hidden; }
 .atlas-toast__action:hover, .atlas-toast button:hover { background: rgba(255, 255, 255, .08); }
 .atlas-toast__action:focus-visible, .atlas-toast button:focus-visible { outline: 2px solid #9cc3ff; outline-offset: 0; }
 .atlas-toast.is-leaving { opacity: 0; transition: opacity calc(var(--dur-2) * .7) var(--ease-out); }
-@keyframes atlas-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes atlas-toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (max-width: 767px) {
   .atlas-toast-region { bottom: calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom)); }
 }
@@ -1425,138 +1470,4 @@ body.atlas-modal-open { overflow: hidden; }
 }
 html.atlas-reduce-motion .atlas-skel { animation: atlas-skel-show 1ms linear 150ms forwards; }
 html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; width: 100%; opacity: .6; }
-
-/* ==========================================================================
-   TRANSITIONAL LEGACY BRIDGE
-   The rules that won the pre-S88 cascade with !important in the retired
-   global override files (atlas-glass, workspaces-polish, polish-pass2, s34 and
-   s38 search, s61), de-glassed and without !important: this layer beats
-   atlas.legacy, so they keep winning. Every selector is wrapped in :where()
-   (zero specificity) so a real component class on the same element wins.
-   Module owners delete their selectors here when they rebuild their page;
-   the section goes when the last legacy page does (spec §9.1 step 3).
-   ========================================================================== */
-/* ---------- from legacy/atlas-glass--components.css ---------- */
-/* Minimalist type: one sans across the app, no serif display faces. */
-:where(#app-screen, #app-screen h1, #app-screen h2, #app-screen h3, #app-screen h4, #app-screen .placeholder-head h2, #app-screen .service-head h1, #app-screen .service-card h3, #app-screen .atlas-logo, .modal h2, .modal h3) {
-  font-family: var(--font-sans);
-}
-:where(#app-screen h1, #app-screen .placeholder-head h2) {
-  font-weight: 600;
-  letter-spacing: -.035em;
-}
-/* Recipes surfaces carry several serif rules of their own; one sweep keeps the
-   workspace on the app's single typeface. */
-:where(#app-screen h2, #app-screen h3) {
-  font-weight: 600;
-  letter-spacing: -.025em;
-}
-:where(.atlas-content thead th) {
-  background: var(--surface);
-  color: var(--atlas-muted);
-  border-color: var(--glass-line);
-}
-/* Buttons */
-:where(.atlas-content .btn, .modal .btn) {
-  background: var(--accent);
-  border: 1px solid var(--blue-700);
-  border-radius: var(--r-md);
-  color: #fff;
-  white-space: nowrap;
-  box-shadow: none;
-}
-:where(.atlas-content .btn:hover, .modal .btn:hover) {
-  background: var(--blue-700);
-  border-color: var(--blue-700);
-}
-:where(.atlas-content .btn.ghost, .modal .btn.ghost) {
-  background: var(--glass-fill-strong);
-  border: 1px solid var(--glass-line-strong);
-  border-radius: var(--r-md);
-  color: var(--atlas-text);
-  white-space: nowrap;
-  box-shadow: var(--glass-highlight);
-}
-:where(.atlas-content .btn.ghost:hover, .modal .btn.ghost:hover) {
-  background: var(--blue-50);
-  border-color: var(--atlas-home-accent-line);
-  color: var(--blue-700);
-}
-/* Modals, sheets, toasts */
-:where(.modal) {
-  background: var(--surface);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--r-xl);
-  box-shadow: var(--glass-highlight), var(--glass-shadow-raised);
-}
-:where(.overlay) {
-  background: var(--overlay);
-}
-:where(.modal-header, .modal-footer) {
-  border-color: var(--glass-line);
-}
-:where(.toast) {
-  background: var(--ink);
-  border-radius: var(--r-lg);
-}
-/* ---------- Module workspaces: Business Intelligence, Import Center. Their own stylesheets carry warm sand fills, gold accents and
-   dark intelligence heroes; these rules bring both onto the white + light
-   blue system without touching their markup or logic. Any selector a
-   module doesn't use is simply inert. ---------- */
-/* Intelligence heroes: dark panels become light glass, with their inherited
-   light text recoloured so nothing turns white-on-white. */
-/* ---------- App-wide type sweep.
-   Fifteen module stylesheets set Fraunces on their own headings. One sweep
-   keeps the whole product on a single typeface without editing any of them. */
-:where( .atlas-import-center) {
-  font-family: var(--font-sans);
-}
-/* Icon wrappers: the fill and the glyph colour both move to blue. */
-/* Containers that hold real copy: fill only. Their own text colours stand —
-   month chips carry staff names and times, export tiles carry labels and
-   descriptions, and recolouring either would tint content, not chrome. */
-/* Glass surfaces for the panels these modules actually use. Every selector here
-   is a named class lifted from the module's own stylesheet — no guesses about
-   DOM structure, so a class a module doesn't use is inert rather than harmful.
-   Knowledge, Marketing and System panels are deliberately absent: their
-   container classes need a read of their renderers, which happens when those
-   workspaces get their own pass. */
-/* ---------- from legacy/workspaces-polish--components.css ---------- */
-/* ---------- Shared surface treatment ---------- */
-/* Nested cards sit inside an already-glass panel: fill only, no second shadow. */
-/* Trust strips carry an attestation — they keep their dark, deliberate weight. */
-/* A manager-only note is a permission boundary; it keeps a distinct tone. */
-/* ---------- Shifts ---------- */
-/* A draft warning and a required-training state are publication states, not
-   decoration: they keep their own tone. */
-/* ---------- Business Intelligence ---------- */
-/* ---------- Reports ---------- */
-/* ---------- Placeholder pages ---------- */
-:where(.empty-module) {
-  border: 1px dashed var(--glass-line-strong);
-  background: var(--surface);
-  box-shadow: none;
-}
-/* ---------- from legacy/polish-pass2--components.css ---------- */
-/* Normalize workspace hierarchy without flattening the more expressive Home
-   greeting. Dynamic module styles load later, so these rules are intentional
-   important overrides. */
-/* Blue communicates selection consistently; neutral white remains the default
-   action treatment used by the approved Inventory and Recipe references. */
-/* Wide workspace content stays within the shared rail and advertises overflow
-   at the component boundary instead of widening the full application. */
-/* ---------- Primary buttons: one blue primary across the product ----------
-   Marketing shipped a near-black primary (--atlas-text), Shifts a brown one
-   (#a6814d). (confirmed) */
-/* ---------- Tab rails: sand troughs → light blue (confirmed) ---------- */
-/* ---------- from legacy/s34-preproduction--search.css ---------- */
-/* Compact search field used across launch modules. */
-:where(:where(.atlas-search) input[type="search"], :where(.atlas-search) input) {
-  min-height:36px;
-  height:36px;
-  border-radius:var(--r-md);
-  background:var(--surface);
-}
-/* ---------- from legacy/s38-app-remediation--search.css ---------- */
-/* Compact Apple-style search controls */
 }

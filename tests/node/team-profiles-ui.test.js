@@ -100,8 +100,9 @@ test('browser uses authenticated gateway and no direct database writes', () => {
 });
 
 test('dialogs and sheets are AtlasModal layers (Esc, focus return, scrim)', () => {
-  assert.match(ui, /root\.setAttribute\('data-atlas-modal', ''\)/);
-  assert.match(ui, /window\.AtlasModal\.register\(root, \{ initialFocus, onClose:/);
+  // The shared AtlasModal.layer / confirm / prompt helpers (modal.js).
+  assert.match(ui, /window\.AtlasModal\.layer\(\{ id, panel, className: 'team-layer', onClose, initialFocus \}\)/);
+  assert.match(ui, /window\.AtlasModal\.confirm\(options\)/);
   assert.match(ui, /initialFocus: '\.atlas-sheet__close'/);
 });
 

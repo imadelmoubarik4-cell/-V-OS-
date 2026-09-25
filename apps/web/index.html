@@ -16,222 +16,21 @@
 <meta property="og:image" content="assets/brand/Atlas_OpenGraph_1200x630.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <!-- S88: atlas-tokens.css is linked first because it declares the cascade-layer
-       order. atlas-base.css (@layer atlas.base) and atlas-components.css
-       (@layer atlas.components) are the design system. Every other stylesheet
-       is in @layer atlas.legacy, linked in the order
-       that decided the cascade before S88 (runtime module sheets included, so
-       config.js, runtime-module-guard.js and the bootstraps find them already
-       present and inject nothing). legacy/*.css are the per-module fragments of
-       the retired override stylesheets. -->
+  <!-- atlas-tokens.css is linked first because it declares the cascade-layer
+       order (atlas.tokens, atlas.base, atlas.components, atlas.modules).
+       atlas-base.css, atlas-components.css and atlas-shell.css are the design
+       system; every module stylesheet is one @layer atlas.modules block (runtime
+       module sheets included, so config.js, runtime-module-guard.js and the
+       bootstraps find them already present and inject nothing). There is no
+       legacy layer and no inline style block. -->
   <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/atlas-components.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s88">
-<style>
-@layer atlas.legacy {
-  :root{
-    --legacy-bg:        #12181A;
-    --legacy-surface:   #1B2321;
-    --legacy-surface-2: #202A27;
-    --legacy-line:      #2E3634;
-    --legacy-brass:     #B8874A;
-    --legacy-brass-hi:  #D1A268;
-    --legacy-wine:      #7A2430;
-    --legacy-text:      #EDE8E0;
-    --legacy-text-mute: #94A099;
-    --legacy-ok:        #6B8F71;
-    --legacy-warn:      #C97A4A;
-    --legacy-radius: 10px;
-  }
-  *{ box-sizing:border-box; }
-  html,body{ height:100%; }
-  body{
-    margin:0;
-    background:#fff;
-    color:var(--atlas-text);
-    font-family:'IBM Plex Sans', sans-serif;
-    -webkit-font-smoothing:antialiased;
-  }
-  .display{ font-family:'Fraunces', serif; }
-  .mono{ font-family:'IBM Plex Mono', monospace; }
-  button{ font-family:inherit; }
-
-  label{
-    display:block;
-    font-size:12px;
-    color:var(--legacy-text-mute);
-    margin:0 0 6px;
-    letter-spacing:.02em;
-  }
-  input[type=email], input[type=password], input[type=text], input[type=number], select{
-    width:100%;
-    background:var(--legacy-bg);
-    border:1px solid var(--legacy-line);
-    color:var(--legacy-text);
-    padding:11px 12px;
-    border-radius:8px;
-    font-size:14px;
-    margin-bottom:18px;
-    outline:none;
-    transition:border-color .15s;
-  }
-  input:focus, select:focus{
-    border-color:var(--legacy-brass);
-  }
-  .btn{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-    background:var(--legacy-brass);
-    color:#181410;
-    border:none;
-    padding:11px 18px;
-    border-radius:8px;
-    font-size:14px;
-    font-weight:600;
-    cursor:pointer;
-    transition:background .15s;
-  }
-  .btn:hover{ background:var(--legacy-brass-hi); }
-  .btn:disabled{ opacity:.5; cursor:default; }
-  .btn.full{ width:100%; }
-  .btn.ghost{
-    background:transparent;
-    color:var(--legacy-text-mute);
-    border:1px solid var(--legacy-line);
-  }
-  .btn.ghost:hover{ color:var(--legacy-text); border-color:var(--legacy-text-mute); background:transparent;}
-  .btn.danger{ background:var(--legacy-wine); color:var(--legacy-text); }
-  .btn.danger:hover{ background:#8f2c3a; }
-
-  /* ---------- DASHBOARD ---------- */
-  #app-screen{ display:none; min-height:100vh; }
-
-  main{ max-width:960px; margin:0 auto; padding:24px; }
-
-
-  .low-stock-banner{
-    display:none;
-    align-items:center; gap:8px;
-    background:rgba(201,122,74,.12);
-    border:1px solid var(--legacy-warn);
-    color:var(--legacy-warn);
-    font-size:13px;
-    padding:10px 14px;
-    border-radius:8px;
-    margin-bottom:16px;
-  }
-
-  table{ width:100%; border-collapse:collapse; }
-  thead th{
-    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.08em;
-    color:var(--legacy-text-mute); font-weight:600; padding:0 10px 10px; border-bottom:1px solid var(--legacy-line);
-  }
-  tbody tr{ border-bottom:1px solid var(--legacy-line); }
-  tbody tr:hover{ background:var(--legacy-surface); }
-  td{ padding:12px 10px; font-size:14px; vertical-align:middle; }
-
-
-  /* ---------- VIEW SWITCH ---------- */
-  .view-switch{ display:flex; gap:6px; margin-bottom:20px; }
-  .view-btn{
-    padding:8px 16px; border-radius:8px; border:1px solid var(--legacy-line);
-    background:transparent; color:var(--legacy-text-mute); font-size:13px; cursor:pointer; font-weight:500;
-  }
-  .view-btn.active{ background:var(--legacy-brass); color:#181410; border-color:var(--legacy-brass); }
-
-
-
-
-  /* ---------- RECIPES ---------- */
-  .card-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px; }
-  .recipe-card{
-    background:var(--legacy-surface); border:1px solid var(--legacy-line); border-radius:10px; padding:20px;
-    cursor:pointer; transition:border-color .15s;
-  }
-  .recipe-card:hover{ border-color:var(--legacy-brass); }
-  .recipe-card .type{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--legacy-text-mute); margin-bottom:8px; }
-  .recipe-card h4{ font-family:'Fraunces', serif; font-weight:500; font-size:19px; margin:0 0 14px; }
-  .recipe-card .rline{ display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:var(--legacy-text-mute); }
-  .recipe-card .rline strong{ color:var(--legacy-text); font-weight:500; }
-  .recipe-card .rline.profit strong{ color:var(--legacy-ok); }
-
-  .modal.wide{ max-width:640px; }
-  .ingredient-builder{
-    display:flex; gap:8px; align-items:flex-end; margin-bottom:14px; flex-wrap:wrap;
-  }
-  .ingredient-builder select{ flex:2; min-width:160px; margin-bottom:0; }
-  .ingredient-builder input{ flex:1; min-width:70px; margin-bottom:0; }
-  .ingredient-list{ margin-bottom:18px; }
-  .ingredient-row{
-    display:flex; justify-content:space-between; align-items:center;
-    padding:8px 0; border-bottom:1px solid var(--legacy-line); font-size:14px;
-  }
-  .ingredient-row .remove-ing{ background:none; border:none; color:var(--legacy-text-mute); cursor:pointer; font-size:15px; }
-  .ingredient-row .remove-ing:hover{ color:var(--legacy-wine); }
-  .cost-panel{
-    background:var(--legacy-bg); border:1px solid var(--legacy-line); border-radius:8px; padding:16px; margin-bottom:18px;
-  }
-  .cost-row{ display:flex; justify-content:space-between; font-size:14px; padding:6px 0; }
-  .cost-row.total strong, .cost-row.profit strong{ color:var(--legacy-text); }
-  .cost-row.profit strong.pos{ color:var(--legacy-ok); }
-  .cost-row.profit strong.neg{ color:var(--legacy-wine); }
-  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-
-
-
-  /* ========== PROJECT ATLAS DESIGN SYSTEM ========== */
-  /* Colour, radius and type tokens live in assets/css/atlas-tokens.css. */
-  #app-screen{color:var(--atlas-text);}
-  .atlas-content main{max-width:none;margin:0;padding:0}.view-switch{display:none}
-  .atlas-content .btn{background:var(--atlas-text);color:white;border-radius:11px}.atlas-content .btn:hover{background:#3a3b37}.atlas-content .btn.ghost{background:var(--atlas-surface);color:var(--atlas-text);border-color:var(--atlas-line)}
-  .atlas-content input,.atlas-content select{background:var(--atlas-surface);color:var(--atlas-text);border-color:var(--atlas-line)}
-  .atlas-content table{background:var(--atlas-surface);border:1px solid var(--atlas-line);border-radius:14px;overflow:hidden}.atlas-content thead th{color:var(--atlas-muted);border-color:var(--atlas-line)}.atlas-content tbody tr{border-color:var(--atlas-line)}.atlas-content tbody tr:hover{background:#faf9f6}.atlas-content td{color:var(--atlas-text)}
-  /* .atlas-card is the design-system card (atlas-components.css); this legacy rule no longer forces it. */
-  .placeholder-view{display:none}.placeholder-head{margin-bottom:22px}.placeholder-head h2{font:500 30px 'Fraunces',serif;margin:0 0 6px}.placeholder-head p{color:var(--atlas-muted);margin:0}.empty-module{padding:42px;text-align:center;background:var(--atlas-surface);border:1px dashed var(--atlas-line);border-radius:var(--atlas-radius)}.empty-module svg{width:32px;height:32px;color:var(--atlas-accent);margin-bottom:10px}
-
-
-  .supplier-modal .two-col{gap:14px;}
-
-  /* PHASE1_SECURITY_GATE_UI
-     Commercial controls are hidden unless the verified profile is manager/admin.
-     Database grants and RLS remain the authoritative boundary. */
-  body:not(.atlas-commercial-manager) [data-commercial-only],
-  body:not(.atlas-commercial-manager) [data-default="suppliers"],
-  body:not(.atlas-commercial-manager) [data-view="suppliers"],
-  body:not(.atlas-commercial-manager) [data-view="imports"],
-  body:not(.atlas-commercial-manager) #add-item-btn,
-  body:not(.atlas-commercial-manager) #add-supplier-btn,
-  body:not(.atlas-commercial-manager) #add-recipe-btn,
-  body:not(.atlas-commercial-manager) #recipe-library-add,
-  body:not(.atlas-commercial-manager) .row-actions,
-  body:not(.atlas-commercial-manager) .step-btn,
-  body:not(.atlas-commercial-manager) [data-edit-recipe],
-  body:not(.atlas-commercial-manager) [data-empty-create],
-  body:not(.atlas-commercial-manager) .recipe-library-item-finance,
-  body:not(.atlas-commercial-manager) .recipe-profile-ingredient > div:last-child,
-  body:not(.atlas-commercial-manager) .recipe-insight-metrics > div:nth-child(-n+5),
-  body:not(.atlas-commercial-manager) .recipe-featured-card,
-  body:not(.atlas-commercial-manager) .recipe-cost-strip,
-  body:not(.atlas-commercial-manager) .recipe-cost-note,
-  body:not(.atlas-commercial-manager) .ingredient-cost-v2 {
-    display:none!important;
-  }
-}
-</style>
   <link rel="stylesheet" href="assets/css/operations.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/home.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--base.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--home.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--operations.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/shifts-workspace.css">
   <link rel="stylesheet" href="assets/css/knowledge-workspace.css">
-  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--base.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--components.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--search.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--settings.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260926-s88">
   <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
        append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
@@ -299,7 +98,7 @@
             <div class="nav-group" data-nav-group="main">
               <a class="nav-item" href="#home" data-view="dashboard" data-nav-id="home" aria-label="Home"><i data-lucide="house" aria-hidden="true"></i><span class="nav-item-label">Home</span></a>
               <a class="nav-item nav-item--ai" href="#ai" data-view="ai" data-nav-id="ai" aria-label="Atlas AI"><i data-lucide="sparkles" aria-hidden="true"></i><span class="nav-item-label">Atlas AI</span></a>
-              <a class="nav-item" href="#messages" data-view="team" data-nav-id="messages" aria-label="Messages"><i data-lucide="messages-square" aria-hidden="true"></i><span class="nav-item-label">Messages</span></a>
+              <a class="nav-item" href="#messages" data-view="team" data-nav-id="messages" aria-label="Messages"><i data-lucide="messages-square" aria-hidden="true"></i><span class="nav-item-label">Messages</span><span class="atlas-badge atlas-nav__badge" data-nav-badge="messages" aria-hidden="true" hidden></span></a>
             </div>
             <div class="nav-group" data-nav-group="venue">
               <div class="nav-label" role="presentation">Venue</div>
@@ -362,12 +161,12 @@
           <div id="recipes-view" style="display:none;"></div>
           <!-- Purchasing (#purchasing/…): rendered by assets/js/atlas-purchasing.js. -->
           <div id="suppliers-view" style="display:none;"></div>
-          <div id="team-view" class="placeholder-view"><div class="placeholder-head"><h2>Team</h2><p>Profiles, roles, emergency contacts and training status.</p></div><div class="empty-module"><i data-lucide="users"></i><h3>Team workspace is ready</h3><p>Next: connect live staff profiles from Supabase.</p></div></div>
-          <div id="shifts-view" class="placeholder-view"><div class="placeholder-head"><h2>Shifts</h2><p>A calm weekly planner built for hospitality.</p></div><div class="empty-module"><i data-lucide="calendar-days"></i><h3>Shift planner foundation is ready</h3><p>Next: weekly schedule, availability and publishing.</p></div></div>
-          <div id="knowledge-view" class="placeholder-view"><div class="placeholder-head"><h2>Knowledge</h2><p>Documents, onboarding, training and checklists.</p></div><div class="empty-module"><i data-lucide="book-open"></i><h3>Knowledge hub foundation is ready</h3><p>Eight onboarding steps already exist in Supabase.</p></div></div>
+          <div id="team-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Team…</p></div>
+          <div id="shifts-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Shifts…</p></div>
+          <div id="knowledge-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Knowledge…</p></div>
           <div id="reports-view" style="display:none;"></div>
           <div id="ai-view" style="display:none;"></div>
-          <div id="settings-view" class="placeholder-view"><div class="placeholder-head"><h2>Settings</h2><p>Venue, team access and VÁ OS preferences.</p></div><div class="empty-module"><i data-lucide="settings"></i><h3>Project Atlas</h3><p>Built with care for VÁ Bar, Reykjavík.</p></div></div>
+          <div id="settings-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Settings…</p></div>
         </main></div>
       </section>
     </div>

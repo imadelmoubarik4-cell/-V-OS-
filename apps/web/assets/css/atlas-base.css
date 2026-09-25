@@ -1,15 +1,14 @@
-/* Atlas base — reset, typography, focus, motion and layout primitives.
+/* Atlas base — reset, typography, focus, motion, role gating and layout
+ * primitives.
  *
  * Spec: docs/design/Atlas_Experience_Redesign.md §5; reference:
  * docs/design/Atlas_Design_System.md. Values come only from atlas-tokens.css.
+ * Component classes live in atlas-components.css; element rules here are the
+ * defaults every page starts from.
  *
- * This layer sits BELOW atlas.legacy on purpose: an element rule here never
- * overrides a pre-S88 page rule, it only fills in what legacy CSS leaves to
- * the browser defaults. Component classes live in atlas-components.css.
- *
- * !important is used only where the spec allows it in base: [hidden] and
- * reduced motion. In the layer order an !important declaration in an earlier
- * layer beats one in a later layer, so these two contracts hold everywhere.
+ * !important is used only where the spec allows it in base: [hidden], reduced
+ * motion and role gating. In the layer order an !important declaration in an
+ * earlier layer beats one in a later layer, so these contracts hold everywhere.
  */
 @layer atlas.base {
 *, *::before, *::after { box-sizing: border-box; }
@@ -43,6 +42,12 @@ body {
 button, input, select, textarea { font-family: inherit; font-size: 100%; color: inherit; }
 button { cursor: pointer; }
 button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
+/* Native controls without a component class read as unavailable when disabled
+   (components set their own disabled look). */
+:where(button, input, select, textarea):disabled { opacity: .55; }
+/* Fieldsets group fields without a box; the legend is plain text. */
+fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+legend { padding: 0; }
 code, kbd, samp, pre { font-family: var(--font-mono); }
 
 /* Headings and numbers */
@@ -82,6 +87,12 @@ svg.lucide { stroke-width: var(--icon-stroke); flex: none; }
 
 /* The hidden attribute always hides (spec §9.1 allows !important here). */
 [hidden] { display: none !important; }
+
+/* Role gating (spec §9.1 allows !important here). Commercial controls stay
+   hidden unless the verified profile is a manager or admin (index.html toggles
+   body.atlas-commercial-manager after loadActiveProfile). Database grants and
+   RLS remain the authoritative boundary; this only keeps the UI honest. */
+body:not(.atlas-commercial-manager) :is([data-commercial-only], [data-view="suppliers"]) { display: none !important; }
 
 /* Screen-reader only text. */
 .sr-only, .atlas-sr-only {
@@ -144,59 +155,5 @@ html.atlas-reduce-motion *::after {
   animation-iteration-count: 1 !important;
   transition-duration: .01ms !important;
   scroll-behavior: auto !important;
-}
-
-/* ==========================================================================
-   Legacy defaults — TRANSITIONAL. The non-!important rules of the retired
-   override files (atlas-glass, workspaces-polish, polish-pass2, s34, s38
-   search, s61), de-glassed. They sit below atlas.legacy, so any module rule
-   still wins; module owners delete their selectors here when they rebuild.
-   ========================================================================== */
-:where(button, input, select, textarea):disabled { opacity: .55; }
-/* ---------- from legacy/atlas-glass--search.css ---------- */
-:where(.atlas-search input, .atlas-content input, .atlas-content select, .atlas-content textarea, .modal input, .modal select, .modal textarea) {
-  background: var(--glass-fill-strong);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--r-md);
-  color: var(--atlas-text);
-}
-:where(.atlas-search input:focus, .atlas-content input:focus, .atlas-content select:focus, .atlas-content textarea:focus, .modal input:focus, .modal select:focus, .modal textarea:focus) {
-  outline: none;
-  border-color: var(--blue-400);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, .16);
-}
-/* ---------- from legacy/workspaces-polish--components.css ---------- */
-/* ---------- Shared surface treatment ---------- */
-/* Nested cards sit inside an already-glass panel: fill only, no second shadow. */
-/* ---------- Settings ---------- */
-:where(.empty-module svg) {
-  color: var(--blue-400);
-}
-/* ---------- from legacy/polish-pass2--components.css ---------- */
-/* Wide workspace content stays within the shared rail and advertises overflow
-   at the component boundary instead of widening the full application. */
-/* ---------- from legacy/s34-preproduction--search.css ---------- */
-/* Compact search field used across launch modules. */
-:where(:where(.atlas-search)) {
-  max-width:420px;
-}
-@media(max-width:680px) {
-  :where(:where(.atlas-search)) {
-    max-width:none;
-    width:100%;
-  }
-}
-/* ---------- from legacy/s38-app-remediation--search.css ---------- */
-/* Compact Apple-style search controls */
-:where(:is( .atlas-search)) {
-  border-radius: 999px;
-}
-/* ---------- from legacy/accessibility-responsive-s61--components.css ---------- */
-@media (max-width: 760px) {
-  :where(.toast) {
-    right: max(14px, env(safe-area-inset-right));
-    bottom: calc(86px + env(safe-area-inset-bottom));
-    max-width: calc(100vw - 28px);
-  }
 }
 }

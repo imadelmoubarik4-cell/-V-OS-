@@ -395,7 +395,7 @@
     settings: { icon: 'settings', label: 'Settings', route: (id) => (id ? `#settings/${encodeURIComponent(id)}` : '#settings') },
     marketing: { icon: 'megaphone', label: 'Marketing', route: () => '#marketing' },
     marketing_recommendation: { icon: 'megaphone', label: 'Marketing', route: () => '#marketing' },
-    brain_recommendation: { icon: 'sparkles', label: 'Decision', route: () => '#ai/decisions' },
+    brain_recommendation: { icon: 'sparkles', label: 'Decision', route: (id) => (id ? `#ai/decisions?decision=${encodeURIComponent(id)}` : '#ai/decisions') },
     brain_memory: { icon: 'sparkles', label: 'Decisions', route: () => '#ai/decisions' },
     briefing: { icon: 'sparkles', label: 'Today’s briefing', route: () => '#home' },
     integration: { icon: 'settings', label: 'Integration', route: () => '#settings/integrations' },
@@ -511,7 +511,7 @@
     streaming: null,
     composer: { attachments: [], source: 'text', duration: null, context: null, voiceNote: null, transcribing: false },
     live: null,
-    decisions: { loaded: false, loading: false, error: null, snapshot: null, filter: { status: 'all', area: 'all', period: '90' }, detail: null },
+    decisions: { loaded: false, loading: false, error: null, snapshot: null, filter: { status: 'all', area: 'all', period: '90' }, detail: null, openId: null },
     openSheet: null,
     renderQueued: false,
     lastParams: {}
@@ -2388,7 +2388,8 @@
           <div class="ai-dec-row ai-dec-row--head" role="row"><span role="columnheader">Recommendation</span><span role="columnheader">Source</span><span role="columnheader">Status</span><span role="columnheader">Decided by</span><span role="columnheader">When</span><span role="columnheader">Outcome</span></div>
           ${rows.map((row) => {
             const [pillLabel, tone] = DECISION_PILLS[row.statusKey] || DECISION_PILLS.proposed;
-            return `<button type="button" class="ai-dec-row" role="row" data-ai-dec-open="${escapeHtml(row.recommendationId || '')}" data-ai-dec-key="${escapeHtml(row.id)}"${row.recommendationId ? '' : ' disabled'}>
+            const selected = Boolean(row.recommendationId) && row.recommendationId === d.openId;
+            return `<button type="button" class="ai-dec-row${selected ? ' is-selected' : ''}" role="row"${selected ? ' aria-current="true"' : ''} data-ai-dec-open="${escapeHtml(row.recommendationId || '')}" data-ai-dec-key="${escapeHtml(row.id)}"${row.recommendationId ? '' : ' disabled'}>
               <span role="cell" class="ai-dec-row__main"><span class="ai-dec-row__t">${escapeHtml(row.title)}</span><span class="ai-dec-row__m">${escapeHtml(row.summary || (row.evidenceCount ? `${row.evidenceCount} ${row.evidenceCount === 1 ? 'source' : 'sources'}` : ''))}</span></span>
               <span role="cell" class="ai-dec-row__cell" data-label="Source">${escapeHtml(row.source)}</span>
               <span role="cell" class="ai-dec-row__cell"><span class="atlas-pill atlas-pill--${tone}">${pillLabel}</span></span>
@@ -2428,12 +2429,21 @@
     }
   }
 
+  // #ai/decisions?decision=<recommendation id> (AtlasAI.openDecision, Messages
+  // and palette links) selects the row and opens its detail sheet.
   async function openDecision(recommendationId) {
     if (!recommendationId) return;
     const id = uid('ai-dec');
+    state.decisions.openId = String(recommendationId);
+    if (state.mode === 'decisions') renderDecisions();
     const layer = openLayer({
       className: 'ai-sheet',
       labelledBy: `${id}-title`,
+      onClose: () => {
+        state.decisions.openId = null;
+        if (state.mode === 'decisions') renderDecisions();
+        if (state.lastParams?.decision) { state.lastParams = { section: 'decisions' }; routeTo({ section: 'decisions' }); }
+      },
       markup: `<div class="ai-sheet__head"><div><h2 id="${id}-title">Decision</h2><p>Loading…</p></div><button type="button" class="atlas-icon-btn" data-ai-layer-close aria-label="Close">${icon('x')}</button></div><div class="ai-sheet__body" aria-busy="true">${'<div class="atlas-skel"></div>'.repeat(4)}</div>`
     });
     let detail;
@@ -2727,6 +2737,7 @@
     if (section === 'decisions') {
       state.mode = 'decisions';
       applyMode();
+      if (params.decision && String(params.decision) !== state.decisions.openId) openDecision(String(params.decision));
       return;
     }
     if (state.mode === 'decisions') { state.mode = 'conversations'; applyMode(); }
@@ -2847,6 +2858,8 @@
     open: (conversationId) => root.AtlasShell?.show?.('ai', conversationId ? { conversation: conversationId } : {}),
     newConversation: () => root.AtlasShell?.show?.('ai', { new: '1' }),
     decisions: () => root.AtlasShell?.show?.('ai', { section: 'decisions' }),
+    // Opens Decisions with this recommendation selected and its detail open.
+    openDecision: (recommendationId) => root.AtlasShell?.show?.('ai', recommendationId ? { section: 'decisions', decision: String(recommendationId) } : { section: 'decisions' }),
     // Pure helpers, exported for tests.
     parseEventBlock,
     splitEvents,

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const app = readFileSync('apps/web/index.html', 'utf8');
 const inventoryCss = readFileSync('apps/web/assets/css/inventory.css', 'utf8');
@@ -17,8 +16,6 @@ const capture = readFileSync('apps/web/assets/js/atlas-capture.js', 'utf8');
 const stockCount = readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8');
 const reportsCss = readFileSync('apps/web/assets/css/reports-workspace.css', 'utf8');
 const settingsCss = readFileSync('apps/web/assets/css/settings-workspace.css', 'utf8');
-// S88: every polish-pass2 fragment has moved into a module sheet; none may come back.
-const finalPolishCss = (() => { try { return legacyCss('polish-pass2'); } catch { return ''; } })();
 const homeJs = readFileSync('apps/web/assets/js/home.js', 'utf8');
 const iconSources = [
   app,
@@ -84,7 +81,7 @@ test('shared polish removes duplicate Home metrics and normalizes workspace hier
   // S88: the retired workspace heroes (Item Master, Stock count, Team) have no rules left.
   assert.doesNotMatch(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.item-master-hero h1|\.stock-count-hero h1/);
   // S88: Team was rebuilt on the shared table; its retired card grid rules are gone.
-  assert.doesNotMatch(finalPolishCss, /\.team-profile-card-media/);
+  assert.doesNotMatch(readFileSync('apps/web/assets/css/team-profiles.source.css', 'utf8'), /\.team-profile-card-media/);
   // S88 Recipes (spec §7.7): one page header, no hero.
   assert.match(recipes, /window\.AtlasShell\.pageHead\(\{ title: 'Recipes'/);
   assert.doesNotMatch(recipes, /Recipe Library|recipe-hero|recipe-summary-grid/);

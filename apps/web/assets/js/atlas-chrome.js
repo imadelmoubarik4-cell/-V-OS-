@@ -264,8 +264,11 @@
       tip.textContent = label;
       const rect = target.getBoundingClientRect();
       tip.hidden = false;
-      tip.style.left = `${Math.round(rect.right + 8)}px`;
-      tip.style.top = `${Math.round(rect.top + rect.height / 2 - tip.offsetHeight / 2)}px`;
+      // Kept inside the viewport (8 px margin) at every width.
+      const left = Math.min(Math.round(rect.right + 8), window.innerWidth - tip.offsetWidth - 8);
+      const top = Math.round(rect.top + rect.height / 2 - tip.offsetHeight / 2);
+      tip.style.left = `${Math.max(8, left)}px`;
+      tip.style.top = `${Math.max(8, Math.min(top, window.innerHeight - tip.offsetHeight - 8))}px`;
       target.setAttribute('aria-describedby', 'atlas-tooltip');
     }, 400);
   }
@@ -647,17 +650,22 @@
     panel.style.right = `${Math.max(8, Math.round(window.innerWidth - rect.right))}px`;
   }
 
+  const isNotifyHash = (hash) => /^#notifications(\?|$)/.test(String(hash || ''));
+
   // AtlasShell.notify.setPanel contract: open(options) / close(options).
+  // options.filter ('all' | 'needs-action') preselects the filter, as does
+  // #notifications?filter=needs-action.
   const notifyPanel = {
     open(options = {}) {
       const layer = ensureNotifyPanel();
+      if (options.filter) state.notifyFilter = options.filter === 'needs-action' ? 'needs-action' : 'all';
       state.notifyTrigger = options.trigger || state.notifyTrigger || $('atlas-notifications-btn');
       renderNotify();
       layer.classList.toggle('is-fullscreen', PHONE.matches);
       layer.hidden = false;
       state.notifyOpen = true;
       document.body.classList.toggle('atlas-overlay-open', PHONE.matches);
-      if (PHONE.matches && window.location.hash !== '#notifications' && !options.fromRoute) {
+      if (PHONE.matches && !isNotifyHash(window.location.hash) && !options.fromRoute) {
         try { window.history.pushState({ atlasNotifications: true }, '', '#notifications'); } catch { /* address bar only */ }
       }
       positionNotify();
@@ -672,7 +680,7 @@
       document.body.classList.remove('atlas-overlay-open');
       $('atlas-notifications-btn')?.setAttribute('aria-expanded', 'false');
       // On phones the panel is the #notifications route: closing goes back.
-      if (window.location.hash === '#notifications') {
+      if (isNotifyHash(window.location.hash)) {
         if (window.history.state?.atlasNotifications) window.history.back();
         else shell.navigate('#home', { source: 'nav' });
       }
@@ -867,9 +875,12 @@
       syncActive();
       closeMore({ restoreFocus: false });
       if (document.body.classList.contains('atlas-sidebar-open')) closeOverlaySidebar({ restoreFocus: false });
-      if (state.initialHash === '#notifications' && detail.source === 'link') { state.initialHash = ''; shell.notify.open({ fromRoute: false }); }
+      if (isNotifyHash(state.initialHash) && detail.source === 'link') { const initial = shell.parseRoute(state.initialHash); state.initialHash = ''; shell.notify.open({ ...initial.params, fromRoute: false }); }
     });
     shell.on('profile:ready', (profile) => { applyRole(); if (profile) loadVenue(); });
+    // The Messages unread worker (AtlasTeamUnreadBadge) announces each change:
+    // the sidebar, rail and More badges follow at once instead of on the poll.
+    shell.on('messages:unread', () => syncBadges());
     shell.on('notify:changed', () => {
       syncBell();
       if (state.notifyOpen) renderNotify();

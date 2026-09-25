@@ -64,7 +64,7 @@ export function settingsBackend({ user = USERS.admin, delayMs = 0, workspace = s
 export function emptyFunctions(names = [
   'atlas-knowledge', 'atlas-shifts', 'atlas-team-messages', 'atlas-reports', 'atlas-system', 'atlas-settings',
   'atlas-marketing-workspace', 'atlas-team-profiles', 'atlas-operations-checkpoint-a', 'atlas-phase3-brain',
-  'atlas-stock-counts', 'atlas-sprint4-briefing', 'atlas-team-profile-photos', 'atlas-phase3-intelligence',
+  'atlas-stock-counts', 'atlas-team-profile-photos', 'atlas-phase3-intelligence',
   'atlas-sprint3-review', 'atlas-notifications', 'atlas-item-master', 'atlas-inventory-scanner'
 ]) {
   return Object.fromEntries(names.map((name) => [name, {}]));

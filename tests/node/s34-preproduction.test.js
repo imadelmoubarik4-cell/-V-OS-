@@ -1,14 +1,12 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
-import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const read = (path) => readFileSync(path, 'utf8');
 const app = read('apps/web/index.html');
 const config = read('apps/web/config.js');
 const runtime = read('apps/web/assets/js/runtime-module-guard.js');
-const design = legacyCss('s34-preproduction');
 const messages = read('apps/web/assets/js/team-messages.js');
 const messageApi = read('supabase/functions/atlas-team-messages/index.ts');
 const shiftsApi = read('supabase/functions/atlas-shifts/index.ts');
@@ -82,13 +80,14 @@ test('shared launch design uses blue actions, compact search, visible focus, and
   assert.match(tokens, /--accent: #2563eb;/);
   assert.match(tokens, /--atlas-accent: var\(--accent\);/);
   assert.match(tokens, /--atlas-action: var\(--accent\);/);
-  assert.doesNotMatch(design, /--atlas-action:#2d78dc/);
   // S88: the shared focus, search and reduced-motion rules moved into the
-  // design system (atlas-base.css and atlas-components.css).
+  // design system (atlas-base.css and atlas-components.css); the s34 override
+  // stylesheet and its legacy fragments are gone.
+  assert.ok(!existsSync('apps/web/assets/css/legacy'), 'no legacy stylesheet directory');
   const base = readFileSync('apps/web/assets/css/atlas-base.css', 'utf8');
   const components = readFileSync('apps/web/assets/css/atlas-components.css', 'utf8');
   assert.match(base, /:focus-visible/);
-  assert.match(components, /input\[type="search"\]/);
+  assert.match(components, /\.atlas-search > \.atlas-input \{ padding-left: 34px;/);
   assert.match(base, /@media \(prefers-reduced-motion: reduce\)/);
   // S88 Team A: the pulsing Home focus card is retired (home.css has no animation).
   assert.doesNotMatch(read('apps/web/assets/css/home.css'), /@keyframes|animation/);
