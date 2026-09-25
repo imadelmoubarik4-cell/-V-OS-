@@ -61,7 +61,14 @@
 .msg-avatar { overflow: hidden; }
 .msg-avatar--atlas { background: var(--bg-muted); color: var(--text-2); }
 .msg-avatar--atlas svg { width: 14px; height: 14px; }
-.msg-item__body { min-width: 0; }
+/* Chat layout (S91a): other people's messages on the left in a neutral
+   bubble, the viewer's own on the right in an accent-tinted one, no avatar. */
+.msg-item__body { position: relative; justify-self: start; min-width: 0; max-width: min(88%, 600px); padding: var(--s-2) var(--s-3); border: 1px solid transparent; border-radius: var(--r-lg); background: var(--bg-muted); }
+.msg-item.is-own { grid-template-columns: minmax(0, 1fr); }
+.msg-item.is-own > .msg-item__gutter { display: none; }
+.msg-item.is-own > .msg-item__body { justify-self: end; max-width: min(80%, 600px); background: var(--accent-soft); }
+.msg-item.is-own .msg-item__meta { justify-content: flex-end; }
+.msg-item.is-deleted > .msg-item__body { border: 1px dashed var(--line); background: var(--bg); }
 .msg-item__meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); }
 .msg-item__name { font: 600 13px/18px var(--font-sans); color: var(--text); }
 .msg-item__role { font: var(--type-caption); color: var(--text-3); }
@@ -75,15 +82,15 @@
 .msg-item__read svg, .msg-item__failed svg { width: 14px; height: 14px; }
 .msg-item__failed { color: var(--danger); font-weight: 500; }
 .msg-item { position: relative; }
-/* Edit / Delete: a small toolbar over the message on hover or focus; inline on touch screens. */
-.msg-item__actions { position: absolute; top: 0; right: 0; display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-1); opacity: 0; pointer-events: none; }
+/* Edit / Delete: a small toolbar above the bubble's top edge on hover or focus (it never covers the time); inline on touch screens. */
+.msg-item__actions { position: absolute; bottom: calc(100% - var(--s-2)); right: var(--s-2); z-index: 1; display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-1); opacity: 0; pointer-events: none; }
 .msg-item:hover > .msg-item__body > .msg-item__actions, .msg-item:focus-within > .msg-item__body > .msg-item__actions { opacity: 1; pointer-events: auto; }
 .msg-item.is-failed .msg-item__actions { position: static; padding: 0; border: 0; box-shadow: none; background: none; opacity: 1; pointer-events: auto; }
-.msg-item__more { position: absolute; top: 0; right: -6px; display: none; }
+.msg-item__more { position: absolute; top: 0; right: 0; display: none; }
 @media (hover: none) {
   .msg-item:not(.is-failed) .msg-item__actions { display: none; }
   .msg-item__more { display: inline-grid; }
-  .msg-item:has(> .msg-item__body > .msg-item__more) > .msg-item__body { padding-right: 32px; }
+  .msg-item:has(> .msg-item__body > .msg-item__more) > .msg-item__body { min-height: var(--touch); padding-right: var(--touch); }
 }
 .msg-actions__list { gap: var(--s-2); }
 

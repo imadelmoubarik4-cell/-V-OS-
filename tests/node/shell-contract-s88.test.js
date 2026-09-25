@@ -237,11 +237,16 @@ test('changed scripts carry the S88 cache key', () => {
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
   // and the UX acceptance round 2 fixes (toast placement, order lines on the
   // phone, one inventory value in Reports, hours validation in place).
-  for (const file of ['atlas-inventory.js', 'atlas-shell.js', 'recipes.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'operations.js', 'reports-overview.js', 'atlas-ai.js']) {
+  for (const file of ['atlas-inventory.js', 'atlas-shell.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'operations.js', 'reports-overview.js', 'atlas-ai.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-s90g"></script>`), file);
   }
+  // S91a phone UI fixes: the Recipes category menu and tile category.
+  assert.ok(index.includes('<script src="assets/js/recipes.js?v=20260926-s91a"></script>'), 'recipes.js');
+  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">'), 'recipes.css');
   const config = read('apps/web/config.js');
-  for (const file of ['team-messages.js', 'team-profile-photos.js']) {
+  // S91a: own messages on the right, others on the left.
+  assert.ok(config.includes("scriptPath: 'assets/js/team-messages.js?v=20260926-s91a'"), 'team-messages.js');
+  for (const file of ['team-profile-photos.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90u'`), file);
   }
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'marketing-workspace.js', 'shifts-workspace.js']) {

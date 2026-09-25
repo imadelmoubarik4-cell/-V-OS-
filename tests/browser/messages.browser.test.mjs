@@ -65,7 +65,9 @@ test('photos come from the sender id; former members fall back safely; system me
     const byId = Object.fromEntries(list.map((row) => [row.id, row]));
     assert.equal(byId.m1.photo, PHOTO, "Sara's own photo");
     assert.equal(byId.m2.photo, null, "the viewer's photo is never used for someone else");
-    assert.equal(byId.m2.avatar, 'IE');
+    // S91a: the viewer's own messages sit on the right without an avatar.
+    assert.equal(byId.m2.avatar, null);
+    assert.equal(byId.m2.name, 'You');
     assert.equal(byId.x1.name, 'Jon Gudmundsson');
     assert.match(byId.x1.role, /no longer active/);
     assert.equal(byId.x2.name, 'Former team member');
