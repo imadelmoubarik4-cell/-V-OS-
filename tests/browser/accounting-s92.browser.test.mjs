@@ -1018,3 +1018,92 @@ test('errors: "Go to <field>" focuses the field; dialog alerts draw their icon; 
     noErrors(record);
   } finally { await close(); }
 });
+
+// ---------- S92 rollout state: web published before the atlas-accounting function ----------
+
+const FN_URL = `${SUPABASE}/functions/v1/${FN}`;
+const healthChecks = (record) => record.requests.filter((entry) => entry.path === '/auth/v1/health');
+const notDeployedText = (page) => page.evaluate(() => {
+  const alert = document.querySelector('#accounting-view [data-acc-not-deployed]');
+  return alert ? { text: alert.textContent.replace(/\s+/g, ' ').trim(), tone: alert.className, generic: Boolean(document.querySelector('#accounting-view [data-acc-load-error]')) } : null;
+});
+const genericText = (page) => page.evaluate(() => document.querySelector('#accounting-view [data-acc-load-error]')?.textContent.replace(/\s+/g, ' ').trim() || null);
+
+test('deploy preview: a missing atlas-accounting (reply the browser cannot read) says the backend is not deployed', { skip }, async () => {
+  const { page, record, close } = await launch({ hash: '#home' });
+  try {
+    // Supabase answers a function that does not exist with a 404 without CORS
+    // headers, so the page's fetch rejects with no HTTP status at all (the
+    // harness would hand a fulfilled 404 back readable, so the refusal is
+    // simulated at the network level). The project itself (Auth health) still
+    // answers.
+    let calls = 0;
+    await page.route(`${FN_URL}**`, (route) => { calls += 1; return route.abort('failed'); });
+    await openAccounting(page);
+    await until(async () => Boolean(await notDeployedText(page)), { message: 'the not-deployed notice' });
+    const notice = await notDeployedText(page);
+    assert.match(notice.text, /Accounting backend is not deployed yet\./);
+    assert.match(notice.text, /Nothing was changed\. Deploy S92 Accounting before testing this preview\./);
+    assert.match(notice.tone, /atlas-alert--warning/, 'a notice, not a red error');
+    assert.equal(notice.generic, false, 'the generic "couldn’t be loaded" alert is not shown');
+    assert.doesNotMatch(await page.textContent('#accounting-view'), /couldn’t be loaded/);
+    assert.ok(healthChecks(record).length >= 1, 'the project was checked');
+    assert.equal(await page.isDisabled('#accounting-view [data-acc-upload]'), true, 'Upload stays off');
+    // "Check again" retries the real endpoint; nothing is faked.
+    const before = calls;
+    await page.click('#accounting-view [data-acc-retry]');
+    await until(() => calls > before, { message: 'a retry of atlas-accounting' });
+    await until(async () => Boolean(await notDeployedText(page)), { message: 'still not deployed' });
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});
+
+test('deploy preview: a readable gateway 404 without error_code also says not deployed', { skip }, async () => {
+  const { page, record, close } = await launch({ hash: '#home' });
+  try {
+    await page.route(`${FN_URL}**`, (route) => route.fulfill({ status: 404, contentType: 'application/json', headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' }, body: '{"code":"NOT_FOUND","message":"Requested function was not found"}' }));
+    await openAccounting(page);
+    await until(async () => Boolean(await notDeployedText(page)), { message: 'the not-deployed notice' });
+    assert.equal((await notDeployedText(page)).generic, false);
+    assert.equal(healthChecks(record).length, 0, 'a readable 404 needs no project check');
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});
+
+test('after deployment: a genuine server failure keeps the generic error, not the rollout notice', { skip }, async () => {
+  const backend = accountingBackend();
+  const inner = backend.handler;
+  let failing = true;
+  backend.handler = (entry) => (failing && entry.action === 'snapshot'
+    ? { __status: 500, body: { error_code: 'unavailable', message: 'Accounting is unavailable right now.' } }
+    : inner(entry));
+  const { page, record, close } = await launch({ backend });
+  try {
+    await openAccounting(page);
+    await until(async () => Boolean(await genericText(page)), { message: 'the generic load error' });
+    const text = await genericText(page);
+    assert.match(text, /Accounting couldn’t be loaded\./);
+    assert.match(text, /Accounting is unavailable right now\. Nothing was changed\./);
+    assert.equal(await notDeployedText(page), null, 'no rollout notice for a deployed function');
+    assert.equal(healthChecks(record).length, 0);
+    // The function recovers: Try again loads the workspace.
+    failing = false;
+    await page.click('#accounting-view [data-acc-retry]');
+    await page.waitForSelector('#accounting-view .atlas-row__link');
+    assert.equal(await genericText(page), null);
+    noErrors(record, [500]);
+  } finally { await close(); }
+});
+
+test('offline: when the Supabase project does not answer either, the generic connection error stays', { skip }, async () => {
+  const { page, record, close } = await launch({ hash: '#home' });
+  try {
+    await page.route(`${FN_URL}**`, (route) => route.abort('internetdisconnected'));
+    await page.route(`${SUPABASE}/auth/v1/health**`, (route) => route.abort('internetdisconnected'));
+    await openAccounting(page);
+    await until(async () => Boolean(await genericText(page)), { message: 'the generic load error' });
+    assert.match(await genericText(page), /Check the connection and try again\./);
+    assert.equal(await notDeployedText(page), null);
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});

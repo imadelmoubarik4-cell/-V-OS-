@@ -51,7 +51,7 @@
 
   const state = {
     workspace: null, tab: 'review', filter: 'all', query: '', month: null,
-    loading: false, error: null, registered: false, initialized: false, openId: null, exporting: false
+    loading: false, error: null, notDeployed: false, registered: false, initialized: false, openId: null, exporting: false
   };
 
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -131,10 +131,43 @@
   function errorText(error) {
     if (error?.status === 401) return 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.';
     if (error?.status === 403) return 'Accounting is for administrators.';
-    if (error?.status === 404 && !error.code) return 'Accounting isn’t switched on for this venue yet.';
     if (error?.name === 'AbortError') return 'The connection timed out. Check the list before trying again.';
     if (error?.code && ERROR_COPY[error.code]) return ERROR_COPY[error.code];
     return 'Nothing was changed. Check the connection and try again.';
+  }
+
+  // Known rollout state (S92): the web app is published before, or without,
+  // the atlas-accounting function. That is not a failure of this page, so it
+  // gets its own plain message instead of "couldn't be loaded".
+  //   - No endpoint configured, or an HTTP 404 that is not the gateway's own
+  //     answer (our function always sends error_code; Supabase answers a
+  //     missing function with a 404 and no error_code).
+  //   - No HTTP answer at all (the browser blocks the missing function's
+  //     reply, which carries no CORS headers) while the Supabase project
+  //     itself answers: then the network is fine and only this function is
+  //     missing.
+  // A timeout, an offline browser, or any answer from the deployed function
+  // (5xx with error_code, 401, 403) stays a genuine failure.
+  async function projectAnswers() {
+    const base = String(cfg.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+    if (!base) return false;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 5000);
+    try {
+      await fetch(`${base}/auth/v1/health`, { cache: 'no-store', signal: controller.signal, headers: { apikey: String(cfg.SUPABASE_ANON_KEY || '') } });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+
+  async function backendMissing(error) {
+    if (error?.status === 404 && !error.code) return true;
+    if (error?.status || error?.name === 'AbortError') return false;
+    if (window.navigator && window.navigator.onLine === false) return false;
+    return projectAnswers();
   }
 
   async function load() {
@@ -145,8 +178,10 @@
       const payload = await api('snapshot');
       state.workspace = payload.workspace || {};
       state.error = null;
+      state.notDeployed = false;
     } catch (error) {
       state.error = error;
+      state.notDeployed = await backendMissing(error).catch(() => false);
     } finally {
       state.loading = false;
       render();
@@ -356,7 +391,8 @@
     const unpaid = documents().filter((doc) => doc.status === 'approved' && doc.paid_by !== 'staff').length;
     const owed = documents().filter((doc) => doc.status === 'approved' && doc.paid_by === 'staff').length;
     let body;
-    if (state.error && !state.workspace) body = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Accounting couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(errorText(state.error))}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-retry>Try again</button></div></div>`;
+    if (state.error && !state.workspace && state.notDeployed) body = `<div class="atlas-alert atlas-alert--warning" role="status" data-acc-not-deployed>${icon('server-off')}<div class="atlas-alert__content"><p class="atlas-alert__title">Accounting backend is not deployed yet.</p><p class="atlas-alert__body">Nothing was changed. Deploy S92 Accounting before testing this preview.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-retry>Check again</button></div></div>`;
+    else if (state.error && !state.workspace) body = `<div class="atlas-alert atlas-alert--danger" role="alert" data-acc-load-error>${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Accounting couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(errorText(state.error))}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-retry>Try again</button></div></div>`;
     else if (!state.workspace) body = `<div class="acc-skeleton" aria-busy="true" aria-label="Loading accounting">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(5)}</div>`;
     else body = ({ unpaid: unpaidMarkup, owed: owedMarkup, all: allMarkup, export: exportMarkup })[state.tab]?.() || reviewMarkup();
     const count = (key) => ({ review, unpaid, owed })[key] || 0;
