@@ -130,8 +130,9 @@ class ItemMasterL2ContractTests(unittest.TestCase):
 
     def test_edge_gateway_is_custom_manager_authenticated(self):
         self.assertIn("requireManager", EDGE)
-        self.assertIn("/auth/v1/user", EDGE)
-        self.assertIn("/rest/v1/profiles", EDGE)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE)
+        self.assertIn("requireRole(actor, MANAGER_ROLES", EDGE)
         self.assertIn('new Set(["admin", "manager"])', EDGE)
         self.assertIn("Checkpoint L2 is available only to managers and administrators", EDGE)
         self.assertIn("[functions.atlas-item-master]", CONFIG)

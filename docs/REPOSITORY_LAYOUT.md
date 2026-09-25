@@ -19,11 +19,11 @@ The Node contract `tests/node/repository-layout.test.js` protects this boundary 
 
 - `stock-provenance.mjs`: stock evidence, trust states, the historical cutoff, the Reports stock and recipe reports.
 - `atlas-domain.mjs`: stock projection, below par, recipe status, blockers and cost, order suggestions and inventory value. Each rule is a port of the browser rule it names and is parity-tested against the shipped browser modules (`tests/node/domain-parity-s88.test.js`).
-- `auth.mjs`: caller authentication (`resolveActor`, `requireRole`) for new functions.
+- `auth.mjs`: caller authentication for every gateway (`resolveActor`, `requireRole`, `isManager`) and the one staff label (`actorLabel`: display name, otherwise "Team member", never an email address). No function calls `/auth/v1/user` itself or hard-codes an Auth project URL or publishable key; configuration comes from `ATLAS_AUTH_PROJECT_URL` / `ATLAS_AUTH_PUBLISHABLE_KEY` and an unconfigured function refuses every request (`tests/node/edge-auth-contract.test.js`).
 
 Shared modules stay plain ESM with no Deno APIs so Node tests import them directly. A function that imports a shared module must list it among its reviewed sources in the release manifests (`tests/node/shared-modules-s88.test.js`); the runtime builders keep `_shared` beside the function folders.
 
-`supabase/functions/atlas-stock-counts/index.ts` is not the configured entrypoint (`entrypoint.ts` is), but it is pinned as a reviewed source in the S35 staging manifest and the S33 runtime fixture, and the S39 production builder packages it. It stays until a release package drops it.
+`atlas-stock-counts` and `atlas-reports` deploy `entrypoint.ts` (`supabase/config.toml`). The former second stock-count implementation (`atlas-stock-counts/index.ts`) was deleted together with its S35 manifest and S33 fixture records; `atlas-reports/entrypoint.ts` only loads `index.ts`, which handles optional production columns explicitly.
 
 ## Rollback discipline
 

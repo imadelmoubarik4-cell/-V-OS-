@@ -68,7 +68,9 @@ test('System UI never renders privileged secrets or raw credentials', () => {
 
 test('System gateway revalidates production manager access on every request', () => {
   assert.match(edge, /requireManagerProfile/);
-  assert.match(edge, /if \(!profile\?\.active\)/);
+  assert.match(edge, /from "\.\.\/_shared\/auth\.mjs"/);
+  assert.match(edge, /await resolveActor\(request, Deno\.env, fetch, \{\s*inactiveMessage: "This Atlas profile is inactive\. System access has been removed\."/);
+  assert.match(edge, /requireRole\(actor, MANAGER_ROLES, "System is available only to managers and administrators\."\)/);
   assert.match(edge, /MANAGER_ROLES = new Set\(\["admin", "manager"\]\)/);
   assert.match(edge, /System is available only to managers and administrators/);
   assert.match(edge, /request\.method !== "GET"/);

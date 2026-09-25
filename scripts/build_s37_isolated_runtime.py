@@ -77,6 +77,11 @@ def _transform(source, add_guard):
         "${AUTH_PROJECT_URL}/rest/v1/",
         "${S37_TARGET_ORIGIN}/rest/v1/",
     )
+    # S89 gateways read the Auth/REST origin through the env-only getter.
+    source = source.replace(
+        "${productionAuthUrl()}/rest/v1/",
+        "${S37_TARGET_ORIGIN}/rest/v1/",
+    )
     source = re.sub(r"\bproductionRows\b", "isolatedRows", source)
     source = source.replace(
         "production_rest_snapshot",

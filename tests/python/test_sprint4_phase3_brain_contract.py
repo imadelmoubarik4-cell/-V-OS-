@@ -94,9 +94,10 @@ class Sprint4Phase3BrainContractTests(unittest.TestCase):
         self.assertIn("to service_role", API_MIGRATION)
 
     def test_edge_function_verifies_manager_and_validates_writes(self) -> None:
-        self.assertIn('/auth/v1/user', EDGE)
-        self.assertIn('/rest/v1/profiles', EDGE)
-        self.assertIn('profile.role !== "admin" && profile.role !== "manager"', EDGE)
+        self.assertIn('from "../_shared/auth.mjs"', EDGE)
+        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE)
+        self.assertIn('requireRole(actor, MANAGER_ROLES', EDGE)
+        self.assertIn('p_decided_by_label: context.label,', EDGE)
         self.assertIn('const DECISIONS = new Set(["accept", "reject", "modify", "defer", "reset"])', EDGE)
         self.assertIn('client_request_id is required', EDGE)
         self.assertIn('success_score must be between 0 and 1', EDGE)

@@ -70,103 +70,118 @@
     {
       "name": "atlas-inventory-scanner",
       "sources": {
-        "supabase/functions/atlas-inventory-scanner/index.ts": "204ec0bb115107a47751bb3452d904f0edbd4a3235d6aab464e3a2316901d5ca",
-        "supabase/functions/_shared/product-identity.mjs": "077745f34ef4935cfb5dafb2195d9a0b33055dc603416cd6f90e2400f0f7379f"
+        "supabase/functions/atlas-inventory-scanner/index.ts": "eb97456fdbbd6e35e9907e7ff47f2bd60403f2a7bed84ce0ab5028843b55496b",
+        "supabase/functions/_shared/product-identity.mjs": "077745f34ef4935cfb5dafb2195d9a0b33055dc603416cd6f90e2400f0f7379f",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-knowledge",
       "sources": {
-        "supabase/functions/atlas-knowledge/index.ts": "d2c5edd2b95953139a17b0a5a27be8216220c0fa5829ba65138d3053dad707ca"
+        "supabase/functions/atlas-knowledge/index.ts": "2914ef901cb2968b683ccf979b5dfe765be914f7dbf0a37fe80292d9dbe90057",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-marketing-workspace",
       "sources": {
-        "supabase/functions/atlas-marketing-workspace/index.ts": "bb178376cd1537c1ba879aac2afa1c124dccda2db448eee599a196f81b3fc95b"
+        "supabase/functions/atlas-marketing-workspace/index.ts": "a43040ffa5bf5bdfaeeba769c5c63bb1742f6467443f386a18306772958d88c5",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-operations-checkpoint-a",
       "sources": {
-        "supabase/functions/atlas-operations-checkpoint-a/index.ts": "6d1432c13d30f66c0f5e9d9b6ae44316c60eb40bd16a44fe1dd06f2873a94c04"
+        "supabase/functions/atlas-operations-checkpoint-a/index.ts": "fe9f6418576623bee7284d50e2083f971211e40d21a75e80855b296dcc525073",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-phase3-brain",
       "sources": {
-        "supabase/functions/atlas-phase3-brain/index.ts": "638f4b6b6aa3eef4481c6badbba6d71a9e9619b4f3eafa326d77911825bfdf82"
+        "supabase/functions/atlas-phase3-brain/index.ts": "19c24b61f0d82595acd6706db558651e5ca6d34388e8c9c1113b61b2cdb6f437",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-phase3-intelligence",
       "sources": {
-        "supabase/functions/atlas-phase3-intelligence/index.ts": "bf2b4c0a661144e8a5aab2538efee6a1a9a0706d0dc088efaefe1b1ff1d05538",
+        "supabase/functions/atlas-phase3-intelligence/index.ts": "87d16c3cf037f9ed50b087a9e2796cb49b0bd136473305db10ba60444e10fd2d",
         "supabase/functions/_shared/atlas-domain.mjs": "67253b04669cada29b75254501f88e77ebbc3bd677e2ea218e6378c954d446f6",
-        "supabase/functions/_shared/stock-provenance.mjs": "9f1aa85342a4d2581ccb78373ce85eae1d551c8811742a53364ab76b06f49012"
+        "supabase/functions/_shared/stock-provenance.mjs": "9f1aa85342a4d2581ccb78373ce85eae1d551c8811742a53364ab76b06f49012",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-reports",
       "sources": {
-        "supabase/functions/atlas-reports/entrypoint.ts": "52922c789f811d6c413a6ed2d0a93badf9c99968709e7108e0dd9169ed585b31",
-        "supabase/functions/atlas-reports/index.ts": "20c09b1a12fb3154d368494598df798bd4c3510863963a098d3b294f75f5a5a6",
-        "supabase/functions/_shared/stock-provenance.mjs": "9f1aa85342a4d2581ccb78373ce85eae1d551c8811742a53364ab76b06f49012"
+        "supabase/functions/atlas-reports/entrypoint.ts": "033d1b40a32481345b8a970fd0c84f6271e5a601bb3dabee9fbf5d2d238306ba",
+        "supabase/functions/atlas-reports/index.ts": "4c62a49dc7a450be6526d75bebb7525db3dda65f052b403eedb31da5a4e53e66",
+        "supabase/functions/_shared/stock-provenance.mjs": "9f1aa85342a4d2581ccb78373ce85eae1d551c8811742a53364ab76b06f49012",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-settings",
       "sources": {
-        "supabase/functions/atlas-settings/index.ts": "d3c23cebe17a78e8b85756e7095d8fad8919418ec6893b3f6eef13094cadc940"
+        "supabase/functions/atlas-settings/index.ts": "7c4bd078500ba0049f2e360066f631f0ebbc6c1a9bf2f877ad8893153b21ace6",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-shifts",
       "sources": {
-        "supabase/functions/atlas-shifts/index.ts": "4db811d9c10be922c1c966f936d361c56247b527db62df6e50de7e150f299123"
+        "supabase/functions/atlas-shifts/index.ts": "fec4f8012ecd4a8b98eb111389b5ca2a112d573511f00eb94a2926149bb25050",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-sprint3-review",
       "sources": {
-        "supabase/functions/atlas-sprint3-review/index.ts": "dd0a532c9a754481afa550077c939f2155f280fdd13af625cf7fd37221e67401"
+        "supabase/functions/atlas-sprint3-review/index.ts": "96508c6c343ba02e6ffe55d8bc33c6c2981392247cab25aac613de6b59613d66",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-sprint4-briefing",
       "sources": {
-        "supabase/functions/atlas-sprint4-briefing/index.ts": "9fd8d237e422a756dda837eef7dac1a09b18ff6e9b00de7ed20c1438706bc1d5"
+        "supabase/functions/atlas-sprint4-briefing/index.ts": "c643f56ff7fd687b19f5273f5b54dd7f2b762dd17f85bf18ef0b022da70ce5a7",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-stock-counts",
       "sources": {
-        "supabase/functions/atlas-stock-counts/entrypoint.ts": "e5331059f8e30ea63091f1497d0ad2ba2832e95646ef13c7501eaacdd0f53261",
-        "supabase/functions/atlas-stock-counts/index.ts": "e10cc53f0154e321bf27486e123d04918d97f20585115d1ffb3a6d60677de3ee"
+        "supabase/functions/atlas-stock-counts/entrypoint.ts": "a0955816f8bd991bd6315f75d85d88575fc83aa3783f8c83bac8482efefbb5d6",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-system",
       "sources": {
-        "supabase/functions/atlas-system/index.ts": "d5b8e6a6201a630e906ceea9168595c55a73da8255c52897f2ba07ac32316940"
+        "supabase/functions/atlas-system/index.ts": "9f31708bf97db4d666f6f925cd1667359f53e2bc9c821de2c521e403622bea1e",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-team-messages",
       "sources": {
-        "supabase/functions/atlas-team-messages/index.ts": "b2321a6bbe62b0e470b300aa367f56b6a7504a94828c7cccb4187a81a744709c"
+        "supabase/functions/atlas-team-messages/index.ts": "573aaec359360c58a20a7e5e4287e5d1e22032d351828d9d2c188be7caec5087",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-team-profile-photos",
       "sources": {
-        "supabase/functions/atlas-team-profile-photos/index.ts": "52c526ff8300db29791b24b3f03e2a3ed88ebb4088c1f47ddbc615f47fcac69d"
+        "supabase/functions/atlas-team-profile-photos/index.ts": "fee055e95a8738e4f47b9c501ddb8b39279b0d3fb94c0ee5e776d669ed9498c5",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
       "name": "atlas-team-profiles",
       "sources": {
-        "supabase/functions/atlas-team-profiles/index.ts": "1fc678add3ad2ae6fee1b79800c9dcd64ecb97110ae9f1f14ff3c245b67eb53a"
+        "supabase/functions/atlas-team-profiles/index.ts": "da20b5877264b2a61f22c811d59162580ed250308b174808a228da75b9fe6a82",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },
     {
@@ -181,7 +196,8 @@
       "name": "atlas-notifications",
       "gateway_jwt": "platform default verification retained",
       "sources": {
-        "supabase/functions/atlas-notifications/index.ts": "5d4265e01a711c42a80972eec9c16b53d4b0c65006e33ed29b3febcd7b558bea"
+        "supabase/functions/atlas-notifications/index.ts": "5e58830a5170dc0bc87ca33609f81ace2fa4447906c7c5e2b7a371f05c6b93a3",
+        "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     }
   ],

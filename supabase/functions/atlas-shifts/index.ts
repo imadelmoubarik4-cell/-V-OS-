@@ -1,9 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
-const AUTH_PROJECT_URL = Deno.env.get("ATLAS_AUTH_PROJECT_URL")
-  ?? "https://dnefgcmjcgxlynycxkts.supabase.co";
-const AUTH_PUBLISHABLE_KEY = Deno.env.get("ATLAS_AUTH_PUBLISHABLE_KEY")
-  ?? "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp";
+import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -57,17 +53,8 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function bearerToken(request: Request): string {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new ApiError(401, "A valid Atlas session is required.");
-  return match[1];
-}
-
 function labelForProfile(profile: Partial<AtlasProfile> | null | undefined): string {
-  return profile?.display_name?.trim()
-    || profile?.email?.trim()
-    || "Atlas team member";
+  return actorLabel(profile);
 }
 
 function isManager(context: AtlasContext): boolean {
@@ -96,40 +83,21 @@ function policyPayload() {
   };
 }
 
+// The production Auth/REST project and its publishable key come only from the
+// function environment (_shared/auth.mjs authConfig); unconfigured fails closed.
+function productionAuthUrl(): string {
+  return authConfig(Deno.env).projectUrl;
+}
+
+function productionPublishableKey(): string {
+  return authConfig(Deno.env).publishableKey;
+}
+
 async function requireActiveProfile(request: Request): Promise<AtlasContext> {
-  const token = bearerToken(request);
-  const headers = {
-    apikey: AUTH_PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    accept: "application/json",
-    "cache-control": "no-store",
-  };
-
-  const userResponse = await fetch(`${AUTH_PROJECT_URL}/auth/v1/user`, { headers });
-  if (!userResponse.ok) throw new ApiError(401, "Your Atlas session has expired.");
-  const user = await userResponse.json() as { id?: string; email?: string | null };
-  if (!user.id) throw new ApiError(401, "Your Atlas account could not be verified.");
-
-  const profileUrl = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
-  profileUrl.searchParams.set("id", `eq.${user.id}`);
-  profileUrl.searchParams.set("select", "id,email,display_name,role,active");
-  profileUrl.searchParams.set("limit", "1");
-  const profileResponse = await fetch(profileUrl, { headers });
-  if (!profileResponse.ok) throw new ApiError(403, "Your Atlas staff profile could not be verified.");
-  const profiles = await profileResponse.json() as AtlasProfile[];
-  const profile = profiles[0];
-  if (!profile?.active) {
-    throw new ApiError(403, "This Atlas profile is inactive. Shift access has been removed.");
-  }
-  if (!PROFILE_ROLES.has(profile.role)) {
-    throw new ApiError(403, "This Atlas profile cannot access Shifts.");
-  }
-
-  return {
-    token,
-    user: { id: user.id, email: user.email },
-    profile,
-  };
+  const actor = await resolveActor(request, Deno.env, fetch, {
+    inactiveMessage: "This Atlas profile is inactive. Shift access has been removed.",
+  });
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
 }
 
 function requireManager(context: AtlasContext): void {
@@ -281,7 +249,7 @@ async function branchRpc(name: string, payload: Record<string, unknown> = {}): P
 async function productionJson(context: AtlasContext, url: URL): Promise<any> {
   const response = await fetch(url, {
     headers: {
-      apikey: AUTH_PUBLISHABLE_KEY,
+      apikey: productionPublishableKey(),
       authorization: `Bearer ${context.token}`,
       accept: "application/json",
       "cache-control": "no-store",
@@ -300,7 +268,7 @@ async function productionJson(context: AtlasContext, url: URL): Promise<any> {
 }
 
 async function productionProfiles(context: AtlasContext): Promise<AtlasProfile[]> {
-  const url = new URL(`${AUTH_PROJECT_URL}/rest/v1/profiles`);
+  const url = new URL(`${productionAuthUrl()}/rest/v1/profiles`);
   url.searchParams.set("select", "id,email,display_name,role,active");
   url.searchParams.set("order", "active.desc,display_name.asc.nullslast,email.asc");
   url.searchParams.set("limit", "500");
@@ -569,7 +537,7 @@ Deno.serve(async (request: Request) => {
 
     return jsonResponse({ result, ...(await snapshot(context, refreshWeek)) });
   } catch (error) {
-    if (error instanceof ApiError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
     console.error("Shifts API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The Shifts service is temporarily unavailable." }, 500);
   }
