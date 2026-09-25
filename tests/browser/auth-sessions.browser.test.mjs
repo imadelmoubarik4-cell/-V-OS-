@@ -62,15 +62,29 @@ test('an inactive staff profile clears this device only', { skip }, async () => 
   } finally { await close(); }
 });
 
-test('a 401 first renews this device session; no sign-in prompt when renewal works', { skip }, async () => {
+test('a 401 while Auth still accepts the session renews nothing and prompts nothing', { skip }, async () => {
   const { page, record, close } = await launchAtlas();
   try {
-    const before = record.requests.filter((entry) => entry.path.startsWith('/auth/v1/token')).length;
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('atlas:auth-required', { detail: { status: 401 } })));
     await settle(page);
-    const refreshes = record.requests.filter((entry) => entry.path.startsWith('/auth/v1/token') && entry.search.includes('grant_type=refresh_token'));
-    assert.ok(refreshes.length >= 1 && record.requests.filter((entry) => entry.path.startsWith('/auth/v1/token')).length > before, 'the session was renewed');
-    assert.equal(await page.$$eval('.atlas-toast', (nodes) => nodes.filter((n) => /session has ended/i.test(n.textContent)).length), 0, 'no sign-in prompt');
+    assert.ok(record.requests.some((entry) => entry.path === '/auth/v1/user'), 'the session was checked with Auth');
+    assert.equal(record.requests.filter((entry) => entry.path.startsWith('/auth/v1/token') && entry.search.includes('grant_type=refresh_token')).length, 0, 'no renewal needed');
+    assert.equal(await page.$$eval('.atlas-toast', (nodes) => nodes.filter((n) => /session/i.test(n.textContent)).length), 0, 'no prompt');
+    assert.equal(logouts(record).length, 0);
+    assert.equal(await page.evaluate(() => document.body.dataset.atlasReady), 'true', 'still signed in');
+  } finally { await close(); }
+});
+
+test('a 401 with a refused session check renews this device session and stays signed in when renewal works', { skip }, async () => {
+  const state = { refused: false };
+  const { page, record, close } = await launchAtlas({
+    fixtures: { auth: { user: () => (state.refused ? { __status: 401, body: { code: 'bad_jwt', message: 'invalid JWT' } } : null) } }
+  });
+  try {
+    state.refused = true;
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('atlas:auth-required', { detail: { status: 401 } })));
+    await settle(page);
+    assert.ok(record.requests.some((entry) => entry.path.startsWith('/auth/v1/token') && entry.search.includes('grant_type=refresh_token')), 'the session was renewed');
     assert.equal(logouts(record).length, 0);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasReady), 'true', 'still signed in');
   } finally { await close(); }
@@ -85,7 +99,10 @@ test('a session ended elsewhere: one sign-in screen, this device only, and every
     // device has been signed out, keep it signed out (as a real browser would).
     initScript: () => { try { if (sessionStorage.getItem('atlas:harness-signed-out') === '1') localStorage.clear(); } catch { /* storage unavailable */ } },
     fixtures: {
-      auth: { token: (entry) => (state.revoked && entry.search.includes('grant_type=refresh_token') ? { __status: 400, body: { error: 'invalid_grant', error_description: 'Refresh Token Not Found' } } : null) },
+      auth: {
+        token: (entry) => (state.revoked && entry.search.includes('grant_type=refresh_token') ? { __status: 400, body: { error: 'invalid_grant', error_description: 'Refresh Token Not Found' } } : null),
+        user: () => (state.revoked ? { __status: 403, body: { code: 'session_not_found', message: 'Session from session_id claim in JWT does not exist' } } : null)
+      },
       functions: new Proxy({}, { get: () => (entry) => (state.revoked ? { __status: 401, body: { error: 'unauthorized' } } : {}) })
     }
   });
@@ -169,7 +186,10 @@ test('when sign-in cannot be checked (Auth unavailable) the session is kept and 
     // measured on the page clock: this test needs the real clock.
     fixedTime: null,
     fixtures: {
-      auth: { token: (entry) => (outage.on && entry.search.includes('grant_type=refresh_token') ? { __status: 503, body: { message: 'upstream unavailable' } } : null) },
+      auth: {
+        token: (entry) => (outage.on && entry.search.includes('grant_type=refresh_token') ? { __status: 503, body: { message: 'upstream unavailable' } } : null),
+        user: () => (outage.on ? { __status: 503, body: { message: 'upstream unavailable' } } : null)
+      },
       functions: new Proxy({}, { get: () => () => (outage.on ? { __status: 401, body: { error: 'unauthorized' } } : {}) })
     }
   });
@@ -205,5 +225,24 @@ test('a deliberate sign-out still signs this device out when Auth cannot be reac
     await Promise.all([page.waitForEvent('load'), page.click('[data-menu-action="sign-out"]')]);
     assert.equal(await page.evaluate(() => sessionStorage.getItem('atlas:harness-had-session')), 'no', 'the stored session was removed before the reload');
     await page.waitForFunction(() => getComputedStyle(document.getElementById('login-screen')).display !== 'none', null, { timeout: 15000 });
+  } finally { await close(); }
+});
+
+test('signing out on purpose in one tab signs the other tab out without a "session ended" notice', { skip }, async () => {
+  const { page, close } = await launchAtlas({ initScript: keepSignedOut });
+  try {
+    const other = await page.context().newPage();
+    await other.goto(page.url());
+    await other.waitForFunction(() => document.body.dataset.atlasReady === 'true', null, { timeout: 15000 });
+    for (const tab of [page, other]) await tab.evaluate(() => { try { sessionStorage.setItem('atlas:harness-signed-out', '1'); } catch { /* storage unavailable */ } });
+    const otherReload = other.waitForEvent('load', { timeout: 15000 });
+    await page.click('#atlas-account-btn');
+    await Promise.all([page.waitForEvent('load'), page.click('[data-menu-action="sign-out"]')]);
+    await otherReload;
+    // Right after its reload the other tab shows sign-in, without the notice
+    // (later, the harness would restore its fixture session).
+    const state = await other.evaluate(() => ({ login: getComputedStyle(document.getElementById('login-screen')).display, notice: document.getElementById('login-error')?.textContent || '' }));
+    assert.notEqual(state.login, 'none', 'the other tab is at sign-in');
+    assert.doesNotMatch(state.notice, /session ended/i, 'no "session ended" notice in the other tab');
   } finally { await close(); }
 });

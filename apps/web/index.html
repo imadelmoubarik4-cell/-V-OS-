@@ -327,7 +327,11 @@
       // Supabase ends the session itself when a refresh is refused (the
       // session was revoked or expired). Never stay half signed in.
       client.auth.onAuthStateChange((event) => {
-        if (event === 'SIGNED_OUT' && currentUser && !signingOut) sessionEnded();
+        if (event !== 'SIGNED_OUT' || !currentUser || signingOut) return;
+        let deliberate = false;
+        try { deliberate = Date.now() - Number(localStorage.getItem(SIGNED_OUT_AT_KEY) || 0) < 15000; } catch (_) { /* storage unavailable */ }
+        if (deliberate) { signingOut = true; location.reload(); return; }
+        sessionEnded();
       });
       clearBootError();
       return client;
@@ -490,8 +494,12 @@
   // device must still end up signed out (a shared bar tablet), so the stored
   // session is removed here.
   let signingOut = false;
+  const SIGNED_OUT_AT_KEY = 'atlas:signed-out-at';
   async function signOut() {
     signingOut = true;
+    // Other tabs of this browser receive SIGNED_OUT too; this tells them it
+    // was on purpose (no "session ended" notice there).
+    try { localStorage.setItem(SIGNED_OUT_AT_KEY, String(Date.now())); } catch (_) { /* storage unavailable */ }
     try {
       window.AtlasPalette?.clearRecent?.();
       const client = await initializeSupabase();
@@ -566,6 +574,21 @@
       let result = null;
       try {
         const client = await initializeSupabase();
+        // A token that is not about to expire is checked first: if Auth still
+        // accepts the session, the 401 is the endpoint's problem and nothing
+        // is renewed (fewer renewals, so no renewal rate limit either).
+        const current = (await client.auth.getSession()).data?.session;
+        const expiresInMs = current?.expires_at ? current.expires_at * 1000 - Date.now() : 0;
+        if (current && expiresInMs > 60000) {
+          const check = await client.auth.getUser().catch((error) => ({ error }));
+          if (!check?.error && check?.data?.user) { lastRenewedAt = Date.now(); return; }
+          const status = Number(check?.error?.status || 0);
+          if (!(status === 400 || status === 401 || status === 403 || check?.error?.name === 'AuthSessionMissingError')) {
+            lastRenewedAt = Date.now();
+            authUnavailableNotice();
+            return;
+          }
+        }
         result = await client.auth.refreshSession();
       } catch (error) {
         result = { error };
@@ -615,7 +638,7 @@
 
   async function onSignedIn(session) {
     currentUser = session.user;
-    try { sessionStorage.removeItem(SESSION_ENDED_KEY); } catch (_) { /* storage unavailable */ }
+    try { sessionStorage.removeItem(SESSION_ENDED_KEY); sessionStorage.removeItem(SESSION_ENDED_AT_KEY); } catch (_) { /* storage unavailable */ }
     const profile = await loadActiveProfile(session);
     // S87 identity rule: the profile display name (AtlasIdentity, atlas-api.js),
     // otherwise "Team member". An email address is never shown or turned into
