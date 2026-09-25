@@ -324,6 +324,8 @@ test('a failed server subscribe leaves the device unsubscribed and says so', { s
 test('a server without a push key reports "Not set up" and offers no switch', { skip }, async () => {
   const { page, close } = await openNotifications((entry) => (entry.action === 'configuration' ? { public_key: null, delivery_enabled: false, enabled: false } : {}));
   try {
+    // The device status is checked asynchronously ("Not checked yet" first).
+    await page.waitForFunction(() => !/Not checked yet/.test(document.querySelector('.settings-device-notifications')?.textContent || ''));
     assert.match(await page.textContent('.settings-device-notifications'), /Not set up/);
     assert.equal(await page.$('[data-settings-push-enable]'), null);
   } finally { await close(); }
