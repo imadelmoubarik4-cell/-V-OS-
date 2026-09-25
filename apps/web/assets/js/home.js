@@ -338,18 +338,22 @@
 
   // ---------- Decisions ledger refresh ----------
   //
-  // The decision memory (Atlas AI › Decisions) is fed by the manager-only
-  // intelligence refresh that the retired Brain page ran once per visit. Home
-  // runs it once per session for managers, in the background.
+  // One producer feeds the decision memory (Atlas AI › Decisions): Atlas AI
+  // background signals (atlas-ai?action=refresh-signals, Atlas_AI_Architecture
+  // §12a). They are deterministic (no model call) and fingerprinted, so the same
+  // signal refreshes its shadow recommendation instead of repeating it. Home
+  // runs the refresh once per session for managers, in the background. The
+  // Checkpoint K refresh (atlas-phase3-intelligence) is no longer triggered
+  // here: it wrote a second set of recommendations for the same shortages.
   function refreshIntelligence() {
     if (state.intelligenceRequested || !isManager()) return;
-    const base = String(window.VABAR_CONFIG?.PHASE3_INTELLIGENCE_API || '').trim();
+    const base = String(window.VABAR_CONFIG?.ATLAS_AI_API || '').trim();
     if (!base) return;
     state.intelligenceRequested = true;
     accessToken().then((token) => {
       if (!token) { state.intelligenceRequested = false; return; }
       const url = new URL(base);
-      url.searchParams.set('action', 'refresh');
+      url.searchParams.set('action', 'refresh-signals');
       return fetch(url, { method: 'POST', cache: 'no-store', headers: { authorization: `Bearer ${token}`, accept: 'application/json', 'content-type': 'application/json' }, body: '{}' });
     }).catch(() => { /* the ledger keeps its last refresh */ });
   }

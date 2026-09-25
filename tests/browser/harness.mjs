@@ -227,3 +227,17 @@ export async function openView(page, view) {
   }, view);
   await page.waitForTimeout(250);
 }
+
+/**
+ * Polls a test-side condition (for example a recorded request) until it holds.
+ * Use it instead of a fixed sleep when the thing to wait for is not in the page.
+ */
+export async function until(check, { timeout = 8000, interval = 20, message = 'condition' } = {}) {
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    const value = await check();
+    if (value) return value;
+    if (Date.now() > deadline) throw new Error(`Timed out waiting for ${message}`);
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+}

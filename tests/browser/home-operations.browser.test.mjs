@@ -3,7 +3,7 @@
 // states. Fixtures: tests/browser/team-a-fixtures.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, requestsTo, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, requestsTo, until, USERS } from './harness.mjs';
 import { teamAFixtures, VIEWER } from './team-a-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -86,6 +86,28 @@ test('a bartender gets "View item", not "Add to order", on an out-of-stock row',
     assert.ok(actions.includes('View item'));
     assert.ok(!actions.includes('Add to order'));
   } finally { await close(); }
+});
+
+test('one intelligence producer: Home refreshes Atlas AI signals once per manager session, never Checkpoint K', { skip }, async () => {
+  const { page, record, close } = await launch();
+  try {
+    await page.waitForSelector('.home-attention .home-row');
+    const signals = () => requestsTo(record, 'atlas-ai', 'refresh-signals');
+    await until(() => signals().length > 0);
+    assert.equal(signals().length, 1);
+    assert.equal(signals()[0].method, 'POST');
+    assert.equal(requestsTo(record, 'atlas-phase3-intelligence', 'refresh').length, 0, 'Checkpoint K no longer writes a second set of recommendations');
+    // Leaving and coming back to Home does not refresh again this session.
+    await go(page, '#inventory');
+    await go(page, '#');
+    assert.equal(signals().length, 1);
+  } finally { await close(); }
+  const staff = await launch(USERS.bartender);
+  try {
+    await staff.page.waitForSelector('.home-attention');
+    await until(() => requestsTo(staff.record, 'atlas-shifts').length > 0);
+    assert.equal(staff.record.requests.filter((entry) => entry.action === 'refresh-signals').length, 0, 'staff never trigger the manager refresh');
+  } finally { await staff.close(); }
 });
 
 test('a viewer sees only the attention rows on Home', { skip }, async () => {
