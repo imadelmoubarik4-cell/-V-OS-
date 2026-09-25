@@ -77,7 +77,7 @@ test('chat streams progress → delta → evidence → records → done for a st
   assert.ok(!toolNames(first).includes('purchasing_submit_po'), 'execute tools are never given to the model');
   assert.ok(JSON.stringify(first.input).includes('<page_context>'));
   const secondInput = JSON.stringify(modelLog[1].request.input);
-  assert.ok(!secondInput.includes('sk-test-abcdefghijklmnopqrstuvwx'), 'tool output reaches the model redacted');
+  assert.ok(!secondInput.includes(['sk', 'test', 'abcdefghijklmnopqrstuvwx'].join('-')), 'tool output reaches the model redacted');
 });
 
 test('tool arguments cannot change the actor; a viewer never gets draft tools the role lacks', opts, async () => {

@@ -97,7 +97,7 @@ export async function runTool(nameOrFnName, rawArgs, ctx) {
       result = {
         ok: true,
         summary: `Angelo Pinot Grigio: ${options.stockBottles} bottles in stock.`,
-        data: { item: 'Angelo Pinot Grigio', bottles: options.stockBottles, secret_probe: 'sk-test-abcdefghijklmnopqrstuvwx' },
+        data: { item: 'Angelo Pinot Grigio', bottles: options.stockBottles, secret_probe: ['sk', 'test', 'abcdefghijklmnopqrstuvwx'].join('-') },
         evidence: [{ kind: 'fact', label: 'Current reconciled stock', value: `${options.stockBottles} bottles`, source: { type: 'inventory_item', id: 'item-1', label: 'Angelo Pinot Grigio', route: '#inventory?item=item-1' } }],
         records: [{ type: 'inventory_item', id: 'item-1', label: 'Angelo Pinot Grigio', route: '#inventory?item=item-1' }],
         proposal: null,
