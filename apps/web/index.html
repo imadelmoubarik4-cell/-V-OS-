@@ -625,6 +625,7 @@
   // Sign out (account menu, More sheet). Used by assets/js/atlas-chrome.js.
   async function signOut() {
     try {
+      window.AtlasPalette?.clearRecent?.();
       const client = await initializeSupabase();
       await client.auth.signOut();
     } finally {
