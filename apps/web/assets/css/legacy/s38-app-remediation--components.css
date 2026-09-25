@@ -50,4 +50,92 @@
 @media (max-width: 760px) {
   .recipe-foundation-card > summary small,.brain-intelligence-grid > .brain-card > summary small,.knowledge-editor-properties > summary small { display:none; }
 }
+/* Moved from s38-app-remediation--inventory-scanner.css when Inventory was rebuilt (S88
+   Team B); the Inventory, scanner and Purchasing selectors were dropped. */
+/* Shared floating-card behaviour */
+:is(
+  .atlas-card,
+  .metric-card,
+  .stat-card,
+  .panel,
+  .operations-card,
+  .operations-summary-card,
+  .checkpoint-a-compact-card,
+  .checkpoint-a-summary-grid article,
+  .checkpoint-a-panel,
+  .checkpoint-a-routine,
+  .recipe-summary-card,
+  .recipe-card,
+  .recipe-foundation-card,
+  .team-messages-layout,
+  .shift-month-summary article,
+  .shift-month-day-detail,
+  .brain-metric,
+  .brain-card,
+  .brain-phase3-card,
+  .brain-signal-card,
+  .settings-hero,
+  .settings-panel,
+  .settings-card,
+  .settings-summary-grid article
+) {
+  box-shadow: var(--s38-shadow);
+  transition:
+    transform 180ms cubic-bezier(.2, .7, .2, 1),
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+:is(
+  .atlas-card,
+  .metric-card,
+  .stat-card,
+  .panel,
+  .operations-card,
+  .operations-summary-card,
+  .checkpoint-a-compact-card,
+  .checkpoint-a-summary-grid article,
+  .checkpoint-a-panel,
+  .checkpoint-a-routine,
+  .recipe-summary-card,
+  .recipe-card,
+  .recipe-foundation-card,
+  .shift-month-summary article,
+  .shift-month-day-detail,
+  .brain-metric,
+  .brain-card,
+  .brain-phase3-card,
+  .brain-signal-card,
+  .settings-panel,
+  .settings-card,
+  .settings-summary-grid article
+):hover {
+  transform: translateY(-3px);
+  box-shadow: var(--s38-shadow-raised);
+  border-color: var(--s38-blue-line);
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(
+    .atlas-card,
+    .metric-card,
+    .stat-card,
+    .panel,
+    .operations-card,
+    .operations-summary-card,
+    .checkpoint-a-compact-card,
+    .checkpoint-a-summary-grid article,
+    .checkpoint-a-panel,
+    .checkpoint-a-routine,
+    .recipe-summary-card,
+    .recipe-card,
+    .recipe-foundation-card,
+    .shift-month-summary article,
+    .shift-month-day-detail,
+    .brain-metric,
+    .brain-card,
+    .settings-panel,
+    .settings-card
+  ) { transition: none; }
+}
 }

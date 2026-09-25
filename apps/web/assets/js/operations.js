@@ -57,10 +57,6 @@
     return `atlas.checklist.${dateKey()}.${type}`;
   }
 
-  function orderedStorageKey() {
-    return `atlas.order-status.${dateKey()}`;
-  }
-
   function readJson(key, fallback) {
     try {
       const value = JSON.parse(localStorage.getItem(key));
@@ -109,12 +105,11 @@
       });
   }
 
-  // An item counts as ordered when it is on a placed purchase order (shared
-  // across devices) or was marked here today before an order was recorded.
+  // An item counts as ordered only when it is on a placed purchase order that
+  // hasn't fully arrived (shared across devices). There is no device-local
+  // "ordered" flag (S88 Team B): orders live in Purchasing.
   function orderedItemIds() {
-    const ids = new Set(readJson(orderedStorageKey(), []));
-    window.AtlasPurchaseOrders?.openItemIds?.().forEach((id) => ids.add(id));
-    return ids;
+    return new Set(window.AtlasPurchaseOrders?.openItemIds?.() || []);
   }
 
   function onPurchaseOrder(id) {
@@ -291,7 +286,7 @@
             <strong>${formatIsk(item.estimatedCost)}</strong>
             ${onPurchaseOrder(item.id)
               ? '<span class="operations-order-state" title="On a placed purchase order">On order</span>'
-              : `<button type="button" data-order-toggle="${escape(item.id)}" title="Noted on this device only. Record a purchase order to share it with the team.">${item.ordered ? 'Reopen' : 'Mark ordered'}</button>`}
+              : '<a class="operations-order-state" href="#purchasing/orders">Create order</a>'}
           </div>`).join('')}
       </section>`).join('');
   }
@@ -354,7 +349,7 @@
             <header class="operations-card-head"><div><h2>Operational signals</h2><p>Current risk indicators for today’s service.</p></div></header>
             <div class="operations-priority-list">
               <div class="operations-priority"><div class="operations-priority-icon"><i data-lucide="ban"></i></div><div><strong>${unavailableRecipes} unavailable ${unavailableRecipes === 1 ? 'recipe' : 'recipes'}</strong><span>Based on live ingredient coverage.</span></div><button type="button" data-operation-target="recipes">Review</button></div>
-              <div class="operations-priority"><div class="operations-priority-icon"><i data-lucide="receipt-text"></i></div><div><strong>${orders.length} unconfirmed order ${orders.length === 1 ? 'item' : 'items'}</strong><span>Mark items ordered as purchasing is completed.</span></div><button type="button" data-operation-target="operations-orders">Review</button></div>
+              <div class="operations-priority"><div class="operations-priority-icon"><i data-lucide="receipt-text"></i></div><div><strong>${orders.length} unconfirmed order ${orders.length === 1 ? 'item' : 'items'}</strong><span>Create purchase orders for them in Purchasing.</span></div><button type="button" data-operation-target="operations-orders">Review</button></div>
             </div>
           </section>
         </aside>
@@ -409,17 +404,6 @@
       localStorage.removeItem(checklistStorageKey(state.checklistType));
       render();
       renderHomeAugmentation();
-    });
-
-    dom.center.querySelectorAll('[data-order-toggle]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const ordered = orderedItemIds();
-        const id = button.dataset.orderToggle;
-        if (ordered.has(id)) ordered.delete(id); else ordered.add(id);
-        writeJson(orderedStorageKey(), Array.from(ordered));
-        render();
-        renderHomeAugmentation();
-      });
     });
   }
 

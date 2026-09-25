@@ -111,16 +111,6 @@
 
   main{ max-width:960px; margin:0 auto; padding:24px; }
 
-  .toolbar{
-    display:flex; align-items:center; justify-content:space-between;
-    gap:12px; margin-bottom:20px; flex-wrap:wrap;
-  }
-  .tabs{ display:flex; gap:6px; flex-wrap:wrap; }
-  .tab{
-    padding:7px 14px; border-radius:20px; border:1px solid var(--legacy-line);
-    background:transparent; color:var(--legacy-text-mute); font-size:13px; cursor:pointer;
-  }
-  .tab.active{ background:var(--legacy-surface); color:var(--legacy-text); border-color:var(--legacy-brass); }
 
   .low-stock-banner{
     display:none;
@@ -142,80 +132,7 @@
   tbody tr{ border-bottom:1px solid var(--legacy-line); }
   tbody tr:hover{ background:var(--legacy-surface); }
   td{ padding:12px 10px; font-size:14px; vertical-align:middle; }
-  td.name{ font-weight:500; }
-  td.cat{ color:var(--legacy-text-mute); font-size:12px; text-transform:capitalize; }
-  .qty-input{
-    width:80px; margin:0; padding:7px 8px; font-size:14px;
-    background:var(--legacy-surface); border:1px solid var(--legacy-line); border-radius:6px; color:var(--legacy-text);
-  }
-  .qty-input:focus{ border-color:var(--legacy-brass); }
-  .unit{ color:var(--legacy-text-mute); font-size:12px; margin-left:6px; }
-  .qty-cell{ display:flex; align-items:center; gap:6px; }
-  .step-btn{
-    width:26px; height:26px; border-radius:6px; border:1px solid var(--legacy-line);
-    background:var(--legacy-surface); color:var(--legacy-text); font-size:14px; cursor:pointer; line-height:1;
-  }
-  .step-btn:hover{ border-color:var(--legacy-brass); color:var(--legacy-brass-hi); }
-  .low-flag{
-    color:var(--legacy-warn); font-family:'Fraunces', serif; font-size:16px; margin-left:6px;
-  }
-  .meta{ color:var(--legacy-text-mute); font-size:12px; }
-  .row-actions{ display:flex; gap:6px; }
-  .icon-btn{
-    background:transparent; border:1px solid var(--legacy-line); color:var(--legacy-text-mute);
-    width:30px; height:30px; border-radius:6px; cursor:pointer; font-size:14px;
-  }
-  .icon-btn:hover{ color:var(--legacy-text); border-color:var(--legacy-text-mute); }
 
-  .empty-state{
-    text-align:center; padding:60px 20px; color:var(--legacy-text-mute);
-  }
-  .empty-state .mark{ font-family:'Fraunces', serif; font-size:40px; color:var(--legacy-surface-2); display:block; margin-bottom:12px; }
-
-  /* ---------- MODAL ---------- */
-  .overlay{
-    display:none; position:fixed; inset:0; background:rgba(10,12,11,.6);
-    align-items:center; justify-content:center; z-index:20; padding:20px;
-  }
-  .modal{
-    background:var(--legacy-surface); border:1px solid var(--legacy-line); border-radius:16px;
-    width:100%; max-width:420px; max-height:calc(100vh - 40px);
-    overflow-y:auto; overscroll-behavior:contain; padding:28px;
-    box-shadow:0 22px 70px rgba(30,25,18,.18);
-  }
-  .modal.item-modal{ max-width:920px; padding:0; overflow:hidden; display:flex; flex-direction:column; }
-  .modal-header{
-    display:flex; align-items:center; justify-content:space-between; gap:16px;
-    padding:24px 28px 18px; border-bottom:1px solid var(--legacy-line); flex:0 0 auto;
-  }
-  .modal-header h2{ margin:0; }
-  .modal-close{
-    width:38px; height:38px; border:1px solid var(--legacy-line); border-radius:10px;
-    background:var(--legacy-surface); color:var(--legacy-text); cursor:pointer; font-size:22px; line-height:1;
-  }
-  .modal-scroll{ padding:24px 28px 8px; overflow-y:auto; min-height:0; }
-  .item-form-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 26px; }
-  .form-field{ min-width:0; }
-  .modal-footer{
-    display:flex; justify-content:flex-end; gap:10px; padding:16px 28px;
-    border-top:1px solid var(--legacy-line); background:rgba(255,255,255,.96);
-    position:sticky; bottom:0; z-index:2; flex:0 0 auto;
-  }
-  .modal-footer .btn{ min-width:120px; }
-  .modal h2{ font-family:'Fraunces', serif; font-weight:500; font-size:22px; margin:0 0 20px; }
-  .modal-actions{ display:flex; gap:10px; margin-top:4px; }
-  .modal-actions .btn{ flex:1; }
-
-  @media (max-width:720px){
-    thead th:nth-child(3), td:nth-child(3){ display:none; } /* hide "updated" col on mobile */
-    .overlay{ padding:0; align-items:flex-end; }
-    .modal.item-modal{ max-width:none; width:100%; max-height:94vh; border-radius:18px 18px 0 0; }
-    .item-form-grid{ grid-template-columns:1fr; }
-    .modal-header{ padding:18px 20px 14px; }
-    .modal-scroll{ padding:18px 20px 4px; }
-    .modal-footer{ padding:14px 20px calc(14px + env(safe-area-inset-bottom)); }
-    .modal-footer .btn{ flex:1; min-width:0; }
-  }
 
   /* ---------- VIEW SWITCH ---------- */
   .view-switch{ display:flex; gap:6px; margin-bottom:20px; }
@@ -361,10 +278,6 @@
   body:not(.atlas-commercial-manager) .ingredient-cost-v2 {
     display:none!important;
   }
-  body:not(.atlas-commercial-manager) #inventory-view .qty-input {
-    pointer-events:none;
-    opacity:.72;
-  }
 }
 </style>
   <link rel="stylesheet" href="assets/css/legacy/home-polish-baseline--home.css?v=20260926-s88">
@@ -377,26 +290,17 @@
   <link rel="stylesheet" href="assets/css/legacy/home-polish--brain.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/home-polish--home.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/home-polish--operations.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/home-polish--inventory.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/inventory-polish--inventory.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/inventory-polish--components.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/inventory-polish--purchasing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/recipes-gallery--recipes.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/purchasing-polish--purchasing.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/purchasing-polish--components.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/purchasing-polish--base.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/import-polish--import-center.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/review-polish--sprint3-review.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--base.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--home.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--inventory.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--recipes.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--brain.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--business.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--marketing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--shifts-month.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/atlas-glass--knowledge.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/atlas-glass--item-master.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--business.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--marketing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/workspaces-polish--team-messages.css?v=20260926-s88">
@@ -418,27 +322,20 @@
   <link rel="stylesheet" href="assets/css/legacy/polish-pass2--shifts-month.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/polish-pass2--marketing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--home.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--inventory-scanner.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--operations.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--shifts.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--stock-count.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--settings.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s34-preproduction--purchasing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/shifts-workspace.css">
   <link rel="stylesheet" href="assets/css/shifts-month-calendar.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/shifts-month-editor.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/knowledge-workspace.css">
-  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--purchasing.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--home.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--shifts-month.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--operations.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--inventory-scanner.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--inventory.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--brain.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--base.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--components.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--search.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--stock-count.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--recipes.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--import-center.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--knowledge.css?v=20260926-s88">
@@ -448,17 +345,17 @@
   <link rel="stylesheet" href="assets/css/legacy/s38-app-remediation--team-profiles.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/knowledge-s56--knowledge.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/team-s57--team-messages.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/inventory-operations-s58--purchasing.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/inventory-operations-s58--inventory.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--reports.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/accessibility-responsive-s61--team-messages.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260926-s88">
   <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
        append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
-       or data attribute); the five also named by runtime-module-guard.js and the
-       scanner sheet keep their unversioned href for that reason. The three links
-       with an id replace the <style> elements that shifts-month-tab-bridge.js,
-       inventory-scanner-bootstrap.js and settings-mount-bridge.js used to inject. -->
+       or data attribute); the five also named by runtime-module-guard.js keep
+       their unversioned href for that reason. The two links
+       with an id replace the <style> elements that shifts-month-tab-bridge.js
+       and settings-mount-bridge.js used to inject. inventory.css and
+       purchasing.css are the rebuilt Inventory and Purchasing modules
+       (@layer atlas.modules). -->
   <link rel="stylesheet" href="assets/css/system-workspace.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/legacy/shifts-month-tab-bridge--shifts-month.css?v=20260926-s88" id="shifts-month-interaction-fix">
   <link rel="stylesheet" href="assets/css/sprint3-review.css?v=20260926-s88">
@@ -471,13 +368,11 @@
   <link rel="stylesheet" href="assets/css/marketing-workspace.css?v=20260926-s88">
   <link rel="stylesheet" href="assets/css/team-profile-photos.css">
   <link rel="stylesheet" href="assets/css/reports-workspace.css?v=20260926-s88">
-  <link rel="stylesheet" href="assets/css/legacy/inventory-scanner-bootstrap--inventory-scanner.css?v=20260926-s88" id="inventory-scanner-interaction-fix">
-  <link rel="stylesheet" href="assets/css/stock-count-workspace.css?v=20260926-s88" data-atlas-stock-count-css="true">
   <link rel="stylesheet" href="assets/css/settings-workspace.css">
   <link rel="stylesheet" href="assets/css/legacy/settings-mount-bridge--settings.css?v=20260926-s88" id="atlas-settings-button-contrast">
-  <link rel="stylesheet" href="assets/css/inventory-scanner.css">
-  <link rel="stylesheet" href="assets/css/item-master-workspace.css?v=20260926-s88" data-atlas-item-master-css="true">
   <link rel="stylesheet" href="assets/css/atlas-ai.css?v=20260926-s88">
+  <link rel="stylesheet" href="assets/css/inventory.css?v=20260925-s88b">
+  <link rel="stylesheet" href="assets/css/purchasing.css?v=20260925-s88b">
 </head>
 <body>
 
@@ -592,28 +487,10 @@
           <div id="home-metrics" class="atlas-grid atlas-home-metrics"><div class="metric-card" data-target="inventory"><div class="metric-icon"><i data-lucide="package"></i></div><div class="metric-copy"><span>Inventory items</span><strong id="home-items">—</strong><small id="home-items-note">Live catalog</small></div></div><div class="metric-card" data-target="inventory-low"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><div class="metric-copy"><span>Items below par</span><strong id="home-low">—</strong><small id="home-low-note">Checking levels</small></div></div><div class="metric-card" data-target="recipes"><div class="metric-icon"><i data-lucide="martini"></i></div><div class="metric-copy"><span>Average recipe margin</span><strong id="home-margin">—</strong><small id="home-margin-note">Verified recipes only</small></div></div><div class="metric-card" data-target="team-profiles"><div class="metric-icon"><i data-lucide="users"></i></div><div class="metric-copy"><span>Team members</span><strong id="home-team">—</strong><small id="home-team-note">Loading live profiles</small></div></div></div>
 
           <div class="alert-banner" id="low-stock-banner"><span class="dot"></span><span id="low-stock-text"></span></div>
-          <section class="inventory-section-header" id="inventory-section-header" hidden>
-            <div class="inventory-section-row">
-              <nav class="inventory-workspace-tabs" aria-label="Inventory sections">
-                <button type="button" class="inventory-workspace-tab" data-view="inventory" data-subview="Items" data-inventory-section="items">Items</button>
-                <button type="button" class="inventory-workspace-tab" data-view="inventory" data-subview="Stock count" data-inventory-section="stock-count">Stock count</button>
-                <button type="button" class="inventory-workspace-tab" data-item-master-l2 data-inventory-section="item-master">Item master</button>
-                <button type="button" class="inventory-workspace-tab" data-view="movements" data-subview="Inventory movements" data-inventory-section="movements">Movements</button>
-                <button type="button" class="inventory-workspace-tab" data-view="waste" data-subview="Waste" data-inventory-section="waste">Waste</button>
-                <button type="button" class="inventory-workspace-tab" data-view="imports" data-inventory-section="imports">Import</button>
-              </nav>
-              <div class="inventory-section-actions">
-                <button class="btn" id="add-item-btn" type="button"><i data-lucide="plus"></i>Add item</button>
-              </div>
-            </div>
-            <div class="inventory-intelligence" id="inventory-intelligence" role="status" aria-live="polite">
-              <span class="inventory-intelligence-icon"><i data-lucide="package"></i></span>
-              <p><strong id="inventory-intelligence-title">Checking inventory readiness.</strong> <span id="inventory-intelligence-detail">Atlas is reviewing verified stock data.</span></p>
-              <button type="button" id="inventory-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
-            </div>
-          </section>
-          <div id="inventory-view" style="display:none;"><div class="toolbar inventory-filter-toolbar"><label class="purchasing-search inventory-search" for="inventory-search"><i data-lucide="search"></i><input type="search" id="inventory-search" aria-label="Search inventory" placeholder="Search items, suppliers, SKU…" autocomplete="off" /></label><div class="tabs" id="category-tabs" aria-label="Inventory categories"></div><div class="tabs inventory-subcategory-tabs" id="subcategory-tabs" aria-label="Inventory subcategories" hidden></div></div><div id="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th data-commercial-only>Supplier</th><th data-commercial-only class="numeric">Cost</th><th>Updated</th><th>Quantity</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="items-body"></tbody></table><div class="empty-state" id="empty-state" style="display:none;"><span class="mark">Á</span>Nothing matches these inventory filters.</div></div></div>
-          <div id="dashboard-view" style="display:none;"><div class="stat-grid"><div class="stat-card"><div class="label">Total items</div><div class="value" id="stat-total-items">0</div></div><div class="stat-card warn"><div class="label">Low stock</div><div class="value" id="stat-low-stock">0</div></div><div class="stat-card" data-commercial-only><div class="label">Spent this month</div><div class="value" id="stat-month-spend">0</div><div class="sub">ISK</div></div><div class="stat-card" data-commercial-only><div class="label">Suppliers</div><div class="value" id="stat-suppliers">0</div></div></div><div class="panel"><h3>Low inventory</h3><div id="low-inventory-rows"><div class="empty-dash">Nothing below par right now.</div></div></div><div class="panel"><h3>Recent activity</h3><div id="activity-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by month</h3><div id="monthly-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by supplier — this month</h3><div id="supplier-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div></div>
+          <!-- Inventory (#inventory, #inventory/item/<id>, #inventory/counts[/<id>], movements, waste):
+               rendered by assets/js/atlas-inventory.js and stock-count-workspace.js. -->
+          <div id="inventory-view" style="display:none;"></div>
+          <div id="dashboard-view" style="display:none;"><div class="stat-grid"><div class="stat-card"><div class="label">Total items</div><div class="value" id="stat-total-items">0</div></div><div class="stat-card warn"><div class="label">Low stock</div><div class="value" id="stat-low-stock">0</div></div><div class="stat-card" data-commercial-only><div class="label">Spent this month</div><div class="value" id="stat-month-spend">—</div></div><div class="stat-card" data-commercial-only><div class="label">Suppliers</div><div class="value" id="stat-suppliers">0</div></div></div><div class="panel"><h3>Low inventory</h3><div id="low-inventory-rows"><div class="empty-dash">Nothing below par right now.</div></div></div><div class="panel"><h3>Recent activity</h3><div id="activity-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by month</h3><div id="monthly-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div><div class="panel" data-commercial-only><h3>Spend by supplier — this month</h3><div id="supplier-spend-rows"><div class="empty-dash">No movements logged yet.</div></div></div></div>
           <div id="recipes-view" style="display:none;">
             <section class="recipe-dashboard">
               <div class="recipe-hero">
@@ -672,27 +549,8 @@
               </div>
             </section>
           </div>
-          <div id="suppliers-view" style="display:none;">
-            <section class="purchasing-workspace-head">
-              <nav class="purchasing-workspace-tabs" aria-label="Purchasing sections">
-                <button type="button" id="purchase-suppliers-tab" class="active" aria-current="page">Suppliers</button>
-                <button type="button" id="purchase-orders-tab" disabled title="Orders are not enabled in this environment">Orders</button>
-                <button type="button" id="purchase-deliveries-tab" disabled title="Review ordered and received deliveries">Deliveries</button>
-              </nav>
-              <button class="btn" id="add-supplier-btn"><i data-lucide="plus"></i>New supplier</button>
-            </section>
-            <div id="purchase-suppliers-panel">
-              <section class="purchasing-intelligence" aria-live="polite">
-                <span class="purchasing-intelligence-icon"><i data-lucide="truck"></i></span>
-                <p><strong id="purchasing-intelligence-title">Checking purchasing readiness.</strong> <span id="purchasing-intelligence-detail">Atlas is reviewing suppliers and recorded restocks.</span></p>
-                <button type="button" id="purchasing-intelligence-action">See analysis <span aria-hidden="true">→</span></button>
-              </section>
-              <div class="toolbar"><label class="purchasing-search" for="supplier-search"><i data-lucide="search"></i><input type="search" id="supplier-search" aria-label="Search suppliers" placeholder="Search suppliers..."/></label></div>
-              <div class="atlas-table-scroll"><table><thead><tr><th>Supplier</th><th>Items</th><th>Spent this month</th><th>Spent all-time</th></tr></thead><tbody id="suppliers-body"></tbody></table></div>
-              <div class="empty-state" id="suppliers-empty" style="display:none;"><span class="mark">Á</span>No suppliers yet.</div>
-            </div>
-            <section id="purchase-order-panel" hidden></section>
-          </div>
+          <!-- Purchasing (#purchasing/…): rendered by assets/js/atlas-purchasing.js. -->
+          <div id="suppliers-view" style="display:none;"></div>
           <div id="imports-view" style="display:none;">
             <section class="atlas-import-center import-queue-center">
               <div class="import-hero">
@@ -827,26 +685,6 @@
           <div id="team-view" class="placeholder-view"><div class="placeholder-head"><h2>Team</h2><p>Profiles, roles, emergency contacts and training status.</p></div><div class="empty-module"><i data-lucide="users"></i><h3>Team workspace is ready</h3><p>Next: connect live staff profiles from Supabase.</p></div></div>
           <div id="shifts-view" class="placeholder-view"><div class="placeholder-head"><h2>Shifts</h2><p>A calm weekly planner built for hospitality.</p></div><div class="empty-module"><i data-lucide="calendar-days"></i><h3>Shift planner foundation is ready</h3><p>Next: weekly schedule, availability and publishing.</p></div></div>
           <div id="knowledge-view" class="placeholder-view"><div class="placeholder-head"><h2>Knowledge</h2><p>Documents, onboarding, training and checklists.</p></div><div class="empty-module"><i data-lucide="book-open"></i><h3>Knowledge hub foundation is ready</h3><p>Eight onboarding steps already exist in Supabase.</p></div></div>
-          <div id="movements-view" class="inventory-ledger-view" style="display:none;">
-            <header class="inventory-ledger-head"><div><span>Inventory evidence</span><h2>Movement history</h2><p>Every recorded restock, count, adjustment, transfer, sale and explicit waste event.</p></div><button type="button" class="btn ghost" id="inventory-ledger-refresh"><i data-lucide="refresh-cw"></i>Refresh</button></header>
-            <div class="inventory-ledger-summary" aria-label="Inventory movement summary"><article><span>Total records</span><strong id="movement-total">0</strong></article><article><span>Restocks</span><strong id="movement-restocks">0</strong></article><article><span>Explicit waste</span><strong id="movement-waste">0</strong></article></div>
-            <section class="inventory-ledger-table"><table><thead><tr><th>Date</th><th>Item</th><th>Type</th><th>Change</th><th>Note</th></tr></thead><tbody id="movement-history-body"></tbody></table><div class="inventory-ledger-empty" id="movement-history-empty" hidden><i data-lucide="history"></i><h3>No movement records yet</h3><p>Verified stock operations will appear here without inference.</p></div></section>
-          </div>
-          <div id="waste-view" class="inventory-ledger-view" style="display:none;">
-            <header class="inventory-ledger-head"><div><span>Controlled inventory workflow</span><h2>Waste</h2><p>Record explicit waste only. Ordinary negative adjustments are never reclassified as waste.</p></div></header>
-            <section class="inventory-waste-entry" data-commercial-only>
-              <div><i data-lucide="recycle"></i><span><strong>Log waste</strong><small>This immediately reduces live stock and creates an immutable movement record.</small></span></div>
-              <form id="inventory-waste-form">
-                <label><span>Inventory item</span><select name="item_id" id="inventory-waste-item" required><option value="">Choose item</option></select></label>
-                <label><span>Quantity wasted</span><input type="number" name="quantity" min="0.000001" step="any" required /></label>
-                <label><span>Reason</span><select name="reason" required><option value="">Choose reason</option><option value="spoilage">Spoilage</option><option value="breakage">Breakage</option><option value="spill">Spill</option><option value="expiry">Expiry</option><option value="preparation">Preparation waste</option><option value="other">Other</option></select></label>
-                <label class="is-wide"><span>Note</span><input name="note" maxlength="900" required placeholder="What happened and where" /></label>
-                <button type="submit" class="btn"><i data-lucide="minus-circle"></i>Record waste</button>
-              </form>
-              <p role="status" id="inventory-waste-status" aria-live="polite"></p>
-            </section>
-            <section class="inventory-ledger-table"><table><thead><tr><th>Date</th><th>Item</th><th>Quantity</th><th>Recorded reason</th></tr></thead><tbody id="waste-history-body"></tbody></table><div class="inventory-ledger-empty" id="waste-history-empty" hidden><i data-lucide="recycle"></i><h3>No explicit waste records</h3><p>Atlas will not infer waste from ordinary adjustments.</p></div></section>
-          </div>
           <div id="reports-view" class="placeholder-view"><div class="placeholder-head"><h2>Reports</h2><p>Inventory, usage, waste, labour and purchasing insights.</p></div><div class="empty-module"><i data-lucide="chart-no-axes-combined"></i><h3>Reports are coming next</h3></div></div>
           <div id="ai-view" style="display:none;"></div>
           <div id="settings-view" class="placeholder-view"><div class="placeholder-head"><h2>Settings</h2><p>Venue, team access and VÁ OS preferences.</p></div><div class="empty-module"><i data-lucide="settings"></i><h3>Project Atlas</h3><p>Built with care for VÁ Bar, Reykjavík.</p></div></div>
@@ -862,84 +700,6 @@
     </nav>
   </div>
 
-
-  <!-- ===================== ADD/EDIT MODAL ===================== -->
-  <div class="overlay" id="item-overlay">
-    <div class="modal item-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div class="modal-header">
-        <h2 id="modal-title">Add new inventory item</h2>
-        <button type="button" class="modal-close" id="close-item-btn" aria-label="Close">×</button>
-      </div>
-      <form id="item-form" style="display:flex; flex-direction:column; min-height:0;">
-        <input type="hidden" id="item-id" />
-        <div class="modal-scroll">
-          <div class="item-form-grid">
-            <div class="form-field"><label for="item-name">Item name</label><input type="text" id="item-name" required placeholder="e.g. Reyka Vodka" /></div>
-            <div class="form-field"><label for="item-category">Category</label><input type="text" id="item-category" list="category-suggestions" placeholder="e.g. Spirits, Mixers, Glassware..." required /><datalist id="category-suggestions"></datalist></div>
-            <div class="form-field"><label for="item-quantity">Quantity (controlled stock workflow)</label><input type="number" id="item-quantity" step="0.1" value="0" disabled /></div>
-            <div class="form-field"><label for="item-unit">Unit</label><input type="text" id="item-unit" placeholder="bottles, kg, cans..." required /></div>
-            <div class="form-field"><label for="item-par">Par level (low-stock alert below this)</label><input type="number" id="item-par" step="0.1" placeholder="optional" /></div>
-            <div class="form-field"><label for="item-supplier">Supplier</label><input type="text" id="item-supplier" list="supplier-suggestions" placeholder="Supplier name" /><datalist id="supplier-suggestions"></datalist></div>
-            <div class="form-field"><label for="item-sku">SKU / barcode <span style="color:var(--legacy-text-mute); font-weight:400;">(optional)</span></label><input type="text" id="item-sku" placeholder="optional" /></div>
-            <div class="form-field"><label for="item-bin">Storage location</label><input type="text" id="item-bin" placeholder="e.g. Back bar shelf 2" /></div>
-            <div class="form-field"><label for="item-units-per-case">Units per case</label><input type="number" id="item-units-per-case" step="1" placeholder="optional" /></div>
-            <div class="form-field"><label for="item-case-cost">Case cost <span style="color:var(--legacy-text-mute); font-weight:400;">(fills unit cost)</span></label><input type="number" id="item-case-cost" step="0.01" placeholder="optional" /></div>
-            <div class="form-field"><label for="item-cost">Cost price (per unit)</label><input type="number" id="item-cost" step="0.01" placeholder="optional" /></div>
-            <div class="form-field"><label for="item-discount">Standard supplier discount %</label><input type="number" id="item-discount" step="0.1" placeholder="0" /></div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn ghost" id="cancel-item-btn">Cancel</button>
-          <button type="submit" class="btn">Save item</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ===================== RESTOCK MODAL ===================== -->
-  <div class="overlay" id="restock-overlay">
-    <div class="modal">
-      <h2>Log a restock</h2>
-      <form id="restock-form">
-        <label for="restock-item">Item</label>
-        <select id="restock-item" required></select>
-
-        <label for="restock-qty">Quantity added</label>
-        <input type="number" id="restock-qty" step="0.1" required />
-
-        <label for="restock-supplier">Supplier</label>
-        <input type="text" id="restock-supplier" />
-
-        <label for="restock-cost">Unit cost (what you paid, per unit)</label>
-        <input type="number" id="restock-cost" step="0.01" />
-
-        <label for="restock-discount">Discount % applied</label>
-        <input type="number" id="restock-discount" step="0.1" placeholder="0" />
-
-        <div class="modal-actions">
-          <button type="button" class="btn ghost" id="cancel-restock-btn">Cancel</button>
-          <button type="submit" class="btn">Log restock</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ===================== SUPPLIER MODAL ===================== -->
-  <div class="overlay" id="supplier-overlay" aria-hidden="true">
-    <div class="modal wide supplier-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-modal-title">
-      <div class="item-modal-head"><div><h2 id="supplier-modal-title">Add new supplier</h2><p>Save a supplier once and use it across inventory, deliveries and purchasing.</p></div><button type="button" class="modal-close" id="close-supplier-btn" aria-label="Close supplier form">×</button></div>
-      <form id="supplier-form">
-        <div class="two-col">
-          <div><label for="supplier-name">Supplier name *</label><input id="supplier-name" required placeholder="Supplier name" /></div>
-          <div><label for="supplier-contact">Contact person</label><input id="supplier-contact" placeholder="optional" /></div>
-          <div><label for="supplier-email">Email</label><input id="supplier-email" type="email" placeholder="orders@example.com" /></div>
-          <div><label for="supplier-phone">Phone</label><input id="supplier-phone" placeholder="optional" /></div>
-        </div>
-        <label for="supplier-notes">Notes</label><textarea id="supplier-notes" rows="3" placeholder="Delivery days, account number, minimum order or other useful details."></textarea>
-        <div class="modal-actions"><button type="button" class="btn ghost" id="cancel-supplier-btn">Cancel</button><button type="submit" class="btn">Save supplier</button></div>
-      </form>
-    </div>
-  </div>
 
   <!-- ===================== RECIPE MODAL · REUSABLE ATLAS SHELL ===================== -->
   <div id="recipe-overlay" data-atlas-modal hidden aria-hidden="true">
@@ -1187,12 +947,6 @@
       banner.style.display = 'flex';
       copy.textContent = `${label} could not load. Refresh to try again, or ask an administrator if it continues.`;
     }
-    const intelligenceTitle = document.getElementById('inventory-intelligence-title');
-    const intelligenceDetail = document.getElementById('inventory-intelligence-detail');
-    if (label === 'Inventory' && intelligenceTitle && intelligenceDetail) {
-      intelligenceTitle.textContent = 'Inventory data is unavailable.';
-      intelligenceDetail.textContent = 'Atlas could not load the role-approved inventory catalogue. Retry after the security migration is available.';
-    }
   }
 
   let items = [];
@@ -1200,33 +954,23 @@
   let inventoryMovements = [];
   let recipes = [];
   let suppliers = [];
+  let countSnapshot = null;
+  let itemsStatus = 'loading';
   // Read-only access to the loaded, role-filtered records for other modules
-  // (Search). Returns the same arrays every page renders from.
+  // (Inventory, Purchasing, Search). Returns the same arrays every page renders
+  // from; status() says whether the last inventory load failed (the previous
+  // rows are kept, never blanked).
   window.AtlasData = Object.freeze({
     items: () => items,
     recipes: () => recipes,
-    suppliers: () => suppliers
+    suppliers: () => suppliers,
+    movements: () => inventoryMovements,
+    countSnapshot: () => countSnapshot,
+    status: () => ({ items: itemsStatus })
   });
   let draftIngredients = [];
-  let activeCategory = 'all';
-  let activeSubcategory = 'all';
-  let belowParOnly = false;
   let activeView = 'dashboard';
 
-  const INVENTORY_GROUPS = [
-    ['spirits', 'Spirits'], ['wine', 'Wine'], ['beer', 'Beer'], ['mixers', 'Mixers'],
-    ['syrups', 'Syrups'], ['bitters', 'Bitters'], ['fresh-fruit', 'Fresh Fruit'],
-    ['fresh-herbs', 'Fresh Herbs'], ['garnish', 'Garnish'], ['bar-ingredients', 'Bar Ingredients'],
-    ['consumables', 'Consumables'], ['bar-equipment', 'Bar Equipment'], ['coffee', 'Coffee']
-  ];
-
-  const DEFAULT_CATEGORIES = [
-    'Vodka', 'Gin', 'Whiskey', 'Rum', 'Tequila & Mezcal', 'Brandy & Cognac',
-    'Vermouth', 'Liqueurs', 'Bitters',
-    'Wine', 'Beer — bottles/cans', 'Beer — kegs', 'Ready-to-drink',
-    'Mixers', 'Juices', 'Fruit & garnish', 'Syrups',
-    'Coffee', 'Non-alcoholic', 'Food / tapas', 'Glassware', 'Cleaning supplies', 'Other'
-  ];
 
   // ---------- AUTH ----------
   function setLoginBusy(busy, label = 'Sign in') {
@@ -1398,9 +1142,7 @@
       .order('name', { ascending: true });
     if (error) {
       console.error(`${relation} could not be loaded`, error);
-      items = [];
-      renderTabs();
-      renderTable();
+      itemsStatus = 'error';
       showDataBoundaryError('Inventory');
       return;
     }
@@ -1412,14 +1154,13 @@
         const url = new URL(endpoint); url.searchParams.set('action', 'snapshot');
         const response = await fetch(url, {headers: {authorization: `Bearer ${session.access_token}`}, signal: AbortSignal.timeout(12000)});
         if (!response.ok) throw new Error('Verified stock unavailable');
-        balances = (await response.json()).counts?.verified_balances || [];
+        countSnapshot = (await response.json()).counts || null;
+        balances = countSnapshot?.verified_balances || [];
       }
     } catch (error) { console.warn('Stock remains unknown until verified balances can be read.'); }
     // Every workspace, including this table, reads the single reconciled quantity.
     items = window.AtlasStockTruth.project(data || [], balances, inventoryMovements);
-    renderTabs();
-    renderTable();
-    renderInventoryOperations();
+    itemsStatus = 'ok';
   }
 
   async function loadRestockLog() {
@@ -1433,12 +1174,10 @@
       console.error(`${relation} could not be loaded`, error);
       inventoryMovements = [];
       restockLog = [];
-      renderInventoryOperations();
       return;
     }
     inventoryMovements = data || [];
     restockLog = inventoryMovements.filter(entry => entry.movement_type === 'restock');
-    renderInventoryOperations();
   }
 
   async function loadRecipes() {
@@ -1511,519 +1250,38 @@
     await Promise.all([loadItems(), loadRecipes(), loadSuppliersData()]);
     renderDashboard();
     renderRecipes();
-    renderSuppliers();
   }
   window.atlasPurchasingData = () => canManageCommercial()
     ? { items: structuredClone(items), suppliers: structuredClone(suppliers) }
     : { items: [], suppliers: [] };
-  // Purchase orders reload the shell data only, as before modules hooked data:loaded.
+  // Purchasing reloads the shell data only; Inventory and Purchasing reload
+  // everything (and re-render through data:loaded) after a change they made.
   window.atlasReloadPurchasingData = loadAtlasData;
-
-  function inventoryGroup(item) {
-    const category = String(item?.category || '').toLowerCase();
-    const name = String(item?.name || '').toLowerCase();
-    const value = `${category} ${name}`;
-
-    // Stored Item Master category is authoritative. Product-name words such as
-    // "Ginger Beer", "Jameson Stout Edition", or "Four Roses" must not move
-    // an item into Beer or Rosé when its category says otherwise.
-    if (/wine|champagne|prosecco|cava|sparkling|ros[eé]/.test(category)) return 'wine';
-    if (/soda|mixer|juice|tonic|soft drink|energy drink/.test(category)) return 'mixers';
-    if (/vodka|gin|whisk(?:e)?y|rum|tequila|mezcal|brandy|cognac|aquavit|brenniv[ií]n|liqueur|aperitif|vermouth|spirit|shot/.test(category)) return 'spirits';
-    if (/beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/.test(category)) return 'beer';
-
-    if (/bitters?/.test(value)) return 'bitters';
-    if (/syrup/.test(value)) return 'syrups';
-    if (/coffee|espresso|hot drink/.test(value)) return 'coffee';
-    if (/glassware|equipment|tool|utensil/.test(value)) return 'bar-equipment';
-    if (/cleaning|consumable|napkin|straw|receipt roll/.test(value)) return 'consumables';
-    if (/herb|mint|basil|rosemary|thyme/.test(value)) return 'fresh-herbs';
-    if (/garnish|olive|cherry|dehydrated|zest/.test(value)) return 'garnish';
-    if (/fruit|lemon|lime|orange|grapefruit|berry/.test(value)) return 'fresh-fruit';
-    if (/mixer|juice|tonic|soda|soft drink|energy drink|ginger beer/.test(value)) return 'mixers';
-    if (/vodka|gin|whisk(?:e)?y|rum|tequila|mezcal|brandy|cognac|aquavit|brenniv[ií]n|liqueur|aperitif|vermouth|spirit|shot/.test(value)) return 'spirits';
-    if (/beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/.test(value)) return 'beer';
-    if (/ingredient|food|tapas|salt|sugar|cream|milk|egg/.test(value)) return 'bar-ingredients';
-    return 'other';
-  }
-
-  function inventorySubcategory(item, group = inventoryGroup(item)) {
-    const stored = String(item?.subcategory || '').trim();
-    const category = String(item?.category || '').toLowerCase();
-    const name = String(item?.name || '').toLowerCase();
-    const value = `${stored} ${category} ${name} ${item?.unit || ''}`.toLowerCase();
-    if (group === 'wine') {
-      const categoryValue = `${stored} ${category}`.toLowerCase();
-      if (/champagne|sparkling|prosecco|cava|cr[eé]mant|franciacorta/.test(categoryValue)) return 'Sparkling';
-      if (/ros[eé]/.test(categoryValue)) return 'Rosé';
-      if (/red wine|\bred\b/.test(categoryValue)) return 'Red';
-      if (/white wine|\bwhite\b/.test(categoryValue)) return 'White';
-      if (/champagne|sparkling|prosecco|cava|cr[eé]mant|franciacorta/.test(name)) return 'Sparkling';
-      if (/ros[eé]/.test(name)) return 'Rosé';
-      return 'White';
-    }
-    if (group === 'spirits') {
-      if (/whisk(?:e)?y|bourbon|scotch|rye/.test(value)) return 'Whiskey';
-      if (/gin/.test(value)) return 'Gin';
-      if (/vodka/.test(value)) return 'Vodka';
-      if (/rum/.test(value)) return 'Rum';
-      if (/tequila|mezcal/.test(value)) return 'Tequila & Mezcal';
-      if (/brandy|cognac/.test(value)) return 'Brandy & Cognac';
-      if (/aquavit|brenniv[ií]n/.test(value)) return 'Aquavit';
-      if (/shot/.test(value)) return 'Shots';
-      return 'Liqueurs & Aperitifs';
-    }
-    if (group === 'beer') {
-      if (/\bkeg|30l|20l|50l/.test(value)) return 'Kegs';
-      if (/cider/.test(name) || (/cider/.test(category) && !/beer/.test(category))) return 'Cider';
-      if (/ready.to.drink|\brtd\b|breezer/.test(value)) return 'RTD';
-      return 'Bottles';
-    }
-    if (stored) return stored.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
-    return String(item?.category || 'Other').trim() || 'Other';
-  }
-
-  function renderInventoryIntelligence() {
-    const title = document.getElementById('inventory-intelligence-title');
-    const detail = document.getElementById('inventory-intelligence-detail');
-    if (!title || !detail) return;
-    const currentItems = items.filter(item => item.active !== false);
-    const low = currentItems.filter(item => window.AtlasStockTruth.belowPar(item));
-    const missingCost = currentItems.filter(item => item.cost_price == null || item.cost_price === '');
-    if (low.length) {
-      const item = low[0];
-      title.textContent = `${item.name} is below par.`;
-      detail.textContent = `${item.quantity} ${item.unit || 'units'} on hand against a par level of ${item.par_level}.`;
-    } else if (missingCost.length && canManageCommercial()) {
-      title.textContent = `${missingCost.length} item${missingCost.length === 1 ? '' : 's'} need cost prices.`;
-      detail.textContent = 'Complete Item Master to improve inventory value and recipe costing.';
-    } else {
-      title.textContent = 'Inventory is ready for review.';
-      detail.textContent = `${currentItems.length} active item${currentItems.length === 1 ? '' : 's'} are available in the current catalogue.`;
-    }
-  }
-
-  function renderTabs() {
-    const currentItems = items.filter(item => item.active !== false);
-    const uniqueCats = [...new Set(currentItems.map(i => i.category))];
-    const presentGroups = new Set(currentItems.map(inventoryGroup));
-    const cats = [['all', 'All'], ...INVENTORY_GROUPS];
-    if (presentGroups.has('other')) cats.push(['other', 'Other']);
-    const wrap = document.getElementById('category-tabs');
-    wrap.innerHTML = '';
-    cats.forEach(([cat, label]) => {
-      const btn = document.createElement('button');
-      btn.className = 'tab' + (cat === activeCategory ? ' active' : '');
-      btn.textContent = label;
-      btn.setAttribute('aria-pressed', String(cat === activeCategory));
-      btn.addEventListener('click', () => { activeCategory = cat; activeSubcategory = 'all'; renderTabs(); renderTable(); });
-      wrap.appendChild(btn);
-    });
-
-    const subWrap = document.getElementById('subcategory-tabs');
-    const groupItems = activeCategory === 'all' ? [] : currentItems.filter(item => inventoryGroup(item) === activeCategory);
-    const counts = groupItems.reduce((result, item) => {
-      const label = inventorySubcategory(item, activeCategory);
-      result.set(label, (result.get(label) || 0) + 1);
-      return result;
-    }, new Map());
-    subWrap.innerHTML = '';
-    subWrap.hidden = !counts.size;
-    if (counts.size || activeCategory === 'wine') {
-      const subcategories = activeCategory === 'wine'
-        ? ['Red', 'White', 'Rosé', 'Sparkling'].map(label => [label, counts.get(label) || 0])
-        : [...counts].sort(([left], [right]) => left.localeCompare(right));
-      subWrap.hidden = false;
-      [['all', 'All', groupItems.length], ...subcategories.map(([label, count]) => [label, label, count])].forEach(([value, label, count]) => {
-        const btn = document.createElement('button');
-        btn.className = 'tab' + (value === activeSubcategory ? ' active' : '');
-        btn.setAttribute('aria-pressed', String(value === activeSubcategory));
-        btn.innerHTML = `${escapeHtml(label)} <span>${count}</span>`;
-        btn.addEventListener('click', () => { activeSubcategory = value; renderTabs(); renderTable(); });
-        subWrap.appendChild(btn);
-      });
-    }
-
-    const datalist = document.getElementById('category-suggestions');
-    datalist.innerHTML = '';
-    const allSuggested = [...new Set([...DEFAULT_CATEGORIES, ...uniqueCats])];
-    allSuggested.forEach(cat => {
-      const opt = document.createElement('option');
-      opt.value = cat;
-      datalist.appendChild(opt);
-    });
-
-    const supplierList = document.getElementById('supplier-suggestions');
-    const uniqueSuppliers = [...new Set(items.map(i => i.supplier).filter(Boolean))];
-    supplierList.innerHTML = '';
-    uniqueSuppliers.forEach(sup => {
-      const opt = document.createElement('option');
-      opt.value = sup;
-      supplierList.appendChild(opt);
-    });
-    renderInventoryIntelligence();
-  }
-
-  function timeAgo(dateStr) {
-    const time = dateStr ? new Date(dateStr).getTime() : NaN;
-    if (!Number.isFinite(time)) return '—';
-    const diff = (Date.now() - time) / 1000;
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-    return Math.floor(diff / 86400) + 'd ago';
-  }
-
-  function movementTypeLabel(value) {
-    return String(value || 'adjustment').replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
-  }
-
-  function movementRow(entry) {
-    const quantity = Number(entry.quantity_change || 0);
-    return `<tr><td>${escapeHtml(new Date(entry.created_at).toLocaleString())}</td><td><strong>${escapeHtml(entry.item_name || 'Inventory item')}</strong></td><td><span class="inventory-movement-type is-${escapeHtml(entry.movement_type || 'adjustment')}">${escapeHtml(movementTypeLabel(entry.movement_type))}</span></td><td class="numeric ${quantity < 0 ? 'is-negative' : 'is-positive'}">${quantity > 0 ? '+' : ''}${escapeHtml(quantity)}</td><td>${escapeHtml(entry.note || '—')}</td></tr>`;
-  }
-
-  function renderInventoryOperations() {
-    const movementBody = document.getElementById('movement-history-body');
-    const wasteBody = document.getElementById('waste-history-body');
-    if (!movementBody || !wasteBody) return;
-    const explicitWaste = inventoryMovements.filter(entry => entry.movement_type === 'waste');
-    document.getElementById('movement-total').textContent = inventoryMovements.length;
-    document.getElementById('movement-restocks').textContent = restockLog.length;
-    document.getElementById('movement-waste').textContent = explicitWaste.length;
-    movementBody.innerHTML = inventoryMovements.map(movementRow).join('');
-    document.getElementById('movement-history-empty').hidden = inventoryMovements.length > 0;
-    wasteBody.innerHTML = explicitWaste.map(entry => `<tr><td>${escapeHtml(new Date(entry.created_at).toLocaleString())}</td><td><strong>${escapeHtml(entry.item_name || 'Inventory item')}</strong></td><td class="numeric">${escapeHtml(Math.abs(Number(entry.quantity_change || 0)))}</td><td>${escapeHtml(entry.note || 'Explicit waste')}</td></tr>`).join('');
-    document.getElementById('waste-history-empty').hidden = explicitWaste.length > 0;
-    const select = document.getElementById('inventory-waste-item');
-    const selected = select.value;
-    select.innerHTML = `<option value="">Choose item</option>${items.filter(item => item.active !== false && Number(item.quantity || 0) > 0).map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} · ${escapeHtml(item.quantity)} ${escapeHtml(item.unit || 'units')}</option>`).join('')}`;
-    if ([...select.options].some(option => option.value === selected)) select.value = selected;
-    window.lucide?.createIcons?.();
-  }
-
-  async function refreshInventoryOperations() {
-    const status = document.getElementById('inventory-waste-status');
-    if (status) status.textContent = 'Refreshing movement history…';
-    await loadRestockLog();
-    if (status) status.textContent = '';
-  }
-
-  document.getElementById('inventory-ledger-refresh').addEventListener('click', refreshInventoryOperations);
-  document.getElementById('inventory-waste-form').addEventListener('submit', async event => {
-    event.preventDefault();
-    if (!requireCommercialManager('Waste recording')) return;
-    const form = event.currentTarget;
-    const status = document.getElementById('inventory-waste-status');
-    const item = items.find(entry => entry.id === form.elements.item_id.value);
-    const quantity = Number(form.elements.quantity.value);
-    const reason = form.elements.reason.value;
-    const note = form.elements.note.value.trim();
-    if (!item || !Number.isFinite(quantity) || quantity <= 0 || quantity > Number(item.quantity || 0)) {
-      status.textContent = 'Choose an item and enter a quantity no greater than current stock.';
-      return;
-    }
-    if (!reason || !note) { status.textContent = 'Choose a reason and add a factual note.'; return; }
-    if (!window.confirm(`Record ${quantity} ${item.unit || 'units'} of ${item.name} as waste? This reduces live stock immediately.`)) return;
-    const submit = form.querySelector('button[type="submit"]');
-    submit.disabled = true;
-    status.textContent = 'Recording waste…';
-    const { error } = await sb.rpc('adjust_inventory', {
-      p_item_id: item.id,
-      p_quantity_change: -quantity,
-      p_movement_type: 'waste',
-      p_unit_cost: item.cost_price || null,
-      p_supplier_id: null,
-      p_note: `${movementTypeLabel(reason)}: ${note}`
-    });
-    if (error) status.textContent = error.message || 'Waste could not be recorded.';
-    else {
-      form.reset();
-      status.textContent = 'Waste recorded and live stock updated.';
-      await loadRestockLog();
-      await loadItems();
-    }
-    submit.disabled = false;
-  });
-
-  function renderTable() {
-    const body = document.getElementById('items-body');
-    const emptyState = document.getElementById('empty-state');
-    const banner = document.getElementById('low-stock-banner');
-    body.innerHTML = '';
-
-    const query = (document.getElementById('inventory-search')?.value || '').trim().toLowerCase();
-    const visible = items.filter(item => {
-      if (item.active === false) return false;
-      const groupMatches = activeCategory === 'all' || inventoryGroup(item) === activeCategory;
-      const subcategoryMatches = activeSubcategory === 'all' || inventorySubcategory(item, activeCategory) === activeSubcategory;
-      const textMatches = !query || [item.name, item.category, item.subcategory, item.supplier, item.sku, item.brand]
-        .some(value => String(value || '').toLowerCase().includes(query));
-      const parMatches = !belowParOnly || window.AtlasStockTruth.belowPar(item);
-      return groupMatches && subcategoryMatches && textMatches && parMatches;
-    });
-    renderBelowParChip();
-    const lowCount = items.filter(i => i.active !== false && window.AtlasStockTruth.belowPar(i)).length;
-
-    if (lowCount > 0) {
-      banner.style.display = 'flex';
-      document.getElementById('low-stock-text').textContent = `${lowCount} item${lowCount > 1 ? 's' : ''} below par`;
-    } else {
-      banner.style.display = 'none';
-    }
-
-    if (visible.length === 0) {
-      emptyState.style.display = 'block';
-    } else {
-      emptyState.style.display = 'none';
-    }
-
-    visible.forEach(item => {
-      const stockKnown = window.AtlasStockTruth.known(item);
-      const displayQuantity = stockKnown ? Number(item.quantity) : null;
-      const isLow = window.AtlasStockTruth.belowPar(item);
-      const cost = item.cost_price == null || item.cost_price === ''
-        ? '—'
-        : `${new Intl.NumberFormat('is-IS', { maximumFractionDigits: 0 }).format(Number(item.cost_price))} ISK`;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="name"><span>${escapeHtml(item.name)}</span>${isLow ? '<span class="below-par-badge">Below par</span>' : ''}${stockKnown && item.stock_recount_due ? '<span class="below-par-badge recount-due-badge" title="Owner-confirmed count is past its freshness window">Recount due</span>' : ''}</td>
-        <td class="cat">${escapeHtml(item.category)}</td>
-        <td class="supplier" data-commercial-only>${escapeHtml(item.supplier || '—')}</td>
-        <td class="cost numeric" data-commercial-only>${cost}</td>
-        <td class="meta">${timeAgo(item.updated_at)}</td>
-        <td>
-          <div class="qty-cell">
-            ${stockKnown ? `
-              <button class="step-btn step-down" data-id="${item.id}" type="button" aria-label="Decrease ${escapeHtml(item.name)}" ${canManageCommercial() ? '' : 'disabled'}>−</button>
-              <input type="number" step="0.1" min="0" class="qty-input mono" value="${displayQuantity ?? ''}" data-id="${item.id}" aria-label="Quantity of ${escapeHtml(item.name)}" ${canManageCommercial() ? '' : 'disabled'} />
-              <button class="step-btn step-up" data-id="${item.id}" type="button" aria-label="Increase ${escapeHtml(item.name)}" ${canManageCommercial() ? '' : 'disabled'}>+</button>
-              <span class="unit">${escapeHtml(item.unit)}</span>
-            ` : `
-              <span class="qty-unknown">Unknown</span>
-              <span class="unit">${escapeHtml(item.unit)}</span>
-            `}
-          </div>
-        </td>
-        <td>
-          <div class="row-actions">
-            <button class="icon-btn edit-btn" type="button" data-id="${item.id}" title="Edit" aria-label="Edit ${escapeHtml(item.name)}">✎</button>
-            <button class="icon-btn delete-btn" type="button" data-id="${item.id}" title="Deactivate" aria-label="Deactivate ${escapeHtml(item.name)}">✕</button>
-          </div>
-        </td>
-      `;
-      body.appendChild(tr);
-    });
-
-    async function applyQuantityChange(id, newQty) {
-      if (!requireCommercialManager('Direct inventory adjustment')) return;
-      if (isNaN(newQty) || newQty < 0) return;
-      const item = items.find(i => i.id === id);
-      if (!item) return;
-      // Movements are deltas from the reconciled quantity the manager can see.
-      const currentQty = window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN;
-      if (!Number.isFinite(currentQty) || newQty === currentQty) return;
-      const quantityChange = newQty - currentQty;
-      const { error } = await sb.rpc('adjust_inventory', {
-        p_item_id: item.id,
-        p_quantity_change: quantityChange,
-        p_movement_type: quantityChange > 0 ? 'restock' : 'adjustment',
-        p_unit_cost: quantityChange > 0 ? (item.cost_price || null) : null,
-        p_supplier_id: item.supplier_id || null,
-        p_note: 'Quick quantity adjustment',
-      });
-      if (error) {
-        alert(error.message);
-        return;
-      }
-      await loadAll();
-    }
-
-    document.querySelectorAll('.qty-input').forEach(inp => {
-      inp.addEventListener('change', (e) => {
-        applyQuantityChange(e.target.dataset.id, parseFloat(e.target.value));
-      });
-    });
-
-    document.querySelectorAll('.step-up').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const item = items.find(i => i.id === btn.dataset.id);
-        if (item) {
-          const currentQty = window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN;
-          if (Number.isFinite(currentQty)) applyQuantityChange(item.id, currentQty + 1);
-        }
-      });
-    });
-    document.querySelectorAll('.step-down').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const item = items.find(i => i.id === btn.dataset.id);
-        if (item) {
-          const currentQty = window.AtlasStockTruth.known(item) ? Number(item.quantity) : NaN;
-          if (Number.isFinite(currentQty)) applyQuantityChange(item.id, Math.max(0, currentQty - 1));
-        }
-      });
-    });
-
-    document.querySelectorAll('[data-set-real-stock]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!requireCommercialManager('Set real stock')) return;
-        const stockTab = document.querySelector('.inventory-workspace-tab[data-inventory-section="stock-count"]');
-        if (stockTab) stockTab.click();
-        try {
-          if (window.AtlasStockCounts?.openForItem) {
-            await window.AtlasStockCounts.openForItem(btn.dataset.setRealStock);
-          } else {
-            window.AtlasStockCounts?.open?.();
-          }
-        } catch (error) {
-          alert(error instanceof Error ? error.message : 'The stock count could not be opened.');
-        }
-      });
-    });
-
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-      btn.addEventListener('click', () => openModal(items.find(i => i.id === btn.dataset.id)));
-    });
-
-    // Deleting an item un-linked its movement history and every recipe that
-    // used it. Items are deactivated instead: they leave live stock, stay in
-    // records and history, and can be reactivated in Item Master.
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!requireCommercialManager('Inventory changes')) return;
-        const item = items.find(i => i.id === btn.dataset.id);
-        if (!confirm(`Deactivate ${item?.name || 'this item'}?\n\nIt leaves live stock, counts and ordering. Its history and recipe links are kept.`)) return;
-        const { error } = await sb.from('inventory_items').update({ active: false }).eq('id', btn.dataset.id);
-        if (error) { alert(error.message); return; }
-        await loadAll();
-      });
-    });
-  }
+  window.atlasReloadData = loadAll;
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   }
 
-  // ---------- MODAL ----------
-  const overlay = document.getElementById('item-overlay');
-  const itemForm = document.getElementById('item-form');
-
-  document.getElementById('add-item-btn').addEventListener('click', () => openModal(null));
-  document.getElementById('inventory-search')?.addEventListener('input', () => renderTable());
-
-  // "Below par" is a filter, not a scroll target: Home, the low-stock banner,
-  // Operations and Search all open Inventory showing exactly those items.
-  function renderBelowParChip() {
-    const toolbar = document.querySelector('#inventory-view .inventory-filter-toolbar');
-    if (!toolbar) return;
-    let chip = toolbar.querySelector('[data-inventory-below-par-chip]');
-    if (!belowParOnly) { chip?.remove(); return; }
-    if (!chip) {
-      chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'inventory-filter-chip';
-      chip.dataset.inventoryBelowParChip = 'true';
-      chip.setAttribute('aria-label', 'Showing items below par. Clear this filter');
-      chip.innerHTML = '<span>Below par only</span><i data-lucide="x"></i>';
-      chip.addEventListener('click', () => { belowParOnly = false; renderTable(); });
-      toolbar.prepend(chip);
-      window.lucide?.createIcons?.();
-    }
-  }
-  function showBelowPar() {
-    activeCategory = 'all';
-    activeSubcategory = 'all';
-    belowParOnly = true;
-    const search = document.getElementById('inventory-search');
-    if (search) search.value = '';
-    setActiveView('inventory');
-    renderTabs();
-    renderTable();
-  }
-  window.AtlasInventory = Object.freeze({ showBelowPar });
-  document.getElementById('cancel-item-btn').addEventListener('click', closeModal);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
-
-  function recalcUnitCostFromCase() {
-    const perCase = parseFloat(document.getElementById('item-units-per-case').value);
-    const caseCost = parseFloat(document.getElementById('item-case-cost').value);
-    if (perCase > 0 && caseCost >= 0) {
-      document.getElementById('item-cost').value = (caseCost / perCase).toFixed(2);
-    }
-  }
-  document.getElementById('item-units-per-case').addEventListener('input', recalcUnitCostFromCase);
-  document.getElementById('item-case-cost').addEventListener('input', recalcUnitCostFromCase);
-
-  function openModal(item) {
-    if (!requireCommercialManager('Inventory master editing')) return;
-    document.getElementById('modal-title').textContent = item ? 'Edit item' : 'Add item';
-    document.getElementById('item-id').value = item ? item.id : '';
-    document.getElementById('item-name').value = item ? item.name : '';
-    document.getElementById('item-category').value = item ? item.category : '';
-    document.getElementById('item-quantity').value = item ? (window.AtlasStockTruth.known(item) ? item.quantity : '') : 0;
-    document.getElementById('item-unit').value = item ? item.unit : 'bottles';
-    document.getElementById('item-par').value = item && item.par_level != null ? item.par_level : '';
-    document.getElementById('item-supplier').value = item && item.supplier ? item.supplier : '';
-    document.getElementById('item-sku').value = item && item.sku ? item.sku : '';
-    document.getElementById('item-bin').value = item && item.bin_location ? item.bin_location : '';
-    document.getElementById('item-units-per-case').value = item && item.units_per_case != null ? item.units_per_case : '';
-    document.getElementById('item-case-cost').value = item && item.case_cost != null ? item.case_cost : '';
-    document.getElementById('item-cost').value = item && item.cost_price != null ? item.cost_price : '';
-    document.getElementById('item-discount').value = item && item.discount_percent != null ? item.discount_percent : '';
-    overlay.style.display = 'flex';
-  }
-
-  function closeModal() {
-    overlay.style.display = 'none';
-    itemForm.reset();
-  }
-
-  itemForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!requireCommercialManager('Inventory master editing')) return;
-    const id = document.getElementById('item-id').value;
-    const payload = {
-      name: document.getElementById('item-name').value.trim(),
-      category: document.getElementById('item-category').value,
-      unit: document.getElementById('item-unit').value.trim(),
-      par_level: document.getElementById('item-par').value === '' ? null : parseFloat(document.getElementById('item-par').value),
-      supplier: document.getElementById('item-supplier').value.trim() || null,
-      sku: document.getElementById('item-sku').value.trim() || null,
-      bin_location: document.getElementById('item-bin').value.trim() || null,
-      units_per_case: document.getElementById('item-units-per-case').value === '' ? null : parseFloat(document.getElementById('item-units-per-case').value),
-      case_cost: document.getElementById('item-case-cost').value === '' ? null : parseFloat(document.getElementById('item-case-cost').value),
-      cost_price: document.getElementById('item-cost').value === '' ? null : parseFloat(document.getElementById('item-cost').value),
-      discount_percent: document.getElementById('item-discount').value === '' ? 0 : parseFloat(document.getElementById('item-discount').value),
-    };
-    const { error: saveError } = id
-      ? await sb.from('inventory_items').update(payload).eq('id', id)
-      : await sb.from('inventory_items').insert({ ...payload, quantity: 0 });
-    if (saveError) { alert(saveError.message); return; }
-    closeModal();
-    await loadAll();
-  });
-
   // ---------- PROJECT ATLAS NAVIGATION ----------
   // AtlasShell (assets/js/atlas-shell.js) owns navigation. The base shell
   // registers its own views here; modules register theirs through
   // AtlasShell.registerView() and never write into these tables.
+  // Inventory (inventory, movements, waste) and Purchasing (suppliers) are
+  // registered by assets/js/atlas-inventory.js and assets/js/atlas-purchasing.js.
   const viewMap = {
-    inventory: document.getElementById('inventory-view'),
     dashboard: document.getElementById('dashboard-view'),
     recipes: document.getElementById('recipes-view'),
-    suppliers: document.getElementById('suppliers-view'),
     imports: document.getElementById('imports-view'),
     team: document.getElementById('team-view'), shifts: document.getElementById('shifts-view'),
-    knowledge: document.getElementById('knowledge-view'), movements: document.getElementById('movements-view'),
-    waste: document.getElementById('waste-view'), reports: document.getElementById('reports-view'),
+    knowledge: document.getElementById('knowledge-view'), reports: document.getElementById('reports-view'),
     settings: document.getElementById('settings-view')
   };
-  const titleMap = {dashboard:'Home',inventory:'Inventory',recipes:'Recipes',suppliers:'Purchasing',imports:'Data',team:'Messages',shifts:'Shifts',knowledge:'Knowledge',movements:'Inventory movements',waste:'Waste',reports:'Reports',settings:'Settings'};
-  const inventoryViews = new Set(['inventory', 'movements', 'waste', 'imports']);
+  const titleMap = {dashboard:'Home',recipes:'Recipes',imports:'Data',team:'Messages',shifts:'Shifts',knowledge:'Knowledge',reports:'Reports',settings:'Settings'};
   const workspaceRootIds = {
     dashboard: 'dashboard-view', inventory: 'inventory-view', recipes: 'recipes-view', suppliers: 'suppliers-view',
     imports: 'imports-view', team: 'team-view', shifts: 'shifts-view', knowledge: 'knowledge-view',
-    movements: 'movements-view', waste: 'waste-view', reports: 'reports-view', settings: 'settings-view',
+    movements: 'inventory-view', waste: 'inventory-view', reports: 'reports-view', settings: 'settings-view',
     operations: 'operations-view', brain: 'brain-view', business: 'business-view', marketing: 'marketing-view',
     'team-profiles': 'team-profiles-view', 'sprint3-review': 'sprint3-review-view', system: 'system-view'
   };
@@ -2049,38 +1307,9 @@
       document.querySelector('.atlas-content')?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
     });
   }
-  function syncInventorySectionHeader(view) {
-    const header = document.getElementById('inventory-section-header');
-    if (!header) return;
-    header.hidden = !inventoryViews.has(view);
-    const intelligence = document.getElementById('inventory-intelligence');
-    const stockCountOpen = document.body.classList.contains('stock-count-active');
-    const itemMasterOpen = document.body.classList.contains('item-master-active');
-    if (intelligence) intelligence.hidden = view !== 'inventory' || stockCountOpen;
-    const actions = header.querySelector('.inventory-section-actions');
-    if (actions) actions.hidden = view !== 'inventory' || stockCountOpen || itemMasterOpen;
-    const lowStockBanner = document.getElementById('low-stock-banner');
-    if (lowStockBanner) lowStockBanner.hidden = view !== 'dashboard';
-    document.querySelectorAll('.inventory-workspace-tab').forEach(button => {
-      const isItems = button.dataset.inventorySection === 'items' && view === 'inventory' && !stockCountOpen;
-      const isStock = button.dataset.inventorySection === 'stock-count' && view === 'inventory' && stockCountOpen;
-      const isItemMaster = button.dataset.inventorySection === 'item-master' && view === 'inventory' && itemMasterOpen;
-      const isOther = button.dataset.view === view && view !== 'inventory';
-      button.classList.toggle('active', isItems || isStock || isItemMaster || isOther);
-    });
-  }
   // The base shell chrome for every destination. AtlasShell.show() runs it once
   // per navigation, before the view's render and onShow hooks.
   function layoutAtlasView(view, entry, context) {
-    const trigger = context.trigger;
-    if (context.source === 'nav' || view !== 'inventory') {
-      window.AtlasStockCounts?.close?.();
-      window.AtlasItemMaster?.close?.();
-    } else if (trigger?.matches?.('.inventory-workspace-tab')) {
-      const section = trigger.dataset.inventorySection;
-      if (section !== 'stock-count') window.AtlasStockCounts?.close?.();
-      if (section !== 'item-master') window.AtlasItemMaster?.close?.();
-    }
     activeView = view;
     document.body.dataset.atlasView = view;
     hideAtlasWorkspaceRoots(view);
@@ -2093,59 +1322,22 @@
     const root = viewMap[view] || window.AtlasShell.view(view)?.root;
     if (root) root.style.display = entry.display;
     restoreAtlasWorkspaceInterior(view);
-    syncInventorySectionHeader(view);
+    const lowStockBanner = document.getElementById('low-stock-banner');
+    if (lowStockBanner) lowStockBanner.hidden = view !== 'dashboard';
     // The page title in the phone top bar, the active navigation item and the
     // overlay sidebar follow view:show in assets/js/atlas-chrome.js.
     resetAtlasWorkspaceScroll();
   }
-  // Inventory sections can change the header after the view is shown (stock
-  // count and item master open from their own modules).
-  window.AtlasShell.on('view:show', ({ view }) => {
-    if (inventoryViews.has(view)) window.setTimeout(() => syncInventorySectionHeader(view), 0);
-  });
   function commercialWorkspaceGuard() {
     if (canManageCommercial()) return true;
     window.AtlasShell.toast('That page is for managers. Ask an administrator if you need access.');
     return 'dashboard';
   }
-  function openPurchasingSection(section) {
-    const tab = { orders: 'purchase-orders-tab', deliveries: 'purchase-deliveries-tab', suppliers: 'purchase-suppliers-tab' }[section];
-    if (!tab) return;
-    window.setTimeout(() => {
-      const button = document.getElementById(tab);
-      if (!button || button.disabled) return;
-      button.click();
-      button.focus({ preventScroll: true });
-    }, 0);
-  }
-  function openInventoryItemLink(itemId) {
-    const item = items.find(entry => String(entry.id) === String(itemId));
-    if (!item) return;
-    window.setTimeout(() => {
-      const search = document.getElementById('inventory-search');
-      if (search) {
-        search.value = item.name;
-        search.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-      const row = document.querySelector(`#items-body [data-id="${CSS.escape(String(item.id))}"]`)?.closest('tr');
-      if (!row) return;
-      row.classList.add('atlas-search-highlight');
-      row.scrollIntoView({ block: 'center' });
-      window.setTimeout(() => row.classList.remove('atlas-search-highlight'), 2400);
-    }, 80);
-  }
   window.AtlasShell.setLayout(layoutAtlasView);
   [
     ['dashboard', { render: () => { renderDashboard(); renderAtlasHome(); } }],
-    ['inventory', { display: 'grid', onShow: (params) => {
-      if (params.item) openInventoryItemLink(params.item);
-      else if (params.filter === 'below-par') showBelowPar();
-    } }],
     ['recipes', { render: () => renderRecipes(), onShow: (params) => { if (params.recipe) window.AtlasRecipes?.openRecipe?.(params.recipe); } }],
-    ['suppliers', { guard: commercialWorkspaceGuard, render: () => renderSuppliers(), onShow: (params) => openPurchasingSection(params.section) }],
     ['imports', { guard: commercialWorkspaceGuard, render: () => window.AtlasImportCenter?.render?.() }],
-    ['movements', { render: () => renderInventoryOperations() }],
-    ['waste', { render: () => renderInventoryOperations() }],
     ['team', {}], ['shifts', {}], ['knowledge', {}], ['reports', {}], ['settings', {}]
   ].forEach(([view, definition]) => window.AtlasShell.registerView(view, { root: viewMap[view], title: titleMap[view], ...definition }));
   // Compatibility shim: modules and tests still call the global by name. It is
@@ -2240,7 +1432,7 @@
     document.querySelectorAll('[data-target]').forEach(el=>{
       el.onclick=()=>{
         const target=el.dataset.target;
-        if(target==='inventory-low'){ showBelowPar(); }
+        if(target==='inventory-low'){ window.AtlasInventory?.showBelowPar?.(); }
         else {
           const navButton=document.querySelector(`.atlas-nav .nav-item[data-view="${target}"]`);
           if(navButton) navButton.click();
@@ -2249,7 +1441,7 @@
       };
     });
     const banner=document.getElementById('low-stock-banner');
-    if(banner) banner.onclick=()=>showBelowPar();
+    if(banner) banner.onclick=()=>window.AtlasInventory?.showBelowPar?.();
   }
   // Home buttons run canonical actions (AtlasShell.actions, registered below),
   // the same ones the command palette, notifications and Atlas AI call.
@@ -2258,130 +1450,30 @@
     const actionId=homeActionIds[button.dataset.homeAction];
     if(actionId) window.AtlasShell.actions.run(actionId,{context:'home'});
   }));
-  document.getElementById('inventory-intelligence-action')?.addEventListener('click', () => {
-    document.querySelector('.nav-item[data-view="reports"]')?.click();
-  });
   // Canonical actions owned by the base shell (spec §4.8). The command palette
   // and the + button list them per role; everything the retired quick-action
   // button and service grid offered is here. The editors keep their own manager
   // check, so a denied action runs the same function, which explains the limit.
-  // recipes.new and inventory.waste.record are interim registrations until the
-  // Recipes (E4) and Inventory (E3) modules register their own (same ids).
+  // recipes.new is an interim registration until the Recipes (E4) module
+  // registers its own (same id). Inventory, stock count and Purchasing actions
+  // are registered by their modules (atlas-inventory.js, stock-count-workspace.js,
+  // atlas-purchasing.js).
   const MANAGERS=['admin','manager'];
-  const STAFF=['admin','manager','bartender'];
-  function openWasteForItem(ctx){
-    window.AtlasShell.navigate('#inventory/waste');
-    const itemId=ctx?.record?.type==='inventory_item'?ctx.record.id:null;
-    if(!itemId) return;
-    window.setTimeout(()=>{
-      const select=document.getElementById('inventory-waste-item');
-      if(select&&[...select.options].some(option=>option.value===String(itemId))){ select.value=String(itemId); select.dispatchEvent(new Event('change',{bubbles:true})); }
-    },60);
-  }
   [
-    { id:'inventory.item.add', label:'Add item', icon:'package-plus', keywords:['new item','product','inventory'], roles:MANAGERS, contexts:['home','inventory'], run:()=>openModal(null) },
-    { id:'inventory.count.start', label:'Start stock count', icon:'list-checks', keywords:['count','stocktake'], roles:STAFF, contexts:['home','inventory'], forRecord:'inventory_item', recordLabel:'Count {name}', run:()=>window.AtlasShell.navigate('#inventory/counts') },
-    { id:'inventory.waste.record', label:'Record waste', icon:'trash-2', keywords:['waste','spoilage','breakage','spill'], roles:MANAGERS, contexts:['inventory'], forRecord:'inventory_item', recordLabel:'Record waste for {name}', run:(ctx)=>openWasteForItem(ctx) },
-    { id:'purchasing.order.new', label:'New order', icon:'shopping-cart', keywords:['order','purchase','buy'], roles:MANAGERS, contexts:['home','purchasing'], forRecord:'inventory_item', recordLabel:'Add {name} to an order', run:()=>window.AtlasShell.navigate('#purchasing/orders') },
-    { id:'purchasing.delivery.receive', label:'Receive a delivery', icon:'truck', keywords:['restock','delivery','receive'], roles:MANAGERS, contexts:['home','inventory','purchasing'], run:()=>openRestockModal() },
-    { id:'purchasing.supplier.add', label:'Add supplier', icon:'store', keywords:['supplier','vendor'], roles:MANAGERS, contexts:['purchasing'], run:()=>{ setActiveView('suppliers'); openSupplierModal(); } },
     { id:'recipes.new', label:'New recipe', icon:'martini', keywords:['recipe','cocktail','drink'], roles:MANAGERS, contexts:['recipes'], run:()=>{ setActiveView('recipes'); window.AtlasRecipes?.openEditor?.(null); } }
   ].forEach(action=>window.AtlasShell.actions.register({ ...action, denied:action.run }));
 
-  // ---------- RESTOCK MODAL ----------
-  const restockOverlay = document.getElementById('restock-overlay');
-  const restockForm = document.getElementById('restock-form');
-  const restockItemSelect = document.getElementById('restock-item');
-
-  function openRestockModal() {
-    if (!requireCommercialManager('Restock logging')) return;
-    restockItemSelect.innerHTML = '';
-    items.forEach(item => {
-      const opt = document.createElement('option');
-      opt.value = item.id;
-      opt.textContent = `${item.name} (${item.quantity ?? 'Unknown'} ${item.unit})`;
-      restockItemSelect.appendChild(opt);
-    });
-    prefillRestockFromItem();
-    restockOverlay.style.display = 'flex';
-  }
-
-  function prefillRestockFromItem() {
-    const item = items.find(i => i.id === restockItemSelect.value);
-    if (!item) return;
-    document.getElementById('restock-supplier').value = item.supplier || '';
-    document.getElementById('restock-cost').value = item.cost_price != null ? item.cost_price : '';
-    document.getElementById('restock-discount').value = item.discount_percent != null ? item.discount_percent : 0;
-  }
-  restockItemSelect.addEventListener('change', prefillRestockFromItem);
-
-  document.getElementById('cancel-restock-btn').addEventListener('click', () => {
-    restockOverlay.style.display = 'none';
-    restockForm.reset();
-  });
-  restockOverlay.addEventListener('click', (e) => { if (e.target === restockOverlay) { restockOverlay.style.display = 'none'; restockForm.reset(); } });
-
-  restockForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!requireCommercialManager('Restock logging')) return;
-    const item = items.find(i => i.id === restockItemSelect.value);
-    if (!item) return;
-    const qtyAdded = parseFloat(document.getElementById('restock-qty').value);
-    const unitCost = document.getElementById('restock-cost').value === '' ? null : parseFloat(document.getElementById('restock-cost').value);
-    const discount = document.getElementById('restock-discount').value === '' ? 0 : parseFloat(document.getElementById('restock-discount').value);
-    const supplier = document.getElementById('restock-supplier').value.trim() || null;
-
-    let supplierId = null;
-    if (supplier) {
-      const { data: existingSupplier } = await sb
-        .from('suppliers')
-        .select('id')
-        .ilike('name', supplier)
-        .maybeSingle();
-      supplierId = existingSupplier?.id || null;
-
-      if (!supplierId) {
-        const { data: createdSupplier, error: supplierError } = await sb
-          .from('suppliers')
-          .insert({ name: supplier })
-          .select('id')
-          .single();
-        if (supplierError) {
-          alert(supplierError.message);
-          return;
-        }
-        supplierId = createdSupplier.id;
-      }
-    }
-
-    const netUnitCost = unitCost == null ? null : unitCost * (1 - discount / 100);
-    const { error } = await sb.rpc('adjust_inventory', {
-      p_item_id: item.id,
-      p_quantity_change: qtyAdded,
-      p_movement_type: 'restock',
-      p_unit_cost: netUnitCost,
-      p_supplier_id: supplierId,
-      p_note: discount ? `Supplier discount: ${discount}%` : null,
-    });
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    restockOverlay.style.display = 'none';
-    restockForm.reset();
-    await loadAll();
-  });
-
   // ---------- DASHBOARD ----------
-  function monthKey(dateStr) {
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  // Venue months and money come from AtlasVenueClock (docs/design/Atlas_Time_Migration.md).
+  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function monthKey(value) {
+    return window.AtlasVenueClock.monthKey(value) || '';
   }
   function monthLabel(key) {
-    const [y, m] = key.split('-');
-    return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    const [y, m] = String(key).split('-');
+    return `${MONTH_NAMES[Number(m) - 1] || ''} ${y}`.trim();
   }
+  const formatKr = (value) => window.AtlasVenueClock.formatKr(value);
 
   function renderDashboard() {
     // Stock cards describe live inventory; inactive rows are records, not stock.
@@ -2420,17 +1512,17 @@
         return `
           <div class="activity-row">
             <span class="who">${escapeHtml(who)}</span> added ${Math.abs(r.quantity_change)} of ${escapeHtml(r.item_name)}
-            <span class="when">${timeAgo(r.created_at)}</span>
+            <span class="when">${escapeHtml(window.AtlasVenueClock.formatRelative(r.created_at))}</span>
           </div>
         `;
       }).join('');
     }
 
-    const thisMonthKey = monthKey(new Date().toISOString());
+    const thisMonthKey = monthKey(window.AtlasVenueClock.today());
     const thisMonthSpend = restockLog
       .filter(r => monthKey(r.created_at) === thisMonthKey)
       .reduce((sum, r) => sum + (r.total_cost || 0), 0);
-    document.getElementById('stat-month-spend').textContent = Math.round(thisMonthSpend).toLocaleString();
+    document.getElementById('stat-month-spend').textContent = formatKr(thisMonthSpend);
 
     // Spend by month, last 6 months with any activity
     const byMonth = {};
@@ -2448,7 +1540,7 @@
         <div class="bar-row">
           <div class="bar-label">${monthLabel(k)}</div>
           <div class="bar-track"><div class="bar-fill" style="width:${maxVal ? (byMonth[k] / maxVal * 100) : 0}%"></div></div>
-          <div class="bar-value mono">${Math.round(byMonth[k]).toLocaleString()} ISK</div>
+          <div class="bar-value num">${formatKr(byMonth[k])}</div>
         </div>
       `).join('');
     }
@@ -2468,7 +1560,7 @@
         <div class="bar-row">
           <div class="bar-label">${escapeHtml(k)}</div>
           <div class="bar-track"><div class="bar-fill" style="width:${maxVal ? (bySupplier[k] / maxVal * 100) : 0}%"></div></div>
-          <div class="bar-value mono">${Math.round(bySupplier[k]).toLocaleString()} ISK</div>
+          <div class="bar-value num">${formatKr(bySupplier[k])}</div>
         </div>
       `).join('');
     }
@@ -2479,113 +1571,6 @@
     if (window.AtlasRecipes) window.AtlasRecipes.render();
   }
 
-  // ---------- SUPPLIER FORM ----------
-  const supplierOverlay = document.getElementById('supplier-overlay');
-  const supplierForm = document.getElementById('supplier-form');
-  function showToast(message){
-    window.AtlasShell.toast(message);
-  }
-  function openSupplierModal(){
-    if (!requireCommercialManager('Supplier management')) return;
-    supplierForm.reset();
-    supplierOverlay.style.display='flex';
-    supplierOverlay.setAttribute('aria-hidden','false');
-    document.getElementById('supplier-name').focus();
-  }
-  function closeSupplierModal(){
-    supplierOverlay.style.display='none';
-    supplierOverlay.setAttribute('aria-hidden','true');
-    supplierForm.reset();
-  }
-  document.getElementById('add-supplier-btn').addEventListener('click',openSupplierModal);
-  document.getElementById('close-supplier-btn').addEventListener('click',closeSupplierModal);
-  document.getElementById('cancel-supplier-btn').addEventListener('click',closeSupplierModal);
-  supplierOverlay.addEventListener('click',event=>{if(event.target===supplierOverlay)closeSupplierModal();});
-  supplierForm.addEventListener('submit',async event=>{
-    event.preventDefault();
-    if (!requireCommercialManager('Supplier management')) return;
-    const payload={
-      name:document.getElementById('supplier-name').value.trim(),
-      contact_name:document.getElementById('supplier-contact').value.trim()||null,
-      email:document.getElementById('supplier-email').value.trim()||null,
-      phone:document.getElementById('supplier-phone').value.trim()||null,
-      notes:document.getElementById('supplier-notes').value.trim()||null
-    };
-    if(!payload.name) return;
-    let result=await sb.from('suppliers').insert(payload);
-    if(result.error){
-      result=await sb.from('suppliers').insert({name:payload.name});
-    }
-    if(result.error){ alert(result.error.message); return; }
-    closeSupplierModal();
-    await loadAll();
-    setActiveView('suppliers');
-    showToast('Supplier added');
-  });
-
-  // ---------- SUPPLIERS ----------
-  let supplierSearchTerm = '';
-  document.getElementById('supplier-search').addEventListener('input', (e) => {
-    supplierSearchTerm = e.target.value.trim().toLowerCase();
-    renderSuppliers();
-  });
-  document.getElementById('purchasing-intelligence-action').addEventListener('click', () => setActiveView('reports'));
-
-  function renderSuppliers() {
-    const thisMonthKey = monthKey(new Date().toISOString());
-    const names = [...new Set([...suppliers.map(s=>s.name).filter(Boolean), ...items.map(i => i.supplier).filter(Boolean)])];
-
-    const allRows = names
-      .map(name => {
-        const itemCount = items.filter(i => i.supplier === name).length;
-        const monthSpend = restockLog
-          .filter(r => r.suppliers?.name === name && monthKey(r.created_at) === thisMonthKey)
-          .reduce((sum, r) => sum + (r.total_cost || 0), 0);
-        const allTimeSpend = restockLog
-          .filter(r => r.suppliers?.name === name)
-          .reduce((sum, r) => sum + (r.total_cost || 0), 0);
-        const supplier = suppliers.find(entry => entry.name === name) || {};
-        return { name, itemCount, monthSpend, allTimeSpend, supplier };
-      })
-      .sort((a, b) => b.allTimeSpend - a.allTimeSpend);
-    const rows = allRows.filter(row => row.name.toLowerCase().includes(supplierSearchTerm));
-
-    const connectedItems = allRows.reduce((sum, row) => sum + row.itemCount, 0);
-    const totalMonthSpend = allRows.reduce((sum, row) => sum + row.monthSpend, 0);
-    const leadSupplier = [...allRows].sort((a, b) => b.monthSpend - a.monthSpend)[0];
-    const insightTitle = document.getElementById('purchasing-intelligence-title');
-    const insightDetail = document.getElementById('purchasing-intelligence-detail');
-    if (insightTitle && insightDetail) {
-      if (!allRows.length) {
-        insightTitle.textContent = 'Add your first supplier to connect purchasing.';
-        insightDetail.textContent = 'Supplier spend and inventory coverage will appear here once records are available.';
-      } else if (totalMonthSpend > 0 && leadSupplier) {
-        const share = Math.round((leadSupplier.monthSpend / totalMonthSpend) * 100);
-        insightTitle.textContent = `${leadSupplier.name} represents ${share}% of recorded spend this month.`;
-        insightDetail.textContent = `${Math.round(totalMonthSpend).toLocaleString()} ISK is supported by recorded restock evidence.`;
-      } else {
-        insightTitle.textContent = `${allRows.length} ${allRows.length === 1 ? 'supplier is' : 'suppliers are'} connected to ${connectedItems} inventory ${connectedItems === 1 ? 'item' : 'items'}.`;
-        insightDetail.textContent = 'Spend appears only when a costed restock is recorded.';
-      }
-    }
-
-    const body = document.getElementById('suppliers-body');
-    const empty = document.getElementById('suppliers-empty');
-    if (rows.length === 0) {
-      body.innerHTML = '';
-      empty.style.display = 'block';
-      return;
-    }
-    empty.style.display = 'none';
-    body.innerHTML = rows.map(r => `
-      <tr>
-        <td class="name"><span class="purchasing-supplier"><span class="purchasing-supplier-avatar">${escapeHtml(r.name.slice(0,2).toUpperCase())}</span><span><strong>${escapeHtml(r.name)}</strong><small>${escapeHtml(r.supplier.email || r.supplier.contact_name || `${r.itemCount} linked ${r.itemCount === 1 ? 'item' : 'items'}`)}</small></span></span></td>
-        <td>${r.itemCount}</td>
-        <td class="mono">${Math.round(r.monthSpend).toLocaleString()} ISK</td>
-        <td class="mono">${Math.round(r.allTimeSpend).toLocaleString()} ISK</td>
-      </tr>
-    `).join('');
-  }
   if (window.lucide) window.lucide.createIcons();
 </script>
 <script src="assets/js/atlas-calculations.js?v=20260924-s87"></script>
@@ -2595,7 +1580,10 @@
 <script src="assets/js/brain.js?v=20260926-s88"></script>
 <script src="assets/js/business.js?v=20260926-s88"></script>
 <script src="assets/js/import-center.js"></script>
-<script src="assets/js/purchase-orders.js?v=20260926-s88"></script>
+<script src="assets/js/atlas-capture.js?v=20260925-s88b"></script>
+<script src="assets/js/atlas-inventory.js?v=20260925-s88b"></script>
+<script src="assets/js/stock-count-workspace.js?v=20260925-s88b"></script>
+<script src="assets/js/atlas-purchasing.js?v=20260925-s88b"></script>
 <script src="assets/js/shifts-workspace.js?v=20260926-s88"></script>
 <script src="assets/js/shifts-month-calendar.js?v=20260926-s88"></script>
 <script src="assets/js/shifts-month-tab-bridge.js?v=20260926-s88"></script>

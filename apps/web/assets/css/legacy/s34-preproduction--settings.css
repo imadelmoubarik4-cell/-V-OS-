@@ -11,4 +11,30 @@
   .settings-device-notifications>div{grid-template-columns:auto minmax(0,1fr)}
   .settings-device-notifications>div button{grid-column:1/-1;width:100%}
 }
+/* Moved from s34-preproduction--stock-count.css and --inventory-scanner.css (S88 Team B);
+   the stock-count and scanner selectors were dropped. */
+:where(.settings-feedback,.team-feedback){border-radius:12px}
+:where(.recipe-editor-modal,.knowledge-editor-modal,.knowledge-source-modal,.shift-modal>section){
+  max-height:min(92vh,900px)!important;
+  border-radius:20px!important;
+  overflow:hidden!important;
+}
+:where(.settings-primary,.settings-hero aside button,.team-send-button,.knowledge-hero-actions .is-primary,
+  .knowledge-drawer footer .is-primary,.knowledge-editor-modal footer .is-primary,
+  .knowledge-source-modal footer .is-primary,.brain-feature-button,.brain-assistant-form button,
+  .recipe-primary-action,.recipe-save-button,.checkpoint-a-primary,.checkpoint-a-compact-button,
+  .checkpoint-a-home-prompt button){
+  border-color:var(--atlas-action)!important;
+  background:var(--atlas-action)!important;
+  color:#fff!important;
+}
+:where(.settings-primary,.settings-hero aside button,.team-send-button,.knowledge-hero-actions .is-primary,
+  .knowledge-drawer footer .is-primary,.knowledge-editor-modal footer .is-primary,
+  .knowledge-source-modal footer .is-primary,.brain-feature-button,.brain-assistant-form button,
+  .recipe-primary-action,.recipe-save-button,.checkpoint-a-primary,.checkpoint-a-compact-button,
+  .checkpoint-a-home-prompt button):hover:not(:disabled){
+  background:var(--atlas-action-hover)!important;
+  border-color:var(--atlas-action-hover)!important;
+  transform:translateY(-1px);
+}
 }
