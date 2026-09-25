@@ -826,6 +826,23 @@ a.atlas-row:focus-visible, button.atlas-row:focus-visible { outline: var(--focus
 .atlas-row__link:hover { text-decoration: none; }
 .atlas-row__link:focus-visible { outline: none; }
 .atlas-row:has(.atlas-row__link) .atlas-row__end { position: relative; z-index: 1; }
+
+/* Linked target: the record a deep link opened (#inventory/movements?movement=,
+   #marketing?recommendation=, #settings/integrations?provider=). The module
+   marks it .is-linked-target with aria-current="true": a brief accent wash
+   that settles on a quiet accent edge. Static (no wash animation) with reduced
+   motion. Table rows wash their cells. */
+.is-linked-target, .atlas-table tr.is-linked-target > td {
+  animation: atlas-linked-target 2400ms var(--ease-out) backwards;
+}
+.is-linked-target { box-shadow: inset 3px 0 0 var(--accent-brand); }
+.atlas-table tr.is-linked-target { box-shadow: none; }
+.atlas-table tr.is-linked-target > td:first-child { box-shadow: inset 3px 0 0 var(--accent-brand); }
+@keyframes atlas-linked-target { 0%, 45% { background-color: var(--accent-soft); } 100% { background-color: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .is-linked-target, .atlas-table tr.is-linked-target > td { animation: none; background-color: var(--accent-soft); }
+}
+html.atlas-reduce-motion :is(.is-linked-target, .atlas-table tr.is-linked-target > td) { animation: none; background-color: var(--accent-soft); }
 .atlas-row__icon {
   display: grid;
   place-items: center;

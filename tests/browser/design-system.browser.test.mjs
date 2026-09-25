@@ -162,3 +162,24 @@ test('no legacy layer reaches the page: four cascade layers, no inline style, ca
     assert.doesNotMatch(result.transition, /transform/);
   } finally { await close(); }
 });
+
+test('linked target: a deep-linked record gets the shared accent wash, static with reduced motion', { skip }, async () => {
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    const { page, close } = await launch({ contextOptions: { reducedMotion } });
+    try {
+      const style = await page.evaluate(() => {
+        const list = document.createElement('ul');
+        list.className = 'atlas-list';
+        list.innerHTML = '<li class="atlas-row is-linked-target" aria-current="true">Target</li>';
+        document.querySelector('#atlas-main').prepend(list);
+        const computed = getComputedStyle(list.firstElementChild);
+        return { shadow: computed.boxShadow, animation: computed.animationName, background: computed.backgroundColor };
+      });
+      assert.match(style.shadow, /inset/, 'a quiet accent edge stays');
+      if (reducedMotion === 'reduce') {
+        assert.equal(style.animation, 'none');
+        assert.equal(style.background, 'rgb(239, 246, 255)', 'the wash is static');
+      } else assert.equal(style.animation, 'atlas-linked-target');
+    } finally { await close(); }
+  }
+});

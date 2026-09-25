@@ -1224,7 +1224,7 @@
       const linked = list.find((entry) => String(entry.id) === focus);
       if (linked) shown.unshift(linked);
     }
-    const focusAttrs = (entry) => ` data-movement-id="${esc(entry.id)}"${focus && String(entry.id) === focus ? ' class="is-focused" aria-current="true"' : ''}`;
+    const focusAttrs = (entry) => ` data-movement-id="${esc(entry.id)}"${focus && String(entry.id) === focus ? ' class="is-linked-target" aria-current="true"' : ''}`;
     const types = [...new Set(movements().map((entry) => entry.movement_type).filter(Boolean))];
     body.innerHTML = `<div class="atlas-toolbar">
         <label class="atlas-search">${icon('search')}<input class="atlas-input" type="search" data-inv-movement-search placeholder="Search item or note" aria-label="Search movements" value="${esc(state.movementQuery)}"></label>

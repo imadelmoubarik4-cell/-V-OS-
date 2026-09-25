@@ -783,7 +783,8 @@
     const needs = provider.connection_state === 'not_configured'
       ? `<details class="settings-needs"><summary>What it needs</summary><p>${escapeHtml(provider.available_message || 'Not available yet.')}</p>${provider.owner_requirements_summary ? `<p>${escapeHtml(provider.owner_requirements_summary)}</p>` : ''}<p>An administrator sets this up with whoever runs the Atlas server.</p></details>`
       : '';
-    return `<li class="settings-provider" data-provider-card="${escapeHtml(key)}">
+    const linked = state.focusProvider === key;
+    return `<li class="settings-provider${linked ? ' is-linked-target' : ''}" data-provider-card="${escapeHtml(key)}"${linked ? ' aria-current="true"' : ''}>
       <div class="settings-provider__head"><div><h3 class="settings-provider__name">${escapeHtml(provider.label || humanize(key))}</h3>${status ? `<p class="settings-provider__status">${escapeHtml(status)}</p>` : ''}</div>${pill(tone, text)}</div>
       ${facts.length ? `<p class="settings-provider__facts">${escapeHtml(facts.join(' · '))}</p>` : ''}
       ${needs}
@@ -949,7 +950,6 @@
     if (state.focusProvider) {
       const card = [...element.querySelectorAll('[data-provider-card]')].find((node) => node.dataset.providerCard === state.focusProvider);
       if (card) {
-        card.setAttribute('aria-current', 'true');
         card.scrollIntoView({ block: 'center' });
         state.focusProvider = null;
       }
