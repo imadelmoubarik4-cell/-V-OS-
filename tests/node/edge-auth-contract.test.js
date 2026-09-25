@@ -117,7 +117,13 @@ test('every endpoint key in config.js is read by a browser module', () => {
   const browser = sourceFiles(path.join(web, 'assets/js')).concat(
     fs.readdirSync(web).filter((name) => name.endsWith('.html')).map((name) => path.join(web, name)),
   ).map((file) => fs.readFileSync(file, 'utf8')).join('\n');
-  for (const key of keys) assert.match(browser, new RegExp(`\\b${key}\\b`), `${key} is configured but never read`);
+  // PHASE3_INTELLIGENCE_API stays in the pinned deploy config (the Checkpoint K
+  // function is still deployed and counted by the release builds), but no
+  // browser module calls it: Atlas AI background signals are the one producer
+  // of Decisions recommendations (Atlas_AI_Architecture.md §12a, §15).
+  const SERVER_ONLY = new Set(['PHASE3_INTELLIGENCE_API']);
+  for (const key of keys.filter((name) => !SERVER_ONLY.has(name))) assert.match(browser, new RegExp(`\\b${key}\\b`), `${key} is configured but never read`);
+  for (const key of SERVER_ONLY) assert.doesNotMatch(browser, new RegExp(`\\b${key}\\b`), `${key} has no browser caller`);
   assert.doesNotMatch(config, /SPRINT4_BRIEFING_API|INVENTORY_SCANNER_API/);
 });
 

@@ -167,6 +167,26 @@
     return quantity < par ? 'below_par' : 'ok';
   }
 
+  // Why stockStatus() is 'unknown' (null when it is not). An item whose stock
+  // was withheld because the shell's inputs (verified balances or movements)
+  // failed to load carries stock_unknown_reason 'stock_data_incomplete'; any
+  // other unknown item has simply not been counted (or its count expired).
+  const INCOMPLETE = 'stock_data_incomplete';
+  function unknownReason(item) {
+    if (stockStatus(item) !== 'unknown') return null;
+    return item?.stock_unknown_reason === INCOMPLETE ? INCOMPLETE : 'not_counted';
+  }
+
+  // Withholds stock when its inputs are incomplete: every item becomes
+  // unknown with reason 'stock_data_incomplete' instead of a projection from
+  // stale counts or no balances (index.html loadItems, AtlasData.health()).
+  function withhold(items, reason = INCOMPLETE) {
+    return (items || []).map((item) => ({
+      ...item, quantity: null, verified_quantity: null, freshness_state: 'unknown', stock_source: null,
+      stock_baseline_at: null, stock_movement_delta: 0, stock_recount_due: false, stock_unknown_reason: reason
+    }));
+  }
+
   function needsOrdering(item) {
     const status = stockStatus(item);
     return status === 'out' || status === 'below_par';
@@ -260,7 +280,7 @@
 
   root.AtlasStockTruth = Object.freeze({
     known, belowPar, project, effectiveStock,
-    STOCK_STATUSES, stockStatus, needsOrdering, stockCounts, hasCost, inventoryValue,
+    STOCK_STATUSES, stockStatus, unknownReason, withhold, needsOrdering, stockCounts, hasCost, inventoryValue,
     PURCHASE_RECEIPT_TYPES, purchaseReceiptAmount, purchaseSpend, MOVEMENT_ROW_LIMIT, MOVEMENT_PAGE_SIZE
   });
 })(window);

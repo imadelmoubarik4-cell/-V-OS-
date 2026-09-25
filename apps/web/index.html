@@ -561,17 +561,23 @@
   let suppliers = [];
   let countSnapshot = null;
   let itemsStatus = 'loading';
+  // Health of each shell data input: 'loading' | 'ok' | 'failed', plus the
+  // derived stock state: 'ok' | 'partial' (items loaded but verified balances
+  // or movements did not, so no stock figure is projected) | 'failed'.
+  let dataHealth = { inventory: 'loading', balances: 'loading', movements: 'loading', recipes: 'loading', suppliers: 'loading', stock: 'loading', stockMissing: [] };
   // Read-only access to the loaded, role-filtered records for other modules
   // (Inventory, Purchasing, Search). Returns the same arrays every page renders
   // from; status() says whether the last inventory load failed (the previous
-  // rows are kept, never blanked).
+  // rows are kept, never blanked) or is 'partial' (stock withheld); health()
+  // says which input failed.
   window.AtlasData = Object.freeze({
     items: () => items,
     recipes: () => recipes,
     suppliers: () => suppliers,
     movements: () => inventoryMovements,
     countSnapshot: () => countSnapshot,
-    status: () => ({ items: itemsStatus })
+    status: () => ({ items: itemsStatus, stock: dataHealth.stock }),
+    health: () => ({ ...dataHealth, stockMissing: [...dataHealth.stockMissing] })
   });
   let draftIngredients = [];
   let activeView = 'dashboard';
@@ -757,23 +763,43 @@
     if (error) {
       console.error(`${relation} could not be loaded`, error);
       itemsStatus = 'error';
+      dataHealth.inventory = 'failed';
+      dataHealth.stock = 'failed';
       showDataBoundaryError('Inventory');
       return;
     }
+    dataHealth.inventory = 'ok';
     let balances = [];
     try {
       const session = (await sb.auth.getSession()).data?.session;
       const endpoint = window.VABAR_CONFIG?.STOCK_COUNTS_API;
-      if (session?.access_token && endpoint) {
-        const url = new URL(endpoint); url.searchParams.set('action', 'snapshot');
-        const response = await fetch(url, {headers: {authorization: `Bearer ${session.access_token}`}, signal: AbortSignal.timeout(12000)});
-        if (!response.ok) throw new Error('Verified stock unavailable');
-        countSnapshot = (await response.json()).counts || null;
-        balances = countSnapshot?.verified_balances || [];
-      }
-    } catch (error) { console.warn('Stock remains unknown until verified balances can be read.'); }
+      if (!session?.access_token || !endpoint) throw new Error('Verified stock unavailable');
+      const url = new URL(endpoint); url.searchParams.set('action', 'snapshot');
+      const response = await fetch(url, {headers: {authorization: `Bearer ${session.access_token}`}, signal: AbortSignal.timeout(12000)});
+      if (!response.ok) throw new Error('Verified stock unavailable');
+      countSnapshot = (await response.json()).counts || null;
+      balances = countSnapshot?.verified_balances || [];
+      dataHealth.balances = 'ok';
+    } catch (error) {
+      console.warn('Stock remains unknown until verified balances can be read.');
+      dataHealth.balances = 'failed';
+    }
     // Every workspace, including this table, reads the single reconciled quantity.
+    // A projection from partial inputs is not stock truth: without verified
+    // balances every item would read "Not counted", and without movements every
+    // quantity would be its last count without sales or waste since. Stock is
+    // then withheld (unknown, reason stock_data_incomplete) and the pages say so.
+    const missing = [dataHealth.balances === 'ok' ? null : 'balances', dataHealth.movements === 'ok' ? null : 'movements'].filter(Boolean);
+    dataHealth.stockMissing = missing;
+    if (missing.length) {
+      dataHealth.stock = 'partial';
+      itemsStatus = 'partial';
+      items = window.AtlasStockTruth.withhold(data || []);
+      window.AtlasShell.emit('data:error', { source: 'Stock figures', kind: 'stock_incomplete', missing: [...missing] });
+      return;
+    }
     items = window.AtlasStockTruth.project(data || [], balances, inventoryMovements);
+    dataHealth.stock = 'ok';
     itemsStatus = 'ok';
   }
 
@@ -798,11 +824,13 @@
         console.error(`${relation} could not be loaded`, error);
         inventoryMovements = [];
         restockLog = [];
+        dataHealth.movements = 'failed';
         return;
       }
       rows.push(...(data || []));
       if (!data || data.length < pageSize) break;
     }
+    dataHealth.movements = 'ok';
     inventoryMovements = rows;
     restockLog = inventoryMovements.filter(entry => entry.movement_type === 'restock');
   }
@@ -816,9 +844,11 @@
       if (error) {
         console.error(error);
         recipes = [];
+        dataHealth.recipes = 'failed';
         return;
       }
       recipes = data || [];
+      dataHealth.recipes = 'ok';
       return;
     }
 
@@ -839,14 +869,17 @@
     if (result.error) {
       console.error('The staff recipe catalogue could not be loaded', result.error);
       recipes = [];
+      dataHealth.recipes = 'failed';
       return;
     }
     recipes = result.data || [];
+    dataHealth.recipes = 'ok';
   }
 
   async function loadSuppliersData() {
     if (!canManageCommercial()) {
       suppliers = [];
+      dataHealth.suppliers = 'ok';
       return;
     }
     const { data, error } = await sb
@@ -856,16 +889,18 @@
     if (error) {
       console.warn('Supplier list could not be loaded:', error.message);
       suppliers = [];
+      dataHealth.suppliers = 'failed';
       return;
     }
     suppliers = data || [];
+    dataHealth.suppliers = 'ok';
   }
 
   // loadAll() loads the shell data, then emits data:loaded. Modules refresh
   // through AtlasShell.onDataLoaded() instead of wrapping this function.
   async function loadAll() {
     await loadAtlasData();
-    window.AtlasShell.dataLoaded({ online: navigator.onLine });
+    window.AtlasShell.dataLoaded({ online: navigator.onLine, health: window.AtlasData.health() });
   }
   async function loadAtlasData() {
     // Keep the last loaded, role-filtered in-memory snapshot during an outage.
@@ -1001,7 +1036,7 @@
 <script src="assets/js/s38-app-remediation.js?v=20260926-s88"></script>
 <script src="assets/js/atlas-search.js?v=20260928-s89t"></script>
 <script src="assets/js/atlas-chrome.js?v=20260926-s88"></script>
-<script src="assets/js/atlas-palette.js?v=20260926-s88"></script>
+<script src="assets/js/atlas-palette.js?v=20260928-s89t"></script>
 <script src="assets/js/atlas-ai-voice.js?v=20260926-s88"></script>
 <script src="assets/js/atlas-ai.js?v=20260926-s88"></script>
 <script src="assets/js/atlas-signin-intro.js?v=20260924-brand1"></script>

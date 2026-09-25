@@ -500,12 +500,12 @@ evals), `npm run eval:ai-live` (live; `:dry-run` in CI).
 
 | Existing | Decision |
 | --- | --- |
-| `atlas-search.js` answerFor (regex Ask) | Record search stays; questions route to Atlas AI. The deterministic answers remain as the offline fallback when Atlas AI is not configured. |
+| `atlas-search.js` answerFor (regex Ask) | Record search stays; questions route to Atlas AI. The deterministic answers remain as the offline fallback when Atlas AI is not configured. The palette (`atlas-palette.js`) reads `AtlasAI.state().configured` or `atlas-ai?action=settings` (`configured`): when Atlas AI is on, a question offers "Ask Atlas" first and renders no inline answer; when it is off, unreachable or the device is offline, the answer renders labelled "Quick answer · Atlas AI is off". |
 | `brain.js` Ask card / `assistantResponse` | Replaced by the Atlas AI entry point. |
 | `brain.js` rule recommendations, hard-coded timeline, calc fallbacks | Removed; timeline uses business hours; recommendations come from `operations.alerts` / `briefing.today`. |
 | `atlas-reports?action=ask` | Deprecated (kept until rollout for compatibility, no UI caller). |
 | Brain decision memory (`atlas-phase3-brain`, `brain-phase3.js`) | Kept as the decision ledger and review UI; AI proposals flow into it. |
-| Checkpoint K intelligence | Kept; now uses the shared stock rule; not called per chat turn. |
+| Checkpoint K intelligence | Kept as a server function; now uses the shared stock rule; not called per chat turn. It is no longer triggered from Home: the one producer of Decisions recommendations is Atlas AI background signals (§12a, `atlas-ai?action=refresh-signals`, run once per manager session by Home and by the scheduler), so the same shortage is never recommended twice under two keys. |
 | Daily briefing (Sprint 4) | Folded into `data_quality.*` and `briefing.today`. |
 | `business.js` | Deprecated in favour of Reports and `reports.*` tools. |
 

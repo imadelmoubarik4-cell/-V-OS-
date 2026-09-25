@@ -7,6 +7,11 @@
 // from AtlasShell.actions.list(ctx); the "Ask Atlas" row routes to
 // #ai/new?q=… for the Atlas AI workspace.
 //
+// Questions go to Atlas AI (Atlas_AI_Architecture.md §15). The deterministic
+// instant answers (AtlasSearch.answerFor) are the offline fallback only: they
+// render when Atlas AI is not configured, switched off, unreachable or the
+// device is offline, and are labelled as such. Record search is always on.
+//
 // Public: window.AtlasPalette = { open({ mode, query, trigger }), close(), isOpen() }.
 (function () {
   'use strict';
@@ -36,7 +41,11 @@
     trigger: null,
     answer: null,
     answerToken: 0,
-    answerTimer: null
+    answerTimer: null,
+    answerState: 'idle',   // idle | pending | ai | answered (data-answer-state)
+    intent: false,         // the query reads as a question AtlasSearch knows
+    ai: null,              // 'on' | 'off' once known (see aiAvailability)
+    aiCheck: null
   };
 
   let layer = null;
@@ -178,11 +187,12 @@
     const pages = (search?.destinations?.(query) || []).map(pageRow);
     const ask = { key: 'ask', label: 'Ask Atlas', rows: [askRow(query)], limit: 1 };
 
-    if (QUESTION.test(query)) sections.push(ask);
+    const question = QUESTION.test(query) || state.intent;
+    if (question) sections.push(ask);
     sections.push(...recordSections);
     add('actions', 'Actions', actions);
     add('pages', 'Go to', pages);
-    if (!QUESTION.test(query)) sections.push(ask);
+    if (!question) sections.push(ask);
     return sections;
   }
 
@@ -229,8 +239,8 @@
   function answerMarkup() {
     const answer = state.answer;
     if (!answer) return '';
-    return `<section class="atlas-palette__answer is-${escape(answer.tone || 'neutral')}" aria-live="polite">
-      <div class="atlas-palette__answer-label">${icon('sparkles', { size: 14 })}Atlas</div>
+    return `<section class="atlas-palette__answer is-${escape(answer.tone || 'neutral')}" aria-live="polite" data-answer-source="offline">
+      <div class="atlas-palette__answer-label">${icon('sparkles', { size: 14 })}Quick answer · Atlas AI is off</div>
       <p>${escape(answer.text)}</p>
       ${answer.lines?.length ? `<ul>${answer.lines.map((line) => `<li>${escape(line)}</li>`).join('')}</ul>` : ''}
       ${answer.action ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-palette-answer-action>${escape(answer.action.label)}</button>` : ''}
@@ -254,6 +264,7 @@
     }).join('');
     const empty = !state.rows.length ? `<p class="atlas-palette__empty">No matches for “${escape(state.query)}”.</p>` : '';
     list.innerHTML = `${answerMarkup()}${groups}${empty}`;
+    list.dataset.answerState = state.answerState;
     input.setAttribute('aria-expanded', String(state.rows.length > 0));
     if (state.active >= 0) input.setAttribute('aria-activedescendant', optionId(state.active));
     else input.removeAttribute('aria-activedescendant');
@@ -308,17 +319,60 @@
 
   // ---------- instant answers (AtlasSearch.answerFor) ----------
 
+  // Atlas AI availability for the palette: 'on' when it is enabled and
+  // configured (atlas-ai?action=settings → configured), otherwise 'off'. The
+  // Atlas AI page's own check wins when it has run; the palette asks once.
+  function aiAvailability() {
+    if (!navigator.onLine) return Promise.resolve('off');
+    const known = window.AtlasAI?.state?.()?.configured;
+    if (known === true) return Promise.resolve('on');
+    if (known === false) return Promise.resolve('off');
+    if (state.ai) return Promise.resolve(state.ai);
+    if (state.aiCheck) return state.aiCheck;
+    const base = String(window.VABAR_CONFIG?.ATLAS_AI_API || '').trim();
+    if (!base) { state.ai = 'off'; return Promise.resolve('off'); }
+    state.aiCheck = (async () => {
+      try {
+        const body = await window.AtlasApi.request(base, { params: { action: 'settings' }, timeoutMs: 8000 });
+        state.ai = body?.configured === true && body?.enabled !== false ? 'on' : 'off';
+      } catch (error) {
+        // Not configured, unreachable or failing: the offline fallback answers.
+        // Without a session yet, answer offline now and ask again next time.
+        if (error?.kind === 'auth') return 'off';
+        state.ai = 'off';
+      }
+      return state.ai;
+    })().finally(() => { state.aiCheck = null; });
+    return state.aiCheck;
+  }
+
   function scheduleAnswer() {
     window.clearTimeout(state.answerTimer);
     const query = normalize(state.query);
     const intent = query ? window.AtlasSearch?.detectIntent?.(query) : null;
-    if (!intent) { if (state.answer) { state.answer = null; render(); } return; }
+    const wasIntent = state.intent;
+    state.intent = Boolean(intent);
+    if (!intent) {
+      const changed = Boolean(state.answer) || wasIntent || state.answerState !== 'idle';
+      state.answer = null;
+      state.answerState = 'idle';
+      if (changed) render();
+      return;
+    }
     const token = ++state.answerToken;
+    state.answerState = 'pending';
+    render();
     state.answerTimer = window.setTimeout(async () => {
+      const ai = await aiAvailability();
+      if (token !== state.answerToken || !state.open) return;
+      // Atlas AI answers questions: the palette offers "Ask Atlas" (first row)
+      // and renders no deterministic answer of its own.
+      if (ai === 'on') { state.answer = null; state.answerState = 'ai'; render(); return; }
       let answer = null;
       try { answer = await window.AtlasSearch.answerFor(query); } catch (error) { console.error('Instant answer failed', error); }
       if (token !== state.answerToken || !state.open) return;
       state.answer = answer;
+      state.answerState = 'answered';
       render();
     }, 160);
   }

@@ -3,7 +3,7 @@
 // countdown is Home's context line, S88 Team A.)
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, requestsTo, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, requestsTo, settle, USERS } from './harness.mjs';
 import { emptyFunctions, venueClockBackend, weekHours } from './fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -41,7 +41,8 @@ test('with no saved hours Home says "Opening hours not set" and shows no timelin
     assert.doesNotMatch(context, /closes|opens at/i, 'no countdown without hours');
 
     await page.click('#home-timeline [data-venue-hours-settings]');
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'settings');
+    await settle(page);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'settings');
     assert.equal(await page.evaluate(() => location.hash), '#settings/hours');
     assert.deepEqual(record.pageErrors, []);
@@ -117,7 +118,7 @@ test('saving hours in Settings updates Home without a reload', { skip }, async (
     assert.equal(requestsTo(record, 'atlas-settings', 'venue-clock').length, 2);
     // Unrelated saves do not re-fetch.
     await page.evaluate(() => window.AtlasShell.emit('settings:saved', { action: 'save-role' }));
-    await page.waitForTimeout(300);
+    await settle(page);
     assert.equal(requestsTo(record, 'atlas-settings', 'venue-clock').length, 2);
   } finally { await close(); }
 });

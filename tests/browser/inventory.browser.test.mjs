@@ -2,7 +2,7 @@
 // stock count (§7.6) and the Visual Inventory capture flows, in a real browser.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, navigateTo, settle, until, USERS } from './harness.mjs';
 import { IDS, inventoryWorld, itemMasterBackend, recognitionBackend, detection, items, fakeCameraScript } from './inventory-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -16,8 +16,7 @@ async function launch({ user = USERS.admin, viewport, itemMaster = itemMasterBac
 }
 
 async function go(page, route) {
-  await page.evaluate((target) => window.AtlasShell.navigate(target), route);
-  await page.waitForTimeout(250);
+  await navigateTo(page, route);
 }
 
 const rowNames = (page) => page.$$eval('#inventory-view tbody tr[data-inv-row] .cell-primary', (cells) => cells.map((cell) => cell.textContent));
@@ -44,7 +43,8 @@ test('Below par is a shareable filter chip that clears back to every item', { sk
   const { page, close } = await launch();
   try {
     await page.evaluate(() => window.AtlasInventory.showBelowPar());
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => /#inventory\?filter=below-par/.test(location.hash));
+    await settle(page);
     assert.match(await page.evaluate(() => location.hash), /#inventory\?filter=below-par/);
     const names = await rowNames(page);
     // S89 canonical status: Limes (verified 0) is out, not below par; the
@@ -53,7 +53,8 @@ test('Below par is a shareable filter chip that clears back to every item', { sk
     assert.ok(!names.includes('Giffard Vanille Syrup'), 'items at or above par are not listed');
     assert.ok(!names.includes('Demerara Sugar Cube'), 'unknown stock is never reported as below par');
     await page.click('[data-inv-clear="status"]');
-    await page.waitForTimeout(150);
+    await page.waitForFunction(() => location.hash === '#inventory');
+    await settle(page);
     assert.equal((await rowNames(page)).length, items.filter((item) => item.active).length);
     assert.equal(await page.evaluate(() => location.hash), '#inventory');
   } finally { await close(); }
@@ -68,7 +69,7 @@ test('the category filter follows the owner model; wine offers exactly four type
     assert.equal(await page.evaluate(() => window.AtlasInventory.inventoryGroup({ category: 'Mixer', name: 'Ginger Beer' })), 'mixers');
     await page.click('[data-inv-menu-trigger="category"]');
     await page.click('[data-inv-menu="category"] [data-value="spirits"]');
-    await page.waitForTimeout(150);
+    await settle(page);
     const names = await rowNames(page);
     assert.ok(names.includes('Tanqueray London Dry') && !names.includes('Limes'));
   } finally { await close(); }
@@ -175,7 +176,7 @@ test('item detail opens with Enter and closes with Escape, returning focus', { s
     assert.match(await page.textContent('.inv-detail'), /Aperol Spritz/, 'recipes using the item are listed');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('.inv-detail'));
-    await page.waitForTimeout(200);
+    await settle(page);
     assert.equal(await page.evaluate(() => document.activeElement?.dataset?.invOpen), IDS.aperol);
   } finally { await close(); }
 });
@@ -201,7 +202,8 @@ test('count flow: phone-first card saves through save-line and hides the tab bar
     assert.equal(await page.evaluate(() => { const bar = document.getElementById('atlas-tabbar'); return !bar || bar.hidden || getComputedStyle(bar).display === 'none'; }), true);
     await page.fill('[data-count-qty]', '1.5');
     await page.click('[data-count-save]');
-    await page.waitForTimeout(400);
+    await until(() => world.counts.calls.some((call) => call.action === 'save-line'), { message: 'save-line' });
+    await settle(page);
     const save = world.counts.calls.find((call) => call.action === 'save-line');
     assert.equal(save.body.line_id, 'a1111111-0000-4000-8000-000000000003', 'the first pending line (Aperol)');
     assert.equal(save.body.observed_input_quantity, 1.5);
@@ -280,7 +282,7 @@ test('add product by camera fills a draft only from confident readings', { skip 
   try {
     await page.evaluate(() => window.AtlasInventory.openAddProductByCamera());
     await page.waitForSelector('.atlas-capture');
-    await page.waitForTimeout(300);
+    await settle(page);
     await page.click('[data-capture-shutter]');
     await page.waitForSelector('[data-capture-result="add_product"]');
     const identify = recognition.calls.find((call) => call.action === 'identify');

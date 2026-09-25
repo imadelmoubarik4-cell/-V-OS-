@@ -2,11 +2,11 @@
 // one render per navigation, Home composition order and no page errors.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, USERS } from './harness.mjs';
+import { fixtureTime, harnessAvailable, launchAtlas, navigateTo, settle, USERS } from './harness.mjs';
 import { emptyFunctions } from './fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
-const balance = (id, quantity) => ({ inventory_item_id: id, verified_quantity: quantity, freshness_state: 'current', verified_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 864000000).toISOString() });
+const balance = (id, quantity) => ({ inventory_item_id: id, verified_quantity: quantity, freshness_state: 'current', verified_at: fixtureTime(-86400000), expires_at: fixtureTime(864000000) });
 const inventory = [
   { id: 'pinot', name: 'Angelo Pinot Grigio', category: 'Wine', unit: 'bottles', par_level: 6, supplier: 'Globus', active: true, cost_price: 2100 },
   { id: 'gin', name: 'Gin', category: 'Gin', unit: 'bottles', par_level: 2, supplier: 'Globus', active: true, cost_price: 5000 }
@@ -36,7 +36,7 @@ async function clickNav(page, view) {
   const visible = await page.$eval(`.atlas-nav .nav-item[data-view="${view}"]`, (node) => node.getClientRects().length > 0).catch(() => false);
   if (visible) await page.click(`.atlas-nav .nav-item[data-view="${view}"]`);
   else await page.evaluate((target) => window.AtlasShell.show(target, {}, { source: 'nav' }), view);
-  await page.waitForTimeout(150);
+  await settle(page);
 }
 
 const state = (page) => page.evaluate(() => {
@@ -90,8 +90,7 @@ test('sidebar navigation shows exactly one workspace, updates the address bar an
     // S88 Team A: the Brain page and the System page are retired. Their links
     // open Home and Settings › System health.
     assert.equal(await page.evaluate(() => window.AtlasShell.views().some((view) => view === 'brain' || view === 'system')), false);
-    await page.evaluate(() => window.AtlasShell.navigate('#settings/system'));
-    await page.waitForTimeout(200);
+    await navigateTo(page, '#settings/system');
     assert.equal((await state(page)).view, 'settings');
     assert.equal((await state(page)).hash, '#settings/system');
     assert.ok(await page.$('[data-settings-system-host]'), 'System health opens inside Settings');
@@ -261,8 +260,7 @@ test('a bartender sees staff actions only and the purchasing link explains its l
     const actions = await page.evaluate(() => window.AtlasShell.actions.list().map((action) => action.id));
     assert.ok(actions.includes('inventory.count.start'));
     assert.ok(!actions.includes('purchasing.order.new'), 'manager-only actions are not listed for staff');
-    await page.evaluate(() => window.AtlasShell.navigate('#purchasing'));
-    await page.waitForTimeout(200);
+    await navigateTo(page, '#purchasing');
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'dashboard');
     // No alert() (spec §4.12): a toast says who can open it.
     assert.deepEqual(record.dialogs, []);

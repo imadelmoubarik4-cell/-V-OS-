@@ -22,6 +22,18 @@ const WEB = path.join(ROOT, 'apps/web');
 export const ORIGIN = 'http://localhost:4173';
 export const SUPABASE = 'https://dnefgcmjcgxlynycxkts.supabase.co';
 export const PROJECT_REF = 'dnefgcmjcgxlynycxkts';
+// Every page runs on a frozen clock so no test depends on the wall clock
+// (greetings, business dates, freshness windows). A test file passes its own
+// fixture time as fixedTime; the default is this Thursday afternoon in
+// Reykjavik. Fixtures build their dates from the same anchor (fixtureTime).
+export const HARNESS_NOW = '2026-09-24T14:00:00.000Z';
+export const HARNESS_NOW_MS = Date.parse(HARNESS_NOW);
+/** ISO time `offsetMs` from the harness anchor (never the wall clock). */
+export function fixtureTime(offsetMs = 0) {
+  return new Date(HARNESS_NOW_MS + offsetMs).toISOString();
+}
+// Far-future token expiry, so a frozen page clock never sees the session expire.
+const SESSION_EXPIRES_AT = 4102444800; // 2100-01-01
 
 function resolveLibraries() {
   const roots = [process.env.ATLAS_BROWSER_LIBS, path.join(ROOT, 'node_modules'), path.join(here, 'node_modules')]
@@ -69,10 +81,9 @@ function base64url(value) {
 }
 
 export function sessionFor(user) {
-  const now = Math.floor(Date.now() / 1000);
-  const token = `${base64url({ alg: 'HS256', typ: 'JWT' })}.${base64url({ sub: user.id, email: user.email, role: 'authenticated', exp: now + 3600 })}.harness`;
+  const token = `${base64url({ alg: 'HS256', typ: 'JWT' })}.${base64url({ sub: user.id, email: user.email, role: 'authenticated', exp: SESSION_EXPIRES_AT })}.harness`;
   return {
-    access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: now + 3600, refresh_token: 'harness-refresh',
+    access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: SESSION_EXPIRES_AT, refresh_token: 'harness-refresh',
     user: { id: user.id, email: user.email, aud: 'authenticated', role: 'authenticated', user_metadata: {}, app_metadata: {} }
   };
 }
@@ -88,17 +99,24 @@ function json(route, body, status = 200) {
  *   functions: { 'atlas-x': (ctx) => ({ status, body }) | body | { __raw: { status, contentType, body } } }
  * `contextOptions` is passed to browser.newContext (for example { hasTouch: true }).
  */
-export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '', contextOptions = {}, timezoneId = undefined, fixedTime = undefined } = {}) {
+export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '', contextOptions = {}, timezoneId = undefined, fixedTime = HARNESS_NOW, controlTimers = false } = {}) {
   const playwright = loadPlaywright();
   const libs = resolveLibraries();
   if (!playwright || !libs) throw new Error('Browser harness dependencies are unavailable.');
   const browser = await playwright.chromium.launch({ executablePath: process.env.ATLAS_CHROMIUM || undefined });
   const context = await browser.newContext({ viewport, serviceWorkers: 'block', ...(timezoneId ? { timezoneId } : {}), ...contextOptions });
   const page = await context.newPage();
-  // Date.now()/new Date() frozen at fixedTime; timers keep running.
-  if (fixedTime !== undefined) await page.clock.setFixedTime(fixedTime);
+  // Date.now()/new Date() frozen at fixedTime (HARNESS_NOW unless the test
+  // passes its own fixture time); timers keep running. null opts out.
+  // controlTimers installs Playwright's fake timers instead (time starts at
+  // fixedTime and flows naturally), so a test can advance timers with
+  // advanceTimers() rather than sleeping through a retry or backoff window.
+  if (controlTimers) await page.clock.install({ time: fixedTime ?? HARNESS_NOW });
+  else if (fixedTime !== null && fixedTime !== undefined) await page.clock.setFixedTime(fixedTime);
   page.setDefaultTimeout(10000);
-  const record = { requests: [], consoleErrors: [], pageErrors: [], dialogs: [] };
+  // inflight/lastActivity let settle() wait for the mocked backend to go quiet.
+  const record = { requests: [], consoleErrors: [], pageErrors: [], dialogs: [], inflight: 0, lastActivity: Date.now() };
+  RECORDS.set(page, record);
 
   page.on('console', (message) => { if (message.type() === 'error') record.consoleErrors.push(message.text()); });
   page.on('pageerror', (error) => record.pageErrors.push(String(error?.stack || error?.message || error)));
@@ -141,6 +159,10 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
 
   const profiles = fixtures.profiles || Object.values(USERS);
   await context.route(`${SUPABASE}/**`, async (route) => {
+    record.inflight += 1;
+    try { return await answerSupabase(route); } finally { record.inflight -= 1; record.lastActivity = Date.now(); }
+  });
+  async function answerSupabase(route) {
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method();
@@ -172,6 +194,8 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
       }
       let rows = table === 'profiles' ? profiles : (fixtures.tables?.[table] ?? []);
       if (typeof rows === 'function') rows = await rows(entry);
+      // A table handler may fail the read: { __status, body } (PostgREST error).
+      if (rows && !Array.isArray(rows) && rows.__status) return json(route, rows.body ?? { message: 'Harness read failure' }, rows.__status);
       const idFilter = url.searchParams.get('id');
       if (idFilter?.startsWith('eq.')) rows = rows.filter((row) => row.id === idFilter.slice(3));
       const single = (request.headers().accept || '').includes('application/vnd.pgrst.object');
@@ -192,7 +216,7 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
 
     if (url.pathname.startsWith('/storage/v1/')) return json(route, {});
     return json(route, { error: 'unmocked' }, 404);
-  });
+  }
 
   if (signedIn) {
     const session = sessionFor(user);
@@ -214,6 +238,56 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
   return { browser, context, page, record, close: () => browser.close() };
 }
 
+const RECORDS = new WeakMap();
+
+/**
+ * Waits until the page is quiet instead of sleeping: no mocked backend request
+ * in flight for `quietMs`, two animation frames rendered, and every finite
+ * animation or transition finished. Use it before asserting that something did
+ * NOT happen; wait on the specific condition (selector, function, request)
+ * whenever there is one.
+ */
+export async function settle(page, { quietMs = 50, timeout = 8000 } = {}) {
+  const record = RECORDS.get(page);
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    await page.evaluate(async () => {
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await Promise.race([
+        Promise.all(document.getAnimations()
+          .filter((animation) => animation.playState === 'running' && Number.isFinite(animation.effect?.getComputedTiming?.().endTime))
+          .map((animation) => animation.finished.catch(() => null))),
+        new Promise((resolve) => setTimeout(resolve, 2000))
+      ]);
+    });
+    const idle = !record || (record.inflight === 0 && Date.now() - record.lastActivity >= quietMs);
+    if (idle) return;
+    if (Date.now() > deadline) throw new Error('Timed out waiting for the page to settle');
+    await new Promise((resolve) => setTimeout(resolve, Math.min(quietMs, 50)));
+  }
+}
+
+/**
+ * Advances a page launched with controlTimers by `ms` of timer time, in steps,
+ * letting the mocked backend answer between steps so chained timers (retries,
+ * backoff) behave as they would in real time.
+ */
+export async function advanceTimers(page, ms, { step = 250 } = {}) {
+  for (let elapsed = 0; elapsed < ms; elapsed += step) {
+    await page.clock.runFor(Math.min(step, ms - elapsed));
+    await settle(page, { quietMs: 20 });
+  }
+}
+
+/**
+ * Navigates through the shell (AtlasShell.navigate shows the view
+ * synchronously, including role redirects) and waits for the page to settle.
+ */
+export async function navigateTo(page, hash) {
+  await page.evaluate(async (target) => { await window.AtlasShell.navigate(target); }, hash);
+  await settle(page);
+}
+
 export function requestsTo(record, fn, action) {
   return record.requests.filter((entry) => entry.path.endsWith(`/functions/v1/${fn}`) && (!action || entry.action === action));
 }
@@ -223,5 +297,20 @@ export async function openView(page, view) {
     const button = document.querySelector(`.atlas-nav .nav-item[data-view="${target}"]`);
     if (button) button.click(); else window.setActiveView?.(target);
   }, view);
-  await page.waitForTimeout(250);
+  await page.waitForFunction((target) => document.body.dataset.atlasView === target, view);
+  await settle(page);
+}
+
+/**
+ * Polls a test-side condition (for example a recorded request) until it holds.
+ * Use it instead of a fixed sleep when the thing to wait for is not in the page.
+ */
+export async function until(check, { timeout = 8000, interval = 20, message = 'condition' } = {}) {
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    const value = await check();
+    if (value) return value;
+    if (Date.now() > deadline) throw new Error(`Timed out waiting for ${message}`);
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
 }

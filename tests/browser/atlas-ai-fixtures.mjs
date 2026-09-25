@@ -134,7 +134,7 @@ export function atlasAiBackend({ configured = true, chat = null, delayChatMs = 0
         return { conversation, messages: list, has_more: false, actions };
       }
       case 'create': {
-        const created = { id: IDS.created, title: null, pinned: false, archived: false, last_message_at: new Date().toISOString(), created_at: new Date().toISOString() };
+        const created = { id: IDS.created, title: null, pinned: false, archived: false, last_message_at: AI_FIXTURE_NOW.toISOString(), created_at: AI_FIXTURE_NOW.toISOString() };
         state.conversations.unshift(created);
         return created;
       }
@@ -171,7 +171,7 @@ export function atlasAiBackend({ configured = true, chat = null, delayChatMs = 0
       case 'voice-end':
         if (!liveSession(body)) return inactive;
         state.voiceActive = false;
-        return { ended: true, voice_session_id: body.voice_session_id, ended_at: new Date().toISOString() };
+        return { ended: true, voice_session_id: body.voice_session_id, ended_at: AI_FIXTURE_NOW.toISOString() };
       case 'voice-tool':
         if (!liveSession(body)) return inactive;
         return {

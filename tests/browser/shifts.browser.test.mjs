@@ -3,7 +3,7 @@
 // hours (never a literal default), overnight shifts, publishing, staff flows.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, requestsTo, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, requestsTo, settle, until, USERS } from './harness.mjs';
 import { shiftsBackend, clockBackend, peopleFunctions, NOW, WEEK } from './people-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -11,7 +11,7 @@ const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependenc
 async function open({ user = USERS.admin, hash = '#shifts', viewport, backend = shiftsBackend({ user }), clock = clockBackend(), contextOptions = {} } = {}) {
   const app = await launchAtlas({ user, hash, viewport, contextOptions, fixedTime: new Date(NOW), fixtures: { functions: peopleFunctions({ 'atlas-shifts': backend.handler, 'atlas-settings': clock.handler }) } });
   await app.page.waitForSelector('.shifts-grid, .shifts-days, .shifts-month, .atlas-empty, .atlas-alert--danger, .shifts-avail, .shifts-list', { timeout: 12000 });
-  await app.page.waitForTimeout(300);
+  await settle(app.page);
   return { ...app, backend };
 }
 
@@ -98,7 +98,8 @@ test('month: Monday-first calendar, a day sheet, adding from the month and publi
     await page.waitForSelector('#shifts-confirm');
     assert.match(await page.textContent('#shifts-confirm'), /Publish September 2026\?/);
     await page.click('#shifts-confirm [type="submit"]');
-    await page.waitForTimeout(500);
+    await until(() => requestsTo(record, 'atlas-shifts', 'publish-month').length, { message: 'publish-month' });
+    await settle(page);
     assert.equal(requestsTo(record, 'atlas-shifts', 'publish-month').length, 1);
     assert.equal(await page.isEnabled('[data-shifts-publish]'), false, 'nothing left to publish');
     assert.match(await page.textContent('.shifts-publish'), /No changes to publish/);
@@ -115,7 +116,8 @@ test('staff: my shifts from today with Confirm and Request change; manager tabs 
     assert.deepEqual(days, ['Thursday 24 September', 'Friday 25 September']);
     assert.equal(await page.$('.shift-chip.is-unpublished'), null, 'staff never see drafts');
     await page.click('[data-shift-id="s4"] [data-shifts-respond="confirmed"]');
-    await page.waitForTimeout(400);
+    await until(() => requestsTo(record, 'atlas-shifts', 'respond').length >= 1, { message: 'the first response' });
+    await settle(page);
     assert.equal(requestsTo(record, 'atlas-shifts', 'respond')[0].body.response, 'confirmed');
     await page.click('[data-shift-id="s7"] [data-shifts-respond="change_requested"]');
     await page.waitForSelector('#shifts-confirm');
@@ -123,7 +125,8 @@ test('staff: my shifts from today with Confirm and Request change; manager tabs 
     assert.equal(await page.isVisible('[data-shifts-confirm-error]'), true, 'a note is required');
     await page.fill('#shifts-confirm-input', 'Can I start at 19:00?');
     await page.click('#shifts-confirm [type="submit"]');
-    await page.waitForTimeout(400);
+    await until(() => requestsTo(record, 'atlas-shifts', 'respond').length >= 2, { message: 'the change request' });
+    await settle(page);
     assert.equal(requestsTo(record, 'atlas-shifts', 'respond')[1].body.note, 'Can I start at 19:00?');
     await page.goto(page.url().replace(/#.*$/, '#shifts/confirmations'));
     await page.waitForSelector('.atlas-empty');
@@ -153,7 +156,8 @@ test('staff: request time off and save availability', { skip }, async () => {
     await page.click(`${monday} [role="switch"]`);
     await page.fill(`${monday} [name="available_from"]`, '18:00');
     await page.click(`${monday} .shifts-avail__save`);
-    await page.waitForTimeout(400);
+    await until(() => requestsTo(record, 'atlas-shifts', 'save-availability').length, { message: 'save-availability' });
+    await settle(page);
     const saved = requestsTo(record, 'atlas-shifts', 'save-availability')[0].body;
     assert.deepEqual([saved.weekday, saved.unavailable, saved.available_from], [1, false, '18:00']);
   } finally { await close(); }

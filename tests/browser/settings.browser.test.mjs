@@ -3,7 +3,7 @@
 // settings-workspace.js / notifications.js with mocked backends.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ORIGIN, USERS, harnessAvailable, launchAtlas, openView, requestsTo } from './harness.mjs';
+import { harnessAvailable, launchAtlas, navigateTo, openView, ORIGIN, requestsTo, settle, until, USERS } from './harness.mjs';
 import { emptyFunctions, settingsBackend } from './fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -19,7 +19,7 @@ async function openSettings(options = {}) {
 async function section(page, key) {
   await page.evaluate((hash) => window.AtlasShell.navigate(hash), `#settings/${key}`);
   await page.waitForSelector(`.settings-nav__link[href="#settings/${key}"][aria-current="page"]`);
-  await page.waitForTimeout(100);
+  await settle(page);
 }
 
 test('Settings lists its sections in a nav and opens each by route', { skip }, async () => {
@@ -45,7 +45,7 @@ test('the save bar appears only after a change, and Discard restores the saved v
     assert.equal(await page.$eval(bar, (node) => node.hidden), false);
     assert.match(await page.textContent(bar), /Unsaved changes/);
     await page.click(`${bar} [data-settings-discard]`);
-    await page.waitForTimeout(150);
+    await settle(page);
     assert.equal(await page.inputValue('[data-settings-section-form="inventory"] [name="variance_tolerance_percent"]'), '5');
     assert.equal(backend.calls.filter((entry) => entry.method === 'POST').length, 0);
   } finally { await close(); }
@@ -57,7 +57,11 @@ test('saving one Settings form never relabels or disables another form', { skip 
     await section(page, 'rules');
     await page.fill('[data-settings-section-form="inventory"] [name="variance_tolerance_percent"]', '6');
     await page.click('[data-settings-section-form="inventory"] button[type="submit"]');
-    await page.waitForTimeout(150);
+    // Inspect while the (900 ms) save is still in flight.
+    await page.waitForFunction(() => {
+      const button = document.querySelector('[data-settings-section-form="inventory"] button[type="submit"]');
+      return button && (button.disabled || /Saving/.test(button.textContent));
+    });
     const buttons = await page.$$eval('form[data-settings-section-form] button[type="submit"]', (nodes) => nodes.map((node) => ({
       form: node.closest('form').dataset.settingsSectionForm, text: node.textContent.trim(), disabled: node.disabled
     })));
@@ -88,7 +92,7 @@ test('a background refresh does not overwrite unsaved edits', { skip }, async ()
     await page.fill('[data-settings-section-form="venue"] [name="city"]', 'Reykjavík');
     const before = requestsTo(record, 'atlas-settings', 'snapshot').length;
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await page.waitForTimeout(400);
+    await settle(page);
     assert.equal(requestsTo(record, 'atlas-settings', 'snapshot').length, before, 'no silent reload while a form is dirty');
     assert.equal(await page.inputValue('[data-settings-section-form="venue"] [name="city"]'), 'Reykjavík');
   } finally { await close(); }
@@ -115,7 +119,7 @@ test('business hours render seven days when none are saved and save as HH:MM', {
     // Saved rows come back as HH:MM:SS; saving again must still send HH:MM.
     await page.fill('.settings-hours-row[data-weekday="5"] [name="close_time"]', '02:00');
     await page.click('[data-settings-hours-form] button[type="submit"]');
-    await page.waitForTimeout(300);
+    await until(() => backend.calls.filter((entry) => entry.action === 'save-hours').length >= 2, { message: 'the second save-hours' });
     const second = backend.calls.filter((entry) => entry.action === 'save-hours').at(-1).body.hours[5];
     assert.equal(second.open_time, '16:00');
     assert.equal(second.close_time, '02:00');
@@ -189,7 +193,8 @@ test('preferences save only implemented values and apply them at the next sign-i
     assert.match(page.url(), /#settings\/preferences$/);
     await page.goto(page.url().split('#')[0], { waitUntil: 'load' });
     await page.waitForFunction(() => document.body.dataset.atlasReady === 'true');
-    await page.waitForTimeout(400);
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'shifts');
+    await settle(page);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'shifts');
     assert.equal(await page.evaluate(() => document.documentElement.classList.contains('atlas-reduce-motion')), true);
   } finally { await close(); }
@@ -202,8 +207,7 @@ test('a bartender sees only personal sections, and a manager-only link opens the
     for (const key of ['team-access', 'rules', 'integrations', 'system', 'security']) {
       assert.ok(!links.includes(`#settings/${key}`), `${key} is not offered to a bartender`);
     }
-    await page.evaluate(() => window.AtlasShell.navigate('#settings/system'));
-    await page.waitForTimeout(300);
+    await navigateTo(page, '#settings/system');
     assert.equal(await page.$('[data-settings-system-host]'), null, 'System health stays with administrators');
   } finally { await close(); }
 });
@@ -279,7 +283,6 @@ function pushStub(mode) {
 async function openNotifications(notifications, mode = 'granted') {
   const app = await openSettings({ initScript: pushStub(mode), functions: { 'atlas-notifications': notifications } });
   await section(app.page, 'notifications');
-  await app.page.waitForTimeout(300);
   return app;
 }
 
@@ -330,7 +333,7 @@ test('blocked permission is reported as blocked, not as off', { skip }, async ()
   const { page, close } = await openNotifications((entry) => (entry.action === 'configuration' ? { public_key: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U', enabled: false } : {}), 'denied');
   try {
     await page.click('[data-settings-push-enable]');
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => /Blocked/.test(document.querySelector('.settings-device-notifications')?.textContent || ''));
     assert.match(await page.textContent('.settings-device-notifications'), /Blocked/);
   } finally { await close(); }
 });

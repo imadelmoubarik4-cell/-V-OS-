@@ -30,7 +30,7 @@
     checkedAt: null,
     shifts: { status: 'idle', key: null, week: null, next: null, fetchedAt: 0, inflight: null },
     messages: { channels: [], fetchedAt: 0, inflight: null, total: null },
-    dataErrors: new Set(),
+    dataErrors: new Map(),
     intelligenceRequested: false,
     registered: false
   };
@@ -89,6 +89,19 @@
 
   function dataLoaded() {
     return Boolean(shell()?.dataLoadedAt?.());
+  }
+
+  // Stock withheld by the shell because verified balances or movements failed
+  // to load (index.html AtlasData.health()). Home then shows no stock numbers.
+  function stockIncomplete() {
+    return window.AtlasData?.health?.()?.stock === 'partial';
+  }
+
+  function sentence(text) { return text ? text[0].toUpperCase() + text.slice(1) : text; }
+
+  function missingStockInputs(missing = window.AtlasData?.health?.()?.stockMissing || []) {
+    const names = missing.map((key) => (key === 'balances' ? 'verified counts' : key === 'movements' ? 'movements' : null)).filter(Boolean);
+    return names.length ? names.join(' and ') : 'stock data';
   }
 
   function duration(ms) {
@@ -174,7 +187,9 @@
 
   // A data load that failed (index.html showDataBoundaryError) is one neutral row.
   function dataErrorRows() {
-    return [...state.dataErrors].map((label) => ({ id: `error:${label}`, severity: 'info', icon: 'circle-alert', title: `${label} couldn’t be loaded`, detail: 'What you see may be incomplete. Nothing was changed.', action: { label: 'Try again', actionId: 'home.reload' } }));
+    return [...state.dataErrors.entries()].map(([label, detail]) => (detail?.kind === 'stock_incomplete'
+      ? { id: 'error:stock-incomplete', severity: 'warning', icon: 'triangle-alert', title: 'Stock figures are incomplete', detail: `${sentence(missingStockInputs(detail.missing))} couldn’t load, so no stock numbers are shown. Try again.`, action: { label: 'Try again', actionId: 'home.reload' } }
+      : { id: `error:${label}`, severity: 'info', icon: 'circle-alert', title: `${label} couldn’t be loaded`, detail: 'What you see may be incomplete. Nothing was changed.', action: { label: 'Try again', actionId: 'home.reload' } }));
   }
 
   // ---------- context line ----------
@@ -326,20 +341,24 @@
 
   // ---------- Decisions ledger refresh ----------
   //
-  // The decision memory (Atlas AI › Decisions) is fed by the manager-only
-  // intelligence refresh that the retired Brain page ran once per visit. Home
-  // runs it once per session for managers, in the background.
+  // One producer feeds the decision memory (Atlas AI › Decisions): Atlas AI
+  // background signals (atlas-ai?action=refresh-signals, Atlas_AI_Architecture
+  // §12a). They are deterministic (no model call) and fingerprinted, so the same
+  // signal refreshes its shadow recommendation instead of repeating it. Home
+  // runs the refresh once per session for managers, in the background. The
+  // Checkpoint K refresh (atlas-phase3-intelligence) is no longer triggered
+  // here: it wrote a second set of recommendations for the same shortages.
   function refreshIntelligence() {
     if (state.intelligenceRequested || !isManager()) return;
-    const base = String(window.VABAR_CONFIG?.PHASE3_INTELLIGENCE_API || '').trim();
+    const base = String(window.VABAR_CONFIG?.ATLAS_AI_API || '').trim();
     if (!base) return;
     state.intelligenceRequested = true;
-    accessToken().then((token) => {
-      if (!token) { state.intelligenceRequested = false; return; }
-      const url = new URL(base);
-      url.searchParams.set('action', 'refresh');
-      return fetch(url, { method: 'POST', cache: 'no-store', headers: { authorization: `Bearer ${token}`, accept: 'application/json', 'content-type': 'application/json' }, body: '{}' });
-    }).catch(() => { /* the ledger keeps its last refresh */ });
+    window.AtlasApi.request(base, { method: 'POST', params: { action: 'refresh-signals' }, body: {} })
+      .catch((error) => {
+        // No session yet: try again on the next Home visit. Otherwise the
+        // ledger keeps its last refresh.
+        if (error?.kind === 'auth') state.intelligenceRequested = false;
+      });
   }
 
   // ---------- messages (notifications feed) ----------
@@ -543,7 +562,8 @@
     const risks = [];
     if (dataLoaded()) {
       const stock = stockFacts();
-      if (stock.active) {
+      if (stock.active && stockIncomplete()) risks.push(`Stock figures are incomplete (${missingStockInputs()} couldn’t load), so Atlas can’t tell what’s low.`);
+      else if (stock.active) {
         facts.sources.add('stock counts');
         if (!stock.known) risks.push('Stock hasn’t been counted yet, so Atlas can’t tell what’s low.');
         else if (stock.out.length) risks.push(`${list(stock.out.map((item) => item.name))} ${stock.out.length === 1 ? 'is' : 'are'} out${stock.below.length ? ` and ${plural(stock.below.length, 'more item is', 'more items are')} below par` : ''}.`);
@@ -598,6 +618,7 @@
     let value; let unit = ''; let detail;
     if (!loaded) { value = '—'; detail = 'Loading stock'; }
     else if (!stock.active) { value = '—'; detail = 'No items yet'; }
+    else if (stockIncomplete()) { value = 'Incomplete'; detail = `Stock figures are incomplete — ${missingStockInputs()} couldn’t load`; }
     else if (!stock.known) { value = 'Not counted'; detail = 'No verified count yet'; }
     else {
       value = String(stock.below.length);
@@ -609,7 +630,7 @@
       if (counted) parts.push(`last count ${counted}`);
       detail = parts.join(' · ') || 'Counted items are at or above par';
     }
-    return { href: stock.known ? '#inventory?filter=below-par' : '#inventory', icon: 'package', label: 'Stock', value, unit, detail, link: 'View inventory', text: value === 'Not counted' };
+    return { href: stock.known ? '#inventory?filter=below-par' : '#inventory', icon: 'package', label: 'Stock', value, unit, detail, link: 'View inventory', text: value === 'Not counted' || value === 'Incomplete' };
   }
 
   function glanceMarkup() {
@@ -811,8 +832,8 @@
       show: () => { loadShifts(); refreshIntelligence(); startTicking(); },
       hide: stopTicking
     });
-    atlas.onDataLoaded(() => queueRender());
-    atlas.on('data:error', (detail) => { if (detail?.source) state.dataErrors.add(String(detail.source)); atlas.emit('notify:changed', { source: 'home:load-errors' }); queueRender(); });
+    atlas.onDataLoaded(() => { if (!stockIncomplete()) state.dataErrors.delete('Stock figures'); queueRender(); });
+    atlas.on('data:error', (detail) => { if (detail?.source) state.dataErrors.set(String(detail.source), detail); atlas.emit('notify:changed', { source: 'home:load-errors' }); queueRender(); });
     atlas.on('profile:ready', (profile) => {
       if (!profile?.id) return;
       loadShifts(true);
