@@ -17,11 +17,13 @@ test('Quick Actions is the + button that opens the palette in Actions mode', () 
 });
 
 test('every former quick-action entry is a canonical action', () => {
+  // S88: Inventory and Purchasing register their own actions from their modules.
+  const sources = [shell, readFileSync('apps/web/assets/js/atlas-inventory.js', 'utf8'), readFileSync('apps/web/assets/js/atlas-purchasing.js', 'utf8')].join('\n');
   for (const id of ['inventory.item.add', 'purchasing.delivery.receive', 'recipes.new', 'purchasing.supplier.add']) {
-    assert.match(shell, new RegExp(`id:'${id.replace(/\./g, '\\.')}'`), id);
+    assert.match(sources, new RegExp(`id: ?'${id.replace(/\./g, '\\.')}'`), id);
   }
   // No emoji labels (spec §5.8) and no "Log a restock" name (§4.8).
-  assert.doesNotMatch(shell, /📦|🍸|🚚|label:'Log a restock'/);
+  assert.doesNotMatch(sources, /📦|🍸|🚚|label: ?'Log a restock'/);
 });
 
 test('palette rows show a visible keyboard focus and an active row', () => {

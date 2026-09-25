@@ -110,40 +110,33 @@ test('no bootstrap rewrites or Blob-evaluates another script', () => {
   // settings-workspace-bootstrap.js orphan was deleted in the S88 CSS split).
   assert.deepEqual(blobScripts, ['assets/js/team-profiles-bootstrap.js']);
   assert.ok(!/settings-workspace-bootstrap/.test(index + read('apps/web/config.js')), 'the orphan bootstrap stays unloaded');
-  const stockCount = read('apps/web/assets/js/stock-count-bootstrap.js');
-  assert.doesNotMatch(stockCount, /await response\.text\(\)|\.replace\(schedulerSource|sourceURL=/);
+  // S88 Team B: the scanner and stock-count bootstraps were deleted; their
+  // modules load as plain scripts from index.html.
+  for (const file of ['stock-count-bootstrap.js', 'inventory-scanner-bootstrap.js']) {
+    assert.ok(!fs.existsSync(`apps/web/assets/js/${file}`), `${file} stays deleted`);
+    assert.ok(!(index + read('apps/web/config.js')).includes(file), `${file} stays unloaded`);
+  }
 });
 
 // Ratchet ceilings (S88). A new observer or capture listener needs a reason and
 // an entry here; the ceilings may only go down.
 //
-// MutationObservers (was 27 at the S87 audit):
-//   stock-count-l1-verified.js  enhances count forms that stock-count-workspace renders; scoped to
-//                               #inventory-view, ignores Lucide-only mutations (moved out of the bootstrap's
-//                               source rewrite). Replace with a stock-count render event (E3).
-const OBSERVER_ALLOWLIST = {
-  'assets/js/stock-count-l1-verified.js': 1
-};
+// MutationObservers (was 27 at the S87 audit; the stock-count L1 observer went with
+// the S88 Team B count rewrite and the badge observer with Team D): none allowed.
+const OBSERVER_ALLOWLIST = {};
 
 // Capture-phase listeners (was 34 textual + 4 forced by the scanner bootstrap):
 //   atlas-shell.js (1)             the single navigation listener; must see sidebar/tab clicks first.
-//   inventory-scanner.js (4)       full-screen overlay above every workspace; taps must never be swallowed
-//                                  (previously forced by replacing document.addEventListener).
 //   rehearsal-boundary.js (1)      offline write boundary: blocks form submits before any module sees them.
-//   stock-count-workspace.js (4)   count forms render inside #inventory-view next to the legacy inventory
-//                                  handlers (S42-pinned; E3 moves them to bubbling with the page rewrite).
-//   stock-count-l1-verified.js (1) publication controls inside the count workspace.
 const CAPTURE_ALLOWLIST = {
   'assets/js/atlas-shell.js': 1,
-  'assets/js/inventory-scanner.js': 4,
-  'assets/js/rehearsal-boundary.js': 1,
-  'assets/js/stock-count-workspace.js': 4,
-  'assets/js/stock-count-l1-verified.js': 1
+  'assets/js/rehearsal-boundary.js': 1
 };
 // S88 Team D: the Month calendar merged into shifts-workspace.js (bubbling
-// listeners only), the photo gallery shim and the badge observer were retired.
-const OBSERVER_CEILING = 1;
-const CAPTURE_CEILING = 11;
+// listeners only), the photo gallery shim and the badge observer were retired;
+// S88 Team B: the stock-count L1 observer and capture listeners went with the count rewrite.
+const OBSERVER_CEILING = 0;
+const CAPTURE_CEILING = 2;
 
 test('MutationObservers stay within the documented ratchet ceiling', () => {
   const counts = countPerFile(/new\s+(?:window\.)?MutationObserver\s*\(/g);
@@ -209,7 +202,11 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
   // Modules register instead of patching.
   const registrations = {
     'operations.js': /atlas\.registerView\('operations'[\s\S]+?atlas\.home\?\.contribute\?\.\('operations', \{ focusRows, order: 20 \}\)[\s\S]+?atlas\.onDataLoaded/,
-    'home.js': /atlas\.registerHomeSection\('home', render, 0\)[\s\S]+?atlas\.home\.contribute\('inventory'[\s\S]+?atlas\.notify\.contribute\('messages', messageItems\)/,
+    'home.js': /atlas\.registerHomeSection\('home', render, 0\)[\s\S]+?atlas\.notify\.contribute\('messages', messageItems\)/,
+    // S88 Team B: Inventory, Stock count and Purchasing contribute their own Home rows.
+    'atlas-inventory.js': /shell\.home\?\.contribute\?\.\('inventory', \{ focusRows: homeRows, order: 10 \}\)/,
+    'stock-count-workspace.js': /home\?\.contribute\?\.\('stock-count'/,
+    'atlas-purchasing.js': /home\?\.contribute\?\.\('purchasing'/,
     // S88 Team C: Business Intelligence is Reports › Overview; Import Center and
     // Real VÁ Data are the Data page (home.contribute replaces a DOM Home section).
     'data-workspace.js': /registerView\('data'[\s\S]+?registerView\('sprint3-review'[\s\S]+?home\?\.contribute\?\.\('data'/,
@@ -223,12 +220,12 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 });
 
 test('changed scripts carry the S88 cache key', () => {
-  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'home.js', 'reports-overview.js', 'recipes.js', 'data-workspace.js', 'purchase-orders.js', 'shifts-workspace.js',
+  for (const file of ['atlas-shell.js', 'runtime-module-guard.js', 'operations.js', 'home.js', 'reports-overview.js', 'recipes.js', 'data-workspace.js', 'atlas-capture.js', 'atlas-inventory.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'shifts-workspace.js',
     'knowledge-workspace.js', 's38-app-remediation.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s88"></script>`), file);
   }
   const config = read('apps/web/config.js');
-  for (const file of ['inventory-scanner-bootstrap.js', 'stock-count-bootstrap.js', 'team-messages.js', 'marketing-workspace.js',
+  for (const file of ['team-messages.js', 'marketing-workspace.js',
     'team-profiles-bootstrap.js', 'team-profile-photos.js', 'reports-workspace.js', 'system-workspace.js',
     'settings-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s88'`), file);

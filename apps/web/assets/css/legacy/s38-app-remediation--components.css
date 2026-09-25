@@ -18,15 +18,6 @@
   50% { opacity:.94; box-shadow:0 0 0 5px rgba(199,123,61,.10),var(--s38-shadow-raised); }
 }
 
-/* Purchasing */
-.purchasing-workspace-tabs { border-color: var(--s38-line); background: #f0f4fa; }
-.purchasing-workspace-tabs button { cursor: pointer; }
-.purchasing-workspace-tabs button.active {
-  background: var(--s38-blue);
-  color: #fff;
-  box-shadow: 0 5px 14px -10px rgba(53, 103, 232, .9);
-}
-.purchasing-workspace-tabs button:disabled { opacity: .42; cursor: not-allowed; }
 @media (max-width: 480px) {
   .brain-metric-grid,
   .shift-month-summary { grid-template-columns: 1fr; }
@@ -49,5 +40,32 @@
 #home-focus [data-atlas-business-focus]:hover{background:#e7f1ff}
 @media (max-width: 760px) {
   .recipe-foundation-card > summary small,.brain-intelligence-grid > .brain-card > summary small,.knowledge-editor-properties > summary small { display:none; }
+}
+/* Moved from s38-app-remediation--inventory-scanner.css when Inventory was rebuilt (S88
+   Team B); only selectors that still render are kept (the other cards were retired
+   by Teams A, C and D). */
+/* Shared floating-card behaviour */
+:is(
+  .atlas-card
+) {
+  box-shadow: var(--s38-shadow);
+  transition:
+    transform 180ms cubic-bezier(.2, .7, .2, 1),
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+:is(
+  .atlas-card
+):hover {
+  transform: translateY(-3px);
+  box-shadow: var(--s38-shadow-raised);
+  border-color: var(--s38-blue-line);
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(
+    .atlas-card,
+      ) { transition: none; }
 }
 }

@@ -5,9 +5,8 @@
   // DOM mutation (a body-wide MutationObserver) and intercepted scanner taps in
   // the capture phase. Each fix now lives in the module that renders the markup:
   //
-  //   scanner close/stepper, quantity input mode   inventory-scanner.js
-  //   purchasing tabs enabled with their titles    purchase-orders.js
-  //   #suppliers/orders|deliveries sections        index.html (AtlasShell route)
+  //   scanner close/stepper, quantity input mode   atlas-capture.js, stock-count-workspace.js (S88)
+  //   purchasing tabs and sections                 atlas-purchasing.js (S88 routes)
   //   message list role=log, notification copy     team-messages.js
   //   body.s38-team-active                          retired (Messages is an AtlasShell view)
   //   body.s38-month-active                         retired (Month is part of shifts-workspace.js)

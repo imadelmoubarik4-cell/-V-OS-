@@ -151,39 +151,11 @@
     return window.AtlasOperations?.today?.() || null;
   }
 
-  // ---------- attention contributions (interim for Inventory) ----------
+  // ---------- attention contributions ----------
   //
-  // Home renders AtlasShell.home.rows(); Inventory (Team B) owns the
-  // 'inventory' key and replaces these rows by contributing the same key.
+  // Home renders AtlasShell.home.rows(). Inventory ('inventory',
+  // atlas-inventory.js), Stock count ('stock-count'), Purchasing ('purchasing'),
   // Recipes ('recipes') and Data ('data') contribute their own rows.
-
-  function inventoryRows() {
-    if (!dataLoaded()) return [];
-    const facts = stockFacts();
-    if (!facts.active) return [];
-    const rows = [];
-    if (!facts.known) {
-      rows.push({ id: 'not-counted', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: `${plural(facts.active, 'item has', 'items have')} no verified count, so Atlas can’t tell what’s low.`, action: { label: 'Start stock count', actionId: 'inventory.count.start' }, roles: WRITE_ROLES });
-      rows.push({ id: 'not-counted-view', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: 'Low stock shows here once a count is verified.', action: { label: 'View inventory', route: '#inventory' }, roles: ['viewer'] });
-      return rows;
-    }
-    facts.out.slice(0, 3).forEach((item) => {
-      const affected = recipesUsing(item.id);
-      const detail = affected.length
-        ? `${list(affected)} ${affected.length === 1 ? 'is' : 'are'} affected`
-        : `0 of ${number(item.par_level)} ${item.unit || 'units'} left`;
-      rows.push({ id: `out:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: { label: 'Add to order', actionId: 'purchasing.order.new', record: { type: 'inventory_item', id: item.id, label: item.name } }, roles: MANAGER_ROLES });
-      rows.push({ id: `out-view:${item.id}`, severity: 'danger', icon: 'package', title: `${item.name} is out`, detail, action: { label: 'View item', route: `#inventory/item/${encodeURIComponent(item.id)}` }, roles: ['bartender', 'viewer'] });
-    });
-    const low = facts.below.filter((item) => !facts.out.includes(item));
-    if (low.length === 1) {
-      const item = low[0];
-      rows.push({ id: `low:${item.id}`, severity: 'warning', icon: 'package', title: `${item.name} is below par`, detail: `${number(item.verified_quantity ?? item.quantity)} of ${number(item.par_level)} ${item.unit || 'units'} left`, action: { label: 'View items', route: '#inventory?filter=below-par' } });
-    } else if (low.length > 1) {
-      rows.push({ id: 'low', severity: 'warning', icon: 'package', title: `${low.length} items are below par`, detail: list(low.map((item) => item.name), 3), action: { label: 'View items', route: '#inventory?filter=below-par' } });
-    }
-    return rows;
-  }
 
   // Recipes (recipes.js) contributes a row per unservable recipe. When an
   // out-of-stock row above already names the recipe, Home hides the repeat.
@@ -823,7 +795,6 @@
     if (!atlas || state.registered) return;
     state.registered = true;
     atlas.registerHomeSection('home', render, 0);
-    atlas.home.contribute('inventory', { focusRows: inventoryRows, order: 10 });
     // 'data' belongs to the Data workspace (pending approvals); load errors use their own key.
     atlas.home.contribute('load-errors', { focusRows: dataErrorRows, order: 90 });
     atlas.notify.contribute('messages', messageItems);
@@ -868,7 +839,6 @@
     stockFacts,
     stockGlance,
     recipeFacts,
-    inventoryRows,
     briefing: () => briefingFacts().lines,
     rows: rowsForRole,
     messageItems

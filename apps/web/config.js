@@ -97,21 +97,10 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
 // briefing, Atlas AI › Decisions the decision ledger, and Operations
 // (assets/js/operations.js, loaded by index.html) the server checklists.
 
-// Checkpoint B waits until the authenticated application shell is visible.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/inventory-scanner-bootstrap.js?v=20260926-s88',
-  globalName: 'AtlasInventoryScannerBootstrap',
-  dataAttribute: 'atlasInventoryScannerBootstrap',
-}));
-
-// Checkpoint L1 adds mobile, unit-aware stock-count sessions. Count
-// observations and manager verification remain private; only the explicit
-// manager publication boundary may create controlled count adjustments.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/stock-count-bootstrap.js?v=20260926-s88',
-  globalName: 'AtlasStockCountBootstrap',
-  dataAttribute: 'atlasStockCountBootstrap',
-}));
+// Inventory, stock count, Purchasing and the shared Visual Inventory capture
+// (atlas-inventory.js, stock-count-workspace.js, atlas-purchasing.js,
+// atlas-capture.js) load with index.html. Recognition never changes stock; a
+// count changes stock only after a manager verifies it.
 
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({

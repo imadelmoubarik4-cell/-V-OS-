@@ -62,12 +62,12 @@ function browser({ items, recipes = [], purchaseOrders = [] }) {
     'apps/web/assets/js/reports-overview.js',
   ]) vm.runInContext(read(file), context, { filename: file });
 
-  // purchase-orders.js needs the Purchasing DOM before it registers, so run
-  // its shipped openItemIds expression against the same orders.
-  const source = read('apps/web/assets/js/purchase-orders.js');
+  // atlas-purchasing.js needs the shell before it registers, so run its
+  // shipped openItemIds expression against the same orders.
+  const source = read('apps/web/assets/js/atlas-purchasing.js');
   const expression = source.match(/openItemIds: \(\) => (.+)\n/)?.[1];
-  assert.ok(expression, 'purchase-orders.js still exposes openItemIds');
-  context.orders = purchaseOrders;
+  assert.ok(expression, 'atlas-purchasing.js still exposes openItemIds');
+  context.state = { orders: purchaseOrders };
   context.AtlasPurchaseOrders = vm.runInContext(`({ openItemIds: () => ${expression} })`, context);
   return context;
 }
@@ -123,6 +123,7 @@ const PURCHASE_ORDERS = [
   { id: 'po-2', status: 'draft', lines: [{ item_id: 'vodka', quantity: 6 }] },
   { id: 'po-3', status: 'received', lines: [{ item_id: 'gin', quantity: 6 }] },
   { id: 'po-4', status: 'cancelled', lines: [{ item_id: 'lime', quantity: 6 }] },
+  { id: 'po-5', status: 'partially_received', lines: [{ item_id: 'tonic', quantity: 24 }] },
 ];
 
 const ingredient = (itemId, quantity, unit, itemName = itemId) => ({ item_id: itemId, item_name: itemName, quantity, unit });

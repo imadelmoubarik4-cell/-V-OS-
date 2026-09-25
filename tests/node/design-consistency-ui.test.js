@@ -4,17 +4,17 @@ import test from 'node:test';
 import { legacyCss, linkPosition, layerOf } from './helpers/legacy-css.js';
 
 const app = readFileSync('apps/web/index.html', 'utf8');
-const inventoryCss = legacyCss('inventory-polish');
-const homeCss = legacyCss('home-polish');
+const inventoryCss = readFileSync('apps/web/assets/css/inventory.css', 'utf8');
 const recipesCss = readFileSync('apps/web/assets/css/recipes.css', 'utf8');
-const purchasingCss = legacyCss('purchasing-polish');
+const purchasingCss = readFileSync('apps/web/assets/css/purchasing.css', 'utf8');
+const inventory = readFileSync('apps/web/assets/js/atlas-inventory.js', 'utf8');
+const purchasing = readFileSync('apps/web/assets/js/atlas-purchasing.js', 'utf8');
 const shellCss = readFileSync('apps/web/assets/css/atlas-shell.css', 'utf8');
 const shellJs = readFileSync('apps/web/assets/js/atlas-shell.js', 'utf8');
 const chrome = readFileSync('apps/web/assets/js/atlas-chrome.js', 'utf8');
 const recipes = readFileSync('apps/web/assets/js/recipes.js', 'utf8');
-const scanner = readFileSync('apps/web/assets/js/inventory-scanner.js', 'utf8');
+const capture = readFileSync('apps/web/assets/js/atlas-capture.js', 'utf8');
 const stockCount = readFileSync('apps/web/assets/js/stock-count-workspace.js', 'utf8');
-const itemMaster = readFileSync('apps/web/assets/js/item-master-workspace.js', 'utf8');
 const reportsCss = readFileSync('apps/web/assets/css/reports-workspace.css', 'utf8');
 const settingsCss = readFileSync('apps/web/assets/css/settings-workspace.css', 'utf8');
 // S88: every polish-pass2 fragment has moved into a module sheet; none may come back.
@@ -27,15 +27,13 @@ const iconSources = [
   readFileSync('apps/web/assets/js/system-workspace.js', 'utf8'),
 ].join('\n');
 
-test('Inventory uses one compact section rail for every approved workspace', () => {
-  assert.match(app, /id="inventory-section-header"/);
-  for (const section of ['items', 'stock-count', 'item-master', 'movements', 'waste', 'imports']) {
-    assert.match(app, new RegExp(`data-inventory-section="${section}"`));
-  }
-  assert.match(inventoryCss, /\.inventory-workspace-tabs/);
-  assert.match(app, /syncInventorySectionHeader\(view\)/);
-  // S88: Inventory registers with AtlasShell as a grid-displayed view.
-  assert.match(app, /\['inventory', \{ display: 'grid'/);
+test('Inventory is one module-owned page with in-page tabs (S88 §7.5)', () => {
+  // The inventory markup lives in assets/js/atlas-inventory.js; index.html keeps an empty root.
+  assert.match(app, /<div id="inventory-view" style="display:none;"><\/div>/);
+  assert.doesNotMatch(app, /id="inventory-section-header"|data-inventory-section=|syncInventorySectionHeader/);
+  for (const view of ['inventory', 'movements', 'waste']) assert.match(inventory, new RegExp(`shell\\.registerView\\('${view}'`));
+  assert.match(inventory, /shell\.pageHead\(\{ title: 'Inventory'/);
+  assert.match(inventoryCss, /^@layer atlas\.modules \{/m);
   assert.match(app, /if \(root\) root\.style\.display = entry\.display;/);
 });
 
@@ -69,13 +67,12 @@ test('workspace switching owns visibility, inventory state and scroll reset cent
   assert.doesNotMatch(app, /brain-view|system-view|restoreAtlasWorkspaceInterior/);
   assert.match(app, /window\.scrollTo\(\{ top: 0, left: 0, behavior: 'auto' \}\)/);
   assert.match(app, /document\.body\.dataset\.atlasView = view/);
-  assert.match(app, /window\.AtlasStockCounts\?\.close\?\.\(\)/);
-  assert.match(app, /window\.AtlasItemMaster\?\.close\?\.\(\)/);
   // S88: one navigation path. AtlasShell routes every sidebar click once and
   // the base shell's chrome is its layout hook; no per-button double binding.
   assert.match(app, /window\.AtlasShell\.setLayout\(layoutAtlasView\)/);
   assert.match(app, /function layoutAtlasView\(view, entry, context\)/);
-  assert.match(app, /if \(context\.source === 'nav' \|\| view !== 'inventory'\)/);
+  // Leaving Inventory pauses an open stock count (atlas-inventory.js onHide).
+  assert.match(inventory, /function onHide\(\) \{[\s\S]*?root\.AtlasStockCounts\?\.leave\?\.\(\);/);
   assert.doesNotMatch(app, /atlasBaseViewBound/);
 });
 
@@ -84,7 +81,8 @@ test('shared polish removes duplicate Home metrics and normalizes workspace hier
   assert.doesNotMatch(app, /class="stat-grid"|checkpoint-a-home-prompt/);
   assert.doesNotMatch(homeJs, /stat-grid|metric-card|checkpoint-a/);
   // S88: the workspace page-title normalization is part of atlas-components.css.
-  assert.match(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.item-master-hero h1,[\s\S]*\.stock-count-hero h1/);
+  // S88: the retired workspace heroes (Item Master, Stock count, Team) have no rules left.
+  assert.doesNotMatch(readFileSync('apps/web/assets/css/atlas-components.css', 'utf8'), /\.item-master-hero h1|\.stock-count-hero h1/);
   // S88: Team was rebuilt on the shared table; its retired card grid rules are gone.
   assert.doesNotMatch(finalPolishCss, /\.team-profile-card-media/);
   // S88 Recipes (spec §7.7): one page header, no hero.
@@ -119,50 +117,35 @@ test('Service Mode is retired; Home and the phone tab bar are the service surfac
 test('Recipes and Purchasing use clean, honest in-page controls', () => {
   assert.match(recipesCss, /@layer atlas\.modules \{/);
   assert.match(recipes, /<div class="atlas-segmented" role="group" aria-label="Availability">/);
-  assert.match(app, /class="purchasing-workspace-tabs"/);
-  assert.match(app, /id="purchase-orders-tab" disabled/);
-  assert.match(app, /id="purchase-deliveries-tab" disabled/);
-  assert.match(readFileSync('apps/web/assets/js/purchase-orders.js', 'utf8'), /openSection\('orders'\)/);
-  assert.match(readFileSync('apps/web/assets/js/purchase-orders.js', 'utf8'), /openSection\('deliveries'\)/);
-  assert.match(app, /id="purchasing-intelligence-title"/);
-  assert.match(app, /Spend appears only when a costed restock is recorded/);
-  assert.match(purchasingCss, /\.purchasing-intelligence \{[^}]*var\(--atlas-home-accent-soft/s);
+  // S88 §7.8: Purchasing is module-owned (atlas-purchasing.js) with Orders, Deliveries and Suppliers tabs.
+  assert.match(app, /<div id="suppliers-view" style="display:none;"><\/div>/);
+  for (const tab of ['Orders', 'Deliveries', 'Suppliers']) assert.match(purchasing, new RegExp(`'${tab}'`));
+  assert.match(purchasing, /shell\.registerView\('suppliers'/);
+  assert.match(purchasingCss, /^@layer atlas\.modules \{/m);
 });
 
-test('Inventory filters use the approved primary and contextual category model', () => {
-  for (const label of [
-    'Spirits', 'Wine', 'Beer', 'Mixers', 'Syrups', 'Bitters', 'Fresh Fruit',
-    'Fresh Herbs', 'Garnish', 'Bar Ingredients', 'Consumables', 'Bar Equipment', 'Coffee',
-  ]) {
-    assert.match(app, new RegExp(`'${label.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&')}'`));
+test('Inventory filters are chips over loaded records, with honest unknowns', () => {
+  for (const label of ['Below par', 'Not counted', 'Out or almost out']) assert.match(inventory, new RegExp(`'${label}'`));
+  assert.match(inventory, /truth\(\)\?\.belowPar\(item\)/);
+  assert.match(inventory, /if \(!truth\(\)\?\.known\(item\)\) return \{ key: 'not_counted', label: 'Not counted'/);
+  assert.match(inventory, /manager \? '<th data-priority="2">Supplier<\/th>' : ''/);
+  assert.doesNotMatch(inventory, /Flóki Single Malt barely moves|45,000 ISK in stock/);
+  // The owner's primary and contextual category model (S38 decisions).
+  for (const label of ['Spirits', 'Wine', 'Beer', 'Mixers', 'Syrups', 'Bitters', 'Fresh fruit', 'Fresh herbs', 'Garnish', 'Bar ingredients', 'Consumables', 'Bar equipment', 'Coffee']) {
+    assert.match(inventory, new RegExp(`'${label}'\\]`));
   }
-  assert.match(app, /function inventoryGroup\(item\)/);
-  assert.match(app, /function inventorySubcategory\(item/);
-  assert.match(app, /if \(group === 'spirits'\)[\s\S]*if \(stored\) return stored\.replace/);
-  assert.match(app, /if \(group === 'beer'\)[\s\S]*if \(stored\) return stored\.replace/);
-  assert.match(app, /\/whisk\(\?:e\)\?y\|bourbon\|scotch\|rye/);
-  assert.match(app, /\/cider\/\.test\(name\).*?!\/beer\/\.test\(category\)/);
-  assert.match(app, /id="subcategory-tabs"/);
-  assert.match(app, /result\.set\(label, \(result\.get\(label\) \|\| 0\) \+ 1\)/);
+  assert.match(inventory, /function inventoryGroup\(item\)/);
+  assert.match(inventory, /function inventorySubcategory\(item, group = inventoryGroup\(item\)\)/);
+  assert.match(inventory, /const WINE_TYPES = \['Red', 'White', 'Rosé', 'Sparkling'\];/);
 });
 
-test('Inventory insight and table values remain grounded in loaded records', () => {
-  assert.match(app, /function renderInventoryIntelligence\(\)/);
-  assert.match(app, /currentItems\.filter\(item => window\.AtlasStockTruth\.belowPar\(item\)\)/);
-  assert.match(app, /item\.cost_price/);
-  assert.match(app, /item\.supplier \|\| '—'/);
-  assert.match(app, /<th data-commercial-only>Supplier<\/th>/);
-  assert.match(app, /<th data-commercial-only class="numeric">Cost<\/th>/);
-  assert.doesNotMatch(app, /Flóki Single Malt barely moves|45,000 ISK in stock/);
-});
-
-test('scan, add, stock count and Item Master share the Inventory header safely', () => {
-  assert.match(scanner, /document\.querySelector\('\.inventory-section-actions'\)/);
-  assert.match(stockCount, /const actions = document\.querySelector\('\.inventory-section-actions'\)/);
-  assert.match(itemMaster, /document\.body\.classList\.add\('item-master-active'\)/);
-  assert.match(itemMaster, /document\.querySelectorAll\('\[data-item-master-l2\]'\)/);
-  assert.match(app, /requireCommercialManager\('Direct inventory adjustment'\)/);
-  assert.match(app, /requireCommercialManager\('Inventory master editing'\)/);
+test('scan, add and stock count share one capture module and the shell top bar', () => {
+  assert.match(capture, /root\.AtlasCapture = /);
+  assert.match(inventory, /root\.AtlasCapture/);
+  assert.match(stockCount, /root\.AtlasCapture/);
+  assert.match(stockCount, /document\.body\.classList\.add\('stock-count-active'\)/);
+  assert.match(inventory, /AtlasChrome\?\.setTopBar\?\./);
+  assert.match(app, /requireCommercialManager\(action = 'This action'\)/);
 });
 
 test('Reports and Settings stay inside the shared responsive content rail', () => {

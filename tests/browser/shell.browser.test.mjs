@@ -106,10 +106,12 @@ test('deep links open their destination at sign-in: #reports/stock, #inventory, 
       await page.waitForFunction(() => window.AtlasReports?.section?.() === 'inventory');
     }],
     ['#inventory', 'inventory', async (page) => {
-      assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('inventory-view')).display), 'grid');
+      // S88 §7.5: Inventory is a module page (atlas-inventory.js).
+      assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('inventory-view')).display), 'block');
+      await page.waitForSelector('#inventory-view [data-inv-search]');
     }],
     ['#purchasing/deliveries', 'suppliers', async (page) => {
-      await page.waitForFunction(() => document.getElementById('purchase-deliveries-tab')?.classList.contains('active'));
+      await page.waitForFunction(() => document.querySelector('#suppliers-view .atlas-tabs a[aria-current="page"]')?.getAttribute('href') === '#purchasing/deliveries');
     }],
     ['#suppliers', 'suppliers', async () => {}]
   ]) {
@@ -196,7 +198,8 @@ test('each navigation renders its view once and Home composes its sections in or
 test('no module patches the shell in the running app and runtime modules load once', { skip }, async () => {
   const { page, record, close } = await launch();
   try {
-    await page.waitForFunction(() => Boolean(window.AtlasInventoryScanner && window.AtlasStockCounts && window.AtlasSettings));
+    // S88 Team B: the scanner is the shared capture module, loaded with the page.
+    await page.waitForFunction(() => Boolean(window.AtlasCapture && window.AtlasStockCounts && window.AtlasSettings));
     const report = await page.evaluate(() => {
       const scripts = [...document.querySelectorAll('script[src]')].map((script) => script.getAttribute('src').split('?')[0]).filter((src) => src.startsWith('assets/'));
       const duplicates = scripts.filter((src, index) => scripts.indexOf(src) !== index);
@@ -213,10 +216,11 @@ test('no module patches the shell in the running app and runtime modules load on
     assert.ok(report.addEventListenerNative, 'document.addEventListener is the browser original');
     assert.ok(report.mutationObserverNative, 'window.MutationObserver is the browser original');
     assert.ok(report.stockCountOpenNative, 'AtlasStockCounts.open is not wrapped');
-    // The Stock count route opens the count workspace through the shell.
+    // The Stock count route opens the Counts tab of Inventory through the shell.
     await page.evaluate(() => window.AtlasShell.navigate('#inventory/counts'));
-    await page.waitForFunction(() => document.body.classList.contains('stock-count-active'));
+    await page.waitForSelector('#inventory-view [data-count-start]');
     assert.equal(await page.evaluate(() => location.hash), '#inventory/counts');
+    assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'inventory');
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });
@@ -245,7 +249,8 @@ test('the bell opens the notifications feed; canonical actions run the existing 
     await page.click('#atlas-quick-actions');
     await page.fill('#atlas-palette-input', 'add item');
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => getComputedStyle(document.getElementById('item-overlay')).display !== 'none');
+    // S88: Add item is a sheet that creates through atlas-item-master create-item.
+    await page.waitForSelector('[data-inv-item-form]');
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });

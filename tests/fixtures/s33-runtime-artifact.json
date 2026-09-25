@@ -83,8 +83,8 @@
         },
         {
           "path": "functions/_shared/atlas-domain.mjs",
-          "source_sha256": "4af34adad4d75576571f7d5f8269167fb831306d9ed679e2b6be0c248a641d57",
-          "candidate_sha256": "179d5bf57c64aa49828f95b66d3039fd01030630c62f14b9810f492b01be7f9c"
+          "source_sha256": "67253b04669cada29b75254501f88e77ebbc3bd677e2ea218e6378c954d446f6",
+          "candidate_sha256": "6f1e0e8ff4beb80dd2d9237ce9cf8bfb5b99e3fbd6ba06658cb632ff8f073da9"
         },
         {
           "path": "functions/_shared/stock-provenance.mjs",

@@ -171,14 +171,14 @@ export function recipeCost(recipe, items, ingredients) {
 }
 
 // ---------------------------------------------------------------------------
-// Purchasing (operations.js orderSuggestions, purchase-orders.js openItemIds)
+// Purchasing (operations.js orderSuggestions, atlas-purchasing.js openItemIds)
 // ---------------------------------------------------------------------------
 
-// purchase-orders.js AtlasPurchaseOrders.openItemIds: items on a placed, not
-// yet received order (status 'ordered').
+// atlas-purchasing.js AtlasPurchaseOrders.openItemIds: items on a placed order
+// that hasn't fully arrived (status 'ordered' or 'partially_received').
 export function openPurchaseOrderItemIds(purchaseOrders) {
   return new Set(asArray(purchaseOrders)
-    .filter((order) => order?.status === "ordered")
+    .filter((order) => order?.status === "ordered" || order?.status === "partially_received")
     .flatMap((order) => asArray(order.lines).map((line) => line?.item_id))
     .filter(Boolean));
 }

@@ -9,11 +9,11 @@
     "inlineAndInjectedStyleBlocks": 4
   },
   "ceilings": {
-    "important": 69,
-    "crossFileDuplicateSelectors": 65,
-    "subElevenPxFontSizes": 63,
-    "stylesheetFiles": 46,
-    "legacyFragmentFiles": 26,
+    "important": 18,
+    "crossFileDuplicateSelectors": 21,
+    "subElevenPxFontSizes": 1,
+    "stylesheetFiles": 26,
+    "legacyFragmentFiles": 7,
     "inlineAndInjectedStyleBlocks": 1
   }
 }

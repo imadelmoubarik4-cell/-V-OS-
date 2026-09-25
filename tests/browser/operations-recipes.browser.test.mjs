@@ -23,10 +23,13 @@ function launch(options = {}) {
     ...options,
     fixtures: {
       tables: { inventory_items: inventory, recipes, suppliers: [], recipe_categories: [] },
-      functions: { ...emptyFunctions(), 'atlas-settings': (options.settings || venueClockBackend()).handler, 'atlas-stock-counts': { counts: { verified_balances: [balance('pinot', 4), balance('lime', 5), balance('gin', 2)] } } }
+      functions: { ...emptyFunctions(), 'atlas-settings': (options.settings || venueClockBackend()).handler, 'atlas-stock-counts': { counts: { verified_balances: [balance('pinot', 4), balance('lime', 5), balance('gin', 2)] } }, ...(options.functions || {}) }
     }
   });
 }
+
+// S88 Team B: Inventory rows (assets/js/atlas-inventory.js).
+const inventoryRows = (page) => page.$$eval('#inventory-view tbody tr[data-inv-row] .cell-primary', (cells) => cells.map((cell) => cell.textContent));
 
 test('Home Stock opens Inventory filtered to items below par', { skip }, async () => {
   const { page, close } = await launch();
@@ -36,11 +39,11 @@ test('Home Stock opens Inventory filtered to items below par', { skip }, async (
     await page.click('.home-glance__item[href="#inventory?filter=below-par"]');
     await page.waitForTimeout(400);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'inventory');
-    const rows = await page.$$eval('#items-body tr td.name span:first-child', (cells) => cells.map((cell) => cell.textContent));
-    assert.deepEqual(rows, ['Angelo Pinot Grigio'], 'Gin is exactly at par and is not listed');
-    await page.click('[data-inventory-below-par-chip]');
+    assert.deepEqual(await inventoryRows(page), ['Angelo Pinot Grigio'], 'Gin is exactly at par and is not listed');
+    // The filter is a chip; clearing it shows every item.
+    await page.click('[data-inv-clear="status"]');
     await page.waitForTimeout(150);
-    assert.equal(await page.$$eval('#items-body tr', (list) => list.length), 3, 'clearing the chip shows every item');
+    assert.equal((await inventoryRows(page)).length, 3, 'clearing the chip shows every item');
   } finally { await close(); }
 });
 
@@ -113,16 +116,28 @@ test('an item on a placed purchase order is suggested as ordered and not counted
   } finally { await close(); }
 });
 
-test('Inventory ✕ deactivates the item instead of deleting its history', { skip }, async () => {
-  const { page, record, close } = await launch();
+test('Inventory deactivates an item instead of deleting its history', { skip }, async () => {
+  // S88: deactivation goes through atlas-item-master set_item_active after the
+  // dependency check (tests/browser/inventory.browser.test.mjs covers the dialog).
+  const calls = [];
+  const itemMaster = (entry) => {
+    calls.push(entry);
+    if (entry.action === 'item_dependencies') return { dependencies: { item: { id: 'pinot', updated_at: '2026-09-20T10:00:00Z' }, blockers: [], warnings: [], can_deactivate: true } };
+    return { result: { item_id: 'pinot', active: false, changed: true } };
+  };
+  const { page, record, close } = await launch({ functions: { 'atlas-item-master': itemMaster } });
   try {
     await openView(page, 'inventory');
-    await page.click('#items-body .delete-btn[data-id="pinot"]');
+    await page.click('[data-inv-row-menu="pinot"]');
+    await page.click('[data-row-action="deactivate"]');
+    await page.waitForSelector('[data-activation-confirm]:not([disabled])');
+    await page.click('[data-activation-confirm]');
     await page.waitForTimeout(300);
-    const write = record.requests.find((entry) => entry.path.endsWith('/rest/v1/inventory_items') && entry.method !== 'GET');
-    assert.equal(write?.method, 'PATCH');
-    assert.deepEqual(write?.body, { active: false });
-    assert.equal(await page.getAttribute('#items-body .qty-input[data-id="lime"]', 'aria-label'), 'Quantity of Lime juice');
+    const write = calls.find((entry) => entry.action === 'set_item_active');
+    assert.equal(write?.body?.item_id, 'pinot');
+    assert.equal(write?.body?.active, false);
+    assert.equal(record.requests.filter((entry) => entry.path.endsWith('/rest/v1/inventory_items') && entry.method !== 'GET').length, 0, 'no delete or direct update');
+    assert.equal(await page.getAttribute('[data-inv-select="lime"]', 'aria-label'), 'Select Lime juice');
   } finally { await close(); }
 });
 

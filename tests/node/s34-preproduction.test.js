@@ -30,14 +30,15 @@ test('runtime module guard preserves Team destinations when runtime config is re
 
 test('inventory, purchasing, and close-control regressions stay wired', () => {
   assert.match(app, /await loadAll\(\);/);
-  assert.match(app, /item\?\.subcategory/);
-  assert.match(app, /id="purchase-deliveries-tab"/);
-  const purchasing = read('apps/web/assets/js/purchase-orders.js');
-  assert.match(purchasing, /openSection\('orders'\)/);
-  assert.match(purchasing, /openSection\('deliveries'\)/);
+  // S88: Purchasing (atlas-purchasing.js) routes its tabs; Inventory sheets close via data-modal-close.
+  const purchasing = read('apps/web/assets/js/atlas-purchasing.js');
+  assert.match(purchasing, /'#purchasing\/orders'/);
+  assert.match(purchasing, /'#purchasing\/deliveries'/);
   for (const source of [
     read('apps/web/assets/js/recipes.js'),
     read('apps/web/assets/js/stock-count-workspace.js'),
+    read('apps/web/assets/js/atlas-inventory.js'),
+    purchasing,
     read('apps/web/assets/js/shifts-workspace.js'),
     read('apps/web/assets/js/knowledge-workspace.js')
   ]) assert.match(source, /data-[a-z-]*close|data-close-[a-z-]+/);

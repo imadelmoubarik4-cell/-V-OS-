@@ -8,29 +8,38 @@ const read = (path) => fs.readFileSync(new URL(path, ROOT), 'utf8');
 const NOW = Date.parse('2026-09-24T12:00:00Z');
 
 // Runs the real Home module (assets/js/home.js) against the real stock-truth
-// projection. Home reads live stock through AtlasHome.stockFacts/stockGlance and
-// its Inventory attention rows (S88 Team A; formerly renderHomeCore/renderDashboard).
-function renderHome(rawItems, balances = [], { role = 'admin' } = {}) {
+// projection. Home reads live stock through AtlasHome.stockFacts/stockGlance
+// (S88 Team A); the Inventory attention rows are contributed by the Inventory
+// module (atlas-inventory.js, key 'inventory', S88 Team B).
+// A shell stub: named methods answer; every other member is a harmless no-op.
+function stubShell(own) {
+  const noop = new Proxy(function () {}, { get: (target, key) => (key === Symbol.toPrimitive ? undefined : noop), apply: () => noop });
+  return new Proxy(own, { get: (target, key) => (key in target ? target[key] : noop) });
+}
+function renderHome(rawItems, balances = [], { role = 'admin', recipes = [] } = {}) {
   const context = {
     Date, Number, Math, Map, Set, String, Array, Object, JSON, console, Intl,
     document: { readyState: 'loading', addEventListener() {}, getElementById: () => null, querySelectorAll: () => [] },
-    AtlasShell: { dataLoadedAt: () => NOW, profile: () => ({ id: 'u1', role }) },
+    AtlasShell: stubShell({ dataLoadedAt: () => NOW, profile: () => ({ id: 'u1', role }) }),
+    AtlasData: { items: () => context.items, recipes: () => recipes, status: () => ({ items: 'ok' }) },
     recipes: []
   };
   context.window = context;
   vm.createContext(context);
   vm.runInContext(read('apps/web/assets/js/atlas-stock-truth.js'), context);
   vm.runInContext(read('apps/web/assets/js/home.js'), context);
+  vm.runInContext(read('apps/web/assets/js/atlas-inventory.js'), context);
   context.items = context.AtlasStockTruth.project(rawItems, balances, [], NOW);
   const facts = context.AtlasHome.stockFacts();
   const glance = context.AtlasHome.stockGlance(true);
-  const rows = context.AtlasHome.inventoryRows();
+  const rows = context.AtlasInventory.homeRows();
   return {
     items: String(facts.active),
     low: glance.value,
     lowNote: glance.detail,
     unknown: facts.unknown,
-    rows: rows.map((row) => row.title).join(' | ')
+    rows: rows.map((row) => row.title).join(' | '),
+    details: rows.map((row) => row.detail).join(' | ')
   };
 }
 
@@ -144,4 +153,18 @@ test('Inventory records keep inactive rows; only live-stock surfaces filter them
   assert.match(html, /items = window\.AtlasStockTruth\.project\(data \|\| \[\], balances, inventoryMovements\);/);
   assert.match(read('apps/web/assets/js/home.js'), /const active = items\(\)\.filter\(\(item\) => item\.active !== false\);/);
   assert.doesNotMatch(html, /update\(\{\s*active:\s*true/);
+  // S88: the Inventory page (atlas-inventory.js) lists inactive rows under the
+  // Inactive filter, and (de)activation goes through set_item_active only.
+  const inventory = read('apps/web/assets/js/atlas-inventory.js');
+  assert.match(inventory, /if \(item\.active === false\) return \{ key: 'inactive', label: 'Inactive'/);
+  assert.match(inventory, /itemMaster\('set_item_active'/);
+  assert.doesNotMatch(inventory, /update\(\{\s*active:/);
+});
+
+test('S88 Team B: an out-of-stock row names the recipes it stops', () => {
+  const rows = [activeCounted('lime', 0, 4), activeCounted('gin', 5, 2)];
+  const recipes = [{ id: 'r1', name: 'Gimlet', active: true, recipe_ingredients: [{ item_id: 'lime' }, { item_id: 'gin' }] }];
+  const home = renderHome(rows, [verified('lime', 0), verified('gin', 5)], { recipes });
+  assert.match(home.rows, /lime is out/);
+  assert.match(home.details, /Gimlet is affected/);
 });

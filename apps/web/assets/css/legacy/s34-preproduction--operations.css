@@ -4,7 +4,7 @@
  * Kept in its original cascade position. */
 @layer atlas.legacy {
 /* Shared cards and state surfaces. */
-:where(.recipe-gallery-card,.purchase-order-card,.knowledge-article-card,
+:where(.recipe-gallery-card,.knowledge-article-card,
   .shift-card,.team-message){
   border-radius:var(--atlas-card-radius);
   transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
