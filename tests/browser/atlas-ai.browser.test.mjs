@@ -775,6 +775,7 @@ test('live voice open elsewhere: "Continue here" moves the call to this device',
     assert.match(panel, /Continue here[\s\S]*Try again/);
     assert.doesNotMatch(panel, /raw quota text|concurrent|voice_quota/);
     assert.deepEqual(calls(backend, 'voice-session').map((entry) => entry.body.takeover ?? null), [null], 'the first start never takes over');
+    assert.equal(calls(backend, 'voice-session')[0].body.heartbeat, true, 'this client says it renews the lease, so the server may use the 2-minute lease');
 
     await page.click('[data-ai-live-takeover]');
     await page.waitForSelector('.voice[data-state="listening"]');
@@ -847,6 +848,33 @@ test('a connected call renews its lease every 45 s; a call moved to another devi
     await page.click('[data-ai-live-end]');
     await until(async () => { await advanceTimers(page, 100); return (await page.locator('.voice').count()) === 0; }, { message: 'the panel to close' });
     assert.equal(calls(backend, 'voice-end').length, 0, 'a replaced session is not ended again');
+  } finally { await close(); }
+});
+
+test('a device that lost the call saves its last transcript lines, then stops as moved', { skip }, async () => {
+  let replaced = false;
+  const { page, context, close, backend } = await openAi({
+    initScript: fakeMediaInit,
+    hash: `#ai/c/${IDS.convNegroni}`,
+    controlTimers: true,
+    backend: { overrides: { 'voice-append': (entry) => (replaced ? { messages: entry.body.turns.map((turn, index) => ({ id: `r-${index}`, created: true })), voice_replaced: true } : undefined) } }
+  });
+  try {
+    await context.route('https://api.openai.com/**', (route) => (route.request().method() === 'OPTIONS'
+      ? route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST' } })
+      : route.fulfill({ status: 201, contentType: 'application/sdp', headers: { 'access-control-allow-origin': '*' }, body: 'v=0 harness-answer' })));
+    await page.click('[data-ai-live]');
+    await until(async () => { await advanceTimers(page, 250); return page.locator('.voice[data-state="listening"]').count(); }, { message: 'the call to connect' });
+    replaced = true;
+    await page.evaluate(() => window.__dc.serverEvent({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u8', transcript: 'Six limes left' }));
+    await jumpTimers(page, 1000);
+    await page.waitForSelector('.voice[data-state="replaced"]');
+    const appends = calls(backend, 'voice-append').map((entry) => entry.body);
+    assert.deepEqual(appends.flatMap((body) => body.turns.map((turn) => turn.text)), ['Six limes left'], 'the last line was saved');
+    assert.match(await page.textContent('.voice'), /Live voice moved to another device\./);
+    await jumpTimers(page, 90000);
+    assert.equal(calls(backend, 'voice-heartbeat').length, 0, 'no heartbeat after the handoff');
+    assert.equal(calls(backend, 'voice-append').length, 1);
   } finally { await close(); }
 });
 

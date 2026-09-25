@@ -47,11 +47,13 @@ If the Supabase GitHub integration is set to deploy migrations to production whe
 
 `20260930092000_s91_voice_lease_and_takeover.sql` is the last file of batch A. Apply it, then deploy
 `atlas-ai`, then the web app (`atlas-ai.js` / `atlas-ai-voice.js` `?v=20260926-s91b`), close together:
-the migration shortens the live voice idle lease to 2 minutes and the new web app renews it with
-`voice-heartbeat` every 45 seconds. The older web app has no heartbeat, so between the migration and
-the web deploy a live call that is silent for 2 minutes (no tool call or transcript) is ended by the
-server. The migration keeps the old `atlas_ai_voice_session_start` parameters first with the same
-defaults, so the currently deployed `atlas-ai` keeps working until it is redeployed.
+the new web app sends `heartbeat: true` on `voice-session`, gets a 2-minute idle lease and renews it
+with `voice-heartbeat` every 45 seconds. Without that flag (the currently deployed atlas-ai, or a tab
+still running an older web app) the lease stays 10 minutes as before, so an open older tab is not cut
+off. The migration keeps the old `atlas_ai_voice_session_start` parameters first with the same
+defaults, so the currently deployed `atlas-ai` keeps working until it is redeployed. The web app's
+`atlas-ai-voice.js` changed again in S91c (the heartbeat flag and saving a replaced device's last
+lines): its `index.html` key must move to `?v=20260926-s91c`.
 `scripts/verify_s91_voice_preview.sql` (run by `verify_s90_workflow_integrity_previews.sh`) proves the
 lease, the heartbeat, the same-user takeover and that quotas still count.
 

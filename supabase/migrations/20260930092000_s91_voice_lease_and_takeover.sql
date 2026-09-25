@@ -6,21 +6,27 @@
 -- during the cross-device sign-out bug, or iOS dropping the page without
 -- pagehide), so the 10-minute idle lease kept the concurrency slot.
 --
--- * Lease: a session is reserved with a short idle lease (default 2 minutes,
---   p_lease_seconds, 30..600) that the live client renews with a lightweight
---   heartbeat about every 45 seconds; tool calls and transcript appends renew
---   it too. A dead session frees its slot within the lease. The hard cap
---   (60 minutes, the provider's session limit) is unchanged.
+-- * Lease: a session is reserved with an idle lease of p_lease_seconds
+--   (30..600). atlas-ai asks for 2 minutes only when the client says it sends
+--   heartbeats (the S91 web app, about every 45 seconds); without that the
+--   default stays 10 minutes, so an older open tab that never heartbeats is
+--   not cut off after 2 silent minutes (S91 review P2-A). The first heartbeat
+--   also shortens a 10-minute session to 2 minutes. Tool calls and transcript
+--   appends renew the lease too. A dead heartbeating session frees its slot
+--   within 2 minutes. Heartbeats are limited to one per 15 seconds per
+--   session (review P3-5). The hard cap (60 minutes) is unchanged.
 -- * Takeover: atlas_ai_voice_session_start(..., p_takeover => true) ends the
 --   SAME user's other live voice sessions (end_reason 'replaced', replaced_by
 --   the new session, one audit row each in ai_voice_session_events) and
 --   reserves the new one under the same per-user lock and transaction. Other
 --   users' sessions are never touched. Quotas still apply to the new session;
 --   if one refuses it, nothing is ended.
--- * A replaced session answers tool, append, heartbeat and activate with
+-- * A replaced session answers tool, heartbeat and activate with
 --   'voice_session_replaced: …' (SQLSTATE 55000 → 409 voice_session_replaced)
---   so that device can stop cleanly and say where the call went. 'end' stays
---   idempotent.
+--   so that device can stop cleanly and say where the call went. Its final
+--   transcript append is still saved for 5 minutes after the handoff (the
+--   result says replaced: true; review P3-3), later appends are refused as
+--   replaced. 'end' stays idempotent.
 --
 -- Additive. Replaces atlas_ai_voice_session_start (old 5-argument signature
 -- dropped; the new one keeps those five parameters first with the same
@@ -34,8 +40,9 @@ set statement_timeout = '2min';
 -- Columns -------------------------------------------------------------------------
 
 alter table atlas_private.ai_voice_sessions
-  add column if not exists lease_seconds integer not null default 120,
+  add column if not exists lease_seconds integer not null default 600,
   add column if not exists heartbeats integer not null default 0,
+  add column if not exists last_heartbeat_at timestamptz,
   add column if not exists replaced_by uuid references atlas_private.ai_voice_sessions(id) on delete set null;
 
 do $s91_voice_constraints$
@@ -152,7 +159,7 @@ create or replace function public.atlas_ai_voice_session_start(
   p_models jsonb default '{}'::jsonb,
   p_mints_per_minute integer default 6,
   p_takeover boolean default false,
-  p_lease_seconds integer default 120
+  p_lease_seconds integer default 600
 )
 returns jsonb
 language plpgsql
@@ -166,7 +173,7 @@ declare
   v_run atlas_private.ai_runs;
   v_row atlas_private.ai_voice_sessions;
   v_replaced uuid[] := array[]::uuid[];
-  v_lease integer := least(greatest(coalesce(p_lease_seconds, 120), 30), 600);
+  v_lease integer := least(greatest(coalesce(p_lease_seconds, 600), 30), 600);
 begin
   perform atlas_private.ai_require_actor(p_actor_id, p_actor_role);
   if p_conversation_id is not null then
@@ -242,7 +249,8 @@ $$;
 
 -- Records activity on an owned voice session.
 --   p_event 'activate'    stores the provider session id (live sessions only)
---   p_event 'heartbeat'   the live client is still connected: renews the lease
+--   p_event 'heartbeat'   the live client is still connected: renews a 2-minute
+--                         lease (at most one per 15 seconds)
 --   p_event 'tool'        a voice-tool call: live only, 30 per minute; renews
 --   p_event 'append'      a transcript append: live or within 5 minutes of the
 --                         end (final flush), 30 per minute; renews while live
@@ -302,7 +310,10 @@ begin
   end if;
 
   if v_row.end_reason = 'replaced' then
-    raise exception using errcode = '55000', message = 'voice_session_replaced: live voice moved to another device';
+    -- The replaced device's last transcript lines are kept for 5 minutes.
+    if p_event <> 'append' or pg_catalog.now() > v_row.ended_at + interval '5 minutes' then
+      raise exception using errcode = '55000', message = 'voice_session_replaced: live voice moved to another device';
+    end if;
   end if;
 
   if p_event = 'append' then
@@ -338,10 +349,16 @@ begin
     where s.id = v_row.id
     returning * into v_row;
   elsif p_event = 'heartbeat' then
+    if v_row.last_heartbeat_at is not null and v_row.last_heartbeat_at > pg_catalog.now() - interval '15 seconds' then
+      raise exception using errcode = '53400', message = 'rate_limited: too many voice heartbeats';
+    end if;
+    -- A heartbeating client gets the 2-minute lease from now on.
     update atlas_private.ai_voice_sessions s
     set heartbeats = s.heartbeats + 1,
+        last_heartbeat_at = pg_catalog.now(),
         last_activity_at = pg_catalog.now(),
-        lease_expires_at = greatest(s.lease_expires_at, least(s.hard_expires_at, pg_catalog.now() + make_interval(secs => s.lease_seconds)))
+        lease_seconds = least(s.lease_seconds, 120),
+        lease_expires_at = least(s.hard_expires_at, pg_catalog.now() + make_interval(secs => least(s.lease_seconds, 120)))
     where s.id = v_row.id
     returning * into v_row;
   else

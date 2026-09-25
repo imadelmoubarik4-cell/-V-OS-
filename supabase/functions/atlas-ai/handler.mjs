@@ -605,7 +605,10 @@ export function createAtlasAiHandler(deps) {
       p_models: { realtime: config.models.realtime },
       p_mints_per_minute: config.limits.voiceMintsPerMinute,
       p_takeover: body.takeover === true,
-      p_lease_seconds: config.limits.voiceLeaseSeconds,
+      // The short lease only for a client that says it heartbeats (the S91
+      // web app); otherwise the database default (10 minutes) applies, so an
+      // older open tab is not cut off after 2 silent minutes (review P2-A).
+      ...(body.heartbeat === true ? { p_lease_seconds: config.limits.voiceLeaseSeconds } : {}),
     });
     const voiceSessionId = reserved?.voice_session_id ?? null;
     const runId = reserved?.run_id ?? null;
@@ -636,7 +639,7 @@ export function createAtlasAiHandler(deps) {
       session_id: providerSessionId,
       voice_session_id: voiceSessionId,
       voice_session_expires_at: reserved?.hard_expires_at ?? null,
-      lease_seconds: Number(reserved?.lease_seconds) || config.limits.voiceLeaseSeconds,
+      lease_seconds: Number(reserved?.lease_seconds) || null,
       heartbeat_seconds: config.limits.voiceHeartbeatSeconds,
       replaced_sessions: Number(reserved?.replaced_sessions) || 0,
       conversation_id: conversationId,
@@ -753,6 +756,9 @@ export function createAtlasAiHandler(deps) {
       };
     });
     const appended = await services.rpc("atlas_ai_messages_append", { p_conversation_id: conversationId, ...actorArgs(actor), p_messages: messages });
+    // A device that lost the call to another one may still save its last
+    // lines for a few minutes; it is told so it stops (review P3-3).
+    if (voice?.replaced === true) return { ...appended, voice_replaced: true };
     if (body.ended === true) await touchVoiceSession(actor, body, "end");
     return appended;
   }

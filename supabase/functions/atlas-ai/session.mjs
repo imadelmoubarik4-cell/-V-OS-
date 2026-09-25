@@ -151,6 +151,7 @@ export function previousEvidence(messages) {
     label: item.label,
     value: item.value,
     source: item.source?.label ?? item.source?.type ?? null,
+    ...(item.origin ? { origin: item.origin } : {}),
   }));
 }
 
