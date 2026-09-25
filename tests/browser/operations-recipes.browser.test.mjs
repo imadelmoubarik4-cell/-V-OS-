@@ -61,7 +61,10 @@ test('Recipes needing attention opens Recipes on the Attention filter', { skip }
   try {
     await clickCard(page, 'recipes-attention');
     assert.equal(await page.evaluate(() => document.body.dataset.atlasView), 'recipes');
-    assert.equal(await page.$eval('#recipe-status-filters .active', (node) => node.dataset.status), 'attention');
+    // S88 Recipes: the attention preset shows as a clearable chip next to the segments.
+    await page.waitForSelector('#recipes-view .atlas-chip.is-active[data-recipe-status="all"]');
+    const names = await page.$$eval('#recipes-view .recipe-tile__name', (nodes) => nodes.map((node) => node.textContent));
+    assert.ok(!names.includes('Old Special'), 'archived recipes are not in the attention list');
   } finally { await close(); }
 });
 
@@ -88,6 +91,8 @@ test('an active recipe can be archived but not deleted', { skip }, async () => {
     await openRecipe(page, 'soda');
     assert.equal(await page.$('[data-delete-recipe]'), null);
     await page.click('[data-archive-recipe]');
+    // Archive asks first (atlas dialog), then writes active=false.
+    await page.click('#recipe-confirm-modal [data-recipe-confirm]');
     await page.waitForTimeout(400);
     const write = record.requests.find((entry) => entry.path.endsWith('/rest/v1/recipes') && entry.method === 'PATCH');
     assert.deepEqual(write?.body, { active: false });
@@ -96,21 +101,19 @@ test('an active recipe can be archived but not deleted', { skip }, async () => {
 });
 
 test('an archived recipe is deleted only after its name is typed', { skip }, async () => {
-  const wrong = await launchAtlas({ promptAnswer: 'yes', fixtures: { tables: { inventory_items: inventory, recipes }, functions: emptyFunctions() } });
+  const { page, record, close } = await launchAtlas({ fixtures: { tables: { inventory_items: inventory, recipes }, functions: emptyFunctions() } });
   try {
-    await openRecipe(wrong.page, 'old');
-    await wrong.page.click('[data-delete-recipe]');
-    await wrong.page.waitForTimeout(300);
-    assert.ok(!wrong.record.requests.some((entry) => entry.method === 'DELETE'), 'a wrong name deletes nothing');
-  } finally { await wrong.close(); }
-
-  const right = await launchAtlas({ promptAnswer: 'Old Special', fixtures: { tables: { inventory_items: inventory, recipes }, functions: emptyFunctions() } });
-  try {
-    await openRecipe(right.page, 'old');
-    await right.page.click('[data-delete-recipe]');
-    await right.page.waitForTimeout(300);
-    assert.ok(right.record.requests.some((entry) => entry.path.endsWith('/rest/v1/recipes') && entry.method === 'DELETE'));
-  } finally { await right.close(); }
+    await openRecipe(page, 'old');
+    await page.click('[data-delete-recipe]');
+    await page.waitForSelector('#recipe-confirm-name');
+    await page.fill('#recipe-confirm-name', 'yes');
+    assert.equal(await page.$eval('#recipe-confirm-modal [data-recipe-confirm]', (button) => button.disabled), true, 'a wrong name cannot confirm');
+    assert.ok(!record.requests.some((entry) => entry.method === 'DELETE'), 'a wrong name deletes nothing');
+    await page.fill('#recipe-confirm-name', 'Old Special');
+    await page.click('#recipe-confirm-modal [data-recipe-confirm]');
+    await page.waitForTimeout(400);
+    assert.ok(record.requests.some((entry) => entry.path.endsWith('/rest/v1/recipes') && entry.method === 'DELETE'));
+  } finally { await close(); }
 });
 
 test('Operations shows items on a placed purchase order as On order', { skip }, async () => {

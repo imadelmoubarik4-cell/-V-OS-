@@ -91,13 +91,6 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
 }
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/sprint3-review.css?v=20260926-s88',
-  scriptPath: 'assets/js/sprint3-review.js?v=20260926-s88',
-  globalName: 'AtlasSprint3Review',
-  dataAttribute: 'atlasSprint3Review',
-}));
-
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/brain-daily-briefing.css?v=20260926-s88',
   scriptPath: 'assets/js/brain-daily-briefing-v2.js?v=20260926-s88',
   globalName: 'AtlasDailyBriefing',

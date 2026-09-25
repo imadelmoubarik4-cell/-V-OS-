@@ -13,9 +13,9 @@ function setup(rpcError,refreshError=false){
 }
 test('failed recipe RPC keeps editor and draft available for retry',async()=>{
  const s=setup({message:'Save unavailable'});await s.scope.saveRecipe({preventDefault(){}});
- assert.equal(s.calls,1);assert.equal(s.closed,false);assert.equal(s.button.disabled,false);assert.equal(s.status.textContent,'Save unavailable');assert.equal(s.scope.state.draftIngredients.length,1);
+ assert.equal(s.calls,1);assert.equal(s.closed,false);assert.equal(s.button.disabled,false);assert.equal(s.status.textContent,"The recipe couldn't be saved. Nothing was changed. Try again.");assert.equal(s.scope.state.draftIngredients.length,1);
 });
 test('committed recipe retains identity if refresh fails, preventing duplicate retry',async()=>{
  const s=setup(null,true);await s.scope.saveRecipe({preventDefault(){}});
- assert.equal(s.field('recipe-id').value,'persisted-id');assert.equal(s.closed,false);assert.equal(s.button.disabled,false);
+ assert.equal(s.field('recipe-id').value,'persisted-id');assert.match(s.status.textContent,/^Saved\. The recipe list couldn't refresh/);assert.equal(s.closed,false);assert.equal(s.button.disabled,false);
 });

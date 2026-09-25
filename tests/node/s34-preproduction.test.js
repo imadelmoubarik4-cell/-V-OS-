@@ -63,8 +63,8 @@ test('one calculation rule gives saved and refetched fixture values', () => {
   assert.equal(calculator.formatIsk(saved.financials.perServing), '200 ISK');
 });
 
-test('Recipes, Brain, and Business Intelligence delegate to the shared calculation rule', () => {
-  for (const source of [read('apps/web/assets/js/recipes.js'), read('apps/web/assets/js/brain.js'), read('apps/web/assets/js/business.js')]) {
+test('Recipes, Brain and Reports › Overview delegate to the shared calculation rule', () => {
+  for (const source of [read('apps/web/assets/js/recipes.js'), read('apps/web/assets/js/brain.js'), read('apps/web/assets/js/reports-overview.js')]) {
     assert.match(source, /AtlasCalculations/);
   }
   assert.match(app, /assets\/js\/atlas-calculations\.js/);

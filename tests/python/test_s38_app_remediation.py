@@ -187,7 +187,9 @@ class S38AppRemediationTests(unittest.TestCase):
         shifts_weekly = (ROOT / "apps/web/assets/js/shifts-workspace.js").read_text(encoding="utf-8")
         self.assertIn("['month', 'calendar-range', 'Month']", shifts_weekly)
         self.assertIn("window.AtlasShiftsMonth?.open?.()", shifts_weekly)
-        self.assertIn("<details class=\"recipe-foundation-card", recipes)
+        # S88 Recipes (spec §7.7): tiles with availability replace the foundation cards.
+        self.assertIn("class=\"recipe-tile\"", recipes)
+        self.assertNotIn("recipe-foundation-card", recipes)
         self.assertIn("knowledge-editor-properties", knowledge)
         self.assertIn("brain-intelligence-grid", brain)
         self.assertIn("home-timeline", brain)
