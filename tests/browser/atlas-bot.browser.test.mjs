@@ -442,11 +442,16 @@ test('calm idle pauses the render loop; a pointer move, a state change or a mome
     await page.mouse.move(700, 400, { steps: 3 });
     await until(async () => (await info(page)).running === true, { message: 'pointer resumes' });
     await until(async () => (await info(page)).paused === true, { message: 'pauses again' });
-    await page.evaluate(() => window.AtlasBot.setState('ai-empty', 'thinking'));
+    // The welcome robot follows the assistant's state (AtlasBot.robot), so its
+    // state changes through the controller: a surface-level setState would be
+    // replaced by the controller's next change (the pointer above woke it, and
+    // its awake spell ends by itself, on a slow runner inside this window).
+    await page.evaluate(() => window.AtlasBot.robot.set('thinking'));
     await until(async () => (await info(page)).running === true, { message: 'state resumes' });
     await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    assert.equal((await info(page)).state, 'thinking');
     assert.equal((await info(page)).running, true, 'a busy state keeps drawing');
-    await page.evaluate(() => window.AtlasBot.setState('ai-empty', 'idle'));
+    await page.evaluate(() => window.AtlasBot.robot.set('idle'));
     await until(async () => (await info(page)).paused === true, { message: 'idle pauses' });
     await page.evaluate(() => window.AtlasBot.play('ai-empty', 'success'));
     await until(async () => (await info(page)).running === true, { message: 'moment resumes' });
@@ -714,6 +719,46 @@ test('reduced motion: a sleeping robot is still (closed eyes, one still Z, no lo
     }
     await until(async () => (await info(page)).running === false, { message: 'no loop' });
     assert.ok((await info(page)).scene.frames > frames, 'each change draws one still frame');
+  } finally { await close(); }
+});
+
+// Under reduced motion only a change draws a (still) frame, and that frame may
+// stay on screen for a long while: it must show the state, never the pose of
+// a moment (a greeting wave, a success smile) that is over or was cut short.
+test('reduced motion: the still frame after a moment shows the state (an error right after a success is dimmed, not smiling; the greeting wave ends)', { skip }, async () => {
+  const { page, close } = await openAi({ viewport: { width: 1440, height: 900 }, contextOptions: { reducedMotion: 'reduce' } });
+  // Sets the state and waits for the still frame it draws.
+  const drawnAs = async (state) => {
+    const before = (await info(page)).scene.frames;
+    await setRobot(page, state);
+    await until(async () => { const now = await info(page); return now.scene.frames > before && now.running === false; }, { message: `${state}: a still frame` });
+    return (await info(page)).scene;
+  };
+  try {
+    await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    await until(async () => (await info(page))?.scene?.greetings === 1, { message: 'greeted' });
+    // The still greeting lasts 1.2 s (on the page's clock); nothing is drawn
+    // after it until a change.
+    const greetedAt = await page.evaluate(() => performance.now());
+    await until(() => page.evaluate((at) => performance.now() - at > 1300, greetedAt), { message: 'the still greeting is over' });
+    let scene = await drawnAs('listening');
+    assert.equal(scene.moment, null, 'the greeting is over');
+    assert.equal(scene.eyes, 'open', 'listening: open eyes, not the greeting smile');
+    // A success, then (before its smile would end) an error.
+    scene = await drawnAs('success');
+    assert.equal(scene.eyes, 'happy', 'success smiles');
+    scene = await drawnAs('error');
+    assert.equal(scene.moment, null, 'the success smile ends with the new state');
+    assert.equal(scene.eyes, 'open', 'error: no smile');
+    assert.ok(scene.pose.eyeLight < 0.8 && scene.pose.glow < 0.8, `error is dimmed (${scene.pose.eyeLight}, ${scene.pose.glow})`);
+    // A success that ends by itself: the still idle frame drawn then has no smile.
+    await drawnAs('success');
+    const before = (await info(page)).scene.frames;
+    await until(async () => (await robotInfo(page)).state === 'idle', { timeout: 5000, message: 'success returns to idle' });
+    await until(async () => { const now = await info(page); return now.scene.frames > before && now.running === false; }, { message: 'idle: a still frame' });
+    scene = (await info(page)).scene;
+    assert.equal(scene.moment, null);
+    assert.equal(scene.eyes, 'open', 'idle after success: the smile is over');
   } finally { await close(); }
 });
 

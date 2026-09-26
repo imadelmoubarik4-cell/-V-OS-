@@ -383,9 +383,11 @@
     const shown = row.then || value;
     document.querySelectorAll(`[data-atlas-bot-live="${CSS.escape(key)}"]`).forEach((host) => paintHost(host, shown));
     if (!entry) return;
-    if (row.then && entry.scene && row.moment) entry.scene.play(row.moment);
     entry.state = shown;
     applyState(entry);
+    // The moment after the state it settles on (a new state ends a still
+    // moment under reduced motion).
+    if (row.then && entry.scene && row.moment) entry.scene.play(row.moment);
   }
 
   function play(key, moment) {

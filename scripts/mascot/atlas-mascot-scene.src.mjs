@@ -368,6 +368,12 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
   const REST = { bob: 0, bodyYaw: 0, bodyRoll: 0, headYaw: 0, headPitch: 0, headRoll: 0, rShoulder: -0.2, rElbow: -0.05, lShoulder: 0.2, lElbow: 0.05, rShoulderX: 0, lShoulderX: 0, squash: 1, glow: 1, happy: 0.35, eyeUp: 0, eyeX: 0, eyeOpen: 1, eyeLight: 1, chest: 1, sleepy: 0, scan: 0, confused: 0 };
   const pose = { ...REST, rShoulder: -0.2, rElbow: 0, lElbow: 0 };
   const wallClock = () => globalThis.performance?.now?.() ?? Date.now();
+  // How long each moment lasts, in seconds: [animated, reduced motion].
+  const MOMENT_LENGTH = { greet: [2.9, 1.2], success: [1.2, 1.5], react: [0.6, 0.9], wake: [0.8, 0.8], error: [2.2, 2.2] };
+  const momentTime = (t) => (reducedMotion ? (wallClock() - status.momentWall) / 1000 : t - status.momentAt);
+  function endMomentIfOver(t) {
+    if (status.moment && momentTime(t) > (MOMENT_LENGTH[status.moment]?.[reducedMotion ? 1 : 0] ?? 0)) status.moment = null;
+  }
   const status = { base: 'idle', baseSince: 0, moment: null, momentAt: 0, momentWall: 0, greetings: 0, frames: 0, time: 0, pointer: { x: 0, y: 0, active: false }, blinkAt: 2.5, blinkUntil: 0, lookAt: 7, lookUntil: 0, lookSide: 1 };
 
   // Where each base state puts the robot. t: seconds; calm: motion allowed.
@@ -446,11 +452,16 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
       out.headPitch = MathUtils.clamp(status.pointer.y * 0.25, -0.22, 0.22);
     }
     // Moments.
-    const m = status.moment;
     // Reduced motion draws a still frame only when something changes, so a
     // moment's clock is the real one there (it ends on time, not after many
     // frames).
-    const since = reducedMotion ? (wallClock() - status.momentWall) / 1000 : t - status.momentAt;
+    // A moment that is over by now ends before this frame is drawn, not
+    // after it: under reduced motion the frame drawn at the next change may
+    // be the last one for a long while, and must show that state (an error
+    // stays dimmed), never the pose of a moment that has already ended.
+    endMomentIfOver(t);
+    const m = status.moment;
+    const since = momentTime(t);
     if (m === 'greet') {
       if (reducedMotion) {
         Object.assign(out, { rShoulder: -2.45, rElbow: -0.35, happy: out.sleepy > 0.5 ? 0 : 1, headYaw: 0, headPitch: 0.04 });
@@ -467,7 +478,6 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
         out.sleepy = 0;
         out.bob += 0.02 * up;
       }
-      if (since > (reducedMotion ? 1.2 : 2.9)) status.moment = null;
     } else if (m === 'success') {
       // Restrained: a brief brightening, a small nod, then an upward posture.
       const d = 1.2;
@@ -482,23 +492,19 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
         out.lShoulder = 0.2 + 0.12 * k;
         out.rShoulder = -0.2 - 0.12 * k;
       }
-      if (since > d + (reducedMotion ? 0.3 : 0)) status.moment = null;
     } else if (m === 'react') {
       const d = 0.6;
       const k = Math.sin(Math.min(1, since / d) * Math.PI);
       if (!reducedMotion) { out.bob += 0.06 * k; out.squash = 1 + 0.025 * k; }
       out.happy = 1;
-      if (since > d + (reducedMotion ? 0.3 : 0)) status.moment = null;
     } else if (m === 'wake') {
       // Waking: eyes open and a small lift of the head.
       const d = 0.8;
       const k = Math.sin(Math.min(1, since / d) * Math.PI);
       if (!reducedMotion) { out.headPitch -= 0.06 * k; out.bob += 0.012 * k; }
       out.glow = Math.max(out.glow, 1 + 0.25 * k);
-      if (since > d) status.moment = null;
     } else if (m === 'error') {
       Object.assign(out, { headRoll: 0.16, happy: 0, confused: 1, glow: 0.75 });
-      if (since > 2.2) status.moment = null;
     }
     return out;
   }
@@ -603,11 +609,16 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
       if (value === status.base) return;
       status.base = value;
       status.baseSince = status.time;
-      // Under reduced motion a new state ends the (still) greeting pose.
-      if (reducedMotion && status.moment === 'greet') status.moment = null;
+      // Under reduced motion a new state ends any (still) moment pose: the
+      // next still frame shows the new state, which may stay on screen
+      // until the state after it (a success smile never masks an error).
+      if (reducedMotion && status.moment) status.moment = null;
     },
     play(moment) {
       if (!MOMENTS.includes(moment)) return;
+      // A greeting that is already over (no frame drawn since, e.g. under
+      // reduced motion) no longer holds other moments back.
+      endMomentIfOver(status.time);
       if (status.moment === 'greet' && moment !== 'greet') return;
       if (moment === 'greet') status.greetings += 1;
       status.moment = moment;
