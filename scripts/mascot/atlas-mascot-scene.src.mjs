@@ -2,7 +2,7 @@
 //
 // Built into apps/web/assets/atlas-bot/atlas-mascot-scene.js by
 // scripts/build_atlas_mascot.mjs (esbuild, Three.js bundled in, no runtime
-// download). Loaded only by assets/js/atlas-ai-mascot.js, only on Atlas AI.
+// download). Loaded on first use by assets/js/atlas-bot.js.
 //
 // The robot is built procedurally from Three.js primitives (no GLB: the
 // source of truth is this file, so the model is reproducible and reviewable).
@@ -119,15 +119,24 @@ function orientTo(mesh, normal) {
   mesh.lookAt(mesh.position.clone().add(normal));
 }
 
-export function buildRobot() {
+// look 'small': the finish for badges shown at 24 px or less, where a glossy
+// visor reads as a dark blob: a matte visor with no highlight, a matte shell
+// and larger, brighter eyes (see EYE_SCALE).
+export const EYE_SCALE = Object.freeze({ normal: 1, small: 1.5 });
+
+export function buildRobot({ look = 'normal' } = {}) {
+  const small = look === 'small';
   const disposables = [];
   const keep = (thing) => { disposables.push(thing); return thing; };
-  const white = keep(new MeshPhysicalMaterial({ color: PALETTE.snow, roughness: 0.32, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.18 }));
+  const white = keep(new MeshPhysicalMaterial({ color: PALETTE.snow, roughness: small ? 0.5 : 0.32, metalness: 0, clearcoat: small ? 0.1 : 0.7, clearcoatRoughness: 0.18 }));
   const midnight = keep(new MeshPhysicalMaterial({ color: PALETTE.midnight, roughness: 0.28, metalness: 0.15, clearcoat: 0.6, clearcoatRoughness: 0.2 }));
   const slate = keep(new MeshStandardMaterial({ color: PALETTE.slate, roughness: 0.45, metalness: 0.2 }));
-  // A soft studio reflection on the visor, not a mirror of the light box.
-  const visorMat = keep(new MeshPhysicalMaterial({ color: '#070B14', roughness: 0.22, metalness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.28, envMapIntensity: 0.45 }));
-  const eyeMat = keep(new MeshBasicMaterial({ color: new Color(PALETTE.glow), toneMapped: false }));
+  // A soft studio reflection on the visor, not a mirror of the light box
+  // (none at all on the small look).
+  const visorMat = keep(small
+    ? new MeshPhysicalMaterial({ color: '#0B1220', roughness: 0.9, metalness: 0, clearcoat: 0, envMapIntensity: 0.04 })
+    : new MeshPhysicalMaterial({ color: '#070B14', roughness: 0.22, metalness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.28, envMapIntensity: 0.45 }));
+  const eyeMat = keep(new MeshBasicMaterial({ color: new Color(small ? '#9FD0FF' : PALETTE.glow), toneMapped: false }));
   const accent = keep(new MeshBasicMaterial({ color: new Color(PALETTE.blue).multiplyScalar(1.25), toneMapped: false }));
   const glowMat = keep(new MeshBasicMaterial({ map: keep(glowTexture()), transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false, opacity: 0.55 }));
   // Unlit, so the A reads as the Midnight brand mark under any light.
@@ -187,6 +196,7 @@ export function buildRobot() {
     const glow = mesh(geo(new PlaneGeometry(0.46, 0.46)), glowMat);
     glow.position.z = -0.012;
     eye.add(arc, oval, glow);
+    eye.scale.setScalar(small ? EYE_SCALE.small : EYE_SCALE.normal);
     head.add(eye);
     eyes.push({ group: eye, arc, oval, glow, side, base: eye.position.clone() });
   });
@@ -279,7 +289,10 @@ export function buildRobot() {
 // ---------------------------------------------------------------------------
 // Scene, renderer and the animation state machine.
 // ---------------------------------------------------------------------------
-export function createMascotScene(canvas, { reducedMotion = false, finePointer = false, framing = 'full', onFrame = null } = {}) {
+// reducedMotion can change later (setReducedMotion): the system setting or
+// Atlas's own preference may be switched while the robot is on screen.
+export function createMascotScene(canvas, { reducedMotion: reduced = false, finePointer = false, framing = 'full', look = 'normal', onFrame = null } = {}) {
+  let reducedMotion = Boolean(reduced);
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power', preserveDrawingBuffer: false });
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
@@ -300,11 +313,12 @@ export function createMascotScene(canvas, { reducedMotion = false, finePointer =
   rim.position.set(-3, 2.5, -3);
   scene.add(rim);
 
-  const robot = buildRobot();
+  const robot = buildRobot({ look });
   scene.add(robot.root);
   const camera = new PerspectiveCamera(26, 1, 0.1, 40);
-  // full: the whole robot; bust: head and shoulders; badge: the head, filling a small square.
-  const frames = { full: { y: 1.14, z: 6.4, look: 1.1 }, bust: { y: 1.62, z: 4.2, look: 1.56 }, badge: { y: 1.6, z: 4.25, look: 1.58 } };
+  // full: the whole robot; bust: head and shoulders; badge: the head, filling
+  // a small square; badge-small: a tighter crop on the face for 24 px or less.
+  const frames = { full: { y: 1.14, z: 6.4, look: 1.1 }, bust: { y: 1.62, z: 4.2, look: 1.56 }, badge: { y: 1.6, z: 4.25, look: 1.58 }, 'badge-small': { y: 1.6, z: 4.0, look: 1.6 } };
   let frame = frames[framing] || frames.full;
   const placeCamera = () => { camera.position.set(0, frame.y, frame.z); camera.lookAt(0, frame.look, 0); };
   placeCamera();
@@ -457,17 +471,24 @@ export function createMascotScene(canvas, { reducedMotion = false, finePointer =
       status.momentAt = status.time;
     },
     pointer(x, y, active) { status.pointer = { x, y, active }; },
+    setReducedMotion(value) {
+      reducedMotion = Boolean(value);
+      if (reducedMotion) status.pointer = { x: 0, y: 0, active: false };
+    },
+    reducedMotion() { return reducedMotion; },
     setFraming(name) { frame = frames[name] || frames.full; placeCamera(); },
     busy() { return Boolean(status.moment); },
     info() {
       const render = renderer.info.render;
       return { base: status.base, moment: status.moment, greetings: status.greetings, frames: status.frames, triangles: render.triangles, calls: render.calls, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures };
     },
-    dispose() {
+    // loseContext: false keeps the canvas's WebGL context (used after the
+    // browser restored a lost context, to build a fresh scene on it).
+    dispose({ loseContext = true } = {}) {
       robot.disposables.forEach((thing) => thing.dispose?.());
       envTarget.dispose();
       renderer.dispose();
-      renderer.forceContextLoss?.();
+      if (loseContext) renderer.forceContextLoss?.();
     }
   };
 }

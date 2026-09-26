@@ -45,13 +45,14 @@ If the Supabase GitHub integration is set to deploy migrations to production whe
 
 ## Atlas AI robot (web only)
 
-The robot is the Atlas AI assistant's face. It replaces the sparkles assistant icon in AI surfaces; the Atlas logo stays the brand mark everywhere. There is no migration and no function; deploy the web app (cache key `?v=20261003-bot1`).
+The robot is the Atlas AI assistant's face. It replaces the sparkles assistant icon in AI surfaces; the Atlas logo stays the brand mark everywhere. There is no migration and no function; deploy the web app (cache keys `?v=20261003-bot1` and, for the review follow-up, `?v=20261003-bot2`).
 
 - `assets/js/atlas-bot.js`: the badge (`AtlasBot.html`) and the interactive 3D robot (`AtlasBot.liveHtml` + `upgrade`).
 - `assets/atlas-bot/atlas-mascot-scene.js`: the 3D scene, Three.js bundled in (MIT), loaded only when Atlas AI shows it. It is about 145 KB gzipped, same-origin, so the CSP is unchanged.
-- `assets/atlas-bot/atlas-bot.png`: the badge sprite (open, blink, happy), rendered from the same scene.
+- `assets/atlas-bot/atlas-bot.png`: the badge sprite (open, blink, happy), rendered from the same scene; `atlas-bot-small.png` is the version for badges of 24 px or less (a tighter face, a matte visor, larger eyes).
+- The live robot probes WebGL once per page, shows the badge again if the browser drops its WebGL context, follows a reduced-motion change live, stops drawing after 15 s of calm idle, and keeps still frames where WebGL runs in software (no GPU).
 
-To change the robot, edit `scripts/mascot/atlas-mascot-scene.src.mjs`, then rebuild both files:
+To change the robot, edit `scripts/mascot/atlas-mascot-scene.src.mjs`, then rebuild the bundle and the sprites:
 
 ```
 npm i --no-save three@0.186.1 esbuild@0.25.10   # or ATLAS_MASCOT_DEPS=<folder with them>

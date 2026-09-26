@@ -2,7 +2,8 @@
 // brand mark everywhere). Two forms of one model (scripts/mascot/):
 //
 //   AtlasBot.html({ size, state })      a small badge: the pre-rendered robot
-//     (assets/atlas-bot/atlas-bot.png, frames open · blink · happy)
+//     (assets/atlas-bot/atlas-bot.png, frames open · blink · happy; at 24 px
+//     or less atlas-bot-small.png, a tighter face with a matte visor)
 //     animated in CSS (.atlas-bot, atlas-components.css): it blinks, smiles
 //     on hover, bobs and glows while thinking, pulses while listening. Use it
 //     wherever the assistant is the symbol (nav, Ask Atlas, message labels).
@@ -17,21 +18,42 @@
 //
 // A live robot is kept by key: a re-render that draws the same key moves the
 // existing canvas into the new placeholder instead of opening another WebGL
-// context. Drawing stops while it is off screen or the tab is hidden.
+// context (WebGL support is probed once, and the probe's context released).
+// Drawing stops while it is off screen, the tab is hidden, or after 15 s of
+// calm idle; a pointer move, a state change, a moment or the tab showing
+// again resumes it. Pointer moves only schedule a frame: at most one draw per
+// animation frame. Reduced motion is followed live (the system setting and
+// Atlas's own preference): the scene is told, pointer tracking stops and the
+// robot draws still frames only when something changes. A lost WebGL context
+// shows the poster again; a restored one rebuilds the scene. Where WebGL runs
+// only in software (no GPU), the poster stays: building and drawing the scene
+// there would hold the page's main thread for seconds.
 (function atlasBot(root) {
   'use strict';
 
-  const SPRITE = 'assets/atlas-bot/atlas-bot.png?v=20261003-bot1';
-  const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20261003-bot1';
+  const SPRITE = 'assets/atlas-bot/atlas-bot.png?v=20261003-bot2';
+  const SPRITE_SMALL = 'assets/atlas-bot/atlas-bot-small.png?v=20261003-bot2';
+  const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20261003-bot2';
+  // Badges this size or smaller use the small sprite (.atlas-bot--small).
+  const SMALL_MAX = 24;
   const STATES = ['idle', 'thinking', 'listening', 'speaking', 'error', 'happy'];
   const live = new Map();
   let scenePromise = null;
+  let webgl = null;
+  let idleAfter = 15000;
+  // WebGL drawn in software (no usable GPU: the browser reports a major
+  // performance caveat). Building and drawing the scene there blocks the
+  // page's main thread for seconds, so the badge poster stays instead.
+  let software = false;
+  let animateInSoftware = false;
+  const now = () => root.performance?.now?.() ?? Date.now();
 
   const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
   const stateOf = (value) => (STATES.includes(value) ? value : 'idle');
   const media = (query) => Boolean(root.matchMedia?.(query).matches);
   // The system setting or Atlas's own Reduce motion preference.
-  const reducedMotion = () => media('(prefers-reduced-motion: reduce)') || document.documentElement.classList.contains('atlas-reduce-motion');
+  const reducedMotion = () => media('(prefers-reduced-motion: reduce)') || Boolean(document.documentElement.classList?.contains('atlas-reduce-motion'));
+  let motionReduced = reducedMotion();
 
   // Badges blink at slightly different moments so a list of them never blinks
   // in step.
@@ -40,7 +62,7 @@
     blinkSeed = (blinkSeed + 1) % 7;
     const px = Math.max(12, Math.min(128, Math.round(Number(size) || 20)));
     const a11y = label ? ` role="img" aria-label="${escape(label)}"` : ' aria-hidden="true"';
-    return `<span class="atlas-bot${className ? ` ${escape(className)}` : ''}" data-atlas-bot data-state="${stateOf(state)}" style="--atlas-bot-size:${px}px;--atlas-bot-delay:-${blinkSeed * 0.9}s"${a11y}></span>`;
+    return `<span class="atlas-bot${px <= SMALL_MAX ? ' atlas-bot--small' : ''}${className ? ` ${escape(className)}` : ''}" data-atlas-bot data-state="${stateOf(state)}" style="--atlas-bot-size:${px}px;--atlas-bot-delay:-${blinkSeed * 0.9}s"${a11y}></span>`;
   }
 
   function liveHtml({ key = 'default', framing = 'full', state = 'idle', size = 160, label = 'Atlas, your assistant' } = {}) {
@@ -48,18 +70,31 @@
     return `<div class="atlas-bot-live" data-atlas-bot-live="${escape(key)}" data-framing="${framing === 'bust' ? 'bust' : 'full'}" data-state="${stateOf(state)}" style="--atlas-bot-live-size:${px}px" role="img" aria-label="${escape(label)}">${html({ size: Math.round(px * 0.72), state, className: 'atlas-bot-live__poster' })}</div>`;
   }
 
+  // Probed once per page: every probe opens a WebGL context, and browsers
+  // keep only a handful (Chrome drops the oldest past ~16). Probe contexts are
+  // released straight away. A GPU context first; failing that, any context
+  // means WebGL in software.
+  const release = (context) => context?.getExtension?.('WEBGL_lose_context')?.loseContext();
+  function probe(options) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('webgl2', options) || canvas.getContext('webgl', options);
+    release(context);
+    return Boolean(context);
+  }
   function webglAvailable() {
+    if (webgl !== null) return webgl;
     try {
-      const canvas = document.createElement('canvas');
-      return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+      webgl = probe({ failIfMajorPerformanceCaveat: true });
+      if (!webgl) { webgl = probe(undefined); software = webgl; }
     } catch {
-      return false;
+      webgl = false;
     }
+    return webgl;
   }
 
   function canGoLive() {
     if (root.navigator?.connection?.saveData) return false;
-    return webglAvailable();
+    return webglAvailable() && (!software || animateInSoftware);
   }
 
   function loadScene() {
@@ -76,8 +111,8 @@
 
   function createLive(key, framing) {
     const entry = {
-      key, framing, state: 'idle', host: null, scene: null, canvas: null, failed: false,
-      visible: false, frame: 0, lastDraw: 0, greeted: false, observer: null, pending: []
+      key, framing, state: 'idle', host: null, scene: null, canvas: null, failed: false, lost: false,
+      visible: false, frame: 0, lastDraw: 0, activeAt: now(), greeted: false, observer: null, sizer: null, size: '', pending: []
     };
     const canvas = document.createElement('canvas');
     canvas.className = 'atlas-bot-live__canvas';
@@ -85,15 +120,16 @@
     entry.canvas = canvas;
 
     const fine = media('(hover: hover) and (pointer: fine)');
+    // Records where the pointer is and asks for a frame; never draws here.
     const onPointer = (event) => {
-      if (!entry.scene || !entry.host) return;
+      if (!entry.scene || !entry.host || motionReduced) return;
       const box = entry.host.getBoundingClientRect();
       const x = ((event.clientX - (box.left + box.width / 2)) / Math.max(240, root.innerWidth / 2));
       const y = ((event.clientY - (box.top + box.height * 0.35)) / Math.max(240, root.innerHeight / 2));
       entry.scene.pointer(Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y)), true);
       wake(entry);
     };
-    const onLeave = () => { entry.scene?.pointer(0, 0, false); wake(entry); };
+    const onLeave = () => { if (motionReduced) return; entry.scene?.pointer(0, 0, false); wake(entry); };
     entry.listen = () => {
       if (fine) {
         root.addEventListener('pointermove', onPointer, { passive: true });
@@ -105,30 +141,75 @@
       document.documentElement.removeEventListener('pointerleave', onLeave);
     };
     canvas.addEventListener('pointerdown', () => play(key, 'react'));
+    // The browser can take the context back (too many contexts, GPU reset):
+    // the poster shows again until it is restored.
+    canvas.addEventListener('webglcontextlost', (event) => {
+      event.preventDefault();
+      // destroy() releases the context on purpose: nothing to show then.
+      if (live.get(key) !== entry) return;
+      entry.lost = true;
+      stop(entry);
+      entry.host?.classList.remove('is-live');
+      entry.host?.classList.add('is-static');
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      if (live.get(key) !== entry || !entry.lost) return;
+      entry.scene?.dispose({ loseContext: false });
+      entry.scene = null;
+      entry.size = '';
+      entry.lost = false;
+      start(entry);
+    });
     return entry;
   }
 
+  // Resizing clears the canvas, so it happens only when the size changed;
+  // the next frame redraws it.
   function resize(entry) {
-    if (!entry.scene || !entry.host) return;
+    if (!entry.scene || !entry.host || entry.lost) return;
     const box = entry.host.getBoundingClientRect();
     const ratio = Math.min(root.devicePixelRatio || 1, media('(pointer: coarse)') ? 1.5 : 2);
-    entry.scene.resize(Math.round(box.width), Math.round(box.height), ratio);
+    const width = Math.round(box.width);
+    const height = Math.round(box.height);
+    const size = `${width}x${height}@${ratio}`;
+    if (!width || !height || size === entry.size) return;
+    entry.size = size;
+    entry.scene.resize(width, height, ratio);
+    wake(entry, false);
   }
 
+  const drawable = (entry) => Boolean(entry.scene && !entry.lost && entry.visible && !document.hidden && entry.host?.isConnected);
+
+  // One animation frame at a time. Reduced motion: a single still frame per
+  // change. Calm idle for idleAfter ms: the loop pauses until woken.
   function loop(entry) {
     entry.frame = 0;
-    if (!entry.scene || !entry.visible || document.hidden || !entry.host?.isConnected) return;
-    if (reducedMotion()) { entry.scene.renderStatic(); return; }
-    entry.frame = root.requestAnimationFrame((now) => {
-      if (now - entry.lastDraw >= entry.scene.frameInterval() - 2) {
-        entry.lastDraw = now;
-        entry.scene.step(now);
+    if (!drawable(entry)) return;
+    if (motionReduced) {
+      entry.frame = root.requestAnimationFrame(() => {
+        entry.frame = 0;
+        if (drawable(entry)) entry.scene.renderStatic();
+      });
+      return;
+    }
+    entry.frame = root.requestAnimationFrame((time) => {
+      entry.frame = 0;
+      if (!drawable(entry)) return;
+      if (time - entry.lastDraw >= entry.scene.frameInterval() - 2) {
+        entry.lastDraw = time;
+        entry.scene.step(time);
       }
+      const calm = entry.state === 'idle' && !entry.scene.busy();
+      if (calm && now() - entry.activeAt > idleAfter) { entry.paused = true; return; }
       loop(entry);
     });
   }
 
-  function wake(entry) {
+  // active: something happened (pointer, state, moment, showing again), which
+  // restarts the idle clock.
+  function wake(entry, active = true) {
+    if (active) entry.activeAt = now();
+    entry.paused = false;
     if (!entry.frame) loop(entry);
   }
 
@@ -139,12 +220,19 @@
 
   function observe(entry) {
     entry.observer?.disconnect();
+    entry.sizer?.disconnect();
+    if ('ResizeObserver' in root) {
+      entry.sizer = new root.ResizeObserver(() => resize(entry));
+      entry.sizer.observe(entry.host);
+    }
     if (!('IntersectionObserver' in root)) { entry.visible = true; return; }
     entry.observer = new root.IntersectionObserver(([record]) => {
+      const was = entry.visible;
       entry.visible = Boolean(record?.isIntersecting);
       if (entry.visible) {
         if (!entry.greeted && entry.scene) { entry.greeted = true; entry.scene.play('greet'); }
-        wake(entry);
+        // Coming into view is activity; a re-render that keeps it in view is not.
+        wake(entry, !was);
       } else stop(entry);
     });
     entry.observer.observe(entry.host);
@@ -153,16 +241,21 @@
   async function start(entry) {
     try {
       const { createMascotScene } = await loadScene();
-      if (entry.scene || entry.failed) return;
+      // Build the scene in a task of its own (not inside the click or render
+      // that asked for it), when the page is idle.
+      await new Promise((resolve) => (root.requestIdleCallback ? root.requestIdleCallback(resolve, { timeout: 400 }) : root.setTimeout(resolve, 0)));
+      // Destroyed or replaced meanwhile: open no context.
+      if (live.get(entry.key) !== entry || entry.scene || entry.failed || entry.lost) return;
       entry.scene = createMascotScene(entry.canvas, {
-        reducedMotion: reducedMotion(),
+        reducedMotion: motionReduced,
         finePointer: media('(hover: hover) and (pointer: fine)'),
         framing: entry.framing
       });
+      entry.host?.classList.remove('is-static');
+      entry.host?.classList.add('is-live');
       applyState(entry);
       resize(entry);
       entry.scene.renderStatic();
-      entry.host?.classList.add('is-live');
       entry.listen();
       entry.pending.splice(0).forEach((moment) => entry.scene.play(moment));
       if (entry.visible && !entry.greeted) { entry.greeted = true; entry.scene.play('greet'); }
@@ -174,10 +267,14 @@
     }
   }
 
+  // A changed state counts as activity; re-applying the same one only
+  // schedules a frame.
   function applyState(entry) {
     if (!entry.scene) return;
+    const changed = entry.applied !== entry.state;
+    entry.applied = entry.state;
     entry.scene.setBase(BASES.includes(entry.state) ? entry.state : 'idle');
-    wake(entry);
+    wake(entry, changed);
   }
 
   // Mounts (or moves) the live robot into every placeholder under `scope`.
@@ -198,8 +295,10 @@
       entry.host = host;
       entry.state = stateOf(host.dataset.state);
       host.appendChild(entry.canvas);
-      if (entry.scene) { host.classList.add('is-live'); resize(entry); applyState(entry); entry.scene.renderStatic(); }
-      else if (entry.failed) host.classList.add('is-static');
+      // Moved into a new placeholder: redraw on the next frame, not now (a
+      // caller may re-render many times a second, e.g. live voice).
+      if (entry.scene && !entry.lost) { host.classList.add('is-live'); resize(entry); applyState(entry); }
+      else if (entry.failed || entry.lost) host.classList.add('is-static');
       observe(entry);
       if (!entry.scene && !entry.failed) start(entry);
     });
@@ -231,6 +330,7 @@
     if (!entry) return;
     stop(entry);
     entry.observer?.disconnect();
+    entry.sizer?.disconnect();
     entry.unlisten?.();
     entry.scene?.dispose();
     entry.canvas.remove();
@@ -240,7 +340,25 @@
   document.addEventListener('visibilitychange', () => {
     live.forEach((entry) => { if (document.hidden) stop(entry); else wake(entry); });
   });
-  root.addEventListener('resize', () => live.forEach((entry) => { resize(entry); wake(entry); }), { passive: true });
+  root.addEventListener('resize', () => live.forEach((entry) => resize(entry)), { passive: true });
+
+  // Reduced motion can be switched on or off while a robot is on screen.
+  function motionChanged() {
+    const value = reducedMotion();
+    if (value === motionReduced) return;
+    motionReduced = value;
+    live.forEach((entry) => {
+      if (!entry.scene) return;
+      entry.scene.setReducedMotion(motionReduced);
+      stop(entry);
+      wake(entry);
+    });
+  }
+  const motionQuery = root.matchMedia?.('(prefers-reduced-motion: reduce)');
+  motionQuery?.addEventListener?.('change', motionChanged);
+  if ('MutationObserver' in root && document.documentElement) {
+    new root.MutationObserver(motionChanged).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  }
 
   root.AtlasBot = {
     html,
@@ -253,8 +371,24 @@
     info(key) {
       const entry = live.get(key);
       if (!entry) return null;
-      return { key, state: entry.state, live: Boolean(entry.scene), failed: entry.failed, visible: entry.visible, running: Boolean(entry.frame), scene: entry.scene?.info() || null };
+      return { key, state: entry.state, live: Boolean(entry.scene), failed: entry.failed, lost: entry.lost, visible: entry.visible, running: Boolean(entry.frame), paused: Boolean(entry.paused), reducedMotion: entry.scene?.reducedMotion() ?? motionReduced, scene: entry.scene?.info() || null };
     },
-    sprite: SPRITE
+    // Tests shorten the calm-idle pause.
+    setIdleTimeout(ms) { idleAfter = Math.max(0, Number(ms) || 0); },
+    // Browser tests draw WebGL in software (SwiftShader) and turn the live
+    // robot on there to exercise it: posters left for software mount now.
+    animateInSoftware(value = true) {
+      animateInSoftware = Boolean(value);
+      if (!animateInSoftware) return;
+      document.querySelectorAll('[data-atlas-bot-live].is-static').forEach((host) => {
+        if (live.has(host.dataset.atlasBotLive || 'default')) return;
+        delete host.dataset.atlasBotMounted;
+        host.classList.remove('is-static');
+      });
+      upgrade(document);
+    },
+    software: () => (webglAvailable(), software),
+    sprite: SPRITE,
+    spriteSmall: SPRITE_SMALL
   };
 }(window));

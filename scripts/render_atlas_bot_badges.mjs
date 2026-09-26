@@ -6,10 +6,14 @@
 //
 //   node scripts/build_atlas_mascot.mjs && node scripts/render_atlas_bot_badges.mjs
 //
-// Output: atlas-bot.png, one sprite of three 160 px frames side by side
-// (open, blink, happy) on a transparent background, shown at 16-64 px by
-// .atlas-bot (atlas-components.css), which blinks and smiles by moving the
-// background between frames.
+// Output, each one sprite of three frames side by side (open, blink, happy)
+// on a transparent background, shown by .atlas-bot (atlas-components.css),
+// which blinks and smiles by moving the background between frames:
+//   atlas-bot.png        160 px frames, the head (badges above 24 px)
+//   atlas-bot-small.png   96 px frames for badges of 24 px or less: a tighter
+//                         crop on the face, a matte visor with no highlight
+//                         and larger, brighter eyes (look 'small'), so the face
+//                         still reads at 18-20 px instead of a dark blob.
 import { createServer } from 'node:http';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -25,14 +29,26 @@ let playwright = null;
 for (const candidate of candidates) { try { playwright = require(candidate); break; } catch { /* next */ } }
 if (!playwright) throw new Error('Playwright is required (npm i --no-save playwright, or set ATLAS_PLAYWRIGHT)');
 
-const SIZE = 160;
+const SPRITES = [
+  { file: 'atlas-bot.png', size: 160, framing: 'badge', look: 'normal' },
+  { file: 'atlas-bot-small.png', size: 96, framing: 'badge-small', look: 'small' }
+];
 const FRAMES = { open: { happy: 0 }, blink: { happy: 0, blink: 0.12 }, happy: { happy: 1 } };
-const page = `<!doctype html><meta charset="utf-8"><body style="margin:0;background:transparent"><canvas id="c" width="${SIZE}" height="${SIZE}" style="width:${SIZE}px;height:${SIZE}px"></canvas>
+const page = `<!doctype html><meta charset="utf-8"><body style="margin:0;background:transparent">
 <script type="module">
   import { createMascotScene } from '/assets/atlas-bot/atlas-mascot-scene.js';
-  const scene = createMascotScene(document.getElementById('c'), { reducedMotion: true, framing: 'badge' });
-  scene.resize(${SIZE}, ${SIZE}, 1);
-  window.frame = (overrides) => { scene.renderStatic(overrides); scene.renderStatic(overrides); return document.getElementById('c').toDataURL('image/png'); };
+  window.render = ({ size, framing, look }, frames) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    document.body.append(canvas);
+    const scene = createMascotScene(canvas, { reducedMotion: true, framing, look });
+    scene.resize(size, size, 1);
+    const urls = frames.map((overrides) => { scene.renderStatic(overrides); scene.renderStatic(overrides); return canvas.toDataURL('image/png'); });
+    scene.dispose();
+    canvas.remove();
+    return urls;
+  };
   window.ready = true;
 </script>`;
 const server = createServer((request, response) => {
@@ -48,24 +64,25 @@ try {
   await tab.goto(`http://127.0.0.1:${server.address().port}/`);
   await tab.waitForFunction(() => window.ready === true);
   mkdirSync(OUT, { recursive: true });
-  const frames = [];
-  for (const overrides of Object.values(FRAMES)) frames.push(await tab.evaluate((value) => window.frame(value), overrides));
-  // Stitch the frames into one sprite in the page (no image library needed).
-  const sprite = await tab.evaluate(async ({ urls, size }) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = size * urls.length;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    for (const [index, url] of urls.entries()) {
-      const image = new Image();
-      image.src = url;
-      await image.decode();
-      ctx.drawImage(image, index * size, 0);
-    }
-    return canvas.toDataURL('image/png');
-  }, { urls: frames, size: SIZE });
-  writeFileSync(path.join(OUT, 'atlas-bot.png'), Buffer.from(sprite.split(',')[1], 'base64'));
-  console.log(`atlas-bot.png (${Object.keys(FRAMES).join(', ')})`);
+  for (const sprite of SPRITES) {
+    const frames = await tab.evaluate(([options, overrides]) => window.render(options, overrides), [sprite, Object.values(FRAMES)]);
+    // Stitch the frames into one sprite in the page (no image library needed).
+    const png = await tab.evaluate(async ({ urls, size }) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size * urls.length;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      for (const [index, url] of urls.entries()) {
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+        ctx.drawImage(image, index * size, 0);
+      }
+      return canvas.toDataURL('image/png');
+    }, { urls: frames, size: sprite.size });
+    writeFileSync(path.join(OUT, sprite.file), Buffer.from(png.split(',')[1], 'base64'));
+    console.log(`${sprite.file} (${Object.keys(FRAMES).join(', ')}, ${sprite.size} px)`);
+  }
 } finally {
   await browser.close();
   server.close();

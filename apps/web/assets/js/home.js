@@ -49,8 +49,6 @@
   }
 
   function icon(name) {
-    // 'atlas-bot' is the Atlas AI robot (atlas-bot.js), the assistant's face.
-    if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: 18 });
     return `<i data-lucide="${escape(name)}" aria-hidden="true"></i>`;
   }
 
@@ -611,7 +609,7 @@
       ? facts.lines.slice(0, 2).map((line) => `<p>${escape(line)}</p>`).join('')
       : `<p class="home-briefing__muted">${dataLoaded() ? 'Today’s briefing isn’t available yet.' : 'Preparing today’s briefing…'}</p>`;
     return `<section class="atlas-card home-briefing" aria-labelledby="home-briefing-title">
-      <div class="home-briefing__head">${icon('atlas-bot')}<h2 id="home-briefing-title">Today’s briefing</h2>${facts.lines.length && updated ? `<span class="home-briefing__time">Updated ${escape(updated)}</span>` : ''}</div>
+      <div class="home-briefing__head">${icon('sparkles')}<h2 id="home-briefing-title">Today’s briefing</h2>${facts.lines.length && updated ? `<span class="home-briefing__time">Updated ${escape(updated)}</span>` : ''}</div>
       <div class="home-briefing__text">${text}</div>
       <div class="home-briefing__foot">
         ${facts.sources.size ? `<span class="home-briefing__sources">${icon('check')}${escape(sourcesLabel(facts.sources))}</span>` : '<span></span>'}

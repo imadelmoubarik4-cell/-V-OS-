@@ -103,7 +103,7 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/team-messages.css',
-  scriptPath: 'assets/js/team-messages.js?v=20261003-bot1',
+  scriptPath: 'assets/js/team-messages.js?v=20261003-bot2',
   globalName: 'AtlasTeamMessages',
   dataAttribute: 'atlasTeamMessages',
 }));

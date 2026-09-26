@@ -242,9 +242,15 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // The Atlas AI robot (atlas-bot.js) replaced the sparkles assistant icon in
   // these scripts; atlas-ai.js also carries the S91b live voice lease.
-  for (const file of ['atlas-bot.js', 'atlas-ai.js', 'atlas-chrome.js', 'atlas-inventory.js', 'atlas-palette.js', 'atlas-shell.js',
-    'home.js', 'knowledge-workspace.js', 'recipes.js']) {
+  for (const file of ['atlas-ai.js', 'atlas-chrome.js', 'atlas-inventory.js', 'atlas-shell.js',
+    'knowledge-workspace.js', 'recipes.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
+  }
+  // Robot review follow-up: one WebGL probe, context loss, live reduced
+  // motion, idle pause (atlas-bot.js); the offline quick answer and the Home
+  // briefing keep the sparkles icon (atlas-palette.js, home.js).
+  for (const file of ['atlas-bot.js', 'atlas-palette.js', 'home.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot2"></script>`), file);
   }
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
@@ -252,9 +258,12 @@ test('changed scripts carry the S88 cache key', () => {
   assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">'), 'recipes.css');
   const config = read('apps/web/config.js');
   // The Atlas AI robot replaced the assistant icon in these lazily loaded scripts.
-  for (const file of ['team-messages.js', 'marketing-workspace.js', 'reports-workspace.js']) {
+  for (const file of ['marketing-workspace.js', 'reports-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261003-bot1'`), file);
   }
+  // Team Messages system notices are the platform, not the assistant: they
+  // keep the Atlas avatar (robot review follow-up).
+  assert.ok(config.includes("scriptPath: 'assets/js/team-messages.js?v=20261003-bot2'"), 'team-messages.js');
   for (const file of ['team-profile-photos.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90u'`), file);
   }
