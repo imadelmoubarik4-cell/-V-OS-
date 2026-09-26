@@ -209,6 +209,49 @@ test('badges: sidebar, palette Ask Atlas and the robot sprite; the Atlas logo st
   } finally { await close(); }
 });
 
+test('every robot asset the page references loads (200) with the keys atlas-bot.js and the stylesheet use', { skip }, async () => {
+  const { fixtures } = aiFixtures();
+  const { page, close } = await launchAtlas({ user: USERS.admin, fixtures, hash: '#home', fixedTime: AI_FIXTURE_NOW });
+  try {
+    const result = await page.evaluate(async () => {
+      const urls = new Set();
+      for (const node of document.querySelectorAll('script[src*="atlas-bot"], link[href*="atlas-ai.css"], link[href*="atlas-components.css"]')) urls.add(node.getAttribute('src') || node.getAttribute('href'));
+      // The sprites the stylesheet points at, read from the served atlas-components.css itself.
+      const sheet = document.querySelector('link[href*="atlas-components.css"]');
+      const text = await (await fetch(sheet.href, { cache: 'no-store' })).text();
+      for (const match of text.matchAll(/url\('?"?([^'")]*atlas-bot\/[^'")]+)'?"?\)/g)) urls.add(new URL(match[1], sheet.href).href);
+      const statuses = {};
+      for (const url of urls) {
+        const response = await fetch(url, { cache: 'no-store' });
+        statuses[url] = response.status;
+      }
+      return { statuses };
+    });
+    const entries = Object.entries(result.statuses);
+    const names = entries.map(([url]) => url);
+    assert.ok(names.some((url) => /assets\/js\/atlas-bot\.js\?v=20261004-bot5$/.test(url)), `atlas-bot.js key: ${names.join(', ')}`);
+    assert.ok(names.some((url) => /atlas-bot\/atlas-bot\.png\?v=20261004-bot5$/.test(url)), 'badge sprite from the stylesheet');
+    assert.ok(names.some((url) => /atlas-bot\/atlas-bot-small\.png\?v=20261004-bot5$/.test(url)), 'small sprite from the stylesheet');
+    for (const [url, status] of entries) assert.equal(status, 200, url);
+    // The scene bundle, fetched with the exact URL atlas-bot.js loads it from.
+    const scene = await page.evaluate(async () => {
+      const source = await (await fetch(document.querySelector('script[src*="atlas-bot.js"]').src)).text();
+      const url = source.match(/const SCENE = '([^']+)'/)?.[1];
+      const sprites = [...source.matchAll(/const SPRITE(?:_SMALL)? = '([^']+)'/g)].map((match) => match[1]);
+      const out = { url, status: url ? (await fetch(url, { cache: 'no-store' })).status : 0, sprites: {} };
+      for (const sprite of sprites) out.sprites[sprite] = (await fetch(sprite, { cache: 'no-store' })).status;
+      return out;
+    });
+    assert.match(scene.url, /^assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261004-bot5$/);
+    assert.equal(scene.status, 200, scene.url);
+    assert.equal(Object.keys(scene.sprites).length, 2);
+    for (const [sprite, status] of Object.entries(scene.sprites)) {
+      assert.equal(status, 200, sprite);
+      assert.ok(names.some((url) => url.endsWith(sprite)), `the stylesheet uses the same key as atlas-bot.js: ${sprite}`);
+    }
+  } finally { await close(); }
+});
+
 test('phone 390: tab bar robot, a smaller live robot, no sideways scroll, nothing overlaps the tab bar', { skip }, async () => {
   const { page, close } = await openAi({ viewport: { width: 390, height: 844 }, contextOptions: { hasTouch: true, isMobile: true } });
   try {
@@ -437,6 +480,8 @@ test('calm idle pauses the render loop; a pointer move, a state change or a mome
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
     await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
+    // Precondition only: the ~3 s greeting runs in scene time, which a starved
+    // CI runner (software WebGL) advances slowly; this test is about the pause.
     await until(async () => (await info(page))?.scene?.moment === null, { timeout: 45000, message: 'greeting ends' });
     await page.evaluate(() => window.AtlasBot.setIdleTimeout(300));
     await until(async () => { const now = await info(page); return now.running === false && now.paused === true; }, { message: 'paused while idle' });

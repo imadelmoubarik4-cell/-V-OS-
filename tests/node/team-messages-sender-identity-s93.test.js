@@ -219,7 +219,12 @@ test('migration: Team name → profiles.display_name (trigger + idempotent backf
   assert.match(MIGRATION, /grant execute on function atlas_private\.team_messages_snapshot\(uuid,text,uuid\[\],text,integer\) to service_role;/);
   assert.doesNotMatch(MIGRATION, /update atlas_private\.team_messages/i, 'stored audit labels are not rewritten');
   const files = fs.readdirSync(new URL('../../supabase/migrations/', import.meta.url)).filter((name) => name.endsWith('.sql')).sort();
-  assert.equal(files.at(-1), '20261002090000_s93_messages_sender_identity.sql', 'the newest migration');
+  // S93 replays after the migrations it builds on (the snapshot it replaces and
+  // the Team details table it reads); later releases may follow it.
+  const at = (name) => files.indexOf(name);
+  assert.ok(at('20261002090000_s93_messages_sender_identity.sql') > at('20260803125226_atlas_team_messages_checkpoint_c.sql'), 'after the snapshot it replaces');
+  assert.ok(at('20261002090000_s93_messages_sender_identity.sql') > at('20260803155556_atlas_team_profiles_checkpoint_e.sql'), 'after team_profile_details');
+  assert.ok(at('20260803125226_atlas_team_messages_checkpoint_c.sql') >= 0 && at('20260803155556_atlas_team_profiles_checkpoint_e.sql') >= 0);
   assert.match(PREVIEW, /rollback;\s*$/);
   assert.match(PREVIEW, /'s93_messages_sender_identity', case when bool_and\(passed\) then 'passed' else 'failed' end/, 'the result key names this release');
   assert.doesNotMatch(PREVIEW, /s92_messages_sender_identity/);

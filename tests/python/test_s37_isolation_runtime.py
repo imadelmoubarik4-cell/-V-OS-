@@ -41,7 +41,9 @@ class S37IsolationRuntimeTests(unittest.TestCase):
             # gateway but the import worker packages _shared/auth.mjs, and the dead
             # atlas-stock-counts/index.ts is gone.
             # S92: atlas-team-messages also packages its identity.mjs.
-            self.assertEqual(result["files"], 43)
+            # S94: atlas-marketing-workspace also packages its handler.mjs and the
+            # three _shared/integrations modules it imports.
+            self.assertEqual(result["files"], 47)
             runtime = json.loads((output / "runtime-manifest.json").read_text())
             self.assertEqual(len(runtime["functions"]), 18)
             self.assertFalse(runtime["production_fallbacks"])

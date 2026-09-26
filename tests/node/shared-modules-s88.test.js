@@ -48,10 +48,15 @@ test('shared modules are dependency-free ESM without Deno APIs', () => {
   // S88: ai-tools/ holds the Atlas AI Tool Gateway (checked file by file in
   // tests/node/ai-tools-registry.test.js with the same rules).
   // S89: recognition/ holds the visual inventory recognition modules.
-  assert.deepEqual(shared.sort(), ['ai-tools', 'atlas-domain.mjs', 'auth.mjs', 'product-identity.mjs', 'recognition', 'stock-provenance.mjs']);
+  // S94B: integrations/ holds the shared integration crypto, provider refresh
+  // and publishing credential modules.
+  // S94C: publishing/ holds the provider publishing adapters the worker uses.
+  assert.deepEqual(shared.sort(), ['ai-tools', 'atlas-domain.mjs', 'auth.mjs', 'integrations', 'product-identity.mjs', 'publishing', 'recognition', 'stock-provenance.mjs']);
   const files = [
     ...shared.filter((name) => name.endsWith('.mjs')),
     ...fs.readdirSync(path.join(FUNCTIONS, '_shared', 'recognition')).map((name) => `recognition/${name}`),
+    ...fs.readdirSync(path.join(FUNCTIONS, '_shared', 'integrations')).map((name) => `integrations/${name}`),
+    ...fs.readdirSync(path.join(FUNCTIONS, '_shared', 'publishing')).map((name) => `publishing/${name}`),
   ];
   for (const file of files) {
     const source = fs.readFileSync(path.join(FUNCTIONS, '_shared', file), 'utf8');

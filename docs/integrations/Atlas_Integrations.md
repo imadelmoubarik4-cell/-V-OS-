@@ -1,6 +1,7 @@
 # Atlas integrations (S88): server-side OAuth and API keys
 
-Status: backend built and tested against the local replay database. Nothing is deployed. The
+Status (S88): backend built and tested against the local replay database. S94B publishing
+connections are in §10. Nothing is deployed. The
 Settings/Marketing/Knowledge web integration will come later and will use the contract in §5.
 Until the owner adds the function secrets in §6, every provider reports
 `not_configured` with the exact requirement text, and no Connect button should appear.
@@ -70,21 +71,39 @@ System and Marketing snapshots keep working. None of those snapshots read the ne
 | --- | --- | --- |
 | `integration_credentials` | `provider_key` PK/FK, `credential_kind` (`oauth_token_set|api_key`), `ciphertext bytea`, `nonce bytea(12)`, `key_version`, `access_expires_at`, `refresh_expires_at`, `external_account_id`, `created_by`, `created_at`, `rotated_at` | One row per provider. Plaintext never reaches the database. |
 | `integration_oauth_states` | `state_hash bytea(32)` PK, `provider_key`, `actor_id`, `actor_label`, `actor_role` (admin/manager), `verifier_ciphertext`, `verifier_nonce`, `key_version`, `return_path` (hash route only), `created_at`, `expires_at` (+10 min), `consumed_at` | Stores sha256(state), never the raw state. The PKCE verifier is encrypted. Rows older than 1 day are purged on each start. |
-| `integration_events` | `id`, `provider_key`, `event_type`, `actor_id`, `actor_label`, `payload jsonb`, `created_at` | Types: `connect_started, credential_stored, connected, callback_failed, verified, verify_failed, refreshed, refresh_failed, disconnected, api_key_saved`. A check constraint rejects credential-shaped keys at any depth. |
+| `integration_events` | `id`, `provider_key`, `event_type`, `actor_id`, `actor_label`, `payload jsonb`, `created_at` | Types: `connect_started, credential_stored, connected, callback_failed, verified, verify_failed, refreshed, refresh_failed, disconnected, api_key_saved` and (S94B) `publish_scope_requested, resource_listed, resource_selected, credential_used, review_state_set`. A check constraint rejects credential-shaped keys at any depth. |
+| `integration_resources` (S94B) | `provider_key`, `resource_kind` (`facebook_page, instagram_account, gbp_account, gbp_location, tiktok_account`), `resource_id`, `parent_resource_id`, `label`, `metadata` (non-secret), `selected`, `selected_at/by/by_label`, `refreshed_at` | Unique (provider, kind, id); at most one selected per (provider, kind) (partial unique index). |
+| `integration_resource_credentials` (S94B) | `provider_key`, `resource_kind` (`facebook_page, instagram_account`), `resource_id` (FK to the resource), `ciphertext`, `nonce`, `key_version`, `created_by`, `created_at`, `rotated_at` | The selected Page's access token only. AAD `atlas-integrations|<provider>|resource|<resource_id>`. |
 
-RPCs. Each is an `atlas_private.integration_*` function (security invoker, `search_path=''`) with a
-`public.atlas_integration_*` wrapper. Execute is revoked from `public, anon, authenticated` and
-granted to `service_role` only:
+S94B also adds `integration_connections.publishing_review_state` (`not_required, unknown, required,
+pending, approved, rejected`, default `unknown`), `integration_oauth_states.purpose`
+(`connect|publishing`) and a refresh lease on `integration_credentials` (`refresh_lock_token`,
+`refresh_locked_until`, `refresh_lock_actor_id`, `refresh_lock_actor_label`).
 
-| Wrapper | Purpose |
+RPCs. Each is an `atlas_private.integration_*` function with a `public.atlas_integration_*`
+wrapper, `search_path=''`. The S88 functions are security invoker; the S94B ones are security
+definer. Execute is revoked from `public, anon, authenticated` and granted to `service_role` only.
+Every function that acts for a person takes `p_actor_id` and `p_actor_role` and re-checks them
+against the active profile (`integration_assert_actor`, S88 hardening 20260926106000):
+
+| Wrapper (current signature) | Purpose |
 | --- | --- |
-| `atlas_integration_status(p_actor_role)` | Status rows for the six providers: `has_credential` and expiry, with no credential columns. Manager/admin. |
-| `atlas_integration_begin(provider, state_hash, verifier_ciphertext, verifier_nonce, key_version, return_path, actor…)` | Stores the hashed state and logs `connect_started`. OAuth providers only. |
-| `atlas_integration_consume_state(provider, state_hash)` | Single use: `update … set consumed_at=now() where … consumed_at is null and expires_at > now() returning …`. Returns null otherwise. |
-| `atlas_integration_store_credential(…)` | Upserts ciphertext and sets `authorization_required` / `waiting_authorization`. Storing a credential never marks the provider connected. |
-| `atlas_integration_read_credential(provider, role)` | Ciphertext for the function only, used by test, refresh and revoke. |
-| `atlas_integration_record_result(provider, event, …)` | `verified` is the only way to reach `status='connected'` and needs a stored credential. `verify_failed`/`callback_failed`/`refresh_failed` set `degraded` or `expired`. |
-| `atlas_integration_disconnect(provider, actor…)` | Deletes the credential and any open states, resets the status columns and logs `disconnected`. |
+| `atlas_integration_status(p_actor_role, p_actor_id)` | Status rows for the six providers: `has_credential` and expiry, `publishing_permission_state`, `publishing_review_state`, listed `resources` (ids, labels, metadata, `selected`, `has_resource_credential`), last 5 events. No credential columns. Manager/admin. |
+| `atlas_integration_begin(p_provider_key, p_state_hash, p_verifier_ciphertext, p_verifier_nonce, p_key_version, p_return_path, p_actor_id, p_actor_label, p_actor_role)` | Stores the hashed state and logs `connect_started`. OAuth providers only. |
+| `atlas_integration_set_state_purpose(p_provider_key, p_state_hash, p_purpose, p_actor_id, p_actor_label, p_actor_role)` (S94B) | Marks the actor's just-started, unbound state as `publishing`; logs `publish_scope_requested`. |
+| `atlas_integration_bind_browser(p_provider_key, p_state_hash, p_binding_hash)` | Binds an unconsumed state to the browser once; returns `{bound, expires_at, purpose}`. |
+| `atlas_integration_consume_state(p_provider_key, p_state_hash, p_binding_hash)` | Single use, bound browser only, initiating user still an active manager/admin. Returns null otherwise. |
+| `atlas_integration_store_credential(p_provider_key, p_credential_kind, p_ciphertext, p_nonce, p_key_version, p_access_expires_at, p_refresh_expires_at, p_external_account_id, p_actor_id, p_actor_label, p_actor_role)` | Upserts ciphertext and sets `authorization_required` / `waiting_authorization`. Storing a credential never marks the provider connected. |
+| `atlas_integration_read_credential(p_provider_key, p_actor_role, p_actor_id)` | Ciphertext for the function only, used by test, listing, Page-token fetch and revoke. |
+| `atlas_integration_record_result(p_provider_key, p_event_type, p_account_id, p_account_label, p_scopes, p_access_expires_at, p_needs_reauthorization, p_error, p_actor_id, p_actor_label, p_actor_role)` | `verified` is the only way to reach `status='connected'` and needs a stored credential. `verify_failed`/`callback_failed`/`refresh_failed` set `degraded` or `expired`. S94B: derives `publishing_permission_state` after every result; `verified` prefers the selected resource as the external account. |
+| `atlas_integration_disconnect(p_provider_key, p_actor_id, p_actor_label, p_actor_role)` | Deletes the credential, open states, listed resources and Page tokens, resets the status columns (publishing to `not_requested`; the review state is kept) and logs `disconnected`. |
+| `atlas_integration_resources_store(p_provider_key, p_resources, p_actor_id, p_actor_label, p_actor_role)` (S94B) | Replaces the provider's listed resources with a live listing; selects nothing (the single TikTok account is selected because the token belongs to it); logs `resource_listed {resource_count}`. |
+| `atlas_integration_resource_select(p_provider_key, p_resource_kind, p_resource_id, p_ciphertext, p_nonce, p_key_version, p_actor_id, p_actor_label, p_actor_role)` (S94B) | Selects one listed, selectable resource; Facebook Page / Instagram account require the Page-token ciphertext, other kinds refuse one; a location also selects its account; only the selected resource keeps a token; logs `resource_selected`. |
+| `atlas_integration_read_resource_credential(p_provider_key, p_resource_kind, p_resource_id, p_actor_id, p_actor_role)` (S94B) | Page-token ciphertext for a manager/admin action in the function. |
+| `atlas_integration_set_review_state(p_provider_key, p_review_state, p_actor_id, p_actor_label, p_actor_role)` (S94B) | **Administrator only**; logs `review_state_set {previous, review}`. |
+| `atlas_integration_publish_targets()` (S94B, no actor) | Readiness for the Marketing gateway, composer and claim gate (§10). |
+| `atlas_integration_read_credential_for_delivery(p_delivery_id, p_claim_token)` (S94B, no actor) | Worker only (§10). |
+| `atlas_integration_refresh_lock(p_provider_key, p_delivery_id, p_claim_token, p_actor_id, p_actor_label, p_actor_role, p_lease_seconds)`, `atlas_integration_refresh_store(p_provider_key, p_lock_token, p_ciphertext, p_nonce, p_key_version, p_access_expires_at, p_refresh_expires_at)`, `atlas_integration_refresh_release(p_provider_key, p_lock_token, p_error, p_needs_reauthorization)` (S94B) | The refresh lease (§10). |
 
 ## 4. Security model
 
@@ -263,6 +282,30 @@ are read, and streamed bodies are cut off at the limit.
 Encrypts and stores the key, then runs the live check. Returns the same shape as `test`. The key
 is never returned. `409 not_configured` until the Tripadvisor settings in §6 exist.
 
+### S94B additions (publishing connections; see §10)
+
+- Every status row of a publishing provider (Facebook, Instagram, TikTok, Google Business
+  Profile) carries `publishing`:
+  `{ supported, permission_state, review_state, resource_kind, resource: {kind,id,label}|null,
+  resource_count, ready, reason, direct_post, scopes_for_publishing, can_allow_publishing,
+  can_choose_resource, can_set_review_state }` (`null` for Drive and Tripadvisor). `reason` uses
+  the readiness vocabulary of §10 plus `not_configured`.
+- `POST ?action=start` accepts `purpose: "connect" | "publishing"`; `publishing` (Allow publishing)
+  asks for connect ∪ publish scopes (Meta also sends `auth_type=rerequest`). The response adds
+  `purpose` and `scopes_requested`.
+- `POST ?action=list-resources` `{provider_key}` → `{ provider, resource_kind, resources:
+  [{resource_kind, resource_id, parent_resource_id, label, selected, selectable,
+  unavailable_reason, details}], notes }`. Live provider call; nothing is selected by default.
+- `POST ?action=select-resource` `{provider_key, resource_kind?, resource_id}` → `{ provider,
+  selected: {kind, id, label} }`. `409 resource_not_listed | resource_not_selectable |
+  provider_check_failed`.
+- `POST ?action=set-review-state` `{provider_key, review_state}` → `{ provider }`.
+  Administrators only (`403 forbidden` otherwise).
+- `POST ?action=disconnect` adds `revoked_permissions` when only this provider's Meta
+  permissions were revoked.
+- `POST ?action=test` refreshes under the shared lease and may answer
+  `error_code: "refresh_in_progress"`.
+
 ## 6. Function secrets (Supabase → Edge Functions → Secrets; never in `apps/web`)
 
 | Secret | Needed for | Value |
@@ -340,3 +383,121 @@ when the owner registers the apps.
 - TikTok Login Kit web and token management: developers.tiktok.com/doc/login-kit-web, developers.tiktok.com/doc/oauth-user-access-token-management
 - TikTok Content Posting API audit and private-only restriction: developers.tiktok.com/docs/en/content-posting-api-get-started
 - Tripadvisor Content API and the Terra migration: tripadvisor-content-api.readme.io/reference/overview, docs.terra.tripadvisor.com/docs/overview
+
+## 10. S94B publishing connections
+
+Contract: `docs/marketing/S94_Publishing_Architecture.md` §4 (binding), research reports 02, 04–06
+and 08 §12. Migration `supabase/migrations/20261004091000_s94b_publishing_connections.sql`.
+
+### Scopes
+
+| Provider | `scopes` (connect/verify) | `publish_scopes` (Allow publishing) |
+| --- | --- | --- |
+| facebook | `pages_show_list, pages_read_engagement` | `pages_show_list, pages_read_engagement, pages_manage_posts, business_management` |
+| instagram | `instagram_basic, pages_show_list` | `instagram_basic, instagram_content_publish, pages_show_list, pages_read_engagement, business_management` |
+| tiktok | `user.info.basic` | `video.upload, video.publish` |
+| google-business-profile | `https://www.googleapis.com/auth/business.manage` | none extra (`business.manage` covers local posts) |
+
+Verify still requires only `scopes`. `publishing_permission_state` is derived in SQL after every
+verify, resource change and review change: `granted` when every publish scope is in
+`scopes_granted` (Google Business Profile: `business.manage`, a selected location and a review
+state that is not `required/pending/rejected`), `missing` when verified without them, `pending`
+(Business Profile only) while the location or API access is not confirmed, `not_requested`
+before a verified connection. A verified connection with publish permission therefore reads
+`connected` in the Marketing display (report 02 §9 fixed).
+
+### Resources (no `[0]` defaults)
+
+| Kind | Listed from | `resource_id` | Selectable when |
+| --- | --- | --- | --- |
+| `facebook_page` | `GET graph.facebook.com/{v}/me/accounts?fields=id,name,category,tasks&limit=100` (paging.next followed on graph.facebook.com only, its `access_token` query parameter removed) | Page id | `tasks` contains `CREATE_CONTENT` |
+| `instagram_account` | `GET …/me/accounts?fields=id,name,tasks,instagram_business_account{id,username,name}&limit=100` | IG user id; parent = Page id | its Page's `tasks` contains `CREATE_CONTENT` |
+| `gbp_account` / `gbp_location` | `GET mybusinessaccountmanagement.googleapis.com/v1/accounts?pageSize=20`, then `GET mybusinessbusinessinformation.googleapis.com/v1/{account}/locations?readMask=name,title,storefrontAddress,metadata&pageSize=100` | `accounts/{a}` / `accounts/{a}/locations/{l}` (the v4 localPosts parent) | role is not `SITE_MANAGER` and `hasVoiceOfMerchant` is not false |
+| `tiktok_account` | `GET open.tiktokapis.com/v2/user/info/?fields=open_id,display_name` (also recorded after every successful verify) | `open_id` | always (one account per token; selected automatically) |
+
+Selecting a Facebook Page or an Instagram account fetches the Page access token with
+`GET graph.facebook.com/{v}/{page-id}?fields=id,access_token` (the Instagram account's parent
+Page), encrypts it (AAD `atlas-integrations|<provider>|resource|<resource_id>`) and stores it in
+`integration_resource_credentials`. A Page token derived from a long-lived user token does not
+expire; it is re-fetched whenever the Page is chosen again.
+
+### Readiness: `atlas_integration_publish_targets()`
+
+Array in the order instagram, facebook, tiktok, google-business-profile of
+`{provider_key, connection_state, publishing_permission_state, publishing_review_state,
+resource: {kind,id,label}|null, ready, reason, target_kinds}`. `reason` (first match):
+`not_connected`, `review_pending` (status `pending_review`), `needs_reauthorization`
+(expired, degraded or unverified; Meta tokens past expiry), Business Profile `pending` →
+`no_resource_selected | review_pending | review_required`, `publishing_permission_missing`,
+`review_required` (review `required/rejected`, not TikTok), `review_pending` (not TikTok),
+`no_resource_selected`. `not_configured` depends on function secrets the database cannot see;
+the gateways add it. `target_kinds` is what the review state allows: Instagram `ig_feed,
+ig_carousel, ig_reel`; Facebook `fb_page_post, fb_page_photo, fb_page_video, fb_reel`; TikTok
+`tiktok_inbox_video` (+ `tiktok_video` when review is `approved`); Google `gbp_local_post`.
+
+### Worker token access: `_shared/integrations/credentials.mjs`
+
+`openPublishingCredential({ rpc, env, fetchImpl, now, sleep? }, { deliveryId, claimToken })` →
+`{ provider_key, access_token, resource: {kind, id, label}, expires_at }`. It calls
+`atlas_integration_read_credential_for_delivery(p_delivery_id, p_claim_token)`, which returns
+ciphertext only when the delivery is claimed with that token and `claimed_until > now()`, is not
+closed, its content is `approved` or `scheduled`, the connection is `connected` with publishing
+`granted`, and the delivery's `external_account_id` is the selected resource (otherwise
+`{granted:false, reason}` with `not_claimed | not_found | delivery_closed | not_approved |
+not_connected | needs_reauthorization | publishing_permission_missing | no_resource_selected |
+resource_changed | publishing_not_installed`, no ciphertext, no event). A granted read records
+`credential_used {delivery_id, resource_kind}`. Facebook and Instagram get the Page token; TikTok
+and Google get the user token. `access_token` is kept out of `JSON.stringify` (`toJSON`).
+Errors are `CredentialError { code, retryable, reauthorize }`; nothing is logged.
+
+`atlas_private.marketing_deliveries` is created by the later S94C migration. The functions that
+read it are plpgsql (resolved at run time) and check `to_regclass()` first, so the S94B migration
+applies on its own and refuses with `publishing_not_installed` until S94C is applied.
+
+Refresh (Google, TikTok) happens under a database lease because a PostgREST call cannot hold a
+row lock across the provider call: `atlas_integration_refresh_lock` (a live delivery claim for
+that provider, or an active manager/admin for Settings Test) gives one caller a 10–120 s lease and
+returns the current ciphertext to everyone; the holder refreshes, then
+`atlas_integration_refresh_store` (re-stores, logs `refreshed`, releases) or
+`atlas_integration_refresh_release` (with an error: logs `refresh_failed`, marks the connection
+expired/degraded). A caller without the lease waits and re-reads, so a rotating TikTok refresh
+token is spent once. `readTikTokCreatorInfo(deps, {actorId, actorRole})` returns the composer's
+creator info (`POST open.tiktokapis.com/v2/post/publish/creator_info/query/`) without the avatar
+URL.
+
+The AES-GCM helpers moved to `_shared/integrations/crypto.mjs` and the provider HTTP/refresh
+helpers to `_shared/integrations/provider-http.mjs`; `atlas-integrations` re-exports them
+unchanged. The publishing worker needs the same `ATLAS_INTEGRATION_KEK_V<n>` secrets (project-wide)
+and, for refresh, the Google/TikTok client secrets.
+
+### Meta disconnect coupling
+
+Facebook and Instagram share one Meta app. Disconnecting one while the other still has a
+credential revokes only its own permissions (`DELETE graph.facebook.com/{v}/me/permissions/{permission}`
+for its connect ∪ publish scopes minus the other's); the last one revokes the app
+(`DELETE /me/permissions`).
+
+### Settings › Integrations
+
+Per card: pill + status line + next step for Not set up yet, Ready to connect, Checking,
+Connected, Publishing allowed, Publishing permission missing (**Allow publishing**), Needs
+reconnecting (**Reconnect**), Verification failed, App review required, Platform review pending,
+No Page / account / location chosen (**Choose …**, opens the picker sheet; also opened once after
+returning from the provider when a target is missing). A capability list, "Recent activity"
+(event labels only) and, for administrators, a "Platform review" control. The picker lists the
+live accounts with none pre-selected, shows why an account cannot be used and confirms before
+changing an existing choice. Tokens, secrets and provider URLs never reach the page.
+
+### Tests
+
+`tests/node/integrations-publishing-s94.test.js`, `tests/browser/settings-integrations-s94.browser.test.mjs`
+and `scripts/verify_s94b_connections_preview.sql` (in `scripts/verify_s90_workflow_integrity_previews.sh`).
+
+### UNVERIFIED (recheck on the live pages before the first real publication)
+
+`auth_type=rerequest` on the Meta dialog; `DELETE /me/permissions/{permission}`; Meta paging and
+`tasks` behaviour when `/me/accounts` is empty or Pages sit in a Business portfolio; whether IG
+publishing needs the Page token or the user token per edge (Atlas uses the Page token);
+`SITE_MANAGER` posting rights on Business Profile; TikTok `creator_info` field names
+(`creator_username`) and error codes; TikTok rotating refresh token semantics.
+
