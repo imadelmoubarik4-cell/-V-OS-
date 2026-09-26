@@ -1711,10 +1711,24 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   html.atlas-reduce-motion .atlas-bot { animation: none; transition: none; }
   html.atlas-reduce-motion .atlas-bot[data-state]::after { animation: none; }
   html.atlas-reduce-motion :is(a, button):hover > .atlas-bot { transform: none; }
+  /* Still, the busy states keep a look of their own (never shown by movement
+     alone): listening an inner blue ring, thinking the tilted head of its
+     movement with a faint ring, answering a soft outer ring. */
+  html.atlas-reduce-motion .atlas-bot[data-state="listening"] { box-shadow: inset 0 0 0 1.5px rgba(59, 130, 246, .5); }
+  html.atlas-reduce-motion .atlas-bot[data-state="thinking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3); transform: translateY(-1px) rotate(4deg); }
+  html.atlas-reduce-motion .atlas-bot[data-state="answering"],
+  html.atlas-reduce-motion .atlas-bot[data-state="speaking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3), 0 0 0 2px rgba(59, 130, 246, .12); }
+  /* .atlas-bot[data-state] is as specific as the state rules above, so the
+     system setting wins over their animations too (a plain .atlas-bot lost
+     to them: thinking, listening and answering kept moving). */
   @media (prefers-reduced-motion: reduce) {
-    .atlas-bot { animation: none; transition: none; }
+    .atlas-bot, .atlas-bot[data-state] { animation: none; transition: none; }
     :is(a, button):hover > .atlas-bot { transform: none; }
     .atlas-bot[data-state]::after { animation: none; }
+    .atlas-bot[data-state="listening"] { box-shadow: inset 0 0 0 1.5px rgba(59, 130, 246, .5); }
+    .atlas-bot[data-state="thinking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3); transform: translateY(-1px) rotate(4deg); }
+    .atlas-bot[data-state="answering"],
+    .atlas-bot[data-state="speaking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3), 0 0 0 2px rgba(59, 130, 246, .12); }
   }
 
   /* The interactive robot: the badge is its poster until the 3D scene draws.

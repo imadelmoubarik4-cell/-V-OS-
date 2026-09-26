@@ -722,6 +722,39 @@ test('reduced motion: a sleeping robot is still (closed eyes, one still Z, no lo
   } finally { await close(); }
 });
 
+// The small robot under reduced motion (the system setting or Atlas's own):
+// no movement, and still every state looks different, so none is shown by
+// animation alone.
+for (const [label, contextOptions, own] of [['system setting', { reducedMotion: 'reduce' }, false], ['Atlas setting', {}, true]]) {
+  test(`reduced motion (${label}): the small robot shows every state still, each with a look of its own`, { skip }, async () => {
+    const { fixtures } = aiFixtures();
+    const { page, close } = await launchAtlas({ user: USERS.admin, fixtures, hash: '#home', viewport: { width: 1440, height: 900 }, contextOptions, fixedTime: AI_FIXTURE_NOW });
+    try {
+      if (own) await page.evaluate(() => document.documentElement.classList.add('atlas-reduce-motion'));
+      await page.mouse.move(1400, 600);
+      const looks = {};
+      for (const state of ['idle', 'awake', 'sleeping', 'listening', 'thinking', 'answering', 'success', 'attention', 'error']) {
+        await setRobot(page, state);
+        await frames(page, 2);
+        const look = await page.$eval('.atlas-nav .nav-item--ai .atlas-bot', (node) => {
+          const style = getComputedStyle(node);
+          const moving = node.getAnimations().filter((animation) => animation.playState === 'running').map((animation) => animation.animationName || animation.transitionProperty).join(',');
+          return { state: node.dataset.state, moving, animation: style.animationName, look: [style.backgroundPosition, style.filter, style.opacity, style.boxShadow, style.transform].join(' | ') };
+        });
+        assert.equal(look.state, state);
+        assert.equal(look.animation, 'none', `${state}: no animation declared`);
+        assert.equal(look.moving, '', `${state}: no movement`);
+        looks[state] = look.look;
+      }
+      const seen = new Map();
+      for (const [state, look] of Object.entries(looks)) {
+        assert.ok(!seen.has(look), `${state} looks the same as ${seen.get(look)}`);
+        seen.set(look, state);
+      }
+    } finally { await close(); }
+  });
+}
+
 // Under reduced motion only a change draws a (still) frame, and that frame may
 // stay on screen for a long while: it must show the state, never the pose of
 // a moment (a greeting wave, a success smile) that is over or was cut short.

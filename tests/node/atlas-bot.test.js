@@ -263,7 +263,9 @@ test('robot styles live in the components layer and honour reduced motion', () =
   assert.match(css, /html\.atlas-reduce-motion \.atlas-bot \{ animation: none; transition: none; \}/);
   assert.match(css, /url\('\.\.\/atlas-bot\/atlas-bot\.png\?v=20261004-bot5'\) 0 0 \/ 400% 100% no-repeat/);
   assert.match(css, /\.atlas-bot--small \{ background-image: url\('\.\.\/atlas-bot\/atlas-bot-small\.png\?v=20261004-bot5'\); \}/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.atlas-bot \{ animation: none; transition: none; \}\s*:is\(a, button\):hover > \.atlas-bot \{ transform: none; \}/);
+  // The system setting stops the state animations too: its rule is as
+  // specific as .atlas-bot[data-state="thinking"] and the like.
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.atlas-bot, \.atlas-bot\[data-state\] \{ animation: none; transition: none; \}\s*:is\(a, button\):hover > \.atlas-bot \{ transform: none; \}/);
   assert.match(read('apps/web/assets/css/atlas-shell.css'), /\.atlas-ai \.ai-empty:not\(\.ai-empty--off\):not\(:has\(\.atlas-bot-live\)\)::before/);
   // Robot refinement cache keys: every changed stylesheet and script.
   for (const asset of ['css/atlas-components.css', 'css/atlas-shell.css', 'css/atlas-ai.css']) assert.ok(index.includes(`href="assets/${asset}?v=20261004-bot5"`), asset);
