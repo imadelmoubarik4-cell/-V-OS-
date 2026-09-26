@@ -303,6 +303,8 @@ is never returned. `409 not_configured` until the Tripadvisor settings in §6 ex
   Administrators only (`403 forbidden` otherwise).
 - `POST ?action=disconnect` adds `revoked_permissions` when only this provider's Meta
   permissions were revoked.
+  Disconnecting Google Drive or Google Business Profile while the other is still connected
+  skips the Google revoke (it would remove both grants) and answers `revoked_at_provider: false`.
 - `POST ?action=test` refreshes under the shared lease and may answer
   `error_code: "refresh_in_progress"`.
 

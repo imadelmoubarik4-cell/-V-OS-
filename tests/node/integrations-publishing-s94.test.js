@@ -688,6 +688,48 @@ test('disconnecting one Meta provider while the other is connected revokes only 
   assert.deepEqual(ig.body.revoked_permissions, ['instagram_basic', 'instagram_content_publish']);
 });
 
+// ------------------------------------------------------------------ Google disconnect coupling
+
+// Google's revoke endpoint removes every scope granted to the client, so while
+// the other Google provider is connected the revoke is skipped.
+function googleRevokeRecorder() {
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    return new Response('{}', { status: 200 });
+  };
+  return { fetchImpl, revokes: () => calls.filter((c) => c.url === 'https://oauth2.googleapis.com/revoke') };
+}
+
+for (const [key, other] of [['google-drive', 'google-business-profile'], ['google-business-profile', 'google-drive']]) {
+  test(`disconnecting ${key} while ${other} is connected keeps the Google grant`, async () => {
+    const db = fakeDatabase();
+    await connect(db, key, { access_token: GOOGLE_ACCESS, refresh_token: 'r-this' });
+    await connect(db, other, { access_token: GOOGLE_ACCESS, refresh_token: 'r-other' });
+    const google = googleRevokeRecorder();
+    const response = await handlerFor(db, google.fetchImpl).call('disconnect', { provider_key: key });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.revoked_at_provider, false);
+    assert.equal(response.body.revoked_permissions, undefined);
+    assert.equal(google.revokes().length, 0, 'no Google revoke while the other provider is connected');
+    assert.equal(db.credentials.has(key), false, 'the local credential is still removed');
+    assert.equal(db.credentials.has(other), true);
+    assert.ok(db.calls.some((c) => c.name === 'atlas_integration_disconnect' && c.payload.p_provider_key === key));
+  });
+
+  test(`disconnecting ${key} when ${other} is not connected revokes at Google`, async () => {
+    const db = fakeDatabase();
+    await connect(db, key, { access_token: GOOGLE_ACCESS, refresh_token: 'r-this' });
+    const google = googleRevokeRecorder();
+    const response = await handlerFor(db, google.fetchImpl).call('disconnect', { provider_key: key });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.revoked_at_provider, true);
+    assert.equal(google.revokes().length, 1);
+    assert.equal(new URLSearchParams(google.revokes()[0].init.body).get('token'), 'r-this');
+    assert.equal(db.credentials.has(key), false);
+  });
+}
+
 // ------------------------------------------------------------------ credential module
 
 function delivery(db, provider, externalAccountId, overrides = {}) {
