@@ -25,13 +25,13 @@
        legacy layer and no inline style block. -->
   <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260929-s90f">
   <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260929-s90u">
-  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20261003-bot3">
+  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20261004-bot5">
   <link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">
   <link rel="stylesheet" href="assets/css/operations.css?v=20260930-s90g">
   <link rel="stylesheet" href="assets/css/home.css?v=20260929-s90u">
   <link rel="stylesheet" href="assets/css/shifts-workspace.css">
   <link rel="stylesheet" href="assets/css/knowledge-workspace.css">
-  <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20261003-bot1">
+  <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20261004-bot5">
   <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
        append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
        or data attribute); the five also named by runtime-module-guard.js use
@@ -44,7 +44,7 @@
   <link rel="stylesheet" href="assets/css/reports-workspace.css?v=20260929-s90f">
   <link rel="stylesheet" href="assets/css/data-workspace.css?v=20260930-s90g">
   <link rel="stylesheet" href="assets/css/settings-workspace.css">
-  <link rel="stylesheet" href="assets/css/atlas-ai.css?v=20261003-bot3">
+  <link rel="stylesheet" href="assets/css/atlas-ai.css?v=20261004-bot5">
   <link rel="stylesheet" href="assets/css/inventory.css?v=20260929-s90f">
   <link rel="stylesheet" href="assets/css/purchasing.css?v=20260930-s90g">
 </head>
@@ -100,7 +100,7 @@
           <div class="atlas-nav__scroll">
             <div class="nav-group" data-nav-group="main">
               <a class="nav-item" href="#home" data-view="dashboard" data-nav-id="home" aria-label="Home"><i data-lucide="house" aria-hidden="true"></i><span class="nav-item-label">Home</span></a>
-              <a class="nav-item nav-item--ai" href="#ai" data-view="ai" data-nav-id="ai" aria-label="Atlas AI"><span class="atlas-bot atlas-bot--small atlas-bot--nav" data-atlas-bot data-state="idle" aria-hidden="true"></span><span class="nav-item-label">Atlas AI</span></a>
+              <a class="nav-item nav-item--ai" href="#ai" data-view="ai" data-nav-id="ai" aria-label="Atlas AI"><span class="atlas-bot atlas-bot--small atlas-bot--nav" data-atlas-bot data-atlas-bot-follow data-state="idle" aria-hidden="true"></span><span class="nav-item-label">Atlas AI</span></a>
               <a class="nav-item" href="#messages" data-view="team" data-nav-id="messages" aria-label="Messages"><i data-lucide="messages-square" aria-hidden="true"></i><span class="nav-item-label">Messages</span><span class="atlas-badge atlas-nav__badge" data-nav-badge="messages" aria-hidden="true" hidden></span></a>
             </div>
             <div class="nav-group" data-nav-group="venue">
@@ -178,7 +178,7 @@
     <nav class="atlas-tabbar" id="atlas-tabbar" aria-label="Main">
       <a class="atlas-tabbar__item" href="#home" data-nav-id="home"><i data-lucide="house" aria-hidden="true"></i><span>Home</span></a>
       <a class="atlas-tabbar__item" href="#inventory" data-nav-id="inventory"><i data-lucide="package" aria-hidden="true"></i><span>Inventory</span></a>
-      <a class="atlas-tabbar__item atlas-tabbar__item--ai" href="#ai" data-nav-id="ai"><span class="atlas-bot atlas-bot--small atlas-bot--tab" data-atlas-bot data-state="idle" aria-hidden="true"></span><span>Atlas</span></a>
+      <a class="atlas-tabbar__item atlas-tabbar__item--ai" href="#ai" data-nav-id="ai"><span class="atlas-bot atlas-bot--small atlas-bot--tab" data-atlas-bot data-atlas-bot-follow data-state="idle" aria-hidden="true"></span><span>Atlas</span></a>
       <a class="atlas-tabbar__item" href="#recipes" data-nav-id="recipes"><i data-lucide="martini" aria-hidden="true"></i><span>Recipes</span></a>
       <button type="button" class="atlas-tabbar__item" id="atlas-more-btn" data-nav-id="more" aria-haspopup="dialog" aria-expanded="false" aria-controls="atlas-more"><i data-lucide="ellipsis" aria-hidden="true"></i><span>More</span><span class="atlas-badge atlas-tabbar__badge" data-nav-badge="more" hidden></span></button>
     </nav>
@@ -196,7 +196,7 @@
 <script src="assets/js/atlas-stock-truth.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-api.js?v=20260926-s91a"></script>
-<script src="assets/js/atlas-bot.js?v=20261003-bot4"></script>
+<script src="assets/js/atlas-bot.js?v=20261004-bot5"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -1041,7 +1041,7 @@
 <script src="assets/js/atlas-inventory.js?v=20261003-bot1"></script>
 <script src="assets/js/stock-count-workspace.js?v=20260930-s90g"></script>
 <script src="assets/js/atlas-purchasing.js?v=20260930-s90g"></script>
-<script src="assets/js/home.js?v=20261003-bot3"></script>
+<script src="assets/js/home.js?v=20261004-bot5"></script>
 <script src="assets/js/reports-overview.js?v=20260930-s90g"></script>
 <script src="assets/js/data-workspace.js?v=20260929-s90u"></script>
 <script src="assets/js/shifts-workspace.js?v=20260929-s90f"></script>
@@ -1051,7 +1051,7 @@
 <script src="assets/js/atlas-chrome.js?v=20261003-bot1"></script>
 <script src="assets/js/atlas-palette.js?v=20261003-bot2"></script>
 <script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>
-<script src="assets/js/atlas-ai.js?v=20261003-bot1"></script>
+<script src="assets/js/atlas-ai.js?v=20261004-bot5"></script>
 <script src="assets/js/atlas-signin-intro.js?v=20260924-brand1"></script>
 </body>
 </html>

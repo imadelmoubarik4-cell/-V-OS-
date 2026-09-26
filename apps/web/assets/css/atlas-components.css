@@ -1610,10 +1610,15 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   /* ==========================================================================
      6.40 Atlas AI robot — .atlas-bot badge, .atlas-bot-live (atlas-bot.js)
      The assistant's face, never a replacement for the Atlas logo. The badge
-     is one sprite of three frames (open · blink · happy) rendered from the
-     3D robot; it blinks, smiles on hover, bobs and glows while thinking and
-     pulses while listening. Reduced motion (Atlas's setting or the system's):
-     still.
+     is one sprite of four frames (open · blink · sleep · happy) rendered from
+     the 3D robot; data-state (set by the one state controller in atlas-bot.js)
+     picks what it shows: idle blinks now and then, awake is a touch brighter,
+     sleeping closes its eyes under a small Z · ZZ · ZZZ, thinking bobs and
+     glows, listening and answering glow softly, attention holds a steady
+     ring, error is dimmed (never red), success and hover smile. Animations run
+     on the page clock (atlas-bot.js sets a negative delay), so a badge drawn
+     again continues rather than restarts. Reduced motion (Atlas's setting or
+     the system's): still frames; the state still shows (frame, ring, dimming).
      ========================================================================== */
   .atlas-bot {
     --atlas-bot-size: 20px;
@@ -1623,24 +1628,31 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
     width: var(--atlas-bot-size);
     height: var(--atlas-bot-size);
     border-radius: 50%;
-    background: var(--line-subtle) url('../atlas-bot/atlas-bot.png?v=20261003-bot3') 0 0 / 300% 100% no-repeat;
+    background: var(--line-subtle) url('../atlas-bot/atlas-bot.png?v=20261004-bot5') 0 0 / 400% 100% no-repeat;
     box-shadow: inset 0 0 0 1px rgba(11, 18, 32, .06);
     vertical-align: middle;
     animation: atlas-bot-blink 5.2s step-end infinite;
     animation-delay: var(--atlas-bot-delay, 0s);
-    transition: transform var(--dur-2) var(--ease-out);
+    transition: transform var(--dur-2) var(--ease-out), filter var(--dur-2) var(--ease-out);
   }
   .atlas-bot[data-state="happy"],
+  .atlas-bot[data-state="success"],
   .atlas-bot:hover,
   :is(a, button):hover > .atlas-bot { background-position: 100% 0; animation: none; }
   :is(a, button):hover > .atlas-bot { transform: translateY(-1px) rotate(-6deg); }
-  .atlas-bot[data-state="thinking"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-think 1.4s var(--ease-out) infinite alternate, atlas-bot-glow 1.4s ease-in-out infinite alternate; }
-  .atlas-bot[data-state="listening"],
-  .atlas-bot[data-state="speaking"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-glow 1s ease-in-out infinite alternate; }
+  .atlas-bot[data-state="awake"] { filter: brightness(1.04) saturate(1.15); box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .22); }
+  .atlas-bot[data-state="sleeping"] { background-position: 66.667% 0; animation: none; filter: saturate(.8); }
+  .atlas-bot[data-state="thinking"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-think 1.6s var(--ease-out) infinite alternate, atlas-bot-glow 1.6s ease-in-out infinite alternate; }
+  .atlas-bot[data-state="listening"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-glow 1.8s ease-in-out infinite alternate; }
+  .atlas-bot[data-state="answering"],
+  .atlas-bot[data-state="speaking"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-glow 2.6s ease-in-out infinite alternate; }
+  .atlas-bot[data-state="attention"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .45), 0 0 0 3px rgba(59, 130, 246, .2); }
   .atlas-bot[data-state="error"] { filter: grayscale(.7); opacity: .75; animation: none; }
+  /* Blink keeps its own offset; the state's movement runs on the page clock. */
+  .atlas-bot[data-state]:is([data-state="thinking"], [data-state="listening"], [data-state="answering"], [data-state="speaking"]) { animation-delay: var(--atlas-bot-delay, 0s), var(--atlas-bot-clock, 0s), var(--atlas-bot-clock, 0s); }
   @keyframes atlas-bot-blink {
     0% { background-position: 0 0; }
-    94% { background-position: 50% 0; }
+    94% { background-position: 33.333% 0; }
     96.5% { background-position: 0 0; }
   }
   @keyframes atlas-bot-think {
@@ -1654,15 +1666,59 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   /* 24 px or less (AtlasBot.html adds the class; the static nav and tab bar
      badges carry it): a tighter face, a matte visor and brighter eyes, so the
      robot does not read as a dark blob. */
-  .atlas-bot--small { background-image: url('../atlas-bot/atlas-bot-small.png?v=20261003-bot3'); }
+  .atlas-bot--small { background-image: url('../atlas-bot/atlas-bot-small.png?v=20261004-bot5'); }
+
+  /* Sleeping: Z, then ZZ, then ZZZ rising at the badge's top right, a fade and
+     a pause, in CSS alone: one pseudo-element whose two text-shadow copies are
+     the second and third Z, each a step higher. Its resting style is the
+     reduced-motion look: a single still Z. Hovering the item (a wake trigger)
+     hides it at once. */
+  .atlas-bot::after {
+    --atlas-bot-z: rgba(51, 65, 85, .78);
+    content: none;
+    position: absolute;
+    left: calc(100% - var(--atlas-bot-size) * .15);
+    bottom: calc(100% - var(--atlas-bot-size) * .45);
+    color: var(--atlas-bot-z);
+    font-family: var(--font-sans);
+    font-size: calc(var(--atlas-bot-size) * .3);
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    text-shadow: calc(var(--atlas-bot-size) * .14) calc(var(--atlas-bot-size) * -.3) 0 transparent, calc(var(--atlas-bot-size) * .28) calc(var(--atlas-bot-size) * -.6) 0 transparent;
+    opacity: .8;
+    pointer-events: none;
+  }
+  .atlas-bot[data-state="sleeping"]::after {
+    content: 'Z';
+    /* Starts at one Z whenever the robot falls asleep. */
+    animation: atlas-bot-z-reveal 6s step-end infinite, atlas-bot-z-fade 6s ease-in-out infinite;
+  }
+  :is(a, button):hover > .atlas-bot::after,
+  .atlas-bot-live > .atlas-bot.atlas-bot-live__poster::after { content: none; }
+  @keyframes atlas-bot-z-reveal {
+    0% { text-shadow: calc(var(--atlas-bot-size) * .14) calc(var(--atlas-bot-size) * -.3) 0 transparent, calc(var(--atlas-bot-size) * .28) calc(var(--atlas-bot-size) * -.6) 0 transparent; }
+    20% { text-shadow: calc(var(--atlas-bot-size) * .14) calc(var(--atlas-bot-size) * -.3) 0 var(--atlas-bot-z), calc(var(--atlas-bot-size) * .28) calc(var(--atlas-bot-size) * -.6) 0 transparent; }
+    40% { text-shadow: calc(var(--atlas-bot-size) * .14) calc(var(--atlas-bot-size) * -.3) 0 var(--atlas-bot-z), calc(var(--atlas-bot-size) * .28) calc(var(--atlas-bot-size) * -.6) 0 var(--atlas-bot-z); }
+  }
+  @keyframes atlas-bot-z-fade {
+    0% { opacity: 0; translate: 0 1px; }
+    6% { opacity: .8; translate: 0 0; }
+    62% { opacity: .8; translate: 0 -1px; }
+    74% { opacity: 0; translate: 0 -2px; }
+    100% { opacity: 0; translate: 0 -2px; }
+  }
   html.atlas-reduce-motion .atlas-bot { animation: none; transition: none; }
+  html.atlas-reduce-motion .atlas-bot[data-state]::after { animation: none; }
   html.atlas-reduce-motion :is(a, button):hover > .atlas-bot { transform: none; }
   @media (prefers-reduced-motion: reduce) {
     .atlas-bot { animation: none; transition: none; }
     :is(a, button):hover > .atlas-bot { transform: none; }
+    .atlas-bot[data-state]::after { animation: none; }
   }
 
-  /* The interactive robot: the badge is its poster until the 3D scene draws. */
+  /* The interactive robot: the badge is its poster until the 3D scene draws.
+     The 3D scene draws the full robot's contact shadow itself. */
   .atlas-bot-live {
     --atlas-bot-live-size: 160px;
     position: relative;
@@ -1670,10 +1726,66 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
     place-items: center;
     width: var(--atlas-bot-live-size);
     height: var(--atlas-bot-live-size);
+    container-type: size;
     touch-action: manipulation;
   }
   .atlas-bot-live__canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity var(--dur-3) var(--ease-out); cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .atlas-bot-live.is-live .atlas-bot-live__canvas { opacity: 1; }
   .atlas-bot-live.is-live .atlas-bot-live__poster { visibility: hidden; }
   .atlas-bot-live.is-static .atlas-bot-live__canvas { display: none; }
+  /* The poster is the head at 72% of the robot's box, whatever size the box
+     is given (a phone or a short screen draws the robot smaller). */
+  .atlas-bot-live > .atlas-bot-live__poster { width: 72%; height: 72%; }
+
+  /* Sleeping: Z · ZZ · ZZZ in the robot's own top-right corner (inside its
+     box, so it never reaches other content), in the display face, Midnight at
+     low opacity; each letter a little larger and higher. Hidden the moment
+     the robot wakes. Resting style = reduced motion: one still Z. */
+  .atlas-bot-z { display: none; }
+  .atlas-bot-live[data-state="sleeping"] > .atlas-bot-z {
+    position: absolute;
+    top: 1%;
+    right: 1%;
+    display: block;
+    width: 22%;
+    height: 21%;
+    color: rgba(51, 65, 85, .7);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .atlas-bot-z > i { position: absolute; font-style: normal; letter-spacing: .02em; opacity: 0; }
+  .atlas-bot-z > i:nth-child(1) { left: 8%; bottom: 0; font-size: 5.5cqmin; opacity: .7; }
+  .atlas-bot-z > i:nth-child(2) { left: 38%; bottom: 26%; font-size: 7.5cqmin; }
+  .atlas-bot-z > i:nth-child(3) { left: 68%; bottom: 50%; font-size: 9.5cqmin; }
+  .atlas-bot-live[data-state="sleeping"] > .atlas-bot-z > i { animation: 6s ease-in-out infinite; }
+  .atlas-bot-live[data-state="sleeping"] > .atlas-bot-z > i:nth-child(1) { animation-name: atlas-bot-z1; }
+  .atlas-bot-live[data-state="sleeping"] > .atlas-bot-z > i:nth-child(2) { animation-name: atlas-bot-z2; }
+  .atlas-bot-live[data-state="sleeping"] > .atlas-bot-z > i:nth-child(3) { animation-name: atlas-bot-z3; }
+  @keyframes atlas-bot-z1 {
+    0% { opacity: 0; translate: 0 2px; }
+    6% { opacity: .75; translate: 0 0; }
+    62% { opacity: .75; translate: 0 -1px; }
+    74% { opacity: 0; translate: 0 -3px; }
+    100% { opacity: 0; translate: 0 -3px; }
+  }
+  @keyframes atlas-bot-z2 {
+    0%, 18% { opacity: 0; translate: 0 2px; }
+    24% { opacity: .75; translate: 0 0; }
+    62% { opacity: .75; translate: 0 -1px; }
+    74% { opacity: 0; translate: 0 -3px; }
+    100% { opacity: 0; translate: 0 -3px; }
+  }
+  @keyframes atlas-bot-z3 {
+    0%, 36% { opacity: 0; translate: 0 2px; }
+    42% { opacity: .75; translate: 0 0; }
+    62% { opacity: .75; translate: 0 -1px; }
+    74% { opacity: 0; translate: 0 -3px; }
+    100% { opacity: 0; translate: 0 -3px; }
+  }
+  html.atlas-reduce-motion .atlas-bot-live[data-state] > .atlas-bot-z > i { animation: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-bot-live[data-state] > .atlas-bot-z > i:nth-child(n) { animation: none; }
+  }
 }

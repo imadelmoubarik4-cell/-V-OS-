@@ -1,12 +1,13 @@
 // Atlas AI robot: the assistant's face (not the Atlas logo, which stays the
 // brand mark everywhere). Two forms of one model (scripts/mascot/):
 //
-//   AtlasBot.html({ size, state })      a small badge: the pre-rendered robot
-//     (assets/atlas-bot/atlas-bot.png, frames open · blink · happy; at 24 px
-//     or less atlas-bot-small.png, a tighter face with a matte visor)
-//     animated in CSS (.atlas-bot, atlas-components.css): it blinks, smiles
-//     on hover, bobs and glows while thinking, pulses while listening. Use it
-//     wherever the assistant is the symbol (nav, Ask Atlas, message labels).
+//   AtlasBot.html({ size, state, follow })   a small badge: the pre-rendered
+//     robot (assets/atlas-bot/atlas-bot.png, frames open · blink · sleep ·
+//     happy; at 24 px or less atlas-bot-small.png, a tighter face with a matte
+//     visor) animated in CSS (.atlas-bot, atlas-components.css): it blinks,
+//     smiles on hover, sleeps with a small z · zz · zzz, bobs and glows while
+//     thinking, pulses while listening. Use it wherever the assistant is the
+//     symbol (nav, Ask Atlas, message labels).
 //
 //   AtlasBot.liveHtml({ key, framing, state }) + AtlasBot.upgrade(root)
 //     the interactive 3D robot (assets/atlas-bot/atlas-mascot-scene.js, Three.js
@@ -28,15 +29,50 @@
 // shows the poster again; a restored one rebuilds the scene. Where WebGL runs
 // only in software (no GPU), the poster stays: building and drawing the scene
 // there would hold the page's main thread for seconds.
+//
+// One state controller (AtlasBot.robot, below) decides what the assistant is
+// doing for every surface that follows it (data-atlas-bot-follow: the sidebar
+// and tab bar badges, the Atlas AI welcome robot, the label of the answer
+// being written). States and how each ends are one table (STATE_TABLE); a
+// transient state (awake, success) returns to idle by itself; calm states
+// fall asleep after a quiet spell; wake triggers (hover, tap, opening Atlas
+// AI, a new conversation, the composer, voice, an AI task) wake it at once.
+// All of it runs on one timer. Surfaces with a state of their own (the live
+// voice robot) use setState(key, state) through the same table.
 (function atlasBot(root) {
   'use strict';
 
-  const SPRITE = 'assets/atlas-bot/atlas-bot.png?v=20261003-bot3';
-  const SPRITE_SMALL = 'assets/atlas-bot/atlas-bot-small.png?v=20261003-bot3';
-  const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20261003-bot4';
+  const SPRITE = 'assets/atlas-bot/atlas-bot.png?v=20261004-bot5';
+  const SPRITE_SMALL = 'assets/atlas-bot/atlas-bot-small.png?v=20261004-bot5';
+  const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20261004-bot5';
   // Badges this size or smaller use the small sprite (.atlas-bot--small).
   const SMALL_MAX = 24;
-  const STATES = ['idle', 'thinking', 'listening', 'speaking', 'error', 'happy'];
+  // The assistant's states: what each shows in the 3D scene, and how it ends.
+  //   calm   it may fall asleep after a quiet spell (idle, awake)
+  //   then   a transient state: after `after` ms it returns to `then`
+  //   moment a one-off movement played as the state starts
+  // Anything else lasts until the next state is set (listening, thinking,
+  // answering, attention, error never fall asleep).
+  const STATE_TABLE = Object.freeze({
+    idle: { scene: 'idle', calm: true },
+    awake: { scene: 'awake', calm: true, then: 'idle', after: 8000 },
+    sleeping: { scene: 'sleeping', asleep: true },
+    listening: { scene: 'listening' },
+    thinking: { scene: 'thinking' },
+    answering: { scene: 'answering' },
+    success: { scene: 'idle', moment: 'success', then: 'idle', after: 1600 },
+    attention: { scene: 'attention' },
+    error: { scene: 'error' }
+  });
+  // Older names still accepted: speaking is answering; hover is awake.
+  const ALIASES = Object.freeze({ speaking: 'answering', hover: 'awake' });
+  // Badges also show 'happy' (the smile frame), which is not a state.
+  const STATES = [...Object.keys(STATE_TABLE), 'happy'];
+  // Quiet spell before the robot falls asleep: 90 s while Atlas AI is open
+  // (the welcome robot is in front of the person, and a long read or a pause to
+  // think should not be interrupted sooner); 5 min while Atlas AI is not
+  // open, where only the small sidebar or tab bar robot shows it.
+  const SLEEP_AFTER = Object.freeze({ active: 90000, inactive: 300000 });
   const live = new Map();
   let scenePromise = null;
   let webgl = null;
@@ -49,7 +85,7 @@
   const now = () => root.performance?.now?.() ?? Date.now();
 
   const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-  const stateOf = (value) => (STATES.includes(value) ? value : 'idle');
+  const stateOf = (value) => { const name = ALIASES[value] || value; return STATES.includes(name) ? name : 'idle'; };
   const media = (query) => Boolean(root.matchMedia?.(query).matches);
   // The system setting or Atlas's own Reduce motion preference.
   const reducedMotion = () => media('(prefers-reduced-motion: reduce)') || Boolean(document.documentElement.classList?.contains('atlas-reduce-motion'));
@@ -58,16 +94,31 @@
   // Badges blink at slightly different moments so a list of them never blinks
   // in step.
   let blinkSeed = 0;
-  function html({ size = 20, state = 'idle', className = '', label = '' } = {}) {
+  // follow: the badge shows the assistant's state (AtlasBot.robot) and keeps
+  // showing it as it changes; `state` is then ignored.
+  function html({ size = 20, state = 'idle', className = '', label = '', follow = false } = {}) {
     blinkSeed = (blinkSeed + 1) % 7;
     const px = Math.max(12, Math.min(128, Math.round(Number(size) || 20)));
     const a11y = label ? ` role="img" aria-label="${escape(label)}"` : ' aria-hidden="true"';
-    return `<span class="atlas-bot${px <= SMALL_MAX ? ' atlas-bot--small' : ''}${className ? ` ${escape(className)}` : ''}" data-atlas-bot data-state="${stateOf(state)}" style="--atlas-bot-size:${px}px;--atlas-bot-delay:-${blinkSeed * 0.9}s"${a11y}></span>`;
+    return `<span class="atlas-bot${px <= SMALL_MAX ? ' atlas-bot--small' : ''}${className ? ` ${escape(className)}` : ''}" data-atlas-bot${follow ? ' data-atlas-bot-follow' : ''} data-state="${follow ? robot.state : stateOf(state)}" style="--atlas-bot-size:${px}px;--atlas-bot-delay:${phase(blinkSeed)};--atlas-bot-clock:${phase(0)}"${a11y}></span>`;
   }
 
-  function liveHtml({ key = 'default', framing = 'full', state = 'idle', size = 160, label = 'Atlas, your assistant' } = {}) {
+  // A negative delay of the time since the page opened: every badge animation
+  // runs on the page's clock, so a badge drawn again (a streamed answer
+  // re-rendering its label) continues its animation instead of restarting it.
+  // The blink adds a per-badge offset (seed) so a list never blinks in step.
+  function phase(seed) {
+    return `-${((now() / 1000) + seed * 0.9).toFixed(2)}s`;
+  }
+
+  // The sleeping z · zz · zzz: one element per robot, animated in CSS only
+  // (shown while the robot sleeps, gone the moment it wakes).
+  const Z = '<span class="atlas-bot-z" aria-hidden="true"><i>z</i><i>z</i><i>z</i></span>';
+
+  function liveHtml({ key = 'default', framing = 'full', state = 'idle', size = 160, label = 'Atlas, your assistant', follow = false } = {}) {
     const px = Math.max(48, Math.min(320, Math.round(Number(size) || 160)));
-    return `<div class="atlas-bot-live" data-atlas-bot-live="${escape(key)}" data-framing="${framing === 'bust' ? 'bust' : 'full'}" data-state="${stateOf(state)}" style="--atlas-bot-live-size:${px}px" role="img" aria-label="${escape(label)}">${html({ size: Math.round(px * 0.72), state, className: 'atlas-bot-live__poster' })}</div>`;
+    const value = follow ? robot.state : stateOf(state);
+    return `<div class="atlas-bot-live" data-atlas-bot-live="${escape(key)}" data-framing="${framing === 'bust' ? 'bust' : 'full'}" data-state="${value}"${follow ? ' data-atlas-bot-follow' : ''} style="--atlas-bot-live-size:${px}px" role="img" aria-label="${escape(label)}">${html({ size: Math.round(px * 0.72), state: value, className: 'atlas-bot-live__poster' })}${Z}</div>`;
   }
 
   // Probed once per page: every probe opens a WebGL context, and browsers
@@ -105,9 +156,8 @@
     return scenePromise;
   }
 
-  // Moments the scene knows; a base state that is also a badge state.
-  const MOMENTS = ['greet', 'success', 'error', 'react'];
-  const BASES = ['idle', 'thinking', 'listening', 'speaking', 'error'];
+  // Moments the scene knows.
+  const MOMENTS = ['greet', 'success', 'error', 'react', 'wake'];
 
   function createLive(key, framing) {
     const entry = {
@@ -140,7 +190,7 @@
       root.removeEventListener('pointermove', onPointer);
       document.documentElement.removeEventListener('pointerleave', onLeave);
     };
-    canvas.addEventListener('pointerdown', () => play(key, 'react'));
+    canvas.addEventListener('pointerdown', () => { play(key, 'react'); });
     // The browser can take the context back (too many contexts, GPU reset):
     // the poster shows again until it is restored.
     canvas.addEventListener('webglcontextlost', (event) => {
@@ -203,7 +253,7 @@
         entry.lastDraw = time;
         entry.scene.step(time);
       }
-      const calm = entry.state === 'idle' && !entry.scene.busy();
+      const calm = (STATE_TABLE[entry.state]?.calm || STATE_TABLE[entry.state]?.asleep) && !entry.scene.busy();
       if (calm && now() - entry.activeAt > idleAfter) { entry.paused = true; return; }
       loop(entry);
     });
@@ -272,12 +322,19 @@
   }
 
   // A changed state counts as activity; re-applying the same one only
-  // schedules a frame.
+  // schedules a frame (the scene keeps the state's timing: no restart). A
+  // state's moment plays as it starts; leaving sleep plays the wake moment.
   function applyState(entry) {
     if (!entry.scene) return;
-    const changed = entry.applied !== entry.state;
+    const was = entry.applied;
+    const changed = was !== entry.state;
     entry.applied = entry.state;
-    entry.scene.setBase(BASES.includes(entry.state) ? entry.state : 'idle');
+    const row = STATE_TABLE[entry.state] || STATE_TABLE.idle;
+    entry.scene.setBase(row.scene);
+    if (changed && was !== undefined) {
+      if (row.moment) entry.scene.play(row.moment);
+      else if (was === 'sleeping') entry.scene.play('wake');
+    }
     wake(entry, changed);
   }
 
@@ -297,7 +354,9 @@
         live.set(key, entry);
       }
       entry.host = host;
-      entry.state = stateOf(host.dataset.state);
+      entry.follow = host.hasAttribute('data-atlas-bot-follow');
+      if (entry.follow) paintHost(host, robot.state);
+      entry.state = entry.follow ? robot.state : stateOf(host.dataset.state);
       host.appendChild(entry.canvas);
       // Moved into a new placeholder: redraw on the next frame, not now (a
       // caller may re-render many times a second, e.g. live voice).
@@ -308,15 +367,24 @@
     });
   }
 
+  function paintHost(host, value) {
+    if (host.dataset.state !== value) host.dataset.state = value;
+    const poster = host.querySelector('.atlas-bot-live__poster');
+    if (poster && poster.dataset.state !== value) poster.dataset.state = value;
+  }
+
+  // One surface's own state (the live voice robot), through the same table:
+  // a transient state plays its moment and settles on the state it returns to.
   function setState(key, state) {
     const entry = live.get(key);
-    const value = stateOf(state);
-    document.querySelectorAll(`[data-atlas-bot-live="${CSS.escape(key)}"]`).forEach((host) => {
-      host.dataset.state = value;
-      host.querySelector('.atlas-bot')?.setAttribute('data-state', value);
-    });
+    let value = stateOf(state);
+    if (value === 'happy') value = 'success';
+    const row = STATE_TABLE[value] || STATE_TABLE.idle;
+    const shown = row.then || value;
+    document.querySelectorAll(`[data-atlas-bot-live="${CSS.escape(key)}"]`).forEach((host) => paintHost(host, shown));
     if (!entry) return;
-    entry.state = value;
+    if (row.then && entry.scene && row.moment) entry.scene.play(row.moment);
+    entry.state = shown;
     applyState(entry);
   }
 
@@ -341,9 +409,137 @@
     live.delete(key);
   }
 
+  // ---------------------------------------------------------------------------
+  // The state controller: one assistant state for every following surface.
+  // ---------------------------------------------------------------------------
+  const robot = {
+    state: 'idle', since: now(), activity: now(), until: 0, active: false,
+    timer: 0, timers: 0, wakes: 0, lastWake: 0, history: [],
+    delays: { ...SLEEP_AFTER }, transient: {}
+  };
+  const sleepAfter = () => (robot.active ? robot.delays.active : robot.delays.inactive);
+  const lasts = (name) => robot.transient[name] ?? STATE_TABLE[name].after;
+
+  // The single timer: whichever comes first of the transient state ending and
+  // the robot falling asleep. Activity only records a time; the timer checks
+  // it when it fires and waits again if something happened meanwhile. No
+  // timer while the tab is hidden (it is set again when the tab shows).
+  function schedule() {
+    if (robot.timer) { root.clearTimeout(robot.timer); robot.timer = 0; robot.timers -= 1; }
+    if (document.hidden || !root.setTimeout) return;
+    const row = STATE_TABLE[robot.state];
+    const due = robot.until || (row.calm ? robot.activity + sleepAfter() : 0);
+    if (!due) return;
+    robot.timers += 1;
+    robot.timer = root.setTimeout(tick, Math.max(0, due - now()));
+  }
+
+  function tick() {
+    robot.timer = 0;
+    robot.timers -= 1;
+    const time = now() + 4;
+    const row = STATE_TABLE[robot.state];
+    if (robot.until) {
+      if (time >= robot.until) { setRobot(row.then, { auto: true }); return; }
+    } else if (row.calm && time >= robot.activity + sleepAfter()) {
+      setRobot('sleeping', { auto: true });
+      return;
+    }
+    schedule();
+  }
+
+  // Every following surface shows the new state: badges by their data-state
+  // (CSS), live robots by their scene.
+  function paint() {
+    document.querySelectorAll('[data-atlas-bot-follow]').forEach((node) => {
+      if (node.hasAttribute('data-atlas-bot-live')) paintHost(node, robot.state);
+      else if (node.dataset.state !== robot.state) node.dataset.state = robot.state;
+    });
+    live.forEach((entry) => {
+      if (!entry.follow || entry.state === robot.state) return;
+      entry.state = robot.state;
+      applyState(entry);
+    });
+  }
+
+  // auto: the controller itself moved on (a transient state ended, the robot
+  // fell asleep), which is not activity.
+  function setRobot(value, { auto = false } = {}) {
+    const next = ALIASES[value] || (value === 'happy' ? 'success' : value);
+    const row = STATE_TABLE[next];
+    if (!row) return robot.state;
+    const time = now();
+    if (!auto) robot.activity = time;
+    robot.until = row.then ? time + lasts(next) : 0;
+    // The same state again (a stream of updates) is one continuous state.
+    if (next !== robot.state) {
+      robot.history.push({ from: robot.state, to: next, at: Math.round(time) });
+      if (robot.history.length > 40) robot.history.shift();
+      robot.state = next;
+      robot.since = time;
+      paint();
+    }
+    schedule();
+    return robot.state;
+  }
+
+  // Something the person did that concerns the assistant. A sleeping or idle
+  // robot wakes (awake, for a while); an awake one stays awake longer without
+  // moving again (typing wakes once, not on every key). clear: a new start
+  // (a new conversation) also clears an error or a pending attention.
+  function wakeRobot(reason = 'activity', { clear = false } = {}) {
+    const time = now();
+    robot.activity = time;
+    robot.lastWake = time;
+    robot.wakes += 1;
+    const current = robot.state;
+    if (current === 'sleeping' || current === 'idle' || (clear && (current === 'error' || current === 'attention'))) {
+      setRobot('awake');
+      return reason;
+    }
+    if (current === 'awake') robot.until = time + lasts('awake');
+    if (!robot.timer) schedule();
+    return reason;
+  }
+
+  // Atlas AI opened (a wake trigger) or closed; the quiet spell before sleep
+  // depends on it.
+  function setActive(value) {
+    const next = Boolean(value);
+    if (next === robot.active) return;
+    robot.active = next;
+    if (next) wakeRobot('open');
+    else schedule();
+  }
+
+  // Hovering or tapping anything that carries a following robot (the Atlas AI
+  // sidebar item, the tab, the welcome robot) wakes it. One listener each for
+  // the page, installed once.
+  const followerAt = (target) => {
+    const node = target?.closest?.('[data-atlas-bot-follow], a, button');
+    if (!node) return null;
+    return node.hasAttribute('data-atlas-bot-follow') ? node : node.querySelector(':scope > [data-atlas-bot-follow]');
+  };
+  let hovered = null;
+  document.addEventListener('pointerover', (event) => {
+    const node = followerAt(event.target);
+    if (node === hovered) return;
+    hovered = node;
+    if (node) wakeRobot('hover');
+  }, { passive: true });
+  document.addEventListener('pointerdown', (event) => { if (followerAt(event.target)) wakeRobot('tap'); }, { passive: true });
+  // While Atlas AI is open, moving the pointer or pressing keys keeps the
+  // robot from falling asleep (it does not wake a sleeping one).
+  const note = () => { if (robot.active && robot.state !== 'sleeping') robot.activity = now(); };
+  root.addEventListener('pointermove', note, { passive: true });
+  root.addEventListener('keydown', note, { passive: true });
+
   document.addEventListener('visibilitychange', () => {
     live.forEach((entry) => { if (document.hidden) stop(entry); else wake(entry); });
+    schedule();
   });
+  // The quiet spell starts when the page opens.
+  schedule();
   root.addEventListener('resize', () => live.forEach((entry) => resize(entry)), { passive: true });
 
   // Reduced motion can be switched on or off while a robot is on screen.
@@ -364,6 +560,12 @@
     new root.MutationObserver(motionChanged).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   }
 
+  const robotInfo = () => ({
+    state: robot.state, since: Math.round(robot.since), active: robot.active, timers: robot.timers, pendingTimer: Boolean(robot.timer),
+    wakes: robot.wakes, sleepAfter: sleepAfter(), transientUntil: robot.until ? Math.round(robot.until) : 0,
+    history: robot.history.map((step) => ({ ...step })), liveRobots: live.size
+  });
+
   root.AtlasBot = {
     html,
     liveHtml,
@@ -371,11 +573,36 @@
     setState,
     play,
     destroy,
+    // The assistant's state for every following surface (see STATE_TABLE):
+    //   robot.set(state)   idle · awake · sleeping · listening · thinking ·
+    //                      answering · success · attention · error
+    //   robot.wake(reason) a wake trigger (hover, tap, composer, voice…)
+    //   robot.active(bool) Atlas AI opened or closed
+    //   robot.setDelays({ active, inactive, awake, success })  tests only:
+    //                      shorter sleep and transient delays (ms)
+    robot: {
+      set: (state) => setRobot(state),
+      wake: (reason, options) => wakeRobot(reason, options),
+      active: (value) => setActive(value),
+      get state() { return robot.state; },
+      info: robotInfo,
+      setDelays({ active, inactive, awake, success } = {}) {
+        if (active !== undefined) robot.delays.active = Math.max(0, Number(active) || 0);
+        if (inactive !== undefined) robot.delays.inactive = Math.max(0, Number(inactive) || 0);
+        if (awake !== undefined) robot.transient.awake = Math.max(0, Number(awake) || 0);
+        if (success !== undefined) robot.transient.success = Math.max(0, Number(success) || 0);
+        schedule();
+      },
+      table: STATE_TABLE
+    },
+    // setRobotState(state) sets the assistant's state; with { key } one
+    // surface's own state.
+    setRobotState(state, { key } = {}) { return key ? setState(key, state) : setRobot(state); },
     // For tests and diagnostics.
     info(key) {
       const entry = live.get(key);
       if (!entry) return null;
-      return { key, state: entry.state, live: Boolean(entry.scene), failed: entry.failed, lost: entry.lost, visible: entry.visible, running: Boolean(entry.frame), paused: Boolean(entry.paused), reducedMotion: entry.scene?.reducedMotion() ?? motionReduced, scene: entry.scene?.info() || null };
+      return { key, state: entry.state, follow: Boolean(entry.follow), live: Boolean(entry.scene), failed: entry.failed, lost: entry.lost, visible: entry.visible, running: Boolean(entry.frame), paused: Boolean(entry.paused), reducedMotion: entry.scene?.reducedMotion() ?? motionReduced, scene: entry.scene?.info() || null, robot: robotInfo() };
     },
     // Tests shorten the calm-idle pause.
     setIdleTimeout(ms) { idleAfter = Math.max(0, Number(ms) || 0); },
