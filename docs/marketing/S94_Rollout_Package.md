@@ -12,7 +12,7 @@ made in production. Each stage below needs its own owner go-ahead; stage 7
 | Branch | `claude/s94-marketing-publishing` |
 | Reviewed code and tests (code pin) | **`718ff9712a80e98eec9b5a699c0f980c4282668a`** — the merge of `main` with the live Atlas AI robot (`6d75918`) plus robot/Marketing regression tests. Its app, function and migration code is byte-identical to merge `6d75918`; `718ff97` adds tests only. |
 | Superseded pins | `ffa4e90` (Media fixes on the real Storage API) is **superseded**: it predates `main`'s Atlas AI robot (#95), so deploying its web app would remove the live robot from production. `ad2bee0` was superseded earlier (cannot upload videos over 6 MB). |
-| Commits after the pin | documentation only (this package); check with `git diff --stat 718ff97..HEAD` — it must list only `docs/marketing/*.md` |
+| Commits after the pin | no runtime code: this package (docs) and `873c8a6` (two browser-test waits made robust for CI: auth renewal request, robot greeting precondition). Check with `git diff --stat 718ff97..HEAD` — it must list only `docs/marketing/*.md` and `tests/browser/*.mjs` |
 | Contains `main` | yes, up to `ef7c907` (Atlas AI robot #95, S93 Messages #94); reconciled in merge `6d75918` (6 conflicts, all resolved keeping both releases) |
 | S94 server code vs `ffa4e90` | unchanged: `git diff ffa4e90 718ff97 -- supabase` is empty; the only app change beyond `main` is `marketing-workspace.js` (Ask Atlas uses the robot icon) and the cache-key lines in `index.html`/`config.js` |
 
