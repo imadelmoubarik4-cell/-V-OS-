@@ -511,6 +511,9 @@
     const root = modal('acc-upload', { initialFocus: '#acc-upload-title' });
     const aiOn = state.workspace?.ai_enabled === true;
     const files = [];
+    // True while an upload run is in progress: the Upload button stays off, so
+    // a second click cannot start a second run over the same files.
+    let running = false;
     root.innerHTML = `<section class="atlas-sheet" data-modal-panel aria-labelledby="acc-upload-title">
         <span class="atlas-sheet__grabber"></span>
         <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="acc-upload-title" tabindex="-1">Upload invoices or receipts</h2><p class="atlas-sheet__desc">${aiOn ? 'Atlas reads each one and fills in what it can. You check and approve it.' : 'You type in the details and approve them. Atlas reading is off (Settings › Atlas AI).'}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close>${icon('x')}</button></header>
@@ -535,7 +538,7 @@
         return `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon">${icon(entry.file.type === 'application/pdf' ? 'file-text' : 'image')}</span><div class="atlas-row__body"><p class="atlas-row__title">${titleMarkup}</p><p class="atlas-row__meta" data-acc-q-status="${index}">${escapeHtml(entry.status || `${Math.max(1, Math.round(entry.file.size / 1024))} KB`)}</p></div><div class="atlas-row__end">${end}</div></li>`;
       }).join('');
       const waiting = files.filter((entry) => !entry.started).length;
-      start.disabled = !waiting;
+      start.disabled = running || !waiting;
       start.textContent = waiting > 1 ? `Upload ${waiting} files` : 'Upload';
       root.querySelector('[data-acc-cancel]').textContent = files.some((entry) => entry.docId) ? 'Done' : 'Cancel';
       window.lucide?.createIcons?.();
@@ -571,11 +574,14 @@
       const paidBy = form.querySelector('input[name="paid_by"]:checked')?.value || 'company';
       const payer = form.elements.paid_by_profile_id.value;
       if (paidBy === 'staff' && !payer) { fail('Choose the team member who paid.', form.elements.paid_by_profile_id); return; }
+      if (running) return;
       fail('');
+      running = true;
       start.disabled = true;
       const fields = paidBy === 'staff' ? { paid_by: 'staff', paid_by_profile_id: payer } : {};
       const created = [];
-      for (const entry of files.filter((item) => !item.started)) {
+      // Claim the next waiting file each time (files added during the run join it).
+      for (let entry = files.find((item) => !item.started); entry; entry = files.find((item) => !item.started)) {
         entry.started = true;
         setStatus(entry, 'Preparing…');
         try {
@@ -589,12 +595,14 @@
           entry.docId = result.document?.id;
           remember(result.document);
           created.push(entry.docId);
-          if (result.readable && aiOn) {
+          // A replayed upload is a document that already exists: Atlas has
+          // already been asked to read it, and a read costs money.
+          if (result.readable && aiOn && !result.replayed) {
             setStatus(entry, 'Uploaded · Atlas is reading it…');
             try {
               const read = await api('read', { method: 'POST', body: { id: entry.docId }, timeout: LONG_TIMEOUT_MS });
               remember(read.document);
-              setStatus(entry, read.outcome === 'read' ? 'Read by Atlas — check it and approve' : 'Uploaded — type in the details');
+              setStatus(entry, ['read', 'already_read'].includes(read.outcome) ? 'Read by Atlas — check it and approve' : 'Uploaded — type in the details');
             } catch (error) {
               setStatus(entry, error?.code === 'rate_limited' ? ERROR_COPY.rate_limited : 'Uploaded — Atlas couldn’t read it, type in the details');
             }
@@ -607,6 +615,7 @@
           else setStatus(entry, errorText(error));
         }
       }
+      running = false;
       render();
       if (created.length === 1 && files.every((entry) => entry.started)) {
         window.AtlasModal.close(root, 'done');
@@ -1070,7 +1079,8 @@
       busy(true);
       fail('');
       try {
-        const result = await api('read', { method: 'POST', body: { id: doc.id }, timeout: LONG_TIMEOUT_MS });
+        // "Read again" asks for a new read of a document Atlas already read.
+        const result = await api('read', { method: 'POST', body: { id: doc.id, again: true }, timeout: LONG_TIMEOUT_MS });
         await refresh(result.document, result.outcome === 'read' ? 'Atlas filled in what it could read. Check it.' : null);
       } catch (error) { await failed(error); }
     }));

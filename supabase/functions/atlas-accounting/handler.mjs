@@ -16,7 +16,7 @@
 //   GET  ?action=file&id=                 a 5-minute signed link to the file
 //   GET  ?action=export&from=&to=         approved, paid and void documents + links
 //   POST ?action=upload   (multipart)     file, request_id, fields (JSON)
-//   POST ?action=read     {id}            Atlas reads the file into a draft
+//   POST ?action=read     {id, again?}    Atlas reads the file into a draft (again: re-read)
 //   POST ?action=command  {id, version, command, payload}
 
 import { AuthError, resolveActor as sharedResolveActor } from "../_shared/auth.mjs";
@@ -420,6 +420,15 @@ export function createAccountingHandler({ env, fetchImpl, newId = () => crypto.r
     const record = (payload) => svc.rpc("atlas_accounting_command", {
       p_actor_id: actor.userId, p_id: id, p_version: null, p_command: "record_read", p_payload: payload,
     });
+    // Only "Read again" (again: true) reads a document that Atlas has read or
+    // is reading. The read after an upload never repeats: a retried or
+    // doubled upload request must not pay for the same document twice.
+    if (body.again !== true) {
+      const current = await svc.rpc("atlas_accounting_document", { p_actor_id: actor.userId, p_id: id });
+      if (current?.extraction_status === "read" || current?.extraction_status === "reading") {
+        return { document: current, outcome: current.extraction_status === "read" ? "already_read" : "reading" };
+      }
+    }
     const apiKey = envValue(env, "OPENAI_API_KEY");
     // Without a key nothing is spent and the limit is not touched.
     if (!apiKey) return { document: await record({ outcome: "not_configured" }), outcome: "not_configured" };

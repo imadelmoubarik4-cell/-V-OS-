@@ -1242,3 +1242,46 @@ test('files dropped on the Accounting page open Upload with them queued; the bro
     assert.equal(await page.textContent('#acc-upload [data-acc-start]'), 'Upload 3 files');
   } finally { await close(); }
 });
+
+test('upload: the Upload button stays off during a run, so each file is uploaded and read exactly once', { skip }, async () => {
+  const backend = accountingBackend();
+  const inner = backend.handler;
+  // Slow uploads and reads, like real ones: the run takes a while.
+  backend.handler = (entry) => (entry.action === 'upload' || entry.action === 'read')
+    ? new Promise((resolve) => setTimeout(() => resolve(inner(entry)), 250))
+    : inner(entry);
+  const { page, close } = await launch({ backend });
+  try {
+    await openAccounting(page);
+    await page.click('#accounting-view .page-head [data-acc-upload]');
+    await page.waitForSelector('#acc-upload.is-open');
+    const pdf = (name) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from(`%PDF-1.4\n% ${name}\n%%EOF\n`) });
+    await page.setInputFiles('#acc-upload [data-acc-files]', [pdf('one.pdf'), pdf('two.pdf'), pdf('three.pdf')]);
+    // On every queue update during the run, record whether the button is off
+    // and click it the way an impatient person would (it used to come back on
+    // as "Upload 2 files" and a second click started a second run).
+    await page.evaluate(() => {
+      window.__startStates = [];
+      const queue = document.querySelector('#acc-upload [data-acc-queue]');
+      new MutationObserver(() => {
+        const start = document.querySelector('#acc-upload [data-acc-start]');
+        const busy = [...queue.querySelectorAll('[data-acc-q-status]')].some((node) => /Preparing|Uploading|reading/.test(node.textContent));
+        if (!busy || !start) return;
+        window.__startStates.push(start.disabled);
+        start.click();
+      }).observe(queue, { childList: true, subtree: true, characterData: true });
+    });
+    await page.click('#acc-upload [data-acc-start]');
+    await until(() => page.evaluate(() => document.querySelectorAll('#acc-upload [data-acc-q-open]').length >= 3), { timeout: 10000, message: 'all three uploaded' });
+    await settle(page);
+    const uploads = backend.calls.filter((call) => call.action === 'upload');
+    const reads = backend.calls.filter((call) => call.action === 'read');
+    assert.equal(uploads.length, 3, 'each file uploaded once');
+    assert.equal(reads.length, 3, 'each file read once');
+    assert.deepEqual(new Set(reads.map((call) => call.body.id)).size, 3);
+    assert.equal(reads.some((call) => call.body.again === true), false, 'the upload read is never a re-read');
+    const states = await page.evaluate(() => window.__startStates);
+    assert.ok(states.length >= 3, `observed the run (${states.length} updates)`);
+    assert.deepEqual([...new Set(states)], [true], 'the Upload button stayed off for the whole run');
+  } finally { await close(); }
+});
