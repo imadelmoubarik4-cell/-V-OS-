@@ -74,7 +74,11 @@ const RENAMES = [
   [/\bMata\b/g, 'Greenleaf'],
   [/Vínkaup/g, 'Cellar Door'],
   [/Kaffibrennslan|Te & Kaffi/g, 'Bean Street'],
-  [/@(?:pantanir\.)?(globus|olgerdin|mata|vinkaup|kaffi)\.example/g, (address, key) => `@${{ globus: 'northwind', olgerdin: 'baydrinks', mata: 'greenleaf', vinkaup: 'cellardoor', kaffi: 'beanstreet' }[key]}.example`]
+  [/@(?:pantanir\.)?(globus|olgerdin|mata|vinkaup|kaffi)\.example/g, (address, key) => `@${{ globus: 'northwind', olgerdin: 'baydrinks', mata: 'greenleaf', vinkaup: 'cellardoor', kaffi: 'beanstreet' }[key]}.example`],
+  // The shared test fixtures use Icelandic 555 numbers, a real landline range.
+  // The guide shows numbers that cannot be assigned (Icelandic numbers never
+  // start with 0), so no screenshot carries a number someone might own.
+  [/(?<![\w-])(?:\+354[ -]?)?555[ -]?(\d{4})(?![\w-])/g, (number, last) => `+354 000 ${last}`]
 ];
 
 export function rename(value) {
@@ -103,8 +107,8 @@ export const PHOTOS = [
 
 const S = { globus: INV.globus, olgerdin: INV.olgerdin, mata: INV.mata, vinkaup: uuid(901), kaffi: uuid(902) };
 export const suppliers = [
-  { id: S.globus, name: 'Northwind', contact_name: 'Anna', email: 'orders@northwind.example', phone: '555 1234', active: true, lead_time_days: 1, order_cutoff: '18:00' },
-  { id: S.olgerdin, name: 'Bay Drinks', contact_name: 'Jón', email: 'orders@baydrinks.example', phone: '555 2200', active: true },
+  { id: S.globus, name: 'Northwind', contact_name: 'Anna', email: 'orders@northwind.example', phone: '+354 000 1234', active: true, lead_time_days: 1, order_cutoff: '18:00' },
+  { id: S.olgerdin, name: 'Bay Drinks', contact_name: 'Jón', email: 'orders@baydrinks.example', phone: '+354 000 2200', active: true },
   { id: S.mata, name: 'Greenleaf', contact_name: 'Rakel', email: 'orders@greenleaf.example', active: true },
   { id: S.vinkaup, name: 'Cellar Door', email: 'orders@cellardoor.example', active: true },
   { id: S.kaffi, name: 'Bean Street', email: 'orders@beanstreet.example', active: true }
@@ -308,7 +312,7 @@ function team(user) {
     if (result?.workspace?.profiles) {
       const profiles = result.workspace.profiles;
       const gunnar = profiles.find((row) => row.id === GUNNAR_ID);
-      if (gunnar) gunnar.phone = gunnar.can_view_sensitive ? '+354 555 0144' : gunnar.phone;
+      if (gunnar) gunnar.phone = gunnar.can_view_sensitive ? '+354 000 0144' : gunnar.phone;
       const owner = profiles.find((row) => row.id === USERS.admin.id);
       if (owner) owner.job_title = 'Owner & general manager';
       profiles.splice(3, 0,
@@ -600,7 +604,7 @@ export function manualWorld(user = DEMO_USERS.admin, { countStatus = 'draft' } =
     return result;
   };
   const settings = base.functions['atlas-settings'];
-  const venueDetails = { registration_number: '', location_label: 'Reykjavík', address_line: 'Pier 3, Old Harbour', city: 'Reykjavík', country_code: 'IS', email: 'hello@harbourroom.example', phone: '+354 555 0100', website: 'https://harbourroom.example', booking_url: 'https://harbourroom.example/book' };
+  const venueDetails = { registration_number: '', location_label: 'Reykjavík', address_line: 'Pier 3, Old Harbour', city: 'Reykjavík', country_code: 'IS', email: 'hello@harbourroom.example', phone: '+354 000 0100', website: 'https://harbourroom.example', booking_url: 'https://harbourroom.example/book' };
   const functions = {
     ...base.functions,
     'atlas-settings': async (entry) => {
