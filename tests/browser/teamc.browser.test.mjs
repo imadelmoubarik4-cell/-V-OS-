@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { harnessAvailable, launchAtlas, requestsTo, settle, until, USERS } from './harness.mjs';
-import { teamCBackend, IDS, NOW } from './teamc-fixtures.mjs';
+import { teamCBackend, IDS, NOW, marketingWorkspace } from './teamc-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 const PHONE = { width: 390, height: 844 };
@@ -193,18 +193,20 @@ test('Marketing: overview lists what is coming up and waiting; drafts store venu
   try {
     await page.waitForSelector('#marketing-view .atlas-list');
     const text = await page.textContent('#marketing-view');
-    assert.match(text, /Publishing is manual until a social account is connected\./);
+    // S94: the caption follows publishing capability (nothing connected here).
+    assert.match(text, /Atlas can't publish yet, so you post by hand and mark it here\./);
     assert.match(text, /Coming up/);
     assert.match(text, /Friday quiz night reel/);
     assert.match(text, /Sat 26 Sep, 17:00/, 'times show in venue time, not the browser zone');
     assert.match(text, /Suggestion/);
+    // S94: the composer is a routed page (#marketing/new).
     await page.click('#marketing-view [data-mk-new]');
-    await page.waitForSelector('#mk-editor.is-open');
+    await page.waitForSelector('[data-mk-composer] #mk-title');
     await page.fill('#mk-title', 'Autumn menu teaser');
     await page.fill('#mk-when', '2026-10-01T18:00');
     await page.fill('#mk-caption', 'Six new drinks from Thursday.');
-    assert.match(await page.textContent('#mk-editor [data-mk-preview-when]'), /Thu 1 Oct, 18:00/);
-    await page.click('#mk-editor [data-mk-save]');
+    await page.waitForFunction(() => /Posts Thu 1 Oct at 18:00/.test(document.querySelector('[data-mk-when-echo]')?.textContent || ''));
+    await page.click('[data-mk-composer] [data-mk-save]');
     await until(() => requestsTo(record, 'atlas-marketing-workspace', 'create-content').length, { message: 'create-content' });
     await settle(page);
     const create = requestsTo(record, 'atlas-marketing-workspace', 'create-content').at(-1);
@@ -214,14 +216,16 @@ test('Marketing: overview lists what is coming up and waiting; drafts store venu
 });
 
 test('Marketing: approving from the sheet; staff see the permission state; phone has no horizontal scroll', { skip }, async () => {
-  const { page, record, close } = await launch({ hash: '#marketing' });
+  // S94: Instagram needs a photo or video before approval; c1 carries one here.
+  const withMedia = () => { const payload = marketingWorkspace(); payload.workspace.content_items[0].media = [{ asset_id: '00000000-0000-4000-8000-000000000950', kind: 'video', mime_type: 'video/mp4', width: 1080, height: 1920, duration_ms: 20000, byte_size: 5000000, position: 0, role: 'cover', platform: null, thumb_url: null }]; return payload; };
+  const { page, record, close } = await launch({ hash: '#marketing', overrides: { functions: { 'atlas-marketing-workspace': withMedia } } });
   try {
     await page.waitForSelector('#marketing-view [data-mk-open="c1"]');
     await page.click('#marketing-view .atlas-row__action[data-mk-open="c1"]');
-    await page.waitForSelector('#mk-editor [data-mk-decide="approved"]');
-    await page.click('#mk-editor [data-mk-decide="changes_requested"]');
-    assert.match(await page.textContent('#mk-editor [data-mk-error]'), /Add a note/);
-    await page.click('#mk-editor [data-mk-decide="approved"]');
+    await page.waitForSelector('[data-mk-composer] [data-mk-decide="approved"]');
+    await page.click('[data-mk-composer] [data-mk-decide="changes_requested"]');
+    assert.match(await page.textContent('[data-mk-composer] [data-mk-error]'), /Add a note/);
+    await page.click('[data-mk-composer] [data-mk-decide="approved"]');
     await until(() => requestsTo(record, 'atlas-marketing-workspace', 'decide-approval').some((entry) => entry.body?.decision === 'approved'), { message: 'the approval' });
     assert.equal(requestsTo(record, 'atlas-marketing-workspace', 'decide-approval').at(-1).body.decision, 'approved');
   } finally { await close(); }
@@ -234,7 +238,7 @@ test('Marketing: approving from the sheet; staff see the permission state; phone
   } finally { await staff.close(); }
   const phone = await launch({ hash: '#marketing/calendar', viewport: PHONE });
   try {
-    await phone.page.waitForSelector('#marketing-view .mk-calendar-list');
+    await phone.page.waitForSelector('#marketing-view .mk-agenda');
     assert.ok(await noHorizontalScroll(phone.page));
   } finally { await phone.close(); }
 });

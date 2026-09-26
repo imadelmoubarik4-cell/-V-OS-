@@ -11,6 +11,8 @@ window.VABAR_CONFIG = {
   STOCK_COUNTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-stock-counts",
   TEAM_MESSAGES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-messages",
   MARKETING_WORKSPACE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-workspace",
+  // Marketing › Media: private photo and video library (signed uploads, 5-minute previews).
+  MARKETING_MEDIA_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-media",
   TEAM_PROFILES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profiles",
   TEAM_PROFILE_PHOTOS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profile-photos",
   SHIFTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-shifts",
@@ -119,6 +121,20 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/marketing-workspace.js?v=20260926-s91a',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
+}));
+
+// S94: the composer's shared platform checks (generated from the publisher's
+// rules) and the Marketing media library (library, picker and upload queue).
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/marketing-platform-rules.js',
+  globalName: 'AtlasPlatformRules',
+  dataAttribute: 'atlasPlatformRules',
+}));
+
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/marketing-media.js',
+  globalName: 'AtlasMarketingMedia',
+  dataAttribute: 'atlasMarketingMedia',
 }));
 
 // Checkpoint E loads a compressed, repository-owned Team Profiles bundle. The

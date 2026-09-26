@@ -197,4 +197,28 @@
   .settings-apikey { flex-direction: column; align-items: stretch; }
   .sys-toolbar { flex-direction: column; align-items: stretch; }
 }
+
+/* ---- S94B Integrations ---- */
+/* Publishing capability list, platform review control, recent activity and
+ * the Page / account / location picker sheet (docs/marketing/research/
+ * 08-ux-spec.md §12). Tokens only; the sheet, radios and avatars are
+ * atlas-components.css. */
+.settings-provider__can { display: flex; flex-direction: column; gap: var(--s-1); margin: 0; padding: 0; list-style: none; font: var(--type-meta); color: var(--text-2); }
+.settings-provider__can > li { display: flex; align-items: flex-start; gap: var(--s-2); }
+.settings-provider__can > li > svg { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--text-3); }
+.settings-review__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-top: var(--s-2); }
+.settings-review__row > .atlas-select { flex: 1 1 200px; max-width: 280px; }
+.settings-provider__events { font: var(--type-meta); color: var(--text-2); }
+.settings-provider__events > summary { width: fit-content; font: var(--type-label); color: var(--accent-text); cursor: pointer; }
+.settings-provider__events > ul { display: flex; flex-direction: column; gap: 2px; margin: var(--s-2) 0 0; padding: 0; list-style: none; }
+.settings-picker { display: flex; flex-direction: column; gap: var(--s-1); margin: 0; padding: 0; border: 0; min-width: 0; }
+.settings-picker__option { align-items: center; gap: var(--s-3); min-height: var(--touch); padding: var(--s-2) var(--s-3); border: 1px solid var(--line-subtle); border-radius: var(--r-md); }
+.settings-picker__option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.settings-picker__option.is-disabled { cursor: not-allowed; color: var(--text-3); }
+.settings-picker__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.settings-picker__name { font: var(--type-label); color: var(--text); overflow-wrap: anywhere; }
+.settings-picker__meta { font: var(--type-meta); color: var(--text-2); overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+  .settings-review__row > .atlas-select { max-width: none; }
+}
 }

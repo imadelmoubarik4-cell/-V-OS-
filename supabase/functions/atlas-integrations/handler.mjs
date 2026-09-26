@@ -9,6 +9,14 @@
 // Browser-facing responses carry status and metadata only. Tokens, API keys,
 // PKCE verifiers, OAuth state and ciphertext never leave this module: every
 // JSON response passes assertNoSecretFields() before it is sent.
+//
+// S94B (publishing connections): start with purpose "publishing" asks for
+// connect ∪ publish scopes; list-resources / select-resource manage the Page,
+// Instagram account, Business Profile location or TikTok account Atlas posts
+// to (the selected Page token is encrypted here, AAD per resource);
+// set-review-state is administrator-only; Test refreshes under the shared
+// database lease; disconnecting one Meta provider while the other is
+// connected revokes only its own permissions.
 
 import { actorLabel as canonicalActorLabel } from "../_shared/auth.mjs";
 import {
@@ -31,6 +39,7 @@ import {
   normalizeReturnPath,
   parseAllowedOrigins,
   readCookie,
+  resourceCredentialAad,
   sanitizeProviderError,
 } from "./oauth-core.mjs";
 import {
@@ -40,12 +49,18 @@ import {
   getProvider,
   providerConfiguration,
   configurationResult,
+  requestedScopes,
+  supportsPublishing,
 } from "./providers.mjs";
+import { CredentialError, needsRefresh, refreshWithLock } from "../_shared/integrations/credentials.mjs";
 
 export const FUNCTION_VERSION = "0.1.0";
 const MAX_BODY_BYTES = 16 * 1024;
-const REFRESH_MARGIN_MS = 5 * 60 * 1000;
 const MANAGER_ROLES = new Set(["admin", "manager"]);
+const REVIEW_STATES = new Set(["not_required", "unknown", "required", "pending", "approved", "rejected"]);
+const META_KEYS = ["facebook", "instagram"];
+// Metadata keys the picker may show (the listing stores nothing else).
+const RESOURCE_META_KEYS = ["category", "tasks", "username", "page_name", "account_label", "address", "has_voice_of_merchant", "type", "role"];
 
 export const CORS_HEADERS = Object.freeze({
   "access-control-allow-origin": "*",
@@ -164,6 +179,37 @@ async function readJson(request) {
   try { parsed = JSON.parse(text); } catch { throw new ApiError(400, "Request body must be valid JSON."); }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new ApiError(400, "Request body must be a JSON object.");
   return parsed;
+}
+
+function requireAdmin(context) {
+  if (context?.profile?.role !== "admin") {
+    throw new ApiError(403, "Only administrators can change this.", { error_code: "forbidden" });
+  }
+}
+
+function publishingProviderFrom(value) {
+  const provider = providerFrom(value);
+  if (!supportsPublishing(provider)) throw new ApiError(400, `${provider.label} does not publish posts.`, { error_code: "invalid_request" });
+  return provider;
+}
+
+// Browser shape of a listed resource: ids, labels and whitelisted metadata.
+function publicResource(row) {
+  const metadata = row?.metadata && typeof row.metadata === "object" ? row.metadata : {};
+  const details = {};
+  for (const key of RESOURCE_META_KEYS) {
+    if (metadata[key] !== undefined && metadata[key] !== null) details[key] = metadata[key];
+  }
+  return {
+    resource_kind: row.resource_kind,
+    resource_id: row.resource_id,
+    parent_resource_id: row.parent_resource_id ?? null,
+    label: row.label,
+    selected: row.selected === true,
+    selectable: metadata.selectable !== false,
+    unavailable_reason: typeof metadata.unavailable_reason === "string" ? metadata.unavailable_reason : null,
+    details,
+  };
 }
 
 function providerFrom(value) {
@@ -285,6 +331,48 @@ export function createIntegrationsHandler(deps) {
       recent_events: Array.isArray(row?.recent_events)
         ? row.recent_events.map((event) => ({ event_type: event.event_type, actor_label: event.actor_label ?? null, created_at: event.created_at }))
         : [],
+      publishing: publishingView(provider, row, connectionState, config, role),
+    };
+  }
+
+  // S94B readiness for one provider, the same rules as the SQL
+  // atlas_integration_publish_targets() plus `not_configured` (function
+  // secrets the database cannot see).
+  function publishingView(provider, row, connectionState, config, role) {
+    if (!supportsPublishing(provider)) return null;
+    const permission = row?.publishing_permission_state ?? "not_requested";
+    const review = row?.publishing_review_state ?? "unknown";
+    const resources = (Array.isArray(row?.resources) ? row.resources : []).filter((entry) => entry?.resource_kind === provider.resource_kind);
+    const selected = resources.find((entry) => entry.selected) ?? null;
+    const needsPageToken = provider.resource_kind === "facebook_page" || provider.resource_kind === "instagram_account";
+    const resourceOk = Boolean(selected) && (!needsPageToken || selected.has_resource_credential === true);
+    const gbp = provider.key === "google-business-profile";
+    let reason = null;
+    if (connectionState === "not_configured") reason = "not_configured";
+    else if (connectionState === "ready") reason = "not_connected";
+    else if (connectionState === "pending_review") reason = "review_pending";
+    else if (connectionState !== "connected") reason = "needs_reauthorization";
+    else if (gbp && permission === "pending") reason = !selected ? "no_resource_selected" : review === "pending" ? "review_pending" : "review_required";
+    else if (permission !== "granted") reason = "publishing_permission_missing";
+    else if (provider.key !== "tiktok" && (review === "required" || review === "rejected")) reason = "review_required";
+    else if (provider.key !== "tiktok" && review === "pending") reason = "review_pending";
+    else if (!resourceOk) reason = "no_resource_selected";
+    const connected = connectionState === "connected";
+    return {
+      supported: true,
+      permission_state: permission,
+      review_state: review,
+      resource_kind: provider.resource_kind,
+      resource: selected ? { kind: selected.resource_kind, id: selected.resource_id, label: selected.label } : null,
+      resource_count: resources.length,
+      ready: reason === null,
+      reason,
+      // TikTok: inbox upload always; Direct Post once TikTok approved Atlas.
+      direct_post: provider.key === "tiktok" ? review === "approved" : null,
+      scopes_for_publishing: requestedScopes(provider, "publishing"),
+      can_allow_publishing: config.configured && provider.publish_scopes.length > 0 && connected && permission !== "granted",
+      can_choose_resource: config.configured && connected,
+      can_set_review_state: role === "admin",
     };
   }
 
@@ -318,6 +406,10 @@ export function createIntegrationsHandler(deps) {
   async function handleStart(context, body) {
     const provider = providerFrom(body.provider_key);
     if (provider.auth_kind !== "oauth2") throw new ApiError(400, `${provider.label} does not use OAuth. Save an API key instead.`);
+    const purpose = body.purpose === undefined || body.purpose === null || body.purpose === "connect" ? "connect" : String(body.purpose);
+    if (purpose !== "connect" && !(purpose === "publishing" && supportsPublishing(provider))) {
+      throw new ApiError(400, "Connection purpose must be connect or publishing.", { error_code: "invalid_request" });
+    }
     requireConfigured(provider);
     const returnPath = normalizeReturnPath(body.return_path);
     if (!returnPath) throw new ApiError(400, "Return path must be an Atlas route such as #settings.");
@@ -344,6 +436,18 @@ export function createIntegrationsHandler(deps) {
       p_actor_label: actorLabel(context.profile),
       p_actor_role: context.profile.role,
     });
+    if (purpose === "publishing") {
+      // The hop reads the purpose back from the bound state (records
+      // publish_scope_requested).
+      await deps.rpc("atlas_integration_set_state_purpose", {
+        p_provider_key: provider.key,
+        p_state_hash: stateHash,
+        p_purpose: purpose,
+        p_actor_id: context.user.id,
+        p_actor_label: actorLabel(context.profile),
+        p_actor_role: context.profile.role,
+      });
+    }
     // authorize_url is the Atlas hop on the functions domain (same host as
     // the callback): opening it binds the state to this browser, then
     // redirects to the provider. A copied URL opened later is refused.
@@ -353,6 +457,8 @@ export function createIntegrationsHandler(deps) {
       provider_key: provider.key,
       authorize_url: hop,
       expires_at: begun?.expires_at ?? null,
+      purpose,
+      scopes_requested: requestedScopes(provider, purpose),
     };
   }
 
@@ -382,6 +488,7 @@ export function createIntegrationsHandler(deps) {
       redirectUri: redirectUriFor(provider),
       state,
       codeChallenge: provider.pkce === "S256" ? challenge : null,
+      purpose: bound.purpose === "publishing" ? "publishing" : "connect",
     });
     return redirectResponse(target, [bindingSetCookie(provider.key, nonce)]);
   }
@@ -431,6 +538,17 @@ export function createIntegrationsHandler(deps) {
         scopes: result.scopes ?? secretValue.scopes ?? null,
         access_expires_at: secretValue.access_expires_at ?? null,
       });
+      if (provider.key === "tiktok" && result.account_id) {
+        // A TikTok token belongs to exactly one account: record it as the
+        // publishing target (the database selects the single account).
+        await deps.rpc("atlas_integration_resources_store", {
+          p_provider_key: provider.key,
+          p_resources: [{ resource_kind: "tiktok_account", resource_id: result.account_id, parent_resource_id: null, label: result.account_label, metadata: { selectable: true } }],
+          p_actor_id: actor.id,
+          p_actor_label: actor.label,
+          p_actor_role: actor.role,
+        }).catch(() => undefined);
+      }
       return { verified: true };
     } catch (error) {
       // The sanitised provider text goes to the audit row only.
@@ -538,15 +656,17 @@ export function createIntegrationsHandler(deps) {
     }
     if (!credential) throw new ApiError(409, `${provider.label} is not connected.`, { error_code: "not_connected" });
     let secretValue = credential.value;
-    const expiresAt = secretValue.access_expires_at ? Date.parse(secretValue.access_expires_at) : null;
-    if (provider.refresh && expiresAt !== null && expiresAt - REFRESH_MARGIN_MS <= now()) {
+    if (provider.refresh && needsRefresh(secretValue, now())) {
+      // S94B: the same database lease as the publishing worker, so a manual
+      // test and a publish never spend a rotating refresh token twice. The
+      // lease RPCs record refreshed / refresh_failed.
       try {
-        secretValue = await provider.refresh(provider, env, deps.fetchImpl, secretValue, now());
-        await storeCredential(provider, credential.kind, secretValue, secretValue, actor);
-        await recordResult(provider, "refreshed", actor, { access_expires_at: secretValue.access_expires_at });
+        secretValue = await refreshForActor(provider, actor);
       } catch (error) {
-        const detail = error instanceof ProviderError ? error.message : "Token refresh failed.";
-        await recordResult(provider, "refresh_failed", actor, { error: detail, needs_reauthorization: true });
+        if (!(error instanceof CredentialError)) throw error;
+        if (error.retryable && error.code !== "refresh_failed") {
+          return { provider: await providerView(provider, actor), verified: false, message: "Atlas is renewing access right now. Try again in a minute.", error_code: "refresh_in_progress" };
+        }
         return { provider: await providerView(provider, actor), verified: false, message: PROVIDER_REFRESH_FAILED, error_code: "provider_refresh_failed" };
       }
     }
@@ -562,12 +682,25 @@ export function createIntegrationsHandler(deps) {
     const role = context.profile.role;
     const actor = { id: context.user.id, role };
     let revokedAtProvider = false;
+    let revokedPermissions = null;
     if (provider.revoke && configurationFor(provider).configured) {
       try {
         const credential = await openCredential(provider, actor);
         if (credential) {
-          await provider.revoke(provider, env, deps.fetchImpl, credential.value);
-          revokedAtProvider = true;
+          // Facebook and Instagram share one Meta app (and usually one user
+          // token): while the other is connected, revoke only this
+          // provider's own permissions instead of every permission.
+          const otherKey = META_KEYS.includes(provider.key) ? META_KEYS.find((key) => key !== provider.key) : null;
+          const otherConnected = otherKey ? Boolean((await statusRows(actor)).get(otherKey)?.has_credential) : false;
+          if (otherConnected && provider.revokePermissions) {
+            const other = getProvider(otherKey);
+            const keep = new Set([...other.scopes, ...(other.publish_scopes ?? [])]);
+            revokedPermissions = requestedScopes(provider, "publishing").filter((permission) => !keep.has(permission));
+            revokedAtProvider = await provider.revokePermissions(provider, env, deps.fetchImpl, credential.value, revokedPermissions);
+          } else {
+            await provider.revoke(provider, env, deps.fetchImpl, credential.value);
+            revokedAtProvider = true;
+          }
         }
       } catch {
         revokedAtProvider = false; // the local credential is still deleted below
@@ -579,7 +712,140 @@ export function createIntegrationsHandler(deps) {
       p_actor_label: actorLabel(context.profile),
       p_actor_role: role,
     });
-    return { provider: await providerView(provider, actor), revoked_at_provider: revokedAtProvider };
+    return {
+      provider: await providerView(provider, actor),
+      revoked_at_provider: revokedAtProvider,
+      ...(revokedPermissions ? { revoked_permissions: revokedPermissions } : {}),
+    };
+  }
+
+  // ---------------------------------------------------------------- S94B
+
+  function keyring() {
+    return { key: keyFor, currentVersion: currentKeyVersion };
+  }
+
+  // Refresh under the shared lease for a manager/admin action.
+  async function refreshForActor(provider, actor) {
+    return refreshWithLock(
+      { rpc: deps.rpc, env, fetchImpl: deps.fetchImpl, now, keyring: keyring(), sleep: deps.sleep },
+      { providerKey: provider.key, lockArgs: { actorId: actor.id, actorLabel: actor.label, actorRole: actor.role } },
+    );
+  }
+
+  async function connectedTokenSet(provider, actor) {
+    let credential;
+    try {
+      credential = await openCredential(provider, actor);
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(409, `Atlas can’t read the saved ${provider.label} connection. Disconnect, then connect again.`, { error_code: "credential_unreadable" });
+    }
+    if (!credential) throw new ApiError(409, `${provider.label} is not connected.`, { error_code: "not_connected" });
+    let value = credential.value;
+    if (provider.refresh && needsRefresh(value, now())) {
+      try {
+        value = await refreshForActor(provider, actor);
+      } catch (error) {
+        if (!(error instanceof CredentialError)) throw error;
+        throw new ApiError(409, PROVIDER_REFRESH_FAILED, { error_code: "provider_refresh_failed" });
+      }
+    }
+    return value;
+  }
+
+  // Live listing from the provider (server-side); stores ids, labels and
+  // non-secret metadata, returns them. Nothing is selected by default.
+  async function handleListResources(context, body) {
+    const provider = publishingProviderFrom(body.provider_key);
+    requireConfigured(provider);
+    const actor = { id: context.user.id, label: actorLabel(context.profile), role: context.profile.role };
+    const tokenSet = await connectedTokenSet(provider, actor);
+    let listing;
+    try {
+      listing = await provider.listResources(provider, env, deps.fetchImpl, tokenSet);
+    } catch (error) {
+      if (!(error instanceof ProviderError)) throw error;
+      throw new ApiError(409, `${provider.label} didn’t return the accounts. Try again, or reconnect.`, { error_code: "provider_check_failed" });
+    }
+    const stored = await deps.rpc("atlas_integration_resources_store", {
+      p_provider_key: provider.key,
+      p_resources: listing.resources,
+      p_actor_id: actor.id,
+      p_actor_label: actor.label,
+      p_actor_role: actor.role,
+    });
+    const rows = Array.isArray(stored?.resources) ? stored.resources : [];
+    return {
+      provider: await providerView(provider, actor),
+      resource_kind: provider.resource_kind,
+      resources: rows.filter((row) => row.resource_kind === provider.resource_kind).map(publicResource),
+      notes: listing.notes ?? {},
+    };
+  }
+
+  async function handleSelectResource(context, body) {
+    const provider = publishingProviderFrom(body.provider_key);
+    requireConfigured(provider);
+    const actor = { id: context.user.id, label: actorLabel(context.profile), role: context.profile.role };
+    const resourceId = typeof body.resource_id === "string" ? body.resource_id.trim() : "";
+    if (!/^[A-Za-z0-9_.:\/-]{1,200}$/.test(resourceId)) throw new ApiError(400, "Choose one of the listed accounts.", { error_code: "invalid_request" });
+    if (body.resource_kind !== undefined && body.resource_kind !== provider.resource_kind) {
+      throw new ApiError(400, "Choose one of the listed accounts.", { error_code: "invalid_request" });
+    }
+    const row = (await statusRows(actor)).get(provider.key);
+    const listed = (Array.isArray(row?.resources) ? row.resources : [])
+      .find((entry) => entry.resource_kind === provider.resource_kind && entry.resource_id === resourceId);
+    if (!listed) throw new ApiError(409, "That account isn’t in the latest list. Refresh the list and choose again.", { error_code: "resource_not_listed" });
+    if (listed.metadata?.selectable === false) throw new ApiError(409, "That account can’t be used for publishing.", { error_code: "resource_not_selectable" });
+    let sealed = { ciphertextHex: null, nonceHex: null };
+    let version = null;
+    if (provider.resourceCredential) {
+      const tokenSet = await connectedTokenSet(provider, actor);
+      let pageToken;
+      try {
+        pageToken = await provider.resourceCredential(provider, env, deps.fetchImpl, tokenSet, listed, now());
+      } catch (error) {
+        if (!(error instanceof ProviderError)) throw error;
+        throw new ApiError(409, `${provider.label} didn’t allow Atlas to post there. Check your role, or reconnect.`, { error_code: "provider_check_failed" });
+      }
+      version = currentKeyVersion();
+      sealed = await encryptJson(await keyFor(version), pageToken, resourceCredentialAad(provider.key, listed.resource_id));
+    }
+    const selected = await deps.rpc("atlas_integration_resource_select", {
+      p_provider_key: provider.key,
+      p_resource_kind: provider.resource_kind,
+      p_resource_id: listed.resource_id,
+      p_ciphertext: sealed.ciphertextHex,
+      p_nonce: sealed.nonceHex,
+      p_key_version: version,
+      p_actor_id: actor.id,
+      p_actor_label: actor.label,
+      p_actor_role: actor.role,
+    });
+    return {
+      provider: await providerView(provider, actor),
+      selected: selected?.selected
+        ? { kind: selected.selected.kind, id: selected.selected.id, label: selected.selected.label }
+        : { kind: provider.resource_kind, id: listed.resource_id, label: listed.label },
+    };
+  }
+
+  // Platform review is not readable by API: an administrator records it.
+  async function handleSetReviewState(context, body) {
+    requireAdmin(context);
+    const provider = publishingProviderFrom(body.provider_key);
+    const review = String(body.review_state ?? "");
+    if (!REVIEW_STATES.has(review)) throw new ApiError(400, "Choose one of the review states.", { error_code: "invalid_request" });
+    const actor = { id: context.user.id, label: actorLabel(context.profile), role: context.profile.role };
+    await deps.rpc("atlas_integration_set_review_state", {
+      p_provider_key: provider.key,
+      p_review_state: review,
+      p_actor_id: actor.id,
+      p_actor_label: actor.label,
+      p_actor_role: actor.role,
+    });
+    return { provider: await providerView(provider, actor) };
   }
 
   async function handleSaveApiKey(context, body) {
@@ -618,6 +884,9 @@ export function createIntegrationsHandler(deps) {
         case "test": return jsonResponse(await handleTest(context, body));
         case "disconnect": return jsonResponse(await handleDisconnect(context, body));
         case "save-api-key": return jsonResponse(await handleSaveApiKey(context, body));
+        case "list-resources": return jsonResponse(await handleListResources(context, body));
+        case "select-resource": return jsonResponse(await handleSelectResource(context, body));
+        case "set-review-state": return jsonResponse(await handleSetReviewState(context, body));
         default: throw new ApiError(404, "Unknown integrations action.");
       }
     } catch (error) {

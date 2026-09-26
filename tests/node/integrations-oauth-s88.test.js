@@ -597,7 +597,11 @@ test('source contract: migration keeps credentials away from browser roles', () 
   assert.doesNotMatch(sql, /vault\./, 'replay DB has no Vault');
   const config = readFileSync('supabase/config.toml', 'utf8');
   assert.match(config, /\[functions\.atlas-integrations\]\nverify_jwt = false/);
-  assert.ok(!readdirSync('supabase/functions').includes('_shared') || !filesUnder('supabase/functions/_shared').some((f) => f.includes('integration')));
+  // S94B: the only shared integration code is the crypto/refresh/credential
+  // modules in _shared/integrations (contract §1); none of them logs.
+  const shared = filesUnder('supabase/functions/_shared').filter((f) => f.includes('integration'));
+  assert.deepEqual(shared.map((f) => f.split('/').pop()).sort(), ['credentials.mjs', 'crypto.mjs', 'provider-http.mjs']);
+  for (const file of shared) assert.doesNotMatch(readFileSync(file, 'utf8'), /console\./, file);
 });
 
 test('response guard withholds any payload with credential-shaped keys', async () => {
