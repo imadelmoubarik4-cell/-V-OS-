@@ -143,11 +143,20 @@
     const onAbort = () => controller.abort();
     signal?.addEventListener?.('abort', onAbort);
     try {
-      const response = await fetch(url, {
-        method, cache: 'no-store', signal: controller.signal,
-        headers: { authorization: `Bearer ${token}`, accept: 'application/json', 'content-type': 'application/json' },
-        body: body ? JSON.stringify(body) : undefined
-      });
+      let response;
+      try {
+        response = await fetch(url, {
+          method, cache: 'no-store', signal: controller.signal,
+          headers: { authorization: `Bearer ${token}`, accept: 'application/json', 'content-type': 'application/json' },
+          body: body ? JSON.stringify(body) : undefined
+        });
+      } catch (error) {
+        if (error?.name === 'AbortError') throw error;
+        // No HTTP response at all: offline, or the media service could not be
+        // reached (not set up yet, blocked, or down; a browser cannot tell
+        // those apart). Not the same as an error the service answered with.
+        throw Object.assign(new Error('unreachable'), { status: 0, code: 'unreachable', offline: navigator.onLine === false });
+      }
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw Object.assign(new Error('failed'), { status: response.status, code: String(payload?.error_code || ''), block: payload?.block || null });
       return payload;
@@ -174,6 +183,9 @@
     frame: 'This frame can’t be captured in this browser. Try another browser, or upload a cover image.'
   };
   function errorText(error, fallback = 'Nothing was changed. Check the connection and try again.') {
+    if (error?.code === 'unreachable') return error.offline
+      ? 'You’re offline. Nothing was changed. Reconnect, then try again.'
+      : 'Atlas couldn’t reach Media. Nothing was changed. Try again in a moment.';
     if (error?.status === 401) return 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.';
     if (error?.status === 403) return 'Media is for managers and administrators.';
     if (error?.status === 404 && (error.code === 'not_configured' || !error.code)) return 'Media storage isn’t set up for this venue yet. An administrator can set it up.';
@@ -615,6 +627,9 @@
     if (error?.code === 'size_mismatch') return 'The upload didn’t arrive complete. Nothing was kept. Retry this one.';
     if (error?.code === 'quota') return 'You have too many unfinished uploads. Let them finish, or cancel some, then try again.';
     if (error?.status === 403 || error?.status === 401 || error?.code === 'not_configured') return errorText(error);
+    if (error?.code === 'unreachable') return error.offline
+      ? 'You’re offline, so this didn’t upload. Retry it when you’re back online.'
+      : 'Atlas couldn’t reach Media, so this didn’t upload. Retry it in a moment.';
     return 'The upload stopped. The other files are fine. Retry this one.';
   }
 
@@ -915,11 +930,20 @@
       const ok = await window.AtlasModal?.confirm?.({ title: `Delete ${plural(items.length, 'item')}?`, body: 'They’re removed from the library. Posts already published keep their copy.', confirmLabel: 'Delete', danger: true });
       if (!ok) return;
       let refused = 0;
+      let failed = 0;
+      let problem = null;
       for (const asset of items) {
-        try { await api('delete', { method: 'POST', body: { asset_id: asset.id } }); } catch { refused += 1; }
+        try { await api('delete', { method: 'POST', body: { asset_id: asset.id } }); } catch (error) {
+          // Only an in_use refusal means "it's in a post"; anything else says what went wrong.
+          if (error?.code === 'in_use') refused += 1; else { failed += 1; problem = error; }
+        }
       }
       view.selected.clear();
-      toast(refused ? `${plural(refused, 'item')} couldn’t be deleted: they’re in posts that are waiting, scheduled or published.` : `${plural(items.length, 'item')} deleted.`, refused ? { tone: 'warning' } : undefined);
+      const notes = [];
+      if (refused) notes.push(`${plural(refused, 'item')} couldn’t be deleted: they’re in posts that are waiting, scheduled or published.`);
+      if (failed) notes.push(`${plural(failed, 'item')} ${failed === 1 ? 'wasn’t' : 'weren’t'} deleted. ${errorText(problem)}`);
+      const deleted = items.length - refused - failed;
+      toast(notes.length ? `${deleted ? `${plural(deleted, 'item')} deleted. ` : ''}${notes.join(' ')}` : `${plural(items.length, 'item')} deleted.`, notes.length ? { tone: 'warning' } : undefined);
       load();
     }
 

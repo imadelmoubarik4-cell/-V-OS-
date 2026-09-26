@@ -71,7 +71,7 @@ function mediaBackend({ assets: seedAssets = [], collections: seedCollections = 
       }
       const upload = body.byte_size <= 6 * MIB
         ? { method: 'put', url: `${SUPABASE}/storage/v1/object/upload/sign/atlas-marketing-media/${path}?token=tok-${id}`, token: `tok-${id}`, expires_at: '2026-09-24T16:00:00.000Z' }
-        : { method: 'tus', url: `${SUPABASE}/storage/v1/upload/resumable`, token: `tok-${id}`, expires_at: '2026-09-24T16:00:00.000Z', chunk_size: 6 * MIB, bucket: 'atlas-marketing-media', object_name: path };
+        : { method: 'tus', url: `${SUPABASE}/storage/v1/upload/resumable/sign`, token: `tok-${id}`, expires_at: '2026-09-24T16:00:00.000Z', chunk_size: 6 * MIB, bucket: 'atlas-marketing-media', object_name: path };
       return { asset: { id, status: 'pending_upload' }, upload, replayed: Boolean(existing) };
     }
     if (action === 'complete') {
@@ -150,14 +150,14 @@ function mediaBackend({ assets: seedAssets = [], collections: seedCollections = 
       objects.set(path, bytes.length);
       return { Key: `atlas-marketing-media/${path}` };
     }
-    if (method === 'POST' && entry.path === '/storage/v1/upload/resumable') {
+    if (method === 'POST' && entry.path === '/storage/v1/upload/resumable/sign') {
       const headers = request.headers();
       const metadata = Object.fromEntries(String(headers['upload-metadata'] || '').split(',').map((pair) => pair.trim().split(' ')).map(([key, value]) => [key, Buffer.from(value || '', 'base64').toString('utf8')]));
       const id = `up-${tus.created.length + 1}`;
       tus.created.push({ id, length: Number(headers['upload-length']), signature: headers['x-signature'], resumable: headers['tus-resumable'], metadata, offset: 0 });
-      return { __status: 201, headers: { location: `${SUPABASE}/storage/v1/upload/resumable/${id}`, 'tus-resumable': '1.0.0' } };
+      return { __status: 201, headers: { location: `${SUPABASE}/storage/v1/upload/resumable/sign/${id}`, 'tus-resumable': '1.0.0' } };
     }
-    const tusMatch = /^\/storage\/v1\/upload\/resumable\/(up-\d+)$/.exec(entry.path);
+    const tusMatch = /^\/storage\/v1\/upload\/resumable\/sign\/(up-\d+)$/.exec(entry.path);
     if (tusMatch) {
       const upload = tus.created.find((created) => created.id === tusMatch[1]);
       if (method === 'HEAD') { tus.heads += 1; return { __status: 200, headers: { 'upload-offset': String(upload.offset), 'upload-length': String(upload.length) } }; }
@@ -322,6 +322,60 @@ test('Media: cancel stops an upload and abandons it; a failed upload retries wit
     assert.equal(flaky.length, 2);
     assert.equal(flaky[0].body.client_request_id, flaky[1].body.client_request_id, 'retry replays the same reservation');
     assert.deepEqual(record.pageErrors, []);
+  } finally {
+    await close();
+  }
+});
+
+test('Media: an unreachable media service (no HTTP response) says so calmly; an upload waits for Retry', { skip }, async () => {
+  // What production showed before the function was deployed: the gateway's
+  // preflight is a 404 without CORS headers, so fetch rejects with no response.
+  const { page, close } = await launchMedia({ media: mediaBackend({ assets: [readyAsset(1)] }) });
+  try {
+    await page.waitForFunction(() => document.querySelectorAll('#mm-test-host .mk-asset').length === 1);
+    await page.route(`${SUPABASE}/functions/v1/atlas-marketing-media**`, (route) => route.abort('failed'));
+    await page.click('#mm-test-host [data-mm-filter="image"]');
+    await page.waitForSelector('#mm-test-host [data-mm-body] .atlas-alert--danger');
+    const banner = await page.textContent('#mm-test-host [data-mm-body] .atlas-alert--danger');
+    assert.match(banner, /Media couldn’t be loaded\. Your files are safe\./);
+    assert.match(banner, /Atlas couldn’t reach Media\. Nothing was changed\. Try again in a moment\./);
+    assert.doesNotMatch(banner, /Check the connection/);
+    await page.setInputFiles('#mm-test-host [data-mm-file]', [{ name: 'while-down.jpg', mimeType: 'image/jpeg', buffer: JPEG }]);
+    await page.waitForSelector('#mm-test-host [data-mm-job][data-mm-state="failed"]');
+    const row = await page.textContent('#mm-test-host [data-mm-job][data-mm-state="failed"]');
+    assert.match(row, /Atlas couldn’t reach Media, so this didn’t upload\. Retry it in a moment\./);
+    assert.doesNotMatch(row, /The other files are fine/);
+    // Back: Try again reloads the grid, Retry finishes the upload.
+    await page.unroute(`${SUPABASE}/functions/v1/atlas-marketing-media**`);
+    await page.click('#mm-test-host [data-mm-reload]');
+    await page.waitForFunction(() => !document.querySelector('#mm-test-host [data-mm-body] .atlas-alert--danger') && document.querySelectorAll('#mm-test-host .mk-asset').length === 1);
+    await page.click('#mm-test-host [data-mm-retry]');
+    await page.waitForFunction(() => !document.querySelector('#mm-test-host [data-mm-job]'));
+  } finally {
+    await close();
+  }
+});
+
+test('Media: bulk delete says which items were in posts and which failed for another reason', { skip }, async () => {
+  const blocked = readyAsset(1, { name: 'in-a-post.jpg', delete_block: { reason: 'in_use', count: 1 } });
+  const media = mediaBackend({ assets: [blocked, readyAsset(2, { name: 'free.jpg' }), readyAsset(3, { name: 'unlucky.jpg' })] });
+  const { page, close } = await launchMedia({ media });
+  try {
+    await page.waitForFunction(() => document.querySelectorAll('#mm-test-host .mk-asset').length === 3);
+    // The delete of one item never gets an answer (the connection drops).
+    await page.route(`${SUPABASE}/functions/v1/atlas-marketing-media**`, (route) => {
+      const body = route.request().postData() || '';
+      return body.includes(uuid(3)) && route.request().url().includes('action=delete') ? route.abort('failed') : route.fallback();
+    });
+    await page.click('#mm-test-host [data-mm-select]');
+    for (const n of [1, 2, 3]) await page.click(`#mm-test-host [data-mm-asset="${uuid(n)}"]`);
+    await page.click('#mm-test-host [data-mm-bulk-delete]');
+    await page.getByLabel('Delete 3 items?').getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.waitForFunction(() => /deleted/.test(document.getElementById('atlas-toast-region')?.textContent || ''));
+    const toastText = await page.textContent('#atlas-toast-region');
+    assert.match(toastText, /1 item deleted\./);
+    assert.match(toastText, /1 item couldn’t be deleted: they’re in posts that are waiting, scheduled or published\./);
+    assert.match(toastText, /1 item wasn’t deleted\. Atlas couldn’t reach Media\./);
   } finally {
     await close();
   }
@@ -551,6 +605,22 @@ test('Media at 390: three-column grid, icon Upload with a name, no sideways scro
     assert.equal(columns, 3);
     assert.equal(await page.getAttribute('#mm-test-host [data-mm-upload]', 'aria-label'), 'Upload photos or videos');
     assert.equal(await page.isVisible('#mm-test-host .mk-media__upload-label'), false);
+    // The shared phone toolbar hides .atlas-toolbar__end; Media's Upload, Sort
+    // and Select live there and must stay on screen, and the filter chips stay
+    // one scrolling row (they were squeezed into a column).
+    const toolbar = await page.evaluate(() => {
+      const box = (selector) => { const rect = document.querySelector(selector)?.getBoundingClientRect(); return rect ? { left: rect.left, right: rect.right, width: rect.width, top: Math.round(rect.top) } : null; };
+      return {
+        upload: box('#mm-test-host [data-mm-upload]'), sort: box('#mm-test-host [data-mm-sort]'), select: box('#mm-test-host [data-mm-select]'),
+        chipTops: [...document.querySelectorAll('#mm-test-host [data-mm-filter]')].map((chip) => Math.round(chip.getBoundingClientRect().top)),
+      };
+    });
+    for (const key of ['upload', 'sort', 'select']) {
+      assert.ok(toolbar[key]?.width > 0 && toolbar[key].left >= 0 && toolbar[key].right <= PHONE.width, `${key} is on screen: ${JSON.stringify(toolbar[key])}`);
+    }
+    assert.equal(new Set(toolbar.chipTops).size, 1, `filter chips in one row: ${toolbar.chipTops}`);
+    // A tap on Upload opens the file chooser.
+    await Promise.all([page.waitForEvent('filechooser'), page.click('#mm-test-host [data-mm-upload]')]);
     assert.equal(await page.isVisible('#mm-test-host .mk-asset__name'), false);
     await page.setInputFiles('#mm-test-host [data-mm-file]', [{ name: 'a-very-long-file-name-from-the-phone-camera-upload.jpg', mimeType: 'image/jpeg', buffer: JPEG }]);
     await page.waitForFunction(() => document.querySelectorAll('#mm-test-host .mk-asset').length === 8);

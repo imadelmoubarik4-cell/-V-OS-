@@ -659,12 +659,17 @@ export function createStorageServices({ env, fetchImpl }) {
     const { url } = credentials();
     // TUS: the direct storage hostname is recommended for large files
     // (https://<ref>.storage.supabase.co); ATLAS_MARKETING_MEDIA_TUS_URL overrides.
+    // The browser holds a signed upload token (x-signature), not a user JWT
+    // with a storage.objects policy, so it must use Storage's signed TUS
+    // endpoint (/upload/resumable/sign). The plain /upload/resumable endpoint
+    // runs as the caller's role and is refused by RLS on this private bucket
+    // (proved against the real Storage API: scripts/e2e/s94-media).
     const override = envValue(env, "ATLAS_MARKETING_MEDIA_TUS_URL");
-    let tus = `${url}/storage/v1/upload/resumable`;
-    if (override && /^https:\/\/[^/\s]+\/storage\/v1\/upload\/resumable$/.test(override)) tus = override;
+    let tus = `${url}/storage/v1/upload/resumable/sign`;
+    if (override && /^https:\/\/[^/\s]+\/storage\/v1\/upload\/resumable\/sign$/.test(override)) tus = override;
     else {
       const match = /^https:\/\/([a-z0-9]{20})\.supabase\.co$/.exec(url);
-      if (match) tus = `https://${match[1]}.storage.supabase.co/storage/v1/upload/resumable`;
+      if (match) tus = `https://${match[1]}.storage.supabase.co/storage/v1/upload/resumable/sign`;
     }
     return { tus };
   }
@@ -769,6 +774,18 @@ export function createMarketingMediaHandler({ env, fetchImpl, now = () => Date.n
     });
     const asset = reserved?.asset ?? {};
     if (asset.status !== "pending_upload") return { asset: await withSignedUrls(storage, asset), upload: null, replayed: true };
+    if (reserved.replayed) {
+      // A retry of an upload whose bytes already arrived (the PUT landed but
+      // its response, or the complete call after it, was lost). Storage never
+      // signs a second upload for an existing object (no upsert), so asking
+      // for one would fail every retry. Verify and finish it here instead;
+      // `upload: null` tells the browser the asset is final.
+      const state = await storage.rpc("atlas_marketing_media_upload_state", { p_actor_id: actor.userId, p_asset_id: asset.id, p_variant_id: null });
+      if (state?.status === "pending_upload" && state.object && state.object.size !== null && state.object.size !== undefined) {
+        const done = await complete(actor, { asset_id: asset.id });
+        return { asset: done.asset, upload: null, replayed: true };
+      }
+    }
     const upload = await uploadFor(reserved.storage_path, bytes, null);
     return { asset: stripPaths(asset), upload, replayed: Boolean(reserved.replayed) };
   }

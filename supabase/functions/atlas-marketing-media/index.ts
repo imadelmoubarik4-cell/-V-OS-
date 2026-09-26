@@ -11,8 +11,9 @@ import { createMarketingMediaHandler } from "./handler.mjs";
 //
 // Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ATLAS_AUTH_PROJECT_URL,
 // ATLAS_AUTH_PUBLISHABLE_KEY; optional ATLAS_MARKETING_MEDIA_TUS_URL (the TUS
-// endpoint browsers upload large files to; default the project's direct
-// storage host). No bytes pass through this function on upload: browsers get
+// endpoint browsers upload large files to, Storage's signed TUS endpoint
+// https://<host>/storage/v1/upload/resumable/sign; default the project's
+// direct storage host). No bytes pass through this function on upload: browsers get
 // a one-time signed upload token for one server-chosen path.
 
 const handle = createMarketingMediaHandler({

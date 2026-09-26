@@ -117,7 +117,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94',
+  stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94c',
   scriptPath: 'assets/js/marketing-workspace.js?v=20261004-s94b',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
@@ -132,7 +132,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/marketing-media.js?v=20261004-s94b',
+  scriptPath: 'assets/js/marketing-media.js?v=20261004-s94c',
   globalName: 'AtlasMarketingMedia',
   dataAttribute: 'atlasMarketingMedia',
 }));

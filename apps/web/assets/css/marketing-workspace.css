@@ -294,7 +294,24 @@
   .mk-picker__count { margin-right: auto; font: var(--type-meta); color: var(--text-2); }
 
   @media (max-width: 767px) {
-    .mk-media__toolbar { flex-wrap: nowrap; }
+    /* Phones: the shared toolbar hides .atlas-toolbar__end and scrolls one
+       row sideways, which here hid Upload, Sort and Select and squeezed the
+       filter chips into a column. Media wraps instead: search + Upload, the
+       filter chips (scrolling), then tags, Sort and Select. */
+    .mk-media__toolbar, .mk-picker__toolbar {
+      flex-wrap: wrap; overflow: visible; row-gap: var(--s-2);
+      -webkit-mask-image: none; mask-image: none;
+    }
+    .mk-media__toolbar > .atlas-search, .mk-picker__toolbar > .atlas-search { flex: 1 1 0; min-width: 0; }
+    .mk-media__toolbar > .atlas-toolbar__end { display: contents; }
+    .mk-picker__toolbar > .atlas-toolbar__end { display: flex; margin-left: 0; }
+    .mk-media__toolbar .mk-media__upload { order: 1; flex: none; }
+    .mk-media__toolbar > [data-mm-filters] { order: 2; flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .mk-media__toolbar > [data-mm-filters] > .atlas-chip { flex: none; }
+    .mk-media__toolbar > [data-mm-tags] { order: 3; }
+    .mk-media__toolbar > [data-mm-tags]:empty { display: none; }
+    .mk-media__toolbar .mk-media__sort { order: 4; margin-left: auto; }
+    .mk-media__toolbar [data-mm-select] { order: 5; flex: none; }
     .mk-media__upload-label { display: none; }
     .mk-media-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 104px), 1fr)); gap: var(--s-1); }
     .mk-media-grid .mk-asset__name, .mk-media-grid .mk-asset__meta { display: none; }

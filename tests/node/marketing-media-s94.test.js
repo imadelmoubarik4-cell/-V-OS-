@@ -11,6 +11,7 @@ import {
   LIMITS,
   classifyUpload,
   createMarketingMediaHandler,
+  createStorageServices,
   imageDimensions,
   mapRpcError,
   parseMoov,
@@ -272,6 +273,8 @@ function fakeBackend({ rangeSupported = true } = {}) {
       const path = decodeURIComponent(url.pathname.slice(prefix.length));
       assert.match(path, PATH_RE);
       assert.equal(headers.get('x-upsert'), null, 'never upsert');
+      // Like Storage: no second upload token for a path that already holds an object.
+      if (objects.has(path)) return json({ statusCode: '409', error: 'Duplicate', message: 'The resource already exists' }, 400);
       const token = `upload-token-${uploads.length + 1}`;
       uploads.push({ path, token });
       return json({ url: `/object/upload/sign/${BUCKET}/${path}?token=${token}` });
@@ -414,13 +417,26 @@ test('reserve: a large video uses TUS on the direct storage host with 6 MB chunk
   assert.equal(result.status, 200);
   const { upload } = result.body;
   assert.equal(upload.method, 'tus');
-  assert.equal(upload.url, 'https://abcdefghijklmnopqrst.storage.supabase.co/storage/v1/upload/resumable');
+  // The signed TUS endpoint: the browser holds an upload token (x-signature),
+  // not a JWT with a storage.objects policy; the plain endpoint is refused by RLS.
+  assert.equal(upload.url, 'https://abcdefghijklmnopqrst.storage.supabase.co/storage/v1/upload/resumable/sign');
   assert.equal(upload.chunk_size, 6 * MIB);
   assert.equal(upload.bucket, BUCKET);
   assert.equal(upload.object_name, h.assets.get(result.body.asset.id).storage_path);
   assert.ok(upload.token);
   // The single-PUT threshold is 6 MiB.
   assert.equal(LIMITS.singleUploadBytes, 6 * MIB);
+});
+
+test('TUS endpoint: always Storage\'s signed resumable route; an override must be one too', () => {
+  const tusFor = (env) => createStorageServices({ env: (name) => env[name], fetchImpl: async () => new Response('{}') }).uploadEndpoints().tus;
+  assert.equal(tusFor(ENV), 'https://abcdefghijklmnopqrst.storage.supabase.co/storage/v1/upload/resumable/sign');
+  assert.equal(tusFor({ ...ENV, SUPABASE_URL: 'https://atlas.example.test' }), 'https://atlas.example.test/storage/v1/upload/resumable/sign');
+  assert.equal(tusFor({ ...ENV, ATLAS_MARKETING_MEDIA_TUS_URL: 'https://storage.example.test/storage/v1/upload/resumable/sign' }),
+    'https://storage.example.test/storage/v1/upload/resumable/sign');
+  // The unsigned route runs as the caller's role and RLS refuses it (no storage.objects policy): never handed out.
+  assert.equal(tusFor({ ...ENV, ATLAS_MARKETING_MEDIA_TUS_URL: 'https://storage.example.test/storage/v1/upload/resumable' }),
+    'https://abcdefghijklmnopqrst.storage.supabase.co/storage/v1/upload/resumable/sign');
 });
 
 test('reserve replays on the same request id and re-signs a pending upload', async () => {
@@ -476,6 +492,36 @@ test('size limits: photos over 30 MB and videos over 1 GB are refused; sizes mus
 });
 
 // ------------------------------------------------------------------ complete
+
+test('a retry after the bytes arrived finishes the upload instead of asking Storage for a second one', async () => {
+  // The PUT landed but its response (or the complete call after it) was lost;
+  // the browser retries with the same request id. Storage refuses a second
+  // upload token for an existing object, so a re-sign would wedge every retry.
+  const h = harness();
+  const data = bytes(JPEG_12x8_BASE64);
+  const { reserve, asset } = await uploadAsset(h, 'tok-manager', { name: 'espresso.jpg', mime: 'image/jpeg', data });
+  const retry = await h.call('tok-manager', 'reserve', {
+    method: 'POST',
+    body: { client_request_id: h.assets.get(reserve.body.asset.id).client_request_id, mime_type: 'image/jpeg', byte_size: data.byteLength, original_filename: 'espresso.jpg' },
+  });
+  assert.equal(retry.status, 200, JSON.stringify(retry.body));
+  assert.equal(retry.body.upload, null);
+  assert.equal(retry.body.replayed, true);
+  assert.equal(retry.body.asset.id, asset.id);
+  assert.equal(retry.body.asset.status, 'ready');
+  assert.equal(asset.width, 12);
+  assert.equal(h.uploads.length, 1, 'no second upload token was requested');
+  // Bytes that fail verification are still refused (and removed) on the retry path.
+  const bad = await uploadAsset(h, 'tok-manager', { name: 'fake.jpg', mime: 'image/jpeg', data: bytes(PDF_BASE64) });
+  const badRetry = await h.call('tok-manager', 'reserve', {
+    method: 'POST',
+    body: { client_request_id: bad.asset.client_request_id, mime_type: 'image/jpeg', byte_size: bytes(PDF_BASE64).byteLength, original_filename: 'fake.jpg' },
+  });
+  assert.equal(badRetry.status, 415);
+  assert.equal(bad.asset.status, 'rejected');
+  assert.ok(h.removed.includes(bad.asset.storage_path));
+  assertNoLeak(h.responses);
+});
 
 test('complete verifies a JPEG by content: ready with server dimensions and sha256', async () => {
   const h = harness();

@@ -270,13 +270,15 @@ test('changed scripts carry the S88 cache key', () => {
   // library and platform checks; S94b: review fixes in the composer (asap,
   // partial save, radios), the media picker and the platform checks.
   assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261004-s94'"), 'settings-workspace.js');
-  for (const file of ['marketing-workspace.js', 'marketing-platform-rules.js', 'marketing-media.js']) {
+  for (const file of ['marketing-workspace.js', 'marketing-platform-rules.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261004-s94b'`), file);
   }
-  for (const file of ['marketing-workspace.css', 'settings-workspace.css']) {
-    assert.ok(config.includes(`stylesheetPath: 'assets/css/${file}?v=20261004-s94'`), file);
-    assert.ok(index.includes(`href="assets/css/${file}?v=20261004-s94"`), file);
-  }
+  // S94c: Media end-to-end fixes (phone toolbar, unreachable media service copy).
+  assert.ok(config.includes("scriptPath: 'assets/js/marketing-media.js?v=20261004-s94c'"), 'marketing-media.js');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94c'"), 'marketing-workspace.css');
+  assert.ok(index.includes('href="assets/css/marketing-workspace.css?v=20261004-s94c"'), 'marketing-workspace.css');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/settings-workspace.css?v=20261004-s94'"), 'settings-workspace.css');
+  assert.ok(index.includes('href="assets/css/settings-workspace.css?v=20261004-s94"'), 'settings-workspace.css');
   // S91: sign-in copy after the session fixes.
   assert.ok(config.includes("scriptPath: 'assets/js/reports-workspace.js?v=20260926-s91a'"), 'reports-workspace.js');
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
