@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" width="760" height="300" font-family="IBM Plex Sans, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <!-- Purchase order lifecycle, labelled from the order statuses on main (Draft, Needs approval,
+       Approved, Ordered, Partly received, Received). Stages 2 and 3 apply only when the venue's
+       approval rules ask for approval. Labels are plain <text> elements; edit in place. -->
+  <defs>
+    <filter id="po-shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#0B0F14" flood-opacity=".07"/></filter>
+    <marker id="po-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <rect x=".5" y=".5" width="759" height="299" rx="16" fill="#F8FAFC" stroke="#e2e8f0"/>
+  <text id="po-title" x="20" y="34" font-size="11" font-weight="600" letter-spacing="1.2" fill="#475569">PURCHASE ORDER LIFECYCLE</text>
+  <g transform="translate(20 56)">
+    <rect width="124" height="104" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#po-shadow)"/>
+    <circle cx="22" cy="24" r="11" fill="#2563eb"/>
+    <text x="22" y="28.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#ffffff">1</text>
+    <text id="po-stage-1-title" x="14" y="62" font-size="13" font-weight="600" fill="#0B0F14">Draft</text>
+    <text id="po-stage-1-note" x="14" y="82" font-size="10.5" fill="#475569">You build the order</text>
+  </g>
+  <path d="M148 108h15" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#po-arrow)"/>
+  <g transform="translate(169 56)">
+    <rect width="124" height="104" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#po-shadow)"/>
+    <circle cx="22" cy="24" r="11" fill="#2563eb"/>
+    <text x="22" y="28.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#ffffff">2</text>
+    <text id="po-stage-2-title" x="14" y="62" font-size="13" font-weight="600" fill="#0B0F14">Needs approval</text>
+    <text id="po-stage-2-note" x="14" y="82" font-size="10.5" fill="#475569">Only if rules ask</text>
+  </g>
+  <path d="M297 108h15" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#po-arrow)"/>
+  <g transform="translate(318 56)">
+    <rect width="124" height="104" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#po-shadow)"/>
+    <circle cx="22" cy="24" r="11" fill="#2563eb"/>
+    <text x="22" y="28.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#ffffff">3</text>
+    <text id="po-stage-3-title" x="14" y="62" font-size="13" font-weight="600" fill="#0B0F14">Approved</text>
+    <text id="po-stage-3-note" x="14" y="82" font-size="10.5" fill="#475569">Ready to send</text>
+  </g>
+  <path d="M446 108h15" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#po-arrow)"/>
+  <g transform="translate(467 56)">
+    <rect width="124" height="104" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#po-shadow)"/>
+    <circle cx="22" cy="24" r="11" fill="#2563eb"/>
+    <text x="22" y="28.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#ffffff">4</text>
+    <text id="po-stage-4-title" x="14" y="62" font-size="13" font-weight="600" fill="#0B0F14">Ordered</text>
+    <text id="po-stage-4-note" x="14" y="82" font-size="10.5" fill="#475569">You sent it yourself</text>
+  </g>
+  <path d="M595 108h15" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#po-arrow)"/>
+  <g transform="translate(616 56)">
+    <rect width="124" height="104" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#po-shadow)"/>
+    <circle cx="22" cy="24" r="11" fill="#2563eb"/>
+    <text x="22" y="28.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#ffffff">5</text>
+    <text id="po-stage-5-title" x="14" y="62" font-size="13" font-weight="600" fill="#0B0F14">Received</text>
+    <text id="po-stage-5-note" x="14" y="82" font-size="10.5" fill="#475569">Stock goes up</text>
+  </g>
+  <path d="M529 164v22" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 4" marker-end="url(#po-arrow)"/>
+  <g transform="translate(318 192)">
+    <rect width="273" height="64" rx="12" fill="#ffffff" stroke="#CBD5E1" stroke-dasharray="4 4"/>
+    <text id="po-exception-title" x="16" y="27" font-size="12.5" font-weight="600" fill="#0B0F14">Partly received</text>
+    <text id="po-exception-note" x="16" y="46" font-size="10.5" fill="#475569">The rest stays open, or close it short</text>
+  </g>
+</svg>

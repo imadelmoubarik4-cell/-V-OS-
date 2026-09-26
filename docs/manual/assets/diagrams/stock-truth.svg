@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" width="760" height="360" font-family="IBM Plex Sans, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <!-- Stock truth: imported quantities and stock-count evidence versus live stock.
+       Every label is a plain <text> element; edit in place. -->
+  <defs>
+    <filter id="st-shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="1.5" stdDeviation="2.2" flood-color="#0B0F14" flood-opacity=".07"/></filter>
+    <marker id="st-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1l7 4-7 4" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker>
+    <marker id="st-arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1l7 4-7 4" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <rect x=".5" y=".5" width="759" height="359" rx="16" fill="#F8FAFC" stroke="#e2e8f0"/>
+  <g transform="translate(24 24)">
+    <rect width="300" height="116" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-dasharray="5 4" filter="url(#st-shadow)"/>
+    <rect x="18" y="18" width="34" height="34" rx="9" fill="#f1f5f9"/>
+    <g transform="translate(25 25) scale(0.8333333333333334)" fill="none" stroke="#475569" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></g>
+    <text x="66" y="34" font-size="15" font-weight="600" fill="#0B0F14">Imported quantities</text>
+    <text x="66" y="52" font-size="10" font-weight="600" letter-spacing="1" fill="#475569">EVIDENCE</text>
+    <text x="18" y="80" font-size="11.5" fill="#475569">Numbers that came in from a file or</text>
+    <text x="18" y="98" font-size="11.5" fill="#475569">another system.</text>
+  </g>
+
+  <g transform="translate(24 160)">
+    <rect width="300" height="116" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#st-shadow)"/>
+    <rect x="18" y="18" width="34" height="34" rx="9" fill="#eff6ff"/>
+    <g transform="translate(25 25) scale(0.8333333333333334)" fill="none" stroke="#2563eb" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></g>
+    <text x="66" y="34" font-size="15" font-weight="600" fill="#0B0F14">Stock-count evidence</text>
+    <text x="66" y="52" font-size="10" font-weight="600" letter-spacing="1" fill="#475569">EVIDENCE</text>
+    <text x="18" y="80" font-size="11.5" fill="#475569">What your team counted on the shelf,</text>
+    <text x="18" y="98" font-size="11.5" fill="#475569">with who counted and when.</text>
+  </g>
+
+  <g transform="translate(446 95)">
+    <rect width="290" height="110" rx="14" fill="#0B0F14" stroke="#0B0F14" filter="url(#st-shadow)"/>
+    <rect x="18" y="18" width="34" height="34" rx="9" fill="#1f2937"/>
+    <g transform="translate(25 25) scale(0.8333333333333334)" fill="none" stroke="#93c5fd" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/></g>
+    <text x="66" y="34" font-size="17" font-weight="600" fill="#ffffff">Live stock</text>
+    <text x="66" y="52" font-size="10" font-weight="600" letter-spacing="1" fill="#93c5fd">CURRENT</text>
+    <text x="18" y="80" font-size="11.5" fill="#CBD5E1">What Atlas treats as on hand now.</text>
+  </g>
+
+  <path d="M328 82 C 390 82, 390 128, 440 128" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="5 5" marker-end="url(#st-arrow-muted)"/>
+  <text x="340" y="74" font-size="10.5" font-weight="500" fill="#606c80">not automatic</text>
+  <path d="M328 218 C 390 218, 390 172, 440 172" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#st-arrow)"/>
+  <text x="344" y="236" font-size="10.5" font-weight="500" fill="#2563eb">verified</text>
+  <g transform="translate(24 294)">
+    <rect width="712" height="44" rx="12" fill="#eff6ff" stroke="#dbeafe"/>
+    <g transform="translate(16 12) scale(0.8333333333333334)" fill="none" stroke="#2563eb" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></g>
+    <text id="stock-truth-rule" x="46" y="27" font-size="13" font-weight="600" fill="#0B0F14">Imported quantities are evidence, not automatically your current stock.</text>
+  </g>
+</svg>
