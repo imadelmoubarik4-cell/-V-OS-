@@ -111,7 +111,7 @@ test('unread per conversation is exposed for the shell feed', () => {
   assert.match(messages, /window\.AtlasShell\?\.emit\?\.\('messages:unread', detail\)/);
 });
 
-test('identity (S92): sender_id → roster name → sender_name → stored name → neutral; never an email', () => {
+test('identity (S93): sender_id → roster name → sender_name → stored name → neutral; never an email', () => {
   const start = messages.indexOf('  function safePersonLabel(value) {');
   const end = messages.indexOf('  function avatarTint(key) {');
   const scope = {

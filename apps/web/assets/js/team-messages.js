@@ -3,7 +3,7 @@
 // Conversation list + thread with composer. Internal AtlasShell view id stays
 // 'team' (spec §3.4: only the route changed; #team is the Team directory).
 //
-// Identity rules (S87, S92, binding): a sender is shown by sender_id → the
+// Identity rules (S87, S93, binding): a sender is shown by sender_id → the
 // current roster's display name → the gateway's sender_name → the stored
 // sender_label → "Team member" (still on the roster) or "Former team member".
 // Neutral labels never hide a real name, and an email address is never shown
@@ -525,7 +525,7 @@
       message.can_delete ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-delete="${escapeHtml(message.id)}">Delete</button>` : ''
     ].join('');
     const readStatus = readStatusMarkup(message);
-    // S92: own messages sit on the right with the viewer's own name and avatar
+    // S93: own messages sit on the right with the viewer's own name and avatar
     // (the avatar gutter moves to the right); "(you)" is for assistive tech.
     // Others show name and role on the left.
     const header = own

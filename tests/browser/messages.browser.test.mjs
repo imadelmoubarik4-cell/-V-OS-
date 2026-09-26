@@ -65,7 +65,7 @@ test('photos come from the sender id; former members fall back safely; system me
     const byId = Object.fromEntries(list.map((row) => [row.id, row]));
     assert.equal(byId.m1.photo, PHOTO, "Sara's own photo");
     assert.equal(byId.m2.photo, null, "Sara's photo is never used for someone else");
-    // S92: the viewer's own messages carry their real name and avatar (initials without a photo).
+    // S93: the viewer's own messages carry their real name and avatar (initials without a photo).
     assert.equal(byId.m2.avatar, 'IE');
     assert.equal(byId.m2.name, 'Imad El Moubarik');
     // An address is never turned into a name (S87), not even its local part.
@@ -210,7 +210,7 @@ test('unread counts reach the shell badge and the per-conversation read API', { 
   } finally { await close(); }
 });
 
-// ---------- S92: sender identity (production: "Team member" everywhere, no photo on own messages) ----------
+// ---------- S93: sender identity (production: "Team member" everywhere, no photo on own messages) ----------
 
 const ADMIN_PHOTO = 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#2f6f5e"/></svg>').toString('base64');
 
@@ -248,7 +248,7 @@ for (const [label, viewport, contextOptions] of [
   ['desktop 1440', { width: 1440, height: 900 }, {}],
   ['phone 390 touch', { width: 390, height: 844 }, { hasTouch: true, isMobile: true }]
 ]) {
-  test(`S92 ${label}: real names and photos on own and others' messages, initials otherwise, own right / others left`, { skip }, async () => {
+  test(`S93 ${label}: real names and photos on own and others' messages, initials otherwise, own right / others left`, { skip }, async () => {
     const photos = [{ profile_id: USERS.admin.id, signed_url: ADMIN_PHOTO, version: 1 }];
     const { page, record, close } = await open({ viewport, contextOptions, photos });
     try {
@@ -288,7 +288,7 @@ for (const [label, viewport, contextOptions] of [
     } finally { await close(); }
   });
 
-  test(`S92 ${label}: the conversation list preview names the live sender; unread badge and time unchanged`, { skip }, async () => {
+  test(`S93 ${label}: the conversation list preview names the live sender; unread badge and time unchanged`, { skip }, async () => {
     const backend = messagesBackend();
     // A stored neutral label (display_name was empty when it was sent) resolves to the live roster name.
     backend.threads.general.at(-1).sender_label = 'Team member';
@@ -318,7 +318,7 @@ for (const [label, viewport, contextOptions] of [
   });
 }
 
-test('S92 production shape: a neutral roster label never hides a real name; a nameless member gets a person icon, never "TM"', { skip }, async () => {
+test('S93 production shape: a neutral roster label never hides a real name; a nameless member gets a person icon, never "TM"', { skip }, async () => {
   const backend = messagesBackend();
   const NONAME = 'c0ffee00-0000-4000-8000-000000000004';
   // Gunnar's profile has no display name yet (the gateway says "Team member");
@@ -340,7 +340,7 @@ test('S92 production shape: a neutral roster label never hides a real name; a na
   } finally { await close(); }
 });
 
-test('S92 hydration: photos that arrive after the thread swap in place; a broken photo URL falls back to initials and asks for fresh URLs', { skip }, async () => {
+test('S93 hydration: photos that arrive after the thread swap in place; a broken photo URL falls back to initials and asks for fresh URLs', { skip }, async () => {
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
   let photoCalls = 0;
@@ -380,7 +380,7 @@ test('S92 hydration: photos that arrive after the thread swap in place; a broken
   } finally { await close(); }
 });
 
-test('S92 Messages asks for the photo snapshot when it never loaded', { skip }, async () => {
+test('S93 Messages asks for the photo snapshot when it never loaded', { skip }, async () => {
   let calls = 0;
   let fail = true;
   const photosHandler = async () => {

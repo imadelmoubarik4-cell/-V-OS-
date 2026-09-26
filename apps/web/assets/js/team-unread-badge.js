@@ -56,7 +56,7 @@
     return text && !text.includes('@') ? text.slice(0, 120) : '';
   }
 
-  // S92: the gateway's live sender_name (sender_id → roster display name),
+  // S93: the gateway's live sender_name (sender_id → roster display name),
   // then the stored label, then the neutral label.
   function senderOf(message) {
     return safePersonLabel(message.sender_name) || safePersonLabel(message.sender_label) || 'Team member';

@@ -252,13 +252,13 @@ test('changed scripts carry the S88 cache key', () => {
   // S92: every message shows its sender's real name and photo (own on the
   // right with the viewer's name and avatar); photos load when Messages opens.
   for (const file of ['team-messages.js', 'team-unread-badge.js', 'team-profile-photos.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260930-s92m'`), file);
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261002-s93m'`), file);
   }
   // The guarded stylesheet keeps one href in index.html, config.js and the guard.
-  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/team-messages.css?v=20260930-s92m">'), 'team-messages.css');
-  assert.ok(config.includes("stylesheetPath: 'assets/css/team-messages.css?v=20260930-s92m'"), 'team-messages.css loader');
-  assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20260930-s92m'"), 'team-messages.css guard');
-  assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20260930-s92m"></script>'), 'runtime-module-guard.js');
+  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/team-messages.css?v=20261002-s93m">'), 'team-messages.css');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css loader');
+  assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css guard');
+  assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20261002-s93m"></script>'), 'runtime-module-guard.js');
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }

@@ -1,10 +1,10 @@
-// S92: Messages showed "Team member" for senders and no photo on the owner's
+// S93: Messages showed "Team member" for senders and no photo on the owner's
 // own messages. The Team name ("Name shown in Atlas") lived only in
 // atlas_private.team_profile_details.preferred_name while every label comes
 // from public.profiles.display_name (S87), which nothing wrote. The migration
 // syncs and backfills display_name; the gateway resolves each message's live
 // name by sender_id and never lets an email-shaped stored label out.
-// The SQL side is proven by scripts/verify_s92_messages_sender_identity_preview.sql
+// The SQL side is proven by scripts/verify_s93_messages_sender_identity_preview.sql
 // against a replayed database.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,8 +14,8 @@ import { json, loadEdgeFunction } from './helpers/edge-function-harness.js';
 import { FORMER_MEMBER_LABEL, realName, rosterLabels, senderName, withSenderNames } from '../../supabase/functions/atlas-team-messages/identity.mjs';
 
 const read = (file) => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
-const MIGRATION = read('supabase/migrations/20260930095000_s92_messages_sender_identity.sql');
-const PREVIEW = read('scripts/verify_s92_messages_sender_identity_preview.sql');
+const MIGRATION = read('supabase/migrations/20261002090000_s93_messages_sender_identity.sql');
+const PREVIEW = read('scripts/verify_s93_messages_sender_identity_preview.sql');
 const GATEWAY = read('supabase/functions/atlas-team-messages/index.ts');
 const PHOTOS = read('apps/web/assets/js/team-profile-photos.js');
 
@@ -161,9 +161,9 @@ test('migration: Team name → profiles.display_name (trigger + idempotent backf
   assert.match(MIGRATION, /grant execute on function atlas_private\.team_messages_snapshot\(uuid,text,uuid\[\],text,integer\) to service_role;/);
   assert.doesNotMatch(MIGRATION, /update atlas_private\.team_messages/i, 'stored audit labels are not rewritten');
   const files = fs.readdirSync(new URL('../../supabase/migrations/', import.meta.url)).filter((name) => name.endsWith('.sql')).sort();
-  assert.equal(files.at(-1), '20260930095000_s92_messages_sender_identity.sql', 'the newest migration');
+  assert.equal(files.at(-1), '20261002090000_s93_messages_sender_identity.sql', 'the newest migration');
   assert.match(PREVIEW, /rollback;\s*$/);
-  assert.match(PREVIEW, /s92_messages_sender_identity/);
+  assert.match(PREVIEW, /s93_messages_sender_identity/);
 });
 
 test('photos: Messages can ask for a fresh snapshot (never loaded, near expiry, or a failed image)', () => {

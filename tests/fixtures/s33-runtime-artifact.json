@@ -259,13 +259,13 @@
       "files": [
         {
           "path": "functions/atlas-team-messages/index.ts",
-          "source_sha256": "636ed18d5787cbda1aec6d5f80a53051194e6b1d5ae33105a475d2139937d91f",
-          "candidate_sha256": "4bb83266ea2e84b861d9a8d3382f85e40cd33ee1de82836e76d5e61a34ff2ade"
+          "source_sha256": "746b4f54a558ba95e8934e1c978050af29d3d910f3f81dacc787c2b42161e755",
+          "candidate_sha256": "aa09d29882b5e2046f4d9526ce47ae8e65b70b5d45ab431293fe58b3fef71ab8"
         },
         {
           "path": "functions/atlas-team-messages/identity.mjs",
-          "source_sha256": "22237c1a5335eb02c5bdb7c8af625df81d9c130140176ac2e9095ee3970dd628",
-          "candidate_sha256": "4174a82cca47f9070dabfcbe0c8ab607f531244405253dd6efae23f78760e87f"
+          "source_sha256": "0ba6fa89f2e9721d3908fd2eb428e7599ceae3db5973e24b4f0b58188d2f5f96",
+          "candidate_sha256": "378256111eb70f260637cdda89f7032f6096d0bb86d3480804a579cac19ae4e1"
         },
         {
           "path": "functions/_shared/auth.mjs",

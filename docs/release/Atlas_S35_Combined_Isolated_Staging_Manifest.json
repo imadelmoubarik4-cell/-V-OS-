@@ -166,8 +166,8 @@
     {
       "name": "atlas-team-messages",
       "sources": {
-        "supabase/functions/atlas-team-messages/index.ts": "636ed18d5787cbda1aec6d5f80a53051194e6b1d5ae33105a475d2139937d91f",
-        "supabase/functions/atlas-team-messages/identity.mjs": "22237c1a5335eb02c5bdb7c8af625df81d9c130140176ac2e9095ee3970dd628",
+        "supabase/functions/atlas-team-messages/index.ts": "746b4f54a558ba95e8934e1c978050af29d3d910f3f81dacc787c2b42161e755",
+        "supabase/functions/atlas-team-messages/identity.mjs": "0ba6fa89f2e9721d3908fd2eb428e7599ceae3db5973e24b4f0b58188d2f5f96",
         "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },

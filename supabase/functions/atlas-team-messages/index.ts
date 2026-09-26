@@ -55,7 +55,7 @@ function jsonResponse(value: unknown, status = 200): Response {
       ...CORS_HEADERS,
       "content-type": "application/json; charset=utf-8",
       "x-content-type-options": "nosniff",
-      "x-atlas-team-messages-version": "0.3.0-s92",
+      "x-atlas-team-messages-version": "0.3.0-s93",
     },
   });
 }
@@ -302,7 +302,7 @@ async function messageSnapshot(context: AtlasContext, channelKey: string, limit:
     }),
     branchRpc("atlas_team_conversation_stars_snapshot", { p_user_id: context.user.id }),
   ]);
-  // S92: every message, read receipt and conversation preview carries the
+  // S93: every message, read receipt and conversation preview carries the
   // sender's live name (sender_id → roster display name → stored name →
   // neutral label); email-shaped stored labels never leave the gateway.
   const snapshot = withSenderNames(rawSnapshot, members);

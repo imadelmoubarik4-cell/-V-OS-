@@ -1,4 +1,4 @@
-// Sender identity for Messages (S92, S87 rule).
+// Sender identity for Messages (S93, S87 rule).
 //
 // A message shows its sender by sender_id → the live profile display name
 // (actorLabel), else the name stored when it was sent, else a neutral label:

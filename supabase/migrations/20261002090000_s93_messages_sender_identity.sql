@@ -1,4 +1,4 @@
--- S92 Messages: every message shows its sender's real name (and photo).
+-- S93 Messages: every message shows its sender's real name (and photo).
 --
 -- Production (25 Sep): Messages showed "Team member" for senders and the
 -- sidebar/greeting had no name. Root cause: the name set in Team ("Name shown

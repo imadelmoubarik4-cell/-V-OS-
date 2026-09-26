@@ -5,7 +5,7 @@
   // A deployment may replace connection values, but it must not remove the
   // scripts that make an authorized navigation destination functional.
   const REQUIRED_MODULES = Object.freeze([
-    ['assets/css/team-messages.css?v=20260930-s92m', 'assets/js/team-messages.js', 'AtlasTeamMessages'],
+    ['assets/css/team-messages.css?v=20261002-s93m', 'assets/js/team-messages.js', 'AtlasTeamMessages'],
     [null, 'assets/js/team-unread-badge.js', 'AtlasTeamUnreadBadge'],
     [null, 'assets/js/team-profiles-bootstrap.js', 'AtlasTeamProfilesBootstrap'],
     ['assets/css/team-profile-photos.css', 'assets/js/team-profile-photos.js', 'AtlasTeamProfilePhotos'],
