@@ -87,7 +87,7 @@ test('live placeholder carries the key, framing and state, with the badge as its
 
 test('the live robot is lazy, same-origin, paused off screen and when hidden, and keeps one WebGL context per key', () => {
   const source = read('apps/web/assets/js/atlas-bot.js');
-  assert.match(source, /const SCENE = 'assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261003-bot3';/);
+  assert.match(source, /const SCENE = 'assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261003-bot4';/);
   assert.match(source, /const SPRITE = 'assets\/atlas-bot\/atlas-bot\.png\?v=20261003-bot3';/);
   assert.match(source, /const SPRITE_SMALL = 'assets\/atlas-bot\/atlas-bot-small\.png\?v=20261003-bot3';/);
   assert.match(source, /import\(url\)/);

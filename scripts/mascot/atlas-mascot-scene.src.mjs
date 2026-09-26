@@ -443,7 +443,10 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
   let last = null;
   function step(now, { instant = false, overrides = null } = {}) {
     const seconds = now / 1000;
-    const dt = last === null ? 0 : Math.min(0.1, seconds - last);
+    // Up to a quarter second per frame: slow frames (software WebGL, a busy
+    // phone) keep animations close to real time; longer gaps (a paused loop)
+    // do not jump.
+    const dt = last === null ? 0 : Math.min(0.25, seconds - last);
     last = seconds;
     status.time += dt;
     apply(dt, status.time, instant, overrides);
