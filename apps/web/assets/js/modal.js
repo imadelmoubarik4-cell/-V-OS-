@@ -187,6 +187,9 @@
 
       const state = modalState.get(root);
       state.previouslyFocused = document.activeElement;
+      // Modules that fill a registered root later (innerHTML after register)
+      // get their panel labelled here: role="dialog", aria-modal and a name.
+      labelDialog(root);
       root.hidden = false;
       root.style.display = 'flex';
       root.setAttribute('aria-hidden', 'false');

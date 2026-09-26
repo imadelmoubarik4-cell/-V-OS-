@@ -80,3 +80,9 @@ verify_jwt = false
 
 [functions.atlas-notifications]
 verify_jwt = true
+
+# S92: Accounting (invoices, receipts, reimbursements). The handler verifies the
+# production-Auth JWT and requires an active admin profile (_shared/auth.mjs);
+# every atlas_accounting_* RPC checks the admin role again.
+[functions.atlas-accounting]
+verify_jwt = false
