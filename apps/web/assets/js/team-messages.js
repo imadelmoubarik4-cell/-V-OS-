@@ -3,10 +3,13 @@
 // Conversation list + thread with composer. Internal AtlasShell view id stays
 // 'team' (spec §3.4: only the route changed; #team is the Team directory).
 //
-// Identity rules (S87, binding): a sender is shown by sender_id → the current
-// roster's display name → a safe label derived from the stored sender_label →
-// "Former team member". An email address is never shown. Photos come from
-// AtlasTeamProfilePhotos.photoFor(sender_id). Atlas recommendation links are
+// Identity rules (S87, S93, binding): a sender is shown by sender_id → the
+// current roster's display name → the gateway's sender_name → the stored
+// sender_label → "Team member" (still on the roster) or "Former team member".
+// Neutral labels never hide a real name, and an email address is never shown
+// or turned into a name. Own and others' messages both show the sender's name
+// and avatar (photo from AtlasTeamProfilePhotos.photoFor(sender_id), initials
+// otherwise); own messages sit on the right. Atlas recommendation links are
 // manager-only: the composer offers them only when the server says
 // can_link_brain_recommendations, and staff see such a link without its title.
 //
@@ -82,24 +85,35 @@
     return ROLE_LABELS[role] || String(role || '').replace(/[_-]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
   }
 
-  // A visible name never shows an email address: an email-only label becomes
-  // its readable local part ("sara.jonsdottir@…" → "Sara Jonsdottir").
+  // A visible name is never an email address (S87): email-shaped text is not
+  // a name at all (nor is its local part), so it falls through to the next
+  // source.
   function safePersonLabel(value) {
-    const text = String(value || '').trim();
-    if (!text) return '';
-    if (!text.includes('@')) return text;
-    const local = text.split('@')[0].replace(/\d+$/, '');
-    const words = local.split(/[._+-]+/).filter(Boolean);
-    return words.length ? words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : '';
+    const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+    return text && !text.includes('@') ? text.slice(0, 120) : '';
+  }
+
+  // "Team member" / "Former team member" are what the gateway stores and sends
+  // when a profile has no name; they never win over a real name.
+  const NEUTRAL_NAMES = ['team member', 'former team member'];
+  function realName(value) {
+    const text = safePersonLabel(value);
+    return text && !NEUTRAL_NAMES.includes(text.toLowerCase()) ? text : '';
   }
 
   // Presentation identity is resolved from sender_id against the current
-  // profile roster; the stored sender_label is only a historical fallback for
-  // people who are no longer active. Audit history is never rewritten.
+  // profile roster, then the gateway's live sender_name, then the stored
+  // sender_label (audit history, never rewritten). The viewer's own messages
+  // can also use the signed-in staff record.
   function senderIdentity(message) {
-    const member = message.sender_id ? state.members.find((entry) => entry.id === message.sender_id) : null;
-    const name = safePersonLabel(member?.label) || safePersonLabel(message.sender_label) || 'Former team member';
-    return { id: message.sender_id || null, name, role: member?.role || message.sender_role || '', current: Boolean(member) };
+    const id = message.sender_id || null;
+    const member = id ? state.members.find((entry) => entry.id === id) : null;
+    const own = Boolean(id) && id === viewerId();
+    const name = realName(member?.label) || realName(message.sender_name) || realName(message.sender_label)
+      || (own ? realName(state.staff?.label) : '')
+      || (member || own || message.sender_id === undefined || message.sender_active === true ? 'Team member' : 'Former team member');
+    const current = Boolean(member || own || message.sender_active === true);
+    return { id, name, role: member?.role || message.sender_role || (own ? state.staff?.role : '') || '', current, own };
   }
 
   // "Own" is the signed-in profile's id against the message's sender_id (the
@@ -122,13 +136,25 @@
     return `atlas-avatar--${'abcd'[hash % 4]}`;
   }
 
+  // Avatar fallback without a photo: the person's initials, or a person icon
+  // when they have no name (a neutral label's "TM" would read as a person).
+  function avatarFallback(identity) {
+    return realName(identity.name) ? escapeHtml(initials(identity.name)) : icon('user');
+  }
+
+  // Photo URLs that failed to load (expired signature, offline) are not
+  // offered again until the photo snapshot brings a fresh URL.
+  const failedPhotos = new Set();
+
   function avatarMarkup(identity, size = '') {
     const photo = identity.id ? window.AtlasTeamProfilePhotos?.photoFor?.(identity.id) : null;
-    const classes = `atlas-avatar ${size} ${avatarTint(identity.id || identity.name)} msg-avatar${photo?.signed_url ? ' has-profile-photo' : ''}`;
-    const inner = photo?.signed_url
-      ? `<img src="${escapeHtml(photo.signed_url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
-      : escapeHtml(initials(identity.name));
-    return `<span class="${classes}" ${identity.id ? `data-team-sender="${escapeHtml(identity.id)}"` : ''} aria-hidden="true">${inner}</span>`;
+    const url = photo?.signed_url && !failedPhotos.has(photo.signed_url) ? photo.signed_url : null;
+    const classes = `atlas-avatar ${size} ${avatarTint(identity.id || identity.name)} msg-avatar${url ? ' has-profile-photo' : ''}`;
+    const inner = url
+      ? `<img src="${escapeHtml(url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
+      : avatarFallback(identity);
+    const key = url || `fallback:${realName(identity.name) || ''}`;
+    return `<span class="${classes}" ${identity.id ? `data-team-sender="${escapeHtml(identity.id)}"` : ''} data-msg-avatar-key="${escapeHtml(key)}" aria-hidden="true">${inner}</span>`;
   }
 
   function clock() {
@@ -373,7 +399,8 @@
     const last = channel.last_message;
     if (!last) return channel.description || 'No messages yet';
     if (last.deleted) return 'Message deleted';
-    const who = last.message_type === 'system' ? 'Atlas' : safePersonLabel(last.sender_label);
+    // The same live identity as the thread (sender_id → roster name → …).
+    const who = last.message_type === 'system' ? 'Atlas' : senderIdentity(last).name;
     return who ? `${who}: ${last.body || ''}` : String(last.body || '');
   }
 
@@ -472,7 +499,7 @@
     const readers = Array.isArray(message.read_by) ? message.read_by : [];
     const count = Number(message.read_by_count || readers.length || 0);
     if (!count) return '<span class="msg-item__read">Sent</span>';
-    const names = readers.map((reader) => safePersonLabel(state.members.find((member) => member.id === reader.user_id)?.label || reader.user_label)).filter(Boolean).join(', ');
+    const names = readers.map((reader) => realName(state.members.find((member) => member.id === reader.user_id)?.label) || realName(reader.user_name) || realName(reader.user_label) || 'Team member').join(', ');
     return `<span class="msg-item__read" ${names ? `title="Read by ${escapeHtml(names)}"` : ''}>${icon('check-check')}Read by ${count}</span>`;
   }
 
@@ -498,13 +525,14 @@
       message.can_delete ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-delete="${escapeHtml(message.id)}">Delete</button>` : ''
     ].join('');
     const readStatus = readStatusMarkup(message);
-    // Own messages sit on the right without an avatar; the header keeps the
-    // time and says "You" to assistive tech only.
+    // S93: own messages sit on the right with the viewer's own name and avatar
+    // (the avatar gutter moves to the right); "(you)" is for assistive tech.
+    // Others show name and role on the left.
     const header = own
-      ? `<header class="msg-item__meta"><strong class="msg-item__name sr-only">You</strong>${stamp}</header>`
+      ? `<header class="msg-item__meta"><strong class="msg-item__name">${escapeHtml(identity.name)}</strong><span class="sr-only"> (you)</span>${stamp}</header>`
       : `<header class="msg-item__meta"><strong class="msg-item__name">${escapeHtml(identity.name)}</strong><span class="msg-item__role">${escapeHtml(roleText)}</span>${stamp}</header>`;
-    return `<article class="msg-item${grouped ? ' is-grouped' : ''}${system ? ' is-system' : ''}${own ? ' is-own' : ''}" data-team-message="${escapeHtml(message.id)}">
-      <span class="msg-item__gutter">${grouped || own ? '' : system ? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">${icon('sparkles')}</span>` : avatarMarkup(identity)}</span>
+    return `<article class="msg-item${grouped ? ' is-grouped' : ''}${system ? ' is-system' : ''}${own ? ' is-own' : ''}" data-team-message="${escapeHtml(message.id)}" ${system ? '' : `data-msg-sender="${escapeHtml(identity.id || '')}"`}>
+      <span class="msg-item__gutter">${grouped ? '' : system ? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">${icon('sparkles')}</span>` : avatarMarkup(identity)}</span>
       <div class="msg-item__body">
         ${grouped ? '' : header}
         <p class="msg-item__text">${formatBody(message.body)}</p>
@@ -588,14 +616,17 @@
   function renderLog(options = {}) {
     const log = region('log');
     if (!log) return;
-    const ids = messages().map((message) => `${message.id}:${message.edited_at || ''}:${message.deleted ? 1 : 0}:${message.read_by_count || 0}`).join('|')
-      + `#${(state.failed[state.selectedChannel] || []).length}#${state.channelLoading}#${snapshotChannelKey()}#${state.selectedChannel}`;
+    // Names are part of the signature: a renamed profile or a roster that
+    // arrives later repaints the thread even when no message changed.
+    const ids = messages().map((message) => `${message.id}:${message.edited_at || ''}:${message.deleted ? 1 : 0}:${message.read_by_count || 0}:${message.message_type === 'system' ? '' : senderIdentity(message).name}`).join('|')
+      + `#${(state.failed[state.selectedChannel] || []).length}#${state.channelLoading}#${snapshotChannelKey()}#${state.selectedChannel}#${viewerId() || ''}`;
     if (options.silent && ids === state.renderedIds) return;
     const stick = !options.silent || nearBottom();
     const previousIds = new Set([...log.querySelectorAll('[data-team-message]')].map((node) => node.dataset.teamMessage));
     log.innerHTML = logMarkup();
     state.renderedIds = ids;
     paintIcons();
+    watchPhotos();
     if (stick) {
       hideJump();
       scrollToBottom();
@@ -689,6 +720,9 @@
   function show(params = {}) {
     state.visible = true;
     ensureRoot();
+    // Avatars need the photo snapshot: load it now if it never loaded (for
+    // example a failed load at sign-in) or its signed URLs are near expiry.
+    window.AtlasTeamProfilePhotos?.ensureFresh?.();
     const requested = params.conversation ? String(params.conversation) : null;
     state.routeChannel = requested;
     const next = requested || state.selectedChannel || (state.snapshot ? defaultChannelKey() : 'general');
@@ -1218,14 +1252,36 @@
     }
   }
 
+  // Photos arrive independently of the thread (hydration): swap only the
+  // avatars, own and others', so the composer and scroll are not disturbed.
   function refreshAvatars() {
+    let changed = false;
     host()?.querySelectorAll('.msg-avatar[data-team-sender]').forEach((avatar) => {
       const message = messages().find((entry) => entry.sender_id === avatar.dataset.teamSender);
       if (!message) return;
       const wrapper = document.createElement('div');
       wrapper.innerHTML = avatarMarkup(senderIdentity(message));
       const next = wrapper.firstElementChild;
-      if (next && next.outerHTML !== avatar.outerHTML) avatar.replaceWith(next);
+      if (next && next.dataset.msgAvatarKey !== avatar.dataset.msgAvatarKey) { avatar.replaceWith(next); changed = true; }
+    });
+    if (changed) paintIcons();
+    watchPhotos();
+  }
+
+  // A photo that fails to load (an expired signed URL after a long sleep, or
+  // offline) falls back to initials at once and asks for fresh URLs. Image
+  // errors do not bubble, so each avatar image is watched once.
+  function handlePhotoError(event) {
+    const image = event.currentTarget;
+    failedPhotos.add(image.getAttribute('src'));
+    refreshAvatars();
+    window.AtlasTeamProfilePhotos?.ensureFresh?.({ stale: true });
+  }
+
+  function watchPhotos() {
+    region('log')?.querySelectorAll('.msg-avatar[data-team-sender] > img:not([data-msg-watched])').forEach((image) => {
+      image.dataset.msgWatched = 'true';
+      image.addEventListener('error', handlePhotoError, { once: true });
     });
   }
 

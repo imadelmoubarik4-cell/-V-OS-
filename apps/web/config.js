@@ -104,14 +104,14 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
 
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/team-messages.css',
-  scriptPath: 'assets/js/team-messages.js?v=20260926-s91a',
+  stylesheetPath: 'assets/css/team-messages.css?v=20261002-s93m',
+  scriptPath: 'assets/js/team-messages.js?v=20261002-s93m',
   globalName: 'AtlasTeamMessages',
   dataAttribute: 'atlasTeamMessages',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/team-unread-badge.js',
+  scriptPath: 'assets/js/team-unread-badge.js?v=20261002-s93m',
   globalName: 'AtlasTeamUnreadBadge',
   dataAttribute: 'atlasTeamUnreadBadge',
 }));
@@ -151,7 +151,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // the browser never receives direct Storage credentials or privileged server keys.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/team-profile-photos.css',
-  scriptPath: 'assets/js/team-profile-photos.js?v=20260929-s90u',
+  scriptPath: 'assets/js/team-profile-photos.js?v=20261002-s93m',
   globalName: 'AtlasTeamProfilePhotos',
   dataAttribute: 'atlasTeamProfilePhotos',
 }));

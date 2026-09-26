@@ -11,7 +11,7 @@ class IsolatedRuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary) / 'runtime'
             result = build(target)
-            self.assertEqual(result['files'], 24)
+            self.assertEqual(result['files'], 25)
             config = (target / 'config.toml').read_text()
             self.assertIn('atlas-reports/entrypoint.ts', config)
             self.assertIn('atlas-stock-counts/entrypoint.ts', config)
