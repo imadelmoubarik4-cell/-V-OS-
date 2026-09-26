@@ -8,9 +8,14 @@
 // source of truth is this file, so the model is reproducible and reviewable).
 // It is rigged as a hierarchy of pivots (root, body, head, shoulders,
 // elbows) and animated by a small state machine:
-//   base states  idle · thinking · listening · speaking · error (unavailable)
-//   moments      greet · success · error · react (a tap)
-// A moment plays over the base state and hands back to it.
+//   base states  idle · awake · sleeping · listening · thinking · answering ·
+//                attention · error (speaking is the old name of answering)
+//   moments      greet · success · error · react (a tap) · wake
+// A moment plays over the base state and hands back to it. Which state shows
+// when (timers, wake triggers, transient states) is decided in one place,
+// the controller in assets/js/atlas-bot.js; the scene only poses the robot.
+// Every state is a set of pose targets blended at a fixed rate, so a change
+// never rebuilds the scene or jumps.
 //
 // The official Atlas A mark is drawn from its SVG path (unchanged geometry)
 // onto a canvas texture and projected onto the forehead and chest as decals.
@@ -27,8 +32,9 @@ import { DecalGeometry } from 'three/examples/jsm/geometries/DecalGeometry.js';
 export const PALETTE = Object.freeze({ midnight: '#0B1220', slate: '#334155', mist: '#CBD5E1', snow: '#FBFAFC', blue: '#3B82F6', glow: '#6FB0FF' });
 // apps/web/assets/brand/Atlas_Mark_Midnight.svg (viewBox 0 0 266 236), verbatim.
 export const MARK_PATH = 'M133 8 L22 195 C34 184 46 174 57 165 C68 158 82 153 97 149 L132 92 L174 159 C156 156 137 154 119 155 C101 157 86 162 74 167 C59 173 48 181 39 189 L7 226 L46 226 C51 217 56 210 60 204 C65 198 71 192 78 187 C87 180 97 175 107 171 C117 168 127 166 138 164 C151 164 164 165 176 167 C186 170 194 173 202 177 C211 182 219 188 224 192 L254 226 L258 226 Z';
-export const BASE_STATES = Object.freeze(['idle', 'thinking', 'listening', 'speaking', 'error']);
-export const MOMENTS = Object.freeze(['greet', 'success', 'error', 'react']);
+export const BASE_STATES = Object.freeze(['idle', 'awake', 'sleeping', 'listening', 'thinking', 'answering', 'attention', 'error']);
+export const MOMENTS = Object.freeze(['greet', 'success', 'error', 'react', 'wake']);
+const BASE_ALIASES = Object.freeze({ speaking: 'answering' });
 
 const HEAD = { y: 1.62, scale: new Vector3(0.98, 0.84, 0.88) };
 const damp = (value, target, rate, dt) => value + (target - value) * (1 - Math.exp(-rate * dt));
@@ -60,6 +66,24 @@ function glowTexture() {
   gradient.addColorStop(0, 'rgba(111,176,255,0.9)');
   gradient.addColorStop(0.4, 'rgba(59,130,246,0.35)');
   gradient.addColorStop(1, 'rgba(59,130,246,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 64, 64);
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
+
+// The soft contact shadow under the full robot (no light casts it: a blurred
+// Midnight ellipse is cheaper than a shadow map and reads the same).
+function shadowTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gradient.addColorStop(0, 'rgba(11,18,32,0.55)');
+  gradient.addColorStop(0.45, 'rgba(11,18,32,0.22)');
+  gradient.addColorStop(1, 'rgba(11,18,32,0)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 64, 64);
   const texture = new CanvasTexture(canvas);
@@ -136,9 +160,14 @@ export function buildRobot({ look = 'normal' } = {}) {
   const visorMat = keep(small
     ? new MeshPhysicalMaterial({ color: '#0B1220', roughness: 0.9, metalness: 0, clearcoat: 0, envMapIntensity: 0.04 })
     : new MeshPhysicalMaterial({ color: '#070B14', roughness: 0.22, metalness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.28, envMapIntensity: 0.45 }));
-  const eyeMat = keep(new MeshBasicMaterial({ color: new Color(small ? '#9FD0FF' : PALETTE.glow), toneMapped: false }));
+  const eyeColor = new Color(small ? '#9FD0FF' : PALETTE.glow);
+  const eyeMat = keep(new MeshBasicMaterial({ color: eyeColor.clone(), toneMapped: false }));
   const accent = keep(new MeshBasicMaterial({ color: new Color(PALETTE.blue).multiplyScalar(1.25), toneMapped: false }));
-  const glowMat = keep(new MeshBasicMaterial({ map: keep(glowTexture()), transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false, opacity: 0.55 }));
+  const chestColor = new Color(PALETTE.blue).multiplyScalar(1.25);
+  const chestMat = keep(new MeshBasicMaterial({ color: chestColor.clone(), toneMapped: false }));
+  const glowMap = keep(glowTexture());
+  const glowMat = keep(new MeshBasicMaterial({ map: glowMap, transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false, opacity: 0.55 }));
+  const chestGlowMat = keep(new MeshBasicMaterial({ map: glowMap, transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false, opacity: 0.42 }));
   // Unlit, so the A reads as the Midnight brand mark under any light.
   const markMat = keep(new MeshBasicMaterial({ map: keep(markTexture(PALETTE.midnight)), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
   const geo = (g) => keep(g);
@@ -163,11 +192,11 @@ export function buildRobot({ look = 'normal' } = {}) {
   const neck = mesh(geo(new CylinderGeometry(0.2, 0.26, 0.2, 32)), midnight);
   neck.position.y = 1.28;
   body.add(neck);
-  const chestLight = mesh(geo(new CapsuleGeometry(0.028, 0.2, 6, 12)), accent);
+  const chestLight = mesh(geo(new CapsuleGeometry(0.028, 0.2, 6, 12)), chestMat);
   chestLight.rotation.z = Math.PI / 2;
   chestLight.position.set(0, 0.58, 0.49);
   body.add(chestLight);
-  const chestGlow = mesh(geo(new PlaneGeometry(0.5, 0.18)), glowMat);
+  const chestGlow = mesh(geo(new PlaneGeometry(0.5, 0.18)), chestGlowMat);
   chestGlow.position.set(0, 0.58, 0.505);
   body.add(chestGlow);
 
@@ -285,7 +314,14 @@ export function buildRobot({ look = 'normal' } = {}) {
   const chestDecal = decalAt(torso, chestPoint, new Vector3(0, 0.07, 1).normalize(), 0.26);
   body.attach(chestDecal);
 
-  return { root, body, head, eyes, earRings, arms, glowMat, accent, disposables };
+  // The contact shadow lies on the floor, outside the robot's root, so it stays
+  // put while the robot breathes (shown for the full framing only).
+  const shadow = mesh(geo(new PlaneGeometry(1.5, 0.62)), keep(new MeshBasicMaterial({ map: keep(shadowTexture()), transparent: true, depthWrite: false, toneMapped: false, opacity: 0.62 })));
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.set(0, 0.002, 0.04);
+  shadow.renderOrder = -1;
+
+  return { root, body, head, eyes, earRings, arms, glowMat, accent, eyeMat, eyeColor, chestMat, chestColor, chestGlowMat, shadow, disposables };
 }
 
 // ---------------------------------------------------------------------------
@@ -317,47 +353,93 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
 
   const robot = buildRobot({ look });
   scene.add(robot.root);
+  scene.add(robot.shadow);
   const camera = new PerspectiveCamera(26, 1, 0.1, 40);
   // full: the whole robot; bust: head and shoulders; badge: the head, filling
   // a small square; badge-small: a tighter crop on the face for 24 px or less.
   const frames = { full: { y: 1.14, z: 6.4, look: 1.1 }, bust: { y: 1.62, z: 4.2, look: 1.56 }, badge: { y: 1.6, z: 4.25, look: 1.58 }, 'badge-small': { y: 1.6, z: 4.0, look: 1.6 } };
   let frame = frames[framing] || frames.full;
-  const placeCamera = () => { camera.position.set(0, frame.y, frame.z); camera.lookAt(0, frame.look, 0); };
+  const placeCamera = () => { camera.position.set(0, frame.y, frame.z); camera.lookAt(0, frame.look, 0); robot.shadow.visible = frame === frames.full; };
   placeCamera();
 
-  // Pose values (current) and their targets.
-  const pose = { bob: 0, bodyYaw: 0, bodyRoll: 0, headYaw: 0, headPitch: 0, headRoll: 0, rShoulder: -0.2, rElbow: 0, lShoulder: 0.2, lElbow: 0, rShoulderX: 0, lShoulderX: 0, squash: 1, glow: 1, happy: 0, eyeUp: 0, eyeOpen: 1, confused: 0 };
-  const status = { base: 'idle', moment: null, momentAt: 0, greetings: 0, frames: 0, time: 0, pointer: { x: 0, y: 0, active: false }, blinkAt: 2.5, blinkUntil: 0, reactUntil: 0 };
+  // Pose values (current) and their targets. eyeLight: eye brightness; chest:
+  // the chest light; sleepy: eyelids (1 = closed); scan: which eye is lit
+  // brighter while thinking (-1 · 1); eyeX / eyeUp: where the eyes look.
+  const REST = { bob: 0, bodyYaw: 0, bodyRoll: 0, headYaw: 0, headPitch: 0, headRoll: 0, rShoulder: -0.2, rElbow: -0.05, lShoulder: 0.2, lElbow: 0.05, rShoulderX: 0, lShoulderX: 0, squash: 1, glow: 1, happy: 0.35, eyeUp: 0, eyeX: 0, eyeOpen: 1, eyeLight: 1, chest: 1, sleepy: 0, scan: 0, confused: 0 };
+  const pose = { ...REST, rShoulder: -0.2, rElbow: 0, lElbow: 0 };
+  const wallClock = () => globalThis.performance?.now?.() ?? Date.now();
+  const status = { base: 'idle', baseSince: 0, moment: null, momentAt: 0, momentWall: 0, greetings: 0, frames: 0, time: 0, pointer: { x: 0, y: 0, active: false }, blinkAt: 2.5, blinkUntil: 0, lookAt: 7, lookUntil: 0, lookSide: 1 };
 
-  function targets(t) {
-    const out = { bob: 0, bodyYaw: 0, bodyRoll: 0, headYaw: 0, headPitch: 0, headRoll: 0, rShoulder: -0.2, rElbow: -0.05, lShoulder: 0.2, lElbow: 0.05, rShoulderX: 0, lShoulderX: 0, squash: 1, glow: 1, happy: 0.35, eyeUp: 0, eyeOpen: 1, confused: 0 };
-    const calm = !reducedMotion;
+  // Where each base state puts the robot. t: seconds; calm: motion allowed.
+  function baseTargets(out, t, calm) {
+    const breathe = (speed, amount) => { out.bob = amount * Math.sin(t * speed); out.squash = 1 + amount * 0.4 * Math.sin(t * speed * 1.4); };
     switch (status.base) {
-      case 'thinking':
-        Object.assign(out, { headRoll: 0.2, headPitch: -0.1, headYaw: -0.12, eyeUp: 1, happy: 0, rShoulder: -0.55, rElbow: -1.9, rShoulderX: -0.5 });
-        if (calm) { out.bodyRoll = 0.03 * Math.sin(t * 1.4); out.headYaw += 0.05 * Math.sin(t * 0.9); }
+      case 'awake':
+        // Attentive: eyes a touch wider and brighter, facing the viewer.
+        Object.assign(out, { eyeOpen: 1.06, eyeLight: 1.16, glow: 1.3, headPitch: -0.03 });
+        if (calm) { breathe(1.25, 0.012); out.headRoll = 0.015 * Math.sin(t * 0.53); }
+        break;
+      case 'sleeping':
+        // Eyes closed, head dipped, glow down, slow breathing.
+        Object.assign(out, { sleepy: 1, eyeLight: 0.62, glow: 0.42, chest: 0.55, headPitch: 0.17, headRoll: 0.05, happy: 0, rShoulder: -0.14, lShoulder: 0.14 });
+        if (calm) { breathe(0.7, 0.014); out.headPitch += 0.015 * Math.sin(t * 0.7 + 0.6); }
         break;
       case 'listening':
-        Object.assign(out, { headRoll: -0.1, headPitch: 0.08, happy: 0, eyeOpen: 1.12 });
-        if (calm) out.glow = 1 + 0.45 * (0.5 + 0.5 * Math.sin(t * 3.2));
+        // A soft, slow blue pulse in the eyes and the chest; an attentive tilt.
+        Object.assign(out, { headRoll: -0.09, headPitch: 0.05, happy: 0, eyeOpen: 1.08, eyeLight: 1.12, glow: 1.2, chest: 1.3 });
+        if (calm) {
+          const pulse = 0.5 + 0.5 * Math.sin(t * 1.9);
+          out.glow = 1.08 + 0.32 * pulse;
+          out.eyeLight = 1.04 + 0.14 * pulse;
+          out.chest = 1.05 + 0.6 * pulse;
+          out.headRoll += 0.02 * Math.sin(t * 0.8);
+        }
         break;
-      case 'speaking':
-        Object.assign(out, { happy: 0.6 });
-        if (calm) { out.headPitch = 0.05 * Math.sin(t * 6.2); out.headRoll = 0.05 * Math.sin(t * 2.3); out.bodyYaw = 0.05 * Math.sin(t * 1.7); out.glow = 1.1 + 0.2 * Math.sin(t * 7); }
+      case 'thinking':
+        // Eyes up and scanning side to side, lit in turn; head tilted, hand
+        // to the chin. No spinner, nothing fast.
+        Object.assign(out, { headRoll: 0.12, headPitch: -0.07, headYaw: -0.1, eyeUp: 0.7, eyeX: 0.03, happy: 0, glow: 1.05, rShoulder: -0.55, rElbow: -1.9, rShoulderX: -0.5 });
+        if (calm) {
+          out.eyeX = 0.03 + 0.045 * Math.sin(t * 1.3);
+          out.scan = Math.sin(t * 2.2);
+          out.headYaw += 0.04 * Math.sin(t * 0.9);
+          out.bodyRoll = 0.02 * Math.sin(t * 1.1);
+        }
+        break;
+      case 'answering':
+        // Settled, looking a little down and to the left, toward the answer.
+        Object.assign(out, { headPitch: 0.1, headYaw: -0.1, eyeX: -0.03, eyeUp: -0.35, happy: 0.4, eyeLight: 1.08, glow: 1.12, bodyYaw: -0.03 });
+        if (calm) { out.headRoll = 0.025 * Math.sin(t * 1.1); out.glow = 1.12 + 0.06 * Math.sin(t * 1.6); out.bodyYaw = -0.03 + 0.015 * Math.sin(t * 0.9); breathe(1.25, 0.008); }
+        break;
+      case 'attention':
+        // Something needs the person: brighter, a slight tilt, idle stops.
+        Object.assign(out, { glow: 1.55, eyeLight: 1.22, eyeOpen: 1.14, chest: 1.6, headRoll: 0.12, headPitch: -0.05, happy: 0 });
         break;
       case 'error':
-        Object.assign(out, { headRoll: 0.16, happy: 0, confused: 1, rShoulder: -0.32, lShoulder: 0.32, glow: 0.7 });
+        // Unavailable: still, eyes dimmer, head a little down. Blue, never red.
+        Object.assign(out, { glow: 0.5, eyeLight: 0.62, eyeOpen: 0.86, chest: 0.6, headPitch: 0.14, headRoll: 0.05, confused: 0.3, happy: 0, rShoulder: -0.12, lShoulder: 0.12 });
         break;
       default:
+        // Idle: barely visible breathing, a slow drift and now and then a
+        // short look aside.
         if (calm) {
-          out.bob = 0.03 * Math.sin(t * 1.25);
-          out.squash = 1 + 0.008 * Math.sin(t * 1.8);
-          out.headYaw = 0.07 * Math.sin(t * 0.37);
-          out.headRoll = 0.025 * Math.sin(t * 0.53);
+          breathe(1.25, 0.018);
+          out.headYaw = 0.04 * Math.sin(t * 0.37);
+          out.headRoll = 0.02 * Math.sin(t * 0.53);
+          if (t >= status.lookAt) { status.lookUntil = t + 1.5; status.lookAt = t + 8 + Math.random() * 7; status.lookSide = -status.lookSide; }
+          if (t < status.lookUntil) { out.headYaw += 0.16 * status.lookSide; out.eyeX = 0.025 * status.lookSide; out.headPitch = -0.03; }
         }
     }
-    // Looking toward the pointer (desktop, not while a moment plays).
-    if (finePointer && calm && status.pointer.active && !status.moment && status.base !== 'thinking') {
+  }
+
+  function targets(t) {
+    const out = { ...REST };
+    const calm = !reducedMotion;
+    baseTargets(out, t, calm);
+    // Looking toward the pointer (desktop, not while a moment plays, not while
+    // the robot thinks, answers, sleeps or is unavailable).
+    const tracks = ['idle', 'awake', 'listening', 'attention'].includes(status.base);
+    if (finePointer && calm && tracks && status.pointer.active && !status.moment) {
       out.headYaw = MathUtils.clamp(status.pointer.x * 0.5, -0.5, 0.5);
       // pointer.y grows downwards and a positive head pitch tips the face down,
       // so the robot looks down at a pointer below it and up at one above.
@@ -365,10 +447,13 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     }
     // Moments.
     const m = status.moment;
-    const since = t - status.momentAt;
+    // Reduced motion draws a still frame only when something changes, so a
+    // moment's clock is the real one there (it ends on time, not after many
+    // frames).
+    const since = reducedMotion ? (wallClock() - status.momentWall) / 1000 : t - status.momentAt;
     if (m === 'greet') {
       if (reducedMotion) {
-        Object.assign(out, { rShoulder: -2.45, rElbow: -0.35, happy: 1, headYaw: 0, headPitch: 0.04 });
+        Object.assign(out, { rShoulder: -2.45, rElbow: -0.35, happy: out.sleepy > 0.5 ? 0 : 1, headYaw: 0, headPitch: 0.04 });
       } else {
         const up = window01(since, 0.25, 0.7) * (1 - window01(since, 2.25, 2.8));
         out.headYaw = MathUtils.lerp(out.headYaw, 0.1, window01(since, 0, 0.4));
@@ -379,16 +464,38 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
         const waving = since > 0.7 && since < 2.25 ? Math.sin((since - 0.7) * Math.PI * 2 * 1.9) : 0;
         out.rElbow = MathUtils.lerp(-0.05, -0.35 + 0.42 * waving, up);
         out.happy = 1;
+        out.sleepy = 0;
         out.bob += 0.02 * up;
       }
       if (since > (reducedMotion ? 1.2 : 2.9)) status.moment = null;
-    } else if (m === 'success' || m === 'react') {
-      const d = m === 'success' ? 0.9 : 0.6;
+    } else if (m === 'success') {
+      // Restrained: a brief brightening, a small nod, then an upward posture.
+      const d = 1.2;
       const k = Math.sin(Math.min(1, since / d) * Math.PI);
-      if (!reducedMotion) { out.bob += 0.08 * k; out.squash = 1 + 0.03 * k; }
       out.happy = 1;
-      if (m === 'success' && !reducedMotion) { out.lShoulder = 0.2 + 0.5 * k; out.rShoulder = -0.2 - 0.5 * k; }
+      out.glow = Math.max(out.glow, 1 + 0.5 * k);
+      out.eyeLight = Math.max(out.eyeLight, 1 + 0.2 * k);
+      if (!reducedMotion) {
+        const nod = since < 0.6 ? Math.sin((since / 0.6) * Math.PI) : 0;
+        out.headPitch = 0.14 * nod - 0.06 * window01(since, 0.5, 0.8) * k;
+        out.bob += 0.025 * k;
+        out.lShoulder = 0.2 + 0.12 * k;
+        out.rShoulder = -0.2 - 0.12 * k;
+      }
       if (since > d + (reducedMotion ? 0.3 : 0)) status.moment = null;
+    } else if (m === 'react') {
+      const d = 0.6;
+      const k = Math.sin(Math.min(1, since / d) * Math.PI);
+      if (!reducedMotion) { out.bob += 0.06 * k; out.squash = 1 + 0.025 * k; }
+      out.happy = 1;
+      if (since > d + (reducedMotion ? 0.3 : 0)) status.moment = null;
+    } else if (m === 'wake') {
+      // Waking: eyes open and a small lift of the head.
+      const d = 0.8;
+      const k = Math.sin(Math.min(1, since / d) * Math.PI);
+      if (!reducedMotion) { out.headPitch -= 0.06 * k; out.bob += 0.012 * k; }
+      out.glow = Math.max(out.glow, 1 + 0.25 * k);
+      if (since > d) status.moment = null;
     } else if (m === 'error') {
       Object.assign(out, { headRoll: 0.16, happy: 0, confused: 1, glow: 0.75 });
       if (since > 2.2) status.moment = null;
@@ -396,11 +503,15 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     return out;
   }
 
+  // Blend rates: going to sleep is slow (the eyes close over about two
+  // seconds); everything else, waking included, settles in a fraction of one.
+  const rateFor = () => (status.base === 'sleeping' && status.moment !== 'greet' ? 1.6 : 9);
+
   function apply(dt, t, instant, overrides = null) {
     const goal = { ...targets(t), ...(overrides || {}) };
-    const rate = instant ? Infinity : 9;
-    for (const [name, value] of Object.entries(goal)) pose[name] = instant ? value : damp(pose[name], value, rate, dt);
-    const { root, body, head, eyes, earRings, arms, glowMat } = robot;
+    const rate = instant ? Infinity : rateFor();
+    for (const [name, value] of Object.entries(goal)) if (name in pose) pose[name] = instant ? value : damp(pose[name], value, rate, dt);
+    const { root, body, head, eyes, earRings, arms, glowMat, eyeMat, eyeColor, chestMat, chestColor, chestGlowMat, shadow } = robot;
     root.position.y = pose.bob;
     body.rotation.y = pose.bodyYaw;
     body.rotation.z = pose.bodyRoll;
@@ -410,25 +521,39 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     arms.right.elbow.rotation.z = pose.rElbow;
     arms.left.shoulder.rotation.set(pose.lShoulderX, 0, pose.lShoulder);
     arms.left.elbow.rotation.z = pose.lElbow;
-    // Eyes: blink, happy arcs vs open ovals, a confused (uneven) look.
+    // Eyes: blink, happy arcs vs open ovals, closed (sleeping) arcs, a
+    // confused (uneven) look.
     let blink = overrides?.blink ?? 1;
-    if (!reducedMotion && !overrides) {
+    if (!reducedMotion && !overrides && pose.sleepy < 0.2) {
       if (t >= status.blinkAt) { status.blinkUntil = t + 0.14; status.blinkAt = t + 2.6 + Math.random() * 3.4; }
       if (t < status.blinkUntil) blink = 0.12;
     }
-    const happy = pose.happy > 0.5;
+    const closed = pose.sleepy > 0.8;
+    const happy = !closed && pose.happy > 0.5;
+    const lid = Math.max(0.1, 1 - 1.1 * pose.sleepy);
     eyes.forEach((eye) => {
-      eye.arc.visible = happy;
-      eye.oval.visible = !happy;
+      eye.arc.visible = happy || closed;
+      eye.oval.visible = !happy && !closed;
       const uneven = eye.side > 0 ? 1 - 0.35 * pose.confused : 1;
-      eye.oval.scale.set(0.068 * pose.eyeOpen, 0.1 * pose.eyeOpen * blink * uneven, 0.02);
-      eye.arc.scale.set(1, blink < 1 ? 0.4 : 1, 1);
+      eye.oval.scale.set(0.068 * pose.eyeOpen, 0.1 * pose.eyeOpen * blink * uneven * lid, 0.02);
+      // Closed eyes: the arc turned over, a soft downward curve.
+      eye.arc.rotation.z = closed ? Math.PI : 0;
+      eye.arc.position.y = closed ? 0.012 : -0.035;
+      eye.arc.scale.set(closed ? 0.82 : 1, closed ? 0.5 : blink < 1 ? 0.4 : 1, 1);
+      eye.glow.scale.setScalar(1 + 0.22 * pose.scan * eye.side);
       eye.group.position.copy(eye.base);
-      eye.group.position.y += 0.05 * pose.eyeUp + (eye.side > 0 ? 0.02 * pose.confused : 0);
-      eye.group.position.x += 0.04 * pose.eyeUp;
+      eye.group.position.y += 0.05 * pose.eyeUp + (eye.side > 0 ? 0.02 * pose.confused : 0) - 0.03 * pose.sleepy;
+      eye.group.position.x += 0.04 * Math.max(0, pose.eyeUp) + pose.eyeX;
     });
+    eyeMat.color.copy(eyeColor).multiplyScalar(MathUtils.clamp(pose.eyeLight, 0.3, 1.5));
+    chestMat.color.copy(chestColor).multiplyScalar(MathUtils.clamp(0.55 + 0.45 * pose.chest, 0.3, 1.6));
+    chestGlowMat.opacity = MathUtils.clamp(0.4 * pose.chest, 0.08, 0.8);
     earRings.forEach((ring) => ring.scale.setScalar(1 + 0.06 * (pose.glow - 1)));
-    glowMat.opacity = MathUtils.clamp(0.42 * pose.glow, 0.15, 0.85);
+    glowMat.opacity = MathUtils.clamp(0.42 * pose.glow, 0.12, 0.85);
+    // The shadow tightens a little as the robot rises.
+    const lift = MathUtils.clamp(pose.bob * 4, -0.2, 0.3);
+    shadow.scale.setScalar(1 - 0.5 * lift);
+    shadow.material.opacity = 0.62 * (1 - lift);
   }
 
   let size = { w: 1, h: 1 };
@@ -455,10 +580,12 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     onFrame?.(status);
   }
 
-  // How often to draw: calm idle needs few frames; moments get smooth ones.
+  // How often to draw: calm idle needs few frames, sleeping fewer still;
+  // moments get smooth ones.
   function frameInterval() {
     if (status.moment) return 1000 / 60;
-    if (status.base === 'idle') return 1000 / 30;
+    if (status.base === 'sleeping') return 1000 / 10;
+    if (status.base === 'idle' || status.base === 'awake') return 1000 / 30;
     return 1000 / 45;
   }
 
@@ -469,13 +596,23 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     // A still frame; overrides pin pose values (the badge renders use this:
     // { happy: 1 } for the smile, { blink: 0.12 } for closed eyes).
     renderStatic(overrides = null) { step((last ?? 0) * 1000 + 16, { instant: true, overrides }); },
-    setBase(name) { status.base = BASE_STATES.includes(name) ? name : 'idle'; },
+    // Changing the base never restarts it: setting the same state again
+    // keeps its timing (baseSince), so a stream of updates is one state.
+    setBase(name) {
+      const value = BASE_ALIASES[name] || (BASE_STATES.includes(name) ? name : 'idle');
+      if (value === status.base) return;
+      status.base = value;
+      status.baseSince = status.time;
+      // Under reduced motion a new state ends the (still) greeting pose.
+      if (reducedMotion && status.moment === 'greet') status.moment = null;
+    },
     play(moment) {
       if (!MOMENTS.includes(moment)) return;
       if (status.moment === 'greet' && moment !== 'greet') return;
       if (moment === 'greet') status.greetings += 1;
       status.moment = moment;
       status.momentAt = status.time;
+      status.momentWall = wallClock();
     },
     pointer(x, y, active) { status.pointer = { x, y, active }; },
     setReducedMotion(value) {
@@ -487,7 +624,15 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     busy() { return Boolean(status.moment); },
     info() {
       const render = renderer.info.render;
-      return { base: status.base, moment: status.moment, greetings: status.greetings, frames: status.frames, headPitch: pose.headPitch, headYaw: pose.headYaw, triangles: render.triangles, calls: render.calls, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures };
+      return {
+        base: status.base, baseSince: status.baseSince, moment: status.moment, greetings: status.greetings, frames: status.frames, frameInterval: frameInterval(),
+        headPitch: pose.headPitch, headYaw: pose.headYaw, headRoll: pose.headRoll,
+        pose: { eyeOpen: pose.eyeOpen, eyeLight: pose.eyeLight, glow: pose.glow, chest: pose.chest, sleepy: pose.sleepy, eyeX: pose.eyeX, eyeUp: pose.eyeUp, scan: pose.scan, bob: pose.bob },
+        eyes: robot.eyes[0].arc.visible ? (pose.sleepy > 0.8 ? 'closed' : 'happy') : 'open',
+        eyeColor: `#${robot.eyeMat.color.getHexString()}`,
+        shadow: robot.shadow.visible,
+        triangles: render.triangles, calls: render.calls, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures
+      };
     },
     // loseContext: false keeps the canvas's WebGL context (used after the
     // browser restored a lost context, to build a fresh scene on it).
