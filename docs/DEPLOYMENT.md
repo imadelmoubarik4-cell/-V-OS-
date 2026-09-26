@@ -43,6 +43,22 @@ After step 4, re-run the smoke test for adding and editing an item.
 
 If the Supabase GitHub integration is set to deploy migrations to production when `main` changes, turn that off before merging this release. Otherwise the merge would apply every file in filename order: the revokes would run before the web deploy, and `20260924170000` would be replayed (production recorded it as `20260924150124`).
 
+## Atlas AI robot (web only)
+
+The robot is the Atlas AI assistant's face. It replaces the sparkles assistant icon in AI surfaces; the Atlas logo stays the brand mark everywhere. There is no migration and no function; deploy the web app (cache key `?v=20261003-bot1`).
+
+- `assets/js/atlas-bot.js`: the badge (`AtlasBot.html`) and the interactive 3D robot (`AtlasBot.liveHtml` + `upgrade`).
+- `assets/atlas-bot/atlas-mascot-scene.js`: the 3D scene, Three.js bundled in (MIT), loaded only when Atlas AI shows it. It is about 145 KB gzipped, same-origin, so the CSP is unchanged.
+- `assets/atlas-bot/atlas-bot.png`: the badge sprite (open, blink, happy), rendered from the same scene.
+
+To change the robot, edit `scripts/mascot/atlas-mascot-scene.src.mjs`, then rebuild both files:
+
+```
+npm i --no-save three@0.186.1 esbuild@0.25.10   # or ATLAS_MASCOT_DEPS=<folder with them>
+node scripts/build_atlas_mascot.mjs
+node scripts/render_atlas_bot_badges.mjs        # needs Playwright + Chromium
+```
+
 ## S91: live voice lease and device handoff
 
 `20260930092000_s91_voice_lease_and_takeover.sql` is the last file of batch A. Apply it, then deploy

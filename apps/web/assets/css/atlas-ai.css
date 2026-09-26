@@ -122,6 +122,10 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 
 .atlas-ai .msg-ai { margin-bottom: 32px; }
 .atlas-ai .msg-ai__who { display: flex; align-items: center; gap: 8px; font: 500 13px/18px var(--font-sans, sans-serif); margin-bottom: 8px; }
+/* The Atlas AI robot (atlas-bot.js): live in the empty state and the voice panel. */
+.atlas-ai .ai-empty__bot { margin-bottom: -8px; }
+.atlas-ai .ai-empty__bot .atlas-bot-live { width: 176px; height: 176px; }
+.atlas-ai .voice__top .atlas-bot-live { width: 44px; height: 44px; margin: -8px -2px -8px -4px; }
 .atlas-ai .ai-mark { width: 22px; height: 22px; border-radius: 6px; background: var(--accent-soft, #edf3fd); color: var(--accent, #1f6fdb); display: grid; place-items: center; }
 .atlas-ai .ai-mark .icon { width: 14px; height: 14px; }
 .atlas-ai .msg-ai__text { font: var(--type-body-lg, 400 15px/24px var(--font-sans, sans-serif)); color: var(--text, #17191e); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
@@ -434,6 +438,7 @@ html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::befo
   /* The empty state keeps the phone tab bar; the composer sits above it. */
   .atlas-ai.has-tabbar .composer-wrap { bottom: calc(56px + env(safe-area-inset-bottom)); }
   .atlas-ai .ai-empty { padding-top: 8vh; min-height: 0; }
+  .atlas-ai .ai-empty__bot .atlas-bot-live { width: 136px; height: 136px; }
   .atlas-ai .ai-empty__chips { flex-direction: column; align-items: stretch; width: 100%; }
   .atlas-ai .ai-empty__chips .atlas-chip { justify-content: flex-start; }
   .atlas-ai .ai-decisions__inner { padding: 12px var(--ai-gutter) 80px; }

@@ -103,7 +103,7 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/team-messages.css',
-  scriptPath: 'assets/js/team-messages.js?v=20260926-s91a',
+  scriptPath: 'assets/js/team-messages.js?v=20261003-bot1',
   globalName: 'AtlasTeamMessages',
   dataAttribute: 'atlasTeamMessages',
 }));
@@ -116,7 +116,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/marketing-workspace.css?v=20260929-s90u',
-  scriptPath: 'assets/js/marketing-workspace.js?v=20260926-s91a',
+  scriptPath: 'assets/js/marketing-workspace.js?v=20261003-bot1',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
 }));
@@ -154,7 +154,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // published versions and their version-specific acknowledgement state.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/knowledge-workspace.css',
-  scriptPath: 'assets/js/knowledge-workspace.js?v=20260929-s90u',
+  scriptPath: 'assets/js/knowledge-workspace.js?v=20261003-bot1',
   globalName: 'AtlasKnowledge',
   dataAttribute: 'atlasKnowledge',
 }));
@@ -164,7 +164,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/reports-workspace.css?v=20260929-s90f',
-  scriptPath: 'assets/js/reports-workspace.js?v=20260926-s91a',
+  scriptPath: 'assets/js/reports-workspace.js?v=20261003-bot1',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));

@@ -137,7 +137,7 @@
 
   function askRow(query) {
     return {
-      id: 'ask', kind: 'ask', icon: 'sparkles', label: query ? `Ask Atlas “${query}”` : 'Ask Atlas', query,
+      id: 'ask', kind: 'ask', icon: 'atlas-bot', label: query ? `Ask Atlas “${query}”` : 'Ask Atlas', query,
       hint: IS_MAC ? ['⌘', '↵'] : ['Ctrl', '↵'],
       run: () => askAtlas(query)
     };
@@ -281,7 +281,7 @@
     const answer = state.answer;
     if (!answer) return '';
     return `<section class="atlas-palette__answer is-${escape(answer.tone || 'neutral')}" aria-live="polite" data-answer-source="offline">
-      <div class="atlas-palette__answer-label">${icon('sparkles', { size: 14 })}Quick answer · Atlas AI is off</div>
+      <div class="atlas-palette__answer-label">${icon('atlas-bot', { size: 14 })}Quick answer · Atlas AI is off</div>
       <p>${escape(answer.text)}</p>
       ${answer.lines?.length ? `<ul>${answer.lines.map((line) => `<li>${escape(line)}</li>`).join('')}</ul>` : ''}
       ${answer.action ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-palette-answer-action>${escape(answer.action.label)}</button>` : ''}

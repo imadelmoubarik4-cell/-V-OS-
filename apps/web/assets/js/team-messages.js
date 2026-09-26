@@ -168,6 +168,8 @@
   }
 
   function icon(name) {
+    // 'atlas-bot' is the Atlas AI robot (atlas-bot.js), the assistant's face.
+    if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: 28 });
     return `<i data-lucide="${escapeHtml(name)}" aria-hidden="true"></i>`;
   }
 
@@ -504,7 +506,7 @@
       ? `<header class="msg-item__meta"><strong class="msg-item__name sr-only">You</strong>${stamp}</header>`
       : `<header class="msg-item__meta"><strong class="msg-item__name">${escapeHtml(identity.name)}</strong><span class="msg-item__role">${escapeHtml(roleText)}</span>${stamp}</header>`;
     return `<article class="msg-item${grouped ? ' is-grouped' : ''}${system ? ' is-system' : ''}${own ? ' is-own' : ''}" data-team-message="${escapeHtml(message.id)}">
-      <span class="msg-item__gutter">${grouped || own ? '' : system ? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">${icon('sparkles')}</span>` : avatarMarkup(identity)}</span>
+      <span class="msg-item__gutter">${grouped || own ? '' : system ? `${window.AtlasBot ? window.AtlasBot.html({ size: 28, className: 'msg-avatar msg-avatar--bot' }) : `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">${icon('sparkles')}</span>`}` : avatarMarkup(identity)}</span>
       <div class="msg-item__body">
         ${grouped ? '' : header}
         <p class="msg-item__text">${formatBody(message.body)}</p>

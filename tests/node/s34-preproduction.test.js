@@ -94,7 +94,7 @@ test('shared launch design uses blue actions, compact search, visible focus, and
   // S88 Team A: the pulsing Home focus card is retired (home.css has no animation).
   assert.doesNotMatch(read('apps/web/assets/css/home.css'), /@keyframes|animation/);
   assert.match(app, /assets\/css\/atlas-base\.css\?v=20260929-s90u/);
-  assert.match(app, /assets\/css\/atlas-components\.css\?v=20260926-s91a/);
+  assert.match(app, /assets\/css\/atlas-components\.css\?v=20261003-bot1/);
 });
 
 test('conversation stars persist through the private gateway', () => {

@@ -57,7 +57,7 @@ test('the Brain page and the Checkpoint A/K layers are retired and unreferenced'
 
 test('Home is the command centre: attention rows, venue clock, briefing entry, no KPI dump', () => {
   assert.match(index, /<div id="dashboard-view" style="display:none;"><\/div>/);
-  assert.match(index, /<script src="assets\/js\/home\.js\?v=20260929-s90u"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/home\.js\?v=20261003-bot1"><\/script>/);
   assert.match(home, /atlas\.registerHomeSection\('home', render, 0\)/);
   assert.match(home, /shell\(\)\?\.home\?\.rows\?\.\(\{ role: role\(\) \}\)/);
   assert.match(home, /const VISIBLE_ROWS = 5;/);

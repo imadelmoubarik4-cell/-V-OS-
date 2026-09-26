@@ -62,7 +62,8 @@ body.atlas-page-full-height .atlas-content, body.atlas-page-full-height .atlas-c
 /* Atlas AI empty state: the kit mark (the page already says Atlas), 32 px
    high, above the greeting. Decorative, from the supplied file, never redrawn;
    here rather than in atlas-ai.css so the AI module stays untouched. */
-.atlas-ai .ai-empty:not(.ai-empty--off)::before { content: ''; display: block; width: 36px; height: 32px; margin-bottom: 8px; background: url("../brand/Atlas_Mark_Midnight.svg") center / contain no-repeat; }
+/* The Atlas mark heads the Atlas AI greeting only where the robot (atlas-bot.js) is absent. */
+.atlas-ai .ai-empty:not(.ai-empty--off):not(:has(.atlas-bot-live))::before { content: ''; display: block; width: 36px; height: 32px; margin-bottom: 8px; background: url("../brand/Atlas_Mark_Midnight.svg") center / contain no-repeat; }
 
 .atlas-nav { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; padding: 0; overflow: visible; }
 .atlas-nav__scroll { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -12px; padding: 4px 12px 8px; scrollbar-width: thin; }
@@ -71,6 +72,8 @@ body.atlas-page-full-height .atlas-content, body.atlas-page-full-height .atlas-c
 .atlas-nav .nav-label { margin: 0; padding: 18px 10px 6px; color: var(--text-3, #606c80); font: 500 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); letter-spacing: 0; text-transform: none; }
 .atlas-nav .nav-item { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; min-height: 34px; margin: 0; padding: 0 10px; border: 0; border-radius: var(--r-md, 8px); background: transparent; color: var(--text-2, #475569); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: left; text-decoration: none; box-shadow: none; cursor: pointer; transition: background var(--dur-1, 120ms) var(--ease-out, ease), color var(--dur-1, 120ms); }
 .atlas-nav .nav-item svg { flex: none; width: 16px; height: 16px; stroke-width: 1.75; color: currentColor; }
+/* The Atlas AI robot sits in the 16 px icon slot, a little larger so its face reads. */
+.atlas-nav .nav-item .atlas-bot--nav { --atlas-bot-size: 20px; margin: -2px; }
 .atlas-nav .nav-item:hover { background: var(--bg-muted, #f1f5f9); color: var(--text, #0b0f14); text-decoration: none; }
 .atlas-nav .nav-item.active, .atlas-nav .nav-item[aria-current="page"] { background: var(--surface, #fff); color: var(--text, #0b0f14); font-weight: 500; box-shadow: 0 1px 2px rgba(11, 15, 20, .06), 0 0 0 1px var(--line, #e2e8f0); }
 /* Active marker: a short Atlas Blue bar at the sidebar edge (Brand v1.0: blue
@@ -141,6 +144,7 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
 .atlas-tabbar__item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--text-2, #475569); font: 500 12px/14px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .atlas-tabbar__item:hover { text-decoration: none; }
 .atlas-tabbar__item svg { width: 22px; height: 22px; stroke-width: 1.6; }
+.atlas-tabbar__item .atlas-bot--tab { --atlas-bot-size: 24px; margin: -1px; }
 .atlas-tabbar__item[aria-current="page"] { color: var(--accent, #2563eb); }
 .atlas-tabbar__item[aria-current="page"] svg { stroke-width: 2; }
 .atlas-tabbar__badge { position: absolute; top: 5px; left: calc(50% + 6px); }
