@@ -116,6 +116,14 @@
     return mb >= 10 ? `${Math.round(mb)} MB` : `${Math.round(mb * 10) / 10} MB`;
   }
 
+  // The file actually published for a photo: a non-JPEG original with a ready
+  // JPEG publish copy (publish_variant_id, no explicit variant chosen) is
+  // published as that JPEG (S94C marketing_content_media_list does the same).
+  function publishedImageMime(item) {
+    if (item && !item.variant_id && item.publish_variant_id) return String(item.publish_variant_mime || "image/jpeg");
+    return String((item && item.mime_type) || "");
+  }
+
   function mediaKind(item) {
     const kind = String((item && item.kind) || "");
     if (kind === "image" || kind === "video") return kind;
@@ -268,7 +276,7 @@
         if (kind === "ig_carousel" && media.length < 2) error("ig_carousel_media", platform, "Instagram: a carousel needs 2 to 10 photos or videos.");
         if (kind !== "ig_reel") {
           for (const { item, index } of images) {
-            if (lim.image_mime.indexOf(String(item.mime_type)) < 0) error("ig_image_format", platform, `Instagram: photo ${nth(index)} must be a JPEG. Use the JPEG copy Atlas makes in the media editor.`);
+            if (lim.image_mime.indexOf(publishedImageMime(item)) < 0) error("ig_image_format", platform, `Instagram: photo ${nth(index)} must be a JPEG. Use the JPEG copy Atlas makes in the media editor.`);
             const ratio = Number(item.width) / Number(item.height);
             if (Number.isFinite(ratio) && ratio > 0) {
               if (ratio < lim.aspect_min - 0.005) error("ig_aspect", platform, `Instagram: photo ${nth(index)} is taller than 4:5. Choose the Portrait 4:5 crop.`);
@@ -302,7 +310,7 @@
         if (kind === "fb_page_photo" && (!images.length || videos.length)) error("fb_photo_media", platform, "Facebook: a photo post needs photos only.");
         if (kind === "fb_page_post" && media.length) error("fb_post_media", platform, "Facebook: a text post has no media. Choose Photo or Video instead.");
         for (const { item, index } of images) {
-          if (lim.image_mime.indexOf(String(item.mime_type)) < 0) error("fb_image_format", platform, `Facebook: photo ${nth(index)} must be a JPEG or PNG. Use the JPEG copy Atlas makes in the media editor.`);
+          if (lim.image_mime.indexOf(publishedImageMime(item)) < 0) error("fb_image_format", platform, `Facebook: photo ${nth(index)} must be a JPEG or PNG. Use the JPEG copy Atlas makes in the media editor.`);
         }
         for (const { item, index } of videos) {
           if (lim.video_mime.indexOf(String(item.mime_type)) < 0) error("fb_video_format", platform, `Facebook: video ${nth(index)} must be MP4 or MOV.`);
@@ -361,7 +369,7 @@
         const first = images[0];
         if (first) {
           const item = first.item;
-          if (lim.image_mime.indexOf(String(item.mime_type)) < 0) error("gbp_photo_format", platform, "Google Business Profile photos must be JPEG or PNG. Use the JPEG copy Atlas makes in the media editor.");
+          if (lim.image_mime.indexOf(publishedImageMime(item)) < 0) error("gbp_photo_format", platform, "Google Business Profile photos must be JPEG or PNG. Use the JPEG copy Atlas makes in the media editor.");
           const bytes = Number(item.byte_size);
           if (Number.isFinite(bytes) && bytes > 0 && (bytes < lim.image_min_bytes || bytes > lim.image_max_bytes)) {
             error("gbp_photo_size", platform, `Google Business Profile photos must be 10 KB to 5 MB. This one is ${bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : formatBytes(bytes)}.`);
@@ -411,5 +419,5 @@
     return { errors, warnings, target_kinds: targetKinds };
   }
 
-  window.AtlasPlatformRules = Object.freeze({ PLATFORM_LABELS, TARGET_KINDS, LIMITS, mediaKind, orientation, countHashtags, countMentions, containsPhoneNumber, deriveTargetKind, validate });
+  window.AtlasPlatformRules = Object.freeze({ PLATFORM_LABELS, TARGET_KINDS, LIMITS, publishedImageMime, mediaKind, orientation, countHashtags, countMentions, containsPhoneNumber, deriveTargetKind, validate });
 })();

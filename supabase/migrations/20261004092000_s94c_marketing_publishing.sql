@@ -418,6 +418,10 @@ as $$
 $$;
 
 -- Removes URLs, bearer strings and token-looking parameters from provider text before it is stored.
+-- A secret-looking key is redacted together with its value (quoted, unquoted or empty), so
+-- `signature="x"` or `?token=""` can never leave `signature=` / `?token=` behind. The last step is a
+-- guarantee: whatever still matches the deliveries/attempts CHECK patterns becomes '[redacted]', so a
+-- sanitised text can never make an insert or update fail with 23514.
 create or replace function atlas_private.marketing_sanitize_text(p_text text, p_max integer default 240)
 returns text
 language sql
@@ -425,16 +429,47 @@ immutable
 security definer
 set search_path = ''
 as $$
-  select nullif(left(pg_catalog.btrim(
-    regexp_replace(
+  select case when cleaned ~* '(access_token|refresh_token|client_secret|bearer [a-z0-9]|[?&]token=|signature=|X-Amz-|https?://)'
+              then '[redacted]' else cleaned end
+  from (
+    select nullif(left(pg_catalog.btrim(
       regexp_replace(
         regexp_replace(
-          regexp_replace(regexp_replace(coalesce(p_text, ''), '[[:cntrl:]]+', ' ', 'g'),
-            'https?://[^[:space:]"'']*', '[link]', 'gi'),
+          regexp_replace(
+            regexp_replace(regexp_replace(coalesce(p_text, ''), '[[:cntrl:]]+', ' ', 'g'),
+              'https?://[^[:space:]"'']*', '[link]', 'gi'),
+            '[?&]?[A-Za-z_]*(access_token|refresh_token|client_secret|token|secret|signature|authorization|password)[A-Za-z_]*[[:space:]]*[=:][[:space:]]*("[^"]*"?|''[^'']*''?|[^[:space:],;&"'']*)',
+            '[redacted]', 'gi'),
           '(access_token|refresh_token|client_secret|X-Amz-[A-Za-z-]*)', '[redacted]', 'gi'),
-        '(bearer|basic)[[:space:]]+[A-Za-z0-9._~+/=-]+', '[redacted]', 'gi'),
-      '(access_token|refresh_token|client_secret|token|secret|signature|authorization|password)[[:space:]]*[=:][[:space:]]*[^[:space:],;&"'']+',
-      '[redacted]', 'gi')), greatest(1, least(coalesce(p_max, 240), 500))), '');
+        '(bearer|basic)[[:space:]]+[A-Za-z0-9._~+/=-]+', '[redacted]', 'gi')), greatest(1, least(coalesce(p_max, 240), 500))), '') as cleaned
+  ) sanitized;
+$$;
+
+-- Fixed, browser-facing wording for a delivery error (last_error_message). Provider text never
+-- reaches the browser: it stays, sanitised, in the attempt ledger (manager history only).
+create or replace function atlas_private.marketing_error_wording(p_class text, p_attention text, p_code text)
+returns text
+language sql
+immutable
+security definer
+set search_path = ''
+as $$
+  select case
+    when p_code in ('ig_image_not_jpeg','ig_image_format') then 'Instagram takes JPEG photos only. Use the JPEG copy of the photo and approve again.'
+    when p_code = 'stale_schedule' or p_class = 'stale' or p_attention = 'stale_schedule' then 'The planned time passed before the post could be sent.'
+    when p_code = 'processing_timeout' then 'The platform did not finish processing in time.'
+    when p_attention = 'max_attempts' then 'Atlas stopped retrying after the maximum number of attempts.'
+    when p_class = 'auth' or p_attention = 'auth_expired' then 'The connection needs reconnecting in Settings › Integrations before Atlas can post.'
+    when p_attention = 'no_resource' then 'Choose which account Atlas posts to in Settings › Integrations, then approve the post again.'
+    when p_attention = 'provider_not_ready' then 'The connection is not ready to publish this post. Check Settings › Integrations.'
+    when p_attention = 'manual_hold' then 'This post is on hold. Check it before publishing again.'
+    when p_attention = 'media_invalid' then 'The platform could not use a photo or video in this post. Check the media and approve again.'
+    when p_attention = 'rate_limit_exhausted' or p_class = 'rate_limited' then 'The platform asked Atlas to slow down. Atlas will try again later.'
+    when p_attention = 'outcome_unknown' then 'Atlas could not confirm whether the platform published this post. Check the platform.'
+    when p_class = 'uncertain' then 'Atlas is checking whether the platform published this post.'
+    when p_class in ('permanent','policy') or p_attention = 'provider_rejected' then 'The platform refused this post.'
+    when p_class = 'transient' then 'The platform could not be reached. Atlas will try again.'
+    else 'Atlas could not publish this post.' end;
 $$;
 
 -- A worker step: only allow-listed keys, sanitised short strings, a server timestamp.
@@ -510,8 +545,23 @@ as $$
   select coalesce(nullif(atlas_private.marketing_target_for(p_targets, p_provider) #>> '{resource,id}', ''), 'pending');
 $$;
 
+-- "As soon as it's approved": metadata.publish_asap on content without a time. A time wins.
+create or replace function atlas_private.marketing_content_publish_asap(p_scheduled_for timestamptz, p_metadata jsonb)
+returns boolean
+language sql
+immutable
+security definer
+set search_path = ''
+as $$
+  select p_scheduled_for is null and coalesce(p_metadata -> 'publish_asap' = 'true'::jsonb, false);
+$$;
+
 -- Ordered media for one content item. p_platform null lists every attachment (fingerprint and
 -- snapshot); a platform returns its effective list (its own override rows, else the common rows).
+-- variant_id is the attachment's own choice (round-tripped by the composer); publish_variant_id is
+-- what is actually published: that choice, else the ready JPEG publish copy of a non-JPEG photo,
+-- else null (the original). storage_path, mime_type, size and sha256 describe the published file,
+-- so the frozen payload and the approval fingerprint cannot bypass the JPEG copy.
 create or replace function atlas_private.marketing_content_media_list(p_content_id uuid, p_platform text default null)
 returns jsonb
 language plpgsql
@@ -533,6 +583,8 @@ begin
       'attachment_id', cm.id,
       'asset_id', cm.asset_id,
       'variant_id', cm.variant_id,
+      'publish_variant_id', variant.id,
+      'collection_id', cm.collection_id,
       'platform', cm.platform,
       'position', cm.position,
       'role', cm.role,
@@ -556,7 +608,8 @@ begin
   into v_result
   from atlas_private.marketing_content_media cm
   join atlas_private.marketing_media_assets asset on asset.id = cm.asset_id
-  left join atlas_private.marketing_media_variants variant on variant.id = cm.variant_id
+  left join atlas_private.marketing_media_variants variant
+    on variant.id = coalesce(cm.variant_id, atlas_private.marketing_media_publish_copy(cm.asset_id))
   where cm.content_id = p_content_id
     and (p_platform is null
          or (v_has_override and cm.platform = p_platform)
@@ -645,7 +698,8 @@ begin
       end if;
     end if;
     if v_key = 'google-business-profile' and v_value ? 'gbp' then
-      if coalesce(v_value #>> '{gbp,topic_type}', 'STANDARD') not in ('STANDARD','EVENT','OFFER','ALERT') then
+      -- ALERT (COVID-era) posts are not published by the worker, so they are refused here too.
+      if coalesce(v_value #>> '{gbp,topic_type}', 'STANDARD') not in ('STANDARD','EVENT','OFFER') then
         raise exception 'Google post type is invalid' using errcode = '22023', hint = 'atlas:invalid_request';
       end if;
       v_url := v_value #>> '{gbp,call_to_action,url}';
@@ -686,7 +740,7 @@ begin
     ));
   end loop;
   select coalesce(jsonb_agg(jsonb_build_object(
-      'asset_id', item ->> 'asset_id', 'variant_id', item ->> 'variant_id', 'platform', item ->> 'platform',
+      'asset_id', item ->> 'asset_id', 'variant_id', item ->> 'publish_variant_id', 'platform', item ->> 'platform',
       'position', item -> 'position', 'role', item ->> 'role', 'sha256', item ->> 'sha256'
     ) order by ordinality), '[]'::jsonb)
   into v_media
@@ -696,6 +750,7 @@ begin
     'content_type', c.content_type,
     'scheduled_for', case when c.scheduled_for is null then null
       else to_char(c.scheduled_for at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') end,
+    'publish_asap', atlas_private.marketing_content_publish_asap(c.scheduled_for, c.metadata),
     'targets', v_target_list,
     'media', v_media,
     'platform_options', c.platform_options
@@ -731,7 +786,7 @@ begin
   select created_at into v_approved_at from atlas_private.marketing_content_approvals where id = p_approval_id;
   v_media := atlas_private.marketing_content_media_list(c.id, p_platform);
   select coalesce(jsonb_agg(jsonb_build_object(
-      'asset_id', item -> 'asset_id', 'variant_id', item -> 'variant_id', 'kind', item -> 'kind',
+      'asset_id', item -> 'asset_id', 'variant_id', item -> 'publish_variant_id', 'kind', item -> 'kind',
       'storage_path', item -> 'storage_path', 'mime_type', item -> 'mime_type', 'width', item -> 'width',
       'height', item -> 'height', 'duration_ms', item -> 'duration_ms', 'byte_size', item -> 'byte_size',
       'sha256', item -> 'sha256', 'position', item -> 'position', 'role', item -> 'role', 'alt_text', item -> 'alt_text'
@@ -752,6 +807,7 @@ begin
     'platform_options', coalesce(c.platform_options -> p_platform, '{}'::jsonb),
     'media', v_media_out,
     'scheduled_for', c.scheduled_for,
+    'publish_asap', atlas_private.marketing_content_publish_asap(c.scheduled_for, c.metadata),
     'event_starts_at', c.event_starts_at,
     'event_ends_at', c.event_ends_at,
     'venue_timezone', atlas_private.venue_timezone()
@@ -920,7 +976,9 @@ begin
     or new.platforms is distinct from old.platforms
     or new.scheduled_for is distinct from old.scheduled_for
     or new.platform_options is distinct from old.platform_options
-    or new.content_type is distinct from old.content_type;
+    or new.content_type is distinct from old.content_type
+    or atlas_private.marketing_content_publish_asap(new.scheduled_for, new.metadata)
+       is distinct from atlas_private.marketing_content_publish_asap(old.scheduled_for, old.metadata);
   if old.status not in ('approved','scheduled') then
     if new.status in ('approved','scheduled') and old.status <> 'pending_approval' then
       raise exception 'Only an approval decision can approve content' using errcode = 'P0001', hint = 'atlas:invalid_request';
@@ -1049,7 +1107,10 @@ begin
   if atlas_private.marketing_content_fingerprint(c.id, v_targets) <> a.approved_fingerprint then
     raise exception 'This post changed after approval. Approve it again.' using errcode = '55000', hint = 'atlas:superseded';
   end if;
-  v_due := coalesce(p_due_at, c.scheduled_for);
+  -- "As soon as it's approved" (metadata.publish_asap, no time): due now. With automatic publishing
+  -- off the rows wait (ready, not sent) exactly like a scheduled post whose time has come.
+  v_due := coalesce(p_due_at, c.scheduled_for,
+    case when atlas_private.marketing_content_publish_asap(c.scheduled_for, c.metadata) then pg_catalog.now() end);
   if v_due is null then
     return v_created;   -- unscheduled approval: nothing is queued until a schedule or Publish now
   end if;
@@ -1860,12 +1921,16 @@ begin
     v_final := 'needs_attention';
   end if;
 
-  update atlas_private.marketing_deliveries set claim_token = null, claimed_by = null, claimed_until = null
+  -- The browser sees fixed wording per class / attention reason / code; the provider's own
+  -- (sanitised) text is kept only in the attempt ledger below.
+  update atlas_private.marketing_deliveries set claim_token = null, claimed_by = null, claimed_until = null,
+    last_error_message = case when last_error_class is null or status = 'published' then last_error_message
+      else atlas_private.marketing_error_wording(last_error_class, attention_reason, last_error_code) end
   where id = d.id
   returning * into d;
   update atlas_private.marketing_delivery_attempts set finished_at = pg_catalog.now(), outcome = v_final,
-    steps = steps || jsonb_build_array(atlas_private.marketing_sanitize_step(jsonb_build_object(
-      'step', 'complete', 'outcome', v_final, 'code', v_code)))
+    steps = steps || jsonb_build_array(atlas_private.marketing_sanitize_step(jsonb_strip_nulls(jsonb_build_object(
+      'step', 'complete', 'outcome', v_final, 'code', v_code, 'message', v_message))))
   where claim_token = p_claim_token and finished_at is null;
   if v_final = 'published' then
     perform atlas_private.marketing_delivery_event(d.id, 'delivery_published',
@@ -1879,6 +1944,86 @@ begin
                             'attention_reason', d.attention_reason);
 end;
 $$;
+
+-- Security P2-1: a provider refused the connection itself while publishing (outcome class auth:
+-- expired/revoked token, lost permission). Fenced on the live claim: only the worker holding this
+-- delivery may mark its connection. The connection becomes expired ("Needs reconnecting"), the
+-- publishing permission is derived again and a sanitised publish_auth_failed event is recorded, so
+-- the next deliveries stop at the gate instead of calling the provider with a dead token.
+create or replace function atlas_private.marketing_delivery_mark_auth_failed(p_delivery_id uuid, p_claim_token uuid, p_error text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  d atlas_private.marketing_deliveries := atlas_private.marketing_delivery_lock_claim(p_delivery_id, p_claim_token);
+  v_error text := coalesce(atlas_private.marketing_sanitize_text(p_error, 240), 'The platform refused the connection.');
+  v_updated integer;
+begin
+  if d.id is null then return jsonb_build_object('ok', false, 'lease_lost', true); end if;
+  update atlas_private.integration_connections c
+  set status = 'expired', authorization_state = 'expired', last_connection_error = v_error, updated_at = pg_catalog.now()
+  where c.provider_key = d.provider_key and c.status <> 'not_connected';
+  get diagnostics v_updated = row_count;
+  if v_updated > 0 then
+    perform atlas_private.integration_derive_publishing(d.provider_key);
+    insert into atlas_private.integration_events (provider_key, event_type, actor_id, actor_label, payload)
+    values (d.provider_key, 'publish_auth_failed', null, 'Atlas publisher',
+            jsonb_build_object('delivery_id', d.id, 'error', v_error));
+  end if;
+  update atlas_private.marketing_delivery_attempts
+  set steps = steps || jsonb_build_array(atlas_private.marketing_sanitize_step(jsonb_build_object('step', 'auth_failed')))
+  where claim_token = p_claim_token and finished_at is null;
+  return jsonb_build_object('ok', true, 'provider_key', d.provider_key, 'connection_status',
+    (select c.status from atlas_private.integration_connections c where c.provider_key = d.provider_key));
+end;
+$$;
+
+-- Media that a delivery may already have put on a platform (published, or anything after the
+-- submit marker, or still in flight) stays pinned even when its post is cancelled afterwards
+-- (cancel after a partial publish): the payload snapshot names the asset and variant.
+create or replace function atlas_private.marketing_delivery_media_pin(p_asset_id uuid)
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select count(distinct d.content_id)::integer
+  from atlas_private.marketing_deliveries d
+  where (d.status in ('published','publishing','processing','verifying')
+         or d.provider_post_id is not null or d.provider_publish_id is not null
+         or d.phase in ('submitting','submitted','remote_processing'))
+    and d.payload_snapshot -> 'media' @> jsonb_build_array(jsonb_build_object('asset_id', p_asset_id));
+$$;
+
+-- S94A's delete block, extended with the delivery pin above (same shape: reason published).
+create or replace function atlas_private.marketing_media_delete_block(p_asset_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select case
+    when exists (select 1 from atlas_private.marketing_media_publication_uses u
+                 where u.asset_id = p_asset_id and u.outcome in ('published','processing'))
+         or atlas_private.marketing_delivery_media_pin(p_asset_id) > 0
+      then pg_catalog.jsonb_build_object('reason', 'published', 'count', greatest(
+        (select count(distinct u.content_id) from atlas_private.marketing_media_publication_uses u
+         where u.asset_id = p_asset_id and u.outcome in ('published','processing')),
+        atlas_private.marketing_delivery_media_pin(p_asset_id)))
+    when exists (select 1 from atlas_private.marketing_content_media m
+                 join atlas_private.marketing_content_items c on c.id = m.content_id
+                 where m.asset_id = p_asset_id and c.status = any(atlas_private.marketing_media_pinning_statuses()))
+      then pg_catalog.jsonb_build_object('reason', 'in_use', 'count',
+        (select count(distinct m.content_id) from atlas_private.marketing_content_media m
+         join atlas_private.marketing_content_items c on c.id = m.content_id
+         where m.asset_id = p_asset_id and c.status = any(atlas_private.marketing_media_pinning_statuses())))
+    else null end;
+$function$;
+revoke all on function atlas_private.marketing_media_delete_block(uuid) from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------------------------
 -- 9. Manager actions, publish now, cancel, reschedule, duplicate, history, partial update
@@ -2109,7 +2254,7 @@ begin
   if exists (select 1 from jsonb_object_keys(v_patch) k where k not in (
       'campaign_id','title','priority','platforms','scheduled_for','reminder_at','event_starts_at','event_ends_at',
       'suggested_format','caption_draft','creative_brief','frames','media_requirements','owner_id','owner_label',
-      'platform_options')) then
+      'platform_options','publish_asap')) then
     raise exception 'Unknown content field' using errcode = '22023', hint = 'atlas:invalid_request';
   end if;
   select * into previous_row from atlas_private.marketing_content_items where id = p_content_id for no key update;
@@ -2152,6 +2297,9 @@ begin
   if v_patch ? 'media_requirements' and jsonb_typeof(v_patch -> 'media_requirements') <> 'object' then
     raise exception 'Media requirements must be an object' using errcode = '22023', hint = 'atlas:invalid_request';
   end if;
+  if v_patch ? 'publish_asap' and jsonb_typeof(v_patch -> 'publish_asap') <> 'boolean' then
+    raise exception 'publish_asap must be true or false' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
   v_options := case when v_patch ? 'platform_options'
     then atlas_private.marketing_validate_platform_options(coalesce(nullif(v_patch -> 'platform_options', 'null'::jsonb), '{}'::jsonb), v_platforms)
     else previous_row.platform_options end;
@@ -2173,6 +2321,9 @@ begin
     owner_id = case when v_patch ? 'owner_id' then (v_patch ->> 'owner_id')::uuid else owner_id end,
     owner_label = case when v_patch ? 'owner_label' then nullif(pg_catalog.btrim(coalesce(v_patch ->> 'owner_label', '')), '') else owner_label end,
     platform_options = v_options,
+    metadata = case when not (v_patch ? 'publish_asap') then metadata
+                    when v_patch -> 'publish_asap' = 'true'::jsonb then metadata || '{"publish_asap": true}'::jsonb
+                    else metadata - 'publish_asap' end,
     status = case when status = 'changes_requested' then 'draft' else status end
   where id = p_content_id
   returning * into content_row;
@@ -2564,6 +2715,7 @@ begin
         'media',(
           select coalesce(jsonb_agg(jsonb_build_object(
             'attachment_id',item->'attachment_id','asset_id',item->'asset_id','variant_id',item->'variant_id',
+            'publish_variant_id',item->'publish_variant_id','collection_id',item->'collection_id',
             'kind',item->'kind','mime_type',item->'mime_type','width',item->'width','height',item->'height',
             'duration_ms',item->'duration_ms','byte_size',item->'byte_size','position',item->'position',
             'role',item->'role','platform',item->'platform','alt_text',item->'alt_text',
@@ -2984,6 +3136,10 @@ create or replace function public.atlas_marketing_delivery_complete(p_delivery_i
 returns jsonb language sql volatile security definer set search_path = ''
 as $$ select atlas_private.marketing_delivery_complete(p_delivery_id, p_claim_token, p_outcome); $$;
 
+create or replace function public.atlas_integration_mark_auth_failed(p_delivery_id uuid, p_claim_token uuid, p_error text)
+returns jsonb language plpgsql volatile security definer set search_path = ''
+as $$ begin return atlas_private.marketing_delivery_mark_auth_failed(p_delivery_id, p_claim_token, p_error); end; $$;
+
 create or replace function public.atlas_marketing_delivery_manager_action(p_actor_id uuid, p_delivery_id uuid, p_action text, p_payload jsonb default '{}'::jsonb)
 returns jsonb language sql volatile security definer set search_path = ''
 as $$ select atlas_private.marketing_delivery_manager_action(p_actor_id, p_delivery_id, p_action, p_payload); $$;
@@ -3038,7 +3194,9 @@ begin
         'marketing_poll_delay','marketing_poll_budget','marketing_delivery_complete','marketing_content_json',
         'marketing_delivery_manager_action','marketing_publish_now','marketing_content_cancel',
         'marketing_update_content_patch','marketing_content_reschedule','marketing_content_duplicate',
-        'marketing_publication_history','marketing_publisher_tick'))
+        'marketing_publication_history','marketing_publisher_tick',
+        'marketing_content_publish_asap','marketing_error_wording',
+        'marketing_delivery_mark_auth_failed','marketing_delivery_media_pin'))
   loop
     execute format('revoke all on function %s from public, anon, authenticated', v_function);
     if v_function::text like 'atlas_private.marketing_publisher_tick(%' then
@@ -3055,6 +3213,7 @@ revoke all on function public.atlas_marketing_delivery_heartbeat(uuid, uuid, int
 revoke all on function public.atlas_marketing_delivery_record_step(uuid, uuid, text, jsonb, jsonb) from public, anon, authenticated;
 revoke all on function public.atlas_marketing_delivery_begin_submit(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.atlas_marketing_delivery_complete(uuid, uuid, jsonb) from public, anon, authenticated;
+revoke all on function public.atlas_integration_mark_auth_failed(uuid, uuid, text) from public, anon, authenticated;
 revoke all on function public.atlas_marketing_delivery_manager_action(uuid, uuid, text, jsonb) from public, anon, authenticated;
 revoke all on function public.atlas_marketing_publish_now(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.atlas_marketing_content_cancel(uuid, uuid, text) from public, anon, authenticated;
@@ -3070,6 +3229,7 @@ grant execute on function public.atlas_marketing_delivery_heartbeat(uuid, uuid, 
 grant execute on function public.atlas_marketing_delivery_record_step(uuid, uuid, text, jsonb, jsonb) to service_role;
 grant execute on function public.atlas_marketing_delivery_begin_submit(uuid, uuid) to service_role;
 grant execute on function public.atlas_marketing_delivery_complete(uuid, uuid, jsonb) to service_role;
+grant execute on function public.atlas_integration_mark_auth_failed(uuid, uuid, text) to service_role;
 grant execute on function public.atlas_marketing_delivery_manager_action(uuid, uuid, text, jsonb) to service_role;
 grant execute on function public.atlas_marketing_publish_now(uuid, uuid) to service_role;
 grant execute on function public.atlas_marketing_content_cancel(uuid, uuid, text) to service_role;

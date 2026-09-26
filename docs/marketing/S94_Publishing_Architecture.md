@@ -264,7 +264,8 @@ cancelled `superseded_by_edit`.
   - TikTok: one video only (`tiktok_inbox_video` default; `tiktok_video` Direct Post when review
     approved), creator-info checks (privacy options, max duration), mandatory consent; photo
     posts unsupported in v1 (need a verified pull domain).
-  - Google Business Profile: STANDARD/EVENT/OFFER/ALERT with optional call to action; 0–1 photo
+  - Google Business Profile: STANDARD/EVENT/OFFER with optional call to action (ALERT is refused
+    by the gateway and SQL: the worker does not publish it); 0–1 photo
     (JPEG/PNG, 10 KB–5 MB, ≥250×250); video unsupported via API in v1; summary ≤1500 chars
     (UNVERIFIED); post `state` polled until LIVE/REJECTED.
 - Rate state: `marketing_provider_accounts` (cooldowns on 429, IG rolling 24 h publish cap with

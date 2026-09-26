@@ -74,7 +74,8 @@ alter table atlas_private.integration_events drop constraint if exists integrati
 alter table atlas_private.integration_events add constraint integration_events_event_type_check check (event_type in (
   'connect_started','credential_stored','connected','callback_failed','verified','verify_failed',
   'refreshed','refresh_failed','disconnected','api_key_saved',
-  'publish_scope_requested','resource_listed','resource_selected','credential_used','review_state_set'
+  'publish_scope_requested','resource_listed','resource_selected','credential_used','review_state_set',
+  'publish_auth_failed'
 ));
 
 -- ------------------------------------------------------------------ tables
@@ -1257,8 +1258,13 @@ begin
 end;
 $function$;
 
--- Releases the lease. With p_error: records refresh_failed and marks the
--- connection expired (p_needs_reauthorization) or degraded.
+-- Releases the lease. With p_error: records refresh_failed (sanitised text) and
+--   p_needs_reauthorization true  -> the provider refused the refresh token
+--                                    (invalid_grant, 400/401): connection expired;
+--   p_needs_reauthorization false -> a non-retryable failure: connection degraded;
+--   p_needs_reauthorization null  -> a transient failure (network, 5xx, 429): the
+--                                    connection is left as it is and the delivery
+--                                    retries through its normal backoff.
 create or replace function atlas_private.integration_refresh_release(
   p_provider_key text,
   p_lock_token uuid,
@@ -1274,7 +1280,11 @@ as $function$
 declare
   v_actor uuid;
   v_label text;
-  v_error text := left(regexp_replace(coalesce(p_error, ''), '[^[:print:]]', ' ', 'g'), 240);
+  v_error text := left(pg_catalog.btrim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(
+    coalesce(p_error, ''), '[^[:print:]]', ' ', 'g'),
+    'https?://[^[:space:]"'']*', '[link]', 'gi'),
+    '[A-Za-z_]*(token|secret|signature|authorization|password|code)[A-Za-z_]*[[:space:]]*[=:][[:space:]]*("[^"]*"?|''[^'']*''?|[^[:space:],;&"'']*)', '[redacted]', 'gi'),
+    '(bearer|basic)[[:space:]]+[A-Za-z0-9._~+/=-]+', '[redacted]', 'gi')), 240);
 begin
   perform atlas_private.integration_assert_provider(p_provider_key);
   update atlas_private.integration_credentials cr
@@ -1284,7 +1294,11 @@ begin
   if not found then
     return jsonb_build_object('released', false);
   end if;
-  if nullif(v_error, '') is not null then
+  if nullif(v_error, '') is not null and p_needs_reauthorization is null then
+    insert into atlas_private.integration_events (provider_key, event_type, actor_id, actor_label, payload)
+    values (p_provider_key, 'refresh_failed', null, 'Atlas publisher',
+            jsonb_build_object('error', v_error, 'transient', true));
+  elsif nullif(v_error, '') is not null then
     update atlas_private.integration_connections c
     set status = case when coalesce(p_needs_reauthorization, false) then 'expired' else 'degraded' end,
         authorization_state = case when coalesce(p_needs_reauthorization, false) then 'expired' else 'waiting_authorization' end,

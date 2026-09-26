@@ -99,6 +99,19 @@ async function open(ctx, sealed, aad) {
   }
 }
 
+// How a failed token refresh is treated:
+//   "reauthorize" - the provider refused the refresh token (invalid_grant,
+//                   HTTP 400/401, no token issued): reconnect needed;
+//   "transient"   - network failure, HTTP 5xx or 429: try again later;
+//   "failed"      - anything else (e.g. 403, missing client secret).
+export function refreshFailureKind(error) {
+  if (!(error instanceof ProviderError)) return "transient";
+  if (error.reauthorize) return "reauthorize";
+  const status = Number(error.status) || 0;
+  if (status === 429 || status >= 500) return "transient";
+  return "failed";
+}
+
 // Refreshes a Google/TikTok token set under the database lease.
 // lockArgs: { deliveryId, claimToken } (worker) or { actorId, actorLabel, actorRole } (a manager).
 // Returns the fresh token set (possibly refreshed by another caller).
@@ -135,15 +148,21 @@ export async function refreshWithLock(deps, { providerKey, lockArgs = {} }) {
       refreshed = await refresher(ctx.env, ctx.fetchImpl, latest, ctx.now());
       if (!refreshed?.access_token) throw new ProviderError("The provider did not return a new access token.", { reauthorize: true });
     } catch (error) {
-      const reauthorize = error instanceof ProviderError ? error.reauthorize : false;
-      const detail = error instanceof ProviderError ? error.message : "Token refresh failed.";
+      const failure = refreshFailureKind(error);
+      const detail = error instanceof ProviderError ? error.message : "Token refresh failed: the provider could not be reached.";
+      // Only a refused refresh token (invalid_grant, 400/401) expires the
+      // connection. A transient failure (network, 5xx, 429) releases the
+      // lease without touching the connection (p_needs_reauthorization
+      // null: the event is recorded, the status is kept) and the delivery
+      // retries through its normal backoff.
       await ctx.rpc("atlas_integration_refresh_release", {
         p_provider_key: providerKey,
         p_lock_token: lock.lock_token,
         p_error: sanitizeProviderError(detail),
-        p_needs_reauthorization: reauthorize,
+        p_needs_reauthorization: failure === "reauthorize" ? true : failure === "transient" ? null : false,
       });
-      throw new CredentialError(reauthorize ? "needs_reauthorization" : "refresh_failed", { reauthorize, retryable: !reauthorize });
+      if (failure === "reauthorize") throw new CredentialError("needs_reauthorization", { reauthorize: true });
+      throw new CredentialError("refresh_failed", { retryable: failure === "transient" });
     }
     const version = ctx.keyring.currentVersion();
     const sealed = await encryptJson(await ctx.keyring.key(version), refreshed, credentialAad(providerKey, kind));

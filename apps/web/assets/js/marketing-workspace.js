@@ -169,7 +169,7 @@
     try {
       const response = await fetch(url, { method, cache: 'no-store', signal: controller.signal, headers: { authorization: `Bearer ${session.access_token}`, accept: 'application/json', 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw Object.assign(new Error('failed'), { status: response.status, code: payload?.error_code || null, serverMessage: typeof payload?.error === 'string' ? payload.error : null });
+      if (!response.ok) throw Object.assign(new Error('failed'), { status: response.status, code: payload?.error_code || null, serverMessage: typeof payload?.error === 'string' ? payload.error : null, contentId: typeof payload?.content_id === 'string' ? payload.content_id : null });
       return payload;
     } finally {
       window.clearTimeout(timer);
@@ -229,7 +229,7 @@
       return payload.result ?? {};
     } catch (error) {
       if (error?.status === 409 || error?.code === 'not_found') load({ quiet: true });
-      throw Object.assign(new Error('mutate'), { userMessage: errorText(error, what), status: error?.status, code: error?.code });
+      throw Object.assign(new Error('mutate'), { userMessage: errorText(error, what), status: error?.status, code: error?.code, contentId: error?.contentId || null });
     } finally {
       state.submitting = false;
     }
@@ -618,8 +618,13 @@
 
   function derivedWhen(item) {
     if (!item) return 'time';
-    return item.scheduled_for ? 'time' : 'none';
+    if (item.scheduled_for) return 'time';
+    return item.metadata?.publish_asap === true ? 'asap' : 'none';
   }
+
+  // Radio groups built from buttons: only the checked one is in the tab order;
+  // the arrow keys, Home and End move the choice (onRadioKey).
+  const radioTab = (checked) => ` tabindex="${checked ? '0' : '-1'}"`;
 
   function draftFromItem(item, { date = null, suggestion = null } = {}) {
     const options = item?.platform_options && typeof item.platform_options === 'object' ? item.platform_options : {};
@@ -789,6 +794,7 @@
       caption_draft: draft.caption,
       scheduled_for: scheduled,
       reminder_at: scheduled && Number.isFinite(minutes) && minutes > 0 ? new Date(Date.parse(scheduled) - minutes * 60000).toISOString() : null,
+      publish_asap: draft.when === 'asap',
       platform_options: platformOptionsPayload(draft)
     };
   }
@@ -902,7 +908,7 @@
         platforms: draft.platforms,
         caption: draft.caption,
         overrides: Object.fromEntries(Object.entries(draft.overrides).filter(([key]) => draft.platforms.includes(key))),
-        media: draft.media.map((m) => ({ asset_id: m.asset_id, kind: m.kind, mime_type: m.mime_type, width: m.width, height: m.height, duration_ms: m.duration_ms, byte_size: m.byte_size, ...(m.alt_text !== undefined ? { alt_text: m.alt_text } : {}) })),
+        media: draft.media.map((m) => ({ asset_id: m.asset_id, variant_id: m.variant_id || null, publish_variant_id: m.publish_variant_id || null, kind: m.kind, mime_type: m.mime_type, width: m.width, height: m.height, duration_ms: m.duration_ms, byte_size: m.byte_size, ...(m.alt_text !== undefined ? { alt_text: m.alt_text } : {}) })),
         options: platformOptionsPayload(draft),
         tiktok_creator_info: state.creatorInfo?.available ? state.creatorInfo : null
       });
@@ -1001,7 +1007,7 @@
     const location = targetFor('google-business-profile')?.resource?.label;
     const minFrom = (id) => ` data-atlas-min-from="${id}"`;
     return `<div class="mk-channel__extra" data-mk-google>
-      <div class="atlas-field"><span class="atlas-label" id="mk-gbp-topic-label">Post type</span><div class="atlas-segmented" role="radiogroup" aria-labelledby="mk-gbp-topic-label">${GBP_TOPICS.map(([key, label]) => `<button type="button" role="radio" aria-checked="${g.topic === key}" data-mk-gbp-topic="${key}"${dis}>${label}</button>`).join('')}</div></div>
+      <div class="atlas-field"><span class="atlas-label" id="mk-gbp-topic-label">Post type</span><div class="atlas-segmented" role="radiogroup" aria-labelledby="mk-gbp-topic-label">${GBP_TOPICS.map(([key, label]) => `<button type="button" role="radio" aria-checked="${g.topic === key}"${radioTab(g.topic === key)} data-mk-gbp-topic="${key}"${dis}>${label}</button>`).join('')}</div></div>
       <p class="help">${location ? `Posting to ${escapeHtml(location)}.` : 'Choose the Business Profile location in Settings › Integrations.'}</p>
       ${g.topic === 'EVENT' || g.topic === 'OFFER' ? `<div class="atlas-field"><label for="mk-gbp-title">${g.topic === 'EVENT' ? 'Event title' : 'Offer title'}</label><input class="atlas-input" id="mk-gbp-title" data-mk-gbp="event_title" maxlength="58" value="${escapeHtml(g.event_title)}"${dis}></div>
       <div class="atlas-grid-2"><div class="atlas-field"><label for="mk-gbp-start">Starts <span class="optional">(${escapeHtml(venueTimeLabel())})</span></label><input class="atlas-input" type="datetime-local" step="60" id="mk-gbp-start" data-mk-gbp="event_start" value="${escapeHtml(g.event_start)}"${dis}></div><div class="atlas-field"><label for="mk-gbp-end">Ends</label><input class="atlas-input" type="datetime-local" step="60" id="mk-gbp-end" data-mk-gbp="event_end" value="${escapeHtml(g.event_end)}"${minFrom('mk-gbp-start')}${dis}></div></div>` : ''}
@@ -1021,7 +1027,7 @@
       const open = state.composer.openChannels?.has(platform);
       return `<details class="mk-channel" data-mk-channel-section="${platform}"${open ? ' open' : ''}><summary><span class="mk-channel__name">${escapeHtml(name)}</span><span class="mk-channel__state" data-mk-channel-state="${platform}">${escapeHtml(channelSummary(platform, draft))}</span></summary>
         <div class="mk-channel__body atlas-stack">
-          ${kinds.length > 1 ? `<div class="atlas-field"><span class="atlas-label" id="mk-format-${platform}">Format</span><div class="atlas-segmented" role="radiogroup" aria-labelledby="mk-format-${platform}">${kinds.map((key) => `<button type="button" role="radio" aria-checked="${kind === key}" data-mk-format="${platform}" data-mk-kind="${key}"${dis}>${escapeHtml(FORMAT_LABEL[key] || humanize(key))}</button>`).join('')}</div></div>` : kind ? `<p class="help">Format: ${escapeHtml(FORMAT_LABEL[kind] || humanize(kind))}${platform === 'instagram' && kind === 'ig_carousel' ? ' (more than one photo or video)' : ''}.</p>` : ''}
+          ${kinds.length > 1 ? `<div class="atlas-field"><span class="atlas-label" id="mk-format-${platform}">Format</span><div class="atlas-segmented" role="radiogroup" aria-labelledby="mk-format-${platform}">${kinds.map((key) => `<button type="button" role="radio" aria-checked="${kind === key}"${radioTab(kind === key)} data-mk-format="${platform}" data-mk-kind="${key}"${dis}>${escapeHtml(FORMAT_LABEL[key] || humanize(key))}</button>`).join('')}</div></div>` : kind ? `<p class="help">Format: ${escapeHtml(FORMAT_LABEL[kind] || humanize(kind))}${platform === 'instagram' && kind === 'ig_carousel' ? ' (more than one photo or video)' : ''}.</p>` : ''}
           <div class="atlas-toggle-row"><div><p class="atlas-toggle-row__label" id="mk-ov-label-${platform}">Write a different caption for ${escapeHtml(name)}</p></div><button type="button" class="atlas-toggle" role="switch" aria-labelledby="mk-ov-label-${platform}" aria-checked="${custom}" data-mk-override-toggle="${platform}"${dis}></button></div>
           ${custom ? `<div class="atlas-field"><label for="mk-override-${platform}">${escapeHtml(name)} caption</label><textarea class="atlas-textarea" id="mk-override-${platform}" rows="4" data-mk-override="${platform}"${dis}>${escapeHtml(draft.overrides[platform])}</textarea><p class="help mk-counter" data-mk-override-counter="${platform}">${escapeHtml(`${number(draft.overrides[platform].length)}${CAPTION_LIMIT[platform] < 10000 ? ` / ${number(CAPTION_LIMIT[platform])}` : ''}`)}</p>${editable ? `<button type="button" class="atlas-link mk-inline-link" data-mk-override-reset="${platform}">Use the common caption again</button>` : ''}</div>` : ''}
           ${platform === 'tiktok' ? tiktokSection(draft, editable) : ''}
@@ -1168,7 +1174,7 @@
       <div class="atlas-field"><label for="mk-caption">Caption</label><textarea class="atlas-textarea" id="mk-caption" name="caption_draft" rows="6" maxlength="10000" data-mk-field="caption"${dis}>${escapeHtml(draft.caption)}</textarea><p class="help mk-counter${counter.over ? ' is-over' : ''}" data-mk-counter>${escapeHtml(counter.text)}</p><p class="help" data-mk-hashtags${hashtags(draft.caption) ? '' : ' hidden'}>${escapeHtml(plural(hashtags(draft.caption), 'hashtag'))}</p>${editable ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm mk-ask-caption" data-mk-ask-caption><i data-lucide="sparkles"></i>Suggest a caption</button>' : ''}</div>
       <div class="mk-channel-list" data-mk-channel-list>${channelSections(draft, editable)}</div>
       <fieldset class="atlas-form-group" id="mk-when-group"><legend class="atlas-label">When</legend>
-        <div class="atlas-segmented" role="radiogroup" aria-label="When">${[['time', 'At a time'], ['asap', 'As soon as it’s approved'], ['none', 'No time yet']].map(([key, label]) => `<button type="button" role="radio" aria-checked="${draft.when === key}" data-mk-when-mode="${key}"${dis}>${label}</button>`).join('')}</div>
+        <div class="atlas-segmented" role="radiogroup" aria-label="When">${[['time', 'At a time'], ['asap', 'As soon as it’s approved'], ['none', 'No time yet']].map(([key, label]) => `<button type="button" role="radio" aria-checked="${draft.when === key}"${radioTab(draft.when === key)} data-mk-when-mode="${key}"${dis}>${label}</button>`).join('')}</div>
         <div class="atlas-field" data-mk-when-field${draft.when === 'time' ? '' : ' hidden'}><label for="mk-when">Post on (${escapeHtml(venueTimeLabel())})</label><input class="atlas-input" type="datetime-local" step="60" id="mk-when" name="scheduled_for" min="${escapeHtml(minNow)}" value="${escapeHtml(draft.scheduled)}" data-mk-field="scheduled"${dis}>${editable ? '<div class="atlas-chips mk-quick"><button type="button" class="atlas-chip" data-mk-quick="1">Next day, same time</button><button type="button" class="atlas-chip" data-mk-quick="7">Next week, same time</button></div>' : ''}</div>
         <p class="help mk-when-echo" data-mk-when-echo>${escapeHtml(whenEcho(draft))}</p>
         <details class="mk-reminder"${draft.reminder !== 'off' ? ' open' : ''}><summary>Reminder</summary><div class="atlas-field"><label for="mk-reminder">Remind me to post by hand</label><select class="atlas-select" id="mk-reminder" data-mk-field="reminder"${dis}>${REMINDERS.map(([key, label]) => `<option value="${key}"${draft.reminder === key ? ' selected' : ''}>${label}</option>`).join('')}</select><p class="help">Only matters for channels you post by hand.</p></div></details>
@@ -1274,7 +1280,7 @@
     element.querySelectorAll('[data-mk-override-counter]').forEach((node) => { const p = node.dataset.mkOverrideCounter; const text = draft.overrides[p] || ''; node.textContent = `${number(text.length)}${CAPTION_LIMIT[p] < 10000 ? ` / ${number(CAPTION_LIMIT[p])}` : ''}`; });
     const whenField = element.querySelector('[data-mk-when-field]');
     if (whenField) whenField.hidden = draft.when !== 'time';
-    element.querySelectorAll('[data-mk-when-mode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.mkWhenMode === draft.when)));
+    element.querySelectorAll('[data-mk-when-mode]').forEach((b) => { const on = b.dataset.mkWhenMode === draft.when; b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; });
     const echo = element.querySelector('[data-mk-when-echo]');
     if (echo) echo.textContent = whenEcho(draft);
     const previews = element.querySelector('[data-mk-previews]');
@@ -1333,6 +1339,7 @@
     const form = element.querySelector('[data-mk-form]');
     form.addEventListener('input', onComposerInput);
     form.addEventListener('change', onComposerInput);
+    form.addEventListener('keydown', onRadioKey);
     bindAddMedia(element);
     // Desktop drag to reorder (buttons always work; drag is an extra).
     form.addEventListener('dragstart', (event) => {
@@ -1349,6 +1356,30 @@
       moveMedia(state.composer.dragFrom, Number(item.dataset.mkMediaIndex));
       state.composer.dragFrom = undefined;
     });
+  }
+
+  // Arrow keys in a role="radiogroup" (When, Google post type, Format): move
+  // to the next enabled option, choose it (the click handler updates the
+  // draft, possibly re-rendering the group) and keep the focus on it.
+  function onRadioKey(event) {
+    const radio = event.target.closest?.('[role="radio"]');
+    const group = radio?.closest('[role="radiogroup"]');
+    if (!radio || !group || !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const radios = [...group.querySelectorAll('[role="radio"]')].filter((node) => !node.disabled);
+    if (!radios.length) return;
+    event.preventDefault();
+    const index = radios.indexOf(radio);
+    let next = index;
+    if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = radios.length - 1;
+    else next = (index + (['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1) + radios.length) % radios.length;
+    const choice = radios[next];
+    const selector = ['data-mk-when-mode', 'data-mk-gbp-topic', 'data-mk-format', 'data-mk-kind']
+      .filter((name) => choice.hasAttribute(name))
+      .map((name) => `[${name}="${CSS.escape(choice.getAttribute(name))}"]`).join('');
+    choice.click();
+    const element = host();
+    (selector && element?.querySelector(`[role="radio"]${selector}`) || choice).focus();
   }
 
   function onComposerInput(event) {
@@ -1413,6 +1444,7 @@
       asset_id: entry.asset_id || entry.id,
       variant_id: entry.variant_id || null,
       collection_id: entry.collection_id || null,
+      publish_variant_id: entry.publish_variant_id || null,
       kind: entry.kind || (String(entry.mime_type || '').startsWith('video/') ? 'video' : 'image'),
       thumb_url: entry.thumb_url || null,
       width: entry.width ?? null,
@@ -1538,19 +1570,35 @@
       if (!id) throw Object.assign(new Error('no id'), { userMessage: 'The suggestion was planned, but Atlas couldn’t open it. Find it in Posts.' });
       composer.id = id;
       composer.suggestion = null;
-      await mutate('update-content', { content_id: id, version: findItem(id)?.version ?? null, title: fields.title, platforms: fields.platforms, caption_draft: fields.caption_draft, campaign_id: fields.campaign_id, platform_options: fields.platform_options }, null);
+      await mutate('update-content', { content_id: id, version: findItem(id)?.version ?? null, title: fields.title, platforms: fields.platforms, caption_draft: fields.caption_draft, campaign_id: fields.campaign_id, publish_asap: fields.publish_asap, platform_options: fields.platform_options }, null);
       if (draft.media.length) await mutate('set-content-media', { content_id: id, items: mediaPayload(draft) }, null);
     } else if (!composer.id) {
-      const result = await mutate('create-content', { client_request_id: requestId(), priority: 'normal', frames: [], media_requirements: {}, content_type: draft.content_type, ...fields, ...(draft.media.length ? { media: mediaPayload(draft) } : {}) }, null);
+      let result;
+      try {
+        result = await mutate('create-content', { client_request_id: requestId(), priority: 'normal', frames: [], media_requirements: {}, content_type: draft.content_type, ...fields, ...(draft.media.length ? { media: mediaPayload(draft) } : {}) }, null);
+      } catch (error) {
+        // The post was created but its options or media were not saved: keep
+        // editing that post, and send everything again on the next Save.
+        if (error?.code === 'partial_save' && error.contentId) {
+          composer.id = error.contentId;
+          composer.unsynced = true;
+          routeToPost(error.contentId);
+        }
+        throw error;
+      }
       const id = result?.content_id || result?.id || result?.content?.id;
       if (!id) throw Object.assign(new Error('no id'), { userMessage: 'The draft was saved, but Atlas couldn’t open it. Find it in Posts.' });
       composer.id = id;
     } else {
-      const original = contentFields(composer.original);
+      // After a partial save the server may not have what the composer last
+      // sent: every field and the media go again.
+      const unsynced = composer.unsynced === true;
+      const original = unsynced ? {} : contentFields(composer.original);
       const patch = {};
-      Object.keys(fields).forEach((key) => { if (JSON.stringify(fields[key]) !== JSON.stringify(original[key])) patch[key] = fields[key]; });
+      Object.keys(fields).forEach((key) => { if (unsynced || JSON.stringify(fields[key]) !== JSON.stringify(original[key])) patch[key] = fields[key]; });
       if (Object.keys(patch).length) await mutate('update-content', { content_id: composer.id, version: item?.version ?? null, ...patch, note: null }, null);
-      if (JSON.stringify(mediaPayload(draft)) !== JSON.stringify(mediaPayload(composer.original))) await mutate('set-content-media', { content_id: composer.id, items: mediaPayload(draft) }, null);
+      if (unsynced || JSON.stringify(mediaPayload(draft)) !== JSON.stringify(mediaPayload(composer.original))) await mutate('set-content-media', { content_id: composer.id, items: mediaPayload(draft) }, null);
+      composer.unsynced = false;
     }
     composer.original = clone(draft);
     composer.savedAt = new Date().toISOString();
@@ -1696,7 +1744,7 @@
       if (decision === 'approved' && !gate('approve')) return true;
       runComposerAction(decide, async () => {
         const past = item.scheduled_for && Date.parse(item.scheduled_for) <= Date.now();
-        await mutate('decide-approval', { content_id: item.id, decision, note }, decision === 'approved' ? (item.scheduled_for ? `Approved. It publishes ${dateTime(item.scheduled_for)}.` : 'Approved.') : decision === 'rejected' ? 'Rejected.' : 'Changes requested.');
+        await mutate('decide-approval', { content_id: item.id, decision, note }, decision === 'approved' ? (item.scheduled_for ? `Approved. It publishes ${dateTime(item.scheduled_for)}.` : item.metadata?.publish_asap === true ? (autoPublishing() ? 'Approved. It publishes now.' : 'Approved. It publishes once automatic publishing is on.') : 'Approved.') : decision === 'rejected' ? 'Rejected.' : 'Changes requested.');
         if (decision === 'approved' && past && autoPublishing()) await mutate('publish-now', { content_id: item.id }, 'Publishing now…');
         remountComposer();
       });

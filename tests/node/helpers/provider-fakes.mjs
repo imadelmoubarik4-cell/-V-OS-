@@ -821,7 +821,27 @@ export function createFakePublishingDb({ now, random = () => 0.5, skipStaleGuard
     return { ok: true, status: row.status, next_attempt_at: row.next_attempt_at, attention_reason: row.attention_reason };
   }
 
+  // Security P2-1: fenced on the live claim; the connection becomes expired.
+  const authFailures = [];
+  function markAuthFailed({ p_delivery_id, p_claim_token, p_error }) {
+    const row = deliveries.get(p_delivery_id);
+    if (!owned(row, p_claim_token)) return { ok: false, lease_lost: true };
+    authFailures.push({ delivery_id: row.id, provider_key: row.provider_key, error: p_error });
+    return { ok: true, provider_key: row.provider_key, connection_status: 'expired' };
+  }
+
+  // Media publication uses (never a URL or token).
+  const mediaUses = [];
+  function recordUse({ p_use }) {
+    if (/"(url|signed_url|signedurl|token|access_token)"\s*:/i.test(JSON.stringify(p_use))) throw new Error('urls and tokens are never stored');
+    for (const key of ['asset_id', 'content_id', 'platform', 'fetch_method']) if (!p_use?.[key]) throw new Error(`record_use: ${key} missing`);
+    mediaUses.push(structuredClone(p_use));
+    return { id: uuid(700000 + mediaUses.length) };
+  }
+
   const handlers = {
+    atlas_integration_mark_auth_failed: markAuthFailed,
+    atlas_marketing_media_record_use: recordUse,
     atlas_marketing_delivery_claim: claim,
     atlas_marketing_delivery_heartbeat: heartbeat,
     atlas_marketing_delivery_record_step: recordStep,
@@ -846,7 +866,7 @@ export function createFakePublishingDb({ now, random = () => 0.5, skipStaleGuard
     row.claimed_until = new Date(now() + 300_000).toISOString();
   }
 
-  return { rpc, deliveries, attempts, rpcLog, notifications, cooldowns, hooks, add, stealLease, isOwned: (id, token) => owned(deliveries.get(id), token) };
+  return { rpc, deliveries, attempts, rpcLog, notifications, cooldowns, hooks, add, stealLease, authFailures, mediaUses, isOwned: (id, token) => owned(deliveries.get(id), token) };
 }
 
 export function createFakeCredentials(db, { tokens = TOKENS, resources = RESOURCES, failures = {} } = {}) {

@@ -474,6 +474,23 @@ test('Media: pick() resolves ordered entries for a collection with collection_id
   }
 });
 
+test('Media: pick() hands the JPEG publish copy of a PNG to the composer (publish_variant_id)', { skip }, async () => {
+  const media = mediaBackend({ assets: [readyAsset(1, { name: 'menu-board.png', mime_type: 'image/png', publish_variant_id: uuid(81) }), readyAsset(2, { name: 'bar.jpg' })] });
+  const { page, close } = await launchMedia({ media });
+  try {
+    const picked = page.evaluate(() => window.AtlasMarketingMedia.pick({ multiple: true, kinds: ['image'], allowCollections: false }));
+    await page.waitForFunction(() => document.querySelectorAll('#mm-picker-sheet .mk-asset').length === 2);
+    await page.click('#mm-picker-sheet .mk-asset[aria-label^="menu-board.png"]');
+    await page.click('#mm-picker-sheet .mk-asset[aria-label^="bar.jpg"]');
+    await page.click('#mm-picker-sheet [data-mm-pick-done]');
+    const entries = await picked;
+    assert.deepEqual(entries.map((entry) => [entry.asset_id, entry.variant_id, entry.publish_variant_id, entry.mime_type]),
+      [[uuid(1), null, uuid(81), 'image/png'], [uuid(2), null, null, 'image/jpeg']]);
+  } finally {
+    await close();
+  }
+});
+
 test('Media: asset detail saves alt text, tags and the focal point; crops follow the focal point; delete is guarded', { skip }, async () => {
   const media = mediaBackend({
     assets: [

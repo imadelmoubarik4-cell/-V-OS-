@@ -209,7 +209,8 @@ const has = (body, key) => Object.prototype.hasOwnProperty.call(body, key);
 // SQL and the worker's rules decide what is valid for publishing.
 const TIKTOK_PRIVACY = new Set(["PUBLIC_TO_EVERYONE", "MUTUAL_FOLLOW_FRIENDS", "FOLLOWER_OF_CREATOR", "SELF_ONLY"]);
 const TARGET_KINDS = new Set(["ig_feed", "ig_carousel", "ig_reel", "fb_page_post", "fb_page_photo", "fb_page_video", "fb_reel", "tiktok_video", "tiktok_inbox_video", "gbp_local_post"]);
-const GBP_TOPICS = new Set(["STANDARD", "EVENT", "OFFER", "ALERT"]);
+// ALERT posts are not published by the worker, so they are not accepted here.
+const GBP_TOPICS = new Set(["STANDARD", "EVENT", "OFFER"]);
 const GBP_ACTIONS = new Set(["BOOK", "ORDER", "SHOP", "LEARN_MORE", "SIGN_UP", "CALL"]);
 function httpsUrl(value, label) {
   const text = optionalText(value, 2000);
@@ -306,9 +307,23 @@ function contentPayload(body, resolveOwner) {
     creative_brief: optionalText(body.creative_brief, 10000),
     frames: jsonArray(body.frames, "Frames", 20),
     media_requirements: jsonObject(body.media_requirements, "Media requirements"),
-    metadata: jsonObject(body.metadata, "Metadata"),
+    metadata: asapMetadata(jsonObject(body.metadata, "Metadata"), body),
     owner: resolveOwner,
   };
+}
+
+// "As soon as it's approved" is stored as metadata.publish_asap on content
+// without a time (the SQL fingerprints it and queues the post on approval).
+function publishAsap(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value !== "boolean") throw new ApiError(400, "“As soon as it’s approved” must be on or off.");
+  return value;
+}
+function asapMetadata(metadata, body) {
+  const out = { ...metadata };
+  delete out.publish_asap;
+  if (publishAsap(body.publish_asap) && !body.scheduled_for) out.publish_asap = true;
+  return out;
 }
 
 // ... and the partial patch: only fields the caller sent, so a save never
@@ -328,6 +343,7 @@ const PATCH_FIELDS = {
   frames: (v) => jsonArray(v, "Frames", 20),
   media_requirements: (v) => jsonObject(v, "Media requirements"),
   platform_options: (v, ctx) => platformOptions(v, ctx),
+  publish_asap: (v) => publishAsap(v),
 };
 export function contentPatch(body, ctx = {}) {
   const patch = {};
@@ -741,6 +757,11 @@ export function createMarketingHandler(deps = {}) {
       case "create-content": {
         requireWriter(context);
         const content = contentPayload(body);
+        // Everything the save carries is validated before the post exists, so
+        // a bad option or media item never leaves an orphan draft behind.
+        const manager = MANAGER_ROLES.has(context.profile.role);
+        const options = has(body, "platform_options") ? platformOptions(body.platform_options, { actorId: context.userId, nowMs: now() }) : null;
+        const media = has(body, "media") ? mediaItems(body.media) : null;
         const owner = await ownerFor(context, body);
         const created = await rpc(RPC.createContent, {
           p_client_request_id: requireUuid(body.client_request_id, "Client request ID"),
@@ -766,15 +787,21 @@ export function createMarketingHandler(deps = {}) {
         // S94: options and media ride on the same save (managers only; the
         // SQL re-checks). The new id comes from the RPC result, never a diff.
         const contentId = created?.content_id ?? created?.id ?? created?.content?.id ?? null;
-        const options = has(body, "platform_options") ? platformOptions(body.platform_options, { actorId: context.userId, nowMs: now() }) : null;
-        const media = has(body, "media") ? mediaItems(body.media) : null;
-        if ((options || media) && contentId && MANAGER_ROLES.has(context.profile.role) && created?.duplicate !== true) {
-          let version = Number(created?.content?.version ?? 1);
-          if (options && Object.keys(options).length) {
-            const patched = await rpc(RPC.patchContent, { p_actor_id: context.userId, p_content_id: contentId, p_expected_version: version, p_patch: { platform_options: options }, p_note: null });
-            version = Number(patched?.content?.version ?? version + 1);
+        if ((options || media) && contentId && manager && created?.duplicate !== true) {
+          try {
+            let version = Number(created?.content?.version ?? 1);
+            if (options && Object.keys(options).length) {
+              const patched = await rpc(RPC.patchContent, { p_actor_id: context.userId, p_content_id: contentId, p_expected_version: version, p_patch: { platform_options: options }, p_note: null });
+              version = Number(patched?.content?.version ?? version + 1);
+            }
+            if (media && media.length) await rpc(RPC.setContentMedia, { p_actor_id: context.userId, p_content_id: contentId, p_items: media });
+          } catch (error) {
+            // The post exists: hand its id back so the composer keeps editing
+            // it (the next Save updates it instead of creating a duplicate).
+            const detail = error instanceof ApiError && error.status === 400 ? String(error.message).trim() : "";
+            const reason = detail ? ` ${/[.!?]$/.test(detail) ? detail : `${detail}.`}` : "";
+            throw new ApiError(409, `The draft was saved, but its channel options or media weren’t.${reason} Check them and save again.`, { error_code: "partial_save", content_id: contentId });
           }
-          if (media && media.length) await rpc(RPC.setContentMedia, { p_actor_id: context.userId, p_content_id: contentId, p_items: media });
         }
         return contentId ? { ...created, content_id: contentId } : created;
       }
@@ -803,12 +830,17 @@ export function createMarketingHandler(deps = {}) {
       }
       case "decide-approval": {
         requireManager(context);
-        return rpc(RPC.decideApproval, {
+        const decided = await rpc(RPC.decideApproval, {
           p_content_id: requireUuid(body.content_id, "Content item"),
           p_decision: requireEnum(body.decision, "Approval decision", APPROVAL_DECISIONS),
           p_note: optionalText(body.note, 3000),
           ...actor,
         });
+        // "As soon as it's approved": the approval queued deliveries due now;
+        // wake the worker (the cron tick is the fallback).
+        const dueNow = (Array.isArray(decided?.deliveries) ? decided.deliveries : []).some((d) => Date.parse(d?.due_at ?? "") <= now());
+        if (dueNow) await wakePublisher();
+        return decided;
       }
       case "mark-published": {
         requireManager(context);
@@ -934,7 +966,10 @@ export function createMarketingHandler(deps = {}) {
       const refreshed = await workspaceSnapshot(context, range);
       return jsonResponse({ result: scrub(result ?? null), workspace: refreshed.workspace, staff: staffPayload(context), members: refreshed.members, policy: policy(refreshed.workspace) });
     } catch (error) {
-      if (error instanceof ApiError) return jsonResponse({ error: error.message, error_code: error.extra?.error_code ?? STATUS_CODES[error.status] ?? "unavailable" }, error.status);
+      if (error instanceof ApiError) {
+        const extra = isUuid(error.extra?.content_id) ? { content_id: error.extra.content_id } : {};
+        return jsonResponse({ error: error.message, error_code: error.extra?.error_code ?? STATUS_CODES[error.status] ?? "unavailable", ...extra }, error.status);
+      }
       console.error("[atlas-marketing-workspace] request failed", error instanceof Error ? error.name : "unknown");
       return jsonResponse({ error: "The Marketing workspace is temporarily unavailable.", error_code: "internal" }, 500);
     }

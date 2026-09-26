@@ -118,7 +118,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94',
-  scriptPath: 'assets/js/marketing-workspace.js?v=20261004-s94',
+  scriptPath: 'assets/js/marketing-workspace.js?v=20261004-s94b',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
 }));
@@ -126,13 +126,13 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // S94: the composer's shared platform checks (generated from the publisher's
 // rules) and the Marketing media library (library, picker and upload queue).
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/marketing-platform-rules.js?v=20261004-s94',
+  scriptPath: 'assets/js/marketing-platform-rules.js?v=20261004-s94b',
   globalName: 'AtlasPlatformRules',
   dataAttribute: 'atlasPlatformRules',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/marketing-media.js?v=20261004-s94',
+  scriptPath: 'assets/js/marketing-media.js?v=20261004-s94b',
   globalName: 'AtlasMarketingMedia',
   dataAttribute: 'atlasMarketingMedia',
 }));

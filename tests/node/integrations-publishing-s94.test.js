@@ -18,8 +18,11 @@ import {
 } from '../../supabase/functions/atlas-integrations/oauth-core.mjs';
 import { PROVIDERS, buildAuthorizeUrl, requestedScopes, supportsPublishing } from '../../supabase/functions/atlas-integrations/providers.mjs';
 import { createIntegrationsHandler } from '../../supabase/functions/atlas-integrations/handler.mjs';
+import { credentialFailure } from '../../supabase/functions/atlas-marketing-publisher/handler.mjs';
+import { ProviderError } from '../../supabase/functions/_shared/integrations/provider-http.mjs';
 import {
   CredentialError,
+  refreshFailureKind,
   __testing,
   openPublishingCredential,
   readTikTokCreatorInfo,
@@ -248,8 +251,11 @@ function fakeDatabase() {
         if (payload.p_lock_token !== lock.token) return { released: false };
         lock.token = null;
         if (payload.p_error) {
-          rows.get(payload.p_provider_key).status = payload.p_needs_reauthorization ? 'expired' : 'degraded';
-          events.push({ provider_key: payload.p_provider_key, event_type: 'refresh_failed', payload: { error: payload.p_error } });
+          // Mirrors SQL: null = transient (connection untouched), true = expired, false = degraded.
+          if (payload.p_needs_reauthorization !== null && payload.p_needs_reauthorization !== undefined) {
+            rows.get(payload.p_provider_key).status = payload.p_needs_reauthorization ? 'expired' : 'degraded';
+          }
+          events.push({ provider_key: payload.p_provider_key, event_type: 'refresh_failed', payload: { error: payload.p_error, transient: payload.p_needs_reauthorization === null } });
         }
         return { released: true };
       }
@@ -826,6 +832,47 @@ test('a refused refresh releases the lease, records refresh_failed and asks for 
   assert.equal(db.rows.get('tiktok').status, 'expired');
   assert.equal(db.lock.token, null);
   assertNoLeak(`${error.message}`, 'error');
+});
+
+// P1-3: one transient refresh failure must not park the channel.
+for (const [label, failure] of [
+  ['HTTP 503', () => new Response('upstream unavailable', { status: 503 })],
+  ['HTTP 500 with an error body', () => Response.json({ error: 'server_error', error_description: 'try later' }, { status: 500 })],
+  ['HTTP 429', () => Response.json({ error: 'rate_limited' }, { status: 429 })],
+  ['a network failure', () => { throw new TypeError('fetch failed'); }],
+]) {
+  test(`a transient refresh failure (${label}) releases the lease, keeps the connection and is retryable`, async () => {
+    const db = await tiktokReady();
+    const claim = delivery(db, 'tiktok', 'open-1');
+    const before = db.rows.get('tiktok').status;
+    const fetchImpl = async (url) => {
+      if (String(url) === 'https://open.tiktokapis.com/v2/oauth/token/') return failure();
+      return new Response('{}', { status: 404 });
+    };
+    const error = await openPublishingCredential({ rpc: db.rpc, env: (n) => ENV[n], fetchImpl, now: () => NOW }, claim).catch((e) => e);
+    assert.ok(error instanceof CredentialError);
+    assert.equal(error.code, 'refresh_failed');
+    assert.equal(error.retryable, true);
+    assert.equal(error.reauthorize, false);
+    const released = db.calls.find((c) => c.name === 'atlas_integration_refresh_release');
+    assert.equal(released.payload.p_needs_reauthorization, null, 'transient: the connection is not degraded or expired');
+    assert.ok(released.payload.p_error, 'the failure is still recorded');
+    assertNoLeak(released.payload.p_error, 'release error');
+    assert.equal(db.rows.get('tiktok').status, before);
+    assert.equal(db.lock.token, null, 'the lease is released');
+    assert.ok(db.events.some((e) => e.event_type === 'refresh_failed' && e.payload.transient === true));
+    // The worker maps it to a normal retry, never to "reconnect".
+    assert.equal(credentialFailure(error).status, 'retrying');
+  });
+}
+
+test('refresh failure kinds: invalid_grant/400/401 reauthorize, 5xx/429/network transient, others failed', () => {
+  assert.equal(refreshFailureKind(new ProviderError('x', { status: 400, reauthorize: true })), 'reauthorize');
+  assert.equal(refreshFailureKind(new ProviderError('x', { status: 401, reauthorize: true })), 'reauthorize');
+  assert.equal(refreshFailureKind(new ProviderError('x', { status: 503 })), 'transient');
+  assert.equal(refreshFailureKind(new ProviderError('x', { status: 429 })), 'transient');
+  assert.equal(refreshFailureKind(new TypeError('fetch failed')), 'transient');
+  assert.equal(refreshFailureKind(new ProviderError('x', { status: 403 })), 'failed');
 });
 
 test('a worker that never gets the lease gives up as retryable refresh_in_progress', async () => {

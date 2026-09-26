@@ -24,7 +24,15 @@
 // heartbeats before long steps, and a classified outcome sent to complete().
 // Every write is fenced on the claim token: lease_lost stops all work on that
 // delivery. Work budget 45 s per invocation (Edge limits: 150 s idle, 150/400 s
-// wall clock); a TikTok upload may run to the upload budget (120 s).
+// wall clock); a TikTok upload may run to the upload budget (120 s), measured
+// from the moment that upload starts and never past the invocation's wall
+// budget (140 s): an upload that could not get a useful share of it is not
+// started (the delivery retries before anything is sent).
+//
+// After complete(): media that reached a platform (published / processing) is
+// recorded with atlas_marketing_media_record_use (pins it against deletion);
+// a provider auth failure marks the connection "Needs reconnecting" through
+// the claim-fenced atlas_integration_mark_auth_failed before complete().
 //
 // This module never logs. Tokens and signed URLs stay in memory: RPC payloads
 // carry ids, phases, sanitised codes/messages (≤ 240 chars) and url_expires_at.
@@ -46,6 +54,7 @@ const LEASE_SECONDS = 300;
 const HEARTBEAT_BELOW_MS = 90_000;
 const DEFAULT_BUDGET_MS = 45_000;
 const DEFAULT_UPLOAD_BUDGET_MS = 120_000;
+const DEFAULT_WALL_BUDGET_MS = 140_000;
 const STOP_CLAIMING_BEFORE_MS = 10_000;
 const MAX_BATCHES = 8;
 
@@ -55,6 +64,8 @@ export const RPC = Object.freeze({
   recordStep: "atlas_marketing_delivery_record_step",
   beginSubmit: "atlas_marketing_delivery_begin_submit",
   complete: "atlas_marketing_delivery_complete",
+  markAuthFailed: "atlas_integration_mark_auth_failed",
+  recordUse: "atlas_marketing_media_record_use",
 });
 
 export const ADAPTERS = Object.freeze({
@@ -232,6 +243,7 @@ export function normalizeClaim(claim) {
   const media = (Array.isArray(payload.media) ? payload.media : []).slice().sort((a, b) => (Number(a.position) || 0) - (Number(b.position) || 0));
   return {
     id: String(row.id ?? ""),
+    content_id: String(row.content_id ?? payload.content_id ?? ""),
     claim_token: String(claim?.claim_token ?? ""),
     claim_kind: String(claim?.claim_kind ?? "publish"),
     lease_until: claim?.lease_until ?? null,
@@ -345,6 +357,8 @@ export function createPublisherHandler({ env, fetchImpl, rpc, now = () => Date.n
     const lease = { until: Date.parse(d.lease_until ?? "") || now() + LEASE_SECONDS * 1000 };
     const secrets = [serviceKey];
     let submitted = false;
+    let uploadStartedAt = null;
+    let providerOutcome = false;
 
     const fenced = (result) => {
       if (!result || result.lease_lost === true || result.ok === false) throw new LeaseLostError();
@@ -362,7 +376,16 @@ export function createPublisherHandler({ env, fetchImpl, rpc, now = () => Date.n
       provider: d.provider_key,
       credential: null,
       mediaUrls: createMediaUrls({ http, supabaseUrl: readEnv("SUPABASE_URL"), serviceKey, now }),
-      timeLeftMs: ({ upload = false } = {}) => (upload ? budget.uploadDeadline : budget.deadline) - now(),
+      // Upload time counts from the upload's own start (startUpload), capped by
+      // the invocation's wall budget; before it starts, this is what an upload
+      // started now could get.
+      timeLeftMs: ({ upload = false } = {}) => (upload
+        ? Math.min((uploadStartedAt ?? now()) + budget.uploadMs, budget.wallDeadline)
+        : budget.deadline) - now(),
+      uploadBudgetMs: budget.uploadMs,
+      startUpload() {
+        if (uploadStartedAt === null) uploadStartedAt = now();
+      },
       async heartbeat({ force = false } = {}) {
         if (!force && lease.until - now() > HEARTBEAT_BELOW_MS) return;
         fenced(await callRpc(RPC.heartbeat, { p_delivery_id: d.id, p_claim_token: d.claim_token, p_seconds: LEASE_SECONDS }));
@@ -421,6 +444,7 @@ export function createPublisherHandler({ env, fetchImpl, rpc, now = () => Date.n
             secrets.push(String(credential.access_token));
             ctx.credential = credential;
             outcome = await adapter.publish(ctx, d);
+            providerOutcome = true;
           }
         }
       }
@@ -440,6 +464,17 @@ export function createPublisherHandler({ env, fetchImpl, rpc, now = () => Date.n
     }
 
     const cleaned = cleanOutcome(coerceForClaim(outcome, d.claim_kind), secrets);
+    // The provider refused the connection itself: mark it "Needs reconnecting"
+    // while this claim is still live (fenced in SQL). A failure here never
+    // stops complete().
+    if (providerOutcome && cleaned.error?.class === "auth" && ["needs_attention", "failed"].includes(cleaned.status)) {
+      try {
+        await callRpc(RPC.markAuthFailed, { p_delivery_id: d.id, p_claim_token: d.claim_token, p_error: cleaned.error.message || cleaned.error.code });
+        counts.auth_marked = (counts.auth_marked ?? 0) + 1;
+      } catch {
+        counts.errors += 1;
+      }
+    }
     let result;
     try {
       result = await callRpc(RPC.complete, { p_delivery_id: d.id, p_claim_token: d.claim_token, p_outcome: cleaned });
@@ -454,13 +489,43 @@ export function createPublisherHandler({ env, fetchImpl, rpc, now = () => Date.n
     }
     const status = OUTCOME_STATUSES.has(result.status) ? result.status : cleaned.status;
     counts[status] = (counts[status] ?? 0) + 1;
+    if (status === "published" || (status === "processing" && d.claim_kind === "publish")) await recordMediaUse(d, status, cleaned, counts);
+  }
+
+  // One publication-use row per media item that reached the platform, so the
+  // library keeps it (delete/purge refused) even if the post is cancelled
+  // after a partial publish. Ids only, never a URL.
+  async function recordMediaUse(d, status, cleaned, counts) {
+    if (!d.content_id) return;
+    const postId = status === "published" ? cleaned.post_id : (cleaned.ids?.provider_publish_id ?? cleaned.ids?.provider_container_id ?? d.publish_id ?? d.container_id);
+    for (const item of d.payload.media) {
+      if (!item?.asset_id || item.role === "thumbnail") continue;
+      try {
+        await callRpc(RPC.recordUse, {
+          p_use: {
+            asset_id: String(item.asset_id),
+            variant_id: item.variant_id ? String(item.variant_id) : null,
+            content_id: d.content_id,
+            publication_job_id: d.id,
+            platform: d.provider_key,
+            fetch_method: d.provider_key === "tiktok" ? "file_upload" : "signed_url",
+            provider_media_id: postId ? String(postId).slice(0, 200) : null,
+            outcome: status,
+          },
+        });
+        counts.media_uses = (counts.media_uses ?? 0) + 1;
+      } catch {
+        counts.errors += 1;
+      }
+    }
   }
 
   async function tick() {
     const started = now();
     const budget = {
       deadline: started + clampInt(readEnv("ATLAS_PUBLISHER_BUDGET_MS"), DEFAULT_BUDGET_MS, 5_000, 120_000),
-      uploadDeadline: started + clampInt(readEnv("ATLAS_PUBLISHER_UPLOAD_BUDGET_MS"), DEFAULT_UPLOAD_BUDGET_MS, 30_000, 300_000),
+      uploadMs: clampInt(readEnv("ATLAS_PUBLISHER_UPLOAD_BUDGET_MS"), DEFAULT_UPLOAD_BUDGET_MS, 30_000, 300_000),
+      wallDeadline: started + clampInt(readEnv("ATLAS_PUBLISHER_WALL_BUDGET_MS"), DEFAULT_WALL_BUDGET_MS, 60_000, 380_000),
     };
     const counts = { claimed: 0, published: 0, processing: 0, retrying: 0, verifying: 0, needs_attention: 0, failed: 0, refused: 0, lease_lost: 0, errors: 0 };
     const id = workerId();

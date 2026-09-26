@@ -43,7 +43,8 @@ const READY_TARGETS = [
 const KIND = { instagram: (media) => (media.length > 1 ? 'ig_carousel' : media[0]?.kind === 'video' ? 'ig_reel' : 'ig_feed'), facebook: (media) => (!media.length ? 'fb_page_post' : media.some((m) => m.kind === 'video') ? 'fb_page_video' : 'fb_page_photo'), tiktok: () => 'tiktok_inbox_video', 'google-business-profile': () => 'gbp_local_post' };
 
 // A stateful gateway double: enough of contract §6 to drive the workflow.
-function marketingGateway({ role = 'admin', automatic = true, targets = READY_TARGETS, creator = null, failOnPublish = ['facebook'] } = {}) {
+function marketingGateway({ role = 'admin', automatic = true, targets = READY_TARGETS, creator = null, failOnPublish = ['facebook'], partialSaveOnce = false } = {}) {
+  let partialPending = partialSaveOnce;
   let sequence = 900;
   const items = new Map();
   const add = (item) => items.set(item.id, { version: 1, platform_options: {}, media: [], deliveries: [], approval_history: [], can_edit: true, can_approve: true, created_by_label: 'Imad El Moubarik', priority: 'normal', ...item });
@@ -81,7 +82,14 @@ function marketingGateway({ role = 'admin', automatic = true, targets = READY_TA
       }
       case 'create-content': {
         const id = uuid(sequence += 1);
-        add({ id, title: body.title, content_type: body.content_type, status: 'draft', platforms: body.platforms || [], caption_draft: body.caption_draft, scheduled_for: body.scheduled_for, reminder_at: body.reminder_at, campaign_id: body.campaign_id, platform_options: body.platform_options || {}, media: mediaFrom(body.media) });
+        const metadata = body.publish_asap === true && !body.scheduled_for ? { publish_asap: true } : {};
+        if (partialPending) {
+          // The gateway created the post, then its options/media failed (contract: partial save).
+          partialPending = false;
+          add({ id, title: body.title, content_type: body.content_type, status: 'draft', platforms: body.platforms || [], caption_draft: body.caption_draft, scheduled_for: body.scheduled_for, reminder_at: body.reminder_at, metadata, platform_options: {}, media: [] });
+          return { __status: 409, body: { error: 'The draft was saved, but its channel options or media weren’t. Check them and save again.', error_code: 'partial_save', content_id: id } };
+        }
+        add({ id, title: body.title, content_type: body.content_type, status: 'draft', platforms: body.platforms || [], caption_draft: body.caption_draft, scheduled_for: body.scheduled_for, reminder_at: body.reminder_at, campaign_id: body.campaign_id, metadata, platform_options: body.platform_options || {}, media: mediaFrom(body.media) });
         return reply({ id, content_id: id, duplicate: false, content: { id, version: 1 } });
       }
       case 'update-content': {
@@ -89,6 +97,7 @@ function marketingGateway({ role = 'admin', automatic = true, targets = READY_TA
         if (body.version != null && body.version !== item.version) return stale();
         const material = ['approved', 'scheduled'].includes(item.status);
         for (const key of ['title', 'campaign_id', 'platforms', 'caption_draft', 'scheduled_for', 'reminder_at', 'platform_options']) if (key in body) item[key] = body[key];
+        if ('publish_asap' in body) item.metadata = body.publish_asap ? { ...(item.metadata || {}), publish_asap: true } : Object.fromEntries(Object.entries(item.metadata || {}).filter(([key]) => key !== 'publish_asap'));
         item.version += 1;
         if (material) { item.status = 'draft'; item.deliveries = item.deliveries.map((d) => ({ ...d, status: 'cancelled' })); item.publication_state = 'none'; }
         return reply({ content: { id: item.id, version: item.version }, approval_invalidated: material });
@@ -343,6 +352,86 @@ test('S94 edit after approval asks first, sends the version and goes back to app
     assert.ok(!('title' in body) && !('media' in body), 'only what changed is sent');
     await page.waitForSelector('[data-mk-submit]');
     assert.match(await page.textContent('#marketing-view .page-head__sub'), /Draft/);
+  } finally { await close(); }
+});
+
+test('S94 review fixes: When radios move with the arrow keys; "As soon as it’s approved" round-trips; a partial save keeps editing the created post', { skip }, async () => {
+  const gateway = marketingGateway({ role: 'admin', partialSaveOnce: true });
+  const { page, record, close } = await launch({ gateway });
+  try {
+    await page.waitForSelector('#marketing-view .page-head');
+    await openNew(page);
+    await page.fill('#mk-title', 'Pop-up tonight');
+    await page.click('[data-mk-channel="facebook"]');
+    await page.fill('#mk-caption', 'Pop-up bar from 20:00.');
+
+    // Roving tabindex: only the chosen option is in the tab order; arrows, Home and End choose.
+    const when = () => page.evaluate(() => ({
+      checked: [...document.querySelectorAll('[data-mk-when-mode]')].filter((b) => b.getAttribute('aria-checked') === 'true').map((b) => b.dataset.mkWhenMode),
+      tabbable: [...document.querySelectorAll('[data-mk-when-mode]')].filter((b) => b.tabIndex === 0).map((b) => b.dataset.mkWhenMode),
+      focused: document.activeElement?.dataset?.mkWhenMode || null
+    }));
+    assert.deepEqual((await when()).tabbable, ['time']);
+    await page.focus('[data-mk-when-mode="time"]');
+    await page.keyboard.press('ArrowRight');
+    assert.deepEqual(await when(), { checked: ['asap'], tabbable: ['asap'], focused: 'asap' });
+    await page.keyboard.press('ArrowDown');
+    assert.deepEqual(await when(), { checked: ['none'], tabbable: ['none'], focused: 'none' });
+    await page.keyboard.press('ArrowRight');
+    assert.deepEqual(await when(), { checked: ['time'], tabbable: ['time'], focused: 'time' }, 'wraps around');
+    await page.keyboard.press('End');
+    assert.equal((await when()).checked[0], 'none');
+    await page.keyboard.press('ArrowLeft');
+    assert.deepEqual(await when(), { checked: ['asap'], tabbable: ['asap'], focused: 'asap' });
+    assert.match(await page.textContent('[data-mk-when-echo]'), /as soon as it’s approved/);
+
+    // First Save: the gateway created the post but not its options (partial save).
+    await page.click('[data-mk-save]');
+    await until(() => requestsTo(record, 'atlas-marketing-workspace', 'create-content').length, { message: 'create-content' });
+    const create = requestsTo(record, 'atlas-marketing-workspace', 'create-content')[0].body;
+    assert.equal(create.publish_asap, true);
+    assert.equal(create.scheduled_for, null);
+    const id = [...gateway.items.keys()].at(-1);
+    await page.waitForFunction(() => /draft was saved/.test(document.querySelector('[data-mk-composer]')?.textContent || ''));
+    await until(() => page.evaluate((target) => location.hash.includes(target), id), { message: 'the created post is routed' });
+
+    // Second Save updates that post (no duplicate) and sends everything again.
+    await page.click('[data-mk-save]');
+    await until(() => requestsTo(record, 'atlas-marketing-workspace', 'update-content').length, { message: 'update-content' });
+    assert.equal(requestsTo(record, 'atlas-marketing-workspace', 'create-content').length, 1, 'no second post');
+    const update = requestsTo(record, 'atlas-marketing-workspace', 'update-content')[0].body;
+    assert.equal(update.content_id, id);
+    assert.equal(update.publish_asap, true);
+    assert.equal(update.platform_options.facebook.target_kind, 'fb_page_post');
+    await until(() => requestsTo(record, 'atlas-marketing-workspace', 'set-content-media').length, { message: 'media sent again' });
+    assert.equal(gateway.items.get(id).metadata.publish_asap, true);
+
+    // Reopened, the post still says "As soon as it’s approved".
+    await page.evaluate(() => { location.hash = '#marketing/posts'; });
+    await page.waitForFunction(() => !document.querySelector('[data-mk-composer]'));
+    await page.evaluate((target) => { location.hash = `#marketing/post?id=${target}`; }, id);
+    await page.waitForSelector('[data-mk-when-mode="asap"]');
+    assert.deepEqual((await when()).checked, ['asap']);
+  } finally { await close(); }
+});
+
+test('S94 review fixes: a PNG photo with its JPEG publish copy passes the Instagram JPEG check', { skip }, async () => {
+  const { page, close } = await launch();
+  try {
+    await page.waitForSelector('#marketing-view .page-head');
+    await openNew(page);
+    await page.fill('#mk-title', 'Menu board');
+    await page.click('[data-mk-channel="instagram"]');
+    await page.fill('#mk-caption', 'New menu board.');
+    const png = { ...ASSETS.photoC, asset_id: uuid(511), mime_type: 'image/png', title: 'menu-board.png' };
+    await addFromMenu(page, 'library', [png]);
+    await page.waitForFunction(() => /must be a JPEG/.test(document.querySelector('[data-mk-checks]').textContent));
+    await page.click('[data-mk-media-index="0"] [data-mk-media-remove]');
+    await page.waitForFunction(() => /Instagram needs at least one photo/.test(document.querySelector('[data-mk-checks]').textContent));
+    await addFromMenu(page, 'library', [{ ...png, publish_variant_id: uuid(512) }]);
+    // The checks re-render after the new media (debounced): neither "no media" nor "not a JPEG".
+    await page.waitForFunction(() => { const text = document.querySelector('[data-mk-checks]').textContent; return !/Instagram needs at least one photo/.test(text) && !/must be a JPEG/.test(text); }, null, { timeout: 5000 });
+    assert.equal(await page.$$eval('.mk-strip__item', (nodes) => nodes.length), 1);
   } finally { await close(); }
 });
 

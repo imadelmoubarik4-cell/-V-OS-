@@ -20,7 +20,11 @@
 -- * bartender/viewer refusals, service-role-only grants, the admin-only automatic publishing switch;
 -- * worker contract: TikTok consent frozen in the payload, definitive rejections after the marker
 --   retry, verifying -> retrying only with definitive proof, IG container_ready after the marker,
---   poll_after_s on verifying outcomes.
+--   poll_after_s on verifying outcomes;
+-- * review fixes: "as soon as it's approved" queues on approval, the JPEG publish copy is what is
+--   published, snapshot media keeps collection_id, media published before a cancel stays pinned,
+--   sanitised text never violates a CHECK and the browser sees fixed wording, ALERT is refused,
+--   a provider auth failure marks the connection through the claim-fenced RPC.
 -- Prints one JSON verdict and rolls everything back. now() is fixed inside the transaction, so
 -- time is simulated by moving row timestamps.
 
@@ -1205,10 +1209,233 @@ exception when others then
 end
 $notifications$;
 
+-- 8. Review fixes ----------------------------------------------------------------------------------
+
+reset role;
+
+do $review_asap$
+declare
+  v_mgr uuid := '00000000-0000-4000-8000-000000094c02';
+  v_content uuid; v_other uuid; v_timed uuid; v_res jsonb; v_row atlas_private.marketing_deliveries; v_claim jsonb;
+  v_fp_off jsonb; v_fp_on jsonb; v_version integer;
+begin
+  perform public.s94cp_park();
+  perform public.s94cp_set_auto(false);
+  v_content := public.s94cp_content('S94C asap', array['facebook'], null, 'Asap caption');
+  select version into v_version from atlas_private.marketing_content_items where id = v_content;
+  v_fp_off := atlas_private.marketing_content_fingerprint_payload(v_content);
+  perform public.atlas_marketing_update_content(v_mgr, v_content, v_version, '{"publish_asap":true}'::jsonb);
+  v_fp_on := atlas_private.marketing_content_fingerprint_payload(v_content);
+  v_res := public.s94cp_approve(v_content);
+  v_row := public.s94cp_live(v_content, 'facebook');
+  perform public.s94cp_ok('66 P1-1 "as soon as it is approved": approval queues a delivery due now; auto off keeps it ready, not sent',
+    (select metadata -> 'publish_asap' = 'true'::jsonb and scheduled_for is null and status = 'approved'
+     from atlas_private.marketing_content_items where id = v_content)
+    and v_fp_off -> 'publish_asap' = 'false'::jsonb and v_fp_on -> 'publish_asap' = 'true'::jsonb
+    and jsonb_array_length(v_res -> 'deliveries') = 1
+    and v_row.status = 'queued' and v_row.due_at = now() and v_row.next_attempt_at = now()
+    and v_row.payload_snapshot -> 'publish_asap' = 'true'::jsonb
+    and atlas_private.marketing_publication_state(v_content) = 'ready_not_sent'
+    and public.atlas_marketing_delivery_claim('worker-asap', 10, 300) = '[]'::jsonb, v_row::text);
+  perform public.s94cp_set_auto(true);
+  v_claim := public.atlas_marketing_delivery_claim('worker-asap', 10, 300);
+  perform public.s94cp_ok('67 P1-1 with automatic publishing on the asap delivery is claimed at once (no time needed)',
+    jsonb_array_length(v_claim) = 1 and (v_claim -> 0 #>> '{delivery,id}')::uuid = v_row.id
+    and v_claim -> 0 ->> 'claim_kind' = 'publish', v_claim::text);
+  perform public.atlas_marketing_delivery_complete(v_row.id, (v_claim -> 0 ->> 'claim_token')::uuid,
+    '{"status":"published","post_id":"123_456"}'::jsonb);
+
+  -- Turning asap off after approval is material; a time always wins over asap.
+  perform public.s94cp_set_auto(false);
+  v_other := public.s94cp_content('S94C asap edit', array['facebook'], null, 'Asap caption 2');
+  select version into v_version from atlas_private.marketing_content_items where id = v_other;
+  perform public.atlas_marketing_update_content(v_mgr, v_other, v_version, '{"publish_asap":true}'::jsonb);
+  perform public.s94cp_approve(v_other);
+  select version into v_version from atlas_private.marketing_content_items where id = v_other;
+  v_res := public.atlas_marketing_update_content(v_mgr, v_other, v_version, '{"publish_asap":false}'::jsonb);
+  v_timed := public.s94cp_content('S94C asap timed', array['facebook'], now() + interval '2 days', 'Timed caption');
+  update atlas_private.marketing_content_items set metadata = metadata || '{"publish_asap":true}' where id = v_timed;
+  perform public.s94cp_approve(v_timed);
+  perform public.s94cp_ok('68 P1-1 switching asap off after approval needs approval again; a planned time wins over asap',
+    (v_res ->> 'approval_invalidated')::boolean
+    and (select status = 'draft' and not (metadata ? 'publish_asap') from atlas_private.marketing_content_items where id = v_other)
+    and (public.s94cp_delivery(v_other, 'facebook')).status = 'cancelled'
+    and (public.s94cp_live(v_timed, 'facebook')).due_at = now() + interval '2 days'
+    and public.s94cp_expect(format('select public.atlas_marketing_update_content(%L::uuid, %L::uuid, null, ''{"publish_asap":"yes"}''::jsonb)', v_mgr, v_other)) like '22023%');
+exception when others then
+  perform public.s94cp_ok('zz section crashed: review_asap', false, sqlstate || ' ' || sqlerrm);
+end
+$review_asap$;
+
+do $review_media$
+declare
+  v_mgr uuid := '00000000-0000-4000-8000-000000094c02';
+  v_png uuid := gen_random_uuid();
+  v_copy uuid := gen_random_uuid();
+  v_collection uuid;
+  v_content uuid; v_row atlas_private.marketing_deliveries; v_snap jsonb; v_item jsonb; v_list jsonb;
+begin
+  perform public.s94cp_park();
+  perform public.s94cp_set_auto(false);
+  insert into atlas_private.marketing_media_assets (id, kind, status, storage_path, declared_mime, mime_type, declared_bytes,
+    byte_size, sha256, width, height, verified_at, uploaded_by)
+  values (v_png, 'image', 'ready', 'venues/main/2026/10/' || v_png || '/original.png', 'image/png', 'image/png', 500000, 500000,
+    encode(pg_catalog.sha256('s94c-png'::bytea), 'hex'), 1080, 1350, now(), v_mgr);
+  insert into atlas_private.marketing_media_variants (id, asset_id, purpose, aspect_ratio, status, storage_path, declared_mime, declared_bytes,
+    mime_type, byte_size, width, height, sha256, verified_at, created_by)
+  values (v_copy, v_png, 'publish', 'original', 'ready', 'venues/main/2026/10/' || v_png || '/v/' || v_copy || '.jpg', 'image/jpeg', 300000,
+    'image/jpeg', 300000, 1080, 1350, encode(pg_catalog.sha256('s94c-png-copy'::bytea), 'hex'), now(), v_mgr);
+  insert into atlas_private.marketing_media_collections (name, created_by) values ('S94C review collection', v_mgr) returning id into v_collection;
+  v_content := public.s94cp_content('S94C png', array['instagram'], null, 'PNG caption');
+  perform public.atlas_marketing_content_media_set(v_mgr, v_content,
+    jsonb_build_array(jsonb_build_object('asset_id', v_png, 'collection_id', v_collection, 'role', 'cover')));
+  perform public.s94cp_approve(v_content);
+  -- No time and no asap: the approval queues nothing; the delivery is made due now here.
+  v_list := atlas_private.marketing_content_media_list(v_content, 'instagram');
+  perform atlas_private.marketing_deliveries_create_for_approval(v_content,
+    (select approval_id from atlas_private.marketing_content_items where id = v_content), now(), 10);
+  v_row := public.s94cp_live(v_content, 'instagram');
+  perform public.s94cp_ok('69 P1-2 a PNG photo is published as its ready JPEG copy (payload, fingerprint; the attachment keeps variant null)',
+    v_row.payload_snapshot #>> '{media,0,variant_id}' = v_copy::text
+    and v_row.payload_snapshot #>> '{media,0,mime_type}' = 'image/jpeg'
+    and v_row.payload_snapshot #>> '{media,0,storage_path}' like '%/v/' || v_copy || '.jpg'
+    and v_list #>> '{0,variant_id}' is null and v_list #>> '{0,publish_variant_id}' = v_copy::text
+    and atlas_private.marketing_content_fingerprint_payload(v_content) #>> '{media,0,variant_id}' = v_copy::text
+    and atlas_private.marketing_media_asset_json(v_png, false) ->> 'publish_variant_id' = v_copy::text,
+    coalesce(v_row.payload_snapshot::text, 'no delivery'));
+  v_snap := public.atlas_marketing_workspace_snapshot(v_mgr, 'manager',
+    (now() at time zone 'Atlantic/Reykjavik')::date, (now() at time zone 'Atlantic/Reykjavik')::date + 30);
+  select item into v_item from jsonb_array_elements(v_snap -> 'content_items') item where item ->> 'id' = v_content::text;
+  perform public.s94cp_ok('70 P3 snapshot media carries collection_id and publish_variant_id, so a re-save keeps provenance',
+    v_item #>> '{media,0,collection_id}' = v_collection::text
+    and v_item #>> '{media,0,publish_variant_id}' = v_copy::text
+    and v_item #>> '{media,0,mime_type}' = 'image/jpeg'
+    and not (v_item -> 'media' -> 0 ? 'storage_path'), left(coalesce(v_item::text, 'missing'), 300));
+exception when others then
+  perform public.s94cp_ok('zz section crashed: review_media', false, sqlstate || ' ' || sqlerrm);
+end
+$review_media$;
+
+do $review_pin$
+declare
+  v_mgr uuid := '00000000-0000-4000-8000-000000094c02';
+  v_asset uuid; v_content uuid; v_claim jsonb; v_ig uuid; v_token uuid; v_block_before jsonb; v_block jsonb; v_state text;
+begin
+  perform public.s94cp_park();
+  v_asset := public.s94cp_asset('image', 9401);
+  v_content := public.s94cp_content('S94C partial cancel', array['instagram','facebook'], now() + interval '1 hour', 'Partial caption');
+  perform public.s94cp_attach(v_content, v_asset, 0);
+  perform public.s94cp_approve(v_content);
+  perform public.s94cp_due(v_content);
+  perform public.s94cp_set_auto(true);
+  v_claim := public.atlas_marketing_delivery_claim('worker-pin', 10, 300);
+  select (c #>> '{delivery,id}')::uuid, (c ->> 'claim_token')::uuid into v_ig, v_token
+  from jsonb_array_elements(v_claim) c where c #>> '{delivery,provider_key}' = 'instagram';
+  perform public.atlas_marketing_delivery_complete(v_ig, v_token, '{"status":"published","post_id":"17999000940"}'::jsonb);
+  -- Facebook: a transient failure before submit (waits to retry), then the post is cancelled.
+  perform public.atlas_marketing_delivery_complete((c #>> '{delivery,id}')::uuid, (c ->> 'claim_token')::uuid,
+    '{"status":"retrying","error":{"class":"transient","code":"http_500"}}'::jsonb)
+  from jsonb_array_elements(v_claim) c where c #>> '{delivery,provider_key}' = 'facebook';
+  v_block_before := atlas_private.marketing_media_delete_block(v_asset);
+  perform public.atlas_marketing_content_cancel(v_mgr, v_content, 'Changed our mind');
+  v_block := atlas_private.marketing_media_delete_block(v_asset);
+  v_state := public.s94cp_expect(format('select public.atlas_marketing_media_lifecycle(%L::uuid, %L::uuid, ''delete'')', v_mgr, v_asset));
+  perform public.s94cp_ok('71 P2 cancel after a partial publish: the published media stays pinned (delete and purge refused)',
+    (select status from atlas_private.marketing_content_items where id = v_content) = 'cancelled'
+    and (public.s94cp_delivery(v_content, 'instagram')).status = 'published'
+    and (public.s94cp_delivery(v_content, 'facebook')).status = 'cancelled'
+    and v_block_before ->> 'reason' = 'published'
+    and v_block ->> 'reason' = 'published' and (v_block ->> 'count')::integer = 1
+    and v_state like '22023%'
+    and (select status = 'ready' from atlas_private.marketing_media_assets where id = v_asset),
+    coalesce(v_block::text, 'no block') || ' / ' || v_state);
+exception when others then
+  perform public.s94cp_ok('zz section crashed: review_pin', false, sqlstate || ' ' || sqlerrm);
+end
+$review_pin$;
+
+do $review_errors$
+declare
+  v_content uuid; v_claim jsonb; v_id uuid; v_token uuid; v_res jsonb; v_row atlas_private.marketing_deliveries;
+  v_text text; v_steps text;
+begin
+  perform public.s94cp_park();
+  v_text := atlas_private.marketing_sanitize_text('bad signature="abc" and ?token="" or &token= then access_token=x Bearer abc.def https://x.test/a?token=1 password: hunter2', 240);
+  v_content := public.s94cp_content('S94C errors', array['instagram'], now() + interval '1 hour', 'Errors caption');
+  perform public.s94cp_attach(v_content, public.s94cp_id('img1'), 0);
+  perform public.s94cp_approve(v_content);
+  perform public.s94cp_due(v_content);
+  perform public.s94cp_set_auto(true);
+  v_claim := public.atlas_marketing_delivery_claim('worker-err', 10, 300);
+  v_id := (v_claim -> 0 #>> '{delivery,id}')::uuid;
+  v_token := (v_claim -> 0 ->> 'claim_token')::uuid;
+  v_res := public.atlas_marketing_delivery_complete(v_id, v_token, jsonb_build_object('status', 'retrying',
+    'error', jsonb_build_object('class', 'transient', 'code', 'http_500',
+      'message', 'Upstream said signature="abc" ?token="" (x-request 42)')));
+  select * into v_row from atlas_private.marketing_deliveries where id = v_id;
+  select steps::text into v_steps from atlas_private.marketing_delivery_attempts where claim_token = v_token;
+  perform public.s94cp_ok('72 P3-1/P3-2 sanitised text never violates the CHECKs; the browser sees fixed wording, the ledger keeps the provider text',
+    v_text !~* '(access_token|refresh_token|client_secret|bearer [a-z0-9]|[?&]token=|signature=|X-Amz-|https?://|hunter2|abc\.def)'
+    and atlas_private.marketing_sanitize_text('signature="x"', 240) !~* 'signature='
+    and atlas_private.marketing_sanitize_text('?token=""', 240) !~* '[?&]token='
+    and v_res ->> 'status' = 'retrying'
+    and v_row.last_error_message = 'The platform could not be reached. Atlas will try again.'
+    and v_row.last_error_code = 'http_500'
+    and v_steps like '%x-request 42%' and v_steps !~* '(signature=|[?&]token=)',
+    v_text || ' / ' || coalesce(v_res::text, '') || ' / ' || coalesce(v_row.last_error_message, ''));
+  perform public.s94cp_ok('73 P3 Google ALERT posts are refused in SQL (the worker cannot publish them)',
+    public.s94cp_expect($q$select atlas_private.marketing_validate_platform_options('{"google-business-profile":{"gbp":{"topic_type":"ALERT"}}}'::jsonb, array['google-business-profile'])$q$) like '22023%'
+    and public.s94cp_expect($q$select atlas_private.marketing_validate_platform_options('{"google-business-profile":{"gbp":{"topic_type":"OFFER"}}}'::jsonb, array['google-business-profile'])$q$) = 'ok');
+exception when others then
+  perform public.s94cp_ok('zz section crashed: review_errors', false, sqlstate || ' ' || sqlerrm);
+end
+$review_errors$;
+
+do $review_auth$
+declare
+  v_content uuid; v_claim jsonb; v_id uuid; v_token uuid; v_wrong jsonb; v_res jsonb; v_target jsonb; v_grants text := '';
+begin
+  perform public.s94cp_park();
+  v_content := public.s94cp_content('S94C auth', array['facebook'], now() + interval '1 hour', 'Auth caption');
+  perform public.s94cp_approve(v_content);
+  perform public.s94cp_due(v_content);
+  perform public.s94cp_set_auto(true);
+  v_claim := public.atlas_marketing_delivery_claim('worker-auth', 10, 300);
+  v_id := (v_claim -> 0 #>> '{delivery,id}')::uuid;
+  v_token := (v_claim -> 0 ->> 'claim_token')::uuid;
+  v_wrong := public.atlas_integration_mark_auth_failed(v_id, gen_random_uuid(), 'wrong claim');
+  perform public.s94cp_ok('74 security P2-1 mark_auth_failed is fenced on the live claim (wrong token: lease_lost, nothing changes)',
+    v_wrong = '{"ok": false, "lease_lost": true}'::jsonb
+    and (select status from atlas_private.integration_connections where provider_key = 'facebook') = 'connected');
+  v_res := public.atlas_integration_mark_auth_failed(v_id, v_token, 'Error validating access token: Session has expired access_token=EAAB123 https://provider.example.test/x');
+  select t into v_target from jsonb_array_elements(public.atlas_integration_publish_targets()) t where t ->> 'provider_key' = 'facebook';
+  select string_agg(r.rolname, ',' order by r.rolname) into v_grants
+  from pg_catalog.pg_roles r
+  where r.rolname in ('anon','authenticated','service_role','public')
+    and has_function_privilege(r.oid, 'public.atlas_integration_mark_auth_failed(uuid, uuid, text)', 'execute');
+  perform public.s94cp_ok('75 security P2-1 a provider auth failure marks the connection Needs reconnecting (sanitised event, service role only)',
+    (v_res ->> 'ok')::boolean and v_res ->> 'connection_status' = 'expired'
+    and (select status = 'expired' and authorization_state = 'expired' and last_connection_error !~* '(EAAB123|https?://)'
+         from atlas_private.integration_connections where provider_key = 'facebook')
+    and v_target ->> 'ready' = 'false' and v_target ->> 'reason' = 'needs_reauthorization'
+    and exists (select 1 from atlas_private.integration_events where provider_key = 'facebook' and event_type = 'publish_auth_failed'
+                and payload ->> 'delivery_id' = v_id::text and payload ->> 'error' !~* '(EAAB123|https?://)')
+    and v_grants = 'service_role'
+    and (select p.prosecdef and p.proconfig @> array['search_path=""']
+         from pg_catalog.pg_proc p where p.oid = 'public.atlas_integration_mark_auth_failed(uuid, uuid, text)'::regprocedure),
+    coalesce(v_res::text, '') || ' / ' || coalesce(v_grants, 'none'));
+  perform public.atlas_marketing_delivery_complete(v_id, v_token,
+    '{"status":"needs_attention","attention_reason":"auth_expired","error":{"class":"auth","code":"meta_190"}}'::jsonb);
+  perform public.s94cp_ready('facebook', 'fb-s94c-1');
+exception when others then
+  perform public.s94cp_ok('zz section crashed: review_auth', false, sqlstate || ' ' || sqlerrm);
+end
+$review_auth$;
+
 reset role;
 
 select jsonb_build_object(
-  's94c_publishing_preview', case when bool_and(passed) and count(*) = 65 then 'passed' else 'failed' end,
+  's94c_publishing_preview', case when bool_and(passed) and count(*) = 75 then 'passed' else 'failed' end,
   'passed_count', count(*) filter (where passed),
   'failed_count', count(*) filter (where not passed),
   'tests', jsonb_agg(jsonb_build_object('test', test_name, 'passed', passed)

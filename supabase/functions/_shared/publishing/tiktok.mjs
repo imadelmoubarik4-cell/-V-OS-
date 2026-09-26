@@ -56,6 +56,9 @@ function chunkSize(ctx) {
   return Math.max(MIN_CHUNK, Math.min(MAX_CHUNK, Math.floor(raw)));
 }
 
+// Time an upload must be able to get before TikTok's init is sent.
+export const UPLOAD_MIN_START_MS = 60_000;
+
 // Upload plan per TikTok's FILE_UPLOAD rules.
 export function uploadPlan(size, preferredChunk = DEFAULT_CHUNK) {
   const total = Math.floor(Number(size));
@@ -135,6 +138,8 @@ async function uploadChunks(ctx, video, plan, uploadUrl) {
   } catch {
     return { ok: false, code: "upload_url_rejected" };
   }
+  // The upload budget counts from here, not from the start of the tick.
+  ctx.startUpload?.();
   for (let index = 0; index < plan.ranges.length; index += 1) {
     const [start, end] = plan.ranges[index];
     if (ctx.timeLeftMs({ upload: true }) < 20_000) return { ok: false, code: "upload_budget_exhausted" };
@@ -197,6 +202,14 @@ async function startPublish(ctx, d) {
     await ctx.mediaUrls.readRange(item.storage_path, 0, 0);
   } catch (error) {
     return mediaFailureOutcome(error);
+  }
+  // A large upload is only started when this invocation can still give it a
+  // useful share of the upload budget: an init whose upload is cut short
+  // leaves TikTok with a broken post. Before the marker nothing was sent, so
+  // the delivery simply retries in a fresh invocation.
+  const needed = Math.min(UPLOAD_MIN_START_MS, 20_000 + plan.total_chunk_count * 20_000, Number(ctx.uploadBudgetMs) || Infinity);
+  if (typeof ctx.timeLeftMs === "function" && ctx.timeLeftMs({ upload: true }) < needed) {
+    return { status: "retrying", retry_after_s: 5, error: { class: "transient", code: "upload_deferred", message: "Not enough time left in this run to upload the video; Atlas will try again right away." } };
   }
   await ctx.beginSubmit();
   const init = await post(ctx, path, body, { afterSubmit: true });

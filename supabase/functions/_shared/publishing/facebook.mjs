@@ -22,6 +22,9 @@
 // a second ambiguity -> needs_attention. ATLAS_PUBLISHER_FB_AUTO_RETRY=false turns
 // the automatic retry off. Reels are not matched through published_posts:
 // the video's own state is read, and an unconfirmed reel goes to a human.
+// Page videos (fb_page_video) are never retried automatically either: a video
+// can stay out of published_posts while Facebook processes it, so empty reads
+// are not proof of absence; Atlas keeps checking, then asks a human.
 
 import { assertProviderUploadUrl } from "./http.mjs";
 import { attentionOutcome, cadence, failedOutcome, mediaFailureOutcome, normalizeCaption, outcomeFor, providerRequest } from "./classify.mjs";
@@ -222,6 +225,10 @@ async function verify(ctx, d, pageId) {
     return { status: "published", post_id: String(row.id), permalink: httpsOrNull(row.permalink_url), published_at: isoOrNull(row.created_time) ?? new Date(ctx.now()).toISOString(), source: "verification" };
   }
   if (matches.length > 1) return attentionOutcome("outcome_unknown", "fb_verify_ambiguous", "Facebook shows more than one matching post. Check the Page.", "uncertain");
+  if (d.target_kind === "fb_page_video") {
+    await ctx.recordStep(null, {}, { step: "verify_absent_read" });
+    return verifyAgain(d, "fb_video_unconfirmed", "Facebook does not show this video yet. Atlas will check again, then ask you to check the Page.");
+  }
   const reads = (Array.isArray(d.progress?.fb_absent_reads) ? d.progress.fb_absent_reads : []).concat(new Date(ctx.now()).toISOString());
   const first = Date.parse(reads[0]);
   if (reads.length < 2 || ctx.now() - first < ABSENT_READ_GAP_MS) {

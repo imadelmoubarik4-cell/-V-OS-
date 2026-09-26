@@ -521,3 +521,69 @@ test('existing actions keep their names and payloads', async () => {
   assert.equal((await post(handle, 'nope', {})).status, 404);
   assert.equal((await handle(new Request('https://fn.test/x?action=snapshot', { method: 'PUT', headers: { authorization: 'Bearer x' } }))).status, 405);
 });
+
+// ---------------------------------------------------------------- review fixes
+
+test('P2 create-content validates options and media before the post exists (no orphan draft)', async () => {
+  for (const bad of [
+    { platform_options: { instagram: { target_kind: 'ig_story_nope' } } },
+    { media: [{ asset_id: 'not-a-uuid' }] },
+    { media: [{ asset_id: ASSET_A }, { asset_id: ASSET_A }] },
+  ]) {
+    const { handle, rpcCalls } = handlerFor('manager', { rpc: { atlas_marketing_create_content: { id: CONTENT_ID, content_id: CONTENT_ID, content: { id: CONTENT_ID, version: 1 } } } });
+    const response = await post(handle, 'create-content', { client_request_id: '77777777-7777-4777-8777-777777777777', title: 'Autumn menu', content_type: 'post', platforms: ['instagram'], ...bad });
+    assert.equal(response.status, 400, JSON.stringify(bad));
+    assert.equal(rpcCalls('atlas_marketing_create_content').length, 0, 'nothing was created');
+  }
+});
+
+test('P2 create-content: a failure after the post exists returns its id as a partial save (409)', async () => {
+  const { handle, rpcCalls } = handlerFor('manager', {
+    rpc: {
+      atlas_marketing_create_content: { id: CONTENT_ID, content_id: CONTENT_ID, content: { id: CONTENT_ID, version: 1 } },
+      atlas_marketing_update_content: { content: { id: CONTENT_ID, version: 2 } },
+      atlas_marketing_content_media_set: { __status: 400, body: { code: '22023', message: 'only ready library media can be attached', hint: 'atlas:not_ready' } },
+    },
+  });
+  const response = await post(handle, 'create-content', {
+    client_request_id: '77777777-7777-4777-8777-777777777777', title: 'Autumn menu', content_type: 'post', platforms: ['instagram'],
+    platform_options: { instagram: { caption: 'IG only' } }, media: [{ asset_id: ASSET_A }],
+  });
+  assert.equal(response.status, 409);
+  const body = await response.json();
+  assert.equal(body.error_code, 'partial_save');
+  assert.equal(body.content_id, CONTENT_ID);
+  assert.match(body.error, /draft was saved/);
+  assert.equal(rpcCalls('atlas_marketing_create_content').length, 1);
+});
+
+test('P1-1 "As soon as it’s approved" is saved as metadata.publish_asap (create and patch); a time wins', async () => {
+  const { handle, rpcCalls } = handlerFor('manager', {
+    rpc: {
+      atlas_marketing_create_content: { id: CONTENT_ID, content_id: CONTENT_ID, content: { id: CONTENT_ID, version: 1 } },
+      atlas_marketing_update_content: { content: { id: CONTENT_ID, version: 2 } },
+    },
+  });
+  await post(handle, 'create-content', { client_request_id: '77777777-7777-4777-8777-777777777777', title: 'Asap', content_type: 'post', platforms: ['facebook'], publish_asap: true, metadata: { note: 'x' } });
+  assert.deepEqual(rpcCalls('atlas_marketing_create_content')[0].body.p_metadata, { note: 'x', publish_asap: true });
+  await post(handle, 'create-content', { client_request_id: '77777777-7777-4777-8777-777777777778', title: 'Timed', content_type: 'post', platforms: ['facebook'], publish_asap: true, scheduled_for: '2026-09-30T18:00:00Z', metadata: { publish_asap: true } });
+  assert.deepEqual(rpcCalls('atlas_marketing_create_content')[1].body.p_metadata, {});
+  await post(handle, 'update-content', { content_id: CONTENT_ID, version: 1, publish_asap: false });
+  assert.deepEqual(rpcCalls('atlas_marketing_update_content')[0].body.p_patch, { publish_asap: false });
+  assert.deepEqual(contentPatch({ publish_asap: true }), { publish_asap: true });
+  assert.throws(() => contentPatch({ publish_asap: 'yes' }));
+});
+
+test('P1-1 approving a post that publishes as soon as it is approved wakes the worker', async () => {
+  const { handle, calls } = handlerFor('manager', {
+    rpc: { atlas_marketing_decide_approval: { content: { id: CONTENT_ID, status: 'approved' }, deliveries: [{ id: DELIVERY_ID, provider_key: 'facebook', due_at: new Date(NOW - 1000).toISOString() }] } },
+  });
+  const response = await post(handle, 'decide-approval', { content_id: CONTENT_ID, decision: 'approved' });
+  assert.equal(response.status, 200);
+  assert.equal(calls.filter((c) => c.path === '/functions/v1/atlas-marketing-publisher').length, 1);
+});
+
+test('P3 Google ALERT posts are refused by the gateway (the worker cannot publish them)', () => {
+  assert.throws(() => platformOptions({ 'google-business-profile': { gbp: { topic_type: 'ALERT' } } }), /Google post type is invalid/);
+  assert.equal(platformOptions({ 'google-business-profile': { gbp: { topic_type: 'offer' } } })['google-business-profile'].gbp.topic_type, 'OFFER');
+});

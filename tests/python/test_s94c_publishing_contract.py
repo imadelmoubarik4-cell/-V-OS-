@@ -266,13 +266,31 @@ class S94CVerificationScriptTests(unittest.TestCase):
     def test_preview_is_rollback_only_and_in_the_runner(self):
         self.assertTrue(PREVIEW.rstrip().endswith("rollback;"))
         self.assertIn("'s94c_publishing_preview'", PREVIEW)
-        self.assertIn("count(*) = 65", PREVIEW)
+        self.assertIn("count(*) = 75", PREVIEW)
         self.assertIn("verify_s94c_publishing_preview.sql", RUNNER)
         for topic in ("state machine", "write-once", "fingerprint", "automatic publishing off", "Publish now",
                       "fencing", "lease recovery", "stale guard", "backoff", "poll claim does not consume",
                       "exactly one marketing push", "history", "snapshot", "venue time", "bartender, viewer",
-                      "grants", "definitive"):
+                      "grants", "definitive", "as soon as it is approved", "JPEG copy", "collection_id",
+                      "cancel after a partial publish", "fixed wording", "ALERT", "mark_auth_failed"):
             self.assertIn(topic, PREVIEW)
+
+    def test_review_fixes_in_the_migration(self):
+        # P1-1: asap is fingerprinted and queues on approval.
+        self.assertIn("'publish_asap', atlas_private.marketing_content_publish_asap(c.scheduled_for, c.metadata)", MIGRATION)
+        self.assertIn("case when atlas_private.marketing_content_publish_asap(c.scheduled_for, c.metadata) then pg_catalog.now() end", MIGRATION)
+        # P1-2: the published file is the JPEG publish copy of a non-JPEG photo.
+        self.assertIn("coalesce(cm.variant_id, atlas_private.marketing_media_publish_copy(cm.asset_id))", MIGRATION)
+        # Security P2-1: service-role-only, definer, empty search_path, fenced on the claim.
+        self.assertIn("create or replace function public.atlas_integration_mark_auth_failed(p_delivery_id uuid, p_claim_token uuid, p_error text)", MIGRATION)
+        self.assertIn("returns jsonb language plpgsql volatile security definer set search_path = ''", MIGRATION)
+        self.assertIn("revoke all on function public.atlas_integration_mark_auth_failed(uuid, uuid, text) from public, anon, authenticated;", MIGRATION)
+        self.assertIn("grant execute on function public.atlas_integration_mark_auth_failed(uuid, uuid, text) to service_role;", MIGRATION)
+        body = function_body("atlas_private.marketing_delivery_mark_auth_failed")
+        self.assertIn("atlas_private.marketing_delivery_lock_claim(p_delivery_id, p_claim_token)", body)
+        # P3: ALERT is refused; the browser sees fixed wording.
+        self.assertIn("not in ('STANDARD','EVENT','OFFER')", MIGRATION)
+        self.assertIn("atlas_private.marketing_error_wording(last_error_class, attention_reason, last_error_code)", MIGRATION)
 
     def test_concurrency_proof_uses_a_throw_away_copy_and_real_sessions(self):
         self.assertIn('case "$PGHOST" in 127.0.0.1|localhost|::1)', CONCURRENCY)

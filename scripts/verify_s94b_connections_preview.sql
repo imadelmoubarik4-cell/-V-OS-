@@ -437,6 +437,27 @@ insert into s94b_connections values
   ('the lease holder stores the refreshed ciphertext and releases', exists (select 1 from atlas_private.integration_credentials
      where provider_key = 'tiktok' and ciphertext = decode(repeat('a3', 40), 'hex') and refresh_lock_token is null and rotated_at is not null)),
   ('refreshed recorded for the publisher', exists (select 1 from atlas_private.integration_events where provider_key = 'tiktok' and event_type = 'refreshed' and actor_label = 'Atlas publisher'));
+-- P1-3: a transient refresh failure (network, 5xx, 429) releases the lease without degrading
+-- or expiring the connection; only the event is recorded (sanitised).
+create temporary table s94b_before_transient on commit drop as
+select status, authorization_state, publishing_permission_state from atlas_private.integration_connections where provider_key = 'tiktok';
+set local role service_role;
+create temporary table s94b_transient on commit drop as
+select public.atlas_integration_refresh_lock('tiktok', null, null, '00000000-0000-4000-8000-000000094b01', 'S94B manager', 'manager', 60) as result;
+select public.atlas_integration_refresh_release('tiktok', (select (result->>'lock_token')::uuid from s94b_transient),
+  'TikTok token refresh failed (HTTP 503): upstream access_token=abc123 https://open.tiktokapis.com/x?token=zz9 Bearer abc.def', null);
+reset role;
+insert into s94b_connections values
+  ('a transient refresh failure keeps the connection (not degraded, not expired) and releases the lease', (
+    select c.status = b.status and c.authorization_state = b.authorization_state and c.publishing_permission_state = b.publishing_permission_state
+    from atlas_private.integration_connections c, s94b_before_transient b where c.provider_key = 'tiktok')
+    and (select status from s94b_before_transient) = 'connected'
+    and exists (select 1 from atlas_private.integration_credentials where provider_key = 'tiktok' and refresh_lock_token is null)),
+  ('a transient refresh failure is recorded as refresh_failed with sanitised text', exists (
+    select 1 from atlas_private.integration_events where provider_key = 'tiktok' and event_type = 'refresh_failed'
+      and payload ->> 'transient' = 'true' and payload ->> 'error' like '%HTTP 503%'
+      and payload ->> 'error' !~* '(abc123|zz9|https?://|bearer abc)'));
+
 set local role service_role;
 create temporary table s94b_fail on commit drop as
 select public.atlas_integration_refresh_lock('tiktok', null, null, '00000000-0000-4000-8000-000000094b01', 'S94B manager', 'manager', 60) as result;

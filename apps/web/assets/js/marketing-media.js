@@ -9,9 +9,9 @@
 //       the grid, the asset detail sheet and the collection builder. Calling
 //       it again for the same host returns the same controller.
 //   pick({ multiple, kinds, allowCollections, initialTab?, exclude? })
-//       -> Promise<[{ asset_id, variant_id?, collection_id?, collection_name?,
-//          kind, thumb_url, width, height, duration_ms, mime_type, byte_size,
-//          alt_text, title }] | null>
+//       -> Promise<[{ asset_id, variant_id?, publish_variant_id, collection_id?,
+//          collection_name?, kind, thumb_url, width, height, duration_ms,
+//          mime_type, byte_size, alt_text, title }] | null>
 //       The library / collection picker sheet with "Upload new". A collection
 //       resolves with its items in order (each with collection_id). null when
 //       dismissed. `kinds` limits to ['image'] / ['video']; `exclude` lists
@@ -201,6 +201,8 @@
     return {
       asset_id: asset.asset_id || asset.id,
       variant_id: extra.variant_id ?? null,
+      // The JPEG copy that is published for a non-JPEG photo (null otherwise).
+      publish_variant_id: asset.publish_variant_id ?? null,
       ...(extra.collection_id ? { collection_id: extra.collection_id, collection_name: extra.collection_name || null } : {}),
       kind: asset.kind,
       thumb_url: thumbUrl(asset),

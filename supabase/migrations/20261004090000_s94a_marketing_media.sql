@@ -513,6 +513,26 @@ as $function$
 $function$;
 revoke all on function atlas_private.marketing_media_thumb_path(uuid) from public, anon, authenticated;
 
+-- The ready JPEG publish copy of a photo whose original is not a JPEG, else null.
+create or replace function atlas_private.marketing_media_publish_copy(p_asset_id uuid)
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select v.id
+  from atlas_private.marketing_media_assets a
+  join atlas_private.marketing_media_variants v on v.asset_id = a.id
+  where a.id = p_asset_id and a.kind = 'image'
+    and coalesce(a.mime_type, a.declared_mime) <> 'image/jpeg'
+    and v.purpose = 'publish' and v.status = 'ready' and v.deleted_at is null
+    and coalesce(v.mime_type, v.declared_mime) = 'image/jpeg'
+  order by v.created_at desc, v.id
+  limit 1;
+$function$;
+revoke all on function atlas_private.marketing_media_publish_copy(uuid) from public, anon, authenticated;
+
 create or replace function atlas_private.marketing_media_asset_json(p_asset_id uuid, p_full boolean default false)
 returns jsonb
 language sql
@@ -547,12 +567,13 @@ as $function$
     'last_published_at', (select max(u.updated_at) from atlas_private.marketing_media_publication_uses u
                           where u.asset_id = m.id and u.outcome = 'published'),
     'delete_block', atlas_private.marketing_media_delete_block(m.id),
-    'thumb_path', atlas_private.marketing_media_thumb_path(m.id)
+    'thumb_path', atlas_private.marketing_media_thumb_path(m.id),
+    -- The JPEG copy that is published instead of a non-JPEG original (the composer's checks and
+    -- the S94C delivery payload both use it).
+    'publish_variant_id', atlas_private.marketing_media_publish_copy(m.id)
   )
   || case when p_full then pg_catalog.jsonb_build_object(
     'storage_path', m.storage_path,
-    'publish_variant_id', (select v.id from atlas_private.marketing_media_variants v
-      where v.asset_id = m.id and v.purpose = 'publish' and v.status = 'ready' order by v.created_at desc limit 1),
     'variants', coalesce((
       select pg_catalog.jsonb_agg(atlas_private.marketing_media_variant_json(v) order by v.purpose, v.created_at desc)
       from atlas_private.marketing_media_variants v where v.asset_id = m.id and v.status = 'ready'), '[]'::jsonb),
@@ -596,6 +617,7 @@ as $function$
         'status', m.status, 'archived', m.archived_at is not null,
         'width', m.width, 'height', m.height, 'duration_ms', m.duration_ms, 'mime_type', m.mime_type, 'byte_size', m.byte_size,
         'alt_text', m.alt_text, 'focal_point', m.metadata->'focal_point',
+        'publish_variant_id', atlas_private.marketing_media_publish_copy(m.id),
         'thumb_path', atlas_private.marketing_media_thumb_path(m.id)) order by i.position)
       from atlas_private.marketing_media_collection_items i join atlas_private.marketing_media_assets m on m.id = i.asset_id
       where i.collection_id = c.id), '[]'::jsonb))
@@ -1639,8 +1661,7 @@ as $function$
         'sha256', coalesce(m.sha256, m.client_sha256), 'sha256_source', case when m.sha256 is not null then 'server' when m.client_sha256 is not null then 'client' end,
         'alt_text', m.alt_text, 'focal_point', m.metadata->'focal_point', 'trim', m.metadata->'trim',
         'cover_variant_id', m.metadata->>'cover_variant_id', 'crops', coalesce(m.metadata->'crops', '{}'::jsonb),
-        'publish_variant_id', (select v.id from atlas_private.marketing_media_variants v
-          where v.asset_id = m.id and v.purpose = 'publish' and v.status = 'ready' order by v.created_at desc limit 1),
+        'publish_variant_id', atlas_private.marketing_media_publish_copy(m.id),
         'poster_variant_id', (select v.id from atlas_private.marketing_media_variants v
           where v.asset_id = m.id and v.purpose = 'poster' and v.status = 'ready' order by v.created_at desc limit 1)
       ) order by m.id)

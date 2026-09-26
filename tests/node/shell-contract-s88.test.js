@@ -260,9 +260,11 @@ test('changed scripts carry the S88 cache key', () => {
   // S91: the Settings sign-in message; S91b: owner copy for integrations
   // that are not set up, with admin-only setup details.
   // S94: Settings publishing connections and the Marketing composer, media
-  // library and platform checks.
-  for (const file of ['settings-workspace.js', 'marketing-workspace.js', 'marketing-platform-rules.js', 'marketing-media.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261004-s94'`), file);
+  // library and platform checks; S94b: review fixes in the composer (asap,
+  // partial save, radios), the media picker and the platform checks.
+  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261004-s94'"), 'settings-workspace.js');
+  for (const file of ['marketing-workspace.js', 'marketing-platform-rules.js', 'marketing-media.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261004-s94b'`), file);
   }
   for (const file of ['marketing-workspace.css', 'settings-workspace.css']) {
     assert.ok(config.includes(`stylesheetPath: 'assets/css/${file}?v=20261004-s94'`), file);

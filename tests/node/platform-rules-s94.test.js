@@ -168,3 +168,19 @@ test('every message names the channel or is a general check, and none leaks inte
     assert.doesNotMatch(item.message, /\b(ig|fb|gbp|tiktok)_[a-z_]+\b|undefined|NaN|null/, item.message);
   }
 });
+
+test('P1-2 a non-JPEG photo with a ready JPEG publish copy passes the JPEG checks (server and browser copy)', () => {
+  const browser = loadBrowserCopy();
+  const heic = { kind: 'image', mime_type: 'image/heic', width: 1080, height: 1350, byte_size: 400_000 };
+  for (const run of [validate, browser.validate]) {
+    const without = run({ platforms: ['instagram', 'facebook', 'google-business-profile'], caption: 'Jazz', media: [heic] });
+    assert.ok(codes(without).includes('ig_image_format'));
+    assert.ok(codes(without).includes('fb_image_format'));
+    assert.ok(codes(without).includes('gbp_photo_format'));
+    const withCopy = run({ platforms: ['instagram', 'facebook', 'google-business-profile'], caption: 'Jazz', media: [{ ...heic, publish_variant_id: '00000000-0000-4000-8000-000000000001' }] });
+    for (const code of ['ig_image_format', 'fb_image_format', 'gbp_photo_format']) assert.ok(!codes(withCopy).includes(code), code);
+    // An explicitly chosen variant is checked as itself.
+    const chosen = run({ platforms: ['instagram'], caption: 'Jazz', media: [{ ...heic, mime_type: 'image/png', variant_id: '00000000-0000-4000-8000-000000000002', publish_variant_id: '00000000-0000-4000-8000-000000000001' }] });
+    assert.ok(codes(chosen).includes('ig_image_format'));
+  }
+});

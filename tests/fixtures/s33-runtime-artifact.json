@@ -57,13 +57,13 @@
         },
         {
           "path": "functions/atlas-marketing-workspace/handler.mjs",
-          "source_sha256": "2e7d5afee4ce49b1b0b4da87ef668015034b1942614350c0c6aa6fa56f263c85",
-          "candidate_sha256": "b30dbac9c4fe039d2a58e5962d21796f52c4fe9e66a42ddc412a0edc7aff19a2"
+          "source_sha256": "cde651b4a0227e73bf73fb7a057ec74cea26693f7bd2c587308e75bf2094e5dd",
+          "candidate_sha256": "0bb01517f42f7486159fb483c417ebdecfcc22bdd7897ef91a8685c3a9196b66"
         },
         {
           "path": "functions/_shared/integrations/credentials.mjs",
-          "source_sha256": "f35c32842a0780adb071f83c9541e59cdbd2b632f7eede01e6ec989c55dc9f19",
-          "candidate_sha256": "3067c4d3703b99da6932b41a335ee2cf655bb24fd2fdc56a9bc75eb6755fc494"
+          "source_sha256": "45fdc2e490935a9bb69375fb2e87d462f8e0d52fb93be23620fe618e1e0f9613",
+          "candidate_sha256": "7fb1ccb969a44dd0e0fc38b240f7cbc2dd15480fc35d66e672251e486020bcb8"
         },
         {
           "path": "functions/_shared/integrations/provider-http.mjs",

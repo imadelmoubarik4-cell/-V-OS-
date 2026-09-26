@@ -1012,3 +1012,97 @@ test('publishing modules never log and never build provider URLs outside the all
     }
   }
 });
+
+// ---- review fixes: auth marking, media uses, upload budget, Facebook video verify ----
+
+test('security P2-1: a provider auth failure marks the connection through the fenced RPC before complete()', async () => {
+  const s = setup({ script: { 'ig.media': [steps.metaAuthExpired()] }, credentials: { failures: { 'google-business-profile': { code: 'needs_reauthorization', reauthorize: true } } } });
+  const ig = s.db.add({ provider_key: 'instagram', target_kind: 'ig_feed', media: [s.image(0)] });
+  const g = s.db.add({ provider_key: 'google-business-profile', target_kind: 'gbp_local_post' });
+  await s.tick();
+  assert.equal(row(s, ig).attention_reason, 'auth_expired');
+  assert.deepEqual(s.db.authFailures.map((f) => f.delivery_id), [ig.id], 'only the provider refusal marks the connection (the credential failure already reflects it)');
+  const log = s.db.rpcLog;
+  const mark = log.findIndex((e) => e.name === 'atlas_integration_mark_auth_failed');
+  const complete = log.findIndex((e) => e.name === 'atlas_marketing_delivery_complete' && e.payload.p_delivery_id === ig.id);
+  assert.ok(mark >= 0 && mark < complete, 'marked while the claim is live, before complete releases it');
+  const claimToken = log[complete].payload.p_claim_token;
+  assert.equal(log[mark].payload.p_claim_token, claimToken, 'fenced on the same claim');
+  assert.ok(log[mark].payload.p_error && !log[mark].payload.p_error.includes(TOKENS.instagram));
+  assert.ok(!s.db.authFailures.some((f) => f.delivery_id === g.id));
+  s.finish();
+});
+
+test('P2 media uses: a published or processing delivery records each media item once per reach (no URLs)', async () => {
+  const s = setup({ env: { ATLAS_PUBLISHER_TIKTOK_CHUNK_BYTES: String(5 * MIB) } });
+  s.fakes.world.tiktokCompleteAfter = 2;
+  const photo = s.image(0);
+  const ig = s.db.add({ provider_key: 'instagram', target_kind: 'ig_feed', media: [photo] });
+  const clip = s.video(0, { size: 3 * MIB });
+  const tt = s.db.add({ provider_key: 'tiktok', target_kind: 'tiktok_inbox_video', media: [clip] });
+  await s.tick();
+  assert.equal(row(s, ig).status, 'published');
+  assert.equal(row(s, tt).status, 'processing');
+  const igUse = s.db.mediaUses.find((u) => u.platform === 'instagram');
+  assert.deepEqual(
+    { asset_id: igUse.asset_id, content_id: igUse.content_id, outcome: igUse.outcome, fetch_method: igUse.fetch_method, job: igUse.publication_job_id, media: igUse.provider_media_id },
+    { asset_id: photo.asset_id, content_id: row(s, ig).content_id, outcome: 'published', fetch_method: 'signed_url', job: ig.id, media: row(s, ig).provider_post_id },
+  );
+  assert.deepEqual(s.db.mediaUses.filter((u) => u.platform === 'tiktok').map((u) => [u.asset_id, u.outcome, u.fetch_method]), [[clip.asset_id, 'processing', 'file_upload']]);
+  s.advance(31);
+  await s.tick();
+  assert.equal(row(s, tt).status, 'processing', 'still processing after the first poll');
+  assert.equal(s.db.mediaUses.filter((u) => u.platform === 'tiktok').length, 1, 'a poll that stays processing records nothing new');
+  s.advance(61);
+  await s.tick();
+  assert.equal(row(s, tt).status, 'published');
+  assert.deepEqual(s.db.mediaUses.filter((u) => u.platform === 'tiktok').map((u) => u.outcome), ['processing', 'published']);
+  assertNoLeak('media uses', s.db.mediaUses);
+  assert.ok(!JSON.stringify(s.db.mediaUses).includes('https://'));
+  s.finish();
+});
+
+test('P3 TikTok upload budget counts from the upload start: a second upload in the same run is not cut short', async () => {
+  const s = setup({ env: { ATLAS_PUBLISHER_TIKTOK_CHUNK_BYTES: String(5 * MIB), ATLAS_PUBLISHER_UPLOAD_BUDGET_MS: '30000' }, slowMs: 3000 });
+  const a = s.db.add({ provider_key: 'tiktok', target_kind: 'tiktok_inbox_video', media: [s.video(0, { size: 12 * MIB })] });
+  const b = s.db.add({ provider_key: 'tiktok', target_kind: 'tiktok_inbox_video', media: [s.video(0, { size: 12 * MIB })] });
+  await s.tick();
+  for (const d of [a, b]) {
+    const publish = s.fakes.world.tiktokPublishes.get(row(s, d).provider_publish_id);
+    assert.ok(publish, 'init sent');
+    assert.equal(publish.received, publish.size, 'every chunk uploaded');
+    assert.equal(row(s, d).status, 'processing');
+  }
+  assert.equal(s.fakes.count('tt.upload'), 4);
+  assert.ok(!s.db.attempts.some((attempt) => attempt.steps.some((step) => step.code === 'upload_budget_exhausted')));
+  s.finish();
+});
+
+test('P3 TikTok: an upload that could not get enough of the run is not started (no init; retried later)', async () => {
+  const s = setup({ env: { ATLAS_PUBLISHER_TIKTOK_CHUNK_BYTES: String(5 * MIB), ATLAS_PUBLISHER_WALL_BUDGET_MS: '60000' }, slowMs: 25_000 });
+  const d = s.db.add({ provider_key: 'tiktok', target_kind: 'tiktok_inbox_video', media: [s.video(0, { size: 3 * MIB })] });
+  await s.tick();
+  assert.equal(s.fakes.count('tt.inbox_init'), 0, 'nothing non-idempotent was sent');
+  assert.equal(row(s, d).status, 'retrying');
+  assert.equal(row(s, d).last_error_code, 'upload_deferred');
+  assert.equal(row(s, d).phase, 'none');
+  s.finish();
+});
+
+test('P2 Facebook page video: empty published_posts reads are not proof of absence (never re-posted)', async () => {
+  const s = setup({ script: { 'fb.videos': ['drop'] } });
+  const d = s.db.add({ provider_key: 'facebook', target_kind: 'fb_page_video', media: [s.video(0, { width: 1920, height: 1080 })] });
+  await s.tick();
+  assert.equal(row(s, d).status, 'verifying');
+  const seen = [];
+  for (let i = 0; i < 6 && row(s, d).status === 'verifying'; i += 1) {
+    s.advance(301);
+    await s.tick();
+    seen.push(row(s, d).status);
+  }
+  assert.ok(!seen.includes('retrying'), `statuses: ${seen.join(',')}`);
+  assert.equal(row(s, d).status, 'needs_attention');
+  assert.equal(row(s, d).attention_reason, 'outcome_unknown');
+  assert.equal(s.fakes.count('fb.videos'), 1, 'POST /videos is sent once');
+  s.finish();
+});
