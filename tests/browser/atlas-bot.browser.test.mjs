@@ -411,9 +411,14 @@ test('reduced motion switched on while the robot runs: the scene is told, drawin
     ]) {
       await on();
       await until(async () => { const now = await info(page); return now.reducedMotion === true && now.running === false; }, { message: 'reduced motion taken live' });
+      // No state change inside the window (a state change draws one still
+      // frame, by design): the robot stays awake throughout, and the pointer
+      // stays off the sidebar's Atlas AI item (hovering it is a wake trigger).
+      await page.evaluate(() => { window.AtlasBot.robot.setDelays({ awake: 600000 }); window.AtlasBot.robot.set('awake'); });
       await frames(page, 3);
+      await until(async () => (await info(page)).running === false, { message: 'still' });
       const still = (await info(page)).scene.frames;
-      await page.mouse.move(100, 100);
+      await page.mouse.move(600, 100);
       await page.mouse.move(1300, 800, { steps: 12 });
       await frames(page, 10);
       assert.equal((await info(page)).scene.frames, still, 'pointer moves draw nothing under reduced motion');
