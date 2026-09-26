@@ -301,8 +301,14 @@ test('live voice connects over WebRTC, runs tools through the server and shows p
     return route.fulfill({ status: 201, contentType: 'application/sdp', headers: { 'access-control-allow-origin': '*' }, body: 'v=0 harness-answer' });
   });
   try {
+    // Starting voice wakes the assistant's robot, which then mirrors the call.
+    await page.evaluate(() => window.AtlasBot?.robot.set('sleeping'));
     await page.click('[data-ai-live]');
     await page.waitForSelector('.voice[data-state="listening"]');
+    const robot = () => page.evaluate(() => window.AtlasBot?.robot.info());
+    assert.equal((await robot()).state, 'listening', 'the robot listens');
+    assert.ok((await robot()).history.some((step) => step.from === 'sleeping' && step.to === 'awake'), 'voice start woke it');
+    assert.equal(await page.$eval('.voice .atlas-bot-live', (node) => node.dataset.state), 'listening');
     assert.equal(calls(backend, 'voice-session').length, 1);
     assert.equal(calls(backend, 'voice-session')[0].body.conversation_id, IDS.convNegroni);
     assert.deepEqual(sdp, [{ url: 'https://api.openai.com/v1/realtime/calls', auth: 'Bearer ek_harness_secret', type: 'application/sdp', body: 'v=0 harness-offer' }]);
@@ -318,6 +324,7 @@ test('live voice connects over WebRTC, runs tools through the server and shows p
     await page.evaluate(() => window.__dc.serverEvent({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u1', transcript: 'Six bottles of Tanqueray and two Campari' }));
     await page.evaluate(() => window.__dc.serverEvent({ type: 'input_audio_buffer.speech_stopped' }));
     assert.equal(await state(), 'thinking');
+    assert.equal((await robot()).state, 'thinking');
     assert.match(await page.textContent('.voice__state'), /Thinking/);
 
     await page.evaluate(() => window.__dc.serverEvent({ type: 'response.output_item.done', item: { type: 'function_call', status: 'completed', call_id: 'call_1', name: 'stock_count_draft', arguments: '{"entries":[]}' } }));
@@ -337,6 +344,8 @@ test('live voice connects over WebRTC, runs tools through the server and shows p
 
     await page.evaluate(() => window.__dc.serverEvent({ type: 'response.output_audio_transcript.delta', item_id: 'a1', delta: 'Got it, six Tanqueray.' }));
     assert.equal(await state(), 'speaking');
+    assert.equal((await robot()).state, 'answering', 'speaking is answering');
+    assert.equal(await page.$eval('.voice .atlas-bot-live', (node) => node.dataset.state), 'answering');
     await page.evaluate(() => window.__dc.serverEvent({ type: 'input_audio_buffer.speech_started' }));
     assert.equal(await state(), 'interrupted', 'speaking over Atlas interrupts it');
     await page.evaluate(() => window.__dc.serverEvent({ type: 'response.output_audio_transcript.done', item_id: 'a1', transcript: 'Got it, six Tanqueray.' }));
