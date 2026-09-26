@@ -64,7 +64,8 @@
   const role = () => shell.profile?.()?.role || root.atlasCurrentProfile?.role || null;
   const isManager = () => MANAGERS.includes(role());
   const canCount = () => STAFF.includes(role());
-  const icon = (name) => `<i data-lucide="${esc(name)}" aria-hidden="true"></i>`;
+  // 'atlas-bot' is the Atlas AI robot (atlas-bot.js), the assistant's face.
+  const icon = (name) => (name === 'atlas-bot' && window.AtlasBot ? window.AtlasBot.html({ size: 18 }) : `<i data-lucide="${esc(name)}" aria-hidden="true"></i>`);
   const lucide = () => root.lucide?.createIcons?.();
   const uuid = () => (root.AtlasCapture?.uuid ? root.AtlasCapture.uuid() : root.crypto.randomUUID());
   const toast = (message, options) => shell.toast?.(message, options);
@@ -694,7 +695,7 @@
     const entries = [['open', 'panel-right-open', 'Open item']];
     if (canCount() && item.active !== false) entries.push(['count', 'list-checks', `Count ${item.name}`]);
     if (isManager() && item.active !== false) entries.push(['order', 'truck', 'Add to an order'], ['waste', 'trash-2', 'Record waste']);
-    entries.push(['ask', 'sparkles', 'Ask Atlas about this']);
+    entries.push(['ask', 'atlas-bot', 'Ask Atlas about this']);
     if (isManager()) entries.push('-', item.active === false ? ['reactivate', 'rotate-ccw', 'Reactivate'] : ['deactivate', 'archive', 'Deactivate']);
     menu.innerHTML = entries.map((entry) => entry === '-' ? '<li role="separator" class="atlas-menu__sep"></li>'
       : `<li><button type="button" class="atlas-menu__item${entry[0] === 'deactivate' ? ' atlas-menu__item--danger' : ''}" data-row-action="${entry[0]}">${icon(entry[1])}${esc(entry[2])}</button></li>`).join('');
@@ -780,7 +781,7 @@
         ${item.active === false ? alertHtml('info', 'This item is inactive.', 'It’s kept for history and left out of counts and orders.', manager ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-inv-reactivate>Reactivate</button>' : '') : ''}
       </div>
       <footer class="atlas-sheet__foot">
-        <button type="button" class="atlas-btn atlas-btn--ghost" data-inv-ask>${icon('sparkles')}Ask Atlas</button>
+        <button type="button" class="atlas-btn atlas-btn--ghost" data-inv-ask>${icon('atlas-bot')}Ask Atlas</button>
         ${canCount() && item.active !== false ? `<button type="button" class="atlas-btn atlas-btn--${manager ? 'secondary' : 'primary'}" data-inv-count-item>${icon('list-checks')}Count this</button>` : ''}
         ${manager ? '<button type="button" class="atlas-btn atlas-btn--primary" data-inv-edit>Edit details</button>' : ''}
       </footer>
@@ -1480,7 +1481,7 @@
           <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-id-action="open"${selected ? '' : ' disabled'}>${icon('panel-right-open')}Open item</button>
           ${canCount() ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="count"${selected && item?.active !== false ? '' : ' disabled'}>${icon('list-checks')}Count item</button>` : ''}
           <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="recipes"${selected ? '' : ' disabled'}>${icon('martini')}View recipes</button>
-          <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="ask">${icon('sparkles')}Ask Atlas</button>
+          <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="ask">${icon('atlas-bot')}Ask Atlas</button>
           <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="wrong">${icon('thumbs-down')}Wrong product</button>
         </div>
         <p class="atlas-capture-note">Identifying never changes stock or items.</p>
@@ -1573,7 +1574,7 @@
         <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-unknown="retry">${icon('scan-line')}Retry scan</button>
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-unknown="search">${icon('search')}Search inventory</button>
         ${candidates.length ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-unknown="matches">${icon('list')}View possible matches</button>` : ''}
-        <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-unknown="ask">${icon('sparkles')}Ask Atlas</button>
+        <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-unknown="ask">${icon('atlas-bot')}Ask Atlas</button>
         ${options.allowDraft === false ? '' : `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--lg" data-unknown="draft">${icon('file-plus')}Create new product draft</button>`}
       </div></div>`, (sheet) => {
       sheet.querySelectorAll('[data-unknown]').forEach((button) => button.addEventListener('click', () => {

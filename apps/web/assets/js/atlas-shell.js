@@ -661,7 +661,7 @@
   const ROLES_MANAGERS = Object.freeze(['admin', 'manager']);
   const NAV_ITEMS = Object.freeze([
     { id: 'home', label: 'Home', icon: 'house', route: '#home', view: 'dashboard', views: ['dashboard', 'brain'], aliases: ['dashboard', 'brain'], group: null, roles: ROLES_ALL, keywords: ['today', 'dashboard', 'briefing'] },
-    { id: 'ai', label: 'Atlas AI', icon: 'sparkles', route: '#ai', view: 'ai', views: ['ai'], aliases: [], group: null, roles: ROLES_ALL, accent: true, keywords: ['ask', 'assistant', 'decisions'] },
+    { id: 'ai', label: 'Atlas AI', icon: 'atlas-bot', route: '#ai', view: 'ai', views: ['ai'], aliases: [], group: null, roles: ROLES_ALL, accent: true, keywords: ['ask', 'assistant', 'decisions'] },
     { id: 'messages', label: 'Messages', icon: 'messages-square', route: '#messages', view: 'team', views: ['team'], aliases: [], group: null, roles: ROLES_ALL, keywords: ['chat', 'handover', 'announcements'] },
     { id: 'operations', label: 'Operations', icon: 'clipboard-check', route: '#operations', view: 'operations', views: ['operations'], aliases: [], group: 'Venue', roles: ROLES_ALL, keywords: ['checklist', 'opening', 'closing', 'temperature'] },
     { id: 'inventory', label: 'Inventory', icon: 'package', route: '#inventory', view: 'inventory', views: ['inventory', 'movements', 'waste'], aliases: ['movements', 'waste'], group: 'Venue', roles: ROLES_ALL, keywords: ['stock', 'items', 'count', 'waste', 'movements'] },
@@ -724,7 +724,8 @@
   function pageHead({ title = '', sub = '', actions = [], id = '' } = {}) {
     const buttons = (Array.isArray(actions) ? actions : []).map((action) => {
       const attrs = Object.entries(action.attrs || {}).map(([name, value]) => ` ${escapeHtml(name)}="${escapeHtml(value)}"`).join('');
-      const icon = action.icon ? `<i data-lucide="${escapeHtml(action.icon)}" aria-hidden="true"></i>` : '';
+      const icon = action.icon === 'atlas-bot' && root.AtlasBot ? root.AtlasBot.html({ size: 20 })
+        : action.icon ? `<i data-lucide="${escapeHtml(action.icon)}" aria-hidden="true"></i>` : '';
       return `<button type="button" class="atlas-btn atlas-btn--${escapeHtml(action.variant || 'secondary')}"${attrs}>${icon}${escapeHtml(action.label)}</button>`;
     }).join('');
     const heading = `<h1 class="page-head__title"${id ? ` id="${escapeHtml(id)}"` : ''}>${escapeHtml(title)}</h1>`;

@@ -99,7 +99,7 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 .atlas-ai .ai-col { max-width: var(--ai-reading); margin: 0 auto; }
 
 /* empty state */
-.atlas-ai .ai-empty { min-height: 100%; display: grid; align-content: center; justify-items: center; gap: 12px; padding: 12vh 0 24px; text-align: center; }
+.atlas-ai .ai-empty { min-height: 100%; display: grid; align-content: safe center; justify-items: center; gap: 12px; padding: 12vh 0 24px; text-align: center; }
 .atlas-ai .ai-empty__greeting { font: 500 28px/34px var(--font-display, 'Fraunces', Georgia, serif); letter-spacing: -0.02em; font-variation-settings: 'opsz' 72; color: var(--text, #17191e); }
 .atlas-ai .ai-empty__context { color: var(--text-2, #5b616b); }
 .atlas-ai .ai-empty__chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; max-width: 560px; }
@@ -122,6 +122,22 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 
 .atlas-ai .msg-ai { margin-bottom: 32px; }
 .atlas-ai .msg-ai__who { display: flex; align-items: center; gap: 8px; font: 500 13px/18px var(--font-sans, sans-serif); margin-bottom: 8px; }
+/* The Atlas AI robot (atlas-bot.js): live in the empty state and the voice panel. */
+.atlas-ai .ai-empty__bot { margin-bottom: -8px; }
+.atlas-ai .ai-empty__bot .atlas-bot-live { width: 176px; height: 176px; }
+.atlas-ai .voice__top .atlas-bot-live { width: 44px; height: 44px; margin: -8px -2px -8px -4px; }
+/* Short screens (phone landscape): a smaller robot and tighter spacing; when the
+   empty state is still taller than the space, it scrolls instead of clipping the
+   robot above the fold ('safe center' above). */
+@media (max-height: 560px) {
+  /* The workspace fills the window instead of pushing the page into a scroll. */
+  .atlas-ai .ai-layout { min-height: 0; }
+  .atlas-ai .ai-empty { padding: 8px 0 16px; gap: 8px; }
+  .atlas-ai .ai-empty__bot .atlas-bot-live { width: 96px; height: 96px; }
+  .atlas-ai .ai-empty__greeting { font-size: 22px; line-height: 28px; }
+  .atlas-ai .ai-empty__chips { margin-top: 4px; }
+  .atlas-ai .composer-hint { display: none; }
+}
 .atlas-ai .ai-mark { width: 22px; height: 22px; border-radius: 6px; background: var(--accent-soft, #edf3fd); color: var(--accent, #1f6fdb); display: grid; place-items: center; }
 .atlas-ai .ai-mark .icon { width: 14px; height: 14px; }
 .atlas-ai .msg-ai__text { font: var(--type-body-lg, 400 15px/24px var(--font-sans, sans-serif)); color: var(--text, #17191e); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
@@ -434,6 +450,7 @@ html.atlas-reduce-motion .atlas-ai *, html.atlas-reduce-motion .atlas-ai *::befo
   /* The empty state keeps the phone tab bar; the composer sits above it. */
   .atlas-ai.has-tabbar .composer-wrap { bottom: calc(56px + env(safe-area-inset-bottom)); }
   .atlas-ai .ai-empty { padding-top: 8vh; min-height: 0; }
+  .atlas-ai .ai-empty__bot .atlas-bot-live { width: 136px; height: 136px; }
   .atlas-ai .ai-empty__chips { flex-direction: column; align-items: stretch; width: 100%; }
   .atlas-ai .ai-empty__chips .atlas-chip { justify-content: flex-start; }
   .atlas-ai .ai-decisions__inner { padding: 12px var(--ai-gutter) 80px; }

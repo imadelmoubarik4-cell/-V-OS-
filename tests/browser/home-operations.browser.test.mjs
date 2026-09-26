@@ -52,6 +52,9 @@ test('Home briefing hands the question to Atlas AI with the briefing as context'
   const { page, close } = await launch();
   try {
     await page.waitForSelector('.home-briefing [data-home-ask]');
+    // The daily briefing is Atlas speaking: its header carries the Atlas AI robot.
+    assert.equal(await page.locator('.home-briefing__head .atlas-bot').count(), 1);
+    assert.equal(await page.locator('.home-briefing__head [data-lucide="sparkles"]').count(), 0);
     await page.evaluate(() => {
       window.__asked = [];
       window.AtlasAI = { ...(window.AtlasAI || {}), askAbout: (record) => { window.__asked.push(record); } };
