@@ -147,7 +147,7 @@ insert into s93_mi select 'the snapshot stays a security invoker',
   not p.prosecdef from pg_proc p where p.oid = to_regprocedure('atlas_private.team_messages_snapshot(uuid,text,uuid[],text,integer)');
 
 select jsonb_build_object(
-  's92_messages_sender_identity', case when bool_and(passed) then 'passed' else 'failed' end,
+  's93_messages_sender_identity', case when bool_and(passed) then 'passed' else 'failed' end,
   'passed_count', count(*) filter (where passed),
   'failed_count', count(*) filter (where not passed),
   'tests', jsonb_agg(jsonb_build_object('test', test_name, 'passed', passed) order by test_name)

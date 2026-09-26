@@ -64,6 +64,17 @@ function labelForProfile(profile: Partial<AtlasProfile> | null | undefined): str
   return actorLabel(profile);
 }
 
+// S93: the only member shape that leaves the gateway. The roster is read with
+// email (for ordering and the S87 label fallback), but an email address never
+// leaves the gateway: every response that carries members goes through here.
+function memberPayload(profile: AtlasProfile) {
+  return {
+    id: profile.id,
+    label: labelForProfile(profile),
+    role: profile.role,
+  };
+}
+
 function staffPayload(context: AtlasContext) {
   return {
     id: context.user.id,
@@ -314,7 +325,7 @@ async function messageSnapshot(context: AtlasContext, channelKey: string, limit:
     })).sort((left: Record<string, unknown>, right: Record<string, unknown>) =>
       Number(Boolean(right.starred)) - Number(Boolean(left.starred)));
   }
-  return { snapshot, members };
+  return { snapshot, members: members.map(memberPayload) };
 }
 
 async function inventoryItems(context: AtlasContext): Promise<any[]> {
@@ -517,11 +528,7 @@ Deno.serve(async (request: Request) => {
         return jsonResponse({
           snapshot,
           staff: staffPayload(context),
-          members: members.map((member) => ({
-            id: member.id,
-            label: labelForProfile(member),
-            role: member.role,
-          })),
+          members,
           policy: {
             delivery_mode: Deno.env.get("ATLAS_PUSH_DELIVERY_ENABLED") === "true" ? "push_and_secure_polling" : "secure_polling",
             browser_notifications_enabled: Deno.env.get("ATLAS_PUSH_DELIVERY_ENABLED") === "true",

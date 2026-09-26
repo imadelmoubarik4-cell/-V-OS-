@@ -9,6 +9,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 import { json, loadEdgeFunction } from './helpers/edge-function-harness.js';
 import { FORMER_MEMBER_LABEL, realName, rosterLabels, senderName, withSenderNames } from '../../supabase/functions/atlas-team-messages/identity.mjs';
@@ -18,6 +19,7 @@ const MIGRATION = read('supabase/migrations/20261002090000_s93_messages_sender_i
 const PREVIEW = read('scripts/verify_s93_messages_sender_identity_preview.sql');
 const GATEWAY = read('supabase/functions/atlas-team-messages/index.ts');
 const PHOTOS = read('apps/web/assets/js/team-profile-photos.js');
+const HOME = read('apps/web/assets/js/home.js');
 
 const ADMIN = 'b9a22f65-e180-429b-8531-008fd08d31aa';
 const SARA = '7d3c1f10-0000-4000-8000-000000000002';
@@ -96,6 +98,8 @@ function backend(self = ROSTER[0]) {
       if (name === 'atlas_team_conversation_stars_snapshot') return json([]);
       if (name === 'atlas_push_notification_enqueue_many') return json({ queued: 1 });
       if (name === 'atlas_team_messages_send') return json({ duplicate: false, message_id: 'new-1' });
+      if (name === 'atlas_team_messages_mark_read') return json({ channel_key: 'general', read: 2 });
+      if (name === 'atlas_team_conversation_star_set') return json({ channel_key: 'general', starred: body.p_starred === true });
       if (name === 'atlas_team_messages_snapshot') {
         return json({
           selected_channel_key: 'general',
@@ -143,6 +147,60 @@ test('gateway send stores the sender display name (never an address) and the pus
   assert.equal(rpc.find((call) => call.name === 'atlas_push_notification_enqueue_many').body.p_body, 'Sara Jónsdóttir: Ice delivered');
 });
 
+// S87: an email address never leaves the gateway. The roster is read with
+// email, so every response that carries members (GET snapshot and every POST:
+// send, mark-read, star, edit, delete) must send only { id, label, role }.
+const post = (action, body) => new Request(`https://fn.test/atlas-team-messages?action=${action}`, {
+  method: 'POST',
+  headers: { authorization: 'Bearer jwt', 'content-type': 'application/json' },
+  body: JSON.stringify({ channel_key: 'general', ...body }),
+});
+
+function assertNoAddress(value, where) {
+  const walk = (node, path) => {
+    if (Array.isArray(node)) return node.forEach((item, index) => walk(item, `${path}[${index}]`));
+    if (node && typeof node === 'object') {
+      for (const [key, child] of Object.entries(node)) {
+        assert.notEqual(key, 'email', `${where}: no email key at ${path}`);
+        walk(child, `${path}.${key}`);
+      }
+    }
+  };
+  walk(value, where);
+}
+
+for (const [name, makeRequest] of [
+  ['GET snapshot', () => new Request('https://fn.test/atlas-team-messages?action=snapshot&channel=general', { headers: { authorization: 'Bearer jwt' } })],
+  ['send', () => post('send', { body: 'Ice delivered', client_request_id: '7d1c1d8e-2b1f-4b7a-9d0e-3f5a2c1b4e66' })],
+  ['mark-read', () => post('mark-read', {})],
+  ['star', () => post('star', { starred: true })],
+]) {
+  test(`gateway ${name}: members are { id, label, role } and the body carries no address`, async () => {
+    const handler = await loadEdgeFunction('supabase/functions/atlas-team-messages/index.ts', ENV);
+    const { rpc, fetchImpl } = backend();
+    rpc.length = 0;
+    const response = await handler(makeRequest(), fetchImpl);
+    assert.equal(response.status, 200);
+    const text = await response.text();
+    assert.doesNotMatch(text, /@/, `${name}: no address in the response`);
+    assert.doesNotMatch(text, /"email"/, `${name}: no email key in the response`);
+    const body = JSON.parse(text);
+    assertNoAddress(body, name);
+    assert.deepEqual(body.members, [
+      { id: ADMIN, label: 'Imad El Moubarik', role: 'admin' },
+      { id: SARA, label: 'Sara Jónsdóttir', role: 'bartender' },
+      { id: NONAME, label: 'Team member', role: 'bartender' },
+    ]);
+    assert.equal(body.staff.label, 'Imad El Moubarik');
+  });
+}
+
+test('gateway: one member shape for every response (memberPayload uses actorLabel via labelForProfile)', () => {
+  assert.match(GATEWAY, /function memberPayload\(profile: AtlasProfile\) \{\s+return \{\s+id: profile\.id,\s+label: labelForProfile\(profile\),\s+role: profile\.role,\s+\};\s+\}/);
+  assert.match(GATEWAY, /function labelForProfile\([^)]*\): string \{\s+return actorLabel\(profile\);/);
+  assert.match(GATEWAY, /return \{ snapshot, members: members\.map\(memberPayload\) \};/);
+});
+
 test('gateway wires the identity module into every snapshot it returns', () => {
   assert.match(GATEWAY, /import \{ withSenderNames \} from "\.\/identity\.mjs";/);
   assert.match(GATEWAY, /const snapshot = withSenderNames\(rawSnapshot, members\);/);
@@ -163,7 +221,8 @@ test('migration: Team name → profiles.display_name (trigger + idempotent backf
   const files = fs.readdirSync(new URL('../../supabase/migrations/', import.meta.url)).filter((name) => name.endsWith('.sql')).sort();
   assert.equal(files.at(-1), '20261002090000_s93_messages_sender_identity.sql', 'the newest migration');
   assert.match(PREVIEW, /rollback;\s*$/);
-  assert.match(PREVIEW, /s93_messages_sender_identity/);
+  assert.match(PREVIEW, /'s93_messages_sender_identity', case when bool_and\(passed\) then 'passed' else 'failed' end/, 'the result key names this release');
+  assert.doesNotMatch(PREVIEW, /s92_messages_sender_identity/);
 });
 
 test('photos: Messages can ask for a fresh snapshot (never loaded, near expiry, or a failed image)', () => {
@@ -171,4 +230,65 @@ test('photos: Messages can ask for a fresh snapshot (never loaded, near expiry, 
   assert.match(PHOTOS, /if \(!state\.lastLoadedAt \|\| Date\.now\(\) - state\.lastLoadedAt > REFRESH_MS\) loadSnapshot\(\{ force: true, silent: true \}\);/);
   assert.match(PHOTOS, /if \(Date\.now\(\) - staleRequestedAt < 60000\) return;/);
   assert.match(PHOTOS, /ensureFresh,/);
+});
+
+// S93: the Home/bell "message" item said "Team member in General" because it
+// read the stored sender_label. It reads the live name first (sender_name from
+// the gateway snapshot, or lastMessage.sender from the unread worker).
+function homeWithShell() {
+  const handlers = new Map();
+  const noop = () => {};
+  const atlas = {
+    profile: () => ({ id: ADMIN, role: 'admin' }),
+    registerHomeSection: noop,
+    home: { contribute: noop },
+    notify: { contribute: noop },
+    actions: { register: noop },
+    links: { register: noop },
+    onView: noop,
+    onDataLoaded: noop,
+    emit: noop,
+    navigate: noop,
+    on: (event, handler) => handlers.set(event, handler),
+  };
+  const context = {
+    Date, Number, Math, Map, Set, String, Array, Object, JSON, console, Promise,
+    setTimeout, clearTimeout,
+    document: { readyState: 'complete', addEventListener: noop, getElementById: () => null, querySelector: () => null },
+    addEventListener: noop,
+    AtlasShell: atlas,
+  };
+  context.window = context;
+  vm.createContext(context);
+  vm.runInContext(HOME, context);
+  return { context, handlers };
+}
+
+const titles = (context) => JSON.parse(JSON.stringify(context.AtlasHome.messageItems())).map((item) => item.title);
+
+test('Home/bell message item: the live name beats a stored "Team member" label (gateway snapshot path)', () => {
+  const { context, handlers } = homeWithShell();
+  context.VABAR_CONFIG = { TEAM_MESSAGES_API: 'https://fn.test/atlas-team-messages' };
+  context.AtlasTeamMessages = {
+    snapshot: () => ({
+      channels: [
+        { key: 'general', name: 'General', unread_count: 1, last_message: { id: 'm1', sender_id: ADMIN, sender_label: 'Team member', sender_name: 'Imad El Moubarik', body: 'Hi' } },
+        { key: 'marketing', name: 'Marketing', unread_count: 1, last_message: { id: 'm2', sender_label: 'old@example.test', sender_name: 'old@example.test', body: 'x' } },
+        { key: 'operations', name: 'Operations', unread_count: 1, last_message: { id: 'm3', sender_label: 'Kári' } },
+      ],
+    }),
+  };
+  handlers.get('notify:changed')({ source: 'messages' });
+  assert.deepEqual(titles(context), ['Imad El Moubarik in General', '1 new messages in Marketing', 'Kári in Operations']);
+});
+
+test('Home/bell message item: the unread worker’s resolved sender maps to sender_name', () => {
+  const { context, handlers } = homeWithShell();
+  handlers.get('messages:unread')({
+    conversations: [{ id: 'general', name: 'General', unread: 1, lastMessageAt: '2026-09-24T14:00:00Z', lastMessage: { id: 'm1', sender: 'Imad El Moubarik', body: 'Hi', deleted: false } }],
+  });
+  const [item] = JSON.parse(JSON.stringify(context.AtlasHome.messageItems()));
+  assert.equal(item.title, 'Imad El Moubarik in General');
+  assert.match(HOME, /last_message: entry\.lastMessage \? \{ id: entry\.lastMessage\.id, sender_name: entry\.lastMessage\.sender,/);
+  assert.match(HOME, /for \(const value of \[last\?\.sender_name, last\?\.sender_label\]\)/);
 });

@@ -225,7 +225,7 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 
 test('changed scripts carry the S88 cache key', () => {
   // S90 UX acceptance remediation (shell, design system and page fixes).
-  for (const file of ['data-workspace.js', 'atlas-capture.js', 'knowledge-workspace.js', 'home.js', 'atlas-search.js']) {
+  for (const file of ['data-workspace.js', 'atlas-capture.js', 'knowledge-workspace.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
   }
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
@@ -259,6 +259,8 @@ test('changed scripts carry the S88 cache key', () => {
   assert.ok(config.includes("stylesheetPath: 'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css loader');
   assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css guard');
   assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20261002-s93m"></script>'), 'runtime-module-guard.js');
+  // S93: the Home/bell message item names the sender by the live name.
+  assert.ok(index.includes('<script src="assets/js/home.js?v=20261002-s93m"></script>'), 'home.js');
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }
