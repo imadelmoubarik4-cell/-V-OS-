@@ -1172,3 +1172,73 @@ test('a11y: sheets and dialogs are announced as modal dialogs; approve names the
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });
+
+// Layers above the page after dialogs close: none may stay over the list.
+async function strayLayers(page) {
+  return page.evaluate(() => [...document.querySelectorAll('body *')].filter((el) => {
+    const cs = getComputedStyle(el);
+    const box = el.getBoundingClientRect();
+    return ['fixed', 'absolute'].includes(cs.position) && cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0
+      && box.width > 120 && box.height > 40 && !el.closest('#atlas-sidebar, #atlas-topbar, #atlas-tabbar, .atlas-toast-region')
+      && box.bottom > 0 && box.top < innerHeight;
+  }).map((el) => `${el.tagName}.${[...el.classList].join('.')}#${el.id}`));
+}
+
+for (const viewport of [{ width: 1872, height: 896 }, { width: 390, height: 844 }]) {
+  test(`no layer stays over the list after Upload and a document sheet close (${viewport.width})`, { skip }, async () => {
+    const documents = seedDocuments();
+    for (let index = 0; index < 13; index += 1) documents.push(doc({ id: `d0000000-0000-4000-8000-${String(index).padStart(12, '0')}`, file_name: `WhatsApp Image ${index}.jpeg`, mime_type: 'image/jpeg' }));
+    const { page, close } = await launch({ viewport, backend: accountingBackend({ documents }) });
+    const press = (selector) => (viewport.width < 768 ? page.tap(selector) : page.click(selector));
+    try {
+      await openAccounting(page);
+      assert.deepEqual(await strayLayers(page), [], 'nothing over the list on load');
+      await page.mouse.wheel(0, 4000);
+      await settle(page);
+      assert.deepEqual(await strayLayers(page), [], 'nothing over the list after scrolling');
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await press('#accounting-view .page-head [data-acc-upload]');
+      await page.waitForSelector('#acc-upload.is-open');
+      await press('#acc-upload .atlas-sheet__close');
+      await until(() => page.evaluate(() => !document.querySelector('.atlas-modal.is-open')));
+      assert.deepEqual(await strayLayers(page), [], 'the upload sheet leaves nothing behind');
+      await press(`#accounting-view .atlas-row__link[data-acc-open="${IDS.review}"]`);
+      await page.waitForSelector('#acc-document.is-open .acc-sheet');
+      await page.keyboard.press('Escape');
+      await until(() => page.evaluate(() => !document.querySelector('.atlas-modal.is-open')));
+      assert.deepEqual(await strayLayers(page), [], 'the document sheet leaves nothing behind');
+      assert.equal(await page.evaluate(() => document.body.classList.contains('atlas-modal-open')), false, 'page scroll is unlocked');
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no sideways scroll');
+    } finally { await close(); }
+  });
+}
+
+test('files dropped on the Accounting page open Upload with them queued; the browser does not open the file', { skip }, async () => {
+  const { page, close } = await launch();
+  try {
+    await openAccounting(page);
+    const dropOn = (selector, name) => page.evaluate(([selector, name]) => {
+      const transfer = new DataTransfer();
+      transfer.items.add(new File(['%PDF-1.4\n%%EOF\n'], name, { type: 'application/pdf' }));
+      const target = document.querySelector(selector);
+      const over = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer });
+      target.dispatchEvent(over);
+      const drop = new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer });
+      target.dispatchEvent(drop);
+      return { overPrevented: over.defaultPrevented, dropPrevented: drop.defaultPrevented };
+    }, [selector, name]);
+    const first = await dropOn('#accounting-view .acc-body', 'dropped-on-list.pdf');
+    assert.deepEqual(first, { overPrevented: true, dropPrevented: true }, 'the browser default (open the file) is stopped');
+    await page.waitForSelector('#acc-upload.is-open');
+    await until(() => page.evaluate(() => document.querySelector('#acc-upload [data-acc-queue]')?.textContent.includes('dropped-on-list.pdf')));
+    // Onto the open sheet, outside its drop zone: added to the same queue once.
+    await dropOn('#acc-upload .atlas-sheet__head', 'second.pdf');
+    await until(() => page.evaluate(() => document.querySelectorAll('#acc-upload [data-acc-queue] > li').length === 2));
+    // Onto the drop zone itself: queued once, not twice.
+    await dropOn('#acc-upload [data-acc-drop]', 'third.pdf');
+    await until(() => page.evaluate(() => document.querySelectorAll('#acc-upload [data-acc-queue] > li').length === 3));
+    await settle(page);
+    assert.equal(await page.locator('#acc-upload [data-acc-queue] > li').count(), 3);
+    assert.equal(await page.textContent('#acc-upload [data-acc-start]'), 'Upload 3 files');
+  } finally { await close(); }
+});

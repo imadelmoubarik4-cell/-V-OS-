@@ -507,7 +507,7 @@
     root.querySelectorAll('input[name="paid_by"]').forEach((input) => input.addEventListener('change', () => { who.hidden = root.querySelector('input[name="paid_by"]:checked')?.value !== 'staff'; }));
   }
 
-  function openUpload() {
+  function openUpload(initialFiles = []) {
     const root = modal('acc-upload', { initialFocus: '#acc-upload-title' });
     const aiOn = state.workspace?.ai_enabled === true;
     const files = [];
@@ -552,8 +552,11 @@
     root.querySelector('[data-acc-camera]').addEventListener('change', (event) => { add(event.target.files); event.target.value = ''; });
     const drop = root.querySelector('[data-acc-drop]');
     drop.addEventListener('dragover', (event) => { event.preventDefault(); drop.classList.add('is-dragover'); });
-    drop.addEventListener('dragleave', () => drop.classList.remove('is-dragover'));
+    // dragleave also fires when the pointer crosses into a child of the label.
+    drop.addEventListener('dragleave', (event) => { if (!drop.contains(event.relatedTarget)) drop.classList.remove('is-dragover'); });
     drop.addEventListener('drop', (event) => { event.preventDefault(); drop.classList.remove('is-dragover'); add(event.dataTransfer?.files || []); });
+    root.addFiles = add;
+    if (initialFiles.length) add(initialFiles);
     queue.addEventListener('click', (event) => {
       const remove = event.target.closest('[data-acc-q-remove]');
       if (remove) { files.splice(Number(remove.dataset.accQRemove), 1); drawQueue(); return; }
@@ -1372,12 +1375,36 @@
     }
   }
 
+  // Files dropped anywhere on the Accounting page (or on the open upload sheet
+  // outside its drop zone) go to the upload queue. Without this the browser
+  // opens a dropped photo or PDF in place of Atlas.
+  const carriesFiles = (event) => [...(event.dataTransfer?.types || [])].includes('Files');
+  function handleDragOver(event) {
+    if (!carriesFiles(event) || !visible() || !isAdmin()) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  }
+  function handleDrop(event) {
+    if (!carriesFiles(event) || !visible() || !isAdmin()) return;
+    event.preventDefault();
+    // The drop zone already queued these files.
+    if (event.target instanceof Element && event.target.closest('[data-acc-drop]')) return;
+    const files = [...(event.dataTransfer?.files || [])];
+    if (!files.length) return;
+    const upload = document.getElementById('acc-upload');
+    if (upload?.classList.contains('is-open')) { upload.addFiles?.(files); return; }
+    if (document.querySelector('.atlas-modal.is-open') || !state.workspace) return;
+    openUpload(files);
+  }
+
   function init() {
     if (state.initialized) return;
     state.initialized = true;
     ensureStructure();
     document.addEventListener('click', handleClick);
     document.addEventListener('input', handleInput);
+    document.addEventListener('dragover', handleDragOver);
+    document.addEventListener('drop', handleDrop);
     window.AtlasShell?.on?.('profile:ready', () => { if (visible()) { render(); if (isAdmin() && !state.workspace && !state.loading) load(); } });
   }
 
