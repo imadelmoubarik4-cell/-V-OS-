@@ -10,11 +10,13 @@ made in production. Each stage below needs its own owner go-ahead; stage 7
 | | |
 |---|---|
 | Branch | `claude/s94-marketing-publishing` |
-| Reviewed code and tests | **`ffa4e901539bf60678f2f55649b074a314e87e11`** (the Media fixes proved end to end on the real Storage API; supersedes `ad2bee0`, which cannot upload videos over 6 MB) |
-| Commits after it | documentation only (this package); check with `git diff --stat ffa4e90..HEAD` — it must list only `docs/marketing/*.md` |
-| Contains `main` | yes, up to `51e4fe8` (S93 Messages); reconciled in merge `de48579` |
+| Reviewed code and tests (code pin) | **`718ff9712a80e98eec9b5a699c0f980c4282668a`** — the merge of `main` with the live Atlas AI robot (`6d75918`) plus robot/Marketing regression tests. Its app, function and migration code is byte-identical to merge `6d75918`; `718ff97` adds tests only. |
+| Superseded pins | `ffa4e90` (Media fixes on the real Storage API) is **superseded**: it predates `main`'s Atlas AI robot (#95), so deploying its web app would remove the live robot from production. `ad2bee0` was superseded earlier (cannot upload videos over 6 MB). |
+| Commits after the pin | documentation only (this package); check with `git diff --stat 718ff97..HEAD` — it must list only `docs/marketing/*.md` |
+| Contains `main` | yes, up to `ef7c907` (Atlas AI robot #95, S93 Messages #94); reconciled in merge `6d75918` (6 conflicts, all resolved keeping both releases) |
+| S94 server code vs `ffa4e90` | unchanged: `git diff ffa4e90 718ff97 -- supabase` is empty; the only app change beyond `main` is `marketing-workspace.js` (Ask Atlas uses the robot icon) and the cache-key lines in `index.html`/`config.js` |
 
-Deploy functions and web **from `ffa4e90` or the docs-only head**, nothing else.
+Deploy functions and web **from `718ff97` or the docs-only head**, nothing else.
 
 ## What ships
 
@@ -27,18 +29,21 @@ Deploy functions and web **from `ffa4e90` or the docs-only head**, nothing else.
 
 **Automatic publishing ships OFF, and the scheduler ships NOT INSTALLED.**
 
-## Acceptance evidence (reconciled branch with the Media fixes, 26 Sep 2026)
+## Acceptance evidence (final reconciled tree `718ff97`, main `ef7c907` merged, 26 Sep 2026)
 
 | Suite | Result |
 |---|---|
-| `npm run test:node` | 1261 tests: 1219 pass, 0 fail, 42 skipped |
+| `npm run test:node` | 1272 tests: 1230 pass, 0 fail, 42 skipped |
 | `npm run test:python` | 283 tests OK, 4 skipped |
 | Full migration replay | passed, 138 migrations |
 | SQL previews | all 9 pass: s90 16/16, s90f 7/7, s90g 6/6, s90h 3/3, s91 18/18, s93 14/14, s94a 56/56, s94b 177/177, s94c 75/75 |
 | Claim concurrency / load | 200-delivery race: 0 double-claimed; pgbench 300 deliveries: 0 double-claimed, 0 double-published |
 | Scheduler proof (`verify_s94_publisher_schedule.sh`, real pg_cron 1.6) | 9/9 |
-| Browser (Marketing, media, Settings, Integrations, teamc, shell, shell-ui, Messages, phone UI, Home) | 132 tests: 131 pass, 0 fail, 1 skipped (screenshot-only) |
-| Media end to end on the real Storage API (`scripts/e2e/s94-media/run.sh`: storage-api v1.11.13, PostgREST, replayed database, the real handler, `apps/web` in Chromium) | gateway 109/109, browser 40/40, orphan/log/boundary checks after the browser run 13/13; `s94_media_smoke_check.sql` passes on the same data |
+| Browser, 18 suites (marketing-s94, marketing-media-s94, settings-integrations-s94, settings, teamc, shell, shell-ui, home-operations, messages, phone-ui-s91a, atlas-ai, atlas-bot, team, identity, auth-sessions, ux-acceptance, ux-acceptance-r2, data-health) | 229 tests: 228 pass, 0 fail, 1 skipped (screenshot-only) |
+| Robot on one CPU core (`taskset -c 0`, slow CI runner) | atlas-bot 17/17, atlas-ai 30/30 |
+| Robot regression on the merged tree | live 3D robot on Atlas AI (pointer: up, down, left, right), Daily Briefing robot, sidebar and phone tab-bar badges, 844×390 and other short/landscape layouts, software-WebGL poster, every robot asset URL 200, one cache key per robot file across `index.html`/`config.js`/`atlas-bot.js`/`atlas-components.css`, no sideways scroll; Marketing's Ask Atlas carries the robot |
+| Messages regression (S93) | messages browser 16/16 (own/other names and photos, initials fallback, channel preview sender, phone list/channel), identity 3/3 (sidebar name), home-operations 13/13; read-receipt and Home sender names in `team-messages-ui` / `team-messages-sender-identity-s93` node tests |
+| Media end to end on the real Storage API (`scripts/e2e/s94-media/run.sh all` on `718ff97`'s code: storage-api v1.11.13, PostgREST, replayed database, the real handler, `apps/web` in Chromium) | gateway 109/109, browser 40/40, orphan/log/boundary checks after the browser run 13/13. JPG, PNG, WebP, HEIC (server flow), small MP4 (single PUT), 13.4 MiB MP4 (signed resumable TUS), thumbnails, JPEG publish copies, VP9 poster, preview, search, Photos/Videos, Collections, Used/Unused, retry after a lost response, delete unused, protected deletion refused, phone 390 upload, reload: all pass. No duplicate row, no orphan object or row, no storage path in responses, no service key in the browser, no token/secret/path in logs. |
 | Edge auth gates (`s94-edge-auth-gates.test.js`) | 5/5: all four functions refuse unauthenticated requests with no backend call; publisher refuses missing/wrong secret, answers no CORS preflight, never logs the secret |
 | Supabase advisors (splinter, run on a replay of `main` vs this branch) | no new security findings; only new items are 24 × INFO `unused_index` for the new, still-empty S94 tables (expected before use) |
 
@@ -122,7 +127,11 @@ header, and the secret absent from logs.
 Merge the S94 PR (opened only when asked) → wait for the Netlify production
 publish → confirm the published commit. Cache keys: `marketing-media.js` and
 Marketing CSS `20261004-s94c`, the other Marketing scripts `20261004-s94b`,
-Settings `20261004-s94`.
+Settings `20261004-s94`. `marketing-workspace.js` also carries the robot's Ask
+Atlas icon; its S94 key replaces production's `20261003-bot1`, so cached copies
+refresh. Every Atlas AI robot key (`20261003-bot1`…`bot4`) and the S93 Messages
+keys are unchanged — after the publish, check the Atlas AI robot and the Messages
+names still show.
 
 ### 6. Production smoke test — no public posting, automatic publishing OFF, no scheduler
 Media (the strengthened check):
@@ -187,5 +196,6 @@ public production account without the owner confirming that specific post.
 - **Instagram/Facebook video:** processing times vary; Facebook page videos are never retried automatically (they go to "Needs attention" after verification) — intended, but a manual check may be needed.
 - **TikTok:** Direct Post needs TikTok's audit (inbox only until then); upload throughput vs the 140 s run budget and the 60 s minimum is an estimate; rotating refresh tokens and error codes unverified.
 - **Google Business Profile:** API access approval; whether a `SITE_MANAGER` may post (treated as not selectable).
-- **Media:** signed upload / TUS headers and CORS from the app origin are verified only on the first real upload (stage 6).
+- **Media:** signed upload / TUS headers and **hosted Supabase CORS** from the app origin are verified only on the first real upload (stage 6 smoke test).
+- **Media, unverified in a real browser:** a real Safari HEIC upload (the harness Chromium refuses HEIC in the browser; the HEIC server flow passes); a real Chrome H.264 poster (the harness Chromium has no H.264 decoder, so H.264 tiles show the video icon; the VP9 poster passes); attaching Media Library assets to a real post against hosted Storage has not been checked.
 - **Behavioural:** a 403 refresh failure marks a connection degraded; an "as soon as approved" post approved while automatic publishing is off goes to "Needs attention" if publishing is enabled more than 6 hours later; a JPEG copy created after approval changes the approval fingerprint (re-approval needed; rare).
