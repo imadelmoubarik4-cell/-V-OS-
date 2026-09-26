@@ -22,7 +22,7 @@ What you see in Atlas depends on your role: **Administrator**, **Manager**, **Ba
 
 1. Open Atlas in your browser, on a phone, tablet or computer.
 2. Enter your **Email** and **Password** and press :ui[Sign in].
-3. Forgot your password? Press :ui[Forgot your password?] and follow the link sent to your email. Open it on the same device.
+3. Forgot your password? Press :ui[Forgot your password?] and follow the link sent to your email.
 
 Your manager gives you access in one of two ways:
 
@@ -90,8 +90,6 @@ Atlas never changes stock, orders or shifts on its own, never invents numbers, a
 :::figure{src="assets/screenshots/ai-empty-phone.png" device=phone width=34mm caption="Atlas AI: start with a suggestion or type your own question."}
 :::
 ::::
-
-::pagebreak
 
 ## Inventory {#qs-inventory}
 

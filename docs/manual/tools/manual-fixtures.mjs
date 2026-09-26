@@ -65,7 +65,16 @@ const RENAMES = [
   [new RegExp(escapeRegExp(FIXTURE_VENUE.business_name), 'g'), 'Harbour Room'],
   [/@[a-z]+\.rvk\b/g, '@harbourroom.rvk'],
   [/[a-z.]+@example\.test/g, (address) => `${{ owner: 'katrin' }[address.split('@')[0]] || address.split('@')[0].split('.')[0]}@harbourroom.example`],
-  [/atlas-ai\/s\d+/g, 'atlas-ai']
+  [/atlas-ai\/s\d+/g, 'atlas-ai'],
+  // The shared test fixtures name real Icelandic wholesalers; the guide shows
+  // invented suppliers instead.
+  [/Ölgerðin Egill Skallagrímsson hf\./g, 'Bay Drinks ehf.'],
+  [/Ölgerðin/g, 'Bay Drinks'],
+  [/Globus/g, 'Northwind'],
+  [/\bMata\b/g, 'Greenleaf'],
+  [/Vínkaup/g, 'Cellar Door'],
+  [/Kaffibrennslan|Te & Kaffi/g, 'Bean Street'],
+  [/@(?:pantanir\.)?(globus|olgerdin|mata|vinkaup|kaffi)\.example/g, (address, key) => `@${{ globus: 'northwind', olgerdin: 'baydrinks', mata: 'greenleaf', vinkaup: 'cellardoor', kaffi: 'beanstreet' }[key]}.example`]
 ];
 
 export function rename(value) {
@@ -94,11 +103,11 @@ export const PHOTOS = [
 
 const S = { globus: INV.globus, olgerdin: INV.olgerdin, mata: INV.mata, vinkaup: uuid(901), kaffi: uuid(902) };
 export const suppliers = [
-  { id: S.globus, name: 'Globus', contact_name: 'Anna', email: 'orders@globus.example', phone: '555 1234', active: true, lead_time_days: 1, order_cutoff: '18:00' },
-  { id: S.olgerdin, name: 'Ölgerðin', contact_name: 'Jón', email: 'orders@olgerdin.example', phone: '555 2200', active: true },
-  { id: S.mata, name: 'Mata', contact_name: 'Rakel', email: 'orders@mata.example', active: true },
-  { id: S.vinkaup, name: 'Vínkaup', email: 'orders@vinkaup.example', active: true },
-  { id: S.kaffi, name: 'Kaffibrennslan', email: 'orders@kaffi.example', active: true }
+  { id: S.globus, name: 'Northwind', contact_name: 'Anna', email: 'orders@northwind.example', phone: '555 1234', active: true, lead_time_days: 1, order_cutoff: '18:00' },
+  { id: S.olgerdin, name: 'Bay Drinks', contact_name: 'Jón', email: 'orders@baydrinks.example', phone: '555 2200', active: true },
+  { id: S.mata, name: 'Greenleaf', contact_name: 'Rakel', email: 'orders@greenleaf.example', active: true },
+  { id: S.vinkaup, name: 'Cellar Door', email: 'orders@cellardoor.example', active: true },
+  { id: S.kaffi, name: 'Bean Street', email: 'orders@beanstreet.example', active: true }
 ];
 const supplierName = (id) => suppliers.find((row) => row.id === id)?.name;
 
@@ -156,10 +165,10 @@ export const balances = [
 export const movements = [
   { id: 'mv5', item_id: ID.mint, item_name: 'Fresh mint', movement_type: 'waste', quantity_change: -1, note: 'Spoilage: wilted', created_at: iso(-0.9), created_by_label: PEOPLE_NAMES.sara },
   { id: 'mv2', item_id: ID.limes, item_name: 'Limes', movement_type: 'waste', quantity_change: -6, note: 'Spoilage: soft limes', created_at: iso(-1.2), created_by_label: PEOPLE_NAMES.gunnar },
-  { id: 'mv4', item_id: ID.prosecco, item_name: 'Prosecco DOC', movement_type: 'restock', quantity_change: 12, total_cost: 22800, supplier_id: S.vinkaup, suppliers: { name: 'Vínkaup' }, note: 'Delivery', created_at: iso(-2.2), created_by_label: PEOPLE_NAMES.owner },
+  { id: 'mv4', item_id: ID.prosecco, item_name: 'Prosecco DOC', movement_type: 'restock', quantity_change: 12, total_cost: 22800, supplier_id: S.vinkaup, suppliers: { name: 'Cellar Door' }, note: 'Delivery', created_at: iso(-2.2), created_by_label: PEOPLE_NAMES.owner },
   { id: 'mv3', item_id: ID.campari, item_name: 'Campari', movement_type: 'adjustment', quantity_change: -1, note: 'Breakage', created_at: iso(-3.5), created_by_label: PEOPLE_NAMES.sara },
-  { id: 'mv1', item_id: ID.tonic, item_name: 'Fever-Tree Tonic', movement_type: 'restock', quantity_change: 24, total_cost: 4560, supplier_id: S.olgerdin, suppliers: { name: 'Ölgerðin' }, note: 'Delivery', created_at: iso(-4), created_by_label: PEOPLE_NAMES.sara },
-  { id: 'mv6', item_id: ID.tanq, item_name: 'Tanqueray London Dry', movement_type: 'restock', quantity_change: 6, total_cost: 25200, supplier_id: S.globus, suppliers: { name: 'Globus' }, note: 'Delivery', created_at: iso(-6), created_by_label: PEOPLE_NAMES.owner }
+  { id: 'mv1', item_id: ID.tonic, item_name: 'Fever-Tree Tonic', movement_type: 'restock', quantity_change: 24, total_cost: 4560, supplier_id: S.olgerdin, suppliers: { name: 'Bay Drinks' }, note: 'Delivery', created_at: iso(-4), created_by_label: PEOPLE_NAMES.sara },
+  { id: 'mv6', item_id: ID.tanq, item_name: 'Tanqueray London Dry', movement_type: 'restock', quantity_change: 6, total_cost: 25200, supplier_id: S.globus, suppliers: { name: 'Northwind' }, note: 'Delivery', created_at: iso(-6), created_by_label: PEOPLE_NAMES.owner }
 ];
 
 const ing = (key, itemId, quantity, unit) => ({ id: `ri-${key}`, item_id: itemId, item_name: items.find((row) => row.id === itemId)?.name, quantity, unit });
@@ -225,7 +234,7 @@ function messages(user) {
     msg(who.dagur, 'Morning all. Quiz night tonight — first round at 20:00, we have 14 teams booked.', 26 * 60, readers(who.sara, who.gunnar, who.elin)),
     msg(who.sara, 'Great. I’ll set up the back tables and the answer sheets before we open.', 25 * 60, readers(who.dagur, who.gunnar)),
     msg(who.gunnar, 'Keg of Einstök changed, the spare is in the walk-in.', 190, readers(who.owner, who.sara)),
-    msg(who.owner, 'Thanks. The Globus order is waiting for approval — Campari and Aperol are on it.', 95, { ...readers(who.sara, who.gunnar), link: { type: 'inventory_item', key: ID.campari, label: 'Campari', route: 'inventory', metadata: {} } }),
+    msg(who.owner, 'Thanks. The Northwind order is waiting for approval — Campari and Aperol are on it.', 95, { ...readers(who.sara, who.gunnar), link: { type: 'inventory_item', key: ID.campari, label: 'Campari', route: 'inventory', metadata: {} } }),
     msg(who.elin, 'Ice machine is making that noise again. I put a note on it.', 42),
     msg(who.elin, 'Using the bags from the chest freezer until someone has a look.', 40),
     msg(who.sara, 'Limes are soft in the last box — I logged six as waste and moved the good ones to the front.', 18)
@@ -412,9 +421,9 @@ function reports() {
     ];
     w.sections = w.sections.map((section) => (section.key === 'waste' ? { ...section, status: 'connected' } : section));
     w.attention = [
-      { title: 'Olmeca Blanco Tequila is out of stock', detail: 'Margarita can’t be served until the Globus order arrives.', section: 'inventory', tone: 'danger', source: 'Stock' },
+      { title: 'Olmeca Blanco Tequila is out of stock', detail: 'Margarita can’t be served until the Northwind order arrives.', section: 'inventory', tone: 'danger', source: 'Stock' },
       { title: 'Campari is almost out', detail: '1 of 4 bottles left. It is on the order waiting for approval.', section: 'inventory', tone: 'warn', source: 'Stock' },
-      { title: 'Globus delivery is 2 days late', detail: 'Buffalo Trace Bourbon and 2 Absolut Vodka are still to come.', section: 'purchasing', tone: 'warn', source: 'Purchasing' }
+      { title: 'Northwind delivery is 2 days late', detail: 'Buffalo Trace Bourbon and 2 Absolut Vodka are still to come.', section: 'purchasing', tone: 'warn', source: 'Purchasing' }
     ];
     w.data_sources[0] = { key: 'inventory', name: 'Stock counts', status: 'partial', note: '25 of 26 items counted this week', records_included: 25, records_excluded: 1, last_refreshed_at: MANUAL_NOW };
     w.reports.inventory = {
@@ -456,9 +465,9 @@ function marketing() {
 
 // The pinned demo conversation, restaged on the Harbour Room's own records:
 // the answer cites only the verified counts and the recipe it used, and
-// mentions the Campari that is already on the Globus order waiting for
+// mentions the Campari that is already on the Northwind order waiting for
 // approval. No sales figure appears anywhere (no till system is connected).
-const AI_ANSWER = 'Yes. Campari is what limits you: one bottle left, which makes about 33 Negronis. It is already on the Globus order waiting for approval, so approve it and mark it as ordered before Globus’s 18:00 cut-off.\n\nTanqueray is below par too (3 of 6) and isn’t on any open order, so I’ve prepared a draft order for two cases.';
+const AI_ANSWER = 'Yes. Campari is what limits you: one bottle left, which makes about 33 Negronis. It is already on the Northwind order waiting for approval, so approve it and mark it as ordered before Northwind’s 18:00 cut-off.\n\nTanqueray is below par too (3 of 6) and isn’t on any open order, so I’ve prepared a draft order for two cases.';
 const AI_EVIDENCE = [
   { kind: 'fact', label: 'Campari on hand', value: '1 bottle (1 L)', source: { type: 'stock_count', id: null, label: 'Count · Tue 22 Sep', route: null } },
   { kind: 'calculation', label: 'Negronis from one bottle', value: '1,000 ml ÷ 30 ml ≈ 33', source: { type: 'recipe', id: RECIPE_IDS.negroni, label: 'Recipe · Negroni', route: null } },
@@ -469,16 +478,16 @@ const AI_RECORDS = [
   { type: 'inventory_item', id: ID.campari, label: 'Campari', route: `#inventory/item/${ID.campari}` },
   { type: 'inventory_item', id: ID.tanq, label: 'Tanqueray London Dry', route: `#inventory/item/${ID.tanq}` },
   { type: 'recipe', id: RECIPE_IDS.negroni, label: 'Negroni', route: `#recipes/${RECIPE_IDS.negroni}` },
-  { type: 'supplier', id: S.globus, label: 'Globus', route: '#purchasing/suppliers' }
+  { type: 'supplier', id: S.globus, label: 'Northwind', route: '#purchasing/suppliers' }
 ];
 function aiMessages() {
   const [question, answer] = negroniMessages();
   const proposal = orderProposal({
-    title: 'Order from Globus',
+    title: 'Order from Northwind',
     // Proposals expire 24 hours after Atlas prepares them (16:27 today).
     expires_at: '2026-09-25T16:27:00.000Z',
     preview: {
-      headline: 'Draft purchase order for Globus',
+      headline: 'Draft purchase order for Northwind',
       lines: [{ label: 'Tanqueray London Dry 1 L', detail: '12 bottles × 4.200 kr = 50.400 kr' }],
       totals: { lines: 1, estimated_total: 50400, estimated_total_label: '50.400 kr' },
       recipients: [],
@@ -591,7 +600,7 @@ export function manualWorld(user = DEMO_USERS.admin, { countStatus = 'draft' } =
     return result;
   };
   const settings = base.functions['atlas-settings'];
-  const venueDetails = { registration_number: '550126-4410', location_label: 'Reykjavík', address_line: 'Hafnarstræti 9', city: 'Reykjavík', country_code: 'IS', email: 'hello@harbourroom.example', phone: '+354 555 0100', website: 'https://harbourroom.example', booking_url: 'https://harbourroom.example/book' };
+  const venueDetails = { registration_number: '', location_label: 'Reykjavík', address_line: 'Pier 3, Old Harbour', city: 'Reykjavík', country_code: 'IS', email: 'hello@harbourroom.example', phone: '+354 555 0100', website: 'https://harbourroom.example', booking_url: 'https://harbourroom.example/book' };
   const functions = {
     ...base.functions,
     'atlas-settings': async (entry) => {

@@ -297,7 +297,7 @@ shot({ name: 'ai-conversation', module: 'Atlas AI', route: `#ai/c/${AI_IDS.convN
 shot({ name: 'ai-approval-card', module: 'Atlas AI', route: `#ai/c/${AI_IDS.convNegroni}`,
   run: scrollTo('[data-ai-approval]', 'center'),
   clip: (page) => boxOf(page, '[data-ai-approval]', 12),
-  state: 'Close-up of a proposal card: a draft purchase order for Globus with what will and will not change.',
+  state: 'Close-up of a proposal card: a draft purchase order for Northwind with what will and will not change.',
   caption: 'Atlas never acts on its own. It prepares the change, tells you exactly what will happen, and waits for you to approve.' });
 shot({ name: 'ai-decisions', module: 'Atlas AI', route: '#ai/decisions', run: async (page) => visible(page, '.ai-dec-row:not(.ai-dec-row--head)'),
   state: 'The Decisions list with open recommendations and past decisions.',
@@ -353,7 +353,7 @@ shot({ name: 'messages-handover', module: 'Messages', route: '#messages/shift-ha
     await visible(page, '#msg-handover-form');
     const fields = page.locator('#msg-handover-form textarea');
     await fields.nth(0).fill('Quiet start, busy from 21:00 with the quiz. Till balanced at close.');
-    await fields.nth(1).fill('Tequila is out, so no Margaritas until the Globus delivery.');
+    await fields.nth(1).fill('Tequila is out, so no Margaritas until the Northwind delivery.');
     await fields.nth(2).fill('Ice machine is noisy again — please call the service company in the morning.');
     await page.evaluate(() => document.activeElement?.blur());
   },
@@ -511,10 +511,10 @@ shot({ name: 'purchasing-suggested-order', module: 'Purchasing', route: '#purcha
   state: 'The Suggested order sheet: below-par items grouped by supplier with an order quantity for each.',
   caption: 'Review suggestions groups what is below par by supplier. Change quantities, then create the draft orders.' });
 shot({ name: 'purchasing-order-draft', module: 'Purchasing', route: `#purchasing/order/${ORDER_IDS.draft}`, run: async (page) => visible(page, '[data-po-cmd]'),
-  state: 'A draft order to Mata, not yet sent for approval.',
+  state: 'A draft order to Greenleaf, not yet sent for approval.',
   caption: 'A draft order can still be changed. Submit it when it is ready.' });
 shot({ name: 'purchasing-order-approval', module: 'Purchasing', route: `#purchasing/order/${ORDER_IDS.approval}`, run: async (page) => visible(page, '[data-po-cmd="approve"]'),
-  state: 'An order to Globus waiting for manager approval.',
+  state: 'An order to Northwind waiting for manager approval.',
   caption: 'Orders over the approval limit wait here until a manager approves or rejects them.' });
 shot({ name: 'purchasing-receive', module: 'Purchasing', route: `#purchasing/order/${ORDER_IDS.ordered}`,
   run: async (page) => {
@@ -526,10 +526,10 @@ shot({ name: 'purchasing-receive', module: 'Purchasing', route: `#purchasing/ord
     await fields.nth(2).fill('24');
     await page.evaluate(() => document.activeElement?.blur());
   },
-  state: 'Receiving the Ölgerðin delivery: ginger beer arrived short (12 of 24).',
+  state: 'Receiving the Bay Drinks delivery: ginger beer arrived short (12 of 24).',
   caption: 'Enter what actually arrived. A short delivery keeps the rest of the order open.' });
 shot({ name: 'purchasing-order-partial', module: 'Purchasing', route: `#purchasing/order/${ORDER_IDS.partial}`, run: async (page) => visible(page, '[data-po-cmd]'),
-  state: 'A partly received Globus order: bourbon and two bottles of vodka still to come.',
+  state: 'A partly received Northwind order: bourbon and two bottles of vodka still to come.',
   caption: 'A partly received order shows what has arrived and what is still outstanding.' });
 shot({ name: 'purchasing-suppliers', module: 'Purchasing', route: '#purchasing/suppliers',
   state: 'The Suppliers list.',

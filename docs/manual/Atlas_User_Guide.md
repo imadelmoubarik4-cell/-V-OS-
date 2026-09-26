@@ -206,13 +206,7 @@ A number next to **Messages** counts unread messages. A number next to **Data** 
 
 ### The top bar {#topbar}
 
-The top bar is the same on every page:
-
-- the sidebar button,
-- the page title,
-- the search field **Search or ask Atlas**,
-- the :ui[+]{icon=plus} **Quick actions** button (computers and tablets only),
-- the :ui[Notifications]{icon=bell} bell.
+The top bar is the same on every page: the sidebar button, the page title, the search field **Search or ask Atlas**, the :ui[+]{icon=plus} **Quick actions** button (computers and tablets only) and the :ui[Notifications]{icon=bell} bell.
 
 ### Search or ask Atlas {#search-palette}
 
@@ -226,7 +220,7 @@ One box finds anything in Atlas and passes questions to Atlas AI. Open it in any
 :::figure{src="assets/screenshots/shell-palette.png" device=desktop caption="Type a few letters and results appear by group. Here “campari” finds the item, the recipes that use it and matching actions."}
 :::
 
-**Before you type**, Atlas shows **Suggested** actions for the page you're on, the records you opened **Recent**ly, and your actions.
+**Before you type**, Atlas shows **Suggested** actions for the page you're on (where there are none, the records you opened **Recent**ly), then the other actions your role can use.
 
 **As you type**, results appear in groups: **Items**, **Recipes**, **Suppliers** (managers), **People**, **Articles**, then **Actions** and **Go to**. Items show their stock at a glance, for example "3 bottles · below par", or "Not counted — no verified stock". When your search names an item, actions such as **Count** that item appear too.
 
@@ -345,7 +339,7 @@ There is also **Schedule only**. This isn't a role but a person on the shift ros
 | Operations | Full: incl. skip, target ranges and schedule | Full | Limited: tick, notes, complete, log temperatures | View |
 | Inventory items | Full: add, edit, deactivate, waste, costs, suppliers | Full | Limited: count, identify, suggest a product or barcode; no costs or suppliers | View: can identify items |
 | Inventory › Movements and Waste | Full | Full | No | No |
-| Stock count | Full: start, count, submit, verify, send back, cancel | Full | Limited: start, count, submit, cancel own count | No |
+| Stock count | Full: start, count, submit, verify, send back, cancel | Full | Limited: start, count, submit, cancel own count | View: sees the Counts list; can't count |
 | Recipes | Full: create, edit, archive, delete, costs, public menu | Full | View: specs and availability, no costs | View: same as bartender |
 | Purchasing | Full | Full (some orders may need a different approver) | No | No |
 | Shifts | Full: plan, publish, time off, confirmations | Full | Limited: own and team schedule, confirm, availability, time off | Limited: Schedule tab only |
@@ -511,7 +505,7 @@ The robot on this chapter's opening page is the face of Atlas AI. The Atlas logo
 
 When you start a new conversation, a larger robot stands above the greeting. It waves hello once, looks toward your pointer on a computer, and reacts when you tap or click it. The small robot next to **Atlas** moves gently while an answer is being written. During live voice, a robot next to the status follows the call: listening, thinking or speaking.
 
-The robot is only decoration; you never need it to use Atlas AI. If your device or browser can't draw the moving robot, for example without graphics acceleration, or your connection is set to save data, you see a still picture of it instead. With **Reduce motion** switched on, in Atlas or on your device, the robot holds still.
+The robot is only decoration; you never need it to use Atlas AI. If your device can't show the moving robot, for example on an older phone or computer, or when your phone is set to save data, you see a still picture of it instead. With **Reduce motion** switched on, in Atlas or on your device, the robot holds still.
 
 ## What Atlas AI can help with {#ai-help}
 
@@ -1270,7 +1264,7 @@ Managers now see "(Count) is waiting for verification" on Home, with :ui[Review]
 **To stop a count**, press :ui[Cancel count]. Nothing counted so far changes stock; the count is kept as cancelled. A manager can cancel any count; the person who started a count can cancel their own.
 
 :::important You don't need "Prepare stock update"
-After verifying, managers may see a **Prepare stock update** button. You can ignore it. Verifying the count has already updated the stock Atlas shows. That button belongs to an extra publishing step that isn't switched on in this release; if you press it, Atlas may say the stock update is blocked. Nothing is wrong with your count.
+After verifying, managers may see a **Prepare stock update** button. You can ignore it. Verifying the count has already updated the stock Atlas shows. That button belongs to a step that isn't switched on in this release; if you press it, Atlas may say the stock update is blocked. Nothing is wrong with your count.
 :::
 
 ## Who can count {#count-roles}
@@ -1432,7 +1426,7 @@ Two extra labels can appear: **Overdue**, when an ordered delivery is past its e
 The quickest way to order what's below par.
 
 1. On the **Orders** tab, press :ui[Review suggestions].
-2. Atlas groups the items by supplier, showing **On hand**, **Par** and a suggested **Order qty**. The suggestion brings stock back up to twice the par level, rounded up to whole cases where the item has a case size.
+2. Atlas groups the items by supplier, showing **On hand**, **Par** and a suggested **Order** quantity. The suggestion brings stock back up to twice the par level, rounded up to whole cases where the item has a case size.
 3. Untick anything you don't want and change quantities.
 4. Press :ui[Create N orders]. Atlas creates one **Draft** order per supplier.
 
@@ -1532,7 +1526,7 @@ Managers plan and publish the rota. Everyone sees their shifts, confirms them, s
 
 ## The schedule {#shifts-schedule}
 
-Shifts opens on the current week. Use the arrows and **Today** to move, and **Week** / **Month** to change the view. The **On now** strip shows who's on today and tomorrow, with a :ui[Handover] button that opens the Shift handover channel.
+Shifts opens on the current week. Use the arrows and **Today** to move, and **Week** / **Month** to change the view. On a computer or tablet, a strip above the schedule shows who's working **Today** and **Tomorrow**. Next to it, managers and bartenders have a :ui[Handover] button that opens the Shift handover channel.
 
 :::figure{src="assets/screenshots/shifts-week.png" device=desktop caption="The manager’s week: people down the side, days across. Dashed shifts aren’t published yet."}
 :::
@@ -1555,6 +1549,10 @@ On a phone, the schedule reads as a list of days instead of a grid.
 :::
 ::::
 
+:::note Viewers and schedule-only people
+Viewers see the **Schedule** tab only. People who are "schedule only" can be put on the rota but can't sign in, so they can't confirm shifts. Shifts aren't sent to any payroll or till system.
+:::
+
 ## Planning the week {#shifts-plan}
 
 ::roles{roles="admin manager"}
@@ -1567,7 +1565,7 @@ On a phone, the schedule reads as a list of days instead of a grid.
 4. Add a **Break** and a **Note** if needed.
 5. Press :ui[Add shift]. It's saved as a draft: "The team sees it after you publish."
 
-:::figure{src="assets/screenshots/shifts-add.png" device=desktop caption="Add shift: choose the person, the day and the times. Atlas warns if the shift falls outside their availability."}
+:::figure{src="assets/screenshots/shifts-add.png" device=desktop width=65% caption="Add shift: choose the person, the day and the times. Atlas warns if the shift falls outside their availability."}
 :::
 
 Use :ui[Copy last week] to start from last week's rota: every shift is copied in as a draft, and nothing is published.
@@ -1580,7 +1578,7 @@ Nothing is visible to the team until you publish. The status shows **Draft · no
 2. Add a **Note to the team** if you like.
 3. Confirm. The team sees the schedule straight away and is asked to confirm their shifts.
 
-Removing or changing a published shift only takes effect when you publish again; until then the team keeps seeing the published version.
+Changes to a published shift reach the team only when you publish again.
 
 ## Your shifts {#shifts-mine}
 
@@ -1611,10 +1609,6 @@ The request shows as **Pending**, then **Approved** or **Declined**.
 - **Confirmations** lists each confirmation and change request for the week. Close a change request with :ui[Resolve] or :ui[Decline]; a note is required and is shown to the person.
 - **Time off**: :ui[Approve] or :ui[Decline] requests. Shifts on approved days show a warning. :ui[Record time off] adds time off that is approved straight away.
 - **Activity** is the history of publishing, changes, requests and decisions.
-
-:::note Viewers and schedule-only people
-Viewers see the **Schedule** tab only. People who are "schedule only" can be put on the rota but can't sign in, so they can't confirm shifts. Shifts aren't sent to any payroll or till system.
-:::
 
 :::chapter{number=13 icon=users}
 # Team {#team}
@@ -1760,7 +1754,7 @@ If a bartender or viewer opens a manager tab from a link, Atlas explains: "This 
 4. Read to the end. Tick-boxes inside an article are personal checklists for you; ticking them does not change anything for anyone else.
 5. If the article is required for you, press :ui[Mark as read]{icon=check}. Atlas confirms with "Marked as read", and the article shows "You've read version N."
 
-:::figure{src="assets/screenshots/knowledge-acknowledge.png" device=desktop caption="A bartender reading a required article. Mark as read confirms this version; Ask Atlas about this opens Atlas AI with the article as context."}
+:::figure{src="assets/screenshots/knowledge-acknowledge.png" device=desktop width=85% caption="A bartender reading a required article. Mark as read confirms this version; Ask Atlas about this opens Atlas AI with the article as context."}
 - [38%, 24%] **Required · not read** until you confirm it.
 - [38%, 94%] **Mark as read** confirms that you have read this version.
 - [49.5%, 94%] **Ask Atlas about this** lets you ask a question about the article.
@@ -1800,7 +1794,7 @@ Articles are written as private drafts. Nothing reaches the team until you publi
 6. Optionally choose **Links to** (Operations, Recipes, Inventory, Shifts, Team or Marketing) and the **Training steps it supports**.
 7. Press :ui[Save private draft]. Atlas confirms: "Draft saved. Staff visibility has not changed."
 
-:::figure{src="assets/screenshots/knowledge-edit.png" device=desktop caption="Editing an article. Changes stay in a private draft until you publish a new version."}
+:::figure{src="assets/screenshots/knowledge-edit.png" device=desktop width=70% caption="Editing an article. Changes stay in a private draft until you publish a new version."}
 :::
 
 ### Publish a version
@@ -2114,7 +2108,7 @@ Each section is a form. When you change something, a bar appears with **Unsaved 
 
 ## Venue {#settings-venue roles="admin manager"}
 
-The business details Atlas uses on documents, in Atlas AI and for your team: **Business name**, **Legal name**, **Registration number**, **Location name**, **Address**, **City**, **Country code**, **Language**, **Email**, **Phone**, **Website** and **Booking link**. The currency is fixed to ISK.
+The business details Atlas uses on documents, in Atlas AI and for your team: **Business name**, **Legal name**, **Registration number**, **Location name**, **Address**, **City**, **Country code**, **Language**, **Email**, **Phone**, **Website** and **Booking link**. Amounts are always in Icelandic krónur (the page shows **Currency: ISK (fixed)**).
 
 The business name and city appear under the Atlas logo in the sidebar and on the sign-in screen.
 
@@ -2186,7 +2180,7 @@ Connecting an account does not make Atlas post anything. Marketing is still publ
 
 ## Security {#settings-security roles="admin"}
 
-A read-only overview for administrators. **Enforced now**: staff sign-in, an active profile required, role-based access, and keys kept on the server. **Not available yet**: two-factor authentication, automatic sign-out after inactivity, trusted devices and emergency lockdown. To remove someone's access today, turn off their Atlas access in Team.
+A read-only overview for administrators. **Enforced now**: **Staff sign-in**, **Active profile required**, **Role-based access** and **Keys stay on the server** (connection passwords never reach your browser). **Not available yet**: two-factor authentication, automatic sign-out after inactivity, trusted devices and emergency lockdown. To remove someone's access today, turn off their Atlas access in Team.
 
 ## System health {#settings-system roles="admin"}
 
@@ -2300,7 +2294,7 @@ Managers can also press :ui[Add to order] on an out-of-stock row. Viewers can fo
 
 :::workflow Receiving a delivery {layout=vertical icon=truck}
 1. Find the order — On Home, press :ui[Receive] on "Delivery from … is due today", or open :path[Purchasing > Deliveries] and open the order.
-2. Start receiving — Press :ui[Receive delivery]. Optionally use :ui[Check with a photo (optional)] to match what is in the photo to the order; you still confirm every line.
+2. Start receiving — Press :ui[Receive delivery]. Optionally, under **Check with a photo**, press :ui[Scan delivery] to match a photo of the delivery to the order; you still confirm every line.
 3. Check each line — Each line starts at the quantity still expected. Change it to what actually arrived and mark :ui[Short] or :ui[Damaged] where needed.
 4. Receive — Press :ui[Receive X of Y lines]. Stock goes up straight away and the order shows Partly received or Received.
 5. Deal with the rest — If the remainder will not come and closing short is switched on, press :ui[Close short] and give a reason.
@@ -2446,7 +2440,7 @@ If the steps here don't help, contact your venue's Atlas administrator. Tell the
 | "Email or password is incorrect." | Check both and try again. If you have forgotten your password, press :ui[Forgot your password?] on the sign-in screen. |
 | A message that your account is not an active staff profile and to ask an administrator to review access | Your Atlas access is off. This is normal right after you accept an email invitation. Ask a manager to open your profile in Team, set your role, turn **Atlas access** on and save. |
 | "This invitation has expired or was already used. Ask your manager for a new one. If you already set a password, sign in instead." | Ask your manager for a new setup link, or sign in if you already chose a password. |
-| "This reset link is invalid or has expired. Request a new link below." | Request a new reset link and open it on the same device. |
+| "This reset link is invalid or has expired. Request a new link below." | Request a new reset link and use the newest email. Each link works once. |
 | "Atlas couldn't connect. Check your connection, then try again." | Check Wi-Fi or mobile data, then press :ui[Retry connection]. |
 | "Your session ended. Sign in again to continue where you were." | Sign in again. Atlas takes you back to where you were. |
 | "Atlas can't check your sign-in right now. You're still signed in; try again in a moment." | Wait a moment and carry on. |
@@ -2613,14 +2607,14 @@ Almost out
 Announcements
 : The Messages channel for official notices. Only managers and administrators can post there.
 
-Proposal card
-: What Atlas AI prepares when it can help with a change, such as a draft order. Nothing happens until a person with the right role taps its button. Cards expire after 24 hours.
-
 At a glance
 : The tiles on Home for stock, recipes and purchasing, or your next shift.
 
 Atlas access
 : The switch on a person's profile in Team that lets them sign in. When it is off, they are signed out on their next action.
+
+Bartender
+: The role for bar staff: counts stock, ticks checklists, logs temperatures, reads recipes, messages the team and confirms their own shifts. Bartenders don't see costs, orders or most settings.
 
 Below par
 : Verified stock under a positive par level.
@@ -2681,6 +2675,9 @@ Out
 
 Par level
 : The quantity you want on hand after a delivery. Set in Data › Par levels, or when adding an item.
+
+Proposal card
+: What Atlas AI prepares when it can help with a change, such as a draft order. Nothing happens until a person with the right role taps its button. Cards expire after 24 hours.
 
 Publish
 : Making a draft visible to the team: a week or month in Shifts, or a version of a Knowledge article.

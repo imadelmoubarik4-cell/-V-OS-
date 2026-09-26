@@ -187,7 +187,7 @@
       "clipped": true,
       "role": "admin",
       "route": "#ai/c/5b0c0f64-1c55-4f7e-9a51-0f2d7b3c1a01",
-      "state": "Close-up of a proposal card: a draft purchase order for Globus with what will and will not change.",
+      "state": "Close-up of a proposal card: a draft purchase order for Northwind with what will and will not change.",
       "caption": "Atlas never acts on its own. It prepares the change, tells you exactly what will happen, and waits for you to approve."
     },
     {
@@ -594,7 +594,7 @@
       "clipped": false,
       "role": "admin",
       "route": "#purchasing/order/6d000000-0000-4000-8000-000000000501",
-      "state": "A draft order to Mata, not yet sent for approval.",
+      "state": "A draft order to Greenleaf, not yet sent for approval.",
       "caption": "A draft order can still be changed. Submit it when it is ready."
     },
     {
@@ -605,7 +605,7 @@
       "clipped": false,
       "role": "admin",
       "route": "#purchasing/order/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
-      "state": "An order to Globus waiting for manager approval.",
+      "state": "An order to Northwind waiting for manager approval.",
       "caption": "Orders over the approval limit wait here until a manager approves or rejects them."
     },
     {
@@ -616,7 +616,7 @@
       "clipped": false,
       "role": "admin",
       "route": "#purchasing/order/ffffffff-ffff-4fff-8fff-ffffffffffff",
-      "state": "Receiving the Ölgerðin delivery: ginger beer arrived short (12 of 24).",
+      "state": "Receiving the Bay Drinks delivery: ginger beer arrived short (12 of 24).",
       "caption": "Enter what actually arrived. A short delivery keeps the rest of the order open."
     },
     {
@@ -627,7 +627,7 @@
       "clipped": false,
       "role": "admin",
       "route": "#purchasing/order/6d000000-0000-4000-8000-000000000505",
-      "state": "A partly received Globus order: bourbon and two bottles of vodka still to come.",
+      "state": "A partly received Northwind order: bourbon and two bottles of vodka still to come.",
       "caption": "A partly received order shows what has arrived and what is still outstanding."
     },
     {
