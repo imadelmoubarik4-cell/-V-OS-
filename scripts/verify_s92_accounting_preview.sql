@@ -46,7 +46,7 @@ insert into s92_acc select 'only service_role may execute the accounting RPCs',
   from unnest(array[
     'public.atlas_accounting_snapshot(uuid)', 'public.atlas_accounting_document(uuid,uuid)',
     'public.atlas_accounting_find_file(uuid,text,uuid)', 'public.atlas_accounting_create(uuid,uuid,jsonb,jsonb)',
-    'public.atlas_accounting_begin_read(uuid,uuid,integer,numeric,integer)', 'public.atlas_accounting_command(uuid,uuid,integer,text,jsonb)',
+    'public.atlas_accounting_begin_read(uuid,uuid,integer,numeric,integer,boolean)', 'public.atlas_accounting_command(uuid,uuid,integer,text,jsonb)',
     'public.atlas_accounting_file(uuid,uuid)', 'public.atlas_accounting_export(uuid,date,date)']) f;
 insert into s92_acc select 'browsers have no table privileges; RLS is on',
   not has_table_privilege('authenticated', 'atlas_private.accounting_documents', 'select')
@@ -289,6 +289,30 @@ insert into s92_acc select 'a late read result never changes a document that lef
   (public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d003', null, 'record_read', '{"outcome":"not_configured"}')->>'extraction_status') = 'none';
 insert into s92_acc select 'a file larger than the read cap is not read and nothing is spent',
   (public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d004', 60, 2, 10)->>'too_large') = 'true';
+
+-- S92b: the read guard sits under the document's row lock.
+update atlas_private.accounting_documents set extraction_status = 'read', status = 'to_review', storage_path = coalesce(storage_path, 'documents/x/guard.pdf'), byte_size = 100
+  where id = '00000000-0000-4000-8000-00000092d005';
+create temporary table s92b_reads as select count(*) as n from atlas_private.accounting_document_events where action = 'read_started';
+insert into s92_acc select 'S92b: a document Atlas read is not read again without "again", and nothing is spent',
+  (public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 500, 100, 5242880)->>'already') = 'read'
+  and (select count(*) from atlas_private.accounting_document_events where action = 'read_started') = (select n from s92b_reads);
+create temporary table s92b_again as
+  select public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 500, 100, 5242880, true) as r;
+insert into s92_acc select 'S92b: Read again (again = true) starts a new read',
+  (select (r->>'storage_path') is not null from s92b_again)
+  and (select extraction_status from atlas_private.accounting_documents where id = '00000000-0000-4000-8000-00000092d005') = 'reading';
+insert into s92_acc select 'S92b: a read in progress is never started twice, not even by Read again',
+  (public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 500, 100, 5242880, true)->>'already') = 'reading'
+  and (public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 500, 100, 5242880)->>'already') = 'reading'
+  and (select count(*) from atlas_private.accounting_document_events where action = 'read_started') = (select n from s92b_reads) + 1;
+update atlas_private.accounting_documents set updated_at = now() - interval '2 minutes' where id = '00000000-0000-4000-8000-00000092d005';
+insert into s92_acc select 'S92b: a read stuck for more than 90 s can be started again',
+  (public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 500, 100, 5242880)->>'storage_path') is not null;
+insert into s92_acc select 'S92b: the old five-argument begin_read is gone; the new one is service-role only',
+  to_regprocedure('public.atlas_accounting_begin_read(uuid,uuid,integer,numeric,integer)') is null
+  and has_function_privilege('service_role', 'public.atlas_accounting_begin_read(uuid,uuid,integer,numeric,integer,boolean)', 'execute')
+  and not has_function_privilege('authenticated', 'public.atlas_accounting_begin_read(uuid,uuid,integer,numeric,integer,boolean)', 'execute');
 
 select jsonb_build_object(
   's92_accounting', case when bool_and(passed) then 'passed' else 'failed' end,

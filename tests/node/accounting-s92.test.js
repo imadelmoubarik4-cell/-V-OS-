@@ -407,24 +407,28 @@ test('production wiring: a function env (as index.ts passes) authenticates throu
   assert.equal((await noToken(new Request('https://fn.test/atlas-accounting?action=snapshot'))).status, 401);
 });
 
-test('a read without "again" never pays twice: a read or reading document is returned as it is', async () => {
-  for (const status of ['read', 'reading']) {
-    const services = fakeServices({ rpc: (name, args) => (name === 'atlas_accounting_document' ? { id: args.p_id, extraction_status: status, version: 3 } : undefined) });
+test('a read never pays twice: begin_read (under the row lock) decides; again is passed only by Read again', async () => {
+  for (const already of ['read', 'reading']) {
+    const services = fakeServices({ rpc: (name, args) => {
+      if (name === 'atlas_accounting_begin_read') return { id: args.p_id, ai_enabled: true, already };
+      if (name === 'atlas_accounting_document') return { id: args.p_id, extraction_status: already, version: 3 };
+      return undefined;
+    } });
     let calls = 0;
     const { handle } = handlerFor({ services, env: { OPENAI_API_KEY: 'k' }, fetchImpl: async () => { calls += 1; return modelReply(READ); } });
-    const { status: code, json } = await body(await handle(post('read', { id: DOC_ID })));
-    assert.equal(code, 200);
-    assert.equal(json.outcome, status === 'read' ? 'already_read' : 'reading');
-    assert.equal(json.document.extraction_status, status);
+    const { status, json } = await body(await handle(post('read', { id: DOC_ID })));
+    assert.equal(status, 200);
+    assert.equal(json.outcome, already === 'read' ? 'already_read' : 'reading');
+    assert.equal(json.document.extraction_status, already);
     assert.equal(calls, 0, 'no model call');
-    assert.equal(services.calls.rpc.some((call) => call.name === 'atlas_accounting_begin_read'), false, 'the daily limit and budget are not touched');
+    assert.equal(services.calls.rpc.find((call) => call.name === 'atlas_accounting_begin_read').args.p_again, false);
+    assert.equal(services.calls.rpc.some((call) => call.name === 'atlas_accounting_command'), false, 'nothing recorded');
   }
-  // "Read again" (again: true) reads a document Atlas already read.
-  const services = fakeServices({ rpc: (name, args) => (name === 'atlas_accounting_document' ? { id: args.p_id, extraction_status: 'read', version: 3 } : undefined) });
+  const services = fakeServices();
   let calls = 0;
   const { handle } = handlerFor({ services, env: { OPENAI_API_KEY: 'k' }, fetchImpl: async () => { calls += 1; return modelReply(READ); } });
   const { json } = await body(await handle(post('read', { id: DOC_ID, again: true })));
   assert.equal(json.outcome, 'read');
   assert.equal(calls, 1);
-  assert.equal(services.calls.rpc.some((call) => call.name === 'atlas_accounting_document'), false, 'no extra lookup for an explicit re-read');
+  assert.equal(services.calls.rpc.find((call) => call.name === 'atlas_accounting_begin_read').args.p_again, true);
 });

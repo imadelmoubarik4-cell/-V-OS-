@@ -115,6 +115,7 @@ function accountingBackend({ aiEnabled = true, documents = seedDocuments(), dupl
     if (action === 'read') {
       const target = find(entry.body?.id);
       if (!target) return fail(404, 'not_found');
+      if (target.extraction_status === 'read' && entry.body?.again !== true) return { document: out(target), outcome: 'already_read' };
       const read = { supplier_name: 'Globus hf.', document_number: 'G-1001', issue_date: '2026-09-20', net_amount: 10000, vat_amount: 2400, total_amount: 12400, currency: 'ISK', line_items: [{ description: 'Campari 1 L', quantity: 4, amount: 12400 }] };
       target.extraction_status = 'read';
       const prefill = Object.fromEntries(['supplier_name', 'document_number', 'issue_date', 'net_amount', 'vat_amount', 'total_amount'].map((key) => [key, read[key]]));
@@ -1272,7 +1273,8 @@ test('upload: the Upload button stays off during a run, so each file is uploaded
       }).observe(queue, { childList: true, subtree: true, characterData: true });
     });
     await page.click('#acc-upload [data-acc-start]');
-    await until(() => page.evaluate(() => document.querySelectorAll('#acc-upload [data-acc-q-open]').length >= 3), { timeout: 10000, message: 'all three uploaded' });
+    // Each finished row has two open controls (title link and Open); count rows.
+    await until(() => page.evaluate(() => document.querySelectorAll('#acc-upload .atlas-row__link[data-acc-q-open]').length === 3), { timeout: 10000, message: 'all three uploaded' });
     await settle(page);
     const uploads = backend.calls.filter((call) => call.action === 'upload');
     const reads = backend.calls.filter((call) => call.action === 'read');
@@ -1283,5 +1285,35 @@ test('upload: the Upload button stays off during a run, so each file is uploaded
     const states = await page.evaluate(() => window.__startStates);
     assert.ok(states.length >= 3, `observed the run (${states.length} updates)`);
     assert.deepEqual([...new Set(states)], [true], 'the Upload button stayed off for the whole run');
+  } finally { await close(); }
+});
+
+test('upload: a failed file is not retried by itself; the next Upload click retries it once; it can be removed', { skip }, async () => {
+  const backend = accountingBackend();
+  const inner = backend.handler;
+  let failing = true;
+  let attempts = 0;
+  backend.handler = (entry) => {
+    if (entry.action === 'upload') attempts += 1;
+    return entry.action === 'upload' && failing ? fail(500, 'internal') : inner(entry);
+  };
+  const { page, close } = await launch({ backend });
+  try {
+    await openAccounting(page);
+    await page.click('#accounting-view .page-head [data-acc-upload]');
+    await page.waitForSelector('#acc-upload.is-open');
+    await page.setInputFiles('#acc-upload [data-acc-files]', { name: 'broken.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF\n') });
+    await page.click('#acc-upload [data-acc-start]');
+    await until(() => page.evaluate(() => !document.querySelector('#acc-upload [data-acc-start]').disabled), { message: 'the run ends' });
+    await settle(page);
+    assert.equal(attempts, 1, 'one attempt, no loop');
+    assert.equal(await page.textContent('#acc-upload [data-acc-start]'), 'Upload');
+    assert.equal(await page.locator('#acc-upload [data-acc-q-remove]').count(), 1, 'a failed row can be removed');
+    failing = false;
+    await page.click('#acc-upload [data-acc-start]');
+    await until(() => page.evaluate(() => document.querySelectorAll('#acc-upload .atlas-row__link[data-acc-q-open]').length === 1), { message: 'the retry uploads it' });
+    await settle(page);
+    assert.equal(attempts, 2, 'the click retried it once');
+    assert.equal(backend.calls.filter((call) => call.action === 'read').length, 1);
   } finally { await close(); }
 });

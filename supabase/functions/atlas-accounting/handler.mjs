@@ -420,24 +420,22 @@ export function createAccountingHandler({ env, fetchImpl, newId = () => crypto.r
     const record = (payload) => svc.rpc("atlas_accounting_command", {
       p_actor_id: actor.userId, p_id: id, p_version: null, p_command: "record_read", p_payload: payload,
     });
-    // Only "Read again" (again: true) reads a document that Atlas has read or
-    // is reading. The read after an upload never repeats: a retried or
-    // doubled upload request must not pay for the same document twice.
-    if (body.again !== true) {
-      const current = await svc.rpc("atlas_accounting_document", { p_actor_id: actor.userId, p_id: id });
-      if (current?.extraction_status === "read" || current?.extraction_status === "reading") {
-        return { document: current, outcome: current.extraction_status === "read" ? "already_read" : "reading" };
-      }
-    }
     const apiKey = envValue(env, "OPENAI_API_KEY");
     // Without a key nothing is spent and the limit is not touched.
     if (!apiKey) return { document: await record({ outcome: "not_configured" }), outcome: "not_configured" };
     const budget = Number(envValue(env, "ATLAS_ACCOUNTING_READ_BUDGET_USD"));
+    // begin_read decides under the document's row lock: a document Atlas
+    // read is only read again with again: true (Read again), and a read in
+    // progress is never started twice. Nothing is spent in either case.
     const started = await svc.rpc("atlas_accounting_begin_read", {
       p_actor_id: actor.userId, p_id: id, p_daily_limit: LIMITS.dailyReads,
       p_daily_budget_usd: Number.isFinite(budget) && budget > 0 ? budget : LIMITS.dailyBudgetUsd,
-      p_max_bytes: LIMITS.readBytes,
+      p_max_bytes: LIMITS.readBytes, p_again: body.again === true,
     });
+    if (started?.already === "read" || started?.already === "reading") {
+      const current = await svc.rpc("atlas_accounting_document", { p_actor_id: actor.userId, p_id: id });
+      return { document: current, outcome: started.already === "read" ? "already_read" : "reading" };
+    }
     if (!started?.ai_enabled) return { document: await record({ outcome: "not_configured" }), outcome: "not_configured" };
     if (started.too_large) return { document: await record({ outcome: "not_readable" }), outcome: "not_readable" };
     if (!READABLE.has(started.mime_type)) return { document: await record({ outcome: "not_readable" }), outcome: "not_readable" };

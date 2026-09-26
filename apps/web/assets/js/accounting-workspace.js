@@ -534,10 +534,10 @@
       queue.innerHTML = files.map((entry, index) => {
         const name = escapeHtml(entry.file.name || 'Photo');
         const titleMarkup = entry.docId ? `<button type="button" class="atlas-row__link" data-acc-q-open="${escapeHtml(entry.docId)}">${name}</button>` : name;
-        const end = entry.docId ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-acc-q-open="${escapeHtml(entry.docId)}" aria-label="Open ${name}">Open</button><span class="atlas-row__chevron">${icon('chevron-right')}</span>` : entry.started ? '' : `<button type="button" class="atlas-icon-btn" data-acc-q-remove="${index}" aria-label="Remove ${name}">${icon('x')}</button>`;
+        const end = entry.docId ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-acc-q-open="${escapeHtml(entry.docId)}" aria-label="Open ${name}">Open</button><span class="atlas-row__chevron">${icon('chevron-right')}</span>` : entry.started && !entry.failed ? '' : `<button type="button" class="atlas-icon-btn" data-acc-q-remove="${index}" aria-label="Remove ${name}">${icon('x')}</button>`;
         return `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon">${icon(entry.file.type === 'application/pdf' ? 'file-text' : 'image')}</span><div class="atlas-row__body"><p class="atlas-row__title">${titleMarkup}</p><p class="atlas-row__meta" data-acc-q-status="${index}">${escapeHtml(entry.status || `${Math.max(1, Math.round(entry.file.size / 1024))} KB`)}</p></div><div class="atlas-row__end">${end}</div></li>`;
       }).join('');
-      const waiting = files.filter((entry) => !entry.started).length;
+      const waiting = files.filter((entry) => !entry.started || entry.failed).length;
       start.disabled = running || !waiting;
       start.textContent = waiting > 1 ? `Upload ${waiting} files` : 'Upload';
       root.querySelector('[data-acc-cancel]').textContent = files.some((entry) => entry.docId) ? 'Done' : 'Cancel';
@@ -577,6 +577,8 @@
       if (running) return;
       fail('');
       running = true;
+      // A new click retries the files that failed last time, once each.
+      files.forEach((entry) => { if (entry.failed) { entry.failed = false; entry.started = false; } });
       start.disabled = true;
       const fields = paidBy === 'staff' ? { paid_by: 'staff', paid_by_profile_id: payer } : {};
       const created = [];
@@ -595,14 +597,15 @@
           entry.docId = result.document?.id;
           remember(result.document);
           created.push(entry.docId);
-          // A replayed upload is a document that already exists: Atlas has
-          // already been asked to read it, and a read costs money.
-          if (result.readable && aiOn && !result.replayed) {
+          // The server reads each document once: after a replayed upload it
+          // answers already_read / reading without spending anything.
+          if (result.readable && aiOn) {
             setStatus(entry, 'Uploaded · Atlas is reading it…');
             try {
               const read = await api('read', { method: 'POST', body: { id: entry.docId }, timeout: LONG_TIMEOUT_MS });
               remember(read.document);
-              setStatus(entry, ['read', 'already_read'].includes(read.outcome) ? 'Read by Atlas — check it and approve' : 'Uploaded — type in the details');
+              setStatus(entry, ['read', 'already_read'].includes(read.outcome) ? 'Read by Atlas — check it and approve'
+                : read.outcome === 'reading' ? 'Atlas is still reading it — open it in a moment' : 'Uploaded — type in the details');
             } catch (error) {
               setStatus(entry, error?.code === 'rate_limited' ? ERROR_COPY.rate_limited : 'Uploaded — Atlas couldn’t read it, type in the details');
             }
@@ -610,7 +613,9 @@
             setStatus(entry, 'Uploaded — type in the details');
           }
         } catch (error) {
-          entry.started = error?.code === 'duplicate_file';
+          // A failed file stays claimed for this run (the run moves on); the
+          // next click on Upload retries it. Duplicates are done.
+          entry.failed = error?.code !== 'duplicate_file';
           if (error?.code === 'duplicate_file') { entry.docId = error.payload?.existing?.id || null; setStatus(entry, 'Already in Accounting'); }
           else setStatus(entry, errorText(error));
         }

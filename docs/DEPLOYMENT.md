@@ -71,6 +71,11 @@ Atlas reads a document only when both of these hold:
 
 Reads are limited to 60 per rolling 24 hours. A read only fills empty fields and never approves anything.
 
+S92b (follow-up, apply in this order):
+1. `20261001100000_s92b_accounting_read_guard.sql`: `begin_read` gains `p_again` (default false) and decides under the document's row lock: a document Atlas already read is read again only with Read again, and a read in progress (under 90 s old) is never started twice. The gateway deployed before it keeps working.
+2. Redeploy `atlas-accounting`: it passes `p_again` and answers `already_read` / `reading` without spending anything.
+3. The web app (`accounting-workspace.js?v=20261001-s92k`): one upload run at a time; a failed file is retried only by the next Upload click.
+
 ## S91: live voice lease and device handoff
 
 `20260930092000_s91_voice_lease_and_takeover.sql` is the last file of batch A. Apply it, then deploy
