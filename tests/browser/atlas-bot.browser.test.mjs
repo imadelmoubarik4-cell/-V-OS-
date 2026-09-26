@@ -100,7 +100,7 @@ test('Atlas AI: the live 3D robot draws, greets once, follows the pointer and re
     await page.mouse.move(1200, 700, { steps: 5 });
     assert.equal((await info(page)).running, true);
     // The greeting is not cut short; a tap after it plays "react".
-    await until(async () => (await info(page))?.scene?.moment === null, { timeout: 15000, message: 'greeting ends' });
+    await until(async () => (await info(page))?.scene?.moment === null, { timeout: 45000, message: 'greeting ends' });
     // It looks toward the pointer: down at a pointer below it, up at one above
     // (a positive head pitch tips the face down).
     const centre = box.x + box.width / 2;
@@ -224,7 +224,7 @@ test('phone 390: tab bar robot, a smaller live robot, no sideways scroll, nothin
     const composer = await page.locator('#ai-view [data-ai-composer]').boundingBox();
     assert.ok(bot.y + bot.height <= composer.y, 'robot sits above the composer');
     assert.ok(composer.y + composer.height <= tabbar.y + 1, 'composer clears the tab bar');
-    await until(async () => (await info(page))?.scene?.moment === null, { timeout: 15000, message: 'greeting ends' });
+    await until(async () => (await info(page))?.scene?.moment === null, { timeout: 45000, message: 'greeting ends' });
     await page.locator('#ai-view .atlas-bot-live__canvas').tap();
     await until(async () => (await info(page))?.scene?.moment === 'react', { message: 'tap reacts' });
     await page.screenshot({ path: process.env.ATLAS_BOT_SHOTS ? `${process.env.ATLAS_BOT_SHOTS}/ai-empty-390.png` : undefined });
@@ -432,7 +432,7 @@ test('calm idle pauses the render loop; a pointer move, a state change or a mome
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
     await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
-    await until(async () => (await info(page))?.scene?.moment === null, { timeout: 15000, message: 'greeting ends' });
+    await until(async () => (await info(page))?.scene?.moment === null, { timeout: 45000, message: 'greeting ends' });
     await page.evaluate(() => window.AtlasBot.setIdleTimeout(300));
     await until(async () => { const now = await info(page); return now.running === false && now.paused === true; }, { message: 'paused while idle' });
     const still = (await info(page)).scene.frames;
@@ -496,7 +496,9 @@ test('WebGL in software (no GPU): the poster stays, no scene is built, and it ca
 
 const robotInfo = (page) => page.evaluate(() => window.AtlasBot.robot.info());
 const setRobot = (page, state) => page.evaluate((name) => window.AtlasBot.robot.set(name), state);
-const greeted = (page) => until(async () => (await info(page))?.scene?.moment === null, { timeout: 15000, message: 'greeting ends' });
+// Precondition only: the ~3 s greeting runs in scene time, which a starved CI
+// runner (software WebGL) advances slowly.
+const greeted = (page) => until(async () => (await info(page))?.scene?.moment === null, { timeout: 45000, message: 'greeting ends' });
 // What every following surface shows: the welcome robot, its poster, the
 // sidebar and tab bar robots.
 const shown = (page) => page.evaluate(() => ({
