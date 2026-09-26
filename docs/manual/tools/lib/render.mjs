@@ -23,7 +23,7 @@ export const CALLOUTS = {
   warning: { label: 'Warning', icon: 'triangle-alert' },
   'admin-only': { label: 'Administrators only', icon: 'shield-check', roles: 'admin' },
   roles: { label: 'Available to', icon: 'users' },
-  ai: { label: 'Atlas AI', icon: 'sparkles' },
+  ai: { label: 'Atlas AI', icon: 'atlas-bot' },
   example: { label: 'Example', icon: 'file-text' },
   'coming-later': { label: 'Coming in a later release', icon: 'hourglass' }
 };
@@ -77,6 +77,13 @@ export function createRenderer(options = {}) {
   function icon(name, cls = '') {
     const key = String(name || '').toLowerCase();
     if (!key) return '';
+    // 'atlas-bot' is the Atlas AI robot badge, as the app shows it wherever
+    // the assistant is the symbol (assets/brand/atlas-bot-small.png, a copy of
+    // apps/web/assets/atlas-bot/atlas-bot-small.png; its first frame).
+    if (key === 'atlas-bot') {
+      const sprite = resolveAsset('assets/brand/atlas-bot-small.png');
+      return `<span class="m-icon m-bot${cls ? ` ${cls}` : ''}" aria-hidden="true" style="background-image:url('${escapeHtml(sprite.href)}')"></span>`;
+    }
     if (!iconCache.has(key)) {
       const file = path.join(iconsDir, `${key}.svg`);
       if (!/^[a-z0-9-]+$/.test(key) || !existsSync(file)) { warn(`Unknown icon "${key}" (add it to tools/extract_icons.mjs)`); iconCache.set(key, ''); }
@@ -291,12 +298,12 @@ ${renderBlocks(block.blocks, ctx)}</div>
     const list = firstList(block.blocks);
     if (!list) { warn('prompts: expected a list of questions'); return ''; }
     const cols = parseInt(block.attrs.cols, 10) || 2;
-    const title = block.label ? `<p class="m-prompts__title">${icon('sparkles')}${inline(block.label)}</p>` : '';
+    const title = block.label ? `<p class="m-prompts__title">${icon('atlas-bot')}${inline(block.label)}</p>` : '';
     const items = list.items.map((item) => {
       const first = item.blocks[0];
       const [q, hint] = splitDash(first && first.type === 'paragraph' ? first.text : '');
       const question = q.replace(/^["“”]+|["“”]+$/g, '');
-      return `<li class="m-prompt"><span class="m-prompt__icon">${icon('sparkles')}</span><p class="m-prompt__q">“${inline(question)}”</p>${hint ? `<p class="m-prompt__hint">${inline(hint)}</p>` : ''}</li>`;
+      return `<li class="m-prompt"><span class="m-prompt__icon">${icon('atlas-bot')}</span><p class="m-prompt__q">“${inline(question)}”</p>${hint ? `<p class="m-prompt__hint">${inline(hint)}</p>` : ''}</li>`;
     }).join('\n');
     return `<div class="m-prompts">${title}<ul class="m-prompts__grid m-prompts__grid--${cols}" aria-label="Example questions for Atlas AI">\n${items}\n</ul></div>`;
   }

@@ -3,7 +3,7 @@ title: Quick Start Guide
 subtitle: Restaurant & Hospitality Operating System
 tagline: Everything you need for your first shift with Atlas.
 version: Atlas Quick Start Guide · Version 0.8 · September 2026
-release: Based on Atlas production release 0.8.0 (main 51e4fe8, 26 September 2026)
+release: Based on Atlas production release 0.8.0 (main ef7c907, 26 September 2026)
 footer: Atlas Quick Start Guide · Version 0.8 · September 2026
 doc-title: Atlas Quick Start Guide
 cover: light
@@ -68,7 +68,7 @@ Tick each checklist item as you do it. Atlas saves your name and the time straig
 ::::keep
 ## Atlas AI {#qs-atlas-ai}
 
-Ask Atlas about your venue in plain language. It answers from your venue's records, and only from what your role may see. Tap :ui[Atlas] on the phone tab bar, or :path[Atlas AI] in the sidebar.
+Ask Atlas about your venue in plain language. It answers from your venue's records, and only from what your role may see. Look for the robot: tap :ui[Atlas]{icon=atlas-bot} on the phone tab bar, or :path[Atlas AI] in the sidebar.
 
 :::prompts Try asking
 - What's low before tonight? — Checks verified stock against par levels.

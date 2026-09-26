@@ -13,7 +13,7 @@ sources, the theme, the images and the build that turns them into HTML and PDF.
 | `assets/screenshots/` | Screenshots (captured from the app on `main`) |
 | `assets/diagrams/` | Hand-authored SVG diagrams (plain-text labels) |
 | `assets/icons/` | Lucide icons used by the manual (ISC, see `LICENSE-lucide.txt`) |
-| `assets/brand/` | Byte-identical copies of the Atlas logos from `apps/web/assets/brand/`, and the Atlas AI robot art (decorative, Atlas AI chapter only) |
+| `assets/brand/` | Byte-identical copies of the Atlas logos from `apps/web/assets/brand/`, the Atlas AI robot art (`atlas-bot.png`, decorative, Atlas AI chapter openers only) and the robot badge (`atlas-bot-small.png`, byte-identical to `apps/web/assets/atlas-bot/`, for `icon=atlas-bot`) |
 | `tools/capture_screenshots.mjs` | Captures every screenshot from the real `apps/web` code through the browser-test harness |
 | `tools/manual-fixtures.mjs` | The demo venue (Harbour Room, Reykjavík) the screenshots show: invented people, suppliers, stock and records |
 | `assets/screenshots/manifest.json` | One entry per screenshot: file, module, viewport, role, route, the state shown and a suggested caption (written by the capture) |
@@ -24,9 +24,9 @@ sources, the theme, the images and the build that turns them into HTML and PDF.
 
 ## Sources of truth
 
-- **What Atlas does** is the code on `main`. The guides document release 0.8.0 (main 51e4fe8):
+- **What Atlas does** is the code on `main`. The guides document release 0.8.0 (main ef7c907):
   exact button labels, headings and messages come from `apps/web`, never from memory. Features that
-  are not on `main` (Accounting, the Atlas AI character in the app, the Marketing publishing platform,
+  are not on `main` (Accounting, the Marketing publishing platform,
   delivery of device alerts) appear only in a short *Coming in a later release* note.
 - **The text** is `Atlas_User_Guide.md` (the single master, every chapter) and
   `Atlas_Quick_Start_Guide.md`. The Quick Start pulls the sections tagged `.quick` in the master
@@ -58,7 +58,10 @@ The capture needs Playwright with Chromium and the pinned browser libraries (see
 `tests/browser/README.md`; `ATLAS_PLAYWRIGHT` points at a Playwright install if it isn't in
 `node_modules`). It serves `apps/web` locally and answers every backend call from the demo venue, so
 nothing reaches production. The page clock is frozen at Thursday 24 September 2026, 16:40 in
-Reykjavík, so two runs give the same pictures. Look at every new PNG before building.
+Reykjavík, so two runs give the same pictures. The Atlas AI robot is a WebGL scene; the capture
+browser draws WebGL in software, where Atlas would show the still poster, so the capture switches
+the live robot on (`AtlasBot.animateInSoftware`, as the browser tests do) and waits for its first
+frame. Motion is reduced, so the robot holds one still pose. Look at every new PNG before building.
 
 The build must finish without warnings. After building, look at every PDF page (for example
 `pdftoppm -r 50 -png docs/manual/Atlas_User_Guide.pdf /tmp/page`) for split figures, widows,
@@ -112,7 +115,7 @@ title: User Guide
 subtitle: Restaurant & Hospitality Operating System
 tagline: Everything your team needs to run the venue.
 version: Atlas User Guide · Version 0.8 · September 2026
-release: Based on Atlas production release 0.8.0 (main 51e4fe8, 26 September 2026)
+release: Based on Atlas production release 0.8.0 (main ef7c907, 26 September 2026)
 footer: Atlas User Guide · Version 0.8 · September 2026
 doc-title: Atlas User Guide          # browser tab / PDF title
 cover: full                          # full (User Guide) | light (Quick Start) | none
@@ -180,6 +183,7 @@ Any callout takes `roles="…"` (adds badges), `icon=` (another Lucide icon) and
 | `:path[Inventory > Stock count]` | Where to go, with chevrons |
 | `:kbd[Ctrl K]` | A key |
 | `:icon[sparkles]` | A Lucide icon from `assets/icons/` |
+| `:icon[atlas-bot]`, `{icon=atlas-bot}` | The Atlas AI robot badge, as the app shows it on Atlas AI, Ask Atlas and the briefing |
 | `:badge[New]{tone=new}` | A small tag (`tone=new`, `live`, `warning`) |
 
 Use the exact UI wording from the app in `:ui[…]` and `:path[…]`.
@@ -306,7 +310,9 @@ Know what you have, what you need and what it costs.
 ```
 
 `art="assets/brand/atlas-bot.png" art-crop=left` adds decorative art (the robot sheet holds three
-poses; `art-crop=left` shows the first). The robot is for the Atlas AI chapter only.
+poses; `art-crop=left` shows the first). Brand rule: the Atlas logo is the product, the robot is
+Atlas AI. Robot chapter art opens the Atlas AI chapters only; elsewhere the robot appears as the
+`atlas-bot` badge, only where the app itself shows it.
 
 ### Quick reference and glossary
 
@@ -350,8 +356,9 @@ chapter). Tag `##` sections, not the chapter's `#` title. A tagged `:::block` is
 ## Icons
 
 `assets/icons/` holds the Lucide 0.454.0 icons (the version the app loads) that the manual uses,
-including every side-bar icon: house, sparkles, messages-square, clipboard-check, package, martini,
-truck, calendar-days, users, book-open, chart-no-axes-column, megaphone, database, settings.
+including the side-bar icons: house, messages-square, clipboard-check, package, martini,
+truck, calendar-days, users, book-open, chart-no-axes-column, megaphone, database, settings
+(Atlas AI's side-bar icon is the robot badge, `atlas-bot`, not a Lucide icon).
 To add one, put its Lucide name in `ICONS` in `tools/extract_icons.mjs` and run:
 
 ```sh

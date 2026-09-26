@@ -3,7 +3,7 @@ title: User Guide
 subtitle: Restaurant & Hospitality Operating System
 tagline: Everything your team needs to run the venue.
 version: Atlas User Guide · Version 0.8 · September 2026
-release: Based on Atlas production release 0.8.0 (main 51e4fe8, 26 September 2026)
+release: Based on Atlas production release 0.8.0 (main ef7c907, 26 September 2026)
 footer: Atlas User Guide · Version 0.8 · September 2026
 doc-title: Atlas User Guide
 cover: full
@@ -74,7 +74,7 @@ Stock comes from counts a manager has verified, plus every delivery and waste re
 ### Less chasing {icon=bell}
 **Needs attention** on Home and the notifications bell gather what is out, overdue or waiting for you, each with a button that takes you straight there.
 
-### Answers in plain language {icon=sparkles}
+### Answers in plain language {icon=atlas-bot}
 Ask Atlas AI "What's low before tonight?" and get an answer built from your own records, with the sources shown.
 
 ### A shared record of who did what {icon=history}
@@ -195,6 +195,8 @@ The sidebar on the left holds every page your role can open, always in the same 
 
 Pages your role can't use are simply left out. Bartenders and viewers, for example, don't see Purchasing, Reports, Marketing or Data.
 
+**Atlas AI** is marked with its robot :icon[atlas-bot]. The robot always means Atlas AI; the Atlas logo at the top stands for Atlas itself.
+
 A number next to **Messages** counts unread messages. A number next to **Data** counts catalogue changes waiting for a manager's approval.
 
 :::figure{src="assets/screenshots/shell-sidebar.png" device=desktop width=28% caption="The sidebar groups the pages by what they are for. Badges show unread messages and changes waiting for approval."}
@@ -287,7 +289,7 @@ On a phone, a tab bar at the bottom replaces the sidebar. It is the same for eve
 
 - **Home**
 - **Inventory**
-- **Atlas**: the sparkles button in the middle opens Atlas AI
+- **Atlas**: the robot button in the middle opens Atlas AI
 - **Recipes**
 - **More**: everything else, with a badge for unread messages
 
@@ -427,7 +429,7 @@ When everything is handled you'll see "Nothing needs you right now", with the ti
 
 ## Today's briefing {#home-briefing}
 
-A plain-language summary of the day in one or two sentences, for example: "You open at 17:00. 4 people are on tonight: Sara, Katrín, Gunnar and Elín. The opening checklist is 4 of 9 done."
+The Atlas AI robot :icon[atlas-bot] heads the briefing. It is a plain-language summary of the day in one or two sentences, for example: "You open at 17:00. 4 people are on tonight: Sara, Katrín, Gunnar and Elín. The opening checklist is 4 of 9 done."
 
 The briefing is built only from your records. The line underneath says where it came from ("From opening hours, shifts, checklists, stock counts, recipes and orders"). If something is missing, the briefing says so, for example "Stock hasn't been counted yet, so Atlas can't tell what's low."
 
@@ -492,18 +494,24 @@ On a computer or tablet, the :ui[+] **Quick actions** button in the top bar open
 If you mostly start somewhere else, for example Recipes behind the bar, change your **Start page** in :path[Preferences].
 :::
 
-:::chapter{number=5 art="assets/brand/atlas-bot.png" art-crop=left icon=sparkles}
+:::chapter{number=5 art="assets/brand/atlas-bot.png" art-crop=left icon=atlas-bot}
 # Atlas AI {#atlas-ai}
 Ask a question in plain language, by typing, talking or showing a photo. Atlas answers from your venue's own records, and prepares changes for a person to approve.
 :::
 
 ::roles{roles="admin manager bartender viewer" label="Who uses it"}
 
-In the app, Atlas AI is marked with the :icon[sparkles] sparkles icon: in the sidebar, in the middle of the phone tab bar, and on every answer.
+## Meet the Atlas AI robot {#ai-robot}
 
-:::coming-later Atlas AI's own character
-The Atlas AI character on this chapter's opening page doesn't appear in the app yet. A later release brings it into Atlas; until then, look for the sparkles icon.
-:::
+The robot on this chapter's opening page is the face of Atlas AI. The Atlas logo stands for the whole product; the robot always means "this is Atlas AI". You'll find it:
+
+- on **Atlas AI** in the sidebar and on **Atlas** in the middle of the phone tab bar,
+- next to **Atlas** on every answer,
+- on :ui[Ask Atlas]{icon=atlas-bot} and :ui[Ask Atlas about this]{icon=atlas-bot}, in **Search or ask Atlas**, and at the top of Home's **Today's briefing**.
+
+When you start a new conversation, a larger robot stands above the greeting. It waves hello once, looks toward your pointer on a computer, and reacts when you tap or click it. The small robot next to **Atlas** moves gently while an answer is being written. During live voice, a robot next to the status follows the call: listening, thinking or speaking.
+
+The robot is only decoration; you never need it to use Atlas AI. If your device or browser can't draw the moving robot, for example without graphics acceleration, or your connection is set to save data, you see a still picture of it instead. With **Reduce motion** switched on, in Atlas or on your device, the robot holds still.
 
 ## What Atlas AI can help with {#ai-help}
 
@@ -540,7 +548,7 @@ There are several ways in:
 - **Atlas AI** in the sidebar, or **Atlas** in the middle of the phone tab bar.
 - Type a question in **Search or ask Atlas** and choose **Ask Atlas "…"**, or press :kbd[Ctrl ↵].
 - :ui[Ask a follow-up] on Home's briefing.
-- :ui[Ask Atlas] or :ui[Ask Atlas about this] on an item, a recipe, a Knowledge article, a report or a scan result. The conversation starts with that record attached as context. The context chip above the box shows it; remove the chip if you want a general question.
+- :ui[Ask Atlas]{icon=atlas-bot} or :ui[Ask Atlas about this]{icon=atlas-bot} on an item, a recipe, a Knowledge article, a report or a scan result. The conversation starts with that record attached as context. The context chip above the box shows it; remove the chip if you want a general question.
 
 :::figure{src="assets/screenshots/ai-empty.png" device=desktop caption="A new conversation. Suggestions fit your role; earlier conversations stay in the list on the left."}
 :::
@@ -1759,7 +1767,7 @@ If a bartender or viewer opens a manager tab from a link, Atlas explains: "This 
 :::
 
 :::tip Ask about an article
-Not sure how a procedure applies tonight? Press :ui[Ask Atlas about this]{icon=sparkles} at the bottom of the article. Atlas AI answers using the article and the records your role can see.
+Not sure how a procedure applies tonight? Press :ui[Ask Atlas about this]{icon=atlas-bot} at the bottom of the article. Atlas AI answers using the article and the records your role can see.
 :::
 
 Article types are **Policy**, **Procedure**, **Checklist**, **Training**, **Reference** and **Live resource**. Some articles include a link such as :ui[Open Operations] that takes you straight to the part of Atlas the article talks about.
@@ -1841,7 +1849,7 @@ At the top of every report:
 - **Period**: Today, Last 7 days, Last 30 days (the default), This month, Last month, Year to date, or Custom dates with **From** and **To**.
 - **Comparison**: "vs previous period" or "No comparison". With a comparison, figures show a change such as "▲ 12 % up", "▼ 5 % down", "Same as before" or "No comparable figure".
 - **Export**: :ui[Download CSV], :ui[Print or save as PDF] or :ui[Copy summary].
-- :ui[Ask Atlas]{icon=sparkles}: opens Atlas AI with the report as context.
+- :ui[Ask Atlas]{icon=atlas-bot}: opens Atlas AI with the report as context.
 
 The line under the page title says when the figures were updated and how many data sources are connected.
 
@@ -2347,7 +2355,7 @@ Report waste or breakage to a manager in the handover; recording waste in Invent
 
 ::figure[Write handover, opened from the Shift handover channel.]{src="assets/screenshots/messages-handover.png" device=desktop width=80%}
 
-:::chapter{number=21 art="assets/brand/atlas-bot.png" art-crop=right icon=sparkles}
+:::chapter{number=21 art="assets/brand/atlas-bot.png" art-crop=right icon=atlas-bot}
 # Atlas AI: example questions {#ai-examples}
 Questions to try, grouped by what you want to know.
 :::

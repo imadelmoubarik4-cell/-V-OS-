@@ -289,5 +289,17 @@ test('the guides render without warnings, name only captured screenshots and kee
     const robot = [...source.matchAll(/:::chapter\{[^}]*art="assets\/brand\/atlas-bot\.png"[^}]*\}\n# ([^{\n]+)/g)].map((m) => m[1].trim());
     robot.forEach((title) => assert.match(title, /^Atlas AI/, `${file}: the robot art only opens an Atlas AI chapter`));
     assert.equal(count(source, /atlas-bot\.png/g), robot.length, `${file}: the robot appears only as chapter art`);
+    // The robot is in the product now (release 0.8.0, main ef7c907): no "not in the app yet" note.
+    assert.doesNotMatch(source, /Atlas AI's own character|doesn't appear in the app yet/);
+    assert.doesNotMatch(source, /main 51e4fe8/);
   }
+});
+
+test('icon=atlas-bot renders the Atlas AI robot badge from the app sprite', () => {
+  assert.ok(readFileSync(path.join(MANUAL, 'assets/brand/atlas-bot-small.png')).equals(readFileSync(path.join(MANUAL, '../../apps/web/assets/atlas-bot/atlas-bot-small.png'))), 'badge sprite is a byte-identical copy');
+  const r = createRenderer({ root: MANUAL, outDir: MANUAL });
+  const html = r.renderBlocks('Press :ui[Ask Atlas]{icon=atlas-bot}.\n\n:::ai Atlas AI\nAsk it.\n:::');
+  assert.match(html, /<span class="m-ui"><span class="m-icon m-bot m-icon--inline" aria-hidden="true" style="background-image:url\('assets\/brand\/atlas-bot-small\.png'\)"><\/span>Ask Atlas<\/span>/);
+  assert.equal(count(html, /m-bot/g), 2, 'the Atlas AI callout uses the robot too');
+  assert.deepEqual(r.warnings, []);
 });

@@ -127,6 +127,22 @@ async function ready(page) {
   await settle(page);
 }
 
+// The Atlas AI robot (apps/web/assets/js/atlas-bot.js) is a WebGL scene. The
+// capture browser draws WebGL in software, where Atlas keeps the still poster;
+// the robot is switched on here, as the browser tests do, and the picture
+// waits until every robot on screen has drawn its first frame. Motion is
+// reduced, so each robot holds one still pose.
+async function liveRobot(page) {
+  const keys = await page.evaluate(() => [...document.querySelectorAll('[data-atlas-bot-live]')].map((host) => host.dataset.atlasBotLive || 'default'));
+  if (!keys.length) return;
+  await page.evaluate(() => window.AtlasBot?.animateInSoftware(true));
+  await page.waitForFunction((names) => names.every((key) => (window.AtlasBot?.info(key)?.scene?.frames || 0) >= 1
+    && document.querySelector(`[data-atlas-bot-live="${key}"]`)?.classList.contains('is-live')), keys, { timeout: 20000 })
+    .catch(() => console.warn('  ! the live robot did not draw; the still poster is shown'));
+  await page.waitForTimeout(300);
+  await settle(page);
+}
+
 /** Bounding box (in CSS px) of `selector`, grown by `pad` and kept inside the viewport. */
 async function boxOf(page, selector, pad = 16) {
   const box = await page.locator(selector).first().boundingBox();
@@ -698,8 +714,17 @@ async function capture(definition, fonts) {
   try {
     if (signedIn && definition.route) await navigateTo(page, definition.route);
     await ready(page);
+    // The unread count arrives a moment after the page: wait for it, so the
+    // Messages badge (the More tab's on a phone) shows the same in every shot
+    // where there is something unread.
+    if (signedIn) {
+      const badge = definition.viewport === 'phone' ? '[data-nav-badge="more"]:not([hidden])' : '.atlas-sidebar [data-nav-badge="messages"]:not([hidden])';
+      await page.evaluate(() => window.AtlasTeamUnreadBadge?.refresh?.()).catch(() => {});
+      await page.waitForSelector(badge, { state: 'visible', timeout: 4000 }).catch(() => {});
+    }
     if (definition.run) await definition.run(page, { record, fixtures });
     await ready(page);
+    await liveRobot(page);
     const clip = definition.clip ? await definition.clip(page) : undefined;
     const file = path.join(OUT, `${definition.name}.png`);
     await page.screenshot({ path: file, clip, animations: 'disabled', caret: 'hide' });
@@ -738,6 +763,6 @@ const manifest = SHOTS.filter((entry) => !entry.name.startsWith('discover-') && 
   file: `${entry.name}.png`, name: entry.name, module: entry.module, viewport: entry.viewport === 'phone' ? 'phone 390×844' : 'desktop 1440×900',
   clipped: Boolean(entry.clip), role: entry.role, route: entry.route || '', state: entry.state, caption: entry.caption
 }));
-writeFileSync(MANIFEST, `${JSON.stringify({ generated_from: 'apps/web (main 51e4fe8) via tests/browser/harness.mjs', clock: MANUAL_NOW, device_scale_factor: 2, screenshots: manifest }, null, 2)}\n`);
+writeFileSync(MANIFEST, `${JSON.stringify({ generated_from: 'apps/web (main ef7c907) via tests/browser/harness.mjs', clock: MANUAL_NOW, device_scale_factor: 2, screenshots: manifest }, null, 2)}\n`);
 console.log(`${selected.length - failures.length}/${selected.length} captured → ${path.relative(process.cwd(), OUT)}`);
 if (failures.length) process.exitCode = 1;
