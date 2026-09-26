@@ -168,7 +168,9 @@
   function resize(entry) {
     if (!entry.scene || !entry.host || entry.lost) return;
     const box = entry.host.getBoundingClientRect();
-    const ratio = Math.min(root.devicePixelRatio || 1, media('(pointer: coarse)') ? 1.5 : 2);
+    // Software WebGL (only drawn when a test turns it on) renders at 1x: every
+    // pixel is computed on the CPU and would starve the page.
+    const ratio = software ? 1 : Math.min(root.devicePixelRatio || 1, media('(pointer: coarse)') ? 1.5 : 2);
     const width = Math.round(box.width);
     const height = Math.round(box.height);
     const size = `${width}x${height}@${ratio}`;
@@ -195,7 +197,9 @@
     entry.frame = root.requestAnimationFrame((time) => {
       entry.frame = 0;
       if (!drawable(entry)) return;
-      if (time - entry.lastDraw >= entry.scene.frameInterval() - 2) {
+      // Software WebGL: at most 20 frames a second, for the same reason.
+      const interval = software ? Math.max(50, entry.scene.frameInterval()) : entry.scene.frameInterval();
+      if (time - entry.lastDraw >= interval - 2) {
         entry.lastDraw = time;
         entry.scene.step(time);
       }

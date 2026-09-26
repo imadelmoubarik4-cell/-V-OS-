@@ -179,7 +179,7 @@ test('the scene bundle and sprite are built from the reviewed sources', () => {
 });
 
 test('the robot replaces the assistant icon in AI surfaces; the Atlas logo stays the brand mark', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-bot\.js\?v=20261003-bot3"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-bot\.js\?v=20261003-bot4"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-bot.js') < index.indexOf('assets/js/atlas-ai.js'));
   assert.match(index, /class="nav-item nav-item--ai"[^>]*><span class="atlas-bot atlas-bot--small atlas-bot--nav"/);
   assert.match(index, /class="atlas-tabbar__item atlas-tabbar__item--ai"[^>]*><span class="atlas-bot atlas-bot--small atlas-bot--tab"/);

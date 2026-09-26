@@ -254,7 +254,7 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // The big robot looks down at a pointer below it and up at one above
   // (atlas-bot.js loads the rebuilt scene).
-  assert.ok(index.includes('<script src="assets/js/atlas-bot.js?v=20261003-bot3"></script>'), 'atlas-bot.js');
+  assert.ok(index.includes('<script src="assets/js/atlas-bot.js?v=20261003-bot4"></script>'), 'atlas-bot.js');
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
 

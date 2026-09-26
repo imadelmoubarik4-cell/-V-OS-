@@ -210,7 +210,9 @@ for (const [label, viewport, mobile] of [
   ['laptop 1280×720', { width: 1280, height: 720 }, false],
 ]) {
   test(`responsive ${label}: the robot fits, overlaps neither the greeting, the suggestions nor the composer, and nothing scrolls sideways`, { skip }, async () => {
-    const { page, close } = await openAi({ viewport, contextOptions: mobile ? { hasTouch: true, isMobile: true } : {} });
+    // Layout only: the robot's poster has the live robot's size, so the scene is
+    // not drawn (software WebGL would only slow the page down).
+    const { page, close } = await openAi({ viewport, contextOptions: mobile ? { hasTouch: true, isMobile: true } : {}, animate: false });
     try {
       await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live', { timeout: 15000 });
       await settle(page);
