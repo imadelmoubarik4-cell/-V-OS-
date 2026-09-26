@@ -267,9 +267,11 @@ export function buildRobot({ look = 'normal' } = {}) {
     root.add(foot);
   });
 
-  // Official A mark decals: forehead and chest.
+  // Official A mark decals: forehead and chest. The forehead mark sits wholly
+  // on the white shell above the visor; the chest mark sits low enough that
+  // the head never covers it.
   root.updateMatrixWorld(true);
-  const forehead = headSurface(0, 1.28, 0, { halfW: 0.86, halfH: 0.5, centreV: -0.1 });
+  const forehead = headSurface(0, 1.56, 0, { halfW: 0.86, halfH: 0.5, centreV: -0.1 });
   const decalAt = (target, point, normal, size) => {
     const probe = new Mesh();
     probe.position.copy(point);
@@ -277,10 +279,10 @@ export function buildRobot({ look = 'normal' } = {}) {
     const decal = mesh(geo(new DecalGeometry(target, point, new Euler().copy(probe.rotation), new Vector3(size, size * 0.887, 0.4))), markMat);
     return decal;
   };
-  const headDecal = decalAt(skull, head.localToWorld(forehead.position.clone()), forehead.normal, 0.46);
+  const headDecal = decalAt(skull, head.localToWorld(forehead.position.clone()), forehead.normal, 0.4);
   head.attach(headDecal);
-  const chestPoint = new Vector3(0, 0.84, 0.5);
-  const chestDecal = decalAt(torso, chestPoint, new Vector3(0, 0.15, 1).normalize(), 0.28);
+  const chestPoint = new Vector3(0, 0.76, 0.5);
+  const chestDecal = decalAt(torso, chestPoint, new Vector3(0, 0.07, 1).normalize(), 0.26);
   body.attach(chestDecal);
 
   return { root, body, head, eyes, earRings, arms, glowMat, accent, disposables };
@@ -357,7 +359,9 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     // Looking toward the pointer (desktop, not while a moment plays).
     if (finePointer && calm && status.pointer.active && !status.moment && status.base !== 'thinking') {
       out.headYaw = MathUtils.clamp(status.pointer.x * 0.5, -0.5, 0.5);
-      out.headPitch = MathUtils.clamp(-status.pointer.y * 0.25, -0.22, 0.22);
+      // pointer.y grows downwards and a positive head pitch tips the face down,
+      // so the robot looks down at a pointer below it and up at one above.
+      out.headPitch = MathUtils.clamp(status.pointer.y * 0.25, -0.22, 0.22);
     }
     // Moments.
     const m = status.moment;
@@ -480,7 +484,7 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     busy() { return Boolean(status.moment); },
     info() {
       const render = renderer.info.render;
-      return { base: status.base, moment: status.moment, greetings: status.greetings, frames: status.frames, triangles: render.triangles, calls: render.calls, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures };
+      return { base: status.base, moment: status.moment, greetings: status.greetings, frames: status.frames, headPitch: pose.headPitch, headYaw: pose.headYaw, triangles: render.triangles, calls: render.calls, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures };
     },
     // loseContext: false keeps the canvas's WebGL context (used after the
     // browser restored a lost context, to build a fresh scene on it).

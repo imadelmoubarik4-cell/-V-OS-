@@ -66,7 +66,9 @@ test('Atlas AI: the live 3D robot draws, greets once, follows the pointer and re
     assert.equal(first.failed, false);
     assert.equal(first.scene.greetings, 1, 'greets once when it first shows');
     assert.ok(first.scene.triangles > 5000 && first.scene.triangles < 200000, `triangle budget: ${first.scene.triangles}`);
-    assert.ok(await drawn(page) > 0.08, 'the robot is drawn in the canvas');
+    // The WebGL canvas does not keep its last frame, so a copy taken after the
+    // browser cleared it reads empty: retry until a drawn frame is copied.
+    await until(async () => await drawn(page) > 0.08, { message: 'the robot is drawn in the canvas' });
     const box = await page.locator('.ai-empty .atlas-bot-live').boundingBox();
     assert.deepEqual([Math.round(box.width), Math.round(box.height)], [176, 176]);
     // The robot replaces the Atlas mark that used to head the greeting; the logo in the sidebar is untouched.
@@ -79,6 +81,15 @@ test('Atlas AI: the live 3D robot draws, greets once, follows the pointer and re
     assert.equal((await info(page)).running, true);
     // The greeting is not cut short; a tap after it plays "react".
     await until(async () => (await info(page))?.scene?.moment === null, { timeout: 15000, message: 'greeting ends' });
+    // It looks toward the pointer: down at a pointer below it, up at one above
+    // (a positive head pitch tips the face down).
+    const centre = box.x + box.width / 2;
+    await page.mouse.move(centre, 890, { steps: 3 });
+    await until(async () => (await info(page))?.scene?.headPitch > 0.1, { message: 'looks down at a pointer below' });
+    await page.mouse.move(centre, 5, { steps: 3 });
+    await until(async () => (await info(page))?.scene?.headPitch < -0.1, { message: 'looks up at a pointer above' });
+    await page.mouse.move(1400, box.y + box.height * 0.35, { steps: 3 });
+    await until(async () => (await info(page))?.scene?.headYaw > 0.1, { message: 'looks right at a pointer to the right' });
     await page.locator('.ai-empty .atlas-bot-live__canvas').click();
     await until(async () => (await info(page))?.scene?.moment === 'react', { message: 'react moment' });
     // Leaving Atlas AI stops drawing; coming back resumes without a new greeting or context.
@@ -150,7 +161,7 @@ test('badges: sidebar, palette Ask Atlas and the robot sprite; the Atlas logo st
     const nav = await spriteLoaded(page, '.atlas-nav .nav-item--ai .atlas-bot');
     assert.equal(nav.found, true);
     // 20 px: the small sprite (tighter face, matte visor, larger eyes).
-    assert.match(nav.url, /assets\/atlas-bot\/atlas-bot-small\.png\?v=20261003-bot2/);
+    assert.match(nav.url, /assets\/atlas-bot\/atlas-bot-small\.png\?v=20261003-bot3/);
     assert.deepEqual([nav.width, nav.height], [288, 96], 'three 96 px frames');
     assert.deepEqual(nav.box, [20, 20]);
     if (process.env.ATLAS_BOT_SHOTS) await page.locator('.atlas-nav .nav-group[data-nav-group="main"]').screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/nav-badge-1440.png` });

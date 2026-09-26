@@ -49,6 +49,8 @@
   }
 
   function icon(name) {
+    // 'atlas-bot' is the Atlas AI robot (atlas-bot.js), the assistant's face.
+    if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: 18 });
     return `<i data-lucide="${escape(name)}" aria-hidden="true"></i>`;
   }
 
@@ -385,7 +387,7 @@
       key: entry.id,
       name: entry.name,
       unread_count: entry.unread,
-      last_message: entry.lastMessage ? { id: entry.lastMessage.id, sender_label: entry.lastMessage.sender, body: entry.lastMessage.body, deleted: entry.lastMessage.deleted, created_at: entry.lastMessageAt } : (entry.lastMessageAt ? { created_at: entry.lastMessageAt } : null)
+      last_message: entry.lastMessage ? { id: entry.lastMessage.id, sender_name: entry.lastMessage.sender, body: entry.lastMessage.body, deleted: entry.lastMessage.deleted, created_at: entry.lastMessageAt } : (entry.lastMessageAt ? { created_at: entry.lastMessageAt } : null)
     }));
     state.messages.fetchedAt = Date.now();
     shell()?.emit?.('notify:changed', { source: 'messages-feed' });
@@ -422,6 +424,17 @@
     })();
   }
 
+  // S93: who wrote the last message. The gateway's live sender_name
+  // (sender_id → roster display name) beats the stored sender_label, which may
+  // still say "Team member"; an email-shaped value is never shown.
+  function lastSenderName(last) {
+    for (const value of [last?.sender_name, last?.sender_label]) {
+      const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+      if (text && !text.includes('@')) return text.slice(0, 120);
+    }
+    return '';
+  }
+
   // One item per conversation with unread messages (spec §4.9).
   function messageItems() {
     return state.messages.channels
@@ -430,7 +443,8 @@
         const unread = number(channel.unread_count);
         const last = channel.last_message || null;
         const name = channel.name || 'Messages';
-        const title = unread === 1 && last?.sender_label ? `${last.sender_label} in ${name}` : `${unread} new messages in ${name}`;
+        const sender = lastSenderName(last);
+        const title = unread === 1 && sender ? `${sender} in ${name}` : `${unread} new messages in ${name}`;
         return {
           id: `messages:${channel.key}:${last?.id || unread}`,
           type: 'message',
@@ -609,7 +623,7 @@
       ? facts.lines.slice(0, 2).map((line) => `<p>${escape(line)}</p>`).join('')
       : `<p class="home-briefing__muted">${dataLoaded() ? 'Today’s briefing isn’t available yet.' : 'Preparing today’s briefing…'}</p>`;
     return `<section class="atlas-card home-briefing" aria-labelledby="home-briefing-title">
-      <div class="home-briefing__head">${icon('sparkles')}<h2 id="home-briefing-title">Today’s briefing</h2>${facts.lines.length && updated ? `<span class="home-briefing__time">Updated ${escape(updated)}</span>` : ''}</div>
+      <div class="home-briefing__head">${icon('atlas-bot')}<h2 id="home-briefing-title">Today’s briefing</h2>${facts.lines.length && updated ? `<span class="home-briefing__time">Updated ${escape(updated)}</span>` : ''}</div>
       <div class="home-briefing__text">${text}</div>
       <div class="home-briefing__foot">
         ${facts.sources.size ? `<span class="home-briefing__sources">${icon('check')}${escape(sourcesLabel(facts.sources))}</span>` : '<span></span>'}

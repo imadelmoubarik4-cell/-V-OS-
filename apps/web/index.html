@@ -25,7 +25,7 @@
        legacy layer and no inline style block. -->
   <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260929-s90f">
   <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260929-s90u">
-  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20261003-bot2">
+  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20261003-bot3">
   <link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">
   <link rel="stylesheet" href="assets/css/operations.css?v=20260930-s90g">
   <link rel="stylesheet" href="assets/css/home.css?v=20260929-s90u">
@@ -34,10 +34,11 @@
   <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20261003-bot1">
   <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
        append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
-       or data attribute); the five also named by runtime-module-guard.js keep
-       their unversioned href for that reason. inventory.css and purchasing.css
+       or data attribute); the five also named by runtime-module-guard.js use
+       exactly the href that guard names (unversioned, or team-messages.css with
+       its cache key). inventory.css and purchasing.css
        are the rebuilt Inventory and Purchasing modules (@layer atlas.modules). -->
-  <link rel="stylesheet" href="assets/css/team-messages.css">
+  <link rel="stylesheet" href="assets/css/team-messages.css?v=20261002-s93m">
   <link rel="stylesheet" href="assets/css/marketing-workspace.css?v=20260929-s90u">
   <link rel="stylesheet" href="assets/css/team-profile-photos.css">
   <link rel="stylesheet" href="assets/css/reports-workspace.css?v=20260929-s90f">
@@ -190,12 +191,12 @@
         crossorigin="anonymous"></script>
 <script src="assets/js/atlas-shell.js?v=20261003-bot1"></script>
 <script src="config.js"></script>
-<script src="assets/js/runtime-module-guard.js?v=20260929-s90f"></script>
+<script src="assets/js/runtime-module-guard.js?v=20261002-s93m"></script>
 <script src="assets/js/rehearsal-boundary.js"></script>
 <script src="assets/js/atlas-stock-truth.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-api.js?v=20260926-s91a"></script>
-<script src="assets/js/atlas-bot.js?v=20261003-bot2"></script>
+<script src="assets/js/atlas-bot.js?v=20261003-bot3"></script>
 <script>
   const SUPABASE_CDN_URLS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -1040,7 +1041,7 @@
 <script src="assets/js/atlas-inventory.js?v=20261003-bot1"></script>
 <script src="assets/js/stock-count-workspace.js?v=20260930-s90g"></script>
 <script src="assets/js/atlas-purchasing.js?v=20260930-s90g"></script>
-<script src="assets/js/home.js?v=20261003-bot2"></script>
+<script src="assets/js/home.js?v=20261003-bot3"></script>
 <script src="assets/js/reports-overview.js?v=20260930-s90g"></script>
 <script src="assets/js/data-workspace.js?v=20260929-s90u"></script>
 <script src="assets/js/shifts-workspace.js?v=20260929-s90f"></script>

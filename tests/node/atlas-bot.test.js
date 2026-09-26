@@ -87,9 +87,9 @@ test('live placeholder carries the key, framing and state, with the badge as its
 
 test('the live robot is lazy, same-origin, paused off screen and when hidden, and keeps one WebGL context per key', () => {
   const source = read('apps/web/assets/js/atlas-bot.js');
-  assert.match(source, /const SCENE = 'assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261003-bot2';/);
-  assert.match(source, /const SPRITE = 'assets\/atlas-bot\/atlas-bot\.png\?v=20261003-bot2';/);
-  assert.match(source, /const SPRITE_SMALL = 'assets\/atlas-bot\/atlas-bot-small\.png\?v=20261003-bot2';/);
+  assert.match(source, /const SCENE = 'assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261003-bot3';/);
+  assert.match(source, /const SPRITE = 'assets\/atlas-bot\/atlas-bot\.png\?v=20261003-bot3';/);
+  assert.match(source, /const SPRITE_SMALL = 'assets\/atlas-bot\/atlas-bot-small\.png\?v=20261003-bot3';/);
   assert.match(source, /import\(url\)/);
   assert.match(source, /IntersectionObserver/);
   assert.match(source, /visibilitychange/);
@@ -179,7 +179,7 @@ test('the scene bundle and sprite are built from the reviewed sources', () => {
 });
 
 test('the robot replaces the assistant icon in AI surfaces; the Atlas logo stays the brand mark', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-bot\.js\?v=20261003-bot2"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-bot\.js\?v=20261003-bot3"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-bot.js') < index.indexOf('assets/js/atlas-ai.js'));
   assert.match(index, /class="nav-item nav-item--ai"[^>]*><span class="atlas-bot atlas-bot--small atlas-bot--nav"/);
   assert.match(index, /class="atlas-tabbar__item atlas-tabbar__item--ai"[^>]*><span class="atlas-bot atlas-bot--small atlas-bot--tab"/);
@@ -207,14 +207,14 @@ test('the robot replaces the assistant icon in AI surfaces; the Atlas logo stays
     ['apps/web/assets/js/recipes.js', /id: 'recipes\.ask', label: 'Ask Atlas about this recipe', icon: 'atlas-bot'/],
     ['apps/web/assets/js/reports-workspace.js', /id: 'reports\.ask', label: 'Ask Atlas about this report', icon: 'atlas-bot'/],
   ]) assert.match(read(file), pattern, file);
-  // Not the assistant speaking: the offline quick answer (Atlas AI is off),
-  // the Home briefing (built from shifts and checklists) and Team Messages
-  // system notices (the Atlas platform) keep their previous icons.
+  // The Home daily briefing is Atlas speaking to the team: it carries the robot.
+  // Not the assistant speaking: the offline quick answer (Atlas AI is off) and
+  // Team Messages system notices (the Atlas platform) keep their previous icons.
   const palette = read('apps/web/assets/js/atlas-palette.js');
   assert.match(palette, /\$\{icon\('sparkles', \{ size: 14 \}\)\}Quick answer · Atlas AI is off/);
   const home = read('apps/web/assets/js/home.js');
-  assert.match(home, /home-briefing__head">\$\{icon\('sparkles'\)\}/);
-  assert.doesNotMatch(home, /AtlasBot|atlas-bot/);
+  assert.match(home, /home-briefing__head">\$\{icon\('atlas-bot'\)\}/);
+  assert.match(home, /name === 'atlas-bot' && window\.AtlasBot\) return window\.AtlasBot\.html\(\{ size: 18 \}\)/);
   const team = read('apps/web/assets/js/team-messages.js');
   assert.match(team, /system \? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">\$\{icon\('sparkles'\)\}<\/span>`/);
   assert.doesNotMatch(team, /AtlasBot|atlas-bot|msg-avatar--bot/, 'no assistant speaks in Team Messages');
@@ -228,8 +228,8 @@ test('robot styles live in the components layer and honour reduced motion', () =
   const layer = css.slice(css.indexOf('@layer atlas.components {'));
   assert.ok(layer.includes('.atlas-bot {'), 'inside @layer atlas.components');
   assert.match(css, /html\.atlas-reduce-motion \.atlas-bot \{ animation: none; transition: none; \}/);
-  assert.match(css, /url\('\.\.\/atlas-bot\/atlas-bot\.png\?v=20261003-bot2'\)/);
-  assert.match(css, /\.atlas-bot--small \{ background-image: url\('\.\.\/atlas-bot\/atlas-bot-small\.png\?v=20261003-bot2'\); \}/);
+  assert.match(css, /url\('\.\.\/atlas-bot\/atlas-bot\.png\?v=20261003-bot3'\)/);
+  assert.match(css, /\.atlas-bot--small \{ background-image: url\('\.\.\/atlas-bot\/atlas-bot-small\.png\?v=20261003-bot3'\); \}/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.atlas-bot \{ animation: none; transition: none; \}\s*:is\(a, button\):hover > \.atlas-bot \{ transform: none; \}/);
   assert.match(read('apps/web/assets/css/atlas-shell.css'), /\.atlas-ai \.ai-empty:not\(\.ai-empty--off\):not\(:has\(\.atlas-bot-live\)\)::before/);
 });

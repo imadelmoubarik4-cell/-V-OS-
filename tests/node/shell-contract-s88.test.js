@@ -230,7 +230,7 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
-  for (const file of ['runtime-module-guard.js', 's38-app-remediation.js', 'shifts-workspace.js',
+  for (const file of ['s38-app-remediation.js', 'shifts-workspace.js',
     'atlas-venue-clock.js', 'modal.js', 'atlas-stock-truth.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
@@ -247,11 +247,14 @@ test('changed scripts carry the S88 cache key', () => {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
   }
   // Robot review follow-up: one WebGL probe, context loss, live reduced
-  // motion, idle pause (atlas-bot.js); the offline quick answer and the Home
-  // briefing keep the sparkles icon (atlas-palette.js, home.js).
-  for (const file of ['atlas-bot.js', 'atlas-palette.js', 'home.js']) {
+  // motion, idle pause (atlas-bot.js); the offline quick answer keeps the
+  // sparkles icon (atlas-palette.js).
+  for (const file of ['atlas-palette.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot2"></script>`), file);
   }
+  // The big robot looks down at a pointer below it and up at one above
+  // (atlas-bot.js loads the rebuilt scene).
+  assert.ok(index.includes('<script src="assets/js/atlas-bot.js?v=20261003-bot3"></script>'), 'atlas-bot.js');
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
 
@@ -261,12 +264,19 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['marketing-workspace.js', 'reports-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261003-bot1'`), file);
   }
-  // Team Messages system notices are the platform, not the assistant: they
-  // keep the Atlas avatar (robot review follow-up).
-  assert.ok(config.includes("scriptPath: 'assets/js/team-messages.js?v=20261003-bot2'"), 'team-messages.js');
-  for (const file of ['team-profile-photos.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90u'`), file);
+  // S92: every message shows its sender's real name and photo (own on the
+  // right with the viewer's name and avatar); photos load when Messages opens.
+  for (const file of ['team-messages.js', 'team-unread-badge.js', 'team-profile-photos.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261002-s93m'`), file);
   }
+  // The guarded stylesheet keeps one href in index.html, config.js and the guard.
+  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/team-messages.css?v=20261002-s93m">'), 'team-messages.css');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css loader');
+  assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css guard');
+  assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20261002-s93m"></script>'), 'runtime-module-guard.js');
+  // S93: the Home/bell message item names the sender by the live name; the
+  // daily briefing header shows the Atlas AI robot.
+  assert.ok(index.includes('<script src="assets/js/home.js?v=20261003-bot3"></script>'), 'home.js');
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }
