@@ -90,6 +90,8 @@ test('Atlas AI: the live 3D robot draws, greets once, follows the pointer and re
     await until(async () => (await info(page))?.scene?.headPitch < -0.1, { message: 'looks up at a pointer above' });
     await page.mouse.move(1400, box.y + box.height * 0.35, { steps: 3 });
     await until(async () => (await info(page))?.scene?.headYaw > 0.1, { message: 'looks right at a pointer to the right' });
+    await page.mouse.move(5, box.y + box.height * 0.35, { steps: 3 });
+    await until(async () => (await info(page))?.scene?.headYaw < -0.1, { message: 'looks left at a pointer to the left' });
     await page.locator('.ai-empty .atlas-bot-live__canvas').click();
     await until(async () => (await info(page))?.scene?.moment === 'react', { message: 'react moment' });
     // Leaving Atlas AI stops drawing; coming back resumes without a new greeting or context.
@@ -178,6 +180,49 @@ test('badges: sidebar, palette Ask Atlas and the robot sprite; the Atlas logo st
     // The brand mark is still the kit logo.
     const brand = await page.$eval('.atlas-sidebar .atlas-brand', (node) => node.innerHTML);
     assert.doesNotMatch(brand, /atlas-bot/);
+  } finally { await close(); }
+});
+
+test('every robot asset the page references loads (200) with the keys atlas-bot.js and the stylesheet use', { skip }, async () => {
+  const { fixtures } = aiFixtures();
+  const { page, close } = await launchAtlas({ user: USERS.admin, fixtures, hash: '#home', fixedTime: AI_FIXTURE_NOW });
+  try {
+    const result = await page.evaluate(async () => {
+      const urls = new Set();
+      for (const node of document.querySelectorAll('script[src*="atlas-bot"], link[href*="atlas-ai.css"], link[href*="atlas-components.css"]')) urls.add(node.getAttribute('src') || node.getAttribute('href'));
+      // The sprites the stylesheet points at, read from the served atlas-components.css itself.
+      const sheet = document.querySelector('link[href*="atlas-components.css"]');
+      const text = await (await fetch(sheet.href, { cache: 'no-store' })).text();
+      for (const match of text.matchAll(/url\('?"?([^'")]*atlas-bot\/[^'")]+)'?"?\)/g)) urls.add(new URL(match[1], sheet.href).href);
+      const statuses = {};
+      for (const url of urls) {
+        const response = await fetch(url, { cache: 'no-store' });
+        statuses[url] = response.status;
+      }
+      return { statuses };
+    });
+    const entries = Object.entries(result.statuses);
+    const names = entries.map(([url]) => url);
+    assert.ok(names.some((url) => /assets\/js\/atlas-bot\.js\?v=20261003-bot4$/.test(url)), `atlas-bot.js key: ${names.join(', ')}`);
+    assert.ok(names.some((url) => /atlas-bot\/atlas-bot\.png\?v=20261003-bot3$/.test(url)), 'badge sprite from the stylesheet');
+    assert.ok(names.some((url) => /atlas-bot\/atlas-bot-small\.png\?v=20261003-bot3$/.test(url)), 'small sprite from the stylesheet');
+    for (const [url, status] of entries) assert.equal(status, 200, url);
+    // The scene bundle, fetched with the exact URL atlas-bot.js loads it from.
+    const scene = await page.evaluate(async () => {
+      const source = await (await fetch(document.querySelector('script[src*="atlas-bot.js"]').src)).text();
+      const url = source.match(/const SCENE = '([^']+)'/)?.[1];
+      const sprites = [...source.matchAll(/const SPRITE(?:_SMALL)? = '([^']+)'/g)].map((match) => match[1]);
+      const out = { url, status: url ? (await fetch(url, { cache: 'no-store' })).status : 0, sprites: {} };
+      for (const sprite of sprites) out.sprites[sprite] = (await fetch(sprite, { cache: 'no-store' })).status;
+      return out;
+    });
+    assert.match(scene.url, /^assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261003-bot4$/);
+    assert.equal(scene.status, 200, scene.url);
+    assert.equal(Object.keys(scene.sprites).length, 2);
+    for (const [sprite, status] of Object.entries(scene.sprites)) {
+      assert.equal(status, 200, sprite);
+      assert.ok(names.some((url) => url.endsWith(sprite)), `the stylesheet uses the same key as atlas-bot.js: ${sprite}`);
+    }
   } finally { await close(); }
 });
 
@@ -368,7 +413,9 @@ test('calm idle pauses the render loop; a pointer move, a state change or a mome
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
     await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
-    await until(async () => (await info(page))?.scene?.moment === null, { timeout: 15000, message: 'greeting ends' });
+    // Precondition only: the ~3 s greeting runs in scene time, which a starved
+    // CI runner (software WebGL) advances slowly; this test is about the pause.
+    await until(async () => (await info(page))?.scene?.moment === null, { timeout: 45000, message: 'greeting ends' });
     await page.evaluate(() => window.AtlasBot.setIdleTimeout(300));
     await until(async () => { const now = await info(page); return now.running === false && now.paused === true; }, { message: 'paused while idle' });
     const still = (await info(page)).scene.frames;

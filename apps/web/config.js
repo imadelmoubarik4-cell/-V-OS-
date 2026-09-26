@@ -11,6 +11,8 @@ window.VABAR_CONFIG = {
   STOCK_COUNTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-stock-counts",
   TEAM_MESSAGES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-messages",
   MARKETING_WORKSPACE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-workspace",
+  // Marketing › Media: private photo and video library (signed uploads, 5-minute previews).
+  MARKETING_MEDIA_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-media",
   TEAM_PROFILES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profiles",
   TEAM_PROFILE_PHOTOS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profile-photos",
   SHIFTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-shifts",
@@ -115,10 +117,24 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/marketing-workspace.css?v=20260929-s90u',
-  scriptPath: 'assets/js/marketing-workspace.js?v=20261003-bot1',
+  stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94c',
+  scriptPath: 'assets/js/marketing-workspace.js?v=20261004-s94b',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
+}));
+
+// S94: the composer's shared platform checks (generated from the publisher's
+// rules) and the Marketing media library (library, picker and upload queue).
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/marketing-platform-rules.js?v=20261004-s94b',
+  globalName: 'AtlasPlatformRules',
+  dataAttribute: 'atlasPlatformRules',
+}));
+
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/marketing-media.js?v=20261004-s94c',
+  globalName: 'AtlasMarketingMedia',
+  dataAttribute: 'atlasMarketingMedia',
 }));
 
 // Checkpoint E loads a compressed, repository-owned Team Profiles bundle. The
@@ -180,8 +196,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // Checkpoint J replaces the Settings placeholder with a versioned, role-aware
 // control centre for venue configuration, operating rules and personal preferences.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/settings-workspace.css',
-  scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91c',
+  stylesheetPath: 'assets/css/settings-workspace.css?v=20261004-s94',
+  scriptPath: 'assets/js/settings-workspace.js?v=20261004-s94',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
 }));

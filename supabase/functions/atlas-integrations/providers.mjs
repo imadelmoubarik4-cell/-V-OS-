@@ -5,20 +5,34 @@
 //   "documented"  - stated in the provider's current developer documentation
 //   "unverified"  - could not be confirmed from primary documentation; the
 //                   provider stays "not available" until the owner confirms it
-// Scopes are the minimum Atlas needs for what is built today: connect and
-// verify the account. Publishing/insights scopes are listed separately in
-// `future_scopes` and are NOT requested.
+// Scopes (S94B, docs/marketing/S94_Publishing_Architecture.md §4):
+//   `scopes`         connect + verify, the minimum; verify requires only these.
+//   `publish_scopes` requested only when a manager presses "Allow publishing"
+//                    (start with purpose "publishing" asks for scopes ∪
+//                    publish_scopes). The database derives
+//                    publishing_permission_state from the granted scopes.
+//   `future_scopes`  insights etc., never requested.
 //
 // All network calls go through an injected `fetchImpl` so tests never reach a
 // provider. No function here returns a token to a caller outside the Edge
 // Function; the handler only exposes `publicProvider()` output.
 
-import { sanitizeProviderError } from "./oauth-core.mjs";
+import {
+  GOOGLE_TOKEN_URL,
+  ProviderError,
+  TIKTOK_TOKEN_URL,
+  expiresAt,
+  readProviderJson,
+  refreshGoogleTokenSet,
+  refreshTikTokTokenSet,
+  secret,
+} from "../_shared/integrations/provider-http.mjs";
+
+export { ProviderError };
 
 export const DEFAULT_META_GRAPH_VERSION = "v25.0";
 
 const GOOGLE_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 
 // Requirements: `env` is the function secret an administrator sets (its NAME
@@ -48,7 +62,10 @@ export const PROVIDERS = Object.freeze({
     tokenUrl: () => GOOGLE_TOKEN_URL,
     revokeUrl: () => GOOGLE_REVOKE_URL,
     scopes: ["https://www.googleapis.com/auth/business.manage"],
+    // business.manage already covers local posts (contract §4).
+    publish_scopes: [],
     future_scopes: [],
+    resource_kind: "gbp_location",
     scopeSeparator: " ",
     clientIdParam: "client_id",
     extraAuthorizeParams: { access_type: "offline", prompt: "consent", include_granted_scopes: "true" },
@@ -57,10 +74,11 @@ export const PROVIDERS = Object.freeze({
       { env: "ATLAS_GOOGLE_OAUTH_CLIENT_SECRET", label: "its client secret" },
     ],
     extraRequirements: [],
-    enables: "Shows your Google reviews and business listing in Atlas.",
+    enables: "Shows your Google listing in Atlas and publishes approved Google posts.",
     owner_requirements_summary:
       "Google Cloud project, approved Business Profile API access, published OAuth consent screen (business.manage is a sensitive scope), OAuth web client.",
     verify: verifyGoogleBusinessProfile,
+    listResources: listGoogleBusinessProfileResources,
     refresh: refreshGoogle,
     revoke: revokeGoogle,
     exchange: exchangeGoogleCode,
@@ -77,6 +95,7 @@ export const PROVIDERS = Object.freeze({
     // drive.file is non-sensitive: per-file access to files the owner picks
     // or Atlas creates. drive.readonly is restricted (security assessment).
     scopes: ["https://www.googleapis.com/auth/drive.file"],
+    publish_scopes: null,
     future_scopes: [],
     scopeSeparator: " ",
     clientIdParam: "client_id",
@@ -106,7 +125,12 @@ export const PROVIDERS = Object.freeze({
     tokenUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/oauth/access_token`,
     revokeUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/me/permissions`,
     scopes: ["pages_show_list", "pages_read_engagement"],
-    future_scopes: ["pages_manage_posts", "read_insights", "business_management"],
+    publish_scopes: ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "business_management"],
+    future_scopes: ["read_insights"],
+    resource_kind: "facebook_page",
+    // Re-asks permissions the person declined earlier (Facebook Login
+    // auth_type=rerequest; UNVERIFIED against the live page this session).
+    publishAuthorizeParams: { auth_type: "rerequest" },
     scopeSeparator: ",",
     clientIdParam: "client_id",
     extraAuthorizeParams: {},
@@ -115,10 +139,13 @@ export const PROVIDERS = Object.freeze({
       { env: "ATLAS_META_APP_SECRET", label: "its app secret" },
     ],
     extraRequirements: [],
-    enables: "Shows your Facebook Page and its activity in Atlas.",
+    enables: "Lets Atlas publish approved posts to your Facebook Page.",
     owner_requirements_summary:
       "Meta Business app with Facebook Login for Business, business verification, App Review for Page permissions, app in Live mode.",
     verify: verifyFacebookPages,
+    listResources: listFacebookPages,
+    resourceCredential: facebookPageCredential,
+    revokePermissions: revokeMetaPermissions,
     refresh: null,
     revoke: revokeMeta,
     exchange: exchangeMetaCode,
@@ -133,7 +160,10 @@ export const PROVIDERS = Object.freeze({
     tokenUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/oauth/access_token`,
     revokeUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/me/permissions`,
     scopes: ["instagram_basic", "pages_show_list"],
-    future_scopes: ["instagram_content_publish", "instagram_manage_insights", "pages_read_engagement", "business_management"],
+    publish_scopes: ["instagram_basic", "instagram_content_publish", "pages_show_list", "pages_read_engagement", "business_management"],
+    future_scopes: ["instagram_manage_insights"],
+    resource_kind: "instagram_account",
+    publishAuthorizeParams: { auth_type: "rerequest" },
     scopeSeparator: ",",
     clientIdParam: "client_id",
     extraAuthorizeParams: {},
@@ -142,10 +172,13 @@ export const PROVIDERS = Object.freeze({
       { env: "ATLAS_META_APP_SECRET", label: "its app secret" },
     ],
     extraRequirements: [],
-    enables: "Shows your Instagram business account in Atlas.",
+    enables: "Lets Atlas publish approved posts to your Instagram account.",
     owner_requirements_summary:
       "Instagram professional account linked to the VÁ Facebook Page; same Meta app; App Review for Instagram permissions.",
     verify: verifyInstagramAccount,
+    listResources: listInstagramAccounts,
+    resourceCredential: instagramPageCredential,
+    revokePermissions: revokeMetaPermissions,
     refresh: null,
     revoke: revokeMeta,
     exchange: exchangeMetaCode,
@@ -159,10 +192,13 @@ export const PROVIDERS = Object.freeze({
     pkce: "none",
     endpoint_evidence: "documented",
     authorizeUrl: () => "https://www.tiktok.com/v2/auth/authorize/",
-    tokenUrl: () => "https://open.tiktokapis.com/v2/oauth/token/",
+    tokenUrl: () => TIKTOK_TOKEN_URL,
     revokeUrl: () => "https://open.tiktokapis.com/v2/oauth/revoke/",
     scopes: ["user.info.basic"],
-    future_scopes: ["video.upload", "video.publish", "video.list"],
+    // Inbox upload (video.upload) and Direct Post (video.publish).
+    publish_scopes: ["video.upload", "video.publish"],
+    future_scopes: ["video.list"],
+    resource_kind: "tiktok_account",
     scopeSeparator: ",",
     clientIdParam: "client_key",
     extraAuthorizeParams: {},
@@ -171,10 +207,11 @@ export const PROVIDERS = Object.freeze({
       { env: "ATLAS_TIKTOK_CLIENT_SECRET", label: "its client secret" },
     ],
     extraRequirements: [],
-    enables: "Shows your TikTok account in Atlas.",
+    enables: "Lets Atlas send approved videos to your TikTok account.",
     owner_requirements_summary:
       "TikTok for Developers app with Login Kit, approved app review, registered redirect URI. Publishing needs Content Posting API audit.",
     verify: verifyTikTok,
+    listResources: listTikTokAccount,
     refresh: refreshTikTok,
     revoke: revokeTikTok,
     exchange: exchangeTikTokCode,
@@ -193,6 +230,7 @@ export const PROVIDERS = Object.freeze({
     tokenUrl: () => null,
     revokeUrl: () => null,
     scopes: [],
+    publish_scopes: null,
     future_scopes: [],
     scopeSeparator: " ",
     clientIdParam: null,
@@ -260,13 +298,24 @@ export function notAvailableMessage() {
 
 // ---------------------------------------------------------------- authorize
 
-export function buildAuthorizeUrl(provider, env, { redirectUri, state, codeChallenge }) {
+// Publishing providers (S94B): the four that have a publish target.
+export function supportsPublishing(provider) {
+  return Array.isArray(provider?.publish_scopes);
+}
+
+// connect: `scopes`; publishing: `scopes` ∪ `publish_scopes`, in order.
+export function requestedScopes(provider, purpose = "connect") {
+  if (purpose !== "publishing" || !supportsPublishing(provider)) return [...provider.scopes];
+  return [...new Set([...provider.scopes, ...provider.publish_scopes])];
+}
+
+export function buildAuthorizeUrl(provider, env, { redirectUri, state, codeChallenge, purpose = "connect" }) {
   const url = new URL(provider.authorizeUrl(env));
   const clientId = String(env(provider.credentials[0].env) ?? "").trim();
   url.searchParams.set(provider.clientIdParam, clientId);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", provider.scopes.join(provider.scopeSeparator));
+  url.searchParams.set("scope", requestedScopes(provider, purpose).join(provider.scopeSeparator));
   url.searchParams.set("state", state);
   if (provider.pkce === "S256") {
     if (!codeChallenge) throw new Error("PKCE challenge is required for this provider.");
@@ -274,43 +323,13 @@ export function buildAuthorizeUrl(provider, env, { redirectUri, state, codeChall
     url.searchParams.set("code_challenge_method", "S256");
   }
   for (const [name, value] of Object.entries(provider.extraAuthorizeParams)) url.searchParams.set(name, value);
+  if (purpose === "publishing" && provider.publishAuthorizeParams) {
+    for (const [name, value] of Object.entries(provider.publishAuthorizeParams)) url.searchParams.set(name, value);
+  }
   return url.toString();
 }
 
 // ---------------------------------------------------------------- provider calls
-
-export class ProviderError extends Error {
-  constructor(message, { status = 0, reauthorize = false } = {}) {
-    super(sanitizeProviderError(message));
-    this.status = status;
-    this.reauthorize = reauthorize;
-  }
-}
-
-async function readProviderJson(response, fallback) {
-  const text = await response.text();
-  let body = null;
-  try { body = text ? JSON.parse(text) : null; } catch { body = null; }
-  if (!response.ok) {
-    const detail = body?.error?.message || body?.error_description || body?.error?.code || body?.error || fallback;
-    throw new ProviderError(`${fallback} (HTTP ${response.status}): ${typeof detail === "string" ? detail : fallback}`, {
-      status: response.status,
-      reauthorize: response.status === 400 || response.status === 401,
-    });
-  }
-  return body ?? {};
-}
-
-function expiresAt(nowMs, seconds) {
-  const value = Number(seconds);
-  return Number.isFinite(value) && value > 0 ? new Date(nowMs + value * 1000).toISOString() : null;
-}
-
-function secret(env, name) {
-  const value = String(env(name) ?? "").trim();
-  if (!value) throw new ProviderError("Provider credentials are not configured.");
-  return value;
-}
 
 async function exchangeGoogleCode(provider, env, fetchImpl, { code, redirectUri, codeVerifier, nowMs }) {
   const response = await fetchImpl(provider.tokenUrl(env), {
@@ -339,25 +358,7 @@ async function exchangeGoogleCode(provider, env, fetchImpl, { code, redirectUri,
 }
 
 async function refreshGoogle(provider, env, fetchImpl, tokenSet, nowMs) {
-  if (!tokenSet.refresh_token) throw new ProviderError("Google did not issue a refresh token; reconnect.", { reauthorize: true });
-  const response = await fetchImpl(provider.tokenUrl(env), {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
-    body: new URLSearchParams({
-      client_id: secret(env, "ATLAS_GOOGLE_OAUTH_CLIENT_ID"),
-      client_secret: secret(env, "ATLAS_GOOGLE_OAUTH_CLIENT_SECRET"),
-      refresh_token: tokenSet.refresh_token,
-      grant_type: "refresh_token",
-    }).toString(),
-  });
-  const body = await readProviderJson(response, "Google token refresh failed");
-  return {
-    ...tokenSet,
-    access_token: body.access_token,
-    scopes: body.scope ? String(body.scope).split(" ").filter(Boolean) : tokenSet.scopes,
-    access_expires_at: expiresAt(nowMs, body.expires_in),
-    obtained_at: new Date(nowMs).toISOString(),
-  };
+  return refreshGoogleTokenSet(env, fetchImpl, tokenSet, nowMs, provider.tokenUrl(env));
 }
 
 async function revokeGoogle(provider, env, fetchImpl, tokenSet) {
@@ -377,6 +378,8 @@ async function googleGet(fetchImpl, url, accessToken, fallback) {
   return readProviderJson(response, fallback);
 }
 
+// S94B: no first-account default. One account is named; several are counted
+// and the owner picks the location in the resource picker.
 async function verifyGoogleBusinessProfile(provider, env, fetchImpl, tokenSet) {
   const body = await googleGet(
     fetchImpl,
@@ -386,9 +389,12 @@ async function verifyGoogleBusinessProfile(provider, env, fetchImpl, tokenSet) {
   );
   const accounts = Array.isArray(body.accounts) ? body.accounts : [];
   if (!accounts.length) throw new ProviderError("The Google account has no Business Profile accounts.");
+  const [only = null] = accounts.length === 1 ? accounts : [];
   return {
-    account_id: String(accounts[0].name ?? "").slice(0, 200) || null,
-    account_label: String(accounts[0].accountName ?? accounts[0].name ?? "Business Profile").slice(0, 200),
+    account_id: only ? String(only.name ?? "").slice(0, 200) || null : null,
+    account_label: only
+      ? String(only.accountName ?? only.name ?? "Business Profile").slice(0, 200)
+      : `${accounts.length}${body.nextPageToken ? "+" : ""} Business Profile accounts`,
     detail: { account_count: accounts.length },
   };
 }
@@ -456,15 +462,28 @@ function requireScopes(granted, required, label) {
   }
 }
 
+function countLabel(names, noun) {
+  const [only] = names;
+  if (names.length === 1) return String(only ?? noun).slice(0, 200);
+  return `${names.length} ${noun}s`;
+}
+
+// The id when there is exactly one (not a choice); otherwise none.
+function soleId(values) {
+  const [only] = values;
+  return values.length === 1 && only !== undefined && only !== null ? String(only).slice(0, 200) || null : null;
+}
+
+// S94B: verify needs only the connect scopes; no first-Page default. The
+// Page Atlas posts to is chosen in the picker (list-resources).
 async function verifyFacebookPages(provider, env, fetchImpl, tokenSet) {
   const granted = await metaGrantedScopes(fetchImpl, env, tokenSet.access_token);
   requireScopes(granted, provider.scopes, "Facebook");
-  const body = await metaGet(fetchImpl, env, "me/accounts?fields=id,name", tokenSet.access_token, "Facebook Page check failed");
-  const pages = Array.isArray(body.data) ? body.data : [];
+  const pages = await metaGetAll(fetchImpl, env, "me/accounts?fields=id,name&limit=100", tokenSet.access_token, "Facebook Page check failed");
   if (!pages.length) throw new ProviderError("No Facebook Page was shared with Atlas.", { reauthorize: true });
   return {
-    account_id: String(pages[0].id ?? "").slice(0, 200) || null,
-    account_label: pages.map((page) => String(page.name ?? "Page")).slice(0, 3).join(", ").slice(0, 200),
+    account_id: soleId(pages.map((page) => page?.id)),
+    account_label: countLabel(pages.map((page) => page?.name ?? "Page"), "Page"),
     scopes: granted,
     detail: { page_count: pages.length },
   };
@@ -473,18 +492,18 @@ async function verifyFacebookPages(provider, env, fetchImpl, tokenSet) {
 async function verifyInstagramAccount(provider, env, fetchImpl, tokenSet) {
   const granted = await metaGrantedScopes(fetchImpl, env, tokenSet.access_token);
   requireScopes(granted, provider.scopes, "Instagram");
-  const body = await metaGet(
-    fetchImpl, env, "me/accounts?fields=name,instagram_business_account{id,username}",
+  const pages = await metaGetAll(
+    fetchImpl, env, "me/accounts?fields=name,instagram_business_account{id,username}&limit=100",
     tokenSet.access_token, "Instagram account check failed",
   );
-  const linked = (Array.isArray(body.data) ? body.data : []).filter((page) => page?.instagram_business_account?.id);
+  const linked = pages.filter((page) => page?.instagram_business_account?.id);
   if (!linked.length) {
     throw new ProviderError("No Instagram professional account is linked to a shared Facebook Page.", { reauthorize: true });
   }
-  const account = linked[0].instagram_business_account;
+  const names = linked.map((page) => page.instagram_business_account.username ? `@${String(page.instagram_business_account.username).slice(0, 190)}` : "Instagram account");
   return {
-    account_id: String(account.id).slice(0, 200),
-    account_label: account.username ? `@${String(account.username).slice(0, 190)}` : "Instagram account",
+    account_id: soleId(linked.map((page) => page.instagram_business_account.id)),
+    account_label: countLabel(names, "Instagram account"),
     scopes: granted,
     detail: { linked_accounts: linked.length },
   };
@@ -525,31 +544,10 @@ async function exchangeTikTokCode(provider, env, fetchImpl, { code, redirectUri,
 }
 
 async function refreshTikTok(provider, env, fetchImpl, tokenSet, nowMs) {
-  if (!tokenSet.refresh_token) throw new ProviderError("TikTok refresh token missing; reconnect.", { reauthorize: true });
-  const response = await fetchImpl(provider.tokenUrl(env), {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
-    body: new URLSearchParams({
-      client_key: secret(env, "ATLAS_TIKTOK_CLIENT_KEY"),
-      client_secret: secret(env, "ATLAS_TIKTOK_CLIENT_SECRET"),
-      grant_type: "refresh_token",
-      refresh_token: tokenSet.refresh_token,
-    }).toString(),
-  });
-  const body = await readProviderJson(response, "TikTok token refresh failed");
-  if (!body.access_token) throw new ProviderError("TikTok token refresh failed.", { reauthorize: true });
-  return {
-    ...tokenSet,
-    access_token: body.access_token,
-    refresh_token: body.refresh_token ?? tokenSet.refresh_token,
-    scopes: body.scope ? String(body.scope).split(",").filter(Boolean) : tokenSet.scopes,
-    access_expires_at: expiresAt(nowMs, body.expires_in),
-    refresh_expires_at: expiresAt(nowMs, body.refresh_expires_in) ?? tokenSet.refresh_expires_at,
-    obtained_at: new Date(nowMs).toISOString(),
-  };
+  return refreshTikTokTokenSet(env, fetchImpl, tokenSet, nowMs, provider.tokenUrl(env));
 }
 
-async function verifyTikTok(provider, env, fetchImpl, tokenSet) {
+async function tiktokUser(fetchImpl, tokenSet) {
   const response = await fetchImpl("https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name", {
     headers: { authorization: `Bearer ${tokenSet.access_token}`, accept: "application/json" },
   });
@@ -559,6 +557,11 @@ async function verifyTikTok(provider, env, fetchImpl, tokenSet) {
   }
   const user = body?.data?.user;
   if (!user?.open_id) throw new ProviderError("TikTok did not return the connected user.");
+  return user;
+}
+
+async function verifyTikTok(provider, env, fetchImpl, tokenSet) {
+  const user = await tiktokUser(fetchImpl, tokenSet);
   return {
     account_id: String(user.open_id).slice(0, 200),
     account_label: String(user.display_name ?? "TikTok account").slice(0, 200),
@@ -577,6 +580,243 @@ async function revokeTikTok(provider, env, fetchImpl, tokenSet) {
       token: tokenSet.access_token,
     }).toString(),
   });
+}
+
+// ---------------------------------------------------------------- S94B resources
+
+const MAX_PAGES = 5;
+const GRAPH_HOST = "graph.facebook.com";
+
+function cleanLabel(value, fallback) {
+  const text = String(value ?? "").replace(/[^\x20-\x7E -￿]/g, " ").replace(/\s+/g, " ").trim();
+  return (text || fallback).slice(0, 200);
+}
+
+function cleanId(value) {
+  const text = String(value ?? "").trim();
+  return /^[A-Za-z0-9_.:\/-]{1,200}$/.test(text) ? text : null;
+}
+
+// Meta returns paging.next with the token in the query. Only a Graph API URL
+// is followed, and the token is removed from the query (the bearer header
+// carries it) so it can never end up anywhere else.
+function nextGraphUrl(next) {
+  if (typeof next !== "string" || !next) return null;
+  try {
+    const url = new URL(next);
+    if (url.protocol !== "https:" || url.hostname !== GRAPH_HOST || url.username || url.password) return null;
+    url.searchParams.delete("access_token");
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+async function metaGetAll(fetchImpl, env, path, accessToken, fallback) {
+  const rows = [];
+  let url = `https://${GRAPH_HOST}/${metaVersion(env)}/${path}`;
+  for (let page = 0; url && page < MAX_PAGES; page += 1) {
+    const response = await fetchImpl(url, { headers: { authorization: `Bearer ${accessToken}`, accept: "application/json" } });
+    const body = await readProviderJson(response, fallback);
+    if (Array.isArray(body.data)) rows.push(...body.data);
+    url = nextGraphUrl(body?.paging?.next);
+  }
+  return rows;
+}
+
+function pageTasks(page) {
+  return Array.isArray(page?.tasks) ? page.tasks.map((task) => String(task)).filter((task) => /^[A-Z_]{2,40}$/.test(task)).slice(0, 8) : null;
+}
+
+// A Page Atlas can post to: the person can perform CREATE_CONTENT on it
+// (Pages API `tasks`). When Meta omits tasks, the Page is offered and the
+// publish call decides.
+function canCreateContent(tasks) {
+  return tasks === null || tasks.includes("CREATE_CONTENT");
+}
+
+async function listFacebookPages(provider, env, fetchImpl, tokenSet) {
+  const pages = await metaGetAll(fetchImpl, env, "me/accounts?fields=id,name,category,tasks&limit=100", tokenSet.access_token, "Facebook Page list failed");
+  const resources = [];
+  for (const page of pages) {
+    const id = cleanId(page?.id);
+    if (!id) continue;
+    const tasks = pageTasks(page);
+    const selectable = canCreateContent(tasks);
+    resources.push({
+      resource_kind: "facebook_page",
+      resource_id: id,
+      parent_resource_id: null,
+      label: cleanLabel(page.name, "Facebook Page"),
+      metadata: {
+        category: page.category ? cleanLabel(page.category, "") || null : null,
+        tasks,
+        selectable,
+        unavailable_reason: selectable ? null : "no_create_content",
+      },
+    });
+  }
+  return { resources, notes: { pages_total: pages.length } };
+}
+
+// Instagram professional accounts are found through the Pages the person
+// manages (instagram_business_account). Pages without one are counted so the
+// picker can explain an empty list.
+async function listInstagramAccounts(provider, env, fetchImpl, tokenSet) {
+  const pages = await metaGetAll(
+    fetchImpl, env, "me/accounts?fields=id,name,tasks,instagram_business_account{id,username,name}&limit=100",
+    tokenSet.access_token, "Instagram account list failed",
+  );
+  const resources = [];
+  let unlinked = 0;
+  for (const page of pages) {
+    const account = page?.instagram_business_account;
+    const id = cleanId(account?.id);
+    const pageId = cleanId(page?.id);
+    if (!id || !pageId) { unlinked += 1; continue; }
+    const tasks = pageTasks(page);
+    const selectable = canCreateContent(tasks);
+    const username = account.username ? cleanLabel(account.username, "").replace(/^@/, "") : null;
+    resources.push({
+      resource_kind: "instagram_account",
+      resource_id: id,
+      parent_resource_id: pageId,
+      label: username ? `@${username}` : cleanLabel(account.name, "Instagram account"),
+      metadata: {
+        username,
+        page_name: cleanLabel(page.name, "Facebook Page"),
+        tasks,
+        selectable,
+        unavailable_reason: selectable ? null : "no_create_content",
+      },
+    });
+  }
+  return { resources, notes: { pages_total: pages.length, pages_without_instagram: unlinked } };
+}
+
+function addressSummary(address) {
+  if (!address || typeof address !== "object") return null;
+  const lines = Array.isArray(address.addressLines) ? address.addressLines.slice(0, 1) : [];
+  const place = [address.postalCode, address.locality].filter(Boolean).join(" ");
+  const text = [...lines, place].filter(Boolean).join(", ");
+  return text ? cleanLabel(text, "") : null;
+}
+
+async function googleGetAll(fetchImpl, baseUrl, accessToken, fallback, key) {
+  const rows = [];
+  let pageToken = null;
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const url = new URL(baseUrl);
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    const body = await googleGet(fetchImpl, url.toString(), accessToken, fallback);
+    if (Array.isArray(body[key])) rows.push(...body[key]);
+    pageToken = typeof body.nextPageToken === "string" && body.nextPageToken ? body.nextPageToken : null;
+    if (!pageToken) break;
+  }
+  return rows;
+}
+
+// Accounts (Account Management v1) and their locations (Business Information
+// v1, readMask required). A location's resource id is the v4 parent
+// "accounts/{a}/locations/{l}" that localPosts need.
+async function listGoogleBusinessProfileResources(provider, env, fetchImpl, tokenSet) {
+  const accounts = (await googleGetAll(
+    fetchImpl, "https://mybusinessaccountmanagement.googleapis.com/v1/accounts?pageSize=20",
+    tokenSet.access_token, "Business Profile account list failed", "accounts",
+  )).slice(0, 20);
+  const resources = [];
+  for (const account of accounts) {
+    const accountName = cleanId(account?.name);
+    if (!accountName || !/^accounts\/[A-Za-z0-9_-]+$/.test(accountName)) continue;
+    const role = typeof account.role === "string" ? account.role.slice(0, 40) : null;
+    resources.push({
+      resource_kind: "gbp_account",
+      resource_id: accountName,
+      parent_resource_id: null,
+      label: cleanLabel(account.accountName, "Business Profile account"),
+      metadata: { type: typeof account.type === "string" ? account.type.slice(0, 40) : null, role },
+    });
+    const url = new URL(`https://mybusinessbusinessinformation.googleapis.com/v1/${accountName}/locations`);
+    url.searchParams.set("readMask", "name,title,storefrontAddress,metadata");
+    url.searchParams.set("pageSize", "100");
+    const locations = await googleGetAll(fetchImpl, url.toString(), tokenSet.access_token, "Business Profile location list failed", "locations");
+    for (const location of locations) {
+      const locationName = cleanId(location?.name);
+      if (!locationName || !/^locations\/[A-Za-z0-9_-]+$/.test(locationName)) continue;
+      const voiceOfMerchant = typeof location.metadata?.hasVoiceOfMerchant === "boolean" ? location.metadata.hasVoiceOfMerchant : null;
+      // Site managers cannot manage posts in the Business Profile UI
+      // (UNVERIFIED for the API): not offered until tested.
+      const reason = role === "SITE_MANAGER" ? "site_manager" : voiceOfMerchant === false ? "not_verified" : null;
+      resources.push({
+        resource_kind: "gbp_location",
+        resource_id: `${accountName}/${locationName}`,
+        parent_resource_id: accountName,
+        label: cleanLabel(location.title, "Business Profile location"),
+        metadata: {
+          location_name: locationName,
+          account_label: cleanLabel(account.accountName, "Business Profile account"),
+          address: addressSummary(location.storefrontAddress),
+          has_voice_of_merchant: voiceOfMerchant,
+          selectable: reason === null,
+          unavailable_reason: reason,
+        },
+      });
+    }
+  }
+  return { resources, notes: { accounts_total: accounts.length } };
+}
+
+// A TikTok token belongs to one account; listing returns it (the database
+// selects the single account).
+async function listTikTokAccount(provider, env, fetchImpl, tokenSet) {
+  const user = await tiktokUser(fetchImpl, tokenSet);
+  return {
+    resources: [{
+      resource_kind: "tiktok_account",
+      resource_id: cleanId(user.open_id) ?? (() => { throw new ProviderError("TikTok returned an unusable account id."); })(),
+      parent_resource_id: null,
+      label: cleanLabel(user.display_name, "TikTok account"),
+      metadata: { selectable: true },
+    }],
+    notes: {},
+  };
+}
+
+// The selected Page's access token (Pages API: GET /{page-id}?fields=access_token
+// with the user token). From a long-lived user token it does not expire.
+async function pageAccessToken(fetchImpl, env, userToken, pageId, nowMs) {
+  const body = await metaGet(fetchImpl, env, `${encodeURIComponent(pageId)}?fields=id,access_token`, userToken, "Facebook Page access check failed");
+  if (String(body?.id ?? "") !== String(pageId) || typeof body?.access_token !== "string" || !body.access_token) {
+    throw new ProviderError("Meta did not allow Atlas to post to this Page. Check your role on the Page.");
+  }
+  return { access_token: body.access_token, token_type: "page", page_id: String(pageId), obtained_at: new Date(nowMs).toISOString() };
+}
+
+async function facebookPageCredential(provider, env, fetchImpl, tokenSet, resource, nowMs) {
+  return pageAccessToken(fetchImpl, env, tokenSet.access_token, resource.resource_id, nowMs);
+}
+
+// Instagram publishing with Facebook Login uses the linked Page's token.
+async function instagramPageCredential(provider, env, fetchImpl, tokenSet, resource, nowMs) {
+  if (!resource.parent_resource_id) throw new ProviderError("This Instagram account is not linked to a Facebook Page.");
+  return pageAccessToken(fetchImpl, env, tokenSet.access_token, resource.parent_resource_id, nowMs);
+}
+
+// Revokes only the named permissions (DELETE /me/permissions/{permission}),
+// used when the other Meta connection shares the same app and must keep
+// working. Returns true when every call succeeded.
+async function revokeMetaPermissions(provider, env, fetchImpl, tokenSet, permissions) {
+  if (!tokenSet.access_token) return false;
+  let ok = true;
+  for (const permission of permissions) {
+    if (!/^[a-z_]{3,60}$/.test(permission)) continue;
+    const response = await fetchImpl(`${provider.revokeUrl(env)}/${permission}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${tokenSet.access_token}` },
+    });
+    if (!response.ok) ok = false;
+  }
+  return ok;
 }
 
 export function tripadvisorVerifyUrl(env, locationId) {

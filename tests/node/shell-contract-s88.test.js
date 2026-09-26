@@ -261,7 +261,8 @@ test('changed scripts carry the S88 cache key', () => {
   assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">'), 'recipes.css');
   const config = read('apps/web/config.js');
   // The Atlas AI robot replaced the assistant icon in these lazily loaded scripts.
-  for (const file of ['marketing-workspace.js', 'reports-workspace.js']) {
+  // (marketing-workspace.js carries the same change under its S94 key below.)
+  for (const file of ['reports-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261003-bot1'`), file);
   }
   // S92: every message shows its sender's real name and photo (own on the
@@ -282,7 +283,22 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // S91: the Settings sign-in message; S91b: owner copy for integrations
   // that are not set up, with admin-only setup details.
-  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91c'"), 'settings-workspace.js');
+  // S94: Settings publishing connections and the Marketing composer, media
+  // library and platform checks; S94b: review fixes in the composer (asap,
+  // partial save, radios), the media picker and the platform checks.
+  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261004-s94'"), 'settings-workspace.js');
+  // marketing-workspace.js also carries the robot's Ask Atlas icon (bot1
+  // content); the S94 key supersedes 20261003-bot1 so production caches refresh.
+  assert.ok(!config.includes("scriptPath: 'assets/js/marketing-workspace.js?v=20261003-bot1'"), 'marketing-workspace.js not on the pre-S94 key');
+  for (const file of ['marketing-workspace.js', 'marketing-platform-rules.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261004-s94b'`), file);
+  }
+  // S94c: Media end-to-end fixes (phone toolbar, unreachable media service copy).
+  assert.ok(config.includes("scriptPath: 'assets/js/marketing-media.js?v=20261004-s94c'"), 'marketing-media.js');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94c'"), 'marketing-workspace.css');
+  assert.ok(index.includes('href="assets/css/marketing-workspace.css?v=20261004-s94c"'), 'marketing-workspace.css');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/settings-workspace.css?v=20261004-s94'"), 'settings-workspace.css');
+  assert.ok(index.includes('href="assets/css/settings-workspace.css?v=20261004-s94"'), 'settings-workspace.css');
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
 });
 

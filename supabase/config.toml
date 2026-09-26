@@ -78,5 +78,17 @@ verify_jwt = false
 [functions.atlas-inventory-recognition]
 verify_jwt = false
 
+# S94A: marketing media library. The handler verifies the production-Auth JWT
+# and the active manager/admin profile (_shared/auth.mjs) for every action;
+# browsers upload straight to Storage with a one-time signed upload token.
+[functions.atlas-marketing-media]
+verify_jwt = false
+
+# S94C: marketing delivery worker. Woken by pg_cron/pg_net and publish-now;
+# the handler authenticates the x-atlas-publisher-secret header (constant time)
+# and exposes no browser surface.
+[functions.atlas-marketing-publisher]
+verify_jwt = false
+
 [functions.atlas-notifications]
 verify_jwt = true

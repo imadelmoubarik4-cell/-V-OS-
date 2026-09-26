@@ -84,8 +84,10 @@ test('a 401 with a refused session check renews this device session and stays si
   try {
     state.refused = true;
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('atlas:auth-required', { detail: { status: 401 } })));
+    // The check and the renewal are asynchronous: wait for the renewal request
+    // rather than for a settled page (same assertion).
+    await until(async () => record.requests.some((entry) => entry.path.startsWith('/auth/v1/token') && entry.search.includes('grant_type=refresh_token')), { message: 'the session was renewed' });
     await settle(page);
-    assert.ok(record.requests.some((entry) => entry.path.startsWith('/auth/v1/token') && entry.search.includes('grant_type=refresh_token')), 'the session was renewed');
     assert.equal(logouts(record).length, 0);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasReady), 'true', 'still signed in');
   } finally { await close(); }

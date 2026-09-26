@@ -233,3 +233,31 @@ test('robot styles live in the components layer and honour reduced motion', () =
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.atlas-bot \{ animation: none; transition: none; \}\s*:is\(a, button\):hover > \.atlas-bot \{ transform: none; \}/);
   assert.match(read('apps/web/assets/css/atlas-shell.css'), /\.atlas-ai \.ai-empty:not\(\.ai-empty--off\):not\(:has\(\.atlas-bot-live\)\)::before/);
 });
+
+test('robot cache keys agree across index.html, config.js, atlas-bot.js and the stylesheet, and every keyed file exists', () => {
+  const bot = read('apps/web/assets/js/atlas-bot.js');
+  const css = read('apps/web/assets/css/atlas-components.css');
+  const config = read('apps/web/config.js');
+  // atlas-bot.js constants -> the sprites the stylesheet shows before the script runs.
+  const constants = Object.fromEntries([...bot.matchAll(/const (SPRITE|SPRITE_SMALL|SCENE) = '([^']+)';/g)].map((m) => [m[1], m[2]]));
+  assert.deepEqual(Object.keys(constants).sort(), ['SCENE', 'SPRITE', 'SPRITE_SMALL']);
+  for (const name of ['SPRITE', 'SPRITE_SMALL']) {
+    assert.ok(css.includes(`url('../${constants[name].replace(/^assets\//, '')}')`), `${name} key matches atlas-components.css`);
+  }
+  for (const url of Object.values(constants)) statSync(`apps/web/${url.split('?')[0]}`);
+  // Every atlas-bot reference in index.html / config.js uses one key per file, and the file exists.
+  const refs = new Map();
+  for (const source of [index, config, css.replace(/\.\.\/atlas-bot\//g, 'assets/atlas-bot/')]) {
+    for (const m of source.matchAll(/(assets\/(?:js\/atlas-bot\.js|atlas-bot\/[\w.-]+|css\/atlas-(?:ai|components)\.css))\?v=([\w-]+)/g)) {
+      if (!refs.has(m[1])) refs.set(m[1], new Set());
+      refs.get(m[1]).add(m[2]);
+    }
+  }
+  for (const [file, keys] of refs) {
+    assert.equal(keys.size, 1, `${file} has one key (${[...keys].join(', ')})`);
+    statSync(`apps/web/${file}`);
+  }
+  for (const [file, key] of [['assets/js/atlas-bot.js', '20261003-bot4'], ['assets/css/atlas-ai.css', '20261003-bot3'], ['assets/css/atlas-components.css', '20261003-bot3']]) {
+    assert.deepEqual([...(refs.get(file) || [])], [key], file);
+  }
+});
