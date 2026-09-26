@@ -413,7 +413,9 @@ test('calm idle pauses the render loop; a pointer move, a state change or a mome
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
     await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
-    await until(async () => (await info(page))?.scene?.moment === null, { timeout: 15000, message: 'greeting ends' });
+    // Precondition only: the ~3 s greeting runs in scene time, which a starved
+    // CI runner (software WebGL) advances slowly; this test is about the pause.
+    await until(async () => (await info(page))?.scene?.moment === null, { timeout: 45000, message: 'greeting ends' });
     await page.evaluate(() => window.AtlasBot.setIdleTimeout(300));
     await until(async () => { const now = await info(page); return now.running === false && now.paused === true; }, { message: 'paused while idle' });
     const still = (await info(page)).scene.frames;
