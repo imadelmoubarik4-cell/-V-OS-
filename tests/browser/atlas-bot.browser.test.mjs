@@ -203,6 +203,48 @@ test('phone 390: tab bar robot, a smaller live robot, no sideways scroll, nothin
   } finally { await close(); }
 });
 
+for (const [label, viewport, mobile] of [
+  ['tablet portrait 768×1024', { width: 768, height: 1024 }, true],
+  ['tablet landscape 1024×768', { width: 1024, height: 768 }, true],
+  ['phone landscape 844×390', { width: 844, height: 390 }, true],
+  ['laptop 1280×720', { width: 1280, height: 720 }, false],
+]) {
+  test(`responsive ${label}: the robot fits, overlaps neither the greeting, the suggestions nor the composer, and nothing scrolls sideways`, { skip }, async () => {
+    const { page, close } = await openAi({ viewport, contextOptions: mobile ? { hasTouch: true, isMobile: true } : {} });
+    try {
+      await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live', { timeout: 15000 });
+      await settle(page);
+      if (process.env.ATLAS_BOT_SHOTS) await page.screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/ai-empty-${viewport.width}x${viewport.height}.png` });
+      const box = async (selector) => page.locator(selector).first().boundingBox();
+      // The workspace fits the window: the page itself does not scroll and the
+      // conversation header is on screen.
+      assert.equal(await page.evaluate(() => Math.round(document.scrollingElement.scrollTop)), 0, 'the page did not scroll');
+      assert.ok(await page.evaluate(() => document.querySelector('#ai-view .ai-layout').getBoundingClientRect().bottom <= innerHeight + 1), 'the Atlas AI workspace fits the window');
+      const bot = await box('#ai-view .ai-empty .atlas-bot-live');
+      const greeting = await box('#ai-view .ai-empty__greeting');
+      const chips = await box('#ai-view .ai-empty__chips');
+      const composer = await box('#ai-view [data-ai-composer]');
+      assert.ok(bot && bot.width >= 96 && bot.width <= 200, `robot size ${bot?.width}`);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no sideways scroll');
+      assert.ok(bot.x >= 0 && bot.x + bot.width <= viewport.width, 'robot inside the viewport horizontally');
+      // At the top of the conversation area the whole robot is visible (nothing clipped above the fold).
+      const area = await box('#ai-view .ai-scroll');
+      assert.ok(bot.y >= area.y - 1, `robot top is not clipped (${bot.y} vs ${area.y})`);
+      assert.ok(bot.y + bot.height <= greeting.y + 1, 'robot above the greeting');
+      assert.ok(greeting.y + greeting.height <= chips.y + 1, 'greeting above the suggestions');
+      // The composer never covers the empty state: it sits below the conversation area,
+      // and the last suggestion can be scrolled into view above it.
+      assert.ok(area.y + area.height <= composer.y + 1, 'conversation area ends above the composer');
+      await page.locator('#ai-view .ai-empty__chips [data-ai-suggest]').last().scrollIntoViewIfNeeded();
+      const lastChip = await page.locator('#ai-view .ai-empty__chips [data-ai-suggest]').last().boundingBox();
+      assert.ok(lastChip.y + lastChip.height <= composer.y + 1, 'the last suggestion is reachable above the composer');
+      const tabbar = await page.locator('#atlas-tabbar').boundingBox().catch(() => null);
+      if (tabbar && tabbar.height > 0) assert.ok(composer.y + composer.height <= tabbar.y + 1, 'composer clears the tab bar');
+      assert.ok(composer.y + composer.height <= viewport.height + 1, 'composer is not clipped');
+    } finally { await close(); }
+  });
+}
+
 const frames = (page, count = 3) => page.evaluate((n) => new Promise((resolve) => { let seen = 0; const tick = () => (++seen >= n ? resolve() : requestAnimationFrame(tick)); requestAnimationFrame(tick); }), count);
 
 test('WebGL context lost: the poster shows and drawing stops; restored: the robot comes back', { skip }, async () => {
