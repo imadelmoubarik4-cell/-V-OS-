@@ -10,11 +10,11 @@ made in production. Each stage below needs its own owner go-ahead; stage 7
 | | |
 |---|---|
 | Branch | `claude/s94-marketing-publishing` |
-| Reviewed code and tests | **`ad2bee09adf621fdd589d8db9d583afc25df4f9d`** |
-| Commits after it | documentation only (this package and the scheduler runbook); check with `git diff --stat ad2bee0..HEAD` — it must list only `docs/marketing/*.md` |
+| Reviewed code and tests | **`ffa4e901539bf60678f2f55649b074a314e87e11`** (the Media fixes proved end to end on the real Storage API; supersedes `ad2bee0`, which cannot upload videos over 6 MB) |
+| Commits after it | documentation only (this package); check with `git diff --stat ffa4e90..HEAD` — it must list only `docs/marketing/*.md` |
 | Contains `main` | yes, up to `51e4fe8` (S93 Messages); reconciled in merge `de48579` |
 
-Deploy functions and web **from `ad2bee0` or the docs-only head**, nothing else.
+Deploy functions and web **from `ffa4e90` or the docs-only head**, nothing else.
 
 ## What ships
 
@@ -27,17 +27,18 @@ Deploy functions and web **from `ad2bee0` or the docs-only head**, nothing else.
 
 **Automatic publishing ships OFF, and the scheduler ships NOT INSTALLED.**
 
-## Acceptance evidence (reconciled branch, 26 Sep 2026)
+## Acceptance evidence (reconciled branch with the Media fixes, 26 Sep 2026)
 
 | Suite | Result |
 |---|---|
-| `npm run test:node` | 1259 tests: 1217 pass, 0 fail, 42 skipped |
+| `npm run test:node` | 1261 tests: 1219 pass, 0 fail, 42 skipped |
 | `npm run test:python` | 283 tests OK, 4 skipped |
 | Full migration replay | passed, 138 migrations |
 | SQL previews | all 9 pass: s90 16/16, s90f 7/7, s90g 6/6, s90h 3/3, s91 18/18, s93 14/14, s94a 56/56, s94b 177/177, s94c 75/75 |
 | Claim concurrency / load | 200-delivery race: 0 double-claimed; pgbench 300 deliveries: 0 double-claimed, 0 double-published |
 | Scheduler proof (`verify_s94_publisher_schedule.sh`, real pg_cron 1.6) | 9/9 |
-| Browser (Marketing, media, Settings, Integrations, teamc, shell, shell-ui, Messages, phone UI, Home) | 130 tests: 129 pass, 0 fail, 1 skipped (screenshot-only) |
+| Browser (Marketing, media, Settings, Integrations, teamc, shell, shell-ui, Messages, phone UI, Home) | 132 tests: 131 pass, 0 fail, 1 skipped (screenshot-only) |
+| Media end to end on the real Storage API (`scripts/e2e/s94-media/run.sh`: storage-api v1.11.13, PostgREST, replayed database, the real handler, `apps/web` in Chromium) | gateway 109/109, browser 40/40, orphan/log/boundary checks after the browser run 13/13; `s94_media_smoke_check.sql` passes on the same data |
 | Edge auth gates (`s94-edge-auth-gates.test.js`) | 5/5: all four functions refuse unauthenticated requests with no backend call; publisher refuses missing/wrong secret, answers no CORS preflight, never logs the secret |
 | Supabase advisors (splinter, run on a replay of `main` vs this branch) | no new security findings; only new items are 24 × INFO `unused_index` for the new, still-empty S94 tables (expected before use) |
 
@@ -119,15 +120,18 @@ header, and the secret absent from logs.
 
 ### 5. Web
 Merge the S94 PR (opened only when asked) → wait for the Netlify production
-publish → confirm the published commit. Cache keys: Marketing scripts
-`20261004-s94b`, Marketing CSS and Settings `20261004-s94`.
+publish → confirm the published commit. Cache keys: `marketing-media.js` and
+Marketing CSS `20261004-s94c`, the other Marketing scripts `20261004-s94b`,
+Settings `20261004-s94`.
 
 ### 6. Production smoke test — no public posting, automatic publishing OFF, no scheduler
 Media (the strengthened check):
 1. In Marketing › Media, upload five files named with the prefix `atlas-smoke-`:
    a JPEG, a PNG, a WebP, an iPhone HEIC (upload from Safari; Chrome cannot
    decode HEIC and refuses it with the "convert to JPEG or use Safari" message —
-   also confirm that message), and a short MP4.
+   also confirm that message), a short MP4, and an MP4 over 6 MB (it goes by
+   the resumable TUS upload; check in DevTools that it posts to
+   `…storage.supabase.co/storage/v1/upload/resumable/sign` and gets `201`).
 2. Run `scripts/s94_media_smoke_check.sql` (read-only) in the SQL editor —
    every row must be `true`: bucket private with the allowlist and no policy;
    each file ready with the sniffed type matching its extension; server-read

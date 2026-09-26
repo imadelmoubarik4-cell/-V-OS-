@@ -102,13 +102,13 @@ Neither the browser nor an Edge Function streams large bytes through the gateway
 2. **Browser upload.**
    - **Images ≤ 6 MiB:** `sb.storage.from('atlas-marketing-media').uploadToSignedUrl(path, token, file, {contentType})`. This is a single PUT.
    - **Videos and anything > 6 MiB:** TUS resumable (`tus-js-client`, loaded from cdnjs/jsdelivr per the app's CSP rules):
-     - Endpoint: `https://dnefgcmjcgxlynycxkts.storage.supabase.co/storage/v1/upload/resumable`. The direct storage hostname is recommended for large files.
+     - Endpoint: `https://dnefgcmjcgxlynycxkts.storage.supabase.co/storage/v1/upload/resumable/sign` (the **signed** TUS route; the plain `/upload/resumable` runs as the caller's role and RLS refuses it on a bucket with no policy — verified against the Storage API, `scripts/e2e/s94-media`). The direct storage hostname is recommended for large files.
      - Chunk size must be 6 MB.
      - Send the token in the **`x-signature` header**: "Resumable uploads also supports using signed upload tokens … including the returned token in the `x-signature` header".
      - The TUS upload URL is valid for up to 24 h.
      - Use `removeFingerprintOnSuccess: true` and **no `x-upsert`**. Concurrent uploads to the same path give `409` to the loser.
      - Source for all TUS points: [verified: https://supabase.com/docs/guides/storage/uploads/resumable-uploads].
-     - The exact companion headers with `x-signature` (whether `apikey` or `authorization` with the publishable key is still required) are **[unverified]**. The docs point to `examples/storage/resumable-upload-signed-uppy`; rehearse it on a branch.
+     - Companion headers **[verified locally against supabase/storage-api v1.11.13]**: `tus-resumable`, `x-signature` (the token), and `apikey` with the publishable key; no user JWT is needed on `/upload/resumable/sign` (the token is checked on every POST, HEAD and PATCH).
    - Progress UI comes from TUS `onProgress`. Resume after tab reload uses `findPreviousUploads()`, within the 2 h token and 24 h TUS URL windows.
 3. **Why not the alternatives.**
    - Direct upload with RLS (pattern A) would need a broad INSERT policy on the bucket, and any authenticated session could write arbitrary paths and sizes until verification.
