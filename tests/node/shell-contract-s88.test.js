@@ -242,7 +242,7 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // The Atlas AI robot (atlas-bot.js) replaced the sparkles assistant icon in
   // these scripts; atlas-ai.js also carries the S91b live voice lease.
-  for (const file of ['atlas-ai.js', 'atlas-chrome.js', 'atlas-inventory.js', 'atlas-shell.js',
+  for (const file of ['atlas-chrome.js', 'atlas-inventory.js', 'atlas-shell.js',
     'knowledge-workspace.js', 'recipes.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
   }
@@ -252,9 +252,13 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['atlas-palette.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot2"></script>`), file);
   }
-  // The big robot looks down at a pointer below it and up at one above
-  // (atlas-bot.js loads the rebuilt scene).
-  assert.ok(index.includes('<script src="assets/js/atlas-bot.js?v=20261003-bot4"></script>'), 'atlas-bot.js');
+  // Robot refinement: one state controller for every AI surface (sleep,
+  // wake, listening, thinking, answering, success, attention, error), the
+  // sleep sprite frame and the rebuilt scene (atlas-bot.js); atlas-ai.js
+  // reports what Atlas is doing to it and still carries the S91b voice lease.
+  for (const file of ['atlas-bot.js', 'atlas-ai.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261004-bot5"></script>`), file);
+  }
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
 
@@ -276,8 +280,9 @@ test('changed scripts carry the S88 cache key', () => {
   assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css guard');
   assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20261002-s93m"></script>'), 'runtime-module-guard.js');
   // S93: the Home/bell message item names the sender by the live name; the
-  // daily briefing header shows the Atlas AI robot.
-  assert.ok(index.includes('<script src="assets/js/home.js?v=20261003-bot3"></script>'), 'home.js');
+  // daily briefing header shows the Atlas AI robot (thinking while the
+  // briefing is prepared).
+  assert.ok(index.includes('<script src="assets/js/home.js?v=20261004-bot5"></script>'), 'home.js');
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }

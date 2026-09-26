@@ -6,9 +6,10 @@
 //
 //   node scripts/build_atlas_mascot.mjs && node scripts/render_atlas_bot_badges.mjs
 //
-// Output, each one sprite of three frames side by side (open, blink, happy)
-// on a transparent background, shown by .atlas-bot (atlas-components.css),
-// which blinks and smiles by moving the background between frames:
+// Output, each one sprite of four frames side by side (open, blink, sleep,
+// happy) on a transparent background, shown by .atlas-bot
+// (atlas-components.css), which blinks, sleeps and smiles by moving the
+// background between frames:
 //   atlas-bot.png        160 px frames, the head (badges above 24 px)
 //   atlas-bot-small.png   96 px frames for badges of 24 px or less: a tighter
 //                         crop on the face, a matte visor with no highlight
@@ -33,7 +34,9 @@ const SPRITES = [
   { file: 'atlas-bot.png', size: 160, framing: 'badge', look: 'normal' },
   { file: 'atlas-bot-small.png', size: 96, framing: 'badge-small', look: 'small' }
 ];
-const FRAMES = { open: { happy: 0 }, blink: { happy: 0, blink: 0.12 }, happy: { happy: 1 } };
+// sleep: eyes closed (the scene's sleeping eyelids), glow lowered, the head
+// dipped a little, as the live robot sleeps.
+const FRAMES = { open: { happy: 0 }, blink: { happy: 0, blink: 0.12 }, sleep: { happy: 0, sleepy: 1, eyeLight: 0.72, glow: 0.45, headPitch: 0.08 }, happy: { happy: 1 } };
 const page = `<!doctype html><meta charset="utf-8"><body style="margin:0;background:transparent">
 <script type="module">
   import { createMascotScene } from '/assets/atlas-bot/atlas-mascot-scene.js';

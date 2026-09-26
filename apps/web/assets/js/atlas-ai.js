@@ -30,6 +30,10 @@
   const VOICE_EXPLAINED_KEY = 'atlas.ai.voice.explained.v1';
   const DAY = 86400000;
 
+  // The assistant's robot state controller (atlas-bot.js): one place decides
+  // what every robot shows; this module only reports what Atlas is doing.
+  const robotBot = () => root.AtlasBot?.robot || null;
+
   // ---------- icons (lucide 0.454.0 paths, inline so streaming never re-scans the DOM) ----------
 
   const ICONS = {
@@ -650,7 +654,10 @@
       document.getElementById(id)?.focus();
     });
     el('composer').addEventListener('submit', (event) => { event.preventDefault(); send(); });
-    el('input').addEventListener('input', () => { autoGrow(); renderComposerBar(); });
+    // The composer wakes the robot (focus, typing); an awake robot only stays
+    // awake longer, so typing never moves it on every key.
+    el('input').addEventListener('focus', () => robotBot()?.wake('composer'));
+    el('input').addEventListener('input', () => { autoGrow(); renderComposerBar(); robotBot()?.wake('typing'); });
     el('input').addEventListener('keydown', (event) => {
       if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
@@ -1132,7 +1139,9 @@
     const name = firstName();
     if (state.configured === false) return notConfiguredMarkup();
     // The live robot greets once, follows the pointer and reacts to a tap.
-    const bot = root.AtlasBot ? `<div class="ai-empty__bot">${root.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176 })}</div>` : '';
+    // It follows the assistant's state (AtlasBot.robot): it sleeps after a
+    // quiet spell and wakes on hover, the composer or a new question.
+    const bot = root.AtlasBot ? `<div class="ai-empty__bot">${root.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176, follow: true })}</div>` : '';
     return `<div class="ai-empty">
       ${bot}
       <h2 class="ai-empty__greeting">What can I help with${name ? `, ${escapeHtml(name)}` : ''}?</h2>
@@ -1313,7 +1322,7 @@
       <button type="button" class="atlas-icon-btn" data-ai-retry="${escapeHtml(message.key)}" aria-label="Try again" title="Try again">${icon('refresh-cw')}</button>
     </div>` : '';
     return `<article class="msg-ai${streaming ? ' is-streaming' : ''}" data-ai-msg="${escapeHtml(message.key)}" aria-busy="${streaming}">
-      <div class="msg-ai__who">${root.AtlasBot ? root.AtlasBot.html({ size: 24, state: streaming ? 'thinking' : message.error ? 'error' : 'idle', className: 'ai-mark-bot' }) : `<span class="ai-mark">${icon('sparkles')}</span>`}Atlas</div>
+      <div class="msg-ai__who">${root.AtlasBot ? root.AtlasBot.html(streaming ? { size: 24, follow: true, className: 'ai-mark-bot' } : { size: 24, state: message.error ? 'error' : 'idle', className: 'ai-mark-bot' }) : `<span class="ai-mark">${icon('sparkles')}</span>`}Atlas</div>
       ${fallback}${stepsMarkup(message)}${body}${fallbackLines}${fallbackAction}${stopped}${error}${recordsMarkup(message)}${evidenceMarkup(message)}${proposals}${actions}
     </article>`;
   }
@@ -1481,11 +1490,13 @@
     const current = actionState(found.proposal);
     if (!canApprove(current) || current.working) return;
     setAction(id, { working: true, status: 'executing', failureText: null });
+    robotBot()?.set('thinking');
     announce('Working on it.');
     try {
       const result = await request('execute-action', { method: 'POST', body: { action_id: id } });
       if (result?.ok === true) {
         setAction(id, { working: false, status: 'executed', result: result.result || {}, action: result.action || null });
+        robotBot()?.set('success');
         announce(`${kindInfo(found.proposal.kind).done}.`);
       } else {
         root.console?.warn?.('[atlas-ai] proposal failed', result?.error?.code || 'failed');
@@ -1496,9 +1507,11 @@
             : code === 'not_found' ? 'A record in this proposal no longer exists. Nothing was changed. Ask Atlas to prepare it again.'
               : 'Nothing was changed. Ask Atlas to prepare it again, or make the change in its page.';
         setAction(id, { working: false, status: 'failed', failureText: text, retryable: false });
+        robotBot()?.set('error');
         announce('This couldn’t be completed.');
       }
     } catch (error) {
+      robotBot()?.set('error');
       if (error?.code === 'network' || error?.status === 0) {
         setAction(id, { working: false, status: 'failed', failureText: 'Atlas couldn’t confirm the result. Check the page before trying again, so nothing is done twice.', retryable: true });
       } else if (error?.code === 'conflict') {
@@ -1520,6 +1533,7 @@
     try {
       await request('reject-action', { method: 'POST', body: { action_id: id } });
       setAction(id, { working: false, status: 'rejected' });
+      if (robotBot()?.state === 'attention') robotBot().set('idle');
       announce('Dismissed.');
     } catch (error) {
       setAction(id, { working: false });
@@ -1605,6 +1619,8 @@
     state.mode = 'conversations';
     state.conv = { id: null, title: '', pinned: false, messages: [], actions: new Map(), loading: false, error: null };
     state.composer.context = context;
+    // A new start wakes the robot and clears an earlier error or attention.
+    robotBot()?.wake('new-conversation', { clear: true });
     applyMode();
     renderThread();
     renderList();
@@ -1671,6 +1687,9 @@
 
     if (userMessage) state.conv.messages.push(userMessage);
     state.conv.messages.push(reply);
+    // The robot thinks until the answer starts, then answers (one continuous
+    // state however many pieces stream in).
+    robotBot()?.set('thinking');
     if (!options.regenerate) {
       input.value = '';
       state.composer.attachments = [];
@@ -1692,7 +1711,8 @@
       conversationId = await ensureConversation();
     } catch (error) {
       state.streaming = null;
-      if (error?.code === 'not_configured') { dropTurn(userMessage, reply); switchOffAndAnswer(text); return; }
+      if (error?.code === 'not_configured') { dropTurn(userMessage, reply); robotBot()?.set('idle'); switchOffAndAnswer(text); return; }
+      robotBot()?.set('error');
       failReply(reply, error);
       renderComposerBar();
       return;
@@ -1731,6 +1751,9 @@
         if (!last || last.label !== label) reply.progress.push({ label, at: Date.now() });
         patchMessage(reply);
       } else if (event === 'delta') {
+        // The first piece of the answer: the robot moves from thinking to
+        // answering, once (later pieces never restart it).
+        if (!reply.content) robotBot()?.set('answering');
         reply.content += String(data?.text || '');
         if (!textFrame) textFrame = root.requestAnimationFrame(flushText);
       } else if (event === 'evidence') {
@@ -1773,6 +1796,7 @@
       } else if (error?.code === 'not_configured') {
         dropTurn(userMessage, reply);
         state.streaming = null;
+        robotBot()?.set('idle');
         switchOffAndAnswer(text);
         return;
       } else {
@@ -1781,6 +1805,9 @@
     }
     if (state.streaming?.reply === reply) state.streaming = null;
     if (reply.status === 'streaming') reply.status = 'complete';
+    // Done: a proposal waiting for approval asks for attention; otherwise a
+    // brief success, then idle. Stopped: idle. Failed: unavailable (not red).
+    robotBot()?.set(reply.status === 'complete' ? (reply.proposals.length ? 'attention' : 'success') : reply.status === 'stopped' ? 'idle' : 'error');
     patchMessage(reply);
     renderComposerBar();
     scrollToBottom();
@@ -2203,6 +2230,7 @@
     }
     const live = { state: 'connecting', startedAt: Date.now(), lines: [], showTranscript: true, errorText: '', blocked: false, concurrent: false, session: null, frame: 0, liveMessage: null };
     state.live = live;
+    robotBot()?.wake('voice');
     renderLive();
     renderComposerBar();
     // Read once so voice-end can still be sent while the page unloads.
@@ -2214,6 +2242,8 @@
       onState: (next, detail) => {
         if (state.live !== live) return;
         live.state = next;
+        // The assistant's robot follows the call too (sidebar, welcome robot).
+        if (next !== 'ended') robotBot()?.set(liveBotState(next));
         if (next === 'error') {
           live.errorText = liveErrorText(detail || {});
           // Daily limits do not lift by retrying now; offer no retry for them.
@@ -2296,6 +2326,7 @@
     if (!live) return;
     root.cancelAnimationFrame(live.frame);
     state.live = null;
+    if (['listening', 'thinking', 'answering'].includes(robotBot()?.state)) robotBot().set('idle');
     renderLive();
     renderComposerBar();
     afterTurn();
@@ -2786,6 +2817,9 @@
   function render(params = {}) {
     if (!ensureRoot()) return;
     state.visible = true;
+    // Opening Atlas AI wakes the robot; while it is open, the robot waits
+    // longer before it falls asleep.
+    robotBot()?.active(true);
     setTopBar();
     measureTop();
     if (!state.initialized) {
@@ -2837,6 +2871,7 @@
 
   function onHide() {
     state.visible = false;
+    robotBot()?.active(false);
     if (state.live) endLive();
     closeMenu();
     closeListSheet();
