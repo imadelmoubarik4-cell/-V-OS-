@@ -107,9 +107,10 @@ test('reduced motion: one still frame, no animation loop, badges do not animate'
   try {
     await page.waitForSelector('#ai-view .atlas-bot-live.is-live', { timeout: 15000 });
     await until(async () => (await info(page))?.scene?.frames >= 1, { message: 'a still frame' });
-    await page.waitForTimeout(400);
+    await page.evaluate(() => new Promise((resolve) => { let count = 0; const tick = () => (++count >= 10 ? resolve() : requestAnimationFrame(tick)); requestAnimationFrame(tick); }));
     const first = await info(page);
-    await page.waitForTimeout(600);
+    // Ten more browser frames: the robot draws none of them.
+    await page.evaluate(() => new Promise((resolve) => { let count = 0; const tick = () => (++count >= 10 ? resolve() : requestAnimationFrame(tick)); requestAnimationFrame(tick); }));
     const later = await info(page);
     assert.equal(later.running, false, 'no animation loop');
     assert.equal(later.scene.frames, first.scene.frames, 'no frames drawn while idle');
