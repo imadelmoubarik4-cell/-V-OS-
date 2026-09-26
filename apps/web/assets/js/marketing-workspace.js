@@ -580,7 +580,7 @@
       return;
     }
     if (state.composer) { renderComposer(); return; }
-    const actions = [{ label: 'Ask Atlas', icon: 'sparkles', variant: 'ghost', attrs: { 'data-mk-ask': '' } }];
+    const actions = [{ label: 'Ask Atlas', icon: 'atlas-bot', variant: 'ghost', attrs: { 'data-mk-ask': '' } }];
     if (state.staff?.can_create !== false) actions.push({ label: 'New post', icon: 'plus', variant: 'primary', attrs: { 'data-mk-new': '' } });
     const waiting = items().filter((item) => item.status === 'pending_approval').length;
     const failed = attentionItems().length;

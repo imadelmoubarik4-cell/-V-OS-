@@ -43,6 +43,23 @@ After step 4, re-run the smoke test for adding and editing an item.
 
 If the Supabase GitHub integration is set to deploy migrations to production when `main` changes, turn that off before merging this release. Otherwise the merge would apply every file in filename order: the revokes would run before the web deploy, and `20260924170000` would be replayed (production recorded it as `20260924150124`).
 
+## Atlas AI robot (web only)
+
+The robot is the Atlas AI assistant's face. It replaces the sparkles assistant icon in AI surfaces; the Atlas logo stays the brand mark everywhere. There is no migration and no function; deploy the web app (cache keys `?v=20261003-bot1` and, for the review follow-up, `?v=20261003-bot2`; `home.js` carries `?v=20261003-bot3` for the S93 sender names plus the robot on the daily briefing, and `team-messages.js` keeps the S93 Messages key because the robot leaves it unchanged). With S94, `marketing-workspace.js` carries the robot's Ask Atlas icon under the S94 key `?v=20261004-s94b` (not `20261003-bot1`), so browsers that cached the robot-only file refetch it.
+
+- `assets/js/atlas-bot.js`: the badge (`AtlasBot.html`) and the interactive 3D robot (`AtlasBot.liveHtml` + `upgrade`).
+- `assets/atlas-bot/atlas-mascot-scene.js`: the 3D scene, Three.js bundled in (MIT), loaded only when Atlas AI shows it. It is about 145 KB gzipped, same-origin, so the CSP is unchanged.
+- `assets/atlas-bot/atlas-bot.png`: the badge sprite (open, blink, happy), rendered from the same scene; `atlas-bot-small.png` is the version for badges of 24 px or less (a tighter face, a matte visor, larger eyes).
+- The live robot probes WebGL once per page, shows the badge again if the browser drops its WebGL context, follows a reduced-motion change live, stops drawing after 15 s of calm idle, and keeps still frames where WebGL runs in software (no GPU).
+
+To change the robot, edit `scripts/mascot/atlas-mascot-scene.src.mjs`, then rebuild the bundle and the sprites:
+
+```
+npm i --no-save three@0.186.1 esbuild@0.25.10   # or ATLAS_MASCOT_DEPS=<folder with them>
+node scripts/build_atlas_mascot.mjs
+node scripts/render_atlas_bot_badges.mjs        # needs Playwright + Chromium
+```
+
 ## S91: live voice lease and device handoff
 
 `20260930092000_s91_voice_lease_and_takeover.sql` is the last file of batch A. Apply it, then deploy

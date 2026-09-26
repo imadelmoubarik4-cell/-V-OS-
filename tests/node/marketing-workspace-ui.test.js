@@ -26,7 +26,7 @@ test('S88: Marketing is a shell view with the spec tabs and no injected navigati
   assert.match(ui, /Waiting for approval/);
   assert.match(ui, /Nothing planned yet/);
   assert.match(ui, /label: 'New post', icon: 'plus', variant: 'primary'/);
-  assert.match(ui, /label: 'Ask Atlas', icon: 'sparkles', variant: 'ghost'/);
+  assert.match(ui, /label: 'Ask Atlas', icon: 'atlas-bot', variant: 'ghost'/);
   assert.match(ui, /window\.AtlasAI\?\.askAbout\?\.\(\{ type: 'marketing'/);
   assert.doesNotMatch(ui, /Marketing chat|data-marketing-team-channel|Planning mode|marketing-stats/);
 });

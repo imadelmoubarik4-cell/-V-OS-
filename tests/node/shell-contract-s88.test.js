@@ -195,7 +195,7 @@ test('every event a module listens for is actually emitted', () => {
 });
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20260930-s90g"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261003-bot1"><\/script>\s*<script src="config\.js"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
   assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine, health: window\.AtlasData\.health\(\) \}\);\s+\}/);
@@ -225,30 +225,46 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 
 test('changed scripts carry the S88 cache key', () => {
   // S90 UX acceptance remediation (shell, design system and page fixes).
-  for (const file of ['data-workspace.js', 'atlas-capture.js', 'knowledge-workspace.js', 'atlas-search.js']) {
+  for (const file of ['data-workspace.js', 'atlas-capture.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
   }
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
   for (const file of ['s38-app-remediation.js', 'shifts-workspace.js',
-    'atlas-venue-clock.js', 'atlas-chrome.js', 'modal.js', 'atlas-stock-truth.js']) {
+    'atlas-venue-clock.js', 'modal.js', 'atlas-stock-truth.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
   // and the UX acceptance round 2 fixes (toast placement, order lines on the
   // phone, one inventory value in Reports, hours validation in place).
-  for (const file of ['atlas-inventory.js', 'atlas-shell.js', 'stock-count-workspace.js', 'atlas-purchasing.js', 'operations.js', 'reports-overview.js']) {
+  for (const file of ['stock-count-workspace.js', 'atlas-purchasing.js', 'operations.js', 'reports-overview.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-s90g"></script>`), file);
   }
-  // S91b: live voice lease heartbeat and "Continue here"; photo counting copy.
-  for (const file of ['atlas-ai.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260926-s91b"></script>`), file);
+  // The Atlas AI robot (atlas-bot.js) replaced the sparkles assistant icon in
+  // these scripts; atlas-ai.js also carries the S91b live voice lease.
+  for (const file of ['atlas-ai.js', 'atlas-chrome.js', 'atlas-inventory.js', 'atlas-shell.js',
+    'knowledge-workspace.js', 'recipes.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
   }
+  // Robot review follow-up: one WebGL probe, context loss, live reduced
+  // motion, idle pause (atlas-bot.js); the offline quick answer keeps the
+  // sparkles icon (atlas-palette.js).
+  for (const file of ['atlas-palette.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot2"></script>`), file);
+  }
+  // The big robot looks down at a pointer below it and up at one above
+  // (atlas-bot.js loads the rebuilt scene).
+  assert.ok(index.includes('<script src="assets/js/atlas-bot.js?v=20261003-bot4"></script>'), 'atlas-bot.js');
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
-  assert.ok(index.includes('<script src="assets/js/recipes.js?v=20260926-s91a"></script>'), 'recipes.js');
+
   assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">'), 'recipes.css');
   const config = read('apps/web/config.js');
+  // The Atlas AI robot replaced the assistant icon in these lazily loaded scripts.
+  // (marketing-workspace.js carries the same change under its S94 key below.)
+  for (const file of ['reports-workspace.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261003-bot1'`), file);
+  }
   // S92: every message shows its sender's real name and photo (own on the
   // right with the viewer's name and avatar); photos load when Messages opens.
   for (const file of ['team-messages.js', 'team-unread-badge.js', 'team-profile-photos.js']) {
@@ -259,8 +275,9 @@ test('changed scripts carry the S88 cache key', () => {
   assert.ok(config.includes("stylesheetPath: 'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css loader');
   assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css guard');
   assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20261002-s93m"></script>'), 'runtime-module-guard.js');
-  // S93: the Home/bell message item names the sender by the live name.
-  assert.ok(index.includes('<script src="assets/js/home.js?v=20261002-s93m"></script>'), 'home.js');
+  // S93: the Home/bell message item names the sender by the live name; the
+  // daily briefing header shows the Atlas AI robot.
+  assert.ok(index.includes('<script src="assets/js/home.js?v=20261003-bot3"></script>'), 'home.js');
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }
@@ -270,6 +287,9 @@ test('changed scripts carry the S88 cache key', () => {
   // library and platform checks; S94b: review fixes in the composer (asap,
   // partial save, radios), the media picker and the platform checks.
   assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261004-s94'"), 'settings-workspace.js');
+  // marketing-workspace.js also carries the robot's Ask Atlas icon (bot1
+  // content); the S94 key supersedes 20261003-bot1 so production caches refresh.
+  assert.ok(!config.includes("scriptPath: 'assets/js/marketing-workspace.js?v=20261003-bot1'"), 'marketing-workspace.js not on the pre-S94 key');
   for (const file of ['marketing-workspace.js', 'marketing-platform-rules.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261004-s94b'`), file);
   }
@@ -279,8 +299,6 @@ test('changed scripts carry the S88 cache key', () => {
   assert.ok(index.includes('href="assets/css/marketing-workspace.css?v=20261004-s94c"'), 'marketing-workspace.css');
   assert.ok(config.includes("stylesheetPath: 'assets/css/settings-workspace.css?v=20261004-s94'"), 'settings-workspace.css');
   assert.ok(index.includes('href="assets/css/settings-workspace.css?v=20261004-s94"'), 'settings-workspace.css');
-  // S91: sign-in copy after the session fixes.
-  assert.ok(config.includes("scriptPath: 'assets/js/reports-workspace.js?v=20260926-s91a'"), 'reports-workspace.js');
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
 });
 

@@ -86,6 +86,7 @@
   };
 
   function icon(name, extraClass = '') {
+    if (name === 'atlas-bot' && root.AtlasBot) return root.AtlasBot.html({ size: 18, className: extraClass });
     const body = ICONS[name] || ICONS.sparkles;
     return `<svg class="icon${extraClass ? ` ${extraClass}` : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
   }
@@ -1130,7 +1131,10 @@
   function emptyStateMarkup() {
     const name = firstName();
     if (state.configured === false) return notConfiguredMarkup();
+    // The live robot greets once, follows the pointer and reacts to a tap.
+    const bot = root.AtlasBot ? `<div class="ai-empty__bot">${root.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176 })}</div>` : '';
     return `<div class="ai-empty">
+      ${bot}
       <h2 class="ai-empty__greeting">What can I help with${name ? `, ${escapeHtml(name)}` : ''}?</h2>
       ${state.composer.context ? `<p class="ai-empty__context">Ask about ${escapeHtml(state.composer.context.label)}, or anything else about the venue.</p>` : ''}
       <div class="ai-empty__chips" role="list">${suggestions().map((item, index) => `<button type="button" role="listitem" class="atlas-chip" data-ai-suggest="${index}">${item.photo ? icon('camera') : item.live ? icon('audio-lines') : ''}${escapeHtml(item.label)}</button>`).join('')}</div>
@@ -1141,7 +1145,7 @@
     const admin = role() === 'admin';
     return `<div class="ai-empty ai-empty--off">
       <div class="atlas-empty">
-        <div class="atlas-empty__icon">${icon('sparkles')}</div>
+        <div class="atlas-empty__icon">${root.AtlasBot ? root.AtlasBot.html({ size: 40 }) : icon('sparkles')}</div>
         <h3>Atlas AI isn’t switched on yet</h3>
         <p>${admin
           ? 'Set it up in Settings › Atlas AI: add the service key, then switch it on. Until then, record search and quick answers from your stock, recipes and shifts still work.'
@@ -1186,6 +1190,7 @@
     }
     if (!conv.messages.length) {
       container.innerHTML = emptyStateMarkup();
+      root.AtlasBot?.upgrade(container);
       return;
     }
     container.innerHTML = conv.messages.map(messageMarkup).join('');
@@ -1308,7 +1313,7 @@
       <button type="button" class="atlas-icon-btn" data-ai-retry="${escapeHtml(message.key)}" aria-label="Try again" title="Try again">${icon('refresh-cw')}</button>
     </div>` : '';
     return `<article class="msg-ai${streaming ? ' is-streaming' : ''}" data-ai-msg="${escapeHtml(message.key)}" aria-busy="${streaming}">
-      <div class="msg-ai__who"><span class="ai-mark">${icon('sparkles')}</span>Atlas</div>
+      <div class="msg-ai__who">${root.AtlasBot ? root.AtlasBot.html({ size: 24, state: streaming ? 'thinking' : message.error ? 'error' : 'idle', className: 'ai-mark-bot' }) : `<span class="ai-mark">${icon('sparkles')}</span>`}Atlas</div>
       ${fallback}${stepsMarkup(message)}${body}${fallbackLines}${fallbackAction}${stopped}${error}${recordsMarkup(message)}${evidenceMarkup(message)}${proposals}${actions}
     </article>`;
   }
@@ -2107,6 +2112,14 @@
     return 'Live voice couldn’t connect. Your conversation is saved.';
   }
 
+  // The robot in the live voice panel mirrors the call.
+  function liveBotState(status) {
+    if (status === 'listening' || status === 'interrupted') return 'listening';
+    if (status === 'thinking' || status === 'speaking') return status;
+    if (status === 'disconnected' || status === 'error' || status === 'inactive' || status === 'replaced') return 'error';
+    return 'idle';
+  }
+
   function liveMarkup() {
     const live = state.live;
     if (!live) return '';
@@ -2123,8 +2136,9 @@
         : status === 'error' && live.errorText ? live.errorText : 'Live voice disconnected. Your conversation is saved.';
     const retry = retryable && status !== 'replaced'
       ? `<button type="button" data-ai-live-reconnect>${icon('refresh-cw')}${status === 'inactive' ? 'Start a new session' : status === 'error' ? 'Try again' : 'Reconnect'}</button>` : '';
+    const bot = root.AtlasBot ? root.AtlasBot.liveHtml({ key: 'ai-voice', framing: 'bust', size: 44, state: liveBotState(status), label: `Atlas, ${label.toLowerCase()}` }) : '';
     return `<div class="voice" role="region" aria-label="Live voice" data-state="${escapeHtml(status)}">
-      <div class="voice__top"><span class="voice__state" aria-live="polite">${escapeHtml(label)}</span><span class="voice__time" data-ai-live-time>${durationLabel((Date.now() - live.startedAt) / 1000)}</span>
+      <div class="voice__top">${bot}<span class="voice__state" aria-live="polite">${escapeHtml(label)}</span><span class="voice__time" data-ai-live-time>${durationLabel((Date.now() - live.startedAt) / 1000)}</span>
         <button type="button" class="voice__toggle" data-ai-live-transcript aria-pressed="${live.showTranscript}">${live.showTranscript ? 'Hide transcript' : 'Show transcript'}</button></div>
       ${broken ? `<div class="voice__error" role="alert">${escapeHtml(message)}</div>` : `<div class="voice__wave" aria-hidden="true">${'<i></i>'.repeat(18)}</div>`}
       ${live.showTranscript && lines ? `<div class="voice__transcript">${lines}</div>` : ''}
@@ -2141,6 +2155,10 @@
     const slot = el('voiceSlot');
     if (!slot) return;
     slot.innerHTML = liveMarkup();
+    // One WebGL context for the call: the robot moves into the new markup and
+    // is released when the call ends.
+    if (state.live) root.AtlasBot?.upgrade(slot);
+    else root.AtlasBot?.destroy('ai-voice');
     state.root.classList.toggle('is-voice', Boolean(state.live));
     syncTabBar();
   }
@@ -2873,7 +2891,7 @@
           rows.push({
             id: current.id,
             severity: 'info',
-            icon: 'sparkles',
+            icon: 'atlas-bot',
             title: `${humanText(current.title, 'A change Atlas prepared')} is waiting for your approval`,
             detail: current.expires_at ? expiryLabel(current.expires_at) : 'Prepared by Atlas',
             action: { label: 'Review', route: `#ai/c/${state.conv.id}` }
@@ -2889,11 +2907,11 @@
     if (!shell) return;
     shell.registerView('ai', { root: () => ensureRoot(), title: 'Atlas AI', display: 'block', render, onHide });
     shell.actions?.register?.({
-      id: 'ai.ask', label: 'Ask Atlas', icon: 'sparkles', keywords: ['ask', 'question', 'atlas', 'ai', 'help'], contexts: ['home', 'inventory', 'recipes', 'suppliers', 'reports'],
+      id: 'ai.ask', label: 'Ask Atlas', icon: 'atlas-bot', keywords: ['ask', 'question', 'atlas', 'ai', 'help'], contexts: ['home', 'inventory', 'recipes', 'suppliers', 'reports'],
       run: (ctx = {}) => ask({ question: ctx.query || ctx.question || '', record: ctx.record || null, view: ctx.context || null })
     });
     shell.actions?.register?.({
-      id: 'ai.ask.record', label: 'Ask Atlas about this', icon: 'sparkles', keywords: ['ask', 'atlas', 'about'],
+      id: 'ai.ask.record', label: 'Ask Atlas about this', icon: 'atlas-bot', keywords: ['ask', 'atlas', 'about'],
       when: (ctx = {}) => Boolean(ctx.record?.type && ctx.record?.id != null),
       run: (ctx = {}) => ask({ question: ctx.query || '', record: ctx.record, view: ctx.context || null, send: Boolean(ctx.query) })
     });

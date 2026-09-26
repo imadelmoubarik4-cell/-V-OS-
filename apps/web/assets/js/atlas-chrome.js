@@ -41,6 +41,9 @@
   // Inline Lucide SVG from the pinned library (no document-wide createIcons
   // pass for every panel render).
   function icon(name, { size = 16, stroke = 1.75, className = '' } = {}) {
+    // 'atlas-bot' is the Atlas AI robot (atlas-bot.js), a touch larger than a
+    // stroke icon so its face reads.
+    if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: size + 4, className });
     const pascal = String(name || '').split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('');
     const node = window.lucide?.icons?.[pascal];
     if (!Array.isArray(node)) return `<i data-lucide="${escape(name)}" aria-hidden="true"></i>`;

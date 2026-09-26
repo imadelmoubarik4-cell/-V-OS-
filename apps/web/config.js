@@ -170,7 +170,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // published versions and their version-specific acknowledgement state.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/knowledge-workspace.css',
-  scriptPath: 'assets/js/knowledge-workspace.js?v=20260929-s90u',
+  scriptPath: 'assets/js/knowledge-workspace.js?v=20261003-bot1',
   globalName: 'AtlasKnowledge',
   dataAttribute: 'atlasKnowledge',
 }));
@@ -180,7 +180,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/reports-workspace.css?v=20260929-s90f',
-  scriptPath: 'assets/js/reports-workspace.js?v=20260926-s91a',
+  scriptPath: 'assets/js/reports-workspace.js?v=20261003-bot1',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));
