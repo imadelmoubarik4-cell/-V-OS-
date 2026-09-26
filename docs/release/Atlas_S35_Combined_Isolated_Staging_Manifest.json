@@ -85,7 +85,11 @@
     {
       "name": "atlas-marketing-workspace",
       "sources": {
-        "supabase/functions/atlas-marketing-workspace/index.ts": "a43040ffa5bf5bdfaeeba769c5c63bb1742f6467443f386a18306772958d88c5",
+        "supabase/functions/atlas-marketing-workspace/index.ts": "9b345bc3f5613a64c8394cc31c8d81491386036cf4809fdedf116fcec82f4b19",
+        "supabase/functions/atlas-marketing-workspace/handler.mjs": "2e7d5afee4ce49b1b0b4da87ef668015034b1942614350c0c6aa6fa56f263c85",
+        "supabase/functions/_shared/integrations/credentials.mjs": "f35c32842a0780adb071f83c9541e59cdbd2b632f7eede01e6ec989c55dc9f19",
+        "supabase/functions/_shared/integrations/provider-http.mjs": "ff97cfa52e2930ce45329c5b2ff98f856f5d3946cc408200ff226a15e8a1943b",
+        "supabase/functions/_shared/integrations/crypto.mjs": "946d9c5f69e0899281709fa948c8d0abd8b9211f9c07b469bab0410e12e26c68",
         "supabase/functions/_shared/auth.mjs": "a1a8014ab4b19545b708bf82a9c7b9c4c16081bdfb93f5101ca2c267e1a5abf7"
       }
     },

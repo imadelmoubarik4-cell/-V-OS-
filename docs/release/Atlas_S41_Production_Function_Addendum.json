@@ -2,7 +2,7 @@
   "package": "Atlas S41 production function addendum v1",
   "status": "Approved for production deployment on 2026-09-15",
   "base_source_manifest": "docs/release/Atlas_S35_Combined_Isolated_Staging_Manifest.json",
-  "base_source_manifest_sha256": "050a689eea877a9148ff85ed560995232c8925d9b16b4aa5cd3fb41d01f9a33b",
+  "base_source_manifest_sha256": "09d7e23ff28fe5f02e3af88931d4afcc63743863612478bd67a164bc03def158",
   "production_target": "dnefgcmjcgxlynycxkts",
   "functions": [
     {

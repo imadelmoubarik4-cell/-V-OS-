@@ -117,8 +117,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/marketing-workspace.css?v=20260929-s90u',
-  scriptPath: 'assets/js/marketing-workspace.js?v=20260926-s91a',
+  stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94',
+  scriptPath: 'assets/js/marketing-workspace.js?v=20261004-s94',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
 }));
@@ -126,13 +126,13 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // S94: the composer's shared platform checks (generated from the publisher's
 // rules) and the Marketing media library (library, picker and upload queue).
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/marketing-platform-rules.js',
+  scriptPath: 'assets/js/marketing-platform-rules.js?v=20261004-s94',
   globalName: 'AtlasPlatformRules',
   dataAttribute: 'atlasPlatformRules',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/marketing-media.js',
+  scriptPath: 'assets/js/marketing-media.js?v=20261004-s94',
   globalName: 'AtlasMarketingMedia',
   dataAttribute: 'atlasMarketingMedia',
 }));
@@ -196,8 +196,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // Checkpoint J replaces the Settings placeholder with a versioned, role-aware
 // control centre for venue configuration, operating rules and personal preferences.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/settings-workspace.css',
-  scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91c',
+  stylesheetPath: 'assets/css/settings-workspace.css?v=20261004-s94',
+  scriptPath: 'assets/js/settings-workspace.js?v=20261004-s94',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
 }));

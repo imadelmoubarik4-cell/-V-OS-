@@ -50,11 +50,13 @@ test('shared modules are dependency-free ESM without Deno APIs', () => {
   // S89: recognition/ holds the visual inventory recognition modules.
   // S94B: integrations/ holds the shared integration crypto, provider refresh
   // and publishing credential modules.
-  assert.deepEqual(shared.filter((name) => name !== 'publishing').sort(), ['ai-tools', 'atlas-domain.mjs', 'auth.mjs', 'integrations', 'product-identity.mjs', 'recognition', 'stock-provenance.mjs']);
+  // S94C: publishing/ holds the provider publishing adapters the worker uses.
+  assert.deepEqual(shared.sort(), ['ai-tools', 'atlas-domain.mjs', 'auth.mjs', 'integrations', 'product-identity.mjs', 'publishing', 'recognition', 'stock-provenance.mjs']);
   const files = [
     ...shared.filter((name) => name.endsWith('.mjs')),
     ...fs.readdirSync(path.join(FUNCTIONS, '_shared', 'recognition')).map((name) => `recognition/${name}`),
     ...fs.readdirSync(path.join(FUNCTIONS, '_shared', 'integrations')).map((name) => `integrations/${name}`),
+    ...fs.readdirSync(path.join(FUNCTIONS, '_shared', 'publishing')).map((name) => `publishing/${name}`),
   ];
   for (const file of files) {
     const source = fs.readFileSync(path.join(FUNCTIONS, '_shared', file), 'utf8');

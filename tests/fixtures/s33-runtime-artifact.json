@@ -52,8 +52,28 @@
       "files": [
         {
           "path": "functions/atlas-marketing-workspace/index.ts",
-          "source_sha256": "a43040ffa5bf5bdfaeeba769c5c63bb1742f6467443f386a18306772958d88c5",
-          "candidate_sha256": "e3d290fdc21eeebbcdc7163574b9edc5c40639808f122e8f4ae51ee5b464bc89"
+          "source_sha256": "9b345bc3f5613a64c8394cc31c8d81491386036cf4809fdedf116fcec82f4b19",
+          "candidate_sha256": "f7461a7844284771a08e4ea7c9d48786223557a18281998c251fa763ebcf6e9d"
+        },
+        {
+          "path": "functions/atlas-marketing-workspace/handler.mjs",
+          "source_sha256": "2e7d5afee4ce49b1b0b4da87ef668015034b1942614350c0c6aa6fa56f263c85",
+          "candidate_sha256": "b30dbac9c4fe039d2a58e5962d21796f52c4fe9e66a42ddc412a0edc7aff19a2"
+        },
+        {
+          "path": "functions/_shared/integrations/credentials.mjs",
+          "source_sha256": "f35c32842a0780adb071f83c9541e59cdbd2b632f7eede01e6ec989c55dc9f19",
+          "candidate_sha256": "3067c4d3703b99da6932b41a335ee2cf655bb24fd2fdc56a9bc75eb6755fc494"
+        },
+        {
+          "path": "functions/_shared/integrations/provider-http.mjs",
+          "source_sha256": "ff97cfa52e2930ce45329c5b2ff98f856f5d3946cc408200ff226a15e8a1943b",
+          "candidate_sha256": "8300e2b0d00bf6e842abb080ea92dc3be494584400d5b0e7551fb14c11d9a569"
+        },
+        {
+          "path": "functions/_shared/integrations/crypto.mjs",
+          "source_sha256": "946d9c5f69e0899281709fa948c8d0abd8b9211f9c07b469bab0410e12e26c68",
+          "candidate_sha256": "c157a3f7c6d64a31fc8a7bfe50cc8f41fc5d91d9059168ff2679a59f11085946"
         },
         {
           "path": "functions/_shared/auth.mjs",

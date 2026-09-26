@@ -259,11 +259,17 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // S91: the Settings sign-in message; S91b: owner copy for integrations
   // that are not set up, with admin-only setup details.
-  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91c'"), 'settings-workspace.js');
-  // S91: sign-in copy after the session fixes.
-  for (const file of ['marketing-workspace.js', 'reports-workspace.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260926-s91a'`), file);
+  // S94: Settings publishing connections and the Marketing composer, media
+  // library and platform checks.
+  for (const file of ['settings-workspace.js', 'marketing-workspace.js', 'marketing-platform-rules.js', 'marketing-media.js']) {
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261004-s94'`), file);
   }
+  for (const file of ['marketing-workspace.css', 'settings-workspace.css']) {
+    assert.ok(config.includes(`stylesheetPath: 'assets/css/${file}?v=20261004-s94'`), file);
+    assert.ok(index.includes(`href="assets/css/${file}?v=20261004-s94"`), file);
+  }
+  // S91: sign-in copy after the session fixes.
+  assert.ok(config.includes("scriptPath: 'assets/js/reports-workspace.js?v=20260926-s91a'"), 'reports-workspace.js');
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
 });
 
