@@ -177,7 +177,7 @@ test('registry covers the six providers with documented endpoints and minimal sc
   assert.deepEqual(PROVIDERS['google-drive'].scopes, ['https://www.googleapis.com/auth/drive.file']);
   assert.equal(PROVIDERS.facebook.authorizeUrl(env), 'https://www.facebook.com/v25.0/dialog/oauth');
   assert.equal(PROVIDERS.facebook.tokenUrl(env), 'https://graph.facebook.com/v25.0/oauth/access_token');
-  assert.deepEqual(PROVIDERS.instagram.scopes, ['instagram_basic', 'pages_show_list']);
+  assert.deepEqual(PROVIDERS.instagram.scopes, ['instagram_basic', 'pages_show_list', 'pages_read_engagement', 'business_management']);
   assert.equal(PROVIDERS.tiktok.authorizeUrl(env), 'https://www.tiktok.com/v2/auth/authorize/');
   assert.equal(PROVIDERS.tiktok.tokenUrl(env), 'https://open.tiktokapis.com/v2/oauth/token/');
   assert.deepEqual(PROVIDERS.tiktok.scopes, ['user.info.basic']);
