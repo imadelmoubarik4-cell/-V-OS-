@@ -124,7 +124,9 @@ export const PROVIDERS = Object.freeze({
     authorizeUrl: (env) => `https://www.facebook.com/${metaVersion(env)}/dialog/oauth`,
     tokenUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/oauth/access_token`,
     revokeUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/me/permissions`,
-    scopes: ["pages_show_list", "pages_read_engagement"],
+    // business_management at connect: Pages reached through a Business
+    // portfolio are missing from /me/accounts without it (seen in production).
+    scopes: ["pages_show_list", "pages_read_engagement", "business_management"],
     publish_scopes: ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "business_management"],
     future_scopes: ["read_insights"],
     resource_kind: "facebook_page",
@@ -159,7 +161,10 @@ export const PROVIDERS = Object.freeze({
     authorizeUrl: (env) => `https://www.facebook.com/${metaVersion(env)}/dialog/oauth`,
     tokenUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/oauth/access_token`,
     revokeUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/me/permissions`,
-    scopes: ["instagram_basic", "pages_show_list"],
+    // Meta's Instagram-with-Facebook-Login setup lists pages_read_engagement
+    // and, for Business-portfolio Pages, business_management to read the
+    // linked account from /me/accounts.
+    scopes: ["instagram_basic", "pages_show_list", "pages_read_engagement", "business_management"],
     publish_scopes: ["instagram_basic", "instagram_content_publish", "pages_show_list", "pages_read_engagement", "business_management"],
     future_scopes: ["instagram_manage_insights"],
     resource_kind: "instagram_account",
@@ -223,8 +228,8 @@ export const PROVIDERS = Object.freeze({
     pkce: "none",
     // The legacy Content API (api.content.tripadvisor.com) is reported as
     // sunset on 31 Aug 2026 in favour of the Terra API (X-API-KEY header on
-    // terra.tripadvisor.com). The exact Terra location-details path could not be
-    // confirmed from primary documentation, so the owner supplies it.
+    // terra.tripadvisor.com). The owner supplies the Location Details address
+    // (GET /api/locations/{id}); the location must be on the key's allowlist.
     endpoint_evidence: "unverified",
     authorizeUrl: () => null,
     tokenUrl: () => null,
@@ -832,6 +837,16 @@ export function tripadvisorVerifyUrl(env, locationId) {
   }
 }
 
+// Terra Location Details returns `names: [{ language, value, primary }]`;
+// prefer the primary entry, then English, then the first one.
+export function tripadvisorLocationName(body) {
+  const names = Array.isArray(body?.names) ? body.names.filter((entry) => typeof entry?.value === "string" && entry.value.trim()) : [];
+  const picked = names.find((entry) => entry.primary === true) ?? names.find((entry) => entry.language === "en") ?? names[0];
+  if (picked) return picked.value.trim();
+  const flat = body?.name ?? body?.data?.name ?? body?.location?.name ?? null;
+  return typeof flat === "string" && flat.trim() ? flat.trim() : null;
+}
+
 async function verifyTripadvisor(provider, env, fetchImpl, tokenSet) {
   const locationId = String(env("ATLAS_TRIPADVISOR_LOCATION_ID") ?? "").trim();
   const url = tripadvisorVerifyUrl(env, locationId);
@@ -840,7 +855,7 @@ async function verifyTripadvisor(provider, env, fetchImpl, tokenSet) {
     headers: { "x-api-key": tokenSet.api_key, accept: "application/json" },
   });
   const body = await readProviderJson(response, "Tripadvisor location check failed");
-  const name = body?.name ?? body?.data?.name ?? body?.location?.name ?? null;
+  const name = tripadvisorLocationName(body);
   return {
     account_id: locationId.slice(0, 200),
     account_label: name ? String(name).slice(0, 200) : `Tripadvisor location ${locationId.slice(0, 40)}`,

@@ -352,10 +352,10 @@ const PAGES = [
 
 // ------------------------------------------------------------------ scope split
 
-test('publish scopes follow contract §4; connect scopes are unchanged and verify needs only them', () => {
-  assert.deepEqual(PROVIDERS.facebook.scopes, ['pages_show_list', 'pages_read_engagement']);
+test('publish scopes follow contract §4; connect scopes include business_management and verify needs only them', () => {
+  assert.deepEqual(PROVIDERS.facebook.scopes, ['pages_show_list', 'pages_read_engagement', 'business_management']);
   assert.deepEqual(PROVIDERS.facebook.publish_scopes, ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'business_management']);
-  assert.deepEqual(PROVIDERS.instagram.scopes, ['instagram_basic', 'pages_show_list']);
+  assert.deepEqual(PROVIDERS.instagram.scopes, ['instagram_basic', 'pages_show_list', 'pages_read_engagement', 'business_management']);
   assert.deepEqual(PROVIDERS.instagram.publish_scopes, ['instagram_basic', 'instagram_content_publish', 'pages_show_list', 'pages_read_engagement', 'business_management']);
   assert.deepEqual(PROVIDERS.tiktok.scopes, ['user.info.basic']);
   assert.deepEqual(PROVIDERS.tiktok.publish_scopes, ['video.upload', 'video.publish']);
@@ -367,13 +367,13 @@ test('publish scopes follow contract §4; connect scopes are unchanged and verif
   }
   assert.deepEqual(requestedScopes(PROVIDERS.tiktok, 'publishing'), ['user.info.basic', 'video.upload', 'video.publish']);
   assert.deepEqual(requestedScopes(PROVIDERS.tiktok, 'connect'), ['user.info.basic']);
-  assert.deepEqual(requestedScopes(PROVIDERS.instagram, 'publishing'), ['instagram_basic', 'pages_show_list', 'instagram_content_publish', 'pages_read_engagement', 'business_management']);
+  assert.deepEqual(requestedScopes(PROVIDERS.instagram, 'publishing'), ['instagram_basic', 'pages_show_list', 'pages_read_engagement', 'business_management', 'instagram_content_publish']);
   const env = (name) => ENV[name];
   const connect = new URL(buildAuthorizeUrl(PROVIDERS.facebook, env, { redirectUri: 'r', state: 's', codeChallenge: null }));
-  assert.equal(connect.searchParams.get('scope'), 'pages_show_list,pages_read_engagement');
+  assert.equal(connect.searchParams.get('scope'), 'pages_show_list,pages_read_engagement,business_management');
   assert.equal(connect.searchParams.get('auth_type'), null);
   const publish = new URL(buildAuthorizeUrl(PROVIDERS.facebook, env, { redirectUri: 'r', state: 's', codeChallenge: null, purpose: 'publishing' }));
-  assert.equal(publish.searchParams.get('scope'), 'pages_show_list,pages_read_engagement,pages_manage_posts,business_management');
+  assert.equal(publish.searchParams.get('scope'), 'pages_show_list,pages_read_engagement,business_management,pages_manage_posts');
   assert.equal(publish.searchParams.get('auth_type'), 'rerequest');
   const tiktok = new URL(buildAuthorizeUrl(PROVIDERS.tiktok, env, { redirectUri: 'r', state: 's', codeChallenge: null, purpose: 'publishing' }));
   assert.equal(tiktok.searchParams.get('scope'), 'user.info.basic,video.upload,video.publish');
@@ -393,13 +393,13 @@ test('the shared crypto module is the one atlas-integrations uses (behaviour unc
 });
 
 test('verify with only the connect scopes succeeds and names no default Page', async () => {
-  const meta = metaProvider({ pages: PAGES, permissions: ['pages_show_list', 'pages_read_engagement'] });
+  const meta = metaProvider({ pages: PAGES, permissions: ['pages_show_list', 'pages_read_engagement', 'business_management'] });
   const result = await PROVIDERS.facebook.verify(PROVIDERS.facebook, (n) => ENV[n], meta.fetchImpl, { access_token: USER_TOKEN });
   assert.equal(result.account_id, null, 'several Pages: no [0] default');
   assert.equal(result.account_label, '4 Pages', 'every page of /me/accounts is read');
-  assert.deepEqual(result.scopes, ['pages_show_list', 'pages_read_engagement']);
+  assert.deepEqual(result.scopes, ['pages_show_list', 'pages_read_engagement', 'business_management']);
   const twoLinked = PAGES.map((page) => (page.id === '111' ? { ...page, instagram_business_account: { id: '17841400000000111', username: 'vabar.reykjavik' } } : page));
-  const ig = metaProvider({ pages: twoLinked, permissions: ['instagram_basic', 'pages_show_list'] });
+  const ig = metaProvider({ pages: twoLinked, permissions: ['instagram_basic', 'pages_show_list', 'pages_read_engagement', 'business_management'] });
   const igResult = await PROVIDERS.instagram.verify(PROVIDERS.instagram, (n) => ENV[n], ig.fetchImpl, { access_token: USER_TOKEN });
   assert.equal(igResult.account_id, null, 'two linked accounts: verify picks neither');
   assert.equal(igResult.account_label, '2 Instagram accounts');
@@ -423,12 +423,12 @@ test('Allow publishing: start with purpose publishing asks for connect ∪ publi
   const hop = await handle(new Request(started.body.authorize_url));
   const location = new URL(hop.headers.get('location'));
   assert.equal(location.origin + location.pathname, 'https://www.facebook.com/v25.0/dialog/oauth');
-  assert.equal(location.searchParams.get('scope'), 'instagram_basic,pages_show_list,instagram_content_publish,pages_read_engagement,business_management');
+  assert.equal(location.searchParams.get('scope'), 'instagram_basic,pages_show_list,pages_read_engagement,business_management,instagram_content_publish');
   assert.equal(location.searchParams.get('auth_type'), 'rerequest');
 
   const plain = await call('start', { provider_key: 'instagram', return_path: '#settings/integrations' });
   const plainHop = new URL((await handle(new Request(plain.body.authorize_url))).headers.get('location'));
-  assert.equal(plainHop.searchParams.get('scope'), 'instagram_basic,pages_show_list', 'Connect keeps the minimal scopes');
+  assert.equal(plainHop.searchParams.get('scope'), 'instagram_basic,pages_show_list,pages_read_engagement,business_management', 'Connect keeps the connect scopes, no publishing');
   assert.equal(db.calls.filter((c) => c.name === 'atlas_integration_set_state_purpose').length, 1);
 
   assert.equal((await call('start', { provider_key: 'google-drive', purpose: 'publishing' })).status, 400);
@@ -687,6 +687,48 @@ test('disconnecting one Meta provider while the other is connected revokes only 
   const ig = await handlerFor(db2, meta2.fetchImpl).call('disconnect', { provider_key: 'instagram' });
   assert.deepEqual(ig.body.revoked_permissions, ['instagram_basic', 'instagram_content_publish']);
 });
+
+// ------------------------------------------------------------------ Google disconnect coupling
+
+// Google's revoke endpoint removes every scope granted to the client, so while
+// the other Google provider is connected the revoke is skipped.
+function googleRevokeRecorder() {
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    return new Response('{}', { status: 200 });
+  };
+  return { fetchImpl, revokes: () => calls.filter((c) => c.url === 'https://oauth2.googleapis.com/revoke') };
+}
+
+for (const [key, other] of [['google-drive', 'google-business-profile'], ['google-business-profile', 'google-drive']]) {
+  test(`disconnecting ${key} while ${other} is connected keeps the Google grant`, async () => {
+    const db = fakeDatabase();
+    await connect(db, key, { access_token: GOOGLE_ACCESS, refresh_token: 'r-this' });
+    await connect(db, other, { access_token: GOOGLE_ACCESS, refresh_token: 'r-other' });
+    const google = googleRevokeRecorder();
+    const response = await handlerFor(db, google.fetchImpl).call('disconnect', { provider_key: key });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.revoked_at_provider, false);
+    assert.equal(response.body.revoked_permissions, undefined);
+    assert.equal(google.revokes().length, 0, 'no Google revoke while the other provider is connected');
+    assert.equal(db.credentials.has(key), false, 'the local credential is still removed');
+    assert.equal(db.credentials.has(other), true);
+    assert.ok(db.calls.some((c) => c.name === 'atlas_integration_disconnect' && c.payload.p_provider_key === key));
+  });
+
+  test(`disconnecting ${key} when ${other} is not connected revokes at Google`, async () => {
+    const db = fakeDatabase();
+    await connect(db, key, { access_token: GOOGLE_ACCESS, refresh_token: 'r-this' });
+    const google = googleRevokeRecorder();
+    const response = await handlerFor(db, google.fetchImpl).call('disconnect', { provider_key: key });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.revoked_at_provider, true);
+    assert.equal(google.revokes().length, 1);
+    assert.equal(new URLSearchParams(google.revokes()[0].init.body).get('token'), 'r-this');
+    assert.equal(db.credentials.has(key), false);
+  });
+}
 
 // ------------------------------------------------------------------ credential module
 

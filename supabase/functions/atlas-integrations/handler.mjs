@@ -59,6 +59,7 @@ const MAX_BODY_BYTES = 16 * 1024;
 const MANAGER_ROLES = new Set(["admin", "manager"]);
 const REVIEW_STATES = new Set(["not_required", "unknown", "required", "pending", "approved", "rejected"]);
 const META_KEYS = ["facebook", "instagram"];
+const GOOGLE_KEYS = ["google-drive", "google-business-profile"];
 // Metadata keys the picker may show (the listing stores nothing else).
 const RESOURCE_META_KEYS = ["category", "tasks", "username", "page_name", "account_label", "address", "has_voice_of_merchant", "type", "role"];
 
@@ -690,13 +691,19 @@ export function createIntegrationsHandler(deps) {
           // Facebook and Instagram share one Meta app (and usually one user
           // token): while the other is connected, revoke only this
           // provider's own permissions instead of every permission.
-          const otherKey = META_KEYS.includes(provider.key) ? META_KEYS.find((key) => key !== provider.key) : null;
+          // Drive and Business Profile share one Google client, and Google's
+          // revoke removes every scope granted to it: while the other is
+          // connected, skip the provider revoke so that connection keeps working.
+          const pair = META_KEYS.includes(provider.key) ? META_KEYS : GOOGLE_KEYS.includes(provider.key) ? GOOGLE_KEYS : null;
+          const otherKey = pair ? pair.find((key) => key !== provider.key) : null;
           const otherConnected = otherKey ? Boolean((await statusRows(actor)).get(otherKey)?.has_credential) : false;
           if (otherConnected && provider.revokePermissions) {
             const other = getProvider(otherKey);
             const keep = new Set([...other.scopes, ...(other.publish_scopes ?? [])]);
             revokedPermissions = requestedScopes(provider, "publishing").filter((permission) => !keep.has(permission));
             revokedAtProvider = await provider.revokePermissions(provider, env, deps.fetchImpl, credential.value, revokedPermissions);
+          } else if (otherConnected) {
+            revokedAtProvider = false; // the other Google connection still uses this grant
           } else {
             await provider.revoke(provider, env, deps.fetchImpl, credential.value);
             revokedAtProvider = true;
