@@ -5,6 +5,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runTool, TOOL_REGISTRY, redactForRole, COMMERCIAL_KEYS } from '../../supabase/functions/_shared/ai-tools/index.mjs';
 import { actorFor, allKeys, createBackend, IDS, makeCtx } from './helpers/ai-tools-fixtures.js';
+import { flavorSnapshot } from './helpers/flavor-fixtures.js';
+
+// The flavour library linked to this suite's small bar (gin and lime juice
+// verified, Campari never counted, tequila stale, Aperol verified at zero).
+const FLAVOR_LINKS = [
+  ['tanqueray', 'london-dry-gin', null, 'confirmed', 'rule:name', 0.95],
+  ['lime', 'lime', 'juice', 'confirmed', 'rule:name', 0.95],
+  ['campari', 'red-bitter-aperitivo', null, 'confirmed', 'alias', 0.95],
+  ['tequila', 'blanco-tequila', null, 'confirmed', 'rule:name', 0.95],
+  ['aperol', 'red-bitter-aperitivo', null, 'needs_review', 'rule:category', 0.4],
+];
+const flavorBackend = () => createBackend({ serviceRpcs: { atlas_flavor_snapshot: () => flavorSnapshot({ links: FLAVOR_LINKS, itemIds: IDS }) } });
 
 // Valid arguments for every tool (used by the role matrix).
 export const SAMPLE_ARGS = {
@@ -55,6 +67,16 @@ export const SAMPLE_ARGS = {
   'marketing.suggestions': { date: null },
   'integrations.status': {},
   'app.open': { target: 'recipes', record_type: 'recipe', record_id: IDS.margarita, label: 'Margarita' },
+  'flavor.search_ingredients': { query: 'gin', use: null, limit: null },
+  'flavor.ingredient_profile': { ingredient: 'gin' },
+  'flavor.pairings': { ingredient: 'gin', preparation: null, use: null, in_stock_only: null, evidence: null, limit: null },
+  'flavor.pairings_from_stock': { ingredient: null, use: null, limit: null },
+  'flavor.substitutes': { ingredient: 'lime', in_stock_only: null, limit: null },
+  'flavor.candidates': { type: 'cocktail', seed: ['gin'], exclude_families: null, exclude_ingredients: null, no_new_purchases: false, goal: null, limit: null },
+  'flavor.explain_pair': { a: 'gin', b: 'lime' },
+  'flavor.use_soon': { limit: null },
+  // Sugar syrup is not stocked here: allowed only as a clearly marked to-buy line.
+  'recipes.compose_draft': { candidate_key: `v1|sour|base=london-dry-gin~-@${IDS.tanqueray}|sour=lime~juice@${IDS.lime}|sweet=sugar-syrup~-@buy`, type: null, no_new_purchases: false, name: null },
 };
 
 const MANAGER_TABLES = new Set(['inventory_items', 'inventory_movements', 'recipes', 'recipe_ingredients', 'suppliers', 'purchase_orders']);
@@ -65,7 +87,7 @@ test('every tool has sample arguments that pass validation', () => {
 
 for (const role of ['admin', 'manager', 'bartender', 'viewer']) {
   test(`role matrix: ${role}`, async () => {
-    const backend = createBackend();
+    const backend = flavorBackend();
     for (const entry of TOOL_REGISTRY) {
       const { ctx } = makeCtx(role, { backend });
       const result = await runTool(entry.name, SAMPLE_ARGS[entry.name], ctx);

@@ -25,6 +25,16 @@ import { guardedRpc } from "../recognition/retrieve.mjs";
 
 export { ATLAS_ROLES, MANAGER_ROLES, WRITE_ROLES };
 
+// The flavour library snapshot (public.atlas_flavor_snapshot) changes only
+// with a migration or a mapping review, so each isolate keeps it for five
+// minutes per project. The role gate still runs on every call.
+export const FLAVOR_SNAPSHOT_TTL_MS = 5 * 60 * 1000;
+const flavorSnapshotCache = new Map();
+
+export function clearFlavorSnapshotCache() {
+  flavorSnapshotCache.clear();
+}
+
 export class ServiceError extends Error {
   constructor(status, message, code = null) {
     super(message);
@@ -363,6 +373,27 @@ export function createServices({ fetch: fetchImpl = globalThis.fetch, env, actor
       });
     },
 
+    // ---- Flavor Intelligence (read only) -----------------------------------
+    // Canonical ingredients, curated pairings and inventory links from
+    // atlas_flavor_snapshot (service role; every Atlas role may read it, the
+    // gate is re-applied before the cache).
+    async flavorSnapshot() {
+      if (actor.active !== true || !ATLAS_ROLES.includes(actor.role)) {
+        throw new ServiceError(403, "This information is not available for your Atlas role.");
+      }
+      const key = config.serviceUrl || "default";
+      const cached = flavorSnapshotCache.get(key);
+      if (cached && now - cached.at >= 0 && now - cached.at < FLAVOR_SNAPSHOT_TTL_MS) return cached.value;
+      return once("flavor_snapshot", async () => {
+        const value = await serviceRpc("atlas_flavor_snapshot", {}, ATLAS_ROLES);
+        if (!value || typeof value !== "object" || !Array.isArray(value.ingredients)) {
+          throw new ServiceError(503, "The flavour library is not available right now.");
+        }
+        flavorSnapshotCache.set(key, { at: now, value });
+        return value;
+      });
+    },
+
     // ---- Purchasing (manager-only by RLS) --------------------------------
     suppliers() {
       requireManager();
@@ -472,6 +503,21 @@ export function createServices({ fetch: fetchImpl = globalThis.fetch, env, actor
     },
     knowledgeSaveDraft(body) {
       return callFunction("atlas-knowledge", { method: "POST", action: "save-draft", body });
+    },
+    // A NEW recipe saved as an inactive draft (Recipes › Drafts) with the
+    // approver's own JWT through atlas_save_recipe (managers and admins;
+    // the database re-checks). Never updates an existing recipe, never puts
+    // anything on service or on the menu.
+    async recipeSaveDraft({ recipe, ingredients }) {
+      requireManager();
+      const saved = await userRpc("atlas_save_recipe", {
+        p_recipe_id: null,
+        p_recipe: { ...recipe, active: false, show_on_menu: false },
+        p_ingredients: ingredients,
+      });
+      const id = typeof saved === "string" ? saved : saved?.id ?? saved?.atlas_save_recipe ?? null;
+      if (!id) throw new ServiceError(503, "The draft recipe could not be confirmed.");
+      return { id: String(id) };
     },
   };
   services.actorLabelArgs = actorLabelArgs;

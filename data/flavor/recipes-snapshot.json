@@ -1,0 +1,1705 @@
+{
+ "source": "production public.recipes (id, name, type, active) and public.recipe_ingredients (recipe_id, item_id), read-only SELECT",
+ "exported_at": "2026-09-27",
+ "note": "Names and links only. No prices, quantities, methods or costs. Used for the mapping report (recipe usage per mapped item).",
+ "recipes": [
+  {
+   "id": "c2d2cef7-62c4-4e2a-934c-063feac4c186",
+   "name": "Americano",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "de5c9bae-06c1-45da-a72a-66d4e5502830",
+   "name": "Angelo Pinot Grigio",
+   "type": "wine-white",
+   "active": true
+  },
+  {
+   "id": "9c959b62-e357-46e8-8b21-d35126659ba9",
+   "name": "Aperol Spritz",
+   "type": "spritz",
+   "active": true
+  },
+  {
+   "id": "24ab781a-57b4-4271-82b7-b6dd16f57670",
+   "name": "Apple Pie",
+   "type": "dessert",
+   "active": true
+  },
+  {
+   "id": "03ad4e06-4735-4faf-976f-9162e9e00124",
+   "name": "Apple Sour",
+   "type": "mocktail",
+   "active": true
+  },
+  {
+   "id": "54bacc48-b856-4777-bb5c-38e901ac9554",
+   "name": "BARA Orange 4%",
+   "type": "beer-cider",
+   "active": true
+  },
+  {
+   "id": "993e462b-48f6-45f7-b50d-139f21c6d676",
+   "name": "Baby Guinness",
+   "type": "shots",
+   "active": true
+  },
+  {
+   "id": "c7d0cb48-04f7-40bf-bbe4-9ed3b87617d5",
+   "name": "Bartender's Choice",
+   "type": "signature-cocktail",
+   "active": true
+  },
+  {
+   "id": "87f09d1c-6683-410b-95dc-bd2bcadc0fc3",
+   "name": "Basil Gimlet",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "16dcb369-c005-4f6f-b46d-853872a3a05d",
+   "name": "Basil Syrup",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "f624af42-1460-434a-8dd5-cb0fed882ef8",
+   "name": "Boli",
+   "type": "beer-cider",
+   "active": true
+  },
+  {
+   "id": "155b6d4c-59f7-4fb5-8d25-4c7c137b6784",
+   "name": "Boli X",
+   "type": "beer-cider",
+   "active": true
+  },
+  {
+   "id": "90ead802-063c-42a0-a876-2fb83679f774",
+   "name": "Breezer 4%",
+   "type": "beer",
+   "active": false
+  },
+  {
+   "id": "bb1aa176-f0bb-4827-abad-bb6384fb17f4",
+   "name": "Brennivín Shot",
+   "type": "shots",
+   "active": true
+  },
+  {
+   "id": "2a691bb3-adf3-4a52-948f-ba84923d8492",
+   "name": "Bríó Nr.75",
+   "type": "beer",
+   "active": true
+  },
+  {
+   "id": "f12500f9-c286-4db6-9091-302dfbfa2b69",
+   "name": "Cappuccino",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "b166c0dd-f3a5-446a-8c1a-d1a2baa1b9e7",
+   "name": "Caramel Latte",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "9f5002f6-26d9-4e5c-8966-71bdd1f6b709",
+   "name": "Carlsberg 0.0%",
+   "type": "beer-cider",
+   "active": true
+  },
+  {
+   "id": "0a642142-656f-45a7-af49-6e0a4d916b63",
+   "name": "Castillo de Molina Cabernet Sauvignon",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "e1d9ab32-e438-4954-82b8-734b1d7aacca",
+   "name": "Chocolate cookies",
+   "type": "dessert",
+   "active": true
+  },
+  {
+   "id": "2aedb884-c474-44b7-b160-41454e9bf987",
+   "name": "Chupa Chups",
+   "type": "signature-cocktail",
+   "active": true
+  },
+  {
+   "id": "2d7950b3-3200-491b-96ae-d22bd880a7a8",
+   "name": "Chupa Chups Infused Patrón",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "73a29aff-57e6-4343-9da1-04d3d6d03fa3",
+   "name": "Cocktail recipe test 1",
+   "type": "signature-cocktail",
+   "active": false
+  },
+  {
+   "id": "aacb27f1-1e37-44d4-a833-c28de8a6f685",
+   "name": "Cortado",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "1402c3dc-f0bb-4876-ba7a-18789eb7d6d0",
+   "name": "Cuba Libre",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "29e77f61-20b3-4729-b983-0222fb0334aa",
+   "name": "Double Espresso",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "baeed344-8b39-4d53-905d-12908ba57ac3",
+   "name": "Espresso",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "1adb6176-9f53-4d38-b5d2-d8c053c32df3",
+   "name": "Espresso Martini",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "817d20df-9663-42b1-9744-27bc562cb952",
+   "name": "Finlandia Vodka",
+   "type": "shot",
+   "active": true
+  },
+  {
+   "id": "a2b92d94-4fa7-4a2c-91c0-67a2a2868378",
+   "name": "Flat White",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "ee917515-1ef2-4620-9662-174423b5a443",
+   "name": "Frozen Pear Daiquiri",
+   "type": "frozen-cocktail",
+   "active": true
+  },
+  {
+   "id": "372220f2-d385-4d31-b9dd-62db02098490",
+   "name": "Frozen Piña Colada",
+   "type": "frozen-cocktail",
+   "active": true
+  },
+  {
+   "id": "a6515f04-259b-467f-a90d-dc9f2adf1b72",
+   "name": "Frozen Porn Star Martini",
+   "type": "frozen-cocktail",
+   "active": true
+  },
+  {
+   "id": "079b2720-e7f9-4412-919f-655b948afa41",
+   "name": "Frozen Strawberry Daiquiri",
+   "type": "frozen-cocktail",
+   "active": true
+  },
+  {
+   "id": "ca01fb27-dc24-4524-876d-20cc936ca5b6",
+   "name": "Gin & Tonic",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "a2a6fd9a-68e9-4de2-9302-ff9163227658",
+   "name": "Green Tea Shot",
+   "type": "shots",
+   "active": true
+  },
+  {
+   "id": "9641d72c-4bc5-4546-a801-54c23d4bf60a",
+   "name": "Guinness",
+   "type": "beer-cider",
+   "active": true
+  },
+  {
+   "id": "5b2e669f-74ce-48d3-8e1f-9f585f441fbe",
+   "name": "Gull Lite",
+   "type": "beer-cider",
+   "active": true
+  },
+  {
+   "id": "5f19aadf-261e-4c30-8bb1-f86dca4407d8",
+   "name": "Hot Chocolate",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "4af1125a-8b28-4ca1-bf26-d165622bd0a1",
+   "name": "Hot Chocolate Base",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "5df72b1d-554c-4119-8a56-5dae48e46481",
+   "name": "Hot Toddy",
+   "type": "hot-cocktail",
+   "active": true
+  },
+  {
+   "id": "d264c13b-b2ce-481e-a5c7-765d34ffc5e4",
+   "name": "House Red",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "12069204-598f-4601-9985-962ad682ae45",
+   "name": "House Rosé",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "c91d2024-12bf-4039-abf2-16338a3d8638",
+   "name": "House Sparkling",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "de90ebd8-0be0-4b7b-8d76-1993cb33e2aa",
+   "name": "House White",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "20594f7e-44d4-4de8-a4a7-77420a4bb5a3",
+   "name": "Hugo Spritz",
+   "type": "spritz",
+   "active": true
+  },
+  {
+   "id": "a9580e0f-40e4-4f15-b0bd-4cfa0a8fc8b7",
+   "name": "Iced Americano",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "ac08d143-2ca4-4b3a-a585-45e7fa37d30b",
+   "name": "Iced Latte",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "d638adf7-85c8-4b33-a312-73702ad85066",
+   "name": "Irish Coffee",
+   "type": "hot-cocktail",
+   "active": true
+  },
+  {
+   "id": "880f95ff-dfe0-46a2-95d9-9ada96ef8a2e",
+   "name": "Kopparberg 4.5%",
+   "type": "beer",
+   "active": false
+  },
+  {
+   "id": "daed25ef-1872-40ab-9c32-0fec916abd53",
+   "name": "La Baume Pinot Noir Rosé",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "52ff7e2c-bcdc-421c-bb62-f9b264325e33",
+   "name": "La Celia Reserva Malbec",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "e5339b0f-9ff1-4a48-aed6-fec9e82eab7e",
+   "name": "Latte",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "e0c03df5-62d7-4b95-9eba-50dfaf7d356f",
+   "name": "Lemonade",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "382ca9e4-18b1-4e93-aff4-8b31093fd5bf",
+   "name": "Limoncello Spritz",
+   "type": "spritz",
+   "active": true
+  },
+  {
+   "id": "0f814fba-7fec-4a42-b6ba-67c5c663e6c8",
+   "name": "Manhattan",
+   "type": "cocktail",
+   "active": true
+  },
+  {
+   "id": "d2ca5875-e071-4506-a8f8-f814bbc73f48",
+   "name": "Margarita",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "1c54a6d7-dadb-49b8-8e82-76b17cc2a266",
+   "name": "Mexican Candy Shot",
+   "type": "shots",
+   "active": true
+  },
+  {
+   "id": "9b2df4bc-44f0-4490-a065-8a0c41ad7585",
+   "name": "Mocha",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "bdced5ce-d0ac-4de6-a141-150458fbbd99",
+   "name": "Moillard Crémant Chardonnay",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "43d417e9-6c7a-40b3-bad5-5fbe6a0f487c",
+   "name": "Mojito",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "cc8769a3-003e-4235-a76a-ff224e79594b",
+   "name": "Moscow Mule",
+   "type": "cocktail",
+   "active": true
+  },
+  {
+   "id": "6467613c-9552-492c-87ba-4b37c952411f",
+   "name": "N/A Limoncello Spritz",
+   "type": "mocktail",
+   "active": true
+  },
+  {
+   "id": "5dbb6ea3-92f3-4c34-a22c-82aa5d152ce9",
+   "name": "Negroni",
+   "type": "cocktail",
+   "active": true
+  },
+  {
+   "id": "a6eaa077-782a-4337-9776-b4552fcf1ba1",
+   "name": "Nojito",
+   "type": "mocktail",
+   "active": true
+  },
+  {
+   "id": "06123e47-f4e1-404b-af61-1c56b3bb3537",
+   "name": "Oat Matcha Latte",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "dc902dce-4385-47a9-8cb2-c379ca3d4422",
+   "name": "Old Fashioned",
+   "type": "cocktail",
+   "active": true
+  },
+  {
+   "id": "50f4b7c1-e191-4928-b256-ababc1ec7cba",
+   "name": "Olmeca Tequila",
+   "type": "shot",
+   "active": true
+  },
+  {
+   "id": "52a89f27-60fa-4140-8c9a-4697f4b4c500",
+   "name": "Orange Juice",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "f9b66ed5-af72-4045-a5a1-aaa39d543773",
+   "name": "Orgasm",
+   "type": "shots",
+   "active": true
+  },
+  {
+   "id": "9cfac79a-a72d-4796-bb8f-0c6a72a8ca67",
+   "name": "Orgasm Shot",
+   "type": "shots",
+   "active": true
+  },
+  {
+   "id": "a6affb19-9cfb-4f07-97e8-fdb69e31ae59",
+   "name": "Paloma",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "fa50c2f6-ae4b-4199-ba44-5d7cb587df71",
+   "name": "Passion Fruit Lemonade",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "1fb4f345-2875-474c-b6d3-d0454fc83c3d",
+   "name": "Pear Syrup",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "b801d76f-3349-448c-8012-3c6dfef5561e",
+   "name": "Pecan Pie",
+   "type": "dessert",
+   "active": true
+  },
+  {
+   "id": "590c6503-3e3c-4060-b1c8-deae4ea83be5",
+   "name": "Popcorn",
+   "type": "signature-cocktail",
+   "active": true
+  },
+  {
+   "id": "33609f83-e965-4183-ad9e-01b1baf76505",
+   "name": "Popcorn-infused Woodford Bourbon",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "dc77cd1b-641e-489a-843a-09b0ddd19330",
+   "name": "Porn Star Martini",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "77731d6d-8a56-45b4-abf7-fa0e75968247",
+   "name": "Saline Solution",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "4caedde3-9d62-4fee-804f-c4e7078ff56a",
+   "name": "Sarti Spritz",
+   "type": "spritz",
+   "active": true
+  },
+  {
+   "id": "e95c4644-a08f-4237-97d3-2416bd0ba289",
+   "name": "Schloss Johannisberg Riesling Bronzelack",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "8efed18c-7543-4074-a61b-d200908066fc",
+   "name": "Segura Viudas Brut Reserva",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "c824e2c8-a2ce-4ba4-bdaf-b3bbf22d0cde",
+   "name": "Simple Syrup",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "fcdc6b76-5e19-4ed3-912a-41d640205510",
+   "name": "Somersby",
+   "type": "beer",
+   "active": true
+  },
+  {
+   "id": "e9f9b5d2-6c76-4614-b5ad-9e7b6ffd74dd",
+   "name": "Somersby Pear 0.0%",
+   "type": "beer",
+   "active": true
+  },
+  {
+   "id": "431a3e6f-b0ae-4479-93ce-670925c1c4ae",
+   "name": "Spiked Hot Chocolate",
+   "type": "hot-cocktail",
+   "active": true
+  },
+  {
+   "id": "94977caa-c805-4700-9cb3-02e75cc7696d",
+   "name": "Strawberry & Pear",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "68e10268-d456-4bf8-9886-937b9839bcb1",
+   "name": "Strawberry Lemonade",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "ce54c567-b79a-4c11-aee5-14d7ef744472",
+   "name": "Tea Selection",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "7f67b21f-4a2e-4bd1-a4c9-29c962f6d93d",
+   "name": "Tequila Sunrise",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "88bf3ec8-4159-4d12-b12f-3ca35b755714",
+   "name": "Test. Espresso Martini",
+   "type": "classic-cocktail",
+   "active": false
+  },
+  {
+   "id": "44542a65-0536-4055-9dcb-4958342b557b",
+   "name": "Tiki Me",
+   "type": "signature-cocktail",
+   "active": true
+  },
+  {
+   "id": "f000087b-7b4c-4acc-b31f-e5bf57853c76",
+   "name": "Tom Collins",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "507c7a7d-6d85-4eca-98a5-8f4339d330bf",
+   "name": "Tommasi Amarone",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "83a5e2c6-7845-4f47-b1a7-86b5ba7cc11a",
+   "name": "Tropical Passion",
+   "type": "other",
+   "active": true
+  },
+  {
+   "id": "afa6bd42-a456-4413-870d-3945cd3affe8",
+   "name": "Tuborg Classic",
+   "type": "beer",
+   "active": true
+  },
+  {
+   "id": "20999e21-1f18-4f47-8594-2be7092d3dae",
+   "name": "Vanilla Latte",
+   "type": "coffee",
+   "active": true
+  },
+  {
+   "id": "e1f328b8-5572-426c-a369-96499b3dc303",
+   "name": "Veuve Clicquot Brut Champagne",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "2e37d0b9-e8a8-4f3d-83ae-c8c5c2e361a7",
+   "name": "Vionta Albariño",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "fe59e331-e824-4d16-b004-1352c06faeab",
+   "name": "Vodka Lemon",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "1262dd8d-d76b-4908-abe2-d7e9d5582794",
+   "name": "Von Winning Sauvignon Blanc",
+   "type": "wine",
+   "active": true
+  },
+  {
+   "id": "604d410a-ead9-4b7b-97ba-e6beee7f51c5",
+   "name": "VÁ Espresso Martini",
+   "type": "signature-cocktail",
+   "active": true
+  },
+  {
+   "id": "15ef05fe-7683-4f5d-ad59-ff890de18e23",
+   "name": "Whisky Sour",
+   "type": "classic-cocktail",
+   "active": true
+  },
+  {
+   "id": "8fe92490-0b4e-4196-bc39-a4a65a14bcbf",
+   "name": "White Claw 4.5%",
+   "type": "beer",
+   "active": false
+  },
+  {
+   "id": "7f746379-03e3-4c41-906f-624a942b1cce",
+   "name": "Ópal",
+   "type": "shot",
+   "active": true
+  },
+  {
+   "id": "99252507-f23b-4104-9e35-6a802141455e",
+   "name": "Úlfrún Nr.34",
+   "type": "beer",
+   "active": true
+  }
+ ],
+ "lines": [
+  {
+   "item_id": "49172b0a-620b-450a-b248-09276fad0556",
+   "recipe_id": "03ad4e06-4735-4faf-976f-9162e9e00124"
+  },
+  {
+   "item_id": "7ca097a8-99fb-4672-9f8f-db1812f06f22",
+   "recipe_id": "03ad4e06-4735-4faf-976f-9162e9e00124"
+  },
+  {
+   "item_id": "cc61b985-454d-4cf3-ab32-bc9a69739c53",
+   "recipe_id": "03ad4e06-4735-4faf-976f-9162e9e00124"
+  },
+  {
+   "item_id": "f5daee2f-d36b-4ba8-a65a-501872b58f29",
+   "recipe_id": "03ad4e06-4735-4faf-976f-9162e9e00124"
+  },
+  {
+   "item_id": "be5815a2-49c3-4826-a4ad-04c1d2a82b26",
+   "recipe_id": "06123e47-f4e1-404b-af61-1c56b3bb3537"
+  },
+  {
+   "item_id": "fadf7891-9f64-4ba4-b536-0edbc07ae7f2",
+   "recipe_id": "06123e47-f4e1-404b-af61-1c56b3bb3537"
+  },
+  {
+   "item_id": "1dd63d9c-bffd-4733-a074-0c514a76ff0c",
+   "recipe_id": "079b2720-e7f9-4412-919f-655b948afa41"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "079b2720-e7f9-4412-919f-655b948afa41"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "079b2720-e7f9-4412-919f-655b948afa41"
+  },
+  {
+   "item_id": "5d35fa37-16c2-4e7f-8f97-b8c0602dedde",
+   "recipe_id": "079b2720-e7f9-4412-919f-655b948afa41"
+  },
+  {
+   "item_id": "680c3b8d-7413-4cb6-91c8-70229665c23e",
+   "recipe_id": "079b2720-e7f9-4412-919f-655b948afa41"
+  },
+  {
+   "item_id": "a425003b-81ef-4dd2-8b61-d327d154d31a",
+   "recipe_id": "079b2720-e7f9-4412-919f-655b948afa41"
+  },
+  {
+   "item_id": "4745f6df-c997-48f1-b6f8-9f4963a37b69",
+   "recipe_id": "0a642142-656f-45a7-af49-6e0a4d916b63"
+  },
+  {
+   "item_id": "35ec3995-6a49-4930-a222-e1c7ab772bd8",
+   "recipe_id": "0f814fba-7fec-4a42-b6ba-67c5c663e6c8"
+  },
+  {
+   "item_id": "75e9f1b7-368e-472c-9920-06df0795efe5",
+   "recipe_id": "0f814fba-7fec-4a42-b6ba-67c5c663e6c8"
+  },
+  {
+   "item_id": "7cd984d5-36a0-42e3-a7f3-cad658000e17",
+   "recipe_id": "0f814fba-7fec-4a42-b6ba-67c5c663e6c8"
+  },
+  {
+   "item_id": "ac8b22ce-b6e8-42df-a180-3009ed0a81f1",
+   "recipe_id": "12069204-598f-4601-9985-962ad682ae45"
+  },
+  {
+   "item_id": "c28435b9-7439-43d2-92d9-6171f4092950",
+   "recipe_id": "1262dd8d-d76b-4908-abe2-d7e9d5582794"
+  },
+  {
+   "item_id": "1dd63d9c-bffd-4733-a074-0c514a76ff0c",
+   "recipe_id": "1402c3dc-f0bb-4876-ba7a-18789eb7d6d0"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "1402c3dc-f0bb-4876-ba7a-18789eb7d6d0"
+  },
+  {
+   "item_id": "e58f60fa-4526-48e9-8595-aae6a78ee73a",
+   "recipe_id": "1402c3dc-f0bb-4876-ba7a-18789eb7d6d0"
+  },
+  {
+   "item_id": "48d406be-cd16-449f-87b0-48c421166633",
+   "recipe_id": "155b6d4c-59f7-4fb5-8d25-4c7c137b6784"
+  },
+  {
+   "item_id": "35ec3995-6a49-4930-a222-e1c7ab772bd8",
+   "recipe_id": "15ef05fe-7683-4f5d-ad59-ff890de18e23"
+  },
+  {
+   "item_id": "49172b0a-620b-450a-b248-09276fad0556",
+   "recipe_id": "15ef05fe-7683-4f5d-ad59-ff890de18e23"
+  },
+  {
+   "item_id": "7ca097a8-99fb-4672-9f8f-db1812f06f22",
+   "recipe_id": "15ef05fe-7683-4f5d-ad59-ff890de18e23"
+  },
+  {
+   "item_id": "cc61b985-454d-4cf3-ab32-bc9a69739c53",
+   "recipe_id": "15ef05fe-7683-4f5d-ad59-ff890de18e23"
+  },
+  {
+   "item_id": "e38dd0c7-0666-4785-be36-c4c7b4bdef31",
+   "recipe_id": "15ef05fe-7683-4f5d-ad59-ff890de18e23"
+  },
+  {
+   "item_id": "0a277aff-44df-4436-a6f5-a8f8b26bf0a4",
+   "recipe_id": "16dcb369-c005-4f6f-b46d-853872a3a05d"
+  },
+  {
+   "item_id": "57a1d4d8-7e18-493d-b446-b38dc6ca31ff",
+   "recipe_id": "16dcb369-c005-4f6f-b46d-853872a3a05d"
+  },
+  {
+   "item_id": "ea316d7a-460e-4ae3-9636-c71321be2478",
+   "recipe_id": "16dcb369-c005-4f6f-b46d-853872a3a05d"
+  },
+  {
+   "item_id": "49172b0a-620b-450a-b248-09276fad0556",
+   "recipe_id": "1adb6176-9f53-4d38-b5d2-d8c053c32df3"
+  },
+  {
+   "item_id": "586488b3-84ec-4599-91f2-644ad093d0f8",
+   "recipe_id": "1adb6176-9f53-4d38-b5d2-d8c053c32df3"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "1adb6176-9f53-4d38-b5d2-d8c053c32df3"
+  },
+  {
+   "item_id": "b75bdc83-7b90-4db7-a109-ccfabd44d712",
+   "recipe_id": "1adb6176-9f53-4d38-b5d2-d8c053c32df3"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "1c54a6d7-dadb-49b8-8e82-76b17cc2a266"
+  },
+  {
+   "item_id": "65aaa69b-c6c0-4b30-b42c-68b98d2fec60",
+   "recipe_id": "1c54a6d7-dadb-49b8-8e82-76b17cc2a266"
+  },
+  {
+   "item_id": "df769dd1-b6f5-4030-808f-a9b653c42526",
+   "recipe_id": "1c54a6d7-dadb-49b8-8e82-76b17cc2a266"
+  },
+  {
+   "item_id": "e9c4237c-de34-4154-941b-25a9b78a00aa",
+   "recipe_id": "1c54a6d7-dadb-49b8-8e82-76b17cc2a266"
+  },
+  {
+   "item_id": "5e2602dd-e728-4f88-90eb-2375d894a731",
+   "recipe_id": "1fb4f345-2875-474c-b6d3-d0454fc83c3d"
+  },
+  {
+   "item_id": "ea316d7a-460e-4ae3-9636-c71321be2478",
+   "recipe_id": "1fb4f345-2875-474c-b6d3-d0454fc83c3d"
+  },
+  {
+   "item_id": "19356efb-17e9-43a8-b89f-9152e39fc2f1",
+   "recipe_id": "20594f7e-44d4-4de8-a4a7-77420a4bb5a3"
+  },
+  {
+   "item_id": "4c098f6f-a16c-46a4-89fe-fb3fdfc3084c",
+   "recipe_id": "20594f7e-44d4-4de8-a4a7-77420a4bb5a3"
+  },
+  {
+   "item_id": "50a099e6-13d6-4772-9d40-b8b47c8762af",
+   "recipe_id": "20594f7e-44d4-4de8-a4a7-77420a4bb5a3"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "20999e21-1f18-4f47-8594-2be7092d3dae"
+  },
+  {
+   "item_id": "f989353c-0cdc-4f0e-9367-584d2d539318",
+   "recipe_id": "20999e21-1f18-4f47-8594-2be7092d3dae"
+  },
+  {
+   "item_id": "fc7709f3-2767-4338-a3ca-6195d7dfb14e",
+   "recipe_id": "20999e21-1f18-4f47-8594-2be7092d3dae"
+  },
+  {
+   "item_id": "8e2a44b1-1f00-41ca-93db-7837de747f2b",
+   "recipe_id": "24ab781a-57b4-4271-82b7-b6dd16f57670"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "29e77f61-20b3-4729-b983-0222fb0334aa"
+  },
+  {
+   "item_id": "97c21577-2ea0-49cc-95be-c82f3e471391",
+   "recipe_id": "2a691bb3-adf3-4a52-948f-ba84923d8492"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "2aedb884-c474-44b7-b160-41454e9bf987"
+  },
+  {
+   "item_id": "965e9e5d-9ca9-4b0e-84c5-9670855e8001",
+   "recipe_id": "2aedb884-c474-44b7-b160-41454e9bf987"
+  },
+  {
+   "item_id": "b0b26b97-c882-46af-a43f-a460efdc6783",
+   "recipe_id": "2aedb884-c474-44b7-b160-41454e9bf987"
+  },
+  {
+   "item_id": "fb2815de-93d0-4785-ba26-a2c52e87cdb7",
+   "recipe_id": "2aedb884-c474-44b7-b160-41454e9bf987"
+  },
+  {
+   "item_id": "1a66f0fe-14b2-4e7c-8da6-b7044c6aba87",
+   "recipe_id": "2d7950b3-3200-491b-96ae-d22bd880a7a8"
+  },
+  {
+   "item_id": "9ab298aa-fcde-4f6f-8574-e4d91e34ca59",
+   "recipe_id": "2d7950b3-3200-491b-96ae-d22bd880a7a8"
+  },
+  {
+   "item_id": "499f8f1e-97b4-444a-a63c-26c82cd183f9",
+   "recipe_id": "2e37d0b9-e8a8-4f3d-83ae-c8c5c2e361a7"
+  },
+  {
+   "item_id": "60cabb07-7178-4b49-8b57-ccdf51141b10",
+   "recipe_id": "33609f83-e965-4183-ad9e-01b1baf76505"
+  },
+  {
+   "item_id": "e38dd0c7-0666-4785-be36-c4c7b4bdef31",
+   "recipe_id": "33609f83-e965-4183-ad9e-01b1baf76505"
+  },
+  {
+   "item_id": "3034a221-f8c7-4a9b-8ad7-5c27e4e6edea",
+   "recipe_id": "372220f2-d385-4d31-b9dd-62db02098490"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "372220f2-d385-4d31-b9dd-62db02098490"
+  },
+  {
+   "item_id": "5500bc6e-c9cf-42c9-913d-8377104fc0d7",
+   "recipe_id": "372220f2-d385-4d31-b9dd-62db02098490"
+  },
+  {
+   "item_id": "80bb0981-ce02-4576-828a-57717ca6d98b",
+   "recipe_id": "372220f2-d385-4d31-b9dd-62db02098490"
+  },
+  {
+   "item_id": "98beda18-7c59-448a-91e5-cc5fb69b6331",
+   "recipe_id": "372220f2-d385-4d31-b9dd-62db02098490"
+  },
+  {
+   "item_id": "fbf57680-32b4-4cb2-90c8-3708ecc2de5d",
+   "recipe_id": "372220f2-d385-4d31-b9dd-62db02098490"
+  },
+  {
+   "item_id": "4c098f6f-a16c-46a4-89fe-fb3fdfc3084c",
+   "recipe_id": "382ca9e4-18b1-4e93-aff4-8b31093fd5bf"
+  },
+  {
+   "item_id": "50a099e6-13d6-4772-9d40-b8b47c8762af",
+   "recipe_id": "382ca9e4-18b1-4e93-aff4-8b31093fd5bf"
+  },
+  {
+   "item_id": "a8c68402-2b4c-4d29-ba81-64eee2263ea3",
+   "recipe_id": "382ca9e4-18b1-4e93-aff4-8b31093fd5bf"
+  },
+  {
+   "item_id": "2f81acb4-2c9d-47b4-87b4-88c86b6fee49",
+   "recipe_id": "431a3e6f-b0ae-4479-93ce-670925c1c4ae"
+  },
+  {
+   "item_id": "74573f95-293f-4dd4-9c02-2388267f56e0",
+   "recipe_id": "431a3e6f-b0ae-4479-93ce-670925c1c4ae"
+  },
+  {
+   "item_id": "a78ac488-f7ca-48a8-8f62-73c2c17572cc",
+   "recipe_id": "431a3e6f-b0ae-4479-93ce-670925c1c4ae"
+  },
+  {
+   "item_id": "e9b80539-374d-4a90-a712-a4298fc9d1df",
+   "recipe_id": "431a3e6f-b0ae-4479-93ce-670925c1c4ae"
+  },
+  {
+   "item_id": "1dd63d9c-bffd-4733-a074-0c514a76ff0c",
+   "recipe_id": "43d417e9-6c7a-40b3-bad5-5fbe6a0f487c"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "43d417e9-6c7a-40b3-bad5-5fbe6a0f487c"
+  },
+  {
+   "item_id": "d4bb8435-f44a-4ae0-b535-4b66ced6055f",
+   "recipe_id": "43d417e9-6c7a-40b3-bad5-5fbe6a0f487c"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "44542a65-0536-4055-9dcb-4958342b557b"
+  },
+  {
+   "item_id": "2f81acb4-2c9d-47b4-87b4-88c86b6fee49",
+   "recipe_id": "44542a65-0536-4055-9dcb-4958342b557b"
+  },
+  {
+   "item_id": "35ec3995-6a49-4930-a222-e1c7ab772bd8",
+   "recipe_id": "44542a65-0536-4055-9dcb-4958342b557b"
+  },
+  {
+   "item_id": "49b55466-7e8e-4c4c-a059-62842eb92a90",
+   "recipe_id": "44542a65-0536-4055-9dcb-4958342b557b"
+  },
+  {
+   "item_id": "7d9bb7f5-53d4-4cc0-853c-2cb8b7115448",
+   "recipe_id": "44542a65-0536-4055-9dcb-4958342b557b"
+  },
+  {
+   "item_id": "80bb0981-ce02-4576-828a-57717ca6d98b",
+   "recipe_id": "44542a65-0536-4055-9dcb-4958342b557b"
+  },
+  {
+   "item_id": "c208c4a7-e5eb-4a51-9fb6-f8e651644981",
+   "recipe_id": "44542a65-0536-4055-9dcb-4958342b557b"
+  },
+  {
+   "item_id": "3c881c64-d69c-479b-a429-606f0ed44cfd",
+   "recipe_id": "4af1125a-8b28-4ca1-bf26-d165622bd0a1"
+  },
+  {
+   "item_id": "f989353c-0cdc-4f0e-9367-584d2d539318",
+   "recipe_id": "4af1125a-8b28-4ca1-bf26-d165622bd0a1"
+  },
+  {
+   "item_id": "4c098f6f-a16c-46a4-89fe-fb3fdfc3084c",
+   "recipe_id": "4caedde3-9d62-4fee-804f-c4e7078ff56a"
+  },
+  {
+   "item_id": "50a099e6-13d6-4772-9d40-b8b47c8762af",
+   "recipe_id": "4caedde3-9d62-4fee-804f-c4e7078ff56a"
+  },
+  {
+   "item_id": "c1446f3e-9a9c-4832-9660-b49dd5d3b6d9",
+   "recipe_id": "4caedde3-9d62-4fee-804f-c4e7078ff56a"
+  },
+  {
+   "item_id": "7b0b34b3-b1ad-4537-b377-d12d49415ddb",
+   "recipe_id": "507c7a7d-6d85-4eca-98a5-8f4339d330bf"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "52a89f27-60fa-4140-8c9a-4697f4b4c500"
+  },
+  {
+   "item_id": "4c628de4-38c0-423f-a6e3-6a4c07d0ee6b",
+   "recipe_id": "52a89f27-60fa-4140-8c9a-4697f4b4c500"
+  },
+  {
+   "item_id": "e65855f5-80f3-469c-8054-12e2865f7078",
+   "recipe_id": "52a89f27-60fa-4140-8c9a-4697f4b4c500"
+  },
+  {
+   "item_id": "b414f736-1872-4ac6-b7bc-93417cba316f",
+   "recipe_id": "52ff7e2c-bcdc-421c-bb62-f9b264325e33"
+  },
+  {
+   "item_id": null,
+   "recipe_id": "54bacc48-b856-4777-bb5c-38e901ac9554"
+  },
+  {
+   "item_id": "b4528c24-0ce6-4b8e-950e-6ce1500c1a94",
+   "recipe_id": "54bacc48-b856-4777-bb5c-38e901ac9554"
+  },
+  {
+   "item_id": "35ec3995-6a49-4930-a222-e1c7ab772bd8",
+   "recipe_id": "590c6503-3e3c-4060-b1c8-deae4ea83be5"
+  },
+  {
+   "item_id": "a80013fc-b0c0-49e9-9d7f-679d449a5c17",
+   "recipe_id": "590c6503-3e3c-4060-b1c8-deae4ea83be5"
+  },
+  {
+   "item_id": "e9524d92-f463-46e1-99de-43557a2a4029",
+   "recipe_id": "590c6503-3e3c-4060-b1c8-deae4ea83be5"
+  },
+  {
+   "item_id": "ecc881a8-6260-42ac-9418-4bb1d5d6bed3",
+   "recipe_id": "5b2e669f-74ce-48d3-8e1f-9f585f441fbe"
+  },
+  {
+   "item_id": "75e9f1b7-368e-472c-9920-06df0795efe5",
+   "recipe_id": "5dbb6ea3-92f3-4c34-a22c-82aa5d152ce9"
+  },
+  {
+   "item_id": "800b96ec-8296-4534-a89f-8d0001900044",
+   "recipe_id": "5dbb6ea3-92f3-4c34-a22c-82aa5d152ce9"
+  },
+  {
+   "item_id": "ad3def57-8e25-4571-b2e9-ffd58804317e",
+   "recipe_id": "5dbb6ea3-92f3-4c34-a22c-82aa5d152ce9"
+  },
+  {
+   "item_id": "0a277aff-44df-4436-a6f5-a8f8b26bf0a4",
+   "recipe_id": "5df72b1d-554c-4119-8a56-5dae48e46481"
+  },
+  {
+   "item_id": "a7bc9f0c-1296-40a2-ab71-46f7611b51f0",
+   "recipe_id": "5df72b1d-554c-4119-8a56-5dae48e46481"
+  },
+  {
+   "item_id": "cc61b985-454d-4cf3-ab32-bc9a69739c53",
+   "recipe_id": "5df72b1d-554c-4119-8a56-5dae48e46481"
+  },
+  {
+   "item_id": "e38dd0c7-0666-4785-be36-c4c7b4bdef31",
+   "recipe_id": "5df72b1d-554c-4119-8a56-5dae48e46481"
+  },
+  {
+   "item_id": "a78ac488-f7ca-48a8-8f62-73c2c17572cc",
+   "recipe_id": "5f19aadf-261e-4c30-8bb1-f86dca4407d8"
+  },
+  {
+   "item_id": "2f81acb4-2c9d-47b4-87b4-88c86b6fee49",
+   "recipe_id": "604d410a-ead9-4b7b-97ba-e6beee7f51c5"
+  },
+  {
+   "item_id": "5f9af2ba-d6e5-4308-872f-ab66f81e10df",
+   "recipe_id": "604d410a-ead9-4b7b-97ba-e6beee7f51c5"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "604d410a-ead9-4b7b-97ba-e6beee7f51c5"
+  },
+  {
+   "item_id": "b75bdc83-7b90-4db7-a109-ccfabd44d712",
+   "recipe_id": "604d410a-ead9-4b7b-97ba-e6beee7f51c5"
+  },
+  {
+   "item_id": "fc7709f3-2767-4338-a3ca-6195d7dfb14e",
+   "recipe_id": "604d410a-ead9-4b7b-97ba-e6beee7f51c5"
+  },
+  {
+   "item_id": "4c098f6f-a16c-46a4-89fe-fb3fdfc3084c",
+   "recipe_id": "6467613c-9552-492c-87ba-4b37c952411f"
+  },
+  {
+   "item_id": "bbec6d28-419e-4162-a52e-1c8ccb813359",
+   "recipe_id": "6467613c-9552-492c-87ba-4b37c952411f"
+  },
+  {
+   "item_id": "e6412b44-acdc-4594-8b05-0b4bd3ec9428",
+   "recipe_id": "6467613c-9552-492c-87ba-4b37c952411f"
+  },
+  {
+   "item_id": "1e6849e3-6d2a-40ae-a274-3abc5ca203c6",
+   "recipe_id": "68e10268-d456-4bf8-9886-937b9839bcb1"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "68e10268-d456-4bf8-9886-937b9839bcb1"
+  },
+  {
+   "item_id": "49172b0a-620b-450a-b248-09276fad0556",
+   "recipe_id": "68e10268-d456-4bf8-9886-937b9839bcb1"
+  },
+  {
+   "item_id": "4c098f6f-a16c-46a4-89fe-fb3fdfc3084c",
+   "recipe_id": "68e10268-d456-4bf8-9886-937b9839bcb1"
+  },
+  {
+   "item_id": "a425003b-81ef-4dd2-8b61-d327d154d31a",
+   "recipe_id": "68e10268-d456-4bf8-9886-937b9839bcb1"
+  },
+  {
+   "item_id": "cc61b985-454d-4cf3-ab32-bc9a69739c53",
+   "recipe_id": "68e10268-d456-4bf8-9886-937b9839bcb1"
+  },
+  {
+   "item_id": "0a277aff-44df-4436-a6f5-a8f8b26bf0a4",
+   "recipe_id": "77731d6d-8a56-45b4-abf7-fa0e75968247"
+  },
+  {
+   "item_id": "35165ccb-f08f-4465-bbc6-42aef9700814",
+   "recipe_id": "77731d6d-8a56-45b4-abf7-fa0e75968247"
+  },
+  {
+   "item_id": "13d99007-8e87-40d0-b5c3-f4cdba6dd78c",
+   "recipe_id": "7f67b21f-4a2e-4bd1-a4c9-29c962f6d93d"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "7f67b21f-4a2e-4bd1-a4c9-29c962f6d93d"
+  },
+  {
+   "item_id": "46be4972-b85c-4760-9f74-861821c77697",
+   "recipe_id": "7f67b21f-4a2e-4bd1-a4c9-29c962f6d93d"
+  },
+  {
+   "item_id": "a2f58dda-2706-440e-979b-6f87229fb484",
+   "recipe_id": "7f67b21f-4a2e-4bd1-a4c9-29c962f6d93d"
+  },
+  {
+   "item_id": "df769dd1-b6f5-4030-808f-a9b653c42526",
+   "recipe_id": "7f67b21f-4a2e-4bd1-a4c9-29c962f6d93d"
+  },
+  {
+   "item_id": "e65855f5-80f3-469c-8054-12e2865f7078",
+   "recipe_id": "7f67b21f-4a2e-4bd1-a4c9-29c962f6d93d"
+  },
+  {
+   "item_id": "841ae69a-dc7d-4945-8c1e-198bb5bc5de4",
+   "recipe_id": "7f746379-03e3-4c41-906f-624a942b1cce"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "83a5e2c6-7845-4f47-b1a7-86b5ba7cc11a"
+  },
+  {
+   "item_id": "3034a221-f8c7-4a9b-8ad7-5c27e4e6edea",
+   "recipe_id": "83a5e2c6-7845-4f47-b1a7-86b5ba7cc11a"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "83a5e2c6-7845-4f47-b1a7-86b5ba7cc11a"
+  },
+  {
+   "item_id": "3f7c1c92-b24a-438e-8761-6c7ccbb4c936",
+   "recipe_id": "83a5e2c6-7845-4f47-b1a7-86b5ba7cc11a"
+  },
+  {
+   "item_id": "49b55466-7e8e-4c4c-a059-62842eb92a90",
+   "recipe_id": "83a5e2c6-7845-4f47-b1a7-86b5ba7cc11a"
+  },
+  {
+   "item_id": "5500bc6e-c9cf-42c9-913d-8377104fc0d7",
+   "recipe_id": "83a5e2c6-7845-4f47-b1a7-86b5ba7cc11a"
+  },
+  {
+   "item_id": "c208c4a7-e5eb-4a51-9fb6-f8e651644981",
+   "recipe_id": "83a5e2c6-7845-4f47-b1a7-86b5ba7cc11a"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "87f09d1c-6683-410b-95dc-bd2bcadc0fc3"
+  },
+  {
+   "item_id": "800b96ec-8296-4534-a89f-8d0001900044",
+   "recipe_id": "87f09d1c-6683-410b-95dc-bd2bcadc0fc3"
+  },
+  {
+   "item_id": "d9f3190e-96c2-4f22-93b2-dbd33ef77730",
+   "recipe_id": "87f09d1c-6683-410b-95dc-bd2bcadc0fc3"
+  },
+  {
+   "item_id": "ba7bf0a2-6b93-45e1-87b1-94e0886c8166",
+   "recipe_id": "8efed18c-7543-4074-a61b-d200908066fc"
+  },
+  {
+   "item_id": null,
+   "recipe_id": "8fe92490-0b4e-4196-bc39-a4a65a14bcbf"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "94977caa-c805-4700-9cb3-02e75cc7696d"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "94977caa-c805-4700-9cb3-02e75cc7696d"
+  },
+  {
+   "item_id": "8907dfea-89a5-486a-ae93-279d6a89979a",
+   "recipe_id": "94977caa-c805-4700-9cb3-02e75cc7696d"
+  },
+  {
+   "item_id": "a425003b-81ef-4dd2-8b61-d327d154d31a",
+   "recipe_id": "94977caa-c805-4700-9cb3-02e75cc7696d"
+  },
+  {
+   "item_id": "a7bc9f0c-1296-40a2-ab71-46f7611b51f0",
+   "recipe_id": "94977caa-c805-4700-9cb3-02e75cc7696d"
+  },
+  {
+   "item_id": "f5daee2f-d36b-4ba8-a65a-501872b58f29",
+   "recipe_id": "94977caa-c805-4700-9cb3-02e75cc7696d"
+  },
+  {
+   "item_id": "bff27f57-77de-4de6-acb0-205f6f4eb93b",
+   "recipe_id": "9641d72c-4bc5-4546-a801-54c23d4bf60a"
+  },
+  {
+   "item_id": "ce170933-6967-49cb-bc4c-af07e25969b2",
+   "recipe_id": "99252507-f23b-4104-9e35-6a802141455e"
+  },
+  {
+   "item_id": "74573f95-293f-4dd4-9c02-2388267f56e0",
+   "recipe_id": "993e462b-48f6-45f7-b50d-139f21c6d676"
+  },
+  {
+   "item_id": "b75bdc83-7b90-4db7-a109-ccfabd44d712",
+   "recipe_id": "993e462b-48f6-45f7-b50d-139f21c6d676"
+  },
+  {
+   "item_id": "3c881c64-d69c-479b-a429-606f0ed44cfd",
+   "recipe_id": "9b2df4bc-44f0-4490-a065-8a0c41ad7585"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "9b2df4bc-44f0-4490-a065-8a0c41ad7585"
+  },
+  {
+   "item_id": "f989353c-0cdc-4f0e-9367-584d2d539318",
+   "recipe_id": "9b2df4bc-44f0-4490-a065-8a0c41ad7585"
+  },
+  {
+   "item_id": "4c098f6f-a16c-46a4-89fe-fb3fdfc3084c",
+   "recipe_id": "9c959b62-e357-46e8-8b21-d35126659ba9"
+  },
+  {
+   "item_id": "50a099e6-13d6-4772-9d40-b8b47c8762af",
+   "recipe_id": "9c959b62-e357-46e8-8b21-d35126659ba9"
+  },
+  {
+   "item_id": "68f8fabf-3076-4ac9-8f6b-0e5f70dec93e",
+   "recipe_id": "9c959b62-e357-46e8-8b21-d35126659ba9"
+  },
+  {
+   "item_id": "10a6fe13-7917-4197-87db-66eeb93167a2",
+   "recipe_id": "9cfac79a-a72d-4796-bb8f-0c6a72a8ca67"
+  },
+  {
+   "item_id": "74573f95-293f-4dd4-9c02-2388267f56e0",
+   "recipe_id": "9cfac79a-a72d-4796-bb8f-0c6a72a8ca67"
+  },
+  {
+   "item_id": "b75bdc83-7b90-4db7-a109-ccfabd44d712",
+   "recipe_id": "9cfac79a-a72d-4796-bb8f-0c6a72a8ca67"
+  },
+  {
+   "item_id": "885a78dc-f0c5-4a5c-a73a-7f5ecac5a6cc",
+   "recipe_id": "9f5002f6-26d9-4e5c-8966-71bdd1f6b709"
+  },
+  {
+   "item_id": "49172b0a-620b-450a-b248-09276fad0556",
+   "recipe_id": "a2a6fd9a-68e9-4de2-9302-ff9163227658"
+  },
+  {
+   "item_id": "9d1358fe-a43e-4b8d-b35c-b8f5191a7742",
+   "recipe_id": "a2a6fd9a-68e9-4de2-9302-ff9163227658"
+  },
+  {
+   "item_id": "b0b26b97-c882-46af-a43f-a460efdc6783",
+   "recipe_id": "a2a6fd9a-68e9-4de2-9302-ff9163227658"
+  },
+  {
+   "item_id": "cc61b985-454d-4cf3-ab32-bc9a69739c53",
+   "recipe_id": "a2a6fd9a-68e9-4de2-9302-ff9163227658"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "a2b92d94-4fa7-4a2c-91c0-67a2a2868378"
+  },
+  {
+   "item_id": "f989353c-0cdc-4f0e-9367-584d2d539318",
+   "recipe_id": "a2b92d94-4fa7-4a2c-91c0-67a2a2868378"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "a6515f04-259b-467f-a90d-dc9f2adf1b72"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "a6515f04-259b-467f-a90d-dc9f2adf1b72"
+  },
+  {
+   "item_id": "49b55466-7e8e-4c4c-a059-62842eb92a90",
+   "recipe_id": "a6515f04-259b-467f-a90d-dc9f2adf1b72"
+  },
+  {
+   "item_id": "586488b3-84ec-4599-91f2-644ad093d0f8",
+   "recipe_id": "a6515f04-259b-467f-a90d-dc9f2adf1b72"
+  },
+  {
+   "item_id": "9f04f6d0-0ddf-4afc-803f-5998c1ace82e",
+   "recipe_id": "a6515f04-259b-467f-a90d-dc9f2adf1b72"
+  },
+  {
+   "item_id": "fc7709f3-2767-4338-a3ca-6195d7dfb14e",
+   "recipe_id": "a6515f04-259b-467f-a90d-dc9f2adf1b72"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "a6affb19-9cfb-4f07-97e8-fdb69e31ae59"
+  },
+  {
+   "item_id": "df769dd1-b6f5-4030-808f-a9b653c42526",
+   "recipe_id": "a6affb19-9cfb-4f07-97e8-fdb69e31ae59"
+  },
+  {
+   "item_id": "1e6849e3-6d2a-40ae-a274-3abc5ca203c6",
+   "recipe_id": "a6eaa077-782a-4337-9776-b4552fcf1ba1"
+  },
+  {
+   "item_id": "49172b0a-620b-450a-b248-09276fad0556",
+   "recipe_id": "a6eaa077-782a-4337-9776-b4552fcf1ba1"
+  },
+  {
+   "item_id": "e6412b44-acdc-4594-8b05-0b4bd3ec9428",
+   "recipe_id": "a6eaa077-782a-4337-9776-b4552fcf1ba1"
+  },
+  {
+   "item_id": "f67480d4-640f-4c19-87b9-344de8425ce8",
+   "recipe_id": "a6eaa077-782a-4337-9776-b4552fcf1ba1"
+  },
+  {
+   "item_id": "0a277aff-44df-4436-a6f5-a8f8b26bf0a4",
+   "recipe_id": "a9580e0f-40e4-4f15-b0bd-4cfa0a8fc8b7"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "a9580e0f-40e4-4f15-b0bd-4cfa0a8fc8b7"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "a9580e0f-40e4-4f15-b0bd-4cfa0a8fc8b7"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "aacb27f1-1e37-44d4-a833-c28de8a6f685"
+  },
+  {
+   "item_id": "f989353c-0cdc-4f0e-9367-584d2d539318",
+   "recipe_id": "aacb27f1-1e37-44d4-a833-c28de8a6f685"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "ac08d143-2ca4-4b3a-a585-45e7fa37d30b"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "ac08d143-2ca4-4b3a-a585-45e7fa37d30b"
+  },
+  {
+   "item_id": "f989353c-0cdc-4f0e-9367-584d2d539318",
+   "recipe_id": "ac08d143-2ca4-4b3a-a585-45e7fa37d30b"
+  },
+  {
+   "item_id": "5d36c4da-420f-4ead-a78b-fff97cfd1771",
+   "recipe_id": "afa6bd42-a456-4413-870d-3945cd3affe8"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "b166c0dd-f3a5-446a-8c1a-d1a2baa1b9e7"
+  },
+  {
+   "item_id": "e9524d92-f463-46e1-99de-43557a2a4029",
+   "recipe_id": "b166c0dd-f3a5-446a-8c1a-d1a2baa1b9e7"
+  },
+  {
+   "item_id": "f989353c-0cdc-4f0e-9367-584d2d539318",
+   "recipe_id": "b166c0dd-f3a5-446a-8c1a-d1a2baa1b9e7"
+  },
+  {
+   "item_id": "018d6121-b94d-4390-8d5a-dd5fc044f72b",
+   "recipe_id": "b801d76f-3349-448c-8012-3c6dfef5561e"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "baeed344-8b39-4d53-905d-12908ba57ac3"
+  },
+  {
+   "item_id": "e01b2f8d-646f-4f50-a8ce-bd0f51464252",
+   "recipe_id": "bb1aa176-f0bb-4827-abad-bb6384fb17f4"
+  },
+  {
+   "item_id": "c5d58a88-3f8c-4b7e-b4f2-75712962ed5d",
+   "recipe_id": "bdced5ce-d0ac-4de6-a141-150458fbbd99"
+  },
+  {
+   "item_id": "0a277aff-44df-4436-a6f5-a8f8b26bf0a4",
+   "recipe_id": "c2d2cef7-62c4-4e2a-934c-063feac4c186"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "c2d2cef7-62c4-4e2a-934c-063feac4c186"
+  },
+  {
+   "item_id": "0a277aff-44df-4436-a6f5-a8f8b26bf0a4",
+   "recipe_id": "c824e2c8-a2ce-4ba4-bdaf-b3bbf22d0cde"
+  },
+  {
+   "item_id": "ea316d7a-460e-4ae3-9636-c71321be2478",
+   "recipe_id": "c824e2c8-a2ce-4ba4-bdaf-b3bbf22d0cde"
+  },
+  {
+   "item_id": "50a099e6-13d6-4772-9d40-b8b47c8762af",
+   "recipe_id": "c91d2024-12bf-4039-abf2-16338a3d8638"
+  },
+  {
+   "item_id": "800b96ec-8296-4534-a89f-8d0001900044",
+   "recipe_id": "ca01fb27-dc24-4524-876d-20cc936ca5b6"
+  },
+  {
+   "item_id": "0ced6b4c-4c03-40b7-9c3d-6b7450e7f898",
+   "recipe_id": "cc8769a3-003e-4235-a76a-ff224e79594b"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "cc8769a3-003e-4235-a76a-ff224e79594b"
+  },
+  {
+   "item_id": "49172b0a-620b-450a-b248-09276fad0556",
+   "recipe_id": "cc8769a3-003e-4235-a76a-ff224e79594b"
+  },
+  {
+   "item_id": "586488b3-84ec-4599-91f2-644ad093d0f8",
+   "recipe_id": "cc8769a3-003e-4235-a76a-ff224e79594b"
+  },
+  {
+   "item_id": "6d0bd678-7b47-4149-883e-f97a5d7503d5",
+   "recipe_id": "ce54c567-b79a-4c11-aee5-14d7ef744472"
+  },
+  {
+   "item_id": "3c854ae5-1e52-40d1-b885-c55308cec557",
+   "recipe_id": "d264c13b-b2ce-481e-a5c7-765d34ffc5e4"
+  },
+  {
+   "item_id": "009a9c04-631b-42f5-93fd-c07de903373f",
+   "recipe_id": "d2ca5875-e071-4506-a8f8-f814bbc73f48"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "d2ca5875-e071-4506-a8f8-f814bbc73f48"
+  },
+  {
+   "item_id": "36f8748d-cc19-4cc4-af67-e277dec8e5dc",
+   "recipe_id": "d2ca5875-e071-4506-a8f8-f814bbc73f48"
+  },
+  {
+   "item_id": "df769dd1-b6f5-4030-808f-a9b653c42526",
+   "recipe_id": "d2ca5875-e071-4506-a8f8-f814bbc73f48"
+  },
+  {
+   "item_id": "2d72bbc1-3138-4f1b-a4b9-1f40319730fa",
+   "recipe_id": "d638adf7-85c8-4b33-a312-73702ad85066"
+  },
+  {
+   "item_id": "9d1358fe-a43e-4b8d-b35c-b8f5191a7742",
+   "recipe_id": "d638adf7-85c8-4b33-a312-73702ad85066"
+  },
+  {
+   "item_id": "e9b80539-374d-4a90-a712-a4298fc9d1df",
+   "recipe_id": "d638adf7-85c8-4b33-a312-73702ad85066"
+  },
+  {
+   "item_id": "fc4701c3-f095-4b75-ab40-011f4c4ce1d8",
+   "recipe_id": "d638adf7-85c8-4b33-a312-73702ad85066"
+  },
+  {
+   "item_id": "819411e9-c9a7-43fd-9e3c-76cb29d9fb12",
+   "recipe_id": "daed25ef-1872-40ab-9c32-0fec916abd53"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "dc77cd1b-641e-489a-843a-09b0ddd19330"
+  },
+  {
+   "item_id": "49b55466-7e8e-4c4c-a059-62842eb92a90",
+   "recipe_id": "dc77cd1b-641e-489a-843a-09b0ddd19330"
+  },
+  {
+   "item_id": "586488b3-84ec-4599-91f2-644ad093d0f8",
+   "recipe_id": "dc77cd1b-641e-489a-843a-09b0ddd19330"
+  },
+  {
+   "item_id": "9f04f6d0-0ddf-4afc-803f-5998c1ace82e",
+   "recipe_id": "dc77cd1b-641e-489a-843a-09b0ddd19330"
+  },
+  {
+   "item_id": "fc7709f3-2767-4338-a3ca-6195d7dfb14e",
+   "recipe_id": "dc77cd1b-641e-489a-843a-09b0ddd19330"
+  },
+  {
+   "item_id": "35ec3995-6a49-4930-a222-e1c7ab772bd8",
+   "recipe_id": "dc902dce-4385-47a9-8cb2-c379ca3d4422"
+  },
+  {
+   "item_id": "d27f5e6b-0fa9-4ceb-8fd8-09b164ed8482",
+   "recipe_id": "dc902dce-4385-47a9-8cb2-c379ca3d4422"
+  },
+  {
+   "item_id": "e38dd0c7-0666-4785-be36-c4c7b4bdef31",
+   "recipe_id": "dc902dce-4385-47a9-8cb2-c379ca3d4422"
+  },
+  {
+   "item_id": "ef1c8e31-b5a5-42a6-88a5-a47cd3f77051",
+   "recipe_id": "de5c9bae-06c1-45da-a72a-66d4e5502830"
+  },
+  {
+   "item_id": "dba84611-9d19-4be7-9521-3441b0cc860e",
+   "recipe_id": "de90ebd8-0be0-4b7b-8d76-1993cb33e2aa"
+  },
+  {
+   "item_id": "0bb62a86-2445-427f-b06c-2f93aeca67a8",
+   "recipe_id": "e0c03df5-62d7-4b95-9eba-50dfaf7d356f"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "e0c03df5-62d7-4b95-9eba-50dfaf7d356f"
+  },
+  {
+   "item_id": "49172b0a-620b-450a-b248-09276fad0556",
+   "recipe_id": "e0c03df5-62d7-4b95-9eba-50dfaf7d356f"
+  },
+  {
+   "item_id": "4c098f6f-a16c-46a4-89fe-fb3fdfc3084c",
+   "recipe_id": "e0c03df5-62d7-4b95-9eba-50dfaf7d356f"
+  },
+  {
+   "item_id": "cc61b985-454d-4cf3-ab32-bc9a69739c53",
+   "recipe_id": "e0c03df5-62d7-4b95-9eba-50dfaf7d356f"
+  },
+  {
+   "item_id": "b0abb754-b671-4185-a48c-0a3896a3f9b4",
+   "recipe_id": "e1d9ab32-e438-4954-82b8-734b1d7aacca"
+  },
+  {
+   "item_id": "37cf5cd3-2a1c-4f65-a486-9e44d4a360b6",
+   "recipe_id": "e1f328b8-5572-426c-a369-96499b3dc303"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "e5339b0f-9ff1-4a48-aed6-fec9e82eab7e"
+  },
+  {
+   "item_id": "f989353c-0cdc-4f0e-9367-584d2d539318",
+   "recipe_id": "e5339b0f-9ff1-4a48-aed6-fec9e82eab7e"
+  },
+  {
+   "item_id": "36228192-32b0-4ebd-8348-d25d5d013784",
+   "recipe_id": "e95c4644-a08f-4237-97d3-2416bd0ba289"
+  },
+  {
+   "item_id": "cbee35ad-b913-46cd-871a-69ba591bb38a",
+   "recipe_id": "e9f9b5d2-6c76-4614-b5ad-9e7b6ffd74dd"
+  },
+  {
+   "item_id": "092d78c5-3b88-413b-be80-a9c1bd7f209e",
+   "recipe_id": "ee917515-1ef2-4620-9662-174423b5a443"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "ee917515-1ef2-4620-9662-174423b5a443"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "ee917515-1ef2-4620-9662-174423b5a443"
+  },
+  {
+   "item_id": "8907dfea-89a5-486a-ae93-279d6a89979a",
+   "recipe_id": "ee917515-1ef2-4620-9662-174423b5a443"
+  },
+  {
+   "item_id": "ad78ca3b-e0f8-4589-a323-971c0a8827c8",
+   "recipe_id": "ee917515-1ef2-4620-9662-174423b5a443"
+  },
+  {
+   "item_id": "fbf57680-32b4-4cb2-90c8-3708ecc2de5d",
+   "recipe_id": "ee917515-1ef2-4620-9662-174423b5a443"
+  },
+  {
+   "item_id": "0bb62a86-2445-427f-b06c-2f93aeca67a8",
+   "recipe_id": "f000087b-7b4c-4acc-b31f-e5bf57853c76"
+  },
+  {
+   "item_id": "49172b0a-620b-450a-b248-09276fad0556",
+   "recipe_id": "f000087b-7b4c-4acc-b31f-e5bf57853c76"
+  },
+  {
+   "item_id": "4c098f6f-a16c-46a4-89fe-fb3fdfc3084c",
+   "recipe_id": "f000087b-7b4c-4acc-b31f-e5bf57853c76"
+  },
+  {
+   "item_id": "800b96ec-8296-4534-a89f-8d0001900044",
+   "recipe_id": "f000087b-7b4c-4acc-b31f-e5bf57853c76"
+  },
+  {
+   "item_id": "cc61b985-454d-4cf3-ab32-bc9a69739c53",
+   "recipe_id": "f000087b-7b4c-4acc-b31f-e5bf57853c76"
+  },
+  {
+   "item_id": "b68322c3-1b5a-47df-977a-2e3f47a50577",
+   "recipe_id": "f12500f9-c286-4db6-9091-302dfbfa2b69"
+  },
+  {
+   "item_id": "f989353c-0cdc-4f0e-9367-584d2d539318",
+   "recipe_id": "f12500f9-c286-4db6-9091-302dfbfa2b69"
+  },
+  {
+   "item_id": "5eb8f256-d136-4e8b-beec-d1bc90454cec",
+   "recipe_id": "f624af42-1460-434a-8dd5-cb0fed882ef8"
+  },
+  {
+   "item_id": "10a6fe13-7917-4197-87db-66eeb93167a2",
+   "recipe_id": "f9b66ed5-af72-4045-a5a1-aaa39d543773"
+  },
+  {
+   "item_id": "74573f95-293f-4dd4-9c02-2388267f56e0",
+   "recipe_id": "f9b66ed5-af72-4045-a5a1-aaa39d543773"
+  },
+  {
+   "item_id": "b75bdc83-7b90-4db7-a109-ccfabd44d712",
+   "recipe_id": "f9b66ed5-af72-4045-a5a1-aaa39d543773"
+  },
+  {
+   "item_id": "07e204a3-4b7c-40d5-bf53-3b985209426a",
+   "recipe_id": "fa50c2f6-ae4b-4199-ba44-5d7cb587df71"
+  },
+  {
+   "item_id": "22c88317-e608-43c6-86ea-ba2b3b59c975",
+   "recipe_id": "fa50c2f6-ae4b-4199-ba44-5d7cb587df71"
+  },
+  {
+   "item_id": "33f9287e-a179-4fcf-847f-00b7a6d007dc",
+   "recipe_id": "fa50c2f6-ae4b-4199-ba44-5d7cb587df71"
+  },
+  {
+   "item_id": "49172b0a-620b-450a-b248-09276fad0556",
+   "recipe_id": "fa50c2f6-ae4b-4199-ba44-5d7cb587df71"
+  },
+  {
+   "item_id": "49b55466-7e8e-4c4c-a059-62842eb92a90",
+   "recipe_id": "fa50c2f6-ae4b-4199-ba44-5d7cb587df71"
+  },
+  {
+   "item_id": "4c098f6f-a16c-46a4-89fe-fb3fdfc3084c",
+   "recipe_id": "fa50c2f6-ae4b-4199-ba44-5d7cb587df71"
+  },
+  {
+   "item_id": "5500bc6e-c9cf-42c9-913d-8377104fc0d7",
+   "recipe_id": "fa50c2f6-ae4b-4199-ba44-5d7cb587df71"
+  },
+  {
+   "item_id": "be306da0-56cc-4ae6-b861-9fb535c11e46",
+   "recipe_id": "fcdc6b76-5e19-4ed3-912a-41d640205510"
+  },
+  {
+   "item_id": "0bb62a86-2445-427f-b06c-2f93aeca67a8",
+   "recipe_id": "fe59e331-e824-4d16-b004-1352c06faeab"
+  },
+  {
+   "item_id": "586488b3-84ec-4599-91f2-644ad093d0f8",
+   "recipe_id": "fe59e331-e824-4d16-b004-1352c06faeab"
+  },
+  {
+   "item_id": "608a4ddd-3ab4-4bbd-9c98-824eaaa2e9e7",
+   "recipe_id": "fe59e331-e824-4d16-b004-1352c06faeab"
+  },
+  {
+   "item_id": "cc61b985-454d-4cf3-ab32-bc9a69739c53",
+   "recipe_id": "fe59e331-e824-4d16-b004-1352c06faeab"
+  }
+ ]
+}

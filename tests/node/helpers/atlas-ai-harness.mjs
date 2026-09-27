@@ -453,7 +453,7 @@ export function createFakeDb({ users = USERS } = {}) {
 }
 
 // Fake fetch for Auth (token → profile) and OpenAI endpoints.
-export function createFakeFetch({ openai = {} } = {}) {
+export function createFakeFetch({ openai = {}, fallback = null } = {}) {
   const requests = [];
   const fetchImpl = async (input, init = {}) => {
     const url = String(input);
@@ -480,6 +480,7 @@ export function createFakeFetch({ openai = {} } = {}) {
     if (url === 'https://api.openai.com/v1/audio/speech') {
       return new Response(new Uint8Array([0x49, 0x44, 0x33, 1, 2, 3]), { status: 200, headers: { 'content-type': 'audio/mpeg' } });
     }
+    if (typeof fallback === 'function') return fallback(input, init);
     return new Response('not found', { status: 404 });
   };
   return { fetchImpl, requests };
@@ -553,7 +554,10 @@ export function createProvider(sdk, respond) {
   return { provider, log, models, hooks };
 }
 
-export function createHandler({ sdk, z, respond, env = {}, services, fetchOptions } = {}) {
+// `gateway` swaps the stub for the real Tool Gateway (Flavor route tests);
+// `fetchOptions.fallback` serves every request the fake Auth/OpenAI fetch
+// does not (e.g. the evaluation world's PostgREST and RPCs).
+export function createHandler({ sdk, z, respond, env = {}, services, fetchOptions, gateway: gatewayOverride = null, now = null } = {}) {
   gateway.reset();
   const fake = services ? { services } : createFakeDb();
   const fetch = createFakeFetch(fetchOptions);
@@ -561,14 +565,14 @@ export function createHandler({ sdk, z, respond, env = {}, services, fetchOption
   const handle = createAtlasAiHandler({
     env: (name) => ({ ...ENV, ...env })[name],
     fetchImpl: fetch.fetchImpl,
-    now: () => Date.now(),
+    now: now ?? (() => Date.now()),
     sdk,
     z,
-    gateway,
+    gateway: gatewayOverride ?? gateway,
     modelProvider: () => providerBundle.provider,
     services: fake.services,
   });
-  return { handle, db: fake.db, services: fake.services, fetch, gateway, modelLog: providerBundle.log, models: providerBundle.models, hooks: providerBundle.hooks };
+  return { handle, db: fake.db, services: fake.services, fetch, gateway: gatewayOverride ?? gateway, modelLog: providerBundle.log, models: providerBundle.models, hooks: providerBundle.hooks };
 }
 
 // Starts a live voice session through the handler (voice-tool and

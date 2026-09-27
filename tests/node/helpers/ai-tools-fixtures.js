@@ -279,6 +279,8 @@ export function createBackend(overrides = {}) {
     atlas_ai_memory_search: () => [{ memory_id: uuid(1101), memory_type: 'recommendation_decision', subject_type: 'inventory_item', subject_key: IDS.angelo, action: 'defer', title: 'Order Angelo Pinot Grigio', context: { reason_code: 'delivery_expected' }, actor_label: 'Magnus', occurred_at: '2026-09-10T10:00:00Z' }],
     atlas_phase3_memory_search: () => [],
     atlas_marketing_recommendations: () => [{ id: uuid(1201), title: 'Friday cocktail feature', summary: 'Post the featured cocktail', content_type: 'post', platforms: ['instagram'], suggested_time: '16:00:00', is_due_today: true, available_for_today: true }],
+    // Extra service RPCs a suite adds (e.g. the flavour snapshot).
+    ...(overrides.serviceRpcs ?? {}),
   };
 
   const userRpcs = {
@@ -301,6 +303,8 @@ export function createBackend(overrides = {}) {
         { item_id: IDS.campari, name: 'Campari', unit: 'bottle', par_level: null, eligible: false, observations: 1, span_days: 0, avg_daily_usage: null, reason: 'Not enough observations', suggestion: null },
       ],
     }),
+    // Extra user-JWT RPCs a suite adds (e.g. atlas_save_recipe).
+    ...(overrides.userRpcs ?? {}),
   };
 
   const functions = {

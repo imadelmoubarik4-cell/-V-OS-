@@ -18,6 +18,7 @@ import { REPORT_TOOLS } from "./tools-reports.mjs";
 import { OPERATIONS_TOOLS, SHIFT_TOOLS } from "./tools-operations.mjs";
 import { KNOWLEDGE_TOOLS, TEAM_TOOLS } from "./tools-people.mjs";
 import { ADMIN_TOOLS } from "./tools-admin.mjs";
+import { FLAVOR_TOOLS } from "./tools-flavor.mjs";
 
 export const TOOL_LEVELS = Object.freeze(["read", "draft", "execute"]);
 export const ROLE_ORDER = Object.freeze(["admin", "manager", "bartender", "viewer"]);
@@ -71,6 +72,15 @@ const SOURCES = {
   "marketing.suggestions": "atlas_marketing_recommendations(p_local_date) (service, all roles)",
   "integrations.status": "atlas-integrations ?action=status (user JWT, managers)",
   "app.open": "none — returns a route",
+  "flavor.search_ingredients": "atlas_flavor_snapshot() (service, all roles; ingredients + aliases) + stock via projectStock/buildStockReport over confirmed flavor_item_links",
+  "flavor.ingredient_profile": "atlas_flavor_snapshot() profile + confirmed links over projectStock (verified current only) + recipes / recipe_catalog",
+  "flavor.pairings": "atlas_flavor_snapshot() curated edges (culinary) + co-occurrence in active recipes (atlas_learned) + projectStock",
+  "flavor.pairings_from_stock": "atlas_flavor_snapshot() edges + recipes co-occurrence, restricted to ingredients with verified current stock (projectStock)",
+  "flavor.substitutes": "atlas_flavor_snapshot() substitute edges + same-family profile similarity (calculated) + projectStock",
+  "flavor.candidates": "flavor-graph templates over atlas_flavor_snapshot() + projectStock (verified current, confirmed links) + atlas-domain recipeMetrics (serve check; cost for managers) + recipes",
+  "flavor.explain_pair": "atlas_flavor_snapshot() edges + recipes co-occurrence + calculated profile overlap",
+  "flavor.use_soon": "projectStock verified quantity vs par_level (overstock ≥ 2 × par); Atlas has no expiry data",
+  "recipes.compose_draft": "flavor-graph compose over atlas_flavor_snapshot() + projectStock + atlas-domain recipeMetrics; executes atlas_save_recipe (new inactive draft)",
 };
 
 // Proposal kind produced by each draft tool (documentation).
@@ -86,6 +96,7 @@ const PROPOSALS = {
   "knowledge.prepare_draft": "knowledge.draft",
   "settings.suggest_change": "settings.suggestion (link only)",
   "data_quality.par_suggestions": "par_level.suggestion (link only)",
+  "recipes.compose_draft": "recipe.draft",
 };
 
 // Evidence each tool produces (documentation).
@@ -137,6 +148,15 @@ const EVIDENCE = {
   "marketing.suggestions": "fact per idea; interpretation seeded basis",
   "integrations.status": "fact/missing per provider; missing POS",
   "app.open": "none",
+  "flavor.search_ingredients": "fact/missing stock per match; interpretation possible matches (needs review)",
+  "flavor.ingredient_profile": "interpretation curated profile and pairings (culinary / Atlas recipes); fact/missing stock; fact recipes using it",
+  "flavor.pairings": "interpretation per pairing labelled with its evidence type; fact/missing centre stock",
+  "flavor.pairings_from_stock": "fact verified stock per side; interpretation per pairing",
+  "flavor.substitutes": "interpretation recorded substitutes; calculation profile similarity; fact/missing stock",
+  "flavor.candidates": "calculation verified coverage and serves per idea; interpretation top pairing; missing to-buy / unmet ingredients; calculation cost and margin (managers)",
+  "flavor.explain_pair": "interpretation per recorded link; calculation aroma overlap; missing when no pairing is recorded",
+  "flavor.use_soon": "missing expiry data; calculation overstock vs par",
+  "recipes.compose_draft": "fact verified stock per line; calculation serves, cost per serve and theoretical margin; interpretation pairings; missing to-buy lines",
 };
 
 function fnNameFor(name) {
@@ -179,6 +199,7 @@ export const TOOL_REGISTRY = Object.freeze([
   ...TEAM_TOOLS,
   ...KNOWLEDGE_TOOLS,
   ...ADMIN_TOOLS,
+  ...FLAVOR_TOOLS,
 ].map(freezeEntry));
 
 const BY_NAME = new Map();
