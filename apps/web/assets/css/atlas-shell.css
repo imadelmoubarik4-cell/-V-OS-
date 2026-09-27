@@ -145,6 +145,8 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
 .atlas-tabbar__item:hover { text-decoration: none; }
 .atlas-tabbar__item svg { width: 22px; height: 22px; stroke-width: 1.6; }
 .atlas-tabbar__item .atlas-bot--tab { --atlas-bot-size: 24px; margin: -1px; }
+/* The sleeping ZZZ sits lower beside the tab robot, inside the tab bar. */
+.atlas-tabbar__item .atlas-bot--tab::after { bottom: calc(100% - var(--atlas-bot-size) * .7); }
 .atlas-tabbar__item[aria-current="page"] { color: var(--accent, #2563eb); }
 .atlas-tabbar__item[aria-current="page"] svg { stroke-width: 2; }
 .atlas-tabbar__badge { position: absolute; top: 5px; left: calc(50% + 6px); }
