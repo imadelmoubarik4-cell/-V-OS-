@@ -124,7 +124,9 @@ export const PROVIDERS = Object.freeze({
     authorizeUrl: (env) => `https://www.facebook.com/${metaVersion(env)}/dialog/oauth`,
     tokenUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/oauth/access_token`,
     revokeUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/me/permissions`,
-    scopes: ["pages_show_list", "pages_read_engagement"],
+    // business_management at connect: Pages reached through a Business
+    // portfolio are missing from /me/accounts without it (seen in production).
+    scopes: ["pages_show_list", "pages_read_engagement", "business_management"],
     publish_scopes: ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "business_management"],
     future_scopes: ["read_insights"],
     resource_kind: "facebook_page",
@@ -159,7 +161,10 @@ export const PROVIDERS = Object.freeze({
     authorizeUrl: (env) => `https://www.facebook.com/${metaVersion(env)}/dialog/oauth`,
     tokenUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/oauth/access_token`,
     revokeUrl: (env) => `https://graph.facebook.com/${metaVersion(env)}/me/permissions`,
-    scopes: ["instagram_basic", "pages_show_list"],
+    // Meta's Instagram-with-Facebook-Login setup lists pages_read_engagement
+    // and, for Business-portfolio Pages, business_management to read the
+    // linked account from /me/accounts.
+    scopes: ["instagram_basic", "pages_show_list", "pages_read_engagement", "business_management"],
     publish_scopes: ["instagram_basic", "instagram_content_publish", "pages_show_list", "pages_read_engagement", "business_management"],
     future_scopes: ["instagram_manage_insights"],
     resource_kind: "instagram_account",
