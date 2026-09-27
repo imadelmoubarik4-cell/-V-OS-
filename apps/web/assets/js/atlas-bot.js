@@ -37,6 +37,7 @@
 // transient state (awake, success) returns to idle by itself; calm states
 // fall asleep after a quiet spell; wake triggers (hover, tap, opening Atlas
 // AI, a new conversation, the composer, voice, an AI task) wake it at once.
+// An error is transient too: 4 s, or until the next wake trigger.
 // All of it runs on one timer. Surfaces with a state of their own (the live
 // voice robot) use setState(key, state) through the same table.
 (function atlasBot(root) {
@@ -52,7 +53,9 @@
   //   then   a transient state: after `after` ms it returns to `then`
   //   moment a one-off movement played as the state starts
   // Anything else lasts until the next state is set (listening, thinking,
-  // answering, attention, error never fall asleep).
+  // answering, attention never fall asleep). An error shows for 4 s and then
+  // returns to idle (the error message stays in the conversation); any wake
+  // trigger ends it sooner.
   const STATE_TABLE = Object.freeze({
     idle: { scene: 'idle', calm: true },
     awake: { scene: 'awake', calm: true, then: 'idle', after: 8000 },
@@ -62,7 +65,7 @@
     answering: { scene: 'answering' },
     success: { scene: 'idle', moment: 'success', then: 'idle', after: 1600 },
     attention: { scene: 'attention' },
-    error: { scene: 'error' }
+    error: { scene: 'error', then: 'idle', after: 4000 }
   });
   // Older names still accepted: speaking is answering; hover is awake.
   const ALIASES = Object.freeze({ speaking: 'answering', hover: 'awake' });
@@ -375,12 +378,14 @@
 
   // One surface's own state (the live voice robot), through the same table:
   // a transient state plays its moment and settles on the state it returns to.
+  // An error is the exception: that surface owns its own error (the live voice
+  // panel keeps its message and retry), so its robot keeps the error pose.
   function setState(key, state) {
     const entry = live.get(key);
     let value = stateOf(state);
     if (value === 'happy') value = 'success';
     const row = STATE_TABLE[value] || STATE_TABLE.idle;
-    const shown = row.then || value;
+    const shown = row.then && value !== 'error' ? row.then : value;
     document.querySelectorAll(`[data-atlas-bot-live="${CSS.escape(key)}"]`).forEach((host) => paintHost(host, shown));
     if (!entry) return;
     entry.state = shown;
@@ -487,15 +492,17 @@
 
   // Something the person did that concerns the assistant. A sleeping or idle
   // robot wakes (awake, for a while); an awake one stays awake longer without
-  // moving again (typing wakes once, not on every key). clear: a new start
-  // (a new conversation) also clears an error or a pending attention.
+  // moving again (typing wakes once, not on every key). An error ends at the
+  // first wake trigger (typing, tap, hover, voice) instead of waiting out its
+  // 4 s. clear: a new start (a new conversation) also clears a pending
+  // attention.
   function wakeRobot(reason = 'activity', { clear = false } = {}) {
     const time = now();
     robot.activity = time;
     robot.lastWake = time;
     robot.wakes += 1;
     const current = robot.state;
-    if (current === 'sleeping' || current === 'idle' || (clear && (current === 'error' || current === 'attention'))) {
+    if (current === 'sleeping' || current === 'idle' || current === 'error' || (clear && current === 'attention')) {
       setRobot('awake');
       return reason;
     }
@@ -580,7 +587,7 @@
     //                      answering · success · attention · error
     //   robot.wake(reason) a wake trigger (hover, tap, composer, voice…)
     //   robot.active(bool) Atlas AI opened or closed
-    //   robot.setDelays({ active, inactive, awake, success })  tests only:
+    //   robot.setDelays({ active, inactive, awake, success, error })  tests only:
     //                      shorter sleep and transient delays (ms)
     robot: {
       set: (state) => setRobot(state),
@@ -588,11 +595,12 @@
       active: (value) => setActive(value),
       get state() { return robot.state; },
       info: robotInfo,
-      setDelays({ active, inactive, awake, success } = {}) {
+      setDelays({ active, inactive, awake, success, error } = {}) {
         if (active !== undefined) robot.delays.active = Math.max(0, Number(active) || 0);
         if (inactive !== undefined) robot.delays.inactive = Math.max(0, Number(inactive) || 0);
         if (awake !== undefined) robot.transient.awake = Math.max(0, Number(awake) || 0);
         if (success !== undefined) robot.transient.success = Math.max(0, Number(success) || 0);
+        if (error !== undefined) robot.transient.error = Math.max(0, Number(error) || 0);
         schedule();
       },
       table: STATE_TABLE

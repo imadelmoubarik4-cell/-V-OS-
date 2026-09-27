@@ -359,9 +359,13 @@ test('controller: wake triggers wake a sleeping or idle robot at once; typing on
   bot.robot.set('thinking');
   bot.robot.wake('hover');
   assert.equal(bot.robot.state, 'thinking', 'hover never interrupts thinking');
+  for (const reason of ['composer', 'typing', 'hover', 'tap', 'voice']) {
+    bot.robot.set('error');
+    bot.advance(500);
+    bot.robot.wake(reason);
+    assert.equal(bot.robot.state, 'awake', `${reason} ends an error at once (no waiting out the 4 s)`);
+  }
   bot.robot.set('error');
-  bot.robot.wake('composer');
-  assert.equal(bot.robot.state, 'error');
   bot.robot.wake('new-conversation', { clear: true });
   assert.equal(bot.robot.state, 'awake', 'a new conversation clears an error');
   bot.robot.set('attention');
@@ -369,7 +373,7 @@ test('controller: wake triggers wake a sleeping or idle robot at once; typing on
   assert.equal(bot.robot.state, 'awake');
 });
 
-test('controller: thinking → answering is one continuous state; success returns to idle; attention and error last', () => {
+test('controller: thinking → answering is one continuous state; success returns to idle; attention lasts; an error returns to idle after 4 s', () => {
   const bot = loadBot();
   bot.robot.set('thinking');
   bot.advance(50);
@@ -386,11 +390,18 @@ test('controller: thinking → answering is one continuous state; success return
   bot.robot.set('attention');
   bot.advance(600000);
   assert.equal(bot.robot.state, 'attention', 'attention waits for the person');
+  bot.robot.set('thinking');
   bot.robot.set('error');
+  assert.equal(bot.robot.table.error.after, 4000);
+  bot.advance(3900);
+  assert.equal(bot.robot.state, 'error', 'the error shows for about 4 s');
+  bot.advance(200);
+  assert.equal(bot.robot.state, 'idle', 'thinking → error → idle by itself');
+  assert.equal(bot.robot.info().timers, 1, 'one timer: the idle robot can fall asleep again');
+  bot.robot.set('error');
+  bot.robot.set('thinking');
   bot.advance(600000);
-  assert.equal(bot.robot.state, 'error');
-  bot.robot.set('idle');
-  assert.equal(bot.robot.state, 'idle', 'thinking → error → idle');
+  assert.equal(bot.robot.state, 'thinking', 'a new question during the error takes over; the error timer does not end it');
 });
 
 test('controller: hovering or tapping an item that carries a following robot wakes it; other items do not', () => {

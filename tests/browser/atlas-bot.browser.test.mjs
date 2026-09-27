@@ -1049,3 +1049,61 @@ test('Daily Briefing: the robot thinks while the briefing is prepared, then rest
     assert.ok(Math.abs(phase[0] - phase[1]) < 0.08, `same phase: ${phase}`);
   } finally { await close(); }
 });
+
+// A failed answer: the message says so in the conversation; the robot shows
+// the error for about 4 s and then returns to idle by itself. Any wake trigger
+// (typing, tapping, voice, a new question) ends the error sooner. Reduced
+// motion keeps the same timing with a still error pose.
+const failingChat = { overrides: { chat: () => ({ __status: 500, body: { error_code: 'internal', message: 'raw server detail' } }) } };
+const askAndFail = async (page) => {
+  await page.fill('#ai-composer-input', 'What is on the rota tonight?');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.msg-ai .atlas-alert');
+  await until(async () => (await robotInfo(page)).state === 'error', { message: 'the robot shows the error' });
+};
+const errorShownFor = async (page) => {
+  const started = await page.evaluate(() => performance.now());
+  await until(async () => (await robotInfo(page)).state === 'idle', { timeout: 10000, message: 'the error returns to idle by itself' });
+  return page.evaluate((at) => performance.now() - at, started);
+};
+
+for (const [label, contextOptions] of [['motion', undefined], ['reduced motion', { reducedMotion: 'reduce' }]]) {
+  test(`failed answer (${label}): the robot shows the error for about 4 s, then idle; the error message stays in the conversation`, { skip }, async () => {
+    const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 }, contextOptions, backend: failingChat });
+    try {
+      await askAndFail(page);
+      assert.equal((await shown(page)).nav, 'error', 'the sidebar robot shows the error');
+      if (contextOptions) {
+        const still = await page.$eval('.atlas-nav .nav-item--ai .atlas-bot', (node) => ({ animation: getComputedStyle(node).animationName, moving: node.getAnimations().filter((animation) => animation.playState === 'running').length }));
+        assert.deepEqual(still, { animation: 'none', moving: 0 }, 'a still error pose');
+      }
+      // Nothing is touched: the pointer rests away from any robot.
+      await page.mouse.move(1400, 880);
+      const elapsed = await errorShownFor(page);
+      assert.ok(elapsed > 2500 && elapsed < 6000, `about 4 s of error (${Math.round(elapsed)} ms)`);
+      assert.deepEqual([(await shown(page)).nav, (await shown(page)).tab], ['idle', 'idle'], 'every following robot is back to idle');
+      assert.match(await page.textContent('.msg-ai .atlas-alert'), /Atlas couldn’t finish this answer\. Nothing was changed\./, 'the error message stays');
+      const path = (await robotInfo(page)).history.map((step) => step.to).slice(-3);
+      assert.deepEqual(path, ['thinking', 'error', 'idle']);
+      assert.deepEqual(record?.pageErrors || [], []);
+    } finally { await close(); }
+  });
+}
+
+test('failed answer: typing, tapping the robot or a new question during the error wakes it at once', { skip }, async () => {
+  const { page, close } = await openAi({ viewport: { width: 1440, height: 900 }, backend: failingChat });
+  try {
+    await askAndFail(page);
+    await page.type('#ai-composer-input', 'W');
+    assert.equal((await robotInfo(page)).state, 'awake', 'typing wakes it at once');
+    await page.fill('#ai-composer-input', '');
+    await askAndFail(page);
+    await page.click('.atlas-nav .nav-item--ai');
+    await until(async () => (await robotInfo(page)).state !== 'error', { timeout: 1500, message: 'a tap on the robot ends the error at once' });
+    await askAndFail(page);
+    await page.fill('#ai-composer-input', 'And tomorrow?');
+    await page.keyboard.press('Enter');
+    await until(async () => ['thinking', 'error'].includes((await robotInfo(page)).state) && (await robotInfo(page)).history.slice(-1)[0].to !== 'idle', { message: 'a new question takes over' });
+    assert.equal(await page.locator('.msg-ai .atlas-alert').count() >= 2, true, 'each failed answer keeps its message');
+  } finally { await close(); }
+});
