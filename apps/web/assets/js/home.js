@@ -619,11 +619,15 @@
     if (isViewer()) return '';
     const facts = briefingFacts();
     const updated = clock()?.formatTime?.(new Date()) || '';
+    const preparing = !facts.lines.length && !dataLoaded();
     const text = facts.lines.length
       ? facts.lines.slice(0, 2).map((line) => `<p>${escape(line)}</p>`).join('')
-      : `<p class="home-briefing__muted">${dataLoaded() ? 'Today’s briefing isn’t available yet.' : 'Preparing today’s briefing…'}</p>`;
+      : `<p class="home-briefing__muted">${preparing ? 'Preparing today’s briefing…' : 'Today’s briefing isn’t available yet.'}</p>`;
+    // The robot thinks while the briefing is prepared, then rests (the text
+    // says the same, so the state never rests on the animation alone).
+    const bot = window.AtlasBot ? window.AtlasBot.html({ size: 18, state: preparing ? 'thinking' : 'idle' }) : icon('atlas-bot');
     return `<section class="atlas-card home-briefing" aria-labelledby="home-briefing-title">
-      <div class="home-briefing__head">${icon('atlas-bot')}<h2 id="home-briefing-title">Today’s briefing</h2>${facts.lines.length && updated ? `<span class="home-briefing__time">Updated ${escape(updated)}</span>` : ''}</div>
+      <div class="home-briefing__head">${bot}<h2 id="home-briefing-title">Today’s briefing</h2>${facts.lines.length && updated ? `<span class="home-briefing__time">Updated ${escape(updated)}</span>` : ''}</div>
       <div class="home-briefing__text">${text}</div>
       <div class="home-briefing__foot">
         ${facts.sources.size ? `<span class="home-briefing__sources">${icon('check')}${escape(sourcesLabel(facts.sources))}</span>` : '<span></span>'}

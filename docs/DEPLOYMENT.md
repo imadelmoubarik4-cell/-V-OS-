@@ -49,8 +49,10 @@ The robot is the Atlas AI assistant's face. It replaces the sparkles assistant i
 
 - `assets/js/atlas-bot.js`: the badge (`AtlasBot.html`) and the interactive 3D robot (`AtlasBot.liveHtml` + `upgrade`).
 - `assets/atlas-bot/atlas-mascot-scene.js`: the 3D scene, Three.js bundled in (MIT), loaded only when Atlas AI shows it. It is about 145 KB gzipped, same-origin, so the CSP is unchanged.
-- `assets/atlas-bot/atlas-bot.png`: the badge sprite (open, blink, happy), rendered from the same scene; `atlas-bot-small.png` is the version for badges of 24 px or less (a tighter face, a matte visor, larger eyes).
+- `assets/atlas-bot/atlas-bot.png`: the badge sprite (open, blink, sleep, happy), rendered from the same scene; `atlas-bot-small.png` is the version for badges of 24 px or less (a tighter face, a matte visor, larger eyes).
 - The live robot probes WebGL once per page, shows the badge again if the browser drops its WebGL context, follows a reduced-motion change live, stops drawing after 15 s of calm idle, and keeps still frames where WebGL runs in software (no GPU).
+
+Robot refinement (`?v=20261004-bot5`: `atlas-bot.js`, `atlas-ai.js`, `home.js`, `atlas-components.css`, `atlas-shell.css`, `atlas-ai.css`, the scene bundle and both sprites; still no migration and no function). One state controller in `atlas-bot.js` (`AtlasBot.robot`) drives every AI surface: idle, awake, sleeping, listening, thinking, answering, success, attention, error (`speaking` still means answering). The robot falls asleep after 90 s without activity while Atlas AI is open and after 5 minutes otherwise (one timer for the page, none while the tab is hidden), with a small CSS-only Z · ZZ · ZZZ; hover, a tap, opening Atlas AI, a new conversation, the composer, voice and an AI task wake it at once. The full robot has a soft contact shadow drawn in its scene; the welcome robot keeps its size (176 / 136 / 96 px) and sits closer to the greeting. The Home briefing robot thinks while the briefing is prepared.
 
 To change the robot, edit `scripts/mascot/atlas-mascot-scene.src.mjs`, then rebuild the bundle and the sprites:
 

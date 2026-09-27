@@ -100,7 +100,7 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 
 /* empty state */
 .atlas-ai .ai-empty { min-height: 100%; display: grid; align-content: safe center; justify-items: center; gap: 12px; padding: 12vh 0 24px; text-align: center; }
-.atlas-ai .ai-empty__greeting { font: 500 28px/34px var(--font-display, 'Fraunces', Georgia, serif); letter-spacing: -0.02em; font-variation-settings: 'opsz' 72; color: var(--text, #17191e); }
+.atlas-ai .ai-empty__greeting { position: relative; font: 500 28px/34px var(--font-display, 'Fraunces', Georgia, serif); letter-spacing: -0.02em; font-variation-settings: 'opsz' 72; color: var(--text, #17191e); }
 .atlas-ai .ai-empty__context { color: var(--text-2, #5b616b); }
 .atlas-ai .ai-empty__chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; max-width: 560px; }
 .atlas-ai .ai-empty--off { padding-top: 8vh; }
@@ -122,8 +122,11 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
 
 .atlas-ai .msg-ai { margin-bottom: 32px; }
 .atlas-ai .msg-ai__who { display: flex; align-items: center; gap: 8px; font: 500 13px/18px var(--font-sans, sans-serif); margin-bottom: 8px; }
-/* The Atlas AI robot (atlas-bot.js): live in the empty state and the voice panel. */
-.atlas-ai .ai-empty__bot { margin-bottom: -8px; }
+/* The Atlas AI robot (atlas-bot.js): live in the empty state and the voice panel.
+   The robot and the greeting read as one unit: the transparent band under its
+   feet (about 12% of its box) tucks under the greeting's top, so its feet sit
+   close to the text without the drawn robot ever touching it. */
+.atlas-ai .ai-empty__bot { margin-bottom: -18px; }
 .atlas-ai .ai-empty__bot .atlas-bot-live { width: 176px; height: 176px; }
 .atlas-ai .voice__top .atlas-bot-live { width: 44px; height: 44px; margin: -8px -2px -8px -4px; }
 /* Short screens (phone landscape): a smaller robot and tighter spacing; when the
@@ -133,6 +136,7 @@ body[data-atlas-view="ai"] .atlas-content.standard-view { max-width: none; paddi
   /* The workspace fills the window instead of pushing the page into a scroll. */
   .atlas-ai .ai-layout { min-height: 0; }
   .atlas-ai .ai-empty { padding: 8px 0 16px; gap: 8px; }
+  .atlas-ai .ai-empty__bot { margin-bottom: -12px; }
   .atlas-ai .ai-empty__bot .atlas-bot-live { width: 96px; height: 96px; }
   .atlas-ai .ai-empty__greeting { font-size: 22px; line-height: 28px; }
   .atlas-ai .ai-empty__chips { margin-top: 4px; }
