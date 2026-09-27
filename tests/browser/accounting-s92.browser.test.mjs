@@ -11,7 +11,8 @@ import { emptyFunctions } from './fixtures.mjs';
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 
 const MANAGER = { id: '7d3c1f10-0000-4000-8000-000000000003', email: 'mia.manager@example.test', display_name: 'Mía Stefánsdóttir', role: 'manager', active: true };
-const PROFILES = [USERS.admin, USERS.bartender, MANAGER];
+const VIEWER = { id: '7d3c1f10-0000-4000-8000-000000000004', email: 'vala.viewer@example.test', display_name: 'Vala Viewer', role: 'viewer', active: true };
+const PROFILES = [USERS.admin, USERS.bartender, MANAGER, VIEWER];
 const TODAY = '2026-09-24';
 const FN = 'atlas-accounting';
 
@@ -228,7 +229,7 @@ function parseCsv(text, separator = ',') {
 
 // ---------------------------------------------------------------------------
 
-test('Accounting is in Business for administrators only; a manager gets the lock', { skip }, async () => {
+test('Accounting is in Business for administrators only (hidden for manager, bartender and viewer); a manager gets the lock', { skip }, async () => {
   const admin = await launch();
   try {
     const nav = await admin.page.evaluate(() => {
@@ -257,7 +258,7 @@ test('Accounting is in Business for administrators only; a manager gets the lock
     noErrors(phone.record);
   } finally { await phone.close(); }
 
-  for (const user of [MANAGER, USERS.bartender]) {
+  for (const user of [MANAGER, USERS.bartender, VIEWER]) {
     const { page, record, close } = await launch({ user });
     try {
       assert.equal(await page.evaluate(() => {
