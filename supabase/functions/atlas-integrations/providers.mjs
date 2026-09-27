@@ -223,8 +223,8 @@ export const PROVIDERS = Object.freeze({
     pkce: "none",
     // The legacy Content API (api.content.tripadvisor.com) is reported as
     // sunset on 31 Aug 2026 in favour of the Terra API (X-API-KEY header on
-    // terra.tripadvisor.com). The exact Terra location-details path could not be
-    // confirmed from primary documentation, so the owner supplies it.
+    // terra.tripadvisor.com). The owner supplies the Location Details address
+    // (GET /api/locations/{id}); the location must be on the key's allowlist.
     endpoint_evidence: "unverified",
     authorizeUrl: () => null,
     tokenUrl: () => null,
@@ -832,6 +832,16 @@ export function tripadvisorVerifyUrl(env, locationId) {
   }
 }
 
+// Terra Location Details returns `names: [{ language, value, primary }]`;
+// prefer the primary entry, then English, then the first one.
+export function tripadvisorLocationName(body) {
+  const names = Array.isArray(body?.names) ? body.names.filter((entry) => typeof entry?.value === "string" && entry.value.trim()) : [];
+  const picked = names.find((entry) => entry.primary === true) ?? names.find((entry) => entry.language === "en") ?? names[0];
+  if (picked) return picked.value.trim();
+  const flat = body?.name ?? body?.data?.name ?? body?.location?.name ?? null;
+  return typeof flat === "string" && flat.trim() ? flat.trim() : null;
+}
+
 async function verifyTripadvisor(provider, env, fetchImpl, tokenSet) {
   const locationId = String(env("ATLAS_TRIPADVISOR_LOCATION_ID") ?? "").trim();
   const url = tripadvisorVerifyUrl(env, locationId);
@@ -840,7 +850,7 @@ async function verifyTripadvisor(provider, env, fetchImpl, tokenSet) {
     headers: { "x-api-key": tokenSet.api_key, accept: "application/json" },
   });
   const body = await readProviderJson(response, "Tripadvisor location check failed");
-  const name = body?.name ?? body?.data?.name ?? body?.location?.name ?? null;
+  const name = tripadvisorLocationName(body);
   return {
     account_id: locationId.slice(0, 200),
     account_label: name ? String(name).slice(0, 200) : `Tripadvisor location ${locationId.slice(0, 40)}`,
