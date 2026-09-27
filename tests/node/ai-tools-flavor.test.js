@@ -296,6 +296,23 @@ test('candidate keys are re-validated against current stock and links (forged or
   assert.throws(() => F.candidateFromKey(index, `v1|highball|base=cognac~-@buy|top=soda-water~-@${ITEM_IDS.soda}`, { stock, items, recipes }), (error) => error.code === 'conflict', 'to buy needs no_new_purchases false');
 });
 
+test('candidate keys must have the engine\'s shape: each role once, one garnish of the template\'s families, and a strong enough pairing', () => {
+  const { index, stock, items, recipes } = engine();
+  // Every key the engine offers still rebuilds (all drink types, all goals).
+  for (const type of ['cocktail', 'mocktail', 'coffee']) {
+    for (const goal of ['balanced', 'use_stock', 'novel', 'simple']) {
+      for (const candidate of F.candidates(index, { stock, items, recipes, type, goal, limit: 20 }).candidates.filter((entry) => entry.composable)) {
+        assert.equal(F.candidateFromKey(index, candidate.key, { stock, items, recipes }).key, candidate.key, candidate.key);
+      }
+    }
+  }
+  const invalid = (key) => assert.throws(() => F.candidateFromKey(index, key, { stock, items, recipes }), (error) => error.code === 'invalid_arguments', key);
+  // Three spirits and two sweeteners in one Collins (review finding M1).
+  invalid(`v1|collins|base=london-dry-gin~-@${ITEM_IDS.tanqueray}|base=cognac~-@${ITEM_IDS.hennessy}|base=vodka~-@${ITEM_IDS.absolut}|sour=lemon~juice@${ITEM_IDS.lemonJuice}|sweet=sugar-syrup~-@${ITEM_IDS.sugarSyrup}|sweet=elderflower-liqueur~-@${ITEM_IDS.stGermain}|top=soda-water~-@${ITEM_IDS.soda}`);
+  // Two garnishes.
+  invalid(`v1|highball|base=london-dry-gin~-@${ITEM_IDS.tanqueray}|top=soda-water~-@${ITEM_IDS.soda}|garnish=mint~-@${ITEM_IDS.mint}|garnish=lemon~-@${ITEM_IDS.lemons}`);
+});
+
 // ---------------------------------------------------------------------------
 // Tools through the gateway
 // ---------------------------------------------------------------------------
@@ -453,7 +470,7 @@ test('recipe.draft execution: approver JWT, forced inactive, record link, name c
 test('recipe.draft commands are strictly validated', () => {
   const base = {
     client_request_id: '00000000-0000-4000-9000-000000000001',
-    recipe: { name: 'X', type: 'Cocktail', glassware: null, garnish: null, method: '1. Stir.', notes: null, yield_quantity: 1, yield_unit: 'serving', menu_price: null, active: false, show_on_menu: false },
+    recipe: { name: 'X', type: 'signature-cocktail', glassware: null, garnish: null, method: '1. Stir.', notes: null, yield_quantity: 1, yield_unit: 'serving', menu_price: null, active: false, show_on_menu: false },
     ingredients: [{ item_id: ITEM_IDS.tanqueray, item_name: 'Tanqueray Gin', quantity: 50, unit: 'ml', role: 'base', to_buy: false }],
     source: { candidate_key: 'v1|x', engine_version: '1.0.0', snapshot_version: null },
   };
@@ -566,4 +583,45 @@ test('scenario: "What can we make from ingredients we should use soon?" is answe
   const ideas = (await run('manager', 'flavor.candidates', { ...CANDIDATE_ARGS, seed: result.data.seed_ingredients, limit: 3 })).result;
   assert.ok(ideas.data.candidates.length > 0);
   assert.ok(ideas.data.candidates.every((candidate) => candidate.scores.inventory.use_soon.overstock_lines >= 1));
+});
+
+test('owner rule: once a verified count expires with no owner-confirmed quantity the item is unknown, never zero and never available', () => {
+  // The same rows, read after every fixture count has expired (2026-09-29T10:00Z).
+  const later = '2026-09-30T12:00:00Z';
+  const inventory = flavorInventoryRows();
+  const balances = flavorBalanceRows();
+  const index = F.indexSnapshot(flavorSnapshot());
+  const items = projectStock(inventory, balances, [], later);
+  const report = buildStockReport(inventory, balances, {}, later, []);
+  const stock = F.stockByIngredient(index, items, { reportRows: report.evidence_rows });
+  const status = (slug) => F.stockFor(stock, INGREDIENT_IDS[slug]);
+  for (const slug of ['london-dry-gin', 'cognac', 'rhubarb', 'lime', 'mango']) {
+    const entry = status(slug);
+    assert.equal(entry.status, 'unknown', `${slug}: an expired count is unknown`);
+    for (const item of entry.items) {
+      assert.equal(item.verified_quantity, null, `${slug}: no quantity is carried past expiry (not the raw one, not zero)`);
+      assert.equal(F.isVerifiedAvailable(items.find((row) => row.id === item.item_id)), false);
+    }
+  }
+  assert.equal(status('coffee-liqueur').status, 'available', 'a valid owner-confirmed quantity is still current evidence');
+  const available = items.filter((item) => F.isVerifiedAvailable(item)).map((item) => item.id);
+  assert.deepEqual(available, [ITEM_IDS.kahlua], 'only the owner-confirmed item remains available');
+});
+
+test('drafts are saved with an existing Recipes category slug and a name within 120 characters', () => {
+  const { index, stock, items, recipes } = engine();
+  const expected = { cocktail: 'signature-cocktail', mocktail: 'mocktail', coffee: 'coffee' };
+  for (const type of Object.keys(expected)) {
+    const [candidate] = F.candidates(index, { stock, items, recipes, type, limit: 5 })._full.filter((entry) => entry.composable !== false);
+    if (!candidate) continue;
+    assert.equal(F.compose(index, candidate, { items, recipes }).type, expected[type], type);
+    assert.ok(PROPOSAL_KINDS['recipe.draft'], 'recipe.draft kind exists');
+  }
+  const [candidate] = F.candidates(index, { stock, items, recipes, type: 'cocktail', limit: 1 })._full;
+  const long = 'A'.repeat(120);
+  const first = F.compose(index, candidate, { items, recipes, name: long });
+  assert.equal(first.name, long);
+  const renamed = F.compose(index, candidate, { items, recipes: [...recipes, { name: long }], name: long });
+  assert.ok(renamed.name.length <= 120, 'the suffix never pushes the name past 120 characters');
+  assert.match(renamed.name, / No\. 2$/);
 });

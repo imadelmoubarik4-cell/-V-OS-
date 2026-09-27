@@ -91,6 +91,26 @@ test('flavor-search resolves aliases and requires a query', async () => {
   assert.equal(empty.status, 400);
 });
 
+test('flavor-substitutes lists recorded and calculated substitutes with stock status', async () => {
+  const { handle, db } = setup({ aiEnabled: false });
+  const found = await json(await handle(get('flavor-substitutes', '&ingredient=lemon&limit=5', USERS.bartender)));
+  assert.equal(found.status, 200, JSON.stringify(found.body));
+  assert.equal(found.body.original.slug, 'lemon');
+  assert.ok(found.body.original.stock && typeof found.body.original.stock.status === 'string');
+  assert.ok(Array.isArray(found.body.substitutes));
+  for (const row of found.body.substitutes) {
+    assert.ok(['recorded', 'profile'].includes(row.basis));
+    if (row.basis === 'profile') assert.equal(row.evidence_type, null, 'a calculated match is never labelled as recorded evidence');
+    assert.notEqual(row.evidence_type, 'scientific');
+    assert.ok('stock_status' in row && Array.isArray(row.differences));
+  }
+  assert.equal(db.toolCalls.at(-1).p_tool_name, 'flavor.substitutes');
+  const empty = await json(await handle(get('flavor-substitutes', '&ingredient=')));
+  assert.equal(empty.status, 400);
+  const missing = await json(await handle(get('flavor-substitutes', '&ingredient=unobtainium')));
+  assert.equal(missing.status, 404);
+});
+
 test('flavor-candidates: verified stock only, every dimension, no cost for staff', async () => {
   const { handle, world } = setup();
   const manager = await ideas(handle, { type: 'cocktail', seed: ['gin'], exclude: { families: ['citrus'] }, no_new_purchases: true, limit: 3 });
@@ -108,6 +128,7 @@ test('flavor-candidates: verified stock only, every dimension, no cost for staff
     }
   }
   assert.equal(manager.body.request.no_new_purchases, true);
+  assert.ok(Array.isArray(manager.body.unused_seeds) && Array.isArray(manager.body.unmeasurable), 'honest leftovers are returned');
   const staff = await ideas(handle, { type: 'cocktail', goal: 'high_margin', limit: 3 }, USERS.bartender);
   assert.equal(staff.status, 200);
   const keys = keysOf(staff.body);

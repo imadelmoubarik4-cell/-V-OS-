@@ -1337,6 +1337,8 @@
     'shift.draft': { icon: 'calendar-days', verb: 'Save as draft', done: 'Shift draft saved', view: 'View shifts', executable: true },
     'team_message.send': { icon: 'messages-square', verb: 'Send message', done: 'Message sent', view: 'View messages', executable: true },
     'knowledge.draft': { icon: 'book-open', verb: 'Save as draft', done: 'Draft saved', view: 'View article', executable: true },
+    // Flavor Intelligence: a new inactive recipe in Recipes › Drafts (never on the menu).
+    'recipe.draft': { icon: 'martini', verb: 'Save draft', done: 'Draft recipe saved', view: 'Open recipe', executable: true },
     'settings.suggestion': { icon: 'settings', verb: 'Open Settings', done: 'Opened', view: 'Open Settings', executable: false },
     'par_level.suggestion': { icon: 'list-checks', verb: 'Open par levels', done: 'Opened', view: 'Open par levels', executable: false }
   };
@@ -1373,6 +1375,10 @@
     if (kind === 'shift.draft') return '#shifts';
     if (kind === 'team_message.send') return '#messages';
     if (kind === 'knowledge.draft') return result.article_id ? `#knowledge/${encodeURIComponent(result.article_id)}` : '#knowledge';
+    if (kind === 'recipe.draft') {
+      const recipeId = result.data?.recipe_id || result.recipe_id;
+      return recipeId ? `#recipes/${encodeURIComponent(recipeId)}` : '#recipes';
+    }
     if (kind === 'settings.suggestion') return '#settings';
     if (kind === 'par_level.suggestion') return '#data/pars';
     return typeof preview.route === 'string' && preview.route.startsWith('#') ? preview.route : null;
@@ -1503,6 +1509,7 @@
         const code = result?.error?.code;
         const text = code === 'forbidden' ? 'Your role can’t approve this. Nothing was changed.'
           : code === 'draft_exists' ? 'This supplier already has a Draft order, so nothing new was created. Ask Atlas to add these lines to that draft.'
+          : code === 'name_taken' ? 'A recipe with this name already exists, so nothing was saved. Ask Atlas for a different name.'
           : code === 'conflict' ? 'Something changed since Atlas prepared this. Nothing was changed. Ask Atlas to prepare it again.'
             : code === 'not_found' ? 'A record in this proposal no longer exists. Nothing was changed. Ask Atlas to prepare it again.'
               : 'Nothing was changed. Ask Atlas to prepare it again, or make the change in its page.';

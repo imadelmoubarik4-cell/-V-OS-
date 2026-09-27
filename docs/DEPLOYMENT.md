@@ -43,6 +43,16 @@ After step 4, re-run the smoke test for adding and editing an item.
 
 If the Supabase GitHub integration is set to deploy migrations to production when `main` changes, turn that off before merging this release. Otherwise the merge would apply every file in filename order: the revokes would run before the web deploy, and `20260924170000` would be replayed (production recorded it as `20260924150124`).
 
+## S95: Atlas Flavor Intelligence
+
+Order: the three S95 migrations (`20261005090000_s95a_flavor_graph.sql`, `20261005091000_s95b_recipe_draft_kind.sql`,
+`20261005092000_s95c_flavor_seed.sql`), then the `atlas-ai` function (flavour routes `flavor-map`, `flavor-search`,
+`flavor-substitutes`, `flavor-candidates`, `flavor-compose`; details in `docs/flavor/Engine.md`), then the web app with
+the key `?v=20261005-fi1` on `atlas-shell.js` (`#recipes/flavor` route), `recipes.js` (Create with Atlas / Flavor Map
+entry), the new `flavor-map.js` (loaded right after `recipes.js`), `recipes.css` (Flavor Map styles; no new stylesheet)
+and `atlas-ai.js` (`recipe.draft` approval card). No `config.js` change: the pages call the existing `ATLAS_AI_API`.
+A web app deployed before the function shows the map's fixed "not available right now" copy; nothing is saved.
+
 ## Atlas AI robot (web only)
 
 The robot is the Atlas AI assistant's face. It replaces the sparkles assistant icon in AI surfaces; the Atlas logo stays the brand mark everywhere. There is no migration and no function; deploy the web app (cache keys `?v=20261003-bot1` and, for the review follow-up, `?v=20261003-bot2`; `home.js` carries `?v=20261003-bot3` for the S93 sender names plus the robot on the daily briefing, and `team-messages.js` keeps the S93 Messages key because the robot leaves it unchanged). With S94, `marketing-workspace.js` carries the robot's Ask Atlas icon under the S94 key `?v=20261004-s94b` (not `20261003-bot1`), so browsers that cached the robot-only file refetch it.

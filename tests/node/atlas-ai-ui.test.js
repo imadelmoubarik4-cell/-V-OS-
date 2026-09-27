@@ -90,7 +90,7 @@ test('index loads the Atlas AI view root, style and scripts with the S88 cache k
   assert.match(index, /<div id="ai-view" style="display:none;"><\/div>/);
   assert.match(index, /<link rel="stylesheet" href="assets\/css\/atlas-ai\.css\?v=20261004-bot6">/);
   assert.ok(index.indexOf('assets/js/atlas-ai-voice.js?v=20260926-s91c') > index.indexOf('assets/js/atlas-search.js?v=20260929-s90u'));
-  assert.ok(index.indexOf('assets/js/atlas-ai.js?v=20261004-bot6') > index.indexOf('assets/js/atlas-ai-voice.js?v=20260926-s91c'));
+  assert.ok(index.indexOf('assets/js/atlas-ai.js?v=20261005-fi1') > index.indexOf('assets/js/atlas-ai-voice.js?v=20260926-s91c'));
 });
 
 test('stylesheet defines no global tokens and honours reduced motion', () => {

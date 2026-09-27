@@ -192,7 +192,7 @@ stock/item/supplier/purchasing change. A name already used is refused with
 The SQL allow-list `atlas_private.ai_action_allowed_roles` must include
 `recipe.draft` → admin/manager (migration `20261005091000_s95b_recipe_draft_kind.sql`).
 The deterministic `atlas-ai` routes `flavor-map`, `flavor-search`,
-`flavor-candidates` and `flavor-compose` run the same registry tools through
+`flavor-substitutes`, `flavor-candidates` and `flavor-compose` run the same registry tools through
 `gateway.runTool` without a model or OpenAI key; `flavor-compose` stores the
 proposal with no conversation (`atlas_ai_action_create` allows a null
 conversation) and the browser approves it through the unchanged

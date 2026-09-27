@@ -889,6 +889,9 @@ export const TEMPLATES = Object.freeze([
 const SOUR_TEMPLATES = new Set(["sour", "collins", "zero_sour"]);
 const TEMPLATE_BY_KEY = new Map(TEMPLATES.map((template) => [template.key, template]));
 const TYPE_LABEL = { cocktail: "Cocktail", mocktail: "Mocktail", coffee: "Coffee", dessert: "Dessert", food: "Food" };
+// The recipe type a draft is saved with: an existing Recipes category slug
+// (recipes.type), so it lands in the right category and its edit form keeps it.
+const DRAFT_TYPE = { cocktail: "signature-cocktail", mocktail: "mocktail", coffee: "coffee" };
 
 function templatesFor(type) {
   return TEMPLATES.filter((template) => template.types.includes(type));
@@ -1256,14 +1259,20 @@ function nameFor(template, parts, featured) {
   }
 }
 
+// Recipe names are at most 120 characters (the recipe.draft schema); a suffix
+// shortens the base name instead of running past the limit.
+const NAME_MAX = 120;
+const withSuffix = (name, suffix) => `${name.slice(0, NAME_MAX - suffix.length).trimEnd()}${suffix}`;
+
 function uniqueName(name, recipes) {
-  const taken = new Set(arr(recipes).map((recipe) => str(recipe?.name).toLowerCase()));
-  if (!taken.has(name.toLowerCase())) return name;
+  const base = str(name).trim().slice(0, NAME_MAX).trimEnd();
+  const taken = new Set(arr(recipes).map((recipe) => str(recipe?.name).trim().toLowerCase()));
+  if (!taken.has(base.toLowerCase())) return base;
   for (let n = 2; n < 50; n += 1) {
-    const next = `${name} No. ${n}`;
+    const next = withSuffix(base, ` No. ${n}`);
     if (!taken.has(next.toLowerCase())) return next;
   }
-  return `${name} (Atlas draft)`;
+  return withSuffix(base, " (Atlas draft)");
 }
 
 function keyFor(template, parts) {
@@ -1596,6 +1605,13 @@ export function candidateFromKey(index, key, { stock, items = [], recipes = [], 
   const itemsById = new Map(arr(items).map((item) => [str(item.id), item]));
   const parts = [];
   let garnish = null;
+  // A key must have the shape the engine builds: each template role at most
+  // once, at most one garnish, nothing outside the template.
+  const seenRoles = new Set();
+  for (const entry of roles) {
+    if (seenRoles.has(entry.role)) throw new FlavorError("invalid_arguments", "That idea reference repeats a role. Ask for fresh ideas.");
+    seenRoles.add(entry.role);
+  }
   for (const entry of roles) {
     const ingredient = index.bySlug.get(entry.slug);
     if (!ingredient) throw new FlavorError("conflict", "An ingredient in that idea is no longer in the flavour library. Ask for fresh ideas.");
@@ -1613,7 +1629,10 @@ export function candidateFromKey(index, key, { stock, items = [], recipes = [], 
       if (!stockItem) throw new FlavorError("conflict", `${ingredient.name} is no longer available from verified stock. Ask for fresh ideas.`);
       option = makeOption(ingredient, prep, [stockItem], "available");
     }
-    const fits = entry.role === "garnish" ? SELECT.garnish(option) : optionFits(template, roleDef, option);
+    const garnishFamilies = template.garnishFamilies ?? ["herb", "citrus"];
+    const fits = entry.role === "garnish"
+      ? SELECT.garnish(option) && garnishFamilies.includes(ingredient.family) && !isSweetPrep(option)
+      : optionFits(template, roleDef, option);
     if (!fits) throw new FlavorError("invalid_arguments", "That idea reference does not match its template. Ask for fresh ideas.");
     const picked = pickItem(roleDef, option, itemsById, template.key);
     if (!picked) throw new FlavorError("conflict", `Verified stock of ${ingredient.name} does not cover one serve. Ask for fresh ideas.`);
@@ -1625,10 +1644,21 @@ export function candidateFromKey(index, key, { stock, items = [], recipes = [], 
   }
   const ids = parts.map((part) => part.option.ingredient.id);
   if (new Set(ids).size !== ids.length) throw new FlavorError("invalid_arguments", "That idea reference repeats an ingredient.");
+  // Optional roles pass the same bar as in candidates(): each must pair well
+  // (≥ 0.55) with the required roles and the optional ones before it.
+  const accepted = parts.filter((part) => part.roleDef.required);
+  for (const role of template.roles.filter((candidate) => !candidate.required)) {
+    const part = parts.find((entry) => entry.role === role.role);
+    if (!part) continue;
+    const compat = compatibility(index, [...accepted.map((entry) => entry.option.ingredient), part.option.ingredient], recipes).score;
+    if (!(compat >= 0.55)) throw new FlavorError("invalid_arguments", `${part.option.ingredient.name} does not pair well enough with the rest of that idea. Ask for fresh ideas.`);
+    accepted.push(part);
+  }
   if (SOUR_TEMPLATES.has(template.key)) tuneSweet(parts, itemsById);
   const drinkType = type && template.types.includes(type) ? type : template.types[0];
   const overstock = new Set(arr(items).filter(isOverstocked).map((item) => str(item.id)));
   const candidate = assemble(index, template, parts, garnish, { itemsById, recipes, includeEconomics, overstock, seedIds: new Set(), type: drinkType });
+  if ((candidate.scores.flavor.compatibility ?? 0) < MIN_COMPATIBILITY) throw new FlavorError("invalid_arguments", "Those ingredients do not pair well enough to draft. Ask for fresh ideas.");
   candidate.rank = rankOf(candidate, "balanced", { maxCost: 0 });
   return candidate;
 }
@@ -1675,11 +1705,11 @@ export function compose(index, candidate, { items = [], recipes = [], name = nul
     { key: "balance", ok: (balanceScore(template, totals).score ?? 1) >= 0.6, detail: balanceScore(template, totals).note },
     ...(template.alcoholFree ? [{ key: "alcohol_free", ok: abv === 0 && options.every((option) => !option.alcoholic), detail: abv === 0 ? "No alcoholic ingredient." : "Contains alcohol." }] : []),
     { key: "allergens", ok: true, detail: allergens.length ? `Contains or may contain: ${allergens.join(", ")}.` : "No allergens recorded for these ingredients (check product labels)." },
-    { key: "name_unique", ok: true, detail: draftName === (str(name) || candidate.name) ? "The name is not used by an existing recipe." : `Renamed to "${draftName}" because the name is already used.` },
+    { key: "name_unique", ok: true, detail: draftName === (str(name) || candidate.name).trim().slice(0, NAME_MAX).trimEnd() ? "The name is not used by an existing recipe." : `Renamed to "${draftName}" because the name is already used.` },
   ];
   const draft = {
     name: draftName,
-    type: TYPE_LABEL[candidate.type] || "Cocktail",
+    type: DRAFT_TYPE[candidate.type] || DRAFT_TYPE.cocktail,
     template: template.key,
     glass: template.glass,
     technique: template.technique,
@@ -1739,4 +1769,4 @@ export function useSoon(index, stock, items) {
   return rows.sort((a, b) => b.ratio_to_par - a.ratio_to_par || a.item_name.localeCompare(b.item_name));
 }
 
-export { TEMPLATE_BY_KEY, TYPE_LABEL };
+export { DRAFT_TYPE, TEMPLATE_BY_KEY, TYPE_LABEL };

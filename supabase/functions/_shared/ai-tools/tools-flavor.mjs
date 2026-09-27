@@ -771,7 +771,7 @@ const composeDraft = {
         subjectType: "recipe",
         subjectKey: draft.name,
         evidence,
-        extras: { lineCosts, includeCost: true, warnings },
+        extras: { lineCosts, costPerServe: draft.costing?.cost_per_serve, includeCost: true, warnings },
       });
       return ok({
         summary: `Prepared "${draft.name}" (${draft.technique}, ${draft.glass}): ${draft.lines.map((line) => line.display).join(", ")}. ${costing?.cost_per_serve !== null && costing?.cost_per_serve !== undefined ? `Estimated cost ${formatIsk(costing.cost_per_serve)} per serve. ` : ""}Approve the card to save it as an inactive draft in Recipes; nothing has been saved yet.`,

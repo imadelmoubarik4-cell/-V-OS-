@@ -25,7 +25,8 @@ export const TEAM_CHANNELS = Object.freeze(["general", "operations", "shift-hand
 export const MESSAGE_LINK_TYPES = Object.freeze(["none", "inventory_item", "routine", "shift"]);
 export const ARTICLE_TYPES = Object.freeze(["policy", "sop", "checklist", "training", "reference", "live_resource"]);
 export const TARGET_ROLES = Object.freeze(["all", "admin", "manager", "bartender", "viewer"]);
-export const RECIPE_DRAFT_TYPES = Object.freeze(["Cocktail", "Mocktail", "Coffee"]);
+// Recipes category slugs (recipes.type) a draft may be saved with.
+export const RECIPE_DRAFT_TYPES = Object.freeze(["signature-cocktail", "mocktail", "coffee"]);
 export const RECIPE_LINE_UNITS = Object.freeze(["ml", "g", "each", "bottle", "can", "bunch", "l", "kg", "tsp", "tbsp"]);
 
 const nullableText = (max) => S.nullable(S.string(null, { minLength: 0, maxLength: max }));
@@ -420,7 +421,9 @@ export function buildPreview(kind, command, extras = {}) {
       const costs = extras.lineCosts || {};
       const toBuy = command.ingredients.filter((line) => line.to_buy);
       const known = command.ingredients.every((line) => !line.to_buy && Number.isFinite(costs[line.item_id]));
-      const total = known ? command.ingredients.reduce((sum, line) => sum + costs[line.item_id], 0) : null;
+      // The total is the engine's canonical cost per serve when it is given
+      // (summing rounded line costs can differ by a few krónur).
+      const total = known ? (Number.isFinite(extras.costPerServe) ? extras.costPerServe : command.ingredients.reduce((sum, line) => sum + costs[line.item_id], 0)) : null;
       const showCost = extras.includeCost === true;
       return {
         headline: `Draft recipe "${command.recipe.name}"`,

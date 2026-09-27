@@ -158,7 +158,12 @@
       if (rest[0] === 'waste') return [['waste']];
       return [['inventory', section(rest[0])]];
     },
-    recipes: (rest) => [['recipes', rest[0] ? { recipe: rest[0], ...(rest[1] === 'edit' ? { edit: '1' } : {}) } : {}]],
+    // #recipes/flavor[/<ingredient>] is the Flavor Map (Flavor Intelligence),
+    // never a recipe id.
+    recipes: (rest) => {
+      if (rest[0] === 'flavor') return [['recipes', section('flavor', rest[1] ? { ingredient: rest[1] } : {})]];
+      return [['recipes', rest[0] ? { recipe: rest[0], ...(rest[1] === 'edit' ? { edit: '1' } : {}) } : {}]];
+    },
     purchasing: (rest) => {
       if (rest[0] === 'order' && rest[1]) return [['suppliers', { section: 'orders', order: rest[1] }]];
       if (rest[0] === 'suppliers' && rest[1]) return [['suppliers', { section: 'suppliers', supplier: rest[1] }]];
@@ -286,6 +291,11 @@
         break;
       }
       case 'recipes': {
+        if (rest.section === 'flavor') {
+          takeParam(rest, 'section');
+          path = ['recipes', 'flavor', takeParam(rest, 'ingredient')];
+          break;
+        }
         const recipe = takeParam(rest, 'recipe');
         const edit = takeParam(rest, 'edit');
         path = ['recipes', recipe, recipe && edit ? 'edit' : null];

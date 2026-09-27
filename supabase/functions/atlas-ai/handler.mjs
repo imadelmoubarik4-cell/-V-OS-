@@ -903,6 +903,12 @@ export function createAtlasAiHandler(deps) {
     }
     recent.push(at);
     flavorHits.set(actor.userId, recent);
+    // Keep the map small: people with no request in the window are dropped.
+    if (flavorHits.size > 500) {
+      for (const [userId, stamps] of flavorHits) {
+        if (!stamps.some((stamp) => at - stamp < FLAVOR_RATE_LIMIT.windowMs)) flavorHits.delete(userId);
+      }
+    }
   }
 
   // Runs one registry tool through gateway.runTool (role check, strict
@@ -987,6 +993,20 @@ export function createAtlasAiHandler(deps) {
     return { results: result.data.results, total: result.data.total, ...flavorEnvelope(result) };
   }
 
+  async function flavorSubstitutes(request, actor) {
+    const params = new URL(request.url).searchParams;
+    const ingredient = (params.get("ingredient") ?? "").trim();
+    if (!ingredient) throw new ApiError(400, "invalid_request", "Choose an ingredient to replace.");
+    const { result } = await flavorTool(actor, "flavor.substitutes", {
+      ingredient: ingredient.slice(0, 100),
+      in_stock_only: queryBoolean(params.get("in_stock_only")),
+      limit: queryInteger(params.get("limit")),
+    });
+    const data = result.data;
+    if (data.needs_clarification) return { needs_clarification: data.needs_clarification, substitutes: [], ...flavorEnvelope(result) };
+    return { original: data.original, substitutes: data.substitutes, total: data.total, ...flavorEnvelope(result) };
+  }
+
   async function flavorCandidates(body, actor) {
     const exclude = body.exclude && typeof body.exclude === "object" && !Array.isArray(body.exclude) ? body.exclude : {};
     const { result } = await flavorTool(actor, "flavor.candidates", {
@@ -1005,6 +1025,8 @@ export function createAtlasAiHandler(deps) {
       considered: data.considered,
       goal: data.goal,
       unmet_seeds: data.unmet_seeds,
+      unused_seeds: data.unused_seeds ?? [],
+      unmeasurable: data.unmeasurable ?? [],
       notes: data.notes,
       request: data.request,
       basis: data.basis,
@@ -1062,6 +1084,7 @@ export function createAtlasAiHandler(deps) {
     "voice-end": { methods: ["POST"], body: true, run: (body, actor) => voiceEnd(body, actor) },
     "flavor-map": { methods: ["GET"], run: (request, actor) => flavorMap(request, actor) },
     "flavor-search": { methods: ["GET"], run: (request, actor) => flavorSearch(request, actor) },
+    "flavor-substitutes": { methods: ["GET"], run: (request, actor) => flavorSubstitutes(request, actor) },
     "flavor-candidates": { methods: ["POST"], body: true, run: (body, actor) => flavorCandidates(body, actor) },
     "flavor-compose": { methods: ["POST"], body: true, run: (body, actor) => flavorCompose(body, actor) },
   };

@@ -144,7 +144,7 @@ of that ingredient/preparation with verified stock covering the serve now, `buy`
 `FlavorError` (`conflict` / `invalid_arguments` / `not_supported` for dessert/food).
 
 `compose(index, candidate, {items, recipes, name, includeEconomics})` →
-`{name, type (Cocktail|Mocktail|Coffee), template, glass, technique, method[], garnish,
+`{name, type (Recipes category slug: signature-cocktail|mocktail|coffee), template, glass, technique, method[], garnish,
 yield: {quantity: 1, unit: 'serving'}, lines: [{item_id, item_name, quantity, unit, role,
 display, to_buy, ingredient_slug}], balance: {sweet, sour, bitter, dilution_pct, abv_est,
 volume_ml, final_volume_ml}, servings_possible, allergens, checks[], candidate_key, costing?}`.
@@ -174,7 +174,7 @@ snapshot RPC yields `unavailable` ("The flavour library is not available right n
 ### `recipe.draft` proposal kind
 
 Roles admin/manager, executable. Strict command:
-`{client_request_id, recipe{name, type: Cocktail|Mocktail|Coffee, glassware?, garnish?, method,
+`{client_request_id, recipe{name, type: signature-cocktail|mocktail|coffee, glassware?, garnish?, method,
 notes?, yield_quantity, yield_unit: 'serving', menu_price? (always null from Atlas), active,
 show_on_menu}, ingredients[1..20]{item_id?, item_name, quantity, unit (ml g each bottle can
 bunch l kg tsp tbsp), role, to_buy}, source{candidate_key, engine_version, snapshot_version?}}`
@@ -190,7 +190,7 @@ The SQL allow-list must include `recipe.draft` (migration `…_s95b_recipe_draft
 
 ## 7. atlas-ai routes
 
-All four are JSON actions of the existing `atlas-ai` function (`?action=`), need a signed-in
+All five are JSON actions of the existing `atlas-ai` function (`?action=`), need a signed-in
 active Atlas profile (Bearer JWT), **do not** need an OpenAI key or the Atlas AI switch
 (no model call, no turn counted), and run the tools through `gateway.runTool` (role check,
 strict arguments, redaction). Each call writes one `ai_tool_calls` audit row (no run or
@@ -236,6 +236,10 @@ true only when some linked item is verified at ≥ 2 × par; `high_margin` only 
 
 **`GET ?action=flavor-search&q=<text>&use=&limit=`** (`q` required, else 400)
 → `{ "results": [ { "id", "slug", "name", "family", "subfamily", "uses", "intensity", "alcoholic", "match": "exact|prefix|words|fuzzy", "matched_text", "score", "stock_status", "in_stock" } ], "total": 1, "summary", "evidence", "records", "unknown" }`
+
+**`GET ?action=flavor-substitutes&ingredient=<slug|name>&in_stock_only=true&limit=8`** (`ingredient` required, else 400)
+→ `{ "original": { …ingredient, "stock": { "status", "reason", "items", "possible_matches" } }, "substitutes": [ { "ingredient": {…}, "score", "basis": "recorded|profile", "evidence_type", "provider", "confidence", "explanation", "aroma_similarity", "taste_similarity", "differences": ["sweeter", …], "adjustments": [ … ], "stock_status", "in_stock" } ], "total", "summary", "evidence", "records", "unknown" }`
+(`basis: "profile"` rows are calculated similarity, `evidence_type: null` — never a recorded pairing.)
 
 **`POST ?action=flavor-candidates`**
 
@@ -288,7 +292,7 @@ For bartenders and viewers `scores.economics` is `null` and no cost appears anyw
                              "will_not_change": ["It is not on service and not on the menu until a manager activates it in Recipes.", "No existing recipe is changed.", "Stock, items, costs, suppliers and purchasing do not change."],
                              "route": "#recipes" },
                 "required_roles": ["admin", "manager"], "expires_at": "…", "status": "proposed" },
-  "draft": { "name": "Orange Gin Sour", "type": "Cocktail", "template": "sour", "glass": "Coupe", "technique": "shaken", "method": ["…"],
+  "draft": { "name": "Orange Gin Sour", "type": "signature-cocktail", "template": "sour", "glass": "Coupe", "technique": "shaken", "method": ["…"],
              "garnish": "lemon peel (Lemons)", "yield": { "quantity": 1, "unit": "serving" }, "lines": [ … ],
              "balance": { "sweet": 1, "sour": 1.25, "bitter": 1, "dilution_pct": 22, "abv_est": 25.8, "volume_ml": 100, "final_volume_ml": 122 },
              "servings_possible": 28, "allergens": [], "checks": [ … ], "candidate_key": "v1|…", "costing": { … } },

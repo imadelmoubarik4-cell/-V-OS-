@@ -195,7 +195,7 @@ test('every event a module listens for is actually emitted', () => {
 });
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261003-bot1"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261005-fi1"><\/script>\s*<script src="config\.js"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
   assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine, health: window\.AtlasData\.health\(\) \}\);\s+\}/);
@@ -242,10 +242,17 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // The Atlas AI robot (atlas-bot.js) replaced the sparkles assistant icon in
   // these scripts; atlas-ai.js also carries the S91b live voice lease.
-  for (const file of ['atlas-chrome.js', 'atlas-inventory.js', 'atlas-shell.js',
-    'knowledge-workspace.js', 'recipes.js']) {
+  for (const file of ['atlas-chrome.js', 'atlas-inventory.js', 'knowledge-workspace.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
   }
+  // Flavor Intelligence (S95): the #recipes/flavor route (atlas-shell.js), the
+  // Recipes "Create with Atlas" entry (recipes.js), the Flavor Map
+  // (flavor-map.js, loaded right after recipes.js), its styles in recipes.css,
+  // and the recipe.draft approval card (atlas-ai.js).
+  for (const file of ['atlas-shell.js', 'recipes.js', 'flavor-map.js', 'atlas-ai.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261005-fi1"></script>`), file);
+  }
+  assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261005-fi1"></script>\n<script src="assets/js/flavor-map.js?v=20261005-fi1"></script>'), 'flavor-map.js right after recipes.js');
   // Robot review follow-up: one WebGL probe, context loss, live reduced
   // motion, idle pause (atlas-bot.js); the offline quick answer keeps the
   // sparkles icon (atlas-palette.js).
@@ -256,13 +263,13 @@ test('changed scripts carry the S88 cache key', () => {
   // wake, listening, thinking, answering, success, attention, error), the
   // sleep sprite frame and the rebuilt scene (atlas-bot.js); atlas-ai.js
   // reports what Atlas is doing to it and still carries the S91b voice lease.
-  for (const file of ['atlas-bot.js', 'atlas-ai.js']) {
+  for (const file of ['atlas-bot.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261004-bot6"></script>`), file);
   }
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
 
-  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">'), 'recipes.css');
+  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20261005-fi1">'), 'recipes.css');
   const config = read('apps/web/config.js');
   // The Atlas AI robot replaced the assistant icon in these lazily loaded scripts.
   // (marketing-workspace.js carries the same change under its S94 key below.)
@@ -503,6 +510,9 @@ test('routes follow the spec table, keep legacy aliases working and round-trip t
   assert.deepEqual(route('#reports/stock'), ['reports', { section: 'stock' }]);
   assert.deepEqual(route('#settings/notifications'), ['settings', { section: 'notifications' }]);
   assert.deepEqual(route('#recipes/r1/edit'), ['recipes', { recipe: 'r1', edit: '1' }]);
+  // Flavor Intelligence: #recipes/flavor is the Flavor Map, never a recipe id.
+  assert.deepEqual(route('#recipes/flavor'), ['recipes', { section: 'flavor' }]);
+  assert.deepEqual(route('#recipes/flavor/london-dry-gin'), ['recipes', { section: 'flavor', ingredient: 'london-dry-gin' }]);
   assert.deepEqual(route('#knowledge/required'), ['knowledge', { section: 'required' }]);
   assert.deepEqual(route('#knowledge/a1'), ['knowledge', { article: 'a1' }]);
   // Legacy aliases.
@@ -531,7 +541,9 @@ test('routes follow the spec table, keep legacy aliases working and round-trip t
     ['suppliers', { section: 'deliveries' }, '#purchasing/deliveries'], ['inventory', { section: 'stock-count' }, '#inventory/counts'],
     ['inventory', { item: 'abc' }, '#inventory/item/abc'], ['movements', {}, '#inventory/movements'], ['imports', {}, '#data'],
     ['sprint3-review', {}, '#data/import-review'], ['system', {}, '#settings/system'], ['reports', { section: 'waste' }, '#reports/waste'],
-    ['settings', { section: 'notifications' }, '#settings/notifications'], ['inventory', { filter: 'below-par' }, '#inventory?filter=below-par']
+    ['settings', { section: 'notifications' }, '#settings/notifications'], ['inventory', { filter: 'below-par' }, '#inventory?filter=below-par'],
+    ['recipes', { section: 'flavor' }, '#recipes/flavor'], ['recipes', { section: 'flavor', ingredient: 'lemon' }, '#recipes/flavor/lemon'],
+    ['recipes', { recipe: 'r1' }, '#recipes/r1']
   ];
   for (const [view, params, expected] of cases) {
     assert.equal(shell.href(view, params), expected);
