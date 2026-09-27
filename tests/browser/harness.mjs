@@ -242,8 +242,11 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
 
   if (signedIn) {
     const session = sessionFor(user);
+    // A tab a test has signed out (sessionStorage atlas:harness-signed-out)
+    // gets no fixture session back when it reloads: localStorage is shared
+    // by the tabs, so that would sign the other tabs back in.
     await context.addInitScript(([key, value]) => {
-      try { window.localStorage.setItem(key, value); } catch { /* storage unavailable */ }
+      try { if (window.sessionStorage.getItem('atlas:harness-signed-out') !== '1') window.localStorage.setItem(key, value); } catch { /* storage unavailable */ }
     }, [`sb-${PROJECT_REF}-auth-token`, JSON.stringify(session)]);
   }
 
