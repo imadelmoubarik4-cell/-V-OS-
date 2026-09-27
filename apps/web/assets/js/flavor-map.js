@@ -201,6 +201,9 @@
     window.AtlasChrome?.setTopBar?.({ title: 'Flavor Map', back: '#recipes' });
     if (!fresh && state.data && slug && state.data.center?.slug === slug) { render(); return; }
     if (state.data?.center?.slug && slug !== state.data.center.slug) state.previousCenter = state.data.center.slug;
+    // Evidence chips depend on the ingredient, so its filter never carries
+    // over to another centre (a hidden chip must not hide pairings).
+    if (slug !== state.slug) state.filters.evidence = [];
     state.slug = slug;
     load();
   }
@@ -218,6 +221,7 @@
     state.error = null;
     state.selected = null;
     state.previousCenter = null;
+    state.filters = { use: '', inStock: false, evidence: [] };
     state.search = { query: '', results: [], open: false, timer: 0, seq: state.search.seq + 1, error: null, active: -1 };
   }
 
@@ -242,6 +246,10 @@
         return;
       }
       state.data = data;
+      // A filter the server no longer offers has no chip, so it is dropped.
+      const offered = data.filters_available || {};
+      if (state.filters.inStock && offered.in_stock_only !== true) state.filters.inStock = false;
+      if (state.filters.use && Array.isArray(offered.uses) && !offered.uses.includes(state.filters.use)) state.filters.use = '';
       const slugs = (data.edges || []).map((edge) => edge.target);
       const keep = [state.previousCenter, state.selected].find((slug) => slug && slugs.includes(slug));
       state.selected = keep || slugs[0] || null;
@@ -273,18 +281,18 @@
     const chips = [];
     if (uses.length) {
       chips.push(`<div class="atlas-chips flavor-map__filter-group" role="group" aria-label="Used in">
-        <button type="button" class="atlas-chip" aria-pressed="${!state.filters.use}" data-flavor-use="">All</button>
-        ${uses.map(([key, label]) => `<button type="button" class="atlas-chip" aria-pressed="${state.filters.use === key}" data-flavor-use="${key}">${label}</button>`).join('')}
+        <button type="button" class="atlas-chip" aria-pressed="${!state.filters.use}" id="flavor-filter-use-all" data-flavor-use="">All</button>
+        ${uses.map(([key, label]) => `<button type="button" class="atlas-chip" aria-pressed="${state.filters.use === key}" id="flavor-filter-use-${key}" data-flavor-use="${key}">${label}</button>`).join('')}
       </div>`);
     }
     const extra = [];
-    if (available.in_stock_only === true) extra.push(`<button type="button" class="atlas-chip" aria-pressed="${state.filters.inStock}" data-flavor-instock><i data-lucide="package-check"></i>In stock only</button>`);
+    if (available.in_stock_only === true) extra.push(`<button type="button" class="atlas-chip" aria-pressed="${state.filters.inStock}" id="flavor-filter-instock" data-flavor-instock><i data-lucide="package-check"></i>In stock only</button>`);
     // One evidence type is not a choice: the chips appear only when the
     // server has pairings of more than one type for this ingredient.
     if (evidence.length > 1) {
       evidence.forEach((key) => {
         const on = !state.filters.evidence.length || state.filters.evidence.includes(key);
-        extra.push(`<button type="button" class="atlas-chip" aria-pressed="${on}" data-flavor-evidence="${key}" title="${escape(EVIDENCE[key].help)}">${escape(EVIDENCE[key].label)}</button>`);
+        extra.push(`<button type="button" class="atlas-chip" aria-pressed="${on}" id="flavor-filter-evidence-${key}" data-flavor-evidence="${key}" title="${escape(EVIDENCE[key].help)}">${escape(EVIDENCE[key].label)}</button>`);
       });
     }
     if (extra.length) chips.push(`<div class="atlas-chips flavor-map__filter-group" role="group" aria-label="Stock and evidence">${extra.join('')}</div>`);
@@ -368,7 +376,10 @@
     const entry = state.data?.stock?.[slug];
     const status = entry?.status || nodeFor(slug)?.stock_status || 'unknown';
     const items = (entry?.items || []).map((item) => {
-      const quantity = item.available && Number.isFinite(Number(item.verified_quantity)) ? `${item.verified_quantity} ${item.unit || ''} verified` : item.freshness && item.freshness !== 'current' ? `count ${item.freshness}` : 'no current count';
+      const counted = item.verified_quantity !== null && item.verified_quantity !== undefined && item.verified_quantity !== '' && Number.isFinite(Number(item.verified_quantity));
+      // A current verified count (including a verified 0) is shown as counted;
+      // only a missing or expired count reads as unknown.
+      const quantity = counted && (item.available || item.freshness === 'current') ? `${Number(item.verified_quantity)} ${item.unit || ''} verified` : item.freshness && item.freshness !== 'current' ? `count ${item.freshness}` : 'no current count';
       return `<li>${escape(item.name)} <span class="recipe-muted">· ${escape(quantity.trim())}</span></li>`;
     }).join('');
     const possible = (entry?.possible_matches || []).map((item) => `<li class="flavor-possible">Possible match: ${escape(item.name)} <span class="recipe-muted">· needs review, not counted as stock</span></li>`).join('');
@@ -598,6 +609,7 @@
     ideas: null,
     ideasError: null,
     busy: false,
+    approving: null,
     preview: null,
     previewError: null,
     nameError: null,
@@ -630,21 +642,36 @@
       id: 'flavor-create',
       className: 'flavor-create-layer',
       panel: '<section class="atlas-sheet atlas-sheet--wide atlas-sheet--full-phone flavor-create" data-modal-panel aria-labelledby="flavor-create-title"></section>',
-      onClose: onCreateClosed
+      onClose: onCreateClosed,
+      // A misplaced tap outside must not throw away a prepared draft.
+      closeOnBackdrop: false
     });
     flow.root.addEventListener('click', onCreateClick);
     flow.root.addEventListener('input', onCreateInput);
     flow.root.addEventListener('change', onCreateChange);
     flow.root.addEventListener('keydown', onCreateKeydown);
+    // While a request is in flight (approve above all) the sheet stays open:
+    // Escape is stopped here, before it reaches the modal's document listener
+    // (approveDraft keeps focus inside the sheet).
+    flow.root.addEventListener('keydown', holdEscapeWhileBusy);
     renderCreate();
     if (step === 'substitute' && flow.substitute.ingredient) loadSubstitutes();
+  }
+
+  function holdEscapeWhileBusy(event) {
+    if (event.key === 'Escape' && flow.busy && flow.root) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   }
 
   function onCreateClosed() {
     // Closing the sheet with a prepared, unapproved draft rejects it: nothing
     // is ever saved without Approve.
+    // Never reject a proposal whose approval is in flight or has an unknown
+    // outcome: it may already be saved.
     const pending = flow.preview?.proposal?.id;
-    if (pending && !flow.preview.approved && !flow.preview.proposal.spent) rejectProposal(pending);
+    if (pending && !flow.preview.approved && !flow.preview.proposal.spent && !flow.approving && !flow.preview.outcomeUnknown) rejectProposal(pending);
     flow.root = null;
     flow.preview = null;
   }
@@ -668,9 +695,9 @@
     if (!panel) return;
     const focusedId = document.activeElement && panel.contains(document.activeElement) ? document.activeElement.id : '';
     const [title, desc] = sheetTitle();
-    const back = flow.step !== 'choose' && canManage() ? `<button type="button" class="atlas-icon-btn flavor-create__back" data-create-back aria-label="Back"><i data-lucide="arrow-left"></i></button>` : '';
+    const back = flow.step !== 'choose' && canManage() ? `<button type="button" class="atlas-icon-btn flavor-create__back" data-create-back aria-label="Back"${flow.busy ? ' disabled' : ''}><i data-lucide="arrow-left"></i></button>` : '';
     panel.innerHTML = `<span class="atlas-sheet__grabber"></span>
-      <header class="atlas-sheet__head">${back}<div><h2 class="atlas-sheet__title" id="flavor-create-title" tabindex="-1">${escape(title)}</h2><p class="atlas-sheet__desc">${escape(desc)}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close><i data-lucide="x"></i></button></header>
+      <header class="atlas-sheet__head">${back}<div><h2 class="atlas-sheet__title" id="flavor-create-title" tabindex="-1">${escape(title)}</h2><p class="atlas-sheet__desc">${escape(desc)}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close${flow.busy ? ' disabled' : ''}><i data-lucide="x"></i></button></header>
       <div class="atlas-sheet__body flavor-create__body" data-step="${escape(flow.step)}">${stepMarkup()}</div>
       ${footMarkup()}`;
     icons();
@@ -705,7 +732,7 @@
       return `<footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="button" class="atlas-btn atlas-btn--primary${flow.busy ? ' is-loading' : ''}" data-create-ideas${flow.busy ? ' disabled aria-busy="true"' : ''}><i data-lucide="sparkles"></i>Show ideas</button></footer>`;
     }
     if (flow.step === 'preview' && flow.preview) {
-      const blocked = Boolean(flow.nameError) || flow.preview.approved;
+      const blocked = Boolean(flow.nameError) || flow.preview.approved || renamePending();
       return `<footer class="atlas-sheet__foot flavor-create__approve"><button type="button" class="atlas-btn atlas-btn--ghost" data-create-discard${flow.busy ? ' disabled' : ''}>Discard</button><button type="button" class="atlas-btn atlas-btn--primary${flow.busy ? ' is-loading' : ''}" data-create-approve${flow.busy || blocked ? ' disabled' : ''}${flow.busy ? ' aria-busy="true"' : ''}><i data-lucide="check"></i>Approve and save draft</button></footer>`;
     }
     return '';
@@ -739,16 +766,16 @@
     const goals = GOALS.filter(([key]) => manager || !['low_cost', 'high_margin'].includes(key));
     return `<div class="flavor-brief">
       <fieldset class="flavor-brief__group"><legend class="atlas-label">What to make</legend>
-        <div class="atlas-segmented flavor-brief__types" role="group" aria-label="What to make">${TYPES.map(([key, label]) => `<button type="button" aria-pressed="${brief.type === key}" data-brief-type="${key}">${label}</button>`).join('')}</div>
+        <div class="atlas-segmented flavor-brief__types" role="group" aria-label="What to make">${TYPES.map(([key, label]) => `<button type="button" aria-pressed="${brief.type === key}" id="flavor-brief-type-${key}" data-brief-type="${key}">${label}</button>`).join('')}</div>
         ${['dessert', 'food'].includes(brief.type) ? '<p class="atlas-field__help">Dessert and food ideas are pairing notes. Atlas drafts recipes for drinks only.</p>' : ''}
       </fieldset>
-      <div class="atlas-toggle-row flavor-brief__toggle"><div><p class="atlas-toggle-row__label" id="flavor-brief-stock-label">No new purchases</p><p class="atlas-toggle-row__help">Use only verified current stock. Turn off to allow ingredients to buy; they are clearly marked.</p></div><button type="button" class="atlas-toggle" role="switch" aria-checked="${brief.noNewPurchases}" aria-labelledby="flavor-brief-stock-label" data-brief-stock></button></div>
+      <div class="atlas-toggle-row flavor-brief__toggle"><div><p class="atlas-toggle-row__label" id="flavor-brief-stock-label">No new purchases</p><p class="atlas-toggle-row__help">Use only verified current stock. Turn off to allow ingredients to buy; they are clearly marked.</p></div><button type="button" class="atlas-toggle" role="switch" aria-checked="${brief.noNewPurchases}" aria-labelledby="flavor-brief-stock-label" id="flavor-brief-stock" data-brief-stock></button></div>
       <div class="atlas-field"><span class="atlas-label" id="flavor-brief-seed-label">Must use <span class="optional">Optional, up to 4</span></span>
         ${brief.seed.length ? `<div class="atlas-chips" aria-labelledby="flavor-brief-seed-label">${chipList(brief.seed, 'data-brief-unseed')}</div>` : ''}
         ${brief.seed.length < 4 ? pickerMarkup('seed', 'Add an ingredient every idea must use', 'Add an ingredient, e.g. rhubarb') : ''}
       </div>
       <div class="atlas-field"><span class="atlas-label" id="flavor-brief-exclude-label">Leave out <span class="optional">Optional</span></span>
-        <div class="atlas-chips" role="group" aria-labelledby="flavor-brief-exclude-label">${FAMILIES.map(([key, label]) => `<button type="button" class="atlas-chip" aria-pressed="${brief.excludeFamilies.includes(key)}" data-brief-family="${key}">${label}</button>`).join('')}</div>
+        <div class="atlas-chips" role="group" aria-labelledby="flavor-brief-exclude-label">${FAMILIES.map(([key, label]) => `<button type="button" class="atlas-chip" aria-pressed="${brief.excludeFamilies.includes(key)}" id="flavor-brief-family-${key}" data-brief-family="${key}">${label}</button>`).join('')}</div>
         ${brief.excludeIngredients.length ? `<div class="atlas-chips">${chipList(brief.excludeIngredients, 'data-brief-unexclude')}</div>` : ''}
         ${brief.excludeIngredients.length < 10 ? pickerMarkup('exclude', 'Leave out an ingredient', 'Leave out an ingredient, e.g. amaretto') : ''}
       </div>
@@ -791,7 +818,7 @@
       <div class="flavor-idea__scores">
         <div class="flavor-idea__group"><h4>Flavour</h4><dl>${scoreRow('Compatibility', percent(flavor.compatibility))}${scoreRow('Balance', percent(flavor.balance))}${flavor.texture != null ? scoreRow('Texture', percent(flavor.texture)) : ''}</dl></div>
         <div class="flavor-idea__group"><h4>Inventory</h4><dl>${scoreRow('From stock', percent(inventory.coverage))}${scoreRow('Serves possible', Number.isFinite(Number(risk.servings_possible)) ? String(risk.servings_possible) : '—', risk.limiting_item ? `limited by ${risk.limiting_item}` : '')}</dl></div>
-        <div class="flavor-idea__group"><h4>Operations</h4><dl>${scoreRow('Steps', String(operations.steps ?? '—'))}${scoreRow('Batching', escape(operations.batching || '—'))}</dl></div>
+        <div class="flavor-idea__group"><h4>Operations</h4><dl>${scoreRow('Steps', escape(String(operations.steps ?? '—')))}${scoreRow('Batching', escape(operations.batching || '—'))}</dl></div>
         <div class="flavor-idea__group"><h4>Menu</h4><dl>${scoreRow('New to the menu', percent(menu.novelty), closest)}</dl></div>
         ${economy}
       </div>
@@ -843,7 +870,7 @@
       <p class="flavor-draft__promise"><i data-lucide="shield-check"></i>Saved as an inactive draft recipe — not on the menu. Nothing is saved until you tap Approve.</p>
       <div class="atlas-field flavor-draft__name"><label class="atlas-label" for="flavor-draft-name">Recipe name</label>
         <div class="flavor-draft__rename"><input class="atlas-input" id="flavor-draft-name" maxlength="120" value="${escape(flow.renameValue ?? draft.name ?? '')}"${flow.nameError ? ' aria-invalid="true" aria-describedby="flavor-draft-name-error"' : ''}><button type="button" class="atlas-btn atlas-btn--secondary" data-create-rename${flow.busy ? ' disabled' : ''}>Use this name</button></div>
-        ${flow.nameError ? `<p class="atlas-field__error" id="flavor-draft-name-error" role="alert">${escape(flow.nameError)}</p>` : '<p class="atlas-field__help">Renaming prepares the draft again with the new name.</p>'}
+        ${flow.nameError ? `<p class="atlas-field__error" id="flavor-draft-name-error" role="alert">${escape(flow.nameError)}</p>` : `<p class="atlas-field__help" id="flavor-draft-name-help" aria-live="polite">${renamePending() ? 'Tap “Use this name” to prepare the draft with this name before approving.' : 'Renaming prepares the draft again with the new name.'}</p>`}
       </div>
       <ul class="recipe-build">${lines}</ul>
       ${method ? `<section class="recipe-section"><h4 class="flavor-detail__label">Method</h4>${method}</section>` : ''}
@@ -927,10 +954,21 @@
     if (event.target.matches?.('[data-brief-goal]')) flow.brief.goal = event.target.value;
   }
 
+  // True while the name field holds a name the prepared draft doesn't have:
+  // Approve waits for "Use this name" so the saved name is the one shown.
+  function renamePending() {
+    return flow.renameValue !== null && flow.renameValue !== undefined
+      && flow.renameValue.trim() !== String(flow.preview?.draft?.name ?? '').trim();
+  }
+
   function onCreateInput(event) {
     const input = event.target;
     if (input.id === 'flavor-draft-name') {
       flow.renameValue = input.value;
+      const approve = flow.root?.querySelector('[data-create-approve]');
+      if (approve) approve.disabled = flow.busy || Boolean(flow.nameError) || Boolean(flow.preview?.approved) || renamePending();
+      const help = document.getElementById('flavor-draft-name-help');
+      if (help) help.textContent = renamePending() ? 'Tap “Use this name” to prepare the draft with this name before approving.' : 'Renaming prepares the draft again with the new name.';
       return;
     }
     const kind = input.dataset?.picker;
@@ -1117,13 +1155,17 @@
 
   async function approveDraft() {
     const preview = flow.preview;
-    if (!preview?.proposal?.id || flow.busy || preview.approved) return;
+    if (!preview?.proposal?.id || flow.busy || preview.approved || renamePending()) return;
     flow.busy = true;
+    flow.approving = preview.proposal.id;
     flow.previewError = null;
     renderCreate();
+    // The Approve button is now disabled: keep focus in the sheet (on its
+    // title) so the keyboard, Escape included, still reaches the sheet.
+    document.getElementById('flavor-create-title')?.focus({ preventScroll: true });
     try {
       const result = await api('execute-action', { body: { action_id: preview.proposal.id }, messages: APPROVE_MESSAGES });
-      if (!flow.root) return;
+      flow.approving = null;
       flow.busy = false;
       if (result?.ok === true) {
         preview.approved = true;
@@ -1133,6 +1175,10 @@
         closeCreate();
         try { await window.atlasReloadData?.(); } catch { /* the recipe page shows its own load state */ }
         navigate(route);
+        return;
+      }
+      if (!flow.root || flow.preview !== preview) {
+        toast(RESULT_MESSAGES[String(result?.error?.code || '')] || 'The draft couldn’t be saved. Nothing was saved.', 'warning');
         return;
       }
       const code = String(result?.error?.code || 'failed');
@@ -1150,22 +1196,31 @@
       preview.approved = false;
       renderCreate();
     } catch (error) {
-      if (!flow.root) return;
+      flow.approving = null;
       flow.busy = false;
+      // The request may have reached Atlas: the outcome is unknown, so this
+      // proposal is never rejected and the copy never claims nothing was saved.
+      preview.outcomeUnknown = true;
+      if (!flow.root || flow.preview !== preview) {
+        toast('Atlas couldn’t confirm the approval. Check Recipes › Drafts before preparing it again.', 'warning');
+        return;
+      }
       flow.previewError = message(error, APPROVE_MESSAGES.unavailable);
       renderCreate();
     }
   }
 
   async function discardDraft() {
+    if (flow.busy) return;
     const id = flow.preview?.proposal?.id;
     const spent = flow.preview?.proposal?.spent;
+    const unknown = Boolean(flow.preview?.outcomeUnknown);
     flow.preview = null;
     flow.nameError = null;
     flow.previewError = null;
     flow.renameValue = null;
-    if (id && !spent) await rejectProposal(id);
-    toast('Draft discarded. Nothing was saved.', 'info');
+    if (id && !spent && !unknown) await rejectProposal(id);
+    toast(unknown ? 'Draft closed. If the approval went through, the recipe is in Recipes › Drafts.' : 'Draft discarded. Nothing was saved.', 'info');
     if (flow.root) goStep(flow.ideas ? 'ideas' : 'brief');
   }
 

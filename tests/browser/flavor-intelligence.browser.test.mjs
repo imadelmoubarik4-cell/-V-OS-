@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { harnessAvailable, launchAtlas, settle, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, settle, until, USERS } from './harness.mjs';
 import { flavorBackend, flavorCalls } from './flavor-fixtures.mjs';
 import { request as aiRequest, USERS as AI_USERS } from '../node/helpers/atlas-ai-harness.mjs';
 import { IDS } from '../ai-evals/fixtures/world.mjs';
@@ -71,6 +71,8 @@ test('Flavor Map at 1440×900: deep link, ring ⇔ list, pair detail, stock stat
     assert.match(negroni, /Atlas-learned/);
     assert.match(await page.textContent('#flavor-detail .flavor-detail__section:nth-of-type(2)'), /Negroni/, 'existing recipe usage');
     assert.match(negroni, /Not in stock/, 'verified zero reads as not in stock');
+    assert.match(negroni, /Campari · 0 \S+ verified/, 'a verified zero is shown as counted, not as unknown');
+    assert.doesNotMatch(negroni, /Campari · no current count/);
     assert.equal(await page.getAttribute('.flavor-map__node[data-flavor-center="red-bitter-aperitivo"]', 'data-stock'), 'out');
     assert.equal(await page.getAttribute('.flavor-map__node[data-flavor-center="basil"]', 'data-stock'), 'not_stocked');
     // Filters come from filters_available; the map has both evidence types.
@@ -81,9 +83,11 @@ test('Flavor Map at 1440×900: deep link, ring ⇔ list, pair detail, stock stat
     await shot(page, 'flavor-desktop-1440x900');
     await noHorizontalScroll(page, '1440×900');
     // In stock only: the server filters.
-    await page.click('.flavor-map__filters [data-flavor-instock]');
+    await page.focus('.flavor-map__filters [data-flavor-instock]');
+    await page.keyboard.press('Enter');
     await page.waitForFunction(() => !document.querySelector('.flavor-map.is-loading') && document.querySelector('.flavor-map__filters [data-flavor-instock]')?.getAttribute('aria-pressed') === 'true');
     await settle(page);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'flavor-filter-instock', 'keyboard focus stays on the filter after it re-renders');
     assert.match(flavorCalls(backend, 'flavor-map').at(-1).search, /in_stock_only=true/);
     const stocks = await page.$$eval('.flavor-map__node', (nodes) => nodes.map((node) => node.dataset.stock));
     assert.ok(stocks.length && stocks.every((stock) => stock === 'available'), stocks.join(','));
@@ -299,6 +303,8 @@ test('Create with Atlas: Discard rejects the proposal and saves nothing', { skip
     await page.waitForSelector('.flavor-draft');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.getElementById('flavor-create'));
+    // The reject is sent as the sheet closes (not awaited by the page).
+    await until(() => flavorCalls(backend, 'reject-action').length >= 2, { message: 'the closed draft is rejected' });
     await settle(page);
     assert.equal(flavorCalls(backend, 'reject-action').length, 2);
     assert.deepEqual(backend.writes(), []);
@@ -393,5 +399,41 @@ test('Find substitutions from the map and Create recipe with this seeds both ing
     await page.waitForSelector('.flavor-idea, #flavor-create .atlas-empty');
     assert.deepEqual(flavorCalls(backend, 'flavor-candidates').at(-1).body.seed, ['london-dry-gin', 'lemon']);
     await noHorizontalScroll(page, 'ideas sheet');
+  } finally { await close(); }
+});
+
+test('Create with Atlas: an unapplied rename blocks Approve; while Approve runs the sheet stays open and nothing is rejected', { skip }, async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const backend = flavorBackend({ overrides: { 'execute-action': async () => { await gate; return undefined; } } });
+  const { page, close, record } = await launch(backend, { hash: '#recipes' });
+  try {
+    await prepareFirstDraft(page);
+    const name = (await page.inputValue('#flavor-draft-name')).trim();
+    // A new name typed but not applied: Approve waits for "Use this name".
+    await page.fill('#flavor-draft-name', `${name} Twilight`);
+    assert.equal(await page.isDisabled('[data-create-approve]'), true, 'Approve is blocked while the field shows a name the draft does not have');
+    assert.match(await page.textContent('#flavor-draft-name-help'), /Use this name/);
+    await page.fill('#flavor-draft-name', name);
+    assert.equal(await page.isDisabled('[data-create-approve]'), false);
+    // Approve in flight: Back and Close are disabled and Escape does nothing.
+    await page.click('[data-create-approve]');
+    await page.waitForFunction(() => document.querySelector('[data-create-approve]')?.getAttribute('aria-busy') === 'true');
+    assert.equal(await page.isDisabled('#flavor-create [data-modal-close]'), true);
+    assert.equal(await page.isDisabled('#flavor-create [data-create-back]'), true);
+    assert.equal(await page.isDisabled('[data-create-discard]'), true);
+    // Keyboard handlers run before press() returns: the sheet must still be open.
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => document.activeElement?.closest?.('#flavor-create') !== null), true, 'focus stays in the sheet while approving');
+    assert.ok(await page.$('#flavor-create'), 'the sheet stays open while approving');
+    assert.equal(flavorCalls(backend, 'reject-action').length, 0, 'an approval in flight is never rejected');
+    release();
+    await hashIs(page, /^#recipes\/[0-9a-f-]{36}$/);
+    assert.equal(flavorCalls(backend, 'reject-action').length, 0);
+    const write = backend.writes().find((entry) => entry.name === 'atlas_save_recipe');
+    assert.equal(write.args.p_recipe.name, name, 'saved with the name shown');
+    assert.match(await page.textContent('#atlas-toast-region'), /saved\. It is inactive and not on the menu/);
+    assert.doesNotMatch(await page.textContent('#atlas-toast-region'), /Nothing was saved/);
+    assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });

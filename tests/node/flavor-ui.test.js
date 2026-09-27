@@ -36,8 +36,15 @@ test('every call goes to the atlas-ai flavour routes through AtlasApi.request', 
 });
 
 test('nothing is saved without Approve: closing or discarding rejects the prepared draft', () => {
-  assert.match(flavor, /function onCreateClosed\(\) \{[\s\S]*?if \(pending && !flow\.preview\.approved && !flow\.preview\.proposal\.spent\) rejectProposal\(pending\);/);
-  assert.match(flavor, /async function discardDraft\(\) \{[\s\S]*?await rejectProposal\(id\);[\s\S]*?Nothing was saved\./);
+  assert.match(flavor, /function onCreateClosed\(\) \{[\s\S]*?if \(pending && !flow\.preview\.approved && !flow\.preview\.proposal\.spent && !flow\.approving && !flow\.preview\.outcomeUnknown\) rejectProposal\(pending\);/);
+  assert.match(flavor, /async function discardDraft\(\) \{[\s\S]*?if \(flow\.busy\) return;[\s\S]*?if \(id && !spent && !unknown\) await rejectProposal\(id\);[\s\S]*?Nothing was saved\./);
+  // An approval in flight or with an unknown outcome is never rejected, and
+  // Approve waits for an unapplied rename.
+  assert.match(flavor, /closeOnBackdrop: false/);
+  assert.match(flavor, /event\.key === 'Escape' && flow\.busy && flow\.root/);
+  assert.match(flavor, /flow\.root\.addEventListener\('keydown', holdEscapeWhileBusy\)/);
+  assert.match(flavor, /preview\.outcomeUnknown = true;/);
+  assert.match(flavor, /const blocked = Boolean\(flow\.nameError\) \|\| flow\.preview\.approved \|\| renamePending\(\);/);
   assert.match(flavor, /Saved as an inactive draft recipe — not on the menu\./);
   assert.match(flavor, /code === 'name_taken'/);
   // A stale idea (409) refreshes the ideas.
