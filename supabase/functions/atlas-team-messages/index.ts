@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
+import { withSenderNames } from "./identity.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -54,13 +55,24 @@ function jsonResponse(value: unknown, status = 200): Response {
       ...CORS_HEADERS,
       "content-type": "application/json; charset=utf-8",
       "x-content-type-options": "nosniff",
-      "x-atlas-team-messages-version": "0.2.0-s34",
+      "x-atlas-team-messages-version": "0.3.0-s93",
     },
   });
 }
 
 function labelForProfile(profile: Partial<AtlasProfile> | null | undefined): string {
   return actorLabel(profile);
+}
+
+// S93: the only member shape that leaves the gateway. The roster is read with
+// email (for ordering and the S87 label fallback), but an email address never
+// leaves the gateway: every response that carries members goes through here.
+function memberPayload(profile: AtlasProfile) {
+  return {
+    id: profile.id,
+    label: labelForProfile(profile),
+    role: profile.role,
+  };
 }
 
 function staffPayload(context: AtlasContext) {
@@ -291,7 +303,7 @@ function formatShiftLabel(shift: any, profiles: AtlasProfile[]): string {
 
 async function messageSnapshot(context: AtlasContext, channelKey: string, limit: number) {
   const members = await activeProfiles(context);
-  const [snapshot, starredChannels] = await Promise.all([
+  const [rawSnapshot, starredChannels] = await Promise.all([
     branchRpc("atlas_team_messages_snapshot", {
       p_user_id: context.user.id,
       p_user_role: context.profile.role,
@@ -301,6 +313,10 @@ async function messageSnapshot(context: AtlasContext, channelKey: string, limit:
     }),
     branchRpc("atlas_team_conversation_stars_snapshot", { p_user_id: context.user.id }),
   ]);
+  // S93: every message, read receipt and conversation preview carries the
+  // sender's live name (sender_id → roster display name → stored name →
+  // neutral label); email-shaped stored labels never leave the gateway.
+  const snapshot = withSenderNames(rawSnapshot, members);
   const starred = new Set(Array.isArray(starredChannels) ? starredChannels.map(String) : []);
   if (Array.isArray(snapshot?.channels)) {
     snapshot.channels = snapshot.channels.map((channel: Record<string, unknown>) => ({
@@ -309,7 +325,7 @@ async function messageSnapshot(context: AtlasContext, channelKey: string, limit:
     })).sort((left: Record<string, unknown>, right: Record<string, unknown>) =>
       Number(Boolean(right.starred)) - Number(Boolean(left.starred)));
   }
-  return { snapshot, members };
+  return { snapshot, members: members.map(memberPayload) };
 }
 
 async function inventoryItems(context: AtlasContext): Promise<any[]> {
@@ -512,11 +528,7 @@ Deno.serve(async (request: Request) => {
         return jsonResponse({
           snapshot,
           staff: staffPayload(context),
-          members: members.map((member) => ({
-            id: member.id,
-            label: labelForProfile(member),
-            role: member.role,
-          })),
+          members,
           policy: {
             delivery_mode: Deno.env.get("ATLAS_PUSH_DELIVERY_ENABLED") === "true" ? "push_and_secure_polling" : "secure_polling",
             browser_notifications_enabled: Deno.env.get("ATLAS_PUSH_DELIVERY_ENABLED") === "true",

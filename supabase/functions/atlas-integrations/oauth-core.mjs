@@ -4,11 +4,43 @@
 //
 // Nothing in this module reads environment variables or talks to the network.
 
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
+// S94B: the AES-256-GCM helpers, hex/base64 helpers and provider-error
+// sanitising live in ../_shared/integrations/crypto.mjs (shared with the
+// publishing credential module) and are re-exported here unchanged.
+import {
+  AES_KEY_BYTES,
+  AES_NONCE_BYTES,
+  base64Decode,
+  bytesToHex,
+  credentialAad,
+  decryptJson,
+  encryptJson,
+  hexToBytes,
+  importAesKey,
+  parseKeyMaterial,
+  randomBytes,
+  resourceCredentialAad,
+  sanitizeProviderError,
+} from "../_shared/integrations/crypto.mjs";
 
-export const AES_KEY_BYTES = 32;
-export const AES_NONCE_BYTES = 12;
+export {
+  AES_KEY_BYTES,
+  AES_NONCE_BYTES,
+  base64Decode,
+  bytesToHex,
+  credentialAad,
+  decryptJson,
+  encryptJson,
+  hexToBytes,
+  importAesKey,
+  parseKeyMaterial,
+  randomBytes,
+  resourceCredentialAad,
+  sanitizeProviderError,
+};
+
+const encoder = new TextEncoder();
+
 export const STATE_BYTES = 32;
 export const PKCE_VERIFIER_BYTES = 48; // 64 base64url characters (RFC 7636: 43-128)
 export const STATE_TTL_SECONDS = 600;
@@ -17,12 +49,6 @@ function subtle() {
   const value = globalThis.crypto?.subtle;
   if (!value) throw new Error("WebCrypto is unavailable.");
   return value;
-}
-
-export function randomBytes(length) {
-  const bytes = new Uint8Array(length);
-  globalThis.crypto.getRandomValues(bytes);
-  return bytes;
 }
 
 export function base64UrlEncode(bytes) {
@@ -39,30 +65,6 @@ export function base64UrlDecode(value) {
   const binary = atob(padded);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return bytes;
-}
-
-export function base64Decode(value) {
-  if (typeof value !== "string" || !/^[A-Za-z0-9+/]+={0,2}$/.test(value.trim())) {
-    throw new Error("Invalid base64 value.");
-  }
-  const binary = atob(value.trim());
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return bytes;
-}
-
-export function bytesToHex(bytes) {
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-export function hexToBytes(value) {
-  const hex = String(value ?? "").replace(/^\\x/, "");
-  if (hex.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(hex)) throw new Error("Invalid hex value.");
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let index = 0; index < bytes.length; index += 1) {
-    bytes[index] = Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16);
-  }
   return bytes;
 }
 
@@ -130,47 +132,7 @@ export function createStateLedger(now = () => Date.now()) {
   };
 }
 
-// ---------------------------------------------------------------- AES-256-GCM
-
-export function parseKeyMaterial(base64Key) {
-  let bytes;
-  try {
-    bytes = base64Decode(String(base64Key ?? ""));
-  } catch {
-    throw new Error("Integration encryption key must be base64.");
-  }
-  if (bytes.length !== AES_KEY_BYTES) throw new Error("Integration encryption key must decode to 32 bytes.");
-  return bytes;
-}
-
-export async function importAesKey(base64Key) {
-  return subtle().importKey("raw", parseKeyMaterial(base64Key), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
-}
-
-export function credentialAad(providerKey, purpose) {
-  return `atlas-integrations|${providerKey}|${purpose}`;
-}
-
-export async function encryptJson(key, value, aad) {
-  const nonce = randomBytes(AES_NONCE_BYTES);
-  const ciphertext = new Uint8Array(await subtle().encrypt(
-    { name: "AES-GCM", iv: nonce, additionalData: encoder.encode(aad), tagLength: 128 },
-    key,
-    encoder.encode(JSON.stringify(value)),
-  ));
-  return { ciphertextHex: bytesToHex(ciphertext), nonceHex: bytesToHex(nonce) };
-}
-
-export async function decryptJson(key, ciphertextHex, nonceHex, aad) {
-  const nonce = hexToBytes(nonceHex);
-  if (nonce.length !== AES_NONCE_BYTES) throw new Error("Credential nonce is invalid.");
-  const plaintext = await subtle().decrypt(
-    { name: "AES-GCM", iv: nonce, additionalData: encoder.encode(aad), tagLength: 128 },
-    key,
-    hexToBytes(ciphertextHex),
-  );
-  return JSON.parse(decoder.decode(plaintext));
-}
+// AES-256-GCM: see ../_shared/integrations/crypto.mjs (re-exported above).
 
 // ---------------------------------------------------------------- redirect + return allow-lists
 
@@ -305,16 +267,4 @@ export function findSecretKeys(value, path = "$") {
     }
   }
   return hits;
-}
-
-// Provider error bodies can echo codes or tokens. Keep a short, printable,
-// token-free summary for last_connection_error and events.
-export function sanitizeProviderError(value) {
-  const text = String(value ?? "")
-    .replace(/[A-Za-z0-9._~+/-]{24,}={0,2}/g, "[redacted]")
-    .replace(/(access_token|refresh_token|code|client_secret|key)=([^&\s]+)/gi, "$1=[redacted]")
-    .replace(/[^\x20-\x7E]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.slice(0, 240) || "Provider request failed.";
 }

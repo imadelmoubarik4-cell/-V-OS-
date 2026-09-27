@@ -656,7 +656,7 @@
   }
 
   function detailHeadActions(recipe) {
-    return `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-recipe-ask><i data-lucide="sparkles"></i>Ask Atlas</button>${canManageCommercial() ? `<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#recipes/${escape(encodeURIComponent(recipe.id))}/edit"><i data-lucide="pencil"></i>Edit</a>` : ''}`;
+    return `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-recipe-ask>${window.AtlasBot ? window.AtlasBot.html({ size: 18 }) : '<i data-lucide="sparkles"></i>'}Ask Atlas</button>${canManageCommercial() ? `<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#recipes/${escape(encodeURIComponent(recipe.id))}/edit"><i data-lucide="pencil"></i>Edit</a>` : ''}`;
   }
 
   function openDetail(recipeId) {
@@ -675,7 +675,7 @@
       closeDetailSheet('route');
       state.phoneDetail = recipe.id;
       render();
-      window.AtlasChrome?.setTopBar?.({ title: recipe.name, back: '#recipes', actions: [{ icon: 'sparkles', label: 'Ask Atlas', run: () => askAbout(recipe) }] });
+      window.AtlasChrome?.setTopBar?.({ title: recipe.name, back: '#recipes', actions: [{ icon: 'atlas-bot', label: 'Ask Atlas', run: () => askAbout(recipe) }] });
       keepAwake(true);
       return;
     }
@@ -1522,7 +1522,7 @@
       run: (ctx = {}) => shell.navigate(`#recipes/${encodeURIComponent(ctx.record.id)}/edit`)
     });
     shell.actions?.register?.({
-      id: 'recipes.ask', label: 'Ask Atlas about this recipe', icon: 'sparkles', keywords: ['ask', 'recipe'],
+      id: 'recipes.ask', label: 'Ask Atlas about this recipe', icon: 'atlas-bot', keywords: ['ask', 'recipe'],
       forRecord: 'recipe', recordLabel: 'Ask Atlas about {name}',
       when: (ctx = {}) => Boolean(ctx.record?.type === 'recipe' && ctx.record?.id),
       run: (ctx = {}) => window.AtlasAI?.askAbout?.({ type: 'recipe', id: ctx.record.id, label: ctx.record.label || '' })

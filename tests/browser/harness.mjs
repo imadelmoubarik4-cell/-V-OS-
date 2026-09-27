@@ -228,14 +228,25 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
       return json(route, result ?? {});
     }
 
-    if (url.pathname.startsWith('/storage/v1/')) return json(route, {});
+    if (url.pathname.startsWith('/storage/v1/')) {
+      // fixtures.storage(entry, request) may answer Storage (S94A uploads):
+      // a body, { __status, body, headers }, { __raw: { status, contentType,
+      // body } } or null for the default 200 {}.
+      const result = typeof fixtures.storage === 'function' ? await fixtures.storage(entry, request) : null;
+      if (result && result.__raw) return route.fulfill({ status: result.__raw.status ?? 200, contentType: result.__raw.contentType || 'application/octet-stream', headers: { 'access-control-allow-origin': '*' }, body: result.__raw.body ?? '' });
+      if (result && result.__status) return route.fulfill({ status: result.__status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*', 'access-control-expose-headers': '*', ...(result.headers || {}) }, body: result.body === undefined ? '' : JSON.stringify(result.body) });
+      return json(route, result ?? {});
+    }
     return json(route, { error: 'unmocked' }, 404);
   }
 
   if (signedIn) {
     const session = sessionFor(user);
+    // A tab a test has signed out (sessionStorage atlas:harness-signed-out)
+    // gets no fixture session back when it reloads: localStorage is shared
+    // by the tabs, so that would sign the other tabs back in.
     await context.addInitScript(([key, value]) => {
-      try { window.localStorage.setItem(key, value); } catch { /* storage unavailable */ }
+      try { if (window.sessionStorage.getItem('atlas:harness-signed-out') !== '1') window.localStorage.setItem(key, value); } catch { /* storage unavailable */ }
     }, [`sb-${PROJECT_REF}-auth-token`, JSON.stringify(session)]);
   }
 

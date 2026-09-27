@@ -14,7 +14,9 @@ const minutesAgo = (minutes) => new Date(Date.parse(NOW) - minutes * 60000).toIS
 export const MEMBERS = [
   { id: USERS.admin.id, label: USERS.admin.display_name, role: 'admin' },
   { id: USERS.bartender.id, label: USERS.bartender.display_name, role: 'bartender' },
-  { id: 'c0ffee00-0000-4000-8000-000000000003', label: 'gunnar.karlsson@example.test', role: 'bartender' }
+  // The gateway labels the roster from profiles.display_name (S87, S92 sync from
+  // the Team name); it never sends an address.
+  { id: 'c0ffee00-0000-4000-8000-000000000003', label: 'Gunnar Karlsson', role: 'bartender' }
 ];
 
 function channel(key, name, description, extra = {}) {
@@ -46,12 +48,12 @@ export function messagesBackend({ user = USERS.admin, empty = false, status = 20
     general.unread_count = 2;
     general.last_read_at = minutesAgo(60);
   }
-  const backend = { calls: [], sent: [], threads, channels, status, sendStatus };
+  const backend = { calls: [], sent: [], threads, channels, status, sendStatus, members: MEMBERS };
   const snapshot = (key) => {
     channels.forEach((entry) => {
       const list = threads[entry.key];
       const last = list[list.length - 1];
-      entry.last_message = last ? { id: last.id, sender_label: last.sender_label, body: last.body.slice(0, 140), message_type: last.message_type, created_at: last.created_at, deleted: Boolean(last.deleted) } : null;
+      entry.last_message = last ? { id: last.id, sender_id: last.sender_id ?? null, sender_role: last.sender_role ?? null, sender_label: last.sender_label, ...(last.sender_name ? { sender_name: last.sender_name } : {}), body: last.body.slice(0, 140), message_type: last.message_type, created_at: last.created_at, deleted: Boolean(last.deleted) } : null;
     });
     const selected = channels.find((entry) => entry.key === key) || channels[0];
     return {
@@ -61,7 +63,7 @@ export function messagesBackend({ user = USERS.admin, empty = false, status = 20
         selected_channel_key: selected.key,
         summary: { total_unread: channels.reduce((sum, entry) => sum + entry.unread_count, 0), active_members: MEMBERS.length }
       },
-      members: MEMBERS,
+      members: backend.members,
       staff: { id: user.id, label: user.display_name, role: user.role, can_post: user.role !== 'viewer', can_announce: manager, can_link_brain_recommendations: manager }
     };
   };

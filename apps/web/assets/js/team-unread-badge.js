@@ -50,19 +50,23 @@
     return Math.min(9999, Math.floor(parsed));
   }
 
-  // The sender label never shows an address (S87): 'sara.bartender@…' reads 'Sara Bartender'.
+  // The sender is never an address (S87): email-shaped text is not a name.
   function safePersonLabel(value) {
-    const text = String(value || '').trim();
-    if (!text || !text.includes('@')) return text;
-    const words = text.split('@')[0].replace(/\d+$/, '').split(/[._+-]+/).filter(Boolean);
-    return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+    return text && !text.includes('@') ? text.slice(0, 120) : '';
+  }
+
+  // S93: the gateway's live sender_name (sender_id → roster display name),
+  // then the stored label, then the neutral label.
+  function senderOf(message) {
+    return safePersonLabel(message.sender_name) || safePersonLabel(message.sender_label) || 'Team member';
   }
 
   function lastMessageOf(message) {
     if (!message) return null;
     return {
       id: message.id || null,
-      sender: message.message_type === 'system' ? 'Atlas' : safePersonLabel(message.sender_label),
+      sender: message.message_type === 'system' ? 'Atlas' : senderOf(message),
       body: message.deleted ? '' : String(message.body || '').slice(0, 140),
       deleted: Boolean(message.deleted)
     };

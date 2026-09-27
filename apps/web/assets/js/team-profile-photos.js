@@ -429,8 +429,24 @@
     }, { once: true });
   }
 
+  // Views that show avatars (Messages) call this when they open: it loads the
+  // snapshot when it never loaded (a failed or skipped load at sign-in) or
+  // its signed URLs are near expiry. { stale: true } says a photo URL failed
+  // to load, so fresh URLs are fetched (at most once a minute).
+  let staleRequestedAt = 0;
+  function ensureFresh(options = {}) {
+    if (options.stale) {
+      if (Date.now() - staleRequestedAt < 60000) return;
+      staleRequestedAt = Date.now();
+      loadSnapshot({ force: true, silent: true });
+      return;
+    }
+    if (!state.lastLoadedAt || Date.now() - state.lastLoadedAt > REFRESH_MS) loadSnapshot({ force: true, silent: true });
+  }
+
   window.AtlasTeamProfilePhotos = {
     refresh: () => loadSnapshot({ force: true }),
+    ensureFresh,
     photos: () => [...state.photos.values()],
     photoFor: (profileId) => photoFor(profileId),
     decorate: scheduleDecorate

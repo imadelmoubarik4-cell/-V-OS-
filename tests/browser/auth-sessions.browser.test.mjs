@@ -12,7 +12,7 @@
 // Mocked backend (real supabase-js), frozen harness clock, no sleeps.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, settle, USERS, PROJECT_REF } from './harness.mjs';
+import { harnessAvailable, launchAtlas, settle, until, USERS, PROJECT_REF } from './harness.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 const logouts = (record) => record.requests.filter((entry) => entry.path.startsWith('/auth/v1/logout'));
@@ -66,8 +66,9 @@ test('a 401 while Auth still accepts the session renews nothing and prompts noth
   const { page, record, close } = await launchAtlas();
   try {
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('atlas:auth-required', { detail: { status: 401 } })));
+    // The check with Auth is asynchronous: wait for it rather than for a settled page.
+    await until(async () => record.requests.some((entry) => entry.path === '/auth/v1/user'), { message: 'the session was checked with Auth' });
     await settle(page);
-    assert.ok(record.requests.some((entry) => entry.path === '/auth/v1/user'), 'the session was checked with Auth');
     assert.equal(record.requests.filter((entry) => entry.path.startsWith('/auth/v1/token') && entry.search.includes('grant_type=refresh_token')).length, 0, 'no renewal needed');
     assert.equal(await page.$$eval('.atlas-toast', (nodes) => nodes.filter((n) => /session/i.test(n.textContent)).length), 0, 'no prompt');
     assert.equal(logouts(record).length, 0);
@@ -83,8 +84,10 @@ test('a 401 with a refused session check renews this device session and stays si
   try {
     state.refused = true;
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('atlas:auth-required', { detail: { status: 401 } })));
+    // The check and the renewal are asynchronous: wait for the renewal request
+    // rather than for a settled page (same assertion).
+    await until(async () => record.requests.some((entry) => entry.path.startsWith('/auth/v1/token') && entry.search.includes('grant_type=refresh_token')), { message: 'the session was renewed' });
     await settle(page);
-    assert.ok(record.requests.some((entry) => entry.path.startsWith('/auth/v1/token') && entry.search.includes('grant_type=refresh_token')), 'the session was renewed');
     assert.equal(logouts(record).length, 0);
     assert.equal(await page.evaluate(() => document.body.dataset.atlasReady), 'true', 'still signed in');
   } finally { await close(); }

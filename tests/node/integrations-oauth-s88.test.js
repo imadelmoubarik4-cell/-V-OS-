@@ -30,6 +30,7 @@ import {
   PROVIDERS,
   buildAuthorizeUrl,
   providerConfiguration,
+  tripadvisorLocationName,
 } from '../../supabase/functions/atlas-integrations/providers.mjs';
 import { createIntegrationsHandler, jsonResponse, rpcFailure } from '../../supabase/functions/atlas-integrations/handler.mjs';
 
@@ -176,7 +177,7 @@ test('registry covers the six providers with documented endpoints and minimal sc
   assert.deepEqual(PROVIDERS['google-drive'].scopes, ['https://www.googleapis.com/auth/drive.file']);
   assert.equal(PROVIDERS.facebook.authorizeUrl(env), 'https://www.facebook.com/v25.0/dialog/oauth');
   assert.equal(PROVIDERS.facebook.tokenUrl(env), 'https://graph.facebook.com/v25.0/oauth/access_token');
-  assert.deepEqual(PROVIDERS.instagram.scopes, ['instagram_basic', 'pages_show_list']);
+  assert.deepEqual(PROVIDERS.instagram.scopes, ['instagram_basic', 'pages_show_list', 'pages_read_engagement', 'business_management']);
   assert.equal(PROVIDERS.tiktok.authorizeUrl(env), 'https://www.tiktok.com/v2/auth/authorize/');
   assert.equal(PROVIDERS.tiktok.tokenUrl(env), 'https://open.tiktokapis.com/v2/oauth/token/');
   assert.deepEqual(PROVIDERS.tiktok.scopes, ['user.info.basic']);
@@ -377,6 +378,16 @@ function assertNoLeak(text) {
     assert.ok(!text.includes(secret), `response leaked ${secret.slice(0, 12)}`);
   }
 }
+
+test('Tripadvisor label comes from the Terra Location Details names list', () => {
+  const terra = { id: 32990019, geo: 'Reykjavik', names: [{ language: 'is', value: 'Vá Bar IS' }, { language: 'en', value: 'Vá Bar', primary: true }] };
+  assert.equal(tripadvisorLocationName(terra), 'Vá Bar');
+  assert.equal(tripadvisorLocationName({ names: [{ language: 'de', value: 'X' }, { language: 'en', value: 'Y' }] }), 'Y');
+  assert.equal(tripadvisorLocationName({ names: [{ language: 'de', value: 'X' }] }), 'X');
+  assert.equal(tripadvisorLocationName({ names: [{ language: 'en', value: '  ' }], name: 'Flat' }), 'Flat');
+  assert.equal(tripadvisorLocationName({ names: 'bad' }), null);
+  assert.equal(tripadvisorLocationName(null), null);
+});
 
 test('unconfigured providers: status says "Not set up yet", start and save-api-key refuse', async () => {
   const { call } = harness();
@@ -597,7 +608,11 @@ test('source contract: migration keeps credentials away from browser roles', () 
   assert.doesNotMatch(sql, /vault\./, 'replay DB has no Vault');
   const config = readFileSync('supabase/config.toml', 'utf8');
   assert.match(config, /\[functions\.atlas-integrations\]\nverify_jwt = false/);
-  assert.ok(!readdirSync('supabase/functions').includes('_shared') || !filesUnder('supabase/functions/_shared').some((f) => f.includes('integration')));
+  // S94B: the only shared integration code is the crypto/refresh/credential
+  // modules in _shared/integrations (contract §1); none of them logs.
+  const shared = filesUnder('supabase/functions/_shared').filter((f) => f.includes('integration'));
+  assert.deepEqual(shared.map((f) => f.split('/').pop()).sort(), ['credentials.mjs', 'crypto.mjs', 'provider-http.mjs']);
+  for (const file of shared) assert.doesNotMatch(readFileSync(file, 'utf8'), /console\./, file);
 });
 
 test('response guard withholds any payload with credential-shaped keys', async () => {

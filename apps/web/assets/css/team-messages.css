@@ -60,13 +60,14 @@
 .msg-item__gutter { display: block; min-height: 1px; }
 .msg-avatar { overflow: hidden; }
 .msg-avatar--atlas { background: var(--bg-muted); color: var(--text-2); }
-.msg-avatar--atlas svg { width: 14px; height: 14px; }
-/* Chat layout (S91a): other people's messages on the left in a neutral
-   bubble, the viewer's own on the right in an accent-tinted one, no avatar. */
+.msg-avatar--atlas svg, .msg-avatar > svg { width: 14px; height: 14px; }
+/* Chat layout (S91a, S92): other people's messages on the left in a neutral
+   bubble, the viewer's own on the right in an accent-tinted one; both carry
+   the sender's name and avatar, own avatar in a gutter on the right. */
 .msg-item__body { position: relative; justify-self: start; min-width: 0; max-width: min(88%, 600px); padding: var(--s-2) var(--s-3); border: 1px solid transparent; border-radius: var(--r-lg); background: var(--bg-muted); }
-.msg-item.is-own { grid-template-columns: minmax(0, 1fr); }
-.msg-item.is-own > .msg-item__gutter { display: none; }
-.msg-item.is-own > .msg-item__body { justify-self: end; max-width: min(80%, 600px); background: var(--accent-soft); }
+.msg-item.is-own { grid-template-columns: minmax(0, 1fr) 28px; }
+.msg-item.is-own > .msg-item__gutter { grid-column: 2; grid-row: 1; }
+.msg-item.is-own > .msg-item__body { grid-column: 1; grid-row: 1; justify-self: end; max-width: min(80%, 600px); background: var(--accent-soft); }
 .msg-item.is-own .msg-item__meta { justify-content: flex-end; }
 .msg-item.is-deleted > .msg-item__body { border: 1px dashed var(--line); background: var(--bg); }
 .msg-item__meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); }

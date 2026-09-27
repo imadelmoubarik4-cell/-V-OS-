@@ -268,7 +268,7 @@
               <li><button type="button" class="atlas-menu__item" role="menuitem" data-reports-export="print"><i data-lucide="printer"></i>Print or save as PDF</button></li>
               <li><button type="button" class="atlas-menu__item" role="menuitem" data-reports-export="copy"><i data-lucide="copy"></i>Copy summary</button></li>
             </ul></span>
-          <button type="button" class="atlas-btn atlas-btn--ghost" data-reports-ask><i data-lucide="sparkles"></i>Ask Atlas</button>
+          <button type="button" class="atlas-btn atlas-btn--ghost" data-reports-ask>${window.AtlasBot ? window.AtlasBot.html({ size: 18 }) : '<i data-lucide="sparkles"></i>'}Ask Atlas</button>
         </div>
       </header>`;
   }
@@ -631,7 +631,7 @@
     document.addEventListener('change', handleChange);
     window.AtlasShell.onView?.('reports', { show: onShow });
     window.AtlasShell.actions?.register?.({
-      id: 'reports.ask', label: 'Ask Atlas about this report', icon: 'sparkles', keywords: ['ask', 'report', 'explain'],
+      id: 'reports.ask', label: 'Ask Atlas about this report', icon: 'atlas-bot', keywords: ['ask', 'report', 'explain'],
       roles: MANAGERS, contexts: ['reports'], run: () => askAtlas()
     });
     window.AtlasShell.onDataLoaded?.(() => { if (visible() && state.activeSection === 'overview' && state.snapshot) render(); });

@@ -184,17 +184,20 @@ for (const who of ['admin', 'bartender']) {
           const right = log.getBoundingClientRect().right - parseFloat(style.paddingRight);
           return nodes.map((node) => {
             const box = node.querySelector('.msg-item__body').getBoundingClientRect();
-            return { id: node.dataset.teamMessage, own: node.classList.contains('is-own'), fromLeft: box.left - left, fromRight: right - box.right, width: right - left, avatar: Boolean(node.querySelector('.msg-avatar')), name: node.querySelector('.msg-item__name')?.textContent || null };
+            const avatar = node.querySelector('.msg-avatar')?.getBoundingClientRect();
+            return { id: node.dataset.teamMessage, own: node.classList.contains('is-own'), fromLeft: box.left - left, fromRight: right - box.right, width: right - left, avatar: Boolean(avatar), avatarRight: avatar ? right - avatar.right : null, name: node.querySelector('.msg-item__name')?.textContent || null };
           });
         });
         const mine = who === 'admin' ? ['m2'] : ['m1'];
         assert.deepEqual(rows.filter((row) => row.own).map((row) => row.id), mine, 'own is the viewer profile id against sender_id');
         for (const row of rows) {
           if (row.own) {
-            assert.ok(row.fromRight <= 2, `${row.id}: right edge at the list's right edge (${row.fromRight})`);
+            // S92: the viewer's own avatar sits in a right-hand gutter; the bubble is next to it.
+            assert.ok(row.fromRight <= 48, `${row.id}: next to the right-hand avatar (${row.fromRight})`);
             assert.ok(row.fromLeft >= row.width * 0.14, `${row.id}: left edge well away from the left (${row.fromLeft})`);
-            assert.equal(row.avatar, false, `${row.id}: no avatar on own messages`);
-            assert.equal(row.name, 'You', `${row.id}: named for assistive tech`);
+            assert.equal(row.avatar, true, `${row.id}: own avatar shown`);
+            assert.ok(row.avatarRight <= 2, `${row.id}: avatar at the list's right edge (${row.avatarRight})`);
+            assert.equal(row.name, user.display_name, `${row.id}: the viewer's real name`);
           } else {
             assert.ok(row.fromLeft <= 48, `${row.id}: next to the avatar gutter on the left (${row.fromLeft})`);
             assert.ok(row.fromRight >= 24, `${row.id}: right edge away from the right (${row.fromRight})`);

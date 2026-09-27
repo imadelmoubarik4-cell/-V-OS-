@@ -137,7 +137,7 @@
 
   function askRow(query) {
     return {
-      id: 'ask', kind: 'ask', icon: 'sparkles', label: query ? `Ask Atlas “${query}”` : 'Ask Atlas', query,
+      id: 'ask', kind: 'ask', icon: 'atlas-bot', label: query ? `Ask Atlas “${query}”` : 'Ask Atlas', query,
       hint: IS_MAC ? ['⌘', '↵'] : ['Ctrl', '↵'],
       run: () => askAtlas(query)
     };

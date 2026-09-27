@@ -11,6 +11,8 @@ window.VABAR_CONFIG = {
   STOCK_COUNTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-stock-counts",
   TEAM_MESSAGES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-messages",
   MARKETING_WORKSPACE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-workspace",
+  // Marketing › Media: private photo and video library (signed uploads, 5-minute previews).
+  MARKETING_MEDIA_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-media",
   TEAM_PROFILES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profiles",
   TEAM_PROFILE_PHOTOS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profile-photos",
   SHIFTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-shifts",
@@ -104,21 +106,21 @@ function loadAtlasAssetsAfterWindowLoad(loader) {
 
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/team-messages.css',
-  scriptPath: 'assets/js/team-messages.js?v=20260926-s91a',
+  stylesheetPath: 'assets/css/team-messages.css?v=20261002-s93m',
+  scriptPath: 'assets/js/team-messages.js?v=20261002-s93m',
   globalName: 'AtlasTeamMessages',
   dataAttribute: 'atlasTeamMessages',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  scriptPath: 'assets/js/team-unread-badge.js',
+  scriptPath: 'assets/js/team-unread-badge.js?v=20261002-s93m',
   globalName: 'AtlasTeamUnreadBadge',
   dataAttribute: 'atlasTeamUnreadBadge',
 }));
 
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/marketing-workspace.css?v=20260929-s90u',
-  scriptPath: 'assets/js/marketing-workspace.js?v=20260926-s91a',
+  stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94c',
+  scriptPath: 'assets/js/marketing-workspace.js?v=20261004-s94b',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
 }));
@@ -129,6 +131,20 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/accounting-workspace.js?v=20261001-s92k',
   globalName: 'AtlasAccounting',
   dataAttribute: 'atlasAccounting',
+}));
+
+// S94: the composer's shared platform checks (generated from the publisher's
+// rules) and the Marketing media library (library, picker and upload queue).
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/marketing-platform-rules.js?v=20261004-s94b',
+  globalName: 'AtlasPlatformRules',
+  dataAttribute: 'atlasPlatformRules',
+}));
+
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/marketing-media.js?v=20261004-s94c',
+  globalName: 'AtlasMarketingMedia',
+  dataAttribute: 'atlasMarketingMedia',
 }));
 
 // Checkpoint E loads a compressed, repository-owned Team Profiles bundle. The
@@ -145,7 +161,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // the browser never receives direct Storage credentials or privileged server keys.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/team-profile-photos.css',
-  scriptPath: 'assets/js/team-profile-photos.js?v=20260929-s90u',
+  scriptPath: 'assets/js/team-profile-photos.js?v=20261002-s93m',
   globalName: 'AtlasTeamProfilePhotos',
   dataAttribute: 'atlasTeamProfilePhotos',
 }));
@@ -164,7 +180,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // published versions and their version-specific acknowledgement state.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/knowledge-workspace.css',
-  scriptPath: 'assets/js/knowledge-workspace.js?v=20260929-s90u',
+  scriptPath: 'assets/js/knowledge-workspace.js?v=20261003-bot1',
   globalName: 'AtlasKnowledge',
   dataAttribute: 'atlasKnowledge',
 }));
@@ -174,7 +190,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // authenticated gateway and labels missing integrations instead of inventing data.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/reports-workspace.css?v=20260929-s90f',
-  scriptPath: 'assets/js/reports-workspace.js?v=20260926-s91a',
+  scriptPath: 'assets/js/reports-workspace.js?v=20261003-bot1',
   globalName: 'AtlasReports',
   dataAttribute: 'atlasReports',
 }));
@@ -190,8 +206,8 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // Checkpoint J replaces the Settings placeholder with a versioned, role-aware
 // control centre for venue configuration, operating rules and personal preferences.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/settings-workspace.css',
-  scriptPath: 'assets/js/settings-workspace.js?v=20260926-s91c',
+  stylesheetPath: 'assets/css/settings-workspace.css?v=20261004-s94',
+  scriptPath: 'assets/js/settings-workspace.js?v=20261004-s94',
   globalName: 'AtlasSettings',
   dataAttribute: 'atlasSettings',
 }));

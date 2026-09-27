@@ -30,6 +30,10 @@
   const VOICE_EXPLAINED_KEY = 'atlas.ai.voice.explained.v1';
   const DAY = 86400000;
 
+  // The assistant's robot state controller (atlas-bot.js): one place decides
+  // what every robot shows; this module only reports what Atlas is doing.
+  const robotBot = () => root.AtlasBot?.robot || null;
+
   // ---------- icons (lucide 0.454.0 paths, inline so streaming never re-scans the DOM) ----------
 
   const ICONS = {
@@ -86,6 +90,7 @@
   };
 
   function icon(name, extraClass = '') {
+    if (name === 'atlas-bot' && root.AtlasBot) return root.AtlasBot.html({ size: 18, className: extraClass });
     const body = ICONS[name] || ICONS.sparkles;
     return `<svg class="icon${extraClass ? ` ${extraClass}` : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
   }
@@ -649,7 +654,10 @@
       document.getElementById(id)?.focus();
     });
     el('composer').addEventListener('submit', (event) => { event.preventDefault(); send(); });
-    el('input').addEventListener('input', () => { autoGrow(); renderComposerBar(); });
+    // The composer wakes the robot (focus, typing); an awake robot only stays
+    // awake longer, so typing never moves it on every key.
+    el('input').addEventListener('focus', () => robotBot()?.wake('composer'));
+    el('input').addEventListener('input', () => { autoGrow(); renderComposerBar(); robotBot()?.wake('typing'); });
     el('input').addEventListener('keydown', (event) => {
       if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
@@ -1130,7 +1138,12 @@
   function emptyStateMarkup() {
     const name = firstName();
     if (state.configured === false) return notConfiguredMarkup();
+    // The live robot greets once, follows the pointer and reacts to a tap.
+    // It follows the assistant's state (AtlasBot.robot): it sleeps after a
+    // quiet spell and wakes on hover, the composer or a new question.
+    const bot = root.AtlasBot ? `<div class="ai-empty__bot">${root.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176, follow: true })}</div>` : '';
     return `<div class="ai-empty">
+      ${bot}
       <h2 class="ai-empty__greeting">What can I help with${name ? `, ${escapeHtml(name)}` : ''}?</h2>
       ${state.composer.context ? `<p class="ai-empty__context">Ask about ${escapeHtml(state.composer.context.label)}, or anything else about the venue.</p>` : ''}
       <div class="ai-empty__chips" role="list">${suggestions().map((item, index) => `<button type="button" role="listitem" class="atlas-chip" data-ai-suggest="${index}">${item.photo ? icon('camera') : item.live ? icon('audio-lines') : ''}${escapeHtml(item.label)}</button>`).join('')}</div>
@@ -1141,7 +1154,7 @@
     const admin = role() === 'admin';
     return `<div class="ai-empty ai-empty--off">
       <div class="atlas-empty">
-        <div class="atlas-empty__icon">${icon('sparkles')}</div>
+        <div class="atlas-empty__icon">${root.AtlasBot ? root.AtlasBot.html({ size: 40 }) : icon('sparkles')}</div>
         <h3>Atlas AI isn’t switched on yet</h3>
         <p>${admin
           ? 'Set it up in Settings › Atlas AI: add the service key, then switch it on. Until then, record search and quick answers from your stock, recipes and shifts still work.'
@@ -1186,6 +1199,7 @@
     }
     if (!conv.messages.length) {
       container.innerHTML = emptyStateMarkup();
+      root.AtlasBot?.upgrade(container);
       return;
     }
     container.innerHTML = conv.messages.map(messageMarkup).join('');
@@ -1308,7 +1322,7 @@
       <button type="button" class="atlas-icon-btn" data-ai-retry="${escapeHtml(message.key)}" aria-label="Try again" title="Try again">${icon('refresh-cw')}</button>
     </div>` : '';
     return `<article class="msg-ai${streaming ? ' is-streaming' : ''}" data-ai-msg="${escapeHtml(message.key)}" aria-busy="${streaming}">
-      <div class="msg-ai__who"><span class="ai-mark">${icon('sparkles')}</span>Atlas</div>
+      <div class="msg-ai__who">${root.AtlasBot ? root.AtlasBot.html(streaming ? { size: 24, follow: true, className: 'ai-mark-bot' } : { size: 24, state: message.error ? 'error' : 'idle', className: 'ai-mark-bot' }) : `<span class="ai-mark">${icon('sparkles')}</span>`}Atlas</div>
       ${fallback}${stepsMarkup(message)}${body}${fallbackLines}${fallbackAction}${stopped}${error}${recordsMarkup(message)}${evidenceMarkup(message)}${proposals}${actions}
     </article>`;
   }
@@ -1476,11 +1490,13 @@
     const current = actionState(found.proposal);
     if (!canApprove(current) || current.working) return;
     setAction(id, { working: true, status: 'executing', failureText: null });
+    robotBot()?.set('thinking');
     announce('Working on it.');
     try {
       const result = await request('execute-action', { method: 'POST', body: { action_id: id } });
       if (result?.ok === true) {
         setAction(id, { working: false, status: 'executed', result: result.result || {}, action: result.action || null });
+        robotBot()?.set('success');
         announce(`${kindInfo(found.proposal.kind).done}.`);
       } else {
         root.console?.warn?.('[atlas-ai] proposal failed', result?.error?.code || 'failed');
@@ -1491,9 +1507,11 @@
             : code === 'not_found' ? 'A record in this proposal no longer exists. Nothing was changed. Ask Atlas to prepare it again.'
               : 'Nothing was changed. Ask Atlas to prepare it again, or make the change in its page.';
         setAction(id, { working: false, status: 'failed', failureText: text, retryable: false });
+        robotBot()?.set('error');
         announce('This couldn’t be completed.');
       }
     } catch (error) {
+      robotBot()?.set('error');
       if (error?.code === 'network' || error?.status === 0) {
         setAction(id, { working: false, status: 'failed', failureText: 'Atlas couldn’t confirm the result. Check the page before trying again, so nothing is done twice.', retryable: true });
       } else if (error?.code === 'conflict') {
@@ -1515,6 +1533,7 @@
     try {
       await request('reject-action', { method: 'POST', body: { action_id: id } });
       setAction(id, { working: false, status: 'rejected' });
+      if (robotBot()?.state === 'attention') robotBot().set('idle');
       announce('Dismissed.');
     } catch (error) {
       setAction(id, { working: false });
@@ -1600,6 +1619,8 @@
     state.mode = 'conversations';
     state.conv = { id: null, title: '', pinned: false, messages: [], actions: new Map(), loading: false, error: null };
     state.composer.context = context;
+    // A new start wakes the robot and clears an earlier error or attention.
+    robotBot()?.wake('new-conversation', { clear: true });
     applyMode();
     renderThread();
     renderList();
@@ -1666,6 +1687,9 @@
 
     if (userMessage) state.conv.messages.push(userMessage);
     state.conv.messages.push(reply);
+    // The robot thinks until the answer starts, then answers (one continuous
+    // state however many pieces stream in).
+    robotBot()?.set('thinking');
     if (!options.regenerate) {
       input.value = '';
       state.composer.attachments = [];
@@ -1687,7 +1711,8 @@
       conversationId = await ensureConversation();
     } catch (error) {
       state.streaming = null;
-      if (error?.code === 'not_configured') { dropTurn(userMessage, reply); switchOffAndAnswer(text); return; }
+      if (error?.code === 'not_configured') { dropTurn(userMessage, reply); robotBot()?.set('idle'); switchOffAndAnswer(text); return; }
+      robotBot()?.set('error');
       failReply(reply, error);
       renderComposerBar();
       return;
@@ -1726,6 +1751,9 @@
         if (!last || last.label !== label) reply.progress.push({ label, at: Date.now() });
         patchMessage(reply);
       } else if (event === 'delta') {
+        // The first piece of the answer: the robot moves from thinking to
+        // answering, once (later pieces never restart it).
+        if (!reply.content) robotBot()?.set('answering');
         reply.content += String(data?.text || '');
         if (!textFrame) textFrame = root.requestAnimationFrame(flushText);
       } else if (event === 'evidence') {
@@ -1768,6 +1796,7 @@
       } else if (error?.code === 'not_configured') {
         dropTurn(userMessage, reply);
         state.streaming = null;
+        robotBot()?.set('idle');
         switchOffAndAnswer(text);
         return;
       } else {
@@ -1776,6 +1805,9 @@
     }
     if (state.streaming?.reply === reply) state.streaming = null;
     if (reply.status === 'streaming') reply.status = 'complete';
+    // Done: a proposal waiting for approval asks for attention; otherwise a
+    // brief success, then idle. Stopped: idle. Failed: unavailable (not red).
+    robotBot()?.set(reply.status === 'complete' ? (reply.proposals.length ? 'attention' : 'success') : reply.status === 'stopped' ? 'idle' : 'error');
     patchMessage(reply);
     renderComposerBar();
     scrollToBottom();
@@ -2107,6 +2139,14 @@
     return 'Live voice couldn’t connect. Your conversation is saved.';
   }
 
+  // The robot in the live voice panel mirrors the call.
+  function liveBotState(status) {
+    if (status === 'listening' || status === 'interrupted') return 'listening';
+    if (status === 'thinking' || status === 'speaking') return status;
+    if (status === 'disconnected' || status === 'error' || status === 'inactive' || status === 'replaced') return 'error';
+    return 'idle';
+  }
+
   function liveMarkup() {
     const live = state.live;
     if (!live) return '';
@@ -2123,8 +2163,9 @@
         : status === 'error' && live.errorText ? live.errorText : 'Live voice disconnected. Your conversation is saved.';
     const retry = retryable && status !== 'replaced'
       ? `<button type="button" data-ai-live-reconnect>${icon('refresh-cw')}${status === 'inactive' ? 'Start a new session' : status === 'error' ? 'Try again' : 'Reconnect'}</button>` : '';
+    const bot = root.AtlasBot ? root.AtlasBot.liveHtml({ key: 'ai-voice', framing: 'bust', size: 44, state: liveBotState(status), label: `Atlas, ${label.toLowerCase()}` }) : '';
     return `<div class="voice" role="region" aria-label="Live voice" data-state="${escapeHtml(status)}">
-      <div class="voice__top"><span class="voice__state" aria-live="polite">${escapeHtml(label)}</span><span class="voice__time" data-ai-live-time>${durationLabel((Date.now() - live.startedAt) / 1000)}</span>
+      <div class="voice__top">${bot}<span class="voice__state" aria-live="polite">${escapeHtml(label)}</span><span class="voice__time" data-ai-live-time>${durationLabel((Date.now() - live.startedAt) / 1000)}</span>
         <button type="button" class="voice__toggle" data-ai-live-transcript aria-pressed="${live.showTranscript}">${live.showTranscript ? 'Hide transcript' : 'Show transcript'}</button></div>
       ${broken ? `<div class="voice__error" role="alert">${escapeHtml(message)}</div>` : `<div class="voice__wave" aria-hidden="true">${'<i></i>'.repeat(18)}</div>`}
       ${live.showTranscript && lines ? `<div class="voice__transcript">${lines}</div>` : ''}
@@ -2141,6 +2182,10 @@
     const slot = el('voiceSlot');
     if (!slot) return;
     slot.innerHTML = liveMarkup();
+    // One WebGL context for the call: the robot moves into the new markup and
+    // is released when the call ends.
+    if (state.live) root.AtlasBot?.upgrade(slot);
+    else root.AtlasBot?.destroy('ai-voice');
     state.root.classList.toggle('is-voice', Boolean(state.live));
     syncTabBar();
   }
@@ -2185,6 +2230,7 @@
     }
     const live = { state: 'connecting', startedAt: Date.now(), lines: [], showTranscript: true, errorText: '', blocked: false, concurrent: false, session: null, frame: 0, liveMessage: null };
     state.live = live;
+    robotBot()?.wake('voice');
     renderLive();
     renderComposerBar();
     // Read once so voice-end can still be sent while the page unloads.
@@ -2196,6 +2242,8 @@
       onState: (next, detail) => {
         if (state.live !== live) return;
         live.state = next;
+        // The assistant's robot follows the call too (sidebar, welcome robot).
+        if (next !== 'ended') robotBot()?.set(liveBotState(next));
         if (next === 'error') {
           live.errorText = liveErrorText(detail || {});
           // Daily limits do not lift by retrying now; offer no retry for them.
@@ -2278,6 +2326,7 @@
     if (!live) return;
     root.cancelAnimationFrame(live.frame);
     state.live = null;
+    if (['listening', 'thinking', 'answering'].includes(robotBot()?.state)) robotBot().set('idle');
     renderLive();
     renderComposerBar();
     afterTurn();
@@ -2768,6 +2817,9 @@
   function render(params = {}) {
     if (!ensureRoot()) return;
     state.visible = true;
+    // Opening Atlas AI wakes the robot; while it is open, the robot waits
+    // longer before it falls asleep.
+    robotBot()?.active(true);
     setTopBar();
     measureTop();
     if (!state.initialized) {
@@ -2819,6 +2871,7 @@
 
   function onHide() {
     state.visible = false;
+    robotBot()?.active(false);
     if (state.live) endLive();
     closeMenu();
     closeListSheet();
@@ -2873,7 +2926,7 @@
           rows.push({
             id: current.id,
             severity: 'info',
-            icon: 'sparkles',
+            icon: 'atlas-bot',
             title: `${humanText(current.title, 'A change Atlas prepared')} is waiting for your approval`,
             detail: current.expires_at ? expiryLabel(current.expires_at) : 'Prepared by Atlas',
             action: { label: 'Review', route: `#ai/c/${state.conv.id}` }
@@ -2889,11 +2942,11 @@
     if (!shell) return;
     shell.registerView('ai', { root: () => ensureRoot(), title: 'Atlas AI', display: 'block', render, onHide });
     shell.actions?.register?.({
-      id: 'ai.ask', label: 'Ask Atlas', icon: 'sparkles', keywords: ['ask', 'question', 'atlas', 'ai', 'help'], contexts: ['home', 'inventory', 'recipes', 'suppliers', 'reports'],
+      id: 'ai.ask', label: 'Ask Atlas', icon: 'atlas-bot', keywords: ['ask', 'question', 'atlas', 'ai', 'help'], contexts: ['home', 'inventory', 'recipes', 'suppliers', 'reports'],
       run: (ctx = {}) => ask({ question: ctx.query || ctx.question || '', record: ctx.record || null, view: ctx.context || null })
     });
     shell.actions?.register?.({
-      id: 'ai.ask.record', label: 'Ask Atlas about this', icon: 'sparkles', keywords: ['ask', 'atlas', 'about'],
+      id: 'ai.ask.record', label: 'Ask Atlas about this', icon: 'atlas-bot', keywords: ['ask', 'atlas', 'about'],
       when: (ctx = {}) => Boolean(ctx.record?.type && ctx.record?.id != null),
       run: (ctx = {}) => ask({ question: ctx.query || '', record: ctx.record, view: ctx.context || null, send: Boolean(ctx.query) })
     });

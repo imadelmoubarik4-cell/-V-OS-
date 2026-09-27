@@ -8,7 +8,9 @@ OCCURRENCES = (ROOT / "supabase/migrations/20260803142450_atlas_marketing_recomm
 OCCURRENCE_FIX = (ROOT / "supabase/migrations/20260803145746_atlas_marketing_recommendation_occurrence_fix.sql").read_text()
 DISMISS_FIX = (ROOT / "supabase/migrations/20260803150024_atlas_marketing_recommendation_dismiss_occurrence_fix.sql").read_text()
 SNAPSHOT_FIX = (ROOT / "supabase/migrations/20260803150212_atlas_marketing_snapshot_variable_conflict_fix.sql").read_text()
-EDGE_FUNCTION = (ROOT / "supabase/functions/atlas-marketing-workspace/index.ts").read_text()
+# S94: the gateway is a thin index.ts over handler.mjs (handler pattern).
+EDGE_ENTRY = (ROOT / "supabase/functions/atlas-marketing-workspace/index.ts").read_text()
+EDGE_FUNCTION = EDGE_ENTRY + (ROOT / "supabase/functions/atlas-marketing-workspace/handler.mjs").read_text()
 CONFIG = (ROOT / "supabase/config.toml").read_text()
 BROWSER_CONFIG = (ROOT / "apps/web/config.js").read_text()
 BROWSER_MODULE = (ROOT / "apps/web/assets/js/marketing-workspace.js").read_text()
@@ -151,9 +153,10 @@ class MarketingWorkspaceContractTests(unittest.TestCase):
         self.assertNotIn("security definer", (MIGRATION + OCCURRENCES).lower())
 
     def test_edge_function_revalidates_active_profile_and_roles(self):
-        self.assertIn("requireActiveProfile", EDGE_FUNCTION)
+        self.assertIn('import { createMarketingHandler } from "./handler.mjs"', EDGE_ENTRY)
+        self.assertIn("Deno.serve(handle)", EDGE_ENTRY)
         self.assertIn('from "../_shared/auth.mjs"', EDGE_FUNCTION)
-        self.assertIn("await resolveActor(request, Deno.env, fetch", EDGE_FUNCTION)
+        self.assertIn("await sharedResolveActor(request, envObject, fetchImpl", EDGE_FUNCTION)
         self.assertIn("Marketing workspace access has been removed", EDGE_FUNCTION)
         self.assertIn('new Set(["admin", "manager", "bartender"])', EDGE_FUNCTION)
         self.assertIn('new Set(["admin", "manager"])', EDGE_FUNCTION)
@@ -164,12 +167,18 @@ class MarketingWorkspaceContractTests(unittest.TestCase):
         self.assertIn("verify_jwt = false", CONFIG)
 
     def test_edge_function_never_calls_social_publish_or_analytics_apis(self):
-        self.assertIn("actual_publishing_enabled: false", EDGE_FUNCTION)
+        # S94: publishing is real but goes only through the publisher worker;
+        # the gateway wakes it with a server-side secret and never calls a provider.
+        self.assertIn("publishing_via_worker: true", EDGE_FUNCTION)
+        self.assertIn("provider_calls_from_gateway: false", EDGE_FUNCTION)
+        self.assertIn("oauth_tokens_in_browser: false", EDGE_FUNCTION)
         self.assertIn("analytics_ingestion_enabled: false", EDGE_FUNCTION)
-        self.assertIn("automatic_social_action: false", EDGE_FUNCTION)
+        self.assertIn('"x-atlas-publisher-secret": secret', EDGE_FUNCTION)
+        self.assertIn('env("ATLAS_MARKETING_PUBLISHER_SECRET")', EDGE_FUNCTION)
         for forbidden in (
             "graph.facebook.com",
             "open-api.tiktok.com",
+            "open.tiktokapis.com",
             "businessprofileperformance.googleapis.com",
             "localPosts.create",
         ):

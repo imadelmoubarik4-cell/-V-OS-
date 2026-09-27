@@ -71,6 +71,8 @@
   }
 
   function icon(name) {
+    // 'atlas-bot' is the Atlas AI robot (atlas-bot.js), the assistant's face.
+    if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: 18 });
     return `<i data-lucide="${escapeHtml(name)}" aria-hidden="true"></i>`;
   }
 
@@ -381,7 +383,7 @@
       : filtered().map((article) => ({ article }));
     const note = state.searchStatus === 'error' ? '<p class="kn-note">Full-text search is unavailable right now, so only titles and summaries are searched.</p>' : '';
     if (!rows.length) {
-      return `${note}<div class="atlas-empty"><div class="atlas-empty__icon">${icon('search')}</div><h3 class="atlas-empty__title">No articles match “${escapeHtml(query)}”</h3><p class="atlas-empty__text">Try other words, or ask Atlas.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-knowledge-ask-search>${icon('sparkles')}Ask Atlas</button></div></div>`;
+      return `${note}<div class="atlas-empty"><div class="atlas-empty__icon">${icon('search')}</div><h3 class="atlas-empty__title">No articles match “${escapeHtml(query)}”</h3><p class="atlas-empty__text">Try other words, or ask Atlas.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-knowledge-ask-search>${icon('atlas-bot')}Ask Atlas</button></div></div>`;
     }
     return `${note}<p class="kn-count" aria-live="polite">${rows.length} ${rows.length === 1 ? 'result' : 'results'}</p><ul class="atlas-list kn-list">${rows.map(({ article, snippet }) => articleRow(article, { snippet })).join('')}</ul>`;
   }
@@ -498,7 +500,7 @@
       : '';
     const readButton = detail.can_acknowledge && !draft
       ? `<button type="button" class="atlas-btn atlas-btn--primary" data-knowledge-acknowledge>${icon('check')}Mark as read</button>` : '';
-    const ask = window.AtlasAI?.askAbout ? `<button type="button" class="atlas-btn atlas-btn--secondary" data-knowledge-ask>${icon('sparkles')}Ask Atlas about this</button>` : '';
+    const ask = window.AtlasAI?.askAbout ? `<button type="button" class="atlas-btn atlas-btn--secondary" data-knowledge-ask>${icon('atlas-bot')}Ask Atlas about this</button>` : '';
     const managerActions = manager ? `<div class="kn-article__manage">
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-knowledge-edit>${icon('pencil')}${draft ? 'Edit draft' : 'Edit'}</button>
         ${draft ? `<button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm" data-knowledge-publish>${icon('send')}Publish version</button>` : ''}
@@ -521,7 +523,7 @@
       ${manager && !draft ? `<section class="kn-section kn-article__section"><h2 class="kn-section__title">Who has read this version</h2>${acknowledgements.length ? `<ul class="atlas-list kn-list">${acknowledgements.map((item) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon atlas-row__icon--positive">${icon('circle-check')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(item.user_label)}</p><p class="atlas-row__meta">${escapeHtml(humanize(item.user_role))} · ${escapeHtml(formatDateTime(item.acknowledged_at))}</p></div></li>`).join('')}</ul>` : '<p class="kn-note">No one has confirmed this version yet.</p>'}</section>` : ''}
       ${manager && history.length ? `<section class="kn-section kn-article__section"><h2 class="kn-section__title">Version history</h2><ul class="atlas-list kn-list">${history.map((item) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon num">v${Number(item.version_number)}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(item.title)}</p><p class="atlas-row__meta">${escapeHtml([humanize(item.state), formatDateTime(item.published_at || item.updated_at), item.change_note].filter(Boolean).join(' · '))}</p></div></li>`).join('')}</ul></section>` : ''}
     </article>
-    ${phoneQuery.matches && (readButton || ask) ? `<div class="kn-bar">${readButton}${window.AtlasAI?.askAbout ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--lg" data-knowledge-ask aria-label="Ask Atlas about this">${icon('sparkles')}</button>` : ''}</div>` : ''}`;
+    ${phoneQuery.matches && (readButton || ask) ? `<div class="kn-bar">${readButton}${window.AtlasAI?.askAbout ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--lg" data-knowledge-ask aria-label="Ask Atlas about this">${icon('atlas-bot')}</button>` : ''}</div>` : ''}`;
   }
 
   // ---------- editor ----------

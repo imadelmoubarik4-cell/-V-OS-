@@ -106,7 +106,8 @@ test('phone (390 and 430): top bar title, 5-slot tab bar, More sheet with the re
         sidebar: document.getElementById('atlas-sidebar').getClientRects().length,
         title: document.getElementById('atlas-page-title').textContent,
         titleVisible: document.getElementById('atlas-page-title').getClientRects().length > 0,
-        tabs: [...document.querySelectorAll('.atlas-tabbar__item > span:first-of-type')].map((node) => node.textContent.trim()),
+        // The Atlas tab's icon is the robot badge (a span), so read the label span.
+        tabs: [...document.querySelectorAll('.atlas-tabbar__item > span:not([data-atlas-bot]):not(.atlas-badge)')].map((node) => node.textContent.trim()),
         current: document.querySelector('.atlas-tabbar [aria-current="page"]')?.dataset.navId,
         topbar: Math.round(document.getElementById('atlas-topbar').getBoundingClientRect().height),
         tabbar: Math.round(document.getElementById('atlas-tabbar').getBoundingClientRect().height)

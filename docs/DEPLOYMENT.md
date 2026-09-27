@@ -76,6 +76,25 @@ S92b (follow-up, apply in this order):
 2. Redeploy `atlas-accounting`: it passes `p_again` and answers `already_read` / `reading` without spending anything.
 3. The web app (`accounting-workspace.js?v=20261001-s92k`): one upload run at a time; a failed file is retried only by the next Upload click.
 
+## Atlas AI robot (web only)
+
+The robot is the Atlas AI assistant's face. It replaces the sparkles assistant icon in AI surfaces; the Atlas logo stays the brand mark everywhere. There is no migration and no function; deploy the web app (cache keys `?v=20261003-bot1` and, for the review follow-up, `?v=20261003-bot2`; `home.js` carries `?v=20261003-bot3` for the S93 sender names plus the robot on the daily briefing, and `team-messages.js` keeps the S93 Messages key because the robot leaves it unchanged). With S94, `marketing-workspace.js` carries the robot's Ask Atlas icon under the S94 key `?v=20261004-s94b` (not `20261003-bot1`), so browsers that cached the robot-only file refetch it.
+
+- `assets/js/atlas-bot.js`: the badge (`AtlasBot.html`) and the interactive 3D robot (`AtlasBot.liveHtml` + `upgrade`).
+- `assets/atlas-bot/atlas-mascot-scene.js`: the 3D scene, Three.js bundled in (MIT), loaded only when Atlas AI shows it. It is about 145 KB gzipped, same-origin, so the CSP is unchanged.
+- `assets/atlas-bot/atlas-bot.png`: the badge sprite (open, blink, sleep, happy), rendered from the same scene; `atlas-bot-small.png` is the version for badges of 24 px or less (a tighter face, a matte visor, larger eyes).
+- The live robot probes WebGL once per page, shows the badge again if the browser drops its WebGL context, follows a reduced-motion change live, stops drawing after 15 s of calm idle, and keeps still frames where WebGL runs in software (no GPU).
+
+Robot refinement (`?v=20261004-bot5`: `atlas-bot.js`, `atlas-ai.js`, `home.js`, `atlas-components.css`, `atlas-shell.css`, `atlas-ai.css`, the scene bundle and both sprites; still no migration and no function). One state controller in `atlas-bot.js` (`AtlasBot.robot`) drives every AI surface: idle, awake, sleeping, listening, thinking, answering, success, attention, error (`speaking` still means answering). The robot falls asleep after 90 s without activity while Atlas AI is open and after 5 minutes otherwise (one timer for the page, none while the tab is hidden), with a small CSS-only Z · ZZ · ZZZ; hover, a tap, opening Atlas AI, a new conversation, the composer, voice and an AI task wake it at once. The full robot has a soft contact shadow drawn in its scene; the welcome robot keeps its size (176 / 136 / 96 px) and sits closer to the greeting. The Home briefing robot thinks while the briefing is prepared.
+
+To change the robot, edit `scripts/mascot/atlas-mascot-scene.src.mjs`, then rebuild the bundle and the sprites:
+
+```
+npm i --no-save three@0.186.1 esbuild@0.25.10   # or ATLAS_MASCOT_DEPS=<folder with them>
+node scripts/build_atlas_mascot.mjs
+node scripts/render_atlas_bot_badges.mjs        # needs Playwright + Chromium
+```
+
 ## S91: live voice lease and device handoff
 
 `20260930092000_s91_voice_lease_and_takeover.sql` is the last file of batch A. Apply it, then deploy

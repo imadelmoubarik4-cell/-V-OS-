@@ -21,9 +21,10 @@ class IsolatedRehearsalBuildTests(unittest.TestCase):
             self.assertIn(builder.TARGET, config)
             # 17 historical endpoints (S89 removed the unread SPRINT4_BRIEFING_API and
             # INVENTORY_SCANNER_API keys) plus ATLAS_AI_API and INTEGRATIONS_API (S88)
-            # and ACCOUNTING_API (S92), all disabled in the rehearsal.
-            self.assertEqual(len(manifest['disabled_runtime_settings']), 20)
+            # ACCOUNTING_API (S92) and MARKETING_MEDIA_API (S94), all disabled in the rehearsal.
+            self.assertEqual(len(manifest['disabled_runtime_settings']), 21)
             self.assertIn('ACCOUNTING_API', manifest['disabled_runtime_settings'])
+            self.assertIn('MARKETING_MEDIA_API', manifest['disabled_runtime_settings'])
             self.assertIn('ATLAS_AI_API', manifest['disabled_runtime_settings'])
             self.assertIn('INTEGRATIONS_API', manifest['disabled_runtime_settings'])
             for forbidden in ('dnefgcmjcgxlynycxkts', 'uhbamqetppqmygesoeeh'):

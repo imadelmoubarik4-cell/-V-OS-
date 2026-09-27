@@ -63,14 +63,34 @@
     { key: 'media_retention_days', type: 'number', label: 'Keep photos and files for (days)', min: 1, max: 365 },
     { key: 'audio_retention', type: 'select', label: 'Voice recordings', choices: [['delete_after_transcription', 'Delete after they are written down'], ['keep_with_media', 'Keep with photos and files']] }
   ];
+  // Connection pill per connection_state; publishing providers refine a
+  // connected card by publishing readiness (S94B, contract §4).
   const INTEGRATION_STATES = {
     not_configured: ['neutral', 'Not set up yet'],
-    ready: ['neutral', 'Not connected'],
+    ready: ['neutral', 'Ready to connect'],
     verifying: ['warning', 'Checking'],
     connected: ['positive', 'Connected'],
-    verification_failed: ['warning', 'Needs attention'],
-    needs_reauthorization: ['warning', 'Needs attention'],
-    pending_review: ['info', 'Waiting for platform review']
+    verification_failed: ['warning', 'Verification failed'],
+    needs_reauthorization: ['warning', 'Needs reconnecting'],
+    pending_review: ['info', 'Platform review pending']
+  };
+  // S94B: what Atlas posts to, per provider (atlas-integrations resource_kind).
+  const RESOURCE_WORDS = {
+    facebook_page: { noun: 'Page', choose: 'Choose Page', change: 'Change Page', title: 'Choose the Facebook Page', use: 'Use this Page', none: 'No Page chosen' },
+    instagram_account: { noun: 'account', choose: 'Choose account', change: 'Change account', title: 'Choose the Instagram account', use: 'Use this account', none: 'No account chosen' },
+    gbp_location: { noun: 'location', choose: 'Choose location', change: 'Change location', title: 'Choose the Business Profile location', use: 'Use this location', none: 'No location chosen' },
+    tiktok_account: { noun: 'account', choose: 'Choose account', change: 'Change account', title: 'Choose the TikTok account', use: 'Use this account', none: 'No account chosen' }
+  };
+  const REVIEW_STATES = [
+    ['unknown', 'Not checked yet'], ['not_required', 'Not needed'], ['required', 'Needed, not started'],
+    ['pending', 'In progress'], ['approved', 'Approved'], ['rejected', 'Rejected']
+  ];
+  const INTEGRATION_EVENTS = {
+    connect_started: 'Connecting started', credential_stored: 'Access saved', connected: 'Connected', callback_failed: 'Connecting failed',
+    verified: 'Checked', verify_failed: 'Check failed', refreshed: 'Access renewed', refresh_failed: 'Renewing access failed',
+    disconnected: 'Disconnected', api_key_saved: 'Key saved', publish_scope_requested: 'Publishing permission requested',
+    resource_listed: 'Accounts listed', resource_selected: 'Posting target chosen', credential_used: 'Used to publish a post',
+    review_state_set: 'Platform review updated'
   };
 
   const state = {
@@ -87,7 +107,7 @@
     offerDraft: null,
     notificationAction: false,
     ai: { status: 'idle', settings: null, preferences: null, error: null },
-    integrations: { status: 'idle', providers: [], error: null, busy: {}, messages: {}, notice: null },
+    integrations: { status: 'idle', providers: [], error: null, busy: {}, messages: {}, notice: null, autoPick: null },
     purchasingPolicy: { status: 'idle', value: null }
   };
 
@@ -740,6 +760,9 @@
       case 'invalid_request': return 'That wasn’t accepted. Check what you entered and try again.';
       case 'network': case 'timeout': return 'Atlas couldn’t be reached. Nothing was changed — try again.';
       case 'verify_failed': return `${name} was connected but didn’t pass Atlas’s check. Reconnect, or check the account on ${name}.`;
+      case 'refresh_in_progress': return `Atlas is renewing access to ${name} right now. Try again in a minute.`;
+      case 'resource_not_listed': return 'That choice isn’t in the latest list any more. Open the list again and choose.';
+      case 'resource_not_selectable': return `Atlas can’t post there. Choose another one on ${name}.`;
       default: return 'Connecting didn’t finish. Nothing was changed — try again.';
     }
   }
@@ -759,6 +782,11 @@
       integrations.error = error;
     }
     render();
+    // Back from the provider: when publishing needs a target, open the picker once.
+    const autoPick = integrations.autoPick;
+    integrations.autoPick = null;
+    const picked = autoPick && integrations.providers.find((provider) => provider.provider_key === autoPick);
+    if (picked?.publishing?.reason === 'no_resource_selected' && picked.publishing.can_choose_resource) openResourcePicker(picked.provider_key);
   }
 
   function replaceProvider(provider) {
@@ -775,8 +803,9 @@
     delete integrations.messages[key];
     render();
     try {
-      if (action === 'start') {
-        const payload = await integrationsApi('start', { method: 'POST', body: { provider_key: key, return_path: '#settings/integrations' } });
+      if (action === 'start' || action === 'allow-publishing') {
+        const purpose = action === 'allow-publishing' ? { purpose: 'publishing' } : {};
+        const payload = await integrationsApi('start', { method: 'POST', body: { provider_key: key, return_path: '#settings/integrations', ...purpose } });
         if (payload?.authorize_url) {
           // The Atlas hop on the functions domain binds this browser; never rebuilt here.
           window.location.assign(payload.authorize_url);
@@ -787,6 +816,7 @@
         const payload = await integrationsApi(action, { method: 'POST', body: { provider_key: key, ...body } });
         replaceProvider(payload?.provider);
         if (action === 'disconnect') integrations.messages[key] = { tone: 'positive', text: `${providerLabel(key)} is disconnected.` };
+        else if (action === 'set-review-state') integrations.messages[key] = { tone: 'positive', text: 'Platform review saved.' };
         else if (payload?.verified === false) integrations.messages[key] = { tone: 'danger', text: integrationMessage(payload.error_code, providerLabel(key)) };
         else integrations.messages[key] = { tone: 'positive', text: action === 'save-api-key' ? `${providerLabel(key)} key saved and checked.` : `${providerLabel(key)} is working.` };
       }
@@ -798,28 +828,105 @@
     }
   }
 
+  // Pill, status line and the primary next step for one card (S94B §4 states).
+  function integrationView(provider) {
+    const name = provider.label || humanize(provider.provider_key);
+    const publishing = provider.publishing && provider.publishing.supported ? provider.publishing : null;
+    const words = RESOURCE_WORDS[publishing?.resource_kind] || RESOURCE_WORDS.facebook_page;
+    const connectionState = provider.connection_state;
+    const base = INTEGRATION_STATES[connectionState] || ['neutral', 'Not connected'];
+    const status = {
+      // Owner copy only: what connecting would enable (S91).
+      not_configured: provider.enables || '',
+      ready: provider.auth_kind === 'api_key' ? 'Add the API key to connect.' : `Ready to connect. ${provider.enables || ''}`.trim(),
+      verifying: 'Atlas is checking the connection.',
+      // Fixed words only: the provider's own text stays in the audit trail (S88 brief §6).
+      verification_failed: 'The last check failed. Test again, or reconnect.',
+      needs_reauthorization: publishing
+        ? `Access expired or was removed on ${name}. Scheduled posts won’t publish until you reconnect.`
+        : 'Access expired. Reconnect to continue.',
+      pending_review: 'The platform is reviewing Atlas’s access. Nothing to do until it finishes.',
+      connected: ''
+    }[connectionState] || '';
+    if (!publishing || connectionState !== 'connected') return { tone: base[0], text: base[1], status, primary: null, state: connectionState };
+    const target = publishing.resource?.label;
+    switch (publishing.reason) {
+      case null:
+      case undefined:
+        return {
+          tone: 'positive', text: 'Publishing allowed', state: 'publishing_allowed',
+          status: `${target ? `Connected as ${target}. ` : ''}Approved posts publish here.${publishing.direct_post === false ? ' Posts go to the TikTok inbox as drafts until TikTok approves Atlas.' : ''}`,
+          primary: null
+        };
+      case 'publishing_permission_missing':
+        return { tone: 'warning', text: 'Publishing permission missing', state: 'publishing_missing', status: `Connected, but posting wasn’t allowed. Allow Atlas to post on ${name}.`, primary: publishing.can_allow_publishing ? 'allow-publishing' : 'start' };
+      case 'no_resource_selected':
+        return { tone: 'warning', text: words.none, state: 'no_resource', status: `Connected. ${words.choose.replace('Choose', 'Choose which')} Atlas posts to.`, primary: publishing.can_choose_resource ? 'choose-resource' : null };
+      case 'review_required':
+        return { tone: 'neutral', text: 'App review required', state: 'review_required', status: `${name} hasn’t approved Atlas for posting yet. Plan and approve posts as usual and post them by hand until then.`, primary: null };
+      case 'review_pending':
+        return { tone: 'info', text: 'Platform review pending', state: 'review_pending', status: `${name} is reviewing Atlas’s access. Nothing to do until it finishes.`, primary: null };
+      default:
+        return { tone: base[0], text: base[1], status, primary: null, state: connectionState };
+    }
+  }
+
+  function capabilityMarkup(provider) {
+    const publishing = provider.publishing;
+    if (!publishing?.supported || provider.connection_state !== 'connected') return '';
+    const words = RESOURCE_WORDS[publishing.resource_kind] || RESOURCE_WORDS.facebook_page;
+    const allowed = publishing.permission_state === 'granted';
+    const rows = [
+      [allowed ? 'circle-check' : 'lock', allowed ? 'Publish approved posts' : 'Publish approved posts: not allowed yet'],
+      [publishing.resource ? 'circle-check' : 'circle-dashed', publishing.resource ? `Posts go to ${publishing.resource.label}` : `${words.none} yet`]
+    ];
+    if (publishing.direct_post === false) rows.push(['info', 'Videos arrive in the TikTok inbox to finish there (private until TikTok approves Atlas)']);
+    if (publishing.direct_post === true) rows.push(['circle-check', 'Direct posting approved by TikTok']);
+    return `<ul class="settings-provider__can">${rows.map(([glyph, text]) => `<li>${icon(glyph)}<span>${escapeHtml(text)}</span></li>`).join('')}</ul>`;
+  }
+
+  function reviewControlMarkup(provider, busy) {
+    const publishing = provider.publishing;
+    if (!publishing?.supported || !publishing.can_set_review_state || !isAdmin() || provider.connection_state === 'not_configured') return '';
+    const key = provider.provider_key;
+    const id = `settings-review-${key}`;
+    const current = REVIEW_STATES.find(([value]) => value === publishing.review_state)?.[1] || 'Not checked yet';
+    return `<details class="settings-needs settings-review" data-integration-review="${escapeHtml(key)}"><summary>Platform review: ${escapeHtml(current)}</summary>
+      <p>Only the platform can see whether it approved Atlas; record what it says here. ${key === 'tiktok' ? 'TikTok: approved allows direct posting.' : key === 'google-business-profile' ? 'Google: approved means Business Profile API access was granted.' : 'Meta: approved means App Review granted the posting permissions.'}</p>
+      <div class="settings-review__row"><label class="sr-only" for="${id}">Platform review</label><select class="atlas-select" id="${id}" data-integration-review-select${busy ? ' disabled' : ''}>${REVIEW_STATES.map(([value, label]) => `<option value="${value}"${value === publishing.review_state ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('')}</select>
+      <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm${busy === 'set-review-state' ? ' is-loading' : ''}" data-integration-review-save data-provider="${escapeHtml(key)}"${busy ? ' disabled' : ''}>Save</button></div>
+    </details>`;
+  }
+
+  function eventsMarkup(provider) {
+    const events = Array.isArray(provider.recent_events) ? provider.recent_events.filter((event) => INTEGRATION_EVENTS[event.event_type]) : [];
+    if (!events.length || provider.connection_state === 'not_configured') return '';
+    return `<details class="settings-provider__events"><summary>Recent activity</summary><ul>${events.map((event) => `<li>${escapeHtml(INTEGRATION_EVENTS[event.event_type])}${event.actor_label ? ` · ${escapeHtml(event.actor_label)}` : ''} · ${escapeHtml(formatDateTime(event.created_at))}</li>`).join('')}</ul></details>`;
+  }
+
   function providerMarkup(provider) {
     const key = provider.provider_key;
-    const [tone, text] = INTEGRATION_STATES[provider.connection_state] || ['neutral', 'Not connected'];
+    const view = integrationView(provider);
     const busy = state.integrations.busy[key];
     const message = state.integrations.messages[key];
+    const publishing = provider.publishing?.supported ? provider.publishing : null;
+    const words = RESOURCE_WORDS[publishing?.resource_kind] || RESOURCE_WORDS.facebook_page;
     const facts = [];
     if (provider.account_label) facts.push(`Account: ${provider.account_label}`);
     if (provider.connected_by_label && provider.connected_at) facts.push(`Connected by ${provider.connected_by_label} · ${formatDateTime(provider.connected_at)}`);
     if (provider.last_verified_at) facts.push(`Last checked ${formatDateTime(provider.last_verified_at)}`);
-    const status = {
-      // Owner copy only: what connecting would enable (S91).
-      not_configured: provider.enables || '',
-      ready: provider.auth_kind === 'api_key' ? 'Add the API key to connect.' : 'Ready to connect.',
-      verifying: 'Atlas is checking the connection.',
-      verification_failed: `The last check failed. Test again, or reconnect.`,
-      needs_reauthorization: 'Access expired. Reconnect to continue.',
-      pending_review: 'The platform is reviewing Atlas’s access. Nothing to do until it finishes.',
-      connected: ''
-    }[provider.connection_state] || '';
     const button = (action, label, variant = 'secondary') => `<button type="button" class="atlas-btn atlas-btn--${variant} atlas-btn--sm${busy === action ? ' is-loading' : ''}" data-integration-action="${action}" data-provider="${escapeHtml(key)}"${busy ? ' disabled' : ''}${busy === action ? ' aria-busy="true"' : ''}>${escapeHtml(label)}</button>`;
     const actions = [];
-    if (provider.can_connect) actions.push(button('start', ['connected', 'verification_failed', 'needs_reauthorization'].includes(provider.connection_state) ? 'Reconnect' : 'Connect', provider.connection_state === 'ready' ? 'primary' : 'secondary'));
+    if (view.primary === 'allow-publishing') actions.push(button('allow-publishing', 'Allow publishing', 'primary'));
+    if (view.primary === 'choose-resource') actions.push(button('choose-resource', words.choose, 'primary'));
+    if (provider.can_connect) {
+      const connectionState = provider.connection_state;
+      if (connectionState === 'ready') actions.push(button('start', 'Connect', 'primary'));
+      else if (connectionState === 'needs_reauthorization' || view.primary === 'start') actions.push(button('start', 'Reconnect', 'primary'));
+      else if (connectionState === 'verification_failed' || (connectionState === 'connected' && !publishing)) actions.push(button('start', 'Reconnect'));
+      else if (connectionState === 'verifying') actions.push(button('start', 'Connect'));
+    }
+    if (publishing && publishing.can_choose_resource && view.primary !== 'choose-resource' && publishing.resource && publishing.resource_kind !== 'tiktok_account') actions.push(button('choose-resource', words.change));
     if (provider.can_test) actions.push(button('test', 'Test connection'));
     if (provider.can_disconnect && provider.connection_state !== 'not_configured') actions.push(button('disconnect', 'Disconnect', 'ghost'));
     const keyForm = provider.can_save_api_key ? `<form class="settings-apikey" data-integration-key-form data-provider="${escapeHtml(key)}">
@@ -834,14 +941,162 @@
       ? `<details class="settings-needs" data-provider-setup><summary>Setup details</summary>${setup.summary ? `<p>${escapeHtml(setup.summary)}</p>` : ''}${Array.isArray(setup.requirements) && setup.requirements.length ? `<ul>${setup.requirements.map((entry) => `<li><code>${escapeHtml(entry.name)}</code> ${escapeHtml(entry.label)}</li>`).join('')}</ul>` : ''}<p>These are set as function secrets on the Atlas server. Their values are never shown here.</p></details>`
       : '';
     const linked = state.focusProvider === key;
-    return `<li class="settings-provider${linked ? ' is-linked-target' : ''}" data-provider-card="${escapeHtml(key)}"${linked ? ' aria-current="true"' : ''}>
-      <div class="settings-provider__head"><div><h3 class="settings-provider__name">${escapeHtml(provider.label || humanize(key))}</h3>${status ? `<p class="settings-provider__status">${escapeHtml(status)}</p>` : ''}</div>${pill(tone, text)}</div>
+    return `<li class="settings-provider${linked ? ' is-linked-target' : ''}" data-provider-card="${escapeHtml(key)}" data-integration-state="${escapeHtml(view.state || provider.connection_state || '')}"${linked ? ' aria-current="true"' : ''}>
+      <div class="settings-provider__head"><div><h3 class="settings-provider__name">${escapeHtml(provider.label || humanize(key))}</h3>${view.status ? `<p class="settings-provider__status">${escapeHtml(view.status)}</p>` : ''}</div>${pill(view.tone, view.text)}</div>
       ${facts.length ? `<p class="settings-provider__facts">${escapeHtml(facts.join(' · '))}</p>` : ''}
+      ${capabilityMarkup(provider)}
       ${needs}
       ${keyForm}
       ${actions.length ? `<div class="settings-actions">${actions.join('')}</div>` : ''}
+      ${reviewControlMarkup(provider, busy)}
+      ${eventsMarkup(provider)}
       ${message ? `<p class="settings-form-feedback is-${message.tone === 'danger' ? 'error' : 'success'}" role="${message.tone === 'danger' ? 'alert' : 'status'}">${icon(message.tone === 'danger' ? 'circle-alert' : 'circle-check')}${escapeHtml(message.text)}</p>` : ''}
     </li>`;
+  }
+
+  // ---------- resource picker (S94B) ----------
+
+  function initials(label) {
+    const words = String(label || '').replace(/^@/, '').split(/[\s._-]+/).filter(Boolean);
+    return (words.slice(0, 2).map((word) => word.charAt(0)).join('') || '?').toUpperCase();
+  }
+
+  const UNAVAILABLE = {
+    no_create_content: 'You can’t post for this Page. Ask a Page admin for content access.',
+    not_verified: 'Not verified on Google yet.',
+    site_manager: 'Site managers can’t post for this location.'
+  };
+
+  function resourceMeta(resource) {
+    const details = resource.details || {};
+    switch (resource.resource_kind) {
+      case 'facebook_page': return ['Page', details.category].filter(Boolean).join(' · ');
+      case 'instagram_account': return details.page_name ? `Linked to the ${details.page_name} Page` : 'Instagram professional account';
+      case 'gbp_location': return [details.address, details.account_label].filter(Boolean).join(' · ') || 'Business Profile location';
+      default: return 'TikTok account';
+    }
+  }
+
+  function pickerEmpty(kind, notes) {
+    switch (kind) {
+      case 'instagram_account': return ['No Instagram account found', notes?.pages_without_instagram ? 'None of your Pages has a linked Instagram professional account. Link it in Instagram, then open this list again.' : 'The account you connected doesn’t manage a Page with an Instagram professional account.'];
+      case 'gbp_location': return ['No locations found', 'The Google account you connected doesn’t manage a Business Profile location. Connect with the account that manages the venue’s profile.'];
+      case 'tiktok_account': return ['No account found', 'TikTok didn’t return the connected account. Reconnect TikTok.'];
+      default: return ['No Pages found', 'The Facebook account you connected doesn’t manage any Pages. Connect with the account that manages the venue’s Page.'];
+    }
+  }
+
+  function pickerBodyMarkup(picker) {
+    const words = RESOURCE_WORDS[picker.kind] || RESOURCE_WORDS.facebook_page;
+    if (picker.status === 'loading') return `<div aria-busy="true">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(3)}<span class="sr-only">Loading the list</span></div>`;
+    if (picker.status === 'error') return `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">${escapeHtml(integrationMessage(picker.error, providerLabel(picker.provider)))}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-picker-retry>Try again</button></div></div>`;
+    if (!picker.resources.length) {
+      const [title, text] = pickerEmpty(picker.kind, picker.notes);
+      return `<div class="atlas-empty atlas-empty--inline" data-picker-empty><div class="atlas-empty__icon">${icon('search-x')}</div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-picker-reconnect>Reconnect</button></div>`;
+    }
+    const current = picker.resources.find((resource) => resource.selected)?.resource_id || '';
+    return `<fieldset class="settings-picker" data-picker-options><legend class="sr-only">${escapeHtml(words.title)}</legend>
+      ${picker.resources.map((resource) => {
+        const disabled = !resource.selectable;
+        const reason = disabled ? UNAVAILABLE[resource.unavailable_reason] || 'Atlas can’t post there.' : '';
+        return `<label class="atlas-check-row settings-picker__option${disabled ? ' is-disabled' : ''}">
+          <input class="atlas-radio" type="radio" name="settings-resource" value="${escapeHtml(resource.resource_id)}"${resource.resource_id === (picker.choice ?? current) ? ' checked' : ''}${disabled ? ' disabled' : ''}>
+          <span class="atlas-avatar atlas-avatar--lg" aria-hidden="true">${escapeHtml(initials(resource.label))}</span>
+          <span class="settings-picker__text"><span class="settings-picker__name">${escapeHtml(resource.label)}${resource.selected ? ' <span class="atlas-badge atlas-badge--muted">In use</span>' : ''}</span><span class="settings-picker__meta">${escapeHtml(reason || resourceMeta(resource))}</span></span>
+        </label>`;
+      }).join('')}
+    </fieldset>`;
+  }
+
+  function pickerPanel(picker) {
+    const words = RESOURCE_WORDS[picker.kind] || RESOURCE_WORDS.facebook_page;
+    const full = picker.resources.length > 5 ? ' atlas-sheet--full-phone' : '';
+    return `<section class="atlas-sheet settings-picker-sheet${full}" data-modal-panel role="dialog" aria-modal="true" aria-labelledby="settings-picker-title">
+      <span class="atlas-sheet__grabber" aria-hidden="true"></span>
+      <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="settings-picker-title">${escapeHtml(words.title)}</h2><p class="atlas-sheet__desc">Atlas posts only to the one you choose. You can change it later.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
+      <div class="atlas-sheet__body" data-picker-body>${pickerBodyMarkup(picker)}</div>
+      <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="button" class="atlas-btn atlas-btn--primary" data-picker-use disabled>${escapeHtml(words.use)}</button></footer>
+    </section>`;
+  }
+
+  // The live list comes from the provider through atlas-integrations; the
+  // sheet never sees a token. Nothing is pre-selected except the one in use.
+  function openResourcePicker(key, trigger = null) {
+    const provider = state.integrations.providers.find((entry) => entry.provider_key === key);
+    const kind = provider?.publishing?.resource_kind;
+    const modal = window.AtlasModal;
+    if (!kind || !modal?.layer) return;
+    const picker = { provider: key, kind, status: 'loading', resources: [], notes: {}, error: null, choice: null, saving: false };
+    const root = modal.layer({ id: 'settings-resource-picker', panel: pickerPanel(picker), onClose: () => trigger?.focus?.() });
+    // Repaint the body and the Use button only: the dialog element that
+    // AtlasModal registered (focus trap, close controls) stays in place.
+    const paint = () => {
+      const body = root.querySelector('[data-picker-body]');
+      const use = root.querySelector('[data-picker-use]');
+      if (!body || !use) return;
+      body.innerHTML = pickerBodyMarkup(picker);
+      const ready = picker.status === 'ready' && picker.resources.some((resource) => resource.selectable);
+      const chosen = picker.choice ?? picker.resources.find((resource) => resource.selected)?.resource_id;
+      use.disabled = !ready || !chosen || picker.saving;
+      use.classList.toggle('is-loading', picker.saving);
+      root.querySelector('.atlas-sheet')?.classList.toggle('atlas-sheet--full-phone', picker.resources.length > 5);
+      window.lucide?.createIcons?.();
+    };
+    const load = async () => {
+      picker.status = 'loading';
+      paint();
+      try {
+        const payload = await integrationsApi('list-resources', { method: 'POST', body: { provider_key: key } });
+        picker.resources = Array.isArray(payload?.resources) ? payload.resources : [];
+        picker.notes = payload?.notes || {};
+        picker.status = 'ready';
+        replaceProvider(payload?.provider);
+        render();
+      } catch (error) {
+        picker.status = 'error';
+        picker.error = error?.code || (error?.status === 403 ? 'forbidden' : null);
+      }
+      if (root.isConnected) paint();
+    };
+    const choose = async () => {
+      const value = picker.choice ?? picker.resources.find((resource) => resource.selected)?.resource_id;
+      const resource = picker.resources.find((entry) => entry.resource_id === value && entry.selectable);
+      if (!resource) return;
+      const current = picker.resources.find((entry) => entry.selected);
+      if (current && current.resource_id !== resource.resource_id && modal.confirm) {
+        const words = RESOURCE_WORDS[kind] || RESOURCE_WORDS.facebook_page;
+        const ok = await modal.confirm({ title: `Change to another ${words.noun}?`, body: `Scheduled posts will publish to ${resource.label}.`, confirmLabel: words.change, cancelLabel: 'Keep current', id: 'settings-picker-confirm' });
+        if (!ok) return;
+      }
+      picker.saving = true;
+      paint();
+      try {
+        const payload = await integrationsApi('select-resource', { method: 'POST', body: { provider_key: key, resource_kind: kind, resource_id: resource.resource_id } });
+        replaceProvider(payload?.provider);
+        state.integrations.messages[key] = { tone: 'positive', text: `Posts go to ${payload?.selected?.label || resource.label} on ${providerLabel(key)}.` };
+        modal.dismiss(root, 'done');
+        window.AtlasShell?.toast?.(`Posts go to ${payload?.selected?.label || resource.label} on ${providerLabel(key)}.`, { tone: 'success' });
+        render();
+      } catch (error) {
+        picker.saving = false;
+        picker.status = 'error';
+        picker.error = error?.code || (error?.status === 403 ? 'forbidden' : null);
+        if (root.isConnected) paint();
+      }
+    };
+    root.addEventListener('change', (event) => {
+      if (event.target?.name !== 'settings-resource') return;
+      picker.choice = event.target.value;
+      root.querySelector('[data-picker-use]')?.removeAttribute('disabled');
+    });
+    root.addEventListener('click', (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target) return;
+      if (target.closest('[data-picker-retry]')) { load(); return; }
+      if (target.closest('[data-picker-reconnect]')) { modal.dismiss(root, 'reconnect'); integrationAction(key, 'start'); return; }
+      if (target.closest('[data-picker-use]') && !target.closest('[data-picker-use]').disabled) choose();
+    });
+    load();
   }
 
   function integrationNoticeMarkup() {
@@ -865,7 +1120,7 @@
     return `${sectionHead('Integrations', 'Outside accounts Atlas can use. Connecting happens on the provider’s own page; Atlas never sees passwords.')}
       ${integrationNoticeMarkup()}
       ${body}
-      <p class="settings-muted">${icon('lock')}Connected accounts never publish anything by themselves. Planning in Marketing works without them.</p>`;
+      <p class="settings-muted">${icon('lock')}Atlas only publishes posts someone approved. Planning in Marketing works without any connection.</p>`;
   }
 
   // One-time notice after the provider redirect: /?integration=…&result=…&reason=…#settings/…
@@ -876,6 +1131,7 @@
     const result = params.get('result');
     if (!provider || !result) return;
     state.integrations.notice = { provider, result, reason: params.get('reason') };
+    if (result === 'connected') state.integrations.autoPick = provider;
     ['integration', 'result', 'reason'].forEach((key) => params.delete(key));
     const query = params.toString();
     try { window.history.replaceState(window.history.state, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`); } catch { /* address bar only */ }
@@ -1508,7 +1764,14 @@
       const action = integration.dataset.integrationAction;
       const provider = integration.dataset.provider;
       if (action === 'disconnect') confirmDisconnect(provider, integration);
+      else if (action === 'choose-resource') openResourcePicker(provider, integration);
       else integrationAction(provider, action);
+      return;
+    }
+    const review = target.closest('[data-integration-review-save]');
+    if (review && !review.disabled) {
+      const value = review.closest('[data-integration-review]')?.querySelector('[data-integration-review-select]')?.value;
+      if (value) integrationAction(review.dataset.provider, 'set-review-state', { review_state: value });
     }
   }
 
