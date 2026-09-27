@@ -1061,10 +1061,16 @@ const askAndFail = async (page) => {
   await page.waitForSelector('.msg-ai .atlas-alert');
   await until(async () => (await robotInfo(page)).state === 'error', { message: 'the robot shows the error' });
 };
+// How long the error lasted, from the controller's own state history (not a
+// wall-clock poll, which a starved runner would stretch).
 const errorShownFor = async (page) => {
-  const started = await page.evaluate(() => performance.now());
-  await until(async () => (await robotInfo(page)).state === 'idle', { timeout: 10000, message: 'the error returns to idle by itself' });
-  return page.evaluate((at) => performance.now() - at, started);
+  await until(async () => (await robotInfo(page)).state === 'idle', { timeout: 15000, message: 'the error returns to idle by itself' });
+  const history = (await robotInfo(page)).history;
+  const end = history.length - 1;
+  assert.equal(history[end].to, 'idle');
+  assert.equal(history[end].from, 'error', 'idle follows the error directly (no wake in between)');
+  const start = history.findLastIndex((step, index) => index < end && step.to === 'error');
+  return history[end].at - history[start].at;
 };
 
 for (const [label, contextOptions] of [['motion', undefined], ['reduced motion', { reducedMotion: 'reduce' }]]) {
@@ -1080,7 +1086,7 @@ for (const [label, contextOptions] of [['motion', undefined], ['reduced motion',
       // Nothing is touched: the pointer rests away from any robot.
       await page.mouse.move(1400, 880);
       const elapsed = await errorShownFor(page);
-      assert.ok(elapsed > 2500 && elapsed < 6000, `about 4 s of error (${Math.round(elapsed)} ms)`);
+      assert.ok(elapsed >= 3900 && elapsed < 5500, `about 4 s of error (${Math.round(elapsed)} ms)`);
       assert.deepEqual([(await shown(page)).nav, (await shown(page)).tab], ['idle', 'idle'], 'every following robot is back to idle');
       assert.match(await page.textContent('.msg-ai .atlas-alert'), /Atlas couldn’t finish this answer\. Nothing was changed\./, 'the error message stays');
       const path = (await robotInfo(page)).history.map((step) => step.to).slice(-3);
