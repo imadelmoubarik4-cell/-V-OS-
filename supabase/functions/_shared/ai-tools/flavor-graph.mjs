@@ -1229,9 +1229,22 @@ function* product(pools, position = 0, chosen = []) {
   for (const option of pools[position]) yield* product(pools, position + 1, [...chosen, option]);
 }
 
+// Short names for idea titles where the rule below would cut a long
+// canonical name badly.
+const SHORT_NAMES = {
+  "amaro-medium": "Amaro", "red-bitter-aperitivo": "Bitter Aperitivo", "herbal-liqueur-green": "Green Alpine",
+  "herbal-liqueur-yellow": "Yellow Alpine", "red-wine": "Red Wine", "dry-white-wine": "White Wine", "rose-wine": "Rosé",
+  "sparkling-wine": "Sparkling", "filter-coffee": "Filter Coffee", "smoked-tea": "Lapsang", "scotch-blended": "Scotch",
+  "islay-scotch": "Islay Scotch", "blanc-vermouth": "Blanc Vermouth", "px-sherry": "PX Sherry", "aged-hard-cheese": "Aged Cheese",
+};
+
 function shortName(ingredient) {
+  if (SHORT_NAMES[ingredient.slug]) return SHORT_NAMES[ingredient.slug];
   const base = ingredient.name.replace(/\(.*?\)/g, " ")
-    .replace(/\b(syrup|liqueur|juice|water|fresh|purée|puree|style|bitters|london dry|blanco|beans?|milk)\b/gi, " ")
+    .split("/")[0]
+    .replace(/^\s*cr[èe]me de\s+/i, "")
+    .replace(/-?\bstyle\b/gi, " ")
+    .replace(/\b(syrup|liqueur|juice|water|fresh|purée|puree|bitters|london dry|blanco|beans?|milk)\b/gi, " ")
     .replace(/\s+/g, " ").trim();
   return (base || ingredient.name).split(" ").slice(0, 2)
     .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : word)).join(" ");
@@ -1769,4 +1782,4 @@ export function useSoon(index, stock, items) {
   return rows.sort((a, b) => b.ratio_to_par - a.ratio_to_par || a.item_name.localeCompare(b.item_name));
 }
 
-export { DRAFT_TYPE, TEMPLATE_BY_KEY, TYPE_LABEL };
+export { DRAFT_TYPE, shortName, TEMPLATE_BY_KEY, TYPE_LABEL };

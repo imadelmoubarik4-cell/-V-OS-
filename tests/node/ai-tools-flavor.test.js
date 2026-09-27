@@ -625,3 +625,14 @@ test('drafts are saved with an existing Recipes category slug and a name within 
   assert.ok(renamed.name.length <= 120, 'the suffix never pushes the name past 120 characters');
   assert.match(renamed.name, / No\. 2$/);
 });
+
+test('idea names use a clean short name for every ingredient in the library', async () => {
+  const { readFileSync } = await import('node:fs');
+  const library = JSON.parse(readFileSync(new URL('../../data/flavor/ingredients.json', import.meta.url), 'utf8')).ingredients;
+  for (const ingredient of library) {
+    const short = F.shortName(ingredient);
+    assert.ok(short && short.length <= 24, `${ingredient.slug}: "${short}"`);
+    assert.doesNotMatch(short, /[/(-]$|^[/-]|\s[/-]\s|\bde$|\bCrème De\b/i, `${ingredient.slug}: "${short}"`);
+    assert.ok(short.split(' ').length <= 2, `${ingredient.slug}: "${short}"`);
+  }
+});
