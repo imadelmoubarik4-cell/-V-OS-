@@ -111,9 +111,9 @@ test('live placeholder carries the key, framing and state, with the badge as its
 
 test('the live robot is lazy, same-origin, paused off screen and when hidden, and keeps one WebGL context per key', () => {
   const source = read('apps/web/assets/js/atlas-bot.js');
-  assert.match(source, /const SCENE = 'assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261004-bot5';/);
-  assert.match(source, /const SPRITE = 'assets\/atlas-bot\/atlas-bot\.png\?v=20261004-bot5';/);
-  assert.match(source, /const SPRITE_SMALL = 'assets\/atlas-bot\/atlas-bot-small\.png\?v=20261004-bot5';/);
+  assert.match(source, /const SCENE = 'assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261004-bot6';/);
+  assert.match(source, /const SPRITE = 'assets\/atlas-bot\/atlas-bot\.png\?v=20261004-bot6';/);
+  assert.match(source, /const SPRITE_SMALL = 'assets\/atlas-bot\/atlas-bot-small\.png\?v=20261004-bot6';/);
   assert.match(source, /import\(url\)/);
   assert.match(source, /IntersectionObserver/);
   assert.match(source, /visibilitychange/);
@@ -203,7 +203,7 @@ test('the scene bundle and sprite are built from the reviewed sources', () => {
 });
 
 test('the robot replaces the assistant icon in AI surfaces; the Atlas logo stays the brand mark', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-bot\.js\?v=20261004-bot5"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-bot\.js\?v=20261004-bot6"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-bot.js') < index.indexOf('assets/js/atlas-ai.js'));
   assert.match(index, /class="nav-item nav-item--ai"[^>]*><span class="atlas-bot atlas-bot--small atlas-bot--nav" data-atlas-bot data-atlas-bot-follow data-state="idle" aria-hidden="true">/);
   assert.match(index, /class="atlas-tabbar__item atlas-tabbar__item--ai"[^>]*><span class="atlas-bot atlas-bot--small atlas-bot--tab" data-atlas-bot data-atlas-bot-follow data-state="idle" aria-hidden="true">/);
@@ -261,15 +261,15 @@ test('robot styles live in the components layer and honour reduced motion', () =
   const layer = css.slice(css.indexOf('@layer atlas.components {'));
   assert.ok(layer.includes('.atlas-bot {'), 'inside @layer atlas.components');
   assert.match(css, /html\.atlas-reduce-motion \.atlas-bot \{ animation: none; transition: none; \}/);
-  assert.match(css, /url\('\.\.\/atlas-bot\/atlas-bot\.png\?v=20261004-bot5'\) 0 0 \/ 400% 100% no-repeat/);
-  assert.match(css, /\.atlas-bot--small \{ background-image: url\('\.\.\/atlas-bot\/atlas-bot-small\.png\?v=20261004-bot5'\); \}/);
+  assert.match(css, /url\('\.\.\/atlas-bot\/atlas-bot\.png\?v=20261004-bot6'\) 0 0 \/ 400% 100% no-repeat/);
+  assert.match(css, /\.atlas-bot--small \{ background-image: url\('\.\.\/atlas-bot\/atlas-bot-small\.png\?v=20261004-bot6'\); \}/);
   // The system setting stops the state animations too: its rule is as
   // specific as .atlas-bot[data-state="thinking"] and the like.
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.atlas-bot, \.atlas-bot\[data-state\] \{ animation: none; transition: none; \}\s*:is\(a, button\):hover > \.atlas-bot \{ transform: none; \}/);
   assert.match(read('apps/web/assets/css/atlas-shell.css'), /\.atlas-ai \.ai-empty:not\(\.ai-empty--off\):not\(:has\(\.atlas-bot-live\)\)::before/);
   // Robot refinement cache keys: every changed stylesheet and script.
-  for (const asset of ['css/atlas-components.css', 'css/atlas-shell.css', 'css/atlas-ai.css']) assert.ok(index.includes(`href="assets/${asset}?v=20261004-bot5"`), asset);
-  for (const asset of ['atlas-bot.js', 'atlas-ai.js', 'home.js']) assert.ok(index.includes(`src="assets/js/${asset}?v=20261004-bot5"`), asset);
+  for (const asset of ['css/atlas-components.css', 'css/atlas-shell.css', 'css/atlas-ai.css']) assert.ok(index.includes(`href="assets/${asset}?v=20261004-bot6"`), asset);
+  for (const asset of ['atlas-bot.js', 'atlas-ai.js', 'home.js']) assert.ok(index.includes(`src="assets/js/${asset}?v=20261004-bot6"`), asset);
   assert.match(read('apps/web/assets/css/atlas-shell.css'), /\.atlas-tabbar__item \.atlas-bot--tab::after \{ bottom: calc\(100% - var\(--atlas-bot-size\) \* \.7\); \}/, 'the tab robot keeps its ZZZ inside the tab bar');
 });
 
@@ -473,7 +473,7 @@ test('robot cache keys agree across index.html, config.js, atlas-bot.js and the 
     assert.equal(keys.size, 1, `${file} has one key (${[...keys].join(', ')})`);
     statSync(`apps/web/${file}`);
   }
-  for (const [file, key] of [['assets/js/atlas-bot.js', '20261004-bot5'], ['assets/css/atlas-ai.css', '20261004-bot5'], ['assets/css/atlas-components.css', '20261004-bot5']]) {
+  for (const [file, key] of [['assets/js/atlas-bot.js', '20261004-bot6'], ['assets/css/atlas-ai.css', '20261004-bot6'], ['assets/css/atlas-components.css', '20261004-bot6']]) {
     assert.deepEqual([...(refs.get(file) || [])], [key], file);
   }
 });

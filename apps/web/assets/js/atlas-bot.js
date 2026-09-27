@@ -43,9 +43,9 @@
 (function atlasBot(root) {
   'use strict';
 
-  const SPRITE = 'assets/atlas-bot/atlas-bot.png?v=20261004-bot5';
-  const SPRITE_SMALL = 'assets/atlas-bot/atlas-bot-small.png?v=20261004-bot5';
-  const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20261004-bot5';
+  const SPRITE = 'assets/atlas-bot/atlas-bot.png?v=20261004-bot6';
+  const SPRITE_SMALL = 'assets/atlas-bot/atlas-bot-small.png?v=20261004-bot6';
+  const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20261004-bot6';
   // Badges this size or smaller use the small sprite (.atlas-bot--small).
   const SMALL_MAX = 24;
   // The assistant's states: what each shows in the 3D scene, and how it ends.

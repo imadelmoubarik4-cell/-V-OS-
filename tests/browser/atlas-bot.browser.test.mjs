@@ -189,7 +189,7 @@ test('badges: sidebar, palette Ask Atlas and the robot sprite; the Atlas logo st
     const nav = await spriteLoaded(page, '.atlas-nav .nav-item--ai .atlas-bot');
     assert.equal(nav.found, true);
     // 20 px: the small sprite (tighter face, matte visor, larger eyes).
-    assert.match(nav.url, /assets\/atlas-bot\/atlas-bot-small\.png\?v=20261004-bot5/);
+    assert.match(nav.url, /assets\/atlas-bot\/atlas-bot-small\.png\?v=20261004-bot6/);
     assert.deepEqual([nav.width, nav.height], [384, 96], 'four 96 px frames');
     assert.deepEqual(nav.box, [20, 20]);
     if (process.env.ATLAS_BOT_SHOTS) await page.locator('.atlas-nav .nav-group[data-nav-group="main"]').screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/nav-badge-1440.png` });
@@ -229,9 +229,9 @@ test('every robot asset the page references loads (200) with the keys atlas-bot.
     });
     const entries = Object.entries(result.statuses);
     const names = entries.map(([url]) => url);
-    assert.ok(names.some((url) => /assets\/js\/atlas-bot\.js\?v=20261004-bot5$/.test(url)), `atlas-bot.js key: ${names.join(', ')}`);
-    assert.ok(names.some((url) => /atlas-bot\/atlas-bot\.png\?v=20261004-bot5$/.test(url)), 'badge sprite from the stylesheet');
-    assert.ok(names.some((url) => /atlas-bot\/atlas-bot-small\.png\?v=20261004-bot5$/.test(url)), 'small sprite from the stylesheet');
+    assert.ok(names.some((url) => /assets\/js\/atlas-bot\.js\?v=20261004-bot6$/.test(url)), `atlas-bot.js key: ${names.join(', ')}`);
+    assert.ok(names.some((url) => /atlas-bot\/atlas-bot\.png\?v=20261004-bot6$/.test(url)), 'badge sprite from the stylesheet');
+    assert.ok(names.some((url) => /atlas-bot\/atlas-bot-small\.png\?v=20261004-bot6$/.test(url)), 'small sprite from the stylesheet');
     for (const [url, status] of entries) assert.equal(status, 200, url);
     // The scene bundle, fetched with the exact URL atlas-bot.js loads it from.
     const scene = await page.evaluate(async () => {
@@ -242,7 +242,7 @@ test('every robot asset the page references loads (200) with the keys atlas-bot.
       for (const sprite of sprites) out.sprites[sprite] = (await fetch(sprite, { cache: 'no-store' })).status;
       return out;
     });
-    assert.match(scene.url, /^assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261004-bot5$/);
+    assert.match(scene.url, /^assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261004-bot6$/);
     assert.equal(scene.status, 200, scene.url);
     assert.equal(Object.keys(scene.sprites).length, 2);
     for (const [sprite, status] of Object.entries(scene.sprites)) {

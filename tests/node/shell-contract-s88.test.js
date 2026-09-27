@@ -257,7 +257,7 @@ test('changed scripts carry the S88 cache key', () => {
   // sleep sprite frame and the rebuilt scene (atlas-bot.js); atlas-ai.js
   // reports what Atlas is doing to it and still carries the S91b voice lease.
   for (const file of ['atlas-bot.js', 'atlas-ai.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261004-bot5"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261004-bot6"></script>`), file);
   }
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
@@ -282,7 +282,7 @@ test('changed scripts carry the S88 cache key', () => {
   // S93: the Home/bell message item names the sender by the live name; the
   // daily briefing header shows the Atlas AI robot (thinking while the
   // briefing is prepared).
-  assert.ok(index.includes('<script src="assets/js/home.js?v=20261004-bot5"></script>'), 'home.js');
+  assert.ok(index.includes('<script src="assets/js/home.js?v=20261004-bot6"></script>'), 'home.js');
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'shifts-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }
