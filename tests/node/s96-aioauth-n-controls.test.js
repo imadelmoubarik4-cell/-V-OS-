@@ -74,7 +74,14 @@ test('N7 archives and other containers disguised as photos are refused before st
   const { handle, calls } = recognition();
   const big = new Uint8Array(13 * 1024 * 1024);
   big.set([0xff, 0xd8, 0xff, 0xe0]);
-  assert.equal((await handle(photo(big, 'image/jpeg'))).status, 413);
+  // A fixed-size (Uint8Array) body carries a content-length, so readBytes refuses it
+  // at the declared-length guard before it opens the body stream — the primary path a
+  // real oversized upload hits. (A FormData body streams with no content-length, and
+  // cancelling that undici stream mid-read leaves a dangling encoder rejection.)
+  const oversized = new Request('https://fn.example.test/atlas-inventory-recognition?action=identify', {
+    method: 'POST', headers: { authorization: 'Bearer t' }, body: big,
+  });
+  assert.equal((await handle(oversized)).status, 413);
   assert.ok(!calls.some((call) => call.kind === 'storage' || call.kind === 'openai'));
 });
 

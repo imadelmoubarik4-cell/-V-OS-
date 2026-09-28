@@ -168,7 +168,14 @@ test('C2 recognition refuses oversized photos with a 413 before reading them int
   const { handle, calls } = recognition();
   const big = new Uint8Array(20 * 1024 * 1024 + 10);
   big.set([0xff, 0xd8, 0xff, 0xe0]);
-  const response = await handle(photo({ client_request_id: RID }, big, 'image/jpeg'));
+  // A fixed-size (Uint8Array) body carries a content-length, so readBytes refuses it
+  // at the declared-length guard before it opens the body stream — the primary path a
+  // real oversized upload hits. (A FormData body streams with no content-length, and
+  // cancelling that undici stream mid-read leaves a dangling encoder rejection.)
+  const oversized = new Request('https://fn.example.test/atlas-inventory-recognition?action=identify', {
+    method: 'POST', headers: { authorization: 'Bearer t' }, body: big,
+  });
+  const response = await handle(oversized);
   assert.equal(response.status, 413);
   assert.ok(!calls.some((call) => call.kind === 'storage'));
 });

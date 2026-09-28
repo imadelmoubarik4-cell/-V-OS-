@@ -28,6 +28,12 @@ PO=00000000-0000-4000-8000-0000000a9713
 
 cleanup() {
   q <<SQL >/dev/null
+-- S96: purchase_order_events and inventory_movements are append-only (20261010096000).
+-- This disposable-fixture teardown runs as postgres, so it uses the migration's own
+-- break-glass escape hatch (private.audit_append_only honours atlas.audit_break_glass
+-- for postgres/supabase_admin) to remove its committed fixtures. The append-only
+-- protection itself is exercised by tests/sql/s96_audit_append_only_test.sql.
+set atlas.audit_break_glass = 'on';
 delete from public.purchase_order_events where order_id = '$PO';
 delete from public.purchase_orders where id = '$PO';
 delete from atlas_private.stock_adjustment_requests where item_id = '$ITEM';

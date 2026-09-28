@@ -103,8 +103,8 @@ insert into s92_acc select 'a path outside documents/<id>/ is refused',
       'mime_type','application/pdf','byte_size',10,'sha256',repeat('b',64)), '{}'::jsonb)$q$) like '22023%';
 
 -- Review ----------------------------------------------------------------------
-insert into s92_acc select 'a stale version is refused (40001)',
-  pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 7, 'save', '{"fields":{"note":"x"}}')$q$) like '40001%';
+insert into s92_acc select 'a stale version is refused (PT409, not 40001: PostgREST retries 40001 forever)',
+  pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 7, 'save', '{"fields":{"note":"x"}}')$q$) like 'PT409%';
 insert into s92_acc select 'invalid VAT rates and unknown suppliers are refused (22023)',
   pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 1, 'save', '{"fields":{"vat_lines":[{"rate":20,"net":100,"vat":20}]}}')$q$) like '22023%'
   and pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 1, 'save', '{"fields":{"supplier_id":"00000000-0000-4000-8000-0000000000ff"}}')$q$) like '22023%';
@@ -150,9 +150,9 @@ insert into s92_acc select 'approve needs supplier, date and total (22023)',
 update s92_doc set value = public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 3, 'approve', '{"confirm_duplicate":true}') where key = 'a';
 insert into s92_acc select 'approve records who and when; an approved document cannot be edited',
   (select value->>'status' = 'approved' and value->>'approved_by_label' = 'S92 Owner' from s92_doc where key = 'a')
-  and pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 4, 'save', '{"fields":{"note":"x"}}')$q$) like '40001%';
+  and pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 4, 'save', '{"fields":{"note":"x"}}')$q$) like 'PT409%';
 insert into s92_acc select 'an approved document cannot be discarded',
-  pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 4, 'discard', '{}')$q$) like '40001%';
+  pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 4, 'discard', '{}')$q$) like 'PT409%';
 
 update s92_doc set value = public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 4, 'mark_paid',
   '{"paid_at":"2026-09-24","payment_method":"bank_transfer","payment_reference":"Netbanki 55"}') where key = 'a';
@@ -206,8 +206,8 @@ insert into s92_acc select 'documents cannot be deleted; history cannot be chang
 
 -- Read limit and export -------------------------------------------------------
 insert into s92_acc select 'only a document to review can be read; the daily limit is enforced',
-  pg_temp.refused($q$select public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 60)$q$) like '40001%'
-  and pg_temp.refused($q$select public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d003', 1)$q$) like '40001%';
+  pg_temp.refused($q$select public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d001', 60)$q$) like 'PT409%'
+  and pg_temp.refused($q$select public.atlas_accounting_begin_read('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d003', 1)$q$) like 'PT409%';
 select public.atlas_accounting_create('00000000-0000-4000-8000-00000092a001', '00000000-0000-4000-8000-00000092c004',
   jsonb_build_object('document_id','00000000-0000-4000-8000-00000092d004',
     'storage_path','documents/00000000-0000-4000-8000-00000092d004/00000000-0000-4000-8000-00000092e004.png',
@@ -236,8 +236,8 @@ select public.atlas_accounting_create('00000000-0000-4000-8000-00000092a001', '0
   '{"supplier_id":"00000000-0000-4000-8000-00000092b002","issue_date":"2026-08-02","total_amount":"5000"}');
 select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 1, 'approve', '{}');
 select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 2, 'reopen', '{}');
-insert into s92_acc select 'a reopened document that was approved cannot be discarded (40001)',
-  pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 3, 'discard', '{}')$q$) like '40001%';
+insert into s92_acc select 'a reopened document that was approved cannot be discarded (PT409, not 40001)',
+  pg_temp.refused($q$select public.atlas_accounting_command('00000000-0000-4000-8000-00000092a001','00000000-0000-4000-8000-00000092d005', 3, 'discard', '{}')$q$) like 'PT409%';
 insert into s92_acc select 'picking a Purchasing supplier keeps its name on the record',
   (select supplier_name = 'S92 Globus' from atlas_private.accounting_documents where id = '00000000-0000-4000-8000-00000092d005');
 delete from public.suppliers where id = '00000000-0000-4000-8000-00000092b002';
