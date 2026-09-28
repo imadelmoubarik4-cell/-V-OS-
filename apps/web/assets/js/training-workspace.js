@@ -474,7 +474,7 @@
       </div>` : '';
 
     // Video: a ready video plays through a Blob object URL (set after paint).
-    const hasVideo = Boolean(media && media.upload_status === 'ready');
+    const hasVideo = Boolean(media && media.upload_status === 'stored');
     const videoBlock = draft
       ? ''
       : hasVideo
@@ -640,7 +640,7 @@
     else if (up.status === 'processing') statusHtml = `<p class="tr-note" data-training-upload-state>Processing…</p>`;
     else if (up.status === 'ready') statusHtml = `<p class="tr-done" data-training-upload-state>${icon('circle-check')}Ready</p>`;
     else if (up.status === 'error') statusHtml = `<div class="atlas-alert atlas-alert--danger">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Upload failed</p><p class="atlas-alert__body">${escapeHtml(up.error || 'The video couldn’t be uploaded.')}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-training-retry-upload>Retry</button></div></div>`;
-    else if (media && media.upload_status === 'ready') statusHtml = `<p class="tr-done">${icon('circle-check')}Video attached${media.original_filename ? ` · ${escapeHtml(media.original_filename)}` : ''}</p>`;
+    else if (media && media.upload_status === 'stored') statusHtml = `<p class="tr-done">${icon('circle-check')}Video attached${media.original_filename ? ` · ${escapeHtml(media.original_filename)}` : ''}</p>`;
     const busy = up.status === 'uploading' || up.status === 'processing';
     return `<input type="file" accept="${VIDEO_ACCEPT}" hidden data-training-file>
       <button type="button" class="atlas-btn atlas-btn--secondary" data-training-upload ${busy ? 'disabled' : ''}>${icon('upload')}${media || up.status === 'ready' ? 'Replace video' : 'Select video'}</button>
@@ -931,26 +931,33 @@
 
   // ---------- load & save ----------
 
-  async function loadSnapshot(options = {}) {
-    if (state.loading) return;
+  function loadSnapshot(options = {}) {
+    // Memoised: concurrent callers (e.g. render's snapshot + a lesson deep-link that
+    // needs permissions) await the same in-flight load, so canManage() is settled
+    // before loadLesson chooses draft vs published.
+    if (state.snapshotPromise) return state.snapshotPromise;
     state.loading = true;
     if (!options.silent) state.error = null;
     paint();
-    try {
-      const payload = await api('snapshot');
-      if (!payload || !Array.isArray(payload.lessons)) throw new TrainingError('Training is temporarily unavailable.', 0);
-      state.snapshot = payload;
-      state.permissions = payload.permissions || null;
-      state.actorRole = payload.actor_role || state.actorRole;
-      state.error = null;
-      state.failedAt = 0;
-    } catch (error) {
-      if (!options.silent || !state.snapshot) state.error = shown(error, 'Training couldn’t be loaded. Check the connection and try again.');
-      state.failedAt = Date.now();
-    } finally {
-      state.loading = false;
-      paint();
-    }
+    state.snapshotPromise = (async () => {
+      try {
+        const payload = await api('snapshot');
+        if (!payload || !Array.isArray(payload.lessons)) throw new TrainingError('Training is temporarily unavailable.', 0);
+        state.snapshot = payload;
+        state.permissions = payload.permissions || null;
+        state.actorRole = payload.actor_role || state.actorRole;
+        state.error = null;
+        state.failedAt = 0;
+      } catch (error) {
+        if (!options.silent || !state.snapshot) state.error = shown(error, 'Training couldn’t be loaded. Check the connection and try again.');
+        state.failedAt = Date.now();
+      } finally {
+        state.loading = false;
+        state.snapshotPromise = null;
+        paint();
+      }
+    })();
+    return state.snapshotPromise;
   }
 
   async function loadLesson(lessonId, options = {}) {
@@ -1036,9 +1043,14 @@
     const changed = lesson !== state.lessonId;
     if (changed) { state.started = false; teardownVideo(); }
     state.lessonId = lesson;
-    if (!state.snapshot && !state.loading && (!state.failedAt || Date.now() - state.failedAt > 20000)) loadSnapshot();
-    if (lesson && (changed || !state.detail)) loadLesson(lesson);
-    else paint();
+    const ensure = (!state.snapshot && (!state.failedAt || Date.now() - state.failedAt > 20000))
+      ? loadSnapshot() : Promise.resolve();
+    if (lesson && (changed || !state.detail)) {
+      // Wait for permissions before loadLesson picks draft (manager) vs published.
+      ensure.then(() => { if (state.lessonId === lesson) loadLesson(lesson); });
+    } else {
+      paint();
+    }
     if (!lesson) window.scrollTo?.(0, 0);
   }
 
