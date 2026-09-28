@@ -68,3 +68,25 @@ Do not auto-merge or delete any; prove useful work is represented in the canonic
 Every canonical module: **PRESERVED**. One explicit integration requirement (not feature loss): the
 accounting **40001→PT409** fix must be applied when Accounting (PR #93) is integrated, or the S96 security
 suite fails on the combined state — which is the suite working as intended.
+
+---
+## FINAL reconciled release candidate (owner-approved Option A + Accounting integration)
+- RC branch: `rc/s96-accounting-release` head `0461f82` (from S96 `34fbccc` + PR#93 `68b3108`, disposable;
+  main / S96 / PR#93 / PR#103 all untouched).
+- Accounting integrated; **PT409 fix applied** (`20261010099000_s96_accounting_no_40001_retry.sql`):
+  `atlas_accounting_command` + `atlas_accounting_begin_read` redefined identically except SQLSTATE
+  40001→PT409 (hint preserved; bounded HTTP 409, no PostgREST retry). Accounting behaviour/data unchanged.
+- Combined-state results:
+  - Node **1506 tests / 1464 pass / 0 fail / 42 skipped**.
+  - Full migration replay **156 migrations** (141 base + 12 S96 + 2 Accounting + 1 PT409).
+  - Python **275 run / 1 pre-existing pdfplumber env error only**.
+  - **S96 security SQL 6/6** (no-40001 now passes with accounting fixed).
+  - Browser **46/46**: csp-s96 (3), flavor-intelligence (13), accounting-s92 — Accounting UI works under the
+    strict CSP; Flavor intact; CSP enforced.
+- No unresolved merge-conflict ambiguity; all 5 overlaps semantically resolved.
+- Every canonical module: **PRESERVED** (positive workflow + negative security both green).
+- Two Highs stay OPEN in production until deliberate deploy: MAIN-01 (Auth config/host) and OPSRISK-01
+  (accounting fix is proven in code here; open in prod until deployed + verified).
+- Do NOT terminate any DB backend unless a fresh pg_stat_activity proves the exact accounting retry-loop PID.
+
+**Preservation status: every canonical module PRESERVED on the reconciled RC. MERGE PRESERVATION READY.**
