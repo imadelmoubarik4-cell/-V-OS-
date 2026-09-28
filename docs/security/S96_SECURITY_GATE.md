@@ -232,6 +232,79 @@ projects/branches with production data (OPSRISK-05); auth events not persisted +
 revokes (DBRLS-07); SPF/DKIM/DMARC (OPSRISK-14/N15). Deploy of every Git fix above is itself an owner action.
 
 ## Regression status
-Node: 1435 pass / 0 fail. Python: only the pre-existing pdfplumber-missing environment error.
+Node (`npm run test:node` @ 07f9d28): 1484 tests, 1442 pass, 0 fail, 42 skipped. Python: 275 run, 1 environment-only error (pdfplumber missing). Migration replay: 153 migrations passed. CSP browser 3/3, flavor browser 13/13 (serial).
 Full migration replay (147+) passes with all S96 migrations. New negative SQL/Node suites listed per commit.
 Rollback: each change is an additive migration or guarded code path; revert the branch commits to restore.
+
+---
+# RECONCILIATION (canonical, HEAD 07f9d28)
+
+## 1. Commit enumeration — 15 commits since S95 994fa5f
+| # | Commit | Type |
+|---|---|---|
+| 1 | b4425f8 recovery token_hash | production-code fix + test |
+| 2 | 2395f55 privileged MFA/session-fixation/aal2 gate | production-code fix + migration(091000) + tests |
+| 3 | 4da5e2e MFA step-up wired into integrations/roles | production-code fix + tests |
+| 4 | 67e9347 revoke sessions on deactivate/demote | migration(091100) + test |
+| 5 | e776b4d RLS ownership/purchasing/last-admin race | migrations(090000-090300) + tests/scripts |
+| 6 | 450b7c7 audit append-only/profile audit/no-40001/drift | migrations(096000-096300) + script + tests |
+| 7 | 6bf47dd stock-count redaction/push/error-leak/verify_jwt | production-code fix + migration(092000) + tests |
+| 8 | 9c459db AI no-retention/Phase3 redaction/AI-RAG tests | production-code fix + tests |
+| 9 | ae3b4d2 supply-chain pinning/SSRF tests/rotation runbook | production-code fix(CI/pins) + tests + doc |
+| 10 | 99d822b public-menu escaping | production-code fix + test |
+| 11 | d9ac538 gate report + coverage matrix + A-ADMIN-01 | documentation/gate-only |
+| 12 | 7d555c0 threat model + incident-response | documentation/evidence-only |
+| 13 | **7321f68 strict CSP / CSV neutralisation / storage UPDATE lockdown** | production-code fix + migration(094000) + tests |
+| 14 | d379f1e fold webstore into gate report | gate-report only |
+| 15 | 07f9d28 reconcile Python contracts (netlify repin, menu client relocated) | regression-test/manifest change |
+Documentation/gate-only: #11, #12, #14. Everything else carries code, migrations, or tests.
+
+## 2. Canonical test numbers (supersede any earlier figure)
+- `npm run test:node` @ 07f9d28 → **1484 tests, 1442 pass, 0 fail, 42 skipped**.
+- `python3 -m unittest discover -s tests/python` → **275 run, 1 error** (`test_sprint1_inventory`: `ModuleNotFoundError: pdfplumber`, environment-only; fails identically on the pre-S96 checkout).
+- Full migration replay (`scripts/verify_full_migration_replay.sh`) → **153 migrations, passed** (141 pre-S96 + 12 S96).
+- Browser: `csp-s96` 3/3, `flavor-intelligence` 13/13 run serially. The full parallel browser suite has pre-existing atlas-ai load-timing flakiness (documented, not S96-introduced).
+
+## 5. OPSRISK-01 accounting — vulnerability vs incident (corrected)
+The **vulnerability is present**: `public.atlas_accounting_command` still contains multiple `ERRCODE='40001'`
+stale/state-conflict paths in the deployed source; the isolated fix remains required and the finding stays
+**High until its production fix is deployed and verified**. Whether a backend is *currently stuck* is a
+separate, time-varying fact. Corrected runbook (replaces "terminate the stuck backend now"):
+1. Re-query `pg_stat_activity` for a non-idle backend older than ~5 min running `atlas_accounting_command`.
+2. Prove it is the accounting retry loop (query text + state='active' + long `xact_start`), not unrelated work.
+3. Terminate only that exact PID with `pg_terminate_backend(<pid>)` if present. Never terminate another backend.
+4. Deploy the accounting 40001 fix via the separately approved integration path (PR #93 not modified here).
+5. Verify a stale-command request returns a bounded 409 with no runaway retry (no growing error count, no pinned conn).
+As of the last read there was no non-idle backend older than 5 minutes, so step 3 may be a no-op right now.
+
+## 7. Owner-only platform actions — individual checklist (each with a verification)
+1. Disable public sign-up → GET /config/auth shows `disable_signup:true`.
+2. Enrol Administrator + Manager application MFA (TOTP) → factors present; then set `ATLAS_REQUIRE_PRIVILEGED_MFA` and `private.auth_policy.require_privileged_mfa=true`; verify aal1 admin refused (s96_aal2_direct_backend behaviour in prod).
+3. Enforce Supabase organization MFA → org setting on; all members enrolled.
+4. Enforce Netlify + GitHub infra MFA → account settings show required.
+5. Replace/revoke the unscoped Supabase PAT with short-lived scoped tokens → old token revoked; new token scoped.
+6. Migrate off legacy JWT/service-role keys (S96_KEY_ROTATION_RUNBOOK.md) → `ATLAS_SERVICE_KEY_SOURCE=secret` on a branch, then prod, then disable legacy keys + revoke HS256 secret.
+7. Delete/lock stale Supabase preview projects & branches holding production data → they no longer accept prod logins.
+8. Enable persistent Auth security logs → auth.audit_log_entries populated.
+9. Extend platform log retention beyond 7 days → retention setting raised.
+10. Enable PITR → backups.pitr_enabled true.
+11. Enable Storage backups → Storage objects covered by a backup.
+12. Apply the two release-gated DB revokes (`scripts/rollout_s87_s90.sh revokes`) → managers cannot write inventory_items directly.
+13. Add SPF record → dig TXT shows hardfail policy.
+14. Add DKIM → selector resolves.
+15. Add DMARC → dig TXT _dmarc shows policy.
+16. Set Realtime to private channels only → public channel join refused.
+17. Enable Postgres SSL enforcement → causes a DB restart; verify clients still connect over SSL first.
+18. Apply direct DB network restrictions (least-privilege CIDR) → only required callers reach the pooler.
+19. Confirm Netlify branch protection / deploy-token posture + GitHub branch protection → rules present; no fork PR secret exposure.
+20. Verify live production security headers after deploy → curl -I os-vabar.netlify.app matches netlify.toml CSP/HSTS.
+
+## 8. Ordered production rollout (do NOT execute yet — owner-run, per group)
+Each group is independently reversible. Do not merge groups into one release.
+- **A. App/Git deploy (Netlify frontend)** — prereq: branch reviewed. Change: deploy apps/web from this branch (strict CSP, moved scripts, escaping). Service: Netlify. Interruption: none (static). Rollback: redeploy previous. Verify: app boots, CSP has no unsafe-inline, headers match. Next: enables B.
+- **B. DB migrations** — prereq: A deployed (frontend no longer writes inventory_items directly). Change: apply the 12 S96 migrations in order via Management API. Service: Postgres. Interruption: none (additive; triggers/policies). Rollback: revert migrations (each is additive; drop the added objects). Verify: 153-migration replay parity + s96 SQL suites. Next: enables C.
+- **C. Edge Function deploys** — prereq: B applied (functions depend on new RLS/redaction). Change: deploy the changed functions (atlas-ai, atlas-integrations, atlas-settings, atlas-team-profiles, atlas-notifications, atlas-stock-counts, atlas-inventory-scanner, atlas-team-profile-photos, marketing-publisher) with verify_jwt unchanged (false). Service: Edge Functions. Interruption: per-function cold start. Rollback: redeploy prior versions. Verify: unauth probes 401; bartender manager-routes 403; stock-count staff redaction. Next: independent of D.
+- **D. Auth configuration (MAIN-01)** — prereq: A deployed (token_hash pages live). Change: Site URL + exact Redirect URLs to production origin; update recovery/invite/magic-link/confirm/email-change templates to token_hash; remove deploy-preview-8. Service: Supabase Auth. Interruption: in-flight email links must be reissued. Rollback: restore previous URL config. Verify: recovery/invite end-to-end on production; no bearer token in any redirect. Next: independent.
+- **E. Key/token rotation** — prereq: C deployed with `ATLAS_SERVICE_KEY_SOURCE` support. Change: switch to secret keys, disable legacy keys, revoke HS256 + the audit PAT. Service: all functions + API. Interruption: brief if a caller still uses legacy. Rollback: re-enable legacy keys. Verify: privileged paths work on new keys; legacy rejected. Next: independent.
+- **F. Netlify/GitHub configuration** — prereq: none. Change: branch protection, deploy-token scope, fork-preview policy, delete stale previews. Service: CI/CD. Interruption: none. Rollback: restore settings. Verify: protected branch rejects direct push; previews use non-privileged config.
+- **G. Backup/network/SSL** — prereq: inventory of all direct-Postgres callers proven. Change: enable PITR + Storage backup; apply network restrictions; enable SSL enforcement (DB restart). Service: Postgres/Storage. Interruption: SSL enforcement restarts the DB. Rollback: relax the setting. Verify: PITR active; only allow-listed CIDRs connect; clients use SSL.
