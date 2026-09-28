@@ -89,16 +89,59 @@ and plays the Blob URL (satisfying the site CSP `media-src 'self' blob:` with no
   finalize, hint redaction, retire gating; plus the S96 verify-jwt allowlist and CSS ratchet).
 - **Python contract** (`tests/python/test_training_contract.py`): PASS (8/8) — static
   security invariants.
-- **Browser** (`tests/browser/training.browser.test.mjs`): <FILL: result> — full UI flow
-  against a faithful mocked backend (manager authoring + upload UI, staff player, chapter
-  seek, explicit completion, manager completion view, v2 immutability, role gating).
+- **Browser** (`tests/browser/training.browser.test.mjs`): PASS — 5/5 training tests, and
+  13/13 for knowledge + training together (the shared `ROUTES.knowledge` change is
+  regression-free); the full browser suite also runs in CI (atlas-verify). Covers the full
+  UI flow against a faithful mocked backend: manager authoring incl. a real signed upload
+  round-trip, staff player (chapter seek, resume, explicit completion), manager completion
+  view, v2 immutability, and role gating. This run found and fixed two real frontend bugs
+  (the playback `upload_status` check and a manager deep-link race).
 
 ## 7. Preview / environment
 
-<FILL after PR: Netlify Deploy Preview URL; Supabase preview-branch / real-backend proof
-status; any OWNER ACTION REQUIRED for wiring a live browser upload to a non-production
-backend, given the app is deliberately pinned to the production Supabase project by
-config.js + the netlify.toml CSP + rehearsal-boundary.js.>
+- **PR:** #108 (`claude/atlas-training-mvp`). **Not merged.**
+- **Netlify Deploy Preview:** https://deploy-preview-108--os-vabar.netlify.app — the full
+  Atlas UI, including Knowledge → Training, renders here. Because the app is deliberately
+  pinned to the **production** Supabase project (`apps/web/config.js` +
+  the `netlify.toml` CSP + `rehearsal-boundary.js`), this preview talks to production,
+  where the `atlas-training` function, tables and bucket are **not** deployed (correctly —
+  this run must not touch production). So Training authoring/playback calls degrade
+  gracefully in the deploy preview rather than performing a live upload.
+- **CI (real infrastructure):** Migration replay ✅ (Postgres 17; runs the s98 DB
+  authorization acceptance). Atlas verification (node + full browser suite) runs on every
+  push. Two failing checks — *Production adoption dry run* and *github-advanced-security* —
+  are pre-existing on `main` / external to this diff (the adoption dry-run's
+  `adjust_inventory` lint blocker in the flattened adoption migration, which never applies
+  s98; and the code-scanning agent's own internal failure); documented on the PR.
+
+### OWNER ACTION REQUIRED — live end-to-end upload in a browser preview
+
+A human clicking through a **real MP4 upload → private storage → signed playback →
+completion in a browser** needs the preview frontend pointed at a **non-production**
+Supabase project that has this branch's migration applied, the `atlas-training-videos`
+bucket, and the `atlas-training` function deployed. That wiring cannot be done safely from
+this Git-only run:
+
+- The app is pinned to the production project by three layers (config, CSP, fetch guard),
+  and this run is not authorized to touch production (no bucket, migration, function deploy
+  or data there).
+- Supabase preview-branch provisioning is unavailable in this environment: a Management-API
+  `create_branch` timed out, no preview branch is auto-created for the PR, and the existing
+  branches report `MIGRATIONS_FAILED`.
+
+**Smallest owner action** to enable the live click-through (any one of):
+1. In the Supabase dashboard, create a preview/staging project (or fix branch
+   provisioning), apply this branch's migrations, and deploy the `atlas-training` function;
+   then point a preview build's `config.js` (+ the CSP/`rehearsal-boundary` host) at that
+   project. (I can prepare that preview config on request.)
+2. Or, when ready to validate against production, apply the s98 migration, create the
+   `atlas-training-videos` bucket and deploy the `atlas-training` function to production and
+   test on the live site — explicitly out of scope for this run and requiring owner
+   approval.
+
+Everything else — the full feature, the automated suite, the DB authorization acceptance on
+real Postgres, and the complete UI flow (including the signed-upload mechanics) against a
+faithful mock — is done and green.
 
 ## 8. Manual owner acceptance script
 
