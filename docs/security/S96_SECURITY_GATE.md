@@ -193,14 +193,23 @@ from one connection). A few such stale commands take the Data API down.
   (this is production accounting code of PR #93 lineage — I did not modify or deploy it).
 
 ## Could-be-High UNVERIFIED (must be resolved or owner-accepted before READY)
-- C17 live-site source maps / C19 stale-host takeover / deploy-preview-8 ownership — blocked by this
-  session's egress policy (os-vabar.netlify.app CONNECT 403). Owner or an unrestricted network must verify.
-- Frontend classes C35 (token exposure), C36 (postMessage), C37 (third-party JS) and storage-serving/N8
-  signed-URL/N17 downgrade — the webstore specialist did not deliver a full report; these are UNVERIFIED
-  and could_be_high until completed. (netlify.toml already ships a strict CSP, HSTS, frame-ancestors,
-  nosniff, Referrer-Policy, Permissions-Policy; AI output escaping is CONTROL VERIFIED by aioauth.)
-- N10 CI/CD: GitHub branch protection, Netlify deploy tokens/fork-preview policy, artifact retention —
-  not readable with available tooling; owner must confirm.
+- **deploy-preview-8 host ownership (MAIN-01)** — this session's egress policy blocks the host, so whether
+  it is live / owner-controlled / claimable is UNVERIFIED. Owner must confirm. This is the one genuine
+  could-be-High UNVERIFIED item.
+- Live production response headers / source maps (C17) and older-preview downgrade (N17) — deploy-preview-103
+  is verified clean (no maps, .env/.git/config all 404, strict headers), but the live os-vabar.netlify.app
+  host is egress-blocked here; owner should re-check headers after deploying this branch. Not could-be-High
+  (preview verified).
+- CI/CD: GitHub branch protection, Netlify deploy-token/fork-preview policy, artifact retention (N10) —
+  not readable with available tooling; owner to confirm. Not could-be-High (no exposure observed).
+
+## Frontend / storage now covered (webstore delivered; no Critical/High)
+XSS sweep 3,459 payloads across 118 states → 0 executions; prototype pollution clean; postMessage has no
+HTML-rendering handlers (C36); no redirect params (C32); recovery uses token_hash + detectSessionInUrl off
+(C33); third-party JS limited + SRI, no analytics, and the strict CSP now drops 'unsafe-inline'/blob:
+(C37); private buckets and accounting docs unreachable even by admin directly, signed tokens bound to one
+object (storage isolation). Residual Low: login tokens in localStorage are XSS-gated — mitigated by the
+committed escaping + strict CSP. C32–C37 disposition: CONTROL VERIFIED (consolidated).
 
 ## Git-only fixes committed on this branch (fixed + regression-tested; awaiting owner deploy)
 - b4425f8 recovery token_hash consumption (MAIN-01 mitigation)
