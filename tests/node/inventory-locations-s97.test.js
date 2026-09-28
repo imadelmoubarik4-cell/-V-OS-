@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 // in the database (RLS + SECURITY DEFINER RPCs that raise 42501), not only in
 // the UI. Legacy bin_location is preserved and never rewritten.
 const migration = readFileSync('supabase/migrations/20261011090000_s97_inventory_storage_locations.sql', 'utf8');
+const s97b = readFileSync('supabase/migrations/20261012090000_s97b_remove_f01_soda_fridge.sql', 'utf8');
 const gate = readFileSync('scripts/verify_phase1_security_gate.sql', 'utf8');
 const appData = readFileSync('apps/web/assets/js/atlas-app.js', 'utf8');
 const ui = readFileSync('apps/web/assets/js/atlas-inventory.js', 'utf8');
@@ -66,13 +67,22 @@ test('permanent delete is Administrator-only and refuses a location in use', () 
   assert.match(migration, /if in_use > 0 or ever_used > 0 then/);
 });
 
-test('the 16 canonical VÁ codes are seeded exactly, F04 is the service cooler', () => {
-  for (const code of ['S01', 'S02', 'S03', 'F01', 'F02', 'F03', 'F04', 'W01', 'W02', 'B01', 'B02', 'B03', 'D01', 'D02', 'D03', 'D04']) {
+test('the 15 canonical VÁ codes are seeded, F04 is the service cooler, s97b drops F01', () => {
+  // The canonical VÁ layout is 15 locations. The owner intentionally deleted
+  // F01 "Main soda fridges" in production (VÁ has one soda fridge, not two);
+  // s97b removes it from the fresh-environment seed so a clean replay matches
+  // production's 15 locations. F02 "Small soda fridge" is the soda-fridge slot.
+  for (const code of ['S01', 'S02', 'S03', 'F02', 'F03', 'F04', 'W01', 'W02', 'B01', 'B02', 'B03', 'D01', 'D02', 'D03', 'D04']) {
     assert.match(migration, new RegExp(`\\('${code}',`), `seed missing ${code}`);
   }
   assert.match(migration, /\('F04','Cooler under coffee machine'/);
   // Idempotent seed, no historical rewrite.
   assert.match(migration, /on conflict \(lower\(code\)\) do nothing/);
+  // s97b removes the F01 seed for fresh environments, only when unassigned, and
+  // leaves production's owner-made location_deleted audit event untouched.
+  assert.match(s97b, /delete from public\.inventory_locations/);
+  assert.match(s97b, /lower\(loc\.code\) = 'f01'/);
+  assert.match(s97b, /not exists \(\s*select 1 from public\.inventory_item_locations/);
 });
 
 test('changes are audited on an append-only trail wired to the S96 triggers', () => {

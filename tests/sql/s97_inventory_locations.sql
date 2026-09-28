@@ -1,7 +1,7 @@
 -- S97 (inventory storage locations) authorization + integrity on a replayed
 -- database (scripts/verify_full_migration_replay.sh stubs). Proves, at the
 -- database boundary (not the UI):
---   1. the 16 canonical VÁ codes are seeded exactly;
+--   1. the 15 canonical VÁ codes are seeded exactly (F01 removed by s97b);
 --   2. read is for active staff only — anon reads nothing;
 --   3. writes (save / set_active / delete / item_locations_set) refuse a
 --      non-manager with 42501;
@@ -24,11 +24,16 @@ insert into auth.users(id, email, raw_user_meta_data) values ('97000000-0000-400
 update public.profiles set role = 'bartender', active = true where id = '97000000-0000-4000-8000-0000000000c1';
 insert into public.inventory_items(name, unit) values ('S97 synthetic item', 'bottles');
 
--- 1. Seed: the 16 canonical codes, exactly, including the F04 service cooler.
+-- 1. Seed: the 15 canonical codes, exactly, including the F04 service cooler.
+--    F01 "Main soda fridges" is removed by s97b (owner deleted it in prod), so a
+--    full replay through s97b lands on 15 canonical locations, not 16.
 do $$ begin
   if (select count(*) from public.inventory_locations
-      where code in ('S01','S02','S03','F01','F02','F03','F04','W01','W02','B01','B02','B03','D01','D02','D03','D04')) <> 16 then
-    raise exception 'S97 must seed the 16 canonical VA locations';
+      where code in ('S01','S02','S03','F02','F03','F04','W01','W02','B01','B02','B03','D01','D02','D03','D04')) <> 15 then
+    raise exception 'S97 must seed the 15 canonical VA locations';
+  end if;
+  if exists (select 1 from public.inventory_locations where lower(code) = 'f01') then
+    raise exception 's97b must remove the F01 soda-fridge seed from fresh environments';
   end if;
   if not exists (select 1 from public.inventory_locations where code = 'F04' and name = 'Cooler under coffee machine') then
     raise exception 'F04 must be the service cooler under the coffee machine';
@@ -54,7 +59,7 @@ do $$
 declare item_id uuid := (select id from public.inventory_items where name = 'S97 synthetic item');
         loc_id uuid := (select id from public.inventory_locations where code = 'S01');
 begin
-  if (select count(*) from public.inventory_location_catalog) <> 16 then
+  if (select count(*) from public.inventory_location_catalog) <> 15 then
     raise exception 'active staff must read the location catalogue';
   end if;
   begin perform public.atlas_inventory_location_save(null, 'X01', 'Staff cannot create'); raise exception 'staff created a location';
