@@ -48,6 +48,7 @@ const SELF_AUTHENTICATED = {
   'atlas-team-profile-photos': 'resolveActor+self-or-manager',
   'atlas-shifts': 'resolveActor+role per action',
   'atlas-knowledge': 'resolveActor+role per action',
+  'atlas-training': 'resolveActor+role per action (S98; verify in code, manager-gated authoring, service-role RPCs)',
   'atlas-reports': 'resolveActor+role-shaped data',
   'atlas-system': 'resolveActor+requireRole(MANAGER)',
   'atlas-settings': 'resolveActor+role per action',
