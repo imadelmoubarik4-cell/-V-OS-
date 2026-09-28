@@ -249,12 +249,18 @@ test('changed scripts carry the S88 cache key', () => {
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
   // and the UX acceptance round 2 fixes (toast placement, order lines on the
   // phone, one inventory value in Reports, hours validation in place).
-  for (const file of ['stock-count-workspace.js', 'atlas-purchasing.js', 'operations.js', 'reports-overview.js']) {
+  for (const file of ['atlas-purchasing.js', 'operations.js', 'reports-overview.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-s90g"></script>`), file);
+  }
+  // S97 Inventory Storage Locations: managed locations with chips, filters, a
+  // Manage Locations page and primary-location stock-count scoping changed the
+  // inventory workspace and the stock-count flow together.
+  for (const file of ['atlas-inventory.js', 'stock-count-workspace.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261011-s97"></script>`), file);
   }
   // The Atlas AI robot (atlas-bot.js) replaced the sparkles assistant icon in
   // these scripts; atlas-ai.js also carries the S91b live voice lease.
-  for (const file of ['atlas-chrome.js', 'atlas-inventory.js', 'knowledge-workspace.js']) {
+  for (const file of ['atlas-chrome.js', 'knowledge-workspace.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
   }
   // Flavor Intelligence (S95) survives Accounting (S92) reconciliation.
