@@ -242,15 +242,82 @@ export function itemMasterBackend({ duplicate = null, blockers = [] } = {}) {
 }
 
 /** The realistic Team B world. */
-export function inventoryWorld({ counts = countBackend(), purchasing = purchasingBackend(), recognition = recognitionBackend(), itemMaster = null, tables = {}, rpc = {}, functions = {} } = {}) {
+// S97 Storage Locations. The 16 canonical VÁ codes, a couple of item
+// assignments, and a stateful mock of the four manager RPCs (save, set_active,
+// delete, item_locations_set). Reads answer inventory_location_catalog and
+// inventory_item_locations; writes mutate the in-memory state and are recorded.
+const LOCATION_SEED = [
+  ['S01', 'Main storage shelves'], ['S02', 'Storage One'], ['S03', 'White spirits cabinet'],
+  ['F01', 'Main soda fridges'], ['F02', 'Small soda fridge'], ['F03', 'Small alcoholic beverages fridge'], ['F04', 'Cooler under coffee machine'],
+  ['W01', 'Small wine fridge'], ['W02', 'Big wine cooler'],
+  ['B01', 'Upper bar section'], ['B02', 'Beer section'], ['B03', 'Backbar display shelves'],
+  ['D01', 'Downstairs freezer'], ['D02', 'Downstairs Cooler One — Juices'], ['D03', 'Downstairs Cooler Two — Cakes & Open Items'], ['D04', 'Downstairs dry storage shelves']
+];
+export const LOCATION_IDS = Object.freeze(Object.fromEntries(
+  LOCATION_SEED.map(([code], i) => [code, `10000000-0000-4000-8000-0000000000${String(i + 10).padStart(2, '0')}`])
+));
+
+export function locationBackend({ assignments: seedAssignments } = {}) {
+  let locations = LOCATION_SEED.map(([code, name], i) => ({ id: LOCATION_IDS[code], code, name, description: null, active: true, sort_order: (i + 1) * 10 }));
+  let assignments = seedAssignments || [
+    { id: 'la-1', inventory_item_id: IDS.campari, location_id: LOCATION_IDS.B03, is_primary: true, sort_order: 0 },
+    { id: 'la-2', inventory_item_id: IDS.campari, location_id: LOCATION_IDS.S03, is_primary: false, sort_order: 1 },
+    { id: 'la-3', inventory_item_id: IDS.tanq, location_id: LOCATION_IDS.B03, is_primary: true, sort_order: 0 }
+  ];
+  const catalog = () => locations.map((loc) => ({ ...loc, item_count: assignments.filter((a) => a.location_id === loc.id).length }));
+  const calls = [];
+  const rpc = {
+    atlas_inventory_item_locations_set: (body) => {
+      calls.push({ name: 'item_locations_set', body });
+      const { p_item_id, p_location_ids = [], p_primary_id = null } = body;
+      assignments = assignments.filter((a) => a.inventory_item_id !== p_item_id);
+      p_location_ids.forEach((lid, i) => assignments.push({ id: `la-${p_item_id}-${lid}`, inventory_item_id: p_item_id, location_id: lid, is_primary: lid === p_primary_id, sort_order: i }));
+      return assignments.filter((a) => a.inventory_item_id === p_item_id);
+    },
+    atlas_inventory_location_save: (body) => {
+      calls.push({ name: 'location_save', body });
+      if (body.p_id) {
+        const loc = locations.find((l) => l.id === body.p_id);
+        Object.assign(loc, { code: body.p_code, name: body.p_name, description: body.p_description ?? null, sort_order: body.p_sort_order ?? loc.sort_order });
+        return loc;
+      }
+      const loc = { id: `loc-new-${locations.length + 1}`, code: body.p_code, name: body.p_name, description: body.p_description ?? null, active: true, sort_order: body.p_sort_order ?? (Math.max(0, ...locations.map((l) => l.sort_order)) + 10) };
+      locations.push(loc);
+      return loc;
+    },
+    atlas_inventory_location_set_active: (body) => {
+      calls.push({ name: 'location_set_active', body });
+      const loc = locations.find((l) => l.id === body.p_id);
+      if (loc) loc.active = body.p_active;
+      return loc;
+    },
+    atlas_inventory_location_delete: (body) => {
+      calls.push({ name: 'location_delete', body });
+      locations = locations.filter((l) => l.id !== body.p_id);
+      return null;
+    }
+  };
   return {
-    counts, purchasing, recognition,
+    calls,
+    get locations() { return locations; },
+    get assignments() { return assignments; },
+    catalog,
+    tables: { inventory_location_catalog: () => catalog(), inventory_item_locations: () => assignments },
+    rpc
+  };
+}
+
+export function inventoryWorld({ counts = countBackend(), purchasing = purchasingBackend(), recognition = recognitionBackend(), locations = locationBackend(), itemMaster = null, tables = {}, rpc = {}, functions = {} } = {}) {
+  return {
+    counts, purchasing, recognition, locations,
     fixtures: {
       tables: {
         inventory_items: items, inventory_catalog: items.map(({ cost_price, supplier_id, ...rest }) => rest), inventory_movements: movements,
-        inventory_movement_catalog: movements, recipes, suppliers, recipe_categories: [], ...purchasing.tables, ...tables
+        inventory_movement_catalog: movements, recipes, suppliers, recipe_categories: [],
+        inventory_location_catalog: locations.tables.inventory_location_catalog, inventory_item_locations: locations.tables.inventory_item_locations,
+        ...purchasing.tables, ...tables
       },
-      rpc: { ...purchasing.rpc, ...rpc },
+      rpc: { ...purchasing.rpc, ...locations.rpc, ...rpc },
       functions: { ...emptyFunctions(), 'atlas-stock-counts': counts.handler, 'atlas-inventory-recognition': recognition.handler, ...(itemMaster ? { 'atlas-item-master': itemMaster } : {}), ...functions }
     }
   };

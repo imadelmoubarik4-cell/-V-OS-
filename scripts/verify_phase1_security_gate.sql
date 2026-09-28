@@ -140,7 +140,16 @@ with public_tables as (
      'private.adjust_inventory_request(text,uuid,numeric,text,numeric,uuid,text)'),
     -- S90g: item-master publication (atlas-item-master, manager token).
     ('public.atlas_apply_item_master_update(uuid,jsonb,uuid[],jsonb,text)',
-     'private.apply_item_master_update(uuid,jsonb,uuid[],jsonb,text)')
+     'private.apply_item_master_update(uuid,jsonb,uuid[],jsonb,text)'),
+    -- S97: managed inventory storage locations (manager location CRUD + assignment).
+    ('public.atlas_inventory_location_save(uuid,text,text,text,integer)',
+     'private.inventory_location_save(uuid,text,text,text,integer)'),
+    ('public.atlas_inventory_location_set_active(uuid,boolean)',
+     'private.inventory_location_set_active(uuid,boolean)'),
+    ('public.atlas_inventory_location_delete(uuid)',
+     'private.inventory_location_delete(uuid)'),
+    ('public.atlas_inventory_item_locations_set(uuid,uuid[],uuid)',
+     'private.inventory_item_locations_set(uuid,uuid[],uuid)')
   ) as v(wrapper, impl)
 ), reviewed_browser_rpc_status as (
   select r.oid, r.wrapper,

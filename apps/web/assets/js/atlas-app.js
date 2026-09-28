@@ -212,12 +212,14 @@
   let inventoryMovements = [];
   let recipes = [];
   let suppliers = [];
+  let locations = [];
+  let itemLocations = [];
   let countSnapshot = null;
   let itemsStatus = 'loading';
   // Health of each shell data input: 'loading' | 'ok' | 'failed', plus the
   // derived stock state: 'ok' | 'partial' (items loaded but verified balances
   // or movements did not, so no stock figure is projected) | 'failed'.
-  let dataHealth = { inventory: 'loading', balances: 'loading', movements: 'loading', recipes: 'loading', suppliers: 'loading', stock: 'loading', stockMissing: [] };
+  let dataHealth = { inventory: 'loading', balances: 'loading', movements: 'loading', recipes: 'loading', suppliers: 'loading', locations: 'loading', stock: 'loading', stockMissing: [] };
   // Read-only access to the loaded, role-filtered records for other modules
   // (Inventory, Purchasing, Search). Returns the same arrays every page renders
   // from; status() says whether the last inventory load failed (the previous
@@ -228,6 +230,8 @@
     recipes: () => recipes,
     suppliers: () => suppliers,
     movements: () => inventoryMovements,
+    locations: () => locations,
+    itemLocations: () => itemLocations,
     countSnapshot: () => countSnapshot,
     status: () => ({ items: itemsStatus, stock: dataHealth.stock }),
     health: () => ({ ...dataHealth, stockMissing: [...dataHealth.stockMissing] })
@@ -747,6 +751,38 @@
     dataHealth.suppliers = 'ok';
   }
 
+  // Storage Locations (S97): the managed location catalogue and the item→location
+  // assignments. Location is a place, never a quantity: neither read here touches
+  // stock. Every active staff member may read both (inventory_location_catalog is
+  // gated to is_active_staff and grants SELECT to authenticated; the assignment
+  // rows carry the same SELECT policy), so this loads for staff and managers alike.
+  async function loadLocations() {
+    const catalog = await sb
+      .from('inventory_location_catalog')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('code', { ascending: true });
+    if (catalog.error) {
+      console.warn('Storage locations could not be loaded:', catalog.error.message);
+      locations = [];
+      itemLocations = [];
+      dataHealth.locations = 'failed';
+      return;
+    }
+    locations = catalog.data || [];
+    const assignments = await sb
+      .from('inventory_item_locations')
+      .select('inventory_item_id,location_id,is_primary,sort_order');
+    if (assignments.error) {
+      console.warn('Storage location assignments could not be loaded:', assignments.error.message);
+      itemLocations = [];
+      dataHealth.locations = 'failed';
+      return;
+    }
+    itemLocations = assignments.data || [];
+    dataHealth.locations = 'ok';
+  }
+
   // loadAll() loads the shell data, then emits data:loaded. Modules refresh
   // through AtlasShell.onDataLoaded() instead of wrapping this function.
   async function loadAll() {
@@ -760,7 +796,7 @@
     // Movement history must load before inventory projection so current verified
     // balances can be adjusted by audited restocks, waste, sales and transfers.
     await loadRestockLog();
-    await Promise.all([loadItems(), loadRecipes(), loadSuppliersData()]);
+    await Promise.all([loadItems(), loadRecipes(), loadSuppliersData(), loadLocations()]);
     renderRecipes();
   }
   window.atlasPurchasingData = () => canManageCommercial()

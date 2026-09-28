@@ -25,7 +25,7 @@
   "files": {
     "apps/web/config.js": "bb961dc3a625d873f0fc6d540ac3f7f189d7e0268648344b76d7b45b08be1bdd",
     "apps/web/assets/js/rehearsal-boundary.js": "202b4748bb354ee61aec47a2b30e13753a2d8ddb0e71192c6fccf5276ba87c45",
-    "apps/web/assets/js/stock-count-workspace.js": "dfa512e7494d0d789fd64ce634da3a7682e3063b2396fd12835c03d9f9d70d57",
+    "apps/web/assets/js/stock-count-workspace.js": "50e57377c086a9fb25affc0335ab55ba7eb324c0d62a167db2067fc365169f55",
     "apps/web/assets/js/data-workspace.js": "e9af170e2dd28ae53bd9571e6a7bef5ee7f1c481ebfe28e886f188a24ce33080",
     "netlify.toml": "e0f811a4a374a5de7fda9eca1e24884006e5bcce5998102bac32872ae67ce8ce",
     "supabase/config.toml": "d7e9c7328dce3d4182279be6fc7b78ddd35e663a723fed192f879bb76b069633"
