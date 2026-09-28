@@ -613,6 +613,7 @@ declare
   saved jsonb;
   v_article_id uuid;
   v_version_id uuid;
+  v_article_key text;
   target_roles text[];
   ch jsonb;
   st jsonb;
@@ -625,9 +626,19 @@ begin
   from pg_catalog.jsonb_array_elements_text(case when pg_catalog.jsonb_typeof(p->'target_roles') = 'array'
     then p->'target_roles' else '["all"]'::jsonb end) value;
 
+  -- Generate an article_key for a brand-new lesson (the Knowledge RPC requires a valid
+  -- key on create); an edit of an existing lesson keeps its key.
+  v_article_key := nullif(p->>'article_key','');
+  if nullif(p->>'article_id','') is null and v_article_key is null then
+    v_article_key := pg_catalog.btrim(pg_catalog.left(pg_catalog.regexp_replace(
+      pg_catalog.lower(coalesce(nullif(pg_catalog.btrim(p->>'title'),''),'lesson')), '[^a-z0-9]+', '-', 'g'), 80), '-');
+    if v_article_key = '' or v_article_key !~ '^[a-z0-9]' then v_article_key := 'lesson'; end if;
+    v_article_key := 'training-' || pg_catalog.left(v_article_key, 70) || '-' || pg_catalog.substr(pg_catalog.md5(gen_random_uuid()::text), 1, 8);
+  end if;
+
   saved := atlas_private.knowledge_save_draft(
     (nullif(p->>'article_id',''))::uuid,
-    nullif(p->>'article_key',''),
+    v_article_key,
     (p->>'category_id')::uuid,
     'training',
     p->>'title',
