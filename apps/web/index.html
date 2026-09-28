@@ -271,6 +271,21 @@
   }
 
   const cfg = window.VABAR_CONFIG || {};
+
+  // S96 (session fixation / login CSRF): Atlas never signs in from tokens in
+  // the address bar. Recovery and invitation links are consumed on their own
+  // pages from a single-use token hash; anything that still arrives here with
+  // auth parameters in the fragment is dropped before the client starts, so a
+  // crafted link can neither plant someone else's session nor sign this
+  // device out.
+  (function dropAuthFragment() {
+    try {
+      const params = new URLSearchParams(location.hash.slice(1));
+      if (['access_token', 'refresh_token', 'token_hash', 'provider_token', 'error_description', 'error_code'].some((key) => params.has(key))) {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+    } catch (_) { /* never block start-up */ }
+  })();
   let sb = null;
 
   // Every workspace talks to Supabase (Edge Functions, PostgREST) through
@@ -316,7 +331,7 @@
         auth: {
           persistSession: true,
           autoRefreshToken: true,
-          detectSessionInUrl: true
+          detectSessionInUrl: false
         }
       });
 
@@ -638,7 +653,36 @@
     return data;
   }
 
+  // S96: second-factor step. A person with a verified authenticator app
+  // confirms a 6-digit code after the password, which upgrades this session
+  // to aal2. Manager and administrator tools require aal2 once a factor is
+  // enrolled (_shared/auth.mjs and private.is_manager_or_admin); without it the
+  // person keeps staff access and can retry by signing in again.
+  async function ensureAssurance(client, ask = (message) => window.prompt(message)) {
+    try {
+      const { data } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (!data || data.currentLevel === 'aal2' || data.nextLevel !== 'aal2') return 'not_required';
+      const listed = await client.auth.mfa.listFactors();
+      const factor = (listed?.data?.totp || []).find((candidate) => candidate.status === 'verified');
+      if (!factor) return 'not_required';
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const code = String(ask(attempt ? 'That code did not work. Enter the current 6-digit code from your authenticator app.' : 'Enter the 6-digit code from your authenticator app.') || '').replace(/\s+/g, '');
+        if (!/^\d{6}$/.test(code)) return 'skipped';
+        const { error } = await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
+        if (!error) return 'verified';
+      }
+      return 'failed';
+    } catch (_) {
+      return 'unavailable';
+    }
+  }
+  window.atlasEnsureAssurance = ensureAssurance;
+
   async function onSignedIn(session) {
+    if (sb?.auth?.mfa) {
+      const outcome = await ensureAssurance(sb);
+      if (outcome === 'verified') session = (await sb.auth.getSession()).data?.session || session;
+    }
     currentUser = session.user;
     try { sessionStorage.removeItem(SESSION_ENDED_KEY); sessionStorage.removeItem(SESSION_ENDED_AT_KEY); } catch (_) { /* storage unavailable */ }
     const profile = await loadActiveProfile(session);

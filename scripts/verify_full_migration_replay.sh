@@ -92,6 +92,16 @@ CREATE TABLE IF NOT EXISTS auth.users(
   is_anonymous boolean default false
 );
 
+-- S96: Supabase Auth's MFA factor table (only the columns migrations read).
+CREATE TABLE IF NOT EXISTS auth.mfa_factors(
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  factor_type text not null default 'totp',
+  status text not null default 'unverified',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid LANGUAGE sql STABLE AS $$
   SELECT nullif(current_setting('request.jwt.claim.sub', true),'')::uuid;
