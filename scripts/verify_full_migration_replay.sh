@@ -102,6 +102,25 @@ CREATE TABLE IF NOT EXISTS auth.mfa_factors(
   updated_at timestamptz default now()
 );
 
+-- S96: Supabase Auth session tables (only the columns migrations touch), with
+-- the production cascade from sessions to refresh tokens.
+CREATE TABLE IF NOT EXISTS auth.sessions(
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  aal text default 'aal1',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  refreshed_at timestamp
+);
+CREATE TABLE IF NOT EXISTS auth.refresh_tokens(
+  id bigserial primary key,
+  token text,
+  user_id text,
+  revoked boolean default false,
+  session_id uuid references auth.sessions(id) on delete cascade,
+  created_at timestamptz default now()
+);
+
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid LANGUAGE sql STABLE AS $$
   SELECT nullif(current_setting('request.jwt.claim.sub', true),'')::uuid;
