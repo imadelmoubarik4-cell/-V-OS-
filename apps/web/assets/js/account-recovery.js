@@ -50,9 +50,26 @@
         recoverySession = false; complete.hidden = true;
       }
     });
-    if (new URLSearchParams(location.hash.slice(1)).has('error')) {
+    const fragment = new URLSearchParams(location.hash.slice(1));
+    if (fragment.has('error')) {
       status.textContent = 'This reset link is invalid or has expired. Request a new link below.';
       history.replaceState(null, '', location.pathname);
+    } else if (fragment.get('token_hash') && fragment.get('type') === 'recovery') {
+      // S96: the email links straight to this page with a single-use token hash
+      // (template: recovery.html#token_hash={{ .TokenHash }}&type=recovery), so no
+      // session token ever travels in a redirect URL. The hash leaves the address
+      // bar before it is exchanged here, on our own origin.
+      const tokenHash = fragment.get('token_hash');
+      history.replaceState(null, '', location.pathname);
+      client.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' }).then(({ data, error }) => {
+        if (error || !data?.session) throw error || new Error('no session');
+        recoverySession = true;
+        request.hidden = true; complete.hidden = false;
+        setTitle('Choose a new password');
+        status.textContent = 'Choose a new password with at least 10 characters.';
+      }).catch(() => {
+        status.textContent = 'This reset link is invalid or has expired. Request a new link below.';
+      });
     }
   } catch (_) {
     // Nothing is in progress: the send button is unavailable (no spinner) and
