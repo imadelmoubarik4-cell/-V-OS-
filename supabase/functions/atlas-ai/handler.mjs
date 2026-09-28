@@ -170,6 +170,7 @@ const ACTION_ERROR_MESSAGES = Object.freeze({
   not_found: "Something this action needs could not be found. Nothing was changed.",
   conflict: "The record changed since this was prepared. Nothing was changed; prepare it again.",
   draft_exists: "This supplier already has a Draft order in Purchasing, so Atlas did not create a second one. Ask Atlas again to add these lines to that draft.",
+  name_taken: "A recipe with this name already exists, so Atlas did not save the draft. Ask Atlas for a different name.",
   invalid_arguments: "The stored action is not valid and was not run.",
   not_executable: "Atlas does not make this change. Open the linked screen to review it yourself.",
   unavailable: "Atlas could not complete this action right now. Nothing was confirmed.",
@@ -180,6 +181,60 @@ function actionError(outcome) {
   const raw = String(outcome?.error?.code ?? "failed");
   const code = Object.hasOwn(ACTION_ERROR_MESSAGES, raw) ? raw : "failed";
   return { code, message: ACTION_ERROR_MESSAGES[code] };
+}
+
+// Flavor Intelligence routes run registry tools directly (no model), so the
+// audit rows carry no run or conversation; proposals are stored without a
+// conversation (atlas_ai_action_create allows it) and approved through the
+// unchanged execute-action route.
+class FlavorTurn extends TurnState {
+  async audit(record = {}) {
+    if (this.runId) return super.audit(record);
+    this.auditCount += 1;
+    const name = String(record.tool_name ?? record.tool ?? record.name ?? "");
+    if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(name)) return null;
+    const status = ["ok", "failed", "denied", "timeout"].includes(record.status) ? record.status : "ok";
+    try {
+      return await this.services.rpc("atlas_ai_tool_call_record", {
+        p_actor_id: this.actor.userId,
+        p_actor_role: this.actor.role,
+        p_run_id: null,
+        p_conversation_id: null,
+        p_tool_name: name.slice(0, 120),
+        p_level: ["read", "draft"].includes(record.level) ? record.level : "read",
+        p_decision: record.decision === "denied" || status === "denied" ? "denied" : "allowed",
+        p_arguments_redacted: redactArguments(record.arguments_redacted ?? record.arguments ?? {}) ?? {},
+        p_result_summary: record.result_summary || record.summary ? redactSecrets(String(record.result_summary ?? record.summary).slice(0, 2000)) : null,
+        p_evidence_count: Math.max(0, Number(record.evidence_count) || 0),
+        p_latency_ms: Number.isFinite(record.latency_ms) ? Math.max(0, Math.round(record.latency_ms)) : null,
+        p_status: status,
+        p_error_code: record.error_code ? String(record.error_code).slice(0, 120) : null,
+      });
+    } catch {
+      return null;
+    }
+  }
+}
+
+const FLAVOR_TOOL_STATUS = Object.freeze({ forbidden: 403, invalid_arguments: 400, not_found: 404, conflict: 409, limit_exceeded: 429 });
+export const FLAVOR_RATE_LIMIT = Object.freeze({ windowMs: 60000, max: 60 });
+
+function queryBoolean(value) {
+  if (value === null || value === undefined || value === "") return null;
+  return ["true", "1", "yes"].includes(String(value).toLowerCase());
+}
+
+function queryInteger(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : Number.NaN;
+}
+
+function stringList(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const list = Array.isArray(value) ? value : [value];
+  const cleaned = list.map((entry) => (typeof entry === "string" ? entry.trim() : entry)).filter((entry) => entry !== "");
+  return cleaned.length ? cleaned : null;
 }
 
 function sseHeaders() {
@@ -837,6 +892,174 @@ export function createAtlasAiHandler(deps) {
     }
   }
 
+  // --- Flavor Intelligence (deterministic; works without an OpenAI key) ---------
+
+  const flavorHits = new Map();
+  function flavorRate(actor) {
+    const at = now();
+    const recent = (flavorHits.get(actor.userId) || []).filter((stamp) => at - stamp < FLAVOR_RATE_LIMIT.windowMs);
+    if (recent.length >= FLAVOR_RATE_LIMIT.max) {
+      throw new ApiError(429, "rate_limited", "Too many flavour requests in a minute. Try again shortly.");
+    }
+    recent.push(at);
+    flavorHits.set(actor.userId, recent);
+    // Keep the map small: people with no request in the window are dropped.
+    if (flavorHits.size > 500) {
+      for (const [userId, stamps] of flavorHits) {
+        if (!stamps.some((stamp) => at - stamp < FLAVOR_RATE_LIMIT.windowMs)) flavorHits.delete(userId);
+      }
+    }
+  }
+
+  // Runs one registry tool through gateway.runTool (role check, strict
+  // arguments, redaction, audit). Tool failures become fixed HTTP errors.
+  async function flavorTool(actor, name, args) {
+    const gateway = gatewayOrUnavailable();
+    flavorRate(actor);
+    const entry = typeof gateway.getTool === "function" ? gateway.getTool(name) : (gateway.TOOL_REGISTRY || []).find((tool) => tool.name === name);
+    if (!entry) throw NOT_CONFIGURED();
+    const turn = new FlavorTurn({
+      services, gateway, actor, env, fetchImpl, now, venue: config.venue, conversationId: null, toolOutputChars: config.limits.toolOutputChars,
+    });
+    const { result, proposal } = await turn.runTool(entry, args);
+    if (!result?.ok) {
+      const code = String(result?.error?.code ?? "unavailable");
+      const status = FLAVOR_TOOL_STATUS[code] ?? 503;
+      throw new ApiError(status, status === 503 ? "unavailable" : code, noteText(result?.error?.message, 300) || "This is unavailable right now.");
+    }
+    return { result, proposal };
+  }
+
+  function flavorEnvelope(result) {
+    return { summary: result.summary, evidence: result.evidence, records: result.records, unknown: result.unknown };
+  }
+
+  async function flavorMap(request, actor) {
+    const url = new URL(request.url);
+    const params = url.searchParams;
+    const { result } = await flavorTool(actor, "flavor.pairings", {
+      ingredient: params.get("ingredient")?.trim() || null,
+      preparation: params.get("preparation")?.trim() || null,
+      use: params.get("use")?.trim() || null,
+      in_stock_only: queryBoolean(params.get("in_stock_only")),
+      evidence: stringList(params.get("evidence")?.split(",").map((entry) => entry.trim()).filter(Boolean)),
+      limit: queryInteger(params.get("limit")),
+    });
+    const data = result.data;
+    if (data.needs_clarification) return { needs_clarification: data.needs_clarification, ...flavorEnvelope(result) };
+    const center = data.center;
+    return {
+      center,
+      preparation: data.preparation,
+      nodes: [
+        { slug: center.slug, name: center.name, family: center.family, subfamily: center.subfamily, uses: center.uses, stock_status: center.stock_status, in_stock: center.in_stock, center: true },
+        ...data.neighbours.map((neighbour) => ({
+          slug: neighbour.ingredient.slug, name: neighbour.ingredient.name, family: neighbour.ingredient.family, subfamily: neighbour.ingredient.subfamily,
+          uses: neighbour.ingredient.uses, stock_status: neighbour.stock_status, in_stock: neighbour.in_stock, center: false,
+        })),
+      ],
+      edges: data.neighbours.map((neighbour) => ({
+        source: center.slug,
+        target: neighbour.ingredient.slug,
+        relation: neighbour.relation,
+        strength: neighbour.dims.strength,
+        aroma: neighbour.dims.aroma,
+        taste: neighbour.dims.taste,
+        texture: neighbour.dims.texture,
+        dims_basis: neighbour.dims_basis,
+        evidence_type: neighbour.evidence_type,
+        confidence: neighbour.confidence,
+        explanation: neighbour.explanation,
+        provider: neighbour.provider,
+        evidence: neighbour.evidence,
+      })),
+      stock: data.stock,
+      filters_available: data.filters_available,
+      total: data.total,
+      basis: data.basis,
+      ...flavorEnvelope(result),
+    };
+  }
+
+  async function flavorSearch(request, actor) {
+    const params = new URL(request.url).searchParams;
+    const query = (params.get("q") ?? "").trim();
+    if (!query) throw new ApiError(400, "invalid_request", "Type an ingredient to search for.");
+    const { result } = await flavorTool(actor, "flavor.search_ingredients", {
+      query: query.slice(0, 100),
+      use: params.get("use")?.trim() || null,
+      limit: queryInteger(params.get("limit")),
+    });
+    return { results: result.data.results, total: result.data.total, ...flavorEnvelope(result) };
+  }
+
+  async function flavorSubstitutes(request, actor) {
+    const params = new URL(request.url).searchParams;
+    const ingredient = (params.get("ingredient") ?? "").trim();
+    if (!ingredient) throw new ApiError(400, "invalid_request", "Choose an ingredient to replace.");
+    const { result } = await flavorTool(actor, "flavor.substitutes", {
+      ingredient: ingredient.slice(0, 100),
+      in_stock_only: queryBoolean(params.get("in_stock_only")),
+      limit: queryInteger(params.get("limit")),
+    });
+    const data = result.data;
+    if (data.needs_clarification) return { needs_clarification: data.needs_clarification, substitutes: [], ...flavorEnvelope(result) };
+    return { original: data.original, substitutes: data.substitutes, total: data.total, ...flavorEnvelope(result) };
+  }
+
+  async function flavorCandidates(body, actor) {
+    const exclude = body.exclude && typeof body.exclude === "object" && !Array.isArray(body.exclude) ? body.exclude : {};
+    const { result } = await flavorTool(actor, "flavor.candidates", {
+      type: body.type ?? null,
+      seed: stringList(body.seed),
+      exclude_families: stringList(exclude.families ?? body.exclude_families),
+      exclude_ingredients: stringList(exclude.ingredients ?? body.exclude_ingredients),
+      no_new_purchases: body.no_new_purchases === undefined ? null : body.no_new_purchases,
+      goal: body.goal ?? null,
+      limit: body.limit ?? null,
+    });
+    const data = result.data;
+    if (data.needs_clarification) return { needs_clarification: data.needs_clarification, candidates: [], ...flavorEnvelope(result) };
+    return {
+      candidates: data.candidates,
+      considered: data.considered,
+      goal: data.goal,
+      unmet_seeds: data.unmet_seeds,
+      unused_seeds: data.unused_seeds ?? [],
+      unmeasurable: data.unmeasurable ?? [],
+      notes: data.notes,
+      request: data.request,
+      basis: data.basis,
+      ...flavorEnvelope(result),
+    };
+  }
+
+  async function flavorCompose(body, actor) {
+    const candidate = body.candidate && typeof body.candidate === "object" && !Array.isArray(body.candidate) ? body.candidate : {};
+    const key = candidate.candidate_key ?? candidate.key ?? body.candidate_key;
+    if (typeof key !== "string" || !key.trim()) throw new ApiError(400, "invalid_request", "Choose an idea to turn into a draft recipe.");
+    const { result, proposal } = await flavorTool(actor, "recipes.compose_draft", {
+      candidate_key: key.trim(),
+      type: candidate.type ?? null,
+      no_new_purchases: candidate.no_new_purchases === undefined ? null : candidate.no_new_purchases,
+      name: typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 120) : null,
+    });
+    if (!proposal) throw new ApiError(503, "unavailable", "The draft recipe could not be prepared for approval. Nothing was saved.");
+    return {
+      proposal: {
+        id: proposal.id,
+        kind: proposal.kind,
+        title: proposal.title,
+        preview: proposal.preview,
+        required_roles: proposal.required_roles,
+        expires_at: proposal.expires_at,
+        status: proposal.status,
+      },
+      draft: result.data.draft,
+      ...flavorEnvelope(result),
+    };
+  }
+
   // --- Routing ----------------------------------------------------------------
 
   const JSON_ROUTES = {
@@ -859,6 +1082,11 @@ export function createAtlasAiHandler(deps) {
     "voice-append": { methods: ["POST"], body: true, run: (body, actor) => voiceAppend(body, actor) },
     "voice-heartbeat": { methods: ["POST"], body: true, run: (body, actor) => voiceHeartbeat(body, actor) },
     "voice-end": { methods: ["POST"], body: true, run: (body, actor) => voiceEnd(body, actor) },
+    "flavor-map": { methods: ["GET"], run: (request, actor) => flavorMap(request, actor) },
+    "flavor-search": { methods: ["GET"], run: (request, actor) => flavorSearch(request, actor) },
+    "flavor-substitutes": { methods: ["GET"], run: (request, actor) => flavorSubstitutes(request, actor) },
+    "flavor-candidates": { methods: ["POST"], body: true, run: (body, actor) => flavorCandidates(body, actor) },
+    "flavor-compose": { methods: ["POST"], body: true, run: (body, actor) => flavorCompose(body, actor) },
   };
 
   return async function handle(request) {

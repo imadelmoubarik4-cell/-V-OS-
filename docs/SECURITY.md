@@ -41,7 +41,7 @@ The five migration files before A.1 were recovered from the hosted migration led
 
 `netlify.toml` limits `script-src` to `'self'`, `blob:` and the exact pinned CDN files (supabase-js 2.45.4 from jsDelivr with an unpkg fallback, and Lucide 0.454.0). Each of these files also carries a reviewed SRI hash. The unused SheetJS (`xlsx@0.18.5`) include was removed in S89: spreadsheets are uploaded to private storage and parsed server-side.
 
-Known rollout follow-up (security review S88b G6): `'unsafe-inline'` remains in `script-src` because `index.html` and `menu.html` still contain inline app scripts. The next step is to move those scripts into files, or allow them by hash or nonce, and then drop `'unsafe-inline'`. Until then, HTML escaping in every renderer remains the main defence against XSS. The browser fuzz tests cover this escaping.
+S96: 'unsafe-inline' removed from script-src. The start-up script moved from `index.html` to `assets/js/atlas-app.js`, the public menu script to `assets/js/public-menu.js`, and Team Profiles loads `team-profiles.source.js` as a plain file instead of a Blob URL, so `script-src` allows only this origin and the pinned, SRI-checked CDN files (no `'unsafe-inline'`, no `blob:`). HTML escaping in every renderer stays the first defence; the CSP is the second. `tests/node/csp-strict-s96.test.js` keeps pages free of inline scripts and inline handlers, and `tests/browser/csp-s96.browser.test.mjs` runs the app under the production CSP and checks that an injected inline handler is refused. `style-src` still allows `'unsafe-inline'` (style attributes are used throughout); that does not allow script.
 
 ## Verification
 

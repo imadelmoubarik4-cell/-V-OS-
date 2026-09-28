@@ -31,7 +31,7 @@
   const QUESTION_WORDS = new Set(['who', 'what', 'whats', 'when', 'where', 'why', 'how', 'many', 'much', 'can', 'could', 'should', 'will', 'which', 'does', 'did', 'are', 'was', 'were', 'have', 'has', 'had', 'got', 'the', 'and', 'any', 'our', 'for', 'there', 'left', 'still', 'you', 'this', 'that', 'tonight', 'today', 'need', 'enough', 'stock']);
   const ACTION_GROUPS = [
     ['Stock', /^inventory\./], ['Purchasing', /^purchasing\./], ['Service', /^(operations|recipes|ai)\./],
-    ['People', /^(shifts|messages|team|knowledge)\./], ['Business', /^(data|marketing|reports|settings)\./]
+    ['People', /^(shifts|messages|team|knowledge)\./], ['Business', /^(accounting|data|marketing|reports|settings)\./]
   ];
 
   const state = {

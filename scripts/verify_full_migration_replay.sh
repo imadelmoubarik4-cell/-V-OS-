@@ -92,6 +92,35 @@ CREATE TABLE IF NOT EXISTS auth.users(
   is_anonymous boolean default false
 );
 
+-- S96: Supabase Auth's MFA factor table (only the columns migrations read).
+CREATE TABLE IF NOT EXISTS auth.mfa_factors(
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  factor_type text not null default 'totp',
+  status text not null default 'unverified',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- S96: Supabase Auth session tables (only the columns migrations touch), with
+-- the production cascade from sessions to refresh tokens.
+CREATE TABLE IF NOT EXISTS auth.sessions(
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  aal text default 'aal1',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  refreshed_at timestamp
+);
+CREATE TABLE IF NOT EXISTS auth.refresh_tokens(
+  id bigserial primary key,
+  token text,
+  user_id text,
+  revoked boolean default false,
+  session_id uuid references auth.sessions(id) on delete cascade,
+  created_at timestamptz default now()
+);
+
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid LANGUAGE sql STABLE AS $$
   SELECT nullif(current_setting('request.jwt.claim.sub', true),'')::uuid;
@@ -186,6 +215,33 @@ if [[ ${#migrations[@]} -eq 0 ]]; then
   echo "No migrations found" >&2
   exit 1
 fi
+
+# Apply-order correction for one back-dated migration.
+# The Accounting base migration (20260926000033_s92_accounting_documents.sql)
+# carries a version string back-dated to match the production ledger, where it
+# was applied incrementally AFTER the purchase-order lifecycle already existed.
+# Its SQL bodies legitimately reference private.purchase_order_total(jsonb),
+# which 20260926093000_s88_purchase_order_receiving_approval.sql creates later
+# in filename-sort order. Replaying from empty in pure sort order would run the
+# Accounting base before its dependency exists, which never happened in
+# production. So we relocate this one file to its real production apply slot —
+# immediately before 20261001100000_s92b_accounting_read_guard.sql (its original
+# RC position) — with full function-body validation left ON. No SQL content is
+# changed; only the position at which this back-dated file is replayed.
+accounting_base='20260926000033_s92_accounting_documents.sql'
+s92b_anchor='20261001100000_s92b_accounting_read_guard.sql'
+reordered=()
+for migration in "${migrations[@]}"; do
+  base="$(basename "$migration")"
+  [[ "$base" == "$accounting_base" ]] && continue
+  if [[ "$base" == "$s92b_anchor" ]]; then
+    for m in "${migrations[@]}"; do
+      [[ "$(basename "$m")" == "$accounting_base" ]] && reordered+=("$m")
+    done
+  fi
+  reordered+=("$migration")
+done
+migrations=("${reordered[@]}")
 
 for migration in "${migrations[@]}"; do
   base="$(basename "$migration")"

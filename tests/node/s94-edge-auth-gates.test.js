@@ -20,6 +20,7 @@ const ENV = {
   ATLAS_AUTH_PROJECT_URL: BASE,
   ATLAS_AUTH_PUBLISHABLE_KEY: 'sb_publishable_test',
   ATLAS_MARKETING_PUBLISHER_SECRET: SECRET,
+  ATLAS_MARKETING_PUBLISHER_ENABLED: 'true',
 };
 const env = (name) => ENV[name];
 

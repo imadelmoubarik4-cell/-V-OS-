@@ -59,6 +59,10 @@ test('resolveActor verifies the session, then reads the caller’s own profile w
     displayName: 'Anna',
     label: 'Anna',
     token: 'user-jwt',
+    aal: 'aal1',
+    amr: [],
+    mfaEnrolled: false,
+    sessionId: null,
     profile: { id: USER_ID, email: 'staff@example.test', display_name: ' Anna ', role: 'bartender', active: true },
   });
   assert.equal(calls.length, 2);

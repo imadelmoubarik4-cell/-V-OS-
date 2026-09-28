@@ -79,6 +79,15 @@ export const PRICE_TABLE_USD_PER_MTOK = Object.freeze({
   "gpt-realtime-2.1-mini": { input: 0.6, output: 2.4 },
   "gpt-4o-mini-tts": { input: 0.6, output: 12 },
 });
+// S96: Responses API calls made through the Agents SDK are not stored at
+// OpenAI (store defaults to true there). Atlas replays history itself, so
+// nothing depends on stored responses; encrypted reasoning items are
+// requested so multi-step tool runs keep working without the store.
+export const RESPONSES_MODEL_SETTINGS = Object.freeze({
+  store: false,
+  providerData: Object.freeze({ include: Object.freeze(["reasoning.encrypted_content"]) }),
+});
+
 export const PRICE_TABLE_NOTE = "Estimated cost from an unverified price table; confirm on the official OpenAI pricing page.";
 
 function read(env, name) {

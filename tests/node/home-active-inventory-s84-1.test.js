@@ -149,7 +149,7 @@ test('6. inactive recipe references such as Ice and Water may stay unverified wi
 });
 
 test('Inventory records keep inactive rows; only live-stock surfaces filter them', () => {
-  const html = read('apps/web/index.html');
+  const html = (read('apps/web/index.html') + read('apps/web/assets/js/atlas-app.js'));
   assert.match(html, /items = window\.AtlasStockTruth\.project\(data \|\| \[\], balances, inventoryMovements\);/);
   assert.match(read('apps/web/assets/js/home.js'), /const active = items\(\)\.filter\(\(item\) => item\.active !== false\);/);
   assert.doesNotMatch(html, /update\(\{\s*active:\s*true/);

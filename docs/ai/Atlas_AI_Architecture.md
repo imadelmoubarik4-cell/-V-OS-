@@ -180,6 +180,24 @@ approval), Knowledge draft (saved as draft, never published), recipe draft,
 manager briefing, marketing draft, suggested settings change (opens Settings;
 Atlas never writes settings), par suggestion (opens the par editor).
 
+**Recipe draft (`recipe.draft`, S95 Flavor Intelligence).** `recipes.compose_draft`
+(managers) turns a deterministic flavour idea (`flavor.candidates` →
+`candidate_key`) into a spec re-checked against current verified stock. On
+approval `actions.mjs` calls `services.recipeSaveDraft` →
+`public.atlas_save_recipe(p_recipe_id := null, …)` with the approver's JWT,
+forcing `active = false` and `show_on_menu = false`: a **new** recipe in
+Recipes › Drafts, never an edit of an existing recipe, never on the menu, no
+stock/item/supplier/purchasing change. A name already used is refused with
+`name_taken` (checked first, then the `recipes_name_key` unique constraint).
+The SQL allow-list `atlas_private.ai_action_allowed_roles` must include
+`recipe.draft` → admin/manager (migration `20261005091000_s95b_recipe_draft_kind.sql`).
+The deterministic `atlas-ai` routes `flavor-map`, `flavor-search`,
+`flavor-substitutes`, `flavor-candidates` and `flavor-compose` run the same registry tools through
+`gateway.runTool` without a model or OpenAI key; `flavor-compose` stores the
+proposal with no conversation (`atlas_ai_action_create` allows a null
+conversation) and the browser approves it through the unchanged
+`execute-action`. Details: `docs/flavor/Engine.md`.
+
 Rules: proposals expire (24 h default); each is single-use (atomic
 `proposed → executing → executed|failed`); only the proposing user or a
 manager may approve; approvals are recorded in `brain_decisions` through the

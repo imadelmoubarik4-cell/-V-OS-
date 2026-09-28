@@ -17,7 +17,9 @@ const css = gunzipSync(readFileSync('apps/web/assets/css/team-profiles.bundle.cs
 test('Team loads through the isolated Team Profiles API as a repository-owned bundle', () => {
   assert.match(config, /TEAM_PROFILES_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-team-profiles"/);
   assert.match(config, /assets\/js\/team-profiles-bootstrap\.js/);
-  assert.match(bootstrap, /team-profiles\.bundle\.js\.gz/);
+  // S96: the script loads as the plain, byte-identical source file (no Blob URL).
+  assert.match(bootstrap, /team-profiles\.source\.js/);
+  assert.doesNotMatch(bootstrap, /createObjectURL|new Blob/);
   assert.match(bootstrap, /team-profiles\.bundle\.css\.gz/);
   assert.match(bootstrap, /DecompressionStream\('gzip'\)/);
   assert.match(bootstrap, /document\.createElement\('style'\)/);

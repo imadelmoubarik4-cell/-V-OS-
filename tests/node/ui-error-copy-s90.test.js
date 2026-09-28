@@ -22,6 +22,10 @@ const ALLOWED = [
   /error\?\.atlasFixed \? error\.message : fallback/,
   /error instanceof (AtlasApiError|CaptureError)/,
   /const text = \[error\?\.message, error\?\.details/,
+  // atlas-app.js (S96, formerly inline in index.html): the library-load and
+  // start-up failures go to the console only; showBootError shows fixed copy.
+  /failures\.push\(error\.message\)/,
+  /showBootError\(error\.message\)/,
   // rehearsal-boundary.js replaces a configuration failure with fixed copy.
   /banner\.textContent = failure\?\.message \|\|/
 ];

@@ -158,7 +158,12 @@
       if (rest[0] === 'waste') return [['waste']];
       return [['inventory', section(rest[0])]];
     },
-    recipes: (rest) => [['recipes', rest[0] ? { recipe: rest[0], ...(rest[1] === 'edit' ? { edit: '1' } : {}) } : {}]],
+    // #recipes/flavor[/<ingredient>] is the Flavor Map (Flavor Intelligence),
+    // never a recipe id.
+    recipes: (rest) => {
+      if (rest[0] === 'flavor') return [['recipes', section('flavor', rest[1] ? { ingredient: rest[1] } : {})]];
+      return [['recipes', rest[0] ? { recipe: rest[0], ...(rest[1] === 'edit' ? { edit: '1' } : {}) } : {}]];
+    },
     purchasing: (rest) => {
       if (rest[0] === 'order' && rest[1]) return [['suppliers', { section: 'orders', order: rest[1] }]];
       if (rest[0] === 'suppliers' && rest[1]) return [['suppliers', { section: 'suppliers', supplier: rest[1] }]];
@@ -169,6 +174,7 @@
     knowledge: (rest) => [['knowledge', ['required', 'training', 'sources', 'activity'].includes(rest[0]) ? section(rest[0]) : rest[0] ? { article: rest[0] } : {}]],
     reports: (rest) => [['reports', section(rest[0])]],
     marketing: (rest) => [['marketing', section(rest[0])]],
+    accounting: (rest) => [['accounting', rest[0] === 'document' && rest[1] ? { document: rest[1] } : section(rest[0])]],
     data: (rest) => {
       if (rest[0] === 'import-review') return [['data', section('import-review')], ['sprint3-review']];
       if (rest[0] === 'import' && rest[1]) return [['data', section('import', { batch: rest[1] })], ['imports']];
@@ -286,6 +292,11 @@
         break;
       }
       case 'recipes': {
+        if (rest.section === 'flavor') {
+          takeParam(rest, 'section');
+          path = ['recipes', 'flavor', takeParam(rest, 'ingredient')];
+          break;
+        }
         const recipe = takeParam(rest, 'recipe');
         const edit = takeParam(rest, 'edit');
         path = ['recipes', recipe, recipe && edit ? 'edit' : null];
@@ -294,6 +305,11 @@
       case 'knowledge': {
         const article = takeParam(rest, 'article');
         path = ['knowledge', article || takeParam(rest, 'section')];
+        break;
+      }
+      case 'accounting': {
+        const document = takeParam(rest, 'document');
+        path = document ? ['accounting', 'document', document] : ['accounting', takeParam(rest, 'section')];
         break;
       }
       case 'ai': {
@@ -659,6 +675,8 @@
 
   const ROLES_ALL = Object.freeze(['admin', 'manager', 'bartender', 'viewer']);
   const ROLES_MANAGERS = Object.freeze(['admin', 'manager']);
+  // S92: Accounting holds invoices, receipts and reimbursements (owner decision: admin only).
+  const ROLES_ADMIN = Object.freeze(['admin']);
   const NAV_ITEMS = Object.freeze([
     { id: 'home', label: 'Home', icon: 'house', route: '#home', view: 'dashboard', views: ['dashboard', 'brain'], aliases: ['dashboard', 'brain'], group: null, roles: ROLES_ALL, keywords: ['today', 'dashboard', 'briefing'] },
     { id: 'ai', label: 'Atlas AI', icon: 'atlas-bot', route: '#ai', view: 'ai', views: ['ai'], aliases: [], group: null, roles: ROLES_ALL, accent: true, keywords: ['ask', 'assistant', 'decisions'] },
@@ -672,6 +690,7 @@
     { id: 'knowledge', label: 'Knowledge', icon: 'book-open', route: '#knowledge', view: 'knowledge', views: ['knowledge'], aliases: [], group: 'People', roles: ROLES_ALL, keywords: ['documents', 'training', 'procedures'] },
     { id: 'reports', label: 'Reports', icon: 'chart-no-axes-column', route: '#reports', view: 'reports', views: ['reports', 'business'], aliases: ['business'], group: 'Business', roles: ROLES_MANAGERS, keywords: ['analytics', 'overview', 'waste', 'labour'] },
     { id: 'marketing', label: 'Marketing', icon: 'megaphone', route: '#marketing', view: 'marketing', views: ['marketing'], aliases: [], group: 'Business', roles: ROLES_MANAGERS, keywords: ['social', 'posts', 'instagram'] },
+    { id: 'accounting', label: 'Accounting', icon: 'receipt-text', route: '#accounting', view: 'accounting', views: ['accounting'], aliases: [], group: 'Business', roles: ROLES_ADMIN, keywords: ['invoices', 'receipts', 'bills', 'reimbursements', 'vat', 'bókhald', 'reikningar'] },
     { id: 'data', label: 'Data', icon: 'database', route: '#data', view: 'imports', views: ['data', 'imports', 'sprint3-review'], aliases: ['imports', 'sprint3-review'], group: 'Business', roles: ROLES_MANAGERS, keywords: ['import', 'excel', 'csv', 'review', 'par levels'] },
     { id: 'settings', label: 'Settings', icon: 'settings', route: '#settings', view: 'settings', views: ['settings', 'system'], aliases: ['system'], group: 'footer', roles: ROLES_MANAGERS, keywords: ['preferences', 'hours', 'notifications', 'system health'] }
   ]);

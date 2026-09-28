@@ -1,0 +1,216 @@
+{
+ "version": 1,
+ "note": "Provider registry from the Flavor Intelligence research (sources.md, 2026-09-27). Only atlas_curated data is in the seed; atlas_learned is computed at runtime from the venue's own recipes. The other rows are the reviewed registry: allowed-but-unused sources (use / use_with_attribution) and sources that must not be ingested or need legal review. No data from any external source is ingested. Not legal advice; some licences were determined from search results where the primary page was blocked.",
+ "sources": [
+  {
+   "id": "atlas_curated",
+   "name": "Atlas curated culinary knowledge",
+   "url": null,
+   "license": "Atlas-owned (proprietary to the Atlas deployment)",
+   "commercial_use": true,
+   "attribution": null,
+   "verdict": "use",
+   "notes": "Canonical ingredients, aroma/taste vectors, preparations and culinary pairing edges hand-authored by Atlas from general culinary and bartending knowledge. Not derived from any external dataset. Draft, needs human review (seed 0.1.0)."
+  },
+  {
+   "id": "atlas_learned",
+   "name": "VÁ BAR recipes in Atlas (co-occurrence)",
+   "url": null,
+   "license": "Tenant-owned data",
+   "commercial_use": true,
+   "attribution": null,
+   "verdict": "use",
+   "notes": "atlas_learned evidence: ingredient co-occurrence in the venue's own recipes, computed at request time by the atlas-ai Edge Function. Tenant-scoped; never shared across tenants without consent."
+  },
+  {
+   "id": "wikidata",
+   "name": "Wikidata",
+   "url": "https://www.wikidata.org",
+   "license": "CC0 1.0",
+   "commercial_use": true,
+   "attribution": "Not required (courtesy)",
+   "verdict": "use",
+   "notes": "Allowed for cross-reference ids and Icelandic/English labels; never flavour evidence. No data ingested in the MVP seed."
+  },
+  {
+   "id": "foodon",
+   "name": "FoodOn ontology",
+   "url": "https://github.com/FoodOntology/foodon",
+   "license": "CC BY 4.0",
+   "commercial_use": true,
+   "attribution": "Required: credit FoodOn and include the licence",
+   "verdict": "use_with_attribution",
+   "notes": "Allowed for an optional foodon_id crosswalk and process terms. No data ingested in the MVP seed."
+  },
+  {
+   "id": "pubchem",
+   "name": "PubChem (NCBI)",
+   "url": "https://pubchem.ncbi.nlm.nih.gov",
+   "license": "Public domain for NCBI core data; depositor annotations carry their own terms",
+   "commercial_use": true,
+   "attribution": "Citation requested",
+   "verdict": "use_with_attribution",
+   "notes": "Core compound ids only, for a future scientific layer; depositor annotations need legal review. No data ingested in the MVP seed."
+  },
+  {
+   "id": "usda_fdc",
+   "name": "USDA FoodData Central",
+   "url": "https://fdc.nal.usda.gov",
+   "license": "Public domain / CC0 1.0",
+   "commercial_use": true,
+   "attribution": "Citation requested",
+   "verdict": "use_with_attribution",
+   "notes": "Allowed for nutrition enrichment only (no flavour data). No data ingested in the MVP seed."
+  },
+  {
+   "id": "open_food_facts",
+   "name": "Open Food Facts",
+   "url": "https://world.openfoodfacts.org/data",
+   "license": "ODbL 1.0 (database), DbCL 1.0 (contents), CC BY-SA (images)",
+   "commercial_use": true,
+   "attribution": "Required",
+   "verdict": "needs_legal_review",
+   "notes": "Share-alike for public derivative databases; would need a separate bounded table. Not used in the MVP."
+  },
+  {
+   "id": "thecocktaildb",
+   "name": "TheCocktailDB",
+   "url": "https://www.thecocktaildb.com",
+   "license": "Proprietary API (paid key for commercial use)",
+   "commercial_use": false,
+   "attribution": "Per their terms",
+   "verdict": "needs_legal_review",
+   "notes": "Storing their data as Atlas evidence is not granted; not used in the MVP."
+  },
+  {
+   "id": "ahn_2011_flavor_network",
+   "name": "Ahn et al. 2011, Flavor network and the principles of food pairing",
+   "url": "https://doi.org/10.1038/srep00196",
+   "license": "CC BY-NC-SA 3.0",
+   "commercial_use": false,
+   "attribution": "Required",
+   "verdict": "do_not_ingest",
+   "notes": "Non-commercial share-alike; recipe portion scraped from third-party sites. Finding may be cited as background only."
+  },
+  {
+   "id": "culinary_reference_books",
+   "name": "Published culinary reference books (e.g. The Flavor Bible, The Flavour Thesaurus)",
+   "url": null,
+   "license": "Copyrighted compilations",
+   "commercial_use": false,
+   "attribution": null,
+   "verdict": "do_not_ingest",
+   "notes": "Their lists are not transcribed; overlap with common culinary facts is expected."
+  },
+  {
+   "id": "culinarydb",
+   "name": "CulinaryDB (CoSyLab)",
+   "url": "https://cosylab.iiitd.edu.in/culinarydb/",
+   "license": "No licence found",
+   "commercial_use": false,
+   "attribution": null,
+   "verdict": "do_not_ingest",
+   "notes": "Built from scraped sites; licence unknown."
+  },
+  {
+   "id": "flavordb",
+   "name": "FlavorDB / FlavorDB2 (IIIT-Delhi CoSyLab)",
+   "url": "https://cosylab.iiitd.edu.in/flavordb2/",
+   "license": "Free for non-commercial use only",
+   "commercial_use": false,
+   "attribution": "Cite the FlavorDB papers",
+   "verdict": "do_not_ingest",
+   "notes": "Non-commercial. No molecule or pairing data from it is in Atlas."
+  },
+  {
+   "id": "flavornet",
+   "name": "Flavornet (Acree & Arn, Cornell)",
+   "url": "https://www.flavornet.org",
+   "license": "No open licence (author copyright)",
+   "commercial_use": false,
+   "attribution": null,
+   "verdict": "do_not_ingest",
+   "notes": "May be cited as literature only."
+  },
+  {
+   "id": "foodb",
+   "name": "FooDB",
+   "url": "https://foodb.ca",
+   "license": "CC BY-NC 4.0",
+   "commercial_use": false,
+   "attribution": "Required",
+   "verdict": "do_not_ingest",
+   "notes": "Non-commercial licence."
+  },
+  {
+   "id": "foodpairing",
+   "name": "Foodpairing",
+   "url": "https://www.foodpairing.com",
+   "license": "Proprietary, commercial",
+   "commercial_use": false,
+   "attribution": null,
+   "verdict": "do_not_ingest",
+   "notes": "Do not ingest, scrape, reconstruct or imitate its data, graphs or visuals."
+  },
+  {
+   "id": "good_scents",
+   "name": "The Good Scents Company",
+   "url": "http://www.thegoodscentscompany.com",
+   "license": "Copyright; permission to reproduce required",
+   "commercial_use": false,
+   "attribution": null,
+   "verdict": "do_not_ingest",
+   "notes": "Staff may consult it; nothing is copied."
+  },
+  {
+   "id": "kaggle_cocktail_datasets",
+   "name": "Kaggle cocktail datasets",
+   "url": null,
+   "license": "Varies; often unknown or CC BY-NC",
+   "commercial_use": false,
+   "attribution": null,
+   "verdict": "do_not_ingest",
+   "notes": "Often re-uploads of TheCocktailDB or publisher content. Classic ratios are authored by Atlas instead."
+  },
+  {
+   "id": "langual",
+   "name": "LanguaL",
+   "url": "https://www.langual.org",
+   "license": "No clear licence found",
+   "commercial_use": false,
+   "attribution": null,
+   "verdict": "do_not_ingest",
+   "notes": "Until written terms are obtained."
+  },
+  {
+   "id": "recipe1m",
+   "name": "Recipe1M / Recipe1M+ (MIT CSAIL)",
+   "url": "http://im2recipe.csail.mit.edu",
+   "license": "Non-commercial research and education only",
+   "commercial_use": false,
+   "attribution": null,
+   "verdict": "do_not_ingest",
+   "notes": "Non-commercial terms of use."
+  },
+  {
+   "id": "recipedb",
+   "name": "RecipeDB (CoSyLab)",
+   "url": "https://cosylab.iiitd.edu.in/recipedb/",
+   "license": "CC BY-NC-SA 3.0",
+   "commercial_use": false,
+   "attribution": "Required",
+   "verdict": "do_not_ingest",
+   "notes": "Non-commercial."
+  },
+  {
+   "id": "recipenlg_kaggle_recipes",
+   "name": "RecipeNLG and Kaggle recipe dumps",
+   "url": null,
+   "license": "Varies; scraped third-party content",
+   "commercial_use": false,
+   "attribution": null,
+   "verdict": "do_not_ingest",
+   "notes": "Unclear licences."
+  }
+ ]
+}

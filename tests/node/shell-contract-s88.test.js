@@ -15,7 +15,9 @@ const ROOT = new URL('../../', import.meta.url);
 const WEB = new URL('apps/web/', ROOT);
 const read = (relative) => fs.readFileSync(new URL(relative, ROOT), 'utf8');
 const shellSource = read('apps/web/assets/js/atlas-shell.js');
-const index = read('apps/web/index.html');
+// S96: the start-up script moved out of index.html into assets/js/atlas-app.js.
+const indexHtml = read('apps/web/index.html');
+const index = indexHtml + read('apps/web/assets/js/atlas-app.js');
 
 // Every script that ships: assets/js/*.js, the gzip Team Profiles bundle (its
 // .source.js twin is identical and not loaded), index.html's inline scripts
@@ -28,8 +30,8 @@ function shippedSources() {
     if (name.endsWith('.js')) sources.push([`assets/js/${name}`, fs.readFileSync(new URL(name, dir), 'utf8')]);
     if (name.endsWith('.js.gz')) sources.push([`assets/js/${name}`, zlib.gunzipSync(fs.readFileSync(new URL(name, dir))).toString('utf8')]);
   }
-  const inline = [...index.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]).join('\n');
-  sources.push(['index.html', inline]);
+  const inline = [...indexHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]).join('\n');
+  if (inline.trim()) sources.push(['index.html', inline]);
   sources.push(['config.js', read('apps/web/config.js')]);
   return sources;
 }
@@ -99,7 +101,7 @@ test('no module reassigns the shell globals or wraps browser APIs', () => {
   }
   // Legitimate browser-API guards, each owned by exactly one file.
   const fetchWrappers = SOURCES.filter(([, source]) => /window\.fetch\s*=(?!=)|root\.fetch\s*=(?!=)/.test(source)).map(([file]) => file);
-  assert.deepEqual(fetchWrappers, ['assets/js/rehearsal-boundary.js', 'index.html'], 'only the rehearsal boundary and the index.html session watch wrap fetch');
+  assert.deepEqual(fetchWrappers, ['assets/js/atlas-app.js', 'assets/js/rehearsal-boundary.js'], 'only the rehearsal boundary and the atlas-app.js session watch wrap fetch');
   // S91: index.html owns the one other fetch guard, the Supabase 401 watch
   // (one consistent signed-out state); it only observes responses.
   assert.equal((index.match(/window\.fetch\s*=(?!=)/g) || []).length, 1, 'index.html wraps fetch once');
@@ -110,9 +112,9 @@ test('no module reassigns the shell globals or wraps browser APIs', () => {
 
 test('no bootstrap rewrites or Blob-evaluates another script', () => {
   const blobScripts = SOURCES.filter(([, source]) => /createObjectURL\(new Blob\(\[source\]/.test(source)).map(([file]) => file).sort();
-  // team-profiles-bootstrap installs the repository-owned gzip bundle (the
-  // settings-workspace-bootstrap.js orphan was deleted in the S88 CSS split).
-  assert.deepEqual(blobScripts, ['assets/js/team-profiles-bootstrap.js']);
+  // S96: no Blob scripts at all (script-src has no blob:); team-profiles-bootstrap
+  // loads team-profiles.source.js as a plain file.
+  assert.deepEqual(blobScripts, []);
   assert.ok(!/settings-workspace-bootstrap/.test(index + read('apps/web/config.js')), 'the orphan bootstrap stays unloaded');
   // S88 Team B: the scanner and stock-count bootstraps were deleted; their
   // modules load as plain scripts from index.html.
@@ -195,7 +197,8 @@ test('every event a module listens for is actually emitted', () => {
 });
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261003-bot1"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261006-s92r"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(indexHtml, /<script src="assets\/js\/atlas-bot\.js[^"]*"><\/script>\s*<script src="assets\/js\/atlas-app\.js\?v=[^"]+"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
   assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine, health: window\.AtlasData\.health\(\) \}\);\s+\}/);
@@ -228,10 +231,19 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['data-workspace.js', 'atlas-capture.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
   }
+  // S92 Accounting: dialogs labelled when they open (modal). The shell (the
+  // admin-only Accounting destination and route) and the palette (its group)
+  // changed on both sides of the S92/robot merge and carry the merge key.
+  for (const file of ['modal.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261001-s92e"></script>`), file);
+  }
+  for (const file of ['atlas-shell.js', 'atlas-palette.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261006-s92r"></script>`), file);
+  }
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
   for (const file of ['s38-app-remediation.js', 'shifts-workspace.js',
-    'atlas-venue-clock.js', 'modal.js', 'atlas-stock-truth.js']) {
+    'atlas-venue-clock.js', 'atlas-stock-truth.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
@@ -242,27 +254,29 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // The Atlas AI robot (atlas-bot.js) replaced the sparkles assistant icon in
   // these scripts; atlas-ai.js also carries the S91b live voice lease.
-  for (const file of ['atlas-chrome.js', 'atlas-inventory.js', 'atlas-shell.js',
-    'knowledge-workspace.js', 'recipes.js']) {
+  for (const file of ['atlas-chrome.js', 'atlas-inventory.js', 'knowledge-workspace.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
   }
-  // Robot review follow-up: one WebGL probe, context loss, live reduced
-  // motion, idle pause (atlas-bot.js); the offline quick answer keeps the
-  // sparkles icon (atlas-palette.js).
+  // Flavor Intelligence (S95) survives Accounting (S92) reconciliation.
+  for (const file of ['recipes.js', 'flavor-map.js', 'atlas-ai.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261005-fi1"></script>`), file);
+  }
+  assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261005-fi1"></script>\n<script src="assets/js/flavor-map.js?v=20261005-fi1"></script>'), 'flavor-map.js right after recipes.js');
+  // Accounting (S92): the offline quick answer keeps the sparkles icon (atlas-palette.js).
   for (const file of ['atlas-palette.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot2"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261006-s92r"></script>`), file);
   }
   // Robot refinement: one state controller for every AI surface (sleep,
   // wake, listening, thinking, answering, success, attention, error), the
   // sleep sprite frame and the rebuilt scene (atlas-bot.js); atlas-ai.js
   // reports what Atlas is doing to it and still carries the S91b voice lease.
-  for (const file of ['atlas-bot.js', 'atlas-ai.js']) {
+  for (const file of ['atlas-bot.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261004-bot6"></script>`), file);
   }
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
 
-  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20260926-s91a">'), 'recipes.css');
+  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/recipes.css?v=20261005-fi1">'), 'recipes.css');
   const config = read('apps/web/config.js');
   // The Atlas AI robot replaced the assistant icon in these lazily loaded scripts.
   // (marketing-workspace.js carries the same change under its S94 key below.)
@@ -503,6 +517,9 @@ test('routes follow the spec table, keep legacy aliases working and round-trip t
   assert.deepEqual(route('#reports/stock'), ['reports', { section: 'stock' }]);
   assert.deepEqual(route('#settings/notifications'), ['settings', { section: 'notifications' }]);
   assert.deepEqual(route('#recipes/r1/edit'), ['recipes', { recipe: 'r1', edit: '1' }]);
+  // Flavor Intelligence: #recipes/flavor is the Flavor Map, never a recipe id.
+  assert.deepEqual(route('#recipes/flavor'), ['recipes', { section: 'flavor' }]);
+  assert.deepEqual(route('#recipes/flavor/london-dry-gin'), ['recipes', { section: 'flavor', ingredient: 'london-dry-gin' }]);
   assert.deepEqual(route('#knowledge/required'), ['knowledge', { section: 'required' }]);
   assert.deepEqual(route('#knowledge/a1'), ['knowledge', { article: 'a1' }]);
   // Legacy aliases.
@@ -531,7 +548,9 @@ test('routes follow the spec table, keep legacy aliases working and round-trip t
     ['suppliers', { section: 'deliveries' }, '#purchasing/deliveries'], ['inventory', { section: 'stock-count' }, '#inventory/counts'],
     ['inventory', { item: 'abc' }, '#inventory/item/abc'], ['movements', {}, '#inventory/movements'], ['imports', {}, '#data'],
     ['sprint3-review', {}, '#data/import-review'], ['system', {}, '#settings/system'], ['reports', { section: 'waste' }, '#reports/waste'],
-    ['settings', { section: 'notifications' }, '#settings/notifications'], ['inventory', { filter: 'below-par' }, '#inventory?filter=below-par']
+    ['settings', { section: 'notifications' }, '#settings/notifications'], ['inventory', { filter: 'below-par' }, '#inventory?filter=below-par'],
+    ['recipes', { section: 'flavor' }, '#recipes/flavor'], ['recipes', { section: 'flavor', ingredient: 'lemon' }, '#recipes/flavor/lemon'],
+    ['recipes', { recipe: 'r1' }, '#recipes/r1']
   ];
   for (const [view, params, expected] of cases) {
     assert.equal(shell.href(view, params), expected);

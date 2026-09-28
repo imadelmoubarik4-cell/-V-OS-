@@ -25,6 +25,9 @@ export const TEAM_CHANNELS = Object.freeze(["general", "operations", "shift-hand
 export const MESSAGE_LINK_TYPES = Object.freeze(["none", "inventory_item", "routine", "shift"]);
 export const ARTICLE_TYPES = Object.freeze(["policy", "sop", "checklist", "training", "reference", "live_resource"]);
 export const TARGET_ROLES = Object.freeze(["all", "admin", "manager", "bartender", "viewer"]);
+// Recipes category slugs (recipes.type) a draft may be saved with.
+export const RECIPE_DRAFT_TYPES = Object.freeze(["signature-cocktail", "mocktail", "coffee"]);
+export const RECIPE_LINE_UNITS = Object.freeze(["ml", "g", "each", "bottle", "can", "bunch", "l", "kg", "tsp", "tbsp"]);
 
 const nullableText = (max) => S.nullable(S.string(null, { minLength: 0, maxLength: max }));
 
@@ -156,6 +159,38 @@ const COMMAND_SCHEMAS = {
     note: S.string(null, { maxLength: 1000 }),
     recognition_request_id: S.nullable(S.uuid()),
   }),
+  // A NEW inactive recipe (Recipes › Drafts). `active`/`show_on_menu` are
+  // part of the schema so a stored command states them, but the executor and
+  // services.recipeSaveDraft force both to false whatever is stored.
+  "recipe.draft": S.object({
+    client_request_id: S.uuid(),
+    recipe: S.object({
+      name: S.string(null, { maxLength: 120 }),
+      type: S.enum(RECIPE_DRAFT_TYPES),
+      glassware: nullableText(80),
+      garnish: nullableText(200),
+      method: S.string(null, { maxLength: 4000 }),
+      notes: nullableText(2000),
+      yield_quantity: S.number(null, { minimum: 0.01, maximum: 1000 }),
+      yield_unit: S.enum(["serving"]),
+      menu_price: S.nullable(S.number(null, { minimum: 0, maximum: 100000000 })),
+      active: S.boolean(),
+      show_on_menu: S.boolean(),
+    }),
+    ingredients: S.array(S.object({
+      item_id: S.nullable(S.uuid()),
+      item_name: S.string(null, { maxLength: 300 }),
+      quantity: S.number(null, { minimum: 0.001, maximum: 100000 }),
+      unit: S.enum(RECIPE_LINE_UNITS),
+      role: S.string(null, { maxLength: 40 }),
+      to_buy: S.boolean(),
+    }), null, { minItems: 1, maxItems: 20 }),
+    source: S.object({
+      candidate_key: S.string(null, { maxLength: 1200 }),
+      engine_version: S.string(null, { maxLength: 20 }),
+      snapshot_version: nullableText(80),
+    }),
+  }),
   "par_level.suggestion": S.object({
     cover_days: S.number(null, { minimum: 1, maximum: 60 }),
     items: S.array(S.object({
@@ -177,6 +212,8 @@ export const PROPOSAL_KINDS = Object.freeze({
   "shift.draft": { roles: MANAGERS, executable: true, subject: "shift_week" },
   "team_message.send": { roles: OPERATIONAL, executable: true, subject: "team_channel" },
   "knowledge.draft": { roles: MANAGERS, executable: true, subject: "knowledge_article" },
+  // Flavor Intelligence: a new inactive draft recipe, saved on approval.
+  "recipe.draft": { roles: MANAGERS, executable: true, subject: "recipe" },
   "settings.suggestion": { roles: MANAGERS, executable: false, subject: "settings" },
   "par_level.suggestion": { roles: MANAGERS, executable: false, subject: "par_levels" },
   // Catalogue proposals: approving the card only submits a PENDING request
@@ -198,7 +235,29 @@ export function requiredRolesFor(kind, command) {
 export function validateCommand(kind, command) {
   const schema = COMMAND_SCHEMAS[kind];
   if (!schema) return { ok: false, errors: [`unknown proposal kind ${kind}`] };
-  return validateArgs(schema, command);
+  const checked = validateArgs(schema, command);
+  if (checked.ok && kind === "recipe.draft") {
+    const errors = recipeDraftErrors(checked.value);
+    if (errors.length) return { ok: false, value: null, errors };
+  }
+  return checked;
+}
+
+// Rules the schema dialect cannot express: a to-buy line has no item id, a
+// stocked line has one, and one item appears once (recipe_ingredients is
+// unique per recipe, item and name).
+function recipeDraftErrors(command) {
+  const errors = [];
+  const seen = new Set();
+  command.ingredients.forEach((line, index) => {
+    if (line.to_buy && line.item_id !== null) errors.push(`ingredients[${index}] is to buy and must not carry an item id`);
+    if (!line.to_buy && !line.item_id) errors.push(`ingredients[${index}] needs an Atlas item id`);
+    const key = `${line.item_id ?? ""}|${line.item_name.trim().toLowerCase()}`;
+    if (seen.has(key)) errors.push(`ingredients[${index}] repeats an ingredient`);
+    seen.add(key);
+  });
+  if (!command.recipe.name.trim()) errors.push("recipe.name is required");
+  return errors;
 }
 
 // ---------------------------------------------------------------------------
@@ -358,6 +417,44 @@ export function buildPreview(kind, command, extras = {}) {
         will_not_change: ["Atlas never changes settings. Open Settings to make the change yourself."],
         route: routeFor("settings", command.section),
       };
+    case "recipe.draft": {
+      const costs = extras.lineCosts || {};
+      const toBuy = command.ingredients.filter((line) => line.to_buy);
+      const known = command.ingredients.every((line) => !line.to_buy && Number.isFinite(costs[line.item_id]));
+      // The total is the engine's canonical cost per serve when it is given
+      // (summing rounded line costs can differ by a few krónur).
+      const total = known ? (Number.isFinite(extras.costPerServe) ? extras.costPerServe : command.ingredients.reduce((sum, line) => sum + costs[line.item_id], 0)) : null;
+      const showCost = extras.includeCost === true;
+      return {
+        headline: `Draft recipe "${command.recipe.name}"`,
+        lines: [
+          ...command.ingredients.map((line) => ({
+            label: `${line.item_name}${line.to_buy ? " (to buy — not in verified stock)" : ""}`,
+            detail: `${formatNumber(line.quantity, 3)} ${line.unit}${showCost && line.item_id && Number.isFinite(costs[line.item_id]) ? ` = ${formatIsk(costs[line.item_id])}` : ""}`,
+          })),
+          { label: "Glass", detail: command.recipe.glassware || "—" },
+          { label: "Garnish", detail: command.recipe.garnish || "—" },
+          { label: "Method", detail: command.recipe.method },
+        ],
+        totals: showCost ? {
+          lines: command.ingredients.length,
+          estimated_total: total,
+          estimated_total_label: total === null ? "Cost per serve unknown (a cost is missing or an ingredient is to buy)" : `${formatIsk(total)} per serve (estimated)`,
+        } : { lines: command.ingredients.length },
+        recipients: [],
+        warnings: [
+          ...(toBuy.length ? [`${toBuy.length} ${toBuy.length === 1 ? "ingredient is" : "ingredients are"} not in verified stock and would need buying: ${toBuy.map((line) => line.item_name).join(", ")}. They are saved as unlinked recipe lines.`] : []),
+          ...(extras.warnings || []),
+        ],
+        will_change: [`A new recipe "${command.recipe.name}" is saved in Recipes › Drafts (inactive).`],
+        will_not_change: [
+          "It is not on service and not on the menu until a manager activates it in Recipes.",
+          "No existing recipe is changed.",
+          "Stock, items, costs, suppliers and purchasing do not change.",
+        ],
+        route: routeFor("recipes"),
+      };
+    }
     case "par_level.suggestion":
       return {
         headline: `Par level suggestions for ${command.items.length} ${command.items.length === 1 ? "item" : "items"} (${formatNumber(command.cover_days)} days cover)`,
@@ -567,6 +664,53 @@ async function executeCatalogRequest(kind, command, services, ctx) {
   };
 }
 
+const NAME_TAKEN_MESSAGE = "A recipe with this name already exists, so Atlas did not save the draft. Ask Atlas for a different name.";
+
+// recipe.draft: always a NEW inactive recipe via atlas_save_recipe with the
+// approver's JWT. A name already used (recipes_name_key) is refused with a
+// clear message instead of a generic conflict.
+async function executeRecipeDraft(command, services) {
+  const name = command.recipe.name.trim();
+  try {
+    const existing = await services.recipes();
+    if ((Array.isArray(existing) ? existing : []).some((recipe) => String(recipe?.name ?? "").trim().toLowerCase() === name.toLowerCase())) {
+      return failure("name_taken", NAME_TAKEN_MESSAGE);
+    }
+  } catch {
+    // The database unique constraint still guards the name below.
+  }
+  let saved;
+  try {
+    saved = await services.recipeSaveDraft({
+      recipe: {
+        name,
+        type: command.recipe.type,
+        glassware: command.recipe.glassware,
+        garnish: command.recipe.garnish,
+        method: command.recipe.method,
+        notes: command.recipe.notes,
+        yield_quantity: command.recipe.yield_quantity,
+        yield_unit: command.recipe.yield_unit,
+        menu_price: command.recipe.menu_price,
+        active: false,
+        show_on_menu: false,
+      },
+      ingredients: command.ingredients.map((line) => ({ item_id: line.to_buy ? null : line.item_id, item_name: line.item_name, quantity: line.quantity, unit: line.unit })),
+    });
+  } catch (error) {
+    if (error instanceof ServiceError && (error.code === "23505" || error.status === 409)) return failure("name_taken", NAME_TAKEN_MESSAGE);
+    throw error;
+  }
+  return {
+    ok: true,
+    result: {
+      summary: `Draft recipe "${name}" saved in Recipes › Drafts. It is inactive and not on the menu.`,
+      data: { recipe_id: saved.id, active: false, show_on_menu: false, to_buy: command.ingredients.filter((line) => line.to_buy).length },
+      records: [record("recipe", saved.id, name)],
+    },
+  };
+}
+
 // Runs an approved proposal. `storedCommand` is the command returned by
 // atlas_ai_action_transition (never a client payload).
 export async function executeProposal(kind, storedCommand, ctx) {
@@ -726,6 +870,8 @@ export async function executeProposal(kind, storedCommand, ctx) {
       case "catalog.new_item":
       case "catalog.wrong_match":
         return await executeCatalogRequest(kind, command, services, ctx);
+      case "recipe.draft":
+        return await executeRecipeDraft(command, services);
       default:
         return failure("not_executable", "Atlas does not run this kind of action.");
     }

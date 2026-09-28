@@ -4,7 +4,7 @@
 # (adjust_inventory_v2 request ids, replay, refusals, grants) and count
 # verification baselines at counted_at (a delivery between count and
 # "Verify anyway" is not erased), and (S91) the live voice lease, heartbeat
-# and same-user device handoff. Each script seeds fixtures inside one
+# and same-user device handoff, and (S92) Accounting documents. Each script seeds fixtures inside one
 # transaction, prints a JSON verdict and rolls back. Loopback databases only.
 set -euo pipefail
 
@@ -22,6 +22,7 @@ for script in \
   verify_s90g_item_master_definer_preview.sql \
   verify_s90h_duplicate_pairs_performance_preview.sql \
   verify_s91_voice_preview.sql \
+  verify_s92_accounting_preview.sql \
   verify_s93_messages_sender_identity_preview.sql \
   verify_s94a_media_preview.sql \
   verify_s94b_connections_preview.sql \

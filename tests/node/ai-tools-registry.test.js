@@ -22,6 +22,9 @@ const REQUIRED_TOOLS = [
   'shifts.who_is_working', 'shifts.prepare_draft', 'team.get_profile', 'team.prepare_message', 'knowledge.search',
   'knowledge.get', 'knowledge.prepare_draft', 'settings.read', 'settings.suggest_change', 'decisions.history',
   'data_quality.review_list', 'data_quality.par_suggestions', 'marketing.suggestions', 'integrations.status', 'app.open',
+  // Flavor Intelligence (S95)
+  'flavor.search_ingredients', 'flavor.ingredient_profile', 'flavor.pairings', 'flavor.pairings_from_stock', 'flavor.substitutes',
+  'flavor.candidates', 'flavor.explain_pair', 'flavor.use_soon', 'recipes.compose_draft',
 ];
 
 test('the registry contains every required tool exactly once', () => {
@@ -72,7 +75,8 @@ test('toolsForRole filters by role, specialist and level and never returns execu
   assert.equal(toolsForRole('manager').length, TOOL_REGISTRY.length);
   assert.deepEqual(toolsForRole('manager', { levels: ['execute'] }), []);
   assert.ok(toolsForRole('manager', { levels: ['draft'] }).every((entry) => entry.level === 'draft'));
-  assert.ok(toolsForRole('manager', { specialist: 'recipes' }).every((entry) => entry.name.startsWith('recipes.')));
+  assert.ok(toolsForRole('manager', { specialist: 'recipes' }).every((entry) => entry.name.startsWith('recipes.') || entry.name.startsWith('flavor.')));
+  assert.ok(!toolsForRole('bartender').some((entry) => entry.name === 'recipes.compose_draft'), 'only managers draft recipes');
   assert.deepEqual(toolsForRole('owner'), []);
 });
 

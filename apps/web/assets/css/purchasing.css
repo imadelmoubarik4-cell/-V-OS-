@@ -73,3 +73,101 @@
 }
 
 }
+
+/* S92 Accounting (#accounting, .acc-*): the document sheet layout, the VAT grid
+   and small helpers. Kept here with Purchasing (spend and suppliers) so the
+   stylesheet count does not grow. */
+@layer atlas.modules {
+  .acc-lead { margin: 0 0 var(--s-4); font: var(--type-body); color: var(--text-2); max-width: 68ch; }
+  .acc-muted { margin: var(--s-3) 0 0; font: var(--type-caption); color: var(--text-2); }
+  .acc-body { margin-top: var(--s-5); }
+  .acc-stats { margin-bottom: var(--s-5); }
+  .acc-row__end { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+  .acc-toolbar { flex-wrap: wrap; gap: var(--s-3); }
+  .acc-filter { overflow-x: auto; max-width: 100%; }
+  .acc-filter-select { display: none; }
+  .acc-error { grid-column: 1 / -1; }
+  /* Owed to team: the person's name left; what they're owed and the action right. */
+  .acc-owed__head { align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
+  .acc-owed__head > .atlas-section__title { flex: 1 1 auto; min-width: 0; }
+  .acc-owed__end { display: flex; align-items: center; gap: var(--s-3); margin-left: auto; }
+  .acc-other-currency { margin-top: 2px; }
+  /* Field hints: what Atlas filled in, and where what it read differs. */
+  .acc-filled, .acc-differs { display: flex; align-items: flex-start; gap: var(--s-1); }
+  .acc-filled > svg, .acc-differs > svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+  .acc-filled > svg { color: var(--accent); }
+  .acc-differs { color: var(--warning); }
+  .acc-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .acc-drop { position: relative; cursor: pointer; }
+  /* The file input is visually hidden: its keyboard focus shows on the drop zone. */
+  .acc-drop:has(.acc-file-input:focus-visible), .acc-camera:has(.acc-file-input:focus-visible) { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+  /* The upload label and file card use spans (phrasing content); stack them
+     as the component's title and help lines. */
+  .acc-drop .atlas-upload__title, .acc-drop .atlas-upload__help,
+  .acc-file .atlas-upload__title, .acc-file .atlas-upload__help { display: block; }
+  .acc-camera { position: relative; align-self: flex-start; }
+  @media (hover: hover) and (pointer: fine) { .acc-camera { display: none; } }
+  .acc-upload { display: flex; flex-direction: column; gap: var(--s-4); }
+  /* The sheet body is a scrolling column: its children keep their height
+     (the photo button stays 44 px however long the queue grows). */
+  .acc-upload > * { flex: none; }
+  .acc-queue:empty { display: none; }
+  .acc-payer { border: 0; margin: 0; padding: 0; display: grid; gap: var(--s-3); min-width: 0; }
+  .acc-payer .atlas-chips { flex-wrap: wrap; }
+
+  /* The file beside the form needs more room than a 640 px wide sheet. */
+  @media (min-width: 768px) { .atlas-sheet.acc-sheet { width: min(1000px, calc(100% - 16px)); } }
+  .acc-doc { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-6); align-items: start; }
+  .acc-doc__file { position: sticky; top: 0; display: grid; gap: var(--s-3); min-width: 0; }
+  .acc-file { display: grid; gap: var(--s-3); justify-items: start; }
+  .acc-file__img { display: block; width: 100%; max-height: 70vh; object-fit: contain; border: 1px solid var(--line); border-radius: var(--radius-md, 8px); background: var(--bg-subtle); }
+  .acc-doc__form { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }
+  .acc-paid { display: flex; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-body); color: var(--positive, var(--text)); }
+  .acc-paid > svg, .acc-paid > i { width: var(--icon-sm, 16px); height: var(--icon-sm, 16px); flex: none; }
+
+  .acc-vat { border: 0; margin: 0; padding: 0; display: grid; gap: var(--s-3); min-width: 0; }
+  .acc-vat__row { display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1fr) 40px; gap: var(--s-3); align-items: end; }
+  .acc-vat__row .atlas-field { min-width: 0; }
+  .acc-vat__remove { margin-bottom: 2px; }
+  .acc-vat__tools { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .acc-amounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 88px; gap: var(--s-3); }
+  .acc-amounts .atlas-input, .acc-vat .atlas-input { font-variant-numeric: tabular-nums; }
+  /* A hint under one field must not stretch its neighbours' label and control apart. */
+  .acc-doc__form .atlas-field { align-content: start; }
+
+  .acc-details { border-top: 1px solid var(--line); padding-top: var(--s-3); }
+  .acc-details > summary { cursor: pointer; font: var(--type-label); color: var(--text-2); min-height: 44px; display: flex; align-items: center; }
+  .acc-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--s-2) var(--s-4); margin: var(--s-2) 0; }
+  .acc-kv dt { font: var(--type-caption); color: var(--text-2); }
+  .acc-kv dd { margin: 0; font: var(--type-body); overflow-wrap: anywhere; }
+
+  .acc-export { max-width: 880px; }
+  .acc-export__month { max-width: 240px; }
+  .acc-export__actions { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+
+  @media (max-width: 899px) {
+    .acc-doc { grid-template-columns: minmax(0, 1fr); }
+    .acc-doc__file { position: static; }
+    .acc-file__img { max-height: 45vh; }
+  }
+  @media (max-width: 599px) {
+    .acc-amounts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .acc-vat__row { grid-template-columns: 88px minmax(0, 1fr) minmax(0, 1fr) 40px; gap: var(--s-2); }
+    /* A grid: the icon in its own column beside the title, the pills under
+       the title and aligned with it, however long the supplier name is. */
+    .acc-row { display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: var(--s-3); row-gap: var(--s-2); align-items: start; }
+    .acc-row > .atlas-row__icon { grid-column: 1; grid-row: 1 / span 2; }
+    .acc-row > .atlas-row__body { grid-column: 2; grid-row: 1; }
+    .acc-row > .acc-row__end { grid-column: 2; grid-row: 2; justify-content: flex-start; }
+    .acc-row > .acc-row__end:empty { display: none; }
+    /* Owed header: the name on its own line, the amount and action below it. */
+    .acc-owed__head > .atlas-section__title { flex-basis: 100%; }
+    .acc-owed__end { margin-left: 0; width: 100%; justify-content: space-between; }
+    .acc-export__actions .atlas-btn { width: 100%; }
+    /* All: search and a filter select, each the full width (six segments don't fit). */
+    .acc-toolbar { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+    .acc-toolbar > .atlas-search { flex: 1 1 100%; min-width: 0; }
+    .acc-filter { display: none; }
+    .acc-filter-select { display: block; flex: 1 1 100%; }
+  }
+}

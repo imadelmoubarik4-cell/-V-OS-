@@ -269,7 +269,9 @@ test('robot styles live in the components layer and honour reduced motion', () =
   assert.match(read('apps/web/assets/css/atlas-shell.css'), /\.atlas-ai \.ai-empty:not\(\.ai-empty--off\):not\(:has\(\.atlas-bot-live\)\)::before/);
   // Robot refinement cache keys: every changed stylesheet and script.
   for (const asset of ['css/atlas-components.css', 'css/atlas-shell.css', 'css/atlas-ai.css']) assert.ok(index.includes(`href="assets/${asset}?v=20261004-bot6"`), asset);
-  for (const asset of ['atlas-bot.js', 'atlas-ai.js', 'home.js']) assert.ok(index.includes(`src="assets/js/${asset}?v=20261004-bot6"`), asset);
+  for (const asset of ['atlas-bot.js', 'home.js']) assert.ok(index.includes(`src="assets/js/${asset}?v=20261004-bot6"`), asset);
+  // atlas-ai.js moved on to the Flavor Intelligence key (recipe.draft approval card).
+  assert.ok(index.includes('src="assets/js/atlas-ai.js?v=20261005-fi1"'), 'atlas-ai.js');
   assert.match(read('apps/web/assets/css/atlas-shell.css'), /\.atlas-tabbar__item \.atlas-bot--tab::after \{ bottom: calc\(100% - var\(--atlas-bot-size\) \* \.7\); \}/, 'the tab robot keeps its ZZZ inside the tab bar');
 });
 

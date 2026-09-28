@@ -129,6 +129,21 @@ async function requireManager(request: Request): Promise<ManagerContext> {
   return { user: { id: actor.userId }, profile: actor.profile, label: actorLabel(actor.profile) };
 }
 
+// S96: database text reaches the browser only when Atlas authored it (the
+// same rule as atlas-settings safeDbMessage); anything naming tables,
+// columns, constraints or functions is replaced with a fixed message.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed as { code?: unknown; message?: unknown };
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
+}
+
 async function branchRpc(name: string, payload: JsonObject = {}): Promise<unknown> {
   const branchUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -154,9 +169,7 @@ async function branchRpc(name: string, payload: JsonObject = {}): Promise<unknow
     parsed = text;
   }
   if (!response.ok) {
-    const message = typeof parsed === "object" && parsed && "message" in parsed
-      ? String((parsed as { message: unknown }).message)
-      : "The Atlas Brain database request failed.";
+    const message = safeDbMessage(parsed, "The Atlas Brain database request failed.");
     throw new ApiError(response.status >= 500 ? 500 : 400, message);
   }
   return parsed;
@@ -272,7 +285,7 @@ Deno.serve(async (request: Request) => {
     throw new ApiError(405, "Method not allowed.");
   } catch (error) {
     if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
-    console.error("Atlas Brain Phase 3 API error", error instanceof Error ? error.message : "unknown");
+    console.error("Atlas Brain Phase 3 API error", error instanceof Error ? error.name : "unknown");
     return jsonResponse({ error: "Atlas Brain Phase 3 is temporarily unavailable." }, 500);
   }
 });

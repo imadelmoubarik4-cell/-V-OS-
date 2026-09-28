@@ -361,9 +361,9 @@ begin
     and v_update #> '{content,media_requirements}' = '{"notes":"vertical"}'::jsonb
     and v_update #>> '{content,caption_draft}' = 'Friday DJ from 21:00'
     and v_update #>> '{content,platform_options,instagram,caption}' = 'IG caption #dj');
-  perform public.s94cp_ok('09 a stale expected version is refused with 40001 atlas:stale_request (409)',
+  perform public.s94cp_ok('09 a stale expected version is refused with PT409 atlas:stale_request (409, never 40001: PostgREST retries 40001 forever)',
     public.s94cp_expect(format('select public.atlas_marketing_update_content(%L::uuid,%L::uuid,%s,''{"title":"x"}''::jsonb)',
-      '00000000-0000-4000-8000-000000094c02', v_content, v_version)) like '40001%');
+      '00000000-0000-4000-8000-000000094c02', v_content, v_version)) like 'PT409%');
   v_decide := public.s94cp_approve(v_content);
   v_ig := public.s94cp_live(v_content, 'instagram');
   v_tt := public.s94cp_live(v_content, 'tiktok');
@@ -998,7 +998,7 @@ begin
   select version into v_version from atlas_private.marketing_content_items where id = v_content;
   perform public.s94cp_ok('48 reschedule with a stale version is refused (409)',
     public.s94cp_expect(format('select public.atlas_marketing_content_reschedule(%L::uuid,%L::uuid,%s,now() + interval ''2 days'')',
-      '00000000-0000-4000-8000-000000094c02', v_content, v_version - 1)) like '40001%');
+      '00000000-0000-4000-8000-000000094c02', v_content, v_version - 1)) like 'PT409%');
   v_res := public.atlas_marketing_content_reschedule('00000000-0000-4000-8000-000000094c02'::uuid, v_content, v_version, now() + interval '2 days');
   perform public.s94cp_ok('49 reschedule of approved content is a material edit: draft, deliveries cancelled, re-approval needed',
     v_res #>> '{content,status}' = 'draft' and (v_res ->> 'approval_invalidated')::boolean and (v_res ->> 'cancelled_deliveries')::integer = 1

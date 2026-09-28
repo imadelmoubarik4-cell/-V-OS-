@@ -12,7 +12,7 @@ test('S34 evidence workflow is PR-scoped, read-only, and uploads one review arti
   assert.match(workflow, /\n\s*- claude\/recipes-gallery-v2/);
   assert.match(workflow, /permissions:\s*\n\s*contents: read/);
   assert.match(workflow, /playwright@1\.55\.0/);
-  assert.match(workflow, /actions\/upload-artifact@v4/);
+  assert.match(workflow, /actions\/upload-artifact@[0-9a-f]{40} # v4\./);
   assert.match(workflow, /name: atlas-s34-synthetic-visual-evidence/);
   assert.match(workflow, /retention-days: 30/);
   assert.doesNotMatch(workflow, /(?:run:|uses:)[^\n]*(?:supabase|deploy|migration|production)/i);

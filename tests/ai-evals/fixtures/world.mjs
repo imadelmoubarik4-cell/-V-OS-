@@ -33,6 +33,7 @@
 
 import { localCandidates, localResolveCodes } from '../../../supabase/functions/_shared/recognition/retrieve.mjs';
 import { DUPLICATE_THRESHOLDS, duplicateKeys, duplicateScore, identityKey, normalizeCode } from '../../../supabase/functions/_shared/product-identity.mjs';
+import { flavorSnapshot } from '../../node/helpers/flavor-fixtures.js';
 
 export const NOW = Date.parse('2026-09-24T12:00:00Z');
 export const BUSINESS_DATE = '2026-09-24';
@@ -501,6 +502,31 @@ function movementRows() {
   }).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
+// Flavor Intelligence: inventory → canonical ingredient links for the VÁ
+// world (the flavour library itself is the shared test fixture). Kahlúa is
+// stale, Angostura and Kristall never counted, Aperol verified at zero;
+// Cranberry Juice is only a possible match (needs review) for strawberry.
+export const FLAVOR_LINKS = [
+  ['tanqueray', 'london-dry-gin', null, 'confirmed', 'rule:category+name', 0.95],
+  ['beefeater', 'london-dry-gin', null, 'confirmed', 'rule:category+name', 0.95],
+  ['campari', 'red-bitter-aperitivo', null, 'confirmed', 'alias', 0.95],
+  ['rosso', 'sweet-vermouth', null, 'confirmed', 'alias', 0.9],
+  ['eljimador', 'blanco-tequila', null, 'confirmed', 'rule:category+name', 0.95],
+  ['cointreau', 'orange-liqueur', null, 'confirmed', 'alias', 0.9],
+  ['absolut', 'vodka', null, 'confirmed', 'rule:category+name', 0.95],
+  ['kahlua', 'coffee-liqueur', null, 'confirmed', 'alias', 0.95],
+  ['angostura', 'aromatic-bitters', null, 'confirmed', 'alias', 0.95],
+  ['prosecco', 'prosecco', null, 'confirmed', 'rule:name', 0.95],
+  ['tonic', 'tonic-water', null, 'confirmed', 'rule:name', 0.95],
+  ['kristall', 'soda-water', null, 'confirmed', 'rule:name', 0.9],
+  ['coffee', 'espresso', null, 'confirmed', 'rule:name', 0.9],
+  ['sugarsyrup', 'sugar-syrup', null, 'confirmed', 'rule:name', 0.95],
+  ['limes', 'lime', null, 'confirmed', 'rule:name', 0.95],
+  ['limejuice', 'lime', 'juice', 'confirmed', 'rule:name', 0.95],
+  ['lemons', 'lemon', null, 'confirmed', 'rule:name', 0.95],
+  ['cranberry', 'strawberry', null, 'needs_review', 'rule:category', 0.3],
+];
+
 function recipeRows() {
   return RECIPES.map((recipe) => ({
     id: IDS.recipe[recipe.key],
@@ -694,6 +720,7 @@ export function createWorld({ hours = false, catalog = false, env = ENV, visionE
     shifts: [],
     messages: [],
     knowledgeDrafts: [],
+    flavorSnapshot: flavorSnapshot({ links: FLAVOR_LINKS, itemIds: IDS.item }),
   };
   let counter = 0;
   const nextId = () => { counter += 1; return miscId(5000 + counter); };
@@ -1060,7 +1087,20 @@ export function createWorld({ hours = false, catalog = false, env = ENV, visionE
       ? [{ memory_id: miscId(1101), memory_type: 'recommendation_decision', subject_type: 'inventory_item', subject_key: IDS.item.angelo, action: 'defer', title: 'Order Angelo Pinot Grigio', context: { reason_code: 'delivery_expected' }, actor_label: 'Maria Manager', occurred_at: '2026-09-10T10:00:00Z' }]
       : []),
     atlas_marketing_recommendations: marketing,
+    atlas_flavor_snapshot: () => data.flavorSnapshot,
   };
+
+  // public.atlas_save_recipe (user JWT, managers; recipes_name_key unique).
+  function saveRecipe(args, actor) {
+    const name = String(args?.p_recipe?.name ?? '').trim();
+    if (data.recipes.some((recipe) => recipe.name.toLowerCase() === name.toLowerCase())) {
+      return pgError(409, 'duplicate key value violates unique constraint "recipes_name_key"', '23505');
+    }
+    const id = nextId();
+    writes.push({ name: 'atlas_save_recipe', args, token: tokenFor(actor), actor_id: actor.id });
+    data.recipes.push({ id, ...args.p_recipe, recipe_ingredients: (args.p_ingredients ?? []).map((line, index) => ({ id: miscId(7000 + index), recipe_id: id, ...line })) });
+    return id;
+  }
 
   const userRpcs = {
     atlas_purchase_order_detail: orderDetail,
@@ -1077,6 +1117,7 @@ export function createWorld({ hours = false, catalog = false, env = ENV, visionE
       return { issue: p_issue, label: issue.label, total: rows.length, rows: rows.slice(p_offset ?? 0, (p_offset ?? 0) + (p_limit ?? 20)) };
     },
     atlas_par_level_evidence: parEvidence,
+    atlas_save_recipe: saveRecipe,
   };
 
   const functions = {
@@ -1201,7 +1242,7 @@ export function createWorld({ hours = false, catalog = false, env = ENV, visionE
       if (!actor) return json({ message: 'JWT invalid' }, 401);
       if (!actor.active || !isManagerRole(actor.role)) return json({ message: 'Active manager access required', code: '42501' }, 403);
       const handler = userRpcs[name];
-      return handler ? respond(name === 'atlas_purchase_order_command_v2' ? handler(body || {}, actor) : handler(body || {})) : json({ message: `rpc ${name} missing` }, 404);
+      return handler ? respond(['atlas_purchase_order_command_v2', 'atlas_save_recipe'].includes(name) ? handler(body || {}, actor) : handler(body || {})) : json({ message: `rpc ${name} missing` }, 404);
     }
 
     // PostgREST tables with the user's JWT.

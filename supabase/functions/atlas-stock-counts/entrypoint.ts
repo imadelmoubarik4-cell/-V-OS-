@@ -125,10 +125,22 @@ const COUNT_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-
 function countEvidence(value: unknown): Record<string, unknown> {
   if (value === null || value === undefined) return {};
   if (typeof value !== "object" || Array.isArray(value)) throw new ApiError(400, "Count evidence must be an object.");
-  const evidence = { ...(value as Record<string, unknown>) };
-  if (JSON.stringify(evidence).length > 16 * 1024) throw new ApiError(413, "Count evidence is too large.");
-  if (evidence.recognition !== undefined) {
-    const source = evidence.recognition;
+  const input = value as Record<string, unknown>;
+  if (JSON.stringify(input).length > 16 * 1024) throw new ApiError(413, "Count evidence is too large.");
+  // S96: only the keys Atlas writes pass (the database stores this object as
+  // sent and nothing re-validates it there). Unknown keys, including
+  // __proto__/constructor, are dropped rather than stored.
+  const evidence: Record<string, unknown> = {};
+  const surface = input.capture_surface;
+  if (typeof surface === "string" && /^[a-z_]{1,40}$/.test(surface)) evidence.capture_surface = surface;
+  const recordedAt = input.client_recorded_at;
+  if (typeof recordedAt === "string" && recordedAt.length <= 40 && !Number.isNaN(Date.parse(recordedAt))) {
+    evidence.client_recorded_at = recordedAt;
+  }
+  const scanned = input.scanned_code;
+  if (typeof scanned === "string" && /^[A-Za-z0-9._-]{1,64}$/.test(scanned)) evidence.scanned_code = scanned;
+  if (Object.prototype.hasOwnProperty.call(input, "recognition") && input.recognition !== undefined) {
+    const source = input.recognition;
     if (!source || typeof source !== "object" || Array.isArray(source)) {
       throw new ApiError(400, "Recognition evidence must be an object.");
     }
@@ -192,6 +204,28 @@ function requireManager(context: Context): void {
   if (!MANAGER_ROLES.has(context.profile.role)) {
     throw new ApiError(403, "This action is limited to managers and administrators.");
   }
+}
+
+// S96: commercial snapshot columns copied onto count lines when a manager
+// started the count (unit/case cost, supplier, source file). Staff and
+// viewers never receive them, whatever the private RPC returns.
+const COMMERCIAL_KEYS = new Set([
+  "unit_cost_snapshot", "case_cost_snapshot", "supplier_snapshot", "source_file_snapshot",
+  "cost_price", "case_cost", "supplier", "supplier_id", "supplier_product_reference", "source_file",
+]);
+
+function withoutCommercialFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutCommercialFields);
+  if (!value || typeof value !== "object") return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (!COMMERCIAL_KEYS.has(key)) out[key] = withoutCommercialFields(entry);
+  }
+  return out;
+}
+
+function forRole(context: Context, value: unknown): unknown {
+  return MANAGER_ROLES.has(context.profile.role) ? value : withoutCommercialFields(value);
 }
 
 async function productionInventory(context: Context): Promise<JsonObject[]> {
@@ -270,14 +304,28 @@ async function productionInventory(context: Context): Promise<JsonObject[]> {
   let parsed: unknown = [];
   try { parsed = text ? JSON.parse(text) : []; } catch { parsed = []; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String((parsed as { message: unknown }).message)
-      : "The production inventory catalog could not be read.";
-    throw new ApiError(response.status === 401 ? 401 : response.status === 403 ? 403 : 400, message);
+    console.warn("Stock-count production read failed", response.status, parsed && typeof parsed === "object" ? String((parsed as { code?: unknown }).code ?? "-") : "-");
+    throw new ApiError(response.status === 401 ? 401 : response.status === 403 ? 403 : 400, "The production inventory catalog could not be read.");
   }
   return Array.isArray(parsed)
     ? parsed.filter((row): row is JsonObject => Boolean(row) && typeof row === "object" && !Array.isArray(row))
     : [];
+}
+
+// S96: database text reaches the browser only when it is an Atlas-authored
+// message raised by our SQL, without schema detail (same rule as
+// atlas-shifts / atlas-team-messages); anything else becomes the fixed
+// fallback and only the SQLSTATE is logged.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed as { code?: unknown; message?: unknown };
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
 }
 
 function branchCredentials() {
@@ -305,11 +353,8 @@ async function branchRpc(name: string, payload: JsonObject = {}): Promise<any> {
   let parsed: any = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : `Stock-count database request ${name} failed.`;
+    const message = safeDbMessage(parsed, "The private stock-count request failed.");
+    if (message === "The private stock-count request failed.") console.warn("Stock-count RPC failed", name, response.status, parsed && typeof parsed === "object" ? String(parsed.code ?? "-") : "-");
     throw new ApiError(response.status >= 500 ? 500 : 400, message);
   }
   return parsed;
@@ -346,7 +391,7 @@ async function snapshot(context: Context) {
     p_actor_id: context.user.id,
     p_actor_role: context.profile.role,
   });
-  return { counts, staff: actorPayload(context), policy: policyPayload() };
+  return { counts: forRole(context, counts), staff: actorPayload(context), policy: policyPayload() };
 }
 
 async function detail(context: Context, sessionId: string) {
@@ -355,7 +400,7 @@ async function detail(context: Context, sessionId: string) {
     p_actor_id: context.user.id,
     p_actor_role: context.profile.role,
   });
-  return { count, staff: actorPayload(context), policy: policyPayload() };
+  return { count: forRole(context, count), staff: actorPayload(context), policy: policyPayload() };
 }
 
 Deno.serve(async (request: Request) => {
@@ -539,7 +584,7 @@ Deno.serve(async (request: Request) => {
       ? await detail(context, sessionId)
       : null;
     return jsonResponse({
-      result,
+      result: forRole(context, result),
       ...refreshed,
       detail: refreshedDetail?.count || null,
     });

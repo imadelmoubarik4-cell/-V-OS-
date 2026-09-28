@@ -204,10 +204,8 @@ async function productionRows(
     let parsed: unknown = [];
     try { parsed = body ? JSON.parse(body) : []; } catch { parsed = []; }
     if (!response.ok) {
-      const message = parsed && typeof parsed === "object" && "message" in parsed
-        ? String((parsed as { message: unknown }).message)
-        : `${table} source returned ${response.status}`;
-      return { table, status: "degraded", rows: [], error: message, observedAt: null };
+      // S96: the table name is Atlas's own; PostgREST text is not passed on.
+      return { table, status: "degraded", rows: [], error: `${table} source returned ${response.status}`, observedAt: null };
     }
     const rows = Array.isArray(parsed)
       ? parsed.filter((row): row is JsonObject => Boolean(row) && typeof row === "object" && !Array.isArray(row))
@@ -224,10 +222,25 @@ async function productionRows(
       table,
       status: "degraded",
       rows: [],
-      error: error instanceof Error ? error.message : `${table} source failed`,
+      error: `${table} source failed`,
       observedAt: null,
     };
   }
+}
+
+// S96: database text reaches the browser only when Atlas authored it (the
+// same rule as atlas-settings safeDbMessage); anything naming tables,
+// columns, constraints or functions is replaced with a fixed message.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed as { code?: unknown; message?: unknown };
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
 }
 
 async function branchRpc(name: string, payload: JsonObject = {}): Promise<any> {
@@ -249,11 +262,7 @@ async function branchRpc(name: string, payload: JsonObject = {}): Promise<any> {
   let parsed: any = null;
   try { parsed = body ? JSON.parse(body) : null; } catch { parsed = body; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : `Checkpoint K database request ${name} failed.`;
+    const message = safeDbMessage(parsed, "The Checkpoint K database request failed.");
     throw new ApiError(response.status >= 500 ? 500 : 400, message);
   }
   return parsed;
@@ -752,7 +761,7 @@ Deno.serve(async (request: Request) => {
     });
   } catch (error) {
     if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
-    console.error("Checkpoint K intelligence error", error instanceof Error ? error.message : "unknown");
+    console.error("Checkpoint K intelligence error", error instanceof Error ? error.name : "unknown");
     return jsonResponse({ error: "Checkpoint K intelligence is temporarily unavailable." }, 500);
   }
 });

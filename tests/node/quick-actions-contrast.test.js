@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 // menu are retired. Quick actions are the command palette in Actions mode,
 // opened from the top-bar + button; every former menu entry is a canonical
 // action (AtlasShell.actions) the palette lists per role.
-const shell = readFileSync('apps/web/index.html', 'utf8');
+const shell = (readFileSync('apps/web/index.html', 'utf8') + readFileSync('apps/web/assets/js/atlas-app.js', 'utf8'));
 const palette = readFileSync('apps/web/assets/js/atlas-palette.js', 'utf8');
 const css = readFileSync('apps/web/assets/css/atlas-shell.css', 'utf8');
 

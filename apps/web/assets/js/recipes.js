@@ -32,7 +32,9 @@
     pendingImageFile: null,
     pendingImageObjectUrl: null,
     initialized: false,
-    loadingCategories: null
+    loadingCategories: null,
+    // #recipes/flavor[/<ingredient>]: the Flavor Map (flavor-map.js) owns the view.
+    flavor: false
   };
 
   const dom = {};
@@ -548,7 +550,14 @@
 
   function libraryMarkup() {
     const manager = canManageCommercial();
-    const actions = manager ? [{ label: 'Public menu', icon: 'qr-code', variant: 'secondary', attrs: { 'data-recipe-menu-link': '' } }, { label: 'New recipe', icon: 'plus', variant: 'primary', attrs: { 'data-recipe-new': '' } }] : [];
+    // Flavor Intelligence: managers create with Atlas (ideas → draft →
+    // approval); everyone can browse the Flavor Map.
+    const flavor = Boolean(window.AtlasFlavorMap);
+    const actions = manager
+      ? [{ label: 'Public menu', icon: 'qr-code', variant: 'secondary', attrs: { 'data-recipe-menu-link': '' } },
+        ...(flavor ? [{ label: 'Create with Atlas', icon: 'atlas-bot', variant: 'secondary', attrs: { 'data-recipe-create-atlas': '' } }] : []),
+        { label: 'New recipe', icon: 'plus', variant: 'primary', attrs: { 'data-recipe-new': '' } }]
+      : flavor ? [{ label: 'Flavor Map', icon: 'orbit', variant: 'secondary', attrs: { 'data-recipe-flavor-map': '' } }] : [];
     const head = window.AtlasShell.pageHead({ title: 'Recipes', sub: headSub(), actions });
     if (recipesHealth() === 'failed' && !recipes.length) return `${head}${loadFailedMarkup()}`;
     if ((!dataLoaded() || recipesHealth() === 'loading') && !recipes.length) {
@@ -1329,7 +1338,7 @@
   }
 
   function renderLibrary({ keepFocus = false } = {}) {
-    if (!dom.view) return;
+    if (!dom.view || state.flavor) return;
     const searchId = typeof keepFocus === 'string' ? keepFocus : 'recipe-search';
     const search = keepFocus ? document.getElementById(searchId) : null;
     const caret = search ? search.selectionStart : null;
@@ -1419,6 +1428,8 @@
     }
     if (target.closest('[data-recipe-clear]')) { state.search = ''; state.category = 'all'; state.statusFilter = 'all'; renderLibrary(); return; }
     if (target.closest('[data-recipe-new]')) { window.AtlasShell.navigate('#recipes/new/edit'); return; }
+    if (target.closest('[data-recipe-create-atlas]')) { window.AtlasFlavorMap?.openCreate?.(); return; }
+    if (target.closest('[data-recipe-flavor-map]')) { window.AtlasShell.navigate('#recipes/flavor'); return; }
     if (target.closest('[data-recipe-menu-link]')) { openMenuShare(); return; }
     if (state.phoneDetail) {
       const recipe = recipes.find((entry) => String(entry.id) === String(state.phoneDetail));
@@ -1442,6 +1453,7 @@
   async function render() {
     if (!state.initialized) init();
     if (!dom.view) return;
+    if (state.flavor) return;
     renderLibrary();
     const modal = document.getElementById('recipe-detail-modal');
     if (modal && window.AtlasModal.isOpen(modal) && state.selectedRecipeId) {
@@ -1458,6 +1470,17 @@
   // #recipes/<id>/edit, #recipes/new/edit.
   function show(params = {}) {
     if (!state.initialized) init();
+    if (params.section === 'flavor' && window.AtlasFlavorMap) {
+      state.phoneDetail = null;
+      state.missingRecipe = null;
+      closeEditor('route');
+      closeDetailSheet('route');
+      keepAwake(false);
+      state.flavor = true;
+      window.AtlasFlavorMap.mount(dom.view, { ingredient: params.ingredient || null });
+      return;
+    }
+    leaveFlavor();
     const recipeId = params.recipe || null;
     const editing = Boolean(params.edit);
     if (!recipeId) {
@@ -1497,6 +1520,13 @@
     openDetail(recipeId);
   }
 
+  function leaveFlavor() {
+    if (!state.flavor) return;
+    state.flavor = false;
+    window.AtlasFlavorMap?.unmount?.();
+    window.AtlasChrome?.setTopBar?.({});
+  }
+
   function registerWithShell() {
     const shell = window.AtlasShell;
     if (!shell) return;
@@ -1510,6 +1540,7 @@
     });
     shell.on?.('view:hide', ({ view }) => {
       if (view !== 'recipes') return;
+      leaveFlavor();
       closeEditor('route');
       closeDetailSheet('route');
       state.phoneDetail = null;

@@ -96,7 +96,7 @@ function json(route, body, status = 200) {
  *   functions: { 'atlas-x': (ctx) => ({ status, body }) | body | { __raw: { status, contentType, body } } }
  * `contextOptions` is passed to browser.newContext (for example { hasTouch: true }).
  */
-export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '', contextOptions = {}, timezoneId = undefined, fixedTime = HARNESS_NOW, controlTimers = false } = {}) {
+export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport = { width: 1440, height: 900 }, signedIn = true, initScript = null, storage = null, hash = '', waitReady = true, promptAnswer = '', contextOptions = {}, timezoneId = undefined, fixedTime = HARNESS_NOW, controlTimers = false, enforceCsp = false } = {}) {
   const playwright = loadPlaywright();
   const libs = resolveLibraries();
   if (!playwright || !libs) throw new Error('Browser harness dependencies are unavailable.');
@@ -145,12 +145,17 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
     const target = path.join(WEB, file);
     if (!target.startsWith(WEB) || !existsSync(target)) return route.fulfill({ status: 404, body: 'not found' });
     let body = readFileSync(target);
-    if (file === '/index.html') {
-      body = Buffer.from(body.toString('utf8')
-        .replace(/\s+integrity="[^"]*"/g, '')
-        .replace(/script\.integrity = SUPABASE_SRI;/, ''));
+    // Every page's pinned CDN SRI is dropped (npm builds differ from the CDN files).
+    if (file.endsWith('.html')) {
+      body = Buffer.from(body.toString('utf8').replace(/\s+integrity="[^"]*"/g, ''));
     }
-    return route.fulfill({ status: 200, contentType: MIME[path.extname(file)] || 'application/octet-stream', body });
+    // S96: the start-up script moved out of index.html; its SRI line is dropped the same way.
+    if (file === '/assets/js/atlas-app.js') {
+      body = Buffer.from(body.toString('utf8').replace(/script\.integrity = SUPABASE_SRI;/, ''));
+    }
+    // enforceCsp: serve pages with the production Content-Security-Policy from netlify.toml.
+    const headers = enforceCsp && file.endsWith('.html') ? { 'content-security-policy': productionCsp() } : {};
+    return route.fulfill({ status: 200, contentType: MIME[path.extname(file)] || 'application/octet-stream', headers, body });
   });
 
   const profiles = fixtures.profiles || Object.values(USERS);
@@ -266,6 +271,14 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
 }
 
 const RECORDS = new WeakMap();
+
+/** The Content-Security-Policy netlify.toml sends in production. */
+export function productionCsp() {
+  const toml = readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8');
+  const match = /Content-Security-Policy = "([^"]+)"/.exec(toml);
+  if (!match) throw new Error('netlify.toml has no Content-Security-Policy');
+  return match[1];
+}
 
 /**
  * Waits until the page is quiet instead of sleeping: no mocked backend request

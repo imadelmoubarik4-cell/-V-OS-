@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
+import { AuthError, actorLabel, authConfig, requireStepUp as requireActorStepUp, resolveActor } from "../_shared/auth.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -29,6 +29,9 @@ type AtlasProfile = {
 
 type AtlasContext = {
   token: string;
+  amr: Array<{ method: string; timestamp?: number }>;
+  aal: string;
+  mfaEnrolled: boolean;
   user: { id: string; email?: string | null };
   profile: AtlasProfile;
 };
@@ -91,7 +94,15 @@ async function requireActiveProfile(request: Request): Promise<AtlasContext> {
     inactiveMessage: "This Atlas profile is inactive. Team access has been removed.",
     profileColumns: ["created_at", "updated_at"],
   });
-  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
+  return { token: actor.token, amr: actor.amr ?? [], aal: actor.aal ?? "aal1", mfaEnrolled: actor.mfaEnrolled === true, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
+}
+
+// S96 step-up: role/active changes and account creation/invitations need a
+// recent sign-in or second-factor check (ATLAS_REQUIRE_STEP_UP=true, window
+// ATLAS_STEP_UP_MAX_AGE_SECONDS, default 900). Enable once the app's
+// "confirm it's you" step is live.
+function requireStepUp(context: AtlasContext): void {
+  requireActorStepUp({ amr: context.amr, aal: context.aal, mfaEnrolled: context.mfaEnrolled, role: context.profile?.role });
 }
 
 function requireManager(context: AtlasContext): void {
@@ -192,6 +203,22 @@ async function readJson(request: Request): Promise<Record<string, unknown>> {
   }
 }
 
+// S96: database text reaches the browser only when it is an Atlas-authored
+// message raised by our SQL, without schema detail (same rule as
+// atlas-shifts / atlas-team-messages); anything else becomes the fixed
+// fallback and only the SQLSTATE is logged.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed as { code?: unknown; message?: unknown };
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
+}
+
 async function branchRpc(name: string, payload: Record<string, unknown> = {}): Promise<any> {
   const branchUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -220,11 +247,8 @@ async function branchRpc(name: string, payload: Record<string, unknown> = {}): P
   }
 
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : "The private Team Profiles request failed.";
+    const message = safeDbMessage(parsed, "The private Team Profiles request failed.");
+    if (message === "The private Team Profiles request failed.") console.warn("Team Profiles RPC failed", name, response.status, parsed && typeof parsed === "object" ? String(parsed.code ?? "-") : "-");
     throw new ApiError(response.status >= 500 ? 500 : 400, message);
   }
   return parsed;
@@ -256,12 +280,9 @@ async function productionJson(
   }
 
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : "Connected Atlas staff data could not be updated.";
-    throw new ApiError(response.status === 401 ? 401 : response.status === 403 ? 403 : 400, message);
+    // Production PostgREST text is never shown; the status is enough.
+    console.warn("Team Profiles production request failed", response.status, parsed && typeof parsed === "object" ? String(parsed.code ?? "-") : "-");
+    throw new ApiError(response.status === 401 ? 401 : response.status === 403 ? 403 : 400, "Connected Atlas staff data could not be updated.");
   }
   return parsed;
 }
@@ -351,6 +372,7 @@ async function logExternalEvent(
 
 async function updateProfileAccess(context: AtlasContext, body: Record<string, unknown>) {
   requireManager(context);
+  requireStepUp(context);
   const profileId = requireUuid(body.profile_id, "Team profile");
   if (profileId === context.user.id) {
     throw new ApiError(400, "You cannot change your own role or active status from Team Profiles.");
@@ -486,6 +508,7 @@ function invitationMetadata(displayName: string | null): Record<string, string> 
 
 async function inviteAccount(context: AtlasContext, body: Record<string, unknown>) {
   requireManager(context);
+  requireStepUp(context);
   const email = requiredText(body.email, "Email", 320).toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Enter a valid email address.");
   const displayName = optionalText(body.display_name, 120);
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -523,6 +546,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 // Used only after requireActiveProfile has verified the live account and role.
 async function createLoginMember(context: AtlasContext, body: Record<string, unknown>) {
   requireManager(context);
+  requireStepUp(context);
   const name = requiredText(body.display_name, "Name", 120);
   const email = requiredText(body.email, "Email", 320).toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Enter a valid email address.");
   const job = requiredText(body.default_role, "Staff role", 120);
@@ -558,6 +582,7 @@ async function createLoginMember(context: AtlasContext, body: Record<string, unk
 
 async function renewMemberSetup(context: AtlasContext, body: Record<string, unknown>) {
   requireManager(context);
+  requireStepUp(context);
   const id = requireUuid(body.profile_id, "Team member");
   const project = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -676,7 +701,10 @@ Deno.serve(async (request: Request) => {
     const refreshed = await snapshot(context);
     return jsonResponse({ result, ...refreshed });
   } catch (error) {
-    if (error instanceof ApiError || error instanceof AuthError) return jsonResponse({ error: error.message }, error.status);
+    if (error instanceof ApiError || error instanceof AuthError) {
+      const code = (error as { code?: unknown }).code;
+      return jsonResponse({ error: error.message, ...(typeof code === "string" ? { code } : {}) }, error.status);
+    }
     console.error("Team Profiles API error", error instanceof Error ? error.message : "unknown");
     return jsonResponse({ error: "The Team Profiles service is temporarily unavailable." }, 500);
   }

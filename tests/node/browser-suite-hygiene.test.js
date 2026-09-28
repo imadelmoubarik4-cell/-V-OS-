@@ -20,7 +20,7 @@ test('browser tests never sleep for a fixed time', () => {
 test('the harness freezes every page clock at the fixture anchor by default', () => {
   const harness = readFileSync(path.join(DIR, 'harness.mjs'), 'utf8');
   assert.match(harness, /export const HARNESS_NOW = '2026-09-24T14:00:00\.000Z';/);
-  assert.match(harness, /fixedTime = HARNESS_NOW, controlTimers = false \} = \{\}\) \{/);
+  assert.match(harness, /fixedTime = HARNESS_NOW, controlTimers = false, enforceCsp = false \} = \{\}\) \{/);
   assert.match(harness, /else if \(fixedTime !== null && fixedTime !== undefined\) await page\.clock\.setFixedTime\(fixedTime\);/);
 });
 

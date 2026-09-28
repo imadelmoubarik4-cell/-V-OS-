@@ -28,6 +28,7 @@ const EXECUTION = {
   'knowledge.draft': '`atlas-knowledge` `save-draft` (user JWT); never publishes',
   'settings.suggestion': 'none — opens Settings',
   'par_level.suggestion': 'none — opens the par editor',
+  'recipe.draft': 'PostgREST RPC `atlas_save_recipe` (user JWT; p_recipe_id null = always a new recipe; active and show_on_menu forced false)',
 };
 
 function cell(value) {

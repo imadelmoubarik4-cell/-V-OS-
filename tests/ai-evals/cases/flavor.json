@@ -1,0 +1,556 @@
+[
+  {
+    "id": "flv-001",
+    "category": "recipes",
+    "blocking": true,
+    "question": "Give me three gin cocktail ideas from what we have",
+    "actor": "manager",
+    "tool": "flavor.candidates",
+    "args": {
+      "type": "cocktail",
+      "seed": [
+        "gin"
+      ],
+      "exclude_families": null,
+      "exclude_ingredients": null,
+      "no_new_purchases": true,
+      "goal": null,
+      "limit": 3
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "3 ideas with London dry gin",
+        "from verified current stock only"
+      ],
+      "data": {
+        "data.candidates": {
+          "$len": 3
+        },
+        "data.candidates[0].lines": {
+          "$every": {
+            "to_buy": false
+          }
+        },
+        "data.candidates[0].scores.economics.cost_per_serve": {
+          "$gte": 1
+        },
+        "data.candidates[0].scores.inventory.coverage": 1,
+        "data.request.no_new_purchases": true
+      },
+      "evidence_kinds": [
+        "calculation",
+        "interpretation"
+      ],
+      "records_exclude": [
+        "inventory_item:@item.kahlua",
+        "inventory_item:@item.angostura",
+        "inventory_item:@item.kristall"
+      ],
+      "unknown": null,
+      "proposal": null
+    },
+    "notes": "Beefeater/Tanqueray, lemons, Cointreau, sugar syrup and Martini Rosso have current counts; Kahlúa (stale), Angostura and Kristall (never counted) must not appear."
+  },
+  {
+    "id": "flv-002",
+    "category": "missing_evidence",
+    "blocking": true,
+    "question": "What can I make with rhubarb?",
+    "actor": "manager",
+    "tool": "flavor.candidates",
+    "args": {
+      "type": null,
+      "seed": [
+        "rabarbari"
+      ],
+      "exclude_families": null,
+      "exclude_ingredients": null,
+      "no_new_purchases": null,
+      "goal": null,
+      "limit": null
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "Rhubarb is not stocked in Atlas"
+      ],
+      "data": {
+        "data.candidates": {
+          "$len": 0
+        },
+        "data.unmet_seeds[0].slug": "rhubarb"
+      },
+      "evidence": [
+        {
+          "kind": "missing",
+          "label": "Rhubarb in Atlas"
+        }
+      ],
+      "unknown": {
+        "count": 1
+      },
+      "proposal": null
+    },
+    "notes": "VÁ stocks no rhubarb item: Atlas says so instead of inventing one."
+  },
+  {
+    "id": "flv-003",
+    "category": "missing_evidence",
+    "blocking": true,
+    "question": "Something with Kahlúa tonight?",
+    "actor": "manager",
+    "tool": "flavor.candidates",
+    "args": {
+      "type": null,
+      "seed": [
+        "kahlua"
+      ],
+      "exclude_families": null,
+      "exclude_ingredients": null,
+      "no_new_purchases": null,
+      "goal": null,
+      "limit": null
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "Coffee liqueur is stock unknown"
+      ],
+      "data": {
+        "data.candidates": {
+          "$len": 0
+        },
+        "data.unmet_seeds[0].stock_status": "unknown"
+      },
+      "evidence": [
+        {
+          "kind": "missing",
+          "label": "Current stock of Kahlúa",
+          "value": "expired"
+        }
+      ],
+      "unknown": {
+        "count": 1
+      }
+    },
+    "notes": "The Kahlúa count expired (stale): unknown, never available."
+  },
+  {
+    "id": "flv-004",
+    "category": "recipes",
+    "blocking": true,
+    "question": "What goes with gin that we have in stock?",
+    "actor": "bartender",
+    "tool": "flavor.pairings",
+    "args": {
+      "ingredient": "gin",
+      "preparation": null,
+      "use": null,
+      "in_stock_only": true,
+      "evidence": null,
+      "limit": 5
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "London dry gin pairs with",
+        "in verified stock"
+      ],
+      "data": {
+        "data.neighbours": {
+          "$every": {
+            "in_stock": true
+          }
+        },
+        "data.neighbours[0].ingredient.slug": "lemon",
+        "data.filters_available.high_margin": false
+      },
+      "evidence": [
+        {
+          "kind": "fact",
+          "label": "Current stock of Beefeater Gin",
+          "value": "5 bottle"
+        },
+        {
+          "kind": "interpretation",
+          "label": "Pairing (culinary): London dry gin + Lemon"
+        }
+      ],
+      "evidence_kinds_absent": [
+        "estimate"
+      ]
+    }
+  },
+  {
+    "id": "flv-005",
+    "category": "recipes",
+    "blocking": true,
+    "question": "Do we have sítróna?",
+    "actor": "viewer",
+    "tool": "flavor.search_ingredients",
+    "args": {
+      "query": "sítróna",
+      "use": null,
+      "limit": null
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "Lemon (in stock)"
+      ],
+      "data": {
+        "data.results[0].slug": "lemon"
+      },
+      "evidence": [
+        {
+          "kind": "fact",
+          "label": "Current stock of Lemons",
+          "value": "25 each"
+        }
+      ],
+      "records": [
+        "inventory_item:@item.lemons"
+      ]
+    },
+    "notes": "Icelandic alias; the lemons count is an owner-confirmed physical count."
+  },
+  {
+    "id": "flv-006",
+    "category": "recipes",
+    "blocking": true,
+    "question": "We're out of lemons, what can replace them?",
+    "actor": "manager",
+    "tool": "flavor.substitutes",
+    "args": {
+      "ingredient": "lemon",
+      "in_stock_only": true,
+      "limit": null
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "Lime (in stock)"
+      ],
+      "data": {
+        "data.substitutes[0].ingredient.slug": "lime",
+        "data.substitutes[0].basis": "recorded"
+      },
+      "evidence_kinds": [
+        "interpretation",
+        "fact"
+      ]
+    }
+  },
+  {
+    "id": "flv-007",
+    "category": "recipes",
+    "blocking": true,
+    "question": "Why do gin and tonic work?",
+    "actor": "bartender",
+    "tool": "flavor.explain_pair",
+    "args": {
+      "a": "gin",
+      "b": "tonic"
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "culinary",
+        "Atlas recipes"
+      ],
+      "data": {
+        "data.recorded": true,
+        "data.edges": {
+          "$some": {
+            "evidence_type": "atlas_learned"
+          }
+        }
+      },
+      "evidence": [
+        {
+          "kind": "interpretation",
+          "label": "Pairing (Atlas recipes)"
+        },
+        {
+          "kind": "calculation",
+          "label": "Aroma overlap"
+        }
+      ],
+      "summary_excludes": [
+        "scientific"
+      ]
+    }
+  },
+  {
+    "id": "flv-008",
+    "category": "recipes",
+    "blocking": false,
+    "question": "What pairs well from what we have?",
+    "actor": "manager",
+    "tool": "flavor.pairings_from_stock",
+    "args": {
+      "ingredient": null,
+      "use": null,
+      "limit": 5
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "entirely from verified stock"
+      ],
+      "data": {
+        "data.pairs.length": 5,
+        "data.pairs": {
+          "$none": {
+            "a.slug": "coffee-liqueur"
+          }
+        }
+      },
+      "evidence_kinds": [
+        "fact",
+        "interpretation"
+      ]
+    }
+  },
+  {
+    "id": "flv-009",
+    "category": "missing_evidence",
+    "blocking": true,
+    "question": "What should we use up soon?",
+    "actor": "manager",
+    "tool": "flavor.use_soon",
+    "args": {
+      "limit": null
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "does not record expiry"
+      ],
+      "data": {
+        "data.freshness_supported": false,
+        "data.overstock": {
+          "$len": 0
+        }
+      },
+      "evidence": [
+        {
+          "kind": "missing",
+          "label": "Expiry and opened dates"
+        }
+      ],
+      "unknown": {
+        "count": {
+          "$gte": 1
+        }
+      }
+    },
+    "notes": "No shelf-life data in Atlas; the only verified signal (count ≥ 2 × par) finds nothing in VÁ today."
+  },
+  {
+    "id": "flv-010",
+    "category": "recipes",
+    "blocking": false,
+    "question": "Tell me about Campari's flavour",
+    "actor": "bartender",
+    "tool": "flavor.ingredient_profile",
+    "args": {
+      "ingredient": "campari"
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "Red bitter aperitivo",
+        "Used in Negroni"
+      ],
+      "data": {
+        "data.recipes_using": {
+          "$some": {
+            "name": "Negroni"
+          }
+        }
+      },
+      "records": [
+        "inventory_item:@item.campari",
+        "recipe:@recipe.negroni"
+      ]
+    }
+  },
+  {
+    "id": "flv-011",
+    "category": "approval_boundary",
+    "blocking": true,
+    "question": "Save that gin sour as a draft recipe",
+    "actor": "manager",
+    "tool": "recipes.compose_draft",
+    "args": {
+      "candidate_key": "v1|sour|base=london-dry-gin~-@@item.beefeater|sour=lemon~-@@item.lemons|sweet=sugar-syrup~-@@item.sugarsyrup|garnish=lemon~-@@item.lemons",
+      "type": null,
+      "no_new_purchases": null,
+      "name": null
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "Prepared \"Gin Sour\"",
+        "nothing has been saved yet"
+      ],
+      "evidence_kinds": [
+        "fact",
+        "calculation",
+        "interpretation"
+      ],
+      "proposal": {
+        "kind": "recipe.draft",
+        "required_roles": [
+          "admin",
+          "manager"
+        ],
+        "executable": true,
+        "command": {
+          "recipe.name": "Gin Sour",
+          "recipe.active": false,
+          "recipe.show_on_menu": false,
+          "recipe.menu_price": null,
+          "ingredients": {
+            "$every": {
+              "to_buy": false
+            }
+          }
+        },
+        "preview": {
+          "will_change[0]": {
+            "$includes": "Recipes › Drafts"
+          }
+        }
+      }
+    },
+    "execute": {
+      "as": "manager",
+      "expected": {
+        "ok": true,
+        "writes": [
+          "atlas_save_recipe"
+        ],
+        "summary": [
+          "saved in Recipes › Drafts"
+        ],
+        "write_args": {
+          "[0].args.p_recipe_id": null,
+          "[0].args.p_recipe.active": false,
+          "[0].args.p_recipe.show_on_menu": false
+        }
+      },
+      "after": {
+        "actor": "manager",
+        "tool": "recipes.search",
+        "args": {
+          "query": "gin sour",
+          "status": "draft",
+          "limit": null
+        },
+        "data": {
+          "data.recipes[0].name": "Gin Sour"
+        }
+      }
+    }
+  },
+  {
+    "id": "flv-012",
+    "category": "approval_boundary",
+    "blocking": true,
+    "question": "Approve the gin sour draft (as a bartender)",
+    "actor": "manager",
+    "tool": "recipes.compose_draft",
+    "args": {
+      "candidate_key": "v1|sour|base=london-dry-gin~-@@item.beefeater|sour=lemon~-@@item.lemons|sweet=sugar-syrup~-@@item.sugarsyrup|garnish=lemon~-@@item.lemons",
+      "type": null,
+      "no_new_purchases": null,
+      "name": "Bar Gin Sour"
+    },
+    "expected": {
+      "ok": true,
+      "proposal": {
+        "kind": "recipe.draft",
+        "command": {
+          "recipe.name": "Bar Gin Sour"
+        }
+      }
+    },
+    "execute": {
+      "as": "bartender",
+      "expected": {
+        "ok": false,
+        "error": "forbidden"
+      }
+    }
+  },
+  {
+    "id": "flv-013",
+    "category": "role_restriction",
+    "blocking": true,
+    "question": "Create a new cocktail recipe for me",
+    "actor": "bartender",
+    "tool": "recipes.compose_draft",
+    "args": {
+      "candidate_key": "v1|sour|base=london-dry-gin~-@@item.beefeater|sour=lemon~-@@item.lemons|sweet=sugar-syrup~-@@item.sugarsyrup|garnish=lemon~-@@item.lemons",
+      "type": null,
+      "no_new_purchases": null,
+      "name": null
+    },
+    "expected": {
+      "ok": false,
+      "error": "forbidden"
+    }
+  },
+  {
+    "id": "flv-014",
+    "category": "role_restriction",
+    "blocking": true,
+    "question": "Which cocktail idea has the best margin?",
+    "actor": "viewer",
+    "tool": "flavor.candidates",
+    "args": {
+      "type": "cocktail",
+      "seed": null,
+      "exclude_families": null,
+      "exclude_ingredients": null,
+      "no_new_purchases": null,
+      "goal": "high_margin",
+      "limit": 3
+    },
+    "expected": {
+      "ok": true,
+      "summary": [
+        "for managers"
+      ],
+      "data": {
+        "data.goal": "balanced",
+        "data.candidates[0].scores.economics": null
+      }
+    }
+  },
+  {
+    "id": "flv-015",
+    "category": "approval_boundary",
+    "blocking": true,
+    "question": "Make that highball with Egils Pilsner as the gin",
+    "actor": "manager",
+    "tool": "recipes.compose_draft",
+    "args": {
+      "candidate_key": "v1|highball|base=london-dry-gin~-@@item.egils|top=tonic-water~-@@item.tonic",
+      "type": null,
+      "no_new_purchases": null,
+      "name": null
+    },
+    "expected": {
+      "ok": false,
+      "error": "conflict",
+      "message": [
+        "no longer available from verified stock"
+      ]
+    },
+    "notes": "A forged key naming an item that is not a confirmed link of the ingredient is refused; nothing is prepared."
+  }
+]

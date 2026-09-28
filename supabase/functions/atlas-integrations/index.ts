@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { ApiError, createIntegrationsHandler, rpcFailure } from "./handler.mjs";
-import { AuthError, resolveActor } from "../_shared/auth.mjs";
+import { AuthError, requireStepUp, resolveActor } from "../_shared/auth.mjs";
 
 // atlas-integrations: server-side OAuth / API-key connections for Google
 // Business Profile, Google Drive, Facebook, Instagram, TikTok and Tripadvisor.
@@ -22,7 +22,11 @@ import { AuthError, resolveActor } from "../_shared/auth.mjs";
 async function authenticate(request: Request) {
   try {
     const actor = await resolveActor(request, Deno.env, fetch, { inactiveMessage: "This Atlas profile is inactive." });
-    return { user: { id: actor.userId }, profile: actor.profile };
+    return {
+      user: { id: actor.userId },
+      profile: actor.profile,
+      assurance: { role: actor.role, aal: actor.aal, amr: actor.amr, mfaEnrolled: actor.mfaEnrolled },
+    };
   } catch (error) {
     if (error instanceof AuthError) throw new ApiError(error.status, error.message);
     throw error;
@@ -63,6 +67,14 @@ const handle = createIntegrationsHandler({
   fetchImpl: (input: string | URL | Request, init?: RequestInit) => fetch(input, init),
   rpc,
   authenticate,
+  stepUp: (context: { assurance?: Record<string, unknown> }) => {
+    try {
+      requireStepUp(context.assurance ?? {}, Deno.env);
+    } catch (error) {
+      if (error instanceof AuthError) throw new ApiError(error.status, error.message, { error_code: (error as AuthError & { code?: string }).code ?? "reauthentication_required" });
+      throw error;
+    }
+  },
   now: () => Date.now(),
 });
 

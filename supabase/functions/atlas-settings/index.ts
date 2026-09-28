@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { AuthError, actorLabel, authConfig, resolveActor } from "../_shared/auth.mjs";
+import { AuthError, actorLabel, authConfig, requireStepUp, resolveActor } from "../_shared/auth.mjs";
 
 const FUNCTION_VERSION = "0.1.3";
 const MAX_BODY_BYTES = 256 * 1024;
@@ -36,6 +36,7 @@ type AtlasContext = {
   token: string;
   user: { id: string; email?: string | null };
   profile: AtlasProfile;
+  assurance: { role?: string; aal?: string; amr?: Array<{ method: string; timestamp?: number }>; mfaEnrolled?: boolean };
 };
 
 class ApiError extends Error {
@@ -113,7 +114,7 @@ async function requireActiveProfile(request: Request): Promise<AtlasContext> {
     inactiveMessage: "This Atlas profile is inactive. Settings access has been removed.",
     profileColumns: ["updated_at"],
   });
-  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
+  return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile, assurance: { role: actor.role, aal: actor.aal, amr: actor.amr, mfaEnrolled: actor.mfaEnrolled } };
 }
 
 function requireManager(context: AtlasContext): void {
@@ -502,6 +503,8 @@ Deno.serve(async (request: Request) => {
 
       case "save-role": {
         requireManager(context);
+        // S96 step-up: changing what an Atlas role may do is a security change.
+        requireStepUp(context.assurance, Deno.env);
         const roleKey = enumValue(body.role_key, "Atlas role", ROLE_KEYS);
         const permissions = objectValue(body.permissions, "Role permissions");
         assertNoSensitiveKeys(permissions);

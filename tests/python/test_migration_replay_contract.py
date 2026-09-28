@@ -79,6 +79,19 @@ class MigrationReplayContractTests(unittest.TestCase):
                        if "-f" in args and "/supabase/migrations/" in args[args.index("-f") + 1]]
             expected = sorted(path.name for path in (ROOT / "supabase/migrations").glob("*.sql")
                               if path.name != "20260910094217_atlas_phase1_production_adoption.sql")
+            # One back-dated file is replayed at its real production apply slot.
+            # 20260926000033_s92_accounting_documents.sql carries a version string
+            # back-dated to match the production ledger, but production applied it
+            # incrementally AFTER the purchase-order lifecycle; its SQL bodies
+            # reference private.purchase_order_total(jsonb), created later in sort
+            # order by 20260926093000_s88_purchase_order_receiving_approval.sql.
+            # The harness relocates it to immediately before s92b (its original RC
+            # position) so a from-empty replay honours the dependency instead of
+            # failing on a forward reference that never occurred in production.
+            accounting_base = "20260926000033_s92_accounting_documents.sql"
+            s92b_anchor = "20261001100000_s92b_accounting_read_guard.sql"
+            expected.remove(accounting_base)
+            expected.insert(expected.index(s92b_anchor), accounting_base)
             self.assertTrue(expected)
             self.assertEqual(applied, expected)
 

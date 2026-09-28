@@ -32,7 +32,7 @@ test('every auth.signOut call in the web app names its scope', () => {
 });
 
 test('a profile read error never signs out; only an inactive profile clears this device', () => {
-  const html = fs.readFileSync(path.join(WEB, 'index.html'), 'utf8');
+  const html = (fs.readFileSync(path.join(WEB, 'index.html'), 'utf8') + fs.readFileSync(path.join(WEB, 'assets/js/atlas-app.js'), 'utf8'));
   const body = html.slice(html.indexOf('async function loadActiveProfile'), html.indexOf('async function onSignedIn'));
   const errorBranch = body.slice(body.indexOf('if (error) {'), body.indexOf('if (!data?.active'));
   assert.ok(errorBranch.includes("'profile_unavailable'"));
@@ -41,7 +41,7 @@ test('a profile read error never signs out; only an inactive profile clears this
 });
 
 test('a 401 renews the session before offering sign-in', () => {
-  const html = fs.readFileSync(path.join(WEB, 'index.html'), 'utf8');
+  const html = (fs.readFileSync(path.join(WEB, 'index.html'), 'utf8') + fs.readFileSync(path.join(WEB, 'assets/js/atlas-app.js'), 'utf8'));
   const handler = html.slice(html.indexOf("addEventListener('atlas:auth-required'"), html.indexOf('const INACTIVE_PROFILE_MESSAGE'));
   assert.ok(handler.indexOf('refreshSession') > -1 && handler.indexOf('refreshSession') < handler.indexOf('await sessionEnded()'));
   // Only 401s from the Supabase project, never its auth endpoints, start it.

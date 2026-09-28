@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import test from 'node:test';
 
 const read = (path) => readFileSync(path, 'utf8');
-const app = read('apps/web/index.html');
+const app = (read('apps/web/index.html') + read('apps/web/assets/js/atlas-app.js'));
 const config = read('apps/web/config.js');
 const runtime = read('apps/web/assets/js/runtime-module-guard.js');
 const messages = read('apps/web/assets/js/team-messages.js');

@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const JS_BUNDLE = 'assets/js/team-profiles.bundle.js.gz';
+  const JS_SOURCE = 'assets/js/team-profiles.source.js?v=20261010-s96';
   const CSS_BUNDLE = 'assets/css/team-profiles.bundle.css.gz';
   let loading = null;
   let navTimer = null;
@@ -24,15 +24,17 @@
     document.head.appendChild(style);
   }
 
-  function installJs(source) {
+  // S96: the JavaScript loads as a plain same-origin file (byte-identical to
+  // the gzip bundle, tests/node/team-profiles-bundle-s96.test.js), so the CSP
+  // needs neither blob: nor 'unsafe-inline' in script-src.
+  function installJs() {
     return new Promise((resolve, reject) => {
       if (window.AtlasTeamProfiles) { resolve(); return; }
-      const url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
       const script = document.createElement('script');
-      script.src = url;
+      script.src = JS_SOURCE;
       script.dataset.atlasTeamProfilesBundle = 'true';
-      script.addEventListener('load', () => { URL.revokeObjectURL(url); resolve(); }, { once: true });
-      script.addEventListener('error', () => { URL.revokeObjectURL(url); reject(new Error('Team Profiles JavaScript could not start.')); }, { once: true });
+      script.addEventListener('load', () => resolve(), { once: true });
+      script.addEventListener('error', () => reject(new Error('Team Profiles JavaScript could not start.')), { once: true });
       document.body.appendChild(script);
     });
   }
@@ -40,8 +42,8 @@
   async function load() {
     if (window.AtlasTeamProfiles) return window.AtlasTeamProfiles;
     if (loading) return loading;
-    loading = Promise.all([decompressText(CSS_BUNDLE), decompressText(JS_BUNDLE)])
-      .then(async ([css, js]) => { installCss(css); await installJs(js); return window.AtlasTeamProfiles; })
+    loading = decompressText(CSS_BUNDLE)
+      .then(async (css) => { installCss(css); await installJs(); return window.AtlasTeamProfiles; })
       .catch((error) => { console.error('Team Profiles bootstrap failed:', error); throw error; })
       .finally(() => { loading = null; });
     return loading;

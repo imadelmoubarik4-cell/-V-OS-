@@ -91,6 +91,35 @@ async function readJson(response) {
 
 const PROFILE_COLUMNS = ["id", "email", "display_name", "role", "active"];
 
+// S96: claims of a token that Auth has just accepted (/auth/v1/user verified
+// its signature, expiry and session). Never call this on an unverified token.
+export function verifiedTokenClaims(token) {
+  try {
+    const part = String(token).split(".")[1] ?? "";
+    const base64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const text = typeof atob === "function"
+      ? atob(base64 + "=".repeat((4 - (base64.length % 4)) % 4))
+      : "";
+    const claims = JSON.parse(text);
+    return claims && typeof claims === "object" ? claims : {};
+  } catch {
+    return {};
+  }
+}
+
+function hasVerifiedFactor(user) {
+  return Array.isArray(user?.factors) && user.factors.some((factor) => factor?.status === "verified");
+}
+
+// S96 MFA policy for privileged roles (admin, manager). A privileged caller
+// who has a verified second factor must present an aal2 session. With
+// ATLAS_REQUIRE_PRIVILEGED_MFA=true every privileged caller must be aal2
+// (switch it on only after every administrator and manager has enrolled and
+// the app's TOTP challenge step is live). Staff roles are unaffected.
+function privilegedMfaMandatory(env) {
+  return String(envValue(env, "ATLAS_REQUIRE_PRIVILEGED_MFA") ?? "").trim().toLowerCase() === "true";
+}
+
 // Resolves the calling user to an Atlas actor:
 // { userId, email, role, active, displayName, label, token, profile }.
 // `profile` is the caller's own profile row (plus any `profileColumns` asked
@@ -122,6 +151,10 @@ export async function resolveActor(request, env, fetchImpl = globalThis.fetch, o
   try {
     userResponse = await fetchImpl(`${projectUrl}/auth/v1/user`, requestInit());
   } catch {
+    throw new AuthError(503, "Atlas authentication is temporarily unavailable.");
+  }
+  if (userResponse?.status === 429 || Number(userResponse?.status) >= 500) {
+    // Auth is busy or down: not a verdict on the session.
     throw new AuthError(503, "Atlas authentication is temporarily unavailable.");
   }
   if (!userResponse?.ok) throw new AuthError(401, "Your Atlas session has expired.");
@@ -162,6 +195,17 @@ export async function resolveActor(request, env, fetchImpl = globalThis.fetch, o
       : "This Atlas profile is inactive. Atlas access has been removed.");
   }
 
+  const claims = verifiedTokenClaims(token);
+  const aal = claims.aal === "aal2" ? "aal2" : "aal1";
+  const amr = Array.isArray(claims.amr) ? claims.amr.filter((entry) => entry && typeof entry.method === "string") : [];
+  const mfaEnrolled = hasVerifiedFactor(user);
+  if (MANAGER_ROLES.includes(profile.role) && active && aal !== "aal2"
+      && (mfaEnrolled || privilegedMfaMandatory(env))) {
+    const error = new AuthError(403, "Confirm your sign-in with your authenticator app to use manager tools.");
+    error.code = "mfa_required";
+    throw error;
+  }
+
   const displayName = safeDisplayName(profile.display_name);
   const email = typeof profile.email === "string" && profile.email.trim()
     ? profile.email.trim()
@@ -174,8 +218,55 @@ export async function resolveActor(request, env, fetchImpl = globalThis.fetch, o
     displayName,
     label: actorLabel(profile),
     token,
+    aal,
+    amr,
+    mfaEnrolled,
+    sessionId: typeof claims.session_id === "string" ? claims.session_id : null,
     profile: { ...profile, active },
   };
+}
+
+// S96 step-up for high-risk actions (role/active changes, invitations,
+// integration disconnects, accounting exports): the most recent sign-in or
+// second-factor check must be at most `maxAgeSeconds` old. Throws 401 with
+// code "reauthentication_required" so the app can ask the person to confirm
+// (TOTP challenge, or password) and retry.
+export const MFA_METHODS = Object.freeze(["totp", "mfa/totp", "phone", "mfa/phone", "webauthn", "mfa/webauthn"]);
+const REAUTH_METHODS = Object.freeze(["password", "otp", ...MFA_METHODS]);
+
+// S96 step-up. Someone with a verified second factor (or an aal2 session, or when
+// options.requireMfa is set) must have completed a second-factor check recently:
+// a fresh password alone does not count for them. Everyone else needs a fresh
+// sign-in. Email-link methods (recovery, invite, magiclink) never count: they
+// prove mailbox access, not the person at the keyboard.
+export function requireRecentAuth(actor, maxAgeSeconds = 900, nowMs = Date.now(), options = {}) {
+  const needsMfa = options.requireMfa === true || actor?.mfaEnrolled === true || actor?.aal === "aal2";
+  const accepted = needsMfa ? MFA_METHODS : REAUTH_METHODS;
+  const stamps = (Array.isArray(actor?.amr) ? actor.amr : [])
+    .filter((entry) => entry && accepted.includes(entry.method))
+    .map((entry) => Number(entry.timestamp))
+    .filter((value) => Number.isFinite(value) && value > 0 && value <= nowMs / 1000 + 60);
+  const latest = stamps.length ? Math.max(...stamps) : 0;
+  if (!latest || nowMs / 1000 - latest > maxAgeSeconds) {
+    const error = new AuthError(401, needsMfa
+      ? "Confirm it is you with your authenticator code to continue with this action."
+      : "Confirm it is you to continue with this action.");
+    error.code = needsMfa ? "mfa_reauthentication_required" : "reauthentication_required";
+    throw error;
+  }
+  return actor;
+}
+
+// Step-up for a high-impact action, configured per deployment:
+// ATLAS_REQUIRE_STEP_UP=true turns it on; ATLAS_STEP_UP_MAX_AGE_SECONDS sets the
+// window (default 900). ATLAS_REQUIRE_PRIVILEGED_MFA=true also demands a recent
+// second factor from every manager/admin, enrolled or not.
+export function requireStepUp(actor, env = globalThis.Deno?.env, nowMs = Date.now()) {
+  if (String(envValue(env, "ATLAS_REQUIRE_STEP_UP") ?? "").trim().toLowerCase() !== "true") return actor;
+  const configured = Number(envValue(env, "ATLAS_STEP_UP_MAX_AGE_SECONDS") || 900);
+  const maxAge = Number.isFinite(configured) && configured > 0 ? Math.min(configured, 3600) : 900;
+  const privileged = MANAGER_ROLES.includes(actor?.role ?? actor?.profile?.role);
+  return requireRecentAuth(actor, maxAge, nowMs, { requireMfa: privileged && privilegedMfaMandatory(env) });
 }
 
 // Throws 403 unless the actor is active and holds one of `roles`.

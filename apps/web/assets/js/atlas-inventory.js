@@ -665,7 +665,9 @@
   function exportCsv() {
     const rows = sorted(filtered());
     const header = ['Item', 'Category', 'Supplier', 'On hand', 'Unit', 'Par', 'Status', 'Unit cost', 'Counted'];
-    const cell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    // S96: a cell that a spreadsheet would read as a formula (= + - @, tab or
+    // carriage return first) is prefixed with ' so it opens as text.
+    const cell = (value) => { const text = String(value ?? ''); return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replace(/"/g, '""')}"`; };
     const lines = rows.map((item) => {
       const known = truth()?.known(item);
       const status = stockStatus(item);

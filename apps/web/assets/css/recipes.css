@@ -173,4 +173,329 @@
     .recipe-ingredient-picker > .atlas-btn { grid-column: 1 / -1; }
     .recipe-cost-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
+  /* ---------- Flavor Intelligence (S95): Flavor Map (#recipes/flavor) and
+     Create with Atlas. Light UI, Atlas blue for the centre and links, stock
+     colours from the status tokens. Rings, rows and actions are 44 px targets. */
+  .flavor-page { display: grid; gap: var(--s-4); min-width: 0; }
+  .flavor-page .page-head { margin-bottom: 0; }
+  .flavor-map__search { position: relative; max-width: 520px; min-width: 0; }
+  .flavor-map__results {
+    position: absolute;
+    top: calc(100% + var(--s-1));
+    left: 0;
+    right: 0;
+    z-index: var(--z-sticky);
+    max-height: 320px;
+    margin: 0;
+    padding: var(--s-1);
+    overflow: auto;
+    list-style: none;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-pop);
+  }
+  .flavor-map__result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--s-2) var(--s-3);
+    border: 0;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text);
+    font: var(--type-body);
+    text-align: left;
+    cursor: pointer;
+  }
+  .flavor-map__result:hover, .flavor-map__result.is-active { background: var(--bg-subtle); }
+  .flavor-map__result:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+  .flavor-map__result-name { min-width: 0; overflow-wrap: anywhere; }
+  .flavor-map__search-note { margin: var(--s-2) 0 0; font: var(--type-meta); color: var(--text-2); }
+  .flavor-map__filters { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); min-width: 0; }
+  .flavor-map__filter-group { min-width: 0; }
+
+  .flavor-map {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr);
+    grid-template-areas: "stage detail" "list list";
+    align-items: start;
+    gap: var(--s-5);
+    min-width: 0;
+    transition: opacity var(--dur-2) var(--ease-out);
+  }
+  .flavor-map.is-loading { opacity: .6; }
+  .flavor-map--empty { grid-template-columns: minmax(0, 1fr); grid-template-areas: "empty"; }
+  .flavor-map__empty { grid-area: empty; }
+  .flavor-map__stage { grid-area: stage; min-width: 0; }
+  .flavor-map__list { grid-area: list; min-width: 0; }
+  .flavor-detail { grid-area: detail; }
+  .flavor-map--loading { grid-template-areas: none; }
+  .flavor-map__skel-ring { width: min(100%, 480px); aspect-ratio: 1 / 1; margin: 0 auto; border-radius: 50%; }
+  .flavor-map__skel-list { display: grid; align-content: start; gap: var(--s-3); }
+
+  /* The ring: the centre ingredient, its partners around it, one thin link
+     each whose width and opacity follow the pairing strength. */
+  .flavor-map__ring { position: relative; width: min(100% - 80px, 540px, max(320px, 72dvh)); aspect-ratio: 1 / 1; margin: var(--s-4) auto; }
+  .flavor-map__links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .flavor-map__link {
+    stroke: var(--accent-brand);
+    stroke-width: calc(1px + 2.5px * var(--flavor-weight));
+    stroke-opacity: calc(.2 + .45 * var(--flavor-weight));
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .flavor-map__link.is-selected { stroke: var(--accent); stroke-opacity: 1; }
+  .flavor-map__center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    place-content: center;
+    gap: 2px;
+    width: 30%;
+    aspect-ratio: 1 / 1;
+    padding: var(--s-2);
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 6px var(--accent-soft);
+    color: var(--text-on-accent);
+    text-align: center;
+    min-height: 0;
+    overflow: hidden;
+    transform: translate(-50%, -50%);
+  }
+  .flavor-map__center-name { font: var(--type-heading); overflow-wrap: anywhere; }
+  .flavor-map__center-stock { font: var(--type-caption); }
+  .flavor-map__node {
+    position: absolute;
+    top: var(--y);
+    left: var(--x);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 44px;
+    min-height: 44px;
+    width: max-content;
+    max-width: clamp(68px, 21%, 112px);
+    padding: 4px 4px 2px;
+    border: 0;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text);
+    font: var(--type-label);
+    text-align: center;
+    cursor: pointer;
+    transform: translate(-50%, -12px);
+    animation: flavor-node-in var(--dur-3) var(--ease-out) both;
+  }
+  .flavor-map__node:focus-visible { outline: var(--focus-outline); outline-offset: 2px; }
+  .flavor-map__label {
+    display: -webkit-box;
+    max-width: 100%;
+    padding: 0 4px;
+    overflow: hidden;
+    border-radius: var(--r-xs);
+    background: var(--surface);
+    overflow-wrap: break-word;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .flavor-map__node:hover .flavor-map__label { color: var(--accent-text); text-decoration: underline; }
+  .flavor-map__node.is-selected .flavor-map__label { color: var(--accent-text); font-weight: 600; }
+  .flavor-map__dot {
+    display: block;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--line-strong);
+    border-radius: 50%;
+    background: var(--bg-muted);
+    box-shadow: 0 0 0 3px var(--surface);
+  }
+  [data-stock="available"] > .flavor-map__dot { border-color: var(--positive); background: var(--positive); }
+  [data-stock="out"] > .flavor-map__dot { border-color: var(--danger); background: var(--danger-soft); }
+  [data-stock="unknown"] > .flavor-map__dot { border-style: dashed; border-color: var(--text-3); background: var(--surface); }
+  .flavor-map__node.is-selected > .flavor-map__dot { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--accent); }
+  @keyframes flavor-node-in {
+    from { opacity: 0; transform: translate(-50%, -12px) scale(.85); }
+    to { opacity: 1; transform: translate(-50%, -12px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .flavor-map__node { animation: none; }
+    .flavor-map { transition: none; }
+  }
+  html.atlas-reduce-motion .flavor-map__node { animation: none; }
+  html.atlas-reduce-motion .flavor-map { transition: none; }
+  .flavor-map__legend { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-2) var(--s-4); margin: var(--s-3) 0 0; padding: 0; list-style: none; font: var(--type-caption); color: var(--text-2); }
+  .flavor-map__legend li { display: inline-flex; align-items: center; gap: 6px; }
+  .flavor-map__legend .flavor-map__dot { width: 12px; height: 12px; box-shadow: none; }
+
+  /* The accessible list: every partner on the ring, with its strength,
+     evidence and stock, selectable for the detail panel. */
+  .flavor-map__list-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2); }
+  .flavor-map__rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--s-5); margin: var(--s-3) 0 0; padding: 0; list-style: none; }
+  .flavor-map__row { display: flex; align-items: center; gap: var(--s-1); min-width: 0; border-bottom: 1px solid var(--line-subtle); }
+  .flavor-map__row-main {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-1) var(--s-3);
+    min-width: 0;
+    min-height: 52px;
+    padding: var(--s-2);
+    border: 0;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text);
+    font: var(--type-body);
+    text-align: left;
+    cursor: pointer;
+  }
+  .flavor-map__row-main:hover { background: var(--bg-subtle); }
+  .flavor-map__row-main:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+  .flavor-map__row.is-selected .flavor-map__row-main { background: var(--accent-soft); }
+  .flavor-map__row-name { min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+  .flavor-map__row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font: var(--type-meta); color: var(--text-2); }
+  .flavor-map__row-centre { flex: none; width: 44px; height: 44px; }
+  .flavor-meter { display: inline-block; flex: none; width: 48px; height: 6px; overflow: hidden; border-radius: var(--r-pill); background: var(--bg-muted); vertical-align: middle; }
+  .flavor-meter > span { display: block; width: calc(var(--flavor-weight) * 100%); height: 100%; background: var(--accent-brand); }
+  .flavor-map__basis { max-width: var(--reading-max); }
+
+  /* Detail panel for the selected pair. */
+  .flavor-detail { display: grid; align-content: start; gap: var(--s-4); min-width: 0; padding: var(--s-5); scroll-margin-top: calc(var(--topbar-h) + var(--s-3)); }
+  .flavor-detail__head { display: grid; gap: 2px; }
+  .flavor-detail__title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); overflow-wrap: anywhere; }
+  .flavor-detail__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); margin: 0; }
+  .flavor-detail__facts dt { font: var(--type-caption); color: var(--text-2); }
+  .flavor-detail__facts dd { display: flex; align-items: center; gap: var(--s-2); margin: 2px 0 0; font: var(--type-num); color: var(--text); }
+  .flavor-detail__section { display: grid; gap: var(--s-2); min-width: 0; }
+  .flavor-detail__section > p { margin: 0; }
+  .flavor-detail__label { margin: 0; font: var(--type-label); color: var(--text-2); }
+  .flavor-detail__evidence-list { display: grid; gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+  .flavor-detail__evidence p { margin: var(--s-1) 0 0; font: var(--type-body); color: var(--text); overflow-wrap: anywhere; }
+  .flavor-detail__evidence p.recipe-muted { font: var(--type-meta); color: var(--text-2); }
+  .flavor-detail__stock { display: grid; gap: var(--s-1); padding-top: var(--s-2); border-top: 1px solid var(--line-subtle); }
+  .flavor-detail__stock-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2); }
+  .flavor-detail__items { margin: 0; padding-left: var(--s-5); font: var(--type-meta); color: var(--text); }
+  .flavor-possible { color: var(--warning); }
+  .flavor-detail__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .flavor-detail__actions .atlas-btn { min-height: 44px; }
+
+  /* Create with Atlas sheet. */
+  .flavor-create__back { flex: none; margin: -6px 0 0 -8px; }
+  .flavor-create__options { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+  .flavor-create__option {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    width: 100%;
+    min-height: 64px;
+    padding: var(--s-3) var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+  .flavor-create__option:hover { border-color: var(--line-strong); background: var(--bg-subtle); }
+  .flavor-create__option:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+  .flavor-create__option > span:nth-child(2) { display: grid; flex: 1 1 auto; gap: 2px; min-width: 0; }
+  .flavor-create__option > svg { flex: none; color: var(--text-3); }
+  .flavor-create__option-icon, .flavor-draft__icon { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border-radius: var(--r-md); background: var(--accent-soft); color: var(--accent-text); }
+  .flavor-create__option-label { font: var(--type-heading); color: var(--text); }
+  .flavor-create__option-help { font: var(--type-meta); color: var(--text-2); }
+  .flavor-brief { display: grid; gap: var(--s-5); min-width: 0; }
+  .flavor-brief__group { display: grid; gap: var(--s-2); min-width: 0; margin: 0; padding: 0; border: 0; }
+  .flavor-brief__group legend { margin-bottom: var(--s-2); }
+  .flavor-brief__types { flex-wrap: wrap; }
+  .flavor-picker { display: grid; gap: var(--s-2); min-width: 0; }
+  .flavor-picker .flavor-map__results { position: static; max-height: 240px; box-shadow: none; }
+  .flavor-list { margin: 0; padding-left: var(--s-5); font: var(--type-meta); }
+  .flavor-ideas__brief { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+  .flavor-ideas { display: grid; gap: var(--s-4); margin: 0; padding: 0; list-style: none; }
+  .flavor-idea { display: grid; gap: var(--s-3); min-width: 0; padding: var(--s-4); }
+  .flavor-idea__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--s-3); }
+  .flavor-idea__head > div { min-width: 0; }
+  .flavor-idea__head .atlas-btn { min-height: 44px; }
+  .flavor-idea__title { margin: 0; font: var(--type-heading); color: var(--text); overflow-wrap: anywhere; }
+  .flavor-idea__ingredients { display: grid; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+  .flavor-idea__ingredient { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; align-items: center; gap: var(--s-2); font: var(--type-body); }
+  .flavor-idea__role { font: var(--type-caption); color: var(--text-2); }
+  .flavor-idea__name { min-width: 0; overflow-wrap: anywhere; }
+  .flavor-idea__lines { margin: 0; padding-left: var(--s-5); font: var(--type-meta); color: var(--text-2); }
+  .flavor-idea__buy, .flavor-idea__pair { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0; font: var(--type-meta); color: var(--text); }
+  .flavor-idea__buy > svg { width: var(--icon-sm); height: var(--icon-sm); color: var(--warning); }
+  .flavor-idea > p { margin: 0; }
+  .flavor-idea__scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--s-3) var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--line-subtle); }
+  .flavor-idea__group h4 { margin: 0 0 var(--s-1); font: var(--type-label); color: var(--text-2); }
+  .flavor-idea__group dl { display: grid; gap: 2px; margin: 0; }
+  .flavor-idea__group dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: var(--s-2); font: var(--type-meta); }
+  .flavor-idea__group dt { color: var(--text-2); }
+  .flavor-idea__group dd { margin: 0; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
+  .flavor-idea__group > p { margin: var(--s-1) 0 0; font: var(--type-caption); }
+  .flavor-draft { display: grid; gap: var(--s-4); min-width: 0; padding: var(--s-5); }
+  .flavor-draft__head { display: flex; align-items: flex-start; gap: var(--s-3); }
+  .flavor-draft__head > div { flex: 1 1 auto; min-width: 0; }
+  .flavor-draft__title { margin: 0; font: var(--type-section); color: var(--text); overflow-wrap: anywhere; }
+  .flavor-draft__promise { display: flex; align-items: flex-start; gap: var(--s-2); margin: 0; padding: var(--s-3); border-radius: var(--r-md); background: var(--accent-soft); color: var(--accent-text); font: var(--type-body); }
+  .flavor-draft__promise > svg { flex: none; width: var(--icon-md); height: var(--icon-md); }
+  .flavor-draft__rename { display: flex; gap: var(--s-2); min-width: 0; }
+  .flavor-draft__rename .atlas-input { flex: 1 1 auto; min-width: 0; }
+  .flavor-draft__note { font: var(--type-meta); color: var(--text-2); }
+  .flavor-draft__note p { margin: 0; }
+  .flavor-draft__note p + p { margin-top: var(--s-1); }
+  .flavor-draft__money { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flavor-create__approve .atlas-btn { min-height: 44px; }
+  .flavor-sub { display: grid; gap: var(--s-4); min-width: 0; }
+  .flavor-sub__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2); }
+  .flavor-sub__head p { margin: 0; }
+  .flavor-sub__original { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font: var(--type-body); }
+  .flavor-sub__list { display: grid; gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+  .flavor-sub__row { display: grid; gap: var(--s-2); padding: var(--s-4); }
+  .flavor-sub__row p { margin: 0; }
+  .flavor-sub__row .atlas-btn { justify-self: start; min-height: 44px; }
+  .flavor-sub__row-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2); }
+  .flavor-sub__basis { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font: var(--type-meta); color: var(--text-2); }
+  .flavor-sub__loading { display: grid; gap: var(--s-3); }
+
+  @media (max-width: 1023px) {
+    .flavor-map { grid-template-columns: minmax(0, 1fr) minmax(280px, .9fr); }
+    .flavor-map__rows { grid-template-columns: minmax(0, 1fr); }
+  }
+  /* Phones: list first (the ring's equivalent), then the selected pair, then
+     the ring itself. */
+  @media (max-width: 767px) {
+    .flavor-map, .flavor-map--loading { grid-template-columns: minmax(0, 1fr); grid-template-areas: "list" "detail" "stage"; gap: var(--s-4); }
+    .flavor-map--empty { grid-template-areas: "empty"; }
+    .flavor-map__search { max-width: none; }
+    .flavor-detail, .flavor-draft { padding: var(--s-4); }
+    .flavor-map__filters { flex-wrap: nowrap; gap: var(--s-2); margin: 0 calc(-1 * var(--page-gutter)); padding: 0 var(--page-gutter); overflow-x: auto; scrollbar-width: none; }
+    .flavor-map__filters::-webkit-scrollbar { display: none; }
+    .flavor-map__filter-group { flex: none; flex-wrap: nowrap; }
+    .flavor-map__center { width: 36%; padding: var(--s-1); }
+    .flavor-map__node { max-width: 96px; font: var(--type-caption); }
+    .flavor-map__center-name { font: var(--type-label); font-weight: 600; }
+    .flavor-page .page-head__actions [data-flavor-back] { display: none; }
+    .flavor-map__filters .atlas-chip { height: var(--touch); }
+    .flavor-idea__ingredient { grid-template-columns: minmax(0, 1fr) auto; }
+    .flavor-idea__role { grid-column: 1 / -1; }
+    .flavor-draft__rename { flex-wrap: wrap; }
+    .flavor-draft__rename .atlas-btn { flex: 1 1 auto; }
+  }
+  /* Short landscape phones (844 × 390): the ring fits the height and the
+     detail sits beside it. */
+  @media (max-height: 560px) and (min-width: 768px) {
+    .flavor-map { grid-template-columns: minmax(0, 1.3fr) minmax(260px, .8fr); }
+    .flavor-map__ring { width: min(100% - 64px, 420px); }
+    .flavor-map__node { font: var(--type-caption); }
+  }
 }

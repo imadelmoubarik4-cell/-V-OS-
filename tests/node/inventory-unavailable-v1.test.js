@@ -4,7 +4,7 @@ import test from 'node:test';
 
 // S88: Movements and Waste are tabs of the Inventory page, owned by
 // assets/js/atlas-inventory.js (routes #inventory/movements, #inventory/waste).
-const app = readFileSync('apps/web/index.html', 'utf8');
+const app = (readFileSync('apps/web/index.html', 'utf8') + readFileSync('apps/web/assets/js/atlas-app.js', 'utf8'));
 const inventory = readFileSync('apps/web/assets/js/atlas-inventory.js', 'utf8');
 
 test('Movements and Waste navigate to dedicated views inside Inventory', () => {

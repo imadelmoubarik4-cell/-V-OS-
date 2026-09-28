@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import * as agents from "npm:@openai/agents@0.18.0";
-import { z } from "npm:zod@4";
+import { z } from "npm:zod@4.6.5";
 import { createAtlasAiHandler } from "./handler.mjs";
 import { loadConfig } from "./config.mjs";
 
