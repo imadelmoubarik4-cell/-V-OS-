@@ -65,10 +65,17 @@
     return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   }
 
+  // Recipe types come from the database (any manager can set them), so they
+  // are data: escaped in markup, never trusted as HTML (S96 webstore).
+  function typeLabel(t) {
+    const text = String(t ?? '');
+    return text ? text[0].toUpperCase() + text.slice(1) : '';
+  }
+
   function render() {
     const types = ['all', ...new Set(allItems.map(i => i.type))];
     document.getElementById('menu-tabs').innerHTML = types.map(t =>
-      `<button class="tab ${t === activeType ? 'active' : ''}" data-type="${t}">${t === 'all' ? 'All' : t[0].toUpperCase() + t.slice(1)}</button>`
+      `<button class="tab ${t === activeType ? 'active' : ''}" data-type="${escapeHtml(t)}">${escapeHtml(t === 'all' ? 'All' : typeLabel(t))}</button>`
     ).join('');
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => { activeType = btn.dataset.type; render(); });
