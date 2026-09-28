@@ -26,6 +26,8 @@ def _runtime_endpoints(source):
     endpoints.pop("ATLAS_AI_API", None)
     # And the S88 integrations gateway (Settings › Integrations).
     endpoints.pop("INTEGRATIONS_API", None)
+    # And S92 Accounting (administrators).
+    endpoints.pop("ACCOUNTING_API", None)
     # And the S94 Marketing media library gateway.
     endpoints.pop("MARKETING_MEDIA_API", None)
     endpoints["NOTIFICATIONS_API"] = "atlas-notifications"

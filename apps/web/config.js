@@ -23,6 +23,8 @@ window.VABAR_CONFIG = {
   // Settings › Integrations: status and server-side OAuth (connect hop, test, disconnect).
   INTEGRATIONS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-integrations",
   ITEM_MASTER_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-item-master",
+  // Accounting (administrators): invoices, receipts and reimbursements; private files, signed links.
+  ACCOUNTING_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-accounting",
   // Atlas AI: conversations, approvals and voice. Answers "not configured" until the owner switches it on.
   ATLAS_AI_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-ai",
   // Import processing remains fail-closed until its separate activation gate.
@@ -121,6 +123,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/marketing-workspace.js?v=20261004-s94b',
   globalName: 'AtlasMarketingWorkspace',
   dataAttribute: 'atlasMarketingWorkspace',
+}));
+
+// S92 Accounting (administrators only): invoices, receipts, reimbursements
+// and the accountant's monthly export, through the atlas-accounting gateway.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/accounting-workspace.js?v=20261001-s92k',
+  globalName: 'AtlasAccounting',
+  dataAttribute: 'atlasAccounting',
 }));
 
 // S94: the composer's shared platform checks (generated from the publisher's

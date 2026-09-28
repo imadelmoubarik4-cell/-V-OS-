@@ -197,7 +197,7 @@ test('every event a module listens for is actually emitted', () => {
 });
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261005-fi1"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261006-s92r"><\/script>\s*<script src="config\.js"><\/script>/);
   assert.match(indexHtml, /<script src="assets\/js\/atlas-bot\.js[^"]*"><\/script>\s*<script src="assets\/js\/atlas-app\.js\?v=[^"]+"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
@@ -231,10 +231,19 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['data-workspace.js', 'atlas-capture.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
   }
+  // S92 Accounting: dialogs labelled when they open (modal). The shell (the
+  // admin-only Accounting destination and route) and the palette (its group)
+  // changed on both sides of the S92/robot merge and carry the merge key.
+  for (const file of ['modal.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261001-s92e"></script>`), file);
+  }
+  for (const file of ['atlas-shell.js', 'atlas-palette.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261006-s92r"></script>`), file);
+  }
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
   for (const file of ['s38-app-remediation.js', 'shifts-workspace.js',
-    'atlas-venue-clock.js', 'modal.js', 'atlas-stock-truth.js']) {
+    'atlas-venue-clock.js', 'atlas-stock-truth.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
@@ -248,19 +257,14 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['atlas-chrome.js', 'atlas-inventory.js', 'knowledge-workspace.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
   }
-  // Flavor Intelligence (S95): the #recipes/flavor route (atlas-shell.js), the
-  // Recipes "Create with Atlas" entry (recipes.js), the Flavor Map
-  // (flavor-map.js, loaded right after recipes.js), its styles in recipes.css,
-  // and the recipe.draft approval card (atlas-ai.js).
-  for (const file of ['atlas-shell.js', 'recipes.js', 'flavor-map.js', 'atlas-ai.js']) {
+  // Flavor Intelligence (S95) survives Accounting (S92) reconciliation.
+  for (const file of ['recipes.js', 'flavor-map.js', 'atlas-ai.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261005-fi1"></script>`), file);
   }
   assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261005-fi1"></script>\n<script src="assets/js/flavor-map.js?v=20261005-fi1"></script>'), 'flavor-map.js right after recipes.js');
-  // Robot review follow-up: one WebGL probe, context loss, live reduced
-  // motion, idle pause (atlas-bot.js); the offline quick answer keeps the
-  // sparkles icon (atlas-palette.js).
+  // Accounting (S92): the offline quick answer keeps the sparkles icon (atlas-palette.js).
   for (const file of ['atlas-palette.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot2"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261006-s92r"></script>`), file);
   }
   // Robot refinement: one state controller for every AI surface (sleep,
   // wake, listening, thinking, answering, success, attention, error), the

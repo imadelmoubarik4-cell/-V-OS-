@@ -54,6 +54,7 @@ const SELF_AUTHENTICATED = {
   'atlas-integrations': 'resolveActor except the signed OAuth callback',
   'atlas-ai': 'resolveActor, or the service-secret header for maintenance',
   'atlas-inventory-recognition': 'resolveActor',
+  'atlas-accounting': 'resolveActor+active admin (S92/PR#93; verify in code, admin-only)',
   'atlas-marketing-media': 'resolveActor+manager',
   'atlas-marketing-publisher': 'constant-time x-atlas-publisher-secret; no browser surface',
 };
