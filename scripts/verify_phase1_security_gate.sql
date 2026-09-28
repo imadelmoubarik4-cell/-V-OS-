@@ -59,13 +59,18 @@ with public_tables as (
     p.prosecdef as security_definer,
     has_function_privilege('authenticated', p.oid, 'execute') as authenticated_execute,
     has_function_privilege('anon', p.oid, 'execute') as anon_execute,
-    exists (
+    -- S96: adjust_inventory writes the ledger through the private definer
+    -- private.adjust_inventory_apply, so browser roles need (and have) no INSERT
+    -- on the stock ledger; a browser insert path would let managers fabricate rows.
+    not has_table_privilege('authenticated', 'public.inventory_movements', 'INSERT')
+    and not has_table_privilege('anon', 'public.inventory_movements', 'INSERT')
+    and not exists (
       select 1 from pg_policies policy
       where policy.schemaname='public'
         and policy.tablename='inventory_movements'
-        and policy.policyname='active managers add inventory movements'
-        and policy.cmd='INSERT'
-    ) as manager_movement_insert_policy
+        and policy.cmd in ('INSERT','ALL')
+        and policy.roles && array['authenticated','anon','public']::name[]
+    ) as browser_movement_insert_revoked
   from pg_proc p
   join pg_namespace n on n.oid=p.pronamespace
   where n.nspname='public'
@@ -77,7 +82,7 @@ with public_tables as (
     not security_definer
     and authenticated_execute
     and not anon_execute
-    and manager_movement_insert_policy
+    and browser_movement_insert_revoked
     as adjust_inventory_safe
   from adjustment_status
 ), purchase_order_status as (
