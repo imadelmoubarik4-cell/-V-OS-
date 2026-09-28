@@ -220,6 +220,39 @@
     return root.AtlasData?.items?.().find((item) => String(item.id) === String(itemId)) || null;
   }
 
+  // Managed storage locations (S97). A count is grouped/scoped by an item's
+  // PRIMARY location only, so an item stored in several places is still counted
+  // exactly once (one canonical quantity) — never double-counted.
+  function itemLocationMap() {
+    const map = new Map();
+    (root.AtlasData?.itemLocations?.() || []).forEach((row) => {
+      const key = String(row.inventory_item_id);
+      const list = map.get(key) || [];
+      list.push(row);
+      map.set(key, list);
+    });
+    return map;
+  }
+  function primaryLocationId(itemId, map) {
+    const rows = (map || itemLocationMap()).get(String(itemId)) || [];
+    const primary = rows.find((row) => row.is_primary) || rows[0];
+    return primary ? String(primary.location_id) : null;
+  }
+  function locationName(id) {
+    const loc = (root.AtlasData?.locations?.() || []).find((entry) => String(entry.id) === String(id));
+    return loc ? loc.name : '';
+  }
+  function locationCode(id) {
+    const loc = (root.AtlasData?.locations?.() || []).find((entry) => String(entry.id) === String(id));
+    return loc ? loc.code : '';
+  }
+  // The location text for a count line: the item's primary managed location
+  // code, falling back to the preserved legacy bin_location note.
+  function lineLocationText(line) {
+    const code = locationCode(primaryLocationId(line.inventory_item_id));
+    return code || line.bin_location || '';
+  }
+
   function scopeLabel(entry) {
     if (!entry) return '';
     if (entry.scope_type === 'all') return 'Full count';
@@ -418,7 +451,15 @@
       catalog.forEach((item) => { const key = String(item[field] || '').trim(); if (key) map.set(key, (map.get(key) || 0) + 1); });
       return [...map].sort((a, b) => a[0].localeCompare(b[0]));
     };
-    const locations = groups('bin_location');
+    // Areas are managed storage locations, counted by each item's PRIMARY
+    // location so nothing is counted twice. Resolved client-side to a focus set.
+    const locMap = itemLocationMap();
+    const primaryCounts = new Map();
+    catalog.forEach((item) => { const lid = primaryLocationId(item.id, locMap); if (lid) primaryCounts.set(lid, (primaryCounts.get(lid) || 0) + 1); });
+    const locations = (root.AtlasData?.locations?.() || [])
+      .filter((loc) => loc.active !== false && primaryCounts.get(String(loc.id)))
+      .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0) || String(a.code || '').localeCompare(String(b.code || '')))
+      .map((loc) => [String(loc.id), loc.name, primaryCounts.get(String(loc.id))]);
     const categories = groups('category');
     const option = (type, value, label, count) => `<label class="sc-area"><input type="radio" class="atlas-radio" name="scope" value="${esc(type)}::${esc(value)}"${type === 'all' ? ' checked' : ''}><span class="sc-area__body"><span class="sc-area__title">${esc(label)}</span><span class="sc-area__meta">${count} ${count === 1 ? 'item' : 'items'}</span></span></label>`;
     const host = document.createElement('div');
@@ -430,7 +471,7 @@
       <form class="atlas-sheet__body" id="sc-start-form">
         <fieldset class="sc-areas"><legend class="atlas-form-group__title">What are you counting?</legend>
         ${option('all', '', itemIds?.length ? `${itemIds.length} selected items (full count list)` : 'Full count', catalog.length)}
-        ${locations.length ? `<p class="sc-areas__label">Areas</p>${locations.map(([value, count]) => option('location', value, value, count)).join('')}` : ''}
+        ${locations.length ? `<p class="sc-areas__label">Areas</p>${locations.map(([value, label, count]) => option('ploc', value, label, count)).join('')}` : ''}
         ${categories.length ? `<p class="sc-areas__label">Categories</p>${categories.map(([value, count]) => option('category', value, value, count)).join('')}` : ''}
         </fieldset>
         <div class="atlas-field"><label for="sc-start-title-input">Name <span class="optional">(optional)</span></label><input class="atlas-input" id="sc-start-title-input" name="title" maxlength="200" placeholder="e.g. Back bar count"></div>
@@ -448,12 +489,23 @@
       const submit = host.querySelector('[data-sc-start-submit]');
       submit.disabled = true;
       submit.classList.add('is-loading');
-      const title = form.elements.title.value.trim() || (type === 'all' ? 'Full count' : `${value} count`);
+      // A managed-location area ('ploc') is a client-side scope: start a full
+      // count on the server, then focus it on the items whose PRIMARY location
+      // is the chosen one, so each item is counted once.
+      const isPrimaryLocation = type === 'ploc';
+      const serverType = isPrimaryLocation ? 'all' : type;
+      const areaLabel = isPrimaryLocation ? locationName(value) : value;
+      const title = form.elements.title.value.trim() || (serverType === 'all' && !isPrimaryLocation ? 'Full count' : `${areaLabel} count`);
       try {
-        const payload = await mutate('start', { title, scope_type: type, scope_value: type === 'all' ? null : value, notes: null, client_request_id: uuid() });
+        const payload = await mutate('start', { title, scope_type: serverType, scope_value: serverType === 'all' ? null : value, notes: null, client_request_id: uuid() });
         root.AtlasModal.close(host);
         const id = payload.detail?.session?.id || payload.result?.session?.id;
-        state.focusIds = itemIds?.length ? new Set(itemIds.map(String)) : null;
+        if (isPrimaryLocation) {
+          const ids = catalog.filter((item) => primaryLocationId(item.id, locMap) === value).map((item) => String(item.id));
+          state.focusIds = ids.length ? new Set(ids) : null;
+        } else {
+          state.focusIds = itemIds?.length ? new Set(itemIds.map(String)) : null;
+        }
         if (id) shell.navigate(`#inventory/counts/${encodeURIComponent(id)}`);
       } catch (error) {
         submit.disabled = false;
@@ -593,7 +645,7 @@
     const value = line.line_status === 'counted' ? (line.observed_input_quantity ?? line.observed_quantity) : '';
     const upNext = [];
     for (let offset = 1; offset < list.length && upNext.length < 3; offset += 1) upNext.push(list[(state.lineIndex + offset) % list.length]);
-    const position = `${line.bin_location ? `${line.bin_location} · ` : ''}item ${state.lineIndex + 1} of ${list.length}`;
+    const position = `${lineLocationText(line) ? `${lineLocationText(line)} · ` : ''}item ${state.lineIndex + 1} of ${list.length}`;
     return `<div class="sc-flow">${flowHead()}
       <section class="atlas-card sc-card" aria-labelledby="sc-item-name" data-count-line="${esc(line.id)}">
         <p class="sc-card__where">${esc(position)}</p>
@@ -605,7 +657,7 @@
         <div data-count-alert></div>
       </section>
       ${upNext.length ? `<section class="sc-upnext" aria-labelledby="sc-upnext-title"><div class="atlas-section__head"><h2 class="atlas-section__title" id="sc-upnext-title">Up next</h2><button type="button" class="atlas-link atlas-section__link" data-count-show-all>Show all items</button></div>
-        <ul class="atlas-card atlas-list">${upNext.map((entry) => `<li class="atlas-row atlas-row--link"><button type="button" class="sc-row-btn" data-count-goto="${esc(entry.id)}"><span class="atlas-row__body"><span class="atlas-row__title">${esc(entry.item_name)}</span><span class="atlas-row__meta">${esc([entry.bin_location, entry.line_status === 'counted' ? `counted ${qty(entry.observed_input_quantity ?? entry.observed_quantity)}` : lastVerifiedText(entry).replace('Last verified', 'last')].filter(Boolean).join(' · '))}</span></span><span class="atlas-row__end">${linePill(entry)}</span></button></li>`).join('')}</ul></section>` : ''}
+        <ul class="atlas-card atlas-list">${upNext.map((entry) => `<li class="atlas-row atlas-row--link"><button type="button" class="sc-row-btn" data-count-goto="${esc(entry.id)}"><span class="atlas-row__body"><span class="atlas-row__title">${esc(entry.item_name)}</span><span class="atlas-row__meta">${esc([lineLocationText(entry), entry.line_status === 'counted' ? `counted ${qty(entry.observed_input_quantity ?? entry.observed_quantity)}` : lastVerifiedText(entry).replace('Last verified', 'last')].filter(Boolean).join(' · '))}</span></span><span class="atlas-row__end">${linePill(entry)}</span></button></li>`).join('')}</ul></section>` : ''}
       <p class="sc-caption">Stock changes only after a manager verifies this count.</p>
       <footer class="sc-footer" data-atlas-sticky-actions>
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg sc-footer__scan" data-count-scan aria-label="Scan item">${icon('scan-line')}</button>
@@ -617,11 +669,11 @@
   function allItemsHtml() {
     const query = state.allQuery.trim().toLowerCase();
     const list = orderedLines().map((line, index) => ({ line, index })).filter(({ line }) => (state.allFilter === 'all' || line.line_status === state.allFilter)
-      && (!query || [line.item_name, line.category, line.bin_location, line.sku, line.barcode].some((value) => String(value || '').toLowerCase().includes(query))));
+      && (!query || [line.item_name, line.category, line.bin_location, lineLocationText(line), line.sku, line.barcode].some((value) => String(value || '').toLowerCase().includes(query))));
     return `<div class="sc-flow">${flowHead()}
       <div class="atlas-toolbar sc-all__toolbar"><label class="atlas-search">${icon('search')}<input class="atlas-input" type="search" data-count-all-search placeholder="Search this count" aria-label="Search this count" value="${esc(state.allQuery)}"></label>
       <div class="atlas-segmented" role="group" aria-label="Show">${[['pending', 'Not counted'], ['counted', 'Counted'], ['all', 'All']].map(([value, label]) => `<button type="button" aria-pressed="${state.allFilter === value}" data-count-all-filter="${value}">${label}</button>`).join('')}</div></div>
-      <ul class="atlas-card atlas-list sc-all">${list.map(({ line, index }) => `<li class="atlas-row atlas-row--link"><button type="button" class="sc-row-btn" data-count-goto-index="${index}"><span class="atlas-row__body"><span class="atlas-row__title">${esc(line.item_name)}</span><span class="atlas-row__meta">${esc([line.bin_location, line.category].filter(Boolean).join(' · '))}</span></span><span class="atlas-row__end">${line.line_status === 'counted' ? `<span class="num">${qty(line.observed_input_quantity ?? line.observed_quantity)}</span>` : ''}${linePill(line)}</span></button></li>`).join('') || '<li class="sc-all__empty">No items match.</li>'}</ul>
+      <ul class="atlas-card atlas-list sc-all">${list.map(({ line, index }) => `<li class="atlas-row atlas-row--link"><button type="button" class="sc-row-btn" data-count-goto-index="${index}"><span class="atlas-row__body"><span class="atlas-row__title">${esc(line.item_name)}</span><span class="atlas-row__meta">${esc([lineLocationText(line), line.category].filter(Boolean).join(' · '))}</span></span><span class="atlas-row__end">${line.line_status === 'counted' ? `<span class="num">${qty(line.observed_input_quantity ?? line.observed_quantity)}</span>` : ''}${linePill(line)}</span></button></li>`).join('') || '<li class="sc-all__empty">No items match.</li>'}</ul>
       <div class="sc-footer sc-footer--plain"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-count-back-card>Back to counting</button></div></div>`;
   }
 
@@ -631,7 +683,7 @@
     const list = orderedLines();
     return `<div class="sc-flow sc-flow--wide">${flowHead()}
       <div class="atlas-table-wrap"><table class="atlas-table atlas-table--compact sc-list-table"><thead><tr><th>Item</th><th>Location</th><th class="is-num">Last verified</th><th class="is-num">Counted</th><th>Status</th></tr></thead>
-      <tbody>${list.map((line) => { const item = catalogItem(line.inventory_item_id); return `<tr data-count-line="${esc(line.id)}"><td><span class="cell-primary">${esc(line.item_name)}</span><span class="cell-sub">${esc(line.inventory_unit || 'units')}</span></td><td>${esc(line.bin_location || '—')}</td><td class="is-num">${num(item?.verified_quantity) !== null ? qty(item.verified_quantity) : '—'}</td><td class="is-num"><input class="atlas-input sc-list-input num" data-count-list-qty="${esc(line.id)}" inputmode="decimal" aria-label="Counted ${esc(line.item_name)}" value="${esc(line.line_status === 'counted' ? (line.observed_input_quantity ?? line.observed_quantity) : '')}" placeholder="—"></td><td data-count-list-status>${linePill(line)}</td></tr>`; }).join('')}</tbody></table></div>
+      <tbody>${list.map((line) => { const item = catalogItem(line.inventory_item_id); return `<tr data-count-line="${esc(line.id)}"><td><span class="cell-primary">${esc(line.item_name)}</span><span class="cell-sub">${esc(line.inventory_unit || 'units')}</span></td><td>${esc(lineLocationText(line) || '—')}</td><td class="is-num">${num(item?.verified_quantity) !== null ? qty(item.verified_quantity) : '—'}</td><td class="is-num"><input class="atlas-input sc-list-input num" data-count-list-qty="${esc(line.id)}" inputmode="decimal" aria-label="Counted ${esc(line.item_name)}" value="${esc(line.line_status === 'counted' ? (line.observed_input_quantity ?? line.observed_quantity) : '')}" placeholder="—"></td><td data-count-list-status>${linePill(line)}</td></tr>`; }).join('')}</tbody></table></div>
       <div class="sc-footer sc-footer--plain"><span class="sc-caption">Changes save as you move to the next row.</span><button type="button" class="atlas-btn atlas-btn--primary" data-count-finish>Finish count</button></div></div>`;
   }
 
@@ -646,7 +698,7 @@
       <section class="atlas-card atlas-card--pad sc-finish" aria-labelledby="sc-finish-title">
         <h2 class="sc-finish__title" id="sc-finish-title">${pending.length ? 'Almost done' : 'Ready to submit'}</h2>
         <dl class="sc-finish__stats"><div><dt>Counted</dt><dd class="num">${counted.length}</dd></div><div><dt>Skipped</dt><dd class="num">${skipped.length}</dd></div><div><dt>Not counted</dt><dd class="num">${pending.length}</dd></div></dl>
-        ${pending.length ? `<h3 class="sc-finish__sub">Not counted yet</h3><ul class="atlas-list">${pending.slice(0, 12).map((line) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${esc(line.item_name)}</p><p class="atlas-row__meta">${esc(line.bin_location || line.category || '')}</p></div><div class="atlas-row__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-count-goto="${esc(line.id)}">Count now</button></div></li>`).join('')}</ul>` : ''}
+        ${pending.length ? `<h3 class="sc-finish__sub">Not counted yet</h3><ul class="atlas-list">${pending.slice(0, 12).map((line) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${esc(line.item_name)}</p><p class="atlas-row__meta">${esc(lineLocationText(line) || line.category || '')}</p></div><div class="atlas-row__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-count-goto="${esc(line.id)}">Count now</button></div></li>`).join('')}</ul>` : ''}
         ${skipped.length ? `<h3 class="sc-finish__sub">Skipped</h3><ul class="atlas-list">${skipped.map((line) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${esc(line.item_name)}</p><p class="atlas-row__meta">${esc(line.skipped_reason || '')}</p></div><div class="atlas-row__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-count-goto="${esc(line.id)}">Count now</button></div></li>`).join('')}</ul>` : ''}
         ${big.length ? `<h3 class="sc-finish__sub">Big differences</h3><p class="sc-hint">More than ${qty(tolerancePercent())}% away from the last verified count.</p><ul class="atlas-list">${big.map((line) => { const change = variance(line); return `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${esc(line.item_name)}</p><p class="atlas-row__meta">Counted ${qty(line.observed_quantity)} · ${change > 0 ? '+' : ''}${qty(change)} ${esc(line.inventory_unit || '')}</p></div><div class="atlas-row__end"><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-count-goto="${esc(line.id)}">Recount</button></div></li>`; }).join('')}</ul>` : ''}
         <div data-count-alert></div>
@@ -682,8 +734,8 @@
       ${publication?.status === 'blocked' ? `<div class="atlas-alert atlas-alert--warning">${icon('triangle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">The stock update is blocked.</p><p class="atlas-alert__body">${esc(publication.blocked_reason || 'Review the count first.')}</p></div></div>` : ''}
       ${s.publication_status === 'published' ? `<div class="atlas-alert atlas-alert--positive">${icon('circle-check')}<div class="atlas-alert__content"><p class="atlas-alert__body">This count updated stock. The count and the earlier quantities are kept in the history.</p></div></div>` : ''}
       <div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table"><thead><tr><th>Item</th><th class="is-num">Last verified</th><th class="is-num">Counted</th><th class="is-num">Difference</th><th>Status</th></tr></thead>
-      <tbody>${list.map((line) => { const item = catalogItem(line.inventory_item_id); const change = variance(line); return `<tr${bigVariance(line) ? ' class="sc-row--flag"' : ''}><td><span class="cell-primary">${esc(line.item_name)}</span><span class="cell-sub">${esc([line.bin_location, line.counted_by_label].filter(Boolean).join(' · '))}</span></td><td class="is-num">${num(item?.verified_quantity) !== null ? qty(item.verified_quantity) : '—'}</td><td class="is-num">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}</td><td class="is-num">${line.line_status === 'counted' ? esc(varianceText(change)) : '—'}</td><td>${linePill(line)}</td></tr>`; }).join('')}</tbody></table></div>
-      <ul class="atlas-table-list">${list.map((line) => { const change = variance(line); return `<li><div class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(line.item_name)}</div><div class="atlas-table-list__meta">${esc(line.bin_location || '')}${line.line_status === 'counted' ? ` · ${esc(varianceText(change))}` : ''}</div></div><div class="atlas-table-list__value">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}<br>${linePill(line)}</div></div></li>`; }).join('')}</ul>
+      <tbody>${list.map((line) => { const item = catalogItem(line.inventory_item_id); const change = variance(line); return `<tr${bigVariance(line) ? ' class="sc-row--flag"' : ''}><td><span class="cell-primary">${esc(line.item_name)}</span><span class="cell-sub">${esc([lineLocationText(line), line.counted_by_label].filter(Boolean).join(' · '))}</span></td><td class="is-num">${num(item?.verified_quantity) !== null ? qty(item.verified_quantity) : '—'}</td><td class="is-num">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}</td><td class="is-num">${line.line_status === 'counted' ? esc(varianceText(change)) : '—'}</td><td>${linePill(line)}</td></tr>`; }).join('')}</tbody></table></div>
+      <ul class="atlas-table-list">${list.map((line) => { const change = variance(line); return `<li><div class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(line.item_name)}</div><div class="atlas-table-list__meta">${esc(lineLocationText(line) || '')}${line.line_status === 'counted' ? ` · ${esc(varianceText(change))}` : ''}</div></div><div class="atlas-table-list__value">${line.line_status === 'counted' ? qty(line.observed_quantity) : '—'}<br>${linePill(line)}</div></div></li>`; }).join('')}</ul>
       <div data-count-alert></div>
       ${actions.length ? `<footer class="sc-footer sc-footer--plain">${actions.join('')}</footer>` : ''}
     </div>`;

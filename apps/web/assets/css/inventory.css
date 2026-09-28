@@ -82,6 +82,54 @@
   .inv-detail__facts { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* ---------- Storage locations (S97) ---------- */
+/* A location is a place, never a quantity. The code chip is a compact, monospace
+ * badge used in the list, the detail sheet and the picker. */
+.inv-loc-chip {
+  display: inline-flex; align-items: center; padding: 2px var(--s-2);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-2);
+  white-space: nowrap;
+}
+.inv-detail__section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); width: 100%; }
+.inv-loc-chips { gap: var(--s-2); }
+.inv-loc-chip--full { display: inline-flex; align-items: center; gap: var(--s-2); }
+.inv-loc-chip--full.is-primary { border-color: var(--accent); color: var(--text); }
+.inv-loc-chip__code { font-family: var(--font-mono); font-size: var(--fs-caption); }
+.inv-loc-chip__badge {
+  margin-left: var(--s-1); padding: 0 var(--s-1); border-radius: var(--r-sm);
+  background: var(--accent-soft); color: var(--accent);
+  font: var(--type-meta); text-transform: uppercase; letter-spacing: 0.04em;
+}
+/* Manage Locations page */
+.inv-loc-intro { margin: var(--s-4) 0 var(--s-3); max-width: 64ch; }
+.inv-loc-list { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.inv-loc-row {
+  display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap;
+  padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface);
+}
+.inv-loc-row.is-archived { opacity: 0.72; }
+.inv-loc-row__main { display: flex; align-items: center; gap: var(--s-3); flex: 1 1 260px; min-width: 0; }
+.inv-loc-row__text { min-width: 0; }
+.inv-loc-row__name { margin: 0; font: var(--type-body); color: var(--text); }
+.inv-loc-row__desc { margin: var(--s-1) 0 0; font: var(--type-meta); color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
+.inv-loc-row__meta { flex: 0 0 auto; }
+.inv-loc-row__actions { display: flex; align-items: center; gap: var(--s-1); flex: 0 0 auto; margin-left: auto; }
+.inv-loc-row__delete { color: var(--danger); }
+.inv-loc-archived { margin-top: var(--s-4); }
+.inv-loc-archived > summary { cursor: pointer; font: var(--type-meta); color: var(--text-2); padding: var(--s-2) 0; }
+/* Item-assignment picker */
+.inv-loc-picker { display: grid; gap: var(--s-1); margin-top: var(--s-3); }
+.inv-loc-pick { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); }
+.inv-loc-pick.is-on { border-color: var(--accent); }
+.inv-loc-pick__check { display: flex; align-items: center; gap: var(--s-2); flex: 1 1 auto; min-width: 0; cursor: pointer; }
+.inv-loc-pick__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.inv-loc-pick__primary { flex: 0 0 auto; }
+.inv-loc-pick__primary.is-primary { color: var(--accent); }
+@media (max-width: 767px) {
+  .inv-loc-row__actions { margin-left: 0; width: 100%; flex-wrap: wrap; }
+}
+
 /* ---------- Duplicate candidates (create-item 409, draft check) ---------- */
 .inv-dup { display: grid; gap: var(--s-3); padding-top: var(--s-4); border-top: 1px solid var(--line); }
 .inv-dup__title { margin: 0; font: var(--type-heading); color: var(--text); }

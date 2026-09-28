@@ -98,6 +98,51 @@
   function suppliers() { return root.AtlasData?.suppliers?.() || []; }
   function recipes() { return root.AtlasData?.recipes?.() || []; }
   function movements() { return root.AtlasData?.movements?.() || []; }
+
+  // Storage Locations (S97). A location is a place, never a quantity: none of
+  // these read or write stock. Read is for every active staff member; the write
+  // flows below refuse for non-managers in the UI and, authoritatively, in the
+  // database (the RPCs raise 42501). '__none__' is the "No location assigned"
+  // filter sentinel, never a real id.
+  const NO_LOCATION = '__none__';
+  function allLocations() { return root.AtlasData?.locations?.() || []; }
+  function itemLocationRows() { return root.AtlasData?.itemLocations?.() || []; }
+  function locationById(id) { return allLocations().find((loc) => String(loc.id) === String(id)) || null; }
+  function locationOrder(a, b) {
+    return (num(a?.sort_order) ?? 0) - (num(b?.sort_order) ?? 0) || String(a?.code || '').localeCompare(String(b?.code || ''), 'en', { sensitivity: 'base' });
+  }
+  function activeLocations() { return allLocations().filter((loc) => loc.active !== false).sort(locationOrder); }
+  // Assignments for one item: primary first, then by location order. Rows whose
+  // location no longer exists are dropped so the UI never shows a dangling chip.
+  function locationsForItem(itemId) {
+    return itemLocationRows()
+      .filter((row) => String(row.inventory_item_id) === String(itemId))
+      .map((row) => ({ ...row, location: locationById(row.location_id) }))
+      .filter((row) => row.location)
+      .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || locationOrder(a.location, b.location));
+  }
+  function primaryLocationForItem(itemId) {
+    const rows = locationsForItem(itemId);
+    return (rows.find((row) => row.is_primary) || rows[0])?.location || null;
+  }
+  function locationFilterLabel(value) {
+    if (value === NO_LOCATION) return 'No location';
+    return locationById(value)?.name || 'Location';
+  }
+  function locationItemCount(id) {
+    const loc = locationById(id);
+    if (loc && typeof loc.item_count === 'number') return loc.item_count;
+    return itemLocationRows().filter((row) => String(row.location_id) === String(id)).length;
+  }
+  // The compact location for a list row: the primary location's code as a chip,
+  // with "+N" when the item is stored in more than one place.
+  function locationCellHtml(item) {
+    const rows = locationsForItem(item.id);
+    if (!rows.length) return '<span class="inv__muted">—</span>';
+    const primary = rows.find((row) => row.is_primary) || rows[0];
+    const extra = rows.length - 1;
+    return `<span class="inv-loc-chip" title="${esc(rows.map((row) => row.location.name).join(', '))}">${esc(primary.location.code)}</span>${extra > 0 ? `<span class="inv__muted"> +${extra}</span>` : ''}`;
+  }
   function dataStatus() { return root.AtlasData?.status?.() || { items: 'ok' }; }
   // One shell input's load health ('loading' | 'ok' | 'failed').
   function inputHealth(key) { return root.AtlasData?.health?.()?.[key] || 'ok'; }
@@ -254,6 +299,7 @@
     if (state.view === 'movements') return 'movements';
     if (state.view === 'waste') return 'waste';
     if (state.params.section === 'stock-count') return 'counts';
+    if (state.params.section === 'locations') return 'locations';
     return 'items';
   }
 
@@ -283,24 +329,26 @@
 
   function tabsHtml(tab) {
     const tabs = [['items', 'Items', '#inventory'], ['counts', 'Counts', '#inventory/counts']];
-    if (isManager()) tabs.push(['movements', 'Movements', '#inventory/movements'], ['waste', 'Waste', '#inventory/waste']);
+    if (isManager()) tabs.push(['locations', 'Locations', '#inventory/locations'], ['movements', 'Movements', '#inventory/movements'], ['waste', 'Waste', '#inventory/waste']);
     return `<nav class="atlas-tabs" aria-label="Inventory sections">${tabs.map(([key, label, href]) => `<a href="${href}"${key === tab ? ' aria-current="page"' : ''} data-inv-tab="${key}">${label}</a>`).join('')}</nav>`;
   }
 
   function render() {
     const element = rootEl();
     const tab = activeTab();
-    if ((tab === 'movements' || tab === 'waste') && !isManager()) {
-      element.innerHTML = `${shell.pageHead({ title: 'Inventory', sub: subtitle() })}${tabsHtml(tab)}<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon">${icon('lock')}</div><h3 class="atlas-empty__title">${tab === 'waste' ? 'Waste' : 'Movements'} is for managers</h3><p class="atlas-empty__text">Ask an administrator for access.</p><a class="atlas-btn atlas-btn--secondary" href="#inventory">Go to items</a></div>`;
+    if ((tab === 'movements' || tab === 'waste' || tab === 'locations') && !isManager()) {
+      const label = tab === 'waste' ? 'Waste' : tab === 'locations' ? 'Storage locations' : 'Movements';
+      element.innerHTML = `${shell.pageHead({ title: 'Inventory', sub: subtitle() })}${tabsHtml(tab)}<div class="atlas-empty atlas-empty--page"><div class="atlas-empty__icon">${icon('lock')}</div><h3 class="atlas-empty__title">${label} is for managers</h3><p class="atlas-empty__text">Ask an administrator for access.</p><a class="atlas-btn atlas-btn--secondary" href="#inventory">Go to items</a></div>`;
       lucide();
       return;
     }
-    const head = shell.pageHead({ title: 'Inventory', sub: subtitle(), actions: tab === 'items' || tab === 'counts' ? headActions(tab) : (tab === 'waste' && inputHealth('movements') !== 'failed' ? [{ label: 'Record waste', icon: 'trash-2', variant: 'primary', attrs: { 'data-inv-waste': '' } }] : []) });
+    const head = shell.pageHead({ title: 'Inventory', sub: subtitle(), actions: tab === 'items' || tab === 'counts' ? headActions(tab) : (tab === 'locations' ? [{ label: 'New location', icon: 'plus', variant: 'primary', attrs: { 'data-inv-location-new': '' } }] : (tab === 'waste' && inputHealth('movements') !== 'failed' ? [{ label: 'Record waste', icon: 'trash-2', variant: 'primary', attrs: { 'data-inv-waste': '' } }] : [])) });
     element.innerHTML = `${head}${tabsHtml(tab)}<div class="inv__body" data-inv-body></div>`;
     const body = element.querySelector('[data-inv-body]');
     if (tab === 'counts') renderCounts(body);
     else if (tab === 'movements') renderMovements(body);
     else if (tab === 'waste') renderWaste(body);
+    else if (tab === 'locations') renderLocations(body);
     else renderItems(body);
     state.rendered = true;
     lucide();
@@ -409,7 +457,11 @@
       if (state.category && inventoryGroup(item) !== state.category) return false;
       if (state.category && state.subcategory && inventorySubcategory(item) !== state.subcategory) return false;
       if (state.supplier && String(item.supplier || '') !== state.supplier) return false;
-      if (state.location && String(item.bin_location || '') !== state.location) return false;
+      if (state.location) {
+        const assigned = locationsForItem(item.id).map((row) => String(row.location_id));
+        if (state.location === NO_LOCATION) { if (assigned.length) return false; }
+        else if (!assigned.includes(state.location)) return false;
+      }
       if (state.status) {
         const status = stockStatus(item).key;
         if (state.status === 'below-par' && truth()?.stockStatus?.(item) !== 'below_par') return false;
@@ -417,7 +469,8 @@
         if (state.status === 'out' && !['out', 'almost_out'].includes(status)) return false;
       }
       if (!query) return true;
-      return [item.name, item.category, item.subcategory, item.supplier, item.sku, item.barcode, item.brand, item.bin_location, item.supplier_product_reference]
+      const locationText = locationsForItem(item.id).map((row) => `${row.location.code} ${row.location.name}`).join(' ');
+      return [item.name, item.category, item.subcategory, item.supplier, item.sku, item.barcode, item.brand, item.bin_location, item.supplier_product_reference, locationText]
         .some((value) => String(value || '').toLowerCase().includes(query));
     });
   }
@@ -473,7 +526,7 @@
     chips.push(state.category ? chip(groupLabel(state.category), { active: true, clear: 'category' }) : chip('Category', { menu: 'category' }));
     if (state.category) chips.push(state.subcategory ? chip(state.subcategory, { active: true, clear: 'subcategory' }) : chip('Type', { menu: 'subcategory' }));
     if (isManager()) chips.push(state.supplier ? chip(state.supplier, { active: true, clear: 'supplier' }) : chip('Supplier', { menu: 'supplier' }));
-    if (state.location) chips.push(chip(state.location, { active: true, clear: 'location' }));
+    if (allLocations().length) chips.push(state.location ? chip(locationFilterLabel(state.location), { active: true, clear: 'location' }) : chip('Location', { menu: 'location' }));
     if (state.activity !== 'active') chips.push(chip(state.activity === 'inactive' ? 'Inactive items' : 'All items', { active: true, clear: 'activity' }));
     chips.push(chip('More filters', { menu: 'more', dashed: true, iconName: 'list-filter' }));
     const menus = [
@@ -481,14 +534,16 @@
       menuHtml('category', groupCounts().map(([value, label, n]) => ['category', value, `${label} · ${n}`])),
       state.category ? menuHtml('subcategory', subcategoryCounts(state.category).map(([value, n]) => ['subcategory', value, `${value} · ${n}`])) : '',
       isManager() ? menuHtml('supplier', distinct('supplier').map(([value, n]) => ['supplier', value, `${value} · ${n}`])) : '',
+      allLocations().length ? menuHtml('location', [
+        ...activeLocations().map((loc) => ['location', String(loc.id), `${loc.code} · ${loc.name}${locationItemCount(loc.id) ? ` · ${locationItemCount(loc.id)}` : ''}`]),
+        '-', ['location', NO_LOCATION, 'No location assigned']
+      ]) : '',
       menuHtml('more', [
-        ...distinct('bin_location').slice(0, 12).map(([value]) => ['location', value, `Location: ${value}`]),
-        ...(distinct('bin_location').length ? ['-'] : []),
         ['activity', 'active', 'Active items'], ['activity', 'inactive', 'Inactive items'], ['activity', 'all', 'All items']
       ]),
       menuHtml('tools', [
         ['tool', 'identify', 'Identify item'],
-        ...(isManager() ? [['tool', 'scan-product', 'Add product by camera'], ['tool', 'export', 'Download as CSV']] : [])
+        ...(isManager() ? [['tool', 'scan-product', 'Add product by camera'], ['tool', 'manage-locations', 'Manage storage locations'], ['tool', 'export', 'Download as CSV']] : [])
       ])
     ].join('');
     return `<div class="inv__filters"><label class="atlas-search inv__search">${icon('search')}<input class="atlas-input" type="search" data-inv-search placeholder="Search items, suppliers or codes" aria-label="Search items, suppliers or codes" value="${esc(state.query)}" autocomplete="off"></label>
@@ -530,6 +585,7 @@
       <td class="inv-col--name"><a class="inv__item-link" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}" title="${esc(item.name)}"><span class="cell-primary cell-clip">${esc(item.name)}</span><span class="cell-sub cell-clip">${esc([unitWord(item), packLine(item)].filter(Boolean).join(' · '))}${known && item.stock_recount_due ? ' · recount due' : ''}</span></a></td>
       <td class="inv-col--text" data-priority="3"><span class="cell-clip" title="${esc(item.category || '')}">${esc(item.category || '—')}</span></td>
       ${manager ? `<td class="inv-col--text" data-priority="2"><span class="cell-clip" title="${esc(item.supplier || '')}">${esc(item.supplier || '—')}</span></td>` : ''}
+      <td class="inv-col--text" data-priority="3">${locationCellHtml(item)}</td>
       <td class="is-num">${onHand}</td>
       <td class="is-num" data-priority="2">${num(item.par_level) ? qty(item.par_level) : '—'}</td>
       <td class="inv-col--status">${statusPill(status)}</td>
@@ -543,7 +599,8 @@
     const status = stockStatus(item);
     const known = truth()?.known(item);
     const par = num(item.par_level);
-    const meta = [item.category, isManager() ? item.supplier : null, item.bin_location].filter(Boolean).join(' · ') || unitWord(item);
+    const primaryLoc = primaryLocationForItem(item.id);
+    const meta = [item.category, isManager() ? item.supplier : null, primaryLoc ? primaryLoc.code : null].filter(Boolean).join(' · ') || unitWord(item);
     const value = known ? `<span class="num">${qty(item.quantity)}</span>${par ? `<span class="inv__par"> / ${qty(par)}</span>` : ''}` : '<span class="inv__muted">—</span>';
     return `<li><a class="atlas-table-list__row" href="#inventory/item/${encodeURIComponent(item.id)}" data-inv-open="${esc(item.id)}"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(item.name)}</div><div class="atlas-table-list__meta">${esc(meta)}</div></div><div class="atlas-table-list__value">${value}${status.label && status.key !== 'ok' ? `<br>${statusPill(status)}` : ''}</div></a></li>`;
   }
@@ -593,6 +650,7 @@
         ${thSort('name', 'Item', ' class="inv-col--name"')}
         <th class="inv-col--category" data-priority="3">Category</th>
         ${manager ? '<th class="inv-col--supplier" data-priority="2">Supplier</th>' : ''}
+        <th class="inv-col--text" data-priority="3">Location</th>
         ${thSort('onhand', 'On hand', ' class="is-num inv-col--qty"')}
         ${thSort('par', 'Par', ' class="is-num inv-col--par" data-priority="2"')}
         ${thSort('status', 'Status', ' class="inv-col--status"')}
@@ -636,6 +694,7 @@
   function runTool(value) {
     if (value === 'identify') openIdentify();
     else if (value === 'scan-product') openAddProductByCamera();
+    else if (value === 'manage-locations') shell.navigate('#inventory/locations');
     else if (value === 'export') exportCsv();
   }
 
@@ -749,13 +808,22 @@
     const facts = [
       ['On hand', known ? `${qty(item.quantity)} ${unitWord(item, item.quantity)}` : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? 'Unknown (stock figures incomplete)' : 'Not counted'],
       ['Par', num(item.par_level) ? `${qty(item.par_level)} ${unitWord(item, item.par_level)}` : 'Not set'],
-      ['Location', item.bin_location || 'Not set'],
       manager ? ['Supplier', item.supplier || 'Not set'] : null,
       manager ? ['Unit cost', num(item.cost_price) !== null ? money(item.cost_price) : 'Not set'] : null,
       ['Pack', [packLine({ ...item, bin_location: null }), num(item.units_per_case) ? `${qty(item.units_per_case)} per case` : ''].filter(Boolean).join(' · ') || 'Not set'],
       ['Last counted', num(item.stock_baseline_at) ? dateText(item.stock_baseline_at, { long: true }) : 'Never'],
       ['Category', item.category || 'Not set']
     ].filter(Boolean);
+    const locRows = locationsForItem(item.id);
+    const locChips = locRows.length
+      ? `<div class="inv-detail__chips inv-loc-chips">${locRows.map((row) => `<span class="atlas-record-chip inv-loc-chip--full${row.is_primary ? ' is-primary' : ''}">${icon('map-pin')}<span class="inv-loc-chip__code">${esc(row.location.code)}</span>${esc(row.location.name)}${row.is_primary ? '<span class="inv-loc-chip__badge">Primary</span>' : ''}</span>`).join('')}</div>`
+      : '<p class="inv__muted">No storage location assigned.</p>';
+    // Legacy free-text note (bin_location) is preserved, never rewritten. It is
+    // shown for review only when it does not already match an assigned location.
+    const legacyBin = String(item.bin_location || '').trim();
+    const legacyMatched = legacyBin && locRows.some((row) => legacyBin.toLowerCase() === String(row.location.code || '').toLowerCase() || legacyBin.toLowerCase() === String(row.location.name || '').toLowerCase());
+    const legacyNote = legacyBin && !legacyMatched ? `<p class="inv__muted inv-detail__note">Legacy location note: “${esc(legacyBin)}”. Assign a managed location to replace it.</p>` : '';
+    const locationSection = `<section class="inv-detail__section" data-inv-detail-locations><div class="inv-detail__section-head"><h3 class="inv-detail__heading">Storage locations</h3>${manager ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-inv-edit-locations>${icon('map-pin')}Edit locations</button>` : ''}</div>${locChips}${legacyNote}</section>`;
     const codes = [['Barcode', item.barcode], ['SKU', item.sku], manager ? ['Supplier number', item.supplier_product_reference] : null].filter((entry) => entry && entry[1]);
     const recipeChips = used.length
       ? `<div class="inv-detail__chips">${used.slice(0, 6).map((recipe) => `<a class="atlas-record-chip" href="#recipes/${encodeURIComponent(recipe.id)}">${icon('martini')}${esc(recipe.name)}</a>`).join('')}${used.length > 6 ? `<span class="inv__muted">+${used.length - 6} more</span>` : ''}</div>`
@@ -775,6 +843,7 @@
         <div class="inv-detail__hero"><p class="inv-detail__figure num">${known ? esc(qty(item.quantity)) : '—'}<span class="inv-detail__unit">${known ? esc(unitWord(item, item.quantity)) : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? 'Unknown' : 'Not counted'}</span></p><p class="inv-detail__hint">${known ? `Last verified count plus recorded movements${num(item.par_level) ? ` · par ${qty(item.par_level)}` : ''}.` : truth()?.unknownReason?.(item) === 'stock_data_incomplete' ? `Stock figures are incomplete — ${esc(missingStockText())} couldn’t load. Try again.` : 'Quantities appear after the first verified count.'}</p></div>
         <dl class="inv-detail__facts">${facts.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>
         ${manager && num(item.par_level) !== null ? '<p class="inv__muted inv-detail__note">Par levels are changed in <a href="#data/pars">Data › Par levels</a>.</p>' : manager ? '<p class="inv__muted inv-detail__note">Set a par level in <a href="#data/pars">Data › Par levels</a>.</p>' : ''}
+        ${locationSection}
         <section class="inv-detail__section" data-inv-detail-recipes><h3 class="inv-detail__heading">Used in</h3>${recipeChips}</section>
         <section class="inv-detail__section"><h3 class="inv-detail__heading">Codes</h3>${codes.length ? `<dl class="inv-detail__facts inv-detail__facts--codes">${codes.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd class="inv-code">${esc(value)}</dd></div>`).join('')}</dl>` : '<p class="inv__muted">No barcode or SKU saved.</p>'}
           ${item.active !== false && canCount() ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-inv-add-code>${icon('scan-barcode')}${manager ? 'Add a barcode' : 'Suggest a barcode'}</button>` : ''}</section>
@@ -850,6 +919,7 @@
     panel.querySelector('[data-inv-ask]')?.addEventListener('click', () => askAbout(item));
     panel.querySelector('[data-inv-count-item]')?.addEventListener('click', () => { closeDetail(); countItem(item.id); });
     panel.querySelector('[data-inv-edit]')?.addEventListener('click', () => openEditSheet(item));
+    panel.querySelector('[data-inv-edit-locations]')?.addEventListener('click', () => openLocationPicker(item));
     panel.querySelector('[data-inv-reactivate]')?.addEventListener('click', () => openActivation(item, true));
     panel.querySelector('[data-inv-add-code]')?.addEventListener('click', () => openAddCode(item));
   }
@@ -953,7 +1023,7 @@
       </fieldset>
       ${staff ? '' : `<fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Stock and cost</legend>
         <div class="atlas-grid-2">${field('inv-f-supplier', 'Supplier', `<select class="atlas-select" id="inv-f-supplier" name="supplier_id">${supplierOptions(draft.supplier)}</select>`)}${field('inv-f-cost_price', 'Cost per unit', `<div class="atlas-affix">${number('cost_price', draft.cost_price)}<span class="suffix">kr</span></div>`)}</div>
-        <div class="atlas-grid-2">${field('inv-f-par_level', 'Par level <span class="optional">(optional)</span>', number('par_level', draft.par_level, 'placeholder="e.g. 4"'), 'The quantity you want on hand after a delivery.')}${field('inv-f-bin_location', 'Location', text('bin_location', draft.bin_location, 'placeholder="e.g. Back bar · shelf 2"'))}</div>
+        <div class="atlas-grid-2">${field('inv-f-par_level', 'Par level <span class="optional">(optional)</span>', number('par_level', draft.par_level, 'placeholder="e.g. 4"'), 'The quantity you want on hand after a delivery.')}${field('inv-f-bin_location', 'Location note <span class="optional">(optional)</span>', text('bin_location', draft.bin_location, 'placeholder="e.g. Back bar · shelf 2"'), 'A free-text note. Assign managed storage locations from the item after it’s created.')}</div>
       </fieldset>`}
       <fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Codes and other names <span class="optional">(optional)</span></legend>
         <div class="atlas-grid-2">${field('inv-f-barcode', 'Barcode', text('barcode', draft.barcode, 'inputmode="numeric" autocomplete="off"'))}${field('inv-f-sku', 'SKU or supplier number', text('sku', draft.sku, 'autocomplete="off"'))}</div>
@@ -1187,7 +1257,7 @@
         <div class="atlas-field"><label for="inv-e-unit">Counted in</label><select class="atlas-select" id="inv-e-unit" name="unit">${unitOptions(item.unit)}</select></div></div>
         <div class="atlas-grid-2">${field('brand', 'Brand <span class="optional">(optional)</span>', item.brand)}${field('variant', 'Variant <span class="optional">(optional)</span>', item.variant)}</div>
         <div class="atlas-grid-2">${field('package_size', 'Package', item.package_size)}${field('units_per_case', 'Units per case', item.units_per_case, 'number')}</div>
-        <div class="atlas-grid-2"><div class="atlas-field"><label for="inv-e-supplier">Supplier</label><select class="atlas-select" id="inv-e-supplier" name="supplier">${supplierOptions(item.supplier).replace(/value="[^"]*" data-name="([^"]*)"/g, 'value="$1"')}</select></div>${field('bin_location', 'Location', item.bin_location)}</div>
+        <div class="atlas-grid-2"><div class="atlas-field"><label for="inv-e-supplier">Supplier</label><select class="atlas-select" id="inv-e-supplier" name="supplier">${supplierOptions(item.supplier).replace(/value="[^"]*" data-name="([^"]*)"/g, 'value="$1"')}</select></div>${field('bin_location', 'Location note', item.bin_location, 'text', 'placeholder="Free-text note"')}</div>
         <div class="atlas-grid-2">${field('cost_price', 'Cost per unit (kr)', item.cost_price, 'number')}${field('case_cost', 'Case cost (kr)', item.case_cost, 'number')}</div>
         <div class="atlas-grid-2">${field('minimum_order_quantity', 'Minimum order', item.minimum_order_quantity, 'number')}${field('lead_time_days', 'Lead time (days)', item.lead_time_days, 'number', 'step="1"')}</div>
         <p class="inv__muted">Par level: ${num(item.par_level) !== null ? esc(qty(item.par_level)) : 'not set'}. Change it in <a href="#data/pars">Data › Par levels</a>.</p>
@@ -1248,6 +1318,260 @@
       } catch (error) {
         busy(button, false);
         form.querySelector('[data-inv-form-alert]').innerHTML = alertHtml('danger', '', shown(error, 'The barcode wasn’t linked. Nothing was changed; try again.'));
+        lucide();
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Storage locations (S97): the Manage Locations page and the item-assignment
+  // picker. Authorization is enforced in the database (the RPCs raise 42501 for
+  // non-managers, and permanent delete is Administrator + never-used only); the
+  // UI mirrors that but never substitutes for it. Nothing here changes stock.
+  // ---------------------------------------------------------------------------
+  const LOCATION_REFUSALS = [
+    [/atlas:location_in_use/i, 'This location is in use. Reassign its items and archive it instead.'],
+    [/only an administrator/i, 'Only an administrator can permanently delete a location.'],
+    [/atlas:forbidden|42501|manager or admin/i, 'Managing storage locations is for managers. Nothing was changed.'],
+    [/atlas:duplicate_code|23505|already exists/i, 'A location with this code already exists. Choose another code.'],
+    [/atlas:missing_fields|needs a code and a name/i, 'A location needs both a code and a name.'],
+    [/16 characters/i, 'The code must be 16 characters or fewer.'],
+    [/atlas:not_found|no longer exists|P0002/i, 'That location no longer exists. Refresh the page.']
+  ];
+  function locationProblem(error) {
+    const text = [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(' ');
+    const match = LOCATION_REFUSALS.find(([pattern]) => pattern.test(text));
+    return match ? match[1] : 'Atlas couldn’t save this change. Nothing was changed; try again.';
+  }
+  async function locationRpc(name, args) {
+    const client = root.atlasSupabase;
+    if (!client?.rpc) throw fixedError('Storage locations aren’t available right now.', { code: 'unavailable' });
+    if (navigator.onLine === false) throw fixedError('You’re offline. Nothing was saved; reconnect and try again.', { code: 'offline' });
+    const { data, error } = await client.rpc(name, args);
+    if (error) throw fixedError(locationProblem(error), { code: error.code || 'rpc', raw: error });
+    return data;
+  }
+
+  function canDeleteLocation(loc) {
+    // Mirror of the DB rule: Administrator only, and only a location never used.
+    return role() === 'admin' && !loc.item_count && locationItemCount(loc.id) === 0;
+  }
+
+  function locationRowHtml(loc) {
+    const count = typeof loc.item_count === 'number' ? loc.item_count : locationItemCount(loc.id);
+    const archived = loc.active === false;
+    const canDelete = canDeleteLocation(loc);
+    return `<li class="inv-loc-row${archived ? ' is-archived' : ''}" data-inv-location-row="${esc(loc.id)}">
+      <div class="inv-loc-row__main">
+        <span class="inv-loc-chip">${esc(loc.code)}</span>
+        <div class="inv-loc-row__text"><p class="inv-loc-row__name">${esc(loc.name)}${archived ? ' <span class="atlas-pill">Archived</span>' : ''}</p>${loc.description ? `<p class="inv-loc-row__desc">${esc(loc.description)}</p>` : ''}</div>
+      </div>
+      <div class="inv-loc-row__meta"><span class="inv__muted">${count} ${count === 1 ? 'item' : 'items'}</span></div>
+      <div class="inv-loc-row__actions">
+        ${!archived ? `<button type="button" class="atlas-icon-btn" data-inv-location-up="${esc(loc.id)}" aria-label="Move ${esc(loc.name)} up">${icon('chevron-up')}</button><button type="button" class="atlas-icon-btn" data-inv-location-down="${esc(loc.id)}" aria-label="Move ${esc(loc.name)} down">${icon('chevron-down')}</button>` : ''}
+        <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-inv-location-edit="${esc(loc.id)}">Edit</button>
+        ${archived
+          ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-inv-location-reactivate="${esc(loc.id)}">Reactivate</button>`
+          : `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-inv-location-archive="${esc(loc.id)}">Archive</button>`}
+        ${canDelete ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm inv-loc-row__delete" data-inv-location-delete="${esc(loc.id)}">Delete</button>` : ''}
+      </div>
+    </li>`;
+  }
+
+  function renderLocations(body) {
+    if (inputHealth('locations') === 'loading' && !allLocations().length) { body.innerHTML = loadingRowsHtml(); return; }
+    if (inputHealth('locations') === 'failed') { body.innerHTML = loadFailedHtml('Storage locations couldn’t be loaded.', 'Nothing was changed; your data is safe. Check your connection and try again.'); return; }
+    const all = allLocations();
+    const active = all.filter((loc) => loc.active !== false).sort(locationOrder);
+    const archived = all.filter((loc) => loc.active === false).sort(locationOrder);
+    if (!all.length) {
+      body.innerHTML = `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('map-pin')}</div><h3 class="atlas-empty__title">No storage locations yet</h3><p class="atlas-empty__text">Add the places you store stock, then assign items to them.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--primary" data-inv-location-new>${icon('plus')}New location</button></div></div>`;
+      return;
+    }
+    const intro = '<p class="inv__muted inv-loc-intro">Locations are places you store stock. They never change an item’s quantity — one item can sit in several places, with one marked primary.</p>';
+    const activeList = `<ul class="inv-loc-list" aria-label="Active storage locations">${active.map(locationRowHtml).join('')}</ul>`;
+    const archivedList = archived.length
+      ? `<details class="inv-loc-archived"><summary>Archived locations (${archived.length})</summary><ul class="inv-loc-list" aria-label="Archived storage locations">${archived.map(locationRowHtml).join('')}</ul></details>`
+      : '';
+    body.innerHTML = `${intro}${activeList}${archivedList}`;
+  }
+
+  function openLocationForm(loc) {
+    if (!isManager()) { toast('Managing storage locations is for managers.', { tone: 'info' }); return; }
+    const editing = Boolean(loc);
+    const overlay = openOverlay(sheetHtml({
+      title: editing ? `Edit ${loc.name}` : 'New storage location',
+      desc: 'A place you store stock. Changing it never changes any quantity.',
+      body: `<form class="atlas-form" id="inv-location-form" novalidate><div data-inv-form-alert></div>
+        <div class="atlas-grid-2">
+          <div class="atlas-field"><label for="inv-loc-code">Code</label><input class="atlas-input" id="inv-loc-code" name="code" maxlength="16" required autocomplete="off" data-autofocus value="${esc(loc?.code ?? '')}" placeholder="e.g. S01"><p class="help">Up to 16 characters. Must be unique.</p></div>
+          <div class="atlas-field"><label for="inv-loc-name">Name</label><input class="atlas-input" id="inv-loc-name" name="name" maxlength="120" required autocomplete="off" value="${esc(loc?.name ?? '')}" placeholder="e.g. Back bar shelf"></div>
+        </div>
+        <div class="atlas-field"><label for="inv-loc-desc">Description <span class="optional">(optional)</span></label><input class="atlas-input" id="inv-loc-desc" name="description" maxlength="500" autocomplete="off" value="${esc(loc?.description ?? '')}"></div>
+      </form>`,
+      foot: `<button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary" form="inv-location-form" data-inv-submit>${editing ? 'Save changes' : 'Create location'}</button>`
+    }), { label: editing ? `Edit ${loc.name}` : 'New storage location' });
+    const form = overlay.panel.querySelector('#inv-location-form');
+    const submit = overlay.panel.querySelector('[data-inv-submit]');
+    const alertHost = form.querySelector('[data-inv-form-alert]');
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const code = form.elements.code.value.trim();
+      const name = form.elements.name.value.trim();
+      if (!code) { form.elements.code.setAttribute('aria-invalid', 'true'); form.elements.code.focus(); return; }
+      if (!name) { form.elements.name.setAttribute('aria-invalid', 'true'); form.elements.name.focus(); return; }
+      busy(submit, true, 'Saving…');
+      try {
+        await locationRpc('atlas_inventory_location_save', {
+          p_id: loc?.id ?? null, p_code: code, p_name: name,
+          p_description: form.elements.description.value.trim() || null,
+          p_sort_order: editing ? (loc.sort_order ?? null) : null
+        });
+        overlay.close('done');
+        toast(editing ? `${name} updated` : `${name} added`);
+        await reloadData();
+      } catch (error) {
+        busy(submit, false);
+        alertHost.innerHTML = alertHtml('danger', editing ? 'Your changes weren’t saved.' : 'The location wasn’t created.', shown(error));
+        lucide();
+      }
+    });
+  }
+
+  function confirmLocation({ title, bodyHtml, confirmLabel, danger = false, run }) {
+    const overlay = openOverlay(`<h2 class="atlas-dialog__title">${esc(title)}</h2>
+      <div class="atlas-dialog__body">${bodyHtml}<div data-inv-form-alert></div></div>
+      <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="button" class="atlas-btn ${danger ? 'atlas-btn--danger-solid' : 'atlas-btn--primary'}" data-confirm>${esc(confirmLabel)}</button></div>`, { className: 'atlas-dialog' });
+    const confirm = overlay.panel.querySelector('[data-confirm]');
+    const alertHost = overlay.panel.querySelector('[data-inv-form-alert]');
+    confirm.addEventListener('click', async () => {
+      busy(confirm, true, 'Working…');
+      try { await run(); overlay.close('done'); await reloadData(); }
+      catch (error) { busy(confirm, false); alertHost.innerHTML = alertHtml('danger', '', shown(error)); lucide(); }
+    });
+    lucide();
+  }
+
+  function archiveLocation(loc) {
+    const count = typeof loc.item_count === 'number' ? loc.item_count : locationItemCount(loc.id);
+    confirmLocation({
+      title: `Archive ${loc.name}?`,
+      bodyHtml: `<p>It’s hidden from new assignments and filters, but kept for history.${count ? ` ${count} ${count === 1 ? 'item stays' : 'items stay'} assigned until you move ${count === 1 ? 'it' : 'them'}.` : ''} You can reactivate it later.</p>`,
+      confirmLabel: 'Archive',
+      run: () => locationRpc('atlas_inventory_location_set_active', { p_id: loc.id, p_active: false }).then(() => toast(`${loc.name} archived`))
+    });
+  }
+
+  function reactivateLocation(loc) {
+    confirmLocation({
+      title: `Reactivate ${loc.name}?`,
+      bodyHtml: '<p>It becomes available for assignments and filters again.</p>',
+      confirmLabel: 'Reactivate',
+      run: () => locationRpc('atlas_inventory_location_set_active', { p_id: loc.id, p_active: true }).then(() => toast(`${loc.name} reactivated`))
+    });
+  }
+
+  function deleteLocation(loc) {
+    if (!canDeleteLocation(loc)) { toast('Only an administrator can delete a location that was never used.', { tone: 'info' }); return; }
+    confirmLocation({
+      title: `Delete ${loc.name}?`,
+      bodyHtml: `<p>This permanently removes the location. It’s only possible because it has never held an item. This can’t be undone.</p>`,
+      confirmLabel: 'Delete permanently', danger: true,
+      run: () => locationRpc('atlas_inventory_location_delete', { p_id: loc.id }).then(() => toast(`${loc.name} deleted`))
+    });
+  }
+
+  async function moveLocation(id, dir) {
+    const list = activeLocations();
+    const idx = list.findIndex((loc) => String(loc.id) === String(id));
+    if (idx < 0) return;
+    const target = list[idx + dir];
+    if (!target) return;
+    const loc = list[idx];
+    // Swap the two sort_order values. Distinct by construction (seed uses 10-step
+    // gaps and new codes append max+10), so the swap always reorders.
+    try {
+      await locationRpc('atlas_inventory_location_save', { p_id: loc.id, p_code: loc.code, p_name: loc.name, p_description: loc.description ?? null, p_sort_order: target.sort_order ?? 0 });
+      await locationRpc('atlas_inventory_location_save', { p_id: target.id, p_code: target.code, p_name: target.name, p_description: target.description ?? null, p_sort_order: loc.sort_order ?? 0 });
+      await reloadData();
+    } catch (error) {
+      toast(shown(error), { tone: 'danger' });
+    }
+  }
+
+  // Item assignment: choose the locations an item is stored in and which is
+  // primary. Replaces the whole set atomically via the RPC. Includes any
+  // already-assigned archived location so it can be kept or removed.
+  function openLocationPicker(item) {
+    if (!isManager()) { toast('Assigning storage locations is for managers.', { tone: 'info' }); return; }
+    const assigned = locationsForItem(item.id);
+    const selected = new Map(assigned.map((row) => [String(row.location_id), Boolean(row.is_primary)]));
+    let primaryId = assigned.find((row) => row.is_primary)?.location_id ? String(assigned.find((row) => row.is_primary).location_id) : null;
+    let query = '';
+    const overlay = openOverlay(sheetHtml({
+      title: `Storage for ${item.name}`,
+      desc: 'Choose where this item is stored. Location never changes its quantity.',
+      body: `<form class="atlas-form" id="inv-location-picker" novalidate><div data-inv-form-alert></div>
+        <label class="atlas-search"><input class="atlas-input" type="search" data-loc-search placeholder="Search locations" aria-label="Search locations" autocomplete="off"></label>
+        <div class="inv-loc-picker" data-loc-list></div></form>`,
+      foot: '<button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary" form="inv-location-picker" data-inv-submit>Save locations</button>'
+    }), { label: `Storage for ${item.name}` });
+    const form = overlay.panel.querySelector('#inv-location-picker');
+    const listEl = form.querySelector('[data-loc-list]');
+    const alertHost = form.querySelector('[data-inv-form-alert]');
+    const submit = overlay.panel.querySelector('[data-inv-submit]');
+    // Pool: active locations, plus any assigned location even if archived.
+    const pool = () => {
+      const map = new Map(activeLocations().map((loc) => [String(loc.id), loc]));
+      assigned.forEach((row) => { if (!map.has(String(row.location_id)) && row.location) map.set(String(row.location_id), row.location); });
+      return [...map.values()].sort(locationOrder);
+    };
+    const drawList = () => {
+      const q = query.trim().toLowerCase();
+      const rows = pool().filter((loc) => !q || `${loc.code} ${loc.name}`.toLowerCase().includes(q));
+      listEl.innerHTML = rows.length ? rows.map((loc) => {
+        const id = String(loc.id);
+        const on = selected.has(id);
+        const isPrimary = primaryId === id;
+        return `<div class="inv-loc-pick${on ? ' is-on' : ''}" data-loc-item="${esc(id)}">
+          <label class="inv-loc-pick__check"><input type="checkbox" class="atlas-check" data-loc-toggle="${esc(id)}"${on ? ' checked' : ''}><span class="inv-loc-chip">${esc(loc.code)}</span><span class="inv-loc-pick__name">${esc(loc.name)}${loc.active === false ? ' <span class="atlas-pill">Archived</span>' : ''}</span></label>
+          <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm inv-loc-pick__primary${isPrimary ? ' is-primary' : ''}" data-loc-primary="${esc(id)}"${on ? '' : ' hidden'} aria-pressed="${isPrimary}">${isPrimary ? 'Primary' : 'Make primary'}</button>
+        </div>`;
+      }).join('') : `<p class="inv__muted">${q ? 'No locations match your search.' : 'No active locations. Add one from Manage Locations.'}</p>`;
+      lucide();
+    };
+    drawList();
+    form.querySelector('[data-loc-search]').addEventListener('input', (event) => { query = event.target.value; drawList(); });
+    listEl.addEventListener('change', (event) => {
+      const toggle = event.target.closest?.('[data-loc-toggle]');
+      if (!toggle) return;
+      const id = toggle.dataset.locToggle;
+      if (toggle.checked) { selected.set(id, false); if (!primaryId) primaryId = id; }
+      else { selected.delete(id); if (primaryId === id) primaryId = selected.size ? [...selected.keys()][0] : null; }
+      drawList();
+    });
+    listEl.addEventListener('click', (event) => {
+      const primaryBtn = event.target.closest?.('[data-loc-primary]');
+      if (!primaryBtn) return;
+      const id = primaryBtn.dataset.locPrimary;
+      if (!selected.has(id)) selected.set(id, false);
+      primaryId = id;
+      drawList();
+    });
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const ids = [...selected.keys()];
+      if (ids.length && !primaryId) primaryId = ids[0];
+      busy(submit, true, 'Saving…');
+      try {
+        await locationRpc('atlas_inventory_item_locations_set', { p_item_id: item.id, p_location_ids: ids, p_primary_id: ids.length ? primaryId : null });
+        overlay.close('done');
+        toast(ids.length ? `Storage updated for ${item.name}` : `Storage cleared for ${item.name}`);
+        await reloadData();
+        if (detail && detail.id === String(item.id)) showDetail(item.id);
+      } catch (error) {
+        busy(submit, false);
+        alertHost.innerHTML = alertHtml('danger', 'Storage wasn’t saved.', shown(error));
         lucide();
       }
     });
@@ -1708,6 +2032,19 @@
     if (target.closest('[data-inv-count]')) { shell.actions.run('inventory.count.start', { context: 'inventory' }); return; }
     if (target.closest('[data-inv-waste]')) { openWasteDialog(); return; }
     if (target.closest('[data-inv-retry]')) { reloadData(); return; }
+    if (target.closest('[data-inv-location-new]')) { openLocationForm(null); return; }
+    const locEdit = target.closest('[data-inv-location-edit]');
+    if (locEdit) { const loc = locationById(locEdit.dataset.invLocationEdit); if (loc) openLocationForm(loc); return; }
+    const locArchive = target.closest('[data-inv-location-archive]');
+    if (locArchive) { const loc = locationById(locArchive.dataset.invLocationArchive); if (loc) archiveLocation(loc); return; }
+    const locReactivate = target.closest('[data-inv-location-reactivate]');
+    if (locReactivate) { const loc = locationById(locReactivate.dataset.invLocationReactivate); if (loc) reactivateLocation(loc); return; }
+    const locDelete = target.closest('[data-inv-location-delete]');
+    if (locDelete) { const loc = locationById(locDelete.dataset.invLocationDelete); if (loc) deleteLocation(loc); return; }
+    const locUp = target.closest('[data-inv-location-up]');
+    if (locUp) { moveLocation(locUp.dataset.invLocationUp, -1); return; }
+    const locDown = target.closest('[data-inv-location-down]');
+    if (locDown) { moveLocation(locDown.dataset.invLocationDown, 1); return; }
     if (target.closest('[data-inv-clear-all]')) { Object.assign(state, { query: '', status: null, category: null, subcategory: null, supplier: null, location: null, activity: 'active' }); syncFilterRoute(); renderItemsOnly(); return; }
     const clear = target.closest('[data-inv-clear]');
     if (clear) {
@@ -1894,7 +2231,8 @@
       { id: 'inventory.product.scan', label: 'Add product by camera', icon: 'scan-line', keywords: ['scan', 'photo', 'new product', 'camera'], roles: MANAGERS, contexts: ['inventory'], run: () => openAddProductByCamera() },
       { id: 'inventory.scan', label: 'Identify item', icon: 'scan-search', keywords: ['scan', 'barcode', 'what is this', 'identify', 'camera'], roles: ['admin', 'manager', 'bartender', 'viewer'], contexts: ['home', 'inventory'], run: () => openIdentify() },
       { id: 'inventory.waste.record', label: 'Record waste', icon: 'trash-2', keywords: ['waste', 'spoilage', 'breakage', 'spill'], roles: MANAGERS, contexts: ['inventory'], forRecord: 'inventory_item', recordLabel: 'Record waste for {name}', run: (ctx) => openWasteDialog(ctx?.record?.type === 'inventory_item' ? ctx.record.id : null) },
-      { id: 'inventory.item.deactivate', label: 'Deactivate item', icon: 'archive', keywords: ['deactivate', 'archive', 'remove'], roles: MANAGERS, forRecord: 'inventory_item', recordLabel: 'Deactivate {name}', when: (ctx) => Boolean(ctx?.record?.id), run: (ctx) => { const item = itemById(ctx.record.id); if (item) openActivation(item, item.active === false); } }
+      { id: 'inventory.item.deactivate', label: 'Deactivate item', icon: 'archive', keywords: ['deactivate', 'archive', 'remove'], roles: MANAGERS, forRecord: 'inventory_item', recordLabel: 'Deactivate {name}', when: (ctx) => Boolean(ctx?.record?.id), run: (ctx) => { const item = itemById(ctx.record.id); if (item) openActivation(item, item.active === false); } },
+      { id: 'inventory.locations.manage', label: 'Manage storage locations', icon: 'map-pin', keywords: ['location', 'storage', 'bin', 'shelf', 'where', 'stored'], roles: MANAGERS, contexts: ['inventory'], run: () => shell.navigate('#inventory/locations') }
     ];
     const registerAction = (action) => shell.actions.register({ ...action, denied: () => toast(`${action.label} is for managers. Ask an administrator if you need access.`, { tone: 'info' }) });
     // Add item first; the rest after every module has loaded, so the palette
