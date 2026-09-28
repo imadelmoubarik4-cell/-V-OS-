@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const app = readFileSync('apps/web/index.html', 'utf8');
+const app = (readFileSync('apps/web/index.html', 'utf8') + readFileSync('apps/web/assets/js/atlas-app.js', 'utf8'));
 const inventoryCss = readFileSync('apps/web/assets/css/inventory.css', 'utf8');
 const recipesCss = readFileSync('apps/web/assets/css/recipes.css', 'utf8');
 const purchasingCss = readFileSync('apps/web/assets/css/purchasing.css', 'utf8');

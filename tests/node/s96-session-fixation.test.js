@@ -9,10 +9,12 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const indexHtml = fs.readFileSync(new URL('../../apps/web/index.html', import.meta.url), 'utf8');
+// S96 (webstore): the start-up script lives in assets/js/atlas-app.js (strict CSP).
+const appSource = fs.readFileSync(new URL('../../apps/web/assets/js/atlas-app.js', import.meta.url), 'utf8');
 const recoverySource = fs.readFileSync(new URL('../../apps/web/assets/js/account-recovery.js', import.meta.url), 'utf8');
 
 function inlineScriptContaining(marker) {
-  const scripts = [...indexHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
+  const scripts = [...indexHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]).concat(appSource);
   const script = scripts.find((source) => source.includes(marker));
   assert.ok(script, `inline script with ${marker}`);
   return script;
@@ -22,7 +24,7 @@ test('the app client never detects a session in the URL', () => {
   const script = inlineScriptContaining('library.createClient(');
   const options = script.slice(script.indexOf('library.createClient('), script.indexOf('library.createClient(') + 400);
   assert.match(options, /detectSessionInUrl:\s*false/);
-  assert.doesNotMatch(indexHtml, /detectSessionInUrl:\s*true/);
+  assert.doesNotMatch(indexHtml + appSource, /detectSessionInUrl:\s*true/);
 });
 
 test('planted auth fragments are dropped before start-up; view routes are kept', () => {

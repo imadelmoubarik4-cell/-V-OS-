@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 // destinations, instant answers); atlas-palette.js renders it. Typing shows
 // results only. Behaviour is covered end to end in
 // tests/browser/search.browser.test.mjs and shell-ui.browser.test.mjs.
-const shell = readFileSync('apps/web/index.html', 'utf8');
+const shell = (readFileSync('apps/web/index.html', 'utf8') + readFileSync('apps/web/assets/js/atlas-app.js', 'utf8'));
 const search = readFileSync('apps/web/assets/js/atlas-search.js', 'utf8');
 const palette = readFileSync('apps/web/assets/js/atlas-palette.js', 'utf8');
 const home = readFileSync('apps/web/assets/js/home.js', 'utf8');

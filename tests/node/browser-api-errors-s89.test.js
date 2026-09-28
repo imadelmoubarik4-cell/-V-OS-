@@ -90,7 +90,7 @@ test('AtlasIdentity labels a person by display name, never by email', () => {
 });
 
 test('the sign-in screen no longer derives a name from the email address', () => {
-  const index = read('apps/web/index.html');
+  const index = (read('apps/web/index.html') + read('apps/web/assets/js/atlas-app.js'));
   assert.doesNotMatch(index, /\/\^imad\/i/);
   assert.doesNotMatch(index, /currentUser\.email\.split\('@'\)/);
   assert.doesNotMatch(index, /userEmailEl\.textContent = currentUser\.email/);

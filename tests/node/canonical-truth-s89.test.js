@@ -265,8 +265,8 @@ test('movement row caps are one number on the browser and the server', () => {
   const context = browser();
   assert.equal(context.AtlasStockTruth.MOVEMENT_ROW_LIMIT, MOVEMENT_ROW_LIMIT);
   assert.equal(MOVEMENT_ROW_LIMIT, 5000);
-  assert.match(read('apps/web/index.html'), /window\.AtlasStockTruth\?\.MOVEMENT_ROW_LIMIT/);
-  assert.match(read('apps/web/index.html'), /\.range\(from, Math\.min\(from \+ pageSize, limit\) - 1\)/);
+  assert.match((read('apps/web/index.html') + read('apps/web/assets/js/atlas-app.js')), /window\.AtlasStockTruth\?\.MOVEMENT_ROW_LIMIT/);
+  assert.match((read('apps/web/index.html') + read('apps/web/assets/js/atlas-app.js')), /\.range\(from, Math\.min\(from \+ pageSize, limit\) - 1\)/);
   assert.match(read('supabase/functions/_shared/ai-tools/services.mjs'), /restPages\("inventory_movements"/);
   assert.match(read('supabase/functions/atlas-reports/index.ts'), /productionMovements\(\s*context,/);
 });

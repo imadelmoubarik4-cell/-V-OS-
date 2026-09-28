@@ -140,7 +140,7 @@ test('staff rows without an owner baseline still follow the verified count', () 
 
 // Issue 2: one reconciled quantity for the Inventory table and its stepper.
 test('Inventory table and quick adjustments read the reconciled quantity, never raw live stock', () => {
-  const html = read('apps/web/index.html');
+  const html = (read('apps/web/index.html') + read('apps/web/assets/js/atlas-app.js'));
   assert.doesNotMatch(html, /live_quantity|hasManagerLiveQuantity|liveQuantityById/);
   assert.match(html, /items = window\.AtlasStockTruth\.project\(data \|\| \[\], balances, inventoryMovements\);/);
   // S88: the Inventory page lives in atlas-inventory.js and shows a quantity
@@ -233,7 +233,7 @@ test('Reports reads the owner confirmation evidence columns', () => {
 // The browser only picks up a changed stock-truth module when its cache key
 // changes. The pre-S84 module (same URL) kept the older verified zero authoritative.
 test('index.html cache keys track the shipped stock-truth and calculation modules', () => {
-  const html = read('apps/web/index.html');
+  const html = (read('apps/web/index.html') + read('apps/web/assets/js/atlas-app.js'));
   const pins = {
     // S89: the canonical stockStatus, hasCost, inventoryValue and purchaseSpend rules,
     // plus unknownReason/withhold for stock withheld when its inputs fail to load.

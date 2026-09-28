@@ -15,7 +15,9 @@ const ROOT = new URL('../../', import.meta.url);
 const WEB = new URL('apps/web/', ROOT);
 const read = (relative) => fs.readFileSync(new URL(relative, ROOT), 'utf8');
 const shellSource = read('apps/web/assets/js/atlas-shell.js');
-const index = read('apps/web/index.html');
+// S96: the start-up script moved out of index.html into assets/js/atlas-app.js.
+const indexHtml = read('apps/web/index.html');
+const index = indexHtml + read('apps/web/assets/js/atlas-app.js');
 
 // Every script that ships: assets/js/*.js, the gzip Team Profiles bundle (its
 // .source.js twin is identical and not loaded), index.html's inline scripts
@@ -28,8 +30,8 @@ function shippedSources() {
     if (name.endsWith('.js')) sources.push([`assets/js/${name}`, fs.readFileSync(new URL(name, dir), 'utf8')]);
     if (name.endsWith('.js.gz')) sources.push([`assets/js/${name}`, zlib.gunzipSync(fs.readFileSync(new URL(name, dir))).toString('utf8')]);
   }
-  const inline = [...index.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]).join('\n');
-  sources.push(['index.html', inline]);
+  const inline = [...indexHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]).join('\n');
+  if (inline.trim()) sources.push(['index.html', inline]);
   sources.push(['config.js', read('apps/web/config.js')]);
   return sources;
 }
@@ -99,7 +101,7 @@ test('no module reassigns the shell globals or wraps browser APIs', () => {
   }
   // Legitimate browser-API guards, each owned by exactly one file.
   const fetchWrappers = SOURCES.filter(([, source]) => /window\.fetch\s*=(?!=)|root\.fetch\s*=(?!=)/.test(source)).map(([file]) => file);
-  assert.deepEqual(fetchWrappers, ['assets/js/rehearsal-boundary.js', 'index.html'], 'only the rehearsal boundary and the index.html session watch wrap fetch');
+  assert.deepEqual(fetchWrappers, ['assets/js/atlas-app.js', 'assets/js/rehearsal-boundary.js'], 'only the rehearsal boundary and the atlas-app.js session watch wrap fetch');
   // S91: index.html owns the one other fetch guard, the Supabase 401 watch
   // (one consistent signed-out state); it only observes responses.
   assert.equal((index.match(/window\.fetch\s*=(?!=)/g) || []).length, 1, 'index.html wraps fetch once');
@@ -110,9 +112,9 @@ test('no module reassigns the shell globals or wraps browser APIs', () => {
 
 test('no bootstrap rewrites or Blob-evaluates another script', () => {
   const blobScripts = SOURCES.filter(([, source]) => /createObjectURL\(new Blob\(\[source\]/.test(source)).map(([file]) => file).sort();
-  // team-profiles-bootstrap installs the repository-owned gzip bundle (the
-  // settings-workspace-bootstrap.js orphan was deleted in the S88 CSS split).
-  assert.deepEqual(blobScripts, ['assets/js/team-profiles-bootstrap.js']);
+  // S96: no Blob scripts at all (script-src has no blob:); team-profiles-bootstrap
+  // loads team-profiles.source.js as a plain file.
+  assert.deepEqual(blobScripts, []);
   assert.ok(!/settings-workspace-bootstrap/.test(index + read('apps/web/config.js')), 'the orphan bootstrap stays unloaded');
   // S88 Team B: the scanner and stock-count bootstraps were deleted; their
   // modules load as plain scripts from index.html.
@@ -196,6 +198,7 @@ test('every event a module listens for is actually emitted', () => {
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
   assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261005-fi1"><\/script>\s*<script src="config\.js"><\/script>/);
+  assert.match(indexHtml, /<script src="assets\/js\/atlas-bot\.js[^"]*"><\/script>\s*<script src="assets\/js\/atlas-app\.js\?v=[^"]+"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
   assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine, health: window\.AtlasData\.health\(\) \}\);\s+\}/);

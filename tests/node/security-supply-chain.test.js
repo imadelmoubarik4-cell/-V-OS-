@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const index = readFileSync('apps/web/index.html', 'utf8');
+// S96: the start-up script moved from index.html to assets/js/atlas-app.js.
+const index = readFileSync('apps/web/index.html', 'utf8') + readFileSync('apps/web/assets/js/atlas-app.js', 'utf8');
 const menu = readFileSync('apps/web/menu.html', 'utf8');
 const config = readFileSync('apps/web/config.js', 'utf8');
 const netlify = readFileSync('netlify.toml', 'utf8');
@@ -49,10 +50,9 @@ test('G6: every external script tag is pinned with SRI and allowed by exact URL 
   assert.ok(external.length >= 2 && dynamic.length >= 2);
 });
 
-test('G6: the remaining unsafe-inline is a documented rollout follow-up', () => {
-  assert.match(scriptSrc, /'unsafe-inline'/);
-  assert.match(netlify, /Known follow-up \(security review S88b G6\): 'unsafe-inline'/);
-  assert.match(readFileSync('docs/SECURITY.md', 'utf8'), /Known rollout follow-up \(security review S88b G6\)/);
+test('G6 closed (S96): script-src has no unsafe-inline and no blob:', () => {
+  assert.doesNotMatch(scriptSrc, /'unsafe-inline'|blob:/);
+  assert.match(readFileSync('docs/SECURITY.md', 'utf8'), /S96: 'unsafe-inline' removed from script-src/);
 });
 
 test('no service-role credential is shipped to the browser', () => {
@@ -72,7 +72,8 @@ test('Netlify headers cover transport, browser capabilities and only production 
   assert.doesNotMatch(netlify, /uhbamqetppqmygesoeeh\.supabase\.co/);
   assert.doesNotMatch(netlify, /atialqebqxcquzdkezln\.supabase\.co/);
   assert.match(netlify, /frame-ancestors 'self' https:\/\/xn--vbar-5na\.is/);
-  assert.match(netlify, /script-src[^\n]*blob:/);
+  assert.doesNotMatch(scriptSrc, /blob:/);
+  assert.match(netlify, /worker-src 'self' blob:/);
   assert.doesNotMatch(netlify, /X-Frame-Options/);
 });
 

@@ -510,8 +510,11 @@
 
   // ---------- export ----------
 
+  // S96: formula-looking text (= + - @, tab or carriage return first) opens as
+  // text in a spreadsheet; numbers stay numbers.
   function escapeCsv(value) {
-    const text = String(value ?? '');
+    let text = String(value ?? '');
+    if (typeof value !== 'number' && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
     return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   }
 

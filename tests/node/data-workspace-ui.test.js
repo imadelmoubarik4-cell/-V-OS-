@@ -9,7 +9,7 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '../..');
 const read = (path) => readFileSync(resolve(root, path), 'utf8');
 const config = read('apps/web/config.js');
-const index = read('apps/web/index.html');
+const index = (read('apps/web/index.html') + read('apps/web/assets/js/atlas-app.js'));
 const script = read('apps/web/assets/js/data-workspace.js');
 const css = read('apps/web/assets/css/data-workspace.css');
 const catalogue = read('supabase/migrations/20260927093000_s89_data_review_catalog_issues.sql');
