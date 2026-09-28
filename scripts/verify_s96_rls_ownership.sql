@@ -14,11 +14,11 @@
 --     acknowledgements, availability, shifts);
 --   * DBRLS-03: bartenders cannot write public.atlas_media rows;
 --   * IDOR: a bartender cannot touch another user's rows;
---   * the 12 browser RPCs reject every non-manager caller;
+--   * the 16 browser RPCs reject every non-manager caller;
 --   * DBRLS-04: with purchase approval enabled, an order priced under the threshold and
 --     received at a higher unit cost is rejected (approval bypass through the receipt price);
 --   * DBRLS-05: managers cannot insert fabricated stock-ledger rows (inventory_movements);
---   * no public function is executable by anon; authenticated only the 12 reviewed RPCs.
+--   * no public function is executable by anon; authenticated only the 16 reviewed RPCs.
 -- Positive tests (must keep working): manager onboarding upsert, bartender reads of
 -- shifts/own details, manager media writes, manager RPCs.
 -- Each test reports ok, FAIL or not_applicable (legacy table absent in a clean replay); the
@@ -121,7 +121,11 @@ declare
     $$select public.atlas_purchase_order_command_v2(gen_random_uuid(), 'create', null, '00000000-0000-4000-8000-0000000a9611', '[{"item_id":"00000000-0000-4000-8000-0000000a9612","quantity":1,"unit_cost":1}]'::jsonb, '', null, null, null, null)$$,
     $$select public.atlas_purchase_order_detail(gen_random_uuid())$$,
     $$select public.atlas_purchase_order_policy()$$,
-    $$select public.atlas_save_recipe(null, '{"name":"x","yield_quantity":1}'::jsonb, '[]'::jsonb)$$
+    $$select public.atlas_save_recipe(null, '{"name":"x","yield_quantity":1}'::jsonb, '[]'::jsonb)$$,
+    $$select public.atlas_inventory_location_save(null, 'S96X', 'S96 location')$$,
+    $$select public.atlas_inventory_location_set_active(gen_random_uuid(), false)$$,
+    $$select public.atlas_inventory_location_delete(gen_random_uuid())$$,
+    $$select public.atlas_inventory_item_locations_set('00000000-0000-4000-8000-0000000a9612', array[]::uuid[], null)$$
   ];
 begin
   set local role authenticated;
@@ -245,7 +249,7 @@ begin
       exception when insufficient_privilege then null;
       end;
     end loop;
-    insert into s96_rls values ('the 12 browser RPCs reject non-manager ' || who, case when ok then 'ok' else 'FAIL' end);
+    insert into s96_rls values ('the 16 browser RPCs reject non-manager ' || who, case when ok then 'ok' else 'FAIL' end);
   end loop;
 
   -- Legitimate manager paths keep working.
@@ -331,13 +335,15 @@ reset session authorization;
 insert into s96_rls select 'no public function is executable by anon',
   case when not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace
     and has_function_privilege('anon', p.oid, 'EXECUTE')) then 'ok' else 'FAIL' end;
-insert into s96_rls select 'authenticated executes only the 12 reviewed public RPCs, all SECURITY INVOKER',
+insert into s96_rls select 'authenticated executes only the 16 reviewed public RPCs, all SECURITY INVOKER',
   case when not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace
     and has_function_privilege('authenticated', p.oid, 'EXECUTE')
     and (p.prosecdef or p.proname not in ('adjust_inventory','adjust_inventory_v2','atlas_apply_item_master_update',
       'atlas_apply_par_levels','atlas_data_review_rows','atlas_data_review_summary','atlas_par_level_evidence',
       'atlas_purchase_order_command','atlas_purchase_order_command_v2','atlas_purchase_order_detail',
-      'atlas_purchase_order_policy','atlas_save_recipe'))) then 'ok' else 'FAIL' end;
+      'atlas_purchase_order_policy','atlas_save_recipe',
+      'atlas_inventory_location_save','atlas_inventory_location_set_active','atlas_inventory_location_delete',
+      'atlas_inventory_item_locations_set'))) then 'ok' else 'FAIL' end;
 insert into s96_rls select 'every SECURITY DEFINER function in public/atlas_private/private pins search_path',
   case when not exists (select 1 from pg_proc p where p.prosecdef
     and p.pronamespace in ('public'::regnamespace, 'atlas_private'::regnamespace, 'private'::regnamespace)
