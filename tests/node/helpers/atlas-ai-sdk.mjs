@@ -4,7 +4,7 @@
 //   Function resolve from the Deno cache.
 // * Under Node the SDK is used when it can be resolved: installed as a
 //   package, or from ATLAS_AI_SDK_DIR (a directory containing node_modules
-//   with @openai/agents@0.18.0 and zod@4).
+//   with @openai/agents@0.18.0 and zod@4.6.5).
 // * Otherwise the SDK-dependent tests are skipped with a reason and the rest
 //   of the suite still runs (plain `npm test` needs no network or packages).
 
@@ -22,7 +22,7 @@ async function attempt(loader) {
 async function load() {
   const deno = await attempt(async () => ({
     sdk: await import('npm:@openai/agents@0.18.0'),
-    z: (await import('npm:zod@4')).z,
+    z: (await import('npm:zod@4.6.5')).z,
     runtime: 'deno',
   }));
   if (deno?.sdk?.Agent) return deno;

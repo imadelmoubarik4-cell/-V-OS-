@@ -32,3 +32,15 @@ tmp/
 # Operational catalogue inputs must never enter repository history.
 **/approved-inventory-extensions.csv
 **/inventory-aliases.csv
+
+# S96: local credentials and Supabase CLI state never enter Git.
+supabase/.temp/
+supabase/.branches/
+supabase/functions/.env
+*.pem
+*.p12
+*.pfx
+*.key
+id_rsa*
+.npmrc
+.netrc

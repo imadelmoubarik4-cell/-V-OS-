@@ -61,7 +61,7 @@ test('config.toml registers atlas-ai with verify_jwt = false and index.ts stays 
   assert.match(config, /\[functions\.atlas-ai\]\nverify_jwt = false/);
   const index = await readFile('supabase/functions/atlas-ai/index.ts', 'utf8');
   assert.match(index, /npm:@openai\/agents@0\.18\.0/);
-  assert.match(index, /npm:zod@4/);
+  assert.match(index, /npm:zod@4\.6\.5"/);
   assert.match(index, /\.\.\/_shared\/ai-tools\/index\.mjs/);
   assert.ok(index.split('\n').length < 80, 'index.ts should only wire the runtime');
   assert.doesNotMatch(index, /sk-[A-Za-z0-9]{10,}/);

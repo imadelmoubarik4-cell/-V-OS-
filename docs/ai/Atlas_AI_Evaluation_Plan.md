@@ -225,7 +225,7 @@ npm run test:ai
 npm run eval:ai-live:dry-run
 
 # Layer 2 live — Node 22, an OpenAI key and the Agents SDK
-npm install --no-save @openai/agents@0.18.0 zod@4     # or set ATLAS_AI_SDK_DIR
+npm install --no-save @openai/agents@0.18.0 zod@4.6.5 # or set ATLAS_AI_SDK_DIR
 OPENAI_API_KEY=sk-… npm run eval:ai-live -- --grade
 OPENAI_API_KEY=sk-… node scripts/ai-eval-live.mjs --filter owner --grade
 OPENAI_API_KEY=sk-… node scripts/ai-eval-live.mjs --case owner-02 --case live-mm-01
@@ -237,7 +237,7 @@ default the orchestrator model), `--out <dir>` (default
 `tmp/ai-eval-live/<timestamp>/`, git-ignored), `--timeout <seconds>`. Models
 come from the runtime's own variables (`ATLAS_AI_MODEL_ORCHESTRATOR`,
 `ATLAS_AI_MODEL_SPECIALIST`, `ATLAS_AI_MODEL_VISION`). `ATLAS_AI_SDK_DIR` is a
-directory whose `node_modules` holds `@openai/agents@0.18.0` and `zod@4`.
+directory whose `node_modules` holds `@openai/agents@0.18.0` and `zod@4.6.5`.
 
 Output: `results.json` (per case: answer, tools, progress, proposals, records,
 every metric with its reason, grade, tokens, estimated cost) and `report.md`

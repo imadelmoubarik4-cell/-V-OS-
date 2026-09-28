@@ -27,8 +27,8 @@
 // ATLAS_AI_MODEL_SPECIALIST, ATLAS_AI_MODEL_VISION; the grader uses
 // ATLAS_AI_EVAL_GRADER_MODEL (default: the orchestrator model).
 // The Agents SDK is loaded from ATLAS_AI_SDK_DIR (a directory whose
-// node_modules holds @openai/agents@0.18.0 and zod@4) or from an installed
-// package (`npm install --no-save @openai/agents@0.18.0 zod@4`).
+// node_modules holds @openai/agents@0.18.0 and zod@4.6.5) or from an installed
+// package (`npm install --no-save @openai/agents@0.18.0 zod@4.6.5`).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -667,7 +667,7 @@ async function main() {
   }
   const loaded = await loadSdk();
   if (!loaded?.sdk?.OpenAIProvider) {
-    console.error('The OpenAI Agents SDK is not available. Set ATLAS_AI_SDK_DIR to a directory whose node_modules has @openai/agents@0.18.0 and zod@4, or run `npm install --no-save @openai/agents@0.18.0 zod@4`.');
+    console.error('The OpenAI Agents SDK is not available. Set ATLAS_AI_SDK_DIR to a directory whose node_modules has @openai/agents@0.18.0 and zod@4, or run `npm install --no-save @openai/agents@0.18.0 zod@4.6.5`.');
     return 2;
   }
   const { sdk, z } = loaded;
