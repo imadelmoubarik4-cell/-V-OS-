@@ -53,18 +53,18 @@ test('the item detail shows storage chips and a manager saves through the RPC', 
     assert.match(section, /B03/);
     assert.match(section, /Primary/);
     assert.match(section, /S03/);
-    // Open the picker, add F01 and make it primary, then save.
+    // Open the picker, add F02 and make it primary, then save.
     await page.click('[data-inv-edit-locations]');
     await page.waitForSelector('#inv-location-picker');
-    await page.click(`[data-loc-toggle="${LOCATION_IDS.F01}"]`);
-    await page.click(`[data-loc-primary="${LOCATION_IDS.F01}"]`);
+    await page.click(`[data-loc-toggle="${LOCATION_IDS.F02}"]`);
+    await page.click(`[data-loc-primary="${LOCATION_IDS.F02}"]`);
     await page.click('.atlas-sheet [data-inv-submit]');
     await page.waitForFunction(() => !document.querySelector('#inv-location-picker'));
     const call = world.locations.calls.find((c) => c.name === 'item_locations_set');
     assert.ok(call, 'the picker saved through atlas_inventory_item_locations_set');
     assert.equal(call.body.p_item_id, IDS.campari);
-    assert.equal(call.body.p_primary_id, LOCATION_IDS.F01, 'the chosen primary is sent');
-    assert.deepEqual([...call.body.p_location_ids].sort(), [LOCATION_IDS.B03, LOCATION_IDS.S03, LOCATION_IDS.F01].sort());
+    assert.equal(call.body.p_primary_id, LOCATION_IDS.F02, 'the chosen primary is sent');
+    assert.deepEqual([...call.body.p_location_ids].sort(), [LOCATION_IDS.B03, LOCATION_IDS.S03, LOCATION_IDS.F02].sort());
   } finally { await close(); }
 });
 
@@ -74,7 +74,7 @@ test('the Manage Locations page creates a location through the RPC (manager)', {
     await navigateTo(page, '#inventory/locations');
     await page.waitForSelector('[data-inv-location-row]');
     const rows = await page.$$eval('[data-inv-location-row]', (els) => els.length);
-    assert.equal(rows, 16, 'the 16 seeded locations are listed');
+    assert.equal(rows, 15, 'the 15 seeded locations are listed');
     await page.click('[data-inv-location-new]');
     await page.waitForSelector('#inv-location-form');
     await page.fill('#inv-loc-code', 'X09');

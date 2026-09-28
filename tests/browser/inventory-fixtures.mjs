@@ -242,13 +242,16 @@ export function itemMasterBackend({ duplicate = null, blockers = [] } = {}) {
 }
 
 /** The realistic Team B world. */
-// S97 Storage Locations. The 16 canonical VÁ codes, a couple of item
+// S97 Storage Locations. The 15 canonical VÁ codes, a couple of item
 // assignments, and a stateful mock of the four manager RPCs (save, set_active,
 // delete, item_locations_set). Reads answer inventory_location_catalog and
 // inventory_item_locations; writes mutate the in-memory state and are recorded.
+// F01 "Main soda fridges" was intentionally deleted by the owner in production
+// (VÁ has one soda fridge, not two) and removed from the fresh-environment seed
+// by s97b; F02 "Small soda fridge" is the canonical soda-fridge location.
 const LOCATION_SEED = [
   ['S01', 'Main storage shelves'], ['S02', 'Storage One'], ['S03', 'White spirits cabinet'],
-  ['F01', 'Main soda fridges'], ['F02', 'Small soda fridge'], ['F03', 'Small alcoholic beverages fridge'], ['F04', 'Cooler under coffee machine'],
+  ['F02', 'Small soda fridge'], ['F03', 'Small alcoholic beverages fridge'], ['F04', 'Cooler under coffee machine'],
   ['W01', 'Small wine fridge'], ['W02', 'Big wine cooler'],
   ['B01', 'Upper bar section'], ['B02', 'Beer section'], ['B03', 'Backbar display shelves'],
   ['D01', 'Downstairs freezer'], ['D02', 'Downstairs Cooler One — Juices'], ['D03', 'Downstairs Cooler Two — Cakes & Open Items'], ['D04', 'Downstairs dry storage shelves']
