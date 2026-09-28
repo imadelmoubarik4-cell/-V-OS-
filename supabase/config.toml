@@ -51,6 +51,12 @@ verify_jwt = false
 [functions.atlas-knowledge]
 verify_jwt = false
 
+# S98: Knowledge › Training. The handler verifies the production-Auth JWT and the
+# active profile (_shared/auth.mjs) for every action, then passes the resolved actor
+# into service-role RPCs. Video upload/playback go through short-lived signed URLs.
+[functions.atlas-training]
+verify_jwt = false
+
 [functions.atlas-reports]
 verify_jwt = false
 entrypoint = "./functions/atlas-reports/entrypoint.ts"
