@@ -18,8 +18,8 @@
       "files": [
         {
           "path": "functions/atlas-inventory-scanner/index.ts",
-          "source_sha256": "eb97456fdbbd6e35e9907e7ff47f2bd60403f2a7bed84ce0ab5028843b55496b",
-          "candidate_sha256": "ab1a5db204516e7ba2e86ff15587bf12e8d810d47d99713e269ea574e9e1eb90"
+          "source_sha256": "39463ac7a0567d32d4d11517df5d8ddd7a1432147be0390df375b61d43c9667f",
+          "candidate_sha256": "1db8f200b29c4b11080593b05b49571ab1a3482ca69654ebd7dbbc7bbabdb6ca"
         },
         {
           "path": "functions/_shared/auth.mjs",
@@ -245,8 +245,8 @@
       "files": [
         {
           "path": "functions/atlas-stock-counts/entrypoint.ts",
-          "source_sha256": "a0955816f8bd991bd6315f75d85d88575fc83aa3783f8c83bac8482efefbb5d6",
-          "candidate_sha256": "48873898376d9a307c3b1a9b87dc640fd83996b15f4d84c486385ce11a9f53d5"
+          "source_sha256": "eef88369d1656c729004bb5476baa9ecf9fe30a0a2967a5c32719ef2d84de742",
+          "candidate_sha256": "be3d6d077de9df557b82ca798174b7b0740fedb37d92d22fcea00803b23bdd19"
         },
         {
           "path": "functions/_shared/auth.mjs",
@@ -301,8 +301,8 @@
       "files": [
         {
           "path": "functions/atlas-team-profile-photos/index.ts",
-          "source_sha256": "fee055e95a8738e4f47b9c501ddb8b39279b0d3fb94c0ee5e776d669ed9498c5",
-          "candidate_sha256": "a0bf6059fd4876c76797ac6d6c90522c37ccbbafad8597b3bb44315061e355a2"
+          "source_sha256": "898cf5a49fe973d4e71dd0e8f220724322ab480fd6f9af83fe1c4e9bc2c4a7e6",
+          "candidate_sha256": "599287603d99024659b45c2b44525f4183960fec85af756fd8906ac60717e2af"
         },
         {
           "path": "functions/_shared/auth.mjs",
@@ -318,8 +318,8 @@
       "files": [
         {
           "path": "functions/atlas-team-profiles/index.ts",
-          "source_sha256": "20cfa8b7fe5dcd9f5fb5a678ccf4ecc88d9551d03ae633b69aeda5258110134a",
-          "candidate_sha256": "8b905693974e42d2d2fd71c99e2511e27831b237f3b9a4cc2b2d49af8211bd1c"
+          "source_sha256": "a26a632cfdf43d9dae79a0bba04edb666be65393f2e624af5929424749c85946",
+          "candidate_sha256": "1f0a47d18404edcc3ab5e7c5889370c543412d230e9ffea88415bc087756b1bc"
         },
         {
           "path": "functions/_shared/auth.mjs",

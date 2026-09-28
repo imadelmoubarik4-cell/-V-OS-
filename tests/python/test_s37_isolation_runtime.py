@@ -43,7 +43,7 @@ class S37IsolationRuntimeTests(unittest.TestCase):
             # S92: atlas-team-messages also packages its identity.mjs.
             # S94: atlas-marketing-workspace also packages its handler.mjs and the
             # three _shared/integrations modules it imports.
-            self.assertEqual(result["files"], 47)
+            self.assertEqual(result["files"], 48)
             runtime = json.loads((output / "runtime-manifest.json").read_text())
             self.assertEqual(len(runtime["functions"]), 18)
             self.assertFalse(runtime["production_fallbacks"])

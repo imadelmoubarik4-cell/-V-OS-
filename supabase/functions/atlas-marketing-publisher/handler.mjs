@@ -117,6 +117,12 @@ export async function secretMatches(provided, expected) {
   return diff === 0;
 }
 
+export function publisherEnabled(readEnv) {
+  const primary = String(readEnv("ATLAS_MARKETING_PUBLISHER_ENABLED") ?? "").trim().toLowerCase();
+  const legacy = String(readEnv("ATLAS_PUBLISHER_ENABLED") ?? "").trim().toLowerCase();
+  return primary === "true" && legacy !== "false";
+}
+
 export function secretConfigured(value) {
   return typeof value === "string" && new TextEncoder().encode(value).length >= MIN_SECRET_BYTES;
 }
@@ -570,7 +576,10 @@ export function createPublisherHandler({ env, fetchImpl, rpc, now = () => Date.n
     if (declared > MAX_BODY_BYTES) return json(413, { error: "too_large" });
     const body = await request.text().catch(() => "");
     if (body.length > MAX_BODY_BYTES) return json(413, { error: "too_large" });
-    if (String(readEnv("ATLAS_MARKETING_PUBLISHER_ENABLED") ?? "true").toLowerCase() === "false") return json(200, { ok: true, disabled: true });
+    // S96: the kill switch fails closed. The worker runs only when
+    // ATLAS_MARKETING_PUBLISHER_ENABLED is exactly "true"; unset, any other
+    // value, or the runbook's ATLAS_PUBLISHER_ENABLED=false keeps it off.
+    if (!publisherEnabled(readEnv)) return json(200, { ok: true, disabled: true });
     if (!credentials || typeof credentials.openPublishingCredential !== "function") return json(503, { error: "not_configured" });
     try {
       const counts = await tick();

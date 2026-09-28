@@ -17,7 +17,8 @@ import { AuthError } from "../_shared/auth.mjs";
 // also held in Vault for the tick), optional ATLAS_MARKETING_PUBLISHER_SECRET_NEXT
 // (rotation), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, the integration KEK read
 // by the credential module, ATLAS_META_GRAPH_VERSION (optional).
-// Kill switch: ATLAS_MARKETING_PUBLISHER_ENABLED=false.
+// Kill switch (S96, fails closed): the worker runs only while
+// ATLAS_MARKETING_PUBLISHER_ENABLED=true; unset or any other value keeps it off.
 
 const handle = createPublisherHandler({
   env: (name: string) => Deno.env.get(name),

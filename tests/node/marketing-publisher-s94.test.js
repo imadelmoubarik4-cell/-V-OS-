@@ -81,7 +81,7 @@ function setup({ env = {}, script = {}, db: dbOptions = {}, credentials: credOpt
       clock.t += slowMs;
     }
   };
-  const fullEnv = { ATLAS_MARKETING_PUBLISHER_SECRET: SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, ...env };
+  const fullEnv = { ATLAS_MARKETING_PUBLISHER_SECRET: SECRET, ATLAS_MARKETING_PUBLISHER_ENABLED: 'true', SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, ...env };
   const makeHandler = () => createPublisherHandler({
     env: fullEnv,
     fetchImpl,
@@ -984,7 +984,7 @@ test('index.ts runs under the Edge harness: secret enforced before any network c
   const unconfigured = await loadEdgeFunction('supabase/functions/atlas-marketing-publisher/index.ts', { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY });
   let res = await unconfigured(new Request('https://functions.test/atlas-marketing-publisher?action=tick', { method: 'POST', headers: { [SECRET_HEADER]: SECRET } }), fetchImpl);
   assert.equal(res.status, 503);
-  const call = await loadEdgeFunction('supabase/functions/atlas-marketing-publisher/index.ts', { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, ATLAS_MARKETING_PUBLISHER_SECRET: SECRET });
+  const call = await loadEdgeFunction('supabase/functions/atlas-marketing-publisher/index.ts', { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, ATLAS_MARKETING_PUBLISHER_SECRET: SECRET, ATLAS_MARKETING_PUBLISHER_ENABLED: 'true' });
   res = await call(new Request('https://functions.test/atlas-marketing-publisher?action=tick', { method: 'POST', headers: { [SECRET_HEADER]: 'wrong' } }), fetchImpl);
   assert.equal(res.status, 401);
   res = await call(new Request('https://functions.test/atlas-marketing-publisher?action=tick', { method: 'GET' }), fetchImpl);

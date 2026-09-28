@@ -70,7 +70,7 @@
     {
       "name": "atlas-inventory-scanner",
       "sources": {
-        "supabase/functions/atlas-inventory-scanner/index.ts": "eb97456fdbbd6e35e9907e7ff47f2bd60403f2a7bed84ce0ab5028843b55496b",
+        "supabase/functions/atlas-inventory-scanner/index.ts": "39463ac7a0567d32d4d11517df5d8ddd7a1432147be0390df375b61d43c9667f",
         "supabase/functions/_shared/product-identity.mjs": "077745f34ef4935cfb5dafb2195d9a0b33055dc603416cd6f90e2400f0f7379f",
         "supabase/functions/_shared/auth.mjs": "1390bdf99392553b48e3e608814d76231367f5a354c7fa70ec965a2902cd36ff"
       }
@@ -156,7 +156,7 @@
     {
       "name": "atlas-stock-counts",
       "sources": {
-        "supabase/functions/atlas-stock-counts/entrypoint.ts": "a0955816f8bd991bd6315f75d85d88575fc83aa3783f8c83bac8482efefbb5d6",
+        "supabase/functions/atlas-stock-counts/entrypoint.ts": "eef88369d1656c729004bb5476baa9ecf9fe30a0a2967a5c32719ef2d84de742",
         "supabase/functions/_shared/auth.mjs": "1390bdf99392553b48e3e608814d76231367f5a354c7fa70ec965a2902cd36ff"
       }
     },
@@ -178,14 +178,14 @@
     {
       "name": "atlas-team-profile-photos",
       "sources": {
-        "supabase/functions/atlas-team-profile-photos/index.ts": "fee055e95a8738e4f47b9c501ddb8b39279b0d3fb94c0ee5e776d669ed9498c5",
+        "supabase/functions/atlas-team-profile-photos/index.ts": "898cf5a49fe973d4e71dd0e8f220724322ab480fd6f9af83fe1c4e9bc2c4a7e6",
         "supabase/functions/_shared/auth.mjs": "1390bdf99392553b48e3e608814d76231367f5a354c7fa70ec965a2902cd36ff"
       }
     },
     {
       "name": "atlas-team-profiles",
       "sources": {
-        "supabase/functions/atlas-team-profiles/index.ts": "20cfa8b7fe5dcd9f5fb5a678ccf4ecc88d9551d03ae633b69aeda5258110134a",
+        "supabase/functions/atlas-team-profiles/index.ts": "a26a632cfdf43d9dae79a0bba04edb666be65393f2e624af5929424749c85946",
         "supabase/functions/_shared/auth.mjs": "1390bdf99392553b48e3e608814d76231367f5a354c7fa70ec965a2902cd36ff"
       }
     },
@@ -201,8 +201,9 @@
       "name": "atlas-notifications",
       "gateway_jwt": "platform default verification retained",
       "sources": {
-        "supabase/functions/atlas-notifications/index.ts": "5e58830a5170dc0bc87ca33609f81ace2fa4447906c7c5e2b7a371f05c6b93a3",
-        "supabase/functions/_shared/auth.mjs": "1390bdf99392553b48e3e608814d76231367f5a354c7fa70ec965a2902cd36ff"
+        "supabase/functions/atlas-notifications/index.ts": "5e693899100e77004e041c9d2238339d87916c81e99529e23dd42fbb1cadc3eb",
+        "supabase/functions/_shared/auth.mjs": "1390bdf99392553b48e3e608814d76231367f5a354c7fa70ec965a2902cd36ff",
+        "supabase/functions/atlas-notifications/push-policy.mjs": "694a07ad8d5cc3517b30d4dd25b3a7b3c5fa3886f7ad75d9939e19779d2da534"
       }
     }
   ],

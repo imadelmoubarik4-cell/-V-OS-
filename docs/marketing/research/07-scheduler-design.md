@@ -998,7 +998,7 @@ Design:
    * the notification CHECK extensions;
    * the `marketing_publisher_tick()` definition.
 2. Run the SQL previews, the concurrency script (local) and the Node tests.
-3. Deploy `atlas-marketing-publisher` (`verify_jwt=false`) with `ATLAS_PUBLISHER_ENABLED=false`, so every
+3. Deploy `atlas-marketing-publisher` (`verify_jwt=false`) with `ATLAS_MARKETING_PUBLISHER_ENABLED` unset (the worker runs only when it is exactly `true`), so every
    tick answers `{disabled:true}` with no claims.
 4. Owner step: `create extension pg_net with schema extensions; create extension pg_cron;`, then the Vault
    secrets and the function secrets (tick and kick), then `cron.schedule`. Update DEPLOYMENT.md: replace
@@ -1008,7 +1008,7 @@ Design:
    the providers are fakes that log) against one test content item. Then one real IG post to the
    venue's account, approved by the owner.
 6. Kill switch: `select cron.unschedule('atlas-marketing-publisher-tick')` and/or
-   `ATLAS_PUBLISHER_ENABLED=false`. In-flight rows recover through the lease rules on re-enable.
+   `ATLAS_MARKETING_PUBLISHER_ENABLED` unset (the worker runs only when it is exactly `true`). In-flight rows recover through the lease rules on re-enable.
 
 ---
 

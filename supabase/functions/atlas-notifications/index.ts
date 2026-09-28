@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import webpush from "npm:web-push@3.6.7";
 import { AuthError, resolveActor } from "../_shared/auth.mjs";
+import { dispatchTokenMatches, pushEndpointAllowed } from "./push-policy.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -23,7 +24,10 @@ function json(value: unknown, status = 200): Response {
 
 function requiredEnv(name: string): string {
   const value = Deno.env.get(name)?.trim();
-  if (!value) throw new ApiError(503, `${name} is not configured.`);
+  if (!value) {
+    console.error("Atlas notifications is missing a setting", name);
+    throw new ApiError(503, "Notifications are not configured.");
+  }
   return value;
 }
 
@@ -72,6 +76,8 @@ function subscriptionPayload(value: unknown) {
   let url: URL;
   try { url = new URL(endpoint); } catch { throw new ApiError(400, "Push subscription endpoint is invalid."); }
   if (url.protocol !== "https:" || !p256dh || !auth) throw new ApiError(400, "Push subscription is incomplete.");
+  if (!pushEndpointAllowed(endpoint)) throw new ApiError(400, "Push subscription endpoint is not a browser push service.");
+  if (p256dh.length > 512 || auth.length > 256) throw new ApiError(400, "Push subscription keys are invalid.");
   return { endpoint, p256dh, auth };
 }
 
@@ -79,7 +85,9 @@ async function dispatch(request: Request): Promise<Response> {
   const enabled = Deno.env.get("ATLAS_PUSH_DELIVERY_ENABLED") === "true";
   if (!enabled) return json({ delivery: "disabled", processed: 0 });
   const expected = requiredEnv("ATLAS_PUSH_DISPATCH_TOKEN");
-  if (request.headers.get("x-atlas-dispatch-token") !== expected) throw new ApiError(401, "Dispatch authorization failed.");
+  if (!(await dispatchTokenMatches(request.headers.get("x-atlas-dispatch-token"), expected))) {
+    throw new ApiError(401, "Dispatch authorization failed.");
+  }
   webpush.setVapidDetails(requiredEnv("ATLAS_VAPID_SUBJECT"), requiredEnv("ATLAS_VAPID_PUBLIC_KEY"), requiredEnv("ATLAS_VAPID_PRIVATE_KEY"));
   const batch = await rpc("atlas_push_notification_claim", { p_limit: 50 });
   let sent = 0;
@@ -91,7 +99,7 @@ async function dispatch(request: Request): Promise<Response> {
       await rpc("atlas_push_notification_complete", { p_notification_id: notice.id, p_status: "suppressed", p_error: "No enabled subscription" });
       continue;
     }
-    const results = await Promise.allSettled(subscriptions.map((subscription: any) => webpush.sendNotification({
+    const results = await Promise.allSettled(subscriptions.filter((subscription: any) => pushEndpointAllowed(subscription?.endpoint)).map((subscription: any) => webpush.sendNotification({
       endpoint: subscription.endpoint,
       keys: { p256dh: subscription.p256dh, auth: subscription.auth },
     }, JSON.stringify({ title: notice.title, body: notice.body, route: notice.route, object_id: notice.object_id }))));
@@ -110,7 +118,7 @@ Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   try {
     const action = new URL(request.url).searchParams.get("action") || "configuration";
-    if (action === "dispatch") return dispatch(request);
+    if (action === "dispatch") return await dispatch(request);
     const user = await activeUser(request);
     if (request.method === "GET" && action === "configuration") {
       return json({

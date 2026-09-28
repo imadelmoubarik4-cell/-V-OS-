@@ -134,10 +134,8 @@ async function productionJson(context: AtlasContext, url: URL): Promise<any> {
   let payload: any = null;
   try { payload = text ? JSON.parse(text) : null; } catch { payload = text; }
   if (!response.ok) {
-    const message = payload && typeof payload === "object" && "message" in payload
-      ? String(payload.message)
-      : "Connected Atlas profile data could not be read.";
-    throw new ApiError(response.status === 401 ? 401 : response.status === 403 ? 403 : 400, message);
+    console.warn("Profile photos production read failed", response.status, payload && typeof payload === "object" ? String(payload.code ?? "-") : "-");
+    throw new ApiError(response.status === 401 ? 401 : response.status === 403 ? 403 : 400, "Connected Atlas profile data could not be read.");
   }
   return payload;
 }
@@ -193,14 +191,27 @@ async function branchRpc(name: string, payload: Record<string, unknown> = {}): P
   let parsed: any = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed
-      ? String(parsed.message)
-      : typeof parsed === "string" && parsed
-      ? parsed
-      : "The private profile-photo request failed.";
+    const message = safeDbMessage(parsed, "The private profile-photo request failed.");
+    if (message === "The private profile-photo request failed.") console.warn("Profile photos RPC failed", name, response.status, parsed && typeof parsed === "object" ? String(parsed.code ?? "-") : "-");
     throw new ApiError(response.status >= 500 ? 500 : 400, message);
   }
   return parsed;
+}
+
+// S96: database text reaches the browser only when it is an Atlas-authored
+// message raised by our SQL, without schema detail (same rule as
+// atlas-shifts / atlas-team-messages); anything else becomes the fixed
+// fallback and only the SQLSTATE is logged.
+const AUTHORED_SQLSTATES = new Set(["P0001", "42501", "22023", "P0002", "55000", "23514"]);
+const SCHEMA_DETAIL = /(relation|column|constraint|function\s|schema|syntax|violates|duplicate key|permission denied|operator|does not exist|null value|sqlstate|pg_|atlas_private\.|public\.)/i;
+
+function safeDbMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const body = parsed as { code?: unknown; message?: unknown };
+  const code = String(body.code ?? "");
+  const message = String(body.message ?? "").trim();
+  if (!message || message.length > 300 || !AUTHORED_SQLSTATES.has(code) || SCHEMA_DETAIL.test(message)) return fallback;
+  return message;
 }
 
 function encodedStoragePath(path: string): string {
@@ -222,7 +233,8 @@ async function uploadStorageObject(path: string, bytes: Uint8Array, mimeType: st
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new ApiError(response.status >= 500 ? 500 : 400, payload.message || payload.error || "The profile photo could not be stored.");
+    console.warn("Profile photo upload failed", response.status);
+    throw new ApiError(response.status >= 500 ? 500 : 400, "The profile photo could not be stored.");
   }
 }
 
@@ -332,6 +344,11 @@ async function photoSnapshot(context: AtlasContext) {
 }
 
 async function uploadPhoto(context: AtlasContext, request: Request) {
+  // S96: refuse an oversized body before it is buffered and parsed.
+  const declared = Number(request.headers.get("content-length") || 0);
+  if (!Number.isFinite(declared) || declared > MAX_PHOTO_BYTES + 64 * 1024) {
+    throw new ApiError(413, "Profile photos must be no larger than 2 MB.");
+  }
   const form = await request.formData();
   const profileId = requireUuid(form.get("profile_id"), "Team profile");
   await requireEditableTarget(context, profileId);
