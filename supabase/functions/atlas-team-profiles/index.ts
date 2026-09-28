@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { AuthError, actorLabel, authConfig, requireRecentAuth, resolveActor } from "../_shared/auth.mjs";
+import { AuthError, actorLabel, authConfig, requireStepUp as requireActorStepUp, resolveActor } from "../_shared/auth.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -30,6 +30,8 @@ type AtlasProfile = {
 type AtlasContext = {
   token: string;
   amr: Array<{ method: string; timestamp?: number }>;
+  aal: string;
+  mfaEnrolled: boolean;
   user: { id: string; email?: string | null };
   profile: AtlasProfile;
 };
@@ -92,7 +94,7 @@ async function requireActiveProfile(request: Request): Promise<AtlasContext> {
     inactiveMessage: "This Atlas profile is inactive. Team access has been removed.",
     profileColumns: ["created_at", "updated_at"],
   });
-  return { token: actor.token, amr: actor.amr ?? [], user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
+  return { token: actor.token, amr: actor.amr ?? [], aal: actor.aal ?? "aal1", mfaEnrolled: actor.mfaEnrolled === true, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
 }
 
 // S96 step-up: role/active changes and account creation/invitations need a
@@ -100,9 +102,7 @@ async function requireActiveProfile(request: Request): Promise<AtlasContext> {
 // ATLAS_STEP_UP_MAX_AGE_SECONDS, default 900). Enable once the app's
 // "confirm it's you" step is live.
 function requireStepUp(context: AtlasContext): void {
-  if (Deno.env.get("ATLAS_REQUIRE_STEP_UP") !== "true") return;
-  const maxAge = Number(Deno.env.get("ATLAS_STEP_UP_MAX_AGE_SECONDS") || 900);
-  requireRecentAuth({ amr: context.amr }, Number.isFinite(maxAge) && maxAge > 0 ? maxAge : 900);
+  requireActorStepUp({ amr: context.amr, aal: context.aal, mfaEnrolled: context.mfaEnrolled, role: context.profile?.role });
 }
 
 function requireManager(context: AtlasContext): void {

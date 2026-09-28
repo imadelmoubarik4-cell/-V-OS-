@@ -231,18 +231,42 @@ export async function resolveActor(request, env, fetchImpl = globalThis.fetch, o
 // second-factor check must be at most `maxAgeSeconds` old. Throws 401 with
 // code "reauthentication_required" so the app can ask the person to confirm
 // (TOTP challenge, or password) and retry.
-export function requireRecentAuth(actor, maxAgeSeconds = 900, nowMs = Date.now()) {
+export const MFA_METHODS = Object.freeze(["totp", "mfa/totp", "phone", "mfa/phone", "webauthn", "mfa/webauthn"]);
+const REAUTH_METHODS = Object.freeze(["password", "otp", ...MFA_METHODS]);
+
+// S96 step-up. Someone with a verified second factor (or an aal2 session, or when
+// options.requireMfa is set) must have completed a second-factor check recently:
+// a fresh password alone does not count for them. Everyone else needs a fresh
+// sign-in. Email-link methods (recovery, invite, magiclink) never count: they
+// prove mailbox access, not the person at the keyboard.
+export function requireRecentAuth(actor, maxAgeSeconds = 900, nowMs = Date.now(), options = {}) {
+  const needsMfa = options.requireMfa === true || actor?.mfaEnrolled === true || actor?.aal === "aal2";
+  const accepted = needsMfa ? MFA_METHODS : REAUTH_METHODS;
   const stamps = (Array.isArray(actor?.amr) ? actor.amr : [])
-    .filter((entry) => ["password", "totp", "otp", "recovery", "invite"].includes(entry.method))
+    .filter((entry) => entry && accepted.includes(entry.method))
     .map((entry) => Number(entry.timestamp))
-    .filter((value) => Number.isFinite(value) && value > 0);
+    .filter((value) => Number.isFinite(value) && value > 0 && value <= nowMs / 1000 + 60);
   const latest = stamps.length ? Math.max(...stamps) : 0;
   if (!latest || nowMs / 1000 - latest > maxAgeSeconds) {
-    const error = new AuthError(401, "Confirm it is you to continue with this action.");
-    error.code = "reauthentication_required";
+    const error = new AuthError(401, needsMfa
+      ? "Confirm it is you with your authenticator code to continue with this action."
+      : "Confirm it is you to continue with this action.");
+    error.code = needsMfa ? "mfa_reauthentication_required" : "reauthentication_required";
     throw error;
   }
   return actor;
+}
+
+// Step-up for a high-impact action, configured per deployment:
+// ATLAS_REQUIRE_STEP_UP=true turns it on; ATLAS_STEP_UP_MAX_AGE_SECONDS sets the
+// window (default 900). ATLAS_REQUIRE_PRIVILEGED_MFA=true also demands a recent
+// second factor from every manager/admin, enrolled or not.
+export function requireStepUp(actor, env = globalThis.Deno?.env, nowMs = Date.now()) {
+  if (String(envValue(env, "ATLAS_REQUIRE_STEP_UP") ?? "").trim().toLowerCase() !== "true") return actor;
+  const configured = Number(envValue(env, "ATLAS_STEP_UP_MAX_AGE_SECONDS") || 900);
+  const maxAge = Number.isFinite(configured) && configured > 0 ? Math.min(configured, 3600) : 900;
+  const privileged = MANAGER_ROLES.includes(actor?.role ?? actor?.profile?.role);
+  return requireRecentAuth(actor, maxAge, nowMs, { requireMfa: privileged && privilegedMfaMandatory(env) });
 }
 
 // Throws 403 unless the actor is active and holds one of `roles`.

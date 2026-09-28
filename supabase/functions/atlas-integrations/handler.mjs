@@ -220,6 +220,8 @@ function providerFrom(value) {
   return provider;
 }
 
+export const STEP_UP_ACTIONS = Object.freeze(new Set(["start", "disconnect", "save-api-key", "select-resource"]));
+
 export function createIntegrationsHandler(deps) {
   const env = (name) => {
     const value = deps.env(name);
@@ -886,6 +888,9 @@ export function createIntegrationsHandler(deps) {
       const action = url.searchParams.get("action") || String(body.action ?? "");
       if (action === "status" && request.method === "GET") return jsonResponse(await handleStatus(context));
       if (request.method !== "POST") throw new ApiError(405, "Use POST for integration changes.");
+      // S96 step-up: connecting, disconnecting, storing credentials and choosing
+      // the provider account need a recent (second-factor) confirmation.
+      if (STEP_UP_ACTIONS.has(action) && typeof deps.stepUp === "function") await deps.stepUp(context, action);
       switch (action) {
         case "start": return jsonResponse(await handleStart(context, body));
         case "test": return jsonResponse(await handleTest(context, body));
