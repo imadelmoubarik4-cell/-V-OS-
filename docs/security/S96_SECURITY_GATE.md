@@ -182,15 +182,22 @@ is not under owner control, this is session theft / account takeover of any user
   (3) update invite/magic-link/email-change/confirmation email templates to token_hash on the production
   origin. Until (1)+(2) are done the finding stays open.
 
-### OPSRISK-01 — High — ACCOUNTING DEPLOYED SOURCE — live PostgREST retry loop
-`public.atlas_accounting_command` raises SQLSTATE 40001 on a stale edit; PostgREST treats it as retryable
-and retries forever, pinning a pooled DB connection (observed active since 2026-09-26; ~8.3–8.6M errors/day
-from one connection). A few such stale commands take the Data API down.
-- Git fix committed for the in-repo catalogue/marketing variants (PT409, 450b7c7). The accounting variant
-  is prepared as an ISOLATED patch (not applied; PR #93 untouched) — `isolated-ACCOUNTING-01-no-40001-retry-loop.diff`.
-- OWNER ACTIONS: (1) terminate the stuck backend now (pg_terminate_backend on the active
-  atlas_accounting_command PID); (2) decide the integration path for the accounting fix and deploy it
-  (this is production accounting code of PR #93 lineage — I did not modify or deploy it).
+### OPSRISK-01 — High — ACCOUNTING DEPLOYED SOURCE — PostgREST retry loop on stale accounting command
+`public.atlas_accounting_command` raises SQLSTATE 40001 on a stale/state-conflict edit; PostgREST treats
+40001 as retryable and retries indefinitely, pinning a pooled DB connection. The **vulnerability is present**
+in the deployed source (multiple `ERRCODE='40001'` paths) and **remains High until its production fix is
+deployed and verified**. Whether a backend is *currently stuck* is a separate, time-varying fact: at the
+latest read there was **no non-idle backend older than ~5 minutes**, so no termination is warranted right now.
+- Git fix committed for the in-repo catalogue/marketing variants (PT409, 450b7c7). The accounting variant is
+  prepared as an ISOLATED patch (not applied; PR #93 untouched) — `isolated-ACCOUNTING-01-no-40001-retry-loop.diff`.
+- OWNER ACTIONS (single authoritative runbook):
+  1. Re-query `pg_stat_activity` for a non-idle backend older than ~5 min running `atlas_accounting_command`.
+  2. Prove it is the accounting retry loop (query text + `state='active'` + long `xact_start`), not other work.
+  3. Terminate **only that exact PID** with `pg_terminate_backend(<pid>)` **if one is present**. Never terminate
+     an unrelated backend. (At the latest read: none present.)
+  4. Deploy the accounting 40001 fix via the separately approved integration path (PR #93 not modified here).
+  5. Verify a stale-command request returns a bounded HTTP 409 with no runaway retry (no growing error count,
+     no pinned connection).
 
 ## Could-be-High UNVERIFIED (must be resolved or owner-accepted before READY)
 - **deploy-preview-8 host ownership (MAIN-01)** — this session's egress policy blocks the host, so whether
@@ -239,7 +246,7 @@ Rollback: each change is an additive migration or guarded code path; revert the 
 ---
 # RECONCILIATION (canonical, HEAD 07f9d28)
 
-## 1. Commit enumeration — 15 commits since S95 994fa5f
+## 1. Commit enumeration — 16 commits since S95 994fa5f
 | # | Commit | Type |
 |---|---|---|
 | 1 | b4425f8 recovery token_hash | production-code fix + test |
@@ -257,7 +264,8 @@ Rollback: each change is an additive migration or guarded code path; revert the 
 | 13 | **7321f68 strict CSP / CSV neutralisation / storage UPDATE lockdown** | production-code fix + migration(094000) + tests |
 | 14 | d379f1e fold webstore into gate report | gate-report only |
 | 15 | 07f9d28 reconcile Python contracts (netlify repin, menu client relocated) | regression-test/manifest change |
-Documentation/gate-only: #11, #12, #14. Everything else carries code, migrations, or tests.
+| 16 | 4f38a61 canonical reconciliation report (commit list, test numbers, master matrix, rollout, checklist) | documentation/gate-only |
+Documentation/gate-only: #11 (d9ac538), #12 (7d555c0), #14 (d379f1e), #16 (4f38a61). Test/manifest reconciliation: #15 (07f9d28). Commits #1–#10 and #13 carry production code, migrations, or tests. (This canonical-cleanup pass is a further documentation-only commit beyond #16.)
 
 ## 2. Canonical test numbers (supersede any earlier figure)
 - `npm run test:node` @ 07f9d28 → **1484 tests, 1442 pass, 0 fail, 42 skipped**.
@@ -265,17 +273,11 @@ Documentation/gate-only: #11, #12, #14. Everything else carries code, migrations
 - Full migration replay (`scripts/verify_full_migration_replay.sh`) → **153 migrations, passed** (141 pre-S96 + 12 S96).
 - Browser: `csp-s96` 3/3, `flavor-intelligence` 13/13 run serially. The full parallel browser suite has pre-existing atlas-ai load-timing flakiness (documented, not S96-introduced).
 
-## 5. OPSRISK-01 accounting — vulnerability vs incident (corrected)
-The **vulnerability is present**: `public.atlas_accounting_command` still contains multiple `ERRCODE='40001'`
-stale/state-conflict paths in the deployed source; the isolated fix remains required and the finding stays
-**High until its production fix is deployed and verified**. Whether a backend is *currently stuck* is a
-separate, time-varying fact. Corrected runbook (replaces "terminate the stuck backend now"):
-1. Re-query `pg_stat_activity` for a non-idle backend older than ~5 min running `atlas_accounting_command`.
-2. Prove it is the accounting retry loop (query text + state='active' + long `xact_start`), not unrelated work.
-3. Terminate only that exact PID with `pg_terminate_backend(<pid>)` if present. Never terminate another backend.
-4. Deploy the accounting 40001 fix via the separately approved integration path (PR #93 not modified here).
-5. Verify a stale-command request returns a bounded 409 with no runaway retry (no growing error count, no pinned conn).
-As of the last read there was no non-idle backend older than 5 minutes, so step 3 may be a no-op right now.
+## 5. OPSRISK-01 accounting — see the single authoritative runbook above
+The OPSRISK-01 section under "The two High findings" is the one authoritative source: vulnerability present
+and **High until the production fix is deployed and verified**; re-query `pg_stat_activity` and terminate only
+an exact proven accounting-retry-loop PID **if present** (none at the latest read); deploy the isolated
+accounting fix via the approved path; verify a bounded 409. No separate or superseding instruction exists.
 
 ## 7. Owner-only platform actions — individual checklist (each with a verification)
 1. Disable public sign-up → GET /config/auth shows `disable_signup:true`.
@@ -308,3 +310,15 @@ Each group is independently reversible. Do not merge groups into one release.
 - **E. Key/token rotation** — prereq: C deployed with `ATLAS_SERVICE_KEY_SOURCE` support. Change: switch to secret keys, disable legacy keys, revoke HS256 + the audit PAT. Service: all functions + API. Interruption: brief if a caller still uses legacy. Rollback: re-enable legacy keys. Verify: privileged paths work on new keys; legacy rejected. Next: independent.
 - **F. Netlify/GitHub configuration** — prereq: none. Change: branch protection, deploy-token scope, fork-preview policy, delete stale previews. Service: CI/CD. Interruption: none. Rollback: restore settings. Verify: protected branch rejects direct push; previews use non-privileged config.
 - **G. Backup/network/SSL** — prereq: inventory of all direct-Postgres callers proven. Change: enable PITR + Storage backup; apply network restrictions; enable SSL enforcement (DB restart). Service: Postgres/Storage. Interruption: SSL enforcement restarts the DB. Rollback: relax the setting. Verify: PITR active; only allow-listed CIDRs connect; clients use SSL.
+
+## Canonical production status (single source of truth)
+- Git security package: **complete and tested** (tests executed at commit `07f9d28`).
+- Production security rollout: **not performed**.
+- MAIN-01 (deploy-preview-8 Auth redirect): **High / open**.
+- OPSRISK-01 (accounting 40001): **High / open**.
+- Current stuck accounting connection: **none observed at latest read**; re-check `pg_stat_activity` before any termination.
+- S96 production migrations: **not applied**.
+- S96 Edge Function fixes: **not deployed**.
+- Auth / platform owner actions: **outstanding** (gate §7 checklist).
+- Documentation HEAD of this canonical package: `claude/s96-security-hardening` tip (this cleanup commit).
+- **Gate: OWNER ACTION REQUIRED.**

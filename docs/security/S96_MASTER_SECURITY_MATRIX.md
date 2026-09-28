@@ -1,212 +1,127 @@
-# S96 Master Security Matrix
+# S96 Master Security Matrix (canonical)
 
-Canonical at HEAD `07f9d28` (branch `claude/s96-security-hardening`). One row per control from the
-master reconciliation. Status is the strongest disposition across agents; VULNERABLE items are fixed
-on-branch at the listed commit unless marked owner-action. `could_be_high` shown only where an agent set it.
+- **Canonical documentation HEAD:** `4f38a61` and later doc-only commits on `claude/s96-security-hardening`.
+- **Tests were executed at commit `07f9d28`** (the last commit that changed code/tests/manifests). Doc-only
+  commits after it did not change any executable code, so the results below still hold; they were **not** re-run
+  at the documentation HEAD.
+- One row per control. Status is normalized to exactly one of: **CONTROL VERIFIED**, **VULNERABLE**,
+  **NOT APPLICABLE**, **UNVERIFIED**. A fixed-but-undeployed issue is **VULNERABLE (in production; fixed on
+  branch)** — the branch carries the fix and its test, but production still has the flaw until deployed.
+- `could_be_high` is TRUE only where an unresolved item could still prove High.
 
-Legend: CV=CONTROL VERIFIED, V=VULNERABLE(→fixed on-branch), NA=NOT APPLICABLE, UNV=UNVERIFIED.
+## A. Attack classes
+C21–C30 were never defined as attack-class IDs (those numbers belong to the "hardening controls 1–30" list in
+section B); every attack-class ID that WAS defined (C1–C20, C31–C44) has a row here.
 
+| ID | Class | Surface | Status | could_be_high | Evidence / final disposition |
+|---|---|---|---|---|---|
+| C1 | CSRF | WEB/FUNC | CONTROL VERIFIED | false | Bearer-token auth, no cookies; verified edgea+aioauth. No meaningless tokens added. |
+| C2 | Insecure file uploads | FUNC/STORAGE | VULNERABLE (fixed on branch) | false | EDGEA-06 photo body parsed before size check → fixed 6bf47dd; recognition MIME/magic/size CV. |
+| C3 | Path traversal / object-key manipulation | FUNC/STORAGE | CONTROL VERIFIED | false | Storage keys server-generated; traversal rejected (edgea, aioauth, webstore probes). |
+| C4 | SSRF | FUNC/AI | CONTROL VERIFIED | false | Consolidated in C44; only dormant push endpoint (fixed on branch 6bf47dd). |
+| C5 | Reset / invite / magic-link / email-change | AUTH | VULNERABLE (fixed on branch + owner) | false | Recovery → token_hash on our origin (b4425f8); invite/magic/confirm/email-change templates = owner action (MAIN-01 §D). |
+| C6 | Session management | AUTH/WEB | VULNERABLE (fixed on branch + owner) | false | Fixation fixed 2395f55; session revocation on deactivate/demote 67e9347; timebox/inactivity = owner action. |
+| C7 | JWT / signing secrets | PLATFORM | VULNERABLE (owner action) | false | Forged-token battery rejected (CV); legacy HS256+anon/service_role keys still trusted → rotation owner action (runbook). |
+| C8 | CORS | FUNC | CONTROL VERIFIED | false | `*` with no credentials on bearer-only APIs; verified edgea+aioauth. |
+| C9 | Rate limits / abuse | FUNC/AI/AUTH | VULNERABLE (partly fixed on branch; owner) | false | DoS-via-retry fixed 450b7c7; per-user AI/upload/message limits missing (EDGEA-07/AIOAUTH) = owner; Auth limits vendor-managed. |
+| C10 | Exposed preview/test/staging | PLATFORM | VULNERABLE (owner action) | false | OPSRISK-05 stale preview projects hold prod data and accept prod logins. |
+| C11 | Default credentials / test accounts | PLATFORM | VULNERABLE (owner action) | false | OPSRISK-10 sole admin is the acceptance-test account; AUTHN-01 public signup. |
+| C12 | Unsigned / unverified webhooks | FUNC | CONTROL VERIFIED | false | All 26 functions enumerated; no inbound third-party webhook exists. |
+| C13 | Frontend-only payment/entitlement | — | NOT APPLICABLE | false | No billing/subscription boundary in Atlas (secsupply). |
+| C14 | IDOR / BOLA | DB/FUNC | VULNERABLE (fixed on branch) | false | DBRLS-01..03, EDGEA-01 fixed (e776b4d/6bf47dd); core RLS/IDOR CV. |
+| C15 | Client-supplied security-sensitive fields | DB/FUNC | VULNERABLE (fixed on branch) | false | DBRLS-04/05, OPSRISK-08 fixed; service-role actor from verified session (CV). |
+| C16 | Sensitive data in logs | FUNC/AI | CONTROL VERIFIED | false | No secrets/PII/tokens logged across 26 functions + frontend. |
+| C17 | Source maps / build artifacts | WEB | CONTROL VERIFIED (preview) / UNVERIFIED (live) | false | preview-103 + backend clean; live os-vabar egress-blocked here → owner re-check post-deploy. |
+| C18 | Cache poisoning / authenticated caching | WEB/FUNC | CONTROL VERIFIED | false | Functions no-store + Vary: authorization; pages max-age=0. |
+| C19 | Stale preview / subdomain takeover | PLATFORM | UNVERIFIED | **true** | deploy-preview-8 host ownership egress-blocked (MAIN-01); owner must verify. |
+| C20 | Prototype pollution / unsafe merge | WEB/FUNC/AI | CONTROL VERIFIED | false | Clean (webstore, edgea, aioauth). |
+| C31 | Netlify/Supabase infrastructure | PLATFORM | VULNERABLE (owner action) | false | SSL-off, DB network 0.0.0.0/0, org MFA off, PITR off — owner checklist (gate §7); rated per credential requirement. |
+| C32 | Auth-link poisoning / open redirects | AUTH/WEB | CONTROL VERIFIED | false | No open-redirect params; redirectTo exact; the Auth-config redirect is MAIN-01 (tracked separately). |
+| C33 | Email scanner / link prefetch safety | AUTH | CONTROL VERIFIED | false | Recovery/invite via single-use token_hash; detectSessionInUrl off; no session created by a GET prefetch. |
+| C34 | Password hardening | PLATFORM | CONTROL VERIFIED | false | min 10, HIBP on, reauth+current-password on. NIST composition rules are Informational (AUTHN-11). |
+| C35 | Session / token exposure | WEB | CONTROL VERIFIED | false | No token in URL/history/referrer/logs; localStorage tokens are XSS-gated, mitigated by strict CSP + escaping. |
+| C36 | postMessage / cross-window | WEB | CONTROL VERIFIED | false | No postMessage handler renders HTML or trusts `*` (webstore). |
+| C37 | Third-party JavaScript / browser supply chain | WEB/CI | VULNERABLE (fixed on branch) | false | CSP 'unsafe-inline'/blob: dropped 7321f68; actions pinned + SRI ae3b4d2; live-header verify = owner. |
+| C38 | Indirect AI prompt injection | AI | CONTROL VERIFIED | false | Tool authz server-side; injection.mjs; approval re-validated (aioauth). |
+| C39 | AI / RAG cross-role leakage | AI | CONTROL VERIFIED | false | Retrieval authorized before generation; verify_s96_knowledge_search_visibility.sql. |
+| C40 | Alternate Supabase interfaces | PLATFORM | CONTROL VERIFIED | false | REST/RPC/Storage/Realtime reviewed; no S3/db-webhooks; GraphQL schema public — owner may restrict if unused. |
+| C41 | Postgres extensions / privileged capabilities | DB | CONTROL VERIFIED | false | vault empty; pg_net/pg_cron absent; no outbound-capable ext reachable by anon/authenticated. |
+| C42 | Non-production data isolation | PLATFORM | VULNERABLE (owner action) | false | OPSRISK-05 stale preview projects hold real data. |
+| C43 | Security detection / alerting | PLATFORM | VULNERABLE (owner action) | false | OPSRISK-09 auth events not persisted; no alerting. security_audit_events added 450b7c7 (DB side). |
+| C44 | SSRF incl. stored & AI-assisted | FUNC/AI | CONTROL VERIFIED | false | 23 sinks; only dormant push endpoint (fixed on branch 6bf47dd); s96-ssrf-egress-gate. |
 
-## A. Attack classes C1–C44
+## B. Hardening controls 1–30 (all 30 present)
 
-| Control | Disposition (agent:status) | could_be_high | Fix commit(s) |
-|---|---|---|---|
-| C1 CSRF | edgea:CONTROL VERIFIED; aioauth:CONTROL VERIFIED | - | - |
-| C1 CSRF (frontend) | webstore:CONTROL VERIFIED | False | - |
-| C10 exposed preview/test/staging environments | opsrisk:VULNERABLE | - | 450b7c7 |
-| C11 XSS (stored/reflected/DOM, AI output) | webstore:VULNERABLE | False | 99d822b/7321f68 |
-| C11 default credentials / sample accounts / bootstrap secrets | opsrisk:VULNERABLE | - | 450b7c7 |
-| C12 webhook-like routes | edgea:CONTROL VERIFIED | - | - |
-| C12 webhooks (enumeration of all inbound unauthenticated-by-design | aioauth:CONTROL VERIFIED | - | - |
-| C13 payment/billing/entitlement enforcement | secsupply:NOT APPLICABLE | - | - |
-| C14 IDOR/BOLA | dbrls:VULNERABLE; dbrls:CONTROL VERIFIED (DB layer by review; live exercise not possible: objects absent from repo replay); edgea:VULNERABLE (Medium:  | - | e776b4d |
-| C15 client-supplied audit fields (mass assignment) | opsrisk:VULNERABLE | - | 450b7c7 |
-| C15 client-supplied role/ids/prices/approval/ownership | dbrls:VULNERABLE; dbrls:CONTROL VERIFIED (review) | - | e776b4d |
-| C15 client-supplied sensitive fields | edgea:VULNERABLE (Low: EDGEA-05 stock-count evidence); others CONTROL VERIFIED | - | 6bf47dd |
-| C15 trusting client-supplied security fields / mass assignment | aioauth:CONTROL VERIFIED | - | - |
-| C16 secrets/PII in logs | edgea:CONTROL VERIFIED (Informational EDGEA-16) | - | - |
-| C16 sensitive data in logs | opsrisk:CONTROL VERIFIED | - | - |
-| C16 sensitive data in logs (AI and integrations code) | aioauth:CONTROL VERIFIED | - | - |
-| C17 source maps / build metadata | secsupply:CONTROL VERIFIED; secsupply:CONTROL VERIFIED | - | - |
-| C17 source maps / build metadata (live site) | secsupply:UNVERIFIED (egress policy: CONNECT to os-vabar.netlify.app returns 403 from this session's proxy) | False | - |
-| C17 source maps/debug bundles/stack traces/build metadata | secsupply:CONTROL VERIFIED | - | - |
-| C17 stack traces / internal detail in function error responses | secsupply:CONTROL VERIFIED | - | - |
-| C18 authenticated-response caching | edgea:CONTROL VERIFIED | - | - |
-| C18 cache poisoning / authenticated caching | webstore:CONTROL VERIFIED | False | - |
-| C19 stale-preview takeover (auth side) | authn:VULNERABLE pending host verification | False | 2395f55/4da5e2e/67e9347 |
-| C19 subdomain / stale-preview takeover | opsrisk:UNVERIFIED (netlify.app and chatgpt.site HTTP blocked by egress policy; DNS resolves for all) | True | - |
-| C2 insecure uploads | edgea:CONTROL VERIFIED; edgea:CONTROL VERIFIED; edgea:VULNERABLE (Low: body parsed before size check, EDGEA-06); type control verified; edgea:CONTROL  | - | 6bf47dd |
-| C2 insecure uploads (inventory recognition; also atlas-ai upload) | aioauth:CONTROL VERIFIED | - | - |
-| C2 insecure uploads (storage policies/serving) | webstore:VULNERABLE | False | 99d822b/7321f68 |
-| C20 prototype pollution | edgea:CONTROL VERIFIED | - | - |
-| C20 prototype pollution (frontend) | webstore:CONTROL VERIFIED | False | - |
-| C20 prototype pollution / unsafe merge | aioauth:CONTROL VERIFIED | - | - |
-| C3 object-key / path manipulation | webstore:VULNERABLE | False | 99d822b/7321f68 |
-| C3 path traversal / object keys | aioauth:CONTROL VERIFIED | - | - |
-| C3 path/object-key manipulation | edgea:CONTROL VERIFIED | - | - |
-| C32-C37 | webstore:UNVERIFIED (class text not provided to webstore) | False | - |
-| C4 SSRF | edgea:VULNERABLE (latent, Low: EDGEA-03 push endpoint); others CONTROL VERIFIED; aioauth:VULNERABLE | - | 6bf47dd |
-| C44 dedicated SSRF / outbound-network gate (ADDENDUM 8; extends C4 | ssrf:CONTROL VERIFIED (with one dormant VULNERABLE: SSRF-01 push endpoint, = EDGEA-03/AIOAUTH-05, delivery disabled, fixed by edgea patch 03) | - | (covered by 6bf47dd) |
-| C5 reset/invite/magic/email-change | authn:VULNERABLE (Low/Medium, config) | False | 2395f55/4da5e2e/67e9347 |
-| C6 session management | authn:VULNERABLE (Low) | False | 2395f55/4da5e2e/67e9347 |
-| C7 JWT | authn:CONTROL VERIFIED | False | - |
-| C7 JWT: legacy/weak secrets and key rotation (legacy-key portion) | secsupply:VULNERABLE | - | ae3b4d2 |
-| C8 CORS | edgea:CONTROL VERIFIED; aioauth:CONTROL VERIFIED | - | - |
-| C9 Auth rate limits | authn:UNVERIFIED (not probed per rules; vendor limits documented) | False | - |
-| C9 rate limits | edgea:VULNERABLE (Low: EDGEA-07) | False | 6bf47dd |
-| C9 rate limits (AI and integrations) | aioauth:VULNERABLE | - | 9c459db |
-| C9 rate limits (DB-side primitives) | dbrls:NOT APPLICABLE (not my class) | - | - |
-| C9 rate limits (DoS via PostgREST retry) | opsrisk:VULNERABLE | - | 450b7c7 |
-| Phase 11: supply chain (npm, Deno, CI, CDN) | secsupply:VULNERABLE | - | ae3b4d2 |
-| Phase 6: secrets in Git history (all refs) | secsupply:CONTROL VERIFIED | - | - |
+| # | Control | Surface | Status | could_be_high | Evidence / test | Fix or owner action |
+|---|---|---|---|---|---|---|
+| 1 | Password-change security (reauth, notifications, session survival) | AUTH | CONTROL VERIFIED | false | reauth+current-password on; recovery global sign-out | owner: enable change/MFA email notifications |
+| 2 | HTTPS everywhere | WEB/PLATFORM | CONTROL VERIFIED | false | all endpoints https; no mixed content | — |
+| 3 | HSTS | WEB | VULNERABLE (fixed on branch) | false | netlify.toml HSTS; includeSubDomains removed 7321f68 | deploy; owner verify live header |
+| 4 | CSRF | WEB/FUNC | CONTROL VERIFIED | false | bearer-only; edgea/aioauth | — |
+| 5 | Session revocation after credential change | AUTH/DB | VULNERABLE (fixed on branch) | false | s96_session_revocation.sql; 67e9347 | deploy |
+| 6 | Reset-link expiry / one-time use | AUTH | CONTROL VERIFIED | false | GoTrue single-use + token_hash flow | — |
+| 7 | User enumeration | AUTH | CONTROL VERIFIED | false | neutral responses (code+config); prod not probed by rule | — |
+| 8 | Upload allow-list (MIME/magic/size/name) | FUNC/STORAGE | VULNERABLE (fixed on branch) | false | 6bf47dd + storage 7321f68; recognition CV | deploy |
+| 9 | Webhook verification | FUNC | CONTROL VERIFIED | false | no inbound webhook exists | — |
+| 10 | Server-authoritative financial values | DB/FUNC | CONTROL VERIFIED | false | accounting/RPC server-side; payments NA | — |
+| 11 | XSS / CSP defense in depth | WEB | VULNERABLE (fixed on branch) | false | menu escaping 99d822b; strict CSP 7321f68; 3,459-payload sweep clean | deploy |
+| 12 | AI usage caps | AI | VULNERABLE (partly fixed; owner) | false | recognition capped (CV); voice metering bypass AIOAUTH-01 | owner: OpenAI project budget; server-held voice call |
+| 13 | Request-body limits | FUNC/AI | VULNERABLE (fixed on branch) | false | photo size fixed 6bf47dd; AI/integrations CV | deploy |
+| 14 | Password-reset rate limiting | AUTH | UNVERIFIED | false | vendor limits; not probed per rules | owner: confirm GoTrue limits / add captcha |
+| 15 | Input validation | DB/FUNC/AI | CONTROL VERIFIED | false | type/length/format; output-context encoding | — |
+| 16 | CORS lockdown | FUNC | CONTROL VERIFIED | false | bearer-only; narrow methods | — |
+| 17 | Directory / index exposure | WEB | CONTROL VERIFIED (preview) / UNVERIFIED (live) | false | preview-103 .env/.git/config 404 | owner: verify live host post-deploy |
+| 18 | Default-admin / maintenance surfaces | PLATFORM/FUNC | VULNERABLE (owner action) | false | OPSRISK-10 test admin; maintenance routes CV | owner: replace acceptance-admin account |
+| 19 | Failed-login abuse protection | AUTH | UNVERIFIED | false | Supabase vendor limits; no DoS-lockout by design | owner: confirm limits / captcha |
+| 20 | Security-event logging | DB/PLATFORM | VULNERABLE (fixed on branch + owner) | false | profile-access audit 450b7c7 | owner: persist auth events, extend retention |
+| 21 | Cookie hardening | WEB | NOT APPLICABLE | false | bearer-only, no auth cookie; OAuth binding cookie is __Host- Secure HttpOnly (CV) | — |
+| 22 | Database least privilege | DB | VULNERABLE (fixed on branch + owner) | false | dbrls revokes e776b4d | owner: apply 2 release-gated revokes (DBRLS-07) |
+| 23 | MFA for privileged accounts | AUTH/DB | VULNERABLE (fixed on branch) | false | 2395f55; s96_aal2_direct_backend.sql | deploy; owner enrol + set mandatory |
+| 24 | Reauthentication for dangerous actions | FUNC | VULNERABLE (fixed on branch) | false | 4da5e2e; s96-mfa-step-up | deploy; owner set ATLAS_REQUIRE_STEP_UP |
+| 25 | Security headers | WEB | VULNERABLE (fixed on branch) | false | 7321f68 CSP/COOP/HSTS | deploy; owner verify live |
+| 26 | Secret rotation & blast radius | PLATFORM | VULNERABLE (owner action) | false | S96_KEY_ROTATION_RUNBOOK.md | owner: rotate legacy keys + PAT |
+| 27 | Backup & restore proof | PLATFORM | VULNERABLE (owner action) | false | restore drill done; PITR off, Storage unbacked | owner: enable PITR + Storage backup |
+| 28 | Privileged session controls | AUTH | VULNERABLE (owner action) | false | timebox/inactivity 0 | owner: set inactivity 12h / timebox 7d |
+| 29 | Egress / SSRF allow-listing | FUNC/AI | CONTROL VERIFIED | false | C44 gate; s96-ssrf-egress-gate | — |
+| 30 | Tamper-resistant audit history | DB | VULNERABLE (fixed on branch) | false | append-only 450b7c7; s96_audit_append_only_test.sql | deploy |
 
-## B. Hardening controls 1–30
+## C. Whole-system controls N1–N20 (all 20 present)
 
-| Control | Disposition (agent:status) | could_be_high | Fix commit(s) |
-|---|---|---|---|
-| 10 Server-authoritative financial values (accounting) | edgea:ALREADY VERIFIED | - | - |
-| 10 Server-authoritative prices/financial values | dbrls:REQUIRED | False | - |
-| 10 Server-authoritative prices/financial values — payments portion | secsupply:NOT APPLICABLE | False | - |
-| 11 XSS incl. AI/imported content; CSP | webstore:REQUIRED | False | - |
-| 12 AI usage caps | aioauth:REQUIRED | False | - |
-| 13 Request-body limits | edgea:REQUIRED | False | - |
-| 13 Request-body limits (AI, integrations, recognition) | aioauth:ALREADY VERIFIED | False | - |
-| 15 Input validation | edgea:ALREADY VERIFIED | - | - |
-| 15 Input validation (AI and integrations) | aioauth:ALREADY VERIFIED | False | - |
-| 15 Input validation (DB-side) | dbrls:ALREADY VERIFIED | False | - |
-| 16 CORS lockdown | edgea:ALREADY VERIFIED | - | - |
-| 16 CORS lockdown (AI and integrations) | aioauth:ALREADY VERIFIED | False | - |
-| 17 Directory/index exposure | secsupply:ALREADY VERIFIED; secsupply:OWNER ACTION REQUIRED | False; False | - |
-| 18 Default-admin / maintenance surfaces (AI maintenance routes) | aioauth:ALREADY VERIFIED | False | - |
-| 18 Default-admin / maintenance surfaces (functions) | edgea:ALREADY VERIFIED | - | - |
-| 18 Default-admin surfaces (default routes, demo logins, test creds | opsrisk:OWNER ACTION REQUIRED | False | - |
-| 2 HTTPS everywhere | webstore:ALREADY VERIFIED | False | - |
-| 2 HTTPS everywhere (integration URLs) | aioauth:ALREADY VERIFIED | False | - |
-| 20 Security-event logging | opsrisk:REQUIRED | False | - |
-| 21 Cookie hardening | webstore:NOT APPLICABLE | False | - |
-| 22 Database least privilege | dbrls:REQUIRED | False | - |
-| 25 Security headers | webstore:REQUIRED | False | - |
-| 26 Secret rotation & blast radius | secsupply:REQUIRED | False | - |
-| 27 Backup & restore proof | opsrisk:OWNER ACTION REQUIRED | False | - |
-| 29 Egress/SSRF allow-listing | edgea:REQUIRED | False | - |
-| 29 Egress/SSRF allow-listing (AI and integrations) | aioauth:REQUIRED | False | - |
-| 3 HSTS on production domain | webstore:REQUIRED | False | - |
-| 30 Tamper-resistant audit history | opsrisk:REQUIRED; dbrls:REQUIRED | False; False | - |
-| 4 CSRF inventory | edgea:ALREADY VERIFIED | - | - |
-| 4 CSRF inventory (AI and integrations) | aioauth:ALREADY VERIFIED | False | - |
-| 4 CSRF inventory (frontend) | webstore:ALREADY VERIFIED | False | - |
-| 8 Upload allow-list | edgea:REQUIRED | False | - |
-| 8 Upload allow-list (buckets) | webstore:REQUIRED | False | - |
-| 8 Upload allow-list (inventory recognition) | aioauth:ALREADY VERIFIED | False | - |
-| 9 Webhook verification | aioauth:ALREADY VERIFIED | False | - |
-| N1 Realtime/WebSocket authorization | dbrls:CONTROL VERIFIED (data) / UNVERIFIED live channel join | False | - |
-| N10 CI/CD and deployment takeover — GitHub Actions | secsupply:VULNERABLE | False | ae3b4d2 |
-| N10 CI/CD and deployment takeover — Netlify deploy tokens and PR p | secsupply:UNVERIFIED (no Netlify API access) | False | - |
-| N10 CI/CD and deployment takeover — Supabase tokens / who can depl | secsupply:VULNERABLE | False | ae3b4d2 |
-| N10 CI/CD and deployment takeover — artifact retention | secsupply:UNVERIFIED (artifact contents not downloaded) | False | - |
-| N10 CI/CD and deployment takeover — branch protection / who can me | secsupply:UNVERIFIED (protection rule details not readable with available read-only tools) | False | - |
-| N11 Data export / mass-exfiltration controls | opsrisk:VULNERABLE | False | 450b7c7 |
-| N11 Export endpoints / mass exfiltration | edgea:CONTROL VERIFIED | - | - |
-| N12 Backup confidentiality | opsrisk:VULNERABLE | False | 450b7c7 |
-| N13 Browser search caches | webstore:UNVERIFIED (code review only; no attack test) | False | - |
-| N13 Search/index leakage (Atlas AI, Knowledge search, Reports) | aioauth:CONTROL VERIFIED | False | - |
-| N14 Notification privacy | edgea:VULNERABLE (latent, Low: EDGEA-08) | False | 6bf47dd |
-| N15 Domain and email security | opsrisk:VULNERABLE | False | 450b7c7 |
-| N16 Migration/production drift detection | opsrisk:VULNERABLE | False | 450b7c7 |
-| N17 Security downgrade (old frontends / stale previews) | webstore:UNVERIFIED (egress policy blocks all previews except 103 and production) | False | - |
-| N18 Delete/disable semantics (Auth side) | authn:VULNERABLE (Low) -> fixed by patch 04. Data access loss was already CONTROL VERIFIED. | False | 2395f55/4da5e2e/67e9347 |
-| N18 Delete/disable semantics (DB side) | dbrls:CONTROL VERIFIED | False | - |
-| N19 Error-message/data leakage | edgea:VULNERABLE (Low: EDGEA-04) | False | 6bf47dd |
-| N19 Error/data leakage (AI) | aioauth:VULNERABLE | False | 9c459db |
-| N2 Cron, queues, background workers | edgea:CONTROL VERIFIED | - | - |
-| N20 Denial-of-wallet | edgea:VULNERABLE (Low: EDGEA-07) | False | 6bf47dd |
-| N20 Denial-of-wallet (AI chat, voice, recognition, flavor) | aioauth:VULNERABLE | False | 9c459db |
-| N3 Venue/tenant isolation | dbrls:NOT APPLICABLE (single-tenant by design; documented risk) | False | - |
-| N4 Race conditions/TOCTOU | dbrls:VULNERABLE (fixed in patch) | False | e776b4d |
-| N5 Idempotency of dangerous writes | edgea:CONTROL VERIFIED | - | - |
-| N5 Idempotency of dangerous writes (DB) | dbrls:CONTROL VERIFIED (except v1 adjust_inventory) | False | - |
-| N6 CSV formula injection (frontend CSV builders) | webstore:VULNERABLE | False | 99d822b/7321f68 |
-| N6 CSV/Excel formula injection (server exports) | edgea:CONTROL VERIFIED | - | - |
-| N7 Archive/document/image bombs | edgea:CONTROL VERIFIED | - | - |
-| N7 Image/decompression bombs (inventory recognition; also atlas-ai | aioauth:CONTROL VERIFIED | False | - |
-| N8 Signed URL security | webstore:VULNERABLE | False | 99d822b/7321f68 |
-| N9 MFA recovery / break-glass admin recovery | authn:UNVERIFIED (no recovery process exists yet; nobody is enrolled, so nothing to recover today) | False | - |
+| # | Control | Surface | Status | could_be_high | Evidence / fix or owner action |
+|---|---|---|---|---|---|
+| N1 | Realtime / WebSocket authorization | DB | CONTROL VERIFIED (data) | false | supabase_realtime publication empty; owner: set private channels (DBRLS-10) |
+| N2 | Cron / queues / background workers | FUNC | CONTROL VERIFIED | false | import-worker 503, publisher gated, AI-maint secret unset |
+| N3 | Venue / tenant isolation | DB | NOT APPLICABLE | false | single-tenant; no venue column; do not add a 2nd venue to this project |
+| N4 | Race conditions / TOCTOU | DB | VULNERABLE (fixed on branch) | false | last-admin race 090300; verify_s96_races.sh 4/4 |
+| N5 | Idempotency of dangerous writes | DB/FUNC | CONTROL VERIFIED | false | request-id dedupe; single approval |
+| N6 | CSV / Excel formula injection | FUNC/WEB | VULNERABLE (fixed on branch) | false | exports neutralised 7321f68; csv-formula-injection-s96 |
+| N7 | Archive / document / image bombs | FUNC | CONTROL VERIFIED | false | recognition never server-decodes; size-capped |
+| N8 | Signed URL security | STORAGE | CONTROL VERIFIED (Low residual) | false | tokens bound to one object; profile-photo TTL 6h (owner may shorten) |
+| N9 | MFA recovery / break-glass | PLATFORM | UNVERIFIED | false | no process yet; 0 enrolled; owner: define per runbook |
+| N10 | CI/CD & deployment takeover | CI | VULNERABLE (partly fixed; owner) | false | actions pinned ae3b4d2; branch-protection/Netlify tokens owner-confirm |
+| N11 | Data export / mass exfiltration | FUNC/PLATFORM | VULNERABLE (owner action) | false | export endpoints CV; volume/audit controls owner action (OPSRISK-N11) |
+| N12 | Backup confidentiality | PLATFORM | VULNERABLE (owner action) | false | OPSRISK-N12; owner: protect backups/no public artifacts |
+| N13 | Search / index leakage | AI | CONTROL VERIFIED | false | verify_s96_knowledge_search_visibility.sql |
+| N14 | Notification privacy | FUNC | VULNERABLE (latent; owner) | false | EDGEA-08 push payload full text; delivery disabled; push-policy 6bf47dd |
+| N15 | Domain / email security (SPF/DKIM/DMARC) | PLATFORM | VULNERABLE (owner action) | false | no DMARC, SPF softfail (OPSRISK-14) |
+| N16 | Migration / production drift detection | PLATFORM | VULNERABLE (owner action) | false | drift script added 450b7c7; owner: run in CI |
+| N17 | Security downgrade / old clients | WEB | CONTROL VERIFIED (server) / UNVERIFIED (old previews) | false | server boundary enforces; old previews egress-blocked |
+| N18 | Delete / disable semantics | DB/AUTH | VULNERABLE (fixed on branch) | false | session revocation 67e9347; s96_session_revocation.sql |
+| N19 | Error-message / data leakage | FUNC/AI | VULNERABLE (fixed on branch) | false | 6bf47dd/9c459db; s96-edge-db-error-leakage, s96-phase3-db-errors |
+| N20 | Denial-of-wallet | FUNC/AI | VULNERABLE (partly fixed; owner) | false | recognition capped; voice AIOAUTH-01; owner: provider budget |
 
-## C. Whole-system controls N1–N20
+## D. Named scenarios and the two open Highs
 
-| Control | Disposition (agent:status) | could_be_high | Fix commit(s) |
-|---|---|---|---|
-| N1 Realtime/WebSocket authorization | dbrls:CONTROL VERIFIED (data) / UNVERIFIED live channel join | False | - |
-| N10 CI/CD and deployment takeover — GitHub Actions | secsupply:VULNERABLE | False | ae3b4d2 |
-| N10 CI/CD and deployment takeover — Netlify deploy tokens and PR p | secsupply:UNVERIFIED (no Netlify API access) | False | - |
-| N10 CI/CD and deployment takeover — Supabase tokens / who can depl | secsupply:VULNERABLE | False | ae3b4d2 |
-| N10 CI/CD and deployment takeover — artifact retention | secsupply:UNVERIFIED (artifact contents not downloaded) | False | - |
-| N10 CI/CD and deployment takeover — branch protection / who can me | secsupply:UNVERIFIED (protection rule details not readable with available read-only tools) | False | - |
-| N11 Data export / mass-exfiltration controls | opsrisk:VULNERABLE | False | 450b7c7 |
-| N11 Export endpoints / mass exfiltration | edgea:CONTROL VERIFIED | - | - |
-| N12 Backup confidentiality | opsrisk:VULNERABLE | False | 450b7c7 |
-| N13 Browser search caches | webstore:UNVERIFIED (code review only; no attack test) | False | - |
-| N13 Search/index leakage (Atlas AI, Knowledge search, Reports) | aioauth:CONTROL VERIFIED | False | - |
-| N14 Notification privacy | edgea:VULNERABLE (latent, Low: EDGEA-08) | False | 6bf47dd |
-| N15 Domain and email security | opsrisk:VULNERABLE | False | 450b7c7 |
-| N16 Migration/production drift detection | opsrisk:VULNERABLE | False | 450b7c7 |
-| N17 Security downgrade (old frontends / stale previews) | webstore:UNVERIFIED (egress policy blocks all previews except 103 and production) | False | - |
-| N18 Delete/disable semantics (Auth side) | authn:VULNERABLE (Low) -> fixed by patch 04. Data access loss was already CONTROL VERIFIED. | False | 2395f55/4da5e2e/67e9347 |
-| N18 Delete/disable semantics (DB side) | dbrls:CONTROL VERIFIED | False | - |
-| N19 Error-message/data leakage | edgea:VULNERABLE (Low: EDGEA-04) | False | 6bf47dd |
-| N19 Error/data leakage (AI) | aioauth:VULNERABLE | False | 9c459db |
-| N2 Cron, queues, background workers | edgea:CONTROL VERIFIED | - | - |
-| N20 Denial-of-wallet | edgea:VULNERABLE (Low: EDGEA-07) | False | 6bf47dd |
-| N20 Denial-of-wallet (AI chat, voice, recognition, flavor) | aioauth:VULNERABLE | False | 9c459db |
-| N3 Venue/tenant isolation | dbrls:NOT APPLICABLE (single-tenant by design; documented risk) | False | - |
-| N4 Race conditions/TOCTOU | dbrls:VULNERABLE (fixed in patch) | False | e776b4d |
-| N5 Idempotency of dangerous writes | edgea:CONTROL VERIFIED | - | - |
-| N5 Idempotency of dangerous writes (DB) | dbrls:CONTROL VERIFIED (except v1 adjust_inventory) | False | - |
-| N6 CSV formula injection (frontend CSV builders) | webstore:VULNERABLE | False | 99d822b/7321f68 |
-| N6 CSV/Excel formula injection (server exports) | edgea:CONTROL VERIFIED | - | - |
-| N7 Archive/document/image bombs | edgea:CONTROL VERIFIED | - | - |
-| N7 Image/decompression bombs (inventory recognition; also atlas-ai | aioauth:CONTROL VERIFIED | False | - |
-| N8 Signed URL security | webstore:VULNERABLE | False | 99d822b/7321f68 |
-| N9 MFA recovery / break-glass admin recovery | authn:UNVERIFIED (no recovery process exists yet; nobody is enrolled, so nothing to recover today) | False | - |
-
-## D. Named scenarios and infrastructure (one row each)
-
-| Item | Surface | Status | Sev | Attack path / evidence | Negative test | Fix commit | Production action | could_be_high |
-|---|---|---|---|---|---|---|---|---|
-| A-ADMIN-01 low-priv→admin | ALL | CONTROL VERIFIED | — | every boundary proven (docs/security/S96_A-ADMIN-01.md) | s96_aal2_direct_backend.sql, s96_authn_gates.sql, s96_rls_ownership.sql, s96-aioauth-security | e776b4d/2395f55/6bf47dd | deploy branch | false |
-| MFA/AAL2 for admin/manager | PROD BACKEND+DB | V→fixed | Med | AUTHN-02: no aal check; enrolled aal1 refused after fix | s96-mfa-step-up, s96_aal2_direct_backend.sql, s96_authn_gates.sql | 2395f55 | deploy + owner enrol MFA, then set mandatory | false |
-| Step-up for dangerous actions | PROD BACKEND | V→fixed | Low | AUTHN-05: role/integration/secret changes | s96-mfa-step-up | 4da5e2e | deploy + set ATLAS_REQUIRE_STEP_UP | false |
-| MFA recovery / break-glass | PLATFORM | UNVERIFIED | Low | AUTHN N9: no process yet; 0 enrolled today | — (runbook) | S96_KEY_ROTATION + IR runbook | owner: define recovery, add 2nd org owner | false |
-| Public sign-up exposure | PLATFORM | V (owner) | Med | AUTHN-01: signup creates inactive viewer only (proven); email-budget/junk-profile abuse | s96_authn_gates.sql (signup→viewer) | — | owner: disable_signup=true | false |
-| Venue/tenant isolation | DB | NOT APPLICABLE | — | DBRLS N3: no venue/tenant column; single-tenant by design | — | — | do not add a 2nd venue to this project | false |
-| Race / TOCTOU | DB | V→fixed | Low | DBRLS-06 last-admin race; approvals/stock/idempotency | verify_s96_races.sh (4/4) | e776b4d | deploy | false |
-| Idempotency of dangerous writes | DB+FUNC | CONTROL VERIFIED | — | request-id dedupe; approvals single | verify_s96_races.sh, edgea tests | — | — | false |
-| Realtime authorization | DB | CV (data) / owner | Low | publication empty (no postgres_changes exposed); DBRLS-10 | dbrls replay | — | owner: set Realtime private channels | false |
-| Background workers / cron | FUNC | CONTROL VERIFIED | — | EDGEA N2: import-worker 503, publisher gated, AI maint secret unset | edgea probes | — | — | false |
-| CSV/Excel formula injection | FUNC+WEB | V→fixed | Low | WEBSTORE-05/N6: exports neutralised | csv-formula-injection-s96 | 7321f68 | deploy | false |
-| Archive/decompression bombs | FUNC | CONTROL VERIFIED | — | recognition never server-decodes; size-capped | s96-aioauth-security | — | — | false |
-| Signed URL security | STORAGE | CV (Low residual) | Low | WEBSTORE-09: profile-photo URL 6h (others 2-15m) | webstore probes | — | owner: shorten photo signed-URL TTL (optional) | false |
-| CI/CD takeover | CI | V (Actions) / UNV | Med | SECSUPPLY N10: unpinned actions→pinned; branch-protection/Netlify tokens unreadable here | security-supply-chain | ae3b4d2 | owner: confirm branch protection, Netlify/PAT posture | false |
-| Backups / recovery | PLATFORM | V (owner) | Med | OPSRISK-11: PITR off, Storage not backed up | restore drill (opsrisk) | — | owner: enable PITR + Storage backup | false |
-| Search/index leakage (AI/Knowledge/Reports) | AI | CONTROL VERIFIED | — | AIOAUTH N13: bartender retrieves no manager data | verify_s96_knowledge_search_visibility.sql | — | — | false |
-| Notification privacy | FUNC | V (latent) | Low | EDGEA-08: push carries full text (delivery disabled today) | edgea review | (push-policy 6bf47dd) | owner: keep push disabled until payload minimised | false |
-| Domain / email security | PLATFORM | V (owner) | Low | OPSRISK-14/N15: no DMARC, SPF softfail | dig evidence | — | owner: add SPF/DKIM/DMARC | false |
-| Downgrade / old clients | WEB | CV / UNV(old previews) | Low | server boundary enforces regardless; older previews egress-blocked | — | — | owner: retire stale previews | false |
-| Deletion/disable session semantics | DB+AUTH | V→fixed | Low | AUTHN N18: sessions now revoked on deactivate/demote | s96_session_revocation.sql | 67e9347 | deploy | false |
-| Error-message/data leakage | FUNC+AI | V→fixed | Low | EDGEA-04/AIOAUTH-04: raw DB text redacted | s96-edge-db-error-leakage, s96-phase3-db-errors | 6bf47dd/9c459db | deploy | false |
-| AI prompt injection / tool authority | AI | CONTROL VERIFIED | — | tools role-gated server-side; injection.mjs; approval re-validated | s96-aioauth-security, s96-aioauth-n-controls | — | — | false |
-| AI/RAG cross-role isolation | AI | CONTROL VERIFIED | — | retrieval authz before generation | verify_s96_knowledge_search_visibility.sql | — | — | false |
-| Alternate Supabase interfaces (C40) | PLATFORM | CV / documented | — | REST/RPC/Storage/Realtime reviewed; GraphQL exposed schema public,graphql_public; S3/webhooks none | dbrls/opsrisk baseline | — | owner: consider restricting GraphQL if unused | false |
-| Postgres extensions (C41) | DB | CONTROL VERIFIED | — | vault empty; pg_net/pg_cron absent; no outbound-capable ext abusable by anon/authenticated | baseline extensions.json | — | — | false |
-| Non-production data isolation (C42) | PLATFORM | V (owner) | Med | OPSRISK-05: stale preview projects hold real VÁ data + accept prod logins | opsrisk read-only | — | owner: delete/lock stale preview projects & branches | false |
-| Security detection / alerting (C43) | PLATFORM | V (owner) | Med | OPSRISK-09: auth events not persisted; no alerting | — | (security_audit_events 450b7c7) | owner: enable auth audit persistence + alerts | false |
-| SSRF incl. stored & AI-assisted (C44) | FUNC+AI | CONTROL VERIFIED | Low(dormant) | ssrf gate: 23 sinks; only push endpoint (dormant) | s96-ssrf-egress-gate | (push-policy 6bf47dd) | keep push disabled until deployed | false |
-| MAIN-01 deploy-preview-8 Auth redirect | PLATFORM | UNVERIFIED / High | High | session theft if host not owner-controlled; host egress-blocked here | s96-auth-email-links (recovery mitig.) | b4425f8 (mitigation only) | owner: verify host + fix Site URL/redirects/templates | **true** |
-| OPSRISK-01 accounting 40001 loop | ACCOUNTING DEPLOYED | VULNERABLE / High | High | stale command → infinite PostgREST retry, pins DB conn | s96_no_serialization_failure_sqlstate_test.sql (catalogue/mktg); accounting variant isolated | 450b7c7 (catalogue/mktg); accounting = isolated patch | owner: deploy accounting fix via approved path; terminate the exact stuck PID only if present | (High, present in prod) |
+| Item | Surface | Status | could_be_high | Evidence / action |
+|---|---|---|---|---|
+| A-ADMIN-01 low-priv → admin | ALL | CONTROL VERIFIED | false | every boundary proven — docs/security/S96_A-ADMIN-01.md |
+| MAIN-01 deploy-preview-8 Auth redirect | PLATFORM | VULNERABLE / **High / open** | **true** | recovery mitigated b4425f8; owner: verify host + fix Site URL/redirects/templates end-to-end |
+| OPSRISK-01 accounting 40001 loop | ACCOUNTING DEPLOYED | VULNERABLE / **High / open** | n/a (present in prod) | catalogue/mktg fixed 450b7c7; accounting = isolated patch; owner: deploy via approved path + verify bounded 409 (see gate §5) |
 
 ## Reconciliation notes
-- 15 commits since 994fa5f (see S96_SECURITY_GATE.md for the classified list). 3 are documentation/gate-only
-  (d9ac538, 7d555c0, d379f1e); 07f9d28 is a test/manifest reconciliation; the rest carry code+migration+tests.
-- Canonical tests at 07f9d28: `npm run test:node` → 1484 tests, 1442 pass, 0 fail, 42 skipped; Python 275 run,
-  1 environment-only error (pdfplumber missing); full migration replay 153 migrations passed; CSP browser 3/3,
-  flavor browser 13/13 (serial). Full parallel browser suite has pre-existing atlas-ai timing flakiness.
+- **16 commits** since 994fa5f. Documentation/gate-only: `d9ac538`, `7d555c0`, `d379f1e`, `4f38a61`.
+  Test/manifest reconciliation: `07f9d28`. The other 11 carry production code, migrations and tests. Full
+  classified list in `docs/security/S96_SECURITY_GATE.md` §1.
+- **Tests executed at `07f9d28`** (not re-run for later doc-only commits): node 1484 total / 1442 pass / 0 fail
+  / 42 skipped; Python 275 run / 1 environment-only error (pdfplumber missing); migration replay 153 passed;
+  CSP browser 3/3; flavor browser 13/13 serial.
