@@ -25,9 +25,13 @@ update public.profiles set role='bartender', active=true, display_name='S98 Bart
 update public.profiles set role='bartender', active=true, display_name='S98 Bartender Two' where id='98000000-0000-4000-8000-0000000000c2';
 update public.profiles set role='bartender', active=false, display_name='S98 Inactive' where id='98000000-0000-4000-8000-0000000000e1';
 
--- A training category to file lessons under.
-insert into atlas_private.knowledge_categories(id, category_key, name)
-values ('98000000-0000-4000-8000-0000000000f0', 's98-training', 'S98 Training')
+-- A training category to file lessons under (active), plus an inactive one that
+-- must never surface in the authoring category list.
+insert into atlas_private.knowledge_categories(id, category_key, name, active, sort_order)
+values ('98000000-0000-4000-8000-0000000000f0', 's98-training', 'S98 Training', true, 10)
+on conflict (category_key) do nothing;
+insert into atlas_private.knowledge_categories(id, category_key, name, active, sort_order)
+values ('98000000-0000-4000-8000-0000000000f2', 's98-training-inactive', 'S98 Retired', false, 20)
 on conflict (category_key) do nothing;
 
 -- 1. The private bucket exists, is private, and allows only video types.
@@ -193,6 +197,34 @@ begin
     perform public.atlas_training_save_progress(bart2,'bartender', v_draft, 10);
     raise exception 'progress saved without starting';
   exception when no_data_found then null; end;
+end $$;
+
+-- 7. The manager snapshot is self-contained for authoring: it returns active
+--    categories only (canonical Knowledge rule), never inactive ones; staff get none.
+do $$
+declare
+  mgr uuid := '98000000-0000-4000-8000-0000000000d1';
+  bart uuid := '98000000-0000-4000-8000-0000000000c1';
+  snap jsonb; cats jsonb;
+begin
+  snap := public.atlas_training_snapshot(mgr, 'manager');
+  cats := snap->'categories';
+  if cats is null or jsonb_typeof(cats) <> 'array' then
+    raise exception 'manager snapshot must include a categories array';
+  end if;
+  if not exists (select 1 from jsonb_array_elements(cats) e
+                 where e->>'id' = '98000000-0000-4000-8000-0000000000f0'
+                   and e->>'name' = 'S98 Training' and e ? 'key') then
+    raise exception 'manager snapshot must contain the seeded active category with id/key/name';
+  end if;
+  if exists (select 1 from jsonb_array_elements(cats) e
+             where e->>'id' = '98000000-0000-4000-8000-0000000000f2') then
+    raise exception 'manager snapshot must not contain an inactive category';
+  end if;
+  snap := public.atlas_training_snapshot(bart, 'bartender');
+  if snap->'categories' <> '[]'::jsonb then
+    raise exception 'staff snapshot must return an empty categories array';
+  end if;
 end $$;
 
 do $$ begin raise notice 'S98 training: all authorization and integrity checks passed'; end $$;
