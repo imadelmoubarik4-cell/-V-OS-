@@ -171,7 +171,11 @@
     },
     shifts: (rest) => [['shifts', section(rest[0])]],
     team: (rest) => [['team-profiles', rest[0] ? { profile: rest[0] } : {}]],
-    knowledge: (rest) => [['knowledge', ['required', 'training', 'sources', 'activity'].includes(rest[0]) ? section(rest[0]) : rest[0] ? { article: rest[0] } : {}]],
+    knowledge: (rest) => {
+      if (rest[0] === 'training') return [['training', rest[1] ? { lesson: rest[1] } : {}], ['knowledge', section('training')]];
+      if (['required', 'training', 'sources', 'activity'].includes(rest[0])) return [['knowledge', section(rest[0])]];
+      return [['knowledge', rest[0] ? { article: rest[0] } : {}]];
+    },
     reports: (rest) => [['reports', section(rest[0])]],
     marketing: (rest) => [['marketing', section(rest[0])]],
     accounting: (rest) => [['accounting', rest[0] === 'document' && rest[1] ? { document: rest[1] } : section(rest[0])]],

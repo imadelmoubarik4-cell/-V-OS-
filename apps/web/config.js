@@ -17,6 +17,9 @@ window.VABAR_CONFIG = {
   TEAM_PROFILE_PHOTOS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profile-photos",
   SHIFTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-shifts",
   KNOWLEDGE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-knowledge",
+  // Knowledge › Training: private video SOPs (signed uploads, short-lived playback),
+  // chapters, procedure steps, progress and explicit completion.
+  TRAINING_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-training",
   REPORTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-reports",
   SYSTEM_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-system",
   SETTINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-settings",
@@ -183,6 +186,16 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/knowledge-workspace.js?v=20261003-bot1',
   globalName: 'AtlasKnowledge',
   dataAttribute: 'atlasKnowledge',
+}));
+
+// S98: Knowledge › Training. Private video SOPs, chapters, procedure steps, progress
+// and explicit completion. Registers the shell view 'training' for #knowledge/training
+// and #knowledge/training/<lesson>.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/training-workspace.css?v=20261015-s98',
+  scriptPath: 'assets/js/training-workspace.js?v=20261015-s98',
+  globalName: 'AtlasTraining',
+  dataAttribute: 'atlasTraining',
 }));
 
 // Checkpoint H replaces the Reports placeholder with a permission-aware,

@@ -86,7 +86,7 @@ class S35StagingPackageTests(unittest.TestCase):
             headers = (output / "_headers").read_text()
             boundary = (output / "assets/js/rehearsal-boundary.js").read_text()
             manifest = json.loads((output / "rehearsal-manifest.json").read_text())
-            self.assertEqual(manifest["runtime_endpoint_count"], 18)
+            self.assertEqual(manifest["runtime_endpoint_count"], 19)
             self.assertFalse(manifest["hosted_setup_performed"])
             self.assertFalse(manifest["notification_delivery_enabled"])
             self.assertFalse(manifest["production_changes"])
@@ -95,7 +95,7 @@ class S35StagingPackageTests(unittest.TestCase):
                 rf"https://{builder.TARGET}\.supabase\.co/functions/v1/([a-z0-9-]+)",
                 config,
             ))
-            self.assertEqual(len(configured_functions), 18)
+            self.assertEqual(len(configured_functions), 19)
             self.assertIn("atlas-import-worker", configured_functions)
             self.assertIn("loadAtlasAsset", config)
             self.assertIn("Runtime modules enabled for this isolated target", boundary)
