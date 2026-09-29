@@ -253,10 +253,15 @@ test('changed scripts carry the S88 cache key', () => {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-s90g"></script>`), file);
   }
   // S97 Inventory Storage Locations: managed locations with chips, filters, a
-  // Manage Locations page and primary-location stock-count scoping changed the
-  // inventory workspace and the stock-count flow together.
-  for (const file of ['atlas-inventory.js', 'stock-count-workspace.js']) {
+  // Manage Locations page and primary-location stock-count scoping.
+  for (const file of ['stock-count-workspace.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261011-s97"></script>`), file);
+  }
+  // Spirits taxonomy fix: stored-first canonical Spirits classification
+  // (Liqueurs / Aperitifs / Vermouth split; no "ori(gin)al" → Gin false match).
+  // Inventory workspace only; the cache key must change so browsers reload it.
+  for (const file of ['atlas-inventory.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261016-spirits"></script>`), file);
   }
   // The Atlas AI robot (atlas-bot.js) replaced the sparkles assistant icon in
   // these scripts; atlas-ai.js also carries the S91b live voice lease.

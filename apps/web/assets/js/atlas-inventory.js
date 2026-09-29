@@ -377,6 +377,30 @@
   const WINE_TYPES = ['Red', 'White', 'Rosé', 'Sparkling'];
   const SPIRITS = /vodka|gin|whisk(?:e)?y|rum|tequila|mezcal|brandy|cognac|aquavit|brenniv[ií]n|liqueur|aperitif|vermouth|spirit|shot/;
   const BEERS = /beer|lager|ale|ipa|stout|cider|\bkeg\b|ready.to.drink|\brtd\b/;
+  // Canonical Spirits taxonomy, in display order. Stored category/subcategory are
+  // authoritative; product-name inference is only a fallback.
+  const SPIRIT_TYPES = ['Gin', 'Vodka', 'Rum', 'Whiskey', 'Tequila & Mezcal', 'Brandy & Cognac', 'Aquavit / Brennivín', 'Liqueurs', 'Aperitifs', 'Vermouth', 'Shots'];
+  // Map one classification string (a stored subcategory, a stored category, or —
+  // only as a last resort — a product name) to a canonical Spirits type. Word
+  // boundaries stop an incidental name substring (e.g. "Bailey's Ori(gin)al" or
+  // "Brennivín Ori(gin)al") from reading as Gin, and the order resolves records
+  // that carry more than one hint (Aperol is Vermouth/Aperitivo → Aperitifs).
+  function spiritsLabel(text) {
+    const t = String(text || '').toLowerCase().trim();
+    if (!t) return null;
+    if (/\baperiti(?:v|f)/.test(t)) return 'Aperitifs';
+    if (/\bvermouth\b/.test(t)) return 'Vermouth';
+    if (/aquavit|akvavit|brenniv[ií]n/.test(t)) return 'Aquavit / Brennivín';
+    if (/tequila|mezcal|mescal/.test(t)) return 'Tequila & Mezcal';
+    if (/brandy|cognac|armagnac|calvados|pisco/.test(t)) return 'Brandy & Cognac';
+    if (/whisk(?:e)?y|bourbon|scotch|\brye\b/.test(t)) return 'Whiskey';
+    if (/liqueur|triple\s*sec|cura[cç]ao|amaretto|schnapps|sambuca|limoncello|cr[eè]me\s+de|irish\s+cream/.test(t)) return 'Liqueurs';
+    if (/\bgin\b/.test(t)) return 'Gin';
+    if (/\bvodka\b/.test(t)) return 'Vodka';
+    if (/\brum\b|\bcacha[cç]a\b/.test(t)) return 'Rum';
+    if (/\bshots?\b/.test(t)) return 'Shots';
+    return null;
+  }
   function inventoryGroup(item) {
     const category = String(item?.category || '').toLowerCase();
     const value = `${category} ${String(item?.name || '').toLowerCase()}`;
@@ -414,15 +438,11 @@
       return 'White';
     }
     if (group === 'spirits') {
-      if (/whisk(?:e)?y|bourbon|scotch|rye/.test(value)) return 'Whiskey';
-      if (/gin/.test(value)) return 'Gin';
-      if (/vodka/.test(value)) return 'Vodka';
-      if (/rum/.test(value)) return 'Rum';
-      if (/tequila|mezcal/.test(value)) return 'Tequila and mezcal';
-      if (/brandy|cognac/.test(value)) return 'Brandy and cognac';
-      if (/aquavit|brenniv[ií]n/.test(value)) return 'Aquavit';
-      if (/shot/.test(value)) return 'Shots';
-      return 'Liqueurs and aperitifs';
+      // Stored classification is authoritative: subcategory first, then category.
+      // A product name is only consulted when neither yields a known type, so a
+      // correctly stored record (Bailey's = Liqueur / Cream Liqueur, Aperol =
+      // Vermouth / Aperitivo) is never overridden by an incidental name substring.
+      return spiritsLabel(stored) || spiritsLabel(category) || spiritsLabel(name) || 'Liqueurs';
     }
     if (group === 'beer') {
       if (/\bkeg|30l|20l|50l/.test(value)) return 'Kegs';
@@ -446,7 +466,13 @@
       counts.set(label, (counts.get(label) || 0) + 1);
     });
     const list = [...counts];
-    return group === 'wine' ? list : list.sort((a, b) => a[0].localeCompare(b[0]));
+    if (group === 'wine') return list;
+    if (group === 'spirits') return list.sort((a, b) => {
+      const ia = SPIRIT_TYPES.indexOf(a[0]);
+      const ib = SPIRIT_TYPES.indexOf(b[0]);
+      return (ia === -1 ? SPIRIT_TYPES.length : ia) - (ib === -1 ? SPIRIT_TYPES.length : ib) || a[0].localeCompare(b[0]);
+    });
+    return list.sort((a, b) => a[0].localeCompare(b[0]));
   }
 
   function filtered() {
