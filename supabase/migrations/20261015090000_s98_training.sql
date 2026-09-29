@@ -414,6 +414,7 @@ as $function$
 declare
   is_manager boolean := p_actor_role in ('admin','manager');
   lessons jsonb;
+  categories jsonb := '[]'::jsonb;
 begin
   perform atlas_private.training_require_actor(p_actor_id, p_actor_role);
 
@@ -455,8 +456,23 @@ begin
       and atlas_private.knowledge_article_visible(a, p_actor_role, is_manager)
   ) rows;
 
+  -- Training authoring needs the category list without depending on the Knowledge
+  -- frontend snapshot. Managers/admins get active categories only, using the same
+  -- canonical rule Knowledge uses (active = true, ordered by sort_order then name);
+  -- staff do not author, so they receive an empty list.
+  if is_manager then
+    select coalesce(pg_catalog.jsonb_agg(
+             pg_catalog.jsonb_build_object(
+               'id', c.id, 'key', c.category_key, 'name', c.name, 'sort_order', c.sort_order)
+             order by c.sort_order, c.name), '[]'::jsonb)
+      into categories
+    from atlas_private.knowledge_categories c
+    where c.active = true;
+  end if;
+
   return pg_catalog.jsonb_build_object(
     'lessons', lessons,
+    'categories', categories,
     'permissions', pg_catalog.jsonb_build_object('can_manage_training', is_manager),
     'actor_role', p_actor_role
   );
