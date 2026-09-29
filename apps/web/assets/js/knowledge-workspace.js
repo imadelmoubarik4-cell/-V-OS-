@@ -817,8 +817,13 @@
     const tab = target.closest('[data-knowledge-tab]');
     if (tab) {
       if (event.metaKey || event.ctrlKey) return;
-      event.preventDefault();
       const key = tab.dataset.knowledgeTab;
+      // #knowledge/training is a standalone registered view (atlas-training), not
+      // a Knowledge section: let the tab's canonical href drive the shell router
+      // so a tab click resolves to the training view exactly as direct navigation
+      // does, and never forces the knowledge view or calls atlas-knowledge.
+      if (key === 'training') return;
+      event.preventDefault();
       routeTo('knowledge', key === 'library' ? {} : { section: key });
       return;
     }
