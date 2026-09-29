@@ -2,38 +2,38 @@
 
 window.VABAR_CONFIG = {
   MODE: "production",
-  SUPABASE_URL: "https://dnefgcmjcgxlynycxkts.supabase.co",
-  SUPABASE_ANON_KEY: "sb_publishable_MQx7jRJzN3z9UV72THr90A_hxXk2Lkp",
-  SPRINT3_REVIEW_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-sprint3-review",
-  PHASE3_BRAIN_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-phase3-brain",
-  PHASE3_INTELLIGENCE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-phase3-intelligence",
-  OPERATIONS_CHECKPOINT_A_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-operations-checkpoint-a",
-  STOCK_COUNTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-stock-counts",
-  TEAM_MESSAGES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-messages",
-  MARKETING_WORKSPACE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-workspace",
+  SUPABASE_URL: "https://ewgxjzewjhitgpxcimfe.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_aRFr5YpkO6GyKzc49tQ6_w_Q5yQ5jU1",
+  SPRINT3_REVIEW_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-sprint3-review",
+  PHASE3_BRAIN_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-phase3-brain",
+  PHASE3_INTELLIGENCE_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-phase3-intelligence",
+  OPERATIONS_CHECKPOINT_A_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-operations-checkpoint-a",
+  STOCK_COUNTS_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-stock-counts",
+  TEAM_MESSAGES_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-team-messages",
+  MARKETING_WORKSPACE_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-marketing-workspace",
   // Marketing › Media: private photo and video library (signed uploads, 5-minute previews).
-  MARKETING_MEDIA_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-marketing-media",
-  TEAM_PROFILES_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profiles",
-  TEAM_PROFILE_PHOTOS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-team-profile-photos",
-  SHIFTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-shifts",
-  KNOWLEDGE_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-knowledge",
+  MARKETING_MEDIA_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-marketing-media",
+  TEAM_PROFILES_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-team-profiles",
+  TEAM_PROFILE_PHOTOS_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-team-profile-photos",
+  SHIFTS_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-shifts",
+  KNOWLEDGE_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-knowledge",
   // Knowledge › Training: private video SOPs (signed uploads, short-lived playback),
   // chapters, procedure steps, progress and explicit completion.
-  TRAINING_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-training",
-  REPORTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-reports",
-  SYSTEM_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-system",
-  SETTINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-settings",
+  TRAINING_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-training",
+  REPORTS_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-reports",
+  SYSTEM_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-system",
+  SETTINGS_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-settings",
   // Settings › Integrations: status and server-side OAuth (connect hop, test, disconnect).
-  INTEGRATIONS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-integrations",
-  ITEM_MASTER_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-item-master",
+  INTEGRATIONS_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-integrations",
+  ITEM_MASTER_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-item-master",
   // Accounting (administrators): invoices, receipts and reimbursements; private files, signed links.
-  ACCOUNTING_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-accounting",
+  ACCOUNTING_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-accounting",
   // Atlas AI: conversations, approvals and voice. Answers "not configured" until the owner switches it on.
-  ATLAS_AI_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-ai",
+  ATLAS_AI_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-ai",
   // Import processing remains fail-closed until its separate activation gate.
   IMPORT_WORKER_API: "",
   // Device subscriptions are opt-in; server-side push delivery remains disabled.
-  NOTIFICATIONS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-notifications",
+  NOTIFICATIONS_API: "https://ewgxjzewjhitgpxcimfe.supabase.co/functions/v1/atlas-notifications",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application

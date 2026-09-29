@@ -1,6 +1,6 @@
 (function (root) {
   'use strict';
-  const TARGET = 'dnefgcmjcgxlynycxkts';
+  const TARGET = 'ewgxjzewjhitgpxcimfe';
   // S88 Atlas AI live voice: the browser sends its WebRTC offer to this one
   // endpoint with a 60-second client secret minted by atlas-ai. Nothing else
   // on that host is reachable.
