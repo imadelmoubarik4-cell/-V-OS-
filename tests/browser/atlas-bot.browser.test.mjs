@@ -112,12 +112,15 @@ test('Atlas AI: the live 3D robot draws, greets once, follows the pointer and re
     await until(async () => (await info(page))?.scene?.headYaw > 0.1, { message: 'looks right at a pointer to the right' });
     await page.mouse.move(5, box.y + box.height * 0.35, { steps: 3 });
     await until(async () => (await info(page))?.scene?.headYaw < -0.1, { message: 'looks left at a pointer to the left' });
-    // The robot and the greeting are one unit: the drawn robot (its feet and
-    // shadow) ends a few pixels above the greeting, never on it.
+    // The robot and the greeting are one unit: the head-framed mascot's drawn
+    // pixels (its feet and soft contact shadow count, alpha > 6) sit right at
+    // the greeting, its feet resting on the line's top leading (never over the
+    // text). A small overlap into that leading is allowed; a gross overlap that
+    // would reach the glyphs is still caught.
     const greeting = await page.locator('#ai-view .ai-empty__greeting').boundingBox();
     const feet = await until(() => drawnBottom(page), { message: 'the robot is drawn' });
     const gap = greeting.y - (box.y + feet);
-    assert.ok(gap >= 0 && gap <= 30, `mascot to greeting gap ${gap}`);
+    assert.ok(gap >= -10 && gap <= 30, `mascot to greeting gap ${gap}`);
     await page.locator('.ai-empty .atlas-bot-live__canvas').click();
     await until(async () => (await info(page))?.scene?.moment === 'react', { message: 'react moment' });
     // Leaving Atlas AI stops drawing; coming back resumes without a new greeting or context.
@@ -375,7 +378,7 @@ test('WebGL context lost: the poster shows and drawing stops; restored: the robo
     // A re-render while lost keeps the poster.
     await page.evaluate(() => {
       const slot = document.querySelector('#ai-view .ai-empty__bot');
-      slot.innerHTML = window.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176 });
+      slot.innerHTML = window.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'head', size: 176 });
       window.AtlasBot.upgrade(slot);
     });
     assert.equal(await page.locator('#ai-view .atlas-bot-live.is-static').count(), 1);
@@ -411,7 +414,7 @@ test('many rapid re-renders reuse one WebGL context and draw at most once per fr
       const slot = document.querySelector('#ai-view .ai-empty__bot');
       const before = window.AtlasBot.info('ai-empty').scene.frames;
       for (let index = 0; index < 60; index += 1) {
-        slot.innerHTML = window.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176 });
+        slot.innerHTML = window.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'head', size: 176 });
         window.AtlasBot.upgrade(slot);
       }
       const after = window.AtlasBot.info('ai-empty').scene.frames;

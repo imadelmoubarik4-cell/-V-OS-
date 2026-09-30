@@ -166,7 +166,7 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
     await page.screenshot({ path: path.join(SHOTS, 'components-1440.png'), fullPage: true });
     assert.deepEqual(errors, []);
     assert.equal(result.coarse, false);
-    assert.equal(result.tokens.accent, '#2563eb');
+    assert.equal(result.tokens.accent, '#08495C');
     assert.equal(result.sizes.btnSm.h, 32);
     assert.equal(result.sizes.btnMd.h, 36);
     assert.equal(result.sizes.btnPrimary.h, 36);
@@ -186,15 +186,15 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
     assert.equal(result.sizes.td.h, 48);
     assert.ok(result.sizes.row.h >= 60);
     assert.equal(result.sizes.menuItem.h, 36);
-    assert.equal(result.sizes.card.radius, '12px');
-    assert.equal(result.sizes.btnMd.radius, '8px');
-    assert.equal(result.sizes.input.radius, '8px');
+    assert.equal(result.sizes.card.radius, '16px');
+    assert.equal(result.sizes.btnMd.radius, '999px');
+    assert.equal(result.sizes.input.radius, '12px');
     assert.equal(result.sizes.title.fontSize, 24);
     assertContrast(result.pairs);
     assert.ok(result.smallest.size >= 12, `text below 12 px: ${JSON.stringify(result.smallest)}`);
     assert.ok(result.scrollWidth <= result.innerWidth, 'no horizontal page scroll');
 
-    // Keyboard focus: 2 px accent outline with a 2 px offset.
+    // Keyboard focus: 2 px accent outline with a 3 px offset.
     await page.focus('[data-test="btn-secondary"]');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Shift+Tab');
@@ -202,7 +202,7 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
       const style = getComputedStyle(document.activeElement);
       return { width: style.outlineWidth, style: style.outlineStyle, color: style.outlineColor, offset: style.outlineOffset, test: document.activeElement.dataset.test };
     });
-    assert.deepEqual(ring, { width: '2px', style: 'solid', color: 'rgb(59, 130, 246)', offset: '2px', test: 'btn-secondary' });
+    assert.deepEqual(ring, { width: '2px', style: 'solid', color: 'rgb(8, 73, 92)', offset: '3px', test: 'btn-secondary' });
     // Inputs show the accent border and a 3 px ring instead of an outline.
     await page.focus('[data-test="input"]');
     await settle(page);
@@ -210,8 +210,8 @@ test('component gallery at 1440 (fine pointer): sizes, focus ring, contrast, 12 
       const style = getComputedStyle(document.activeElement);
       return { border: style.borderTopColor, shadow: style.boxShadow };
     });
-    assert.equal(inputFocus.border, 'rgb(59, 130, 246)');
-    assert.match(inputFocus.shadow, /rgba\(59, 130, 246, 0\.2\) 0px 0px 0px 3px/);
+    assert.equal(inputFocus.border, 'rgb(8, 73, 92)');
+    assert.match(inputFocus.shadow, /rgba\(8, 73, 92, 0\.22\) 0px 0px 0px 3px/);
   } finally {
     await browser.close();
   }
