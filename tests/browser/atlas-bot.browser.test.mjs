@@ -631,10 +631,10 @@ test('idle falls asleep (test hook): eyes close, Z → ZZ → ZZZ → fade in th
     await greeted(page);
     assert.equal((await robotInfo(page)).active, true, 'Atlas AI is open');
     await page.evaluate(() => window.AtlasBot.robot.setDelays({ active: 700, awake: 300 }));
-    await until(async () => (await robotInfo(page)).state === 'sleeping', { timeout: 10000, message: 'falls asleep' });
+    await until(async () => (await robotInfo(page)).state === 'sleeping', { timeout: RENDER_MS, message: 'falls asleep' });
     assert.equal((await robotInfo(page)).timers, 0, 'no timer runs while it sleeps');
-    await until(async () => (await info(page)).scene.eyes === 'closed', { timeout: 10000, message: 'eyes close' });
-    await until(async () => (await info(page)).scene.pose.alert < 0.7, { timeout: 10000, message: 'the mascot settles (lower alert)' });
+    await until(async () => (await info(page)).scene.eyes === 'closed', { timeout: RENDER_MS, message: 'eyes close' });
+    await until(async () => (await info(page)).scene.pose.alert < 0.7, { timeout: RENDER_MS, message: 'the mascot settles (lower alert)' });
     // The live robot's Z: three letters, each on its own CSS animation (no JS timer).
     const sequence = await page.evaluate(() => {
       const letters = [...document.querySelectorAll('#ai-view .ai-empty .atlas-bot-z > i')];
@@ -681,7 +681,7 @@ test('idle falls asleep (test hook): eyes close, Z → ZZ → ZZZ → fade in th
       mini: getComputedStyle(document.querySelector('.atlas-nav .nav-item--ai .atlas-bot'), '::after').content
     }));
     assert.deepEqual(woken, { state: 'awake', z: 'none', mini: 'none' });
-    await until(async () => (await info(page)).scene.eyes === 'open', { message: 'eyes open' });
+    await until(async () => (await info(page)).scene.eyes === 'open', { timeout: RENDER_MS, message: 'eyes open' });
     assert.equal((await robotInfo(page)).timers, 1, 'one timer: awake returns to idle, then the quiet spell');
     if (process.env.ATLAS_BOT_SHOTS) await page.locator('.atlas-nav .nav-group[data-nav-group="main"]').screenshot({ path: `${process.env.ATLAS_BOT_SHOTS}/nav-awake-1440.png` });
   } finally { await close(); }
