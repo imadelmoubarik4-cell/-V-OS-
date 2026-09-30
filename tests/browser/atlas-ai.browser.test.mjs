@@ -201,17 +201,17 @@ test('when Atlas AI is off the page says so and falls back to quick answers', { 
   try {
     await page.waitForSelector('.ai-empty--off');
     const text = await aiText(page);
-    assert.match(text, /Atlas AI isn’t switched on yet/);
-    assert.match(text, /Set it up in Settings › Atlas AI/);
+    assert.match(text, /Alcedo AI isn’t switched on yet/);
+    assert.match(text, /Set it up in Settings › Alcedo AI/);
     assert.ok(await page.isVisible('.ai-empty--off a[href="#settings/ai"]'));
     await typeAndSend(page, 'What is low in stock?');
     await page.waitForSelector('.msg-ai__label');
-    assert.match(await page.textContent('.msg-ai'), /Quick answer[\s\S]*Atlas AI is off/);
-    assert.equal(calls(backend, 'chat').length, 0, 'no chat request once Atlas AI is known to be off');
+    assert.match(await page.textContent('.msg-ai'), /Quick answer[\s\S]*Alcedo AI is off/);
+    assert.equal(calls(backend, 'chat').length, 0, 'no chat request once Alcedo AI is known to be off');
     await typeAndSend(page, 'Why are margins lower this month?');
     await page.waitForFunction(() => document.querySelectorAll('.msg-ai').length === 2);
-    assert.match(await page.$$eval('.msg-ai', (nodes) => nodes[1].innerText), /Atlas AI is off, so I can’t answer that yet/);
-    assert.equal(await page.isDisabled('[data-ai-attach]'), true, 'uploads need Atlas AI');
+    assert.match(await page.$$eval('.msg-ai', (nodes) => nodes[1].innerText), /Alcedo AI is off, so I can’t answer that yet/);
+    assert.equal(await page.isDisabled('[data-ai-attach]'), true, 'uploads need Alcedo AI');
   } finally { await close(); }
 });
 
@@ -231,7 +231,7 @@ test('a 503 on the first question switches to the truthful off state', { skip },
     await page.waitForSelector('.msg-ai__label');
     assert.equal(await page.$$eval('.msg-user', (nodes) => nodes.length), 1, 'the question appears once');
     assert.match(await page.textContent('.msg-ai'), /Quick answer/);
-    assert.match(await page.textContent('#ai-view'), /Atlas AI is off/);
+    assert.match(await page.textContent('#ai-view'), /Alcedo AI is off/);
   } finally { await close(); }
 });
 
@@ -402,7 +402,7 @@ test('history: search, rename, pin and delete with confirmation', { skip }, asyn
     await page.click(trigger);
     await page.click('.atlas-menu__item:has-text("Delete")');
     await page.waitForSelector('.ai-dialog');
-    assert.match(await page.textContent('.ai-dialog'), /Delete this conversation\?[\s\S]*Orders, counts or messages Atlas already created stay as they are\./);
+    assert.match(await page.textContent('.ai-dialog'), /Delete this conversation\?[\s\S]*Orders, counts or messages Alcedo already created stay as they are\./);
     // Focus stays inside the dialog.
     for (let index = 0; index < 5; index += 1) await page.keyboard.press('Tab');
     assert.ok(await page.evaluate(() => document.activeElement.closest('.ai-dialog') !== null));
@@ -437,7 +437,7 @@ test('deep links open a conversation and Decisions for managers', { skip }, asyn
     assert.equal(await decisions.page.evaluate(() => location.hash), '#ai/decisions');
     const rows = await decisions.page.$$eval('.ai-dec-row:not(.ai-dec-row--head)', (nodes) => nodes.map((node) => node.innerText.replace(/\s+/g, ' ')));
     assert.equal(rows.length, 3);
-    assert.match(rows[0], /Order Campari before Friday.*Atlas AI.*Proposed/);
+    assert.match(rows[0], /Order Campari before Friday.*Alcedo AI.*Proposed/);
     await decisions.page.selectOption('#ai-dec-status', 'dismissed');
     assert.equal(await decisions.page.$$eval('.ai-dec-row:not(.ai-dec-row--head)', (nodes) => nodes.length), 1);
     await decisions.page.selectOption('#ai-dec-status', 'all');
@@ -452,8 +452,9 @@ test('deep links open a conversation and Decisions for managers', { skip }, asyn
 });
 
 // S90 (review P1-2): Atlas AI's own reset never overrides design-system
-// buttons. The approval card's primary keeps its white label (AA 4.5:1) and the
-// staff Decisions permission link is a normal secondary button.
+// buttons. The approval card's primary keeps its design-system label — the
+// Alcedo primary is orange with ink text (AA 4.5:1) — and the staff Decisions
+// permission link is a normal secondary button.
 function contrastOf(locator) {
   return locator.evaluate((node) => {
     const parse = (value) => (value.match(/[\d.]+/g) || []).slice(0, 4).map(Number);
@@ -472,7 +473,7 @@ test('approval card buttons keep the design-system colours and pass AA contrast'
   try {
     await page.waitForSelector('[data-ai-approval] .atlas-btn--primary');
     const primary = await contrastOf(page.locator('[data-ai-approval] .atlas-btn--primary').first());
-    assert.equal(primary.color, 'rgb(255, 255, 255)', `${primary.label}: the primary label is white, got ${primary.color}`);
+    assert.equal(primary.color, 'rgb(16, 32, 31)', `${primary.label}: the primary label is ink, got ${primary.color}`);
     assert.ok(primary.ratio >= 4.5, `${primary.label}: ${primary.ratio.toFixed(2)}:1`);
     const buttons = page.locator('[data-ai-approval] .atlas-btn');
     for (let index = 0; index < await buttons.count(); index += 1) {
@@ -523,7 +524,7 @@ test('search questions and Ask Atlas actions open Atlas AI with the question', {
     await page.fill('#atlas-palette-input', 'Why are margins lower this month?');
     await page.waitForFunction(() => document.getElementById('atlas-palette-list')?.dataset.answerState !== 'pending' && document.querySelector('.atlas-palette__item--ask'));
     const options = await page.$$eval('.atlas-palette__item', (nodes) => nodes.map((node) => node.innerText.replace(/\s+/g, ' ').trim()));
-    assert.ok(options.some((option) => /Ask Atlas “Why are margins lower this month\?”/.test(option)), JSON.stringify(options));
+    assert.ok(options.some((option) => /Ask Alcedo “Why are margins lower this month\?”/.test(option)), JSON.stringify(options));
     await page.keyboard.press('Control+Enter');
     await page.waitForFunction(() => document.body.dataset.atlasView === 'ai');
     assert.match(await page.evaluate(() => location.hash), /^#ai(\/|$|\?)/);
@@ -893,7 +894,7 @@ test('upload limits and sizes show fixed copy and nothing is sent', { skip }, as
     [{ error_code: 'upload_quota_exceeded', reason: 'daily_files' }, 429, /today’s limit of 100 files/],
     [{ error_code: 'upload_quota_exceeded', reason: 'daily_bytes' }, 429, /today’s upload size limit/],
     [{ error_code: 'too_large' }, 413, /larger than 25 MB/],
-    [{ error_code: 'not_configured' }, 503, /need Atlas AI to be switched on/]
+    [{ error_code: 'not_configured' }, 503, /need Alcedo AI to be switched on/]
   ];
   for (const [payload, status, copy] of cases) {
     const { page, close, backend } = await openAi({ backend: { overrides: { upload: () => ({ __status: status, body: { ...payload, message: 'raw storage detail' } }) } } });
@@ -941,7 +942,7 @@ test('photos over 20 MB together are stopped before sending; a 413 from the serv
     await page.click('[data-ai-remove-att]');
     await page.keyboard.press('Enter');
     await page.waitForSelector('.msg-ai .atlas-alert');
-    assert.match(await page.textContent('.msg-ai .atlas-alert'), /Atlas couldn’t finish this answer\. Nothing was changed\.[\s\S]*up to 20 MB together/);
+    assert.match(await page.textContent('.msg-ai .atlas-alert'), /Alcedo couldn’t finish this answer\. Nothing was changed\.[\s\S]*up to 20 MB together/);
   } finally { await close(); }
 });
 

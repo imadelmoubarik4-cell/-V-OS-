@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Atlas</title>
-<!-- Brand v1.0: supplied kit files, byte-exact (docs/brand/README.md). -->
+<title>Alcedo</title>
+<!-- ALCEDO brand: kit files under assets/brand/alcedo/ swapped into the existing
+     brand filenames (internal paths kept). See docs/brand/ALCEDO_REBRAND_INVENTORY.md. -->
 <link rel="icon" href="assets/brand/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="assets/brand/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32x32.png">
@@ -12,10 +13,13 @@
 <link rel="icon" type="image/png" sizes="48x48" href="assets/brand/favicon-48x48.png">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
-<meta property="og:title" content="Atlas">
+<meta property="og:title" content="Alcedo">
 <meta property="og:image" content="assets/brand/Atlas_OpenGraph_1200x630.jpg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- ALCEDO type: Instrument Serif (display) / Manrope (body) / JetBrains Mono
+     (labels) are self-hosted OFL woff2 under assets/fonts/ and declared with
+     @font-face in atlas-tokens.css. Preload the two most-used faces. -->
+<link rel="preload" href="assets/fonts/Manrope-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/InstrumentSerif-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <!-- atlas-tokens.css is linked first because it declares the cascade-layer
        order (atlas.tokens, atlas.base, atlas.components, atlas.modules).
        atlas-base.css, atlas-components.css and atlas-shell.css are the design
@@ -23,16 +27,16 @@
        module sheets included, so config.js, runtime-module-guard.js and the
        bootstraps find them already present and inject nothing). There is no
        legacy layer and no inline style block. -->
-  <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260929-s90f">
-  <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260929-s90u">
-  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20261004-bot6">
+  <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260930-polish1">
+  <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260930-alcedo2">
+  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20260930-polish1">
   <link rel="stylesheet" href="assets/css/recipes.css?v=20261005-fi1">
   <link rel="stylesheet" href="assets/css/operations.css?v=20260930-s90g">
-  <link rel="stylesheet" href="assets/css/home.css?v=20260929-s90u">
+  <link rel="stylesheet" href="assets/css/home.css?v=20260930-alcedo3">
   <link rel="stylesheet" href="assets/css/shifts-workspace.css">
   <link rel="stylesheet" href="assets/css/knowledge-workspace.css">
   <link rel="stylesheet" href="assets/css/training-workspace.css?v=20261015-s98">
-  <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20261004-bot6">
+  <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260930-polish1">
   <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
        append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
        or data attribute); the five also named by runtime-module-guard.js use
@@ -54,16 +58,13 @@
   <!-- ===================== SIGN IN (spec §7.17) ===================== -->
   <div id="login-screen" class="atlas-auth">
     <main class="atlas-auth__column" aria-labelledby="login-title">
-      <!-- Brand v1.0 sign-in intro (docs/brand/README.md): the owner's logo motion
-           plays once per browser session, muted and decorative, then settles on
-           the kit's static stacked lockup (the logo for assistive technology).
-           assets/js/atlas-signin-intro.js decides whether it may play at all. -->
+      <!-- ALCEDO sign-in: the static stacked lockup only. The stale Atlas motion
+           <video> was removed (its clip still rendered the old Atlas logo
+           rotation); the wrapper keeps data-atlas-signin-intro so
+           assets/js/atlas-signin-intro.js still runs and safely no-ops when no
+           <video> is present, settling straight to the static lockup. -->
       <div class="atlas-auth__brand atlas-auth__brand--intro" data-atlas-signin-intro data-intro-state="static">
-        <video class="atlas-auth__intro" muted playsinline preload="none" disablepictureinpicture disableremoteplayback aria-hidden="true" tabindex="-1" hidden>
-          <source src="assets/brand/motion/atlas-signin-intro.webm" type="video/webm">
-          <source src="assets/brand/motion/atlas-signin-intro.mp4" type="video/mp4">
-        </video>
-        <img class="atlas-auth__lockup" src="assets/brand/Atlas_Primary_Stacked_Midnight.svg" alt="Atlas" width="128" height="113">
+        <img class="atlas-auth__lockup" src="assets/brand/Atlas_Primary_Stacked_Midnight.svg" alt="Alcedo" width="128" height="104">
       </div>
       <h1 class="atlas-auth__title" id="login-title">Welcome back</h1>
       <p class="atlas-auth__sub" id="login-sub">Sign in to continue.</p>
@@ -95,13 +96,13 @@
     <div class="atlas-shell">
       <aside class="atlas-sidebar" id="atlas-sidebar" aria-label="Sidebar">
         <div class="atlas-brand">
-          <a class="atlas-brand__link nav-home" href="#home" aria-label="Atlas — Home"><img class="atlas-brand__lockup" src="assets/brand/Atlas_Primary_Horizontal_Midnight.svg" alt="Atlas" width="121" height="32"><img class="atlas-brand__mark" src="assets/brand/Atlas_Mark_Midnight.svg" alt="Atlas" width="27" height="24"><span class="atlas-brand__venue" id="atlas-brand-venue" hidden></span></a>
+          <a class="atlas-brand__link nav-home" href="#home" aria-label="Alcedo — Home"><img class="atlas-brand__lockup" src="assets/brand/Atlas_Primary_Horizontal_Midnight.svg" alt="Alcedo" width="100" height="32"><img class="atlas-brand__mark" src="assets/brand/Atlas_Mark_Midnight.svg" alt="Alcedo" width="24" height="24"><span class="atlas-brand__venue" id="atlas-brand-venue" hidden></span></a>
         </div>
         <nav class="atlas-nav" aria-label="Main">
           <div class="atlas-nav__scroll">
             <div class="nav-group" data-nav-group="main">
               <a class="nav-item" href="#home" data-view="dashboard" data-nav-id="home" aria-label="Home"><i data-lucide="house" aria-hidden="true"></i><span class="nav-item-label">Home</span></a>
-              <a class="nav-item nav-item--ai" href="#ai" data-view="ai" data-nav-id="ai" aria-label="Atlas AI"><span class="atlas-bot atlas-bot--small atlas-bot--nav" data-atlas-bot data-atlas-bot-follow data-state="idle" aria-hidden="true"></span><span class="nav-item-label">Atlas AI</span></a>
+              <a class="nav-item nav-item--ai" href="#ai" data-view="ai" data-nav-id="ai" aria-label="Alcedo AI"><span class="atlas-bot atlas-bot--small atlas-bot--nav" data-atlas-bot data-atlas-bot-follow data-state="idle" aria-hidden="true"></span><span class="nav-item-label">Alcedo AI</span></a>
               <a class="nav-item" href="#messages" data-view="team" data-nav-id="messages" aria-label="Messages"><i data-lucide="messages-square" aria-hidden="true"></i><span class="nav-item-label">Messages</span><span class="atlas-badge atlas-nav__badge" data-nav-badge="messages" aria-hidden="true" hidden></span></a>
             </div>
             <div class="nav-group" data-nav-group="venue">
@@ -148,15 +149,15 @@
         <header class="atlas-topbar" id="atlas-topbar">
           <button type="button" class="atlas-icon-btn atlas-topbar__toggle" id="atlas-sidebar-toggle" aria-controls="atlas-sidebar" aria-expanded="true" aria-label="Collapse sidebar"><i data-lucide="panel-left" aria-hidden="true"></i></button>
           <button type="button" class="atlas-icon-btn atlas-topbar__back" id="atlas-topbar-back" aria-label="Back" hidden><i data-lucide="chevron-left" aria-hidden="true"></i></button>
-          <a class="atlas-topbar__mark" href="#home" aria-label="Atlas — Home"><img src="assets/brand/Atlas_Mark_Midnight.svg" alt="" width="25" height="22"></a>
+          <a class="atlas-topbar__mark" href="#home" aria-label="Alcedo — Home"><img src="assets/brand/Atlas_Mark_Midnight.svg" alt="" width="24" height="24"></a>
           <div class="atlas-topbar__title" id="atlas-page-title">Home</div>
-          <button type="button" class="atlas-omni" id="atlas-omni" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K /"><i data-lucide="search" aria-hidden="true"></i><span class="atlas-omni__label">Search or ask Atlas</span><kbd class="kbd atlas-omni__kbd" data-shortcut-hint>⌘K</kbd></button>
+          <button type="button" class="atlas-omni" id="atlas-omni" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K /"><i data-lucide="search" aria-hidden="true"></i><span class="atlas-omni__label">Search or ask Alcedo</span><kbd class="kbd atlas-omni__kbd" data-shortcut-hint>⌘K</kbd></button>
           <span class="atlas-topbar__spacer"></span>
           <span class="atlas-topbar__actions" id="atlas-topbar-actions"></span>
-          <button type="button" class="atlas-icon-btn atlas-topbar__phone atlas-topbar__global" id="atlas-phone-search" aria-haspopup="dialog" aria-label="Search or ask Atlas"><i data-lucide="search" aria-hidden="true"></i></button>
+          <button type="button" class="atlas-icon-btn atlas-topbar__phone atlas-topbar__global" id="atlas-phone-search" aria-haspopup="dialog" aria-label="Search or ask Alcedo"><i data-lucide="search" aria-hidden="true"></i></button>
           <button type="button" class="atlas-icon-btn atlas-topbar__desktop" id="atlas-quick-actions" aria-haspopup="dialog" aria-label="Quick actions"><i data-lucide="plus" aria-hidden="true"></i></button>
           <button type="button" class="atlas-icon-btn atlas-topbar__global" id="atlas-notifications-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="atlas-notifications" aria-label="Notifications"><i data-lucide="bell" aria-hidden="true"></i><span class="dot" hidden></span></button>
-          <div class="atlas-loading-line" id="atlas-loading-line" role="progressbar" aria-label="Loading Atlas" hidden></div>
+          <div class="atlas-loading-line" id="atlas-loading-line" role="progressbar" aria-label="Loading Alcedo" hidden></div>
         </header>
         <div class="atlas-content standard-view"><main id="atlas-main" tabindex="-1">
 
@@ -182,7 +183,7 @@
     <nav class="atlas-tabbar" id="atlas-tabbar" aria-label="Main">
       <a class="atlas-tabbar__item" href="#home" data-nav-id="home"><i data-lucide="house" aria-hidden="true"></i><span>Home</span></a>
       <a class="atlas-tabbar__item" href="#inventory" data-nav-id="inventory"><i data-lucide="package" aria-hidden="true"></i><span>Inventory</span></a>
-      <a class="atlas-tabbar__item atlas-tabbar__item--ai" href="#ai" data-nav-id="ai"><span class="atlas-bot atlas-bot--small atlas-bot--tab" data-atlas-bot data-atlas-bot-follow data-state="idle" aria-hidden="true"></span><span>Atlas</span></a>
+      <a class="atlas-tabbar__item atlas-tabbar__item--ai" href="#ai" data-nav-id="ai"><span class="atlas-bot atlas-bot--small atlas-bot--tab" data-atlas-bot data-atlas-bot-follow data-state="idle" aria-hidden="true"></span><span>Alcedo</span></a>
       <a class="atlas-tabbar__item" href="#recipes" data-nav-id="recipes"><i data-lucide="martini" aria-hidden="true"></i><span>Recipes</span></a>
       <button type="button" class="atlas-tabbar__item" id="atlas-more-btn" data-nav-id="more" aria-haspopup="dialog" aria-expanded="false" aria-controls="atlas-more"><i data-lucide="ellipsis" aria-hidden="true"></i><span>More</span><span class="atlas-badge atlas-tabbar__badge" data-nav-badge="more" hidden></span></button>
     </nav>
@@ -197,32 +198,32 @@
 <script src="config.js"></script>
 <script src="assets/js/runtime-module-guard.js?v=20261002-s93m"></script>
 <script src="assets/js/rehearsal-boundary.js"></script>
-<script src="assets/js/atlas-stock-truth.js?v=20260929-s90f"></script>
+<script src="assets/js/atlas-stock-truth.js?v=20260930-alcedo2"></script>
 <script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-api.js?v=20260926-s91a"></script>
-<script src="assets/js/atlas-bot.js?v=20261004-bot6"></script>
+<script src="assets/js/atlas-bot.js?v=20260930-glb2"></script>
 <script src="assets/js/atlas-app.js?v=20261011-s97"></script>
 <script src="assets/js/atlas-calculations.js?v=20260929-s90p"></script>
 <script src="assets/js/modal.js?v=20261001-s92e"></script>
 <script src="assets/js/recipes.js?v=20261005-fi1"></script>
 <script src="assets/js/flavor-map.js?v=20261005-fi1"></script>
-<script src="assets/js/operations.js?v=20260930-s90g"></script>
+<script src="assets/js/operations.js?v=20260930-polish1"></script>
 <script src="assets/js/atlas-capture.js?v=20260929-s90u"></script>
 <script src="assets/js/atlas-inventory.js?v=20261016-spirits"></script>
 <script src="assets/js/stock-count-workspace.js?v=20261011-s97"></script>
-<script src="assets/js/atlas-purchasing.js?v=20260930-s90g"></script>
+<script src="assets/js/atlas-purchasing.js?v=20260930-polish1"></script>
 <script src="assets/js/home.js?v=20261004-bot6"></script>
 <script src="assets/js/reports-overview.js?v=20260930-s90g"></script>
-<script src="assets/js/data-workspace.js?v=20260929-s90u"></script>
+<script src="assets/js/data-workspace.js?v=20260930-polish1"></script>
 <script src="assets/js/shifts-workspace.js?v=20260929-s90f"></script>
 <script src="assets/js/knowledge-workspace.js?v=20261003-bot1"></script>
-<script src="assets/js/training-workspace.js?v=20261015-s98"></script>
+<script src="assets/js/training-workspace.js?v=20260930-polish1"></script>
 <script src="assets/js/s38-app-remediation.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-search.js?v=20260929-s90u"></script>
 <script src="assets/js/atlas-chrome.js?v=20261003-bot1"></script>
 <script src="assets/js/atlas-palette.js?v=20261006-s92r"></script>
 <script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>
-<script src="assets/js/atlas-ai.js?v=20261005-fi1"></script>
+<script src="assets/js/atlas-ai.js?v=20260930-polish1"></script>
 <script src="assets/js/atlas-signin-intro.js?v=20260924-brand1"></script>
 </body>
 </html>

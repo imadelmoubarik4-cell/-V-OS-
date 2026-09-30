@@ -69,7 +69,7 @@
   }
 
   // Purchasing spend: the canonical costed purchase receipts in the period
-  // (AtlasStockTruth.purchaseSpend; same rule as Reports SQL and Atlas AI).
+  // (AtlasStockTruth.purchaseSpend; same rule as Reports SQL and Alcedo AI).
   // Waste and adjustments are never spend.
   function spend(start, end) {
     return truth()?.purchaseSpend?.(movementsBetween(start, end)).total ?? 0;

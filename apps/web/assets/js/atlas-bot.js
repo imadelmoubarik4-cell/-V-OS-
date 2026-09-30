@@ -1,51 +1,59 @@
-// Atlas AI robot: the assistant's face (not the Atlas logo, which stays the
-// brand mark everywhere). Two forms of one model (scripts/mascot/):
+// Alcedo, the assistant's face (not the Atlas logo, which stays the brand mark
+// everywhere). Two forms of one mascot (scripts/mascot/):
 //
-//   AtlasBot.html({ size, state, follow })   a small badge: the pre-rendered
-//     robot (assets/atlas-bot/atlas-bot.png, frames open · blink · sleep ·
-//     happy; at 24 px or less atlas-bot-small.png, a tighter face with a matte
-//     visor) animated in CSS (.atlas-bot, atlas-components.css): it blinks,
-//     smiles on hover, sleeps with a small z · zz · zzz, bobs and glows while
-//     thinking, pulses while listening. Use it wherever the assistant is the
-//     symbol (nav, Ask Atlas, message labels).
+//   AtlasBot.html({ size, state, follow })   a small badge: a static render of
+//     the mascot (assets/atlas-bot/alcedo-mascot-head.png, a head-and-upper-body
+//     crop; the full mascot poster is alcedo-mascot-poster.png) animated in CSS
+//     (.atlas-bot, atlas-components.css): it breathes, tilts while listening,
+//     sleeps with a small z · zz · zzz. Use it wherever the assistant is the
+//     symbol (nav, Ask Alcedo, message labels).
 //
 //   AtlasBot.liveHtml({ key, framing, state }) + AtlasBot.upgrade(root)
-//     the interactive 3D robot (assets/atlas-bot/atlas-mascot-scene.js, Three.js
-//     bundled, loaded on first use). It greets once, follows the pointer on
-//     desktop, reacts to a tap and shows idle · thinking · listening ·
-//     speaking · error. The badge is its poster: it stays when WebGL is
-//     missing, the scene fails to load, the connection asks to save data, or
-//     until the first frame is drawn. Reduced motion: one still frame.
+//     the interactive 3D mascot: the approved Blender GLB
+//     (assets/atlas-bot/alcedo-mascot.glb) loaded and animated by
+//     assets/atlas-bot/atlas-mascot-scene.js (Three.js + GLTFLoader bundled,
+//     loaded on first use). It greets once, follows the pointer on desktop,
+//     reacts to a tap and shows idle · thinking · listening · speaking · error.
+//     The poster is its fallback: it stays when WebGL is missing, the scene
+//     fails to load, the connection asks to save data, or until the first frame
+//     is drawn. Reduced motion: one still frame.
 //
-// A live robot is kept by key: a re-render that draws the same key moves the
+// A live mascot is kept by key: a re-render that draws the same key moves the
 // existing canvas into the new placeholder instead of opening another WebGL
 // context (WebGL support is probed once, and the probe's context released).
 // Drawing stops while it is off screen, the tab is hidden, or after 15 s of
 // calm idle; a pointer move, a state change, a moment or the tab showing
 // again resumes it. Pointer moves only schedule a frame: at most one draw per
 // animation frame. Reduced motion is followed live (the system setting and
-// Atlas's own preference): the scene is told, pointer tracking stops and the
-// robot draws still frames only when something changes. A lost WebGL context
+// Alcedo's own preference): the scene is told, pointer tracking stops and the
+// mascot draws still frames only when something changes. A lost WebGL context
 // shows the poster again; a restored one rebuilds the scene. Where WebGL runs
 // only in software (no GPU), the poster stays: building and drawing the scene
 // there would hold the page's main thread for seconds.
 //
 // One state controller (AtlasBot.robot, below) decides what the assistant is
 // doing for every surface that follows it (data-atlas-bot-follow: the sidebar
-// and tab bar badges, the Atlas AI welcome robot, the label of the answer
+// and tab bar badges, the Atlas AI welcome mascot, the label of the answer
 // being written). States and how each ends are one table (STATE_TABLE); a
 // transient state (awake, success) returns to idle by itself; calm states
 // fall asleep after a quiet spell; wake triggers (hover, tap, opening Atlas
 // AI, a new conversation, the composer, voice, an AI task) wake it at once.
 // An error is transient too: 4 s, or until the next wake trigger.
 // All of it runs on one timer. Surfaces with a state of their own (the live
-// voice robot) use setState(key, state) through the same table.
+// voice mascot) use setState(key, state) through the same table.
 (function atlasBot(root) {
   'use strict';
 
-  const SPRITE = 'assets/atlas-bot/atlas-bot.png?v=20261004-bot6';
-  const SPRITE_SMALL = 'assets/atlas-bot/atlas-bot-small.png?v=20261004-bot6';
-  const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20261004-bot6';
+  // ALCEDO mascot: the approved Blender GLB, animated live in a Three.js scene
+  // (assets/atlas-bot/atlas-mascot-scene.js, three + GLTFLoader bundled in, the
+  // GLB fetched at runtime). The static poster is a render of the GLB idle
+  // FRONT pose: the full mascot (SPRITE) for the large live poster and a
+  // head-and-upper-body crop (SPRITE_SMALL) for small badges. The poster shows
+  // when WebGL is missing, the scene fails to load, the connection asks to save
+  // data, WebGL runs only in software, or until the first live frame is drawn.
+  const SPRITE = 'assets/atlas-bot/alcedo-mascot-poster.png?v=20260930-glb2';
+  const SPRITE_SMALL = 'assets/atlas-bot/alcedo-mascot-head.png?v=20260930-glb2';
+  const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20260930-glb2';
   // Badges this size or smaller use the small sprite (.atlas-bot--small).
   const SMALL_MAX = 24;
   // The assistant's states: what each shows in the 3D scene, and how it ends.
@@ -118,10 +126,10 @@
   // (shown while the robot sleeps, gone the moment it wakes).
   const Z = '<span class="atlas-bot-z" aria-hidden="true"><i>z</i><i>z</i><i>z</i></span>';
 
-  function liveHtml({ key = 'default', framing = 'full', state = 'idle', size = 160, label = 'Atlas, your assistant', follow = false } = {}) {
+  function liveHtml({ key = 'default', framing = 'full', state = 'idle', size = 160, label = 'Alcedo, your assistant', follow = false } = {}) {
     const px = Math.max(48, Math.min(320, Math.round(Number(size) || 160)));
     const value = follow ? robot.state : stateOf(state);
-    return `<div class="atlas-bot-live" data-atlas-bot-live="${escape(key)}" data-framing="${framing === 'bust' ? 'bust' : 'full'}" data-state="${value}"${follow ? ' data-atlas-bot-follow' : ''} style="--atlas-bot-live-size:${px}px" role="img" aria-label="${escape(label)}">${html({ size: Math.round(px * 0.72), state: value, className: 'atlas-bot-live__poster' })}${Z}</div>`;
+    return `<div class="atlas-bot-live" data-atlas-bot-live="${escape(key)}" data-framing="${['bust', 'head'].includes(framing) ? framing : 'full'}" data-state="${value}"${follow ? ' data-atlas-bot-follow' : ''} style="--atlas-bot-live-size:${px}px" role="img" aria-label="${escape(label)}">${html({ size: Math.round(px * 0.72), state: value, className: 'atlas-bot-live__poster' })}${Z}</div>`;
   }
 
   // Probed once per page: every probe opens a WebGL context, and browsers
@@ -308,6 +316,15 @@
         finePointer: media('(hover: hover) and (pointer: fine)'),
         framing: entry.framing
       });
+      // The GLB loads asynchronously: keep the poster until the model is ready
+      // and the first frame can be drawn, so the live surface never flashes
+      // blank. A failed load throws and falls back to the poster below.
+      if (entry.scene.ready?.then) {
+        const ok = await entry.scene.ready;
+        if (ok === false) throw new Error('scene asset failed to load');
+      }
+      // Destroyed, replaced or context lost while the asset loaded.
+      if (live.get(entry.key) !== entry || entry.lost) return;
       entry.host?.classList.remove('is-static');
       entry.host?.classList.add('is-live');
       applyState(entry);
@@ -318,8 +335,12 @@
       if (entry.visible && !entry.greeted) { entry.greeted = true; entry.scene.play('greet'); }
       wake(entry);
     } catch {
-      // The poster badge stays; the robot is decoration, never a blocker.
+      // The poster badge stays; the mascot is decoration, never a blocker. A
+      // scene whose asset failed to load is disposed so nothing tries to draw
+      // it (its WebGL context is released).
       entry.failed = true;
+      if (entry.scene) { try { entry.scene.dispose(); } catch { /* already gone */ } entry.scene = null; }
+      entry.host?.classList.remove('is-live');
       entry.host?.classList.add('is-static');
     }
   }
@@ -341,7 +362,10 @@
     wake(entry, changed);
   }
 
-  // Mounts (or moves) the live robot into every placeholder under `scope`.
+  // Mounts (or moves) the live mascot into every placeholder under `scope`.
+  // When WebGL can go live, a canvas is created per key and the GLB scene is
+  // lazy-built on it; otherwise (no WebGL, software-only, Save-Data) the host
+  // keeps its poster and is marked static.
   function upgrade(scope = document) {
     const hosts = scope.querySelectorAll?.('[data-atlas-bot-live]') || [];
     hosts.forEach((host) => {
@@ -349,7 +373,7 @@
       host.dataset.atlasBotMounted = '1';
       if (!canGoLive()) { host.classList.add('is-static'); return; }
       const key = host.dataset.atlasBotLive || 'default';
-      const framing = host.dataset.framing === 'bust' ? 'bust' : 'full';
+      const framing = ['bust', 'head'].includes(host.dataset.framing) ? host.dataset.framing : 'full';
       let entry = live.get(key);
       if (!entry || entry.framing !== framing) {
         if (entry) destroy(key);

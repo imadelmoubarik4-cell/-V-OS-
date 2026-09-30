@@ -1,7 +1,7 @@
 // Public menu (menu.html). External since S96 so the CSP needs no 'unsafe-inline'.
   const cfg = window.VABAR_CONFIG;
   // The public menu always uses a fresh anonymous client. It never restores the
-  // signed-in Atlas session from shared browser storage.
+  // signed-in Alcedo session from shared browser storage.
   const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
     auth: {
       persistSession: false,

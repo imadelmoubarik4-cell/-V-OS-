@@ -41,18 +41,24 @@
 .home-muted .atlas-btn { margin-left: var(--s-2); vertical-align: middle; }
 .home-muted + .atlas-btn { margin-top: var(--s-3); }
 
-.home-briefing { padding: var(--s-5) var(--s-5) var(--s-4); }
+/* ALCEDO: the daily briefing is the Home summary/hero — a deep-teal panel with
+   ivory text and an orange accent, like the website's dark cards. */
+.home-briefing { padding: var(--s-5) var(--s-5) var(--s-4); background: var(--accent); border-color: var(--accent-hover); color: var(--atlas-snow); box-shadow: var(--shadow-pop); }
 .home-briefing__head { display: flex; align-items: center; gap: var(--s-2); }
-.home-briefing__head > svg { width: var(--icon-sm); height: var(--icon-sm); color: var(--accent); }
-.home-briefing__head h2 { margin: 0; font: var(--type-heading); color: var(--text); }
-.home-briefing__time { margin-left: auto; font: var(--type-caption); color: var(--text-2); }
-.home-briefing__text { margin-top: 10px; font: var(--type-body-lg); color: var(--text); }
+.home-briefing__head > svg { width: var(--icon-sm); height: var(--icon-sm); color: var(--highlight); }
+.home-briefing__head h2 { margin: 0; font: var(--type-heading); color: var(--atlas-snow); }
+.home-briefing__time { margin-left: auto; font: var(--type-caption); color: rgba(248, 245, 237, .72); }
+.home-briefing__text { margin-top: 10px; font: var(--type-body-lg); color: var(--atlas-snow); }
 .home-briefing__text p { margin: 0; }
 .home-briefing__text p + p { margin-top: var(--s-2); }
-.home-briefing__muted { color: var(--text-2); }
-.home-briefing__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-top: 14px; padding-top: var(--s-3); border-top: 1px solid var(--line-subtle); }
-.home-briefing__sources { display: flex; align-items: center; gap: 6px; font: var(--type-caption); color: var(--text-2); }
-.home-briefing__sources > svg { width: 14px; height: 14px; }
+.home-briefing__muted { color: rgba(248, 245, 237, .72); }
+.home-briefing__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-top: 14px; padding-top: var(--s-3); border-top: 1px solid rgba(248, 245, 237, .16); }
+.home-briefing__sources { display: flex; align-items: center; gap: 6px; font: var(--type-caption); color: rgba(248, 245, 237, .72); }
+.home-briefing__sources > svg { width: 14px; height: 14px; color: var(--highlight); }
+/* Follow-up action reads on the teal panel: ivory ghost button. */
+.home-briefing .atlas-btn--ghost { color: var(--atlas-snow); }
+.home-briefing .atlas-btn--ghost:hover:not(:disabled, [aria-disabled="true"]),
+.home-briefing .atlas-btn--ghost:active:not(:disabled, [aria-disabled="true"]) { background: rgba(248, 245, 237, .14); }
 
 .home-glance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .home-glance__item { display: flex; flex-direction: column; min-width: 0; padding: var(--s-5) var(--s-6) var(--s-5) 0; color: inherit; text-decoration: none; }

@@ -42,7 +42,7 @@
   }
 
   function initials(value) {
-    const words = String(value || 'Atlas').trim().split(/\s+/).filter(Boolean);
+    const words = String(value || 'Alcedo').trim().split(/\s+/).filter(Boolean);
     return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join('') || 'A';
   }
 
@@ -55,10 +55,10 @@
   // Fixed copy for every failure (AtlasApi, atlas-api.js): server text is
   // never shown.
   const API_MESSAGES = {
-    not_configured: 'Profile photos aren’t set up for this Atlas yet.',
-    auth: 'Sign in to Atlas to manage profile photos.',
+    not_configured: 'Profile photos aren’t set up for this Alcedo yet.',
+    auth: 'Sign in to Alcedo to manage profile photos.',
     forbidden: 'You can change only your own profile photo.',
-    not_found: 'That team member isn’t in Atlas any more. Refresh and try again.',
+    not_found: 'That team member isn’t in Alcedo any more. Refresh and try again.',
     invalid: 'That photo wasn’t accepted. Use a JPEG, PNG or WebP image under 2 MB.',
     too_large: 'That photo is too large. Use an image under 2 MB.',
     timeout: 'The profile-photo service took too long to respond. Check the connection and try again.',
@@ -165,7 +165,7 @@
   function decorateSidebarAvatar() {
     if (!state.staff?.id) return;
     const avatar = document.getElementById('user-avatar');
-    const name = document.getElementById('profile-name')?.textContent?.trim() || state.staff.label || 'Atlas';
+    const name = document.getElementById('profile-name')?.textContent?.trim() || state.staff.label || 'Alcedo';
     decorateAvatar(avatar, state.staff.id, name);
   }
 
@@ -213,7 +213,7 @@
       });
       image.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(photoError('Atlas could not read this image. Use a JPEG, PNG, or WebP photo.'));
+        reject(photoError('Alcedo could not read this image. Use a JPEG, PNG, or WebP photo.'));
       };
       image.src = url;
     });
@@ -264,7 +264,7 @@
         mime = 'image/jpeg';
         extension = 'jpg';
       }
-      if (!blob) throw photoError('Atlas could not prepare this profile photo.');
+      if (!blob) throw photoError('Alcedo could not prepare this profile photo.');
       if (blob.size > MAX_UPLOAD_BYTES) {
         blob = await canvasBlob(canvas, mime, 0.68);
       }

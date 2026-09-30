@@ -27,7 +27,7 @@
 //   takePendingUse() -> entries | null
 //       What "Use in new post" handed to the composer (read once).
 //
-// Every call goes through the atlas-marketing-media gateway with the Atlas
+// Every call goes through the atlas-marketing-media gateway with the Alcedo
 // session; nothing reads Storage or private tables directly. Bytes go from the
 // browser straight to Storage with the one-time signed upload token the
 // gateway returns (single PUT up to 6 MiB, TUS resumable above: 6 MB chunks,
@@ -185,8 +185,8 @@
   function errorText(error, fallback = 'Nothing was changed. Check the connection and try again.') {
     if (error?.code === 'unreachable') return error.offline
       ? 'You’re offline. Nothing was changed. Reconnect, then try again.'
-      : 'Atlas couldn’t reach Media. Nothing was changed. Try again in a moment.';
-    if (error?.status === 401) return 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.';
+      : 'Alcedo couldn’t reach Media. Nothing was changed. Try again in a moment.';
+    if (error?.status === 401) return 'Alcedo couldn’t confirm your sign-in for this. Try again in a moment.';
     if (error?.status === 403) return 'Media is for managers and administrators.';
     if (error?.status === 404 && (error.code === 'not_configured' || !error.code)) return 'Media storage isn’t set up for this venue yet. An administrator can set it up.';
     if (error?.code && CODE_TEXT[error.code]) return CODE_TEXT[error.code];
@@ -629,7 +629,7 @@
     if (error?.status === 403 || error?.status === 401 || error?.code === 'not_configured') return errorText(error);
     if (error?.code === 'unreachable') return error.offline
       ? 'You’re offline, so this didn’t upload. Retry it when you’re back online.'
-      : 'Atlas couldn’t reach Media, so this didn’t upload. Retry it in a moment.';
+      : 'Alcedo couldn’t reach Media, so this didn’t upload. Retry it in a moment.';
     return 'The upload stopped. The other files are fine. Retry this one.';
   }
 
@@ -1182,7 +1182,7 @@
         ? `<video class="mk-detail__video" controls muted playsinline preload="metadata" src="${escapeHtml(asset.preview_url)}" data-mm-video></video>`
         : `<div class="mk-focal" data-mm-focal-area><img src="${escapeHtml(asset.preview_url)}" alt="${escapeHtml(asset.alt_text || `Photo: ${nameOf(asset)}`)}" data-mm-focal-img><span class="mk-focal__ring" role="slider" tabindex="0" aria-label="Focal point" aria-valuemin="0" aria-valuemax="100" data-mm-focal></span></div>`)
       : `<p class="mk-muted">The preview isn’t available right now.</p>`;
-    const crops = !isVideo ? `<fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Crops</legend><p class="help">Atlas makes these copies for posting. The original is never changed.</p><ul class="mk-crops" data-mm-crops>${CROPS.map(([ratio, label, w, h]) => {
+    const crops = !isVideo ? `<fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Crops</legend><p class="help">Alcedo makes these copies for posting. The original is never changed.</p><ul class="mk-crops" data-mm-crops>${CROPS.map(([ratio, label, w, h]) => {
       const saved = cropState[ratio];
       const variant = saved && variants.find((entry) => entry.id === saved.variant_id);
       const width = variant?.width || null;

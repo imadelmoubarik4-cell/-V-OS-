@@ -111,7 +111,7 @@ test('each card shows the pill, status line and next step for its state', { skip
     assert.equal(await pillText(page, 'instagram'), 'No account chosen');
     assert.equal(await page.textContent('[data-provider-card="instagram"] [data-integration-action="choose-resource"]'), 'Choose account');
     assert.equal(await pillText(page, 'tiktok'), 'Publishing allowed');
-    assert.match(await card(page, 'tiktok'), /TikTok inbox as drafts until TikTok approves Atlas/);
+    assert.match(await card(page, 'tiktok'), /TikTok inbox as drafts until TikTok approves Alcedo/);
     assert.equal(await pillText(page, 'google-business-profile'), 'App review required');
     assert.match(await card(page, 'google-business-profile'), /post them by hand until then/);
     assert.equal(await pillText(page, 'google-drive'), 'Verification failed');
@@ -122,7 +122,7 @@ test('each card shows the pill, status line and next step for its state', { skip
     assert.match(await page.textContent('[data-provider-card="facebook"] .settings-provider__can'), /not allowed yet/);
     await page.click('[data-provider-card="instagram"] .settings-provider__events > summary');
     assert.match(await page.textContent('[data-provider-card="instagram"] .settings-provider__events'), /Accounts listed · Þórdís/);
-    assert.match(await page.textContent('.settings-layout [data-settings-content]'), /Atlas only publishes posts someone approved/);
+    assert.match(await page.textContent('.settings-layout [data-settings-content]'), /Alcedo only publishes posts someone approved/);
     assert.doesNotMatch(await page.textContent('.settings-layout [data-settings-content]'), /token|secret|ATLAS_/i);
     assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }

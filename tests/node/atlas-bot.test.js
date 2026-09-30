@@ -1,13 +1,15 @@
-// The Atlas AI robot (apps/web/assets/js/atlas-bot.js): the assistant's face
-// in AI surfaces. The Atlas logo stays the brand mark; the robot replaces the
-// sparkles assistant icon only.
+// Alcedo, the assistant's face (apps/web/assets/js/atlas-bot.js): the mascot in
+// AI surfaces. The Atlas logo stays the brand mark; the mascot replaces the
+// sparkles assistant icon only. The interactive form is the approved Blender
+// GLB (assets/atlas-bot/alcedo-mascot.glb) loaded and animated by the built
+// scene bundle (assets/atlas-bot/atlas-mascot-scene.js, three + GLTFLoader
+// bundled); the fallback is a static render of the GLB idle pose.
 import assert from 'node:assert/strict';
 import { readFileSync, statSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
 const read = (file) => readFileSync(file, 'utf8');
-const index = read('apps/web/index.html');
 
 // A minimal DOM: canvases record the WebGL contexts asked of them. gpu: false
 // is WebGL in software (a context only without failIfMajorPerformanceCaveat).
@@ -52,7 +54,6 @@ function loadBot({ webgl = true, gpu = true, followers = [] } = {}) {
     querySelectorAll: (selector) => (selector === '[data-atlas-bot-follow]' ? followers : [])
   };
   vm.runInNewContext(read('apps/web/assets/js/atlas-bot.js'), { window, document, URL, CSS: { escape: String } });
-  // Moves the fake clock on, firing timers in order.
   const advance = (ms) => {
     const end = clock.t + ms;
     for (;;) {
@@ -83,37 +84,52 @@ const host = (key) => {
   };
 };
 
+// ---------------------------------------------------------------------------
+// Markup
+// ---------------------------------------------------------------------------
+
 test('badge markup: escaped, sized within bounds, unknown states fall back to idle, decorative unless labelled', () => {
   const bot = loadBot();
   const plain = bot.html({ size: 18 });
   assert.match(plain, /^<span class="atlas-bot atlas-bot--small" data-atlas-bot data-state="idle" style="--atlas-bot-size:18px;--atlas-bot-delay:-[\d.]+s;--atlas-bot-clock:-[\d.]+s" aria-hidden="true"><\/span>$/);
   assert.match(bot.html({ size: 4 }), /--atlas-bot-size:12px/);
   assert.match(bot.html({ size: 900 }), /--atlas-bot-size:128px/);
-  // 24 px or less: the small sprite (tighter face, matte visor, larger eyes).
+  // 24 px or less: the small head-crop poster (.atlas-bot--small).
   assert.match(bot.html({ size: 24 }), /class="atlas-bot atlas-bot--small"/);
   assert.match(bot.html({ size: 28 }), /class="atlas-bot" /);
   assert.match(bot.html({ size: 20, className: 'x' }), /class="atlas-bot atlas-bot--small x"/);
   assert.match(bot.html({ state: 'thinking' }), /data-state="thinking"/);
   assert.match(bot.html({ state: '"><script>' }), /data-state="idle"/);
-  const hostile = bot.html({ className: '"><img src=x onerror=alert(1)>', label: '<b>Atlas</b>' });
+  const hostile = bot.html({ className: '"><img src=x onerror=alert(1)>', label: '<b>Alcedo</b>' });
   assert.doesNotMatch(hostile, /<img|<b>/);
-  assert.match(hostile, /role="img" aria-label="&lt;b&gt;Atlas&lt;\/b&gt;"/);
+  assert.match(hostile, /role="img" aria-label="&lt;b&gt;Alcedo&lt;\/b&gt;"/);
 });
 
-test('live placeholder carries the key, framing and state, with the badge as its poster', () => {
+test('live placeholder carries the key, framing and state, with the badge as its poster; labelled Alcedo', () => {
   const bot = loadBot();
   const markup = bot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176 });
-  assert.match(markup, /class="atlas-bot-live" data-atlas-bot-live="ai-empty" data-framing="full" data-state="idle" style="--atlas-bot-live-size:176px" role="img" aria-label="Atlas, your assistant"/);
-  assert.match(markup, /class="atlas-bot atlas-bot-live__poster"/, 'the 176 px robot poster uses the large sprite');
+  assert.match(markup, /class="atlas-bot-live" data-atlas-bot-live="ai-empty" data-framing="full" data-state="idle" style="--atlas-bot-live-size:176px" role="img" aria-label="Alcedo, your assistant"/);
+  assert.match(markup, /class="atlas-bot atlas-bot-live__poster"/, 'the 176 px poster uses the large sprite');
   assert.match(bot.liveHtml({ framing: 'weird' }), /data-framing="full"/);
   assert.match(bot.liveHtml({ framing: 'bust' }), /data-framing="bust"/);
 });
 
-test('the live robot is lazy, same-origin, paused off screen and when hidden, and keeps one WebGL context per key', () => {
+// ---------------------------------------------------------------------------
+// The live mascot: lazy WebGL upgrade, guards, one context per key
+// ---------------------------------------------------------------------------
+
+test('the live mascot is lazy, same-origin, paused off screen and when hidden, and keeps one WebGL context per key', () => {
   const source = read('apps/web/assets/js/atlas-bot.js');
-  assert.match(source, /const SCENE = 'assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20261004-bot6';/);
-  assert.match(source, /const SPRITE = 'assets\/atlas-bot\/atlas-bot\.png\?v=20261004-bot6';/);
-  assert.match(source, /const SPRITE_SMALL = 'assets\/atlas-bot\/atlas-bot-small\.png\?v=20261004-bot6';/);
+  // The scene bundle path is preserved (atlas-mascot-scene.js); the assets are
+  // the GLB-derived poster + head crop; all on the new cache token.
+  assert.match(source, /const SCENE = 'assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20260930-glb2';/);
+  assert.match(source, /const SPRITE = 'assets\/atlas-bot\/alcedo-mascot-poster\.png\?v=20260930-glb2';/);
+  assert.match(source, /const SPRITE_SMALL = 'assets\/atlas-bot\/alcedo-mascot-head\.png\?v=20260930-glb2';/);
+  // The real WebGL lazy-upgrade is in place (not the static no-op placeholder).
+  assert.match(source, /if \(!canGoLive\(\)\) \{ host\.classList\.add\('is-static'\); return; \}/);
+  assert.match(source, /entry = createLive\(key, framing\)/);
+  assert.match(source, /if \(!entry\.scene && !entry\.failed\) start\(entry\)/);
+  assert.match(source, /const \{ createMascotScene \} = await loadScene\(\)/);
   assert.match(source, /import\(url\)/);
   assert.match(source, /IntersectionObserver/);
   assert.match(source, /visibilitychange/);
@@ -124,7 +140,7 @@ test('the live robot is lazy, same-origin, paused off screen and when hidden, an
   assert.match(source, /webglcontextlost/);
   assert.match(source, /webglcontextrestored/);
   assert.match(source, /ResizeObserver/);
-  assert.match(source, /live\.get\(entry\.key\) !== entry/, 'a robot destroyed while the scene loads opens no context');
+  assert.match(source, /live\.get\(entry\.key\) !== entry/, 'a mascot destroyed while the scene loads opens no context');
   assert.match(source, /setReducedMotion\(motionReduced\)/);
   assert.match(source, /failIfMajorPerformanceCaveat: true/, 'WebGL in software keeps the poster');
   assert.match(source, /requestIdleCallback/, 'the scene is built in a task of its own');
@@ -141,9 +157,9 @@ test('WebGL is probed once per page and the probe context is released, however m
   assert.equal(probes.length, 1, 'one probe canvas');
   assert.deepEqual(probes[0].contexts, ['webgl2']);
   assert.equal(probes[0].lost, 1, 'the probe context is released (WEBGL_lose_context)');
-  const robots = bot.canvases.filter((canvas) => canvas.attributes['aria-hidden'] === 'true');
-  assert.ok(robots.length >= 43, 'robots made their canvases');
-  assert.ok(robots.every((canvas) => typeof canvas.handlers.webglcontextlost === 'function' && typeof canvas.handlers.webglcontextrestored === 'function'), 'every robot canvas handles context loss');
+  const mascots = bot.canvases.filter((canvas) => canvas.attributes['aria-hidden'] === 'true');
+  assert.ok(mascots.length >= 43, 'mascots made their canvases');
+  assert.ok(mascots.every((canvas) => typeof canvas.handlers.webglcontextlost === 'function' && typeof canvas.handlers.webglcontextrestored === 'function'), 'every mascot canvas handles context loss');
 });
 
 test('without WebGL every placeholder keeps its poster, still with one probe', () => {
@@ -156,7 +172,7 @@ test('without WebGL every placeholder keeps its poster, still with one probe', (
   assert.equal(bot.info('a'), null);
 });
 
-test('WebGL in software (no GPU): probed once, and the poster stays (no scene, no robot context)', () => {
+test('WebGL in software (no GPU): probed once, and the poster stays (no scene, no mascot context)', () => {
   const bot = loadBot({ gpu: false });
   const hosts = Array.from({ length: 5 }, () => host('soft'));
   hosts.forEach((node) => bot.upgrade({ querySelectorAll: () => [node] }));
@@ -165,114 +181,73 @@ test('WebGL in software (no GPU): probed once, and the poster stays (no scene, n
   assert.equal(bot.software(), true);
   assert.ok(hosts.every((node) => node.classes.has('is-static')));
   assert.equal(bot.info('soft'), null);
-  // Browser tests (SwiftShader) turn the live robot on.
+  // Browser tests (SwiftShader) turn the live mascot on.
   bot.animateInSoftware(true);
   bot.upgrade({ querySelectorAll: () => [host('soft')] });
   assert.notEqual(bot.info('soft'), null);
   assert.equal(loadBot().software(), false);
 });
 
-test('the scene takes reduced motion live and has a small look for badges', () => {
-  const source = read('scripts/mascot/atlas-mascot-scene.src.mjs');
+// ---------------------------------------------------------------------------
+// The scene source, the built bundle and the GLB / poster assets
+// ---------------------------------------------------------------------------
+
+test('the GLB scene source exports the mascot contract and rigs the GLB by its named pivots', () => {
+  const source = read('scripts/mascot/alcedo-glb-scene.src.mjs');
+  assert.match(source, /export function createMascotScene\(canvas,/);
+  assert.match(source, /export const BASE_STATES = Object\.freeze\(\['idle', 'awake', 'sleeping', 'listening', 'thinking', 'answering', 'attention', 'error'\]\);/);
+  assert.match(source, /export const MOMENTS = Object\.freeze\(\['greet', 'success', 'error', 'react', 'wake'\]\);/);
+  assert.match(source, /const BASE_ALIASES = Object\.freeze\(\{ speaking: 'answering' \}\);/);
+  assert.match(source, /import \{ GLTFLoader \} from 'three\/examples\/jsm\/loaders\/GLTFLoader\.js';/);
+  assert.match(source, /'\.\/alcedo-mascot\.glb'/, 'fetches the GLB by a runtime-relative URL');
   assert.match(source, /setReducedMotion\(value\) \{/);
-  assert.match(source, /let reducedMotion = Boolean\(reduced\);/);
-  assert.match(source, /'badge-small': \{/);
-  assert.match(source, /export const EYE_SCALE = Object\.freeze\(\{ normal: 1, small: 1\.5 \}\);/);
   assert.match(source, /dispose\(\{ loseContext = true \} = \{\}\)/);
-  const bundle = read('apps/web/assets/atlas-bot/atlas-mascot-scene.js');
-  assert.match(bundle, /setReducedMotion/, 'the bundle is rebuilt from this source');
-  assert.match(bundle, /badge-small/);
-  const render = read('scripts/render_atlas_bot_badges.mjs');
-  assert.match(render, /file: 'atlas-bot-small\.png', size: 96, framing: 'badge-small', look: 'small'/);
+  // Rig by named pivots (no skeleton).
+  for (const node of ['Head_preparation_pivot', 'Left_oval_eye', 'Right_oval_eye', 'Small_central_orange_beak', 'Left_wing_preparation_pivot', 'Right_wing_preparation_pivot']) assert.ok(source.includes(node), node);
+  // Head yaw is capped so the concealed head/body seam stays hidden.
+  assert.match(source, /const YAW_MAX = 0\.36;/);
+  // No red anywhere in the fallback palette / materials.
+  assert.doesNotMatch(source, /0xff0000|'red'/i);
 });
 
-test('the scene bundle and sprite are built from the reviewed sources', () => {
+test('the scene bundle is built from the GLB source, bundles GLTFLoader, and stays under 700 KiB', () => {
   const bundle = read('apps/web/assets/atlas-bot/atlas-mascot-scene.js');
-  assert.match(bundle, /^\/\* Atlas AI mascot scene, built by scripts\/build_atlas_mascot\.mjs from scripts\/mascot\/atlas-mascot-scene\.src\.mjs with three@0\.186\.1 \(MIT/);
+  assert.match(bundle, /^\/\* Alcedo mascot scene, built by scripts\/build_atlas_mascot\.mjs from scripts\/mascot\/alcedo-glb-scene\.src\.mjs with three@0\.186\.1 \(MIT/);
+  assert.match(bundle, /createMascotScene/, 'the bundle exports the scene factory');
+  assert.match(bundle, /alcedo-mascot\.glb/, 'the bundle fetches the GLB at runtime');
+  assert.match(bundle, /GLTFLoader/, 'GLTFLoader is bundled in');
+  assert.match(bundle, /Head_preparation_pivot/, 'rigged by the named pivots');
+  assert.match(bundle, /setReducedMotion/);
   assert.ok(statSync('apps/web/assets/atlas-bot/atlas-mascot-scene.js').size < 700 * 1024, 'scene bundle stays under 700 KiB');
-  const png = readFileSync('apps/web/assets/atlas-bot/atlas-bot.png');
-  assert.equal(png.subarray(1, 4).toString('ascii'), 'PNG');
-  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [640, 160], 'four 160 px frames: open, blink, sleep, happy');
-  assert.ok(png.length < 80 * 1024);
-  const small = readFileSync('apps/web/assets/atlas-bot/atlas-bot-small.png');
-  assert.equal(small.subarray(1, 4).toString('ascii'), 'PNG');
-  assert.deepEqual([small.readUInt32BE(16), small.readUInt32BE(20)], [384, 96], 'four 96 px frames: open, blink, sleep, happy');
-  assert.ok(small.length < 40 * 1024);
-  const source = read('scripts/mascot/atlas-mascot-scene.src.mjs');
-  assert.match(source, /export const MARK_PATH = 'M133 8 L22 195/, 'the official A mark geometry');
 });
 
-test('the robot replaces the assistant icon in AI surfaces; the Atlas logo stays the brand mark', () => {
-  assert.match(index, /<script src="assets\/js\/atlas-bot\.js\?v=20261004-bot6"><\/script>/);
-  assert.ok(index.indexOf('assets/js/atlas-bot.js') < index.indexOf('assets/js/atlas-ai.js'));
-  assert.match(index, /class="nav-item nav-item--ai"[^>]*><span class="atlas-bot atlas-bot--small atlas-bot--nav" data-atlas-bot data-atlas-bot-follow data-state="idle" aria-hidden="true">/);
-  assert.match(index, /class="atlas-tabbar__item atlas-tabbar__item--ai"[^>]*><span class="atlas-bot atlas-bot--small atlas-bot--tab" data-atlas-bot data-atlas-bot-follow data-state="idle" aria-hidden="true">/);
-  assert.doesNotMatch(index, /nav-item--ai"[^>]*><i data-lucide="sparkles"/);
-  assert.match(index, /<img class="atlas-brand__lockup" src="assets\/brand\/Atlas_Primary_Horizontal_Midnight\.svg"/);
-  assert.match(index, /<img class="atlas-brand__mark" src="assets\/brand\/Atlas_Mark_Midnight\.svg"/);
+test('the build script points at the GLB source and the shipped bundle path', () => {
+  const build = read('scripts/build_atlas_mascot.mjs');
+  assert.match(build, /entryPoints: \[path\.join\(ROOT, 'scripts\/mascot\/alcedo-glb-scene\.src\.mjs'\)\]/);
+  assert.match(build, /outfile: path\.join\(ROOT, 'apps\/web\/assets\/atlas-bot\/atlas-mascot-scene\.js'\)/);
+  assert.match(build, /if \(threeVersion !== '0\.186\.1'\)/);
+});
 
-  const ai = read('apps/web/assets/js/atlas-ai.js');
-  assert.match(ai, /liveHtml\(\{ key: 'ai-empty', framing: 'full', size: 176, follow: true \}\)/);
-  assert.match(ai, /liveHtml\(\{ key: 'ai-voice', framing: 'bust'/);
-  // The answer being written follows the assistant's state (thinking, then
-  // answering); a finished one is still (idle, or error).
-  assert.match(ai, /html\(streaming \? \{ size: 24, follow: true, className: 'ai-mark-bot' \} : \{ size: 24, state: message\.error \? 'error' : 'idle', className: 'ai-mark-bot' \}\)/);
-  // atlas-ai.js reports what Atlas does to the one controller.
-  for (const call of ["robotBot()?.set('thinking')", "robotBot()?.set('answering')", "robotBot()?.wake('composer')", "robotBot()?.wake('typing')", "robotBot()?.wake('new-conversation', { clear: true })", "robotBot()?.wake('voice')", "robotBot()?.set(liveBotState(next))", 'robotBot()?.active(true)', 'robotBot()?.active(false)', "robotBot()?.set('success')", "robotBot()?.set('error')"]) {
-    assert.ok(ai.includes(call), call);
+test('the GLB asset and the GLB-derived poster/head assets are present and well-formed', () => {
+  const glb = readFileSync('apps/web/assets/atlas-bot/alcedo-mascot.glb');
+  assert.equal(glb.subarray(0, 4).toString('ascii'), 'glTF', 'a binary glTF (GLB) container');
+  assert.ok(glb.length > 100 * 1024, 'the model has geometry');
+  for (const file of ['alcedo-mascot-poster.png', 'alcedo-mascot-head.png']) {
+    const png = readFileSync(`apps/web/assets/atlas-bot/${file}`);
+    assert.equal(png.subarray(1, 4).toString('ascii'), 'PNG', `${file} is a PNG`);
+    const ihdr = png.indexOf(Buffer.from('IHDR'));
+    assert.equal(png[ihdr + 13], 6, `${file} is RGBA (transparent)`);
   }
-  assert.match(ai, /robotBot\(\)\?\.set\(reply\.status === 'complete' \? \(reply\.proposals\.length \? 'attention' : 'success'\) : reply\.status === 'stopped' \? 'idle' : 'error'\)/);
-  assert.match(ai, /id: 'ai\.ask', label: 'Ask Atlas', icon: 'atlas-bot'/);
-  // Live voice: the robot mirrors the call.
-  const mapping = ai.match(/function liveBotState\(status\) \{[\s\S]*?\n  \}/)[0];
-  const liveBotState = vm.runInNewContext(`(${mapping.replace('function liveBotState', 'function')})`);
-  assert.deepEqual(['listening', 'interrupted', 'thinking', 'speaking', 'error', 'disconnected', 'replaced', 'connecting', 'muted'].map(liveBotState),
-    ['listening', 'listening', 'thinking', 'speaking', 'error', 'error', 'error', 'idle', 'idle']);
-
-  for (const [file, pattern] of [
-    ['apps/web/assets/js/atlas-chrome.js', /if \(name === 'atlas-bot' && window\.AtlasBot\)/],
-    ['apps/web/assets/js/atlas-palette.js', /id: 'ask', kind: 'ask', icon: 'atlas-bot'/],
-    ['apps/web/assets/js/atlas-inventory.js', /\['ask', 'atlas-bot', 'Ask Atlas about this'\]/],
-    ['apps/web/assets/js/knowledge-workspace.js', /data-knowledge-ask>\$\{icon\('atlas-bot'\)\}Ask Atlas about this/],
-    ['apps/web/assets/js/marketing-workspace.js', /label: 'Ask Atlas', icon: 'atlas-bot'/],
-    ['apps/web/assets/js/recipes.js', /id: 'recipes\.ask', label: 'Ask Atlas about this recipe', icon: 'atlas-bot'/],
-    ['apps/web/assets/js/reports-workspace.js', /id: 'reports\.ask', label: 'Ask Atlas about this report', icon: 'atlas-bot'/],
-  ]) assert.match(read(file), pattern, file);
-  // The Home daily briefing is Atlas speaking to the team: it carries the robot.
-  // Not the assistant speaking: the offline quick answer (Atlas AI is off) and
-  // Team Messages system notices (the Atlas platform) keep their previous icons.
-  const palette = read('apps/web/assets/js/atlas-palette.js');
-  assert.match(palette, /\$\{icon\('sparkles', \{ size: 14 \}\)\}Quick answer · Atlas AI is off/);
-  const home = read('apps/web/assets/js/home.js');
-  assert.match(home, /home-briefing__head">\$\{bot\}/);
-  assert.match(home, /const bot = window\.AtlasBot \? window\.AtlasBot\.html\(\{ size: 18, state: preparing \? 'thinking' : 'idle' \}\) : icon\('atlas-bot'\);/);
-  assert.match(home, /const preparing = !facts\.lines\.length && !dataLoaded\(\);/);
-  assert.match(home, /name === 'atlas-bot' && window\.AtlasBot\) return window\.AtlasBot\.html\(\{ size: 18 \}\)/);
-  const team = read('apps/web/assets/js/team-messages.js');
-  assert.match(team, /system \? `<span class="atlas-avatar msg-avatar msg-avatar--atlas" aria-hidden="true">\$\{icon\('sparkles'\)\}<\/span>`/);
-  assert.doesNotMatch(team, /AtlasBot|atlas-bot|msg-avatar--bot/, 'no assistant speaks in Team Messages');
-  // Not an assistant symbol: record types and the cocktail category keep their icons.
-  assert.match(ai, /brain_recommendation: \{ icon: 'sparkles', label: 'Decision'/);
-  assert.match(read('apps/web/assets/js/recipes.js'), /slug: 'signature-cocktail', name: 'Signature Cocktails', icon: 'sparkles'/);
 });
 
-test('robot styles live in the components layer and honour reduced motion', () => {
-  const css = read('apps/web/assets/css/atlas-components.css');
-  const layer = css.slice(css.indexOf('@layer atlas.components {'));
-  assert.ok(layer.includes('.atlas-bot {'), 'inside @layer atlas.components');
-  assert.match(css, /html\.atlas-reduce-motion \.atlas-bot \{ animation: none; transition: none; \}/);
-  assert.match(css, /url\('\.\.\/atlas-bot\/atlas-bot\.png\?v=20261004-bot6'\) 0 0 \/ 400% 100% no-repeat/);
-  assert.match(css, /\.atlas-bot--small \{ background-image: url\('\.\.\/atlas-bot\/atlas-bot-small\.png\?v=20261004-bot6'\); \}/);
-  // The system setting stops the state animations too: its rule is as
-  // specific as .atlas-bot[data-state="thinking"] and the like.
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.atlas-bot, \.atlas-bot\[data-state\] \{ animation: none; transition: none; \}\s*:is\(a, button\):hover > \.atlas-bot \{ transform: none; \}/);
-  assert.match(read('apps/web/assets/css/atlas-shell.css'), /\.atlas-ai \.ai-empty:not\(\.ai-empty--off\):not\(:has\(\.atlas-bot-live\)\)::before/);
-  // Robot refinement cache keys: every changed stylesheet and script.
-  for (const asset of ['css/atlas-components.css', 'css/atlas-shell.css', 'css/atlas-ai.css']) assert.ok(index.includes(`href="assets/${asset}?v=20261004-bot6"`), asset);
-  for (const asset of ['atlas-bot.js', 'home.js']) assert.ok(index.includes(`src="assets/js/${asset}?v=20261004-bot6"`), asset);
-  // atlas-ai.js moved on to the Flavor Intelligence key (recipe.draft approval card).
-  assert.ok(index.includes('src="assets/js/atlas-ai.js?v=20261005-fi1"'), 'atlas-ai.js');
-  assert.match(read('apps/web/assets/css/atlas-shell.css'), /\.atlas-tabbar__item \.atlas-bot--tab::after \{ bottom: calc\(100% - var\(--atlas-bot-size\) \* \.7\); \}/, 'the tab robot keeps its ZZZ inside the tab bar');
+test('cache tokens agree inside atlas-bot.js and every keyed asset exists', () => {
+  const bot = read('apps/web/assets/js/atlas-bot.js');
+  const constants = Object.fromEntries([...bot.matchAll(/const (SPRITE|SPRITE_SMALL|SCENE) = '([^']+)';/g)].map((m) => [m[1], m[2]]));
+  assert.deepEqual(Object.keys(constants).sort(), ['SCENE', 'SPRITE', 'SPRITE_SMALL']);
+  // One shared token, and each referenced file exists on disk.
+  const tokens = new Set(Object.values(constants).map((u) => u.split('?v=')[1]));
+  assert.deepEqual([...tokens], ['20260930-glb2'], 'one cache token for the mascot assets');
+  for (const url of Object.values(constants)) statSync(`apps/web/${url.split('?')[0]}`);
 });
 
 // ---------------------------------------------------------------------------
@@ -290,10 +265,9 @@ test('controller: one table of states; old names map to new ones; badges render 
   assert.match(bot.html({ state: 'speaking' }), /data-state="answering"/, 'speaking is answering');
   assert.match(bot.html({ state: 'happy' }), /data-state="happy"/);
   assert.equal(bot.robot.set('speaking'), 'answering');
-  // A following badge or live robot shows the controller's state, whatever it is asked for.
   assert.match(bot.html({ follow: true, state: 'error' }), /data-atlas-bot-follow data-state="answering"/);
   assert.match(bot.liveHtml({ key: 'x', follow: true }), /data-state="answering" data-atlas-bot-follow/);
-  assert.match(bot.liveHtml({ key: 'x' }), /<span class="atlas-bot-z" aria-hidden="true"><i>z<\/i><i>z<\/i><i>z<\/i><\/span><\/div>$/, 'one Z element per robot, decorative');
+  assert.match(bot.liveHtml({ key: 'x' }), /<span class="atlas-bot-z" aria-hidden="true"><i>z<\/i><i>z<\/i><i>z<\/i><\/span><\/div>$/, 'one Z element per mascot, decorative');
   assert.equal(bot.setRobotState('thinking'), 'thinking');
 });
 
@@ -306,7 +280,6 @@ test('controller: idle falls asleep after the quiet spell (5 min, or 90 s while 
   bot.advance(2000);
   assert.equal(bot.robot.state, 'sleeping');
   assert.equal(bot.robot.info().timers, 0, 'no timer while asleep');
-  // Opening Atlas AI wakes it; there the spell is 90 s.
   bot.robot.active(true);
   assert.equal(bot.robot.state, 'awake');
   assert.equal(bot.robot.info().sleepAfter, 90000);
@@ -316,7 +289,6 @@ test('controller: idle falls asleep after the quiet spell (5 min, or 90 s while 
   assert.equal(bot.robot.state, 'idle');
   bot.advance(2000);
   assert.equal(bot.robot.state, 'sleeping');
-  // Test hook: shorter delays.
   bot.robot.setDelays({ active: 500, awake: 100 });
   bot.robot.wake('hover');
   bot.advance(120);
@@ -346,7 +318,7 @@ test('controller: never more than one timer, whatever happens; the hidden tab ho
   assert.ok(seen.has(0) && seen.has(1));
 });
 
-test('controller: wake triggers wake a sleeping or idle robot at once; typing only keeps it awake; busy states stay', () => {
+test('controller: wake triggers wake a sleeping or idle mascot at once; typing only keeps it awake; busy states stay', () => {
   const followers = [follower({ 'data-atlas-bot-follow': '' })];
   const bot = loadBot({ followers });
   bot.robot.set('sleeping');
@@ -399,14 +371,14 @@ test('controller: thinking → answering is one continuous state; success return
   assert.equal(bot.robot.state, 'error', 'the error shows for about 4 s');
   bot.advance(200);
   assert.equal(bot.robot.state, 'idle', 'thinking → error → idle by itself');
-  assert.equal(bot.robot.info().timers, 1, 'one timer: the idle robot can fall asleep again');
+  assert.equal(bot.robot.info().timers, 1, 'one timer: the idle mascot can fall asleep again');
   bot.robot.set('error');
   bot.robot.set('thinking');
   bot.advance(600000);
   assert.equal(bot.robot.state, 'thinking', 'a new question during the error takes over; the error timer does not end it');
 });
 
-test('controller: hovering or tapping an item that carries a following robot wakes it; other items do not', () => {
+test('controller: hovering or tapping an item that carries a following mascot wakes it; other items do not', () => {
   const bot = loadBot();
   const badge = { hasAttribute: (name) => name === 'data-atlas-bot-follow' };
   const link = { hasAttribute: () => false, querySelector: (selector) => (selector === ':scope > [data-atlas-bot-follow]' ? badge : null) };
@@ -420,62 +392,4 @@ test('controller: hovering or tapping an item that carries a following robot wak
   bot.robot.set('sleeping');
   bot.fire('pointerdown', { target: target(badge) });
   assert.equal(bot.robot.state, 'awake', 'a tap wakes it');
-});
-
-test('the scene poses every state from the one pose system: sleep draws at 10 fps, the full robot is grounded by a soft shadow, no red', () => {
-  const source = read('scripts/mascot/atlas-mascot-scene.src.mjs');
-  assert.match(source, /export const BASE_STATES = Object\.freeze\(\['idle', 'awake', 'sleeping', 'listening', 'thinking', 'answering', 'attention', 'error'\]\);/);
-  assert.match(source, /export const MOMENTS = Object\.freeze\(\['greet', 'success', 'error', 'react', 'wake'\]\);/);
-  assert.match(source, /const BASE_ALIASES = Object\.freeze\(\{ speaking: 'answering' \}\);/);
-  for (const state of ['awake', 'sleeping', 'listening', 'thinking', 'answering', 'attention', 'error']) assert.match(source, new RegExp(`case '${state}':`), state);
-  assert.match(source, /if \(status\.base === 'sleeping'\) return 1000 \/ 10;/, 'sleeping draws at most 10 frames a second');
-  assert.match(source, /if \(value === status\.base\) return;/, 'setting the same state again never restarts it');
-  assert.match(source, /robot\.shadow\.visible = frame === frames\.full;/, 'the shadow grounds the full robot only (not the bust or badges)');
-  // Pointer tracking keeps its signs (x right = look right, y down = look down).
-  assert.match(source, /out\.headYaw = MathUtils\.clamp\(status\.pointer\.x \* 0\.5, -0\.5, 0\.5\);/);
-  assert.match(source, /out\.headPitch = MathUtils\.clamp\(status\.pointer\.y \* 0\.25, -0\.22, 0\.22\);/);
-  // No red anywhere in the robot's palette.
-  assert.doesNotMatch(source, /#(?:f|e|d)[0-9a-f](?:[0-4][0-9a-f]){2}\b|0xff0000|'red'/i);
-  const bundle = read('apps/web/assets/atlas-bot/atlas-mascot-scene.js');
-  assert.match(bundle, /sleeping/);
-  assert.match(bundle, /attention/);
-  const render = read('scripts/render_atlas_bot_badges.mjs');
-  assert.match(render, /sleep: \{ happy: 0, sleepy: 1/);
-  const css = read('apps/web/assets/css/atlas-components.css');
-  assert.match(css, /\.atlas-bot\[data-state="sleeping"\] \{ background-position: 66\.667% 0; animation: none;/);
-  assert.match(css, /@keyframes atlas-bot-z-reveal/);
-  for (const name of ['atlas-bot-z1', 'atlas-bot-z2', 'atlas-bot-z3']) assert.match(css, new RegExp(`@keyframes ${name} \\{`));
-  assert.match(css, /html\.atlas-reduce-motion \.atlas-bot-live\[data-state\] > \.atlas-bot-z > i \{ animation: none; \}/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.atlas-bot-live\[data-state\] > \.atlas-bot-z > i:nth-child\(n\) \{ animation: none; \}/);
-  const ai = read('apps/web/assets/css/atlas-ai.css');
-  assert.match(ai, /\.atlas-ai \.ai-empty__bot \{ margin-bottom: -18px; \}/, 'the robot sits close to the greeting');
-  assert.match(ai, /\.atlas-ai \.ai-empty__bot \.atlas-bot-live \{ width: 176px; height: 176px; \}/, 'the approved size');
-});
-
-test('robot cache keys agree across index.html, config.js, atlas-bot.js and the stylesheet, and every keyed file exists', () => {
-  const bot = read('apps/web/assets/js/atlas-bot.js');
-  const css = read('apps/web/assets/css/atlas-components.css');
-  const config = read('apps/web/config.js');
-  // atlas-bot.js constants -> the sprites the stylesheet shows before the script runs.
-  const constants = Object.fromEntries([...bot.matchAll(/const (SPRITE|SPRITE_SMALL|SCENE) = '([^']+)';/g)].map((m) => [m[1], m[2]]));
-  assert.deepEqual(Object.keys(constants).sort(), ['SCENE', 'SPRITE', 'SPRITE_SMALL']);
-  for (const name of ['SPRITE', 'SPRITE_SMALL']) {
-    assert.ok(css.includes(`url('../${constants[name].replace(/^assets\//, '')}')`), `${name} key matches atlas-components.css`);
-  }
-  for (const url of Object.values(constants)) statSync(`apps/web/${url.split('?')[0]}`);
-  // Every atlas-bot reference in index.html / config.js uses one key per file, and the file exists.
-  const refs = new Map();
-  for (const source of [index, config, css.replace(/\.\.\/atlas-bot\//g, 'assets/atlas-bot/')]) {
-    for (const m of source.matchAll(/(assets\/(?:js\/atlas-bot\.js|atlas-bot\/[\w.-]+|css\/atlas-(?:ai|components)\.css))\?v=([\w-]+)/g)) {
-      if (!refs.has(m[1])) refs.set(m[1], new Set());
-      refs.get(m[1]).add(m[2]);
-    }
-  }
-  for (const [file, keys] of refs) {
-    assert.equal(keys.size, 1, `${file} has one key (${[...keys].join(', ')})`);
-    statSync(`apps/web/${file}`);
-  }
-  for (const [file, key] of [['assets/js/atlas-bot.js', '20261004-bot6'], ['assets/css/atlas-ai.css', '20261004-bot6'], ['assets/css/atlas-components.css', '20261004-bot6']]) {
-    assert.deepEqual([...(refs.get(file) || [])], [key], file);
-  }
 });

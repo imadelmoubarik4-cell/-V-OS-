@@ -84,13 +84,13 @@
   const GBP_ACTIONS = Object.freeze(["BOOK", "ORDER", "SHOP", "LEARN_MORE", "SIGN_UP", "CALL"]);
 
   const READY_REASONS = Object.freeze({
-    not_connected: "isn't connected. Connect it in Settings › Integrations; Atlas won't post there until then.",
-    needs_reauthorization: "needs reconnecting in Settings › Integrations before Atlas can post.",
+    not_connected: "isn't connected. Connect it in Settings › Integrations; Alcedo won't post there until then.",
+    needs_reauthorization: "needs reconnecting in Settings › Integrations before Alcedo can post.",
     publishing_permission_missing: "is connected, but posting isn't allowed yet. Choose Allow publishing in Settings › Integrations.",
-    review_required: "needs the platform's app review before Atlas can post.",
-    review_pending: "is waiting for the platform's app review before Atlas can post.",
+    review_required: "needs the platform's app review before Alcedo can post.",
+    review_pending: "is waiting for the platform's app review before Alcedo can post.",
     no_resource_selected: "has no account chosen. Choose one in Settings › Integrations.",
-    not_configured: "isn't set up for Atlas yet.",
+    not_configured: "isn't set up for Alcedo yet.",
   });
 
   function formatNumber(value) {
@@ -249,7 +249,7 @@
     for (const platform of platforms) {
       const label = PLATFORM_LABELS[platform];
       if (!label) {
-        error("unknown_platform", platform, "Atlas can't publish to this channel.");
+        error("unknown_platform", platform, "Alcedo can't publish to this channel.");
         targetKinds[platform] = null;
         continue;
       }
@@ -276,7 +276,7 @@
         if (kind === "ig_carousel" && media.length < 2) error("ig_carousel_media", platform, "Instagram: a carousel needs 2 to 10 photos or videos.");
         if (kind !== "ig_reel") {
           for (const { item, index } of images) {
-            if (lim.image_mime.indexOf(publishedImageMime(item)) < 0) error("ig_image_format", platform, `Instagram: photo ${nth(index)} must be a JPEG. Use the JPEG copy Atlas makes in the media editor.`);
+            if (lim.image_mime.indexOf(publishedImageMime(item)) < 0) error("ig_image_format", platform, `Instagram: photo ${nth(index)} must be a JPEG. Use the JPEG copy Alcedo makes in the media editor.`);
             const ratio = Number(item.width) / Number(item.height);
             if (Number.isFinite(ratio) && ratio > 0) {
               if (ratio < lim.aspect_min - 0.005) error("ig_aspect", platform, `Instagram: photo ${nth(index)} is taller than 4:5. Choose the Portrait 4:5 crop.`);
@@ -310,7 +310,7 @@
         if (kind === "fb_page_photo" && (!images.length || videos.length)) error("fb_photo_media", platform, "Facebook: a photo post needs photos only.");
         if (kind === "fb_page_post" && media.length) error("fb_post_media", platform, "Facebook: a text post has no media. Choose Photo or Video instead.");
         for (const { item, index } of images) {
-          if (lim.image_mime.indexOf(publishedImageMime(item)) < 0) error("fb_image_format", platform, `Facebook: photo ${nth(index)} must be a JPEG or PNG. Use the JPEG copy Atlas makes in the media editor.`);
+          if (lim.image_mime.indexOf(publishedImageMime(item)) < 0) error("fb_image_format", platform, `Facebook: photo ${nth(index)} must be a JPEG or PNG. Use the JPEG copy Alcedo makes in the media editor.`);
         }
         for (const { item, index } of videos) {
           if (lim.video_mime.indexOf(String(item.mime_type)) < 0) error("fb_video_format", platform, `Facebook: video ${nth(index)} must be MP4 or MOV.`);
@@ -319,9 +319,9 @@
             if (Number.isFinite(ms) && ms > 0 && (ms < lim.reel_min_ms || ms > lim.reel_max_ms)) warn("fb_reel_duration", platform, `Facebook Reels are usually 3 to 90 seconds. This video is ${formatDuration(ms)}.`);
             if (orientation(item) && orientation(item) !== "portrait") warn("fb_reel_orientation", platform, "Facebook Reels look best as vertical 9:16 video.");
           } else if (Number.isFinite(ms) && ms > lim.video_max_ms) {
-            error("fb_video_duration", platform, `Facebook videos from Atlas can be up to 20 minutes. This one is ${formatDuration(ms)}.`);
+            error("fb_video_duration", platform, `Facebook videos from Alcedo can be up to 20 minutes. This one is ${formatDuration(ms)}.`);
           }
-          if (Number(item.byte_size) > lim.video_max_bytes) error("fb_video_size", platform, `Facebook videos from Atlas can be up to 1 GB. This one is ${formatBytes(item.byte_size)}.`);
+          if (Number(item.byte_size) > lim.video_max_bytes) error("fb_video_size", platform, `Facebook videos from Alcedo can be up to 1 GB. This one is ${formatBytes(item.byte_size)}.`);
         }
         const chars = characterCount(caption);
         if (chars > lim.caption) error("fb_caption_length", platform, `Facebook text is ${formatNumber(chars)} characters; the limit is 63,206.`);
@@ -331,7 +331,7 @@
         const creator = (tt.creator_info && typeof tt.creator_info === "object" ? tt.creator_info : null)
           || (source.tiktok_creator_info && typeof source.tiktok_creator_info === "object" ? source.tiktok_creator_info : null);
         if (!media.length) error("tiktok_no_media", platform, "TikTok needs one video.");
-        else if (images.length) error("tiktok_photo_unsupported", platform, "TikTok posts from Atlas need one video. Photo posts aren't supported yet.");
+        else if (images.length) error("tiktok_photo_unsupported", platform, "TikTok posts from Alcedo need one video. Photo posts aren't supported yet.");
         else if (videos.length > 1) error("tiktok_one_video", platform, "TikTok posts one video at a time. Remove the extra videos.");
         for (const { item, index } of videos) {
           if (lim.video_mime.indexOf(String(item.mime_type)) < 0) error("tiktok_video_format", platform, `TikTok: video ${nth(index)} must be MP4, MOV or WebM.`);
@@ -340,7 +340,7 @@
           if (Number.isFinite(ms) && ms > maxSec * 1000) error("tiktok_too_long", platform, `TikTok: this account can post videos up to ${formatLimitMinutes(maxSec)}. This one is ${formatDuration(ms)}.`);
         }
         if (String(own.target_kind || "") === "tiktok_video" && kind !== "tiktok_video") {
-          warn("tiktok_direct_unavailable", platform, "TikTok: direct posting needs TikTok's approval first. Atlas sends the video to your TikTok inbox instead, and you finish the post in the TikTok app.");
+          warn("tiktok_direct_unavailable", platform, "TikTok: direct posting needs TikTok's approval first. Alcedo sends the video to your TikTok inbox instead, and you finish the post in the TikTok app.");
         }
         if (kind === "tiktok_video") {
           const privacy = String(tt.privacy_level || "");
@@ -348,7 +348,7 @@
           if (!TIKTOK_PRIVACY_LABELS[privacy]) error("tiktok_privacy", platform, "Choose who can see it on TikTok.");
           else if (allowed && allowed.indexOf(privacy) < 0) {
             error("tiktok_privacy_unavailable", platform, allowed.length && allowed.every((value) => value === "SELF_ONLY")
-              ? "Until TikTok approves Atlas, TikTok posts are private (Only me). Choose Only me."
+              ? "Until TikTok approves Alcedo, TikTok posts are private (Only me). Choose Only me."
               : `TikTok doesn't offer "${TIKTOK_PRIVACY_LABELS[privacy]}" for this account. Choose who can see it again.`);
           }
           if (tt.commercial_content === true || tt.brand_content_toggle === true || tt.brand_organic_toggle === true) {
@@ -369,7 +369,7 @@
         const first = images[0];
         if (first) {
           const item = first.item;
-          if (lim.image_mime.indexOf(publishedImageMime(item)) < 0) error("gbp_photo_format", platform, "Google Business Profile photos must be JPEG or PNG. Use the JPEG copy Atlas makes in the media editor.");
+          if (lim.image_mime.indexOf(publishedImageMime(item)) < 0) error("gbp_photo_format", platform, "Google Business Profile photos must be JPEG or PNG. Use the JPEG copy Alcedo makes in the media editor.");
           const bytes = Number(item.byte_size);
           if (Number.isFinite(bytes) && bytes > 0 && (bytes < lim.image_min_bytes || bytes > lim.image_max_bytes)) {
             error("gbp_photo_size", platform, `Google Business Profile photos must be 10 KB to 5 MB. This one is ${bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : formatBytes(bytes)}.`);

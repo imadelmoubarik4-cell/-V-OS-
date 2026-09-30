@@ -68,7 +68,7 @@ test('Flavor Map at 1440×900: deep link, ring ⇔ list, pair detail, stock stat
     await page.click('[data-flavor-select="red-bitter-aperitivo"]');
     const negroni = await page.textContent('#flavor-detail');
     assert.match(negroni, /Culinary/);
-    assert.match(negroni, /Atlas-learned/);
+    assert.match(negroni, /Alcedo-learned/);
     assert.match(await page.textContent('#flavor-detail .flavor-detail__section:nth-of-type(2)'), /Negroni/, 'existing recipe usage');
     assert.match(negroni, /Not in stock/, 'verified zero reads as not in stock');
     assert.match(negroni, /Campari · 0 \S+ verified/, 'a verified zero is shown as counted, not as unknown');

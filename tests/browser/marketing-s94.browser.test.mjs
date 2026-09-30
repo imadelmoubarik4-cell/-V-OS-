@@ -202,7 +202,7 @@ test('S94 operator workflow: compose with media, checks, schedule, submit, appro
   try {
     await page.waitForSelector('#marketing-view .page-head');
     const head = await page.textContent('#marketing-view');
-    assert.match(head, /Atlas publishes approved posts to Instagram, Facebook and TikTok\. Google Business Profile is posted by hand\./);
+    assert.match(head, /Alcedo publishes approved posts to Instagram, Facebook and TikTok\. Google Business Profile is posted by hand\./);
     assert.deepEqual(await page.$$eval('#marketing-view .atlas-tabs a', (a) => a.map((x) => x.textContent.replace(/\d+/g, '').trim())), ['Overview', 'Calendar', 'Posts', 'Media', 'Campaigns', 'History']);
     // Merged with the Atlas AI robot: the header's Ask Atlas carries the robot
     // badge (not the sparkles icon) next to the S94 "New post" action.

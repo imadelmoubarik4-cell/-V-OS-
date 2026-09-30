@@ -108,7 +108,7 @@
     const client = root.atlasSupabase;
     if (!client?.auth) throw fixedError('Sign in again to continue.');
     // getSession() waits on the auth lock without a deadline of its own.
-    const result = await withTimeout(client.auth.getSession(), SESSION_TIMEOUT_MS, 'Atlas couldn’t confirm your session in time. Check the connection, then try again.');
+    const result = await withTimeout(client.auth.getSession(), SESSION_TIMEOUT_MS, 'Alcedo couldn’t confirm your session in time. Check the connection, then try again.');
     const access = result?.data?.session?.access_token;
     if (!access) throw fixedError('Sign in again to continue.');
     return access;
@@ -154,14 +154,14 @@
       return payload;
     } catch (error) {
       if (error?.name === 'AbortError') throw fixedError('The stock count service took too long. Your saved counts are safe; try again.');
-      if (error instanceof TypeError) throw fixedError('Atlas couldn’t reach the stock count service. Check your connection; nothing was lost.');
+      if (error instanceof TypeError) throw fixedError('Alcedo couldn’t reach the stock count service. Check your connection; nothing was lost.');
       throw error;
     } finally {
       root.clearTimeout(timer);
     }
   }
 
-  const MALFORMED = 'The stock count service sent an answer Atlas couldn’t read. Your saved counts are safe; try again.';
+  const MALFORMED = 'The stock count service sent an answer Alcedo couldn’t read. Your saved counts are safe; try again.';
 
   function applyPayload(payload) {
     if (payload.counts && typeof payload.counts === 'object') state.snapshot = { ...payload.counts, sessions: Array.isArray(payload.counts.sessions) ? payload.counts.sessions : [] };
@@ -341,7 +341,7 @@
   }
   function previewText(line, inputQuantity, inputUnit) {
     if (!inputUnit || inputUnit === 'inventory') return 'Up to three decimals for part containers, e.g. 1.7';
-    if (String(inputQuantity ?? '').trim() === '') return `Counted in ${UNIT_LABELS[inputUnit] || inputUnit}; Atlas converts to ${line.inventory_unit || 'units'}.`;
+    if (String(inputQuantity ?? '').trim() === '') return `Counted in ${UNIT_LABELS[inputUnit] || inputUnit}; Alcedo converts to ${line.inventory_unit || 'units'}.`;
     const result = previewNormalization(line, inputQuantity, inputUnit);
     return result ? `Saves as ${qty(result.normalized)} ${line.inventory_unit || 'units'}.` : 'This item is missing its pack size, so count it in its own unit.';
   }
@@ -524,7 +524,7 @@
   function setPhoneTitle(text) {
     const title = document.getElementById('atlas-page-title');
     if (title) title.textContent = text;
-    document.title = `${text} · Atlas`;
+    document.title = `${text} · Alcedo`;
   }
 
   function enterFlow() {
@@ -725,7 +725,7 @@
     if (publication?.status === 'ready' && p.production_apply_enabled && policy.publication_environment_enabled) actions.push('<button type="button" class="atlas-btn atlas-btn--primary" data-count-publish>Update stock from this count</button>');
     if (p.can_verify) actions.push('<button type="button" class="atlas-btn atlas-btn--primary" data-count-verify>Verify count</button>');
     const note = s.status === 'submitted'
-      ? (isManager() ? 'Check the differences, then verify. Verified counts become the stock Atlas shows.' : 'Waiting for a manager to verify it.')
+      ? (isManager() ? 'Check the differences, then verify. Verified counts become the stock Alcedo shows.' : 'Waiting for a manager to verify it.')
       : s.status === 'verified' ? `Verified${s.verified_by_label ? ` by ${s.verified_by_label}` : ''}${s.verified_at ? ` on ${dateText(s.verified_at, { long: true })}` : ''}.`
         : s.status === 'draft' ? 'You can’t edit this count.' : 'This count is closed.';
     return `<div class="sc-flow sc-flow--wide">
@@ -913,7 +913,7 @@
   }
 
   async function verify() {
-    const ok = await dialog({ title: 'Verify this count?', body: 'The counted quantities become the stock Atlas shows for these items. The count and who did it are kept.', confirm: 'Verify count' });
+    const ok = await dialog({ title: 'Verify this count?', body: 'The counted quantities become the stock Alcedo shows for these items. The count and who did it are kept.', confirm: 'Verify count' });
     if (!ok) return;
     try {
       await command('verify', null, { acknowledge_conflicts: false }, 'Count verified');
@@ -1018,7 +1018,7 @@
       <div class="atlas-capture-result__head">${item.image_url ? `<img class="atlas-capture-result__img" src="${esc(item.image_url)}" alt="">` : `<span class="atlas-capture-result__img" aria-hidden="true">${icon('package')}</span>`}
         <div class="atlas-capture-result__text"><h3 class="atlas-capture-result__title">${esc(line.item_name)}</h3><p class="atlas-capture-muted">${esc([item.brand, item.category, item.package_size || null].filter(Boolean).join(' · '))}</p><p class="atlas-capture-muted">Counted in ${esc(line.inventory_unit || 'units')} · ${esc(lastVerifiedText(line))}</p></div>
         ${detection ? R.band(detection, candidate) : '<span class="atlas-pill atlas-pill--info">Chosen</span>'}</div>
-      ${detection ? `<details class="atlas-capture-more"><summary>How sure Atlas is</summary>${R.fields(detection, { item, keys: ['identity', 'brand', 'variant', 'unit_size', 'barcode', 'inventory_match'] })}</details>` : ''}
+      ${detection ? `<details class="atlas-capture-more"><summary>How sure Alcedo is</summary>${R.fields(detection, { item, keys: ['identity', 'brand', 'variant', 'unit_size', 'barcode', 'inventory_match'] })}</details>` : ''}
       ${mode === 'add' ? `<p class="sc-hint">Adds to the ${qty(already)} counted earlier.</p>` : ''}
       ${stepperHtml(line, '', { idPrefix: 'sc-scan' })}
       <div data-sheet-alert></div>

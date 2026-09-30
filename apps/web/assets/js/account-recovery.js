@@ -39,7 +39,7 @@
     window.AtlasRehearsalBoundary.validate(cfg);
     // S96: the recovery session lives in this page's memory only. It is never
     // written to the app's stored session, so an abandoned (or planted) reset
-    // link does not leave this device signed in to Atlas.
+    // link does not leave this device signed in to Alcedo.
     client = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
       auth: { persistSession: false, autoRefreshToken: false, storageKey: 'atlas-recovery-setup' }
     });

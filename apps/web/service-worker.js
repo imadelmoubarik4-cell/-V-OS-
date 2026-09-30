@@ -4,8 +4,8 @@ self.addEventListener('push', (event) => {
   let payload = {};
   try { payload = event.data?.json?.() || {}; } catch { payload = { body: event.data?.text?.() || '' }; }
   const route = payload.route === 'shifts' ? 'shifts' : 'team';
-  event.waitUntil(self.registration.showNotification(payload.title || 'Atlas update', {
-    body: payload.body || 'Open Atlas to review the update.',
+  event.waitUntil(self.registration.showNotification(payload.title || 'Alcedo update', {
+    body: payload.body || 'Open Alcedo to review the update.',
     tag: payload.tag || `atlas-${route}`,
     renotify: Boolean(payload.renotify),
     // Brand v1.0 platform icon (supplied kit file, docs/brand/README.md).

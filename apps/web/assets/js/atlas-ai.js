@@ -1,4 +1,4 @@
-// Atlas AI workspace (#ai): conversations, streamed answers with progress,
+// Alcedo AI workspace (#ai): conversations, streamed answers with progress,
 // evidence and linked records, approval cards, photo/file attachments, voice
 // notes and live voice, and the manager Decisions ledger (#ai/decisions).
 //
@@ -31,7 +31,7 @@
   const DAY = 86400000;
 
   // The assistant's robot state controller (atlas-bot.js): one place decides
-  // what every robot shows; this module only reports what Atlas is doing.
+  // what every robot shows; this module only reports what Alcedo is doing.
   const robotBot = () => root.AtlasBot?.robot || null;
 
   // ---------- icons (lucide 0.454.0 paths, inline so streaming never re-scans the DOM) ----------
@@ -146,7 +146,7 @@
   function dayKey(value) { return fmt({ year: 'numeric', month: '2-digit', day: '2-digit' }, value); }
   function timeLabel(value) { return fmt({ hour: '2-digit', minute: '2-digit', hour12: false }, value); }
 
-  // 'Tue 15 Sep' as everywhere in Atlas (ICU en-GB prints 'Sept').
+  // 'Tue 15 Sep' as everywhere in Alcedo (ICU en-GB prints 'Sept').
   function shortDate(date) {
     return fmt({ weekday: 'short', day: 'numeric', month: 'short' }, date).replace(',', '').replace(/\bSept\b/, 'Sep');
   }
@@ -253,7 +253,7 @@
 
   class AiError extends Error {
     constructor(status, code, message, reason = null) {
-      super(message || 'Atlas AI request failed.');
+      super(message || 'Alcedo AI request failed.');
       this.name = 'AiError';
       this.status = status;
       this.code = code || 'failed';
@@ -276,7 +276,7 @@
 
   async function buildUrl(action, params) {
     const base = endpoint();
-    if (!base) throw new AiError(503, 'not_configured', 'Atlas AI is not configured');
+    if (!base) throw new AiError(503, 'not_configured', 'Alcedo AI is not configured');
     const url = new URL(base);
     url.searchParams.set('action', action);
     Object.entries(params || {}).forEach(([key, value]) => {
@@ -288,7 +288,7 @@
   async function request(action, { method = 'GET', params = null, body = undefined, form = null, signal = undefined, stream = false } = {}) {
     const url = await buildUrl(action, params);
     const token = await accessToken();
-    if (!token) throw new AiError(401, 'unauthorized', 'Sign in again to use Atlas AI.');
+    if (!token) throw new AiError(401, 'unauthorized', 'Sign in again to use Alcedo AI.');
     const headers = { authorization: `Bearer ${token}`, accept: stream ? 'text/event-stream' : 'application/json' };
     if (body !== undefined && !form) headers['content-type'] = 'application/json';
     let response;
@@ -296,7 +296,7 @@
       response = await root.fetch(url, { method, headers, body: form || (body !== undefined ? JSON.stringify(body) : undefined), signal, cache: 'no-store' });
     } catch (error) {
       if (error?.name === 'AbortError') throw error;
-      throw new AiError(0, 'network', 'Atlas couldn’t be reached.');
+      throw new AiError(0, 'network', 'Alcedo couldn’t be reached.');
     }
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
@@ -322,7 +322,7 @@
   function uploadWithProgress(action, form, onProgress, signalHolder) {
     return new Promise((resolve, reject) => {
       Promise.all([buildUrl(action), accessToken()]).then(([url, token]) => {
-        if (!token) { reject(new AiError(401, 'unauthorized', 'Sign in again to use Atlas AI.')); return; }
+        if (!token) { reject(new AiError(401, 'unauthorized', 'Sign in again to use Alcedo AI.')); return; }
         const xhr = new XMLHttpRequest();
         if (signalHolder) signalHolder.abort = () => xhr.abort();
         xhr.open('POST', url.toString());
@@ -338,7 +338,7 @@
             reject(new AiError(xhr.status, payload?.error_code || (xhr.status === 503 ? 'unavailable' : 'failed'), payload?.message, payload?.reason));
           }
         };
-        xhr.onerror = () => reject(new AiError(0, 'network', 'Atlas couldn’t be reached.'));
+        xhr.onerror = () => reject(new AiError(0, 'network', 'Alcedo couldn’t be reached.'));
         xhr.onabort = () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
         xhr.send(form);
       }).catch(reject);
@@ -347,23 +347,23 @@
 
   // Plain-language failure copy: what failed, what is safe, what to do.
   const FIXED_COPY = {
-    rate_limited: 'Atlas is getting a lot of requests from you right now. Wait a minute, then try again.',
-    busy: 'Atlas is busy right now. Try again in a moment.',
-    timeout: 'Atlas took too long to answer. Try again, or ask a narrower question.',
+    rate_limited: 'Alcedo is getting a lot of requests from you right now. Wait a minute, then try again.',
+    busy: 'Alcedo is busy right now. Try again in a moment.',
+    timeout: 'Alcedo took too long to answer. Try again, or ask a narrower question.',
     too_many_steps: 'That needed too many steps. Try a narrower question.',
     forbidden: 'Your role can’t do this. Ask a manager if it’s needed.',
     conflict: 'This was already handled or has expired. Nothing else was changed.',
     too_large: 'This file is larger than 25 MB.',
     attachments_too_large: 'Photos and PDFs in one message can be up to 20 MB together. Remove one and try again.',
-    unsupported_type: 'Atlas can read photos, PDFs, text and CSV files.',
+    unsupported_type: 'Alcedo can read photos, PDFs, text and CSV files.',
     unauthorized: 'Your session has ended. Sign in again to continue.',
     message_too_long: 'That message is too long. Shorten it and try again.',
     voice_session_inactive: 'This live voice session has ended. Start a new one to continue.',
     voice_session_replaced: 'Live voice moved to another device.',
-    not_configured: 'Atlas AI isn’t switched on yet.',
+    not_configured: 'Alcedo AI isn’t switched on yet.',
     // A 503 without the server's not_configured code is an outage, not an
     // unconfigured venue (S90, review P2-5).
-    unavailable: 'Atlas AI isn’t available right now. Nothing was changed. Try again shortly.'
+    unavailable: 'Alcedo AI isn’t available right now. Nothing was changed. Try again shortly.'
   };
   const QUOTA_COPY = {
     voice_quota_exceeded: {
@@ -373,9 +373,9 @@
       default: 'You’ve reached today’s live voice limit. Voice notes and text still work.'
     },
     upload_quota_exceeded: {
-      daily_files: 'You’ve reached today’s limit of 100 files for Atlas AI. It resets within 24 hours.',
-      daily_bytes: 'You’ve reached today’s upload size limit for Atlas AI. It resets within 24 hours.',
-      default: 'You’ve reached today’s upload limit for Atlas AI. It resets within 24 hours.'
+      daily_files: 'You’ve reached today’s limit of 100 files for Alcedo AI. It resets within 24 hours.',
+      daily_bytes: 'You’ve reached today’s upload size limit for Alcedo AI. It resets within 24 hours.',
+      default: 'You’ve reached today’s upload limit for Alcedo AI. It resets within 24 hours.'
     }
   };
 
@@ -383,7 +383,7 @@
     const code = error?.code;
     if (QUOTA_COPY[code]) return QUOTA_COPY[code][error?.reason] || QUOTA_COPY[code].default;
     if (FIXED_COPY[code]) return FIXED_COPY[code];
-    if (code === 'network') return `${subject} couldn’t reach Atlas. Nothing was changed. Check your connection and try again.`;
+    if (code === 'network') return `${subject} couldn’t reach Alcedo. Nothing was changed. Check your connection and try again.`;
     return `${subject} couldn’t be completed. Nothing was changed. Try again.`;
   }
 
@@ -443,7 +443,7 @@
     else root.location.hash = route;
   }
 
-  // Page context label for a record the person opened Atlas from.
+  // Page context label for a record the person opened Alcedo from.
   function contextLabel(type, id) {
     const lists = { inventory_item: 'inventory', recipe: 'recipes', supplier: 'suppliers', purchase_order: 'purchaseOrders' };
     const list = lists[type] ? root.AtlasData?.[lists[type]]?.() : null;
@@ -465,7 +465,7 @@
   ];
 
   function progressLabel(value) {
-    const text = humanText(String(value || '').replace(/[.…]+$/, ''), 'Checking Atlas');
+    const text = humanText(String(value || '').replace(/[.…]+$/, ''), 'Checking Alcedo');
     return text.length > 80 ? `${text.slice(0, 77)}…` : text;
   }
 
@@ -476,7 +476,7 @@
 
   function stepsSummary(steps) {
     const unique = [...new Set(steps.map((step) => pastTense(step.label)))];
-    if (!unique.length) return 'Checked Atlas';
+    if (!unique.length) return 'Checked Alcedo';
     const lower = unique.map((entry, index) => (index === 0 ? entry : entry.charAt(0).toLowerCase() + entry.slice(1)));
     if (lower.length === 1) return lower[0];
     return `${lower.slice(0, -1).join(', ')} and ${lower.at(-1)}`;
@@ -585,7 +585,7 @@
               <div class="ai-search">${icon('search')}<input id="ai-list-search-input" class="atlas-input" type="search" placeholder="Search conversations" autocomplete="off"></div>
             </div>
             <div class="ai-list__modes" data-ai-modes hidden>
-              <div class="atlas-segmented" role="group" aria-label="Atlas AI sections">
+              <div class="atlas-segmented" role="group" aria-label="Alcedo AI sections">
                 <button type="button" data-ai-mode="conversations" aria-pressed="true">Conversations</button>
                 <button type="button" data-ai-mode="decisions" aria-pressed="false">Decisions</button>
               </div>
@@ -594,7 +594,7 @@
           <nav class="ai-list__scroll" data-ai-list aria-label="Conversation history"></nav>
         </aside>
         <section class="ai-thread" data-ai-thread aria-label="Conversation">
-          <h1 class="sr-only">Atlas AI</h1>
+          <h1 class="sr-only">Alcedo AI</h1>
           <header class="ai-thread__head">
             <button type="button" class="atlas-icon-btn ai-thread__list-btn" data-ai-open-list aria-label="Conversations">${icon('panel-left')}</button>
             <div class="ai-thread__title" data-ai-title></div>
@@ -610,12 +610,12 @@
             <div class="composer-prompts" data-ai-prompts hidden></div>
             <form class="composer" data-ai-composer novalidate>
               <div class="composer__attachments" data-ai-attachments hidden></div>
-              <label class="sr-only" for="ai-composer-input">Message Atlas</label>
-              <textarea id="ai-composer-input" data-ai-input rows="1" placeholder="Ask Atlas about stock, recipes, shifts…" autocomplete="off"></textarea>
+              <label class="sr-only" for="ai-composer-input">Message Alcedo</label>
+              <textarea id="ai-composer-input" data-ai-input rows="1" placeholder="Ask Alcedo about stock, recipes, shifts…" autocomplete="off"></textarea>
               <div class="composer__bar" data-ai-bar></div>
               <div class="composer__record" data-ai-record hidden></div>
             </form>
-            <p class="composer-hint" data-ai-hint>Atlas prepares changes for you to approve. It never changes stock, orders or shifts on its own.</p>
+            <p class="composer-hint" data-ai-hint>Alcedo prepares changes for you to approve. It never changes stock, orders or shifts on its own.</p>
             <input type="file" data-ai-file-photo accept="image/*" hidden tabindex="-1">
             <input type="file" data-ai-file-camera accept="image/*" capture="environment" hidden tabindex="-1">
             <input type="file" data-ai-file-any accept="${UPLOAD_ACCEPT}" hidden tabindex="-1" multiple>
@@ -760,7 +760,7 @@
     el('modes').querySelectorAll('[data-ai-mode]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.aiMode === state.mode)));
     const list = state.list;
     if (state.configured === false && !list.items.length) {
-      container.innerHTML = '<p class="ai-list__note">Conversations appear here once Atlas AI is switched on.</p>';
+      container.innerHTML = '<p class="ai-list__note">Conversations appear here once Alcedo AI is switched on.</p>';
       return;
     }
     if (list.loading && !list.loaded) {
@@ -775,7 +775,7 @@
     if (!items.length) {
       container.innerHTML = list.query
         ? `<p class="ai-list__note">No conversations match “${escapeHtml(list.query)}”.</p>`
-        : '<p class="ai-list__note">Your conversations with Atlas appear here.</p>';
+        : '<p class="ai-list__note">Your conversations with Alcedo appear here.</p>';
       return;
     }
     const groups = list.results ? [['Results', items]] : listGroups(items);
@@ -906,7 +906,7 @@
   async function deleteConversation(id) {
     const confirmed = await confirmDialog({
       title: 'Delete this conversation?',
-      body: 'Its messages, photos and files are removed. Orders, counts or messages Atlas already created stay as they are.',
+      body: 'Its messages, photos and files are removed. Orders, counts or messages Alcedo already created stay as they are.',
       confirm: 'Delete',
       danger: true
     });
@@ -1141,7 +1141,7 @@
     // The live robot greets once, follows the pointer and reacts to a tap.
     // It follows the assistant's state (AtlasBot.robot): it sleeps after a
     // quiet spell and wakes on hover, the composer or a new question.
-    const bot = root.AtlasBot ? `<div class="ai-empty__bot">${root.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176, follow: true })}</div>` : '';
+    const bot = root.AtlasBot ? `<div class="ai-empty__bot">${root.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'head', size: 176, follow: true })}</div>` : '';
     return `<div class="ai-empty">
       ${bot}
       <h2 class="ai-empty__greeting">What can I help with${name ? `, ${escapeHtml(name)}` : ''}?</h2>
@@ -1155,9 +1155,9 @@
     return `<div class="ai-empty ai-empty--off">
       <div class="atlas-empty">
         <div class="atlas-empty__icon">${root.AtlasBot ? root.AtlasBot.html({ size: 40 }) : icon('sparkles')}</div>
-        <h3>Atlas AI isn’t switched on yet</h3>
+        <h3>Alcedo AI isn’t switched on yet</h3>
         <p>${admin
-          ? 'Set it up in Settings › Atlas AI: add the service key, then switch it on. Until then, record search and quick answers from your stock, recipes and shifts still work.'
+          ? 'Set it up in Settings › Alcedo AI: add the service key, then switch it on. Until then, record search and quick answers from your stock, recipes and shifts still work.'
           : 'An administrator can switch it on in Settings. Until then, record search and quick answers from your stock, recipes and shifts still work.'}</p>
         ${admin ? '<a class="atlas-btn atlas-btn--secondary" href="#settings/ai" data-ai-route="#settings/ai">Open Settings</a>' : ''}
       </div>
@@ -1271,7 +1271,7 @@
     const open = message.evidenceOpen ?? (hasMissing || items.length > 2);
     const rows = items.map((item) => {
       const [kindLabel, kindClass] = EVIDENCE_KINDS[item.kind] || EVIDENCE_KINDS.interpretation;
-      const label = humanText(item.label, 'Checked in Atlas');
+      const label = humanText(item.label, 'Checked in Alcedo');
       const value = item.value == null ? '' : humanText(item.value, '');
       const statement = value ? `${label}: ${value}` : label;
       const source = item.source || null;
@@ -1283,8 +1283,8 @@
       return `<div class="evidence__row" role="listitem"><span class="kind ${kindClass}">${kindLabel}</span><span class="evidence__statement">${escapeHtml(statement)}</span>${sourceHtml}</div>`;
     }).join('');
     const bodyId = `ai-ev-${escapeHtml(message.key)}`;
-    return `<div class="evidence${open ? ' is-open' : ''}" role="group" aria-label="How Atlas knows">
-      <button type="button" class="evidence__head" data-ai-evidence="${escapeHtml(message.key)}" aria-expanded="${open}" aria-controls="${bodyId}" title="How do you know?">${icon('file-text')}<span>How Atlas knows</span><span class="muted">${items.length} ${items.length === 1 ? 'source' : 'sources'}</span>${icon('chevron-down', 'icon--chev')}</button>
+    return `<div class="evidence${open ? ' is-open' : ''}" role="group" aria-label="How Alcedo knows">
+      <button type="button" class="evidence__head" data-ai-evidence="${escapeHtml(message.key)}" aria-expanded="${open}" aria-controls="${bodyId}" title="How do you know?">${icon('file-text')}<span>How Alcedo knows</span><span class="muted">${items.length} ${items.length === 1 ? 'source' : 'sources'}</span>${icon('chevron-down', 'icon--chev')}</button>
       <div class="evidence__body" id="${bodyId}" role="list"${open ? '' : ' hidden'}>${rows}</div>
     </div>`;
   }
@@ -1311,7 +1311,7 @@
     const body = text
       ? `<div class="msg-ai__text" data-ai-text>${formatAnswer(text, { emphasiseFirst: message.status === 'complete' && !message.fallback && message.grounding !== 'replaced' })}</div>`
       : streaming ? '<div class="ai-skel-lines" aria-hidden="true"><div class="atlas-skel" style="width:92%"></div><div class="atlas-skel" style="width:74%"></div></div><div class="msg-ai__text" data-ai-text hidden></div>' : '';
-    const fallback = message.fallback ? `<p class="msg-ai__label"><span class="atlas-pill atlas-pill--plain">Quick answer</span> From Atlas records. Atlas AI is off, so this is a fixed check, not a full answer.</p>` : '';
+    const fallback = message.fallback ? `<p class="msg-ai__label"><span class="atlas-pill atlas-pill--plain">Quick answer</span> From Alcedo records. Alcedo AI is off, so this is a fixed check, not a full answer.</p>` : '';
     const fallbackLines = message.fallbackLines?.length ? `<ul class="msg-ai__lines">${message.fallbackLines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>` : '';
     const fallbackAction = message.fallbackAction ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ai-fallback-action="${escapeHtml(message.key)}">${escapeHtml(message.fallbackAction.label)}</button>` : '';
     const stopped = message.status === 'stopped' ? `<p class="msg-ai__stopped">${icon('square')}Stopped. ${text ? 'This answer is incomplete.' : 'Nothing was answered.'}</p>` : '';
@@ -1322,7 +1322,7 @@
       <button type="button" class="atlas-icon-btn" data-ai-retry="${escapeHtml(message.key)}" aria-label="Try again" title="Try again">${icon('refresh-cw')}</button>
     </div>` : '';
     return `<article class="msg-ai${streaming ? ' is-streaming' : ''}" data-ai-msg="${escapeHtml(message.key)}" aria-busy="${streaming}">
-      <div class="msg-ai__who">${root.AtlasBot ? root.AtlasBot.html(streaming ? { size: 24, follow: true, className: 'ai-mark-bot' } : { size: 24, state: message.error ? 'error' : 'idle', className: 'ai-mark-bot' }) : `<span class="ai-mark">${icon('sparkles')}</span>`}Atlas</div>
+      <div class="msg-ai__who">${root.AtlasBot ? root.AtlasBot.html(streaming ? { size: 24, follow: true, className: 'ai-mark-bot' } : { size: 24, state: message.error ? 'error' : 'idle', className: 'ai-mark-bot' }) : `<span class="ai-mark">${icon('sparkles')}</span>`}Alcedo</div>
       ${fallback}${stepsMarkup(message)}${body}${fallbackLines}${fallbackAction}${stopped}${error}${recordsMarkup(message)}${evidenceMarkup(message)}${proposals}${actions}
     </article>`;
   }
@@ -1397,7 +1397,7 @@
       return `<div class="approval approval--collapsed" data-ai-approval="${id}">${icon('x')}<span><strong>Dismissed</strong> · ${escapeHtml(title)}</span></div>`;
     }
     if (proposal.status === 'expired') {
-      return `<div class="approval approval--collapsed" data-ai-approval="${id}">${icon('info')}<span><strong>Expired</strong> · ${escapeHtml(title)}. Ask Atlas to prepare it again if it’s still needed.</span></div>`;
+      return `<div class="approval approval--collapsed" data-ai-approval="${id}">${icon('info')}<span><strong>Expired</strong> · ${escapeHtml(title)}. Ask Alcedo to prepare it again if it’s still needed.</span></div>`;
     }
 
     const lines = Array.isArray(preview.lines) ? preview.lines : [];
@@ -1457,11 +1457,11 @@
       foot = `<div class="approval__foot">
         <span class="spacer">${expires}${waiting ? `${expires ? ' · ' : ''}${waiting}` : ''}</span>
         ${allowed || !info.executable ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-ai-dismiss="${id}"${working ? ' disabled' : ''}>Dismiss</button>` : ''}
-        ${info.executable && allowed ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ai-edit="${id}"${working ? ' disabled' : ''} title="Tell Atlas what to change">Edit</button>` : ''}
+        ${info.executable && allowed ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ai-edit="${id}"${working ? ' disabled' : ''} title="Tell Alcedo what to change">Edit</button>` : ''}
         ${primary}
       </div>`;
     }
-    const failure = proposal.status === 'failed' ? `<div class="atlas-alert atlas-alert--danger approval__failed" role="alert">${icon('circle-alert')}<div><div class="atlas-alert__title">This couldn’t be completed.</div><div>${escapeHtml(proposal.failureText || 'Nothing was changed. Try again, or ask Atlas to prepare it again.')}</div></div>${proposal.retryable === false ? '' : `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ai-approve="${id}">Try again</button>`}</div>` : '';
+    const failure = proposal.status === 'failed' ? `<div class="atlas-alert atlas-alert--danger approval__failed" role="alert">${icon('circle-alert')}<div><div class="atlas-alert__title">This couldn’t be completed.</div><div>${escapeHtml(proposal.failureText || 'Nothing was changed. Try again, or ask Alcedo to prepare it again.')}</div></div>${proposal.retryable === false ? '' : `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-ai-approve="${id}">Try again</button>`}</div>` : '';
 
     return `<div class="approval" role="group" aria-label="${escapeHtml(title)}" data-ai-approval="${id}" data-status="${escapeHtml(proposal.status)}">
       <div class="approval__head">
@@ -1508,11 +1508,11 @@
         root.console?.warn?.('[atlas-ai] proposal failed', result?.error?.code || 'failed');
         const code = result?.error?.code;
         const text = code === 'forbidden' ? 'Your role can’t approve this. Nothing was changed.'
-          : code === 'draft_exists' ? 'This supplier already has a Draft order, so nothing new was created. Ask Atlas to add these lines to that draft.'
-          : code === 'name_taken' ? 'A recipe with this name already exists, so nothing was saved. Ask Atlas for a different name.'
-          : code === 'conflict' ? 'Something changed since Atlas prepared this. Nothing was changed. Ask Atlas to prepare it again.'
-            : code === 'not_found' ? 'A record in this proposal no longer exists. Nothing was changed. Ask Atlas to prepare it again.'
-              : 'Nothing was changed. Ask Atlas to prepare it again, or make the change in its page.';
+          : code === 'draft_exists' ? 'This supplier already has a Draft order, so nothing new was created. Ask Alcedo to add these lines to that draft.'
+          : code === 'name_taken' ? 'A recipe with this name already exists, so nothing was saved. Ask Alcedo for a different name.'
+          : code === 'conflict' ? 'Something changed since Alcedo prepared this. Nothing was changed. Ask Alcedo to prepare it again.'
+            : code === 'not_found' ? 'A record in this proposal no longer exists. Nothing was changed. Ask Alcedo to prepare it again.'
+              : 'Nothing was changed. Ask Alcedo to prepare it again, or make the change in its page.';
         setAction(id, { working: false, status: 'failed', failureText: text, retryable: false });
         robotBot()?.set('error');
         announce('This couldn’t be completed.');
@@ -1520,7 +1520,7 @@
     } catch (error) {
       robotBot()?.set('error');
       if (error?.code === 'network' || error?.status === 0) {
-        setAction(id, { working: false, status: 'failed', failureText: 'Atlas couldn’t confirm the result. Check the page before trying again, so nothing is done twice.', retryable: true });
+        setAction(id, { working: false, status: 'failed', failureText: 'Alcedo couldn’t confirm the result. Check the page before trying again, so nothing is done twice.', retryable: true });
       } else if (error?.code === 'conflict') {
         setAction(id, { working: false, status: 'failed', failureText: 'This proposal was already handled or has expired. Nothing else was changed.', retryable: false });
         refreshActions();
@@ -1584,7 +1584,7 @@
       source: message.source || 'text',
       metadata: message.metadata || {},
       progress: [],
-      error: message.status === 'error' ? { title: 'Atlas couldn’t finish this answer.', body: 'Nothing was changed.' } : null,
+      error: message.status === 'error' ? { title: 'Alcedo couldn’t finish this answer.', body: 'Nothing was changed.' } : null,
       created_at: message.created_at
     };
   }
@@ -1676,7 +1676,7 @@
       if (ready.length) { input.focus(); toast('Add a question about the attachment.'); }
       return;
     }
-    if (!navigator.onLine) { toast('You’re offline. Atlas AI needs a connection.'); return; }
+    if (!navigator.onLine) { toast('You’re offline. Alcedo AI needs a connection.'); return; }
     const modelBytes = ready.filter((attachment) => attachment.kind === 'image' || attachment.kind === 'pdf').reduce((sum, attachment) => sum + (Number(attachment.size) || 0), 0);
     if (!options.regenerate && modelBytes > MAX_TURN_ATTACHMENT_BYTES) { toast(FIXED_COPY.attachments_too_large); return; }
 
@@ -1711,7 +1711,7 @@
     const controller = new AbortController();
     state.streaming = { controller, reply };
     renderComposerBar();
-    announce('Atlas is answering.');
+    announce('Alcedo is answering.');
 
     let conversationId;
     try {
@@ -1818,7 +1818,7 @@
     patchMessage(reply);
     renderComposerBar();
     scrollToBottom();
-    announce(reply.status === 'complete' ? 'Atlas answered.' : reply.status === 'stopped' ? 'Stopped.' : 'Atlas couldn’t finish this answer.');
+    announce(reply.status === 'complete' ? 'Alcedo answered.' : reply.status === 'stopped' ? 'Stopped.' : 'Alcedo couldn’t finish this answer.');
     afterTurn();
   }
 
@@ -1830,7 +1830,7 @@
     reply.status = 'error';
     const specific = ['rate_limited', 'busy', 'timeout', 'too_many_steps', 'network', 'forbidden', 'message_too_long', 'unauthorized', 'attachments_too_large', 'too_large', 'upload_quota_exceeded'].includes(error?.code);
     reply.error = {
-      title: 'Atlas couldn’t finish this answer. Nothing was changed.',
+      title: 'Alcedo couldn’t finish this answer. Nothing was changed.',
       body: specific ? friendly(error, 'This question') : ''
     };
     if (render) patchMessage(reply);
@@ -1887,7 +1887,7 @@
     loadList({ quiet: true });
   }
 
-  // Atlas AI is off: truthful state plus the deterministic answers from search.
+  // Alcedo AI is off: truthful state plus the deterministic answers from search.
   function switchOffAndAnswer(text) {
     state.configured = false;
     renderList();
@@ -1906,7 +1906,7 @@
       reply.fallbackLines = answer.lines || [];
       reply.fallbackAction = answer.action && typeof answer.action.run === 'function' ? answer.action : null;
     } else {
-      reply.content = 'Atlas AI is off, so I can’t answer that yet. Quick answers work for questions like “What is low in stock?”, “What needs ordering?”, “Can we make a Margarita?” or “Who works tomorrow?”. You can also search for an item, recipe or supplier.';
+      reply.content = 'Alcedo AI is off, so I can’t answer that yet. Quick answers work for questions like “What is low in stock?”, “What needs ordering?”, “Can we make a Margarita?” or “Who works tomorrow?”. You can also search for an item, recipe or supplier.';
     }
     state.conv.messages.push(reply);
     renderThread();
@@ -1925,7 +1925,7 @@
 
   function addFiles(files) {
     if (!files.length) return;
-    if (state.configured === false) { toast('Photos and files need Atlas AI to be switched on.'); return; }
+    if (state.configured === false) { toast('Photos and files need Alcedo AI to be switched on.'); return; }
     const room = MAX_ATTACHMENTS - state.composer.attachments.length;
     if (room <= 0) { toast(`Attach up to ${MAX_ATTACHMENTS} files per message.`); return; }
     files.slice(0, room).forEach((file) => {
@@ -1960,7 +1960,7 @@
       attachment.status = 'error';
       if (error?.code === 'not_configured') {
         state.configured = false;
-        attachment.error = 'Photos and files need Atlas AI to be switched on.';
+        attachment.error = 'Photos and files need Alcedo AI to be switched on.';
         renderThread();
       } else attachment.error = friendly(error, 'The upload');
     }
@@ -2013,20 +2013,20 @@
     const context = state.composer.context;
     const sendDisabled = streaming ? false : (!text || uploading || offline || state.composer.transcribing);
     bar.innerHTML = `
-      <button type="button" class="atlas-icon-btn" data-ai-attach aria-label="Add photo or file" aria-haspopup="menu"${off || offline ? ' disabled title="Photos and files need Atlas AI"' : ''}>${icon('plus', 'icon--md')}</button>
+      <button type="button" class="atlas-icon-btn" data-ai-attach aria-label="Add photo or file" aria-haspopup="menu"${off || offline ? ' disabled title="Photos and files need Alcedo AI"' : ''}>${icon('plus', 'icon--md')}</button>
       ${context ? `<span class="composer__ctx">${icon(recordIcon(context.type))}<span>${escapeHtml(context.label)}</span><button type="button" class="composer__ctx-x" data-ai-clear-context aria-label="Remove ${escapeHtml(context.label)} from this question">${icon('x')}</button></span>` : ''}
       <span class="spacer"></span>
       ${voice.voiceNote ? `<button type="button" class="atlas-icon-btn" data-ai-voice-note aria-label="Record a voice note"${off || offline || streaming ? ' disabled' : ''}>${icon('mic', 'icon--md')}</button>` : ''}
-      ${voice.liveVoice ? `<button type="button" class="atlas-icon-btn" data-ai-live aria-label="Talk to Atlas"${off || offline || streaming || state.live ? ' disabled' : ''}>${icon('audio-lines', 'icon--md')}</button>` : ''}
+      ${voice.liveVoice ? `<button type="button" class="atlas-icon-btn" data-ai-live aria-label="Talk to Alcedo"${off || offline || streaming || state.live ? ' disabled' : ''}>${icon('audio-lines', 'icon--md')}</button>` : ''}
       ${streaming
         ? `<button type="button" class="send send--stop" data-ai-stop aria-label="Stop generating">${icon('square')}</button>`
         : `<button type="submit" class="send" aria-label="Send"${sendDisabled ? ' disabled' : ''}>${icon('arrow-up')}</button>`}`;
     el('input').disabled = offline;
-    el('input').placeholder = offline ? 'You’re offline. Atlas AI needs a connection.' : 'Ask Atlas about stock, recipes, shifts…';
+    el('input').placeholder = offline ? 'You’re offline. Alcedo AI needs a connection.' : 'Ask Alcedo about stock, recipes, shifts…';
     el('composer').classList.toggle('is-offline', offline);
     el('hint').textContent = off
-      ? 'Atlas AI is off. Quick answers come from your stock, recipes and shifts.'
-      : 'Atlas prepares changes for you to approve. It never changes stock, orders or shifts on its own.';
+      ? 'Alcedo AI is off. Quick answers come from your stock, recipes and shifts.'
+      : 'Alcedo prepares changes for you to approve. It never changes stock, orders or shifts on its own.';
     const prompts = el('prompts');
     if (prompts && text) prompts.hidden = true;
   }
@@ -2170,7 +2170,7 @@
         : status === 'error' && live.errorText ? live.errorText : 'Live voice disconnected. Your conversation is saved.';
     const retry = retryable && status !== 'replaced'
       ? `<button type="button" data-ai-live-reconnect>${icon('refresh-cw')}${status === 'inactive' ? 'Start a new session' : status === 'error' ? 'Try again' : 'Reconnect'}</button>` : '';
-    const bot = root.AtlasBot ? root.AtlasBot.liveHtml({ key: 'ai-voice', framing: 'bust', size: 44, state: liveBotState(status), label: `Atlas, ${label.toLowerCase()}` }) : '';
+    const bot = root.AtlasBot ? root.AtlasBot.liveHtml({ key: 'ai-voice', framing: 'bust', size: 44, state: liveBotState(status), label: `Alcedo, ${label.toLowerCase()}` }) : '';
     return `<div class="voice" role="region" aria-label="Live voice" data-state="${escapeHtml(status)}">
       <div class="voice__top">${bot}<span class="voice__state" aria-live="polite">${escapeHtml(label)}</span><span class="voice__time" data-ai-live-time>${durationLabel((Date.now() - live.startedAt) / 1000)}</span>
         <button type="button" class="voice__toggle" data-ai-live-transcript aria-pressed="${live.showTranscript}">${live.showTranscript ? 'Hide transcript' : 'Show transcript'}</button></div>
@@ -2222,8 +2222,8 @@
     try { explained = root.localStorage?.getItem(VOICE_EXPLAINED_KEY) === 'yes'; } catch { explained = false; }
     if (!explained && !skipExplain) {
       const ok = await confirmDialog({
-        title: 'Talk to Atlas',
-        body: 'Atlas listens only while this panel is open. Anything Atlas prepares appears as a card for you to approve with a tap. Your browser asks for the microphone next.',
+        title: 'Talk to Alcedo',
+        body: 'Alcedo listens only while this panel is open. Anything Alcedo prepares appears as a card for you to approve with a tap. Your browser asks for the microphone next.',
         confirm: 'Start talking'
       });
       if (!ok) return;
@@ -2279,7 +2279,7 @@
         reply.evidence = [...(reply.evidence || []), ...evidence].slice(0, 40);
         patchMessage(reply);
       },
-      onError: (problem) => { if (problem?.code === 'rate_limited') toast('Live voice is going faster than Atlas allows. Wait a moment before the next request.'); }
+      onError: (problem) => { if (problem?.code === 'rate_limited') toast('Live voice is going faster than Alcedo allows. Wait a moment before the next request.'); }
     });
     live.session = session;
     waveLoop();
@@ -2325,7 +2325,7 @@
     if (!reply.proposals.some((entry) => entry.id === proposal.id)) reply.proposals.push(proposal);
     renderThread();
     scrollToBottom(true);
-    announce(`Atlas prepared ${humanText(proposal.title, 'a change')}. Review the card to approve it.`);
+    announce(`Alcedo prepared ${humanText(proposal.title, 'a change')}. Review the card to approve it.`);
   }
 
   function finishLive() {
@@ -2415,7 +2415,7 @@
       title: humanText(recommendation.title, 'Recommendation'),
       summary: humanText(recommendation.summary, ''),
       evidenceCount: Array.isArray(recommendation.evidence) ? recommendation.evidence.length : 0,
-      source: /atlas-ai/i.test(String(recommendation.generated_by || '')) ? 'Atlas AI' : 'Rule',
+      source: /atlas-ai/i.test(String(recommendation.generated_by || '')) ? 'Alcedo AI' : 'Rule',
       status: recommendation.status,
       decidedBy: '',
       when: recommendation.updated_at || recommendation.created_at || recommendation.generated_at || null,
@@ -2430,7 +2430,7 @@
       title: humanText(memory.title, 'Decision'),
       summary: humanText(memory.summary, ''),
       evidenceCount: 0,
-      source: /atlas-ai/i.test(JSON.stringify(memory.context || {})) ? 'Atlas AI' : 'Rule',
+      source: /atlas-ai/i.test(JSON.stringify(memory.context || {})) ? 'Alcedo AI' : 'Rule',
       action: memory.action,
       decidedBy: humanText(memory.actor_label, ''),
       when: memory.occurred_at,
@@ -2455,7 +2455,7 @@
     if (!container) return;
     if (!isManager()) {
       container.innerHTML = `<div class="ai-decisions__inner"><h1 class="ai-decisions__title" id="ai-decisions-title">Decisions</h1>
-        <div class="atlas-empty"><div class="atlas-empty__icon">${icon('lock')}</div><h3>Decisions are for managers</h3><p>Ask a manager or administrator if you need to see what was decided.</p><a class="atlas-btn atlas-btn--secondary" href="#ai" data-ai-route="#ai">Go to Atlas AI</a></div></div>`;
+        <div class="atlas-empty"><div class="atlas-empty__icon">${icon('lock')}</div><h3>Decisions are for managers</h3><p>Ask a manager or administrator if you need to see what was decided.</p><a class="atlas-btn atlas-btn--secondary" href="#ai" data-ai-route="#ai">Go to Alcedo AI</a></div></div>`;
       return;
     }
     const d = state.decisions;
@@ -2477,15 +2477,18 @@
       if (!rows.length) {
         body = decisionRows().length
           ? `<div class="atlas-empty"><h3>No decisions match these filters</h3><p>Try another status, area or period.</p><button type="button" class="atlas-btn atlas-btn--secondary" data-ai-dec-clear>Clear filters</button></div>`
-          : `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('list-checks')}</div><h3>No decisions recorded yet</h3><p>When you approve or dismiss something Atlas suggests, it appears here with what happened next.</p></div>`;
+          : `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('list-checks')}</div><h3>No decisions recorded yet</h3><p>When you approve or dismiss something Alcedo suggests, it appears here with what happened next.</p></div>`;
       } else {
         body = `<div class="ai-dec-table" role="table" aria-label="Decisions">
           <div class="ai-dec-row ai-dec-row--head" role="row"><span role="columnheader">Recommendation</span><span role="columnheader">Source</span><span role="columnheader">Status</span><span role="columnheader">Decided by</span><span role="columnheader">When</span><span role="columnheader">Outcome</span></div>
           ${rows.map((row) => {
             const [pillLabel, tone] = DECISION_PILLS[row.statusKey] || DECISION_PILLS.proposed;
             const selected = Boolean(row.recommendationId) && row.recommendationId === d.openId;
+            const norm = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+            const summary = norm(row.summary) === norm(row.title) ? '' : row.summary;
+            const subtitle = summary || (row.evidenceCount ? `${row.evidenceCount} ${row.evidenceCount === 1 ? 'source' : 'sources'}` : '');
             return `<button type="button" class="ai-dec-row${selected ? ' is-selected' : ''}" role="row"${selected ? ' aria-current="true"' : ''} data-ai-dec-open="${escapeHtml(row.recommendationId || '')}" data-ai-dec-key="${escapeHtml(row.id)}"${row.recommendationId ? '' : ' disabled'}>
-              <span role="cell" class="ai-dec-row__main"><span class="ai-dec-row__t">${escapeHtml(row.title)}</span><span class="ai-dec-row__m">${escapeHtml(row.summary || (row.evidenceCount ? `${row.evidenceCount} ${row.evidenceCount === 1 ? 'source' : 'sources'}` : ''))}</span></span>
+              <span role="cell" class="ai-dec-row__main"><span class="ai-dec-row__t">${escapeHtml(row.title)}</span><span class="ai-dec-row__m">${escapeHtml(subtitle)}</span></span>
               <span role="cell" class="ai-dec-row__cell" data-label="Source">${escapeHtml(row.source)}</span>
               <span role="cell" class="ai-dec-row__cell"><span class="atlas-pill atlas-pill--${tone}">${pillLabel}</span></span>
               <span role="cell" class="ai-dec-row__cell" data-label="Decided by">${escapeHtml(row.decidedBy || '—')}</span>
@@ -2494,13 +2497,13 @@
             </button>`;
           }).join('')}
         </div>
-        <p class="ai-decisions__foot">${rows.length} ${rows.length === 1 ? 'decision' : 'decisions'} · Atlas records these so it can explain what was decided before. Nothing here changes stock, orders or shifts.</p>`;
+        <p class="ai-decisions__foot">${rows.length} ${rows.length === 1 ? 'decision' : 'decisions'} · Alcedo records these so it can explain what was decided before. Nothing here changes stock, orders or shifts.</p>`;
       }
     }
     const head = root.AtlasShell.pageHead({
       id: 'ai-decisions-title',
       title: 'Decisions',
-      sub: 'What Atlas suggested, what was decided and what happened next.',
+      sub: 'What Alcedo suggested, what was decided and what happened next.',
       actions: [{ label: 'Refresh', icon: 'refresh-cw', variant: 'secondary', attrs: { 'data-ai-dec-refresh': '', ...(d.loading ? { disabled: '', 'aria-busy': 'true' } : {}) } }]
     });
     container.innerHTML = `<div class="ai-decisions__inner">${head}${filters}${body}</div>`;
@@ -2575,7 +2578,7 @@
         <h3>Record a decision</h3>
         <div class="atlas-field"><label for="${id}-decision">Decision</label><select id="${id}-decision" class="atlas-select" name="decision"><option value="accept">Approve</option><option value="reject">Dismiss</option><option value="defer">Decide later</option></select></div>
         <div class="atlas-field" data-ai-defer hidden><label for="${id}-until">Decide by</label><input id="${id}-until" class="atlas-input" type="datetime-local" step="60" name="until"></div>
-        <div class="atlas-field"><label for="${id}-notes">Note (optional)</label><textarea id="${id}-notes" class="atlas-input" name="notes" rows="3" placeholder="What should Atlas remember about this?"></textarea></div>
+        <div class="atlas-field"><label for="${id}-notes">Note <span class="optional">(optional)</span></label><textarea id="${id}-notes" class="atlas-input" name="notes" rows="3" placeholder="What should Alcedo remember about this?"></textarea></div>
         <div class="ai-sheet__error" data-ai-dec-error hidden role="alert"></div>
         <div class="ai-sheet__actions"><button type="submit" class="atlas-btn atlas-btn--primary">Save decision</button></div>
       </form>
@@ -2824,7 +2827,7 @@
   function render(params = {}) {
     if (!ensureRoot()) return;
     state.visible = true;
-    // Opening Atlas AI wakes the robot; while it is open, the robot waits
+    // Opening Alcedo AI wakes the robot; while it is open, the robot waits
     // longer before it falls asleep.
     robotBot()?.active(true);
     setTopBar();
@@ -2860,7 +2863,7 @@
       if (params.q) {
         // A route-supplied question only prefills the composer: a link (email,
         // chat, QR code) must never send a turn as the signed-in user. Only an
-        // in-app intent (ask(), the palette's Ask Atlas row) sends, and that
+        // in-app intent (ask(), the palette's Ask Alcedo row) sends, and that
         // intent travels in memory (takePendingSend), never in the URL.
         const question = String(params.q).slice(0, 4000);
         if (params.send !== '0' && takePendingSend(question)) send({ text: question });
@@ -2903,7 +2906,7 @@
     return Boolean(pending && pending.text === question && Date.now() - pending.at <= PENDING_SEND_TTL_MS);
   }
 
-  // Opens Atlas AI with an optional question and page context.
+  // Opens Alcedo AI with an optional question and page context.
   function ask({ question = '', record = null, view = null, send: autoSend = true } = {}) {
     const params = { new: '1' };
     if (record?.type && record?.id != null) {
@@ -2934,8 +2937,8 @@
             id: current.id,
             severity: 'info',
             icon: 'atlas-bot',
-            title: `${humanText(current.title, 'A change Atlas prepared')} is waiting for your approval`,
-            detail: current.expires_at ? expiryLabel(current.expires_at) : 'Prepared by Atlas',
+            title: `${humanText(current.title, 'A change Alcedo prepared')} is waiting for your approval`,
+            detail: current.expires_at ? expiryLabel(current.expires_at) : 'Prepared by Alcedo',
             action: { label: 'Review', route: `#ai/c/${state.conv.id}` }
           });
         }));
@@ -2947,18 +2950,18 @@
   function registerWithShell() {
     const shell = root.AtlasShell;
     if (!shell) return;
-    shell.registerView('ai', { root: () => ensureRoot(), title: 'Atlas AI', display: 'block', render, onHide });
+    shell.registerView('ai', { root: () => ensureRoot(), title: 'Alcedo AI', display: 'block', render, onHide });
     shell.actions?.register?.({
-      id: 'ai.ask', label: 'Ask Atlas', icon: 'atlas-bot', keywords: ['ask', 'question', 'atlas', 'ai', 'help'], contexts: ['home', 'inventory', 'recipes', 'suppliers', 'reports'],
+      id: 'ai.ask', label: 'Ask Alcedo', icon: 'atlas-bot', keywords: ['ask', 'question', 'atlas', 'ai', 'help'], contexts: ['home', 'inventory', 'recipes', 'suppliers', 'reports'],
       run: (ctx = {}) => ask({ question: ctx.query || ctx.question || '', record: ctx.record || null, view: ctx.context || null })
     });
     shell.actions?.register?.({
-      id: 'ai.ask.record', label: 'Ask Atlas about this', icon: 'atlas-bot', keywords: ['ask', 'atlas', 'about'],
+      id: 'ai.ask.record', label: 'Ask Alcedo about this', icon: 'atlas-bot', keywords: ['ask', 'atlas', 'about'],
       when: (ctx = {}) => Boolean(ctx.record?.type && ctx.record?.id != null),
       run: (ctx = {}) => ask({ question: ctx.query || '', record: ctx.record, view: ctx.context || null, send: Boolean(ctx.query) })
     });
     shell.actions?.register?.({
-      id: 'ai.voice', label: 'Talk to Atlas', icon: 'audio-lines', keywords: ['voice', 'talk', 'speak', 'count by voice'], roles: OPERATIONAL_ROLES, contexts: ['home', 'inventory'],
+      id: 'ai.voice', label: 'Talk to Alcedo', icon: 'audio-lines', keywords: ['voice', 'talk', 'speak', 'count by voice'], roles: OPERATIONAL_ROLES, contexts: ['home', 'inventory'],
       when: () => Boolean(root.AtlasAIVoice?.supported?.().liveVoice),
       run: () => { shell.show('ai', { new: '1' }, { source: 'action' }); root.setTimeout(() => startLive(), 0); }
     });

@@ -9,7 +9,7 @@
 // Neutral labels never hide a real name, and an email address is never shown
 // or turned into a name. Own and others' messages both show the sender's name
 // and avatar (photo from AtlasTeamProfilePhotos.photoFor(sender_id), initials
-// otherwise); own messages sit on the right. Atlas recommendation links are
+// otherwise); own messages sit on the right. Alcedo recommendation links are
 // manager-only: the composer offers them only when the server says
 // can_link_brain_recommendations, and staff see such a link without its title.
 //
@@ -30,7 +30,7 @@
     { type: 'inventory_item', label: 'Item', icon: 'package', noun: 'items' },
     { type: 'routine', label: 'Checklist', icon: 'clipboard-check', noun: 'checklists due today' },
     { type: 'shift', label: 'Shift', icon: 'calendar-days', noun: 'shifts' },
-    { type: 'brain_recommendation', label: 'Recommendation', icon: 'sparkles', noun: 'Atlas recommendations', managerOnly: true }
+    { type: 'brain_recommendation', label: 'Recommendation', icon: 'sparkles', noun: 'Alcedo recommendations', managerOnly: true }
   ];
   const LINK_ICONS = { inventory_item: 'package', routine: 'clipboard-check', shift: 'calendar-days', brain_recommendation: 'sparkles', knowledge_article: 'book-open' };
 
@@ -75,7 +75,7 @@
   }
 
   function initials(value) {
-    const words = String(value || 'Atlas').trim().split(/\s+/).filter(Boolean);
+    const words = String(value || 'Alcedo').trim().split(/\s+/).filter(Boolean);
     if (!words.length) return 'A';
     return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join('');
   }
@@ -249,7 +249,7 @@
 
   async function api(action, options = {}) {
     const endpoint = teamApi();
-    if (!endpoint) throw new MessagesError('Messages are not set up for this Atlas yet.', 0);
+    if (!endpoint) throw new MessagesError('Messages are not set up for this Alcedo yet.', 0);
     const session = await activeSession();
     if (!session?.access_token) throw new MessagesError('Sign in again to read messages.', 401);
 
@@ -290,7 +290,7 @@
   // Fixed copy only (AtlasApi, atlas-api.js): server text is never shown,
   // whatever its length or wording.
   const API_MESSAGES = {
-    auth: 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.',
+    auth: 'Alcedo couldn’t confirm your sign-in for this. Try again in a moment.',
     forbidden: 'Your role can’t do that in Messages.',
     not_found: 'That conversation or message isn’t available any more.',
     conflict: 'This changed while you were writing. Refresh and try again.',
@@ -400,7 +400,7 @@
     if (!last) return channel.description || 'No messages yet';
     if (last.deleted) return 'Message deleted';
     // The same live identity as the thread (sender_id → roster name → …).
-    const who = last.message_type === 'system' ? 'Atlas' : senderIdentity(last).name;
+    const who = last.message_type === 'system' ? 'Alcedo' : senderIdentity(last).name;
     return who ? `${who}: ${last.body || ''}` : String(last.body || '');
   }
 
@@ -489,7 +489,7 @@
     const iconName = LINK_ICONS[link.type] || 'link-2';
     // Recommendation titles are manager context; staff see only that one exists.
     if (link.type === 'brain_recommendation' && !isManager()) {
-      return `<span class="atlas-record-chip msg-link is-locked">${icon('lock')}<span>Atlas recommendation · managers only</span></span>`;
+      return `<span class="atlas-record-chip msg-link is-locked">${icon('lock')}<span>Alcedo recommendation · managers only</span></span>`;
     }
     return `<a class="atlas-record-chip msg-link" href="${escapeHtml(linkHref(link))}" data-team-open-link="${escapeHtml(link.type)}" data-team-link-key="${escapeHtml(link.key)}">${icon(iconName)}<span>${escapeHtml(link.label || 'Linked record')}</span></a>`;
   }
@@ -514,7 +514,7 @@
       </article>`;
     }
     const system = message.message_type === 'system';
-    const identity = system ? { id: null, name: 'Atlas', role: '', current: true } : senderIdentity(message);
+    const identity = system ? { id: null, name: 'Alcedo', role: '', current: true } : senderIdentity(message);
     const grouped = !system && previous && !previous.deleted && previous.message_type !== 'system'
       && previous.sender_id && previous.sender_id === message.sender_id
       && venueDateOf(previous.created_at) === venueDateOf(time)
@@ -1305,7 +1305,7 @@
         route: `#messages/${channel.key}`,
         lastMessageAt: channel.last_message?.created_at || null,
         preview: channel.last_message ? previewOf(channel) : '',
-        lastMessage: channel.last_message ? { id: channel.last_message.id || null, sender: channel.last_message.message_type === 'system' ? 'Atlas' : senderIdentity(channel.last_message).name, body: channel.last_message.deleted ? '' : String(channel.last_message.body || '').slice(0, 140), deleted: Boolean(channel.last_message.deleted) } : null
+        lastMessage: channel.last_message ? { id: channel.last_message.id || null, sender: channel.last_message.message_type === 'system' ? 'Alcedo' : senderIdentity(channel.last_message).name, body: channel.last_message.deleted ? '' : String(channel.last_message.body || '').slice(0, 140), deleted: Boolean(channel.last_message.deleted) } : null
       })).filter((entry) => entry.unread > 0)
     };
   }

@@ -13,7 +13,7 @@
 // ?action=set-item, S88 contract §2) on the venue's business date; nothing is
 // stored on the device. Readiness moved to Home, suggested purchasing to
 // Purchasing (AtlasOperations.orderSuggestions stays the canonical browser
-// suggestion rule for Purchasing, Search and Atlas AI).
+// suggestion rule for Purchasing, Search and Alcedo AI).
 // No inventory quantity change from this module.
 (function () {
   'use strict';
@@ -267,7 +267,7 @@
     if (error?.code === 'routine_closed') return 'This checklist is already completed or skipped.';
     if (error?.status === 403) return 'Your role can view checklists but not tick them.';
     if (error?.status === 404) return 'This checklist changed. Refresh to see the current one.';
-    if (error?.code === 'network' || error?.status === 0) return 'You’re offline or Atlas couldn’t be reached. Nothing was saved — try again.';
+    if (error?.code === 'network' || error?.status === 0) return 'You’re offline or Alcedo couldn’t be reached. Nothing was saved — try again.';
     return 'That couldn’t be saved. Nothing was changed — try again.';
   }
 
@@ -532,7 +532,7 @@
     if (state.status === 'error') return errorMarkup();
     const rows = todayRows();
     const notSetUp = state.checklists && state.checklists.configured === false
-      ? `<div class="atlas-alert atlas-alert--warning" role="status">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__title">Opening and closing checklists aren’t set up on the server yet</p><p class="atlas-alert__body">They appear here once they are. Atlas never keeps a checklist on one device.</p></div></div>`
+      ? `<div class="atlas-alert atlas-alert--warning" role="status">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__title">Opening and closing checklists aren’t set up on the server yet</p><p class="atlas-alert__body">They appear here once they are. Alcedo never keeps a checklist on one device.</p></div></div>`
       : '';
     if (!rows.length) {
       return `${notSetUp}<div class="atlas-empty"><div class="atlas-empty__icon">${icon('list-checks')}</div><h3>No checklists today</h3><p>${canManage() ? 'Routines you schedule appear here on their day.' : 'Checklists your manager schedules appear here on their day.'}</p>${canManage() ? '<a class="atlas-btn atlas-btn--secondary" href="#operations/schedule">Set up routines in Schedule</a>' : ''}</div>`;
@@ -607,7 +607,7 @@
       return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('thermometer')}</div><h3>No temperature points yet</h3><p>Fridges and freezers you log appear here once a manager adds them.</p></div>`;
     }
     const unconfigured = number(tempSummary.range_unconfigured_points);
-    return `${unconfigured ? `<div class="atlas-alert atlas-alert--warning" role="status">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">${escape(`${plural(unconfigured, 'point has', 'points have')} no target range yet. Readings are saved, but Atlas can’t say whether they are in range until a manager sets one.`)}</p></div></div>` : ''}
+    return `${unconfigured ? `<div class="atlas-alert atlas-alert--warning" role="status">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">${escape(`${plural(unconfigured, 'point has', 'points have')} no target range yet. Readings are saved, but Alcedo can’t say whether they are in range until a manager sets one.`)}</p></div></div>` : ''}
     <div class="atlas-table-wrap atlas-table-wrap--responsive ops-temp"><table class="atlas-table">
       <thead><tr><th scope="col">Point</th><th scope="col">Target range</th><th scope="col" class="is-num">Today</th><th scope="col">Logged</th><th scope="col">Status</th><th scope="col" class="col-actions"><span class="sr-only">Actions</span></th></tr></thead>
       <tbody>${points.map((point) => {
@@ -727,7 +727,9 @@
   function field(label, control, help = '') {
     const id = `ops-field-${++fieldSequence}`;
     const withId = control.replace(/^\s*<(input|select|textarea)\b/, `<$1 id="${id}"`);
-    return `<div class="atlas-field"><label for="${id}">${escape(label)}</label>${withId}${help ? `<p class="atlas-field__help">${escape(help)}</p>` : ''}</div>`;
+    const optional = / \(optional\)$/.test(label);
+    const labelHtml = `${escape(optional ? label.replace(/ \(optional\)$/, '') : label)}${optional ? ' <span class="optional">(optional)</span>' : ''}`;
+    return `<div class="atlas-field"><label for="${id}">${labelHtml}</label>${withId}${help ? `<p class="atlas-field__help">${escape(help)}</p>` : ''}</div>`;
   }
 
   // ---------- actions ----------
@@ -885,7 +887,7 @@
     openDialog({
       title: `${point.name} target range`,
       wide: true,
-      body: `<p>Atlas never invents food-safety limits; leave a value empty if there is none.</p>
+      body: `<p>Alcedo never invents food-safety limits; leave a value empty if there is none.</p>
         ${field('Name', `<input class="atlas-input" name="name" required maxlength="140" value="${escape(point.name)}">`)}
         ${field('Location', `<input class="atlas-input" name="location" maxlength="240" value="${escape(point.location || '')}">`)}
         <div class="atlas-grid-2">${field('Minimum (°C)', `<input class="atlas-input" name="min" type="number" inputmode="decimal" step="0.1" value="${point.min_temp_c ?? ''}">`)}${field('Maximum (°C)', `<input class="atlas-input" name="max" type="number" inputmode="decimal" step="0.1" value="${point.max_temp_c ?? ''}">`)}</div>

@@ -1,5 +1,5 @@
-// Atlas Flavor Intelligence: the Flavor Map (#recipes/flavor[/<ingredient>])
-// and the "Create with Atlas" flow on the Recipes page.
+// Alcedo Flavor Intelligence: the Flavor Map (#recipes/flavor[/<ingredient>])
+// and the "Create with Alcedo" flow on the Recipes page.
 //
 // Everything shown here comes from the deterministic atlas-ai flavour routes
 // (docs/flavor/Engine.md §7): flavor-map, flavor-search, flavor-substitutes,
@@ -11,7 +11,7 @@
 //   - Stock is shown as the server reports it: verified in stock, verified
 //     out, unknown (never zero), not stocked; a needs-review link is only a
 //     "possible match" and never counts as stock.
-//   - Evidence types stay separate and labelled (culinary, Atlas-learned,
+//   - Evidence types stay separate and labelled (culinary, Alcedo-learned,
 //     scientific, AI interpretation); nothing is called scientific unless the
 //     server says so.
 //   - A filter the server does not offer (filters_available) is not shown.
@@ -25,16 +25,16 @@
   const USES = [['cocktail', 'Cocktails'], ['mocktail', 'Mocktails'], ['coffee', 'Coffee'], ['dessert', 'Desserts'], ['food', 'Food']];
   const EVIDENCE = {
     culinary: { label: 'Culinary', help: 'Curated bar and kitchen knowledge. A starting point, not laboratory data.' },
-    atlas_learned: { label: 'Atlas-learned', help: 'Used together in your own Atlas recipes.' },
+    atlas_learned: { label: 'Alcedo-learned', help: 'Used together in your own Alcedo recipes.' },
     scientific: { label: 'Scientific', help: 'From a published scientific source.' },
-    ai_interpretation: { label: 'AI interpretation', help: 'Atlas AI’s reading. Check it before relying on it.' }
+    ai_interpretation: { label: 'AI interpretation', help: 'Alcedo AI’s reading. Check it before relying on it.' }
   };
   const RELATIONS = { complement: 'Complements', contrast: 'Contrasts', bridge: 'Bridges', substitute: 'Can replace' };
   const STOCK = {
     available: { label: 'Verified in stock', tone: 'positive' },
     out: { label: 'Not in stock', tone: 'danger' },
     unknown: { label: 'Stock unknown', tone: 'neutral' },
-    not_stocked: { label: 'Not stocked in Atlas', tone: 'plain' }
+    not_stocked: { label: 'Not stocked in Alcedo', tone: 'plain' }
   };
   const TYPES = [['', 'Any drink'], ['cocktail', 'Cocktail'], ['mocktail', 'Mocktail'], ['coffee', 'Coffee'], ['dessert', 'Dessert pairing'], ['food', 'Food pairing']];
   const GOALS = [['balanced', 'Best overall'], ['use_stock', 'Use what we have'], ['simple', 'Simplest to make'], ['novel', 'Most new to the menu'], ['low_cost', 'Lowest cost'], ['high_margin', 'Highest margin']];
@@ -47,29 +47,29 @@
   // Fixed copy per failure (AtlasApi.request never shows server text).
   const MAP_MESSAGES = {
     not_found: 'That ingredient isn’t in the flavour library. Search for another one.',
-    forbidden: 'Your Atlas role can’t open the Flavor Map.',
+    forbidden: 'Your Alcedo role can’t open the Flavor Map.',
     rate_limited: 'Too many flavour requests in a minute. Wait a moment, then try again.',
     unavailable: 'The flavour library isn’t available right now. Nothing was changed. Try again shortly.',
     not_configured: 'Flavour Intelligence isn’t set up for this venue yet.'
   };
   const IDEAS_MESSAGES = {
     ...MAP_MESSAGES,
-    invalid: 'Atlas couldn’t use that brief. Check the ingredients and try again.',
+    invalid: 'Alcedo couldn’t use that brief. Check the ingredients and try again.',
     forbidden: 'Only managers and administrators can create draft recipes.'
   };
   const COMPOSE_MESSAGES = {
     ...IDEAS_MESSAGES,
     conflict: 'This idea is no longer possible from verified stock, so nothing was prepared. The ideas were refreshed.',
-    not_found: 'An ingredient in this idea is no longer in Atlas. The ideas were refreshed.'
+    not_found: 'An ingredient in this idea is no longer in Alcedo. The ideas were refreshed.'
   };
   const APPROVE_MESSAGES = {
     forbidden: 'Only managers and administrators can approve a draft recipe. Nothing was saved.',
     not_found: 'This draft is no longer waiting for approval. Nothing was saved. Prepare it again.',
     conflict: 'This draft was already handled or has expired. Nothing else was saved. Prepare it again.',
     rate_limited: 'Too many requests just now. Wait a moment, then try again. Nothing was saved.',
-    unavailable: 'Atlas couldn’t save the draft right now. Nothing was saved. Try again shortly.',
-    timeout: 'Atlas couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.',
-    network: 'Atlas couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.'
+    unavailable: 'Alcedo couldn’t save the draft right now. Nothing was saved. Try again shortly.',
+    timeout: 'Alcedo couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.',
+    network: 'Alcedo couldn’t confirm the result. Check Recipes › Drafts before trying again, so nothing is saved twice.'
   };
   const RESULT_MESSAGES = {
     name_taken: 'A recipe with this name already exists, so nothing was saved. Choose another name and prepare the draft again.',
@@ -383,7 +383,7 @@
       return `<li>${escape(item.name)} <span class="recipe-muted">· ${escape(quantity.trim())}</span></li>`;
     }).join('');
     const possible = (entry?.possible_matches || []).map((item) => `<li class="flavor-possible">Possible match: ${escape(item.name)} <span class="recipe-muted">· needs review, not counted as stock</span></li>`).join('');
-    const why = status === 'unknown' ? '<p class="recipe-muted">Unknown is not zero: Atlas has no current verified count for it.</p>' : '';
+    const why = status === 'unknown' ? '<p class="recipe-muted">Unknown is not zero: Alcedo has no current verified count for it.</p>' : '';
     return `<div class="flavor-detail__stock"><div class="flavor-detail__stock-head"><strong>${escape(name)}</strong>${stockPill(status)}</div>${items || possible ? `<ul class="flavor-detail__items">${items}${possible}</ul>` : ''}${why}</div>`;
   }
 
@@ -429,7 +429,7 @@
     const center = state.data?.center;
     const sub = center ? `What pairs with ${center.name}. Pick a pairing to see why, and what is in stock.` : 'What pairs with what, from culinary knowledge and your own recipes.';
     const actions = [{ label: 'All recipes', icon: 'arrow-left', variant: 'ghost', attrs: { 'data-flavor-back': '' } }];
-    if (manager) actions.push({ label: 'Create with Atlas', icon: 'atlas-bot', variant: 'primary', attrs: { 'data-flavor-open-create': '' } });
+    if (manager) actions.push({ label: 'Create with Alcedo', icon: 'atlas-bot', variant: 'primary', attrs: { 'data-flavor-open-create': '' } });
     return window.AtlasShell.pageHead({ title: 'Flavor Map', sub, actions });
   }
 
@@ -451,7 +451,7 @@
         <div class="flavor-map${state.loading ? ' is-loading' : ''}${empty ? ' flavor-map--empty' : ''}" aria-busy="${state.loading}">
           ${empty ? `<div class="atlas-empty flavor-map__empty"><div class="atlas-empty__icon"><i data-lucide="orbit"></i></div><h3 class="atlas-empty__title">No pairings match these filters</h3><p class="atlas-empty__text">${escape(state.data.center.name)} has no recorded pairings with these filters.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-flavor-clear>Clear filters</button></div></div>` : `${ringMarkup()}${detailMarkup()}${listMarkup()}`}
         </div>
-        <p class="recipe-muted flavor-map__basis">Pairings are Atlas-curated culinary knowledge and ingredients used together in your recipes, not laboratory data. Stock shows only verified current counts; unknown is never counted as zero.</p>`;
+        <p class="recipe-muted flavor-map__basis">Pairings are Alcedo-curated culinary knowledge and ingredients used together in your recipes, not laboratory data. Stock shows only verified current counts; unknown is never counted as zero.</p>`;
     } else {
       body = '';
     }
@@ -600,7 +600,7 @@
     }
   }
 
-  // ---------- Create with Atlas (sheet) ----------
+  // ---------- Create with Alcedo (sheet) ----------
 
   const flow = {
     root: null,
@@ -682,12 +682,12 @@
 
   function sheetTitle() {
     return {
-      choose: ['Create with Atlas', 'Atlas suggests ideas from verified stock. Nothing is saved until you approve a draft.'],
-      brief: ['Ideas from current stock', 'Choose what to make. Atlas uses only verified current stock unless you allow new purchases.'],
+      choose: ['Create with Alcedo', 'Alcedo suggests ideas from verified stock. Nothing is saved until you approve a draft.'],
+      brief: ['Ideas from current stock', 'Choose what to make. Alcedo uses only verified current stock unless you allow new purchases.'],
       ideas: ['Ideas', 'Every score is shown. Pick one to prepare a draft recipe.'],
       preview: ['Draft recipe', 'Check the draft. Nothing is saved until you approve it.'],
       substitute: ['Find a substitute', 'What can replace an ingredient, and whether it is in verified stock.']
-    }[flow.step] || ['Create with Atlas', ''];
+    }[flow.step] || ['Create with Alcedo', ''];
   }
 
   function renderCreate() {
@@ -740,7 +740,7 @@
 
   function chooseMarkup() {
     const options = [
-      ['stock', 'package-check', 'Use current stock', 'Drink ideas made only from what Atlas has verified in stock.'],
+      ['stock', 'package-check', 'Use current stock', 'Drink ideas made only from what Alcedo has verified in stock.'],
       ['pair', 'orbit', 'Pair ingredients', 'Search an ingredient and see what pairs with it, and why.'],
       ['substitute', 'replace', 'Find a substitute', 'What can replace an ingredient, and whether you have it.'],
       ['map', 'map', 'Open Flavor Map', 'Browse pairings around any ingredient.']
@@ -767,7 +767,7 @@
     return `<div class="flavor-brief">
       <fieldset class="flavor-brief__group"><legend class="atlas-label">What to make</legend>
         <div class="atlas-segmented flavor-brief__types" role="group" aria-label="What to make">${TYPES.map(([key, label]) => `<button type="button" aria-pressed="${brief.type === key}" id="flavor-brief-type-${key}" data-brief-type="${key}">${label}</button>`).join('')}</div>
-        ${['dessert', 'food'].includes(brief.type) ? '<p class="atlas-field__help">Dessert and food ideas are pairing notes. Atlas drafts recipes for drinks only.</p>' : ''}
+        ${['dessert', 'food'].includes(brief.type) ? '<p class="atlas-field__help">Dessert and food ideas are pairing notes. Alcedo drafts recipes for drinks only.</p>' : ''}
       </fieldset>
       <div class="atlas-toggle-row flavor-brief__toggle"><div><p class="atlas-toggle-row__label" id="flavor-brief-stock-label">No new purchases</p><p class="atlas-toggle-row__help">Use only verified current stock. Turn off to allow ingredients to buy; they are clearly marked.</p></div><button type="button" class="atlas-toggle" role="switch" aria-checked="${brief.noNewPurchases}" aria-labelledby="flavor-brief-stock-label" id="flavor-brief-stock" data-brief-stock></button></div>
       <div class="atlas-field"><span class="atlas-label" id="flavor-brief-seed-label">Must use <span class="optional">Optional, up to 4</span></span>
@@ -806,7 +806,7 @@
     const closest = menu.closest_recipe?.name ? `closest: ${menu.closest_recipe.name}` : '';
     const pair = (candidate.pairs || []).find((entry) => entry.basis === 'recorded');
     const action = candidate.composable === false
-      ? '<p class="recipe-muted">Pairing notes only. Atlas drafts recipes for drinks.</p>'
+      ? '<p class="recipe-muted">Pairing notes only. Alcedo drafts recipes for drinks.</p>'
       : `<button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm" data-create-compose="${index}"${flow.busy ? ' disabled' : ''}><i data-lucide="file-plus-2"></i>Prepare draft</button>`;
     return `<li class="flavor-idea atlas-card" aria-labelledby="flavor-idea-${index}">
       <header class="flavor-idea__head"><div><h3 class="flavor-idea__title" id="flavor-idea-${index}">${escape(candidate.name)}</h3><p class="recipe-muted">${escape([candidate.template?.name, candidate.template?.glass, candidate.template?.technique].filter(Boolean).join(' · '))}</p></div>${action}</header>
@@ -831,7 +831,7 @@
     const unmet = (ideas.unmet_seeds || []).map((seed) => `<li>${escape(seed.name || seed.slug)}: ${escape(seed.reason || 'no usable stock')}</li>`).join('');
     const unused = (ideas.unused_seeds || []).map((seed) => `<li>${escape(seed.name || seed.slug)}: ${escape(seed.reason || 'fits no idea')}</li>`).join('');
     const unmeasurable = Array.isArray(ideas.unmeasurable) && ideas.unmeasurable.length
-      ? `<div class="atlas-alert atlas-alert--info"><i data-lucide="ruler"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Some stock could not be measured</p><p class="atlas-alert__body">${escape(ideas.unmeasurable.map((item) => item.name).join(', '))}: no package size is set, so Atlas can’t measure a serve from ${ideas.unmeasurable.length === 1 ? 'it' : 'them'}. Set the package size in Inventory to include ${ideas.unmeasurable.length === 1 ? 'it' : 'them'}.</p></div></div>`
+      ? `<div class="atlas-alert atlas-alert--info"><i data-lucide="ruler"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Some stock could not be measured</p><p class="atlas-alert__body">${escape(ideas.unmeasurable.map((item) => item.name).join(', '))}: no package size is set, so Alcedo can’t measure a serve from ${ideas.unmeasurable.length === 1 ? 'it' : 'them'}. Set the package size in Inventory to include ${ideas.unmeasurable.length === 1 ? 'it' : 'them'}.</p></div></div>`
       : '';
     const notes = (ideas.notes || []).filter(Boolean).map((note) => `<li>${escape(note)}</li>`).join('');
     const request = ideas.request || {};
@@ -906,7 +906,7 @@
             ${row.differences?.length ? `<p class="recipe-muted">Differs: ${escape(row.differences.join(', '))}.</p>` : ''}
             ${row.adjustments?.length ? `<p class="recipe-muted">Adjust: ${escape(row.adjustments.join('; '))}.</p>` : ''}
             <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-sub-open="${escape(row.ingredient?.slug || '')}"><i data-lucide="orbit"></i>Open in Flavor Map</button>
-          </li>`).join('')}</ul>` : `<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon"><i data-lucide="search-x"></i></div><h3 class="atlas-empty__title">No substitutes found</h3><p class="atlas-empty__text">${sub.inStock ? 'None with verified stock. Turn off “Only what’s in stock” to see all.' : 'Atlas has no recorded or similar substitute for this ingredient.'}</p></div>`}`;
+          </li>`).join('')}</ul>` : `<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon"><i data-lucide="search-x"></i></div><h3 class="atlas-empty__title">No substitutes found</h3><p class="atlas-empty__text">${sub.inStock ? 'None with verified stock. Turn off “Only what’s in stock” to see all.' : 'Alcedo has no recorded or similar substitute for this ingredient.'}</p></div>`}`;
       }
     }
     return `<div class="flavor-sub">${head}${toggle}${list}</div>`;
@@ -1063,7 +1063,7 @@
       if (!flow.root) return;
       flow.busy = false;
       if (Array.isArray(data.needs_clarification) && data.needs_clarification.length) {
-        flow.ideasError = `Atlas isn’t sure which ingredient you meant: ${data.needs_clarification.map((entry) => entry.query).join(', ')}. Pick it from the search list.`;
+        flow.ideasError = `Alcedo isn’t sure which ingredient you meant: ${data.needs_clarification.map((entry) => entry.query).join(', ')}. Pick it from the search list.`;
         goStep('brief');
         return;
       }
@@ -1198,11 +1198,11 @@
     } catch (error) {
       flow.approving = null;
       flow.busy = false;
-      // The request may have reached Atlas: the outcome is unknown, so this
+      // The request may have reached Alcedo: the outcome is unknown, so this
       // proposal is never rejected and the copy never claims nothing was saved.
       preview.outcomeUnknown = true;
       if (!flow.root || flow.preview !== preview) {
-        toast('Atlas couldn’t confirm the approval. Check Recipes › Drafts before preparing it again.', 'warning');
+        toast('Alcedo couldn’t confirm the approval. Check Recipes › Drafts before preparing it again.', 'warning');
         return;
       }
       flow.previewError = message(error, APPROVE_MESSAGES.unavailable);
@@ -1237,7 +1237,7 @@
       if (!flow.root || flow.substitute !== sub) return;
       sub.loading = false;
       if (Array.isArray(data.needs_clarification) && data.needs_clarification.length) {
-        sub.error = 'Atlas isn’t sure which ingredient you meant. Choose it from the search list.';
+        sub.error = 'Alcedo isn’t sure which ingredient you meant. Choose it from the search list.';
       } else sub.data = data;
     } catch (error) {
       if (!flow.root || flow.substitute !== sub) return;

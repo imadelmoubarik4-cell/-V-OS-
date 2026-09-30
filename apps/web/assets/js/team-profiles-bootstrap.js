@@ -8,7 +8,7 @@
 
   async function decompressText(path) {
     if (!('DecompressionStream' in window)) {
-      throw new Error('This browser cannot open the Team Profiles bundle. Update the browser and reload Atlas.');
+      throw new Error('This browser cannot open the Team Profiles bundle. Update the browser and reload Alcedo.');
     }
     const response = await fetch(path, { cache: 'no-store' });
     if (!response.ok || !response.body) throw new Error(`Team Profiles asset failed to load (${response.status}).`);
@@ -68,7 +68,7 @@
       await load();
       if (window.AtlasShell.current() === 'team-profiles') window.AtlasShell.show('team-profiles', params, { history: false });
     } catch (error) {
-      window.AtlasShell?.toast?.('Team couldn\u2019t open. Reload Atlas and try again.');
+      window.AtlasShell?.toast?.('Team couldn\u2019t open. Reload Alcedo and try again.');
     } finally {
       setButtonLoading(button, false);
     }

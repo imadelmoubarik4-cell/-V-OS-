@@ -1,21 +1,23 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><title>Set up your login · Atlas</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><title>Set up your login · Alcedo</title>
 <link rel="icon" href="assets/brand/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="assets/brand/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32x32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260929-s90f">
-<link rel="stylesheet" href="assets/css/atlas-base.css?v=20260929-s90u">
-<link rel="stylesheet" href="assets/css/atlas-components.css?v=20260930-s90g">
-<link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260929-s90u">
+<!-- ALCEDO type: self-hosted Instrument Serif / Manrope / JetBrains Mono
+     (see @font-face in atlas-tokens.css). Preload the primary faces. -->
+<link rel="preload" href="assets/fonts/Manrope-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/InstrumentSerif-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260930-polish1">
+<link rel="stylesheet" href="assets/css/atlas-base.css?v=20260930-alcedo2">
+<link rel="stylesheet" href="assets/css/atlas-components.css?v=20260930-polish1">
+<link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260930-polish1">
 </head>
 <body data-atlas-standalone="true">
 <div class="atlas-auth">
   <main class="atlas-auth__column" aria-labelledby="invite-title">
-    <div class="atlas-auth__brand"><img class="atlas-auth__lockup" src="assets/brand/Atlas_Primary_Stacked_Midnight.svg" alt="Atlas" width="112" height="99"></div>
-    <h1 class="atlas-auth__title" id="invite-title">Set up your Atlas login</h1>
+    <div class="atlas-auth__brand"><img class="atlas-auth__lockup" src="assets/brand/Atlas_Primary_Stacked_Midnight.svg" alt="Alcedo" width="112" height="91"></div>
+    <h1 class="atlas-auth__title" id="invite-title">Set up your Alcedo login</h1>
     <p class="atlas-auth__sub" id="invite-sub">Choose a password to finish setting up your account.</p>
     <div class="atlas-auth__skeleton" id="invite-checking" aria-hidden="true"><span></span><span></span><span></span></div>
     <p class="atlas-auth__status" id="status" role="status">Checking your invitation…</p>

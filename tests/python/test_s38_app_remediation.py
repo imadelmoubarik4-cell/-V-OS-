@@ -52,10 +52,13 @@ class S38AppRemediationTests(unittest.TestCase):
         self.assertLess(self.index.index(js_reference), self.index.index("</body>"))
 
     def test_shared_visual_contract(self):
-        # S88: the S38 blue is an alias of the single Atlas blue (--accent; Brand v1.0 #2563eb).
+        # S88: the S38 blue is an alias of the single interface accent (--accent).
+        # ALCEDO rebrand: --accent is now the deep teal (var(--atlas-blue) = #08495C),
+        # not the old Atlas blue literal; every S38 "blue" alias resolves to it.
         tokens = (ROOT / "apps/web/assets/css/atlas-tokens.css").read_text(encoding="utf-8")
         self.assertIn("--s38-blue: var(--accent);", tokens)
-        self.assertIn("--accent: #2563eb;", tokens)
+        self.assertIn("--accent: var(--atlas-blue);", tokens)
+        self.assertIn("--atlas-blue: #08495C;", tokens)
         self.assertNotIn("--s38-blue: #4f7df3", self.css)
         # The S38 card, pulse and reduced-motion rules are retired: cards are the
         # .atlas-card component and reduced motion is atlas-base.css.
