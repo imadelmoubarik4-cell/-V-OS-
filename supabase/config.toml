@@ -57,6 +57,12 @@ verify_jwt = false
 [functions.atlas-training]
 verify_jwt = false
 
+# S99: Bookings. The handler verifies the production-Auth JWT and the active profile
+# (_shared/auth.mjs) for every action, then passes the resolved actor into service-role
+# RPCs that run the atomic check-and-reserve. No guest PII leaves the staff RPCs.
+[functions.atlas-bookings]
+verify_jwt = false
+
 [functions.atlas-reports]
 verify_jwt = false
 entrypoint = "./functions/atlas-reports/entrypoint.ts"

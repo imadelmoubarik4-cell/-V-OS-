@@ -17,6 +17,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_PATH = ROOT / "supabase/migrations/20261016090000_s99_bookings.sql"
 MIGRATION = MIGRATION_PATH.read_text(encoding="utf-8")
+CONFIG_TOML = (ROOT / "supabase/config.toml").read_text(encoding="utf-8")
+CONFIG_JS = (ROOT / "apps/web/config.js").read_text(encoding="utf-8")
 
 BOOKING_RPCS = [
     "atlas_bookings_snapshot", "atlas_bookings_config", "atlas_bookings_save_area",
@@ -111,6 +113,12 @@ class BookingsContractTests(unittest.TestCase):
 
     def test_migration_reloads_schema(self):
         self.assertIn("notify pgrst, 'reload schema';", MIGRATION)
+
+    def test_function_config_registers_bookings_gateway(self):
+        self.assertRegex(CONFIG_TOML, r"\[functions\.atlas-bookings\]\s*\nverify_jwt = false")
+
+    # The frontend BOOKINGS_API endpoint + its ratchets land with the browser module that
+    # reads it (the staff workspace), so that assertion lives with the frontend step.
 
 
 if __name__ == "__main__":
