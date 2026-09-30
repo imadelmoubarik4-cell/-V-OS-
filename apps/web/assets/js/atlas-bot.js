@@ -43,8 +43,11 @@
 (function atlasBot(root) {
   'use strict';
 
-  const SPRITE = 'assets/atlas-bot/atlas-bot.png?v=20261004-bot6';
-  const SPRITE_SMALL = 'assets/atlas-bot/atlas-bot-small.png?v=20261004-bot6';
+  // ALCEDO kingfisher mascot: a static transparent image (full bird for the
+  // large live poster, head-and-upper-body crop for small badges). The old robot
+  // sprite sheet and 3D scene are no longer used.
+  const SPRITE = 'assets/atlas-bot/alcedo-kingfisher-full.png?v=20261016-alcedo';
+  const SPRITE_SMALL = 'assets/atlas-bot/alcedo-kingfisher-head.png?v=20261016-alcedo';
   const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20261004-bot6';
   // Badges this size or smaller use the small sprite (.atlas-bot--small).
   const SMALL_MAX = 24;
@@ -118,7 +121,7 @@
   // (shown while the robot sleeps, gone the moment it wakes).
   const Z = '<span class="atlas-bot-z" aria-hidden="true"><i>z</i><i>z</i><i>z</i></span>';
 
-  function liveHtml({ key = 'default', framing = 'full', state = 'idle', size = 160, label = 'Atlas, your assistant', follow = false } = {}) {
+  function liveHtml({ key = 'default', framing = 'full', state = 'idle', size = 160, label = 'Alcedo, your assistant', follow = false } = {}) {
     const px = Math.max(48, Math.min(320, Math.round(Number(size) || 160)));
     const value = follow ? robot.state : stateOf(state);
     return `<div class="atlas-bot-live" data-atlas-bot-live="${escape(key)}" data-framing="${framing === 'bust' ? 'bust' : 'full'}" data-state="${value}"${follow ? ' data-atlas-bot-follow' : ''} style="--atlas-bot-live-size:${px}px" role="img" aria-label="${escape(label)}">${html({ size: Math.round(px * 0.72), state: value, className: 'atlas-bot-live__poster' })}${Z}</div>`;
@@ -342,31 +345,20 @@
   }
 
   // Mounts (or moves) the live robot into every placeholder under `scope`.
+  // ALCEDO kingfisher: the mascot is the approved transparent bird shown as a
+  // static image with restrained CSS motion (breathing, a listening tilt) — there
+  // is no 3D scene to upgrade to. So every live surface stays on its bird poster
+  // and is marked static; the WebGL path (loadScene/createLive/canvas) is never
+  // entered. data-atlas-bot-follow still works because paint() repaints each
+  // host's data-state by DOM scan on every state change, so the poster's
+  // listening tilt tracks the assistant. The public API (upgrade) is unchanged.
   function upgrade(scope = document) {
     const hosts = scope.querySelectorAll?.('[data-atlas-bot-live]') || [];
     hosts.forEach((host) => {
       if (host.dataset.atlasBotMounted === '1') return;
       host.dataset.atlasBotMounted = '1';
-      if (!canGoLive()) { host.classList.add('is-static'); return; }
-      const key = host.dataset.atlasBotLive || 'default';
-      const framing = host.dataset.framing === 'bust' ? 'bust' : 'full';
-      let entry = live.get(key);
-      if (!entry || entry.framing !== framing) {
-        if (entry) destroy(key);
-        entry = createLive(key, framing);
-        live.set(key, entry);
-      }
-      entry.host = host;
-      entry.follow = host.hasAttribute('data-atlas-bot-follow');
-      if (entry.follow) paintHost(host, robot.state);
-      entry.state = entry.follow ? robot.state : stateOf(host.dataset.state);
-      host.appendChild(entry.canvas);
-      // Moved into a new placeholder: redraw on the next frame, not now (a
-      // caller may re-render many times a second, e.g. live voice).
-      if (entry.scene && !entry.lost) { host.classList.add('is-live'); resize(entry); applyState(entry); }
-      else if (entry.failed || entry.lost) host.classList.add('is-static');
-      observe(entry);
-      if (!entry.scene && !entry.failed) start(entry);
+      host.classList.add('is-static');
+      if (host.hasAttribute('data-atlas-bot-follow')) paintHost(host, robot.state);
     });
   }
 

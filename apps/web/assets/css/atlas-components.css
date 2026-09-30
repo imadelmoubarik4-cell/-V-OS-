@@ -1620,6 +1620,15 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
      again continues rather than restarts. Reduced motion (Atlas's setting or
      the system's): still frames; the state still shows (frame, ring, dimming).
      ========================================================================== */
+  /* ALCEDO kingfisher mascot (replaces the robot sprite). The badge is the
+     approved transparent bird as a *contained* background image: the head-and-
+     upper-body crop for small badges, the full bird for the large live poster.
+     Motion is restrained and whole-image only — gentle idle breathing on the
+     live poster and a small listening tilt; no opacity blink, no warped beak or
+     wing. Reduced motion keeps the bird completely static. The assistant state
+     controller and every interaction are unchanged; transient states read
+     through the accompanying status text (and a subtle teal ring), never by
+     distorting the bird. */
   .atlas-bot {
     --atlas-bot-size: 20px;
     position: relative;
@@ -1627,46 +1636,32 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
     flex: none;
     width: var(--atlas-bot-size);
     height: var(--atlas-bot-size);
-    border-radius: 50%;
-    background: var(--line-subtle) url('../atlas-bot/atlas-bot.png?v=20261004-bot6') 0 0 / 400% 100% no-repeat;
-    box-shadow: inset 0 0 0 1px rgba(11, 18, 32, .06);
+    background: transparent url('../atlas-bot/alcedo-kingfisher-head.png?v=20261016-alcedo') center / contain no-repeat;
     vertical-align: middle;
-    animation: atlas-bot-blink 5.2s step-end infinite;
-    animation-delay: var(--atlas-bot-delay, 0s);
     transition: transform var(--dur-2) var(--ease-out), filter var(--dur-2) var(--ease-out);
   }
-  .atlas-bot[data-state="happy"],
-  .atlas-bot[data-state="success"],
-  .atlas-bot:hover,
-  :is(a, button):hover > .atlas-bot { background-position: 100% 0; animation: none; }
-  :is(a, button):hover > .atlas-bot { transform: translateY(-1px) rotate(-6deg); }
-  .atlas-bot[data-state="awake"] { filter: brightness(1.04) saturate(1.15); box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .22); }
-  .atlas-bot[data-state="sleeping"] { background-position: 66.667% 0; animation: none; filter: saturate(.8); }
-  .atlas-bot[data-state="thinking"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-think 1.6s var(--ease-out) infinite alternate, atlas-bot-glow 1.6s ease-in-out infinite alternate; }
-  .atlas-bot[data-state="listening"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-glow 1.8s ease-in-out infinite alternate; }
-  .atlas-bot[data-state="answering"],
-  .atlas-bot[data-state="speaking"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-glow 2.6s ease-in-out infinite alternate; }
-  .atlas-bot[data-state="attention"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .45), 0 0 0 3px rgba(59, 130, 246, .2); }
-  .atlas-bot[data-state="error"] { filter: grayscale(.7); opacity: .75; animation: none; }
-  /* Blink keeps its own offset; the state's movement runs on the page clock. */
-  .atlas-bot[data-state]:is([data-state="thinking"], [data-state="listening"], [data-state="answering"], [data-state="speaking"]) { animation-delay: var(--atlas-bot-delay, 0s), var(--atlas-bot-clock, 0s), var(--atlas-bot-clock, 0s); }
-  @keyframes atlas-bot-blink {
-    0% { background-position: 0 0; }
-    94% { background-position: 33.333% 0; }
-    96.5% { background-position: 0 0; }
+  :is(a, button):hover > .atlas-bot { transform: translateY(-1px); }
+  .atlas-bot[data-state="error"] { filter: saturate(.85); }
+  /* The large live surface shows the FULL bird and carries the restrained
+     motion: breathing at rest, a small tilt while listening. */
+  .atlas-bot-live__poster {
+    background-image: url('../atlas-bot/alcedo-kingfisher-full.png?v=20261016-alcedo');
+    transform-origin: 50% 86%;
+    animation: alcedo-bot-breathe 5.2s ease-in-out infinite;
   }
-  @keyframes atlas-bot-think {
-    from { transform: translateY(0) rotate(-4deg); }
-    to { transform: translateY(-2px) rotate(4deg); }
+  .atlas-bot-live[data-state="listening"] > .atlas-bot-live__poster { animation: alcedo-bot-listen 3.6s ease-in-out infinite; }
+  @keyframes alcedo-bot-breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.025); }
   }
-  @keyframes atlas-bot-glow {
-    from { box-shadow: inset 0 0 0 1px rgba(11, 18, 32, .06), 0 0 0 0 rgba(59, 130, 246, 0); }
-    to { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .35), 0 0 0 4px rgba(59, 130, 246, .18); }
+  @keyframes alcedo-bot-listen {
+    0%, 100% { transform: rotate(0deg) scale(1.01); }
+    50% { transform: rotate(-3deg) scale(1.02); }
   }
   /* 24 px or less (AtlasBot.html adds the class; the static nav and tab bar
      badges carry it): a tighter face, a matte visor and brighter eyes, so the
      robot does not read as a dark blob. */
-  .atlas-bot--small { background-image: url('../atlas-bot/atlas-bot-small.png?v=20261004-bot6'); }
+  .atlas-bot--small { background-image: url('../atlas-bot/alcedo-kingfisher-head.png?v=20261016-alcedo'); }
 
   /* Sleeping: Z, then ZZ, then ZZZ rising at the badge's top right, a fade and
      a pause, in CSS alone: one pseudo-element whose two text-shadow copies are
@@ -1714,10 +1709,9 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   /* Still, the busy states keep a look of their own (never shown by movement
      alone): listening an inner blue ring, thinking the tilted head of its
      movement with a faint ring, answering a soft outer ring. */
-  html.atlas-reduce-motion .atlas-bot[data-state="listening"] { box-shadow: inset 0 0 0 1.5px rgba(59, 130, 246, .5); }
-  html.atlas-reduce-motion .atlas-bot[data-state="thinking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3); transform: translateY(-1px) rotate(4deg); }
-  html.atlas-reduce-motion .atlas-bot[data-state="answering"],
-  html.atlas-reduce-motion .atlas-bot[data-state="speaking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3), 0 0 0 2px rgba(59, 130, 246, .12); }
+  /* Kingfisher: with reduced motion the bird stays completely still; transient
+     states (listening/thinking/answering) are conveyed by the status text, not
+     by a ring or a tilt. */
   /* .atlas-bot[data-state] is as specific as the state rules above, so the
      system setting wins over their animations too (a plain .atlas-bot lost
      to them: thinking, listening and answering kept moving). */
@@ -1725,10 +1719,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
     .atlas-bot, .atlas-bot[data-state] { animation: none; transition: none; }
     :is(a, button):hover > .atlas-bot { transform: none; }
     .atlas-bot[data-state]::after { animation: none; }
-    .atlas-bot[data-state="listening"] { box-shadow: inset 0 0 0 1.5px rgba(59, 130, 246, .5); }
-    .atlas-bot[data-state="thinking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3); transform: translateY(-1px) rotate(4deg); }
-    .atlas-bot[data-state="answering"],
-    .atlas-bot[data-state="speaking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3), 0 0 0 2px rgba(59, 130, 246, .12); }
+    /* Kingfisher: still bird under reduced motion; state is shown in text. */
   }
 
   /* The interactive robot: the badge is its poster until the 3D scene draws.

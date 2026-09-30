@@ -222,7 +222,7 @@ test('the robot replaces the assistant icon in AI surfaces; the Atlas logo stays
     assert.ok(ai.includes(call), call);
   }
   assert.match(ai, /robotBot\(\)\?\.set\(reply\.status === 'complete' \? \(reply\.proposals\.length \? 'attention' : 'success'\) : reply\.status === 'stopped' \? 'idle' : 'error'\)/);
-  assert.match(ai, /id: 'ai\.ask', label: 'Ask Atlas', icon: 'atlas-bot'/);
+  assert.match(ai, /id: 'ai\.ask', label: 'Ask Alcedo', icon: 'atlas-bot'/);
   // Live voice: the robot mirrors the call.
   const mapping = ai.match(/function liveBotState\(status\) \{[\s\S]*?\n  \}/)[0];
   const liveBotState = vm.runInNewContext(`(${mapping.replace('function liveBotState', 'function')})`);
@@ -232,17 +232,17 @@ test('the robot replaces the assistant icon in AI surfaces; the Atlas logo stays
   for (const [file, pattern] of [
     ['apps/web/assets/js/atlas-chrome.js', /if \(name === 'atlas-bot' && window\.AtlasBot\)/],
     ['apps/web/assets/js/atlas-palette.js', /id: 'ask', kind: 'ask', icon: 'atlas-bot'/],
-    ['apps/web/assets/js/atlas-inventory.js', /\['ask', 'atlas-bot', 'Ask Atlas about this'\]/],
-    ['apps/web/assets/js/knowledge-workspace.js', /data-knowledge-ask>\$\{icon\('atlas-bot'\)\}Ask Atlas about this/],
-    ['apps/web/assets/js/marketing-workspace.js', /label: 'Ask Atlas', icon: 'atlas-bot'/],
-    ['apps/web/assets/js/recipes.js', /id: 'recipes\.ask', label: 'Ask Atlas about this recipe', icon: 'atlas-bot'/],
-    ['apps/web/assets/js/reports-workspace.js', /id: 'reports\.ask', label: 'Ask Atlas about this report', icon: 'atlas-bot'/],
+    ['apps/web/assets/js/atlas-inventory.js', /\['ask', 'atlas-bot', 'Ask Alcedo about this'\]/],
+    ['apps/web/assets/js/knowledge-workspace.js', /data-knowledge-ask>\$\{icon\('atlas-bot'\)\}Ask Alcedo about this/],
+    ['apps/web/assets/js/marketing-workspace.js', /label: 'Ask Alcedo', icon: 'atlas-bot'/],
+    ['apps/web/assets/js/recipes.js', /id: 'recipes\.ask', label: 'Ask Alcedo about this recipe', icon: 'atlas-bot'/],
+    ['apps/web/assets/js/reports-workspace.js', /id: 'reports\.ask', label: 'Ask Alcedo about this report', icon: 'atlas-bot'/],
   ]) assert.match(read(file), pattern, file);
   // The Home daily briefing is Atlas speaking to the team: it carries the robot.
   // Not the assistant speaking: the offline quick answer (Atlas AI is off) and
   // Team Messages system notices (the Atlas platform) keep their previous icons.
   const palette = read('apps/web/assets/js/atlas-palette.js');
-  assert.match(palette, /\$\{icon\('sparkles', \{ size: 14 \}\)\}Quick answer · Atlas AI is off/);
+  assert.match(palette, /\$\{icon\('sparkles', \{ size: 14 \}\)\}Quick answer · Alcedo AI is off/);
   const home = read('apps/web/assets/js/home.js');
   assert.match(home, /home-briefing__head">\$\{bot\}/);
   assert.match(home, /const bot = window\.AtlasBot \? window\.AtlasBot\.html\(\{ size: 18, state: preparing \? 'thinking' : 'idle' \}\) : icon\('atlas-bot'\);/);
