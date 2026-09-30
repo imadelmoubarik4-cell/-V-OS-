@@ -21,10 +21,7 @@ def provenance(rel):
     if rel.startswith('prototypes/atlas-website/'):
         return 'Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs'
     if rel.endswith('assets/hero.mp4'): return 'Supplied upload, byte-identical (H.264 High, 1280×720, 24 fps, 8.0 s)'
-    if rel.endswith('assets/hero-tray.mp4'): return 'Derived: hero.mp4 with the twig replaced by the approved tray + hand (tools/tray-edit)'
-    if rel.endswith('hero-tray-final.webp'): return 'Derived: last frame (8.00 s) of hero-tray.mp4, WebP q80'
-    if rel.endswith('tray-hand-reference.webp'): return 'Supplied approved tray and hand reference image, byte-identical'
-    if '/tools/tray-edit/' in rel: return 'Authored: hero tray edit pipeline'
+    if rel.endswith('hero-final.webp'): return 'Derived: last frame (8.00 s) of hero.mp4, ffmpeg extract, WebP q80'
     if 'alcedo-horizontal-' in name: return 'Derived: kit symbol + outlined wordmark paths, uniform scale/translate only (tools/build_horizontal_lockup.py)'
     if '/assets/brand/' in rel: return KIT
     if name == 'alcedo-kingfisher-master.webp': return 'Supplied approved mascot master, byte-identical (1214×1295, genuine alpha)'

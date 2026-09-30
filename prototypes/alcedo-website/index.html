@@ -52,7 +52,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap"></noscript>
-<link rel="preload" as="image" href="assets/hero-tray-final.webp" type="image/webp">
+<link rel="preload" as="image" href="assets/hero-final.webp" type="image/webp">
 <style>
 /* =====================================================================
    1. TOKENS
@@ -640,16 +640,16 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   <!-- =================================================================== HERO -->
   <section class="hero" id="top" aria-labelledby="hero-title">
     <div class="hero__stage" aria-hidden="true">
-      <!-- [ASSET: VIDEO] assets/hero-tray.mp4: the original hero footage (assets/hero.mp4) with the twig
-           replaced by the approved black serving tray held from below by a hand. The real bird, its flight,
-           landing timing and settling are the original footage. Plays once, never loops, holds its last
-           frame. (The old remote reference URL is not used as a fallback: it still shows the twig.) -->
+      <!-- [ASSET: VIDEO] Sources are tried in order: the supplied local file first, then the
+           reference URL. Reorder or replace them to change the source. Plays once, never loops,
+           holds its last frame. -->
       <video class="hero__video" id="hero-video" muted playsinline preload="auto" disablepictureinpicture disableremoteplayback tabindex="-1">
-        <source src="assets/hero-tray.mp4" type="video/mp4">
+        <source src="assets/hero.mp4" type="video/mp4">
+        <source src="https://thinkingods.com/demos/kingfisher-hero/hero.mp4" type="video/mp4">
       </video>
-      <!-- [ASSET: FINAL FRAME] Last frame (8.00 s) of hero-tray.mp4. Used for reduced motion, blocked autoplay,
+      <!-- [ASSET: FINAL FRAME] Last frame (8.00 s) of hero.mp4. Used for reduced motion, blocked autoplay,
            playback failure, no-JS, and as the thumbnail source when the video cannot be drawn. -->
-      <img class="hero__still" id="hero-still" src="assets/hero-tray-final.webp" alt="" width="1280" height="720" decoding="async">
+      <img class="hero__still" id="hero-still" src="assets/hero-final.webp" alt="" width="1280" height="720" decoding="async">
       <div class="hero__placeholder"><div class="hero__placeholder-box">Hero visual placeholder<br>final frame unavailable</div></div>
       <div class="hero__veil hero__veil--left"></div>
       <div class="hero__veil hero__veil--bottom"></div>
@@ -1107,7 +1107,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   /* ===================================================================
      [TIMING] + [DESTINATION] CONFIGURATION
      =================================================================== */
-  // Landing timestamp (seconds). Verified against the supplied hero.mp4 (timing unchanged in hero-tray.mp4): hard cut to the perched
+  // Landing timestamp (seconds). Verified against the supplied hero.mp4: hard cut to the perched
   // close-up at 4.00 s, bird and framing settle by ~4.3 s. For another clip, scrub to the moment the
   // bird is settled on the twig and put that time here; the reveal moves with it.
   const REVEAL_AT = 4.3;
