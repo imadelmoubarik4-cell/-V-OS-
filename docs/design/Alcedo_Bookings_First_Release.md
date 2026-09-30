@@ -237,9 +237,36 @@ Built on the existing `supabase/functions/*` + `_shared/auth.mjs` pattern.
 - Time zone **Atlantic/Reykjavik**.
 - Proposed area labels reused from the current workflow: **Wine cellar, Ocean,
   Long table** (labels only).
-- **Actual table numbers, layouts, combinations and seat counts are not invented**
-  — supplied by the owner before the pilot (see below).
 - Pilot runs on real configuration only **after owner approval**.
+
+### 12.1 Owner-supplied reference (current system — to confirm)
+
+The owner shared the current VÁ floor-plan designer + table list. Captured here
+as the pilot's source data; **treated as reference to confirm, not final**:
+
+- One room shown, **"VÁ"** (the "Select room" dropdown implies other rooms may
+  exist).
+- **16 tables named Bar 1 – Bar 16**, arranged around the room **perimeter** (a
+  row along the top, columns down both sides) — a bar‑seating layout.
+- Each table currently shows **Name "1"** and **Min/Max guests mostly 1/1**
+  (single bar seats), with a **"Block online"** flag and a **priority** selector
+  per table.
+
+**Open questions to confirm before this becomes real config:**
+1. Is the per‑table **"1"** the **seat capacity** (single stools) or an unset
+   name? Confirm real seat counts.
+2. **Bar 6** shows **Min 2 / Max 1** (invalid: max < min) — a data slip in the
+   source; what are the correct values?
+3. Is **Bar** the only area for the pilot, or are **Wine cellar / Ocean / Long
+   table** (or others) also in scope?
+4. **Table combinations** — which bar tables may be joined for larger parties?
+5. Per‑table **priority** meaning and the **Block online** defaults.
+
+A test‑data **floor‑plan Designer prototype** on the Alcedo brand system (rooms,
+colour‑coded tables by section, unique numbers, seat capacity, status indicators,
+block‑online, drag‑to‑move, plus a list alternative) has been built for review,
+seeded with this VÁ layout as **test data only** — no production system or real
+pilot data is wired.
 
 ---
 
