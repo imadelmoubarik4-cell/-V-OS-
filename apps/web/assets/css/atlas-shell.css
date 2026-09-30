@@ -21,7 +21,7 @@
 #app-screen { display: none; min-height: 100vh; background: var(--bg, #fff); color: var(--text, #0b0f14); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
 .atlas-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
 body.atlas-rail .atlas-shell { grid-template-columns: 64px minmax(0, 1fr); }
-.atlas-main { grid-column: 2; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; background: var(--bg, #fff); }
+.atlas-main { grid-column: 2; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; background: var(--bg-subtle, #f8f5ed); }
 .atlas-content, .atlas-content.standard-view { width: 100%; max-width: calc(1200px + 2 * var(--page-gutter, 40px)); margin: 0 auto; padding: 32px var(--page-gutter, 40px) 80px; background: transparent; }
 .atlas-content > main { width: 100%; max-width: none; margin: 0; padding: 0; }
 .atlas-content > main:focus { outline: none; }
@@ -75,10 +75,11 @@ body.atlas-page-full-height .atlas-content, body.atlas-page-full-height .atlas-c
 /* The Atlas AI robot sits in the 16 px icon slot, a little larger so its face reads. */
 .atlas-nav .nav-item .atlas-bot--nav { --atlas-bot-size: 20px; margin: -2px; }
 .atlas-nav .nav-item:hover { background: var(--bg-muted, #f1f5f9); color: var(--text, #0b0f14); text-decoration: none; }
-.atlas-nav .nav-item.active, .atlas-nav .nav-item[aria-current="page"] { background: var(--surface, #fff); color: var(--text, #0b0f14); font-weight: 500; box-shadow: 0 1px 2px rgba(11, 15, 20, .06), 0 0 0 1px var(--line, #e2e8f0); }
+.atlas-nav .nav-item.active, .atlas-nav .nav-item[aria-current="page"] { background: var(--accent-soft, #eef4f5); color: var(--accent-text, #08495c); font-weight: 600; box-shadow: inset 0 0 0 1px var(--atlas-accent-line, rgba(8, 73, 92, .24)); }
+.atlas-nav .nav-item.active svg, .atlas-nav .nav-item[aria-current="page"] svg { color: var(--accent-brand, #08495c); }
 /* Active marker: a short Atlas Blue bar at the sidebar edge (Brand v1.0: blue
    marks selection; the item itself stays neutral). */
-.atlas-nav .nav-item.active::before, .atlas-nav .nav-item[aria-current="page"]::before { content: ''; position: absolute; top: 9px; left: -12px; width: 3px; height: 16px; border-radius: 0 2px 2px 0; background: var(--accent-brand, #3b82f6); }
+.atlas-nav .nav-item.active::before, .atlas-nav .nav-item[aria-current="page"]::before { content: ''; position: absolute; top: 9px; left: -12px; width: 3px; height: 16px; border-radius: 0 2px 2px 0; background: var(--highlight, #E8732A); }
 .atlas-nav .nav-item--ai svg { color: var(--accent-brand, #3b82f6); }
 .atlas-nav .nav-item-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Unread count ([data-nav-badge], written by atlas-chrome.js), right-aligned. */
@@ -293,7 +294,7 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
 .atlas-auth__brand--intro[data-intro-state="playing"] .atlas-auth__lockup { opacity: 0; transition: opacity 0s linear 200ms; }
 .atlas-auth__brand--intro + .atlas-auth__title { margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) { .atlas-auth__brand--intro :is(.atlas-auth__intro, .atlas-auth__lockup) { transition: none; } }
-.atlas-auth__title { margin: 32px 0 6px; text-align: center; color: var(--text, #0b0f14); font: 500 28px/34px var(--font-display, 'Fraunces', Georgia, serif); letter-spacing: -.02em; font-variation-settings: 'opsz' 72; }
+.atlas-auth__title { margin: 32px 0 6px; text-align: center; color: var(--text, #0b0f14); font: 400 34px/38px var(--font-display, 'Instrument Serif', Georgia, serif); letter-spacing: -.01em; }
 .atlas-auth__sub { margin: 0; text-align: center; color: var(--text-2, #475569); font: 400 15px/22px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); }
 .atlas-auth__form { display: grid; gap: 16px; margin: 28px 0 0; }
 .atlas-auth__form[hidden] { display: none; }

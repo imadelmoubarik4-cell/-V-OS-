@@ -15,8 +15,11 @@
 <link rel="manifest" href="site.webmanifest">
 <meta property="og:title" content="Alcedo">
 <meta property="og:image" content="assets/brand/Atlas_OpenGraph_1200x630.jpg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- ALCEDO type: Instrument Serif (display) / Manrope (body) / JetBrains Mono
+     (labels) are self-hosted OFL woff2 under assets/fonts/ and declared with
+     @font-face in atlas-tokens.css. Preload the two most-used faces. -->
+<link rel="preload" href="assets/fonts/Manrope-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/InstrumentSerif-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <!-- atlas-tokens.css is linked first because it declares the cascade-layer
        order (atlas.tokens, atlas.base, atlas.components, atlas.modules).
        atlas-base.css, atlas-components.css and atlas-shell.css are the design
@@ -24,16 +27,16 @@
        module sheets included, so config.js, runtime-module-guard.js and the
        bootstraps find them already present and inject nothing). There is no
        legacy layer and no inline style block. -->
-  <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260930-alcedo">
-  <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260929-s90u">
-  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20261004-bot6">
+  <link rel="stylesheet" href="assets/css/atlas-tokens.css?v=20260930-alcedo2">
+  <link rel="stylesheet" href="assets/css/atlas-base.css?v=20260930-alcedo2">
+  <link rel="stylesheet" href="assets/css/atlas-components.css?v=20260930-alcedo2">
   <link rel="stylesheet" href="assets/css/recipes.css?v=20261005-fi1">
   <link rel="stylesheet" href="assets/css/operations.css?v=20260930-s90g">
   <link rel="stylesheet" href="assets/css/home.css?v=20260929-s90u">
   <link rel="stylesheet" href="assets/css/shifts-workspace.css">
   <link rel="stylesheet" href="assets/css/knowledge-workspace.css">
   <link rel="stylesheet" href="assets/css/training-workspace.css?v=20261015-s98">
-  <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20261004-bot6">
+  <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260930-alcedo2">
   <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
        append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
        or data attribute); the five also named by runtime-module-guard.js use
@@ -55,15 +58,12 @@
   <!-- ===================== SIGN IN (spec §7.17) ===================== -->
   <div id="login-screen" class="atlas-auth">
     <main class="atlas-auth__column" aria-labelledby="login-title">
-      <!-- Brand v1.0 sign-in intro (docs/brand/README.md): the owner's logo motion
-           plays once per browser session, muted and decorative, then settles on
-           the kit's static stacked lockup (the logo for assistive technology).
-           assets/js/atlas-signin-intro.js decides whether it may play at all. -->
+      <!-- ALCEDO sign-in: the static stacked lockup only. The stale Atlas motion
+           <video> was removed (its clip still rendered the old Atlas logo
+           rotation); the wrapper keeps data-atlas-signin-intro so
+           assets/js/atlas-signin-intro.js still runs and safely no-ops when no
+           <video> is present, settling straight to the static lockup. -->
       <div class="atlas-auth__brand atlas-auth__brand--intro" data-atlas-signin-intro data-intro-state="static">
-        <video class="atlas-auth__intro" muted playsinline preload="none" disablepictureinpicture disableremoteplayback aria-hidden="true" tabindex="-1" hidden>
-          <source src="assets/brand/motion/atlas-signin-intro.webm" type="video/webm">
-          <source src="assets/brand/motion/atlas-signin-intro.mp4" type="video/mp4">
-        </video>
         <img class="atlas-auth__lockup" src="assets/brand/Atlas_Primary_Stacked_Midnight.svg" alt="Alcedo" width="128" height="104">
       </div>
       <h1 class="atlas-auth__title" id="login-title">Welcome back</h1>
@@ -198,10 +198,10 @@
 <script src="config.js"></script>
 <script src="assets/js/runtime-module-guard.js?v=20261002-s93m"></script>
 <script src="assets/js/rehearsal-boundary.js"></script>
-<script src="assets/js/atlas-stock-truth.js?v=20260929-s90f"></script>
+<script src="assets/js/atlas-stock-truth.js?v=20260930-alcedo2"></script>
 <script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-api.js?v=20260926-s91a"></script>
-<script src="assets/js/atlas-bot.js?v=20261004-bot6"></script>
+<script src="assets/js/atlas-bot.js?v=20260930-glb"></script>
 <script src="assets/js/atlas-app.js?v=20261011-s97"></script>
 <script src="assets/js/atlas-calculations.js?v=20260929-s90p"></script>
 <script src="assets/js/modal.js?v=20261001-s92e"></script>

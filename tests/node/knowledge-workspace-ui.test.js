@@ -120,7 +120,7 @@ test('browser has no direct private database or Drive API access', () => {
   assert.doesNotMatch(ui, /\.from\s*\(/);
   assert.doesNotMatch(ui, /knowledge_articles|knowledge_article_versions|knowledge_acknowledgements/);
   assert.doesNotMatch(ui, /drive\.googleapis\.com|www\.googleapis\.com\/drive/);
-  assert.match(ui, /Atlas doesn’t sync Drive documents automatically/);
+  assert.match(ui, /Alcedo doesn’t sync Drive documents automatically/);
 });
 
 test('article reading layout: 720 column, 16/26 body, 17/28 and a sticky bar on phones', () => {

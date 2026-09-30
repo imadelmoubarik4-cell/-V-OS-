@@ -68,7 +68,7 @@ test('stock and evidence stay honest: unknown is not zero, possible matches neve
   assert.match(flavor, /unknown: \{ label: 'Stock unknown'/);
   assert.match(flavor, /Unknown is not zero/);
   assert.match(flavor, /Possible match: \$\{escape\(item\.name\)\} <span class="recipe-muted">· needs review, not counted as stock/);
-  for (const label of ["label: 'Culinary'", "label: 'Atlas-learned'", "label: 'Scientific'", "label: 'AI interpretation'"]) assert.ok(flavor.includes(label), label);
+  for (const label of ["label: 'Culinary'", "label: 'Alcedo-learned'", "label: 'Scientific'", "label: 'AI interpretation'"]) assert.ok(flavor.includes(label), label);
   // Each evidence entry is shown with its own label, never merged.
   assert.match(flavor, /const evidence = entries\.map\(\(entry\) => `<li class="flavor-detail__evidence">\$\{evidencePill\(entry\.evidence_type\)\}/);
   // A calculated substitute is never shown as a recorded one.

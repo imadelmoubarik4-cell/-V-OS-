@@ -243,9 +243,11 @@ test('changed scripts carry the S88 cache key', () => {
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
   for (const file of ['s38-app-remediation.js', 'shifts-workspace.js',
-    'atlas-venue-clock.js', 'atlas-stock-truth.js']) {
+    'atlas-venue-clock.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
+  // ALCEDO rebrand: atlas-stock-truth.js changed (Atlas->Alcedo comment) and carries the rebrand key.
+  assert.ok(index.includes('<script src="assets/js/atlas-stock-truth.js?v=20260930-alcedo2"></script>'), 'atlas-stock-truth.js');
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
   // and the UX acceptance round 2 fixes (toast placement, order lines on the
   // phone, one inventory value in Reports, hours validation in place).
@@ -282,7 +284,7 @@ test('changed scripts carry the S88 cache key', () => {
   // sleep sprite frame and the rebuilt scene (atlas-bot.js); atlas-ai.js
   // reports what Atlas is doing to it and still carries the S91b voice lease.
   for (const file of ['atlas-bot.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261004-bot6"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-glb"></script>`), file);
   }
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.

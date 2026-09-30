@@ -177,13 +177,13 @@
   height: var(--control-md);
   min-width: 0;
   margin: 0;
-  padding: 0 14px;
+  padding: 0 16px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
+  border-radius: var(--r-pill);   /* ALCEDO: pill buttons, like the website */
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow-1);
-  font: 500 14px/20px var(--font-sans);
+  font: 600 14px/20px var(--font-sans);
   letter-spacing: 0;
   text-decoration: none;
   white-space: nowrap;
@@ -196,16 +196,31 @@
 .atlas-btn > svg:last-child:not(:first-child), .atlas-btn > .icon:last-child:not(:first-child) { margin-left: 0; margin-right: -2px; }
 .atlas-btn:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 
+/* ALCEDO primary CTA: vivid orange fill with INK text and an orange glow,
+   matching the website's .btn--orange. Orange + ink reads ~5.5:1 (AA). */
 .atlas-btn--primary {
-  --spin-track: rgba(255, 255, 255, .45);
-  --spin-head: #ffffff;
+  --spin-track: rgba(16, 32, 31, .28);
+  --spin-head: var(--text);
+  border-color: transparent;
+  background: var(--highlight);
+  color: var(--text);
+  box-shadow: 0 14px 28px -16px rgba(232, 115, 42, .9);
+}
+.atlas-btn--primary:hover:not(:disabled, [aria-disabled="true"]) { background: #EC8240; }
+.atlas-btn--primary:active:not(:disabled, [aria-disabled="true"]) { background: #d9631f; }
+
+/* Deep-teal emphasis button: brand dark fill with ivory text, the website's
+   .btn--dark. For key secondary actions and dark panels. */
+.atlas-btn--brand {
+  --spin-track: rgba(248, 245, 237, .45);
+  --spin-head: var(--atlas-snow);
   border-color: transparent;
   background: var(--accent);
   color: var(--text-on-accent);
   box-shadow: none;
 }
-.atlas-btn--primary:hover:not(:disabled, [aria-disabled="true"]) { background: var(--accent-hover); }
-.atlas-btn--primary:active:not(:disabled, [aria-disabled="true"]) { background: var(--accent-press); }
+.atlas-btn--brand:hover:not(:disabled, [aria-disabled="true"]) { background: #0A566C; }
+.atlas-btn--brand:active:not(:disabled, [aria-disabled="true"]) { background: var(--accent-hover); }
 
 .atlas-btn--secondary { border-color: var(--line-strong); background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
 .atlas-btn--secondary:hover:not(:disabled, [aria-disabled="true"]) { background: var(--bg-subtle); }
@@ -1636,7 +1651,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
     flex: none;
     width: var(--atlas-bot-size);
     height: var(--atlas-bot-size);
-    background: transparent url('../atlas-bot/alcedo-kingfisher-head.png?v=20261016-alcedo') center / contain no-repeat;
+    background: transparent url('../atlas-bot/alcedo-mascot-head.png?v=20260930-glb') center / contain no-repeat;
     vertical-align: middle;
     transition: transform var(--dur-2) var(--ease-out), filter var(--dur-2) var(--ease-out);
   }
@@ -1645,7 +1660,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   /* The large live surface shows the FULL bird and carries the restrained
      motion: breathing at rest, a small tilt while listening. */
   .atlas-bot-live__poster {
-    background-image: url('../atlas-bot/alcedo-kingfisher-full.png?v=20261016-alcedo');
+    background-image: url('../atlas-bot/alcedo-mascot-poster.png?v=20260930-glb');
     transform-origin: 50% 86%;
     animation: alcedo-bot-breathe 5.2s ease-in-out infinite;
   }
@@ -1661,7 +1676,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   /* 24 px or less (AtlasBot.html adds the class; the static nav and tab bar
      badges carry it): a tighter face, a matte visor and brighter eyes, so the
      robot does not read as a dark blob. */
-  .atlas-bot--small { background-image: url('../atlas-bot/alcedo-kingfisher-head.png?v=20261016-alcedo'); }
+  .atlas-bot--small { background-image: url('../atlas-bot/alcedo-mascot-head.png?v=20260930-glb'); }
 
   /* Sleeping: Z, then ZZ, then ZZZ rising at the badge's top right, a fade and
      a pause, in CSS alone: one pseudo-element whose two text-shadow copies are

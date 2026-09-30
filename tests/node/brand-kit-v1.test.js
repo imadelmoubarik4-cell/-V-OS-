@@ -126,29 +126,23 @@ test('pages use the swapped logos, favicons and manifest; no typed wordmark or "
   for (const icon of site.icons) assert.ok(existsSync(path.join(WEB, icon.src)), icon.src);
 });
 
-test('the sign-in motion is the owner-approved clip only, on the sign-in screen only', () => {
-  // NOTE (follow-up): the intro clip still renders the Atlas logo rotation; there
-  // is no ALCEDO motion asset in the kit. The clip settles on the (now ALCEDO)
-  // static lockup. Replacing the motion needs new artwork — see the inventory.
-  assert.equal(sha256('docs/brand/motion/Atlas_Logo_Rotation_source.mp4'), 'b3279e9de8e04c1d74cb750b19f42641e781496f3095936eb2e49e70b5b307dc');
-  assert.deepEqual(readdirSync(path.join(BRAND, 'motion')).sort(), ['atlas-signin-intro.mp4', 'atlas-signin-intro.webm']);
-  assert.equal(sha256(path.join(BRAND, 'motion/atlas-signin-intro.mp4')), 'a72029a8ba157c0c0b9f2d5e89f3ab5f9b3e5cc7cdaefbda1f13aa668b6b3fd0');
-  assert.equal(sha256(path.join(BRAND, 'motion/atlas-signin-intro.webm')), '4422c8c674914aa4fc33e3e75a390666f53fe19b9b81a18dcf7e1b9b2b8b850b');
+test('the sign-in screen shows the static ALCEDO lockup only — stale Atlas motion removed', () => {
+  // ALCEDO rebrand: the stale Atlas sign-in motion clip was removed from the
+  // login (it rendered the old Atlas logo rotation). The sign-in screen now
+  // settles immediately on the static ALCEDO stacked lockup — no <video>.
   const index = readFileSync(path.join(WEB, 'index.html'), 'utf8');
-  const videos = [...index.matchAll(/<video\b[^>]*>/g)].map((match) => match[0]);
-  assert.equal(videos.length, 1, 'one video, the sign-in intro');
-  for (const attribute of ['muted', 'playsinline', 'disablepictureinpicture', 'aria-hidden="true"', 'preload="none"']) assert.ok(videos[0].includes(attribute), attribute);
-  for (const forbidden of ['loop', 'controls', 'autoplay']) assert.ok(!new RegExp(`\\s${forbidden}\\b`).test(videos[0]), `${forbidden} is not set in markup (the script decides)`);
-  assert.match(index, /<div id="login-screen"[\s\S]*data-atlas-signin-intro[\s\S]*<div id="app-screen">/, 'the intro sits inside the sign-in screen');
+  const indexNoComments = index.replace(/<!--[\s\S]*?-->/g, '');
+  const videos = [...indexNoComments.matchAll(/<video\b[^>]*>/g)].map((match) => match[0]);
+  assert.equal(videos.length, 0, 'no sign-in motion video in index.html');
+  assert.doesNotMatch(indexNoComments, /brand\/motion/, 'index.html no longer references brand/motion');
+  // The login screen still carries the static ALCEDO lockup image.
+  assert.match(index, /<div id="login-screen"[\s\S]*class="atlas-auth__lockup"[\s\S]*<div id="app-screen">/, 'static lockup sits inside the sign-in screen');
+  const lockup = index.match(/<img class="atlas-auth__lockup"[^>]*>/);
+  assert.ok(lockup, 'the static lockup img is present');
+  assert.match(lockup[0], /alt="Alcedo"/, 'the lockup is labelled Alcedo');
   for (const page of ['invitation.html', 'recovery.html', 'menu.html']) assert.doesNotMatch(readFileSync(path.join(WEB, page), 'utf8'), /<video|brand\/motion/, page);
   const worker = readFileSync(path.join(WEB, 'service-worker.js'), 'utf8');
   assert.doesNotMatch(worker, /addEventListener\('fetch'|caches\.|brand\/motion/);
-  const script = readFileSync(path.join(WEB, 'assets/js/atlas-signin-intro.js'), 'utf8');
-  assert.match(script, /prefers-reduced-motion: reduce/);
-  assert.match(script, /atlas-reduce-motion/);
-  assert.match(script, /saveData/);
-  assert.match(script, /sessionStorage/);
-  assert.doesNotMatch(script, /\.loop = true/);
 });
 
 // ---------- tokens and contrast ----------

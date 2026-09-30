@@ -53,8 +53,11 @@ fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 legend { padding: 0; }
 code, kbd, samp, pre { font-family: var(--font-mono); }
 
-/* Headings and numbers */
-h1, h2, h3, h4, h5, h6 { font-family: var(--font-sans); font-weight: 600; color: var(--text); }
+/* Headings and numbers. ALCEDO: the top display headings (h1–h3) are set in
+   Instrument Serif at 400 like the website's titles; the tighter sub-headings
+   (h4–h6) stay in Manrope semibold so dense UI headers keep their weight. */
+h1, h2, h3 { font-family: var(--font-display); font-weight: 400; color: var(--text); letter-spacing: -0.01em; }
+h4, h5, h6 { font-family: var(--font-sans); font-weight: 600; color: var(--text); }
 strong, b { font-weight: 600; }
 .num, time, [data-num] { font-variant-numeric: tabular-nums; }
 
@@ -92,7 +95,7 @@ svg.lucide { stroke-width: var(--icon-stroke); flex: none; }
 :is(h1, h2, h3, h4, [tabindex="-1"]):focus:not(:focus-visible),
 :is(h1, h2, h3, h4)[tabindex="-1"]:focus { outline: none; }
 
-::selection { background: rgba(59, 130, 246, .20); color: inherit; }
+::selection { background: rgba(232, 115, 42, .26); color: var(--text); }
 
 /* The hidden attribute always hides (spec §9.1 allows !important here). */
 [hidden] { display: none !important; }
