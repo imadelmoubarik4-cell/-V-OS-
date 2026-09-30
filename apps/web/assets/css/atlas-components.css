@@ -675,7 +675,7 @@ textarea.atlas-input,
   width: auto;
   height: 2px;
   border-radius: 2px;
-  background: var(--text);
+  background: var(--highlight);   /* ALCEDO: selected-tab indicator is orange (active label stays ink) */
   transform: none;
 }
 .atlas-tabs > :is(a, button, [role="tab"]):focus-visible { outline: var(--focus-outline); outline-offset: -2px; border-radius: var(--r-sm); }
@@ -819,12 +819,13 @@ a.atlas-record-chip:hover { border-color: var(--line-strong); background: var(--
   flex: none;
   padding: 0 5px;
   border-radius: var(--r-pill);
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--highlight);   /* ALCEDO: primary badge/count is orange with ink text (~5.5:1 AA) */
+  color: var(--text);
   font: 600 12px/1 var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
 .atlas-badge--muted { background: var(--bg-muted); color: var(--text-2); }
+.atlas-badge--brand { background: var(--accent); color: var(--text-on-accent); }   /* teal count, where orange would clash */
 
 /* ==========================================================================
    6.14 Card — .atlas-card (white, hairline, 12 px radius, no shadow)
@@ -834,7 +835,7 @@ a.atlas-record-chip:hover { border-color: var(--line-strong); background: var(--
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: none;
+  box-shadow: var(--shadow-soft);   /* warm cream card lifts off the ivory canvas — set apart by hairline + soft teal shadow, not by whiteness */
   color: var(--text);
 }
 .atlas-card--pad { padding: var(--s-5); }

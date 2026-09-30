@@ -83,7 +83,7 @@ body.atlas-page-full-height .atlas-content, body.atlas-page-full-height .atlas-c
 .atlas-nav .nav-item--ai svg { color: var(--accent-brand, #3b82f6); }
 .atlas-nav .nav-item-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Unread count ([data-nav-badge], written by atlas-chrome.js), right-aligned. */
-.atlas-nav__badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill, 999px); background: var(--accent, #2563eb); color: #fff; font: 500 12px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: center; font-variant-numeric: tabular-nums; }
+.atlas-nav__badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill, 999px); background: var(--highlight, #E8732A); color: var(--text, #10201f); font: 600 12px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: center; font-variant-numeric: tabular-nums; }
 .atlas-nav .atlas-badge--muted.atlas-nav__badge { background: var(--neutral-soft, #f1f5f9); color: var(--text-2, #475569); }
 
 .atlas-sidebar__foot { flex: none; padding-top: 4px; }
@@ -117,7 +117,7 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
 /* ==========================================================================
    Top bar (§4.3) and phone top bar (§4.4)
    ========================================================================== */
-.atlas-topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 8px; height: 56px; min-height: 56px; padding: 0 var(--page-gutter, 40px) 0 16px; background: #fff; border-bottom: 1px solid var(--line-subtle, #f1f5f9); backdrop-filter: none; box-shadow: none; }
+.atlas-topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 8px; height: 56px; min-height: 56px; padding: 0 var(--page-gutter, 40px) 0 16px; background: var(--bg-subtle, #f8f5ed); border-bottom: 1px solid var(--line, rgba(16,32,31,.14)); backdrop-filter: none; box-shadow: none; }
 /* The app loading line (spec §4.11) sits on the top bar's bottom edge while the
    shell data loads, so the page below never shifts. */
 .atlas-topbar > .atlas-loading-line { position: absolute; right: 0; bottom: -1px; left: 0; }

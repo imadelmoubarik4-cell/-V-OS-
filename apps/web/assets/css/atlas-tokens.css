@@ -49,18 +49,18 @@
   --atlas-blue: #08495C;       /* deep teal — the interface accent */
 
   /* ---------- Colour: surfaces ---------- */
-  --bg: #ffffff;                 /* content canvas (kept ~white so the orange highlight keeps 3:1; page warmth comes from the ivory shell surfaces + cards) */
-  --bg-subtle: var(--atlas-snow);   /* warm ivory: sidebar, table header, inset panels, app canvas */
-  --bg-muted: #ECEFE8;           /* hover on subtle, segmented track, skeleton (warm sage-tinted paper) */
-  --bg-hover: #F5F3EA;           /* table row hover (between white and ivory) */
-  --surface: #ffffff;            /* cards, sheets, popovers (kept ~white for the orange 3:1 rule; sits on ivory) */
+  --bg: var(--atlas-snow);       /* content canvas — warm ivory #F8F5ED (no white in the app chrome) */
+  --bg-subtle: var(--atlas-snow);   /* warm ivory: sidebar, topbar, table header, inset panels */
+  --bg-muted: #E8E1D2;           /* hover on subtle, segmented track, skeleton (deeper warm cream) */
+  --bg-hover: #EFE9DB;           /* table row hover (warm cream, off the ivory canvas) */
+  --surface: #F3EFE3;            /* cards, sheets, popovers, inputs — warm cream, NEVER white; set off the ivory canvas by a hairline + soft teal shadow */
   --overlay: rgba(16, 32, 31, .32);  /* ink */
 
   /* ---------- Colour: text (all ≥ 4.5:1 on --bg, --bg-subtle and --bg-muted) ---------- */
   --text: var(--atlas-midnight); /* headings and primary text, 19.2:1 on white */
   --text-2: #2E3D3A;             /* secondary — warm ink family (ALCEDO), ≥ 9:1 on light surfaces */
   --text-3: #4E5E58;             /* placeholders, group labels, meta — warm ink family, ≥ 5.5:1 on light surfaces */
-  --text-on-accent: #ffffff;
+  --text-on-accent: var(--atlas-snow);  /* ivory text on teal/dark fills (no stark white); ~9.3:1 on teal */
   --ink: var(--atlas-slate);     /* dark surfaces: tooltips, toasts, bulk bar (white text 14.7:1) */
 
   /* ---------- Colour: lines (Mist) ---------- */
@@ -100,7 +100,7 @@
   --positive: #047857;           /* 5.5:1 on white, 5.2:1 on --positive-soft */
   --positive-soft: #ecfdf5;
   --warning: #b45309;            /* text: 5.0:1 on white, 4.8:1 on --warning-soft */
-  --warning-icon: #d97706;       /* icons only (3.2:1, non-text) */
+  --warning-icon: #c26a04;       /* icons only, deep amber — >= 3:1 non-text on the ivory canvas, kept clearly distinct from brand orange #E8732A */
   --warning-soft: #fffbeb;
   --danger: #c42020;             /* 5.9:1 on white (text and white-on-fill), 5.4:1 on --danger-soft */
   --danger-soft: #fef2f2;
