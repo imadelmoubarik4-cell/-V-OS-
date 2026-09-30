@@ -11,7 +11,7 @@
 //   - Stock is shown as the server reports it: verified in stock, verified
 //     out, unknown (never zero), not stocked; a needs-review link is only a
 //     "possible match" and never counts as stock.
-//   - Evidence types stay separate and labelled (culinary, Atlas-learned,
+//   - Evidence types stay separate and labelled (culinary, Alcedo-learned,
 //     scientific, AI interpretation); nothing is called scientific unless the
 //     server says so.
 //   - A filter the server does not offer (filters_available) is not shown.
@@ -25,7 +25,7 @@
   const USES = [['cocktail', 'Cocktails'], ['mocktail', 'Mocktails'], ['coffee', 'Coffee'], ['dessert', 'Desserts'], ['food', 'Food']];
   const EVIDENCE = {
     culinary: { label: 'Culinary', help: 'Curated bar and kitchen knowledge. A starting point, not laboratory data.' },
-    atlas_learned: { label: 'Atlas-learned', help: 'Used together in your own Alcedo recipes.' },
+    atlas_learned: { label: 'Alcedo-learned', help: 'Used together in your own Alcedo recipes.' },
     scientific: { label: 'Scientific', help: 'From a published scientific source.' },
     ai_interpretation: { label: 'AI interpretation', help: 'Alcedo AI’s reading. Check it before relying on it.' }
   };
@@ -451,7 +451,7 @@
         <div class="flavor-map${state.loading ? ' is-loading' : ''}${empty ? ' flavor-map--empty' : ''}" aria-busy="${state.loading}">
           ${empty ? `<div class="atlas-empty flavor-map__empty"><div class="atlas-empty__icon"><i data-lucide="orbit"></i></div><h3 class="atlas-empty__title">No pairings match these filters</h3><p class="atlas-empty__text">${escape(state.data.center.name)} has no recorded pairings with these filters.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-flavor-clear>Clear filters</button></div></div>` : `${ringMarkup()}${detailMarkup()}${listMarkup()}`}
         </div>
-        <p class="recipe-muted flavor-map__basis">Pairings are Atlas-curated culinary knowledge and ingredients used together in your recipes, not laboratory data. Stock shows only verified current counts; unknown is never counted as zero.</p>`;
+        <p class="recipe-muted flavor-map__basis">Pairings are Alcedo-curated culinary knowledge and ingredients used together in your recipes, not laboratory data. Stock shows only verified current counts; unknown is never counted as zero.</p>`;
     } else {
       body = '';
     }
