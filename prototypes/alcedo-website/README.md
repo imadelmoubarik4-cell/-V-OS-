@@ -109,21 +109,6 @@ The approved Alcedo kingfisher replaces the robot everywhere in this prototype. 
   - **Progress:** Thinking shows an indeterminate `role="progressbar"`.
   - **Without JavaScript:** the static mascot shows and the buttons stay hidden.
 
-## Hero video (tray edit)
-
-The hero plays `assets/hero-tray.mp4`. It is the original footage (`assets/hero.mp4`, kept as the source) with the twig replaced by the approved round, matte black, non-slip serving tray, held from below by a hand. The tray matches `assets/reference/tray-hand-reference.webp`.
-
-- **What is unchanged:**
-  - the bird, its flight path, wing movement, landing timing and settling are the original footage;
-  - pixels away from the tray and twig are unchanged;
-  - the duration (8.00 s), the cut at 4.00 s and `REVEAL_AT = 4.3` are unchanged.
-- **The tray** is present from the first frame, in both the wide shot and the close-up. Its rim lip sits where the toes gripped the twig, with contact shadows under the toes.
-- **Stabilisation:** in the original, the twig bounces after the landing. The close-up is therefore stabilised on the perch point, so the tray stays steady and the feet do not slide.
-- **The final frame** is `assets/hero-tray-final.webp`.
-- **The old remote reference URL** is no longer a fallback source, because it still shows the twig.
-
-Method, rebuild steps and checks are in `tools/tray-edit/README.md`.
-
 ## Food Intelligence card
 
 The card shows an illustrated **Flavor Map**, modelled on the app's pairing ring. It is labelled "Flavor Map · illustration with sample data".
