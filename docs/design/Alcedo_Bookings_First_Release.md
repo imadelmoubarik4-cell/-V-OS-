@@ -252,15 +252,19 @@ as the pilot's source data; **treated as reference to confirm, not final**:
   (single bar seats), with a **"Block online"** flag and a **priority** selector
   per table.
 
-**Open questions to confirm before this becomes real config:**
-1. Is the per‑table **"1"** the **seat capacity** (single stools) or an unset
-   name? Confirm real seat counts.
-2. **Bar 6** shows **Min 2 / Max 1** (invalid: max < min) — a data slip in the
-   source; what are the correct values?
-3. Is **Bar** the only area for the pilot, or are **Wine cellar / Ocean / Long
-   table** (or others) also in scope?
-4. **Table combinations** — which bar tables may be joined for larger parties?
-5. Per‑table **priority** meaning and the **Block online** defaults.
+**Owner clarifications received:**
+- The tables are **single bar stools** — one seat each.
+- **Bar 6** = **Min 0 / Max 1** (min 0 = no minimum; corrects the earlier
+  Min 2/Max 1 misread).
+- **Other rooms exist for the VÁ location** — the room dropdown is real; Bar is
+  one room of several.
+
+**Still to confirm before this becomes real config:**
+1. The **other rooms/areas** for the VÁ location and their tables (names, seat
+   counts) — Wine cellar / Ocean / Long table and any others.
+2. **Table combinations** — which bar tables (or other tables) may be joined for
+   larger parties.
+3. Per‑table **priority** meaning and the **Block online** defaults.
 
 A test‑data **floor‑plan Designer prototype** on the Alcedo brand system (rooms,
 colour‑coded tables by section, unique numbers, seat capacity, status indicators,
