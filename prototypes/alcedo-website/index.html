@@ -7,14 +7,14 @@
   authentication, database or production branding.
 
   One file: all CSS and JavaScript are inline, no framework, no build step.
-  Media (video, final frame, logos, robot, screenshots) are separate files in ./assets.
+  Media (video, final frame, logos, mascot, screenshots) are separate files in ./assets.
   Serve the folder with any static server (see README.md) or open the file directly.
 
   QUICK EDIT MAP (search for these markers):
     [ASSET: VIDEO]        hero footage sources (<source> elements inside #hero-video)
     [ASSET: FINAL FRAME]  static final-frame image (#hero-still)
     [ASSET: LOGO]         ALCEDO symbol (header) and lockup (footer)
-    [ASSET: ROBOT]        AI robot sprite (--robot-sprite in :root)
+    [ASSET: MASCOT]       Alcedo kingfisher mascot (full body + launcher crop) and its demonstration
     [ASSET: SCREENS]      product screenshots in the tour
     [COPY]                editable copy
     [STATUS]              feature availability labels
@@ -72,11 +72,11 @@
   --orange-2: #F3A15E;    /* orange text on dark panels (8.3:1) */
   --teal: #0E7C86;        /* decorative teal: lines, dots, illustrations */
   --brand-teal: #08495C;  /* ALCEDO deep teal: teal text on light surfaces (5.4:1 on sage, 9:1 on ivory) */
-  --teal-2: #6CC0C6;      /* teal text on dark panels (7.5:1) */
-  --panel: #0F1D1C;
-  --panel-2: #172A28;
-  --on-panel: #E3E8DE;
-  --on-panel-2: rgba(227,232,222,.74);
+  --teal-2: #9ED6DA;      /* light teal for text/dots on deep-teal panels (6.3:1) */
+  --panel: #08495C;       /* ALCEDO deep teal (brand kit): hero cards, Daily Operations, owners card, CTA, footer */
+  --on-panel: #F8F5ED;    /* ALCEDO warm ivory on deep teal (9.1:1) */
+  --on-panel-2: rgba(248,245,237,.8);   /* secondary ivory on deep teal (6.4:1) */
+  --panel-line: rgba(248,245,237,.16);  /* hairlines on deep teal */
 
   --font-serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   --font-sans: Manrope, "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -86,8 +86,8 @@
   --header-h: 76px;
   --radius: 20px;
   --radius-lg: 26px;
-  --shadow: 0 34px 70px -34px rgba(8,20,19,.55), 0 14px 28px -18px rgba(8,20,19,.30);
-  --shadow-soft: 0 26px 60px -36px rgba(8,20,19,.34), 0 8px 18px -14px rgba(8,20,19,.16);
+  --shadow: 0 24px 48px -32px rgba(8,73,92,.42), 0 6px 14px -10px rgba(8,73,92,.16);        /* softer, teal-tinted */
+  --shadow-soft: 0 18px 40px -32px rgba(8,73,92,.26), 0 4px 10px -8px rgba(8,73,92,.10);
   --ease: cubic-bezier(.2,.7,.1,1);
 
   /* Hero framing. In the final frame the perched bird sits at x ≈ 33–70 %, y ≈ 22–91 %. */
@@ -95,10 +95,6 @@
   --video-y: 50%;
   --copy-offset: 76px;
 
-  /* [ASSET: ROBOT] The app's AI robot re-rendered from its own 3D scene with the Alcedo symbol in
-     place of the Atlas mark (forehead and chest decals only): 640×160 sprite, frames
-     open · blink · sleep · happy, identical framing to apps/web/assets/atlas-bot/atlas-bot.png. */
-  --robot-sprite: url("assets/ai-robot-alcedo.png");
 }
 
 /* =====================================================================
@@ -135,11 +131,11 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .btn:hover { transform: translateY(-1px); }
 .btn--orange { background: var(--orange); color: var(--ink); box-shadow: 0 14px 28px -16px rgba(232,115,42,.9); }
 .btn--orange:hover { background: #EC8240; }
-.btn--dark { background: var(--ink); color: var(--paper); }
-.btn--dark:hover { background: #1B302E; }
+.btn--dark { background: var(--panel); color: var(--on-panel); }
+.btn--dark:hover { background: #0A566C; }
 .btn--line { border-color: rgba(16,32,31,.34); color: var(--ink); background: rgb(var(--bg-rgb) / .35); }
 .btn--line:hover { border-color: var(--ink); }
-.btn--line-dark { border-color: rgba(227,232,222,.3); color: var(--on-panel); background: transparent; }
+.btn--line-dark { border-color: rgba(248,245,237,.6); color: var(--on-panel); background: transparent; }
 .btn--line-dark:hover { border-color: var(--on-panel); }
 .btn--sm { min-height: 40px; padding: 0 18px; font-size: 13.5px; }
 .btn__arrow { width: 14px; height: 14px; flex: none; }
@@ -154,6 +150,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .status--preview::before { background: var(--orange); }
 .status--soon::before { background: transparent; border: 1px solid var(--orange); }
 .on-dark .status { color: var(--teal-2); }
+.on-dark .status:not(.status--preview):not(.status--soon)::before { background: var(--teal-2); }
 .note {
   display: flex; gap: 8px; margin-top: 14px;
   font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; line-height: 1.5; color: var(--ink-3);
@@ -161,10 +158,42 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .note::before { content: ""; width: 6px; height: 6px; margin-top: 5px; border-radius: 50%; border: 1px solid var(--orange); flex: none; }
 .on-dark .note { color: var(--on-panel-2); }
 
-/* AI robot */
-.robot { display: inline-block; width: var(--robot-size, 40px); height: var(--robot-size, 40px); background: var(--robot-sprite) 0 0 / 400% 100% no-repeat; flex: none; }
-@media (prefers-reduced-motion: no-preference) { .robot { animation: robot-blink 7s steps(1, end) infinite; } }
-@keyframes robot-blink { 0%, 94%, 100% { background-position: 0 0; } 95%, 96% { background-position: 33.333% 0; } }
+/* [ASSET: MASCOT] The approved Alcedo kingfisher. Motion is whole-image only (no new poses, no
+   warping, no opacity blinking): gentle idle breathing and a small tilt while listening, both
+   pivoting at the feet. Reduced motion: completely static. */
+.mascot-launcher { display: block; object-fit: contain; }
+.mascot-demo { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.mascot-demo__label { color: var(--ink-3); font-size: 10px; }
+.mascot-demo__row { display: flex; align-items: flex-end; gap: 16px; margin-top: 10px; }
+.mascot-demo__stage { flex: none; width: 104px; height: 108px; display: flex; align-items: flex-end; justify-content: center; }
+.mascot-tilt { transform-origin: 50% 96%; transition: transform .6s var(--ease); }
+.mascot-breathe { display: block; width: 104px; height: auto; transform-origin: 50% 96%; }
+.mascot-demo[data-state="listening"] .mascot-tilt { transform: rotate(-3.5deg); }
+@media (prefers-reduced-motion: no-preference) {
+  .mascot-breathe { animation: mascot-breathe 5.2s ease-in-out infinite; }
+}
+@keyframes mascot-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.014); } }
+.mascot-demo__side { min-width: 0; flex: 1; }
+.mascot-demo__controls { display: flex; flex-wrap: wrap; gap: 6px; }
+.mascot-demo__controls button {
+  min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent;
+  font: 600 12.5px var(--font-sans); color: var(--ink-2); cursor: pointer;
+}
+.mascot-demo__controls button:hover { border-color: rgba(16,32,31,.4); color: var(--ink); }
+.mascot-demo__controls button[aria-pressed="true"] { background: var(--panel); border-color: var(--panel); color: var(--on-panel); }
+.mascot-demo__status { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13.5px; font-weight: 600; color: var(--brand-teal); }
+.mascot-demo__status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--teal); flex: none; }
+.mascot-demo[data-state="listening"] .mascot-demo__status::before { background: var(--orange); }
+.mascot-demo__progress { position: relative; height: 4px; margin-top: 8px; border-radius: 999px; background: rgba(8,73,92,.14); overflow: hidden; }
+.mascot-demo__progress span { position: absolute; inset: 0 auto 0 0; width: 38%; border-radius: inherit; background: var(--brand-teal); }
+@media (prefers-reduced-motion: no-preference) {
+  .mascot-demo__progress span { animation: mascot-progress 1.6s var(--ease) infinite; }
+}
+@keyframes mascot-progress { from { transform: translateX(-100%); } to { transform: translateX(270%); } }
+@media (prefers-reduced-motion: reduce) {
+  .mascot-tilt, .mascot-demo[data-state="listening"] .mascot-tilt, .mascot-breathe { transform: none !important; }
+  .mascot-demo__progress span { width: 100%; opacity: .55; }   /* static bar; the status text carries the state */
+}
 
 /* =====================================================================
    3. HEADER
@@ -252,8 +281,8 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .hero__cards > li:nth-child(2) { margin-right: 28px; }
 .hcard {
   position: relative; display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 10px 14px; align-items: start;
-  padding: 14px 16px 12px 14px; background: linear-gradient(180deg, var(--panel-2), var(--panel)); color: var(--on-panel);
-  border: 1px solid rgba(227,232,222,.09); border-radius: 18px; box-shadow: var(--shadow);
+  padding: 14px 16px 12px 14px; background: var(--panel); color: var(--on-panel);
+  border: 1px solid var(--panel-line); border-radius: 18px; box-shadow: var(--shadow);
 }
 .hcard__meta { color: var(--on-panel-2); font-size: 10.5px; padding-right: 40px; }
 .hcard__meta b { color: var(--orange-2); font-weight: 500; }
@@ -263,12 +292,12 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .hcard__title a:focus-visible { outline: none; }
 .hcard:has(a:focus-visible) { outline: 2px solid var(--orange-2); outline-offset: 3px; }
 .hcard__text { margin-top: 4px; font-size: 13px; line-height: 1.45; color: var(--on-panel-2); }
-.hcard .status { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid rgba(227,232,222,.1); font-size: 10px; }
-.hcard .robot { position: absolute; top: 10px; right: 12px; --robot-size: 34px; }
+.hcard .status { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid var(--panel-line); font-size: 10px; }
+.hcard .mascot-launcher { position: absolute; top: 8px; right: 10px; width: 38px; height: 38px; }
 .thumb {
   position: relative; width: 58px; height: 58px; border-radius: 13px; overflow: hidden;
-  background: radial-gradient(circle at 72% 28%, rgba(232,115,42,.42), transparent 58%), linear-gradient(160deg, rgba(14,124,134,.55), rgba(14,124,134,.18));
-  box-shadow: inset 0 0 0 1px rgba(227,232,222,.12);
+  background: radial-gradient(circle at 72% 28%, rgba(232,115,42,.4), transparent 58%), linear-gradient(160deg, rgba(248,245,237,.16), rgba(248,245,237,.05));
+  box-shadow: inset 0 0 0 1px var(--panel-line);
 }
 .thumb__label { position: absolute; inset: auto 0 5px 0; text-align: center; font-family: var(--font-mono); font-size: 8px; letter-spacing: .12em; text-transform: uppercase; color: rgba(227,232,222,.8); }
 .thumb__canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .7s var(--ease); }
@@ -328,7 +357,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 
 .bento { display: grid; gap: 16px; grid-template-columns: 1.35fr 1fr 1fr; grid-template-rows: minmax(300px, auto) minmax(260px, auto); list-style: none; padding: 0; margin: 0; }
 .bento__card { position: relative; display: flex; flex-direction: column; padding: clamp(22px, 2.4vw, 32px); border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow-soft); scroll-margin-top: 24px; }
-.bento__card--ops { grid-row: span 2; background: var(--panel); color: var(--on-panel); border-color: rgba(227,232,222,.08); box-shadow: var(--shadow); }
+.bento__card--ops { grid-row: span 2; background: var(--panel); color: var(--on-panel); border-color: var(--panel-line); box-shadow: var(--shadow); }
 .bento__card--training { grid-column: 2 / span 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 40px; }
 .bento__head { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .bento__index { color: var(--ink-3); }
@@ -342,14 +371,12 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .status-stack { display: grid; justify-items: start; gap: 8px; margin-top: 14px; }
 .bento .status-stack .status { margin-top: 0; }
 .modules { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; list-style: none; padding: 0; }
-.modules li { padding: 12px 0; border-top: 1px solid rgba(227,232,222,.12); }
+.modules li { padding: 12px 0; border-top: 1px solid var(--panel-line); }
 .modules b { display: block; font-weight: 600; font-size: 14.5px; }
 .modules span { display: block; font-size: 13px; line-height: 1.45; color: var(--on-panel-2); }
 .bento__art { margin-top: auto; padding-top: 26px; color: var(--ink); }
 .bento__card--ops .bento__art { color: var(--on-panel); }
 .bento__art svg { width: 100%; height: auto; overflow: visible; }
-.bento__card--ai .bento__art { display: flex; align-items: flex-end; gap: 16px; }
-.bento__card--ai .robot { --robot-size: 84px; }
 .bento__card--training .bento__art { margin-top: 0; padding-top: 0; align-self: center; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; list-style: none; padding: 0; }
 .chips li { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); }
@@ -371,7 +398,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   font: 600 13.5px var(--font-sans); color: var(--ink-2); cursor: pointer; transition: background-color .2s, color .2s, border-color .2s;
 }
 .tab:hover { border-color: rgba(16,32,31,.4); color: var(--ink); }
-.tab[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tab[aria-selected="true"] { background: var(--panel); color: var(--on-panel); border-color: var(--panel); }
 .js .tour__panel:not(.is-active) { display: none; }
 .tour__panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr); gap: 28px 48px; align-items: start; }
 .no-js .tour__panel + .tour__panel { margin-top: 48px; padding-top: 48px; border-top: 1px solid var(--line); }
@@ -385,7 +412,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .shot img { width: 100%; height: auto; }
 .shot__label {
   position: absolute; left: 12px; top: 12px; display: inline-flex; gap: 8px; align-items: center;
-  padding: 5px 10px; border-radius: 999px; background: rgba(16,32,31,.82); color: var(--paper);
+  padding: 5px 10px; border-radius: 999px; background: rgba(8,73,92,.9); color: var(--on-panel);
   font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
 }
 .shot__label::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--orange-2); }
@@ -396,7 +423,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .routes { padding: 0 var(--gutter) clamp(64px, 8vw, 110px); background: var(--ivory); }
 .routes__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .route { display: flex; flex-direction: column; padding: clamp(26px, 3vw, 40px); border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow-soft); }
-.route--owners { background: var(--panel); color: var(--on-panel); border-color: rgba(227,232,222,.08); }
+.route--owners { background: var(--panel); color: var(--on-panel); border-color: var(--panel-line); }
 .route__for { color: var(--brand-teal); }
 .route--owners .route__for { color: var(--orange-2); }
 .route__title { margin-top: 14px; font-family: var(--font-serif); font-weight: 400; font-size: clamp(30px, 3vw, 40px); line-height: 1.04; }
@@ -419,7 +446,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
    ===================================================================== */
 .closing { padding: 0 var(--gutter) clamp(72px, 9vw, 120px); background: var(--ivory); }
 .cta { position: relative; overflow: hidden; background: var(--panel); color: var(--on-panel); border-radius: 32px; box-shadow: var(--shadow); padding: clamp(44px, 7vw, 96px) clamp(24px, 6vw, 88px); display: grid; grid-template-columns: minmax(0, 1.4fr) auto; gap: 32px 48px; align-items: end; }
-.cta::after { content: ""; position: absolute; right: -8%; top: -30%; width: 46%; aspect-ratio: 1; border-radius: 50%; border: 1px solid rgba(108,192,198,.18); pointer-events: none; }
+.cta::after { content: ""; position: absolute; right: -8%; top: -30%; width: 46%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--panel-line); pointer-events: none; }
 .cta .kicker { color: var(--teal-2); }
 .cta__title { margin-top: 18px; font-family: var(--font-serif); font-weight: 400; font-size: clamp(38px, 5vw, 68px); line-height: 1; letter-spacing: -.015em; max-width: 16ch; }
 .cta__title em { font-style: italic; color: var(--orange-2); }
@@ -441,7 +468,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .footer__links a { display: inline-block; padding: 6px 0; font-size: 14px; text-decoration: none; color: var(--on-panel); }
 .footer__links a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .footer__links small { display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; color: var(--on-panel-2); }
-.footer__bottom { margin-top: 56px; padding-top: 24px; border-top: 1px solid rgba(227,232,222,.12); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 32px; color: var(--on-panel-2); font-size: 13px; }
+.footer__bottom { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--panel-line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 32px; color: var(--on-panel-2); font-size: 13px; }
 .footer__proto { color: var(--orange-2); }
 
 /* =====================================================================
@@ -592,7 +619,8 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <p class="hcard__text">Meet your team’s assistant.</p>
         </div>
         <p class="status">Implemented</p>
-        <span class="robot" aria-hidden="true"></span>
+        <!-- [ASSET: MASCOT] compact launcher crop (head and upper body) -->
+        <img class="mascot-launcher" src="assets/mascot/alcedo-kingfisher-launcher.webp" width="256" height="256" alt="" decoding="async">
       </li>
       <li class="hcard rv on-dark" style="--d:7">
         <div class="thumb" aria-hidden="true"><canvas class="thumb__canvas" data-crop="0.43,0.60,0.24"></canvas><span class="thumb__label">Frame</span></div>
@@ -688,16 +716,24 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <p class="bento__text">Ask by text or voice, or add a photo or document. It answers from your venue’s records and prepares drafts — orders, counts, recipes — for a person to approve.</p>
           <ul class="chips" aria-label="Ways to ask"><li>Text</li><li>Voice</li><li>Photos &amp; files</li></ul>
           <p class="status">Implemented</p>
-          <div class="bento__art">
-            <!-- [ASSET: ROBOT] the existing AI robot from the application -->
-            <span class="robot" role="img" aria-label="The AI assistant robot"></span>
-            <svg viewBox="0 0 150 80" aria-hidden="true" style="max-width:150px">
-              <rect class="art-line draw" pathLength="1" x="2" y="4" width="120" height="30" rx="15"/>
-              <path class="art-line draw" pathLength="1" d="M18 19h60"/>
-              <rect class="art-teal draw" pathLength="1" x="28" y="44" width="120" height="30" rx="15"/>
-              <path class="art-teal draw" pathLength="1" d="M44 59h52"/>
-              <circle class="art-dot-orange" cx="112" cy="59" r="3"/>
-            </svg>
+          <!-- [ASSET: MASCOT] Demonstration of the mascot's states. It is not connected to the assistant:
+               the buttons only change the preview. Without JavaScript the static mascot is shown. -->
+          <div class="mascot-demo" data-state="idle" aria-labelledby="mascot-demo-label">
+            <p class="mascot-demo__label mono" id="mascot-demo-label">Mascot demonstration · not connected to the assistant</p>
+            <div class="mascot-demo__row">
+              <div class="mascot-demo__stage">
+                <div class="mascot-tilt"><img class="mascot-breathe" src="assets/mascot/alcedo-kingfisher.webp" width="579" height="600" alt="The Alcedo kingfisher mascot" loading="lazy" decoding="async"></div>
+              </div>
+              <div class="mascot-demo__side">
+                <div class="mascot-demo__controls" role="group" aria-label="Preview a mascot state" hidden>
+                  <button type="button" data-state="idle" aria-pressed="true">Idle</button>
+                  <button type="button" data-state="listening" aria-pressed="false">Listening</button>
+                  <button type="button" data-state="thinking" aria-pressed="false">Thinking</button>
+                </div>
+                <p class="mascot-demo__status" role="status">Ready to help</p>
+                <div class="mascot-demo__progress" role="progressbar" aria-label="Preparing a draft" hidden><span></span></div>
+              </div>
+            </div>
           </div>
         </li>
 
@@ -1321,6 +1357,30 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
     }
     window.addEventListener('hashchange', fromHash);
     fromHash();
+  }
+
+  /* ---------- mascot demonstration (preview only; not connected to the assistant) ---------- */
+  const demo = document.querySelector('.mascot-demo');
+  if (demo) {
+    const STATES = {
+      idle: 'Ready to help',
+      listening: 'Listening…',
+      thinking: 'Thinking — preparing a draft for you to approve'
+    };
+    const controls = demo.querySelector('.mascot-demo__controls');
+    const status = demo.querySelector('.mascot-demo__status');
+    const progress = demo.querySelector('.mascot-demo__progress');
+    const setState = function (name) {
+      demo.setAttribute('data-state', name);
+      controls.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-state') === name ? 'true' : 'false'); });
+      status.textContent = STATES[name];
+      progress.hidden = name !== 'thinking';
+    };
+    controls.addEventListener('click', function (e) {
+      const b = e.target.closest('button[data-state]');
+      if (b) setState(b.getAttribute('data-state'));
+    });
+    controls.hidden = false;
   }
 
   /* ---------- below-the-fold reveal ---------- */

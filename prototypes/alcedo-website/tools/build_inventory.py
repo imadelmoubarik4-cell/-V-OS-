@@ -24,7 +24,8 @@ def provenance(rel):
     if rel.endswith('hero-final.webp'): return 'Derived: last frame (8.00 s) of hero.mp4, ffmpeg extract, WebP q80'
     if 'alcedo-horizontal-' in name: return 'Derived: kit symbol + outlined wordmark paths, uniform scale/translate only (tools/build_horizontal_lockup.py)'
     if '/assets/brand/' in rel: return KIT
-    if name == 'ai-robot-alcedo.png': return 'Derived: app robot scene re-rendered with the Alcedo decal (tools/render_robot_alcedo.sh)'
+    if name == 'alcedo-kingfisher-master.webp': return 'Supplied approved mascot master, byte-identical (1214×1295, genuine alpha)'
+    if '/assets/mascot/' in rel: return 'Derived: mascot master, alpha clean-up and rectangular crop only (tools/build_mascot_assets.py)'
     if '/assets/screens/' in rel: return 'Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000'
     if '/tools/' in rel: return 'Authored: build/verification tool'
     return 'Authored'

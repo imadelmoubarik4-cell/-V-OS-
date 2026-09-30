@@ -35,13 +35,14 @@ assets/hero.mp4                         supplied hero footage (8.0 s, 1280×720,
 assets/hero-final.webp                  its last frame (8.00 s)
 assets/brand/alcedo-horizontal-*.svg    horizontal lockups (light / dark), derived, pending brand approval
 assets/brand/logo-color.svg             kit source of the lockup paths (input to the lockup script)
-assets/brand/symbol-color.svg           kit symbol (source of the robot decal paths)
+assets/brand/symbol-color.svg           kit symbol (reference copy)
 assets/brand/logo-dark.svg, favicon.ico, icon-32.png, icon-180.png   kit files used by the page
-assets/ai-robot-alcedo.png              the app's AI robot re-rendered with the Alcedo symbol
+assets/mascot/alcedo-kingfisher-master.webp    approved transparent kingfisher master (supplied, byte-identical)
+assets/mascot/alcedo-kingfisher.webp           full-body web copy (600 px tall)
+assets/mascot/alcedo-kingfisher-launcher.webp  head-and-upper-body launcher crop (256 px square)
 assets/screens/*.webp                   product screenshots (current app, built-in test data)
 tools/build_horizontal_lockup.py        regenerates the two lockups from the kit
-tools/robot-alcedo-mark.patch           the only change to the robot scene (mark texture)
-tools/render_robot_alcedo.sh            regenerates ai-robot-alcedo.png (never writes into apps/)
+tools/build_mascot_assets.py            regenerates the two mascot web copies from the master
 tools/build_preview.py                  builds the single-file review copy
 ```
 
@@ -56,7 +57,7 @@ Search `index.html` for the marker comments: `[ASSET: …]`, `[COPY]`, `[STATUS]
    - **Header:** `assets/brand/alcedo-horizontal-light.svg`, shown at 58 px tall (about 185 px wide; the kit minimum is 180 px). Use `alcedo-horizontal-dark.svg` on dark or deep-teal surfaces.
    - **Footer:** the kit's `logo-dark.svg` (stacked lockup on its teal field).
    - **How the lockups are built:** see *Horizontal lockup* below.
-3. **AI robot:** `--robot-sprite` in `:root`. See *Robot* below.
+3. **Mascot:** replace `assets/mascot/alcedo-kingfisher-master.webp` and run `python3 tools/build_mascot_assets.py`. See *Mascot* below.
 4. **Copy and status labels**
    - All copy is plain HTML.
    - Status chips: `.status` = **Implemented**, `.status--preview` = **Preview**, `.status--soon` = **Coming soon**. A legend on the page explains all three.
@@ -86,18 +87,47 @@ The kit (v1.0, review edition) has only stacked lockups, so the two horizontal v
 - **Rebuild:** `python3 tools/build_horizontal_lockup.py assets/brand/logo-color.svg`.
 - **Note for brand:** the kit's horizon arc is a 3-unit stroke, so it renders as a hairline (about 0.4 px) at header size.
 
-## Robot
+## Mascot
 
-`assets/ai-robot-alcedo.png` is the application's own robot (`scripts/mascot/atlas-mascot-scene.src.mjs`), rendered by the repository's renderer (`scripts/render_atlas_bot_badges.mjs`).
+The approved Alcedo kingfisher replaces the robot everywhere in this prototype. The application's own assistant and robot are unchanged; the app-side replacement belongs on `claude/alcedo-rebrand`.
 
-- **What changed:** only the decal texture. The Atlas mark is replaced by the ALCEDO symbol paths (teal A, orange beak, teal arc), drawn at the decal's aspect so the symbol keeps its proportions.
-- **What is preserved:** the model, materials, lighting, framing and the four sprite frames (open · blink · sleep · happy) that drive the blink animation.
-- **Verification:**
-  - rendering the unmodified scene through the same pipeline reproduces the app's committed `atlas-bot.png` pixel for pixel;
-  - in the Alcedo render, only the forehead and chest mark regions differ, and the face and visor rows are identical in all four frames.
-- **Rebuild:** `tools/render_robot_alcedo.sh`. It works in a temp folder and needs npm access and Playwright Chromium.
+- **Master:** `assets/mascot/alcedo-kingfisher-master.webp`, 1214×1295 with genuine transparency, kept byte-identical as supplied.
+- **Edge check:** on ivory, deep teal, near-black and sage there is no white halo; fur edges are soft and the bill tip and claws are crisp. Only 0.2 % of the semi-transparent edge pixels are very light.
+- **Web copies** (`tools/build_mascot_assets.py`), which change the alpha channel only, never the bird's pixels or shape:
+  - the master's body is about 99 % opaque (alpha 252–253), so alpha of 248 or more becomes fully opaque;
+  - 2,891 faint stray pixels (alpha ≤ 34) more than 7 px from the bird are cleared.
+- **Versions:**
+  - full body, 600 px tall, used in the mascot demonstration;
+  - head and upper body, a square crop of crown, eye, full bill, breast and top of the wing at 256 px, used as the compact launcher on the Alcedo AI hero card.
+- **Motion:**
+  - whole image only: gentle idle breathing (1.4 % scale over 5.2 s) and a 3.5° listening tilt, both pivoting at the feet;
+  - no new poses, no warping of the bill or wings, no opacity blinking;
+  - reduced motion: completely static, with no breathing, no tilt and a static progress bar.
+- **Demonstration:** it sits in the Alcedo AI card and is labelled "Mascot demonstration · not connected to the assistant".
+  - **States:** Idle, Listening and Thinking buttons (`aria-pressed`) switch the preview.
+  - **Status text:** a `role="status"` line announces "Ready to help", "Listening…" or "Thinking — preparing a draft for you to approve".
+  - **Progress:** Thinking shows an indeterminate `role="progressbar"`.
+  - **Without JavaScript:** the static mascot shows and the buttons stay hidden.
 
-The application's own robot is unchanged.
+## Colours
+
+The dark surfaces use the brand kit's **deep teal `#08495C`** with **warm ivory `#F8F5ED`** text and restrained orange accents. That covers the hero feature cards, Daily Operations, the restaurant-owners card, the closing CTA and the footer. Deep-teal buttons and the selected tour tab follow the same token, so no near-black surfaces remain. The light cards stay ivory and the hero stays sage. Shadows are softer and teal-tinted, and hairlines on teal use ivory at 16 %.
+
+- **Where to change it:** the shared tokens `--panel`, `--on-panel`, `--on-panel-2`, `--panel-line`, `--teal-2`, `--shadow` and `--shadow-soft` in `:root`. Desktop and mobile use the same tokens.
+- **Footer logo:** the kit's `logo-dark.svg` sits on the teal footer, and its own teal field (the same `#08495C`) merges with it. Logo colours and geometry are unchanged.
+
+Contrast checked (WCAG 2.x):
+
+| Pair | Ratio |
+|---|---|
+| Ivory on deep teal (titles, body, buttons, selected tab) | 9.10:1 |
+| Ivory 80 % on deep teal (descriptions, footer small print) | 6.46:1 |
+| Status text `#9ED6DA` on deep teal | 6.18:1 |
+| Orange `#F3A15E` labels on deep teal | 4.75:1 |
+| Ink on orange buttons | 5.54:1 |
+| Orange dots and buttons against deep teal (non-text) | 3.27:1 |
+| Outline-button border (ivory 60 %) on deep teal (non-text) | 4.34:1 |
+| Deep-teal button against ivory / sage (non-text) | 9.10:1 / 5.39:1 |
 
 ## Status labels
 
@@ -140,7 +170,7 @@ The screenshots show the real `apps/web` UI running in the repository's mocked b
 ## Open items before publication
 
 - **Brand approval**
-  - the derived horizontal lockups and the re-rendered robot;
+  - the derived horizontal lockups and the mascot crops;
   - the kit itself, which is a review edition;
   - the giant ALCEDO word, which is decorative serif type, separate from the logo.
 - **Domain:** `alcedo.is` is shown as the *intended* domain only.

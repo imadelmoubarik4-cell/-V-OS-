@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds a single self-contained preview file of the prototype for review.
 
-Every local asset (video, final frame, logos, robot, screenshots, icons) referenced by
+Every local asset (video, final frame, logos, mascot, screenshots, icons) referenced by
 index.html is embedded as a data URI, so the one file can be opened or shared for review
 without the assets folder. The source index.html is not changed.
 
