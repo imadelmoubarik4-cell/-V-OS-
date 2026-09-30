@@ -15,6 +15,15 @@
 // functions directly with the invitee's own session token.
 (async function () {
   'use strict';
+  // Onboarding completion guard. Every step must be done before the account is
+  // activated; this pure predicate is unit-tested (interrupted onboarding) and
+  // is a belt-and-braces client check — complete-onboarding re-verifies name,
+  // phone, photo and a verified authenticator server-side regardless.
+  const done = { password: false, name: false, phone: false, photo: false, mfa: false };
+  function canCompleteOnboarding(state) {
+    return Boolean(state && state.password && state.name && state.phone && state.photo && state.mfa);
+  }
+  window.AtlasOnboarding = { canCompleteOnboarding };
   const cfg = window.VABAR_CONFIG || {};
   const status = document.getElementById('status');
   const checking = document.getElementById('invite-checking');
@@ -147,6 +156,7 @@
     try {
       const { error } = await client.auth.updateUser({ password });
       if (error) throw error;
+      done.password = true;
       showStep('details');
       say('Tell your team who you are.');
     } catch (_) {
@@ -173,6 +183,8 @@
       await edgeRequest(cfg.TEAM_PROFILES_API, 'save-details', {
         profile_id: userId, preferred_name: name, phone, phone_visibility: 'managers_only'
       });
+      done.name = true;
+      done.phone = true;
       showStep('photo');
       say('Add a profile photo to continue.');
     } catch (error) {
@@ -239,6 +251,7 @@
       await edgeRequest(cfg.TEAM_PROFILE_PHOTOS_API, 'upload', form);
       // Only mark the step complete once the server confirmed the upload.
       photoUploaded = true;
+      done.photo = true;
       const preview = el('photo-preview');
       if (preview) { preview.classList.add('has-profile-photo'); preview.innerHTML = `<img src="${prepared.preview}" alt="Your profile photo">`; }
       el('photo-continue').disabled = false;
@@ -260,6 +273,10 @@
   // ---- step 4: authenticator, then complete ----
   let mfaController = null;
   async function completeOnboarding() {
+    if (!canCompleteOnboarding(done)) {
+      say('Finish every step — name, phone, photo and authenticator — before completing your account.', 'error');
+      return;
+    }
     say('Finishing your account…');
     try {
       await edgeRequest(cfg.TEAM_PROFILES_API, 'complete-onboarding', {});
@@ -279,7 +296,7 @@
     mfaMounted = true;
     mfaController = await window.AtlasMfaEnroll.mount(el('mfa-host'), {
       client,
-      onVerified: () => { completeOnboarding(); }
+      onVerified: () => { done.mfa = true; completeOnboarding(); }
     });
   }
 })();

@@ -138,4 +138,49 @@ grant execute on function public.atlas_team_profile_onboarding_ready(uuid) to se
 comment on function public.atlas_team_profile_onboarding_ready(uuid) is
   'Service-role-only onboarding readiness check: whether an invitee has a stored phone and profile photo. Used by atlas-team-profiles complete-onboarding.';
 
+-- S99: authoritative rollout-policy read for the client entry gate. Returns the
+-- two policy flags and, crucially, `must_enroll` COMPUTED for the calling user:
+-- true only when the caller has NO verified factor AND the policy requires 2FA
+-- for them (require_all_staff_mfa for everyone, or require_privileged_mfa for an
+-- admin/manager). With both flags off this is false for everyone, so the client
+-- gate never forces enrolment on existing factor-less staff — the release stays
+-- non-breaking. This is a read of policy + the caller's own factor/role only; it
+-- exposes no one else's data.
+create or replace function public.atlas_auth_policy()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  priv boolean;
+  allstaff boolean;
+  caller_role text;
+  enrolled boolean;
+begin
+  select coalesce(policy.require_privileged_mfa, false), coalesce(policy.require_all_staff_mfa, false)
+    into priv, allstaff
+  from private.auth_policy as policy where policy.id;
+  priv := coalesce(priv, false);
+  allstaff := coalesce(allstaff, false);
+  select profile.role::text into caller_role
+  from public.profiles as profile where profile.id = (select auth.uid());
+  select exists (
+    select 1 from auth.mfa_factors as factor
+    where factor.user_id = (select auth.uid()) and factor.status::text = 'verified'
+  ) into enrolled;
+  return jsonb_build_object(
+    'require_privileged_mfa', priv,
+    'require_all_staff_mfa', allstaff,
+    'must_enroll', (not coalesce(enrolled, false))
+      and (allstaff or (coalesce(caller_role, '') in ('admin', 'manager') and priv))
+  );
+end;
+$$;
+revoke all on function public.atlas_auth_policy() from public, anon;
+grant execute on function public.atlas_auth_policy() to authenticated;
+comment on function public.atlas_auth_policy() is
+  'Rollout-policy read for the client MFA entry gate: the two auth_policy flags plus must_enroll computed for the caller (no verified factor AND policy requires 2FA for their role). Non-breaking: false for everyone until the owner flips a flag.';
+
 notify pgrst, 'reload schema';

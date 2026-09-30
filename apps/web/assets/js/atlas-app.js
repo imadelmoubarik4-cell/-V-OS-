@@ -487,20 +487,53 @@
   }
   window.atlasEnsureAssurance = ensureAssurance;
 
-  // S99: two-factor is required for EVERYONE to enter Atlas. After the password
-  // sign-in, an account with no verified authenticator is routed to enrolment
-  // (AtlasMfaEnroll, mounted inline on the sign-in screen) and cannot continue
-  // until a factor is verified; an account that already has a factor uses the
-  // existing aal1→aal2 challenge (ensureAssurance). This is the client-side half
-  // of enforcement — the database flag (private.auth_policy.require_all_staff_mfa)
-  // stays off until rollout, so a transient MFA-API error never locks anyone out
-  // (it fails open here and only logs).
-  // Returns: 'ok' to enter, 'enroll'/'blocked' when this took over the screen.
+  // S99 two-factor ENTRY gate. Two independent things are enforced here and must
+  // not be confused:
+  //   * A person who ALREADY has a verified authenticator must step up to aal2
+  //     every sign-in (challenge) — if you have 2FA, you use it. This is
+  //     unconditional and was already true under S96.
+  //   * A person with NO factor is sent to enrolment ONLY when the rollout
+  //     policy requires it FOR THEM (`must_enroll`, computed server-side by the
+  //     atlas_auth_policy RPC from the auth_policy flags + their role + whether
+  //     they have a factor). With the flags off, `must_enroll` is false, so
+  //     existing factor-less staff simply enter — the RELEASE is non-breaking,
+  //     and enrolment for existing staff turns on only when the owner flips the
+  //     policy during rollout. New invitees enrol in the invite wizard, not here.
+  // A transient MFA-API or policy read error fails open (logs, lets the person
+  // in) so a fault never locks anyone out.
+  function mfaEntryDecision(state) {
+    if (state && state.hasVerifiedFactor) return state.aal === 'aal2' ? 'allow' : 'challenge';
+    return state && state.mustEnroll ? 'enroll' : 'allow';
+  }
+  window.atlasMfaEntryDecision = mfaEntryDecision;
+
+  // What mountLoginEnrollment does given whether the enrolment UI is present.
+  // Pure and unit-tested so the "missing UI" path can never loop back through
+  // the gate: 'mount' shows the enrol UI, 'enter' fails open into the app.
+  function enrollmentPlan(hasUi) { return hasUi ? 'mount' : 'enter'; }
+  window.atlasEnrollmentPlan = enrollmentPlan;
+
+  // Whether THIS session must enrol now, per the rollout policy. Fails safe to
+  // false so a read error never forces enrolment or a lock-out.
+  async function fetchMustEnroll() {
+    try {
+      const { data, error } = await sb.rpc('atlas_auth_policy');
+      if (error) return false;
+      return data?.must_enroll === true;
+    } catch (_) { return false; }
+  }
+
+  // Returns 'ok' to enter, or 'enroll'/'blocked' when it took over the screen.
   async function enforceEntryMfa(session) {
     try {
       const listed = await sb.auth.mfa.listFactors();
-      const factor = (listed?.data?.totp || []).find((candidate) => candidate.status === 'verified');
-      if (factor) {
+      const hasVerifiedFactor = (listed?.data?.totp || []).some((candidate) => candidate.status === 'verified');
+      let aal = 'aal1';
+      try { aal = (await sb.auth.mfa.getAuthenticatorAssuranceLevel())?.data?.currentLevel || 'aal1'; } catch (_) { /* default aal1 */ }
+      const mustEnroll = hasVerifiedFactor ? false : await fetchMustEnroll();
+      const decision = mfaEntryDecision({ hasVerifiedFactor, aal, mustEnroll });
+      if (decision === 'allow') return 'ok';
+      if (decision === 'challenge') {
         const outcome = await ensureAssurance(sb);
         if (outcome === 'verified' || outcome === 'not_required' || outcome === 'unavailable') return 'ok';
         // The person has a factor but did not confirm the code: require it.
@@ -511,14 +544,16 @@
         appScreen.style.display = 'none';
         return 'blocked';
       }
-      mountLoginEnrollment(session);
-      return 'enroll';
+      return mountLoginEnrollment(session); // 'enroll', or 'ok' if it failed open
     } catch (error) {
       console.warn('MFA entry check failed; continuing without step-up', error?.message || error);
       return 'ok';
     }
   }
 
+  // Returns 'enroll' when it took over the screen with the enrol UI, or 'ok'
+  // when the UI was unavailable and it entered the app directly. It NEVER calls
+  // back into onSignedIn/the gate, so a missing UI cannot cause a retry loop.
   function mountLoginEnrollment(session) {
     loginScreen.style.display = '';
     appScreen.style.display = 'none';
@@ -527,11 +562,12 @@
     showLoginError('');
     const host = document.getElementById('login-mfa');
     const mountPoint = document.getElementById('login-mfa-host');
-    if (!host || !mountPoint || !window.AtlasMfaEnroll) {
-      // No enrolment UI available: fail open rather than trap the person.
+    if (enrollmentPlan(Boolean(host && mountPoint && window.AtlasMfaEnroll)) === 'enter') {
+      // No enrolment UI available: enter the app directly rather than trap the
+      // person or loop them back through the gate.
       console.warn('Two-factor enrolment UI is unavailable; continuing.');
-      onSignedIn(session).catch((error) => console.error(error));
-      return;
+      enterApp(session).catch((error) => console.error(error));
+      return 'ok';
     }
     loginForm.hidden = true;
     host.hidden = false;
@@ -541,9 +577,10 @@
         host.hidden = true;
         loginForm.hidden = false;
         const fresh = (await sb.auth.getSession()).data?.session || session;
-        await onSignedIn(fresh);
+        await enterApp(fresh);
       }
     });
+    return 'enroll';
   }
 
   async function onSignedIn(session) {
@@ -552,6 +589,10 @@
       if (gate === 'enroll' || gate === 'blocked') return;
       session = (await sb.auth.getSession()).data?.session || session;
     }
+    await enterApp(session);
+  }
+
+  async function enterApp(session) {
     currentUser = session.user;
     try { sessionStorage.removeItem(SESSION_ENDED_KEY); sessionStorage.removeItem(SESSION_ENDED_AT_KEY); } catch (_) { /* storage unavailable */ }
     const profile = await loadActiveProfile(session);

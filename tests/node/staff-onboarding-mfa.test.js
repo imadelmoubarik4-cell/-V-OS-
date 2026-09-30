@@ -121,10 +121,13 @@ test('the photo function accepts an inactive onboarding self-upload only', () =>
   assert.match(PHOTO_FN, /context\.profile\.active === true && MANAGER_ROLES\.has/);
 });
 
-test('the login gate blocks entry without a verified authenticator', () => {
+test('the login gate routes to enrolment only when the rollout policy requires it', () => {
   assert.match(APP_JS, /function enforceEntryMfa/);
   assert.match(APP_JS, /mountLoginEnrollment/);
-  // No verified factor => route to enrolment (does not enter the app).
+  // Enrolment is gated on the server-computed policy (must_enroll), not forced
+  // unconditionally — that is what keeps the release non-breaking for existing
+  // factor-less staff. (Behavioural cases live in mfa-entry-gate.test.js.)
+  assert.match(APP_JS, /fetchMustEnroll\(\)/);
   assert.match(APP_JS, /return 'enroll';/);
   assert.match(APP_JS, /if \(gate === 'enroll' \|\| gate === 'blocked'\) return;/);
 });
