@@ -95,9 +95,10 @@
   --video-y: 50%;
   --copy-offset: 76px;
 
-  /* [ASSET: ROBOT] The existing AI robot from the app (apps/web/assets/atlas-bot/atlas-bot.png):
-     640×160 sprite, frames open · blink · sleep · happy. It still carries the Atlas mark. */
-  --robot-sprite: url("assets/ai-robot.png");
+  /* [ASSET: ROBOT] The app's AI robot re-rendered from its own 3D scene with the Alcedo symbol in
+     place of the Atlas mark (forehead and chest decals only): 640×160 sprite, frames
+     open · blink · sleep · happy, identical framing to apps/web/assets/atlas-bot/atlas-bot.png. */
+  --robot-sprite: url("assets/ai-robot-alcedo.png");
 }
 
 /* =====================================================================
@@ -170,11 +171,10 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
    ===================================================================== */
 .site-header { position: absolute; top: 0; left: 0; right: 0; z-index: 20; padding: 0 var(--gutter); }
 .site-header__inner { height: var(--header-h); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; max-width: 1480px; margin: 0 auto; }
-/* [ASSET: LOGO] The kit symbol is shown uncropped in geometry; the wrapper only trims the SVG's
-   empty margins. Symbol box inside the 512-unit viewBox: x 35–478, y 95–366 (443 × 271). */
-.brand { --sym-h: 36px; display: inline-flex; align-items: center; justify-self: start; padding: 8px; margin-left: -8px; border-radius: 10px; text-decoration: none; }
-.brand__crop { position: relative; width: calc(var(--sym-h) * 443 / 271); height: var(--sym-h); overflow: hidden; }
-.brand__crop img { position: absolute; max-width: none; width: calc(var(--sym-h) * 512 / 271); height: auto; left: calc(var(--sym-h) * -35 / 271); top: calc(var(--sym-h) * -95 / 271); }
+/* [ASSET: LOGO] Horizontal lockup (1353 × 425 units, clear space built in: 70 units on every side).
+   At 58 px tall the lockup art is ~39 px high and the image ~185 px wide (kit minimum 180 px). */
+.brand { display: inline-flex; align-items: center; justify-self: start; margin-left: calc(58px * -70 / 425); border-radius: 10px; text-decoration: none; }
+.brand__logo { height: 58px; width: auto; max-width: none; }
 .primary-nav ul { display: flex; gap: clamp(18px, 2.4vw, 34px); list-style: none; padding: 0; }
 .primary-nav a, .header-login {
   font-size: 14px; font-weight: 500; text-decoration: none; color: var(--ink); padding: 8px 2px;
@@ -320,6 +320,10 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .section-title { margin-top: 18px; font-family: var(--font-serif); font-weight: 400; font-size: clamp(40px, 5vw, 70px); line-height: 1; letter-spacing: -.015em; text-wrap: balance; }
 .section-title em { font-style: italic; color: var(--brand-teal); }
 .intro__text { font-size: 17px; line-height: 1.7; color: var(--ink-3); max-width: 50ch; }
+.legend { margin: 18px 0 0; display: grid; gap: 8px; }
+.legend div { display: grid; grid-template-columns: 128px 1fr; gap: 12px; align-items: baseline; }
+.legend dd { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-3); }
+@media (max-width: 480px) { .legend div { grid-template-columns: 1fr; gap: 2px; } }
 .brand-note { margin-top: 16px; font-size: 14px; color: var(--ink-3); max-width: 52ch; padding-left: 14px; border-left: 2px solid var(--orange); }
 
 .bento { display: grid; gap: 16px; grid-template-columns: 1.35fr 1fr 1fr; grid-template-rows: minmax(300px, auto) minmax(260px, auto); list-style: none; padding: 0; margin: 0; }
@@ -512,9 +516,10 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 <header class="site-header" id="site-header">
   <div class="site-header__inner">
     <a class="brand rv" style="--d:0" href="#top" aria-label="Alcedo — back to top">
-      <!-- [ASSET: LOGO] ALCEDO Logo Kit v1.0 symbol-color.svg (byte-identical). The kit has no
-           horizontal lockup and recommends the symbol alone below 180 px, so the header uses the symbol. -->
-      <span class="brand__crop"><img src="assets/brand/symbol-color.svg" width="512" height="512" alt="Alcedo"></span>
+      <!-- [ASSET: LOGO] Horizontal lockup composed from the ALCEDO Logo Kit v1.0 symbol and outlined
+           wordmark (geometry unchanged; pending brand approval). Dark-surface version:
+           assets/brand/alcedo-horizontal-dark.svg -->
+      <img class="brand__logo" src="assets/brand/alcedo-horizontal-light.svg" width="1353" height="425" alt="Alcedo">
     </a>
     <nav class="primary-nav rv" style="--d:1" aria-label="Primary">
       <ul>
@@ -525,7 +530,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
       </ul>
     </nav>
     <div class="header-actions rv" style="--d:2">
-      <a class="header-login" href="#staff-login" data-dest="staffLogin">Staff login</a>
+      <a class="header-login" href="https://os-vabar.netlify.app">Staff login</a>
       <a class="btn btn--dark btn--sm header-demo" href="#request-demo" data-dest="requestDemo">Request a demo</a>
       <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu"><span class="menu-toggle__bars" aria-hidden="true"></span>Menu</button>
     </div>
@@ -537,7 +542,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <li><a href="#alcedo-ai">Alcedo AI</a></li>
         <li><a href="#food-intelligence">Food Intelligence</a></li>
         <li><a href="#training">Training</a></li>
-        <li><a href="#staff-login" data-dest="staffLogin">Staff login</a></li>
+        <li><a href="https://os-vabar.netlify.app">Staff login</a></li>
         <li class="mobile-menu__cta"><a href="#request-demo" data-dest="requestDemo">Request a demo</a></li>
       </ul>
     </nav>
@@ -586,7 +591,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h2 class="hcard__title"><a href="#alcedo-ai">Alcedo AI</a></h2>
           <p class="hcard__text">Meet your team’s assistant.</p>
         </div>
-        <p class="status">Available in the current app</p>
+        <p class="status">Implemented</p>
         <span class="robot" aria-hidden="true"></span>
       </li>
       <li class="hcard rv on-dark" style="--d:7">
@@ -632,6 +637,12 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <div class="reveal-up" style="--i:1">
           <p class="intro__text">Explore how Alcedo connects restaurant workflows, knowledge, and assistance. Discover the platform and see which capabilities are available today.</p>
           <p class="brand-note">Alcedo is the new brand direction for Atlas. Screenshots on this page show the current application, which still carries the Atlas name.</p>
+          <!-- [STATUS] legend -->
+          <dl class="legend" aria-label="Status labels">
+            <div><dt><span class="status">Implemented</span></dt><dd>Built in the current application and checked against its code. Production rollout is not confirmed on this page.</dd></div>
+            <div><dt><span class="status status--preview">Preview</span></dt><dd>Built; release awaiting approval.</dd></div>
+            <div><dt><span class="status status--soon">Coming soon</span></dt><dd>Built; not yet deployed.</dd></div>
+          </dl>
         </div>
       </div>
 
@@ -649,7 +660,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
             <li><b>Shifts</b><span>Plan and publish schedules; staff confirm shifts and request time off.</span></li>
             <li><b>Reports</b><span>Stock, purchasing, recipes, waste and labour. Sales data is not connected.</span></li>
           </ul>
-          <p class="status">Available in the current app</p>
+          <p class="status">Implemented</p>
           <p class="note">Purchasing and Reports are for managers and administrators.</p>
           <div class="bento__art" aria-hidden="true">
             <svg viewBox="0 0 360 150">
@@ -676,7 +687,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="bento__title">Alcedo AI</h3>
           <p class="bento__text">Ask by text or voice, or add a photo or document. It answers from your venue’s records and prepares drafts — orders, counts, recipes — for a person to approve.</p>
           <ul class="chips" aria-label="Ways to ask"><li>Text</li><li>Voice</li><li>Photos &amp; files</li></ul>
-          <p class="status">Available in the current app</p>
+          <p class="status">Implemented</p>
           <div class="bento__art">
             <!-- [ASSET: ROBOT] the existing AI robot from the application -->
             <span class="robot" role="img" aria-label="The AI assistant robot"></span>
@@ -717,7 +728,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
             <p class="bento__text"><strong>Alcedo Training:</strong> managers publish short video lessons with steps, aimed at the right roles; staff watch, resume and mark lessons complete. <strong>Knowledge:</strong> a searchable library with required reading.</p>
             <div class="status-stack">
               <p class="status status--soon">Alcedo Training — coming soon</p>
-              <p class="status">Knowledge library — available in the current app</p>
+              <p class="status">Knowledge library — implemented</p>
             </div>
           </div>
           <div class="bento__art" aria-hidden="true">
@@ -755,7 +766,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Inventory</h3>
           <p class="tour__text">Know what is on hand before service.</p>
           <ul class="tour__list"><li>Items by location, category and supplier</li><li>Stock taken from the last verified count plus recorded movements</li><li>Par levels flag what is low or out</li></ul>
-          <p class="status">Available in the current app</p>
+          <p class="status">Implemented</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/inventory.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Inventory table in the current application with eight sample bar items, their par levels and stock status.">
@@ -768,7 +779,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Purchasing</h3>
           <p class="tour__text">Orders that a person approves.</p>
           <ul class="tour__list"><li>Suggested orders from items below par</li><li>Approve, mark as ordered and receive deliveries</li><li>Nothing is sent to a supplier automatically</li></ul>
-          <p class="status">Available · managers and administrators</p>
+          <p class="status">Implemented · managers and administrators</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/purchasing.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Purchasing view with a suggested order and two sample orders, one waiting for approval.">
@@ -781,7 +792,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Recipes</h3>
           <p class="tour__text">See what you can make tonight.</p>
           <ul class="tour__list"><li>Recipe library by category</li><li>Availability worked out from verified stock</li><li>Costs visible to managers only</li></ul>
-          <p class="status">Available in the current app</p>
+          <p class="status">Implemented</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/recipes.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Recipe cards for four sample drinks, showing which can be served from current stock.">
@@ -794,7 +805,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Stock count</h3>
           <p class="tour__text">Count on a phone, one item at a time.</p>
           <ul class="tour__list"><li>Guided counts by area</li><li>Quick part-bottle entries</li><li>Stock changes only after a manager verifies the count</li></ul>
-          <p class="status">Available in the current app</p>
+          <p class="status">Implemented</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/stock-count.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="A stock count in progress for a sample back bar, counting one item at a time.">
@@ -807,7 +818,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Shifts</h3>
           <p class="tour__text">A schedule everyone can see.</p>
           <ul class="tour__list"><li>Week and month planning, published when ready</li><li>Staff confirm shifts, share availability and request time off</li><li>Changes after publishing are highlighted</li></ul>
-          <p class="status">Available in the current app</p>
+          <p class="status">Implemented</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/shifts.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Weekly shift schedule with four fictional team members.">
@@ -820,7 +831,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Reports</h3>
           <p class="tour__text">A clear view of stock and spend.</p>
           <ul class="tour__list"><li>Overview, stock, purchasing, recipes, waste and labour</li><li>Items that need attention</li><li>Sales are not connected (no point-of-sale link)</li></ul>
-          <p class="status">Available · managers and administrators</p>
+          <p class="status">Implemented · managers and administrators</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/reports.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Reports overview with sample purchasing spend, recipe margin and items needing attention.">
@@ -833,7 +844,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Alcedo AI</h3>
           <p class="tour__text">Ask, check, then approve.</p>
           <ul class="tour__list"><li>Text, voice, photos and documents</li><li>Answers show the records they are based on</li><li>Prepares drafts; a person approves every change</li></ul>
-          <p class="status">Available in the current app</p>
+          <p class="status">Implemented</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/ai.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Scripted sample conversation in which the assistant checks Campari stock and prepares a draft order for approval.">
@@ -884,7 +895,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           </ol>
           <div class="route__actions">
             <a class="btn btn--line" href="#training">Explore training</a>
-            <a class="btn btn--dark" href="#staff-login" data-dest="staffLogin">Staff login</a>
+            <a class="btn btn--dark" href="https://os-vabar.netlify.app">Staff login</a>
           </div>
           <p class="note">Schedules, messages, training progress and manuals stay inside the signed-in application — never on this public site.</p>
         </article>
@@ -892,7 +903,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <p class="route__for mono">For restaurant owners</p>
           <h3 class="route__title">See what Alcedo could run for you.</h3>
           <ol class="route__steps">
-            <li>Explore the modules and what is available today.</li>
+            <li>Explore the modules and the status of each.</li>
             <li>Request a demonstration with your team’s questions.</li>
           </ol>
           <div class="route__actions">
@@ -915,15 +926,18 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         </div>
         <a class="btn btn--orange" href="#request-demo" data-dest="requestDemo">Request a demo <svg class="btn__arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
-      <!-- Shown while DESTINATIONS are empty. No form: nothing is collected, sent or stored. -->
+      <!-- [DESTINATION] Staff login goes to the existing application (href set directly in the HTML so it
+           works without JavaScript; search for "https://os-vabar.netlify.app" to change it). Demo/contact and privacy stay
+           labelled prototype destinations until DESTINATIONS is filled. No form: nothing is sent or stored. -->
       <div class="destinations">
         <div class="dest reveal-up" id="staff-login" tabindex="-1" style="--i:0">
-          <p class="mono">Prototype information</p>
+          <p class="mono">Staff access</p>
           <h3 class="dest__title">Staff login</h3>
-          <p class="dest__text">Staff sign in to the existing application; this website does not handle accounts or passwords. The login link will be added here once the destination is confirmed.</p>
+          <p class="dest__text">Staff sign in to the existing application, which still shows the Atlas name. This website does not handle accounts or passwords.</p>
+          <a class="dest__link" href="https://os-vabar.netlify.app">Open the staff sign-in <span aria-hidden="true">→</span></a>
         </div>
         <div class="dest reveal-up" id="request-demo" tabindex="-1" style="--i:1">
-          <p class="mono">Prototype information</p>
+          <p class="mono">Prototype destination</p>
           <h3 class="dest__title">Request a demo</h3>
           <p class="dest__text">Demo requests are not open yet. A contact route will be added once approved. Nothing is sent or stored from this prototype.</p>
         </div>
@@ -953,14 +967,14 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
       <nav aria-label="Access and contact">
         <p class="footer__heading mono">Access &amp; contact</p>
         <ul class="footer__links">
-          <li><a href="#staff-login" data-dest="staffLogin">Staff login <small>Destination to be confirmed</small></a></li>
-          <li><a href="#request-demo" data-dest="requestDemo">Request a demo <small>Contact route to be confirmed</small></a></li>
+          <li><a href="https://os-vabar.netlify.app">Staff login <small>os-vabar.netlify.app · current application</small></a></li>
+          <li><a href="#request-demo" data-dest="requestDemo">Request a demo <small>Prototype destination · contact details to be supplied</small></a></li>
         </ul>
       </nav>
       <div id="privacy" tabindex="-1">
         <p class="footer__heading mono">Privacy</p>
         <ul class="footer__links">
-          <li><a href="#privacy" data-dest="privacy">Privacy information <small>Placeholder — to be supplied before publication</small></a></li>
+          <li><a href="#privacy" data-dest="privacy">Privacy information <small>Prototype destination · notice to be supplied before publication</small></a></li>
         </ul>
       </div>
     </div>
@@ -985,9 +999,9 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   const FALLBACK_MS = 9000;      // hard timeout: content always appears within 9 s
   const BG_SAMPLE = { x: 0.94, y: 0.12 };
   const GHOST_FACTOR = 0.955;
-  // Real destinations. Leave '' to keep the labelled prototype information on this page.
+  // Destinations still to be supplied. Leave '' to keep the labelled prototype destination on this page.
+  // (Staff login is a plain link to the existing application; see the [DESTINATION] comment in the HTML.)
   const DESTINATIONS = {
-    staffLogin: '',    // e.g. the existing application's sign-in URL
     requestDemo: '',   // e.g. 'mailto:…' or a contact page, once approved
     privacy: ''        // privacy notice URL
   };
