@@ -1,4 +1,4 @@
-// Atlas shell chrome (spec §4): sidebar and rail, top bar, phone tab bar and
+// Alcedo shell chrome (spec §4): sidebar and rail, top bar, phone tab bar and
 // More sheet, account menu, notifications panel, offline bar and the page
 // title. It renders on AtlasShell (navigation model, routes, notify feed,
 // toast) and owns no data: destinations and roles come from AtlasShell.nav,
@@ -41,7 +41,7 @@
   // Inline Lucide SVG from the pinned library (no document-wide createIcons
   // pass for every panel render).
   function icon(name, { size = 16, stroke = 1.75, className = '' } = {}) {
-    // 'atlas-bot' is the Atlas AI robot (atlas-bot.js), a touch larger than a
+    // 'atlas-bot' is the Alcedo AI robot (atlas-bot.js), a touch larger than a
     // stroke icon so its face reads.
     if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: size + 4, className });
     const pascal = String(name || '').split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('');
@@ -156,17 +156,17 @@
       else link.removeAttribute('aria-current');
     });
     const view = shell.view(shell.current());
-    const label = item?.label || view?.title || 'Atlas';
+    const label = item?.label || view?.title || 'Alcedo';
     const title = $('atlas-page-title');
     const text = state.topbar.title || label;
     if (title && !document.body.classList.contains('stock-count-active')) title.textContent = text;
-    document.title = text === 'Home' ? 'Atlas' : `${text} · Atlas`;
+    document.title = text === 'Home' ? 'Alcedo' : `${text} · Alcedo`;
   }
 
   // ---------- page-owned phone top bar (spec §4.4) ----------
   // A page sets it from its onShow hook; every navigation resets it.
   //   setTopBar({ title, back: '#route' | fn, actions: [{ icon, label, run }], own: true })
-  // `own` hides the global search and bell (Atlas AI conversations).
+  // `own` hides the global search and bell (Alcedo AI conversations).
   function renderTopBar() {
     const back = $('atlas-topbar-back');
     if (back) back.hidden = !state.topbar.back;
@@ -484,8 +484,8 @@
         <section class="atlas-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="atlas-shortcuts-title">
           <header class="atlas-dialog-panel__head"><h2 id="atlas-shortcuts-title">Keyboard shortcuts</h2><button type="button" class="atlas-icon-btn" data-atlas-close aria-label="Close">${icon('x', { size: 18 })}</button></header>
           <div class="atlas-shortcuts">
-            ${row([mod, 'K'], 'Search or ask Atlas')}${row(['/'], 'Search (when not typing)')}${row(['↑', '↓'], 'Move in lists and menus')}
-            ${row(['↵'], 'Open the selected result')}${row([mod, '↵'], 'Ask Atlas with what you typed')}${row(['Esc'], 'Close a panel or dialog')}
+            ${row([mod, 'K'], 'Search or ask Alcedo')}${row(['/'], 'Search (when not typing)')}${row(['↑', '↓'], 'Move in lists and menus')}
+            ${row(['↵'], 'Open the selected result')}${row([mod, '↵'], 'Ask Alcedo with what you typed')}${row(['Esc'], 'Close a panel or dialog')}
           </div>
         </section>`;
       document.body.appendChild(layer);
@@ -749,7 +749,7 @@
 
   // ---------- venue name (brand line, sign-in) ----------
   // Read from Settings › Venue (business name and city). Never invented: with
-  // no venue on record the brand shows "Atlas" alone. The last value read is
+  // no venue on record the brand shows "Alcedo" alone. The last value read is
   // remembered on this device for the sign-in screen.
   const VENUE_KEY = 'atlas.venue.v1';
   let venueRequested = false;
@@ -770,7 +770,7 @@
     const line = $('atlas-brand-venue');
     if (line) { line.textContent = venue ? venue.line : ''; line.hidden = !venue; }
     const link = document.querySelector('.atlas-brand__link');
-    if (link) link.setAttribute('aria-label', venue ? `Atlas, ${venue.line} — Home` : 'Atlas — Home');
+    if (link) link.setAttribute('aria-label', venue ? `Alcedo, ${venue.line} — Home` : 'Alcedo — Home');
     document.querySelectorAll('[data-atlas-venue-line]').forEach((node) => { node.textContent = venue ? venue.line : ''; node.hidden = !venue; });
     const sub = $('login-sub');
     if (sub) sub.textContent = venue ? `Sign in to ${venue.name}.` : 'Sign in to continue.';
@@ -801,7 +801,7 @@
       const payload = response.ok ? await response.json().catch(() => ({})) : {};
       setVenue(venueFromWorkspace(payload.workspace));
     } catch (error) {
-      console.warn('Venue name unavailable; the brand shows Atlas only.', error?.message || error);
+      console.warn('Venue name unavailable; the brand shows Alcedo only.', error?.message || error);
       setVenue(null);
     }
   }
@@ -856,7 +856,7 @@
   function init() {
     document.querySelectorAll('[data-shortcut-hint]').forEach((hint) => { hint.textContent = IS_MAC ? '⌘K' : 'Ctrl K'; });
     const omni = $('atlas-omni');
-    if (omni) omni.setAttribute('aria-label', `Search or ask Atlas (${IS_MAC ? 'Command' : 'Control'} K)`);
+    if (omni) omni.setAttribute('aria-label', `Search or ask Alcedo (${IS_MAC ? 'Command' : 'Control'} K)`);
     shell.notify.setPanel(notifyPanel);
     document.addEventListener('click', onDocumentClick);
     document.addEventListener('keydown', onKeydown);
@@ -911,7 +911,7 @@
     closeMore,
     openAccountMenu,
     closeAccountMenu,
-    // Flows that own the bottom edge (Atlas AI conversation, stock count,
+    // Flows that own the bottom edge (Alcedo AI conversation, stock count,
     // full-screen sheets) hide the phone tab bar while they are open.
     setTabBarHidden(reason, hidden) {
       const reasons = new Set((document.body.dataset.atlasTabbarHidden || '').split(' ').filter(Boolean));

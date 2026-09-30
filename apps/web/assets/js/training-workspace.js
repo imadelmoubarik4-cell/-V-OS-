@@ -250,7 +250,7 @@
 
   async function api(action, options = {}) {
     const endpoint = String(cfg.TRAINING_API || '').trim();
-    if (!endpoint) throw new TrainingError('Training is not set up for this Atlas yet.', 0);
+    if (!endpoint) throw new TrainingError('Training is not set up for this Alcedo yet.', 0);
     const token = await accessToken();
     const url = new URL(endpoint);
     url.searchParams.set('action', action);

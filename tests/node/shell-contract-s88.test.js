@@ -648,7 +648,7 @@ test('canonical actions have one permission check and one implementation', async
   assert.deepEqual({ ...(await shell.actions.run('purchasing.order.new')) }, { ok: false, reason: 'forbidden' });
   assert.deepEqual({ ...(await shell.actions.run('purchasing.order.new', { role: 'admin' })) }, { ok: true, result: 3 }, 'run returns the implementation result (Array#push length here)');
   assert.deepEqual(runs.map((entry) => entry[0]), ['count', 'order-denied', 'order']);
-  await assert.rejects(shell.actions.run('does.not.exist'), /Unknown Atlas action/);
+  await assert.rejects(shell.actions.run('does.not.exist'), /Unknown Alcedo action/);
   assert.equal(shell.actions.get('ai.ask').label, 'Ask Atlas');
 });
 

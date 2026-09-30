@@ -3,7 +3,7 @@
 // Commands go through rpc('atlas_purchase_order_command_v2') only; which
 // buttons show comes from rpc('atlas_purchase_order_policy') and the order's
 // own detail (rpc('atlas_purchase_order_detail')). "Mark as ordered" records
-// that the manager ordered it: Atlas never sends anything to a supplier.
+// that the manager ordered it: Alcedo never sends anything to a supplier.
 // Receiving records stock through the same command (one request id per
 // submit, so a retry never receives twice). Photos only propose which lines
 // arrived; a person always confirms the quantities.
@@ -435,7 +435,7 @@
     const active = suppliers().filter((supplier) => supplier.active !== false);
     const overlay = openOverlay(sheetHtml({
       title: editing ? 'Edit order' : 'New order',
-      desc: 'Atlas doesn’t send orders to suppliers. Send it as you usually do, then mark it as ordered.',
+      desc: 'Alcedo doesn’t send orders to suppliers. Send it as you usually do, then mark it as ordered.',
       body: `<form class="atlas-form" id="po-order-form" novalidate><div data-po-alert></div>
         ${active.length ? '' : alertHtml('warning', 'No active suppliers', 'Add a supplier before creating an order.', '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-add-supplier>Add supplier</button>')}
         <div class="atlas-grid-2"><div class="atlas-field"><label for="po-supplier">Supplier</label><select class="atlas-select" id="po-supplier" name="supplier" required><option value="">Choose a supplier</option>${active.map((supplier) => `<option value="${esc(supplier.id)}"${String(supplier.id) === String(inferredSupplier) ? ' selected' : ''}>${esc(supplier.name)}</option>`).join('')}</select></div>
@@ -537,7 +537,7 @@
       title: 'Suggested order',
       desc: 'Items below par, grouped by supplier. Change quantities before creating the orders.',
       body: `<form id="po-suggest-form" class="atlas-form" novalidate>${onOrderNote(suggestionsOnOrder())}${groups.map((group, gIndex) => `<fieldset class="po-group" data-po-group="${gIndex}"${group.supplier ? '' : ' disabled'}><legend class="po-group__title">${esc(group.name)} <span data-po-group-state></span></legend>
-        ${group.supplier ? '' : '<p class="po__muted">These items aren’t linked to a supplier in Atlas yet, so they can’t go on an order. Link a supplier in the item details.</p>'}
+        ${group.supplier ? '' : '<p class="po__muted">These items aren’t linked to a supplier in Alcedo yet, so they can’t go on an order. Link a supplier in the item details.</p>'}
         <div class="atlas-table-wrap"><table class="atlas-table atlas-table--compact"><thead><tr><th class="col-check"><span class="sr-only">Include</span></th><th>Item</th><th class="is-num">On hand</th><th class="is-num">Par</th><th class="is-num">Order</th></tr></thead><tbody>
         ${group.lines.map((line) => `<tr><td class="col-check"><input type="checkbox" class="atlas-check" data-po-include checked aria-label="Include ${esc(line.name)}" value="${esc(line.id)}"></td><td><span class="cell-primary">${esc(line.name)}</span><span class="cell-sub">${line.cases ? `${line.cases} ${line.cases === 1 ? 'case' : 'cases'} · ` : ''}${esc(line.unit)}</span></td><td class="is-num">${qty(line.item?.quantity)}</td><td class="is-num">${qty(line.item?.par_level)}</td><td class="is-num"><input class="atlas-input po-suggest__qty num" type="number" inputmode="decimal" min="0.001" step="any" value="${esc(line.orderQuantity)}" data-po-suggest-qty="${esc(line.id)}" aria-label="Quantity of ${esc(line.name)}"></td></tr>`).join('')}
         </tbody></table></div></fieldset>`).join('')}<div data-po-alert></div></form>`,
@@ -694,7 +694,7 @@
       headExtra: `<div class="po-detail__pills">${statusPill(order)}${needsApproval && order.status === 'draft' ? '<span class="atlas-pill atlas-pill--info">Needs approval</span>' : ''}</div>`,
       body: `${stepperHtml(order)}
         <div data-po-alert></div>
-        ${order.status === 'draft' || order.status === 'approved' ? alertHtml('info', '', 'Atlas doesn’t send orders to suppliers. Send it as you usually do, then mark it as ordered.') : ''}
+        ${order.status === 'draft' || order.status === 'approved' ? alertHtml('info', '', 'Alcedo doesn’t send orders to suppliers. Send it as you usually do, then mark it as ordered.') : ''}
         <dl class="po-detail__facts">
           <div><dt>Total</dt><dd class="num">${money(data.total ?? orderTotal(order))}</dd></div>
           <div><dt>Expected delivery</dt><dd>${order.expected_delivery_date ? esc(dateText(order.expected_delivery_date, { long: true })) : 'Not set'}${canSetDate ? ' <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-po-date>Change</button>' : ''}</dd></div>
@@ -780,7 +780,7 @@
       const action = button.dataset.poCmd;
       let reason = null;
       if (action === 'place') {
-        const ok = await confirmDialog({ title: 'Mark this order as ordered?', body: 'Atlas doesn’t send orders to suppliers. Mark it as ordered once you’ve sent it by phone, email or the supplier’s portal.', confirm: 'Mark as ordered' });
+        const ok = await confirmDialog({ title: 'Mark this order as ordered?', body: 'Alcedo doesn’t send orders to suppliers. Mark it as ordered once you’ve sent it by phone, email or the supplier’s portal.', confirm: 'Mark as ordered' });
         if (!ok) return;
       } else if (action === 'reject') {
         reason = await confirmDialog({ title: 'Send this order back?', body: 'It goes back to draft so it can be changed.', confirm: 'Send back', field: { label: 'Reason', required: true } });
@@ -838,7 +838,7 @@
       title: 'Receive delivery',
       desc: `${esc(supplierName(order))} · check what arrived, then receive it`,
       body: `<div data-po-alert></div>
-        <div class="atlas-upload po-photo"><div class="atlas-upload__thumb">${icon('camera')}</div><div class="atlas-upload__body"><p class="atlas-upload__title">Check with a photo <span class="optional">(optional)</span></p><p class="atlas-upload__help">Atlas matches what it sees to this order. You still confirm every line.</p></div><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-scan>Scan delivery</button></div>
+        <div class="atlas-upload po-photo"><div class="atlas-upload__thumb">${icon('camera')}</div><div class="atlas-upload__body"><p class="atlas-upload__title">Check with a photo <span class="optional">(optional)</span></p><p class="atlas-upload__help">Alcedo matches what it sees to this order. You still confirm every line.</p></div><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-po-scan>Scan delivery</button></div>
         <form id="po-receive-form" class="po-receive">${lines.map((line, index) => `<div class="po-receive__line" data-po-rline="${esc(line.item_id)}">
           <div class="po-receive__head"><p class="po-receive__name">${esc(line.item_name || itemById(line.item_id)?.name || 'Item')}</p><p class="po__muted">Ordered ${qty(line.quantity)} ${esc(line.unit || '')}${num(line.received_quantity) ? ` · ${qty(line.received_quantity)} already received` : ''}</p><span class="po-receive__seen" data-po-seen hidden><span class="atlas-pill atlas-pill--positive">Seen in photo</span></span></div>
           <div class="po-receive__controls"><div class="po-stepper"><button type="button" class="atlas-icon-btn" data-po-step="-1" aria-label="One less">${icon('minus')}</button><label class="sr-only" for="po-rq-${index}">Received quantity</label><input class="atlas-input po-stepper__input num" id="po-rq-${index}" data-po-rqty type="text" inputmode="decimal" value="${esc(qty(line.remaining_quantity ?? line.quantity).replace(/,/g, ''))}"><button type="button" class="atlas-icon-btn" data-po-step="1" aria-label="One more">${icon('plus')}</button></div>
@@ -1069,7 +1069,7 @@
 
   function openSupplierDetail(id) {
     const supplier = supplierById(id);
-    if (!supplier) { if (suppliers().length) { toast('That supplier isn’t in Atlas any more.'); shell.navigate('#purchasing/suppliers'); } return; }
+    if (!supplier) { if (suppliers().length) { toast('That supplier isn’t in Alcedo any more.'); shell.navigate('#purchasing/suppliers'); } return; }
     if (state.supplierSheet) { const previous = state.supplierSheet; state.supplierSheet = null; previous.close('replace'); }
     const { supplierItems, openOrders, spend, lastDelivery } = supplierStats(supplier);
     const orders = state.orders.filter((order) => String(order.supplier_id) === String(supplier.id)).slice(0, 10);

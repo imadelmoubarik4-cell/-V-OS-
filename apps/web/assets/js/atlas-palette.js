@@ -1,15 +1,15 @@
-// Command palette: "Search or ask Atlas" (spec §4.6, §4.7, §8.8).
+// Command palette: "Search or ask Alcedo" (spec §4.6, §4.7, §8.8).
 //
-// One entry point for records, canonical actions, destinations and Atlas AI.
+// One entry point for records, canonical actions, destinations and Alcedo AI.
 // Opens from ⌘K / Ctrl K, "/" (outside a field), the top-bar field, the +
 // button (Actions) and the phone search icon. Records, destinations and
 // instant answers come from AtlasSearch (assets/js/atlas-search.js); actions
-// from AtlasShell.actions.list(ctx); the "Ask Atlas" row routes to
-// #ai/new?q=… for the Atlas AI workspace.
+// from AtlasShell.actions.list(ctx); the "Ask Alcedo" row routes to
+// #ai/new?q=… for the Alcedo AI workspace.
 //
-// Questions go to Atlas AI (Atlas_AI_Architecture.md §15). The deterministic
+// Questions go to Alcedo AI (Atlas_AI_Architecture.md §15). The deterministic
 // instant answers (AtlasSearch.answerFor) are the offline fallback only: they
-// render when Atlas AI is not configured, switched off, unreachable or the
+// render when Alcedo AI is not configured, switched off, unreachable or the
 // device is offline, and are labelled as such. Record search is always on.
 //
 // Public: window.AtlasPalette = { open({ mode, query, trigger }), close(), isOpen(), clearRecent() }.
@@ -137,7 +137,7 @@
 
   function askRow(query) {
     return {
-      id: 'ask', kind: 'ask', icon: 'atlas-bot', label: query ? `Ask Atlas “${query}”` : 'Ask Atlas', query,
+      id: 'ask', kind: 'ask', icon: 'atlas-bot', label: query ? `Ask Alcedo “${query}”` : 'Ask Alcedo', query,
       hint: IS_MAC ? ['⌘', '↵'] : ['Ctrl', '↵'],
       run: () => askAtlas(query)
     };
@@ -145,7 +145,7 @@
 
   function askAtlas(query) {
     const text = normalize(query);
-    // Atlas AI (E6) reads q from #ai/new; the context tag rides along.
+    // Alcedo AI (E6) reads q from #ai/new; the context tag rides along.
     const params = [text ? `q=${encodeURIComponent(text)}` : '', state.context && state.context.id !== 'ai' ? `from=${encodeURIComponent(state.context.id)}` : ''].filter(Boolean).join('&');
     const route = `#ai/new${params ? `?${params}` : ''}`;
     // The send intent rides in memory: the URL alone only prefills (G1).
@@ -182,11 +182,11 @@
       // Every other permitted action, grouped (phone and the + button) or as one list.
       const shown = new Set(top.map((row) => row.id));
       allActionsGrouped().forEach((group) => add(`actions:${group.label}`, state.mode === 'actions' || PHONE.matches ? group.label : 'Actions', group.rows.filter((row) => !shown.has(row.id)), { limit: state.mode === 'actions' ? 99 : MAX_ROWS }));
-      if (state.mode !== 'actions') add('ask', 'Ask Atlas', [askRow('')]);
+      if (state.mode !== 'actions') add('ask', 'Ask Alcedo', [askRow('')]);
       return mergeActionSections(sections);
     }
 
-    // The Ask Atlas row replaces the "search Knowledge for…" fallback here.
+    // The Ask Alcedo row replaces the "search Knowledge for…" fallback here.
     const findRecords = (text) => (search?.records?.(text) || []).filter((result) => result.type !== 'knowledge_search');
     // "count campari": a verb and a record. When the whole query names no
     // record, split it into the record part and the action part.
@@ -226,7 +226,7 @@
       : [];
     const actions = [...recordActions, ...matching.filter((row) => !recordActions.some((other) => other.id.startsWith(`${row.id}:`)))];
     const pages = (search?.destinations?.(query) || []).map(pageRow);
-    const ask = { key: 'ask', label: 'Ask Atlas', rows: [askRow(query)], limit: 1 };
+    const ask = { key: 'ask', label: 'Ask Alcedo', rows: [askRow(query)], limit: 1 };
 
     const question = QUESTION.test(query) || state.intent;
     if (question) sections.push(ask);
@@ -271,7 +271,7 @@
     const hint = row.kind === 'ask' && row.hint ? `<span class="atlas-palette__hint">${row.hint.map((key) => `<kbd class="kbd">${escape(key)}</kbd>`).join('')}</span>`
       : active ? '<span class="atlas-palette__hint"><kbd class="kbd">↵</kbd></span>' : '';
     const label = row.kind === 'ask' && row.query
-      ? `Ask Atlas “<b>${escape(row.query)}</b>”`
+      ? `Ask Alcedo “<b>${escape(row.query)}</b>”`
       : escape(row.label);
     return `<div class="atlas-palette__item atlas-palette__item--${row.kind}${active ? ' is-active' : ''}" id="${optionId(index)}" role="option" aria-selected="${active}" data-palette-index="${index}">
       ${icon(row.icon, { size: 16 })}<span class="atlas-palette__label">${label}</span>${row.meta ? `<span class="atlas-palette__meta">${escape(row.meta)}</span>` : ''}${hint}</div>`;
@@ -281,7 +281,7 @@
     const answer = state.answer;
     if (!answer) return '';
     return `<section class="atlas-palette__answer is-${escape(answer.tone || 'neutral')}" aria-live="polite" data-answer-source="offline">
-      <div class="atlas-palette__answer-label">${icon('sparkles', { size: 14 })}Quick answer · Atlas AI is off</div>
+      <div class="atlas-palette__answer-label">${icon('sparkles', { size: 14 })}Quick answer · Alcedo AI is off</div>
       <p>${escape(answer.text)}</p>
       ${answer.lines?.length ? `<ul>${answer.lines.map((line) => `<li>${escape(line)}</li>`).join('')}</ul>` : ''}
       ${answer.action ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-palette-answer-action>${escape(answer.action.label)}</button>` : ''}
@@ -360,9 +360,9 @@
 
   // ---------- instant answers (AtlasSearch.answerFor) ----------
 
-  // Atlas AI availability for the palette: 'on' when it is enabled and
+  // Alcedo AI availability for the palette: 'on' when it is enabled and
   // configured (atlas-ai?action=settings → configured), otherwise 'off'. The
-  // Atlas AI page's own check wins when it has run; the palette asks once.
+  // Alcedo AI page's own check wins when it has run; the palette asks once.
   function aiAvailability() {
     if (!navigator.onLine) return Promise.resolve('off');
     const known = window.AtlasAI?.state?.()?.configured;
@@ -406,7 +406,7 @@
     state.answerTimer = window.setTimeout(async () => {
       const ai = await aiAvailability();
       if (token !== state.answerToken || !state.open) return;
-      // Atlas AI answers questions: the palette offers "Ask Atlas" (first row)
+      // Alcedo AI answers questions: the palette offers "Ask Alcedo" (first row)
       // and renders no deterministic answer of its own.
       if (ai === 'on') { state.answer = null; state.answerState = 'ai'; render(); return; }
       let answer = null;
@@ -430,13 +430,13 @@
       <section class="atlas-palette" role="dialog" aria-modal="true" aria-label="Search and quick actions">
         <div class="atlas-palette__input">
           ${icon('search', { size: 18 })}
-          <input type="text" id="atlas-palette-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="atlas-palette-list" aria-label="Search or ask Atlas" placeholder="Search or ask Atlas" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" />
+          <input type="text" id="atlas-palette-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="atlas-palette-list" aria-label="Search or ask Alcedo" placeholder="Search or ask Alcedo" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" />
           <span class="atlas-palette__ctx" hidden></span>
           <button type="button" class="atlas-palette__close" data-palette-close>Cancel</button>
         </div>
         <div class="atlas-palette__body" id="atlas-palette-list" role="listbox" aria-label="Results"></div>
         <footer class="atlas-palette__foot" aria-hidden="true">
-          <span><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd>Move</span><span><kbd class="kbd">↵</kbd>Open</span><span><kbd class="kbd">${IS_MAC ? '⌘' : 'Ctrl'}↵</kbd>Ask Atlas</span><span><kbd class="kbd">Tab</kbd>Next section</span><span><kbd class="kbd">esc</kbd>Close</span>
+          <span><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd>Move</span><span><kbd class="kbd">↵</kbd>Open</span><span><kbd class="kbd">${IS_MAC ? '⌘' : 'Ctrl'}↵</kbd>Ask Alcedo</span><span><kbd class="kbd">Tab</kbd>Next section</span><span><kbd class="kbd">esc</kbd>Close</span>
         </footer>
       </section>`;
     document.body.appendChild(layer);
@@ -511,7 +511,7 @@
     const current = shell.nav.forRoute(window.location.hash) || shell.nav.forView(shell.current());
     state.context = current && current.id !== 'settings' ? current : null;
     input.value = query;
-    input.placeholder = mode === 'actions' ? 'Search actions' : 'Search or ask Atlas';
+    input.placeholder = mode === 'actions' ? 'Search actions' : 'Search or ask Alcedo';
     syncContext();
     layer.classList.toggle('is-phone', PHONE.matches);
     layer.hidden = false;

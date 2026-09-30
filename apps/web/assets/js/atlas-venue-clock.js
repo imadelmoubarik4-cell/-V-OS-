@@ -1,4 +1,4 @@
-// Atlas venue clock: the one browser source for operational time.
+// Alcedo venue clock: the one browser source for operational time.
 //
 // Every operational date, time and "is the venue open" answer in the browser
 // comes from here, in the VENUE time zone (Settings -> venue.timezone, served
@@ -383,7 +383,7 @@
   // calendar pickers, screen-reader support); inside the control the device
   // locale decides how the value is shown. The value itself is always ISO
   // ('YYYY-MM-DD', 'HH:MM', 'YYYY-MM-DDTHH:MM' in the venue zone through
-  // localInputValue / fromLocalInput), and every time Atlas renders itself
+  // localInputValue / fromLocalInput), and every time Alcedo renders itself
   // stays 24 h (formatTime, formatDate).
   //
   // Inline validation: when a native field is committed (change) or left
@@ -676,7 +676,7 @@
     const endpoint = String(root.VABAR_CONFIG?.SETTINGS_API || '').trim();
     if (!endpoint || typeof root.fetch !== 'function') return fail('Opening hours are not available in this environment.');
     const token = await sessionToken();
-    if (!token) return fail('Sign in to Atlas to read opening hours.', 'signed_out');
+    if (!token) return fail('Sign in to Alcedo to read opening hours.', 'signed_out');
     const url = new URL(endpoint);
     url.searchParams.set('action', 'venue-clock');
     const controller = typeof AbortController === 'function' ? new AbortController() : null;

@@ -83,7 +83,7 @@ test('composer links server-verified Atlas records; recommendations are manager-
   for (const type of ['inventory_item', 'routine', 'shift', 'brain_recommendation']) assert.match(messages, new RegExp(type));
   assert.match(messages, /api\('targets', \{ params: \{ type: current, q: query \} \}\)/);
   assert.match(messages, /const types = LINK_TYPES\.filter\(\(entry\) => !entry\.managerOnly \|\| state\.staff\?\.can_link_brain_recommendations\);/);
-  assert.match(messages, /Atlas recommendation \\u00b7 managers only|Atlas recommendation · managers only/);
+  assert.match(messages, /Alcedo recommendation \\u00b7 managers only|Alcedo recommendation · managers only/);
   assert.match(messages, /if \(link\.type === 'inventory_item'\) return `#inventory\/item\/\$\{key\}`;/);
   // Brain and Checkpoint A are retired: recommendation links open Atlas AI decisions.
   assert.doesNotMatch(messages, /AtlasCheckpointALayout|AtlasPhase3Brain/);
@@ -161,7 +161,7 @@ test('own and others\' messages both carry name and avatar; previews and read re
   // Avatars: photo, else initials of a real name, else a person icon (never "TM").
   assert.match(messages, /return realName\(identity\.name\) \? escapeHtml\(initials\(identity\.name\)\) : icon\('user'\);/);
   // Channel preview: the same live identity as the thread.
-  assert.match(messages, /const who = last\.message_type === 'system' \? 'Atlas' : senderIdentity\(last\)\.name;/);
+  assert.match(messages, /const who = last\.message_type === 'system' \? 'Alcedo' : senderIdentity\(last\)\.name;/);
   assert.match(messages, /realName\(reader\.user_name\)/);
   // Hydration: photos loaded later swap avatars in place; a failed photo falls back and asks for fresh URLs.
   assert.match(messages, /window\.addEventListener\('atlas:profile-photos-updated', refreshAvatars\);/);

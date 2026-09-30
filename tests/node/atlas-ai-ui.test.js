@@ -63,9 +63,9 @@ test('interface copy avoids engineering words (spec §5.9, §7.2)', () => {
   for (const word of ['agent', 'tool', 'function', 'JSON', 'payload', 'RPC', 'token', 'schema', 'model', 'runtime', 'Unknown', 'Submit']) {
     assert.doesNotMatch(copy, new RegExp(`\\b${word}\\b`, 'i'), `"${word}" in Atlas AI copy`);
   }
-  assert.match(ai, /Atlas AI isn’t switched on yet/);
-  assert.match(ai, /Atlas prepares changes for you to approve\. It never changes stock, orders or shifts on its own\./);
-  assert.match(ai, /Atlas couldn’t finish this answer\. Nothing was changed\./);
+  assert.match(ai, /Alcedo AI isn’t switched on yet/);
+  assert.match(ai, /Alcedo prepares changes for you to approve\. It never changes stock, orders or shifts on its own\./);
+  assert.match(ai, /Alcedo couldn’t finish this answer\. Nothing was changed\./);
   assert.match(ai, /Live voice disconnected\. Your conversation is saved\./);
   assert.match(ai, /No decisions recorded yet/);
 });

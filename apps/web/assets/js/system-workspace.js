@@ -4,7 +4,7 @@
 //
 // Read only. Talks to atlas-system (GET ?action=snapshot) with the signed-in
 // person's session; it never retries jobs, changes incidents or rolls back.
-// Anything Atlas has not verified reads "Not checked yet", never "Healthy".
+// Anything Alcedo has not verified reads "Not checked yet", never "Healthy".
 (function () {
   'use strict';
 
@@ -174,7 +174,7 @@
 
   function servicesMarkup() {
     const services = list('services');
-    if (!services.length) return emptyMarkup('server', 'No service checks recorded yet', 'Atlas shows a service here once a check has run. It never reports a service as healthy without one.');
+    if (!services.length) return emptyMarkup('server', 'No service checks recorded yet', 'Alcedo shows a service here once a check has run. It never reports a service as healthy without one.');
     return `<ul class="atlas-list atlas-card">${services.map((service) => `<li class="atlas-row">
       <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(service.label)}</p>
         <p class="atlas-row__meta">${escapeHtml([humanize(service.category), environmentName(service.environment), `checked ${ago(service.last_checked_at)}`].filter(Boolean).join(' · '))}</p>
@@ -191,8 +191,8 @@
         <p class="atlas-row__meta">${escapeHtml([label(incident.severity), `last seen ${when(incident.last_occurred_at)}`, `${count(incident.occurrence_count)} times`].join(' · '))}</p>
         ${incident.resolution_note ? `<p class="atlas-row__meta">Resolution: ${escapeHtml(incident.resolution_note)}</p>` : ''}</div>
       <div class="atlas-row__end">${pill(incident.status)}</div>
-    </li>`).join('')}</ul>` : emptyMarkup('circle-check', 'No incidents recorded', 'Problems Atlas detects appear here with their impact.');
-    return `${body}<p class="sys-note">${icon('lock')}Incidents are read-only here: Atlas can’t resolve or dismiss them from this page.</p>`;
+    </li>`).join('')}</ul>` : emptyMarkup('circle-check', 'No incidents recorded', 'Problems Alcedo detects appear here with their impact.');
+    return `${body}<p class="sys-note">${icon('lock')}Incidents are read-only here: Alcedo can’t resolve or dismiss them from this page.</p>`;
   }
 
   function sourcesMarkup() {
@@ -203,7 +203,7 @@
       || (state.sourceFilter === 'historical' && source.is_historical)
       || (state.sourceFilter === 'blocked' && ['not_connected', 'blocked', 'stale', 'partial'].includes(source.status)));
     const chips = `<div class="atlas-chips sys-filters" role="group" aria-label="Filter data sources">${filters.map(([key, text]) => `<button type="button" class="atlas-chip" aria-pressed="${state.sourceFilter === key}" data-system-source-filter="${key}">${text}</button>`).join('')}</div>`;
-    if (!sources.length) return emptyMarkup('database', 'No data sources registered yet', 'Pages may still hold data; this list shows only sources Atlas has checked.');
+    if (!sources.length) return emptyMarkup('database', 'No data sources registered yet', 'Pages may still hold data; this list shows only sources Alcedo has checked.');
     return `${chips}<div class="atlas-table-wrap"><table class="atlas-table">
       <thead><tr><th scope="col">Source</th><th scope="col" class="is-num">Records</th><th scope="col">Last update</th><th scope="col">Status</th></tr></thead>
       <tbody>${visible.map((source) => `<tr>
@@ -226,7 +226,7 @@
           ${blockers.length ? `<p class="atlas-row__meta sys-warn">${escapeHtml(`${blockers.length} release ${blockers.length === 1 ? 'blocker' : 'blockers'}: ${blockers.map((blocker) => blocker.label || blocker.key).join(', ')}`)}</p>` : ''}</div>
         <div class="atlas-row__end">${pill(release.status)}</div>
       </li>`;
-    }).join('')}</ul>` : emptyMarkup('git-compare', 'No releases recorded yet', 'Each release Atlas records appears here.');
+    }).join('')}</ul>` : emptyMarkup('git-compare', 'No releases recorded yet', 'Each release Alcedo records appears here.');
     return `${body}<dl class="sys-facts sys-facts--list">
       <div><dt>Automatic copy of test data to the live app</dt><dd>${recovery.production_sync_enabled ? 'On' : 'Off'}</dd></div>
       <div><dt>Automatic retries</dt><dd>${recovery.automatic_retries_enabled ? 'On' : 'Off'}</dd></div>
@@ -241,7 +241,7 @@
         ${job.last_error_message ? `<p class="atlas-row__meta sys-warn">${escapeHtml(job.last_error_message)}</p>` : ''}</div>
       <div class="atlas-row__end">${pill(job.status)}</div>
     </li>`).join('')}</ul>` : emptyMarkup('list-todo', 'No background jobs registered', 'Scheduled work appears here once it exists.');
-    return `${body}<p class="sys-note">${icon('lock')}Retry controls are disabled: failed jobs can’t be retried from Atlas yet.</p>`;
+    return `${body}<p class="sys-note">${icon('lock')}Retry controls are disabled: failed jobs can’t be retried from Alcedo yet.</p>`;
   }
 
   function auditMarkup() {
@@ -259,7 +259,7 @@
           <div><dt>Rollback point</dt><dd>${escapeHtml(recovery.rollback_reference || 'Not recorded')}</dd></div>
           <div><dt>Verified backup</dt><dd>${escapeHtml(label(recovery.backup_status))}</dd></div>
         </dl>
-        <p class="sys-note">${icon('lock')}Rollback unavailable: Atlas shows the recovery points but can’t roll back from here.</p>
+        <p class="sys-note">${icon('lock')}Rollback unavailable: Alcedo shows the recovery points but can’t roll back from here.</p>
       </section>
       <section class="sys-block" aria-labelledby="sys-protection-title">
         <h3 class="sys-block__title" id="sys-protection-title">Protection checks</h3>
@@ -274,7 +274,7 @@
       <section class="sys-block" aria-labelledby="sys-audit-title">
         <h3 class="sys-block__title" id="sys-audit-title">Recent activity</h3>
         ${domains.length > 1 ? `<div class="atlas-chips sys-filters" role="group" aria-label="Filter activity">${domains.map((domain) => `<button type="button" class="atlas-chip" aria-pressed="${state.auditFilter === domain}" data-system-audit-filter="${escapeHtml(domain)}">${escapeHtml(domain === 'all' ? 'All' : humanize(domain))}</button>`).join('')}</div>` : ''}
-        ${visible.length ? `<ul class="atlas-list atlas-card">${visible.slice(0, 60).map((event) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(humanize(event.event_type))}</p><p class="atlas-row__meta">${escapeHtml([humanize(event.domain), event.actor_label ? `by ${event.actor_label}` : 'by Atlas', when(event.created_at)].join(' · '))}</p></div></li>`).join('')}</ul>` : '<p class="sys-muted">No activity recorded for this filter.</p>'}
+        ${visible.length ? `<ul class="atlas-list atlas-card">${visible.slice(0, 60).map((event) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(humanize(event.event_type))}</p><p class="atlas-row__meta">${escapeHtml([humanize(event.domain), event.actor_label ? `by ${event.actor_label}` : 'by Alcedo', when(event.created_at)].join(' · '))}</p></div></li>`).join('')}</ul>` : '<p class="sys-muted">No activity recorded for this filter.</p>'}
       </section>`;
   }
 

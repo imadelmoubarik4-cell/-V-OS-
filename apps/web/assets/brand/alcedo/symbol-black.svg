@@ -20,20 +20,20 @@
        id="g12">
       <path
          d="M 75,310 Q 150,255 220,170 L 270,110 235,25 Z"
-         fill="#ffffff"
+         fill="#000000"
          id="path4" />
       <path
          d="m 395,112 -110,41 q -20,7 -7,27 L 385,310 305,168 Z"
-         fill="#ffffff"
+         fill="#000000"
          id="path6" />
       <path
          d="m 280,120 h 85 l -119,38 z"
-         fill="#ffffff"
+         fill="#000000"
          id="path8" />
       <path
          d="m 0,275 q 60,-43 133,-52 m 74,-4 q 28,-3 56,0 m 47,6 q 79,16 155,50"
          fill="none"
-         stroke="#ffffff"
+         stroke="#000000"
          stroke-width="3"
          id="path10" />
     </g>

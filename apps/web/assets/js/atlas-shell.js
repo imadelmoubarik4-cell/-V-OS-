@@ -1,4 +1,4 @@
-// Atlas shell: the single owner of navigation, view lifecycle, routes, Home
+// Alcedo shell: the single owner of navigation, view lifecycle, routes, Home
 // composition, canonical actions, the notifications feed and runtime loading.
 //
 // Before S88 the shell's globals (setActiveView, loadAll, renderAtlasHome) were
@@ -146,7 +146,7 @@
 
   const ROUTES = {
     home: () => [['dashboard']],
-    // Until the Atlas AI workspace registers 'ai', its predecessor (Brain, which
+    // Until the Alcedo AI workspace registers 'ai', its predecessor (Brain, which
     // holds today's Ask) answers the route so the destination never dead-ends.
     ai: (rest) => [['ai', rest[0] === 'c' ? { conversation: rest[1] || '' } : rest[0] === 'new' ? { new: '1' } : section(rest[0])], ['brain']],
     messages: (rest) => [['team', rest[0] ? { conversation: rest[0] } : {}]],
@@ -217,7 +217,7 @@
     return LEGACY_ROUTE_HEADS.has(routeHead(input));
   }
 
-  // A route Atlas knows: a spec or legacy route, a registered view or a
+  // A route Alcedo knows: a spec or legacy route, a registered view or a
   // navigation destination. Anything else (#bogus) opens the not-found page.
   function isKnownRoute(input) {
     const head = routeHead(input);
@@ -683,7 +683,7 @@
   const ROLES_ADMIN = Object.freeze(['admin']);
   const NAV_ITEMS = Object.freeze([
     { id: 'home', label: 'Home', icon: 'house', route: '#home', view: 'dashboard', views: ['dashboard', 'brain'], aliases: ['dashboard', 'brain'], group: null, roles: ROLES_ALL, keywords: ['today', 'dashboard', 'briefing'] },
-    { id: 'ai', label: 'Atlas AI', icon: 'atlas-bot', route: '#ai', view: 'ai', views: ['ai'], aliases: [], group: null, roles: ROLES_ALL, accent: true, keywords: ['ask', 'assistant', 'decisions'] },
+    { id: 'ai', label: 'Alcedo AI', icon: 'atlas-bot', route: '#ai', view: 'ai', views: ['ai'], aliases: [], group: null, roles: ROLES_ALL, accent: true, keywords: ['ask', 'assistant', 'decisions'] },
     { id: 'messages', label: 'Messages', icon: 'messages-square', route: '#messages', view: 'team', views: ['team'], aliases: [], group: null, roles: ROLES_ALL, keywords: ['chat', 'handover', 'announcements'] },
     { id: 'operations', label: 'Operations', icon: 'clipboard-check', route: '#operations', view: 'operations', views: ['operations'], aliases: [], group: 'Venue', roles: ROLES_ALL, keywords: ['checklist', 'opening', 'closing', 'temperature'] },
     { id: 'inventory', label: 'Inventory', icon: 'package', route: '#inventory', view: 'inventory', views: ['inventory', 'movements', 'waste'], aliases: ['movements', 'waste'], group: 'Venue', roles: ROLES_ALL, keywords: ['stock', 'items', 'count', 'waste', 'movements'] },
@@ -759,7 +759,7 @@
   // ---------- canonical actions (spec §4.8) ----------
   //
   // One label, icon, permission check and implementation per action; the
-  // palette, the + button, Home rows, notifications and Atlas AI all call
+  // palette, the + button, Home rows, notifications and Alcedo AI all call
   // actions.run(id, ctx).
 
   function registerAction(definition = {}) {
@@ -809,7 +809,7 @@
 
   async function runAction(id, context = {}) {
     const entry = actionRegistry.get(String(id || ''));
-    if (!entry) throw new Error(`Unknown Atlas action: ${id}`);
+    if (!entry) throw new Error(`Unknown Alcedo action: ${id}`);
     if (!roleAllows(entry.roles, context)) {
       emit('action:denied', { id: entry.id });
       if (entry.denied) safe(entry.denied, context);

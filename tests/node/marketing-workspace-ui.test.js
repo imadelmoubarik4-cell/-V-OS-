@@ -26,7 +26,7 @@ test('S88: Marketing is a shell view with the spec tabs and no injected navigati
   assert.match(ui, /Waiting for approval/);
   assert.match(ui, /Nothing planned yet/);
   assert.match(ui, /label: 'New post', icon: 'plus', variant: 'primary'/);
-  assert.match(ui, /label: 'Ask Atlas', icon: 'atlas-bot', variant: 'ghost'/);
+  assert.match(ui, /label: 'Ask Alcedo', icon: 'atlas-bot', variant: 'ghost'/);
   assert.match(ui, /window\.AtlasAI\?\.askAbout\?\.\(\{ type: 'marketing'/);
   assert.doesNotMatch(ui, /Marketing chat|data-marketing-team-channel|Planning mode|marketing-stats/);
 });
@@ -34,13 +34,13 @@ test('S88: Marketing is a shell view with the spec tabs and no injected navigati
 test('S94: the publishing caption follows channel capability; connections live in Settings', () => {
   // UX spec §3 / §14.1: the fixed "manual" copy became false once Atlas can publish.
   assert.doesNotMatch(ui, /Publishing is manual until a social account is connected\.|Nothing is posted automatically\./);
-  assert.match(ui, /Atlas can\\'t publish yet, so you post by hand and mark it here\./);
+  assert.match(ui, /Alcedo can\\'t publish yet, so you post by hand and mark it here\./);
   assert.match(ui, /Automatic publishing is off/);
-  assert.match(ui, /Atlas publishes approved posts at their scheduled time\./);
+  assert.match(ui, /Alcedo publishes approved posts at their scheduled time\./);
   assert.match(ui, /#settings\/integrations/);
   // The browser never talks to a social provider; the publisher worker does.
   assert.doesNotMatch(ui, /graph\.facebook\.com|open-api\.tiktok\.com|open\.tiktokapis\.com|mybusiness[a-z]*\.googleapis\.com/);
-  assert.match(ui, /Marked as posted by hand\. Nothing was posted by Atlas\./);
+  assert.match(ui, /Marked as posted by hand\. Nothing was posted by Alcedo\./);
 });
 
 test('post composer: routed page with channels, media, caption, previews and the approval footer', () => {

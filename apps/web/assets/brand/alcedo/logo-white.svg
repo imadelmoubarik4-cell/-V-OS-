@@ -20,20 +20,20 @@
        id="g12">
       <path
          d="M 75,310 Q 150,255 220,170 L 270,110 235,25 Z"
-         fill="#08495c"
+         fill="#ffffff"
          id="path4" />
       <path
          d="m 395,112 -110,41 q -20,7 -7,27 L 385,310 305,168 Z"
-         fill="#08495c"
+         fill="#ffffff"
          id="path6" />
       <path
          d="m 280,120 h 85 l -119,38 z"
-         fill="#e8732a"
+         fill="#ffffff"
          id="path8" />
       <path
          d="m 0,275 q 60,-43 133,-52 m 74,-4 q 28,-3 56,0 m 47,6 q 79,16 155,50"
          fill="none"
-         stroke="#08495c"
+         stroke="#ffffff"
          stroke-width="3"
          id="path10" />
     </g>
@@ -41,7 +41,7 @@
   <g
      aria-label="ALCEDO"
      id="text16"
-     style="font-size:57px;font-family:'DejaVu Sans', Arial, sans-serif;letter-spacing:15;text-anchor:middle;fill:#08495c">
+     style="font-size:57px;font-family:'DejaVu Sans', Arial, sans-serif;letter-spacing:15;text-anchor:middle;fill:#ffffff">
     <path
        d="m 264.32251,453.98535 -7.62598,20.6792 h 15.27979 z m -3.17285,-5.53857 h 6.37353 L 283.35962,490 h -5.84473 l -3.78515,-10.65967 H 254.99878 L 251.21362,490 h -5.92822 z"
        id="path24" />

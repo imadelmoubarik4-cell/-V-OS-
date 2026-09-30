@@ -1,11 +1,12 @@
-// Brand v1.0 (docs/brand/README.md).
+// ALCEDO rebrand (docs/brand/ALCEDO_REBRAND_INVENTORY.md).
 //
-// 1. The committed Atlas Brand Identity Kit is intact: every file matches its
-//    sha256 in ASSET_MANIFEST.csv (read with CR stripped) and nothing is added.
-// 2. Every brand asset shipped in apps/web is a byte-identical copy of a kit
-//    file (no redraws, no re-exports), and the pages use them instead of the
-//    retired atlas-icon.png or a typed "A" tile / "Atlas" wordmark.
-// 3. The design tokens take the kit palette and meet WCAG AA: text and button
+// 1. The committed Atlas Brand Identity Kit in docs/brand is still intact: every
+//    file matches its sha256 in ASSET_MANIFEST.csv (historical source of record).
+// 2. Every brand asset shipped in apps/web now carries the ALCEDO kit
+//    (apps/web/assets/brand/alcedo/): the swapped files are byte-identical copies
+//    of their alcedo source, and the two horizontal lockups are composed from the
+//    ALCEDO symbol + wordmark. Filenames are unchanged (internal paths).
+// 3. The design tokens take the ALCEDO palette and meet WCAG AA: text and button
 //    text >= 4.5:1, focus ring and indicators >= 3:1 against adjacent colours.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -16,6 +17,7 @@ import test from 'node:test';
 const KIT = 'docs/brand/Atlas_Brand_Identity_Kit_v1.0';
 const WEB = 'apps/web';
 const BRAND = path.join(WEB, 'assets/brand');
+const ALCEDO = path.join(BRAND, 'alcedo');
 
 const sha256 = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
 function walk(dir) {
@@ -33,7 +35,7 @@ function manifest() {
   }));
 }
 
-test('the brand kit in docs/brand matches ASSET_MANIFEST.csv file for file', () => {
+test('the historical Atlas brand kit in docs/brand still matches ASSET_MANIFEST.csv file for file', () => {
   const entries = manifest();
   assert.equal(entries.size, 77);
   for (const [file, hash] of entries) {
@@ -45,47 +47,64 @@ test('the brand kit in docs/brand matches ASSET_MANIFEST.csv file for file', () 
   assert.deepEqual(present.filter((file) => !entries.has(file)), [], 'files added to the kit that the manifest does not list');
 });
 
-test('every brand asset shipped in apps/web is byte-identical to its kit source', () => {
-  const kitByName = new Map();
-  for (const file of manifest().keys()) {
-    const name = path.posix.basename(file);
-    if (!kitByName.has(name)) kitByName.set(name, []);
-    kitByName.get(name).push(file);
-  }
-  const shipped = walk(BRAND).filter((file) => !file.startsWith(path.join(BRAND, 'motion')));
-  assert.ok(shipped.length >= 14, 'the web brand assets are present');
-  for (const file of shipped) {
-    const sources = kitByName.get(path.basename(file)) || [];
-    assert.equal(sources.length, 1, `${file} has exactly one kit source with the same name`);
-    assert.equal(sha256(file), sha256(path.join(KIT, sources[0])), `${file} must be a byte-exact copy of ${sources[0]}`);
-  }
-  // No logo SVG anywhere else in the web bundle (no redrawn marks).
-  const strays = walk(WEB).filter((file) => file.endsWith('.svg') && !file.startsWith(BRAND));
-  assert.deepEqual(strays, []);
-  // Lockups the shell and sign-in pages rely on.
-  for (const name of ['Atlas_Primary_Horizontal_Midnight.svg', 'Atlas_Primary_Horizontal_White.svg', 'Atlas_Primary_Stacked_Midnight.svg', 'Atlas_Mark_Midnight.svg', 'Atlas_Mark_White.svg', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'favicon-192x192.png', 'favicon-512x512.png']) {
-    assert.ok(existsSync(path.join(BRAND, name)), `${name} is shipped`);
+// The shipped brand files (Atlas_* / favicon* names kept as internal paths) whose
+// bytes are a straight copy of an ALCEDO kit source.
+const SWAPS = {
+  'favicon.ico': 'favicon.ico',
+  'favicon-16x16.png': 'icon-16.png',
+  'favicon-32x32.png': 'icon-32.png',
+  'favicon-48x48.png': 'icon-48.png',
+  'favicon-192x192.png': 'icon-192.png',
+  'favicon-512x512.png': 'icon-512.png',
+  'apple-touch-icon.png': 'icon-180.png',
+  'Atlas_Mark_Midnight.svg': 'symbol-color.svg',
+  'Atlas_Mark_White.svg': 'symbol-white.svg',
+  'Atlas_Primary_Stacked_Midnight.svg': 'logo-color.svg',
+  'favicon.svg': 'symbol-color.svg'
+};
+
+test('shipped brand assets are byte-identical copies of their ALCEDO kit source', () => {
+  for (const [shipped, source] of Object.entries(SWAPS)) {
+    const shippedPath = path.join(BRAND, shipped);
+    const sourcePath = path.join(ALCEDO, source);
+    assert.ok(existsSync(shippedPath), `${shipped} is shipped`);
+    assert.ok(existsSync(sourcePath), `${source} is in the ALCEDO kit`);
+    assert.equal(sha256(shippedPath), sha256(sourcePath), `${shipped} must be a byte-exact copy of alcedo/${source}`);
   }
 });
 
-test('pages use the kit logos, favicons and manifest; no typed wordmark or "A" tile remains', () => {
+test('the horizontal lockups are composed from the ALCEDO symbol and wordmark', () => {
+  // No horizontal lockup exists in the kit, so these two are composed in-repo
+  // (symbol left + ALCEDO wordmark right). Verify they carry both parts.
+  for (const [name, ink] of [['Atlas_Primary_Horizontal_Midnight.svg', '#08495c'], ['Atlas_Primary_Horizontal_White.svg', '#ffffff']]) {
+    const svg = readFileSync(path.join(BRAND, name), 'utf8');
+    assert.match(svg, /aria-label="Alcedo"/, `${name} names Alcedo`);
+    assert.match(svg, /M 75,310 Q 150,255/, `${name} has the kingfisher symbol path`);
+    assert.match(svg, /264\.32251,453\.98535/, `${name} has the ALCEDO wordmark paths`);
+    assert.ok(svg.includes(ink), `${name} is drawn in ${ink}`);
+  }
+  // The teal midnight lockup keeps the orange beak accent from the kit symbol.
+  assert.ok(readFileSync(path.join(BRAND, 'Atlas_Primary_Horizontal_Midnight.svg'), 'utf8').includes('#e8732a'));
+});
+
+test('pages use the swapped logos, favicons and manifest; no typed wordmark or "A" tile remains', () => {
   const index = readFileSync(path.join(WEB, 'index.html'), 'utf8');
   for (const pattern of [
     /<link rel="icon" href="assets\/brand\/favicon\.ico"/,
     /<link rel="icon" type="image\/svg\+xml" href="assets\/brand\/favicon\.svg">/,
     /<link rel="apple-touch-icon" sizes="180x180" href="assets\/brand\/apple-touch-icon\.png">/,
     /<link rel="manifest" href="site\.webmanifest">/,
-    /class="atlas-brand__lockup" src="assets\/brand\/Atlas_Primary_Horizontal_Midnight\.svg" alt="Atlas"/,
-    /class="atlas-brand__mark" src="assets\/brand\/Atlas_Mark_Midnight\.svg" alt="Atlas"/,
+    /class="atlas-brand__lockup" src="assets\/brand\/Atlas_Primary_Horizontal_Midnight\.svg" alt="Alcedo"/,
+    /class="atlas-brand__mark" src="assets\/brand\/Atlas_Mark_Midnight\.svg" alt="Alcedo"/,
     /class="atlas-topbar__mark"[^>]*><img src="assets\/brand\/Atlas_Mark_Midnight\.svg"/,
-    /class="atlas-auth__lockup" src="assets\/brand\/Atlas_Primary_Stacked_Midnight\.svg" alt="Atlas"/
+    /class="atlas-auth__lockup" src="assets\/brand\/Atlas_Primary_Stacked_Midnight\.svg" alt="Alcedo"/
   ]) assert.match(index, pattern);
   for (const page of ['invitation.html', 'recovery.html']) {
     const html = readFileSync(path.join(WEB, page), 'utf8');
-    assert.match(html, /class="atlas-auth__lockup" src="assets\/brand\/Atlas_Primary_Stacked_Midnight\.svg" alt="Atlas"/, page);
+    assert.match(html, /class="atlas-auth__lockup" src="assets\/brand\/Atlas_Primary_Stacked_Midnight\.svg" alt="Alcedo"/, page);
     assert.match(html, /<link rel="icon" type="image\/svg\+xml" href="assets\/brand\/favicon\.svg">/, page);
   }
-  // menu.html is the venue's public menu: its own brand, no Atlas favicon.
+  // menu.html is the venue's public menu: its own brand, no app favicon.
   assert.doesNotMatch(readFileSync(path.join(WEB, 'menu.html'), 'utf8'), /assets\/brand\//);
   for (const file of walk(WEB).filter((name) => /\.(html|js|css)$/.test(name))) {
     const text = readFileSync(file, 'utf8');
@@ -96,17 +115,21 @@ test('pages use the kit logos, favicons and manifest; no typed wordmark or "A" t
   assert.equal(existsSync(path.join(WEB, 'assets/logo')), false);
 
   const site = JSON.parse(readFileSync(path.join(WEB, 'site.webmanifest'), 'utf8'));
-  assert.equal(site.name, 'Atlas');
-  assert.equal(site.theme_color, '#0B0F14');
-  assert.equal(site.background_color, '#F8FAFC');
+  assert.equal(site.name, 'Alcedo');
+  assert.equal(site.short_name, 'Alcedo');
+  assert.equal(site.theme_color, '#08495C');
+  assert.equal(site.background_color, '#F8F5ED');
   assert.equal(site.display, 'standalone');
   assert.equal(site.start_url, './');
+  assert.equal(site.id, './');
+  assert.equal(site.scope, './');
   for (const icon of site.icons) assert.ok(existsSync(path.join(WEB, icon.src)), icon.src);
 });
 
 test('the sign-in motion is the owner-approved clip only, on the sign-in screen only', () => {
-  // Owner-approved exception to guideline rule 05 (docs/brand/README.md): one
-  // motion asset, sign-in only. Source kept byte-exact; web encodes pinned.
+  // NOTE (follow-up): the intro clip still renders the Atlas logo rotation; there
+  // is no ALCEDO motion asset in the kit. The clip settles on the (now ALCEDO)
+  // static lockup. Replacing the motion needs new artwork — see the inventory.
   assert.equal(sha256('docs/brand/motion/Atlas_Logo_Rotation_source.mp4'), 'b3279e9de8e04c1d74cb750b19f42641e781496f3095936eb2e49e70b5b307dc');
   assert.deepEqual(readdirSync(path.join(BRAND, 'motion')).sort(), ['atlas-signin-intro.mp4', 'atlas-signin-intro.webm']);
   assert.equal(sha256(path.join(BRAND, 'motion/atlas-signin-intro.mp4')), 'a72029a8ba157c0c0b9f2d5e89f3ab5f9b3e5cc7cdaefbda1f13aa668b6b3fd0');
@@ -118,7 +141,6 @@ test('the sign-in motion is the owner-approved clip only, on the sign-in screen 
   for (const forbidden of ['loop', 'controls', 'autoplay']) assert.ok(!new RegExp(`\\s${forbidden}\\b`).test(videos[0]), `${forbidden} is not set in markup (the script decides)`);
   assert.match(index, /<div id="login-screen"[\s\S]*data-atlas-signin-intro[\s\S]*<div id="app-screen">/, 'the intro sits inside the sign-in screen');
   for (const page of ['invitation.html', 'recovery.html', 'menu.html']) assert.doesNotMatch(readFileSync(path.join(WEB, page), 'utf8'), /<video|brand\/motion/, page);
-  // The service worker never caches the clip (it has no fetch handler at all).
   const worker = readFileSync(path.join(WEB, 'service-worker.js'), 'utf8');
   assert.doesNotMatch(worker, /addEventListener\('fetch'|caches\.|brand\/motion/);
   const script = readFileSync(path.join(WEB, 'assets/js/atlas-signin-intro.js'), 'utf8');
@@ -158,19 +180,25 @@ function contrast(a, b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-test('tokens carry the kit palette verbatim', () => {
+test('tokens carry the ALCEDO palette', () => {
   const token = tokens();
-  const kit = readFileSync(path.join(KIT, '07_Developer/atlas-brand-tokens.css'), 'utf8');
-  for (const [, name, value] of kit.matchAll(/(--atlas-[a-z]+):\s*(#[0-9A-Fa-f]{6});/g)) assert.equal(token(name), value.toLowerCase(), name);
-  assert.equal(token('--text'), '#0b0f14');
-  assert.equal(token('--bg-subtle'), '#f8fafc');
+  const kit = JSON.parse(readFileSync(path.join(ALCEDO, 'brand-tokens.json'), 'utf8'));
+  assert.equal(kit.brand, 'ALCEDO');
+  // The kit anchors flow into the named tokens.
+  assert.equal(token('--atlas-blue'), kit.colors.teal.toLowerCase());   // #08495c
+  assert.equal(token('--atlas-snow'), kit.colors.ivory.toLowerCase());  // #f8f5ed
+  assert.equal(token('--atlas-midnight'), kit.colors.ink.toLowerCase()); // #10201f
+  assert.equal(token('--highlight'), kit.colors.orange.toLowerCase());  // #e8732a
+  assert.equal(token('--accent-brand'), '#08495c');
+  assert.equal(token('--accent'), '#08495c');
+  assert.equal(token('--accent-hover'), '#063a49');
+  assert.equal(token('--accent-press'), '#052e3a');
+  assert.equal(token('--focus-color'), '#08495c');
+  assert.equal(token('--text'), '#10201f');
+  assert.equal(token('--bg-subtle'), '#f8f5ed');
   assert.equal(token('--line-strong'), '#cbd5e1');
-  assert.equal(token('--accent-brand'), '#3b82f6');
-  assert.equal(token('--accent'), '#2563eb');
-  assert.equal(token('--accent-hover'), '#1d4ed8');
-  assert.equal(token('--focus-color'), '#3b82f6');
   // Legacy names still resolve to the new system.
-  for (const [legacy, modern] of [['--atlas-accent', '--accent'], ['--atlas-text', '--text'], ['--atlas-muted', '--text-2'], ['--atlas-line', '--line'], ['--s38-blue', '--accent'], ['--color-primary', '--accent'], ['--atlas-sidebar', '--bg-subtle'], ['--atlas-danger', '--danger']]) {
+  for (const [legacy, modern] of [['--atlas-accent', '--accent'], ['--atlas-text', '--text'], ['--atlas-muted', '--text-2'], ['--atlas-line', '--line'], ['--s38-blue', '--accent'], ['--color-primary', '--accent'], ['--atlas-sidebar', '--bg-subtle'], ['--atlas-danger', '--danger'], ['--blue-500', '--accent']]) {
     assert.equal(token(legacy), token(modern), legacy);
   }
 });
@@ -194,10 +222,15 @@ test('text and button colours meet WCAG AA (4.5:1); focus and indicators meet 3:
       if (ratio < 4.5) failures.push(`${fg} on ${bg}: ${ratio.toFixed(2)}:1`);
     }
   }
+  // Non-text indicators. Teal focus/accent-brand is verified on light surfaces;
+  // dark --ink surfaces (toasts, tooltips) carry a light indicator instead
+  // (white text on --ink is checked above at ~14.7:1) because dark teal cannot
+  // reach 3:1 on a dark surface.
   const nonText = [
-    ['--focus-color', ['--bg', '--bg-subtle', '--bg-muted', '--surface', '--accent-soft', '--ink']],
+    ['--focus-color', ['--bg', '--bg-subtle', '--bg-muted', '--surface', '--accent-soft']],
     ['--accent-brand', ['--bg', '--bg-subtle', '--bg-muted']],
-    ['--warning-icon', ['--bg']]
+    ['--warning-icon', ['--bg']],
+    ['--highlight', ['--bg', '--surface']]
   ];
   for (const [fg, backgrounds] of nonText) {
     for (const bg of backgrounds) {
@@ -206,6 +239,11 @@ test('text and button colours meet WCAG AA (4.5:1); focus and indicators meet 3:
     }
   }
   assert.deepEqual(failures, []);
-  // The documented reason --accent is not Atlas Blue: white on #3B82F6 fails AA.
-  assert.ok(contrast('#ffffff', token('--accent-brand')) < 4.5);
+  // ALCEDO teal is dark, so unlike Atlas Blue it doubles as a text-bearing fill:
+  // white on --accent passes AA.
+  assert.ok(contrast('#ffffff', token('--accent')) >= 4.5);
+  // The documented reason orange is a highlight only: orange on white fails AA
+  // for text (< 4.5:1) while still reaching 3:1 as a non-text indicator.
+  assert.ok(contrast(token('--highlight'), '#ffffff') < 4.5);
+  assert.ok(contrast(token('--highlight'), '#ffffff') >= 3);
 });

@@ -54,11 +54,11 @@ test('nothing is saved without Approve: closing or discarding rejects the prepar
 test('staff never get create actions or costs; economics only when the server sends them', () => {
   assert.match(flavor, /function canManage\(\) \{[\s\S]*?\['admin', 'manager'\]\.includes\(profile\.role\)/);
   assert.match(flavor, /manager \? `<button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm" data-flavor-create=/);
-  assert.match(flavor, /if \(manager\) actions\.push\(\{ label: 'Create with Atlas'/);
+  assert.match(flavor, /if \(manager\) actions\.push\(\{ label: 'Create with Alcedo'/);
   assert.match(flavor, /const economy = economics \?/);
   assert.match(flavor, /const cost = manager && view\.totals\?\.estimated_total_label/);
   assert.match(flavor, /if \(step !== 'substitute' && !manager\)/);
-  assert.match(recipes, /label: 'Create with Atlas', icon: 'atlas-bot', variant: 'secondary', attrs: \{ 'data-recipe-create-atlas': '' \}/);
+  assert.match(recipes, /label: 'Create with Alcedo', icon: 'atlas-bot', variant: 'secondary', attrs: \{ 'data-recipe-create-atlas': '' \}/);
   assert.match(recipes, /: flavor \? \[\{ label: 'Flavor Map', icon: 'orbit', variant: 'secondary', attrs: \{ 'data-recipe-flavor-map': '' \} \}\] : \[\];/);
 });
 

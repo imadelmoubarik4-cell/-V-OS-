@@ -71,7 +71,7 @@
   }
 
   function icon(name) {
-    // 'atlas-bot' is the Atlas AI robot (atlas-bot.js), the assistant's face.
+    // 'atlas-bot' is the Alcedo AI robot (atlas-bot.js), the assistant's face.
     if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: 18 });
     return `<i data-lucide="${escapeHtml(name)}" aria-hidden="true"></i>`;
   }
@@ -227,7 +227,7 @@
 
   async function api(action, options = {}) {
     const endpoint = String(cfg.KNOWLEDGE_API || '').trim();
-    if (!endpoint) throw new KnowledgeError('Knowledge is not set up for this Atlas yet.', 0);
+    if (!endpoint) throw new KnowledgeError('Knowledge is not set up for this Alcedo yet.', 0);
     const session = await activeSession();
     if (!session?.access_token) throw new KnowledgeError('Sign in again to read Knowledge.', 401);
     const url = new URL(endpoint);
@@ -383,7 +383,7 @@
       : filtered().map((article) => ({ article }));
     const note = state.searchStatus === 'error' ? '<p class="kn-note">Full-text search is unavailable right now, so only titles and summaries are searched.</p>' : '';
     if (!rows.length) {
-      return `${note}<div class="atlas-empty"><div class="atlas-empty__icon">${icon('search')}</div><h3 class="atlas-empty__title">No articles match “${escapeHtml(query)}”</h3><p class="atlas-empty__text">Try other words, or ask Atlas.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-knowledge-ask-search>${icon('atlas-bot')}Ask Atlas</button></div></div>`;
+      return `${note}<div class="atlas-empty"><div class="atlas-empty__icon">${icon('search')}</div><h3 class="atlas-empty__title">No articles match “${escapeHtml(query)}”</h3><p class="atlas-empty__text">Try other words, or ask Alcedo.</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-knowledge-ask-search>${icon('atlas-bot')}Ask Alcedo</button></div></div>`;
     }
     return `${note}<p class="kn-count" aria-live="polite">${rows.length} ${rows.length === 1 ? 'result' : 'results'}</p><ul class="atlas-list kn-list">${rows.map(({ article, snippet }) => articleRow(article, { snippet })).join('')}</ul>`;
   }
@@ -446,7 +446,7 @@
     const rows = articles().filter((article) => Number(article.source_count || 0) > 0);
     const status = state.snapshot?.settings?.google_drive_connection_status || 'not_connected';
     return `<section class="kn-section"><h2 class="kn-section__title">Google Drive</h2>
-        <div class="atlas-alert atlas-alert--info">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__title">${status === 'connected' ? 'Connected' : 'Not connected'}</p><p class="atlas-alert__body">Atlas doesn’t sync Drive documents automatically. Source links are recorded by hand, and the links stay visible to managers only.</p></div></div>
+        <div class="atlas-alert atlas-alert--info">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__title">${status === 'connected' ? 'Connected' : 'Not connected'}</p><p class="atlas-alert__body">Alcedo doesn’t sync Drive documents automatically. Source links are recorded by hand, and the links stay visible to managers only.</p></div></div>
       </section>
       <section class="kn-section"><h2 class="kn-section__title">Articles with sources</h2>${rows.length ? `<ul class="atlas-list kn-list">${rows.map((article) => articleRow(article, { meta: `${article.category_name || 'Knowledge'} · ${Number(article.source_count)} ${Number(article.source_count) === 1 ? 'source' : 'sources'}` })).join('')}</ul>` : '<p class="kn-note">No sources have been added to articles yet.</p>'}</section>`;
   }
@@ -454,7 +454,7 @@
   function activityMarkup() {
     const events = Array.isArray(state.snapshot?.events) ? state.snapshot.events : [];
     if (!events.length) return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('history')}</div><h3 class="atlas-empty__title">No Knowledge activity yet</h3><p class="atlas-empty__text">Publishing, confirmations and source changes appear here.</p></div>`;
-    return `<section class="kn-section"><h2 class="kn-section__title">Knowledge activity</h2><ul class="atlas-list kn-list">${events.map((event) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon">${icon(event.event_type === 'article_acknowledged' ? 'circle-check' : event.event_type === 'version_published' ? 'send' : 'history')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(EVENT_LABELS[event.event_type] || humanize(event.event_type))}${event.article_title ? ` · ${escapeHtml(event.article_title)}` : ''}</p><p class="atlas-row__meta">${escapeHtml(event.actor_label || 'Atlas')} · ${escapeHtml(vc()?.formatRelative?.(event.created_at) || formatDateTime(event.created_at))}</p></div></li>`).join('')}</ul></section>`;
+    return `<section class="kn-section"><h2 class="kn-section__title">Knowledge activity</h2><ul class="atlas-list kn-list">${events.map((event) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon">${icon(event.event_type === 'article_acknowledged' ? 'circle-check' : event.event_type === 'version_published' ? 'send' : 'history')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(EVENT_LABELS[event.event_type] || humanize(event.event_type))}${event.article_title ? ` · ${escapeHtml(event.article_title)}` : ''}</p><p class="atlas-row__meta">${escapeHtml(event.actor_label || 'Alcedo')} · ${escapeHtml(vc()?.formatRelative?.(event.created_at) || formatDateTime(event.created_at))}</p></div></li>`).join('')}</ul></section>`;
   }
 
   function permissionMarkup() {
@@ -500,7 +500,7 @@
       : '';
     const readButton = detail.can_acknowledge && !draft
       ? `<button type="button" class="atlas-btn atlas-btn--primary" data-knowledge-acknowledge>${icon('check')}Mark as read</button>` : '';
-    const ask = window.AtlasAI?.askAbout ? `<button type="button" class="atlas-btn atlas-btn--secondary" data-knowledge-ask>${icon('atlas-bot')}Ask Atlas about this</button>` : '';
+    const ask = window.AtlasAI?.askAbout ? `<button type="button" class="atlas-btn atlas-btn--secondary" data-knowledge-ask>${icon('atlas-bot')}Ask Alcedo about this</button>` : '';
     const managerActions = manager ? `<div class="kn-article__manage">
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-knowledge-edit>${icon('pencil')}${draft ? 'Edit draft' : 'Edit'}</button>
         ${draft ? `<button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm" data-knowledge-publish>${icon('send')}Publish version</button>` : ''}
@@ -523,7 +523,7 @@
       ${manager && !draft ? `<section class="kn-section kn-article__section"><h2 class="kn-section__title">Who has read this version</h2>${acknowledgements.length ? `<ul class="atlas-list kn-list">${acknowledgements.map((item) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon atlas-row__icon--positive">${icon('circle-check')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(item.user_label)}</p><p class="atlas-row__meta">${escapeHtml(humanize(item.user_role))} · ${escapeHtml(formatDateTime(item.acknowledged_at))}</p></div></li>`).join('')}</ul>` : '<p class="kn-note">No one has confirmed this version yet.</p>'}</section>` : ''}
       ${manager && history.length ? `<section class="kn-section kn-article__section"><h2 class="kn-section__title">Version history</h2><ul class="atlas-list kn-list">${history.map((item) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon num">v${Number(item.version_number)}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(item.title)}</p><p class="atlas-row__meta">${escapeHtml([humanize(item.state), formatDateTime(item.published_at || item.updated_at), item.change_note].filter(Boolean).join(' · '))}</p></div></li>`).join('')}</ul></section>` : ''}
     </article>
-    ${phoneQuery.matches && (readButton || ask) ? `<div class="kn-bar">${readButton}${window.AtlasAI?.askAbout ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--lg" data-knowledge-ask aria-label="Ask Atlas about this">${icon('atlas-bot')}</button>` : ''}</div>` : ''}`;
+    ${phoneQuery.matches && (readButton || ask) ? `<div class="kn-bar">${readButton}${window.AtlasAI?.askAbout ? `<button type="button" class="atlas-icon-btn atlas-icon-btn--lg" data-knowledge-ask aria-label="Ask Alcedo about this">${icon('atlas-bot')}</button>` : ''}</div>` : ''}`;
   }
 
   // ---------- editor ----------
@@ -616,7 +616,7 @@
         <span class="atlas-sheet__grabber" aria-hidden="true"></span>
         <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="kn-source-title">${source.id ? 'Edit source' : 'Add source'}</h2><p class="atlas-sheet__desc">Where this article comes from. Only managers see links.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
         <form class="atlas-sheet__body atlas-form" id="kn-source-form" data-knowledge-source-form novalidate>
-          <div class="atlas-field"><label for="ks-type">Type</label><select class="atlas-select" id="ks-type" name="source_type">${[['google_drive', 'Google Drive'], ['atlas_module', 'Atlas page'], ['sprint3_import', 'Imported file'], ['manual', 'Written by hand'], ['external', 'Other link']].map(([value, label]) => `<option value="${value}" ${value === (source.source_type || 'manual') ? 'selected' : ''}>${label}</option>`).join('')}</select></div>
+          <div class="atlas-field"><label for="ks-type">Type</label><select class="atlas-select" id="ks-type" name="source_type">${[['google_drive', 'Google Drive'], ['atlas_module', 'Alcedo page'], ['sprint3_import', 'Imported file'], ['manual', 'Written by hand'], ['external', 'Other link']].map(([value, label]) => `<option value="${value}" ${value === (source.source_type || 'manual') ? 'selected' : ''}>${label}</option>`).join('')}</select></div>
           <div class="atlas-field"><label for="ks-label">Name</label><input class="atlas-input" id="ks-label" name="source_label" maxlength="220" required value="${escapeHtml(source.source_label || '')}"><p class="error" hidden data-error-for="source_label">Add a name.</p></div>
           <div class="atlas-field"><label for="ks-ref">Reference <span class="optional">Optional</span></label><input class="atlas-input" id="ks-ref" name="source_reference" maxlength="1000" value="${escapeHtml(source.source_reference || '')}"></div>
           <div class="atlas-field"><label for="ks-url">Private source URL <span class="optional">Optional</span></label><input class="atlas-input" id="ks-url" name="source_url" type="url" maxlength="3000" value="${escapeHtml(source.source_url || '')}"><p class="help">The URL remains manager-only.</p></div>

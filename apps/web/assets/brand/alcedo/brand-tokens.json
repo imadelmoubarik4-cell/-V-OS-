@@ -1,0 +1,17 @@
+{
+  "brand": "ALCEDO",
+  "version": "1.0-review",
+  "colors": {
+    "teal": "#08495C",
+    "orange": "#E8732A",
+    "ivory": "#F8F5ED",
+    "sage": "#B6C3B0",
+    "ink": "#10201F"
+  },
+  "typography": {
+    "display": "Instrument Serif",
+    "body": "Manrope",
+    "label": "JetBrains Mono"
+  },
+  "clear_space_symbol_width": 0.15
+}

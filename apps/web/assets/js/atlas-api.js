@@ -1,4 +1,4 @@
-// Atlas platform helpers (S89): the one browser request helper for Atlas Edge
+// Alcedo platform helpers (S89): the one browser request helper for Alcedo Edge
 // Functions, and the one staff identity label.
 //
 // AtlasApi.request(url, { method, body, params, timeoutMs, messages })
@@ -20,17 +20,17 @@
   'use strict';
 
   const MESSAGES = Object.freeze({
-    auth: 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.',
-    forbidden: 'Your Atlas role can’t do this. Ask a manager if you need access.',
+    auth: 'Alcedo couldn’t confirm your sign-in for this. Try again in a moment.',
+    forbidden: 'Your Alcedo role can’t do this. Ask a manager if you need access.',
     not_found: 'That isn’t available any more. Refresh and try again.',
     conflict: 'This changed while you were working. Refresh and try again.',
-    invalid: 'Atlas couldn’t accept that. Check the details and try again.',
+    invalid: 'Alcedo couldn’t accept that. Check the details and try again.',
     too_large: 'That is too large to send. Try something smaller.',
     rate_limited: 'Too many requests just now. Wait a moment, then try again.',
-    not_configured: 'This part of Atlas isn’t set up for this venue yet.',
-    unavailable: 'This part of Atlas isn’t available right now. Nothing was changed. Try again shortly.',
+    not_configured: 'This part of Alcedo isn’t set up for this venue yet.',
+    unavailable: 'This part of Alcedo isn’t available right now. Nothing was changed. Try again shortly.',
     timeout: 'The connection timed out. Nothing was changed. Try again.',
-    network: 'Atlas couldn’t reach the server. Check the connection, then try again.',
+    network: 'Alcedo couldn’t reach the server. Check the connection, then try again.',
     failed: 'Something went wrong. Nothing was changed. Try again.'
   });
 
@@ -136,7 +136,7 @@
   }
 
   // The message to show for any error (an AtlasApiError, or anything else).
-  // Only copy Atlas wrote itself is ever shown: an AtlasApiError (including
+  // Only copy Alcedo wrote itself is ever shown: an AtlasApiError (including
   // fixed()) or a module error marked `atlasFixed` (AtlasCapture's
   // CaptureError). A JavaScript error (TypeError, …) or server text reads as
   // `fallback` and is logged to the console only.

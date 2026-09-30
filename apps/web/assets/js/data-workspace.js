@@ -52,7 +52,7 @@
     metadata_correction: 'Detail correction', wrong_match_report: 'Wrong match', code_conflict: 'Code conflict'
   };
   const SOURCE_LABELS = {
-    recognition: 'from a scan', ai_proposal: 'from Atlas AI', manager: 'by a manager', data_review: 'from Data',
+    recognition: 'from a scan', ai_proposal: 'from Alcedo AI', manager: 'by a manager', data_review: 'from Data',
     backfill: 'suggested from existing details', import: 'from an import'
   };
   const REQUEST_STATUS = {
@@ -374,7 +374,7 @@
       icon: 'badge-check',
       roles: MANAGERS,
       title: `${plural(count, 'catalogue change', 'catalogue changes')} ${count === 1 ? 'is' : 'are'} waiting for your approval`,
-      detail: 'New names, barcodes, items and duplicates from scans, imports and Atlas AI',
+      detail: 'New names, barcodes, items and duplicates from scans, imports and Alcedo AI',
       action: { label: 'Review', route: '#data/approvals' }
     }];
   }
@@ -598,7 +598,7 @@
     const buttons = actions.map(([action, icon, text, variant]) => `<button type="button" class="atlas-btn atlas-btn--${variant}" data-data-batch-action="${action}" data-batch-id="${attr(batch.id)}"${busy ? ' disabled aria-busy="true"' : ''}><i data-lucide="${icon}"></i>${text}</button>`).join('');
     const records = recordCount(batch);
     const failure = batch.status === 'failed'
-      ? alertMarkup({ title: 'Atlas couldn\'t read this file.', body: 'Your live records were not changed. Try again, or upload a corrected file — spreadsheets work best as CSV with one product per row.', action: '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-data-upload>Upload a corrected file</button>' })
+      ? alertMarkup({ title: 'Alcedo couldn\'t read this file.', body: 'Your live records were not changed. Try again, or upload a corrected file — spreadsheets work best as CSV with one product per row.', action: '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-data-upload>Upload a corrected file</button>' })
       : '';
     return `${back}
       <section class="atlas-section data-import-detail" aria-labelledby="data-import-title">
@@ -639,7 +639,7 @@
         return;
       }
       if (action === 'cancel') {
-        if (!await confirmDialog({ title: `Cancel ${sourceName(batch)}?`, body: 'Atlas stops reading this file. The file is kept so you can delete it or try again.', confirm: 'Cancel import', keep: 'Keep importing' })) return;
+        if (!await confirmDialog({ title: `Cancel ${sourceName(batch)}?`, body: 'Alcedo stops reading this file. The file is kept so you can delete it or try again.', confirm: 'Cancel import', keep: 'Keep importing' })) return;
         await updateBatch(batch.id, { status: 'cancelled', current_stage: 'cancelled', last_error: 'Cancelled by a manager.' }, 'Import cancelled.');
         return;
       }
@@ -775,9 +775,9 @@
       batch_key: batchKey, source_files: [file.name], file_name: file.name, file_extension: ext || null,
       mime_type: mimeFor(file), file_size: file.size, entity_scope: scope, status: 'uploaded',
       current_stage: 'uploading', progress_percent: 5, created_by: user.id, record_counts: {},
-      notes: 'Uploaded from Atlas Data.'
+      notes: 'Uploaded from Alcedo Data.'
     }).select('*').single();
-    if (insertError || !batch) refuse('Atlas couldn\'t start the upload');
+    if (insertError || !batch) refuse('Alcedo couldn\'t start the upload');
     // Storage path stays in UTC (storage layout, not an operational date).
     const now = new Date();
     const directory = [now.getUTCFullYear(), String(now.getUTCMonth() + 1).padStart(2, '0'), String(now.getUTCDate()).padStart(2, '0')].join('/');
@@ -1293,7 +1293,7 @@
       const notConfigured = queue.error.status === 404;
       body = alertMarkup({ title: notConfigured ? 'Approvals aren\'t available yet.' : 'Requests couldn\'t be loaded.', body: notConfigured ? 'The catalogue service isn\'t switched on for this venue. Nothing is waiting on you.' : friendlyError(queue.error, 'Nothing was changed. Try again.'), action: notConfigured ? '' : retryButton('queue') });
     } else if (!queue.loaded || (queue.loading && !queue.rows.length)) body = skeletonRows(4);
-    else if (!queue.rows.length) body = emptyMarkup({ icon: 'badge-check', title: queue.status === 'pending' ? 'Nothing waiting for approval' : 'No decisions yet', text: 'New names, barcodes, items and duplicate reports from scans, imports and Atlas AI wait here until a manager decides.' });
+    else if (!queue.rows.length) body = emptyMarkup({ icon: 'badge-check', title: queue.status === 'pending' ? 'Nothing waiting for approval' : 'No decisions yet', text: 'New names, barcodes, items and duplicate reports from scans, imports and Alcedo AI wait here until a manager decides.' });
     else {
       body = `<ul class="atlas-list data-queue">${queue.rows.map((request) => `<li class="atlas-row atlas-row--link"><span class="atlas-row__icon"><i data-lucide="${request.kind === 'new_item' ? 'package-plus' : request.kind === 'duplicate_resolution' ? 'copy' : request.kind === 'wrong_match_report' ? 'flag' : request.kind === 'code' ? 'barcode' : 'tag'}"></i></span>
           <div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(requestTitle(request))}</p><p class="atlas-row__meta">${escapeHtml(requestMeta(request))}</p></div>
@@ -1321,7 +1321,7 @@
       ['Requested', `${request.requested_by_label || 'Someone'} · ${formatDateTime(request.requested_at)}${SOURCE_LABELS[request.source] ? ` · ${SOURCE_LABELS[request.source]}` : ''}`],
       request.decided_at ? ['Decided', `${request.decided_by_label || 'A manager'} · ${formatDateTime(request.decided_at)}${request.self_approved ? ' · own request' : ''}`] : null,
       request.decision_note ? ['Decision note', request.decision_note] : null,
-      request.status === 'failed' ? ['Result', 'Approved, but Atlas couldn\'t apply the change. Nothing was changed.'] : null,
+      request.status === 'failed' ? ['Result', 'Approved, but Alcedo couldn\'t apply the change. Nothing was changed.'] : null,
       request.status === 'applied' ? ['Result', 'Applied. Stock quantities were not changed.'] : null
     ].filter(Boolean);
     const duplicateControls = request.kind === 'duplicate_resolution' && pending ? `<fieldset class="atlas-form-group"><legend class="atlas-form-group__title">Decision</legend>
@@ -1384,7 +1384,7 @@
   async function runBackfill() {
     const ok = await confirmDialog({
       title: 'Suggest missing details?',
-      body: 'Atlas reads each active item\'s category, size and package text and proposes the missing product type and unit size. Every suggestion waits here for your approval; no item changes until you approve it.',
+      body: 'Alcedo reads each active item\'s category, size and package text and proposes the missing product type and unit size. Every suggestion waits here for your approval; no item changes until you approve it.',
       confirm: 'Suggest details', keep: 'Not now'
     });
     if (!ok) return;

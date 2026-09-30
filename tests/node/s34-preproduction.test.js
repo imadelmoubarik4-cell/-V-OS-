@@ -76,10 +76,11 @@ test('Recipes and Reports › Overview delegate to the shared calculation rule (
 });
 
 test('shared launch design uses blue actions, compact search, visible focus, and reduced motion', () => {
-  // S88: the action colour resolves to the single, AA-contrast Atlas blue
-  // (--accent #2563eb since Brand v1.0); every legacy name is an alias of it.
+  // ALCEDO: the action colour resolves to the single, AA-contrast deep teal
+  // (--accent = --atlas-blue #08495C); every legacy name is an alias of it.
   const tokens = readFileSync('apps/web/assets/css/atlas-tokens.css', 'utf8');
-  assert.match(tokens, /--accent: #2563eb;/);
+  assert.match(tokens, /--accent: var\(--atlas-blue\);/);
+  assert.match(tokens, /--atlas-blue: #08495C;/);
   assert.match(tokens, /--atlas-accent: var\(--accent\);/);
   assert.match(tokens, /--atlas-action: var\(--accent\);/);
   // S88: the shared focus, search and reduced-motion rules moved into the
