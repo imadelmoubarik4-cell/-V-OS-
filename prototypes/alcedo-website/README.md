@@ -109,6 +109,29 @@ The approved Alcedo kingfisher replaces the robot everywhere in this prototype. 
   - **Progress:** Thinking shows an indeterminate `role="progressbar"`.
   - **Without JavaScript:** the static mascot shows and the buttons stay hidden.
 
+## Food Intelligence card
+
+The card shows an illustrated **Flavor Map**, modelled on the app's pairing ring. It is labelled "Flavor Map · illustration with sample data".
+
+- **Content:**
+  - London dry gin sits in the centre, with six pairings around it: Lemon, Tonic water, Sweet vermouth, Basil, Honey and Mint.
+  - Each pairing shows its stock state: filled dot = in stock, ring = not in stock, dashed ring = stock unknown.
+  - Each pairing also shows its source, as the app labels it: "Culinary pairing", or "Learned from your recipes".
+  - No strengths, confidence scores or other numbers are shown.
+- **Motion:**
+  - when the card scrolls into view, the lines draw out from the centre and the pairings fade in, staggered;
+  - a tour then highlights one pairing every 3.4 s: the line turns orange, a spark travels along it, and the caption updates;
+  - the tour runs only while the map is on screen and the tab is visible;
+  - hovering or focusing the map pauses it, and a **Pause / Play tour** button stops it for good (WCAG 2.2.2).
+- **Interaction:**
+  - every pairing is a button (`aria-pressed`) with a full accessible name, for example "London dry gin and Sweet vermouth: learned from your recipes, in stock";
+  - choosing one stops the tour and announces the caption;
+  - automatic tour steps are not announced.
+- **Reduced motion:** a static map with no draw-in, tour, spark or Pause button; choosing a pairing still works.
+- **No JavaScript:** the full static map, with the first pairing captioned.
+- **Narrow cards:** below 300 px of card width (three bento columns at about 900–1000 px), the map becomes taller so labels never collide. Checked at 360–1280 px.
+- **Where to edit:** the pairings are the `.fmap__node` buttons. Change `data-name`, `data-source`, `data-stock`, the label, and the `--x` / `--y` position (the percentage of a 320 × 230 map). The matching line is the `<path>` with the same `data-key`.
+
 ## Colours
 
 The dark surfaces use the brand kit's **deep teal `#08495C`** with **warm ivory `#F8F5ED`** text and restrained orange accents. That covers the hero feature cards, Daily Operations, the restaurant-owners card, the closing CTA and the footer. Deep-teal buttons and the selected tour tab follow the same token, so no near-black surfaces remain. The light cards stay ivory and the hero stays sage. Shadows are softer and teal-tinted, and hairlines on teal use ivory at 16 %.

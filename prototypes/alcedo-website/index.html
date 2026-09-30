@@ -378,6 +378,64 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .bento__card--ops .bento__art { color: var(--on-panel); }
 .bento__art svg { width: 100%; height: auto; overflow: visible; }
 .bento__card--training .bento__art { margin-top: 0; padding-top: 0; align-self: center; }
+/* Food Intelligence: illustrated Flavor Map (sample data) */
+.fmap { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--line); container-type: inline-size; }
+.fmap__top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.fmap__label { color: var(--ink-3); font-size: 10px; }
+.fmap__pause { flex: none; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; font: 600 12px var(--font-sans); color: var(--ink-2); cursor: pointer; }
+.fmap__pause:hover { border-color: rgba(16,32,31,.4); color: var(--ink); }
+.fmap__stage { position: relative; margin-top: 8px; aspect-ratio: 320 / 230; }
+.fmap__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.fmap__orbit, .fmap__line, .fmap__spark { vector-effect: non-scaling-stroke; }
+.fmap__orbit { fill: none; stroke: var(--line); stroke-dasharray: 2 5; }
+.fmap__line { fill: none; stroke: rgba(8,73,92,.28); stroke-width: 1.4; stroke-linecap: round; transition: stroke .4s var(--ease), stroke-width .4s var(--ease); }
+.fmap[data-active="lemon"] .fmap__line[data-key="lemon"], .fmap[data-active="tonic"] .fmap__line[data-key="tonic"],
+.fmap[data-active="vermouth"] .fmap__line[data-key="vermouth"], .fmap[data-active="basil"] .fmap__line[data-key="basil"],
+.fmap[data-active="honey"] .fmap__line[data-key="honey"], .fmap[data-active="mint"] .fmap__line[data-key="mint"] { stroke: var(--orange); stroke-width: 2.2; }
+.fmap__spark { fill: none; stroke: var(--orange); stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: .14 1; stroke-dashoffset: 1.14; opacity: 0; }
+.fmap__centre {
+  position: absolute; left: 50%; top: 48.7%; transform: translate(-50%, -50%);
+  padding: 8px 12px; border-radius: 999px; background: var(--panel); color: var(--on-panel);
+  font: 600 12.5px/1.2 var(--font-sans); white-space: nowrap; box-shadow: var(--shadow-soft);
+}
+.fmap__nodes { position: absolute; inset: 0; }
+.fmap__node {
+  position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -50%);
+  display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px 0 8px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--card);
+  font: 600 12px var(--font-sans); color: var(--ink-2); white-space: nowrap; cursor: pointer;
+  transition: background-color .35s var(--ease), color .35s var(--ease), border-color .35s var(--ease), box-shadow .35s var(--ease);
+}
+.fmap__node:hover { border-color: rgba(8,73,92,.45); color: var(--ink); }
+.fmap__node[aria-pressed="true"] { background: var(--panel); border-color: var(--panel); color: var(--on-panel); box-shadow: 0 0 0 4px rgba(232,115,42,.18); }
+.fmap__dot, .fmap__key { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.fmap__node--in .fmap__dot, .fmap__key--in { background: var(--teal); }
+.fmap__node--out .fmap__dot, .fmap__key--out { border: 1.5px solid var(--teal); }
+.fmap__node--unknown .fmap__dot, .fmap__key--unknown { border: 1.5px dashed var(--ink-3); }
+.fmap__node[aria-pressed="true"] .fmap__dot { background: var(--teal-2); border-color: var(--teal-2); }
+.fmap__node--out[aria-pressed="true"] .fmap__dot, .fmap__node--unknown[aria-pressed="true"] .fmap__dot { background: transparent; }
+/* narrow cards (e.g. three bento columns at ~900-1000 px): a taller map so the labels never collide */
+@container (max-width: 300px) {
+  .fmap__stage { aspect-ratio: 1 / 1.12; }
+  .fmap__centre { font-size: 11.5px; padding: 7px 10px; }
+  .fmap__node { font-size: 11.5px; padding: 0 8px 0 7px; gap: 5px; }
+}
+.fmap__caption { margin-top: 10px; display: grid; gap: 2px; min-height: 2.9em; }
+.fmap__pair { font-family: var(--font-serif); font-size: 21px; line-height: 1.15; color: var(--ink); }
+.fmap__meta { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--brand-teal); }
+.fmap__legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--ink-3); }
+.fmap__legend li { display: inline-flex; align-items: center; gap: 6px; }
+/* Motion (only when JavaScript + IntersectionObserver run and motion is allowed) */
+.io .fmap .fmap__line { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1s var(--ease), stroke .4s var(--ease), stroke-width .4s var(--ease); transition-delay: calc(var(--n) * 90ms + 200ms), 0s, 0s; }
+.io .is-in .fmap .fmap__line { stroke-dashoffset: 0; }
+.io .fmap .fmap__node, .io .fmap .fmap__centre { opacity: 0; }
+.io .fmap .fmap__node { transition: opacity .6s var(--ease), background-color .35s var(--ease), color .35s var(--ease), border-color .35s var(--ease), box-shadow .35s var(--ease); transition-delay: calc(var(--n) * 90ms + 500ms), 0s, 0s, 0s, 0s; }
+.io .fmap .fmap__centre { transition: opacity .6s var(--ease) .1s; }
+.io .is-in .fmap .fmap__node, .io .is-in .fmap .fmap__centre { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .fmap.is-touring .fmap__spark.is-running { animation: fmap-spark 1.3s var(--ease) 1 both; }
+}
+@keyframes fmap-spark { 0% { opacity: 0; stroke-dashoffset: 1.14; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; stroke-dashoffset: 0; } }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; list-style: none; padding: 0; }
 .chips li { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); }
 .art-line { fill: none; stroke: currentColor; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; opacity: .55; }
@@ -524,6 +582,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   .no-js .header-login { display: inline; }
 }
 @media (max-width: 480px) {
+  .fmap__node { font-size: 11.5px; padding: 0 8px 0 7px; }
   .header-demo { display: none; }   /* still in the menu */
   .modules { grid-template-columns: 1fr; }
   .footer__grid { grid-template-columns: 1fr; }
@@ -742,19 +801,39 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="bento__title">Food Intelligence</h3>
           <p class="bento__text">A Flavor Map of ingredient pairings, each labelled with where it comes from, plus substitutes and ideas based on verified stock. Recipe drafts stay inactive until a manager approves them.</p>
           <p class="status status--preview">Preview</p>
-          <div class="bento__art" aria-hidden="true">
-            <svg viewBox="0 0 260 90">
-              <path class="art-line draw" pathLength="1" d="M20 60L78 24L136 56L196 20L240 62M78 24L96 78M136 56L96 78M196 20L186 76"/>
-              <circle class="art-line draw" pathLength="1" cx="20" cy="60" r="8"/>
-              <circle class="art-teal draw" pathLength="1" cx="78" cy="24" r="10"/>
-              <circle class="art-line draw" pathLength="1" cx="96" cy="78" r="7"/>
-              <circle class="art-orange draw" pathLength="1" cx="136" cy="56" r="12"/>
-              <circle class="art-line draw" pathLength="1" cx="196" cy="20" r="9"/>
-              <circle class="art-line draw" pathLength="1" cx="186" cy="76" r="6"/>
-              <circle class="art-teal draw" pathLength="1" cx="240" cy="62" r="8"/>
-              <circle class="art-dot-orange" cx="136" cy="56" r="3"/>
-            </svg>
-          </div>
+          <!-- Food Intelligence: an illustrated Flavor Map modelled on the app's pairing ring (sample data).
+               Draws in when scrolled into view, then tours one pairing at a time; hover, focus or Pause stops the
+               tour; every pairing is a button. Reduced motion: static, no tour. -->
+          <figure class="fmap" data-active="lemon">
+            <div class="fmap__top">
+              <p class="fmap__label mono">Flavor Map · illustration with sample data</p>
+              <button type="button" class="fmap__pause" aria-pressed="false" hidden>Pause</button>
+            </div>
+            <div class="fmap__stage">
+              <svg class="fmap__svg" viewBox="0 0 320 230" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <circle class="fmap__orbit" cx="160" cy="112" r="88"/>
+                <path class="fmap__line" data-key="lemon" d="M160 112L160 24" pathLength="1" style="--n:0"/><path class="fmap__spark" data-key="lemon" d="M160 112L160 24" pathLength="1"/><path class="fmap__line" data-key="tonic" d="M160 112L236 68" pathLength="1" style="--n:1"/><path class="fmap__spark" data-key="tonic" d="M160 112L236 68" pathLength="1"/><path class="fmap__line" data-key="vermouth" d="M160 112L236 156" pathLength="1" style="--n:2"/><path class="fmap__spark" data-key="vermouth" d="M160 112L236 156" pathLength="1"/><path class="fmap__line" data-key="basil" d="M160 112L160 200" pathLength="1" style="--n:3"/><path class="fmap__spark" data-key="basil" d="M160 112L160 200" pathLength="1"/><path class="fmap__line" data-key="honey" d="M160 112L84 156" pathLength="1" style="--n:4"/><path class="fmap__spark" data-key="honey" d="M160 112L84 156" pathLength="1"/><path class="fmap__line" data-key="mint" d="M160 112L84 68" pathLength="1" style="--n:5"/><path class="fmap__spark" data-key="mint" d="M160 112L84 68" pathLength="1"/>
+              </svg>
+              <div class="fmap__centre" aria-hidden="true">London dry gin</div>
+              <div class="fmap__nodes" role="group" aria-label="Pairings for London dry gin">
+                <button type="button" class="fmap__node fmap__node--in" data-key="lemon" data-name="Lemon" data-source="Culinary pairing" data-stock="in stock" style="--x:50.000%;--y:10.435%;--n:0" aria-pressed="true" aria-label="London dry gin and Lemon: culinary pairing, in stock"><span class="fmap__dot" aria-hidden="true"></span>Lemon</button>
+                <button type="button" class="fmap__node fmap__node--in" data-key="tonic" data-name="Tonic water" data-source="Culinary pairing" data-stock="in stock" style="--x:73.750%;--y:29.565%;--n:1" aria-pressed="false" aria-label="London dry gin and Tonic water: culinary pairing, in stock"><span class="fmap__dot" aria-hidden="true"></span>Tonic</button>
+                <button type="button" class="fmap__node fmap__node--in" data-key="vermouth" data-name="Sweet vermouth" data-source="Learned from your recipes" data-stock="in stock" style="--x:73.750%;--y:67.826%;--n:2" aria-pressed="false" aria-label="London dry gin and Sweet vermouth: learned from your recipes, in stock"><span class="fmap__dot" aria-hidden="true"></span>Vermouth</button>
+                <button type="button" class="fmap__node fmap__node--out" data-key="basil" data-name="Basil" data-source="Culinary pairing" data-stock="not in stock" style="--x:50.000%;--y:86.957%;--n:3" aria-pressed="false" aria-label="London dry gin and Basil: culinary pairing, not in stock"><span class="fmap__dot" aria-hidden="true"></span>Basil</button>
+                <button type="button" class="fmap__node fmap__node--unknown" data-key="honey" data-name="Honey" data-source="Culinary pairing" data-stock="stock unknown" style="--x:26.250%;--y:67.826%;--n:4" aria-pressed="false" aria-label="London dry gin and Honey: culinary pairing, stock unknown"><span class="fmap__dot" aria-hidden="true"></span>Honey</button>
+                <button type="button" class="fmap__node fmap__node--in" data-key="mint" data-name="Mint" data-source="Culinary pairing" data-stock="in stock" style="--x:26.250%;--y:29.565%;--n:5" aria-pressed="false" aria-label="London dry gin and Mint: culinary pairing, in stock"><span class="fmap__dot" aria-hidden="true"></span>Mint</button>
+              </div>
+            </div>
+            <figcaption class="fmap__caption">
+              <span class="fmap__pair">London dry gin + Lemon</span>
+              <span class="fmap__meta">Culinary pairing · in stock</span>
+            </figcaption>
+            <ul class="fmap__legend" aria-label="Stock key">
+              <li><span class="fmap__key fmap__key--in" aria-hidden="true"></span>In stock</li>
+              <li><span class="fmap__key fmap__key--out" aria-hidden="true"></span>Not in stock</li>
+              <li><span class="fmap__key fmap__key--unknown" aria-hidden="true"></span>Stock unknown</li>
+            </ul>
+          </figure>
         </li>
 
         <li class="bento__card bento__card--training reveal-up" id="training" style="--i:3">
@@ -1381,6 +1460,57 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
       if (b) setState(b.getAttribute('data-state'));
     });
     controls.hidden = false;
+  }
+
+  /* ---------- Food Intelligence map: pairing tour (sample data) ---------- */
+  const fmap = document.querySelector('.fmap');
+  if (fmap) {
+    const nodes = Array.prototype.slice.call(fmap.querySelectorAll('.fmap__node'));
+    const pair = fmap.querySelector('.fmap__pair');
+    const meta = fmap.querySelector('.fmap__meta');
+    const caption = fmap.querySelector('.fmap__caption');
+    const pauseBtn = fmap.querySelector('.fmap__pause');
+    const TOUR_MS = 3400;
+    let index = 0, timer = 0, visible = false, hovering = false, paused = reduceMotion;
+    const show = function (i, announce) {
+      index = i;
+      const n = nodes[i];
+      fmap.setAttribute('data-active', n.getAttribute('data-key'));
+      nodes.forEach(function (b, j) { b.setAttribute('aria-pressed', j === i ? 'true' : 'false'); });
+      caption.setAttribute('aria-live', announce ? 'polite' : 'off');   // only announce the visitor's own choices
+      pair.textContent = 'London dry gin + ' + n.getAttribute('data-name');
+      meta.textContent = n.getAttribute('data-source') + ' · ' + n.getAttribute('data-stock');
+      fmap.querySelectorAll('.fmap__spark').forEach(function (s) { s.classList.remove('is-running'); });
+      const spark = fmap.querySelector('.fmap__spark[data-key="' + n.getAttribute('data-key') + '"]');
+      if (spark) { void spark.getBoundingClientRect(); spark.classList.add('is-running'); }
+    };
+    const running = function () { return !paused && visible && !hovering && !document.hidden; };
+    const sync = function () {
+      fmap.classList.toggle('is-touring', !reduceMotion);
+      clearInterval(timer); timer = 0;
+      if (running()) timer = setInterval(function () { show((index + 1) % nodes.length, false); }, TOUR_MS);
+    };
+    nodes.forEach(function (b, i) { b.addEventListener('click', function () { paused = true; setPauseLabel(); show(i, true); sync(); }); });
+    const setPauseLabel = function () {
+      pauseBtn.textContent = paused ? 'Play tour' : 'Pause';
+      pauseBtn.setAttribute('aria-pressed', paused ? 'true' : 'false');
+      pauseBtn.setAttribute('aria-label', paused ? 'Play the pairing tour' : 'Pause the pairing tour');
+    };
+    pauseBtn.addEventListener('click', function () { paused = !paused; setPauseLabel(); if (!paused) show((index + 1) % nodes.length, false); sync(); });
+    fmap.addEventListener('pointerenter', function () { hovering = true; sync(); });
+    fmap.addEventListener('pointerleave', function () { hovering = false; sync(); });
+    fmap.addEventListener('focusin', function () { hovering = true; sync(); });
+    fmap.addEventListener('focusout', function (e) { if (!fmap.contains(e.relatedTarget)) { hovering = false; sync(); } });
+    document.addEventListener('visibilitychange', sync);
+    if (!reduceMotion) {   // reduced motion: static map, no tour and no Pause control (nothing moves)
+      pauseBtn.hidden = false;
+      setPauseLabel();
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) { visible = entries[0].isIntersecting; sync(); }, { threshold: 0.35 }).observe(fmap);
+      } else { visible = true; }
+    }
+    show(0, false);
+    sync();
   }
 
   /* ---------- below-the-fold reveal ---------- */
