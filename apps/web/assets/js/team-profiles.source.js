@@ -421,15 +421,18 @@
     const adminLocked = state.staff.role === 'manager' && profile.role === 'admin';
     const self = profile.id === state.staff.id;
     const renew = !self ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-member-renew="${escapeHtml(profile.id)}">${icon('link')}New setup link</button>` : '';
+    // S99 lost-phone recovery: a manager may reset a member's authenticator so
+    // they re-enrol at next sign-in. A manager cannot reset an admin (admin-only).
+    const resetMfa = !self && !adminLocked ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-member-reset-mfa="${escapeHtml(profile.id)}">${icon('shield')}Reset two-factor</button>` : '';
     if (!liveWrites || !profile.can_manage_access || adminLocked || self) {
       const reason = self ? 'You can’t change your own role or turn off your own access.' : adminLocked ? 'Only an administrator can change an administrator.' : 'Access can’t be changed here right now.';
-      return `<section class="team-detail__section"><h3 class="team-detail__title">Access</h3><dl class="team-detail__list">${row('Role', escapeHtml(roleLabel(profile.role)))}${row('Alcedo access', profile.active ? 'On' : 'Off')}</dl><p class="team-detail__hint">${escapeHtml(reason)}</p>${renew}</section>`;
+      return `<section class="team-detail__section"><h3 class="team-detail__title">Access</h3><dl class="team-detail__list">${row('Role', escapeHtml(roleLabel(profile.role)))}${row('Alcedo access', profile.active ? 'On' : 'Off')}</dl><p class="team-detail__hint">${escapeHtml(reason)}</p>${renew}${resetMfa}</section>`;
     }
     return `<section class="team-detail__section"><h3 class="team-detail__title">Access</h3>
       <form class="atlas-form team-access" data-team-profile-access-form data-profile-id="${escapeHtml(profile.id)}" novalidate>
         <div class="atlas-field"><label for="team-access-role">Role</label><select class="atlas-select" id="team-access-role" name="role">${['admin', 'manager', 'bartender', 'viewer'].map((key) => `<option value="${key}" ${profile.role === key ? 'selected' : ''}>${escapeHtml(roleLabel(key))}</option>`).join('')}</select></div>
         <div class="atlas-toggle-row"><div><p class="atlas-toggle-row__label" id="team-access-active-label">Alcedo access</p><p class="atlas-toggle-row__help">When off, they’re signed out on their next action.</p></div><button type="button" class="atlas-toggle" role="switch" aria-checked="${profile.active ? 'true' : 'false'}" aria-labelledby="team-access-active-label" data-team-access-active></button></div>
-        <div class="atlas-form-foot">${renew}<button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--sm">Save access</button></div>
+        <div class="atlas-form-foot">${renew}${resetMfa}<button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--sm">Save access</button></div>
       </form></section>`;
   }
 
@@ -663,10 +666,11 @@
       id: 'team-invite',
       panel: `<section class="atlas-sheet" data-modal-panel aria-labelledby="team-invite-title">
         <span class="atlas-sheet__grabber" aria-hidden="true"></span>
-        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="team-invite-title">Invite by email</h2><p class="atlas-sheet__desc">Alcedo emails them a secure invitation. You choose their role after they accept.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
+        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="team-invite-title">Invite by email</h2><p class="atlas-sheet__desc">Alcedo emails them a secure invitation. Pick their role now; their account turns on once they finish setup (password, name, phone, photo and authenticator app).</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
         <form class="atlas-sheet__body atlas-form" id="team-invite-form" data-team-profile-invite-form novalidate>
           <div class="atlas-field"><label for="ti-email">Email</label><input class="atlas-input" id="ti-email" name="email" type="email" required maxlength="320" autocomplete="email"><p class="error" hidden data-error-for="email">Enter an email address.</p></div>
           <div class="atlas-field"><label for="ti-name">Name <span class="optional">Optional</span></label><input class="atlas-input" id="ti-name" name="display_name" maxlength="120" autocomplete="name"></div>
+          <div class="atlas-field"><label for="ti-role">Role</label><select class="atlas-select" id="ti-role" name="role">${(role() === 'admin' ? ['admin', 'manager', 'bartender', 'viewer'] : ['manager', 'bartender', 'viewer']).map((key) => `<option value="${key}"${key === 'viewer' ? ' selected' : ''}>${escapeHtml(roleLabel(key))}</option>`).join('')}</select></div>
         </form>
         <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="team-invite-form" class="atlas-btn atlas-btn--primary">Send invitation</button></footer>
       </section>`
@@ -679,7 +683,7 @@
       root.querySelector('[data-error-for="email"]').hidden = !bad;
       form.email.setAttribute('aria-invalid', String(bad));
       if (bad) { form.email.focus(); return; }
-      const ok = await mutate('invite-account', { email, display_name: form.display_name.value.trim() || null }, `Invitation sent to ${email}`);
+      const ok = await mutate('invite-account', { email, display_name: form.display_name.value.trim() || null, role: form.role?.value || 'viewer' }, `Invitation sent to ${email}`);
       if (ok) closeLayer(root);
     });
   }
@@ -861,6 +865,18 @@
       } finally {
         state.submitting = false;
       }
+      return;
+    }
+    const resetMfa = target.closest('[data-team-member-reset-mfa]');
+    if (resetMfa) {
+      const profile = profileById(resetMfa.dataset.teamMemberResetMfa);
+      const answer = await confirmDialog({
+        title: `Reset ${profile?.name || 'this member'}’s two-factor?`,
+        body: 'Their authenticator app is removed. They’ll be asked to set up a new one the next time they sign in. Use this if they lost their phone.',
+        confirmLabel: 'Reset two-factor',
+        danger: true
+      });
+      if (answer) mutate('reset-member-mfa', { profile_id: resetMfa.dataset.teamMemberResetMfa }, 'Two-factor reset');
     }
   }
 

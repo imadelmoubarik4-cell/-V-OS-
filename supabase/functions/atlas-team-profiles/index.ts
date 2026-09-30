@@ -62,7 +62,10 @@ function profileLabel(profile: Partial<AtlasProfile> | null | undefined): string
 }
 
 function isManager(context: AtlasContext): boolean {
-  return MANAGER_ROLES.has(context.profile.role);
+  // S99: an inactive caller (e.g. an invitee mid-onboarding, resolved with
+  // allowInactive) is never treated as a manager, so self-scoped actions like
+  // save-details stay self-only for them.
+  return context.profile.active === true && MANAGER_ROLES.has(context.profile.role);
 }
 
 function staffPayload(context: AtlasContext) {
@@ -89,10 +92,15 @@ function productionPublishableKey(): string {
   return authConfig(Deno.env).publishableKey;
 }
 
-async function requireActiveProfile(request: Request): Promise<AtlasContext> {
+async function requireActiveProfile(request: Request, options: { allowInactive?: boolean } = {}): Promise<AtlasContext> {
+  // S99: onboarding actions (save-details, complete-onboarding) resolve with
+  // allowInactive so an invitee whose profile is still inactive can save their
+  // own details before activation. isManager() returns false for such a caller,
+  // so those actions remain strictly self-scoped.
   const actor = await resolveActor(request, Deno.env, fetch, {
     inactiveMessage: "This Atlas profile is inactive. Team access has been removed.",
     profileColumns: ["created_at", "updated_at"],
+    allowInactive: options.allowInactive === true,
   });
   return { token: actor.token, amr: actor.amr ?? [], aal: actor.aal ?? "aal1", mfaEnrolled: actor.mfaEnrolled === true, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
 }
@@ -506,11 +514,26 @@ function invitationMetadata(displayName: string | null): Record<string, string> 
 }
 // s90-invite-helpers:end
 
+// S99: the manager/admin picks the invitee's role at invite time. A manager may
+// invite bartender|viewer|manager; only an administrator may invite an admin.
+// The chosen role is stored on the auth user's app_metadata (atlas_intended_role)
+// — never on the profile yet — and applied only when the invitee finishes setup
+// (complete-onboarding). The account stays inactive until then.
+const INVITE_ASSIGNABLE_ROLES = new Set(["manager", "bartender", "viewer", "admin"]);
+function resolveInviteRole(context: AtlasContext, value: unknown): string {
+  const role = requiredEnum(value, "Role", INVITE_ASSIGNABLE_ROLES);
+  if (role === "admin" && context.profile.role !== "admin") {
+    throw new ApiError(403, "Only an administrator can invite an administrator.");
+  }
+  return role;
+}
+
 async function inviteAccount(context: AtlasContext, body: Record<string, unknown>) {
   requireManager(context);
   requireStepUp(context);
   const email = requiredText(body.email, "Email", 320).toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Enter a valid email address.");
   const displayName = optionalText(body.display_name, 120);
+  const intendedRole = resolveInviteRole(context, body.role ?? "viewer");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!serviceRoleKey) throw new ApiError(500, "Account invitations are temporarily unavailable.");
 
@@ -538,7 +561,20 @@ async function inviteAccount(context: AtlasContext, body: Record<string, unknown
       : "Invitation could not be sent.";
     throw new ApiError(response.status === 422 ? 409 : response.status >= 500 ? 503 : 400, detail);
   }
-  return { invited: true, email };
+  // Record the intended role and who invited them; the account is NOT activated.
+  const invitedId = typeof result?.id === "string" ? result.id
+    : typeof result?.user?.id === "string" ? result.user.id : null;
+  if (invitedId) {
+    const admin = createClient(productionAuthUrl(), serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { error: markerError } = await admin.auth.admin.updateUserById(invitedId, {
+      app_metadata: { atlas_intended_role: intendedRole, atlas_invited_by: context.user.id },
+    });
+    if (markerError) console.warn("Invite metadata could not be stored", markerError.message);
+    await logExternalEvent(context, "active_status_changed", invitedId, {
+      previous_active: false, active: false, role: intendedRole, reason: "account_invited",
+    }).catch(() => undefined);
+  }
+  return { invited: true, email, role: intendedRole };
 }
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -599,13 +635,108 @@ async function renewMemberSetup(context: AtlasContext, body: Record<string, unkn
   return { id, email: data.user.email, invitation_token: link.properties.hashed_token, email_sent: false };
 }
 
+// S99 self-service onboarding completion. Any authenticated invitee finishing
+// their OWN setup: the role comes only from the invite metadata (the caller can
+// never choose it), and activation happens only after the account has a verified
+// authenticator (aal2 + a verified factor) and a saved name, phone and photo —
+// all re-verified here, never trusted from the client. This is the invite-flow
+// gate only; it is independent of the database-wide MFA enforcement flag.
+async function completeOnboarding(context: AtlasContext) {
+  const project = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!key || project !== productionAuthUrl()) throw new ApiError(503, "Account setup is unavailable.");
+  if (context.aal !== "aal2") {
+    const error = new ApiError(403, "Set up your authenticator app before finishing your account.");
+    (error as { code?: string }).code = "mfa_required";
+    throw error;
+  }
+  const admin = createClient(project!, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: userData, error: userError } = await admin.auth.admin.getUserById(context.user.id);
+  if (userError || !userData?.user) throw new ApiError(400, "Your account could not be verified. Try again.");
+  const user = userData.user;
+  const factors = Array.isArray((user as { factors?: Array<{ status?: string }> }).factors) ? (user as { factors: Array<{ status?: string }> }).factors : [];
+  if (!factors.some((factor) => factor?.status === "verified")) {
+    const error = new ApiError(403, "Set up your authenticator app before finishing your account.");
+    (error as { code?: string }).code = "mfa_required";
+    throw error;
+  }
+  const rawName = typeof user.user_metadata?.full_name === "string"
+    ? user.user_metadata.full_name
+    : typeof user.user_metadata?.display_name === "string" ? user.user_metadata.display_name : "";
+  const displayName = String(rawName).replace(/\s+/g, " ").trim();
+  if (!displayName || displayName.length < 2 || displayName.includes("@")) throw new ApiError(400, "Add your name before finishing your account.");
+  const readiness = await branchRpc("atlas_team_profile_onboarding_ready", { p_profile_id: context.user.id });
+  if (!readiness?.has_phone) throw new ApiError(400, "Add a phone number before finishing your account.");
+  if (!readiness?.has_photo) throw new ApiError(400, "Add a profile photo before finishing your account.");
+  const intended = String((user.app_metadata as { atlas_intended_role?: unknown })?.atlas_intended_role ?? "viewer");
+  const role = PROFILE_ROLES.has(intended) ? intended : "viewer";
+  const { data: updated, error: profileError } = await admin.from("profiles")
+    .update({ display_name: displayName, role, active: true })
+    .eq("id", context.user.id)
+    .select("id,email,display_name,role,active")
+    .maybeSingle();
+  if (profileError || !updated) throw new ApiError(503, "Your account could not be finished. Ask your manager to review it.");
+  await branchRpc("atlas_shifts_sync_profiles", {
+    p_profiles: [{ id: context.user.id, email: user.email, display_name: displayName, role, active: true }],
+    p_actor_id: context.user.id, p_actor_label: displayName, p_actor_role: role,
+  }).catch((error) => console.warn("Shift sync after onboarding failed", error instanceof Error ? error.message : error));
+  await logExternalEvent(context, "active_status_changed", context.user.id, {
+    previous_active: false, active: true, role, reason: "onboarding_completed",
+  }).catch(() => undefined);
+  return { completed: true, role };
+}
+
+// S99 lost-phone recovery. A manager/admin removes a member's authenticator so
+// they can enrol a new one at next sign-in. A manager may reset
+// bartender|viewer|manager but not an admin (only an admin may reset an admin),
+// and the last active admin can never be stripped of their factor.
+async function resetMemberMfa(context: AtlasContext, body: Record<string, unknown>) {
+  requireManager(context);
+  requireStepUp(context);
+  const id = requireUuid(body.profile_id, "Team member");
+  if (id === context.user.id) throw new ApiError(400, "Reset your own authenticator from Settings, not here.");
+  const project = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!key || project !== productionAuthUrl()) throw new ApiError(503, "Two-factor reset is unavailable.");
+  const target = await profileById(context, id);
+  if (!target) throw new ApiError(404, "The selected Atlas profile no longer exists.");
+  if (context.profile.role === "manager" && target.role === "admin") {
+    throw new ApiError(403, "Only an administrator can reset an administrator’s two-factor.");
+  }
+  if (target.role === "admin" && target.active) {
+    const all = await profiles(context);
+    const otherActiveAdmins = all.filter((profile) => profile.id !== id && profile.active && profile.role === "admin");
+    if (otherActiveAdmins.length === 0) throw new ApiError(409, "Atlas must keep at least one administrator with two-factor set up.");
+  }
+  const admin = createClient(project!, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  let factors: Array<{ id?: string }> = [];
+  try {
+    const { data } = await admin.auth.admin.mfa.listFactors({ userId: id });
+    factors = Array.isArray(data?.factors) ? data.factors : [];
+  } catch (error) {
+    console.warn("Could not list factors for reset", error instanceof Error ? error.message : error);
+    throw new ApiError(503, "The member’s two-factor could not be read. Try again.");
+  }
+  let removed = 0;
+  for (const factor of factors) {
+    if (!factor?.id) continue;
+    const { error } = await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: id });
+    if (!error) removed += 1;
+  }
+  await logExternalEvent(context, "active_status_changed", id, { reason: "mfa_reset", factors_removed: removed });
+  return { reset: true, factors_removed: removed };
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
 
   try {
-    const context = await requireActiveProfile(request);
     const url = new URL(request.url);
     const action = url.searchParams.get("action") || "snapshot";
+    // S99: onboarding self-service actions accept an inactive (mid-onboarding)
+    // caller; every other action still requires an active staff profile.
+    const allowInactive = request.method === "POST" && (action === "save-details" || action === "complete-onboarding");
+    const context = await requireActiveProfile(request, { allowInactive });
 
     if (request.method === "GET") {
       if (action !== "snapshot") throw new ApiError(404, "Unknown Team Profiles action.");
@@ -692,6 +823,15 @@ Deno.serve(async (request: Request) => {
 
       case "invite-account":
         result = await inviteAccount(context, body);
+        break;
+
+      case "complete-onboarding":
+        // Self-scoped and possibly inactive-until-now: return without the
+        // manager snapshot (which the invitee has no rights to read).
+        return jsonResponse({ result: await completeOnboarding(context) });
+
+      case "reset-member-mfa":
+        result = await resetMemberMfa(context, body);
         break;
 
       default:

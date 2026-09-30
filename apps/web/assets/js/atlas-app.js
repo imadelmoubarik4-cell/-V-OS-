@@ -487,10 +487,70 @@
   }
   window.atlasEnsureAssurance = ensureAssurance;
 
+  // S99: two-factor is required for EVERYONE to enter Atlas. After the password
+  // sign-in, an account with no verified authenticator is routed to enrolment
+  // (AtlasMfaEnroll, mounted inline on the sign-in screen) and cannot continue
+  // until a factor is verified; an account that already has a factor uses the
+  // existing aal1→aal2 challenge (ensureAssurance). This is the client-side half
+  // of enforcement — the database flag (private.auth_policy.require_all_staff_mfa)
+  // stays off until rollout, so a transient MFA-API error never locks anyone out
+  // (it fails open here and only logs).
+  // Returns: 'ok' to enter, 'enroll'/'blocked' when this took over the screen.
+  async function enforceEntryMfa(session) {
+    try {
+      const listed = await sb.auth.mfa.listFactors();
+      const factor = (listed?.data?.totp || []).find((candidate) => candidate.status === 'verified');
+      if (factor) {
+        const outcome = await ensureAssurance(sb);
+        if (outcome === 'verified' || outcome === 'not_required' || outcome === 'unavailable') return 'ok';
+        // The person has a factor but did not confirm the code: require it.
+        showLoginError('Confirm your authenticator code to enter Alcedo. Sign in again to try once more.');
+        bootRetry = true;
+        setLoginBusy(false, 'Try again');
+        loginScreen.style.display = '';
+        appScreen.style.display = 'none';
+        return 'blocked';
+      }
+      mountLoginEnrollment(session);
+      return 'enroll';
+    } catch (error) {
+      console.warn('MFA entry check failed; continuing without step-up', error?.message || error);
+      return 'ok';
+    }
+  }
+
+  function mountLoginEnrollment(session) {
+    loginScreen.style.display = '';
+    appScreen.style.display = 'none';
+    document.documentElement.dataset.atlasSignin = 'shown';
+    setLoginBusy(false, 'Sign in');
+    showLoginError('');
+    const host = document.getElementById('login-mfa');
+    const mountPoint = document.getElementById('login-mfa-host');
+    if (!host || !mountPoint || !window.AtlasMfaEnroll) {
+      // No enrolment UI available: fail open rather than trap the person.
+      console.warn('Two-factor enrolment UI is unavailable; continuing.');
+      onSignedIn(session).catch((error) => console.error(error));
+      return;
+    }
+    loginForm.hidden = true;
+    host.hidden = false;
+    window.AtlasMfaEnroll.mount(mountPoint, {
+      client: sb,
+      onVerified: async () => {
+        host.hidden = true;
+        loginForm.hidden = false;
+        const fresh = (await sb.auth.getSession()).data?.session || session;
+        await onSignedIn(fresh);
+      }
+    });
+  }
+
   async function onSignedIn(session) {
     if (sb?.auth?.mfa) {
-      const outcome = await ensureAssurance(sb);
-      if (outcome === 'verified') session = (await sb.auth.getSession()).data?.session || session;
+      const gate = await enforceEntryMfa(session);
+      if (gate === 'enroll' || gate === 'blocked') return;
+      session = (await sb.auth.getSession()).data?.session || session;
     }
     currentUser = session.user;
     try { sessionStorage.removeItem(SESSION_ENDED_KEY); sessionStorage.removeItem(SESSION_ENDED_AT_KEY); } catch (_) { /* storage unavailable */ }

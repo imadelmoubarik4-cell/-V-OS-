@@ -198,7 +198,8 @@ test('every event a module listens for is actually emitted', () => {
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
   assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261006-s92r"><\/script>\s*<script src="config\.js"><\/script>/);
-  assert.match(indexHtml, /<script src="assets\/js\/atlas-bot\.js[^"]*"><\/script>\s*<script src="assets\/js\/atlas-app\.js\?v=[^"]+"><\/script>/);
+  // S99: atlas-mfa-enroll.js loads between atlas-bot.js and atlas-app.js.
+  assert.match(indexHtml, /<script src="assets\/js\/atlas-bot\.js[^"]*"><\/script>\s*<script src="assets\/js\/atlas-mfa-enroll\.js\?v=[^"]+"><\/script>\s*<script src="assets\/js\/atlas-app\.js\?v=[^"]+"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
   assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine, health: window\.AtlasData\.health\(\) \}\);\s+\}/);
@@ -326,7 +327,12 @@ test('changed scripts carry the S88 cache key', () => {
   // S94: Settings publishing connections and the Marketing composer, media
   // library and platform checks; S94b: review fixes in the composer (asap,
   // partial save, radios), the media picker and the platform checks.
-  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261004-s94'"), 'settings-workspace.js');
+  // S99: Settings Security now manages the current user's authenticator (2FA).
+  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261016-s99'"), 'settings-workspace.js');
+  // S99: the TOTP enrolment module loads statically before atlas-app.js and is
+  // reused by the invitation wizard and the login gate.
+  assert.ok(index.includes('<script src="assets/js/atlas-mfa-enroll.js?v=20261016-s99"></script>'), 'atlas-mfa-enroll.js');
+  assert.ok(index.indexOf('assets/js/atlas-mfa-enroll.js') < index.indexOf('assets/js/atlas-app.js'), 'atlas-mfa-enroll.js loads before atlas-app.js');
   // marketing-workspace.js also carries the robot's Ask Atlas icon (bot1
   // content); the S94 key supersedes 20261003-bot1 so production caches refresh.
   assert.ok(!config.includes("scriptPath: 'assets/js/marketing-workspace.js?v=20261003-bot1'"), 'marketing-workspace.js not on the pre-S94 key');
