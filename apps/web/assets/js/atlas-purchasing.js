@@ -306,9 +306,17 @@
     const list = root.AtlasOperations?.orderSuggestions?.() || [];
     return list.map((entry) => ({ ...entry, orderStatus: itemOrderStatus(entry.id) })).filter((entry) => entry.orderStatus);
   }
+  let excludedPanelSeq = 0;
   function onOrderNote(list) {
     if (!list.length) return '';
-    return `<p class="po__muted" data-po-on-order>Not suggested again: ${list.map((entry) => `${esc(entry.name)} (${esc(ON_ORDER_LABEL[entry.orderStatus] || 'on an open order')})`).join(', ')}.</p>`;
+    const n = list.length;
+    const panelId = `po-excluded-panel-${++excludedPanelSeq}`;
+    const rows = list.map((entry) => `<li>${esc(entry.name)} <span class="po__muted">(${esc(ON_ORDER_LABEL[entry.orderStatus] || 'on an open order')})</span></li>`).join('');
+    return `<div class="atlas-disclosure" data-po-on-order>
+        <p class="po__muted">${n} ${n === 1 ? 'item isn’t' : 'items aren’t'} suggested again.</p>
+        <button type="button" class="atlas-disclosure__toggle" aria-expanded="false" aria-controls="${panelId}">Show details</button>
+        <div class="atlas-disclosure__panel" id="${panelId}" hidden><ul class="po-excluded-list">${rows}</ul></div>
+      </div>`;
   }
   function suggestionGroups() {
     const groups = new Map();
@@ -1118,6 +1126,16 @@
     const supplierRow = target.closest('tr[data-po-supplier]');
     if (supplierRow && !target.closest('a, button')) shell.navigate(`#purchasing/suppliers/${encodeURIComponent(supplierRow.dataset.poSupplier)}`);
   }
+  function onDisclosureToggle(event) {
+    const toggle = event.target instanceof Element ? event.target.closest('.atlas-disclosure__toggle') : null;
+    if (!toggle) return;
+    const panelId = toggle.getAttribute('aria-controls');
+    const panel = panelId ? document.getElementById(panelId) : toggle.closest('.atlas-disclosure')?.querySelector('.atlas-disclosure__panel');
+    const expanded = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!expanded));
+    if (panel) panel.hidden = expanded;
+    toggle.textContent = expanded ? 'Show details' : 'Hide details';
+  }
   function onInput(event) {
     const target = event.target;
     if (!(target instanceof HTMLInputElement) || !target.matches('[data-po-supplier-search]')) return;
@@ -1185,6 +1203,7 @@
       if (shell.current() === 'suppliers') render();
     });
     document.addEventListener('click', onClick);
+    document.addEventListener('click', onDisclosureToggle);
     document.addEventListener('input', onInput);
   }
 

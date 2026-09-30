@@ -70,7 +70,7 @@ body.atlas-page-full-height .atlas-content, body.atlas-page-full-height .atlas-c
 .atlas-nav__foot { flex: none; padding-top: 12px; }
 .atlas-nav .nav-group { display: grid; gap: 1px; margin: 0; }
 .atlas-nav .nav-label { margin: 0; padding: 18px 10px 6px; color: var(--text-3, #606c80); font: 500 12px/16px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); letter-spacing: 0; text-transform: none; }
-.atlas-nav .nav-item { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; min-height: 34px; margin: 0; padding: 0 10px; border: 0; border-radius: var(--r-md, 8px); background: transparent; color: var(--text-2, #475569); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: left; text-decoration: none; box-shadow: none; cursor: pointer; transition: background var(--dur-1, 120ms) var(--ease-out, ease), color var(--dur-1, 120ms); }
+.atlas-nav .nav-item { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; min-height: 34px; margin: 0; padding: 0 10px; border: 0; border-radius: var(--r-md, 8px); background: transparent; color: var(--text-2, #475569); font: 400 14px/20px var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif); text-align: left; text-decoration: none; box-shadow: none; cursor: pointer; transition: background var(--motion-mid, 200ms) var(--ease-out, ease), color var(--motion-mid, 200ms) var(--ease-out, ease), box-shadow var(--motion-mid, 200ms) var(--ease-out, ease); }
 .atlas-nav .nav-item svg { flex: none; width: 16px; height: 16px; stroke-width: 1.75; color: currentColor; }
 /* The Atlas AI robot sits in the 16 px icon slot, a little larger so its face reads. */
 .atlas-nav .nav-item .atlas-bot--nav { --atlas-bot-size: 20px; margin: -2px; }
@@ -79,7 +79,8 @@ body.atlas-page-full-height .atlas-content, body.atlas-page-full-height .atlas-c
 .atlas-nav .nav-item.active svg, .atlas-nav .nav-item[aria-current="page"] svg { color: var(--accent-brand, #08495c); }
 /* Active marker: a short Atlas Blue bar at the sidebar edge (Brand v1.0: blue
    marks selection; the item itself stays neutral). */
-.atlas-nav .nav-item.active::before, .atlas-nav .nav-item[aria-current="page"]::before { content: ''; position: absolute; top: 9px; left: -12px; width: 3px; height: 16px; border-radius: 0 2px 2px 0; background: var(--highlight, #E8732A); }
+.atlas-nav .nav-item.active::before, .atlas-nav .nav-item[aria-current="page"]::before { content: ''; position: absolute; top: 9px; left: -12px; width: 3px; height: 16px; border-radius: 0 2px 2px 0; background: var(--highlight, #E8732A); transform-origin: center; animation: atlas-nav-indicator var(--motion-mid, 200ms) var(--ease-out, ease); }
+@keyframes atlas-nav-indicator { from { opacity: 0; transform: scaleY(.4); } to { opacity: 1; transform: scaleY(1); } }
 .atlas-nav .nav-item--ai svg { color: var(--accent-brand, #3b82f6); }
 .atlas-nav .nav-item-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Unread count ([data-nav-badge], written by atlas-chrome.js), right-aligned. */
@@ -109,8 +110,9 @@ body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav .nav-item:is(.active, [aria-
 body.atlas-rail:not(.atlas-sidebar-open) .atlas-nav__badge { position: absolute; top: 8px; right: 9px; min-width: 0; width: 8px; height: 8px; padding: 0; overflow: hidden; font-size: 0; line-height: 0; box-shadow: 0 0 0 2px var(--bg-subtle, #f8fafc); }
 body.atlas-rail:not(.atlas-sidebar-open) .atlas-account { justify-content: center; width: 44px; padding: 8px 0; }
 /* Overlay sidebar at 768–1279 (toggle; scrim, Esc closes). */
-body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 70; width: 240px; box-shadow: var(--shadow-modal, 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20)); }
-.atlas-sidebar-scrim { position: fixed; inset: 0; z-index: 69; background: var(--overlay, rgba(11, 15, 20, .32)); }
+body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 70; width: 240px; box-shadow: var(--shadow-modal, 0 4px 12px rgba(11, 15, 20, .08), 0 32px 80px rgba(11, 15, 20, .20)); animation: atlas-drawer-in var(--motion-mid, 200ms) var(--ease-out, ease) both; }
+.atlas-sidebar-scrim { position: fixed; inset: 0; z-index: 69; background: var(--overlay, rgba(11, 15, 20, .32)); animation: atlas-fade-in var(--motion-mid, 200ms) var(--ease-out, ease) both; }
+@keyframes atlas-drawer-in { from { opacity: 0; transform: translateX(calc(-1 * var(--move-md, 8px))); } to { opacity: 1; transform: none; } }
 
 /* Rail tooltips: the .atlas-tooltip component, positioned by atlas-chrome.js after 400 ms. */
 
@@ -394,10 +396,17 @@ body.atlas-rail.atlas-sidebar-open .atlas-sidebar { position: fixed; top: 0; lef
   .page--full-height { height: auto; min-height: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .atlas-sheet-panel, .atlas-notify, .atlas-palette, .atlas-account-menu, .atlas-toast { animation-duration: 1ms; }
+  .atlas-sheet-panel, .atlas-notify, .atlas-palette, .atlas-account-menu, .atlas-toast, .atlas-sidebar-scrim { animation-duration: 1ms; }
   .atlas-nav .nav-item, .atlas-omni { transition: none; }
+  /* Active nav item appears without the indicator sweep or drawer slide; the
+     teal wash and orange bar are still shown, just without movement. */
+  .atlas-nav .nav-item.active::before, .atlas-nav .nav-item[aria-current="page"]::before { animation: none; transform: none; }
+  body.atlas-rail.atlas-sidebar-open .atlas-sidebar { animation: none; }
 }
-html.atlas-reduce-motion :is(.atlas-sheet-panel, .atlas-notify, .atlas-palette, .atlas-account-menu, .atlas-toast) { animation-duration: 1ms; }
+html.atlas-reduce-motion :is(.atlas-sheet-panel, .atlas-notify, .atlas-palette, .atlas-account-menu, .atlas-toast, .atlas-sidebar-scrim) { animation-duration: 1ms; }
+html.atlas-reduce-motion .atlas-nav .nav-item.active::before,
+html.atlas-reduce-motion .atlas-nav .nav-item[aria-current="page"]::before { animation: none; transform: none; }
+html.atlas-reduce-motion body.atlas-rail.atlas-sidebar-open .atlas-sidebar { animation: none; }
 
 /* Hidden always wins inside the shell (attribute toggled by the chrome). */
 :is(.atlas-shell, .atlas-tabbar, .atlas-layer, .atlas-auth, #app-screen) [hidden], .atlas-layer[hidden], .atlas-sidebar-scrim[hidden] { display: none; }

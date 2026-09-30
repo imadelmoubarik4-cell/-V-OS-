@@ -228,9 +228,11 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 
 test('changed scripts carry the S88 cache key', () => {
   // S90 UX acceptance remediation (shell, design system and page fixes).
-  for (const file of ['data-workspace.js', 'atlas-capture.js', 'atlas-search.js']) {
+  for (const file of ['atlas-capture.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
   }
+  // Alcedo polish pass: data-workspace.js changed (import dialog a11y) and carries the polish key.
+  assert.ok(index.includes('<script src="assets/js/data-workspace.js?v=20260930-polish1"></script>'), 'data-workspace.js');
   // S92 Accounting: dialogs labelled when they open (modal). The shell (the
   // admin-only Accounting destination and route) and the palette (its group)
   // changed on both sides of the S92/robot merge and carry the merge key.
@@ -251,8 +253,12 @@ test('changed scripts carry the S88 cache key', () => {
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
   // and the UX acceptance round 2 fixes (toast placement, order lines on the
   // phone, one inventory value in Reports, hours validation in place).
-  for (const file of ['atlas-purchasing.js', 'operations.js', 'reports-overview.js']) {
+  for (const file of ['reports-overview.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-s90g"></script>`), file);
+  }
+  // Alcedo polish pass: atlas-purchasing.js (exclusion disclosure) and operations.js ((optional) label) carry the polish key.
+  for (const file of ['atlas-purchasing.js', 'operations.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-polish1"></script>`), file);
   }
   // S97 Inventory Storage Locations: managed locations with chips, filters, a
   // Manage Locations page and primary-location stock-count scoping.
@@ -271,9 +277,11 @@ test('changed scripts carry the S88 cache key', () => {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
   }
   // Flavor Intelligence (S95) survives Accounting (S92) reconciliation.
-  for (const file of ['recipes.js', 'flavor-map.js', 'atlas-ai.js']) {
+  for (const file of ['recipes.js', 'flavor-map.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261005-fi1"></script>`), file);
   }
+  // Alcedo polish pass: atlas-ai.js changed ((optional) label, Decisions subtitle) and carries the polish key.
+  assert.ok(index.includes('<script src="assets/js/atlas-ai.js?v=20260930-polish1"></script>'), 'atlas-ai.js');
   assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261005-fi1"></script>\n<script src="assets/js/flavor-map.js?v=20261005-fi1"></script>'), 'flavor-map.js right after recipes.js');
   // Accounting (S92): the offline quick answer keeps the sparkles icon (atlas-palette.js).
   for (const file of ['atlas-palette.js']) {

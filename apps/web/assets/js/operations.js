@@ -727,7 +727,9 @@
   function field(label, control, help = '') {
     const id = `ops-field-${++fieldSequence}`;
     const withId = control.replace(/^\s*<(input|select|textarea)\b/, `<$1 id="${id}"`);
-    return `<div class="atlas-field"><label for="${id}">${escape(label)}</label>${withId}${help ? `<p class="atlas-field__help">${escape(help)}</p>` : ''}</div>`;
+    const optional = / \(optional\)$/.test(label);
+    const labelHtml = `${escape(optional ? label.replace(/ \(optional\)$/, '') : label)}${optional ? ' <span class="optional">(optional)</span>' : ''}`;
+    return `<div class="atlas-field"><label for="${id}">${labelHtml}</label>${withId}${help ? `<p class="atlas-field__help">${escape(help)}</p>` : ''}</div>`;
   }
 
   // ---------- actions ----------

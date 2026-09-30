@@ -695,8 +695,8 @@
           </div>
           <label class="atlas-upload data-upload-drop" data-data-drop>
             <span class="atlas-upload__thumb"><i data-lucide="file-up"></i></span>
-            <span class="atlas-upload__body"><span class="atlas-upload__title" data-data-file-name>Choose a file or drop it here</span><span class="atlas-upload__help">CSV, Excel, PDF, JSON, text or a photo, up to 50 MB.</span></span>
-            <input class="sr-only" type="file" name="file" multiple accept=".pdf,.xlsx,.xls,.csv,.json,.txt,.jpg,.jpeg,.png,.webp,.heic,.heif">
+            <span class="atlas-upload__body"><span class="atlas-upload__title" data-data-file-name>Choose a file or drop it here</span><span class="atlas-upload__help" id="data-upload-help">CSV, Excel, PDF, JSON, text or a photo, up to 50 MB.</span></span>
+            <input class="sr-only" type="file" name="file" multiple aria-label="Choose a file" aria-describedby="data-upload-help" accept=".pdf,.xlsx,.xls,.csv,.json,.txt,.jpg,.jpeg,.png,.webp,.heic,.heif">
           </label>
           <p class="data-upload-note">Nothing changes live records until you review the file.</p>
           <p class="error" data-data-upload-error hidden></p>

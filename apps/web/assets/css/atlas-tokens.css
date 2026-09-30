@@ -191,8 +191,22 @@
   --dur-1: 120ms;   /* hover, press, colour */
   --dur-2: 180ms;   /* menus, popovers, toggles, tabs, row expand */
   --dur-3: 240ms;   /* sheets, dialogs, palette */
-  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-out: cubic-bezier(.2, .7, .1, 1);
   --ease-in-out: cubic-bezier(.4, 0, .2, 1);
+
+  /* Shared motion system (animation pass). Durations and easing are
+     theme-independent, so they are defined once here (never mirrored in a
+     theme block). Controls animate at --motion-fast/--motion-mid (~120–250ms),
+     larger transitions at --motion-mid/--motion-slow (~200–350ms). Prefer
+     opacity + transform only. The movement tokens below collapse to 0 under
+     prefers-reduced-motion (media block at the foot of :root). */
+  --motion-fast: 140ms;
+  --motion-mid: 200ms;
+  --motion-slow: 300ms;
+  --ease-standard: cubic-bezier(.4, 0, .2, 1);
+  --ease-in: cubic-bezier(.4, 0, 1, 1);
+  --move-sm: 4px;
+  --move-md: 8px;
 
   /* ---------- Layers ---------- */
   --z-sticky: 20;
@@ -326,9 +340,9 @@
   --weight-medium: 500;
   --weight-semibold: 600;
   --touch-target: var(--touch);
-  --motion-fast: var(--dur-1);
+  /* --motion-fast, --motion-mid, --motion-slow, --ease-standard and --ease-in
+     are defined once in the Motion section above (shared motion system). */
   --motion-base: var(--dur-2);
-  --ease-standard: var(--ease-out);
 }
 @media (max-width: 1279px) { :root { --page-gutter: 32px; } }
 @media (max-width: 1023px) { :root { --page-gutter: 24px; } }
@@ -340,6 +354,16 @@
     --type-body: 400 15px/22px var(--font-sans);
     --type-kpi: 500 22px/28px var(--font-sans);
   }
+}
+/* Reduced motion: the movement tokens collapse to 0, so every transform that
+   reads --move-sm / --move-md (button press, drawer/menu/toast slide, page
+   entry) resolves to no movement while colour, shadow and opacity states stay
+   intact. Durations/looping are additionally neutralized in atlas-base.css
+   (global) and per-component reduced-motion blocks. Defined here because tokens
+   may only be declared in this file. The mascot is unaffected — it reads none
+   of these tokens and keeps its own reduced-motion handling. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --move-sm: 0px; --move-md: 0px; }
 }
 }
 

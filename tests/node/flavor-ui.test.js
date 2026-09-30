@@ -123,5 +123,5 @@ test('#recipes/flavor is a route of Recipes, never a recipe id; Recipes hands th
 test('Atlas AI approval card knows recipe.draft', () => {
   assert.match(ai, /'recipe\.draft': \{ icon: 'martini', verb: 'Save draft', done: 'Draft recipe saved', view: 'Open recipe', executable: true \}/);
   assert.match(ai, /code === 'name_taken' \? 'A recipe with this name already exists, so nothing was saved\./);
-  assert.ok(index.includes('<script src="assets/js/atlas-ai.js?v=20261005-fi1"></script>'));
+  assert.ok(index.includes('<script src="assets/js/atlas-ai.js?v=20260930-polish1"></script>'));
 });

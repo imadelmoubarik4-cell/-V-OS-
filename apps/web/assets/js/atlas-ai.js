@@ -2484,8 +2484,11 @@
           ${rows.map((row) => {
             const [pillLabel, tone] = DECISION_PILLS[row.statusKey] || DECISION_PILLS.proposed;
             const selected = Boolean(row.recommendationId) && row.recommendationId === d.openId;
+            const norm = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+            const summary = norm(row.summary) === norm(row.title) ? '' : row.summary;
+            const subtitle = summary || (row.evidenceCount ? `${row.evidenceCount} ${row.evidenceCount === 1 ? 'source' : 'sources'}` : '');
             return `<button type="button" class="ai-dec-row${selected ? ' is-selected' : ''}" role="row"${selected ? ' aria-current="true"' : ''} data-ai-dec-open="${escapeHtml(row.recommendationId || '')}" data-ai-dec-key="${escapeHtml(row.id)}"${row.recommendationId ? '' : ' disabled'}>
-              <span role="cell" class="ai-dec-row__main"><span class="ai-dec-row__t">${escapeHtml(row.title)}</span><span class="ai-dec-row__m">${escapeHtml(row.summary || (row.evidenceCount ? `${row.evidenceCount} ${row.evidenceCount === 1 ? 'source' : 'sources'}` : ''))}</span></span>
+              <span role="cell" class="ai-dec-row__main"><span class="ai-dec-row__t">${escapeHtml(row.title)}</span><span class="ai-dec-row__m">${escapeHtml(subtitle)}</span></span>
               <span role="cell" class="ai-dec-row__cell" data-label="Source">${escapeHtml(row.source)}</span>
               <span role="cell" class="ai-dec-row__cell"><span class="atlas-pill atlas-pill--${tone}">${pillLabel}</span></span>
               <span role="cell" class="ai-dec-row__cell" data-label="Decided by">${escapeHtml(row.decidedBy || '—')}</span>
@@ -2575,7 +2578,7 @@
         <h3>Record a decision</h3>
         <div class="atlas-field"><label for="${id}-decision">Decision</label><select id="${id}-decision" class="atlas-select" name="decision"><option value="accept">Approve</option><option value="reject">Dismiss</option><option value="defer">Decide later</option></select></div>
         <div class="atlas-field" data-ai-defer hidden><label for="${id}-until">Decide by</label><input id="${id}-until" class="atlas-input" type="datetime-local" step="60" name="until"></div>
-        <div class="atlas-field"><label for="${id}-notes">Note (optional)</label><textarea id="${id}-notes" class="atlas-input" name="notes" rows="3" placeholder="What should Alcedo remember about this?"></textarea></div>
+        <div class="atlas-field"><label for="${id}-notes">Note <span class="optional">(optional)</span></label><textarea id="${id}-notes" class="atlas-input" name="notes" rows="3" placeholder="What should Alcedo remember about this?"></textarea></div>
         <div class="ai-sheet__error" data-ai-dec-error hidden role="alert"></div>
         <div class="ai-sheet__actions"><button type="submit" class="atlas-btn atlas-btn--primary">Save decision</button></div>
       </form>

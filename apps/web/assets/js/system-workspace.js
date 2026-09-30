@@ -23,7 +23,8 @@
     not_connected: 'Not connected', disabled_by_policy: 'Off by policy', historical: 'Historical', blocked: 'Blocked',
     running: 'Running', waiting: 'Waiting', failed: 'Failed', idle: 'Idle', open: 'Open', monitoring: 'Monitoring',
     resolved: 'Resolved', dismissed: 'Dismissed', critical: 'Critical', warning: 'Warning', info: 'Information',
-    disabled: 'Off', enabled: 'On', unverified: 'Not verified', preview_only: 'Test only', none: 'None'
+    disabled: 'Off', enabled: 'On', unverified: 'Not verified', preview_only: 'Test only', none: 'None',
+    not_verified_by_atlas_runtime: 'Not verified by Alcedo'
   };
   const GOOD = ['healthy', 'connected', 'ready', 'current', 'resolved'];
   const WARN = ['degraded', 'partial', 'stale', 'warning', 'monitoring', 'waiting', 'no_records', 'limited', 'unverified'];
