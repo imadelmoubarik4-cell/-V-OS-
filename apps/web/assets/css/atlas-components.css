@@ -1661,6 +1661,8 @@ body.atlas-modal-open { overflow: hidden; }
   gap: var(--s-1);
   align-self: start;
   margin: 0;
+  /* Keep the text-link look but give it a 44px touch target (a11y minimum). */
+  min-height: var(--touch);
   padding: 0;
   border: 0;
   background: transparent;

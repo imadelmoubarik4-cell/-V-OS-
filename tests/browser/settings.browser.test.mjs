@@ -154,7 +154,7 @@ test('a time zone the server rejects is explained under the field', { skip }, as
     await app.page.click('[data-settings-timezone-form] button[type="submit"]');
     await app.page.waitForSelector('#settings-timezone-error');
     const text = await app.page.textContent('#settings-timezone-error');
-    assert.match(text, /“Mars\/Olympus” isn’t a time zone Atlas recognises/);
+    assert.match(text, /“Mars\/Olympus” isn’t a time zone Alcedo recognises/);
     assert.doesNotMatch(await app.page.textContent('[data-settings-timezone-form]'), /Unknown time zone/, 'server text is never shown');
     assert.equal(await app.page.getAttribute('[data-settings-timezone-form] [name="timezone"]', 'aria-invalid'), 'true');
   } finally { await app.close(); }

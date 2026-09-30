@@ -338,12 +338,12 @@ test('Media: an unreachable media service (no HTTP response) says so calmly; an 
     await page.waitForSelector('#mm-test-host [data-mm-body] .atlas-alert--danger');
     const banner = await page.textContent('#mm-test-host [data-mm-body] .atlas-alert--danger');
     assert.match(banner, /Media couldn’t be loaded\. Your files are safe\./);
-    assert.match(banner, /Atlas couldn’t reach Media\. Nothing was changed\. Try again in a moment\./);
+    assert.match(banner, /Alcedo couldn’t reach Media\. Nothing was changed\. Try again in a moment\./);
     assert.doesNotMatch(banner, /Check the connection/);
     await page.setInputFiles('#mm-test-host [data-mm-file]', [{ name: 'while-down.jpg', mimeType: 'image/jpeg', buffer: JPEG }]);
     await page.waitForSelector('#mm-test-host [data-mm-job][data-mm-state="failed"]');
     const row = await page.textContent('#mm-test-host [data-mm-job][data-mm-state="failed"]');
-    assert.match(row, /Atlas couldn’t reach Media, so this didn’t upload\. Retry it in a moment\./);
+    assert.match(row, /Alcedo couldn’t reach Media, so this didn’t upload\. Retry it in a moment\./);
     assert.doesNotMatch(row, /The other files are fine/);
     // Back: Try again reloads the grid, Retry finishes the upload.
     await page.unroute(`${SUPABASE}/functions/v1/atlas-marketing-media**`);
@@ -375,7 +375,7 @@ test('Media: bulk delete says which items were in posts and which failed for ano
     const toastText = await page.textContent('#atlas-toast-region');
     assert.match(toastText, /1 item deleted\./);
     assert.match(toastText, /1 item couldn’t be deleted: they’re in posts that are waiting, scheduled or published\./);
-    assert.match(toastText, /1 item wasn’t deleted\. Atlas couldn’t reach Media\./);
+    assert.match(toastText, /1 item wasn’t deleted\. Alcedo couldn’t reach Media\./);
   } finally {
     await close();
   }

@@ -194,7 +194,7 @@ test('Marketing: overview lists what is coming up and waiting; drafts store venu
     await page.waitForSelector('#marketing-view .atlas-list');
     const text = await page.textContent('#marketing-view');
     // S94: the caption follows publishing capability (nothing connected here).
-    assert.match(text, /Atlas can't publish yet, so you post by hand and mark it here\./);
+    assert.match(text, /Alcedo can't publish yet, so you post by hand and mark it here\./);
     assert.match(text, /Coming up/);
     assert.match(text, /Friday quiz night reel/);
     assert.match(text, /Sat 26 Sep, 17:00/, 'times show in venue time, not the browser zone');
@@ -256,7 +256,7 @@ test('Data: imports list puts files needing attention first; an import shows its
     await page.click('#data-view a.cell-primary[href$="000000000201"]');
     await page.waitForSelector('#data-view .atlas-steps');
     const detail = await page.textContent('#data-view .data-import-detail');
-    assert.match(detail, /Atlas couldn.t read this file\./);
+    assert.match(detail, /Alcedo couldn.t read this file\./);
     assert.match(detail, /Your live records were not changed\./);
     assert.doesNotMatch(detail, /pdf parse error/, 'no raw error text');
     assert.deepEqual(record.pageErrors, []);

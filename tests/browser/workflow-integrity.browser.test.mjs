@@ -144,11 +144,19 @@ test('P2-7: items on an order waiting for approval are listed, not suggested aga
   try {
     await openSuggestions(page);
     const form = await page.textContent('#po-suggest-form');
-    assert.match(form, /Not suggested again: Campari \(on an order waiting for approval\), Aperol \(on an order waiting for approval\), Fever-Tree Tonic \(on order\)\./);
+    // The excluded items are now a disclosure: a summary count line, a Show
+    // details toggle, and a hidden panel listing each item with its order state
+    // (textContent includes the hidden panel text).
+    assert.match(form, /3 items aren’t suggested again\./);
+    assert.match(form, /Campari \(on an order waiting for approval\)/);
+    assert.match(form, /Aperol \(on an order waiting for approval\)/);
+    assert.match(form, /Fever-Tree Tonic \(on order\)/);
     const suggested = await page.$$eval('[data-po-include]', (nodes) => nodes.map((node) => node.value));
     assert.ok(!suggested.includes(IDS.campari) && !suggested.includes(IDS.aperol));
     assert.ok(suggested.includes(IDS.tanq) && suggested.includes(IDS.limes));
-    assert.match(await page.textContent('.po-suggest'), /Not suggested again: Campari/);
+    const suggestCard = await page.textContent('.po-suggest');
+    assert.match(suggestCard, /3 items aren’t suggested again\./);
+    assert.match(suggestCard, /Campari \(on an order waiting for approval\)/);
   } finally { await close(); }
 });
 

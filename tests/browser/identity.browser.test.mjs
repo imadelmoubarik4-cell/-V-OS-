@@ -78,12 +78,12 @@ test('AtlasIdentity and AtlasApi: fixed copy by status and code, never server te
       };
     });
     assert.deepEqual(result.failures, [
-      { kind: 'invalid', status: 400, message: 'Atlas couldn’t accept that. Check the details and try again.' },
+      { kind: 'invalid', status: 400, message: 'Alcedo couldn’t accept that. Check the details and try again.' },
       { kind: 'failed', status: 500, message: 'Something went wrong. Nothing was changed. Try again.' },
     ]);
     for (const failure of result.failures) assert.doesNotMatch(failure.message, /column|relation|does not exist|atlas_private/);
     assert.equal(result.unconfigured, 'not_configured');
-    assert.deepEqual(result.expired, ['auth', 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.']);
+    assert.deepEqual(result.expired, ['auth', 'Alcedo couldn’t confirm your sign-in for this. Try again in a moment.']);
     assert.equal(result.authEvent, true, 'a 401 asks the shell to offer sign-in');
     assert.deepEqual(result.labels, ['Team member', 'Team member', 'Ada Lovelace']);
     assert.deepEqual(result.kinds, ['auth', 'forbidden', 'not_found', 'conflict', 'too_large', 'rate_limited', 'invalid', 'unavailable', 'failed']);

@@ -353,7 +353,7 @@ test('P2: a question in the palette lists the record it is about under Ask Atlas
     await page.fill('#atlas-palette-input', 'how many limes do we have?');
     await page.waitForFunction(() => document.querySelectorAll('#atlas-palette-list [role="option"]').length > 1);
     const rows = await page.$$eval('#atlas-palette-list [role="option"]', (nodes) => nodes.map((node) => node.textContent.trim().replace(/\s+/g, ' ')));
-    assert.match(rows[0], /Ask Atlas/);
+    assert.match(rows[0], /Ask Alcedo/);
     assert.ok(rows.slice(1).some((row) => /Limes/.test(row)), rows.join(' | '));
   } finally { await close(); }
 });
