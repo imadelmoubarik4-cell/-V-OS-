@@ -51,7 +51,7 @@ test('Overview has the former Business Intelligence figures, unknown stays unkno
 });
 
 test('sales are shown as not connected; no revenue is invented', () => {
-  assert.match(ui, /Not connected — no point-of-sale system sends sales to Atlas/);
+  assert.match(ui, /Not connected — no point-of-sale system sends sales to Alcedo/);
   assert.match(ui, /Realised margin needs sales|realised margin need sales/i);
   assert.doesNotMatch(ui, /Math\.random\(\)|sampleSales|fakeRevenue/i);
 });

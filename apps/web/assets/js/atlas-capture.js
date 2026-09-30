@@ -33,14 +33,14 @@
 
   const MODES = Object.freeze({
     stock_count: { title: 'Scan item', hint: 'Point at the barcode. Avoid people and screens.' },
-    identify: { title: 'Identify item', hint: 'Point at the product or its barcode. Nothing changes in Atlas.' },
+    identify: { title: 'Identify item', hint: 'Point at the product or its barcode. Nothing changes in Alcedo.' },
     add_product: { title: 'Scan product', hint: 'Take a photo of the front label. Avoid people and screens.' },
     receiving: { title: 'Scan delivery', hint: 'Take a photo of the goods or the delivery note.' }
   });
 
   const FIELD_LABELS = Object.freeze({
     identity: 'Product', brand: 'Brand', variant: 'Variant', category: 'Category', package_type: 'Package',
-    unit_size: 'Unit size', package_size: 'Pack', barcode: 'Barcode', inventory_match: 'Atlas item', supplier_match: 'Supplier'
+    unit_size: 'Unit size', package_size: 'Pack', barcode: 'Barcode', inventory_match: 'Alcedo item', supplier_match: 'Supplier'
   });
   const STATE_WORDS = Object.freeze({ sure: 'Sure', check: 'Check', not_sure: 'Not sure', unknown: 'Not read' });
   const STATE_TONES = Object.freeze({ sure: 'positive', check: 'warning', not_sure: 'neutral', unknown: 'neutral' });
@@ -50,7 +50,7 @@
   // Fixed, friendly copy per error code (the service already sends fixed text;
   // anything unknown gets a generic line, never raw server text).
   const ERROR_COPY = Object.freeze({
-    invalid_request: 'Atlas couldn’t read that request. Try again.',
+    invalid_request: 'Alcedo couldn’t read that request. Try again.',
     unauthorized: 'Sign in again to continue.',
     forbidden: 'This isn’t available for your role.',
     not_found: 'That could not be found. Refresh and try again.',
@@ -93,7 +93,7 @@
       super(message);
       this.name = 'CaptureError';
       this.code = code;
-      // Fixed copy Atlas wrote (ERROR_COPY), safe to show (AtlasApi.message).
+      // Fixed copy Alcedo wrote (ERROR_COPY), safe to show (AtlasApi.message).
       this.atlasFixed = true;
       Object.assign(this, extra);
     }
@@ -126,7 +126,7 @@
       response = await fetch(url, { method, headers, cache: 'no-store', signal: controller.signal, body: form || (body ? JSON.stringify(body) : undefined) });
     } catch (error) {
       if (error?.name === 'AbortError') throw new CaptureError('timeout', 'Recognition took too long. Try again, or scan the barcode.');
-      throw new CaptureError('network', 'Atlas couldn’t reach recognition. Check your connection and try again.');
+      throw new CaptureError('network', 'Alcedo couldn’t reach recognition. Check your connection and try again.');
     } finally {
       root.clearTimeout(timer);
     }
@@ -296,7 +296,7 @@
       const state = fieldState(detection, key);
       if (confidence == null && state === 'unknown' && !['identity', 'inventory_match'].includes(key)) return '';
       let value = readValue(detection, key);
-      if (key === 'inventory_match') value = item ? item.name : 'No Atlas item';
+      if (key === 'inventory_match') value = item ? item.name : 'No Alcedo item';
       if (key === 'identity' && !value) value = item?.name || null;
       if (key === 'brand' && !value) value = item?.brand || null;
       if (key === 'category' && !value) value = item?.category || null;
@@ -305,7 +305,7 @@
       const shown = value ? state : 'unknown';
       return `<div class="atlas-capture-field" data-field="${escapeHtml(key)}" data-state="${escapeHtml(shown)}"><dt>${escapeHtml(FIELD_LABELS[key])}</dt><dd><span class="atlas-capture-field__value">${value ? escapeHtml(value) : '<span class="atlas-capture-muted">Not read</span>'}</span>${value ? `<span class="atlas-pill${STATE_TONES[shown] === 'neutral' ? '' : ` atlas-pill--${STATE_TONES[shown]}`}">${escapeHtml(STATE_WORDS[shown])}</span>` : ''}</dd></div>`;
     }).filter(Boolean).join('');
-    return rows ? `<dl class="atlas-capture-fields" aria-label="How sure Atlas is, field by field">${rows}</dl>` : '';
+    return rows ? `<dl class="atlas-capture-fields" aria-label="How sure Alcedo is, field by field">${rows}</dl>` : '';
   }
 
   const POLARITY_ICON = { for: 'check', against: 'x', missing: 'minus' };
@@ -342,7 +342,7 @@
       return `<li class="atlas-capture-candidate${selected ? ' is-selected' : ''}" data-candidate="${escapeHtml(candidate.item_id)}" data-rank="${escapeHtml(candidate.rank)}">
         <div class="atlas-capture-candidate__head"><div class="atlas-capture-candidate__text"><p class="atlas-capture-candidate__name">${escapeHtml(name)}</p><p class="atlas-capture-candidate__meta">${escapeHtml([item.category, size].filter(Boolean).join(' · ') || 'Inventory item')}</p></div><span class="atlas-capture-candidate__percent num">${escapeHtml(candidate.percent)}%</span></div>
         <div class="atlas-cluster">${flagPills(candidate)}</div>
-        <details class="atlas-capture-why"${startOpen ? ' open' : ''}><summary>Why Atlas suggests it</summary>${evidenceMarkup(candidate)}</details>
+        <details class="atlas-capture-why"${startOpen ? ' open' : ''}><summary>Why Alcedo suggests it</summary>${evidenceMarkup(candidate)}</details>
         ${action ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-capture-choose="${escapeHtml(candidate.item_id)}" data-rank="${escapeHtml(candidate.rank)}"${candidate.item?.active === false || candidate.flags?.inactive ? ' disabled title="Inactive items can’t be chosen. Reactivate it first."' : ''}>${escapeHtml(action)} ${escapeHtml(name)}</button>` : ''}
       </li>`;
     }).join('')}</ol>`;
@@ -495,7 +495,7 @@
 
   function errorSheet(session, error) {
     const message = error instanceof CaptureError ? error.message : ERROR_COPY.internal;
-    showSheet(session, `<div class="atlas-alert atlas-alert--danger" role="alert"><i data-lucide="circle-alert" aria-hidden="true"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Atlas couldn’t check this.</p><p class="atlas-alert__body">${escapeHtml(message)} Nothing was changed.</p></div></div>
+    showSheet(session, `<div class="atlas-alert atlas-alert--danger" role="alert"><i data-lucide="circle-alert" aria-hidden="true"></i><div class="atlas-alert__content"><p class="atlas-alert__title">Alcedo couldn’t check this.</p><p class="atlas-alert__body">${escapeHtml(message)} Nothing was changed.</p></div></div>
       <div class="atlas-capture__actions"><button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-capture-retry>Retry scan</button>${session.onSearch ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-capture-search>Search inventory</button>' : ''}</div>`,
     (sheet) => {
       sheet.querySelector('[data-capture-retry]')?.addEventListener('click', () => controller(session).resume());
@@ -528,7 +528,7 @@
   async function handleCapture(session, { codes = [], image = null, source }) {
     if (session.closed) return;
     stopDetection(session);
-    setBusy(session, 'Checking Atlas inventory…');
+    setBusy(session, 'Checking Alcedo inventory…');
     const clientRequestId = session.clientRequestId || uuid();
     session.clientRequestId = clientRequestId;
     try {

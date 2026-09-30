@@ -130,7 +130,7 @@ test('Settings has the spec sections, per-form save bars and truthful integratio
   // Offer drafts start empty: hours come from the manager, never 15:00–18:00.
   assert.match(settings, /start_time: '', end_time: ''/);
   // Time zone errors from the server appear under the field, in fixed words.
-  assert.match(settings, /isn’t a time zone Atlas recognises/);
+  assert.match(settings, /isn’t a time zone Alcedo recognises/);
   // Atlas AI settings render from the actual response, incl. the S88 limits.
   for (const key of ['voice_sessions_per_day', 'voice_minutes_per_day', 'max_concurrent_voice_sessions', 'upload_bytes_per_day', 'upload_files_per_day']) {
     assert.match(settings, new RegExp(`key: '${key}'`));

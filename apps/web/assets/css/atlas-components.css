@@ -69,6 +69,14 @@
   color: var(--text-2);
 }
 .page-head__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); flex: 0 1 auto; min-width: 0; max-width: 100%; }
+/* Page entry: the header and the summary/KPI row fade in with a tiny rise once,
+   on load. The keyframe ENDS at opacity 1 and the elements' resting state is
+   fully visible, so nothing waits on JS — if the animation never runs they are
+   simply shown. Dense lists and table rows are deliberately excluded so live
+   updates never flicker. Reduced motion collapses the rise (--move-sm → 0) and
+   the global rule (atlas-base.css) cuts the duration, leaving an instant show. */
+.page-head, .atlas-stats { animation: atlas-enter var(--motion-slow) var(--ease-out); }
+@keyframes atlas-enter { from { opacity: 0; transform: translateY(var(--move-sm)); } to { opacity: 1; transform: none; } }
 /* Text that carries user content wraps even a very long unbroken token inside
    its (min-width: 0) column instead of overflowing the page. Leaf text
    elements break anywhere; the containers (card, sheet and dialog bodies)
@@ -177,35 +185,55 @@
   height: var(--control-md);
   min-width: 0;
   margin: 0;
-  padding: 0 14px;
+  padding: 0 16px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
+  border-radius: var(--r-pill);   /* ALCEDO: pill buttons, like the website */
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow-1);
-  font: 500 14px/20px var(--font-sans);
+  font: 600 14px/20px var(--font-sans);
   letter-spacing: 0;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
-  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+  transition: background-color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
 }
 .atlas-btn:hover { text-decoration: none; }
+/* Tactile feedback: a gentle lift on hover, a small press on active. Both read
+   the movement token, so prefers-reduced-motion collapses them to no movement
+   while the colour states above stay visible. Disabled buttons never move. */
+.atlas-btn:hover:not(:disabled, [aria-disabled="true"]) { transform: translateY(calc(var(--move-sm) * -0.25)); }
+.atlas-btn:active:not(:disabled, [aria-disabled="true"]) { transform: translateY(calc(var(--move-sm) * 0.25)); }
 .atlas-btn > svg, .atlas-btn > .icon { width: var(--icon-sm); height: var(--icon-sm); flex: none; margin-left: -2px; }
 .atlas-btn > svg:last-child:not(:first-child), .atlas-btn > .icon:last-child:not(:first-child) { margin-left: 0; margin-right: -2px; }
 .atlas-btn:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 
+/* ALCEDO primary CTA: vivid orange fill with INK text and an orange glow,
+   matching the website's .btn--orange. Orange + ink reads ~5.5:1 (AA). */
 .atlas-btn--primary {
-  --spin-track: rgba(255, 255, 255, .45);
-  --spin-head: #ffffff;
+  --spin-track: rgba(16, 32, 31, .28);
+  --spin-head: var(--text);
+  border-color: transparent;
+  background: var(--highlight);
+  color: var(--text);
+  box-shadow: 0 14px 28px -16px rgba(232, 115, 42, .9);
+}
+.atlas-btn--primary:hover:not(:disabled, [aria-disabled="true"]) { background: #EC8240; }
+.atlas-btn--primary:active:not(:disabled, [aria-disabled="true"]) { background: #d9631f; }
+
+/* Deep-teal emphasis button: brand dark fill with ivory text, the website's
+   .btn--dark. For key secondary actions and dark panels. */
+.atlas-btn--brand {
+  --spin-track: rgba(248, 245, 237, .45);
+  --spin-head: var(--atlas-snow);
   border-color: transparent;
   background: var(--accent);
   color: var(--text-on-accent);
   box-shadow: none;
 }
-.atlas-btn--primary:hover:not(:disabled, [aria-disabled="true"]) { background: var(--accent-hover); }
-.atlas-btn--primary:active:not(:disabled, [aria-disabled="true"]) { background: var(--accent-press); }
+.atlas-btn--brand:hover:not(:disabled, [aria-disabled="true"]) { background: #0A566C; }
+.atlas-btn--brand:active:not(:disabled, [aria-disabled="true"]) { background: var(--accent-hover); }
 
 .atlas-btn--secondary { border-color: var(--line-strong); background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
 .atlas-btn--secondary:hover:not(:disabled, [aria-disabled="true"]) { background: var(--bg-subtle); }
@@ -443,8 +471,15 @@ textarea.atlas-input,
   text-transform: none;
   color: var(--text);
 }
-.atlas-field .optional,
-.atlas-label .optional { color: var(--text-2); font-weight: 400; }
+/* The "(optional)" suffix in a form label: a muted, lighter, slightly spaced
+   secondary note. One consistent rule wherever it is used. */
+.optional {
+  margin-left: var(--s-1);
+  color: var(--text-3);
+  font-weight: 400;
+  font-size: var(--fs-caption);
+  letter-spacing: .01em;
+}
 .atlas-field .help,
 .atlas-field__help { margin: 0; font: var(--type-caption); color: var(--text-2); }
 .atlas-field .error,
@@ -646,7 +681,7 @@ textarea.atlas-input,
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
-  transition: color var(--dur-1) var(--ease-out);
+  transition: color var(--motion-mid) var(--ease-out);
 }
 .atlas-tabs > :is(a, button, [role="tab"]):hover { color: var(--text); text-decoration: none; }
 .atlas-tabs > :is(a, button, [role="tab"]):is([aria-current="page"], [aria-selected="true"], .is-active) { color: var(--text); }
@@ -660,9 +695,13 @@ textarea.atlas-input,
   width: auto;
   height: 2px;
   border-radius: 2px;
-  background: var(--text);
+  background: var(--highlight);   /* ALCEDO: selected-tab indicator is orange (active label stays ink) */
   transform: none;
+  /* The orange underline grows in from its centre when a tab becomes active. */
+  transform-origin: center;
+  animation: atlas-tab-underline var(--motion-mid) var(--ease-out);
 }
+@keyframes atlas-tab-underline { from { opacity: 0; transform: scaleX(.4); } to { opacity: 1; transform: scaleX(1); } }
 .atlas-tabs > :is(a, button, [role="tab"]):focus-visible { outline: var(--focus-outline); outline-offset: -2px; border-radius: var(--r-sm); }
 .atlas-tabs .count {
   padding: 1px 6px;
@@ -804,12 +843,13 @@ a.atlas-record-chip:hover { border-color: var(--line-strong); background: var(--
   flex: none;
   padding: 0 5px;
   border-radius: var(--r-pill);
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--highlight);   /* ALCEDO: primary badge/count is orange with ink text (~5.5:1 AA) */
+  color: var(--text);
   font: 600 12px/1 var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
 .atlas-badge--muted { background: var(--bg-muted); color: var(--text-2); }
+.atlas-badge--brand { background: var(--accent); color: var(--text-on-accent); }   /* teal count, where orange would clash */
 
 /* ==========================================================================
    6.14 Card — .atlas-card (white, hairline, 12 px radius, no shadow)
@@ -819,7 +859,7 @@ a.atlas-record-chip:hover { border-color: var(--line-strong); background: var(--
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: none;
+  box-shadow: var(--shadow-soft);   /* warm cream card lifts off the ivory canvas — set apart by hairline + soft teal shadow, not by whiteness */
   color: var(--text);
 }
 .atlas-card--pad { padding: var(--s-5); }
@@ -1394,10 +1434,11 @@ body.atlas-modal-open { overflow: hidden; }
   display: block;
   height: 12px;
   border-radius: var(--r-xs);
-  background: linear-gradient(90deg, var(--bg-muted) 0, #f8fafc 50%, var(--bg-muted) 100%);
+  /* Warm ivory sweep over the cream track (ALCEDO), not a cool blue-white. */
+  background: linear-gradient(90deg, var(--bg-muted) 0, var(--bg) 50%, var(--bg-muted) 100%);
   background-size: 200% 100%;
   opacity: 0;
-  animation: atlas-skel-show 1ms linear 150ms forwards, atlas-shimmer 1.4s ease-in-out 150ms infinite;
+  animation: atlas-skel-show 1ms linear 150ms forwards, atlas-shimmer 1.5s var(--ease-standard) 150ms infinite;
 }
 .atlas-skel--text { height: 12px; }
 .atlas-skel--title { height: 24px; width: 40%; }
@@ -1494,8 +1535,8 @@ body.atlas-modal-open { overflow: hidden; }
 /* Touch: the action (Undo) is a full 44 px target; the negative block margin
    takes it into the toast's own padding, so the toast keeps its height. */
 @media (pointer: coarse) { .atlas-toast__action, .atlas-toast button { height: var(--touch); margin-block: -8px; } }
-.atlas-toast.is-leaving { opacity: 0; transition: opacity calc(var(--dur-2) * .7) var(--ease-out); }
-@keyframes atlas-toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.atlas-toast.is-leaving { opacity: 0; transform: translateY(var(--move-sm)); transition: opacity calc(var(--motion-mid) * .7) var(--ease-in), transform calc(var(--motion-mid) * .7) var(--ease-in); }
+@keyframes atlas-toast-in { from { opacity: 0; transform: translateY(var(--move-sm)); } to { opacity: 1; transform: none; } }
 @media (max-width: 767px) {
   .atlas-toast-region { bottom: calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom)); }
 }
@@ -1583,7 +1624,9 @@ body.atlas-modal-open { overflow: hidden; }
 .atlas-upload__body { flex: 1 1 auto; min-width: 0; }
 .atlas-upload > .atlas-btn { flex: none; }   /* the text column wraps; the button keeps its label */
 .atlas-upload__title { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--text); overflow-wrap: anywhere; }
-.atlas-upload__help { margin: 2px 0 0; font: var(--type-caption); color: var(--text-2); }
+/* The hint under the title: a clear gap below the title, muted and smaller,
+   and it wraps instead of pushing the control sideways. */
+.atlas-upload__help { margin: var(--s-1) 0 0; font: var(--type-caption); color: var(--text-3); overflow-wrap: anywhere; }
 .atlas-upload__error { margin: 2px 0 0; font: var(--type-caption); color: var(--danger); }
 .atlas-upload .atlas-progress { margin-top: 6px; }
 .atlas-upload--file { border-style: solid; border-color: var(--line); }
@@ -1600,13 +1643,73 @@ body.atlas-modal-open { overflow: hidden; }
   animation: atlas-spin 700ms linear infinite;
 }
 
-/* Reduced motion: the skeleton shimmer is static and nothing slides. */
+/* ==========================================================================
+   6.28 Disclosure — .atlas-disclosure ("Show details / Hide details")
+   A wrapper holding a .atlas-disclosure__toggle (a button with aria-expanded)
+   and a collapsible .atlas-disclosure__panel. The panel animates open/closed
+   with a grid-template-rows 0fr→1fr + opacity transition — no measured height,
+   so there is no content jump and rapid toggling just reverses the single
+   interruptible transition. The panel wraps its content in one element (the
+   overflow:hidden child) so the collapse clips cleanly. Open state is read from
+   the toggle's aria-expanded, or a data-open / .is-open hook on the wrapper or
+   the panel, so it works whatever the script toggles.
+   ========================================================================== */
+.atlas-disclosure { display: grid; gap: var(--s-2); min-width: 0; }
+.atlas-disclosure__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  align-self: start;
+  margin: 0;
+  /* Keep the text-link look but give it a 44px touch target (a11y minimum). */
+  min-height: var(--touch);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text);
+  font: var(--type-label);
+  text-align: left;
+  cursor: pointer;
+}
+.atlas-disclosure__toggle:hover { text-decoration: underline; text-underline-offset: 2px; }
+.atlas-disclosure__toggle:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); border-radius: var(--r-sm); }
+/* The caret (a chevron svg) flips when the panel is open. */
+.atlas-disclosure__toggle > svg { width: var(--icon-sm); height: var(--icon-sm); color: currentColor; transition: transform var(--motion-fast) var(--ease-out); }
+.atlas-disclosure__toggle[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.atlas-disclosure__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--motion-mid) var(--ease-standard), opacity var(--motion-mid) var(--ease-standard);
+}
+.atlas-disclosure__panel > * { min-height: 0; overflow: hidden; }
+.atlas-disclosure__toggle[aria-expanded="true"] + .atlas-disclosure__panel,
+.atlas-disclosure__panel[data-open],
+.atlas-disclosure[data-open] > .atlas-disclosure__panel,
+.atlas-disclosure.is-open > .atlas-disclosure__panel {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* Reduced motion: the skeleton shimmer is static and nothing slides. The
+   movement tokens (--move-sm/--move-md) are already 0 here, so the button
+   press/lift, toast slide, drawer and menu translate resolve to no movement
+   automatically; below we additionally stop the looping/scaling animations and
+   the disclosure/caret transitions while every open/hover/active state stays
+   visible (colour, shadow, opacity and the open panel are unchanged). The
+   mascot rules are intentionally untouched. */
 @media (prefers-reduced-motion: reduce) {
   .atlas-skel { animation: atlas-skel-show 1ms linear 150ms forwards; }
   .atlas-loading-line::after { animation: none; left: 0; width: 100%; opacity: .6; }
+  .atlas-tabs > :is(a, button, [role="tab"]):is([aria-current="page"], [aria-selected="true"], .is-active)::after { animation: none; transform: none; }
+  .atlas-disclosure__panel { transition: none; }
+  .atlas-disclosure__toggle > svg { transition: none; }
 }
 html.atlas-reduce-motion .atlas-skel { animation: atlas-skel-show 1ms linear 150ms forwards; }
 html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; width: 100%; opacity: .6; }
+html.atlas-reduce-motion .atlas-tabs > :is(a, button, [role="tab"]):is([aria-current="page"], [aria-selected="true"], .is-active)::after { animation: none; transform: none; }
+html.atlas-reduce-motion .atlas-disclosure__panel { transition: none; }
+html.atlas-reduce-motion .atlas-disclosure__toggle > svg { transition: none; }
   /* ==========================================================================
      6.40 Atlas AI robot — .atlas-bot badge, .atlas-bot-live (atlas-bot.js)
      The assistant's face, never a replacement for the Atlas logo. The badge
@@ -1620,6 +1723,15 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
      again continues rather than restarts. Reduced motion (Atlas's setting or
      the system's): still frames; the state still shows (frame, ring, dimming).
      ========================================================================== */
+  /* ALCEDO kingfisher mascot (replaces the robot sprite). The badge is the
+     approved transparent bird as a *contained* background image: the head-and-
+     upper-body crop for small badges, the full bird for the large live poster.
+     Motion is restrained and whole-image only — gentle idle breathing on the
+     live poster and a small listening tilt; no opacity blink, no warped beak or
+     wing. Reduced motion keeps the bird completely static. The assistant state
+     controller and every interaction are unchanged; transient states read
+     through the accompanying status text (and a subtle teal ring), never by
+     distorting the bird. */
   .atlas-bot {
     --atlas-bot-size: 20px;
     position: relative;
@@ -1627,46 +1739,35 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
     flex: none;
     width: var(--atlas-bot-size);
     height: var(--atlas-bot-size);
-    border-radius: 50%;
-    background: var(--line-subtle) url('../atlas-bot/atlas-bot.png?v=20261004-bot6') 0 0 / 400% 100% no-repeat;
-    box-shadow: inset 0 0 0 1px rgba(11, 18, 32, .06);
+    background: transparent url('../atlas-bot/alcedo-mascot-head.png?v=20260930-glb2') center / contain no-repeat;
     vertical-align: middle;
-    animation: atlas-bot-blink 5.2s step-end infinite;
-    animation-delay: var(--atlas-bot-delay, 0s);
     transition: transform var(--dur-2) var(--ease-out), filter var(--dur-2) var(--ease-out);
   }
-  .atlas-bot[data-state="happy"],
-  .atlas-bot[data-state="success"],
-  .atlas-bot:hover,
-  :is(a, button):hover > .atlas-bot { background-position: 100% 0; animation: none; }
-  :is(a, button):hover > .atlas-bot { transform: translateY(-1px) rotate(-6deg); }
-  .atlas-bot[data-state="awake"] { filter: brightness(1.04) saturate(1.15); box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .22); }
-  .atlas-bot[data-state="sleeping"] { background-position: 66.667% 0; animation: none; filter: saturate(.8); }
-  .atlas-bot[data-state="thinking"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-think 1.6s var(--ease-out) infinite alternate, atlas-bot-glow 1.6s ease-in-out infinite alternate; }
-  .atlas-bot[data-state="listening"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-glow 1.8s ease-in-out infinite alternate; }
-  .atlas-bot[data-state="answering"],
-  .atlas-bot[data-state="speaking"] { animation: atlas-bot-blink 5.2s step-end infinite, atlas-bot-glow 2.6s ease-in-out infinite alternate; }
-  .atlas-bot[data-state="attention"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .45), 0 0 0 3px rgba(59, 130, 246, .2); }
-  .atlas-bot[data-state="error"] { filter: grayscale(.7); opacity: .75; animation: none; }
-  /* Blink keeps its own offset; the state's movement runs on the page clock. */
-  .atlas-bot[data-state]:is([data-state="thinking"], [data-state="listening"], [data-state="answering"], [data-state="speaking"]) { animation-delay: var(--atlas-bot-delay, 0s), var(--atlas-bot-clock, 0s), var(--atlas-bot-clock, 0s); }
-  @keyframes atlas-bot-blink {
-    0% { background-position: 0 0; }
-    94% { background-position: 33.333% 0; }
-    96.5% { background-position: 0 0; }
+  :is(a, button):hover > .atlas-bot { transform: translateY(-1px); }
+  .atlas-bot[data-state="error"] { filter: saturate(.85); }
+  /* The large live surface shows the FULL bird and carries the restrained
+     motion: breathing at rest, a small tilt while listening. */
+  .atlas-bot-live__poster {
+    background-image: url('../atlas-bot/alcedo-mascot-poster.png?v=20260930-glb2');
+    transform-origin: 50% 86%;
+    animation: alcedo-bot-breathe 5.2s ease-in-out infinite;
   }
-  @keyframes atlas-bot-think {
-    from { transform: translateY(0) rotate(-4deg); }
-    to { transform: translateY(-2px) rotate(4deg); }
+  .atlas-bot-live[data-framing="head"] .atlas-bot-live__poster {
+    background-image: url('../atlas-bot/alcedo-mascot-head-glass.png?v=20260930-glb2');
   }
-  @keyframes atlas-bot-glow {
-    from { box-shadow: inset 0 0 0 1px rgba(11, 18, 32, .06), 0 0 0 0 rgba(59, 130, 246, 0); }
-    to { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .35), 0 0 0 4px rgba(59, 130, 246, .18); }
+  .atlas-bot-live[data-state="listening"] > .atlas-bot-live__poster { animation: alcedo-bot-listen 3.6s ease-in-out infinite; }
+  @keyframes alcedo-bot-breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.025); }
+  }
+  @keyframes alcedo-bot-listen {
+    0%, 100% { transform: rotate(0deg) scale(1.01); }
+    50% { transform: rotate(-3deg) scale(1.02); }
   }
   /* 24 px or less (AtlasBot.html adds the class; the static nav and tab bar
      badges carry it): a tighter face, a matte visor and brighter eyes, so the
      robot does not read as a dark blob. */
-  .atlas-bot--small { background-image: url('../atlas-bot/atlas-bot-small.png?v=20261004-bot6'); }
+  .atlas-bot--small { background-image: url('../atlas-bot/alcedo-mascot-head.png?v=20260930-glb2'); }
 
   /* Sleeping: Z, then ZZ, then ZZZ rising at the badge's top right, a fade and
      a pause, in CSS alone: one pseudo-element whose two text-shadow copies are
@@ -1714,10 +1815,9 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
   /* Still, the busy states keep a look of their own (never shown by movement
      alone): listening an inner blue ring, thinking the tilted head of its
      movement with a faint ring, answering a soft outer ring. */
-  html.atlas-reduce-motion .atlas-bot[data-state="listening"] { box-shadow: inset 0 0 0 1.5px rgba(59, 130, 246, .5); }
-  html.atlas-reduce-motion .atlas-bot[data-state="thinking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3); transform: translateY(-1px) rotate(4deg); }
-  html.atlas-reduce-motion .atlas-bot[data-state="answering"],
-  html.atlas-reduce-motion .atlas-bot[data-state="speaking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3), 0 0 0 2px rgba(59, 130, 246, .12); }
+  /* Kingfisher: with reduced motion the bird stays completely still; transient
+     states (listening/thinking/answering) are conveyed by the status text, not
+     by a ring or a tilt. */
   /* .atlas-bot[data-state] is as specific as the state rules above, so the
      system setting wins over their animations too (a plain .atlas-bot lost
      to them: thinking, listening and answering kept moving). */
@@ -1725,10 +1825,7 @@ html.atlas-reduce-motion .atlas-loading-line::after { animation: none; left: 0; 
     .atlas-bot, .atlas-bot[data-state] { animation: none; transition: none; }
     :is(a, button):hover > .atlas-bot { transform: none; }
     .atlas-bot[data-state]::after { animation: none; }
-    .atlas-bot[data-state="listening"] { box-shadow: inset 0 0 0 1.5px rgba(59, 130, 246, .5); }
-    .atlas-bot[data-state="thinking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3); transform: translateY(-1px) rotate(4deg); }
-    .atlas-bot[data-state="answering"],
-    .atlas-bot[data-state="speaking"] { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3), 0 0 0 2px rgba(59, 130, 246, .12); }
+    /* Kingfisher: still bird under reduced motion; state is shown in text. */
   }
 
   /* The interactive robot: the badge is its poster until the 3D scene draws.

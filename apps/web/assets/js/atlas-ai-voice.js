@@ -1,4 +1,4 @@
-// Atlas AI voice: voice notes (record → transcribe → editable transcript) and
+// Alcedo AI voice: voice notes (record → transcribe → editable transcript) and
 // live voice (WebRTC straight to the realtime voice service with a 60-second
 // client secret minted by atlas-ai?action=voice-session).
 //
@@ -16,7 +16,7 @@
 //                     onProposal, onRecords, onTurnsSaved, onError, onConversation })
 //                                       → { start({ takeover }), mute(bool), end(), exit(), state(), conversationId(), voiceSessionId() }
 //
-// Voice session contract (atlas-ai hardening): voice-session returns the Atlas
+// Voice session contract (atlas-ai hardening): voice-session returns the Alcedo
 // voice_session_id; it is kept for the life of the call and sent with every
 // voice-tool and voice-append. 409 voice_session_inactive stops all tool and
 // transcript calls for that session (state 'inactive'); nothing is retried
@@ -167,7 +167,7 @@
     const emit = (name, ...args) => { try { options[name]?.(...args); } catch (error) { root.console?.error?.(error); } };
     let conversationId = options.conversationId || null;
     let sessionId = null;          // provider session id (only a fallback key)
-    let voiceSessionId = null;     // Atlas voice session id from voice-session
+    let voiceSessionId = null;     // Alcedo voice session id from voice-session
     let inactive = false;          // 409 voice_session_inactive or voice_session_replaced seen
     let heartbeatTimer = 0;
     let heartbeatSeconds = DEFAULT_HEARTBEAT_SECONDS;

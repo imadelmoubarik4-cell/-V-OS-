@@ -1,7 +1,7 @@
 // Accounting (#accounting, #accounting/<tab>, #accounting/document/<id>) —
 // supplier invoices, receipts and staff reimbursements. Administrators only.
 //
-// Upload a photo or PDF → Atlas may read it into a draft (only when Atlas AI
+// Upload a photo or PDF → Alcedo may read it into a draft (only when Alcedo AI
 // is on; typed values are never overwritten) → an administrator checks and
 // approves it → marks it paid, or reimbursed when a team member paid. Nothing
 // is posted to an accounting system: Export gives the accountant a CSV and
@@ -25,7 +25,7 @@
   const METHODS = { bank_transfer: 'Bank transfer', card: 'Card', cash: 'Cash', other: 'Other' };
   const VAT_RATES = [24, 11, 0];
   const HISTORY = {
-    uploaded: 'Uploaded', read_started: 'Atlas started reading', read: 'Atlas read it', read_failed: 'Atlas couldn’t read it',
+    uploaded: 'Uploaded', read_started: 'Alcedo started reading', read: 'Alcedo read it', read_failed: 'Alcedo couldn’t read it',
     edited: 'Edited', approved: 'Approved', reopened: 'Reopened', paid: 'Marked paid', unpaid: 'Payment undone',
     voided: 'Voided', discarded: 'Discarded', file_opened: 'File opened', exported: 'Exported'
   };
@@ -43,7 +43,7 @@
     append_only: 'Accounting records are kept for 7 years and can’t be deleted.',
     too_large: 'Files can be up to 15 MB.',
     unsupported_type: 'Upload a PDF, or a JPEG, PNG, WebP or HEIC photo.',
-    rate_limited: 'Atlas has read today’s limit of documents. Type the details in by hand, or try again tomorrow.',
+    rate_limited: 'Alcedo has read today’s limit of documents. Type the details in by hand, or try again tomorrow.',
     storage_failed: 'The file could not be stored. Nothing was saved. Try again.',
     unavailable: 'Accounting is unavailable right now. Nothing was changed. Try again in a moment.',
     internal: 'Accounting could not complete that request. Nothing was changed.'
@@ -62,7 +62,7 @@
   const requestId = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => Math.floor(Math.random() * 16).toString(16)));
   const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 
-  // Krónur read like the rest of Atlas ("3.900 kr", whole krónur) through the
+  // Krónur read like the rest of Alcedo ("3.900 kr", whole krónur) through the
   // shared AtlasFormat.money; other currencies keep their decimals (Intl).
   function money(value, currency = 'ISK') {
     if (value === null || value === undefined || value === '') return '—';
@@ -129,7 +129,7 @@
   }
 
   function errorText(error) {
-    if (error?.status === 401) return 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.';
+    if (error?.status === 401) return 'Alcedo couldn’t confirm your sign-in for this. Try again in a moment.';
     if (error?.status === 403) return 'Accounting is for administrators.';
     if (error?.name === 'AbortError') return 'The connection timed out. Check the list before trying again.';
     if (error?.code && ERROR_COPY[error.code]) return ERROR_COPY[error.code];
@@ -284,7 +284,7 @@
   function reviewMarkup() {
     const list = documents().filter((doc) => doc.status === 'to_review');
     return list.length
-      ? `<p class="acc-lead">Check what Atlas filled in, add anything missing and approve. Nothing is final until you approve it.</p><ul class="atlas-list">${list.map((doc) => row(doc, rowAction(doc, 'Review', 'data-acc-open'), { status: false })).join('')}</ul>`
+      ? `<p class="acc-lead">Check what Alcedo filled in, add anything missing and approve. Nothing is final until you approve it.</p><ul class="atlas-list">${list.map((doc) => row(doc, rowAction(doc, 'Review', 'data-acc-open'), { status: false })).join('')}</ul>`
       : empty('inbox', 'Nothing to review', 'Upload an invoice or a receipt — a photo or a PDF — and it waits here for you to check.', uploadButton('secondary'));
   }
 
@@ -402,7 +402,7 @@
     else if (!state.workspace) body = `<div class="acc-skeleton" aria-busy="true" aria-label="Loading accounting">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(5)}</div>`;
     else body = ({ unpaid: unpaidMarkup, owed: owedMarkup, all: allMarkup, export: exportMarkup })[state.tab]?.() || reviewMarkup();
     const count = (key) => ({ review, unpaid, owed })[key] || 0;
-    // Upload waits for the workspace (the team list and whether Atlas reads).
+    // Upload waits for the workspace (the team list and whether Alcedo reads).
     const uploadAttrs = state.workspace ? { 'data-acc-upload': '' } : { 'data-acc-upload': '', disabled: '' };
     element.innerHTML = `<div class="atlas-page acc-page">
         ${window.AtlasShell.pageHead({ title: 'Accounting', sub: state.workspace ? `${review} to review · ${unpaid} unpaid · ${owed} owed to team` : 'Invoices, receipts and reimbursements', actions: [{ label: 'Upload', icon: 'upload', variant: 'primary', attrs: uploadAttrs }] })}
@@ -471,7 +471,7 @@
   }
 
   // Photos are resized on the device (longest edge 2400 px, JPEG) so a phone
-  // photo uploads quickly and Atlas can read it. A browser that cannot decode
+  // photo uploads quickly and Alcedo can read it. A browser that cannot decode
   // the photo (HEIC outside Safari) uploads the original.
   async function prepareFile(file) {
     if (!/^image\//.test(file.type) || typeof window.createImageBitmap !== 'function') return file;
@@ -516,7 +516,7 @@
     let running = false;
     root.innerHTML = `<section class="atlas-sheet" data-modal-panel aria-labelledby="acc-upload-title">
         <span class="atlas-sheet__grabber"></span>
-        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="acc-upload-title" tabindex="-1">Upload invoices or receipts</h2><p class="atlas-sheet__desc">${aiOn ? 'Atlas reads each one and fills in what it can. You check and approve it.' : 'You type in the details and approve them. Atlas reading is off (Settings › Atlas AI).'}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close>${icon('x')}</button></header>
+        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="acc-upload-title" tabindex="-1">Upload invoices or receipts</h2><p class="atlas-sheet__desc">${aiOn ? 'Alcedo reads each one and fills in what it can. You check and approve it.' : 'You type in the details and approve them. Alcedo reading is off (Settings › Alcedo AI).'}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" aria-label="Close" data-modal-close>${icon('x')}</button></header>
         <form class="atlas-sheet__body atlas-form acc-upload" data-acc-upload-form>
           ${errorSlot()}
           <label class="atlas-upload acc-drop" data-acc-drop><span class="atlas-upload__thumb">${icon('file-up')}</span><span class="atlas-upload__body"><span class="atlas-upload__title">Choose files</span><span class="atlas-upload__help">PDF or photo, up to 15 MB each. You can choose several.</span></span><input type="file" class="acc-file-input" data-acc-files accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.heic" multiple></label>
@@ -600,14 +600,14 @@
           // The server reads each document once: after a replayed upload it
           // answers already_read / reading without spending anything.
           if (result.readable && aiOn) {
-            setStatus(entry, 'Uploaded · Atlas is reading it…');
+            setStatus(entry, 'Uploaded · Alcedo is reading it…');
             try {
               const read = await api('read', { method: 'POST', body: { id: entry.docId }, timeout: LONG_TIMEOUT_MS });
               remember(read.document);
-              setStatus(entry, ['read', 'already_read'].includes(read.outcome) ? 'Read by Atlas — check it and approve'
-                : read.outcome === 'reading' ? 'Atlas is still reading it — open it in a moment' : 'Uploaded — type in the details');
+              setStatus(entry, ['read', 'already_read'].includes(read.outcome) ? 'Read by Alcedo — check it and approve'
+                : read.outcome === 'reading' ? 'Alcedo is still reading it — open it in a moment' : 'Uploaded — type in the details');
             } catch (error) {
-              setStatus(entry, error?.code === 'rate_limited' ? ERROR_COPY.rate_limited : 'Uploaded — Atlas couldn’t read it, type in the details');
+              setStatus(entry, error?.code === 'rate_limited' ? ERROR_COPY.rate_limited : 'Uploaded — Alcedo couldn’t read it, type in the details');
             }
           } else {
             setStatus(entry, 'Uploaded — type in the details');
@@ -639,12 +639,12 @@
     const again = canRead ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-read>Read again</button>' : '';
     const alert = (tone, head, text, actions = '') => `<div class="atlas-alert atlas-alert--${tone}" role="status">${icon(tone === 'info' ? 'sparkles' : 'circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">${escapeHtml(head)}</p>${text ? `<p class="atlas-alert__body">${escapeHtml(text)}</p>` : ''}</div>${actions ? `<div class="atlas-alert__actions">${actions}</div>` : ''}</div>`;
     switch (doc.extraction_status) {
-      case 'read': return doc.status === 'to_review' ? alert('info', 'Atlas read this document', 'It filled in the empty fields, marked “Filled by Atlas”. Check every value against the document before approving.') : '';
-      case 'reading': return alert('info', 'Atlas is reading it…', 'If this takes more than a minute, try again.', again);
-      case 'failed': return alert('warning', 'Atlas couldn’t read it right now', 'Type in the details, or try again.', again);
-      case 'not_readable': return doc.status === 'to_review' ? alert('warning', 'Atlas couldn’t read this file', 'Type in the details from the document.') : '';
-      case 'not_configured': return doc.status === 'to_review' ? alert('warning', 'Atlas reading is off', 'Type in the details, or switch on Atlas AI in Settings.', again) : '';
-      default: return canRead ? alert('info', 'Let Atlas fill it in', 'Atlas reads the supplier, dates, amounts and VAT. You check them before approving.', '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-read>Read with Atlas</button>') : '';
+      case 'read': return doc.status === 'to_review' ? alert('info', 'Alcedo read this document', 'It filled in the empty fields, marked “Filled by Alcedo”. Check every value against the document before approving.') : '';
+      case 'reading': return alert('info', 'Alcedo is reading it…', 'If this takes more than a minute, try again.', again);
+      case 'failed': return alert('warning', 'Alcedo couldn’t read it right now', 'Type in the details, or try again.', again);
+      case 'not_readable': return doc.status === 'to_review' ? alert('warning', 'Alcedo couldn’t read this file', 'Type in the details from the document.') : '';
+      case 'not_configured': return doc.status === 'to_review' ? alert('warning', 'Alcedo reading is off', 'Type in the details, or switch on Alcedo AI in Settings.', again) : '';
+      default: return canRead ? alert('info', 'Let Alcedo fill it in', 'Alcedo reads the supplier, dates, amounts and VAT. You check them before approving.', '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-acc-read>Read with Alcedo</button>') : '';
     }
   }
 
@@ -685,7 +685,7 @@
       ['Total', read.total_amount !== null && read.total_amount !== undefined ? money(read.total_amount, read.currency || doc.currency) : null]
     ].filter(([, value]) => value);
     const lines = Array.isArray(read.line_items) ? read.line_items : [];
-    return `<details class="acc-details"><summary>What Atlas read</summary>
+    return `<details class="acc-details"><summary>What Alcedo read</summary>
         <dl class="acc-kv">${rows.map(([key, value]) => `<div><dt>${escapeHtml(key)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}</dl>
         ${lines.length ? `<div class="atlas-table-wrap atlas-table-wrap--scroll"><table class="atlas-table atlas-table--compact"><thead><tr><th>Line</th><th class="num">Qty</th><th class="num">Amount</th></tr></thead><tbody>${lines.map((line) => `<tr><td>${escapeHtml(line.description)}</td><td class="num">${escapeHtml(line.quantity ?? '')}</td><td class="num">${escapeHtml(line.amount !== null && line.amount !== undefined ? money(line.amount, doc.currency) : '')}</td></tr>`).join('')}</tbody></table></div>` : ''}
         <p class="atlas-field__help">Lines are for reference; they don’t change stock or prices.</p></details>`;
@@ -811,21 +811,21 @@
     return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
   };
 
-  // "Filled by Atlas" under a field whose value is still what Atlas put there;
-  // a warning where what Atlas read differs from the value now in the field.
+  // "Filled by Alcedo" under a field whose value is still what Alcedo put there;
+  // a warning where what Alcedo read differs from the value now in the field.
   function hints(doc, key) {
     const prefill = doc.extraction?.prefill || {};
     const read = doc.extraction?.fields || {};
     const out = [];
     const keys = key === 'supplier' ? ['supplier_id', 'supplier_name'] : [key];
     if (keys.some((name) => Object.prototype.hasOwnProperty.call(prefill, name) && same(prefill[name], doc[name]))) {
-      out.push(`<p class="atlas-field__help acc-filled">${icon('sparkles')}Filled by Atlas</p>`);
+      out.push(`<p class="atlas-field__help acc-filled">${icon('sparkles')}Filled by Alcedo</p>`);
     }
     const readKey = key === 'supplier' ? 'supplier_name' : key;
     if (['supplier', 'issue_date', 'total_amount'].includes(key) && read[readKey] !== null && read[readKey] !== undefined && read[readKey] !== ''
       && doc[readKey] !== null && doc[readKey] !== undefined && doc[readKey] !== '' && !same(read[readKey], doc[readKey])) {
       const shown = key === 'total_amount' ? money(read.total_amount, read.currency || doc.currency) : key === 'issue_date' ? dateOnly(read.issue_date) : read.supplier_name;
-      out.push(`<p class="atlas-field__help acc-differs">${icon('circle-alert')}Atlas read ${escapeHtml(shown)}. Check it against the document.</p>`);
+      out.push(`<p class="atlas-field__help acc-differs">${icon('circle-alert')}Alcedo read ${escapeHtml(shown)}. Check it against the document.</p>`);
     }
     return out.join('');
   }
@@ -1045,7 +1045,7 @@
           approved = await command(doc, 'approve');
         } catch (error) {
           if (error?.code !== 'possible_duplicate') throw error;
-          if (!(await confirmDialog('Approve a possible duplicate?', 'Atlas found a document from the same supplier with the same number, or the same date and total. Approve only if this is a different document.', 'Approve anyway'))) { await refresh(doc); return; }
+          if (!(await confirmDialog('Approve a possible duplicate?', 'Alcedo found a document from the same supplier with the same number, or the same date and total. Approve only if this is a different document.', 'Approve anyway'))) { await refresh(doc); return; }
           approved = await command(doc, 'approve', { confirm_duplicate: true });
         }
         await refresh(approved, approved.paid_by === 'staff' ? `Approved. ${approved.paid_by_label || 'The team member'} is owed ${money(approved.total_amount, approved.currency)}.` : 'Approved. It’s under Unpaid until you mark it paid.');
@@ -1084,9 +1084,9 @@
       busy(true);
       fail('');
       try {
-        // "Read again" asks for a new read of a document Atlas already read.
+        // "Read again" asks for a new read of a document Alcedo already read.
         const result = await api('read', { method: 'POST', body: { id: doc.id, again: true }, timeout: LONG_TIMEOUT_MS });
-        await refresh(result.document, result.outcome === 'read' ? 'Atlas filled in what it could read. Check it.' : null);
+        await refresh(result.document, result.outcome === 'read' ? 'Alcedo filled in what it could read. Check it.' : null);
       } catch (error) { await failed(error); }
     }));
     root.querySelectorAll('.acc-doc [data-acc-open]').forEach((link) => link.addEventListener('click', () => openRoute(link.dataset.accOpen)));
@@ -1139,7 +1139,7 @@
     const done = new Set();
     const summary = many ? `${plural(docs.length, 'receipt', 'receipts')} · ${totalsText(docs)}` : `${title(first)} · ${money(first.total_amount, first.currency)}`;
     root.innerHTML = `<section class="atlas-dialog atlas-dialog--form" data-modal-panel aria-labelledby="acc-pay-title"><h2 class="atlas-dialog__title" id="acc-pay-title">${staff ? `Reimburse ${who}` : 'Mark as paid'}</h2>
-        <form class="atlas-dialog__body atlas-form" novalidate>${errorSlot()}<p>${escapeHtml(summary)}. Atlas doesn’t move money; this records that ${staff ? 'you paid them back' : 'it was paid'}.</p>
+        <form class="atlas-dialog__body atlas-form" novalidate>${errorSlot()}<p>${escapeHtml(summary)}. Alcedo doesn’t move money; this records that ${staff ? 'you paid them back' : 'it was paid'}.</p>
           <div class="atlas-grid-2"><div class="atlas-field"><label for="acc-paid-on">${staff ? 'Reimbursed on' : 'Paid on'}</label><input class="atlas-input" type="date" id="acc-paid-on" name="paid_at" value="${escapeHtml(venueToday())}" max="${escapeHtml(venueToday())}" required></div>
           <div class="atlas-field"><label for="acc-method">How</label><select class="atlas-select" id="acc-method" name="payment_method">${Object.entries(METHODS).map(([key, label]) => `<option value="${key}">${label}</option>`).join('')}</select></div></div>
           <div class="atlas-field"><label for="acc-ref">Reference <span class="optional">(optional)</span></label><input class="atlas-input" id="acc-ref" name="payment_reference" maxlength="120" placeholder="e.g. bank transfer reference"></div>
@@ -1392,7 +1392,7 @@
 
   // Files dropped anywhere on the Accounting page (or on the open upload sheet
   // outside its drop zone) go to the upload queue. Without this the browser
-  // opens a dropped photo or PDF in place of Atlas.
+  // opens a dropped photo or PDF in place of Alcedo.
   const carriesFiles = (event) => [...(event.dataTransfer?.types || [])].includes('Files');
   function handleDragOver(event) {
     if (!carriesFiles(event) || !visible() || !isAdmin()) return;

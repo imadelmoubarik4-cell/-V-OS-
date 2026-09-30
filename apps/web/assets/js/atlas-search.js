@@ -22,7 +22,7 @@
   // Top-level pages come from AtlasShell.nav; these are the linkable tabs.
   const MANAGERS = ['admin', 'manager'];
   const SECTIONS = [
-    ['ai', 'Atlas AI › Decisions', '#ai/decisions', ['decisions', 'recommendations', 'outcomes'], MANAGERS],
+    ['ai', 'Alcedo AI › Decisions', '#ai/decisions', ['decisions', 'recommendations', 'outcomes'], MANAGERS],
     ['inventory', 'Inventory › Stock count', '#inventory/counts', ['stock count', 'count stock', 'stocktake', 'counts']],
     ['inventory', 'Inventory › Movements', '#inventory/movements', ['movement', 'movements', 'history', 'ledger'], MANAGERS],
     ['inventory', 'Inventory › Waste', '#inventory/waste', ['waste', 'spoilage', 'breakage'], MANAGERS],
@@ -106,7 +106,7 @@
   }
 
   // The venue business date from the venue clock (a close after midnight is
-  // still the previous day), the same "today" as Home, Shifts and Atlas AI.
+  // still the previous day), the same "today" as Home, Shifts and Alcedo AI.
   // The calendar date in the default zone is only the fallback.
   function venueDate(offsetDays = 0) {
     const clock = window.AtlasVenueClock;
@@ -205,7 +205,7 @@
     return matches;
   }
 
-  // ---------- Ask Atlas answers ----------
+  // ---------- Ask Alcedo answers ----------
 
   function detectIntent(raw) {
     const q = normalize(raw);
@@ -225,7 +225,7 @@
 
   function answerLowStock() {
     const list = inventory();
-    if (!list.length) return { text: 'Inventory has not loaded yet, so Atlas cannot say what is low.', tone: 'unknown' };
+    if (!list.length) return { text: 'Inventory has not loaded yet, so Alcedo cannot say what is low.', tone: 'unknown' };
     const truth = window.AtlasStockTruth;
     const counted = list.filter((item) => truth.known(item));
     // The canonical status: out items first, then below par (lowest first).
@@ -235,7 +235,7 @@
     const low = [...out, ...below];
     const unknown = list.length - counted.length;
     const unknownNote = unknown ? ` ${unknown} ${unknown === 1 ? 'item has' : 'items have'} no verified count, so ${unknown === 1 ? 'it is' : 'they are'} not included.` : '';
-    if (!counted.length) return { text: `No item has a verified count yet, so Atlas cannot tell what is low.${unknownNote}`, tone: 'unknown', action: { label: 'Start stock count', run: () => openRoute('#inventory/counts') } };
+    if (!counted.length) return { text: `No item has a verified count yet, so Alcedo cannot tell what is low.${unknownNote}`, tone: 'unknown', action: { label: 'Start stock count', run: () => openRoute('#inventory/counts') } };
     if (!low.length) return { text: `Nothing with a verified count is out or below par.${unknownNote}`, tone: 'good' };
     const lines = low.slice(0, 6).map((item) => (truth.stockStatus(item) === 'out'
       ? `${item.name}: out`
@@ -254,11 +254,11 @@
   }
 
   function answerCanMake(subject) {
-    if (!recipes().length) return { text: 'Recipes have not loaded yet, so Atlas cannot check this.', tone: 'unknown' };
+    if (!recipes().length) return { text: 'Recipes have not loaded yet, so Alcedo cannot check this.', tone: 'unknown' };
     const recipe = findRecipe(subject);
-    if (!recipe) return { text: `Atlas has no recipe matching “${subject}”.`, tone: 'unknown' };
+    if (!recipe) return { text: `Alcedo has no recipe matching “${subject}”.`, tone: 'unknown' };
     const status = window.AtlasRecipes?.recipeStatus?.(recipe);
-    if (!status) return { text: `Atlas could not read readiness for ${recipe.name}.`, tone: 'unknown' };
+    if (!status) return { text: `Alcedo could not read readiness for ${recipe.name}.`, tone: 'unknown' };
     const availability = status.availability || {};
     const limiting = availability.limiting?.item?.name || availability.limiting?.ingredient?.item_name || null;
     const open = { label: `Open ${recipe.name}`, run: () => window.AtlasRecipes?.openRecipe?.(recipe.id) };
@@ -267,7 +267,7 @@
     if (status.key === 'incomplete') {
       const blockers = window.AtlasRecipes?.recipeBlockers?.(recipe) || [];
       const detail = blockers.length ? blockers.map((entry) => `${entry.name} — ${entry.reason}`).join('; ') : 'its ingredients cannot be checked against verified stock';
-      return { text: `Atlas cannot confirm ${recipe.name}: ${detail}.`, tone: 'unknown', action: open };
+      return { text: `Alcedo cannot confirm ${recipe.name}: ${detail}.`, tone: 'unknown', action: open };
     }
     const servings = Number(availability.servings);
     const count = Number.isFinite(servings) ? ` About ${servings} ${servings === 1 ? 'serving' : 'servings'} from verified stock` : '';
@@ -277,7 +277,7 @@
 
   function answerHowMany(subject) {
     const list = inventory();
-    if (!list.length) return { text: 'Inventory has not loaded yet, so Atlas cannot answer this.', tone: 'unknown' };
+    if (!list.length) return { text: 'Inventory has not loaded yet, so Alcedo cannot answer this.', tone: 'unknown' };
     const target = stripUnits(subject);
     if (!target) return null;
     const matches = list
@@ -286,12 +286,12 @@
       .sort((a, b) => b.value - a.value)
       .slice(0, 5)
       .map((entry) => entry.item);
-    if (!matches.length) return { text: `Atlas has no inventory item matching “${target}”.`, tone: 'unknown' };
+    if (!matches.length) return { text: `Alcedo has no inventory item matching “${target}”.`, tone: 'unknown' };
     if (matches.length === 1) {
       const item = matches[0];
       const known = window.AtlasStockTruth?.known(item);
       return {
-        text: known ? `${item.name}: ${stockLine(item)}.` : `${item.name} has no verified count, so Atlas does not know how many remain.`,
+        text: known ? `${item.name}: ${stockLine(item)}.` : `${item.name} has no verified count, so Alcedo does not know how many remain.`,
         tone: known ? (window.AtlasStockTruth.needsOrdering(item) ? 'warn' : 'good') : 'unknown',
         action: { label: `Show ${item.name}`, run: () => openInventoryItem(item) }
       };
@@ -300,7 +300,7 @@
   }
 
   function answerOrdering() {
-    if (!inventory().length) return { text: 'Inventory has not loaded yet, so Atlas cannot build an order list.', tone: 'unknown' };
+    if (!inventory().length) return { text: 'Inventory has not loaded yet, so Alcedo cannot build an order list.', tone: 'unknown' };
     const suggestions = window.AtlasOperations?.orderSuggestions?.();
     if (!Array.isArray(suggestions)) return { text: 'Order suggestions are not available on this page yet.', tone: 'unknown' };
     const open = suggestions.filter((entry) => !entry.ordered);
@@ -324,13 +324,13 @@
     }
     const workspace = shifts.snapshot?.();
     const dayLabel = offset ? 'tomorrow' : 'today';
-    if (!workspace) return { text: `Atlas could not load the schedule, so it cannot say who works ${dayLabel}.`, tone: 'unknown', action: { label: 'Open Shifts', run: () => openView('shifts') } };
+    if (!workspace) return { text: `Alcedo could not load the schedule, so it cannot say who works ${dayLabel}.`, tone: 'unknown', action: { label: 'Open Shifts', run: () => openView('shifts') } };
     const date = venueDate(offset);
     const weekStart = String(workspace.week?.week_start || shifts.week?.() || '');
     const weekEnd = weekStart ? new Date(`${weekStart}T12:00:00Z`) : null;
     if (weekEnd) weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
     if (weekStart && (date < weekStart || date > weekEnd.toISOString().slice(0, 10))) {
-      return { text: `${dayLabel[0].toUpperCase()}${dayLabel.slice(1)} is outside the week open in Shifts, so Atlas has not loaded it.`, tone: 'unknown', action: { label: 'Open Shifts', run: () => openView('shifts') } };
+      return { text: `${dayLabel[0].toUpperCase()}${dayLabel.slice(1)} is outside the week open in Shifts, so Alcedo has not loaded it.`, tone: 'unknown', action: { label: 'Open Shifts', run: () => openView('shifts') } };
     }
     const peopleById = new Map((workspace.people || []).map((person) => [person.id, person]));
     const entries = (workspace.shifts || [])
@@ -357,7 +357,7 @@
   // ---------- navigation ----------
 
   // Results open through AtlasShell routes, the same #view/section?param links
-  // Atlas AI records carry (#inventory/item/…, #settings/notifications).
+  // Alcedo AI records carry (#inventory/item/…, #settings/notifications).
   function openView(view, params = {}) {
     window.AtlasShell.show(view, params, { source: 'nav' });
   }

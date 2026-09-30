@@ -66,7 +66,7 @@
     if (!message) return null;
     return {
       id: message.id || null,
-      sender: message.message_type === 'system' ? 'Atlas' : senderOf(message),
+      sender: message.message_type === 'system' ? 'Alcedo' : senderOf(message),
       body: message.deleted ? '' : String(message.body || '').slice(0, 140),
       deleted: Boolean(message.deleted)
     };

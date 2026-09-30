@@ -38,14 +38,14 @@ test('sidebar: spec groups and role visibility (admin sees 14 + Settings, barten
     try {
       assert.deepEqual(await visibleSidebar(page), expected, user.role);
       assert.deepEqual(await groupLabels(page), labels, `${user.role}: no empty group`);
-      // The active item is neutral (white surface, no blue), aria-current on one link.
+      // The active item carries the brand accent (pale teal wash, teal label), aria-current on one link.
       const active = await page.evaluate(() => {
         const node = document.querySelector('.atlas-sidebar .nav-item[aria-current="page"]');
         const style = getComputedStyle(node);
         return { id: node.dataset.navId, bg: style.backgroundColor, color: style.color, count: document.querySelectorAll('.atlas-sidebar [aria-current="page"]').length };
       });
-      assert.deepEqual([active.id, active.bg, active.count], ['home', 'rgb(255, 255, 255)', 1]);
-      assert.equal(active.color, 'rgb(11, 15, 20)');
+      assert.deepEqual([active.id, active.bg, active.count], ['home', 'rgb(238, 244, 245)', 1]);
+      assert.equal(active.color, 'rgb(8, 73, 92)');
       // Landmarks: one Main navigation visible, banner top bar, main content.
       assert.equal(await page.evaluate(() => document.querySelector('.atlas-sidebar nav.atlas-nav').getAttribute('aria-label')), 'Main');
       assert.equal(await page.evaluate(() => document.querySelector('main#atlas-main') !== null && document.querySelector('header.atlas-topbar') !== null), true);
@@ -112,7 +112,7 @@ test('phone (390 and 430): top bar title, 5-slot tab bar, More sheet with the re
         topbar: Math.round(document.getElementById('atlas-topbar').getBoundingClientRect().height),
         tabbar: Math.round(document.getElementById('atlas-tabbar').getBoundingClientRect().height)
       }));
-      assert.deepEqual(chrome, { sidebar: 0, title: 'Home', titleVisible: true, tabs: ['Home', 'Inventory', 'Atlas', 'Recipes', 'More'], current: 'home', topbar: 52, tabbar: 56 });
+      assert.deepEqual(chrome, { sidebar: 0, title: 'Home', titleVisible: true, tabs: ['Home', 'Inventory', 'Alcedo', 'Recipes', 'More'], current: 'home', topbar: 52, tabbar: 56 });
       await page.click('.atlas-tabbar__item[data-nav-id="inventory"]');
       await page.waitForFunction(() => document.body.dataset.atlasView === 'inventory');
       assert.equal(await page.textContent('#atlas-page-title'), 'Inventory');
@@ -181,7 +181,7 @@ test('palette: ⌘K / Ctrl K / "/" open it; arrows, Tab and Enter run an action;
       active: document.getElementById('atlas-palette-input').getAttribute('aria-activedescendant')
     }));
     assert.deepEqual(typed.sections.slice(0, 2), ['Items', 'Recipes']);
-    assert.equal(typed.sections.at(-1), 'Ask Atlas', 'Ask Atlas is last for a non-question');
+    assert.equal(typed.sections.at(-1), 'Ask Alcedo', 'Ask Alcedo is last for a non-question');
     assert.ok(typed.rows.includes('Count Campari'), 'record-aware action');
     assert.ok(typed.rows.includes('Add Campari to an order'));
     assert.equal(typed.active, 'atlas-palette-option-0');
@@ -226,7 +226,7 @@ test('palette: Ask Atlas routes to #ai/new with the query; questions put it firs
     await page.keyboard.type('what should I order?');
     await page.waitForFunction(() => document.getElementById('atlas-palette-list')?.dataset.answerState !== 'pending');
     const first = await page.evaluate(() => ({ section: document.querySelector('.atlas-palette__label-row').textContent, active: document.querySelector('.atlas-palette__item.is-active .atlas-palette__label').textContent.trim() }));
-    assert.deepEqual(first, { section: 'Ask Atlas', active: 'Ask Atlas “what should I order?”' });
+    assert.deepEqual(first, { section: 'Ask Alcedo', active: 'Ask Alcedo “what should I order?”' });
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => location.hash.startsWith('#ai/new?'));
     assert.match(await page.evaluate(() => location.hash), /^#ai\/new\?q=what%20should%20I%20order%3F&from=home$/);
@@ -405,7 +405,7 @@ test('phone: every shell control is at least 44 px; zoom is allowed; focus is vi
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
     const ring = await page.evaluate(() => { const style = getComputedStyle(document.activeElement); return `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`; });
-    assert.equal(ring, 'solid 2px rgb(59, 130, 246)');
+    assert.equal(ring, 'solid 2px rgb(8, 73, 92)');
   } finally { await close(); }
 });
 
@@ -449,7 +449,7 @@ test('brand line reads the venue from Settings, shows "Atlas" alone without one;
     assert.equal(await without.page.$eval('#atlas-brand-venue', (node) => node.hidden), true);
     // Brand v1.0: the supplied horizontal lockup, never typed text.
     const lockup = await without.page.$eval('.atlas-brand__lockup', (img) => ({ alt: img.alt, src: img.getAttribute('src'), loaded: img.complete && img.naturalWidth > 0, width: img.getBoundingClientRect().width }));
-    assert.deepEqual({ ...lockup, width: undefined }, { alt: 'Atlas', src: 'assets/brand/Atlas_Primary_Horizontal_Midnight.svg', loaded: true, width: undefined });
+    assert.deepEqual({ ...lockup, width: undefined }, { alt: 'Alcedo', src: 'assets/brand/Atlas_Primary_Horizontal_Midnight.svg', loaded: true, width: undefined });
     assert.ok(lockup.width >= 96, `lockup ${lockup.width}px is below the 96 px minimum`);
     assert.equal(await without.page.textContent('.atlas-brand__link'), '');
   } finally { await without.close(); }

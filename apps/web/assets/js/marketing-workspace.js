@@ -66,14 +66,14 @@
     not_connected: (c) => `${c} isn't connected, so you'll post it by hand.`,
     needs_reauthorization: (c) => `${c} needs reconnecting before it can publish. Reconnect in Settings.`,
     publishing_permission_missing: (c) => `${c} is connected, but posting wasn't allowed. Allow publishing in Settings.`,
-    review_required: (c) => `${c} hasn't approved Atlas for posting yet, so you'll post it by hand.`,
-    review_pending: (c) => `${c} is still reviewing Atlas's access, so you'll post it by hand.`,
+    review_required: (c) => `${c} hasn't approved Alcedo for posting yet, so you'll post it by hand.`,
+    review_pending: (c) => `${c} is still reviewing Alcedo's access, so you'll post it by hand.`,
     no_resource_selected: (c) => `${c}: choose where to post in Settings.`,
     not_configured: (c) => `${c} isn't set up yet, so you'll post it by hand.`
   };
   const ATTENTION_TEXT = {
     auth_expired: (c) => `${c} needs reconnecting. Nothing was posted to ${c}. Reconnect, then retry.`,
-    outcome_unknown: (c) => `Atlas couldn't confirm whether ${c} received the post. Check ${c}; if it isn't there, retry.`,
+    outcome_unknown: (c) => `Alcedo couldn't confirm whether ${c} received the post. Check ${c}; if it isn't there, retry.`,
     rate_limit_exhausted: (c) => `${c}'s posting limit was reached. Nothing was posted. Retry later.`,
     max_attempts: (c) => `${c} didn't answer after several tries. Nothing was posted. Retry in a few minutes.`,
     stale_schedule: (c) => `The time to post passed before ${c} could publish it. Nothing was posted. Retry to post it now.`,
@@ -177,7 +177,7 @@
   }
 
   function errorText(error, what) {
-    if (error?.status === 401) return 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.';
+    if (error?.status === 401) return 'Alcedo couldn’t confirm your sign-in for this. Try again in a moment.';
     if (error?.status === 403) return 'Your role can\'t do this. Ask an administrator.';
     if (error?.status === 404 && error?.code === 'not_found') return 'That post no longer exists. The list has been reloaded.';
     if (error?.status === 404) return 'Marketing isn\'t switched on for this venue yet.';
@@ -469,7 +469,7 @@
       try { media.mount(state.mediaHost, { mode: 'library' }); } catch { state.mediaMounted = false; }
     }
     if (!state.mediaMounted) {
-      state.mediaHost.innerHTML = emptyMarkup('images', 'The media library is loading', 'If it doesn’t appear, reload Atlas. Your files are safe.', '<button type="button" class="atlas-btn atlas-btn--secondary" data-mk-media-retry>Try again</button>');
+      state.mediaHost.innerHTML = emptyMarkup('images', 'The media library is loading', 'If it doesn’t appear, reload Alcedo. Your files are safe.', '<button type="button" class="atlas-btn atlas-btn--secondary" data-mk-media-retry>Try again</button>');
       ensureMediaModule().then(() => { if (window.AtlasMarketingMedia?.mount && state.tab === 'media' && !state.composer && visible()) render(); });
     }
   }
@@ -539,7 +539,7 @@
     }).join('')}</ul></section>`).join('');
     return `<div class="atlas-toolbar"><div class="atlas-chips" role="group" aria-label="Show">${filters.map(([key, label]) => `<button type="button" class="atlas-chip" aria-pressed="${state.historyFilter === key}" data-mk-history-filter="${key}">${label}</button>`).join('')}</div></div>
       ${list.length ? posts : emptyMarkup('history', state.historyFilter === 'all' ? 'Nothing published yet' : 'Nothing here', 'Posts appear here once they go out, with each channel’s result.')}
-      <details class="mk-activity"><summary>All activity</summary>${history().length ? `<ul class="atlas-list">${history().map((event) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(HISTORY_LABELS[event.event_type] || humanize(event.event_type))}${event.payload?.provider_key ? ` · ${escapeHtml(CHANNELS[event.payload.provider_key] || '')}` : ''}${event.payload?.title ? ` · ${escapeHtml(event.payload.title)}` : ''}</p><p class="atlas-row__meta">${escapeHtml(event.actor_label || 'Atlas')} · ${escapeHtml(dateTime(event.created_at, '—'))}</p></div></li>`).join('')}</ul>` : '<p class="mk-muted">No marketing activity yet.</p>'}</details>`;
+      <details class="mk-activity"><summary>All activity</summary>${history().length ? `<ul class="atlas-list">${history().map((event) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(HISTORY_LABELS[event.event_type] || humanize(event.event_type))}${event.payload?.provider_key ? ` · ${escapeHtml(CHANNELS[event.payload.provider_key] || '')}` : ''}${event.payload?.title ? ` · ${escapeHtml(event.payload.title)}` : ''}</p><p class="atlas-row__meta">${escapeHtml(event.actor_label || 'Alcedo')} · ${escapeHtml(dateTime(event.created_at, '—'))}</p></div></li>`).join('')}</ul>` : '<p class="mk-muted">No marketing activity yet.</p>'}</details>`;
   }
 
   // Header caption from publishing capability (UX spec §3; architecture §0.2).
@@ -555,10 +555,10 @@
     const ready = CHANNEL_ORDER.filter((key) => targetFor(key)?.ready);
     const notReady = CHANNEL_ORDER.filter((key) => !ready.includes(key));
     let text;
-    if (!ready.length) text = 'Atlas can\'t publish yet, so you post by hand and mark it here. Connect accounts in Settings.';
-    else if (!autoPublishing()) text = 'Automatic publishing is off, so Atlas doesn\'t publish yet. Approved posts wait as “Ready, not sent”. An administrator can turn it on in Settings › Marketing.';
-    else if (notReady.length) text = `Atlas publishes approved posts to ${listText(ready.map((key) => CHANNELS[key]))}. ${listText(notReady.map((key) => CHANNELS[key]))} ${notReady.length === 1 ? 'is' : 'are'} posted by hand.`;
-    else text = 'Atlas publishes approved posts at their scheduled time.';
+    if (!ready.length) text = 'Alcedo can\'t publish yet, so you post by hand and mark it here. Connect accounts in Settings.';
+    else if (!autoPublishing()) text = 'Automatic publishing is off, so Alcedo doesn\'t publish yet. Approved posts wait as “Ready, not sent”. An administrator can turn it on in Settings › Marketing.';
+    else if (notReady.length) text = `Alcedo publishes approved posts to ${listText(ready.map((key) => CHANNELS[key]))}. ${listText(notReady.map((key) => CHANNELS[key]))} ${notReady.length === 1 ? 'is' : 'are'} posted by hand.`;
+    else text = 'Alcedo publishes approved posts at their scheduled time.';
     return `<p class="mk-caption">${escapeHtml(text)}${settings}</p>`;
   }
 
@@ -580,7 +580,7 @@
       return;
     }
     if (state.composer) { renderComposer(); return; }
-    const actions = [{ label: 'Ask Atlas', icon: 'atlas-bot', variant: 'ghost', attrs: { 'data-mk-ask': '' } }];
+    const actions = [{ label: 'Ask Alcedo', icon: 'atlas-bot', variant: 'ghost', attrs: { 'data-mk-ask': '' } }];
     if (state.staff?.can_create !== false) actions.push({ label: 'New post', icon: 'plus', variant: 'primary', attrs: { 'data-mk-new': '' } });
     const waiting = items().filter((item) => item.status === 'pending_approval').length;
     const failed = attentionItems().length;
@@ -601,7 +601,7 @@
     const tabs = element.querySelector('.atlas-tabs');
     const active = tabs?.querySelector('[aria-current="page"]');
     if (tabs && active && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = Math.max(0, active.getBoundingClientRect().left - tabs.getBoundingClientRect().left + tabs.scrollLeft - (tabs.clientWidth - active.offsetWidth) / 2);
-    // #marketing?recommendation=<id> (Atlas AI record links): show that suggestion.
+    // #marketing?recommendation=<id> (Alcedo AI record links): show that suggestion.
     if (state.focusSuggestion && state.workspace) {
       const row = [...element.querySelectorAll('[data-mk-suggestion]')].find((node) => node.dataset.mkSuggestion === state.focusSuggestion);
       if (row) { row.scrollIntoView({ block: 'center' }); row.querySelector('[data-mk-plan]')?.focus({ preventScroll: true }); }
@@ -936,7 +936,7 @@
     if (!draft.platforms.length) return 'Choose where it goes. You can post to more than one channel.';
     const ready = draft.platforms.filter((p) => targetFor(p)?.ready);
     const lines = [];
-    if (ready.length) lines.push(`${listText(ready.map((p) => CHANNELS[p]))}: ${autoPublishing() ? 'Atlas publishes' : 'Atlas can publish once automatic publishing is on'}.`);
+    if (ready.length) lines.push(`${listText(ready.map((p) => CHANNELS[p]))}: ${autoPublishing() ? 'Alcedo publishes' : 'Alcedo can publish once automatic publishing is on'}.`);
     draft.platforms.filter((p) => !ready.includes(p)).forEach((p) => {
       const reason = targetFor(p)?.reason || 'not_connected';
       lines.push((REASON_TEXT[reason] || REASON_TEXT.not_connected)(CHANNELS[p]).replace(', so you\'ll post it by hand', ': you post it by hand'));
@@ -987,17 +987,17 @@
     const dis = editable ? '' : ' disabled';
     const options = info?.available && info.privacy_level_options?.length ? info.privacy_level_options : Object.keys(TIKTOK_PRIVACY);
     const privateOnly = info?.available && options.length === 1 && options[0] === 'SELF_ONLY';
-    const who = info?.available && (info.username || info.nickname) ? `Posting as <strong>@${escapeHtml(info.username || info.nickname)}</strong>` : info && !info.available ? 'TikTok’s settings for this account couldn’t be read. Atlas checks them again before posting.' : 'Reading the TikTok account…';
+    const who = info?.available && (info.username || info.nickname) ? `Posting as <strong>@${escapeHtml(info.username || info.nickname)}</strong>` : info && !info.available ? 'TikTok’s settings for this account couldn’t be read. Alcedo checks them again before posting.' : 'Reading the TikTok account…';
     const check = (key, label, disabledByCreator) => `<label class="atlas-check-row"><input type="checkbox" class="atlas-check" data-mk-tt="${key}"${t[key] ? ' checked' : ''}${disabledByCreator || !editable ? ' disabled' : ''}>${escapeHtml(label)}${disabledByCreator ? ' <span class="help">Turned off in your TikTok settings.</span>' : ''}</label>`;
     return `<div class="mk-channel__extra" data-mk-tiktok>
         <p class="mk-creator"><span class="atlas-avatar atlas-avatar--sm atlas-avatar--a" aria-hidden="true">T</span><span>${who}</span></p>
-        ${direct ? `${privateOnly ? '<div class="atlas-alert atlas-alert--info"><i data-lucide="info"></i><div class="atlas-alert__content"><p class="atlas-alert__body">Until TikTok approves Atlas, TikTok posts are private (Only me). You can make them public in the TikTok app afterwards.</p></div></div>' : ''}
+        ${direct ? `${privateOnly ? '<div class="atlas-alert atlas-alert--info"><i data-lucide="info"></i><div class="atlas-alert__content"><p class="atlas-alert__body">Until TikTok approves Alcedo, TikTok posts are private (Only me). You can make them public in the TikTok app afterwards.</p></div></div>' : ''}
         <div class="atlas-field"><label for="mk-tt-privacy">Who can see this video</label><select class="atlas-select" id="mk-tt-privacy" data-mk-tt-privacy${dis}><option value="" disabled${t.privacy_level ? '' : ' selected'}>Choose who can see it</option>${options.map((key) => { const blocked = key === 'SELF_ONLY' && t.brand_content; return `<option value="${escapeHtml(key)}"${t.privacy_level === key ? ' selected' : ''}${blocked ? ' disabled' : ''}>${escapeHtml(TIKTOK_PRIVACY[key] || humanize(key))}${blocked ? ' (branded content can’t be private)' : ''}</option>`; }).join('')}</select></div>
         <fieldset class="mk-fieldset"><legend class="atlas-label">Allow people to</legend>${check('allow_comment', 'Comment', info?.comment_disabled)}${check('allow_duet', 'Duet', info?.duet_disabled)}${check('allow_stitch', 'Stitch', info?.stitch_disabled)}</fieldset>`
         : ''}
         ${direct ? `<div class="atlas-toggle-row"><div><p class="atlas-toggle-row__label" id="mk-tt-commercial-label">Disclose commercial content</p><p class="atlas-toggle-row__help">Turn on if this post promotes your venue, a brand, product or service.</p></div><button type="button" class="atlas-toggle" role="switch" id="mk-tt-commercial" aria-labelledby="mk-tt-commercial-label" aria-checked="${t.commercial}" data-mk-tt-commercial${dis}></button></div>
         ${t.commercial ? `<fieldset class="mk-fieldset" id="mk-tt-commercial-kinds"><legend class="sr-only">What this promotes</legend><label class="atlas-check-row"><input type="checkbox" class="atlas-check" data-mk-tt="brand_organic"${t.brand_organic ? ' checked' : ''}${dis}><span><span>Your brand</span><span class="help mk-block">You're promoting yourself or your own business. The post is labelled “Promotional content”.</span></span></label><label class="atlas-check-row"><input type="checkbox" class="atlas-check" data-mk-tt="brand_content"${t.brand_content ? ' checked' : ''}${dis}><span><span>Branded content</span><span class="help mk-block">You're promoting another brand or a third party. The post is labelled “Paid partnership”.</span></span></label></fieldset>` : ''}
-        <label class="atlas-check-row mk-consent-row"><input type="checkbox" class="atlas-check" id="mk-tt-consent" data-mk-tt-consent${t.consent_confirmed_at ? ' checked' : ''}${dis}><span>I agree to TikTok's ${t.commercial && t.brand_content ? `<a href="${TIKTOK_BRANDED_URL}" target="_blank" rel="noopener">Branded Content Policy</a> and ` : ''}<a href="${TIKTOK_MUSIC_URL}" target="_blank" rel="noopener">Music Usage Confirmation</a> for this post.</span></label>` : '<p class="help">Atlas sends the video to your TikTok inbox. You choose who can see it, add any labels and post it from the TikTok app.</p>'}
+        <label class="atlas-check-row mk-consent-row"><input type="checkbox" class="atlas-check" id="mk-tt-consent" data-mk-tt-consent${t.consent_confirmed_at ? ' checked' : ''}${dis}><span>I agree to TikTok's ${t.commercial && t.brand_content ? `<a href="${TIKTOK_BRANDED_URL}" target="_blank" rel="noopener">Branded Content Policy</a> and ` : ''}<a href="${TIKTOK_MUSIC_URL}" target="_blank" rel="noopener">Music Usage Confirmation</a> for this post.</span></label>` : '<p class="help">Alcedo sends the video to your TikTok inbox. You choose who can see it, add any labels and post it from the TikTok app.</p>'}
       </div>`;
   }
 
@@ -1471,7 +1471,7 @@
   async function addMedia(source) {
     if (source === 'upload') { host()?.querySelector('#mk-media-file')?.click(); return; }
     const media = window.AtlasMarketingMedia || (await ensureMediaModule(), window.AtlasMarketingMedia);
-    if (!media?.pick) { window.AtlasShell?.toast?.('The media library isn’t available yet. Reload Atlas and try again.', { tone: 'warning' }); return; }
+    if (!media?.pick) { window.AtlasShell?.toast?.('The media library isn’t available yet. Reload Alcedo and try again.', { tone: 'warning' }); return; }
     try {
       const picked = await media.pick({ multiple: true, kinds: ['image', 'video'], allowCollections: source === 'collection', initialTab: source === 'collection' ? 'collections' : 'library', exclude: state.composer.draft.media.map((m) => m.asset_id) });
       if (Array.isArray(picked) && picked.length && state.composer) addToDraft(picked, source);
@@ -1482,7 +1482,7 @@
 
   async function uploadMedia(files) {
     const media = window.AtlasMarketingMedia || (await ensureMediaModule(), window.AtlasMarketingMedia);
-    if (!media?.upload) { window.AtlasShell?.toast?.('The media library isn’t available yet. Reload Atlas and try again.', { tone: 'warning' }); return; }
+    if (!media?.upload) { window.AtlasShell?.toast?.('The media library isn’t available yet. Reload Alcedo and try again.', { tone: 'warning' }); return; }
     const composer = state.composer;
     composer.uploads += files.length;
     scheduleChecks();
@@ -1567,7 +1567,7 @@
     if (composer.suggestion && !composer.id) {
       const result = await mutate('convert-recommendation', { recommendation_id: composer.suggestion.id, occurrence_date: state.workspace?.venue_date || venueToday(), client_request_id: requestId(), scheduled_for: fields.scheduled_for, reminder_at: fields.reminder_at }, null);
       const id = result?.content?.id || result?.content_id || result?.id;
-      if (!id) throw Object.assign(new Error('no id'), { userMessage: 'The suggestion was planned, but Atlas couldn’t open it. Find it in Posts.' });
+      if (!id) throw Object.assign(new Error('no id'), { userMessage: 'The suggestion was planned, but Alcedo couldn’t open it. Find it in Posts.' });
       composer.id = id;
       composer.suggestion = null;
       await mutate('update-content', { content_id: id, version: findItem(id)?.version ?? null, title: fields.title, platforms: fields.platforms, caption_draft: fields.caption_draft, campaign_id: fields.campaign_id, publish_asap: fields.publish_asap, platform_options: fields.platform_options }, null);
@@ -1587,7 +1587,7 @@
         throw error;
       }
       const id = result?.content_id || result?.id || result?.content?.id;
-      if (!id) throw Object.assign(new Error('no id'), { userMessage: 'The draft was saved, but Atlas couldn’t open it. Find it in Posts.' });
+      if (!id) throw Object.assign(new Error('no id'), { userMessage: 'The draft was saved, but Alcedo couldn’t open it. Find it in Posts.' });
       composer.id = id;
     } else {
       // After a partial save the server may not have what the composer last
@@ -1806,7 +1806,7 @@
     if (target.closest('[data-mk-published]')) {
       const button = target.closest('[data-mk-published]');
       runComposerAction(button, async () => {
-        await mutate('mark-published', { content_id: item.id, published_at: new Date().toISOString(), external_publication_ids: {}, note: null }, 'Marked as posted by hand. Nothing was posted by Atlas.');
+        await mutate('mark-published', { content_id: item.id, published_at: new Date().toISOString(), external_publication_ids: {}, note: null }, 'Marked as posted by hand. Nothing was posted by Alcedo.');
         remountComposer({ editing: false });
       });
       return true;
@@ -1824,7 +1824,7 @@
       await mutate('retry-delivery', { delivery_id: deliveryId }, message, `The ${name} channel`);
     } catch (error) {
       if (error.code !== 'attestation_required') throw error;
-      const ok = await confirm({ title: `Was it posted to ${name}?`, body: `Atlas couldn't confirm what happened. Check ${name} first. If the post isn't there, confirm and Atlas tries again.`, confirmLabel: 'It wasn’t posted, retry', cancelLabel: 'Cancel' });
+      const ok = await confirm({ title: `Was it posted to ${name}?`, body: `Alcedo couldn't confirm what happened. Check ${name} first. If the post isn't there, confirm and Alcedo tries again.`, confirmLabel: 'It wasn’t posted, retry', cancelLabel: 'Cancel' });
       if (!ok) return;
       await mutate('retry-delivery', { delivery_id: deliveryId, confirmed_not_posted: true }, message, `The ${name} channel`);
     }

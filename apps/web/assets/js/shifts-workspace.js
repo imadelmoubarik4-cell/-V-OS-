@@ -322,7 +322,7 @@
 
   async function api(action, options = {}) {
     const apiUrl = endpoint();
-    if (!apiUrl) throw new ShiftsError('Shifts are not set up for this Atlas yet.', 0);
+    if (!apiUrl) throw new ShiftsError('Shifts are not set up for this Alcedo yet.', 0);
     const session = await activeSession();
     if (!session?.access_token) throw new ShiftsError('Sign in again to see shifts.', 401);
 
@@ -940,7 +940,7 @@
     const choices = manage ? activePeople() : people().filter((person) => person.id === ownPersonId());
     const person = choices.find((entry) => entry.id === state.availabilityPersonId) || choices.find((entry) => entry.id === ownPersonId()) || choices[0] || null;
     if (!person) {
-      return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('user-x')}</div><h3 class="atlas-empty__title">Your account isn’t on the shift roster</h3><p class="atlas-empty__text">Ask a manager to add you to the team in Atlas. Then you can set your availability here.</p></div>`;
+      return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('user-x')}</div><h3 class="atlas-empty__title">Your account isn’t on the shift roster</h3><p class="atlas-empty__text">Ask a manager to add you to the team in Alcedo. Then you can set your availability here.</p></div>`;
     }
     state.availabilityPersonId = person.id;
     const rows = list(ws, 'availability');
@@ -1038,7 +1038,7 @@
       .filter((row) => row.shift)
       .sort((a, b) => (a.response.manager_status === 'open' ? -1 : 0) - (b.response.manager_status === 'open' ? -1 : 0) || a.shift.starts_local.localeCompare(b.shift.starts_local));
     if (!rows.length) {
-      return `${alertMarkup(slot)}<div class="atlas-empty"><div class="atlas-empty__icon">${icon('badge-check')}</div><h3 class="atlas-empty__title">No responses for ${escapeHtml(weekRangeLabel(state.weekStart))}</h3><p class="atlas-empty__text">Publishing a week asks everyone with an Atlas login to confirm their shifts.</p></div>`;
+      return `${alertMarkup(slot)}<div class="atlas-empty"><div class="atlas-empty__icon">${icon('badge-check')}</div><h3 class="atlas-empty__title">No responses for ${escapeHtml(weekRangeLabel(state.weekStart))}</h3><p class="atlas-empty__text">Publishing a week asks everyone with an Alcedo login to confirm their shifts.</p></div>`;
     }
     return `${alertMarkup(slot)}<div class="atlas-toolbar shifts-toolbar"><p class="shifts-toolbar__note">Week of ${escapeHtml(weekRangeLabel(state.weekStart))}. Change requests need a note when you close them.</p></div><ul class="atlas-list shifts-list">${rows.map(({ response, shift }) => {
       const status = RESPONSE[response.response] || RESPONSE.pending;
@@ -1054,7 +1054,7 @@
     if (!ws) return `${alertMarkup(slot)}${slot.error && !slot.loading ? '' : skeletonMarkup('list')}`;
     const events = list(ws, 'events');
     if (!events.length) return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('history')}</div><h3 class="atlas-empty__title">No schedule activity yet</h3><p class="atlas-empty__text">Changes to shifts, availability, time off and publishing appear here.</p></div>`;
-    return `<ul class="atlas-list shifts-list">${events.map((event) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon">${icon('history')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(EVENT_LABELS[event.event_type] || String(event.event_type || 'Change').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()))}</p><p class="atlas-row__meta">${escapeHtml(event.actor_label || 'Atlas')} · <time datetime="${escapeHtml(event.created_at || '')}">${escapeHtml(vc()?.formatRelative?.(event.created_at) || '')}</time></p></div></li>`).join('')}</ul>`;
+    return `<ul class="atlas-list shifts-list">${events.map((event) => `<li class="atlas-row atlas-row--compact"><span class="atlas-row__icon">${icon('history')}</span><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(EVENT_LABELS[event.event_type] || String(event.event_type || 'Change').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()))}</p><p class="atlas-row__meta">${escapeHtml(event.actor_label || 'Alcedo')} · <time datetime="${escapeHtml(event.created_at || '')}">${escapeHtml(vc()?.formatRelative?.(event.created_at) || '')}</time></p></div></li>`).join('')}</ul>`;
   }
 
   function contentMarkup() {

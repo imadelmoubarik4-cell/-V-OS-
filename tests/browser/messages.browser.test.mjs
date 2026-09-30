@@ -119,7 +119,7 @@ test('linking a record: staff get no recommendations; managers do; staff never s
       await settle(page);
       await page.goto(page.url().replace(/#.*$/, '#messages/announcements'));
       await page.waitForSelector('[data-team-message="a2"]');
-      assert.match(await page.textContent('[data-team-message="a2"] .msg-link'), /Atlas recommendation · managers only/);
+      assert.match(await page.textContent('[data-team-message="a2"] .msg-link'), /Alcedo recommendation · managers only/);
       assert.doesNotMatch(await page.textContent('#team-view'), /Globus contract/);
       assert.match(await page.textContent('.msg-composer__locked'), /Only managers can post in Announcements/);
     } finally { await close(); }

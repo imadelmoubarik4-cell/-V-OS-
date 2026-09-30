@@ -238,7 +238,7 @@ test('count scan: a Sure match is pre-selected, saved with recognition evidence,
       const probes = [-21, -15, 0, 15, 21].map((dy) => { const node = document.elementFromPoint(cx, cy + dy); return Boolean(node && (node === summary || summary.contains(node))); });
       return { text: summary.textContent.trim(), height: Math.round(box.height), hitHeight: parseFloat(hit.height), probes };
     });
-    assert.equal(disclosure.text, 'How sure Atlas is');
+    assert.equal(disclosure.text, 'How sure Alcedo is');
     assert.ok(disclosure.hitHeight >= 44, `hit area ${disclosure.hitHeight}px (visual ${disclosure.height}px)`);
     assert.deepEqual(disclosure.probes, [true, true, true, true, true], 'the whole 44 px band reaches the summary');
     await page.tap('[data-capture-result="count"] .atlas-capture-more > summary');

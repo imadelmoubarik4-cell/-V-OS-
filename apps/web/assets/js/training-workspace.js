@@ -250,7 +250,7 @@
 
   async function api(action, options = {}) {
     const endpoint = String(cfg.TRAINING_API || '').trim();
-    if (!endpoint) throw new TrainingError('Training is not set up for this Atlas yet.', 0);
+    if (!endpoint) throw new TrainingError('Training is not set up for this Alcedo yet.', 0);
     const token = await accessToken();
     const url = new URL(endpoint);
     url.searchParams.set('action', action);
@@ -689,7 +689,7 @@
           <fieldset class="tr-fieldset"><legend class="tr-fieldset__title">Written procedure (SOP)</legend><div class="atlas-field"><label class="sr-only" for="tr-content">Written procedure</label><textarea class="atlas-input atlas-textarea tr-editor__content" id="tr-content" name="content" rows="12" maxlength="250000" required placeholder="# Heading&#10;&#10;- A point&#10;1. A numbered step">${escapeHtml(version.content || '')}</textarea><p class="help"># for headings, - for lists, 1. for numbered steps, **bold**.</p><p class="error" hidden data-error-for="content">Write the procedure before saving.</p></div></fieldset>
           <fieldset class="tr-fieldset"><legend class="tr-fieldset__title">Procedure steps</legend><div class="tr-step-rows" data-training-step-rows>${steps.length ? steps.map((step) => stepRowMarkup(step.label || '')).join('') : stepRowMarkup()}</div><button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-training-step-add>${icon('plus')}Add step</button></fieldset>
         </form>
-        <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="tr-editor-form" class="atlas-btn atlas-btn--secondary" data-training-save-draft>Save draft</button>${article.id ? `<button type="button" class="atlas-btn atlas-btn--primary" data-training-publish-editor>${icon('send')}Publish</button>` : ''}</footer>
+        <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="tr-editor-form" class="atlas-btn atlas-btn--primary" data-training-save-draft>Save draft</button>${article.id ? `<button type="button" class="atlas-btn atlas-btn--primary" data-training-publish-editor>${icon('send')}Publish</button>` : ''}</footer>
       </section>`
     });
 

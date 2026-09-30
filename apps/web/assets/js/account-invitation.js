@@ -70,7 +70,7 @@
       if (error) throw error;
       await client.auth.signOut({ scope: 'local' });
       form.reset(); form.hidden = true;
-      say('Your password is set. You can now sign in to Atlas with your email and password.');
+      say('Your password is set. You can now sign in to Alcedo with your email and password.');
     } catch (_) {
       say('Your password could not be set. Check the requirements and try again before closing this page.', 'error');
     } finally {

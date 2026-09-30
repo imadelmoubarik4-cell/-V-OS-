@@ -550,12 +550,12 @@
 
   function libraryMarkup() {
     const manager = canManageCommercial();
-    // Flavor Intelligence: managers create with Atlas (ideas → draft →
+    // Flavor Intelligence: managers create with Alcedo (ideas → draft →
     // approval); everyone can browse the Flavor Map.
     const flavor = Boolean(window.AtlasFlavorMap);
     const actions = manager
       ? [{ label: 'Public menu', icon: 'qr-code', variant: 'secondary', attrs: { 'data-recipe-menu-link': '' } },
-        ...(flavor ? [{ label: 'Create with Atlas', icon: 'atlas-bot', variant: 'secondary', attrs: { 'data-recipe-create-atlas': '' } }] : []),
+        ...(flavor ? [{ label: 'Create with Alcedo', icon: 'atlas-bot', variant: 'secondary', attrs: { 'data-recipe-create-atlas': '' } }] : []),
         { label: 'New recipe', icon: 'plus', variant: 'primary', attrs: { 'data-recipe-new': '' } }]
       : flavor ? [{ label: 'Flavor Map', icon: 'orbit', variant: 'secondary', attrs: { 'data-recipe-flavor-map': '' } }] : [];
     const head = window.AtlasShell.pageHead({ title: 'Recipes', sub: headSub(), actions });
@@ -574,7 +574,7 @@
     } else if (state.viewMode === 'list') content = listMarkup(list);
     else content = `<div class="recipe-grid${list.some((recipe) => recipe.image_url) ? '' : ' recipe-grid--plain'}">${list.map(tileMarkup).join('')}</div>`;
     const stale = dataLoaded() && !navigator.onLine
-      ? '<div class="atlas-alert atlas-alert--warning"><i data-lucide="wifi-off"></i><div class="atlas-alert__content"><p class="atlas-alert__body">You\'re offline. Showing recipes and stock from the last time Atlas loaded.</p></div></div>'
+      ? '<div class="atlas-alert atlas-alert--warning"><i data-lucide="wifi-off"></i><div class="atlas-alert__content"><p class="atlas-alert__body">You\'re offline. Showing recipes and stock from the last time Alcedo loaded.</p></div></div>'
       : recipesHealth() === 'failed'
         ? '<div class="atlas-alert atlas-alert--warning"><i data-lucide="triangle-alert"></i><div class="atlas-alert__content"><p class="atlas-alert__body">Recipes couldn’t be refreshed. Showing them as they were last loaded; nothing was changed.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-recipe-retry>Try again</button></div></div>'
         : '';
@@ -665,7 +665,7 @@
   }
 
   function detailHeadActions(recipe) {
-    return `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-recipe-ask>${window.AtlasBot ? window.AtlasBot.html({ size: 18 }) : '<i data-lucide="sparkles"></i>'}Ask Atlas</button>${canManageCommercial() ? `<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#recipes/${escape(encodeURIComponent(recipe.id))}/edit"><i data-lucide="pencil"></i>Edit</a>` : ''}`;
+    return `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-recipe-ask>${window.AtlasBot ? window.AtlasBot.html({ size: 18 }) : '<i data-lucide="sparkles"></i>'}Ask Alcedo</button>${canManageCommercial() ? `<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#recipes/${escape(encodeURIComponent(recipe.id))}/edit"><i data-lucide="pencil"></i>Edit</a>` : ''}`;
   }
 
   function openDetail(recipeId) {
@@ -684,7 +684,7 @@
       closeDetailSheet('route');
       state.phoneDetail = recipe.id;
       render();
-      window.AtlasChrome?.setTopBar?.({ title: recipe.name, back: '#recipes', actions: [{ icon: 'atlas-bot', label: 'Ask Atlas', run: () => askAbout(recipe) }] });
+      window.AtlasChrome?.setTopBar?.({ title: recipe.name, back: '#recipes', actions: [{ icon: 'atlas-bot', label: 'Ask Alcedo', run: () => askAbout(recipe) }] });
       keepAwake(true);
       return;
     }
@@ -1553,8 +1553,8 @@
       run: (ctx = {}) => shell.navigate(`#recipes/${encodeURIComponent(ctx.record.id)}/edit`)
     });
     shell.actions?.register?.({
-      id: 'recipes.ask', label: 'Ask Atlas about this recipe', icon: 'atlas-bot', keywords: ['ask', 'recipe'],
-      forRecord: 'recipe', recordLabel: 'Ask Atlas about {name}',
+      id: 'recipes.ask', label: 'Ask Alcedo about this recipe', icon: 'atlas-bot', keywords: ['ask', 'recipe'],
+      forRecord: 'recipe', recordLabel: 'Ask Alcedo about {name}',
       when: (ctx = {}) => Boolean(ctx.record?.type === 'recipe' && ctx.record?.id),
       run: (ctx = {}) => window.AtlasAI?.askAbout?.({ type: 'recipe', id: ctx.record.id, label: ctx.record.label || '' })
     });
@@ -1607,7 +1607,7 @@
     getHomeMetrics,
     summary,
     recipeAvailability,
-    // Search and Ask Atlas use the exact readiness shown on the Recipes page.
+    // Search and Ask Alcedo use the exact readiness shown on the Recipes page.
     recipeStatus,
     recipeBlockers,
     availabilityView,

@@ -1,4 +1,4 @@
-// Atlas app shell start-up: Supabase client, sign-in, session lifecycle,
+// Alcedo app shell start-up: Supabase client, sign-in, session lifecycle,
 // shell data loading and the base views. Moved out of index.html in S96 so the
 // Content-Security-Policy can drop script-src 'unsafe-inline' (docs/SECURITY.md).
 // A classic script: its top-level declarations stay global, exactly as when
@@ -13,7 +13,7 @@
     const err = document.getElementById('login-error');
     if (!err) return;
     console.error(prefix, msg);
-    err.textContent = "Atlas couldn't connect. Check your connection, then try again.";
+    err.textContent = "Alcedo couldn't connect. Check your connection, then try again.";
     err.hidden = false;
   }
 
@@ -77,7 +77,7 @@
 
   const cfg = window.VABAR_CONFIG || {};
 
-  // S96 (session fixation / login CSRF): Atlas never signs in from tokens in
+  // S96 (session fixation / login CSRF): Alcedo never signs in from tokens in
   // the address bar. Recovery and invitation links are consumed on their own
   // pages from a single-use token hash; anything that still arrives here with
   // auth parameters in the fragment is dropped before the client starts, so a
@@ -168,7 +168,7 @@
   }
 
   window.addEventListener('unhandledrejection', event => {
-    console.error('Unhandled Atlas error:', event.reason);
+    console.error('Unhandled Alcedo error:', event.reason);
   });
 
   const loginScreen = document.getElementById('login-screen');
@@ -292,14 +292,14 @@
         console.warn('Sign-in failed', error.status || '', error.message);
         showLoginError(error.status === 400 || /invalid/i.test(error.message || '')
           ? 'Email or password is incorrect.'
-          : "Atlas couldn't sign you in right now. Check your connection and try again.");
+          : "Alcedo couldn't sign you in right now. Check your connection and try again.");
         return;
       }
       await onSignedIn(data.session);
     } catch (e) {
       console.error('Sign-in failed', e);
       setLoginBusy(false);
-      showLoginError(e?.code === 'inactive_profile' ? INACTIVE_PROFILE_MESSAGE : "Atlas couldn't sign you in right now. Check your connection and try again.");
+      showLoginError(e?.code === 'inactive_profile' ? INACTIVE_PROFILE_MESSAGE : "Alcedo couldn't sign you in right now. Check your connection and try again.");
     }
   });
   document.getElementById('login-password-toggle')?.addEventListener('click', (event) => {
@@ -344,7 +344,7 @@
   window.atlasSignOut = signOut;
 
   // One consistent state when the session is over: this device's session is
-  // cleared (never the person's other devices) and Atlas returns to the
+  // cleared (never the person's other devices) and Alcedo returns to the
   // sign-in screen with a clear message, keeping the page address so signing
   // in again reopens it with every module loaded fresh. No page is left
   // showing old data, spinning, or signed in while its requests fail.
@@ -365,7 +365,7 @@
     } catch (_) { /* storage unavailable */ }
     if (recent) {
       forgetStoredSession(sb);
-      window.AtlasShell?.toast?.('Your session ended. Reload Atlas and sign in again.', { tone: 'warning', duration: 15000 });
+      window.AtlasShell?.toast?.('Your session ended. Reload Alcedo and sign in again.', { tone: 'warning', duration: 15000 });
       return;
     }
     await signOut();
@@ -377,7 +377,7 @@
   function authUnavailableNotice() {
     if (Date.now() - authNoticeAt < RENEW_COOLDOWN_MS) return;
     authNoticeAt = Date.now();
-    window.AtlasShell?.toast?.('Atlas can’t check your sign-in right now. You’re still signed in; try again in a moment.', { tone: 'warning' });
+    window.AtlasShell?.toast?.('Alcedo can’t check your sign-in right now. You’re still signed in; try again in a moment.', { tone: 'warning' });
   }
   // A refresh error is final only when Auth says the session is gone.
   function sessionIsGone(error) {
@@ -657,7 +657,7 @@
   }
 
   // The newest AtlasStockTruth.MOVEMENT_ROW_LIMIT movements (5 000, the same
-  // cap as Reports and Atlas AI), read in pages so the PostgREST max-rows
+  // cap as Reports and Alcedo AI), read in pages so the PostgREST max-rows
   // default (1 000) cannot silently cut the stock projection short.
   async function loadRestockLog() {
     const relation = canManageCommercial() ? 'inventory_movements' : 'inventory_movement_catalog';
@@ -875,7 +875,7 @@
     // Import Center and Real VÁ Data are one manager page now: Data (assets/js/data-workspace.js).
     ['imports', { guard: () => 'data' }],
     ['team', {}], ['shifts', {}], ['knowledge', {}], ['reports', {}], ['settings', {}],
-    // An address Atlas doesn't know (#bogus) opens this page instead of
+    // An address Alcedo doesn't know (#bogus) opens this page instead of
     // leaving the previous page on screen (AtlasShell.isKnownRoute).
     ['not-found', { render: () => renderNotFound() }]
   ].forEach(([view, definition]) => window.AtlasShell.registerView(view, { root: viewMap[view], title: titleMap[view], ...definition }));
