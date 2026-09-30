@@ -26,7 +26,7 @@ def provenance(rel):
     if '/assets/brand/' in rel: return KIT
     if name == 'alcedo-kingfisher-master.webp': return 'Supplied approved mascot master, byte-identical (1214×1295, genuine alpha)'
     if '/assets/mascot/' in rel: return 'Derived: mascot master, alpha clean-up and rectangular crop only (tools/build_mascot_assets.py)'
-    if '/assets/screens/' in rel: return 'Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000'
+    if '/assets/screens/' in rel: return 'Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000'
     if '/tools/' in rel: return 'Authored: build/verification tool'
     return 'Authored'
 

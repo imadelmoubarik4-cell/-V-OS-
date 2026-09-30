@@ -6,7 +6,7 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 | Status | Path | Bytes | SHA-256 | Used by Alcedo page | Provenance |
 |---|---|---:|---|---|---|
 | A | `prototypes/alcedo-website/INVENTORY.md` | — | (this file) | — | Authored |
-| A | `prototypes/alcedo-website/README.md` | 14,698 | `1e1f7af725f97bdccb041a394c46521ff8f3ce983c484249b9317cb2e218d5d9` | — | Authored |
+| A | `prototypes/alcedo-website/README.md` | 15,049 | `965eebd4a9c6fea4f547549475425dbbc0e1b9bae0aa77f4d1811a1d587fb01d` | — | Authored |
 | A | `prototypes/alcedo-website/assets/brand/alcedo-horizontal-dark.svg` | 3,112 | `53003b7eb06cc133f699506759b48e04ecc334cdb1b9ecfed5b34b62f07d4460` | no (dark-surface deliverable) | Derived: kit symbol + outlined wordmark paths, uniform scale/translate only (tools/build_horizontal_lockup.py) |
 | A | `prototypes/alcedo-website/assets/brand/alcedo-horizontal-light.svg` | 3,122 | `542f346c67f54bc5a1b1724d125b3d76994880653aa84a532665af6188284838` | yes | Derived: kit symbol + outlined wordmark paths, uniform scale/translate only (tools/build_horizontal_lockup.py) |
 | A | `prototypes/alcedo-website/assets/brand/favicon.ico` | 3,742 | `c02f49970e8c7d23a2d6e37915a8083aa483c6437df2d70afa806d3e191deae0` | yes | ALCEDO Logo Kit v1.0 (supplied zip), byte-identical copy |
@@ -20,21 +20,21 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 | A | `prototypes/alcedo-website/assets/mascot/alcedo-kingfisher-launcher.webp` | 20,542 | `6addb573ae40a43bd64885e8288e8a3ffbeb8f346e828b8aa5df3ff9cfeca6ce` | yes | Derived: mascot master, alpha clean-up and rectangular crop only (tools/build_mascot_assets.py) |
 | A | `prototypes/alcedo-website/assets/mascot/alcedo-kingfisher-master.webp` | 283,430 | `58fa8ea1ad77eb45489d0745e677349706e252b7cbb34d5ba64ef16fd82a2cd8` | no (source kept for tools) | Supplied approved mascot master, byte-identical (1214×1295, genuine alpha) |
 | A | `prototypes/alcedo-website/assets/mascot/alcedo-kingfisher.webp` | 78,080 | `dc7aa35bd26abc363a372f8679961144988fc62b895889585ae404a15d490162` | yes | Derived: mascot master, alpha clean-up and rectangular crop only (tools/build_mascot_assets.py) |
-| A | `prototypes/alcedo-website/assets/screens/ai.webp` | 81,690 | `d9ae3ce1ccb2097ef16a7e0652ff96e89087bbdabd5d93a7e52d982882b352d0` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/assets/screens/food-intelligence.webp` | 78,878 | `dd6580cdea3ca0f8929762b4445393df5382be7079e9eb0a019c9d36042e58ff` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/assets/screens/inventory.webp` | 71,470 | `fc4bec8fb78de5cccdd0ac2be1a9b35588baf20a90a5d5eb7eaf4a9fa4636f63` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/assets/screens/purchasing.webp` | 49,434 | `600fb70b15d6dfeb4eb34cc735ca8325e21b7b35477c8ed8b1557d90a8ef16c4` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/assets/screens/recipes.webp` | 46,844 | `a35e97b4a26381c41b061380683133fd7fcffbdb76043dcb8a86912e9439e673` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/assets/screens/reports.webp` | 69,416 | `65e6ed8c1cff7e6f2aaf3688f4d4869c45cc8be5c6003275f99cd248b001774c` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/assets/screens/shifts.webp` | 58,882 | `872cbf875ea807505d904ca514a69eaac4ee6921880acd4125d6992deb6fa200` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/assets/screens/stock-count.webp` | 42,420 | `0f43dee1c942cb663cba6d6ade1389f66badf32aa4e88cf1aaddc99eaddd42c5` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/assets/screens/training.webp` | 53,274 | `516513c9121c7767ae28b8b92a2395880293316e4edeadc85b8976d618812dc4` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/index.html` | 101,061 | `417ef7c89ff1f966da0749fda587d186520f3b6ca0cd4d27f25be77e2760e79e` | — | Authored |
+| A | `prototypes/alcedo-website/assets/screens/ai.webp` | 78,824 | `723d573e5d156e334578dcd7a293bf5bd5cdff1b2ae9ce2ecd64a31ab171a563` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
+| A | `prototypes/alcedo-website/assets/screens/food-intelligence.webp` | 78,124 | `707c8490fe6511381f21dc6a47fc40d773b41bc09952446139af80d722b482ff` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
+| A | `prototypes/alcedo-website/assets/screens/inventory.webp` | 71,190 | `514123aad111652d704aa81737e7903ccacc34f7e0fb1f00bc6abe3febb8cbc2` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
+| A | `prototypes/alcedo-website/assets/screens/purchasing.webp` | 46,064 | `fbb80af49b4b40ffac91aa86eefbe95c7935590a8c141b973b212b102ea8cf58` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
+| A | `prototypes/alcedo-website/assets/screens/recipes.webp` | 47,636 | `f861760f9d275843f4cfbf855beba81ee740729834f26cc59a670b0265809d76` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
+| A | `prototypes/alcedo-website/assets/screens/reports.webp` | 68,986 | `99049952665c1ad307554bec2e96f35618b94626e186fcda362daf02094c33c1` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
+| A | `prototypes/alcedo-website/assets/screens/shifts.webp` | 58,018 | `61dcc0397496f4133c63052d0fc350b5d63b8dfc39b389b78a2e8cdd3c21e1dd` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
+| A | `prototypes/alcedo-website/assets/screens/stock-count.webp` | 43,016 | `e68188e7130b68e4af65fb977173e5b872b62d7c6b6ca66b881e95c9248b2859` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
+| A | `prototypes/alcedo-website/assets/screens/training.webp` | 54,522 | `8419522a9bf624fe292cac588cfcf32166728abae36572d3aaffa579e91dd3ef` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
+| A | `prototypes/alcedo-website/index.html` | 101,107 | `06695c08334edf87e84bb813e36092e40fe8e3da2e262827e37b3e45716e6b78` | — | Authored |
 | A | `prototypes/alcedo-website/tools/build_horizontal_lockup.py` | 2,822 | `1fe783529bceb957b5208afc2e658f9a1dc849afa9b424b88570c1406a2ff8dd` | — | Authored: build/verification tool |
-| A | `prototypes/alcedo-website/tools/build_inventory.py` | 3,485 | `67a02a4e46502e1803f7745a5c6186233c595512e6ce3d00fb50226ebd10c8c2` | — | Authored: build/verification tool |
+| A | `prototypes/alcedo-website/tools/build_inventory.py` | 3,520 | `c57ed00be1160605117a576e9e28319f98f0c2af3f11cdb07ee0c7304ed6ded4` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_mascot_assets.py` | 2,065 | `fea963334e47ac2bad92b460b2684d3b437338c6116981e85d7771edc8e11a50` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_preview.py` | 1,252 | `18aa67e31a840f24152986d163c2daed0259367fbccf5be8693b22ba118e9ffd` | — | Authored: build/verification tool |
 | A | `prototypes/atlas-website/README.md` | 6,940 | `ab5d96636ab77718cc248d25c82191ae69d160786f7c1b8b8e97bdf23f9a862a` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 | A | `prototypes/atlas-website/index.html` | 199,966 | `f90fb4fef99102ff09cf146c4a8123925e46db540e58be74b76f45e2f769fcb0` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 
-Total (excluding this file): 2,720,646 bytes.
+Total (excluding this file): 2,715,150 bytes.

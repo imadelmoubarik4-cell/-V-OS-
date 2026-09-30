@@ -183,7 +183,10 @@ Results for this revision:
 
 ## Screenshots and privacy
 
-The screenshots show the real `apps/web` UI running in the repository's mocked backend (`tests/browser/harness.mjs`), with a frozen clock and no production traffic.
+The screenshots show the Alcedo-branded pre-release build of the app, from PR #113 at commit `4e1e5d6` (the build behind `deploy-preview-113--os-vabar.netlify.app`).
+
+- **How they were captured:** that build's `apps/web` ran in the same commit's mocked backend (`tests/browser/harness.mjs`), with a frozen clock and no production traffic. The deploy preview itself was not reachable from the capture environment, and it would have shown real venue data.
+- **Branding:** no "Atlas" wording appears in any screenshot.
 
 - **Replaced before capture:** fixture names that could be real people, the venue name and Icelandic supplier names ("Alex Morgan", "Harbor Bar", "Northwind Wines", …).
 - **Checked afterwards:** every shot's visible text, for the original names, emails and phone numbers; none remain.
