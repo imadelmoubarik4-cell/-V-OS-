@@ -22,28 +22,34 @@
 // shadow, an orange breast, white throat/cheek flashes, a long charcoal beak
 // and orange feet).
 import {
-  ACESFilmicToneMapping, CanvasTexture, CapsuleGeometry, Color, ConeGeometry, CylinderGeometry,
-  DirectionalLight, Group, HemisphereLight, MathUtils, Mesh, MeshBasicMaterial, MeshPhysicalMaterial,
-  MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, PMREMGenerator, RepeatWrapping, Scene,
-  SphereGeometry, SRGBColorSpace, Vector3, WebGLRenderer
+  ACESFilmicToneMapping, BufferAttribute, CanvasTexture, CapsuleGeometry, Color, ConeGeometry,
+  DirectionalLight, Group, HemisphereLight, LatheGeometry, MathUtils, Mesh, MeshBasicMaterial,
+  MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, PMREMGenerator,
+  Quaternion, RepeatWrapping, Scene, SphereGeometry, SRGBColorSpace, Vector2, Vector3, WebGLRenderer
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-// Brand + reference palette (from the approved 12-pose sheet).
+// Palette sampled directly from the approved master photo (8.webp).
 export const PALETTE = Object.freeze({
-  crown: '#127E93',      // crown / nape: darker teal, finely cyan-speckled
-  electric: '#1AAED2',   // back / wings / tail: vivid electric blue (brighter)
-  teal: '#1E9FB8',       // Alcedo mid teal (general brand tone)
-  deepTeal: '#08495C',   // Alcedo deep teal: shadowed feathers, wing edges
-  speck: '#7FE4F2',      // the bright-cyan speckles on the crown and wings
-  wingUnder: '#8C8172',  // muted grey-brown wing undersides (seen on lift)
-  orange: '#E8732A',     // breast and belly (warm burnt orange)
-  orangeDeep: '#C85A18', // shadowed belly / cheek edge
-  foot: '#F0892E',       // bright orange feet
-  white: '#F8F5ED',      // cheek / throat / ear-spot patches
-  beak: '#26292E',       // charcoal near-black beak
-  eye: '#0E0B09',        // large dark near-black eye
-  ground: '#08495C'      // colour of the contact shadow
+  crown: '#134F61',      // crown / nape base: rich deep teal
+  crownSpangle: '#54C4D8', // bright cyan crown spangles
+  electric: '#0A7CA4',   // back / wing coverts: electric teal-blue
+  electricDeep: '#063E54', // shadowed back / wing base
+  covertSpot: '#7ED6E8', // cyan spots on the wing coverts
+  primary: '#24303A',    // dark grey-blue primary tips
+  teal: '#0B6DA9',       // tail blue
+  deepTeal: '#083D50',   // deepest shadow feathers
+  orange: '#D97826',     // breast: deep warm orange
+  orangeUp: '#E58230',   // upper breast, a touch brighter
+  orangeDeep: '#B4601A', // shadowed breast
+  cream: '#E9D8B4',      // low belly, fading to cream
+  foot: '#EF7C1E',       // bright orange feet
+  claw: '#17130E',       // dark claws
+  white: '#F4F0EB',      // white throat and cheek/neck patch
+  beak: '#1E1F22',       // long black beak
+  beakBase: '#6E513F',   // faint warm base of the beak
+  eye: '#0A0A0C',        // dark eye
+  ground: '#0B4A5E'      // colour of the contact shadow
 });
 
 export const BASE_STATES = Object.freeze(['idle', 'awake', 'sleeping', 'listening', 'thinking', 'answering', 'attention', 'error']);
@@ -54,45 +60,112 @@ const damp = (value, target, rate, dt) => value + (target - value) * (1 - Math.e
 const ease = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const window01 = (t, a, b) => ease((t - a) / (b - a));
 
-// The head is an ellipsoid centred inside the head pivot. Features (eyes,
-// cheeks, throat, beak) sit on its surface, placed by azimuth/elevation.
-const HEAD = { cx: 0, cy: 0.30, cz: 0.02, rx: 0.60, ry: 0.56, rz: 0.60 };
+// The head is a flattened ellipsoid (wider/longer front-to-back than tall, a
+// real bird crown rather than a ball) centred inside the head pivot. Features
+// sit on its surface, placed by azimuth/elevation.
+const HEAD = { cx: 0, cy: 0.2, cz: 0.0, rx: 0.4, ry: 0.37, rz: 0.47 };
+const UP = new Vector3(0, 1, 0);
 
-// A point on the head ellipsoid at (azimuth, elevation) with azimuth 0 = front
-// (+Z), positive = the bird's left (+X); elevation 0 = the eye line, + = up.
-// Returned in head-group local space, lifted along the surface normal.
+// The outward direction at (azimuth, elevation): azimuth 0 = front (+Z),
+// positive = the bird's left (+X); elevation 0 = the eye line, + = up.
+function headDir(azim, elev) {
+  return new Vector3(Math.sin(azim) * Math.cos(elev), Math.sin(elev), Math.cos(azim) * Math.cos(elev));
+}
+// A point on the head ellipsoid and its surface normal (head-local space).
 function headSurface(azim, elev, lift = 0) {
-  const dir = new Vector3(Math.sin(azim) * Math.cos(elev), Math.sin(elev), Math.cos(azim) * Math.cos(elev));
+  const dir = headDir(azim, elev);
   const position = new Vector3(HEAD.cx + dir.x * HEAD.rx, HEAD.cy + dir.y * HEAD.ry, HEAD.cz + dir.z * HEAD.rz);
   const normal = new Vector3(dir.x / HEAD.rx, dir.y / HEAD.ry, dir.z / HEAD.rz).normalize();
   return { position: position.addScaledVector(normal, lift), normal };
 }
 
-// The speckled feather texture: a base tint with scattered lighter cyan
-// flecks, the field mark of a common kingfisher's crown and wing coverts.
-function speckleTexture(base, speck) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = base;
-  ctx.fillRect(0, 0, 256, 256);
-  ctx.fillStyle = speck;
-  for (let i = 0; i < 230; i += 1) {
-    const x = Math.random() * 256;
-    const y = Math.random() * 256;
-    const r = 1.1 + Math.random() * 2.2;
-    ctx.globalAlpha = 0.35 + Math.random() * 0.5;
+const finish = (canvas, { srgb = true, repeat = false } = {}) => {
+  const texture = new CanvasTexture(canvas);
+  if (srgb) texture.colorSpace = SRGBColorSpace;
+  if (repeat) texture.wrapS = texture.wrapT = RepeatWrapping;
+  texture.anisotropy = 4;
+  return texture;
+};
+const spangle = (ctx, x0, y0, x1, y1, color, count, rMin, rMax, aMin = 0.3, aMax = 0.75) => {
+  ctx.fillStyle = color;
+  for (let i = 0; i < count; i += 1) {
+    const x = x0 + Math.random() * (x1 - x0);
+    const y = y0 + Math.random() * (y1 - y0);
+    const r = rMin + Math.random() * (rMax - rMin);
+    ctx.globalAlpha = aMin + Math.random() * (aMax - aMin);
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  texture.wrapS = texture.wrapT = RepeatWrapping;
-  texture.anisotropy = 4;
-  return texture;
+};
+// A soft radial blob (feathered edge, no hard disc) used for face markings.
+const softBlob = (ctx, cx, cy, rx, ry, color) => {
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+  const c = new Color(color); const rgb = `${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)}`;
+  g.addColorStop(0, `rgba(${rgb},1)`); g.addColorStop(0.6, `rgba(${rgb},0.95)`); g.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, Math.max(rx, ry), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+};
+
+// The head colour + markings, painted flush into one texture mapped onto the
+// head sphere. Sphere UV: u=0.25 is the face (+Z), v=1 is the crown (+Y),
+// v=0 the chin. Markings follow the master: spangled teal crown, orange lores
+// around the eyes, a white throat and a white cheek/neck patch behind each eye.
+function headTexture() {
+  const W = 1024, H = 512;
+  const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  // Base teal, a touch deeper low (nape/collar) and richer on the crown.
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, PALETTE.crown); grad.addColorStop(0.45, PALETTE.electricDeep); grad.addColorStop(1, PALETTE.crown);
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+  const U = (u) => u * W, V = (v) => (1 - v) * H; // v=1 top -> canvas y=0
+  // Crown spangles (upper band, all around): fine and restrained so the deep
+  // teal dominates, as in the master.
+  spangle(ctx, 0, 0, W, V(0.58), PALETTE.crownSpangle, 520, 1.0, 2.4, 0.25, 0.62);
+  // Face markings, symmetric around the face at u=0.25, mirrored near u=0.75
+  // is the back (no face there). The eyes sit near u=0.17 and u=0.33.
+  const eyeU = [0.17, 0.33];
+  eyeU.forEach((u) => {
+    softBlob(ctx, U(u), V(0.5), 78, 92, PALETTE.orange);          // orange lore around the eye
+    softBlob(ctx, U(u + (u < 0.25 ? -0.05 : 0.05)), V(0.42), 42, 48, PALETTE.orangeDeep);
+  });
+  // White throat (front chin) and white cheek/neck patch behind each eye.
+  softBlob(ctx, U(0.25), V(0.2), 70, 70, PALETTE.white);
+  softBlob(ctx, U(0.06), V(0.4), 56, 74, PALETTE.white);
+  softBlob(ctx, U(0.44), V(0.4), 56, 74, PALETTE.white);
+  // A hint of spangle over the orange lore edge for feather flow.
+  eyeU.forEach((u) => spangle(ctx, U(u) - 40, V(0.58), U(u) + 40, V(0.5), PALETTE.crownSpangle, 40, 1, 2, 0.2, 0.5));
+  return finish(canvas);
+}
+
+// A feather-panel texture: base colour with cyan spangle spots (wing coverts).
+function spotTexture(base, spot, count = 120) {
+  const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, base); g.addColorStop(1, PALETTE.electricDeep);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+  spangle(ctx, 0, 0, 256, 220, spot, count, 1.6, 4.2, 0.35, 0.85);
+  return finish(canvas, { repeat: true });
+}
+
+// A soft feather-structure bump map (fine directional streaks + noise), so the
+// matte materials read as feathers rather than plastic.
+function bumpTexture() {
+  const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 1400; i += 1) {
+    const x = Math.random() * 256, y = Math.random() * 256;
+    const g = 128 + (Math.random() * 2 - 1) * 60;
+    ctx.strokeStyle = `rgb(${g},${g},${g})`; ctx.lineWidth = 0.6 + Math.random();
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (Math.random() * 6 - 3), y + 4 + Math.random() * 6); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  return finish(canvas, { srgb: false, repeat: true });
 }
 
 // The soft contact shadow under the bird (a blurred deep-teal ellipse: cheaper
@@ -130,212 +203,220 @@ export function buildKingfisher({ look = 'normal' } = {}) {
   const geo = (g) => keep(g);
   const mesh = (g, m) => new Mesh(g, m);
 
-  // Feather materials. Standard (matte-ish) rather than the robot's glossy
-  // physical shells: feathers are soft. The env map gives a gentle sheen.
-  // Crown/nape are a darker teal; back/wings/tail a brighter electric blue.
-  const crownMap = keep(speckleTexture(PALETTE.crown, PALETTE.speck));
-  const backMap = keep(speckleTexture(PALETTE.electric, PALETTE.speck));
-  const crownMat = keep(new MeshStandardMaterial({ color: 0xffffff, map: crownMap, roughness: 0.74, metalness: 0.06, envMapIntensity: 0.55 }));
-  const backMat = keep(new MeshStandardMaterial({ color: 0xffffff, map: backMap, roughness: 0.68, metalness: 0.08, envMapIntensity: 0.7 }));
-  const deepTealMat = keep(new MeshStandardMaterial({ color: PALETTE.deepTeal, roughness: 0.78, metalness: 0.05, envMapIntensity: 0.5 }));
-  const wingUnderMat = keep(new MeshStandardMaterial({ color: PALETTE.wingUnder, roughness: 0.88, metalness: 0.02, envMapIntensity: 0.4 }));
-  const orangeMat = keep(new MeshStandardMaterial({ color: PALETTE.orange, roughness: 0.82, metalness: 0.02, envMapIntensity: 0.45 }));
-  const orangeDeepMat = keep(new MeshStandardMaterial({ color: PALETTE.orangeDeep, roughness: 0.85, metalness: 0.02, envMapIntensity: 0.4 }));
-  const whiteMat = keep(new MeshStandardMaterial({ color: PALETTE.white, roughness: 0.7, metalness: 0.02, envMapIntensity: 0.5 }));
-  const footMat = keep(new MeshStandardMaterial({ color: PALETTE.foot, roughness: 0.55, metalness: 0.05, envMapIntensity: 0.5 }));
-  const beakMat = keep(new MeshPhysicalMaterial({ color: PALETTE.beak, roughness: 0.38, metalness: 0.15, clearcoat: 0.5, clearcoatRoughness: 0.35, envMapIntensity: 0.7 }));
-  const eyeMat = keep(new MeshPhysicalMaterial({ color: PALETTE.eye, roughness: 0.12, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.1 }));
-  const shineMat = keep(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false }));
+  // Matte-to-satin feather materials (low specular), each with a fine feather
+  // bump so they read as plumage, not plastic.
+  const bump = keep(bumpTexture());
+  const feather = (opts) => keep(new MeshStandardMaterial({ roughness: 0.85, metalness: 0.02, envMapIntensity: 0.24, bumpMap: bump, bumpScale: 0.015, ...opts }));
+  const headMat = feather({ map: keep(headTexture()) });
+  const bodyMat = feather({ vertexColors: true, bumpScale: 0.02 });
+  const covertMat = keep(new MeshStandardMaterial({ map: keep(spotTexture(PALETTE.electric, PALETTE.covertSpot, 120)), roughness: 0.8, metalness: 0.03, envMapIntensity: 0.3, bumpMap: bump, bumpScale: 0.02 }));
+  const scapularMat = keep(new MeshStandardMaterial({ map: keep(spotTexture(PALETTE.electric, PALETTE.covertSpot, 70)), roughness: 0.82, metalness: 0.03, envMapIntensity: 0.28, bumpMap: bump, bumpScale: 0.02 }));
+  const primaryMat = feather({ color: PALETTE.primary, roughness: 0.8, bumpScale: 0.025 });
+  const tailMat = keep(new MeshStandardMaterial({ map: keep(spotTexture(PALETTE.teal, PALETTE.covertSpot, 40)), roughness: 0.82, metalness: 0.03, envMapIntensity: 0.3, bumpMap: bump, bumpScale: 0.02 }));
+  const footMat = keep(new MeshStandardMaterial({ color: PALETTE.foot, roughness: 0.5, metalness: 0.05, envMapIntensity: 0.4 }));
+  const clawMat = keep(new MeshStandardMaterial({ color: PALETTE.claw, roughness: 0.4, metalness: 0.05 }));
+  // The beak: satin black with a faint warm base. Low specular.
+  const beakMat = keep(new MeshStandardMaterial({ color: PALETTE.beak, roughness: 0.34, metalness: 0.12, envMapIntensity: 0.5 }));
+  const beakBaseMat = feather({ color: PALETTE.beakBase, roughness: 0.6 });
+  // Matte-dark eye: no clearcoat, so no bright rim at any yaw; one catch-light.
+  const eyeMat = keep(new MeshStandardMaterial({ color: PALETTE.eye, roughness: 0.35, metalness: 0, envMapIntensity: 0.4 }));
+  const shineMat = keep(new MeshBasicMaterial({ color: 0xb9c4c6, toneMapped: false }));
 
   const root = new Group();
   root.name = 'alcedo-mascot';
-  // Front-facing and symmetric: the FRONT idle pose. A zero base yaw makes a
-  // left head-turn and a right head-turn true mirror images across the camera.
-  root.rotation.y = 0;
+  root.rotation.y = 0; // FRONT; view angle for renders is set separately (setViewYaw)
 
   const body = new Group();
   body.name = 'body';
+  // A slight forward-leaning perched posture, like the master.
+  body.rotation.x = 0.1;
   root.add(body);
 
-  // Torso: a plump egg, electric-blue over the back, tilted a touch upright.
-  const torso = mesh(geo(new SphereGeometry(1, 48, 36)), backMat);
-  torso.scale.set(0.64, 0.74, 0.66);
-  torso.position.set(0, 0.86, 0);
-  torso.rotation.x = -0.12;
+  // Body: a compact teardrop (lathe of revolution) — broad shoulders under the
+  // head, widest chest, tapering to a short rear. Two-tone plumage is painted
+  // per-vertex: electric-blue back/flanks, deep-orange breast, cream low belly.
+  // Broad rounded shoulders at the top (so the head merges in, no snowman
+  // waist), widest at the chest, tapering to a short rear.
+  const torsoProfile = [
+    [0.001, 0.1], [0.13, 0.16], [0.24, 0.27], [0.33, 0.43], [0.39, 0.6],
+    [0.42, 0.78], [0.43, 0.97], [0.42, 1.14], [0.38, 1.28], [0.31, 1.4], [0.2, 1.5], [0.08, 1.56]
+  ].map(([r, y]) => new Vector2(r, y));
+  const torsoGeo = geo(new LatheGeometry(torsoProfile, 64));
+  // Per-vertex colour (stored linear). Front (+Z) = orange over cream; back
+  // (-Z) = electric blue; a soft blend at the flanks.
+  const pos = torsoGeo.attributes.position;
+  const colAttr = new Float32Array(pos.count * 3);
+  const cBackHi = new Color(PALETTE.electric).convertSRGBToLinear();
+  const cBackLo = new Color(PALETTE.electricDeep).convertSRGBToLinear();
+  const cOrange = new Color(PALETTE.orange).convertSRGBToLinear();
+  const cOrangeUp = new Color(PALETTE.orangeUp).convertSRGBToLinear();
+  const cCream = new Color(PALETTE.cream).convertSRGBToLinear();
+  const tmpA = new Color(); const tmpB = new Color();
+  const smooth = (e0, e1, x) => { const t = MathUtils.clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+  for (let i = 0; i < pos.count; i += 1) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const rh = Math.hypot(x, z) || 1e-5;
+    const front = smooth(-0.55, 0.5, z / rh); // 0 back .. 1 front, soft wrap (no hard seam)
+    const t = MathUtils.clamp((y - 0.1) / (1.5 - 0.1), 0, 1);
+    tmpA.copy(cBackLo).lerp(cBackHi, smooth(0.15, 0.85, t));            // back gradient
+    tmpB.copy(cCream).lerp(cOrange, smooth(0.12, 0.32, t));              // low belly cream -> orange
+    tmpB.lerp(cOrangeUp, smooth(0.5, 0.9, t));                          // upper breast brighter
+    tmpA.lerp(tmpB, front);
+    colAttr[i * 3] = tmpA.r; colAttr[i * 3 + 1] = tmpA.g; colAttr[i * 3 + 2] = tmpA.b;
+  }
+  torsoGeo.setAttribute('color', new BufferAttribute(colAttr, 3));
+  const torso = mesh(torsoGeo, bodyMat);
+  torso.scale.set(0.97, 1, 1.04);
   body.add(torso);
 
-  // Orange breast/belly: a second egg pushed to the front and down, so orange
-  // shows on the belly and chest while teal stays on the back and shoulders.
-  const belly = mesh(geo(new SphereGeometry(1, 44, 32)), orangeMat);
-  belly.scale.set(0.55, 0.64, 0.5);
-  belly.position.set(0, 0.8, 0.22);
-  body.add(belly);
-  const bellyLow = mesh(geo(new SphereGeometry(1, 36, 26)), orangeDeepMat);
-  bellyLow.scale.set(0.42, 0.32, 0.4);
-  bellyLow.position.set(0, 0.42, 0.2);
-  body.add(bellyLow);
+  // --- Head: a real bird head, flatter crown, seated LOW so its lower back
+  // merges into the broad shoulders (no snowman neck). All markings are painted
+  // flush into the head texture (crown spangles, orange lores, white throat,
+  // white cheek/neck) — no raised discs.
+  // A nape filler bridges the back of the head to the upper back, filling the
+  // concave junction so the back reads as one continuous crown->nape->back line
+  // (no snowman waist). Deep teal, part of the body.
+  const napeMat = feather({ color: PALETTE.crown });
+  const nape = mesh(geo(new SphereGeometry(1, 32, 24)), napeMat);
+  nape.scale.set(0.3, 0.33, 0.26);
+  nape.position.set(0, 1.0, -0.18);
+  body.add(nape);
 
-  // A short dark-teal nape to bridge body and head.
-  const neck = mesh(geo(new SphereGeometry(1, 32, 24)), crownMat);
-  neck.scale.set(0.34, 0.3, 0.34);
-  neck.position.set(0, 1.24, 0.06);
-  body.add(neck);
-
-  // --- Head (pivot at the neck, so a nod turns about the neck) ------------
   const head = new Group();
   head.name = 'head';
-  head.position.set(0, 1.28, 0.02);
+  head.position.set(0, 1.16, -0.02);
   body.add(head);
-  const skull = mesh(geo(new SphereGeometry(1, 56, 44)), crownMat);
+  const skull = mesh(geo(new SphereGeometry(1, 64, 48)), headMat);
   skull.scale.set(HEAD.rx, HEAD.ry, HEAD.rz);
   skull.position.set(HEAD.cx, HEAD.cy, HEAD.cz);
   head.add(skull);
 
-  // A flat-topped crown reads as a kingfisher: a slightly flattened dark-teal
-  // cap, finely cyan-speckled.
-  const crown = mesh(geo(new SphereGeometry(1, 40, 28, 0, Math.PI * 2, 0, Math.PI * 0.55)), crownMat);
-  crown.scale.set(HEAD.rx * 1.01, HEAD.ry * 0.92, HEAD.rz * 1.01);
-  crown.position.set(HEAD.cx, HEAD.cy + 0.02, HEAD.cz);
-  head.add(crown);
-
-  // A surface patch (orange cheeks, white throat/neck flashes): a flattened
-  // disc laid on the head, oriented to the surface normal.
-  const patchAt = (azim, elev, w, h, material, lift = 0.02) => {
-    const { position, normal } = headSurface(azim, elev, lift);
-    const patch = mesh(geo(new SphereGeometry(1, 24, 18)), material);
-    patch.position.copy(position);
-    orientTo(patch, normal);
-    patch.scale.set(w, h, 0.02);
-    head.add(patch);
-    return patch;
-  };
-  // Orange ear-coverts below and behind each eye (symmetric), reaching down
-  // toward the breast as in the reference.
-  patchAt(0.82, -0.24, 0.2, 0.22, orangeMat);
-  patchAt(-0.82, -0.24, 0.2, 0.22, orangeMat);
-  // White throat at the chin and a small white flash low on each side.
-  patchAt(0, -0.66, 0.2, 0.17, whiteMat, 0.015);
-  patchAt(1.28, -0.5, 0.12, 0.16, whiteMat);
-  patchAt(-1.28, -0.5, 0.12, 0.16, whiteMat);
-  // The white throat continues up behind each eye as a small ear-spot.
-  patchAt(1.18, -0.02, 0.09, 0.12, whiteMat);
-  patchAt(-1.18, -0.02, 0.09, 0.12, whiteMat);
-
-  // --- Beak: a long straight charcoal dagger, upper fixed + lower on a pivot
-  // for a small open/close while speaking. -----------------------------------
-  const beakBase = headSurface(0, -0.04, -0.02);
+  // --- Beak: a long straight forward dagger (~head length), nearly horizontal
+  // (~10 deg down), separate upper and lower mandibles meeting along a mouth
+  // line. The lower mandible is the pivot for the speaking animation.
+  const beakBase = headSurface(0, -0.05, -0.02);
   const beakGroup = new Group();
   beakGroup.position.copy(beakBase.position);
-  // Angle the beak forward and gently down so its full length reads even
-  // head-on (a straight beak pointed at the camera foreshortens to a dot),
-  // without drooping in profile.
-  beakGroup.rotation.x = Math.PI / 2 + 0.48;
+  beakGroup.rotation.x = Math.PI / 2 + 0.17; // ~10 deg below horizontal
   head.add(beakGroup);
-  // Upper mandible: the solid blade that carries the silhouette. Roughly as
-  // long as the head is deep. Flattened top-to-bottom.
-  const BEAK_LEN = 1.0;
-  const upperBeak = mesh(geo(new ConeGeometry(0.1, BEAK_LEN, 20, 1, false)), beakMat);
-  upperBeak.position.set(0, BEAK_LEN * 0.5 + 0.02, 0);
-  upperBeak.scale.set(1, 1, 0.72);
+  const BEAK_LEN = 1.05;
+  const upperBeak = mesh(geo(new ConeGeometry(0.115, BEAK_LEN, 24, 1, false)), beakMat);
+  upperBeak.position.set(0, BEAK_LEN * 0.5, 0.012);
+  upperBeak.scale.set(1, 1, 0.6); // flat-bottomed blade
   beakGroup.add(upperBeak);
-  // Lower mandible: nested directly beneath and slightly inside the upper, so
-  // a closed beak reads as one blade; it drops on a pivot to "speak".
+  const beakWarm = mesh(geo(new SphereGeometry(0.07, 16, 12)), beakBaseMat);
+  beakWarm.scale.set(0.9, 0.3, 0.8);
+  beakWarm.position.set(0, -0.08, -0.01); // tucked into the face, no knob
+  beakGroup.add(beakWarm);
   const lowerBeakPivot = new Group();
-  lowerBeakPivot.position.set(0, 0.04, 0);
+  lowerBeakPivot.position.set(0, 0.0, -0.028); // hinge at the gape
   beakGroup.add(lowerBeakPivot);
-  const lowerBeak = mesh(geo(new ConeGeometry(0.082, BEAK_LEN * 0.94, 18, 1, false)), beakMat);
-  lowerBeak.position.set(0, BEAK_LEN * 0.47, -0.008);
-  lowerBeak.scale.set(0.9, 1, 0.5);
+  const lowerBeak = mesh(geo(new ConeGeometry(0.1, BEAK_LEN * 0.96, 22, 1, false)), beakMat);
+  lowerBeak.position.set(0, BEAK_LEN * 0.48, 0.028);
+  lowerBeak.scale.set(0.92, 1, 0.5); // flat-topped blade -> the two meet at a mouth line
   lowerBeakPivot.add(lowerBeak);
 
-  // --- Eyes with an upper eyelid each (dark, glossy, a small white catch-light)
+  // --- Eyes: small, dark, seated in the face on the sides of the head, with
+  // one restrained catch-light. Sunk so only a rounded lens shows. The eyelid
+  // is a small local dome hinged at the top (blink), flush at any yaw.
   const eyes = [];
   const eyeScale = small ? EYE_SCALE.small : EYE_SCALE.normal;
   [1, -1].forEach((side) => {
-    const eye = new Group();
-    const { position, normal } = headSurface(side * 0.56, 0.12, 0.0);
-    eye.position.copy(position);
-    orientTo(eye, normal);
-    eye.scale.setScalar(eyeScale);
-    const rEye = 0.1;
-    const ball = mesh(geo(new SphereGeometry(rEye, 24, 18)), eyeMat);
-    ball.position.z = -0.035; // sink into the head so the eye is not a bulging dome
-    ball.scale.set(1, 1, 0.72); // flatten toward the surface
-    eye.add(ball);
-    const shine = mesh(geo(new SphereGeometry(rEye * 0.17, 10, 8)), shineMat);
-    shine.position.set(-side * 0.028, 0.03, rEye * 0.6);
-    eye.add(shine);
-    // Upper eyelid: a teal cap pivoted at the top of the eye. Open = tucked
-    // back over the brow; closed = swung forward-down over the eye.
-    const lidPivot = new Group();
-    lidPivot.position.set(0, rEye * 0.92, 0);
-    const lid = mesh(geo(new SphereGeometry(rEye * 1.16, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.62)), crownMat);
-    lid.position.set(0, -rEye * 0.92, 0);
-    lidPivot.add(lid);
-    eye.add(lidPivot);
-    head.add(eye);
-    eyes.push({ group: eye, ball, shine, lidPivot, side });
+    const eyeGrp = new Group();
+    const { position, normal } = headSurface(side * 0.55, 0.08, 0);
+    eyeGrp.position.copy(position);
+    orientTo(eyeGrp, normal);
+    eyeGrp.scale.setScalar(eyeScale);
+    const rEye = 0.066;
+    const ball = mesh(geo(new SphereGeometry(rEye, 20, 16)), eyeMat);
+    ball.position.z = -rEye * 0.5; // recessed, only a small dark lens shows
+    ball.scale.set(1, 1, 0.78);
+    eyeGrp.add(ball);
+    const shine = mesh(geo(new SphereGeometry(rEye * 0.13, 8, 6)), shineMat);
+    shine.position.set(-side * 0.014, 0.016, rEye * 0.5);
+    eyeGrp.add(shine);
+    const lidHinge = new Group();
+    lidHinge.position.set(0, rEye * 0.92, 0);
+    const lid = mesh(geo(new SphereGeometry(rEye * 1.3, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.62)), headMat);
+    lid.position.set(0, -rEye * 0.92, rEye * 0.05);
+    lidHinge.add(lid);
+    eyeGrp.add(lidHinge);
+    head.add(eyeGrp);
+    eyes.push({ group: eyeGrp, ball, shine, lidHinge, side });
   });
 
-  // --- Wings: a folded, speckled teal wing on each side, pivoted at the
-  // shoulder so it can lift briefly on success. ------------------------------
+  // --- Wings: FOLDED wings lying flat against each flank, from shoulder to
+  // just past the hip and ABOVE the feet. Built from stacked feather panels:
+  // scapulars + cyan-spotted coverts + a darker tapered primary tip. The whole
+  // group pivots at the shoulder so the later animation lifts it up-and-out.
   const wings = [];
   [1, -1].forEach((side) => {
     const pivot = new Group();
     pivot.name = side > 0 ? 'wingL' : 'wingR';
-    // Pivot high on the shoulder; the wing hangs down along the flank at rest
-    // (reading as a folded wing) and swings up-and-out when raised.
-    pivot.position.set(side * 0.3, 1.06, -0.06);
-    const wing = mesh(geo(new SphereGeometry(1, 32, 24)), backMat);
-    wing.scale.set(0.17, 0.66, 0.4);
-    wing.position.set(side * 0.12, -0.5, -0.02);
-    wing.rotation.z = side * 0.06;
-    pivot.add(wing);
-    // The muted grey-brown underside, on the inner face (shown when raised).
-    const under = mesh(geo(new SphereGeometry(1, 28, 20)), wingUnderMat);
-    under.scale.set(0.14, 0.63, 0.37);
-    under.position.set(side * (0.12 - 0.05), -0.5, -0.02);
-    under.rotation.z = side * 0.06;
-    pivot.add(under);
-    // A darker deep-teal wingtip toward the tail.
-    const tip = mesh(geo(new ConeGeometry(0.13, 0.5, 16)), deepTealMat);
-    tip.position.set(side * 0.1, -1.0, -0.06);
-    tip.rotation.set(0.35, 0, side * 0.06);
-    pivot.add(tip);
+    // High on the flank toward the back, so the folded wing sits on the
+    // back/side (not splaying to the front). Panels are FLAT against the body.
+    pivot.position.set(side * 0.33, 1.02, -0.08);
+    // Scapulars over the shoulder/back.
+    const scap = mesh(geo(new SphereGeometry(1, 28, 20)), scapularMat);
+    scap.scale.set(0.1, 0.28, 0.26);
+    scap.position.set(-side * 0.02, -0.18, -0.06);
+    scap.rotation.set(0.05, side * 0.1, side * 0.06);
+    pivot.add(scap);
+    // Coverts: the main cyan-spotted panel down the flank (flat, layered).
+    const cov = mesh(geo(new SphereGeometry(1, 28, 22)), covertMat);
+    cov.scale.set(0.09, 0.4, 0.3);
+    cov.position.set(-side * 0.01, -0.44, -0.08);
+    cov.rotation.set(0.02, side * 0.08, side * 0.04);
+    pivot.add(cov);
+    // Primaries: a darker tapered blade to a clear pointed tip, angled DOWN and
+    // BACK to a wingtip past the hip, above the feet.
+    const prim = mesh(geo(new ConeGeometry(0.12, 0.64, 18)), primaryMat);
+    prim.scale.set(0.7, 1, 0.42);
+    prim.position.set(-side * 0.02, -0.66, -0.2);
+    prim.rotation.set(-0.5, side * 0.06, side * 0.02);
+    pivot.add(prim);
     body.add(pivot);
-    const rest = side * 0.05;
-    pivot.rotation.z = rest;
-    wings.push({ pivot, side, rest });
+    const rest = side * 0.02;
+    const restX = 0.05;
+    pivot.rotation.set(restX, 0, rest);
+    wings.push({ pivot, side, rest, restX });
   });
 
-  // --- Tail: short, teal, angled back and down. -----------------------------
+  // --- Tail: a short, broad blue tail behind, clearly visible, not dominant.
   const tailPivot = new Group();
-  tailPivot.position.set(0, 0.64, -0.34);
+  tailPivot.position.set(0, 0.34, -0.34);
   body.add(tailPivot);
-  const tail = mesh(geo(new ConeGeometry(0.17, 0.72, 18)), backMat);
-  tail.scale.set(1, 1, 0.4);
-  tail.position.set(0, -0.28, -0.14);
-  tail.rotation.x = -2.3; // point back and slightly down
+  const tail = mesh(geo(new ConeGeometry(0.17, 0.52, 16)), tailMat);
+  tail.scale.set(1, 1, 0.3); // a broad flat feather blade
+  tail.position.set(0, -0.2, -0.1);
+  tail.rotation.x = -2.4; // back and a little down
   tailPivot.add(tail);
 
-  // --- Feet: two small orange perched feet with toes. -----------------------
+  // --- Feet: bright orange, three forward toes + one back, dark claws, clearly
+  // readable below the body on the perch (the body leans forward, so the feet
+  // sit forward under the chest).
+  const claw = (x, y, z, ax, ay) => { const c = mesh(geo(new ConeGeometry(0.016, 0.06, 8)), clawMat); c.position.set(x, y, z); c.rotation.set(ax, ay, 0); body.add(c); };
   [1, -1].forEach((side) => {
-    const leg = mesh(geo(new CapsuleGeometry(0.045, 0.12, 6, 12)), footMat);
-    leg.position.set(side * 0.17, 0.2, 0.16);
+    const leg = mesh(geo(new CapsuleGeometry(0.042, 0.14, 6, 12)), footMat);
+    leg.position.set(side * 0.12, 0.17, 0.14);
     body.add(leg);
-    const ankle = mesh(geo(new SphereGeometry(0.06, 16, 12)), footMat);
-    ankle.position.set(side * 0.17, 0.12, 0.18);
+    const ankle = mesh(geo(new SphereGeometry(0.055, 16, 12)), footMat);
+    ankle.position.set(side * 0.12, 0.08, 0.17);
     body.add(ankle);
-    [-0.07, 0, 0.07].forEach((dx) => {
-      const toe = mesh(geo(new CapsuleGeometry(0.022, 0.09, 4, 8)), footMat);
-      toe.position.set(side * 0.17 + dx, 0.09, 0.26);
-      toe.rotation.x = 1.35;
+    // Three forward toes, splayed on the perch.
+    [[-0.07, 0.3], [0.0, 0.33], [0.07, 0.29]].forEach(([dx, tz]) => {
+      const toe = mesh(geo(new CapsuleGeometry(0.021, 0.12, 4, 8)), footMat);
+      toe.position.set(side * 0.12 + dx, 0.05, 0.2);
+      toe.rotation.set(1.4, side * 0.14, 0);
       body.add(toe);
+      claw(side * 0.12 + dx * 1.3, 0.035, tz, 2.0, side * 0.14);
     });
-    const back = mesh(geo(new CapsuleGeometry(0.022, 0.06, 4, 8)), footMat);
-    back.position.set(side * 0.17, 0.09, 0.11);
-    back.rotation.x = -1.35;
+    // One back toe.
+    const back = mesh(geo(new CapsuleGeometry(0.02, 0.07, 4, 8)), footMat);
+    back.position.set(side * 0.12, 0.05, 0.06);
+    back.rotation.x = -1.4;
     body.add(back);
+    claw(side * 0.12, 0.035, 0.0, -2.0, 0);
   });
 
   // The contact shadow lies on the floor outside the root, so it stays put
@@ -356,7 +437,7 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power', preserveDrawingBuffer: false });
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.98;
   renderer.setClearColor(0x000000, 0);
   const scene = new Scene();
   const pmrem = new PMREMGenerator(renderer);
@@ -365,11 +446,11 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
   scene.environment = envTarget.texture;
   room.traverse?.((node) => { node.geometry?.dispose?.(); node.material?.dispose?.(); });
   pmrem.dispose();
-  scene.add(new HemisphereLight(0xffffff, 0xbfe4ec, 0.6));
-  const key = new DirectionalLight(0xfff4e6, 1.55);
+  scene.add(new HemisphereLight(0xffffff, 0xb8ddE6, 0.34));
+  const key = new DirectionalLight(0xfff4e6, 1.5);
   key.position.set(2.6, 4, 5);
   scene.add(key);
-  const rim = new DirectionalLight(0x9fd6e6, 0.85);
+  const rim = new DirectionalLight(0x9fd6e6, 0.7);
   rim.position.set(-3, 2.4, -3);
   scene.add(rim);
 
@@ -379,7 +460,7 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
   const camera = new PerspectiveCamera(26, 1, 0.1, 40);
   // full: the whole bird; bust: head and shoulders; badge / badge-small: the
   // head filling a small square.
-  const frames = { full: { y: 1.2, z: 6.6, look: 1.05 }, bust: { y: 1.5, z: 4.4, look: 1.42 }, badge: { y: 1.5, z: 4.3, look: 1.46 }, 'badge-small': { y: 1.5, z: 4.05, look: 1.48 } };
+  const frames = { full: { y: 1.05, z: 7.0, look: 1.02 }, bust: { y: 1.58, z: 4.6, look: 1.5 }, badge: { y: 1.58, z: 4.45, look: 1.52 }, 'badge-small': { y: 1.58, z: 4.2, look: 1.54 } };
   let frame = frames[framing] || frames.full;
   const placeCamera = () => { camera.position.set(0, frame.y, frame.z); camera.lookAt(0, frame.look, 0); bird.shadow.visible = frame === frames.full; };
   placeCamera();
@@ -549,21 +630,19 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     }
     const cover = MathUtils.clamp(Math.max(blink, pose.sleepy), 0, 1);
     eyes.forEach((eye) => {
-      // Eyelid: open = tucked back (-1.35), closed = drawn down over the eye.
-      eye.lidPivot.rotation.x = MathUtils.lerp(-1.35, 0.35, cover);
-      eye.shine.visible = cover < 0.5;
-      eye.shine.scale.setScalar(MathUtils.clamp(pose.alert, 0.6, 1.5));
-      eye.group.position.x += 0; // placeholder to keep base intact
+      // Eyelid hinge: open = tucked up behind the brow (-1.5), closed = swept
+      // down over the eye (+0.25). Real geometry, flush at every head turn.
+      eye.lidHinge.rotation.x = MathUtils.lerp(-1.5, 0.25, cover);
+      eye.shine.visible = cover < 0.45;
+      eye.shine.scale.setScalar(MathUtils.clamp(pose.alert, 0.6, 1.4));
     });
-    // Small gaze shift: nudge each eye's catch-light for life.
-    eyes.forEach((eye) => { eye.shine.position.x = -eye.side * 0.03 + pose.eyeX * 0.03; eye.shine.position.y = 0.035 + pose.eyeUp * 0.03; });
 
     wings.forEach((w) => {
       const lift = MathUtils.clamp(pose.wing, 0, 1);
       // Swing up and out (sign chosen so each wing opens outward, symmetric),
       // with a slight forward tilt so the raised wings read as spread.
       w.pivot.rotation.z = w.rest + w.side * 1.55 * lift;
-      w.pivot.rotation.x = -0.3 * lift;
+      w.pivot.rotation.x = w.restX - 0.38 * lift;
     });
 
     // The shadow tightens a little as the bird rises.
@@ -628,6 +707,9 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     },
     reducedMotion() { return reducedMotion; },
     setFraming(name) { frame = frames[name] || frames.full; placeCamera(); },
+    // Rotate the whole bird to a viewing angle (radians). For static preview
+    // renders only (front/back/profiles/three-quarter); does not affect states.
+    setViewYaw(rad) { bird.root.rotation.y = rad; },
     busy() { return Boolean(status.moment); },
     info() {
       const render = renderer.info.render;
