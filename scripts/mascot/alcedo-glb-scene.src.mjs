@@ -39,8 +39,11 @@ const NODE = {
   eyeL: 'Left_oval_eye', eyeR: 'Right_oval_eye', beak: 'Small_central_orange_beak',
   wingL: 'Left_wing_preparation_pivot', wingR: 'Right_wing_preparation_pivot'
 };
-// Default asset location: the GLB sits next to the built scene module.
-const DEFAULT_ASSET = new URL('./alcedo-kingfisher.glb', import.meta.url).href;
+// Default asset location: the GLB ships next to the built scene bundle
+// (apps/web/assets/atlas-bot/alcedo-mascot.glb), fetched by a runtime-relative
+// URL so no absolute path is baked in. The cache token matches the bundle's.
+const GLB_VERSION = '20260930-glb';
+const DEFAULT_ASSET = `${new URL('./alcedo-mascot.glb', import.meta.url).href}?v=${GLB_VERSION}`;
 
 // The soft contact shadow under the bird (a blurred ellipse — cheaper than a
 // shadow map and reads the same), matching the existing mascot's approach.

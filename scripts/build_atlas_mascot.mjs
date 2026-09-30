@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Builds apps/web/assets/atlas-bot/atlas-mascot-scene.js from
-// scripts/mascot/atlas-mascot-scene.src.mjs: one minified ES module with the
-// Three.js parts it uses bundled in (no CDN at runtime; CSP script-src 'self').
+// scripts/mascot/alcedo-glb-scene.src.mjs: one minified ES module with the
+// Three.js parts it uses — including GLTFLoader — bundled in (no CDN at
+// runtime; CSP script-src 'self'). The module loads the approved Blender GLB
+// (apps/web/assets/atlas-bot/alcedo-mascot.glb) at runtime and animates it
+// through the model's named pivots.
 //
 //   npm i --no-save three@0.186.1 esbuild@0.25.10   (or set ATLAS_MASCOT_DEPS
 //   to a folder whose node_modules has them), then:
@@ -22,7 +25,7 @@ const threeVersion = JSON.parse(readFileSync(path.join(path.dirname(require.reso
 if (threeVersion !== '0.186.1') throw new Error(`three ${threeVersion}: the reviewed build uses 0.186.1`);
 
 const result = await esbuild.build({
-  entryPoints: [path.join(ROOT, 'scripts/mascot/atlas-mascot-scene.src.mjs')],
+  entryPoints: [path.join(ROOT, 'scripts/mascot/alcedo-glb-scene.src.mjs')],
   outfile: path.join(ROOT, 'apps/web/assets/atlas-bot/atlas-mascot-scene.js'),
   bundle: true,
   format: 'esm',
@@ -30,7 +33,7 @@ const result = await esbuild.build({
   target: ['es2020', 'safari15'],
   legalComments: 'inline',
   nodePaths: [path.join(deps, 'node_modules')],
-  banner: { js: `/* Atlas AI mascot scene, built by scripts/build_atlas_mascot.mjs from scripts/mascot/atlas-mascot-scene.src.mjs with three@${threeVersion} (MIT, https://threejs.org). Do not edit by hand. */` },
+  banner: { js: `/* Alcedo mascot scene, built by scripts/build_atlas_mascot.mjs from scripts/mascot/alcedo-glb-scene.src.mjs with three@${threeVersion} (MIT, https://threejs.org). Loads alcedo-mascot.glb at runtime. Do not edit by hand. */` },
   metafile: true,
   logLevel: 'warning'
 });
