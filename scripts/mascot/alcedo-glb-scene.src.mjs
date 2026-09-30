@@ -15,8 +15,8 @@
 // returned object also exposes `ready` (a promise) for the preview harness.
 import {
   ACESFilmicToneMapping, CanvasTexture, Color, DirectionalLight, Group, HemisphereLight,
-  MathUtils, Mesh, MeshBasicMaterial, PerspectiveCamera, PlaneGeometry, PMREMGenerator, Scene,
-  SRGBColorSpace, Vector3, WebGLRenderer
+  MathUtils, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, PerspectiveCamera, PlaneGeometry,
+  PMREMGenerator, Scene, SRGBColorSpace, Vector3, WebGLRenderer
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -42,7 +42,7 @@ const NODE = {
 // Default asset location: the GLB ships next to the built scene bundle
 // (apps/web/assets/atlas-bot/alcedo-mascot.glb), fetched by a runtime-relative
 // URL so no absolute path is baked in. The cache token matches the bundle's.
-const GLB_VERSION = '20260930-glb';
+const GLB_VERSION = '20260930-glb2';
 const DEFAULT_ASSET = `${new URL('./alcedo-mascot.glb', import.meta.url).href}?v=${GLB_VERSION}`;
 
 // The soft contact shadow under the bird (a blurred ellipse — cheaper than a
@@ -97,7 +97,9 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
   const camera = new PerspectiveCamera(26, 1, 0.1, 60);
   // The model stands ~2 units tall (feet ~0, head top ~2). full: whole bird;
   // bust: head + shoulders; badge/badge-small: the head filling a square.
-  const frames = { full: { y: 1.0, z: 6.9, look: 0.98 }, bust: { y: 1.5, z: 4.6, look: 1.46 }, badge: { y: 1.5, z: 4.4, look: 1.5 }, 'badge-small': { y: 1.5, z: 4.15, look: 1.52 } };
+  // head: a tight crop on the head + upper body (the Alcedo AI panel uses it so
+  // the assistant reads as a face, not a full body).
+  const frames = { full: { y: 1.0, z: 6.9, look: 0.98 }, head: { y: 1.62, z: 3.5, look: 1.56 }, bust: { y: 1.5, z: 4.6, look: 1.46 }, badge: { y: 1.5, z: 4.4, look: 1.5 }, 'badge-small': { y: 1.5, z: 4.15, look: 1.52 } };
   let frame = frames[framing] || frames.full;
   const placeCamera = () => { camera.position.set(0, frame.y, frame.z); camera.lookAt(0, frame.look, 0); shadow.visible = frame === frames.full; };
   placeCamera();
@@ -150,7 +152,7 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
         if (calm) breathe(1.2, 0.007);
         break;
       case 'error':
-        Object.assign(out, { headRoll: 0.2, headPitch: 0.12, headYaw: -0.05, alert: 0.85 });
+        Object.assign(out, { headRoll: 0.2, headPitch: 0.12, headYaw: -0.05, alert: 0.72 });
         break;
       default:
         if (calm) {
@@ -286,9 +288,33 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
     const find = (n) => { const o = g.getObjectByName(n); if (!o) console.warn('alcedo: node not found:', n); return o; };
     const headPivot = find(NODE.headPivot), eyeL = find(NODE.eyeL), eyeR = find(NODE.eyeR), beak = find(NODE.beak), wingL = find(NODE.wingL), wingR = find(NODE.wingR), body = find(NODE.body);
     if (!headPivot || !eyeL || !eyeR || !beak || !wingL || !wingR) { console.error('alcedo: missing rig nodes; names =', JSON.stringify(names)); readyResolve(false); return; }
-    // Soften the model's own materials to the ivory-studio look and let the
-    // environment carry the sheen (they arrive as glTF PBR standard materials).
-    g.traverse((o) => { if (o.isMesh && o.material) { const mm = Array.isArray(o.material) ? o.material : [o.material]; mm.forEach((m) => { m.envMapIntensity = 0.55; if ('roughness' in m) m.roughness = Math.min(1, (m.roughness ?? 0.6) + 0.15); if ('metalness' in m) m.metalness = 0; }); } });
+    // A subtle glossy glass/ceramic finish: convert each material to a physical
+    // one with a light clearcoat and environment reflections (the RoomEnvironment
+    // PMREM map already on the scene). The approved vertex colours (teal head,
+    // orange breast, white throat, dark eyes, orange beak/feet) are preserved —
+    // colour, map and vertexColors are carried over; only the surface gains a
+    // soft highlight, never a recolour or a wash-out.
+    const glassCache = new Map();
+    const toGlass = (m) => {
+      if (glassCache.has(m)) return glassCache.get(m);
+      const p = new MeshPhysicalMaterial({
+        color: m.color ? m.color.clone() : undefined,
+        map: m.map || null,
+        vertexColors: Boolean(m.vertexColors),
+        transparent: Boolean(m.transparent),
+        opacity: m.opacity ?? 1,
+        side: m.side,
+        roughness: 0.3,
+        metalness: 0,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.2,
+        envMapIntensity: 0.85
+      });
+      glassCache.set(m, p);
+      disposables.push(p);
+      return p;
+    };
+    g.traverse((o) => { if (o.isMesh && o.material) { o.material = Array.isArray(o.material) ? o.material.map(toGlass) : toGlass(o.material); } });
     rig = {
       headPivot, eyeL, eyeR, beak, wingL, wingR, body,
       base: {
@@ -331,6 +357,9 @@ export function createMascotScene(canvas, { reducedMotion: reduced = false, fine
       return {
         base: status.base, baseSince: status.baseSince, moment: status.moment, greetings: status.greetings, frames: status.frames, frameInterval: frameInterval(), ready: Boolean(rig),
         headPitch: pose.headPitch, headYaw: pose.headYaw, headRoll: pose.headRoll,
+        // A diagnostic: the eyes read closed when blinking or asleep (the model
+        // has no eyelids — the eye meshes are squashed flat), else open.
+        eyes: Math.max(pose.blink, pose.sleepy) > 0.6 ? 'closed' : 'open',
         pose: { squash: pose.squash, beak: pose.beak, wing: pose.wing, sleepy: pose.sleepy, blink: pose.blink, alert: pose.alert, bob: pose.bob },
         shadow: shadow.visible, triangles: render.triangles, calls: render.calls, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures
       };

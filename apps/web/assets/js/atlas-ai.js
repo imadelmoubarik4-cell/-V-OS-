@@ -1141,7 +1141,7 @@
     // The live robot greets once, follows the pointer and reacts to a tap.
     // It follows the assistant's state (AtlasBot.robot): it sleeps after a
     // quiet spell and wakes on hover, the composer or a new question.
-    const bot = root.AtlasBot ? `<div class="ai-empty__bot">${root.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'full', size: 176, follow: true })}</div>` : '';
+    const bot = root.AtlasBot ? `<div class="ai-empty__bot">${root.AtlasBot.liveHtml({ key: 'ai-empty', framing: 'head', size: 176, follow: true })}</div>` : '';
     return `<div class="ai-empty">
       ${bot}
       <h2 class="ai-empty__greeting">What can I help with${name ? `, ${escapeHtml(name)}` : ''}?</h2>

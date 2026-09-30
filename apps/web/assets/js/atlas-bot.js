@@ -51,9 +51,9 @@
   // head-and-upper-body crop (SPRITE_SMALL) for small badges. The poster shows
   // when WebGL is missing, the scene fails to load, the connection asks to save
   // data, WebGL runs only in software, or until the first live frame is drawn.
-  const SPRITE = 'assets/atlas-bot/alcedo-mascot-poster.png?v=20260930-glb';
-  const SPRITE_SMALL = 'assets/atlas-bot/alcedo-mascot-head.png?v=20260930-glb';
-  const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20260930-glb';
+  const SPRITE = 'assets/atlas-bot/alcedo-mascot-poster.png?v=20260930-glb2';
+  const SPRITE_SMALL = 'assets/atlas-bot/alcedo-mascot-head.png?v=20260930-glb2';
+  const SCENE = 'assets/atlas-bot/atlas-mascot-scene.js?v=20260930-glb2';
   // Badges this size or smaller use the small sprite (.atlas-bot--small).
   const SMALL_MAX = 24;
   // The assistant's states: what each shows in the 3D scene, and how it ends.
@@ -129,7 +129,7 @@
   function liveHtml({ key = 'default', framing = 'full', state = 'idle', size = 160, label = 'Alcedo, your assistant', follow = false } = {}) {
     const px = Math.max(48, Math.min(320, Math.round(Number(size) || 160)));
     const value = follow ? robot.state : stateOf(state);
-    return `<div class="atlas-bot-live" data-atlas-bot-live="${escape(key)}" data-framing="${framing === 'bust' ? 'bust' : 'full'}" data-state="${value}"${follow ? ' data-atlas-bot-follow' : ''} style="--atlas-bot-live-size:${px}px" role="img" aria-label="${escape(label)}">${html({ size: Math.round(px * 0.72), state: value, className: 'atlas-bot-live__poster' })}${Z}</div>`;
+    return `<div class="atlas-bot-live" data-atlas-bot-live="${escape(key)}" data-framing="${['bust', 'head'].includes(framing) ? framing : 'full'}" data-state="${value}"${follow ? ' data-atlas-bot-follow' : ''} style="--atlas-bot-live-size:${px}px" role="img" aria-label="${escape(label)}">${html({ size: Math.round(px * 0.72), state: value, className: 'atlas-bot-live__poster' })}${Z}</div>`;
   }
 
   // Probed once per page: every probe opens a WebGL context, and browsers
@@ -373,7 +373,7 @@
       host.dataset.atlasBotMounted = '1';
       if (!canGoLive()) { host.classList.add('is-static'); return; }
       const key = host.dataset.atlasBotLive || 'default';
-      const framing = host.dataset.framing === 'bust' ? 'bust' : 'full';
+      const framing = ['bust', 'head'].includes(host.dataset.framing) ? host.dataset.framing : 'full';
       let entry = live.get(key);
       if (!entry || entry.framing !== framing) {
         if (entry) destroy(key);

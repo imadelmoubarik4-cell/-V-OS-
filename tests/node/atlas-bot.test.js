@@ -122,9 +122,9 @@ test('the live mascot is lazy, same-origin, paused off screen and when hidden, a
   const source = read('apps/web/assets/js/atlas-bot.js');
   // The scene bundle path is preserved (atlas-mascot-scene.js); the assets are
   // the GLB-derived poster + head crop; all on the new cache token.
-  assert.match(source, /const SCENE = 'assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20260930-glb';/);
-  assert.match(source, /const SPRITE = 'assets\/atlas-bot\/alcedo-mascot-poster\.png\?v=20260930-glb';/);
-  assert.match(source, /const SPRITE_SMALL = 'assets\/atlas-bot\/alcedo-mascot-head\.png\?v=20260930-glb';/);
+  assert.match(source, /const SCENE = 'assets\/atlas-bot\/atlas-mascot-scene\.js\?v=20260930-glb2';/);
+  assert.match(source, /const SPRITE = 'assets\/atlas-bot\/alcedo-mascot-poster\.png\?v=20260930-glb2';/);
+  assert.match(source, /const SPRITE_SMALL = 'assets\/atlas-bot\/alcedo-mascot-head\.png\?v=20260930-glb2';/);
   // The real WebGL lazy-upgrade is in place (not the static no-op placeholder).
   assert.match(source, /if \(!canGoLive\(\)\) \{ host\.classList\.add\('is-static'\); return; \}/);
   assert.match(source, /entry = createLive\(key, framing\)/);
@@ -246,7 +246,7 @@ test('cache tokens agree inside atlas-bot.js and every keyed asset exists', () =
   assert.deepEqual(Object.keys(constants).sort(), ['SCENE', 'SPRITE', 'SPRITE_SMALL']);
   // One shared token, and each referenced file exists on disk.
   const tokens = new Set(Object.values(constants).map((u) => u.split('?v=')[1]));
-  assert.deepEqual([...tokens], ['20260930-glb'], 'one cache token for the mascot assets');
+  assert.deepEqual([...tokens], ['20260930-glb2'], 'one cache token for the mascot assets');
   for (const url of Object.values(constants)) statSync(`apps/web/${url.split('?')[0]}`);
 });
 

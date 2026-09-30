@@ -284,7 +284,7 @@ test('changed scripts carry the S88 cache key', () => {
   // sleep sprite frame and the rebuilt scene (atlas-bot.js); atlas-ai.js
   // reports what Atlas is doing to it and still carries the S91b voice lease.
   for (const file of ['atlas-bot.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-glb"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-glb2"></script>`), file);
   }
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
