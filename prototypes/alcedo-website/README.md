@@ -107,7 +107,7 @@ The application's own robot is unchanged.
 | **Preview** | Built; release awaiting approval. | Food Intelligence: `docs/flavor/Deployment.md` requires owner approval, and the live site is not confirmed. |
 | **Coming soon** | Built; not yet deployed. | Alcedo Training: `docs/release/Atlas_Training_MVP.md` records no production migration applied. |
 
-Purchasing and Reports are marked for managers and administrators. Reports has no sales or point-of-sale connection. The AI only reads and drafts; a person approves every change. The Discover intro keeps the required sentence "see which capabilities are available today"; the legend beside it defines what each label means.
+Purchasing and Reports are marked for managers and administrators. Reports has no sales or point-of-sale connection. The AI only reads and drafts; a person approves every change. The Discover intro reads "explore implemented capabilities and upcoming features", matching the legend beside it.
 
 ## Testing
 

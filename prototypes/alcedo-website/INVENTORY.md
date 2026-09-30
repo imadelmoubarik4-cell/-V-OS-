@@ -6,7 +6,7 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 | Status | Path | Bytes | SHA-256 | Used by Alcedo page | Provenance |
 |---|---|---:|---|---|---|
 | A | `prototypes/alcedo-website/INVENTORY.md` | — | (this file) | — | Authored |
-| A | `prototypes/alcedo-website/README.md` | 10,331 | `8c1e63eac303b001bd8de9eba75f0ad57cac441f92ed727d84148c5bc19a492a` | — | Authored |
+| A | `prototypes/alcedo-website/README.md` | 10,300 | `b74ec4d240e0a961a15727aad0db8e6dfb8b09debe21b98d21aefa52a486ae67` | — | Authored |
 | A | `prototypes/alcedo-website/assets/ai-robot-alcedo.png` | 71,285 | `f72b5385e1ee7a4e7d0190b85488cb2953a16c1a24714650c97025b2d4806ff1` | yes | Derived: app robot scene re-rendered with the Alcedo decal (tools/render_robot_alcedo.sh) |
 | A | `prototypes/alcedo-website/assets/brand/alcedo-horizontal-dark.svg` | 3,112 | `53003b7eb06cc133f699506759b48e04ecc334cdb1b9ecfed5b34b62f07d4460` | no (dark-surface deliverable) | Derived: kit symbol + outlined wordmark paths, uniform scale/translate only (tools/build_horizontal_lockup.py) |
 | A | `prototypes/alcedo-website/assets/brand/alcedo-horizontal-light.svg` | 3,122 | `542f346c67f54bc5a1b1724d125b3d76994880653aa84a532665af6188284838` | yes | Derived: kit symbol + outlined wordmark paths, uniform scale/translate only (tools/build_horizontal_lockup.py) |
@@ -27,7 +27,7 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 | A | `prototypes/alcedo-website/assets/screens/shifts.webp` | 58,882 | `872cbf875ea807505d904ca514a69eaac4ee6921880acd4125d6992deb6fa200` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
 | A | `prototypes/alcedo-website/assets/screens/stock-count.webp` | 42,420 | `0f43dee1c942cb663cba6d6ade1389f66badf32aa4e88cf1aaddc99eaddd42c5` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
 | A | `prototypes/alcedo-website/assets/screens/training.webp` | 53,274 | `516513c9121c7767ae28b8b92a2395880293316e4edeadc85b8976d618812dc4` | yes | Captured: apps/web in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/index.html` | 84,160 | `0ef9926fb169853cb3346204c490a9121baf527da88c29ddce2ff5ffa4bf47d1` | — | Authored |
+| A | `prototypes/alcedo-website/index.html` | 84,172 | `369b559eb63d656b632245075409f2f6c64528422d2d51e63934cecabc78b631` | — | Authored |
 | A | `prototypes/alcedo-website/tools/build_horizontal_lockup.py` | 2,822 | `1fe783529bceb957b5208afc2e658f9a1dc849afa9b424b88570c1406a2ff8dd` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_inventory.py` | 3,351 | `47607cacef09170d4d31e0e27ba092c83796b79ea4e10ac0d3622519c47625c2` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_preview.py` | 1,251 | `6df4d8b10e58b07dec74d3fe5634bdd39512c85a544098887d7a48ab55c31b4a` | — | Authored: build/verification tool |
@@ -36,4 +36,4 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 | A | `prototypes/atlas-website/README.md` | 6,940 | `ab5d96636ab77718cc248d25c82191ae69d160786f7c1b8b8e97bdf23f9a862a` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 | A | `prototypes/atlas-website/index.html` | 199,966 | `f90fb4fef99102ff09cf146c4a8123925e46db540e58be74b76f45e2f769fcb0` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 
-Total (excluding this file): 2,391,292 bytes.
+Total (excluding this file): 2,391,273 bytes.
