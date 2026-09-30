@@ -28,6 +28,12 @@ async function openAi({ viewport, contextOptions, initScript, hash = '#ai/new', 
   return { ...launched, backend: state };
 }
 
+// The GLB scene rasterises in software (SwiftShader) with no GPU; on a loaded
+// CI runner it draws several times slower than on a dev box, so a frame with a
+// full, non-cleared robot can take well over the 8 s default to be copied back.
+// Render/animation-driven waits below use this generous budget — every check
+// must still become true; we only wait longer for the slow renderer.
+const RENDER_MS = 45000;
 const info = (page, key = 'ai-empty') => page.evaluate((name) => window.AtlasBot?.info(name), key);
 // Share of drawn (non-transparent) pixels in the robot canvas.
 const drawn = (page) => page.evaluate(() => {
@@ -80,7 +86,7 @@ test('Atlas AI: the live 3D robot draws, greets once, follows the pointer and re
   const { page, close } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
     await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
-    await until(async () => (await info(page))?.scene?.frames > 3, { message: 'robot frames' });
+    await until(async () => (await info(page))?.scene?.frames > 3, { timeout: RENDER_MS, message: 'robot frames' });
     const first = await info(page);
     assert.equal(first.live, true);
     assert.equal(first.failed, false);
@@ -88,7 +94,7 @@ test('Atlas AI: the live 3D robot draws, greets once, follows the pointer and re
     assert.ok(first.scene.triangles > 5000 && first.scene.triangles < 200000, `triangle budget: ${first.scene.triangles}`);
     // The WebGL canvas does not keep its last frame, so a copy taken after the
     // browser cleared it reads empty: retry until a drawn frame is copied.
-    await until(async () => await drawn(page) > 0.08, { message: 'the robot is drawn in the canvas' });
+    await until(async () => await drawn(page) > 0.08, { timeout: RENDER_MS, message: 'the robot is drawn in the canvas' });
     const box = await page.locator('.ai-empty .atlas-bot-live').boundingBox();
     assert.deepEqual([Math.round(box.width), Math.round(box.height)], [176, 176]);
     // The robot replaces the Atlas mark that used to head the greeting; the logo in the sidebar is untouched.
@@ -105,24 +111,24 @@ test('Atlas AI: the live 3D robot draws, greets once, follows the pointer and re
     // (a positive head pitch tips the face down).
     const centre = box.x + box.width / 2;
     await page.mouse.move(centre, 890, { steps: 3 });
-    await until(async () => (await info(page))?.scene?.headPitch > 0.1, { message: 'looks down at a pointer below' });
+    await until(async () => (await info(page))?.scene?.headPitch > 0.1, { timeout: RENDER_MS, message: 'looks down at a pointer below' });
     await page.mouse.move(centre, 5, { steps: 3 });
-    await until(async () => (await info(page))?.scene?.headPitch < -0.1, { message: 'looks up at a pointer above' });
+    await until(async () => (await info(page))?.scene?.headPitch < -0.1, { timeout: RENDER_MS, message: 'looks up at a pointer above' });
     await page.mouse.move(1400, box.y + box.height * 0.35, { steps: 3 });
-    await until(async () => (await info(page))?.scene?.headYaw > 0.1, { message: 'looks right at a pointer to the right' });
+    await until(async () => (await info(page))?.scene?.headYaw > 0.1, { timeout: RENDER_MS, message: 'looks right at a pointer to the right' });
     await page.mouse.move(5, box.y + box.height * 0.35, { steps: 3 });
-    await until(async () => (await info(page))?.scene?.headYaw < -0.1, { message: 'looks left at a pointer to the left' });
+    await until(async () => (await info(page))?.scene?.headYaw < -0.1, { timeout: RENDER_MS, message: 'looks left at a pointer to the left' });
     // The robot and the greeting are one unit: the head-framed mascot's drawn
     // pixels (its feet and soft contact shadow count, alpha > 6) sit right at
     // the greeting, its feet resting on the line's top leading (never over the
     // text). A small overlap into that leading is allowed; a gross overlap that
     // would reach the glyphs is still caught.
     const greeting = await page.locator('#ai-view .ai-empty__greeting').boundingBox();
-    const feet = await until(() => drawnBottom(page), { message: 'the robot is drawn' });
+    const feet = await until(() => drawnBottom(page), { timeout: RENDER_MS, message: 'the robot is drawn' });
     const gap = greeting.y - (box.y + feet);
     assert.ok(gap >= -10 && gap <= 30, `mascot to greeting gap ${gap}`);
     await page.locator('.ai-empty .atlas-bot-live__canvas').click();
-    await until(async () => (await info(page))?.scene?.moment === 'react', { message: 'react moment' });
+    await until(async () => (await info(page))?.scene?.moment === 'react', { timeout: RENDER_MS, message: 'react moment' });
     // Leaving Atlas AI stops drawing; coming back resumes without a new greeting or context.
     await page.evaluate(() => window.AtlasShell.navigate('#home'));
     await until(async () => (await info(page))?.running === false, { message: 'stops off screen' });
@@ -363,7 +369,7 @@ test('WebGL context lost: the poster shows and drawing stops; restored: the robo
   const { page, close, record } = await openAi({ viewport: { width: 1440, height: 900 } });
   try {
     await page.waitForSelector('#ai-view .ai-empty .atlas-bot-live.is-live', { timeout: 15000 });
-    await until(async () => (await info(page))?.scene?.frames > 2, { message: 'robot frames' });
+    await until(async () => (await info(page))?.scene?.frames > 2, { timeout: RENDER_MS, message: 'robot frames' });
     await page.evaluate(() => {
       const canvas = document.querySelector('.atlas-bot-live__canvas');
       const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
@@ -384,8 +390,8 @@ test('WebGL context lost: the poster shows and drawing stops; restored: the robo
     assert.equal(await page.locator('#ai-view .atlas-bot-live.is-static').count(), 1);
     await page.evaluate(() => window.loseContextForTest.restoreContext());
     await page.waitForSelector('#ai-view .atlas-bot-live.is-live:not(.is-static)', { timeout: 15000 });
-    await until(async () => { const now = await info(page); return now?.lost === false && now.scene?.frames > 1; }, { message: 'drawing again' });
-    await until(async () => (await drawn(page)) > 0.08, { timeout: 8000, message: 'the robot is drawn again after the restore' });
+    await until(async () => { const now = await info(page); return now?.lost === false && now.scene?.frames > 1; }, { timeout: RENDER_MS, message: 'drawing again' });
+    await until(async () => (await drawn(page)) > 0.08, { timeout: RENDER_MS, message: 'the robot is drawn again after the restore' });
     assert.equal(await page.locator('canvas.atlas-bot-live__canvas').count(), 1);
     assert.deepEqual(record?.pageErrors || [], []);
   } finally { await close(); }
