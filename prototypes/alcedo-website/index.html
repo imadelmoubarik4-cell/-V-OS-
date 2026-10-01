@@ -133,7 +133,8 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .btn--orange:hover { background: #EC8240; }
 .btn--dark { background: var(--panel); color: var(--on-panel); }
 .btn--dark:hover { background: #0A566C; }
-.btn--line { border-color: rgba(16,32,31,.34); color: var(--ink); background: rgb(var(--bg-rgb) / .35); }
+.btn--line { border-color: rgba(16,32,31,.34); color: var(--ink); background: transparent; }
+.hero .btn--line { background: rgb(var(--bg-rgb) / .35); }
 .btn--line:hover { border-color: var(--ink); }
 .btn--line-dark { border-color: rgba(248,245,237,.6); color: var(--on-panel); background: transparent; }
 .btn--line-dark:hover { border-color: var(--on-panel); }
@@ -358,13 +359,14 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .bento { display: grid; gap: 16px; grid-template-columns: 1.35fr 1fr 1fr; grid-template-rows: minmax(300px, auto) minmax(260px, auto); list-style: none; padding: 0; margin: 0; }
 .bento__card { position: relative; display: flex; flex-direction: column; padding: clamp(22px, 2.4vw, 32px); border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow-soft); scroll-margin-top: 24px; }
 .bento__card--ops { grid-row: span 2; background: var(--panel); color: var(--on-panel); border-color: var(--panel-line); box-shadow: var(--shadow); }
-.bento__card--training { grid-column: 2 / span 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 40px; }
+.bento__card--training { grid-column: 2 / span 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 40px; }
+.bento__card--training .bento__head { grid-column: 1 / -1; }
 .bento__head { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .bento__index { color: var(--ink-3); }
 .bento__card--ops .bento__index { color: var(--on-panel-2); }
 .bento__tag { color: var(--brand-teal); }
 .bento__card--ops .bento__tag { color: var(--orange-2); }
-.bento__title { margin-top: 26px; font-family: var(--font-serif); font-weight: 400; font-size: clamp(30px, 2.8vw, 40px); line-height: 1.02; letter-spacing: -.01em; }
+.bento__title { text-wrap: balance; margin-top: 26px; font-family: var(--font-serif); font-weight: 400; font-size: clamp(30px, 2.8vw, 40px); line-height: 1.02; letter-spacing: -.01em; }
 .bento__text { margin-top: 12px; font-size: 15px; line-height: 1.6; color: var(--ink-3); max-width: 46ch; }
 .bento__card--ops .bento__text { color: var(--on-panel-2); }
 .bento .status { margin-top: 14px; }
@@ -375,7 +377,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .modules b { display: block; font-weight: 600; font-size: 14.5px; }
 .modules span { display: block; font-size: 13px; line-height: 1.45; color: var(--on-panel-2); }
 .bento__art { margin-top: auto; padding-top: 26px; color: var(--ink); }
-.bento__card--ops .bento__art { color: var(--on-panel); }
+.bento__card--ops .bento__art { color: var(--on-panel); flex: 1; display: flex; align-items: center; min-height: 160px; }
 .bento__art svg { width: 100%; height: auto; overflow: visible; }
 .bento__card--training .bento__art { margin-top: 0; padding-top: 0; align-self: center; }
 /* Food Intelligence: illustrated Flavor Map (sample data) */
@@ -484,7 +486,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .route--owners { background: var(--panel); color: var(--on-panel); border-color: var(--panel-line); }
 .route__for { color: var(--brand-teal); }
 .route--owners .route__for { color: var(--orange-2); }
-.route__title { margin-top: 14px; font-family: var(--font-serif); font-weight: 400; font-size: clamp(30px, 3vw, 40px); line-height: 1.04; }
+.route__title { margin-top: 14px; font-family: var(--font-serif); font-weight: 400; font-size: clamp(30px, 3vw, 40px); line-height: 1.04; text-wrap: balance; }
 .route__steps { margin: 18px 0 26px; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 10px; }
 .route__steps li { counter-increment: step; display: grid; grid-template-columns: 28px 1fr; gap: 10px; font-size: 15px; color: var(--ink-2); }
 .route--owners .route__steps li { color: var(--on-panel-2); }
@@ -506,7 +508,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .cta { position: relative; overflow: hidden; background: var(--panel); color: var(--on-panel); border-radius: 32px; box-shadow: var(--shadow); padding: clamp(44px, 7vw, 96px) clamp(24px, 6vw, 88px); display: grid; grid-template-columns: minmax(0, 1.4fr) auto; gap: 32px 48px; align-items: end; }
 .cta::after { content: ""; position: absolute; right: -8%; top: -30%; width: 46%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--panel-line); pointer-events: none; }
 .cta .kicker { color: var(--teal-2); }
-.cta__title { margin-top: 18px; font-family: var(--font-serif); font-weight: 400; font-size: clamp(38px, 5vw, 68px); line-height: 1; letter-spacing: -.015em; max-width: 16ch; }
+.cta__title { text-wrap: balance; margin-top: 18px; font-family: var(--font-serif); font-weight: 400; font-size: clamp(38px, 5vw, 68px); line-height: 1; letter-spacing: -.015em; max-width: 16ch; }
 .cta__title em { font-style: italic; color: var(--orange-2); }
 .cta__note { margin-top: 18px; color: var(--on-panel-2); font-size: 15px; max-width: 48ch; }
 .destinations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
@@ -723,7 +725,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         </div>
         <div class="reveal-up" style="--i:1">
           <p class="intro__text">Explore how Alcedo connects restaurant workflows, knowledge, and assistance. Discover the platform and explore implemented capabilities and upcoming features.</p>
-          <p class="brand-note">Alcedo is the new brand direction for Atlas. Screenshots on this page show the Alcedo-branded pre-release build of the application.</p>
+          <p class="brand-note">Alcedo is the new brand direction for Atlas. Screenshots on this page show the Alcedo application.</p>
           <!-- [STATUS] legend -->
           <dl class="legend" aria-label="Status labels">
             <div><dt><span class="status">Implemented</span></dt><dd>Built in the current application and checked against its code. Production rollout is not confirmed on this page.</dd></div>
@@ -837,8 +839,8 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         </li>
 
         <li class="bento__card bento__card--training reveal-up" id="training" style="--i:3">
+          <div class="bento__head"><span class="bento__index mono">04</span><span class="bento__tag mono">Learning</span></div>
           <div>
-            <div class="bento__head"><span class="bento__index mono">04</span><span class="bento__tag mono">Learning</span></div>
             <h3 class="bento__title">Training &amp; Knowledge</h3>
             <p class="bento__text"><strong>Alcedo Training:</strong> managers publish short video lessons with steps, aimed at the right roles; staff watch, resume and mark lessons complete. <strong>Knowledge:</strong> a searchable library with required reading.</p>
             <div class="status-stack">
@@ -873,7 +875,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <p class="kicker mono">03 Inside the workspace</p>
           <h2 class="section-title" id="tour-title">See the modules <em>as they are today.</em></h2>
         </div>
-        <p class="intro__text reveal-up" style="--i:1">Screenshots from the Alcedo pre-release build running against built-in test data: every name, quantity and price is sample data, not a real venue’s records.</p>
+        <p class="intro__text reveal-up" style="--i:1">Screenshots from the Alcedo application running against built-in test data: every name, quantity and price is sample data, not a real venue’s records.</p>
       </div>
       <div class="tabs" role="tablist" aria-label="Modules" hidden></div>
       <div class="tour__panel" id="tour-inventory" data-tab="Inventory">
@@ -886,7 +888,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <figure class="shot">
           <img src="assets/screens/inventory.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Inventory table in the current application with eight sample bar items, their par levels and stock status.">
           <span class="shot__label">Sample data</span>
-          <figcaption>Alcedo pre-release build · built-in test data</figcaption>
+          <figcaption>Alcedo application · built-in test data</figcaption>
         </figure>
       </div>
       <div class="tour__panel" id="tour-purchasing" data-tab="Purchasing">
@@ -899,7 +901,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <figure class="shot">
           <img src="assets/screens/purchasing.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Purchasing view with a suggested order and two sample orders, one waiting for approval.">
           <span class="shot__label">Sample data</span>
-          <figcaption>Alcedo pre-release build · built-in test data</figcaption>
+          <figcaption>Alcedo application · built-in test data</figcaption>
         </figure>
       </div>
       <div class="tour__panel" id="tour-recipes" data-tab="Recipes">
@@ -912,7 +914,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <figure class="shot">
           <img src="assets/screens/recipes.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Recipe cards for four sample drinks, showing which can be served from current stock.">
           <span class="shot__label">Sample data</span>
-          <figcaption>Alcedo pre-release build · built-in test data</figcaption>
+          <figcaption>Alcedo application · built-in test data</figcaption>
         </figure>
       </div>
       <div class="tour__panel" id="tour-stock-count" data-tab="Stock count">
@@ -925,7 +927,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <figure class="shot">
           <img src="assets/screens/stock-count.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="A stock count in progress for a sample back bar, counting one item at a time.">
           <span class="shot__label">Sample data</span>
-          <figcaption>Alcedo pre-release build · built-in test data</figcaption>
+          <figcaption>Alcedo application · built-in test data</figcaption>
         </figure>
       </div>
       <div class="tour__panel" id="tour-shifts" data-tab="Shifts">
@@ -938,7 +940,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <figure class="shot">
           <img src="assets/screens/shifts.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Weekly shift schedule with four fictional team members.">
           <span class="shot__label">Sample data · fictional staff</span>
-          <figcaption>Alcedo pre-release build · built-in test data</figcaption>
+          <figcaption>Alcedo application · built-in test data</figcaption>
         </figure>
       </div>
       <div class="tour__panel" id="tour-reports" data-tab="Reports">
@@ -951,7 +953,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <figure class="shot">
           <img src="assets/screens/reports.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Reports overview with sample purchasing spend, recipe margin and items needing attention.">
           <span class="shot__label">Sample data</span>
-          <figcaption>Alcedo pre-release build · built-in test data</figcaption>
+          <figcaption>Alcedo application · built-in test data</figcaption>
         </figure>
       </div>
       <div class="tour__panel" id="tour-ai" data-tab="Alcedo AI">
@@ -964,7 +966,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <figure class="shot">
           <img src="assets/screens/ai.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Scripted sample conversation in which the assistant checks Campari stock and prepares a draft order for approval.">
           <span class="shot__label">Scripted demonstration · sample data</span>
-          <figcaption>Alcedo pre-release build · built-in test data</figcaption>
+          <figcaption>Alcedo application · built-in test data</figcaption>
         </figure>
       </div>
       <div class="tour__panel" id="tour-food-intelligence" data-tab="Food Intelligence">
@@ -977,7 +979,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <figure class="shot">
           <img src="assets/screens/food-intelligence.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Flavor Map showing sample pairings for London dry gin and which ingredients are in stock.">
           <span class="shot__label">Sample data</span>
-          <figcaption>Alcedo pre-release build · built-in test data</figcaption>
+          <figcaption>Alcedo application · built-in test data</figcaption>
         </figure>
       </div>
       <div class="tour__panel" id="tour-training" data-tab="Training">
@@ -990,7 +992,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <figure class="shot">
           <img src="assets/screens/training.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Training library in a pre-release build with four sample lessons.">
           <span class="shot__label">Sample lessons · pre-release build</span>
-          <figcaption>Alcedo pre-release build · built-in test data</figcaption>
+          <figcaption>Alcedo application · built-in test data</figcaption>
         </figure>
       </div>
     </div>
@@ -1048,7 +1050,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <div class="dest reveal-up" id="staff-login" tabindex="-1" style="--i:0">
           <p class="mono">Staff access</p>
           <h3 class="dest__title">Staff login</h3>
-          <p class="dest__text">Staff sign in to the existing application, which still shows the Atlas name. This website does not handle accounts or passwords.</p>
+          <p class="dest__text">Staff sign in to the Alcedo application with their existing account. This website does not handle accounts or passwords.</p>
           <a class="dest__link" href="https://os-vabar.netlify.app">Open the staff sign-in <span aria-hidden="true">→</span></a>
         </div>
         <div class="dest reveal-up" id="request-demo" tabindex="-1" style="--i:1">
