@@ -25,6 +25,9 @@
         <input class="atlas-input" id="recovery-email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required aria-describedby="recovery-email-error">
         <p class="atlas-field__error" id="recovery-email-error" hidden></p>
       </div>
+      <!-- OWNER-GATED CAPTCHA (config.js AUTH_CAPTCHA_PROVIDER). Empty while a
+           provider is not set up: no widget renders and no token is sent. -->
+      <div class="atlas-auth__captcha" id="recovery-captcha" hidden></div>
       <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit">Send reset link</button>
     </form>
     <form id="complete-recovery" class="atlas-auth__form" novalidate hidden>

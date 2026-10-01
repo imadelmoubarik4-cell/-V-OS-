@@ -90,8 +90,9 @@ where not exists (select 1 from s89_rs where test_name = 'the hourly identificat
 update atlas_private.ai_settings set upload_files_per_day = 1;
 select public.atlas_recognition_register_media(jsonb_build_object('path','00000000-0000-4000-8000-00000008a903/unsorted/00000000-0000-4000-8000-00000008ac01.jpg',
   'mime','image/jpeg','bytes',1000,'kind','image'), '00000000-0000-4000-8000-00000008a903','bartender');
-insert into s89_rs select 'recognition media expire within 30 days',
-  (select expires_at between now() + interval '29 days' and now() + interval '30 days 1 minute' and purpose = 'recognition'
+-- S100 tightened the pilot media_retention_days to 14 (was 30).
+insert into s89_rs select 'recognition media expire within 14 days',
+  (select expires_at between now() + interval '13 days' and now() + interval '14 days 1 minute' and purpose = 'recognition'
    from atlas_private.ai_media where path = '00000000-0000-4000-8000-00000008a903/unsorted/00000000-0000-4000-8000-00000008ac01.jpg');
 do $probe$
 declare

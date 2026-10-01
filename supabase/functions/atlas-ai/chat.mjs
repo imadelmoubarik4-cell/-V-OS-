@@ -153,14 +153,42 @@ async function prepareAgent({ deps, config, actor, preferences, hasVision, nowIs
   return { graph, runner, orchestratorName };
 }
 
+// S100 block-event kinds keyed by the rate_limited reason the data layer
+// classified (http.mjs:rateLimitReason). A generic/legacy 429 records as
+// 'rate_limited'.
+const BLOCK_KIND_BY_REASON = Object.freeze({
+  slow_down: "rate_limited",
+  budget_daily: "budget_daily",
+  budget_monthly: "budget_monthly",
+  turn_limit: "turn_limit",
+});
+
 async function startRun(services, actor, conversationId, channel, models) {
-  const run = await services.rpc("atlas_ai_run_start", {
-    p_actor_id: actor.userId,
-    p_actor_role: actor.role,
-    p_conversation_id: conversationId,
-    p_channel: channel,
-    p_models: models,
-  });
+  let run;
+  try {
+    run = await services.rpc("atlas_ai_run_start", {
+      p_actor_id: actor.userId,
+      p_actor_role: actor.role,
+      p_conversation_id: conversationId,
+      p_channel: channel,
+      p_models: models,
+    });
+  } catch (error) {
+    // S100: the run_start transaction rolled back, so the block is recorded by a
+    // separate RPC that commits on its own. Best-effort and never changes the
+    // error the caller sees (a 429 still surfaces to the browser with Retry-After).
+    if (error instanceof ApiError && error.status === 429 && error.code === "rate_limited") {
+      const kind = BLOCK_KIND_BY_REASON[error.extra?.reason] ?? "rate_limited";
+      await safeRpc(services, "atlas_ai_record_block", {
+        p_actor_id: actor.userId,
+        p_actor_role: actor.role,
+        p_kind: kind,
+        p_channel: channel,
+        p_detail: { reason: error.extra?.reason ?? "rate_limited" },
+      });
+    }
+    throw error;
+  }
   return run?.run_id ?? run?.id ?? null;
 }
 

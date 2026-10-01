@@ -83,6 +83,12 @@
           <p class="atlas-field__error" id="password-error" hidden></p>
         </div>
         <p class="atlas-auth__error" id="login-error" role="alert" hidden></p>
+        <!-- OWNER-GATED CAPTCHA (config.js AUTH_CAPTCHA_PROVIDER). Empty while a
+             provider is not set up: no widget renders and no token is sent. -->
+        <div class="atlas-auth__captcha" id="login-captcha" hidden></div>
+        <!-- Calm, polite countdown during the client-side failed-login cooldown
+             (a UX speed-bump; Supabase Auth's server limits are the real control). -->
+        <p class="atlas-auth__status" id="login-cooldown" role="status" aria-live="polite" hidden></p>
         <button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--lg atlas-auth__submit" id="login-btn">Sign in</button>
       </form>
       <p class="atlas-auth__link"><a href="recovery.html">Forgot your password?</a></p>
@@ -202,7 +208,7 @@
 <script src="assets/js/atlas-venue-clock.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-api.js?v=20260926-s91a"></script>
 <script src="assets/js/atlas-bot.js?v=20260930-glb2"></script>
-<script src="assets/js/atlas-app.js?v=20261011-s97"></script>
+<script src="assets/js/atlas-app.js?v=20261017-s99"></script>
 <script src="assets/js/atlas-calculations.js?v=20260929-s90p"></script>
 <script src="assets/js/modal.js?v=20261001-s92e"></script>
 <script src="assets/js/recipes.js?v=20261005-fi1"></script>
