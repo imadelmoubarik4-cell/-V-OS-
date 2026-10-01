@@ -356,7 +356,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 @media (max-width: 480px) { .legend div { grid-template-columns: 1fr; gap: 2px; } }
 .brand-note { margin-top: 16px; font-size: 14px; color: var(--ink-3); max-width: 52ch; padding-left: 14px; border-left: 2px solid var(--orange); }
 
-.bento { display: grid; gap: 16px; grid-template-columns: 1.35fr 1fr 1fr; grid-template-rows: minmax(300px, auto) minmax(260px, auto); list-style: none; padding: 0; margin: 0; }
+.bento { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(300px, auto) minmax(260px, auto); list-style: none; padding: 0; margin: 0; }
 .bento__card { position: relative; display: flex; flex-direction: column; padding: clamp(22px, 2.4vw, 32px); border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow-soft); scroll-margin-top: 24px; }
 .bento__card--ops { grid-row: span 2; background: var(--panel); color: var(--on-panel); border-color: var(--panel-line); box-shadow: var(--shadow); }
 .bento__card--training { grid-column: 2 / span 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 40px; }
@@ -379,7 +379,6 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .bento__art { margin-top: auto; padding-top: 26px; color: var(--ink); }
 .bento__card--ops .bento__art { color: var(--on-panel); flex: 1; display: flex; align-items: center; min-height: 160px; }
 .bento__art svg { width: 100%; height: auto; overflow: visible; }
-.bento__card--training .bento__art { margin-top: 0; padding-top: 0; align-self: center; }
 /* Food Intelligence: illustrated Flavor Map (sample data) */
 .fmap { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--line); container-type: inline-size; }
 .fmap__top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -438,6 +437,110 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   .fmap.is-touring .fmap__spark.is-running { animation: fmap-spark 1.3s var(--ease) 1 both; }
 }
 @keyframes fmap-spark { 0% { opacity: 0; stroke-dashoffset: 1.14; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; stroke-dashoffset: 0; } }
+/* ---------- Playful layer (all optional; reduced motion keeps the interactions, drops the movement) ---------- */
+/* spotlight that follows the pointer on cards */
+.hcard, .bento__card, .route { --mx: 50%; --my: 50%; isolation: isolate; }
+.hcard::before, .bento__card::before, .route::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+  background: radial-gradient(260px circle at var(--mx) var(--my), rgba(232,115,42,.10), transparent 70%);
+  transition: opacity .35s var(--ease); z-index: -1;
+}
+.on-dark.hcard::before, .bento__card--ops::before, .route--owners::before { background: radial-gradient(280px circle at var(--mx) var(--my), rgba(158,214,218,.16), transparent 70%); }
+.is-lit::before { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) and (pointer: fine) {
+  /* tilt only while hovered, so the hero's staggered reveal (which also animates transform) is untouched */
+  .is-revealed .hcard.rv.tiltable { transition: transform .3s var(--ease), box-shadow .35s var(--ease), opacity .3s, filter .3s; transition-delay: 0s; }
+  .is-revealed .hcard.rv.tiltable.is-lit { transform: perspective(700px) rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg)); }
+  .bento__card, .route { transition: transform .35s var(--ease), box-shadow .35s var(--ease); }
+  .bento__card:hover, .route:hover { transform: translateY(-3px); }
+}
+
+/* Daily Operations: interactive checklist */
+.opscheck { margin-top: auto; padding-top: 22px; container-type: inline-size; }
+.opscheck__label { color: var(--on-panel-2); font-size: 10px; }
+.opscheck__body { display: flex; align-items: center; gap: 22px; margin-top: 12px; }
+.opscheck__list { flex: 1; list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.opscheck__item {
+  width: 100%; display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 12px; border-radius: 12px;
+  border: 1px solid var(--panel-line); background: rgba(248,245,237,.04); color: var(--on-panel);
+  font: 500 13.5px var(--font-sans); text-align: left; cursor: pointer;
+  transition: background-color .25s var(--ease), border-color .25s var(--ease), color .25s var(--ease);
+}
+.opscheck__item:hover { background: rgba(248,245,237,.09); border-color: rgba(248,245,237,.32); }
+.opscheck__item[aria-pressed="true"] { color: var(--on-panel-2); text-decoration: line-through; text-decoration-color: rgba(248,245,237,.45); }
+.opscheck__box { position: relative; width: 18px; height: 18px; flex: none; border-radius: 5px; border: 1.5px solid rgba(248,245,237,.6); transition: background-color .25s var(--ease), border-color .25s var(--ease); }
+.opscheck__item[aria-pressed="true"] .opscheck__box { background: var(--teal-2); border-color: var(--teal-2); }
+.opscheck__box::after { content: ""; position: absolute; left: 5px; top: 1.5px; width: 5px; height: 10px; border: solid var(--panel); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0); transition: transform .25s var(--ease); }
+.opscheck__item[aria-pressed="true"] .opscheck__box::after { transform: rotate(45deg) scale(1); }
+.opscheck__ring { position: relative; width: 112px; height: 112px; flex: none; }
+.opscheck__ring svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.opscheck__track { fill: none; stroke: var(--panel-line); stroke-width: 8; }
+.opscheck__fill { fill: none; stroke: var(--teal-2); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: calc(1 - var(--p, .5)); transition: stroke-dashoffset .6s var(--ease), stroke .4s; }
+.opscheck[data-done="4"] .opscheck__fill { stroke: var(--orange-2); }
+.opscheck__count { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-serif); font-size: 30px; color: var(--on-panel); }
+@container (max-width: 330px) {
+  .opscheck__body { gap: 14px; }
+  .opscheck__ring { width: 78px; height: 78px; }
+  .opscheck__count { font-size: 22px; }
+  .opscheck__item { font-size: 12.5px; padding: 0 9px; gap: 8px; }
+}
+.opscheck__status { margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--teal-2); }
+.opscheck[data-done="4"] .opscheck__status { color: var(--orange-2); }
+.opscheck__burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.opscheck__burst i { position: absolute; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; background: var(--orange-2); opacity: 0; }
+.opscheck__burst i:nth-child(even) { background: var(--teal-2); }
+@media (prefers-reduced-motion: no-preference) {
+  .opscheck.is-celebrating .opscheck__burst i { animation: burst .9s var(--ease) both; }
+  .opscheck.is-celebrating .opscheck__ring { animation: pop .5s var(--ease); }
+}
+.opscheck__burst i:nth-child(1) { --bx: 0px; --by: -76px; } .opscheck__burst i:nth-child(2) { --bx: 54px; --by: -54px; }
+.opscheck__burst i:nth-child(3) { --bx: 76px; --by: 0px; }  .opscheck__burst i:nth-child(4) { --bx: 54px; --by: 54px; }
+.opscheck__burst i:nth-child(5) { --bx: 0px; --by: 76px; }  .opscheck__burst i:nth-child(6) { --bx: -54px; --by: 54px; }
+.opscheck__burst i:nth-child(7) { --bx: -76px; --by: 0px; } .opscheck__burst i:nth-child(8) { --bx: -54px; --by: -54px; }
+@keyframes burst { 0% { opacity: 0; transform: translate(0, 0) scale(.4); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--bx), var(--by)) scale(1); } }
+@keyframes pop { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.08); } }
+
+/* Training: mini lesson player */
+.lesson { align-self: center; padding: 18px; border-radius: 18px; border: 1px solid var(--line); background: rgba(248,245,237,.7); }
+.lesson__label { color: var(--ink-3); font-size: 10px; }
+.lesson__player { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+.lesson__play { flex: none; width: 48px; height: 48px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--orange); color: var(--ink); cursor: pointer; box-shadow: 0 10px 22px -14px rgba(232,115,42,.9); transition: transform .2s var(--ease); }
+.lesson__play:hover { transform: scale(1.06); }
+.lesson__play svg { width: 22px; height: 22px; }
+.lesson__icon-play { fill: currentColor; }
+.lesson__icon-replay { display: none; }
+.lesson[data-state="done"] .lesson__icon-play { display: none; }
+.lesson[data-state="done"] .lesson__icon-replay { display: block; }
+.lesson__meta { flex: 1; min-width: 0; }
+.lesson__title { font-family: var(--font-serif); font-size: 20px; line-height: 1.1; }
+.lesson__bar { position: relative; height: 5px; margin-top: 8px; border-radius: 999px; background: rgba(8,73,92,.12); overflow: hidden; }
+.lesson__bar span { position: absolute; inset: 0 auto 0 0; width: calc(var(--lp, 0) * 1%); background: var(--brand-teal); border-radius: inherit; }
+.lesson__steps { list-style: none; counter-reset: s; padding: 0; margin: 14px 0 0; display: grid; gap: 6px; }
+.lesson__steps li { counter-increment: s; display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--ink-3); transition: color .3s var(--ease); }
+.lesson__steps li::before { content: counter(s); width: 20px; height: 20px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line); font: 500 10px var(--font-mono); color: var(--ink-3); transition: background-color .3s var(--ease), color .3s var(--ease), border-color .3s var(--ease); }
+.lesson__steps li.is-done { color: var(--ink); }
+.lesson__steps li.is-done::before { content: "✓"; background: var(--teal); border-color: var(--teal); color: var(--card); }
+.lesson__status { margin-top: 12px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--brand-teal); }
+
+/* Mascot: tap to say hello (whole-image hop) */
+.mascot-poke { display: block; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 12px; }
+.mascot-hop, .mascot-tilt { display: block; }
+@media (prefers-reduced-motion: no-preference) {
+  .mascot-demo.is-hopping .mascot-hop { animation: hop .6s var(--ease); }
+}
+@keyframes hop { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-14px); } 60% { transform: translateY(0); } 75% { transform: translateY(-4px); } }
+
+/* Scroll progress with a small kingfisher */
+.flightline { position: fixed; left: 0; right: 0; top: 0; height: 3px; z-index: 60; pointer-events: none; }
+.flightline__bar { position: absolute; inset: 0 auto 0 0; width: calc(var(--sp, 0) * 100%); background: linear-gradient(90deg, var(--teal), var(--orange)); }
+.flightline__bird { position: absolute; top: -9px; left: calc(var(--sp, 0) * 100% - 13px); width: 26px; height: 26px; max-width: none; opacity: var(--so, 0); transition: opacity .3s; filter: drop-shadow(0 2px 3px rgba(8,73,92,.3)); }
+
+/* Tour: panels slide in when switched */
+@media (prefers-reduced-motion: no-preference) {
+  .js .tour__panel.is-active { animation: panel-in .5s var(--ease); }
+}
+@keyframes panel-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; list-style: none; padding: 0; }
 .chips li { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); }
 .art-line { fill: none; stroke: currentColor; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; opacity: .55; }
@@ -599,6 +702,8 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
+<!-- Scroll progress: a small kingfisher flies along the line as the page scrolls (decorative). -->
+<div class="flightline" aria-hidden="true"><span class="flightline__bar"></span><img class="flightline__bird" src="assets/mascot/alcedo-kingfisher-launcher.webp" width="256" height="256" alt=""></div>
 
 <!-- HEADER — [COPY] labels · [DESTINATION] login/demo (placeholders until supplied) -->
 <header class="site-header" id="site-header">
@@ -751,23 +856,23 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           </ul>
           <p class="status">Implemented</p>
           <p class="note">Purchasing and Reports are for managers and administrators.</p>
-          <div class="bento__art" aria-hidden="true">
-            <svg viewBox="0 0 360 150">
-              <rect class="art-line draw" pathLength="1" x="8" y="8" width="150" height="134" rx="14"/>
-              <rect class="art-teal draw" pathLength="1" x="28" y="34" width="14" height="14" rx="3"/>
-              <path class="art-teal draw" pathLength="1" d="M31 41l3 3 6-7"/>
-              <path class="art-line draw" pathLength="1" d="M54 41h82"/>
-              <rect class="art-teal draw" pathLength="1" x="28" y="68" width="14" height="14" rx="3"/>
-              <path class="art-teal draw" pathLength="1" d="M31 75l3 3 6-7"/>
-              <path class="art-line draw" pathLength="1" d="M54 75h66"/>
-              <rect class="art-orange draw" pathLength="1" x="28" y="102" width="14" height="14" rx="3"/>
-              <path class="art-line draw" pathLength="1" d="M54 109h74"/>
-              <circle class="art-line draw" pathLength="1" cx="268" cy="62" r="48"/>
-              <path class="art-teal draw" pathLength="1" d="M268 62V34M268 62l20 12"/>
-              <path class="art-orange draw" pathLength="1" d="M268 14a48 48 0 0 1 42 25"/>
-              <path class="art-line draw" pathLength="1" d="M192 136h160M200 131v10M240 131v10M280 131v10M320 131v10"/>
-              <circle class="art-dot-teal" cx="268" cy="62" r="3"/>
-            </svg>
+          <!-- Playful demo (illustration, sample tasks): tick tonight's opening checklist. -->
+          <div class="opscheck" data-done="2">
+            <p class="opscheck__label mono">Try it · tonight’s opening checklist</p>
+            <div class="opscheck__body">
+              <ul class="opscheck__list">
+                <li><button type="button" class="opscheck__item" aria-pressed="true"><span class="opscheck__box" aria-hidden="true"></span>Fridges checked</button></li>
+                <li><button type="button" class="opscheck__item" aria-pressed="true"><span class="opscheck__box" aria-hidden="true"></span>Ice and garnish ready</button></li>
+                <li><button type="button" class="opscheck__item" aria-pressed="false"><span class="opscheck__box" aria-hidden="true"></span>Back bar counted</button></li>
+                <li><button type="button" class="opscheck__item" aria-pressed="false"><span class="opscheck__box" aria-hidden="true"></span>Temperatures logged</button></li>
+              </ul>
+              <div class="opscheck__ring" aria-hidden="true">
+                <svg viewBox="0 0 120 120"><circle class="opscheck__track" cx="60" cy="60" r="50"/><circle class="opscheck__fill" cx="60" cy="60" r="50" pathLength="1"/></svg>
+                <span class="opscheck__count">2/4</span>
+                <span class="opscheck__burst"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+              </div>
+            </div>
+            <p class="opscheck__status" role="status">2 of 4 done · opens at 17:00</p>
           </div>
         </li>
 
@@ -783,7 +888,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
             <p class="mascot-demo__label mono" id="mascot-demo-label">Mascot demonstration · not connected to the assistant</p>
             <div class="mascot-demo__row">
               <div class="mascot-demo__stage">
-                <div class="mascot-tilt"><img class="mascot-breathe" src="assets/mascot/alcedo-kingfisher.webp" width="579" height="600" alt="The Alcedo kingfisher mascot" loading="lazy" decoding="async"></div>
+                <button type="button" class="mascot-poke" aria-label="Say hello to the Alcedo kingfisher"><span class="mascot-hop"><span class="mascot-tilt"><img class="mascot-breathe" src="assets/mascot/alcedo-kingfisher.webp" width="579" height="600" alt="" loading="lazy" decoding="async"></span></span></button>
               </div>
               <div class="mascot-demo__side">
                 <div class="mascot-demo__controls" role="group" aria-label="Preview a mascot state" hidden>
@@ -848,19 +953,23 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
               <p class="status">Knowledge library — implemented</p>
             </div>
           </div>
-          <div class="bento__art" aria-hidden="true">
-            <svg viewBox="0 0 380 150">
-              <rect class="art-line draw" pathLength="1" x="6" y="10" width="170" height="104" rx="14"/>
-              <path class="art-orange draw" pathLength="1" d="M80 44v32l26-16z"/>
-              <path class="art-line draw" pathLength="1" d="M22 96h138"/>
-              <path class="art-teal draw" pathLength="1" d="M22 96h62"/>
-              <path class="art-line draw" pathLength="1" d="M206 30h160M206 62h160M206 94h160M206 126h160"/>
-              <circle class="art-teal draw" pathLength="1" cx="216" cy="30" r="7"/>
-              <circle class="art-teal draw" pathLength="1" cx="216" cy="62" r="7"/>
-              <circle class="art-line draw" pathLength="1" cx="216" cy="94" r="7"/>
-              <circle class="art-line draw" pathLength="1" cx="216" cy="126" r="7"/>
-              <path class="art-teal draw" pathLength="1" d="M212 30l3 3 5-6M212 62l3 3 5-6"/>
-            </svg>
+          <!-- Playful demo (illustration, sample lesson): play a lesson and watch the steps complete. -->
+          <div class="lesson" data-state="ready">
+            <p class="lesson__label mono">Try it · sample lesson</p>
+            <div class="lesson__player">
+              <button type="button" class="lesson__play" aria-label="Play the sample lesson"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="lesson__icon-play" d="M8 5.5v13l10.5-6.5z"/><path class="lesson__icon-replay" d="M5 12a7 7 0 1 0 2.1-5M5 4.5v3.6h3.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <div class="lesson__meta">
+                <p class="lesson__title">Stirred classics: Negroni</p>
+                <div class="lesson__bar" role="progressbar" aria-label="Lesson progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+              </div>
+            </div>
+            <ol class="lesson__steps">
+              <li>Chill the glass</li>
+              <li>Measure 30 / 30 / 30 ml</li>
+              <li>Stir for 30 seconds</li>
+              <li>Express the orange peel</li>
+            </ol>
+            <p class="lesson__status" role="status">4 steps · about 5 minutes</p>
           </div>
         </li>
       </ul>
@@ -1513,6 +1622,111 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
     }
     show(0, false);
     sync();
+  }
+
+  /* ---------- playful layer ---------- */
+  const finePointer = window.matchMedia('(pointer: fine)').matches;
+  // spotlight + gentle tilt on cards (pointer devices only; tilt off for reduced motion)
+  if (finePointer) {
+    document.querySelectorAll('.hcard, .bento__card, .route').forEach(function (card) {
+      card.addEventListener('pointermove', function (e) {
+        const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+        card.style.setProperty('--mx', (x * 100) + '%');
+        card.style.setProperty('--my', (y * 100) + '%');
+        if (!reduceMotion && card.classList.contains('hcard') && hero.classList.contains('is-revealed')) {
+          card.classList.add('tiltable');
+          card.style.setProperty('--rx', ((x - 0.5) * 5).toFixed(2) + 'deg');
+          card.style.setProperty('--ry', ((0.5 - y) * 5).toFixed(2) + 'deg');
+        }
+        card.classList.add('is-lit');
+      });
+      card.addEventListener('pointerleave', function () {
+        card.classList.remove('is-lit');
+        card.style.removeProperty('--rx'); card.style.removeProperty('--ry');
+        setTimeout(function () { if (!card.classList.contains('is-lit')) card.classList.remove('tiltable'); }, 350);
+      });
+    });
+  }
+
+  // Daily Operations checklist
+  const ops = document.querySelector('.opscheck');
+  if (ops) {
+    const items = Array.prototype.slice.call(ops.querySelectorAll('.opscheck__item'));
+    const count = ops.querySelector('.opscheck__count'), status = ops.querySelector('.opscheck__status');
+    const update = function (celebrate) {
+      const done = items.filter(function (b) { return b.getAttribute('aria-pressed') === 'true'; }).length;
+      ops.setAttribute('data-done', String(done));
+      ops.style.setProperty('--p', String(done / items.length));
+      count.textContent = done + '/' + items.length;
+      status.textContent = done === items.length ? 'All done · ready for service' : done + ' of ' + items.length + ' done · opens at 17:00';
+      if (celebrate && done === items.length) { ops.classList.remove('is-celebrating'); void ops.offsetWidth; ops.classList.add('is-celebrating'); }
+    };
+    items.forEach(function (b) { b.addEventListener('click', function () { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); update(true); }); });
+    update(false);
+  }
+
+  // Training lesson player
+  const lesson = document.querySelector('.lesson');
+  if (lesson) {
+    const play = lesson.querySelector('.lesson__play'), bar = lesson.querySelector('.lesson__bar');
+    const steps = Array.prototype.slice.call(lesson.querySelectorAll('.lesson__steps li'));
+    const lstatus = lesson.querySelector('.lesson__status');
+    let raf = 0;
+    const setP = function (p) {
+      lesson.style.setProperty('--lp', String(Math.round(p * 100)));
+      bar.setAttribute('aria-valuenow', String(Math.round(p * 100)));
+      steps.forEach(function (s, i) { s.classList.toggle('is-done', p >= (i + 1) / steps.length - 0.001); });
+    };
+    const finish = function () {
+      setP(1); lesson.setAttribute('data-state', 'done');
+      lstatus.textContent = 'Lesson complete · marked as done';
+      play.setAttribute('aria-label', 'Replay the sample lesson');
+    };
+    play.addEventListener('click', function () {
+      cancelAnimationFrame(raf);
+      lesson.setAttribute('data-state', 'playing');
+      lstatus.textContent = 'Playing…';
+      play.setAttribute('aria-label', 'Restart the sample lesson');
+      if (reduceMotion) { finish(); return; }
+      const t0 = performance.now(), DUR = 4200;
+      (function tick(now) {
+        const p = Math.min(1, (now - t0) / DUR);
+        setP(p);
+        if (p < 1) raf = requestAnimationFrame(tick); else finish();
+      })(t0);
+    });
+    setP(0);
+  }
+
+  // Mascot: tap to say hello
+  const poke = document.querySelector('.mascot-poke');
+  if (poke) {
+    const demoEl = document.querySelector('.mascot-demo'), mstatus = demoEl.querySelector('.mascot-demo__status');
+    let helloTimer = 0;
+    poke.addEventListener('click', function () {
+      demoEl.classList.remove('is-hopping'); void demoEl.offsetWidth; demoEl.classList.add('is-hopping');
+      const before = mstatus.getAttribute('data-saved') || mstatus.textContent;
+      mstatus.setAttribute('data-saved', before);
+      mstatus.textContent = 'Hello! I’m the Alcedo kingfisher.';
+      clearTimeout(helloTimer);
+      helloTimer = setTimeout(function () { mstatus.textContent = mstatus.getAttribute('data-saved'); mstatus.removeAttribute('data-saved'); }, 2200);
+    });
+    demoEl.querySelectorAll('.mascot-demo__controls button').forEach(function (b) { b.addEventListener('click', function () { clearTimeout(helloTimer); mstatus.removeAttribute('data-saved'); }); });
+  }
+
+  // Scroll progress kingfisher
+  const flight = document.querySelector('.flightline');
+  if (flight) {
+    let ticking = false;
+    const onScroll = function () {
+      ticking = false;
+      const max = document.documentElement.scrollHeight - innerHeight;
+      const sp = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
+      flight.style.setProperty('--sp', sp.toFixed(4));
+      flight.style.setProperty('--so', scrollY > innerHeight * 0.6 ? '1' : '0');
+    };
+    window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
+    onScroll();
   }
 
   /* ---------- below-the-fold reveal ---------- */

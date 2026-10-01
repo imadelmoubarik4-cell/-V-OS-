@@ -109,6 +109,29 @@ The approved Alcedo kingfisher replaces the robot everywhere in this prototype. 
   - **Progress:** Thinking shows an indeterminate `role="progressbar"`.
   - **Without JavaScript:** the static mascot shows and the buttons stay hidden.
 
+## Interactive and playful layer
+
+All interactions work by keyboard and touch. With reduced motion, the interactions still work, but without movement.
+
+- **Daily Operations:** "Try it · tonight's opening checklist", sample tasks.
+  - The four tasks are toggle buttons (`aria-pressed`).
+  - A progress ring and a status line (`role="status"`) follow the ticks.
+  - Completing all four shows "All done · ready for service", with a short burst of dots. The burst is skipped with reduced motion.
+- **Training:** "Try it · sample lesson", a mini player.
+  - Play runs a 4.2 s progress bar (`role="progressbar"`) and ticks off the four steps.
+  - At the end it shows "Lesson complete" and the button becomes Replay.
+  - With reduced motion, the lesson completes instantly.
+- **Mascot demo:** the kingfisher is a button, "Say hello".
+  - Pressing it gives a small whole-image hop and the greeting "Hello! I'm the Alcedo kingfisher."; the previous status returns after 2.2 s.
+  - With reduced motion there is no hop.
+- **Cards** (hero, bento and route cards):
+  - a soft spotlight follows the pointer;
+  - hero cards tilt up to 2.5° while hovered;
+  - bento and route cards lift by 3 px;
+  - pointer devices only, and no tilt or lift with reduced motion.
+- **Scroll progress:** a 3 px teal-to-orange line along the top of the window, with a small kingfisher riding it. It is decorative (`aria-hidden`).
+- **Tour:** the chosen screenshot panel slides in gently. This is off with reduced motion.
+
 ## Food Intelligence card
 
 The card shows an illustrated **Flavor Map**, modelled on the app's pairing ring. It is labelled "Flavor Map · illustration with sample data".
