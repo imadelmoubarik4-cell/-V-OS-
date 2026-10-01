@@ -138,12 +138,19 @@ begin
     for t in select c.relname from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r','v','m','p')
                and has_table_privilege('authenticated', c.oid, 'SELECT') loop
       begin
-        execute format('select count(*) from public.%I', t) into n;
+        -- S99 adds a self-row-only "read own profile" policy so an inactive invitee can
+        -- bootstrap onboarding. That own row is allowed; any OTHER readable row is a leak,
+        -- so profiles is counted excluding the caller's own id.
+        if t = 'profiles' then
+          execute format('select count(*) from public.profiles where id <> %L::uuid', who) into n;
+        else
+          execute format('select count(*) from public.%I', t) into n;
+        end if;
       exception when insufficient_privilege or raise_exception then n := 0;
       end;
       total := total + n;
     end loop;
-    insert into s96_rls values ('session ' || who || ' without an active profile reads no public rows', case when total = 0 then 'ok' else 'FAIL' end);
+    insert into s96_rls values ('session ' || who || ' without an active profile reads no public rows beyond its own profile', case when total = 0 then 'ok' else 'FAIL' end);
     ok := true;
     begin
       insert into public.suppliers (name) values ('s96 unauth');
@@ -335,9 +342,12 @@ reset session authorization;
 insert into s96_rls select 'no public function is executable by anon',
   case when not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace
     and has_function_privilege('anon', p.oid, 'EXECUTE')) then 'ok' else 'FAIL' end;
-insert into s96_rls select 'authenticated executes only the 16 reviewed public RPCs, all SECURITY INVOKER',
+insert into s96_rls select 'authenticated executes only the 17 reviewed public RPCs (16 invoker + the S99 atlas_auth_policy definer read)',
   case when not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace
     and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+    -- S99: atlas_auth_policy is the one reviewed browser-exposed SECURITY DEFINER read
+    -- (authenticated-only, search_path pinned, returns only the caller's own MFA policy).
+    and p.proname <> 'atlas_auth_policy'
     and (p.prosecdef or p.proname not in ('adjust_inventory','adjust_inventory_v2','atlas_apply_item_master_update',
       'atlas_apply_par_levels','atlas_data_review_rows','atlas_data_review_summary','atlas_par_level_evidence',
       'atlas_purchase_order_command','atlas_purchase_order_command_v2','atlas_purchase_order_detail',
