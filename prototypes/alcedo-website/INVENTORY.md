@@ -7,7 +7,7 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 |---|---|---:|---|---|---|
 | A | `prototypes/alcedo-website/404.html` | 1,532 | `4257f972160052709f523029e4f42772b8544e21eab75121f1c3ac7eb62a9247` | — | Authored: website page |
 | A | `prototypes/alcedo-website/INVENTORY.md` | — | (this file) | — | Authored |
-| A | `prototypes/alcedo-website/README.md` | 18,256 | `a4541c29312378a16fe568545f642206ec58175f35d596e3f6d75287bae5a03a` | — | Authored |
+| A | `prototypes/alcedo-website/README.md` | 18,234 | `8047f3eb7cd846edfdc2faf8702117f781efda2321b7fba640b59d9e6d3b85cd` | — | Authored |
 | A | `prototypes/alcedo-website/assets/brand/alcedo-horizontal-dark.svg` | 3,112 | `53003b7eb06cc133f699506759b48e04ecc334cdb1b9ecfed5b34b62f07d4460` | no (dark-surface deliverable) | Derived: kit symbol + outlined wordmark paths, uniform scale/translate only (tools/build_horizontal_lockup.py) |
 | A | `prototypes/alcedo-website/assets/brand/alcedo-horizontal-light.svg` | 3,122 | `542f346c67f54bc5a1b1724d125b3d76994880653aa84a532665af6188284838` | yes | Derived: kit symbol + outlined wordmark paths, uniform scale/translate only (tools/build_horizontal_lockup.py) |
 | A | `prototypes/alcedo-website/assets/brand/favicon.ico` | 3,742 | `c02f49970e8c7d23a2d6e37915a8083aa483c6437df2d70afa806d3e191deae0` | yes | ALCEDO Logo Kit v1.0 (supplied zip), byte-identical copy |
@@ -53,4 +53,4 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 | A | `prototypes/atlas-website/README.md` | 6,940 | `ab5d96636ab77718cc248d25c82191ae69d160786f7c1b8b8e97bdf23f9a862a` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 | A | `prototypes/atlas-website/index.html` | 199,966 | `f90fb4fef99102ff09cf146c4a8123925e46db540e58be74b76f45e2f769fcb0` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 
-Total (excluding this file): 3,123,191 bytes.
+Total (excluding this file): 3,123,169 bytes.
