@@ -56,7 +56,7 @@ tools/build_preview.py                  builds the single-file review copy
 Search `index.html` for the marker comments: `[ASSET: …]`, `[COPY]`, `[STATUS]`, `[DESTINATION]`, `[CROP]` and `[TIMING]`.
 
 1. **Video source and static final frame**
-   - **Video:** the `<source>` elements inside `#hero-video` are tried in order: local `assets/hero.mp4` first, then the reference URL `https://thinkingods.com/demos/kingfisher-hero/hero.mp4`. Reorder or replace them.
+   - **Video:** the `<source>` inside `#hero-video` is the local `assets/hero.mp4` (no third-party fallback, so the site loads nothing from other origins). Replace the file to change the footage.
    - **Final frame:** `#hero-still` is used for reduced motion, blocked autoplay, playback failure, no-JS, and as the thumbnail source when the video can't be drawn. When the footage changes, replace `assets/hero-final.webp` with the new last frame.
 2. **Logo**
    - **Header:** `assets/brand/alcedo-horizontal-light.svg`, shown at 58 px tall (about 185 px wide; the kit minimum is 180 px). Use `alcedo-horizontal-dark.svg` on dark or deep-teal surfaces.
