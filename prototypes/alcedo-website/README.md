@@ -40,9 +40,10 @@ assets/brand/logo-dark.svg, favicon.ico, icon-32.png, icon-180.png   kit files u
 assets/mascot/alcedo-mascot-poster.png / -head.png   the app's Alcedo AI mascot renders (byte-identical, main c8dc9f0)
 assets/mascot/alcedo-mascot.webp / -head.webp        web copies (600 px tall / 256 px badge)
 assets/fonts/*.woff2, LICENSE-OFL.txt                self-hosted fonts (SIL Open Font License)
-privacy.html                                         privacy notice
+privacy.html                                         privacy notice (English)
+personuvernd.html                                    privacy notice (Icelandic); keep both in step
 404.html                                             not-found page (stays noindex)
-robots.txt, sitemap.xml                              allow indexing; list the two pages
+robots.txt, sitemap.xml                              allow indexing; list the three pages
 netlify.toml                                         hosting config: security headers + hashed CSP (generated)
 assets/screens/*.webp                   product screenshots (current app, built-in test data)
 tools/build_horizontal_lockup.py        regenerates the two lockups from the kit
@@ -215,7 +216,7 @@ The screenshots show the Alcedo-branded pre-release build of the app, from PR #1
 ## Contact, privacy and third parties
 
 - **Demo and contact:** `Alcedo@Alcedo.is` (mailto links; no form, so the site itself collects nothing).
-- **Privacy:** `privacy.html` states that the site uses no cookies, analytics, tracking or forms. The controller is Coffee & Cocktails ehf. and the host is Netlify, Inc. One highlighted `[TO CONFIRM]` remains: the company's kennitala and registered address. The email provider is not chosen yet, so the notice describes it as "our email service provider"; if the chosen provider stores mail outside the EEA, name it in the notice.
+- **Privacy:** `privacy.html` states that the site uses no cookies, analytics, tracking or forms. The controller is Coffee & Cocktails ehf. (kt. 671124-0220, Geirsgata 17, 101 Reykjavík) and the host is Netlify, Inc. The Icelandic version is `personuvernd.html`; the two pages link to each other and declare each other with `hreflang`. The company details also appear in the site footer. The email provider is not chosen yet, so the notice describes it as "our email service provider"; if the chosen provider stores mail outside the EEA, name it in the notice.
 - **No third-party requests:** fonts are self-hosted (Instrument Serif, Manrope and JetBrains Mono, latin subset, SIL OFL), and the hero video is served from the site. A test serves the page with the production security headers, and checks that nothing outside the site is requested and that there are no CSP violations.
 
 ## Hosting
@@ -237,10 +238,9 @@ Recommended: **Netlify**, as its own site, separate from the application's.
 
 ## Open items before launch
 
-- **Owner details for the privacy page:** kennitala and registered address of Coffee & Cocktails ehf. (the remaining `[TO CONFIRM]` marker).
 - **Email:** `Alcedo@Alcedo.is` has no mail provider yet. Every contact link on the site points to it, so the mailbox must be set up and tested before launch.
 - **Application domain:** every Staff login link goes to `https://app.alcedo.is/`. Connect that subdomain to the application's Netlify site (with HTTPS) and test sign-in there before launch; the app's Supabase auth settings must allow the new origin for redirects.
 - **Domain:** `alcedo.is` is registered to the owner and Netlify is the chosen host (both confirmed 1 October 2026). What remains is connecting the domain (see Hosting above).
 - **Go-live switch:** done 1 October 2026. `noindex` was removed, canonical links point to `https://alcedo.is/`, the prototype footer lines were replaced by "© 2026 Coffee & Cocktails ehf.", and the title is now "Alcedo — Food & beverage operations, all in one place". If the primary domain on Netlify ends up being `www.alcedo.is`, change the canonical links and `sitemap.xml` to match.
 - **Brand approval:** the derived horizontal lockups.
-- **Legal review:** recommended for the privacy notice.
+- **Legal review:** recommended for the privacy notice, in both languages.
