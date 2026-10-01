@@ -68,7 +68,7 @@ Search `index.html` for the marker comments: `[ASSET: …]`, `[COPY]`, `[STATUS]
    - Status chips: `.status` = **Available**, `.status--soon` = **Coming soon**. A legend on the page explains both.
    - Screenshot labels (`.shot__label`): "Sample data", "Scripted demonstration · sample data", or "Sample lessons · pre-release build".
 5. **Destinations**
-   - **Staff login** links directly to `https://os-vabar.netlify.app`, the current application origin documented in `docs/DEPLOYMENT.md`. The `href` is set in the HTML so it works without JavaScript; search for the URL to change it.
+   - **Staff login** links directly to `https://app.alcedo.is/`, the application's address under the Alcedo domain (set by the owner on 1 October 2026; it previously pointed to `https://os-vabar.netlify.app`). Make sure `app.alcedo.is` is connected to the application before launch. The `href` is set in the HTML so it works without JavaScript; search for the URL to change it.
    - **Request a demo** links to `mailto:Alcedo@Alcedo.is` (search the page for that address to change it); a Copy address button appears where the browser allows it.
    - **Privacy** links to `privacy.html`.
    - Nothing is submitted, collected or stored, and no second authentication system exists.
@@ -239,6 +239,7 @@ Recommended: **Netlify**, as its own site, separate from the application's.
 
 - **Owner details for the privacy page:** kennitala and registered address of Coffee & Cocktails ehf. (the remaining `[TO CONFIRM]` marker).
 - **Email:** `Alcedo@Alcedo.is` has no mail provider yet. Every contact link on the site points to it, so the mailbox must be set up and tested before launch.
+- **Application domain:** every Staff login link goes to `https://app.alcedo.is/`. Connect that subdomain to the application's Netlify site (with HTTPS) and test sign-in there before launch; the app's Supabase auth settings must allow the new origin for redirects.
 - **Domain:** `alcedo.is` is registered to the owner and Netlify is the chosen host (both confirmed 1 October 2026). What remains is connecting the domain (see Hosting above).
 - **Go-live switch:** done 1 October 2026. `noindex` was removed, canonical links point to `https://alcedo.is/`, the prototype footer lines were replaced by "© 2026 Coffee & Cocktails ehf.", and the title is now "Alcedo — Food & beverage operations, all in one place". If the primary domain on Netlify ends up being `www.alcedo.is`, change the canonical links and `sitemap.xml` to match.
 - **Brand approval:** the derived horizontal lockups.
