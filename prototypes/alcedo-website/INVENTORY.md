@@ -29,7 +29,7 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 | A | `prototypes/alcedo-website/assets/screens/shifts.webp` | 58,018 | `61dcc0397496f4133c63052d0fc350b5d63b8dfc39b389b78a2e8cdd3c21e1dd` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
 | A | `prototypes/alcedo-website/assets/screens/stock-count.webp` | 43,016 | `e68188e7130b68e4af65fb977173e5b872b62d7c6b6ca66b881e95c9248b2859` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
 | A | `prototypes/alcedo-website/assets/screens/training.webp` | 54,522 | `8419522a9bf624fe292cac588cfcf32166728abae36572d3aaffa579e91dd3ef` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
-| A | `prototypes/alcedo-website/index.html` | 116,612 | `5c3458d403c05513fd98f727e17d09c1ecef173f94dd05ed5b4923143ccc18ca` | — | Authored |
+| A | `prototypes/alcedo-website/index.html` | 116,854 | `2c7e76a7d51fbee94dfc360b6f89dfd802c8589be5f57d22c7e5dc21c5794364` | — | Authored |
 | A | `prototypes/alcedo-website/tools/build_horizontal_lockup.py` | 2,822 | `1fe783529bceb957b5208afc2e658f9a1dc849afa9b424b88570c1406a2ff8dd` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_inventory.py` | 3,520 | `c57ed00be1160605117a576e9e28319f98f0c2af3f11cdb07ee0c7304ed6ded4` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_mascot_assets.py` | 2,065 | `fea963334e47ac2bad92b460b2684d3b437338c6116981e85d7771edc8e11a50` | — | Authored: build/verification tool |
@@ -37,4 +37,4 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 | A | `prototypes/atlas-website/README.md` | 6,940 | `ab5d96636ab77718cc248d25c82191ae69d160786f7c1b8b8e97bdf23f9a862a` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 | A | `prototypes/atlas-website/index.html` | 199,966 | `f90fb4fef99102ff09cf146c4a8123925e46db540e58be74b76f45e2f769fcb0` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 
-Total (excluding this file): 2,732,146 bytes.
+Total (excluding this file): 2,732,388 bytes.

@@ -83,6 +83,7 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
   --gutter: clamp(16px, 4vw, 56px);
+  --section-gap: clamp(64px, 8vw, 112px);   /* one vertical rhythm between all sections */
   --header-h: 76px;
   --radius: 20px;
   --radius-lg: 26px;
@@ -342,9 +343,10 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 /* =====================================================================
    5. DISCOVER ALCEDO
    ===================================================================== */
-.discover { position: relative; background: linear-gradient(180deg, var(--bg) 0, var(--ivory) 220px); border-top: 1px solid var(--line); padding: clamp(80px, 11vw, 140px) var(--gutter) clamp(64px, 8vw, 110px); }
+.discover { position: relative; background: linear-gradient(180deg, var(--bg) 0, var(--ivory) 220px); padding: var(--section-gap) var(--gutter) calc(var(--section-gap) / 2); }
 .wrap { max-width: 1280px; margin: 0 auto; }
-.intro { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 72px; align-items: end; padding-bottom: clamp(44px, 6vw, 72px); }
+.intro { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 72px; align-items: start; padding-bottom: clamp(44px, 6vw, 72px); }
+.intro .intro__text { margin-top: 34px; }   /* lines the paragraph up with the heading, not the kicker */
 .kicker { color: var(--brand-teal); display: flex; align-items: center; gap: 12px; }
 .kicker::before { content: ""; width: 22px; height: 1px; background: currentColor; }
 .section-title { margin-top: 18px; font-family: var(--font-serif); font-weight: 400; font-size: clamp(40px, 5vw, 70px); line-height: 1; letter-spacing: -.015em; text-wrap: balance; }
@@ -553,7 +555,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .bento__card--ops .art-orange { stroke: var(--orange-2); }
 
 /* Product tour */
-.tour { padding: clamp(64px, 8vw, 110px) var(--gutter); background: var(--ivory); border-top: 1px solid var(--line); }
+.tour { padding: calc(var(--section-gap) / 2) var(--gutter) var(--section-gap); background: var(--ivory); border-top: 1px solid var(--line); }
 .tour__head { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px 72px; align-items: end; margin-bottom: 36px; }
 .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px; margin: 0 -4px 22px; scrollbar-width: thin; }
 .tab {
@@ -583,7 +585,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .shot figcaption { padding: 10px 14px; border-top: 1px solid var(--line); background: var(--card); font-size: 12.5px; color: var(--ink-3); }
 
 /* Two routes */
-.routes { padding: 0 var(--gutter) clamp(64px, 8vw, 110px); background: var(--ivory); }
+.routes { padding: 0 var(--gutter) var(--section-gap); background: var(--ivory); }
 .routes__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .route { display: flex; flex-direction: column; padding: clamp(26px, 3vw, 40px); border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow-soft); }
 .route--owners { background: var(--panel); color: var(--on-panel); border-color: var(--panel-line); }
@@ -607,7 +609,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 /* =====================================================================
    6. CTA, DESTINATIONS, FOOTER
    ===================================================================== */
-.closing { padding: 0 var(--gutter) clamp(72px, 9vw, 120px); background: var(--ivory); }
+.closing { padding: 0 var(--gutter) var(--section-gap); background: var(--ivory); }
 .cta { position: relative; overflow: hidden; background: var(--panel); color: var(--on-panel); border-radius: 32px; box-shadow: var(--shadow); padding: clamp(44px, 7vw, 96px) clamp(24px, 6vw, 88px); display: grid; grid-template-columns: minmax(0, 1.4fr) auto; gap: 32px 48px; align-items: end; }
 .cta::after { content: ""; position: absolute; right: -8%; top: -30%; width: 46%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--panel-line); pointer-events: none; }
 .cta .kicker { color: var(--teal-2); }
@@ -675,6 +677,8 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   .hero__strip { padding-right: 0; gap: 8px 24px; }
   .hero__control { bottom: auto; top: calc(var(--stage-h) - 56px); right: 16px; }
   .intro, .tour__head { grid-template-columns: 1fr; }
+  .intro { gap: 20px; }
+  .intro .intro__text { margin-top: 0; }
   .bento { grid-template-columns: 1fr; grid-template-rows: none; }
   .bento__card--ops, .bento__card--training { grid-row: auto; grid-column: auto; }
   .bento__card--training { grid-template-columns: 1fr; }
