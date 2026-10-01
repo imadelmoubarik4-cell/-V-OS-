@@ -20,6 +20,9 @@ window.VABAR_CONFIG = {
   // Knowledge › Training: private video SOPs (signed uploads, short-lived playback),
   // chapters, procedure steps, progress and explicit completion.
   TRAINING_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-training",
+  // Bookings (S99): the one authoritative availability + reservation service for
+  // the staff booking workspace and manager configuration (areas, tables, rules).
+  BOOKINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-bookings",
   REPORTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-reports",
   SYSTEM_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-system",
   SETTINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-settings",
@@ -196,6 +199,16 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/training-workspace.js?v=20261015-s98',
   globalName: 'AtlasTraining',
   dataAttribute: 'atlasTraining',
+}));
+
+// S99: Bookings. The staff day view (floor plan + list, add booking, assign/move,
+// status lifecycle) and manager configuration, through the atlas-bookings gateway.
+// Registers the shell view 'bookings' for #bookings and #bookings/config.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/bookings-workspace.css?v=20261016-s99',
+  scriptPath: 'assets/js/bookings-workspace.js?v=20261016-s99',
+  globalName: 'AtlasBookings',
+  dataAttribute: 'atlasBookings',
 }));
 
 // Checkpoint H replaces the Reports placeholder with a permission-aware,

@@ -339,6 +339,12 @@ test('changed scripts carry the S88 cache key', () => {
   assert.ok(index.includes('href="assets/css/marketing-workspace.css?v=20261004-s94c"'), 'marketing-workspace.css');
   assert.ok(config.includes("stylesheetPath: 'assets/css/settings-workspace.css?v=20261004-s94'"), 'settings-workspace.css');
   assert.ok(index.includes('href="assets/css/settings-workspace.css?v=20261004-s94"'), 'settings-workspace.css');
+  // S99 Bookings: the staff workspace + manager configuration load from both
+  // index.html (static tag + link) and config.js (runtime loader) on one key.
+  assert.ok(index.includes('<script src="assets/js/bookings-workspace.js?v=20261016-s99"></script>'), 'bookings-workspace.js');
+  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/bookings-workspace.css?v=20261016-s99">'), 'bookings-workspace.css');
+  assert.ok(config.includes("scriptPath: 'assets/js/bookings-workspace.js?v=20261016-s99'"), 'bookings-workspace.js loader');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/bookings-workspace.css?v=20261016-s99'"), 'bookings-workspace.css loader');
   assert.match(config, /window\.AtlasShell\.load\(scriptPath/);
 });
 

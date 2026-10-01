@@ -36,6 +36,7 @@
   <link rel="stylesheet" href="assets/css/shifts-workspace.css">
   <link rel="stylesheet" href="assets/css/knowledge-workspace.css">
   <link rel="stylesheet" href="assets/css/training-workspace.css?v=20261015-s98">
+  <link rel="stylesheet" href="assets/css/bookings-workspace.css?v=20261016-s99">
   <link rel="stylesheet" href="assets/css/atlas-shell.css?v=20260930-polish1">
   <!-- Runtime module stylesheets, in the order config.js and the bootstraps used to
        append them. Hrefs match their loaders exactly (the loaders de-duplicate by href
@@ -111,6 +112,7 @@
               <a class="nav-item" href="#inventory" data-view="inventory" data-nav-id="inventory" aria-label="Inventory"><i data-lucide="package" aria-hidden="true"></i><span class="nav-item-label">Inventory</span></a>
               <a class="nav-item" href="#recipes" data-view="recipes" data-nav-id="recipes" aria-label="Recipes"><i data-lucide="martini" aria-hidden="true"></i><span class="nav-item-label">Recipes</span></a>
               <a class="nav-item" href="#purchasing" data-view="suppliers" data-nav-id="purchasing" aria-label="Purchasing" hidden><i data-lucide="truck" aria-hidden="true"></i><span class="nav-item-label">Purchasing</span></a>
+              <a class="nav-item" href="#bookings" data-view="bookings" data-nav-id="bookings" aria-label="Bookings"><i data-lucide="calendar-check" aria-hidden="true"></i><span class="nav-item-label">Bookings</span></a>
             </div>
             <div class="nav-group" data-nav-group="people">
               <div class="nav-label" role="presentation">People</div>
@@ -173,6 +175,8 @@
           <div id="knowledge-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Knowledge…</p></div>
           <!-- Training (#knowledge/training, #knowledge/training/<lesson>): rendered by assets/js/training-workspace.js as the 'training' view. -->
           <div id="training-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Training…</p></div>
+          <!-- Bookings (#bookings, #bookings/config, #bookings/<date>): rendered by assets/js/bookings-workspace.js as the 'bookings' view. -->
+          <div id="bookings-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Bookings…</p></div>
           <div id="reports-view" style="display:none;"></div>
           <div id="ai-view" style="display:none;"></div>
           <div id="not-found-view" style="display:none;"></div>
@@ -218,6 +222,7 @@
 <script src="assets/js/shifts-workspace.js?v=20260929-s90f"></script>
 <script src="assets/js/knowledge-workspace.js?v=20261003-bot1"></script>
 <script src="assets/js/training-workspace.js?v=20260930-polish1"></script>
+<script src="assets/js/bookings-workspace.js?v=20261016-s99"></script>
 <script src="assets/js/s38-app-remediation.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-search.js?v=20260929-s90u"></script>
 <script src="assets/js/atlas-chrome.js?v=20261003-bot1"></script>

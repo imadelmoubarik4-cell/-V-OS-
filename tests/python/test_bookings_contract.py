@@ -117,8 +117,12 @@ class BookingsContractTests(unittest.TestCase):
     def test_function_config_registers_bookings_gateway(self):
         self.assertRegex(CONFIG_TOML, r"\[functions\.atlas-bookings\]\s*\nverify_jwt = false")
 
-    # The frontend BOOKINGS_API endpoint + its ratchets land with the browser module that
-    # reads it (the staff workspace), so that assertion lives with the frontend step.
+    def test_frontend_endpoint_inside_configured_host(self):
+        # rehearsal-boundary requires every *_API to start with SUPABASE_URL/functions/v1/.
+        self.assertRegex(
+            CONFIG_JS,
+            r'BOOKINGS_API:\s*"https://dnefgcmjcgxlynycxkts\.supabase\.co/functions/v1/atlas-bookings"',
+        )
 
 
 if __name__ == "__main__":

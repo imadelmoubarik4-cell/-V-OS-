@@ -36,8 +36,8 @@ def _runtime_endpoints(source):
     endpoints.setdefault("SPRINT4_BRIEFING_API", "atlas-sprint4-briefing")
     endpoints.setdefault("INVENTORY_SCANNER_API", "atlas-inventory-scanner")
     endpoints["IMPORT_WORKER_API"] = "atlas-import-worker"
-    if len(endpoints) != 19:
-        raise ValueError(f"Expected 19 runtime endpoints, found {len(endpoints)}.")
+    if len(endpoints) != 20:
+        raise ValueError(f"Expected 20 runtime endpoints, found {len(endpoints)}.")
     return endpoints
 
 

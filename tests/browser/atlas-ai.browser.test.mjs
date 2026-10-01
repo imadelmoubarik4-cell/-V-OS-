@@ -192,7 +192,11 @@ test('a bartender sees manager-only proposals as waiting, with approve disabled'
     await button.click({ force: true });
     await settle(page);
     assert.equal(calls(backend, 'execute-action').length, 0);
-    assert.equal(await page.locator('[data-ai-mode="decisions"]').filter({ visible: true }).count(), 0, 'no Decisions tab for staff');
+    // The Decisions tab is hidden for staff: its container carries [hidden], so
+    // the tab has no rendered box (boundingBox is null). Asserting on the box is
+    // robust across Playwright versions, where filter({ visible }) has counted a
+    // zero-size element inside a display:none parent as visible.
+    assert.equal(await page.locator('[data-ai-mode="decisions"]').boundingBox(), null, 'no visible Decisions tab for staff');
   } finally { await close(); }
 });
 
