@@ -301,8 +301,8 @@
       "files": [
         {
           "path": "functions/atlas-team-profile-photos/index.ts",
-          "source_sha256": "898cf5a49fe973d4e71dd0e8f220724322ab480fd6f9af83fe1c4e9bc2c4a7e6",
-          "candidate_sha256": "599287603d99024659b45c2b44525f4183960fec85af756fd8906ac60717e2af"
+          "source_sha256": "c6f96448bc069e7aa22d97fa5a1adb0657ec0203524365a21155f88d2649bc32",
+          "candidate_sha256": "d3d3a3eae29a7cb51786be0b68afea8045cfdd797fbca6e919803fe57ef2def7"
         },
         {
           "path": "functions/_shared/auth.mjs",
@@ -318,8 +318,8 @@
       "files": [
         {
           "path": "functions/atlas-team-profiles/index.ts",
-          "source_sha256": "a26a632cfdf43d9dae79a0bba04edb666be65393f2e624af5929424749c85946",
-          "candidate_sha256": "1f0a47d18404edcc3ab5e7c5889370c543412d230e9ffea88415bc087756b1bc"
+          "source_sha256": "eb8ae27168d3e8a7bba4fb1288f98c241f766acb1e7187d6862a63a34fc66dae",
+          "candidate_sha256": "c54803bf05a4607868a3afc971c7868a5c62cf782b9b5b160b0634ba09a5b76a"
         },
         {
           "path": "functions/_shared/auth.mjs",
