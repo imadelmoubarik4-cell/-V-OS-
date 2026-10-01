@@ -39,9 +39,20 @@ export function jsonResponse(value, status = 200, headers = {}) {
   });
 }
 
+// Advisory Retry-After (seconds) for a rate-limited response. The per-minute
+// throttle clears quickly; budget/turn caps roll over on a longer boundary, so
+// we only promise a soon-retry for the throttle and give a conservative hint
+// otherwise. Header only — never relied on for enforcement (that is the DB's).
+function retryAfterFor(error) {
+  if (!(error instanceof ApiError) || error.code !== "rate_limited") return null;
+  return error.extra?.reason === "slow_down" ? 30 : 3600;
+}
+
 export function errorResponse(error) {
   if (error instanceof ApiError) {
-    return jsonResponse({ error_code: error.code, message: error.message, ...error.extra }, error.status);
+    const retryAfter = retryAfterFor(error);
+    const headers = retryAfter === null ? {} : { "retry-after": String(retryAfter) };
+    return jsonResponse({ error_code: error.code, message: error.message, ...error.extra }, error.status, headers);
   }
   if (error && typeof error.status === "number" && error.name === "AuthError") {
     const code = error.status === 401 ? "unauthorized" : error.status === 403 ? "forbidden" : "unavailable";
@@ -129,10 +140,22 @@ const reasonAfter = (message, prefix, allowed) => {
   const reason = message.slice(prefix.length).trim();
   return allowed.has(reason) ? { reason } : {};
 };
+// Classify a `rate_limited:` message (S88 turn limit + S100 throttle/budget) so
+// the browser and the block-event recorder can tell the causes apart. The
+// per-minute throttle ("slow_down") clears quickly; budgets/turns roll over on a
+// longer boundary. Unknown text falls back to the generic code.
+const rateLimitReason = (message) => {
+  const rest = message.slice("rate_limited:".length).trim();
+  if (rest.startsWith("too many")) return "slow_down";
+  if (rest.startsWith("daily AI budget")) return "budget_daily";
+  if (rest.startsWith("monthly AI budget")) return "budget_monthly";
+  if (rest.startsWith("daily")) return "turn_limit";
+  return "rate_limited";
+};
 const RPC_ERRORS = [
   // S88 hardening codes are matched by message prefix first (the SQLSTATEs
   // 55000/53400 are shared with conflict and other limits).
-  { test: (_code, message) => message.startsWith("rate_limited:"), status: 429, code: "rate_limited", message: "You've reached an Atlas AI limit. Please wait and try again." },
+  { test: (_code, message) => message.startsWith("rate_limited:"), status: 429, code: "rate_limited", message: "You've reached an Atlas AI limit. Please wait and try again.", extra: (message) => ({ reason: rateLimitReason(message) }) },
   { test: (_code, message) => message.startsWith("voice_quota_exceeded:"), status: 429, code: "voice_quota_exceeded", message: "You've reached today's live voice limit. Voice notes and text still work.", extra: (message) => reasonAfter(message, "voice_quota_exceeded:", VOICE_QUOTA_REASONS) },
   { test: (_code, message) => message.startsWith("upload_quota_exceeded:"), status: 429, code: "upload_quota_exceeded", message: "You've reached today's upload limit for Atlas AI. It resets within 24 hours.", extra: (message) => reasonAfter(message, "upload_quota_exceeded:", UPLOAD_QUOTA_REASONS) },
   { test: (_code, message) => message.startsWith("voice_session_inactive:"), status: 409, code: "voice_session_inactive", message: "This live voice session has ended. Start a new one to continue." },
