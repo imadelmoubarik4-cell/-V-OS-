@@ -1,9 +1,9 @@
-# Alcedo website — platform preview (prototype)
+# Alcedo website (alcedo.is)
 
-This is a website prototype for **Alcedo**, the proposed new brand direction for the restaurant operations platform currently called Atlas. It is **for review only**:
+This is the public website for **Alcedo**, the new brand for the restaurant operations platform currently called Atlas, operated by Coffee & Cocktails ehf.
 
-- not deployed, not linked from the application, and marked `noindex`;
-- the Atlas application, its authentication, database names and production branding are unchanged. Nothing in `apps/` or `scripts/` is modified by this work.
+- **Live mode:** switched on 1 October 2026 at the owner's request. Search engines may index the pages, which carry canonical links to `https://alcedo.is/`. Nothing is published until the Netlify site is set up and the domain connected (see Hosting).
+- **No app changes:** the Atlas application, its authentication, database names and production branding are unchanged. Nothing in `apps/` or `scripts/` is modified by this work.
 
 `index.html` holds all CSS and JavaScript inline, with no framework and no build step. Media are separate files in `assets/`.
 
@@ -41,7 +41,8 @@ assets/mascot/alcedo-mascot-poster.png / -head.png   the app's Alcedo AI mascot 
 assets/mascot/alcedo-mascot.webp / -head.webp        web copies (600 px tall / 256 px badge)
 assets/fonts/*.woff2, LICENSE-OFL.txt                self-hosted fonts (SIL Open Font License)
 privacy.html                                         privacy notice
-404.html                                             not-found page
+404.html                                             not-found page (stays noindex)
+robots.txt, sitemap.xml                              allow indexing; list the two pages
 netlify.toml                                         hosting config: security headers + hashed CSP (generated)
 assets/screens/*.webp                   product screenshots (current app, built-in test data)
 tools/build_horizontal_lockup.py        regenerates the two lockups from the kit
@@ -214,7 +215,7 @@ The screenshots show the Alcedo-branded pre-release build of the app, from PR #1
 ## Contact, privacy and third parties
 
 - **Demo and contact:** `Alcedo@Alcedo.is` (mailto links; no form, so the site itself collects nothing).
-- **Privacy:** `privacy.html` states that the site uses no cookies, analytics, tracking or forms. It has three highlighted `[TO CONFIRM]` details only the owner can supply: the legal entity (name, kennitala, address), the hosting provider and the email provider.
+- **Privacy:** `privacy.html` states that the site uses no cookies, analytics, tracking or forms. The controller is Coffee & Cocktails ehf. and the host is Netlify, Inc. One highlighted `[TO CONFIRM]` remains: the company's kennitala and registered address. The email provider is not chosen yet, so the notice describes it as "our email service provider"; if the chosen provider stores mail outside the EEA, name it in the notice.
 - **No third-party requests:** fonts are self-hosted (Instrument Serif, Manrope and JetBrains Mono, latin subset, SIL OFL), and the hero video is served from the site. A test serves the page with the production security headers, and checks that nothing outside the site is requested and that there are no CSP violations.
 
 ## Hosting
@@ -236,8 +237,9 @@ Recommended: **Netlify**, as its own site, separate from the application's.
 
 ## Open items before launch
 
-- **Owner details for the privacy page:** legal entity, hosting provider and email provider (the `[TO CONFIRM]` markers).
-- **Domain:** confirm `alcedo.is` is registered and choose the host.
-- **Go-live switch:** remove `noindex` from `index.html` and `privacy.html`, remove the footer's "Prototype — not for publication" and "Intended domain" lines, and change the title (drop "(prototype)").
+- **Owner details for the privacy page:** kennitala and registered address of Coffee & Cocktails ehf. (the remaining `[TO CONFIRM]` marker).
+- **Email:** `Alcedo@Alcedo.is` has no mail provider yet. Every contact link on the site points to it, so the mailbox must be set up and tested before launch.
+- **Domain:** `alcedo.is` is registered to the owner and Netlify is the chosen host (both confirmed 1 October 2026). What remains is connecting the domain (see Hosting above).
+- **Go-live switch:** done 1 October 2026. `noindex` was removed, canonical links point to `https://alcedo.is/`, the prototype footer lines were replaced by "© 2026 Coffee & Cocktails ehf.", and the title is now "Alcedo — Food & beverage operations, all in one place". If the primary domain on Netlify ends up being `www.alcedo.is`, change the canonical links and `sitemap.xml` to match.
 - **Brand approval:** the derived horizontal lockups.
 - **Legal review:** recommended for the privacy notice.
