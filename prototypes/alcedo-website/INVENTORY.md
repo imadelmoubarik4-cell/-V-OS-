@@ -5,7 +5,7 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 
 | Status | Path | Bytes | SHA-256 | Used by Alcedo page | Provenance |
 |---|---|---:|---|---|---|
-| A | `prototypes/alcedo-website/404.html` | 1,532 | `4257f972160052709f523029e4f42772b8544e21eab75121f1c3ac7eb62a9247` | — | Authored |
+| A | `prototypes/alcedo-website/404.html` | 1,532 | `4257f972160052709f523029e4f42772b8544e21eab75121f1c3ac7eb62a9247` | — | Authored: website page |
 | A | `prototypes/alcedo-website/INVENTORY.md` | — | (this file) | — | Authored |
 | A | `prototypes/alcedo-website/README.md` | 17,345 | `9e69b654ca195407750a091270bb807b0531588879bc82060ac88b6b66294621` | — | Authored |
 | A | `prototypes/alcedo-website/assets/brand/alcedo-horizontal-dark.svg` | 3,112 | `53003b7eb06cc133f699506759b48e04ecc334cdb1b9ecfed5b34b62f07d4460` | no (dark-surface deliverable) | Derived: kit symbol + outlined wordmark paths, uniform scale/translate only (tools/build_horizontal_lockup.py) |
@@ -16,21 +16,21 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 | A | `prototypes/alcedo-website/assets/brand/logo-color.svg` | 3,256 | `a2bc14805de7189c4ee7a168c639944d4ef265d6ef16205cc515a2934938646b` | no (source kept for tools) | ALCEDO Logo Kit v1.0 (supplied zip), byte-identical copy |
 | A | `prototypes/alcedo-website/assets/brand/logo-dark.svg` | 3,351 | `0ac9c47c8a3560d69a19ab3e950b932e76e205a1389eb267a82cc553e81aa151` | yes | ALCEDO Logo Kit v1.0 (supplied zip), byte-identical copy |
 | A | `prototypes/alcedo-website/assets/brand/symbol-color.svg` | 1,014 | `910ebf208c6cf1c38e5fab4fc4b9394fb38aef655c15a44160256380a1d60b9d` | no (source kept for tools) | ALCEDO Logo Kit v1.0 (supplied zip), byte-identical copy |
-| A | `prototypes/alcedo-website/assets/fonts/LICENSE-OFL.txt` | 13,663 | `027f8d2c4f050f81cc121bfac884dbc18fbdf47afdf48281836b170f6a3a1644` | no (source kept for tools) | Authored |
-| A | `prototypes/alcedo-website/assets/fonts/instrument-serif-latin-400-italic.woff2` | 22,128 | `5a51946dfffa82972bc98745359c46761515641fda557c25116459a9f83da4a7` | yes | Authored |
-| A | `prototypes/alcedo-website/assets/fonts/instrument-serif-latin-400-normal.woff2` | 21,032 | `5eb09b5ac0e28b67c2f041c8ba6d244604ca0c0980d65912ab2d47fed84ddc31` | yes | Authored |
-| A | `prototypes/alcedo-website/assets/fonts/jetbrains-mono-latin-400-normal.woff2` | 21,168 | `14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb` | yes | Authored |
-| A | `prototypes/alcedo-website/assets/fonts/jetbrains-mono-latin-500-normal.woff2` | 21,832 | `cb182feeed4d798ff6961d3c79f7026279448fca0676438aaecb21f3fc39553a` | yes | Authored |
-| A | `prototypes/alcedo-website/assets/fonts/manrope-latin-400-normal.woff2` | 14,108 | `849290ef12a2eeb9af5c11924120d11aa4ae8b435ed3347d7fc8bc240c293ca3` | yes | Authored |
-| A | `prototypes/alcedo-website/assets/fonts/manrope-latin-500-normal.woff2` | 14,044 | `19874318747181a650eda439c37955220b849d9c4797c9e0718ee67d4bf929bc` | yes | Authored |
-| A | `prototypes/alcedo-website/assets/fonts/manrope-latin-600-normal.woff2` | 14,172 | `f7ac6258da20ab7541939b59851155753d1d24f1b30cbcb949077a3faa3d1593` | yes | Authored |
-| A | `prototypes/alcedo-website/assets/fonts/manrope-latin-700-normal.woff2` | 14,212 | `d2a12c85a831e4b5db341767d0347fa3d1361d22a1fcb3e361a16b6c90080f71` | yes | Authored |
+| A | `prototypes/alcedo-website/assets/fonts/LICENSE-OFL.txt` | 13,663 | `027f8d2c4f050f81cc121bfac884dbc18fbdf47afdf48281836b170f6a3a1644` | no (source kept for tools) | Font licences (SIL OFL 1.1) |
+| A | `prototypes/alcedo-website/assets/fonts/instrument-serif-latin-400-italic.woff2` | 22,128 | `5a51946dfffa82972bc98745359c46761515641fda557c25116459a9f83da4a7` | yes | Font file from @fontsource v5.3.0 (latin subset), SIL Open Font License |
+| A | `prototypes/alcedo-website/assets/fonts/instrument-serif-latin-400-normal.woff2` | 21,032 | `5eb09b5ac0e28b67c2f041c8ba6d244604ca0c0980d65912ab2d47fed84ddc31` | yes | Font file from @fontsource v5.3.0 (latin subset), SIL Open Font License |
+| A | `prototypes/alcedo-website/assets/fonts/jetbrains-mono-latin-400-normal.woff2` | 21,168 | `14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb` | yes | Font file from @fontsource v5.3.0 (latin subset), SIL Open Font License |
+| A | `prototypes/alcedo-website/assets/fonts/jetbrains-mono-latin-500-normal.woff2` | 21,832 | `cb182feeed4d798ff6961d3c79f7026279448fca0676438aaecb21f3fc39553a` | yes | Font file from @fontsource v5.3.0 (latin subset), SIL Open Font License |
+| A | `prototypes/alcedo-website/assets/fonts/manrope-latin-400-normal.woff2` | 14,108 | `849290ef12a2eeb9af5c11924120d11aa4ae8b435ed3347d7fc8bc240c293ca3` | yes | Font file from @fontsource v5.3.0 (latin subset), SIL Open Font License |
+| A | `prototypes/alcedo-website/assets/fonts/manrope-latin-500-normal.woff2` | 14,044 | `19874318747181a650eda439c37955220b849d9c4797c9e0718ee67d4bf929bc` | yes | Font file from @fontsource v5.3.0 (latin subset), SIL Open Font License |
+| A | `prototypes/alcedo-website/assets/fonts/manrope-latin-600-normal.woff2` | 14,172 | `f7ac6258da20ab7541939b59851155753d1d24f1b30cbcb949077a3faa3d1593` | yes | Font file from @fontsource v5.3.0 (latin subset), SIL Open Font License |
+| A | `prototypes/alcedo-website/assets/fonts/manrope-latin-700-normal.woff2` | 14,212 | `d2a12c85a831e4b5db341767d0347fa3d1361d22a1fcb3e361a16b6c90080f71` | yes | Font file from @fontsource v5.3.0 (latin subset), SIL Open Font License |
 | A | `prototypes/alcedo-website/assets/hero-final.webp` | 20,142 | `fad5a9ae28fc81acfaf80d10ab2eb94d7c7c41ea8e42dbc51783fafd99dbbbce` | yes | Derived: last frame (8.00 s) of hero.mp4, ffmpeg extract, WebP q80 |
 | A | `prototypes/alcedo-website/assets/hero.mp4` | 1,408,523 | `4caf7b35565e6f092eaec3cc9d653d553a47eb2737ae5e8288703d58376540df` | yes | Supplied upload, byte-identical (H.264 High, 1280×720, 24 fps, 8.0 s) |
-| A | `prototypes/alcedo-website/assets/mascot/alcedo-mascot-head.png` | 188,447 | `7280ee9a98e8d73c3cd0b41f95b6c153d959cbea2bbc407f8631ccc2c523028a` | no (source kept for tools) | Derived: mascot master, alpha clean-up and rectangular crop only (tools/build_mascot_assets.py) |
-| A | `prototypes/alcedo-website/assets/mascot/alcedo-mascot-head.webp` | 8,062 | `8a0b0cb8decbd1850f794446443aba6ce4e2f7d0018f76f51679fe5247f6fb84` | yes | Derived: mascot master, alpha clean-up and rectangular crop only (tools/build_mascot_assets.py) |
-| A | `prototypes/alcedo-website/assets/mascot/alcedo-mascot-poster.png` | 376,018 | `4414098e0c0858d42540bd5abc96744c7b1f5b40dfe36659d6d3f3334a5d1fea` | no (source kept for tools) | Derived: mascot master, alpha clean-up and rectangular crop only (tools/build_mascot_assets.py) |
-| A | `prototypes/alcedo-website/assets/mascot/alcedo-mascot.webp` | 25,760 | `66436a6188001cf4f36ee14b5472eeaf02d045a07dd2b1bb4e1cddd314905730` | yes | Derived: mascot master, alpha clean-up and rectangular crop only (tools/build_mascot_assets.py) |
+| A | `prototypes/alcedo-website/assets/mascot/alcedo-mascot-head.png` | 188,447 | `7280ee9a98e8d73c3cd0b41f95b6c153d959cbea2bbc407f8631ccc2c523028a` | no (source kept for tools) | Copied byte-identical from the app (apps/web/assets/atlas-bot, main c8dc9f0): owner-approved Alcedo AI mascot |
+| A | `prototypes/alcedo-website/assets/mascot/alcedo-mascot-head.webp` | 8,062 | `8a0b0cb8decbd1850f794446443aba6ce4e2f7d0018f76f51679fe5247f6fb84` | yes | Derived: app mascot render, crop and resize only (tools/build_mascot_assets.py) |
+| A | `prototypes/alcedo-website/assets/mascot/alcedo-mascot-poster.png` | 376,018 | `4414098e0c0858d42540bd5abc96744c7b1f5b40dfe36659d6d3f3334a5d1fea` | no (source kept for tools) | Copied byte-identical from the app (apps/web/assets/atlas-bot, main c8dc9f0): owner-approved Alcedo AI mascot |
+| A | `prototypes/alcedo-website/assets/mascot/alcedo-mascot.webp` | 25,760 | `66436a6188001cf4f36ee14b5472eeaf02d045a07dd2b1bb4e1cddd314905730` | yes | Derived: app mascot render, crop and resize only (tools/build_mascot_assets.py) |
 | A | `prototypes/alcedo-website/assets/screens/ai.webp` | 78,824 | `723d573e5d156e334578dcd7a293bf5bd5cdff1b2ae9ce2ecd64a31ab171a563` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
 | A | `prototypes/alcedo-website/assets/screens/food-intelligence.webp` | 78,124 | `707c8490fe6511381f21dc6a47fc40d773b41bc09952446139af80d722b482ff` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
 | A | `prototypes/alcedo-website/assets/screens/inventory.webp` | 71,190 | `514123aad111652d704aa81737e7903ccacc34f7e0fb1f00bc6abe3febb8cbc2` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
@@ -41,14 +41,14 @@ Nothing outside `prototypes/` is changed (no `apps/`, `scripts/`, `supabase/`, `
 | A | `prototypes/alcedo-website/assets/screens/stock-count.webp` | 43,016 | `e68188e7130b68e4af65fb977173e5b872b62d7c6b6ca66b881e95c9248b2859` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
 | A | `prototypes/alcedo-website/assets/screens/training.webp` | 54,522 | `8419522a9bf624fe292cac588cfcf32166728abae36572d3aaffa579e91dd3ef` | yes | Captured: Alcedo pre-release build (PR #113, 4e1e5d6) in the mocked test harness, fictional sample data, WebP 1600×1000 |
 | A | `prototypes/alcedo-website/index.html` | 118,207 | `c80c4dcc0111a14a17677e54e6c4b4e18801074f47a349f2996d56c3fa7b5363` | — | Authored |
-| A | `prototypes/alcedo-website/netlify.toml` | 1,328 | `2f3cb5a30790dca7cd9407872782c659a6a76526f35ac05d1de80344a4889bd9` | — | Authored |
-| A | `prototypes/alcedo-website/privacy.html` | 9,716 | `938025f4b775d947177906b2cf0cecd1dcea256ff1011289565318ab39db1adf` | — | Authored |
+| A | `prototypes/alcedo-website/netlify.toml` | 1,328 | `2f3cb5a30790dca7cd9407872782c659a6a76526f35ac05d1de80344a4889bd9` | — | Generated by tools/build_netlify_toml.py (security headers, hashed CSP) |
+| A | `prototypes/alcedo-website/privacy.html` | 9,716 | `938025f4b775d947177906b2cf0cecd1dcea256ff1011289565318ab39db1adf` | — | Authored: website page |
 | A | `prototypes/alcedo-website/tools/build_horizontal_lockup.py` | 2,822 | `1fe783529bceb957b5208afc2e658f9a1dc849afa9b424b88570c1406a2ff8dd` | — | Authored: build/verification tool |
-| A | `prototypes/alcedo-website/tools/build_inventory.py` | 3,520 | `c57ed00be1160605117a576e9e28319f98f0c2af3f11cdb07ee0c7304ed6ded4` | — | Authored: build/verification tool |
+| A | `prototypes/alcedo-website/tools/build_inventory.py` | 3,925 | `553d59f4331fb29dfd679bc1290f08a97ab0675229b7f84c99388e659fd62a16` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_mascot_assets.py` | 1,409 | `b37014315935978417ff96b51c0ee329ff6e1733b75f692f0f22461ddd5b1a6e` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_netlify_toml.py` | 2,392 | `506b883000d590c74fb4112a2190b9bce3dcec9599e3e55d407d11cb4f2c093c` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_preview.py` | 1,252 | `18aa67e31a840f24152986d163c2daed0259367fbccf5be8693b22ba118e9ffd` | — | Authored: build/verification tool |
 | A | `prototypes/atlas-website/README.md` | 6,940 | `ab5d96636ab77718cc248d25c82191ae69d160786f7c1b8b8e97bdf23f9a862a` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 | A | `prototypes/atlas-website/index.html` | 199,966 | `f90fb4fef99102ff09cf146c4a8123925e46db540e58be74b76f45e2f769fcb0` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 
-Total (excluding this file): 3,121,452 bytes.
+Total (excluding this file): 3,121,857 bytes.
