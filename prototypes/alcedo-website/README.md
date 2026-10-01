@@ -37,12 +37,16 @@ assets/brand/alcedo-horizontal-*.svg    horizontal lockups (light / dark), deriv
 assets/brand/logo-color.svg             kit source of the lockup paths (input to the lockup script)
 assets/brand/symbol-color.svg           kit symbol (reference copy)
 assets/brand/logo-dark.svg, favicon.ico, icon-32.png, icon-180.png   kit files used by the page
-assets/mascot/alcedo-kingfisher-master.webp    approved transparent kingfisher master (supplied, byte-identical)
-assets/mascot/alcedo-kingfisher.webp           full-body web copy (600 px tall)
-assets/mascot/alcedo-kingfisher-launcher.webp  head-and-upper-body launcher crop (256 px square)
+assets/mascot/alcedo-mascot-poster.png / -head.png   the app's Alcedo AI mascot renders (byte-identical, main c8dc9f0)
+assets/mascot/alcedo-mascot.webp / -head.webp        web copies (600 px tall / 256 px badge)
+assets/fonts/*.woff2, LICENSE-OFL.txt                self-hosted fonts (SIL Open Font License)
+privacy.html                                         privacy notice
+404.html                                             not-found page
+netlify.toml                                         hosting config: security headers + hashed CSP (generated)
 assets/screens/*.webp                   product screenshots (current app, built-in test data)
 tools/build_horizontal_lockup.py        regenerates the two lockups from the kit
-tools/build_mascot_assets.py            regenerates the two mascot web copies from the master
+tools/build_mascot_assets.py            regenerates the mascot web copies from the app renders
+tools/build_netlify_toml.py             regenerates netlify.toml (re-run after editing any inline <script>)
 tools/build_preview.py                  builds the single-file review copy
 ```
 
@@ -57,14 +61,15 @@ Search `index.html` for the marker comments: `[ASSET: …]`, `[COPY]`, `[STATUS]
    - **Header:** `assets/brand/alcedo-horizontal-light.svg`, shown at 58 px tall (about 185 px wide; the kit minimum is 180 px). Use `alcedo-horizontal-dark.svg` on dark or deep-teal surfaces.
    - **Footer:** the kit's `logo-dark.svg` (stacked lockup on its teal field).
    - **How the lockups are built:** see *Horizontal lockup* below.
-3. **Mascot:** replace `assets/mascot/alcedo-kingfisher-master.webp` and run `python3 tools/build_mascot_assets.py`. See *Mascot* below.
+3. **Mascot:** copy the app's latest `alcedo-mascot-poster.png` and `alcedo-mascot-head.png` into `assets/mascot/` and run `python3 tools/build_mascot_assets.py`. See *Mascot* below.
 4. **Copy and status labels**
    - All copy is plain HTML.
-   - Status chips: `.status` = **Implemented**, `.status--preview` = **Preview**, `.status--soon` = **Coming soon**. A legend on the page explains all three.
+   - Status chips: `.status` = **Available**, `.status--soon` = **Coming soon**. A legend on the page explains both.
    - Screenshot labels (`.shot__label`): "Sample data", "Scripted demonstration · sample data", or "Sample lessons · pre-release build".
 5. **Destinations**
    - **Staff login** links directly to `https://os-vabar.netlify.app`, the current application origin documented in `docs/DEPLOYMENT.md`. The `href` is set in the HTML so it works without JavaScript; search for the URL to change it.
-   - **Request a demo** and **Privacy** stay labelled *prototype destinations*. Set `DESTINATIONS.requestDemo` and `DESTINATIONS.privacy` at the top of the script once the details are supplied; while empty, links go to the labelled blocks on the page.
+   - **Request a demo** links to `mailto:Alcedo@Alcedo.is` (search the page for that address to change it); a Copy address button appears where the browser allows it.
+   - **Privacy** links to `privacy.html`.
    - Nothing is submitted, collected or stored, and no second authentication system exists.
 6. **Thumbnail crops:** `data-crop="centreX,centreY,size"` on each hero-card canvas. Current values:
    - head `0.555,0.335,0.22`;
@@ -89,25 +94,14 @@ The kit (v1.0, review edition) has only stacked lockups, so the two horizontal v
 
 ## Mascot
 
-The approved Alcedo kingfisher replaces the robot everywhere in this prototype. The application's own assistant and robot are unchanged; the app-side replacement belongs on `claude/alcedo-rebrand`.
+The site uses the same Alcedo AI mascot as the application: the owner-approved glossy 3D kingfisher (`main`, commit `c8dc9f0`). It replaces the realistic kingfisher used earlier.
 
-- **Master:** `assets/mascot/alcedo-kingfisher-master.webp`, 1214×1295 with genuine transparency, kept byte-identical as supplied.
-- **Edge check:** on ivory, deep teal, near-black and sage there is no white halo; fur edges are soft and the bill tip and claws are crisp. Only 0.2 % of the semi-transparent edge pixels are very light.
-- **Web copies** (`tools/build_mascot_assets.py`), which change the alpha channel only, never the bird's pixels or shape:
-  - the master's body is about 99 % opaque (alpha 252–253), so alpha of 248 or more becomes fully opaque;
-  - 2,891 faint stray pixels (alpha ≤ 34) more than 7 px from the bird are cleared.
-- **Versions:**
-  - full body, 600 px tall, used in the mascot demonstration;
-  - head and upper body, a square crop of crown, eye, full bill, breast and top of the wing at 256 px, used as the compact launcher on the Alcedo AI hero card.
-- **Motion:**
-  - whole image only: gentle idle breathing (1.4 % scale over 5.2 s) and a 3.5° listening tilt, both pivoting at the feet;
-  - no new poses, no warping of the bill or wings, no opacity blinking;
-  - reduced motion: completely static, with no breathing, no tilt and a static progress bar.
-- **Demonstration:** it sits in the Alcedo AI card and is labelled "Mascot demonstration · not connected to the assistant".
-  - **States:** Idle, Listening and Thinking buttons (`aria-pressed`) switch the preview.
-  - **Status text:** a `role="status"` line announces "Ready to help", "Listening…" or "Thinking — preparing a draft for you to approve".
-  - **Progress:** Thinking shows an indeterminate `role="progressbar"`.
-  - **Without JavaScript:** the static mascot shows and the buttons stay hidden.
+- **Sources:** `assets/mascot/alcedo-mascot-poster.png` (full mascot) and `alcedo-mascot-head.png` (head and upper body), byte-identical copies of `apps/web/assets/atlas-bot/`.
+- **Web copies** (`tools/build_mascot_assets.py`, crop and resize only):
+  - `alcedo-mascot.webp`, the full figure at 600 px tall, used in the Alcedo AI card's demonstration;
+  - `alcedo-mascot-head.webp`, a 256 px badge used on the hero AI card, the scroll-progress line and the 404 page.
+- **Motion:** whole-image only, as before: gentle breathing, a 3.5° listening tilt and a hop when tapped. Fully static with reduced motion.
+- **Demonstration:** labelled "Mascot demonstration · not connected to the assistant". Idle, Listening and Thinking states, with status text and a progress bar for Thinking. Tapping the mascot says "Hello! I'm Alcedo AI."
 
 ## Interactive and playful layer
 
@@ -177,13 +171,14 @@ Contrast checked (WCAG 2.x):
 
 ## Status labels
 
+Confirmed by the owner on 1 October 2026.
+
 | Label | Meaning | Used for |
 |---|---|---|
-| **Implemented** | Built in the current application and checked against its code. Production rollout is **not** confirmed by this page. | Inventory, Purchasing, Recipes, Stock Count, Shifts, Reports, Alcedo AI, Knowledge library |
-| **Preview** | Built; release awaiting approval. | Food Intelligence: `docs/flavor/Deployment.md` requires owner approval, and the live site is not confirmed. |
-| **Coming soon** | Built; not yet deployed. | Alcedo Training: `docs/release/Atlas_Training_MVP.md` records no production migration applied. |
+| **Available** | In the Alcedo application today. | Inventory, Purchasing, Recipes, Stock Count, Shifts, Reports, Alcedo AI, Food Intelligence, Alcedo Training, Knowledge library |
+| **Coming soon** | In development; not yet available. | Bookings |
 
-Purchasing and Reports are marked for managers and administrators. Reports has no sales or point-of-sale connection. The AI only reads and drafts; a person approves every change. The Discover intro reads "explore implemented capabilities and upcoming features", matching the legend beside it.
+Purchasing and Reports are marked for managers and administrators. Reports has no sales or point-of-sale connection.
 
 ## Testing
 
@@ -216,12 +211,33 @@ The screenshots show the Alcedo-branded pre-release build of the app, from PR #1
 - **Sample content:** the training lessons were written for the capture.
 - **Staying private:** staff schedules, messages, training results, manuals and business records stay behind sign-in.
 
-## Open items before publication
+## Contact, privacy and third parties
 
-- **Brand approval**
-  - the derived horizontal lockups and the mascot crops;
-  - the kit itself, which is a review edition;
-  - the giant ALCEDO word, which is decorative serif type, separate from the logo.
-- **Domain:** `alcedo.is` is shown as the *intended* domain only.
-- **Destinations:** demo/contact and privacy details are still to be supplied.
-- **Product sign-off:** confirm the status labels.
+- **Demo and contact:** `Alcedo@Alcedo.is` (mailto links; no form, so the site itself collects nothing).
+- **Privacy:** `privacy.html` states that the site uses no cookies, analytics, tracking or forms. It has three highlighted `[TO CONFIRM]` details only the owner can supply: the legal entity (name, kennitala, address), the hosting provider and the email provider.
+- **No third-party requests:** fonts are self-hosted (Instrument Serif, Manrope and JetBrains Mono, latin subset, SIL OFL), and the hero video is served from the site. A test serves the page with the production security headers, and checks that nothing outside the site is requested and that there are no CSP violations.
+
+## Hosting
+
+Recommended: **Netlify**, as its own site, separate from the application's.
+
+- **Setup:** connect this repository and set the base directory to `prototypes/alcedo-website`. There is no build command, and the publish directory is the folder itself.
+- **Why Netlify:**
+  - the team already runs the app there;
+  - static hosting with free HTTPS;
+  - every pull request gets a deploy preview;
+  - `netlify.toml` already sets the headers.
+- **Headers in `netlify.toml`:**
+  - CSP, where scripts are allowed only by hash;
+  - HSTS, nosniff, Referrer-Policy, Permissions-Policy and COOP;
+  - `tools/` and the `.md` files are blocked from being served.
+- **Domain:** add `alcedo.is` and `www.alcedo.is` to the Netlify site, then point DNS at Netlify at the registrar (ISNIC for `.is`). Netlify issues the certificate.
+- **Alternative:** Cloudflare Pages is equally suitable, but its headers file is `_headers`, so `netlify.toml` would need porting.
+
+## Open items before launch
+
+- **Owner details for the privacy page:** legal entity, hosting provider and email provider (the `[TO CONFIRM]` markers).
+- **Domain:** confirm `alcedo.is` is registered and choose the host.
+- **Go-live switch:** remove `noindex` from `index.html` and `privacy.html`, remove the footer's "Prototype — not for publication" and "Intended domain" lines, and change the title (drop "(prototype)").
+- **Brand approval:** the derived horizontal lockups.
+- **Legal review:** recommended for the privacy notice.

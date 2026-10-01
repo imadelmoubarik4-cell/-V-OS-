@@ -14,11 +14,11 @@
     [ASSET: VIDEO]        hero footage sources (<source> elements inside #hero-video)
     [ASSET: FINAL FRAME]  static final-frame image (#hero-still)
     [ASSET: LOGO]         ALCEDO symbol (header) and lockup (footer)
-    [ASSET: MASCOT]       Alcedo kingfisher mascot (full body + launcher crop) and its demonstration
+    [ASSET: MASCOT]       Alcedo AI mascot from the app (full body + head badge) and its demonstration
     [ASSET: SCREENS]      product screenshots in the tour
     [COPY]                editable copy
     [STATUS]              feature availability labels
-    [DESTINATION]         staff login, demo/contact and privacy destinations (DESTINATIONS in the script)
+    [DESTINATION]         staff login (app URL), demo email, privacy page
     [CROP]                thumbnail crop coordinates (data-crop)
     [TIMING]              REVEAL_AT landing timestamp (top of the <script>)
 -->
@@ -47,13 +47,21 @@
     if (el.tagName === 'VIDEO' || (el.tagName === 'SOURCE' && !el.nextElementSibling)) window.__alcedoHeroFailed = true;
   }, true);
 </script>
-<!-- Fonts are an optional enhancement, loaded without blocking rendering; every family has fallbacks. -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap"></noscript>
+<!-- Fonts are self-hosted (assets/fonts, SIL Open Font License): no request leaves this site. -->
+<link rel="preload" href="assets/fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/manrope-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" as="image" href="assets/hero-final.webp" type="image/webp">
 <style>
+/* Self-hosted fonts (latin subset) */
+@font-face { font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("assets/fonts/manrope-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("assets/fonts/manrope-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("assets/fonts/manrope-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("assets/fonts/manrope-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("assets/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("assets/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+
 /* =====================================================================
    1. TOKENS
    ===================================================================== */
@@ -160,16 +168,16 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .note::before { content: ""; width: 6px; height: 6px; margin-top: 5px; border-radius: 50%; border: 1px solid var(--orange); flex: none; }
 .on-dark .note { color: var(--on-panel-2); }
 
-/* [ASSET: MASCOT] The approved Alcedo kingfisher. Motion is whole-image only (no new poses, no
+/* [ASSET: MASCOT] The Alcedo AI mascot, same renders as the application (apps/web/assets/atlas-bot). Motion is whole-image only (no new poses, no
    warping, no opacity blinking): gentle idle breathing and a small tilt while listening, both
    pivoting at the feet. Reduced motion: completely static. */
 .mascot-launcher { display: block; object-fit: contain; }
 .mascot-demo { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
 .mascot-demo__label { color: var(--ink-3); font-size: 10px; }
 .mascot-demo__row { display: flex; align-items: flex-end; gap: 16px; margin-top: 10px; }
-.mascot-demo__stage { flex: none; width: 104px; height: 108px; display: flex; align-items: flex-end; justify-content: center; }
+.mascot-demo__stage { flex: none; width: 104px; height: 128px; display: flex; align-items: flex-end; justify-content: center; }
 .mascot-tilt { transform-origin: 50% 96%; transition: transform .6s var(--ease); }
-.mascot-breathe { display: block; width: 104px; height: auto; transform-origin: 50% 96%; }
+.mascot-breathe { display: block; width: auto; height: 124px; max-width: 104px; object-fit: contain; transform-origin: 50% 96%; }
 .mascot-demo[data-state="listening"] .mascot-tilt { transform: rotate(-3.5deg); }
 @media (prefers-reduced-motion: no-preference) {
   .mascot-breathe { animation: mascot-breathe 5.2s ease-in-out infinite; }
@@ -376,6 +384,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .bento .status-stack .status { margin-top: 0; }
 .modules { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; list-style: none; padding: 0; }
 .modules li { padding: 12px 0; border-top: 1px solid var(--panel-line); }
+.modules__soon .status { margin-top: 4px; }
 .modules b { display: block; font-weight: 600; font-size: 14.5px; }
 .modules span { display: block; font-size: 13px; line-height: 1.45; color: var(--on-panel-2); }
 .bento__art { margin-top: auto; padding-top: 26px; color: var(--ink); }
@@ -621,6 +630,11 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .dest .mono { color: var(--brand-teal); }
 .dest__title { margin-top: 10px; font-family: var(--font-serif); font-weight: 400; font-size: 28px; line-height: 1.1; }
 .dest__text { margin-top: 8px; font-size: 14.5px; color: var(--ink-3); max-width: 56ch; }
+.dest__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 12px; }
+.dest__actions .dest__link { margin-top: 0; }
+.copy-mail { min-height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; font: 600 12.5px var(--font-sans); color: var(--ink-2); cursor: pointer; }
+.copy-mail:hover { border-color: rgba(16,32,31,.4); color: var(--ink); }
+.cta__mail { color: var(--on-panel); text-underline-offset: 3px; }
 .dest__link { display: inline-block; margin-top: 12px; font-weight: 600; font-size: 14.5px; color: var(--brand-teal); }
 
 .site-footer { background: var(--panel); color: var(--on-panel); padding: 64px var(--gutter) 36px; }
@@ -707,7 +721,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <!-- Scroll progress: a small kingfisher flies along the line as the page scrolls (decorative). -->
-<div class="flightline" aria-hidden="true"><span class="flightline__bar"></span><img class="flightline__bird" src="assets/mascot/alcedo-kingfisher-launcher.webp" width="256" height="256" alt=""></div>
+<div class="flightline" aria-hidden="true"><span class="flightline__bar"></span><img class="flightline__bird" src="assets/mascot/alcedo-mascot-head.webp" width="256" height="256" alt=""></div>
 
 <!-- HEADER — [COPY] labels · [DESTINATION] login/demo (placeholders until supplied) -->
 <header class="site-header" id="site-header">
@@ -728,7 +742,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
     </nav>
     <div class="header-actions rv" style="--d:2">
       <a class="header-login" href="https://os-vabar.netlify.app">Staff login</a>
-      <a class="btn btn--dark btn--sm header-demo" href="#request-demo" data-dest="requestDemo">Request a demo</a>
+      <a class="btn btn--dark btn--sm header-demo" href="#request-demo">Request a demo</a>
       <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu"><span class="menu-toggle__bars" aria-hidden="true"></span>Menu</button>
     </div>
   </div>
@@ -740,7 +754,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <li><a href="#food-intelligence">Food Intelligence</a></li>
         <li><a href="#training">Training</a></li>
         <li><a href="https://os-vabar.netlify.app">Staff login</a></li>
-        <li class="mobile-menu__cta"><a href="#request-demo" data-dest="requestDemo">Request a demo</a></li>
+        <li class="mobile-menu__cta"><a href="#request-demo">Request a demo</a></li>
       </ul>
     </nav>
   </div>
@@ -751,12 +765,10 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   <!-- =================================================================== HERO -->
   <section class="hero" id="top" aria-labelledby="hero-title">
     <div class="hero__stage" aria-hidden="true">
-      <!-- [ASSET: VIDEO] Sources are tried in order: the supplied local file first, then the
-           reference URL. Reorder or replace them to change the source. Plays once, never loops,
-           holds its last frame. -->
+      <!-- [ASSET: VIDEO] assets/hero.mp4, served from this site (no third-party fallback). Plays once,
+           never loops, holds its last frame. -->
       <video class="hero__video" id="hero-video" muted playsinline preload="auto" disablepictureinpicture disableremoteplayback tabindex="-1">
         <source src="assets/hero.mp4" type="video/mp4">
-        <source src="https://thinkingods.com/demos/kingfisher-hero/hero.mp4" type="video/mp4">
       </video>
       <!-- [ASSET: FINAL FRAME] Last frame (8.00 s) of hero.mp4. Used for reduced motion, blocked autoplay,
            playback failure, no-JS, and as the thumbnail source when the video cannot be drawn. -->
@@ -774,7 +786,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
       <p class="hero__lede rv" style="--d:4">Alcedo brings daily operations, team knowledge, and intelligent assistance into a shared workspace.</p>
       <div class="hero__actions rv" style="--d:5">
         <a class="btn btn--orange" href="#platform">Explore Alcedo <svg class="btn__arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-        <a class="btn btn--line" href="#request-demo" data-dest="requestDemo">Request a demo</a>
+        <a class="btn btn--line" href="#request-demo">Request a demo</a>
       </div>
     </div>
 
@@ -788,9 +800,9 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h2 class="hcard__title"><a href="#alcedo-ai">Alcedo AI</a></h2>
           <p class="hcard__text">Meet your team’s assistant.</p>
         </div>
-        <p class="status">Implemented</p>
+        <p class="status">Available</p>
         <!-- [ASSET: MASCOT] compact launcher crop (head and upper body) -->
-        <img class="mascot-launcher" src="assets/mascot/alcedo-kingfisher-launcher.webp" width="256" height="256" alt="" decoding="async">
+        <img class="mascot-launcher" src="assets/mascot/alcedo-mascot-head.webp" width="256" height="256" alt="" decoding="async">
       </li>
       <li class="hcard rv on-dark" style="--d:7">
         <div class="thumb" aria-hidden="true"><canvas class="thumb__canvas" data-crop="0.43,0.60,0.24"></canvas><span class="thumb__label">Frame</span></div>
@@ -799,7 +811,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h2 class="hcard__title"><a href="#food-intelligence">Food Intelligence</a></h2>
           <p class="hcard__text">Explore ingredients, recipes, and connected information.</p>
         </div>
-        <p class="status status--preview">Preview</p>
+        <p class="status">Available</p>
       </li>
       <li class="hcard rv on-dark" style="--d:8">
         <!-- perch crop: feet gripping the twig, complements head (detail) and wing (texture) -->
@@ -809,7 +821,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h2 class="hcard__title"><a href="#training">Alcedo Training</a></h2>
           <p class="hcard__text">Discover learning and guidance for your team.</p>
         </div>
-        <p class="status status--soon">Coming soon</p>
+        <p class="status">Available</p>
       </li>
     </ul>
 
@@ -833,13 +845,12 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h2 class="section-title" id="discover-title">Clear information. <em>A more prepared team.</em></h2>
         </div>
         <div class="reveal-up" style="--i:1">
-          <p class="intro__text">Explore how Alcedo connects restaurant workflows, knowledge, and assistance. Discover the platform and explore implemented capabilities and upcoming features.</p>
+          <p class="intro__text">Explore how Alcedo connects restaurant workflows, knowledge, and assistance. Discover the platform: what is available today and what is coming next.</p>
           <p class="brand-note">Alcedo is the new brand direction for Atlas. Screenshots on this page show the Alcedo application.</p>
           <!-- [STATUS] legend -->
           <dl class="legend" aria-label="Status labels">
-            <div><dt><span class="status">Implemented</span></dt><dd>Built in the current application and checked against its code. Production rollout is not confirmed on this page.</dd></div>
-            <div><dt><span class="status status--preview">Preview</span></dt><dd>Built; release awaiting approval.</dd></div>
-            <div><dt><span class="status status--soon">Coming soon</span></dt><dd>Built; not yet deployed.</dd></div>
+            <div><dt><span class="status">Available</span></dt><dd>In the Alcedo application today.</dd></div>
+            <div><dt><span class="status status--soon">Coming soon</span></dt><dd>In development; not yet available.</dd></div>
           </dl>
         </div>
       </div>
@@ -857,8 +868,9 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
             <li><b>Stock Count</b><span>Phone-first counting, one item at a time. Stock changes after a manager verifies.</span></li>
             <li><b>Shifts</b><span>Plan and publish schedules; staff confirm shifts and request time off.</span></li>
             <li><b>Reports</b><span>Stock, purchasing, recipes, waste and labour. Sales data is not connected.</span></li>
+            <li class="modules__soon"><b>Bookings</b><span class="status status--soon">Coming soon</span></li>
           </ul>
-          <p class="status">Implemented</p>
+          <p class="status">Available</p>
           <p class="note">Purchasing and Reports are for managers and administrators.</p>
           <!-- Playful demo (illustration, sample tasks): tick tonight's opening checklist. -->
           <div class="opscheck" data-done="2">
@@ -885,14 +897,14 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="bento__title">Alcedo AI</h3>
           <p class="bento__text">Ask by text or voice, or add a photo or document. It answers from your venue’s records and prepares drafts — orders, counts, recipes — for a person to approve.</p>
           <ul class="chips" aria-label="Ways to ask"><li>Text</li><li>Voice</li><li>Photos &amp; files</li></ul>
-          <p class="status">Implemented</p>
+          <p class="status">Available</p>
           <!-- [ASSET: MASCOT] Demonstration of the mascot's states. It is not connected to the assistant:
                the buttons only change the preview. Without JavaScript the static mascot is shown. -->
           <div class="mascot-demo" data-state="idle" aria-labelledby="mascot-demo-label">
             <p class="mascot-demo__label mono" id="mascot-demo-label">Mascot demonstration · not connected to the assistant</p>
             <div class="mascot-demo__row">
               <div class="mascot-demo__stage">
-                <button type="button" class="mascot-poke" aria-label="Say hello to the Alcedo kingfisher"><span class="mascot-hop"><span class="mascot-tilt"><img class="mascot-breathe" src="assets/mascot/alcedo-kingfisher.webp" width="579" height="600" alt="" loading="lazy" decoding="async"></span></span></button>
+                <button type="button" class="mascot-poke" aria-label="Say hello to Alcedo AI"><span class="mascot-hop"><span class="mascot-tilt"><img class="mascot-breathe" src="assets/mascot/alcedo-mascot.webp" width="406" height="600" alt="" loading="lazy" decoding="async"></span></span></button>
               </div>
               <div class="mascot-demo__side">
                 <div class="mascot-demo__controls" role="group" aria-label="Preview a mascot state" hidden>
@@ -911,7 +923,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <div class="bento__head"><span class="bento__index mono">03</span><span class="bento__tag mono">Ingredients</span></div>
           <h3 class="bento__title">Food Intelligence</h3>
           <p class="bento__text">A Flavor Map of ingredient pairings, each labelled with where it comes from, plus substitutes and ideas based on verified stock. Recipe drafts stay inactive until a manager approves them.</p>
-          <p class="status status--preview">Preview</p>
+          <p class="status">Available</p>
           <!-- Food Intelligence: an illustrated Flavor Map modelled on the app's pairing ring (sample data).
                Draws in when scrolled into view, then tours one pairing at a time; hover, focus or Pause stops the
                tour; every pairing is a button. Reduced motion: static, no tour. -->
@@ -953,8 +965,8 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
             <h3 class="bento__title">Training &amp; Knowledge</h3>
             <p class="bento__text"><strong>Alcedo Training:</strong> managers publish short video lessons with steps, aimed at the right roles; staff watch, resume and mark lessons complete. <strong>Knowledge:</strong> a searchable library with required reading.</p>
             <div class="status-stack">
-              <p class="status status--soon">Alcedo Training — coming soon</p>
-              <p class="status">Knowledge library — implemented</p>
+              <p class="status">Alcedo Training — available</p>
+              <p class="status">Knowledge library — available</p>
             </div>
           </div>
           <!-- Playful demo (illustration, sample lesson): play a lesson and watch the steps complete. -->
@@ -996,7 +1008,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Inventory</h3>
           <p class="tour__text">Know what is on hand before service.</p>
           <ul class="tour__list"><li>Items by location, category and supplier</li><li>Stock taken from the last verified count plus recorded movements</li><li>Par levels flag what is low or out</li></ul>
-          <p class="status">Implemented</p>
+          <p class="status">Available</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/inventory.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Inventory table in the current application with eight sample bar items, their par levels and stock status.">
@@ -1009,7 +1021,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Purchasing</h3>
           <p class="tour__text">Orders that a person approves.</p>
           <ul class="tour__list"><li>Suggested orders from items below par</li><li>Approve, mark as ordered and receive deliveries</li><li>Nothing is sent to a supplier automatically</li></ul>
-          <p class="status">Implemented · managers and administrators</p>
+          <p class="status">Available · managers and administrators</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/purchasing.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Purchasing view with a suggested order and two sample orders, one waiting for approval.">
@@ -1022,7 +1034,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Recipes</h3>
           <p class="tour__text">See what you can make tonight.</p>
           <ul class="tour__list"><li>Recipe library by category</li><li>Availability worked out from verified stock</li><li>Costs visible to managers only</li></ul>
-          <p class="status">Implemented</p>
+          <p class="status">Available</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/recipes.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Recipe cards for four sample drinks, showing which can be served from current stock.">
@@ -1035,7 +1047,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Stock count</h3>
           <p class="tour__text">Count on a phone, one item at a time.</p>
           <ul class="tour__list"><li>Guided counts by area</li><li>Quick part-bottle entries</li><li>Stock changes only after a manager verifies the count</li></ul>
-          <p class="status">Implemented</p>
+          <p class="status">Available</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/stock-count.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="A stock count in progress for a sample back bar, counting one item at a time.">
@@ -1048,7 +1060,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Shifts</h3>
           <p class="tour__text">A schedule everyone can see.</p>
           <ul class="tour__list"><li>Week and month planning, published when ready</li><li>Staff confirm shifts, share availability and request time off</li><li>Changes after publishing are highlighted</li></ul>
-          <p class="status">Implemented</p>
+          <p class="status">Available</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/shifts.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Weekly shift schedule with four fictional team members.">
@@ -1061,7 +1073,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Reports</h3>
           <p class="tour__text">A clear view of stock and spend.</p>
           <ul class="tour__list"><li>Overview, stock, purchasing, recipes, waste and labour</li><li>Items that need attention</li><li>Sales are not connected (no point-of-sale link)</li></ul>
-          <p class="status">Implemented · managers and administrators</p>
+          <p class="status">Available · managers and administrators</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/reports.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Reports overview with sample purchasing spend, recipe margin and items needing attention.">
@@ -1074,7 +1086,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Alcedo AI</h3>
           <p class="tour__text">Ask, check, then approve.</p>
           <ul class="tour__list"><li>Text, voice, photos and documents</li><li>Answers show the records they are based on</li><li>Prepares drafts; a person approves every change</li></ul>
-          <p class="status">Implemented</p>
+          <p class="status">Available</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/ai.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Scripted sample conversation in which the assistant checks Campari stock and prepares a draft order for approval.">
@@ -1087,7 +1099,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Food Intelligence</h3>
           <p class="tour__text">Pairings grounded in what you stock.</p>
           <ul class="tour__list"><li>Flavor Map of ingredient pairings with their sources</li><li>Substitutes and ideas from verified stock</li><li>Recipe drafts saved inactive until a manager approves</li></ul>
-          <p class="status status--preview">Preview</p>
+          <p class="status">Available</p>
         </div>
         <figure class="shot">
           <img src="assets/screens/food-intelligence.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Flavor Map showing sample pairings for London dry gin and which ingredients are in stock.">
@@ -1100,11 +1112,11 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <h3 class="tour__title">Alcedo Training</h3>
           <p class="tour__text">Short lessons for every role.</p>
           <ul class="tour__list"><li>Video lessons with steps, aimed at roles</li><li>Staff resume and mark lessons complete</li><li>Managers see who has completed each version</li></ul>
-          <p class="status status--soon">Coming soon</p>
+          <p class="status">Available</p>
         </div>
         <figure class="shot">
-          <img src="assets/screens/training.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Training library in a pre-release build with four sample lessons.">
-          <span class="shot__label">Sample lessons · pre-release build</span>
+          <img src="assets/screens/training.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Training library with four sample lessons.">
+          <span class="shot__label">Sample lessons</span>
           <figcaption>Alcedo application · built-in test data</figcaption>
         </figure>
       </div>
@@ -1138,7 +1150,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           </ol>
           <div class="route__actions">
             <a class="btn btn--line-dark" href="#inside">Explore modules</a>
-            <a class="btn btn--orange" href="#request-demo" data-dest="requestDemo">Request a demo</a>
+            <a class="btn btn--orange" href="#request-demo">Request a demo</a>
           </div>
         </article>
       </div>
@@ -1152,13 +1164,13 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <div>
           <p class="kicker mono">04 Next step</p>
           <h2 class="cta__title" id="cta-title">Explore what Alcedo could bring to <em>your team.</em></h2>
-          <p class="cta__note">Commercial details and the Alcedo name are still being finalised. A walkthrough can be arranged once demo requests open.</p>
+          <p class="cta__note">Tell us about your venue and we will arrange a walkthrough for your team. Write to <a class="cta__mail" href="mailto:Alcedo@Alcedo.is?subject=Alcedo%20demo%20request">Alcedo@Alcedo.is</a>.</p>
         </div>
-        <a class="btn btn--orange" href="#request-demo" data-dest="requestDemo">Request a demo <svg class="btn__arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="btn btn--orange" href="#request-demo">Request a demo <svg class="btn__arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
-      <!-- [DESTINATION] Staff login goes to the existing application (href set directly in the HTML so it
-           works without JavaScript; search for "https://os-vabar.netlify.app" to change it). Demo/contact and privacy stay
-           labelled prototype destinations until DESTINATIONS is filled. No form: nothing is sent or stored. -->
+      <!-- [DESTINATION] Staff login: the Alcedo application (search for "https://os-vabar.netlify.app" to change it).
+           Demo requests: email Alcedo@Alcedo.is (search for "Alcedo@Alcedo.is"). Privacy: privacy.html.
+           No form on this site: nothing is collected, sent or stored by the website itself. -->
       <div class="destinations">
         <div class="dest reveal-up" id="staff-login" tabindex="-1" style="--i:0">
           <p class="mono">Staff access</p>
@@ -1167,9 +1179,13 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
           <a class="dest__link" href="https://os-vabar.netlify.app">Open the staff sign-in <span aria-hidden="true">→</span></a>
         </div>
         <div class="dest reveal-up" id="request-demo" tabindex="-1" style="--i:1">
-          <p class="mono">Prototype destination</p>
+          <p class="mono">Demo &amp; contact</p>
           <h3 class="dest__title">Request a demo</h3>
-          <p class="dest__text">Demo requests are not open yet. A contact route will be added once approved. Nothing is sent or stored from this prototype.</p>
+          <p class="dest__text">Email us with your venue and a time that suits you, and we will set up a walkthrough.</p>
+          <div class="dest__actions">
+            <a class="dest__link" href="mailto:Alcedo@Alcedo.is?subject=Alcedo%20demo%20request">Alcedo@Alcedo.is <span aria-hidden="true">→</span></a>
+            <button type="button" class="copy-mail" data-copy="Alcedo@Alcedo.is" hidden>Copy address</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1198,13 +1214,13 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         <p class="footer__heading mono">Access &amp; contact</p>
         <ul class="footer__links">
           <li><a href="https://os-vabar.netlify.app">Staff login <small>os-vabar.netlify.app · current application</small></a></li>
-          <li><a href="#request-demo" data-dest="requestDemo">Request a demo <small>Prototype destination · contact details to be supplied</small></a></li>
+          <li><a href="mailto:Alcedo@Alcedo.is?subject=Alcedo%20demo%20request">Request a demo <small>Alcedo@Alcedo.is</small></a></li>
         </ul>
       </nav>
-      <div id="privacy" tabindex="-1">
+      <div>
         <p class="footer__heading mono">Privacy</p>
         <ul class="footer__links">
-          <li><a href="#privacy" data-dest="privacy">Privacy information <small>Prototype destination · notice to be supplied before publication</small></a></li>
+          <li><a href="privacy.html">Privacy notice <small>No cookies, no tracking</small></a></li>
         </ul>
       </div>
     </div>
@@ -1229,12 +1245,6 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   const FALLBACK_MS = 9000;      // hard timeout: content always appears within 9 s
   const BG_SAMPLE = { x: 0.94, y: 0.12 };
   const GHOST_FACTOR = 0.955;
-  // Destinations still to be supplied. Leave '' to keep the labelled prototype destination on this page.
-  // (Staff login is a plain link to the existing application; see the [DESTINATION] comment in the HTML.)
-  const DESTINATIONS = {
-    requestDemo: '',   // e.g. 'mailto:…' or a contact page, once approved
-    privacy: ''        // privacy notice URL
-  };
 
   const root = document.documentElement;
   const hero = document.getElementById('top');
@@ -1247,11 +1257,6 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const state = { run: 0, timer: 0, raf: 0, revealed: false, failed: false, stopped: false, mode: 'pause', seekFinal: false };
 
-  /* ---------- destinations ---------- */
-  document.querySelectorAll('[data-dest]').forEach(function (a) {
-    const url = DESTINATIONS[a.getAttribute('data-dest')];
-    if (url) a.setAttribute('href', url);
-  });
 
   /* ---------- focus management: hidden controls are not focusable ---------- */
   const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]';
@@ -1628,6 +1633,18 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
     sync();
   }
 
+  /* ---------- copy the contact address ---------- */
+  document.querySelectorAll('.copy-mail').forEach(function (btn) {
+    if (!navigator.clipboard) return;                     // no clipboard API: the mailto link is enough
+    btn.hidden = false;
+    btn.addEventListener('click', function () {
+      navigator.clipboard.writeText(btn.getAttribute('data-copy')).then(function () {
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = 'Copy address'; }, 1800);
+      }, function () { btn.textContent = 'Copy failed'; });
+    });
+  });
+
   /* ---------- playful layer ---------- */
   const finePointer = window.matchMedia('(pointer: fine)').matches;
   // spotlight + gentle tilt on cards (pointer devices only; tilt off for reduced motion)
@@ -1711,7 +1728,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
       demoEl.classList.remove('is-hopping'); void demoEl.offsetWidth; demoEl.classList.add('is-hopping');
       const before = mstatus.getAttribute('data-saved') || mstatus.textContent;
       mstatus.setAttribute('data-saved', before);
-      mstatus.textContent = 'Hello! I’m the Alcedo kingfisher.';
+      mstatus.textContent = 'Hello! I’m Alcedo AI.';
       clearTimeout(helloTimer);
       helloTimer = setTimeout(function () { mstatus.textContent = mstatus.getAttribute('data-saved'); mstatus.removeAttribute('data-saved'); }, 2200);
     });
