@@ -236,11 +236,20 @@ Recommended: **Netlify**, as its own site, separate from the application's.
 - **Domain:** add `alcedo.is` and `www.alcedo.is` to the Netlify site, then point DNS at Netlify at the registrar (ISNIC for `.is`). Netlify issues the certificate.
 - **Alternative:** Cloudflare Pages is equally suitable, but its headers file is `_headers`, so `netlify.toml` would need porting.
 
-## Open items before launch
+## Launch checklist
 
-- **Email:** `Alcedo@Alcedo.is` has no mail provider yet. Every contact link on the site points to it, so the mailbox must be set up and tested before launch.
-- **Application domain:** every Staff login link goes to `https://app.alcedo.is/`. Connect that subdomain to the application's Netlify site (with HTTPS) and test sign-in there before launch; the app's Supabase auth settings must allow the new origin for redirects.
-- **Domain:** `alcedo.is` is registered to the owner and Netlify is the chosen host (both confirmed 1 October 2026). What remains is connecting the domain (see Hosting above).
-- **Go-live switch:** done 1 October 2026. `noindex` was removed, canonical links point to `https://alcedo.is/`, the prototype footer lines were replaced by "© 2026 Coffee & Cocktails ehf.", and the title is now "Alcedo — Food & beverage operations, all in one place". If the primary domain on Netlify ends up being `www.alcedo.is`, change the canonical links and `sitemap.xml` to match.
+Done (as confirmed by the owner, 1 October 2026):
+
+- **Email:** the `Alcedo@Alcedo.is` mailbox is set up. Every contact link on the site points to it.
+- **Application domain:** `https://app.alcedo.is/` is connected to the application. Every Staff login link goes there.
+- **Domain:** `alcedo.is` is registered to the owner; Netlify is the chosen host.
+- **Company details:** Coffee & Cocktails ehf., kt. 671124-0220, Geirsgata 17, 101 Reykjavík, in both privacy notices and the site footer.
+- **Go-live switch:** `noindex` removed, canonical links to `https://alcedo.is/`, prototype footer lines replaced by the company line, title "Alcedo — Food & beverage operations, all in one place". If the primary domain on Netlify ends up being `www.alcedo.is`, change the canonical links and `sitemap.xml` to match.
+
+Still open:
+
+- **Hosting:** create the Netlify site (base directory `prototypes/alcedo-website`, no build) and point `alcedo.is` and `www.alcedo.is` at it (see Hosting above).
+- **Email provider in the notice:** the privacy notices say "our email service provider". If the provider stores mail outside the EEA (for example Google Workspace or Microsoft 365 in the US), name it in both notices; the legal review covers this.
 - **Brand approval:** the derived horizontal lockups.
 - **Legal review:** recommended for the privacy notice, in both languages.
+- **Final check on the live domain:** send a test email from the Request a demo link, sign in through Staff login, and open the privacy pages in both languages.
