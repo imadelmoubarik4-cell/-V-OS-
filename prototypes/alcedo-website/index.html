@@ -2,9 +2,8 @@
 <!--
   ALCEDO — public website (alcedo.is), operated by Coffee & Cocktails ehf.
 
-  Alcedo is the proposed new brand direction for the restaurant operations platform
-  currently called Atlas. This page does not change the Atlas application, its
-  authentication, database or production branding.
+  Marketing website for the Alcedo platform. It is separate from the Alcedo application
+  and does not touch its authentication, database or branding.
 
   One file: all CSS and JavaScript are inline, no framework, no build step.
   Media (video, final frame, logos, mascot, screenshots) are separate files in ./assets.
@@ -167,7 +166,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .note::before { content: ""; width: 6px; height: 6px; margin-top: 5px; border-radius: 50%; border: 1px solid var(--orange); flex: none; }
 .on-dark .note { color: var(--on-panel-2); }
 
-/* [ASSET: MASCOT] The Alcedo AI mascot, same renders as the application (apps/web/assets/atlas-bot). Motion is whole-image only (no new poses, no
+/* [ASSET: MASCOT] The Alcedo AI mascot, same renders as the application. Motion is whole-image only (no new poses, no
    warping, no opacity blinking): gentle idle breathing and a small tilt while listening, both
    pivoting at the feet. Reduced motion: completely static. */
 .mascot-launcher { display: block; object-fit: contain; }
@@ -363,7 +362,6 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 .legend div { display: grid; grid-template-columns: 128px 1fr; gap: 12px; align-items: baseline; }
 .legend dd { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-3); }
 @media (max-width: 480px) { .legend div { grid-template-columns: 1fr; gap: 2px; } }
-.brand-note { margin-top: 16px; font-size: 14px; color: var(--ink-3); max-width: 52ch; padding-left: 14px; border-left: 2px solid var(--orange); }
 
 .bento { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(300px, auto) minmax(260px, auto); list-style: none; padding: 0; margin: 0; }
 .bento__card { position: relative; display: flex; flex-direction: column; padding: clamp(22px, 2.4vw, 32px); border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow-soft); scroll-margin-top: 24px; }
@@ -844,7 +842,6 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
         </div>
         <div class="reveal-up" style="--i:1">
           <p class="intro__text">Explore how Alcedo connects restaurant workflows, knowledge, and assistance. Discover the platform: what is available today and what is coming next.</p>
-          <p class="brand-note">Alcedo is the new brand direction for Atlas. Screenshots on this page show the Alcedo application.</p>
           <!-- [STATUS] legend -->
           <dl class="legend" aria-label="Status labels">
             <div><dt><span class="status">Available</span></dt><dd>In the Alcedo application today.</dd></div>
