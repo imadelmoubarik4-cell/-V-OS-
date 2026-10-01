@@ -5,15 +5,17 @@ Every local asset (video, final frame, logos, mascot, screenshots, icons) refere
 index.html is embedded as a data URI, so the one file can be opened or shared for review
 without the assets folder. The source index.html is not changed.
 
-    python3 tools/build_preview.py OUTPUT.html
+    python3 tools/build_preview.py OUTPUT.html [PAGE]      (PAGE defaults to index.html)
 """
 import base64, mimetypes, pathlib, re, sys
 
 here = pathlib.Path(__file__).resolve().parent.parent
-html = (here / 'index.html').read_text()
+page = sys.argv[2] if len(sys.argv) > 2 else 'index.html'
+html = (here / page).read_text()
 mimetypes.add_type('image/webp', '.webp')
 mimetypes.add_type('image/svg+xml', '.svg')
 mimetypes.add_type('image/x-icon', '.ico')
+mimetypes.add_type('font/woff2', '.woff2')
 
 def data_uri(rel):
     path = here / rel
