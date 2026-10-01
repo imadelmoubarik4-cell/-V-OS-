@@ -48,7 +48,8 @@ select 'every ai_* table has RLS and no anon/authenticated/public privilege',
     and has_table_privilege('service_role', c.oid, 'select,insert,update,delete'))
   -- 8 S88 tables + ai_voice_sessions and ai_rate_events (20260926106000_s88_ai_hardening.sql)
   -- + ai_voice_session_events (20260930092000_s91_voice_lease_and_takeover.sql)
-  and count(*) = 11,
+  -- + ai_block_events (20261017090000_s100_security_cost_hardening.sql)
+  and count(*) = 12,
   string_agg(c.relname, ',' order by c.relname)
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'atlas_private' and c.relkind = 'r' and c.relname like 'ai\_%';
@@ -63,7 +64,8 @@ select 'every atlas_ai_* RPC and atlas_knowledge_search is service-role only, in
     and coalesce(p.proconfig @> array['search_path=""'], false))
   -- 31 data-layer RPCs + atlas_ai_signals_upsert (20260926105000_s88_ai_signals.sql)
   -- + atlas_ai_voice_session_start/_touch (20260926106000_s88_ai_hardening.sql)
-  and count(*) = 34,
+  -- + atlas_ai_record_block/_usage_summary/_limits_set (20261017090000_s100_security_cost_hardening.sql)
+  and count(*) = 37,
   count(*)::text || ' functions'
 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public' and (p.proname like 'atlas\_ai\_%' or p.proname = 'atlas_knowledge_search');
@@ -386,7 +388,9 @@ begin
     and public.s88_expect(format('select public.atlas_ai_media_register(%L,%L,null,%L,%L,30000000,%L)', bar, 'bartender', bar || '/unsorted/00000000-0000-4000-8000-000000088a09.jpg', 'image/jpeg', 'image')) = '22023'
     and public.s88_expect(format('select public.atlas_ai_media_get(%L,%L,%L)', m_old, bar, 'bartender')) = 'P0002'
     and (select expires_at < pg_catalog.now() + interval '2 days' from atlas_private.ai_media where id = m_conv_media)
-    and (select expires_at > pg_catalog.now() + interval '29 days' from atlas_private.ai_media where id = m_new), null);
+    -- S100 tightened the pilot media_retention_days to 14 (was 30), so a new upload
+    -- expires ~14 days out rather than ~30.
+    and (select expires_at > pg_catalog.now() + interval '13 days' from atlas_private.ai_media where id = m_new), null);
   r2 := public.atlas_ai_media_purge_confirm(array[m_old, m_new]);
   insert into s88_ai values ('purge returns exactly the expired paths and confirm marks them deleted',
     (r->>'count')::int = 1 and r->'media'->0->>'path' = mgr || '/' || mgr_conv || '/00000000-0000-4000-8000-000000088a01.jpg'

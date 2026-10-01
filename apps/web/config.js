@@ -34,6 +34,18 @@ window.VABAR_CONFIG = {
   IMPORT_WORKER_API: "",
   // Device subscriptions are opt-in; server-side push delivery remains disabled.
   NOTIFICATIONS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-notifications",
+  // Sign-in / recovery CAPTCHA (OWNER-GATED, off by default). Empty provider =
+  // feature off: no widget renders, no provider script loads, and no captchaToken
+  // is ever threaded, so sign-in and password reset behave exactly as today.
+  // To turn it on the owner must (1) enable the SAME provider in the Supabase
+  // dashboard (Auth › Attack Protection), (2) set AUTH_CAPTCHA_PROVIDER to
+  // "hcaptcha" or "turnstile" and AUTH_CAPTCHA_SITE_KEY to that provider's site
+  // key, and (3) add the provider's script + frame origins to the netlify CSP
+  // (script-src / frame-src). The CSP is intentionally NOT broadened here; it
+  // stays locked down until a provider is actually enabled. Supabase Auth's own
+  // server-side rate limits remain the real abuse control either way.
+  AUTH_CAPTCHA_PROVIDER: "",
+  AUTH_CAPTCHA_SITE_KEY: "",
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application

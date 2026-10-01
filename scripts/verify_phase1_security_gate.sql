@@ -188,6 +188,73 @@ with public_tables as (
       select 1 from reviewed_browser_rpc_status rr
       where rr.oid = p.oid and rr.reviewed_rpc_safe
     )
+), actor_param_exposure as (
+  -- S100 tripwire (always valid): a Pattern-A edge RPC takes p_actor_id/p_actor_role
+  -- and re-validates the actor server-side, so it must be service_role-only. If any
+  -- such function becomes executable by a browser role the actor could be spoofed,
+  -- so this list must always be empty.
+  select p.proname, pg_get_function_identity_arguments(p.oid) as args
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and pg_get_function_identity_arguments(p.oid) ~ '\mp_actor_(id|role)\M'
+    and (
+      has_function_privilege('anon', p.oid, 'execute')
+      or has_function_privilege('authenticated', p.oid, 'execute')
+    )
+), recipe_write_boundary as (
+  -- Commercially sensitive recipe writes stay manager-only (every write policy gates
+  -- on is_manager_or_admin(), which is false for anon/inactive/viewer/bartender), and
+  -- no write policy targets anon/public. Always valid: recipes always exist.
+  select
+    coalesce((select c.relrowsecurity from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relname = 'recipes'), false) as rls_enabled,
+    not exists (
+      select 1 from pg_policies pol
+      where pol.schemaname = 'public' and pol.tablename = 'recipes'
+        and pol.cmd in ('INSERT','UPDATE','DELETE','ALL')
+        and coalesce(pol.qual,'') !~ 'is_manager_or_admin'
+        and coalesce(pol.with_check,'') !~ 'is_manager_or_admin'
+    ) as writes_manager_only,
+    not exists (
+      select 1 from pg_policies pol
+      where pol.schemaname = 'public' and pol.tablename = 'recipes'
+        and pol.cmd in ('INSERT','UPDATE','DELETE','ALL')
+        and pol.roles && array['anon','public']::name[]
+    ) as no_anon_write
+), recipe_price_audit as (
+  -- Optional until the S100 migration is installed. When present, the audit table must
+  -- be sealed (browser no access, append-only even for service_role) and fed by the
+  -- SECURITY DEFINER trigger on public.recipes so no frontend write path can skip it.
+  select
+    to_regclass('atlas_private.recipe_price_events') is not null as installed,
+    coalesce((select c.relrowsecurity from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'atlas_private' and c.relname = 'recipe_price_events'), false) as rls_enabled,
+    coalesce(not has_table_privilege('authenticated','atlas_private.recipe_price_events','insert,update,delete'), true) as browser_no_write,
+    coalesce(not has_table_privilege('anon','atlas_private.recipe_price_events','select,insert,update,delete'), true) as anon_no_access,
+    coalesce(not has_table_privilege('service_role','atlas_private.recipe_price_events','update,delete,truncate'), true) as append_only,
+    exists (
+      select 1 from pg_trigger t
+      join pg_class c on c.oid = t.tgrelid
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relname = 'recipes'
+        and t.tgname = 'recipes_s100_commercial_audit' and not t.tgisinternal
+    ) as trigger_attached,
+    exists (
+      select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'private' and p.proname = 'recipe_commercial_audit'
+        and p.prosecdef and coalesce('search_path=""' = any(p.proconfig), false)
+    ) as definer_pinned
+), recipe_price_audit_final as (
+  select *,
+    (not installed) or (
+      rls_enabled and browser_no_write and anon_no_access and append_only
+      and trigger_attached and definer_pinned
+    ) as recipe_price_audit_safe
+  from recipe_price_audit
 ), fingerprint as (
   select
     count(*) as inventory_records,
@@ -242,8 +309,20 @@ select jsonb_build_object(
     case when exists (select 1 from recipe_save_status where not recipe_save_safe)
       then 'recipe save is not a caller-evaluated manager-only RPC' end,
     case when exists (select 1 from reviewed_browser_rpc_status where not reviewed_rpc_safe)
-      then 'an S88 browser RPC is not an invoker wrapper over a manager-gated definer body' end
+      then 'an S88 browser RPC is not an invoker wrapper over a manager-gated definer body' end,
+    case when exists (select 1 from actor_param_exposure)
+      then 'a p_actor_id/p_actor_role RPC is executable by a browser role (actor-spoofing exposure)' end,
+    case when not coalesce((select rls_enabled and writes_manager_only and no_anon_write from recipe_write_boundary), false)
+      then 'recipe writes are not strictly manager-only under RLS' end,
+    case when exists (select 1 from recipe_price_audit_final where not recipe_price_audit_safe)
+      then 'recipe price/flag audit trail is installed but not sealed append-only behind a definer trigger' end
   ]::text[], null)),
+  'actor_param_exposure', coalesce((
+    select jsonb_agg(jsonb_build_object('function', proname, 'args', args) order by proname, args)
+    from actor_param_exposure
+  ), '[]'::jsonb),
+  'recipe_write_boundary', (select to_jsonb(recipe_write_boundary) from recipe_write_boundary),
+  'recipe_price_audit', (select to_jsonb(recipe_price_audit_final) from recipe_price_audit_final),
   'reviewed_browser_rpcs', coalesce((
     select jsonb_agg(jsonb_build_object('function', wrapper, 'safe', reviewed_rpc_safe) order by wrapper)
     from reviewed_browser_rpc_status
