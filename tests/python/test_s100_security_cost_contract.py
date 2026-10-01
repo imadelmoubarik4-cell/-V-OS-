@@ -22,9 +22,36 @@ class S100MigrationContractTests(unittest.TestCase):
                     "daily_budget_usd", "monthly_budget_usd"):
             self.assertIn(col, MIG)
         # budgets are nullable so the owner is never locked out (NULL = no cap)
-        self.assertIn("daily_budget_usd numeric(12,2) default 50", MIG)
         self.assertIn("daily_budget_usd is null or daily_budget_usd >= 0", MIG)
         self.assertIn("monthly_budget_usd is null or monthly_budget_usd >= 0", MIG)
+
+    def test_pilot_cost_defaults_not_the_high_first_draft_values(self):
+        # the pilot ships a $5 daily backstop + $30 monthly hard cap, never 50/500
+        self.assertIn("daily_budget_usd numeric(12,2) default 5", MIG)
+        self.assertIn("monthly_budget_usd numeric(12,2) default 30", MIG)
+        self.assertNotIn("default 50", MIG)
+        self.assertNotIn("default 500", MIG)
+        # run_start's defensive fallback matches the pilot turn cap, not 200
+        self.assertIn("coalesce(v_settings.daily_turn_limit_per_user, 40)", MIG)
+
+    def test_pilot_baseline_update_is_guarded_against_owner_customizations(self):
+        # each pilot value is applied only where the column still equals its ship
+        # default (CASE ... else <column> end), so owner-tuned caps are preserved.
+        for pair in (
+            ("daily_turn_limit_per_user = 200 then 40"),
+            ("voice_sessions_per_day = 20 then 5"),
+            ("voice_minutes_per_day = 60 then 15"),
+            ("upload_files_per_day = 100 then 20"),
+            ("upload_bytes_per_day = 262144000 then 52428800"),
+            ("recognition_identifications_per_hour = 60 then 20"),
+            ("recognition_vision_per_day = 150 then 30"),
+            ("recognition_vision_budget_usd_per_day = 5 then 1"),
+            ("media_retention_days = 30 then 14"),
+            ("daily_budget_usd = 50 then 5"),
+            ("monthly_budget_usd = 500 then 30"),
+        ):
+            self.assertIn(pair, MIG)
+        self.assertIn("else daily_turn_limit_per_user end", MIG)
 
     def test_text_chat_throttle_reuses_the_durable_limiter(self):
         # race-safe sliding window, not a per-isolate counter

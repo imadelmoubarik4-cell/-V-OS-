@@ -328,6 +328,28 @@ end
 $t8e$;
 
 -- ---------------------------------------------------------------------------
+-- T11: the migration applied the VÁ/Alcedo pilot baseline to the settings row
+-- (this reads the committed row BEFORE T9/T10 mutate it below).
+-- ---------------------------------------------------------------------------
+do $t11$
+declare s atlas_private.ai_settings;
+begin
+  select * into s from atlas_private.ai_settings where id;
+  if s.daily_turn_limit_per_user <> 40
+     or s.voice_sessions_per_day <> 5 or s.voice_minutes_per_day <> 15
+     or s.max_concurrent_voice_sessions <> 1
+     or s.upload_files_per_day <> 20 or s.upload_bytes_per_day <> 52428800
+     or s.recognition_identifications_per_hour <> 20 or s.recognition_vision_per_day <> 30
+     or s.recognition_vision_budget_usd_per_day <> 1
+     or s.media_retention_days <> 14 or s.audio_retention <> 'delete_after_transcription'
+     or s.daily_budget_usd <> 5 or s.monthly_budget_usd <> 30 then
+    raise exception 'T11 FAIL: pilot baseline not applied: %', row_to_json(s);
+  end if;
+  raise notice 'T11 pass: VÁ/Alcedo pilot baseline applied (turns 40, voice 5/15, uploads 20/50MiB, recog 20/30/$1, media 14d, budget $5/$30)';
+end
+$t11$;
+
+-- ---------------------------------------------------------------------------
 -- T9: the durable text-chat throttle actually fires (not just the grants).
 -- ---------------------------------------------------------------------------
 insert into atlas_private.ai_settings (id, enabled, chat_requests_per_minute, chat_burst_limit, daily_budget_usd, monthly_budget_usd)

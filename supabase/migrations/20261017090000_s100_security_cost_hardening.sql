@@ -31,9 +31,9 @@ alter table atlas_private.ai_settings
     check (chat_requests_per_minute between 1 and 600),
   add column if not exists chat_burst_limit integer not null default 5
     check (chat_burst_limit between 1 and 200),
-  add column if not exists daily_budget_usd numeric(12,2) default 50
+  add column if not exists daily_budget_usd numeric(12,2) default 5
     check (daily_budget_usd is null or daily_budget_usd >= 0),
-  add column if not exists monthly_budget_usd numeric(12,2) default 500
+  add column if not exists monthly_budget_usd numeric(12,2) default 30
     check (monthly_budget_usd is null or monthly_budget_usd >= 0);
 
 -- 1b. Allow the text-chat throttle buckets in the existing durable limiter -----------
@@ -43,6 +43,29 @@ alter table atlas_private.ai_settings
 alter table atlas_private.ai_rate_events drop constraint if exists ai_rate_events_bucket_check;
 alter table atlas_private.ai_rate_events add constraint ai_rate_events_bucket_check
   check (bucket in ('voice_mint','voice_tool','voice_append','chat_request','chat_burst'));
+
+-- 1c. VÁ/Alcedo pilot baseline for the AI quota/cost settings ----------------------
+-- The agreed pilot caps are much tighter than the S88/S89/S91 ship defaults. Apply them
+-- to the singleton settings row, but ONLY where a value is still at its original ship
+-- default, so a cap the owner has explicitly tuned is never silently overwritten. The
+-- budgets are corrected from this migration's own first-draft defaults (50/500) to the
+-- pilot (5 daily backstop / 30 monthly hard cap). Everything stays owner-tunable via
+-- public.atlas_ai_limits_set / public.atlas_ai_settings_set (NULL budget = cap disabled).
+update atlas_private.ai_settings set
+  daily_turn_limit_per_user = case when daily_turn_limit_per_user = 200 then 40 else daily_turn_limit_per_user end,
+  voice_sessions_per_day = case when voice_sessions_per_day = 20 then 5 else voice_sessions_per_day end,
+  voice_minutes_per_day = case when voice_minutes_per_day = 60 then 15 else voice_minutes_per_day end,
+  upload_files_per_day = case when upload_files_per_day = 100 then 20 else upload_files_per_day end,
+  upload_bytes_per_day = case when upload_bytes_per_day = 262144000 then 52428800 else upload_bytes_per_day end, -- 50 MiB
+  recognition_identifications_per_hour = case when recognition_identifications_per_hour = 60 then 20 else recognition_identifications_per_hour end,
+  recognition_vision_per_day = case when recognition_vision_per_day = 150 then 30 else recognition_vision_per_day end,
+  recognition_vision_budget_usd_per_day = case when recognition_vision_budget_usd_per_day = 5 then 1 else recognition_vision_budget_usd_per_day end,
+  media_retention_days = case when media_retention_days = 30 then 14 else media_retention_days end,
+  -- audio_retention and max_concurrent_voice_sessions already ship at the pilot value.
+  daily_budget_usd = case when daily_budget_usd = 50 then 5 else daily_budget_usd end,
+  monthly_budget_usd = case when monthly_budget_usd = 500 then 30 else monthly_budget_usd end,
+  updated_at = pg_catalog.now()
+where id;
 
 -- 2. Durable, append-only block/abuse event trail --------------------------------
 create table if not exists atlas_private.ai_block_events (
@@ -145,7 +168,7 @@ begin
       -- Check and reserve under one per-user lock: concurrent turns queue
       -- here, so a burst cannot overshoot the daily limit.
       perform atlas_private.ai_lock_user(p_actor_id, 'turns');
-      if atlas_private.ai_turns_used(p_actor_id) >= coalesce(v_settings.daily_turn_limit_per_user, 200) then
+      if atlas_private.ai_turns_used(p_actor_id) >= coalesce(v_settings.daily_turn_limit_per_user, 40) then
         raise exception using errcode = '53400', message = 'rate_limited: daily Atlas AI limit reached';
       end if;
     end if;
