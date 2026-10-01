@@ -178,14 +178,14 @@
     {
       "name": "atlas-team-profile-photos",
       "sources": {
-        "supabase/functions/atlas-team-profile-photos/index.ts": "898cf5a49fe973d4e71dd0e8f220724322ab480fd6f9af83fe1c4e9bc2c4a7e6",
+        "supabase/functions/atlas-team-profile-photos/index.ts": "c6f96448bc069e7aa22d97fa5a1adb0657ec0203524365a21155f88d2649bc32",
         "supabase/functions/_shared/auth.mjs": "1390bdf99392553b48e3e608814d76231367f5a354c7fa70ec965a2902cd36ff"
       }
     },
     {
       "name": "atlas-team-profiles",
       "sources": {
-        "supabase/functions/atlas-team-profiles/index.ts": "a26a632cfdf43d9dae79a0bba04edb666be65393f2e624af5929424749c85946",
+        "supabase/functions/atlas-team-profiles/index.ts": "eb8ae27168d3e8a7bba4fb1288f98c241f766acb1e7187d6862a63a34fc66dae",
         "supabase/functions/_shared/auth.mjs": "1390bdf99392553b48e3e608814d76231367f5a354c7fa70ec965a2902cd36ff"
       }
     },

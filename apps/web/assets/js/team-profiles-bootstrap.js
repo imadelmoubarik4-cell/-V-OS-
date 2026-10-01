@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const JS_SOURCE = 'assets/js/team-profiles.source.js?v=20261010-s96';
+  const JS_SOURCE = 'assets/js/team-profiles.source.js?v=20261016-s99';
   const CSS_BUNDLE = 'assets/css/team-profiles.bundle.css.gz';
   let loading = null;
   let navTimer = null;

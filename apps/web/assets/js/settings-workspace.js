@@ -108,7 +108,9 @@
     notificationAction: false,
     ai: { status: 'idle', settings: null, preferences: null, error: null },
     integrations: { status: 'idle', providers: [], error: null, busy: {}, messages: {}, notice: null, autoPick: null },
-    purchasingPolicy: { status: 'idle', value: null }
+    purchasingPolicy: { status: 'idle', value: null },
+    // S99: the current user's own authenticator status (client.auth.mfa.listFactors).
+    mfa: { status: 'idle', hasFactor: false, busy: false }
   };
 
   // ---------- helpers ----------
@@ -1149,18 +1151,128 @@
       ['Keys stay on the server', 'Service keys and connection secrets never reach the browser.']
     ];
     const unavailable = [
-      ['Two-factor authentication', 'Not enforced yet — needs the sign-in provider’s two-factor setup.'],
       ['Automatic sign-out after inactivity', 'Not enforced yet — sessions follow the sign-in provider’s refresh rules.'],
       ['Trusted devices', 'Not available yet.'],
       ['Emergency lockdown', 'Not available yet — deactivate a profile in Team to remove access.']
     ];
     return `${sectionHead('Security', 'What Alcedo enforces today, and what isn’t available yet.')}
       <section class="settings-security">
+        ${mfaMarkup()}
         <section class="settings-form atlas-card" aria-labelledby="settings-security-on"><div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-security-on">Enforced now</h3></div>${pill('positive', 'On')}</div>
           <ul class="settings-capabilities">${enforced.map(([title, detail]) => `<li>${icon('shield-check')}<span><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></span></li>`).join('')}</ul></section>
         <section class="settings-form atlas-card" aria-labelledby="settings-security-off"><div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-security-off">Not available yet</h3></div>${pill('neutral', 'Off')}</div>
           <ul class="settings-capabilities">${unavailable.map(([title, detail]) => `<li>${icon('circle-dashed')}<span><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></span></li>`).join('')}</ul></section>
       </section>`;
+  }
+
+  // S99: the current user's own authenticator (two-factor). Every account needs
+  // one to sign in; this card lets the person set one up, replace it, or remove
+  // then re-add it. It reads/writes only the current user's factors through the
+  // app's Supabase client (window.atlasSupabase).
+  function mfaMarkup() {
+    const mfa = state.mfa;
+    let body;
+    if (mfa.status === 'idle' || mfa.status === 'loading') {
+      body = `<div aria-busy="true"><span class="atlas-skel atlas-skel--row"></span><span class="sr-only">Checking your authenticator</span></div>`;
+    } else if (mfa.status === 'error') {
+      body = `<p class="settings-muted">${icon('circle-alert')}Your authenticator status couldn’t be checked. <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-settings-mfa-refresh>Try again</button></p>`;
+    } else if (mfa.hasFactor) {
+      body = `<p class="settings-muted">${icon('shield-check')}An authenticator app is set up for your account.</p>
+        <div class="settings-savebar" style="position:static">
+          <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm${mfa.busy ? ' is-loading' : ''}"${mfa.busy ? ' disabled aria-busy="true"' : ''} data-settings-mfa-setup>Replace authenticator</button>
+          <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm"${mfa.busy ? ' disabled' : ''} data-settings-mfa-remove>Remove</button>
+        </div>`;
+    } else {
+      body = `<p class="settings-muted">${icon('shield-alert')}No authenticator app is set up yet. You’ll be asked to add one the next time you sign in.</p>
+        <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm${mfa.busy ? ' is-loading' : ''}"${mfa.busy ? ' disabled aria-busy="true"' : ''} data-settings-mfa-setup>Set up authenticator</button>`;
+    }
+    return `<section class="settings-form atlas-card" aria-labelledby="settings-security-mfa"><div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-security-mfa">Two-factor authentication</h3><p class="settings-form__sub">An authenticator app is required to sign in to Alcedo.</p></div>${mfa.status === 'ready' ? pill(mfa.hasFactor ? 'positive' : 'neutral', mfa.hasFactor ? 'On' : 'Off') : ''}</div>${body}</section>`;
+  }
+
+  function mfaClient() {
+    return window.atlasSupabase || null;
+  }
+
+  async function loadMfaStatus(force) {
+    const client = mfaClient();
+    if (!client?.auth?.mfa) { state.mfa.status = 'error'; return; }
+    if (state.mfa.status === 'loading') return;
+    if (!force && state.mfa.status === 'ready') return;
+    state.mfa.status = 'loading';
+    try {
+      const { data, error } = await client.auth.mfa.listFactors();
+      if (error) throw error;
+      state.mfa.hasFactor = (data?.totp || []).some((factor) => factor.status === 'verified');
+      state.mfa.status = 'ready';
+    } catch (error) {
+      console.warn('Authenticator status could not be read', error?.message || error);
+      state.mfa.status = 'error';
+    }
+    if (state.section === 'security' && settingsVisible()) render();
+  }
+
+  function openMfaSetup() {
+    const client = mfaClient();
+    if (!client || !window.AtlasMfaEnroll) { window.AtlasShell?.toast?.('Two-factor setup isn’t available right now. Reload Alcedo and try again.'); return; }
+    const root = document.createElement('div');
+    root.className = 'atlas-modal';
+    root.dataset.atlasModal = '';
+    root.hidden = true;
+    root.innerHTML = `<section class="atlas-dialog" data-modal-panel aria-labelledby="settings-mfa-title">
+      <h2 class="atlas-dialog__title" id="settings-mfa-title">Set up your authenticator</h2>
+      <div class="atlas-dialog__body"><div data-settings-mfa-host></div></div>
+      <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Close</button></div>
+    </section>`;
+    document.body.appendChild(root);
+    const modal = window.AtlasModal;
+    let controller = null;
+    const cleanup = () => { controller?.destroy?.(); root.remove(); };
+    if (!modal) { cleanup(); return; }
+    modal.register(root, { onClose: () => window.setTimeout(cleanup, 0) });
+    modal.open(root);
+    window.AtlasMfaEnroll.mount(root.querySelector('[data-settings-mfa-host]'), {
+      client,
+      onVerified: () => {
+        window.AtlasShell?.toast?.('Authenticator set up');
+        modal.close(root);
+        loadMfaStatus(true);
+      }
+    }).then((instance) => { controller = instance; });
+  }
+
+  async function removeMfa() {
+    const client = mfaClient();
+    if (!client?.auth?.mfa) return;
+    const answer = await (window.AtlasModal ? confirmRemoveMfa() : Promise.resolve(true));
+    if (!answer) return;
+    state.mfa.busy = true;
+    if (state.section === 'security' && settingsVisible()) render();
+    try {
+      const { data } = await client.auth.mfa.listFactors();
+      const factors = (data?.totp || []).filter((factor) => factor.status === 'verified');
+      for (const factor of factors) { await client.auth.mfa.unenroll({ factorId: factor.id }); }
+      window.AtlasShell?.toast?.('Authenticator removed. Set up a new one to keep signing in.');
+    } catch (error) {
+      window.AtlasShell?.toast?.('The authenticator couldn’t be removed. Try again.');
+    } finally {
+      state.mfa.busy = false;
+      loadMfaStatus(true);
+    }
+  }
+
+  function confirmRemoveMfa() {
+    return new Promise((resolve) => {
+      const root = document.createElement('div');
+      root.className = 'atlas-modal';
+      root.dataset.atlasModal = '';
+      root.hidden = true;
+      root.innerHTML = `<section class="atlas-dialog" data-modal-panel aria-labelledby="settings-mfa-remove-title"><h2 class="atlas-dialog__title" id="settings-mfa-remove-title">Remove your authenticator?</h2><div class="atlas-dialog__body"><p>You’ll need to set up an authenticator again the next time you sign in.</p></div><div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Keep it</button><button type="button" class="atlas-btn atlas-btn--danger-solid" data-settings-mfa-remove-confirm>Remove</button></div></section>`;
+      document.body.appendChild(root);
+      let answer = false;
+      window.AtlasModal.register(root, { onClose: () => { root.remove(); resolve(answer); } });
+      root.querySelector('[data-settings-mfa-remove-confirm]').addEventListener('click', () => { answer = true; window.AtlasModal.close(root); });
+      window.AtlasModal.open(root);
+    });
   }
 
   function systemMarkup() {
@@ -1251,6 +1363,7 @@
     </div>`;
     restoreDrafts(element, drafts);
     if ((current || defaultSection()) === 'system' && !listOnly) window.AtlasSystem?.mount?.(element.querySelector('[data-settings-system-host]'));
+    if ((current || defaultSection()) === 'security' && !listOnly && (state.mfa.status === 'idle')) loadMfaStatus();
     window.lucide?.createIcons?.();
     // #settings/integrations?provider=<key> (Alcedo AI record links): show that provider once it has loaded.
     if (state.focusProvider) {
@@ -1722,6 +1835,9 @@
       return;
     }
     if (target.closest('[data-settings-refresh]')) { load(); return; }
+    if (target.closest('[data-settings-mfa-refresh]')) { loadMfaStatus(true); return; }
+    if (target.closest('[data-settings-mfa-setup]')) { openMfaSetup(); return; }
+    if (target.closest('[data-settings-mfa-remove]')) { removeMfa(); return; }
     if (target.closest('[data-settings-push-enable]')) { updatePushPreference(true); return; }
     if (target.closest('[data-settings-push-disable]')) { updatePushPreference(false); return; }
     const discard = target.closest('[data-settings-discard]');

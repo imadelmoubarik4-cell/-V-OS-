@@ -94,5 +94,6 @@ test('step-up is wired into the deployed entry points for integrations, settings
   const settings = readFileSync(new URL('../../supabase/functions/atlas-settings/index.ts', import.meta.url), 'utf8');
   assert.match(settings, /case "save-role": \{\s+requireManager\(context\);\s+\/\/ S96 step-up[^\n]*\n\s+requireStepUp\(context\.assurance, Deno\.env\);/);
   const team = readFileSync(new URL('../../supabase/functions/atlas-team-profiles/index.ts', import.meta.url), 'utf8');
-  assert.equal((team.match(/requireStepUp\(context\);/g) || []).length, 4, 'role change, create login, renew setup, invite');
+  // S99 added the reset-member-mfa manager action, also step-up gated.
+  assert.equal((team.match(/requireStepUp\(context\);/g) || []).length, 5, 'role change, create login, renew setup, invite, reset MFA');
 });

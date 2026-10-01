@@ -166,6 +166,19 @@ with public_tables as (
   from reviewed_browser_rpc r
   join pg_proc p on p.oid = r.oid
   left join pg_proc impl on impl.oid = r.impl_oid
+), auth_policy_status as (
+  -- S99: the client MFA entry gate reads its own rollout policy through this
+  -- SECURITY DEFINER function. It is authenticated-only (never anon), search_path
+  -- pinned, and returns only the caller's own policy decision (auth.uid()-scoped),
+  -- so it is a reviewed browser-exposed read. Optional until S99 installs it.
+  select p.oid,
+    p.prosecdef
+    and coalesce('search_path=""' = any(p.proconfig), false)
+    and has_function_privilege('authenticated', p.oid, 'execute')
+    and not has_function_privilege('anon', p.oid, 'execute')
+    as auth_policy_safe
+  from pg_proc p
+  where p.oid = to_regprocedure('public.atlas_auth_policy()')
 ), browser_functions as (
   select p.oid, p.proname, pg_get_function_identity_arguments(p.oid) as args
   from pg_proc p
@@ -187,6 +200,10 @@ with public_tables as (
     and not exists (
       select 1 from reviewed_browser_rpc_status rr
       where rr.oid = p.oid and rr.reviewed_rpc_safe
+    )
+    and not exists (
+      select 1 from auth_policy_status aps
+      where aps.oid = p.oid and aps.auth_policy_safe
     )
 ), actor_param_exposure as (
   -- S100 tripwire (always valid): a Pattern-A edge RPC takes p_actor_id/p_actor_role
@@ -315,7 +332,9 @@ select jsonb_build_object(
     case when not coalesce((select rls_enabled and writes_manager_only and no_anon_write from recipe_write_boundary), false)
       then 'recipe writes are not strictly manager-only under RLS' end,
     case when exists (select 1 from recipe_price_audit_final where not recipe_price_audit_safe)
-      then 'recipe price/flag audit trail is installed but not sealed append-only behind a definer trigger' end
+      then 'recipe price/flag audit trail is installed but not sealed append-only behind a definer trigger' end,
+    case when exists (select 1 from auth_policy_status where not auth_policy_safe)
+      then 'atlas_auth_policy is browser-exposed but not a safe authenticated-only search_path-pinned definer read' end
   ]::text[], null)),
   'actor_param_exposure', coalesce((
     select jsonb_agg(jsonb_build_object('function', proname, 'args', args) order by proname, args)

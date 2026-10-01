@@ -111,7 +111,7 @@ test('the replay verification covers every S96 finding plus the regression contr
     "IDOR: bartender cannot change or delete another user''s media row",
     "IDOR: bartender cannot write another user''s onboarding progress",
     'no public function is executable by anon',
-    'authenticated executes only the 16 reviewed public RPCs, all SECURITY INVOKER',
+    'authenticated executes only the 17 reviewed public RPCs (16 invoker + the S99 atlas_auth_policy definer read)',
     'every SECURITY DEFINER function in public/atlas_private/private pins search_path',
     'every public table has RLS enabled',
     'every public view granted to browser roles is security_invoker',
