@@ -11,6 +11,7 @@ import {
 
 const MANAGER = { userId: '22222222-2222-4222-8222-222222222222', role: 'manager', active: true, label: 'Manager' };
 const BARTENDER = { userId: '33333333-3333-4333-8333-333333333333', role: 'bartender', active: true, label: 'Bar' };
+const VIEWER = { userId: '99999999-9999-4999-8999-999999999999', role: 'viewer', active: true, label: 'Viewer' };
 const RES = '44444444-4444-4444-8444-444444444444';
 const TABLE = '55555555-5555-4555-8555-555555555555';
 
@@ -92,6 +93,28 @@ test('save-area / save-table / save-settings are manager-only', async () => {
     const staff = handlerFor({ actor: BARTENDER });
     const r = await read(await staff.handle(post(action, { name: 'x', label: 'Bar 1', seat_capacity: 2, member_table_ids: [TABLE, RES], combined_capacity: 4 })));
     assert.equal(r.status, 403, `${action} must be manager-only`);
+  }
+});
+
+test('viewer can read Bookings but cannot mutate reservations', async () => {
+  const { handle, svc } = handlerFor({ actor: VIEWER });
+  assert.equal((await read(await handle(get('snapshot', { date: '2026-11-03' })))).status, 200);
+  assert.equal((await read(await handle(get('availability', {
+    from: '2026-11-03T18:00:00Z', to: '2026-11-03T20:00:00Z', party_size: '1'
+  })))).status, 200);
+
+  const mutations = [
+    ['create', { party_size: 1, start_at: '2026-11-03T18:00:00Z' }],
+    ['assign', { reservation_id: RES, table_ids: [TABLE] }],
+    ['set-status', { reservation_id: RES, to_status: 'arrived' }],
+    ['hold', { table_id: TABLE, start_at: '2026-11-03T18:00:00Z', end_at: '2026-11-03T20:00:00Z' }],
+    ['release-hold', { hold_id: '88888888-8888-4888-8888-888888888888' }],
+  ];
+  for (const [action, body] of mutations) {
+    const before = svc.calls.rpc.length;
+    const result = await read(await handle(post(action, body)));
+    assert.equal(result.status, 403, `${action} must reject viewer`);
+    assert.equal(svc.calls.rpc.length, before, `${action} must not reach service-role RPC`);
   }
 });
 
