@@ -107,6 +107,7 @@ button.shift-chip[class*="atlas-person--"]:hover { border-color: color-mix(in sr
 .shifts-month__chips { display: grid; gap: 2px; min-width: 0; }
 .shifts-month__chip { overflow: hidden; padding: 2px 6px; border: 1px solid var(--line); border-radius: var(--r-xs); font: var(--type-caption); white-space: nowrap; text-overflow: ellipsis; }
 .shifts-month__chip.is-unpublished { border-style: dashed; border-color: var(--line-hover); }
+.shifts-month__chip[class*="atlas-person--"] { border-inline-start: 3px solid var(--person-color); border-inline-start-color: var(--person-color); background: color-mix(in srgb, var(--person-color) 9%, var(--surface)); }
 .shifts-month__who { font-weight: 500; }
 .shifts-month__more, .shifts-month__gap { font: var(--type-caption); color: var(--text-2); }
 .shifts-month__gap { color: var(--warning); }

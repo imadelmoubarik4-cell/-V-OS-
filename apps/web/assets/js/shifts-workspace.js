@@ -940,7 +940,7 @@
       if (gap) labelParts.push('open, no one scheduled');
       return `<button type="button" class="shifts-month__cell${inMonth ? '' : ' is-outside'}${key === current ? ' is-today' : ''}" data-shifts-day="${escapeHtml(key)}" ${inMonth ? '' : 'tabindex="-1"'} aria-label="${escapeHtml(labelParts.join(', '))}" ${key === current ? 'aria-current="date"' : ''}>
         <span class="shifts-month__num num">${dayNumber(key)}</span>
-        ${inMonth ? `<span class="shifts-month__chips">${entries.slice(0, 3).map((shift) => `<span class="shifts-month__chip${isUnpublished(shift, ws) ? ' is-unpublished' : ''}"><span class="shifts-month__who">${escapeHtml(mineOnly ? 'You' : nameOf(shift, ws).split(' ')[0])}</span> <span class="num">${escapeHtml(timeOf(shift.starts_local))}</span></span>`).join('')}${entries.length > 3 ? `<span class="shifts-month__more">+${entries.length - 3} more</span>` : ''}</span>
+        ${inMonth ? `<span class="shifts-month__chips">${entries.slice(0, 3).map((shift) => `<span class="shifts-month__chip${isUnpublished(shift, ws) ? ' is-unpublished' : ''}${personColorClassOn(personFor(shift.person_id, ws) || { id: shift.person_id, display_name: shift.person_name })}"><span class="shifts-month__who">${escapeHtml(mineOnly ? 'You' : nameOf(shift, ws).split(' ')[0])}</span> <span class="num">${escapeHtml(timeOf(shift.starts_local))}</span></span>`).join('')}${entries.length > 3 ? `<span class="shifts-month__more">+${entries.length - 3} more</span>` : ''}</span>
         <span class="shifts-month__count num" aria-hidden="true">${entries.length ? entries.length : ''}</span>
         ${gap ? '<span class="shifts-month__gap">No one scheduled</span>' : ''}` : ''}
       </button>`;
