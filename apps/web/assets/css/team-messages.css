@@ -85,7 +85,8 @@
 /* Read receipts: one grey tick while only sent, a coloured double tick once read.
    The read receipt is a button (tap to see who read it) but reads as plain text. */
 .msg-item__read--sent { color: var(--text-3); }
-.msg-item__read--read { border: 0; margin: 0; padding: 0; background: none; cursor: pointer; color: var(--accent-brand); font: var(--type-caption); }
+.msg-item__read--read { position: relative; border: 0; margin: 0; padding: 0; background: none; cursor: pointer; color: var(--accent-brand); font: var(--type-caption); }
+.msg-item__read--read::after { content: ''; position: absolute; inset: -14px -8px; }   /* 44 px touch target */
 .msg-item__read--read svg { color: var(--accent-brand); }
 .msg-item__read--read:hover { text-decoration: underline; }
 .msg-item__read--read:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--r-xs); }
