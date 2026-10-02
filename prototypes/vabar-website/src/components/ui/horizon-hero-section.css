@@ -8,6 +8,19 @@
   color: var(--foreground, #ede8e0);
 }
 
+/* Fades the bottom of the hero into the page colour, so it never ends in a hard line. */
+.hero-container::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 140px;
+  background: linear-gradient(180deg, transparent, var(--background, #262626));
+  pointer-events: none;
+  z-index: 5;
+}
+
 .hero-stage {
   position: sticky;
   top: 0;
@@ -122,6 +135,14 @@
   letter-spacing: 0.08em;
   pointer-events: none;
   transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+/* As the hero scrolls away, its bottom controls fade so they never touch the next section. */
+.hero-stage[data-end] .scroll-progress,
+.hero-stage[data-end] .hero-play-hint,
+.hero-stage[data-end] .side-menu {
+  opacity: 0 !important;
+  pointer-events: none;
 }
 
 .hero-play-hint[data-played] {

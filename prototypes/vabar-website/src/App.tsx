@@ -117,14 +117,18 @@ export default function App() {
 function Marquee({ words }: { words: string[] }) {
   const row = [...words, ...words];
   return (
-    <div className="relative -rotate-1 overflow-hidden border-y border-foreground/10 bg-gradient-to-r from-rust via-copper to-rust py-4 text-background" aria-hidden="true">
-      <div className="animate-marquee flex w-max gap-10 whitespace-nowrap font-display text-3xl font-bold uppercase tracking-[0.12em] sm:text-4xl">
-        {[...row, ...row].map((w, i) => (
-          <span key={i} className="flex items-center gap-10">
-            {w}
-            <span aria-hidden="true">✦</span>
-          </span>
-        ))}
+    // The band is wider than the screen and pulled up over the hero's bottom edge, so its tilt
+    // never shows a wedge of page background at either end.
+    <div className="relative z-20 -mt-8 mb-2" aria-hidden="true">
+      <div className="relative -left-[5vw] w-[110vw] -rotate-1 overflow-hidden border-y border-foreground/10 bg-gradient-to-r from-rust via-copper to-rust py-4 text-background shadow-[0_12px_30px_-12px_rgba(0,0,0,0.6)]">
+        <div className="animate-marquee flex w-max gap-10 whitespace-nowrap font-display text-3xl font-bold uppercase tracking-[0.12em] sm:text-4xl">
+          {[...row, ...row].map((w, i) => (
+            <span key={i} className="flex items-center gap-10">
+              {w}
+              <span aria-hidden="true">✦</span>
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );

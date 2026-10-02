@@ -749,7 +749,12 @@ export const Component = ({
       style={{ height: `${slides.length * 100}svh` }}
     >
       {/* Sticky stage: canvas, side menu and progress stay put while the slides scroll. */}
-      <div className="hero-stage" onPointerMove={onStagePointerMove} onPointerDown={onStagePointerDown}>
+      <div
+        className="hero-stage"
+        data-end={scrollProgress > 0.95 || undefined}
+        onPointerMove={onStagePointerMove}
+        onPointerDown={onStagePointerDown}
+      >
         {/* Per-slide backgrounds, cross-faded by scroll position */}
         {slides.map((slide, i) =>
           slide.background ? (
