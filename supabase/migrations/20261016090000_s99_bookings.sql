@@ -837,7 +837,7 @@ begin
   end loop;
 
   return pg_catalog.jsonb_build_object('party_size', p_party_size, 'duration_minutes',
-    pg_catalog.extract(epoch from dur)::int / 60, 'slots', slots);
+    extract(epoch from dur)::int / 60, 'slots', slots);
 end
 $function$;
 revoke all on function public.atlas_bookings_availability(uuid, text, timestamptz, timestamptz, integer) from public, anon, authenticated;
