@@ -261,9 +261,12 @@ as the pilot's source data; **treated as reference to confirm, not final**:
 - **2 Oct 2026 floor-plan screenshot confirms the VÁ room geometry:** 16 individual
   table/stool positions around the perimeter of one rectangular room, with
   **8 positions across the top, 4 down the left side, and 4 down the right side**;
-  the centre remains open. This geometry is confirmed source reference. The
-  screenshot does **not** expose the Bar 1–Bar 16 labels on each position, so the
-  numbering order must still be confirmed before production coordinates are seeded.
+  the centre remains open.
+- **Owner confirmed the numbering order on 2 Oct 2026:** **Bar 1 is the top-left
+  position and Bar 1 → Bar 16 continue clockwise**. Therefore the coordinate
+  mapping is: **Bar 1–8 left-to-right across the top; Bar 9–12 top-to-bottom down
+  the right side; Bar 13–16 bottom-to-top up the left side**. This numbering and
+  geometry are now approved source data for the VÁ Bar room.
 
 **Still to confirm before this becomes real config:**
 1. The **other rooms/areas** for the VÁ location and their tables (names, seat
