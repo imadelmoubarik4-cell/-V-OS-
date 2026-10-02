@@ -30,7 +30,7 @@ export type HeroSlide = {
   /** Particles that drift (and burst on tap) while this slide is on screen. */
   particle?: ParticleSlide;
   /** Photos shown behind this slide, cross-faded in order with a slow zoom (a little story). */
-  photos?: { src: string; position?: string; soft?: boolean }[];
+  photos?: { src: string; position?: string; soft?: boolean; tint?: string }[];
 };
 
 export type HeroPalette = {
@@ -781,6 +781,9 @@ export const Component = ({
                   style={{ objectPosition: ph.position ?? "50% 35%" }}
                 />
               ))}
+              {slide.photos[0].tint ? (
+                <span className="hero-photos-tint" style={{ background: slide.photos[0].tint }} />
+              ) : null}
               <span className="hero-photos-scrim" />
             </div>
           ) : null,

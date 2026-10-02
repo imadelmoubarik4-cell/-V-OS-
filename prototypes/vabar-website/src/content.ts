@@ -15,6 +15,8 @@ import heroGarnish from "@/assets/hero/cocktails-garnish.webp";
 import heroPresent from "@/assets/hero/cocktails-present.webp";
 // TAPAS hero photo (supplied 2 October 2026; small source, shown soft-focus).
 import heroTapas from "@/assets/hero/tapas.webp";
+// WINE hero photo: the owner's photo of a wine glass with the VÁ logo etched in its base.
+import heroWine from "@/assets/hero/wine-glass.webp";
 
 export type Lang = "en" | "is";
 
@@ -104,6 +106,7 @@ export const heroScenes: Pick<HeroSlide, "palette" | "background" | "glow" | "pa
     background: "radial-gradient(ellipse at 50% 110%, #6a1230 0%, #400d22 38%, #1e0c16 72%, #0f080c 100%)",
     glow: "rgba(170, 30, 75, 0.6)",
     particle: { kind: "drops", rgb: "255, 110, 150" },
+    photos: [{ src: heroWine, position: "50% 62%", tint: "rgba(110, 10, 45, 0.35)" }],
   },
 ];
 

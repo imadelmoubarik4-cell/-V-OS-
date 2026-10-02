@@ -46,6 +46,13 @@
   filter: blur(3px) saturate(1.1);
 }
 
+/* Optional colour wash that ties a photo to its word's mood */
+.hero-photos-tint {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: color;
+}
+
 /* Darkens the photo where the words sit, and fades its edges into the page */
 .hero-photos-scrim {
   position: absolute;
