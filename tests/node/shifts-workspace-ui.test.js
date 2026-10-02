@@ -24,7 +24,7 @@ test('Shifts loads from the isolated Shifts API as one module', () => {
     assert.ok(!existsSync(`apps/web/${retired}`), `${retired} is deleted`);
     assert.doesNotMatch(config + index, new RegExp(retired.split('/').pop().replace('.', '\\.')));
   }
-  assert.match(index, /<script src="assets\/js\/shifts-workspace\.js\?v=20260929-s90f"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/shifts-workspace\.js\?v=20261002-s103"><\/script>/);
 });
 
 test('routes: week, month, availability, time off, confirmations, activity', () => {
@@ -123,6 +123,33 @@ test('staff: my shifts with Confirm, team view, availability and time off', () =
   assert.match(shifts, /data-shifts-time-off-decision/);
   assert.match(shifts, /data-shifts-response-decision/);
   assert.match(shifts, /This part of Shifts is for managers/);
+});
+
+test('colour by person: stable per-teammate colour, a remembered toggle, tokens only', () => {
+  // A stable colour class per person from the 12-hue palette, hashed from a stable key.
+  assert.match(shifts, /const PERSON_COLORS = 12;/);
+  // Distinct palette slot per teammate by roster position (stable, collision-free ≤12).
+  assert.match(shifts, /function colorIndexFor\(person\)[\s\S]+?colorMap = new Map\(roster\.map\(\(id, index\) => \[id, index % PERSON_COLORS\]\)\);/);
+  assert.match(shifts, /function personColorClass\(person\) \{\s*return `atlas-person--\$\{colorIndexFor\(person\)\}`;/);
+  // The choice is remembered per browser and defaults on.
+  assert.match(shifts, /const COLOR_PREF_KEY = 'atlas\.shifts\.colorByPerson';/);
+  assert.match(shifts, /colorByPerson: loadColorPref\(\)/);
+  assert.match(shifts, /return stored == null \? true : stored === '1';/);
+  // A switch in the toolbar flips it and repaints.
+  assert.match(shifts, /data-shifts-color-toggle/);
+  assert.match(shifts, /role="switch" aria-checked="\$\{state\.colorByPerson\}"/);
+  assert.match(shifts, /state\.colorByPerson = !state\.colorByPerson; saveColorPref\(\); paint\(\);/);
+  // The colour class rides the chip, the grid row header, the day-list row and the on-now strip.
+  assert.match(shifts, /class="shift-chip[\s\S]*?\$\{shiftColorClass\(shift, ws\)\}"/);
+  assert.match(shifts, /class="shifts-grid__person\$\{personColorClassOn\(person\)\}"/);
+  assert.match(shifts, /class="atlas-row shifts-row[\s\S]*?\$\{shiftColorClass\(shift, ws\)\}"/);
+  assert.match(shifts, /class="shifts-now__person\$\{personColorClassOn\(/);
+  // Palette hex lives in the component layer; the module stylesheet references the token only.
+  const components = readFileSync('apps/web/assets/css/atlas-components.css', 'utf8');
+  assert.match(components, /\.atlas-person--0 \{ --person-color: #[0-9a-f]{6}; \}/i);
+  assert.match(components, /\.atlas-person--11 \{ --person-color: #[0-9a-f]{6}; \}/i);
+  assert.match(css, /\.shift-chip\[class\*="atlas-person--"\]::before \{ width: 3px; background: var\(--person-color\); \}/);
+  assert.match(css, /\.shifts-color-toggle\[aria-checked="true"\]/);
 });
 
 test('handover lives in Messages and Shifts links to it', () => {

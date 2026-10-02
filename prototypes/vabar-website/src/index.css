@@ -1,0 +1,167 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import "@fontsource/quicksand/400.css";
+@import "@fontsource/quicksand/500.css";
+@import "@fontsource/quicksand/600.css";
+@import "@fontsource/quicksand/700.css";
+@import "@fontsource/ibm-plex-sans/300.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+
+/* VÁ brand palette (MANUAL_DE_MARCA): Azul primario #143A4D, Azul secundario #2D5668,
+   Terracota primario #E08D6D, Terracota secundario #A15C3F, on the manual's charcoal. */
+:root {
+  --radius: 1rem;
+  --background: #262626;
+  --foreground: #f5f1ec;
+  --card: #143a4d;
+  --card-foreground: #f5f1ec;
+  --muted: #2e2e2e;
+  --muted-foreground: #c9c3bd;
+  --border: #3d3d3d;
+  --input: #3d3d3d;
+  --ring: #e08d6d;
+  --primary: #e08d6d;
+  --primary-foreground: #2e2e2e;
+  --secondary: #2d5668;
+  --secondary-foreground: #f5f1ec;
+  --accent: #e08d6d;
+  --accent-foreground: #2e2e2e;
+  --navy: #143a4d;
+  --ocean: #2d5668;
+  --copper: #e08d6d;
+  --rust: #a15c3f;
+  --charcoal: #2e2e2e;
+  /* The manual's typeface, Bubbleboddy Neue, is a trial licence; Quicksand (SIL OFL) stands in. */
+  --font-display: "Quicksand", "Bubbleboddy Neue", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-copper: var(--copper);
+  --color-rust: var(--rust);
+  --color-navy: var(--navy);
+  --color-charcoal: var(--charcoal);
+  --color-ocean: var(--ocean);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-body);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    color-scheme: dark;
+    overflow-x: clip;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-weight: 300;
+    overflow-x: clip;
+  }
+  ::selection {
+    background: var(--copper);
+    color: var(--accent-foreground);
+  }
+  :focus-visible {
+    outline: 2px solid var(--copper);
+    outline-offset: 3px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+/* Marquee band */
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+}
+
+/* Cocktail shaker */
+@keyframes shake {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  20% { transform: rotate(-14deg) translateY(-6px); }
+  40% { transform: rotate(12deg) translateY(4px); }
+  60% { transform: rotate(-10deg) translateY(-4px); }
+  80% { transform: rotate(8deg) translateY(2px); }
+}
+.animate-shake {
+  animation: shake 0.32s ease-in-out infinite;
+}
+
+/* Bubbles and confetti bits that pop out of the shaker and the skál button */
+@keyframes pop-out {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+.pop-bit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  pointer-events: none;
+  animation: pop-out 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+/* Clinking glasses on the skál button */
+@keyframes clink-left {
+  0%, 100% { transform: rotate(0); }
+  40% { transform: rotate(18deg) translateX(6px); }
+}
+@keyframes clink-right {
+  0%, 100% { transform: rotate(0); }
+  40% { transform: rotate(-18deg) translateX(-6px); }
+}
+.clink .glass-left { animation: clink-left 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.clink .glass-right { animation: clink-right 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* Result card flip-in */
+@keyframes flip-in {
+  0% { transform: perspective(800px) rotateX(70deg) translateY(20px); opacity: 0; }
+  100% { transform: perspective(800px) rotateX(0) translateY(0); opacity: 1; }
+}
+.animate-flip-in {
+  animation: flip-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-shake,
+  .animate-flip-in,
+  .clink .glass-left,
+  .clink .glass-right {
+    animation: none;
+  }
+  .pop-bit {
+    display: none;
+  }
+}

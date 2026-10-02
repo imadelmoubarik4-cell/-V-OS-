@@ -28,6 +28,9 @@
 <title>Alcedo — Food &amp; beverage operations, all in one place</title>
 <meta name="description" content="Alcedo brings daily operations, team knowledge, and intelligent assistance into a shared workspace for restaurants and bars.">
 <link rel="canonical" href="https://www.alcedo.is/">
+<link rel="alternate" hreflang="en" href="https://www.alcedo.is/">
+<link rel="alternate" hreflang="is" href="https://www.alcedo.is/is/">
+<link rel="alternate" hreflang="x-default" href="https://www.alcedo.is/">
 <meta name="theme-color" content="#B6C3B0">
 <!-- ALCEDO Logo Kit v1.0 (review edition) icons, byte-identical copies -->
 <link rel="icon" href="assets/brand/favicon.ico" sizes="16x16 32x32 48x48">
@@ -219,6 +222,12 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 }
 .primary-nav a:hover, .header-login:hover { background-size: 100% 1px; }
 .header-actions { display: flex; align-items: center; gap: 18px; justify-self: end; }
+.lang-switch {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 36px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 999px; font: 600 12px/1 var(--font-mono); letter-spacing: .08em;
+  text-decoration: none; color: var(--ink); transition: border-color .2s var(--ease), background-color .2s var(--ease);
+}
+.lang-switch:hover { border-color: rgba(16,32,31,.4); background: rgba(16,32,31,.05); }
 .primary-nav a, .header-actions a { white-space: nowrap; }
 .menu-toggle {
   display: none; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px; border-radius: 999px;
@@ -667,6 +676,10 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   .footer__grid { grid-template-columns: 1fr 1fr; }
   .tour__panel { grid-template-columns: 1fr; }
 }
+@media (min-width: 901px) and (max-width: 1000px) {   /* room for the longer Icelandic labels */
+  .primary-nav ul { gap: 12px; }
+  .header-actions { gap: 10px; }
+}
 @media (max-width: 900px) {
   :root { --header-h: 68px; --video-x: 50%; --video-y: 45%; --stage-h: calc(var(--header-h) + max(46svh, 280px)); }
   .site-header__inner { grid-template-columns: auto 1fr; gap: 12px; }
@@ -737,6 +750,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
       </ul>
     </nav>
     <div class="header-actions rv" style="--d:2">
+      <a class="lang-switch" href="is/" hreflang="is" lang="is" aria-label="Íslenska">IS</a>
       <a class="header-login" href="https://app.alcedo.is/">Staff login</a>
       <a class="btn btn--dark btn--sm header-demo" href="#request-demo">Request a demo</a>
       <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu"><span class="menu-toggle__bars" aria-hidden="true"></span>Menu</button>
@@ -1231,6 +1245,15 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 (function () {
   'use strict';
 
+  // [COPY] Text the script writes. English is the default; the Icelandic page (is/index.html, built by
+  // tools/build_is.py) supplies translations in a JSON block with id "ui-text", so both pages run this
+  // same script (one CSP hash).
+  const UI_TEXT = (function () {
+    const el = document.getElementById('ui-text');
+    try { return el ? JSON.parse(el.textContent) : {}; } catch (e) { return {}; }
+  })();
+  const ui = function (key, english) { return UI_TEXT[key] || english; };
+
   /* ===================================================================
      [TIMING] + [DESTINATION] CONFIGURATION
      =================================================================== */
@@ -1387,10 +1410,10 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
 
   /* ---------- playback ---------- */
   const CONTROL = {
-    pause:  { text: 'Pause',  label: 'Pause intro animation' },
-    resume: { text: 'Play',   label: 'Play intro animation from where it stopped' },
-    start:  { text: 'Play',   label: 'Play intro animation from the start' },
-    replay: { text: 'Replay', label: 'Replay intro animation' }
+    pause:  { text: ui('pause', 'Pause'),   label: ui('introPauseLabel', 'Pause intro animation') },
+    resume: { text: ui('play', 'Play'),     label: ui('introResumeLabel', 'Play intro animation from where it stopped') },
+    start:  { text: ui('play', 'Play'),     label: ui('introStartLabel', 'Play intro animation from the start') },
+    replay: { text: ui('replay', 'Replay'), label: ui('introReplayLabel', 'Replay intro animation') }
   };
   function setControl(mode) {
     state.mode = mode;
@@ -1559,9 +1582,9 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
   const demo = document.querySelector('.mascot-demo');
   if (demo) {
     const STATES = {
-      idle: 'Ready to help',
-      listening: 'Listening…',
-      thinking: 'Thinking — preparing a draft for you to approve'
+      idle: ui('mascotIdle', 'Ready to help'),
+      listening: ui('mascotListening', 'Listening…'),
+      thinking: ui('mascotThinking', 'Thinking — preparing a draft for you to approve')
     };
     const controls = demo.querySelector('.mascot-demo__controls');
     const status = demo.querySelector('.mascot-demo__status');
@@ -1587,6 +1610,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
     const meta = fmap.querySelector('.fmap__meta');
     const caption = fmap.querySelector('.fmap__caption');
     const pauseBtn = fmap.querySelector('.fmap__pause');
+    const centre = fmap.querySelector('.fmap__centre').textContent;
     const TOUR_MS = 3400;
     let index = 0, timer = 0, visible = false, hovering = false, paused = reduceMotion;
     const show = function (i, announce) {
@@ -1595,7 +1619,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
       fmap.setAttribute('data-active', n.getAttribute('data-key'));
       nodes.forEach(function (b, j) { b.setAttribute('aria-pressed', j === i ? 'true' : 'false'); });
       caption.setAttribute('aria-live', announce ? 'polite' : 'off');   // only announce the visitor's own choices
-      pair.textContent = 'London dry gin + ' + n.getAttribute('data-name');
+      pair.textContent = centre + ' + ' + n.getAttribute('data-name');
       meta.textContent = n.getAttribute('data-source') + ' · ' + n.getAttribute('data-stock');
       fmap.querySelectorAll('.fmap__spark').forEach(function (s) { s.classList.remove('is-running'); });
       const spark = fmap.querySelector('.fmap__spark[data-key="' + n.getAttribute('data-key') + '"]');
@@ -1609,9 +1633,9 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
     };
     nodes.forEach(function (b, i) { b.addEventListener('click', function () { paused = true; setPauseLabel(); show(i, true); sync(); }); });
     const setPauseLabel = function () {
-      pauseBtn.textContent = paused ? 'Play tour' : 'Pause';
+      pauseBtn.textContent = paused ? ui('tourPlay', 'Play tour') : ui('pause', 'Pause');
       pauseBtn.setAttribute('aria-pressed', paused ? 'true' : 'false');
-      pauseBtn.setAttribute('aria-label', paused ? 'Play the pairing tour' : 'Pause the pairing tour');
+      pauseBtn.setAttribute('aria-label', paused ? ui('tourPlayLabel', 'Play the pairing tour') : ui('tourPauseLabel', 'Pause the pairing tour'));
     };
     pauseBtn.addEventListener('click', function () { paused = !paused; setPauseLabel(); if (!paused) show((index + 1) % nodes.length, false); sync(); });
     fmap.addEventListener('pointerenter', function () { hovering = true; sync(); });
@@ -1636,9 +1660,9 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
     btn.hidden = false;
     btn.addEventListener('click', function () {
       navigator.clipboard.writeText(btn.getAttribute('data-copy')).then(function () {
-        btn.textContent = 'Copied';
-        setTimeout(function () { btn.textContent = 'Copy address'; }, 1800);
-      }, function () { btn.textContent = 'Copy failed'; });
+        btn.textContent = ui('copied', 'Copied');
+        setTimeout(function () { btn.textContent = ui('copyAddress', 'Copy address'); }, 1800);
+      }, function () { btn.textContent = ui('copyFailed', 'Copy failed'); });
     });
   });
 
@@ -1676,7 +1700,8 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
       ops.setAttribute('data-done', String(done));
       ops.style.setProperty('--p', String(done / items.length));
       count.textContent = done + '/' + items.length;
-      status.textContent = done === items.length ? 'All done · ready for service' : done + ' of ' + items.length + ' done · opens at 17:00';
+      status.textContent = done === items.length ? ui('checklistDone', 'All done · ready for service')
+        : ui('checklistProgress', '{done} of {total} done · opens at 17:00').replace('{done}', done).replace('{total}', items.length);
       if (celebrate && done === items.length) { ops.classList.remove('is-celebrating'); void ops.offsetWidth; ops.classList.add('is-celebrating'); }
     };
     items.forEach(function (b) { b.addEventListener('click', function () { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); update(true); }); });
@@ -1697,14 +1722,14 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
     };
     const finish = function () {
       setP(1); lesson.setAttribute('data-state', 'done');
-      lstatus.textContent = 'Lesson complete · marked as done';
-      play.setAttribute('aria-label', 'Replay the sample lesson');
+      lstatus.textContent = ui('lessonDone', 'Lesson complete · marked as done');
+      play.setAttribute('aria-label', ui('lessonReplayLabel', 'Replay the sample lesson'));
     };
     play.addEventListener('click', function () {
       cancelAnimationFrame(raf);
       lesson.setAttribute('data-state', 'playing');
-      lstatus.textContent = 'Playing…';
-      play.setAttribute('aria-label', 'Restart the sample lesson');
+      lstatus.textContent = ui('lessonPlaying', 'Playing…');
+      play.setAttribute('aria-label', ui('lessonRestartLabel', 'Restart the sample lesson'));
       if (reduceMotion) { finish(); return; }
       const t0 = performance.now(), DUR = 4200;
       (function tick(now) {
@@ -1725,7 +1750,7 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
       demoEl.classList.remove('is-hopping'); void demoEl.offsetWidth; demoEl.classList.add('is-hopping');
       const before = mstatus.getAttribute('data-saved') || mstatus.textContent;
       mstatus.setAttribute('data-saved', before);
-      mstatus.textContent = 'Hello! I’m Alcedo AI.';
+      mstatus.textContent = ui('mascotHello', 'Hello! I’m Alcedo AI.');
       clearTimeout(helloTimer);
       helloTimer = setTimeout(function () { mstatus.textContent = mstatus.getAttribute('data-saved'); mstatus.removeAttribute('data-saved'); }, 2200);
     });

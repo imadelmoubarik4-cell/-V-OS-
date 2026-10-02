@@ -37,11 +37,13 @@ insert into s88_checklists values ('no due or availability time is invented', no
   select 1 from atlas_private.routine_templates template
   where template.template_key in ('daily-opening-checklist','daily-closing-checklist')
     and (template.due_time is not null or template.available_from is not null)));
-insert into s88_checklists values ('each checklist has nine required items with the S87 ids', (
-  select count(*) filter (where template.template_key='daily-opening-checklist') = 9
-     and count(*) filter (where template.template_key='daily-closing-checklist') = 9
-     and bool_and(item.required and item.active)
-     and count(*) filter (where item.item_key in ('cash-pos','tablet','cash-close','shift-report')) = 4
+insert into s88_checklists values ('each checklist has 22 active VÁ items; the S87 items are retired', (
+  select count(*) filter (where template.template_key='daily-opening-checklist' and item.active) = 22
+     and count(*) filter (where template.template_key='daily-closing-checklist' and item.active) = 22
+     and bool_and(item.required or not item.active)
+     and bool_and(item.active) filter (where item.item_key like 'va-%')
+     and bool_and(not item.active) filter (where item.item_key in ('cash-pos','tablet','cash-close','shift-report'))
+     and count(*) filter (where item.item_key in ('va-unlock-door','va-glasses','va-close-store-perishables','va-close-lockup') and item.active) = 4
   from atlas_private.routine_template_items item
   join atlas_private.routine_templates template on template.id=item.template_id
   where template.template_key in ('daily-opening-checklist','daily-closing-checklist')));
@@ -72,7 +74,7 @@ begin
   insert into s88_checklists values ('both checklists are returned and configured',
     (first_read->>'configured')::boolean and first_read->'opening'->>'routine_type' = 'opening'
     and first_read->'closing'->>'routine_type' = 'closing'
-    and jsonb_array_length(first_read->'opening'->'items') = 9);
+    and jsonb_array_length(first_read->'opening'->'items') = 22);
   insert into s88_checklists values ('instances are created once per business date', (
     select count(*) = 2 from atlas_private.routine_instances instance
     join atlas_private.routine_templates template on template.id=instance.template_id
@@ -108,7 +110,7 @@ begin
     select 1 from atlas_private.operations_events event
     where event.entity_id=opening_id and event.event_type='routine_item_updated'
       and event.actor_id='00000000-0000-4000-8000-000000088202'
-      and event.payload->>'item_key' = 'cash-pos'
+      and event.payload->>'item_key' = 'va-unlock-door'
       and event.payload->>'evidence_source' = 'device_checklist_import_s88'));
 
   perform public.atlas_operations_set_item(opening_id, opening_item, false, null, '{}'::jsonb,
