@@ -1164,4 +1164,585 @@ $function$;
 revoke all on function public.atlas_bookings_release_hold(uuid, text, uuid) from public, anon, authenticated;
 grant execute on function public.atlas_bookings_release_hold(uuid, text, uuid) to service_role;
 
+
+-- 6. VÁ production booking model + owner-approved configuration -------------------
+-- Bar uses physical single-seat stools. Wine cellar / Ocean view / Long table are
+-- pooled-capacity locations: overlapping bookings are allowed while the sum of guests
+-- in the location stays <= 30.
+
+alter table atlas_private.booking_areas
+  add column if not exists allocation_mode text not null default 'tables'
+    check (allocation_mode in ('tables','pooled'));
+alter table atlas_private.booking_areas
+  add column if not exists guest_capacity integer
+    check (guest_capacity is null or guest_capacity between 1 and 500);
+alter table atlas_private.booking_areas
+  add column if not exists circular_adjacency boolean not null default false;
+
+alter table atlas_private.booking_tables
+  add column if not exists position_index integer
+    check (position_index is null or position_index between 1 and 500);
+create unique index if not exists booking_tables_area_position_uniq
+  on atlas_private.booking_tables (area_id, position_index)
+  where position_index is not null;
+
+alter table atlas_private.reservations
+  add column if not exists area_id uuid references atlas_private.booking_areas(id) on delete set null;
+create index if not exists reservations_area_window_idx
+  on atlas_private.reservations (area_id, start_at, end_at)
+  where area_id is not null;
+
+alter table atlas_private.booking_settings
+  add column if not exists last_start_local time not null default '20:30';
+alter table atlas_private.booking_settings
+  add column if not exists cancellation_cutoff_minutes integer not null default 15
+    check (cancellation_cutoff_minutes between 0 and 1440);
+
+-- Owner-approved VÁ rules: 2h maximum/default duration, 15-minute slots, 90-day
+-- advance window, 20:30 latest online start, staff approval for guest requests.
+update atlas_private.booking_settings
+set slot_interval_minutes = 15,
+    default_duration_minutes = 120,
+    duration_by_party = '{}'::jsonb,
+    turnaround_minutes = 0,
+    advance_days = 90,
+    max_party_online = 30,
+    auto_confirm = false,
+    last_start_local = '20:30',
+    cancellation_cutoff_minutes = 15
+where id = true;
+
+-- Real VÁ locations. Deterministic ids keep this seed idempotent.
+insert into atlas_private.booking_areas
+  (id, name, section_colour, display_order, is_active, allocation_mode, guest_capacity, circular_adjacency)
+values
+  ('ba000000-0000-4000-8000-000000000001','Bar','teal',1,true,'tables',16,true),
+  ('ba000000-0000-4000-8000-000000000002','Wine cellar','plum',2,true,'pooled',30,false),
+  ('ba000000-0000-4000-8000-000000000003','Ocean view','sky',3,true,'pooled',30,false),
+  ('ba000000-0000-4000-8000-000000000004','Long table','sage',4,true,'pooled',30,false)
+on conflict (id) do update set
+  name = excluded.name,
+  section_colour = excluded.section_colour,
+  display_order = excluded.display_order,
+  is_active = excluded.is_active,
+  allocation_mode = excluded.allocation_mode,
+  guest_capacity = excluded.guest_capacity,
+  circular_adjacency = excluded.circular_adjacency;
+
+-- Confirmed clockwise floor mapping:
+-- Bar 1-8 top left->right; Bar 9-12 right top->bottom; Bar 13-16 left bottom->top.
+insert into atlas_private.booking_tables
+  (id, area_id, label, seat_capacity, min_party, priority, is_bookable, block_online,
+   temporarily_unavailable, floor_x, floor_y, shape, position_index)
+values
+  ('bb000000-0000-4000-8000-000000000001','ba000000-0000-4000-8000-000000000001','Bar 1',1,0,0,true,false,false,1,1,'stool',1),
+  ('bb000000-0000-4000-8000-000000000002','ba000000-0000-4000-8000-000000000001','Bar 2',1,0,0,true,false,false,2,1,'stool',2),
+  ('bb000000-0000-4000-8000-000000000003','ba000000-0000-4000-8000-000000000001','Bar 3',1,0,0,true,false,false,3,1,'stool',3),
+  ('bb000000-0000-4000-8000-000000000004','ba000000-0000-4000-8000-000000000001','Bar 4',1,0,0,true,false,false,4,1,'stool',4),
+  ('bb000000-0000-4000-8000-000000000005','ba000000-0000-4000-8000-000000000001','Bar 5',1,0,0,true,false,false,5,1,'stool',5),
+  ('bb000000-0000-4000-8000-000000000006','ba000000-0000-4000-8000-000000000001','Bar 6',1,0,0,true,false,false,6,1,'stool',6),
+  ('bb000000-0000-4000-8000-000000000007','ba000000-0000-4000-8000-000000000001','Bar 7',1,0,0,true,false,false,7,1,'stool',7),
+  ('bb000000-0000-4000-8000-000000000008','ba000000-0000-4000-8000-000000000001','Bar 8',1,0,0,true,false,false,8,1,'stool',8),
+  ('bb000000-0000-4000-8000-000000000009','ba000000-0000-4000-8000-000000000001','Bar 9',1,0,0,true,false,false,8,2,'stool',9),
+  ('bb000000-0000-4000-8000-000000000010','ba000000-0000-4000-8000-000000000001','Bar 10',1,0,0,true,false,false,8,3,'stool',10),
+  ('bb000000-0000-4000-8000-000000000011','ba000000-0000-4000-8000-000000000001','Bar 11',1,0,0,true,false,false,8,4,'stool',11),
+  ('bb000000-0000-4000-8000-000000000012','ba000000-0000-4000-8000-000000000001','Bar 12',1,0,0,true,false,false,8,5,'stool',12),
+  ('bb000000-0000-4000-8000-000000000013','ba000000-0000-4000-8000-000000000001','Bar 13',1,0,0,true,false,false,1,5,'stool',13),
+  ('bb000000-0000-4000-8000-000000000014','ba000000-0000-4000-8000-000000000001','Bar 14',1,0,0,true,false,false,1,4,'stool',14),
+  ('bb000000-0000-4000-8000-000000000015','ba000000-0000-4000-8000-000000000001','Bar 15',1,0,0,true,false,false,1,3,'stool',15),
+  ('bb000000-0000-4000-8000-000000000016','ba000000-0000-4000-8000-000000000001','Bar 16',1,0,0,true,false,false,1,2,'stool',16)
+on conflict (id) do update set
+  area_id = excluded.area_id,
+  label = excluded.label,
+  seat_capacity = excluded.seat_capacity,
+  min_party = excluded.min_party,
+  priority = excluded.priority,
+  is_bookable = excluded.is_bookable,
+  block_online = excluded.block_online,
+  temporarily_unavailable = excluded.temporarily_unavailable,
+  floor_x = excluded.floor_x,
+  floor_y = excluded.floor_y,
+  shape = excluded.shape,
+  position_index = excluded.position_index;
+
+-- Pooled locations serialize on their area row and count overlapping confirmed guests.
+create or replace function atlas_private.booking_pooled_area_has_capacity(
+  p_area_id uuid, p_start timestamptz, p_end timestamptz, p_party_size integer,
+  p_ignore_reservation uuid default null
+)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  cap integer;
+  mode text;
+  used integer;
+begin
+  select a.guest_capacity, a.allocation_mode into cap, mode
+  from atlas_private.booking_areas a where a.id = p_area_id;
+  if mode <> 'pooled' or cap is null then return false; end if;
+
+  select coalesce(pg_catalog.sum(r.party_size),0)::int into used
+  from atlas_private.reservations r
+  where r.area_id = p_area_id
+    and r.status in ('confirmed','arrived','seated')
+    and (p_ignore_reservation is null or r.id <> p_ignore_reservation)
+    and pg_catalog.tstzrange(r.start_at, r.end_at, '[)') &&
+        pg_catalog.tstzrange(p_start, p_end, '[)');
+
+  return used + p_party_size <= cap;
+end
+$function$;
+revoke all on function atlas_private.booking_pooled_area_has_capacity(uuid,timestamptz,timestamptz,integer,uuid)
+  from public, anon, authenticated;
+
+-- For table-mode areas with position_index values, find one contiguous free run. The
+-- Bar is circular, so adjacency may wrap from Bar 16 back to Bar 1.
+create or replace function atlas_private.booking_find_contiguous_tables(
+  p_area_id uuid, p_party_size integer, p_start timestamptz, p_end timestamptz,
+  p_ignore_reservation uuid default null
+)
+returns uuid[]
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  max_pos integer;
+  is_circular boolean;
+  start_pos integer;
+  offset_i integer;
+  target_pos integer;
+  tid uuid;
+  candidate uuid[];
+begin
+  select pg_catalog.max(t.position_index), coalesce(a.circular_adjacency,false)
+    into max_pos, is_circular
+  from atlas_private.booking_tables t
+  join atlas_private.booking_areas a on a.id = t.area_id
+  where t.area_id = p_area_id and t.is_bookable and not t.temporarily_unavailable
+  group by a.circular_adjacency;
+
+  if max_pos is null or p_party_size < 1 or p_party_size > max_pos then return null; end if;
+
+  for start_pos in 1..max_pos loop
+    candidate := array[]::uuid[];
+    for offset_i in 0..(p_party_size - 1) loop
+      target_pos := start_pos + offset_i;
+      if target_pos > max_pos then
+        if not is_circular then candidate := null; exit; end if;
+        target_pos := ((target_pos - 1) % max_pos) + 1;
+      end if;
+
+      select t.id into tid
+      from atlas_private.booking_tables t
+      where t.area_id = p_area_id and t.position_index = target_pos
+        and t.is_bookable and not t.temporarily_unavailable
+        and atlas_private.booking_table_free(t.id, p_start, p_end, p_ignore_reservation);
+
+      if tid is null then candidate := null; exit; end if;
+      candidate := pg_catalog.array_append(candidate, tid);
+    end loop;
+    if candidate is not null and pg_catalog.array_length(candidate,1) = p_party_size then
+      return candidate;
+    end if;
+  end loop;
+  return null;
+end
+$function$;
+revoke all on function atlas_private.booking_find_contiguous_tables(uuid,integer,timestamptz,timestamptz,uuid)
+  from public, anon, authenticated;
+
+-- Include the location in staff reservation payloads.
+create or replace function atlas_private.booking_reservation_json(p_reservation_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select case when r.id is null then null else pg_catalog.jsonb_build_object(
+    'id', r.id, 'source', r.source, 'status', r.status,
+    'start_at', r.start_at, 'end_at', r.end_at, 'party_size', r.party_size,
+    'area_id', r.area_id, 'location', a.name, 'area_allocation_mode', a.allocation_mode,
+    'guest_name', r.guest_name, 'guest_phone', r.guest_phone, 'guest_email', r.guest_email,
+    'guest_requests', r.guest_requests, 'staff_notes', r.staff_notes,
+    'booking_reference', r.booking_reference, 'provider_ref', r.provider_ref,
+    'created_by_label', r.created_by_label, 'created_at', r.created_at, 'updated_at', r.updated_at,
+    'tables', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'table_id', rt.table_id, 'label', bt.label, 'combination_id', rt.combination_id)
+        order by bt.position_index nulls last, bt.label)
+      from atlas_private.reservation_tables rt
+      join atlas_private.booking_tables bt on bt.id = rt.table_id
+      where rt.reservation_id = r.id and rt.released_at is null), '[]'::jsonb)
+  ) end
+  from atlas_private.reservations r
+  left join atlas_private.booking_areas a on a.id = r.area_id
+  where r.id = p_reservation_id;
+$function$;
+revoke all on function atlas_private.booking_reservation_json(uuid) from public, anon, authenticated;
+
+-- Snapshot with pooled-location metadata.
+create or replace function public.atlas_bookings_snapshot(
+  p_actor_id uuid, p_actor_role text, p_date date default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  is_manager boolean := p_actor_role in ('admin','manager');
+  the_day date := coalesce(p_date, (pg_catalog.now())::date);
+  day_start timestamptz := the_day::timestamptz;
+  day_end timestamptz := (the_day + 1)::timestamptz;
+begin
+  perform atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+  return pg_catalog.jsonb_build_object(
+    'date', the_day,
+    'areas', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'id', a.id, 'name', a.name, 'section_colour', a.section_colour,
+        'display_order', a.display_order, 'is_active', a.is_active,
+        'allocation_mode', a.allocation_mode, 'guest_capacity', a.guest_capacity,
+        'circular_adjacency', a.circular_adjacency)
+        order by a.display_order, a.name)
+      from atlas_private.booking_areas a where a.is_active), '[]'::jsonb),
+    'tables', coalesce((
+      select pg_catalog.jsonb_agg(atlas_private.booking_table_json(t.id)
+        order by t.position_index nulls last, t.label)
+      from atlas_private.booking_tables t), '[]'::jsonb),
+    'reservations', coalesce((
+      select pg_catalog.jsonb_agg(atlas_private.booking_reservation_json(r.id) order by r.start_at)
+      from atlas_private.reservations r
+      where r.start_at < day_end and r.end_at > day_start
+        and r.status <> 'cancelled'), '[]'::jsonb),
+    'holds', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'id', h.id, 'table_id', h.table_id, 'start_at', h.start_at, 'end_at', h.end_at,
+        'reason', h.reason, 'expires_at', h.expires_at) order by h.start_at)
+      from atlas_private.booking_holds h
+      where h.expires_at > pg_catalog.now() and h.start_at < day_end and h.end_at > day_start), '[]'::jsonb),
+    'permissions', pg_catalog.jsonb_build_object('can_configure', is_manager, 'can_manage_reservations', true),
+    'actor_role', p_actor_role
+  );
+end
+$function$;
+revoke all on function public.atlas_bookings_snapshot(uuid, text, date) from public, anon, authenticated;
+grant execute on function public.atlas_bookings_snapshot(uuid, text, date) to service_role;
+
+-- Configuration payload includes the owner-approved location model and rules.
+create or replace function public.atlas_bookings_config(p_actor_id uuid, p_actor_role text)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  perform atlas_private.booking_require_manager(p_actor_id, p_actor_role);
+  return pg_catalog.jsonb_build_object(
+    'areas', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'id', a.id, 'name', a.name, 'section_colour', a.section_colour,
+        'display_order', a.display_order, 'is_active', a.is_active,
+        'allocation_mode', a.allocation_mode, 'guest_capacity', a.guest_capacity,
+        'circular_adjacency', a.circular_adjacency)
+        order by a.display_order, a.name)
+      from atlas_private.booking_areas a), '[]'::jsonb),
+    'tables', coalesce((
+      select pg_catalog.jsonb_agg(atlas_private.booking_table_json(t.id)
+        order by t.position_index nulls last, t.label)
+      from atlas_private.booking_tables t), '[]'::jsonb),
+    'combinations', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'id', c.id, 'name', c.name, 'member_table_ids', pg_catalog.to_jsonb(c.member_table_ids),
+        'combined_capacity', c.combined_capacity, 'is_permitted', c.is_permitted)
+        order by c.name)
+      from atlas_private.booking_table_combinations c), '[]'::jsonb),
+    'settings', (
+      select pg_catalog.jsonb_build_object(
+        'slot_interval_minutes', s.slot_interval_minutes,
+        'default_duration_minutes', s.default_duration_minutes,
+        'duration_by_party', s.duration_by_party,
+        'turnaround_minutes', s.turnaround_minutes,
+        'last_start_offset_minutes', s.last_start_offset_minutes,
+        'last_start_local', s.last_start_local,
+        'cancellation_cutoff_minutes', s.cancellation_cutoff_minutes,
+        'advance_days', s.advance_days,
+        'max_party_online', s.max_party_online,
+        'approval_party_threshold', s.approval_party_threshold,
+        'auto_confirm', s.auto_confirm,
+        'hours', s.hours, 'holiday_exceptions', s.holiday_exceptions,
+        'version', s.version)
+      from atlas_private.booking_settings s where s.id = true)
+  );
+end
+$function$;
+revoke all on function public.atlas_bookings_config(uuid, text) from public, anon, authenticated;
+grant execute on function public.atlas_bookings_config(uuid, text) to service_role;
+
+-- Location-aware atomic create. Pooled areas reserve guest capacity; table-mode areas
+-- auto-allocate one contiguous run when no seats are explicitly selected.
+create or replace function public.atlas_bookings_create(p_actor_id uuid, p_actor_role text, p_payload jsonb)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $function$
+declare
+  label text := atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+  p jsonb := coalesce(p_payload, '{}'::jsonb);
+  s atlas_private.booking_settings;
+  v_party integer := (p->>'party_size')::int;
+  v_start timestamptz := (p->>'start_at')::timestamptz;
+  v_dur interval;
+  v_end timestamptz;
+  v_source text := coalesce(nullif(p->>'source',''), 'phone');
+  v_idem text := nullif(p->>'idempotency_key','');
+  v_force_status text := nullif(p->>'status','');
+  v_area_id uuid := (nullif(p->>'area_id',''))::uuid;
+  v_area atlas_private.booking_areas;
+  v_ref text;
+  v_res_id uuid := gen_random_uuid();
+  v_status text;
+  v_table_ids uuid[];
+  v_auto uuid;
+  existing atlas_private.reservations;
+  tid uuid;
+  table_area_count integer;
+  table_capacity integer;
+begin
+  if pg_catalog.jsonb_typeof(p) <> 'object' or v_party is null or v_party < 1 or v_start is null then
+    raise exception 'A booking needs a party size and a start time.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if v_source not in ('web','phone','walk_in','dineout','other') then
+    raise exception 'Unknown booking source.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  if v_idem is not null then
+    select * into existing from atlas_private.reservations where idempotency_key = v_idem;
+    if existing.id is not null then
+      return pg_catalog.jsonb_build_object('reservation', atlas_private.booking_reservation_json(existing.id), 'replayed', true);
+    end if;
+  end if;
+
+  select * into s from atlas_private.booking_settings where id = true;
+  v_dur := pg_catalog.make_interval(mins => least(120, atlas_private.booking_duration_minutes(v_party)));
+  v_end := v_start + v_dur;
+
+  if v_source = 'web' then
+    if v_party > coalesce(s.max_party_online,30) then
+      raise exception 'That party is too large for online booking.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+    if v_start > pg_catalog.now() + pg_catalog.make_interval(days => s.advance_days) then
+      raise exception 'That date is outside the advance booking window.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+    if v_start::time > s.last_start_local then
+      raise exception 'That start time is later than the last online booking.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+  end if;
+
+  if pg_catalog.jsonb_typeof(p->'table_ids') = 'array' then
+    select pg_catalog.array_agg((value #>> '{}')::uuid) into v_table_ids
+    from pg_catalog.jsonb_array_elements(p->'table_ids') value;
+  end if;
+
+  -- Derive the location from explicitly chosen seats when the caller omitted area_id.
+  if v_area_id is null and v_table_ids is not null then
+    select pg_catalog.count(distinct t.area_id), pg_catalog.min(t.area_id)
+      into table_area_count, v_area_id
+    from atlas_private.booking_tables t where t.id = any(v_table_ids);
+    if table_area_count <> 1 then
+      raise exception 'Selected seats must belong to one location.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+  end if;
+  -- Backward-compatible staff fallback: if there is exactly one table-mode area, use it.
+  if v_area_id is null then
+    select a.id into v_area_id
+    from atlas_private.booking_areas a
+    where a.is_active and a.allocation_mode = 'tables'
+    order by a.display_order, a.name
+    limit 1;
+  end if;
+
+  select * into v_area from atlas_private.booking_areas a where a.id = v_area_id for update;
+  if v_area.id is null then
+    raise exception 'Choose a booking location.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if v_area.guest_capacity is not null and v_party > v_area.guest_capacity then
+    raise exception 'That party is larger than this location can hold.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  if v_force_status in ('confirmed','requested') then
+    v_status := v_force_status;
+  elsif v_source = 'web' and not coalesce(s.auto_confirm,false) then
+    v_status := 'requested';
+  elsif v_table_ids is null and v_party >= coalesce(s.approval_party_threshold,7) and v_source = 'web' then
+    v_status := 'requested';
+  elsif coalesce(s.auto_confirm,false) then
+    v_status := 'confirmed';
+  else
+    v_status := case when v_source in ('phone','walk_in') then 'confirmed' else 'requested' end;
+  end if;
+
+  if v_status = 'confirmed' and v_area.allocation_mode = 'pooled' then
+    if not atlas_private.booking_pooled_area_has_capacity(v_area.id, v_start, v_end, v_party, null) then
+      raise exception 'That location does not have enough guest capacity for this time.' using errcode = '23505', hint = 'atlas:conflict';
+    end if;
+    v_table_ids := null;
+  elsif v_status = 'confirmed' then
+    if v_table_ids is null then
+      v_table_ids := atlas_private.booking_find_contiguous_tables(v_area.id, v_party, v_start, v_end, null);
+      -- Compatibility for table-mode areas that do not use position_index.
+      if v_table_ids is null then
+        select t.id into v_auto
+        from atlas_private.booking_tables t
+        where t.area_id = v_area.id and t.is_bookable and not t.temporarily_unavailable
+          and t.seat_capacity >= v_party and t.min_party <= v_party
+          and atlas_private.booking_table_free(t.id, v_start, v_end, null)
+        order by t.seat_capacity, t.priority, t.label
+        limit 1
+        for update;
+        if v_auto is not null then v_table_ids := array[v_auto]; end if;
+      end if;
+      if v_table_ids is null then
+        raise exception 'No adjacent seats are free for that time and party.' using errcode = '23505', hint = 'atlas:conflict';
+      end if;
+    end if;
+
+    perform 1 from atlas_private.booking_tables t where t.id = any(v_table_ids) order by t.id for update;
+    if (select pg_catalog.count(*) from atlas_private.booking_tables t
+        where t.id = any(v_table_ids) and t.area_id = v_area.id) <> pg_catalog.array_length(v_table_ids,1) then
+      raise exception 'Selected seats do not belong to this location.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+    select coalesce(pg_catalog.sum(t.seat_capacity),0)::int into table_capacity
+    from atlas_private.booking_tables t where t.id = any(v_table_ids);
+    if table_capacity < v_party then
+      raise exception 'Choose enough seats for this party.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+    foreach tid in array v_table_ids loop
+      if not atlas_private.booking_table_free(tid, v_start, v_end, null) then
+        raise exception 'A selected seat is no longer free for the requested time.' using errcode = '23505', hint = 'atlas:conflict';
+      end if;
+    end loop;
+  end if;
+
+  v_ref := atlas_private.booking_new_reference();
+  insert into atlas_private.reservations (
+    id, area_id, source, status, start_at, end_at, party_size, guest_name, guest_phone, guest_email,
+    guest_requests, staff_notes, booking_reference, provider_ref, idempotency_key,
+    created_by, created_by_label, created_by_role)
+  values (v_res_id, v_area.id, v_source, v_status, v_start, v_end, v_party,
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p->>'guest_name','')),160),''),
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p->>'guest_phone','')),40),''),
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p->>'guest_email','')),200),''),
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p->>'guest_requests','')),2000),''),
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p->>'staff_notes','')),2000),''),
+    v_ref, nullif(p->>'provider_ref',''), v_idem, p_actor_id, label, p_actor_role);
+
+  if v_status = 'confirmed' and v_area.allocation_mode = 'tables' then
+    foreach tid in array v_table_ids loop
+      insert into atlas_private.reservation_tables (reservation_id, table_id, start_at, end_at)
+      values (v_res_id, tid, v_start, v_end);
+    end loop;
+  end if;
+
+  insert into atlas_private.reservation_status_history
+    (reservation_id, from_status, to_status, changed_by, changed_by_label, changed_by_role, note)
+  values (v_res_id, null, v_status, p_actor_id, label, p_actor_role, 'created');
+  insert into atlas_private.booking_events
+    (event_type, reservation_id, actor_id, actor_label, actor_role, payload)
+  values ('reservation_created', v_res_id, p_actor_id, label, p_actor_role,
+    pg_catalog.jsonb_build_object('status',v_status,'source',v_source,'party_size',v_party,'area_id',v_area.id));
+
+  return pg_catalog.jsonb_build_object('reservation', atlas_private.booking_reservation_json(v_res_id), 'replayed', false);
+exception
+  when invalid_text_representation or numeric_value_out_of_range then
+    raise exception 'Invalid booking.' using errcode = '22023', hint = 'atlas:invalid_request';
+end
+$function$;
+revoke all on function public.atlas_bookings_create(uuid, text, jsonb) from public, anon, authenticated;
+grant execute on function public.atlas_bookings_create(uuid, text, jsonb) to service_role;
+
+-- Pooled reservations can be approved without a physical table; table-mode requests
+-- still require a seat allocation before confirmation.
+create or replace function public.atlas_bookings_set_status(
+  p_actor_id uuid, p_actor_role text, p_reservation_id uuid, p_to_status text, p_note text default null
+)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $function$
+declare
+  label text := atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+  r atlas_private.reservations;
+  a atlas_private.booking_areas;
+  allowed text[];
+begin
+  select * into r from atlas_private.reservations where id = p_reservation_id for update;
+  if r.id is null then raise exception 'Booking not found.' using errcode = 'P0002', hint = 'atlas:not_found'; end if;
+  if p_to_status not in ('requested','confirmed','arrived','seated','completed','cancelled','no_show') then
+    raise exception 'Unknown status.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  allowed := case r.status
+    when 'requested' then array['confirmed','cancelled','no_show']
+    when 'confirmed' then array['arrived','seated','completed','cancelled','no_show']
+    when 'arrived'   then array['seated','completed','cancelled','no_show']
+    when 'seated'    then array['completed','cancelled']
+    else array[]::text[] end;
+  if p_to_status = r.status then
+    return pg_catalog.jsonb_build_object('reservation', atlas_private.booking_reservation_json(r.id), 'unchanged', true);
+  end if;
+  if not (p_to_status = any(allowed)) then
+    raise exception 'That status change is not allowed.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  if r.status = 'requested' and p_to_status = 'confirmed' then
+    select * into a from atlas_private.booking_areas where id = r.area_id for update;
+    if a.allocation_mode = 'pooled' then
+      if not atlas_private.booking_pooled_area_has_capacity(a.id, r.start_at, r.end_at, r.party_size, r.id) then
+        raise exception 'That location no longer has enough guest capacity.' using errcode = '23505', hint = 'atlas:conflict';
+      end if;
+    elsif not exists (
+      select 1 from atlas_private.reservation_tables rt
+      where rt.reservation_id = r.id and rt.released_at is null
+    ) then
+      raise exception 'Assign seats before confirming this booking.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+  end if;
+
+  update atlas_private.reservations set status = p_to_status where id = r.id;
+  if p_to_status in ('cancelled','no_show','completed') then
+    update atlas_private.reservation_tables set released_at = pg_catalog.now()
+    where reservation_id = r.id and released_at is null;
+    update atlas_private.booking_holds set expires_at = pg_catalog.now()
+    where reservation_id = r.id and expires_at > pg_catalog.now();
+  end if;
+
+  insert into atlas_private.reservation_status_history
+    (reservation_id, from_status, to_status, changed_by, changed_by_label, changed_by_role, note)
+  values (r.id, r.status, p_to_status, p_actor_id, label, p_actor_role,
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p_note,'')),500),''));
+  insert into atlas_private.booking_events
+    (event_type, reservation_id, actor_id, actor_label, actor_role, payload)
+  values ('status_changed', r.id, p_actor_id, label, p_actor_role,
+    pg_catalog.jsonb_build_object('from',r.status,'to',p_to_status));
+  return pg_catalog.jsonb_build_object('reservation', atlas_private.booking_reservation_json(r.id), 'unchanged', false);
+end
+$function$;
+revoke all on function public.atlas_bookings_set_status(uuid, text, uuid, text, text)
+  from public, anon, authenticated;
+grant execute on function public.atlas_bookings_set_status(uuid, text, uuid, text, text) to service_role;
+
 notify pgrst, 'reload schema';
