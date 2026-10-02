@@ -169,6 +169,8 @@
       if (rest[0] === 'suppliers' && rest[1]) return [['suppliers', { section: 'suppliers', supplier: rest[1] }]];
       return [['suppliers', section(rest[0])]];
     },
+    // #bookings (staff day), #bookings/config (manager), #bookings/<date>.
+    bookings: (rest) => [['bookings', section(rest[0])]],
     shifts: (rest) => [['shifts', section(rest[0])]],
     team: (rest) => [['team-profiles', rest[0] ? { profile: rest[0] } : {}]],
     knowledge: (rest) => {
@@ -689,6 +691,7 @@
     { id: 'inventory', label: 'Inventory', icon: 'package', route: '#inventory', view: 'inventory', views: ['inventory', 'movements', 'waste'], aliases: ['movements', 'waste'], group: 'Venue', roles: ROLES_ALL, keywords: ['stock', 'items', 'count', 'waste', 'movements'] },
     { id: 'recipes', label: 'Recipes', icon: 'martini', route: '#recipes', view: 'recipes', views: ['recipes'], aliases: [], group: 'Venue', roles: ROLES_ALL, keywords: ['cocktails', 'drinks', 'menu'] },
     { id: 'purchasing', label: 'Purchasing', icon: 'truck', route: '#purchasing', view: 'suppliers', views: ['suppliers'], aliases: ['suppliers'], group: 'Venue', roles: ROLES_MANAGERS, keywords: ['orders', 'suppliers', 'deliveries'] },
+    { id: 'bookings', label: 'Bookings', icon: 'calendar-check', route: '#bookings', view: 'bookings', views: ['bookings'], aliases: [], group: 'Venue', roles: ROLES_ALL, keywords: ['reservations', 'tables', 'floor plan', 'guests', 'walk-in'] },
     { id: 'shifts', label: 'Shifts', icon: 'calendar-days', route: '#shifts', view: 'shifts', views: ['shifts'], aliases: [], group: 'People', roles: ROLES_ALL, keywords: ['schedule', 'rota', 'availability', 'time off'] },
     { id: 'team', label: 'Team', icon: 'users', route: '#team', view: 'team-profiles', views: ['team-profiles'], aliases: ['team-profiles'], group: 'People', roles: ROLES_ALL, keywords: ['people', 'staff', 'profiles', 'directory'] },
     { id: 'knowledge', label: 'Knowledge', icon: 'book-open', route: '#knowledge', view: 'knowledge', views: ['knowledge'], aliases: [], group: 'People', roles: ROLES_ALL, keywords: ['documents', 'training', 'procedures'] },
