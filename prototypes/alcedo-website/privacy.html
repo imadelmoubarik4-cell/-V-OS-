@@ -1,0 +1,133 @@
+<!doctype html>
+<!--
+  ALCEDO — privacy notice for this website (alcedo.is).
+
+  Icelandic version: personuvernd.html. Keep the two in step when either changes.
+  Controller: Coffee & Cocktails ehf., kt. 671124-0220. Hosting: Netlify, Inc. Email provider: not
+  chosen yet, so the notice names the category only; name it if it stores mail outside the EEA.
+  Recommended: have this notice reviewed before launch.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy notice — Alcedo</title>
+<meta name="description" content="How the Alcedo website handles personal data: no cookies, no tracking, no forms.">
+<link rel="canonical" href="https://alcedo.is/privacy.html">
+<link rel="alternate" hreflang="en" href="https://alcedo.is/privacy.html">
+<link rel="alternate" hreflang="is" href="https://alcedo.is/personuvernd.html">
+<meta name="theme-color" content="#F8F5ED">
+<link rel="icon" href="assets/brand/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/brand/icon-32.png">
+<link rel="apple-touch-icon" href="assets/brand/icon-180.png">
+<link rel="preload" href="assets/fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/manrope-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("assets/fonts/manrope-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("assets/fonts/manrope-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("assets/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+:root {
+  --ivory: #F8F5ED; --card: #FDFCF8; --ink: #10201F; --ink-2: #2E3D3A; --ink-3: #4E5E58;
+  --line: rgba(16,32,31,.14); --brand-teal: #08495C; --teal: #0E7C86; --orange: #E8732A;
+  --panel: #08495C; --on-panel: #F8F5ED; --on-panel-2: rgba(248,245,237,.8); --panel-line: rgba(248,245,237,.16);
+  --font-serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-sans: Manrope, "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --gutter: clamp(16px, 4vw, 56px);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { margin: 0; background: var(--ivory); color: var(--ink); font-family: var(--font-sans); font-size: 16.5px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+a { color: var(--brand-teal); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--brand-teal); outline-offset: 3px; border-radius: 6px; }
+.skip-link { position: absolute; left: 16px; top: -100px; background: var(--ink); color: var(--ivory); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; text-decoration: none; }
+.skip-link:focus { top: 12px; }
+.mono { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1180px; margin: 0 auto; padding: 14px var(--gutter); }
+.top img { height: 58px; width: auto; margin-left: calc(58px * -70 / 425); }
+.top__links { display: flex; align-items: center; gap: 8px 22px; flex-wrap: wrap; justify-content: flex-end; }
+.back, .lang { font-weight: 600; font-size: 14px; text-decoration: none; color: var(--ink); padding: 8px 2px; }
+.back:hover, .lang:hover { text-decoration: underline; }
+main { max-width: 760px; margin: 0 auto; padding: clamp(32px, 6vw, 72px) var(--gutter) clamp(64px, 8vw, 112px); }
+.kicker { color: var(--brand-teal); display: flex; align-items: center; gap: 12px; margin: 0; }
+.kicker::before { content: ""; width: 22px; height: 1px; background: currentColor; }
+h1 { font-family: var(--font-serif); font-weight: 400; font-size: clamp(44px, 7vw, 72px); line-height: 1; letter-spacing: -.015em; margin: 18px 0 0; }
+h1 em { color: var(--brand-teal); }
+.updated { margin-top: 14px; color: var(--ink-3); font-size: 14px; }
+.summary { margin: 36px 0 8px; padding: 22px 24px; border-radius: 20px; background: var(--panel); color: var(--on-panel); display: grid; gap: 10px; list-style: none; }
+.summary li { display: flex; gap: 12px; align-items: baseline; }
+.summary li::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #9ED6DA; flex: none; transform: translateY(-2px); }
+h2 { font-family: var(--font-serif); font-weight: 400; font-size: clamp(28px, 3.4vw, 36px); line-height: 1.1; margin: 48px 0 0; padding-top: 24px; border-top: 1px solid var(--line); }
+p, ul.plain { margin: 14px 0 0; color: var(--ink-2); }
+ul.plain { padding-left: 1.1em; }
+ul.plain li + li { margin-top: 6px; }
+strong { color: var(--ink); }
+footer { background: var(--panel); color: var(--on-panel-2); font-size: 14px; }
+footer .in { max-width: 1180px; margin: 0 auto; padding: 32px var(--gutter); display: flex; flex-wrap: wrap; gap: 12px 32px; justify-content: space-between; }
+footer a { color: var(--on-panel); }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="top">
+  <a href="index.html" aria-label="Alcedo — home"><img src="assets/brand/alcedo-horizontal-light.svg" width="1353" height="425" alt="Alcedo"></a>
+  <nav class="top__links" aria-label="Page">
+    <a class="lang" href="personuvernd.html" hreflang="is" lang="is">Íslenska</a>
+    <a class="back" href="index.html">← Back to the website</a>
+  </nav>
+</header>
+
+<main id="main">
+  <p class="kicker mono">Privacy</p>
+  <h1>Privacy notice for <em>this website</em></h1>
+  <p class="updated">Last updated 1 October 2026</p>
+
+  <ul class="summary" aria-label="In short">
+    <li>No cookies, no analytics and no tracking of any kind.</li>
+    <li>No forms: this website does not collect anything you type.</li>
+    <li>Everything (text, images, video and fonts) is served from this website itself; no third-party services are loaded.</li>
+    <li>If you email us, we use your message only to reply to you.</li>
+  </ul>
+
+  <h2>Who we are</h2>
+  <p>This website presents Alcedo, a shared workspace for restaurants and bars. The controller of the personal data described here is Coffee &amp; Cocktails ehf., kennitala (Icelandic company ID) 671124-0220, Geirsgata 17, 101 Reykjavík, Iceland.</p>
+  <p>Questions about privacy: <a href="mailto:Alcedo@Alcedo.is">Alcedo@Alcedo.is</a>.</p>
+
+  <h2>When you visit the website</h2>
+  <p>This website does not set cookies, does not use analytics, and does not store anything in your browser.</p>
+  <p>Like any website, the server that delivers the pages receives technical information with each request: your IP address, the date and time, the page or file requested, and your browser’s user-agent. This is handled by our hosting provider, Netlify, Inc., only to deliver the website and keep it secure, and is kept for the provider’s standard log period. The legal basis is our legitimate interest in running a secure website (GDPR Article 6(1)(f)).</p>
+
+  <h2>When you email us</h2>
+  <p>If you write to <a href="mailto:Alcedo@Alcedo.is">Alcedo@Alcedo.is</a>, for example to request a demo, we receive your email address, your name if you include it, and whatever you write. We use this only to answer you and, if you ask for one, to arrange a demonstration. The legal basis is taking steps at your request before a possible agreement (Article 6(1)(b)) or our legitimate interest in replying to enquiries (Article 6(1)(f)).</p>
+  <p>We keep the correspondence for as long as needed to handle your request and any follow-up, and then delete it. Our email service provider stores these messages on our behalf.</p>
+
+  <h2>Staff login and the Alcedo application</h2>
+  <p>The “Staff login” links take staff to the Alcedo application, which is a separate service. This website never sees or handles accounts or passwords. How the application processes data is described separately to its users.</p>
+
+  <h2>Who we share data with</h2>
+  <p>We do not sell personal data, and we do not share it for advertising. Our hosting provider (Netlify, Inc.) and our email service provider process data on our behalf and under our instructions. Netlify is based in the United States. If a provider processes data outside the European Economic Area, this happens only with the safeguards required by the GDPR.</p>
+
+  <h2>Your rights</h2>
+  <p>Under the GDPR and the Icelandic Act on Data Protection and the Processing of Personal Data (No. 90/2018), you can ask us:</p>
+  <ul class="plain">
+    <li>for a copy of the personal data we hold about you;</li>
+    <li>to correct it or have it deleted;</li>
+    <li>to restrict our use of it, or object to it;</li>
+    <li>for your data in a portable format.</li>
+  </ul>
+  <p>Write to <a href="mailto:Alcedo@Alcedo.is">Alcedo@Alcedo.is</a>. You can also complain to the Icelandic Data Protection Authority, Persónuvernd (<a href="https://www.personuvernd.is" rel="noopener">personuvernd.is</a>).</p>
+
+  <h2>Changes</h2>
+  <p>If this notice changes, we will update it here and change the date at the top.</p>
+</main>
+
+<footer>
+  <div class="in">
+    <p style="margin:0">© 2026 Coffee &amp; Cocktails ehf. · kt. 671124-0220 · Geirsgata 17, 101 Reykjavík</p>
+    <p style="margin:0"><a href="index.html">Home</a> · <a href="personuvernd.html" hreflang="is" lang="is">Íslenska</a> · <a href="mailto:Alcedo@Alcedo.is">Alcedo@Alcedo.is</a></p>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 512 512"
+   role="img"
+   aria-label="Alcedo logo"
+   version="1.1"
+   id="svg16"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs20" />
+  <title
+     id="title2">Alcedo — Concept 2 vector refinement</title>
+  <g
+     transform="matrix(0.95,0,0,0.95,35,72)"
+     id="g14">
+    <g
+       id="g12">
+      <path
+         d="M 75,310 Q 150,255 220,170 L 270,110 235,25 Z"
+         fill="#08495c"
+         id="path4" />
+      <path
+         d="m 395,112 -110,41 q -20,7 -7,27 L 385,310 305,168 Z"
+         fill="#08495c"
+         id="path6" />
+      <path
+         d="m 280,120 h 85 l -119,38 z"
+         fill="#e8732a"
+         id="path8" />
+      <path
+         d="m 0,275 q 60,-43 133,-52 m 74,-4 q 28,-3 56,0 m 47,6 q 79,16 155,50"
+         fill="none"
+         stroke="#08495c"
+         stroke-width="3"
+         id="path10" />
+    </g>
+  </g>
+</svg>

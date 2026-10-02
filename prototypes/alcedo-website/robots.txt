@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://alcedo.is/sitemap.xml
