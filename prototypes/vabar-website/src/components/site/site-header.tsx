@@ -48,18 +48,29 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
       onClick={onToggleLang}
       lang={lang === "en" ? "is" : "en"}
       aria-label={t.nav.lang}
-      className="relative h-9 w-[4.5rem] rounded-full border border-foreground/25 text-xs font-semibold tracking-widest transition-colors hover:border-copper"
+      className="relative h-9 w-[4.75rem] overflow-hidden rounded-full border border-foreground/25 text-xs font-semibold transition-colors hover:border-copper"
     >
+      {/* The knob is exactly one half of the inner track and slides by its own width. */}
       <span
         aria-hidden="true"
         className={cn(
-          "absolute top-1 h-7 w-8 rounded-full bg-foreground transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-          lang === "en" ? "left-1" : "left-[calc(100%-2.25rem)]",
+          "absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-foreground transition-transform duration-500 ease-[cubic-bezier(0.34,1.3,0.64,1)] motion-reduce:transition-none",
+          lang === "is" && "translate-x-full",
         )}
       />
-      <span aria-hidden="true" className="relative z-[1] grid grid-cols-2">
-        <span className={lang === "en" ? "text-background" : "text-foreground/70"}>EN</span>
-        <span className={lang === "is" ? "text-background" : "text-foreground/70"}>IS</span>
+      {/* Labels use the same inset and halves, so each is centred over the knob. */}
+      <span aria-hidden="true" className="absolute inset-1 z-[1] grid grid-cols-2 place-items-center">
+        {(["en", "is"] as const).map((l) => (
+          <span
+            key={l}
+            className={cn(
+              "pl-[0.12em] tracking-[0.12em] transition-colors duration-300",
+              lang === l ? "text-background" : "text-foreground/70",
+            )}
+          >
+            {l.toUpperCase()}
+          </span>
+        ))}
       </span>
     </button>
   );

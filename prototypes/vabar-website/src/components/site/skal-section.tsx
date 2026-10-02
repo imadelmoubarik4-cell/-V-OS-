@@ -17,7 +17,7 @@ const readCount = () => {
 export function SkalSection({ t }: { t: Copy }) {
   const [count, setCount] = useState(readCount);
   const [clinking, setClinking] = useState(false);
-  const { burst, node: bits } = useBurst(["✨", "🥂", "💚", "⭐", "🎉"]);
+  const { burst, node: bits } = useBurst(["✨", "🤩", "⭐", "🎉", "💫"]);
 
   useEffect(() => {
     try {
@@ -96,7 +96,7 @@ export function SkalSection({ t }: { t: Copy }) {
                   >
                     <span className="flex flex-col items-center">
                       <span aria-hidden="true" className="flex text-5xl">
-                        <span className="glass-left inline-block origin-bottom">🥂</span>
+                        <span className="glass-left inline-block origin-bottom">🤩</span>
                       </span>
                       <span className="mt-2 font-display text-3xl font-bold">{t.skal.button}</span>
                     </span>

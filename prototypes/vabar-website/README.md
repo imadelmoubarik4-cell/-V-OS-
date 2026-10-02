@@ -132,7 +132,7 @@ It is used for every call-to-action button on the page.
 8. **Behind the bar** (`#bar`): the photo deck (tap, swipe, arrow keys).
 9. **Shake:** choose moods, shake, and get one of 22 drinks from the menu, with its menu description and price; VÁ's signatures are marked.
 10. **Reviews** (`#reviews`): the three reviews quoted on the current site, shown as tilted speech bubbles.
-11. **Skál:** the cheers counter.
+11. **Say VÁ!** (`#skal`): explains the name. *Vá* (said like "vow") is Icelandic for "wow!", what you say when something amazes you. The big button counts every VÁ (stored on this device only), with sparkle bursts and a glow that brightens level by level.
 12. **FAQ** (`#faq`): the 12 questions and answers from the current site, in both languages. They use native `<details>`, so they work without JavaScript and every answer is in the HTML.
 13. **Visit:** the address, info@vábar.is, directions, menu (and booking, when set), plus the opening hours with the Open now badge.
 14. **Footer:**

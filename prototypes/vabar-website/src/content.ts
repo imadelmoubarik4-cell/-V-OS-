@@ -276,7 +276,7 @@ export const alcedo = { name: "Alcedo", logo: alcedoLogo, url: "https://www.alce
 
 export const copy = {
   en: {
-    nav: { book: "Book a table", drinks: "Drinks", happy: "Happy hour", shake: "Shake", skal: "Skál", visit: "Visit", menu: "Menu", lang: "Íslenska", langShort: "IS" },
+    nav: { book: "Book a table", drinks: "Drinks", happy: "Happy hour", shake: "Shake", skal: "VÁ", visit: "Visit", menu: "Menu", lang: "Íslenska", langShort: "IS" },
     heroHeading: "VÁ BAR: cocktail bar, wine bar and coffee with tapas at Hafnartorg, Reykjavík",
     heroMenu: "EXPLORE",
     heroPlay: "Tap to play",
@@ -377,11 +377,11 @@ export const copy = {
       menu: "See the full menu",
     },
     skal: {
-      eyebrow: "Play · skál counter",
-      title: "Say skál.",
-      lead: "Icelandic for cheers. Every glass you raise here clinks a little louder.",
-      button: "Skál!",
-      count: (n: number) => (n === 0 ? "No glasses raised yet" : n === 1 ? "1 glass raised" : `${n} glasses raised`),
+      eyebrow: "Play · VÁ counter",
+      title: "Say VÁ!",
+      lead: "Vá (said like “vow”) is Icelandic for “wow!”, what you say when something amazes you. That's our whole idea: moments that make you say VÁ. Go on, say it.",
+      button: "VÁ!",
+      count: (n: number) => (n === 0 ? "No VÁs yet" : n === 1 ? "1 VÁ" : `${n} VÁs`),
       levels: ["Warming up", "Getting cosy", "Party at the harbour", "Northern lights mode"],
       reset: "Reset",
       note: "Counted on this device only.",
@@ -405,7 +405,7 @@ export const copy = {
     footer: { staff: "Staff login", top: "Back to top", hours: "Sun–Thu 11:30–22:00 · Fri–Sat 11:30–00:00" },
   },
   is: {
-    nav: { book: "Bóka borð", drinks: "Drykkir", happy: "Gleðistund", shake: "Hrista", skal: "Skál", visit: "Heimsókn", menu: "Matseðill", lang: "English", langShort: "EN" },
+    nav: { book: "Bóka borð", drinks: "Drykkir", happy: "Gleðistund", shake: "Hrista", skal: "VÁ", visit: "Heimsókn", menu: "Matseðill", lang: "English", langShort: "EN" },
     heroHeading: "VÁ BAR: kokteilabar, vínbar og kaffi með tapas á Hafnartorgi í Reykjavík",
     heroMenu: "KANNA",
     heroPlay: "Pikkaðu til að leika",
@@ -506,11 +506,11 @@ export const copy = {
       menu: "Sjá allan matseðilinn",
     },
     skal: {
-      eyebrow: "Leikur · skálateljari",
-      title: "Segðu skál.",
-      lead: "Hvert glas sem þú lyftir hér klingir aðeins hærra.",
-      button: "Skál!",
-      count: (n: number) => (n === 0 ? "Engu glasi lyft enn" : n === 1 ? "1 glasi lyft" : `${n} glösum lyft`),
+      eyebrow: "Leikur · VÁ-teljari",
+      title: "Segðu VÁ!",
+      lead: "„Vá!“ segjum við þegar eitthvað kemur okkur skemmtilega á óvart. Það er hugmyndin á bak við nafnið: augnablik sem fá þig til að segja VÁ. Prófaðu.",
+      button: "VÁ!",
+      count: (n: number) => (n === 0 ? "Ekkert VÁ enn" : `${n} × VÁ`),
       levels: ["Að hitna", "Orðið notalegt", "Partí við höfnina", "Norðurljósastemning"],
       reset: "Núllstilla",
       note: "Talið aðeins í þessu tæki.",
