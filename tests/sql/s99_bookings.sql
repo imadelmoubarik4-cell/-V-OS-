@@ -86,7 +86,7 @@ begin
   -- Bartender (service staff) creates a party-of-2 booking; auto-assigns the smallest
   -- suitable table (Bar 1, cap 2), confirmed.
   r1 := public.atlas_bookings_create(bart,'bartender', jsonb_build_object(
-    'party_size',2,'start_at',base,'guest_name','Guest One','guest_phone','555-0001'));
+    'party_size',2,'start_at',base,'status','confirmed','guest_name','Guest One','guest_phone','555-0001'));
   if (r1->'reservation'->>'status') <> 'confirmed' then raise exception 'first booking should confirm'; end if;
   if jsonb_array_length(r1->'reservation'->'tables') <> 1 then raise exception 'first booking should hold one table'; end if;
   if (r1->'reservation'->'tables'->0->>'label') <> 'Bar 1' then raise exception 'first booking should take the smallest suitable table (Bar 1)'; end if;
@@ -96,13 +96,13 @@ begin
   -- An overlapping party-of-2 that explicitly asks for Bar 1 is rejected (no double book).
   begin
     perform public.atlas_bookings_create(bart,'bartender', jsonb_build_object(
-      'party_size',2,'start_at', base + interval '30 minutes','table_ids', jsonb_build_array(t1)));
+      'party_size',2,'start_at', base + interval '30 minutes','status','confirmed','table_ids', jsonb_build_array(t1)));
     raise exception 'a second overlapping booking on Bar 1 was allowed';
   exception when unique_violation then null; end;  -- errcode 23505 / atlas:conflict
 
   -- Auto-assign at the same overlapping time now picks Bar 2 (Bar 1 is busy).
   r2 := public.atlas_bookings_create(bart,'bartender', jsonb_build_object(
-    'party_size',2,'start_at', base + interval '30 minutes','guest_name','Guest Two'));
+    'party_size',2,'start_at', base + interval '30 minutes','status','confirmed','guest_name','Guest Two'));
   if (r2->'reservation'->'tables'->0->>'label') <> 'Bar 2' then raise exception 'auto-assign should fall through to Bar 2'; end if;
 
   -- A large party over the approval threshold (default 7) with no explicit table stays
@@ -141,7 +141,7 @@ begin
   declare r3 jsonb;
   begin
     r3 := public.atlas_bookings_create(bart,'bartender', jsonb_build_object(
-      'party_size',2,'start_at', base,'guest_name','Guest Three'));
+      'party_size',2,'start_at', base,'status','confirmed','guest_name','Guest Three'));
     if (r3->'reservation'->'tables'->0->>'label') <> 'Bar 1' then raise exception 'Bar 1 should be free again after the cancel'; end if;
   end;
 
