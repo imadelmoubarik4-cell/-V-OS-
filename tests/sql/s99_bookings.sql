@@ -111,10 +111,9 @@ begin
     'party_size',2,'start_at', base + interval '30 minutes','status','confirmed','guest_name','Guest Two'));
   if (r2->'reservation'->'tables'->0->>'label') <> 'Bar 2' then raise exception 'auto-assign should fall through to Bar 2'; end if;
 
-  -- A large party over the approval threshold (default 7) with no explicit table stays
-  -- 'requested' and allocates nothing.
+  -- A website request stays requested until staff approval, even when capacity exists.
   r_big := public.atlas_bookings_create(bart,'bartender', jsonb_build_object(
-    'party_size',8,'start_at', base + interval '3 hours','guest_name','Big Group'));
+    'party_size',8,'start_at', base + interval '150 minutes','source','web','guest_name','Big Group'));
   if (r_big->'reservation'->>'status') <> 'requested' then raise exception 'a large party should stay requested'; end if;
   if jsonb_array_length(r_big->'reservation'->'tables') <> 0 then raise exception 'a requested booking must not hold a table'; end if;
   res_big := (r_big->'reservation'->>'id')::uuid;
