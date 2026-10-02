@@ -110,7 +110,7 @@ create table if not exists atlas_private.booking_settings (
   advance_days integer not null default 90 check (advance_days between 1 and 400),
   max_party_online integer not null default 8 check (max_party_online between 1 and 100),
   approval_party_threshold integer not null default 7 check (approval_party_threshold between 1 and 100),
-  auto_confirm boolean not null default true,
+  auto_confirm boolean not null default false,
   -- hours: {"mon":[["17:00","23:00"]], …} local venue time; empty means closed that day.
   hours jsonb not null default '{}'::jsonb check (jsonb_typeof(hours) = 'object'),
   holiday_exceptions jsonb not null default '[]'::jsonb check (jsonb_typeof(holiday_exceptions) = 'array'),
@@ -900,9 +900,10 @@ begin
     from pg_catalog.jsonb_array_elements(p->'table_ids') value;
   end if;
 
-  -- Decide the status. Staff may force 'confirmed'/'requested'; otherwise a party at or
-  -- over the approval threshold (with no explicit table) is 'requested', else confirmed
-  -- when auto_confirm is on.
+  -- Decide the status. Staff may explicitly confirm/request a staff-entered booking.
+  -- Otherwise website/guest-originated bookings stay requested while auto_confirm is off
+  -- (VÁ default: staff approval). The threshold remains available if a manager later
+  -- chooses to enable auto-confirm.
   if v_force_status in ('confirmed','requested') then
     v_status := v_force_status;
   elsif v_table_ids is null and v_party >= coalesce(s.approval_party_threshold, 7) then
