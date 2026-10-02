@@ -17,6 +17,46 @@
   z-index: 0;
 }
 
+.hero-photos {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #0b1014;
+}
+
+.hero-photos img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.12);
+  transition: opacity 1.4s ease, transform 7s ease-out;
+}
+
+.hero-photos img[data-on] {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Darkens the photo where the words sit, and fades its edges into the page */
+.hero-photos-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 50%, rgba(0, 0, 0, 0.45), transparent 75%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.1) 35%, rgba(0, 0, 0, 0.25) 70%, rgba(0, 0, 0, 0.8) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-photos img {
+    transition: none;
+    transform: none;
+  }
+}
+
 .hero-bg {
   position: absolute;
   inset: 0;
@@ -25,6 +65,7 @@
 }
 
 .hero-canvas {
+  transition: opacity 0.3s linear;
   position: absolute;
   inset: 0;
   width: 100% !important;
@@ -36,6 +77,57 @@
   background:
     radial-gradient(ellipse at 30% 30%, rgba(224,141,109, 0.25), transparent 55%),
     radial-gradient(ellipse at 70% 40%, rgba(122, 60, 255, 0.22), transparent 60%);
+}
+
+/* Themed particles drawn over the scene; taps fall through to the scene canvas. */
+.hero-particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.hero-canvas[data-playable] {
+  cursor: pointer;
+}
+
+.hero-play-hint {
+  position: absolute;
+  right: clamp(16px, 3vw, 40px);
+  bottom: clamp(20px, 4vh, 40px);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid rgba(245, 241, 236, 0.25);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(6px);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.hero-play-hint[data-played] {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.hero-play-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--copper, #e08d6d);
+  animation: hero-ping 1.6s ease-out infinite;
+}
+
+@keyframes hero-ping {
+  0% { box-shadow: 0 0 0 0 rgba(224, 141, 109, 0.7); }
+  100% { box-shadow: 0 0 0 10px rgba(224, 141, 109, 0); }
 }
 
 /* Side menu */
@@ -230,6 +322,9 @@
 }
 
 @media (max-width: 640px) {
+  .hero-play-hint {
+    bottom: 64px;
+  }
   .side-menu {
     top: auto;
     bottom: 16px;

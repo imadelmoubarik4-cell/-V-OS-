@@ -13,6 +13,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import "./horizon-hero-section.css";
+import { HeroParticles, type ParticleSlide } from "./hero-particles";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -26,6 +27,10 @@ export type HeroSlide = {
   background?: string;
   /** Colour of the glow around this slide's title. */
   glow?: string;
+  /** Particles that drift (and burst on tap) while this slide is on screen. */
+  particle?: ParticleSlide;
+  /** Photos shown behind this slide, cross-faded in order with a slow zoom (a little story). */
+  photos?: { src: string; position?: string }[];
 };
 
 export type HeroPalette = {
@@ -41,6 +46,8 @@ export type HeroProps = {
   scrollLabel?: string;
   palette?: HeroPalette;
   onMenuClick?: () => void;
+  /** Small hint inviting visitors to tap the sky (shown when particles are on). */
+  playHint?: string;
   /** Optional fuller page heading for screen readers and search engines (the big title stays visual). */
   srTitle?: string;
   /** Optional logo shown instead of the landing title text (the title stays as its accessible name). */
@@ -82,6 +89,9 @@ type ThreeState = {
   blendTarget: number;
   blend: number;
   lastTime: number;
+  /** Pointer position over the hero, -1 … 1 (target from events, current eased). */
+  pointerTarget: { x: number; y: number };
+  pointer: { x: number; y: number };
 };
 
 const prefersReducedMotion = () =>
@@ -94,6 +104,7 @@ export const Component = ({
   palette = DEFAULT_PALETTE,
   onMenuClick,
   srTitle,
+  playHint,
   logo,
   children,
 }: HeroProps) => {
@@ -128,7 +139,21 @@ export const Component = ({
     blendTarget: 0,
     blend: 0,
     lastTime: 0,
+    pointerTarget: { x: 0, y: 0 },
+    pointer: { x: 0, y: 0 },
   });
+  const particlesCanvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<HeroParticles | null>(null);
+  const [played, setPlayed] = useState(false);
+  // Which photo of a slide's photo story is showing (advances every few seconds).
+  const [photoStep, setPhotoStep] = useState(0);
+  const hasPhotos = slides.some((sl) => sl.photos && sl.photos.length > 1);
+  useEffect(() => {
+    if (!hasPhotos || prefersReducedMotion()) return;
+    const id = window.setInterval(() => setPhotoStep((n) => n + 1), 4500);
+    return () => window.clearInterval(id);
+  }, [hasPhotos]);
+  const [particlesOn, setParticlesOn] = useState(false);
 
   // One palette per slide (falling back to `palette`). Keyed by value so a new array with the
   // same colours (e.g. after a language switch) does not rebuild the WebGL scene.
@@ -430,7 +455,11 @@ export const Component = ({
         const floatX = reduced ? 0 : Math.sin(time * 0.1) * 2;
         const floatY = reduced ? 0 : Math.cos(time * 0.15) * 1;
 
-        refs.camera.position.set(pos.x + floatX, pos.y + floatY, pos.z);
+        // Gentle parallax towards the pointer.
+        const pt = refs.pointer;
+        pt.x += (refs.pointerTarget.x - pt.x) * 0.04;
+        pt.y += (refs.pointerTarget.y - pt.y) * 0.04;
+        refs.camera.position.set(pos.x + floatX + pt.x * 18, pos.y + floatY - pt.y * 10, pos.z);
         refs.camera.lookAt(0, 10, -600);
       }
 
@@ -550,6 +579,54 @@ export const Component = ({
       refs.atmosphere = null;
     };
   }, [scenePalettes]);
+
+  // Themed particles over the scene (off with reduced motion or when no slide asks for them).
+  const particleKey = JSON.stringify(slides.map((sl) => sl.particle ?? null));
+  useEffect(() => {
+    const canvas = particlesCanvasRef.current;
+    const kinds = slides.map((sl) => sl.particle).filter(Boolean) as ParticleSlide[];
+    if (!canvas || prefersReducedMotion() || kinds.length !== slides.length) return;
+    const refs = threeRefs.current;
+    const layer = new HeroParticles(canvas, kinds, () => (refs.lastTime ? refs.blend : refs.blendTarget));
+    particlesRef.current = layer;
+    setParticlesOn(true);
+
+    let inView = true;
+    const sync = () => (inView && !document.hidden ? layer.start() : layer.stop());
+    const io = new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting;
+      sync();
+    });
+    if (containerRef.current) io.observe(containerRef.current);
+    const onResize = () => layer.resize();
+    window.addEventListener("resize", onResize);
+    document.addEventListener("visibilitychange", sync);
+    sync();
+    return () => {
+      layer.stop();
+      io.disconnect();
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", sync);
+      particlesRef.current = null;
+      setParticlesOn(false);
+    };
+    // particleKey stands in for `slides`, so a re-render with the same particles keeps the layer
+  }, [particleKey]);
+
+  const onStagePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    threeRefs.current.pointerTarget = {
+      x: ((e.clientX - r.left) / r.width) * 2 - 1,
+      y: ((e.clientY - r.top) / r.height) * 2 - 1,
+    };
+  };
+  const onStagePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // only taps on the sky itself, not on buttons
+    if (!(e.target instanceof HTMLCanvasElement) || !particlesRef.current) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    particlesRef.current.burst(e.clientX - r.left, e.clientY - r.top);
+    setPlayed(true);
+  };
 
   // GSAP Animations - Run after component is ready
   useEffect(() => {
@@ -671,7 +748,7 @@ export const Component = ({
       style={{ height: `${slides.length * 100}svh` }}
     >
       {/* Sticky stage: canvas, side menu and progress stay put while the slides scroll. */}
-      <div className="hero-stage">
+      <div className="hero-stage" onPointerMove={onStagePointerMove} onPointerDown={onStagePointerDown}>
         {/* Per-slide backgrounds, cross-faded by scroll position */}
         {slides.map((slide, i) =>
           slide.background ? (
@@ -683,7 +760,52 @@ export const Component = ({
             />
           ) : null,
         )}
-        <canvas ref={canvasRef} className="hero-canvas" aria-hidden="true" data-failed={webglFailed || undefined} />
+        {/* Per-slide photo stories, cross-faded by scroll position */}
+        {slides.map((slide, i) =>
+          slide.photos?.length ? (
+            <div
+              key={`photos-${slide.title}`}
+              className="hero-photos"
+              aria-hidden="true"
+              style={{ opacity: Math.max(0, 1 - Math.abs(scrollProgress * totalSections - i)) }}
+            >
+              {slide.photos.map((ph, k) => (
+                <img
+                  key={ph.src}
+                  src={ph.src}
+                  alt=""
+                  decoding="async"
+                  data-on={photoStep % slide.photos!.length === k || undefined}
+                  style={{ objectPosition: ph.position ?? "50% 35%" }}
+                />
+              ))}
+              <span className="hero-photos-scrim" />
+            </div>
+          ) : null,
+        )}
+        <canvas
+          ref={canvasRef}
+          className="hero-canvas"
+          aria-hidden="true"
+          data-failed={webglFailed || undefined}
+          data-playable={particlesOn || undefined}
+          style={{
+            opacity:
+              1 -
+              0.8 *
+                slides.reduce(
+                  (w, sl, i) => (sl.photos?.length ? Math.max(w, 1 - Math.abs(scrollProgress * totalSections - i)) : w),
+                  0,
+                ),
+          }}
+        />
+        <canvas ref={particlesCanvasRef} className="hero-particles" aria-hidden="true" />
+        {particlesOn && playHint ? (
+          <p className="hero-play-hint" data-played={played || undefined} aria-hidden="true">
+            <span className="hero-play-dot" />
+            {playHint}
+          </p>
+        ) : null}
 
         {/* Side menu */}
         <button

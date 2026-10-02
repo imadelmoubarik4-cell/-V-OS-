@@ -103,10 +103,12 @@ It is used for every call-to-action button on the page.
 `src/App.tsx` puts it together. Copy and venue facts are in `src/content.ts`; the menu is in `src/menu-data.ts`. Both are in English and Icelandic.
 
 1. **Header:** the solo logo, section links (Drinks, Happy hour, Shake, Visit), the **EN / IS** switch and a Menu button. A **Book a table** button appears once `site.bookingUrl` is set. On phones, links open in a full-screen overlay (the hero's side menu opens it too).
-2. **Hero:** the 3D horizon scene with three words. The whole scene changes mood with each word, blending smoothly as you scroll (sky glow, mountains, atmosphere, background and title glow). The moods are `heroScenes` in `src/content.ts`.
-   - **COCKTAILS** (*KOKTEILAR*): cool ice-blue and teal, like the backlit blue stone wall behind the bar. "Handcrafted at the bar, from our signatures to the classics", with the "See the menu" and "Find us" buttons.
-   - **TAPAS:** warm saffron, olive and sun-baked earth. "Mediterranean-inspired plates, made for sharing".
-   - **WINE** (*VÍN*): deep burgundy and plum. "Curated wines by the glass or bottle, at Hafnartorg in Reykjavík".
+2. **Hero:** the 3D horizon scene with three words. The scene changes mood with each word, blending smoothly as you scroll (sky glow, mountains, atmosphere, background and title glow). The moods are `heroScenes` in `src/content.ts`.
+   - **COCKTAILS** (*KOKTEILAR*): a photo story of a cocktail being made: **pour → garnish → present**. The photos cross-fade every 4.5 s with a slow zoom, under a dark fade so the word stays readable, with the 3D scene dimmed on top. Rising **bubbles** float over it. "Handcrafted at the bar, from our signatures to the classics", with the See the menu and Find us buttons.
+   - **TAPAS:** warm saffron, olive and sun-baked earth, with drifting golden **sparks**. "Mediterranean-inspired plates, made for sharing".
+   - **WINE** (*VÍN*): deep burgundy and plum, with slow glossy rosé **drops**. "Curated wines by the glass or bottle, at Hafnartorg in Reykjavík".
+   - **Play:** tap or click anywhere on the background for a burst of that word's particles. The scene leans gently towards the mouse. A small "Tap to play" hint disappears after the first tap. With reduced motion, the photos and particles stay still.
+   - **Replacing the COCKTAILS photos:** overwrite `src/assets/hero/cocktails-pour.webp`, `cocktails-garnish.webp` and `cocktails-present.webp` (portrait, about 1080×1920) and rebuild. The current files are stand-ins from the bar photos until Imad's pour, garnish and present shots arrive as files.
 3. **Marquee:** "Cocktails ✦ Coffee ✦ Tapas ✦ Wines ✦ Happy hour 15–18 ✦ Hafnartorg".
 4. **Our story** (`#story`): "One shared vision", with the founders' text from the current site and the numbers 20 (years of experience), 2024 (opened) and 101 (downtown Reykjavík), which count up as they scroll in.
 5. **On the menu** (`#drinks`): the whole printed menu with prices, in six tabs:
@@ -177,6 +179,7 @@ Built around the search terms VÁ BAR is found with on Google (bar, coffee, rest
 5. **Directions:** replace the Maps search in `site.mapsUrl` with the Google Business Profile's Maps link.
 6. **Icelandic copy:** have a native speaker read the text that was translated (marked in the commit history).
 7. **Photos:** the bartender is recognisable. Make sure he's happy to appear on the website.
+8. **Hero photos:** send Imad's three photos (pouring, garnishing with the cherry, presenting the cocktail) as files, to replace the stand-ins in `src/assets/hero/`.
 
 ## Hosting
 

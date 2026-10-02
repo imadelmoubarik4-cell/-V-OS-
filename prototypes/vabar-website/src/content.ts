@@ -8,6 +8,11 @@ import cocktailPhoto from "@/assets/photos/cocktail.webp";
 import pourPhoto from "@/assets/photos/pour.webp";
 import muddlePhoto from "@/assets/photos/muddle.webp";
 import glassPhoto from "@/assets/photos/glass.webp";
+// COCKTAILS hero story: pour → garnish → present. Placeholders until Imad's three photos arrive;
+// replace these three files (same names) and rebuild.
+import heroPour from "@/assets/hero/cocktails-pour.webp";
+import heroGarnish from "@/assets/hero/cocktails-garnish.webp";
+import heroPresent from "@/assets/hero/cocktails-present.webp";
 
 export type Lang = "en" | "is";
 
@@ -65,7 +70,7 @@ export const heroPalette: HeroPalette = {
  * TAPAS: warm Mediterranean saffron, olive and sun-baked earth.
  * WINE: deep burgundy and plum.
  */
-export const heroScenes: Pick<HeroSlide, "palette" | "background" | "glow">[] = [
+export const heroScenes: Pick<HeroSlide, "palette" | "background" | "glow" | "particle" | "photos">[] = [
   {
     palette: {
       nebula: [0x1d6f8f, 0x2d5668],
@@ -74,6 +79,8 @@ export const heroScenes: Pick<HeroSlide, "palette" | "background" | "glow">[] = 
     },
     background: "radial-gradient(ellipse at 50% 115%, #1d6f8f 0%, #123447 40%, #0d1820 75%, #0a0f13 100%)",
     glow: "rgba(90, 180, 230, 0.5)",
+    particle: { kind: "bubbles", rgb: "200, 235, 255" },
+    photos: [{ src: heroPour }, { src: heroGarnish }, { src: heroPresent, position: "50% 30%" }],
   },
   {
     palette: {
@@ -83,6 +90,7 @@ export const heroScenes: Pick<HeroSlide, "palette" | "background" | "glow">[] = 
     },
     background: "radial-gradient(ellipse at 50% 115%, #9a5a1e 0%, #5a3414 40%, #24180f 75%, #120d09 100%)",
     glow: "rgba(232, 160, 60, 0.5)",
+    particle: { kind: "sparks", rgb: "240, 170, 70" },
   },
   {
     palette: {
@@ -92,6 +100,7 @@ export const heroScenes: Pick<HeroSlide, "palette" | "background" | "glow">[] = 
     },
     background: "radial-gradient(ellipse at 50% 110%, #6a1230 0%, #400d22 38%, #1e0c16 72%, #0f080c 100%)",
     glow: "rgba(170, 30, 75, 0.6)",
+    particle: { kind: "drops", rgb: "255, 110, 150" },
   },
 ];
 
@@ -251,6 +260,7 @@ export const copy = {
     nav: { book: "Book a table", drinks: "Drinks", happy: "Happy hour", shake: "Shake", skal: "Skál", visit: "Visit", menu: "Menu", lang: "Íslenska", langShort: "IS" },
     heroHeading: "VÁ BAR: cocktail bar, wine bar and coffee with tapas at Hafnartorg, Reykjavík",
     heroMenu: "EXPLORE",
+    heroPlay: "Tap to play",
     heroScroll: "SCROLL",
     slides: [
       { title: "COCKTAILS", line1: "Handcrafted at the bar,", line2: "from our signatures to the classics" },
@@ -378,6 +388,7 @@ export const copy = {
     nav: { book: "Bóka borð", drinks: "Drykkir", happy: "Gleðistund", shake: "Hrista", skal: "Skál", visit: "Heimsókn", menu: "Matseðill", lang: "English", langShort: "EN" },
     heroHeading: "VÁ BAR: kokteilabar, vínbar og kaffi með tapas á Hafnartorgi í Reykjavík",
     heroMenu: "KANNA",
+    heroPlay: "Pikkaðu til að leika",
     heroScroll: "SKRUNA",
     slides: [
       { title: "KOKTEILAR", line1: "Handgerðir við barinn,", line2: "frá einkennisdrykkjum til klassíkur" },

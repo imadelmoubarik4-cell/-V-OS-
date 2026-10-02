@@ -60,6 +60,7 @@ export default function App() {
         <HorizonHero
           slides={t.slides.map((slide, i) => ({ ...slide, ...heroScenes[i] }))}
           srTitle={t.heroHeading}
+          playHint={t.heroPlay}
           menuLabel={t.heroMenu}
           scrollLabel={t.heroScroll}
           palette={heroPalette}
