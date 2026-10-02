@@ -2,7 +2,7 @@
 
 This is the public website for **Alcedo**, the new brand for the restaurant operations platform currently called Atlas, operated by Coffee & Cocktails ehf.
 
-- **Live mode:** switched on 1 October 2026 at the owner's request. Search engines may index the pages, which carry canonical links to `https://alcedo.is/`. Nothing is published until the Netlify site is set up and the domain connected (see Hosting).
+- **Live mode:** live since 2 October 2026 at `https://www.alcedo.is/` (Netlify project `alcedo-website`, deployed from `main`). `alcedo.is` and `http://` redirect there. Search engines may index the pages, which carry canonical links to `https://www.alcedo.is/`.
 - **No app changes:** the Atlas application, its authentication, database names and production branding are unchanged. Nothing in `apps/` or `scripts/` is modified by this work.
 
 `index.html` holds all CSS and JavaScript inline, with no framework and no build step. Media are separate files in `assets/`.
@@ -233,23 +233,22 @@ Recommended: **Netlify**, as its own site, separate from the application's.
   - CSP, where scripts are allowed only by hash;
   - HSTS, nosniff, Referrer-Policy, Permissions-Policy and COOP;
   - `tools/` and the `.md` files are blocked from being served.
-- **Domain:** add `alcedo.is` and `www.alcedo.is` to the Netlify site, then point DNS at Netlify at the registrar (ISNIC for `.is`). Netlify issues the certificate.
+- **Domain:** `alcedo.is` uses Netlify DNS (nameservers moved at ISNIC). The primary domain is `www.alcedo.is`; `alcedo.is` redirects to it. Netlify issues and renews the certificate. If the primary domain is ever changed, update the canonical and `hreflang` links in the three pages, `sitemap.xml` and `robots.txt` to match.
 - **Alternative:** Cloudflare Pages is equally suitable, but its headers file is `_headers`, so `netlify.toml` would need porting.
 
 ## Launch checklist
 
-Done (as confirmed by the owner, 1 October 2026):
+Done (1–2 October 2026):
 
-- **Email:** the `Alcedo@Alcedo.is` mailbox is set up. Every contact link on the site points to it.
+- **Email:** the `Alcedo@Alcedo.is` mailbox is on Google Workspace. Every contact link on the site points to it, and both privacy notices name Google Workspace (Google may process data in the United States).
 - **Application domain:** `https://app.alcedo.is/` is connected to the application. Every Staff login link goes there.
-- **Domain:** `alcedo.is` is registered to the owner; Netlify is the chosen host.
+- **Domain and hosting:** `alcedo.is` is registered to the owner and served by Netlify (project `alcedo-website`, base directory `prototypes/alcedo-website`, no build command, deploys from `main`). Primary domain `www.alcedo.is`.
 - **Company details:** Coffee & Cocktails ehf., kt. 671124-0220, Geirsgata 17, 101 Reykjavík, in both privacy notices and the site footer.
-- **Go-live switch:** `noindex` removed, canonical links to `https://alcedo.is/`, prototype footer lines replaced by the company line, title "Alcedo — Food & beverage operations, all in one place". If the primary domain on Netlify ends up being `www.alcedo.is`, change the canonical links and `sitemap.xml` to match.
+- **Go-live switch:** `noindex` removed, canonical links to `https://www.alcedo.is/`, prototype footer lines replaced by the company line, title "Alcedo — Food & beverage operations, all in one place".
 
 Still open:
 
-- **Hosting:** create the Netlify site (base directory `prototypes/alcedo-website`, no build) and point `alcedo.is` and `www.alcedo.is` at it (see Hosting above).
-- **Email provider in the notice:** the privacy notices say "our email service provider". If the provider stores mail outside the EEA (for example Google Workspace or Microsoft 365 in the US), name it in both notices; the legal review covers this.
+- **Email authentication:** mail is on Google Workspace (MX `smtp.google.com` and the Google verification TXT are in Netlify DNS). Still to add in Netlify DNS: SPF (`v=spf1 include:_spf.google.com ~all` on `alcedo.is`), the DKIM record generated in the Google Admin console (`google._domainkey`), and optionally DMARC (`_dmarc`).
 - **Brand approval:** the derived horizontal lockups.
 - **Legal review:** recommended for the privacy notice, in both languages.
-- **Final check on the live domain:** send a test email from the Request a demo link, sign in through Staff login, and open the privacy pages in both languages.
+- **Final check on the live domain:** send a test email from the Request a demo link and check it arrives. (Site, redirects, headers, privacy pages and `app.alcedo.is` were checked live on 2 October 2026.)
