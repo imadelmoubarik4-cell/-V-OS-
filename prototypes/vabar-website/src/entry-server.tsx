@@ -2,7 +2,7 @@
 // dist/index.html, so crawlers and link previews see the real content without running JS.
 import { renderToString } from "react-dom/server";
 import App from "./App";
-import { copy, site } from "./content";
+import { copy, site, socialLinks } from "./content";
 
 export function faqLd() {
   return {
@@ -43,6 +43,8 @@ export function jsonLd() {
       "VÁ BAR combines handcrafted cocktails, curated wines, and Mediterranean-inspired tapas, with coffee from 11:30, inside Hafnartorg Gallery Food Hall in Reykjavík.",
     servesCuisine: ["Cocktails", "Wine", "Tapas", "Mediterranean", "Coffee"],
     hasMenu: site.menuUrl,
+    acceptsReservations: site.bookingUrl ?? true,
+    ...(socialLinks.length ? { sameAs: socialLinks.map((s) => s.url) } : {}),
     address: {
       "@type": "PostalAddress",
       streetAddress: site.street,

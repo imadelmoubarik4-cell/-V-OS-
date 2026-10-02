@@ -3,6 +3,7 @@
 // VÁ's own recipes in Atlas (data/flavor/recipes-snapshot.json, names and ingredients only, no
 // prices); the description is the business profile of the current Wix site.
 import type { HeroPalette, HeroSlide } from "@/components/ui/horizon-hero-section";
+import type { SocialKey } from "@/components/site/social-icons";
 import barPhoto from "@/assets/photos/bar.webp";
 import cocktailPhoto from "@/assets/photos/cocktail.webp";
 import pourPhoto from "@/assets/photos/pour.webp";
@@ -50,9 +51,16 @@ export const site = {
   // Contact address shown on the current vábar.is. The link uses the punycode domain so every mail app accepts it.
   email: "info@vábar.is",
   emailHref: "mailto:info@xn--vbar-5na.is",
-  // Table bookings run through Sinna. Paste VÁ's Sinna booking link here and a "Book a table"
-  // button appears in the header and the Visit section; null hides it.
+  // Table bookings move to Alcedo. When Alcedo's guest booking page is live, paste its link here and
+  // every "Book a table" button opens it. Until then (null) the buttons open a booking request email.
   bookingUrl: null as string | null,
+  // VÁ's social profiles, in display order. Each link adds an icon to the footer and the phone menu,
+  // and is listed for Google (schema.org sameAs); null hides it.
+  socials: [
+    { key: "instagram", label: "Instagram", url: null },
+    { key: "facebook", label: "Facebook", url: null },
+    { key: "tiktok", label: "TikTok", url: null },
+  ] as { key: SocialKey; label: string; url: string | null }[],
   // A Maps search for the full address. Swap for the Google Business Profile link when you have it.
   mapsUrl:
     "https://www.google.com/maps/search/?api=1&query=" +
@@ -277,6 +285,12 @@ export const alcedo = { name: "Alcedo", logo: alcedoLogo, url: "https://www.alce
 export const copy = {
   en: {
     nav: { book: "Book a table", drinks: "Drinks", happy: "Happy hour", shake: "Shake", skal: "VÁ", visit: "Visit", menu: "Menu", lang: "Íslenska", langShort: "IS" },
+    // Pre-filled email used by the "Book a table" buttons until Alcedo's booking page is live.
+    bookingEmail: {
+      subject: "Table booking at VÁ BAR",
+      body: "Hi VÁ BAR,\n\nI'd like to book a table.\n\nDate:\nTime:\nNumber of guests:\nName:\nPhone:\n\nThank you!",
+    },
+    follow: "Follow VÁ",
     heroHeading: "VÁ BAR: cocktail bar, wine bar and coffee with tapas at Hafnartorg, Reykjavík",
     heroMenu: "EXPLORE",
     heroPlay: "Tap to play",
@@ -337,7 +351,7 @@ export const copy = {
         { q: "What are VÁ Bar's opening hours?", a: "VÁ Bar is open Sunday to Thursday 11:30–22:00 and Friday to Saturday 11:30–00:00. Opening hours may vary on public holidays." },
         { q: "Does VÁ Bar have a happy hour?", a: "Yes. VÁ has happy hour deals on selected cocktails for 1,990 kr, wines for 1,090 kr and all beers for 990 kr. See the happy hour section for current times and offers." },
         { q: "When is happy hour at VÁ Bar?", a: "Happy hour is every day 15:00–18:00. There is also a late-night happy hour every Friday and Saturday 22:00–00:00." },
-        { q: "Can I book a table at VÁ Bar?", a: "Yes. You can book a table online through Sinna. We recommend booking ahead at weekends, for celebrations and for larger groups." },
+        { q: "Can I book a table at VÁ Bar?", a: "Yes. Use the “Book a table” button on this page. We recommend booking ahead at weekends, for celebrations and for larger groups." },
         { q: "Does VÁ Bar offer alcohol-free cocktails?", a: "Yes. We offer a selection of creative alcohol-free cocktails, wines and other non-alcoholic drinks." },
         { q: "Is VÁ good for dates and celebrations?", a: "Absolutely. VÁ's warm atmosphere, carefully mixed cocktails, tapas and curated wines make it ideal for dates, birthdays, celebrations and relaxed evenings with friends." },
         { q: "What makes VÁ different from other bars in Reykjavík?", a: "VÁ brings together creative cocktails, flavourful tapas, curated wines and personal service in one memorable experience. Our aim is simple: to create moments that make people say “VÁ”." },
@@ -406,6 +420,11 @@ export const copy = {
   },
   is: {
     nav: { book: "Bóka borð", drinks: "Drykkir", happy: "Gleðistund", shake: "Hrista", skal: "VÁ", visit: "Heimsókn", menu: "Matseðill", lang: "English", langShort: "EN" },
+    bookingEmail: {
+      subject: "Borðapöntun á VÁ BAR",
+      body: "Halló VÁ BAR,\n\nMig langar að bóka borð.\n\nDagsetning:\nTími:\nFjöldi gesta:\nNafn:\nSími:\n\nTakk fyrir!",
+    },
+    follow: "Fylgdu VÁ",
     heroHeading: "VÁ BAR: kokteilabar, vínbar og kaffi með tapas á Hafnartorgi í Reykjavík",
     heroMenu: "KANNA",
     heroPlay: "Pikkaðu til að leika",
@@ -466,7 +485,7 @@ export const copy = {
         { q: "Hver er opnunartími VÁ Bar?", a: "VÁ Bar er opinn sunnudaga til fimmtudaga frá 11:30–22:00 og föstudaga til laugardaga frá 11:30–00:00. Opnunartími getur verið breytilegur á almennum frídögum." },
         { q: "Er VÁ Bar með Happy Hour?", a: "Já. VÁ býður upp á Happy Hour-tilboð á völdum kokteilum á 1.990 kr., vínum á 1.090 kr. og öllum bjórum á 990 kr. Skoðaðu gleðistundarhlutann fyrir gildandi tíma og tilboð." },
         { q: "Hvenær er Happy Hour á VÁ Bar?", a: "Happy Hour er alla daga frá 15:00–18:00. Auk þess er síðkvölds Happy Hour alla föstudaga og laugardaga frá 22:00–00:00." },
-        { q: "Er hægt að bóka borð á VÁ Bar?", a: "Já. Hægt er að bóka borð á netinu í gegnum Sinna. Mælt er með því að bóka fyrirfram um helgar, fyrir hátíðarhöld og stærri hópa." },
+        { q: "Er hægt að bóka borð á VÁ Bar?", a: "Já. Notaðu hnappinn „Bóka borð“ hér á síðunni. Mælt er með því að bóka fyrirfram um helgar, fyrir hátíðarhöld og stærri hópa." },
         { q: "Býður VÁ Bar upp á áfengislausa kokteila?", a: "Já. Við bjóðum upp á úrval af frumlegum áfengislausum kokteilum, vínum og öðrum óáfengum drykkjum." },
         { q: "Hentar VÁ fyrir stefnumót og hátíðarhöld?", a: "Algjörlega. Hlýlegt andrúmsloft VÁ, vandlega blandaðir kokteilar, tapasréttir og sérvalin vín gera staðinn tilvalinn fyrir stefnumót, afmæli, hátíðarhöld og afslappaðar stundir með vinum." },
         { q: "Hvað aðgreinir VÁ frá öðrum börum í Reykjavík?", a: "VÁ sameinar frumlega kokteila, bragðmikla tapasrétti, sérvalin vín og persónulega þjónustu í eina eftirminnilega upplifun. Markmið okkar er einfalt: að skapa augnablik sem fá fólk til að segja „VÁ“." },
@@ -536,3 +555,14 @@ export const copy = {
 };
 
 export type Copy = (typeof copy)["en"];
+
+/** Where "Book a table" goes: Alcedo's booking page when set, otherwise a pre-filled request email. */
+export function bookingHref(t: Copy) {
+  if (site.bookingUrl) return site.bookingUrl;
+  const q = new URLSearchParams({ subject: t.bookingEmail.subject, body: t.bookingEmail.body });
+  // mailto wants %20 for spaces, not "+".
+  return `${site.emailHref}?${q.toString().replace(/\+/g, "%20")}`;
+}
+
+/** Social profiles that have a link; the rest stay hidden. */
+export const socialLinks = site.socials.filter((s): s is typeof s & { url: string } => Boolean(s.url));

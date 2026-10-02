@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Clock, MapPin } from "lucide-react";
 import { FlowButton } from "@/components/ui/flow-button";
 import { cn } from "@/lib/utils";
-import { site, type Copy, type Hours } from "@/content";
+import { bookingHref, site, type Copy, type Hours } from "@/content";
 import { Eyebrow, Reveal } from "./helpers";
 
 const TZ = "Atlantic/Reykjavik";
@@ -93,9 +93,12 @@ export function VisitSection({ t }: { t: Copy }) {
               <div className="mt-8 flex flex-wrap gap-3">
                 <FlowButton href={site.mapsUrl} target="_blank" rel="noopener" text={t.visit.directions} tone="light" />
                 <FlowButton href={site.menuUrl} text={t.visit.menu} tone="light" />
-                {site.bookingUrl ? (
-                  <FlowButton href={site.bookingUrl} target="_blank" rel="noopener" text={t.nav.book} tone="light" />
-                ) : null}
+                <FlowButton
+                  href={bookingHref(t)}
+                  {...(site.bookingUrl ? { target: "_blank", rel: "noopener" } : {})}
+                  text={t.nav.book}
+                  tone="light"
+                />
               </div>
             </div>
           </Reveal>

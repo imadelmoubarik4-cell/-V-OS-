@@ -102,7 +102,7 @@ It is used for every call-to-action button on the page.
 
 `src/App.tsx` puts it together. Copy and venue facts are in `src/content.ts`; the menu is in `src/menu-data.ts`. Both are in English and Icelandic.
 
-1. **Header:** the solo logo, section links (Drinks, Happy hour, Shake, Visit), the **EN / IS** switch and a Menu button. A **Book a table** button appears once `site.bookingUrl` is set. On phones, links open in a full-screen overlay (the hero's side menu opens it too).
+1. **Header:** the solo logo, section links (Drinks, Happy hour, Shake, Visit), the **EN / IS** switch, **Book a table** and a Menu button (on phones, booking is a calendar icon next to the menu button). On phones, links open in a full-screen overlay (the hero's side menu opens it too).
 2. **Hero:** the 3D horizon scene with three words. The scene changes mood with each word, blending smoothly as you scroll (sky glow, mountains, atmosphere, background and title glow). The moods are `heroScenes` in `src/content.ts`.
    - **COCKTAILS** (*KOKTEILAR*): a photo story of a cocktail being made: **pour → garnish → present**. The photos cross-fade every 4.5 s with a slow zoom, under a dark fade so the word stays readable, with the 3D scene dimmed on top. Rising **bubbles** float over it. "Handcrafted at the bar, from our signatures to the classics", with the See the menu and Find us buttons.
    - **TAPAS:** a photo of tapas on slate (soft-focus, because the supplied file is only 239×158 px), warm saffron tones and drifting golden **sparks**. "Mediterranean-inspired plates, made for sharing". To use a sharper photo, replace `src/assets/hero/tapas.webp` (landscape, at least 1600 px wide) and remove `soft: true` in `heroScenes`. If it is a stock photo, check the licence covers a business website.
@@ -134,7 +134,7 @@ It is used for every call-to-action button on the page.
 10. **Reviews** (`#reviews`): the three reviews quoted on the current site, shown as tilted speech bubbles.
 11. **Say VÁ!** (`#skal`): explains the name. *Vá* (said like "vow") is Icelandic for "wow!", what you say when something amazes you. The big button counts every VÁ (stored on this device only), with sparkle bursts and a glow that brightens level by level.
 12. **FAQ** (`#faq`): the 12 questions and answers from the current site, in both languages. They use native `<details>`, so they work without JavaScript and every answer is in the HTML.
-13. **Visit:** the address, info@vábar.is, directions, menu (and booking, when set), plus the opening hours with the Open now badge.
+13. **Visit:** the address, info@vábar.is, directions, menu and **Book a table**, plus the opening hours with the Open now badge.
 14. **Footer:**
     - **Partners:** the Mekka Wines & Spirits and Ölgerðin logos on ivory tiles, so their own colours stay untouched. Each links to the partner's site (`partners` in `src/content.ts`; check the two URLs).
     - **Powered by Alcedo:** the white Alcedo logo from the Alcedo Logo Kit v1, the kit's version for dark backgrounds, shown at its 180 px minimum or wider and linking to www.alcedo.is.
@@ -178,8 +178,8 @@ Built around the search terms VÁ BAR is found with on Google (bar, coffee, rest
 
 ## Before launch
 
-1. **Booking link:** bookings run through Sinna. Paste VÁ's Sinna booking URL into `site.bookingUrl` in `src/content.ts`, and "Book a table" / "Bóka borð" appears in the header, the phone menu and the Visit section.
-2. **Social links:** the current site links to Facebook, Instagram and TikTok. Send the three profile URLs; they will go in the footer and the structured data (`sameAs`).
+1. **Booking link (Alcedo):** bookings move to Alcedo. "Book a table" / "Bóka borð" is in the header, the hero, the phone menu and the Visit section. Until Alcedo's guest booking page is live (`site.bookingUrl` is `null`), every booking button opens a pre-filled booking request email to info@vábar.is (date, time, guests, name, phone; English or Icelandic to match the page). When the page is live, paste its URL into `site.bookingUrl` in `src/content.ts`; all buttons switch to it and open it in a new tab, and Google's data (`acceptsReservations`) points to it.
+2. **Social links:** paste the Instagram, Facebook and TikTok profile URLs into `site.socials` in `src/content.ts`. Each one adds an icon to the footer and the phone menu and is listed for Google (`sameAs`); a `null` link stays hidden. The icons are Simple Icons paths (CC0) in `src/components/site/social-icons.tsx`.
 3. **Reviews:** the three reviews are copied word for word from the current site. Check that each is a real review on Google or Tripadvisor. Google's guidelines don't allow invented or edited reviews.
 4. **Illustrations:** the current site's line drawings (the founders, the bartender, the guests) came only as screenshots. Send the original files to use them, for example inverted to light lines on the dark background.
 5. **Directions:** replace the Maps search in `site.mapsUrl` with the Google Business Profile's Maps link.

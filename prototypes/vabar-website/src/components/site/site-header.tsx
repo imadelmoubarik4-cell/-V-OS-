@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { CalendarDays, Menu, X } from "lucide-react";
 import { FlowButton } from "@/components/ui/flow-button";
 import { cn } from "@/lib/utils";
-import { site, type Copy, type Lang } from "@/content";
+import { bookingHref, site, socialLinks, type Copy, type Lang } from "@/content";
+import { SocialIcon } from "./social-icons";
 import logoUrl from "@/assets/brand/va-logo.svg";
 
 type Props = {
@@ -34,6 +35,10 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
       document.body.style.overflow = "";
     };
   }, [navOpen, setNavOpen]);
+
+  const book = bookingHref(t);
+  // Alcedo's booking page opens in a new tab; the request email opens the mail app.
+  const bookTarget = site.bookingUrl ? { target: "_blank", rel: "noopener" } : {};
 
   const links = [
     { href: "#drinks", label: t.nav.drinks },
@@ -116,16 +121,23 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
 
           <div className="flex items-center gap-3">
             {langButton}
-            {site.bookingUrl ? (
-              <a
-                href={site.bookingUrl}
-                target="_blank"
-                rel="noopener"
-                className="hidden rounded-full bg-copper px-5 py-2 text-sm font-bold text-charcoal transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-rotate-2 hover:scale-105 active:scale-95 motion-reduce:transform-none sm:inline-flex"
-              >
-                {t.nav.book}
-              </a>
-            ) : null}
+            <a
+              href={book}
+              {...bookTarget}
+              className="hidden items-center gap-2 rounded-full bg-copper px-5 py-2 text-sm font-bold text-charcoal transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-rotate-2 hover:scale-105 active:scale-95 motion-reduce:transform-none sm:inline-flex"
+            >
+              <CalendarDays className="size-4" aria-hidden="true" />
+              {t.nav.book}
+            </a>
+            {/* On phones the booking button shrinks to an icon, next to the menu button. */}
+            <a
+              href={book}
+              {...bookTarget}
+              aria-label={t.nav.book}
+              className="grid size-10 place-items-center rounded-full bg-copper text-charcoal transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-90 motion-reduce:transform-none sm:hidden"
+            >
+              <CalendarDays className="size-5" aria-hidden="true" />
+            </a>
             <FlowButton href={site.menuUrl} text={t.nav.menu} tone="light" className="hidden px-6 py-2 sm:inline-flex" />
             <button
               type="button"
@@ -164,11 +176,12 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
           {[
             ...links,
             { href: site.menuUrl, label: t.nav.menu },
-            ...(site.bookingUrl ? [{ href: site.bookingUrl, label: t.nav.book }] : []),
+            { href: book, label: t.nav.book },
           ].map((l, i) => (
             <a
               key={l.href}
               href={l.href}
+              {...(l.href === book ? bookTarget : {})}
               onClick={() => setNavOpen(false)}
               className="group font-display text-5xl font-semibold transition-all duration-300 hover:tracking-wide hover:text-copper sm:text-7xl"
               style={{ transitionDelay: `${i * 30}ms` }}
@@ -178,6 +191,23 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
             </a>
           ))}
           <div className="mt-6">{langButton}</div>
+          {socialLinks.length ? (
+            <ul className="mt-2 flex gap-3" aria-label={t.follow}>
+              {socialLinks.map((s) => (
+                <li key={s.key}>
+                  <a
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener"
+                    aria-label={s.label}
+                    className="grid size-11 place-items-center rounded-full border border-foreground/25 transition-colors hover:border-copper hover:text-copper"
+                  >
+                    <SocialIcon name={s.key} className="size-5" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </nav>
       </div>
     </>

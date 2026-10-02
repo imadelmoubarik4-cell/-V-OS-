@@ -13,7 +13,8 @@ import { ShakeSection } from "@/components/site/shake-section";
 import { SkalSection } from "@/components/site/skal-section";
 import { VisitSection } from "@/components/site/visit-section";
 import { CursorGlow } from "@/components/site/helpers";
-import { alcedo, copy, heroPalette, heroScenes, partners, site, type Lang } from "@/content";
+import { alcedo, bookingHref, copy, heroPalette, heroScenes, partners, site, socialLinks, type Lang } from "@/content";
+import { SocialIcon } from "@/components/site/social-icons";
 import logoUrl from "@/assets/brand/va-logo.svg";
 
 const LANG_KEY = "va-lang";
@@ -66,6 +67,13 @@ export default function App() {
           palette={heroPalette}
           onMenuClick={openNav}
         >
+          <FlowButton
+            href={bookingHref(t)}
+            {...(site.bookingUrl ? { target: "_blank", rel: "noopener" } : {})}
+            text={t.nav.book}
+            tone="light"
+            className="border-copper bg-copper/25 font-bold backdrop-blur"
+          />
           <FlowButton href={site.menuUrl} text={t.heroCtaMenu} tone="light" className="bg-background/30 backdrop-blur" />
           <FlowButton href="#visit" text={t.heroCtaVisit} tone="light" className="bg-background/30 backdrop-blur" />
         </HorizonHero>
@@ -144,6 +152,23 @@ export default function App() {
                   {site.email}
                 </a>
               </p>
+              {socialLinks.length ? (
+                <ul className="mt-4 flex gap-3" aria-label={t.follow}>
+                  {socialLinks.map((s) => (
+                    <li key={s.key}>
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener"
+                        aria-label={s.label}
+                        className="grid size-10 place-items-center rounded-full border border-foreground/20 text-foreground/80 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:-rotate-6 hover:border-copper hover:text-copper motion-reduce:transform-none"
+                      >
+                        <SocialIcon name={s.key} className="size-[18px]" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <p className="mt-4 text-xs">© 2026 {site.company}</p>
             </div>
             <div className="flex flex-wrap items-center gap-4">
