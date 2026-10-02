@@ -316,6 +316,10 @@ unless a manager later changes an individual seat manually.
   After that cutoff, cancellation must be handled by staff rather than the
   guest self-service flow.
 - **Advance booking window: keep the existing 90-day default.**
+- **Confirmation policy: staff approval.** Guest/website bookings are saved as
+  **requested** and are not presented as confirmed until a VÁ team member approves
+  them. Staff-created **phone and walk-in** bookings count as the staff decision
+  and may be confirmed immediately when saved.
 
 
 A test‑data **floor‑plan Designer prototype** on the Alcedo brand system (rooms,
