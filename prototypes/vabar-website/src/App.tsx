@@ -56,7 +56,6 @@ export default function App() {
           scrollLabel={t.heroScroll}
           palette={heroPalette}
           onMenuClick={openNav}
-          logo={<img src={logoUrl} alt="" width={438} height={296} />}
         >
           <FlowButton href={site.menuUrl} text={t.heroCtaMenu} tone="light" className="bg-background/30 backdrop-blur" />
           <FlowButton href="#visit" text={t.heroCtaVisit} tone="light" className="bg-background/30 backdrop-blur" />
@@ -70,14 +69,11 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="relative z-10 border-t border-foreground/10 bg-background px-4 pb-10 pt-16 sm:px-6" inert={navOpen || undefined}>
+      <footer className="relative z-10 border-t border-foreground/10 bg-background px-4 pb-10 pt-12 sm:px-6" inert={navOpen || undefined}>
         <div className="mx-auto flex max-w-6xl flex-col gap-10">
-          <p className="font-display text-[22vw] font-semibold leading-none tracking-tight text-foreground/[0.06] select-none sm:text-[16vw]" aria-hidden="true">
-            VÁ · SKÁL
-          </p>
           <div className="flex flex-col justify-between gap-6 text-sm text-foreground/60 sm:flex-row sm:items-end">
             <div>
-              <img src={logoUrl} alt={site.name} width={110} height={74} className="h-auto w-[110px]" />
+              <img src={logoUrl} alt={site.name} width={64} height={43} className="h-auto w-[64px]" />
               <p className="mt-4">{site.area}</p>
               <p className="mt-4 text-xs">© 2026 {site.company}</p>
             </div>

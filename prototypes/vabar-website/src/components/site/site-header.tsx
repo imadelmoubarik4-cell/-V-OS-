@@ -15,13 +15,9 @@ type Props = {
 
 export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props) {
   const [scrolled, setScrolled] = useState(false);
-  const [pastHeroLogo, setPastHeroLogo] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 40);
-      setPastHeroLogo(window.scrollY > window.innerHeight * 0.55);
-    };
+    const onScroll = () => setScrolled(window.scrollY > 40);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -81,16 +77,14 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
             className="group block"
             aria-label={`${site.name}, ${t.footer.top.toLowerCase()}`}
           >
-            {/* Solo logo (no slogan); a playful wobble on hover */}
+            {/* Solo logo (no slogan), always small in the top-left; a playful wobble on hover */}
             <img
               src={logoUrl}
               alt=""
-              width={74}
-              height={50}
+              width={64}
+              height={43}
               className={cn(
-                "h-auto w-[64px] transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-rotate-6 group-hover:scale-110 motion-reduce:transform-none sm:w-[74px]",
-                // stays out of the way while the big hero logo is on screen
-                !pastHeroLogo && "opacity-0 group-focus-visible:opacity-100",
+                "h-auto w-[56px] transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-rotate-6 group-hover:scale-110 motion-reduce:transform-none sm:w-[64px]",
               )}
             />
           </a>
@@ -144,7 +138,7 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
           <X className="size-6" />
         </button>
         <nav className="flex h-full flex-col items-center justify-center gap-4" aria-label="Overlay">
-          <img src={logoUrl} alt="" width={120} height={81} className="mb-6 h-auto w-[120px]" />
+          <img src={logoUrl} alt="" width={64} height={43} className="mb-4 h-auto w-[64px]" />
           {[...links, { href: site.menuUrl, label: t.nav.menu }].map((l, i) => (
             <a
               key={l.href}

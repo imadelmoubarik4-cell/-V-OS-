@@ -118,8 +118,8 @@ export const copy = {
     heroMenu: "EXPLORE",
     heroScroll: "SCROLL",
     slides: [
-      { title: "VÁ", line1: "Cocktails, tapas and wines", line2: "by the old harbour in Reykjavík" },
-      { title: "SKÁL", line1: "Shaken, stirred and poured with care,", line2: "small plates to share" },
+      { title: "SKÁL", line1: "Cocktails, tapas and wines", line2: "by the old harbour in Reykjavík" },
+      { title: "TAPAS", line1: "Small plates to share,", line2: "wines to linger over" },
       { title: "HAFNARTORG", line1: "Find us at Hafnartorg,", line2: "come in from the cold" },
     ] satisfies HeroSlide[],
     heroCtaMenu: "See the menu",
@@ -169,8 +169,8 @@ export const copy = {
     heroMenu: "KANNA",
     heroScroll: "SKRUNA",
     slides: [
-      { title: "VÁ", line1: "Kokteilar, tapas og vín", line2: "við gömlu höfnina í Reykjavík" },
-      { title: "SKÁL", line1: "Hristir, hrærðir og bornir fram af alúð,", line2: "smáréttir til að deila" },
+      { title: "SKÁL", line1: "Kokteilar, tapas og vín", line2: "við gömlu höfnina í Reykjavík" },
+      { title: "TAPAS", line1: "Smáréttir til að deila,", line2: "vín til að njóta" },
       { title: "HAFNARTORG", line1: "Þú finnur okkur á Hafnartorgi,", line2: "komdu inn úr kuldanum" },
     ] satisfies HeroSlide[],
     heroCtaMenu: "Sjá matseðil",

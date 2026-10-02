@@ -53,7 +53,7 @@ Here the files were written by hand to the same layout (TypeScript 7 no longer a
 
 - **Logo:** `src/assets/brand/va-logo.svg` is the **solo logo**: the VÁ mark without the "Cocktails | Tapas | Wines" slogan. It uses the white and terracotta-gradient version for dark backgrounds.
   - **Source:** the vector paths are copied from page 10 of the brand manual. The slogan and the page background were removed, the viewBox was cropped to the mark, and coordinates were rounded to two decimals. The shapes and colours are unchanged.
-  - **Where it appears:** the landing hero (large, as the page's `<h1>` with the accessible name "VÁ"), the header (it appears once the hero logo has scrolled away), the navigation overlay, the footer and the favicon.
+  - **Where it appears:** small in the top-left of the header (always visible, 56–64 px wide), plus the navigation overlay and the footer at the same small size, and the favicon. It is never shown large.
   - **Slogan:** the lockup is not used anywhere. Cocktails, tapas and wines are mentioned in the copy instead (hero line and marquee).
 - **Colours** (tokens in `src/index.css`):
 
@@ -76,7 +76,7 @@ The supplied WebGL hero (three.js star field, nebula, mountain layers and bloom;
 
 Changes from the original:
 
-- **Props:** `slides`, `menuLabel`, `scrollLabel`, `palette`, `onMenuClick` and `children` (rendered under the landing subtitle). All default to the original content and colours.
+- **Props:** `slides`, `menuLabel`, `scrollLabel`, `palette`, `onMenuClick`, `logo` (optional; shown instead of the landing title text, not used on this page) and `children` (rendered under the landing subtitle). All default to the original content and colours.
 - **Scroll range:** progress is measured over the hero only (it was the whole document), so the page continues below. The canvas sits in a sticky stage and the slides scroll over it.
 - **Title intro:** the landing title is now split into characters, so the GSAP character animation actually runs. The original reused `titleRef` / `subtitleRef` on every slide, so the refs ended up on the last slide.
 - **Robustness:** typed refs, arrays reset on remount (React StrictMode), composer and atmosphere disposed, and rendering pauses while the hero is off-screen or the tab is hidden. With no WebGL, a CSS gradient shows and the text still appears.
@@ -104,8 +104,8 @@ It is used for every call-to-action button on the page.
 
 - **Header:** the solo logo (it wobbles on hover), section links, an animated **EN / IS** switch (remembered per device, and the default follows the browser language), and a Menu FlowButton. On phones there is a full-screen navigation overlay, which the hero's side menu also opens. It closes with Escape.
 - **Hero:** the horizon scene in the brand colours. Three slides:
-  - the **solo logo**, with "Cocktails, tapas and wines by the old harbour in Reykjavík" and the "See the menu" and "Find us" buttons;
-  - **SKÁL**;
+  - **SKÁL**, with "Cocktails, tapas and wines by the old harbour in Reykjavík" and the "See the menu" and "Find us" buttons;
+  - **TAPAS**;
   - **HAFNARTORG**.
 - **Marquee:** a tilted terracotta band, "Cocktails ✦ Tapas ✦ Wines ✦ Skál ✦ …" (static with reduced motion).
 - **Shake:** choose moods (Fresh, Sour, Bitter, Sweet, Strong, Coffee, or "Surprise me"), then press the cocktail shaker.
