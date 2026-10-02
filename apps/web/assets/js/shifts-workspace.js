@@ -50,6 +50,7 @@
     tab: 'schedule',
     mode: 'week',
     staffView: 'mine',
+    colorByPerson: loadColorPref(),
     showEarlier: false,
     weekStart: null,
     monthStart: null,
@@ -263,6 +264,59 @@
     let hash = 0;
     for (const character of String(key || 'x')) hash = ((hash * 31) + character.charCodeAt(0)) >>> 0;
     return `atlas-avatar--${'abcd'[hash % 4]}`;
+  }
+
+  // Colour by person: a stable per-teammate colour from the 12-hue --person-color
+  // palette (atlas-components.css). The owner toggles it in the toolbar; the choice
+  // is remembered per browser. When off, no colour class is emitted and chips use
+  // the default accent.
+  const PERSON_COLORS = 12;
+  const COLOR_PREF_KEY = 'atlas.shifts.colorByPerson';
+  function loadColorPref() {
+    try {
+      const stored = window.localStorage?.getItem(COLOR_PREF_KEY);
+      return stored == null ? true : stored === '1';
+    } catch { return true; }
+  }
+  function saveColorPref() {
+    try { window.localStorage?.setItem(COLOR_PREF_KEY, state.colorByPerson ? '1' : '0'); } catch { /* private mode */ }
+  }
+  // Give each teammate a distinct palette slot by their position in the roster
+  // (sorted by id, cached by roster signature), so for a team of 12 or fewer no
+  // two people share a colour — and the colour stays stable while the roster does.
+  // People the roster can't resolve (schedule-only, name-only) fall back to a hash.
+  let colorMap = null;
+  let colorSig = '';
+  function colorIndexFor(person) {
+    const roster = people().map((entry) => entry.id).filter(Boolean).sort();
+    const sig = roster.join(',');
+    if (sig !== colorSig) {
+      colorSig = sig;
+      colorMap = new Map(roster.map((id, index) => [id, index % PERSON_COLORS]));
+    }
+    if (person?.id != null && colorMap.has(person.id)) return colorMap.get(person.id);
+    const key = person?.id || person?.profile_id || person?.display_name || 'x';
+    let hash = 0;
+    for (const character of String(key)) hash = ((hash * 31) + character.charCodeAt(0)) >>> 0;
+    return hash % PERSON_COLORS;
+  }
+  function personColorClass(person) {
+    return `atlas-person--${colorIndexFor(person)}`;
+  }
+  // Colour class for a shift's person (resolving through the workspace), with the
+  // leading space so it drops cleanly into a class list. Empty when colour is off.
+  function shiftColorClass(shift, ws) {
+    if (!state.colorByPerson) return '';
+    const person = personFor(shift.person_id, ws) || { id: shift.person_id, display_name: shift.person_name };
+    return ` ${personColorClass(person)}`;
+  }
+  function personColorClassOn(person) {
+    return state.colorByPerson ? ` ${personColorClass(person)}` : '';
+  }
+  // The toolbar switch. Shown only where more than one person appears, so toggling
+  // colour is meaningful (manager grid, or a staff member's team view).
+  function colorToggleMarkup() {
+    return `<button type="button" class="shifts-color-toggle" data-shifts-color-toggle role="switch" aria-checked="${state.colorByPerson}">${icon('palette')}<span>Colour by person</span></button>`;
   }
 
   function initials(value) {
@@ -729,7 +783,7 @@
     return `<section class="shifts-now" aria-label="Who is working">${days.map(([key, label]) => {
       const rows = whoIsOn(key, ws);
       return `<div class="shifts-now__day"><p class="shifts-now__label">${label} <span>${escapeHtml(shortDate(key))}</span></p>${rows.length
-        ? `<p class="shifts-now__people">${rows.map((row) => `<span class="shifts-now__person">${avatar(personFor(row.personId, ws))}${escapeHtml(row.name.split(' ')[0])} <span class="num">${escapeHtml(row.start)}–${escapeHtml(row.end)}</span></span>`).join('')}</p>`
+        ? `<p class="shifts-now__people">${rows.map((row) => `<span class="shifts-now__person${personColorClassOn(personFor(row.personId, ws) || { id: row.personId, display_name: row.name })}">${avatar(personFor(row.personId, ws))}${escapeHtml(row.name.split(' ')[0])} <span class="num">${escapeHtml(row.start)}–${escapeHtml(row.end)}</span></span>`).join('')}</p>`
         : `<p class="shifts-now__none">${canManage() ? 'No one scheduled' : 'No published shifts'}</p>`}</div>`;
     }).join('')}${canManage() || canRespond() ? '<a class="atlas-btn atlas-btn--ghost atlas-btn--sm shifts-now__handover" href="#messages/shift-handover">' + icon('notebook-pen') + 'Handover</a>' : ''}</section>`;
   }
@@ -752,7 +806,7 @@
     const label = `${nameOf(shift, ws)}, ${longDate(dateOf(shift.starts_local))}, ${timeOf(shift.starts_local)} to ${timeOf(shift.ends_local)}${shift.role_name ? `, ${shift.role_name}` : ''}${unpublished ? ', not published' : ''}${responseText ? `, ${responseText}` : ''}${warnings.length ? `. ${warnings.join('. ')}` : ''}`;
     const tag = canManage() ? 'button type="button"' : 'div';
     const close = canManage() ? 'button' : 'div';
-    return `<${tag} class="shift-chip${unpublished ? ' is-unpublished' : ''}${warnings.length ? ' has-warning' : ''}" ${canManage() ? `data-shifts-edit="${escapeHtml(shift.id)}"` : ''} aria-label="${escapeHtml(label)}" ${warnings.length ? `title="${escapeHtml(warnings.join(' · '))}"` : ''}>
+    return `<${tag} class="shift-chip${unpublished ? ' is-unpublished' : ''}${warnings.length ? ' has-warning' : ''}${shiftColorClass(shift, ws)}" ${canManage() ? `data-shifts-edit="${escapeHtml(shift.id)}"` : ''} aria-label="${escapeHtml(label)}" ${warnings.length ? `title="${escapeHtml(warnings.join(' · '))}"` : ''}>
       <span class="shift-chip__time num">${escapeHtml(timeOf(shift.starts_local))}–${escapeHtml(timeOf(shift.ends_local))}</span>
       ${shift.role_name ? `<span class="shift-chip__role">${escapeHtml(shift.role_name)}</span>` : ''}
       ${warnings.length ? `<span class="shift-chip__warn">${icon('triangle-alert')}<span>${escapeHtml(warningWord(warnings))}</span></span>` : ''}
@@ -775,7 +829,7 @@
       const personShifts = shifts.filter((shift) => shift.person_id === person.id);
       const hours = personShifts.reduce((total, shift) => total + hoursOf(shift), 0);
       return `<div class="shifts-grid__row" role="row">
-        <div class="shifts-grid__person" role="rowheader">${avatar(person)}<span class="shifts-grid__name"><span class="shifts-grid__display">${escapeHtml(person.display_name)}</span><span class="shifts-grid__hours num">${personShifts.length ? formatHours(hours) : manage ? 'No shifts' : ''}</span></span></div>
+        <div class="shifts-grid__person${personColorClassOn(person)}" role="rowheader">${avatar(person)}<span class="shifts-grid__name"><span class="shifts-grid__display">${escapeHtml(person.display_name)}</span><span class="shifts-grid__hours num">${personShifts.length ? formatHours(hours) : manage ? 'No shifts' : ''}</span></span></div>
         ${days.map((key) => {
           const cell = personShifts.filter((shift) => dateOf(shift.starts_local) === key).sort((a, b) => a.starts_local.localeCompare(b.starts_local));
           const leave = list(ws, 'time_off').find((request) => request.person_id === person.id && request.status === 'approved' && request.starts_on <= key && request.ends_on >= key);
@@ -819,7 +873,7 @@
       Number(shift.break_minutes || 0) ? `${Number(shift.break_minutes)} min break` : null,
       shift.note
     ].filter(Boolean).join(' · ');
-    return `<li class="atlas-row shifts-row${unpublished ? ' is-unpublished' : ''}" data-shift-id="${escapeHtml(shift.id)}">
+    return `<li class="atlas-row shifts-row${unpublished ? ' is-unpublished' : ''}${shiftColorClass(shift, ws)}" data-shift-id="${escapeHtml(shift.id)}">
       <div class="atlas-row__body">
         <p class="atlas-row__title shifts-row__time num">${escapeHtml(timeOf(shift.starts_local))}–${escapeHtml(timeOf(shift.ends_local))}${options.mine ? '' : `<span class="shifts-row__name">${escapeHtml(nameOf(shift, ws))}</span>`}</p>
         ${meta && options.mine ? `<p class="atlas-row__meta">${escapeHtml(meta)}</p>` : meta && !options.mine ? `<p class="atlas-row__meta">${escapeHtml([shift.role_name, shift.note].filter(Boolean).join(' · '))}</p>` : ''}
@@ -850,7 +904,7 @@
       content = mine.length ? dayListMarkup(ws, { mine: true }) + (!state.showEarlier && state.weekStart <= today() && today() <= addDays(state.weekStart, 6) && !mine.some((shift) => dateOf(shift.starts_local) >= today()) ? `<p class="shifts-day__empty">No more shifts for you this week.</p>` : '')
         : `<div class="atlas-empty shifts-empty"><div class="atlas-empty__icon">${icon('calendar')}</div><h3 class="atlas-empty__title">No shifts for you this week</h3><p class="atlas-empty__text">${ownPersonId() ? 'You’re not on the published schedule this week.' : 'Your account isn’t linked to the shift roster yet. Ask a manager to add you.'}</p><div class="atlas-empty__actions"><button type="button" class="atlas-btn atlas-btn--secondary" data-shifts-staff-view="team">See the team’s week</button></div></div>`;
     } else content = narrowQuery.matches ? dayListMarkup(ws) : weekGridMarkup(ws);
-    return `<div class="atlas-toolbar shifts-toolbar">${toggle}${statusMarkup()}</div>${onNowMarkup(ws)}${content}`;
+    return `<div class="atlas-toolbar shifts-toolbar">${toggle}${statusMarkup()}${state.staffView === 'team' ? `<span class="shifts-toolbar__legend">${colorToggleMarkup()}</span>` : ''}</div>${onNowMarkup(ws)}${content}`;
   }
 
   function weekScheduleMarkup() {
@@ -859,7 +913,7 @@
     if (!ws) return `${alertMarkup(slot)}${slot.error && !slot.loading ? '' : skeletonMarkup(narrowQuery.matches ? 'list' : 'grid')}`;
     if (!canManage()) return `${alertMarkup(slot)}${staffScheduleMarkup(ws)}`;
     const content = list(ws, 'shifts').length ? (narrowQuery.matches ? dayListMarkup(ws) : weekGridMarkup(ws)) : weekEmptyMarkup();
-    return `${alertMarkup(slot)}<div class="atlas-toolbar shifts-toolbar">${statusMarkup()}<span class="shifts-toolbar__legend">${list(ws, 'shifts').some((shift) => isUnpublished(shift, ws)) ? '<span class="shift-chip shift-chip--legend is-unpublished" aria-hidden="true"></span>Dashed: not published yet' : ''}</span><div class="atlas-toolbar__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-add="${escapeHtml(state.weekStart <= today() && today() <= addDays(state.weekStart, 6) ? today() : state.weekStart)}">${icon('plus')}Add shift</button></div></div>${onNowMarkup(ws)}${content}`;
+    return `${alertMarkup(slot)}<div class="atlas-toolbar shifts-toolbar">${statusMarkup()}<span class="shifts-toolbar__legend">${colorToggleMarkup()}${list(ws, 'shifts').some((shift) => isUnpublished(shift, ws)) ? '<span class="shift-chip shift-chip--legend is-unpublished" aria-hidden="true"></span>Dashed: not published yet' : ''}</span><div class="atlas-toolbar__end"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-shifts-add="${escapeHtml(state.weekStart <= today() && today() <= addDays(state.weekStart, 6) ? today() : state.weekStart)}">${icon('plus')}Add shift</button></div></div>${onNowMarkup(ws)}${content}`;
   }
 
   function monthScheduleMarkup() {
@@ -1248,6 +1302,7 @@
       return;
     }
     if (target.closest('[data-shifts-earlier]')) { state.showEarlier = true; paint(); return; }
+    if (target.closest('[data-shifts-color-toggle]')) { state.colorByPerson = !state.colorByPerson; saveColorPref(); paint(); return; }
     const staffView = target.closest('[data-shifts-staff-view]');
     if (staffView) {
       state.staffView = staffView.dataset.shiftsStaffView === 'team' ? 'team' : 'mine';

@@ -64,6 +64,19 @@ button.shift-chip:hover { border-color: var(--line-strong); background: var(--bg
 .shift-chip--legend { display: inline-block; width: 18px; height: 12px; padding: 0; }
 .shift-chip--legend::before { display: none; }
 
+/* ---------- colour by person (toggle in the toolbar) ---------- */
+/* Palette tokens (--person-color) come from atlas-components.css via the
+   atlas-person--N class the module adds to each coloured element. */
+.shifts-color-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--text-2); font: var(--type-caption); cursor: pointer; }
+.shifts-color-toggle svg { width: 14px; height: 14px; }
+.shifts-color-toggle:hover { border-color: var(--line-strong); color: var(--text); }
+.shifts-color-toggle[aria-checked="true"] { border-color: var(--accent-brand); color: var(--text); }
+.shift-chip[class*="atlas-person--"]::before { width: 3px; background: var(--person-color); }
+.shift-chip[class*="atlas-person--"] { border-color: color-mix(in srgb, var(--person-color) 40%, var(--line)); background: color-mix(in srgb, var(--person-color) 9%, var(--surface)); }
+button.shift-chip[class*="atlas-person--"]:hover { border-color: color-mix(in srgb, var(--person-color) 60%, var(--line)); background: color-mix(in srgb, var(--person-color) 16%, var(--surface)); }
+.shifts-grid__person[class*="atlas-person--"] .atlas-avatar, .shifts-now__person[class*="atlas-person--"] .atlas-avatar { outline: 2px solid var(--person-color); outline-offset: 1px; }
+.shifts-row[class*="atlas-person--"] { box-shadow: inset 3px 0 0 var(--person-color); }
+
 /* ---------- day list (phones, tablets, staff "Team") ---------- */
 .shifts-days { display: grid; gap: var(--s-6); }
 .shifts-days__earlier { justify-self: start; }

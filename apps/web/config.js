@@ -185,7 +185,7 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 // availability, time-off, publishing and confirmation workspace.
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/shifts-workspace.css',
-  scriptPath: 'assets/js/shifts-workspace.js?v=20260929-s90f',
+  scriptPath: 'assets/js/shifts-workspace.js?v=20261002-s103',
   globalName: 'AtlasShifts',
   dataAttribute: 'atlasShifts',
 }));
