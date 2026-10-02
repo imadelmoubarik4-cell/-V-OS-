@@ -57,6 +57,11 @@ verify_jwt = false
 [functions.atlas-training]
 verify_jwt = false
 
+# Bookings validates the Auth JWT and active profile inside the handler, then
+# passes the resolved actor into service-role-only booking RPCs.
+[functions.atlas-bookings]
+verify_jwt = false
+
 [functions.atlas-reports]
 verify_jwt = false
 entrypoint = "./functions/atlas-reports/entrypoint.ts"
