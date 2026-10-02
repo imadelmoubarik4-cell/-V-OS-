@@ -1,0 +1,124 @@
+/* Bookings (#bookings, #bookings/config) — the Alcedo staff booking workspace
+ * and manager configuration. Layout only; page header, buttons, rows, pills,
+ * alerts, sheets, dialogs, fields, toggles, segmented control and empty states
+ * are the shared atlas-* components. No tokens defined here (only used), no
+ * !important. Section colours derive from the Alcedo palette tokens so the floor
+ * plan inherits the brand. */
+@layer atlas.modules {
+.bk-host { display: block; }
+.bk-body { margin-top: var(--s-5); }
+.bk-alert { margin-top: var(--s-4); }
+.bk-skel { display: grid; gap: var(--s-2); margin-top: var(--s-5); }
+.bk-note { margin: 0; font: var(--type-meta); color: var(--text-2); }
+.bk-crumb { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 var(--s-1) calc(-1 * var(--s-1)); font: var(--type-meta); color: var(--text-2); text-decoration: none; }
+.bk-crumb svg { width: 16px; height: 16px; }
+.bk-crumb:hover { color: var(--text); }
+
+/* ---------- day controls ---------- */
+.bk-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-4); margin-top: var(--s-4); }
+.bk-date { max-width: 200px; }
+.bk-viewtoggle { margin-left: auto; }
+
+/* ---------- section colours (Alcedo palette, token-derived swatches) ---------- */
+.bk-c-teal { --bk-c: var(--accent); }
+.bk-c-orange { --bk-c: var(--highlight); }
+.bk-c-sage { --bk-c: var(--positive); }
+.bk-c-ivory { --bk-c: var(--bg-muted); }
+.bk-c-ink { --bk-c: var(--ink); }
+.bk-c-plum { --bk-c: color-mix(in srgb, var(--danger) 55%, var(--accent) 45%); }
+.bk-c-sky { --bk-c: color-mix(in srgb, var(--accent) 42%, var(--surface)); }
+.bk-c-clay { --bk-c: color-mix(in srgb, var(--highlight) 58%, var(--danger) 42%); }
+.bk-swatch { display: inline-block; width: 12px; height: 12px; flex: none; border-radius: var(--r-xs); background: var(--bk-c, var(--accent)); }
+.bk-row__swatch { display: inline-block; width: 8px; align-self: stretch; flex: none; border-radius: var(--r-pill); background: var(--bk-c, var(--accent)); }
+
+/* ---------- floor plan ---------- */
+.bk-map { display: grid; gap: var(--s-6); margin-top: var(--s-5); }
+.bk-area { border-left: 3px solid var(--bk-c, var(--accent)); padding-left: var(--s-4); }
+.bk-area__title { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
+.bk-area__tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--s-3); }
+
+/* VÁ Bar: confirmed 16-stool perimeter. 8 across the top, 4 down the right,
+ * 4 back up the left, with an intentionally open centre. */
+.bk-floor-grid { grid-template-columns: repeat(8, minmax(88px, 1fr)); grid-template-rows: repeat(5, minmax(72px, auto)); }
+.bk-floor-grid .bk-table { min-width: 0; min-height: 72px; }
+.bk-floor-grid [data-bookings-position="1"] { grid-column: 1; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="2"] { grid-column: 2; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="3"] { grid-column: 3; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="4"] { grid-column: 4; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="5"] { grid-column: 5; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="6"] { grid-column: 6; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="7"] { grid-column: 7; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="8"] { grid-column: 8; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="9"] { grid-column: 8; grid-row: 2; }
+.bk-floor-grid [data-bookings-position="10"] { grid-column: 8; grid-row: 3; }
+.bk-floor-grid [data-bookings-position="11"] { grid-column: 8; grid-row: 4; }
+.bk-floor-grid [data-bookings-position="12"] { grid-column: 8; grid-row: 5; }
+.bk-floor-grid [data-bookings-position="13"] { grid-column: 1; grid-row: 5; }
+.bk-floor-grid [data-bookings-position="14"] { grid-column: 1; grid-row: 4; }
+.bk-floor-grid [data-bookings-position="15"] { grid-column: 1; grid-row: 3; }
+.bk-floor-grid [data-bookings-position="16"] { grid-column: 1; grid-row: 2; }
+
+.bk-table { display: grid; align-content: start; gap: 2px; min-height: 96px; padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); text-align: left; cursor: pointer; color: var(--text); }
+.bk-table:hover { background: var(--bg-hover); }
+.bk-table:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.bk-table__label { font: 600 16px/22px var(--font-sans); color: var(--text); }
+.bk-table__cap { font: var(--type-caption); color: var(--text-3); }
+.bk-table__status { margin-top: var(--s-1); font: var(--type-label); color: var(--text-2); }
+.bk-table__guest { font: var(--type-caption); color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Status accents pair a coloured edge WITH the text label (never colour alone). */
+.bk-table--free { border-left: 4px solid var(--line-strong); }
+.bk-table--booked { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.bk-table--booked .bk-table__status { color: var(--accent-text); }
+.bk-table--seated { border-left: 4px solid var(--positive); background: var(--positive-soft); }
+.bk-table--seated .bk-table__status { color: var(--positive); }
+.bk-table--unavailable { border-left: 4px solid var(--danger); background: var(--danger-soft); }
+.bk-table--unavailable .bk-table__status { color: var(--danger); }
+
+/* ---------- list alternative ---------- */
+.bk-list { margin-top: var(--s-5); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.bk-row { padding: 0; }
+.bk-row__btn { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 60px; padding: var(--s-2) var(--s-4) var(--s-2) 0; border: 0; background: transparent; text-align: left; cursor: pointer; color: var(--text); }
+.bk-row__btn:hover { background: var(--bg-hover); }
+.bk-row__btn:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
+.bk-row__status { margin-left: auto; flex: none; }
+
+/* ---------- reservation detail ---------- */
+.bk-detail__body { display: grid; gap: var(--s-4); }
+.bk-detail__status { display: flex; align-items: center; gap: var(--s-2); margin: 0; }
+.bk-detail__requested { font: var(--type-meta); color: var(--warning); }
+.bk-detail__facts { display: grid; gap: var(--s-3); margin: 0; }
+.bk-detail__facts > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--s-3); }
+.bk-detail__facts dt { margin: 0; font: var(--type-label); color: var(--text-3); }
+.bk-detail__facts dd { margin: 0; font: var(--type-body); color: var(--text); overflow-wrap: anywhere; }
+.bk-detail__assign { display: grid; gap: var(--s-2); padding-top: var(--s-3); border-top: 1px solid var(--line); }
+.bk-detail__assign-label { font: var(--type-label); color: var(--text-2); }
+.bk-detail__assign-row { display: flex; gap: var(--s-2); align-items: center; }
+.bk-detail__assign-row .atlas-select { flex: 1 1 auto; min-width: 0; }
+.bk-detail__foot { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+/* ---------- config ---------- */
+.bk-config { max-width: var(--reading-max); }
+.bk-cfg-section { margin-top: var(--s-8); }
+.bk-cfg-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); }
+.bk-cfg-title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
+.bk-cfg-list { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.bk-cfg-row { display: flex; align-items: center; gap: var(--s-3); min-height: 60px; padding: var(--s-3) var(--s-4); }
+.bk-settings { display: grid; gap: var(--s-4); }
+.bk-settings__foot { display: flex; justify-content: flex-end; padding-top: var(--s-2); }
+.bk-combo-members { display: grid; gap: var(--s-2); }
+
+/* ---------- phone ---------- */
+@media (max-width: 767px) {
+  .bk-body { margin-top: var(--s-4); }
+  .bk-controls { gap: var(--s-3); }
+  .bk-date { max-width: none; flex: 1 1 100%; }
+  .bk-viewtoggle { margin-left: 0; width: 100%; }
+  .bk-area__tables { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .bk-floor-grid { grid-template-columns: repeat(4, minmax(120px, 1fr)); grid-template-rows: none; overflow-x: auto; }
+  .bk-floor-grid .bk-table { grid-column: auto; grid-row: auto; }
+  .bk-table { min-height: var(--touch); }
+  .bk-row__btn { min-height: var(--touch); }
+  .bk-detail__facts > div { grid-template-columns: 1fr; gap: 2px; }
+  .bk-config { max-width: none; }
+}
+}

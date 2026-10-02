@@ -20,6 +20,8 @@ window.VABAR_CONFIG = {
   // Knowledge › Training: private video SOPs (signed uploads, short-lived playback),
   // chapters, procedure steps, progress and explicit completion.
   TRAINING_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-training",
+  // Bookings: authoritative staff availability + reservation service.
+  BOOKINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-bookings",
   REPORTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-reports",
   SYSTEM_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-system",
   SETTINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-settings",
@@ -208,6 +210,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   scriptPath: 'assets/js/training-workspace.js?v=20261015-s98',
   globalName: 'AtlasTraining',
   dataAttribute: 'atlasTraining',
+}));
+
+// Bookings: staff day view + manager room/rules configuration.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/bookings-workspace.css?v=20261002-bookings1',
+  scriptPath: 'assets/js/bookings-workspace.js?v=20261002-bookings1',
+  globalName: 'AtlasBookings',
+  dataAttribute: 'atlasBookings',
 }));
 
 // Checkpoint H replaces the Reports placeholder with a permission-aware,

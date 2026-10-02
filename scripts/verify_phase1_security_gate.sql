@@ -245,13 +245,23 @@ with public_tables as (
   -- be sealed (browser no access, append-only even for service_role) and fed by the
   -- SECURITY DEFINER trigger on public.recipes so no frontend write path can skip it.
   select
-    to_regclass('atlas_private.recipe_price_events') is not null as installed,
+    exists (
+      select 1 from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'atlas_private' and c.relname = 'recipe_price_events'
+    ) as installed,
     coalesce((select c.relrowsecurity from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'atlas_private' and c.relname = 'recipe_price_events'), false) as rls_enabled,
-    coalesce(not has_table_privilege('authenticated','atlas_private.recipe_price_events','insert,update,delete'), true) as browser_no_write,
-    coalesce(not has_table_privilege('anon','atlas_private.recipe_price_events','select,insert,update,delete'), true) as anon_no_access,
-    coalesce(not has_table_privilege('service_role','atlas_private.recipe_price_events','update,delete,truncate'), true) as append_only,
+    coalesce((select not has_table_privilege('authenticated', c.oid, 'insert,update,delete')
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'atlas_private' and c.relname = 'recipe_price_events'), true) as browser_no_write,
+    coalesce((select not has_table_privilege('anon', c.oid, 'select,insert,update,delete')
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'atlas_private' and c.relname = 'recipe_price_events'), true) as anon_no_access,
+    coalesce((select not has_table_privilege('service_role', c.oid, 'update,delete,truncate')
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'atlas_private' and c.relname = 'recipe_price_events'), true) as append_only,
     exists (
       select 1 from pg_trigger t
       join pg_class c on c.oid = t.tgrelid
@@ -356,10 +366,16 @@ select jsonb_build_object(
     'recipe_catalog', to_regclass('public.recipe_catalog') is not null
   ),
   'atlas_stock_count_views', jsonb_build_object(
-    'source_available', to_regclass('atlas_private.inventory_verified_balances') is not null,
+    'source_available', exists (
+      select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'atlas_private' and c.relname = 'inventory_verified_balances'
+    ),
     'staff_view', to_regclass('public.stock_count_summary') is not null,
     'manager_view', to_regclass('public.stock_count_manager_summary') is not null,
-    'expected_in_this_database', to_regclass('atlas_private.inventory_verified_balances') is not null
+    'expected_in_this_database', exists (
+      select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'atlas_private' and c.relname = 'inventory_verified_balances'
+    )
   ),
   'fingerprint', (select to_jsonb(fingerprint) from fingerprint)
 ) as phase1_security_gate;
