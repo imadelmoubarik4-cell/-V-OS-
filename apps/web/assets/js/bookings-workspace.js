@@ -270,7 +270,7 @@
     const reservation = reservationsForTable(table.id)[0] || null;
     const capacity = table.seat_capacity ? `${table.seat_capacity} seat${table.seat_capacity === 1 ? '' : 's'}` : '';
     const label = `${table.label} — ${status.label}${reservation?.guest_name ? `, ${reservation.guest_name}` : ''}`;
-    return `<button type="button" class="bk-table bk-table--${escapeHtml(status.key)}" data-bookings-table="${escapeHtml(table.id)}"${reservation ? ` data-bookings-reservation="${escapeHtml(reservation.id)}"` : ''} aria-label="${escapeHtml(label)}">
+    return `<button type="button" class="bk-table bk-table--${escapeHtml(status.key)}" data-bookings-table="${escapeHtml(table.id)}" data-bookings-position="${escapeHtml(String(table.position_index || ''))}"${reservation ? ` data-bookings-reservation="${escapeHtml(reservation.id)}"` : ''} aria-label="${escapeHtml(label)}">
       <span class="bk-table__label">${escapeHtml(table.label)}</span>
       <span class="bk-table__cap">${escapeHtml(capacity)}</span>
       <span class="bk-table__status" data-bookings-status>${escapeHtml(status.label)}</span>
@@ -304,9 +304,10 @@
       if (area.allocation_mode === 'pooled') return pooledAreaMarkup(area);
       const colour = sectionColour(area);
       const areaTables = tablesForArea(area.id);
+      const floorClass = area.circular_adjacency && areaTables.some((table) => table.position_index) ? ' bk-floor-grid' : '';
       return `<section class="bk-area bk-c-${escapeHtml(colour)}" data-bookings-area="${escapeHtml(area.id)}" aria-labelledby="bk-area-${escapeHtml(area.id)}">
         <h3 class="bk-area__title" id="bk-area-${escapeHtml(area.id)}"><span class="bk-swatch" aria-hidden="true"></span>${escapeHtml(area.name)}</h3>
-        <div class="bk-area__tables">${areaTables.length ? areaTables.map(tableButtonMarkup).join('') : '<p class="bk-note">No seats configured here.</p>'}</div>
+        <div class="bk-area__tables${floorClass}">${areaTables.length ? areaTables.map(tableButtonMarkup).join('') : '<p class="bk-note">No seats configured here.</p>'}</div>
       </section>`;
     }).join('');
     return `<div class="bk-map" data-bookings-map role="group" aria-label="Booking locations">${groups}</div>`;
