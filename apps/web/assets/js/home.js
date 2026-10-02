@@ -2,7 +2,7 @@
 // seconds, is today under control and what needs me.
 //
 // Renders into #dashboard-view (the shell's internal Home view) as the one
-// Home section ('home', order 0). Everything shown is real Atlas data:
+// Home section ('home', order 0). Everything shown is real Alcedo data:
 //   context line   AtlasVenueClock (saved hours only; "not set" is said)
 //   Needs attention AtlasShell.home.rows() — every module contributes rows
 //   Today's briefing composed from the same facts, with its sources named
@@ -49,7 +49,7 @@
   }
 
   function icon(name) {
-    // 'atlas-bot' is the Atlas AI robot (atlas-bot.js), the assistant's face.
+    // 'atlas-bot' is the Alcedo AI robot (atlas-bot.js), the assistant's face.
     if (name === 'atlas-bot' && window.AtlasBot) return window.AtlasBot.html({ size: 18 });
     return `<i data-lucide="${escape(name)}" aria-hidden="true"></i>`;
   }
@@ -350,7 +350,7 @@
 
   // ---------- Decisions ledger refresh ----------
   //
-  // One producer feeds the decision memory (Atlas AI › Decisions): Atlas AI
+  // One producer feeds the decision memory (Alcedo AI › Decisions): Alcedo AI
   // background signals (atlas-ai?action=refresh-signals, Atlas_AI_Architecture
   // §12a). They are deterministic (no model call) and fingerprinted, so the same
   // signal refreshes its shadow recommendation instead of repeating it. Home
@@ -557,7 +557,7 @@
         else service.push('You’re closed for the rest of today.');
       }
     } else if (venueState?.status === 'not_set') {
-      service.push('Opening hours aren’t set, so Atlas can’t plan around service times.');
+      service.push('Opening hours aren’t set, so Alcedo can’t plan around service times.');
     }
     const tonight = tonightShifts();
     if (tonight && !tonight.error) {
@@ -583,10 +583,10 @@
     const risks = [];
     if (dataLoaded()) {
       const stock = stockFacts();
-      if (stock.active && stockIncomplete()) risks.push(`Stock figures are incomplete (${missingStockInputs()} couldn’t load), so Atlas can’t tell what’s low.`);
+      if (stock.active && stockIncomplete()) risks.push(`Stock figures are incomplete (${missingStockInputs()} couldn’t load), so Alcedo can’t tell what’s low.`);
       else if (stock.active) {
         facts.sources.add('stock counts');
-        if (!stock.known) risks.push('Stock hasn’t been counted yet, so Atlas can’t tell what’s low.');
+        if (!stock.known) risks.push('Stock hasn’t been counted yet, so Alcedo can’t tell what’s low.');
         else if (stock.out.length) risks.push(`Out of stock: ${list(stock.out.map((item) => item.name))}${stock.below.length ? `; ${plural(stock.below.length, 'more item is', 'more items are')} below par` : ''}.`);
         else if (stock.below.length) risks.push(`${list(stock.below.map((item) => item.name))} ${stock.below.length === 1 ? 'is' : 'are'} below par.`);
         else risks.push(stock.unknown ? `Nothing counted is below par; ${plural(stock.unknown, 'item hasn’t', 'items haven’t')} been counted.` : 'Nothing counted is below par.');
@@ -746,7 +746,7 @@
     const current = venue?.state?.();
     let body;
     if (!venue || !current || current.status === 'loading') body = '<p class="home-muted" data-venue-clock-state="loading">Loading opening hours…</p>';
-    else if (current.status === 'unavailable') body = '<p class="home-muted" data-venue-clock-state="unavailable">Opening hours unavailable. Atlas couldn’t read the venue’s saved hours.</p>';
+    else if (current.status === 'unavailable') body = '<p class="home-muted" data-venue-clock-state="unavailable">Opening hours unavailable. Alcedo couldn’t read the venue’s saved hours.</p>';
     else if (current.status === 'not_set') {
       body = `<p class="home-muted" data-venue-clock-state="not_set">Opening hours not set.${current.canManageHours ? ' <a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#settings/hours" data-venue-hours-settings>Set opening hours</a>' : ' A manager can add them in Settings.'}</p>`;
     } else {
@@ -888,7 +888,7 @@
       id: 'home.reload', label: 'Reload data', icon: 'refresh-cw', keywords: ['refresh', 'reload'],
       run: () => reloadData()
     });
-    // Team Messages recommendation links open Atlas AI › Decisions with that
+    // Team Messages recommendation links open Alcedo AI › Decisions with that
     // recommendation selected (AtlasAI.openDecision; Brain retired).
     atlas.links?.register?.('brain_recommendation', (key) => { atlas.navigate(key ? `#ai/decisions?recommendation=${encodeURIComponent(key)}` : '#ai/decisions'); return true; });
     atlas.onView('dashboard', {

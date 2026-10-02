@@ -1,4 +1,4 @@
-// Atlas app shell start-up: Supabase client, sign-in, session lifecycle,
+// Alcedo app shell start-up: Supabase client, sign-in, session lifecycle,
 // shell data loading and the base views. Moved out of index.html in S96 so the
 // Content-Security-Policy can drop script-src 'unsafe-inline' (docs/SECURITY.md).
 // A classic script: its top-level declarations stay global, exactly as when
@@ -13,7 +13,7 @@
     const err = document.getElementById('login-error');
     if (!err) return;
     console.error(prefix, msg);
-    err.textContent = "Atlas couldn't connect. Check your connection, then try again.";
+    err.textContent = "Alcedo couldn't connect. Check your connection, then try again.";
     err.hidden = false;
   }
 
@@ -77,7 +77,7 @@
 
   const cfg = window.VABAR_CONFIG || {};
 
-  // S96 (session fixation / login CSRF): Atlas never signs in from tokens in
+  // S96 (session fixation / login CSRF): Alcedo never signs in from tokens in
   // the address bar. Recovery and invitation links are consumed on their own
   // pages from a single-use token hash; anything that still arrives here with
   // auth parameters in the fragment is dropped before the client starts, so a
@@ -168,7 +168,7 @@
   }
 
   window.addEventListener('unhandledrejection', event => {
-    console.error('Unhandled Atlas error:', event.reason);
+    console.error('Unhandled Alcedo error:', event.reason);
   });
 
   const loginScreen = document.getElementById('login-screen');
@@ -176,6 +176,8 @@
   const loginForm = document.getElementById('login-form');
   const loginError = document.getElementById('login-error');
   const loginBtn = document.getElementById('login-btn');
+  const loginCooldownEl = document.getElementById('login-cooldown');
+  const loginCaptchaEl = document.getElementById('login-captcha');
   const userEmailEl = document.getElementById('user-email');
 
   let currentUser = null;
@@ -273,12 +275,150 @@
   ['email', 'password'].forEach((id) => document.getElementById(id)?.addEventListener('input', () => {
     if (document.getElementById(`${id}-error`)?.hidden === false) showFieldError(id, '');
   }));
+
+  // ---------- LOGIN ABUSE SPEED-BUMP (S99) ----------
+  // A CLIENT-SIDE UX brake only. It is NOT a security boundary on its own: it
+  // lives in this one browser, can be cleared, and only slows repeated guesses
+  // from a single device. Supabase Auth's own server-side rate limits remain the
+  // real control (OWNER-GATED in the Supabase dashboard › Auth › Rate Limits).
+  // Only genuine bad-credential failures count; a network/503 blip never does,
+  // so a connectivity problem is never punished. A successful sign-in clears it.
+  // The counter is kept in memory and mirrored to localStorage so a reload does
+  // not reset an attacker's cooldown; all storage access is wrapped in try/catch
+  // (private mode / disabled storage must never break sign-in).
+  const LOGIN_THROTTLE_KEY = 'atlas:login-throttle.v1';
+  // Progressive cooldown, checked high-to-low: 5–7 failures → 30s, 8–9 → 2 min,
+  // 10+ → 5 min. Below 5 failures there is no cooldown.
+  const LOGIN_LOCKOUT_STEPS = [
+    { fails: 10, cooldownMs: 300000 },
+    { fails: 8, cooldownMs: 120000 },
+    { fails: 5, cooldownMs: 30000 }
+  ];
+  let loginFailures = 0;      // consecutive bad-credential failures (this device)
+  let loginLockedUntil = 0;   // epoch ms before which the next attempt is refused
+  let loginCooldownTimer = null;
+  function cooldownForFailures(fails) {
+    for (const step of LOGIN_LOCKOUT_STEPS) if (fails >= step.fails) return step.cooldownMs;
+    return 0;
+  }
+  function loginCooldownRemaining() {
+    return Math.max(0, loginLockedUntil - Date.now());
+  }
+  function readLoginThrottle() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LOGIN_THROTTLE_KEY) || 'null');
+      if (raw && typeof raw.fails === 'number') {
+        loginFailures = raw.fails;
+        loginLockedUntil = Number(raw.until) || 0;
+      }
+    } catch (_) { /* storage unavailable (private mode) */ }
+  }
+  function writeLoginThrottle() {
+    try { localStorage.setItem(LOGIN_THROTTLE_KEY, JSON.stringify({ fails: loginFailures, until: loginLockedUntil })); } catch (_) { /* storage unavailable */ }
+  }
+  function clearLoginThrottle() {
+    loginFailures = 0;
+    loginLockedUntil = 0;
+    if (loginCooldownTimer) { clearInterval(loginCooldownTimer); loginCooldownTimer = null; }
+    if (loginCooldownEl) { loginCooldownEl.textContent = ''; loginCooldownEl.hidden = true; }
+    try { localStorage.removeItem(LOGIN_THROTTLE_KEY); } catch (_) { /* storage unavailable */ }
+  }
+  function registerLoginFailure() {
+    loginFailures += 1;
+    const cooldownMs = cooldownForFailures(loginFailures);
+    loginLockedUntil = cooldownMs > 0 ? Date.now() + cooldownMs : 0;
+    writeLoginThrottle();
+  }
+  // Calm, polite countdown. The button is disabled (never spinning) for the
+  // duration; the message never reveals whether the email exists.
+  function renderLoginCooldown() {
+    const remaining = loginCooldownRemaining();
+    if (remaining <= 0) { endLoginCooldown(); return; }
+    loginBtn.disabled = true;
+    loginBtn.classList.remove('is-loading');
+    loginBtn.removeAttribute('aria-busy');
+    loginBtn.textContent = 'Sign in';
+    if (loginCooldownEl) {
+      loginCooldownEl.textContent = `Too many attempts. Try again in ${Math.ceil(remaining / 1000)}s.`;
+      loginCooldownEl.hidden = false;
+    }
+  }
+  function startLoginCooldown() {
+    if (loginCooldownTimer) clearInterval(loginCooldownTimer);
+    renderLoginCooldown();
+    loginCooldownTimer = setInterval(renderLoginCooldown, 1000);
+  }
+  function endLoginCooldown() {
+    if (loginCooldownTimer) { clearInterval(loginCooldownTimer); loginCooldownTimer = null; }
+    if (loginCooldownEl) { loginCooldownEl.textContent = ''; loginCooldownEl.hidden = true; }
+    if (!bootRetry && loginCooldownRemaining() <= 0) loginBtn.disabled = false;
+  }
+  readLoginThrottle();
+
+  // ---------- CAPTCHA (OWNER-GATED, inert by default) ----------
+  // Threads a provider token through Supabase Auth, but only when the owner sets
+  // AUTH_CAPTCHA_PROVIDER in config.js AND enables the same provider in the
+  // Supabase dashboard. With no provider (the default) this is a strict no-op:
+  // no script loads, no widget renders, and captchaOptions() returns undefined
+  // so signInWithPassword is called with exactly { email, password } as before.
+  // When a provider is turned on, its script and frame origins MUST be added to
+  // the netlify CSP (script-src / frame-src) — OWNER-GATED, not broadened here.
+  const CAPTCHA_PROVIDERS = {
+    hcaptcha: { script: 'https://js.hcaptcha.com/1/api.js?render=explicit', api: () => window.hcaptcha },
+    turnstile: { script: 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit', api: () => window.turnstile }
+  };
+  const captchaProvider = CAPTCHA_PROVIDERS[String(cfg.AUTH_CAPTCHA_PROVIDER || '').toLowerCase()] || null;
+  const captchaSiteKey = String(cfg.AUTH_CAPTCHA_SITE_KEY || '');
+  let captchaWidgetId = null;
+  let captchaToken = '';
+  function captchaEnabled() { return Boolean(captchaProvider && captchaSiteKey); }
+  function loadCaptchaScript() {
+    return new Promise((resolve, reject) => {
+      if (captchaProvider.api()) { resolve(); return; }
+      const existing = [...document.scripts].find((script) => script.src === captchaProvider.script);
+      if (existing) { existing.addEventListener('load', () => resolve()); existing.addEventListener('error', () => reject(new Error('captcha unavailable'))); return; }
+      const script = document.createElement('script');
+      script.src = captchaProvider.script;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('captcha unavailable'));
+      document.head.appendChild(script);
+    });
+  }
+  async function renderCaptcha() {
+    if (!captchaEnabled() || !loginCaptchaEl || captchaWidgetId !== null) return;
+    try {
+      await loadCaptchaScript();
+      const api = captchaProvider.api();
+      if (!api?.render) return;
+      captchaWidgetId = api.render(loginCaptchaEl, {
+        sitekey: captchaSiteKey,
+        callback: (token) => { captchaToken = token || ''; },
+        'expired-callback': () => { captchaToken = ''; },
+        'error-callback': () => { captchaToken = ''; }
+      });
+      loginCaptchaEl.hidden = false;
+    } catch (_) { /* provider unreachable: the server still enforces its own check */ }
+  }
+  function resetCaptcha() {
+    captchaToken = '';
+    try { if (captchaWidgetId !== null) captchaProvider?.api()?.reset?.(captchaWidgetId); } catch (_) { /* ignore */ }
+  }
+  // undefined when disabled, so the no-op path adds no captchaToken key at all.
+  function captchaOptions() {
+    return captchaEnabled() ? { captchaToken } : undefined;
+  }
+
   // Set when start-up could not finish (connection, or the staff profile could
   // not be read for a kept session): the button then retries start-up.
   let bootRetry = false;
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (bootRetry) { location.reload(); return; }
+    // Still cooling down (button disabled, but guard the keyboard/programmatic
+    // submit path too): re-show the countdown, attempt nothing.
+    if (loginCooldownRemaining() > 0) { startLoginCooldown(); return; }
     showLoginError('');
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -286,20 +426,31 @@
     setLoginBusy(true, 'Signing in…');
     try {
       const client = await initializeSupabase();
-      const { data, error } = await client.auth.signInWithPassword({ email, password });
+      // captchaToken key is present only when a provider is configured (no-op otherwise).
+      const options = captchaOptions();
+      const { data, error } = await client.auth.signInWithPassword(options ? { email, password, options } : { email, password });
       setLoginBusy(false);
       if (error) {
         console.warn('Sign-in failed', error.status || '', error.message);
-        showLoginError(error.status === 400 || /invalid/i.test(error.message || '')
-          ? 'Email or password is incorrect.'
-          : "Atlas couldn't sign you in right now. Check your connection and try again.");
+        const badCredentials = error.status === 400 || /invalid/i.test(error.message || '');
+        if (badCredentials) {
+          // A genuine wrong email/password: count it toward the speed-bump.
+          registerLoginFailure();
+          resetCaptcha();
+          showLoginError('Email or password is incorrect.');
+          if (loginCooldownRemaining() > 0) startLoginCooldown();
+        } else {
+          // Network / 503 / other: a connectivity blip, never counted.
+          showLoginError("Alcedo couldn't sign you in right now. Check your connection and try again.");
+        }
         return;
       }
+      clearLoginThrottle();
       await onSignedIn(data.session);
     } catch (e) {
       console.error('Sign-in failed', e);
       setLoginBusy(false);
-      showLoginError(e?.code === 'inactive_profile' ? INACTIVE_PROFILE_MESSAGE : "Atlas couldn't sign you in right now. Check your connection and try again.");
+      showLoginError(e?.code === 'inactive_profile' ? INACTIVE_PROFILE_MESSAGE : "Alcedo couldn't sign you in right now. Check your connection and try again.");
     }
   });
   document.getElementById('login-password-toggle')?.addEventListener('click', (event) => {
@@ -344,7 +495,7 @@
   window.atlasSignOut = signOut;
 
   // One consistent state when the session is over: this device's session is
-  // cleared (never the person's other devices) and Atlas returns to the
+  // cleared (never the person's other devices) and Alcedo returns to the
   // sign-in screen with a clear message, keeping the page address so signing
   // in again reopens it with every module loaded fresh. No page is left
   // showing old data, spinning, or signed in while its requests fail.
@@ -365,7 +516,7 @@
     } catch (_) { /* storage unavailable */ }
     if (recent) {
       forgetStoredSession(sb);
-      window.AtlasShell?.toast?.('Your session ended. Reload Atlas and sign in again.', { tone: 'warning', duration: 15000 });
+      window.AtlasShell?.toast?.('Your session ended. Reload Alcedo and sign in again.', { tone: 'warning', duration: 15000 });
       return;
     }
     await signOut();
@@ -377,7 +528,7 @@
   function authUnavailableNotice() {
     if (Date.now() - authNoticeAt < RENEW_COOLDOWN_MS) return;
     authNoticeAt = Date.now();
-    window.AtlasShell?.toast?.('Atlas can’t check your sign-in right now. You’re still signed in; try again in a moment.', { tone: 'warning' });
+    window.AtlasShell?.toast?.('Alcedo can’t check your sign-in right now. You’re still signed in; try again in a moment.', { tone: 'warning' });
   }
   // A refresh error is final only when Auth says the session is gone.
   function sessionIsGone(error) {
@@ -487,11 +638,112 @@
   }
   window.atlasEnsureAssurance = ensureAssurance;
 
+  // S99 two-factor ENTRY gate. Two independent things are enforced here and must
+  // not be confused:
+  //   * A person who ALREADY has a verified authenticator must step up to aal2
+  //     every sign-in (challenge) — if you have 2FA, you use it. This is
+  //     unconditional and was already true under S96.
+  //   * A person with NO factor is sent to enrolment ONLY when the rollout
+  //     policy requires it FOR THEM (`must_enroll`, computed server-side by the
+  //     atlas_auth_policy RPC from the auth_policy flags + their role + whether
+  //     they have a factor). With the flags off, `must_enroll` is false, so
+  //     existing factor-less staff simply enter — the RELEASE is non-breaking,
+  //     and enrolment for existing staff turns on only when the owner flips the
+  //     policy during rollout. New invitees enrol in the invite wizard, not here.
+  // A transient MFA-API or policy read error fails open (logs, lets the person
+  // in) so a fault never locks anyone out.
+  function mfaEntryDecision(state) {
+    if (state && state.hasVerifiedFactor) return state.aal === 'aal2' ? 'allow' : 'challenge';
+    return state && state.mustEnroll ? 'enroll' : 'allow';
+  }
+  window.atlasMfaEntryDecision = mfaEntryDecision;
+
+  // What mountLoginEnrollment does given whether the enrolment UI is present.
+  // Pure and unit-tested so the "missing UI" path can never loop back through
+  // the gate: 'mount' shows the enrol UI, 'enter' fails open into the app.
+  function enrollmentPlan(hasUi) { return hasUi ? 'mount' : 'enter'; }
+  window.atlasEnrollmentPlan = enrollmentPlan;
+
+  // Whether THIS session must enrol now, per the rollout policy. Fails safe to
+  // false so a read error never forces enrolment or a lock-out.
+  async function fetchMustEnroll() {
+    try {
+      const { data, error } = await sb.rpc('atlas_auth_policy');
+      if (error) return false;
+      return data?.must_enroll === true;
+    } catch (_) { return false; }
+  }
+
+  // Returns 'ok' to enter, or 'enroll'/'blocked' when it took over the screen.
+  async function enforceEntryMfa(session) {
+    try {
+      const listed = await sb.auth.mfa.listFactors();
+      const hasVerifiedFactor = (listed?.data?.totp || []).some((candidate) => candidate.status === 'verified');
+      let aal = 'aal1';
+      try { aal = (await sb.auth.mfa.getAuthenticatorAssuranceLevel())?.data?.currentLevel || 'aal1'; } catch (_) { /* default aal1 */ }
+      const mustEnroll = hasVerifiedFactor ? false : await fetchMustEnroll();
+      const decision = mfaEntryDecision({ hasVerifiedFactor, aal, mustEnroll });
+      if (decision === 'allow') return 'ok';
+      if (decision === 'challenge') {
+        const outcome = await ensureAssurance(sb);
+        if (outcome === 'verified' || outcome === 'not_required' || outcome === 'unavailable') return 'ok';
+        // The person has a factor but did not confirm the code: require it.
+        showLoginError('Confirm your authenticator code to enter Alcedo. Sign in again to try once more.');
+        bootRetry = true;
+        setLoginBusy(false, 'Try again');
+        loginScreen.style.display = '';
+        appScreen.style.display = 'none';
+        return 'blocked';
+      }
+      return mountLoginEnrollment(session); // 'enroll', or 'ok' if it failed open
+    } catch (error) {
+      console.warn('MFA entry check failed; continuing without step-up', error?.message || error);
+      return 'ok';
+    }
+  }
+
+  // Returns 'enroll' when it took over the screen with the enrol UI, or 'ok'
+  // when the UI was unavailable and it entered the app directly. It NEVER calls
+  // back into onSignedIn/the gate, so a missing UI cannot cause a retry loop.
+  function mountLoginEnrollment(session) {
+    loginScreen.style.display = '';
+    appScreen.style.display = 'none';
+    document.documentElement.dataset.atlasSignin = 'shown';
+    setLoginBusy(false, 'Sign in');
+    showLoginError('');
+    const host = document.getElementById('login-mfa');
+    const mountPoint = document.getElementById('login-mfa-host');
+    if (enrollmentPlan(Boolean(host && mountPoint && window.AtlasMfaEnroll)) === 'enter') {
+      // No enrolment UI available: enter the app directly rather than trap the
+      // person or loop them back through the gate.
+      console.warn('Two-factor enrolment UI is unavailable; continuing.');
+      enterApp(session).catch((error) => console.error(error));
+      return 'ok';
+    }
+    loginForm.hidden = true;
+    host.hidden = false;
+    window.AtlasMfaEnroll.mount(mountPoint, {
+      client: sb,
+      onVerified: async () => {
+        host.hidden = true;
+        loginForm.hidden = false;
+        const fresh = (await sb.auth.getSession()).data?.session || session;
+        await enterApp(fresh);
+      }
+    });
+    return 'enroll';
+  }
+
   async function onSignedIn(session) {
     if (sb?.auth?.mfa) {
-      const outcome = await ensureAssurance(sb);
-      if (outcome === 'verified') session = (await sb.auth.getSession()).data?.session || session;
+      const gate = await enforceEntryMfa(session);
+      if (gate === 'enroll' || gate === 'blocked') return;
+      session = (await sb.auth.getSession()).data?.session || session;
     }
+    await enterApp(session);
+  }
+
+  async function enterApp(session) {
     currentUser = session.user;
     try { sessionStorage.removeItem(SESSION_ENDED_KEY); sessionStorage.removeItem(SESSION_ENDED_AT_KEY); } catch (_) { /* storage unavailable */ }
     const profile = await loadActiveProfile(session);
@@ -576,6 +828,9 @@
         // No session: the sign-in form is what this visitor sees (logo intro).
         document.documentElement.dataset.atlasSignin = 'shown';
         window.AtlasSignInIntro?.start();
+        renderCaptcha();
+        // A cooldown from a prior device session survives the reload.
+        if (loginCooldownRemaining() > 0) startLoginCooldown();
         let ended = false;
         try { ended = sessionStorage.getItem(SESSION_ENDED_KEY) === '1'; sessionStorage.removeItem(SESSION_ENDED_KEY); } catch (_) { /* storage unavailable */ }
         if (ended) {
@@ -595,6 +850,7 @@
         appScreen.style.display = 'none';
         document.documentElement.dataset.atlasSignin = 'shown';
         window.AtlasSignInIntro?.start();
+        renderCaptcha();
         showLoginError(INACTIVE_PROFILE_MESSAGE);
         ['email', 'password'].forEach((id) => document.getElementById(id)?.setAttribute('aria-invalid', 'false'));
         return;
@@ -657,7 +913,7 @@
   }
 
   // The newest AtlasStockTruth.MOVEMENT_ROW_LIMIT movements (5 000, the same
-  // cap as Reports and Atlas AI), read in pages so the PostgREST max-rows
+  // cap as Reports and Alcedo AI), read in pages so the PostgREST max-rows
   // default (1 000) cannot silently cut the stock projection short.
   async function loadRestockLog() {
     const relation = canManageCommercial() ? 'inventory_movements' : 'inventory_movement_catalog';
@@ -875,7 +1131,7 @@
     // Import Center and Real VÁ Data are one manager page now: Data (assets/js/data-workspace.js).
     ['imports', { guard: () => 'data' }],
     ['team', {}], ['shifts', {}], ['knowledge', {}], ['reports', {}], ['settings', {}],
-    // An address Atlas doesn't know (#bogus) opens this page instead of
+    // An address Alcedo doesn't know (#bogus) opens this page instead of
     // leaving the previous page on screen (AtlasShell.isKnownRoute).
     ['not-found', { render: () => renderNotFound() }]
   ].forEach(([view, definition]) => window.AtlasShell.registerView(view, { root: viewMap[view], title: titleMap[view], ...definition }));

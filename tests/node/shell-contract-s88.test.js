@@ -198,7 +198,8 @@ test('every event a module listens for is actually emitted', () => {
 
 test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell calls', () => {
   assert.match(index, /<script src="assets\/js\/atlas-shell\.js\?v=20261006-s92r"><\/script>\s*<script src="config\.js"><\/script>/);
-  assert.match(indexHtml, /<script src="assets\/js\/atlas-bot\.js[^"]*"><\/script>\s*<script src="assets\/js\/atlas-app\.js\?v=[^"]+"><\/script>/);
+  // S99: atlas-mfa-enroll.js loads between atlas-bot.js and atlas-app.js.
+  assert.match(indexHtml, /<script src="assets\/js\/atlas-bot\.js[^"]*"><\/script>\s*<script src="assets\/js\/atlas-mfa-enroll\.js\?v=[^"]+"><\/script>\s*<script src="assets\/js\/atlas-app\.js\?v=[^"]+"><\/script>/);
   assert.ok(index.indexOf('assets/js/atlas-shell.js') < index.indexOf('assets/js/runtime-module-guard.js'));
   assert.match(index, /function setActiveView\(view\) \{\s+return window\.AtlasShell\.show\(view\);\s+\}/);
   assert.match(index, /async function loadAll\(\) \{\s+await loadAtlasData\(\);\s+window\.AtlasShell\.dataLoaded\(\{ online: navigator\.onLine, health: window\.AtlasData\.health\(\) \}\);\s+\}/);
@@ -228,9 +229,11 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
 
 test('changed scripts carry the S88 cache key', () => {
   // S90 UX acceptance remediation (shell, design system and page fixes).
-  for (const file of ['data-workspace.js', 'atlas-capture.js', 'atlas-search.js']) {
+  for (const file of ['atlas-capture.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
   }
+  // Alcedo polish pass: data-workspace.js changed (import dialog a11y) and carries the polish key.
+  assert.ok(index.includes('<script src="assets/js/data-workspace.js?v=20260930-polish1"></script>'), 'data-workspace.js');
   // S92 Accounting: dialogs labelled when they open (modal). The shell (the
   // admin-only Accounting destination and route) and the palette (its group)
   // changed on both sides of the S92/robot merge and carry the merge key.
@@ -243,14 +246,20 @@ test('changed scripts carry the S88 cache key', () => {
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
   for (const file of ['s38-app-remediation.js', 'shifts-workspace.js',
-    'atlas-venue-clock.js', 'atlas-stock-truth.js']) {
+    'atlas-venue-clock.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
+  // ALCEDO rebrand: atlas-stock-truth.js changed (Atlas->Alcedo comment) and carries the rebrand key.
+  assert.ok(index.includes('<script src="assets/js/atlas-stock-truth.js?v=20260930-alcedo2"></script>'), 'atlas-stock-truth.js');
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
   // and the UX acceptance round 2 fixes (toast placement, order lines on the
   // phone, one inventory value in Reports, hours validation in place).
-  for (const file of ['atlas-purchasing.js', 'operations.js', 'reports-overview.js']) {
+  for (const file of ['reports-overview.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-s90g"></script>`), file);
+  }
+  // Alcedo polish pass: atlas-purchasing.js (exclusion disclosure) and operations.js ((optional) label) carry the polish key.
+  for (const file of ['atlas-purchasing.js', 'operations.js']) {
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-polish1"></script>`), file);
   }
   // S97 Inventory Storage Locations: managed locations with chips, filters, a
   // Manage Locations page and primary-location stock-count scoping.
@@ -269,9 +278,11 @@ test('changed scripts carry the S88 cache key', () => {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
   }
   // Flavor Intelligence (S95) survives Accounting (S92) reconciliation.
-  for (const file of ['recipes.js', 'flavor-map.js', 'atlas-ai.js']) {
+  for (const file of ['recipes.js', 'flavor-map.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261005-fi1"></script>`), file);
   }
+  // Alcedo polish pass: atlas-ai.js changed ((optional) label, Decisions subtitle) and carries the polish key.
+  assert.ok(index.includes('<script src="assets/js/atlas-ai.js?v=20260930-polish1"></script>'), 'atlas-ai.js');
   assert.ok(index.includes('<script src="assets/js/recipes.js?v=20261005-fi1"></script>\n<script src="assets/js/flavor-map.js?v=20261005-fi1"></script>'), 'flavor-map.js right after recipes.js');
   // Accounting (S92): the offline quick answer keeps the sparkles icon (atlas-palette.js).
   for (const file of ['atlas-palette.js']) {
@@ -282,7 +293,7 @@ test('changed scripts carry the S88 cache key', () => {
   // sleep sprite frame and the rebuilt scene (atlas-bot.js); atlas-ai.js
   // reports what Atlas is doing to it and still carries the S91b voice lease.
   for (const file of ['atlas-bot.js']) {
-    assert.ok(index.includes(`<script src="assets/js/${file}?v=20261004-bot6"></script>`), file);
+    assert.ok(index.includes(`<script src="assets/js/${file}?v=20260930-glb2"></script>`), file);
   }
   assert.ok(index.includes('<script src="assets/js/atlas-ai-voice.js?v=20260926-s91c"></script>'), 'atlas-ai-voice.js');
   // S91a phone UI fixes: the Recipes category menu and tile category.
@@ -316,7 +327,12 @@ test('changed scripts carry the S88 cache key', () => {
   // S94: Settings publishing connections and the Marketing composer, media
   // library and platform checks; S94b: review fixes in the composer (asap,
   // partial save, radios), the media picker and the platform checks.
-  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261004-s94'"), 'settings-workspace.js');
+  // S99: Settings Security now manages the current user's authenticator (2FA).
+  assert.ok(config.includes("scriptPath: 'assets/js/settings-workspace.js?v=20261016-s99'"), 'settings-workspace.js');
+  // S99: the TOTP enrolment module loads statically before atlas-app.js and is
+  // reused by the invitation wizard and the login gate.
+  assert.ok(index.includes('<script src="assets/js/atlas-mfa-enroll.js?v=20261016-s99"></script>'), 'atlas-mfa-enroll.js');
+  assert.ok(index.indexOf('assets/js/atlas-mfa-enroll.js') < index.indexOf('assets/js/atlas-app.js'), 'atlas-mfa-enroll.js loads before atlas-app.js');
   // marketing-workspace.js also carries the robot's Ask Atlas icon (bot1
   // content); the S94 key supersedes 20261003-bot1 so production caches refresh.
   assert.ok(!config.includes("scriptPath: 'assets/js/marketing-workspace.js?v=20261003-bot1'"), 'marketing-workspace.js not on the pre-S94 key');
@@ -648,7 +664,7 @@ test('canonical actions have one permission check and one implementation', async
   assert.deepEqual({ ...(await shell.actions.run('purchasing.order.new')) }, { ok: false, reason: 'forbidden' });
   assert.deepEqual({ ...(await shell.actions.run('purchasing.order.new', { role: 'admin' })) }, { ok: true, result: 3 }, 'run returns the implementation result (Array#push length here)');
   assert.deepEqual(runs.map((entry) => entry[0]), ['count', 'order-denied', 'order']);
-  await assert.rejects(shell.actions.run('does.not.exist'), /Unknown Atlas action/);
+  await assert.rejects(shell.actions.run('does.not.exist'), /Unknown Alcedo action/);
   assert.equal(shell.actions.get('ai.ask').label, 'Ask Atlas');
 });
 

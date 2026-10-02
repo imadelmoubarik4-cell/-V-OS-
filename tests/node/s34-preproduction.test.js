@@ -76,10 +76,11 @@ test('Recipes and Reports › Overview delegate to the shared calculation rule (
 });
 
 test('shared launch design uses blue actions, compact search, visible focus, and reduced motion', () => {
-  // S88: the action colour resolves to the single, AA-contrast Atlas blue
-  // (--accent #2563eb since Brand v1.0); every legacy name is an alias of it.
+  // ALCEDO: the action colour resolves to the single, AA-contrast deep teal
+  // (--accent = --atlas-blue #08495C); every legacy name is an alias of it.
   const tokens = readFileSync('apps/web/assets/css/atlas-tokens.css', 'utf8');
-  assert.match(tokens, /--accent: #2563eb;/);
+  assert.match(tokens, /--accent: var\(--atlas-blue\);/);
+  assert.match(tokens, /--atlas-blue: #08495C;/);
   assert.match(tokens, /--atlas-accent: var\(--accent\);/);
   assert.match(tokens, /--atlas-action: var\(--accent\);/);
   // S88: the shared focus, search and reduced-motion rules moved into the
@@ -93,8 +94,8 @@ test('shared launch design uses blue actions, compact search, visible focus, and
   assert.match(base, /@media \(prefers-reduced-motion: reduce\)/);
   // S88 Team A: the pulsing Home focus card is retired (home.css has no animation).
   assert.doesNotMatch(read('apps/web/assets/css/home.css'), /@keyframes|animation/);
-  assert.match(app, /assets\/css\/atlas-base\.css\?v=20260929-s90u/);
-  assert.match(app, /assets\/css\/atlas-components\.css\?v=20261004-bot6/);
+  assert.match(app, /assets\/css\/atlas-base\.css\?v=20260930-alcedo2/);
+  assert.match(app, /assets\/css\/atlas-components\.css\?v=20260930-polish1/);
 });
 
 test('conversation stars persist through the private gateway', () => {

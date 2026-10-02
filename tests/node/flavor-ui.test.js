@@ -54,11 +54,11 @@ test('nothing is saved without Approve: closing or discarding rejects the prepar
 test('staff never get create actions or costs; economics only when the server sends them', () => {
   assert.match(flavor, /function canManage\(\) \{[\s\S]*?\['admin', 'manager'\]\.includes\(profile\.role\)/);
   assert.match(flavor, /manager \? `<button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm" data-flavor-create=/);
-  assert.match(flavor, /if \(manager\) actions\.push\(\{ label: 'Create with Atlas'/);
+  assert.match(flavor, /if \(manager\) actions\.push\(\{ label: 'Create with Alcedo'/);
   assert.match(flavor, /const economy = economics \?/);
   assert.match(flavor, /const cost = manager && view\.totals\?\.estimated_total_label/);
   assert.match(flavor, /if \(step !== 'substitute' && !manager\)/);
-  assert.match(recipes, /label: 'Create with Atlas', icon: 'atlas-bot', variant: 'secondary', attrs: \{ 'data-recipe-create-atlas': '' \}/);
+  assert.match(recipes, /label: 'Create with Alcedo', icon: 'atlas-bot', variant: 'secondary', attrs: \{ 'data-recipe-create-atlas': '' \}/);
   assert.match(recipes, /: flavor \? \[\{ label: 'Flavor Map', icon: 'orbit', variant: 'secondary', attrs: \{ 'data-recipe-flavor-map': '' \} \}\] : \[\];/);
 });
 
@@ -68,7 +68,7 @@ test('stock and evidence stay honest: unknown is not zero, possible matches neve
   assert.match(flavor, /unknown: \{ label: 'Stock unknown'/);
   assert.match(flavor, /Unknown is not zero/);
   assert.match(flavor, /Possible match: \$\{escape\(item\.name\)\} <span class="recipe-muted">· needs review, not counted as stock/);
-  for (const label of ["label: 'Culinary'", "label: 'Atlas-learned'", "label: 'Scientific'", "label: 'AI interpretation'"]) assert.ok(flavor.includes(label), label);
+  for (const label of ["label: 'Culinary'", "label: 'Alcedo-learned'", "label: 'Scientific'", "label: 'AI interpretation'"]) assert.ok(flavor.includes(label), label);
   // Each evidence entry is shown with its own label, never merged.
   assert.match(flavor, /const evidence = entries\.map\(\(entry\) => `<li class="flavor-detail__evidence">\$\{evidencePill\(entry\.evidence_type\)\}/);
   // A calculated substitute is never shown as a recorded one.
@@ -123,5 +123,5 @@ test('#recipes/flavor is a route of Recipes, never a recipe id; Recipes hands th
 test('Atlas AI approval card knows recipe.draft', () => {
   assert.match(ai, /'recipe\.draft': \{ icon: 'martini', verb: 'Save draft', done: 'Draft recipe saved', view: 'Open recipe', executable: true \}/);
   assert.match(ai, /code === 'name_taken' \? 'A recipe with this name already exists, so nothing was saved\./);
-  assert.ok(index.includes('<script src="assets/js/atlas-ai.js?v=20261005-fi1"></script>'));
+  assert.ok(index.includes('<script src="assets/js/atlas-ai.js?v=20260930-polish1"></script>'));
 });

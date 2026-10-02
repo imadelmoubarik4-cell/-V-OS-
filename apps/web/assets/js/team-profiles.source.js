@@ -1,6 +1,6 @@
 // Team — #team, #team/<profileId> (docs/design/Atlas_Experience_Redesign.md §7.10).
 //
-// Directory of people (Atlas accounts and schedule-only roster people), a
+// Directory of people (Alcedo accounts and schedule-only roster people), a
 // profile sheet (full screen on phones) and manager tools: add or invite
 // people, access (role, active), onboarding tasks and setup links. Emergency
 // contacts are shown only to the person and managers, and to managers only
@@ -65,7 +65,7 @@
   }
 
   function initials(value) {
-    const words = String(value || 'Atlas').trim().split(/\s+/).filter(Boolean);
+    const words = String(value || 'Alcedo').trim().split(/\s+/).filter(Boolean);
     return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join('') || 'A';
   }
 
@@ -143,7 +143,7 @@
 
   async function api(action, options = {}) {
     const endpoint = options.roster ? String(cfg.SHIFTS_API || '').trim() : String(cfg.TEAM_PROFILES_API || '').trim();
-    if (!endpoint) throw new TeamError('Team is not set up for this Atlas yet.', 0);
+    if (!endpoint) throw new TeamError('Team is not set up for this Alcedo yet.', 0);
     const session = await activeSession();
     if (!session?.access_token) throw new TeamError('Sign in again to see the team.', 401);
     const url = new URL(endpoint);
@@ -287,7 +287,7 @@
   }
 
   function contactCell(profile) {
-    if (profile.schedule_only) return '<span class="team-muted" title="No Atlas account">—</span>';
+    if (profile.schedule_only) return '<span class="team-muted" title="No Alcedo account">—</span>';
     return Number(profile.emergency_contact_count || 0) > 0
       ? `<span class="team-ok">${icon('check')}<span>Saved</span></span>`
       : pill('Missing', 'warning');
@@ -369,7 +369,7 @@
       <div class="team-profile-detail-actions team-detail__actions">${profile.can_edit_profile ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-team-profile-edit="${escapeHtml(profile.id)}">${icon('pencil')}Edit profile</button>` : ''}</div>
     </div>`;
     if (profile.schedule_only) {
-      return `${head}<section class="team-detail__section"><h3 class="team-detail__title">Schedule only</h3><p class="team-detail__text">${escapeHtml(profile.name)} is on the shift roster without an Atlas login. ${manager ? 'Add them again with a login to give them access.' : ''}</p>${shifts.length ? shiftsSection(profile, shifts) : ''}<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#shifts">Open Shifts</a></section>`;
+      return `${head}<section class="team-detail__section"><h3 class="team-detail__title">Schedule only</h3><p class="team-detail__text">${escapeHtml(profile.name)} is on the shift roster without an Alcedo login. ${manager ? 'Add them again with a login to give them access.' : ''}</p>${shifts.length ? shiftsSection(profile, shifts) : ''}<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#shifts">Open Shifts</a></section>`;
     }
     const phone = profile.phone ? `<a href="tel:${escapeHtml(String(profile.phone).replace(/\s+/g, ''))}">${escapeHtml(profile.phone)}</a>` : `<span class="team-muted">${profile.can_view_sensitive ? 'Not added' : 'Shared with managers only'}</span>`;
     const email = profile.email ? `<a href="mailto:${escapeHtml(profile.email)}">${escapeHtml(profile.email)}</a>` : '<span class="team-muted">Shared with managers only</span>';
@@ -421,15 +421,18 @@
     const adminLocked = state.staff.role === 'manager' && profile.role === 'admin';
     const self = profile.id === state.staff.id;
     const renew = !self ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-member-renew="${escapeHtml(profile.id)}">${icon('link')}New setup link</button>` : '';
+    // S99 lost-phone recovery: a manager may reset a member's authenticator so
+    // they re-enrol at next sign-in. A manager cannot reset an admin (admin-only).
+    const resetMfa = !self && !adminLocked ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-member-reset-mfa="${escapeHtml(profile.id)}">${icon('shield')}Reset two-factor</button>` : '';
     if (!liveWrites || !profile.can_manage_access || adminLocked || self) {
       const reason = self ? 'You can’t change your own role or turn off your own access.' : adminLocked ? 'Only an administrator can change an administrator.' : 'Access can’t be changed here right now.';
-      return `<section class="team-detail__section"><h3 class="team-detail__title">Access</h3><dl class="team-detail__list">${row('Role', escapeHtml(roleLabel(profile.role)))}${row('Atlas access', profile.active ? 'On' : 'Off')}</dl><p class="team-detail__hint">${escapeHtml(reason)}</p>${renew}</section>`;
+      return `<section class="team-detail__section"><h3 class="team-detail__title">Access</h3><dl class="team-detail__list">${row('Role', escapeHtml(roleLabel(profile.role)))}${row('Alcedo access', profile.active ? 'On' : 'Off')}</dl><p class="team-detail__hint">${escapeHtml(reason)}</p>${renew}${resetMfa}</section>`;
     }
     return `<section class="team-detail__section"><h3 class="team-detail__title">Access</h3>
       <form class="atlas-form team-access" data-team-profile-access-form data-profile-id="${escapeHtml(profile.id)}" novalidate>
         <div class="atlas-field"><label for="team-access-role">Role</label><select class="atlas-select" id="team-access-role" name="role">${['admin', 'manager', 'bartender', 'viewer'].map((key) => `<option value="${key}" ${profile.role === key ? 'selected' : ''}>${escapeHtml(roleLabel(key))}</option>`).join('')}</select></div>
-        <div class="atlas-toggle-row"><div><p class="atlas-toggle-row__label" id="team-access-active-label">Atlas access</p><p class="atlas-toggle-row__help">When off, they’re signed out on their next action.</p></div><button type="button" class="atlas-toggle" role="switch" aria-checked="${profile.active ? 'true' : 'false'}" aria-labelledby="team-access-active-label" data-team-access-active></button></div>
-        <div class="atlas-form-foot">${renew}<button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--sm">Save access</button></div>
+        <div class="atlas-toggle-row"><div><p class="atlas-toggle-row__label" id="team-access-active-label">Alcedo access</p><p class="atlas-toggle-row__help">When off, they’re signed out on their next action.</p></div><button type="button" class="atlas-toggle" role="switch" aria-checked="${profile.active ? 'true' : 'false'}" aria-labelledby="team-access-active-label" data-team-access-active></button></div>
+        <div class="atlas-form-foot">${renew}${resetMfa}<button type="submit" class="atlas-btn atlas-btn--primary atlas-btn--sm">Save access</button></div>
       </form></section>`;
   }
 
@@ -437,7 +440,7 @@
     if (!state.staff?.can_manage_team) return '';
     const events = (Array.isArray(state.workspace?.events) ? state.workspace.events : []).filter((event) => event.profile_id === profile.id).slice(0, 8);
     if (!events.length) return '';
-    return `<section class="team-detail__section"><h3 class="team-detail__title">History</h3><ul class="team-history">${events.map((event) => `<li><span>${escapeHtml(EVENT_LABELS[event.event_type] || humanize(event.event_type))}</span><span class="team-muted">${escapeHtml(event.actor_label || 'Atlas')} · ${escapeHtml(vc()?.formatRelative?.(event.created_at) || '')}</span></li>`).join('')}</ul></section>`;
+    return `<section class="team-detail__section"><h3 class="team-detail__title">History</h3><ul class="team-history">${events.map((event) => `<li><span>${escapeHtml(EVENT_LABELS[event.event_type] || humanize(event.event_type))}</span><span class="team-muted">${escapeHtml(event.actor_label || 'Alcedo')} · ${escapeHtml(vc()?.formatRelative?.(event.created_at) || '')}</span></li>`).join('')}</ul></section>`;
   }
 
   // ---------- layers ----------
@@ -511,7 +514,7 @@
         <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="team-edit-title">Edit profile</h2><p class="atlas-sheet__desc">${escapeHtml(profile.name)}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
         <form class="atlas-sheet__body atlas-form" id="team-edit-form" data-team-profile-details-form novalidate>
           <input type="hidden" name="profile_id" value="${escapeHtml(profile.id)}">
-          <div class="atlas-field"><label for="te-name">Name shown in Atlas</label><input class="atlas-input" id="te-name" name="preferred_name" maxlength="120" value="${escapeHtml(profile.preferred_name || profile.display_name || profile.name || '')}"></div>
+          <div class="atlas-field"><label for="te-name">Name shown in Alcedo</label><input class="atlas-input" id="te-name" name="preferred_name" maxlength="120" value="${escapeHtml(profile.preferred_name || profile.display_name || profile.name || '')}"></div>
           <div class="atlas-field"><label for="te-phone">Phone <span class="optional">Optional</span></label><input class="atlas-input" id="te-phone" name="phone" type="tel" maxlength="40" value="${escapeHtml(profile.phone || '')}"></div>
           <div class="atlas-field"><label for="te-phone-vis">Who can see the phone number</label><select class="atlas-select" id="te-phone-vis" name="phone_visibility"><option value="managers_only" ${profile.phone_visibility !== 'team' ? 'selected' : ''}>Managers only</option><option value="team" ${profile.phone_visibility === 'team' ? 'selected' : ''}>Everyone on the team</option></select></div>
           <div class="atlas-field"><label for="te-lang">Language <span class="optional">Optional</span></label><input class="atlas-input" id="te-lang" name="preferred_language" maxlength="80" value="${escapeHtml(profile.preferred_language || '')}" placeholder="English, Icelandic"></div>
@@ -592,7 +595,7 @@
         <form class="atlas-sheet__body atlas-form" id="team-add-form" data-team-profile-add-member-form novalidate>
           <div class="atlas-field"><label for="ta-name">Name</label><input class="atlas-input" id="ta-name" name="display_name" required maxlength="120"><p class="error" hidden data-error-for="display_name">Enter a name.</p></div>
           <div class="atlas-field"><label for="ta-role">Job</label><input class="atlas-input" id="ta-role" name="default_role" required maxlength="120" placeholder="Bartender, barback, manager"><p class="error" hidden data-error-for="default_role">Enter what they do.</p></div>
-          <div class="atlas-field"><label for="ta-access">Atlas access</label><select class="atlas-select" id="ta-access" name="access"><option value="schedule_only">No login — on the schedule only</option><option value="bartender">Staff login</option><option value="viewer">Read-only login</option></select><p class="help">With a login you get a one-time setup link to share with them. No email is sent.</p></div>
+          <div class="atlas-field"><label for="ta-access">Alcedo access</label><select class="atlas-select" id="ta-access" name="access"><option value="schedule_only">No login — on the schedule only</option><option value="bartender">Staff login</option><option value="viewer">Read-only login</option></select><p class="help">With a login you get a one-time setup link to share with them. No email is sent.</p></div>
           <div class="atlas-field"><label for="ta-email">Email <span class="optional" data-email-optional>Optional</span></label><input class="atlas-input" id="ta-email" name="email" type="email" maxlength="320" autocomplete="off"><p class="error" hidden data-error-for="email">A login needs an email address.</p></div>
         </form>
         <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="team-add-form" class="atlas-btn atlas-btn--primary">Add team member</button></footer>
@@ -663,10 +666,11 @@
       id: 'team-invite',
       panel: `<section class="atlas-sheet" data-modal-panel aria-labelledby="team-invite-title">
         <span class="atlas-sheet__grabber" aria-hidden="true"></span>
-        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="team-invite-title">Invite by email</h2><p class="atlas-sheet__desc">Atlas emails them a secure invitation. You choose their role after they accept.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
+        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="team-invite-title">Invite by email</h2><p class="atlas-sheet__desc">Alcedo emails them a secure invitation. Pick their role now; their account turns on once they finish setup (password, name, phone, photo and authenticator app).</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
         <form class="atlas-sheet__body atlas-form" id="team-invite-form" data-team-profile-invite-form novalidate>
           <div class="atlas-field"><label for="ti-email">Email</label><input class="atlas-input" id="ti-email" name="email" type="email" required maxlength="320" autocomplete="email"><p class="error" hidden data-error-for="email">Enter an email address.</p></div>
           <div class="atlas-field"><label for="ti-name">Name <span class="optional">Optional</span></label><input class="atlas-input" id="ti-name" name="display_name" maxlength="120" autocomplete="name"></div>
+          <div class="atlas-field"><label for="ti-role">Role</label><select class="atlas-select" id="ti-role" name="role">${(role() === 'admin' ? ['admin', 'manager', 'bartender', 'viewer'] : ['manager', 'bartender', 'viewer']).map((key) => `<option value="${key}"${key === 'viewer' ? ' selected' : ''}>${escapeHtml(roleLabel(key))}</option>`).join('')}</select></div>
         </form>
         <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="team-invite-form" class="atlas-btn atlas-btn--primary">Send invitation</button></footer>
       </section>`
@@ -679,7 +683,7 @@
       root.querySelector('[data-error-for="email"]').hidden = !bad;
       form.email.setAttribute('aria-invalid', String(bad));
       if (bad) { form.email.focus(); return; }
-      const ok = await mutate('invite-account', { email, display_name: form.display_name.value.trim() || null }, `Invitation sent to ${email}`);
+      const ok = await mutate('invite-account', { email, display_name: form.display_name.value.trim() || null, role: form.role?.value || 'viewer' }, `Invitation sent to ${email}`);
       if (ok) closeLayer(root);
     });
   }
@@ -861,6 +865,18 @@
       } finally {
         state.submitting = false;
       }
+      return;
+    }
+    const resetMfa = target.closest('[data-team-member-reset-mfa]');
+    if (resetMfa) {
+      const profile = profileById(resetMfa.dataset.teamMemberResetMfa);
+      const answer = await confirmDialog({
+        title: `Reset ${profile?.name || 'this member'}’s two-factor?`,
+        body: 'Their authenticator app is removed. They’ll be asked to set up a new one the next time they sign in. Use this if they lost their phone.',
+        confirmLabel: 'Reset two-factor',
+        danger: true
+      });
+      if (answer) mutate('reset-member-mfa', { profile_id: resetMfa.dataset.teamMemberResetMfa }, 'Two-factor reset');
     }
   }
 
@@ -873,7 +889,7 @@
     const active = form.querySelector('[data-team-access-active]')?.getAttribute('aria-checked') === 'true';
     const nextRole = form.elements.namedItem('role').value;
     if (!active && profile.active) {
-      const answer = await confirmDialog({ title: `Turn off ${profile.name}’s access?`, body: 'They are signed out on their next action and can’t open Atlas until you turn access on again. Their history stays.', confirmLabel: 'Turn off access', danger: true });
+      const answer = await confirmDialog({ title: `Turn off ${profile.name}’s access?`, body: 'They are signed out on their next action and can’t open Alcedo until you turn access on again. Their history stays.', confirmLabel: 'Turn off access', danger: true });
       if (!answer) return;
     }
     mutate('update-access', { profile_id: profile.id, role: nextRole, active }, 'Access saved');

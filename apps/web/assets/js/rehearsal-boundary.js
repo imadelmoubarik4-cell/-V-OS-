@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
   const TARGET = 'dnefgcmjcgxlynycxkts';
-  // S88 Atlas AI live voice: the browser sends its WebRTC offer to this one
+  // S88 Alcedo AI live voice: the browser sends its WebRTC offer to this one
   // endpoint with a 60-second client secret minted by atlas-ai. Nothing else
   // on that host is reachable.
   const REALTIME_CALLS = 'https://api.openai.com/v1/realtime/calls';
@@ -14,10 +14,10 @@
   }
   function validate(config) {
     if (!['production', 'isolated-rehearsal'].includes(config.MODE)) return;
-    if (config.SUPABASE_URL !== `https://${TARGET}.supabase.co`) throw new Error('Atlas target mismatch.');
-    if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(config.SUPABASE_ANON_KEY || '')) throw new Error('An Atlas publishable key is required.');
+    if (config.SUPABASE_URL !== `https://${TARGET}.supabase.co`) throw new Error('Alcedo target mismatch.');
+    if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(config.SUPABASE_ANON_KEY || '')) throw new Error('An Alcedo publishable key is required.');
     for (const [key, value] of Object.entries(config)) {
-      if (key.endsWith('_API') && value && !String(value).startsWith(`${config.SUPABASE_URL}/functions/v1/`)) throw new Error(`Atlas endpoint mismatch: ${key}`);
+      if (key.endsWith('_API') && value && !String(value).startsWith(`${config.SUPABASE_URL}/functions/v1/`)) throw new Error(`Alcedo endpoint mismatch: ${key}`);
     }
   }
   const api = { TARGET, allowed, validate };
@@ -27,14 +27,14 @@
   const config = root.VABAR_CONFIG || {};
   let failure = null;
   // The configuration problem goes to the console; people see fixed copy.
-  try { validate(config); } catch (error) { root.console?.error?.('Atlas configuration:', error); failure = new Error('Atlas isn’t set up correctly here. Nothing can be saved; tell your administrator.'); }
+  try { validate(config); } catch (error) { root.console?.error?.('Alcedo configuration:', error); failure = new Error('Alcedo isn’t set up correctly here. Nothing can be saved; tell your administrator.'); }
   const originalFetch = root.fetch.bind(root);
   root.fetch = function (input, init) {
     const url = typeof input === 'string' || input instanceof URL ? String(input) : input.url;
     const method = String(init?.method || input?.method || 'GET').toUpperCase();
     if (failure) return Promise.reject(failure);
     if (['production', 'isolated-rehearsal'].includes(config.MODE) && !allowed(url, config, root.location.origin)) {
-      return Promise.reject(new Error('This request is outside the configured Atlas environment.'));
+      return Promise.reject(new Error('This request is outside the configured Alcedo environment.'));
     }
     if (!root.navigator.onLine && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       return Promise.reject(new Error('Offline: nothing was submitted. Reconnect and refresh before saving.'));

@@ -1,12 +1,13 @@
 {
   "id": "./",
-  "name": "Atlas",
-  "short_name": "Atlas",
+  "name": "Alcedo",
+  "short_name": "Alcedo",
+  "description": "Alcedo — the venue operations workspace.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "theme_color": "#0B0F14",
-  "background_color": "#F8FAFC",
+  "theme_color": "#08495C",
+  "background_color": "#F8F5ED",
   "icons": [
     {
       "src": "assets/brand/favicon-192x192.png",

@@ -294,7 +294,7 @@ test('review: edit supplier, date and VAT lines, fill totals, save, then approve
     // File preview area (a signed link for a PDF), the read banner and the fields.
     await page.waitForSelector(`${sheet} [data-acc-file] a[href*="/storage/v1/object/sign/"]`);
     assert.match(await page.textContent(`${sheet} [data-acc-file]`), /Open PDF/);
-    assert.match(await page.textContent(`${sheet} .acc-doc__form .atlas-alert`), /Let Atlas fill it in/);
+    assert.match(await page.textContent(`${sheet} .acc-doc__form .atlas-alert`), /Let Alcedo fill it in/);
     // It opens at the top with focus on the heading, the URL names the document.
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'acc-doc-title');
     assert.equal(await page.evaluate(() => location.hash), `#accounting/document/${IDS.review}`);
@@ -417,12 +417,12 @@ test('upload: a PDF paid by a team member needs a person, posts multipart, reads
     assert.equal(reads.length, 1, 'Atlas reads it when Atlas AI is on');
     assert.equal(reads[0].body.id, backend.documents[0].id);
     assert.equal(await page.isHidden('#acc-upload'), true, 'a single upload closes the upload sheet');
-    assert.match(await page.textContent('#acc-document .acc-doc__form .atlas-alert'), /Atlas read this document/);
+    assert.match(await page.textContent('#acc-document .acc-doc__form .atlas-alert'), /Alcedo read this document/);
     assert.equal(await page.inputValue('#acc-document #acc-supplier-name'), 'Globus hf.');
     // Fields Atlas filled say so.
     const filled = await page.$$eval('#acc-document .acc-filled', (nodes) => nodes.map((node) => node.closest('.atlas-field').querySelector('label').getAttribute('for')));
     assert.deepEqual(filled, ['acc-supplier-name', 'acc-number', 'acc-date', 'acc-net', 'acc-vat-total', 'acc-total']);
-    assert.equal(await page.textContent('#acc-document .acc-filled'), 'Filled by Atlas');
+    assert.equal(await page.textContent('#acc-document .acc-filled'), 'Filled by Alcedo');
     assert.equal(await page.isChecked('#acc-document input[name="paid_by"][value="staff"]'), true);
     noErrors(record);
   } finally { await close(); }
@@ -434,7 +434,7 @@ test('upload with Atlas AI off does not call read', { skip }, async () => {
     await openAccounting(page);
     await page.click('#accounting-view [data-acc-upload]');
     await page.waitForSelector('#acc-upload.is-open');
-    assert.match(await page.textContent('#acc-upload .atlas-sheet__desc'), /Atlas reading is off/);
+    assert.match(await page.textContent('#acc-upload .atlas-sheet__desc'), /Alcedo reading is off/);
     await page.setInputFiles('#acc-upload [data-acc-files]', { name: 'a.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF\n') });
     await page.click('#acc-upload [data-acc-start]');
     await page.waitForSelector('#acc-document.is-open [data-acc-form]');
@@ -858,9 +858,9 @@ test('phone: the sheet opens at the top on its heading; Back closes it; tabs and
     // Hints: filled by Atlas where the value is Atlas's; a warning where it differs.
     const hints = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#acc-document .acc-filled, #acc-document .acc-differs')].map((node) => [`${node.closest('.atlas-field').querySelector('label').getAttribute('for')}:${node.classList.contains('acc-filled') ? 'filled' : 'differs'}`, node.textContent.trim()])));
     assert.deepEqual(hints, {
-      'acc-supplier-name:filled': 'Filled by Atlas',
-      'acc-date:filled': 'Filled by Atlas',
-      'acc-total:differs': 'Atlas read 13.000 kr. Check it against the document.'
+      'acc-supplier-name:filled': 'Filled by Alcedo',
+      'acc-date:filled': 'Filled by Alcedo',
+      'acc-total:differs': 'Alcedo read 13.000 kr. Check it against the document.'
     });
     assert.match(await page.textContent('#acc-document [data-acc-file]'), /Opens in a new tab\./);
     assert.doesNotMatch(await page.textContent('#acc-document [data-acc-file]'), /5 minutes/);

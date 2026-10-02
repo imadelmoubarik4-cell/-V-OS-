@@ -143,7 +143,7 @@ test('AtlasAI.openDecision selects the recommendation in #ai/decisions and opens
   } finally { await close(); }
 });
 
-test('no legacy layer reaches the page: four cascade layers, no inline style, cards without shadow or lift', { skip }, async () => {
+test('no legacy layer reaches the page: four cascade layers, no inline style, cards carry the soft-lift shadow', { skip }, async () => {
   const { page, close } = await launch({ user: USERS.admin });
   try {
     const result = await page.evaluate(() => {
@@ -158,7 +158,7 @@ test('no legacy layer reaches the page: four cascade layers, no inline style, ca
     });
     assert.deepEqual(result.layers, ['atlas.base', 'atlas.components', 'atlas.modules', 'atlas.tokens']);
     assert.equal(result.inline, 0);
-    assert.equal(result.shadow, 'none');
+    assert.equal(result.shadow, 'rgba(8, 73, 92, 0.26) 0px 18px 40px -32px, rgba(8, 73, 92, 0.1) 0px 4px 10px -8px');
     assert.doesNotMatch(result.transition, /transform/);
   } finally { await close(); }
 });
@@ -178,7 +178,7 @@ test('linked target: a deep-linked record gets the shared accent wash, static wi
       assert.match(style.shadow, /inset/, 'a quiet accent edge stays');
       if (reducedMotion === 'reduce') {
         assert.equal(style.animation, 'none');
-        assert.equal(style.background, 'rgb(239, 246, 255)', 'the wash is static');
+        assert.equal(style.background, 'rgb(238, 244, 245)', 'the wash is static');
       } else assert.equal(style.animation, 'atlas-linked-target');
     } finally { await close(); }
   }

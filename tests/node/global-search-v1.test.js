@@ -15,7 +15,7 @@ const reports = readFileSync('apps/web/assets/js/reports-workspace.js', 'utf8');
 
 test('the top-bar field is a button that opens the palette; the palette owns the input', () => {
   assert.match(shell, /<button type="button" class="atlas-omni" id="atlas-omni" aria-haspopup="dialog"/);
-  assert.match(shell, /<span class="atlas-omni__label">Search or ask Atlas<\/span>/);
+  assert.match(shell, /<span class="atlas-omni__label">Search or ask Alcedo<\/span>/);
   assert.doesNotMatch(shell, /id="global-search"/);
   assert.match(palette, /role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="atlas-palette-list"/);
   assert.match(shell, /<script src="assets\/js\/atlas-search\.js\?v=[^"]+"><\/script>\s*<script src="assets\/js\/atlas-chrome\.js\?v=[^"]+"><\/script>\s*<script src="assets\/js\/atlas-palette\.js\?v=[^"]+"><\/script>/);

@@ -28,6 +28,57 @@
     if (message) document.getElementById(id)?.focus?.();
   };
   const setTitle = (text) => { if (title) title.textContent = text; };
+
+  // ---------- CAPTCHA (OWNER-GATED, inert by default) ----------
+  // Mirrors the sign-in flow: a provider token is threaded into
+  // resetPasswordForEmail only when the owner sets AUTH_CAPTCHA_PROVIDER in
+  // config.js AND enables the same provider in the Supabase dashboard. With no
+  // provider (the default) this is a strict no-op: no script loads, no widget
+  // renders, and resetPasswordForEmail is called with exactly { redirectTo } as
+  // before. If a provider is enabled, its script/frame origins MUST be added to
+  // the netlify CSP (OWNER-GATED; the CSP is not broadened here).
+  const CAPTCHA_PROVIDERS = {
+    hcaptcha: { script: 'https://js.hcaptcha.com/1/api.js?render=explicit', api: () => window.hcaptcha },
+    turnstile: { script: 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit', api: () => window.turnstile }
+  };
+  const captchaCfg = window.VABAR_CONFIG || {};
+  const captchaProvider = CAPTCHA_PROVIDERS[String(captchaCfg.AUTH_CAPTCHA_PROVIDER || '').toLowerCase()] || null;
+  const captchaSiteKey = String(captchaCfg.AUTH_CAPTCHA_SITE_KEY || '');
+  const captchaContainer = document.getElementById('recovery-captcha');
+  let captchaWidgetId = null;
+  let captchaToken = '';
+  const captchaEnabled = () => Boolean(captchaProvider && captchaSiteKey);
+  const loadCaptchaScript = () => new Promise((resolve, reject) => {
+    if (captchaProvider.api()) { resolve(); return; }
+    const existing = [...document.scripts].find((script) => script.src === captchaProvider.script);
+    if (existing) { existing.addEventListener('load', () => resolve()); existing.addEventListener('error', () => reject(new Error('captcha unavailable'))); return; }
+    const script = document.createElement('script');
+    script.src = captchaProvider.script;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('captcha unavailable'));
+    document.head.appendChild(script);
+  });
+  const renderCaptcha = async () => {
+    if (!captchaEnabled() || !captchaContainer || captchaWidgetId !== null) return;
+    try {
+      await loadCaptchaScript();
+      const api = captchaProvider.api();
+      if (!api?.render) return;
+      captchaWidgetId = api.render(captchaContainer, {
+        sitekey: captchaSiteKey,
+        callback: (token) => { captchaToken = token || ''; },
+        'expired-callback': () => { captchaToken = ''; },
+        'error-callback': () => { captchaToken = ''; }
+      });
+      captchaContainer.hidden = false;
+    } catch (_) { /* provider unreachable: the server still enforces its own check */ }
+  };
+  const resetCaptcha = () => {
+    captchaToken = '';
+    try { if (captchaWidgetId !== null) captchaProvider?.api()?.reset?.(captchaWidgetId); } catch (_) { /* ignore */ }
+  };
   const rules = () => {
     const password = document.getElementById('new-password').value;
     const confirm = document.getElementById('confirm-password').value;
@@ -39,7 +90,7 @@
     window.AtlasRehearsalBoundary.validate(cfg);
     // S96: the recovery session lives in this page's memory only. It is never
     // written to the app's stored session, so an abandoned (or planted) reset
-    // link does not leave this device signed in to Atlas.
+    // link does not leave this device signed in to Alcedo.
     client = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
       auth: { persistSession: false, autoRefreshToken: false, storageKey: 'atlas-recovery-setup' }
     });
@@ -76,6 +127,8 @@
         status.textContent = 'This reset link is invalid or has expired. Request a new link below.';
       });
     }
+    // Render the captcha on the reset-request form (no-op unless configured).
+    renderCaptcha();
   } catch (_) {
     // Nothing is in progress: the send button is unavailable (no spinner) and
     // the page offers a reload.
@@ -97,12 +150,14 @@
     busy(request, true);
     try {
       const redirectTo = new URL('recovery.html', location.href).href;
-      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
+      // captchaToken key is present only when a provider is configured (no-op otherwise).
+      const options = captchaEnabled() ? { redirectTo, captchaToken } : { redirectTo };
+      const { error } = await client.auth.resetPasswordForEmail(email, options);
       if (error) throw error;
       request.hidden = true;
       setTitle('Check your email');
       status.textContent = 'If this email can receive a reset, a link will arrive shortly. Check your inbox and spam folder, then open the link on this device.';
-    } catch (_) { status.textContent = "A reset link couldn't be requested. Check your connection and try again in a moment."; }
+    } catch (_) { resetCaptcha(); status.textContent = "A reset link couldn't be requested. Check your connection and try again in a moment."; }
     finally { busy(request, false); }
   });
   complete.addEventListener('submit', async event => {

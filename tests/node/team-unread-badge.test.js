@@ -44,13 +44,13 @@ test('the notifications feed on Home reads per-conversation unread from the work
   const home = readFileSync('apps/web/assets/js/home.js', 'utf8');
   assert.match(badge, /lastMessage: lastMessageOf\(channel\.last_message\)/);
   // S92: the gateway's live sender_name first; an address is never a name.
-  assert.match(badge, /sender: message\.message_type === 'system' \? 'Atlas' : senderOf\(message\)/);
+  assert.match(badge, /sender: message\.message_type === 'system' \? 'Alcedo' : senderOf\(message\)/);
   assert.match(badge, /return safePersonLabel\(message\.sender_name\) \|\| safePersonLabel\(message\.sender_label\) \|\| 'Team member';/);
   assert.doesNotMatch(badge, /split\('@'\)/);
   assert.match(badge, /loaded: \(\) => state\.loaded/);
   assert.match(home, /badge\?\.loaded\?\.\(\) && typeof badge\.conversations === 'function'/);
   assert.match(home, /atlas\.on\('messages:unread', \(detail\) => \{ if \(Array\.isArray\(detail\?\.conversations\)\) applyConversations\(detail\.conversations\); \}\);/);
-  assert.match(messages, /sender: channel\.last_message\.message_type === 'system' \? 'Atlas' : senderIdentity\(channel\.last_message\)\.name/);
+  assert.match(messages, /sender: channel\.last_message\.message_type === 'system' \? 'Alcedo' : senderIdentity\(channel\.last_message\)\.name/);
 });
 
 test('unread worker uses authenticated API only', () => {

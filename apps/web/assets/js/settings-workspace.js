@@ -7,7 +7,7 @@
 // Staff see Preferences and Notifications only (the nav is hidden then).
 //
 // Sources: atlas-settings (snapshot and saves; S87/S88 contracts), atlas-ai
-// (?action=settings for the venue's Atlas AI settings and limits, rendered from
+// (?action=settings for the venue's Alcedo AI settings and limits, rendered from
 // the actual response; ?action=preferences for personal reply settings),
 // atlas-integrations (status, start, test, disconnect, save-api-key; S88 §6 and
 // the owner hardening brief §5–6) and AtlasSystem (System health).
@@ -29,7 +29,7 @@
     { key: 'team-access', label: 'Team access', icon: 'users', roles: ['admin'] },
     { key: 'notifications', label: 'Notifications', icon: 'bell', roles: null },
     { key: 'rules', label: 'Operational rules', icon: 'list-checks', roles: ['admin', 'manager'] },
-    { key: 'ai', label: 'Atlas AI', icon: 'sparkles', roles: ['admin', 'manager'] },
+    { key: 'ai', label: 'Alcedo AI', icon: 'sparkles', roles: ['admin', 'manager'] },
     { key: 'integrations', label: 'Integrations', icon: 'plug', roles: ['admin', 'manager'] },
     { key: 'security', label: 'Security', icon: 'shield', roles: ['admin'] },
     { key: 'system', label: 'System health', icon: 'activity', roles: ['admin'] },
@@ -45,15 +45,15 @@
     shifts: 'shifts', knowledge: 'knowledge', reports: 'reports', settings: 'settings'
   };
   const START_VIEWS = [
-    ['dashboard', 'Home'], ['ai', 'Atlas AI'], ['team', 'Messages'], ['operations', 'Operations'],
+    ['dashboard', 'Home'], ['ai', 'Alcedo AI'], ['team', 'Messages'], ['operations', 'Operations'],
     ['inventory', 'Inventory'], ['recipes', 'Recipes'], ['suppliers', 'Purchasing'],
     ['shifts', 'Shifts'], ['knowledge', 'Knowledge'], ['reports', 'Reports'], ['settings', 'Settings']
   ];
   const PREFERENCE_CACHE_KEY = 'atlas.preferences.v1';
-  // Atlas AI venue settings (GET atlas-ai?action=settings). Only keys present
+  // Alcedo AI venue settings (GET atlas-ai?action=settings). Only keys present
   // in the response are rendered, so older and newer servers both work.
   const AI_FIELDS = [
-    { key: 'enabled', type: 'toggle', label: 'Atlas AI is on for the venue', help: 'When off, Atlas AI answers from saved records only and prepares nothing.' },
+    { key: 'enabled', type: 'toggle', label: 'Alcedo AI is on for the venue', help: 'When off, Alcedo AI answers from saved records only and prepares nothing.' },
     { key: 'daily_turn_limit_per_user', type: 'number', label: 'Questions per person per day', min: 1, max: 10000 },
     { key: 'voice_sessions_per_day', type: 'number', label: 'Voice conversations per person per day', min: 1, max: 1000 },
     { key: 'voice_minutes_per_day', type: 'number', label: 'Voice minutes per person per day', min: 1, max: 1440 },
@@ -74,7 +74,7 @@
     needs_reauthorization: ['warning', 'Needs reconnecting'],
     pending_review: ['info', 'Platform review pending']
   };
-  // S94B: what Atlas posts to, per provider (atlas-integrations resource_kind).
+  // S94B: what Alcedo posts to, per provider (atlas-integrations resource_kind).
   const RESOURCE_WORDS = {
     facebook_page: { noun: 'Page', choose: 'Choose Page', change: 'Change Page', title: 'Choose the Facebook Page', use: 'Use this Page', none: 'No Page chosen' },
     instagram_account: { noun: 'account', choose: 'Choose account', change: 'Change account', title: 'Choose the Instagram account', use: 'Use this account', none: 'No account chosen' },
@@ -108,7 +108,9 @@
     notificationAction: false,
     ai: { status: 'idle', settings: null, preferences: null, error: null },
     integrations: { status: 'idle', providers: [], error: null, busy: {}, messages: {}, notice: null, autoPick: null },
-    purchasingPolicy: { status: 'idle', value: null }
+    purchasingPolicy: { status: 'idle', value: null },
+    // S99: the current user's own authenticator status (client.auth.mfa.listFactors).
+    mfa: { status: 'idle', hasFactor: false, busy: false }
   };
 
   // ---------- helpers ----------
@@ -285,7 +287,7 @@
   function friendlySaveError(error, context = '') {
     if (error?.status === 409 || /changed after this page was opened/i.test(error?.serverText || '')) return 'Someone else saved this after you opened it. Discard your changes to see theirs, then edit again.';
     if (error?.status === 403) return 'Your role can’t change this setting.';
-    if (error?.code === 'network' || error?.code === 'timeout') return 'Atlas couldn’t be reached. Nothing was saved — check the connection and try again.';
+    if (error?.code === 'network' || error?.code === 'timeout') return 'Alcedo couldn’t be reached. Nothing was saved — check the connection and try again.';
     if (error?.status === 400) return context || 'Some values aren’t accepted. Check them and try again.';
     return 'That couldn’t be saved. Nothing was changed — try again.';
   }
@@ -385,7 +387,7 @@
     const data = section('venue');
     const value = data?.value || {};
     const disabled = !data?.can_edit;
-    return `${sectionHead('Venue', 'The business details Atlas uses on documents, in Atlas AI and for your team.')}
+    return `${sectionHead('Venue', 'The business details Alcedo uses on documents, in Alcedo AI and for your team.')}
     <form class="settings-form atlas-card" data-settings-section-form="venue" data-version="${Number(data?.version || 1)}">
       ${formHead('Venue details', '', readOnlyNote(!disabled))}
       <div class="settings-grid">
@@ -416,8 +418,8 @@
     const error = state.fieldErrors.timezone;
     const isDefault = clock()?.timezoneIsDefault?.();
     return `<form class="settings-form atlas-card" data-settings-timezone-form data-version="${Number(data?.version || 1)}">
-      ${formHead('Time zone', 'Opening hours, checklists and “today” everywhere in Atlas use the venue’s time zone.', readOnlyNote(!disabled))}
-      ${field('Venue time zone', input('timezone', zone, { disabled, required: true, placeholder: exampleZone(), invalid: Boolean(error), describedby: error ? 'settings-timezone-error' : '' }), { error, errorId: 'settings-timezone-error', help: isDefault ? 'Atlas is using the default zone because none is saved.' : `A zone name such as ${exampleZone()}.` })}
+      ${formHead('Time zone', 'Opening hours, checklists and “today” everywhere in Alcedo use the venue’s time zone.', readOnlyNote(!disabled))}
+      ${field('Venue time zone', input('timezone', zone, { disabled, required: true, placeholder: exampleZone(), invalid: Boolean(error), describedby: error ? 'settings-timezone-error' : '' }), { error, errorId: 'settings-timezone-error', help: isDefault ? 'Alcedo is using the default zone because none is saved.' : `A zone name such as ${exampleZone()}.` })}
       ${feedback('timezone')}
       ${disabled ? '' : saveBar('timezone', 'Save time zone')}
     </form>`;
@@ -449,9 +451,9 @@
         <td data-label="Kitchen"><input class="atlas-input" ${TIME_FIELD} name="kitchen_close_time" aria-label="${escapeHtml(day)} kitchen closes" value="${escapeHtml(hhmm(row.kitchen_close_time) || '')}"${timeOff}></td>
       </tr>`;
     }).join('');
-    const empty = !saved.size ? `<div class="atlas-alert atlas-alert--info">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">No opening hours are saved yet, so Home shows no timeline and nothing counts down. Atlas never guesses hours.</p></div></div>` : '';
+    const empty = !saved.size ? `<div class="atlas-alert atlas-alert--info">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">No opening hours are saved yet, so Home shows no timeline and nothing counts down. Alcedo never guesses hours.</p></div></div>` : '';
     return `<form class="settings-form atlas-card" data-settings-hours-form>
-      ${formHead('Weekly hours', 'Home, Operations and Atlas AI read these hours.', editable ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-settings-copy-monday>Copy Monday to all</button>' : readOnlyNote(false))}
+      ${formHead('Weekly hours', 'Home, Operations and Alcedo AI read these hours.', editable ? '<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-settings-copy-monday>Copy Monday to all</button>' : readOnlyNote(false))}
       ${empty}
       <div class="atlas-table-wrap settings-hours"><table class="atlas-table atlas-table--compact">
         <colgroup><col class="settings-hours__day"><col class="settings-hours__check"><col><col><col class="settings-hours__check"><col><col></colgroup>
@@ -495,7 +497,7 @@
 
   function hoursMarkup() {
     const offers = state.workspace?.offers || [];
-    return `${sectionHead('Opening hours', 'When the venue is open, and its offers. Nothing here is invented: without saved hours, Atlas says so.')}
+    return `${sectionHead('Opening hours', 'When the venue is open, and its offers. Nothing here is invented: without saved hours, Alcedo says so.')}
       ${timezoneFormMarkup()}
       ${hoursFormMarkup()}
       <div class="settings-subhead"><h3>Offers</h3>${canManage() && !state.offerDraft ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-add-offer>' + icon('plus') + 'Add offer</button>' : ''}</div>
@@ -540,13 +542,13 @@
     else if (on) action = '<button type="button" class="atlas-btn atlas-btn--secondary" data-settings-push-disable>Turn notifications off</button>';
     else if (device.status === 'pending') action = '<button type="button" class="atlas-btn atlas-btn--primary" data-settings-push-enable>Turn notifications on</button>';
     else if (device.status === 'unsynced') action = '<button type="button" class="atlas-btn atlas-btn--primary" data-settings-push-enable>Reconnect this device</button>';
-    const blocked = device.status === 'denied' ? '<p class="settings-muted">To unblock: open this site’s settings in your browser (the icon next to the address), allow notifications, then reload Atlas.</p>' : '';
+    const blocked = device.status === 'denied' ? '<p class="settings-muted">To unblock: open this site’s settings in your browser (the icon next to the address), allow notifications, then reload Alcedo.</p>' : '';
     const policies = isManager() ? (state.workspace?.notification_policies || []) : [];
     return `${sectionHead('Notifications', 'Alerts on this device, and who gets which alert.')}
       <section class="settings-form atlas-card settings-device-notifications is-${escapeHtml(device.status)}" aria-labelledby="settings-device-title">
         <div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-device-title">This device</h3><p class="settings-form__sub">${escapeHtml(device.detail || '')}</p></div>${pill(tone, text)}</div>
         ${blocked}
-        <p class="settings-muted">Atlas asks the browser for permission only when you turn notifications on. Turning them off unsubscribes this device.</p>
+        <p class="settings-muted">Alcedo asks the browser for permission only when you turn notifications on. Turning them off unsubscribes this device.</p>
         ${action ? `<div class="settings-actions">${action}</div>` : ''}
         ${feedback('push')}
       </section>
@@ -557,9 +559,9 @@
       </section>`;
   }
 
-  // Rules that change Atlas today say so; the rest are saved for upcoming features.
+  // Rules that change Alcedo today say so; the rest are saved for upcoming features.
   const SETTING_USAGE = {
-    inventory: { automatic_reorder_suggestions: 'Used for order suggestions in Purchasing and Atlas AI.' },
+    inventory: { automatic_reorder_suggestions: 'Used for order suggestions in Purchasing and Alcedo AI.' },
     brain: { purchase_learning_enabled: 'Used for order suggestions.', menu_learning_enabled: 'Used for recipe availability notes.', waste_learning_enabled: 'Used for waste notes.' }
   };
 
@@ -569,7 +571,7 @@
     const disabled = !data.can_edit;
     const used = Object.keys(SETTING_USAGE[key] || {}).length;
     return `<form class="settings-form atlas-card" data-settings-section-form="${escapeHtml(key)}" data-version="${Number(data.version || 1)}">
-      ${formHead(title, description || (used ? 'Settings marked “in use” change Atlas today; the rest are saved for upcoming features.' : 'Saved for upcoming features — these don’t change Atlas yet.'), readOnlyNote(!disabled))}
+      ${formHead(title, description || (used ? 'Settings marked “in use” change Alcedo today; the rest are saved for upcoming features.' : 'Saved for upcoming features — these don’t change Alcedo yet.'), readOnlyNote(!disabled))}
       ${fields(data.value || {}, disabled)}
       ${sectionVersion(data)}
       ${feedback(`section:${key}`)}
@@ -601,7 +603,7 @@
     ${checkRow('barcode_gallery_enabled', value.barcode_gallery_enabled, 'Allow photos from the gallery in the scanner', { disabled })}
     ${checkRow('allow_multiple_barcodes', value.allow_multiple_barcodes, 'Allow several barcodes per item', { disabled })}
     ${checkRow('staff_barcode_linking', value.staff_barcode_linking, 'Staff can link barcodes to items', { disabled })}
-    <p class="settings-muted">${icon('lock')}Placing orders and changing stock from the scanner stay manual. Atlas never does either by itself.</p>`);
+    <p class="settings-muted">${icon('lock')}Placing orders and changing stock from the scanner stay manual. Alcedo never does either by itself.</p>`);
     const temperature = ruleForm('temperature', 'Temperature log', (value, disabled) => `<div class="settings-grid">
       ${field('Reminder times', input('reminder_times', (value.reminder_times || []).join(', '), { disabled, placeholder: '10:00, 16:00' }), { help: 'Separate times with commas.' })}
       ${field('Escalate after (minutes)', input('escalation_minutes', value.escalation_minutes, { type: 'number', min: 0, max: 1440, disabled, inputmode: 'numeric' }))}
@@ -627,7 +629,7 @@
       ${field('Brand voice', textarea('brand_voice', value.brand_voice, { disabled, rows: 3 }), { help: 'Moves to Marketing settings with the Marketing redesign.' })}
       ${field('Story frames by default', input('default_story_frames', value.default_story_frames, { type: 'number', min: 1, max: 10, disabled, inputmode: 'numeric' }))}
       ${checkRow('approval_required', value.approval_required, 'Posts need approval', { disabled })}
-      ${checkRow('ai_caption_drafts_enabled', value.ai_caption_drafts_enabled, 'Atlas drafts captions', { disabled })}
+      ${checkRow('ai_caption_drafts_enabled', value.ai_caption_drafts_enabled, 'Alcedo drafts captions', { disabled })}
       <p class="settings-muted">${icon('lock')}Publishing and analytics stay off until an account is connected in Integrations.</p>`);
     return `${sectionHead('Operational rules', 'Thresholds, reminders and approvals.')}
       ${operations}${inventory}${purchasingPolicyMarkup()}${temperature}${cleaning}${marketing}`;
@@ -655,7 +657,7 @@
     </section>`;
   }
 
-  // ---------- Atlas AI ----------
+  // ---------- Alcedo AI ----------
 
   const aiApi = (action, options) => request(cfg.ATLAS_AI_API, action, options);
 
@@ -679,7 +681,7 @@
     const ai = state.ai;
     if (ai.status !== 'ready') return '<section class="settings-form atlas-card" aria-busy="true"><span class="atlas-skel atlas-skel--row"></span><span class="atlas-skel atlas-skel--row"></span></section>';
     if (!ai.settings) {
-      const text = ai.error?.code === 'not_configured' ? 'Atlas AI isn’t available in this environment yet.' : 'The Atlas AI settings couldn’t be loaded. Nothing was changed.';
+      const text = ai.error?.code === 'not_configured' ? 'Alcedo AI isn’t available in this environment yet.' : 'The Alcedo AI settings couldn’t be loaded. Nothing was changed.';
       return `<div class="atlas-alert atlas-alert--${ai.error?.code === 'not_configured' ? 'info' : 'danger'}" role="status">${icon('info')}<div class="atlas-alert__content"><p class="atlas-alert__body">${escapeHtml(text)}</p></div>${ai.error?.code === 'not_configured' ? '' : '<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-ai-retry>Try again</button></div>'}</div>`;
     }
     const value = ai.settings;
@@ -698,7 +700,7 @@
     });
     const [first, ...rest] = controls;
     return `<form class="settings-form atlas-card" data-settings-ai-form>
-      ${formHead('Atlas AI for the venue', value.enabled && value.configured === false ? 'It is switched on here, but the service connection isn’t set up yet, so answers use saved records only.' : 'Limits apply to each person, per day.', `${status}${readOnlyNote(editable)}`)}
+      ${formHead('Alcedo AI for the venue', value.enabled && value.configured === false ? 'It is switched on here, but the service connection isn’t set up yet, so answers use saved records only.' : 'Limits apply to each person, per day.', `${status}${readOnlyNote(editable)}`)}
       ${first || ''}
       <div class="settings-grid">${rest.join('')}</div>
       ${value.updated_at ? `<p class="settings-form__meta">Last changed ${escapeHtml(formatDateTime(value.updated_at))}</p>` : ''}
@@ -713,10 +715,10 @@
     const value = ai.preferences;
     const has = (key) => Object.prototype.hasOwnProperty.call(value, key);
     return `<form class="settings-form atlas-card" data-settings-ai-preferences-form>
-      ${formHead('Your replies', 'How Atlas AI answers you. Only you see these.')}
+      ${formHead('Your replies', 'How Alcedo AI answers you. Only you see these.')}
       ${has('reply_length') ? field('Reply length', select('reply_length', value.reply_length, [['short', 'Short'], ['normal', 'Normal'], ['detailed', 'Detailed']])) : ''}
       ${has('speak_answers') ? toggle('speak_answers', Boolean(value.speak_answers), 'Read answers aloud in voice conversations') : ''}
-      ${has('voice_enabled') ? toggle('voice_enabled', Boolean(value.voice_enabled), 'Offer voice in Atlas AI') : ''}
+      ${has('voice_enabled') ? toggle('voice_enabled', Boolean(value.voice_enabled), 'Offer voice in Alcedo AI') : ''}
       ${has('language') ? field('Language', select('language', value.language, [['auto', 'Same as my question'], ['en', 'English'], ['is', 'Íslenska']])) : ''}
       ${feedback('ai-preferences')}
       ${saveBar('ai-preferences')}
@@ -728,11 +730,11 @@
     ${checkRow('purchase_learning_enabled', value.purchase_learning_enabled, 'Learn from orders', { disabled, help: usedHelp('brain', 'purchase_learning_enabled') })}
     ${checkRow('menu_learning_enabled', value.menu_learning_enabled, 'Learn from recipes', { disabled, help: usedHelp('brain', 'menu_learning_enabled') })}
     ${checkRow('waste_learning_enabled', value.waste_learning_enabled, 'Learn from waste', { disabled, help: usedHelp('brain', 'waste_learning_enabled') })}
-    <p class="settings-muted">${icon('lock')}Atlas never acts on a suggestion by itself; a person approves every change.</p>`, 'What Atlas AI learns from when it suggests things. Each setting changes Atlas today.');
+    <p class="settings-muted">${icon('lock')}Alcedo never acts on a suggestion by itself; a person approves every change.</p>`, 'What Alcedo AI learns from when it suggests things. Each setting changes Alcedo today.');
   }
 
   function aiMarkup() {
-    return `${sectionHead('Atlas AI', 'Whether Atlas AI is on, its daily limits, and how it suggests things.')}
+    return `${sectionHead('Alcedo AI', 'Whether Alcedo AI is on, its daily limits, and how it suggests things.')}
       ${aiSettingsForm()}${aiPreferencesForm()}${decisionsForm()}`;
   }
 
@@ -748,21 +750,21 @@
   function integrationMessage(code, provider) {
     const name = provider || 'The provider';
     switch (code) {
-      case 'browser_mismatch': return 'Connecting was started in another browser, or this browser blocked Atlas’s sign-in cookie. Nothing was connected. Start again from this browser.';
+      case 'browser_mismatch': return 'Connecting was started in another browser, or this browser blocked Alcedo’s sign-in cookie. Nothing was connected. Start again from this browser.';
       case 'not_authorized': return 'Only an active manager or administrator can finish connecting. Nothing was connected.';
       case 'provider_check_failed': return `${name} didn’t accept the connection. Reconnect, or check the account on ${name}.`;
       case 'provider_refresh_failed': return `${name} didn’t renew access. Reconnect to continue.`;
-      case 'credential_unreadable': return `Atlas can’t read the saved ${name} connection any more. Disconnect, then connect again.`;
+      case 'credential_unreadable': return `Alcedo can’t read the saved ${name} connection any more. Disconnect, then connect again.`;
       case 'not_configured': return `${name === 'The provider' ? 'This connection' : name} isn’t set up yet. An administrator can set it up.`;
       case 'not_connected': return `${name} isn’t connected.`;
       case 'forbidden': return 'Only managers and administrators can change integrations.';
       case 'denied': return `You cancelled on ${name}. Nothing was connected.`;
       case 'invalid_request': return 'That wasn’t accepted. Check what you entered and try again.';
-      case 'network': case 'timeout': return 'Atlas couldn’t be reached. Nothing was changed — try again.';
-      case 'verify_failed': return `${name} was connected but didn’t pass Atlas’s check. Reconnect, or check the account on ${name}.`;
-      case 'refresh_in_progress': return `Atlas is renewing access to ${name} right now. Try again in a minute.`;
+      case 'network': case 'timeout': return 'Alcedo couldn’t be reached. Nothing was changed — try again.';
+      case 'verify_failed': return `${name} was connected but didn’t pass Alcedo’s check. Reconnect, or check the account on ${name}.`;
+      case 'refresh_in_progress': return `Alcedo is renewing access to ${name} right now. Try again in a minute.`;
       case 'resource_not_listed': return 'That choice isn’t in the latest list any more. Open the list again and choose.';
-      case 'resource_not_selectable': return `Atlas can’t post there. Choose another one on ${name}.`;
+      case 'resource_not_selectable': return `Alcedo can’t post there. Choose another one on ${name}.`;
       default: return 'Connecting didn’t finish. Nothing was changed — try again.';
     }
   }
@@ -807,7 +809,7 @@
         const purpose = action === 'allow-publishing' ? { purpose: 'publishing' } : {};
         const payload = await integrationsApi('start', { method: 'POST', body: { provider_key: key, return_path: '#settings/integrations', ...purpose } });
         if (payload?.authorize_url) {
-          // The Atlas hop on the functions domain binds this browser; never rebuilt here.
+          // The Alcedo hop on the functions domain binds this browser; never rebuilt here.
           window.location.assign(payload.authorize_url);
           return;
         }
@@ -839,13 +841,13 @@
       // Owner copy only: what connecting would enable (S91).
       not_configured: provider.enables || '',
       ready: provider.auth_kind === 'api_key' ? 'Add the API key to connect.' : `Ready to connect. ${provider.enables || ''}`.trim(),
-      verifying: 'Atlas is checking the connection.',
+      verifying: 'Alcedo is checking the connection.',
       // Fixed words only: the provider's own text stays in the audit trail (S88 brief §6).
       verification_failed: 'The last check failed. Test again, or reconnect.',
       needs_reauthorization: publishing
         ? `Access expired or was removed on ${name}. Scheduled posts won’t publish until you reconnect.`
         : 'Access expired. Reconnect to continue.',
-      pending_review: 'The platform is reviewing Atlas’s access. Nothing to do until it finishes.',
+      pending_review: 'The platform is reviewing Alcedo’s access. Nothing to do until it finishes.',
       connected: ''
     }[connectionState] || '';
     if (!publishing || connectionState !== 'connected') return { tone: base[0], text: base[1], status, primary: null, state: connectionState };
@@ -855,17 +857,17 @@
       case undefined:
         return {
           tone: 'positive', text: 'Publishing allowed', state: 'publishing_allowed',
-          status: `${target ? `Connected as ${target}. ` : ''}Approved posts publish here.${publishing.direct_post === false ? ' Posts go to the TikTok inbox as drafts until TikTok approves Atlas.' : ''}`,
+          status: `${target ? `Connected as ${target}. ` : ''}Approved posts publish here.${publishing.direct_post === false ? ' Posts go to the TikTok inbox as drafts until TikTok approves Alcedo.' : ''}`,
           primary: null
         };
       case 'publishing_permission_missing':
-        return { tone: 'warning', text: 'Publishing permission missing', state: 'publishing_missing', status: `Connected, but posting wasn’t allowed. Allow Atlas to post on ${name}.`, primary: publishing.can_allow_publishing ? 'allow-publishing' : 'start' };
+        return { tone: 'warning', text: 'Publishing permission missing', state: 'publishing_missing', status: `Connected, but posting wasn’t allowed. Allow Alcedo to post on ${name}.`, primary: publishing.can_allow_publishing ? 'allow-publishing' : 'start' };
       case 'no_resource_selected':
-        return { tone: 'warning', text: words.none, state: 'no_resource', status: `Connected. ${words.choose.replace('Choose', 'Choose which')} Atlas posts to.`, primary: publishing.can_choose_resource ? 'choose-resource' : null };
+        return { tone: 'warning', text: words.none, state: 'no_resource', status: `Connected. ${words.choose.replace('Choose', 'Choose which')} Alcedo posts to.`, primary: publishing.can_choose_resource ? 'choose-resource' : null };
       case 'review_required':
-        return { tone: 'neutral', text: 'App review required', state: 'review_required', status: `${name} hasn’t approved Atlas for posting yet. Plan and approve posts as usual and post them by hand until then.`, primary: null };
+        return { tone: 'neutral', text: 'App review required', state: 'review_required', status: `${name} hasn’t approved Alcedo for posting yet. Plan and approve posts as usual and post them by hand until then.`, primary: null };
       case 'review_pending':
-        return { tone: 'info', text: 'Platform review pending', state: 'review_pending', status: `${name} is reviewing Atlas’s access. Nothing to do until it finishes.`, primary: null };
+        return { tone: 'info', text: 'Platform review pending', state: 'review_pending', status: `${name} is reviewing Alcedo’s access. Nothing to do until it finishes.`, primary: null };
       default:
         return { tone: base[0], text: base[1], status, primary: null, state: connectionState };
     }
@@ -880,7 +882,7 @@
       [allowed ? 'circle-check' : 'lock', allowed ? 'Publish approved posts' : 'Publish approved posts: not allowed yet'],
       [publishing.resource ? 'circle-check' : 'circle-dashed', publishing.resource ? `Posts go to ${publishing.resource.label}` : `${words.none} yet`]
     ];
-    if (publishing.direct_post === false) rows.push(['info', 'Videos arrive in the TikTok inbox to finish there (private until TikTok approves Atlas)']);
+    if (publishing.direct_post === false) rows.push(['info', 'Videos arrive in the TikTok inbox to finish there (private until TikTok approves Alcedo)']);
     if (publishing.direct_post === true) rows.push(['circle-check', 'Direct posting approved by TikTok']);
     return `<ul class="settings-provider__can">${rows.map(([glyph, text]) => `<li>${icon(glyph)}<span>${escapeHtml(text)}</span></li>`).join('')}</ul>`;
   }
@@ -892,7 +894,7 @@
     const id = `settings-review-${key}`;
     const current = REVIEW_STATES.find(([value]) => value === publishing.review_state)?.[1] || 'Not checked yet';
     return `<details class="settings-needs settings-review" data-integration-review="${escapeHtml(key)}"><summary>Platform review: ${escapeHtml(current)}</summary>
-      <p>Only the platform can see whether it approved Atlas; record what it says here. ${key === 'tiktok' ? 'TikTok: approved allows direct posting.' : key === 'google-business-profile' ? 'Google: approved means Business Profile API access was granted.' : 'Meta: approved means App Review granted the posting permissions.'}</p>
+      <p>Only the platform can see whether it approved Alcedo; record what it says here. ${key === 'tiktok' ? 'TikTok: approved allows direct posting.' : key === 'google-business-profile' ? 'Google: approved means Business Profile API access was granted.' : 'Meta: approved means App Review granted the posting permissions.'}</p>
       <div class="settings-review__row"><label class="sr-only" for="${id}">Platform review</label><select class="atlas-select" id="${id}" data-integration-review-select${busy ? ' disabled' : ''}>${REVIEW_STATES.map(([value, label]) => `<option value="${value}"${value === publishing.review_state ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('')}</select>
       <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm${busy === 'set-review-state' ? ' is-loading' : ''}" data-integration-review-save data-provider="${escapeHtml(key)}"${busy ? ' disabled' : ''}>Save</button></div>
     </details>`;
@@ -938,7 +940,7 @@
     // enables (S91).
     const setup = provider.setup_details;
     const needs = provider.connection_state === 'not_configured' && isAdmin() && setup
-      ? `<details class="settings-needs" data-provider-setup><summary>Setup details</summary>${setup.summary ? `<p>${escapeHtml(setup.summary)}</p>` : ''}${Array.isArray(setup.requirements) && setup.requirements.length ? `<ul>${setup.requirements.map((entry) => `<li><code>${escapeHtml(entry.name)}</code> ${escapeHtml(entry.label)}</li>`).join('')}</ul>` : ''}<p>These are set as function secrets on the Atlas server. Their values are never shown here.</p></details>`
+      ? `<details class="settings-needs" data-provider-setup><summary>Setup details</summary>${setup.summary ? `<p>${escapeHtml(setup.summary)}</p>` : ''}${Array.isArray(setup.requirements) && setup.requirements.length ? `<ul>${setup.requirements.map((entry) => `<li><code>${escapeHtml(entry.name)}</code> ${escapeHtml(entry.label)}</li>`).join('')}</ul>` : ''}<p>These are set as function secrets on the Alcedo server. Their values are never shown here.</p></details>`
       : '';
     const linked = state.focusProvider === key;
     return `<li class="settings-provider${linked ? ' is-linked-target' : ''}" data-provider-card="${escapeHtml(key)}" data-integration-state="${escapeHtml(view.state || provider.connection_state || '')}"${linked ? ' aria-current="true"' : ''}>
@@ -998,7 +1000,7 @@
     return `<fieldset class="settings-picker" data-picker-options><legend class="sr-only">${escapeHtml(words.title)}</legend>
       ${picker.resources.map((resource) => {
         const disabled = !resource.selectable;
-        const reason = disabled ? UNAVAILABLE[resource.unavailable_reason] || 'Atlas can’t post there.' : '';
+        const reason = disabled ? UNAVAILABLE[resource.unavailable_reason] || 'Alcedo can’t post there.' : '';
         return `<label class="atlas-check-row settings-picker__option${disabled ? ' is-disabled' : ''}">
           <input class="atlas-radio" type="radio" name="settings-resource" value="${escapeHtml(resource.resource_id)}"${resource.resource_id === (picker.choice ?? current) ? ' checked' : ''}${disabled ? ' disabled' : ''}>
           <span class="atlas-avatar atlas-avatar--lg" aria-hidden="true">${escapeHtml(initials(resource.label))}</span>
@@ -1013,7 +1015,7 @@
     const full = picker.resources.length > 5 ? ' atlas-sheet--full-phone' : '';
     return `<section class="atlas-sheet settings-picker-sheet${full}" data-modal-panel role="dialog" aria-modal="true" aria-labelledby="settings-picker-title">
       <span class="atlas-sheet__grabber" aria-hidden="true"></span>
-      <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="settings-picker-title">${escapeHtml(words.title)}</h2><p class="atlas-sheet__desc">Atlas posts only to the one you choose. You can change it later.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
+      <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="settings-picker-title">${escapeHtml(words.title)}</h2><p class="atlas-sheet__desc">Alcedo posts only to the one you choose. You can change it later.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
       <div class="atlas-sheet__body" data-picker-body>${pickerBodyMarkup(picker)}</div>
       <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="button" class="atlas-btn atlas-btn--primary" data-picker-use disabled>${escapeHtml(words.use)}</button></footer>
     </section>`;
@@ -1113,14 +1115,14 @@
     if (integrations.status === 'idle' || integrations.status === 'loading') body = `<div aria-busy="true">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(4)}<span class="sr-only">Loading integrations</span></div>`;
     else if (integrations.status === 'error') {
       body = integrations.error?.code === 'not_configured'
-        ? `<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon">${icon('plug')}</div><h3>Not set up yet</h3><p>Integrations connect Atlas to your Google, Meta, TikTok and Tripadvisor accounts. An administrator can set them up.</p></div>`
+        ? `<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon">${icon('plug')}</div><h3>Not set up yet</h3><p>Integrations connect Alcedo to your Google, Meta, TikTok and Tripadvisor accounts. An administrator can set them up.</p></div>`
         : `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Integrations couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(integrations.error?.status === 403 ? 'Only managers and administrators can see integrations.' : 'Nothing was changed. Try again.')}</p></div>${integrations.error?.status === 403 ? '' : '<div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-integrations-retry>Try again</button></div>'}</div>`;
     } else if (!integrations.providers.length) body = '<p class="settings-muted">No integrations are available.</p>';
     else body = `<ul class="settings-providers">${integrations.providers.map(providerMarkup).join('')}</ul>`;
-    return `${sectionHead('Integrations', 'Outside accounts Atlas can use. Connecting happens on the provider’s own page; Atlas never sees passwords.')}
+    return `${sectionHead('Integrations', 'Outside accounts Alcedo can use. Connecting happens on the provider’s own page; Alcedo never sees passwords.')}
       ${integrationNoticeMarkup()}
       ${body}
-      <p class="settings-muted">${icon('lock')}Atlas only publishes posts someone approved. Planning in Marketing works without any connection.</p>`;
+      <p class="settings-muted">${icon('lock')}Alcedo only publishes posts someone approved. Planning in Marketing works without any connection.</p>`;
   }
 
   // One-time notice after the provider redirect: /?integration=…&result=…&reason=…#settings/…
@@ -1143,19 +1145,19 @@
 
   function securityMarkup() {
     const enforced = [
-      ['Staff sign-in', 'Every account signs in with its own email and password; passwords are never stored in Atlas.'],
+      ['Staff sign-in', 'Every account signs in with its own email and password; passwords are never stored in Alcedo.'],
       ['Active profile required', 'Deactivated profiles are signed out, and every request checks the profile again.'],
       ['Role-based access', 'Costs, purchasing and item changes are limited to managers and administrators.'],
       ['Keys stay on the server', 'Service keys and connection secrets never reach the browser.']
     ];
     const unavailable = [
-      ['Two-factor authentication', 'Not enforced yet — needs the sign-in provider’s two-factor setup.'],
       ['Automatic sign-out after inactivity', 'Not enforced yet — sessions follow the sign-in provider’s refresh rules.'],
       ['Trusted devices', 'Not available yet.'],
       ['Emergency lockdown', 'Not available yet — deactivate a profile in Team to remove access.']
     ];
-    return `${sectionHead('Security', 'What Atlas enforces today, and what isn’t available yet.')}
+    return `${sectionHead('Security', 'What Alcedo enforces today, and what isn’t available yet.')}
       <section class="settings-security">
+        ${mfaMarkup()}
         <section class="settings-form atlas-card" aria-labelledby="settings-security-on"><div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-security-on">Enforced now</h3></div>${pill('positive', 'On')}</div>
           <ul class="settings-capabilities">${enforced.map(([title, detail]) => `<li>${icon('shield-check')}<span><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></span></li>`).join('')}</ul></section>
         <section class="settings-form atlas-card" aria-labelledby="settings-security-off"><div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-security-off">Not available yet</h3></div>${pill('neutral', 'Off')}</div>
@@ -1163,8 +1165,118 @@
       </section>`;
   }
 
+  // S99: the current user's own authenticator (two-factor). Every account needs
+  // one to sign in; this card lets the person set one up, replace it, or remove
+  // then re-add it. It reads/writes only the current user's factors through the
+  // app's Supabase client (window.atlasSupabase).
+  function mfaMarkup() {
+    const mfa = state.mfa;
+    let body;
+    if (mfa.status === 'idle' || mfa.status === 'loading') {
+      body = `<div aria-busy="true"><span class="atlas-skel atlas-skel--row"></span><span class="sr-only">Checking your authenticator</span></div>`;
+    } else if (mfa.status === 'error') {
+      body = `<p class="settings-muted">${icon('circle-alert')}Your authenticator status couldn’t be checked. <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-settings-mfa-refresh>Try again</button></p>`;
+    } else if (mfa.hasFactor) {
+      body = `<p class="settings-muted">${icon('shield-check')}An authenticator app is set up for your account.</p>
+        <div class="settings-savebar" style="position:static">
+          <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm${mfa.busy ? ' is-loading' : ''}"${mfa.busy ? ' disabled aria-busy="true"' : ''} data-settings-mfa-setup>Replace authenticator</button>
+          <button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm"${mfa.busy ? ' disabled' : ''} data-settings-mfa-remove>Remove</button>
+        </div>`;
+    } else {
+      body = `<p class="settings-muted">${icon('shield-alert')}No authenticator app is set up yet. You’ll be asked to add one the next time you sign in.</p>
+        <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--sm${mfa.busy ? ' is-loading' : ''}"${mfa.busy ? ' disabled aria-busy="true"' : ''} data-settings-mfa-setup>Set up authenticator</button>`;
+    }
+    return `<section class="settings-form atlas-card" aria-labelledby="settings-security-mfa"><div class="settings-form__head"><div><h3 class="settings-form__title" id="settings-security-mfa">Two-factor authentication</h3><p class="settings-form__sub">An authenticator app is required to sign in to Alcedo.</p></div>${mfa.status === 'ready' ? pill(mfa.hasFactor ? 'positive' : 'neutral', mfa.hasFactor ? 'On' : 'Off') : ''}</div>${body}</section>`;
+  }
+
+  function mfaClient() {
+    return window.atlasSupabase || null;
+  }
+
+  async function loadMfaStatus(force) {
+    const client = mfaClient();
+    if (!client?.auth?.mfa) { state.mfa.status = 'error'; return; }
+    if (state.mfa.status === 'loading') return;
+    if (!force && state.mfa.status === 'ready') return;
+    state.mfa.status = 'loading';
+    try {
+      const { data, error } = await client.auth.mfa.listFactors();
+      if (error) throw error;
+      state.mfa.hasFactor = (data?.totp || []).some((factor) => factor.status === 'verified');
+      state.mfa.status = 'ready';
+    } catch (error) {
+      console.warn('Authenticator status could not be read', error?.message || error);
+      state.mfa.status = 'error';
+    }
+    if (state.section === 'security' && settingsVisible()) render();
+  }
+
+  function openMfaSetup() {
+    const client = mfaClient();
+    if (!client || !window.AtlasMfaEnroll) { window.AtlasShell?.toast?.('Two-factor setup isn’t available right now. Reload Alcedo and try again.'); return; }
+    const root = document.createElement('div');
+    root.className = 'atlas-modal';
+    root.dataset.atlasModal = '';
+    root.hidden = true;
+    root.innerHTML = `<section class="atlas-dialog" data-modal-panel aria-labelledby="settings-mfa-title">
+      <h2 class="atlas-dialog__title" id="settings-mfa-title">Set up your authenticator</h2>
+      <div class="atlas-dialog__body"><div data-settings-mfa-host></div></div>
+      <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Close</button></div>
+    </section>`;
+    document.body.appendChild(root);
+    const modal = window.AtlasModal;
+    let controller = null;
+    const cleanup = () => { controller?.destroy?.(); root.remove(); };
+    if (!modal) { cleanup(); return; }
+    modal.register(root, { onClose: () => window.setTimeout(cleanup, 0) });
+    modal.open(root);
+    window.AtlasMfaEnroll.mount(root.querySelector('[data-settings-mfa-host]'), {
+      client,
+      onVerified: () => {
+        window.AtlasShell?.toast?.('Authenticator set up');
+        modal.close(root);
+        loadMfaStatus(true);
+      }
+    }).then((instance) => { controller = instance; });
+  }
+
+  async function removeMfa() {
+    const client = mfaClient();
+    if (!client?.auth?.mfa) return;
+    const answer = await (window.AtlasModal ? confirmRemoveMfa() : Promise.resolve(true));
+    if (!answer) return;
+    state.mfa.busy = true;
+    if (state.section === 'security' && settingsVisible()) render();
+    try {
+      const { data } = await client.auth.mfa.listFactors();
+      const factors = (data?.totp || []).filter((factor) => factor.status === 'verified');
+      for (const factor of factors) { await client.auth.mfa.unenroll({ factorId: factor.id }); }
+      window.AtlasShell?.toast?.('Authenticator removed. Set up a new one to keep signing in.');
+    } catch (error) {
+      window.AtlasShell?.toast?.('The authenticator couldn’t be removed. Try again.');
+    } finally {
+      state.mfa.busy = false;
+      loadMfaStatus(true);
+    }
+  }
+
+  function confirmRemoveMfa() {
+    return new Promise((resolve) => {
+      const root = document.createElement('div');
+      root.className = 'atlas-modal';
+      root.dataset.atlasModal = '';
+      root.hidden = true;
+      root.innerHTML = `<section class="atlas-dialog" data-modal-panel aria-labelledby="settings-mfa-remove-title"><h2 class="atlas-dialog__title" id="settings-mfa-remove-title">Remove your authenticator?</h2><div class="atlas-dialog__body"><p>You’ll need to set up an authenticator again the next time you sign in.</p></div><div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Keep it</button><button type="button" class="atlas-btn atlas-btn--danger-solid" data-settings-mfa-remove-confirm>Remove</button></div></section>`;
+      document.body.appendChild(root);
+      let answer = false;
+      window.AtlasModal.register(root, { onClose: () => { root.remove(); resolve(answer); } });
+      root.querySelector('[data-settings-mfa-remove-confirm]').addEventListener('click', () => { answer = true; window.AtlasModal.close(root); });
+      window.AtlasModal.open(root);
+    });
+  }
+
   function systemMarkup() {
-    return `${sectionHead('System health', 'Read-only checks of the Atlas service. Anything not checked says so.')}<div class="settings-system" data-settings-system-host></div>`;
+    return `${sectionHead('System health', 'Read-only checks of the Alcedo service. Anything not checked says so.')}<div class="settings-system" data-settings-system-host></div>`;
   }
 
   function preferencesMarkup() {
@@ -1173,10 +1285,10 @@
     const stored = preference.start_view;
     const startView = START_VIEWS.some(([key]) => key === stored) ? stored : 'dashboard';
     const allowed = START_VIEWS.filter(([key]) => key === startView || window.AtlasShell?.nav?.allowed?.(START_VIEW_TARGETS[key] || key) !== false);
-    return `${sectionHead('Preferences', 'How Atlas opens and behaves for you. Saved to your profile.')}
+    return `${sectionHead('Preferences', 'How Alcedo opens and behaves for you. Saved to your profile.')}
       <form class="settings-form atlas-card" data-settings-preferences-form>
-        ${field('Start page', select('start_view', startView, allowed), { help: 'The page Atlas opens after you sign in.' })}
-        ${checkRow('reduce_motion', preference.reduce_motion, 'Reduce motion', { help: 'Turns off animations across Atlas.' })}
+        ${field('Start page', select('start_view', startView, allowed), { help: 'The page Alcedo opens after you sign in.' })}
+        ${checkRow('reduce_motion', preference.reduce_motion, 'Reduce motion', { help: 'Turns off animations across Alcedo.' })}
         <dl class="settings-facts">
           <div><dt>Notifications on this device</dt><dd>${escapeHtml(device.status === 'enabled' ? 'On' : 'Off')} · <a href="#settings/notifications">Manage</a></dd></div>
           <div><dt>Theme</dt><dd>Light (the only theme for now)</dd></div>
@@ -1191,7 +1303,7 @@
   function activityMarkup() {
     const events = state.workspace?.events || [];
     return `${sectionHead('Activity', 'Changes to settings, newest first. This history can’t be edited.')}
-      ${events.length ? `<ul class="atlas-list atlas-card">${events.map((event) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(humanize(event.section_key || 'settings'))} · ${escapeHtml(humanize(String(event.event_type || '').replace(/^settings_/, '')))}</p><p class="atlas-row__meta">${escapeHtml(`${event.actor_label || 'Atlas'} · ${formatDateTime(event.created_at)}`)}</p></div></li>`).join('')}</ul>`
+      ${events.length ? `<ul class="atlas-list atlas-card">${events.map((event) => `<li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">${escapeHtml(humanize(event.section_key || 'settings'))} · ${escapeHtml(humanize(String(event.event_type || '').replace(/^settings_/, '')))}</p><p class="atlas-row__meta">${escapeHtml(`${event.actor_label || 'Alcedo'} · ${formatDateTime(event.created_at)}`)}</p></div></li>`).join('')}</ul>`
         : '<div class="atlas-empty atlas-empty--inline"><div class="atlas-empty__icon">' + icon('history') + '</div><h3>No changes yet</h3><p>Every saved setting appears here with who changed it.</p></div>'}`;
   }
 
@@ -1238,7 +1350,7 @@
     let content;
     if (state.status === 'idle' || (state.status === 'loading' && !state.workspace)) content = `<div aria-busy="true">${'<span class="atlas-skel atlas-skel--row"></span>'.repeat(5)}<span class="sr-only">Loading settings</span></div>`;
     else if (state.status === 'error' && !state.workspace) {
-      content = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Settings couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(state.error?.status === 403 ? 'Your profile can’t open Settings. Ask an administrator.' : state.error?.status === 401 ? 'Atlas couldn’t confirm your sign-in for this. Nothing has changed. Try again in a moment.' : 'Nothing was changed. Check the connection and try again.')}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-refresh>Try again</button></div></div>`;
+      content = `<div class="atlas-alert atlas-alert--danger" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">Settings couldn’t be loaded.</p><p class="atlas-alert__body">${escapeHtml(state.error?.status === 403 ? 'Your profile can’t open Settings. Ask an administrator.' : state.error?.status === 401 ? 'Alcedo couldn’t confirm your sign-in for this. Nothing has changed. Try again in a moment.' : 'Nothing was changed. Check the connection and try again.')}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-settings-refresh>Try again</button></div></div>`;
     } else content = sectionMarkup(current || defaultSection());
     const listOnly = showNav && phone() && !current;
     const drafts = captureDrafts(element);
@@ -1251,8 +1363,9 @@
     </div>`;
     restoreDrafts(element, drafts);
     if ((current || defaultSection()) === 'system' && !listOnly) window.AtlasSystem?.mount?.(element.querySelector('[data-settings-system-host]'));
+    if ((current || defaultSection()) === 'security' && !listOnly && (state.mfa.status === 'idle')) loadMfaStatus();
     window.lucide?.createIcons?.();
-    // #settings/integrations?provider=<key> (Atlas AI record links): show that provider once it has loaded.
+    // #settings/integrations?provider=<key> (Alcedo AI record links): show that provider once it has loaded.
     if (state.focusProvider) {
       const card = [...element.querySelectorAll('[data-provider-card]')].find((node) => node.dataset.providerCard === state.focusProvider);
       if (card) {
@@ -1519,7 +1632,7 @@
       await mutate(key, 'save-section', { section_key: 'venue', expected_version: Number(form.dataset.version || 1), value }, 'Time zone saved.', {
         errorText: (error) => {
           if (error?.status === 400 && /time ?zone/i.test(error.serverText || '')) {
-            state.fieldErrors.timezone = `“${zone}” isn’t a time zone Atlas recognises. Use a name such as ${exampleZone()}.`;
+            state.fieldErrors.timezone = `“${zone}” isn’t a time zone Alcedo recognises. Use a name such as ${exampleZone()}.`;
             return 'The time zone wasn’t saved.';
           }
           return friendlySaveError(error);
@@ -1648,10 +1761,10 @@
       const { patch, problem } = aiPatch(form);
       if (problem) { state.formFeedback.ai = { type: 'error', text: problem }; render(); return; }
       if (!Object.keys(patch).length) { state.dirtyForms.delete('ai'); render(); return; }
-      await mutate(key, 'ai-settings', null, 'Atlas AI settings saved.', {
+      await mutate(key, 'ai-settings', null, 'Alcedo AI settings saved.', {
         request: () => aiApi('settings', { method: 'POST', body: { patch } }),
         apply: (payload) => { state.ai.settings = { ...(state.ai.settings || {}), ...(payload?.settings || payload || {}) }; },
-        errorText: (error) => (error?.status === 403 ? 'Only managers and administrators can change Atlas AI settings.' : error?.status === 400 ? 'A value is outside what Atlas allows. Check the limits and try again.' : friendlySaveError(error))
+        errorText: (error) => (error?.status === 403 ? 'Only managers and administrators can change Alcedo AI settings.' : error?.status === 400 ? 'A value is outside what Alcedo allows. Check the limits and try again.' : friendlySaveError(error))
       });
       return;
     }
@@ -1722,6 +1835,9 @@
       return;
     }
     if (target.closest('[data-settings-refresh]')) { load(); return; }
+    if (target.closest('[data-settings-mfa-refresh]')) { loadMfaStatus(true); return; }
+    if (target.closest('[data-settings-mfa-setup]')) { openMfaSetup(); return; }
+    if (target.closest('[data-settings-mfa-remove]')) { removeMfa(); return; }
     if (target.closest('[data-settings-push-enable]')) { updatePushPreference(true); return; }
     if (target.closest('[data-settings-push-disable]')) { updatePushPreference(false); return; }
     const discard = target.closest('[data-settings-discard]');
@@ -1783,7 +1899,7 @@
     root.hidden = true;
     root.innerHTML = `<div class="atlas-dialog" data-modal-panel aria-labelledby="settings-disconnect-title">
       <h2 class="atlas-dialog__title" id="settings-disconnect-title">Disconnect ${escapeHtml(name)}?</h2>
-      <div class="atlas-dialog__body"><p>Atlas deletes its saved access and stops using ${escapeHtml(name)}. You can connect again later.</p></div>
+      <div class="atlas-dialog__body"><p>Alcedo deletes its saved access and stops using ${escapeHtml(name)}. You can connect again later.</p></div>
       <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Keep connected</button><button type="button" class="atlas-btn atlas-btn--danger-solid" data-settings-confirm-disconnect>Disconnect</button></div>
     </div>`;
     document.body.appendChild(root);

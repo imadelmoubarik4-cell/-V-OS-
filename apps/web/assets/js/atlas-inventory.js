@@ -64,7 +64,7 @@
   const role = () => shell.profile?.()?.role || root.atlasCurrentProfile?.role || null;
   const isManager = () => MANAGERS.includes(role());
   const canCount = () => STAFF.includes(role());
-  // 'atlas-bot' is the Atlas AI robot (atlas-bot.js), the assistant's face.
+  // 'atlas-bot' is the Alcedo AI robot (atlas-bot.js), the assistant's face.
   const icon = (name) => (name === 'atlas-bot' && window.AtlasBot ? window.AtlasBot.html({ size: 18 }) : `<i data-lucide="${esc(name)}" aria-hidden="true"></i>`);
   const lucide = () => root.lucide?.createIcons?.();
   const uuid = () => (root.AtlasCapture?.uuid ? root.AtlasCapture.uuid() : root.crypto.randomUUID());
@@ -168,7 +168,7 @@
 
   // The pill for the canonical AtlasStockTruth.stockStatus. "Almost out" is
   // only a display tier of below par (at or under ALMOST_OUT_RATIO of par): it
-  // counts as below par everywhere (filters, Home, Reports, Atlas AI).
+  // counts as below par everywhere (filters, Home, Reports, Alcedo AI).
   function stockStatus(item) {
     if (item.active === false) return { key: 'inactive', label: 'Inactive', tone: '', rank: 6 };
     const status = truth()?.stockStatus ? truth().stockStatus(item) : 'unknown';
@@ -238,12 +238,12 @@
         body: body ? JSON.stringify({ action, ...body }) : undefined
       });
     } catch (_) {
-      throw fixedError('Atlas couldn’t reach the server. Nothing was saved; check your connection and try again.', { code: 'network' });
+      throw fixedError('Alcedo couldn’t reach the server. Nothing was saved; check your connection and try again.', { code: 'network' });
     }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const code = payload.code || (response.status === 403 ? 'forbidden' : response.status === 404 ? 'not_found' : response.status >= 500 ? 'unavailable' : 'invalid_request');
-      throw fixedError(ITEM_MASTER_ERRORS[code] || 'Atlas couldn’t save this right now. Nothing was changed; try again.', { code, status: response.status, duplicateCheck: payload.duplicate_check || null });
+      throw fixedError(ITEM_MASTER_ERRORS[code] || 'Alcedo couldn’t save this right now. Nothing was changed; try again.', { code, status: response.status, duplicateCheck: payload.duplicate_check || null });
     }
     return payload;
   }
@@ -782,7 +782,7 @@
     const entries = [['open', 'panel-right-open', 'Open item']];
     if (canCount() && item.active !== false) entries.push(['count', 'list-checks', `Count ${item.name}`]);
     if (isManager() && item.active !== false) entries.push(['order', 'truck', 'Add to an order'], ['waste', 'trash-2', 'Record waste']);
-    entries.push(['ask', 'atlas-bot', 'Ask Atlas about this']);
+    entries.push(['ask', 'atlas-bot', 'Ask Alcedo about this']);
     if (isManager()) entries.push('-', item.active === false ? ['reactivate', 'rotate-ccw', 'Reactivate'] : ['deactivate', 'archive', 'Deactivate']);
     menu.innerHTML = entries.map((entry) => entry === '-' ? '<li role="separator" class="atlas-menu__sep"></li>'
       : `<li><button type="button" class="atlas-menu__item${entry[0] === 'deactivate' ? ' atlas-menu__item--danger' : ''}" data-row-action="${entry[0]}">${icon(entry[1])}${esc(entry[2])}</button></li>`).join('');
@@ -878,14 +878,14 @@
         ${item.active === false ? alertHtml('info', 'This item is inactive.', 'It’s kept for history and left out of counts and orders.', manager ? '<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-inv-reactivate>Reactivate</button>' : '') : ''}
       </div>
       <footer class="atlas-sheet__foot">
-        <button type="button" class="atlas-btn atlas-btn--ghost" data-inv-ask>${icon('atlas-bot')}Ask Atlas</button>
+        <button type="button" class="atlas-btn atlas-btn--ghost" data-inv-ask>${icon('atlas-bot')}Ask Alcedo</button>
         ${canCount() && item.active !== false ? `<button type="button" class="atlas-btn atlas-btn--${manager ? 'secondary' : 'primary'}" data-inv-count-item>${icon('list-checks')}Count this</button>` : ''}
         ${manager ? '<button type="button" class="atlas-btn atlas-btn--primary" data-inv-edit>Edit details</button>' : ''}
       </footer>
       <ul class="atlas-menu" data-inv-detail-menu-list hidden>
         ${manager ? '<li><button type="button" class="atlas-menu__item" data-row-action="edit">Edit details</button></li>' : ''}
         ${manager && item.active !== false ? '<li><button type="button" class="atlas-menu__item" data-row-action="order">Add to an order</button></li><li><button type="button" class="atlas-menu__item" data-row-action="waste">Record waste</button></li>' : ''}
-        <li><button type="button" class="atlas-menu__item" data-row-action="ask">Ask Atlas about this</button></li>
+        <li><button type="button" class="atlas-menu__item" data-row-action="ask">Ask Alcedo about this</button></li>
         ${manager ? `<li role="separator" class="atlas-menu__sep"></li><li><button type="button" class="atlas-menu__item${item.active === false ? '' : ' atlas-menu__item--danger'}" data-row-action="${item.active === false ? 'reactivate' : 'deactivate'}">${item.active === false ? 'Reactivate' : 'Deactivate'}</button></li>` : ''}
       </ul>`;
   }
@@ -907,7 +907,7 @@
     if (detail) { const previous = detail; detail = null; previous.overlay.close('replace'); }
     if (!item) {
       if (!items().length) return; // data not loaded yet: data:loaded reopens it
-      toast('That item isn’t in Atlas any more.');
+      toast('That item isn’t in Alcedo any more.');
       shell.navigate('#inventory');
       return;
     }
@@ -994,7 +994,7 @@
       lucide();
       body.querySelector('input')?.focus();
     }).catch((error) => {
-      body.innerHTML = alertHtml('danger', 'Atlas couldn’t check this item.', `${shown(error, 'Atlas couldn’t reach the server.')} Nothing was changed.`);
+      body.innerHTML = alertHtml('danger', 'Alcedo couldn’t check this item.', `${shown(error, 'Alcedo couldn’t reach the server.')} Nothing was changed.`);
       lucide();
     });
     confirm.addEventListener('click', async () => {
@@ -1157,7 +1157,7 @@
     const overlay = openOverlay(sheetHtml({
       title,
       desc: recognition ? 'Filled in from the photo. Check every field before you add it.' : 'New items start as Not counted.',
-      body: `${recognition ? alertHtml('info', '', 'Readings Atlas wasn’t sure about are left empty. Nothing is saved until you add the item.') : `<button type="button" class="atlas-btn atlas-btn--secondary inv-scan-product" data-inv-scan-product>${icon('scan-line')}Scan product</button>`}${itemFormHtml(draft)}`,
+      body: `${recognition ? alertHtml('info', '', 'Readings Alcedo wasn’t sure about are left empty. Nothing is saved until you add the item.') : `<button type="button" class="atlas-btn atlas-btn--secondary inv-scan-product" data-inv-scan-product>${icon('scan-line')}Scan product</button>`}${itemFormHtml(draft)}`,
       foot: '<button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" class="atlas-btn atlas-btn--primary" data-inv-submit form="inv-item-form">Add item</button>'
     }), { label: title });
     const form = overlay.panel.querySelector('[data-inv-item-form]');
@@ -1326,7 +1326,7 @@
   function openAddCode(item) {
     const manager = isManager();
     const overlay = openOverlay(`<h2 class="atlas-dialog__title">${manager ? 'Add a barcode' : 'Suggest a barcode'}</h2>
-      <form class="atlas-dialog__body atlas-form" id="inv-code-form"><p>${manager ? `Link a barcode or SKU to ${esc(item.name)}. Atlas checks it isn’t used by another item.` : `A manager checks it before it’s linked to ${esc(item.name)}.`}</p>
+      <form class="atlas-dialog__body atlas-form" id="inv-code-form"><p>${manager ? `Link a barcode or SKU to ${esc(item.name)}. Alcedo checks it isn’t used by another item.` : `A manager checks it before it’s linked to ${esc(item.name)}.`}</p>
       <div class="atlas-field"><label for="inv-code">Barcode or SKU</label><input class="atlas-input" id="inv-code" name="code" inputmode="numeric" autocomplete="off" required></div><div data-inv-form-alert></div></form>
       <div class="atlas-dialog__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="inv-code-form" class="atlas-btn atlas-btn--primary">${manager ? 'Add barcode' : 'Send for approval'}</button></div>`, { className: 'atlas-dialog' });
     const form = overlay.panel.querySelector('#inv-code-form');
@@ -1367,7 +1367,7 @@
   function locationProblem(error) {
     const text = [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(' ');
     const match = LOCATION_REFUSALS.find(([pattern]) => pattern.test(text));
-    return match ? match[1] : 'Atlas couldn’t save this change. Nothing was changed; try again.';
+    return match ? match[1] : 'Alcedo couldn’t save this change. Nothing was changed; try again.';
   }
   async function locationRpc(name, args) {
     const client = root.atlasSupabase;
@@ -1649,7 +1649,7 @@
     const list = movements().filter((entry) => entry.movement_type === 'waste');
     body.innerHTML = `<div class="atlas-table-wrap atlas-table-wrap--responsive"><table class="atlas-table"><thead><tr><th>Date</th><th>Item</th><th class="is-num">Quantity</th><th>Reason</th></tr></thead>
       <tbody>${list.map((entry) => `<tr><td>${esc(dateTimeText(entry.created_at))}</td><td class="cell-primary">${esc(entry.item_name || 'Inventory item')}</td><td class="is-num">${qty(Math.abs(num(entry.quantity_change) || 0))}</td><td class="inv__note">${esc(entry.note || 'Waste')}</td></tr>`).join('')}</tbody></table>
-      ${list.length ? '' : `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('trash-2')}</div><h3 class="atlas-empty__title">No waste recorded</h3><p class="atlas-empty__text">Only waste you record appears here. Atlas never treats other adjustments as waste.</p><button type="button" class="atlas-btn atlas-btn--secondary" data-inv-waste>Record waste</button></div>`}</div>
+      ${list.length ? '' : `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('trash-2')}</div><h3 class="atlas-empty__title">No waste recorded</h3><p class="atlas-empty__text">Only waste you record appears here. Alcedo never treats other adjustments as waste.</p><button type="button" class="atlas-btn atlas-btn--secondary" data-inv-waste>Record waste</button></div>`}</div>
       <ul class="atlas-table-list">${list.map((entry) => `<li><div class="atlas-table-list__row"><div class="atlas-table-list__body"><div class="atlas-table-list__title">${esc(entry.item_name || 'Inventory item')}</div><div class="atlas-table-list__meta">${esc(dateTimeText(entry.created_at))} · ${esc(entry.note || 'Waste')}</div></div><div class="atlas-table-list__value">${qty(Math.abs(num(entry.quantity_change) || 0))}</div></div></li>`).join('')}</ul>
       <div class="atlas-table-foot"><span>${list.length} ${list.length === 1 ? 'record' : 'records'}</span><span>Recording waste lowers stock straight away.</span></div>`;
   }
@@ -1662,12 +1662,12 @@
   // never claims stock is unchanged.
   const STOCK_UNCONFIRMED = 'We couldn’t confirm the save. Check Movements before trying again.';
   const STOCK_REFUSALS = [
-    [/resulting quantity would be negative|item not found/i, 'Atlas’s stock record for this item is lower than that quantity, so nothing was recorded. Check the quantity, or count the item first.'],
+    [/resulting quantity would be negative|item not found/i, 'Alcedo’s stock record for this item is lower than that quantity, so nothing was recorded. Check the quantity, or count the item first.'],
     [/unit cost must be 0 or more/i, 'The unit cost must be 0 or more, so nothing was recorded.'],
     [/waste must lower stock|delivery must add stock|quantity change/i, 'Enter a quantity above 0, so nothing was recorded.'],
-    [/already used for a different change/i, 'Your earlier try may already be saved, so Atlas won’t record different details from this dialog. Check Movements, then close this and start again if something is still missing.'],
-    [/request id is required/i, 'Atlas couldn’t record this change. Close this and try again.'],
-    [/invalid movement type/i, 'Atlas can’t record this kind of change here.'],
+    [/already used for a different change/i, 'Your earlier try may already be saved, so Alcedo won’t record different details from this dialog. Check Movements, then close this and start again if something is still missing.'],
+    [/request id is required/i, 'Alcedo couldn’t record this change. Close this and try again.'],
+    [/invalid movement type/i, 'Alcedo can’t record this kind of change here.'],
     [/manager or administrator|permission denied|42501/i, 'Recording stock changes is for managers. Nothing was recorded.']
   ];
   function stockSaveProblem(error) {
@@ -1676,7 +1676,7 @@
     if (match) return { refused: true, text: match[1] };
     // A PostgreSQL/PostgREST error code means the server answered and rolled
     // back. A network failure, timeout or gateway error has no such code.
-    if (/^(22|23|42|P0|PGRST)/.test(String(error?.code || ''))) return { refused: true, text: 'Atlas didn’t accept this change, so nothing was recorded. Check the details and try again.' };
+    if (/^(22|23|42|P0|PGRST)/.test(String(error?.code || ''))) return { refused: true, text: 'Alcedo didn’t accept this change, so nothing was recorded. Check the details and try again.' };
     return { refused: false, text: STOCK_UNCONFIRMED };
   }
   async function adjustStock({ requestId, itemId, change, type, unitCost = null, supplierId = null, note = '' }) {
@@ -1825,7 +1825,7 @@
         <div class="atlas-capture-result__head">${item?.image_url ? `<img class="atlas-capture-result__img" src="${esc(item.image_url)}" alt="">` : `<span class="atlas-capture-result__img" aria-hidden="true">${icon('package')}</span>`}
           <div class="atlas-capture-result__text"><p class="atlas-capture-result__kicker">${heading}</p><h3 class="atlas-capture-result__title">${esc(item?.name || 'Choose the product')}</h3><p class="atlas-capture-muted">${esc([item?.brand, item?.category, packLine(item || {})].filter(Boolean).join(' · ') || 'Nothing changes until you choose.')}</p></div>
           ${R().band(detection, candidate)}</div>
-        ${item ? `<dl class="atlas-capture-facts"><div><dt>In Atlas</dt><dd>${item.active === false ? 'Yes · inactive' : 'Yes'}</dd></div><div><dt>Verified stock</dt><dd>${known ? `${qty(item.quantity)} ${esc(unitWord(item))}` : 'Not counted'}</dd></div>${isManager() ? `<div><dt>Supplier</dt><dd>${esc(item.supplier || item.supplier_name || 'Not set')}</dd></div>` : ''}</dl>` : ''}
+        ${item ? `<dl class="atlas-capture-facts"><div><dt>In Alcedo</dt><dd>${item.active === false ? 'Yes · inactive' : 'Yes'}</dd></div><div><dt>Verified stock</dt><dd>${known ? `${qty(item.quantity)} ${esc(unitWord(item))}` : 'Not counted'}</dd></div>${isManager() ? `<div><dt>Supplier</dt><dd>${esc(item.supplier || item.supplier_name || 'Not set')}</dd></div>` : ''}</dl>` : ''}
         ${R().fields(detection, { item, showSupplier: isManager(), keys: ['identity', 'brand', 'variant', 'category', 'package_type', 'unit_size', 'barcode', 'inventory_match', 'supplier_match'] })}
         ${selected ? (others.length ? `<details class="atlas-capture-more"><summary>Other possible matches (${others.length})</summary>${R().candidates({ ...detection, candidates: others }, { action: 'Choose', startOpen: false })}</details>` : '')
           : R().candidates(detection, { action: 'Choose' })}
@@ -1833,7 +1833,7 @@
           <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-id-action="open"${selected ? '' : ' disabled'}>${icon('panel-right-open')}Open item</button>
           ${canCount() ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="count"${selected && item?.active !== false ? '' : ' disabled'}>${icon('list-checks')}Count item</button>` : ''}
           <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="recipes"${selected ? '' : ' disabled'}>${icon('martini')}View recipes</button>
-          <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="ask">${icon('atlas-bot')}Ask Atlas</button>
+          <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="ask">${icon('atlas-bot')}Ask Alcedo</button>
           <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-id-action="wrong">${icon('thumbs-down')}Wrong product</button>
         </div>
         <p class="atlas-capture-note">Identifying never changes stock or items.</p>
@@ -1920,13 +1920,13 @@
     onChoose.usedFor = onChoose.usedFor || options.usedFor || 'identify';
     const candidates = detection?.candidates || [];
     ctl.showSheet(`<div class="atlas-capture-result" data-capture-result="unknown">
-      <div class="atlas-capture-result__head"><span class="atlas-capture-result__img" aria-hidden="true">${icon('scan-search')}</span><div class="atlas-capture-result__text"><h3 class="atlas-capture-result__title">Atlas couldn’t tell which item this is.</h3><p class="atlas-capture-muted">Nothing was created or changed.</p></div>${detection ? R().band(detection) : ''}</div>
-      ${detection ? `<details class="atlas-capture-more" open><summary>What Atlas could read</summary>${R().fields(detection, { keys: ['identity', 'brand', 'variant', 'category', 'package_type', 'unit_size', 'barcode'] }) || '<p class="atlas-capture-muted">Nothing readable. Try a closer photo of the label.</p>'}</details>` : ''}
+      <div class="atlas-capture-result__head"><span class="atlas-capture-result__img" aria-hidden="true">${icon('scan-search')}</span><div class="atlas-capture-result__text"><h3 class="atlas-capture-result__title">Alcedo couldn’t tell which item this is.</h3><p class="atlas-capture-muted">Nothing was created or changed.</p></div>${detection ? R().band(detection) : ''}</div>
+      ${detection ? `<details class="atlas-capture-more" open><summary>What Alcedo could read</summary>${R().fields(detection, { keys: ['identity', 'brand', 'variant', 'category', 'package_type', 'unit_size', 'barcode'] }) || '<p class="atlas-capture-muted">Nothing readable. Try a closer photo of the label.</p>'}</details>` : ''}
       <div class="atlas-capture__actions atlas-capture__actions--grid">
         <button type="button" class="atlas-btn atlas-btn--primary atlas-btn--lg" data-unknown="retry">${icon('scan-line')}Retry scan</button>
         <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-unknown="search">${icon('search')}Search inventory</button>
         ${candidates.length ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-unknown="matches">${icon('list')}View possible matches</button>` : ''}
-        <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-unknown="ask">${icon('atlas-bot')}Ask Atlas</button>
+        <button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-unknown="ask">${icon('atlas-bot')}Ask Alcedo</button>
         ${options.allowDraft === false ? '' : `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--lg" data-unknown="draft">${icon('file-plus')}Create new product draft</button>`}
       </div></div>`, (sheet) => {
       sheet.querySelectorAll('[data-unknown]').forEach((button) => button.addEventListener('click', () => {
@@ -1941,7 +1941,7 @@
   }
 
   function possibleMatchesSheet(result, detection, ctl, onChoose, options) {
-    ctl.showSheet(`<div class="atlas-capture-result"><h3 class="atlas-capture-result__title">Possible matches</h3><p class="atlas-capture-muted">Atlas isn’t sure about any of these. Choose one only if it’s the product in your hand.</p>
+    ctl.showSheet(`<div class="atlas-capture-result"><h3 class="atlas-capture-result__title">Possible matches</h3><p class="atlas-capture-muted">Alcedo isn’t sure about any of these. Choose one only if it’s the product in your hand.</p>
       ${R().candidates(detection, { action: 'Choose' })}
       <div class="atlas-capture__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--lg" data-back>Back</button></div></div>`, (sheet) => {
       sheet.querySelector('[data-back]').addEventListener('click', () => unknownSheet(result, detection, ctl, { ...options, onChoose }));
@@ -2162,7 +2162,7 @@
       if (filter === 'inactive') state.activity = 'inactive';
     }
     if (view === 'inventory' && params?.q != null) state.query = String(params.q);
-    // #inventory/movements?movement=<id> (Atlas AI evidence links) opens the
+    // #inventory/movements?movement=<id> (Alcedo AI evidence links) opens the
     // ledger on that record: filters are cleared so the row is present.
     state.focusMovement = view === 'movements' && params?.movement ? String(params.movement) : null;
     if (state.focusMovement) { state.movementQuery = ''; state.movementType = null; }
@@ -2217,7 +2217,7 @@
     const known = active.filter((item) => stock.stockStatus(item) !== 'unknown');
     const rows = [];
     if (!known.length) {
-      rows.push({ id: 'not-counted', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: `${active.length} ${active.length === 1 ? 'item has' : 'items have'} no verified count, so Atlas can’t tell what’s low.`, action: { label: 'Start stock count', actionId: 'inventory.count.start' }, roles: STAFF });
+      rows.push({ id: 'not-counted', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: `${active.length} ${active.length === 1 ? 'item has' : 'items have'} no verified count, so Alcedo can’t tell what’s low.`, action: { label: 'Start stock count', actionId: 'inventory.count.start' }, roles: STAFF });
       rows.push({ id: 'not-counted-view', severity: 'info', icon: 'list-checks', title: 'Stock isn’t counted yet', detail: 'Low stock shows here once a count is verified.', action: { label: 'View inventory', route: '#inventory' }, roles: ['viewer'] });
       return rows;
     }

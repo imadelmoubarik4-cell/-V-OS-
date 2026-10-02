@@ -146,7 +146,7 @@ test('readiness and alt text are warnings, never blocking', () => {
     targets_ready: [{ provider_key: 'instagram', ready: false, reason: 'needs_reauthorization' }, { provider_key: 'facebook', ready: true }],
   });
   assert.deepEqual(codes(result), []);
-  assert.equal(messageFor(result, 'not_ready', 'warnings'), 'Instagram needs reconnecting in Settings › Integrations before Atlas can post.');
+  assert.equal(messageFor(result, 'not_ready', 'warnings'), 'Instagram needs reconnecting in Settings › Integrations before Alcedo can post.');
   assert.equal(result.warnings.filter((w) => w.code === 'missing_alt').length, 1);
   assert.equal(messageFor(result, 'missing_alt', 'warnings'), 'Photo 1 has no alt text. Add it so people using screen readers know what it shows.');
   // A readiness map works too.

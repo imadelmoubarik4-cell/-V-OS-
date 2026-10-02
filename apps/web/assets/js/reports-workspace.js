@@ -191,7 +191,7 @@
 
   function errorText(error) {
     if (!error) return '';
-    if (error.status === 401) return 'Atlas couldn’t confirm your sign-in for this. Try again in a moment.';
+    if (error.status === 401) return 'Alcedo couldn’t confirm your sign-in for this. Try again in a moment.';
     if (error.status === 403) return 'Reports are for managers. Ask an administrator for access.';
     if (error.status === 404) return 'Reports aren\'t switched on for this venue yet.';
     if (error.name === 'AbortError') return 'The connection timed out. Nothing was changed. Try again.';
@@ -268,7 +268,7 @@
               <li><button type="button" class="atlas-menu__item" role="menuitem" data-reports-export="print"><i data-lucide="printer"></i>Print or save as PDF</button></li>
               <li><button type="button" class="atlas-menu__item" role="menuitem" data-reports-export="copy"><i data-lucide="copy"></i>Copy summary</button></li>
             </ul></span>
-          <button type="button" class="atlas-btn atlas-btn--ghost" data-reports-ask>${window.AtlasBot ? window.AtlasBot.html({ size: 18 }) : '<i data-lucide="sparkles"></i>'}Ask Atlas</button>
+          <button type="button" class="atlas-btn atlas-btn--ghost" data-reports-ask>${window.AtlasBot ? window.AtlasBot.html({ size: 18 }) : '<i data-lucide="sparkles"></i>'}Ask Alcedo</button>
         </div>
       </header>`;
   }
@@ -340,7 +340,7 @@
     const charts = `<section class="atlas-section" aria-labelledby="reports-money"><div class="atlas-section__head"><h2 class="atlas-section__title" id="reports-money">Money</h2></div>
         <div class="reports-chart-grid">${suppliersChart}
           <div class="atlas-card atlas-card--pad reports-facts"><ul class="atlas-list">
-            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Sales</p><p class="atlas-row__meta">${salesSource?.status === 'connected' ? 'Connected' : 'Not connected — no point-of-sale system sends sales to Atlas, so revenue and realised margin aren\'t shown.'}</p></div></li>
+            <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Sales</p><p class="atlas-row__meta">${salesSource?.status === 'connected' ? 'Connected' : 'Not connected — no point-of-sale system sends sales to Alcedo, so revenue and realised margin aren\'t shown.'}</p></div></li>
             <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Suggested order</p><p class="atlas-row__meta">${incomplete ? 'Unknown — stock figures are incomplete' : exposure && exposure.items ? `${exposure.items} ${noun(exposure.items, 'item', 'items')} below par · about ${money(exposure.estimate)}${exposure.uncosted ? ` plus ${exposure.uncosted} without a cost` : ''}` : 'Nothing below par that isn\'t already ordered'}</p></div><div class="atlas-row__end"><a class="atlas-btn atlas-btn--ghost atlas-btn--sm" href="#purchasing">Purchasing</a></div></li>
             <li class="atlas-row atlas-row--compact"><div class="atlas-row__body"><p class="atlas-row__title">Average cost per serve</p><p class="atlas-row__meta">${costing && costing.averageCostPerServe !== null ? `${money(costing.averageCostPerServe)} across ${costing.complete} fully costed ${noun(costing.complete, 'recipe', 'recipes')}` : 'Needs recipes with every ingredient costed'}</p></div></li>
           </ul></div>
@@ -471,7 +471,7 @@
       if (!count) chart = notEnough('No waste recorded in this period.');
     } else if (section === 'labour') {
       figures = `<div class="atlas-stats reports-stats">${statMarkup({ label: 'Shifts', value: escapeHtml(formatNumber(summary.shift_count)) })}${statMarkup({ label: 'Scheduled hours', value: escapeHtml(formatNumber(summary.scheduled_hours, 1)), unit: 'h' })}${statMarkup({ label: 'Not published', value: escapeHtml(formatNumber(summary.unpublished_shift_entries)), unit: noun(summary.unpublished_shift_entries, 'shift', 'shifts') })}</div>`;
-      chart = '<p class="reports-muted">Scheduled hours only. Labour cost needs pay rates, which Atlas doesn\'t store.</p>';
+      chart = '<p class="reports-muted">Scheduled hours only. Labour cost needs pay rates, which Alcedo doesn\'t store.</p>';
     }
     return `${figures}<section class="atlas-section"><div class="atlas-section__head"><h2 class="atlas-section__title">${escapeHtml(TABS.find(([key]) => key === section)?.[1] || '')} detail</h2></div>${chart}${tableMarkup(section)}</section>`;
   }
@@ -634,7 +634,7 @@
     document.addEventListener('change', handleChange);
     window.AtlasShell.onView?.('reports', { show: onShow });
     window.AtlasShell.actions?.register?.({
-      id: 'reports.ask', label: 'Ask Atlas about this report', icon: 'atlas-bot', keywords: ['ask', 'report', 'explain'],
+      id: 'reports.ask', label: 'Ask Alcedo about this report', icon: 'atlas-bot', keywords: ['ask', 'report', 'explain'],
       roles: MANAGERS, contexts: ['reports'], run: () => askAtlas()
     });
     window.AtlasShell.onDataLoaded?.(() => { if (visible() && state.activeSection === 'overview' && state.snapshot) render(); });

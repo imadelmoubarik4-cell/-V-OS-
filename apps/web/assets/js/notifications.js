@@ -35,7 +35,7 @@
 
   function unsupportedDetail() {
     const { ios, standalone } = standaloneIos();
-    if (ios && !standalone) return 'On iPhone and iPad, add Atlas to the Home Screen (Share → Add to Home Screen), open it from there, then turn notifications on.';
+    if (ios && !standalone) return 'On iPhone and iPad, add Alcedo to the Home Screen (Share → Add to Home Screen), open it from there, then turn notifications on.';
     return 'This browser does not support push notifications.';
   }
 
@@ -69,7 +69,7 @@
 
   function deliveryNote() {
     return state.deliveryEnabled === false
-      ? ' Atlas has not switched on alert delivery yet, so nothing will arrive until it does.'
+      ? ' Alcedo has not switched on alert delivery yet, so nothing will arrive until it does.'
       : '';
   }
 
@@ -92,7 +92,7 @@
   async function refresh() {
     if (!supported()) return set('unsupported', unsupportedDetail());
     if (Notification.permission === 'denied') {
-      return set('denied', 'Notifications are blocked for Atlas in this browser. Allow them in the browser’s site settings, then return here.');
+      return set('denied', 'Notifications are blocked for Alcedo in this browser. Allow them in the browser’s site settings, then return here.');
     }
     const worker = await registration();
     const subscription = await worker.pushManager.getSubscription();
@@ -100,14 +100,14 @@
     try {
       configuration = await serverConfiguration();
     } catch (error) {
-      return set(subscription ? 'unsynced' : 'pending', window.AtlasApi ? `Atlas couldn’t confirm notification status. ${window.AtlasApi.message(error, 'Check the connection and try again.')}` : 'Atlas couldn’t confirm notification status. Check the connection and try again.');
+      return set(subscription ? 'unsynced' : 'pending', window.AtlasApi ? `Alcedo couldn’t confirm notification status. ${window.AtlasApi.message(error, 'Check the connection and try again.')}` : 'Alcedo couldn’t confirm notification status. Check the connection and try again.');
     }
     if (!configuration.public_key) {
-      return set('unavailable', 'Notifications are not set up on the Atlas server yet.');
+      return set('unavailable', 'Notifications are not set up on the Alcedo server yet.');
     }
     if (!subscription) return set('pending', 'Notifications are off for this device.');
     if (!configuration.enabled) {
-      return set('unsynced', 'This device has a subscription that Atlas has not saved. Turn notifications on again to reconnect it.');
+      return set('unsynced', 'This device has a subscription that Alcedo has not saved. Turn notifications on again to reconnect it.');
     }
     return set('enabled', `This device is subscribed.${deliveryNote()}`);
   }
@@ -123,11 +123,11 @@
         : await Notification.requestPermission();
       if (permission !== 'granted') {
         return permission === 'denied'
-          ? set('denied', 'Notifications are blocked for Atlas in this browser. Allow them in the browser’s site settings, then return here.')
+          ? set('denied', 'Notifications are blocked for Alcedo in this browser. Allow them in the browser’s site settings, then return here.')
           : set('pending', 'Permission was not granted. Notifications stay off.');
       }
       const configuration = await serverConfiguration();
-      if (!configuration.public_key) return set('unavailable', 'Notifications are not set up on the Atlas server yet.');
+      if (!configuration.public_key) return set('unavailable', 'Notifications are not set up on the Alcedo server yet.');
       const worker = await registration();
       const existing = await worker.pushManager.getSubscription();
       const subscription = existing || await worker.pushManager.subscribe({
@@ -159,7 +159,7 @@
         await api('unsubscribe', { endpoint: endpointUrl });
       } catch (error) {
         set('pending', 'Notifications are off for this device.');
-        const text = 'This device is unsubscribed, but Atlas couldn’t update the server. Try again when you’re online.';
+        const text = 'This device is unsubscribed, but Alcedo couldn’t update the server. Try again when you’re online.';
         throw window.AtlasApi ? window.AtlasApi.fixed(text) : new Error(text);
       }
     }

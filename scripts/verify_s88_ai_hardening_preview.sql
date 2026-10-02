@@ -102,10 +102,12 @@ begin
 
   -- Settings: new quota fields
   r := public.atlas_ai_settings_get(bar, 'bartender');
+  -- S100 set the VÁ/Alcedo pilot baseline on the singleton settings row, so the live
+  -- "safe defaults" are now the tighter pilot caps (voice 5/15, uploads 20/50 MiB).
   insert into s88_hardening values ('settings expose voice and upload quotas with safe defaults',
-    (r->>'voice_sessions_per_day')::int = 20 and (r->>'voice_minutes_per_day')::int = 60
-    and (r->>'max_concurrent_voice_sessions')::int = 1 and (r->>'upload_bytes_per_day')::bigint = 262144000
-    and (r->>'upload_files_per_day')::int = 100, r::text);
+    (r->>'voice_sessions_per_day')::int = 5 and (r->>'voice_minutes_per_day')::int = 15
+    and (r->>'max_concurrent_voice_sessions')::int = 1 and (r->>'upload_bytes_per_day')::bigint = 52428800
+    and (r->>'upload_files_per_day')::int = 20, r::text);
   insert into s88_hardening values ('quota settings are validated and manager-only',
     public.s88h_expect(format('select public.atlas_ai_settings_set(%L,%L,%L)', mgr, 'manager', '{"max_concurrent_voice_sessions":0}')) like '22023%'
     and public.s88h_expect(format('select public.atlas_ai_settings_set(%L,%L,%L)', mgr, 'manager', '{"upload_bytes_per_day":1}')) like '22023%'

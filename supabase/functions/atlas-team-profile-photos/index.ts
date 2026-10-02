@@ -69,7 +69,10 @@ function profileLabel(profile: Partial<AtlasProfile> | null | undefined): string
 }
 
 function isManager(context: AtlasContext): boolean {
-  return MANAGER_ROLES.has(context.profile.role);
+  // S99: an inactive caller (an invitee uploading their own photo mid-onboarding,
+  // resolved with allowInactive) is never a manager, so requireEditableTarget
+  // keeps them to their own profile only.
+  return context.profile.active === true && MANAGER_ROLES.has(context.profile.role);
 }
 
 function isUuid(value: unknown): value is string {
@@ -114,9 +117,13 @@ function productionPublishableKey(): string {
   return authConfig(Deno.env).publishableKey;
 }
 
-async function requireActiveProfile(request: Request): Promise<AtlasContext> {
+async function requireActiveProfile(request: Request, options: { allowInactive?: boolean } = {}): Promise<AtlasContext> {
+  // S99: photo upload accepts an inactive (mid-onboarding) caller so an invitee
+  // can add their required profile photo before activation. isManager() returns
+  // false for such a caller, so requireEditableTarget keeps them self-only.
   const actor = await resolveActor(request, Deno.env, fetch, {
     inactiveMessage: "This Atlas profile is inactive. Team access has been removed.",
+    allowInactive: options.allowInactive === true,
   });
   return { token: actor.token, user: { id: actor.userId }, profile: actor.profile as AtlasProfile };
 }
@@ -421,9 +428,11 @@ Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
 
   try {
-    const context = await requireActiveProfile(request);
     const url = new URL(request.url);
     const action = url.searchParams.get("action") || "snapshot";
+    // S99: only the self-scoped upload accepts an inactive onboarding caller.
+    const allowInactive = request.method === "POST" && action === "upload";
+    const context = await requireActiveProfile(request, { allowInactive });
 
     if (request.method === "GET") {
       if (action !== "snapshot") throw new ApiError(404, "Unknown profile-photo action.");

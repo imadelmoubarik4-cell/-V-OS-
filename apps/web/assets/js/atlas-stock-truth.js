@@ -208,7 +208,7 @@
 
   // A usable inventory cost is a finite cost_price above zero. Null, zero,
   // negative or non-numeric cost is "missing cost" everywhere (recipe cost,
-  // stock value, order estimates, Reports, Atlas AI).
+  // stock value, order estimates, Reports, Alcedo AI).
   function hasCost(item) {
     const cost = numberOrNull(item?.cost_price);
     return cost !== null && cost > 0;

@@ -86,7 +86,7 @@ test('Atlas AI on: questions offer "Ask Atlas" first and render no deterministic
       const result = await ask(page, question);
       assert.equal(result.answerState, 'ai', question);
       assert.equal(result.answer, null, `${question}: no inline regex answer while Atlas AI is on`);
-      assert.match(result.options[0], new RegExp(`^Ask Atlas “${question.replace('?', '\\?')}”`), `${question}: Ask Atlas is the first row`);
+      assert.match(result.options[0], new RegExp(`^Ask Alcedo “${question.replace('?', '\\?')}”`), `${question}: Ask Alcedo is the first row`);
     }
     assert.equal(calls.filter((action) => action === 'settings').length, 1, 'the palette checks Atlas AI once per session');
     // Record search stays on.
@@ -106,10 +106,10 @@ test('Atlas AI off: the deterministic answer is the labelled offline fallback', 
   try {
     const result = await ask(page, 'What is low in stock?');
     assert.equal(result.answerState, 'answered');
-    assert.match(result.answer, /^Quick answer · Atlas AI is off/);
+    assert.match(result.answer, /^Quick answer · Alcedo AI is off/);
     assert.match(result.answer, /1 item is below par/);
     assert.equal(await page.$eval('.atlas-palette__answer', (node) => node.dataset.answerSource), 'offline');
-    assert.match(result.options[0], /^Ask Atlas/, 'Ask Atlas is still offered');
+    assert.match(result.options[0], /^Ask Alcedo/, 'Ask Alcedo is still offered');
   } finally { await close(); }
 });
 
@@ -161,7 +161,7 @@ test('"How many Angelo Pinot Grigio bottles remain?" answers from verified stock
   const { page, close } = await launchAtlas({ fixtures: fixtures() });
   try {
     assert.match((await ask(page, 'How many Angelo Pinot Grigio bottles remain?')).answer, /Angelo Pinot Grigio 750ml: 4 bottles · below par/);
-    assert.match((await ask(page, 'How many agave syrup do we have?')).answer, /no verified count, so Atlas does not know/);
+    assert.match((await ask(page, 'How many agave syrup do we have?')).answer, /no verified count, so Alcedo does not know/);
   } finally { await close(); }
 });
 
@@ -169,7 +169,7 @@ test('"Can we make Margarita?" uses the Recipes readiness', { skip }, async () =
   const { page, close } = await launchAtlas({ fixtures: fixtures() });
   try {
     const { answer } = await ask(page, 'Can we make Margarita?');
-    assert.match(answer, /Atlas cannot confirm Margarita: Olmeca Blanco Tequila 1L — inventory unit does not match recipe unit/, 'names the real blocker, not the smallest known ingredient');
+    assert.match(answer, /Alcedo cannot confirm Margarita: Olmeca Blanco Tequila 1L — inventory unit does not match recipe unit/, 'names the real blocker, not the smallest known ingredient');
     const status = await page.evaluate(() => window.AtlasRecipes.recipeStatus(window.AtlasData.recipes().find((r) => r.id === 'margarita')).key);
     assert.equal(status, 'incomplete', 'the answer matches the Recipes page');
     assert.match((await ask(page, 'Can we make Mojito?')).answer, /no recipe matching/);

@@ -513,7 +513,7 @@ export function learnedEdges(index, recipes) {
       evidence_type: "atlas_learned",
       provider: "atlas_recipes",
       confidence: round(Math.min(0.9, 0.5 + 0.1 * count), 2),
-      explanation: `Used together in ${count} Atlas recipe${count === 1 ? "" : "s"}: ${names.slice(0, 4).join(", ")}${names.length > 4 ? "…" : ""}.`,
+      explanation: `Used together in ${count} Alcedo recipe${count === 1 ? "" : "s"}: ${names.slice(0, 4).join(", ")}${names.length > 4 ? "…" : ""}.`,
       recipes: used,
     };
   });
