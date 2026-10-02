@@ -69,5 +69,7 @@ jobs:
         run: bash scripts/verify_s96_previews.sh
       - name: Run S98 Training acceptance (private bucket, sealed tables/RPCs, immutable versions, version-specific completion, fail-closed)
         run: bash scripts/verify_s98_training.sh
+      - name: Run Bookings acceptance (sealed tables/RPCs, atomic check-and-reserve, no double-book, requested-vs-confirmed, cancel releases, fail-closed)
+        run: bash scripts/verify_s99_bookings.sh
       - name: Run S100 security & cost hardening acceptance (service-role-only AI cost/throttle RPCs, append-only block trail, sealed manager-only recipe price audit)
         run: bash scripts/verify_s100_security_cost.sh
