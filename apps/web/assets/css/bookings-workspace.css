@@ -37,6 +37,27 @@
 .bk-area__title { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
 .bk-area__tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--s-3); }
 
+/* VÁ Bar: confirmed 16-stool perimeter. 8 across the top, 4 down the right,
+ * 4 back up the left, with an intentionally open centre. */
+.bk-floor-grid { grid-template-columns: repeat(8, minmax(88px, 1fr)); grid-template-rows: repeat(5, minmax(72px, auto)); }
+.bk-floor-grid .bk-table { min-width: 0; min-height: 72px; }
+.bk-floor-grid [data-bookings-position="1"] { grid-column: 1; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="2"] { grid-column: 2; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="3"] { grid-column: 3; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="4"] { grid-column: 4; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="5"] { grid-column: 5; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="6"] { grid-column: 6; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="7"] { grid-column: 7; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="8"] { grid-column: 8; grid-row: 1; }
+.bk-floor-grid [data-bookings-position="9"] { grid-column: 8; grid-row: 2; }
+.bk-floor-grid [data-bookings-position="10"] { grid-column: 8; grid-row: 3; }
+.bk-floor-grid [data-bookings-position="11"] { grid-column: 8; grid-row: 4; }
+.bk-floor-grid [data-bookings-position="12"] { grid-column: 8; grid-row: 5; }
+.bk-floor-grid [data-bookings-position="13"] { grid-column: 1; grid-row: 5; }
+.bk-floor-grid [data-bookings-position="14"] { grid-column: 1; grid-row: 4; }
+.bk-floor-grid [data-bookings-position="15"] { grid-column: 1; grid-row: 3; }
+.bk-floor-grid [data-bookings-position="16"] { grid-column: 1; grid-row: 2; }
+
 .bk-table { display: grid; align-content: start; gap: 2px; min-height: 96px; padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); text-align: left; cursor: pointer; color: var(--text); }
 .bk-table:hover { background: var(--bg-hover); }
 .bk-table:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
@@ -93,6 +114,8 @@
   .bk-date { max-width: none; flex: 1 1 100%; }
   .bk-viewtoggle { margin-left: 0; width: 100%; }
   .bk-area__tables { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .bk-floor-grid { grid-template-columns: repeat(4, minmax(120px, 1fr)); grid-template-rows: none; overflow-x: auto; }
+  .bk-floor-grid .bk-table { grid-column: auto; grid-row: auto; }
   .bk-table { min-height: var(--touch); }
   .bk-row__btn { min-height: var(--touch); }
   .bk-detail__facts > div { grid-template-columns: 1fr; gap: 2px; }
