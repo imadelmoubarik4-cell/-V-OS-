@@ -308,6 +308,15 @@ unless a manager later changes an individual seat manually.
 
 **Bar floor configuration is now fully confirmed.**
 
+**Owner booking-rule confirmations — 2 Oct 2026:**
+- **Maximum booking duration: 2 hours (120 minutes).**
+- **Booking interval: 15 minutes.**
+- **Latest bookable start time: 20:30 local VÁ time.**
+- **Guest self-cancellation cutoff: 15 minutes before the booking start.**
+  After that cutoff, cancellation must be handled by staff rather than the
+  guest self-service flow.
+
+
 A test‑data **floor‑plan Designer prototype** on the Alcedo brand system (rooms,
 colour‑coded tables by section, unique numbers, seat capacity, status indicators,
 block‑online, drag‑to‑move, plus a list alternative) has been built for review,
