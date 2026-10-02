@@ -280,12 +280,17 @@ The **Bar** remains the only seat-level area, using the confirmed Bar 1–Bar 16
 clockwise layout. Non-Bar locations should therefore be represented as
 location-level booking resources rather than invented tables.
 
+**Owner confirmation — 2 Oct 2026: shared-capacity location bookings are allowed.**
+**Wine cellar, Ocean and Long table may each hold multiple bookings at the same
+time**, provided the combined guest count for overlapping bookings in that
+location does **not exceed 30**. These are therefore pooled-capacity booking
+locations, not exclusive table allocations. Their configured minimum is **0**
+(no minimum) and maximum/capacity is **30**; an actual reservation still records
+a positive guest count.
+
 **Still to confirm before real production activation:**
-1. Whether **Wine cellar / Ocean / Long table** allow more than one booking at the
-   same time (subject to total guest capacity), or whether a single booking blocks
-   that location/time.
-2. **Table combinations** for Bar 1–Bar 16, if adjacent stools may be grouped.
-3. Per-Bar-seat **priority** meaning and the **Block online** defaults.
+1. **Table combinations** for Bar 1–Bar 16, if adjacent stools may be grouped.
+2. Per-Bar-seat **priority** meaning and the **Block online** defaults.
 
 A test‑data **floor‑plan Designer prototype** on the Alcedo brand system (rooms,
 colour‑coded tables by section, unique numbers, seat capacity, status indicators,
