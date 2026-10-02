@@ -142,7 +142,9 @@ test('the sign-in screen shows the static ALCEDO lockup only — stale Atlas mot
   assert.match(lockup[0], /alt="Alcedo"/, 'the lockup is labelled Alcedo');
   for (const page of ['invitation.html', 'recovery.html', 'menu.html']) assert.doesNotMatch(readFileSync(path.join(WEB, page), 'utf8'), /<video|brand\/motion/, page);
   const worker = readFileSync(path.join(WEB, 'service-worker.js'), 'utf8');
-  assert.doesNotMatch(worker, /addEventListener\('fetch'|caches\.|brand\/motion/);
+  // The PWA service worker caches the app shell for offline use, but must never
+  // cache the removed brand/motion clip.
+  assert.doesNotMatch(worker, /brand\/motion/);
 });
 
 // ---------- tokens and contrast ----------
