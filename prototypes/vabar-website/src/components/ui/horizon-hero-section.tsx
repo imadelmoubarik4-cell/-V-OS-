@@ -31,6 +31,8 @@ export type HeroProps = {
   scrollLabel?: string;
   palette?: HeroPalette;
   onMenuClick?: () => void;
+  /** Optional fuller page heading for screen readers and search engines (the big title stays visual). */
+  srTitle?: string;
   /** Optional logo shown instead of the landing title text (the title stays as its accessible name). */
   logo?: ReactNode;
   /** Rendered under the landing subtitle (e.g. call-to-action buttons). */
@@ -77,6 +79,7 @@ export const Component = ({
   scrollLabel = "SCROLL",
   palette = DEFAULT_PALETTE,
   onMenuClick,
+  srTitle,
   logo,
   children,
 }: HeroProps) => {
@@ -651,8 +654,9 @@ export const Component = ({
             ref={titleRef}
             className="hero-title"
             style={{ visibility: "hidden", "--chars": first.title.length } as CSSProperties}
-            aria-label={first.title}
+            aria-label={srTitle ? undefined : first.title}
           >
+            {srTitle ? <span className="hero-sr-only">{srTitle}</span> : null}
             {logo ? <span className="hero-logo">{logo}</span> : splitTitle(first.title)}
           </h1>
 

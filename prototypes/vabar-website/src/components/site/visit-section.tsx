@@ -46,13 +46,18 @@ export function isOpen(hours: Hours, now = reykjavikNow()) {
 export function VisitSection({ t }: { t: Copy }) {
   const hours = site.hours;
   const [now, setNow] = useState(reykjavikNow);
+  // The open/closed badge and today's row depend on the visitor's clock, so they appear only
+  // in the browser (not in the prerendered HTML).
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    setNow(reykjavikNow());
     const id = window.setInterval(() => setNow(reykjavikNow()), 60_000);
     return () => window.clearInterval(id);
   }, []);
 
-  const open = hours ? isOpen(hours, now) : null;
+  const open = hours && mounted ? isOpen(hours, now) : null;
   // Monday first
   const order = [1, 2, 3, 4, 5, 6, 0];
 
@@ -72,7 +77,13 @@ export function VisitSection({ t }: { t: Copy }) {
                 <MapPin className="size-4 text-copper transition-transform duration-500 group-hover:-translate-y-1 group-hover:scale-125" />
                 {t.visit.where}
               </div>
-              <p className="mt-4 font-display text-3xl font-semibold">{site.area}</p>
+              <address className="mt-4 not-italic">
+                <p className="font-display text-3xl font-semibold">{site.name}</p>
+                <p className="mt-2 text-lg">{site.venue}</p>
+                <p className="text-lg text-muted-foreground">
+                  {site.street}, {site.postcode} {site.city}
+                </p>
+              </address>
               <div className="mt-8 flex flex-wrap gap-3">
                 <FlowButton href={site.mapsUrl} target="_blank" rel="noopener" text={t.visit.directions} tone="light" />
                 <FlowButton href={site.menuUrl} text={t.visit.menu} tone="light" />
@@ -82,7 +93,7 @@ export function VisitSection({ t }: { t: Copy }) {
 
           <Reveal delay={200}>
             <div className="group h-full rounded-3xl border border-foreground/10 bg-card p-8 transition-all duration-500 hover:-translate-y-1 hover:border-copper/40 hover:shadow-[0_20px_60px_-20px_rgba(161,92,63,0.35)] motion-reduce:transform-none">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3 text-sm uppercase tracking-[0.2em] text-foreground/60">
                   <Clock className="size-4 text-copper transition-transform duration-700 group-hover:rotate-[360deg]" />
                   {t.visit.hours}
@@ -90,7 +101,7 @@ export function VisitSection({ t }: { t: Copy }) {
                 {open !== null ? (
                   <span
                     className={cn(
-                      "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold",
+                      "inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold",
                       open ? "bg-copper/15 text-copper" : "bg-foreground/10 text-foreground/70",
                     )}
                   >
@@ -109,7 +120,7 @@ export function VisitSection({ t }: { t: Copy }) {
                         key={d}
                         className={cn(
                           "flex justify-between py-2.5 text-sm",
-                          d === now.day && "font-semibold text-copper",
+                          mounted && d === now.day && "font-semibold text-copper",
                         )}
                       >
                         <span className="capitalize">{t.visit.days[d]}</span>

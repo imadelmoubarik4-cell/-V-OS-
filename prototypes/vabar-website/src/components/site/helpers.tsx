@@ -32,7 +32,7 @@ export function Reveal({ children, className, delay = 0 }: { children: ReactNode
     <div
       ref={ref}
       className={cn(
-        "transition-all duration-[900ms] ease-[cubic-bezier(0.19,1,0.22,1)] motion-reduce:transition-none",
+        "reveal transition-all duration-[900ms] ease-[cubic-bezier(0.19,1,0.22,1)] motion-reduce:transition-none",
         shown ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0",
         className,
       )}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Component as HorizonHero } from "@/components/ui/horizon-hero-section";
 import { FlowButton } from "@/components/ui/flow-button";
 import { SiteHeader } from "@/components/site/site-header";
+import { MenuSection } from "@/components/site/menu-section";
 import { ShakeSection } from "@/components/site/shake-section";
 import { SkalSection } from "@/components/site/skal-section";
 import { VisitSection } from "@/components/site/visit-section";
@@ -52,6 +53,7 @@ export default function App() {
       <main id="top" inert={navOpen || undefined}>
         <HorizonHero
           slides={t.slides}
+          srTitle={t.heroHeading}
           menuLabel={t.heroMenu}
           scrollLabel={t.heroScroll}
           palette={heroPalette}
@@ -63,6 +65,7 @@ export default function App() {
 
         <div id="main" className="relative z-10 bg-background">
           <Marquee words={t.marquee} />
+          <MenuSection t={t} lang={lang} />
           <ShakeSection t={t} lang={lang} />
           <SkalSection t={t} />
           <VisitSection t={t} />
@@ -74,7 +77,10 @@ export default function App() {
           <div className="flex flex-col justify-between gap-6 text-sm text-foreground/60 sm:flex-row sm:items-end">
             <div>
               <img src={logoUrl} alt={site.name} width={64} height={43} className="h-auto w-[64px]" />
-              <p className="mt-4">{site.area}</p>
+              <p className="mt-4 text-foreground/80">
+                {site.name} · {site.venue} · {site.street}, {site.postcode} {site.city}
+              </p>
+              <p className="mt-1 tabular-nums">{t.footer.hours}</p>
               <p className="mt-4 text-xs">© 2026 {site.company}</p>
             </div>
             <div className="flex flex-wrap items-center gap-4">
@@ -84,7 +90,6 @@ export default function App() {
               <FlowButton href="#top" text={t.footer.top} tone="light" />
             </div>
           </div>
-          <p className="text-center text-[11px] text-foreground/40">{t.banner}</p>
         </div>
       </footer>
     </>

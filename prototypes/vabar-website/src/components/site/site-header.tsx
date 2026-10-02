@@ -36,7 +36,8 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
   }, [navOpen, setNavOpen]);
 
   const links = [
-    { href: "#shake", label: t.nav.drinks },
+    { href: "#drinks", label: t.nav.drinks },
+    { href: "#shake", label: t.nav.shake },
     { href: "#skal", label: t.nav.skal },
     { href: "#visit", label: t.nav.visit },
   ];

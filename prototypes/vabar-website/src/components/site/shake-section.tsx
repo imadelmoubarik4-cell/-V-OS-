@@ -152,7 +152,14 @@ export function ShakeSection({ t, lang }: { t: Copy; lang: Lang }) {
                 key={drink.id + progress}
                 className="animate-flip-in rounded-3xl border border-foreground/10 bg-card/80 p-6 shadow-2xl backdrop-blur"
               >
-                <p className="text-xs uppercase tracking-[0.2em] text-copper">{t.shake.result}</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs uppercase tracking-[0.2em] text-copper">{t.shake.result}</p>
+                  {drink.signature ? (
+                    <span className="rounded-full bg-copper px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-charcoal">
+                      ★ {t.shake.signature}
+                    </span>
+                  ) : null}
+                </div>
                 <p className="mt-2 flex items-center gap-3 font-display text-4xl font-semibold">
                   <span aria-hidden="true" className="text-3xl">
                     {drink.emoji}

@@ -151,6 +151,16 @@
   filter: drop-shadow(0 6px 30px rgba(0, 0, 0, 0.45));
 }
 
+.hero-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .title-char {
   display: inline-block;
   will-change: transform;

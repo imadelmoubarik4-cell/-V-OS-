@@ -2,7 +2,7 @@
 
 A redesign prototype for **vábar.is** (`https://www.xn--vbar-5na.is/`), the public site of VÁ at Hafnartorg, Reykjavík. It is a separate project: nothing in `apps/`, `packages/` or the root `package.json` changes.
 
-- **Status:** prototype. `noindex` is set in `index.html`, and the footer says that drinks, hours and some links are placeholders until confirmed (see *Before launch*).
+- **Status:** ready for review. Hours, address, menu link and drinks are real; the page is indexable and SEO-ready (see *SEO*). The live vábar.is is still the Wix site until the domain is moved (see *Hosting*).
 - **Stack:** Vite, React 19, TypeScript, Tailwind CSS v4 and the shadcn/ui project structure (`components.json`, `@/` alias, `src/components/ui`, `src/lib/utils.ts`).
 - **Brand:** follows the owner's brand manual (`MANUAL_DE_MARCA.pdf`, supplied 2 October 2026, not committed). See *Brand* below.
 - **No third-party requests:** fonts (Quicksand and IBM Plex Sans) are self-hosted via `@fontsource`, and three.js and GSAP are bundled.
@@ -100,51 +100,82 @@ It is used for every call-to-action button on the page.
 
 ## The page
 
-`src/App.tsx` puts it together; all copy is in `src/content.ts` (English and Icelandic).
+`src/App.tsx` puts it together; all copy and venue facts are in `src/content.ts` (English and Icelandic).
 
-- **Header:** the solo logo (it wobbles on hover), section links, an animated **EN / IS** switch (remembered per device, and the default follows the browser language), and a Menu FlowButton. On phones there is a full-screen navigation overlay, which the hero's side menu also opens. It closes with Escape.
+- **Header:** the solo logo (it wobbles on hover), section links (Drinks, Shake, Skál, Visit), an animated **EN / IS** switch (remembered per device; the default follows the browser language) and a Menu button. On phones a full-screen navigation overlay opens instead; the hero's side menu opens it too, and Escape closes it.
 - **Hero:** the horizon scene in the brand colours. Three slides:
-  - **SKÁL**, with "Cocktails, tapas and wines by the old harbour in Reykjavík" and the "See the menu" and "Find us" buttons;
-  - **TAPAS**;
-  - **HAFNARTORG**.
-- **Marquee:** a tilted terracotta band, "Cocktails ✦ Tapas ✦ Wines ✦ Skál ✦ …" (static with reduced motion).
-- **Shake:** choose moods (Fresh, Sour, Bitter, Sweet, Strong, Coffee, or "Surprise me"), then press the cocktail shaker.
-  - The shaker wobbles while a progress ring fills, then bubbles pop and a cocktail card flips in, with a link to the menu.
-  - It never suggests the same drink twice in a row.
+  - **SKÁL**: "Handcrafted cocktails, curated wines and Mediterranean-inspired tapas", with the "See the menu" and "Find us" buttons;
+  - **COFFEE** (*KAFFI*): "Coffee from 11:30, cocktails until late";
+  - **HAFNARTORG**: "Inside Hafnartorg Gallery Food Hall, Geirsgata 17, by the old harbour".
+- **Marquee:** a tilted terracotta band, "Cocktails ✦ Coffee ✦ Tapas ✦ Wines ✦ Skál ✦ Hafnartorg" (static with reduced motion).
+- **On the menu** (`#drinks`): four tabs (Coffee, Cocktails, Spritz & zero, Wine & beer), each with real item names and small tags (Signature, Frozen, Hot, 0.0%, Draught, House). There are no prices; "Full menu & prices" goes to the live menu. The tabs follow the WAI-ARIA pattern, so arrow keys move between them.
+- **Shake:** choose moods (Fresh, Sour, Bitter, Sweet, Strong, Coffee, Frozen, Warm, Alcohol-free, or "Surprise me"), then press the cocktail shaker. It suggests one of 20 VÁ drinks, with VÁ's own signatures marked, and never the same drink twice in a row.
 - **Skál:** a "Skál!" button that clinks, bursts sparkles and counts glasses raised (stored on this device only), with levels that make the glow behind it brighter.
-- **Visit:** Hafnartorg, directions, menu, and an hours card. Once hours are filled in, it shows an **Open now / Closed now** badge computed in Reykjavík time, including hours past midnight.
-- **Footer:** the company line, Staff login and Back to top.
-- **Throughout:**
-  - sections fade up as they scroll in;
-  - a soft terracotta glow follows the pointer (fine pointers only);
-  - there is a skip link.
-  - With reduced motion, everything still works, without movement.
+- **Visit:** the address card (VÁ BAR · Hafnartorg Gallery Food Hall · Geirsgata 17, 101 Reykjavík) with directions and menu buttons, and the opening-hours table with today highlighted and an **Open now / Closed now** badge in Reykjavík time. Closing at 00:00 counts as midnight.
+- **Footer:** address, hours, the company line, Staff login and Back to top.
+- **Throughout:** sections fade up as they scroll in, a soft terracotta glow follows the pointer (fine pointers only), and there is a skip link. With reduced motion everything still works, without movement.
+
+## Where the facts come from
+
+| Fact | Source |
+|---|---|
+| Opening hours: Sun–Thu 11:30–22:00, Fri–Sat 11:30–00:00 | The owner, 2 October 2026 |
+| Address: VÁ BAR, Hafnartorg Gallery Food Hall, Geirsgata 17, 101 Reykjavík | The owner, 2 October 2026 |
+| Menu link `https://app.alcedo.is/menu.html` | The owner, 2 October 2026 |
+| Drink names and ingredients | VÁ's recipes in Atlas: `data/flavor/recipes-snapshot.json` (exported 27 September 2026; names and ingredient links only, no prices or quantities) |
+| "Handcrafted cocktails, curated wines and Mediterranean-inspired tapas" | The business description on the current Wix site (VÁ BAR Reykjavik) |
+| Logo, colours | The brand manual |
+| Company line | `prototypes/alcedo-website` |
+
+When the menu changes, update `drinks` and `menuTabs` in `src/content.ts`. The full menu, with prices, always comes from the live menu page.
+
+## SEO
+
+Built around the search terms VÁ BAR is found with on Google (bar, coffee, restaurants, food hall, cafe, cocktail bar, wine bar, tapas, Reykjavík, "vá bar"):
+
+- **Prerendered HTML:** `npm run build` renders the page on the server (`src/entry-server.tsx`) and writes it into `dist/index.html` (`scripts/prerender.mjs`). Crawlers and link previews therefore get the full text (the menu, address and hours) without running JavaScript. In the browser, React then takes over.
+- **Structured data:** a JSON-LD block, generated from `src/content.ts`, describes a `BarOrPub` + `CafeOrCoffeeShop` with:
+  - its address and the containing place (Hafnartorg Gallery Food Hall);
+  - opening hours (Friday and Saturday close as `23:59`, which Google reads as midnight);
+  - the menu link, cuisine (cocktails, wine, tapas, Mediterranean, coffee) and the operating company.
+- **Head:**
+  - **Title:** "VÁ BAR · Cocktail & wine bar, coffee and tapas at Hafnartorg, Reykjavík".
+  - **Meta description:** names the food hall, the address and "open daily from 11:30".
+  - **Also:** the canonical URL `https://www.xn--vbar-5na.is/` and Open Graph tags.
+- **Headings and copy:** the page heading reads "VÁ BAR: cocktail bar, wine bar and coffee with tapas at Hafnartorg, Reykjavík" for screen readers and search engines, while the big visual title stays "SKÁL". The keywords appear in normal sentences, not as a keyword list.
+- **Crawling:** `robots.txt` allows everything and points to `sitemap.xml`. With no JavaScript, the hero text and every section are still visible.
+- **Language:** one URL, English by default in the HTML, with the EN / IS switch in the browser. Separate `/is/` pages with `hreflang` would help Icelandic searches; they can be added later.
+- **Off the site:** the Google Business Profile matters most for "bar near me" and "coffee near me". Keep its hours, address, menu link and website the same as here. Search terms in German and Spanish ("kaffee", "cafetería", "restaurantes") come from tourists' phones and are served by that profile, not by page text.
 
 ## Before launch
 
-Only these facts are confirmed: the logo, colours and "Cocktails, Tapas, Wines" (brand manual), the name VÁ, "Hafnartorg · Reykjavík" (the app's public menu page), the company line, and Staff login → `https://app.alcedo.is/`. Everything marked `[CONFIRM]` in `src/content.ts` needs the owner:
-
-1. **Opening hours:** `site.hours` is `null`, so the page says hours are coming soon. Fill in `{ 0: { open: "17:00", close: "01:00" }, … }` and the table and the Open now badge appear.
-2. **Drinks:** the Shake game uses eight classic cocktails, labelled "Classic cocktails, not the full menu". Swap in VÁ's own drinks. No prices are shown.
-3. **Menu link:** `site.menuUrl` points to the app's public menu (`apps/web/menu.html`) at `https://app.alcedo.is/menu.html`. Check that the page loads there.
-4. **Directions:** `site.mapsUrl` is a Google Maps search. Replace it with the venue's own Maps link.
-5. **Content from the current vábar.is:** the live site could not be fetched from the build environment, so nothing from it (photos, social links, phone, events) is carried over yet. Send the content to keep, and it can be added.
-6. **Icelandic copy:** have a native speaker read it.
-7. **Going live:** remove `noindex`, remove the placeholder line in the footer (`copy.*.banner`), and add a canonical link to `https://www.xn--vbar-5na.is/`.
+1. **Directions:** `site.mapsUrl` is a Google Maps search for the full address. Replace it with the Google Business Profile's own Maps link.
+2. **Icelandic copy:** have a native speaker read it.
+3. **Menu page:** check that `https://app.alcedo.is/menu.html` shows the current menu (it reads live from Atlas).
+4. **Optional:** a share image (`og:image`, 1200×630) for links on Facebook and Messenger, and a phone number if you want one on the site.
 
 ## Hosting
 
-Deploy as its own Netlify site: base directory `prototypes/vabar-website`, build command `npm run build`, publish directory `dist`. `netlify.toml` sets a strict CSP (`script-src 'self'`) and the security headers. Note that the app's CSP already allows `frame-ancestors https://xn--vbar-5na.is`.
+`https://www.xn--vbar-5na.is/` is currently a published **Wix** site ("VÁ BAR Reykjavik", Premium plan with the custom domain). To serve this redesign there:
+
+1. Create a Netlify site from this repository: base directory `prototypes/vabar-website`, build command `npm run build`, publish directory `dist`. `netlify.toml` sets a strict CSP (`script-src 'self'`) and the security headers.
+2. Check the Netlify URL, then add `www.xn--vbar-5na.is` and `xn--vbar-5na.is` as custom domains in Netlify.
+3. Point the domain's DNS at Netlify (at the DNS host, or by moving the nameservers as was done for alcedo.is). Until that switch, the Wix site stays live, and nothing here changes it.
+4. After the switch, submit `https://www.xn--vbar-5na.is/sitemap.xml` in Google Search Console.
+
+The app's CSP already allows `frame-ancestors https://xn--vbar-5na.is`.
 
 ## Checks run
 
-- `npm run build`: TypeScript and the Vite build pass.
+- `npm run build`: TypeScript, the Vite build and the prerender pass. The output contains the page text, the JSON-LD and the head tags.
 - **Headless Chromium, 1440×900 and 390×844:**
-  - no page errors or console errors;
+  - no page errors or console errors or warnings;
   - no horizontal overflow;
   - the hero renders and the slides scroll;
-  - the Shake game returns a drink;
+  - the menu tabs switch;
+  - the Shake game returns a VÁ drink (with "Coffee" chosen: VÁ Espresso Martini, then Irish Coffee);
   - the Skál counter counts;
   - the EN → IS switch sets `<html lang="is">`;
-  - the side menu opens the overlay, and Escape closes it.
-- **Performance:** three.js is split into its own chunk (about 141 kB gzipped). The app chunk is about 137 kB gzipped.
+  - the side menu opens the overlay, and Escape closes it;
+  - the hours badge read "Closed now" on Friday at 10:15 Reykjavík time, which is correct (VÁ opens at 11:30).
+- **Performance:** three.js is in its own chunk (about 141 kB gzipped). The app chunk is about 140 kB gzipped.
