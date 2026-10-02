@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Page not found — Alcedo</title>
+<title>Page not found · Síða fannst ekki — Alcedo</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="/assets/brand/favicon.ico" sizes="16x16 32x32 48x48">
 <style>
@@ -14,6 +14,9 @@ h1 { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; font-siz
 p { color: #4E5E58; margin: 0 0 24px; }
 a.btn { display: inline-block; padding: 12px 22px; border-radius: 999px; background: #E8732A; color: #10201F; font-weight: 600; text-decoration: none; }
 a.btn:focus-visible { outline: 2px solid #08495C; outline-offset: 3px; }
+a.btn + a.btn { margin-left: 8px; }
+a.btn--line { background: transparent; border: 1.5px solid #10201F; padding: 10.5px 20.5px; }
+p[lang="is"] { margin-top: -16px; }
 img { width: 96px; height: auto; }
 </style>
 </head>
@@ -22,7 +25,9 @@ img { width: 96px; height: auto; }
   <img src="/assets/mascot/alcedo-mascot-head.webp" width="256" height="256" alt="">
   <h1>This page flew off.</h1>
   <p>The page you were looking for isn’t here.</p>
+  <p lang="is">Þessi síða flaug burt. Síðan sem þú leitaðir að er ekki hér.</p>
   <a class="btn" href="/">Back to Alcedo</a>
+  <a class="btn btn--line" href="/is/" lang="is">Aftur á forsíðu</a>
 </main>
 </body>
 </html>
