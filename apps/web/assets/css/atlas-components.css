@@ -1389,6 +1389,24 @@ body.atlas-modal-open { overflow: hidden; }
 .atlas-avatar--b { background: #efe5dc; color: #6b4424; }
 .atlas-avatar--c { background: #e2efe8; color: #245a41; }
 .atlas-avatar--d { background: #ece6f2; color: #54406e; }
+
+/* Per-person colour palette: a stable --person-color token per teammate, used to
+   colour-code the Shift plan (chip accent bars, avatar rings, row markers). Twelve
+   mid-tone hues chosen to stay legible as a thin bar or a faint tint on both light
+   and dark surfaces. Hex lives here (component layer); consumers reference the
+   --person-color token only. */
+.atlas-person--0 { --person-color: #3f7fd6; }
+.atlas-person--1 { --person-color: #c25a2e; }
+.atlas-person--2 { --person-color: #2f9e6f; }
+.atlas-person--3 { --person-color: #8a5cd0; }
+.atlas-person--4 { --person-color: #b5860c; }
+.atlas-person--5 { --person-color: #1f9bb3; }
+.atlas-person--6 { --person-color: #d05f91; }
+.atlas-person--7 { --person-color: #5f8a2a; }
+.atlas-person--8 { --person-color: #cf7a2a; }
+.atlas-person--9 { --person-color: #6a6cd6; }
+.atlas-person--10 { --person-color: #2f9ea0; }
+.atlas-person--11 { --person-color: #b0503f; }
 .atlas-avatar__status {
   position: absolute;
   right: -1px;

@@ -494,13 +494,24 @@
     return `<a class="atlas-record-chip msg-link" href="${escapeHtml(linkHref(link))}" data-team-open-link="${escapeHtml(link.type)}" data-team-link-key="${escapeHtml(link.key)}">${icon(iconName)}<span>${escapeHtml(link.label || 'Linked record')}</span></a>`;
   }
 
+  // The name a reader should show: the live member label, falling back to the
+  // snapshot's own label/name, then a generic.
+  function readerName(reader) {
+    return realName(state.members.find((member) => member.id === reader.user_id)?.label)
+      || realName(reader.user_name) || realName(reader.user_label) || 'Team member';
+  }
+
+  // WhatsApp-style receipt on your own messages: one grey tick while only sent,
+  // a coloured double tick once someone has read it. The double tick is a button
+  // that opens the "Read by" list — a tooltip alone is invisible on the bar's
+  // touch screens, so tapping is how you see who read it.
   function readStatusMarkup(message) {
     if (!isOwn(message) || message.message_type !== 'user') return '';
     const readers = Array.isArray(message.read_by) ? message.read_by : [];
     const count = Number(message.read_by_count || readers.length || 0);
-    if (!count) return '<span class="msg-item__read">Sent</span>';
-    const names = readers.map((reader) => realName(state.members.find((member) => member.id === reader.user_id)?.label) || realName(reader.user_name) || realName(reader.user_label) || 'Team member').join(', ');
-    return `<span class="msg-item__read" ${names ? `title="Read by ${escapeHtml(names)}"` : ''}>${icon('check-check')}Read by ${count}</span>`;
+    if (!count) return `<span class="msg-item__read msg-item__read--sent">${icon('check')}Sent</span>`;
+    const names = readers.map(readerName).join(', ');
+    return `<button type="button" class="msg-item__read msg-item__read--read" data-msg-readers="${escapeHtml(message.id)}" ${names ? `title="Read by ${escapeHtml(names)}"` : ''} aria-label="Read by ${count}. See who read this.">${icon('check-check')}Read by ${count}</button>`;
   }
 
   function messageMarkup(message, previous) {
@@ -1051,6 +1062,30 @@
   }
 
   // Phones: Edit and Delete sit behind a "…" button in a small action sheet.
+  // "Read by" sheet: who has read this message and when (newest reads last, the
+  // order the snapshot returns). Opened by tapping the double-tick receipt.
+  function openReadersSheet(messageId) {
+    const message = messages().find((candidate) => candidate.id === messageId);
+    if (!message) return;
+    const readers = Array.isArray(message.read_by) ? message.read_by : [];
+    const rows = readers.map((reader) => {
+      const name = readerName(reader);
+      const when = reader.read_at ? formatStamp(reader.read_at) : '';
+      return `<li class="msg-readers__row">
+        <span class="msg-readers__who">${avatarMarkup({ id: reader.user_id, name })}<span class="msg-readers__name">${escapeHtml(name)}${reader.user_role ? `<span class="msg-readers__role">${escapeHtml(roleLabel(reader.user_role))}</span>` : ''}</span></span>
+        ${when ? `<time class="msg-readers__when" datetime="${escapeHtml(isoOf(reader.read_at))}">${escapeHtml(when)}</time>` : ''}
+      </li>`;
+    }).join('');
+    openLayer({
+      id: 'msg-readers',
+      panel: `<section class="atlas-sheet msg-readers" data-modal-panel aria-labelledby="msg-readers-title">
+        <span class="atlas-sheet__grabber" aria-hidden="true"></span>
+        <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="msg-readers-title">Read by ${readers.length}</h2><p class="atlas-sheet__desc">${escapeHtml(String(message.body || '').slice(0, 80))}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
+        <ul class="atlas-sheet__body msg-readers__list">${rows || '<li class="msg-readers__empty">No one has read this yet.</li>'}</ul>
+      </section>`
+    });
+  }
+
   function openMessageActions(messageId) {
     const message = messages().find((candidate) => candidate.id === messageId);
     if (!message) return;
@@ -1196,6 +1231,9 @@
       return;
     }
     if (target.closest('[data-team-cancel-edit]')) { event.preventDefault(); resetComposer(); renderComposer({ focus: true }); return; }
+
+    const readersButton = target.closest('[data-msg-readers]');
+    if (readersButton) { event.preventDefault(); openReadersSheet(readersButton.dataset.msgReaders); return; }
 
     const more = target.closest('[data-msg-more]');
     if (more) { event.preventDefault(); openMessageActions(more.dataset.msgMore); return; }

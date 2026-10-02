@@ -245,10 +245,12 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // S90 follow-up: workflow integrity, native date/time pickers, one open-order
   // truth in Atlas AI and the UX leftovers changed these after the s90u key.
-  for (const file of ['s38-app-remediation.js', 'shifts-workspace.js',
-    'atlas-venue-clock.js']) {
+  for (const file of ['s38-app-remediation.js', 'atlas-venue-clock.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90f"></script>`), file);
   }
+  // Shift plan: colour by person (a remembered toolbar toggle colours each
+  // teammate's chips, avatar ring and rows); shifts-workspace.js carries the key.
+  assert.ok(index.includes('<script src="assets/js/shifts-workspace.js?v=20261002-s103"></script>'), 'shifts-workspace.js');
   // ALCEDO rebrand: atlas-stock-truth.js changed (Atlas->Alcedo comment) and carries the rebrand key.
   assert.ok(index.includes('<script src="assets/js/atlas-stock-truth.js?v=20260930-alcedo2"></script>'), 'atlas-stock-truth.js');
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
@@ -308,20 +310,22 @@ test('changed scripts carry the S88 cache key', () => {
   // S92: every message shows its sender's real name and photo (own on the
   // right with the viewer's name and avatar); photos load when Messages opens.
   for (const file of ['team-messages.js', 'team-unread-badge.js', 'team-profile-photos.js']) {
-    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261002-s93m'`), file);
+    assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20261002-s93r'`), file);
   }
   // The guarded stylesheet keeps one href in index.html, config.js and the guard.
-  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/team-messages.css?v=20261002-s93m">'), 'team-messages.css');
-  assert.ok(config.includes("stylesheetPath: 'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css loader');
-  assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20261002-s93m'"), 'team-messages.css guard');
-  assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20261002-s93m"></script>'), 'runtime-module-guard.js');
+  assert.ok(index.includes('<link rel="stylesheet" href="assets/css/team-messages.css?v=20261002-s93r">'), 'team-messages.css');
+  assert.ok(config.includes("stylesheetPath: 'assets/css/team-messages.css?v=20261002-s93r'"), 'team-messages.css loader');
+  assert.ok(read('apps/web/assets/js/runtime-module-guard.js').includes("'assets/css/team-messages.css?v=20261002-s93r'"), 'team-messages.css guard');
+  assert.ok(index.includes('<script src="assets/js/runtime-module-guard.js?v=20261002-s93r"></script>'), 'runtime-module-guard.js');
   // S93: the Home/bell message item names the sender by the live name; the
   // daily briefing header shows the Atlas AI robot (thinking while the
   // briefing is prepared).
   assert.ok(index.includes('<script src="assets/js/home.js?v=20261004-bot6"></script>'), 'home.js');
-  for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js', 'shifts-workspace.js']) {
+  for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }
+  // Shift plan colour-by-person: shifts-workspace.js lazy-load key matches index.html.
+  assert.ok(config.includes("scriptPath: 'assets/js/shifts-workspace.js?v=20261002-s103'"), 'shifts-workspace.js config key');
   // S91: the Settings sign-in message; S91b: owner copy for integrations
   // that are not set up, with admin-only setup details.
   // S94: Settings publishing connections and the Marketing composer, media
