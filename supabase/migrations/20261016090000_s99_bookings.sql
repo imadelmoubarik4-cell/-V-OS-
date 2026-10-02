@@ -88,7 +88,7 @@ create index if not exists booking_tables_area_idx
 create table if not exists atlas_private.booking_table_combinations (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(btrim(name)) between 1 and 80),
-  member_table_ids uuid[] not null check (array_length(member_table_ids, 1) between 2 and 12),
+  member_table_ids uuid[] not null check (array_length(member_table_ids, 1) between 2 and 16),
   combined_capacity integer not null check (combined_capacity between 2 and 200),
   is_permitted boolean not null default true,
   created_by uuid,
