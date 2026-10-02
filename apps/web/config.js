@@ -20,6 +20,8 @@ window.VABAR_CONFIG = {
   // Knowledge › Training: private video SOPs (signed uploads, short-lived playback),
   // chapters, procedure steps, progress and explicit completion.
   TRAINING_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-training",
+  // Bookings: authoritative staff availability + reservation service.
+  BOOKINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-bookings",
   REPORTS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-reports",
   SYSTEM_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-system",
   SETTINGS_API: "https://dnefgcmjcgxlynycxkts.supabase.co/functions/v1/atlas-settings",
