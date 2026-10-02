@@ -268,12 +268,24 @@ as the pilot's source data; **treated as reference to confirm, not final**:
   the right side; Bar 13–16 bottom-to-top up the left side**. This numbering and
   geometry are now approved source data for the VÁ Bar room.
 
-**Still to confirm before this becomes real config:**
-1. The **other rooms/areas** for the VÁ location and their tables (names, seat
-   counts) — Wine cellar / Ocean / Long table and any others.
-2. **Table combinations** — which bar tables (or other tables) may be joined for
-   larger parties.
-3. Per‑table **priority** meaning and the **Block online** defaults.
+**Owner clarification — 2 Oct 2026: non-Bar booking locations are location-level, not table-level.**
+For **Wine cellar, Ocean and Long table**, Alcedo does **not** need a floor/table map.
+A booking for one of these locations only needs:
+- **Location**
+- **Guests: 0–30**
+- **Time**
+- **Name of the person**
+
+The **Bar** remains the only seat-level area, using the confirmed Bar 1–Bar 16
+clockwise layout. Non-Bar locations should therefore be represented as
+location-level booking resources rather than invented tables.
+
+**Still to confirm before real production activation:**
+1. Whether **Wine cellar / Ocean / Long table** allow more than one booking at the
+   same time (subject to total guest capacity), or whether a single booking blocks
+   that location/time.
+2. **Table combinations** for Bar 1–Bar 16, if adjacent stools may be grouped.
+3. Per-Bar-seat **priority** meaning and the **Block online** defaults.
 
 A test‑data **floor‑plan Designer prototype** on the Alcedo brand system (rooms,
 colour‑coded tables by section, unique numbers, seat capacity, status indicators,
