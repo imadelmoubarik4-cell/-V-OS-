@@ -1357,6 +1357,27 @@ $function$;
 revoke all on function atlas_private.booking_find_contiguous_tables(uuid,integer,timestamptz,timestamptz,uuid)
   from public, anon, authenticated;
 
+-- Table payload now includes the confirmed physical perimeter position.
+create or replace function atlas_private.booking_table_json(p_table_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select case when t.id is null then null else pg_catalog.jsonb_build_object(
+    'id', t.id, 'area_id', t.area_id, 'label', t.label,
+    'seat_capacity', t.seat_capacity, 'min_party', t.min_party, 'priority', t.priority,
+    'is_bookable', t.is_bookable, 'block_online', t.block_online,
+    'temporarily_unavailable', t.temporarily_unavailable,
+    'unavailable_from', t.unavailable_from, 'unavailable_until', t.unavailable_until,
+    'floor_x', t.floor_x, 'floor_y', t.floor_y, 'shape', t.shape,
+    'position_index', t.position_index
+  ) end
+  from atlas_private.booking_tables t where t.id = p_table_id;
+$function$;
+revoke all on function atlas_private.booking_table_json(uuid) from public, anon, authenticated;
+
 -- Include the location in staff reservation payloads.
 create or replace function atlas_private.booking_reservation_json(p_reservation_id uuid)
 returns jsonb
