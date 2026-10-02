@@ -69,6 +69,30 @@ class BookingsContractTests(unittest.TestCase):
                 f"{rpc} must NOT be executable by authenticated (browser)",
             )
 
+    def test_viewer_is_read_only_for_reservation_mutations(self):
+        self.assertIn("create or replace function atlas_private.booking_require_staff", MIGRATION)
+        self.assertIn("p_actor_role not in ('admin','manager','bartender')", MIGRATION)
+        for rpc in [
+            "atlas_bookings_create", "atlas_bookings_assign",
+            "atlas_bookings_set_status", "atlas_bookings_hold",
+            "atlas_bookings_release_hold",
+        ]:
+            blocks = re.findall(
+                rf"create or replace function public\.{rpc}\b[\s\S]*?\$function\$;",
+                MIGRATION,
+            )
+            self.assertTrue(blocks, f"{rpc} definition missing")
+            for block in blocks:
+                self.assertIn(
+                    "booking_require_staff(p_actor_id, p_actor_role)",
+                    block,
+                    f"{rpc} must reject viewer at the DB boundary",
+                )
+        self.assertIn(
+            "'can_manage_reservations', p_actor_role in ('admin','manager','bartender')",
+            MIGRATION,
+        )
+
     def test_every_definer_function_pins_search_path(self):
         definer = len(re.findall(r"\nsecurity definer\n", MIGRATION))
         pinned = len(re.findall(r"set search_path = ''", MIGRATION))
