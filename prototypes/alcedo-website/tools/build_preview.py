@@ -18,7 +18,7 @@ mimetypes.add_type('image/x-icon', '.ico')
 mimetypes.add_type('font/woff2', '.woff2')
 
 def data_uri(rel):
-    path = here / rel
+    path = (here / page).parent / rel          # paths are relative to the page (is/ uses ../assets/)
     mime = mimetypes.guess_type(path.name)[0] or 'application/octet-stream'
     return f'data:{mime};base64,' + base64.b64encode(path.read_bytes()).decode()
 
@@ -28,7 +28,7 @@ def swap(match):
     seen.setdefault(rel, data_uri(rel))
     return match.group(1) + seen[rel] + match.group(3)
 
-out = re.sub(r'((?:src|href)=")(assets/[^"]+)(")', swap, html)
-out = re.sub(r'(url\(")(assets/[^"]+)("\))', swap, out)
+out = re.sub(r'((?:src|href)=")((?:\.\./)?assets/[^"]+)(")', swap, html)
+out = re.sub(r'(url\(")((?:\.\./)?assets/[^"]+)("\))', swap, out)
 pathlib.Path(sys.argv[1]).write_text(out)
 print(f'{len(seen)} assets embedded -> {sys.argv[1]} ({len(out) / 1e6:.1f} MB)')

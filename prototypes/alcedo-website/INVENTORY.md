@@ -52,8 +52,8 @@ The website work changed nothing outside `prototypes/` (no `apps/`, `scripts/`, 
 | A | `prototypes/alcedo-website/tools/build_is.py` | 25,421 | `73222565cec6ee8b6e682b31529fbedfe59f7117a2dec529c931e990d166a462` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_mascot_assets.py` | 1,409 | `b37014315935978417ff96b51c0ee329ff6e1733b75f692f0f22461ddd5b1a6e` | — | Authored: build/verification tool |
 | A | `prototypes/alcedo-website/tools/build_netlify_toml.py` | 2,624 | `5d27f5399e87fb4dacd32d43557044527384021727a86e084ca4f59db6ca08db` | — | Authored: build/verification tool |
-| A | `prototypes/alcedo-website/tools/build_preview.py` | 1,387 | `f827dbc1a2df1bd2f9869924861239baac6cd26183f399dc133ef96bb171fe87` | — | Authored: build/verification tool |
+| A | `prototypes/alcedo-website/tools/build_preview.py` | 1,487 | `d3a86ea1e69381944e184e391b580069b1bf384c0f41ded356250738384c9526` | — | Authored: build/verification tool |
 | A | `prototypes/atlas-website/README.md` | 6,940 | `ab5d96636ab77718cc248d25c82191ae69d160786f7c1b8b8e97bdf23f9a862a` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 | A | `prototypes/atlas-website/index.html` | 199,966 | `f90fb4fef99102ff09cf146c4a8123925e46db540e58be74b76f45e2f769fcb0` | — | Authored: Atlas-branded prototype (first request); brand kit files embedded as data URIs |
 
-Total (excluding this file): 3,287,876 bytes.
+Total (excluding this file): 3,287,976 bytes.
