@@ -445,6 +445,9 @@
       party_size: party,
       start_at: startAt,
       source: String(data.get('source') || 'phone'),
+      // This form is staff-only (phone / walk-in), so saving is itself the staff
+      // approval. Guest/website requests omit this and remain requested.
+      status: 'confirmed',
       guest_name: String(data.get('guest_name') || '').trim() || undefined,
       guest_phone: String(data.get('guest_phone') || '').trim() || undefined,
       guest_requests: String(data.get('guest_requests') || '').trim() || undefined
@@ -573,7 +576,7 @@
           <div class="atlas-field"><label for="bk-set-last_start_offset_minutes">Last start before close (min)</label>${number('last_start_offset_minutes', settings.last_start_offset_minutes, 0, 360, 5)}</div>
           <div class="atlas-field"><label for="bk-set-max_party_online">Max party online</label>${number('max_party_online', settings.max_party_online, 1, 500)}</div>
         </div>
-        <div class="atlas-toggle-row"><div><p class="atlas-toggle-row__label" id="bk-set-auto-label">Auto-confirm ordinary bookings</p><p class="atlas-toggle-row__help">Large parties and special requests still wait for staff.</p></div><button type="button" class="atlas-toggle" role="switch" aria-checked="${settings.auto_confirm ? 'true' : 'false'}" aria-labelledby="bk-set-auto-label" data-bookings-auto-confirm></button></div>
+        <div class="atlas-toggle-row"><div><p class="atlas-toggle-row__label" id="bk-set-auto-label">Auto-confirm website bookings</p><p class="atlas-toggle-row__help">Keep this off for VÁ: website requests wait for staff approval. Staff-created phone and walk-in bookings can confirm when saved.</p></div><button type="button" class="atlas-toggle" role="switch" aria-checked="${settings.auto_confirm ? 'true' : 'false'}" aria-labelledby="bk-set-auto-label" data-bookings-auto-confirm></button></div>
         <input type="hidden" name="expected_version" value="${escapeHtml(String(settings.version ?? ''))}">
         <div class="bk-settings__foot"><button type="submit" class="atlas-btn atlas-btn--primary" data-bookings-settings-save>Save rules</button></div>
       </form>
