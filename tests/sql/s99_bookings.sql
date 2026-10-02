@@ -19,10 +19,12 @@ insert into auth.users(id, email, raw_user_meta_data) values
   ('99000000-0000-4000-8000-0000000000a1', 's99-admin@example.invalid', '{}'),
   ('99000000-0000-4000-8000-0000000000d1', 's99-manager@example.invalid', '{}'),
   ('99000000-0000-4000-8000-0000000000c1', 's99-bartender@example.invalid', '{}'),
+  ('99000000-0000-4000-8000-0000000000f1', 's99-viewer@example.invalid', '{}'),
   ('99000000-0000-4000-8000-0000000000e1', 's99-inactive@example.invalid', '{}');
 update public.profiles set role='admin', active=true, display_name='S99 Admin' where id='99000000-0000-4000-8000-0000000000a1';
 update public.profiles set role='manager', active=true, display_name='S99 Manager' where id='99000000-0000-4000-8000-0000000000d1';
 update public.profiles set role='bartender', active=true, display_name='S99 Bartender' where id='99000000-0000-4000-8000-0000000000c1';
+update public.profiles set role='viewer', active=true, display_name='S99 Viewer' where id='99000000-0000-4000-8000-0000000000f1';
 update public.profiles set role='bartender', active=false, display_name='S99 Inactive' where id='99000000-0000-4000-8000-0000000000e1';
 
 -- 1. Tables and RPCs are sealed from browser roles; service_role can execute.
@@ -63,6 +65,20 @@ begin
   begin
     perform public.atlas_bookings_config('99000000-0000-4000-8000-0000000000c1', 'manager');
     raise exception 'role forgery accepted';
+  exception when insufficient_privilege then null; end;
+
+  -- Viewer is read-only: snapshot is allowed but every reservation mutation is denied.
+  if coalesce((public.atlas_bookings_snapshot(
+      '99000000-0000-4000-8000-0000000000f1', 'viewer', current_date
+    )->'permissions'->>'can_manage_reservations')::boolean, true) then
+    raise exception 'viewer was advertised as able to manage reservations';
+  end if;
+  begin
+    perform public.atlas_bookings_create(
+      '99000000-0000-4000-8000-0000000000f1', 'viewer',
+      jsonb_build_object('party_size',1,'start_at','2026-11-03 18:00:00+00')
+    );
+    raise exception 'viewer created a reservation';
   exception when insufficient_privilege then null; end;
 end $$;
 
