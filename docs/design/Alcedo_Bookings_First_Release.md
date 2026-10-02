@@ -295,9 +295,14 @@ Alcedo must never combine non-adjacent stools automatically. The exact maximum
 number of stools allowed in one grouped Bar booking is still owner-configurable
 and must not be invented.
 
+**Owner confirmation — 2 Oct 2026: Bar grouping may use the full bar.**
+A Bar booking may combine **any contiguous run of adjacent stools up to all 16
+Bar seats**. The grouping engine must preserve physical adjacency and may wrap
+across the Bar 16 ↔ Bar 1 boundary because the confirmed layout is one continuous
+clockwise perimeter.
+
 **Still to confirm before real production activation:**
-1. The **maximum number of adjacent Bar stools** that may be grouped into one booking.
-2. Per-Bar-seat **priority** meaning and the **Block online** defaults.
+1. Per-Bar-seat **priority** meaning and the **Block online** defaults.
 
 A test‑data **floor‑plan Designer prototype** on the Alcedo brand system (rooms,
 colour‑coded tables by section, unique numbers, seat capacity, status indicators,
