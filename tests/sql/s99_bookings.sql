@@ -73,7 +73,7 @@ delete from atlas_private.booking_tables;
 delete from atlas_private.booking_areas;
 
 -- 3-6. The core reservation flow.
-do $
+do $bookings$
 declare
   mgr uuid := '99000000-0000-4000-8000-0000000000d1';
   bart uuid := '99000000-0000-4000-8000-0000000000c1';
@@ -162,7 +162,7 @@ begin
     perform public.atlas_bookings_set_status(mgr,'manager', res_big, 'arrived', null);
     raise exception 'an illegal status transition was allowed';
   exception when invalid_parameter_value then null; end;
-end $$;
+end $bookings$;
 
 -- 7. Inactive profile fails closed on a read.
 do $$ begin
