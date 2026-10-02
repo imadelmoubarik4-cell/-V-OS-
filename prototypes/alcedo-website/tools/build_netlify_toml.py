@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Writes netlify.toml for hosting this folder as its own Netlify site (base directory:
 prototypes/alcedo-website). Security headers include a strict Content-Security-Policy:
-scripts are allowed only by the SHA-256 hash of each inline <script> in index.html and
-privacy.html, so re-run this after editing any inline script:
+scripts are allowed only by the SHA-256 hash of each inline <script> in the site's pages
+(every .html file outside tools/), so re-run this after editing any inline script:
 
     python3 tools/build_netlify_toml.py
 """
@@ -10,8 +10,8 @@ import base64, hashlib, pathlib, re
 
 HERE = pathlib.Path(__file__).resolve().parent.parent
 hashes = []
-for page in ('index.html', 'privacy.html'):
-    html = re.sub(r'<!--.*?-->', '', (HERE / page).read_text(), flags=re.S)   # comments may mention <script>
+for page in sorted(p for p in HERE.rglob('*.html') if 'tools' not in p.relative_to(HERE).parts):
+    html = re.sub(r'<!--.*?-->', '', page.read_text(), flags=re.S)   # comments may mention <script>
     for body in re.findall(r'<script>(.*?)</script>', html, re.S):
         h = "'sha256-" + base64.b64encode(hashlib.sha256(body.encode()).digest()).decode() + "'"
         if h not in hashes:
