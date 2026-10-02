@@ -1557,7 +1557,7 @@ begin
 
   -- Derive the location from explicitly chosen seats when the caller omitted area_id.
   if v_area_id is null and v_table_ids is not null then
-    select pg_catalog.count(distinct t.area_id), pg_catalog.min(t.area_id)
+    select pg_catalog.count(distinct t.area_id), (pg_catalog.array_agg(distinct t.area_id))[1]
       into table_area_count, v_area_id
     from atlas_private.booking_tables t where t.id = any(v_table_ids);
     if table_area_count <> 1 then
