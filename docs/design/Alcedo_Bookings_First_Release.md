@@ -301,8 +301,12 @@ Bar seats**. The grouping engine must preserve physical adjacency and may wrap
 across the Bar 16 ↔ Bar 1 boundary because the confirmed layout is one continuous
 clockwise perimeter.
 
-**Still to confirm before real production activation:**
-1. Per-Bar-seat **priority** meaning and the **Block online** defaults.
+**Owner confirmation — 2 Oct 2026: all Bar seats are online-bookable with equal priority.**
+**Bar 1–Bar 16 are all available for online booking by default**, with no preferred
+seat ordering. All 16 use the same allocation priority, and **Block online = false**
+unless a manager later changes an individual seat manually.
+
+**Bar floor configuration is now fully confirmed.**
 
 A test‑data **floor‑plan Designer prototype** on the Alcedo brand system (rooms,
 colour‑coded tables by section, unique numbers, seat capacity, status indicators,
