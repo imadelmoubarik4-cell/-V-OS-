@@ -7,7 +7,7 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-VZTt0mBoYfNC6DQ6qClW6kAzyKenPsYr9cpBjeS+s4k=' 'sha256-gtAiq1kiXqzWWNUxF7X1yfCYCd7ubzVtZL6xKfG9cl4='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-VZTt0mBoYfNC6DQ6qClW6kAzyKenPsYr9cpBjeS+s4k=' 'sha256-qsfhJPiGh5FK5r+QU6n906NnYhcK4YQssY4h7j+xmP8='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), interest-cohort=()"

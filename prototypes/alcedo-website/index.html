@@ -1497,8 +1497,9 @@ h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; }
     const run = ++state.run;
     armFallback(run);
     setControl('pause');
-    const begin = function () { if (run === state.run && !state.failed && !state.stopped) startPlay(run, true); };
-    if (video.readyState >= 2) begin(); else video.addEventListener('loadeddata', begin, { once: true });
+    // Start at once: iOS Safari ignores preload and fetches nothing until play() is called, so
+    // waiting for 'loadeddata' there left the hero blank until the fallback timer.
+    startPlay(run, true);
   }
 
   /* ---------- product tour tabs (without JS every panel is shown in sequence) ---------- */
