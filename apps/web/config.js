@@ -212,6 +212,14 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasTraining',
 }));
 
+// Bookings: staff day view + manager room/rules configuration.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  stylesheetPath: 'assets/css/bookings-workspace.css?v=20261002-bookings1',
+  scriptPath: 'assets/js/bookings-workspace.js?v=20261002-bookings1',
+  globalName: 'AtlasBookings',
+  dataAttribute: 'atlasBookings',
+}));
+
 // Checkpoint H replaces the Reports placeholder with a permission-aware,
 // read-only analysis workspace. It pulls live source records through the
 // authenticated gateway and labels missing integrations instead of inventing data.
