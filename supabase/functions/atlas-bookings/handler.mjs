@@ -30,6 +30,7 @@ import { AuthError, resolveActor as sharedResolveActor } from "../_shared/auth.m
 export const FUNCTION_VERSION = "0.1.0";
 export const LIMITS = Object.freeze({ jsonBytes: 64 * 1024 });
 const MANAGER_ROLES = new Set(["admin", "manager"]);
+const STAFF_ROLES = new Set(["admin", "manager", "bartender"]);
 
 export const CORS_HEADERS = Object.freeze({
   "access-control-allow-origin": "*",
@@ -208,7 +209,12 @@ export function createBookingsHandler({ env, fetchImpl, resolveActor = null, ser
     if (!actor || actor.active === false) throw new ApiError(403, "forbidden", MESSAGES.forbidden);
     return actor;
   }
+  function requireStaff(actor) {
+    if (!STAFF_ROLES.has(actor.role)) throw new ApiError(403, "forbidden", MESSAGES.forbidden);
+    return actor;
+  }
   function requireManager(actor) {
+    requireStaff(actor);
     if (!MANAGER_ROLES.has(actor.role)) throw new ApiError(403, "forbidden", MESSAGES.forbidden);
     return actor;
   }
@@ -250,11 +256,13 @@ export function createBookingsHandler({ env, fetchImpl, resolveActor = null, ser
     return svc.rpc("atlas_bookings_save_settings", { ...actorArgs(actor), p_payload: body, p_expected_version: expected });
   }
   async function create(actor, body) {
+    requireStaff(actor);
     if (boundedInt(body.party_size, 1, 500) === null) throw invalid();
     requireInstant(body.start_at);
     return svc.rpc("atlas_bookings_create", { ...actorArgs(actor), p_payload: body });
   }
   async function assign(actor, body) {
+    requireStaff(actor);
     const tables = body.table_ids;
     if (!Array.isArray(tables) || tables.length < 1) throw invalid();
     tables.forEach(requireUuid);
@@ -263,6 +271,7 @@ export function createBookingsHandler({ env, fetchImpl, resolveActor = null, ser
     });
   }
   async function setStatus(actor, body) {
+    requireStaff(actor);
     const to = String(body.to_status ?? "").trim();
     if (!to) throw invalid();
     return svc.rpc("atlas_bookings_set_status", {
@@ -271,9 +280,11 @@ export function createBookingsHandler({ env, fetchImpl, resolveActor = null, ser
     });
   }
   async function hold(actor, body) {
+    requireStaff(actor);
     return svc.rpc("atlas_bookings_hold", { ...actorArgs(actor), p_payload: body });
   }
   async function releaseHold(actor, body) {
+    requireStaff(actor);
     return svc.rpc("atlas_bookings_release_hold", { ...actorArgs(actor), p_hold_id: requireUuid(body.hold_id) });
   }
 
