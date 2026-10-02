@@ -15,7 +15,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MIGRATION_PATH = ROOT / "supabase/migrations/20261016090000_s99_bookings.sql"
+MIGRATION_PATH = ROOT / "supabase/migrations/20261020090000_s103_bookings.sql"
 MIGRATION = MIGRATION_PATH.read_text(encoding="utf-8")
 CONFIG_TOML = (ROOT / "supabase/config.toml").read_text(encoding="utf-8")
 CONFIG_JS = (ROOT / "apps/web/config.js").read_text(encoding="utf-8")
