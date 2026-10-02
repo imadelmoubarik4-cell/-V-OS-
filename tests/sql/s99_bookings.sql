@@ -66,8 +66,14 @@ begin
   exception when insufficient_privilege then null; end;
 end $$;
 
+-- The migration seeds the real VÁ floor. The integrity flow below uses an isolated
+-- synthetic room, so clear only the seeded booking configuration inside this transaction.
+delete from atlas_private.booking_table_combinations;
+delete from atlas_private.booking_tables;
+delete from atlas_private.booking_areas;
+
 -- 3-6. The core reservation flow.
-do $$
+do $
 declare
   mgr uuid := '99000000-0000-4000-8000-0000000000d1';
   bart uuid := '99000000-0000-4000-8000-0000000000c1';
@@ -81,7 +87,7 @@ begin
   t1 := (public.atlas_bookings_save_table(mgr,'manager', jsonb_build_object(
     'area_id', area->>'id', 'label','Bar 1','seat_capacity',2,'min_party',0,'priority',1))->>'id')::uuid;
   t2 := (public.atlas_bookings_save_table(mgr,'manager', jsonb_build_object(
-    'area_id', area->>'id', 'label','Bar 2','seat_capacity',4,'min_party',0,'priority',2))->>'id')::uuid;
+    'area_id', area->>'id', 'label','Bar 2','seat_capacity',8,'min_party',0,'priority',2))->>'id')::uuid;
 
   -- Bartender (service staff) creates a party-of-2 booking; auto-assigns the smallest
   -- suitable table (Bar 1, cap 2), confirmed.
