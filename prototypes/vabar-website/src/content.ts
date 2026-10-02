@@ -261,6 +261,19 @@ export const photos: Photo[] = [
   },
 ];
 
+import mekkaLogo from "@/assets/partners/mekka.png";
+import olgerdinLogo from "@/assets/partners/olgerdin.png";
+import alcedoLogo from "@/assets/partners/alcedo-white.svg";
+
+/** Partner logos (supplied by the owner, 2 October 2026), shown on ivory tiles in their own colours. */
+export const partners = [
+  { name: "Mekka Wines & Spirits", logo: mekkaLogo, url: "https://www.mekka.is/", width: 386, height: 48 },
+  { name: "Ölgerðin", logo: olgerdinLogo, url: "https://www.olgerdin.is/", width: 520, height: 402 },
+];
+
+/** Alcedo, the operations platform VÁ runs on: white logo from the Alcedo Logo Kit v1 (for dark backgrounds). */
+export const alcedo = { name: "Alcedo", logo: alcedoLogo, url: "https://www.alcedo.is/" };
+
 export const copy = {
   en: {
     nav: { book: "Book a table", drinks: "Drinks", happy: "Happy hour", shake: "Shake", skal: "Skál", visit: "Visit", menu: "Menu", lang: "Íslenska", langShort: "IS" },
@@ -388,6 +401,7 @@ export const copy = {
       directions: "Get directions",
       menu: "See the menu",
     },
+    partners: { title: "Our partners", powered: "Powered by" },
     footer: { staff: "Staff login", top: "Back to top", hours: "Sun–Thu 11:30–22:00 · Fri–Sat 11:30–00:00" },
   },
   is: {
@@ -516,6 +530,7 @@ export const copy = {
       directions: "Leiðarlýsing",
       menu: "Sjá matseðil",
     },
+    partners: { title: "Samstarfsaðilar", powered: "Knúið af" },
     footer: { staff: "Innskráning starfsfólks", top: "Efst á síðu", hours: "sun–fim 11:30–22:00 · fös–lau 11:30–00:00" },
   },
 };

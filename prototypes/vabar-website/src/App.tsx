@@ -13,7 +13,7 @@ import { ShakeSection } from "@/components/site/shake-section";
 import { SkalSection } from "@/components/site/skal-section";
 import { VisitSection } from "@/components/site/visit-section";
 import { CursorGlow } from "@/components/site/helpers";
-import { copy, heroPalette, heroScenes, site, type Lang } from "@/content";
+import { alcedo, copy, heroPalette, heroScenes, partners, site, type Lang } from "@/content";
 import logoUrl from "@/assets/brand/va-logo.svg";
 
 const LANG_KEY = "va-lang";
@@ -87,6 +87,51 @@ export default function App() {
 
       <footer className="relative z-10 border-t border-foreground/10 bg-background px-4 pb-10 pt-12 sm:px-6" inert={navOpen || undefined}>
         <div className="mx-auto flex max-w-6xl flex-col gap-10">
+          {/* Partners and the platform VÁ runs on */}
+          <div className="flex flex-col gap-8 border-b border-foreground/10 pb-10 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-foreground/60">{t.partners.title}</p>
+              <ul className="flex flex-wrap items-center gap-4">
+                {partners.map((p, i) => (
+                  <li key={p.name}>
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noopener"
+                      aria-label={p.name}
+                      className={`grid h-24 w-56 place-items-center rounded-2xl bg-[#f5f1ec] px-6 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.7)] transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1 hover:scale-[1.03] motion-reduce:transform-none ${i % 2 ? "hover:rotate-1" : "hover:-rotate-1"}`}
+                    >
+                      <img
+                        src={p.logo}
+                        alt={p.name}
+                        width={p.width}
+                        height={p.height}
+                        loading="lazy"
+                        className="max-h-16 w-auto max-w-full object-contain"
+                      />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <a
+              href={alcedo.url}
+              target="_blank"
+              rel="noopener"
+              className="group flex flex-col items-start gap-1 md:items-end"
+              aria-label={`${t.partners.powered} ${alcedo.name}`}
+            >
+              <span className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/60">{t.partners.powered}</span>
+              <img
+                src={alcedo.logo}
+                alt=""
+                width={200}
+                height={163}
+                loading="lazy"
+                className="h-auto w-[200px] opacity-85 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:opacity-100 motion-reduce:transform-none"
+              />
+            </a>
+          </div>
           <div className="flex flex-col justify-between gap-6 text-sm text-foreground/60 sm:flex-row sm:items-end">
             <div>
               <img src={logoUrl} alt={site.name} width={64} height={43} className="h-auto w-[64px]" />

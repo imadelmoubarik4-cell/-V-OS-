@@ -135,7 +135,10 @@ It is used for every call-to-action button on the page.
 11. **Skál:** the cheers counter.
 12. **FAQ** (`#faq`): the 12 questions and answers from the current site, in both languages. They use native `<details>`, so they work without JavaScript and every answer is in the HTML.
 13. **Visit:** the address, info@vábar.is, directions, menu (and booking, when set), plus the opening hours with the Open now badge.
-14. **Footer:** address, hours, email, the company line and Staff login.
+14. **Footer:**
+    - **Partners:** the Mekka Wines & Spirits and Ölgerðin logos on ivory tiles, so their own colours stay untouched. Each links to the partner's site (`partners` in `src/content.ts`; check the two URLs).
+    - **Powered by Alcedo:** the white Alcedo logo from the Alcedo Logo Kit v1, the kit's version for dark backgrounds, shown at its 180 px minimum or wider and linking to www.alcedo.is.
+    - **Below them:** address, hours, email, the company line and Staff login.
 
 Every interaction works with a keyboard and a touch screen. With reduced motion everything still works, without movement.
 
@@ -150,6 +153,8 @@ Every interaction works with a keyboard and a touch screen. With reduced motion 
 | Logo, colours | The brand manual |
 | Photos | The owner, 2 October 2026 (`src/assets/photos/`, `public/og-image.jpg`) |
 | Company line | `prototypes/alcedo-website` |
+| Partner logos (Mekka Wines & Spirits, Ölgerðin) | The owner, 2 October 2026 (`src/assets/partners/`) |
+| Alcedo logo | `ALCEDO_Logo_Kit_v1.zip` (review edition), `logo-white.svg` |
 
 When the printed menu changes, update `src/menu-data.ts`. The shaker game reads names, descriptions and prices from it. FAQ answers written in only one language on the old site were translated for the other.
 
