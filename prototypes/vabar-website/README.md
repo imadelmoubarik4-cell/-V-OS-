@@ -103,10 +103,10 @@ It is used for every call-to-action button on the page.
 `src/App.tsx` puts it together. Copy and venue facts are in `src/content.ts`; the menu is in `src/menu-data.ts`. Both are in English and Icelandic.
 
 1. **Header:** the solo logo, section links (Drinks, Happy hour, Shake, Visit), the **EN / IS** switch and a Menu button. A **Book a table** button appears once `site.bookingUrl` is set. On phones, links open in a full-screen overlay (the hero's side menu opens it too).
-2. **Hero:** the 3D horizon scene. Three slides:
-   - **SKÁL**: "Handcrafted cocktails, curated wines and Mediterranean-inspired tapas";
-   - **COFFEE** (*KAFFI*);
-   - **HAFNARTORG**.
+2. **Hero:** the 3D horizon scene with three words. The whole scene changes mood with each word, blending smoothly as you scroll (sky glow, mountains, atmosphere, background and title glow). The moods are `heroScenes` in `src/content.ts`.
+   - **COCKTAILS** (*KOKTEILAR*): cool ice-blue and teal, like the backlit blue stone wall behind the bar. "Handcrafted at the bar, from our signatures to the classics", with the "See the menu" and "Find us" buttons.
+   - **TAPAS:** warm saffron, olive and sun-baked earth. "Mediterranean-inspired plates, made for sharing".
+   - **WINE** (*VÍN*): deep burgundy and plum. "Curated wines by the glass or bottle, at Hafnartorg in Reykjavík".
 3. **Marquee:** "Cocktails ✦ Coffee ✦ Tapas ✦ Wines ✦ Happy hour 15–18 ✦ Hafnartorg".
 4. **Our story** (`#story`): "One shared vision", with the founders' text from the current site and the numbers 20 (years of experience), 2024 (opened) and 101 (downtown Reykjavík), which count up as they scroll in.
 5. **On the menu** (`#drinks`): the whole printed menu with prices, in six tabs:

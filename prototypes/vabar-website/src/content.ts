@@ -59,6 +59,42 @@ export const heroPalette: HeroPalette = {
   atmosphere: [0.36, 0.2, 0.13],
 };
 
+/**
+ * One mood per hero word; the scene blends between them as you scroll.
+ * COCKTAILS: cool ice-blue and teal, like the backlit blue stone wall behind the bar.
+ * TAPAS: warm Mediterranean saffron, olive and sun-baked earth.
+ * WINE: deep burgundy and plum.
+ */
+export const heroScenes: Pick<HeroSlide, "palette" | "background" | "glow">[] = [
+  {
+    palette: {
+      nebula: [0x1d6f8f, 0x2d5668],
+      mountains: [0x081a26, 0x0e2a3a, 0x15394d, 0x1f4d66],
+      atmosphere: [0.08, 0.3, 0.46],
+    },
+    background: "radial-gradient(ellipse at 50% 115%, #1d6f8f 0%, #123447 40%, #0d1820 75%, #0a0f13 100%)",
+    glow: "rgba(90, 180, 230, 0.5)",
+  },
+  {
+    palette: {
+      nebula: [0xd9822b, 0x6f7d2c],
+      mountains: [0x24160d, 0x3a2312, 0x553118, 0x704020],
+      atmosphere: [0.5, 0.3, 0.08],
+    },
+    background: "radial-gradient(ellipse at 50% 115%, #9a5a1e 0%, #5a3414 40%, #24180f 75%, #120d09 100%)",
+    glow: "rgba(232, 160, 60, 0.5)",
+  },
+  {
+    palette: {
+      nebula: [0x6e1230, 0x3d1450],
+      mountains: [0x1a0810, 0x2a0c1a, 0x3a1026, 0x4c1432],
+      atmosphere: [0.2, 0.015, 0.07],
+    },
+    background: "radial-gradient(ellipse at 50% 110%, #6a1230 0%, #400d22 38%, #1e0c16 72%, #0f080c 100%)",
+    glow: "rgba(170, 30, 75, 0.6)",
+  },
+];
+
 // Drinks for the "Shake" game. Names match src/menu-data.ts, which supplies description and price.
 export const drinks: Drink[] = [
   { id: "va-espresso-martini", name: "VÁ Espresso Martini", signature: true, moods: ["coffee", "strong", "sweet"], emoji: "☕" },
@@ -217,9 +253,9 @@ export const copy = {
     heroMenu: "EXPLORE",
     heroScroll: "SCROLL",
     slides: [
-      { title: "SKÁL", line1: "Handcrafted cocktails, curated wines", line2: "and Mediterranean-inspired tapas" },
-      { title: "COFFEE", line1: "Coffee from 11:30,", line2: "cocktails until late" },
-      { title: "HAFNARTORG", line1: "Inside Hafnartorg Gallery Food Hall,", line2: "Geirsgata 17, by the old harbour" },
+      { title: "COCKTAILS", line1: "Handcrafted at the bar,", line2: "from our signatures to the classics" },
+      { title: "TAPAS", line1: "Mediterranean-inspired plates,", line2: "made for sharing" },
+      { title: "WINE", line1: "Curated wines by the glass or bottle,", line2: "at Hafnartorg in Reykjavík" },
     ] satisfies HeroSlide[],
     heroCtaMenu: "See the menu",
     heroCtaVisit: "Find us",
@@ -344,9 +380,9 @@ export const copy = {
     heroMenu: "KANNA",
     heroScroll: "SKRUNA",
     slides: [
-      { title: "SKÁL", line1: "Handgerðir kokteilar, sérvalin vín", line2: "og tapas að hætti Miðjarðarhafsins" },
-      { title: "KAFFI", line1: "Kaffi frá 11:30,", line2: "kokteilar fram á kvöld" },
-      { title: "HAFNARTORG", line1: "Í mathöllinni Hafnartorg Gallery,", line2: "Geirsgötu 17, við gömlu höfnina" },
+      { title: "KOKTEILAR", line1: "Handgerðir við barinn,", line2: "frá einkennisdrykkjum til klassíkur" },
+      { title: "TAPAS", line1: "Smáréttir að hætti Miðjarðarhafsins,", line2: "gerðir til að deila" },
+      { title: "VÍN", line1: "Sérvalin vín í glasi eða flösku,", line2: "á Hafnartorgi í Reykjavík" },
     ] satisfies HeroSlide[],
     heroCtaMenu: "Sjá matseðil",
     heroCtaVisit: "Finna okkur",

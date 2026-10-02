@@ -5,7 +5,7 @@
 // over this section only (so the page can continue below it), the title is split into
 // characters so its intro animation runs, rendering pauses off-screen, reduced motion is
 // respected, and the scene falls back to a CSS gradient when WebGL is unavailable.
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -16,7 +16,17 @@ import "./horizon-hero-section.css";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export type HeroSlide = { title: string; line1: string; line2: string };
+export type HeroSlide = {
+  title: string;
+  line1: string;
+  line2: string;
+  /** Scene colours while this slide is on screen; the scene blends between slides as you scroll. */
+  palette?: HeroPalette;
+  /** CSS background painted behind the scene for this slide (cross-fades between slides). */
+  background?: string;
+  /** Colour of the glow around this slide's title. */
+  glow?: string;
+};
 
 export type HeroPalette = {
   nebula: [number, number];
@@ -68,6 +78,10 @@ type ThreeState = {
   animationId: number | null;
   visible: boolean;
   target: { x: number; y: number; z: number } | null;
+  /** Scroll position in slides (0 … slides-1): target from scroll, current eased towards it. */
+  blendTarget: number;
+  blend: number;
+  lastTime: number;
 };
 
 const prefersReducedMotion = () =>
@@ -111,12 +125,31 @@ export const Component = ({
     animationId: null,
     visible: true,
     target: null,
+    blendTarget: 0,
+    blend: 0,
+    lastTime: 0,
   });
+
+  // One palette per slide (falling back to `palette`). Keyed by value so a new array with the
+  // same colours (e.g. after a language switch) does not rebuild the WebGL scene.
+  const paletteKey = JSON.stringify([palette, slides.map((s) => s.palette ?? null)]);
+  const scenePalettes = useMemo(
+    () => slides.map((s) => s.palette ?? palette),
+    [paletteKey],
+  );
 
   // Initialize Three.js
   useEffect(() => {
     const refs = threeRefs.current;
     const reduced = prefersReducedMotion();
+    const palette = scenePalettes[0];
+    // Pre-built colours for blending between slides.
+    const sceneColors = scenePalettes.map((p) => ({
+      nebula: p.nebula.map((c) => new THREE.Color(c)),
+      mountains: p.mountains.map((c) => new THREE.Color(c)),
+      atmosphere: new THREE.Vector3(...p.atmosphere),
+    }));
+    const tmpVec = new THREE.Vector3();
     // StrictMode mounts twice: start from clean arrays every time.
     refs.stars = [];
     refs.mountains = [];
@@ -365,6 +398,26 @@ export const Component = ({
       if (refs.nebula) refs.nebula.material.uniforms.time.value = time * 0.5;
       if (refs.atmosphere) refs.atmosphere.material.uniforms.time.value = time;
 
+      // Blend the scene colours towards the slide being scrolled to.
+      if (sceneColors.length > 1) {
+        // Time-based easing, so the colours settle in about a second at any frame rate.
+        const dt = refs.lastTime ? Math.min(Math.max(time - refs.lastTime, 0), 0.25) : 1 / 60;
+        refs.lastTime = time;
+        refs.blend += (refs.blendTarget - refs.blend) * (reduced ? 1 : 1 - Math.exp(-dt * 3.5));
+        const i = Math.min(Math.floor(refs.blend), sceneColors.length - 1);
+        const f = Math.min(Math.max(refs.blend - i, 0), 1);
+        const a = sceneColors[i];
+        const b = sceneColors[Math.min(i + 1, sceneColors.length - 1)];
+        if (refs.nebula) {
+          (refs.nebula.material.uniforms.color1.value as THREE.Color).lerpColors(a.nebula[0], b.nebula[0], f);
+          (refs.nebula.material.uniforms.color2.value as THREE.Color).lerpColors(a.nebula[1], b.nebula[1], f);
+        }
+        refs.mountains.forEach((m, k) => m.material.color.lerpColors(a.mountains[k], b.mountains[k], f));
+        if (refs.atmosphere) {
+          (refs.atmosphere.material.uniforms.tint.value as THREE.Vector3).copy(tmpVec.copy(a.atmosphere).lerp(b.atmosphere, f));
+        }
+      }
+
       // Smooth camera movement with easing
       if (refs.camera && refs.target) {
         const smoothingFactor = reduced ? 1 : 0.05; // Lower = smoother but slower
@@ -496,7 +549,7 @@ export const Component = ({
       refs.nebula = null;
       refs.atmosphere = null;
     };
-  }, [palette]);
+  }, [scenePalettes]);
 
   // GSAP Animations - Run after component is ready
   useEffect(() => {
@@ -577,6 +630,8 @@ export const Component = ({
         z: currentPos.z + (nextPos.z - currentPos.z) * sectionProgress,
       };
 
+      refs.blendTarget = totalProgress;
+
       // Fly through the mountains, then move them out of the way.
       refs.mountains.forEach((mountain, i) => {
         mountain.position.z = progress > 0.7 ? 600000 : (refs.locations[i] ?? mountain.position.z);
@@ -587,6 +642,7 @@ export const Component = ({
 
       if (reduced && refs.composer && refs.camera) {
         smoothCameraPos.current = { ...refs.target };
+        refs.blend = refs.blendTarget;
         refs.camera.position.set(refs.target.x, refs.target.y, refs.target.z);
         refs.camera.lookAt(0, 10, -600);
         refs.composer.render();
@@ -616,6 +672,17 @@ export const Component = ({
     >
       {/* Sticky stage: canvas, side menu and progress stay put while the slides scroll. */}
       <div className="hero-stage">
+        {/* Per-slide backgrounds, cross-faded by scroll position */}
+        {slides.map((slide, i) =>
+          slide.background ? (
+            <div
+              key={slide.title}
+              className="hero-bg"
+              aria-hidden="true"
+              style={{ background: slide.background, opacity: Math.max(0, 1 - Math.abs(scrollProgress * totalSections - i)) }}
+            />
+          ) : null,
+        )}
         <canvas ref={canvasRef} className="hero-canvas" aria-hidden="true" data-failed={webglFailed || undefined} />
 
         {/* Side menu */}
@@ -649,7 +716,10 @@ export const Component = ({
 
       {/* Slides scroll over the stage */}
       <div className="scroll-sections">
-        <section className="content-section hero-content cosmos-content">
+        <section
+          className="content-section hero-content cosmos-content"
+          style={first.glow ? ({ "--glow": first.glow } as CSSProperties) : undefined}
+        >
           <h1
             ref={titleRef}
             className="hero-title"
@@ -668,7 +738,11 @@ export const Component = ({
         </section>
 
         {rest.map((slide) => (
-          <section key={slide.title} className="content-section">
+          <section
+            key={slide.title}
+            className="content-section"
+            style={slide.glow ? ({ "--glow": slide.glow } as CSSProperties) : undefined}
+          >
             <h2 className="hero-title" style={{ "--chars": slide.title.length } as CSSProperties}>
               {slide.title}
             </h2>

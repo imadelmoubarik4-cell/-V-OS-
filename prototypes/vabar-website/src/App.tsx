@@ -13,7 +13,7 @@ import { ShakeSection } from "@/components/site/shake-section";
 import { SkalSection } from "@/components/site/skal-section";
 import { VisitSection } from "@/components/site/visit-section";
 import { CursorGlow } from "@/components/site/helpers";
-import { copy, heroPalette, site, type Lang } from "@/content";
+import { copy, heroPalette, heroScenes, site, type Lang } from "@/content";
 import logoUrl from "@/assets/brand/va-logo.svg";
 
 const LANG_KEY = "va-lang";
@@ -58,7 +58,7 @@ export default function App() {
 
       <main id="top" inert={navOpen || undefined}>
         <HorizonHero
-          slides={t.slides}
+          slides={t.slides.map((slide, i) => ({ ...slide, ...heroScenes[i] }))}
           srTitle={t.heroHeading}
           menuLabel={t.heroMenu}
           scrollLabel={t.heroScroll}

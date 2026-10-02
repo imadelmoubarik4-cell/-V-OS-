@@ -17,6 +17,13 @@
   z-index: 0;
 }
 
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.3s linear;
+}
+
 .hero-canvas {
   position: absolute;
   inset: 0;
@@ -130,10 +137,12 @@
   font-family: var(--font-display, serif);
   font-weight: 500;
   /* Shrinks long words (--chars is set per title) so they never overflow the viewport. */
-  font-size: min(clamp(64px, 24vw, 220px), calc((100vw - 48px) / (var(--chars, 6) * 0.72)));
+  /* Fits the word inside the section's side padding (--chars is set per title). */
+  font-size: min(clamp(56px, 24vw, 220px), calc((100vw - 2 * clamp(20px, 8vw, 120px) - 32px) / (var(--chars, 6) * 0.8)));
+  white-space: nowrap;
   line-height: 0.9;
   letter-spacing: 0.02em;
-  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.45), 0 0 60px rgba(224, 141, 109, 0.2);
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.45), 0 0 70px var(--glow, rgba(224, 141, 109, 0.25));
   padding: 0.05em 0.1em;
 }
 
