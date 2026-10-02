@@ -203,6 +203,14 @@
       && Array.isArray(reservation.tables) && reservation.tables.some((allocation) => allocation.table_id === tableId));
   }
 
+  function reservationsForArea(areaId) {
+    return reservations().filter((reservation) => reservation.area_id === areaId && LIVE_STATUSES.has(reservation.status));
+  }
+
+  function areaById(areaId) {
+    return areas().find((area) => area.id === areaId) || null;
+  }
+
   function tableIsUnavailable(table) {
     return Boolean(table.temporarily_unavailable) || table.is_bookable === false;
   }
@@ -270,28 +278,46 @@
     </button>`;
   }
 
+  function pooledAreaMarkup(area) {
+    const all = reservationsForArea(area.id).sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
+    const occupying = all.filter((reservation) => ['confirmed', 'arrived', 'seated'].includes(reservation.status));
+    const used = occupying.reduce((sum, reservation) => sum + (Number(reservation.party_size) || 0), 0);
+    const capacity = Number(area.guest_capacity) || 30;
+    const bookings = all.length
+      ? all.map((reservation) => `<button type="button" class="atlas-row bk-row bk-location-row" data-bookings-reservation="${escapeHtml(reservation.id)}">
+          <span class="atlas-row__body"><span class="atlas-row__title">${escapeHtml(reservation.guest_name || 'Reservation')}</span><span class="atlas-row__meta">${escapeHtml(`${formatTime(reservation.start_at)} · ${reservation.party_size} guest${Number(reservation.party_size) === 1 ? '' : 's'}`)}</span></span>
+          <span class="bk-row__status">${pill(STATUS_LABEL[reservation.status] || humanize(reservation.status), STATUS_TONE[reservation.status] || 'neutral')}</span>
+        </button>`).join('')
+      : '<p class="bk-note">No bookings for this location today.</p>';
+    return `<section class="bk-area bk-location bk-c-${escapeHtml(sectionColour(area))}" data-bookings-area="${escapeHtml(area.id)}" aria-labelledby="bk-area-${escapeHtml(area.id)}">
+      <h3 class="bk-area__title" id="bk-area-${escapeHtml(area.id)}"><span class="bk-swatch" aria-hidden="true"></span>${escapeHtml(area.name)} <span class="bk-note">${escapeHtml(`${used}/${capacity} guests`)}</span></h3>
+      <div class="bk-location__bookings">${bookings}</div>
+    </section>`;
+  }
+
   function mapMarkup() {
     const list = areas();
     if (!list.length) {
-      return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('map')}</div><h2 class="atlas-empty__title">No areas configured yet</h2><p class="atlas-empty__text">${canConfigure() ? 'Add an area and its tables in Configure.' : 'Ask a manager to set up the floor plan.'}</p></div>`;
+      return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('map')}</div><h2 class="atlas-empty__title">No locations configured yet</h2><p class="atlas-empty__text">${canConfigure() ? 'Configure the booking locations first.' : 'Ask a manager to set up Bookings.'}</p></div>`;
     }
     const groups = list.map((area) => {
+      if (area.allocation_mode === 'pooled') return pooledAreaMarkup(area);
       const colour = sectionColour(area);
       const areaTables = tablesForArea(area.id);
       return `<section class="bk-area bk-c-${escapeHtml(colour)}" data-bookings-area="${escapeHtml(area.id)}" aria-labelledby="bk-area-${escapeHtml(area.id)}">
         <h3 class="bk-area__title" id="bk-area-${escapeHtml(area.id)}"><span class="bk-swatch" aria-hidden="true"></span>${escapeHtml(area.name)}</h3>
-        <div class="bk-area__tables">${areaTables.length ? areaTables.map(tableButtonMarkup).join('') : '<p class="bk-note">No tables in this area yet.</p>'}</div>
+        <div class="bk-area__tables">${areaTables.length ? areaTables.map(tableButtonMarkup).join('') : '<p class="bk-note">No seats configured here.</p>'}</div>
       </section>`;
     }).join('');
-    return `<div class="bk-map" data-bookings-map role="group" aria-label="Floor plan">${groups}</div>`;
+    return `<div class="bk-map" data-bookings-map role="group" aria-label="Booking locations">${groups}</div>`;
   }
 
   function listMarkup() {
-    const rows = tables().map((table) => {
-      const area = areas().find((entry) => entry.id === table.area_id);
+    const tableRows = tables().map((table) => {
+      const area = areaById(table.area_id);
       const status = tableStatus(table);
       const reservation = reservationsForTable(table.id)[0] || null;
-      const meta = [area?.name, table.seat_capacity ? `${table.seat_capacity} seats` : null,
+      const meta = [area?.name, table.seat_capacity ? `${table.seat_capacity} seat${table.seat_capacity === 1 ? '' : 's'}` : null,
         reservation ? `${reservation.guest_name || SOURCE_LABEL[reservation.source] || 'Booked'} · ${formatTime(reservation.start_at)}` : null].filter(Boolean).join(' · ');
       return `<li class="atlas-row bk-row" data-bookings-row="${escapeHtml(table.id)}" data-bookings-table="${escapeHtml(table.id)}"${reservation ? ` data-bookings-reservation="${escapeHtml(reservation.id)}"` : ''}>
         <button type="button" class="bk-row__btn" aria-label="${escapeHtml(`${table.label} — ${status.label}`)}">
@@ -301,8 +327,20 @@
         </button>
       </li>`;
     }).join('');
+
+    const locationRows = areas().filter((area) => area.allocation_mode === 'pooled').flatMap((area) =>
+      reservationsForArea(area.id).map((reservation) => `<li class="atlas-row bk-row" data-bookings-row="reservation-${escapeHtml(reservation.id)}" data-bookings-reservation="${escapeHtml(reservation.id)}">
+        <button type="button" class="bk-row__btn" aria-label="${escapeHtml(`${area.name} — ${reservation.guest_name || 'Reservation'}`)}">
+          <span class="bk-row__swatch bk-c-${escapeHtml(sectionColour(area))}" aria-hidden="true"></span>
+          <span class="atlas-row__body"><span class="atlas-row__title">${escapeHtml(reservation.guest_name || 'Reservation')}</span><span class="atlas-row__meta">${escapeHtml(`${area.name} · ${formatTime(reservation.start_at)} · ${reservation.party_size} guests`)}</span></span>
+          <span class="bk-row__status">${pill(STATUS_LABEL[reservation.status] || humanize(reservation.status), STATUS_TONE[reservation.status] || 'neutral')}</span>
+        </button>
+      </li>`)
+    ).join('');
+
+    const rows = tableRows + locationRows;
     if (!rows) {
-      return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('list')}</div><h2 class="atlas-empty__title">No tables yet</h2><p class="atlas-empty__text">${canConfigure() ? 'Add tables in Configure.' : 'Ask a manager to set up the tables.'}</p></div>`;
+      return `<div class="atlas-empty"><div class="atlas-empty__icon">${icon('list')}</div><h2 class="atlas-empty__title">No booking resources yet</h2><p class="atlas-empty__text">Configure the booking locations first.</p></div>`;
     }
     return `<ul class="atlas-list bk-list" data-bookings-list>${rows}</ul>`;
   }
@@ -331,7 +369,7 @@
       const tone = to === 'cancelled' || to === 'no_show' ? 'danger' : to === 'confirmed' ? 'primary' : 'secondary';
       return `<button type="button" class="atlas-btn atlas-btn--${tone} atlas-btn--sm" data-bookings-status-btn data-to-status="${escapeHtml(to)}">${escapeHtml(label)}</button>`;
     }).join('');
-    const canAssign = canManageReservations() && LIVE_STATUSES.has(status);
+    const canAssign = canManageReservations() && LIVE_STATUSES.has(status) && reservation.area_allocation_mode !== 'pooled';
     return `<section class="atlas-sheet bk-detail" data-modal-panel aria-labelledby="bk-detail-title">
       <span class="atlas-sheet__grabber" aria-hidden="true"></span>
       <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="bk-detail-title">${escapeHtml(reservation.guest_name || 'Reservation')}</h2><p class="atlas-sheet__desc">${escapeHtml(SOURCE_LABEL[reservation.source] || humanize(reservation.source || ''))} · ${escapeHtml(reservation.booking_reference || '')}</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
@@ -340,7 +378,8 @@
         <dl class="bk-detail__facts">
           <div><dt>Party</dt><dd>${escapeHtml(String(reservation.party_size || ''))}</dd></div>
           <div><dt>Time</dt><dd>${escapeHtml(formatTime(reservation.start_at))}${reservation.end_at ? `–${escapeHtml(formatTime(reservation.end_at))}` : ''}</dd></div>
-          <div><dt>Tables</dt><dd data-bookings-detail-tables>${tableLabels.length ? escapeHtml(tableLabels.join(', ')) : 'Unassigned'}</dd></div>
+          <div><dt>Location</dt><dd>${escapeHtml(reservation.location || areaById(reservation.area_id)?.name || 'Unassigned')}</dd></div>
+          ${tableLabels.length ? `<div><dt>Seats</dt><dd data-bookings-detail-tables>${escapeHtml(tableLabels.join(', '))}</dd></div>` : ''}
           ${contact.length ? `<div><dt>Contact</dt><dd>${contact.map((entry) => escapeHtml(entry)).join('<br>')}</dd></div>` : ''}
           ${reservation.guest_requests ? `<div><dt>Requests</dt><dd>${escapeHtml(reservation.guest_requests)}</dd></div>` : ''}
           ${reservation.staff_notes ? `<div><dt>Staff notes</dt><dd>${escapeHtml(reservation.staff_notes)}</dd></div>` : ''}
@@ -394,7 +433,9 @@
   // ---------- render: add booking ----------
 
   function addBookingMarkup(prefill = {}) {
-    const areaOptions = areas().map((area) => {
+    const inferredAreaId = prefill.areaId || tableById(prefill.tableId)?.area_id || areas()[0]?.id || '';
+    const locationOptions = areas().map((area) => `<option value="${escapeHtml(area.id)}"${area.id === inferredAreaId ? ' selected' : ''}>${escapeHtml(area.name)}</option>`).join('');
+    const areaOptions = areas().filter((area) => area.allocation_mode !== 'pooled').map((area) => {
       const areaTables = tablesForArea(area.id).filter((table) => !tableIsUnavailable(table));
       if (!areaTables.length) return '';
       return `<optgroup label="${escapeHtml(area.name)}">${areaTables.map((table) => `<option value="${escapeHtml(table.id)}"${prefill.tableId === table.id ? ' selected' : ''}>${escapeHtml(table.label)}</option>`).join('')}</optgroup>`;
@@ -404,15 +445,16 @@
       <header class="atlas-sheet__head"><div><h2 class="atlas-sheet__title" id="bk-add-title">Add booking</h2><p class="atlas-sheet__desc">Phone or walk-in. A reference is shown when it saves.</p></div><button type="button" class="atlas-icon-btn atlas-sheet__close" data-modal-close aria-label="Close">${icon('x')}</button></header>
       <form class="atlas-sheet__body atlas-form bk-add__form" id="bk-add-form" data-bookings-create-form novalidate>
         <div class="atlas-grid-2">
-          <div class="atlas-field"><label for="bk-add-party">Party size</label><input class="atlas-input" type="number" min="1" max="500" inputmode="numeric" id="bk-add-party" name="party_size" value="2" required><p class="error" hidden data-error-for="party_size">Enter a party size.</p></div>
+          <div class="atlas-field"><label for="bk-add-party">Guests</label><input class="atlas-input" type="number" min="1" max="30" inputmode="numeric" id="bk-add-party" name="party_size" value="2" required><p class="error" hidden data-error-for="party_size">Enter 1–30 guests.</p></div>
           <div class="atlas-field"><label for="bk-add-source">Source</label><select class="atlas-select" id="bk-add-source" name="source"><option value="phone">Phone</option><option value="walk_in">Walk-in</option></select></div>
         </div>
+        <div class="atlas-field"><label for="bk-add-location">Location</label><select class="atlas-select" id="bk-add-location" name="area_id" required>${locationOptions}</select><p class="error" hidden data-error-for="area_id">Choose a location.</p></div>
         <div class="atlas-grid-2">
           <div class="atlas-field"><label for="bk-add-date">Date</label><input class="atlas-input" type="date" id="bk-add-date" name="date" value="${escapeHtml(prefill.date || state.date)}" required></div>
-          <div class="atlas-field"><label for="bk-add-time">Time</label><input class="atlas-input" type="time" id="bk-add-time" name="time" required><p class="error" hidden data-error-for="time">Enter a time.</p></div>
+          <div class="atlas-field"><label for="bk-add-time">Time</label><input class="atlas-input" type="time" step="900" id="bk-add-time" name="time" required><p class="error" hidden data-error-for="time">Enter a time.</p></div>
         </div>
-        <div class="atlas-field"><label for="bk-add-table">Table <span class="optional">Optional</span></label><select class="atlas-select" id="bk-add-table" name="table_id"><option value="">Assign later</option>${areaOptions}</select></div>
-        <div class="atlas-field"><label for="bk-add-name">Guest name</label><input class="atlas-input" id="bk-add-name" name="guest_name" maxlength="120" placeholder="Name for the booking"></div>
+        <div class="atlas-field"><label for="bk-add-table">Specific Bar seat <span class="optional">Optional</span></label><select class="atlas-select" id="bk-add-table" name="table_id"><option value="">Auto-assign adjacent seats</option>${areaOptions}</select></div>
+        <div class="atlas-field"><label for="bk-add-name">Guest name</label><input class="atlas-input" id="bk-add-name" name="guest_name" maxlength="120" placeholder="Name for the booking" required><p class="error" hidden data-error-for="guest_name">Add the guest name.</p></div>
         <div class="atlas-field"><label for="bk-add-phone">Phone <span class="optional">Optional</span></label><input class="atlas-input" id="bk-add-phone" name="guest_phone" maxlength="60" inputmode="tel"></div>
         <div class="atlas-field"><label for="bk-add-requests">Requests <span class="optional">Optional</span></label><textarea class="atlas-input atlas-textarea" id="bk-add-requests" name="guest_requests" rows="2" maxlength="1000"></textarea></div>
       </form>
@@ -437,7 +479,9 @@
     const party = Number(data.get('party_size'));
     const date = String(data.get('date') || '').trim();
     const time = String(data.get('time') || '').trim();
-    const errors = { party_size: !Number.isInteger(party) || party < 1, time: !time || !date };
+    const areaId = String(data.get('area_id') || '').trim();
+    const guestName = String(data.get('guest_name') || '').trim();
+    const errors = { party_size: !Number.isInteger(party) || party < 1 || party > 30, time: !time || !date, area_id: !areaId, guest_name: !guestName };
     Object.entries(errors).forEach(([key, bad]) => { const el = root.querySelector(`[data-error-for="${key}"]`); if (el) el.hidden = !bad; });
     if (Object.values(errors).some(Boolean)) return;
     const startAt = new Date(`${date}T${time}:00`).toISOString();
@@ -448,7 +492,8 @@
       // This form is staff-only (phone / walk-in), so saving is itself the staff
       // approval. Guest/website requests omit this and remain requested.
       status: 'confirmed',
-      guest_name: String(data.get('guest_name') || '').trim() || undefined,
+      area_id: areaId,
+      guest_name: guestName,
       guest_phone: String(data.get('guest_phone') || '').trim() || undefined,
       guest_requests: String(data.get('guest_requests') || '').trim() || undefined
     };
@@ -866,7 +911,14 @@
     const autoToggle = target.closest('[data-bookings-auto-confirm]');
     if (autoToggle) { autoToggle.setAttribute('aria-checked', String(autoToggle.getAttribute('aria-checked') !== 'true')); return; }
 
-    // A table or a list row: open the reservation, else offer to add here.
+    // Any reservation card/row opens its detail.
+    const reservationTrigger = target.closest('[data-bookings-reservation]');
+    if (reservationTrigger?.dataset.bookingsReservation) {
+      openReservation(reservationTrigger.dataset.bookingsReservation);
+      return;
+    }
+
+    // A free table or list row offers to add a booking there.
     const tableTrigger = target.closest('[data-bookings-table]');
     if (tableTrigger) {
       const reservationId = tableTrigger.dataset.bookingsReservation;
