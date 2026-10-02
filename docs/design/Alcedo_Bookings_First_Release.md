@@ -288,8 +288,15 @@ locations, not exclusive table allocations. Their configured minimum is **0**
 (no minimum) and maximum/capacity is **30**; an actual reservation still records
 a positive guest count.
 
+**Owner confirmation — 2 Oct 2026: adjacent Bar stools may be grouped.**
+Bar 1–Bar 16 are single-seat stools, and **adjacent stools may be combined for
+larger parties**. Grouping must follow the confirmed physical clockwise layout;
+Alcedo must never combine non-adjacent stools automatically. The exact maximum
+number of stools allowed in one grouped Bar booking is still owner-configurable
+and must not be invented.
+
 **Still to confirm before real production activation:**
-1. **Table combinations** for Bar 1–Bar 16, if adjacent stools may be grouped.
+1. The **maximum number of adjacent Bar stools** that may be grouped into one booking.
 2. Per-Bar-seat **priority** meaning and the **Block online** defaults.
 
 A test‑data **floor‑plan Designer prototype** on the Alcedo brand system (rooms,
