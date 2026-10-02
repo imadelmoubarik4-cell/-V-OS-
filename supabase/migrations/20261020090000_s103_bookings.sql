@@ -332,6 +332,25 @@ end
 $function$;
 revoke all on function atlas_private.booking_require_actor(uuid, text) from public, anon, authenticated;
 
+-- Mutating reservation actions are staff-only. Viewer is deliberately read-only.
+create or replace function atlas_private.booking_require_staff(p_actor_id uuid, p_actor_role text)
+returns text
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare label text;
+begin
+  label := atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+  if p_actor_role not in ('admin','manager','bartender') then
+    raise exception 'Changing Bookings is for active staff.' using errcode = '42501', hint = 'atlas:forbidden';
+  end if;
+  return label;
+end
+$function$;
+revoke all on function atlas_private.booking_require_staff(uuid, text) from public, anon, authenticated;
+
 -- The actor must additionally be a manager or administrator. Returns the label.
 create or replace function atlas_private.booking_require_manager(p_actor_id uuid, p_actor_role text)
 returns text
@@ -537,7 +556,10 @@ begin
         'reason', h.reason, 'expires_at', h.expires_at) order by h.start_at)
       from atlas_private.booking_holds h
       where h.expires_at > pg_catalog.now() and h.start_at < day_end and h.end_at > day_start), '[]'::jsonb),
-    'permissions', pg_catalog.jsonb_build_object('can_configure', is_manager, 'can_manage_reservations', true),
+    'permissions', pg_catalog.jsonb_build_object(
+      'can_configure', is_manager,
+      'can_manage_reservations', p_actor_role in ('admin','manager','bartender')
+    ),
     'actor_role', p_actor_role
   );
 end
@@ -857,7 +879,7 @@ security definer
 set search_path = ''
 as $function$
 declare
-  label text := atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+  label text := atlas_private.booking_require_staff(p_actor_id, p_actor_role);
   p jsonb := coalesce(p_payload, '{}'::jsonb);
   s atlas_private.booking_settings;
   v_party integer := (p->>'party_size')::int;
@@ -991,7 +1013,7 @@ security definer
 set search_path = ''
 as $function$
 declare
-  label text := atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+  label text := atlas_private.booking_require_staff(p_actor_id, p_actor_role);
   r atlas_private.reservations;
   v_table_ids uuid[];
   was_requested boolean;
@@ -1057,7 +1079,7 @@ security definer
 set search_path = ''
 as $function$
 declare
-  label text := atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+  label text := atlas_private.booking_require_staff(p_actor_id, p_actor_role);
   r atlas_private.reservations;
   allowed text[];
 begin
@@ -1113,7 +1135,7 @@ security definer
 set search_path = ''
 as $function$
 declare
-  label text := atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+  label text := atlas_private.booking_require_staff(p_actor_id, p_actor_role);
   p jsonb := coalesce(p_payload, '{}'::jsonb);
   v_table uuid := (nullif(p->>'table_id',''))::uuid;
   v_start timestamptz := (p->>'start_at')::timestamptz;
@@ -1151,7 +1173,7 @@ volatile
 security definer
 set search_path = ''
 as $function$
-declare label text := atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+declare label text := atlas_private.booking_require_staff(p_actor_id, p_actor_role);
 begin
   update atlas_private.booking_holds set expires_at = pg_catalog.now()
   where id = p_hold_id and expires_at > pg_catalog.now();
@@ -1450,7 +1472,10 @@ begin
         'reason', h.reason, 'expires_at', h.expires_at) order by h.start_at)
       from atlas_private.booking_holds h
       where h.expires_at > pg_catalog.now() and h.start_at < day_end and h.end_at > day_start), '[]'::jsonb),
-    'permissions', pg_catalog.jsonb_build_object('can_configure', is_manager, 'can_manage_reservations', true),
+    'permissions', pg_catalog.jsonb_build_object(
+      'can_configure', is_manager,
+      'can_manage_reservations', p_actor_role in ('admin','manager','bartender')
+    ),
     'actor_role', p_actor_role
   );
 end
@@ -1519,7 +1544,7 @@ security definer
 set search_path = ''
 as $function$
 declare
-  label text := atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+  label text := atlas_private.booking_require_staff(p_actor_id, p_actor_role);
   p jsonb := coalesce(p_payload, '{}'::jsonb);
   s atlas_private.booking_settings;
   v_party integer := (p->>'party_size')::int;
@@ -1705,7 +1730,7 @@ security definer
 set search_path = ''
 as $function$
 declare
-  label text := atlas_private.booking_require_actor(p_actor_id, p_actor_role);
+  label text := atlas_private.booking_require_staff(p_actor_id, p_actor_role);
   r atlas_private.reservations;
   a atlas_private.booking_areas;
   allowed text[];
