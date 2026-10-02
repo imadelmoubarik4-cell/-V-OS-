@@ -315,6 +315,7 @@ unless a manager later changes an individual seat manually.
 - **Guest self-cancellation cutoff: 15 minutes before the booking start.**
   After that cutoff, cancellation must be handled by staff rather than the
   guest self-service flow.
+- **Advance booking window: keep the existing 90-day default.**
 
 
 A test‑data **floor‑plan Designer prototype** on the Alcedo brand system (rooms,
