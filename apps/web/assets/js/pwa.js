@@ -24,13 +24,25 @@
     var el = document.getElementById('pwa-install');
     if (el) el.remove();
   }
-  function showBanner(message, actionLabel, onAction) {
+  // The iOS share glyph (box with an up-arrow), drawn inline so the hint reads
+  // as the exact button to look for in Safari.
+  var SHARE_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+
+  function showBanner(message, actionLabel, onAction, iconSvg) {
     if (dismissed() || isStandalone() || document.getElementById('pwa-install') || !document.body) return;
     var bar = document.createElement('div');
     bar.id = 'pwa-install';
     bar.className = 'pwa-install';
     bar.setAttribute('role', 'region');
     bar.setAttribute('aria-label', 'Install Alcedo');
+
+    if (iconSvg) {
+      var icon = document.createElement('span');
+      icon.className = 'pwa-install__icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.innerHTML = iconSvg; // static, trusted markup
+      bar.appendChild(icon);
+    }
 
     var text = document.createElement('span');
     text.className = 'pwa-install__text';
@@ -81,10 +93,11 @@
 
   window.addEventListener('appinstalled', function () { remember(); removeBanner(); });
 
-  // iOS Safari has no install prompt — show the one-time Add to Home Screen hint.
+  // iOS Safari has no install prompt (Apple allows no tap-to-install), so show a
+  // one-time hint pointing at the exact Safari steps, led by the Share glyph.
   if (isiOS() && !isStandalone() && !dismissed()) {
     window.addEventListener('load', function () {
-      showBanner('Add Alcedo to your Home Screen: tap Share, then “Add to Home Screen”.', null, null);
+      showBanner('To install Alcedo: tap Share, then “Add to Home Screen”.', null, null, SHARE_SVG);
     });
   }
 })();

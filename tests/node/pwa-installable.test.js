@@ -46,7 +46,7 @@ test('pwa.js registers the worker on load and offers install / add-to-home', () 
 
 test('index.html loads pwa.js and carries the PWA head metadata', () => {
   const index = read('index.html');
-  assert.match(index, /<script src="assets\/js\/pwa\.js\?v=20261002-pwa1"><\/script>/);
+  assert.match(index, /<script src="assets\/js\/pwa\.js\?v=20261002-pwa2"><\/script>/);
   assert.match(index, /<link rel="manifest" href="site\.webmanifest">/);
   assert.match(index, /<meta name="theme-color" content="#08495C">/);
   assert.match(index, /<meta name="apple-mobile-web-app-capable" content="yes">/);
