@@ -30,7 +30,7 @@ export type HeroSlide = {
   /** Particles that drift (and burst on tap) while this slide is on screen. */
   particle?: ParticleSlide;
   /** Photos shown behind this slide, cross-faded in order with a slow zoom (a little story). */
-  photos?: { src: string; position?: string }[];
+  photos?: { src: string; position?: string; soft?: boolean }[];
 };
 
 export type HeroPalette = {
@@ -181,7 +181,8 @@ export const Component = ({
     refs.locations = [];
 
     const createStarField = (scene: THREE.Scene) => {
-      const starCount = window.innerWidth < 768 ? 2500 : 5000;
+      // Kept sparse so the stars stay in the background behind the words and photos.
+      const starCount = window.innerWidth < 768 ? 600 : 1100;
 
       for (let i = 0; i < 3; i++) {
         const geometry = new THREE.BufferGeometry();
@@ -213,7 +214,7 @@ export const Component = ({
           colors[j * 3 + 1] = color.g;
           colors[j * 3 + 2] = color.b;
 
-          sizes[j] = Math.random() * 2 + 0.5;
+          sizes[j] = Math.random() * 1.4 + 0.4;
         }
 
         geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -776,6 +777,7 @@ export const Component = ({
                   alt=""
                   decoding="async"
                   data-on={photoStep % slide.photos!.length === k || undefined}
+                  data-soft={ph.soft || undefined}
                   style={{ objectPosition: ph.position ?? "50% 35%" }}
                 />
               ))}

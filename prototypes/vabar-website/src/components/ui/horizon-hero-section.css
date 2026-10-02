@@ -41,6 +41,11 @@
   transform: scale(1);
 }
 
+/* Small source photos are shown soft-focus, so they read as a deliberate backdrop. */
+.hero-photos img[data-soft] {
+  filter: blur(3px) saturate(1.1);
+}
+
 /* Darkens the photo where the words sit, and fades its edges into the page */
 .hero-photos-scrim {
   position: absolute;

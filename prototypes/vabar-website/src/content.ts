@@ -13,6 +13,8 @@ import glassPhoto from "@/assets/photos/glass.webp";
 import heroPour from "@/assets/hero/cocktails-pour.webp";
 import heroGarnish from "@/assets/hero/cocktails-garnish.webp";
 import heroPresent from "@/assets/hero/cocktails-present.webp";
+// TAPAS hero photo (supplied 2 October 2026; small source, shown soft-focus).
+import heroTapas from "@/assets/hero/tapas.webp";
 
 export type Lang = "en" | "is";
 
@@ -91,6 +93,7 @@ export const heroScenes: Pick<HeroSlide, "palette" | "background" | "glow" | "pa
     background: "radial-gradient(ellipse at 50% 115%, #9a5a1e 0%, #5a3414 40%, #24180f 75%, #120d09 100%)",
     glow: "rgba(232, 160, 60, 0.5)",
     particle: { kind: "sparks", rgb: "240, 170, 70" },
+    photos: [{ src: heroTapas, position: "50% 50%", soft: true }],
   },
   {
     palette: {
