@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { FlowButton } from "@/components/ui/flow-button";
 import { cn } from "@/lib/utils";
 import { drinks, moodLabels, site, type Copy, type Drink, type Lang, type Mood } from "@/content";
+import { findMenuItem } from "@/menu-data";
+import { formatIsk } from "./menu-section";
 import { Eyebrow, Reveal, reducedMotion, useBurst } from "./helpers";
 
 const MOODS = Object.keys(moodLabels) as Mood[];
@@ -22,6 +24,7 @@ export function ShakeSection({ t, lang }: { t: Copy; lang: Lang }) {
   const [progress, setProgress] = useState(0);
   const [drink, setDrink] = useState<Drink | null>(null);
   const timer = useRef<number | null>(null);
+  const menuItem = drink ? findMenuItem(drink.name) : undefined;
   const { burst, node: bits } = useBurst(["🫧", "✨", "🍋", "🧊", "🌿", "🍒"]);
 
   useEffect(() => () => {
@@ -164,9 +167,12 @@ export function ShakeSection({ t, lang }: { t: Copy; lang: Lang }) {
                   <span aria-hidden="true" className="text-3xl">
                     {drink.emoji}
                   </span>
-                  {drink.name}
+                  {menuItem?.name[lang] ?? drink.name}
                 </p>
-                <p className="mt-3 text-muted-foreground">{drink.notes[lang]}</p>
+                {menuItem?.desc ? <p className="mt-3 text-muted-foreground">{menuItem.desc[lang]}</p> : null}
+                {menuItem?.price ? (
+                  <p className="mt-2 font-display text-xl font-semibold tabular-nums text-copper">{formatIsk(menuItem.price, lang)}</p>
+                ) : null}
                 <div className="mt-4 flex flex-wrap gap-1.5">
                   {drink.moods.map((m) => (
                     <span key={m} className="rounded-full bg-foreground/5 px-2.5 py-1 text-xs text-foreground/70">

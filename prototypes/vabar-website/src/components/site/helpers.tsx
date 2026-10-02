@@ -4,8 +4,18 @@ import { cn } from "@/lib/utils";
 export const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Fades children up the first time they scroll into view. */
-export function Reveal({ children, className, delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
+export function Reveal({
+  children,
+  className,
+  delay = 0,
+  as: Tag = "div",
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+  as?: "div" | "li";
+}) {
+  const ref = useRef<HTMLDivElement & HTMLLIElement>(null);
   const [shown, setShown] = useState(false);
 
   useEffect(() => {
@@ -29,7 +39,7 @@ export function Reveal({ children, className, delay = 0 }: { children: ReactNode
   }, []);
 
   return (
-    <div
+    <Tag
       ref={ref}
       className={cn(
         "reveal transition-all duration-[900ms] ease-[cubic-bezier(0.19,1,0.22,1)] motion-reduce:transition-none",
@@ -39,7 +49,7 @@ export function Reveal({ children, className, delay = 0 }: { children: ReactNode
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
-    </div>
+    </Tag>
   );
 }
 

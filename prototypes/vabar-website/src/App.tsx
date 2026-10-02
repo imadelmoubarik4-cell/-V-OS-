@@ -3,6 +3,12 @@ import { Component as HorizonHero } from "@/components/ui/horizon-hero-section";
 import { FlowButton } from "@/components/ui/flow-button";
 import { SiteHeader } from "@/components/site/site-header";
 import { MenuSection } from "@/components/site/menu-section";
+import { BarSection } from "@/components/site/bar-section";
+import { AboutSection } from "@/components/site/about-section";
+import { HappyHourSection } from "@/components/site/happy-hour-section";
+import { ReviewsSection } from "@/components/site/reviews-section";
+import { EventsSection } from "@/components/site/events-section";
+import { FaqSection } from "@/components/site/faq-section";
 import { ShakeSection } from "@/components/site/shake-section";
 import { SkalSection } from "@/components/site/skal-section";
 import { VisitSection } from "@/components/site/visit-section";
@@ -65,9 +71,15 @@ export default function App() {
 
         <div id="main" className="relative z-10 bg-background">
           <Marquee words={t.marquee} />
+          <AboutSection t={t} />
           <MenuSection t={t} lang={lang} />
+          <HappyHourSection t={t} lang={lang} />
+          <EventsSection t={t} lang={lang} />
+          <BarSection t={t} lang={lang} />
           <ShakeSection t={t} lang={lang} />
+          <ReviewsSection t={t} />
           <SkalSection t={t} />
+          <FaqSection t={t} />
           <VisitSection t={t} />
         </div>
       </main>
@@ -81,6 +93,11 @@ export default function App() {
                 {site.name} · {site.venue} · {site.street}, {site.postcode} {site.city}
               </p>
               <p className="mt-1 tabular-nums">{t.footer.hours}</p>
+              <p className="mt-1">
+                <a href={site.emailHref} className="text-copper underline-offset-4 hover:underline">
+                  {site.email}
+                </a>
+              </p>
               <p className="mt-4 text-xs">© 2026 {site.company}</p>
             </div>
             <div className="flex flex-wrap items-center gap-4">

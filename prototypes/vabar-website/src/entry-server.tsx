@@ -2,7 +2,19 @@
 // dist/index.html, so crawlers and link previews see the real content without running JS.
 import { renderToString } from "react-dom/server";
 import App from "./App";
-import { site } from "./content";
+import { copy, site } from "./content";
+
+export function faqLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: copy.en.faq.items.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+}
 
 export function render() {
   return renderToString(<App />);
@@ -25,6 +37,8 @@ export function jsonLd() {
     name: site.name,
     alternateName: ["VÁ", "Vá bar"],
     url: site.url,
+    email: site.email,
+    image: `${site.url}og-image.jpg`,
     description:
       "VÁ BAR combines handcrafted cocktails, curated wines, and Mediterranean-inspired tapas, with coffee from 11:30, inside Hafnartorg Gallery Food Hall in Reykjavík.",
     servesCuisine: ["Cocktails", "Wine", "Tapas", "Mediterranean", "Coffee"],

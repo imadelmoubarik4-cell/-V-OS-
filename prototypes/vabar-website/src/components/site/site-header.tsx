@@ -37,8 +37,8 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
 
   const links = [
     { href: "#drinks", label: t.nav.drinks },
+    { href: "#happy-hour", label: t.nav.happy },
     { href: "#shake", label: t.nav.shake },
-    { href: "#skal", label: t.nav.skal },
     { href: "#visit", label: t.nav.visit },
   ];
 
@@ -105,6 +105,16 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
 
           <div className="flex items-center gap-3">
             {langButton}
+            {site.bookingUrl ? (
+              <a
+                href={site.bookingUrl}
+                target="_blank"
+                rel="noopener"
+                className="hidden rounded-full bg-copper px-5 py-2 text-sm font-bold text-charcoal transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-rotate-2 hover:scale-105 active:scale-95 motion-reduce:transform-none sm:inline-flex"
+              >
+                {t.nav.book}
+              </a>
+            ) : null}
             <FlowButton href={site.menuUrl} text={t.nav.menu} tone="light" className="hidden px-6 py-2 sm:inline-flex" />
             <button
               type="button"
@@ -140,7 +150,11 @@ export function SiteHeader({ t, lang, onToggleLang, navOpen, setNavOpen }: Props
         </button>
         <nav className="flex h-full flex-col items-center justify-center gap-4" aria-label="Overlay">
           <img src={logoUrl} alt="" width={64} height={43} className="mb-4 h-auto w-[64px]" />
-          {[...links, { href: site.menuUrl, label: t.nav.menu }].map((l, i) => (
+          {[
+            ...links,
+            { href: site.menuUrl, label: t.nav.menu },
+            ...(site.bookingUrl ? [{ href: site.bookingUrl, label: t.nav.book }] : []),
+          ].map((l, i) => (
             <a
               key={l.href}
               href={l.href}

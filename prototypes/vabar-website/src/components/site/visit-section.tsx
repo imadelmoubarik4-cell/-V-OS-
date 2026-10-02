@@ -8,7 +8,7 @@ import { Eyebrow, Reveal } from "./helpers";
 const TZ = "Atlantic/Reykjavik";
 
 /** Weekday (0 = Sunday) and minutes since midnight in Reykjavík. */
-function reykjavikNow(date = new Date()) {
+export function reykjavikNow(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: TZ,
     weekday: "short",
@@ -83,10 +83,19 @@ export function VisitSection({ t }: { t: Copy }) {
                 <p className="text-lg text-muted-foreground">
                   {site.street}, {site.postcode} {site.city}
                 </p>
+                <p className="mt-3 text-lg">
+                  <span className="sr-only">{t.visit.email}: </span>
+                  <a href={site.emailHref} className="text-copper underline-offset-4 hover:underline">
+                    {site.email}
+                  </a>
+                </p>
               </address>
               <div className="mt-8 flex flex-wrap gap-3">
                 <FlowButton href={site.mapsUrl} target="_blank" rel="noopener" text={t.visit.directions} tone="light" />
                 <FlowButton href={site.menuUrl} text={t.visit.menu} tone="light" />
+                {site.bookingUrl ? (
+                  <FlowButton href={site.bookingUrl} target="_blank" rel="noopener" text={t.nav.book} tone="light" />
+                ) : null}
               </div>
             </div>
           </Reveal>

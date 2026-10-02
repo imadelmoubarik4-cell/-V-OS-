@@ -100,34 +100,55 @@ It is used for every call-to-action button on the page.
 
 ## The page
 
-`src/App.tsx` puts it together; all copy and venue facts are in `src/content.ts` (English and Icelandic).
+`src/App.tsx` puts it together. Copy and venue facts are in `src/content.ts`; the menu is in `src/menu-data.ts`. Both are in English and Icelandic.
 
-- **Header:** the solo logo (it wobbles on hover), section links (Drinks, Shake, Skál, Visit), an animated **EN / IS** switch (remembered per device; the default follows the browser language) and a Menu button. On phones a full-screen navigation overlay opens instead; the hero's side menu opens it too, and Escape closes it.
-- **Hero:** the horizon scene in the brand colours. Three slides:
-  - **SKÁL**: "Handcrafted cocktails, curated wines and Mediterranean-inspired tapas", with the "See the menu" and "Find us" buttons;
-  - **COFFEE** (*KAFFI*): "Coffee from 11:30, cocktails until late";
-  - **HAFNARTORG**: "Inside Hafnartorg Gallery Food Hall, Geirsgata 17, by the old harbour".
-- **Marquee:** a tilted terracotta band, "Cocktails ✦ Coffee ✦ Tapas ✦ Wines ✦ Skál ✦ Hafnartorg" (static with reduced motion).
-- **On the menu** (`#drinks`): four tabs (Coffee, Cocktails, Spritz & zero, Wine & beer), each with real item names and small tags (Signature, Frozen, Hot, 0.0%, Draught, House). There are no prices; "Full menu & prices" goes to the live menu. The tabs follow the WAI-ARIA pattern, so arrow keys move between them.
-- **Shake:** choose moods (Fresh, Sour, Bitter, Sweet, Strong, Coffee, Frozen, Warm, Alcohol-free, or "Surprise me"), then press the cocktail shaker. It suggests one of 20 VÁ drinks, with VÁ's own signatures marked, and never the same drink twice in a row.
-- **Skál:** a "Skál!" button that clinks, bursts sparkles and counts glasses raised (stored on this device only), with levels that make the glow behind it brighter.
-- **Visit:** the address card (VÁ BAR · Hafnartorg Gallery Food Hall · Geirsgata 17, 101 Reykjavík) with directions and menu buttons, and the opening-hours table with today highlighted and an **Open now / Closed now** badge in Reykjavík time. Closing at 00:00 counts as midnight.
-- **Footer:** address, hours, the company line, Staff login and Back to top.
-- **Throughout:** sections fade up as they scroll in, a soft terracotta glow follows the pointer (fine pointers only), and there is a skip link. With reduced motion everything still works, without movement.
+1. **Header:** the solo logo, section links (Drinks, Happy hour, Shake, Visit), the **EN / IS** switch and a Menu button. A **Book a table** button appears once `site.bookingUrl` is set. On phones, links open in a full-screen overlay (the hero's side menu opens it too).
+2. **Hero:** the 3D horizon scene. Three slides:
+   - **SKÁL**: "Handcrafted cocktails, curated wines and Mediterranean-inspired tapas";
+   - **COFFEE** (*KAFFI*);
+   - **HAFNARTORG**.
+3. **Marquee:** "Cocktails ✦ Coffee ✦ Tapas ✦ Wines ✦ Happy hour 15–18 ✦ Hafnartorg".
+4. **Our story** (`#story`): "One shared vision", with the founders' text from the current site and the numbers 20 (years of experience), 2024 (opened) and 101 (downtown Reykjavík), which count up as they scroll in.
+5. **On the menu** (`#drinks`): the whole printed menu with prices, in six tabs:
+   - Cocktails: signature, most popular, frozen, hot;
+   - Spritz & zero proof, including shots;
+   - Wine, with glass and bottle prices;
+   - Beer;
+   - Coffee;
+   - Treats & juices.
+
+   It ends with the allergy note and a link to the live menu.
+6. **Happy hour** (`#happy-hour`): every day 15:00–18:00, plus the late night on Friday and Saturday 22:00–00:00.
+   - A live line says "Happy hour is on · ends in …" or "Next happy hour today at 15:00 · in …".
+   - The lineup cards come from the happy hour menu: cocktails 1,990, wine 1,090, draught beer, bottles & cans and shots 990.
+   - The menu's fine print is underneath.
+7. **What's happening** (`#events`): three event cards. The one on now gets an "On now" badge; one later the same day gets "Tonight".
+   - **Girls' Night:** every Thursday 18:00–22:00, 50% off cocktails.
+   - **Weekend Late Hour:** Friday and Saturday 22:00–00:00.
+   - **Sunday 2-for-1:** all beers, Sundays 18:00–20:00.
+8. **Behind the bar** (`#bar`): the photo deck (tap, swipe, arrow keys).
+9. **Shake:** choose moods, shake, and get one of 22 drinks from the menu, with its menu description and price; VÁ's signatures are marked.
+10. **Reviews** (`#reviews`): the three reviews quoted on the current site, shown as tilted speech bubbles.
+11. **Skál:** the cheers counter.
+12. **FAQ** (`#faq`): the 12 questions and answers from the current site, in both languages. They use native `<details>`, so they work without JavaScript and every answer is in the HTML.
+13. **Visit:** the address, info@vábar.is, directions, menu (and booking, when set), plus the opening hours with the Open now badge.
+14. **Footer:** address, hours, email, the company line and Staff login.
+
+Every interaction works with a keyboard and a touch screen. With reduced motion everything still works, without movement.
 
 ## Where the facts come from
 
 | Fact | Source |
 |---|---|
-| Opening hours: Sun–Thu 11:30–22:00, Fri–Sat 11:30–00:00 | The owner, 2 October 2026 |
-| Address: VÁ BAR, Hafnartorg Gallery Food Hall, Geirsgata 17, 101 Reykjavík | The owner, 2 October 2026 |
-| Menu link `https://app.alcedo.is/menu.html` | The owner, 2 October 2026 |
-| Drink names and ingredients | VÁ's recipes in Atlas: `data/flavor/recipes-snapshot.json` (exported 27 September 2026; names and ingredient links only, no prices or quantities) |
-| "Handcrafted cocktails, curated wines and Mediterranean-inspired tapas" | The business description on the current Wix site (VÁ BAR Reykjavik) |
+| Opening hours, address, menu link | The owner, 2 October 2026 |
+| Every menu item, description and price; the happy hour lineup and fine print | The printed menus: "VÁ Cocktails Menu Redesign" A3 and "VÁ Happy hour Menu Redesign" A4, English and Icelandic (supplied 2 October 2026), in `src/menu-data.ts` |
+| Happy hour times and prices, founders' text, the numbers, reviews, FAQ answers, events, info@vábar.is | The current vábar.is (screenshots and FAQ text from the owner, 2 October 2026). Girls' Night replaces Date Nights, at the owner's request. |
+| "Handcrafted cocktails, curated wines and Mediterranean-inspired tapas" | The current Wix site's business profile |
 | Logo, colours | The brand manual |
+| Photos | The owner, 2 October 2026 (`src/assets/photos/`, `public/og-image.jpg`) |
 | Company line | `prototypes/alcedo-website` |
 
-When the menu changes, update `drinks` and `menuTabs` in `src/content.ts`. The full menu, with prices, always comes from the live menu page.
+When the printed menu changes, update `src/menu-data.ts`. The shaker game reads names, descriptions and prices from it. FAQ answers written in only one language on the old site were translated for the other.
 
 ## SEO
 
@@ -141,7 +162,7 @@ Built around the search terms VÁ BAR is found with on Google (bar, coffee, rest
 - **Head:**
   - **Title:** "VÁ BAR · Cocktail & wine bar, coffee and tapas at Hafnartorg, Reykjavík".
   - **Meta description:** names the food hall, the address and "open daily from 11:30".
-  - **Also:** the canonical URL `https://www.xn--vbar-5na.is/` and Open Graph tags.
+  - **Also:** the canonical URL `https://www.xn--vbar-5na.is/`, Open Graph tags and a share image (`og-image.jpg`, the VÁ logo etched in a glass) for links on Facebook, Messenger and other apps.
 - **Headings and copy:** the page heading reads "VÁ BAR: cocktail bar, wine bar and coffee with tapas at Hafnartorg, Reykjavík" for screen readers and search engines, while the big visual title stays "SKÁL". The keywords appear in normal sentences, not as a keyword list.
 - **Crawling:** `robots.txt` allows everything and points to `sitemap.xml`. With no JavaScript, the hero text and every section are still visible.
 - **Language:** one URL, English by default in the HTML, with the EN / IS switch in the browser. Separate `/is/` pages with `hreflang` would help Icelandic searches; they can be added later.
@@ -149,10 +170,13 @@ Built around the search terms VÁ BAR is found with on Google (bar, coffee, rest
 
 ## Before launch
 
-1. **Directions:** `site.mapsUrl` is a Google Maps search for the full address. Replace it with the Google Business Profile's own Maps link.
-2. **Icelandic copy:** have a native speaker read it.
-3. **Menu page:** check that `https://app.alcedo.is/menu.html` shows the current menu (it reads live from Atlas).
-4. **Optional:** a share image (`og:image`, 1200×630) for links on Facebook and Messenger, and a phone number if you want one on the site.
+1. **Booking link:** bookings run through Sinna. Paste VÁ's Sinna booking URL into `site.bookingUrl` in `src/content.ts`, and "Book a table" / "Bóka borð" appears in the header, the phone menu and the Visit section.
+2. **Social links:** the current site links to Facebook, Instagram and TikTok. Send the three profile URLs; they will go in the footer and the structured data (`sameAs`).
+3. **Reviews:** the three reviews are copied word for word from the current site. Check that each is a real review on Google or Tripadvisor. Google's guidelines don't allow invented or edited reviews.
+4. **Illustrations:** the current site's line drawings (the founders, the bartender, the guests) came only as screenshots. Send the original files to use them, for example inverted to light lines on the dark background.
+5. **Directions:** replace the Maps search in `site.mapsUrl` with the Google Business Profile's Maps link.
+6. **Icelandic copy:** have a native speaker read the text that was translated (marked in the commit history).
+7. **Photos:** the bartender is recognisable. Make sure he's happy to appear on the website.
 
 ## Hosting
 
@@ -178,4 +202,9 @@ The app's CSP already allows `frame-ancestors https://xn--vbar-5na.is`.
   - the EN → IS switch sets `<html lang="is">`;
   - the side menu opens the overlay, and Escape closes it;
   - the hours badge read "Closed now" on Friday at 10:15 Reykjavík time, which is correct (VÁ opens at 11:30).
-- **Performance:** three.js is in its own chunk (about 141 kB gzipped). The app chunk is about 140 kB gzipped.
+  - with the clock set to Thursday 19:00, Girls' Night showed "On now"; on Friday at 16:10, happy hour showed "on · ends in 1 h 50 min" and the Weekend Late Hour showed "Tonight";
+  - the photo deck moved on tap, swipe, the ← key and the Next button;
+  - the menu tabs switch, and wine rows show glass and bottle prices that line up at 390 px;
+  - with "Warm" chosen, the shaker returned Irish Coffee (2,990 kr) and Spiked Hot Chocolate (3,090 kr), with their menu descriptions;
+  - FAQ answers open and close.
+- **Performance:** three.js is in its own chunk (about 141 kB gzipped). The app chunk is about 150 kB gzipped. The photos are 20–67 kB each and load lazily.

@@ -3,6 +3,11 @@
 // VÁ's own recipes in Atlas (data/flavor/recipes-snapshot.json, names and ingredients only, no
 // prices); the description is the business profile of the current Wix site.
 import type { HeroPalette, HeroSlide } from "@/components/ui/horizon-hero-section";
+import barPhoto from "@/assets/photos/bar.webp";
+import cocktailPhoto from "@/assets/photos/cocktail.webp";
+import pourPhoto from "@/assets/photos/pour.webp";
+import muddlePhoto from "@/assets/photos/muddle.webp";
+import glassPhoto from "@/assets/photos/glass.webp";
 
 export type Lang = "en" | "is";
 
@@ -12,7 +17,6 @@ export type Drink = {
   id: string;
   name: string;
   moods: Mood[];
-  notes: Record<Lang, string>;
   emoji: string;
   signature?: boolean;
 };
@@ -34,6 +38,12 @@ export const site = {
   company: "Coffee & Cocktails ehf. · kt. 671124-0220 · Geirsgata 17, 101 Reykjavík",
   menuUrl: "https://app.alcedo.is/menu.html",
   staffUrl: "https://app.alcedo.is/",
+  // Contact address shown on the current vábar.is. The link uses the punycode domain so every mail app accepts it.
+  email: "info@vábar.is",
+  emailHref: "mailto:info@xn--vbar-5na.is",
+  // Table bookings run through Sinna. Paste VÁ's Sinna booking link here and a "Book a table"
+  // button appears in the header and the Visit section; null hides it.
+  bookingUrl: null as string | null,
   // A Maps search for the full address. Swap for the Google Business Profile link when you have it.
   mapsUrl:
     "https://www.google.com/maps/search/?api=1&query=" +
@@ -49,167 +59,30 @@ export const heroPalette: HeroPalette = {
   atmosphere: [0.36, 0.2, 0.13],
 };
 
-// Drinks for the "Shake" game: VÁ's own cocktails, spritzes and alcohol-free drinks.
+// Drinks for the "Shake" game. Names match src/menu-data.ts, which supplies description and price.
 export const drinks: Drink[] = [
-  {
-    id: "va-espresso-martini",
-    name: "VÁ Espresso Martini",
-    signature: true,
-    moods: ["coffee", "strong", "sweet"],
-    emoji: "☕",
-    notes: {
-      en: "Our house version: dark spiced rum, fresh espresso, coffee liqueur, vanilla and a pinch of salt.",
-      is: "Okkar útgáfa: dökkt kryddromm, nýlagað espressó, kaffilíkjör, vanilla og ögn af salti.",
-    },
-  },
-  {
-    id: "popcorn",
-    name: "Popcorn",
-    signature: true,
-    moods: ["strong", "sweet"],
-    emoji: "🍿",
-    notes: {
-      en: "Popcorn-infused Woodford bourbon with salted caramel and bitters.",
-      is: "Woodford bourbon með poppkornsbragði, saltkaramellu og bitter.",
-    },
-  },
-  {
-    id: "tiki-me",
-    name: "Tiki Me",
-    signature: true,
-    moods: ["sweet", "strong", "fresh"],
-    emoji: "🍍",
-    notes: {
-      en: "Spiced rum and cognac with passion fruit, pineapple, coconut and lime.",
-      is: "Kryddromm og koníak með ástaraldin, ananas, kókos og límónu.",
-    },
-  },
-  {
-    id: "chupa-chups",
-    name: "Chupa Chups",
-    signature: true,
-    moods: ["sweet", "sour"],
-    emoji: "🍭",
-    notes: {
-      en: "Lollipop-infused Patrón tequila with peach and lime.",
-      is: "Patrón tekíla með sleikjóbragði, ferskju og límónu.",
-    },
-  },
-  {
-    id: "basil-gimlet",
-    name: "Basil Gimlet",
-    moods: ["fresh", "sour"],
-    emoji: "🌿",
-    notes: { en: "Gin, lime and our own basil syrup.", is: "Gin, límóna og basilsíróp hússins." },
-  },
-  {
-    id: "porn-star-martini",
-    name: "Porn Star Martini",
-    moods: ["sweet", "sour"],
-    emoji: "💛",
-    notes: { en: "Vodka, passion fruit, vanilla and lime.", is: "Vodka, ástaraldin, vanilla og límóna." },
-  },
-  {
-    id: "negroni",
-    name: "Negroni",
-    moods: ["bitter", "strong"],
-    emoji: "🍊",
-    notes: { en: "Gin, Campari and Antica Formula vermouth.", is: "Gin, Campari og Antica Formula vermút." },
-  },
-  {
-    id: "whisky-sour",
-    name: "Whisky Sour",
-    moods: ["sour", "strong"],
-    emoji: "🍋",
-    notes: {
-      en: "Woodford Reserve, lemon, sugar and a silky aquafaba foam.",
-      is: "Woodford Reserve, sítróna, sykur og silkimjúk aquafaba-froða.",
-    },
-  },
-  {
-    id: "margarita",
-    name: "Margarita",
-    moods: ["sour", "fresh"],
-    emoji: "🧂",
-    notes: { en: "Tequila, triple sec, lime and agave.", is: "Tekíla, triple sec, límóna og agave." },
-  },
-  {
-    id: "old-fashioned",
-    name: "Old Fashioned",
-    moods: ["strong", "sweet"],
-    emoji: "🥃",
-    notes: { en: "Woodford Reserve, demerara sugar and Angostura bitters.", is: "Woodford Reserve, demerara-sykur og Angostura bitter." },
-  },
-  {
-    id: "moscow-mule",
-    name: "Moscow Mule",
-    moods: ["fresh", "sour"],
-    emoji: "🫚",
-    notes: { en: "Vodka, ginger beer and lime.", is: "Vodka, engiferbjór og límóna." },
-  },
-  {
-    id: "aperol-spritz",
-    name: "Aperol Spritz",
-    moods: ["fresh", "bitter"],
-    emoji: "🫧",
-    notes: { en: "Aperol, prosecco and soda.", is: "Aperol, prosecco og sódavatn." },
-  },
-  {
-    id: "hugo-spritz",
-    name: "Hugo Spritz",
-    moods: ["fresh", "sweet"],
-    emoji: "🌼",
-    notes: { en: "St-Germain elderflower, prosecco and soda.", is: "St-Germain ylliblómalíkjör, prosecco og sódavatn." },
-  },
-  {
-    id: "frozen-pina-colada",
-    name: "Frozen Piña Colada",
-    moods: ["frozen", "sweet"],
-    emoji: "🥥",
-    notes: { en: "Rum, coconut and pineapple, blended with ice.", is: "Romm, kókos og ananas, blandað með klaka." },
-  },
-  {
-    id: "frozen-strawberry-daiquiri",
-    name: "Frozen Strawberry Daiquiri",
-    moods: ["frozen", "sweet", "sour"],
-    emoji: "🍓",
-    notes: { en: "Rum, strawberry and lime, blended with ice.", is: "Romm, jarðarber og límóna, blandað með klaka." },
-  },
-  {
-    id: "irish-coffee",
-    name: "Irish Coffee",
-    moods: ["warm", "coffee", "strong"],
-    emoji: "🔥",
-    notes: { en: "Jameson, hot coffee, brown sugar and cream.", is: "Jameson, heitt kaffi, púðursykur og rjómi." },
-  },
-  {
-    id: "hot-toddy",
-    name: "Hot Toddy",
-    moods: ["warm", "sweet"],
-    emoji: "🍯",
-    notes: { en: "Woodford Reserve, honey, lemon and hot water.", is: "Woodford Reserve, hunang, sítróna og heitt vatn." },
-  },
-  {
-    id: "nojito",
-    name: "Nojito",
-    moods: ["zero", "fresh"],
-    emoji: "🌱",
-    notes: { en: "Alcohol-free: mint, lime and Bottega 0.0 Bianco.", is: "Áfengislaus: mynta, límóna og Bottega 0.0 Bianco." },
-  },
-  {
-    id: "apple-sour",
-    name: "Apple Sour",
-    moods: ["zero", "sour"],
-    emoji: "🍏",
-    notes: { en: "Alcohol-free: apple, lemon and a silky aquafaba foam.", is: "Áfengislaus: epli, sítróna og silkimjúk aquafaba-froða." },
-  },
-  {
-    id: "na-limoncello-spritz",
-    name: "N/A Limoncello Spritz",
-    moods: ["zero", "fresh", "sweet"],
-    emoji: "🍋",
-    notes: { en: "Alcohol-free limoncino and bubbles.", is: "Áfengislaust limoncino og búbblur." },
-  },
+  { id: "va-espresso-martini", name: "VÁ Espresso Martini", signature: true, moods: ["coffee", "strong", "sweet"], emoji: "☕" },
+  { id: "popcorn", name: "Popcorn", signature: true, moods: ["strong", "sweet"], emoji: "🍿" },
+  { id: "tiki-me", name: "Tiki Me", signature: true, moods: ["sweet", "strong", "fresh"], emoji: "🍍" },
+  { id: "chupa-chups", name: "Chupa Chups", signature: true, moods: ["sweet", "sour"], emoji: "🍭" },
+  { id: "espresso-martini", name: "Espresso Martini", moods: ["coffee", "strong"], emoji: "☕" },
+  { id: "basil-gimlet", name: "Basil Gimlet", moods: ["fresh", "sour"], emoji: "🌿" },
+  { id: "porn-star-martini", name: "Porn Star Martini", moods: ["sweet", "sour"], emoji: "💛" },
+  { id: "whisky-sour", name: "Whisky Sour", moods: ["sour", "strong"], emoji: "🍋" },
+  { id: "margarita", name: "Margarita", moods: ["sour", "fresh"], emoji: "🧂" },
+  { id: "mojito", name: "Mojito", moods: ["fresh", "sour", "sweet"], emoji: "🌱" },
+  { id: "gin-tonic", name: "Gin & Tonic", moods: ["fresh", "bitter"], emoji: "🫒" },
+  { id: "aperol-spritz", name: "Aperol Spritz", moods: ["fresh", "bitter"], emoji: "🫧" },
+  { id: "hugo-spritz", name: "Hugo Spritz", moods: ["fresh", "sweet"], emoji: "🌼" },
+  { id: "frozen-pina-colada", name: "Frozen Piña Colada", moods: ["frozen", "sweet"], emoji: "🥥" },
+  { id: "frozen-strawberry-daiquiri", name: "Frozen Strawberry Daiquiri", moods: ["frozen", "sweet", "sour"], emoji: "🍓" },
+  { id: "frozen-pear-daiquiri", name: "Frozen Pear Daiquiri", moods: ["frozen", "sweet"], emoji: "🍐" },
+  { id: "irish-coffee", name: "Irish Coffee", moods: ["warm", "coffee", "strong"], emoji: "🔥" },
+  { id: "hot-toddy", name: "Hot Toddy", moods: ["warm", "sweet"], emoji: "🍯" },
+  { id: "spiked-hot-chocolate", name: "Spiked Hot Chocolate", moods: ["warm", "sweet"], emoji: "🍫" },
+  { id: "nojito", name: "Nojito", moods: ["zero", "fresh"], emoji: "🌱" },
+  { id: "apple-sour", name: "Apple Sour", moods: ["zero", "sour"], emoji: "🍏" },
+  { id: "na-limoncello-spritz", name: "N/A Limoncello Spritz", moods: ["zero", "fresh", "sweet"], emoji: "🍋" },
 ];
 
 export const moodLabels: Record<Mood, Record<Lang, string>> = {
@@ -224,75 +97,122 @@ export const moodLabels: Record<Mood, Record<Lang, string>> = {
   zero: { en: "Alcohol-free", is: "Áfengislaust" },
 };
 
-/** Menu highlights by tab: real item names from VÁ's recipes. Prices live on the full menu. */
-export type MenuTab = { id: string; label: Record<Lang, string>; lead: Record<Lang, string>; items: { name: string; tag?: Record<Lang, string> }[] };
+/** Happy hour, as on the current vábar.is (2 October 2026). Minutes since midnight; 1440 = midnight. */
+export const happyHour = {
+  periods: [
+    { days: [0, 1, 2, 3, 4, 5, 6], start: 15 * 60, end: 18 * 60 },
+    { days: [5, 6], start: 22 * 60, end: 24 * 60 },
+  ],
+};
 
-const sig = { en: "Signature", is: "Einkenni" };
-const frozen = { en: "Frozen", is: "Frosinn" };
-const hot = { en: "Hot", is: "Heitur" };
-const zero = { en: "0.0%", is: "0,0%" };
-const sweetTag = { en: "Sweet", is: "Sætt" };
-const draught = { en: "Draught", is: "Á krana" };
-const house = { en: "House", is: "Hússins" };
+/** Weekly events ("What's happening"). Minutes since midnight; 1440 = midnight. */
+export const events = [
+  {
+    id: "girls-night",
+    emoji: "💃",
+    days: [4],
+    start: 18 * 60,
+    end: 22 * 60,
+    title: { en: "Girls' Night", is: "Stelpukvöld" },
+    when: { en: "Every Thursday · 18:00–22:00", is: "Alla fimmtudaga · 18:00–22:00" },
+    text: { en: "50% off cocktails.", is: "50% afsláttur af kokteilum." },
+  },
+  {
+    id: "late-hour",
+    emoji: "🌙",
+    days: [5, 6],
+    start: 22 * 60,
+    end: 24 * 60,
+    title: { en: "Weekend Late Hour", is: "Gleðistund um helgar" },
+    when: { en: "Friday & Saturday · 22:00–00:00", is: "Föstudaga og laugardaga · 22:00–00:00" },
+    text: { en: "Happy hour returns before closing.", is: "Gleðistundin snýr aftur fyrir lokun." },
+  },
+  {
+    id: "sunday-2for1",
+    emoji: "🍻",
+    days: [0],
+    start: 18 * 60,
+    end: 20 * 60,
+    title: { en: "Sunday 2-for-1", is: "Sunnudagur 2 fyrir 1" },
+    when: { en: "Every Sunday · 18:00–20:00", is: "Alla sunnudaga · 18:00–20:00" },
+    text: { en: "2-for-1 on all beers.", is: "2 fyrir 1 af öllum bjór." },
+  },
+];
 
-export const menuTabs: MenuTab[] = [
+/** Reviews quoted on the current vábar.is. Kept word for word; see README before launch. */
+export const reviews = [
   {
-    id: "coffee",
-    label: { en: "Coffee", is: "Kaffi" },
-    lead: { en: "From 11:30 every day.", is: "Frá 11:30 alla daga." },
-    items: [
-      { name: "Espresso" }, { name: "Double Espresso" }, { name: "Americano" }, { name: "Iced Americano" },
-      { name: "Cortado" }, { name: "Cappuccino" }, { name: "Flat White" }, { name: "Latte" }, { name: "Iced Latte" },
-      { name: "Vanilla Latte" }, { name: "Caramel Latte" }, { name: "Mocha" }, { name: "Oat Matcha Latte" },
-      { name: "Hot Chocolate" }, { name: "Tea Selection" },
-      { name: "Apple Pie", tag: sweetTag }, { name: "Pecan Pie", tag: sweetTag }, { name: "Chocolate cookies", tag: sweetTag },
-    ],
+    quote: "Great cocktails and the tapas are genuinely good, not an afterthought. Perfect spot before dinner elsewhere or to stay all night.",
+    author: "Jón K.",
+    source: "Google",
   },
   {
-    id: "cocktails",
-    label: { en: "Cocktails", is: "Kokteilar" },
-    lead: { en: "Our signatures, the classics, frozen and hot.", is: "Okkar einkennisdrykkir, klassíkin, frosnir og heitir." },
-    items: [
-      { name: "VÁ Espresso Martini", tag: sig }, { name: "Popcorn", tag: sig }, { name: "Tiki Me", tag: sig },
-      { name: "Chupa Chups", tag: sig }, { name: "Bartender's Choice", tag: sig },
-      { name: "Basil Gimlet" }, { name: "Espresso Martini" }, { name: "Porn Star Martini" }, { name: "Margarita" },
-      { name: "Paloma" }, { name: "Mojito" }, { name: "Whisky Sour" }, { name: "Negroni" }, { name: "Old Fashioned" },
-      { name: "Manhattan" }, { name: "Moscow Mule" }, { name: "Tom Collins" }, { name: "Cuba Libre" },
-      { name: "Gin & Tonic" }, { name: "Tequila Sunrise" },
-      { name: "Frozen Piña Colada", tag: frozen }, { name: "Frozen Strawberry Daiquiri", tag: frozen },
-      { name: "Frozen Pear Daiquiri", tag: frozen }, { name: "Frozen Porn Star Martini", tag: frozen },
-      { name: "Irish Coffee", tag: hot }, { name: "Hot Toddy", tag: hot }, { name: "Spiked Hot Chocolate", tag: hot },
-    ],
+    quote: "Happy hour prices are excellent for the location. Wine list is small but well chosen. Will be back.",
+    author: "Maria S.",
+    source: "Google",
   },
   {
-    id: "spritz",
-    label: { en: "Spritz & zero", is: "Spritz & 0,0%" },
-    lead: { en: "Bubbles, and plenty without alcohol.", is: "Búbblur, og nóg án áfengis." },
-    items: [
-      { name: "Aperol Spritz" }, { name: "Hugo Spritz" }, { name: "Limoncello Spritz" }, { name: "Sarti Spritz" },
-      { name: "Nojito", tag: zero }, { name: "Apple Sour", tag: zero }, { name: "N/A Limoncello Spritz", tag: zero },
-      { name: "Lemonade", tag: zero }, { name: "Strawberry Lemonade", tag: zero }, { name: "Passion Fruit Lemonade", tag: zero },
-      { name: "Tropical Passion", tag: zero }, { name: "Strawberry & Pear", tag: zero },
-    ],
+    quote: "A lively environment but not so loud you can't have a conversation. Staff were very friendly and knowledgeable and I thoroughly enjoyed spending time at this bar. Would highly recommend!",
+    author: "kylier946",
+    source: "Tripadvisor",
+  },
+];
+
+/** "Behind the bar" photos (supplied by the owner, 2 October 2026; 720×1280 web copies). */
+export type Photo = { id: string; src: string; alt: Record<Lang, string>; caption: Record<Lang, string>; position?: string };
+
+export const photos: Photo[] = [
+  {
+    id: "bar",
+    src: barPhoto,
+    position: "60% 50%",
+    caption: { en: "Behind the bar at Hafnartorg", is: "Á bak við barinn á Hafnartorgi" },
+    alt: {
+      en: "A bartender in a flat cap mixes a drink at the VÁ BAR counter, with glasses hanging above.",
+      is: "Barþjónn með derhúfu blandar drykk við barborð VÁ BAR, með glös hangandi fyrir ofan.",
+    },
   },
   {
-    id: "wine",
-    label: { en: "Wine & beer", is: "Vín & bjór" },
-    lead: { en: "House wines by the glass, a few special bottles, beer on draught.", is: "Húsvín í glasi, nokkrar sérvaldar flöskur og bjór á krana." },
-    items: [
-      { name: "House Red", tag: house }, { name: "House White", tag: house }, { name: "House Rosé", tag: house },
-      { name: "House Sparkling", tag: house },
-      { name: "Vionta Albariño" }, { name: "Von Winning Sauvignon Blanc" }, { name: "Schloss Johannisberg Riesling Bronzelack" },
-      { name: "La Celia Reserva Malbec" }, { name: "Tommasi Amarone" }, { name: "Veuve Clicquot Brut Champagne" },
-      { name: "Boli", tag: draught }, { name: "Gull Lite", tag: draught }, { name: "Tuborg Classic", tag: draught },
-      { name: "Somersby", tag: draught }, { name: "Guinness" }, { name: "Úlfrún Nr.34" },
-    ],
+    id: "cocktail",
+    src: cocktailPhoto,
+    caption: { en: "Crushed ice, fresh lime", is: "Mulinn klaki, fersk límóna" },
+    alt: {
+      en: "A tall green cocktail with lime and crushed ice, finished with a red pour from a jigger.",
+      is: "Hár grænn kokteill með límónu og muldum klaka, toppaður með rauðu úr mæliglasi.",
+    },
+  },
+  {
+    id: "pour",
+    src: pourPhoto,
+    caption: { en: "Every pour measured", is: "Hver skammtur mældur" },
+    alt: {
+      en: "A bartender pours into a jigger in front of the bar's backlit blue stone wall.",
+      is: "Barþjónn hellir í mæliglas fyrir framan upplýstan bláan steinvegg barsins.",
+    },
+  },
+  {
+    id: "muddle",
+    src: muddlePhoto,
+    caption: { en: "Muddled to order", is: "Marið á staðnum" },
+    alt: {
+      en: "A bartender muddles lime in a glass under a row of hanging martini glasses.",
+      is: "Barþjónn merur límónu í glasi undir röð af hangandi martini-glösum.",
+    },
+  },
+  {
+    id: "glass",
+    src: glassPhoto,
+    caption: { en: "Our logo, etched in the glass", is: "Merkið okkar, grafið í glasið" },
+    alt: {
+      en: "The base of a wine glass with the VÁ logo etched into it, on a black napkin.",
+      is: "Fótur á vínglasi með VÁ-merkinu gröfnu í glerið, á svartri servíettu.",
+    },
   },
 ];
 
 export const copy = {
   en: {
-    nav: { drinks: "Drinks", shake: "Shake", skal: "Skál", visit: "Visit", menu: "Menu", lang: "Íslenska", langShort: "IS" },
+    nav: { book: "Book a table", drinks: "Drinks", happy: "Happy hour", shake: "Shake", skal: "Skál", visit: "Visit", menu: "Menu", lang: "Íslenska", langShort: "IS" },
     heroHeading: "VÁ BAR: cocktail bar, wine bar and coffee with tapas at Hafnartorg, Reykjavík",
     heroMenu: "EXPLORE",
     heroScroll: "SCROLL",
@@ -303,13 +223,79 @@ export const copy = {
     ] satisfies HeroSlide[],
     heroCtaMenu: "See the menu",
     heroCtaVisit: "Find us",
-    marquee: ["Cocktails", "Coffee", "Tapas", "Wines", "Skál", "Hafnartorg"],
+    marquee: ["Cocktails", "Coffee", "Tapas", "Wines", "Happy hour 15–18", "Hafnartorg"],
     menu: {
       eyebrow: "On the menu",
       title: "Coffee by day, cocktails by night.",
-      lead: "A taste of what we pour. The full menu has everything, with prices.",
+      lead: "Everything we pour and serve, straight from our menu. Prices in Icelandic krónur; wine by the 150 ml glass or the bottle.",
+      glass: "Glass",
+      bottle: "Bottle",
+      signature: "Signature",
+      favourite: "House favourite",
+      allergies: "Please tell your server about any allergies or dietary needs.",
       tabsLabel: "Menu sections",
-      full: "Full menu & prices",
+      full: "Open the live menu",
+    },
+    about: {
+      eyebrow: "Our story",
+      title: "One shared vision.",
+      body: "VÁ Cocktail bar in Reykjavík was created by two friends with different backgrounds but one shared vision: to build a unique hospitality experience centred on atmosphere, quality and unforgettable moments in the heart of Reykjavík.",
+      stats: [
+        { value: 20, label: "Years of experience" },
+        { value: 2024, label: "Opened" },
+        { value: 101, label: "Downtown Reykjavík" },
+      ],
+    },
+    happy: {
+      eyebrow: "Every day, 15:00–18:00",
+      title: "The best deal at Hafnartorg.",
+      lead: "Daily happy hour on cocktails, wine and beer, plus a late one on Friday and Saturday.",
+      when: "When",
+      daily: "Every day",
+      late: "Late night · Friday & Saturday",
+      lineup: "On happy hour",
+      finePrint: "Happy hour applies only to the items listed · No substitutions · Not valid with other offers",
+      on: (left: string) => `Happy hour is on · ends in ${left}`,
+      next: (when: string, until: string) => `Next happy hour ${when} · in ${until}`,
+      today: (time: string) => `today at ${time}`,
+      tomorrow: (time: string) => `tomorrow at ${time}`,
+      onDay: (day: string, time: string) => `${day} at ${time}`,
+      days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      h: "h",
+      min: "min",
+    },
+    faq: {
+      eyebrow: "FAQ",
+      title: "Good questions.",
+      items: [
+        { q: "Where is VÁ Bar?", a: "VÁ Bar is in Hafnartorg Gallery (Geirsgata 17, 101 Reykjavík), in the heart of Reykjavík, within walking distance of Harpa and the city centre." },
+        { q: "What are VÁ Bar's opening hours?", a: "VÁ Bar is open Sunday to Thursday 11:30–22:00 and Friday to Saturday 11:30–00:00. Opening hours may vary on public holidays." },
+        { q: "Does VÁ Bar have a happy hour?", a: "Yes. VÁ has happy hour deals on selected cocktails for 1,990 kr, wines for 1,090 kr and all beers for 990 kr. See the happy hour section for current times and offers." },
+        { q: "When is happy hour at VÁ Bar?", a: "Happy hour is every day 15:00–18:00. There is also a late-night happy hour every Friday and Saturday 22:00–00:00." },
+        { q: "Can I book a table at VÁ Bar?", a: "Yes. You can book a table online through Sinna. We recommend booking ahead at weekends, for celebrations and for larger groups." },
+        { q: "Does VÁ Bar offer alcohol-free cocktails?", a: "Yes. We offer a selection of creative alcohol-free cocktails, wines and other non-alcoholic drinks." },
+        { q: "Is VÁ good for dates and celebrations?", a: "Absolutely. VÁ's warm atmosphere, carefully mixed cocktails, tapas and curated wines make it ideal for dates, birthdays, celebrations and relaxed evenings with friends." },
+        { q: "What makes VÁ different from other bars in Reykjavík?", a: "VÁ brings together creative cocktails, flavourful tapas, curated wines and personal service in one memorable experience. Our aim is simple: to create moments that make people say “VÁ”." },
+        { q: "What food and drinks do you serve at VÁ Bar?", a: "We serve handcrafted cocktails, curated wines, and Mediterranean-inspired tapas. It is a focused menu, made for sharing, pairing, and enjoying at the bar or table." },
+        { q: "Do you host private events or group bookings?", a: "Yes. We can help with group bookings and private events. Contact us at info@vábar.is with your date, group size, and what you need, and we will get back to you." },
+        { q: "Do you have vegetarian, vegan, or allergen-friendly options?", a: "Yes, we offer options for different preferences. Please ask our team when you visit, and we will help you choose dishes that work for you." },
+        { q: "Can I walk in, or do I need a reservation?", a: "Walk-ins are welcome when we have space. For busy times, we recommend booking a table to secure your spot." },
+      ],
+    },
+    events: { eyebrow: "Good to know", title: "What's happening.", onNow: "On now", tonight: "Tonight" },
+    reviews: {
+      eyebrow: "What people say",
+      title: "Don't take our word for it.",
+      review: (source: string) => `${source} review`,
+    },
+    bar: {
+      eyebrow: "Behind the bar",
+      title: "Made by hand, right in front of you.",
+      lead: "Tap the photo or swipe to deal the next one.",
+      next: "Next photo",
+      prev: "Previous photo",
+      deck: "Photos from VÁ BAR",
+      of: "of",
     },
     shake: {
       eyebrow: "Play · cocktail shaker",
@@ -346,13 +332,14 @@ export const copy = {
       closedNow: "Closed now",
       days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
       midnight: "midnight",
+      email: "Email",
       directions: "Get directions",
       menu: "See the menu",
     },
     footer: { staff: "Staff login", top: "Back to top", hours: "Sun–Thu 11:30–22:00 · Fri–Sat 11:30–00:00" },
   },
   is: {
-    nav: { drinks: "Drykkir", shake: "Hrista", skal: "Skál", visit: "Heimsókn", menu: "Matseðill", lang: "English", langShort: "EN" },
+    nav: { book: "Bóka borð", drinks: "Drykkir", happy: "Gleðistund", shake: "Hrista", skal: "Skál", visit: "Heimsókn", menu: "Matseðill", lang: "English", langShort: "EN" },
     heroHeading: "VÁ BAR: kokteilabar, vínbar og kaffi með tapas á Hafnartorgi í Reykjavík",
     heroMenu: "KANNA",
     heroScroll: "SKRUNA",
@@ -363,13 +350,79 @@ export const copy = {
     ] satisfies HeroSlide[],
     heroCtaMenu: "Sjá matseðil",
     heroCtaVisit: "Finna okkur",
-    marquee: ["Kokteilar", "Kaffi", "Tapas", "Vín", "Skál", "Hafnartorg"],
+    marquee: ["Kokteilar", "Kaffi", "Tapas", "Vín", "Gleðistund 15–18", "Hafnartorg"],
     menu: {
       eyebrow: "Á matseðlinum",
       title: "Kaffi á daginn, kokteilar á kvöldin.",
-      lead: "Smá forsmekkur. Allur matseðillinn, með verðum, er á matseðilssíðunni.",
+      lead: "Allt sem við hellum upp á og berum fram, beint af matseðlinum. Verð í íslenskum krónum; vín í 150 ml glasi eða flösku.",
+      glass: "Glas",
+      bottle: "Flaska",
+      signature: "Sérkokteill",
+      favourite: "Vinsælt hjá okkur",
+      allergies: "Vinsamlegast láttu þjóninn vita um ofnæmi eða sérþarfir.",
       tabsLabel: "Hlutar matseðils",
-      full: "Allur matseðill og verð",
+      full: "Opna matseðilinn",
+    },
+    about: {
+      eyebrow: "Sagan okkar",
+      title: "Ein sameiginleg sýn.",
+      body: "VÁ kokteilabar í Reykjavík var stofnaður af tveimur vinum með ólíkan bakgrunn en eina sameiginlega sýn: að skapa einstaka gestrisni þar sem andrúmsloft, gæði og ógleymanlegar stundir eru í fyrirrúmi, í hjarta Reykjavíkur.",
+      stats: [
+        { value: 20, label: "Ára reynsla" },
+        { value: 2024, label: "Opnaði" },
+        { value: 101, label: "Miðbær Reykjavíkur" },
+      ],
+    },
+    happy: {
+      eyebrow: "Alla daga, 15:00–18:00",
+      title: "Besta tilboðið á Hafnartorgi.",
+      lead: "Gleðistund alla daga á kokteilum, víni og bjór, og önnur seint á föstudags- og laugardagskvöldum.",
+      when: "Hvenær",
+      daily: "Alla daga",
+      late: "Næturstund · föstudaga og laugardaga",
+      lineup: "Á gleðistund",
+      finePrint: "Gleðistundin gildir aðeins um það sem talið er upp · Engar skiptingar · Gildir ekki með öðrum tilboðum",
+      on: (left: string) => `Gleðistund núna · lýkur eftir ${left}`,
+      next: (when: string, until: string) => `Næsta gleðistund ${when} · eftir ${until}`,
+      today: (time: string) => `í dag kl. ${time}`,
+      tomorrow: (time: string) => `á morgun kl. ${time}`,
+      onDay: (day: string, time: string) => `á ${day} kl. ${time}`,
+      days: ["sunnudag", "mánudag", "þriðjudag", "miðvikudag", "fimmtudag", "föstudag", "laugardag"],
+      h: "klst.",
+      min: "mín.",
+    },
+    faq: {
+      eyebrow: "Spurt og svarað",
+      title: "Góðar spurningar.",
+      items: [
+        { q: "Hvar er VÁ Bar staðsettur?", a: "VÁ Bar er staðsettur í Hafnartorg Gallery (Geirsgötu 17, 101 Reykjavík), í hjarta Reykjavíkur, í göngufæri frá Hörpu og miðbænum." },
+        { q: "Hver er opnunartími VÁ Bar?", a: "VÁ Bar er opinn sunnudaga til fimmtudaga frá 11:30–22:00 og föstudaga til laugardaga frá 11:30–00:00. Opnunartími getur verið breytilegur á almennum frídögum." },
+        { q: "Er VÁ Bar með Happy Hour?", a: "Já. VÁ býður upp á Happy Hour-tilboð á völdum kokteilum á 1.990 kr., vínum á 1.090 kr. og öllum bjórum á 990 kr. Skoðaðu gleðistundarhlutann fyrir gildandi tíma og tilboð." },
+        { q: "Hvenær er Happy Hour á VÁ Bar?", a: "Happy Hour er alla daga frá 15:00–18:00. Auk þess er síðkvölds Happy Hour alla föstudaga og laugardaga frá 22:00–00:00." },
+        { q: "Er hægt að bóka borð á VÁ Bar?", a: "Já. Hægt er að bóka borð á netinu í gegnum Sinna. Mælt er með því að bóka fyrirfram um helgar, fyrir hátíðarhöld og stærri hópa." },
+        { q: "Býður VÁ Bar upp á áfengislausa kokteila?", a: "Já. Við bjóðum upp á úrval af frumlegum áfengislausum kokteilum, vínum og öðrum óáfengum drykkjum." },
+        { q: "Hentar VÁ fyrir stefnumót og hátíðarhöld?", a: "Algjörlega. Hlýlegt andrúmsloft VÁ, vandlega blandaðir kokteilar, tapasréttir og sérvalin vín gera staðinn tilvalinn fyrir stefnumót, afmæli, hátíðarhöld og afslappaðar stundir með vinum." },
+        { q: "Hvað aðgreinir VÁ frá öðrum börum í Reykjavík?", a: "VÁ sameinar frumlega kokteila, bragðmikla tapasrétti, sérvalin vín og persónulega þjónustu í eina eftirminnilega upplifun. Markmið okkar er einfalt: að skapa augnablik sem fá fólk til að segja „VÁ“." },
+        { q: "Hvaða mat og drykki bjóðið þið upp á?", a: "Við bjóðum upp á handgerða kokteila, sérvalin vín og tapas að hætti Miðjarðarhafsins. Matseðillinn er hnitmiðaður, gerður til að deila, para saman og njóta við barinn eða borðið." },
+        { q: "Takið þið að ykkur einkasamkvæmi eða hópbókanir?", a: "Já. Við aðstoðum með hópbókanir og einkasamkvæmi. Sendu okkur línu á info@vábar.is með dagsetningu, fjölda gesta og því sem þú þarft, og við höfum samband." },
+        { q: "Er í boði grænmetis-, vegan- eða ofnæmisvænt?", a: "Já, við bjóðum upp á valkosti fyrir ólíkar þarfir. Spurðu starfsfólkið þegar þú kemur og við hjálpum þér að velja það sem hentar þér." },
+        { q: "Get ég komið án bókunar, eða þarf ég að panta?", a: "Það er velkomið að koma án bókunar þegar pláss leyfir. Á annatímum mælum við með að bóka borð til að tryggja sér sæti." },
+      ],
+    },
+    events: { eyebrow: "Gott að vita", title: "Hvað er að gerast.", onNow: "Í gangi núna", tonight: "Í kvöld" },
+    reviews: {
+      eyebrow: "Það sem fólk segir",
+      title: "Ekki trúa okkur bara.",
+      review: (source: string) => `Umsögn á ${source}`,
+    },
+    bar: {
+      eyebrow: "Á bak við barinn",
+      title: "Handgert, beint fyrir framan þig.",
+      lead: "Pikkaðu á myndina eða strjúktu til að sjá þá næstu.",
+      next: "Næsta mynd",
+      prev: "Fyrri mynd",
+      deck: "Myndir frá VÁ BAR",
+      of: "af",
     },
     shake: {
       eyebrow: "Leikur · kokteilahristari",
@@ -406,6 +459,7 @@ export const copy = {
       closedNow: "Lokað núna",
       days: ["sunnudagur", "mánudagur", "þriðjudagur", "miðvikudagur", "fimmtudagur", "föstudagur", "laugardagur"],
       midnight: "miðnætti",
+      email: "Netfang",
       directions: "Leiðarlýsing",
       menu: "Sjá matseðil",
     },
