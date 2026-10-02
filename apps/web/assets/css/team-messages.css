@@ -82,6 +82,21 @@
 .msg-item__read, .msg-item__failed { display: inline-flex; align-items: center; gap: var(--s-1); font: var(--type-caption); color: var(--text-3); }
 .msg-item__read svg, .msg-item__failed svg { width: 14px; height: 14px; }
 .msg-item__failed { color: var(--danger); font-weight: 500; }
+/* Read receipts: one grey tick while only sent, a coloured double tick once read.
+   The read receipt is a button (tap to see who read it) but reads as plain text. */
+.msg-item__read--sent { color: var(--text-3); }
+.msg-item__read--read { border: 0; margin: 0; padding: 0; background: none; cursor: pointer; color: var(--accent-brand); font: var(--type-caption); }
+.msg-item__read--read svg { color: var(--accent-brand); }
+.msg-item__read--read:hover { text-decoration: underline; }
+.msg-item__read--read:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--r-xs); }
+/* "Read by" sheet */
+.msg-readers__list { display: grid; gap: var(--s-1); list-style: none; margin: 0; padding: var(--s-2) 0; }
+.msg-readers__row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) 0; }
+.msg-readers__who { display: inline-flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.msg-readers__name { display: grid; min-width: 0; font: var(--type-body); color: var(--text); }
+.msg-readers__role { font: var(--type-caption); color: var(--text-2); }
+.msg-readers__when { flex: none; font: var(--type-caption); color: var(--text-2); white-space: nowrap; }
+.msg-readers__empty { color: var(--text-2); font: var(--type-caption); padding: var(--s-2) 0; list-style: none; }
 .msg-item { position: relative; }
 /* Edit / Delete: a small toolbar above the bubble's top edge on hover or focus (it never covers the time); inline on touch screens. */
 .msg-item__actions { position: absolute; bottom: calc(100% - var(--s-2)); right: var(--s-2); z-index: 1; display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-1); opacity: 0; pointer-events: none; }

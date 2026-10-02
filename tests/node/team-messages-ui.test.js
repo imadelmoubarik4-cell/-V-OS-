@@ -63,6 +63,18 @@ test('unread, read, edit and deletion controls', () => {
   assert.match(messages, /total_unread/);
   assert.match(messages, /unread_count/);
   assert.match(messages, /Read by \$\{count\}/);
+  // WhatsApp-style receipt on your own messages: one grey tick when only sent,
+  // a coloured double tick once read; the double tick is a button that opens the
+  // "Read by" sheet (a tooltip alone is invisible on touch screens).
+  assert.match(messages, /msg-item__read--sent">\$\{icon\('check'\)\}Sent/);
+  assert.match(messages, /class="msg-item__read msg-item__read--read" data-msg-readers="\$\{escapeHtml\(message\.id\)\}"/);
+  assert.match(messages, /\$\{icon\('check-check'\)\}Read by \$\{count\}/);
+  assert.match(messages, /function openReadersSheet\(messageId\)/);
+  assert.match(messages, /id: 'msg-readers'/);
+  assert.match(messages, /Read by \$\{readers\.length\}/);
+  assert.match(messages, /const readersButton = target\.closest\('\[data-msg-readers\]'\);/);
+  assert.match(css, /\.msg-item__read--read \{[^}]*cursor: pointer;/);
+  assert.match(css, /\.msg-readers__list \{/);
   assert.match(messages, /data-team-edit/);
   assert.match(messages, /data-team-delete/);
   assert.match(messages, /api\('mark-read'/);
