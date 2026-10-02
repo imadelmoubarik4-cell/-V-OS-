@@ -1411,6 +1411,7 @@ body.atlas-modal-open { overflow: hidden; }
 /* PWA install prompt (Android native prompt / iOS Add-to-Home hint). Injected by
    pwa.js only off-standalone and before install; hidden during automated tests. */
 .pwa-install { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); z-index: 1000; display: flex; align-items: center; gap: 12px; width: max-content; max-width: min(520px, calc(100vw - 32px)); padding: 8px 8px 8px 16px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--text); box-shadow: 0 8px 28px rgba(8, 16, 24, .18); }
+.pwa-install__icon { flex: none; display: inline-flex; align-items: center; color: var(--accent-brand); }
 .pwa-install__text { min-width: 0; font: var(--type-caption); color: var(--text); }
 .pwa-install__action { flex: none; min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: var(--accent-brand); color: #fff; font: 600 14px/1 var(--font-sans); cursor: pointer; }
 .pwa-install__close { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--text-2); font-size: 22px; line-height: 1; cursor: pointer; }
