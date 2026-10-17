@@ -48,6 +48,11 @@ window.VABAR_CONFIG = {
   // server-side rate limits remain the real abuse control either way.
   AUTH_CAPTCHA_PROVIDER: "",
   AUTH_CAPTCHA_SITE_KEY: "",
+  // KANEL Pricing & Profitability (Finance › Menu Pricing). FEATURE-FLAGGED: the
+  // destination only appears when this is true, and only for admin/manager roles.
+  // It is a client-side calculation workspace — it never writes to live POS/menu
+  // prices, invoices or accounting records. Set to false to hide it entirely.
+  KANEL_PRICING_ENABLED: true,
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
@@ -219,6 +224,25 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   globalName: 'AtlasBookings',
   dataAttribute: 'atlasBookings',
 }));
+
+// KANEL Pricing & Profitability (Finance › Menu Pricing): admin/manager-only,
+// feature-flagged. A client-side calculation workspace over the shared pricing
+// engine; registers the shell view 'pricing'. Loads only when the flag is on.
+if (window.VABAR_CONFIG && window.VABAR_CONFIG.KANEL_PRICING_ENABLED) {
+  // The shared, decimal-safe calculation engine (window.KanelPricing). Pure and
+  // dependency-free; the workspace waits for it before it renders.
+  loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+    scriptPath: 'assets/js/kanel-pricing-engine.js?v=20261017-kanel1',
+    globalName: 'KanelPricing',
+    dataAttribute: 'kanelPricingEngine',
+  }));
+  loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+    stylesheetPath: 'assets/css/finance-pricing-workspace.css?v=20261017-kanel1',
+    scriptPath: 'assets/js/finance-pricing-workspace.js?v=20261017-kanel1',
+    globalName: 'AtlasFinancePricing',
+    dataAttribute: 'atlasFinancePricing',
+  }));
+}
 
 // Checkpoint H replaces the Reports placeholder with a permission-aware,
 // read-only analysis workspace. It pulls live source records through the

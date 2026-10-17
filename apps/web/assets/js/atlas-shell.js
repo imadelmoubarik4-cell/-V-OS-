@@ -179,6 +179,8 @@
       return [['knowledge', rest[0] ? { article: rest[0] } : {}]];
     },
     reports: (rest) => [['reports', section(rest[0])]],
+    // #pricing (dashboard), #pricing/quick (quick calculator), #pricing/<section>.
+    pricing: (rest) => [['pricing', section(rest[0])]],
     marketing: (rest) => [['marketing', section(rest[0])]],
     accounting: (rest) => [['accounting', rest[0] === 'document' && rest[1] ? { document: rest[1] } : section(rest[0])]],
     data: (rest) => {
@@ -698,6 +700,7 @@
     { id: 'reports', label: 'Reports', icon: 'chart-no-axes-column', route: '#reports', view: 'reports', views: ['reports', 'business'], aliases: ['business'], group: 'Business', roles: ROLES_MANAGERS, keywords: ['analytics', 'overview', 'waste', 'labour'] },
     { id: 'marketing', label: 'Marketing', icon: 'megaphone', route: '#marketing', view: 'marketing', views: ['marketing'], aliases: [], group: 'Business', roles: ROLES_MANAGERS, keywords: ['social', 'posts', 'instagram'] },
     { id: 'accounting', label: 'Accounting', icon: 'receipt-text', route: '#accounting', view: 'accounting', views: ['accounting'], aliases: [], group: 'Business', roles: ROLES_ADMIN, keywords: ['invoices', 'receipts', 'bills', 'reimbursements', 'vat', 'bókhald', 'reikningar'] },
+    { id: 'pricing', label: 'Menu Pricing', icon: 'badge-percent', route: '#pricing', view: 'pricing', views: ['pricing'], aliases: [], group: 'Business', roles: ROLES_MANAGERS, flag: 'KANEL_PRICING_ENABLED', keywords: ['price', 'pricing', 'margin', 'profit', 'cost', 'vat', 'menu', 'calculator', 'break-even', 'kanel', 'verð', 'framlegð'] },
     { id: 'data', label: 'Data', icon: 'database', route: '#data', view: 'imports', views: ['data', 'imports', 'sprint3-review'], aliases: ['imports', 'sprint3-review'], group: 'Business', roles: ROLES_MANAGERS, keywords: ['import', 'excel', 'csv', 'review', 'par levels'] },
     { id: 'settings', label: 'Settings', icon: 'settings', route: '#settings', view: 'settings', views: ['settings', 'system'], aliases: ['system'], group: 'footer', roles: ROLES_MANAGERS, keywords: ['preferences', 'hours', 'notifications', 'system health'] }
   ]);
@@ -707,10 +710,22 @@
     return { ...item, views: [...item.views], aliases: [...item.aliases], roles: [...item.roles], keywords: [...item.keywords] };
   }
 
+  // A destination may be hidden behind a client feature flag (e.g. a module still
+  // in test). An item with no `flag` is always on; one with a `flag` appears only
+  // when window.VABAR_CONFIG[flag] is truthy. Unknown config reads as off.
+  function featureEnabled(item) {
+    if (!item || !item.flag) return true;
+    try { return Boolean(window.VABAR_CONFIG && window.VABAR_CONFIG[item.flag]); }
+    catch { return false; }
+  }
+
   // Destinations the role may open, in sidebar order ({ all: true } lists every one).
   function navItems(context = {}) {
     const role = currentRole(context);
-    return NAV_ITEMS.filter((item) => context.all || (Boolean(role) && item.roles.includes(role))).map(describeNav);
+    return NAV_ITEMS
+      .filter((item) => featureEnabled(item))
+      .filter((item) => context.all || (Boolean(role) && item.roles.includes(role)))
+      .map(describeNav);
   }
 
   function navById(id) {
@@ -735,7 +750,7 @@
   function navAllowed(target, role = currentRole()) {
     const item = navById(target) || navForView(target);
     if (!item) return true;
-    return Boolean(role) && item.roles.includes(role);
+    return Boolean(role) && item.roles.includes(role) && featureEnabled(item);
   }
 
   // ---------- page markup helpers (spec §6.1) ----------
