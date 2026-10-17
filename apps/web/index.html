@@ -145,6 +145,7 @@
               <a class="nav-item" href="#reports" data-view="reports" data-nav-id="reports" aria-label="Reports" hidden><i data-lucide="chart-no-axes-column" aria-hidden="true"></i><span class="nav-item-label">Reports</span></a>
               <a class="nav-item" href="#marketing" data-view="marketing" data-nav-id="marketing" aria-label="Marketing" hidden><i data-lucide="megaphone" aria-hidden="true"></i><span class="nav-item-label">Marketing</span></a>
               <a class="nav-item" href="#accounting" data-view="accounting" data-nav-id="accounting" aria-label="Accounting" hidden><i data-lucide="receipt-text" aria-hidden="true"></i><span class="nav-item-label">Accounting</span></a>
+              <a class="nav-item" href="#pricing" data-view="pricing" data-nav-id="pricing" aria-label="Menu Pricing" hidden><i data-lucide="badge-percent" aria-hidden="true"></i><span class="nav-item-label">Menu Pricing</span></a>
               <a class="nav-item" href="#data" data-view="data" data-nav-id="data" aria-label="Data" hidden><i data-lucide="database" aria-hidden="true"></i><span class="nav-item-label">Data</span><span class="atlas-badge atlas-badge--muted atlas-nav__badge" data-nav-badge="data" hidden></span></a>
             </div>
             <!-- Retired destinations (spec §3.1) keep a hidden link so their modules
@@ -197,6 +198,8 @@
           <div id="training-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Training…</p></div>
           <!-- Bookings (#bookings, #bookings/config, #bookings/<date>): staff floor + manager configuration. -->
           <div id="bookings-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Bookings…</p></div>
+          <!-- Menu Pricing (#pricing, #pricing/quick, #pricing/<section>): KANEL Pricing & Profitability, rendered by assets/js/finance-pricing-workspace.js as the 'pricing' view. Feature-flagged + admin/manager only. -->
+          <div id="pricing-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Menu Pricing…</p></div>
           <div id="reports-view" style="display:none;"></div>
           <div id="ai-view" style="display:none;"></div>
           <div id="not-found-view" style="display:none;"></div>

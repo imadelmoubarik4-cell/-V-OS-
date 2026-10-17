@@ -1,0 +1,87 @@
+/* KANEL Pricing & Profitability (Finance › Menu Pricing) — layout only. Page
+ * header, buttons, fields, segmented control, checks and empty states are the
+ * shared atlas-* components. No tokens defined here (only used), no hex, no
+ * !important. Tints derive from the Alcedo palette tokens via color-mix. */
+@layer atlas.modules {
+.fp-host { display: block; }
+.fp-page { display: block; }
+.fp-tabs { margin-top: var(--s-4); flex-wrap: wrap; }
+.fp-tab { display: inline-flex; align-items: center; gap: var(--s-2); }
+.fp-tab svg { width: 16px; height: 16px; }
+.fp-body { margin-top: var(--s-5); }
+
+/* ---------- cards + grid ---------- */
+.fp-grid { display: grid; gap: var(--s-5); }
+.fp-grid--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: start; }
+.fp-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s-5); box-shadow: var(--shadow-1); }
+.fp-card__title { margin: 0; font: var(--type-section); letter-spacing: var(--track-section); color: var(--text); }
+.fp-card__sub { margin: var(--s-2) 0 0; font: var(--type-meta); color: var(--text-2); }
+.fp-card__headrow { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.fp-subhead { margin: var(--s-5) 0 var(--s-2); font: var(--type-label); color: var(--text-2); }
+
+/* ---------- quick form ---------- */
+.fp-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.fp-form .atlas-field { margin-top: var(--s-3); }
+.fp-check { margin-top: var(--s-4); }
+.fp-note { display: flex; align-items: flex-start; gap: var(--s-2); margin: var(--s-4) 0 0; font: var(--type-meta); color: var(--text-2); }
+.fp-note svg { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--accent); }
+.fp-note--ok svg { color: var(--positive); }
+
+/* ---------- result ladder ---------- */
+.fp-result__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap; }
+.fp-reco { text-align: right; padding: var(--s-2) var(--s-3); border-radius: var(--r-xs); background: var(--accent-soft); min-width: 160px; }
+.fp-reco__label { display: block; font: var(--type-caption); color: var(--text-2); }
+.fp-reco__value { display: block; font: var(--type-num); font-weight: 600; color: var(--text); }
+.fp-reco__floor { display: block; font: var(--type-caption); color: var(--text-2); }
+
+.fp-stats { display: grid; gap: 0; margin: var(--s-4) 0 0; }
+.fp-stats--kpi { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s-3); }
+.fp-stat { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) 0; border-bottom: 1px solid var(--line); }
+.fp-stats--kpi .fp-stat { flex-direction: column; align-items: flex-start; gap: 2px; padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-xs); background: var(--bg-muted); }
+.fp-stat__label { font: var(--type-meta); color: var(--text-2); }
+.fp-stat__hint { display: block; font: var(--type-caption); color: var(--text-2); opacity: 0.8; }
+.fp-stat__value { font: var(--type-num); color: var(--text); white-space: nowrap; }
+.fp-stat--good .fp-stat__value { color: var(--positive); }
+.fp-stat--warn .fp-stat__value { color: var(--warning); }
+.fp-stat--bad .fp-stat__value { color: var(--danger); }
+
+/* ---------- warnings ---------- */
+.fp-warnings { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: grid; gap: var(--s-2); }
+.fp-warn { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-2) var(--s-3); border-radius: var(--r-xs); font: var(--type-meta); }
+.fp-warn svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.fp-warn--warn { background: var(--warning-soft); color: var(--text); }
+.fp-warn--error { background: var(--danger-soft); color: var(--text); }
+
+/* ---------- tables ---------- */
+.fp-tablewrap { margin-top: var(--s-4); overflow-x: auto; }
+.fp-table { width: 100%; border-collapse: collapse; font: var(--type-meta); }
+.fp-table th, .fp-table td { text-align: left; padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--line); vertical-align: top; }
+.fp-table thead th { font: var(--type-caption); color: var(--text-2); text-transform: uppercase; letter-spacing: var(--track-section); white-space: nowrap; }
+.fp-table td.fp-num, .fp-table th.fp-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fp-table--dense th, .fp-table--dense td { padding: 6px var(--s-3); }
+.fp-row--flag { background: color-mix(in srgb, var(--warning) 10%, transparent); }
+.fp-item { display: block; font: var(--type-label); color: var(--text); }
+.fp-item__note { display: block; font: var(--type-caption); color: var(--text-2); }
+.fp-num--good { color: var(--positive); }
+.fp-num--warn { color: var(--warning); }
+.fp-num--bad { color: var(--danger); }
+
+/* ---------- pills / dots ---------- */
+.fp-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px var(--s-2); border-radius: var(--r-pill); font: var(--type-caption); white-space: nowrap; }
+.fp-tag svg { width: 13px; height: 13px; }
+.fp-tag--ok { background: var(--positive-soft); color: var(--text); }
+.fp-tag--warn { background: var(--warning-soft); color: var(--text); }
+.fp-tag--error { background: var(--danger-soft); color: var(--text); }
+.fp-tag--muted { background: var(--bg-muted); color: var(--text-2); }
+.fp-tag--lock { background: var(--accent-soft); color: var(--text); }
+.fp-tag--draft { background: color-mix(in srgb, var(--highlight) 22%, var(--surface)); color: var(--text); }
+.fp-dot { display: inline-block; width: 10px; height: 10px; border-radius: var(--r-pill); background: var(--text-2); }
+.fp-dot--ok { background: var(--positive); }
+.fp-dot--warn { background: var(--warning); }
+.fp-dot--error { background: var(--danger); }
+
+@media (max-width: 720px) {
+  .fp-grid--split { grid-template-columns: minmax(0, 1fr); }
+  .fp-form__row { grid-template-columns: 1fr; }
+}
+}
