@@ -51,11 +51,10 @@ window.VABAR_CONFIG = {
   // KANEL Pricing & Profitability (Finance › Menu Pricing). FEATURE-FLAGGED: the
   // destination only appears when this is true, and only for admin/manager roles.
   // It is a client-side calculation workspace — it never writes to live POS/menu
-  // prices, invoices or accounting records. DISABLED in production until the S104
-  // database migration is applied and its RLS/RPC checks pass (see issue #124);
-  // flip to true only after that controlled, verified step. When off, the engine,
-  // workspace and nav destination do not load at all.
-  KANEL_PRICING_ENABLED: false,
+  // prices, invoices or accounting records. The S104 database migration is applied
+  // and its RLS/RPC checks passed in production (issue #124), so the module is
+  // enabled for admin/manager roles. Set to false to hide it entirely.
+  KANEL_PRICING_ENABLED: true,
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application

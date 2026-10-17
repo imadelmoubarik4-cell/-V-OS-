@@ -31,7 +31,7 @@ const groupLabels = (page) => page.evaluate(() => [...document.querySelectorAll(
 
 test('sidebar: spec groups and role visibility (admin sees 15 + Settings, bartender exactly 10)', { skip }, async () => {
   for (const [user, expected, labels] of [
-    [USERS.admin, ['home', 'ai', 'messages', 'operations', 'inventory', 'recipes', 'purchasing', 'bookings', 'shifts', 'team', 'knowledge', 'reports', 'marketing', 'accounting', 'data', 'settings'], ['Venue', 'People', 'Business']],
+    [USERS.admin, ['home', 'ai', 'messages', 'operations', 'inventory', 'recipes', 'purchasing', 'bookings', 'shifts', 'team', 'knowledge', 'reports', 'marketing', 'accounting', 'pricing', 'data', 'settings'], ['Venue', 'People', 'Business']],
     [USERS.bartender, ['home', 'ai', 'messages', 'operations', 'inventory', 'recipes', 'bookings', 'shifts', 'team', 'knowledge'], ['Venue', 'People']]
   ]) {
     const { page, record, close } = await launch({ user });
@@ -97,7 +97,7 @@ test('at 1440 the sidebar collapses to the rail and the choice survives a reload
 
 test('phone (390 and 430): top bar title, 5-slot tab bar, More sheet with the rest per role', { skip }, async () => {
   for (const [user, width, more] of [
-    [USERS.admin, 390, ['messages', 'operations', 'purchasing', 'bookings', 'shifts', 'team', 'knowledge', 'reports', 'marketing', 'accounting', 'data', 'settings']],
+    [USERS.admin, 390, ['messages', 'operations', 'purchasing', 'bookings', 'shifts', 'team', 'knowledge', 'reports', 'marketing', 'accounting', 'pricing', 'data', 'settings']],
     [USERS.bartender, 430, ['messages', 'operations', 'bookings', 'shifts', 'team', 'knowledge', 'settings']]
   ]) {
     const { page, record, close } = await launch({ user, viewport: { width, height: 900 } });
