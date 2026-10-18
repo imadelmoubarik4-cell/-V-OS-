@@ -356,32 +356,57 @@ async function profileById(context: AtlasContext, profileId: string): Promise<At
   return Array.isArray(rows) && rows[0] ? rows[0] as AtlasProfile : null;
 }
 
-// Best-effort invitation status (pending / accepted / expired) per profile, for the
-// manager directory. Derived READ-ONLY from the production Auth project; never blocks
-// the snapshot — any failure yields an empty map and the UI simply shows no pill.
-// "accepted" = the invitee confirmed (set a password); "pending"/"expired" = invited
-// here (app_metadata.atlas_invited_by) and not yet confirmed, split on invite age.
-async function invitationStatuses(context: AtlasContext): Promise<Record<string, string>> {
+// Best-effort invitation status (pending / expired) per profile, for the manager
+// directory. Derived READ-ONLY from the production Auth project; never blocks the
+// snapshot — any failure yields an empty map and the UI simply shows no pill.
+// "pending"/"expired" = invited here (app_metadata.atlas_invited_by) and not yet
+// confirmed, split on invite age; the directory draws a pill for these only.
+//
+// Only an unconfirmed account can be a live invite, and such accounts are created
+// inactive (active=false) and flip to active once the invitee confirms and finishes
+// onboarding. So the candidate set is exactly the inactive profiles already loaded
+// for this snapshot, which we resolve one Auth read each (bounded) — instead of
+// paging the entire Auth user base (up to 4,000 users) on every snapshot. A
+// confirmed account carries no pill, so "accepted" is never emitted.
+async function invitationStatuses(
+  context: AtlasContext,
+  profileRows: AtlasProfile[],
+): Promise<Record<string, string>> {
   if (!isManager(context)) return {};
   const project = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!key || project !== productionAuthUrl()) return {};
+
+  // Cap the per-user Auth reads so an unusually large pool of inactive profiles can
+  // never fan out into an unbounded number of requests.
+  const lookupCap = Number(Deno.env.get("ATLAS_INVITE_LOOKUP_CAP") ?? "100") || 100;
+  const candidates = (Array.isArray(profileRows) ? profileRows : [])
+    .filter((p) => p && p.id && p.active === false)
+    .slice(0, lookupCap);
+  if (!candidates.length) return {};
+
   const expiryHours = Number(Deno.env.get("ATLAS_INVITE_EXPIRY_HOURS") ?? "24") || 24;
   const cutoff = Date.now() - expiryHours * 3600 * 1000;
   const out: Record<string, string> = {};
   try {
     const admin = createClient(project!, key, { auth: { persistSession: false, autoRefreshToken: false } });
-    for (let page = 1; page <= 20; page++) {
-      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
-      if (error || !data?.users?.length) break;
-      for (const u of data.users) {
-        if (u.email_confirmed_at) { out[u.id] = "accepted"; continue; }
-        const invitedBy = (u.app_metadata as Record<string, unknown> | undefined)?.atlas_invited_by;
-        if (!invitedBy) continue; // not an invite we track
-        const issued = Date.parse(u.invited_at ?? u.confirmation_sent_at ?? u.created_at ?? "");
-        out[u.id] = Number.isFinite(issued) && issued < cutoff ? "expired" : "pending";
+    const resolved = await Promise.all(candidates.map(async (p) => {
+      try {
+        const { data, error } = await admin.auth.admin.getUserById(p.id);
+        if (error || !data?.user) return null;
+        return { id: p.id, user: data.user };
+      } catch {
+        return null; // one missing/failed lookup must not drop the rest
       }
-      if (data.users.length < 200) break;
+    }));
+    for (const entry of resolved) {
+      if (!entry) continue;
+      const u = entry.user;
+      if (u.email_confirmed_at) continue; // confirmed → active member, no pill
+      const invitedBy = (u.app_metadata as Record<string, unknown> | undefined)?.atlas_invited_by;
+      if (!invitedBy) continue; // not an invite we track
+      const issued = Date.parse(u.invited_at ?? u.confirmation_sent_at ?? u.created_at ?? "");
+      out[entry.id] = Number.isFinite(issued) && issued < cutoff ? "expired" : "pending";
     }
   } catch (err) {
     console.warn("invitationStatuses best-effort failed", (err as Error)?.message);
@@ -391,11 +416,13 @@ async function invitationStatuses(context: AtlasContext): Promise<Record<string,
 }
 
 async function snapshot(context: AtlasContext) {
-  const [profileRows, taskRows, progressRows, invitations] = await Promise.all([
-    profiles(context),
+  // Profiles load first so the invitation lookup only touches the inactive ones;
+  // tasks, progress and that bounded lookup then run together.
+  const profileRows = await profiles(context);
+  const [taskRows, progressRows, invitations] = await Promise.all([
     onboardingTasks(context),
     onboardingProgress(context),
-    invitationStatuses(context),
+    invitationStatuses(context, profileRows),
   ]);
 
   const workspace = await branchRpc("atlas_team_profiles_snapshot", {
