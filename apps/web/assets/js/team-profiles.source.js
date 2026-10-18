@@ -27,6 +27,7 @@
   const state = {
     workspace: null,
     staff: null,
+    invitations: {},
     roster: [],
     rosterShifts: [],
     loading: false,
@@ -107,6 +108,16 @@
 
   function pill(label, tone = 'neutral') {
     return `<span class="atlas-pill atlas-pill--${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
+  }
+
+  // Invitation status pill from the manager-only snapshot.invitations map.
+  // Accepted/confirmed members show no pill (reduces noise); only outstanding
+  // invites are flagged so a manager knows to resend.
+  function invitationPill(profile) {
+    const status = state.invitations && state.invitations[profile.id];
+    if (status === 'pending') return ` ${pill('Invite pending', 'warning')}`;
+    if (status === 'expired') return ` ${pill('Invite expired', 'danger')}`;
+    return '';
   }
 
   // ---------- API ----------
@@ -311,7 +322,7 @@
         </tr></thead>
         <tbody>${rows.map((profile) => `<tr class="team-table__row${profile.active ? '' : ' is-inactive'}" data-team-profile-select="${escapeHtml(profile.id)}">
           <td><a class="team-person" href="#team/${encodeURIComponent(profile.id)}" data-team-profile-open="${escapeHtml(profile.id)}">${avatar(profile)}<span class="team-person__text"><span class="cell-primary" data-team-profile-name>${escapeHtml(profile.name)}</span><span class="cell-sub">${escapeHtml([profile.job_title, manager ? profile.email : null].filter(Boolean).join(' · ') || roleLabel(profile.role))}</span></span></a></td>
-          <td>${pill(roleLabel(profile.role))}${profile.active ? '' : ` ${pill('Inactive')}`}</td>
+          <td>${pill(roleLabel(profile.role))}${profile.active ? '' : ` ${pill('Inactive')}`}${invitationPill(profile)}</td>
           <td>${shiftCell(profile)}</td>
           ${manager ? `<td data-priority="2">${trainingCell(profile)}</td><td data-priority="3">${contactCell(profile)}</td>` : ''}
           <td class="col-actions"><span class="team-chevron">${icon('chevron-right')}</span></td>
@@ -365,7 +376,7 @@
     const titleId = options.titleId || 'team-detail-title';
     const head = `<div class="team-detail__head" data-team-profile-detail="${escapeHtml(profile.id)}" ${profile.schedule_only ? 'data-schedule-only' : ''}>
       <span class="team-profile-detail-avatar">${avatar(profile, 'atlas-avatar--xl')}</span>
-      <div class="team-detail__who"><h2 class="team-detail__name" id="${titleId}">${escapeHtml(profile.name)}</h2><p class="team-detail__role">${escapeHtml([profile.job_title, roleLabel(profile.role)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · '))}</p>${profile.active ? '' : pill('Inactive')}</div>
+      <div class="team-detail__who"><h2 class="team-detail__name" id="${titleId}">${escapeHtml(profile.name)}</h2><p class="team-detail__role">${escapeHtml([profile.job_title, roleLabel(profile.role)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · '))}</p>${profile.active ? '' : pill('Inactive')}${invitationPill(profile)}</div>
       <div class="team-profile-detail-actions team-detail__actions">${profile.can_edit_profile ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-team-profile-edit="${escapeHtml(profile.id)}">${icon('pencil')}Edit profile</button>` : ''}</div>
     </div>`;
     if (profile.schedule_only) {
@@ -597,6 +608,9 @@
           <div class="atlas-field"><label for="ta-role">Job</label><input class="atlas-input" id="ta-role" name="default_role" required maxlength="120" placeholder="Bartender, barback, manager"><p class="error" hidden data-error-for="default_role">Enter what they do.</p></div>
           <div class="atlas-field"><label for="ta-access">Alcedo access</label><select class="atlas-select" id="ta-access" name="access"><option value="schedule_only">No login — on the schedule only</option><option value="bartender">Staff login</option><option value="viewer">Read-only login</option></select><p class="help">With a login you get a one-time setup link to share with them. No email is sent.</p></div>
           <div class="atlas-field"><label for="ta-email">Email <span class="optional" data-email-optional>Optional</span></label><input class="atlas-input" id="ta-email" name="email" type="email" maxlength="320" autocomplete="off"><p class="error" hidden data-error-for="email">A login needs an email address.</p></div>
+          <div class="atlas-field"><label for="ta-dept">Department <span class="optional">Optional</span></label><select class="atlas-select" id="ta-dept" name="department"><option value="">—</option><option value="management">Management</option><option value="bar">Bar</option><option value="kitchen">Kitchen</option><option value="service">Service</option><option value="operations">Operations</option><option value="marketing">Marketing</option><option value="other">Other</option></select></div>
+          <div class="atlas-field"><label for="ta-emp">Employment type <span class="optional">Optional</span></label><select class="atlas-select" id="ta-emp" name="employment_type"><option value="">—</option><option value="owner">Owner</option><option value="full_time">Full-time</option><option value="part_time">Part-time</option><option value="temporary">Temporary</option><option value="contractor">Contractor</option><option value="other">Other</option></select></div>
+          <div class="atlas-field"><label for="ta-start">Start date <span class="optional">Optional</span></label><input class="atlas-input" id="ta-start" name="start_date" type="date"></div>
         </form>
         <footer class="atlas-sheet__foot"><button type="button" class="atlas-btn atlas-btn--ghost" data-modal-close>Cancel</button><button type="submit" form="team-add-form" class="atlas-btn atlas-btn--primary">Add team member</button></footer>
       </section>`
@@ -616,6 +630,12 @@
       submit.disabled = true;
       try {
         const login = access !== 'schedule_only';
+        // Optional employment details apply to login members only (create-person ignores them).
+        if (login) {
+          const dept = form.department.value; if (dept) body.department = dept;
+          const employmentType = form.employment_type.value; if (employmentType) body.employment_type = employmentType;
+          const startDate = form.start_date.value; if (startDate) body.start_date = startDate;
+        }
         const payload = await api(login ? 'create-login-member' : 'create-person', { roster: !login, method: 'POST', body });
         closeLayer(root);
         if (login) {
@@ -700,6 +720,7 @@
       if (!payload?.workspace) throw new TeamError('Team is temporarily unavailable.', 0);
       state.workspace = payload.workspace;
       state.staff = payload.staff || state.staff;
+      state.invitations = (payload.invitations && typeof payload.invitations === 'object') ? payload.invitations : {};
       state.roster = Array.isArray(roster?.workspace?.people) ? roster.workspace.people : [];
       state.rosterShifts = Array.isArray(roster?.workspace?.shifts) ? roster.workspace.shifts : [];
       state.error = null;

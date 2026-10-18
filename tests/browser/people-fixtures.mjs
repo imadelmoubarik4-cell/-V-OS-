@@ -293,6 +293,7 @@ export function teamBackend({ user = USERS.admin, status = 200, empty = false } 
         summary: { active_profiles: rows.filter((row) => row.active).length, managers: rows.filter((row) => ['admin', 'manager'].includes(row.role)).length, training_complete: manager ? rows.filter((row) => row.done === 3).length : null, emergency_contacts_complete: manager ? rows.filter((row) => row.contacts.length).length : null },
         events: manager ? [{ id: 'ev1', profile_id: USERS.bartender.id, event_type: 'profile_details_updated', actor_label: 'Imad El Moubarik', created_at: '2026-09-22T10:00:00Z' }] : []
       },
+      invitations: manager ? { 'c0ffee00-0000-4000-8000-000000000003': 'pending', 'c0ffee00-0000-4000-8000-000000000004': 'expired' } : {},
       staff: { id: user.id, role: user.role, can_manage_team: manager, can_edit_self: true, live_training_writes_enabled: true, live_profile_writes_enabled: true, account_invitations_enabled: true },
       policy: {}
     };
