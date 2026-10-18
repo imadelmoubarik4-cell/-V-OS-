@@ -11,7 +11,11 @@
   'use strict';
 
   const cfg = window.VABAR_CONFIG || {};
-  const POLL_MS = 8000;
+  // App-wide background poll for the unread badge. 30s keeps the count "live
+  // enough" for a secondary indicator while cutting steady-state requests ~73%
+  // vs the former 8s (≈450→120 req/hour per idle tab). The Messages view itself
+  // polls faster (~6s) while open, and this poll pauses when the tab is hidden.
+  const POLL_MS = 30000;
   const REQUEST_TIMEOUT_MS = 12000;
   const state = {
     inFlight: false,

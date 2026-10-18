@@ -22,7 +22,10 @@ test('the shell chrome renders the badge; the worker writes no badge markup', ()
 });
 
 test('unread total and per-conversation counts refresh outside Messages without racing its read cursor', () => {
-  assert.match(badge, /const POLL_MS = 8000/);
+  // Perf: the app-wide background poll runs at 30s (was 8s) to cut steady-state
+  // requests; freshness is still guaranteed by the visibility/focus refresh and
+  // the live 'messages:unread' event while Messages is open (asserted below).
+  assert.match(badge, /const POLL_MS = 30000/);
   assert.match(badge, /action', 'snapshot/);
   assert.match(badge, /payload\?\.snapshot\?\.summary\?\.total_unread/);
   assert.match(badge, /conversationsFrom\(payload\?\.snapshot\?\.channels\)/);
