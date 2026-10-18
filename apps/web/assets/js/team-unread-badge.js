@@ -16,10 +16,19 @@
   // vs the former 8s (≈450→120 req/hour per idle tab). The Messages view itself
   // polls faster (~6s) while open, and this poll pauses when the tab is hidden.
   const POLL_MS = 30000;
+  // Until the first real snapshot lands, poll quickly so the badge populates
+  // promptly after sign-in (the app screen can still be mid-boot when init's
+  // immediate refresh runs) instead of waiting up to a full 30s tick. Bounded,
+  // so a visible login screen that never signs in settles to POLL_MS and does
+  // not hold the fast cadence.
+  const WARMUP_MS = 2000;
+  const WARMUP_MAX_ATTEMPTS = 8;
   const REQUEST_TIMEOUT_MS = 12000;
   const state = {
     inFlight: false,
     timer: null,
+    timerToken: null,
+    warmupAttempts: 0,
     authSubscription: null,
     lastTotal: 0,
     conversations: [],
@@ -184,15 +193,35 @@
     }
   }
 
+  // Self-scheduling timer: fast while warming up (no snapshot loaded yet, within
+  // the bounded start-up window), then the steady-state POLL_MS. A plain interval
+  // cannot change its own cadence, hence setTimeout re-armed after each refresh.
+  function nextDelay() {
+    return (!state.loaded && state.warmupAttempts < WARMUP_MAX_ATTEMPTS) ? WARMUP_MS : POLL_MS;
+  }
+
+  function scheduleNext() {
+    const token = {};
+    state.timerToken = token;
+    state.timer = window.setTimeout(async () => {
+      if (!state.loaded) state.warmupAttempts += 1;
+      await refreshUnread({ silent: true });
+      // Reschedule only if this chain is still the active one — not stopped, and
+      // not superseded by a restart (e.g. a visibility flip) during the await.
+      if (state.timerToken === token) scheduleNext();
+    }, nextDelay());
+  }
+
   function startPolling() {
     if (state.timer) return;
-    state.timer = window.setInterval(() => refreshUnread({ silent: true }), POLL_MS);
+    scheduleNext();
   }
 
   function stopPolling() {
-    if (!state.timer) return;
-    window.clearInterval(state.timer);
+    if (state.timer === null) return;
+    window.clearTimeout(state.timer);
     state.timer = null;
+    state.timerToken = null;
   }
 
   function handleVisibility() {
