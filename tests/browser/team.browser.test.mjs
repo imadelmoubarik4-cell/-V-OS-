@@ -3,7 +3,7 @@
 // Messages identity (S87) is covered in messages.browser.test.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { harnessAvailable, launchAtlas, requestsTo, settle, USERS } from './harness.mjs';
+import { harnessAvailable, launchAtlas, requestsTo, settle, until, USERS } from './harness.mjs';
 import { teamFunctions, peopleFunctions, NOW } from './people-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -94,5 +94,79 @@ test('the API returning 503 shows a plain error and Try again works', { skip }, 
     assert.match(alert, /The team couldn’t be loaded\./);
     assert.doesNotMatch(alert, /503|rpc|Profiles are temporarily/);
     assert.equal(await page.$('[data-team-profiles-refresh]') !== null, true);
+  } finally { await close(); }
+});
+
+const GUNNAR = 'c0ffee00-0000-4000-8000-000000000003';
+
+test('an administrator sees Remove + Delete on another member but not on their own row', { skip }, async () => {
+  const { page, close } = await open({ hash: `#team/${GUNNAR}` });
+  try {
+    await page.waitForSelector('#team-profile-sheet .team-detail__name');
+    assert.equal(await page.$(`#team-profile-sheet [data-team-member-remove="${GUNNAR}"]`) !== null, true);
+    assert.equal(await page.$(`#team-profile-sheet [data-team-member-delete="${GUNNAR}"]`) !== null, true);
+    assert.match(await page.textContent('#team-profile-sheet .team-danger'), /Remove from team[\s\S]*Delete permanently/);
+    // Own row: neither control (you can't remove or delete yourself).
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => location.hash === '#team');
+    await page.click(`[data-team-profile-open="${USERS.admin.id}"]`);
+    await page.waitForSelector('#team-profile-sheet .team-detail__name');
+    assert.equal(await page.$('#team-profile-sheet [data-team-member-remove]'), null, 'no self-remove');
+    assert.equal(await page.$('#team-profile-sheet [data-team-member-delete]'), null, 'no self-delete');
+  } finally { await close(); }
+});
+
+test('Remove from team archives the member (reversible) and keeps their records', { skip }, async () => {
+  const { page, record, close } = await open({ hash: `#team/${GUNNAR}` });
+  try {
+    await page.waitForSelector(`#team-profile-sheet [data-team-member-remove="${GUNNAR}"]`);
+    await page.click(`#team-profile-sheet [data-team-member-remove="${GUNNAR}"]`);
+    await page.waitForSelector('#team-confirm');
+    assert.match(await page.textContent('#team-confirm'), /Remove Gunnar Karlsson from the team\?[\s\S]*add them back/);
+    await page.click('#team-confirm [type="submit"]');
+    await until(() => requestsTo(record, 'atlas-team-profiles', 'remove-from-team').length >= 1, { message: 'the remove request' });
+    const req = requestsTo(record, 'atlas-team-profiles', 'remove-from-team')[0];
+    assert.equal(req.body.profile_id, GUNNAR);
+    await settle(page);
+    // The sheet closes; the member drops out of the default (active) view but is
+    // kept — under the Inactive filter they are still there, marked Inactive.
+    await page.waitForFunction(() => location.hash === '#team');
+    assert.equal(await page.$(`.team-table tbody tr[data-team-profile-select="${GUNNAR}"]`), null, 'gone from the active list');
+    await page.click('[data-team-profiles-filter="inactive"]');
+    await page.waitForSelector(`tr[data-team-profile-select="${GUNNAR}"]`);
+    assert.match(await page.textContent(`tr[data-team-profile-select="${GUNNAR}"]`), /Inactive/);
+    assert.equal(requestsTo(record, 'atlas-team-profiles', 'delete-member').length, 0, 'remove never deletes');
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});
+
+test('Delete permanently needs the exact typed name, then erases the member', { skip }, async () => {
+  const { page, record, close } = await open({ hash: `#team/${GUNNAR}` });
+  try {
+    await page.waitForSelector(`#team-profile-sheet [data-team-member-delete="${GUNNAR}"]`);
+    await page.click(`#team-profile-sheet [data-team-member-delete="${GUNNAR}"]`);
+    await page.waitForSelector('#team-delete-member');
+    // A preview was fetched and the modal tells the truth: shifts are kept.
+    await until(() => requestsTo(record, 'atlas-team-profiles', 'delete-preview').length >= 1, { message: 'the preview' });
+    const text = await page.textContent('#team-delete-member');
+    assert.match(text, /Deleted for good[\s\S]*Alcedo sign-in/);
+    assert.match(text, /Kept \(required records\)[\s\S]*2 shifts they already worked/);
+    // Wrong name: the delete is refused and nothing is sent.
+    await page.fill('#team-delete-confirm', 'Gunnar');
+    await page.click('#team-delete-member [type="submit"]');
+    await settle(page);
+    assert.match(await page.textContent('#team-delete-member [data-atlas-dialog-error]'), /name doesn’t match/);
+    assert.equal(requestsTo(record, 'atlas-team-profiles', 'delete-member').length, 0, 'no delete on a bad name');
+    // Exact name: the deletion runs and the member is gone from the directory.
+    await page.fill('#team-delete-confirm', 'Gunnar Karlsson');
+    await page.click('#team-delete-member [type="submit"]');
+    await until(() => requestsTo(record, 'atlas-team-profiles', 'delete-member').length >= 1, { message: 'the delete request' });
+    const del = requestsTo(record, 'atlas-team-profiles', 'delete-member')[0];
+    assert.equal(del.body.profile_id, GUNNAR);
+    assert.equal(del.body.confirm_name, 'Gunnar Karlsson');
+    await settle(page);
+    await page.waitForFunction(() => location.hash === '#team');
+    assert.equal(await page.$(`tr[data-team-profile-select="${GUNNAR}"]`), null, 'the member no longer appears');
+    assert.deepEqual(record.pageErrors, []);
   } finally { await close(); }
 });
