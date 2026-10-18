@@ -697,31 +697,36 @@
   // which the Edge Function re-checks server-side. When the admin has no second
   // factor we can't challenge here — we let the request through and the server's
   // own step-up policy decides (and its message is shown truthfully).
+  // Fail-closed: deletion proceeds ONLY when a fresh authenticator check verifies
+  // here. If the MFA API is unavailable, the factor lookup fails, or the admin has
+  // no verified factor, we do NOT continue — the server also enforces this, but
+  // the UI must never wave the deletion through on a lookup/verify failure.
   async function stepUpForDeletion() {
     const client = window.atlasSupabase;
-    if (!client?.auth?.mfa) return 'ok';
+    if (!client?.auth?.mfa) return 'unavailable';
+    let factor;
     try {
       const listed = await client.auth.mfa.listFactors();
-      const factor = (listed?.data?.totp || []).find((candidate) => candidate.status === 'verified');
-      if (!factor) return 'ok';
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        const entered = await window.AtlasModal.prompt({
-          id: 'team-delete-stepup', title: 'Confirm it’s you',
-          body: attempt
-            ? 'That code didn’t work. Enter the current 6-digit code from your authenticator app.'
-            : 'Enter the 6-digit code from your authenticator app to confirm this permanent deletion.',
-          label: 'Authenticator code', placeholder: '000000', required: true, multiline: false, maxLength: 6, type: 'text', confirmLabel: 'Confirm'
-        });
-        if (entered === null) return 'cancelled';
-        const code = String(entered).replace(/\s+/g, '');
-        if (!/^\d{6}$/.test(code)) continue;
-        const { error } = await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
-        if (!error) return 'verified';
-      }
-      return 'failed';
+      factor = (listed?.data?.totp || []).find((candidate) => candidate.status === 'verified');
     } catch {
-      return 'ok';
+      return 'lookup_failed';
     }
+    if (!factor) return 'no_factor';
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const entered = await window.AtlasModal.prompt({
+        id: 'team-delete-stepup', title: 'Confirm it’s you',
+        body: attempt
+          ? 'That code didn’t work. Enter the current 6-digit code from your authenticator app.'
+          : 'Enter the 6-digit code from your authenticator app to confirm this permanent deletion.',
+        label: 'Authenticator code', placeholder: '000000', required: true, multiline: false, maxLength: 6, type: 'text', confirmLabel: 'Confirm'
+      });
+      if (entered === null) return 'cancelled';
+      const code = String(entered).replace(/\s+/g, '');
+      if (!/^\d{6}$/.test(code)) continue;
+      const { error } = await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
+      if (!error) return 'verified';
+    }
+    return 'failed';
   }
 
   // After a successful removal/deletion: close the open profile, refresh the
@@ -786,7 +791,9 @@
         if (normalizeName(typed) !== normalizeName(name)) return 'That name doesn’t match. Type the member’s name exactly to confirm.';
         const step = await stepUpForDeletion();
         if (step === 'cancelled') return 'Enter your authenticator code to confirm this deletion.';
-        if (step === 'failed') return 'The authenticator code didn’t match. Try again with the current 6-digit code.';
+        if (step === 'no_factor') return 'Set up an authenticator app on your own account before deleting a team member.';
+        if (step === 'lookup_failed' || step === 'unavailable') return 'Two-factor couldn’t be checked right now, so the deletion was not performed. Try again.';
+        if (step !== 'verified') return 'The authenticator code didn’t match. Try again with the current 6-digit code.';
         let payload;
         try {
           payload = await api('delete-member', { method: 'POST', body: { ...target, confirm_name: typed.trim() } });

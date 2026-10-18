@@ -8,12 +8,18 @@ import { teamFunctions, peopleFunctions, NOW } from './people-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 
-async function open({ user = USERS.admin, hash = '#team', viewport, status = 200, contextOptions = {} } = {}) {
-  const app = await launchAtlas({ user, hash, viewport, contextOptions, fixedTime: new Date(NOW), fixtures: { functions: peopleFunctions(teamFunctions({ user, status })) } });
+async function open({ user = USERS.admin, hash = '#team', viewport, status = 200, contextOptions = {}, mfa = null } = {}) {
+  const fixtures = { functions: peopleFunctions(teamFunctions({ user, status })) };
+  if (mfa) fixtures.mfa = mfa;
+  const app = await launchAtlas({ user, hash, viewport, contextOptions, fixedTime: new Date(NOW), fixtures });
   await app.page.waitForSelector('.team-table, .team-list, .atlas-alert--danger, .team-detail', { timeout: 12000 });
   await settle(app.page);
   return app;
 }
+
+// A verified authenticator so the admin can clear the fail-closed step-up before
+// a permanent deletion; fixtures.mfa.verify defaults to success.
+const VERIFIED_TOTP = { factors: [{ id: 'factor-1', factor_type: 'totp', status: 'verified', friendly_name: 'Authenticator' }] };
 
 test('admin directory: table with role, today’s shift, training and contact state', { skip }, async () => {
   const { page, record, close } = await open();
@@ -140,8 +146,8 @@ test('Remove from team archives the member (reversible) and keeps their records'
   } finally { await close(); }
 });
 
-test('Delete permanently needs the exact typed name, then erases the member', { skip }, async () => {
-  const { page, record, close } = await open({ hash: `#team/${GUNNAR}` });
+test('Delete permanently needs the exact typed name + a fresh authenticator code, then erases the member', { skip }, async () => {
+  const { page, record, close } = await open({ hash: `#team/${GUNNAR}`, mfa: VERIFIED_TOTP });
   try {
     await page.waitForSelector(`#team-profile-sheet [data-team-member-delete="${GUNNAR}"]`);
     await page.click(`#team-profile-sheet [data-team-member-delete="${GUNNAR}"]`);
@@ -151,15 +157,19 @@ test('Delete permanently needs the exact typed name, then erases the member', { 
     const text = await page.textContent('#team-delete-member');
     assert.match(text, /Deleted for good[\s\S]*Alcedo sign-in/);
     assert.match(text, /Kept \(required records\)[\s\S]*2 shifts they already worked/);
-    // Wrong name: the delete is refused and nothing is sent.
+    // Wrong name: the delete is refused and nothing is sent (no step-up either).
     await page.fill('#team-delete-confirm', 'Gunnar');
     await page.click('#team-delete-member [type="submit"]');
     await settle(page);
     assert.match(await page.textContent('#team-delete-member [data-atlas-dialog-error]'), /name doesn’t match/);
     assert.equal(requestsTo(record, 'atlas-team-profiles', 'delete-member').length, 0, 'no delete on a bad name');
-    // Exact name: the deletion runs and the member is gone from the directory.
+    // Exact name → a fresh authenticator code is required before the delete runs.
     await page.fill('#team-delete-confirm', 'Gunnar Karlsson');
     await page.click('#team-delete-member [type="submit"]');
+    await page.waitForSelector('#team-delete-stepup-input');
+    assert.equal(requestsTo(record, 'atlas-team-profiles', 'delete-member').length, 0, 'no delete before the code');
+    await page.fill('#team-delete-stepup-input', '123456');
+    await page.click('#team-delete-stepup [type="submit"]');
     await until(() => requestsTo(record, 'atlas-team-profiles', 'delete-member').length >= 1, { message: 'the delete request' });
     const del = requestsTo(record, 'atlas-team-profiles', 'delete-member')[0];
     assert.equal(del.body.profile_id, GUNNAR);
@@ -168,5 +178,19 @@ test('Delete permanently needs the exact typed name, then erases the member', { 
     await page.waitForFunction(() => location.hash === '#team');
     assert.equal(await page.$(`tr[data-team-profile-select="${GUNNAR}"]`), null, 'the member no longer appears');
     assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});
+
+test('Delete permanently fails closed when the admin has no verified authenticator', { skip }, async () => {
+  const { page, record, close } = await open({ hash: `#team/${GUNNAR}` }); // no mfa factor seeded
+  try {
+    await page.waitForSelector(`#team-profile-sheet [data-team-member-delete="${GUNNAR}"]`);
+    await page.click(`#team-profile-sheet [data-team-member-delete="${GUNNAR}"]`);
+    await page.waitForSelector('#team-delete-member');
+    await page.fill('#team-delete-confirm', 'Gunnar Karlsson');
+    await page.click('#team-delete-member [type="submit"]');
+    await settle(page);
+    assert.match(await page.textContent('#team-delete-member [data-atlas-dialog-error]'), /authenticator app/);
+    assert.equal(requestsTo(record, 'atlas-team-profiles', 'delete-member').length, 0, 'no deletion without a verified factor');
   } finally { await close(); }
 });

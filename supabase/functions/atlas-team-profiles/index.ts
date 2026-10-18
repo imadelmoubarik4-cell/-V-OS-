@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { AuthError, actorLabel, authConfig, requireStepUp as requireActorStepUp, resolveActor } from "../_shared/auth.mjs";
+import { AuthError, actorLabel, authConfig, requireRecentAuth, requireStepUp as requireActorStepUp, resolveActor } from "../_shared/auth.mjs";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -111,6 +111,30 @@ async function requireActiveProfile(request: Request, options: { allowInactive?:
 // "confirm it's you" step is live.
 function requireStepUp(context: AtlasContext): void {
   requireActorStepUp({ amr: context.amr, aal: context.aal, mfaEnrolled: context.mfaEnrolled, role: context.profile?.role });
+}
+
+// Permanent deletion is irreversible, so it is gated harder than ordinary
+// step-up: the caller must have an ENROLLED verified second factor, an aal2
+// session, AND a RECENT second-factor check (a fresh password never counts).
+// This holds regardless of ATLAS_REQUIRE_STEP_UP — that flag can relax other
+// actions, but never this one.
+function requireFreshMfaForDeletion(context: AtlasContext): void {
+  if (context.mfaEnrolled !== true) {
+    const error = new ApiError(403, "Set up an authenticator app on your own account before you can permanently delete a team member.");
+    (error as { code?: string }).code = "mfa_enrollment_required";
+    throw error;
+  }
+  if (context.aal !== "aal2") {
+    const error = new ApiError(403, "Confirm it is you with your authenticator code before permanently deleting a team member.");
+    (error as { code?: string }).code = "mfa_required";
+    throw error;
+  }
+  const configured = Number(Deno.env.get("ATLAS_STEP_UP_MAX_AGE_SECONDS") || 900);
+  const maxAge = Number.isFinite(configured) && configured > 0 ? Math.min(configured, 3600) : 900;
+  // requireMfa:true → only a recent second-factor method satisfies this; a fresh
+  // password-only reauthentication is rejected. Throws AuthError (401,
+  // mfa_reauthentication_required) which the handler relays.
+  requireRecentAuth({ amr: context.amr, aal: context.aal, mfaEnrolled: context.mfaEnrolled }, maxAge, Date.now(), { requireMfa: true });
 }
 
 function requireManager(context: AtlasContext): void {
@@ -652,6 +676,15 @@ async function ensureNotLastActiveManager(context: AtlasContext, profileId: stri
   if (others.length === 0) throw new ApiError(409, "Alcedo must keep at least one active manager or administrator. Assign another before removing this one.");
 }
 
+// Stricter guard for an administrator target: Alcedo must keep at least one OTHER
+// active administrator — managers do not count, because admin-only capabilities
+// (including this deletion) would otherwise be left with no one to perform them.
+async function ensureNotLastActiveAdmin(context: AtlasContext, profileId: string): Promise<void> {
+  const all = await profiles(context);
+  const otherActiveAdmins = all.filter((p) => p.id !== profileId && p.active && p.role === "admin");
+  if (otherActiveAdmins.length === 0) throw new ApiError(409, "Alcedo must keep at least one active administrator. Make someone else an administrator before removing this one.");
+}
+
 function normalizeName(value: string): string {
   return value.normalize("NFC").replace(/\s+/g, " ").trim().toLowerCase();
 }
@@ -668,7 +701,10 @@ async function removeFromTeam(context: AtlasContext, body: Record<string, unknow
     const target = await profileById(context, profileId);
     if (!target) throw new ApiError(404, "The selected team member no longer exists.");
     if (context.profile.role === "manager" && target.role === "admin") throw new ApiError(403, "Only an administrator can remove an administrator.");
-    if ((target.role === "admin" || target.role === "manager") && target.active) await ensureNotLastActiveManager(context, profileId);
+    if (target.active) {
+      if (target.role === "admin") await ensureNotLastActiveAdmin(context, profileId);
+      else if (target.role === "manager") await ensureNotLastActiveManager(context, profileId);
+    }
     if (target.active) {
       const url = new URL(`${productionAuthUrl()}/rest/v1/profiles`);
       url.searchParams.set("id", `eq.${profileId}`);
@@ -713,23 +749,37 @@ async function deletePreview(context: AtlasContext, body: Record<string, unknown
 
 async function deleteMember(context: AtlasContext, body: Record<string, unknown>) {
   if (context.profile.role !== "admin") throw new ApiError(403, "Only an administrator can permanently delete a team member.");
-  requireStepUp(context);
+  // Admin + enrolled verified factor + RECENT MFA, server-side, always.
+  requireFreshMfaForDeletion(context);
+
   const profileId = optionalUuid(body.profile_id, "Team profile");
   const personId = optionalUuid(body.person_id, "Roster person");
-  if (!profileId && !personId) throw new ApiError(400, "Select a team member to delete.");
+  // Exactly one identifier — never both, never neither — so the target can't be
+  // ambiguous and a login member can't be smuggled in through the roster route.
+  if (Boolean(profileId) === Boolean(personId)) {
+    throw new ApiError(400, "Select exactly one team member to delete.");
+  }
   const confirmName = requiredText(body.confirm_name, "Confirmation name", 160);
 
-  // Resolve the target + name-match, and run eligibility/guards BEFORE anything is removed.
+  // Resolve the target + name-match + eligibility/guards BEFORE anything is removed.
   let targetLabel = "";
   if (profileId) {
     if (profileId === context.user.id) throw new ApiError(400, "You cannot delete your own account.");
     const target = await profileById(context, profileId);
     if (!target) throw new ApiError(404, "The selected team member no longer exists.");
     targetLabel = target.display_name || "";
-    if (target.active && (target.role === "admin" || target.role === "manager")) await ensureNotLastActiveManager(context, profileId);
+    if (target.active) {
+      if (target.role === "admin") await ensureNotLastActiveAdmin(context, profileId);
+      else if (target.role === "manager") await ensureNotLastActiveManager(context, profileId);
+    }
   } else {
     const preview = await branchRpc("atlas_team_member_deletion_preview", { p_profile_id: null, p_person_id: personId });
     if (!preview?.found) throw new ApiError(404, "The selected team member no longer exists.");
+    // The schedule-only route must never reach a login-linked employee — those
+    // are deleted through their profile so the account + auth user are handled.
+    if (preview.person_profile_id || preview.login_enabled === true) {
+      throw new ApiError(409, "This person has an Alcedo login. Open their profile to delete them, not the schedule.");
+    }
     targetLabel = preview.display_name || "";
   }
   if (normalizeName(confirmName) !== normalizeName(targetLabel)) {
@@ -737,28 +787,52 @@ async function deleteMember(context: AtlasContext, body: Record<string, unknown>
   }
 
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const url = Deno.env.get("SUPABASE_URL");
-  if (!key || url !== productionAuthUrl()) throw new ApiError(503, "Permanent deletion is unavailable right now.");
-  const admin = createClient(url!, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const projectUrl = Deno.env.get("SUPABASE_URL");
+  if (!key || projectUrl !== productionAuthUrl()) throw new ApiError(503, "Permanent deletion is unavailable right now.");
+  const admin = createClient(projectUrl!, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  // 1. Revoke access first (login member): deactivate → s96 trigger kills sessions.
+  // 1. Revoke access first (login member) — FAIL CLOSED. We confirm the correct
+  //    profile is now inactive before any personal data is purged. If revocation
+  //    fails or can't be confirmed, we stop here: nothing is deleted and the
+  //    login is never left active.
   if (profileId) {
     const patch = new URL(`${productionAuthUrl()}/rest/v1/profiles`);
     patch.searchParams.set("id", `eq.${profileId}`);
-    await productionJson(context, patch, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ active: false }) }).catch(() => undefined);
+    patch.searchParams.set("select", "id,active");
+    let revoked: any;
+    try {
+      revoked = await productionJson(context, patch, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ active: false }) });
+    } catch (_error) {
+      throw new ApiError(502, "The member’s access could not be revoked, so nothing was deleted. Please try again.");
+    }
+    const row = Array.isArray(revoked) ? revoked[0] : revoked;
+    if (!row || row.id !== profileId || row.active !== false) {
+      throw new ApiError(502, "The member’s access could not be confirmed as revoked, so nothing was deleted. Please try again.");
+    }
+    await logExternalEvent(context, "active_status_changed", profileId, { previous_active: true, active: false, reason: "permanently_deleted" }).catch(() => undefined);
   }
 
-  // 2. Purge branch-side personal data + roster (hard-delete or anonymize, keeps shifts).
+  // 2. Purge branch-side personal data + roster (hard-delete or anonymize, keeps
+  //    shifts). The RPC refuses an unknown target and a login-linked schedule-only
+  //    row, so a silent no-op can never reach here as a false success.
   const purge = await branchRpc("atlas_team_member_purge_branch", {
     p_profile_id: profileId, p_person_id: personId,
     p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile), p_actor_role: context.profile.role,
   });
+  if (!purge?.ok) throw new ApiError(502, "The member’s records could not be removed. Please try again.");
 
-  // 3. Remove the profile photo object (best-effort; the DB row is already gone).
+  // 3. Remove the profile photo object. If it fails we keep the path so it can be
+  //    retried and NEVER claim full erasure while the object may still exist.
   let photoRemoved = false;
+  let orphanPhotoPath: string | null = null;
   if (purge?.photo_storage_path) {
-    const { error } = await admin.storage.from("atlas-profile-photos").remove([purge.photo_storage_path]);
+    const { error } = await admin.storage.from("atlas-profile-photos").remove([String(purge.photo_storage_path)]);
     photoRemoved = !error;
+    if (error) {
+      orphanPhotoPath = String(purge.photo_storage_path);
+      // Record the orphaned object (not the person's name) so cleanup can retry.
+      await logExternalEvent(context, "active_status_changed", profileId ?? context.user.id, { reason: "deletion_photo_orphaned", storage_path: orphanPhotoPath }).catch(() => undefined);
+    }
   }
 
   // 4. Delete the Supabase Auth user (login member) — cascades the profile row,
@@ -770,9 +844,20 @@ async function deleteMember(context: AtlasContext, body: Record<string, unknown>
     authDeleted = !error;
     if (error) {
       return { ok: false, partial: true, mode: purge?.mode, auth_deleted: false, photo_removed: photoRemoved,
+        storage_cleanup_required: Boolean(orphanPhotoPath), storage_path: orphanPhotoPath,
         shifts_retained: purge?.shift_entry_count ?? 0,
         message: "Access was revoked and personal data was removed, but deleting the sign-in account failed. It is safe to retry; no historical records were lost." };
     }
+  }
+
+  // A failed photo removal is still a truthful PARTIAL — we never report complete
+  // erasure while an object may remain in storage.
+  if (orphanPhotoPath) {
+    return { ok: false, partial: true, deleted: true, account_kind: profileId ? "login" : "schedule_only",
+      mode: purge?.mode, auth_deleted: authDeleted, photo_removed: false,
+      storage_cleanup_required: true, storage_path: orphanPhotoPath,
+      shifts_retained: purge?.shift_entry_count ?? 0,
+      message: "The member was deleted, but their stored profile photo could not be removed. The reference was kept so it can be retried; no historical records were lost." };
   }
 
   return { ok: true, deleted: true, account_kind: profileId ? "login" : "schedule_only",

@@ -86,9 +86,13 @@ begin
   end if;
 
   return jsonb_build_object(
-    'found', (person.id is not null) or has_details,
+    'found', (person.id is not null) or has_details or has_photo,
     'account_kind', case when p_profile_id is not null then 'login' else 'schedule_only' end,
     'person_id', person.id,
+    -- The resolved roster row's own link, so the caller can refuse a schedule-only
+    -- delete that actually points at a login-linked employee.
+    'person_profile_id', person.profile_id,
+    'login_enabled', coalesce(person.login_enabled, false),
     'profile_id', p_profile_id,
     'display_name', person.display_name,
     'shift_entry_count', entry_count,
@@ -158,17 +162,27 @@ declare
   details_deleted integer := 0;
   contacts_deleted integer := 0;
   mode text;
-  label text;
+  resolved boolean := false;
   kind text := case when p_profile_id is not null then 'login' else 'schedule_only' end;
 begin
+  -- Exactly one identifier. Never both (ambiguous), never neither (no target).
+  if (p_profile_id is null) = (p_person_id is null) then
+    raise exception 'exactly one of p_profile_id / p_person_id is required';
+  end if;
+
   if p_profile_id is not null then
     select * into person from atlas_private.shift_people where profile_id = p_profile_id limit 1;
-  elsif p_person_id is not null then
+  else
     select * into person from atlas_private.shift_people where id = p_person_id limit 1;
+    -- The schedule-only route must never touch a login-linked roster row: those
+    -- belong to an auth account and are deleted through the profile route.
+    if person.id is not null and person.profile_id is not null then
+      raise exception 'person % is linked to a login profile; use the profile route', p_person_id;
+    end if;
   end if;
-  label := person.display_name;
 
   if person.id is not null then
+    resolved := true;
     select count(*) into entry_count from atlas_private.shift_entries where person_id = person.id;
   end if;
 
@@ -180,9 +194,14 @@ begin
     get diagnostics details_deleted = row_count;
     select storage_path into photo_path from atlas_private.team_profile_photos where profile_id = p_profile_id;
     delete from atlas_private.team_profile_photos where profile_id = p_profile_id;
-    if label is null then
-      select display_name into label from atlas_private.team_profile_details where profile_id = p_profile_id; -- already deleted; label stays person.display_name/null
+    if contacts_deleted > 0 or details_deleted > 0 or photo_path is not null then
+      resolved := true;
     end if;
+  end if;
+
+  -- Deleting an unknown employee must never look like success.
+  if not resolved then
+    raise exception 'no team member found for the given identifier';
   end if;
 
   -- Roster person: hard-delete when no shift history, else anonymize + archive.
@@ -205,10 +224,13 @@ begin
     mode := 'full_delete';
   end if;
 
+  -- Append-only audit for a PERMANENT deletion keeps only non-identifying keys:
+  -- the pseudonymous ids, counts and the acting administrator — never the deleted
+  -- person's name, so an undeletable record can't defeat the erasure.
   insert into atlas_private.team_member_deletion_audit
     (action, target_kind, target_profile_id, target_person_id, target_label, mode, shift_entry_count,
      actor_id, actor_label, actor_role, detail)
-  values ('permanently_deleted', kind, p_profile_id, person.id, label, mode, entry_count,
+  values ('permanently_deleted', kind, p_profile_id, person.id, null, mode, entry_count,
     p_actor_id, p_actor_label, p_actor_role,
     jsonb_build_object('details_deleted', details_deleted, 'contacts_deleted', contacts_deleted,
       'photo_removed', photo_path is not null));

@@ -1,8 +1,9 @@
 // S105 Team member removal & permanent deletion — gateway guard logic.
-// Extracts removeFromTeam/deleteMember (+ helpers) from the Deno edge source and
-// runs them in a VM with hand-mocked deps (same technique as team-login-s64f),
-// since the Deno function can't execute in Node. Proves the authorization and
-// safety guards; the real data semantics are proven by the SQL migration tests.
+// Extracts removeFromTeam/deleteMember/deletePreview (+ helpers) from the Deno
+// edge source and runs them in a VM with hand-mocked deps (same technique as
+// team-login-s64f), since the Deno function can't execute in Node. Proves the
+// authorization and safety guards; the real data semantics are proven by the SQL
+// migration tests, and the fresh-MFA primitive by team-deletion-mfa-s105.test.js.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -16,7 +17,7 @@ const handler = stripTypeScriptTypes(source.slice(begin, source.indexOf('Deno.se
 function setup(overrides = {}) {
   const calls = [];
   const admin = {
-    storage: { from: () => ({ remove: async () => { calls.push('storage.remove'); return { error: null }; } }) },
+    storage: { from: () => ({ remove: async () => { calls.push('storage.remove'); return { error: overrides.storageError || null }; } }) },
     auth: { admin: { deleteUser: async () => { calls.push('auth.deleteUser'); return { error: overrides.authDeleteError || null }; } } },
   };
   const scope = {
@@ -28,21 +29,27 @@ function setup(overrides = {}) {
     ApiError: class extends Error { constructor(status, message) { super(message); this.status = status; } },
     requireManager: (c) => { if (!['admin', 'manager'].includes(c.profile.role)) throw new scope.ApiError(403, 'manager required'); },
     requireStepUp: () => {},
+    // Defined earlier in the module than the extracted slice, so it is mocked
+    // here; its real enforcement is proven by team-deletion-mfa-s105.test.js.
+    requireFreshMfaForDeletion: overrides.requireFreshMfaForDeletion || (() => {}),
     optionalUuid: (v) => (v == null ? null : v),
     requiredText: (v) => { if (!v) throw new scope.ApiError(400, 'required'); return String(v); },
     profileLabel: () => 'Owner',
     logExternalEvent: async () => calls.push('audit'),
-    productionJson: async () => { calls.push('deactivate'); return [{ active: false }]; },
+    productionJson: async (_ctx, url) => {
+      calls.push('deactivate');
+      const id = url?.searchParams?.get?.('id')?.replace('eq.', '') || null;
+      return overrides.deactivateResult ? overrides.deactivateResult(id) : [{ id, active: false }];
+    },
     branchRpc: async (name) => {
       calls.push(name);
-      if (name === 'atlas_team_member_deletion_preview') return { found: true, display_name: 'Pat Casual', shift_entry_count: 0 };
-      if (name === 'atlas_team_member_purge_branch') return { ok: true, mode: 'anonymized_kept_shifts', shift_entry_count: 2, photo_storage_path: 'profiles/x/y.webp' };
+      if (name === 'atlas_team_member_deletion_preview') return overrides.preview || { found: true, display_name: 'Pat Casual', shift_entry_count: 0 };
+      if (name === 'atlas_team_member_purge_branch') return overrides.purge || { ok: true, mode: 'anonymized_kept_shifts', shift_entry_count: 2, photo_storage_path: 'profiles/x/y.webp' };
       if (name === 'atlas_team_member_remove_from_team') return { ok: true, roster_archived: true };
       return {};
     },
-    profileById: async () => ({ id: 'emp1', display_name: 'Jane Doe', role: 'bartender', active: true }),
-    profiles: async () => [{ id: 'admin1', role: 'admin', active: true }, { id: 'emp1', role: 'bartender', active: true }],
-    ...overrides,
+    profileById: overrides.profileById || (async () => ({ id: 'emp1', display_name: 'Jane Doe', role: 'bartender', active: true })),
+    profiles: overrides.profiles || (async () => [{ id: 'admin1', role: 'admin', active: true }, { id: 'emp1', role: 'bartender', active: true }]),
   };
   vm.createContext(scope);
   vm.runInContext(handler, scope);
@@ -58,9 +65,22 @@ test('only an administrator can permanently delete', async () => {
   assert.deepEqual(calls, []);
 });
 
+test('a stale or unverified admin is stopped by the MFA gate before any work', async () => {
+  const { scope, calls } = setup({ requireFreshMfaForDeletion: () => { const e = new Error('reauthentication_required'); throw e; } });
+  await assert.rejects(scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'Jane Doe' }), /reauthentication_required/);
+  assert.deepEqual(calls, [], 'no deactivate/purge/auth-delete without fresh MFA');
+});
+
 test('an administrator cannot delete their own account', async () => {
   const { scope, calls } = setup();
   await assert.rejects(scope.deleteMember(admin, { profile_id: 'admin1', confirm_name: 'Owner' }), /your own account/);
+  assert.deepEqual(calls, []);
+});
+
+test('exactly one identifier is required — both or neither is rejected', async () => {
+  const { scope, calls } = setup();
+  await assert.rejects(scope.deleteMember(admin, { profile_id: 'emp1', person_id: 'person1', confirm_name: 'x' }), /exactly one/);
+  await assert.rejects(scope.deleteMember(admin, { confirm_name: 'x' }), /exactly one/);
   assert.deepEqual(calls, []);
 });
 
@@ -70,13 +90,21 @@ test('the typed name must match before anything is deleted', async () => {
   assert.deepEqual(calls, [], 'no deactivate/purge/auth-delete on a bad confirmation');
 });
 
-test('cannot delete the last active administrator/manager', async () => {
+test('cannot delete the last active administrator (managers do not count)', async () => {
   const { scope, calls } = setup({
     profileById: async () => ({ id: 'emp1', display_name: 'Jane Doe', role: 'admin', active: true }),
-    profiles: async () => [{ id: 'emp1', role: 'admin', active: true }, { id: 'x', role: 'manager', active: false }],
+    profiles: async () => [{ id: 'emp1', role: 'admin', active: true }, { id: 'x', role: 'manager', active: true }],
   });
-  await assert.rejects(scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'Jane Doe' }), /at least one active/);
+  await assert.rejects(scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'Jane Doe' }), /at least one active administrator/);
   assert.deepEqual(calls, []);
+});
+
+test('the schedule-only route refuses a login-linked employee', async () => {
+  const { scope, calls } = setup({ preview: { found: true, display_name: 'Pat Casual', person_profile_id: 'prof-x' } });
+  await assert.rejects(scope.deleteMember(admin, { person_id: 'person1', confirm_name: 'Pat Casual' }), /Alcedo login/);
+  assert.ok(calls.includes('atlas_team_member_deletion_preview'));
+  assert.ok(!calls.includes('atlas_team_member_purge_branch'), 'never purges a login-linked person via the roster route');
+  assert.ok(!calls.includes('auth.deleteUser'));
 });
 
 test('eligible login member: deactivate → purge → remove photo → delete auth user', async () => {
@@ -85,7 +113,21 @@ test('eligible login member: deactivate → purge → remove photo → delete au
   assert.equal(r.ok, true);
   assert.equal(r.auth_deleted, true);
   assert.equal(r.shifts_retained, 2);
-  assert.deepEqual(calls, ['deactivate', 'atlas_team_member_purge_branch', 'storage.remove', 'auth.deleteUser']);
+  assert.deepEqual(calls, ['deactivate', 'audit', 'atlas_team_member_purge_branch', 'storage.remove', 'auth.deleteUser']);
+});
+
+test('fail-closed: an unconfirmed deactivation stops the delete before any purge', async () => {
+  const { scope, calls } = setup({ deactivateResult: () => [{ id: 'emp1', active: true }] }); // still active → not confirmed
+  await assert.rejects(scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'Jane Doe' }), /could not be confirmed as revoked|could not be revoked/);
+  assert.ok(calls.includes('deactivate'));
+  assert.ok(!calls.includes('atlas_team_member_purge_branch'), 'no purge while the login may still be active');
+  assert.ok(!calls.includes('auth.deleteUser'));
+});
+
+test('fail-closed: a deactivation request error stops the delete', async () => {
+  const { scope, calls } = setup({ deactivateResult: () => { throw new Error('network'); } });
+  await assert.rejects(scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'Jane Doe' }), /could not be revoked/);
+  assert.ok(!calls.includes('atlas_team_member_purge_branch'));
 });
 
 test('a failed auth-user delete returns a truthful partial result, not false success', async () => {
@@ -95,6 +137,22 @@ test('a failed auth-user delete returns a truthful partial result, not false suc
   assert.equal(r.partial, true);
   assert.equal(r.auth_deleted, false);
   assert.match(r.message, /safe to retry/);
+});
+
+test('a failed photo removal never reports complete erasure and keeps the path to retry', async () => {
+  const { scope } = setup({ storageError: { message: 'storage down' } });
+  const r = await scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'Jane Doe' });
+  assert.equal(r.ok, false);
+  assert.equal(r.partial, true);
+  assert.equal(r.photo_removed, false);
+  assert.equal(r.storage_cleanup_required, true);
+  assert.equal(r.storage_path, 'profiles/x/y.webp');
+  assert.match(r.message, /profile photo/);
+});
+
+test('an unknown target cannot return false success (the RPC refuses a no-op)', async () => {
+  const { scope } = setup({ purge: { ok: false } });
+  await assert.rejects(scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'Jane Doe' }), /could not be removed/);
 });
 
 test('schedule-only member: name checked via preview, no auth-user delete', async () => {
@@ -121,6 +179,14 @@ test('remove-from-team deactivates + archives a login member (reversible)', asyn
   assert.ok(calls.includes('deactivate'));
   assert.ok(calls.includes('atlas_team_member_remove_from_team'));
   assert.ok(!calls.includes('auth.deleteUser'), 'remove never deletes the auth account');
+});
+
+test('remove-from-team cannot strip the last active administrator', async () => {
+  const { scope } = setup({
+    profileById: async () => ({ id: 'emp1', display_name: 'Jane Doe', role: 'admin', active: true }),
+    profiles: async () => [{ id: 'emp1', role: 'admin', active: true }, { id: 'x', role: 'manager', active: true }],
+  });
+  await assert.rejects(scope.removeFromTeam(admin, { profile_id: 'emp1' }), /at least one active administrator/);
 });
 
 test('you cannot remove your own account from the team', async () => {
