@@ -837,20 +837,32 @@ async function deleteMember(context: AtlasContext, body: Record<string, unknown>
   });
   if (!purge?.ok) throw new ApiError(502, "The member’s records could not be removed. Please try again.");
 
-  // 3. Remove the profile photo object. If it fails we keep the path so it can be
-  //    retried and NEVER claim full erasure while the object may still exist.
+  // 3. Remove the profile photo object. The purge already recorded it (atomically,
+  //    in the transaction that dropped its DB row), so the path can't be lost. We
+  //    mark that record resolved ONLY after Storage confirms deletion; on failure
+  //    it stays pending for the in-app cleanup banner. We never claim full erasure
+  //    while the object may still exist.
   let photoRemoved = false;
   let orphanPhotoPath: string | null = null;
+  let cleanupRecordPending = false;
   if (purge?.photo_storage_path) {
-    const { error } = await admin.storage.from("atlas-profile-photos").remove([String(purge.photo_storage_path)]);
+    const path = String(purge.photo_storage_path);
+    const { error } = await admin.storage.from("atlas-profile-photos").remove([path]);
     photoRemoved = !error;
     if (error) {
-      orphanPhotoPath = String(purge.photo_storage_path);
-      // Durably register the orphaned object (its path only, no identity) so an
-      // administrator can finish the cleanup from inside Alcedo later.
-      await branchRpc("atlas_team_member_record_photo_orphan", {
-        p_storage_path: orphanPhotoPath, p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile),
-      }).catch(() => undefined);
+      orphanPhotoPath = path; // stays recorded + pending; the admin finishes it in Alcedo
+    } else {
+      try {
+        const resolved = await branchRpc("atlas_team_member_resolve_photo_orphan", {
+          p_storage_path: path, p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile),
+        });
+        if (resolved?.ok !== true) cleanupRecordPending = true;
+      } catch (_error) {
+        // The object IS gone, but the cleanup record couldn't be marked resolved.
+        // Report it truthfully; the banner will show it and a retry (a no-op
+        // Storage delete) will resolve it. The record is never lost.
+        cleanupRecordPending = true;
+      }
     }
   }
 
@@ -881,6 +893,9 @@ async function deleteMember(context: AtlasContext, body: Record<string, unknown>
 
   return { ok: true, deleted: true, account_kind: profileId ? "login" : "schedule_only",
     mode: purge?.mode, auth_deleted: authDeleted, photo_removed: photoRemoved,
+    // The object is gone but its cleanup record couldn't be marked resolved; the
+    // banner still shows it and a retry clears it. Surfaced, not hidden.
+    ...(cleanupRecordPending ? { cleanup_record_pending: true } : {}),
     shifts_retained: purge?.shift_entry_count ?? 0 };
 }
 
@@ -899,16 +914,22 @@ async function cleanupPhotoOrphans(context: AtlasContext) {
   const orphans = await branchRpc("atlas_team_member_list_photo_orphans");
   const paths: string[] = Array.isArray(orphans) ? orphans.map((o: { storage_path?: unknown }) => String(o?.storage_path || "")).filter(Boolean) : [];
   let removed = 0;
-  const stillFailing: string[] = [];
+  let remaining = 0;
   for (const path of paths) {
     const { error } = await admin.storage.from("atlas-profile-photos").remove([path]);
-    if (error) { stillFailing.push(path); continue; }
-    await branchRpc("atlas_team_member_resolve_photo_orphan", {
-      p_storage_path: path, p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile),
-    }).catch(() => undefined);
-    removed += 1;
+    if (error) { remaining += 1; continue; } // object still there — stays listed
+    // Mark resolved ONLY now that Storage confirmed deletion. If the bookkeeping
+    // fails, it is NOT resolved — count it as remaining (truthful), never lose it.
+    try {
+      const resolved = await branchRpc("atlas_team_member_resolve_photo_orphan", {
+        p_storage_path: path, p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile),
+      });
+      if (resolved?.ok === true) removed += 1; else remaining += 1;
+    } catch (_error) {
+      remaining += 1;
+    }
   }
-  return { ok: stillFailing.length === 0, attempted: paths.length, removed, remaining: stillFailing.length };
+  return { ok: remaining === 0, attempted: paths.length, removed, remaining };
 }
 
 // S99 self-service onboarding completion. Any authenticated invitee finishing

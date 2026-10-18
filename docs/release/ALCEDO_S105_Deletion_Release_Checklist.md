@@ -93,8 +93,14 @@ the same four statements in production):
 - [ ] **2. Apply ONLY** `supabase/migrations/20261022090000_s105_team_member_deletion.sql`
       (idempotent / re-runnable) — not a push.
 - [ ] **3. Record the S105 ledger row** (idempotent), version `20261022090000`.
-- [ ] **4. Verify the ledger**: `scripts/verify_migration_ledger.sh` (no pending
-      migrations; S104 and S105 recorded).
+- [ ] **4. Verify the ledger**: `scripts/verify_migration_ledger.sh` — it is
+      **baseline-aware**: production runs on an adopted/squashed baseline (~98
+      ledger rows vs ~167 files), so it checks only the post-baseline tail
+      (version ≥ S104), asserts S104 + S105 are recorded, and flags drift there —
+      it never treats squashed history as pending and never backfills it. The
+      equivalent read-only production check is: confirm rows `20261021090000` and
+      `20261022090000` exist in `supabase_migrations.schema_migrations`, and that
+      no migration file newer than `20261022090000` is unrecorded.
 - [ ] Deploy the `atlas-team-profiles` edge function.
 - [ ] Deploy the frontend (the Team bundle) — Netlify builds from `main` on merge.
 - [ ] Smoke check: load Team, open a profile, confirm **Remove from team** (manager+)
@@ -151,12 +157,18 @@ and every recovery runs inside Alcedo — no manual Supabase access:**
   shift, and finishes the Auth-user deletion. Proven by `tests/sql` check 7 and the
   node "resumed delete" test.
 - Profile-photo object removal failed → `{ ok:false, partial:true,
-  storage_cleanup_required:true, storage_path:<path> }`, and the path is recorded
-  in `atlas_private.team_member_deletion_orphans`. Recovery: admins see a **Team
-  banner** ("N leftover profile photos to remove — Finish cleanup") that calls
-  `cleanup-photo-orphans` (admin + step-up) to remove the objects and mark them
-  resolved. No manual Supabase access, no asking Claude. The count rides the
-  snapshot (`staff.photo_orphan_count`).
+  storage_cleanup_required:true, storage_path:<path> }`. The path is recorded in
+  `atlas_private.team_member_deletion_orphans` **inside the same DB transaction
+  that drops the photo row** (`team_member_purge_branch`), so the recovery
+  information can never be lost — if saving it failed, the whole purge fails and
+  nothing is deleted (the photo row stays as the source of truth). A record is
+  marked resolved **only after Storage confirms deletion**; if that bookkeeping
+  fails it is reported (`cleanup_record_pending` / counted as `remaining`), never
+  silently dropped. Recovery: admins see a **Team banner** ("N leftover profile
+  photos to remove — Finish cleanup") that calls `cleanup-photo-orphans`
+  (admin + step-up) to remove the objects and resolve the records — inside Alcedo,
+  no manual Supabase access. The count rides the snapshot
+  (`staff.photo_orphan_count`); repeated cleanups are safe no-ops.
 - Deactivation could not be confirmed → the delete **stops before any purge**
   (502). Recovery: nothing was changed; retry once the Auth project is reachable.
 - Unaccepted invitation (Auth user, no roster/profile rows) → deletable directly;

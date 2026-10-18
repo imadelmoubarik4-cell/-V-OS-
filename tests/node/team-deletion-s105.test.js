@@ -48,7 +48,10 @@ function setup(overrides = {}) {
       if (name === 'atlas_team_member_remove_from_team') return { ok: true, roster_archived: true };
       if (name === 'atlas_team_member_list_photo_orphans') return overrides.orphans || [];
       if (name === 'atlas_team_member_record_photo_orphan') return { ok: true };
-      if (name === 'atlas_team_member_resolve_photo_orphan') return { ok: true };
+      if (name === 'atlas_team_member_resolve_photo_orphan') {
+        if (overrides.resolveError) throw new Error('resolve failed');
+        return overrides.resolveResult || { ok: true, resolved: true };
+      }
       return {};
     },
     profileById: overrides.profileById || (async () => ({ id: 'emp1', display_name: 'Jane Doe', role: 'bartender', active: true })),
@@ -116,7 +119,19 @@ test('eligible login member: deactivate → purge → remove photo → delete au
   assert.equal(r.ok, true);
   assert.equal(r.auth_deleted, true);
   assert.equal(r.shifts_retained, 2);
-  assert.deepEqual(calls, ['deactivate', 'audit', 'atlas_team_member_purge_branch', 'storage.remove', 'auth.deleteUser']);
+  // Photo removed → the orphan recorded by the purge is resolved before the Auth
+  // user delete (resolve only after Storage confirmed deletion).
+  assert.deepEqual(calls, ['deactivate', 'audit', 'atlas_team_member_purge_branch', 'storage.remove', 'atlas_team_member_resolve_photo_orphan', 'auth.deleteUser']);
+  assert.ok(!r.cleanup_record_pending);
+});
+
+test('photo removed but the cleanup record could not be resolved → reported truthfully, not lost', async () => {
+  const { scope, calls } = setup({ resolveError: true });
+  const r = await scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'Jane Doe' });
+  assert.equal(r.ok, true); // the member IS deleted and the photo IS removed
+  assert.equal(r.photo_removed, true);
+  assert.equal(r.cleanup_record_pending, true); // surfaced, not hidden — the banner will still show it
+  assert.ok(calls.includes('atlas_team_member_resolve_photo_orphan'));
 });
 
 test('fail-closed: an unconfirmed deactivation stops the delete before any purge', async () => {
@@ -209,6 +224,23 @@ test('a still-failing orphan removal is reported as remaining, not resolved', as
   assert.equal(r.remaining, 1);
   assert.equal(r.removed, 0);
   assert.ok(!calls.includes('atlas_team_member_resolve_photo_orphan'), 'never resolve what was not removed');
+});
+
+test('cleanup where Storage removed the object but resolve fails → counted remaining, never claimed done', async () => {
+  const { scope } = setup({ orphans: [{ storage_path: 'profiles/x/y.webp' }], resolveError: true });
+  const r = await scope.cleanupPhotoOrphans(admin);
+  assert.equal(r.ok, false);
+  assert.equal(r.removed, 0, 'not counted removed until the record is confirmed resolved');
+  assert.equal(r.remaining, 1);
+});
+
+test('a repeated cleanup with nothing left is a clean no-op', async () => {
+  const { scope } = setup({ orphans: [] });
+  const r = await scope.cleanupPhotoOrphans(admin);
+  assert.equal(r.ok, true);
+  assert.equal(r.attempted, 0);
+  assert.equal(r.removed, 0);
+  assert.equal(r.remaining, 0);
 });
 
 test('photo-orphan cleanup is refused for non-admins', async () => {

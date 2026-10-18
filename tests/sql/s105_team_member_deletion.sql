@@ -105,6 +105,11 @@ begin
   if exists(select 1 from atlas_private.team_emergency_contacts where profile_id='a0000000-0000-4000-8000-0000000000a1') then raise exception 'A: contacts not deleted'; end if;
   if exists(select 1 from atlas_private.team_profile_photos where profile_id='a0000000-0000-4000-8000-0000000000a1') then raise exception 'A: photo row not deleted'; end if;
   if (res->>'photo_storage_path') <> 'profiles/a0000000-0000-4000-8000-0000000000a1/a0000000-0000-4000-8000-0000000000a2.webp' then raise exception 'A: photo path not returned for storage cleanup'; end if;
+  -- Durability: the orphan was recorded in the SAME transaction that dropped the
+  -- photo row (pending), so the cleanup path can never be lost before Storage removal.
+  if not exists(select 1 from atlas_private.team_member_deletion_orphans
+    where storage_path = 'profiles/a0000000-0000-4000-8000-0000000000a1/a0000000-0000-4000-8000-0000000000a2.webp' and resolved_at is null)
+  then raise exception 'A: photo orphan not recorded atomically by the purge'; end if;
   -- Audit written, name REDACTED (null), ids/counts/actor kept.
   if not exists(select 1 from atlas_private.team_member_deletion_audit
     where action='permanently_deleted' and target_profile_id='a0000000-0000-4000-8000-0000000000a1'
@@ -226,15 +231,17 @@ end $$;
 
 -- 8. Orphan-photo registry: record → list → resolve, and DELETE is revoked.
 do $$
-declare listed jsonb;
+declare path text := 'profiles/f0000000-0000-4000-8000-0000000000f1/f0000000-0000-4000-8000-0000000000f2.webp';
 begin
   set local role service_role;
-  perform public.atlas_team_member_record_photo_orphan('profiles/f0000000-0000-4000-8000-0000000000f1/f0000000-0000-4000-8000-0000000000f2.webp', '99999999-9999-4999-8999-999999999999'::uuid, 'Owner');
-  listed := public.atlas_team_member_list_photo_orphans();
-  if jsonb_array_length(listed) <> 1 then raise exception '8: orphan not listed after record'; end if;
-  perform public.atlas_team_member_resolve_photo_orphan('profiles/f0000000-0000-4000-8000-0000000000f1/f0000000-0000-4000-8000-0000000000f2.webp', '99999999-9999-4999-8999-999999999999'::uuid, 'Owner');
-  listed := public.atlas_team_member_list_photo_orphans();
-  if jsonb_array_length(listed) <> 0 then raise exception '8: orphan still listed after resolve'; end if;
+  perform public.atlas_team_member_record_photo_orphan(path, '99999999-9999-4999-8999-999999999999'::uuid, 'Owner');
+  -- Assert this specific path (other checks may have recorded their own orphans).
+  if not public.atlas_team_member_list_photo_orphans() @> jsonb_build_array(jsonb_build_object('storage_path', path))::jsonb
+     and not exists(select 1 from jsonb_array_elements(public.atlas_team_member_list_photo_orphans()) e where e->>'storage_path' = path)
+  then raise exception '8: orphan not listed after record'; end if;
+  perform public.atlas_team_member_resolve_photo_orphan(path, '99999999-9999-4999-8999-999999999999'::uuid, 'Owner');
+  if exists(select 1 from jsonb_array_elements(public.atlas_team_member_list_photo_orphans()) e where e->>'storage_path' = path)
+  then raise exception '8: orphan still listed after resolve'; end if;
   reset role;
   if has_table_privilege('service_role','atlas_private.team_member_deletion_orphans','DELETE')
   then raise exception '8: service_role can DELETE from the orphan registry'; end if;

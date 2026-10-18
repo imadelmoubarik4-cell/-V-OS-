@@ -194,6 +194,16 @@ begin
     get diagnostics details_deleted = row_count;
     select storage_path into photo_path from atlas_private.team_profile_photos where profile_id = p_profile_id;
     delete from atlas_private.team_profile_photos where profile_id = p_profile_id;
+    -- Durability: register the Storage object for cleanup in the SAME transaction
+    -- that removes its DB reference, so the only information needed to finish the
+    -- cleanup can never be lost if the Edge Function dies before Storage removal.
+    -- The Edge Function marks it resolved only after Storage confirms deletion.
+    if photo_path is not null then
+      insert into atlas_private.team_member_deletion_orphans(storage_path, recorded_by, recorded_by_label)
+      values (photo_path, p_actor_id, p_actor_label)
+      on conflict (storage_path) do update set resolved_at = null, resolved_by = null, resolved_by_label = null,
+        recorded_by = excluded.recorded_by, recorded_by_label = excluded.recorded_by_label;
+    end if;
     if contacts_deleted > 0 or details_deleted > 0 or photo_path is not null then
       resolved := true;
     end if;
