@@ -192,7 +192,11 @@ test('a bartender sees manager-only proposals as waiting, with approve disabled'
     await button.click({ force: true });
     await settle(page);
     assert.equal(calls(backend, 'execute-action').length, 0);
-    assert.equal(await page.locator('[data-ai-mode="decisions"]').filter({ visible: true }).count(), 0, 'no Decisions tab for staff');
+    // Use the :visible pseudo (works on the installed Playwright). NOTE: locator
+    // .filter({ visible: true }) is a no-op before Playwright 1.51 (this repo runs
+    // 1.48), so it silently counts hidden nodes — the Decisions tab IS correctly
+    // hidden for staff (clientRects=0, display:none via the [hidden] modes bar).
+    assert.equal(await page.locator('[data-ai-mode="decisions"]:visible').count(), 0, 'no Decisions tab for staff');
   } finally { await close(); }
 });
 
