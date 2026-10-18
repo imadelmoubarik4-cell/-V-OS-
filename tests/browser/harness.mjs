@@ -178,7 +178,21 @@ export async function launchAtlas({ user = USERS.admin, fixtures = {}, viewport 
       const handler = fixtures.auth?.user;
       const result = typeof handler === 'function' ? await handler(entry) : handler;
       if (result && result.__status) return json(route, result.body ?? {}, result.__status);
-      return json(route, sessionFor(user).user);
+      const self = sessionFor(user).user;
+      // supabase-js mfa.listFactors() reads user.factors; a test can seed enrolled
+      // factors via fixtures.mfa.factors to exercise the step-up flow.
+      if (Array.isArray(fixtures.mfa?.factors)) self.factors = fixtures.mfa.factors;
+      return json(route, self);
+    }
+    // MFA challenge/verify (step-up): mocked so a test can succeed or fail a code.
+    if (/^\/auth\/v1\/factors\/[^/]+\/challenge$/.test(url.pathname)) {
+      return json(route, { id: 'harness-challenge', type: 'totp', expires_at: SESSION_EXPIRES_AT });
+    }
+    if (/^\/auth\/v1\/factors\/[^/]+\/verify$/.test(url.pathname)) {
+      const handler = fixtures.mfa?.verify;
+      const result = typeof handler === 'function' ? await handler(entry) : handler;
+      if (result && result.__status) return json(route, result.body ?? {}, result.__status);
+      return json(route, sessionFor(user)); // a fresh aal2 session
     }
     if (url.pathname.startsWith('/auth/v1/token')) {
       // fixtures.auth.token may fail a token grant (for example a refresh after

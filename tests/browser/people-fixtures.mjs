@@ -263,14 +263,14 @@ function training(done, visible) {
   return { private: false, total_required: 3, completed_required: done, percent: Math.round((done / 3) * 100), complete: done === 3, tasks };
 }
 
-export function teamBackend({ user = USERS.admin, status = 200, empty = false } = {}) {
+export function teamBackend({ user = USERS.admin, status = 200, empty = false, photoOrphans = 0 } = {}) {
   const manager = ['admin', 'manager'].includes(user.role);
   const sees = (id) => manager || id === user.id;
-  const backend = { calls: [], status };
+  const backend = { calls: [], status, photoOrphans };
   const base = [
     { id: USERS.admin.id, name: 'Imad El Moubarik', display_name: 'Imad El Moubarik', email: 'owner@example.test', role: 'admin', active: true, job_title: 'Owner', department: 'management', employment_type: 'owner', start_date: '2024-05-01', phone: '+354 555 0101', phone_visibility: 'team', preferred_language: 'English', done: 3, contacts: [{ id: 'ec1', contact_name: 'Lina El Moubarik', relationship: 'Partner', phone: '+354 555 0199', priority: 1, note: null }] },
     { id: USERS.bartender.id, name: 'Sara Jónsdóttir', display_name: 'Sara Jónsdóttir', email: 'sara.bartender@example.test', role: 'bartender', active: true, job_title: 'Bartender', department: 'bar', employment_type: 'part_time', start_date: '2025-02-01', phone: '+354 555 0102', phone_visibility: 'managers_only', preferred_language: 'Icelandic', done: 2, contacts: [] },
-    { id: 'c0ffee00-0000-4000-8000-000000000003', name: 'Gunnar Karlsson', display_name: 'Gunnar Karlsson', email: 'gunnar.karlsson@example.test', role: 'bartender', active: true, job_title: 'Bartender', department: 'bar', employment_type: 'full_time', start_date: '2025-06-15', phone: null, phone_visibility: 'managers_only', preferred_language: null, done: 3, contacts: [{ id: 'ec2', contact_name: 'Anna Karlsdóttir', relationship: 'Mother', phone: '+354 555 0177', priority: 1, note: null }] },
+    { id: 'c0ffee00-0000-4000-8000-000000000003', name: 'Gunnar Karlsson', display_name: 'Gunnar Karlsson', email: 'gunnar.karlsson@example.test', role: 'bartender', active: true, job_title: 'Bartender', department: 'bar', employment_type: 'full_time', start_date: '2025-06-15', phone: null, phone_visibility: 'managers_only', preferred_language: null, done: 3, shifts: 2, contacts: [{ id: 'ec2', contact_name: 'Anna Karlsdóttir', relationship: 'Mother', phone: '+354 555 0177', priority: 1, note: null }] },
     { id: 'c0ffee00-0000-4000-8000-000000000004', name: 'Ása Helgadóttir', display_name: 'Ása Helgadóttir', email: 'asa@example.test', role: 'viewer', active: false, job_title: 'Former barback', department: 'bar', employment_type: 'temporary', start_date: '2024-01-10', phone: null, phone_visibility: 'managers_only', preferred_language: null, done: 1, contacts: [] }
   ];
   const profile = (row) => {
@@ -294,7 +294,7 @@ export function teamBackend({ user = USERS.admin, status = 200, empty = false } 
         events: manager ? [{ id: 'ev1', profile_id: USERS.bartender.id, event_type: 'profile_details_updated', actor_label: 'Imad El Moubarik', created_at: '2026-09-22T10:00:00Z' }] : []
       },
       invitations: manager ? { 'c0ffee00-0000-4000-8000-000000000003': 'pending', 'c0ffee00-0000-4000-8000-000000000004': 'expired' } : {},
-      staff: { id: user.id, role: user.role, can_manage_team: manager, can_edit_self: true, live_training_writes_enabled: true, live_profile_writes_enabled: true, account_invitations_enabled: true },
+      staff: { id: user.id, role: user.role, can_manage_team: manager, can_edit_self: true, live_training_writes_enabled: true, live_profile_writes_enabled: true, account_invitations_enabled: true, ...(user.role === 'admin' ? { photo_orphan_count: backend.photoOrphans } : {}) },
       policy: {}
     };
   };
@@ -311,15 +311,31 @@ export function teamBackend({ user = USERS.admin, status = 200, empty = false } 
       if (entry.action === 'update-onboarding' && row) row.done = Math.max(0, Math.min(3, row.done + (body.completed ? 1 : -1)));
       if (entry.action === 'create-login-member') return { result: { id: 'new-member', email: body.email, invitation_token: 'tok_example' }, ...snapshot() };
       if (entry.action === 'renew-member-setup') return { result: { id: body.profile_id, email: row?.email, invitation_token: 'tok_renewed' }, ...snapshot() };
+      if (entry.action === 'delete-preview' && row) {
+        const shifts = Number(row.shifts || 0);
+        return { result: { account_kind: 'login', display_name: row.display_name, shift_entry_count: shifts, has_shift_history: shifts > 0, hard_delete_mode: shifts > 0 ? 'anonymized_kept_shifts' : 'full_delete', can_delete: user.role === 'admin' && row.id !== user.id }, ...snapshot() };
+      }
+      if (entry.action === 'remove-from-team' && row) { row.active = false; return { result: { removed: true, roster_archived: true }, ...snapshot() }; }
+      if (entry.action === 'delete-member' && row) {
+        const shifts = Number(row.shifts || 0);
+        const idx = base.indexOf(row);
+        if (idx >= 0) base.splice(idx, 1); // the person is gone from the directory
+        return { result: { ok: true, deleted: true, account_kind: 'login', mode: shifts > 0 ? 'anonymized_kept_shifts' : 'full_delete', auth_deleted: true, photo_removed: false, shifts_retained: shifts }, ...snapshot() };
+      }
+      if (entry.action === 'cleanup-photo-orphans') {
+        const removed = backend.photoOrphans;
+        backend.photoOrphans = 0;
+        return { result: { ok: true, attempted: removed, removed, remaining: 0 }, ...snapshot() };
+      }
     }
     return snapshot();
   };
   return backend;
 }
 
-export function teamFunctions({ user = USERS.admin, status = 200, empty = false } = {}) {
+export function teamFunctions({ user = USERS.admin, status = 200, empty = false, photoOrphans = 0 } = {}) {
   return {
-    'atlas-team-profiles': teamBackend({ user, status, empty }).handler,
+    'atlas-team-profiles': teamBackend({ user, status, empty, photoOrphans }).handler,
     'atlas-shifts': shiftsBackend({ user }).handler,
     'atlas-settings': clockBackend().handler
   };
