@@ -94,9 +94,10 @@ test('step-up is wired into the deployed entry points for integrations, settings
   const settings = readFileSync(new URL('../../supabase/functions/atlas-settings/index.ts', import.meta.url), 'utf8');
   assert.match(settings, /case "save-role": \{\s+requireManager\(context\);\s+\/\/ S96 step-up[^\n]*\n\s+requireStepUp\(context\.assurance, Deno\.env\);/);
   const team = readFileSync(new URL('../../supabase/functions/atlas-team-profiles/index.ts', import.meta.url), 'utf8');
-  // S99 added reset-member-mfa; S105 added remove-from-team (step-up) — 6 in all:
-  // role change, create login, renew setup, invite, reset MFA, remove-from-team.
-  assert.equal((team.match(/requireStepUp\(context\);/g) || []).length, 6, 'role change, create login, renew setup, invite, reset MFA, remove-from-team');
+  // S99 added reset-member-mfa; S105 added remove-from-team and photo-orphan
+  // cleanup (step-up) — 7 in all: role change, create login, renew setup, invite,
+  // reset MFA, remove-from-team, cleanup-photo-orphans.
+  assert.equal((team.match(/requireStepUp\(context\);/g) || []).length, 7, 'role change, create login, renew setup, invite, reset MFA, remove-from-team, cleanup-photo-orphans');
   // S105 permanent deletion is gated harder: an enrolled verified factor + aal2 +
   // a RECENT second-factor check, enforced server-side regardless of the flag.
   assert.match(team, /case "delete-member":[\s\S]*?\n/);

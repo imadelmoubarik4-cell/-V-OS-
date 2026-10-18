@@ -46,6 +46,9 @@ function setup(overrides = {}) {
       if (name === 'atlas_team_member_deletion_preview') return overrides.preview || { found: true, display_name: 'Pat Casual', shift_entry_count: 0 };
       if (name === 'atlas_team_member_purge_branch') return overrides.purge || { ok: true, mode: 'anonymized_kept_shifts', shift_entry_count: 2, photo_storage_path: 'profiles/x/y.webp' };
       if (name === 'atlas_team_member_remove_from_team') return { ok: true, roster_archived: true };
+      if (name === 'atlas_team_member_list_photo_orphans') return overrides.orphans || [];
+      if (name === 'atlas_team_member_record_photo_orphan') return { ok: true };
+      if (name === 'atlas_team_member_resolve_photo_orphan') return { ok: true };
       return {};
     },
     profileById: overrides.profileById || (async () => ({ id: 'emp1', display_name: 'Jane Doe', role: 'bartender', active: true })),
@@ -163,6 +166,54 @@ test('schedule-only member: name checked via preview, no auth-user delete', asyn
   assert.ok(calls.includes('atlas_team_member_deletion_preview'));
   assert.ok(calls.includes('atlas_team_member_purge_branch'));
   assert.ok(!calls.includes('auth.deleteUser'), 'no auth user to delete for a schedule-only person');
+});
+
+// ---- resumable retry + invitation ----
+test('a resumed delete after a failed Auth deletion finishes cleanly (idempotent, no re-purge destruction)', async () => {
+  // Second attempt: branch data already gone → purge is already_clean, no photo.
+  const { scope, calls } = setup({ purge: { ok: true, already_clean: true, mode: 'full_delete', shift_entry_count: 0, photo_storage_path: null } });
+  const r = await scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'Jane Doe' });
+  assert.equal(r.ok, true);
+  assert.equal(r.auth_deleted, true);
+  // deactivate (idempotent) → purge (no-op) → delete the Auth user. No storage.remove.
+  assert.deepEqual(calls, ['deactivate', 'audit', 'atlas_team_member_purge_branch', 'auth.deleteUser']);
+});
+
+test('an unaccepted invitation (Auth user, no roster/details) is deleted, confirmed by email', async () => {
+  const { scope, calls } = setup({
+    profileById: async () => ({ id: 'emp1', display_name: '', email: 'invitee@example.invalid', role: 'viewer', active: false }),
+    purge: { ok: true, already_clean: true, mode: 'full_delete', shift_entry_count: 0, photo_storage_path: null },
+  });
+  const r = await scope.deleteMember(admin, { profile_id: 'emp1', confirm_name: 'invitee@example.invalid' });
+  assert.equal(r.ok, true);
+  assert.ok(calls.includes('auth.deleteUser'));
+});
+
+// ---- orphan photo cleanup ----
+test('photo-orphan cleanup is admin-only and removes + resolves each tracked file', async () => {
+  const { scope, calls } = setup({ orphans: [{ storage_path: 'profiles/x/y.webp' }, { storage_path: 'profiles/a/b.webp' }] });
+  const r = await scope.cleanupPhotoOrphans(admin);
+  assert.equal(r.ok, true);
+  assert.equal(r.attempted, 2);
+  assert.equal(r.removed, 2);
+  assert.equal(r.remaining, 0);
+  assert.ok(calls.includes('atlas_team_member_list_photo_orphans'));
+  assert.equal(calls.filter((c) => c === 'storage.remove').length, 2);
+  assert.equal(calls.filter((c) => c === 'atlas_team_member_resolve_photo_orphan').length, 2);
+});
+
+test('a still-failing orphan removal is reported as remaining, not resolved', async () => {
+  const { scope, calls } = setup({ orphans: [{ storage_path: 'profiles/x/y.webp' }], storageError: { message: 'down' } });
+  const r = await scope.cleanupPhotoOrphans(admin);
+  assert.equal(r.ok, false);
+  assert.equal(r.remaining, 1);
+  assert.equal(r.removed, 0);
+  assert.ok(!calls.includes('atlas_team_member_resolve_photo_orphan'), 'never resolve what was not removed');
+});
+
+test('photo-orphan cleanup is refused for non-admins', async () => {
+  const { scope } = setup();
+  await assert.rejects(scope.cleanupPhotoOrphans({ user: { id: 'm1' }, profile: { role: 'manager' } }), /administrator/);
 });
 
 // ---- remove-from-team ----

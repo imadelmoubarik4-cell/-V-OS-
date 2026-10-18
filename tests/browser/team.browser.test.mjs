@@ -8,8 +8,8 @@ import { teamFunctions, peopleFunctions, NOW } from './people-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 
-async function open({ user = USERS.admin, hash = '#team', viewport, status = 200, contextOptions = {}, mfa = null } = {}) {
-  const fixtures = { functions: peopleFunctions(teamFunctions({ user, status })) };
+async function open({ user = USERS.admin, hash = '#team', viewport, status = 200, contextOptions = {}, mfa = null, photoOrphans = 0 } = {}) {
+  const fixtures = { functions: peopleFunctions(teamFunctions({ user, status, photoOrphans })) };
   if (mfa) fixtures.mfa = mfa;
   const app = await launchAtlas({ user, hash, viewport, contextOptions, fixedTime: new Date(NOW), fixtures });
   await app.page.waitForSelector('.team-table, .team-list, .atlas-alert--danger, .team-detail', { timeout: 12000 });
@@ -178,6 +178,28 @@ test('Delete permanently needs the exact typed name + a fresh authenticator code
     await page.waitForFunction(() => location.hash === '#team');
     assert.equal(await page.$(`tr[data-team-profile-select="${GUNNAR}"]`), null, 'the member no longer appears');
     assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});
+
+test('an administrator can finish leftover photo cleanup from the Team banner', { skip }, async () => {
+  const { page, record, close } = await open({ photoOrphans: 2 });
+  try {
+    await page.waitForSelector('[data-team-cleanup-photos]');
+    assert.match(await page.textContent('.team-danger, .atlas-alert--warning'), /2 leftover profile photos to remove/);
+    await page.click('[data-team-cleanup-photos]');
+    await until(() => requestsTo(record, 'atlas-team-profiles', 'cleanup-photo-orphans').length >= 1, { message: 'the cleanup request' });
+    await settle(page);
+    // The banner clears once the orphans are gone.
+    assert.equal(await page.$('[data-team-cleanup-photos]'), null, 'banner gone after cleanup');
+    assert.deepEqual(record.pageErrors, []);
+  } finally { await close(); }
+});
+
+test('a bartender never sees the photo-cleanup banner', { skip }, async () => {
+  const { page, close } = await open({ user: USERS.bartender, photoOrphans: 3 });
+  try {
+    await page.waitForSelector('.team-table, .team-list');
+    assert.equal(await page.$('[data-team-cleanup-photos]'), null, 'no cleanup banner for non-admins');
   } finally { await close(); }
 });
 

@@ -31,17 +31,16 @@ files, so they **cannot both fast-merge**:
 - `supabase/functions/atlas-team-profiles/index.ts` (also carries the pinned fingerprint)
 - `tests/browser/people-fixtures.mjs`, `tests/browser/team.browser.test.mjs`
 
-Plan:
-- [ ] Pick a merge order (recommended: **#128 first**, it is smaller and additive).
-- [ ] Merge the first PR to `main`.
-- [ ] Rebase/merge the second PR onto the new `main`; resolve the overlap in
+Plan (merge **#129 first** — the owner's priority):
+- [ ] Merge **PR #129** to `main` first. It is conflict-free against `main` today
+      (mergeable), gated green on `contracts` + `replay`.
+- [ ] Afterwards, rebase **PR #128** onto the new `main`; resolve the overlap in
       `index.ts`, `team-profiles.source.js`, the two test files **by hand**.
-- [ ] Rebuild the gzip bundle: `node scripts/build_team_profiles_bundle.mjs`
-      (never resolve the `.gz` by hand) and confirm
-      `node scripts/build_team_profiles_bundle.mjs --check`.
-- [ ] Re-pin the `atlas-team-profiles/index.ts` fingerprint chain again on the
-      second PR (see §6) — the merged `index.ts` is a new byte sequence.
-- [ ] Re-run node + browser + the s105 SQL verifier on the rebased branch.
+- [ ] On #128, rebuild the gzip bundle: `node scripts/build_team_profiles_bundle.mjs`
+      (never resolve the `.gz` by hand) and confirm with `--check`.
+- [ ] Re-pin the `atlas-team-profiles/index.ts` fingerprint chain on #128 (see §6) —
+      the merged `index.ts` is a new byte sequence.
+- [ ] Re-run node + browser + the s105 SQL verifier on the rebased #128.
 
 ## 2. S104 migration-ledger status (independent, do not block S105)
 
@@ -83,9 +82,19 @@ reauthentication never satisfies it, and this holds **regardless of**
 
 ## 5. Apply the migration + deploy the edge function (production)
 
-In order:
-- [ ] Apply `supabase/migrations/20261022090000_s105_team_member_deletion.sql` to
-      `dnefgcmjcgxlynycxkts` (idempotent / re-runnable). Record the ledger row.
+**Reviewed order — do NOT run a directory-wide `supabase db push`** while S104's
+ledger row is missing (§2), or it will replay S104. Use the explicit sequence
+(rehearsed by `scripts/apply_s105_reviewed.sh` on a disposable DB; the owner runs
+the same four statements in production):
+- [ ] **1. Backfill the S104 ledger row first** (idempotent), so S104 is never
+      replayed:
+      `insert into supabase_migrations.schema_migrations(version,name,statements)
+      values ('20261021090000','s104_kanel_pricing',array[]::text[]) on conflict (version) do nothing;`
+- [ ] **2. Apply ONLY** `supabase/migrations/20261022090000_s105_team_member_deletion.sql`
+      (idempotent / re-runnable) — not a push.
+- [ ] **3. Record the S105 ledger row** (idempotent), version `20261022090000`.
+- [ ] **4. Verify the ledger**: `scripts/verify_migration_ledger.sh` (no pending
+      migrations; S104 and S105 recorded).
 - [ ] Deploy the `atlas-team-profiles` edge function.
 - [ ] Deploy the frontend (the Team bundle) — Netlify builds from `main` on merge.
 - [ ] Smoke check: load Team, open a profile, confirm **Remove from team** (manager+)
@@ -108,9 +117,11 @@ Known pre-existing reds (NOT introduced by S105, do not block the required gates
   (`adjust_inventory is not a caller-evaluated manager-only RPC`). That run applies
   only the baseline + Phase-1 adoption migrations — it does not apply s105 — so it
   is unchanged by this PR and is a separate inventory-RPC workstream.
-- `Browser tests` carries the known atlas-bot WebGL flake in CI's GPU-less runner.
-  The S105 team suite passes locally (headless Chromium). Documented separately;
-  not weakened.
+- `Browser tests` carries the known atlas-bot WebGL flake in CI's GPU-less runner,
+  and a Reports tab-indicator layout check (ux-acceptance-r2 N-9) that differs by
+  1px of subpixel rendering in that runner. Verified **not a regression**: this PR
+  changes only `team-profiles.*` (no Reports, shared-layout, or tab-indicator
+  code), and N-9 passes locally in headless Chromium. Documented, not weakened.
 
 ## 7. Synthetic employee deletion test (pre-production rehearsal)
 
@@ -130,28 +141,43 @@ edge function deployed and MFA configured:
 
 ## 8. Rollback and partial-failure recovery
 
-**Partial outcomes are reported truthfully by the feature (never a false success):**
+**Partial outcomes are reported truthfully by the feature (never a false success),
+and every recovery runs inside Alcedo — no manual Supabase access:**
 - Auth-user delete failed → `{ ok:false, partial:true, auth_deleted:false }` with a
-  "safe to retry" message. Recovery: access is already revoked and personal data
-  already purged; **re-run the delete** for the same member to complete the
-  auth-user deletion. Idempotent.
+  "safe to retry" message. Recovery: **re-run Delete permanently** for the same
+  member in Alcedo. The branch purge is now idempotent (the login route treats an
+  already-cleaned target as a valid no-op, `already_clean:true`), so the retry
+  skips the completed cleanup, performs no duplicate destructive op, keeps every
+  shift, and finishes the Auth-user deletion. Proven by `tests/sql` check 7 and the
+  node "resumed delete" test.
 - Profile-photo object removal failed → `{ ok:false, partial:true,
-  storage_cleanup_required:true, storage_path:<path> }` and an
-  `active_status_changed` event logged with `reason:"deletion_photo_orphaned"` and
-  the path. Recovery: delete that storage object out of band (or re-run), using the
-  retained `storage_path`; no historical records were lost.
+  storage_cleanup_required:true, storage_path:<path> }`, and the path is recorded
+  in `atlas_private.team_member_deletion_orphans`. Recovery: admins see a **Team
+  banner** ("N leftover profile photos to remove — Finish cleanup") that calls
+  `cleanup-photo-orphans` (admin + step-up) to remove the objects and mark them
+  resolved. No manual Supabase access, no asking Claude. The count rides the
+  snapshot (`staff.photo_orphan_count`).
 - Deactivation could not be confirmed → the delete **stops before any purge**
   (502). Recovery: nothing was changed; retry once the Auth project is reachable.
+- Unaccepted invitation (Auth user, no roster/profile rows) → deletable directly;
+  confirm by typing the invitee's name or, when no name was set, their email.
 
-**Migration rollback:** s105 only adds objects (one table + three functions + three
+**Migration rollback:** s105 only adds objects (two tables + six functions + their
 wrappers). To roll back, drop them:
 ```
 drop function if exists public.atlas_team_member_purge_branch(uuid,uuid,uuid,text,text);
 drop function if exists public.atlas_team_member_remove_from_team(uuid,uuid,uuid,text,text);
 drop function if exists public.atlas_team_member_deletion_preview(uuid,uuid);
+drop function if exists public.atlas_team_member_record_photo_orphan(text,uuid,text);
+drop function if exists public.atlas_team_member_list_photo_orphans();
+drop function if exists public.atlas_team_member_resolve_photo_orphan(text,uuid,text);
 drop function if exists atlas_private.team_member_purge_branch(uuid,uuid,uuid,text,text);
 drop function if exists atlas_private.team_member_remove_from_team(uuid,uuid,uuid,text,text);
 drop function if exists atlas_private.team_member_deletion_preview(uuid,uuid);
+drop function if exists atlas_private.team_member_record_photo_orphan(text,uuid,text);
+drop function if exists atlas_private.team_member_list_photo_orphans();
+drop function if exists atlas_private.team_member_resolve_photo_orphan(text,uuid,text);
+drop table if exists atlas_private.team_member_deletion_orphans;
 drop table if exists atlas_private.team_member_deletion_audit;  -- keep for audit history unless required
 ```
 The feature also fails closed if the migration is absent: the edge function

@@ -348,6 +348,14 @@
     return `<div class="atlas-alert atlas-alert--danger team-alert" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">The team couldn’t be ${state.workspace ? 'updated' : 'loaded'}.</p><p class="atlas-alert__body">${escapeHtml(state.error)} ${state.workspace ? 'You’re seeing the last list that loaded.' : 'Nothing has changed.'}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-team-profiles-refresh>Try again</button></div></div>`;
   }
 
+  // Admin-only: when a permanent delete couldn't remove a member's stored photo,
+  // the leftover file is tracked and cleaned up here — no manual Supabase access.
+  function orphanCleanupBanner() {
+    const count = Number(state.staff?.photo_orphan_count || 0);
+    if (!count || state.staff?.role !== 'admin') return '';
+    return `<div class="atlas-alert atlas-alert--warning team-alert" role="status">${icon('image-off')}<div class="atlas-alert__content"><p class="atlas-alert__title">${count} leftover profile ${count === 1 ? 'photo' : 'photos'} to remove</p><p class="atlas-alert__body">A permanent deletion couldn’t remove ${count === 1 ? 'a stored photo' : 'some stored photos'}. No personal records remain — only the ${count === 1 ? 'file' : 'files'}. Finish removing ${count === 1 ? 'it' : 'them'} now.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-team-cleanup-photos>${icon('trash-2')}Finish cleanup</button></div></div>`;
+  }
+
   // ---------- profile ----------
 
   function row(label, value) {
@@ -741,6 +749,24 @@
     routeTo('team-profiles', {});
   }
 
+  async function cleanupOrphanPhotos() {
+    if (state.submitting) return;
+    state.submitting = true;
+    try {
+      const payload = await api('cleanup-photo-orphans', { method: 'POST', body: {} });
+      const r = payload?.result || {};
+      state.workspace = payload.workspace || state.workspace;
+      state.staff = payload.staff || state.staff;
+      if (r.remaining) window.AtlasShell?.toast?.(`Removed ${r.removed}; ${r.remaining} still couldn’t be removed. Try again shortly.`);
+      else window.AtlasShell?.toast?.(r.attempted ? `Removed ${r.removed} leftover ${r.removed === 1 ? 'photo' : 'photos'}` : 'Nothing left to clean up');
+    } catch (error) {
+      window.AtlasShell?.toast?.(shown(error, 'The cleanup couldn’t run. Try again.'));
+    } finally {
+      state.submitting = false;
+      loadSnapshot({ silent: true });
+    }
+  }
+
   async function removeMemberFromTeam(profile) {
     if (!profile || state.submitting) return;
     const name = profile.name || 'this member';
@@ -902,7 +928,7 @@
       view.innerHTML = `<div class="team team--detail">${state.workspace ? `<div class="team-detail">${detailMarkup(profile, { titleId: 'team-page-title' })}</div>` : alertMarkup() || `<div class="team-skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(4)}</div>`}</div>`;
       window.AtlasChrome?.setTopBar?.({ title: profile?.name || 'Team', back: () => routeTo('team-profiles', {}) });
     } else {
-      view.innerHTML = `<div class="team">${headerMarkup()}${alertMarkup()}${!state.workspace && state.error ? '' : toolbarMarkup()}<div class="team-body">${directoryMarkup()}</div></div>`;
+      view.innerHTML = `<div class="team">${headerMarkup()}${alertMarkup()}${orphanCleanupBanner()}${!state.workspace && state.error ? '' : toolbarMarkup()}<div class="team-body">${directoryMarkup()}</div></div>`;
       window.AtlasChrome?.setTopBar?.({});
     }
     paintIcons();
@@ -962,6 +988,7 @@
       return;
     }
     if (target.closest('[data-team-profiles-refresh]')) { state.failedAt = 0; loadSnapshot(); return; }
+    if (target.closest('[data-team-cleanup-photos]')) { cleanupOrphanPhotos(); return; }
     if (target.closest('[data-team-profile-add-member]')) { openAddMember(); return; }
     if (target.closest('[data-team-profile-invite]')) { openInvite(); return; }
     if (target.closest('[data-team-clear]')) { state.search = ''; state.roleFilter = 'all'; state.trainingDue = false; state.contactMissing = false; state.filter = 'active'; paint(); return; }

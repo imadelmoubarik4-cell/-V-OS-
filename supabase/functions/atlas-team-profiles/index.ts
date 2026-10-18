@@ -371,9 +371,17 @@ async function snapshot(context: AtlasContext) {
     p_actor_role: context.profile.role,
   });
 
+  // Admins get the count of orphaned deleted-member photos so Team can surface a
+  // one-click cleanup banner. Best-effort: never let it break the snapshot.
+  const staff = staffPayload(context);
+  if (context.profile.role === "admin") {
+    const orphans = await branchRpc("atlas_team_member_list_photo_orphans").catch(() => []);
+    (staff as { photo_orphan_count?: number }).photo_orphan_count = Array.isArray(orphans) ? orphans.length : 0;
+  }
+
   return {
     workspace,
-    staff: staffPayload(context),
+    staff,
     policy: {
       inactive_profile_access: "denied_on_every_request",
       emergency_contacts: "self_or_manager",
@@ -763,11 +771,17 @@ async function deleteMember(context: AtlasContext, body: Record<string, unknown>
 
   // Resolve the target + name-match + eligibility/guards BEFORE anything is removed.
   let targetLabel = "";
+  // Values an administrator may type to confirm. An unaccepted invitation often
+  // has no display name yet, so the invite email is also accepted — it is only
+  // compared here and never stored as a label (see edge-auth-contract).
+  const confirmChoices: string[] = [];
   if (profileId) {
     if (profileId === context.user.id) throw new ApiError(400, "You cannot delete your own account.");
     const target = await profileById(context, profileId);
     if (!target) throw new ApiError(404, "The selected team member no longer exists.");
     targetLabel = target.display_name || "";
+    confirmChoices.push(targetLabel);
+    if (target.email) confirmChoices.push(String(target.email));
     if (target.active) {
       if (target.role === "admin") await ensureNotLastActiveAdmin(context, profileId);
       else if (target.role === "manager") await ensureNotLastActiveManager(context, profileId);
@@ -781,8 +795,10 @@ async function deleteMember(context: AtlasContext, body: Record<string, unknown>
       throw new ApiError(409, "This person has an Alcedo login. Open their profile to delete them, not the schedule.");
     }
     targetLabel = preview.display_name || "";
+    confirmChoices.push(targetLabel);
   }
-  if (normalizeName(confirmName) !== normalizeName(targetLabel)) {
+  const accepted = confirmChoices.filter(Boolean).map((v) => normalizeName(v));
+  if (!accepted.length || !accepted.includes(normalizeName(confirmName))) {
     throw new ApiError(400, "The typed name doesn’t match. Type the member’s name exactly to confirm permanent deletion.");
   }
 
@@ -830,8 +846,11 @@ async function deleteMember(context: AtlasContext, body: Record<string, unknown>
     photoRemoved = !error;
     if (error) {
       orphanPhotoPath = String(purge.photo_storage_path);
-      // Record the orphaned object (not the person's name) so cleanup can retry.
-      await logExternalEvent(context, "active_status_changed", profileId ?? context.user.id, { reason: "deletion_photo_orphaned", storage_path: orphanPhotoPath }).catch(() => undefined);
+      // Durably register the orphaned object (its path only, no identity) so an
+      // administrator can finish the cleanup from inside Alcedo later.
+      await branchRpc("atlas_team_member_record_photo_orphan", {
+        p_storage_path: orphanPhotoPath, p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile),
+      }).catch(() => undefined);
     }
   }
 
@@ -863,6 +882,33 @@ async function deleteMember(context: AtlasContext, body: Record<string, unknown>
   return { ok: true, deleted: true, account_kind: profileId ? "login" : "schedule_only",
     mode: purge?.mode, auth_deleted: authDeleted, photo_removed: photoRemoved,
     shifts_retained: purge?.shift_entry_count ?? 0 };
+}
+
+// Administrator self-service cleanup for profile-photo objects orphaned when a
+// permanent delete removed the DB row but the Storage removal failed. Lists the
+// recorded orphans, removes each object, and marks the removed ones resolved.
+// Admin-only + step-up; nothing here can touch a live member's data.
+async function cleanupPhotoOrphans(context: AtlasContext) {
+  if (context.profile.role !== "admin") throw new ApiError(403, "Only an administrator can finish removing deleted members’ files.");
+  requireStepUp(context);
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const projectUrl = Deno.env.get("SUPABASE_URL");
+  if (!key || projectUrl !== productionAuthUrl()) throw new ApiError(503, "Cleanup is unavailable right now.");
+  const admin = createClient(projectUrl!, key, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  const orphans = await branchRpc("atlas_team_member_list_photo_orphans");
+  const paths: string[] = Array.isArray(orphans) ? orphans.map((o: { storage_path?: unknown }) => String(o?.storage_path || "")).filter(Boolean) : [];
+  let removed = 0;
+  const stillFailing: string[] = [];
+  for (const path of paths) {
+    const { error } = await admin.storage.from("atlas-profile-photos").remove([path]);
+    if (error) { stillFailing.push(path); continue; }
+    await branchRpc("atlas_team_member_resolve_photo_orphan", {
+      p_storage_path: path, p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile),
+    }).catch(() => undefined);
+    removed += 1;
+  }
+  return { ok: stillFailing.length === 0, attempted: paths.length, removed, remaining: stillFailing.length };
 }
 
 // S99 self-service onboarding completion. Any authenticated invitee finishing
@@ -1074,6 +1120,10 @@ Deno.serve(async (request: Request) => {
 
       case "delete-member":
         result = await deleteMember(context, body);
+        break;
+
+      case "cleanup-photo-orphans":
+        result = await cleanupPhotoOrphans(context);
         break;
 
       default:

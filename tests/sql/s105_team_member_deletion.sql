@@ -59,6 +59,11 @@ begin
   then raise exception 'browser roles can execute the deletion wrappers'; end if;
   if not has_function_privilege('service_role','public.atlas_team_member_purge_branch(uuid,uuid,uuid,text,text)','EXECUTE')
   then raise exception 'service_role cannot execute the purge wrapper'; end if;
+  -- Orphan-photo cleanup wrappers are equally sealed from browser roles.
+  if has_function_privilege('anon','public.atlas_team_member_list_photo_orphans()','EXECUTE')
+     or has_function_privilege('authenticated','public.atlas_team_member_resolve_photo_orphan(text,uuid,text)','EXECUTE')
+     or has_function_privilege('anon','public.atlas_team_member_record_photo_orphan(text,uuid,text)','EXECUTE')
+  then raise exception 'browser roles can execute the orphan-cleanup wrappers'; end if;
   -- Private functions carry no PUBLIC/anon/authenticated EXECUTE.
   if has_function_privilege('anon','atlas_private.team_member_purge_branch(uuid,uuid,uuid,text,text)','EXECUTE')
      or has_function_privilege('authenticated','atlas_private.team_member_purge_branch(uuid,uuid,uuid,text,text)','EXECUTE')
@@ -149,12 +154,14 @@ begin
     reset role; raise exception '4b: both identifiers were accepted';
   exception when others then reset role; if sqlerrm not like '%exactly one%' then raise exception '4b: wrong both-id error: %', sqlerrm; end if; end;
 
+  -- Unknown SCHEDULE-ONLY target must raise (its only existence is the roster row).
+  -- The login route is deliberately idempotent instead (proven in check 7).
   set local role service_role;
   begin
-    perform public.atlas_team_member_purge_branch('f0000000-0000-4000-8000-00000000ffff', null, '99999999-9999-4999-8999-999999999999'::uuid,'Owner','admin');
-    reset role; raise exception '4b: an unknown target returned success';
+    perform public.atlas_team_member_purge_branch(null, 'f0000000-0000-4000-8000-00000000ffff', '99999999-9999-4999-8999-999999999999'::uuid,'Owner','admin');
+    reset role; raise exception '4b: an unknown schedule-only target returned success';
   exception when others then reset role; if sqlerrm not like '%no team member found%' then raise exception '4b: wrong unknown-target error: %', sqlerrm; end if; end;
-  raise notice 'check 4b ok: exactly-one identifier + unknown target refused';
+  raise notice 'check 4b ok: exactly-one identifier + unknown schedule-only target refused';
 end $$;
 
 -- 4c. Genuine schedule-only person is fully removed via the person route.
@@ -201,6 +208,39 @@ begin
   if row.display_name <> 'Keep Me' then raise exception '6: remove changed identifying data'; end if;
   if not exists(select 1 from atlas_private.team_member_deletion_audit where action='removed_from_team' and target_profile_id='e0000000-0000-4000-8000-0000000000e1') then raise exception '6: no removed_from_team audit'; end if;
   raise notice 'check 6 ok: remove-from-team archives reversibly';
+end $$;
+
+-- 7. Login route is IDEMPOTENT: a profile with no branch rows (a resumed delete
+--    after a failed Auth deletion, or an unaccepted invitation) is a valid no-op,
+--    not a false success — it returns ok with already_clean=true and never raises.
+do $$
+declare res jsonb;
+begin
+  set local role service_role;
+  res := public.atlas_team_member_purge_branch('f0000000-0000-4000-8000-0000000000f1', null, '99999999-9999-4999-8999-999999999999'::uuid, 'Owner', 'admin');
+  reset role;
+  if not (res->>'ok')::boolean then raise exception '7: idempotent login purge did not return ok'; end if;
+  if not (res->>'already_clean')::boolean then raise exception '7: expected already_clean=true for an empty login target'; end if;
+  raise notice 'check 7 ok: login purge is idempotent (resumable / invitation)';
+end $$;
+
+-- 8. Orphan-photo registry: record → list → resolve, and DELETE is revoked.
+do $$
+declare listed jsonb;
+begin
+  set local role service_role;
+  perform public.atlas_team_member_record_photo_orphan('profiles/f0000000-0000-4000-8000-0000000000f1/f0000000-0000-4000-8000-0000000000f2.webp', '99999999-9999-4999-8999-999999999999'::uuid, 'Owner');
+  listed := public.atlas_team_member_list_photo_orphans();
+  if jsonb_array_length(listed) <> 1 then raise exception '8: orphan not listed after record'; end if;
+  perform public.atlas_team_member_resolve_photo_orphan('profiles/f0000000-0000-4000-8000-0000000000f1/f0000000-0000-4000-8000-0000000000f2.webp', '99999999-9999-4999-8999-999999999999'::uuid, 'Owner');
+  listed := public.atlas_team_member_list_photo_orphans();
+  if jsonb_array_length(listed) <> 0 then raise exception '8: orphan still listed after resolve'; end if;
+  reset role;
+  if has_table_privilege('service_role','atlas_private.team_member_deletion_orphans','DELETE')
+  then raise exception '8: service_role can DELETE from the orphan registry'; end if;
+  if has_table_privilege('anon','atlas_private.team_member_deletion_orphans','SELECT')
+  then raise exception '8: anon can read the orphan registry'; end if;
+  raise notice 'check 8 ok: orphan registry record/list/resolve + sealed';
 end $$;
 
 select 'S105: all deletion authorization and integrity checks passed' as result;

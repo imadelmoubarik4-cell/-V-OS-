@@ -199,8 +199,14 @@ begin
     end if;
   end if;
 
-  -- Deleting an unknown employee must never look like success.
-  if not resolved then
+  -- A schedule-only person is known ONLY by their roster row, so an unknown
+  -- person_id must raise instead of looking like success. A login member is
+  -- different: existence is owned by the production Auth account (verified by the
+  -- Edge Function before this runs), and the branch side may legitimately be empty
+  -- — an unaccepted invitation never had roster/detail rows, and a resumed delete
+  -- after a failed Auth-user deletion has already purged them. So the login route
+  -- is idempotent: zero branch rows is a valid no-op, not a false success.
+  if not resolved and p_person_id is not null then
     raise exception 'no team member found for the given identifier';
   end if;
 
@@ -233,16 +239,86 @@ begin
   values ('permanently_deleted', kind, p_profile_id, person.id, null, mode, entry_count,
     p_actor_id, p_actor_label, p_actor_role,
     jsonb_build_object('details_deleted', details_deleted, 'contacts_deleted', contacts_deleted,
-      'photo_removed', photo_path is not null));
+      'photo_removed', photo_path is not null, 'already_clean', not resolved));
 
   return jsonb_build_object(
     'ok', true, 'mode', mode, 'shift_entry_count', entry_count,
     'photo_storage_path', photo_path,
-    'details_deleted', details_deleted, 'contacts_deleted', contacts_deleted
+    'details_deleted', details_deleted, 'contacts_deleted', contacts_deleted,
+    -- true when there was no branch-side data to remove (a resumed delete or an
+    -- unaccepted invitation); the Edge Function still finishes the Auth deletion.
+    'already_clean', not resolved
   );
 end
 $function$;
 revoke all on function atlas_private.team_member_purge_branch(uuid, uuid, uuid, text, text) from public, anon, authenticated;
+
+-- 4b. Orphaned profile-photo registry (storage-cleanup retry) --------------------
+-- When a permanent delete removes the photo DB row but the Storage object removal
+-- fails, the object is left orphaned. We record its path here so an administrator
+-- can finish the cleanup from inside Alcedo (no manual Supabase access), and mark
+-- it resolved once removed. Resolvable (not append-only); service-role-only.
+create table if not exists atlas_private.team_member_deletion_orphans (
+  id uuid primary key default gen_random_uuid(),
+  storage_path text not null unique,
+  recorded_by uuid,
+  recorded_by_label text,
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz,
+  resolved_by uuid,
+  resolved_by_label text
+);
+create index if not exists team_member_deletion_orphans_unresolved_idx
+  on atlas_private.team_member_deletion_orphans (created_at) where resolved_at is null;
+
+alter table atlas_private.team_member_deletion_orphans enable row level security;
+drop policy if exists "service role manages photo orphans" on atlas_private.team_member_deletion_orphans;
+create policy "service role manages photo orphans" on atlas_private.team_member_deletion_orphans
+  for all to service_role using (true) with check (true);
+revoke all on atlas_private.team_member_deletion_orphans from public, anon, authenticated;
+grant select, insert, update on atlas_private.team_member_deletion_orphans to service_role;
+revoke delete, truncate on atlas_private.team_member_deletion_orphans from service_role, authenticated, anon;
+
+-- Record an orphan (idempotent: re-opens a previously resolved path if it recurs).
+create or replace function atlas_private.team_member_record_photo_orphan(p_storage_path text, p_actor_id uuid, p_actor_label text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+begin
+  if p_storage_path is null or length(p_storage_path) = 0 then
+    raise exception 'a storage path is required';
+  end if;
+  insert into atlas_private.team_member_deletion_orphans(storage_path, recorded_by, recorded_by_label)
+  values (p_storage_path, p_actor_id, p_actor_label)
+  on conflict (storage_path) do update set resolved_at = null, resolved_by = null, resolved_by_label = null,
+    recorded_by = excluded.recorded_by, recorded_by_label = excluded.recorded_by_label;
+  return jsonb_build_object('ok', true, 'storage_path', p_storage_path);
+end
+$function$;
+revoke all on function atlas_private.team_member_record_photo_orphan(text, uuid, text) from public, anon, authenticated;
+
+-- List the unresolved orphans (newest first) for the admin cleanup UI.
+create or replace function atlas_private.team_member_list_photo_orphans()
+returns jsonb language sql stable security definer set search_path = ''
+as $function$
+  select coalesce(jsonb_agg(jsonb_build_object('storage_path', storage_path, 'created_at', created_at) order by created_at desc), '[]'::jsonb)
+  from atlas_private.team_member_deletion_orphans where resolved_at is null;
+$function$;
+revoke all on function atlas_private.team_member_list_photo_orphans() from public, anon, authenticated;
+
+-- Mark an orphan resolved once its Storage object has actually been removed.
+create or replace function atlas_private.team_member_resolve_photo_orphan(p_storage_path text, p_actor_id uuid, p_actor_label text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+declare updated integer := 0;
+begin
+  update atlas_private.team_member_deletion_orphans
+    set resolved_at = now(), resolved_by = p_actor_id, resolved_by_label = p_actor_label
+    where storage_path = p_storage_path and resolved_at is null;
+  get diagnostics updated = row_count;
+  return jsonb_build_object('ok', true, 'resolved', updated > 0);
+end
+$function$;
+revoke all on function atlas_private.team_member_resolve_photo_orphan(text, uuid, text) from public, anon, authenticated;
 
 -- 5. Public wrappers (service_role only) -----------------------------------------
 create or replace function public.atlas_team_member_deletion_preview(p_profile_id uuid, p_person_id uuid)
@@ -262,3 +338,21 @@ returns jsonb language sql volatile security invoker set search_path = ''
 as $$ select atlas_private.team_member_purge_branch(p_profile_id, p_person_id, p_actor_id, p_actor_label, p_actor_role); $$;
 revoke all on function public.atlas_team_member_purge_branch(uuid, uuid, uuid, text, text) from public, anon, authenticated;
 grant execute on function public.atlas_team_member_purge_branch(uuid, uuid, uuid, text, text) to service_role;
+
+create or replace function public.atlas_team_member_record_photo_orphan(p_storage_path text, p_actor_id uuid, p_actor_label text)
+returns jsonb language sql volatile security invoker set search_path = ''
+as $$ select atlas_private.team_member_record_photo_orphan(p_storage_path, p_actor_id, p_actor_label); $$;
+revoke all on function public.atlas_team_member_record_photo_orphan(text, uuid, text) from public, anon, authenticated;
+grant execute on function public.atlas_team_member_record_photo_orphan(text, uuid, text) to service_role;
+
+create or replace function public.atlas_team_member_list_photo_orphans()
+returns jsonb language sql stable security invoker set search_path = ''
+as $$ select atlas_private.team_member_list_photo_orphans(); $$;
+revoke all on function public.atlas_team_member_list_photo_orphans() from public, anon, authenticated;
+grant execute on function public.atlas_team_member_list_photo_orphans() to service_role;
+
+create or replace function public.atlas_team_member_resolve_photo_orphan(p_storage_path text, p_actor_id uuid, p_actor_label text)
+returns jsonb language sql volatile security invoker set search_path = ''
+as $$ select atlas_private.team_member_resolve_photo_orphan(p_storage_path, p_actor_id, p_actor_label); $$;
+revoke all on function public.atlas_team_member_resolve_photo_orphan(text, uuid, text) from public, anon, authenticated;
+grant execute on function public.atlas_team_member_resolve_photo_orphan(text, uuid, text) to service_role;
