@@ -332,11 +332,46 @@ async function profileById(context: AtlasContext, profileId: string): Promise<At
   return Array.isArray(rows) && rows[0] ? rows[0] as AtlasProfile : null;
 }
 
+// Best-effort invitation status (pending / accepted / expired) per profile, for the
+// manager directory. Derived READ-ONLY from the production Auth project; never blocks
+// the snapshot — any failure yields an empty map and the UI simply shows no pill.
+// "accepted" = the invitee confirmed (set a password); "pending"/"expired" = invited
+// here (app_metadata.atlas_invited_by) and not yet confirmed, split on invite age.
+async function invitationStatuses(context: AtlasContext): Promise<Record<string, string>> {
+  if (!isManager(context)) return {};
+  const project = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!key || project !== productionAuthUrl()) return {};
+  const expiryHours = Number(Deno.env.get("ATLAS_INVITE_EXPIRY_HOURS") ?? "24") || 24;
+  const cutoff = Date.now() - expiryHours * 3600 * 1000;
+  const out: Record<string, string> = {};
+  try {
+    const admin = createClient(project!, key, { auth: { persistSession: false, autoRefreshToken: false } });
+    for (let page = 1; page <= 20; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+      if (error || !data?.users?.length) break;
+      for (const u of data.users) {
+        if (u.email_confirmed_at) { out[u.id] = "accepted"; continue; }
+        const invitedBy = (u.app_metadata as Record<string, unknown> | undefined)?.atlas_invited_by;
+        if (!invitedBy) continue; // not an invite we track
+        const issued = Date.parse(u.invited_at ?? u.confirmation_sent_at ?? u.created_at ?? "");
+        out[u.id] = Number.isFinite(issued) && issued < cutoff ? "expired" : "pending";
+      }
+      if (data.users.length < 200) break;
+    }
+  } catch (err) {
+    console.warn("invitationStatuses best-effort failed", (err as Error)?.message);
+    return {};
+  }
+  return out;
+}
+
 async function snapshot(context: AtlasContext) {
-  const [profileRows, taskRows, progressRows] = await Promise.all([
+  const [profileRows, taskRows, progressRows, invitations] = await Promise.all([
     profiles(context),
     onboardingTasks(context),
     onboardingProgress(context),
+    invitationStatuses(context),
   ]);
 
   const workspace = await branchRpc("atlas_team_profiles_snapshot", {
@@ -349,6 +384,7 @@ async function snapshot(context: AtlasContext) {
 
   return {
     workspace,
+    invitations,
     staff: staffPayload(context),
     policy: {
       inactive_profile_access: "denied_on_every_request",
@@ -537,6 +573,13 @@ async function inviteAccount(context: AtlasContext, body: Record<string, unknown
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!serviceRoleKey) throw new ApiError(500, "Account invitations are temporarily unavailable.");
 
+  // Duplicate guard (parity with create-login-member): refuse inviting an email
+  // that already has an Atlas account, before issuing a new invite.
+  const dupeCheck = createClient(productionAuthUrl(), serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: existingProfiles, error: dupeError } = await dupeCheck.from("profiles").select("id").ilike("email", email.replace(/[%_]/g, "\\$&"));
+  if (dupeError) throw new ApiError(503, "Could not check existing accounts.");
+  if (existingProfiles?.length) throw new ApiError(409, "This email already has an Atlas account. Select that member; do not send a duplicate invitation. Use password recovery if they cannot sign in.");
+
   const inviteUrl = new URL(`${productionAuthUrl()}/auth/v1/invite`);
   inviteUrl.searchParams.set("redirect_to", invitationRedirect(Deno.env.get("ATLAS_APP_ORIGIN"), Deno.env.get("ATLAS_INTEGRATIONS_APP_ORIGINS")));
   const response = await fetch(inviteUrl, {
@@ -587,6 +630,10 @@ async function createLoginMember(context: AtlasContext, body: Record<string, unk
   const email = requiredText(body.email, "Email", 320).toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Enter a valid email address.");
   const job = requiredText(body.default_role, "Staff role", 120);
   const role = requiredEnum(body.login_role, "Atlas access", new Set(["bartender", "viewer"]));
+  // Optional employment details captured at creation (reuse the save-details validators).
+  const department = optionalEnum(body.department, "Department", DEPARTMENTS);
+  const employmentType = optionalEnum(body.employment_type, "Employment type", EMPLOYMENT_TYPES);
+  const startDate = optionalDate(body.start_date, "Start date");
   const project = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!key || project !== productionAuthUrl()) throw new ApiError(503, "Account setup requires the same Atlas authentication project.");
@@ -604,7 +651,7 @@ async function createLoginMember(context: AtlasContext, body: Record<string, unk
   if (profileError) throw new ApiError(503, "Account created but access is not configured. Ask an administrator to review this member before retrying.");
   await branchRpc("atlas_team_profile_upsert_details", {
     p_profile_id: id, p_preferred_name: name, p_job_title: job,
-    p_department: null, p_employment_type: null, p_start_date: null,
+    p_department: department, p_employment_type: employmentType, p_start_date: startDate,
     p_phone: null, p_phone_visibility: "managers_only", p_preferred_language: null, p_manager_notes: null,
     p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile), p_actor_role: context.profile.role,
   });
