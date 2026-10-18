@@ -348,6 +348,14 @@
     return `<div class="atlas-alert atlas-alert--danger team-alert" role="alert">${icon('circle-alert')}<div class="atlas-alert__content"><p class="atlas-alert__title">The team couldn’t be ${state.workspace ? 'updated' : 'loaded'}.</p><p class="atlas-alert__body">${escapeHtml(state.error)} ${state.workspace ? 'You’re seeing the last list that loaded.' : 'Nothing has changed.'}</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-team-profiles-refresh>Try again</button></div></div>`;
   }
 
+  // Admin-only: when a permanent delete couldn't remove a member's stored photo,
+  // the leftover file is tracked and cleaned up here — no manual Supabase access.
+  function orphanCleanupBanner() {
+    const count = Number(state.staff?.photo_orphan_count || 0);
+    if (!count || state.staff?.role !== 'admin') return '';
+    return `<div class="atlas-alert atlas-alert--warning team-alert" role="status">${icon('image-off')}<div class="atlas-alert__content"><p class="atlas-alert__title">${count} leftover profile ${count === 1 ? 'photo' : 'photos'} to remove</p><p class="atlas-alert__body">A permanent deletion couldn’t remove ${count === 1 ? 'a stored photo' : 'some stored photos'}. No personal records remain — only the ${count === 1 ? 'file' : 'files'}. Finish removing ${count === 1 ? 'it' : 'them'} now.</p></div><div class="atlas-alert__actions"><button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-team-cleanup-photos>${icon('trash-2')}Finish cleanup</button></div></div>`;
+  }
+
   // ---------- profile ----------
 
   function row(label, value) {
@@ -369,7 +377,7 @@
       <div class="team-profile-detail-actions team-detail__actions">${profile.can_edit_profile ? `<button type="button" class="atlas-btn atlas-btn--secondary atlas-btn--sm" data-team-profile-edit="${escapeHtml(profile.id)}">${icon('pencil')}Edit profile</button>` : ''}</div>
     </div>`;
     if (profile.schedule_only) {
-      return `${head}<section class="team-detail__section"><h3 class="team-detail__title">Schedule only</h3><p class="team-detail__text">${escapeHtml(profile.name)} is on the shift roster without an Alcedo login. ${manager ? 'Add them again with a login to give them access.' : ''}</p>${shifts.length ? shiftsSection(profile, shifts) : ''}<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#shifts">Open Shifts</a></section>`;
+      return `${head}<section class="team-detail__section"><h3 class="team-detail__title">Schedule only</h3><p class="team-detail__text">${escapeHtml(profile.name)} is on the shift roster without an Alcedo login. ${manager ? 'Add them again with a login to give them access.' : ''}</p>${shifts.length ? shiftsSection(profile, shifts) : ''}<a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#shifts">Open Shifts</a></section>${removalBlock(profile)}`;
     }
     const phone = profile.phone ? `<a href="tel:${escapeHtml(String(profile.phone).replace(/\s+/g, ''))}">${escapeHtml(profile.phone)}</a>` : `<span class="team-muted">${profile.can_view_sensitive ? 'Not added' : 'Shared with managers only'}</span>`;
     const email = profile.email ? `<a href="mailto:${escapeHtml(profile.email)}">${escapeHtml(profile.email)}</a>` : '<span class="team-muted">Shared with managers only</span>';
@@ -377,7 +385,7 @@
       ${row('Phone', phone)}${row('Email', email)}${profile.preferred_language ? row('Language', escapeHtml(profile.preferred_language)) : ''}
       ${profile.can_view_sensitive ? `${row('Department', escapeHtml(DEPARTMENT_LABELS[profile.department] || 'Not set'))}${row('Employment', escapeHtml(EMPLOYMENT_LABELS[profile.employment_type] || 'Not set'))}${row('Started', escapeHtml(formatDate(profile.start_date)))}` : ''}
     </dl></section>`;
-    return `${head}${contact}${emergencySection(profile, own)}${shiftsSection(profile, shifts)}${trainingSection(profile, t)}${own ? `<section class="team-detail__section"><h3 class="team-detail__title">Required reading</h3><p class="team-detail__text">Procedures you need to read are in Knowledge.</p><a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#knowledge/required">${icon('book-open')}Open required reading</a></section>` : ''}${manager && profile.manager_notes ? `<section class="team-detail__section"><h3 class="team-detail__title">Manager note</h3><p class="team-detail__text">${escapeHtml(profile.manager_notes)}</p></section>` : ''}${accessSection(profile)}${historySection(profile)}`;
+    return `${head}${contact}${emergencySection(profile, own)}${shiftsSection(profile, shifts)}${trainingSection(profile, t)}${own ? `<section class="team-detail__section"><h3 class="team-detail__title">Required reading</h3><p class="team-detail__text">Procedures you need to read are in Knowledge.</p><a class="atlas-btn atlas-btn--secondary atlas-btn--sm" href="#knowledge/required">${icon('book-open')}Open required reading</a></section>` : ''}${manager && profile.manager_notes ? `<section class="team-detail__section"><h3 class="team-detail__title">Manager note</h3><p class="team-detail__text">${escapeHtml(profile.manager_notes)}</p></section>` : ''}${accessSection(profile)}${historySection(profile)}${removalBlock(profile)}`;
   }
 
   function emergencySection(profile, own) {
@@ -441,6 +449,26 @@
     const events = (Array.isArray(state.workspace?.events) ? state.workspace.events : []).filter((event) => event.profile_id === profile.id).slice(0, 8);
     if (!events.length) return '';
     return `<section class="team-detail__section"><h3 class="team-detail__title">History</h3><ul class="team-history">${events.map((event) => `<li><span>${escapeHtml(EVENT_LABELS[event.event_type] || humanize(event.event_type))}</span><span class="team-muted">${escapeHtml(event.actor_label || 'Alcedo')} · ${escapeHtml(vc()?.formatRelative?.(event.created_at) || '')}</span></li>`).join('')}</ul></section>`;
+  }
+
+  // Taking someone off the team. "Remove from team" (manager+) archives — it is
+  // reversible and keeps every record. "Delete permanently" (administrators only)
+  // erases their personal data and sign-in for good; shifts they already worked
+  // are kept under a de-identified "Former team member" row and never destroyed.
+  // Hidden for your own row; a manager can't act on an administrator. Every rule
+  // is re-checked by the Edge Function — these buttons only decide what to show.
+  function removalBlock(profile) {
+    if (!state.staff?.can_manage_team) return '';
+    if (profile.id === state.staff.id) return '';
+    const managerOnAdmin = state.staff.role === 'manager' && profile.role === 'admin';
+    const canRemove = profile.active !== false && !managerOnAdmin;
+    const canDelete = state.staff.role === 'admin';
+    if (!canRemove && !canDelete) return '';
+    const remove = canRemove ? `<button type="button" class="atlas-btn atlas-btn--ghost atlas-btn--sm" data-team-member-remove="${escapeHtml(profile.id)}">${icon('user-minus')}Remove from team</button>` : '';
+    const del = canDelete ? `<button type="button" class="atlas-btn atlas-btn--danger atlas-btn--sm" data-team-member-delete="${escapeHtml(profile.id)}">${icon('trash-2')}Delete permanently</button>` : '';
+    return `<section class="team-detail__section team-danger"><h3 class="team-detail__title">Remove from team</h3>
+      <p class="team-detail__hint">Removing takes them off the active team and signs them out, but keeps their records — you can add them back any time. Deleting permanently erases their personal details${profile.schedule_only ? '' : ' and Alcedo sign-in'} for good and can’t be undone; shifts they already worked are kept.</p>
+      <div class="team-danger__actions">${remove}${del}</div></section>`;
   }
 
   // ---------- layers ----------
@@ -661,6 +689,160 @@
     });
   }
 
+  // Identify a removal/deletion target: login members by profile_id, schedule-only
+  // roster people by person_id (they have no account). The server resolves both.
+  function removalTarget(profile) {
+    return profile.schedule_only === true ? { person_id: profile.id } : { profile_id: profile.id };
+  }
+
+  function normalizeName(value) {
+    return String(value || '').normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  // Step-up before a permanent deletion: force a FRESH authenticator check right
+  // now, so the sign-in that authorises the delete is recent (not a day-old
+  // session). challengeAndVerify refreshes the session's second-factor timestamp,
+  // which the Edge Function re-checks server-side. When the admin has no second
+  // factor we can't challenge here — we let the request through and the server's
+  // own step-up policy decides (and its message is shown truthfully).
+  // Fail-closed: deletion proceeds ONLY when a fresh authenticator check verifies
+  // here. If the MFA API is unavailable, the factor lookup fails, or the admin has
+  // no verified factor, we do NOT continue — the server also enforces this, but
+  // the UI must never wave the deletion through on a lookup/verify failure.
+  async function stepUpForDeletion() {
+    const client = window.atlasSupabase;
+    if (!client?.auth?.mfa) return 'unavailable';
+    let factor;
+    try {
+      const listed = await client.auth.mfa.listFactors();
+      factor = (listed?.data?.totp || []).find((candidate) => candidate.status === 'verified');
+    } catch {
+      return 'lookup_failed';
+    }
+    if (!factor) return 'no_factor';
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const entered = await window.AtlasModal.prompt({
+        id: 'team-delete-stepup', title: 'Confirm it’s you',
+        body: attempt
+          ? 'That code didn’t work. Enter the current 6-digit code from your authenticator app.'
+          : 'Enter the 6-digit code from your authenticator app to confirm this permanent deletion.',
+        label: 'Authenticator code', placeholder: '000000', required: true, multiline: false, maxLength: 6, type: 'text', confirmLabel: 'Confirm'
+      });
+      if (entered === null) return 'cancelled';
+      const code = String(entered).replace(/\s+/g, '');
+      if (!/^\d{6}$/.test(code)) continue;
+      const { error } = await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
+      if (!error) return 'verified';
+    }
+    return 'failed';
+  }
+
+  // After a successful removal/deletion: close the open profile, refresh the
+  // roster (schedule-only people live in the shifts snapshot), and tell Shifts
+  // and Messages to re-read so the person disappears everywhere at once.
+  function afterRemoval() {
+    state.profileId = null;
+    window.dispatchEvent(new Event('atlas:team-roster-changed'));
+    loadSnapshot({ silent: true });
+    // Close the open profile and return to the directory (the member is gone or
+    // archived, so the open sheet no longer makes sense) — on every viewport.
+    routeTo('team-profiles', {});
+  }
+
+  async function cleanupOrphanPhotos() {
+    if (state.submitting) return;
+    state.submitting = true;
+    try {
+      const payload = await api('cleanup-photo-orphans', { method: 'POST', body: {} });
+      const r = payload?.result || {};
+      state.workspace = payload.workspace || state.workspace;
+      state.staff = payload.staff || state.staff;
+      if (r.remaining) window.AtlasShell?.toast?.(`Removed ${r.removed}; ${r.remaining} still couldn’t be removed. Try again shortly.`);
+      else window.AtlasShell?.toast?.(r.attempted ? `Removed ${r.removed} leftover ${r.removed === 1 ? 'photo' : 'photos'}` : 'Nothing left to clean up');
+    } catch (error) {
+      window.AtlasShell?.toast?.(shown(error, 'The cleanup couldn’t run. Try again.'));
+    } finally {
+      state.submitting = false;
+      loadSnapshot({ silent: true });
+    }
+  }
+
+  async function removeMemberFromTeam(profile) {
+    if (!profile || state.submitting) return;
+    const name = profile.name || 'this member';
+    const answer = await confirmDialog({
+      title: `Remove ${name} from the team?`,
+      body: `${name} is taken off the active team and signed out. Their profile, history and the shifts they worked are all kept — you can add them back any time.`,
+      confirmLabel: 'Remove from team', danger: true
+    });
+    if (!answer) return;
+    const ok = await mutate('remove-from-team', removalTarget(profile), `${name} removed from the team`);
+    if (ok) afterRemoval();
+  }
+
+  async function openDeleteMember(profile) {
+    if (!profile || state.submitting) return;
+    const target = removalTarget(profile);
+    const schedule = profile.schedule_only === true;
+    let preview;
+    try {
+      const payload = await api('delete-preview', { method: 'POST', body: target });
+      preview = payload?.result || {};
+    } catch (error) {
+      window.AtlasShell?.toast?.(shown(error, 'This member couldn’t be checked right now. Try again.'));
+      return;
+    }
+    const name = preview.display_name || profile.name || 'this member';
+    const keepsShifts = preview.hard_delete_mode === 'anonymized_kept_shifts';
+    const shiftCount = Number(preview.shift_entry_count || 0);
+    const kind = schedule ? 'Schedule-only — no login' : 'Alcedo login account';
+    const removed = ['Their name, contact details and profile'];
+    if (!schedule) removed.push('Their emergency contacts and profile photo', 'Their Alcedo sign-in — they can no longer log in');
+    if (!keepsShifts) removed.push('Their roster entry (no past shifts to keep)');
+    const kept = keepsShifts ? [`The ${shiftCount} shift${shiftCount === 1 ? '' : 's'} they already worked — kept under “Former team member” so the schedule history stays correct`] : [];
+    const list = (items, danger) => `<ul class="team-delete__list${danger ? ' team-delete__list--danger' : ''}">${items.map((entry) => `<li>${escapeHtml(entry)}</li>`).join('')}</ul>`;
+    const bodyHtml = `
+      <div class="team-delete__who">${avatar(profile, 'atlas-avatar--lg')}<div><strong>${escapeHtml(name)}</strong><span class="team-muted">${escapeHtml(kind)}</span></div></div>
+      <p class="team-delete__warn">This permanently deletes personal data and can’t be undone.</p>
+      <p class="team-delete__label">Deleted for good</p>${list(removed, true)}
+      ${kept.length ? `<p class="team-delete__label">Kept (required records)</p>${list(kept, false)}` : ''}
+      <div class="atlas-field"><label for="team-delete-confirm">Type <strong>${escapeHtml(name)}</strong> to confirm</label>
+        <input class="atlas-input" id="team-delete-confirm" name="confirm_name" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${escapeHtml(name)}"></div>`;
+    await window.AtlasModal.form({
+      id: 'team-delete-member', className: 'team-delete', title: 'Delete permanently?',
+      body: bodyHtml, submitLabel: 'Delete permanently', danger: true, wide: true,
+      onSubmit: async (form) => {
+        const typed = form.elements.namedItem('confirm_name')?.value || '';
+        if (!typed.trim()) return 'Type the member’s name to confirm.';
+        if (normalizeName(typed) !== normalizeName(name)) return 'That name doesn’t match. Type the member’s name exactly to confirm.';
+        const step = await stepUpForDeletion();
+        if (step === 'cancelled') return 'Enter your authenticator code to confirm this deletion.';
+        if (step === 'no_factor') return 'Set up an authenticator app on your own account before deleting a team member.';
+        if (step === 'lookup_failed' || step === 'unavailable') return 'Two-factor couldn’t be checked right now, so the deletion was not performed. Try again.';
+        if (step !== 'verified') return 'The authenticator code didn’t match. Try again with the current 6-digit code.';
+        let payload;
+        try {
+          payload = await api('delete-member', { method: 'POST', body: { ...target, confirm_name: typed.trim() } });
+        } catch (error) {
+          return shown(error, 'The member couldn’t be deleted. Nothing was changed; try again.');
+        }
+        const result = payload?.result || {};
+        state.workspace = payload.workspace || state.workspace;
+        state.staff = payload.staff || state.staff;
+        if (result.ok === false) {
+          // Honest partial outcome: access revoked + personal data purged, but the
+          // sign-in account deletion failed. Never report this as a clean success.
+          window.AtlasShell?.toast?.(result.message || 'Partly done — access was revoked and data removed, but finishing the sign-in deletion failed. It’s safe to retry.');
+          afterRemoval();
+          return null;
+        }
+        window.AtlasShell?.toast?.(`${name} was permanently deleted`);
+        afterRemoval();
+        return null;
+      }
+    });
+  }
+
   function openInvite() {
     const root = openLayer({
       id: 'team-invite',
@@ -746,7 +928,7 @@
       view.innerHTML = `<div class="team team--detail">${state.workspace ? `<div class="team-detail">${detailMarkup(profile, { titleId: 'team-page-title' })}</div>` : alertMarkup() || `<div class="team-skel" aria-busy="true">${'<div class="atlas-skel atlas-skel--row"></div>'.repeat(4)}</div>`}</div>`;
       window.AtlasChrome?.setTopBar?.({ title: profile?.name || 'Team', back: () => routeTo('team-profiles', {}) });
     } else {
-      view.innerHTML = `<div class="team">${headerMarkup()}${alertMarkup()}${!state.workspace && state.error ? '' : toolbarMarkup()}<div class="team-body">${directoryMarkup()}</div></div>`;
+      view.innerHTML = `<div class="team">${headerMarkup()}${alertMarkup()}${orphanCleanupBanner()}${!state.workspace && state.error ? '' : toolbarMarkup()}<div class="team-body">${directoryMarkup()}</div></div>`;
       window.AtlasChrome?.setTopBar?.({});
     }
     paintIcons();
@@ -806,6 +988,7 @@
       return;
     }
     if (target.closest('[data-team-profiles-refresh]')) { state.failedAt = 0; loadSnapshot(); return; }
+    if (target.closest('[data-team-cleanup-photos]')) { cleanupOrphanPhotos(); return; }
     if (target.closest('[data-team-profile-add-member]')) { openAddMember(); return; }
     if (target.closest('[data-team-profile-invite]')) { openInvite(); return; }
     if (target.closest('[data-team-clear]')) { state.search = ''; state.roleFilter = 'all'; state.trainingDue = false; state.contactMissing = false; state.filter = 'active'; paint(); return; }
@@ -867,6 +1050,10 @@
       }
       return;
     }
+    const removeMember = target.closest('[data-team-member-remove]');
+    if (removeMember) { removeMemberFromTeam(profileById(removeMember.dataset.teamMemberRemove)); return; }
+    const deleteMember = target.closest('[data-team-member-delete]');
+    if (deleteMember) { openDeleteMember(profileById(deleteMember.dataset.teamMemberDelete)); return; }
     const resetMfa = target.closest('[data-team-member-reset-mfa]');
     if (resetMfa) {
       const profile = profileById(resetMfa.dataset.teamMemberResetMfa);

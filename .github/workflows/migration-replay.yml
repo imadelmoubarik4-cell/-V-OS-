@@ -73,3 +73,5 @@ jobs:
         run: bash scripts/verify_s99_bookings.sh
       - name: Run S100 security & cost hardening acceptance (service-role-only AI cost/throttle RPCs, append-only block trail, sealed manager-only recipe price audit)
         run: bash scripts/verify_s100_security_cost.sh
+      - name: Run S105 team-member deletion acceptance (sealed deletion RPCs, append-only audit, shift-RESTRICT anonymize, schedule-only route guard, redacted audit)
+        run: bash scripts/verify_s105_team_deletion.sh

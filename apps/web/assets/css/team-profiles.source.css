@@ -64,6 +64,23 @@
 .team-history .team-muted { font: var(--type-caption); }
 .team-access .atlas-form-foot { justify-content: space-between; }
 
+/* ---------- remove / delete ---------- */
+.team-danger { border-top-color: var(--danger-ring, var(--line-subtle)); }
+.team-danger .team-detail__title { color: var(--danger); }
+.team-danger__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+.team-delete .atlas-dialog { max-width: 30rem; }
+.team-delete__who { display: flex; align-items: center; gap: var(--s-3); margin: 0 0 var(--s-3); }
+.team-delete__who > div { display: grid; gap: 2px; min-width: 0; }
+.team-delete__who strong { font: var(--type-label); color: var(--text); }
+.team-delete__who .team-muted { font: var(--type-caption); }
+.team-delete__warn { margin: 0 0 var(--s-3); font: var(--type-body); color: var(--danger); }
+.team-delete__label { margin: var(--s-3) 0 var(--s-1); font: var(--type-meta); color: var(--text-2); }
+.team-delete__list { display: grid; gap: var(--s-1); margin: 0 0 var(--s-2); padding-left: var(--s-4); }
+.team-delete__list li { font: var(--type-body); color: var(--text-2); }
+.team-delete__list--danger li { color: var(--text); }
+.team-delete .atlas-field { margin-top: var(--s-3); }
+
 @media (max-width: 767px) {
   .team-toolbar .atlas-search { flex: 1 1 100%; width: 100%; }
   .team--detail { padding-top: var(--s-2); }
