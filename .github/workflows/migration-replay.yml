@@ -77,3 +77,5 @@ jobs:
         run: bash scripts/verify_s105_team_deletion.sh
       - name: Run S106 bookings-engine acceptance (online cap 4, 15-min turnaround, three fixed Bar sections, non-wrapping contiguity, cross-section assign refused, per-day last start)
         run: bash scripts/verify_s106_bookings_engine.sh
+      - name: Run S107 public-booking acceptance (sealed RPCs, server gates off by default, Bar-only, requested + expiring hold + no seat, unguessable token, idempotency, rate limit, no double-hold)
+        run: bash scripts/verify_s107_public_booking.sh
