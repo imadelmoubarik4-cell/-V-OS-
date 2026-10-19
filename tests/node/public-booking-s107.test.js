@@ -128,6 +128,15 @@ test('CORS echoes only an allow-listed origin', async () => {
   assert.notEqual(bad.headers.get('access-control-allow-origin'), 'https://evil.test');
 });
 
+test('CORS is restrictive by default (never "*"), echoing only the KANEL origins', async () => {
+  const { handle } = makeHandler(); // no PUBLIC_BOOKING_ORIGINS set
+  const wildcard = await handle(req('OPTIONS', '/?action=availability', { headers: { origin: 'https://evil.test' } }));
+  assert.notEqual(wildcard.headers.get('access-control-allow-origin'), '*', 'default must not be a wildcard');
+  assert.notEqual(wildcard.headers.get('access-control-allow-origin'), 'https://evil.test', 'a non-listed origin is not echoed');
+  const kanel = await handle(req('OPTIONS', '/?action=availability', { headers: { origin: 'https://kanel.is' } }));
+  assert.equal(kanel.headers.get('access-control-allow-origin'), 'https://kanel.is', 'kanel.is is allowed by default');
+});
+
 test('an unknown action or method is 404', async () => {
   const { handle } = makeHandler();
   assert.equal((await handle(req('GET', '/?action=nope'))).status, 404);

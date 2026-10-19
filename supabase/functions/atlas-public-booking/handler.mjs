@@ -44,16 +44,15 @@ export const MESSAGES = Object.freeze({
   internal: "We couldn’t complete that request. Nothing was changed.",
 });
 
+// The CORS allow-list is restrictive by default: only the KANEL site origins,
+// overridable with PUBLIC_BOOKING_ORIGINS (comma-separated). Never "*". A
+// non-matching Origin is not echoed (the browser then blocks the cross-origin
+// read). No credentials/cookies are used.
+const DEFAULT_ORIGINS = ["https://kanel.is", "https://www.kanel.is"];
 function corsHeaders(env, requestOrigin) {
-  // Allowlist from env (comma-separated). Unset -> "*", since the public booking
-  // data is non-sensitive and no credentials/cookies are used. When set, only a
-  // matching Origin is echoed back.
   const configured = String(envValue(env, "PUBLIC_BOOKING_ORIGINS") ?? "").trim();
-  let allow = "*";
-  if (configured) {
-    const list = configured.split(",").map((o) => o.trim()).filter(Boolean);
-    allow = requestOrigin && list.includes(requestOrigin) ? requestOrigin : (list[0] ?? "null");
-  }
+  const list = configured ? configured.split(",").map((o) => o.trim()).filter(Boolean) : DEFAULT_ORIGINS;
+  const allow = requestOrigin && list.includes(requestOrigin) ? requestOrigin : (list[0] ?? "null");
   return {
     "access-control-allow-origin": allow,
     "access-control-allow-headers": "content-type, idempotency-key",
