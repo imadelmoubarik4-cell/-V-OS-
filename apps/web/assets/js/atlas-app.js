@@ -808,7 +808,7 @@
     }
     for (const { view, params } of [route, { view: preferences?.start_view, params: {} }]) {
       if (!view || view === 'dashboard') continue;
-      if (window.AtlasShell.nav.allowed(view) && (window.AtlasShell.nav.forView(view) || window.AtlasShell.view(view))) { window.AtlasShell.show(view, params, { source: 'link', route: location.hash }); return; }
+      if (window.AtlasShell.nav.allowed(view) && (window.AtlasShell.nav.forView(view) || window.AtlasShell.view(view) || window.AtlasShell.isLazyView?.(view))) { window.AtlasShell.show(view, params, { source: 'link', route: location.hash }); return; }
     }
     window.AtlasShell.show('dashboard', {}, { source: 'link' });
   }

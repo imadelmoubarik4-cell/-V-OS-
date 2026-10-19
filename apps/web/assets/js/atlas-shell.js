@@ -237,7 +237,10 @@
 
   function chooseCandidate(candidates) {
     const list = candidates.filter((candidate) => candidate && candidate[0]);
-    const registered = list.find(([view]) => views.has(view));
+    // A lazy view counts as available, so a route that prefers it (e.g.
+    // #knowledge/training → training, else knowledge) resolves to the lazy view and
+    // loads its module, instead of falling through to an already-loaded fallback.
+    const registered = list.find(([view]) => views.has(view) || lazyViews.has(view));
     return registered || list[0] || ['dashboard'];
   }
 
@@ -1399,6 +1402,7 @@
     // views and lifecycle
     registerView,
     registerLazyView,
+    isLazyView: (name) => lazyViews.has(canonicalName(name)),
     unregisterView: (name) => unregisterView(name),
     view: getView,
     views: viewNames,

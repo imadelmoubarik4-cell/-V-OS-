@@ -5,6 +5,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { harnessAvailable, launchAtlas, navigateTo, settle, until, USERS } from './harness.mjs';
 import { bookingsWorld, TODAY } from './bookings-fixtures.mjs';
+import { knowledgeBackend, peopleFunctions, NOW } from './people-fixtures.mjs';
+import { trainingBackend } from './training-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 
@@ -54,6 +56,24 @@ for (const [label, hash] of [['manager config', '#bookings/config'], ['a dated d
     } finally { await app.close(); }
   });
 }
+
+test('Training is lazy too: absent at boot, loads on a direct deep-link to #knowledge/training', { skip }, async () => {
+  const kn = knowledgeBackend({ user: USERS.admin });
+  const tr = trainingBackend({ lessons: [] });
+  const fixtures = { functions: peopleFunctions({ 'atlas-knowledge': kn.handler, 'atlas-training': tr.handler }) };
+  // Boot on Home: Training must not be fetched yet.
+  const home = await launchAtlas({ user: USERS.admin, hash: '', fixedTime: new Date(NOW), fixtures });
+  try {
+    await settle(home.page);
+    assert.equal(await globalDefined(home.page, 'AtlasTraining'), false, 'AtlasTraining not loaded at boot');
+  } finally { await home.close(); }
+  // Deep-link straight to #knowledge/training resolves to the lazily-loaded training view.
+  const deep = await launchAtlas({ user: USERS.admin, hash: '#knowledge/training', fixedTime: new Date(NOW), fixtures });
+  try {
+    await deep.page.waitForFunction(() => document.body.dataset.atlasView === 'training', null, { timeout: 12000 });
+    assert.equal(await globalDefined(deep.page, 'AtlasTraining'), true, 'AtlasTraining loaded for the deep link');
+  } finally { await deep.close(); }
+});
 
 test('returning to Bookings and rapid repeat navigation never re-download the module', { skip }, async () => {
   const world = bookingsWorld();
