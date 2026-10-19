@@ -81,3 +81,5 @@ jobs:
         run: bash scripts/verify_s107_public_booking.sh
       - name: Run S108 booking-notifications acceptance (sealed outbox, manager-only alerts, KANEL reference, approve/change/cancel emails queued-not-sent, no-email still alerts, idempotency isolation)
         run: bash scripts/verify_s108_booking_notifications.sh
+      - name: Run S109 in-app inbox acceptance (per-manager inbox + unread + mark-read RPCs manager-only, public_token-gated legacy skip, declined vs cancelled vs no_show, DB flag enforced, conflicting idempotency refused, outbox de-dup)
+        run: bash scripts/verify_s109_booking_notifications_inbox.sh
