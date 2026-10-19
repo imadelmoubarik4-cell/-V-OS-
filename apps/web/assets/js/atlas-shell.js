@@ -70,6 +70,9 @@
   let routing = false;
   let replaceNextRoute = false;
   let pending = null;
+  // Lazy views: a destination whose module is downloaded on first navigation
+  // instead of at boot. key → { js, css, global, loading }.
+  const lazyViews = new Map();
   let lastProfile = null;
   let dataLoadedAt = 0;
   let waitingForData = null;
@@ -444,6 +447,38 @@
     return () => unregisterView(key, entry);
   }
 
+  // Register a view whose module is fetched on first navigation to it, rather
+  // than eagerly at boot. spec: { js, css?, global? }. When show() is asked for a
+  // key that has not registered yet, triggerLazyLoad downloads the module; the
+  // module calls registerView on load and the stored `pending` navigation replays
+  // (see registerView), so the destination opens as soon as its code arrives.
+  function registerLazyView(name, spec = {}) {
+    const key = canonicalName(name);
+    if (!key || !spec.js) throw new Error('AtlasShell.registerLazyView needs a view name and a script path.');
+    lazyViews.set(key, { js: spec.js, css: spec.css || null, global: spec.global || null, loading: false });
+    if (pending && pending.name === key) triggerLazyLoad(key);
+    return key;
+  }
+
+  // Start a lazy view's download once. load() itself dedupes by path, so a race
+  // between two navigations cannot fetch twice; the `loading` flag just avoids
+  // re-entering. Never loads a view that has already registered.
+  function triggerLazyLoad(key) {
+    const spec = lazyViews.get(key);
+    if (!spec || spec.loading || views.has(key)) return;
+    spec.loading = true;
+    const document = root.document;
+    if (spec.css && document && !document.querySelector(`link[href="${spec.css}"]`)) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = spec.css;
+      link.dataset.atlasLazyView = key;
+      document.head?.appendChild(link);
+    }
+    load(spec.js, { global: spec.global, async: true, dataset: { atlasLazyView: key } })
+      .catch((error) => { spec.loading = false; report(error); });
+  }
+
   function unregisterView(name, entry) {
     const key = canonicalName(name);
     if (entry && views.get(key) !== entry) return false;
@@ -481,6 +516,9 @@
     if (!entry) {
       // A destination whose module has not loaded yet opens as soon as it registers.
       pending = { name: key, params: params || {}, options };
+      // If it is a lazy view, download its module now; it registers on load and
+      // this pending navigation replays. Non-lazy unknown views simply wait.
+      triggerLazyLoad(key);
       return false;
     }
     if (entry.guard) {
@@ -1324,6 +1362,7 @@
     version: VERSION,
     // views and lifecycle
     registerView,
+    registerLazyView,
     unregisterView: (name) => unregisterView(name),
     view: getView,
     views: viewNames,

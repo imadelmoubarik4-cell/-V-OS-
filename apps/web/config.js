@@ -211,7 +211,9 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 
 // S98: Knowledge › Training. Private video SOPs, chapters, procedure steps, progress
 // and explicit completion. Registers the shell view 'training' for #knowledge/training
-// and #knowledge/training/<lesson>.
+// and #knowledge/training/<lesson>. (Not yet lazy: 'training' is a nav-less sub-route
+// reached via a fallback candidate and a direct-boot guard, so it needs more routing
+// work than bookings — tracked as a follow-up to the lazy-view change below.)
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/training-workspace.css?v=20261015-s98',
   scriptPath: 'assets/js/training-workspace.js?v=20261015-s98',
@@ -219,13 +221,17 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasTraining',
 }));
 
-// Bookings: staff day view + manager room/rules configuration.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/bookings-workspace.css?v=20261002-bookings1',
-  scriptPath: 'assets/js/bookings-workspace.js?v=20261002-bookings1',
-  globalName: 'AtlasBookings',
-  dataAttribute: 'atlasBookings',
-}));
+// Bookings: staff day view + manager room/rules configuration. Lazy: its module (and
+// CSS) download on the first navigation to the 'bookings' view, not at boot — a
+// self-contained top-level destination with no Home contribution and no eager
+// consumer of window.AtlasBookings.
+if (window.AtlasShell?.registerLazyView) {
+  window.AtlasShell.registerLazyView('bookings', {
+    js: 'assets/js/bookings-workspace.js?v=20261002-bookings1',
+    css: 'assets/css/bookings-workspace.css?v=20261002-bookings1',
+    global: 'AtlasBookings',
+  });
+}
 
 // KANEL Pricing & Profitability (Finance › Menu Pricing): admin/manager-only,
 // feature-flagged. A client-side calculation workspace over the shared pricing
