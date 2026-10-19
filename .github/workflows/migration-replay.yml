@@ -79,3 +79,5 @@ jobs:
         run: bash scripts/verify_s106_bookings_engine.sh
       - name: Run S107 public-booking acceptance (sealed RPCs, server gates off by default, Bar-only, requested + expiring hold + no seat, unguessable token, idempotency, rate limit, no double-hold)
         run: bash scripts/verify_s107_public_booking.sh
+      - name: Run S108 booking-notifications acceptance (sealed outbox, manager-only alerts, KANEL reference, approve/change/cancel emails queued-not-sent, no-email still alerts, idempotency isolation)
+        run: bash scripts/verify_s108_booking_notifications.sh
