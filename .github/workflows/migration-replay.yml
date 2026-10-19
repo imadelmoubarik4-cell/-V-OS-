@@ -75,3 +75,5 @@ jobs:
         run: bash scripts/verify_s100_security_cost.sh
       - name: Run S105 team-member deletion acceptance (sealed deletion RPCs, append-only audit, shift-RESTRICT anonymize, schedule-only route guard, redacted audit)
         run: bash scripts/verify_s105_team_deletion.sh
+      - name: Run S106 bookings-engine acceptance (online cap 4, 15-min turnaround, three fixed Bar sections, non-wrapping contiguity, cross-section assign refused, per-day last start)
+        run: bash scripts/verify_s106_bookings_engine.sh

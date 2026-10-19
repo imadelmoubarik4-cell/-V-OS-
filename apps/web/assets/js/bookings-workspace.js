@@ -304,7 +304,10 @@
       if (area.allocation_mode === 'pooled') return pooledAreaMarkup(area);
       const colour = sectionColour(area);
       const areaTables = tablesForArea(area.id);
-      const floorClass = area.circular_adjacency && areaTables.some((table) => table.position_index) ? ' bk-floor-grid' : '';
+      // S106: the floor grid renders for any area whose stools have a laid-out
+      // position_index. (It no longer keys off circular_adjacency — the Bar's
+      // circular ring was replaced by three fixed sections; see s106 migration.)
+      const floorClass = areaTables.some((table) => table.position_index) ? ' bk-floor-grid' : '';
       return `<section class="bk-area bk-c-${escapeHtml(colour)}" data-bookings-area="${escapeHtml(area.id)}" aria-labelledby="bk-area-${escapeHtml(area.id)}">
         <h3 class="bk-area__title" id="bk-area-${escapeHtml(area.id)}"><span class="bk-swatch" aria-hidden="true"></span>${escapeHtml(area.name)}</h3>
         <div class="bk-area__tables${floorClass}">${areaTables.length ? areaTables.map(tableButtonMarkup).join('') : '<p class="bk-note">No seats configured here.</p>'}</div>
