@@ -48,18 +48,19 @@
 
   // Run once the app screen is actually shown. The boot/auth triggers can fire
   // before the shell reveals the app, when a fetch would no-op; this waits for
-  // that transition with a MutationObserver (event-driven, never a poll).
+  // the shell's own readiness events (profile ready / first view shown), which
+  // are mirrored on window. Event-driven — never a MutationObserver or a poll.
   function whenSignedIn(run) {
     if (appIsSignedIn()) { run(); return; }
     let done = false;
-    const obs = new MutationObserver(() => {
-      if (done || !appIsSignedIn()) return;
-      done = true; obs.disconnect(); run();
-    });
-    obs.observe(document.body, { attributes: true, attributeFilter: ['data-atlas-ready'] });
-    const app = document.getElementById('app-screen');
-    if (app) obs.observe(app, { attributes: true, attributeFilter: ['style', 'class'] });
-    window.setTimeout(() => obs.disconnect(), 20000);  // never leak the observer
+    const cleanup = () => {
+      window.removeEventListener('atlas:profile-ready', go);
+      window.removeEventListener('atlas:view-change', go);
+    };
+    function go() { if (done || !appIsSignedIn()) return; done = true; cleanup(); run(); }
+    window.addEventListener('atlas:profile-ready', go);
+    window.addEventListener('atlas:view-change', go);
+    window.setTimeout(cleanup, 20000);  // never leak the listeners
   }
 
   async function activeSession() {
