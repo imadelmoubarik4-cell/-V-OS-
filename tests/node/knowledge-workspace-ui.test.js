@@ -17,7 +17,9 @@ test('Knowledge loads through the authenticated Knowledge gateway', () => {
   assert.match(config, /KNOWLEDGE_API:\s*"https:\/\/dnefgcmjcgxlynycxkts\.supabase\.co\/functions\/v1\/atlas-knowledge"/);
   assert.match(config, /assets\/css\/knowledge-workspace\.css/);
   assert.match(config, /assets\/js\/knowledge-workspace\.js/);
-  assert.match(config, /globalName:\s*'AtlasKnowledge'/);
+  // Knowledge is a lazy view: registered with its global via registerLazyView.
+  assert.match(config, /global:\s*'AtlasKnowledge'/);
+  assert.match(config, /registerLazyView\('knowledge'/);
   assert.doesNotMatch(config + ui, /SUPABASE_SERVICE_ROLE_KEY/);
 });
 
@@ -146,6 +148,9 @@ test('module stylesheet: one atlas.modules layer, tokens only, nothing under 12 
 });
 
 test('production loads the Knowledge assets with a cache key', () => {
-  assert.match(index, /knowledge-workspace\.js\?v=20261003-bot1/);
-  assert.match(index, /assets\/css\/knowledge-workspace\.css/);
+  // Knowledge is a lazy view: its cache-keyed assets are declared in config.js
+  // (registerLazyView) and downloaded on first navigation, not eager in index.html.
+  assert.match(config, /knowledge-workspace\.js\?v=20261003-bot1/);
+  assert.match(config, /assets\/css\/knowledge-workspace\.css/);
+  assert.doesNotMatch(index, /<script src="assets\/js\/knowledge-workspace\.js/);
 });

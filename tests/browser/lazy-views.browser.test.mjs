@@ -91,6 +91,20 @@ for (const role of ['admin', 'bartender']) {
   });
 }
 
+test('Knowledge (required + lazy) is absent at boot and opens on navigation', { skip }, async () => {
+  const user = USERS.admin;
+  const fixtures = { functions: peopleFunctions({ 'atlas-knowledge': knowledgeBackend({ user }).handler }) };
+  const app = await launchAtlas({ user, hash: '', fixedTime: new Date(NOW), fixtures });
+  const { page } = app;
+  try {
+    await settle(page);
+    assert.equal(await globalDefined(page, 'AtlasKnowledge'), false, 'AtlasKnowledge not loaded at boot');
+    await navigateTo(page, '#knowledge');
+    await until(() => globalDefined(page, 'AtlasKnowledge'), { message: 'AtlasKnowledge loads on navigation' });
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'knowledge', null, { timeout: 8000 });
+  } finally { await app.close(); }
+});
+
 test('returning to Bookings and rapid repeat navigation never re-download the module', { skip }, async () => {
   const world = bookingsWorld();
   const app = await launchAtlas({ user: USERS.admin, hash: '', fixtures: world.fixtures });

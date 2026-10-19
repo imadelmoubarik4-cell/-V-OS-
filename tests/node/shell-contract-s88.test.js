@@ -279,9 +279,13 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // The Atlas AI robot (atlas-bot.js) replaced the sparkles assistant icon in
   // these scripts; atlas-ai.js also carries the S91b live voice lease.
-  for (const file of ['atlas-chrome.js', 'knowledge-workspace.js']) {
+  for (const file of ['atlas-chrome.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261003-bot1"></script>`), file);
   }
+  // Knowledge is a lazy view now: not eager in index.html, registered via config.js
+  // on the same cache key, and downloaded on first navigation to #knowledge.
+  assert.ok(!index.includes('<script src="assets/js/knowledge-workspace.js?v=20261003-bot1"></script>'), 'knowledge-workspace.js is not eager');
+  assert.ok(read('apps/web/config.js').includes("registerLazyView('knowledge'"), 'knowledge registered as a lazy view');
   // Flavor Intelligence (S95) survives Accounting (S92) reconciliation.
   for (const file of ['recipes.js', 'flavor-map.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20261005-fi1"></script>`), file);

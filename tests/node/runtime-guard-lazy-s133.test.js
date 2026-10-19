@@ -46,21 +46,23 @@ function runGuard({ atlasShell } = {}) {
 const scriptOf = (src) => src.split('?')[0];
 
 test('the guard leaves a confirmed lazy required module for navigation to load', () => {
-  // Shell reports shifts (the lazy entry) as a registered lazy view.
-  const { loaded } = runGuard({ atlasShell: { isLazyView: (k) => k === 'shifts', load: null } });
+  // Shell reports shifts and knowledge (the lazy entries) as registered lazy views.
+  const { loaded } = runGuard({ atlasShell: { isLazyView: (k) => k === 'shifts' || k === 'knowledge', load: null } });
   const paths = loaded.map(scriptOf);
   assert.ok(!paths.includes('assets/js/shifts-workspace.js'), 'shifts is not force-loaded when registered lazy');
+  assert.ok(!paths.includes('assets/js/knowledge-workspace.js'), 'knowledge is not force-loaded when registered lazy');
   // Eager required modules still load.
   assert.ok(paths.includes('assets/js/team-messages.js'), 'eager team-messages still loads');
-  assert.ok(paths.includes('assets/js/knowledge-workspace.js'), 'knowledge (still eager) loads');
+  assert.ok(paths.includes('assets/js/settings-workspace.js'), 'settings (still eager) loads');
   assert.ok(paths.includes('assets/js/notifications.js'), 'notifications loads');
 });
 
 test('the guard force-loads a lazy required module the shell did not register (fail-safe)', () => {
-  // Shell is present but has NOT registered shifts lazily (reduced/broken deploy).
+  // Shell is present but has NOT registered the lazy views (reduced/broken deploy).
   const { loaded } = runGuard({ atlasShell: { isLazyView: () => false, load: null } });
-  assert.ok(loaded.map(scriptOf).includes('assets/js/shifts-workspace.js'),
-    'shifts is force-loaded when its lazy registration is missing');
+  const paths = loaded.map(scriptOf);
+  assert.ok(paths.includes('assets/js/shifts-workspace.js'), 'shifts force-loaded when its lazy registration is missing');
+  assert.ok(paths.includes('assets/js/knowledge-workspace.js'), 'knowledge force-loaded when its lazy registration is missing');
 });
 
 test('with no shell at all, every required module (including the lazy one) loads eagerly', () => {

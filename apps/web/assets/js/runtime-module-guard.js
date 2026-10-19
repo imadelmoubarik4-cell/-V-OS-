@@ -18,7 +18,7 @@
     [null, 'assets/js/team-profiles-bootstrap.js', 'AtlasTeamProfilesBootstrap'],
     ['assets/css/team-profile-photos.css', 'assets/js/team-profile-photos.js', 'AtlasTeamProfilePhotos'],
     ['assets/css/shifts-workspace.css', 'assets/js/shifts-workspace.js', 'AtlasShifts', 'shifts'],
-    ['assets/css/knowledge-workspace.css', 'assets/js/knowledge-workspace.js', 'AtlasKnowledge'],
+    ['assets/css/knowledge-workspace.css', 'assets/js/knowledge-workspace.js', 'AtlasKnowledge', 'knowledge'],
     ['assets/css/settings-workspace.css', 'assets/js/settings-workspace.js', 'AtlasSettings'],
     [null, 'assets/js/notifications.js', 'AtlasNotifications']
   ]);
