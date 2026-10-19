@@ -16,19 +16,26 @@
   // vs the former 8s (≈450→120 req/hour per idle tab). The Messages view itself
   // polls faster (~6s) while open, and this poll pauses when the tab is hidden.
   const POLL_MS = 30000;
-  // Until the first real snapshot lands, poll quickly so the badge populates
-  // promptly after sign-in (the app screen can still be mid-boot when init's
-  // immediate refresh runs) instead of waiting up to a full 30s tick. Bounded,
-  // so a visible login screen that never signs in settles to POLL_MS and does
-  // not hold the fast cadence.
+  // The fast cadence only applies while the first snapshot has not yet landed AND
+  // no request has actually failed — i.e. the app screen is still mid-boot and the
+  // poll is a no-op (no network). It makes the badge populate promptly after
+  // sign-in instead of waiting a full 30s tick, and is bounded so a login screen
+  // that never signs in settles to POLL_MS.
   const WARMUP_MS = 2000;
   const WARMUP_MAX_ATTEMPTS = 8;
+  // When a request actually fails (401/403/429/5xx or the API is unreachable) the
+  // poll must NOT keep the fast cadence, or a persistently failing API would be
+  // hit in a tight loop. Back off exponentially from 8s, doubling, capped at the
+  // steady-state interval: 8s → 16s → 30s. The base is >= the former steady poll,
+  // so a failing API is never polled faster than it was before this change.
+  const ERROR_BASE_MS = 8000;
   const REQUEST_TIMEOUT_MS = 12000;
   const state = {
     inFlight: false,
     timer: null,
     timerToken: null,
     warmupAttempts: 0,
+    errorStreak: 0,
     authSubscription: null,
     lastTotal: 0,
     conversations: [],
@@ -169,52 +176,75 @@
     }
   }
 
+  // Returns the outcome so the scheduler can pick the next cadence:
+  //   'skipped' — no request was sent (not signed in, tab hidden, already in
+  //               flight, or no session yet); safe to retry on the fast cadence.
+  //   'loaded'  — a real snapshot was applied.
+  //   'error'   — the request failed (HTTP error or unreachable); back off.
   async function refreshUnread(options = {}) {
     if (state.inFlight || document.hidden || !appIsSignedIn()) {
-      if (!appIsSignedIn()) setUnread(0, []);
-      return;
+      if (!appIsSignedIn()) { setUnread(0, []); state.errorStreak = 0; }
+      return 'skipped';
     }
 
     // While Messages is open, reuse its current full snapshot so the background
     // poll does not race against the channel mark-as-read request.
     if (teamIsVisible() && window.AtlasTeamMessages?.snapshot?.()) {
       setUnread(window.AtlasTeamMessages.unreadCount?.() || 0, conversationsFrom(window.AtlasTeamMessages.snapshot()?.channels), { fromSnapshot: true });
-      return;
+      state.errorStreak = 0;
+      return 'loaded';
     }
 
     state.inFlight = true;
     try {
       const result = await fetchUnread();
       setUnread(result.total, result.conversations, { fromSnapshot: result.fromSnapshot });
+      if (result.fromSnapshot) {
+        state.errorStreak = 0;
+        return 'loaded';
+      }
+      return 'skipped'; // no session yet: no API request was made, keep warming up
     } catch (error) {
+      state.errorStreak += 1;
       if (!options.silent) console.warn('Messages unread count could not refresh.');
+      return 'error';
     } finally {
       state.inFlight = false;
     }
   }
 
-  // Self-scheduling timer: fast while warming up (no snapshot loaded yet, within
-  // the bounded start-up window), then the steady-state POLL_MS. A plain interval
-  // cannot change its own cadence, hence setTimeout re-armed after each refresh.
+  // Delay until the next poll, chosen from the state the last attempt left behind.
+  // Error backoff wins over everything, so a failing API is never polled fast.
   function nextDelay() {
-    return (!state.loaded && state.warmupAttempts < WARMUP_MAX_ATTEMPTS) ? WARMUP_MS : POLL_MS;
+    if (state.errorStreak > 0) {
+      return Math.min(POLL_MS, ERROR_BASE_MS * Math.pow(2, state.errorStreak - 1));
+    }
+    if (!state.loaded && state.warmupAttempts < WARMUP_MAX_ATTEMPTS) return WARMUP_MS;
+    return POLL_MS;
   }
 
-  function scheduleNext() {
+  // Self-scheduling timer. A plain interval cannot change its own cadence, so each
+  // tick re-arms the next one AFTER its refresh resolves, using that result's
+  // delay. The first tick runs immediately (delay 0). A per-chain token means a
+  // stop or restart during an in-flight refresh can never leave two timers running.
+  function scheduleTick(delay) {
     const token = {};
     state.timerToken = token;
     state.timer = window.setTimeout(async () => {
-      if (!state.loaded) state.warmupAttempts += 1;
+      state.timer = null;
+      // Count a warm-up attempt only while actually warming up (not erroring), so
+      // the fast cadence is bounded and backoff is never cut short.
+      if (!state.loaded && state.errorStreak === 0) state.warmupAttempts += 1;
       await refreshUnread({ silent: true });
-      // Reschedule only if this chain is still the active one — not stopped, and
-      // not superseded by a restart (e.g. a visibility flip) during the await.
-      if (state.timerToken === token) scheduleNext();
-    }, nextDelay());
+      // Re-arm only if this chain is still the active one — not stopped, and not
+      // superseded by a restart (e.g. a visibility flip) during the await.
+      if (state.timerToken === token) scheduleTick(nextDelay());
+    }, delay);
   }
 
   function startPolling() {
-    if (state.timer) return;
-    scheduleNext();
+    if (state.timer !== null) return;
+    scheduleTick(0); // poll now; subsequent cadence follows each result
   }
 
   function stopPolling() {
@@ -229,8 +259,8 @@
       stopPolling();
       return;
     }
+    // Becoming visible restarts polling, whose first tick runs immediately.
     startPolling();
-    refreshUnread();
   }
 
   function subscribeToAuth() {
@@ -260,8 +290,7 @@
     if (state.initialized) return;
     state.initialized = true;
 
-    startPolling();
-    refreshUnread();
+    startPolling(); // runs the first poll immediately, then re-arms by result
 
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', () => refreshUnread({ silent: true }));
