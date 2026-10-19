@@ -216,8 +216,11 @@ test('index.html keeps setActiveView, loadAll and renderAtlasHome as thin shell 
     'stock-count-workspace.js': /home\?\.contribute\?\.\('stock-count'/,
     'atlas-purchasing.js': /home\?\.contribute\?\.\('purchasing'/,
     // S88 Team C: Business Intelligence is Reports › Overview; Import Center and
-    // Real VÁ Data are the Data page (home.contribute replaces a DOM Home section).
-    'data-workspace.js': /registerView\('data'[\s\S]+?registerView\('sprint3-review'[\s\S]+?home\?\.contribute\?\.\('data'/,
+    // Real VÁ Data are the Data page. The Data page is now split: the heavy
+    // workspace registers its own view; the eager shard (data-home.js) owns the
+    // retired-id redirect and the Home contribution so they work before it loads.
+    'data-workspace.js': /registerView\('data'/,
+    'data-home.js': /registerView\?\.\('sprint3-review'[\s\S]+?home\?\.contribute\?\.\('data', \{ order: 60, focusRows \}\)/,
     'recipes.js': /home\?\.contribute\?\.\('recipes'/,
     'settings-workspace.js': /registerView\?\.\('settings'/,
     'marketing-workspace.js': /registerView\('marketing'/,
@@ -232,8 +235,12 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['atlas-capture.js', 'atlas-search.js']) {
     assert.ok(index.includes(`<script src="assets/js/${file}?v=20260929-s90u"></script>`), file);
   }
-  // Alcedo polish pass: data-workspace.js changed (import dialog a11y) and carries the polish key.
-  assert.ok(index.includes('<script src="assets/js/data-workspace.js?v=20260930-polish1"></script>'), 'data-workspace.js');
+  // Alcedo perf pass: the Data workspace is now lazy (registered in config.js,
+  // keeping its polish key on the module URL); the eager shard data-home.js is the
+  // boot-time script that stands in for it.
+  assert.ok(!/<script src="assets\/js\/data-workspace\.js/.test(index), 'data-workspace.js is lazy, not an eager script');
+  assert.ok(read('apps/web/config.js').includes("js: 'assets/js/data-workspace.js?v=20260930-polish1'"), 'data-workspace.js lazy-registered with its key');
+  assert.ok(index.includes('<script src="assets/js/data-home.js?v=20261019-lazyhome1"></script>'), 'data-home.js');
   // S92 Accounting: dialogs labelled when they open (modal). The shell (the
   // admin-only Accounting destination and route) and the palette (its group)
   // changed on both sides of the S92/robot merge and carry the merge key.

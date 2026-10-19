@@ -23,10 +23,10 @@
     "automatic_import_authorized": false
   },
   "files": {
-    "apps/web/config.js": "922a6419b4977366d2f060c9a3b55ba4f82ef056ab0c5e982ed627a4c02811f0",
+    "apps/web/config.js": "a5eec8477f976c78b4fbccdcdac446f0de885c2bdb16955a17d1dbc13e2042e1",
     "apps/web/assets/js/rehearsal-boundary.js": "1c89934dc783d9d9802e1ccbc4b73fdc481b58bd4478fda64678729086d0b4fe",
     "apps/web/assets/js/stock-count-workspace.js": "6653a4226e762248186a2c64a793a080203d4fa94830b9b28453a4a6d9f20092",
-    "apps/web/assets/js/data-workspace.js": "de64be7e75b22abd4ffb2cd4ff0960bd7f8e566cde25e96d49d635c262836486",
+    "apps/web/assets/js/data-workspace.js": "184729ba944f4b36c3d3785f038c0fbd2231b4bfe9b8fd0d2a2a64efc93973ba",
     "netlify.toml": "e0f811a4a374a5de7fda9eca1e24884006e5bcce5998102bac32872ae67ce8ce",
     "supabase/config.toml": "24efa2cef1b984f0a1b945e6e046911ca87609b9f62b25885092c3201ff2f4b0"
   }

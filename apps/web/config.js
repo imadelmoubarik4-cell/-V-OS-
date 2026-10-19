@@ -238,6 +238,21 @@ if (window.AtlasShell?.registerLazyView) {
   });
 }
 
+// Data (#data): manager-only imports / record issues / par levels / import review /
+// approvals. Lazy: the heavy workspace UI (window.AtlasDataWorkspace) downloads on
+// the first navigation to the 'data' view, not at boot. The Home attention row, the
+// nav badge and the review summary stay eager in data-home.js (window.AtlasDataHome),
+// so they work before this module loads; the module reads the summary back from the
+// shard rather than fetching its own.
+if (window.AtlasShell?.registerLazyView) {
+  window.AtlasShell.registerLazyView('data', {
+    js: 'assets/js/data-workspace.js?v=20260930-polish1',
+    css: 'assets/css/data-workspace.css?v=20260930-s90g',
+    global: 'AtlasDataWorkspace',
+    root: 'data-view', // where the "could not load" + retry message renders on failure
+  });
+}
+
 // KANEL Pricing & Profitability (Finance › Menu Pricing): admin/manager-only,
 // feature-flagged. A client-side calculation workspace over the shared pricing
 // engine; registers the shell view 'pricing'. Loads only when the flag is on.

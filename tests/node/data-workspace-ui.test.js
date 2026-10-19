@@ -11,6 +11,9 @@ const read = (path) => readFileSync(resolve(root, path), 'utf8');
 const config = read('apps/web/config.js');
 const index = (read('apps/web/index.html') + read('apps/web/assets/js/atlas-app.js'));
 const script = read('apps/web/assets/js/data-workspace.js');
+// The Home row, nav badge and review summary live in the eager shard; the heavy
+// workspace (script) loads lazily on first navigation to #data.
+const home = read('apps/web/assets/js/data-home.js');
 const css = read('apps/web/assets/css/data-workspace.css');
 const catalogue = read('supabase/migrations/20260927093000_s89_data_review_catalog_issues.sql');
 
@@ -31,7 +34,11 @@ test('import review uses the production manager API; the old pages are gone', ()
     assert.doesNotMatch(index + config, new RegExp(file.replace(/[.]/g, '\\.')));
   }
   assert.doesNotMatch(index, /id="imports-view"/);
-  assert.match(index, /<script src="assets\/js\/data-workspace\.js\?v=20260930-polish1"><\/script>/);
+  // Data workspace is lazy: registered via config.js, not an eager <script>. The
+  // small eager shard (data-home.js) loads at boot in its place.
+  assert.match(config, /registerLazyView\('data', \{[\s\S]*?js: 'assets\/js\/data-workspace\.js\?v=20260930-polish1'/);
+  assert.doesNotMatch(index, /<script src="assets\/js\/data-workspace\.js/);
+  assert.match(index, /<script src="assets\/js\/data-home\.js\?v=20261019-lazyhome1"><\/script>/);
   assert.match(index, /\['imports', \{ guard: \(\) => 'data' \}\]/);
 });
 
@@ -89,11 +96,18 @@ test('approval queue: decide with version and resolution, audit shown, backfill 
   assert.match(script, /self_approve: true/);
 });
 
-test('Home attention row and nav badge for pending approvals', () => {
-  assert.match(script, /home\?\.contribute\?\.\('data', \{ order: 60, focusRows \}\)/);
-  assert.match(script, /catalog\.pending_approval/);
-  assert.match(script, /route: '#data\/approvals'/);
-  assert.match(script, /\[data-nav-badge="data"\]/);
+test('Home attention row and nav badge for pending approvals (eager shard)', () => {
+  // These must work before the heavy workspace loads, so they live in data-home.js.
+  assert.match(home, /home\?\.contribute\?\.\('data', \{ order: 60, focusRows \}\)/);
+  assert.match(home, /catalog\.pending_approval/);
+  assert.match(home, /route: '#data\/approvals'/);
+  assert.match(home, /\[data-nav-badge="data"\]/);
+  // The shard owns the review summary and the workspace reads it back (one fetch).
+  assert.match(home, /rpc\('atlas_data_review_summary'/);
+  assert.match(home, /root\.AtlasDataHome =/);
+  assert.match(script, /const dataHome = \(\) => root\.AtlasDataHome/);
+  // The workspace never fetches the summary itself — it reads it from the shard.
+  assert.doesNotMatch(script, /rpc\('atlas_data_review_summary'/);
 });
 
 test('import review: nothing changes live records until approved', () => {
