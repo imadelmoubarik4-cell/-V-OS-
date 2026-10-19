@@ -185,7 +185,7 @@
     {
       "name": "atlas-team-profiles",
       "sources": {
-        "supabase/functions/atlas-team-profiles/index.ts": "8522d96a105a3c82505de7ee7f1b90f2ee22500502f3cc3772ea6ef908011617",
+        "supabase/functions/atlas-team-profiles/index.ts": "1b3ec351057e3b1ee98f7b09dce40d83be585dac4620b039ea2e7ca10e645668",
         "supabase/functions/_shared/auth.mjs": "1390bdf99392553b48e3e608814d76231367f5a354c7fa70ec965a2902cd36ff"
       }
     },

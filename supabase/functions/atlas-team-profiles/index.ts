@@ -356,6 +356,33 @@ async function profileById(context: AtlasContext, profileId: string): Promise<At
   return Array.isArray(rows) && rows[0] ? rows[0] as AtlasProfile : null;
 }
 
+// Absolute ceiling on Auth reads per snapshot, regardless of any env override —
+// the lookup must never fan out with the roster size.
+const INVITE_LOOKUP_HARD_MAX = 100;
+// Auth reads in flight at once: small enough to stay gentle on the Auth admin
+// API, large enough to clear a handful of invites quickly.
+const INVITE_LOOKUP_CONCURRENCY = 8;
+// A single slow Auth read, and the lookup as a whole, must never hold the Team
+// snapshot. Bound both; whatever has resolved by the deadline is used.
+const INVITE_LOOKUP_REQUEST_TIMEOUT_MS = 2000;
+const INVITE_LOOKUP_TOTAL_BUDGET_MS = 4000;
+
+const INVITE_TIMED_OUT = Symbol("invite-lookup-timeout");
+
+// Resolve a promise, or INVITE_TIMED_OUT if it has not settled within `ms`, so one
+// hung Auth read cannot stall the batch. The real promise's result is discarded on
+// timeout; its rejection is swallowed so it never becomes an unhandled rejection.
+function withInviteTimeout<T>(promise: Promise<T>, ms: number): Promise<T | typeof INVITE_TIMED_OUT> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<typeof INVITE_TIMED_OUT>((resolve) => {
+    timer = setTimeout(() => resolve(INVITE_TIMED_OUT), ms);
+  });
+  return Promise.race([
+    promise.then((value) => { clearTimeout(timer); return value; }, () => { clearTimeout(timer); return INVITE_TIMED_OUT; }),
+    timeout,
+  ]);
+}
+
 // Best-effort invitation status (pending / expired) per profile, for the manager
 // directory. Derived READ-ONLY from the production Auth project; never blocks the
 // snapshot — any failure yields an empty map and the UI simply shows no pill.
@@ -365,9 +392,10 @@ async function profileById(context: AtlasContext, profileId: string): Promise<At
 // Only an unconfirmed account can be a live invite, and such accounts are created
 // inactive (active=false) and flip to active once the invitee confirms and finishes
 // onboarding. So the candidate set is exactly the inactive profiles already loaded
-// for this snapshot, which we resolve one Auth read each (bounded) — instead of
-// paging the entire Auth user base (up to 4,000 users) on every snapshot. A
-// confirmed account carries no pill, so "accepted" is never emitted.
+// for this snapshot — resolved one targeted Auth read each, capped, concurrency-
+// limited and time-boxed — instead of paging the whole Auth user base. A confirmed
+// account carries no pill, so "accepted" is never emitted. The result is keyed by
+// profile id, so a status is recorded at most once per profile.
 async function invitationStatuses(
   context: AtlasContext,
   profileRows: AtlasProfile[],
@@ -377,37 +405,50 @@ async function invitationStatuses(
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!key || project !== productionAuthUrl()) return {};
 
-  // Cap the per-user Auth reads so an unusually large pool of inactive profiles can
-  // never fan out into an unbounded number of requests.
-  const lookupCap = Number(Deno.env.get("ATLAS_INVITE_LOOKUP_CAP") ?? "100") || 100;
+  // Hard-clamp the cap to [0, INVITE_LOOKUP_HARD_MAX] so an env override can only
+  // ever lower it, never raise it past the absolute maximum.
+  const configured = Number(Deno.env.get("ATLAS_INVITE_LOOKUP_CAP") ?? String(INVITE_LOOKUP_HARD_MAX));
+  const cap = Math.max(0, Math.min(INVITE_LOOKUP_HARD_MAX, Number.isFinite(configured) ? Math.floor(configured) : INVITE_LOOKUP_HARD_MAX));
+  if (cap === 0) return {};
+
+  const createdMs = (p: AtlasProfile) => { const t = Date.parse(p.created_at ?? ""); return Number.isFinite(t) ? t : 0; };
+  // Newest inactive profiles first: a live invite is a recently-created account,
+  // while long-deactivated members are old — so when inactive profiles exceed the
+  // cap, recent invites win the slots instead of being crowded out.
   const candidates = (Array.isArray(profileRows) ? profileRows : [])
     .filter((p) => p && p.id && p.active === false)
-    .slice(0, lookupCap);
+    .sort((a, b) => createdMs(b) - createdMs(a))
+    .slice(0, cap);
   if (!candidates.length) return {};
 
   const expiryHours = Number(Deno.env.get("ATLAS_INVITE_EXPIRY_HOURS") ?? "24") || 24;
   const cutoff = Date.now() - expiryHours * 3600 * 1000;
+  const deadline = Date.now() + INVITE_LOOKUP_TOTAL_BUDGET_MS;
   const out: Record<string, string> = {};
   try {
     const admin = createClient(project!, key, { auth: { persistSession: false, autoRefreshToken: false } });
-    const resolved = await Promise.all(candidates.map(async (p) => {
-      try {
-        const { data, error } = await admin.auth.admin.getUserById(p.id);
-        if (error || !data?.user) return null;
-        return { id: p.id, user: data.user };
-      } catch {
-        return null; // one missing/failed lookup must not drop the rest
+    let index = 0;
+    const worker = async () => {
+      while (index < candidates.length && Date.now() < deadline) {
+        const p = candidates[index++];
+        try {
+          const result = await withInviteTimeout(admin.auth.admin.getUserById(p.id), INVITE_LOOKUP_REQUEST_TIMEOUT_MS);
+          if (result === INVITE_TIMED_OUT) continue;
+          const { data, error } = result;
+          if (error || !data?.user) continue;
+          const u = data.user;
+          if (u.email_confirmed_at) continue; // confirmed → active member, no pill
+          const invitedBy = (u.app_metadata as Record<string, unknown> | undefined)?.atlas_invited_by;
+          if (!invitedBy) continue; // not an invite we track
+          const issued = Date.parse(u.invited_at ?? u.confirmation_sent_at ?? u.created_at ?? "");
+          out[p.id] = Number.isFinite(issued) && issued < cutoff ? "expired" : "pending";
+        } catch {
+          // One missing/failed lookup must not drop the rest.
+        }
       }
-    }));
-    for (const entry of resolved) {
-      if (!entry) continue;
-      const u = entry.user;
-      if (u.email_confirmed_at) continue; // confirmed → active member, no pill
-      const invitedBy = (u.app_metadata as Record<string, unknown> | undefined)?.atlas_invited_by;
-      if (!invitedBy) continue; // not an invite we track
-      const issued = Date.parse(u.invited_at ?? u.confirmation_sent_at ?? u.created_at ?? "");
-      out[entry.id] = Number.isFinite(issued) && issued < cutoff ? "expired" : "pending";
-    }
+    };
+    const workers = Array.from({ length: Math.min(INVITE_LOOKUP_CONCURRENCY, candidates.length) }, worker);
+    await Promise.all(workers);
   } catch (err) {
     console.warn("invitationStatuses best-effort failed", (err as Error)?.message);
     return {};
