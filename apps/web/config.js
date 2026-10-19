@@ -192,22 +192,35 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 
 // Checkpoint F replaces the Shifts placeholder with a private weekly planner,
 // availability, time-off, publishing and confirmation workspace.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/shifts-workspace.css',
-  scriptPath: 'assets/js/shifts-workspace.js?v=20261002-s103',
-  globalName: 'AtlasShifts',
-  dataAttribute: 'atlasShifts',
-}));
+// Lazy: the Shifts module (and CSS) download on the first navigation to #shifts,
+// not at boot. It is a required module (runtime-module-guard.js), so the guard
+// confirms this lazy registration and would load it eagerly if it were ever
+// missing — the destination can never silently disappear.
+if (window.AtlasShell?.registerLazyView) {
+  window.AtlasShell.registerLazyView('shifts', {
+    js: 'assets/js/shifts-workspace.js?v=20261002-s103',
+    css: 'assets/css/shifts-workspace.css',
+    global: 'AtlasShifts',
+    root: 'shifts-view',
+  });
+}
 
 // Checkpoint G replaces the Knowledge placeholder with a version-controlled,
 // role-aware library. Drafts remain manager-only, while staff receive only
 // published versions and their version-specific acknowledgement state.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/knowledge-workspace.css',
-  scriptPath: 'assets/js/knowledge-workspace.js?v=20261003-bot1',
-  globalName: 'AtlasKnowledge',
-  dataAttribute: 'atlasKnowledge',
-}));
+// Lazy: the Knowledge module (and CSS) download on the first navigation to
+// #knowledge, not at boot. Like Shifts it is a required module
+// (runtime-module-guard.js), so the guard confirms this lazy registration and
+// would load it eagerly if it were ever missing. #knowledge/training resolves to
+// the standalone (also lazy) training view, so Knowledge is not needed for it.
+if (window.AtlasShell?.registerLazyView) {
+  window.AtlasShell.registerLazyView('knowledge', {
+    js: 'assets/js/knowledge-workspace.js?v=20261003-bot1',
+    css: 'assets/css/knowledge-workspace.css',
+    global: 'AtlasKnowledge',
+    root: 'knowledge-view',
+  });
+}
 
 // S98: Knowledge › Training. Private video SOPs, chapters, procedure steps, progress
 // and explicit completion. Registers the shell view 'training' for #knowledge/training

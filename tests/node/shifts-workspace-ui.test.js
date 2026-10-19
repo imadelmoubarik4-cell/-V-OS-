@@ -24,7 +24,11 @@ test('Shifts loads from the isolated Shifts API as one module', () => {
     assert.ok(!existsSync(`apps/web/${retired}`), `${retired} is deleted`);
     assert.doesNotMatch(config + index, new RegExp(retired.split('/').pop().replace('.', '\\.')));
   }
-  assert.match(index, /<script src="assets\/js\/shifts-workspace\.js\?v=20261002-s103"><\/script>/);
+  // Shifts is a lazy view: not an eager index.html tag, registered in config.js and
+  // downloaded on first navigation to #shifts.
+  assert.doesNotMatch(index, /<script src="assets\/js\/shifts-workspace\.js\?v=20261002-s103"><\/script>/);
+  assert.match(config, /registerLazyView\('shifts'/);
+  assert.match(config, /js: 'assets\/js\/shifts-workspace\.js\?v=20261002-s103'/);
 });
 
 test('routes: week, month, availability, time off, confirmations, activity', () => {

@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { harnessAvailable, launchAtlas, navigateTo, settle, until, USERS } from './harness.mjs';
 import { bookingsWorld, TODAY } from './bookings-fixtures.mjs';
-import { knowledgeBackend, peopleFunctions, NOW } from './people-fixtures.mjs';
+import { knowledgeBackend, peopleFunctions, NOW, shiftsBackend, clockBackend } from './people-fixtures.mjs';
 import { trainingBackend } from './training-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
@@ -73,6 +73,36 @@ test('Training is lazy too: absent at boot, loads on a direct deep-link to #know
     await deep.page.waitForFunction(() => document.body.dataset.atlasView === 'training', null, { timeout: 12000 });
     assert.equal(await globalDefined(deep.page, 'AtlasTraining'), true, 'AtlasTraining loaded for the deep link');
   } finally { await deep.close(); }
+});
+
+for (const role of ['admin', 'bartender']) {
+  test(`Shifts (required + lazy) is absent at boot and opens on navigation for a ${role}`, { skip }, async () => {
+    const user = USERS[role];
+    const fixtures = { functions: peopleFunctions({ 'atlas-shifts': shiftsBackend({ user }).handler, 'atlas-settings': clockBackend().handler }) };
+    const app = await launchAtlas({ user, hash: '', fixedTime: new Date(NOW), fixtures });
+    const { page } = app;
+    try {
+      await settle(page);
+      assert.equal(await globalDefined(page, 'AtlasShifts'), false, 'AtlasShifts not loaded at boot');
+      await navigateTo(page, '#shifts');
+      await until(() => globalDefined(page, 'AtlasShifts'), { message: 'AtlasShifts loads on navigation' });
+      await page.waitForFunction(() => document.body.dataset.atlasView === 'shifts', null, { timeout: 8000 });
+    } finally { await app.close(); }
+  });
+}
+
+test('Knowledge (required + lazy) is absent at boot and opens on navigation', { skip }, async () => {
+  const user = USERS.admin;
+  const fixtures = { functions: peopleFunctions({ 'atlas-knowledge': knowledgeBackend({ user }).handler }) };
+  const app = await launchAtlas({ user, hash: '', fixedTime: new Date(NOW), fixtures });
+  const { page } = app;
+  try {
+    await settle(page);
+    assert.equal(await globalDefined(page, 'AtlasKnowledge'), false, 'AtlasKnowledge not loaded at boot');
+    await navigateTo(page, '#knowledge');
+    await until(() => globalDefined(page, 'AtlasKnowledge'), { message: 'AtlasKnowledge loads on navigation' });
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'knowledge', null, { timeout: 8000 });
+  } finally { await app.close(); }
 });
 
 test('returning to Bookings and rapid repeat navigation never re-download the module', { skip }, async () => {
