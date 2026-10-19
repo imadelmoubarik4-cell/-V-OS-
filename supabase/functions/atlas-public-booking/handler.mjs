@@ -55,7 +55,9 @@ function corsHeaders(env, requestOrigin) {
   const allow = requestOrigin && list.includes(requestOrigin) ? requestOrigin : (list[0] ?? "null");
   return {
     "access-control-allow-origin": allow,
-    "access-control-allow-headers": "content-type, idempotency-key",
+    // x-booking-token lets a caller pass the private status token in a header
+    // instead of the URL query string (see statusToken()).
+    "access-control-allow-headers": "content-type, idempotency-key, x-booking-token",
     "access-control-allow-methods": "GET, POST, OPTIONS",
     "cache-control": "no-store, max-age=0",
     pragma: "no-cache",
@@ -128,18 +130,52 @@ async function readJson(request) {
   }
 }
 
-// A stable, privacy-preserving client fingerprint: SHA-256 of the first
-// forwarded IP + a server salt, truncated. Never stores the raw IP.
+const IP_RE = /^(\d{1,3}(\.\d{1,3}){3}|[0-9a-f:]+)$/i;
+
+// The trustworthy client IP. X-Forwarded-For is client-spoofable on the LEFT: a
+// caller can prepend fake entries to rotate their fingerprint and evade the rate
+// limit. Our own infrastructure appends the real connecting IP on the RIGHT, so
+// with N trusted proxy hops the real client sits at index (length - N). We never
+// take the leftmost (attacker-controlled) entry. If the chain is shorter than the
+// configured hops the request did not traverse our infrastructure as expected, so
+// we fall back to x-real-ip (set by trusted infra) and otherwise to a constant —
+// never to a client-supplied value.
+function clientIp(request, env) {
+  const hops = Math.max(1, Number(envValue(env, "PUBLIC_BOOKING_TRUSTED_HOPS") ?? 1) || 1);
+  const xff = String(request.headers.get("x-forwarded-for") ?? "");
+  const chain = xff.split(",").map((s) => s.trim()).filter((s) => IP_RE.test(s));
+  if (chain.length >= hops) {
+    const ip = chain[chain.length - hops];
+    if (ip && IP_RE.test(ip)) return ip;
+  }
+  const real = String(request.headers.get("x-real-ip") ?? "").trim();
+  if (IP_RE.test(real)) return real;
+  return "unknown";
+}
+
+// A strong, server-only salt is MANDATORY: without it the function fails safe
+// (503) rather than fingerprinting with a guessable default or leaking a raw IP.
+function requireSalt(env) {
+  const salt = envValue(env, "PUBLIC_BOOKING_SALT");
+  if (!salt || String(salt).length < 16) {
+    console.error("[atlas-public-booking] PUBLIC_BOOKING_SALT missing or too weak");
+    throw new ApiError(503, "unavailable", MESSAGES.unavailable);
+  }
+  return String(salt);
+}
+
+// A stable, privacy-preserving client fingerprint: SHA-256 of the trustworthy
+// client IP + the mandatory server salt, truncated. The raw IP is never returned
+// or stored; a hashing failure fails safe (503) instead of leaking it.
 async function fingerprint(request, env) {
-  const fwd = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "";
-  const ip = fwd.split(",")[0].trim() || "unknown";
-  const salt = envValue(env, "PUBLIC_BOOKING_SALT") ?? "atlas-public-booking";
+  const salt = requireSalt(env);
+  const ip = clientIp(request, env);
   try {
     const data = new TextEncoder().encode(`${salt}:${ip}`);
     const digest = await globalThis.crypto.subtle.digest("SHA-256", data);
     return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
   } catch {
-    return `ip:${ip}`.slice(0, 64);
+    throw new ApiError(503, "unavailable", MESSAGES.unavailable);
   }
 }
 
@@ -147,6 +183,7 @@ const PUBLIC_RPCS = new Set([
   "atlas_public_booking_availability",
   "atlas_public_booking_request",
   "atlas_public_booking_status",
+  "atlas_public_booking_rate",
 ]);
 
 export function createServices({ env, fetchImpl }) {
@@ -188,6 +225,27 @@ export function createPublicBookingHandler({ env, fetchImpl, services = null } =
     return envValue(env, "PUBLIC_BOOKING_ENABLED") === "true";
   }
 
+  // Consume the per-action rate budget in its OWN committed transaction BEFORE
+  // the work. Because this is a separate RPC call (its own PostgREST transaction),
+  // a flood whose booking RPCs later fail still counts toward the limit. A refused
+  // budget maps to 429. The fingerprint is already salted + trusted-IP derived.
+  async function rateGate(fp, action) {
+    const res = await svc.rpc("atlas_public_booking_rate", { p_fingerprint: fp, p_action: action });
+    if (!res || res.ok !== true) throw new ApiError(429, "rate_limited", MESSAGES.rate_limited);
+  }
+
+  // The private status token, preferred OUT of the URL query string: a request
+  // header or POST body first, the query only as a legacy fallback.
+  async function statusToken(request, url) {
+    const header = request.headers.get("x-booking-token");
+    if (header) return String(header).trim();
+    if (request.method === "POST") {
+      const body = await readJson(request);
+      if (typeof body.token === "string") return body.token.trim();
+    }
+    return (url.searchParams.get("token") || "").trim();
+  }
+
   async function route(request) {
     const url = new URL(request.url);
     const action = url.searchParams.get("action") || "availability";
@@ -197,12 +255,14 @@ export function createPublicBookingHandler({ env, fetchImpl, services = null } =
       if (!DATE.test(date)) throw invalid();
       const party = Number(url.searchParams.get("party_size"));
       if (!Number.isInteger(party) || party < 1 || party > 20) throw invalid();
+      await rateGate(await fingerprint(request, env), "availability");
       return svc.rpc("atlas_public_booking_availability", { p_date: date, p_party_size: party, p_tz: "Atlantic/Reykjavik" });
     }
 
-    if (request.method === "GET" && action === "status") {
-      const token = url.searchParams.get("token") || "";
+    if ((request.method === "GET" || request.method === "POST") && action === "status") {
+      const token = await statusToken(request, url);
       if (!TOKEN.test(token)) throw new ApiError(404, "not_found", MESSAGES.not_found);
+      await rateGate(await fingerprint(request, env), "status");
       return svc.rpc("atlas_public_booking_status", { p_token: token });
     }
 
@@ -210,6 +270,7 @@ export function createPublicBookingHandler({ env, fetchImpl, services = null } =
       const body = await readJson(request);
       const idem = request.headers.get("idempotency-key") || body.idempotency_key || null;
       const fp = await fingerprint(request, env);
+      await rateGate(fp, "request");
       const payload = {
         party_size: body.party_size,
         start_at: body.start_at,

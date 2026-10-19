@@ -9,7 +9,10 @@ import assert from 'node:assert/strict';
 import { createPublicBookingHandler } from '../../supabase/functions/atlas-public-booking/handler.mjs';
 
 const SERVICE_KEY = 'super-secret-service-role-key-value';
-const baseEnv = { PUBLIC_BOOKING_ENABLED: 'true', SUPABASE_URL: 'https://x.supabase.co', SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY };
+// A strong fingerprint salt is now MANDATORY (>=16 chars); the function fails safe
+// without it (see the dedicated salt tests below).
+const STRONG_SALT = 'test-salt-0123456789abcdef';
+const baseEnv = { PUBLIC_BOOKING_ENABLED: 'true', SUPABASE_URL: 'https://x.supabase.co', SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, PUBLIC_BOOKING_SALT: STRONG_SALT };
 
 function fakeServices(overrides = {}) {
   const calls = { rpc: [] };
@@ -19,6 +22,7 @@ function fakeServices(overrides = {}) {
       calls.rpc.push({ name, args });
       if (overrides.rpc) { const v = await overrides.rpc(name, args); if (v !== undefined) return v; }
       switch (name) {
+        case 'atlas_public_booking_rate': return { ok: true };
         case 'atlas_public_booking_availability': return { date: args.p_date, party_size: args.p_party_size, duration_minutes: 120, slots: ['2027-02-03T18:00:00Z'] };
         case 'atlas_public_booking_request': return { reference: 'VA-ABCDEF', public_token: 'a'.repeat(32), status: 'requested' };
         case 'atlas_public_booking_status': return { reference: 'VA-ABCDEF', status: 'requested', start_at: '2027-02-03T18:00:00Z', party_size: 2 };
@@ -141,4 +145,88 @@ test('an unknown action or method is 404', async () => {
   const { handle } = makeHandler();
   assert.equal((await handle(req('GET', '/?action=nope'))).status, 404);
   assert.equal((await handle(req('DELETE', '/?action=request'))).status, 404);
+});
+
+// --- S109 edge hardening (owner review of PR #135, item 5) --------------------
+
+test('every action consumes the edge-committed rate budget first (availability/status/request)', async () => {
+  const { handle, services } = makeHandler();
+  await handle(req('GET', '/?action=availability&date=2027-02-03&party_size=2'));
+  await handle(req('GET', `/?action=status&token=${'a'.repeat(32)}`));
+  await handle(req('POST', '/?action=request', { headers: { 'content-type': 'application/json' }, body: { party_size: 2, start_at: '2027-02-03T18:00:00Z', guest_name: 'G' } }));
+  const rate = services.calls.rpc.filter((c) => c.name === 'atlas_public_booking_rate');
+  assert.deepEqual(rate.map((c) => c.args.p_action).sort(), ['availability', 'request', 'status']);
+  // The budget is consumed BEFORE the action it guards (its own committed txn).
+  const idx = (n) => services.calls.rpc.findIndex((c) => c.name === n);
+  assert.ok(idx('atlas_public_booking_rate') < idx('atlas_public_booking_availability'));
+});
+
+test('a refused rate budget is 429 and the action RPC never runs', async () => {
+  for (const [action, make] of [
+    ['availability', () => req('GET', '/?action=availability&date=2027-02-03&party_size=2')],
+    ['status', () => req('GET', `/?action=status&token=${'a'.repeat(32)}`)],
+    ['request', () => req('POST', '/?action=request', { headers: { 'content-type': 'application/json' }, body: { party_size: 2, start_at: '2027-02-03T18:00:00Z', guest_name: 'G' } })],
+  ]) {
+    const services = fakeServices({ rpc: (name) => (name === 'atlas_public_booking_rate' ? { ok: false } : undefined) });
+    const handle = createPublicBookingHandler({ env: baseEnv, services });
+    const res = await handle(make());
+    assert.equal(res.status, 429, `${action} must be rate-limited`);
+    assert.ok(!services.calls.rpc.some((c) => c.name === `atlas_public_booking_${action}`), `${action} RPC must not run when rate-limited`);
+  }
+});
+
+test('the fingerprint is derived from the TRUSTED (rightmost) forwarded hop, not a spoofed leftmost entry', async () => {
+  // A client prepends a fake XFF entry to try to rotate its fingerprint; our infra
+  // appends the real connecting IP on the right. With one trusted hop the real IP
+  // (10.0.0.9) is used — the spoofed 'evil' entry is ignored.
+  const { handle, services } = makeHandler();
+  await handle(req('POST', '/?action=request', {
+    headers: { 'content-type': 'application/json', 'x-forwarded-for': '1.1.1.1, 10.0.0.9' },
+    body: { party_size: 2, start_at: '2027-02-03T18:00:00Z', guest_name: 'G' },
+  }));
+  const fpReal = services.calls.rpc.find((c) => c.name === 'atlas_public_booking_request').args.p_payload.fingerprint;
+
+  const second = fakeServices();
+  const handle2 = createPublicBookingHandler({ env: baseEnv, services: second });
+  await handle2(req('POST', '/?action=request', {
+    headers: { 'content-type': 'application/json', 'x-forwarded-for': '9.9.9.9, 10.0.0.9' },
+    body: { party_size: 2, start_at: '2027-02-03T18:00:00Z', guest_name: 'G' },
+  }));
+  const fpSpoofChanged = second.calls.rpc.find((c) => c.name === 'atlas_public_booking_request').args.p_payload.fingerprint;
+  assert.equal(fpReal, fpSpoofChanged, 'changing only the spoofable leftmost entry must NOT change the fingerprint');
+});
+
+test('a missing or weak fingerprint salt fails safe (503) and never leaks a raw IP', async () => {
+  for (const salt of [undefined, '', 'short']) {
+    const env = { ...baseEnv }; if (salt === undefined) delete env.PUBLIC_BOOKING_SALT; else env.PUBLIC_BOOKING_SALT = salt;
+    const services = fakeServices();
+    const handle = createPublicBookingHandler({ env, services });
+    const res = await handle(req('GET', '/?action=availability&date=2027-02-03&party_size=2', { headers: { 'x-forwarded-for': '203.0.113.7' } }));
+    assert.equal(res.status, 503, `salt=${JSON.stringify(salt)} must fail safe`);
+    const text = await res.text();
+    assert.ok(!text.includes('203.0.113.7'), 'a raw IP must never appear in the response');
+    assert.ok(!services.calls.rpc.length, 'no RPC runs without a valid salt');
+  }
+});
+
+test('the status token can travel off the URL — in a header or a POST body', async () => {
+  const tok = 'a'.repeat(32);
+  const viaHeader = makeHandler();
+  const r1 = await viaHeader.handle(req('GET', '/?action=status', { headers: { 'x-booking-token': tok } }));
+  assert.equal(r1.status, 200);
+  assert.equal(viaHeader.services.calls.rpc.at(-1).name, 'atlas_public_booking_status');
+  assert.equal(viaHeader.services.calls.rpc.at(-1).args.p_token, tok);
+
+  const viaBody = makeHandler();
+  const r2 = await viaBody.handle(req('POST', '/?action=status', { headers: { 'content-type': 'application/json' }, body: { token: tok } }));
+  assert.equal(r2.status, 200);
+  assert.equal(viaBody.services.calls.rpc.at(-1).args.p_token, tok);
+});
+
+test('CORS and the server flag fail safe together: a disabled endpoint still never wildcards CORS', async () => {
+  const { handle } = makeHandler({ ...baseEnv, PUBLIC_BOOKING_ENABLED: 'false' });
+  const res = await handle(req('GET', '/?action=availability&date=2027-02-03&party_size=2', { headers: { origin: 'https://evil.test' } }));
+  assert.equal(res.status, 404);
+  assert.notEqual(res.headers.get('access-control-allow-origin'), '*');
+  assert.notEqual(res.headers.get('access-control-allow-origin'), 'https://evil.test');
 });

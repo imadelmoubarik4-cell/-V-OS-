@@ -15,7 +15,9 @@ import { createPublicBookingHandler } from "./handler.mjs";
 //
 // Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 // Config: PUBLIC_BOOKING_ENABLED ("true" to enable), PUBLIC_BOOKING_ORIGINS
-// (comma-separated CORS allowlist), PUBLIC_BOOKING_SALT (fingerprint salt).
+// (comma-separated CORS allowlist), PUBLIC_BOOKING_SALT (MANDATORY strong
+// fingerprint salt, >=16 chars — the function fails safe without it),
+// PUBLIC_BOOKING_TRUSTED_HOPS (trusted proxy hops for X-Forwarded-For; default 1).
 
 const handle = createPublicBookingHandler({
   env: (name: string) => Deno.env.get(name),
