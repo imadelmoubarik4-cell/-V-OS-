@@ -58,17 +58,48 @@ staff interface.
   reassign) too.
 - Additive tests for the new values and the segment/day-cutoff behaviour.
 
-**Phase 3 — Guest API (edge, behind the flag).**
-- A narrowly scoped public path on `atlas-bookings`: availability (read),
-  reservation-request (create as `requested`), and guest status-by-reference —
-  with idempotency, abuse/rate protection, and **no** staff credentials, service
-  keys or other guests' PII exposed. Honours an expiring hold; never presents a
-  pending request as confirmed; allocation stays transaction-safe.
+**Phase 3 — Guest API (edge, behind the flag). DONE (s107 + s109 hardening).**
+- A separate, narrowly scoped public edge function `atlas-public-booking`:
+  availability (read), reservation-request (create as `requested`), and guest
+  status-by-token — with idempotency, rate protection, and **no** staff
+  credentials, service keys or other guests' PII exposed. Honours an expiring
+  hold; never presents a pending request as confirmed; allocation stays
+  transaction-safe. An **independent server flag** (`PUBLIC_BOOKING_ENABLED`),
+  separate from the DB flag (`public_online_enabled`, re-checked by every RPC)
+  and the frontend flag, keeps the endpoint inert by default.
+- s109 security hardening (owner review): the status RPC re-checks the DB flag;
+  rate budget is consumed in its own committed transaction at the edge
+  (`atlas_public_booking_rate`) so failed requests still count, and it gates
+  availability/status/request alike; X-Forwarded-For is read from the trusted
+  (rightmost) hop, never a spoofable leftmost entry; a strong `PUBLIC_BOOKING_SALT`
+  is mandatory (fails safe, never falls back to a raw IP); a conflicting
+  idempotency reuse is refused rather than returning the stored guest's token;
+  the status token can travel in a header/POST body instead of the URL; CORS is
+  restrictive by default (the KANEL origins, never `*`).
 
 **Phase 4 — Website integration. BLOCKED — see below.**
 
-**Phase 5 — Staff notifications.** Requests/approvals/changes/cancellations into
-the Alcedo workflow and the approved KANEL email sender.
+**Phase 5 — Staff notifications. DONE (s108 + s109).**
+- A real in-app notification **inbox** (`atlas_private.booking_notifications`,
+  sealed) written by the booking lifecycle trigger for every active
+  manager/admin, with per-user read/unread, surfaced in the app-wide bell by a
+  small event-driven (no-poll) client worker (`bookings-notifications.js`) and
+  reachable through the authenticated staff edge (`?action=notifications` /
+  `notifications-read`). It works whether or not `ATLAS_PUSH_DELIVERY_ENABLED`
+  is set. Clicking a notification deep-links the exact reservation
+  (`#bookings/res/<id>`); the service worker routes booking pushes there too,
+  even when the app was closed.
+- The workflow fires **only** for KANEL online bookings — gated on the
+  `public_token` origin marker, never `source` — so legacy VÁ Bar / Sinna
+  reservations never trigger KANEL-branded mail or alerts.
+- Correct lifecycle semantics: a rejected pending request (`requested→cancelled`)
+  is `declined` (distinct guest email); a cancelled confirmed booking is
+  `cancelled`; `no_show` writes the inbox only and never emails the guest.
+- A sealed, inert email **outbox** (`booking_email_outbox`), sender
+  `kanel@kanel.is`, with a de-dupe key so repeated lifecycle events cannot later
+  send duplicate guest mail. **No email is ever sent** by the current code;
+  activation waits on an owner-approved provider (see
+  `docs/release/KANEL_Booking_Email_Readiness.md`).
 
 **Phase 6 — Verification.** Automated db/concurrency/security/browser/mobile/a11y
 tests in staging; all 30 verification cases documented.
