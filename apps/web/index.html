@@ -198,6 +198,8 @@
           <div id="training-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Training…</p></div>
           <!-- Bookings (#bookings, #bookings/config, #bookings/<date>): staff floor + manager configuration. -->
           <div id="bookings-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Bookings…</p></div>
+          <!-- Data (#data/…): manager imports / issues / par levels / approvals, rendered by assets/js/data-workspace.js (lazy). data-home.js owns the Home row + nav badge eagerly; this placeholder also hosts the lazy load/retry message. -->
+          <div id="data-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Data…</p></div>
           <!-- Menu Pricing (#pricing, #pricing/quick, #pricing/<section>): KANEL Pricing & Profitability, rendered by assets/js/finance-pricing-workspace.js as the 'pricing' view. Feature-flagged + admin/manager only. -->
           <div id="pricing-view" class="placeholder-view"><p class="atlas-view-loading" role="status">Opening Menu Pricing…</p></div>
           <div id="reports-view" style="display:none;"></div>
@@ -242,13 +244,15 @@
 <script src="assets/js/atlas-purchasing.js?v=20260930-polish1"></script>
 <script src="assets/js/home.js?v=20261004-bot6"></script>
 <script src="assets/js/reports-overview.js?v=20260930-s90g"></script>
-<script src="assets/js/data-workspace.js?v=20260930-polish1"></script>
+<script src="assets/js/data-home.js?v=20261019-lazyhome1"></script>
 <script src="assets/js/shifts-workspace.js?v=20261002-s103"></script>
 <script src="assets/js/knowledge-workspace.js?v=20261003-bot1"></script>
-<!-- training-workspace.js and bookings-workspace.js are lazy views: their modules
-     download on first navigation to #knowledge/training and #bookings respectively
-     (registered via AtlasShell.registerLazyView in config.js), not eagerly here,
-     trimming the boot payload. -->
+<!-- training-workspace.js, bookings-workspace.js and data-workspace.js are lazy
+     views: their modules download on first navigation to #knowledge/training,
+     #bookings and #data respectively (registered via AtlasShell.registerLazyView
+     in config.js), not eagerly here, trimming the boot payload. data-home.js above
+     stays eager — the small shard that owns the Data Home row, nav badge and the
+     review summary so they work before the Data workspace loads. -->
 <script src="assets/js/s38-app-remediation.js?v=20260929-s90f"></script>
 <script src="assets/js/atlas-search.js?v=20260929-s90u"></script>
 <script src="assets/js/atlas-chrome.js?v=20261003-bot1"></script>

@@ -66,7 +66,14 @@ test('web checkpoint has no missing local asset references', async () => {
     if (/^(?:https?:|#|data:|mailto:)/.test(reference)) continue;
     await assert.doesNotReject(access(new URL(reference.split(/[?#]/)[0], root)), `Missing ${reference}`);
   }
-  // S88: Import Center is the Data page (assets/js/data-workspace.js).
-  assert.match(html, /assets\/js\/data-workspace\.js/);
+  // S88: Import Center is the Data page. The heavy workspace
+  // (assets/js/data-workspace.js) now loads lazily from config.js; index.html
+  // eagerly loads the small shard (data-home.js) in its place, and still
+  // references the workspace stylesheet.
+  const config = await readFile(new URL('config.js', root), 'utf8');
+  assert.match(html, /assets\/js\/data-home\.js/);
+  assert.match(config, /assets\/js\/data-workspace\.js/);
   assert.doesNotMatch(html, /assets\/js\/import-center\.js/);
+  // The lazy module reference in config.js must also resolve on disk.
+  await assert.doesNotReject(access(new URL('assets/js/data-workspace.js', root)), 'Missing data-workspace.js');
 });
