@@ -70,6 +70,9 @@
   let routing = false;
   let replaceNextRoute = false;
   let pending = null;
+  // Lazy views: a destination whose module is downloaded on first navigation
+  // instead of at boot. key → { js, css, global, loading }.
+  const lazyViews = new Map();
   let lastProfile = null;
   let dataLoadedAt = 0;
   let waitingForData = null;
@@ -234,7 +237,10 @@
 
   function chooseCandidate(candidates) {
     const list = candidates.filter((candidate) => candidate && candidate[0]);
-    const registered = list.find(([view]) => views.has(view));
+    // A lazy view counts as available, so a route that prefers it (e.g.
+    // #knowledge/training → training, else knowledge) resolves to the lazy view and
+    // loads its module, instead of falling through to an already-loaded fallback.
+    const registered = list.find(([view]) => views.has(view) || lazyViews.has(view));
     return registered || list[0] || ['dashboard'];
   }
 
@@ -444,6 +450,74 @@
     return () => unregisterView(key, entry);
   }
 
+  // Register a view whose module is fetched on first navigation to it, rather
+  // than eagerly at boot. spec: { js, css?, global? }. When show() is asked for a
+  // key that has not registered yet, triggerLazyLoad downloads the module; the
+  // module calls registerView on load and the stored `pending` navigation replays
+  // (see registerView), so the destination opens as soon as its code arrives.
+  function registerLazyView(name, spec = {}) {
+    const key = canonicalName(name);
+    if (!key || !spec.js) throw new Error('AtlasShell.registerLazyView needs a view name and a script path.');
+    lazyViews.set(key, { js: spec.js, css: spec.css || null, global: spec.global || null, root: spec.root || null, loading: false });
+    if (pending && pending.name === key) triggerLazyLoad(key);
+    return key;
+  }
+
+  // Start a lazy view's download once. load() itself dedupes by path, so a race
+  // between two navigations cannot fetch twice; the `loading` flag just avoids
+  // re-entering. Never loads a view that has already registered. On failure the
+  // flag is cleared so a retry can re-attempt, and an error with a retry control
+  // replaces the loading placeholder when this view is still the awaited one.
+  function triggerLazyLoad(key) {
+    const spec = lazyViews.get(key);
+    if (!spec || spec.loading || views.has(key)) return;
+    spec.loading = true;
+    const document = root.document;
+    if (spec.css && document && !document.querySelector(`link[href="${spec.css}"]`)) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = spec.css;
+      link.dataset.atlasLazyView = key;
+      document.head?.appendChild(link);
+    }
+    load(spec.js, { global: spec.global, async: true, dataset: { atlasLazyView: key } })
+      .catch((error) => { spec.loading = false; renderLazyError(key); report(error); });
+  }
+
+  // When a lazy view's module cannot be downloaded, replace its loading
+  // placeholder with an error and a "Try again" control — but only while that view
+  // is still the awaited destination, so a user who has navigated elsewhere is not
+  // shown an error in a hidden view. Retry re-runs show(), which (the loading flag
+  // now cleared) re-attempts the download.
+  function renderLazyError(key) {
+    const spec = lazyViews.get(key);
+    const document = root.document;
+    if (!spec || !spec.root || !document) return;
+    if (!pending || pending.name !== key) return;
+    const host = document.getElementById(spec.root);
+    if (!host) return;
+    host.innerHTML = '';
+    const alert = document.createElement('div');
+    alert.className = 'atlas-alert atlas-alert--danger';
+    alert.setAttribute('role', 'alert');
+    alert.dataset.lazyError = key;
+    const message = document.createElement('p');
+    message.textContent = 'This section could not be loaded. Check your connection and try again.';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'atlas-btn atlas-btn--primary';
+    retry.dataset.lazyRetry = key;
+    retry.textContent = 'Try again';
+    retry.addEventListener('click', () => {
+      const params = pending && pending.name === key ? pending.params : {};
+      host.innerHTML = '<p class="atlas-view-loading" role="status">Loading…</p>';
+      show(key, params, { source: 'retry' });
+    });
+    alert.appendChild(message);
+    alert.appendChild(retry);
+    host.appendChild(alert);
+  }
+
   function unregisterView(name, entry) {
     const key = canonicalName(name);
     if (entry && views.get(key) !== entry) return false;
@@ -481,6 +555,9 @@
     if (!entry) {
       // A destination whose module has not loaded yet opens as soon as it registers.
       pending = { name: key, params: params || {}, options };
+      // If it is a lazy view, download its module now; it registers on load and
+      // this pending navigation replays. Non-lazy unknown views simply wait.
+      triggerLazyLoad(key);
       return false;
     }
     if (entry.guard) {
@@ -1324,6 +1401,8 @@
     version: VERSION,
     // views and lifecycle
     registerView,
+    registerLazyView,
+    isLazyView: (name) => lazyViews.has(canonicalName(name)),
     unregisterView: (name) => unregisterView(name),
     view: getView,
     views: viewNames,

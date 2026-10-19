@@ -211,21 +211,32 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 
 // S98: Knowledge › Training. Private video SOPs, chapters, procedure steps, progress
 // and explicit completion. Registers the shell view 'training' for #knowledge/training
-// and #knowledge/training/<lesson>.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/training-workspace.css?v=20261015-s98',
-  scriptPath: 'assets/js/training-workspace.js?v=20261015-s98',
-  globalName: 'AtlasTraining',
-  dataAttribute: 'atlasTraining',
-}));
+// and #knowledge/training/<lesson>. Lazy: its module (and CSS) download on the first
+// navigation to the view. 'training' is a nav-less sub-route reached via a fallback
+// candidate (#knowledge/training → training, else knowledge) and openInitialView's
+// direct-boot guard, both of which now treat a lazy view as available, so tab-click
+// and direct deep-link resolve to it identically.
+if (window.AtlasShell?.registerLazyView) {
+  window.AtlasShell.registerLazyView('training', {
+    js: 'assets/js/training-workspace.js?v=20261015-s98',
+    css: 'assets/css/training-workspace.css?v=20261015-s98',
+    global: 'AtlasTraining',
+    root: 'training-view',
+  });
+}
 
-// Bookings: staff day view + manager room/rules configuration.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/bookings-workspace.css?v=20261002-bookings1',
-  scriptPath: 'assets/js/bookings-workspace.js?v=20261002-bookings1',
-  globalName: 'AtlasBookings',
-  dataAttribute: 'atlasBookings',
-}));
+// Bookings: staff day view + manager room/rules configuration. Lazy: its module (and
+// CSS) download on the first navigation to the 'bookings' view, not at boot — a
+// self-contained top-level destination with no Home contribution and no eager
+// consumer of window.AtlasBookings.
+if (window.AtlasShell?.registerLazyView) {
+  window.AtlasShell.registerLazyView('bookings', {
+    js: 'assets/js/bookings-workspace.js?v=20261002-bookings1',
+    css: 'assets/css/bookings-workspace.css?v=20261002-bookings1',
+    global: 'AtlasBookings',
+    root: 'bookings-view', // where the "could not load" + retry message renders on failure
+  });
+}
 
 // KANEL Pricing & Profitability (Finance › Menu Pricing): admin/manager-only,
 // feature-flagged. A client-side calculation workspace over the shared pricing
