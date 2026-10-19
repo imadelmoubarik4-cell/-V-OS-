@@ -356,11 +356,114 @@ async function profileById(context: AtlasContext, profileId: string): Promise<At
   return Array.isArray(rows) && rows[0] ? rows[0] as AtlasProfile : null;
 }
 
+// Absolute ceiling on Auth reads per snapshot, regardless of any env override —
+// the lookup must never fan out with the roster size.
+const INVITE_LOOKUP_HARD_MAX = 100;
+// Auth reads in flight at once: small enough to stay gentle on the Auth admin
+// API, large enough to clear a handful of invites quickly.
+const INVITE_LOOKUP_CONCURRENCY = 8;
+// A single slow Auth read, and the lookup as a whole, must never hold the Team
+// snapshot. Bound both; whatever has resolved by the deadline is used.
+const INVITE_LOOKUP_REQUEST_TIMEOUT_MS = 2000;
+const INVITE_LOOKUP_TOTAL_BUDGET_MS = 4000;
+
+const INVITE_TIMED_OUT = Symbol("invite-lookup-timeout");
+
+// Resolve a promise, or INVITE_TIMED_OUT if it has not settled within `ms`, so one
+// hung Auth read cannot stall the batch. The real promise's result is discarded on
+// timeout; its rejection is swallowed so it never becomes an unhandled rejection.
+function withInviteTimeout<T>(promise: Promise<T>, ms: number): Promise<T | typeof INVITE_TIMED_OUT> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<typeof INVITE_TIMED_OUT>((resolve) => {
+    timer = setTimeout(() => resolve(INVITE_TIMED_OUT), ms);
+  });
+  return Promise.race([
+    promise.then((value) => { clearTimeout(timer); return value; }, () => { clearTimeout(timer); return INVITE_TIMED_OUT; }),
+    timeout,
+  ]);
+}
+
+// Best-effort invitation status (pending / expired) per profile, for the manager
+// directory. Derived READ-ONLY from the production Auth project; never blocks the
+// snapshot — any failure yields an empty map and the UI simply shows no pill.
+// "pending"/"expired" = invited here (app_metadata.atlas_invited_by) and not yet
+// confirmed, split on invite age; the directory draws a pill for these only.
+//
+// Only an unconfirmed account can be a live invite, and such accounts are created
+// inactive (active=false) and flip to active once the invitee confirms and finishes
+// onboarding. So the candidate set is exactly the inactive profiles already loaded
+// for this snapshot — resolved one targeted Auth read each, capped, concurrency-
+// limited and time-boxed — instead of paging the whole Auth user base. A confirmed
+// account carries no pill, so "accepted" is never emitted. The result is keyed by
+// profile id, so a status is recorded at most once per profile.
+async function invitationStatuses(
+  context: AtlasContext,
+  profileRows: AtlasProfile[],
+): Promise<Record<string, string>> {
+  if (!isManager(context)) return {};
+  const project = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!key || project !== productionAuthUrl()) return {};
+
+  // Hard-clamp the cap to [0, INVITE_LOOKUP_HARD_MAX] so an env override can only
+  // ever lower it, never raise it past the absolute maximum.
+  const configured = Number(Deno.env.get("ATLAS_INVITE_LOOKUP_CAP") ?? String(INVITE_LOOKUP_HARD_MAX));
+  const cap = Math.max(0, Math.min(INVITE_LOOKUP_HARD_MAX, Number.isFinite(configured) ? Math.floor(configured) : INVITE_LOOKUP_HARD_MAX));
+  if (cap === 0) return {};
+
+  const createdMs = (p: AtlasProfile) => { const t = Date.parse(p.created_at ?? ""); return Number.isFinite(t) ? t : 0; };
+  // Newest inactive profiles first: a live invite is a recently-created account,
+  // while long-deactivated members are old — so when inactive profiles exceed the
+  // cap, recent invites win the slots instead of being crowded out.
+  const candidates = (Array.isArray(profileRows) ? profileRows : [])
+    .filter((p) => p && p.id && p.active === false)
+    .sort((a, b) => createdMs(b) - createdMs(a))
+    .slice(0, cap);
+  if (!candidates.length) return {};
+
+  const expiryHours = Number(Deno.env.get("ATLAS_INVITE_EXPIRY_HOURS") ?? "24") || 24;
+  const cutoff = Date.now() - expiryHours * 3600 * 1000;
+  const deadline = Date.now() + INVITE_LOOKUP_TOTAL_BUDGET_MS;
+  const out: Record<string, string> = {};
+  try {
+    const admin = createClient(project!, key, { auth: { persistSession: false, autoRefreshToken: false } });
+    let index = 0;
+    const worker = async () => {
+      while (index < candidates.length && Date.now() < deadline) {
+        const p = candidates[index++];
+        try {
+          const result = await withInviteTimeout(admin.auth.admin.getUserById(p.id), INVITE_LOOKUP_REQUEST_TIMEOUT_MS);
+          if (result === INVITE_TIMED_OUT) continue;
+          const { data, error } = result;
+          if (error || !data?.user) continue;
+          const u = data.user;
+          if (u.email_confirmed_at) continue; // confirmed → active member, no pill
+          const invitedBy = (u.app_metadata as Record<string, unknown> | undefined)?.atlas_invited_by;
+          if (!invitedBy) continue; // not an invite we track
+          const issued = Date.parse(u.invited_at ?? u.confirmation_sent_at ?? u.created_at ?? "");
+          out[p.id] = Number.isFinite(issued) && issued < cutoff ? "expired" : "pending";
+        } catch {
+          // One missing/failed lookup must not drop the rest.
+        }
+      }
+    };
+    const workers = Array.from({ length: Math.min(INVITE_LOOKUP_CONCURRENCY, candidates.length) }, worker);
+    await Promise.all(workers);
+  } catch (err) {
+    console.warn("invitationStatuses best-effort failed", (err as Error)?.message);
+    return {};
+  }
+  return out;
+}
+
 async function snapshot(context: AtlasContext) {
-  const [profileRows, taskRows, progressRows] = await Promise.all([
-    profiles(context),
+  // Profiles load first so the invitation lookup only touches the inactive ones;
+  // tasks, progress and that bounded lookup then run together.
+  const profileRows = await profiles(context);
+  const [taskRows, progressRows, invitations] = await Promise.all([
     onboardingTasks(context),
     onboardingProgress(context),
+    invitationStatuses(context, profileRows),
   ]);
 
   const workspace = await branchRpc("atlas_team_profiles_snapshot", {
@@ -381,6 +484,7 @@ async function snapshot(context: AtlasContext) {
 
   return {
     workspace,
+    invitations,
     staff,
     policy: {
       inactive_profile_access: "denied_on_every_request",
@@ -569,6 +673,13 @@ async function inviteAccount(context: AtlasContext, body: Record<string, unknown
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!serviceRoleKey) throw new ApiError(500, "Account invitations are temporarily unavailable.");
 
+  // Duplicate guard (parity with create-login-member): refuse inviting an email
+  // that already has an Atlas account, before issuing a new invite.
+  const dupeCheck = createClient(productionAuthUrl(), serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: existingProfiles, error: dupeError } = await dupeCheck.from("profiles").select("id").ilike("email", email.replace(/[%_]/g, "\\$&"));
+  if (dupeError) throw new ApiError(503, "Could not check existing accounts.");
+  if (existingProfiles?.length) throw new ApiError(409, "This email already has an Atlas account. Select that member; do not send a duplicate invitation. Use password recovery if they cannot sign in.");
+
   const inviteUrl = new URL(`${productionAuthUrl()}/auth/v1/invite`);
   inviteUrl.searchParams.set("redirect_to", invitationRedirect(Deno.env.get("ATLAS_APP_ORIGIN"), Deno.env.get("ATLAS_INTEGRATIONS_APP_ORIGINS")));
   const response = await fetch(inviteUrl, {
@@ -619,6 +730,10 @@ async function createLoginMember(context: AtlasContext, body: Record<string, unk
   const email = requiredText(body.email, "Email", 320).toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Enter a valid email address.");
   const job = requiredText(body.default_role, "Staff role", 120);
   const role = requiredEnum(body.login_role, "Atlas access", new Set(["bartender", "viewer"]));
+  // Optional employment details captured at creation (reuse the save-details validators).
+  const department = optionalEnum(body.department, "Department", DEPARTMENTS);
+  const employmentType = optionalEnum(body.employment_type, "Employment type", EMPLOYMENT_TYPES);
+  const startDate = optionalDate(body.start_date, "Start date");
   const project = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!key || project !== productionAuthUrl()) throw new ApiError(503, "Account setup requires the same Atlas authentication project.");
@@ -636,7 +751,7 @@ async function createLoginMember(context: AtlasContext, body: Record<string, unk
   if (profileError) throw new ApiError(503, "Account created but access is not configured. Ask an administrator to review this member before retrying.");
   await branchRpc("atlas_team_profile_upsert_details", {
     p_profile_id: id, p_preferred_name: name, p_job_title: job,
-    p_department: null, p_employment_type: null, p_start_date: null,
+    p_department: department, p_employment_type: employmentType, p_start_date: startDate,
     p_phone: null, p_phone_visibility: "managers_only", p_preferred_language: null, p_manager_notes: null,
     p_actor_id: context.user.id, p_actor_label: profileLabel(context.profile), p_actor_role: context.profile.role,
   });

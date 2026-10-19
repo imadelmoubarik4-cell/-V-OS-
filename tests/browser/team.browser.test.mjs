@@ -39,6 +39,36 @@ test('admin directory: table with role, today’s shift, training and contact st
   } finally { await close(); }
 });
 
+test('admin sees a pending invite pill and the add sheet carries optional employment fields', { skip }, async () => {
+  const { page, close } = await open();
+  try {
+    // Gunnar (active) has a pending invite — flagged in the directory (manager-only).
+    assert.match(await page.textContent('tr[data-team-profile-select="c0ffee00-0000-4000-8000-000000000003"]'), /Invite pending/);
+    // Add-member sheet exposes the optional employment details.
+    await page.click('[data-team-profile-add-member]');
+    await page.waitForSelector('#team-add-form');
+    assert.ok(await page.$('#ta-dept'), 'department field present');
+    assert.ok(await page.$('#ta-emp'), 'employment type field present');
+    assert.ok(await page.$('#ta-start'), 'start date field present');
+    assert.equal(await page.getAttribute('#ta-start', 'type'), 'date');
+  } finally { await close(); }
+});
+
+test('an expired invite is flagged on the member detail', { skip }, async () => {
+  const { page, close } = await open({ hash: '#team/c0ffee00-0000-4000-8000-000000000004' });
+  try {
+    await page.waitForSelector('.team-detail__name');
+    assert.match(await page.textContent('.team-detail'), /Invite expired/);
+  } finally { await close(); }
+});
+
+test('bartender sees no invitation pills (manager-only)', { skip }, async () => {
+  const { page, close } = await open({ user: USERS.bartender });
+  try {
+    assert.doesNotMatch(await page.textContent('.team-table'), /Invite pending|Invite expired/);
+  } finally { await close(); }
+});
+
 test('bartender directory: no emails, no emergency column, own profile editable', { skip }, async () => {
   const { page, close } = await open({ user: USERS.bartender });
   try {
