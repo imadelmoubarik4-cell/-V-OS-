@@ -465,12 +465,15 @@
 
   // Start a lazy view's download once. load() itself dedupes by path, so a race
   // between two navigations cannot fetch twice; the `loading` flag just avoids
-  // re-entering. Never loads a view that has already registered. On failure the
-  // flag is cleared so a retry can re-attempt, and an error with a retry control
-  // replaces the loading placeholder when this view is still the awaited one.
+  // re-entering. The "already loaded" test is the module's global being installed —
+  // NOT views.has(key) — because some destinations have a placeholder/stub view
+  // registered at boot (atlas-app base views); the real module must still download
+  // and re-register over that stub. On failure the flag is cleared so a retry can
+  // re-attempt, and an error with a retry control replaces the loading placeholder
+  // when this view is still the awaited one.
   function triggerLazyLoad(key) {
     const spec = lazyViews.get(key);
-    if (!spec || spec.loading || views.has(key)) return;
+    if (!spec || spec.loading || (spec.global && root[spec.global])) return;
     spec.loading = true;
     const document = root.document;
     if (spec.css && document && !document.querySelector(`link[href="${spec.css}"]`)) {
@@ -493,7 +496,10 @@
     const spec = lazyViews.get(key);
     const document = root.document;
     if (!spec || !spec.root || !document) return;
-    if (!pending || pending.name !== key) return;
+    // Surface the error only while this view is still the one in view — either the
+    // awaited (pending) destination, or the current view sitting on a stub
+    // placeholder. A user who navigated elsewhere is never shown an error.
+    if (pending?.name !== key && current !== key) return;
     const host = document.getElementById(spec.root);
     if (!host) return;
     host.innerHTML = '';
@@ -550,14 +556,17 @@
 
   function show(name, params = {}, options = {}) {
     const key = canonicalName(name);
+    // A lazy view whose module is not loaded yet: start its download now. This runs
+    // whether or not a placeholder/stub entry is already registered for the key —
+    // the module re-registers and renders itself (workspaces do `if current===key
+    // render()`) once it arrives, replacing any stub.
+    triggerLazyLoad(key);
     const entry = views.get(key);
     const source = options.source || 'api';
     if (!entry) {
-      // A destination whose module has not loaded yet opens as soon as it registers.
+      // A destination whose module has not loaded yet opens as soon as it registers
+      // (the lazy load above, or an eagerly-loaded module registering later).
       pending = { name: key, params: params || {}, options };
-      // If it is a lazy view, download its module now; it registers on load and
-      // this pending navigation replays. Non-lazy unknown views simply wait.
-      triggerLazyLoad(key);
       return false;
     }
     if (entry.guard) {

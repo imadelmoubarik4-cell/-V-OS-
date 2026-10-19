@@ -96,8 +96,13 @@ test('the sign-in screen no longer derives a name from the email address', () =>
   assert.doesNotMatch(index, /userEmailEl\.textContent = currentUser\.email/);
   assert.match(index, /const displayName = identity\.label\(profile\);/);
   assert.match(index, /email: '', role: profile\.role/);
-  assert.ok(index.indexOf('assets/js/atlas-api.js') > 0 && index.indexOf('assets/js/atlas-api.js') < index.indexOf('assets/js/shifts-workspace.js'),
-    'atlas-api.js loads before the modules that use it');
+  // atlas-api.js is eager; the modules that use it either load after it in
+  // index.html or lazily on navigation (well after boot). Shifts is lazy now, so
+  // assert atlas-api.js is eager and before a still-eager consumer (atlas-inventory),
+  // and that shifts-workspace.js is no longer an eager tag.
+  assert.ok(index.indexOf('<script src="assets/js/atlas-api.js') > 0 && index.indexOf('<script src="assets/js/atlas-api.js') < index.indexOf('<script src="assets/js/atlas-inventory.js'),
+    'atlas-api.js loads before the eager modules that use it');
+  assert.equal(index.indexOf('<script src="assets/js/shifts-workspace.js'), -1, 'shifts-workspace.js is lazy, not an eager tag');
   assert.doesNotMatch(read(`${JS_DIR}/atlas-chrome.js`), /atlas-account-menu__email/);
 });
 

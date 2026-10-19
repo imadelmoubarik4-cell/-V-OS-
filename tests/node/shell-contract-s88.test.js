@@ -250,7 +250,10 @@ test('changed scripts carry the S88 cache key', () => {
   }
   // Shift plan: colour by person (a remembered toolbar toggle colours each
   // teammate's chips, avatar ring and rows); shifts-workspace.js carries the key.
-  assert.ok(index.includes('<script src="assets/js/shifts-workspace.js?v=20261002-s103"></script>'), 'shifts-workspace.js');
+  // Shifts is a lazy view now: not eager in index.html, registered via config.js on
+  // the same cache key, and downloaded on first navigation to #shifts.
+  assert.ok(!index.includes('<script src="assets/js/shifts-workspace.js?v=20261002-s103"></script>'), 'shifts-workspace.js is not eager');
+  assert.ok(read('apps/web/config.js').includes("registerLazyView('shifts'"), 'shifts registered as a lazy view');
   // ALCEDO rebrand: atlas-stock-truth.js changed (Atlas->Alcedo comment) and carries the rebrand key.
   assert.ok(index.includes('<script src="assets/js/atlas-stock-truth.js?v=20260930-alcedo2"></script>'), 'atlas-stock-truth.js');
   // Engineering re-acceptance follow-up (clearer waste/delivery retry message)
@@ -324,8 +327,8 @@ test('changed scripts carry the S88 cache key', () => {
   for (const file of ['team-profiles-bootstrap.js', 'system-workspace.js']) {
     assert.ok(config.includes(`scriptPath: 'assets/js/${file}?v=20260929-s90f'`), file);
   }
-  // Shift plan colour-by-person: shifts-workspace.js lazy-load key matches index.html.
-  assert.ok(config.includes("scriptPath: 'assets/js/shifts-workspace.js?v=20261002-s103'"), 'shifts-workspace.js config key');
+  // Shift plan colour-by-person: shifts-workspace.js lazy-view key in config.js.
+  assert.ok(config.includes("js: 'assets/js/shifts-workspace.js?v=20261002-s103'"), 'shifts-workspace.js lazy-view key');
   // S91: the Settings sign-in message; S91b: owner copy for integrations
   // that are not set up, with admin-only setup details.
   // S94: Settings publishing connections and the Marketing composer, media

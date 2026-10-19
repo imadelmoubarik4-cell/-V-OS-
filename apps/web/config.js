@@ -192,12 +192,18 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
 
 // Checkpoint F replaces the Shifts placeholder with a private weekly planner,
 // availability, time-off, publishing and confirmation workspace.
-loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
-  stylesheetPath: 'assets/css/shifts-workspace.css',
-  scriptPath: 'assets/js/shifts-workspace.js?v=20261002-s103',
-  globalName: 'AtlasShifts',
-  dataAttribute: 'atlasShifts',
-}));
+// Lazy: the Shifts module (and CSS) download on the first navigation to #shifts,
+// not at boot. It is a required module (runtime-module-guard.js), so the guard
+// confirms this lazy registration and would load it eagerly if it were ever
+// missing — the destination can never silently disappear.
+if (window.AtlasShell?.registerLazyView) {
+  window.AtlasShell.registerLazyView('shifts', {
+    js: 'assets/js/shifts-workspace.js?v=20261002-s103',
+    css: 'assets/css/shifts-workspace.css',
+    global: 'AtlasShifts',
+    root: 'shifts-view',
+  });
+}
 
 // Checkpoint G replaces the Knowledge placeholder with a version-controlled,
 // role-aware library. Drafts remain manager-only, while staff receive only
