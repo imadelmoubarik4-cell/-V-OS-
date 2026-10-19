@@ -55,6 +55,14 @@ window.VABAR_CONFIG = {
   // and its RLS/RPC checks passed in production (issue #124), so the module is
   // enabled for admin/manager roles. Set to false to hide it entirely.
   KANEL_PRICING_ENABLED: true,
+  // Public (guest) online booking — Reserve a Table / Bóka borð on the public
+  // website, backed by the existing Alcedo bookings system. FEATURE-FLAGGED and
+  // OFF by default: while false, no public booking endpoint is advertised, no
+  // guest booking UI loads, and the staff bookings workspace behaves exactly as
+  // today. Turning it on is deliberate and owner-gated — it must not happen until
+  // the booking engine corrections, the scoped public API and the website form
+  // are complete and verified (KANEL × ALCEDO online-bookings handoff, phased).
+  PUBLIC_BOOKING_ENABLED: false,
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application
