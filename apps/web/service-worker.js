@@ -71,25 +71,44 @@ self.addEventListener('fetch', (event) => {
   })());
 });
 
+// Known notification routes. 'bookings' (S109) opens the Bookings workspace, and
+// deep-links the exact reservation when the payload carries its id.
+const ROUTES = new Set(['shifts', 'bookings', 'team']);
+const routeOf = (value) => (ROUTES.has(value) ? value : 'team');
+
+// The in-app destination for a route (+ optional object id), relative to scope.
+function routeHash(route, objectId) {
+  if (route === 'shifts') return '#shifts';
+  if (route === 'bookings') return objectId ? `#bookings/res/${encodeURIComponent(objectId)}` : '#bookings';
+  // S88 route table: Messages opens at #messages (#team is now the Team directory).
+  return '#messages';
+}
+
 self.addEventListener('push', (event) => {
   let payload = {};
   try { payload = event.data?.json?.() || {}; } catch { payload = { body: event.data?.text?.() || '' }; }
-  const route = payload.route === 'shifts' ? 'shifts' : 'team';
-  event.waitUntil(self.registration.showNotification(payload.title || 'Alcedo update', {
-    body: payload.body || 'Open Alcedo to review the update.',
-    tag: payload.tag || `atlas-${route}`,
-    renotify: Boolean(payload.renotify),
-    // Brand v1.0 platform icon (supplied kit file, docs/brand/README.md).
-    icon: 'assets/brand/favicon-192x192.png',
-    data: { route, object_id: payload.object_id || null }
-  }));
+  const route = routeOf(payload.route);
+  event.waitUntil((async () => {
+    await self.registration.showNotification(payload.title || 'Alcedo update', {
+      body: payload.body || 'Open Alcedo to review the update.',
+      tag: payload.tag || `atlas-${route}`,
+      renotify: Boolean(payload.renotify),
+      // Brand v1.0 platform icon (supplied kit file, docs/brand/README.md).
+      icon: 'assets/brand/favicon-192x192.png',
+      data: { route, object_id: payload.object_id || null }
+    });
+    // Relay to any open client so its in-app notification bell refreshes without
+    // polling (the booking inbox works whether or not push delivery is enabled).
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) client.postMessage({ type: 'atlas:push', route });
+  })());
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const route = event.notification.data?.route === 'shifts' ? 'shifts' : 'team';
-  // S88 route table: Messages opens at #messages (#team is now the Team directory).
-  const target = new URL(`./#${route === 'shifts' ? 'shifts' : 'messages'}`, self.registration.scope).href;
+  const route = routeOf(event.notification.data?.route);
+  const objectId = event.notification.data?.object_id || null;
+  const target = new URL(`./${routeHash(route, objectId)}`, self.registration.scope).href;
   event.waitUntil((async () => {
     const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     const existing = windows.find((client) => client.url.startsWith(self.registration.scope));
@@ -97,6 +116,7 @@ self.addEventListener('notificationclick', (event) => {
       await existing.navigate(target);
       return existing.focus();
     }
+    // App was closed: open a fresh window straight at the reservation.
     return clients.openWindow(target);
   })());
 });

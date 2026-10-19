@@ -537,6 +537,9 @@
     try {
       await api('set-status', { body: { reservation_id: reservationId, to_status: toStatus } });
       toast(`Marked ${STATUS_LABEL[toStatus] ? STATUS_LABEL[toStatus].toLowerCase() : toStatus}`, 'success');
+      // A lifecycle change (approve/reject/cancel/no_show) may create booking
+      // notifications; let the bell refresh without polling.
+      try { window.dispatchEvent(new CustomEvent('atlas:bookings-changed')); } catch { /* no-op */ }
       await loadSnapshot({ force: true, silent: true });
       refreshReservationLayer(root, reservationId);
     } catch (error) {
@@ -552,6 +555,8 @@
     try {
       await api('assign', { body: { reservation_id: reservationId, table_ids: tableIds } });
       toast('Table updated', 'success');
+      // Assigning a held request confirms it (a lifecycle change → notifications).
+      try { window.dispatchEvent(new CustomEvent('atlas:bookings-changed')); } catch { /* no-op */ }
       await loadSnapshot({ force: true, silent: true });
       refreshReservationLayer(root, reservationId);
     } catch (error) {
@@ -879,7 +884,12 @@
     if (state.section === 'config') {
       ensure.then(() => { if (state.visible && state.section === 'config' && canConfigure() && !state.config) loadConfig(); });
     }
-    if (!params.section) window.scrollTo?.(0, 0);
+    // Deep link from a booking notification (#bookings/res/<id>): open that
+    // reservation's detail once the day view is ready.
+    if (params.reservation) {
+      ensure.then(() => { if (state.visible) openReservation(String(params.reservation)); });
+    }
+    if (!params.section && !params.reservation) window.scrollTo?.(0, 0);
   }
 
   function onHide() {

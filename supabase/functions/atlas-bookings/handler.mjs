@@ -161,6 +161,7 @@ const RPCS = new Set([
   "atlas_bookings_save_table", "atlas_bookings_save_combination", "atlas_bookings_save_settings",
   "atlas_bookings_availability", "atlas_bookings_create", "atlas_bookings_assign",
   "atlas_bookings_set_status", "atlas_bookings_hold", "atlas_bookings_release_hold",
+  "atlas_bookings_notifications", "atlas_bookings_notification_read",
 ]);
 
 export function createServices({ env, fetchImpl }) {
@@ -287,6 +288,23 @@ export function createBookingsHandler({ env, fetchImpl, resolveActor = null, ser
     requireStaff(actor);
     return svc.rpc("atlas_bookings_release_hold", { ...actorArgs(actor), p_hold_id: requireUuid(body.hold_id) });
   }
+  // In-app booking notification inbox (managers/admins). The RPCs re-check the
+  // actor; the edge fast-fails non-managers so a bartender never reaches the RPC.
+  async function notifications(actor, params) {
+    requireManager(actor);
+    const raw = Number(params.get("limit"));
+    const limit = Number.isInteger(raw) ? Math.min(Math.max(raw, 1), 100) : 30;
+    return svc.rpc("atlas_bookings_notifications", { ...actorArgs(actor), p_limit: limit });
+  }
+  async function notificationsRead(actor, body) {
+    requireManager(actor);
+    const all = body.all === true;
+    const ids = Array.isArray(body.ids) ? body.ids.map((id) => requireUuid(id)) : null;
+    if (!all && (!ids || !ids.length)) throw invalid();
+    return svc.rpc("atlas_bookings_notification_read", {
+      ...actorArgs(actor), p_ids: all ? null : ids, p_all: all,
+    });
+  }
 
   return async function handle(request) {
     if (request.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
@@ -298,6 +316,7 @@ export function createBookingsHandler({ env, fetchImpl, resolveActor = null, ser
         if (action === "snapshot") return jsonResponse(await snapshot(actor, url.searchParams.get("date")));
         if (action === "config") return jsonResponse(await config(actor));
         if (action === "availability") return jsonResponse(await availability(actor, url.searchParams));
+        if (action === "notifications") return jsonResponse(await notifications(actor, url.searchParams));
         throw new ApiError(404, "not_found", MESSAGES.not_found);
       }
       if (request.method !== "POST") throw new ApiError(405, "invalid_request", MESSAGES.invalid_request);
@@ -312,6 +331,7 @@ export function createBookingsHandler({ env, fetchImpl, resolveActor = null, ser
         case "set-status": return jsonResponse(await setStatus(actor, body));
         case "hold": return jsonResponse(await hold(actor, body));
         case "release-hold": return jsonResponse(await releaseHold(actor, body));
+        case "notifications-read": return jsonResponse(await notificationsRead(actor, body));
         default: throw new ApiError(404, "not_found", MESSAGES.not_found);
       }
     } catch (error) {

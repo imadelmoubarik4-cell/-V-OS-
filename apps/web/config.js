@@ -150,6 +150,16 @@ loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   dataAttribute: 'atlasTeamUnreadBadge',
 }));
 
+// S109: KANEL online-booking notifications for managers/admins. A small,
+// event-driven (no-poll) worker that feeds the app-wide notification bell from
+// the server-side booking inbox; independent of web-push delivery. Loads after
+// window load so it never delays startup.
+loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
+  scriptPath: 'assets/js/bookings-notifications.js?v=20261026-s109',
+  globalName: 'AtlasBookingsNotifications',
+  dataAttribute: 'atlasBookingsNotifications',
+}));
+
 loadAtlasAssetsAfterWindowLoad(() => loadAtlasAssetOnce({
   stylesheetPath: 'assets/css/marketing-workspace.css?v=20261004-s94c',
   scriptPath: 'assets/js/marketing-workspace.js?v=20261004-s94b',
