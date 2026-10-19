@@ -203,3 +203,27 @@ test('phone: day list, add from the top bar, no sideways scroll, 44 px targets',
     } finally { await close(); }
   }
 });
+
+// DB/API efficiency: concurrent loads of the same week coalesce into one request.
+test('re-entrant loads of the same week fire a single snapshot request (in-flight de-dup)', { skip }, async () => {
+  const backend = shiftsBackend({ user: USERS.admin });
+  const orig = backend.handler;
+  backend.handler = async (entry) => { await new Promise((r) => setTimeout(r, 250)); return orig(entry); };
+  // Boot settled on Home (no boot-time race with the shifts view), then measure the
+  // delta from re-entrant shifts loads only.
+  const app = await launchAtlas({
+    user: USERS.admin, hash: '#dashboard', fixedTime: new Date(NOW),
+    fixtures: { functions: peopleFunctions({ 'atlas-shifts': backend.handler, 'atlas-settings': clockBackend().handler }) }
+  });
+  const { page, record } = app;
+  try {
+    await settle(page);
+    const before = requestsTo(record, 'atlas-shifts', 'snapshot').length;
+    // Several rapid shows of Shifts during one in-flight load: each render calls
+    // loadWeek() (non-force), which must reuse the in-flight request, not duplicate it.
+    await page.evaluate(() => { for (let i = 0; i < 4; i++) window.AtlasShell.show('shifts'); });
+    await page.waitForSelector('.shifts-grid, .shifts-days, .shifts-month, .atlas-empty, .shifts-avail, .shifts-list', { timeout: 10000 });
+    await settle(page);
+    assert.equal(requestsTo(record, 'atlas-shifts', 'snapshot').length - before, 1, 'one snapshot request despite re-entrant loads');
+  } finally { await app.close(); }
+});
