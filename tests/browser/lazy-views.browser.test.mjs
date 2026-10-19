@@ -4,11 +4,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { harnessAvailable, launchAtlas, navigateTo, settle, until, USERS } from './harness.mjs';
-import { bookingsWorld } from './bookings-fixtures.mjs';
+import { bookingsWorld, TODAY } from './bookings-fixtures.mjs';
 
 const skip = harnessAvailable() ? false : 'Playwright/Chromium harness dependencies are not installed';
 
 const globalDefined = (page, name) => page.evaluate((n) => typeof window[n] !== 'undefined', name);
+const bookingScriptCount = (page) => page.evaluate(() => document.querySelectorAll('script[src*="bookings-workspace"]').length);
 
 test('a lazy view does not load at boot and loads on first navigation', { skip }, async () => {
   const world = bookingsWorld();
@@ -38,5 +39,41 @@ test('a lazy view loads on a direct deep-link boot to its route', { skip }, asyn
     // its lazily-loaded module registers (the pending navigation replays).
     await page.waitForFunction(() => document.body.dataset.atlasView === 'bookings', null, { timeout: 12000 });
     assert.equal(await globalDefined(page, 'AtlasBookings'), true, 'AtlasBookings loaded for the deep link');
+  } finally { await app.close(); }
+});
+
+for (const [label, hash] of [['manager config', '#bookings/config'], ['a dated day', `#bookings/${TODAY}`]]) {
+  test(`a direct deep-link to ${label} resolves to the lazily-loaded bookings view`, { skip }, async () => {
+    const world = bookingsWorld();
+    const app = await launchAtlas({ user: USERS.admin, hash, fixtures: world.fixtures });
+    const { page } = app;
+    try {
+      await page.waitForFunction(() => document.body.dataset.atlasView === 'bookings', null, { timeout: 12000 });
+      assert.equal(await globalDefined(page, 'AtlasBookings'), true, `AtlasBookings loaded for ${hash}`);
+      assert.equal(await page.evaluate(() => (location.hash || '').startsWith('#bookings')), true, 'stays on a bookings route');
+    } finally { await app.close(); }
+  });
+}
+
+test('returning to Bookings and rapid repeat navigation never re-download the module', { skip }, async () => {
+  const world = bookingsWorld();
+  const app = await launchAtlas({ user: USERS.admin, hash: '', fixtures: world.fixtures });
+  const { page } = app;
+  try {
+    await settle(page);
+    await navigateTo(page, '#bookings');
+    await until(() => globalDefined(page, 'AtlasBookings'), { message: 'bookings loads first time' });
+    assert.equal(await bookingScriptCount(page), 1, 'one script after first open');
+
+    // Leave and come back: already registered, so no second download or re-init.
+    await navigateTo(page, '#dashboard');
+    await navigateTo(page, '#bookings');
+    await page.waitForFunction(() => document.body.dataset.atlasView === 'bookings');
+    assert.equal(await bookingScriptCount(page), 1, 'no re-download on return');
+
+    // Rapid repeated navigations to the same view add no further script tags.
+    await page.evaluate(() => { for (let i = 0; i < 5; i++) window.AtlasShell.navigate('#bookings'); });
+    await settle(page);
+    assert.equal(await bookingScriptCount(page), 1, 'rapid repeats do not duplicate the download');
   } finally { await app.close(); }
 });

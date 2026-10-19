@@ -230,6 +230,7 @@ if (window.AtlasShell?.registerLazyView) {
     js: 'assets/js/bookings-workspace.js?v=20261002-bookings1',
     css: 'assets/css/bookings-workspace.css?v=20261002-bookings1',
     global: 'AtlasBookings',
+    root: 'bookings-view', // where the "could not load" + retry message renders on failure
   });
 }
 

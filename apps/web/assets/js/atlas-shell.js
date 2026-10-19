@@ -455,14 +455,16 @@
   function registerLazyView(name, spec = {}) {
     const key = canonicalName(name);
     if (!key || !spec.js) throw new Error('AtlasShell.registerLazyView needs a view name and a script path.');
-    lazyViews.set(key, { js: spec.js, css: spec.css || null, global: spec.global || null, loading: false });
+    lazyViews.set(key, { js: spec.js, css: spec.css || null, global: spec.global || null, root: spec.root || null, loading: false });
     if (pending && pending.name === key) triggerLazyLoad(key);
     return key;
   }
 
   // Start a lazy view's download once. load() itself dedupes by path, so a race
   // between two navigations cannot fetch twice; the `loading` flag just avoids
-  // re-entering. Never loads a view that has already registered.
+  // re-entering. Never loads a view that has already registered. On failure the
+  // flag is cleared so a retry can re-attempt, and an error with a retry control
+  // replaces the loading placeholder when this view is still the awaited one.
   function triggerLazyLoad(key) {
     const spec = lazyViews.get(key);
     if (!spec || spec.loading || views.has(key)) return;
@@ -476,7 +478,41 @@
       document.head?.appendChild(link);
     }
     load(spec.js, { global: spec.global, async: true, dataset: { atlasLazyView: key } })
-      .catch((error) => { spec.loading = false; report(error); });
+      .catch((error) => { spec.loading = false; renderLazyError(key); report(error); });
+  }
+
+  // When a lazy view's module cannot be downloaded, replace its loading
+  // placeholder with an error and a "Try again" control — but only while that view
+  // is still the awaited destination, so a user who has navigated elsewhere is not
+  // shown an error in a hidden view. Retry re-runs show(), which (the loading flag
+  // now cleared) re-attempts the download.
+  function renderLazyError(key) {
+    const spec = lazyViews.get(key);
+    const document = root.document;
+    if (!spec || !spec.root || !document) return;
+    if (!pending || pending.name !== key) return;
+    const host = document.getElementById(spec.root);
+    if (!host) return;
+    host.innerHTML = '';
+    const alert = document.createElement('div');
+    alert.className = 'atlas-alert atlas-alert--danger';
+    alert.setAttribute('role', 'alert');
+    alert.dataset.lazyError = key;
+    const message = document.createElement('p');
+    message.textContent = 'This section could not be loaded. Check your connection and try again.';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'atlas-btn atlas-btn--primary';
+    retry.dataset.lazyRetry = key;
+    retry.textContent = 'Try again';
+    retry.addEventListener('click', () => {
+      const params = pending && pending.name === key ? pending.params : {};
+      host.innerHTML = '<p class="atlas-view-loading" role="status">Loading…</p>';
+      show(key, params, { source: 'retry' });
+    });
+    alert.appendChild(message);
+    alert.appendChild(retry);
+    host.appendChild(alert);
   }
 
   function unregisterView(name, entry) {
