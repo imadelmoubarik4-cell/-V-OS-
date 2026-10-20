@@ -23,16 +23,36 @@ flag flipped, no email sent. Activation is owner-gated and strictly sequenced.
 
 ## Validation evidence (local, pre-release)
 
-- Full migration replay: clean fresh DB, 170 migrations, `migration_replay: passed`.
+### Authoritative CI (GitHub, head `81877a6`)
+
+- `contracts` (required): **green.**
+- `replay` (required): **green.**
+- Browser suite: **444 passed, 2 failed, 1 skipped — not fully green.** The two
+  failing tests are:
+  - `atlas-bot.browser.test.mjs` — timeout waiting for success to return to idle.
+  - `ux-acceptance.browser.test.mjs` — `#data` header top offset 1 instead of 0.
+- The 19 Accounting failures seen at `ada6668` are **absent** at `81877a6`.
+- `disposable PostgreSQL 17` ("Production adoption dry run"): red — the
+  `adjust_inventory` lint documented in the S106 impact doc.
+
+The two browser failures above are **open and not yet explained with baseline
+evidence**; they are **not** labelled pre-existing here and were not investigated
+(no further implementation was requested). They must be understood before this PR
+is treated as release-ready.
+
+### Local checks (this environment only — distinct from CI; do not conflate)
+
+- Migration replay: clean fresh DB, 170 migrations, `migration_replay: passed`.
 - SQL acceptances: s99, s106, s107, s108, s109 — all passed.
-- Node suite: 1624 pass / 0 fail (incl. edge hardening + SW routing + observer ratchet).
-- Browser: full bookings suite + notification suite green; **Accounting/Home/Team
-  suites stay green** (worker inert by default — no unexpected booking requests).
-- Python contracts: s106/s107/s108/s109 + S42 cutover + S34 — green.
-- Known non-blocking CI reds, unrelated to bookings: the pre-existing
-  "Production adoption dry run / disposable PostgreSQL 17" baseline
-  (`adjust_inventory` lint, documented in the S106 impact doc) and the two
-  documented GPU-less browser flakes (atlas-ai, atlas-bot).
+- Node suite: 1628 pass / 0 fail (edge hardening + SW routing + observer ratchet +
+  the default-OFF flag contract).
+- Targeted browser (local): `bookings-notifications` 5/5, `bookings` +
+  `accounting-s92` 35/35, `home-operations` + `team-messages` + `shell-ui` 29/29.
+- Local `atlas-ai` + `atlas-bot`: 68/70 — the two LOCAL failures
+  (`atlas-ai` "manager-only proposals"; `atlas-bot` "idle falls asleep") are
+  **different tests/assertions** from the two CI failures above; the environments
+  diverge and neither set substitutes for the other.
+- Python contracts: s106/s107/s108/s109 + S42 cutover + S34 — all passed.
 
 ## Release sequence (each step owner-approved, in order)
 
