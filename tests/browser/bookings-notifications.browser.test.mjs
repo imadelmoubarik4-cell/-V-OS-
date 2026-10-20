@@ -23,9 +23,13 @@ function world(extra = {}) {
   });
 }
 
+// The staff inbox is OFF by default in production (BOOKING_NOTIFICATIONS_ENABLED);
+// these tests deliberately configure the environment to turn it on.
+const ENABLE = { BOOKING_NOTIFICATIONS_ENABLED: true };
+
 async function boot({ user = USERS.admin } = {}) {
   const w = world();
-  const app = await launchAtlas({ user, fixtures: w.fixtures });
+  const app = await launchAtlas({ user, fixtures: w.fixtures, configOverrides: ENABLE });
   // The notifications worker loads after window load, then fetches the inbox.
   await app.page.waitForFunction(() => window.AtlasBookingsNotifications?.loaded?.() === true, null, { timeout: 15000 });
   await settle(app.page);
@@ -75,9 +79,25 @@ test('mark-all-read persists to the server for bookings too', { skip }, async ()
   } finally { await close(); }
 });
 
+test('OFF by default: the worker is inert — no booking request, no console error', { skip }, async () => {
+  // No configOverrides: BOOKING_NOTIFICATIONS_ENABLED stays false (production).
+  const w = world();
+  const app = await launchAtlas({ user: USERS.admin, fixtures: w.fixtures });
+  try {
+    await settle(app.page);
+    // Give the readiness events time to fire; the worker must still do nothing.
+    await app.page.evaluate(() => new Promise((r) => setTimeout(r, 400)));
+    await settle(app.page);
+    assert.equal(await app.page.evaluate(() => window.AtlasBookingsNotifications?.loaded?.()), false, 'worker never loads while off');
+    assert.ok(!w.bookings.calls.some((c) => c.action === 'notifications'), 'no atlas-bookings notifications request while off');
+    const bookingErrors = app.record.consoleErrors.filter((t) => /atlas-bookings/.test(t));
+    assert.deepEqual(bookingErrors, [], 'no booking console errors while off');
+  } finally { await app.close(); }
+});
+
 test('a bartender never receives booking notifications (manager/admin only)', { skip }, async () => {
   const w = world();
-  const app = await launchAtlas({ user: USERS.bartender, fixtures: w.fixtures });
+  const app = await launchAtlas({ user: USERS.bartender, fixtures: w.fixtures, configOverrides: ENABLE });
   try {
     // The worker tries once, is refused (403), and stays silent.
     await until(() => app.page.evaluate(() => Boolean(window.AtlasBookingsNotifications)), { message: 'worker present' });

@@ -37,6 +37,14 @@
     return String(cfg.BOOKINGS_API || '').trim();
   }
 
+  // Independent, OFF-by-default staff feature flag. Read live from VABAR_CONFIG so
+  // a deliberately configured environment can set it; while false the worker is
+  // completely inert — it never fetches atlas-bookings, so no page (Accounting,
+  // Home, Team, …) makes an unexpected booking request or logs a console error.
+  function enabled() {
+    return (window.VABAR_CONFIG || cfg).BOOKING_NOTIFICATIONS_ENABLED === true;
+  }
+
   function appIsSignedIn() {
     const app = document.getElementById('app-screen');
     const login = document.getElementById('login-screen');
@@ -131,7 +139,7 @@
   }
 
   async function refresh(options = {}) {
-    if (state.inFlight || state.forbidden || !appIsSignedIn()) return;
+    if (!enabled() || state.inFlight || state.forbidden || !appIsSignedIn()) return;
     if (!options.force && Date.now() - state.lastFetchAt < THROTTLE_MS) return;
     let session;
     try { session = await activeSession(); } catch { return; }
@@ -216,9 +224,14 @@
     if (state.initialized) return;
     state.initialized = true;
 
+    // Feature OFF (default): stay completely inert. No contributor, no action, no
+    // listeners, no fetch — other pages never see a booking request or error.
+    if (!enabled()) return;
+
     registerOpenAction();
     announce();               // register the (empty) contributor up front
-    whenSignedIn(() => refresh({ force: true, silent: true }));
+    subscribeToAuth();        // subscribe now if the client is ready…
+    whenSignedIn(() => { subscribeToAuth(); refresh({ force: true, silent: true }); });  // …else once the app is shown (the client exists by then)
 
     // Event-driven refreshes only — no setInterval anywhere.
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh({ silent: true }); });
@@ -235,10 +248,6 @@
       if (detail?.all && state.items.some((row) => !row.read)) persistRead(null, true);
     });
 
-    if (!subscribeToAuth()) {
-      const authTimer = window.setInterval(() => { if (subscribeToAuth()) window.clearInterval(authTimer); }, 250);
-      window.setTimeout(() => window.clearInterval(authTimer), 10000);
-    }
     window.addEventListener('pagehide', () => { state.authSubscription?.unsubscribe?.(); }, { once: true });
   }
 

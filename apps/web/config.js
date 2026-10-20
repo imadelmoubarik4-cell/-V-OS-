@@ -63,6 +63,16 @@ window.VABAR_CONFIG = {
   // the booking engine corrections, the scoped public API and the website form
   // are complete and verified (KANEL × ALCEDO online-bookings handoff, phased).
   PUBLIC_BOOKING_ENABLED: false,
+  // Staff in-app booking notifications (the manager/admin booking inbox in the
+  // notification bell). FEATURE-FLAGGED and OFF by default, and INDEPENDENT of
+  // PUBLIC_BOOKING_ENABLED: this only turns on the staff-facing inbox worker
+  // (bookings-notifications.js). While false, the worker is completely inert — it
+  // registers nothing, adds no listeners and never calls atlas-bookings — so no
+  // page makes an unexpected booking request. Turn this on ONLY after the s109
+  // migration is applied and the authenticated staff edge (atlas-bookings
+  // notifications actions) is deployed; it is separate from, and must not be
+  // conflated with, activating the public guest-booking website.
+  BOOKING_NOTIFICATIONS_ENABLED: false,
 };
 
 // Several Atlas modules add Lucide placeholders while observing the application

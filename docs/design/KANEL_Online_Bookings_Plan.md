@@ -123,6 +123,37 @@ site and will proceed. Phase 4 needs one of:
    here), or
 3. deferring Phase 4 until the site is available.
 
+## Deployment sequence (owner-gated; each step independent)
+
+The pieces are **decoupled by independent flags** so nothing activates implicitly.
+Deploy strictly in this order; each step is safe to stop at and nothing downstream
+turns on by itself:
+
+1. **Database migration.** Apply the additive migrations (`s106`→`s109`) to
+   production. This changes staff booking behaviour (caps, turnaround, sections —
+   see `docs/release/S106_Bookings_Engine_Production_Impact.md`) but adds no public
+   surface. Both feature flags are still off.
+2. **Authenticated staff edge function.** Deploy `atlas-bookings` (now carrying the
+   `notifications` / `notifications-read` actions). Still no behaviour change for
+   anyone until a flag is set.
+3. **Staff inbox enablement.** Flip **`BOOKING_NOTIFICATIONS_ENABLED`** (config.js)
+   to `true`. Only now does the manager/admin in-app booking inbox appear. This is
+   staff-only and **independent of the public website** — it does not expose any
+   guest endpoint. Requires steps 1–2 first (otherwise the worker would call an
+   edge that cannot answer); while the flag is false the worker is completely
+   inert.
+4. **Public website + guest-booking activation (SEPARATE, later).** Only after the
+   KANEL website form is built and reviewed: deploy the `atlas-public-booking` edge
+   function, set its **own** independent server flag `PUBLIC_BOOKING_ENABLED=true`
+   (edge env) with a strong `PUBLIC_BOOKING_SALT`, set the DB
+   `booking_settings.public_online_enabled=true`, and set the frontend
+   `PUBLIC_BOOKING_ENABLED=true`. All three are required together; the frontend
+   flag alone can never open the endpoint. This step is **not** implied by steps
+   1–3 and must not be conflated with them.
+5. **Email delivery (SEPARATE, later).** Only after an owner-approved provider +
+   authenticated sending domain — see `docs/release/KANEL_Booking_Email_Readiness.md`.
+   Until then the outbox stays sealed and inert.
+
 ## Rollback
 
 - All Phase 2+ schema changes ship as a **new, additive** migration that is NOT
