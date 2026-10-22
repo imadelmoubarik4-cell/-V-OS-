@@ -12,7 +12,7 @@ Facts behind the text (for the reviewer, not for publication):
 | Topic | What the system does |
 |---|---|
 | Fields collected | name (required), email, phone, party size, date/time, optional note (max 500 characters). The website requires email and phone so staff can reply. |
-| Where it is stored | Alcedo's database on Supabase **[region to confirm — Dashboard → Project Settings → General]**. Sent directly from the browser to the booking service over HTTPS. Netlify (website host) does not receive the form contents. |
+| Where it is stored | Alcedo's database on Supabase **region eu-west-1 (Ireland, EEA)**, confirmed from the Supabase project on 22 Oct 2026. Sent directly from the browser to the booking service over HTTPS. Netlify (website host) does not receive the form contents. |
 | IP address | Used only to limit abuse. A salted one-way hash is stored, never the raw IP. Rows are removed automatically by later requests, normally within about an hour. |
 | Status token | A random token is created per request. The website discards it; it is never stored in the browser. |
 | Guest emails | Not sent. Emails are queued in a sealed outbox inside the database until an email provider is approved. |
@@ -48,8 +48,7 @@ automatically, normally within about an hour.
 
 **Who processes it for us.** Our booking system, Alcedo, runs on Supabase, which
 stores the data for us under a data processing agreement **[confirm DPA in place;
-hosting region: …; if outside the EEA, safeguards: EU Standard Contractual
-Clauses]**. We do not sell your data or use it for marketing, and the booking form
+hosting region: Ireland (EEA)]**. We do not sell your data or use it for marketing, and the booking form
 uses no analytics or advertising trackers.
 
 **How long we keep it.** **[Owner decision — e.g. "We keep booking details for 12
@@ -90,7 +89,7 @@ er eytt sjálfkrafa, að jafnaði innan um klukkustundar.
 
 **Vinnsluaðilar.** Bókunarkerfið okkar, Alcedo, keyrir á Supabase, sem geymir
 gögnin fyrir okkur samkvæmt vinnslusamningi **[staðfesta vinnslusamning;
-hýsingarsvæði: …; ef utan EES: stöðluð samningsákvæði ESB]**. Við seljum ekki
+hýsingarsvæði: Írland (EES)]**. Við seljum ekki
 upplýsingarnar þínar né notum þær í markaðsskyni og bókunarformið notar engar
 vefmælingar eða auglýsingarakningu.
 
