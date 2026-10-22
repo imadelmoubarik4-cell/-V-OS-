@@ -5,20 +5,32 @@ owner's explicit approval for that action. Approval of one row does not carry ov
 to the next. The runbook section is in brackets:
 [`KANEL_Bookings_Release_Runbook.md`](KANEL_Bookings_Release_Runbook.md).
 
-Current state (22 Oct 2026): nothing below is done. Production is at S105. Public
-reservations are off. kanel.is is untouched.
+Current state (22 Oct 2026): production is at S105 and the read-only preflight (A1)
+has passed. Nothing has been applied, deployed or switched on. Public reservations are
+off. kanel.is is untouched.
 
-## 0. Owner decisions (before anything is applied)
+## 0. Owner decisions
 
-- [ ] **Opening hours.** Fri–Sat close at 23:59 (last online start 21:45) or at
-      00:00 next day (last start 22:00, matching the website's "midnight" text).
-      Sun–Thu 22:00 gives last start 20:00. [§4 B1]
-- [ ] **S106 staff impact accepted:** 15-min turnaround, Bar sections A/B/C, online
-      cap 4. [§1]
-- [ ] **Browser CI:** accept the three documented failures as not caused by PR #135,
-      or wait for a stabilisation PR. [`KANEL_PR135_Browser_CI_Evidence.md`]
-- [ ] **Guest confirmation routine:** who monitors, response target, same-day rule.
-      [`KANEL_Guest_Confirmation_SOP.md`]
+Recorded 22 Oct 2026. These are planning decisions; each production action below
+still needs its own approval.
+
+- [x] **Opening hours (planned).** Sun–Thu 11:30–22:00 (last online start 20:00).
+      Fri–Sat 11:30–00:00 next day: `close_time = 00:00`, `close_next_day = true`
+      (last online start 22:00). **Production hours are not changed yet.** That is
+      step B1, which needs its own approval. [§4 B1]
+- [x] **S106 rules accepted as the basis for release:** 15-min turnaround, fixed Bar
+      sections 1–8 / 9–12 / 13–16, online party size 1–4. Applying the migration is
+      a separate approval (A3). [§1]
+- [x] **Browser CI release exception:** the remaining `ux-acceptance:69` failure
+      (`#data` header top 1 vs 0) is accepted as an **identified release
+      exception**, based on the documented failures on earlier `main` commits. It
+      does not permit weakening tests, and it does not approve the merge (A5).
+      [`KANEL_PR135_Browser_CI_Evidence.md`]
+- [ ] **Guest confirmation routine.** Proposed: review within 10 minutes while
+      open, because a web request holds its seats for only 15 minutes. Owner to
+      approve before Phase B. [`KANEL_Guest_Confirmation_SOP.md`]
+- [ ] **How staff are alerted to new web requests** (see the B0 gate): a periodic
+      inbox refresh, web push delivery, or a manual check routine.
 - [ ] **Privacy notice:** fill in the legal entity, kennitala, hosting region, DPA
       and retention period, then legal and native-speaker review.
       [`KANEL_Booking_Privacy_Notice.md`]
@@ -30,8 +42,9 @@ reservations are off. kanel.is is untouched.
 | ✓ | # | Action | Approval | Evidence to keep |
 |---|---|---|---|---|
 | [ ] | A0 | Staging rehearsal on a Supabase branch: apply, test, roll back, re-apply, delete the branch | 🔒 APPROVAL | test output |
-| [ ] | A1 | Run `KANEL_preflight_readonly.sql` (read-only). No FAIL; owner decides on each WARN | — (read-only) | CSV export |
-| [ ] | A2 | Record the backup / PITR time; `pg_dump` the booking tables and schema; save the snapshot JSON | 🔒 APPROVAL (exports guest data) | timestamp, file names |
+| [x] | A1 | Run `KANEL_preflight_readonly.sql` (read-only). No FAIL; owner decides on each WARN | — (read-only) | **Done 22 Oct 2026 by the owner, file from `b26b82e`:** 17 PASS · 13 INFO · 0 WARN · 0 FAIL. Ledger at S105; no S106–S109 rows; no future active bookings or conflicting allocations; Bar 1–16 passes all checks. Read-only; nothing changed. |
+| [ ] | A2 | Record the backup / PITR time; `pg_dump` the booking tables and schema; save the snapshot JSON | 🔒 APPROVAL (exports guest data) — **next gated action** | timestamp, file names |
+| [ ] | A2.9 | **Fresh preflight immediately before A3.1**, using the same file from the release commit. Must again show 0 FAIL, and the owner reviews any new WARN (for example, new bookings made since A1). If A3 is not started straight away, run it again. | — (read-only) — **mandatory** | CSV export, time run |
 | [ ] | A3.1 | Run `KANEL_apply_1_s106_bookings_engine.sql` | 🔒 APPROVAL (production DB) | SQL editor result |
 | [ ] | A3.2 | Run `KANEL_apply_2_s107_public_booking_api.sql` | 🔒 APPROVAL | result |
 | [ ] | A3.3 | Run `KANEL_apply_3_s108_booking_notifications.sql` | 🔒 APPROVAL | result |
@@ -48,6 +61,7 @@ reservations are off. kanel.is is untouched.
 
 | ✓ | # | Action | Approval |
 |---|---|---|---|
+| [ ] | B0 | **Gate: staff are alerted to new web requests.** A7 (inbox) is live, and a manager has seen a test web request appear in the bell. With push delivery off, the bell refreshes only when the app regains focus or visibility, comes back online, or after a staff booking change. A screen left open does **not** update by itself. Before B5, the owner chooses: (a) a small follow-up change that refreshes the inbox every 1–2 min while the app is visible to a manager, (b) web push delivery (separate approval), or (c) a manual 10-minute check in the SOP. | Owner decision; (a) and (b) are separate changes needing approval |
 | [ ] | B1 | Set or confirm hours in Alcedo → Settings → Business hours | 🔒 APPROVAL (hours change) |
 | [ ] | B2 | Publish the privacy notice and adopt the SOP; staff briefed | Owner decision |
 | [ ] | B3 | Secret `PUBLIC_BOOKING_SALT` (`openssl rand -hex 32`; never shared) | 🔒 APPROVAL (secret) |

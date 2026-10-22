@@ -109,6 +109,13 @@ booking by 15 min or to another stool.
 3. Save the structural snapshot: run `scripts/release/kanel_bookings_snapshot.sql`
    in the SQL editor and keep its JSON output.
 
+### A2.9. Fresh preflight — mandatory, immediately before A3
+A1 passed on 22 Oct 2026 (17 PASS, 13 INFO, 0 WARN, 0 FAIL). Bookings made since
+then can still break the new rules, so run `KANEL_preflight_readonly.sql` again from
+the release commit **immediately before** A3.1. Keep the export. Proceed only with
+0 FAIL, after the owner has reviewed any WARN. If A3 does not start straight away,
+run it again.
+
 ### A3. Apply S106 → S109 — **APPROVAL** (production database write)
 Pick a quiet time. S106 changes staff rules immediately. In the SQL editor, run
 each file **whole**, in order, one at a time:
@@ -160,8 +167,8 @@ today, because the function authenticates staff itself. Then repeat the A4 staff
 check.
 
 ### A7. Staff in-app booking inbox — **APPROVAL** (separate small PR)
-This step is optional before Phase B, but staff need the inbox to see web requests
-without refreshing Bookings.
+**Required before Phase B** (owner decision, 22 Oct 2026): the staff inbox must be
+working before public requests are accepted. See gate B0 for how often it refreshes.
 1. A one-line PR sets `BOOKING_NOTIFICATIONS_ENABLED: true` in `apps/web/config.js`
    and re-pins its SHA-256 in
    `docs/release/Atlas_S42_Production_Cutover_Manifest.json` (the S42 contract test
@@ -198,8 +205,9 @@ booking.
 
 | # | Action | Approval |
 |---|---|---|
-| B1 | **Confirm opening hours** in Alcedo → Settings → Business hours. The engine offers start times from open to close − 2 h. With today's values, Sun–Thu last start is **20:00**. Fri–Sat at **23:59** gives a last start of **21:45**. Setting Fri–Sat to close **00:00 (next day)** gives **22:00** and matches the website's "until midnight" text. Owner decides. | **APPROVAL** (hours change) |
-| B2 | Decide the guest-confirmation routine and response time ([`KANEL_Guest_Confirmation_SOP.md`](KANEL_Guest_Confirmation_SOP.md)), and publish the privacy notice ([`KANEL_Booking_Privacy_Notice.md`](KANEL_Booking_Privacy_Notice.md)) after legal review. | Owner decision |
+| B0 | **Gate: staff are alerted to new web requests.** A7 is live, and a manager has seen a test request in the bell. With `ATLAS_PUSH_DELIVERY_ENABLED` off, the bell refreshes only when the app regains focus or visibility, comes back online, or after a staff booking change. It does not poll, so a screen left open will not show a new request on its own. Choose one: (a) a small follow-up change that refreshes the inbox every 1–2 min while the app is visible to a manager; (b) web push delivery; (c) a manual 10-minute check in the SOP. | Owner decision; (a) and (b) need their own approval |
+| B1 | **Set opening hours** in Alcedo → Settings → Business hours, as decided on 22 Oct 2026: Sun–Thu 11:30–22:00 (last online start 20:00); Fri–Sat 11:30–00:00 with `close_time = 00:00`, `close_next_day = true` (last online start 22:00). Afterwards, check the preflight `hours` rows show these last starts. | **APPROVAL** (hours change) |
+| B2 | Approve the guest-confirmation routine (proposed: 10-minute review while open) ([`KANEL_Guest_Confirmation_SOP.md`](KANEL_Guest_Confirmation_SOP.md)), and publish the privacy notice ([`KANEL_Booking_Privacy_Notice.md`](KANEL_Booking_Privacy_Notice.md)) after legal review. | Owner decision |
 | B3 | Set the salt: `supabase secrets set --project-ref dnefgcmjcgxlynycxkts PUBLIC_BOOKING_SALT="$(openssl rand -hex 32)"`. Never commit it or paste it in chat. Without a salt of at least 16 characters, the function answers 503 to every enabled call (fail-safe). | **APPROVAL** (secret) |
 | B4 | Check `PUBLIC_BOOKING_TRUSTED_HOPS` (default 1). See §6.2 check 5. If it is wrong, all guests share one rate-limit bucket (8 requests / 10 min in total). | **APPROVAL** if changed |
 | B5 | Edge flag: `supabase secrets set … PUBLIC_BOOKING_ENABLED=true`. The endpoint now answers, but the DB flag still refuses. | **APPROVAL** (flag) |

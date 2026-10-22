@@ -11,8 +11,15 @@ PR diff. No test was changed, skipped, retried or loosened to get these results.
 |---|---|---|
 | `81877a6` (owner-verified) | 444 passed, 2 failed, 1 skipped | `atlas-bot.browser.test.mjs:578` ("timeout waiting for success to return to idle"); `ux-acceptance.browser.test.mjs:69` (`#data` header top 1, expected 0) |
 | `af98362` (docs-only change vs `81877a6`) | 2 failed | `atlas-bot.browser.test.mjs:578` (same); `home-operations.browser.test.mjs:207` (`1 !== 2`). **`ux-acceptance` passed.** |
+| `b26b82e` (release tooling + docs; app code unchanged) | 445 passed, 1 failed, 1 skipped | `ux-acceptance.browser.test.mjs:69` (`#data` header top 1, expected 0). **`atlas-bot` and `home-operations` passed.** |
 
-`af98362` changed only Markdown. The code and tests the browser job runs are
+**Release exception (owner decision, 22 Oct 2026):** the remaining
+`ux-acceptance:69` failure is accepted as an identified release exception, on the
+evidence that it fails on earlier `main` commits. This does not permit weakening the
+test, and it is not approval to merge.
+
+`af98362` changed only Markdown, and `b26b82e` changed only release SQL, scripts,
+the replay workflow and docs. The code and tests the browser job runs are
 byte-identical between the two heads, yet the set of failing tests differs.
 
 Local results in this environment are **not** CI evidence and are not used here.

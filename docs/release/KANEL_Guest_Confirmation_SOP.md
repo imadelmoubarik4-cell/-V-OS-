@@ -1,11 +1,34 @@
 # KANEL — guest confirmation procedure (until automated emails exist)
 
-**Status: proposed. Owner to approve before Phase B activation.**
+**Status: proposed (revised 22 Oct 2026). Owner to approve before Phase B
+activation.** Prerequisite: the staff booking inbox (runbook A7) is working, and gate
+B0 (how staff are alerted) is decided.
 
 While email delivery is off, **a guest learns the outcome of a web request only when
 KANEL staff contact them.** The website tells the guest their request is *not* a
 confirmed reservation and shows a `KA-XXXXXX` reference. There is no status page and
 no automatic email. (Alcedo queues guest emails in a sealed outbox, but sends none.)
+
+## Why 10 minutes: the 15-minute seat hold
+
+When a guest submits a request, Alcedo holds suitable seats for **15 minutes**. Until
+staff confirm it, the request is not a booking and the seats are not assigned. When
+the hold ends, the request stays **Requested**, but its seats are free again. Another
+guest or a staff booking can then take them.
+
+- **Target: review within 10 minutes while open.** That leaves about 5 minutes
+  before the hold lapses, so the seats the guest saw are usually still free when you
+  assign them.
+- **Past 15 minutes, nothing is cancelled**, but assigning may fail. Then pick other
+  stools or offer another time. Never promise the original time without assigning
+  first.
+- **Requests made while KANEL is closed** (late at night, or for a later date)
+  will have lost their hold by the time anyone looks. Review them first thing at
+  opening and expect to re-pick seats.
+
+The hold length is a booking setting (`public_hold_minutes`, default 15, allowed
+1–120). Lengthening it protects the guest's seats but blocks them from other guests
+for longer. Changing it is a separate owner decision.
 
 **The one rule:** never tell a guest, in any channel, that a booking is confirmed
 until staff have (1) approved it in Alcedo and (2) told the guest. "We've received
@@ -16,18 +39,21 @@ your request" is not a confirmation.
 | Decision | Suggestion |
 |---|---|
 | Who monitors requests, by shift | Manager on duty; owner as backup |
-| Response target | Within 2 hours while open; by 12:00 next day for requests that arrive while closed |
+| Response target | **10 minutes while open** (proposed); requests made while closed are handled within 30 minutes of opening |
+| How staff notice new requests | See runbook gate B0. With push off, the bell does **not** update on a screen left open. Until (a) or (b) is approved, the manager on duty reopens or refocuses Alcedo at least every 10 minutes. |
 | Same-day requests | Phone (not email) if the visit is under 4 hours away |
 | Minimum notice for web requests | Not enforced by the system today. Decide whether same-day requests are acceptable. |
 | Group requests (5+) | Website sends them to email/phone (online limit 1–4); handle as today |
 
 ## Routine
 
-1. **Check.** At opening, every two hours while open, and at closing: open Alcedo →
-   Bookings. Web requests show as **Requested**. If the staff inbox is enabled
-   (Phase A7), managers also see them in the bell.
-2. **Act quickly.** A web request holds its seats for about **15 minutes** only.
-   After that the seats can be taken by someone else, so assigning may fail.
+1. **Check.** At opening, at least every 10 minutes while open, and at closing.
+   Look at the bell (booking inbox) and Alcedo → Bookings, where web requests show
+   as **Requested**. Switching to Alcedo, or reopening it, refreshes the bell.
+2. **Act within 10 minutes.** Assign seats while the 15-minute hold still protects
+   them. If you intend to accept but can't reach the guest yet, you may assign
+   the seats first. This marks the booking **Confirmed** in Alcedo only. The guest
+   is still not told until step 4. If it then falls through, **Cancel** it.
 3. **Decide in Alcedo first** (open the booking):
    - **Approve:** assign seats. Assigning seats to a web request confirms it, and
      the status becomes **Confirmed**. (Alcedo refuses **Confirm** until seats are
