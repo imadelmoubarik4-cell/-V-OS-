@@ -21,24 +21,27 @@ flag flipped, no email sent. Activation is owner-gated and strictly sequenced.
   inbox) and `PUBLIC_BOOKING_ENABLED` (guest website/edge) — both OFF; neither
   implies the other.
 
-## Validation evidence (local, pre-release)
+## Validation evidence
 
-### Authoritative CI (GitHub, head `81877a6`)
+### Authoritative CI (GitHub)
 
-- `contracts` (required): **green.**
-- `replay` (required): **green.**
-- Browser suite: **444 passed, 2 failed, 1 skipped — not fully green.** The two
-  failing tests are:
-  - `atlas-bot.browser.test.mjs` — timeout waiting for success to return to idle.
-  - `ux-acceptance.browser.test.mjs` — `#data` header top offset 1 instead of 0.
+- `contracts` (required) and `replay` (required): **green** at `81877a6` and `af98362`.
+  From this release onward, `replay` also proves the S106–S109 rollback and
+  re-apply (runbook §2).
+- Browser suite: **not fully green.**
+  - At `81877a6` (owner-verified): 444 passed, 2 failed, 1 skipped
+    (`atlas-bot:578`, `ux-acceptance:69`).
+  - At `af98362` (docs-only change): 2 failed (`atlas-bot:578`,
+    `home-operations:207`); `ux-acceptance` passed.
+  - Evidence and classification:
+    [`KANEL_PR135_Browser_CI_Evidence.md`](KANEL_PR135_Browser_CI_Evidence.md).
+    `atlas-bot:578` and `ux-acceptance:69` also fail on `main` before PR #135.
+    `home-operations:207` is non-deterministic on identical code, and no PR cause
+    was found. No test was weakened.
 - The 19 Accounting failures seen at `ada6668` are **absent** at `81877a6`.
-- `disposable PostgreSQL 17` ("Production adoption dry run"): red — the
-  `adjust_inventory` lint documented in the S106 impact doc.
-
-The two browser failures above are **open and not yet explained with baseline
-evidence**; they are **not** labelled pre-existing here and were not investigated
-(no further implementation was requested). They must be understood before this PR
-is treated as release-ready.
+- `disposable PostgreSQL 17` ("Production adoption dry run"): red. This is the
+  `adjust_inventory` lint, which fails identically on a clean `main`. See the S106
+  impact doc.
 
 ### Local checks (this environment only — distinct from CI; do not conflate)
 
@@ -54,33 +57,23 @@ is treated as release-ready.
   diverge and neither set substitutes for the other.
 - Python contracts: s106/s107/s108/s109 + S42 cutover + S34 — all passed.
 
-## Release sequence (each step owner-approved, in order)
+## Release sequence and activation gate
 
-1. **Apply DB migrations s106→s109** to production. Review the S106 production
-   impact + rollback first. No public surface added; both flags stay off.
-2. **Deploy `atlas-bookings`** (authenticated staff edge, now with the inbox
-   actions). Still no behaviour change until a flag is set.
-3. **Enable the staff inbox:** set `BOOKING_NOTIFICATIONS_ENABLED=true` (config.js),
-   re-pin the S42 manifest, deploy the web bundle. Staff-only; no guest exposure.
-4. **(Separate, later) Public guest booking:** build + review the KANEL website
-   form, deploy `atlas-public-booking`, then set ALL of: edge
-   `PUBLIC_BOOKING_ENABLED=true` + strong `PUBLIC_BOOKING_SALT`, DB
-   `public_online_enabled=true`, frontend `PUBLIC_BOOKING_ENABLED=true`.
-5. **(Separate, later) Email delivery:** approve a provider + authenticated
-   `kanel@kanel.is` domain, add the secret-gated dispatch worker, then drain the
-   outbox. Not before.
+Superseded by the production release runbook and checklist, which reflect the
+owner-confirmed production state (22 Oct 2026: S105, `atlas-public-booking` not
+deployed, 30 / 0 settings):
 
-## Pre-activation gate (must all be true before step 4)
+- [`KANEL_Bookings_Release_Runbook.md`](KANEL_Bookings_Release_Runbook.md):
+  exact sequence, S106 staff impact, backup, rollback tiers, secrets, flags, and
+  end-to-end tests.
+- [`KANEL_Go_Live_Checklist.md`](KANEL_Go_Live_Checklist.md): every action that
+  needs owner approval.
+- [`KANEL_Guest_Confirmation_SOP.md`](KANEL_Guest_Confirmation_SOP.md) and
+  [`KANEL_Booking_Privacy_Notice.md`](KANEL_Booking_Privacy_Notice.md) (EN/IS drafts).
 
-- [ ] Owner has approved the S106 staff-behaviour changes and the production apply.
-- [ ] KANEL website (Moss & Stone / kanel.is) source connected and the booking
-      form built + reviewed (Phase 4 — currently BLOCKED on the source).
-- [ ] `PUBLIC_BOOKING_SALT` provisioned as an edge secret (strong, ≥16 chars).
-- [ ] CORS origins confirmed for the live KANEL domain(s).
-- [ ] Authoritative KANEL opening hours confirmed by the owner (the engine reads
-      `settings_business_hours`; they must be set to KANEL's real schedule, not a
-      prior venue's).
-- [ ] Rate-limit thresholds reviewed for expected live traffic.
+The KANEL website integration is done and deployed with booking **off**
+(`KANEL_BOOKING.enabled:false` on Netlify `kanelbar`). Switching it on is runbook
+step B8.
 
 ## Explicit non-goals of this PR
 
