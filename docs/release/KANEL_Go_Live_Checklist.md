@@ -6,7 +6,7 @@ to the next. The runbook section is in brackets:
 [`KANEL_Bookings_Release_Runbook.md`](KANEL_Bookings_Release_Runbook.md).
 
 Current state (23 Oct 2026): **production is at S109** (A3 applied 07:31 UTC). A1, A2,
-A2.9, A3 and the A4 database checks are done; the A4 staff check in Alcedo is pending. Nothing has been applied, deployed or switched on. Public
+A2.9, A3 and the A4 database checks are done; the A4 staff check in Alcedo is pending. Nothing has been merged, deployed or switched on. Public
 reservations are off. kanel.is is untouched.
 
 ## 0. Owner decisions
