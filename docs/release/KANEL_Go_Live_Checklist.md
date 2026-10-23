@@ -5,8 +5,8 @@ owner's explicit approval for that action. Approval of one row does not carry ov
 to the next. The runbook section is in brackets:
 [`KANEL_Bookings_Release_Runbook.md`](KANEL_Bookings_Release_Runbook.md).
 
-Current state (23 Oct 2026): production is at S105. A1 (read-only preflight) is done.
-A2 (backup) is complete. Nothing has been applied, deployed or switched on. Public
+Current state (23 Oct 2026): **production is at S109** (A3 applied 07:31 UTC). A1, A2,
+A2.9, A3 and the A4 database checks are done; the A4 staff check in Alcedo is pending. Nothing has been applied, deployed or switched on. Public
 reservations are off. kanel.is is untouched.
 
 ## 0. Owner decisions
@@ -47,12 +47,12 @@ still needs its own approval.
 | [ ] | A0 | Staging rehearsal on a Supabase branch: apply, test, roll back, re-apply, delete the branch | 🔒 APPROVAL | test output |
 | [x] | A1 | Run `KANEL_preflight_readonly.sql` (read-only). No FAIL; owner decides on each WARN | — (read-only) | **Done 22 Oct 2026 by the owner, file from `b26b82e`:** 17 PASS · 13 INFO · 0 WARN · 0 FAIL. Ledger at S105; no S106–S109 rows; no future active bookings or conflicting allocations; Bar 1–16 passes all checks. Read-only; nothing changed. |
 | [x] | A2 | Record the backup / PITR time; export the booking tables and schema; save the snapshot JSON; encrypt; verify | ✅ APPROVED (22 Oct) · ✅ **COMPLETE** (23 Oct 2026, owner-confirmed) | [`evidence/KANEL_A2_Backup_Evidence_20261022.md`](evidence/KANEL_A2_Backup_Evidence_20261022.md). Logical export verified restorable (11/11 checksums). Archive encrypted to the owner's GPG key (fingerprint `4E1B…DA58`), SHA-256 `d40ae31d…19f15b`. Owner confirmed download, decryption and the `.tar` hash. **Limitation:** physical backup not restore-tested (PITR off; latest daily backup 2026-10-23 04:25 UTC). |
-| [ ] | A2.9 | **Fresh preflight immediately before A3.1**, using the same file from the release commit. Must again show 0 FAIL, and the owner reviews any new WARN (for example, new bookings made since A1). If A3 is not started straight away, run it again. | — (read-only) — **mandatory** | CSV export, time run |
-| [ ] | A3.1 | Run `KANEL_apply_1_s106_bookings_engine.sql` | 🔒 APPROVAL (production DB) | SQL editor result |
-| [ ] | A3.2 | Run `KANEL_apply_2_s107_public_booking_api.sql` | 🔒 APPROVAL | result |
-| [ ] | A3.3 | Run `KANEL_apply_3_s108_booking_notifications.sql` | 🔒 APPROVAL | result |
-| [ ] | A3.4 | Run `KANEL_apply_4_s109_booking_notifications_inbox.sql` | 🔒 APPROVAL | result |
-| [ ] | A4 | Post-apply checks (ledger S105…S109; settings 4 / 15 / `public_online_enabled=false`; zero web rows) and the staff booking check in Alcedo | — (read-only + test booking) | results |
+| [x] | A2.9 | **Fresh preflight immediately before A3.1**, using the same file from the release commit. Must again show 0 FAIL, and the owner reviews any new WARN (for example, new bookings made since A1). If A3 is not started straight away, run it again. | — (read-only) — **mandatory** | CSV export, time run | **Done 07:29 UTC:** 17 PASS / 13 INFO / 0 WARN / 0 FAIL; data unchanged since A2. [`evidence/KANEL_A3_A4_Evidence_20261023.md`](evidence/KANEL_A3_A4_Evidence_20261023.md)
+| [x] | A3.1 | Run `KANEL_apply_1_s106_bookings_engine.sql` | ✅ APPROVED (23 Oct 2026) | applied 07:31:18 UTC; ledger `20261023090000` |
+| [x] | A3.2 | Run `KANEL_apply_2_s107_public_booking_api.sql` | ✅ APPROVED (23 Oct 2026) | applied 07:31:30 UTC; ledger `20261024090000` |
+| [x] | A3.3 | Run `KANEL_apply_3_s108_booking_notifications.sql` | ✅ APPROVED (23 Oct 2026) | applied 07:31:31 UTC; ledger `20261025090000` |
+| [x] | A3.4 | Run `KANEL_apply_4_s109_booking_notifications_inbox.sql` | ✅ APPROVED (23 Oct 2026) | applied 07:31:32 UTC; ledger `20261026090000` |
+| [ ] | A4 | Post-apply checks (ledger S105…S109; settings 4 / 15 / `public_online_enabled=false`; zero web rows) and the staff booking check in Alcedo | — (read-only + test booking) | results | **DB checks done** (settings 4 / 15 / off; 17/17 functions and 2/2 constraints match CI-tested S109; guest RPCs service_role only). **Pending:** the staff booking check in Alcedo. [`evidence/KANEL_A3_A4_Evidence_20261023.md`](evidence/KANEL_A3_A4_Evidence_20261023.md)
 | [ ] | A5 | Mark PR #135 ready and **merge**. Netlify deploys app.alcedo.is with both web flags off | 🔒 APPROVAL (merge + web deploy) | merge SHA, Netlify deploy id |
 | [ ] | A6 | `supabase functions deploy atlas-bookings` from merged `main` | 🔒 APPROVAL (edge deploy) | CLI output |
 | [ ] | A7 | Separate PR: `BOOKING_NOTIFICATIONS_ENABLED: true` plus the S42 re-pin; merge → Netlify | 🔒 APPROVAL (frontend flag) | PR, deploy id |

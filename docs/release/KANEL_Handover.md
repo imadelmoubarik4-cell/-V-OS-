@@ -13,9 +13,9 @@ Read this first in a new chat. Then read, in this order:
 | Branch | `claude/kanel-online-bookings` (head `a67364e` at handover, or later) |
 | PR | **#135**, **draft**, not merged. Base `main` at `e14ccf6` (main has not moved). |
 | Supabase project | `dnefgcmjcgxlynycxkts` (`vabar-inventory`), region **eu-west-1**, Postgres 17.6 |
-| Production DB | **S105** (`20261022090000`). S106–S109 **not applied**. |
+| Production DB | **S109** — S106–S109 applied 23 Oct 2026 07:31 UTC (A3). `public_online_enabled=false`. |
 | Edge functions | `atlas-bookings` deployed (from main). `atlas-public-booking` **not deployed**. |
-| Production settings | `max_party_online = 30`, `turnaround_minutes = 0`; 0 reservations |
+| Production settings | `max_party_online = 4`, `turnaround_minutes = 15` (since A3); 0 reservations |
 | Staff web app | app.alcedo.is, Netlify; deploys automatically on merge to `main` |
 | KANEL website | kanel.is, Netlify project `kanelbar`; deployed by the owner with booking **off** (`KANEL_BOOKING.enabled:false`). **Do not touch it or prepare another package.** |
 
@@ -62,7 +62,8 @@ Read this first in a new chat. Then read, in this order:
 | **A1 preflight** | ✅ **done** by the owner from `b26b82e`: 17 PASS / 13 INFO / 0 WARN / 0 FAIL |
 | **A2 backup** | ✅ **COMPLETE** (23 Oct 2026; owner-confirmed; physical backup not restore-tested) |
 | A2.9 fresh preflight | **mandatory** immediately before A3.1 |
-| A3.1–A3.4 apply S106–S109 | **not approved**. The owner will authorise the next stage separately. |
+| A2.9 / A3.1–A3.4 | ✅ done 23 Oct 2026 (`evidence/KANEL_A3_A4_Evidence_20261023.md`) |
+| A4 | DB checks ✅; staff check in Alcedo pending |
 | A4–A8, B0–B9, Phase C | not approved |
 
 ## 5. A2: complete (23 Oct 2026). History below
