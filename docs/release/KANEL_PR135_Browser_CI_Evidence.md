@@ -147,3 +147,29 @@ condition, two events, deep link), `atlas-shell.js` (one route), and
 Same blocker as documented: `security_lint_blockers: ['adjust_inventory is not a
 caller-evaluated manager-only RPC']`, `controlled_adjustment.adjust_inventory_safe:
 false`. It also fails on a clean `main` (S106 impact doc). This is the baseline issue.
+
+## Update — `ca8933e` (23 Oct 2026): S110 + staff seat picker
+
+GitHub CI on `ca8933e`, which adds the S110 migration, the seat picker and 8 new
+browser tests:
+
+| Check | Result |
+|---|---|
+| `contracts` (required) | ✅ green |
+| `replay` (required): full replay, S99/S106–S110 acceptances, S110 → S106–S109 rollback proof, re-apply via bundles 1–5 | ✅ green |
+| Browser | 455 tests: **452 pass, 2 fail, 1 skip**. **All bookings tests pass**: `bookings` 8/8, `bookings-seats` 8/8 (new), `bookings-notifications` 5/5. |
+| `disposable PostgreSQL 17` | red. Identical `adjust_inventory is not a caller-evaluated manager-only RPC` baseline. |
+
+The two browser failures:
+- `atlas-bot:578` ("success returns to idle"): fails before PR #135 (`6dea4ff`,
+  `0babc4b`, `187f276`, all in `main`'s history). **Existing instability.**
+- `atlas-bot:690` ("an AI task starts thinking": `awake` instead of `thinking`):
+  fails before PR #135 at `ce4f1be` (in `main`'s history) and `d3fdef5`.
+  **Existing instability.**
+
+PR #135 changes no atlas-bot code. No test was weakened. The `ux-acceptance:69`
+exception does not cover these; they are recorded on their own evidence.
+
+Local note: a full local browser run was lost to a container restart. The bookings
+suites (21/21), Node (1628/0), SQL and Python results were completed locally before
+the restart.
