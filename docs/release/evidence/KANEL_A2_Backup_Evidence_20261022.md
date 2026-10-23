@@ -100,6 +100,24 @@ A2 is completed only when the owner confirms (1) they hold the archive and its
 SHA-256 matches, and (2) they have a working way to decrypt it, using a key
 delivered to an owner-controlled age/GPG public key.
 
+## Key transfer (23 Oct 2026)
+
+The archive was re-encrypted to the owner's GPG public key. The plaintext went
+through a pipe and was never written to disk. The owner holds the private key in
+Kleopatra; it was never in this session.
+
+| Item | Value |
+|---|---|
+| Recipient | `KANEL  private <kanel@kanel.is>`; primary key fingerprint `4E1B 6BE0 5AA8 D574 BBDB 4463 A198 A517 34A2 DA58`; encryption subkey `694D296FF25C1EB4` (cv25519) |
+| File | `KANEL_A2_pre_s106_backup_20261022_for_KANEL_private.tar.gpg` (2,776,420 bytes; AES-256; single recipient) |
+| SHA-256 (.gpg) | `d40ae31dc2136c5b6bda7631072e8d4b9eb5a548f2eb0341231cc676d619f15b` |
+| SHA-256 of the decrypted `.tar` (must match) | `494df88530955f84ee214ac10b2990bba5d732531172b483198ecbec1cc33363` |
+| Delivered | to the owner as a file download, 23 Oct 2026 |
+
+**A2 stays PENDING** until the owner confirms the download hash, successful
+decryption and the `.tar` hash. The passphrase-protected original and its
+passphrase are kept until then, as the owner asked.
+
 ## Open items (owner)
 
 1. **Off-container storage.** This cloud container is temporary. The encrypted
