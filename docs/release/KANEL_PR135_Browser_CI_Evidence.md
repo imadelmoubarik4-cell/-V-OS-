@@ -1,6 +1,12 @@
 # PR #135 — browser CI failures: regression or baseline? (evidence)
 
 Question: are the unresolved browser CI failures on PR #135 caused by the PR?
+Note on wording: the browser workflow (`atlas-verify.yml`) runs on **pull requests
+only**, never on pushes to `main`. "`main` evidence" below means CI runs of commits
+that are now in `main`'s history (`6dea4ff`, `0babc4b`, `187f276`, `ce4f1be`, from
+the `claude/employee-deletion` PR), plus runs of other branches that never contained
+PR #135's code.
+
 Method: compare failing assertions with (a) `main` CI runs from before PR #135
 existed, (b) PR runs on different commits with identical code under test, and (c) the
 PR diff. No test was changed, skipped, retried or loosened to get these results.
@@ -87,3 +93,57 @@ condition, two events, deep link), `atlas-shell.js` (one route), and
   not caused by the PR, **or** waits for the stabilisation PR. Owner decision.
 - Re-check browser CI on the final head before merging. The failing set has varied
   between runs.
+
+## Update — `a788bf7` (23 Oct 2026): three `atlas-bot` failures
+
+`a788bf7`: 447 tests, 443 pass, **3 fail**, 1 skip. All three failures are in
+`tests/browser/atlas-bot.browser.test.mjs`, the live WebGL robot:
+
+| Test | Error at `a788bf7` |
+|---|---|
+| `:85` live 3D robot draws, greets, follows, reacts | `page.screenshot: Timeout 10000ms exceeded` |
+| `:368` WebGL context lost → restored | `Timed out waiting for the robot is drawn again after the restore` |
+| `:734` answering never restarts | `it kept moving` (frame counter did not advance during 30 animation frames) |
+
+### Evidence
+
+1. **Identical code passes.** Between `b26b82e` and `a788bf7` only `docs/` changed.
+   Browser CI on the same app and test code had a **fully green** browser job at
+   `54491e9` (started 15 s before `a788bf7`; differs by one Markdown line),
+   `6a1904c`, `2ae1d7f`, `98d59b2` and `a67364e`. Other runs on this code failed
+   only `atlas-bot:578` (`3ea337a`, `7d06828`) or `ux-acceptance:69` (`b26b82e`).
+2. **The PR does not touch this code.** PR #135 changes no atlas-bot code and no
+   atlas-bot test. Its only shared-test change (`harness.mjs` `configOverrides`) is
+   inert unless a test passes it, and atlas-bot never does.
+3. **History of the same tests before PR #135** (19 CI logs; two rows re-verified by
+   hand against the raw logs):
+
+| Test | Failed before PR #135 (no PR #135 code) |
+|---|---|
+| `atlas-bot:85` | `0babc4b` (in `main` history), `b25363a` |
+| `atlas-bot:368` | `b853fe0`, `3d3b6ec`, `4fc4b8c`, `b15bfb1` |
+| `atlas-bot:734` | **not seen** in the 19 sampled runs |
+
+   The atlas-bot suite as a whole fails intermittently across branches: lines 85,
+   156, 264, 368, 488, 520, 578, 690 and 734 each fail in some runs, always as
+   timeouts or frame/timing assertions in the WebGL render loop.
+4. **Local repetition** (headless Chromium, the three tests only, 10 runs each):
+   `main` `e14ccf6` **30/30 pass**; PR head `a788bf7` **30/30 pass**.
+
+### Classification
+
+- `atlas-bot:85` and `:368`: **existing instability.** They fail the same way on
+  code without PR #135.
+- `atlas-bot:734`: **non-deterministic on identical code; no regression found.**
+  It passes on `main` and the PR head locally (10/10 each) and in CI on five other
+  heads with the same code, and the PR does not touch it. **Limit:** it has not been
+  observed failing before PR #135, so it is **not proven** to be a pre-existing
+  failure. It belongs to the same timing-sensitive WebGL suite as the proven ones.
+- None of these is covered by the `ux-acceptance:69` exception. Each needs its own
+  owner decision.
+
+### Production-adoption dry run at `a788bf7`
+
+Same blocker as documented: `security_lint_blockers: ['adjust_inventory is not a
+caller-evaluated manager-only RPC']`, `controlled_adjustment.adjust_inventory_safe:
+false`. It also fails on a clean `main` (S106 impact doc). This is the baseline issue.
