@@ -18,6 +18,7 @@ were changed. Every database access was a read-only query
 | Postgres | 17.6 |
 | PITR | **disabled** (`pitr_enabled: false`); WAL-G enabled |
 | Latest physical backup | id `2034882394`, **COMPLETED**, `2026-10-22T04:46:12Z` |
+| Next daily backup | id `2044351775`, **COMPLETED**, `2026-10-23T04:25:05Z` (checked 2026-10-23 06:45 UTC) |
 | Earlier daily backups | COMPLETED on 21, 20, 19, 18, 17, 16 (×2) and 15 Oct |
 | Restore test of the physical backup | **Not performed.** It requires restoring to a new project (billable) or to production (destructive). Neither is approved. |
 
@@ -86,6 +87,18 @@ The repo migrations (replayed in CI) plus the tested rollback are what rebuild S
 | SHA-256 (.gpg) | `77f01145d74ee1cbfbee269a2058997beb7bfbb23c8353056f5b44d220273bd0` |
 | Location | Session scratchpad (`…/scratchpad/a2/`, mode 0600); passphrase in a separate file (mode 0600). **Not committed to git.** |
 | Plaintext | All plaintext exports, the tar, the verification copies and the local restore databases were shredded or dropped after verification. |
+
+## Owner decision (23 Oct 2026)
+
+The owner chose **option (a)**: the verified logical export, matching checksums,
+local restore tests and the successful rollback rehearsal are accepted as sufficient
+backup preparation for this release. No paid staging project and no PITR upgrade.
+**The limitation stands:** the complete Supabase physical backup has not been
+restore-tested.
+
+A2 is completed only when the owner confirms (1) they hold the archive and its
+SHA-256 matches, and (2) they have a working way to decrypt it, using a key
+delivered to an owner-controlled age/GPG public key.
 
 ## Open items (owner)
 
