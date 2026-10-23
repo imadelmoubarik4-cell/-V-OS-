@@ -83,5 +83,7 @@ jobs:
         run: bash scripts/verify_s108_booking_notifications.sh
       - name: Run S109 in-app inbox acceptance (per-manager inbox + unread + mark-read RPCs manager-only, public_token-gated legacy skip, declined vs cancelled vs no_show, DB flag enforced, conflicting idempotency refused, outbox de-dup)
         run: bash scripts/verify_s109_booking_notifications_inbox.sh
-      - name: Prove the S106–S109 rollback (LAST — rolls the replayed DB back to S105, then re-runs main's pre-S106 staff booking acceptance)
+      - name: Run S110 seat-integrity acceptance (parties 1–4 adjacent in one section, capacity, cross-section and gaps refused on create and move, duplicates/unavailable seats refused, 15-min turnaround with same-day reuse, viewer denied)
+        run: bash scripts/verify_s110_booking_seat_integrity.sh
+      - name: Prove the S110 and S106–S109 rollbacks (LAST — rolls the replayed DB back to S105, re-runs main's pre-S106 staff booking acceptance, then re-applies S106–S110 via the reviewed bundles)
         run: bash scripts/release/verify_kanel_bookings_rollback.sh

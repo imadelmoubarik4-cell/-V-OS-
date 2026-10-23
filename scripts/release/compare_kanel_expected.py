@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Compare a structural snapshot (kanel_bookings_snapshot.sql) with the S105 state in
-kanel_pre_s106_expected.json.
+"""Compare a structural snapshot (kanel_bookings_snapshot.sql) with an expected pre-release state (S105:
+kanel_pre_s106_expected.json; S109: kanel_pre_s110_expected.json).
 
   --mode rollback (default): after a rollback — restored objects must equal S105 AND the
       release's functions/trigger must be absent.
@@ -43,5 +43,5 @@ if problems:
     for p in problems:
         print("  -", p)
     sys.exit(1)
-print(f"{label}: all {len(exp['restored_functions'])} functions, {len(exp['restored_constraints'])} constraints match S105; "
+print(f"{label}: all {len(exp['restored_functions'])} functions, {len(exp['restored_constraints'])} constraints match the expected state; "
       f"{len(exp['release_functions'])} release functions and {len(exp['release_triggers'])} trigger absent")

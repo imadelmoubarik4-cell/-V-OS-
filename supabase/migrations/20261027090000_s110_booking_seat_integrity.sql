@@ -1,0 +1,352 @@
+-- S110 — Booking seat integrity (KANEL × ALCEDO online bookings).
+--
+-- Closes the A4 functional findings (docs/release/KANEL_A4_Blocker_Multi_Seat.md):
+--   B1  staff assign/move did not check that the chosen seats hold the party;
+--   B2  staff create with explicitly chosen seats did not apply the S106
+--       adjacency / single-section rule;
+--   plus: duplicate seat ids, seats that are not bookable / temporarily
+--   unavailable / inside an unavailable_from–unavailable_until window, and
+--   moving a booking now records its new location.
+--
+-- One authoritative rule set, atlas_private.booking_check_seat_group, is used by
+-- create (auto-assigned and explicit seats) and assign/move. booking_table_json
+-- gains the read-only 'segment' (section) so the staff UI can explain refusals;
+-- the server stays authoritative. No table, column, data or grant change.
+-- Staff authorisation is unchanged (booking_require_staff). Idempotent.
+
+-- 1. Seat-group rule (sealed helper; raises on the first broken rule) ----------
+create or replace function atlas_private.booking_check_seat_group(
+  p_table_ids uuid[], p_area_id uuid, p_party integer,
+  p_start timestamptz, p_end timestamptz, p_ignore_reservation uuid
+)
+returns uuid
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $function$
+declare
+  n integer := coalesce(pg_catalog.cardinality(p_table_ids), 0);
+  found_n integer;
+  areas_n integer;
+  v_area uuid;
+  a atlas_private.booking_areas;
+  capacity integer;
+  tid uuid;
+begin
+  if n < 1 then
+    raise exception 'Choose at least one seat.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if (select pg_catalog.count(distinct x) from pg_catalog.unnest(p_table_ids) x) <> n
+     or pg_catalog.array_position(p_table_ids, null) is not null then
+    raise exception 'A seat was chosen more than once.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  -- Lock the chosen seats (stable order) so concurrent writers serialise on them.
+  perform 1 from atlas_private.booking_tables t where t.id = any(p_table_ids) order by t.id for update;
+
+  select pg_catalog.count(*), pg_catalog.count(distinct t.area_id), (pg_catalog.array_agg(distinct t.area_id))[1],
+         coalesce(pg_catalog.sum(t.seat_capacity), 0)::int
+    into found_n, areas_n, v_area, capacity
+  from atlas_private.booking_tables t where t.id = any(p_table_ids);
+  if found_n <> n then
+    raise exception 'A chosen seat does not exist.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if areas_n <> 1 then
+    raise exception 'Selected seats must belong to one location.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if p_area_id is not null and v_area <> p_area_id then
+    raise exception 'Selected seats do not belong to this location.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  select * into a from atlas_private.booking_areas where id = v_area;
+  if a.id is null or not a.is_active or a.allocation_mode <> 'tables' then
+    raise exception 'That location does not take seat bookings.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  if exists (
+    select 1 from atlas_private.booking_tables t
+    where t.id = any(p_table_ids)
+      and (not t.is_bookable or t.temporarily_unavailable
+           or (t.unavailable_from is not null and t.unavailable_until is not null
+               and t.unavailable_from < p_end and t.unavailable_until > p_start))
+  ) then
+    raise exception 'A selected seat is not available for booking.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  if not atlas_private.booking_tables_contiguous_segment(p_table_ids) then
+    raise exception 'Those stools are not one adjacent group within a single seating section.'
+      using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  if capacity < coalesce(p_party, 1) then
+    raise exception 'Choose enough seats for this party.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  -- Free for the window, including the turnaround buffer (booking_table_free).
+  foreach tid in array p_table_ids loop
+    if not atlas_private.booking_table_free(tid, p_start, p_end, p_ignore_reservation) then
+      raise exception 'A selected seat is not free for that time.' using errcode = '23505', hint = 'atlas:conflict';
+    end if;
+  end loop;
+  return v_area;
+end
+$function$;
+revoke all on function atlas_private.booking_check_seat_group(uuid[], uuid, integer, timestamptz, timestamptz, uuid)
+  from public, anon, authenticated;
+
+-- 2. Table JSON: add the read-only section ('segment') -------------------------
+create or replace function atlas_private.booking_table_json(p_table_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select case when t.id is null then null else pg_catalog.jsonb_build_object(
+    'id', t.id, 'area_id', t.area_id, 'label', t.label,
+    'seat_capacity', t.seat_capacity, 'min_party', t.min_party, 'priority', t.priority,
+    'is_bookable', t.is_bookable, 'block_online', t.block_online,
+    'temporarily_unavailable', t.temporarily_unavailable,
+    'unavailable_from', t.unavailable_from, 'unavailable_until', t.unavailable_until,
+    'floor_x', t.floor_x, 'floor_y', t.floor_y, 'shape', t.shape,
+    'position_index', t.position_index, 'segment', t.segment
+  ) end
+  from atlas_private.booking_tables t where t.id = p_table_id;
+$function$;
+revoke all on function atlas_private.booking_table_json(uuid) from public, anon, authenticated;
+
+-- 3. Staff create: the S103 body verbatim, with its allocation checks replaced by
+--    the seat-group rule (auto-assigned and explicitly chosen seats alike).
+create or replace function public.atlas_bookings_create(p_actor_id uuid, p_actor_role text, p_payload jsonb)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $function$
+declare
+  label text := atlas_private.booking_require_staff(p_actor_id, p_actor_role);
+  p jsonb := coalesce(p_payload, '{}'::jsonb);
+  s atlas_private.booking_settings;
+  v_party integer := (p->>'party_size')::int;
+  v_start timestamptz := (p->>'start_at')::timestamptz;
+  v_dur interval;
+  v_end timestamptz;
+  v_source text := coalesce(nullif(p->>'source',''), 'phone');
+  v_idem text := nullif(p->>'idempotency_key','');
+  v_force_status text := nullif(p->>'status','');
+  v_area_id uuid := (nullif(p->>'area_id',''))::uuid;
+  v_area atlas_private.booking_areas;
+  v_ref text;
+  v_res_id uuid := gen_random_uuid();
+  v_status text;
+  v_table_ids uuid[];
+  v_auto uuid;
+  existing atlas_private.reservations;
+  tid uuid;
+  table_area_count integer;
+begin
+  if pg_catalog.jsonb_typeof(p) <> 'object' or v_party is null or v_party < 1 or v_start is null then
+    raise exception 'A booking needs a party size and a start time.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if v_source not in ('web','phone','walk_in','dineout','other') then
+    raise exception 'Unknown booking source.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  if v_idem is not null then
+    select * into existing from atlas_private.reservations where idempotency_key = v_idem;
+    if existing.id is not null then
+      return pg_catalog.jsonb_build_object('reservation', atlas_private.booking_reservation_json(existing.id), 'replayed', true);
+    end if;
+  end if;
+
+  select * into s from atlas_private.booking_settings where id = true;
+  v_dur := pg_catalog.make_interval(mins => least(120, atlas_private.booking_duration_minutes(v_party)));
+  v_end := v_start + v_dur;
+
+  if v_source = 'web' then
+    if v_party > coalesce(s.max_party_online,30) then
+      raise exception 'That party is too large for online booking.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+    if v_start > pg_catalog.now() + pg_catalog.make_interval(days => s.advance_days) then
+      raise exception 'That date is outside the advance booking window.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+    if v_start::time > s.last_start_local then
+      raise exception 'That start time is later than the last online booking.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+  end if;
+
+  if pg_catalog.jsonb_typeof(p->'table_ids') = 'array' then
+    select pg_catalog.array_agg((value #>> '{}')::uuid) into v_table_ids
+    from pg_catalog.jsonb_array_elements(p->'table_ids') value;
+  end if;
+
+  -- Derive the location from explicitly chosen seats when the caller omitted area_id.
+  if v_area_id is null and v_table_ids is not null then
+    select pg_catalog.count(distinct t.area_id), (pg_catalog.array_agg(distinct t.area_id))[1]
+      into table_area_count, v_area_id
+    from atlas_private.booking_tables t where t.id = any(v_table_ids);
+    if table_area_count <> 1 then
+      raise exception 'Selected seats must belong to one location.' using errcode = '22023', hint = 'atlas:invalid_request';
+    end if;
+  end if;
+  -- Backward-compatible staff fallback: if there is exactly one table-mode area, use it.
+  if v_area_id is null then
+    select a.id into v_area_id
+    from atlas_private.booking_areas a
+    where a.is_active and a.allocation_mode = 'tables'
+    order by a.display_order, a.name
+    limit 1;
+  end if;
+
+  select * into v_area from atlas_private.booking_areas a where a.id = v_area_id for update;
+  if v_area.id is null then
+    raise exception 'Choose a booking location.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if v_area.guest_capacity is not null and v_party > v_area.guest_capacity then
+    raise exception 'That party is larger than this location can hold.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  if v_force_status in ('confirmed','requested') then
+    v_status := v_force_status;
+  elsif v_source = 'web' and not coalesce(s.auto_confirm,false) then
+    v_status := 'requested';
+  elsif v_table_ids is null and v_party >= coalesce(s.approval_party_threshold,7) and v_source = 'web' then
+    v_status := 'requested';
+  elsif coalesce(s.auto_confirm,false) then
+    v_status := 'confirmed';
+  else
+    v_status := case when v_source in ('phone','walk_in') then 'confirmed' else 'requested' end;
+  end if;
+
+  if v_status = 'confirmed' and v_area.allocation_mode = 'pooled' then
+    if not atlas_private.booking_pooled_area_has_capacity(v_area.id, v_start, v_end, v_party, null) then
+      raise exception 'That location does not have enough guest capacity for this time.' using errcode = '23505', hint = 'atlas:conflict';
+    end if;
+    v_table_ids := null;
+  elsif v_status = 'confirmed' then
+    if v_table_ids is null then
+      v_table_ids := atlas_private.booking_find_contiguous_tables(v_area.id, v_party, v_start, v_end, null);
+      -- Compatibility for table-mode areas that do not use position_index.
+      if v_table_ids is null then
+        select t.id into v_auto
+        from atlas_private.booking_tables t
+        where t.area_id = v_area.id and t.is_bookable and not t.temporarily_unavailable
+          and t.seat_capacity >= v_party and t.min_party <= v_party
+          and atlas_private.booking_table_free(t.id, v_start, v_end, null)
+        order by t.seat_capacity, t.priority, t.label
+        limit 1
+        for update;
+        if v_auto is not null then v_table_ids := array[v_auto]; end if;
+      end if;
+      if v_table_ids is null then
+        raise exception 'No adjacent seats are free for that time and party.' using errcode = '23505', hint = 'atlas:conflict';
+      end if;
+    end if;
+
+    -- S110: one authoritative check for auto-assigned AND explicitly chosen seats:
+    -- no duplicates, all exist, one active seat-based location (this one), each
+    -- bookable and not unavailable for the window, one adjacent group within a
+    -- single section, enough total capacity, and free incl. the turnaround.
+    perform atlas_private.booking_check_seat_group(v_table_ids, v_area.id, v_party, v_start, v_end, null);
+  end if;
+
+  v_ref := atlas_private.booking_new_reference();
+  insert into atlas_private.reservations (
+    id, area_id, source, status, start_at, end_at, party_size, guest_name, guest_phone, guest_email,
+    guest_requests, staff_notes, booking_reference, provider_ref, idempotency_key,
+    created_by, created_by_label, created_by_role)
+  values (v_res_id, v_area.id, v_source, v_status, v_start, v_end, v_party,
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p->>'guest_name','')),160),''),
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p->>'guest_phone','')),40),''),
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p->>'guest_email','')),200),''),
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p->>'guest_requests','')),2000),''),
+    nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p->>'staff_notes','')),2000),''),
+    v_ref, nullif(p->>'provider_ref',''), v_idem, p_actor_id, label, p_actor_role);
+
+  if v_status = 'confirmed' and v_area.allocation_mode = 'tables' then
+    foreach tid in array v_table_ids loop
+      insert into atlas_private.reservation_tables (reservation_id, table_id, start_at, end_at)
+      values (v_res_id, tid, v_start, v_end);
+    end loop;
+  end if;
+
+  insert into atlas_private.reservation_status_history
+    (reservation_id, from_status, to_status, changed_by, changed_by_label, changed_by_role, note)
+  values (v_res_id, null, v_status, p_actor_id, label, p_actor_role, 'created');
+  insert into atlas_private.booking_events
+    (event_type, reservation_id, actor_id, actor_label, actor_role, payload)
+  values ('reservation_created', v_res_id, p_actor_id, label, p_actor_role,
+    pg_catalog.jsonb_build_object('status',v_status,'source',v_source,'party_size',v_party,'area_id',v_area.id));
+
+  return pg_catalog.jsonb_build_object('reservation', atlas_private.booking_reservation_json(v_res_id), 'replayed', false);
+exception
+  when invalid_text_representation or numeric_value_out_of_range then
+    raise exception 'Invalid booking.' using errcode = '22023', hint = 'atlas:invalid_request';
+end
+$function$;
+revoke all on function public.atlas_bookings_create(uuid, text, jsonb) from public, anon, authenticated;
+grant execute on function public.atlas_bookings_create(uuid, text, jsonb) to service_role;
+
+-- 4. Staff assign / move: the S106 body, with its section check + free loop
+--    replaced by the seat-group rule (adds capacity, duplicates, availability);
+--    a move to another seat-based location now records that location.
+create or replace function public.atlas_bookings_assign(
+  p_actor_id uuid, p_actor_role text, p_reservation_id uuid, p_table_ids jsonb
+)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $function$
+declare
+  label text := atlas_private.booking_require_staff(p_actor_id, p_actor_role);
+  r atlas_private.reservations;
+  v_table_ids uuid[];
+  v_area uuid;
+  was_requested boolean;
+  tid uuid;
+begin
+  select * into r from atlas_private.reservations where id = p_reservation_id for update;
+  if r.id is null then raise exception 'Booking not found.' using errcode = 'P0002', hint = 'atlas:not_found'; end if;
+  if r.status in ('cancelled','no_show','completed') then
+    raise exception 'This booking can no longer be moved.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  if pg_catalog.jsonb_typeof(p_table_ids) <> 'array' then
+    raise exception 'Choose at least one table.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+  select pg_catalog.array_agg((value #>> '{}')::uuid) into v_table_ids
+  from pg_catalog.jsonb_array_elements(p_table_ids) value;
+  if v_table_ids is null or pg_catalog.array_length(v_table_ids, 1) < 1 then
+    raise exception 'Choose at least one table.' using errcode = '22023', hint = 'atlas:invalid_request';
+  end if;
+
+  v_area := atlas_private.booking_check_seat_group(v_table_ids, null, r.party_size, r.start_at, r.end_at, r.id);
+
+  update atlas_private.reservation_tables set released_at = pg_catalog.now()
+  where reservation_id = r.id and released_at is null;
+  foreach tid in array v_table_ids loop
+    insert into atlas_private.reservation_tables (reservation_id, table_id, start_at, end_at)
+    values (r.id, tid, r.start_at, r.end_at);
+  end loop;
+  if r.area_id is distinct from v_area then
+    update atlas_private.reservations set area_id = v_area where id = r.id;
+  end if;
+
+  was_requested := r.status = 'requested';
+  if was_requested then
+    update atlas_private.reservations set status = 'confirmed' where id = r.id;
+    insert into atlas_private.reservation_status_history (reservation_id, from_status, to_status, changed_by, changed_by_label, changed_by_role, note)
+    values (r.id, 'requested', 'confirmed', p_actor_id, label, p_actor_role, 'assigned tables');
+  end if;
+  insert into atlas_private.booking_events (event_type, reservation_id, actor_id, actor_label, actor_role, payload)
+  values ('reservation_assigned', r.id, p_actor_id, label, p_actor_role, pg_catalog.jsonb_build_object('tables', pg_catalog.to_jsonb(v_table_ids)));
+  return pg_catalog.jsonb_build_object('reservation', atlas_private.booking_reservation_json(r.id));
+exception
+  when invalid_text_representation then
+    raise exception 'Invalid table selection.' using errcode = '22023', hint = 'atlas:invalid_request';
+end
+$function$;
+revoke all on function public.atlas_bookings_assign(uuid, text, uuid, jsonb) from public, anon, authenticated;
+grant execute on function public.atlas_bookings_assign(uuid, text, uuid, jsonb) to service_role;

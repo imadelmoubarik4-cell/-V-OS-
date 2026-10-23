@@ -20,6 +20,16 @@
 
 begin;
 
+-- 0. S110 builds on S106 (its seat rule calls booking_tables_contiguous_segment).
+--    Roll S110 back first with KANEL_S110_rollback.sql; refuse otherwise.
+do $guard$
+begin
+  if exists (select 1 from supabase_migrations.schema_migrations where version >= '20261027000000') then
+    raise exception 'KANEL rollback refused: S110 (or later) is recorded - run KANEL_S110_rollback.sql first';
+  end if;
+end
+$guard$;
+
 -- 1. Stop the web-request workflow first (it fires only for public_token rows).
 drop trigger if exists booking_lifecycle_notify_trg on atlas_private.reservations;
 
