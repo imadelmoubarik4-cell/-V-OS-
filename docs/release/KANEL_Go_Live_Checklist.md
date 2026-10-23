@@ -5,10 +5,9 @@ owner's explicit approval for that action. Approval of one row does not carry ov
 to the next. The runbook section is in brackets:
 [`KANEL_Bookings_Release_Runbook.md`](KANEL_Bookings_Release_Runbook.md).
 
-Current state (22 Oct 2026): production is at S105. The read-only preflight (A1) has
-passed. A2 (backup) is approved and in progress: the logical export is verified, but
-restoring the physical backup is not. Nothing has been applied, deployed or switched on. Public reservations are
-off. kanel.is is untouched.
+Current state (23 Oct 2026): production is at S105. A1 (read-only preflight) is done.
+A2 (backup) is complete. Nothing has been applied, deployed or switched on. Public
+reservations are off. kanel.is is untouched.
 
 ## 0. Owner decisions
 
@@ -47,7 +46,7 @@ still needs its own approval.
 |---|---|---|---|---|
 | [ ] | A0 | Staging rehearsal on a Supabase branch: apply, test, roll back, re-apply, delete the branch | 🔒 APPROVAL | test output |
 | [x] | A1 | Run `KANEL_preflight_readonly.sql` (read-only). No FAIL; owner decides on each WARN | — (read-only) | **Done 22 Oct 2026 by the owner, file from `b26b82e`:** 17 PASS · 13 INFO · 0 WARN · 0 FAIL. Ledger at S105; no S106–S109 rows; no future active bookings or conflicting allocations; Bar 1–16 passes all checks. Read-only; nothing changed. |
-| [ ] | A2 | Record the backup / PITR time; export the booking tables and schema; save the snapshot JSON; encrypt; verify | ✅ **APPROVED** (owner, 22 Oct 2026; backup only) — **not complete** | [`evidence/KANEL_A2_Backup_Evidence_20261022.md`](evidence/KANEL_A2_Backup_Evidence_20261022.md). Logical export verified restorable (11/11 checksums), encrypted (AES-256). **Open:** physical backup restore not verified (PITR off; latest daily backup 2026-10-22 04:46 UTC); archive must be moved off the temporary container. |
+| [x] | A2 | Record the backup / PITR time; export the booking tables and schema; save the snapshot JSON; encrypt; verify | ✅ APPROVED (22 Oct) · ✅ **COMPLETE** (23 Oct 2026, owner-confirmed) | [`evidence/KANEL_A2_Backup_Evidence_20261022.md`](evidence/KANEL_A2_Backup_Evidence_20261022.md). Logical export verified restorable (11/11 checksums). Archive encrypted to the owner's GPG key (fingerprint `4E1B…DA58`), SHA-256 `d40ae31d…19f15b`. Owner confirmed download, decryption and the `.tar` hash. **Limitation:** physical backup not restore-tested (PITR off; latest daily backup 2026-10-23 04:25 UTC). |
 | [ ] | A2.9 | **Fresh preflight immediately before A3.1**, using the same file from the release commit. Must again show 0 FAIL, and the owner reviews any new WARN (for example, new bookings made since A1). If A3 is not started straight away, run it again. | — (read-only) — **mandatory** | CSV export, time run |
 | [ ] | A3.1 | Run `KANEL_apply_1_s106_bookings_engine.sql` | 🔒 APPROVAL (production DB) | SQL editor result |
 | [ ] | A3.2 | Run `KANEL_apply_2_s107_public_booking_api.sql` | 🔒 APPROVAL | result |

@@ -1,9 +1,11 @@
 # A2 — pre-migration backup evidence (22 Oct 2026)
 
-**A2 status: APPROVED by the owner, NOT complete.** The logical export below is
-verified restorable. The Supabase physical backup is listed as completed, but **its
-restore has not been verified**. Under the owner's rule, A2 stays open until a
-restorable backup is verified to the owner's satisfaction. See "Open items".
+**A2 status: ✅ COMPLETE (23 Oct 2026).** The owner chose closing option (a). The
+logical export is verified restorable (11/11 checksums). The owner has confirmed
+download, decryption with their own GPG key, matching SHA-256 for both the `.gpg` and
+the `.tar`, and readable contents. **Documented limitation:** the complete Supabase
+physical backup has **not** been restore-tested. PITR is disabled, and the latest
+daily backup is `2044351775`, completed 2026-10-23 04:25 UTC.
 
 Scope: backup only. No production data, settings, schema, functions, flags or secrets
 were changed. Every database access was a read-only query
@@ -114,21 +116,22 @@ Kleopatra; it was never in this session.
 | SHA-256 of the decrypted `.tar` (must match) | `494df88530955f84ee214ac10b2990bba5d732531172b483198ecbec1cc33363` |
 | Delivered | to the owner as a file download, 23 Oct 2026 |
 
-**A2 stays PENDING** until the owner confirms the download hash, successful
-decryption and the `.tar` hash. The passphrase-protected original and its
-passphrase are kept until then, as the owner asked.
+**Owner confirmation (23 Oct 2026):** downloaded; the `.gpg` SHA-256 matched;
+decrypted in Kleopatra with the owner's own private key; the `.tar` SHA-256 matched;
+contents readable.
 
-## Open items (owner)
+**Session clean-up (23 Oct 2026):** the passphrase-protected original archive, its
+passphrase file and the temporary keyring holding the owner's public key were
+shredded. The gpg agent was stopped. No private key was ever in this session. The
+only copy left in the session is the file encrypted to the owner's key, which only
+the owner can open.
 
-1. **Off-container storage.** This cloud container is temporary. The encrypted
-   archive must be downloaded to KANEL's own secure storage. The passphrase should be
-   delivered through a separate channel, or the archive re-encrypted to an
-   owner-supplied age/GPG public key (preferred).
-2. **Physical backup restore not verified.** Options: (a) accept the verified logical
-   export and the tested rollback as sufficient for this release (the change only
-   touches booking objects); (b) approve a restore of backup `2034882394` to a new,
-   temporary project to verify it (billable), then delete that project; (c) enable
-   PITR (paid add-on) before A3.
-3. **Timing.** To shrink the tier-3 data-loss window, schedule A3 soon after the next
-   daily backup (around 04:45 UTC). Re-run the export together with the mandatory
-   A2.9 preflight if anything changed.
+## Status of the earlier open items
+
+1. Off-container storage: **resolved.** The owner holds the archive, encrypted to
+   their own GPG key.
+2. Physical backup restore not verified: **accepted (option a)** for this release.
+   No paid staging project and no PITR upgrade were approved. The limitation stays
+   documented.
+3. Timing: still recommended. Run A3 soon after a daily backup, together with the
+   mandatory A2.9 fresh preflight. Refresh the export if booking data changed.

@@ -60,12 +60,14 @@ Read this first in a new chat. Then read, in this order:
 |---|---|
 | A0 staging rehearsal | not requested |
 | **A1 preflight** | ✅ **done** by the owner from `b26b82e`: 17 PASS / 13 INFO / 0 WARN / 0 FAIL |
-| **A2 backup** | ✅ **APPROVED, NOT COMPLETE** (see §5) |
+| **A2 backup** | ✅ **COMPLETE** (23 Oct 2026; owner-confirmed; physical backup not restore-tested) |
 | A2.9 fresh preflight | **mandatory** immediately before A3.1 |
-| A3.1–A3.4 apply S106–S109 | **not approved**. Do not request approval until A2 is closed. |
+| A3.1–A3.4 apply S106–S109 | **not approved**. The owner will authorise the next stage separately. |
 | A4–A8, B0–B9, Phase C | not approved |
 
-## 5. A2: exactly where it stands
+## 5. A2: complete (23 Oct 2026). History below
+
+Update: the owner chose option (a). The archive was re-encrypted to the owner's GPG key (`4E1B 6BE0 5AA8 D574 BBDB 4463 A198 A517 34A2 DA58`), delivered, and the owner confirmed decryption and both hashes. The passphrase-protected original, its passphrase and the temporary keyring were shredded. Final evidence: `evidence/KANEL_A2_Backup_Evidence_20261022.md`.
 
 Done (read-only Management API; nothing in production changed):
 - Supabase backups: **PITR disabled**. Latest daily physical backup id `2034882394`,
